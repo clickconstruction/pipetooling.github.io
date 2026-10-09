@@ -13,7 +13,7 @@ Closeout shows in the Bill the customer window, below the bills under **Sent**. 
 
 1. **Every line billed.** Our pay applications have billed the whole price.
 2. **Every trade's final pay application.** Each trade asks for its own retainage with its conditional waiver on final payment.
-3. **The customer accepts the work.** The customer walks the job and accepts it.
+3. **The customer accepts the work.** The customer walks the job and accepts it, here or in their portal.
 4. **Our final pay application.** Our final asks for what the customer holds.
 5. **The architect certifies it.** Record the certificate the way you do for any bill.
 6. **The customer pays it.** Then our unconditional waiver on final payment goes.
@@ -30,6 +30,8 @@ The trades step names each trade still to send its final, and what stands in tha
 6. Press {{button:blue|Accept the work}}.
 
 {{button:blue|Accept the work}} shows once every line is billed. The step then says the day they accepted it. A job is accepted once.
+
+The customer can also accept the work in their portal, under the job, once every line is billed. The customer types the name of the one who walked it, and a note if they want. The step then says the day, with *in their portal*.
 
 ## Send our final pay application
 

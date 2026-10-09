@@ -580,8 +580,10 @@ export interface OwnerBilling {
   retainageHeld: number
   /** Our pay applications to the owner, oldest first, as each went. Absent: none sent yet. */
   payApps?: OwnerPayAppSent[]
-  /** The day the owner accepted the work, recorded by our office (O7a). Absent: not yet. Our final pay application waits for it. */
+  /** The day the owner accepted the work, recorded by our office (O7a) or pressed in their portal (O7c). Absent: not yet. Our final pay application waits for it. */
   acceptedOn?: string
+  /** They accepted it in their portal (O7c). Absent: our office recorded it. */
+  acceptedInPortal?: boolean
   /** Interest on late bills we sent the owner, oldest first: a bill of its own, never on the pay application. */
   interestBills?: OwnerInterestBill[]
 }
@@ -937,6 +939,10 @@ export interface ChangeOrder {
   sentOn: string | null
   /** The day the owner signed or declined it. */
   answeredOn: string | null
+  /** They pressed it in their portal (O7c). Absent: the office recorded it, or no answer yet. */
+  answeredInPortal?: boolean
+  /** The reason they gave for declining it, one line (O7c). Absent: none given. */
+  declinedNote?: string
   /** Percent of its work done, for the owner's bill. */
   pctDone: number
   /**

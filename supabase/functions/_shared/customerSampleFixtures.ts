@@ -4,7 +4,7 @@
  * renders exactly what a real customer would get with today's copy, terms, footer and brand.
  */
 import { rollUpPartDecisions, roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, type RoomRow, type SubmittalRoomPayload } from './submittalRoomPayload.ts'
-import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, SAMPLE_TOKEN, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
+import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_OWNER, SAMPLE_SUB, SAMPLE_TOKEN, SAMPLE_TOKEN_OWNER, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
 import { resolveEstimateCustomerExperience, toClientCustomerExperience } from './estimateCustomerExperience.ts'
 import type { SharedBidRoomPayload } from './bidRoomPayload.ts'
@@ -159,7 +159,60 @@ function sampleWaiver(
   return { audience, jobId, jobLabel: bill.jobLabel, jobAddress: bill.jobAddress, invoiceId, billLabel, amount, billedYmd, paid, final, conditional: half(conditional), unconditional: half(unconditional) }
 }
 
+/**
+ * GC mode's customer (O7c): the owner of a job we build, with our certified pay application to pay, a change order
+ * waiting on them and the work to accept, so What customers see shows both presses. Sample presses only say thank you.
+ */
+function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: string, appOrigin: string): Record<string, unknown> {
+  const bill = {
+    invoiceId: 'sample-inv-owner',
+    jobLabel: `${SAMPLE_OWNER.job} (GC) · Job 1010`,
+    jobNumber: '1010',
+    jobName: `${SAMPLE_OWNER.job} (GC)`,
+    serviceTag: 'plum',
+    jobAddress: SAMPLE_OWNER.address,
+    amount: 45_000,
+    billedOn: ymdPlusDays(todayYmd, -6),
+    payUrl: `${appOrigin.replace(/\/$/, '')}/portal?t=${SAMPLE_TOKEN_OWNER}#pay`,
+    checkRef: 'SR-1010',
+    asGc: false,
+    billedTo: null,
+    ownerName: null,
+    payments: [],
+    totalPaid: 0,
+  }
+  return {
+    company,
+    customerName: SAMPLE_OWNER.company,
+    customerPhone: '(512) 555-0177',
+    audience: 'customer',
+    bills: [bill],
+    totalDue: bill.amount,
+    requestableJobs: [],
+    requestableProperties: [],
+    requestToken: SAMPLE_TOKEN_OWNER,
+    slug: SAMPLE_OWNER.portalSlug,
+    agreements: [],
+    testReports: [],
+    waivers: [],
+    stages: [],
+    bankTransfer: null,
+    gcJobs: [
+      {
+        projectId: 'sample-gc-project',
+        name: SAMPLE_OWNER.job,
+        changeOrders: [
+          { id: 'sample-gc-co-2', number: 2, description: 'Add a coffee bar cabinet, per the customer', price: 1_100, days: 3, sentOn: ymdPlusDays(todayYmd, -2) },
+        ],
+        canAccept: true,
+        accepted: null,
+      },
+    ],
+  }
+}
+
 export function sampleCustomerPortalResponse(company: SamplePortalCompany, state: SampleState, todayYmd: string, appOrigin: string): Record<string, unknown> {
+  if (state === 'owner') return sampleOwnerPortalResponse(company, todayYmd, appOrigin)
   const gc = state === 'gc'
   const payUrl = `${appOrigin.replace(/\/$/, '')}/portal?t=${SAMPLE_TOKEN}#pay`
   const openBill = {

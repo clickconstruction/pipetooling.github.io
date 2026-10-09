@@ -71,6 +71,11 @@ describe('GcBillCloseout', () => {
     expect(writes.onSendFinal).toHaveBeenLastCalledWith(true)
   })
 
+  it('says when they accepted it in their portal (O7c)', () => {
+    setup((p) => ({ ownerBilling: { ...p.ownerBilling!, acceptedOn: '2026-10-07', acceptedInPortal: true } }))
+    expect(screen.getByText('Accepted Oct 7 in their portal.')).toBeTruthy()
+  })
+
   it('waits for the trades after the acceptance', () => {
     setup(accepted)
     expect(screen.queryByRole('button', { name: 'Send the final pay application' })).toBeNull()

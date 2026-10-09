@@ -16,6 +16,11 @@ function known<T extends string>(value: string, allowed: readonly T[], what: str
   throw new Error(`A change order's ${what} reads "${value}", which the app does not know.`)
 }
 
+/** The customer's reason for declining (O7c), read loosely until the types regenerate after 20261009235000's push. */
+function declinedNoteOf(row: ChangeOrderRow): string {
+  return ((row as ChangeOrderRow & { declined_note?: string | null }).declined_note ?? '').trim()
+}
+
 /** One row as the kernels read it. A time extension names its moves (`daysOnChart`); an ordinary one has none. */
 export function changeOrderFromRow(row: ChangeOrderRow): ChangeOrder {
   return {
@@ -30,6 +35,8 @@ export function changeOrderFromRow(row: ChangeOrderRow): ChangeOrder {
     status: known(row.status, STATUSES, 'status'),
     sentOn: row.sent_on,
     answeredOn: row.answered_on,
+    ...(row.answered_how === 'portal' ? { answeredInPortal: true } : {}),
+    ...(declinedNoteOf(row) ? { declinedNote: declinedNoteOf(row) } : {}),
     pctDone: Number(row.pct_done),
     days: row.days,
     ...(row.days_on_chart ? { daysOnChart: row.days_on_chart } : {}),

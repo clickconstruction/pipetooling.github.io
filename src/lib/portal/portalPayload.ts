@@ -2,6 +2,8 @@ import type { PortalPropertyNotice } from '../../../supabase/functions/_shared/p
 import type { ChecksEventIn, ChecksJobIn } from '../jobs/gcChecksApplied'
 export type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
 import { bankTransferDetailsForPortal, parseBankTransferDetails, type BankTransferDetails } from '../bankTransferDetails'
+import type { PortalGcChangeOrder, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
+export type { PortalGcChangeOrder, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
 /**
  * Customer portal payload parsing (portal train PR 1). The /portal page
  * receives this from the customer-portal edge function; the parser is
@@ -118,6 +120,33 @@ export type PortalPayload = {
   waivers: PortalWaiverRow[]
   /** Records for an owner (punch list #86): the request the office offered on this portal and not yet sent — to sign, or signed; null from an older function. */
   ownerRecords: PortalOwnerRecords | null
+  /** GC mode (O7c): the GC jobs we build for this customer, with the change orders waiting on them and the work to accept — `_shared/gcPortal.ts`; [] from an older function. */
+  gcJobs: PortalGcJob[]
+}
+
+const isYmd = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
+
+/** One GC job's section, or null when a field is off: a broken row never reaches the page. */
+export function parsePortalGcJob(raw: unknown): PortalGcJob | null {
+  if (!raw || typeof raw !== 'object') return null
+  const j = raw as Record<string, unknown>
+  if (typeof j.projectId !== 'string' || !j.projectId || typeof j.name !== 'string') return null
+  const changeOrders: PortalGcChangeOrder[] = Array.isArray(j.changeOrders)
+    ? j.changeOrders.flatMap((c): PortalGcChangeOrder[] => {
+        if (!c || typeof c !== 'object') return []
+        const o = c as Record<string, unknown>
+        if (typeof o.id !== 'string' || !o.id || typeof o.number !== 'number' || !isYmd(o.sentOn)) return []
+        return [{ id: o.id, number: o.number, description: typeof o.description === 'string' ? o.description : '', price: Number(o.price) || 0, days: Number(o.days) || 0, sentOn: o.sentOn }]
+      })
+    : []
+  const a = j.accepted && typeof j.accepted === 'object' ? (j.accepted as Record<string, unknown>) : null
+  return {
+    projectId: j.projectId,
+    name: j.name,
+    changeOrders,
+    canAccept: j.canAccept === true,
+    accepted: a && isYmd(a.on) ? { on: a.on, how: a.how === 'portal' ? 'portal' : 'office' } : null,
+  }
 }
 
 export type PortalOwnerRecords = { id: string; address: string; ownerName: string; offeredOn: string; signed: { on: string; name: string } | null; /** Sent on the portal (shape B): the day, and the packet's PDF as a signed URL, or null while the copy is still being kept. */ sent: { on: string; downloadUrl: string | null } | null }
@@ -391,6 +420,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     stages: Array.isArray(r.stages) ? r.stages.map(parseJobStages).filter((x): x is PortalJobStages => x != null) : [],
     promise: parsePortalPromise(r.promise),
     checks: parsePortalChecks(r.checks),
+    gcJobs: Array.isArray(r.gcJobs) ? r.gcJobs.map(parsePortalGcJob).filter((x): x is PortalGcJob => x != null) : [],
   }
 }
 
