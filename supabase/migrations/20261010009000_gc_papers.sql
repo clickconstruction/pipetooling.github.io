@@ -210,7 +210,9 @@ GRANT EXECUTE ON FUNCTION public.gc_company_paper(uuid, uuid) TO authenticated;
 
 -- 7) A company's paper, signed or filed, keeps its promise in the same transaction (the prototype's promisesKeptBy:
 -- tradeSignMsa keeps msa, tradeSignW9 w9, tradeUploadCoi insurance). The WHEN lets only a company's paper through, so a
--- person's signing (accept-contract, the person path) never reaches it and accept-contract is untouched.
+-- person's signing (accept-contract, the person path) never reaches it and accept-contract is untouched, and only an
+-- agreement, a W-9 or a certificate: a signed license or 'other' paper keeps nothing. An agreement keeps msa, the rule
+-- the Portal's msaFirst gate reads (gc_trade_sign_sow, doc_type agreement).
 CREATE OR REPLACE FUNCTION public.gc_company_paper_kept()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -221,7 +223,7 @@ BEGIN
   IF TG_OP = 'UPDATE' AND OLD.status = 'signed' THEN
     RETURN NULL;
   END IF;
-  PERFORM public.gc_keep_promises(NEW.company_id, CASE NEW.doc_type WHEN 'w9' THEN 'w9' WHEN 'coi' THEN 'insurance' ELSE 'msa' END);
+  PERFORM public.gc_keep_promises(NEW.company_id, CASE NEW.doc_type WHEN 'agreement' THEN 'msa' WHEN 'w9' THEN 'w9' WHEN 'coi' THEN 'insurance' END);
   RETURN NULL;
 END;
 $$;
@@ -229,7 +231,7 @@ $$;
 CREATE OR REPLACE TRIGGER gc_company_paper_kept
   AFTER INSERT OR UPDATE OF status ON public.person_contract_documents
   FOR EACH ROW
-  WHEN (NEW.company_id IS NOT NULL AND NEW.status = 'signed')
+  WHEN (NEW.company_id IS NOT NULL AND NEW.status = 'signed' AND NEW.doc_type IN ('agreement', 'w9', 'coi'))
   EXECUTE FUNCTION public.gc_company_paper_kept();
 
 -- 8) The office files a company's insurance certificate, as SubDocumentAddForm files a sub's: a company paper, signed, with

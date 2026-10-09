@@ -190,6 +190,14 @@ RESET ROLE;
 UPDATE public.person_contract_documents SET status = 'signed' WHERE company_id = '00000000-0000-0000-0000-000000000711' AND document_name = 'Master Subcontract Agreement';
 SELECT gpt.same('a signed paper updated again keeps nothing', (
   SELECT count(*)::text FROM public.gc_trade_promises WHERE company_id = '00000000-0000-0000-0000-000000000711' AND kind = 'msa' AND kept_on IS NULL), '1');
+-- A company's paper of another type, signed, keeps nothing: only an agreement, a W-9 or a certificate keeps a promise,
+-- an agreement the msa, the rule the Portal's msaFirst gate reads (doc_type agreement).
+INSERT INTO public.person_contract_documents (person_name, company_id, document_name, doc_type, contract_lineage_id, lineage_version, status)
+VALUES ('gc-company:00000000-0000-0000-0000-000000000711', '00000000-0000-0000-0000-000000000711', 'Safety acknowledgment', 'other', gen_random_uuid(), 1, 'unsent');
+UPDATE public.person_contract_documents SET status = 'signed', signed_at = public.app_today() WHERE document_name = 'Safety acknowledgment';
+SELECT gpt.same('a signed paper of another type keeps nothing', (
+  SELECT doc_type || ' ' || status || ', ' || (SELECT count(*) FROM public.gc_trade_promises WHERE company_id = '00000000-0000-0000-0000-000000000711' AND kind = 'msa' AND kept_on IS NULL) || ' msa still open'
+  FROM public.person_contract_documents WHERE document_name = 'Safety acknowledgment'), 'other signed, 1 msa still open');
 -- gc_record_company_coi's refusals, in words.
 SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d2');
 SET LOCAL ROLE authenticated;
