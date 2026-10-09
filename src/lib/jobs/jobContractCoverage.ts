@@ -12,7 +12,7 @@
  */
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { isUnderContractFloor } from './jobContractFloor'
-import { framesLabel, framesProgress, framesWaitingLine, joinSignerNames, signedNames, signerNamesLine } from './jobContractSigners'
+import { filedOnPaper, framesLabel, framesProgress, framesWaitingLine, joinSignerNames, signedNames, signerNamesLine } from './jobContractSigners'
 
 export type JobContractRowLike = {
   id: string
@@ -39,11 +39,13 @@ export type JobContractRowLike = {
   co_signer_name?: string | null
   co_signed_at?: string | null
   co_signer_printed_name?: string | null
+  /** v2.5101: a second frame filed from the paper after the first signed through the link reads as paper. */
+  co_signer_mode?: string | null
 }
 
 /** The columns a batch read selects for the coverage kernel — one list, so no reader drops the second signer. */
 export const JOB_CONTRACT_COVERAGE_COLUMNS =
-  'id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url, recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name'
+  'id, job_id, status, revision, recipient_email, sent_at, last_sent_at, view_count, signed_at, signer_printed_name, signer_mode, voided_at, signed_document_url, recipient_name, signer_consented_at, co_signer_name, co_signed_at, co_signer_printed_name, co_signer_mode'
 
 /** A customer-accepted estimates row — the rails every online signature already lands on. */
 export type SignedEstimateLike = {
@@ -154,7 +156,7 @@ export function buildJobContractCoverage(
     if (signed) {
       out.set(job.id, {
         kind: 'signed',
-        source: signed.signer_mode === 'paper' ? 'paper' : 'contract',
+        source: filedOnPaper(signed) ? 'paper' : 'contract',
         documentUrl: signed.signed_document_url ?? null,
         signedAt: signed.signed_at,
         signerName: signerNamesLine(signed) || signed.signer_printed_name,

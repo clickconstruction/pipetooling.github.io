@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatContractSignedStamp, isSignedOnDayMarker, jobContractSignatureAuditLine, jobContractSignatureBlocks, jobContractSignersAuditLine } from './jobContractLifecycle'
+import { formatContractSignedStamp, isSignedOnDayMarker, jobContractChips, jobContractSignatureAuditLine, jobContractSignatureBlocks, jobContractSignersAuditLine } from './jobContractLifecycle'
 
 /** A second signer in the agreement's audit line and printed blocks (v2.4590). */
 const STATUTES = ' · 15 U.S.C. § 7001 · Tex. Bus. & Com. Code ch. 322'
@@ -35,6 +35,18 @@ const paperTwo = {
 /** The first frame filed from a paper; the second signed through the link before it came back (v2.4657). */
 const paperAfterLink = { ...paperTwo, co_signer_mode: 'draw', co_signer_consented_at: '2026-09-29T19:05:00Z' }
 
+/** The first frame signed through the link; the second filed from the paper on its Signed on day (v2.5101). */
+const linkThenPaper = {
+  ...one,
+  signer_mode: 'draw',
+  signed_at: '2026-10-09T12:00:00Z',
+  co_signer_name: 'Alex Owner',
+  co_signed_at: '2026-10-09T12:00:00Z',
+  co_signer_printed_name: 'Alex Owner',
+  co_signer_mode: 'paper',
+  co_signer_consented_at: null,
+}
+
 describe('jobContractSignersAuditLine — the line in History and Documents', () => {
   it('one signer reads exactly as the one-block line', () => {
     expect(jobContractSignersAuditLine(one)).toBe(jobContractSignatureAuditLine(one))
@@ -58,8 +70,25 @@ describe('jobContractSignersAuditLine — the line in History and Documents', ()
     expect(jobContractSignersAuditLine(named)).toBe('Signed on paper by Sam Owner · recorded Sep 29, 2026, 2:05 PM CT')
   })
 
-  it('a paper filed after the second signer signed through the link names only the paper’s signer (v2.4657)', () => {
-    expect(jobContractSignersAuditLine(paperAfterLink)).toBe('Signed on paper by Sam Owner · recorded Sep 29, 2026, 2:05 PM CT')
+  it('a paper filed after the second signer signed through the link names each frame its own way (v2.5101)', () => {
+    expect(jobContractSignersAuditLine(paperAfterLink)).toBe(
+      `Signed on paper by Sam Owner · recorded Sep 29, 2026, 2:05 PM CT · signed electronically by Alex Owner (drawn) · Sep 29, 2026, 2:05 PM CT · consent recorded${STATUTES}`,
+    )
+  })
+
+  it('the first signer through the link, the second on paper: each frame its own way, in frame order (v2.5101)', () => {
+    expect(jobContractSignersAuditLine(linkThenPaper)).toBe(
+      `Signed electronically by Sam Owner (drawn) · Sep 29, 2026, 2:00 PM CT · consent recorded${STATUTES} · signed on paper by Alex Owner on Oct 9, 2026`,
+    )
+  })
+})
+
+describe('jobContractChips — a record part link, part paper (v2.5101)', () => {
+  const base = { status: 'signed', voided_at: null, send_count: 1, view_count: 1 }
+  it('reads on file · paper when either frame was filed from the paper', () => {
+    expect(jobContractChips({ ...base, ...linkThenPaper })).toEqual([{ label: 'on file · paper', tone: 'signed' }])
+    expect(jobContractChips({ ...base, ...paperAfterLink })).toEqual([{ label: 'on file · paper', tone: 'signed' }])
+    expect(jobContractChips({ ...base, ...two })).toEqual([{ label: 'signed ✓', tone: 'signed' }])
   })
 })
 
@@ -127,6 +156,21 @@ describe('jobContractSignatureBlocks — what every print draws', () => {
       imageUrl: 'https://x.test/b.png',
       paper: false,
     })
+  })
+})
+
+describe('jobContractSignatureBlocks — the first signer through the link, the second on paper (v2.5101)', () => {
+  it('keeps the link signature’s block and draws the paper’s signer as a Signed on paper block of its own', () => {
+    const b = jobContractSignatureBlocks(linkThenPaper, { signatureUrl: 'https://x.test/a.png', record: { jobNumber: '1053' } })
+    expect(b.signature).toMatchObject({
+      printedName: 'Sam Owner',
+      auditLine: `Signed electronically by Sam Owner (drawn) · Sep 29, 2026, 2:00 PM CT · consent recorded${STATUTES}`,
+      imageUrl: 'https://x.test/a.png',
+      paper: false,
+      whenLabel: 'Sep 29, 2026, 2:00 PM CT',
+    })
+    expect(b.coSignerName).toBe('Alex Owner')
+    expect(b.coSignature).toMatchObject({ printedName: 'Alex Owner', auditLine: 'Signed on paper by Alex Owner on Oct 9, 2026', imageUrl: null, paper: true, whenLabel: 'Oct 9, 2026' })
   })
 })
 

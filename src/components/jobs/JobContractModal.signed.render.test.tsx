@@ -178,6 +178,29 @@ describe('JobContractModal — the signed state', () => {
     expect(within(paper).getByTestId('paper-cosignature').textContent).toContain('Signed electronically by Grace Palmer (drawn) · Sep 20, 2026, 12:00 PM CT')
   })
 
+  it('a paper filed after the first signer signed through the link (v2.5101): the link signature keeps its mark, the paper’s signer has their own, and the rail reads the paper', async () => {
+    rowsState.current = [
+      signedRow({
+        public_token: null, signed_document_url: 'https://docs.google.com/document/d/abc/edit', signed_pdf_path: null, sent_channel: 'pdf_email',
+        paper_signed_on: '2026-09-22', signed_at: '2026-09-22T12:00:00Z',
+        co_signer_name: 'Grace Palmer', co_signed_at: '2026-09-22T12:00:00Z', co_signer_printed_name: 'Grace Palmer', co_signer_mode: 'paper', co_signer_consented_at: null, co_signer_signature_storage_path: null,
+      }),
+    ]
+    renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)
+    const rail = await screen.findByTestId('contract-signed-rail')
+    expect(screen.getByTestId('contract-status-pill').textContent).toMatch(/· Michael Palmer and Grace Palmer$/)
+    const banner = within(rail).getByTestId('contract-signed-banner').textContent ?? ''
+    expect(banner).toContain('Michael Palmer and Grace Palmer')
+    expect(banner).toContain('One signed on their phone, one on paper · filed as a Google Doc')
+    expect(within(rail).getByRole('link', { name: /Open the signed Google Doc/ })).toBeTruthy()
+    expect(within(rail).queryByRole('button', { name: 'Print / save as PDF' })).toBeNull()
+    const paper = screen.getByTestId('contract-paper')
+    const sig = within(paper).getByTestId('paper-signature').textContent ?? ''
+    expect(sig).toContain('Signed electronically by Michael Palmer (drawn) · Sep 21, 2026, 9:29 AM CT · consent recorded')
+    expect(within(paper).getByTestId('paper-cosignature').textContent).toContain('Signed on paper by Grace Palmer on Sep 22, 2026')
+    expect(within(paper).queryByTestId('paper-cosigner-frame')).toBeNull()
+  })
+
   it('a filed Google Doc: the document door and the copy by email as the link; no signing link to copy', async () => {
     rowsState.current = [signedRow({ signer_mode: 'paper', public_token: null, signed_document_url: 'https://docs.google.com/document/d/abc/edit', signer_signature_storage_path: null, signed_pdf_path: null, signer_ip: null, signer_user_agent: null, signer_consented_at: null })]
     renderWithProviders(<JobContractModal open onClose={() => undefined} job={job} />)

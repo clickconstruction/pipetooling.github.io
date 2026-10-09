@@ -147,7 +147,7 @@ Have a paper scan instead? The small **Have a scan or photo instead?** link unde
 
 {{gif:get-a-job-contract-signed-file.gif|From the Pipeline row, the chip opens the Contract modal. File a signed contract opens the sheet. The pasted Google Doc link turns into the green linked line, and Record as signed lights up}}
 
-Did two people sign the paper? Type the second name in **Second signer**. A second signer named on the draft is already in that box. Each name is filed as its own signature. The record names both people. Clear the box when only one person signed. When the second signer already signed through the link, the sheet says so and keeps that signature.
+Did two people sign the paper? Type the second name in **Second signer**. A second signer named on the draft is already in that box. Each name is filed as its own signature. The record names both people. Clear the box when only one person signed. When the second signer already signed through the link, the sheet says so and keeps that signature. The same goes for the first signer. A PDF you emailed to sign by hand still carries its link. When the customer signed there, **Signed by** shows that signature in place of its box. Put the name of the person who signed the paper in **Second signer**. The record keeps both signatures, one from the link and one from the paper.
 
 ## One signed paper for several jobs
 

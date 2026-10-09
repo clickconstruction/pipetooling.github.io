@@ -50,6 +50,31 @@ describe('signedDoors — the Contract window\'s signed state', () => {
     expect(signedHowLine({ source: 'paper', row, estimateDrawn: false })).toBe('Signed outside the app · filed as a Google Doc')
   })
 
+  it('one signer through the link, one on paper: the paper is the document; no build, no print (v2.5101)', () => {
+    const row = {
+      signer_mode: 'draw',
+      signed_document_url: null,
+      paper_upload_path: 'jc/1/paper.pdf',
+      public_token: null,
+      signed_at: '2026-10-09T12:00:00Z',
+      signer_printed_name: 'Sam Owner',
+      signer_consented_at: '2026-10-01T15:00:00Z',
+      co_signer_name: 'Alex Owner',
+      co_signed_at: '2026-10-09T12:00:00Z',
+      co_signer_printed_name: 'Alex Owner',
+      co_signer_mode: 'paper',
+    }
+    const d = signedDoors({ ...base, source: 'paper', row, uploadedCopy: true })
+    expect(d.emailCopy).toEqual({ attachment: 'pdf', sub: 'PDF attached' })
+    expect(d.downloadPdf).toBeNull()
+    expect(d.openUploaded).toBe(true)
+    expect(d.print).toBe(false)
+    expect(signedHowLine({ source: 'paper', row, estimateDrawn: false })).toBe('One signed on their phone, one on paper · uploaded by the office')
+    const gdoc = { ...row, paper_upload_path: null, signed_document_url: 'https://docs.google.com/document/d/abc123/edit', signer_mode: 'in_person' }
+    expect(signedHowLine({ source: 'paper', row: gdoc, estimateDrawn: false })).toBe('One signed on our device, one on paper · filed as a Google Doc')
+    expect(signedDoors({ ...base, source: 'paper', row: gdoc }).emailCopy).toEqual({ attachment: 'link', sub: 'the link' })
+  })
+
   it('an estimate or bid-room acceptance: Accepted, a copy by email and a built PDF, the door to where it lives', () => {
     const d = signedDoors({ ...base, source: 'estimate', row: null, estimateId: 'e1', estimateNumber: 12 })
     expect(d.verb).toBe('Accepted')
