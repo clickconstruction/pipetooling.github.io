@@ -39,7 +39,8 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtil
 import { twinQuestionAudienceColumnPresent } from '../../../supabase/functions/_shared/twinQuestionAudience'
 import { useTwinQuestionBidRefs } from '../../hooks/useTwinQuestionBidRefs'
 import { orderPendingByStake, pickOpenAudit } from '../../lib/bids/auditTriage'
-import { buildAuditQueue, deltaWord, finishLabel, jobNameFromShell, sealedLine, whyLine, type AuditQueueItem } from '../../lib/bids/auditQueue'
+import { buildAuditQueue, deltaWord, finishLabel, jobNameFromShell, sealedLine, slateKey, whyLine, type AuditQueueItem } from '../../lib/bids/auditQueue'
+import { useParkedAuditSlates } from '../../hooks/useParkedAuditSlates'
 import { buildAliasNote, pairAliases, pairLabel, selfAssessmentLead, topDifferences, type AliasPair, type TopDifference } from '../../lib/bids/auditCardShape'
 import { buildAxisCards, normalizeBidNumber, type RunScoreRow } from '../../lib/bids/confidenceBoard'
 import type { ShadowRunRow } from '../../lib/bids/shadowStory'
@@ -159,6 +160,9 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
   const [composer, setComposer] = useState<Record<string, string>>({}) // key: `${auditId}:card` or `answer:${questionId}`
   const [busy, setBusy] = useState<string | null>(null)
   const [showDigested, setShowDigested] = useState(false)
+  // v2.5016 (the owner's call of 2026-10-09): slates parked with Skip this slate, on this device.
+  const { parked: parkedSlates, park: parkSlate, bringBack: bringBackSlate } = useParkedAuditSlates(authUser?.id)
+  const [parkedOpen, setParkedOpen] = useState(false)
   // Cockpit: one card open at a time; the rest collapse to triage rows.
   const [expandedId, setExpandedId] = useState<string | null>(null)
   // twin bid_id -> its reference (comparison + diff; sealed while the ref is unsent).
@@ -481,7 +485,11 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
   // for the notes, draft totals and references (the signals the order reads), opens the
   // first workable pending card, re-picks as they move, and holds once the estimator picks.
   const focusAppliedRef = useRef<string | null>(null)
-  const workable = useCallback((a: AuditWithBid) => !isSealed(a) && !isUnpricedAudit(draftByAudit[a.id]), [isSealed, draftByAudit])
+  const workable = useCallback(
+    (a: AuditWithBid) =>
+      !isSealed(a) && !isUnpricedAudit(draftByAudit[a.id]) && !parkedSlates.has(slateKey({ shellName: a.bids?.project_name ?? null, requestedAt: a.requested_at, refSentDate: null }) ?? ''),
+    [isSealed, draftByAudit, parkedSlates],
+  )
   useEffect(() => {
     // A door from the Robot Board / the envelope names the card to open — once, and it counts as a pick.
     if (focusAuditId && focusAppliedRef.current !== focusAuditId) {
@@ -689,7 +697,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
       }),
     [triaged, refByBidId, isSealed, draftByAudit, notesByAudit, deltaPctFor, axisByShellNumber, gateByAxis, plansAskBidIds],
   )
-  const queue = useMemo(() => buildAuditQueue(queueItems, expandedId), [queueItems, expandedId])
+  const queue = useMemo(() => buildAuditQueue(queueItems, expandedId, parkedSlates), [queueItems, expandedId, parkedSlates])
   const [sealedOpen, setSealedOpen] = useState(false)
   // v2.4261 (punch list #63): the card's folds — the confession, the rest of the differences, the pairs, the system table, the questions — and the alias answers.
   const [cardFolds, setCardFolds] = useState<Record<string, boolean>>({})
@@ -1452,10 +1460,20 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                   {queue.upNext.length > 0 ? (
                     <div data-testid="queue-up-next">
                       {sectionHead('Up next', String(queue.upNext.length), 'by what your verdict unblocks')}
+                      {queue.upNextSlates.length > 0 ? (
+                        <div data-testid="queue-slates" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem', alignItems: 'baseline', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
+                          {queue.upNextSlates.map((sl) => (
+                            <span key={sl.key} style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'baseline' }}>
+                              <span>{sl.key} · {sl.count}</span>
+                              <button type="button" aria-label={`Skip the ${sl.key} slate`} onClick={() => parkSlate(sl.key)} style={{ ...linkBtnStyle, fontSize: 'inherit' }}>Skip this slate</button>
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>{queue.upNext.map((i) => row(i))}</div>
                     </div>
                   ) : queue.now == null && queue.workableCount === 0 ? (
-                    <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing waiting on a verdict.</div>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{queue.parked.length > 0 ? 'Nothing waiting on a verdict outside the parked slates.' : 'Nothing waiting on a verdict.'}</div>
                   ) : null}
                   {queue.sealed.length > 0 ? (
                     <div data-testid="queue-sealed">
@@ -1463,6 +1481,24 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                         {sectionHead('Opens when you send', `${queue.sealed.length} ${sealedOpen ? '▾' : '▸'}`, sealedOpen ? null : queue.sealed.slice(0, 4).map((i) => jobNameFromShell(i.shellName)).join(' · ') + (queue.sealed.length > 4 ? ' · …' : ''))}
                       </button>
                       {sealedOpen ? <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>{queue.sealed.map((i) => row(i, { sealed: true }))}</div> : null}
+                    </div>
+                  ) : null}
+                  {queue.parked.length > 0 ? (
+                    <div data-testid="queue-parked">
+                      <button type="button" onClick={() => setParkedOpen((v) => !v)} aria-expanded={parkedOpen} style={{ background: 'transparent', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', color: 'inherit', textAlign: 'left', width: '100%' }}>
+                        {sectionHead('Parked', `${queue.parked.reduce((n, sl) => n + sl.items.length, 0)} ${parkedOpen ? '▾' : '▸'}`, parkedOpen ? null : queue.parked.map((sl) => sl.key).join(' · '))}
+                      </button>
+                      {parkedOpen
+                        ? queue.parked.map((sl) => (
+                            <div key={sl.key} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', marginBottom: '0.5rem' }}>
+                              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                <span>{sl.key} · {sl.items.length} audit{sl.items.length === 1 ? '' : 's'}</span>
+                                <button type="button" aria-label={`Bring the ${sl.key} slate back`} onClick={() => bringBackSlate(sl.key)} style={{ ...linkBtnStyle, fontSize: 'inherit' }}>Bring it back</button>
+                              </div>
+                              {sl.items.map((i) => row(i))}
+                            </div>
+                          ))
+                        : null}
                     </div>
                   ) : null}
                   {queue.digesting.length > 0 ? (
