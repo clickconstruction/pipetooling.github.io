@@ -306,6 +306,7 @@ A GC project we build bills its customer through one Pipeline job, its **billing
   - no bill-to columns: the payer comes from the job's customer when it sends (`billToParty.ts`);
   - the pay application keeps its link (`gc_owner_pay_apps.invoice_id`) once, and a certificate of nothing makes no bill.
 - **Our record stays ours.** The pay application and its lines, with our fee and contingency as lines of their own, are on `gc_owner_pay_apps` and `gc_owner_pay_app_lines`, the money team's (dev, the leaders, the controller). The bill carries only the amount the customer owes.
+- **Our conditional waiver** with each sent pay application is a `job_lien_releases` row on the billing job, made in `LienReleaseModal` with its `ask` (the pay application's amount and bill day, since no bill exists until the certificate) and linked once by `gc_owner_pay_apps.conditional_waiver_id` (v2.4996).
 - Payments, promises and our unconditional waivers on these bills are O5c's, through the Pipeline's own RPCs on the billing job. Migration `20261009200000_gc_owner_pay_app_send.sql`.
 
 ## System of record (the 2026-08-24 policy)

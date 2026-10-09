@@ -34,6 +34,9 @@ import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, payAppSendPayload, type BillingRows } from '../lib/gc/billCustomer'
 import { ownerPayApp, ownerPayAppForm, ownerPayAppParties } from '../lib/gc/ownerBilling'
 import { downloadPayAppExcel, downloadPayAppPdf } from '../lib/gc/payAppFileWriters'
+import LienReleaseModal from '../components/jobs/LienReleaseModal'
+import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
+import type { JobWithDetails } from '../types/jobWithDetails'
 import { openQuestions, questionsCloseOn, type PlanQuestionView } from '../lib/gc/questions'
 import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
 import { emailTheAnswer, sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
@@ -99,6 +102,7 @@ import {
   sendSetEmails,
   type GcPickerCustomer,
   type GcTeamMember,
+  linkPayAppWaiver,
   loadGcBillingRows,
   recordCertificate,
   sendOwnerPayApp,
@@ -540,6 +544,25 @@ export default function GcProjects() {
       .then(() => (reload ? loadBill() : undefined))
       .catch((e) => setBillProblem(formatErrorMessage(e, failed)))
       .finally(() => setBillBusy(null))
+  }
+  // Our conditional waiver with a sent pay application (O4a-4): the Pipeline's own waiver window on the
+  // billing job, filled in with what the bill asked and its bill day, since no bill exists until the certificate.
+  const [waiverFor, setWaiverFor] = useState<{ job: JobWithDetails; payAppId: string; ask: { amount: number; throughDate: string } } | null>(null)
+  const openWaiver = (number: number) => {
+    if (!billProjectId) return
+    const row = billRows?.billing.get(billProjectId)?.payApps.find((a) => a.number === number)
+    const jobId = billRows?.terms.find((t) => t.project_id === billProjectId)?.billing_job_id
+    if (!row || !jobId) return
+    billWrite(
+      `waiver-${number}`,
+      async () => {
+        const job = await fetchJobWithDetailsById(jobId)
+        if (!job) throw new Error('The billing job did not load.')
+        setWaiverFor({ job, payAppId: row.id, ask: { amount: Math.round(Number(row.due) * 100) / 100, throughDate: row.period_to } })
+      },
+      'The waiver did not open.',
+      false,
+    )
   }
 
   if (authLoading) return null
@@ -984,13 +1007,15 @@ export default function GcProjects() {
         />
       )}
 
-      {canSeeGcMoney(role) && billProject && billState && (
+      {/* The waiver window sits below ours (z 1100), so Bill the customer steps aside while it is open. */}
+      {canSeeGcMoney(role) && billProject && billState && !waiverFor && (
         <GcBillCustomerWindow
           state={billState}
           project={billProject}
           today={today}
           busy={billBusy}
           problem={billProblem}
+          waived={(billRows?.billing.get(billProject.id)?.payApps ?? []).filter((a) => a.conditional_waiver_id !== null).map((a) => a.number)}
           onClose={() => setBillWindow(null)}
           writes={{
             onSend: () => billWrite('send', () => sendOwnerPayApp(billProject.id, payAppSendPayload(ownerPayApp(billState, billProject), today)), 'The pay application did not go.'),
@@ -1005,6 +1030,23 @@ export default function GcProjects() {
               const parties = ownerPayAppParties(billState, billProject, form)
               billWrite('file', () => (kind === 'xlsx' ? downloadPayAppExcel : downloadPayAppPdf)(form.app, parties), 'The form did not download.', false)
             },
+            onWaiver: openWaiver,
+          }}
+        />
+      )}
+
+      {canSeeGcMoney(role) && waiverFor && (
+        <LienReleaseModal
+          open
+          job={waiverFor.job}
+          invoice={null}
+          invoiceIds={[]}
+          initialFormType="conditional_progress"
+          ask={waiverFor.ask}
+          signerNameFallback={(profileName ?? '').trim()}
+          onClose={() => setWaiverFor(null)}
+          onIssued={(releaseId) => {
+            if (releaseId) billWrite('waiver', () => linkPayAppWaiver(waiverFor.payAppId, releaseId), 'The waiver was made, but not linked to its pay application.')
           }}
         />
       )}

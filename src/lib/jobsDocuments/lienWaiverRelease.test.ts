@@ -240,6 +240,12 @@ describe('buildLienWaiverPrefill', () => {
     expect(buildLienWaiverPrefill('conditional_progress', ctx([inv({ id: 'a', amount: 1, billed_at: '2026-10-03T12:00:00Z' })])).throughDate).toBe('2026-10-03')
   })
 
+  it('takes a GC pay application\'s ask over the bills: what it asked and its bill day', () => {
+    const job = jobWith({ revenue: 182000, invoices: [inv({ id: 'a', amount: 48000, billed_at: '2026-10-26T17:00:00Z' })] })
+    const f = buildLienWaiverPrefill('conditional_progress', { job, invoices: [], issuer: null, ownerName: null, signerName: '', ask: { amount: 1234.5, throughDate: '2026-11-25' } })
+    expect([f.amount, f.throughDate]).toEqual(['1234.50', '2026-11-25'])
+  })
+
   it('falls back: issuer→ClickConstruction, owner→GC→customer, through→last_work_date', () => {
     const job = jobWith({ gcCustomer: { id: 'gc', name: 'GC Fallback Inc' } })
     const f = buildLienWaiverPrefill('unconditional_final', {

@@ -32,6 +32,17 @@ The architect signs a certificate for what they approve. Record it when it comes
 
 The certificate makes the bill the customer pays. It shows on their statement with **Pay**. What the architect left out comes back on the next pay application.
 
+## Send our conditional waiver
+
+Our conditional waiver goes with each pay application. It gives up our lien rights for the amount once they pay it.
+
+1. Find the pay application under **Sent**.
+2. Press {{button:outline|Make our conditional waiver}}.
+3. The waiver window opens on the job's billing job. The amount and the day come from the pay application.
+4. Check the form, sign it and send it the way you send any waiver.
+
+Once it is made, the pay application shows {{chip:green|our waiver went with it}}.
+
 ## Change the retainage
 
 The customer holds back part of every bill until the end. It starts at 10 percent.
