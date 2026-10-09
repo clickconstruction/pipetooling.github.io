@@ -7,6 +7,7 @@ import { runEnvelopes } from './runEnvelopes'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { homesteadStatementApplies, parseLienDeskDraftFields } from './lienNoticeDraft'
 import { buildLienSupplierJobs } from './lienJobSuppliers'
+import { lienFieldsHash } from './lienNoticeSignature'
 
 const TODAY = '2026-09-14'
 
@@ -574,5 +575,39 @@ describe('print one item out of the run (v2.4853)', () => {
     expect(noticesFullyPrinted([n, m], new Set([runCopyKey('it1', 'owner'), runCopyKey('it1', 'original_contractor')])).map((x) => x.itemId)).toEqual(['it1'])
     expect(noticesFullyPrinted([n, m], new Set([runCopyKey('it2', 'owner')])).map((x) => x.itemId)).toEqual(['it2'])
     expect(noticesFullyPrinted([{ itemId: 'it3', recipients: [] } as unknown as typeof n], new Set())).toEqual([])
+  })
+})
+
+describe('the leader’s signature rides with the notice (v2.5077)', () => {
+  const signedCols = { signed_at: '2026-10-09T19:14:00.000Z', signed_by: 'u1', signed_on_device_of: null, signer_printed_name: 'Robert Douglas', signer_signature_mode: 'type', signer_signature_storage_path: null }
+  const build = (item: LienDeskItemRow) => {
+    const d = data([item])
+    return buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas, Owner', TODAY)
+  }
+
+  it('reads the signed row into the notice, the cover letter and the form; an unsigned row gives none', () => {
+    const item = { ...approved, ...signedCols, signed_fields_hash: lienFieldsHash(approved.fields) } as LienDeskItemRow
+    const run = build(item)
+    expect(run).toHaveLength(1)
+    const sig = run[0]!.signature
+    expect(sig?.mode).toBe('type')
+    expect(sig?.printedName).toBe('Robert Douglas')
+    expect(sig?.recordId).toMatch(/^L650-/)
+    const formSig = runNoticeBlocks(run[0]!, run[0]!.recipients[0]!).find((b) => b.kind === 'signature')
+    expect(formSig && formSig.kind === 'signature' ? formSig.signed?.recordId : null).toBe(sig!.recordId)
+    const letterSig = runCoverNoteBlocks(run[0]!).find((b) => b.kind === 'signature')
+    expect(letterSig && letterSig.kind === 'signature' ? letterSig.signed?.printedName : null).toBe('Robert Douglas')
+    expect(build(approved)[0]!.signature).toBeNull()
+    const unsignedForm = runNoticeBlocks(build(approved)[0]!, run[0]!.recipients[0]!).find((b) => b.kind === 'signature')
+    expect(unsignedForm && unsignedForm.kind === 'signature' ? unsignedForm.signed ?? null : 'missing').toBeNull()
+  })
+
+  it('a draft edited after signing reads as unsigned; the packet shell loads the cursive face only when a page carries a pressed signature', () => {
+    const item = { ...approved, ...signedCols, signed_fields_hash: 'not-the-hash-of-these-fields' } as LienDeskItemRow
+    expect(build(item)[0]!.signature).toBeNull()
+    const signedItem = { ...approved, ...signedCols, signed_fields_hash: lienFieldsHash(approved.fields) } as LienDeskItemRow
+    const signedRun = build(signedItem)
+    expect(runPacketHtml(signedRun, TODAY, null)).toContain('fonts.googleapis.com/css2?family=Great+Vibes')
+    expect(runPacketHtml(build(approved), TODAY, null)).not.toContain('Great+Vibes')
   })
 })

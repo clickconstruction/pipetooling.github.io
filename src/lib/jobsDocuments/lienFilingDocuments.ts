@@ -20,6 +20,32 @@ import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
 
 // ---------- shared block model ----------
 
+/**
+ * The leader's electronic signature as the papers print it (v2.5077, lien desk signing): the mark
+ * — his name in the cursive face for a pressed signature, the ink for a drawn one — in the framed
+ * block estimates and contracts already use, tagged "Signed electronically", with the printed name
+ * and company under the rule, the day and clock, and the record ID in the corner; the audit
+ * sentence and the statute line in grey beneath. `lienNoticeSignature.ts` builds it from the row.
+ */
+export type FilingSignature = {
+  mode: 'type' | 'draw'
+  printedName: string
+  pngDataUrl?: string | null
+  /** "Signed October 9, 2026 at 2:14 PM CT". */
+  signedWords: string
+  /** "L878-4C2E91". */
+  recordId: string
+  auditLine: string
+}
+
+export const FILING_ESIGN_LINE = 'Binding as a signature in ink under the ESIGN Act (15 U.S.C. § 7001) and the Texas UETA (Bus. & Com. Code ch. 322).'
+/** The cursive face a pressed signature prints in; a print shell adds it when a page carries one. */
+export const FILING_SIGNATURE_FONT_LINK = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap">'
+/** True when a rendered page holds a pressed (typed) signature and so needs the cursive face loaded. */
+export function filingHtmlHasTypedSignature(html: string): boolean {
+  return html.includes('data-filing-signed-mode="type"')
+}
+
 export type FilingDocBlock =
   | { kind: 'letterhead'; company: string; licenseLine: string; contactLines: string[] }
   | { kind: 'refstrip'; items: string[] }
@@ -29,7 +55,8 @@ export type FilingDocBlock =
   | { kind: 'formLine'; label: string; value: string; field?: string; ghost?: boolean }
   | { kind: 'paragraph'; text: string }
   | { kind: 'numbered'; n: number; text: string }
-  | { kind: 'signature'; lines: string[] }
+  /** `signed` (v2.5077): the leader's signature; without it the block is the rule and the names. */
+  | { kind: 'signature'; lines: string[]; signed?: FilingSignature | null }
   | { kind: 'notarial'; who: string }
   | { kind: 'deliveryRecord'; lines: string[] }
   /** A boxed line the reader must not miss (v2.3758): the pay page's direct-payment rule on the owner's copy. */
@@ -115,6 +142,25 @@ function payRowLineHtml(b: Extract<FilingDocBlock, { kind: 'payRow' }>, mark: Fi
   return `<div style="margin-top:0.2em"><span${attrs} style="${style};font-weight:700"><span data-field-text>${text}</span></span>${sub}</div>`
 }
 
+/** The signed frame on the page (v2.5077): the mark, the rule, the names, the day, the record ID; the audit and statute lines under it. */
+function signedSignatureHtml(sig: FilingSignature, lines: string[]): string {
+  const mark =
+    sig.mode === 'draw' && sig.pngDataUrl
+      ? `<img src="${sig.pngDataUrl}" alt="Signature of ${esc(sig.printedName)}" style="display:block;max-height:56px;max-width:260px;object-fit:contain;object-position:left bottom" />`
+      : `<div style="font-family:'Great Vibes','Brush Script MT',cursive;font-size:2.2em;line-height:1.1;color:#111827;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(sig.printedName)}</div>`
+  return (
+    `<div style="margin:2em 0 0;display:flex;justify-content:flex-end"><div style="width:54%">` +
+    `<div data-filing-signed="${esc(sig.recordId)}" data-filing-signed-mode="${sig.mode}" style="position:relative;border:1.5px solid #c2410c;border-radius:6px;padding:12px 16px 9px">` +
+    `<span style="position:absolute;top:-8px;left:10px;background:#fff;padding:0 6px;${HTML_LABEL_FONT};font-size:0.58em;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#c2410c;line-height:1.2">Signed electronically</span>` +
+    mark +
+    `<div style="border-top:1px solid currentColor;margin-top:0.35em;padding-top:0.35em;${HTML_LABEL_FONT};font-size:0.72em;color:${HTML_MUTED};line-height:1.5">${[...lines, sig.signedWords].map(esc).join('<br/>')}</div>` +
+    `<span style="position:absolute;bottom:-7px;right:10px;background:#fff;padding:0 6px;font-family:ui-monospace,Menlo,monospace;font-size:0.62em;color:${HTML_MUTED};line-height:1.2">${esc(sig.recordId)}</span>` +
+    `</div>` +
+    `<div style="${HTML_LABEL_FONT};font-size:0.62em;color:${HTML_MUTED};margin-top:0.8em;line-height:1.5">${esc(sig.auditLine)}<br/>${esc(FILING_ESIGN_LINE)}</div>` +
+    `</div></div>`
+  )
+}
+
 export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOptions): string {
   const parts: string[] = []
   for (const b of blocks) {
@@ -195,10 +241,12 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
         break
       case 'signature':
         parts.push(
-          `<div style="margin:2em 0 0;display:flex;justify-content:flex-end"><div style="width:46%">` +
-            `<div style="border-bottom:1px solid currentColor;height:1.6em"></div>` +
-            `<div style="${HTML_LABEL_FONT};font-size:0.72em;color:${HTML_MUTED};margin-top:0.3em">${b.lines.map(esc).join('<br/>')}</div>` +
-            `</div></div>`,
+          b.signed
+            ? signedSignatureHtml(b.signed, b.lines)
+            : `<div style="margin:2em 0 0;display:flex;justify-content:flex-end"><div style="width:46%">` +
+                `<div style="border-bottom:1px solid currentColor;height:1.6em"></div>` +
+                `<div style="${HTML_LABEL_FONT};font-size:0.72em;color:${HTML_MUTED};margin-top:0.3em">${b.lines.map(esc).join('<br/>')}</div>` +
+                `</div></div>`,
         )
         break
       case 'notarial':
@@ -254,7 +302,11 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
         out.push(`${b.n}. ${b.text}`)
         break
       case 'signature':
-        out.push(`______________________________\n${b.lines.join('\n')}`)
+        out.push(
+          b.signed
+            ? `/s/ ${b.signed.printedName}\nSigned electronically · ${b.signed.recordId} · ${b.signed.signedWords}\n${b.lines.join('\n')}\n${b.signed.auditLine}`
+            : `______________________________\n${b.lines.join('\n')}`,
+        )
         break
       case 'notarial':
         out.push(
@@ -274,11 +326,12 @@ export function filingDocPrintHtml(blocks: FilingDocBlock[], docTitle: string, f
   const footerHtml = footer
     ? `<div style="${HTML_LABEL_FONT};margin-top:1.8em;padding-top:0.5em;border-top:1px solid ${HTML_RULE};font-size:0.68em;color:${HTML_MUTED}">${esc(footer)}</div>`
     : ''
-  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(docTitle)}</title>
+  const body = filingDocHtml(blocks)
+  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(docTitle)}</title>${filingHtmlHasTypedSignature(body) ? FILING_SIGNATURE_FONT_LINK : ''}
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
   @media print { body { margin: 0.5in auto; } }
-</style></head><body>${filingDocHtml(blocks)}${footerHtml}</body></html>`
+</style></head><body>${body}${footerHtml}</body></html>`
 }
 
 const PAGE_MARGIN = 22
@@ -463,6 +516,80 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
         y += 2.5
         break
       case 'signature': {
+        if (b.signed) {
+          // The signed frame (v2.5077): the mark, the rule, the names, the day; the tag on the top
+          // edge, the record ID on the bottom edge; the audit and statute lines under it.
+          const s = b.signed
+          const frameX = RIGHT_EDGE - 96
+          const frameW = 96
+          const pad = 4
+          let png: { w: number; h: number } | null = null
+          if (s.mode === 'draw' && s.pngDataUrl) {
+            try {
+              const props = doc.getImageProperties(s.pngDataUrl)
+              const scale = Math.min((frameW - pad * 2) / props.width, 14 / props.height)
+              png = { w: props.width * scale, h: props.height * scale }
+            } catch {
+              png = null
+            }
+          }
+          const markH = png ? png.h + 1 : 9
+          const frameH = pad + 1 + markH + 1 + 4 + (b.lines.length + 1) * 3.8 + pad - 1
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(6)
+          const auditLines = doc.splitTextToSize(`${s.auditLine} ${FILING_ESIGN_LINE}`, frameW) as string[]
+          y += 8
+          ensureRoom(frameH + auditLines.length * 2.8 + 8)
+          doc.setDrawColor(194, 65, 12)
+          doc.setLineWidth(0.4)
+          doc.roundedRect(frameX, y, frameW, frameH, 1.5, 1.5)
+          doc.setFillColor(255, 255, 255)
+          doc.setFont('helvetica', 'bold')
+          doc.setFontSize(5.5)
+          doc.setTextColor(194, 65, 12)
+          const tag = 'SIGNED ELECTRONICALLY'
+          const tagW = doc.getTextWidth(tag) + 2
+          doc.rect(frameX + 3, y - 1.5, tagW, 3, 'F')
+          doc.text(tag, frameX + 4, y + 0.8)
+          let yy = y + pad + 1
+          if (png) {
+            doc.addImage(s.pngDataUrl as string, 'PNG', frameX + pad, yy, png.w, png.h, undefined, 'FAST')
+            yy += png.h + 1
+          } else {
+            doc.setFont('times', 'italic')
+            doc.setFontSize(16)
+            doc.setTextColor(17, 24, 39)
+            doc.text(s.printedName, frameX + pad, yy + 6)
+            yy += 9
+          }
+          doc.setDrawColor(...INK)
+          doc.setLineWidth(0.3)
+          doc.line(frameX + pad, yy + 1, frameX + frameW - pad, yy + 1)
+          yy += 5
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(7.5)
+          doc.setTextColor(...MUTED)
+          for (const l of [...b.lines, s.signedWords]) {
+            doc.text(l, frameX + pad, yy)
+            yy += 3.8
+          }
+          doc.setFont('courier', 'normal')
+          doc.setFontSize(6)
+          const idW = doc.getTextWidth(s.recordId) + 2
+          doc.setFillColor(255, 255, 255)
+          doc.rect(frameX + frameW - 3 - idW, y + frameH - 1.5, idW, 3, 'F')
+          doc.text(s.recordId, frameX + frameW - 2 - idW, y + frameH + 0.8)
+          y += frameH + 4
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(6)
+          doc.setTextColor(...MUTED)
+          for (const l of auditLines) {
+            doc.text(l, frameX, y)
+            y += 2.8
+          }
+          y += 2
+          break
+        }
         y += 10
         ensureRoom(20)
         const sigX = RIGHT_EDGE - 78
@@ -582,7 +709,7 @@ export function homesteadStatementBlocks(): FilingDocBlock[] {
 export type LienNoticeInstrument = 'notice_53_056' | 'retainage_53_057'
 
 /** The § 53.056(a-2) form, verbatim — values are the only variable part. `ghostOptional` (v2.3694): the desk shows the blank optional line so it can be typed; print never asks for it. `instrument` (v2.3753): the § 53.057(a-2) retainage form is the same lines with "Total retainage unpaid" in place of the claim amount. */
-export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExtras, opts?: { ghostOptional?: boolean; instrument?: LienNoticeInstrument }): FilingDocBlock[] {
+export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExtras, opts?: { ghostOptional?: boolean; instrument?: LienNoticeInstrument; signature?: FilingSignature | null }): FilingDocBlock[] {
   const retainage = opts?.instrument === 'retainage_53_057'
   const blocks: FilingDocBlock[] = [
     retainage
@@ -614,7 +741,7 @@ export function buildLienNoticeBlocks(f: LienNoticeFields, extras?: FilingDocExt
     ...(!retainage && (f.retainageIncluded ?? '').trim() ? [{ kind: 'formLine', label: 'Of which, unpaid retainage:', value: demandMoney(f.retainageIncluded ?? ''), field: 'retainageIncluded' } as FilingDocBlock] : []),
     { kind: 'formLine', label: "(Claimant's contact person)", value: f.contactPerson.trim(), field: 'contactPerson' },
     { kind: 'formLine', label: "(Claimant's address)", value: f.claimantAddress.trim(), field: 'claimantAddress' },
-    { kind: 'signature', lines: [f.contactPerson.trim(), f.claimantName.trim()].filter((l) => l) },
+    { kind: 'signature', lines: [f.contactPerson.trim(), f.claimantName.trim()].filter((l) => l), signed: opts?.signature ?? null },
     // A homestead lien is invalid unless the notice includes or has attached the § 53.254(g) statement (v2.3744) — printed under both Subchapter C forms on a residence.
     ...(f.homesteadStatement ? homesteadStatementBlocks() : []),
   ]

@@ -5,6 +5,7 @@ import {
   buildReleaseOfRecordBlocks,
   filingDocFooter,
   filingDocHtml,
+  filingDocPrintHtml,
   filingDocText,
   filingLetterheadFromIssuer,
   filingPdfFilename,
@@ -234,5 +235,43 @@ describe('the pay page blocks (v2.3758)', () => {
     expect(html).toContain('border:1px dashed')
     expect(html).toContain('pay by check to the address above')
     expect(filingDocText([{ kind: 'callout', text: 'Rule.' }, { kind: 'payRow', label: 'L', description: 'D', amountLine: 'A', address: 'X', note: '', svg: null, png: null }])).toBe('Rule.\n\nL\nD\nA\nX')
+  })
+})
+
+describe('the signed frame (v2.5077, lien desk signing)', () => {
+  const signed = { mode: 'type' as const, printedName: 'Robert Douglas', pngDataUrl: null, signedWords: 'Signed October 9, 2026 at 2:14 PM CT', recordId: 'L878-4C2E91', auditLine: 'Placed by Robert Douglas with one press under his own sign-in to ClickTooling on October 9, 2026 at 2:14 PM CT.' }
+
+  it('unsigned, the block is the rule and the names as before; signed, the page carries the tag, the cursive name, the names under the rule, the day, the record ID and the audit lines', () => {
+    const plain = filingDocHtml(buildLienNoticeBlocks(NOTICE_FIELDS))
+    expect(plain).toContain('border-bottom:1px solid currentColor;height:1.6em')
+    expect(plain).not.toContain('Signed electronically')
+    const html = filingDocHtml(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature: signed }))
+    expect(html).toContain('data-filing-signed="L878-4C2E91"')
+    expect(html).toContain('data-filing-signed-mode="type"')
+    expect(html).toContain('Signed electronically')
+    expect(html).toContain("font-family:'Great Vibes'")
+    expect(html).toContain('>Robert Douglas</div>')
+    expect(html).toContain('Malachi Whites<br/>Click Plumbing and Electrical<br/>Signed October 9, 2026 at 2:14 PM CT')
+    expect(html).toContain('>L878-4C2E91</span>')
+    expect(html).toContain('Placed by Robert Douglas with one press')
+    expect(html).toContain('ESIGN Act (15 U.S.C. § 7001)')
+    expect(html).not.toContain('height:1.6em')
+  })
+
+  it('drawn, the frame holds the ink instead of the cursive name', () => {
+    const html = filingDocHtml(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature: { ...signed, mode: 'draw', pngDataUrl: 'data:image/png;base64,AAAA' } }))
+    expect(html).toContain('<img src="data:image/png;base64,AAAA" alt="Signature of Robert Douglas"')
+    expect(html).toContain('data-filing-signed-mode="draw"')
+    expect(html).not.toContain("font-family:'Great Vibes'")
+  })
+
+  it('in plain text the mark is /s/ the name with the record line; the print shell loads the cursive face only for a pressed signature', () => {
+    const text = filingDocText(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature: signed }))
+    expect(text).toContain('/s/ Robert Douglas\nSigned electronically · L878-4C2E91 · Signed October 9, 2026 at 2:14 PM CT\nMalachi Whites\nClick Plumbing and Electrical\nPlaced by Robert Douglas')
+    expect(filingDocText(buildLienNoticeBlocks(NOTICE_FIELDS))).toContain('______________________________\nMalachi Whites')
+    const shellSigned = filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature: signed }), 'Notice')
+    expect(shellSigned).toContain('fonts.googleapis.com/css2?family=Great+Vibes')
+    expect(filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS), 'Notice')).not.toContain('Great+Vibes')
+    expect(filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature: { ...signed, mode: 'draw', pngDataUrl: 'data:image/png;base64,AAAA' } }), 'Notice')).not.toContain('Great+Vibes')
   })
 })
