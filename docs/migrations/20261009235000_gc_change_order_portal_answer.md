@@ -34,3 +34,7 @@ GC mode, Owner Billing's O7c: the customer answers a change order in their porta
 - the office signing by the old three arguments, and declining with a blank reason;
 - an estimator stopped;
 - the service role saying office refused; their portal's decline keeping its reason, trimmed; a second answer refused.
+
+## Status
+
+**Applied to prod 2026-10-09 at 13:05 UTC** by the lead (GC MODE) from a clean checkout at main's tip (4efd22470) with `scripts/db-push.sh` (`--include-all`); drift 825/825 after. The thirteen functions that bundle the changed shared files (`customer-portal`, `submit-portal-request`, `gc-trade-portal`, `submit-gc-trade-portal`, `gc-statement-email-dispatch`, `get-bid-proposal-room`, `get-contract-for-signer`, `get-estimate-for-customer`, `get-job-contract`, `get-rfq-quote-page`, `get-submittal-room`, `legal-portal`, `sub-portal`) deployed the same minute with `scripts/deploy-functions.sh`; edge drift 145/145. Verified through the management API: step 1, `gc_answer_change_order` once with five arguments, closed to `anon`; step 2, no declined note yet; and as a signed-in dev, rolled back, `how = 'portal'` refused with *Only the customer's portal records an answer as theirs.* Nothing was pressed on prod; the portal checks wait on Grace's yes in Helper 15's chat. The types ride Helper 17's regeneration with 20261010009000.
