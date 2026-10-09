@@ -238,5 +238,7 @@ The cover-letter block (decision 2) · the house's written ask and upload page (
 Moved there 2026-09-21 (v1 shipped): the approved-alternate → takeoff-row write, the design-change
 sign-off, the Mail Drop retirement, and decision 11's two open calls (may the app send the link; whose
 call a design change is). The owner answered them all on 2026-10-09: an approved alternate writes
-nothing onto the takeoff row, and the rest are builds (decision 11 says where they stand). Each has
-one home; this file keeps the pointer.
+nothing onto the takeoff row; decision 11 says where its two calls stand, the sign-off with them; and
+the Mail Drop habit is retired (v2.5027): a submittal leaves only through Share or Send the link, and
+a revision already marked *sent by email* keeps that mark. Each has one home; this file keeps the
+pointer.

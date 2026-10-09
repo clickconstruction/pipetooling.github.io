@@ -723,7 +723,7 @@ describe('BidsSubmittalsTab', () => {
       fireEvent.click(within(rows[0]!).getByRole('button', { name: 'Save the cut sheet for DWH-1 as a PDF' }))
       await waitFor(() => expect(saved).toEqual([{ name: 'DWH-1 cut sheet.pdf', href: 'blob:cut-sheet' }]))
       expect(state.storage).toEqual(['download b398/rev-1/0.pdf'])
-      expect(await screen.findByText('Saved DWH-1 cut sheet.pdf · 3 pages. Attach it to your email or text.')).toBeTruthy()
+      expect(await screen.findByText('Saved DWH-1 cut sheet.pdf · 3 pages, to read or to file in the GC’s own system.')).toBeTruthy()
       expect(state.writes).toEqual([])
     } finally {
       click.mockRestore()
