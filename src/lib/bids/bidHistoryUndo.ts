@@ -273,10 +273,14 @@ export function bidUndoPlan(
 
 export type BidUndoUnseen = { ticks: number; hides: number; items: number; mappings: number }
 
-export const BID_UNDO_UNSEEN_TABLES: ReadonlyArray<{ table: string; column: string; key: keyof BidUndoUnseen }> = [
+/**
+ * `ticked`: a choice row counts only while it is ticked. An untick, and the chooser's save of every
+ * fixture it shows, leave a row with `ticked = false`, which is no tick.
+ */
+export const BID_UNDO_UNSEEN_TABLES: ReadonlyArray<{ table: string; column: string; key: keyof BidUndoUnseen; ticked?: true }> = [
   { table: 'bid_count_row_submission_hides', column: 'count_row_id', key: 'hides' },
   { table: 'bid_submittal_items', column: 'source_count_row_id', key: 'items' },
-  { table: 'bid_submittal_takeoff_choices', column: 'count_row_id', key: 'ticks' },
+  { table: 'bid_submittal_takeoff_choices', column: 'count_row_id', key: 'ticks', ticked: true },
   { table: 'bids_takeoff_template_mappings', column: 'count_row_id', key: 'mappings' },
 ]
 

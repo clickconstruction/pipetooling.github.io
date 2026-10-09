@@ -125,18 +125,21 @@ describe('loadCanEditBid (PR 6)', () => {
 
 describe('loadBidUndoUnseen (PR 6)', () => {
   /** Each table answers the rows that name the asked ids. */
-  function selectStub(rows: Record<string, Array<Record<string, string>>>, failOn?: string) {
+  function selectStub(rows: Record<string, Array<Record<string, unknown>>>, failOn?: string) {
     const asked: string[] = []
     const client = {
       from(table: string) {
         let col = ''
         let ids: string[] = []
+        const eqs: Array<[string, unknown]> = []
         const b = {
           select: (c: string) => { col = c; return b },
           in: (_c: string, v: string[]) => { ids = v; return b },
+          eq: (c: string, v: unknown) => { eqs.push([c, v]); return b },
           then: (resolve: (v: unknown) => void) => {
-            asked.push(`${table}.${col}:${ids.length}`)
-            resolve(table === failOn ? { data: null, error: { message: 'permission denied' } } : { data: (rows[table] ?? []).filter((r) => ids.includes(r[col]!)), error: null })
+            asked.push(`${table}.${col}:${ids.length}${eqs.map(([c, v]) => ` ${c}=${String(v)}`).join('')}`)
+            const hit = (r: Record<string, unknown>) => ids.includes(r[col] as string) && eqs.every(([c, v]) => r[c] === v)
+            resolve(table === failOn ? { data: null, error: { message: 'permission denied' } } : { data: (rows[table] ?? []).filter(hit), error: null })
           },
         }
         return b
@@ -148,7 +151,8 @@ describe('loadBidUndoUnseen (PR 6)', () => {
   it('counts each kind per count row, reading every table in chunks of 100', async () => {
     const ids = Array.from({ length: 150 }, (_, i) => `c${i}`)
     const { client, asked } = selectStub({
-      bid_submittal_takeoff_choices: [{ count_row_id: 'c1' }, { count_row_id: 'c120' }],
+      // An untick, or the chooser's save of a fixture it showed, leaves a row with ticked false: no tick.
+      bid_submittal_takeoff_choices: [{ count_row_id: 'c1', ticked: true }, { count_row_id: 'c120', ticked: true }, { count_row_id: 'c7', ticked: false }],
       bid_submittal_items: [{ source_count_row_id: 'c1' }, { source_count_row_id: 'c1' }],
       bid_count_row_submission_hides: [{ count_row_id: 'c-not-asked' }],
     })
@@ -156,7 +160,7 @@ describe('loadBidUndoUnseen (PR 6)', () => {
     expect(asked).toEqual([
       'bid_count_row_submission_hides.count_row_id:100', 'bid_count_row_submission_hides.count_row_id:50',
       'bid_submittal_items.source_count_row_id:100', 'bid_submittal_items.source_count_row_id:50',
-      'bid_submittal_takeoff_choices.count_row_id:100', 'bid_submittal_takeoff_choices.count_row_id:50',
+      'bid_submittal_takeoff_choices.count_row_id:100 ticked=true', 'bid_submittal_takeoff_choices.count_row_id:50 ticked=true',
       'bids_takeoff_template_mappings.count_row_id:100', 'bids_takeoff_template_mappings.count_row_id:50',
     ])
     expect(Object.fromEntries(got)).toEqual({ c1: { ticks: 1, hides: 0, items: 2, mappings: 0 }, c120: { ticks: 1, hides: 0, items: 0, mappings: 0 } })

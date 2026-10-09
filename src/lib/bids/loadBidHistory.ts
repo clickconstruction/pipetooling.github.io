@@ -93,8 +93,8 @@ export async function removeBidAddedRows(table: string, ids: ReadonlyArray<strin
 }
 
 /**
- * What hangs on each count row outside the ledger (punch list #73, PR 6): the submittal ticks and
- * items, the rows hidden from the pricing page and the old By Stage picks, read for the count rows
+ * What hangs on each count row outside the ledger (punch list #73, PR 6): the submittal ticks (ticked
+ * ones only) and items, the rows hidden from the pricing page and the old By Stage picks, read for the count rows
  * an Undo would remove, before it is offered and again on the press. A row with none is left out.
  * Throws a failed read, so Undo stays off rather than guess.
  */
@@ -102,9 +102,10 @@ export async function loadBidUndoUnseen(countRowIds: ReadonlyArray<string>, clie
   const out = new Map<string, BidUndoUnseen>()
   // The tables are named at run time.
   const untyped = client as unknown as SupabaseClient
-  for (const { table, column, key } of BID_UNDO_UNSEEN_TABLES) {
+  for (const { table, column, key, ticked } of BID_UNDO_UNSEEN_TABLES) {
     for (let i = 0; i < countRowIds.length; i += REMOVE_CHUNK) {
-      const { data, error } = await untyped.from(table).select(column).in(column, countRowIds.slice(i, i + REMOVE_CHUNK))
+      const read = untyped.from(table).select(column).in(column, countRowIds.slice(i, i + REMOVE_CHUNK))
+      const { data, error } = await (ticked ? read.eq('ticked', true) : read)
       if (error) throw new Error(error.message)
       for (const r of (data ?? []) as unknown as Array<Record<string, string | null>>) {
         const id = r[column]
