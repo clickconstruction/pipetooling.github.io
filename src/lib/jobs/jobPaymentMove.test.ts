@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { jobPaymentTraceLines, paymentMoveBlock, paymentMoveBlockText, paymentMoveReason, planJobPaymentMove } from './jobPaymentMove'
+import { jobPaymentRemovedReasonWords, jobPaymentTraceLines, paymentMoveBlock, paymentMoveBlockText, paymentMoveReason, planJobPaymentMove } from './jobPaymentMove'
+import type { JobPaymentEvent } from './jobPaymentMove'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { PaymentRow } from './jobFormTypes'
 
@@ -46,6 +47,49 @@ describe('jobPaymentTraceLines', () => {
     expect(jobPaymentTraceLines([ev()], 'j922', label, money)).toEqual([{ id: 'e1', direction: 'in', text: '$2400.00 moved here from J880 · Reliant · Taunya · wrong job' }])
     expect(jobPaymentTraceLines([ev({ reason: null, actor_name: null })], 'j880', label, money)[0]!.text).toBe('$2400.00 moved → J922 · Michael Palmer')
     expect(jobPaymentTraceLines([ev()], 'j000', label, money)).toEqual([])
+  })
+})
+
+describe('jobPaymentTraceLines — a payment moved here and later removed (the owner\'s call of 2026-10-09)', () => {
+  // J907 from punch list #22's walk: $1.00 moved J904 → J907, then removed on J907. Remove stored *unlinked*; no bill held it.
+  const moved: JobPaymentEvent = { id: 'm1', kind: 'moved', payment_id: 'p9', from_job_id: 'j904', to_job_id: 'j907', invoice_id: null, amount: 1, paid_on: '2026-10-08', reason: 'wrong job', actor_name: 'Robert', created_at: '2026-10-08T15:00:00Z' }
+  const removed: JobPaymentEvent = { id: 'r1', kind: 'removed', payment_id: 'p9', from_job_id: 'j907', to_job_id: null, invoice_id: null, amount: 1, paid_on: '2026-10-08', reason: 'unlinked', actor_name: 'Robert', created_at: '2026-10-08T15:05:00Z' }
+  const label = (id: string) => (id === 'j904' ? 'J904 · ZZ TEST held check A' : 'J907 · ZZ TEST held check B')
+  const money = (n: number) => `$${n.toFixed(2)}`
+  const arrived = { id: 'm1', direction: 'in', text: '$1.00 moved here from J904 · ZZ TEST held check A · Robert · wrong job' }
+
+  it('draws *$1.00 removed · Robert* right under its moved-here line, never *unlinked*, whatever order the events come in', () => {
+    const want = [arrived, { id: 'r1', direction: 'removed', text: '$1.00 removed · Robert' }]
+    expect(jobPaymentTraceLines([removed, moved], 'j907', label, money)).toEqual(want)
+    expect(jobPaymentTraceLines([moved, removed], 'j907', label, money)).toEqual(want)
+    // The job it left keeps its one moved line.
+    expect(jobPaymentTraceLines([removed, moved], 'j904', label, money)).toEqual([{ id: 'm1', direction: 'out', text: '$1.00 moved → J907 · ZZ TEST held check B · Robert · wrong job' }])
+  })
+  it('a removal that never moved here draws nothing, as before', () => {
+    expect(jobPaymentTraceLines([{ ...removed, payment_id: 'p-other' }, moved], 'j907', label, money)).toEqual([arrived])
+    expect(jobPaymentTraceLines([{ ...removed, payment_id: null }, moved], 'j907', label, money)).toEqual([arrived])
+    expect(jobPaymentTraceLines([removed], 'j907', label, money)).toEqual([])
+    expect(jobPaymentTraceLines([{ ...removed, from_job_id: 'j904' }, moved], 'j907', label, money)).toEqual([arrived])
+  })
+  it('goes under the latest arrival when the payment came here twice', () => {
+    const in1 = { ...moved, id: 'm1', created_at: '2026-10-08T10:00:00Z' }
+    const back = { ...moved, id: 'm2', from_job_id: 'j907', to_job_id: 'j904', created_at: '2026-10-08T11:00:00Z' }
+    const in2 = { ...moved, id: 'm3', created_at: '2026-10-08T12:00:00Z' }
+    const gone = { ...removed, created_at: '2026-10-08T13:00:00Z' }
+    expect(jobPaymentTraceLines([gone, in2, back, in1], 'j907', label, money).map((l) => l.id)).toEqual(['m3', 'r1', 'm2', 'm1'])
+    expect(jobPaymentTraceLines([in1, back, in2, gone], 'j907', label, money).map((l) => l.id)).toEqual(['m1', 'm2', 'm3', 'r1'])
+  })
+  it('a bill that held it, the bank and a typed reason read as words; no one named reads as the amount alone', () => {
+    expect(jobPaymentTraceLines([{ ...removed, invoice_id: 'inv-1' }, moved], 'j907', label, money)[1]!.text).toBe('$1.00 removed · Robert · unlinked from its bill')
+    expect(jobPaymentTraceLines([{ ...removed, actor_name: null }, moved], 'j907', label, money)[1]!.text).toBe('$1.00 removed')
+    expect(jobPaymentRemovedReasonWords('unlinked', false)).toBeNull()
+    expect(jobPaymentRemovedReasonWords('unlinked', true)).toBe('unlinked from its bill')
+    expect(jobPaymentRemovedReasonWords('unlinked_stripe_bill_unrecorded', true)).toBe('unlinked from its Stripe bill')
+    expect(jobPaymentRemovedReasonWords('bank_failed', false)).toBe('the bank returned it')
+    expect(jobPaymentRemovedReasonWords('bank_failed: Insufficient funds', false)).toBe('the bank returned it · Insufficient funds')
+    expect(jobPaymentRemovedReasonWords('  customer paid twice ', false)).toBe('customer paid twice')
+    expect(jobPaymentRemovedReasonWords(null, true)).toBeNull()
+    expect(jobPaymentRemovedReasonWords('   ', true)).toBeNull()
   })
 })
 
