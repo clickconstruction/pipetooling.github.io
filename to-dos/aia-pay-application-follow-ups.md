@@ -1,7 +1,7 @@
 ---
 name: "AIA G702-G703: what the history train left"
 number: 92
-group: residual
+group: ready
 status: the history train shipped 2026-10-06 (v2.4710 #4720, v2.4714 #4723, v2.4715 #4724, types #4731; both migrations pushed) · Restore (v2.4883) and Put the amounts back (v2.4885) shipped 2026-10-07 · left: a paid line (the owner's call), Taunya's look on a phone
 summary: >
   The pay application window now opens on the job's history: where the job stands, one line per
@@ -10,9 +10,9 @@ summary: >
   or raised and left: putting a deleted application back, showing what the GC actually paid on
   each application, a one-press "put the amounts back" on the changed-after warning, and whether
   a phone should land on the history or the form.
-next: the owner's answer on the bill tie (a row in owner-decisions-pending.md), then build 2. Taunya's look on her phone decides item 4.
+next: build 2 — the owner chose on 2026-10-09 that the office picks the bill an application became (a nullable `job_pay_applications.invoice_id`, set on the application or from Bill Customer), with the amount-and-date match pre-filling the pick; a migration and one PR. Taunya's look on her phone decides item 4.
 size: M (2) · a look (4)
-blocker: Item 2 waits on the owner's call on the bill tie; item 4 on Taunya.
+blocker: Item 4 waits on Taunya; none on item 2.
 ver: v2.4710 · v2.4714 · v2.4715
 opinion: later — the history answers the owner's question today; build 3 the first time someone hits the warning, 2 when the office asks what was paid on an application.
 mockup: the train's mock-up and its critique — https://claude.ai/artifact/7x1hxdFQbgdoh9RRhhLHeB (section C)

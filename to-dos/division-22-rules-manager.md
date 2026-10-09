@@ -1,14 +1,14 @@
 ---
 name: Division 22 rules manager
 number: 2
-group: gated
-status: owner-gated
+group: ready
+status: the full rules manager approved by the owner 2026-10-09 (the decisions sitting); not started
 summary: Rules manager UI; RH / EDF / med-gas seed call. Gas and the Needs You card shipped.
-next: "Wendi: is pinning enough? You: seed RH / EDF, rule on med gas?"
+next: Build the full rules manager from the plan below; seed RH / EDF and the med-gas rule with it.
 size: M
-blocker: Wendi + you.
+blocker: None.
 ver: coverage 73%
-opinion: later — coverage is 73% and gas shipped; ask Wendi once whether pinning is enough before building a manager.
+opinion: build — the owner picked the full manager on 2026-10-09.
 ---
 
 # Division 22 (Copy fixtures for text): the rules manager and the unseeded sections
