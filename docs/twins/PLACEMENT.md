@@ -411,17 +411,22 @@ keyed b376 rows; ledger note on b405). The shape, so future mirrors keep it:
   price ($130–160/ft); copper water rides its size curve ($22–90/ft). Never
   price buried 4" at the above-slab CI rate — that single row was the BT-2
   price miss ($204/ft vs her $35).
-- **Travel, rentals, and incidentals are HUMAN lines (audit 2026-09-04, b418 +
-  b408)**: the reference rows them as one flat `RENTALS/TRAVEL` line priced by
-  judgment per job — never per mile. The $80/mi book rate (calibrated once:
-  b376, $20k at 249 mi on a $347k job) put $23,464 of travel on a ~$49k
-  Brownsville proto at 293 mi — "charging 50% for traveling is actually crazy
-  work". Until Wendi's bands are recorded (PENDING — the next audit question:
-  what she carries at ~50 / 100 / 200 / 300 mi on a small proto vs a $300k
-  job), carry ONE `Travel & Rentals` row, count 1, priced at the LESSER of
-  $80 × miles and 10% of the building subtotal, and state the building total
-  and the travel line separately in the lock note so the scorecard reads both
-  ways. Incidentals / DSC rows: never — "assessed by humans depending on job".
+- **Travel is $0.70 a mile, round trip, once per job day (the owner's call of
+  2026-10-09; it replaces the interim 10% cap and closes the bands question)**:
+  row the book's `Travel & Rentals (per mile from office)` entry once, at
+  count = miles from the office × job days. The book prices it $1.40 a count —
+  $0.70 a mile, both ways, for each day a crew drives out — so the row reads
+  $0.70 × miles × 2 × job days. Job days are the days a crew is on site: take
+  them from the bid's schedule, else estimate them from the labor and say how,
+  never fewer than 1. Worked example: a job 45 mi from the office that takes
+  12 job days rows count 540 (45 × 12) and carries $756. Brownsville at 293 mi
+  carries $410.20 a job day — the old $80/mi rate (b376's one calibration,
+  $20k at 249 mi on a $347k job) had put $23,464 on that ~$49k proto, "charging
+  50% for traveling is actually crazy work". State the miles, the job days and
+  the travel line in the lock note so the scorecard reads them. Rentals stay a
+  HUMAN line (audit 2026-09-04, b418 + b408): the reference prices them by
+  judgment per job. Incidentals / DSC rows: never — "assessed by humans
+  depending on job".
 - **The schedule's model IS the model — never upsize, and sanity-check the
   device price (b411 + b418)**: the plan called an OS-25 oil interceptor; the
   robot rowed an OS-100 at $9,500 ("wrong item and wrong price"). An OS-25 +
