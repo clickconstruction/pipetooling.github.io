@@ -9,6 +9,7 @@ import {
   buildCrewPnlSummary,
   compareCrewPnlRows,
   crewPnlRangeForPreset,
+  crewPnlVehicleRatesFromWheels,
   type CrewPnlJobInput,
   type CrewPnlPersonRow,
   type CrewPnlRange,
@@ -16,8 +17,11 @@ import {
   type CrewPnlRosterPerson,
   type CrewPnlSortKey,
   type CrewPnlSubLaborInput,
+  type CrewPnlVehicleRate,
   DEFAULT_SUB_LABOR_EQUIVALENT_RATE,
 } from '../../lib/crewPnlSummary'
+import { loadWheelsFixedRates } from '../../lib/people/wheelsData'
+import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../../lib/overheadOfficeJobSettings'
 import { laborJobSubCost } from '../../lib/jobs/subLaborCost'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { formatDecimalWorkHoursToHhMm } from '../../lib/formatDecimalWorkHoursHhMm'
@@ -27,7 +31,7 @@ import { subRateSaveDecision } from '../../lib/jobs/crewPnlSubRate'
 import { crewPnlJobsUniverseNotice, type CrewPnlJobsUniverseState } from '../../lib/jobs/crewPnlJobsUniverse'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, todayYmdInAppTz } from '../../utils/dateUtils'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
 import type { TeamLaborRow } from '../../utils/teamLabor'
@@ -46,6 +50,12 @@ const thBase: CSSProperties = {
 
 const ESTIMATE_LED_TOOLTIP =
   'Mostly an equal-split estimate: the job had no clocked hours to weight by, so its total was divided evenly among team members. Ranked below fully-weighted rows in every numeric sort.'
+
+const VEHICLE_TOOLTIP =
+  "The vehicle deal's fixed rate from People → Vehicles × the person's field hours in the range (any job but the office job), as Review charges it. Fuel stays on the jobs. Profit nets it."
+
+/** Wheels PR 3 (v2.5039): the deals' fixed rates at today's 90-day rate, and the office job whose hours are not field hours. */
+type CrewPnlVehicleState = { status: 'loading' } | { status: 'ready'; rates: CrewPnlVehicleRate[]; officeJobId: string | null; window: { start: string; end: string } } | { status: 'failed' }
 
 const UNMATCHED_TOOLTIP =
   'Not matched to a roster person — this spelling appears only in free-text fields (sub sheets, sessions) and no single roster name clearly matches it. Fix the spelling at the source, or add the person to People, and the rows merge.'
@@ -143,6 +153,30 @@ export default function JobsCrewPnlTab({
     }
   }
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set())
+  const [vehicle, setVehicle] = useState<CrewPnlVehicleState>({ status: 'loading' })
+
+  // Wheels PR 3 (v2.5039): the Vehicle part reads the same rates Review charges. Fail-soft: the
+  // table still loads, the column reads — and the footnote says why.
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const [usersRes, officeJobId] = await Promise.all([
+          supabase.from('users').select('id, name').is('archived_at', null),
+          fetchOverheadOfficeJobLedgerIdFromAppSettings().catch(() => null),
+        ])
+        if (usersRes.error) throw usersRes.error
+        const users = ((usersRes.data ?? []) as Array<{ id: string; name: string | null }>).map((u) => ({ id: u.id, name: u.name ?? '' }))
+        const wheels = await loadWheelsFixedRates({ todayYmd: todayYmdInAppTz(), users })
+        if (!cancelled) setVehicle({ status: 'ready', rates: crewPnlVehicleRatesFromWheels(wheels.rows), officeJobId, window: wheels.window })
+      } catch {
+        if (!cancelled) setVehicle({ status: 'failed' })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -264,8 +298,10 @@ export default function JobsCrewPnlTab({
       people,
       range,
       subLaborEquivalentRate: subEquivalentRate,
+      vehicleRates: vehicle.status === 'ready' ? vehicle.rates : [],
+      officeJobId: vehicle.status === 'ready' ? vehicle.officeJobId : null,
     })
-  }, [people, jobs, allJobs, laborJobs, teamLaborData, range, driveMileageCost, driveTimePerMile, subEquivalentRate])
+  }, [people, jobs, allJobs, laborJobs, teamLaborData, range, driveMileageCost, driveTimePerMile, subEquivalentRate, vehicle])
 
   const visibleRows = useMemo(() => {
     if (!summary) return []
@@ -303,7 +339,7 @@ export default function JobsCrewPnlTab({
     return sortAsc ? ' ▲' : ' ▼'
   }
 
-  const isLoading = loading || people === null
+  const isLoading = loading || people === null || vehicle.status === 'loading'
 
   return (
     <div>
@@ -421,6 +457,9 @@ export default function JobsCrewPnlTab({
                   <th style={{ ...thBase, textAlign: 'right' }} onClick={() => toggleSort('laborCost')}>
                     Labor Cost{sortMark('laborCost')}
                   </th>
+                  <th style={{ ...thBase, textAlign: 'right' }} onClick={() => toggleSort('vehicleCost')} title={VEHICLE_TOOLTIP}>
+                    Vehicle{sortMark('vehicleCost')}
+                  </th>
                   <th style={{ ...thBase, textAlign: 'right' }} onClick={() => toggleSort('billing')} title={CREW_PNL_BILLED_TOOLTIP}>
                     {CREW_PNL_BILLED_LABEL}{sortMark('billing')}
                   </th>
@@ -439,7 +478,7 @@ export default function JobsCrewPnlTab({
                     <Fragment key={row.key}>
                       {i === firstEstimateLedIndex && (
                         <tr data-testid="crew-pnl-estimate-divider">
-                          <td colSpan={6} style={{ padding: '0.4rem 0.75rem', fontSize: '0.6875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderBottom: '1px solid var(--border)' }} title={ESTIMATE_LED_TOOLTIP}>
+                          <td colSpan={7} style={{ padding: '0.4rem 0.75rem', fontSize: '0.6875rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-tint)', borderBottom: '1px solid var(--border)' }} title={ESTIMATE_LED_TOOLTIP}>
                             ≈ Estimated rows — most of their billing is an equal-split guess (jobs with no hours to weight by), so they rank below the real rows.
                           </td>
                         </tr>
@@ -464,6 +503,7 @@ export default function JobsCrewPnlTab({
                   <td style={{ padding: '0.75rem' }}>Total</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>{formatDecimalWorkHoursToHhMm(summary.totals.hours)}</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(summary.totals.laborCost)}</td>
+                  <td style={{ padding: '0.75rem', textAlign: 'right' }} data-testid="crew-pnl-vehicle-total">{summary.totals.vehicleCost > 0 ? `$${formatCurrency(summary.totals.vehicleCost)}` : '—'}</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(summary.totals.billing)}</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right', color: summary.totals.profit >= 0 ? '#15803d' : 'var(--text-red-700)' }}>
                     {summary.totals.profit < 0 ? '−' : ''}${formatCurrency(Math.abs(summary.totals.profit))}
@@ -505,6 +545,20 @@ export default function JobsCrewPnlTab({
             credit split evenly across assigned names; unlinked sheets carry cost but no credit.
             Free-text spellings merge into their roster person when only one name can match; "unmatched" means none did.
             The date range filters work dates; billing follows the hours worked in the range.
+          </p>
+          <p style={{ color: 'var(--text-faint)', fontSize: '0.6875rem', margin: '0.35rem 0 0' }} data-testid="crew-pnl-vehicle-note">
+            {vehicle.status === 'ready' ? (
+              <>
+                <strong>Vehicle</strong> is the deal's fixed rate from People → Vehicles × the person's field hours in the range, any job but the
+                office job, as Review charges it. The rate is the override, else a company truck's insurance, registration, service and wear
+                ÷ its holder's field hours over {vehicle.window.start} to {vehicle.window.end}; $0 on their own vehicle. Fuel stays on the jobs.
+                Profit is Billed − Labor − Vehicle.
+              </>
+            ) : (
+              <>
+                <strong>Vehicle</strong> rates could not be read from People → Vehicles, so the Vehicle column reads — and profit leaves it out.
+              </>
+            )}
           </p>
         </>
       )}
@@ -566,6 +620,12 @@ function CrewPnlRow({
         </td>
         <td
           style={{ padding: '0.75rem', textAlign: 'right' }}
+          title={row.vehicleRate != null ? `$${formatCurrency(row.vehicleRate)}/field h × ${row.fieldHours.toLocaleString('en-US', { maximumFractionDigits: 1 })} field h` : undefined}
+        >
+          {row.vehicleCost > 0 ? `$${formatCurrency(row.vehicleCost)}` : '—'}
+        </td>
+        <td
+          style={{ padding: '0.75rem', textAlign: 'right' }}
           title={row.hasEstimatedBilling ? 'Includes equal-split estimates (≈)' : undefined}
         >
           {row.billing > 0 ? `${row.hasEstimatedBilling ? '≈ ' : ''}$${formatCurrency(row.billing)}` : '—'}
@@ -581,7 +641,7 @@ function CrewPnlRow({
       </tr>
       {expanded && (
         <tr>
-          <td colSpan={6} style={{ padding: '0.25rem 0.75rem 0.75rem 2rem', background: 'var(--bg-page)', borderBottom: '1px solid var(--border)' }}>
+          <td colSpan={7} style={{ padding: '0.25rem 0.75rem 0.75rem 2rem', background: 'var(--bg-page)', borderBottom: '1px solid var(--border)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ color: 'var(--text-muted)' }}>

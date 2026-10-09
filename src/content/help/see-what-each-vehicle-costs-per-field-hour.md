@@ -2,7 +2,7 @@
 title: see what each person's vehicle costs per field hour
 category: Office
 roles: dev
-keywords: wheels, vehicle, truck, fuel, gas, own vehicle, company truck, per field hour, rate, fixed rate, arrangement, pay config, review, insurance, registration, service, fuel on no job
+keywords: wheels, vehicle, truck, fuel, gas, own vehicle, company truck, per field hour, rate, fixed rate, arrangement, pay config, review, insurance, registration, service, fuel on no job, wear, replacement value, crew p&l, bids, crew rate, fleet
 ---
 
 Some people drive their own truck and the company pays their fuel. Others drive a company truck.
@@ -14,16 +14,18 @@ Those are two different deals. **Wheels** on People → Vehicles shows what each
 You open Payroll → {{button:outline|Pay config}} and pick a **Vehicle** for each person:
 
 - {{chip:blue|🚗 Own vehicle · fuel paid}} means the company pays the fuel for their own truck.
-- {{chip:green|🚚 Company truck}} means they drive a truck the company owns. The truck has fixed costs. Those are insurance while on a plan, registration and service.
+- {{chip:green|🚚 Company truck}} means they drive a truck the company owns. The truck has fixed costs. Those are insurance while on a plan, registration, service and wear.
 - **None** means they ride along or work in the office. Their fuel stays on the job as parts.
 
 Fuel stays on the jobs it was put on, whatever the deal. It counts in each job's cost, the same on every screen. So People → Review charges the deal only for what is not on a job.
 
 - For an own vehicle, Review charges their fuel that is on no job.
 - For a company truck, Review charges the truck's fixed costs per field hour. It adds their fuel that is on no job.
-- A truck with no insurance, registration or service on file charges only that fuel.
+- A truck with no insurance, registration, service or replacement value on file charges only that fuel.
 
 The line shows in a person's math drawer. The deal chip sits beside their name on the ranking.
+
+Jobs → **Crew P&L** charges the same fixed rate. Each person's **Vehicle** column is that rate times their field hours in the range. See [read the Crew P&L tab](/help/crew-pnl).
 
 ## Read the Wheels report
 
@@ -43,4 +45,16 @@ The line above the table averages the two deals all-in, fuel included. That comp
 
 ## The truck table
 
-Under the people, each company truck shows its running cost for the window. That is the holder's fuel, insurance plus registration pro-rated over the 90 days, and service events with a cost. It shows the total and the all-in rate per holder field hour. Review charges only the fixed part, without the fuel. Parked or unassigned trucks list what they carried with no hours against them. Wear is not included yet. Wear is the truck's own value over its life.
+Under the people, each company truck shows its running cost for the window. That is the holder's fuel and insurance plus registration pro-rated over the 90 days. It adds service events with a cost, and wear. It shows the total and the all-in rate per holder field hour. Review charges only the fixed part, without the fuel. Parked or unassigned trucks list what they carried with no hours against them.
+
+## Wear
+
+**Wear** is the truck's own value used up over the 90 days. The app spreads the truck's latest replacement value over five years. A $36,500 truck wears $20 a day, so $1,800 in the window.
+
+You record the value on the vehicle. Open it on People → Vehicles and press {{button:outline|Update value}}. A truck with no value on file shows a dash and adds no wear. Its row says so. The latest value counts, so recording $0 ends the wear.
+
+## The trucks on a bid
+
+Under the truck table, one line adds up every vehicle. Parked and unassigned ones count too. It divides their insurance, registration, service and wear by the whole crew's field hours. That is what the trucks cost per field hour.
+
+Bids → Labor shows the same number on the crew rate card. It is shown and never added to the bid. The burden factor and the driving line already carry the truck. See [estimate the labor hours on a bid](/help/estimate-labor-hours-on-a-bid).

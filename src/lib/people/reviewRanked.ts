@@ -339,7 +339,7 @@ const fmtUsd2 = (n: number) => `$${Math.abs(n).toLocaleString('en-US', { minimum
  * The vehicle deal as a drawer line (v2.2735). Since v2.4653 (punch list #52 PR 5) the deal's fuel
  * stays on the jobs it was put on — it is in the ⛽ line above, shared like every job cost — so the
  * line charges only what is not on a job: the deal's fixed $/field h (company truck: insurance +
- * registration + service; a manual fixed rate wins) and the person's fuel on no job in the period.
+ * registration + service + wear since v2.5039; a manual fixed rate wins) and the person's fuel on no job in the period.
  */
 function wheelsLines(b: TeamSummaryBreakdown): ReviewMathLine[] {
   if (b.vehicleArrangement === 'none') return []
@@ -353,7 +353,7 @@ function wheelsLines(b: TeamSummaryBreakdown): ReviewMathLine[] {
       : b.vehicleArrangement !== 'company'
         ? null
         : b.vehicleRate === 0
-          ? 'no insurance, registration or service on file for the truck'
+          ? 'no insurance, registration, service or replacement value on file for the truck'
           : 'no fixed rate yet, see People → Vehicles → Wheels'
   const why = `${fixedText ? `${fixedText}${refund ? ', and ' : ' + '}` : ''}${fuelText}; their fuel on jobs is in the ⛽ line above`
   return [

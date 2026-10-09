@@ -62,9 +62,9 @@ Profit after overhead **$20,175** · ÷ 176 clocked hours = **$115/hr**
 
 Each person's **Vehicle** on Pay config decides one more line. Their fuel stays on the jobs it was put on, like everyone's. It shows in the ⛽ line, shared like every job cost. So the vehicle line charges only what is not on a job.
 
-- {{chip:green|🚚 $2.24/h fixed}} means a company truck. The line is the truck's insurance, registration and service per field hour. It adds their fuel that is on no job.
+- {{chip:green|🚚 $2.24/h fixed}} means a company truck. The line is the truck's insurance, registration, service and wear per field hour. It adds their fuel that is on no job.
 - {{chip:blue|🚗 own}} means their own vehicle with fuel paid. The line is their fuel that is on no job.
-- A truck with no insurance, registration or service on file charges only that fuel.
+- A truck with no insurance, registration, service or replacement value on file charges only that fuel.
 
 The chip sits beside the name on every ranked bar. The fixed rates come from People → Vehicles → Wheels.
 

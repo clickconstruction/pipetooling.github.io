@@ -1,4 +1,5 @@
 import { normalizeIdentityKey } from './identityKey'
+import type { WheelsPersonRow } from './people/wheels'
 /** Jobs → Crew P&L (formerly "Teams") kernel. Pure — no React/supabase.
  *
  * Per-person rollup of labor cost vs billing credit:
@@ -10,6 +11,9 @@ import { normalizeIdentityKey } from './identityKey'
  *   resolve to a roster person where possible; unresolvable names key on the normalized string.
  * - The date range filters labor by work date / sub-job date; billing follows the hours, so a
  *   window attributes the slice of revenue earned in it.
+ * - Wheels PR 3 (v2.5039): a person on a vehicle deal carries a Vehicle part — the deal's fixed
+ *   $/field hour × their in-range crew hours on any job but the office job, as Review charges it.
+ *   Profit nets it; the Labor column stays wages.
  */
 
 export type CrewPnlRosterPerson = {
@@ -84,12 +88,21 @@ export type CrewPnlPersonRow = {
   unmatched: boolean
   /** Sub-sheet dollars in range that matched NO job — cost with no billing credit (v2.977). */
   unlinkedSubCost: number
+  /** Crew hours in range on any job but the office job: what the vehicle rate multiplies (v2.5039). */
+  fieldHours: number
+  /** The vehicle deal's fixed $/field hour (People → Vehicles); null with no deal (v2.5039). */
+  vehicleRate: number | null
+  /** vehicleRate × fieldHours, in the profit; 0 with no deal (v2.5039). */
+  vehicleCost: number
   perJob: CrewPnlJobLine[]
 }
 
+/** Wheels PR 3 (v2.5039): one vehicle deal's fixed rate, keyed like Review keys it (login, else the pay-config name). */
+export type CrewPnlVehicleRate = { userId: string | null; personName: string; ratePerFieldHour: number }
+
 export type CrewPnlSummary = {
   rows: CrewPnlPersonRow[]
-  totals: { hours: number; laborCost: number; billing: number; profit: number }
+  totals: { hours: number; laborCost: number; vehicleCost: number; billing: number; profit: number }
   /** Sub-labor linkage audit (v2.977): how much sub money actually reached a job. */
   subLabor: {
     total: number
@@ -228,6 +241,20 @@ export function buildCrewPnlPersonResolver(people: CrewPnlRosterPerson[]): CrewP
 /** $/hr used to impute "equivalent hours" for flat-rate sub sheets (dev-tunable via app_settings). */
 export const DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 50
 
+/**
+ * The vehicle deals Review charges, off People → Vehicles' rows (v2.5039): every deal but None with
+ * a fixed rate — the override, else the computed rate ($0 on their own vehicle, a company truck's
+ * insurance + registration + service + wear ÷ its holder's field hours). Fuel is never in it.
+ */
+export function crewPnlVehicleRatesFromWheels(rows: ReadonlyArray<Pick<WheelsPersonRow, 'userId' | 'name' | 'arrangement' | 'fixedRate'>>): CrewPnlVehicleRate[] {
+  const out: CrewPnlVehicleRate[] = []
+  for (const r of rows) {
+    if (r.arrangement === 'none' || r.fixedRate == null || !Number.isFinite(r.fixedRate) || r.fixedRate < 0) continue
+    out.push({ userId: r.userId, personName: r.name, ratePerFieldHour: r.fixedRate })
+  }
+  return out
+}
+
 export function buildCrewPnlSummary(args: {
   jobs: CrewPnlJobInput[]
   teamLabor: CrewPnlTeamLaborInput[]
@@ -236,6 +263,10 @@ export function buildCrewPnlSummary(args: {
   range: CrewPnlRange
   /** cost ÷ this rate = a flat-rate sub sheet's equivalent hours (default 50). */
   subLaborEquivalentRate?: number
+  /** Wheels PR 3 (v2.5039): each vehicle deal's fixed $/field hour at today's 90-day rate (`crewPnlVehicleRatesFromWheels`). */
+  vehicleRates?: ReadonlyArray<CrewPnlVehicleRate>
+  /** The office job: its hours are not field hours, so they carry no Vehicle part. */
+  officeJobId?: string | null
 }): CrewPnlSummary {
   const { jobs, teamLabor, subLabor, people, range } = args
   const equivalentRate = args.subLaborEquivalentRate != null && args.subLaborEquivalentRate > 0
@@ -244,12 +275,12 @@ export function buildCrewPnlSummary(args: {
   const resolver = buildCrewPnlPersonResolver(people)
   const jobById = new Map(jobs.map((j) => [j.id, j]))
 
-  type Acc = { hours: number; laborCost: number; billing: number; fallbackBilling: number; perJob: CrewPnlJobLine[]; hasEstimated: boolean; unlinkedSubCost: number }
+  type Acc = { hours: number; fieldHours: number; laborCost: number; billing: number; fallbackBilling: number; perJob: CrewPnlJobLine[]; hasEstimated: boolean; unlinkedSubCost: number }
   const byKey = new Map<string, Acc>()
   function acc(key: string): Acc {
     let a = byKey.get(key)
     if (!a) {
-      a = { hours: 0, laborCost: 0, billing: 0, fallbackBilling: 0, perJob: [], hasEstimated: false, unlinkedSubCost: 0 }
+      a = { hours: 0, fieldHours: 0, laborCost: 0, billing: 0, fallbackBilling: 0, perJob: [], hasEstimated: false, unlinkedSubCost: 0 }
       byKey.set(key, a)
     }
     return a
@@ -299,6 +330,7 @@ export function buildCrewPnlSummary(args: {
       const billing = revenue > 0 && jobAllTimeHours > 0 ? revenue * (inHours / jobAllTimeHours) : 0
       const a = acc(key)
       a.hours += inHours
+      if (row.jobId !== args.officeJobId) a.fieldHours += inHours
       a.laborCost += inCost
       a.billing += billing
       a.perJob.push({
@@ -381,8 +413,17 @@ export function buildCrewPnlSummary(args: {
     }
   }
 
+  // Wheels PR 3 (v2.5039): the deal's fixed rate × field hours, as Review's vehicle line charges it.
+  const vehicleRateByKey = new Map<string, number>()
+  for (const v of args.vehicleRates ?? []) {
+    const rate = Number(v.ratePerFieldHour)
+    if (Number.isFinite(rate) && rate >= 0) vehicleRateByKey.set(resolver.keyForUser(v.userId, v.personName), rate)
+  }
+
   const rows: CrewPnlPersonRow[] = [...byKey.entries()].map(([key, a]) => {
-    const profit = a.billing - a.laborCost
+    const vehicleRate = vehicleRateByKey.get(key) ?? null
+    const vehicleCost = vehicleRate != null && a.fieldHours > 0 ? Math.round(vehicleRate * a.fieldHours * 100) / 100 : 0
+    const profit = a.billing - a.laborCost - vehicleCost
     return {
       key,
       displayName: resolver.displayName(key),
@@ -396,6 +437,9 @@ export function buildCrewPnlSummary(args: {
       estimateLed: crewPnlRowIsEstimateLed(a.fallbackBilling, a.billing),
       unmatched: resolver.isUnmatched(key),
       unlinkedSubCost: a.unlinkedSubCost,
+      fieldHours: a.fieldHours,
+      vehicleRate,
+      vehicleCost,
       perJob: a.perJob,
     }
   })
@@ -405,10 +449,11 @@ export function buildCrewPnlSummary(args: {
     (t, r) => ({
       hours: t.hours + r.hours,
       laborCost: t.laborCost + r.laborCost,
+      vehicleCost: t.vehicleCost + r.vehicleCost,
       billing: t.billing + r.billing,
       profit: t.profit + r.profit,
     }),
-    { hours: 0, laborCost: 0, billing: 0, profit: 0 },
+    { hours: 0, laborCost: 0, vehicleCost: 0, billing: 0, profit: 0 },
   )
 
   unlinkedSheets.sort((a, b) => b.cost - a.cost)
@@ -425,12 +470,13 @@ export function crewPnlRowIsEstimateLed(fallbackBilling: number, billing: number
   return fallbackBilling > 0 && fallbackBilling * 2 >= billing
 }
 
-export type CrewPnlSortKey = 'name' | 'hours' | 'laborCost' | 'billing' | 'profit' | 'rate'
+export type CrewPnlSortKey = 'name' | 'hours' | 'laborCost' | 'vehicleCost' | 'billing' | 'profit' | 'rate'
 
 function crewPnlSortValue(row: CrewPnlPersonRow, key: CrewPnlSortKey): number | string {
   if (key === 'name') return row.displayName.toLowerCase()
   if (key === 'hours') return row.hours
   if (key === 'laborCost') return row.laborCost
+  if (key === 'vehicleCost') return row.vehicleCost
   if (key === 'billing') return row.billing
   if (key === 'rate') return row.billingPerHour ?? -Infinity
   return row.profit

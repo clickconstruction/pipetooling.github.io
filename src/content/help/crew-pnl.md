@@ -2,7 +2,7 @@
 title: read the Crew P&L tab
 category: Billing & Money
 roles: dev
-keywords: crew pnl, teams, labor cost, billing credit, profit per person, hours weighted, estimated, unmatched, cached figures
+keywords: crew pnl, teams, labor cost, billing credit, profit per person, hours weighted, estimated, unmatched, cached figures, vehicle, truck, wheels, field hours
 order: 32
 ---
 The Crew P&L tab answers one question per person. Did the work they did bring in more than it cost?
@@ -13,8 +13,9 @@ You open it at **Jobs → Crew P&L**. P&L means profit and loss. The tab was for
 
 - **Hours** is clocked crew hours plus their share of sub-sheet labor hours. A sub sheet is a subcontractor's labor sheet. Clocked hours come from approved time. They are split by each day's job assignments.
 - **Labor Cost** is those hours × their wage. It adds their share of sub-sheet labor cost, including drive.
+- **Vehicle** is the person's vehicle deal, priced as Review prices it. It is the deal's fixed rate times their field hours in the range. Field hours are their crew hours on any job but the Office job. The rate comes from People → Vehicles. It is the override, or a company truck's insurance, registration, service and wear per field hour. On their own vehicle it is $0. The rate is today's, read over the last 90 days, whatever the range. A person with no deal shows a dash. See [what each person's vehicle costs](/help/see-what-each-vehicle-costs-per-field-hour).
 - *Billed (gross)* is their credit of the job's gross total bill. That is what was billed. It is not cash collected, and not revenue before overhead. The credit is **weighted by hours**. A job's total is credited as the job total × their share of the hours. Their share is their hours on the job ÷ everyone's hours on the job. Someone who worked 8 of a job's 10 hours gets 80% of the credit.
-- **Profit** is *Billed (gross)* − Labor Cost. It is green when positive.
+- **Profit** is *Billed (gross)* − Labor Cost − Vehicle. It is green when positive.
 - **$/hr** is *Billed (gross)* ÷ Hours.
 
 :::example The ≈ marker

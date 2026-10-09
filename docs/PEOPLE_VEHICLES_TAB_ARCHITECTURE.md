@@ -8,7 +8,7 @@ covers:
   - src/components/people/PeopleVehiclesTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-10-09
 ---
 
 > **Line numbers are as of `a05cef4c4`** (the `mapped_at` commit) and move with every edit, so search for the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/people/PeopleVehiclesTab.tsx`.
@@ -50,7 +50,7 @@ This is a **sub-decomposition** map. The parent [`PEOPLE_TABS_ARCHITECTURE.md`](
 | H. Hand-off / motor pool | state 174–178 · `MOTOR_POOL_OPTION` 122 · `openHandOff` 635–640 · `submitHandOff` 642–701 · render 2182–2254 | ~145 | low-med: opened from the card (1347) and the panel (1459) | med: 3 non-atomic writes | inline; write plan extracted | `handOffWrites` (3), `currentPossession` + motor-pool tests; smoke counts buttons |
 | I. Check-in settings (dev) | state 183–185 · `isDev` 1195 · 1197–1214 · render 2524–2629 | ~130 | low | low | inline | `vehicleCheckinSettings.test.ts` (3); dialog untested |
 | J. Catch-up + odometer history | state 211–214, 216 · 895–918 · mounts 2773–2805 | ~60 inline | low | low | **modals extracted** (`VehicleCatchUpModals` 312, `VehicleOdometerHistoryModal` 206) | `vehicleCatchUp` (2), `vehicleOdometerHistory` (5); smoke drives the history sheet; catch-up modals have no render test |
-| K. Wheels (dev) | mount 2083–2084 | 2 inline | none (props: `users`) | low | **extracted** (`PeopleVehiclesWheelsSection`, 303) | `lib/people/wheels` (10), `wheelsData` (8); no render test |
+| K. Wheels (dev) | mount 2084–2085 | 2 inline | none (props: `users`) | low | **extracted** (`PeopleVehiclesWheelsSection`, 314) | `lib/people/wheels` (14), `wheelsData` (13), `fleetTruckRateSql` (5); render smoke (1) |
 
 Test inventory: `PeopleVehiclesTab.render.test.tsx` has **one** `it` (177 lines). Its supabase mock ignores filters, so every `eq`/`in`/`is` returns the whole table. It covers board cards, holders, groups, the strip, insurance lines, task chips, the odometer-history sheet (open, add reading, close), and the opened panel (quick entry, ledger rows, service/problem/maintenance blocks). No e2e spec covers Vehicles; `viewport-smoke.spec.ts` only visits `/people`.
 
@@ -136,7 +136,7 @@ Test inventory: `PeopleVehiclesTab.render.test.tsx` has **one** `it` (177 lines)
 
 ### K. Wheels (dev-only)
 
-`{isDev && !loading && !selectedVehicle ? <PeopleVehiclesWheelsSection users={users} /> : null}` 2084. The module (303 lines, also exports `VehicleArrangementChip`, which `review/PeopleReviewRankedList.tsx` 13 uses) self-loads `loadWheelsSnapshot` when `open` (default true, line 103). Nothing to extract.
+`{isDev && !loading && !selectedVehicle ? <PeopleVehiclesWheelsSection users={users} /> : null}` 2085. The module (314 lines, also exports `VehicleArrangementChip`, which `review/PeopleReviewRankedList.tsx` 13 uses) self-loads `loadWheelsSnapshot` when `open` (default true, line 107). Nothing to extract. Since Wheels PR 3 (v2.5039) a truck's fixed part carries **wear**, its latest replacement value on or before today ÷ (5 × 365) × 90 (`truckWearForWindow`; a latest $0 ends it), shown in the trucks table's Wear column, and the snapshot's `fleet` (`fleetTruckRate`: every vehicle's insurance + registration + service + wear ÷ the whole crew's field hours) sits under the trucks. The SECURITY DEFINER read `fleet_truck_rate_per_field_hour` (`20261010008000`) returns the same number to the Bids crew-rate card, and `loadWheelsFixedRates` gives Crew P&L the people's rates without the card-fuel read.
 
 ---
 
@@ -226,7 +226,7 @@ Side track (not a move): a render smoke for `VehicleCatchUpModals` and for `Peop
 
 ## Hazards
 
-- **Money paths:** `vehicles.weekly_insurance_cost` (`saveInsuranceCost` 754–775) and `weekly_registration_cost` (`upsertVehicle` 596/607) are read by pay stubs (`People.tsx` 1487–1519 → `buildPayStubHtml`) and by Wheels (`wheelsData.ts` 87, 154–167). `weeklyTotal` (328–336) is inline and untested. The plan total goes through string surgery (2506). Service `cost` (1086–1098) and replacement value (1176–1183) are stored only. A move must keep the parse/fallback semantics exactly (`parseFloat || 0`, `weeklyInsuranceCostFromInput` rounding).
+- **Money paths:** `vehicles.weekly_insurance_cost` (`saveInsuranceCost` 754–775) and `weekly_registration_cost` (`upsertVehicle` 596/607) are read by pay stubs (`People.tsx` 1487–1519 → `buildPayStubHtml`) and by Wheels (`wheelsData.ts` 87, 154–167). `weeklyTotal` (328–336) is inline and untested. The plan total goes through string surgery (2506). Service `cost` (1086–1098) and replacement value (1176–1183) feed Wheels: service and wear in each truck's fixed rate (v2.5039), which Review, Crew P&L and the Bids crew-rate card read. A move must keep the parse/fallback semantics exactly (`parseFloat || 0`, `weeklyInsuranceCostFromInput` rounding).
 - **RLS / role gates:** the UI gate is `canAccessVehicles` (parent). Table RLS is "Pay access users can manage …" (`is_dev() OR is_pay_approved_master() OR is_assistant()`) on tasks (`20260814233006` 44–46), plans/periods (`20260814214226` 47–55) and check-ins (`20260823210023` 31–34). Holders get SELECT on their vehicle, readings and service events through `holds_vehicle()`, INSERT on readings, and SELECT on their own possessions via `user_id = auth.uid()` (`20260814183650`). The dev-only UI (Wheels, ⚙ settings) keys on the local `isDev` from the `users` roster (1195), not `usePeopleAccess`. Assignment writes checklist rows **for another user**. Field completion flows back through the SECURITY DEFINER trigger `sync_vehicle_maintenance_task_completion`.
 - **Realtime:** none. There are no subscriptions; freshness comes from the 20 `loadFleet` call sites and 9 `loadPanel` call sites, none awaited and none request-guarded, so a slow earlier load can overwrite a newer one.
 - **URL deep links:** none into a vehicle. `?tab=vehicles` is resolved by the parent, and the selection is local. A `vehicle=` param would be a feature, not a move.

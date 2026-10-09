@@ -2,7 +2,7 @@
 title: estimate labor hours on a bid
 category: Bids & Estimating
 roles: dev, master_technician, estimator, assistant
-keywords: hours not on the counts, set aside, use for, version switch, renamed fixture, jobs baseline, hours per $1k, billed jobs, labor, hours, labor book, robot default, one book, hours from, override, reset to robot, learned, calibrated, propose, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
+keywords: hours not on the counts, set aside, use for, version switch, renamed fixture, jobs baseline, hours per $1k, billed jobs, labor, hours, labor book, robot default, one book, hours from, override, reset to robot, learned, calibrated, propose, alias, plan code, queue, crew-days, revenue per field hour, usable as a budget, old, new, cost estimate, fill from the book, save and learn, per 100 ft, footage, task, fixed hours, sub line, source, crew rate, company rate, burden, overhead per field hour, trucks, truck rate, vehicle, wear, bid labor, direct cost, margin, calibration, book vs jobs, evidence, jobs agree, set, keep
 ---
 Bids → Labor turns a bid's count sheet into hours. The view is the one that learns.
 
@@ -59,6 +59,8 @@ The head also carries an **Other direct** tile. It adds up equipment, permits, s
 Under the tiles sits the **Crew rate** card. The **company rate** is the last 90 days of recorded field wages from People times the burden factor. Burden is what an hour costs beyond the wage itself. The wages are every closed clock session on a job, wage-priced. So it reads like *company $35.76/h = $29.80 avg recorded field wage (90 d, 3,120 h) × 1.20 burden*. A bid with no rate of its own is costed at the company rate. The Labor $ tile, the "rate set" chip and the bottom line all read it. Press {{button:blue|save it on the bid}} to write that number onto the bid. Then Pricing and the printed documents read the same rate. Type your own in the rate box to override it. The chip reads {{chip:blue|$35.00/h override}} and *use company rate* clears it.
 
 Two facts sit near the rate and are never added to the bid's cost. **Overhead / field hour** is a tile in the row above. It is the last 90 days of overhead divided by the field hours worked in those days. It matches the *A · per field hour* card on People → Overhead. Only a dev or a leader approved for pay opens that page. The Crew rate line reads *bid labor recorded*, with the hours and dollars clocked on this bid. Both already sit in the overhead pool. The old *Estimators Time* box is gone for the same reason. Bid labor is recorded, not invented.
+
+The card also says what the company's trucks cost per field hour. It reads like *trucks $2.50/field h = $2,996.28 insurance, registration, service and wear on 13 trucks ÷ 1,200 field h (90 d) · shown, not added*. It is never added to the bid. The burden factor and the driving line already carry the truck. People → Vehicles shows the same number under its trucks. The line stays hidden until the crew has field hours in the window.
 
 ## The bottom line
 

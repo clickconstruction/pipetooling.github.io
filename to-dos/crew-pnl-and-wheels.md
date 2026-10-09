@@ -2,12 +2,12 @@
 name: "Crew P&L: wheels and the $50 default"
 number: 1
 group: ready
-status: PR 3 approved by the owner 2026-10-09 (the decisions sitting); not started
+status: Wheels PR 3 shipped v2.5039 (2026-10-09, the owner's call of that day); items 2 and 3 remain
 summary: >
-  Vehicle rates on Crew P&L and Bids; the $50 sub-equivalent default; the backlog lines still
-  true.
-next: Build Wheels PR 3 — the vehicle deal priced on Bids and Crew P&L, wear in the truck rate — from the plan below.
-size: S + S
+  The $50 sub-equivalent default and the backlog lines still true. The vehicle rates on Crew P&L and
+  Bids shipped in v2.5039.
+next: Item 2 (derive the $50 sub-equivalent from the loaded field average) waits until vehicle records exist; item 3 waits on the audit footer's raw job # texts.
+size: S
 blocker: None.
 ver: from v2.2735
 opinion: build — the owner said yes on 2026-10-09; the $50 default stands until vehicle records exist.
@@ -26,13 +26,13 @@ Wheels on Labor (v2.2733 / v2.2735) priced each person's vehicle deal per field 
 | 1. Wage name-join silently zeroes labor | **Resolved** — `src/lib/crewPnlSummary.ts` is person-keyed (people.id first, normalized name fallback). |
 | 2. `revenue` is bid value, not cash | Design choice, not a to-do (documented). |
 | 3. Sheet linking beyond trim/lower (e.g. "HCP " prefix) | Still exact-match; decide after reading the audit footer's raw job # texts. |
-| 4. Employee cost is bare wage, subs are market price | Still true on Crew P&L; Review now carries the vehicle burden (Wheels) — **this is the PR 3 gap**. |
+| 4. Employee cost is bare wage, subs are market price | The vehicle part is closed: since v2.5039 Crew P&L carries the Vehicle column Review charges. Otherwise still bare wage (a burden multiplier stays a design choice). |
 | 5. `DEFAULT_SUB_LABOR_EQUIVALENT_RATE = 50` is a manual literal | Still literal (`crewPnlSummary.ts`, `DEFAULT_SUB_LABOR_EQUIVALENT_RATE`); could track the field crew's real loaded average. |
 | 6. Sub data rides the Jobs page's `laborJobs` loader | Still true (`Jobs.tsx` passes `laborJobs` into `JobsCrewPnlTab`); the audit footer dropping to $0 remains the tell. |
 
 ## The plan
 
-1. **Wheels PR 3 (optional)**: Crew P&L labor cost gains the per-field-hour vehicle line from the same kernel Review uses; Bids labor estimate reads the same rate; add wear to the truck rate if the owner wants it.
+1. **Wheels PR 3 — done in v2.5039.** Crew P&L's **Vehicle** column is Review's fixed rate × each person's field hours in the range (the office job left out); profit nets it. The Bids crew-rate card shows the trucks per field hour (`fleet_truck_rate_per_field_hour`), never added: the burden and the driving line carry the truck. The truck rate carries wear, the latest replacement value over five years. The $50 sub-equivalent default is untouched; it was never a vehicle fallback.
 2. Sub-equivalent rate: derive the default from the loaded field average (one kernel + a Settings readout), keep the box editable.
 3. Sheet-linking normalization only after the audit texts are read.
 
@@ -42,4 +42,4 @@ Wheels on Labor (v2.2733 / v2.2735) priced each person's vehicle deal per field 
 
 ## How to verify
 
-- A week with a company-truck driver: Crew P&L labor for that person rises by the Wheels line exactly as Review shows it; the audit footer still reconciles.
+- A week with a company-truck driver: Crew P&L's Vehicle cell for that person equals Review's vehicle fixed part for the same field hours; the audit footer still reconciles. (v2.5039 pins this in `crewPnlSummary.test.ts` and `JobsCrewPnlTab.render.test.tsx`; the server read matched `fleetTruckRate` on a local Postgres.)
