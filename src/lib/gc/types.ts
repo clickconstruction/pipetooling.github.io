@@ -460,6 +460,8 @@ export interface Draw {
   approvedOn?: string
   /** The day we paid it. Unset: not yet, or before the day was kept. */
   paidOn?: string
+  /** Back-charges the office took off this draw (Portal lane, owner 2026-10-05): net is already less by these. */
+  backCharges?: { chargeId: string; amount: number }[]
 }
 
 export interface Sow {

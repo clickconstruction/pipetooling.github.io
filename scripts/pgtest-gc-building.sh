@@ -23,6 +23,7 @@ PRESSES=(
   supabase/migrations/*_gc_save_daily_log.sql
   supabase/migrations/*_gc_submittal_writes.sql
   supabase/migrations/*_gc_rfi_writes.sql
+  supabase/migrations/*_gc_trade_draws.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }

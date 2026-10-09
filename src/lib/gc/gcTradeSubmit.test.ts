@@ -192,6 +192,14 @@ describe('the verb’s refusals', () => {
     notYourMove: 'P5',
     // Building's U5a, gc_trade_rfi_ask: a question on a job not being built.
     jobNotBuilding: 'P5',
+    // Building's U6a, the trades' draws: a statement of work not signed, a draw waiting, nothing to bill, a split
+    // line, a waiver before payment, and a second signature (shared with P2c-i's gc_trade_sign_sow).
+    sowNotSigned: 'P5',
+    drawWaiting: 'P5',
+    nothingToBill: 'P5',
+    splitLine: 'P5',
+    notPaidYet: 'P5',
+    alreadySigned: 'P2c-ii',
   }
 
   it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {
