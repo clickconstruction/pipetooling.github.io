@@ -4,6 +4,7 @@ import type { LienDeskDraftFields } from './lienNoticeDraft'
 import type { LienDeskItemRow, LienNoticePolicy, LienSubmitOutcome } from './lienDesk'
 import type { LienWordChannel } from './lienWord'
 import { canTakeBackItem, fieldsWithTakeBack } from './lienRunTakeBack'
+import { LIEN_DESK_SIGNATURE_CLEAR } from './lienNoticeSignature'
 
 /** The desk's three kinds — one live row per (job, kind). */
 export type LienDeskItemKind = 'notice_53_056' | 'affidavit' | 'retainage_53_057'
@@ -35,7 +36,8 @@ export async function saveLienDeskDraft(input: {
   const payload = { months: input.months, fields: draftJson(input.fields), cover_note: input.coverNote }
   if (input.itemId) {
     await withSupabaseRetry(
-      () => supabase.from('job_lien_desk_items').update({ ...payload, status: 'drafted' } as never).eq('id', input.itemId as string),
+      // A draft saved after signing clears the signature (v2.5082): the mark belongs to the notice as he signed it.
+      () => supabase.from('job_lien_desk_items').update({ ...payload, status: 'drafted', ...LIEN_DESK_SIGNATURE_CLEAR } as never).eq('id', input.itemId as string),
       'lien desk: save draft',
     )
     return input.itemId
@@ -120,6 +122,7 @@ export async function pullBackLienDeskItem(itemId: string, userId: string | null
         .from('job_lien_desk_items')
         .update({
           status: 'drafted',
+          ...LIEN_DESK_SIGNATURE_CLEAR,
           approval_mode: null,
           approved_by: null,
           approved_at: null,
@@ -148,6 +151,7 @@ export async function undoLienDeskApprovals(itemIds: ReadonlyArray<string>, user
         .from('job_lien_desk_items')
         .update({
           status: 'drafted',
+          ...LIEN_DESK_SIGNATURE_CLEAR,
           approval_mode: null,
           approved_by: null,
           approved_at: null,

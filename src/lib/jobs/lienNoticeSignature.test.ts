@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  LIEN_DESK_SIGNATURE_CLEAR,
+  lienChipSigned,
   lienFieldsHash,
   lienNoticeSignatureFromRow,
   lienSignatureAuditLine,
@@ -99,5 +101,16 @@ describe('the row’s signature', () => {
     const pressed = lienNoticeSignatureFromRow(signed(), { jobNumber: '878', itemId: 'it1', fieldsHash: lienFieldsHash(FIELDS), pngDataUrl: 'data:image/png;base64,AAAA' })
     expect(pressed!.pngDataUrl).toBeNull()
     expect(lienSignatureAuditLine({ mode: 'draw', printedName: '', signedAtIso: SIGNED_AT })).toBe('Drawn by the leader in ClickTooling on October 9, 2026 at 2:14 PM CT.')
+  })
+})
+
+describe('the chip’s word and the clearing patch (v2.5082)', () => {
+  it('signed with the instant while the draft is what he signed, unsigned otherwise; the clearing patch nulls all seven columns', () => {
+    const hash = lienFieldsHash(FIELDS)
+    expect(lienChipSigned(signed(), hash)).toEqual({ at: SIGNED_AT })
+    expect(lienChipSigned(signed(), lienFieldsHash({ ...FIELDS, gcEmail: 'x' }))).toBe('unsigned')
+    expect(lienChipSigned(signed({ signed_at: null }), hash)).toBe('unsigned')
+    expect(Object.values(LIEN_DESK_SIGNATURE_CLEAR).every((v) => v === null)).toBe(true)
+    expect(Object.keys(LIEN_DESK_SIGNATURE_CLEAR).sort()).toEqual(['signed_at', 'signed_by', 'signed_fields_hash', 'signed_on_device_of', 'signer_printed_name', 'signer_signature_mode', 'signer_signature_storage_path'])
   })
 })

@@ -58,6 +58,13 @@ vi.mock('../../lib/jobs/lienDeskIo', async () => {
     setCustomerLienNoticePolicy: async (_id: string, policy: string, note: string) => void io.policies.push({ policy, note }),
   }
 })
+// Sign and approve (v2.5082): the leader's press signs each notice in the batch; the test watches it as an approval.
+vi.mock('../../lib/jobs/lienDeskSignIo', () => ({
+  signLienDeskItem: async ({ itemId }: { itemId: string }) => {
+    io.approved.push(itemId)
+    return { ok: true, signedAtIso: '2026-10-09T19:14:00Z' }
+  },
+}))
 vi.mock('../../lib/jobsDocuments/printWindow', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobsDocuments/printWindow')>('../../lib/jobsDocuments/printWindow')
   return { ...actual, openHtmlPrintWindow: () => true }
@@ -356,7 +363,7 @@ describe('GcOnNoticeModal', () => {
     // the footer: 2 ready (994, 1031), 1 waits on the roll, 1 public
     expect(screen.getByText(/2 ready now · 1 more the moment Use all found is pressed · 1 left out \(public owner\)/)).toBeTruthy()
     // the spoken-word door is the secondary button beside it (the leader may use it too)
-    expect(screen.getByTestId('gc-notice-approve-all').textContent).toContain('Approve all 2 and send the run')
+    expect(screen.getByTestId('gc-notice-approve-all').textContent).toContain('Sign and approve all 2 and send the run')
     expect(screen.queryByRole('button', { name: /Send all .* to the leader/ })).toBeNull()
     // the fill is a literal that holds in dark mode (v2.3664), and the overlay ends above the Dispatch / Job mode footer
     expect(screen.getByTestId('gc-notice-approve-all').style.background).toBe('rgb(22, 101, 52)')

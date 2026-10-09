@@ -242,10 +242,18 @@ Every other value is the statute's form or is filled from somewhere else. Hover 
 
 The desk shows the master only what needs a decision. He sees what is open with the GC, their word, the months and hours, and what a hold costs. He has four answers.
 
-- {{button:green|Approve & next ▸}} approves it and opens the next one.
+- {{button:green|Sign and approve & next ▸}} signs it, approves it and opens the next one.
 - {{button:outline|Hold — they promised…}} asks him again on the promise date.
 - {{button:outline|Hold — I'll call first}} asks him again three days before the deadline.
 - **Back to the office** sends it back to be fixed.
+
+### Signing a notice
+
+The notice's own signature line sits above the buttons. Your name waits on it in cursive. Press {{button:green|Sign and approve ▸}} and your name goes on the line with today's date. The record says who pressed, from which sign-in, and when. The notice, the cover letter and letter two print your name above the rule. It sits in a frame that reads **Signed electronically**. The frame carries a short record ID. Press **Draw instead** to sign with a finger or the mouse. Press **Press instead** to go back to the name.
+
+The chip on a ready notice reads **signed** with the day. Edit a signed notice and the chip reads **unsigned** again. Sign it again before the run.
+
+A notice approved on your word reaches Ready to send unsigned. Open it and press {{button:green|Sign ▸}} on its footer. Your name goes on the paper the same way.
 
 ## A discount if they pay before the lien
 
@@ -380,7 +388,7 @@ The window follows the order of the work. A bar of five steps stays pinned at th
 
 The footer says what the run takes. Then the buttons follow the role.
 
-- {{button:green|Approve all N and send the run ▸}} is for a dev or a master technician. Every ready job is approved, the ticks apply and the run opens.
+- {{button:green|Sign and approve all N and send the run ▸}} is for a dev or a master technician. Every ready job is signed and approved, the ticks apply and the run opens. Each notice gets its own signature from the one press.
 - {{button:outline|The leader said to send them…}} is for an assistant, a controller or a dev. Type who said it, when and how. Every notice then goes to Ready to send on his word.
 - {{button:blue|Send all N to the leader ▸}} puts one card on the master's Dashboard and in Quickfill. It opens the same window on his phone. His window shows the cover letter, the reason and the note as you sent them. Once he approves the set, the office prints the run.
 
@@ -390,9 +398,9 @@ Taunya hears that Harborline's Harbor Ridge draw went to another job. She filter
 
 Nothing is mailed or recorded until the run is recorded. Afterwards, the GC's row on Bids, Customer review shows {{chip:red|on notice since Sep 15 · 7}}. The desk's Affidavits tab carries the same jobs with their deadlines.
 
-### Pressed Approve all by mistake
+### Pressed Sign and approve all by mistake
 
-**Approve all** opens the run window. A strip under its title says what you just approved. Press {{button:outline|Undo the approval…}} there.
+**Sign and approve all** opens the run window. A strip under its title says what you just approved. Press {{button:outline|Undo the approval…}} there.
 
 A window asks first. It lists what goes back and what stays.
 
@@ -408,7 +416,7 @@ The offer lasts while Put a GC on notice stays open. It ends once the run is rec
 ## Who can do what
 
 - **Draft, send for approval and send on the leader's word:** a dev, an assistant or a controller. A master can draft and approve his own.
-- **Approve, hold and set a standing rule:** a dev or a master technician. The database refuses an approval from anyone else. It also refuses a send on a spoken word without a note.
+- **Sign, approve, hold and set a standing rule:** a dev or a master technician. The database refuses an approval from anyone else. It refuses a signature that is not the leader's own press or his own drawing. It also refuses a send on a spoken word without a note.
 - **Put a GC on notice:** the office opens it and readies the owners. Approving all of it is for the master or a dev. A send on the spoken word is for an assistant, a controller or a dev.
 
 A storefront on a row means a supply house is still owed on that job. The card that explains it is in [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).
