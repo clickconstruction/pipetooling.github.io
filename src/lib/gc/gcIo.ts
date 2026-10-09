@@ -20,6 +20,7 @@ import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
 import type { BillingRows, ContractLineRow, OwnerTermsRow, PayAppSend } from './billCustomer'
 import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
+import { paymentRefusalWords } from './moneyIn'
 import { gcTradeEmailRefusal, tradeMailLang } from './tradeEmail'
 import { sendGcTradeEmail } from './tradeEmailIo'
 import {
@@ -475,7 +476,61 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
     const rows = out.get(acceptance.project_id)
     if (rows) rows.acceptance = acceptance
   }
+  await loadGcBillingJobMoney(out)
   return out
+}
+
+/**
+ * Money in on each project's billing job (O5c), from the Pipeline's own records: its bills, every payment on it,
+ * the customer's live promises (`list_job_payment_promises`, the Pipeline's reader) and our waivers. Read, never
+ * copied: a payment made anywhere in the app shows here.
+ */
+async function loadGcBillingJobMoney(out: Map<string, OwnerBillingRows>): Promise<void> {
+  const projectIds = [...out.keys()]
+  const jobsOf = taken(await supabase.from('gc_projects').select('project_id, billing_job_id').in('project_id', projectIds), 'load the billing jobs')
+  const jobByProject = new Map(jobsOf.filter((r) => r.billing_job_id !== null).map((r) => [r.project_id, r.billing_job_id as string]))
+  const jobIds = [...new Set(jobByProject.values())]
+  if (jobIds.length === 0) return
+  const [bills, payments, promises, waivers] = await Promise.all([
+    supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status').in('job_id', jobIds),
+    supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', jobIds),
+    supabase.rpc('list_job_payment_promises'),
+    supabase.from('job_lien_releases').select('job_id, form_type, invoice_ids').in('job_id', jobIds),
+  ])
+  const billRows = taken(bills, 'load the bills on the billing job')
+  const paymentRows = taken(payments, 'load the payments on the billing job')
+  const promiseRows = (taken(promises, 'load the promises to pay') ?? []) as { jobId?: string; promisedYmd?: string; createdAt?: string; source?: string; note?: string | null }[]
+  const waiverRows = taken(waivers, 'load our waivers on the billing job')
+  for (const [projectId, jobId] of jobByProject) {
+    const rows = out.get(projectId)
+    if (!rows) continue
+    rows.money = {
+      bills: billRows.filter((b) => b.job_id === jobId).map((b) => ({ id: b.id, amount: Number(b.amount), status: b.status ?? '' })),
+      payments: paymentRows.filter((p) => p.job_id === jobId).map((p) => ({ invoice_id: p.invoice_id, amount: Number(p.amount), paid_on: p.paid_on })),
+      promises: promiseRows
+        .filter((p) => p.jobId === jobId && p.promisedYmd && p.createdAt)
+        .map((p) => ({ promisedYmd: p.promisedYmd ?? '', createdAt: p.createdAt ?? '', source: p.source ?? 'office', note: p.note ?? null })),
+      waivers: waiverRows.filter((w) => w.job_id === jobId).map((w) => ({ form_type: w.form_type, invoice_ids: w.invoice_ids ?? [] })),
+    }
+  }
+}
+
+/** A payment on a GC bill (O5c): the Pipeline's own `mark_invoice_paid`, on the app's day. No amount: the rest of it. */
+export async function recordGcPayment(invoiceId: string, amount: number | null, paidOn: string): Promise<void> {
+  const answer = taken(
+    await supabase.rpc('mark_invoice_paid', { p_invoice_id: invoiceId, p_paid_on: paidOn, ...(amount !== null ? { p_amount: amount } : {}) }),
+    'record the payment',
+  ) as { error?: string } | null
+  // It answers a refusal rather than raising one.
+  if (answer?.error) throw new Error(paymentRefusalWords(answer.error))
+}
+
+/** The customer's word on when they will pay (O5c): the Pipeline's own `add_job_payment_promise` on the billing job. */
+export async function recordGcPromise(jobId: string, date: string, note: string, channel: string | null): Promise<void> {
+  taken(
+    await supabase.rpc('add_job_payment_promise', { p_job_id: jobId, p_date: date, ...(note.trim() ? { p_note: note.trim() } : {}), ...(channel ? { p_channel: channel } : {}) }),
+    'record when they said they will pay',
+  )
 }
 
 /**

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Btn, Chip, Stat, input } from './gcUi'
+import { GcBillMoneyIn, type MoneyInWrites } from './GcBillMoneyIn'
 import {
   appCertified,
   ownerAccount,
   ownerCarriedForward,
+  ownerLateBills,
   ownerPayApp,
   ownerPayAppHasWork,
   ownerPayAppsSent,
@@ -18,10 +20,10 @@ import { money, shortDate } from '../../lib/gc/words'
  * kernels, its form as Excel or PDF, Send, the architect's certificate, which makes the bill the customer pays
  * on the Pipeline's own billing job, and where we stand with them. The database's functions check every step
  * (`gc_send_owner_pay_app`, `gc_record_certificate`); the window only carries the press. Until the app emails it
- * (O4b), the office sends the form from its own email.
+ * (O4b), the office sends the form from its own email. Money in on each certified bill (O5c) is `GcBillMoneyIn`.
  */
 
-export interface BillCustomerWrites {
+export interface BillCustomerWrites extends MoneyInWrites {
   onSend: () => void
   onCertify: (number: number, amount: number, on: string, note: string) => void
   onSetRetainage: (pct: number, step: OwnerRetainageStep | null) => void
@@ -38,15 +40,20 @@ interface Props {
   writes: BillCustomerWrites
   /** The sent ones our conditional waiver already went with, by number. */
   waived?: number[]
+  /** How many of our unconditional waivers name each sent one's bill, by number (O5c). */
+  unconditional?: Record<number, number>
+  /** Payments on the billing job that name no bill: shown as they are, never laid on a pay application (O5c). */
+  unbilled?: { on: string | null; amount: number }[]
   /** What a write is working on: 'send', 'retainage', 'cert-<n>', 'waiver-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
 }
 
-export function GcBillCustomerWindow({ state, project, today, writes, waived = [], busy, problem, onClose }: Props) {
+export function GcBillCustomerWindow({ state, project, today, writes, waived = [], unconditional = {}, unbilled = [], busy, problem, onClose }: Props) {
   const sent = ownerPayAppsSent(project)
   const account = ownerAccount(project)
+  const late = ownerLateBills(state, project)
   const signed = project.ownerContractSignedOn !== null
 
   useEffect(() => {
@@ -95,6 +102,20 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
             </div>
           )}
 
+          {late.length > 0 && (
+            <div style={{ display: 'grid', gap: '0.2rem', fontSize: '0.875rem', color: 'var(--text-red-700)' }}>
+              {late.map((b) => (
+                <div key={b.app.number}>{`Pay application ${b.app.number} is ${b.due.daysLate === 1 ? '1 day' : `${b.due.daysLate} days`} late: ${money(b.open)} open.`}</div>
+              ))}
+            </div>
+          )}
+
+          {unbilled.map((p, i) => (
+            <div key={`unbilled-${i}`} style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+              {`A payment of ${money(p.amount)}${p.on ? ` on ${shortDate(p.on)}` : ''} on the billing job names no bill.`}
+            </div>
+          ))}
+
           {signed ? (
             <ThisMonth state={state} project={project} writes={writes} busy={busy} />
           ) : (
@@ -107,7 +128,7 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
             <div style={{ display: 'grid', gap: '0.45rem' }}>
               <div style={{ fontWeight: 600 }}>Sent</div>
               {[...sent].reverse().map((app) => (
-                <SentRow key={app.number} app={app} today={today} writes={writes} waived={waived.includes(app.number)} busy={busy} />
+                <SentRow key={app.number} state={state} project={project} app={app} today={today} writes={writes} waived={waived.includes(app.number)} unconditional={unconditional[app.number] ?? 0} busy={busy} />
               ))}
             </div>
           )}
@@ -256,7 +277,25 @@ function Retainage({ state, project, sentAny, writes, busy }: { state: GcState; 
   )
 }
 
-function SentRow({ app, today, writes, waived, busy }: { app: OwnerPayAppSent; today: string; writes: BillCustomerWrites; waived: boolean; busy?: string | null }) {
+function SentRow({
+  state,
+  project,
+  app,
+  today,
+  writes,
+  waived,
+  unconditional,
+  busy,
+}: {
+  state: GcState
+  project: GcProject
+  app: OwnerPayAppSent
+  today: string
+  writes: BillCustomerWrites
+  waived: boolean
+  unconditional: number
+  busy?: string | null
+}) {
   const certified = appCertified(app)
   const asked = Math.round(app.due * 100) / 100
   const [amount, setAmount] = useState(String(asked))
@@ -296,6 +335,7 @@ function SentRow({ app, today, writes, waived, busy }: { app: OwnerPayAppSent; t
           PDF
         </Btn>
       </div>
+      <GcBillMoneyIn state={state} project={project} app={app} writes={writes} unconditional={unconditional} busy={busy} />
       {certified === null && (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <label style={{ display: 'grid', gap: '0.2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
