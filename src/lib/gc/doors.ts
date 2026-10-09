@@ -58,6 +58,9 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   // Award and the statement of work (B6-a): a contract with the trade, dev only until call W.
   gc_sows: dev('Board', AWARD_OPENS),
   gc_sow_lines: dev('Board', AWARD_OPENS),
+  // A trade partner company's papers (B6-b-i): every send, with its promise. The papers themselves are rows of
+  // person_contract_documents, under that table's own policies.
+  gc_paper_sends: dev('Board', AWARD_OPENS),
 
   // The trade's portal, and its two records on a trade's signed work (P4a).
   gc_trade_portal_links: dev('Portal', PORTAL_OPENS),

@@ -1104,6 +1104,8 @@ P4b-i (v2.5044) adds the two kinds above on P4a's verbs, `ask_change` under the 
 
 ### gc-trade-email
 
+> **v2.5041 — the frame takes an optional action** (`_shared/gcTradeEmail.ts`, for send-contract-for-signature's company branch, agreed with the Portal lane): with no action this function's emails are byte for byte as before (`src/lib/gc/gcTradeEmailFrame.pin.test.ts`), and a kept copy now also blanks a `?t=` token. **Redeploy with send-contract-for-signature** so `check:edge-drift` reads level.
+
 **Purpose**: GC mode's one sender for every email to a trade partner company (v2.4936, P3-a of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p3.md`, both on branch `spike/gc-mode`). A lane sends by kind: the Ask window's invitation and reminder, a new set's plans, the questions window's answer, and the rest as they land. Each email goes to whoever at the company gets that kind, carries the company's portal link, and is recorded once per key in `gc_trade_messages`, which the portal's *Messages* reads. The questions window's answer (v2.4938), the Ask window's invitation (v2.4939) and a new set's plans (v2.4940) call it; `nudge` comes next. The words for a back-charge (`backChargeEmail`: `sent`, `settled`, `taken`, kind `backCharge`) and for the office's answers to a change a company asked for (`changeAskEmail`: `down`, `sent`, `no`, kind `changeAsk`) are built in `src/lib/gc/tradeEmail.ts` (P4b-iii, v2.5049), keyed `<id>:<stage>`, for Building's screen, Owner Billing's O3b and U6 to send.
 
 **Endpoint**: `POST /functions/v1/gc-trade-email` with `{ companyId, kind, key, projectId | null, lang, subject, lines, group? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { companyId, messageId, emailSendLogId, to }`, the same with `already: true` for a key sent before, or `{ error: key, detail? }`.
@@ -2145,6 +2147,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### get-contract-for-signer
 
+> **v2.5041 — a company's paper names the company** (GC mode, B6-b-i): for a row with `company_id`, the response's `person_name` and a W-9's prefilled name are the company's (`paperForName`, `_shared/companyPaper.ts`), never its stored `gc-company:<id>` name. **Redeploy required.**
+
 **Purpose**: Public read of a **sent** person contract document for the signing page (no JWT).
 
 **Endpoint**: `GET /functions/v1/get-contract-for-signer?token=<opaque>`
@@ -2187,6 +2191,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-contract-for-signature
 
+> **v2.5041 — a trade partner company's paper (GC mode, the Board's B6-b-i)**: a body with `trade_email: { companyId, key, lang, subject, lines, actionLabel }` takes the company branch, gc-trade-email's steps in order. A dev only (`officeOnly`; a training account or a twin `readOnly`), Spanish held (`spanishHeld`), the company's own sendable paper (`notFound` when the paper is not that company's), the `key` sent once and checked before any token is minted (`already: true`, nothing sent), the company's `contracts` people with the rest cc'd (`noEmail`), the token as for a person, then `buildGcTradeEmail` with the signing link as its action and the company's portal under it when it has a link (read, never minted). It writes a `gc_trade_messages` row (`msa`, or `paper` for a W-9, group `contracts`) and the sent copy (`gc_trade_email`, its `?t=` kept as `…`). Errors are gc-trade-email's keys. The person path is unchanged: its request checks, sendability and sent copy moved word for word to `_shared/contractSigningSend.ts` and are pinned against main with its email by `src/lib/contractSigningSend.pin.test.ts`. **Redeploy required.**
+
 > **v2.4574 — the email is kept as it went**: the signing email is filed (`person_contract`, the document as its source), under the person when the document's name finds exactly one active person. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, **`url`**, or **`form_template_id`** (v2.2797: a form row needs no body), mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
@@ -2211,6 +2217,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### open-contract-form-pdf
+
+> **v2.5041** (GC mode, B6-b-i): a company's form PDF downloads as `<document_name> - <company name>.pdf`, never under its stored name. **Redeploy required.**
 
 **Purpose**: Mint a short-lived link to a **signed form PDF** (Contract Forms, v2.2798) — the flattened copy in the private `contract-form-pdfs` bucket, the only place a form's sensitive answers exist — for a staff member allowed to see it, and log the open.
 
