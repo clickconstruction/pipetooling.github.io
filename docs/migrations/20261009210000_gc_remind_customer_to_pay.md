@@ -44,3 +44,7 @@ The money team's policy on the reminders is its gate (`gc_money_team()`), and O1
 - the reminder as it went;
 - its one chase touch on the billing job;
 - a refusal once the Pipeline marks the bill paid in full.
+
+## Status
+
+**Applied to prod 2026-10-09 at 09:13 UTC** by the lead (GC MODE) in the morning batch (`scripts/db-push.sh`, `--include-all`, with 140000 and 220000); drift 813/813. Verified through the management API, rolled back: step 1, the function once, SECURITY INVOKER, not executable by `anon`; step 2, a reminder on a made-up id as a dev gave *That pay application is not there.* and wrote nothing (0 reminders after). Step 3, the check to the inbox, waits on Grace's yes in Helper 15's chat.
