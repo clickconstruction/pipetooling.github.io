@@ -57,7 +57,7 @@ This page was checked on 2026-09-14 against the statute text at statutes.capitol
 **Limits on a collection letter**
 
 - [What a letter to a homeowner may not say](#what-a-letter-to-a-homeowner-may-not-say)
-- [Theft of service stays off the letter](#theft-of-service-stays-off-the-letter)
+- [Theft of service is off unless you tick it](#theft-of-service-is-off-unless-you-tick-it)
 
 **Open questions**
 
@@ -324,17 +324,17 @@ A homeowner's debt is a consumer debt. The letter may threaten a suit or a lien.
 
 Threats of a civil suit or a lien are allowed.
 
-**What you do.** Nothing by hand. The lien line is offered only while a lien can still be filed. Every charge names its statute. The letter says it will *seek* fees. It never says they *will be added*. The *§ 31.04* line is off.
+**What you do.** Nothing by hand. The lien line is offered only while a lien can still be filed. Every charge names its statute. The letter says it will *seek* fees. It never says they *will be added*. The *§ 31.04* line is off unless you tick it.
 
 **Cite.** *Fin. Code § 392.001, § 392.301(a)(2), (6), (8), (b)(2), § 392.303(a)(2), § 392.304(a)(8), (12), (13)*
 
-### Theft of service stays off the letter
+### Theft of service is off unless you tick it
 
-The law can presume an intent not to pay after a certified demand goes unpaid 10 days. The app keeps that line off until the attorney package.
+The law can presume an intent not to pay after a certified demand goes unpaid 10 days. The app leaves that line off unless you tick it.
 
 **What it says.** The law can presume intent to avoid payment. That presumption needs a written demand. The demand goes by certified or registered mail with a return receipt. A commercial delivery service also counts. It goes to the address on the service agreement. The bill must stay unpaid 10 days after receipt. This is the source of the app's default of 10 business days.
 
-**What you do.** Leave the *§ 31.04* line off. It ships off and stays off until the attorney package.
+**What you do.** The *§ 31.04* line starts off on every demand letter. On a job with no payment, you may tick *Theft-of-services report (Penal Code § 31.04)*. Once anything is paid on the job, the box is greyed out.
 
 **Cite.** *Penal Code § 31.04(a)(4), (b)(2), (c)*
 
@@ -347,7 +347,6 @@ A lawyer has not confirmed these readings. The app uses them today.
 - Whether a late *§ 53.056* notice still carries the affidavit while the affidavit window is open. See [A late notice can still carry the affidavit](#a-late-notice-can-still-carry-the-affidavit).
 - Whether a bill counts as chapter 28's written payment request on a homeowner job. The letter says it does today.
 - The CPRC chapter 38 sentence on every letter.
-- The *§ 31.04* line, and delivery under *§ 31.04(c)*.
 - The statutory release text in *§ 53.284*.
 - How *TRCP 500.3* treats fees in the justice court amount.
 - Whether the Texas Supreme Court reads chapter 392 as reaching original creditors. The Fifth Circuit does, in *Miller v. BAC, 726 F.3d 717*.

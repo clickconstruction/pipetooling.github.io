@@ -113,7 +113,7 @@ export type DemandLetterFields = {
   includeLien: boolean
   /** YYYY-MM-DD — when set, the Chapter 53 line quotes it. */
   lienFilingDeadline: string
-  /** Tex. Penal Code § 31.04 — OFF until attorney sign-off. */
+  /** Tex. Penal Code § 31.04 — off by default; the office may tick it on a job with no payment (the owner's call of 2026-10-09, v2.5030). */
   includeTheftOfServices: boolean
   includeLateFees: boolean
   includeNotarial: boolean
