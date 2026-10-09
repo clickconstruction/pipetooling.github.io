@@ -42,3 +42,7 @@ The money team's policies are the gate. An estimator is refused at the interest 
 - the restated send and certificate keeping it there;
 - a second interest bill taking the next number;
 - an estimator and a trainee stopped.
+
+## Status
+
+**Applied to prod 2026-10-09 at 09:13 UTC** by the lead (GC MODE) in the morning batch (`scripts/db-push.sh`, `--include-all`, with 140000 and 210000); drift 813/813. Verified through the management API: step 1, both functions once, SECURITY INVOKER, not executable by `anon`; step 2, `gc_send_owner_pay_app` and `gc_record_certificate` both carry `gc_owner_billing_revenue`; step 3, no billing job and no interest bill exist on prod yet, so there is no revenue to compare and nothing changed. Step 4, the check to the inbox, waits on Grace's yes in Helper 15's chat.
