@@ -36,6 +36,13 @@ The stand-in was `bid_submittal_events (id, event_type)` with the old check and 
 
 Then `npm run check:migration-drift`, the function's deploy and `npm run check:edge-drift`. No types PR is needed, because a check constraint is not in `database.ts`.
 
+## Status
+
+Merged as v2.5026 (#5094) and pushed to prod in GC MODE's 09:12 UTC batch on 2026-10-09 (drift 813 of 813 at 09:13). `send-submittal-room-link` (new, `verify_jwt = false`) and `dev-mcp` deployed from the main checkout at 09:14 UTC (edge drift all 144 current). The verify steps ran read-only over the session pooler at 09:16 UTC:
+
+1. **Passed.** `bid_submittal_events_type_check` names nine values, `link_sent` last.
+2. **Passed.** The event counts are unchanged: asked 1 · closed 1 · decided 17 · file_dropped 3 · identified 3 · reply 1 · shared 1 · view 2; no `link_sent` yet.
+
 ## Rollback
 
 A one-off migration restores the eight-value check, after deleting any `link_sent` rows. Before that, `send-submittal-room-link` is removed, or the client's door and box are taken out.
