@@ -1,0 +1,157 @@
+{
+  "about": "The schedule's PR 7c-i (to-dos/gc-mode/mockups/schedule-pr7c.md): the call list's kernels (G-115), lifted to src/lib/gc word for word with no caller yet. The call list and the counts it reads are the Schedule lane's; projectPeople.ts and customerSend.ts are the Board lane's files (B2b and B6-c extend them) and followUpPeople joins the Building lane's followUpSheet.ts, each with that lane's nod. callListCallActions stays on the spike: it returns the prototype's reducer actions. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/schedule-pr7c-i.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Invite": "types.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "files": [
+    {
+      "from": "gcCallList",
+      "to": "schedule/callList.ts",
+      "moves": "all",
+      "stays": [
+        "callListCallActions"
+      ],
+      "header": "/**\n * GC mode, the real build, the schedule's PR 7c-i: by company as a call list (G-115): everyone whose answer moves the chart, every reason under their name, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcCallList.ts`); the plan is to-dos/gc-mode/mockups/schedule-pr7c.md on that branch.\n */"
+    },
+    {
+      "from": "gcCounts",
+      "to": "schedule/counts.ts",
+      "moves": [
+        "CALL_LIST_SAYS",
+        "crewCalls",
+        "unconfirmedDates",
+        "unconfirmedStarts",
+        "barReasons",
+        "scheduleReasons",
+        "uninsuredReasons",
+        "REASON_GROUPS",
+        "reasonGroup"
+      ],
+      "header": "/**\n * GC mode, the real build, the schedule's PR 7c-i: what the call list and its rows read from the counts (G-146): the reasons a bar, the schedule and an uninsured trade give, and how they group, moved word for word from the GC mode prototype\n * (branch spike/gc-mode, `gcCounts.ts`); the plan is to-dos/gc-mode/mockups/schedule-pr7c.md on that branch.\n */"
+    },
+    {
+      "from": "gcProjectPeople",
+      "to": "projectPeople.ts",
+      "moves": [
+        "projectPeople",
+        "projectFollowPeople",
+        "customerAsPerson",
+        "ProjectPerson",
+        "PersonReason",
+        "PeopleTone"
+      ],
+      "header": "/**\n * GC mode, the real build: who to call on a project, with every reason under their name (Follow up by person), moved word for\n * word from the GC mode prototype (branch spike/gc-mode, `gcProjectPeople.ts`) by the schedule's PR 7c-i, whose call list\n * reads it. The Board lane's file: its B2b adds the board's count of them.\n */"
+    },
+    {
+      "from": "gcCustomerSend",
+      "to": "customerSend.ts",
+      "moves": [
+        "contractWaitingOn",
+        "customerReminderLate",
+        "customerSentWords"
+      ],
+      "header": "/**\n * GC mode, the real build: our papers to the customer and where each one waits, moved word for word from the GC mode\n * prototype (branch spike/gc-mode, `gcCustomerSend.ts`) by the schedule's PR 7c-i, whose call list reads them. Get\n * started's file (the Board lane's B6-c adds the step and the emails); the change-order paper is Owner Billing's.\n */"
+    },
+    {
+      "from": "gcFollowUpSheet",
+      "to": "followUpSheet.ts",
+      "append": true,
+      "moves": [
+        "followUpPeople"
+      ]
+    }
+  ],
+  "types": [
+    {
+      "to": "types.ts",
+      "whole": true,
+      "append": true,
+      "names": [
+        "CustomerSend"
+      ]
+    },
+    {
+      "to": "types.ts",
+      "append": true,
+      "about": "GcState, GcCustomer and Partner as the latest lifts list them (owner-billing-o2a, owner-billing-o2b, portal-p0), with 7c-i's fields after, each word for word. They replace those in types.ts.",
+      "fields": {
+        "GcState": [
+          "today",
+          "customers",
+          "projects",
+          "partners",
+          "tradePromises",
+          "paperSends",
+          "scheduleTemplates",
+          "customerSends"
+        ],
+        "GcCustomer": [
+          "id",
+          "name",
+          "contact",
+          "portalOn",
+          "payDays",
+          "retainagePct",
+          "address",
+          "phone",
+          "email",
+          "contacts"
+        ],
+        "Partner": [
+          "id",
+          "company",
+          "coiExpires",
+          "contact",
+          "email",
+          "phone",
+          "trades",
+          "address",
+          "license",
+          "msa",
+          "msaSignedOn",
+          "w9",
+          "invited",
+          "bids",
+          "promisesMade",
+          "promisesKept",
+          "msaSentOn",
+          "vetting",
+          "base",
+          "basePoint",
+          "maxMiles",
+          "portalOpenedOn",
+          "people",
+          "contactGets",
+          "contacts",
+          "won"
+        ]
+      },
+      "names": [
+        "GcState",
+        "GcCustomer",
+        "Partner"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "from": "gcCallList.test.ts",
+      "to": "schedule/callList.test.ts",
+      "header": "/**\n * The tests of `gcCallList.test.ts` on branch spike/gc-mode that read only the call list's kernels and the made-up data,\n * moved word for word (the schedule's PR 7c-i). The data is `testState.ts`. The tests that play the prototype's reducer\n * or read the Follow up sheet stay on the spike, where they run against these kernels.\n */"
+    }
+  ],
+  "pin": {
+    "known": {
+      "PlanSheet": "its discipline and page comments are New project's PR 1b words on main (v2.4696), not the spike's; the fields are the same",
+      "CustomerRole": "its doc comment is New project's PR 1b words on main (v2.4696), not the spike's; the type is the same",
+      "ChangeOrder": "answeredInPortal and declinedNote are Owner Billing's O7c on main (v2.5025, #5125), not on the spike; the fields the spike has are the same"
+    }
+  }
+}
