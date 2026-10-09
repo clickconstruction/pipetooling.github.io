@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
+import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import { GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
@@ -79,6 +80,10 @@ describe('canSendGcTradeEmail', () => {
 
   it('names the same roles as gc-trade-email, so the two copies cannot drift', () => {
     expect([...GC_TRADE_EMAIL_TEAM].sort()).toEqual([...GC_TRADE_EMAIL_ROLES].sort())
+  })
+
+  it('names the money team as gc-customer-email does, so the two copies cannot drift', () => {
+    expect([...GC_MONEY_TEAM].sort()).toEqual([...GC_CUSTOMER_EMAIL_ROLES].sort())
   })
 })
 

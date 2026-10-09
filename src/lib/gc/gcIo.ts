@@ -18,6 +18,7 @@ import { gcProjectFromRows, questionRowOf, type GcProjectRows, type GcProjectVie
 import type { DeclineReason, GcLostWhy, OwnerRetainageStep, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
+import { GC_CUSTOMER_EMAIL_FILED_AS } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import type { BillingRows, ContractLineRow, OwnerTermsRow, PayAppSend } from './billCustomer'
 import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
 import { paymentRefusalWords } from './moneyIn'
@@ -458,18 +459,33 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
   ])
   const appRows = taken(payApps, 'load the pay applications')
   const appIds = appRows.map((a) => a.id)
-  const [lines, reminders] = await Promise.all([
+  const [lines, reminders, emails] = await Promise.all([
     appIds.length ? supabase.from('gc_owner_pay_app_lines').select('*').in('pay_app_id', appIds).order('position') : Promise.resolve({ data: [], error: null }),
     appIds.length ? supabase.from('gc_owner_pay_reminders').select('*').in('pay_app_id', appIds).order('created_at') : Promise.resolve({ data: [], error: null }),
+    // Our emails about each pay application, from their sent copies (O4b: the copies are the record of what went). Every
+    // kind of them files as one kind, so a print filed against the same application is never read as an email.
+    appIds.length
+      ? supabase
+          .from('sent_documents')
+          .select('source_id, recipient_name, sent_at')
+          .eq('source_table', 'gc_owner_pay_apps')
+          .eq('kind', GC_CUSTOMER_EMAIL_FILED_AS.pay_app)
+          .eq('how', 'email')
+          .in('source_id', appIds)
+          .order('sent_at')
+      : Promise.resolve({ data: [], error: null }),
   ])
   const lineRows = taken(lines, 'load the pay application lines')
   const reminderRows = taken(reminders, 'load the reminders to pay')
+  const emailRows = (taken(emails, 'load the emails about the pay applications') ?? []) as { source_id: string | null; recipient_name: string | null; sent_at: string }[]
   for (const app of appRows) {
     const rows = out.get(app.project_id)
     if (!rows) continue
     rows.payApps.push(app)
     rows.lines.push(...lineRows.filter((l) => l.pay_app_id === app.id))
     rows.reminders.push(...reminderRows.filter((r) => r.pay_app_id === app.id))
+    const sentAbout = emailRows.filter((e) => e.source_id === app.id).map((e) => ({ source_id: app.id, recipient_name: e.recipient_name, sent_at: e.sent_at }))
+    if (sentAbout.length > 0) rows.emails = [...(rows.emails ?? []), ...sentAbout]
   }
   for (const bill of taken(interestBills, 'load the interest bills')) out.get(bill.project_id)?.interestBills.push(bill)
   for (const acceptance of taken(acceptances, 'load the acceptances')) {

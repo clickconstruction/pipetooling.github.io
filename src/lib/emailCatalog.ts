@@ -196,6 +196,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Click Construction asks you to quote Electrical on Sample Retail Shell',
   },
   {
+    id: 'gc_customer_email',
+    name: 'GC mode — our email to a GC customer or its architect (every kind, one sender)',
+    group: 'billing',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'gc-customer-email',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Pay application 3 for Sample Retail Shell, $48,600',
+  },
+  {
     id: 'legal_recipient_confirm',
     name: 'Legal portal — confirm your email',
     group: 'lien',

@@ -24,7 +24,8 @@ import { money, shortDate } from '../../lib/gc/words'
  */
 
 export interface BillCustomerWrites extends MoneyInWrites {
-  onSend: () => void
+  /** Send this month's pay application; with `email`, email it to the customer and the architect with its form (O4b). */
+  onSend: (email: boolean) => void
   onCertify: (number: number, amount: number, on: string, note: string) => void
   onSetRetainage: (pct: number, step: OwnerRetainageStep | null) => void
   onDownload: (which: number | 'draft', kind: 'xlsx' | 'pdf') => void
@@ -44,13 +45,15 @@ interface Props {
   unconditional?: Record<number, number>
   /** Payments on the billing job that name no bill: shown as they are, never laid on a pay application (O5c). */
   unbilled?: { on: string | null; amount: number }[]
+  /** Who each sent one was emailed to and when, by number, read from its sent copies (O4b). */
+  emailed?: Record<number, { to: string; on: string }[]>
   /** What a write is working on: 'send', 'retainage', 'cert-<n>', 'waiver-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
 }
 
-export function GcBillCustomerWindow({ state, project, today, writes, waived = [], unconditional = {}, unbilled = [], busy, problem, onClose }: Props) {
+export function GcBillCustomerWindow({ state, project, today, writes, waived = [], unconditional = {}, unbilled = [], emailed = {}, busy, problem, onClose }: Props) {
   const sent = ownerPayAppsSent(project)
   const account = ownerAccount(project)
   const late = ownerLateBills(state, project)
@@ -128,7 +131,7 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
             <div style={{ display: 'grid', gap: '0.45rem' }}>
               <div style={{ fontWeight: 600 }}>Sent</div>
               {[...sent].reverse().map((app) => (
-                <SentRow key={app.number} state={state} project={project} app={app} today={today} writes={writes} waived={waived.includes(app.number)} unconditional={unconditional[app.number] ?? 0} busy={busy} />
+                <SentRow key={app.number} state={state} project={project} app={app} today={today} writes={writes} waived={waived.includes(app.number)} unconditional={unconditional[app.number] ?? 0} emailed={emailed[app.number] ?? []} busy={busy} />
               ))}
             </div>
           )}
@@ -139,6 +142,8 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
 }
 
 function ThisMonth({ state, project, writes, busy }: { state: GcState; project: GcProject; writes: BillCustomerWrites; busy?: string | null }) {
+  // The email starts off: an untouched Send files the pay application and emails no one (O4b, the sends start off).
+  const [email, setEmail] = useState(false)
   const app = ownerPayApp(state, project)
   const hasWork = ownerPayAppHasWork(app)
   const carried = ownerCarriedForward(app)
@@ -184,7 +189,7 @@ function ThisMonth({ state, project, writes, busy }: { state: GcState; project: 
         {carried > 0 && <div style={{ color: 'var(--text-muted)' }}>{`It asks again for ${money(carried)} the architect left out before.`}</div>}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-        <Btn kind="primary" disabled={!hasWork || busy === 'send'} onClick={writes.onSend}>
+        <Btn kind="primary" disabled={!hasWork || busy === 'send'} onClick={() => writes.onSend(email)}>
           {`Send pay application ${app.number}`}
         </Btn>
         <Btn kind="quiet" disabled={busy === 'file'} onClick={() => writes.onDownload('draft', 'xlsx')}>
@@ -195,7 +200,15 @@ function ThisMonth({ state, project, writes, busy }: { state: GcState; project: 
         </Btn>
         {!hasWork && <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Nothing new to bill since the last one.</span>}
       </div>
-      <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Send it from your own email with the form. The app does not email it yet.</div>
+      <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.875rem' }}>
+        <input type="checkbox" checked={email} onChange={(e) => setEmail(e.target.checked)} />
+        Email it to the customer and the architect now
+      </label>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+        {email
+          ? `It goes to ${project.owner || 'the customer'} and ${project.architect || 'the architect'} by email now, with the form. Make our conditional waiver under Sent after. It goes in its own email.`
+          : 'Send files the pay application without an email. Tick Email it to the customer and the architect now to email it too.'}
+      </div>
     </div>
   )
 }
@@ -285,6 +298,7 @@ function SentRow({
   writes,
   waived,
   unconditional,
+  emailed,
   busy,
 }: {
   state: GcState
@@ -294,6 +308,7 @@ function SentRow({
   writes: BillCustomerWrites
   waived: boolean
   unconditional: number
+  emailed: { to: string; on: string }[]
   busy?: string | null
 }) {
   const certified = appCertified(app)
@@ -335,6 +350,9 @@ function SentRow({
           PDF
         </Btn>
       </div>
+      {emailed.length > 0 && (
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{`Emailed to ${[...new Set(emailed.map((e) => e.to))].join(' and ')} on ${shortDate(emailed[0]!.on)}.`}</div>
+      )}
       <GcBillMoneyIn state={state} project={project} app={app} writes={writes} unconditional={unconditional} busy={busy} />
       {certified === null && (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>

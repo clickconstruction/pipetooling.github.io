@@ -10,7 +10,12 @@ import { installDomShims } from '../../test/renderSmokeMocks'
 installDomShims()
 
 /** Fair Oaks D with its made-up bills, the last one still waiting on the architect unless `lastApp` says otherwise. */
-function setup(over: Partial<GcProject> = {}, waived: number[] = [], lastApp: Partial<OwnerPayAppSent> = {}, extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[] } = {}) {
+function setup(
+  over: Partial<GcProject> = {},
+  waived: number[] = [],
+  lastApp: Partial<OwnerPayAppSent> = {},
+  extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[]; emailed?: Record<number, { to: string; on: string }[]> } = {},
+) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
   const billing = fairOaks.ownerBilling!
@@ -23,7 +28,7 @@ function setup(over: Partial<GcProject> = {}, waived: number[] = [], lastApp: Pa
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
   const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn() }
-  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} onClose={() => undefined} />)
+  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} onClose={() => undefined} />)
   return { writes, last }
 }
 
@@ -32,7 +37,8 @@ describe('GcBillCustomerWindow', () => {
     const { writes, last } = setup()
     const next = last.number + 1
     fireEvent.click(screen.getByRole('button', { name: `Send pay application ${next}` }))
-    expect(writes.onSend).toHaveBeenCalled()
+    // The email starts off: an untouched Send emails no one.
+    expect(writes.onSend).toHaveBeenCalledWith(false)
     fireEvent.click(screen.getByRole('button', { name: 'See the form in Excel' }))
     expect(writes.onDownload).toHaveBeenCalledWith('draft', 'xlsx')
     fireEvent.click(screen.getByRole('button', { name: 'See the form as a PDF' }))
@@ -133,5 +139,18 @@ describe('GcBillCustomerWindow', () => {
   it('names a payment on the billing job that names no bill, and lays it on none', () => {
     setup({}, [], {}, { unbilled: [{ on: '2026-10-03', amount: 250 }] })
     expect(document.body.textContent).toContain(`A payment of ${money(250)} on Oct 3 on the billing job names no bill.`)
+  })
+  it('emails it to the customer and the architect only once the tick is on', () => {
+    const { writes, last } = setup()
+    expect(document.body.textContent).toContain('Send files the pay application without an email. Tick Email it to the customer and the architect now to email it too.')
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Email it to the customer and the architect now' }))
+    expect(document.body.textContent).toContain('by email now, with the form. Make our conditional waiver under Sent after. It goes in its own email.')
+    fireEvent.click(screen.getByRole('button', { name: `Send pay application ${last.number + 1}` }))
+    expect(writes.onSend).toHaveBeenCalledWith(true)
+  })
+
+  it('says who a sent one was emailed to, from its sent copies', () => {
+    setup({}, [], {}, { emailed: { 1: [{ to: 'Cibolo Creek Partners', on: '2026-07-25' }, { to: 'Garza Architects', on: '2026-07-25' }] } })
+    expect(document.body.textContent).toContain('Emailed to Cibolo Creek Partners and Garza Architects on Jul 25.')
   })
 })
