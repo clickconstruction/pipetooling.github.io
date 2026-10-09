@@ -5,7 +5,8 @@
  * the database's own words (`gc_schedule_draft`). It starts on the job's start day, the rough's, or
  * the Monday after next, and its line in the log is the prototype's. The opened bar's card says
  * what the chart's hover card says, with what holds the bar, its parts and its place. A move's,
- * an undo's and a redo's lines in the log (the schedule's PR 8a) are the prototype's too.
+ * an undo's and a redo's lines in the log (the schedule's PR 8a) are the prototype's too, and so are
+ * the job's own work's and a failed inspection's (PR 9a).
  */
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { addDays } from '../building'
@@ -14,11 +15,12 @@ import { shortDate, weekdayDate } from '../words'
 import { actualWords } from './actualDates'
 import { lastFinishDay, type GanttBar } from './gantt'
 import { moveActivityName, moveRecord, planMove, spanWords, type MovePlan } from './moves'
-import { daysBetween, pushedAfterWords } from './network'
+import { addedActivityProblem, nextOwnId } from './addedActivity'
+import { daysBetween, pushAfter, pushedAfterWords } from './network'
 import { placeGuess, takesPlace } from './places'
 import { mondayOf } from './schedule'
 import { movedParts, partFacts } from './splitBars'
-import type { ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason } from './types'
+import type { InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason } from './types'
 
 // ---------------------------------------------------------------------------------------------
 // The first draft
@@ -101,6 +103,82 @@ export function partMovePress(
     ? moveWords(project, lineId, plan, why)
     : `${moveActivityName(project, lineId)}, ${activity.parts.find((x) => x.id === partId)?.name ?? 'a part'} now runs ${weekdayDate(start)} to ${weekdayDate(finish)}. ${why.by}: ${why.note.trim()}`
   return { move, activities, words }
+}
+
+// ---------------------------------------------------------------------------------------------
+// The job's own work and an inspection (PR 9a)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The job's own work put on the chart (G-38), as the prototype's reducer does it (`addScheduleActivity`): a bar that is
+ * no trade's line, what it waits on, the bars that wait on it from now on, and what that pushes. The bars come back as
+ * the push leaves them, for `addScheduleActivity`'s io, with the reducer's line in the log. Null: its problem
+ * (`addedActivityProblem`) or no schedule.
+ */
+export function ownWorkPress(
+  project: GcProject,
+  input: { label: string; who: string; start: string; finish: string; after: string[]; holdsUp: string[] },
+  by: string,
+): { activities: ScheduleActivity[]; words: string } | null {
+  const schedule = project.schedule
+  const label = input.label.trim()
+  const who = input.who.trim()
+  if (!schedule || addedActivityProblem(label, who, input.start, input.finish)) return null
+  const ids = new Set(schedule.activities.map((a) => a.lineId))
+  const lineId = nextOwnId(project)
+  const after = [...new Set(input.after)].filter((id) => ids.has(id))
+  const holdsUp = new Set([...new Set(input.holdsUp)].filter((id) => ids.has(id) && !after.includes(id)))
+  const activity: ScheduleActivity = { lineId, packageId: '', start: input.start, finish: input.finish, after, added: { label, who, doneOn: null } }
+  // The lines that wait on it from now on, then what that pushes (the owner, 2026-10-04: what comes after moves out).
+  const pushed = pushAfter(project, [...schedule.activities.map((a) => (holdsUp.has(a.lineId) ? { ...a, after: [...a.after, lineId] } : a)), activity], lineId)
+  return {
+    activities: pushed.activities,
+    words: `${by} put ${label} on ${project.name}'s schedule, ${weekdayDate(input.start)} to ${weekdayDate(input.finish)}, ${who}.${holdsUp.size > 0 ? ` ${holdsUp.size} ${holdsUp.size === 1 ? 'activity waits' : 'activities wait'} on it.` : ''}${pushed.moved.length > 0 ? ` ${pushedAfterWords(pushed.moved)}` : ''}`,
+  }
+}
+
+/** The job's own work taken off the chart, the reducer's line in the log: "Slab cure came off Fair Oaks D's schedule." */
+export function ownWorkOffWords(project: GcProject, lineId: string): string {
+  const activity = project.schedule?.activities.find((a) => a.lineId === lineId)
+  return `${activity?.added?.label ?? moveActivityName(project, lineId)} came off ${project.name}'s schedule.`
+}
+
+/**
+ * An inspection that did not pass (`failInspection`), on a job being built: the failure, the inspection at its
+ * re-inspection day with its days kept, and what waits on it moved out, with the reducer's line in the log. Null: what
+ * the reducer refuses (no note, a re-inspection not after today, passed already, not an inspection, not being built).
+ *
+ * The push is main's own (`pushAfter`): what waits on the inspection moves out, down the line, each gap kept and work
+ * already done left alone, as a move pushes. The prototype's reducer pushes with New project's `pushSchedule`, over the
+ * whole plan, a wait's gap left out and done work moved: on a real job it would undo days got back and move finished
+ * bars. The known difference, the lead's pick (to-dos/gc-mode/mockups/schedule-pr9.md).
+ */
+export function failInspectionPress(
+  project: GcProject,
+  lineId: string,
+  input: { note: string; packageIds: string[]; reinspectOn: string },
+  today: string,
+): { failure: InspectionFailure; activities: ScheduleActivity[]; words: string } | null {
+  const schedule = project.schedule
+  const activity = schedule?.activities.find((a) => a.lineId === lineId)
+  const inspection = activity?.inspection
+  const note = input.note.trim().replace(/\s+/g, ' ')
+  if (project.stage !== 'building' || !schedule || !activity || !inspection || inspection.passedOn) return null
+  if (!note || !input.reinspectOn || input.reinspectOn <= today) return null
+  const known = new Set(project.packages.map((k) => k.id))
+  const packageIds = [...new Set(input.packageIds)].filter((id) => known.has(id))
+  const length = daysBetween(activity.start, activity.finish)
+  const failure = { on: today, note, packageIds, reinspectOn: input.reinspectOn }
+  const again: ScheduleActivity = { ...activity, start: input.reinspectOn, finish: addDays(input.reinspectOn, length), inspection: { ...inspection, failed: [...(inspection.failed ?? []), failure] } }
+  const pushed = pushAfter(project, schedule.activities.map((a) => (a.lineId === lineId ? again : a)), lineId)
+  const movedOut = pushed.moved.length
+  const trades = project.packages.filter((k) => packageIds.includes(k.id)).map((k) => k.trade)
+  const whose = trades.length === 0 ? '' : ` It was ${trades.length === 1 ? trades[0] : `${trades.slice(0, -1).join(', ')} and ${trades[trades.length - 1]}`}'s work.`
+  return {
+    failure,
+    activities: pushed.activities,
+    words: `The ${inspection.label.toLowerCase()} failed on ${project.name}: ${note.replace(/[.\s]+$/, '')}.${whose} Re-inspection ${weekdayDate(input.reinspectOn)}.${movedOut > 0 ? ` ${movedOut} ${movedOut === 1 ? 'activity after it moves' : 'activities after it move'} out.` : ''}`,
+  }
 }
 
 /** When a change someone else saved was made, on the company's clock (G-134's refusal): "2:14 pm". Empty for a time it cannot read. */
