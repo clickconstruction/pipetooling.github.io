@@ -26,7 +26,12 @@ export type LienFootChipItem = {
   printed_at?: string | null
   hold_reason?: string | null
   hold_until?: string | null
+  /** v2.5082: the leader's signature on the notice; the chip says signed or unsigned. */
+  signed_at?: string | null
 }
+
+/** The chip's word on the signature (v2.5082): null = no word (the row does not carry the column yet), 'signed' with the day, or 'unsigned'. */
+export type LienFootChipSigned = { at: string } | 'unsigned' | null
 
 /** "Oct 7" from an instant (company calendar) or a day. */
 export function shortDay(iso: string | null | undefined): string {
@@ -50,9 +55,22 @@ export function awaitingChip(item: LienFootChipItem | null | undefined): LienFoo
  * The ready footer: approved on the leader’s word, by the GC’s standing rule, or by the leader on a day; the offer rides along.
  * A notice whose printed run was taken back (punch list #101) says so last: `takenBack` from `takenBackChipWords`.
  */
-export function readyChip(item: LienFootChipItem | null | undefined, gcName: string | null | undefined, offerWords: string | null | undefined, leaderName?: string | null, takenBack?: { tail: string; sentence: string } | null): LienFootChip {
-  const chip = approvedChip(item, gcName, offerWords, leaderName)
-  return takenBack ? { ...chip, words: `${chip.words} · ${takenBack.tail}`, title: `${chip.title} ${takenBack.sentence}` } : chip
+export function readyChip(
+  item: LienFootChipItem | null | undefined,
+  gcName: string | null | undefined,
+  offerWords: string | null | undefined,
+  leaderName?: string | null,
+  takenBack?: { tail: string; sentence: string } | null,
+  signed?: LienFootChipSigned,
+): LienFootChip {
+  const base = approvedChip(item, gcName, offerWords, leaderName)
+  const chip = takenBack ? { ...base, words: `${base.words} · ${takenBack.tail}`, title: `${base.title} ${takenBack.sentence}` } : base
+  if (signed === 'unsigned') return { ...chip, tone: 'amber', words: `${chip.words} · unsigned`, title: `${chip.title} Unsigned: the run holds it until the leader signs.` }
+  if (signed && typeof signed === 'object') {
+    const day = shortDay(signed.at)
+    return { ...chip, words: `${chip.words} · signed${day ? ` ${day}` : ''}`, title: `${chip.title} Signed ${longDay(signed.at) ?? ''}.`.replace(/\s+\./, '.') }
+  }
+  return chip
 }
 
 function approvedChip(item: LienFootChipItem | null | undefined, gcName: string | null | undefined, offerWords: string | null | undefined, leaderName?: string | null): LienFootChip {

@@ -155,3 +155,20 @@ export function lienNoticeSignatureFromRow(
 export function toFilingSignature(sig: LienNoticeSignature): FilingSignature {
   return { mode: sig.mode, printedName: sig.printedName, pngDataUrl: sig.pngDataUrl, signedWords: sig.signedWords, recordId: sig.recordId, auditLine: sig.auditLine }
 }
+
+/** The patch that clears a signature (v2.5082): a draft saved after signing, a pull-back, an undo — the leader signs again. */
+export const LIEN_DESK_SIGNATURE_CLEAR: LienDeskSignatureColumns = {
+  signed_at: null,
+  signed_by: null,
+  signed_on_device_of: null,
+  signer_printed_name: null,
+  signer_signature_mode: null,
+  signer_signature_storage_path: null,
+  signed_fields_hash: null,
+}
+
+/** The chip's word on a ready notice (v2.5082): signed, with the instant, or unsigned — stale counts as unsigned. */
+export function lienChipSigned(row: LienDeskSignatureColumns, fieldsHash: string): { at: string } | 'unsigned' {
+  if (!row.signed_at || !(row.signer_printed_name ?? '').trim() || lienSignatureStale(row, fieldsHash)) return 'unsigned'
+  return { at: row.signed_at }
+}
