@@ -788,7 +788,7 @@ const response = await supabase.functions.invoke('login-as-user', {
 
 ### dev-login
 
-**Purpose**: Password-free sign-in when running in development mode. No existing auth required. Used for local testing (e.g. checklist, E2E) without credentials. **Frontend identity is fixed (v2.1517)**: `src/pages/DevLogin.tsx` always sends `robert@douglasmining.com` (`DEV_LOGIN_EMAIL` constant) — the `?as=` value and the old email input no longer pick the account; `as`'s presence just triggers the auto-login. The function itself still accepts any existing user's email if invoked directly with the secret.
+**Purpose**: Password-free sign-in when running in development mode. No existing auth required. Used for local testing (e.g. checklist, E2E) without credentials. **Frontend identity is fixed (v2.1517)**: `src/pages/DevLogin.tsx` always sends `robert@douglasmining.com` (`DEV_LOGIN_EMAIL` constant) — the `?as=` value and the old email input no longer pick the account; `as`'s presence just triggers the auto-login, but for `?as=twin:<role>[:<n>]`, which signs in as that twin's account (v2.2426, `twinAliasEmail`). It signs in once per URL (v2.4993, `signedInFor`): StrictMode's second run minted a second link, which cancelled the first. The function itself still accepts any existing user's email if invoked directly with the secret.
 
 **Endpoint**: `POST /functions/v1/dev-login`
 
@@ -1053,7 +1053,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### submit-gc-trade-portal
 
-**Purpose**: GC mode's trade partner portal, the writes (v2.4925, P2b-i of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p2b.md`). It covers everything a company does from its no-password page: Got it, its language, who gets its emails, opening the plans, the day its quote will come, a quote, confirming a quote on a new set, answering unclear lines, passing, and asking about the plans. Each kind calls P2a's `gc_trade_<verb>` (migration `20261008140000_gc_trade_writes`, service role only) with the link's company first. The page's presses post to it since v2.4935 (P2b-ii, `gcTradePortalPress.ts`).
+**Purpose**: GC mode's trade partner portal, the writes (v2.4925, P2b-i of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p2b.md`). It covers everything a company does from its no-password page: Got it, its language, who gets its emails, opening the plans, the day its quote will come, a quote, confirming a quote on a new set, answering unclear lines, passing, asking about the plans and, since P4b-i (v2.5044), answering a charge and asking for a change. Each kind calls P2a's `gc_trade_<verb>` (migration `20261008140000_gc_trade_writes`, service role only) with the link's company first. The page's presses post to it since v2.4935 (P2b-ii, `gcTradePortalPress.ts`).
 
 **Endpoint**: `POST /functions/v1/submit-gc-trade-portal` with `{ token, kind, website?, ...fields }` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. **Response**: `{ ok: true, value? }` or `{ error: key }`.
 
@@ -1130,13 +1130,13 @@ The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, a
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_trade_email`.
 
-**Doors**: a dev only until the portal's door. The questions window sends kind `answer` to the companies on the trade (P3-b, v2.4938: `emailTheAnswer` in `src/lib/gc/tradeEmailIo.ts`, which then adds them to `gc_plan_questions.answer_sent_to`). The Ask window sends kind `invite` (v2.4939, `askEmail.ts`), and a new set of plans sends kind `plans` to each company asked to quote (v2.4940, New project's step 7: `setEmail.ts`, `sendSetEmails` in `gcIo.ts`, key `<projectId>:plans:<rev>`, recorded in `gc_plan_set_sends`). `nudge` comes next.
+**Doors**: a dev only until the portal's door. The questions window sends kind `answer` to the companies on the trade (P3-b, v2.4938: `emailTheAnswer` in `src/lib/gc/tradeEmailIo.ts`, which then adds them to `gc_plan_questions.answer_sent_to`). The Ask window sends kind `invite` (v2.4939, `askEmail.ts`), and a new set of plans sends kind `plans` to each company asked to quote (v2.4940, New project's step 7: `setEmail.ts`, `sendSetEmails` in `gcIo.ts`, key `<projectId>:plans:<rev>`, recorded in `gc_plan_set_sends`). A statement of work's **Send to their portal to sign** sends kind `sow` (B6-a-ii, v2.5036: `sowEmailRequest` in `sowEmail.ts`, key `<sow id>:sow`) once the Portal's sign screen is live (`SOW_SIGN_SCREEN_LIVE`, false today). Change orders sends kind `changeAsk` (O3b, v2.5055: `emailChangeAsk` in `gcIo.ts`, key `<request id>:<stage>`): `down` with **Turn it down**, `sent` with **Send for signature** on a change order made of the ask, `no` with **They declined**, and **Tell <company>** for a stage whose email has not gone. `nudge` comes next.
 
 ---
 
 ### gc-customer-email
 
-**Purpose**: GC mode's sender for our emails to a GC project's customer and its architect (v2.4998, Owner Billing O4b of `to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md` on branch `spike/gc-mode`). Each press that sends one has its own tick, off to start:
+**Purpose**: GC mode's sender for our emails to a GC project's customer and its architect (v2.4998, Owner Billing O4b of `to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md` on branch `spike/gc-mode`). Each press that sends one but **Send the reminder** has its own tick, off to start:
 - Bill the customer's **Send pay application**, with **Email it to the customer and the architect now**, emails the pay application to the customer and asks the architect to certify it, both with the G702 and G703 as a PDF (O4b-1). Closeout's **Send the final pay application** (O7a, v2.5019) emails our final the same way, its form drawn from the final's own record, with its tick off to start.
 - **Record the certificate**, with **Email the customer the bill now**, emails the customer the bill the architect certified (O4b-2, v2.4999). It has no Pay: the bill is not on Stripe, so the email asks for their day, with their portal link when they have one.
 - Change orders' **Send for signature**, with **Email it to the customer now**, emails the change order for them to sign by reply (O4b-2). There is no change order form yet: the words carry the change, the price and the days.
@@ -1516,7 +1516,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### submit-sub-portal
 
-> **v2.5042 — redeploy after merge**: each dispatch note now calls [`notify-dispatch-request`](#notify-dispatch-request) as an internal caller, with the service-role key as its bearer, through [`_shared/internalFunctionCall.ts`](../supabase/functions/_shared/internalFunctionCall.ts). The notes are availability, a day off under a pick, work done, a progress note, a declined offer and a signed order.
+> **v2.5042 — redeploy after merge**: each dispatch note now calls [`notify-dispatch-request`](#notify-dispatch-request) as an internal caller, with the service-role key as its bearer, through [`_shared/internalFunctionCall.ts`](../supabase/functions/_shared/internalFunctionCall.ts). The notes are availability, a day off under a pick, work done, a progress note, a declined offer, a signed order, picked or moved dates (`sub_dates_picked`) and a can't-do-these-dates ask (`sub_dates_askback`).
 > - Before, the call carried no `Authorization` header, so the notifier answered 401 and no phone heard a sub's note. The inbox row was always written.
 > - A non-2xx answer is now logged as `notify-dispatch-request refused <status> <body>`.
 > - Handler test: `src/lib/subs/subPortalDispatchNotify.run.test.ts`.

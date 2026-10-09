@@ -9,7 +9,7 @@ covers:
   - src/components/SupplyHousesTab.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-02
+last_updated: 2026-10-09
 ---
 
 ## Overview
@@ -337,7 +337,7 @@ Open candidates at a05cef4c4:
 16. **Closed (v2.3168).** The Price coverage modal lost its second copy of supply-house CRUD; house editing is `useSupplyHouseEditor` behind both Supply houses bodies.
 17. **`SupplyHousesTab` has two mount contracts.** Materials passes data + callbacks; Quickfill passes nothing, so the tab self-loads houses (`loadSupplyHousesInternal`), reads the role from `useAuth`, loads the first service type for Create PO (503–505), and falls back to `navigate('/materials', { state: { openPOId } })` (603–609). Every prop stays optional.
 18. **Hooks run above the access gate** (`useReportQuickfillSectionMetric` 595–599 before `return null` at 601) so the Quickfill metric reports; it no-ops outside the Quickfill provider.
-19. **The invoice sign comes from the document kind** (`signedAmountForSave`), never the typed amount; `on_job_account` is **sent only when it changed** (the merge-to-db-push window) and forced off unless exactly one job is allocated; `paidAtPayload` sends `paid_at` only when the typed day differs — the DB trigger stamps `now()` on the flip to paid.
+19. **The invoice sign comes from the document kind** (`signedAmountForSave`), never the typed amount; `on_job_account` is **sent only when it changed** (the merge-to-db-push window), and so is a credit's pair since v2.5035 (`creditsInvoicePatch`: `credits_invoice_id`, picked in **Credits invoice…** (`CreditPairPick`) from `creditableInvoices`, read on both rows by `creditPairingLine`, and held to the same house by the `supply_house_invoices_credit_pair_guard` trigger) and forced off unless exactly one job is allocated; `paidAtPayload` sends `paid_at` only when the typed day differs — the DB trigger stamps `now()` on the flip to paid.
 20. **Allocations save delete-then-insert** (774–785), not atomic; rows with pct ≤ 0 are dropped; an edited invoice with no allocations deletes all.
 21. **Apply Payment never writes `link`** — `applyPaymentUpdate` (`lib/materials/supplyHouseInvoiceForm.ts`, tested) marks the bills paid and files a typed link in `payment_link` (v2.3843, shown as **Receipt** beside **View**). `link` is the invoice scan: a blank box used to null it (fixed v2.3830) and a typed one replaced it.
 22. **`loadSupplyHouseDetail` reads the whole `supply_house_invoice_job_allocations` table** (416, no filter) and fetches job details for every allocated job on each house open; PO items load one query per PO (453–469). Scope/batch in a behavior PR, not a move.

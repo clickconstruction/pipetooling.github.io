@@ -10,7 +10,7 @@ covers:
   - src/components/my-time-day-editor/MyTimeDayTimelineBody.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-08
+last_updated: 2026-10-09
 ---
 
 ## Overview
@@ -68,7 +68,7 @@ The Team Summary drilldowns (`people/teamSummary/drilldowns.tsx`, `TeamSummaryIn
 
 | # | Region | Anchor symbol | Lines (a05cef4c4) | Status | Owned state | Coupling | Risk | Tests | Recommended action |
 |---|---|---|---|---|---|---|---|---|---|
-| 0 | Shell + edit-window gating | `saveableRange`, `priorWeekAck`, overlay (z 1200), header, branch ladder, dual footers | 355–378, 1509–1563, 2573–2775, 3022–3131, 3134–3214 | shell | 2 (`priorWeekAck`, `layoutMode`) + 2 effects | — | — | none (no render smoke mounts the modal) | **Stays** — this is the parent |
+| 0 | Shell + edit-window gating | `saveableRange`, `priorWeekAck`, overlay (z 1200), header, branch ladder, dual footers | 355–378, 1509–1563, 2573–2775, 3022–3131, 3134–3214 | shell | 2 (`priorWeekAck`, `layoutMode`) + 2 effects | — | — | `DashboardMyTimeDayEditorModal.render.test.tsx` (12, v2.4960: Save, Reject session and the ways out) | **Stays** — this is the parent |
 | 1 | Session data engine | `fetchedSessions`, `sessionsFetchNonce`, `sortedSessions`, `sessionClusters`, `nowTick` | 396–402, 564–711, 827–831, 1008–1146 | extracted (v2.4949, `useMyTimeDaySessions`, kept in the shell) | 8 + 4 effects | **maximum** — every region reads it | high | kernels tested (`myTimeDayTimeline*`, 45 cases); fetch/effects tested since v2.4949 | **done v2.4949** — `useMyTimeDaySessions`, kept in the shell and destructured |
 | 2 | Salary prefetch + empty-day hints | `useMyTimeSalaryPrefetch` (one call in the shell, after `resolvedSessions`), `emptyDayLine` | the shell keeps the hook call, `bumpSessionsFetchNonce` and the two reads in the render | **extracted v2.3967** | 0 in the shell (3 + 2 refs + 3 effects in the hook) | low (tells the shell to bump `sessionsFetchNonce`) | low | `myTimeSalaryPrefetch.test.ts` (14), `MyTimeEditorHooks.render.test.tsx` (13 of 20), `resolveCalendarWorkday` (11); `salaryScheduleSync` untested | Done |
 | 3 | Job/bid label loader | `useMyTimeJobBidLabels` (one call in the shell, after the NCNS hook) | the shell keeps the hook call | **extracted v2.3967** | 0 in the shell (2 + 2 refs + 2 effects in the hook) | low (outputs 2 memos) | low | `myTimeJobBidLabels.test.ts` (9), `MyTimeEditorHooks.render.test.tsx` (7 of 20), `formatJobLedgerSummaryLine` in `ledgerDisplayPrefixes.test.ts` | Done |
@@ -266,7 +266,7 @@ Documented in [The save engine](#the-save-engine--payroll-path). Additional piec
 
 ## Test coverage
 
-No test file mounts, mocks or names `DashboardMyTimeDayEditorModal` (`git grep` over `*.test.ts(x)` and `e2e/` finds none) — there is no `*.render.test.tsx` for the modal, so the shell, the sub-flow registry and every inline dialog are unguarded against wiring breaks. The Not-coming-in and discard confirms have their own render smoke since v2.3919 (`MyTimeDayEditorConfirms.render.test.tsx`, 9) the NCNS flow since v2.3932 (`MyTimeNcnsFlow.render.test.tsx`, 20) and the reject confirm since v2.3946 (`MyTimeRejectSessionDialog.render.test.tsx`, 9), and the label and salary hooks since v2.3967 (`MyTimeEditorHooks.render.test.tsx`, 20); the rest of the coverage is in the `lib/` kernels it calls:
+Since v2.4960 `DashboardMyTimeDayEditorModal.render.test.tsx` mounts the modal (12 cases): Reject session's one `reject_clock_session` call (v2.4964), Save's one `save_my_time_day` call with its refusal and its approved-time question, and the ways out (Close, the backdrop and Escape, whose one window listener is v2.4980's). The Not-coming-in and discard confirms have their own render smoke since v2.3919 (`MyTimeDayEditorConfirms.render.test.tsx`, 9) the NCNS flow since v2.3932 (`MyTimeNcnsFlow.render.test.tsx`, 20) and the reject confirm since v2.3946 (`MyTimeRejectSessionDialog.render.test.tsx`, 9), and the label and salary hooks since v2.3967 (`MyTimeEditorHooks.render.test.tsx`, 20); the rest of the coverage is in the `lib/` kernels it calls:
 
 | Kernel | Test file(s) | Cases | Regions |
 |---|---|---|---|

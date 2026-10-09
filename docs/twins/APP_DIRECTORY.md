@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-10-08
+last_updated: 2026-10-09
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -77,7 +77,7 @@ made, copied, remade or turned off, and whether they opened it (a dev's only, un
 Once a trade has a quote, **Compare quotes** (guide `compare-quotes-and-carry-one`) puts its quotes side by side, takes a cost to cover what each leaves out, and carries one as the trade's number.
 **Our number** on a project's card (guide `set-our-number-and-send-our-bid`) adds our costs and fee to the trades for the money team; **We sent our bid**, **We won this** and **We lost this** sit on the project's head.
 **Bid tabs** on a project's card (guide `share-a-bid-tab-with-the-trades`) share each trade's quotes, low to high, with the companies that quoted once our bid is in.
-For the money team (the owner, the leaders and the controller, since the Owner Billing door): **Change orders** on a won job's card (guide `change-our-contract-with-the-customer`) writes a change order to the customer, sends it, by email when its tick is on, and records their answer, **Bill the customer** on a won job's card (guide `bill-the-customer-on-a-gc-job`) sends this month's pay application, by email to the customer and the architect when its tick is on, and records the architect's certificate, emailing the customer the certified bill when that tick is on, then what the customer paid and when they said they will pay (guide `record-what-a-gc-customer-paid`) and a reminder to pay a late bill (guide `remind-a-customer-to-pay-a-gc-bill`), then the customer's acceptance and our final pay application (guide `close-out-a-gc-job-with-the-customer`), and the switch's **Money** pill (guide `see-the-money-on-our-gc-jobs`) shows money across every job that is ours, with the Monday money email below it (guide `get-our-gc-money-by-email-each-week`); `/gc?view=money` opens it. Lists every GC project as the kernels read it (the plan
+For the money team (the owner, the leaders and the controller, since the Owner Billing door): **Change orders** on a won job's card (guide `change-our-contract-with-the-customer`) writes a change order to the customer, sends it, by email when its tick is on, and records their answer, and, for a dev while the trade wave is closed, lists the trades' asks for a change to make a change order of or turn down (guide `answer-a-trade-partners-change-request`), **Bill the customer** on a won job's card (guide `bill-the-customer-on-a-gc-job`) sends this month's pay application, by email to the customer and the architect when its tick is on, and records the architect's certificate, emailing the customer the certified bill when that tick is on, then what the customer paid and when they said they will pay (guide `record-what-a-gc-customer-paid`) and a reminder to pay a late bill (guide `remind-a-customer-to-pay-a-gc-bill`), then the customer's acceptance and our final pay application (guide `close-out-a-gc-job-with-the-customer`), and the switch's **Money** pill (guide `see-the-money-on-our-gc-jobs`) shows money across every job that is ours, with the Monday money email below it (guide `get-our-gc-money-by-email-each-week`); `/gc?view=money` opens it. Lists every GC project as the kernels read it (the plan
 sets, the sheets, the trades with their scope lines and the gaps) and holds **New project**:
 the four-step window (project → plans → trades → each scope) that writes through
 `gc_create_project`. **Open the scope book** (`?book=1`)
@@ -269,7 +269,9 @@ Settings / Sign out); holding a slot on the bar swaps it too.
 One no-password link per trade partner company (v2.4920, `GcTradePortal.tsx`, read through `gc-trade-portal`): the
 company's asks, quotes, plans and questions on each project. From it the company names its people, promises a quote
 day, quotes, answers lines, passes, asks about the plans and picks who gets our emails (v2.4935, through
-`submit-gc-trade-portal`). `/t/sample` is the sample. A link is made by a dev in the company window's **Their portal**
+`submit-gc-trade-portal`). On a job of its own it also reads its statement of work, the charges to it and the
+changes it asked for (v2.5044), and agrees with or disputes a charge and asks for a change (v2.5048). `/t/sample`
+is the sample. A link is made by a dev in the company window's **Their portal**
 until the trade wave, and the first email to the company makes one (v2.4936).
 Roles: public.
 
