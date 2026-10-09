@@ -21,7 +21,14 @@ import {
   type FixtureNameAudit,
   type FixtureNameAuditRow,
 } from '../../lib/specSectionAudit'
-import { groupRulesBySection, ruleStandings, sectionTallies, type LedgerRule } from '../../lib/specSectionRules'
+import {
+  groupRulesBySection,
+  ruleStandings,
+  sectionTallies,
+  type LedgerRule,
+  type RuleDraft,
+  type SectionDraft,
+} from '../../lib/specSectionRules'
 import { SpecSectionRulesTab } from './SpecSectionRulesTab'
 import { SpecSectionSectionsTab } from './SpecSectionSectionsTab'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
@@ -157,6 +164,86 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
     [sections],
   )
 
+  /** The ledger again, sorted as the first load sorts it, after any write (a pin, or the manager's save and delete). */
+  async function reloadRules() {
+    const rules = await withSupabaseRetry(
+      () =>
+        supabase
+          .from('spec_section_match_rules')
+          .select('id, pattern, match_kind, section_code, priority')
+          .order('priority', { ascending: true })
+          .order('created_at', { ascending: true }),
+      'reload spec section match rules',
+    )
+    setRuleRows(rules ?? [])
+  }
+
+  async function reloadSections() {
+    const rows = await withSupabaseRetry(() => supabase.from('spec_sections').select('code, title').order('code'), 'reload spec sections')
+    setSections(rows ?? [])
+  }
+
+  // The manager's write side (v2.5061). Each resolves to an error message, or null when saved; RLS keeps writes to
+  // the ledger's writers, and a deleted rule or section lands in Recently deleted (20261010015000).
+  async function saveRule(editingId: string | null, draft: RuleDraft): Promise<string | null> {
+    try {
+      const row = { pattern: draft.pattern.trim(), match_kind: draft.matchKind, section_code: draft.sectionCode, priority: draft.priority }
+      const res = editingId
+        ? await supabase.from('spec_section_match_rules').update({ ...row, updated_at: new Date().toISOString() }).eq('id', editingId)
+        : await supabase.from('spec_section_match_rules').insert(row)
+      checkSupabaseError(res, 'save the rule')
+      await reloadRules()
+      return null
+    } catch (err) {
+      return formatErrorMessage(err, 'Could not save the rule.')
+    }
+  }
+
+  async function deleteRule(id: string): Promise<string | null> {
+    try {
+      checkSupabaseError(await supabase.from('spec_section_match_rules').delete().eq('id', id), 'delete the rule')
+      await reloadRules()
+      return null
+    } catch (err) {
+      return formatErrorMessage(err, 'Could not delete the rule.')
+    }
+  }
+
+  async function addSection(draft: SectionDraft): Promise<string | null> {
+    try {
+      checkSupabaseError(await supabase.from('spec_sections').insert({ code: draft.code, title: draft.title }), 'add the section')
+      await reloadSections()
+      return null
+    } catch (err) {
+      return formatErrorMessage(err, 'Could not add the section.')
+    }
+  }
+
+  async function renameSection(code: string, title: string): Promise<string | null> {
+    try {
+      checkSupabaseError(
+        await supabase.from('spec_sections').update({ title, updated_at: new Date().toISOString() }).eq('code', code),
+        'rename the section',
+      )
+      await reloadSections()
+      return null
+    } catch (err) {
+      return formatErrorMessage(err, 'Could not rename the section.')
+    }
+  }
+
+  async function deleteSection(code: string): Promise<string | null> {
+    // The tab refuses while rules file names here; this re-checks against the ledger as loaded, so a cascade never runs.
+    if (ledgerRules.some((r) => r.sectionCode === code)) return `${code} still holds rules. Move or delete them first.`
+    try {
+      checkSupabaseError(await supabase.from('spec_sections').delete().eq('code', code), 'delete the section')
+      await reloadSections()
+      return null
+    } catch (err) {
+      return formatErrorMessage(err, 'Could not delete the section.')
+    }
+  }
+
   /** Pin = exact rule for this name. sectionCode null → deliberate "No code". */
   async function pin(row: FixtureNameAuditRow, sectionCode: string | null) {
     setPinBusy(row.fixture)
@@ -182,16 +269,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
         checkSupabaseError(res, 'save the rule')
       }
       // Refresh rules only — the name list is unchanged; classification re-runs locally.
-      const rules = await withSupabaseRetry(
-        () =>
-          supabase
-            .from('spec_section_match_rules')
-            .select('id, pattern, match_kind, section_code, priority')
-            .order('priority', { ascending: true })
-            .order('created_at', { ascending: true }),
-        'reload spec section match rules',
-      )
-      setRuleRows(rules ?? [])
+      await reloadRules()
       setPicked((p) => {
         const next = { ...p }
         delete next[row.fixture]
@@ -291,11 +369,27 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
             </div>
             {tab === 'rules' ? (
               <div role="tabpanel" aria-label="Rules">
-                <SpecSectionRulesTab groups={groups} standings={standings} rulesById={rulesById} />
+                <SpecSectionRulesTab
+                  groups={groups}
+                  standings={standings}
+                  rulesById={rulesById}
+                  rules={ledgerRules}
+                  names={names}
+                  sections={sections}
+                  portalZIndex={MODAL_Z + 10}
+                  onSaveRule={saveRule}
+                  onDeleteRule={deleteRule}
+                />
               </div>
             ) : tab === 'sections' ? (
               <div role="tabpanel" aria-label="Sections">
-                <SpecSectionSectionsTab tallies={tallies} />
+                <SpecSectionSectionsTab
+                  tallies={tallies}
+                  rules={ledgerRules}
+                  onAddSection={addSection}
+                  onRenameSection={renameSection}
+                  onDeleteSection={deleteSection}
+                />
               </div>
             ) : (
             <>

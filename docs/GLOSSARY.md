@@ -1087,6 +1087,10 @@ Bids → Pricing tab → Share ▾ → **Division 22 codes** (v2.2598). The rule
   - **Names**: the audit. Uncoded names come first, with *Pin it* and *No code*.
   - **Rules**: every rule under its section, with its standing ([`specSectionRules.ts`](../src/lib/specSectionRules.ts)). A rule decides N names on M bids, or never decides because an earlier rule gets its names first, or catches no name yet.
   - **Sections**: each section's rules, names and bids.
+- **The manager's writes** (v2.5061):
+  - **Rules**: *Add a rule*, and *Edit* or *Delete* on each rule. Each shows what it would move before saving: the names whose code changes and the coverage before and after.
+  - The form refuses an empty pattern, an unknown section, a bad order and a duplicate. It warns on a two-letter pattern and on an order shared with a rule that catches the same names.
+  - **Sections**: *Add a section* and *Rename*. *Delete* is refused while any rule files names under the section, and the words say how many, because its rules would go with it (`ON DELETE CASCADE`).
 - **Writers**: dev, master, assistant, controller and estimator, under RLS. A deleted rule or section is restorable for 90 days (v2.5056).
 - **The manager train**: [`to-dos/division-22-rules-manager.md`](../to-dos/division-22-rules-manager.md).
 

@@ -14,7 +14,7 @@
  */
 
 import { classifySpecSection, type SpecSectionMatchKind, type SpecSectionMatchRule } from './classifySpecSection'
-import { foldFixtureNameSpellings, type FixtureNameAuditInput } from './specSectionAudit'
+import { AUDIT_PIN_PRIORITY, foldFixtureNameSpellings, ruleLabel, type FixtureNameAuditInput } from './specSectionAudit'
 
 /** A ledger row as the manager holds it: the classifier's rule plus its id. */
 export type LedgerRule = SpecSectionMatchRule & { id: string }
@@ -264,4 +264,79 @@ export function sectionTallies(groups: ReadonlyArray<SectionRuleGroup>, standing
     names: g.rules.reduce((s, r) => s + (standings.get(r.id)?.wins ?? 0), 0),
     bids: g.rules.reduce((s, r) => s + (standings.get(r.id)?.winBids ?? 0), 0),
   }))
+}
+
+// ── The manager's write side (v2.5061, PR 4 of the train) ────────────────────────────────────────────────────────
+
+/**
+ * Rules other than the one being edited that hold the draft's order and catch at least one of the same names.
+ * Between equal orders the ledger's load order decides, which nobody can see, so the manager warns.
+ */
+export function orderTies(
+  draft: RuleDraft,
+  rules: ReadonlyArray<LedgerRule>,
+  names: ReadonlyArray<FixtureNameAuditInput>,
+  editingId?: string,
+): LedgerRule[] {
+  if (!draft.pattern.trim()) return []
+  const sameOrder = rules.filter((r) => r.id !== editingId && r.priority === draft.priority)
+  if (sameOrder.length === 0) return []
+  const folded = foldFixtureNameSpellings(names)
+  return sameOrder.filter((r) => folded.some((n) => ruleCatches(draft, n.fixture) && ruleCatches(r, n.fixture)))
+}
+
+/** The tie warning in the manager's words, or null when there is no tie. */
+export function orderTieWarning(ties: ReadonlyArray<LedgerRule>, priority: number): RuleProblem | null {
+  const first = ties[0]
+  if (!first) return null
+  const more = ties.length > 1 ? ` and ${ties.length - 1} more` : ''
+  return {
+    level: 'warn',
+    message: `Order ${priority} is also held by “${ruleLabel(first)}”${more}, and they catch some of the same names. Pick another order so it is clear which rule decides.`,
+  }
+}
+
+/**
+ * A starting order for a new rule. An exact name goes with the audit's pins. A pattern goes after the last
+ * pattern and before the catch-alls (700 and up).
+ */
+export function defaultPriorityFor(kind: SpecSectionMatchKind, rules: ReadonlyArray<SpecSectionMatchRule>): number {
+  if (kind === 'exact') return AUDIT_PIN_PRIORITY
+  const patterns = rules.map((r) => r.priority).filter((p) => p >= 100 && p < 700)
+  const next = patterns.length > 0 ? Math.max(...patterns) + 1 : 100
+  return Math.min(next, 699)
+}
+
+export type SectionDraft = { code: string; title: string }
+
+/** A section number as the ledger writes it: three pairs of digits, such as 22 45 00 (a fourth .NN is allowed). */
+export const SECTION_CODE_SHAPE = /^\d{2} \d{2} \d{2}(\.\d{2})?$/
+
+/** What stops a section from saving. `editingCode` is the section being renamed, if any. */
+export function validateSectionDraft(
+  draft: SectionDraft,
+  sections: ReadonlyArray<{ code: string }>,
+  editingCode?: string,
+): RuleProblem[] {
+  const problems: RuleProblem[] = []
+  const code = draft.code.trim()
+  if (!code) problems.push({ level: 'refuse', message: 'Type the section number, such as 22 45 00.' })
+  else if (!SECTION_CODE_SHAPE.test(code)) problems.push({ level: 'refuse', message: 'Write the number as three pairs of digits, such as 22 45 00.' })
+  if (!draft.title.trim()) problems.push({ level: 'refuse', message: 'Type the section title.' })
+  if (code && code !== editingCode && sections.some((s) => s.code === code)) {
+    problems.push({ level: 'refuse', message: `Section ${code} is already in the list.` })
+  }
+  return problems
+}
+
+/**
+ * Why a section cannot be deleted yet, or null when it can. Deleting a section deletes its rules with it
+ * (ON DELETE CASCADE), and a section restored together with its rules would bring them back with no code, so the
+ * manager refuses while any rule files names under it. The words carry the count.
+ */
+export function sectionDeleteRefusal(code: string, rules: ReadonlyArray<SpecSectionMatchRule>): string | null {
+  const n = rules.filter((r) => r.sectionCode === code).length
+  if (n === 0) return null
+  const them = n === 1 ? 'it' : 'them'
+  return `${code} holds ${n} rule${n === 1 ? '' : 's'}. Move ${them} to another section or delete ${them} first.`
 }

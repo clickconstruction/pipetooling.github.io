@@ -69,6 +69,8 @@ When the toast says some names have no code, you open the same {{button:green|â–
 
 The window has three tabs along the top. **Names** is the list above. **Rules** shows every rule under its section. Each rule says how many names it decides. A rule that never decides names the rule that wins first. **Sections** shows each section with its rules, names and bids.
 
+On **Rules**, {{button:outline|Add a rule}} makes a new rule. **Edit** and **Delete** sit on each rule. Before you save, the form lists the names whose code would change. A deleted rule can be put back for 90 days from Recently deleted. On **Sections**, you can add a section or rename one. A section that still holds rules cannot be deleted. The message says how many rules it holds.
+
 :::example Clearing the gas rows
 Wendi copies BP339's fixtures and the toast says 36 names have no code. She opens **Division 22 codes**, sees "11/2IN 90 GAS" at the top (17 bids), picks the section the specs use for gas piping, and pins it. Every gas fitting on every bid now files under that section â€” one pin, done forever.
 :::
