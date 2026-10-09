@@ -32,8 +32,12 @@ export const BID_ACTIONS = {
   bookFill: 'book-fill',
   /** twin-mcp's paste_counts: a robot's rows and their book assignments. */
   robotPaste: 'robot-paste',
-  /** History's Put back (PR 4): set by `put_back_bid_change` itself on its one write, never sent by the client. */
+  /** History's Put back (PR 4, a value; PR 5, a removed row): set by `put_back_bid_change` and `restore_bid_removed_row` on their writes, never sent by the client. */
   putBack: 'put-back',
+  /** The Pricing tab's margin brush (PR 5): every price one stroke, or its Undo, writes. A person's press. */
+  priceBrush: 'price-brush',
+  /** The price book drawer's Use on this bid (PR 5): the copy of the book it makes and the bid's pick of it. A person's press. */
+  bookSwitch: 'book-switch',
 } as const
 
 export type BidAction = (typeof BID_ACTIONS)[keyof typeof BID_ACTIONS]
@@ -51,6 +55,11 @@ export const BID_ACTION_SHAPE = /^[a-z][a-z0-9-]{1,40}$/
  */
 export function withBidAction<T extends { setHeader?(name: string, value: string): T }>(query: T, action: BidAction): T {
   return typeof query.setHeader === 'function' ? query.setHeader(BID_ACTION_HEADER, action) : query
+}
+
+/** Tag the query only when there is an action: a write shared by a tagged path and an untagged one (the brush's price write, a book switch's save). */
+export function withBidActionIf<T extends { setHeader?(name: string, value: string): T }>(query: T, action: BidAction | null | undefined): T {
+  return action ? withBidAction(query, action) : query
 }
 
 /** The header as a client option, for a client whose every call is one action (twin-mcp's paste_counts). */

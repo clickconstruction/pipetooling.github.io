@@ -528,5 +528,63 @@ SELECT bct.same('put back: the trainee and the stranger changed nothing',
 RESET ROLE;
 UPDATE mark SET id = bct.last();
 
+-- 20 · A removed row put back (PR 5, 20261010017000): the bid's editors list its own removed rows and
+--      put one back with what was removed with it. A fresh count row with a price and a part line is
+--      removed; the price alone is refused while its count row is out; the count row comes back with
+--      both, recorded as the estimator's put back. A superintendent cannot list, a trainee cannot put
+--      back. (The whole scenario is one transaction, so every delete shares a time: the rows a put back
+--      takes are only those that hang on it.)
+SET LOCAL ROLE authenticated;
+INSERT INTO public.bids_count_rows (id, bid_id, bid_version_id, fixture, count, sequence_order) VALUES
+  ('00000000-0000-0000-0000-00000000c790', '00000000-0000-0000-0000-00000000c7d1', '00000000-0000-0000-0000-00000000c7a5', 'History DRAIN', 3, 40);
+INSERT INTO public.bid_count_row_custom_prices (id, bid_id, count_row_id, price_book_version_id, unit_price) VALUES
+  ('00000000-0000-0000-0000-00000000c791', '00000000-0000-0000-0000-00000000c7d1', '00000000-0000-0000-0000-00000000c790', '00000000-0000-0000-0000-00000000c7b0', 450);
+INSERT INTO public.bids_takeoff_rough_part_lines (id, bid_id, bid_version_id, count_row_id, part_id, quantity, unit_price, sequence_order) VALUES
+  ('00000000-0000-0000-0000-00000000c792', '00000000-0000-0000-0000-00000000c7d1', '00000000-0000-0000-0000-00000000c7a5', '00000000-0000-0000-0000-00000000c790', '00000000-0000-0000-0000-00000000c7d0', 1, 12, 9);
+DELETE FROM public.bids_count_rows WHERE id = '00000000-0000-0000-0000-00000000c790';
+SELECT bct.same('removed rows: the estimator lists the drain, its price and its part line, each named, each in the ledger',
+  (SELECT string_agg(table_name || ' ' || COALESCE(label, '-') || ' ' || in_ledger::text, E'\n' ORDER BY table_name COLLATE "C")
+     FROM public.list_bid_removed_rows('00000000-0000-0000-0000-00000000c7d1')
+    WHERE record_id IN ('00000000-0000-0000-0000-00000000c790', '00000000-0000-0000-0000-00000000c791', '00000000-0000-0000-0000-00000000c792')),
+  E'bid_count_row_custom_prices History DRAIN true\nbids_count_rows History DRAIN true\nbids_takeoff_rough_part_lines History P-trap true');
+SELECT bct.refused('removed rows: the price alone waits for its count row',
+  format('SELECT public.restore_bid_removed_row(%L)', (SELECT archive_id FROM public.list_bid_removed_rows('00000000-0000-0000-0000-00000000c7d1') WHERE record_id = '00000000-0000-0000-0000-00000000c791')),
+  'Its count row was removed too. Put that back first.');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e4","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e4', true);
+SELECT bct.refused('removed rows: a superintendent cannot list them',
+  $$SELECT * FROM public.list_bid_removed_rows('00000000-0000-0000-0000-00000000c7d1')$$, 'Only someone who can edit this bid');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e6","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e6', true);
+SELECT bct.refused('removed rows: a trainee (read only) cannot put one back',
+  format('SELECT public.restore_bid_removed_row(%L)', (SELECT id FROM public.deleted_records_archive WHERE record_id = '00000000-0000-0000-0000-00000000c790' AND restored_at IS NULL)),
+  'Only someone who can edit this bid');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000c7e1","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-00000000c7e1', true);
+UPDATE mark SET id = bct.last();
+SELECT bct.same('removed rows: the drain comes back with its price and its part line',
+  (SELECT (r ->> 'restored') || ' ' || (r -> 'tables' ->> 'bids_count_rows') || ' ' || (r -> 'tables' ->> 'bid_count_row_custom_prices') || ' ' || (r -> 'tables' ->> 'bids_takeoff_rough_part_lines')
+     FROM public.restore_bid_removed_row((SELECT archive_id FROM public.list_bid_removed_rows('00000000-0000-0000-0000-00000000c7d1') WHERE record_id = '00000000-0000-0000-0000-00000000c790')) AS r),
+  '3 1 1 1');
+SELECT bct.same('removed rows: all three are live again, as they were',
+  (SELECT count(*)::text FROM public.bids_count_rows WHERE id = '00000000-0000-0000-0000-00000000c790' AND fixture = 'History DRAIN' AND count = 3) || ' ' ||
+  (SELECT trim_scale(unit_price)::text FROM public.bid_count_row_custom_prices WHERE id = '00000000-0000-0000-0000-00000000c791') || ' ' ||
+  (SELECT count(*)::text FROM public.bids_takeoff_rough_part_lines WHERE id = '00000000-0000-0000-0000-00000000c792'),
+  '1 450 1');
+SELECT bct.same('removed rows: recorded as her put back, a press',
+  (SELECT string_agg(table_name || ' ' || op || ' ' || COALESCE(action, '-') || ' ' || COALESCE(by_app::text, '-') || ' ' || (changed_by = '00000000-0000-0000-0000-00000000c7e1')::text, E'\n' ORDER BY table_name COLLATE "C")
+     FROM bct.rows_after((SELECT id FROM mark))),
+  E'bid_count_row_custom_prices insert put-back false true\nbids_count_rows insert put-back false true\nbids_takeoff_rough_part_lines insert put-back false true');
+SELECT bct.same('removed rows: the tag ends with the call', COALESCE(public.bid_change_action(), 'none'), 'none');
+SELECT bct.same('removed rows: the three leave the list',
+  (SELECT count(*)::text FROM public.list_bid_removed_rows('00000000-0000-0000-0000-00000000c7d1')
+    WHERE record_id IN ('00000000-0000-0000-0000-00000000c790', '00000000-0000-0000-0000-00000000c791', '00000000-0000-0000-0000-00000000c792')),
+  '0');
+SELECT bct.refused('removed rows: a row already put back is not waiting',
+  format('SELECT public.restore_bid_removed_row(%L)', (SELECT id FROM public.deleted_records_archive WHERE record_id = '00000000-0000-0000-0000-00000000c790' ORDER BY deleted_at DESC LIMIT 1)),
+  'not waiting to be put back');
+RESET ROLE;
+UPDATE mark SET id = bct.last();
+
 SELECT 'bid_changes PASSED' AS result;
 ROLLBACK;
