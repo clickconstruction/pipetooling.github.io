@@ -7,6 +7,7 @@ import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { buildContractSigningEmail, clampContractEmailIntro, clampContractEmailSubject } from '../_shared/contractSigningEmail.ts'
+import { personSigningSentCopy, signingDocRefusal, signingRequestRefusal, type SigningRequestBody } from '../_shared/contractSigningSend.ts'
 
 /** Short portal address root — mirrors `PORTAL_SHORT_ORIGIN` in src/lib/portal/portalShortOrigin.ts. */
 const PORTAL_SHORT_ORIGIN = 'https://my.clickplumbing.com/'
@@ -25,19 +26,6 @@ function randomUrlToken(): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
-}
-
-function hasSigningContent(row: {
-  signing_body_html?: string | null
-  canonical_document_url?: string | null
-  url?: string | null
-  form_template_id?: string | null
-}): boolean {
-  if (row.form_template_id) return true
-  if (row.signing_body_html?.trim()) return true
-  if (row.canonical_document_url?.trim()) return true
-  if (row.url?.trim()) return true
-  return false
 }
 
 const corsHeaders = {
@@ -127,30 +115,17 @@ serve(async (req) => {
       })
     }
 
-    const body = (await req.json()) as {
-      person_contract_document_id?: string
-      signer_email?: string
-      public_origin?: string
-      email_subject?: string
-      email_intro_plain?: string
-    }
+    const body = (await req.json()) as SigningRequestBody
     const { person_contract_document_id, signer_email, public_origin } = body
-    if (!person_contract_document_id || !signer_email?.trim()) {
-      return new Response(
-        JSON.stringify({ error: 'person_contract_document_id and signer_email required' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(signer_email.trim())) {
-      return new Response(JSON.stringify({ error: 'Invalid email' }), {
-        status: 400,
+    // The request's own refusals (_shared/contractSigningSend.ts, pinned against main).
+    const requestRefusal = signingRequestRefusal(body)
+    if (requestRefusal) {
+      return new Response(JSON.stringify({ error: requestRefusal.error }), {
+        status: requestRefusal.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+    const signerEmail = signer_email as string
 
     const { data: row, error: selErr } = await userClient
       .from('person_contract_documents')
@@ -176,29 +151,11 @@ serve(async (req) => {
       form_template_id: string | null
     }
 
-    if (doc.status === 'signed') {
-      return new Response(JSON.stringify({ error: 'This document is already signed' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    if (!hasSigningContent(doc)) {
-      return new Response(
-        JSON.stringify({
-          error:
-            'Add contract text, a canonical document URL, or a reference link before sending for signature.',
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
-    }
-
-    if (doc.status !== 'unsent' && doc.status !== 'sent') {
-      return new Response(JSON.stringify({ error: 'Invalid status for sending' }), {
-        status: 400,
+    // Signed already, nothing to sign, or a status that is neither unsent nor sent (pinned against main).
+    const docRefusal = signingDocRefusal(doc)
+    if (docRefusal) {
+      return new Response(JSON.stringify({ error: docRefusal.error }), {
+        status: docRefusal.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -300,13 +257,20 @@ serve(async (req) => {
       )
     }
 
-    const sent = await sendEmailViaResend(signer_email.trim(), subject, textPlain, htmlBody, resendApiKey, fromMailbox, mail.replyTo)
+    const sent = await sendEmailViaResend(signerEmail.trim(), subject, textPlain, htmlBody, resendApiKey, fromMailbox, mail.replyTo)
     // Sent copies (docs/SENT_COPIES.md): the email asking them to sign is kept, under the person.
     if (sent.success) {
-      await fileSentEmailBestEffort(
-        { kind: 'person_contract', recipientName: doc.person_name, personId: sentCopyPersonId, source: { table: 'person_contract_documents', id: doc.id }, sentBy: user.id },
-        { to: [signer_email.trim()], from: fromMailbox, subject, html: htmlBody, resendEmailId: sent.resendEmailId ?? null },
-      )
+      const [filing, copy] = personSigningSentCopy({
+        doc,
+        personId: sentCopyPersonId,
+        sentBy: user.id,
+        signerEmail,
+        from: fromMailbox,
+        subject,
+        html: htmlBody,
+        resendEmailId: sent.resendEmailId ?? null,
+      })
+      await fileSentEmailBestEffort(filing, copy)
     }
     if (!sent.success) {
       return new Response(
