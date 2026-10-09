@@ -98,6 +98,7 @@ when_to_read:
    - [submit-gc-trade-portal](#submit-gc-trade-portal)
    - [gc-trade-email](#gc-trade-email)
    - [gc-customer-email](#gc-customer-email)
+   - [gc-money-monday-email](#gc-money-monday-email)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -1146,6 +1147,22 @@ The window writes the words (`src/lib/gc/customerEmail.ts` and the reminder's `p
 Each window does its own write first, then the email: the pay application (`gc_send_owner_pay_app`), the certificate (`gc_record_certificate`), the change order's send (`gc_send_change_order`), the reminder (`gc_remind_customer_to_pay`) or the interest bill (`gc_send_owner_interest_bill`). An email that does not go leaves that write in place, and the window says why with `gcCustomerEmailRefusal(key)`. It calls the function with `sendGcCustomerEmail` (`src/lib/gc/customerEmailIo.ts`), which never throws for a refusal.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN` (the portal link's address; clicktooling.com when unset). Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_customer_email`.
+
+---
+
+### gc-money-monday-email
+
+**Purpose**: The Monday money email (v2.5024, Owner Billing O7b of `to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md` on branch `spike/gc-mode`): the money team's `gc_money_monday` Report Subscriptions stream ([REPORT_SUBSCRIPTIONS.md](./REPORT_SUBSCRIPTIONS.md)). A member of the money team asks for it on Money in GC projects, for themselves or a teammate, on the weekdays and at the time they pick. The email says who owes us on the GC jobs that are ours, as Money's *Who owes us* reads it, and what went last week, with **Open Money** (`/gc?view=money`). No six weeks line yet (the lead's call 2).
+
+**Endpoint**: `POST /functions/v1/gc-money-monday-email` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret`, or the staff JWT checked in-body for the two modes.
+
+- `{ mode: 'preview' }`: the caller must be on the money team (`MONEY_TEAM`: dev, master_technician, controller, as `gc_money_team()`). Answers `{ subject, html }`: the email as it would go now. **See the email as it would go now** calls it.
+- `{ mode: 'test_send' }`: the same gate; a `[TEST]` copy to the caller's own address only. **Email me a test** calls it.
+- No mode: the cron (`3-58/5`, the :03 lane). It drains due `gc_money_monday_email_requests` rows, ten at a time and five tries each, and reads `get_gc_money_monday_payload()` once a batch, since every recipient gets the same email. A recipient who is archived, has no email or is off the money team is stamped and skipped. A good send stamps `sent_at` and re-inserts a weekly row +7 days, once.
+
+The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on sample data): *Customers owe us $X on N bills*, then **Late**, **Waiting on the architect** and **Coming in**, each bill in OwedRow's words, then **Last week** and **Open Money**. It goes from `EMAIL_FROM` through `sendEmailViaResend`, Reply-To the member who asked, logged as `gc_money_monday`. It is internal, so there is no sent copy.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (the Open Money link; clicktooling.com when unset). **Deploy**: `supabase functions deploy gc-money-monday-email --no-verify-jwt` after migration `20261009233000_gc_money_monday_email.sql`, which makes the requests table, the payload and the cron.
 
 ---
 

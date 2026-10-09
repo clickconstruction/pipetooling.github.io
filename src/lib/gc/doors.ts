@@ -109,6 +109,7 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_owner_pay_reminders: { lane: 'Owner Billing', door: 'money' },
   gc_owner_interest_bills: { lane: 'Owner Billing', door: 'money' },
   gc_owner_acceptances: { lane: 'Owner Billing', door: 'money' },
+  gc_money_monday_email_requests: { lane: 'Owner Billing', door: 'money' },
 }
 
 /**

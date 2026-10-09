@@ -36,6 +36,7 @@ const ENTRY_TONES: Record<WeekGridEntry['stream'], { background: string; color: 
   money_waiting: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' },
   crew_day: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
   statement_round: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)' },
+  gc_money_monday: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' },
 }
 
 /** Chicago {ymd, minutes} for a send_at instant (Intl — kept out of the pure kernel). */

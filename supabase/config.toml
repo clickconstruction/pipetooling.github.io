@@ -917,6 +917,11 @@ verify_jwt = false
 [functions.send-submittal-room-link]
 verify_jwt = false
 
+# The Monday money email (GC mode, Owner Billing O7b): the cron sends X-Cron-Secret and no JWT; Preview and the test
+# send read the staff JWT themselves, like statement-round-email-dispatch.
+[functions.gc-money-monday-email]
+verify_jwt = false
+
 # pg_cron callers: the call carries X-Cron-Secret and no JWT, and each function checks the secret itself.
 # Without these blocks a plain `supabase functions deploy` turns the gateway check on and every cron call is refused (v2.4817).
 [functions.crew-day-email-dispatch]

@@ -24,7 +24,7 @@ export type MyEmailSchedulePayload = {
     crew_filter?: string
   }>
   one_offs: Array<{
-    stream: 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement' | 'weekly_money' | 'payment_forecast' | 'money_waiting' | 'crew_day' | 'statement_round'
+    stream: 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement' | 'weekly_money' | 'payment_forecast' | 'money_waiting' | 'crew_day' | 'statement_round' | 'gc_money_monday'
     send_at: string
     /** Set when the send already went out (current-week history rows, v2.1323). */
     sent_at?: string | null
@@ -184,7 +184,7 @@ export function describeDigestSchedule(w: MyEmailSchedulePayload['weekly'][numbe
 }
 
 export type WeekGridEntry = {
-  stream: 'report_digest' | 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement' | 'weekly_money' | 'payment_forecast' | 'money_waiting' | 'crew_day' | 'statement_round'
+  stream: 'report_digest' | 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement' | 'weekly_money' | 'payment_forecast' | 'money_waiting' | 'crew_day' | 'statement_round' | 'gc_money_monday'
   label: string
   timeLabel: string
   /** Minutes since midnight — the in-day sort key. */
@@ -245,7 +245,7 @@ export function currentWeekDays(todayYmd: string): Array<{ ymd: string; dow: num
 }
 
 export type PlacedOneOff = {
-  stream: 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement' | 'weekly_money' | 'payment_forecast' | 'money_waiting' | 'crew_day' | 'statement_round'
+  stream: 'billed_report' | 'schedule_day' | 'gc_statement' | 'weekly_movement' | 'weekly_money' | 'payment_forecast' | 'money_waiting' | 'crew_day' | 'statement_round' | 'gc_money_monday'
   detail: string | null
   /** Chicago calendar day of the send instant. */
   ymd: string
@@ -284,7 +284,7 @@ export function buildMyEmailWeekGrid(
       if (o.ymd !== ymd) continue
       entries.push({
         stream: o.stream,
-        label: o.stream === 'billed_report' ? 'Billed report' : o.stream === 'gc_statement' ? 'GC statement' : o.stream === 'weekly_movement' ? 'Weekly movement' : o.stream === 'weekly_money' ? 'Weekly money' : o.stream === 'payment_forecast' ? 'Payment forecast' : o.stream === 'money_waiting' ? 'Money waiting' : o.stream === 'crew_day' ? 'Crew Day' : o.stream === 'statement_round' ? 'Statement round' : 'My dispatch day',
+        label: o.stream === 'billed_report' ? 'Billed report' : o.stream === 'gc_statement' ? 'GC statement' : o.stream === 'weekly_movement' ? 'Weekly movement' : o.stream === 'weekly_money' ? 'Weekly money' : o.stream === 'payment_forecast' ? 'Payment forecast' : o.stream === 'money_waiting' ? 'Money waiting' : o.stream === 'crew_day' ? 'Crew Day' : o.stream === 'statement_round' ? 'Statement round' : o.stream === 'gc_money_monday' ? 'GC money' : 'My dispatch day',
         timeLabel: formatMinutes(o.minutes),
         minutes: o.minutes,
         detail: o.detail,

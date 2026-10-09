@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from '../lib/gc/access'
+import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -30,6 +30,7 @@ import { dailyLogPayload, withDailyLogs, type DailyLogRow } from '../lib/gc/dail
 import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
+import { GcMoneyMondayEmail, type MoneyMondayIo } from '../components/gc/GcMoneyMondayEmail'
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, finalPayAppForm, finalPayAppSendPayload, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
 import { loadSchedule } from '../lib/gc/scheduleIo'
@@ -96,6 +97,10 @@ import {
   editScopeBookLine,
   issuePlanSet,
   loadGcTeam,
+  listMoneyMondayRequests,
+  applyMoneyMondayPlan,
+  previewMoneyMonday,
+  sendMoneyMondayTest,
   answerQuestion,
   markQuestionSent,
   recordQuestion,
@@ -157,6 +162,14 @@ interface Loaded {
 
 function money(n: number): string {
   return `$${Math.round(n).toLocaleString('en-US')}`
+}
+
+/** The Monday money email's reads and writes (O7b), gcIo's, one object for the page's life; each is read when called. */
+const MONEY_MONDAY_IO: MoneyMondayIo = {
+  list: () => listMoneyMondayRequests(),
+  apply: (plan) => applyMoneyMondayPlan(plan),
+  preview: () => previewMoneyMonday(),
+  test: () => sendMoneyMondayTest(),
 }
 
 export default function GcProjects() {
@@ -892,7 +905,16 @@ export default function GcProjects() {
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
-                <GcMoney state={moneyState} schedulesRead={moneySchedules !== null} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
+                  <GcMoney state={moneyState} schedulesRead={moneySchedules !== null} />
+                  {user && loaded && (
+                    <GcMoneyMondayEmail
+                      me={{ id: user.id, name: profileName ?? '' }}
+                      team={loaded.team.filter((p) => (GC_MONEY_TEAM as readonly string[]).includes(p.role))}
+                      io={MONEY_MONDAY_IO}
+                    />
+                  )}
+                </div>
               ) : moneyProblem ? (
                 <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{moneyProblem}</div>
               ) : (
