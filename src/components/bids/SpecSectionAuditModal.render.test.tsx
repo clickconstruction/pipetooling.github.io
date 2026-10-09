@@ -36,6 +36,8 @@ const db: {
   ruleOrders: string[]
   inserted: Record<string, unknown>[]
   updated: Array<{ patch: Record<string, unknown>; id: string }>
+  deleted: string[]
+  sectionOps: Array<Record<string, unknown>>
 } = {
   audit: [],
   rules: [],
@@ -47,6 +49,8 @@ const db: {
   ruleOrders: [],
   inserted: [],
   updated: [],
+  deleted: [],
+  sectionOps: [],
 }
 
 vi.mock('../../lib/supabase', () => ({
@@ -85,13 +89,43 @@ vi.mock('../../lib/supabase', () => ({
           update: (patch: Record<string, unknown>) => ({
             eq: (_col: string, id: string) => {
               db.updated.push({ patch, id })
+              // The ledger keeps the change, so the reload after an edit sees it.
+              db.rules = db.rules.map((r) => (r.id === id ? { ...r, ...(patch as Partial<RuleRow>) } : r))
+              return Promise.resolve({ data: null, error: null })
+            },
+          }),
+          delete: () => ({
+            eq: (_col: string, id: string) => {
+              db.deleted.push(id)
+              db.rules = db.rules.filter((r) => r.id !== id)
               return Promise.resolve({ data: null, error: null })
             },
           }),
         }
       }
       if (table === 'spec_sections') {
-        return { select: () => ({ order: () => Promise.resolve({ data: [...db.sections], error: null, status: 200 }) }) }
+        return {
+          select: () => ({ order: () => Promise.resolve({ data: [...db.sections], error: null, status: 200 }) }),
+          insert: (row: SectionRow) => {
+            db.sectionOps.push({ op: 'insert', ...row })
+            db.sections = [...db.sections, row].sort((a, b) => a.code.localeCompare(b.code))
+            return Promise.resolve({ data: null, error: null })
+          },
+          update: (patch: Partial<SectionRow>) => ({
+            eq: (_col: string, code: string) => {
+              db.sectionOps.push({ op: 'update', code, title: patch.title })
+              db.sections = db.sections.map((sec) => (sec.code === code ? { ...sec, title: patch.title ?? sec.title } : sec))
+              return Promise.resolve({ data: null, error: null })
+            },
+          }),
+          delete: () => ({
+            eq: (_col: string, code: string) => {
+              db.sectionOps.push({ op: 'delete', code })
+              db.sections = db.sections.filter((sec) => sec.code !== code)
+              return Promise.resolve({ data: null, error: null })
+            },
+          }),
+        }
       }
       return { select: () => Promise.resolve({ data: [], error: null, status: 200 }) }
     },
@@ -123,6 +157,8 @@ beforeEach(() => {
   db.ruleOrders = []
   db.inserted = []
   db.updated = []
+  db.deleted = []
+  db.sectionOps = []
 })
 
 /** Mount the open modal and wait for the table the load reveals. */
@@ -366,9 +402,9 @@ describe('SpecSectionAuditModal tabs (v2.5058, the rules manager read side)', ()
     fireEvent.click(screen.getByRole('tab', { name: 'Sections' }))
     const rows = within(screen.getByRole('tabpanel', { name: 'Sections' })).getAllByRole('row').map((r) => r.textContent)
     expect(rows).toEqual([
-      'SectionTitleRulesNamesBids',
-      '22 42 13Commercial Water Closets1112',
-      '22 42 16Commercial Lavatories and Sinks000',
+      'SectionTitleRulesNamesBidsActions',
+      '22 42 13Commercial Water Closets1112RenameDelete',
+      '22 42 16Commercial Lavatories and Sinks000RenameDelete',
       '—No code (deliberately)115',
     ])
   })
@@ -377,5 +413,139 @@ describe('SpecSectionAuditModal tabs (v2.5058, the rules manager read side)', ()
     await mountLoaded()
     expect(db.ruleReads).toBe(1)
     expect(db.ruleOrders).toEqual(['priority', 'created_at'])
+  })
+})
+
+describe('SpecSectionAuditModal write side (v2.5061, the rules manager)', () => {
+  async function openRules() {
+    await mountLoaded()
+    fireEvent.click(screen.getByRole('tab', { name: 'Rules' }))
+    return screen.getByRole('tabpanel', { name: 'Rules' })
+  }
+
+  async function pickSection(form: HTMLElement, option: string) {
+    fireEvent.click(within(form).getByRole('combobox', { name: 'Files under' }))
+    fireEvent.click(await screen.findByRole('option', { name: option }))
+  }
+
+  it('Add a rule shows what it would move before saving, then saves one rule and the list shows it deciding', async () => {
+    const panel = await openRules()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Add a rule' }))
+    const form = within(panel).getByRole('form', { name: 'Add a rule' })
+    fireEvent.change(within(form).getByLabelText('Looks for'), { target: { value: 'MYSTERY' } })
+    await pickSection(form, SINK_SECTION)
+
+    const moves = within(form).getByLabelText('What this change moves')
+    expect(moves.textContent).toContain('Codes 1, recodes 0, leaves 0 uncoded. Coverage 50% → 75%.')
+    expect(moves.textContent).toContain('MYSTERY SINK (11 bids): uncoded → 22 42 16')
+    // A pattern's starting order goes after the last pattern.
+    expect((within(form).getByLabelText('Order') as HTMLInputElement).value).toBe('101')
+
+    fireEvent.click(within(form).getByRole('button', { name: 'Save rule' }))
+    await waitFor(() => expect(db.inserted).toHaveLength(1))
+    expect(db.inserted[0]).toEqual({ pattern: 'MYSTERY', match_kind: 'contains', section_code: '22 42 16', priority: 101 })
+    const sinks = await within(panel).findByRole('region', { name: '22 42 16 Commercial Lavatories and Sinks' })
+    expect(within(sinks).getByText('contains MYSTERY')).toBeTruthy()
+    expect(within(sinks).getByText('Decides 1 name on 11 bids')).toBeTruthy()
+  })
+
+  it('a draft with a refusal cannot be saved: no section yet, then the same words the same way as another rule', async () => {
+    const panel = await openRules()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Add a rule' }))
+    const form = within(panel).getByRole('form', { name: 'Add a rule' })
+    fireEvent.change(within(form).getByLabelText('Looks for'), { target: { value: 'wc-' } })
+    fireEvent.change(within(form).getByLabelText('How'), { target: { value: 'starts_with' } })
+    expect(within(form).getByText('Pick where the rule files its names, or No code.')).toBeTruthy()
+    await pickSection(form, SINK_SECTION)
+    expect(within(form).getByText('A rule already looks for “WC-” this way. Edit that rule instead.')).toBeTruthy()
+    expect((within(form).getByRole('button', { name: 'Save rule' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(db.inserted).toHaveLength(0)
+  })
+
+  it('a draft at an order a rule already holds for the same names is warned about, and can still be saved', async () => {
+    const panel = await openRules()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Add a rule' }))
+    const form = within(panel).getByRole('form', { name: 'Add a rule' })
+    fireEvent.change(within(form).getByLabelText('Looks for'), { target: { value: 'WC' } })
+    fireEvent.change(within(form).getByLabelText('Order'), { target: { value: '100' } })
+    await pickSection(form, SINK_SECTION)
+    expect(
+      within(form).getByText('Order 100 is also held by “starts with WC-”, and they catch some of the same names. Pick another order so it is clear which rule decides.'),
+    ).toBeTruthy()
+    expect((within(form).getByRole('button', { name: 'Save rule' }) as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('Edit opens the rule in the form and saving updates that rule, after showing the names it recodes', async () => {
+    const panel = await openRules()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Edit starts with WC-' }))
+    const form = within(panel).getByRole('form', { name: 'Edit a rule' })
+    expect((within(form).getByLabelText('Looks for') as HTMLInputElement).value).toBe('WC-')
+    expect((within(form).getByLabelText('Order') as HTMLInputElement).value).toBe('100')
+    await pickSection(form, SINK_SECTION)
+    expect(within(form).getByLabelText('What this change moves').textContent).toContain('Codes 0, recodes 1, leaves 0 uncoded.')
+
+    fireEvent.click(within(form).getByRole('button', { name: 'Save rule' }))
+    await waitFor(() => expect(db.updated).toHaveLength(1))
+    expect(db.updated[0]?.id).toBe('rule-wc')
+    expect(db.updated[0]?.patch).toMatchObject({ pattern: 'WC-', match_kind: 'starts_with', section_code: '22 42 16', priority: 100 })
+    expect(db.inserted).toHaveLength(0)
+  })
+
+  it('Delete says what the delete would move and that it can be put back; Keep it closes, Delete rule deletes', async () => {
+    const panel = await openRules()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Delete exactly DEMO' }))
+    const confirm = within(panel).getByRole('group', { name: 'Delete exactly DEMO?' })
+    expect(confirm.textContent).toContain('1 name would be left uncoded and 0 recoded. Coverage 50% → 25%.')
+    expect(confirm.textContent).toContain('You can put it back for 90 days from Recently deleted.')
+    fireEvent.click(within(confirm).getByRole('button', { name: 'Keep it' }))
+    expect(within(panel).queryByRole('group', { name: 'Delete exactly DEMO?' })).toBeNull()
+    expect(db.deleted).toEqual([])
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Delete exactly DEMO' }))
+    fireEvent.click(within(within(panel).getByRole('group', { name: 'Delete exactly DEMO?' })).getByRole('button', { name: 'Delete rule' }))
+    await waitFor(() => expect(db.deleted).toEqual(['rule-demo']))
+    await waitFor(() => expect(within(panel).queryByText('exactly DEMO')).toBeNull())
+  })
+
+  async function openSections() {
+    await mountLoaded()
+    fireEvent.click(screen.getByRole('tab', { name: 'Sections' }))
+    return screen.getByRole('tabpanel', { name: 'Sections' })
+  }
+
+  it('Add a section saves a number in the ledger\'s shape with a title, and refuses one that is not', async () => {
+    const panel = await openSections()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Add a section' }))
+    const form = within(panel).getByRole('form', { name: 'Add a section' })
+    fireEvent.change(within(form).getByLabelText('Section number'), { target: { value: '226300' } })
+    fireEvent.change(within(form).getByLabelText('Section title'), { target: { value: 'Gas Systems for Laboratory and Healthcare Facilities' } })
+    expect(within(form).getByText('Write the number as three pairs of digits, such as 22 45 00.')).toBeTruthy()
+    expect((within(form).getByRole('button', { name: 'Save section' }) as HTMLButtonElement).disabled).toBe(true)
+
+    fireEvent.change(within(form).getByLabelText('Section number'), { target: { value: '22 63 00' } })
+    fireEvent.click(within(form).getByRole('button', { name: 'Save section' }))
+    await waitFor(() => expect(db.sectionOps).toEqual([{ op: 'insert', code: '22 63 00', title: 'Gas Systems for Laboratory and Healthcare Facilities' }]))
+    expect(await within(panel).findByText('Gas Systems for Laboratory and Healthcare Facilities')).toBeTruthy()
+  })
+
+  it('Delete on a section that holds rules is refused with the count; an empty section asks first, then deletes', async () => {
+    const panel = await openSections()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Delete 22 42 13' }))
+    expect(within(panel).getByRole('alert').textContent).toBe('22 42 13 holds 1 rule. Move it to another section or delete it first.')
+    expect(db.sectionOps).toEqual([])
+
+    fireEvent.click(within(panel).getByRole('button', { name: 'Delete 22 42 16' }))
+    expect(within(panel).getByText('Delete section 22 42 16 Commercial Lavatories and Sinks? You can put it back for 90 days from Recently deleted.')).toBeTruthy()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Delete section' }))
+    await waitFor(() => expect(db.sectionOps).toEqual([{ op: 'delete', code: '22 42 16' }]))
+  })
+
+  it('Rename saves a section\'s new title', async () => {
+    const panel = await openSections()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Rename 22 42 16' }))
+    fireEvent.change(within(panel).getByLabelText('New title for 22 42 16'), { target: { value: 'Commercial Lavatories, Sinks and Basins' } })
+    fireEvent.click(within(panel).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(db.sectionOps).toEqual([{ op: 'update', code: '22 42 16', title: 'Commercial Lavatories, Sinks and Basins' }]))
+    expect(await within(panel).findByText('Commercial Lavatories, Sinks and Basins')).toBeTruthy()
   })
 })
