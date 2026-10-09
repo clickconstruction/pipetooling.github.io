@@ -1,7 +1,37 @@
 import { describe, expect, it } from 'vitest'
-import { jobFormPaidDollars, jobFormPaymentRemovePreview, jobFormRevenueDollars } from './jobFormMoneyTotals'
+import { jobFormPaidDollars, jobFormPaymentRemovePreview, jobFormRevenueDollars, jobFormRiderFeesDollars } from './jobFormMoneyTotals'
 
 const line = (name: string, count: number, line_unit_price: number | null) => ({ name, count, line_unit_price })
+/** A bill carrying returned check fees, as `add_ar_return_case_fee` leaves it (v2.5033). */
+const billWithFees = (...amounts: unknown[]) => ({ id: 'b1', amount: 13_710, fee_lines: amounts.map((amount, i) => ({ description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', amount, case_id: `tx-${i}`, added_at: '2026-10-09T15:00:00Z' })) })
+
+describe('jobFormRiderFeesDollars (v2.5091)', () => {
+  it('is the hazmat fees plus every returned check fee on the job’s bills', () => {
+    expect(jobFormRiderFeesDollars(500, [billWithFees(30)])).toBe(530)
+    expect(jobFormRiderFeesDollars(0, [billWithFees(30), { id: 'b2', fee_lines: null }, billWithFees(30)])).toBe(60)
+  })
+
+  it('with no fee on a bill it is the hazmat fees alone, as before', () => {
+    expect(jobFormRiderFeesDollars(500, [])).toBe(500)
+    expect(jobFormRiderFeesDollars(500, [{ id: 'b1', amount: 4_210 }])).toBe(500)
+    expect(jobFormRiderFeesDollars(0, null)).toBe(0)
+    expect(jobFormRiderFeesDollars(0, undefined)).toBe(0)
+  })
+
+  it('a fee line that names no case is not counted', () => {
+    expect(jobFormRiderFeesDollars(0, [{ id: 'b1', fee_lines: [{ description: 'Some other fee', amount: 45 }] }])).toBe(0)
+  })
+
+  it('adds in cents, and an unreadable hazmat figure counts as nothing', () => {
+    expect(jobFormRiderFeesDollars(0.1, [billWithFees(0.2)])).toBe(0.3)
+    expect(jobFormRiderFeesDollars(Number.NaN, [billWithFees(30)])).toBe(30)
+  })
+
+  it('the Job Total and the revenue written on save keep the fee: Southern Post’s bill 1', () => {
+    const fixtures = [line('Rough-in', 1, 13_680), line('Final', 2, 2_000)]
+    expect(jobFormRevenueDollars(fixtures, jobFormRiderFeesDollars(0, [billWithFees(30)]))).toBe(17_710)
+  })
+})
 
 describe('jobFormRevenueDollars', () => {
   it('is the named line items plus the rider fees', () => {
