@@ -7,6 +7,7 @@ import { payPromiseLabel } from '../../lib/jobs/payPromise'
 import { underLineCount, worklistGroupTitle, type GcWorklist, type GcWorklistGroup, type GcWorklistRow } from '../../lib/jobs/gcWorklist'
 import GcReviewRow from './GcReviewRow'
 import { TEMP_PILL } from './GcTemperatureBoard'
+import { GC_STATEMENT_UNCHECKED_WORDS } from '../../../supabase/functions/_shared/gcStatementGate'
 
 export type GcWorklistLastWord = { temperature: string | null; at: string | null; by: string; note: string | null }
 
@@ -148,7 +149,7 @@ export default function GcWorklistPanel({
         onClick={() => onOpenHistory(r)}
       />
     ) : r.checked !== 'done' ? (
-      <Step step="Send" state="locked" label="Send" title="Check the bills first — a statement never goes out unchecked" />
+      <Step step="Send" state="locked" label="Send" title={GC_STATEMENT_UNCHECKED_WORDS} />
     ) : (
       <Step step="Send" state="next" label="Send" title={`Draft ${r.gcName}’s statement — nothing sends until you press Send statement`} onClick={canAct ? () => onSend(r) : undefined} />
     )

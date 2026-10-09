@@ -70,9 +70,11 @@ import {
   gcGroupCertStatus,
   gcReviewSentThisWeek,
   gcReviewWeekStartYmd,
+  gcStatementHeld,
   latestCertByGc,
   type GcReviewCertRow,
 } from '../../lib/jobs/gcReviewCertification'
+import { GC_STATEMENT_UNCHECKED_WORDS } from '../../../supabase/functions/_shared/gcStatementGate'
 import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
 import GcReviewCertifyModal from './GcReviewCertifyModal'
 import GcStatementMarkSentForm from './GcStatementMarkSentForm'
@@ -385,9 +387,20 @@ export function JobsGcReviewModal({
   /** Wednesday certification (v2.1983): this week's attestations + the open checklist. */
   const certWeekStart = gcReviewWeekStartYmd()
   const [certRows, setCertRows] = useState<GcReviewCertRow[]>([])
+  /** Whether the week's certifications were read (v2.5022): the statement doors wait for the read, and say so when it fails. */
+  const [certsRead, setCertsRead] = useState<'reading' | 'read' | 'failed'>('reading')
   const [certifyGroup, setCertifyGroup] = useState<GcReviewGroup | null>(null)
   const refreshCerts = useCallback(() => {
-    listGcReviewCertifications(certWeekStart).then(setCertRows, () => setCertRows([]))
+    listGcReviewCertifications(certWeekStart).then(
+      (rows) => {
+        setCertRows(rows)
+        setCertsRead('read')
+      },
+      () => {
+        setCertRows([])
+        setCertsRead('failed')
+      },
+    )
   }, [certWeekStart])
   // Freeze the page behind the modal (v2.2144): the review scrolls inside its own panel; the Stages board under it must not.
   useBodyScrollLock(open)
@@ -1065,6 +1078,18 @@ export function JobsGcReviewModal({
       </span>
     )
   }
+  /**
+   * The statement doors' hold (v2.5022; the owner's call of 2026-10-09): Share → Draft Message, Copy and
+   * Print wait for this week's check, in the worklist row's words. Null when the statement may go out —
+   * checked and unchanged, nothing outstanding outside Collections, or not one GC's statement.
+   */
+  const statementHoldFor = (g: GcReviewGroup): string | null => {
+    if (byDevelopment || g.isNoGc || !g.gcId) return null
+    if (!gcStatementHeld(certGroupByGc.get(g.gcId), certsByGc.get(g.gcId))) return null
+    if (certsRead === 'reading') return 'Reading this week’s checks…'
+    if (certsRead === 'failed') return 'This week’s checks could not be read. Close GC Review and open it again.'
+    return GC_STATEMENT_UNCHECKED_WORDS
+  }
   /** The opened row: the statement's chips and its actions, then its bills. */
   const groupDetail = (g: GcReviewGroup) => (
     <>
@@ -1244,39 +1269,56 @@ export function JobsGcReviewModal({
                     gap: 2,
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShareMenuGroupKey(null)
-                      openEmailDialogForGroup(g)
-                    }}
-                    title={`Draft the ${g.gcName} statement email — nothing sends until you click Send statement`}
-                    style={gcShareMenuItemStyle}
-                  >
-                    Draft Message
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShareMenuGroupKey(null)
-                      onCopyForEmail(g, effectiveGroupBy, { portalUrl: portalLinkFor(g)?.url ?? null, received: byDevelopment ? null : receivedFor(g.gcId) })
-                    }}
-                    title={`Copy the ${g.gcName} statement to paste into an email`}
-                    style={gcShareMenuItemStyle}
-                  >
-                    Copy
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShareMenuGroupKey(null)
-                      onPrint([g], effectiveGroupBy)
-                    }}
-                    title={`Print the ${g.gcName} statement`}
-                    style={gcShareMenuItemStyle}
-                  >
-                    Print
-                  </button>
+                  {(() => {
+                    // The three doors a statement leaves by wait for this week's check (v2.5022).
+                    const hold = statementHoldFor(g)
+                    const doorStyle = hold ? { ...gcShareMenuItemStyle, opacity: 0.5, cursor: 'not-allowed' } : gcShareMenuItemStyle
+                    return (
+                      <>
+                        {hold ? (
+                          <div role="note" data-testid="gc-statement-held" style={{ maxWidth: 220, padding: '0.4rem 0.6rem', fontSize: '0.75rem', lineHeight: 1.35, borderRadius: 4, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
+                            {hold}
+                          </div>
+                        ) : null}
+                        <button
+                          type="button"
+                          disabled={hold != null}
+                          onClick={() => {
+                            setShareMenuGroupKey(null)
+                            openEmailDialogForGroup(g)
+                          }}
+                          title={hold ?? `Draft the ${g.gcName} statement email — nothing sends until you click Send statement`}
+                          style={doorStyle}
+                        >
+                          Draft Message
+                        </button>
+                        <button
+                          type="button"
+                          disabled={hold != null}
+                          onClick={() => {
+                            setShareMenuGroupKey(null)
+                            onCopyForEmail(g, effectiveGroupBy, { portalUrl: portalLinkFor(g)?.url ?? null, received: byDevelopment ? null : receivedFor(g.gcId) })
+                          }}
+                          title={hold ?? `Copy the ${g.gcName} statement to paste into an email`}
+                          style={doorStyle}
+                        >
+                          Copy
+                        </button>
+                        <button
+                          type="button"
+                          disabled={hold != null}
+                          onClick={() => {
+                            setShareMenuGroupKey(null)
+                            onPrint([g], effectiveGroupBy)
+                          }}
+                          title={hold ?? `Print the ${g.gcName} statement`}
+                          style={doorStyle}
+                        >
+                          Print
+                        </button>
+                      </>
+                    )
+                  })()}
                   <button
                     type="button"
                     disabled={invoicePrintGroupKey != null}

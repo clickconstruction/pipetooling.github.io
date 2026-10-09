@@ -16,6 +16,11 @@
  *      unattended dedupe window (12 h, by ANY lane — journey-map #45) is
  *      stamped `skipped: duplicate — …` via the shared gcStatementSendDedupe
  *      kernel, and the chain still advances.
+ *   2b. A GC's statement whose bills were not checked this week, or moved
+ *      since (v2.5022, `_shared/gcStatementGate.ts`), is refused: the row is
+ *      stamped `refused: <the worklist's words> (<why>)`, counted, and the chain
+ *      still advances — never sent, never skipped without a word. A gate that
+ *      cannot read fails the attempt, so the row is tried again.
  *   3. Send via Resend from the EMAIL_FROM sender with the REQUESTER's
  *      email as reply-to (matches send-gc-statement-email).
  *   4. Audit into gc_statement_emails (group_by 'all' when no entity id) and
@@ -45,6 +50,8 @@ import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
 import { buildGcChecksReport, type ChecksDepositIn, type ChecksEventIn, type ChecksJobIn } from '../_shared/gcChecksApplied.ts'
 import { STATEMENT_RECEIVED_DAYS, statementReceivedFromChecks, type StatementReceivedIn } from '../_shared/gcStatementByProperty.ts'
 import { ymdPlusDays } from '../_shared/customerSample.ts'
+import { gcStatementRefusedNote } from '../_shared/gcStatementGate.ts'
+import { readGcStatementGate } from '../_shared/gcStatementGateIo.ts'
 import {
   chicagoDateStr,
   chicagoTodayYmd,
@@ -231,6 +238,7 @@ serve(async (req) => {
     let sent = 0
     let skipped = 0
     let duplicates = 0
+    let refused = 0
     const errors: string[] = []
 
     /** Recent audit rows for one recipient, shaped for the dedupe kernel. Fails open (empty) on a read error. */
@@ -331,6 +339,23 @@ serve(async (req) => {
           await enqueueNextWeek(row)
           skipped += 1
           continue
+        }
+
+        // The gate (v2.5022): a GC's statement goes only on this week's standing check. The rows are
+        // the group just built, netted by the rule; a failed read throws to the retry below.
+        if (isSingle && row.group_by === 'gc' && row.gc_customer_id) {
+          const gate = await readGcStatementGate(admin, row.gc_customer_id, { rows: singleGroup!.rows })
+          if (!gate.ok) {
+            const note = gcStatementRefusedNote(gate)
+            console.log('gc-statement-email-dispatch', row.id, note)
+            await admin
+              .from('gc_statement_email_requests')
+              .update({ sent_at: new Date().toISOString(), error: note.slice(0, 900) })
+              .eq('id', row.id)
+            await enqueueNextWeek(row)
+            refused += 1
+            continue
+          }
         }
 
         // Send-time dedupe (journey-map #45): same statement, same address,
@@ -464,7 +489,7 @@ serve(async (req) => {
       }
     }
 
-    return jsonResponse({ ok: true, processed: rows.length, sent, skipped, duplicates, errors })
+    return jsonResponse({ ok: true, processed: rows.length, sent, skipped, duplicates, refused, errors })
   } catch (e) {
     console.error('gc-statement-email-dispatch', e)
     return jsonResponse({ error: e instanceof Error ? e.message : String(e) }, 500)

@@ -103,6 +103,17 @@ export function gcGroupCertStatus(
   return { state: 'changed', cert, delta: group.subtotal - snap.total }
 }
 
+/**
+ * Is this GC's statement held at the doors — Share → Draft Message, Copy and Print (v2.5022; the owner's
+ * call of 2026-10-09)? Held until its bills are checked this week and unchanged since, as the worklist
+ * row's Send is. A GC with nothing outstanding outside Collections has no check to wait for: the week's
+ * worklist leaves it out. `certGroup` is the GC's group as certified — Collections left out.
+ */
+export function gcStatementHeld(certGroup: Pick<GcReviewGroup, 'rows' | 'subtotal'> | undefined, cert: GcReviewCertRow | undefined): boolean {
+  if (!certGroup || cents(certGroup.subtotal) <= 0) return false
+  return gcGroupCertStatus(certGroup, cert).state !== 'certified'
+}
+
 /** True when this GC's last statement send falls inside the cert week (company calendar). */
 export function gcReviewSentThisWeek(lastSentIso: string | undefined, weekStartYmd: string): boolean {
   if (!lastSentIso) return false

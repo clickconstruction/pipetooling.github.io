@@ -8,6 +8,7 @@ import {
   gcReviewWeekProgress,
   gcReviewWeekStartYmd,
   gcReviewWeekdayIndex,
+  gcStatementHeld,
   latestCertByGc,
   type GcReviewCertRow,
 } from './gcReviewCertification'
@@ -88,6 +89,16 @@ describe('gcReviewCertification', () => {
     const s2 = gcGroupCertStatus(paidDown, cert())
     expect(s2.state).toBe('changed')
     expect(s2.state === 'changed' && s2.delta).toBe(-150)
+  })
+
+  it('the statement doors (v2.5022): held until checked and unchanged, open when nothing outside Collections is owed', () => {
+    const group = { rows: [{ key: 'a', remaining: 100 }, { key: 'b', remaining: 200 }] as never[], subtotal: 300 }
+    expect(gcStatementHeld(group, undefined)).toBe(true)
+    expect(gcStatementHeld(group, cert())).toBe(false)
+    expect(gcStatementHeld({ ...group, rows: [{ key: 'a', remaining: 100 }, { key: 'b', remaining: 150 }] as never[], subtotal: 250 }, cert())).toBe(true)
+    // Nothing to check: no group outside Collections, or nothing owed on it.
+    expect(gcStatementHeld(undefined, undefined)).toBe(false)
+    expect(gcStatementHeld({ rows: [{ key: 'a', remaining: 0 }] as never[], subtotal: 0.004 }, undefined)).toBe(false)
   })
 
   it('sent-this-week compares in the company calendar against the Monday key', () => {
