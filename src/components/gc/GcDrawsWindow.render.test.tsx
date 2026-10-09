@@ -169,6 +169,33 @@ describe('GcDrawsWindow', () => {
     expect(document.querySelector('[data-draw-change-hint]')!.textContent).toBe('Their portal does not take signatures yet. Call them to sign it.')
   })
 
+  it('records a change they signed on paper with They signed it, the file it came as beside it (U6d)', () => {
+    const base = initialGcState()
+    const sent: ChangeOrder = { ...signedChange, tradeChange: { status: 'sent', sentOn: '2026-10-01', signedOn: null, sovLineId: '' } }
+    const project = { ...base.projects.find((p) => p.id === 'fairoaksd')!, changeOrders: [sent] }
+    const state: GcState = { ...base, projects: base.projects.map((p) => (p.id === project.id ? project : p)) }
+    const onChangeSignedIn = vi.fn()
+    const writes = { onCameIn: vi.fn(), onApprove: vi.fn(), onApproveLess: vi.fn(), onSendBack: vi.fn(), onPay: vi.fn(), onWaiverIn: vi.fn(), onCharge: vi.fn(), onSettleCharge: vi.fn(), onTakeCharge: vi.fn(), onSendChange: vi.fn(), onChangeSignedIn }
+    render(<GcDrawsWindow state={state} project={project} writes={writes} onClose={() => undefined} />)
+    const change = document.querySelector('[data-draw-change="co-steel-1"]') as HTMLElement
+    expect(change.textContent).toContain('waiting on their signature')
+    const hint = document.querySelector('[data-draw-change-hint]')!.textContent!
+    expect(hint).toBe('Their portal does not take signatures yet. Call them to sign it. Once they sign on paper or by email, press They signed it.')
+    expect(plainWordsFailures(hint)).toEqual([])
+    fireEvent.click(within(change).getByRole('button', { name: 'They signed it' }))
+    const form = change.querySelector('[data-draw-change-signed-form]') as HTMLElement
+    expect(plainWordsFailures(form.querySelector('span')!.textContent!)).toEqual([])
+    fireEvent.change(within(form).getByLabelText("The signed file's name"), { target: { value: 'CO 4 signed.pdf' } })
+    fireEvent.click(within(form).getByRole('button', { name: 'Record their signature' }))
+    expect(onChangeSignedIn).toHaveBeenCalledWith('fsteel', 'co-steel-1', { fileName: 'CO 4 signed.pdf', driveUrl: '' })
+    expect(change.querySelector('[data-draw-change-signed-form]')).toBeNull()
+  })
+
+  it('offers no They signed it without the press, as before U6d', () => {
+    setup({ project: (p) => ({ ...p, changeOrders: [{ ...signedChange, tradeChange: { status: 'sent', sentOn: '2026-10-01', signedOn: null, sovLineId: '' } }] }) })
+    expect(screen.queryByRole('button', { name: 'They signed it' })).toBeNull()
+  })
+
   it('shows the email tick only to someone who may email a trade, off until they turn it on', () => {
     setup()
     expect(document.querySelector('[data-draw-email-tick]')).toBeNull()

@@ -58,6 +58,8 @@ They have 5 days to agree or dispute it. Keep or drop a disputed charge, and say
 
 A change order the customer signed goes to the trade it belongs to. Press {{button:blue|Send the change to Iron Horse Fabrication}} on the change. The button names the company. Their portal does not take signatures yet, so call them to sign it.
 
+When they sign on paper or by email, press {{button:outline|They signed it}} on the change. Add the file and its Drive link if you have them. Then press {{button:blue|Record their signature}}. The change becomes a line of their statement of work.
+
 ## Email the trade
 
 Tick **Email the trade about what I press here** at the top of the window. The tick starts off.

@@ -51,6 +51,10 @@ import {
   takeBackCharge,
 } from '../lib/gc/drawsIo'
 import { changeEmail, chargeEmail, drawEmailFor, lessEmail, paidEmail, type DrawEmail, type DrawEmailTo } from '../lib/gc/drawEmail'
+import { GcCloseoutWindow } from '../components/gc/GcCloseoutWindow'
+import { acceptWork, approveRetainage, changeSignedIn, closeJob, finalPayAppCameIn } from '../lib/gc/closeoutIo'
+import { loadGcPunch } from '../lib/gc/punchIo'
+import { withPunch, type PunchRow } from '../lib/gc/punchRows'
 import type { ScheduleRead } from '../lib/gc/schedule/rows'
 import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
@@ -773,6 +777,68 @@ export default function GcProjects() {
   const drawOf = (project: GcProject, packageId: string, drawId: string) => sowOf(project, packageId)?.draws.find((d) => d.id === drawId)
   const chargeOf = (project: GcProject, packageId: string, chargeId: string) => sowOf(project, packageId)?.backCharges?.find((c) => c.id === chargeId)
 
+  // Closeout (Building's U6d): each trade's last steps and closing the job, opened at `closeout=<projectId>` for a dev on
+  // the money team. It reads the customer's bills, since their retainage on us opens the trades', and the job's punch
+  // list, which holds Accept the work. Both lie over the board with the draws. Each press reads again what it wrote.
+  const closeoutProjectId = params.get('closeout')
+  const [closeoutBills, setCloseoutBills] = useState<{ id: string; rows: BillingRows } | null>(null)
+  const [closeoutPunch, setCloseoutPunch] = useState<{ id: string; rows: PunchRow[] } | null>(null)
+  const [closeoutBusy, setCloseoutBusy] = useState<string | null>(null)
+  const [closeoutProblem, setCloseoutProblem] = useState<string | null>(null)
+  const loadCloseout = useCallback(async () => {
+    if (!closeoutProjectId || !canUseGcBuilding(role) || !canSeeGcMoney(role)) return
+    const [rows, punch] = await Promise.all([loadGcBillingRows([closeoutProjectId]), loadGcPunch([closeoutProjectId])])
+    setCloseoutBills({ id: closeoutProjectId, rows })
+    setCloseoutPunch({ id: closeoutProjectId, rows: punch })
+  }, [closeoutProjectId, role])
+  useEffect(() => {
+    void loadCloseout().catch((e) => setCloseoutProblem(formatErrorMessage(e, 'The customer’s bills or the punch list did not load.')))
+  }, [loadCloseout])
+  const closeoutBillsRead = closeoutBills !== null && closeoutBills.id === closeoutProjectId
+  const closeoutState = useMemo(() => {
+    if (!boardWithChanges || !closeoutProjectId) return null
+    const billed = closeoutBills && closeoutBills.id === closeoutProjectId ? billingStateFor(boardWithChanges, closeoutProjectId, closeoutBills.rows) : boardWithChanges
+    return withPunch(billed, closeoutPunch && closeoutPunch.id === closeoutProjectId ? closeoutPunch.rows : [])
+  }, [boardWithChanges, closeoutProjectId, closeoutBills, closeoutPunch])
+  const closeoutProject = closeoutProjectId ? (closeoutState?.projects.find((p) => p.id === closeoutProjectId) ?? null) : null
+  const setCloseoutWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('closeout', projectId)
+    else next.delete('closeout')
+    setParams(next, { replace: true })
+    setCloseoutProblem(null)
+  }
+  /** From Closeout to Bill the customer, where the customer's payment of our retainage is recorded. */
+  const closeoutToBill = (projectId: string) => {
+    const next = new URLSearchParams(params)
+    next.delete('closeout')
+    next.set('bill', projectId)
+    setParams(next, { replace: true })
+    setBillProblem(null)
+  }
+  /**
+   * A closeout press: run it, then read again the draws, the customer's bills and the punch list, and the board for an
+   * acceptance or the projects for a closed job. A release marked paid emails the trade when the Draws window's tick is on.
+   */
+  const closeoutWrite = <T,>(busyId: string, work: Promise<T>, failed: string, reread: { board?: boolean; projects?: boolean } = {}, paid?: { packageId: string; drawId: string }) => {
+    setCloseoutBusy(busyId)
+    setCloseoutProblem(null)
+    void work
+      .then(async () => {
+        const [tables] = await Promise.all([loadDraws(), loadCloseout(), reread.board ? refreshBoard() : null, reread.projects ? reloadProjects() : null])
+        if (!paid || !drawEmailOn || !canSendGcTradeEmail(role) || !board || !closeoutProjectId) return
+        const state = withTradeChanges(withChangeOrders(withDraws(board, tables), changeOrderRows), tables)
+        const project = state.projects.find((p) => p.id === closeoutProjectId)
+        const to = project ? drawEmailFor(project, paid.packageId) : null
+        const draw = project ? drawOf(project, paid.packageId, paid.drawId) : undefined
+        if (!to || !draw) return
+        const answer = await emailTheTrade(to.companyId, (lang) => paidEmail({ ...to, lang }, draw))
+        if (answer && !answer.ok) throw new Error(`It is saved. The email did not go: ${gcTradeEmailRefusal(answer.key)}`)
+      })
+      .catch((e) => setCloseoutProblem(formatErrorMessage(e, failed)))
+      .finally(() => setCloseoutBusy(null))
+  }
+
   // Money (Owner Billing's O6a): every job that is ours, with billing read when the lens opens and laid over
   // the board's projects and their change orders. Read only.
   const [moneyRows, setMoneyRows] = useState<BillingRows | null>(null)
@@ -1209,6 +1275,12 @@ export default function GcProjects() {
                   Draws
                 </Btn>
               )}
+              {/* Closeout (Building's U6d): a dev's on the money team, on a job being built or closed. */}
+              {canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && (p.stage === 'building' || p.stage === 'closed') && (
+                <Btn kind="quiet" onClick={() => setCloseoutWindow(p.id)}>
+                  Closeout
+                </Btn>
+              )}
               {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
                 <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
                   Bill the customer
@@ -1603,6 +1675,40 @@ export default function GcProjects() {
                 const co = project.changeOrders?.find((x) => x.id === changeOrderId)
                 return co ? changeEmail(to, co) : null
               }),
+            // U6d: their signature on paper adds a line to their statement of work, which the board reads.
+            onChangeSignedIn: (packageId, changeOrderId, file) =>
+              drawWrite(
+                changeOrderId,
+                packageId,
+                changeSignedIn(changeOrderId, file).then(async (line) => {
+                  await refreshBoard()
+                  return line
+                }),
+                'Their signature was not recorded.',
+              ),
+          }}
+        />
+      )}
+
+      {canUseGcBuilding(role) && canSeeGcMoney(role) && closeoutProject && closeoutState && (
+        <GcCloseoutWindow
+          state={closeoutState}
+          project={closeoutProject}
+          extras={drawExtras(drawTables)}
+          checkLink={async (url) => (await checkDriveAccess(url)).access}
+          emailTick={canSendGcTradeEmail(role) ? { on: drawEmailOn, onChange: setDrawEmailOn } : null}
+          billsRead={closeoutBillsRead}
+          busy={closeoutBusy}
+          problem={closeoutProblem}
+          onSeeBill={() => closeoutToBill(closeoutProject.id)}
+          onClose={() => setCloseoutWindow(null)}
+          writes={{
+            onAccept: (packageId) => closeoutWrite(packageId, acceptWork(packageId), 'The work was not accepted.', { board: true }),
+            onFinalCameIn: (d) => closeoutWrite(d.packageId, finalPayAppCameIn(d), 'The final pay application was not recorded.'),
+            onApproveRelease: (_packageId, drawId) => closeoutWrite(drawId, approveRetainage(drawId), 'The release was not approved.'),
+            onPay: (packageId, drawId) => closeoutWrite(drawId, payDraw(drawId), 'It was not marked paid.', {}, { packageId, drawId }),
+            onWaiverIn: (_packageId, drawId) => closeoutWrite(drawId, drawWaiverIn(drawId), 'Their final release was not recorded.'),
+            onCloseJob: () => closeoutWrite(closeoutProject.id, closeJob(closeoutProject.id), 'The job was not closed.', { projects: true }),
           }}
         />
       )}

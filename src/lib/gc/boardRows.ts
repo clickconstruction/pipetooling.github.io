@@ -141,6 +141,8 @@ export interface BoardDatesRow {
   started_on: string | null
   lost_why: string | null
   won_by: string | null
+  /** The day the job was closed (Building's U6c, `gc_close_job`). Null: still open. */
+  closed_on?: string | null
 }
 
 /** A company's vetting form (B1's `gc_company_vetting_forms`), as they wrote it. */
@@ -479,6 +481,7 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     lostOn: view.lostOn,
     lostWhy,
     wonBy: dates?.won_by ?? null,
+    ...(dates?.closed_on ? { closedOn: dates.closed_on } : {}),
   }
 }
 
