@@ -52,3 +52,20 @@ export function laborJobMatchesPerson(
   if (!target) return false
   return splitAssignedToNames(row.assigned_to_name).includes(target)
 }
+
+/**
+ * The person's even share of a sheet they are on (`laborJobMatchesPerson`): 1/N for the sheet's N
+ * distinct names, the split Team Summary books (`laborJobShareForPerson`), else 0. Review takes it
+ * too (the owner's call of 2026-10-09), so a sheet under four names counts a quarter on each
+ * person's panel instead of the whole sheet four times. A sheet the junction puts them on under a
+ * name the list spells differently still splits by the list's names.
+ */
+export function laborJobShareOfMatchedPerson(
+  row: { id: string; assigned_to_name: string | null },
+  junctionJobIds: ReadonlySet<string>,
+  personName: string,
+): number {
+  if (!laborJobMatchesPerson(row, junctionJobIds, personName)) return 0
+  const names = new Set(splitAssignedToNames(row.assigned_to_name))
+  return names.size > 1 ? 1 / names.size : 1
+}

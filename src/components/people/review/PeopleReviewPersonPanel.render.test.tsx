@@ -30,6 +30,8 @@ import { PeopleReviewPersonPanel } from './PeopleReviewPersonPanel'
 import { EMPTY_REVIEW_OVERHEAD_RATES } from '../../../lib/people/loadReviewOverheadRates'
 import { renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import type { ReviewLaborJob } from '../../../lib/people/reviewPersonTypes'
+import { buildReviewPersonAllocation } from '../../../lib/people/reviewPersonAllocation'
+import { EMPTY_CARD_CHARGE_EXCLUSIONS } from '../../../lib/jobs/cardChargeAllocationFilter'
 
 type Props = ComponentProps<typeof PeopleReviewPersonPanel>
 
@@ -128,6 +130,27 @@ describe('PeopleReviewPersonPanel', () => {
     view.rerender(<PeopleReviewPersonPanel {...pick('Ann')} roster={['Ann', 'Ben', 'Cy']} />)
     await settle()
     expect(calls.map((c) => c.personName)).toEqual(['Ann', 'Ann', 'Ann'])
+  })
+
+  it('JP1007’s shape: a $2,150 sheet under four names reads a quarter on the panel (the owner’s call of 2026-10-09)', async () => {
+    const sheetRow = { id: 'sub', job_date: '2026-10-01', address: '7 Pine', job_number: '1007', job_ledger_id: 'job-1007', labor_rate: 50, distance_miles: 0, assigned_to_name: 'Ann | Ben | Cy | Cutting Co LLC' }
+    const lines = [{ job_id: 'sub', count: 1, hrs_per_unit: 0, is_fixed: false, labor_rate: null, direct_labor_amount: 2150 }]
+    const loaded = buildReviewPersonAllocation({
+      personName: 'Ben', start: '2026-09-15', end: '2026-10-14', onlyPaidJobs: false, payConfig: {}, officeJobLedgerId: null, junctionJobIds: new Set(),
+      allLaborRowsForCostAllTime: [sheetRow], crewRows: [], allCrewRowsForCostAllTime: [], hoursRows: [], allReports: [], taskInstances: [], outstandingInstances: [],
+      settingsRows: [], tallyParts: [], allHoursRows: [], allHoursRowsAllTime: [], laborItems: lines,
+      crewJobsLedger: [{ id: 'job-1007', hcp_number: '1007', click_number: '', job_name: 'Pine St', job_address: '7 Pine', revenue: 9000, pct_complete: null, service_type_id: null, status: 'billed' }],
+      invoiceRows: [], materialRows: [], cardAllocRows: [], cardExclusions: EMPTY_CARD_CHARGE_EXCLUSIONS,
+      allLaborRows: [{ id: 'sub', job_number: '1007', job_ledger_id: 'job-1007', job_date: '2026-10-01' }], allCrewRows: [], allHoursRows2: [], allLaborItems: lines,
+    })
+    renderWithProviders(<PeopleReviewPersonPanel {...pick('Ben')} />)
+    await settle()
+    await finish(0, loaded)
+    expect(screen.getByText('Pine St')).toBeTruthy()
+    expect(screen.getByText('$538')).toBeTruthy()
+    expect(screen.getByText('25% of $2,150')).toBeTruthy()
+    // The job's $2,150 shows only as the total beside this person's $538, never as theirs.
+    expect(screen.getAllByText('$2,150').map((el) => el.parentElement?.textContent)).toEqual(['$538$2,150'])
   })
 
   it('a failed load says so, and Retry loads again', async () => {

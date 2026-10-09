@@ -256,20 +256,23 @@ describe('loadReviewPersonData — a hand-built week', () => {
     expect(row.userTotalContributionToBill).toBeCloseTo(JOB1_VALUE * personShare, 10)
   })
 
-  it('the sheet: a job cost with its drive, never a share of revenue', async () => {
+  it('the sheet: a job cost with its drive, never a share of revenue; Al books his half of a two-name sheet', async () => {
     const d = await loadReviewPersonData(input())
     expect(d.laborJobs).toHaveLength(1)
     const row = d.laborJobs[0]!
+    // 'Al | Sub Co' splits evenly (the owner's call of 2026-10-09, Team Summary's split): Al's panel
+    // books half the sheet's hours, labor and drive, and Sub Co's half reads as sub labor by others.
+    const half = 1 / 2
     expect(row).toMatchObject({
       source: 'labor',
       id: 'sheet-1',
       job_id: 'job-2',
       job_date: '2026-09-03',
       job_name: 'Oak Ave',
-      hours: 3,
-      hoursInfo: '3.00 (1 items)',
-      laborCost: ownSheetCost(),
-      driveCost: 10 * MILE + 10 * MINUTES * 40,
+      hours: 3 * half,
+      hoursInfo: '1.50 (1 items)',
+      laborCost: ownSheetCost() * half,
+      driveCost: (10 * MILE + 10 * MINUTES * 40) * half,
       partsCost: 0,
       // Billed, so finished: the whole contract is earned.
       totalBill: 500,
@@ -277,16 +280,16 @@ describe('loadReviewPersonData — a hand-built week', () => {
       valueCreated: 500,
       totalLaborOnJob: ownSheetCost(),
       revenueBeforeOverhead: 500 - ownSheetCost(),
-      // The only sheet on the job is the person's own: nothing by others.
-      subLaborCost: 0,
-      userTotalDriveCostOnJob: 10 * MILE + 10 * MINUTES * 40,
+      // The one sheet on the job is shared: Sub Co's half is by others.
+      subLaborCost: ownSheetCost() * half,
+      userTotalDriveCostOnJob: (10 * MILE + 10 * MINUTES * 40) * half,
       totalDriveCostOnJob: 10 * MILE + 10 * MINUTES * 40,
       allocatedTotalBill: 0,
       allocatedRevenueBeforeOverhead: 0,
       allocatedPartsCost: 0,
       totalJobHours: 3,
-      userTotalHoursOnJob: 3,
-      userTotalContributionToBill: 500,
+      userTotalHoursOnJob: 3 * half,
+      userTotalContributionToBill: 500 * half,
     })
   })
 

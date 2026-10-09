@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { laborJobMatchesPerson, splitAssignedToNames } from './laborJobPersonMatch'
+import { laborJobMatchesPerson, laborJobShareOfMatchedPerson, splitAssignedToNames } from './laborJobPersonMatch'
 
 describe('splitAssignedToNames', () => {
   it('splits the delimited multi-name column into trimmed names', () => {
@@ -58,5 +58,21 @@ describe('laborJobMatchesPerson', () => {
   it('never matches a blank person name or a null column', () => {
     expect(laborJobMatchesPerson({ id: 'job-6', assigned_to_name: 'Alice Ames' }, none, '   ')).toBe(false)
     expect(laborJobMatchesPerson({ id: 'job-7', assigned_to_name: null }, none, 'Alice Ames')).toBe(false)
+  })
+})
+
+describe('laborJobShareOfMatchedPerson (the owner’s call of 2026-10-09)', () => {
+  const sheet = (assigned_to_name: string | null) => ({ id: 'sub', assigned_to_name })
+  it('a sheet’s N distinct names each get 1/N, as Team Summary splits it', () => {
+    expect(laborJobShareOfMatchedPerson(sheet('Al | Bo | Cy | Cutting Co LLC'), new Set(), 'Bo')).toBe(0.25)
+    expect(laborJobShareOfMatchedPerson(sheet('Al | Al | Bo'), new Set(), 'Al')).toBe(0.5)
+    expect(laborJobShareOfMatchedPerson(sheet('Al'), new Set(), 'Al')).toBe(1)
+  })
+  it('nothing for a sheet the person is not on', () => {
+    expect(laborJobShareOfMatchedPerson(sheet('Al | Bo'), new Set(), 'Cy')).toBe(0)
+  })
+  it('a junction match under another spelling splits by the list; an empty list is the person’s whole', () => {
+    expect(laborJobShareOfMatchedPerson(sheet('Al | Bo'), new Set(['sub']), 'Alan')).toBe(0.5)
+    expect(laborJobShareOfMatchedPerson(sheet(null), new Set(['sub']), 'Alan')).toBe(1)
   })
 })

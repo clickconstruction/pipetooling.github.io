@@ -510,3 +510,56 @@ describe('buildReviewPersonAllocation — the contributors window adds up to the
     expect(e.laborByJobAndPerson['job-1']).toEqual([{ personName: 'Bo | Cutting Co LLC', hours: 4, laborCost: 3 * 50 + 80, subLaborCost: 3 * 50 + 80, crewLaborCost: 0 }])
   })
 })
+
+describe('buildReviewPersonAllocation — a sheet under several names books an equal share to each (the owner’s call of 2026-10-09)', () => {
+  // JP1007's shape, made-up names: a $2,150 direct line with no hours under four names. Team Summary
+  // booked a quarter to each; each person's Review panel counted all $2,150.
+  const NAMES = 'Al | Bo | Cy | Cutting Co LLC'
+  const subSheet = sheet({ id: 'sub', labor_rate: 50, assigned_to_name: NAMES })
+  const lines = [item({ job_id: 'sub', count: 1, hrs_per_unit: 0, direct_labor_amount: 2150 })]
+  const panelFor = (personName: string, junctionJobIds: ReadonlySet<string> = new Set()) =>
+    buildReviewPersonAllocation(
+      rows({
+        personName,
+        junctionJobIds,
+        allLaborRowsForCostAllTime: [subSheet],
+        laborItems: lines,
+        allLaborRows: [{ id: 'sub', job_number: subSheet.job_number, job_ledger_id: subSheet.job_ledger_id, job_date: subSheet.job_date }],
+        allLaborItems: lines,
+        crewJobsLedger: [job({ status: 'billed' })],
+      }),
+    )
+
+  it('each name’s panel books a quarter, the rest reads as sub labor by others, and the job total stays whole', () => {
+    for (const who of ['Al', 'Bo', 'Cy', 'Cutting Co LLC']) {
+      const row = panelFor(who).laborJobs[0]!
+      expect(row.laborCost).toBe(537.5)
+      expect(row.subLaborCost).toBe(1612.5)
+      expect(row.totalLaborOnJob).toBe(2150)
+      expect(row.userTotalLaborOnJob).toBe(537.5)
+    }
+  })
+
+  it('the four panels add up to the sheet once, not four times', () => {
+    const total = ['Al', 'Bo', 'Cy', 'Cutting Co LLC'].reduce((sum, who) => sum + panelFor(who).laborJobs[0]!.laborCost, 0)
+    expect(total).toBe(2150)
+  })
+
+  it('the contributors window keeps the sheet as one row under all the names', () => {
+    expect(panelFor('Bo').laborByJobAndPerson['job-1']).toEqual([{ personName: NAMES, hours: 0, laborCost: 2150, subLaborCost: 2150, crewLaborCost: 0 }])
+  })
+
+  it('a person the junction puts on the sheet under another spelling still books a quarter', () => {
+    expect(panelFor('Alan', new Set(['sub'])).laborJobs[0]!.laborCost).toBe(537.5)
+  })
+
+  it('hours split the same way, and a sheet under one name stays whole', () => {
+    const hoursLines = [item({ job_id: 'sub', count: 4, hrs_per_unit: 2 })]
+    const split = buildReviewPersonAllocation(rows({ personName: 'Cy', allLaborRowsForCostAllTime: [subSheet], laborItems: hoursLines, crewJobsLedger: [job({ status: 'billed' })] }))
+    expect(split.laborJobs[0]!.hours).toBe(2)
+    expect(split.laborJobs[0]!.laborCost).toBe(8 * 50 / 4)
+    const whole = buildReviewPersonAllocation(rows({ allLaborRowsForCostAllTime: [sheet({ id: 'sub' })], laborItems: hoursLines, crewJobsLedger: [job({ status: 'billed' })] }))
+    expect(whole.laborJobs[0]!.hours).toBe(8)
+    expect(whole.laborJobs[0]!.laborCost).toBe(8 * 40)
+  })
+})
