@@ -10,7 +10,7 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; Shared substrate; Master summary table; PeopleContractsTab dossiers; PeopleOverheadTab dossiers; Stage-A candidates; Test coverage; Cross-surface duplication; Recommended extraction order; What must stay in the parents; Preserve-quirks list; Recent churn
-last_updated: 2026-10-04
+last_updated: 2026-10-09
 ---
 
 ## What this surface is
@@ -265,7 +265,7 @@ No render smoke exists for either tab (`PeopleContractsTab.render.test.tsx` / `P
 | Packet → person-document materialize (latest-lineage UPDATE or fresh v1 INSERT, fill body only when empty) | `PeopleContractsTab.materializePacketForPerson`, `src/lib/people/materializePacket.ts` (lifted copy; `PersonDeskPaperworkSection`, `lib/people/hireWrites.ts`), `src/components/contracts/ContractLibraryModal.tsx` (`savePacket` ~287–330) | same rules, three copies; the tab should import the lib one, then extract a pure write planner into `lib/contractPackets.ts` |
 | `personContractDocumentHasStaffData` | `PeopleContractsTab.tsx` 80–97, `src/lib/contractPackets.ts` | identical bodies; tab should import |
 | Raw `fetch` to `send-contract-for-signature` (JWT + anon key + JSON body + `{ok, emailed, accept_url}` handling) | `PeopleContractsTab.sendContractForSignature`, `src/components/jobs/LienWaiverSendModal.tsx` ~152 | a `lib/contracts/sendContractForSignature.ts` client helper |
-| 90-day overhead pool scan | `lib/overheadPoolSnapshot.ts` (tab, Dashboard, bridge, job day ledger) vs `src/components/people/PeopleReviewTab.tsx` (own fetch orchestration, effect ~411–647, over the same kernels) | Review tab could consume the snapshot loader (region A of [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) plans the same thing) |
+| 90-day overhead pool scan | `lib/overheadPoolSnapshot.ts` (tab, Dashboard, bridge, job day ledger) vs `src/components/people/PeopleReviewTab.tsx` (own fetch orchestration, effect ~411–647, over the same kernels) | Gone since v2.5014: Review reads the snapshot loader too (region A of [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md)) |
 | Office job setting read | `PeopleOverheadTab` effect 372–411, `src/pages/People.tsx` ~2671, `PeopleReviewTab`, `src/hooks/useOverheadOfficeJobId.ts` (module cache), ~12 more readers | tab writes notify none; only the module cache stays stale until page reload |
 | Debounced `search_jobs_ledger` picker (300 ms + `UnifiedSearchResultRow`) | `PeopleOverheadTab` 789–816 + ~20 other components (`AssignFocusModal`, `ClockInOutButton`, `HoursUnassignedModal`, `JobPaymentMoveModal`, …) | a shared `useJobsLedgerSearch` hook would serve all |
 
