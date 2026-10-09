@@ -111,3 +111,13 @@ Not expected. To undo: drop the five functions, then `gc_trade_change_requests` 
 ## Status
 
 Prepared 2026-10-08 by the Portal lane (Helper 13) on `mockups/portal-p4.md` as amended (`spike/gc-mode` at cf6b09fc5, its SQL word for word). Cut on 2026-10-09 once B6-a (`20261009140000`, applied 09:13 UTC) and its types (#5101) were on main. The lead pushes it in the evening batch.
+
+**Applied to prod 2026-10-09 at 10:43 UTC**: the file rode PUNCHLIST's push of 20261010004500 under the lanes' shared-push rule (a plain push takes every pending file); drift 819/819 after, 820/820 once 005000 followed. Verified at 10:47 UTC by the lead (GC MODE) through the management API, every write rolled back:
+- Step 1: both tables empty, each with its `_dev` policy, the three twin fences and the three read-only blocks.
+- Step 2: the office's three functions open to the signed in and the service role, the trade's two to the service role only, none to `anon`.
+- Step 3, as a dev on the test project's Concrete trade: `sowNotSigned`, *A charge goes on signed work. This trade's statement of work is not signed.*
+- Step 4, as an estimator: `devOnly`, *Only a dev charges a trade while GC mode is built.*, before the row was read.
+- Step 5, as the service role for the test company: `notAwarded`, *A change is asked on work the company signed for, on a job that is ours.*
+- After the rollbacks: 0 charges, 0 requests.
+
+The types ride PUNCHLIST's regeneration (#5111) and Helper 17's PR after it.

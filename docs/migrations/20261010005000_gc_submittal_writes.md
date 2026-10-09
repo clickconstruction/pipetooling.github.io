@@ -65,3 +65,12 @@ No screen calls them until U4b, so nothing else changes.
 ## Status
 
 Written for the Building lane's U4a; not applied. The lead pushes it after the merge and records here what steps 1 to 5 said.
+
+**Applied to prod 2026-10-09 at 10:53 UTC** by the lead (GC MODE) from a clean checkout at main's tip (db7a2853a) with `scripts/db-push.sh` (`--include-all`, since 006000 was applied first); drift 820/820 after. Verified the same hour through the management API, every write rolled back:
+- Step 1: six functions, every one SECURITY INVOKER and closed to `anon`; `gc_trade_submittal_send` closed to the signed in and open to the service role.
+- Step 2, as a dev: *No trade with that id.*, *Our own crew sends no submittals.* (Plumbing on the test project), *This trade is not awarded yet. Its submittals start once it is.* (the Concrete trade).
+- Step 3, inside one rolled-back transaction, the award drafted first (`gc_award` on ask `115b6971`, the $12,500 quote): the submittal read back `03 30 00-01` holding one scope line, the trade's move; a round that came in by email (file and Drive link) made it ours; *sent another way* put it with the architect; *revise* with a note made it the trade's move again, one round kept. Nothing was kept on prod (0 submittals, 0 statements of work after); the kept rows the doc describes wait on Grace's yes in Helper 18's chat.
+- Step 4: the training-mode user's call gave *A training account cannot add a submittal.* (`42501`).
+- Step 5: as a dev, `gc_trade_submittal_send` gave *permission denied for function gc_trade_submittal_send*.
+
+The types PR follows with 006000's (Helper 17, after PUNCHLIST's #5111).
