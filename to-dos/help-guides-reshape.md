@@ -44,9 +44,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   with Data health, and recording payments.
 - **Move:** the months-worked lien section belongs with the lien guides.
 
-### share a customer their portal
+### ~~share a customer their portal~~ — shipped v2.5057
 
-`share-a-customer-their-portal` · 2,244 words · #4586
+`share-a-customer-their-portal` · 2,244 words · #4586 · now the opening and three guides: the office side (the core), *see what a customer sees on their portal* (statement, payments, requests) and *show an owner the bills their GC pays* (the owner switch and the lien notice card). Nothing cut.
 
 - **Opening:** "A customer's portal is a private page with their statement and Pay online buttons.
   You make the link from the globe next to their name."
