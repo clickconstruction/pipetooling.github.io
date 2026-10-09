@@ -3,9 +3,9 @@
  * The Dispatch hub's modes (the SCHEDULE_DISPATCH map's step 6), on the hook: every way into a
  * mode, from every other mode; every way out; Escape; the ?placeJob= arm; and each writer the
  * page keeps (the add-block window, the tabs, the week arrows, the picker's pick, the new-job
- * path) through the intents it calls. The expectations are literal, gaps d to f named (a to c
- * fixed in v2.4989), so a row changed in `lib/scheduleDispatch/hubModes.ts` fails here as well as
- * in its table test.
+ * path) through the intents it calls. The expectations are literal, each of the six gaps named
+ * (a to c fixed in v2.4989, d to f in v2.5009), so a row changed in `lib/scheduleDispatch/hubModes.ts`
+ * fails here as well as in its table test.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
@@ -98,16 +98,16 @@ const IS_ON: Record<Mode, (m: Modes) => boolean> = {
 const on = (m: Modes) => MODES.filter((mode) => IS_ON[mode](m))
 
 describe('entering a mode', () => {
-  /** What each way in leaves on, of the modes that were on before it (literal; gap e named). */
+  /** What each way in leaves on, of the modes that were on before it (literal; gap e named, fixed v2.5009). */
   const WAYS_IN: Record<string, { run: (m: Modes) => void; turnsOn: Mode; keeps: Mode[] }> = {
     'a block’s Linked copy (startPlacement)': { run: ENTER.placement, turnsOn: 'placement', keeps: ['picker'] },
     'Copy jobs linked (startLinkedCopy)': { run: ENTER.linkedCopy, turnsOn: 'linkedCopy', keeps: [] },
     'Select multiple cells (startMultiCell)': { run: ENTER.multiCell, turnsOn: 'multiCell', keeps: [] },
     '+ Add job (openToolbarPicker)': { run: ENTER.picker, turnsOn: 'picker', keeps: [] },
-    'a cell’s + (openCellPicker, gap e)': {
+    'a cell’s + (openCellPicker, gap e fixed: it ends the other modes)': {
       run: (m) => m.onHubEmptyCellOpenChoice('u-dana', '2026-10-07'),
       turnsOn: 'picker',
-      keeps: ['placement', 'linkedCopy', 'assignPlacement', 'multiCell'],
+      keeps: [],
     },
   }
 
@@ -230,17 +230,26 @@ describe('leaving a mode', () => {
 describe('Escape', () => {
   const esc = () => act(() => void window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })))
 
-  it('ends placement, and with it the placing strip, the cell and ?placeJob= (gap f)', () => {
+  it('on the placing strip ends it and takes ?placeJob= off the URL, as its Cancel does', () => {
     url = new URLSearchParams(`week=${WEEK}&placeJob=job-9`)
     const { result } = mount({ searchParams: url })
     expect(on(result.current)).toEqual(['assignPlacement'])
     esc()
     expect(on(result.current)).toEqual([])
     expect(url.get('placeJob')).toBeNull()
+  })
 
+  it('while moving or copying ends that mode alone, and leaves the URL and the picker’s cell (gap f fixed v2.5009)', () => {
+    const { result } = mount()
+    act(() => result.current.onHubEmptyCellOpenChoice('u-dana', '2026-10-07'))
     act(() => ENTER.placement(result.current))
+    expect(on(result.current).sort()).toEqual(['picker', 'placement'])
+    const setSearchParams = input.setSearchParams as unknown as ReturnType<typeof vi.fn>
+    setSearchParams.mockClear()
     esc()
-    expect(on(result.current)).toEqual([])
+    expect(on(result.current)).toEqual(['picker'])
+    expect(result.current.hubCellAddContext).toEqual({ assigneeUserId: 'u-dana', workDate: '2026-10-07' })
+    expect(setSearchParams).not.toHaveBeenCalled()
   })
 
   it('ends linked copy alone, and multi-cell alone', () => {
@@ -321,7 +330,7 @@ describe('the writers the page keeps, through the hook', () => {
     onHubAssignJobCellPick: { run: (m) => m.leaveModesFor('assignCellPick'), keeps: ['placement', 'linkedCopy', 'multiCell', 'picker'] },
     onCreateNewJobFromHubJobPicker: { run: (m) => m.leaveModesFor('newJob'), keeps: ['linkedCopy', 'assignPlacement', 'multiCell'] },
     'setHubTab, Jobs or Day (gap c fixed: linked copy and the picker end too)': { run: (m) => m.leaveModesFor('tabAway'), keeps: [] },
-    'shiftWeek and goThisWeek (gap d: multi-cell waits for the new week)': { run: (m) => m.leaveModesFor('weekNav'), keeps: ['multiCell', 'picker'] },
+    'shiftWeek and goThisWeek (gap d fixed: multi-cell ends at once)': { run: (m) => m.leaveModesFor('weekNav'), keeps: ['picker'] },
     'the picker’s pick (pickJobToPlace)': { run: (m) => m.pickJobToPlace('job-8'), keeps: ['linkedCopy', 'multiCell'], turnsOn: 'assignPlacement' },
     'the new job with no cell (placeNewJob)': { run: (m) => m.placeNewJob('job-9'), keeps: ['placement', 'linkedCopy', 'multiCell', 'picker'], turnsOn: 'assignPlacement' },
   }

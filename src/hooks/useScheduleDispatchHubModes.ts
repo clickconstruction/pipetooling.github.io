@@ -222,9 +222,10 @@ export function useScheduleDispatchHubModes({
   useEffect(() => {
     if (!cardPlacementMode && !hubAssignJobPlacement) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        leave('escapePlacement')
-      }
+      if (e.key !== 'Escape') return
+      // Esc ends only the mode it is pressed in (gap f, the owner's call of 2026-10-09).
+      if (cardPlacementMode) leave('escapePlacement')
+      if (hubAssignJobPlacement) leave('escapeAssign')
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

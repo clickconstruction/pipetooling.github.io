@@ -135,6 +135,10 @@ To put the same jobs on several people at once, you use the chains button in the
 
 Copies that would overlap something already on that person's day are skipped. So are copies the person already has. The toast tells you how many applied. You click as many people as you need, then press {{chip:gray|Esc}} or **Done**.
 
+## Stop a move, a copy or a pick
+
+You may be moving a block, copying jobs linked, placing a job or picking several cells. {{chip:gray|Esc}} ends that one and nothing else. The week arrows end it too. So does the add control in a cell, which opens **Add job to schedule** for that cell.
+
 ## When nobody on a block can run the job
 
 Every helper and sub carries a *needs supervision* switch. See *say who can run a job on their own*. A block, solo or a linked crew, may have people who all still need supervision. It wears an amber {{chip:yellow|unsupervised}} pill on its time line. The Add / Edit block window says so under the person's name while you build it. It is a warning, never a stop. You add a master, or someone who can run a job, as a linked copy. Or you save it anyway if the office knows something the roster does not. A master on the block always covers it.
