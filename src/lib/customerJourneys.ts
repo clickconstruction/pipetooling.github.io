@@ -509,7 +509,7 @@ export function customerJourneys(): Journey[] {
           sublabel: 'my.clickplumbing.com/sams-plumbing',
           when: 'Weekly',
           customerCan: 'See their sheets, what they are owed and when it pays, open offers, and their paperwork.',
-          guide: 'share-a-sub-their-portal',
+          guide: 'see-what-a-sub-sees-on-their-portal',
           reflects: ['Sub pay-run day and explainer (Settings)', 'Portal letterhead (portalCompany)', 'Paperwork states and the insurance-expiry nudge'],
           render: { kind: 'page', path: SUB_PORTAL_SAMPLE_PATH },
         },
