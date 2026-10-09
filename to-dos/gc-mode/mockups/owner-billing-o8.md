@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing O8: the customer pays a certified bill by card, with a 3% card fee"
 parent: to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md (PR 11, O8, after O7c)
-status: planned 2026-10-09 by Helper 5 at the lead's ask, from the owner's answer to the Stripe Pay question · nothing built · the shape is (a), card only, and the owner's answer on card only or card or bank (asked 2026-10-09) may change it · no SQL yet; the SQL block follows the owner's answer
+status: planned 2026-10-09 by Helper 5 at the lead's ask, from the owner's answer to the Stripe Pay question · amended the same evening: the fee is a rider on its bill, out of every GC figure (the lead's call) · nothing built · the shape is (a), card only, and the owner's answer on card only or card or bank (asked 2026-10-09) may change it · no SQL yet; the SQL block follows the owner's answer
 ---
 
 # O8: the customer pays a certified bill by card
@@ -34,7 +34,7 @@ do not convert for them.
 
 | PR | What | Waits on |
 |---|---|---|
-| **O8a** | The migration: `gc_owner_card_bills` (one row per bill turned to card), the three presses in SQL, and `gc_owner_billing_revenue` counting the fees | The owner's answer on card only |
+| **O8a** | The migration: `gc_owner_card_bills` (one row per bill turned to card), the three presses in SQL, the fee as a rider on its bill (`fee_lines`) that `job_rider_fees` counts, and `gc_owner_billing_revenue` adding the billing job's riders | The owner's answer on card only |
 | **O8b** | **Pay by card** in the customer's portal. The function `gc-card-bill` (the portal's door and the office's undo door), the portal payload's offer, the press and its panel. Also the staff convert guard in `create-stripe-invoice`. Two deploys | O8a pushed, its types |
 | **O8c** | The office's side. Bill the customer reads the fee and offers **Back to a check bill**. The mapper reads a card bill at its certified amount. The three emails gain their card lines | O8b |
 
@@ -65,17 +65,30 @@ do not convert for them.
   (`extra_line_items`), the way the biohazard roll-in rides today.
   - The Stripe invoice's total is the certified amount plus the fee.
   - The bill's other line is "Pay application 3 for <job>, certified Oct 9".
-- **The bill's row takes the total.** `jobs_ledger_invoices.amount` becomes certified plus fee, which is what Stripe
-  asks, so the Pipeline's Billed list, AR and the statement read what the customer owes.
-- **The billing job's revenue counts the fee.** `gc_owner_billing_revenue` adds every live card row's fee, so the
-  job reads paid only when the contract, the interest billed and the card fees are in. Without that, a card bill
-  paid in full would push the job's payments past its revenue.
-- **Owner Billing's own reads take the fee off** (O8c). The mapper reads a card bill at `amount − fee`, so every
+- **The bill's row takes the total, and the fee rides on it.** `jobs_ledger_invoices.amount` becomes certified plus
+  fee, which is what Stripe asks, so the Pipeline's Billed list, AR and the statement read what the customer owes.
+  - `fee_lines` gains one entry: `{ description: "Credit card fee (3%)", amount, card_bill: <invoice id>, added_at }`.
+  - That is the house shape for a fee on a bill (v2.5033's returned-check fee): inside the amount, and its own row on
+    the printed bill.
+- **The fee is a recovery of Stripe's processing cost, not the project's revenue** (the lead's call, 2026-10-09; the
+  owner can overrule). It stays out of every GC figure.
+- **The billing job's Pipeline total still covers the fee, as a rider.** v2.5091's `job_rider_fees(job)` counts a
+  `card_bill` entry, as it counts a returned-check fee. `gc_owner_billing_revenue` becomes
+  `gc_owner_contract_now + the interest billed + job_rider_fees(billing job)`.
+  - Without the rider the billing job reads paid early. The Pipeline marks a job paid when
+    `revenue − payments_made ≤ 0` (`update_job_status`). A card payment carries its fee, so the payments would reach
+    the contract before the last bill is paid. `billTruth` would then drop that open bill out of Owed, and the AR card
+    and Payment Chase would lose it.
+  - This puts the fee in no GC figure. `gc_owner_billing_revenue`'s only readers are the three functions that set
+    `jobs_ledger.revenue` on the billing job, and no GC kernel reads `jobs_ledger.revenue`.
+  - The same restatement picks up a returned-check fee on a GC bill, which v2.5091's header left to the GC crew.
+- **Owner Billing's own reads take the fee off** (O8c). The mapper reads a card bill at `amount − fee`, so every GC
   figure stays at what the architect certified:
-  - Bill the customer, Money and Closeout;
+  - Bill the customer, Money's revenue and margin, and Closeout;
   - interest, the reminder's open amount and the waivers.
-  The fee shows on its own line. A card payment is laid on the pay application up to the certified amount, and
-  the rest is the fee.
+
+  A card payment is laid on the pay application up to the certified amount, and the rest is the fee. The fee shows
+  only where the Stripe total is said: the portal row, the Sent list's card line and the reminder.
 - **Our unconditional waiver names the work paid, not the fee** (call 7).
 - **Stripe's own charge to us** comes out of the payout as on every Stripe bill. `jobMargin` leaves both the fee
   and Stripe's charge out, since they roughly net.
@@ -149,7 +162,8 @@ as `submit-portal-request` checks it. Then, as the service role:
    - `stripe_invoice_id`, `hosted_invoice_url` and `stripe_invoice_status`;
    - `stripe_mode` and `external_send_channel = 'stripe'`.
 
-   It also sets the card row `on_card` and lays the billing job's revenue again.
+   It also adds the `fee_lines` rider, sets the card row `on_card`, and lays the billing job's revenue again
+   through `gc_owner_billing_revenue`, which now counts the rider.
 4. If Stripe fails, the pending row is cleared and the panel says it could not. A pending row older than ten
    minutes with no Stripe id may be begun again.
 
@@ -195,8 +209,12 @@ payment. The press:
    $288,879.00.";
 2. sends `gc-card-bill { undo }`, which voids the Stripe invoice. It refuses a paid one: "Stripe shows a payment.
    Refund it in Stripe first.";
-3. then `gc_card_bill_undo(invoice)` writes the row back: `amount` = base, the Stripe columns cleared, the card
-   row `undone` with the day and who, and the revenue laid again.
+3. then `gc_card_bill_undo(invoice)` writes the row back:
+   - `amount` = base;
+   - the Stripe columns cleared;
+   - the `card_bill` entry taken off `fee_lines`;
+   - the card row `undone` with the day and who;
+   - and the revenue laid again.
 
 The Pipeline's own **Send back** never runs on a GC bill: it deletes the row, and a pay application's link to its
 bill is kept (the O4a trigger).
@@ -247,20 +265,38 @@ you will pay." and the portal's *see* line.
   (`apply_read_only_write_blocks`, `apply_read_only_stmt_blocks`, `apply_digital_twin_write_blocks`).
 - **`gc_card_bill_begin` and `gc_card_bill_finish`**: the service role only, like O7c's portal gate.
 - **`gc_card_bill_undo`**: the money team, signed in.
-- **`gc_owner_billing_revenue`** restated: the contract now, the interest billed, and every `on_card` row's fee.
-  The three functions that lay revenue call it, so none of them changes.
+- **`job_rider_fees`** restated byte for byte from `20261010023000` but for one more kind of `fee_lines` entry it
+  sums: one that names its `card_bill`, beside one that names its `case_id`.
+  - Its client twin, `jobFormRiderFeesDollars` (through `arReturnCaseFee.ts`'s fee-lines reader), learns the same
+    entry in the same PR, so Edit Job's billing save keeps it.
+  - CREATE OR REPLACE keeps its grants and its comment's place. The comment gains the card fee.
+- **`gc_owner_billing_revenue`** restated: `gc_owner_contract_now`, plus the interest billed, plus
+  `job_rider_fees(billing job)`. The billing job is read from `gc_projects.billing_job_id`. A project with no billing job adds no riders.
+  - The three functions that lay revenue call it, so none of them changes.
+  - Its comment says what it is: the billing job's Pipeline total, which decides when the job reads paid. No GC
+    figure reads it.
 - **The bed**, `supabase/tests/gc_owner_billing/90_card_bills.sql`:
   - begin refused with a payment, on an interest bill, on a bill on Stripe already, and as a signed-in user;
   - the fee to the cent on $288,879.00, and on a bill whose 3% falls on a half cent;
-  - finish sets the total and the revenue;
-  - undo refused for a training account, and undo putting the base and the revenue back;
+  - finish: the total on the row, one `card_bill` entry in `fee_lines` equal to the fee, `job_rider_fees` up by the
+    fee, and the billing job's revenue equal to the contract, the interest and the fee;
+  - the early-paid case: a billing job whose earlier card bill is paid with its fee, and whose last bill is still
+    open, stays `billed`, not `paid`;
+  - a returned-check fee on a GC bill counted in the revenue;
+  - undo refused for a training account; undo putting back the base, taking the rider off and the fee out of the
+    revenue;
   - a second begin after undo refused (call 4).
+- **The GC figures' check** sits in O8c's mapper tests: a card bill read at `amount − fee` in Bill the customer,
+  Money's revenue and margin, Closeout, interest and the waivers.
 
 ## Docs each PR touches
 
-- O8a: `docs/migrations/<stamp>_gc_owner_card_bills.md` with its verify steps, `docs/ACCESS_CONTROL.md` (the
-  service-role door), and `docs/BILLING_FLOWS.md` → *GC mode: a project's billing job* ("Its bills are not on
-  Stripe" becomes "until the customer turns one to card").
+- O8a: `docs/migrations/<stamp>_gc_owner_card_bills.md` with its verify steps, and `docs/ACCESS_CONTROL.md` (the
+  service-role door).
+  - `docs/BILLING_FLOWS.md` → *GC mode: a project's billing job*: "Its bills are not on Stripe" becomes "until the
+    customer turns one to card".
+  - The same doc's *Revenue is kept at the contract plus the interest billed* line gains the riders, and its
+    `job_rider_fees` sentence under the *Source tables* paragraph gains the card fee.
 - O8b: `docs/EDGE_FUNCTIONS.md` (the `gc-card-bill` section and its TOC line, and `create-stripe-invoice`'s
   convert guard), the customer surfaces and the journey.
 - O8c: the guide `record-what-a-gc-customer-paid` (a bill on card, Back to a check bill), `PROJECT_DOCUMENTATION.md`
@@ -275,7 +311,7 @@ On the test project, with its test customer's portal link and the function in St
 4. Card 4242 pays it.
 5. The webhook records the payment.
 6. Bill the customer reads "Paid by card" with the fee.
-7. The billing job's revenue includes the fee.
+7. The billing job's Pipeline total includes the fee as a rider, and Money's figures do not.
 
 A second test bill: convert it, then **Back to a check bill**. The Stripe invoice is void and the row is back at
 its base. Nothing is pressed before her yes.
@@ -296,6 +332,8 @@ its base. Nothing is pressed before her yes.
 7. **Our unconditional waiver names the work paid**, never the fee.
 8. **Test mode and the switch.** The function stays in Stripe's test mode and the offer stays off until the owner
    says live, after the live walk.
+9. **The fee is a recovery of Stripe's processing cost, not the project's revenue** (the lead's call, 2026-10-09).
+   It rides in the billing job's Pipeline total only, so the paid flip and AR stay true. The owner can overrule.
 
 ## Is this the best we can do?
 
