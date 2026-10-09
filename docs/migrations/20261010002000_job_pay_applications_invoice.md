@@ -42,6 +42,10 @@ The whole-schema bed (`npm run test:pg:pay-applications`, Docker) now re-runs th
 
 Then run `npm run check:migration-drift`. A types PR adds the column to `database.ts`. The client's `as never` on the tie's write can go then.
 
+## Status
+
+Merged as v2.5032 (#5103) and pushed with 003000 and 004000 on 2026-10-09 (drift 817 of 817). Verified read-only: the `invoice_id` column and `job_pay_applications_invoice_live_uniq` (`(invoice_id) WHERE invoice_id IS NOT NULL AND deleted_at IS NULL`) are present; the stamp trigger carries both additions; nothing tied yet. Types: PR #5111.
+
 ## Rollback
 
 A one-off migration:

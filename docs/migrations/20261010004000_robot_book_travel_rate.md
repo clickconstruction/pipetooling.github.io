@@ -30,3 +30,7 @@ Punchlist pushes it after merge. The robots read the new rule from `get_placemen
 ## Checked before the PR
 
 On Homebrew Postgres 15, applied twice, the robot book's global travel entry moved to $1.40. A bid's robot copy, an office book's entry of the same fixture, and the robot book's *Equipment Rentals* stayed as they were.
+
+## Status
+
+Merged as v2.5034 (#5104) and pushed with 002000 and 003000 on 2026-10-09 (drift 817 of 817). Verified read-only: the Robot Default book's *Travel & Rentals (per mile from office)* entry reads `1.40 | 1.40`. twin-mcp redeployed from the main checkout after the push (edge drift all 144 current), so the robots' new counting rule never met the $80 entry.

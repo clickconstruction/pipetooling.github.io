@@ -36,3 +36,7 @@ The October notice for each read **2027-01-15** before this migration and reads 
 ## Checked before the PR
 
 On Homebrew Postgres 15 the file was applied twice, so it is idempotent. For August it reads: `''` and `NULL` give the notice 2026-10-15 and the affidavit 2026-11-16; `residential` gives the same; `non_residential` gives 2026-11-16 and 2026-12-15. A malformed month still returns `NULL`. These match the client kernel to the day.
+
+## Status
+
+Merged as v2.5031 (#5098) and pushed alone on 2026-10-09 (drift 814 of 814) — the only pending file and the lowest number. Verified read-only over the session pooler: `lien_notice_deadline('2026-10', '')` reads 2026-12-15 and `'non_residential'` 2027-01-15; `lien_filing_deadline` 2027-01-15 vs 2027-02-15. The nine portal functions that bundle `customerSampleFixtures.ts` redeployed from the main checkout (edge drift all 144 current).
