@@ -5,8 +5,8 @@
  * second time. A trade never sees our price to the customer, our budgets, general conditions,
  * contingency or fee, the office's plugs, covers and taken alternates, another company or its number,
  * the office's call notes and notes on a quote or a decline, a lost bid's note or who won it. Of its
- * work (P4b-i) it reads its own award, statement of work, charges and change requests, and of a change
- * order made of its request only its part: never the customer's price.
+ * work (P4b-i) it reads its own award, statement of work and its lines (P2c-ii), charges and change requests,
+ * and of a change order made of its request only its part: never the customer's price.
  *
  * Pure, with no Deno or browser API: the edge function and `src/lib/gc/tradePortalSlice.test.ts` both
  * call it.
@@ -33,10 +33,12 @@ export interface TradePortalRows {
   /** The sets New project's set email sent this company, and whether each changed its trade (gc_plan_set_sends). */
   setSends: Row[]
   /**
-   * Its statements of work (B6-a's gc_sows), its charges and its change requests (P4a), and the change orders its
-   * requests became. Optional, so a caller with none (a test, an older sample) passes none.
+   * Its statements of work (B6-a's gc_sows) and their lines (gc_sow_lines, P2c-ii), its charges and its change
+   * requests (P4a), and the change orders its requests became. Optional, so a caller with none (a test, an older
+   * sample) passes none.
    */
   sows?: Row[]
+  sowLines?: Row[]
   backCharges?: Row[]
   changeRequests?: Row[]
   changeOrders?: Row[]
@@ -70,6 +72,8 @@ export interface TradePortalSlice {
    * so it reads a missing list as none.
    */
   sows?: SliceRow[]
+  /** The lines of its statements of work (P2c-ii): absent from a slice the function sent before P2c-ii was deployed. */
+  sowLines?: SliceRow[]
   backCharges?: SliceRow[]
   changeRequests?: SliceRow[]
   changeOrders?: SliceRow[]
@@ -97,8 +101,12 @@ export const TRADE_PORTAL_FIELDS = {
   questions: ['id', 'project_id', 'package_id', 'text', 'sheets', 'asked_on', 'answered_on', 'answer', 'in_set_id'],
   messages: ['id', 'project_id', 'kind', 'mail_group', 'lang', 'subject', 'lines', 'to_names', 'sent_on'],
   setSends: ['set_id', 'touched'],
-  // Its own number on its own work: never the leveled total or another company's.
-  sows: ['id', 'package_id', 'invite_id', 'status', 'price', 'retainage_pct', 'based_on_rev', 'sent_on', 'signed_on'],
+  // Its own number on its own work: never the leveled total or another company's. What it will not do (P2c-ii) is
+  // what its own quote left out. The signer's fields stay the server's.
+  sows: ['id', 'package_id', 'invite_id', 'status', 'price', 'retainage_pct', 'based_on_rev', 'sent_on', 'signed_on', 'excluded'],
+  // Its statement of work's lines (P2c-ii): each one's price on its own work, and the scope item it is, which the
+  // kernels' SovLine.id reads.
+  sowLines: ['id', 'sow_id', 'position', 'label', 'amount', 'scope_item_id'],
   // Every column but who in the office made or settled it.
   backCharges: ['id', 'project_id', 'package_id', 'company_id', 'sow_id', 'amount', 'reason', 'photo_url', 'sent_on', 'answer_by', 'status', 'answered_on', 'answer_note', 'settled_on', 'settled_note', 'taken_draw_id', 'taken_on', 'created_at'],
   changeRequests: ['id', 'project_id', 'package_id', 'company_id', 'sow_id', 'asked_on', 'description', 'reason', 'amount', 'days', 'file_url', 'change_order_id', 'turned_down_on', 'turned_down_note', 'created_at'],
@@ -181,17 +189,19 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Requ
 }
 
 /**
- * Its own work: the statements of work, charges and change requests that are this company's, on its trades,
- * and the change orders its requests became, as their part only. A statement of work that was cancelled is
+ * Its own work: the statements of work, charges and change requests that are this company's, on its trades, the
+ * lines of those statements of work, and the change orders its requests became, as their part only. A statement of work that was cancelled is
  * not one (main's `Sow` has no such status).
  */
-function ownWork(rows: TradePortalRows, companyId: string, packageIds: Set<string>): Required<Pick<TradePortalSlice, 'sows' | 'backCharges' | 'changeRequests' | 'changeOrders'>> {
+function ownWork(rows: TradePortalRows, companyId: string, packageIds: Set<string>): Required<Pick<TradePortalSlice, 'sows' | 'sowLines' | 'backCharges' | 'changeRequests' | 'changeOrders'>> {
   const own = (r: Row) => idOf(r, 'company_id') === companyId && packageIds.has(idOf(r, 'package_id'))
   const sows = (rows.sows ?? []).filter((s) => own(s) && s.status !== 'cancelled')
+  const sowIds = new Set(sows.map((s) => idOf(s)))
   const requests = (rows.changeRequests ?? []).filter(own)
   const orderIds = new Set(requests.map((r) => idOf(r, 'change_order_id')).filter(Boolean))
   return {
     sows: sows.map((s) => pick(s, TRADE_PORTAL_FIELDS.sows)),
+    sowLines: (rows.sowLines ?? []).filter((l) => sowIds.has(idOf(l, 'sow_id'))).map((l) => pick(l, TRADE_PORTAL_FIELDS.sowLines)),
     backCharges: (rows.backCharges ?? []).filter(own).map((c) => pick(c, TRADE_PORTAL_FIELDS.backCharges)),
     changeRequests: requests.map((r) => pick(r, TRADE_PORTAL_FIELDS.changeRequests)),
     changeOrders: (rows.changeOrders ?? []).filter((o) => orderIds.has(idOf(o))).map((o) => pick(o, TRADE_PORTAL_FIELDS.changeOrders)),

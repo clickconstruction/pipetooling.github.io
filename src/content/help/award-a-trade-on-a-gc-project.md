@@ -47,4 +47,8 @@ The statement of work shows under the trade on the project's card. The owner, th
 
 Press {{button:blue|Send to their portal to sign}}. The chip then reads {{chip:yellow|Statement of work waiting on their signature}}.
 
-The company signs it in their portal. The portal's sign screen comes in a later step.
+Tick **Email it now** first to tell the company by email too. The box starts unticked, so the send alone emails no one.
+
+The company signs it in their portal with **Sign the statement of work**. It can sign only after it signs our master agreement. The chip then reads {{chip:green|Statement of work signed}} with the day.
+
+[Share a trade partner its portal](/help/share-a-trade-partner-its-portal) shows what the company sees.

@@ -3,7 +3,7 @@ import { boardStateFromRows } from './boardRows'
 import { clinicBoardRows } from './boardTestRows'
 import { PAPER_EMAIL_WORDS, paperEmail, paperSendKey } from './paperEmail'
 import { paperStep } from './paperSend'
-import { pWeekday } from './portalI18n'
+import { pt, pWeekday } from './portalI18n'
 
 const state = boardStateFromRows(clinicBoardRows())
 const lonestar = state.partners.find((p) => p.id === 'lonestar')!
@@ -57,9 +57,17 @@ describe('the email a send from Documents writes', () => {
     ])
   })
 
-  it('writes no email for a statement of work while its sign screen is not live, nor for a waiver', () => {
+  it('reminds them of a statement of work since its sign screen is live (P2c-ii), and writes no email for a waiver', () => {
     const sow = { paper: 'sow' as const, docKey: 'sow-k1', mode: 'reminder' as const, verb: 'Remind them', title: '', sendLabel: '', dayWord: 'Sign by', history: '', promiseKind: 'sow' as const, what: '', projectId: 'p1', packageId: 'k1' }
-    expect(paperEmail(state, lonestar, sow, BY, '', 'en')).toBeNull()
+    const project = state.projects.find((p) => p.id === 'p1')!
+    const trade = project.packages.find((k) => k.id === 'k1')!.trade
+    expect(paperEmail(state, lonestar, sow, BY, '', 'en')).toEqual({
+      how: 'email',
+      kind: 'sow',
+      projectId: 'p1',
+      subject: `Reminder: ${pt('en', 'mSowSubject', { trade, project: project.name })}`,
+      lines: [`Your statement of work for ${trade} on ${project.name} is still waiting for your signature. Please sign it by ${pWeekday('en', BY)}.`, pt('en', 'mSowOpen')],
+    })
     expect(paperEmail(state, lonestar, { ...sow, paper: 'waiver', docKey: 'waivers-k1', promiseKind: 'closeout' }, BY, '', 'en')).toBeNull()
   })
 

@@ -35,7 +35,7 @@ describe('the statement of work’s email (the Board’s B6-a-ii)', () => {
     expect(sowEmailRequest(boardStateFromRows(awardedClinicBoardRows()), 'p1', 'k2', 'w1', 'en')).toBeNull()
   })
 
-  it('the box to email it stays hidden until the Portal’s sign screen is live (its P2c sets this)', () => {
-    expect(SOW_SIGN_SCREEN_LIVE).toBe(false)
+  it('the box to email it shows, since the Portal’s sign screen is live (P2c-ii)', () => {
+    expect(SOW_SIGN_SCREEN_LIVE).toBe(true)
   })
 })

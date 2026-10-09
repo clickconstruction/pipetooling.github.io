@@ -197,6 +197,10 @@ const S = {
   signSow: { en: 'Sign the statement of work', es: 'Firmar la orden de trabajo' },
   signMsaFirst: { en: 'Sign the master agreement first.', es: 'Primero firme el contrato maestro.' },
   signedOn: { en: 'signed {date}', es: 'firmado el {date}' },
+  // The sign form on a statement of work (P2c-ii): /contract/accept's form in the company's words.
+  sowSignLead: { en: 'By signing, you agree to do this work for this price, under our master agreement.', es: 'Al firmar, usted acepta hacer este trabajo por este precio, conforme a nuestro contrato maestro.' },
+  sowSignAgree: { en: 'I read this statement of work and I agree to it.', es: 'Leí esta orden de trabajo y estoy de acuerdo.' },
+  sowConsentNoun: { en: 'this statement of work', es: 'esta orden de trabajo' },
   reportTitle: { en: '{trade} · report your work and get paid', es: '{trade} · reporte su avance y cobre' },
   paidThrough: { en: 'paid through {pct}%', es: 'pagado hasta {pct}%' },
   percentAria: { en: 'Percent done, {line}', es: 'Porcentaje de avance, {line}' },
@@ -976,6 +980,9 @@ const S = {
   errNotAwarded: { en: 'You can ask for a change only on work you signed for.', es: 'Solo puede pedir un cambio en el trabajo que firmó.' },
   errNoteNeeded: { en: 'Say why you dispute it.', es: 'Diga por qué lo disputa.' },
   errDescriptionNeeded: { en: 'Say what changed.', es: 'Diga qué cambió.' },
+  errSowNotSent: { en: 'This statement of work is not ready to sign. Reload the page.', es: 'Esta orden de trabajo todavía no está lista para firmar. Vuelva a cargar la página.' },
+  errAlreadySigned: { en: 'This is signed already.', es: 'Esto ya está firmado.' },
+  errConsentNeeded: { en: 'Tick I agree to sign electronically, then sign.', es: 'Marque Acepto firmar electrónicamente y luego firme.' },
   previewNothing: { en: 'Preview. Nothing is saved from here.', es: 'Vista previa. Desde aquí no se guarda nada.' },
   quoteTickHelp: { en: 'Tick what your quote covers. Untick what it leaves out.', es: 'Marque lo que incluye su cotización. Desmarque lo que no incluye.' },
 } satisfies Record<string, Record<PortalLang, string>>

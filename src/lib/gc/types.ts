@@ -465,6 +465,8 @@ export interface Draw {
 }
 
 export interface Sow {
+  /** The row's id on main (`gc_sows.id`), which the trade's signature names (the Portal's P2c-ii). The prototype's had none. */
+  id?: string
   status: 'draft' | 'sent' | 'signed'
   price: number
   retainagePct: number

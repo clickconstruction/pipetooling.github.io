@@ -23,7 +23,7 @@ describe('the trade portal’s sample', () => {
       else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { keys.add(k); if (k !== 'lines' && k !== 'includes') walk(x) }
     }
     walk(slice)
-    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'note', 'mine'].includes(k))).toEqual([])
+    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'sowLines', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'note', 'mine'].includes(k))).toEqual([])
   })
 
   it('stays current: its days count from today', () => {
@@ -55,6 +55,14 @@ describe('the sample’s job (P4b-i)', () => {
   it('is awarded to the sample company and signed, so it can be charged and can ask for a change', () => {
     expect([pkg.awardedInviteId, pkg.sow?.status, pkg.sow?.price]).toEqual([SAMPLE_TRADE_IDS.jobAsk, 'signed', 48600])
     expect(portalCanAskChange(job, pkg, partnerId)).toBe(true)
+  })
+
+  it('carries its statement of work’s lines, which add up to its price (P2c-ii)', () => {
+    expect(pkg.sow?.sov.map((l) => [l.id, l.label, l.amount])).toEqual([
+      [SAMPLE_TRADE_IDS.jobLine1, 'Rough-in', 29160],
+      [SAMPLE_TRADE_IDS.jobLine2, 'Trim and fixtures', 19440],
+    ])
+    expect(pkg.sow?.sov.reduce((sum, l) => sum + l.amount, 0)).toBe(pkg.sow?.price)
   })
 
   it('shows one open charge with its photo, and one change with the customer at the company’s part only', () => {
