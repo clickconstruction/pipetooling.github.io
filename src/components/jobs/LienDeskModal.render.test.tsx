@@ -536,6 +536,34 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('button', { name: 'Hold' })).toBeTruthy()
   })
 
+  it('the leader’s FYI list in the title bar names what went on his word and what a GC’s standing rule sent, marked as the rule’s (v2.5028)', async () => {
+    const item = (id: string, job: string, over: Record<string, unknown>) =>
+      ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-06'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: '2026-09-14T15:00:00Z', approval_mode: 'rule', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, printed_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T15:00:00Z', voided_at: null, ...over }) as unknown as LienDeskItemRow
+    const rows = [...J650, row('j651', '2026-06', '2026-09-15'), row('j652', '2026-06', '2026-09-15'), row('j653', '2026-06', '2026-09-15')]
+    const items = [
+      item('w1', 'j650', { approval_mode: 'word', word_note: 'Malachi Whites, Sep 14', word_channel: 'phone' }),
+      item('r1', 'j651', { approval_mode: 'rule' }),
+      item('r2', 'j652', { approval_mode: 'rule', status: 'sent', sent_at: '2026-09-14T16:00:00Z' }),
+      // Printed and in the mail, its tracking not yet typed: still a send (the printed pile came after this list, v2.4119).
+      item('w2', 'j653', { approval_mode: 'word', word_note: 'Malachi Whites, Sep 14', word_channel: 'text', printed_at: '2026-09-14T16:30:00Z' }),
+    ]
+    const withJobs = () => {
+      const d = data(rows, items, true)
+      d.jobsById.j651 = { ...d.jobsById.j650!, id: 'j651', hcp_number: '651', job_name: 'Palomino Trail' }
+      d.jobsById.j652 = { ...d.jobsById.j650!, id: 'j652', hcp_number: '652', job_name: 'Quarry Bend' }
+      d.jobsById.j653 = { ...d.jobsById.j650!, id: 'j653', hcp_number: '653', job_name: 'Heron Ct' }
+      return d
+    }
+    const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={withJobs()} />)
+    await settle()
+    expect((document.querySelector('[data-lien-fyi]') as HTMLElement).textContent).toBe('Sent on your word: 650, 653 · by Loberg Contracting’s rule: 651, 652')
+    view.unmount()
+    // The office drafts and sends; the list is the leader's.
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="controller" data={withJobs()} />)
+    await settle()
+    expect(document.querySelector('[data-lien-fyi]')).toBeNull()
+  })
+
   it('the office sees an awaiting item as waiting on the leader, and nothing due reads calm', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="controller" data={data([])} />)
     await settle()

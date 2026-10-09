@@ -42,7 +42,7 @@ import {
   startLetterTwo,
   noteOwnerCall,
 } from '../../lib/jobs/lienDeskIo'
-import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { defaultWordNote, lienFyiStrip, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
@@ -1386,7 +1386,9 @@ export default function LienDeskModal({
     const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
     return { ...base, ownerName: rowOwner, months: months.length ? describeNoticeMonths(months) : null, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false, offer: lienOfferFromItem(e?.item) }
   }
-  const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
+  // The leader's FYI list (v2.5028): what reached Ready to send, the mail or Sent without his Approve — on his word, or by a
+  // GC's standing rule. In the mail counts: the printed pile (v2.4119) came after this list and had left it out.
+  const fyiSends = entries.filter((e) => (e.item?.approval_mode === 'word' || e.item?.approval_mode === 'rule') && (e.pile === 'ready' || e.pile === 'printed' || e.pile === 'sent'))
 
   // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4672).
   const PILE_HEAD_H = 30
@@ -3064,7 +3066,7 @@ export default function LienDeskModal({
             ) : null}
           </span>
           {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off All filings it holds only the leader's spoken-word line, or the door on a phone. */}
-          {paperShown || (leader && wordSent.length > 0) || (isMobile && ownerRecordsDoor) ? (
+          {paperShown || (leader && fyiSends.length > 0) || (isMobile && ownerRecordsDoor) ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
           {paperShown ? (
@@ -3149,9 +3151,15 @@ export default function LienDeskModal({
               ) : null}
             </div>
           ) : null}
-          {leader && wordSent.length > 0 ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
-              Sent on your word: {wordSent.map((e) => jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0]).join(', ')}
+          {leader && fyiSends.length > 0 ? (
+            <span data-lien-fyi style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word, and notices a GC’s standing rule sent without asking you">
+              {lienFyiStrip(
+                fyiSends.map((e) => ({
+                  jobLabel: jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0] ?? e.jobId,
+                  by: e.item?.approval_mode === 'rule' ? 'rule' : 'word',
+                  gcName: e.gcCustomerId ? data?.gcsById[e.gcCustomerId]?.name : null,
+                })),
+              )}
             </span>
           ) : null}
           {ownerRecordsUp ? null : ownerRecordsDoor}
