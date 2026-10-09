@@ -81,6 +81,47 @@ describe('GcCompareQuotes', () => {
     expect(screen.getByRole('button', { name: 'Carrying. Stop' })).toBeTruthy()
   })
 
+  it('once the job is won, awards a quote with who decided, and a company the gate stops says why', async () => {
+    const won = rows()
+    const state = boardStateFromRows({ ...won, projects: won.projects.map((p) => ({ ...p, stage: 'buyout' })) })
+    const w = { ...writes(), award: vi.fn(() => Promise.resolve()) }
+    render(<GcCompareQuotes state={state} projectId="p1" packageId="k1" writes={w} team={{ team: [{ id: 'u1', name: 'Rosa' }, { id: 'u2', name: 'Sam' }], me: 'u2' }} onClose={() => undefined} />)
+    const dialog = screen.getByRole('dialog', { name: 'Compare Sitework quotes' })
+    expect(within(dialog).queryByRole('button', { name: 'Carry this number' })).toBeNull()
+    const lonestar = dialog.querySelector('[data-gc-award="i1"]') as HTMLElement
+    const hillside = dialog.querySelector('[data-gc-award="i2"]') as HTMLElement
+    expect((within(hillside).getByRole('button', { name: 'Award and draft the statement of work' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(within(hillside).getByText(/^Hillside Excavation is not vetted yet\./)).toBeTruthy()
+    // The one pressing is named first; another estimator can be picked.
+    expect((within(lonestar).getByLabelText('Estimator') as HTMLSelectElement).value).toBe('u2')
+    fireEvent.change(within(lonestar).getByLabelText('Estimator'), { target: { value: 'u1' } })
+    fireEvent.click(within(lonestar).getByRole('button', { name: 'Award and draft the statement of work' }))
+    await waitFor(() => expect(w.award).toHaveBeenCalledWith('i1', 'u1'))
+  })
+
+  it('reads Awarded on the quote awarded, and holds the other quotes’ Award', () => {
+    const won = rows()
+    const awarded = boardStateFromRows({
+      ...won,
+      projects: won.projects.map((p) => ({ ...p, stage: 'buyout', trades: p.trades.map((t) => (t.id === 'k1' ? { ...t, awardedInviteId: 'i1', awardedOn: '2026-10-08' } : t)) })),
+    })
+    const { dialog } = open(awarded, { ...writes(), award: vi.fn(() => Promise.resolve()) })
+    expect(within(dialog.querySelector('[data-gc-award="i1"]') as HTMLElement).getByText('Awarded')).toBeTruthy()
+    expect((within(dialog.querySelector('[data-gc-award="i2"]') as HTMLElement).getByRole('button', { name: 'Award and draft the statement of work' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('offers no Award while we bid, nor to a reader who cannot award', () => {
+    const { dialog } = open(boardStateFromRows(rows()), { ...writes(), award: vi.fn(() => Promise.resolve()) })
+    expect(within(dialog).queryByRole('button', { name: 'Award and draft the statement of work' })).toBeNull()
+    expect(within(dialog).getAllByRole('button', { name: 'Carry this number' }).length).toBe(2)
+  })
+
+  it('offers no Award to a reader without the award write, even once the job is won', () => {
+    const won = rows()
+    const { dialog } = open(boardStateFromRows({ ...won, projects: won.projects.map((p) => ({ ...p, stage: 'buyout' })) }))
+    expect(within(dialog).queryByRole('button', { name: 'Award and draft the statement of work' })).toBeNull()
+  })
+
   it('offers no carry on a lost bid', () => {
     const lost = rows()
     open(boardStateFromRows({ ...lost, projects: lost.projects.map((p) => ({ ...p, lostOn: '2026-10-07' })) }))

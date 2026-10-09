@@ -23,17 +23,10 @@ export interface GcProjectRows {
     property_owner_customer_id: string | null
     architect_customer_id: string | null
     project_manager_user_id: string | null
-    /**
-     * Our number's three inputs moved to `gc_project_money` (B5, v2.4923), which only the money team reads.
-     * Nothing reads these columns since B5-c (v2.4930); B6-a drops them.
-     */
-    general_conditions?: number | string
-    contingency_pct?: number | string
-    fee_pct?: number | string
     drive_folder_url: string
     lost_on: string | null
   }
-  packages: { id: string; trade: string; position: number; budget: number | string; ours: boolean; own_bid_id: string | null; carried_invite_id?: string | null; carry_budget?: boolean }[]
+  packages: { id: string; trade: string; position: number; budget: number | string; ours: boolean; own_bid_id: string | null; carried_invite_id?: string | null; carry_budget?: boolean; awarded_invite_id?: string | null; awarded_by?: string | null; awarded_on?: string | null }[]
   scopeItems: { id: string; package_id: string; position: number; label: string; sheets: string[] | null; specs: string[] | null; added_in_set_id: string | null }[]
   exclusions: { id: string; package_id: string; position: number; label: string; by: string }[]
   sets: { id: string; rev: number; label: string; kind: string; issued_on: string; note: string; checked_by_user_id: string | null; drive_url: string; drive_access: string | null; drive_checked_on: string | null }[]
@@ -75,6 +68,10 @@ export interface GcTradeView {
   /** The quote we carry as this trade's number (the Board's B5), or our budget. Unset or null and false: nothing carried yet. */
   carriedInviteId?: string | null
   carryBudget?: boolean
+  /** The ask awarded the trade (the Board's B6-a), who decided and the day. Unset or null: not awarded. */
+  awardedInviteId?: string | null
+  awardedBy?: string | null
+  awardedOn?: string | null
   scope: { id: string; label: string; sheets: string[] | null; specs: string[] | null; addedInSetId: string | null }[]
   excludes: ScopeExclusion[]
 }
@@ -231,6 +228,9 @@ export function gcProjectFromRows(rows: GcProjectRows): GcProjectView {
       ownBidId: p.own_bid_id,
       carriedInviteId: p.carried_invite_id ?? null,
       carryBudget: p.carry_budget ?? false,
+      awardedInviteId: p.awarded_invite_id ?? null,
+      awardedBy: p.awarded_by ?? null,
+      awardedOn: p.awarded_on ?? null,
       scope: rows.scopeItems
         .filter((x) => x.package_id === p.id)
         .sort((a, b) => a.position - b.position)

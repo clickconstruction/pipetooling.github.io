@@ -66,6 +66,7 @@ import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTra
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
+import { GcTradeSow, type SowWrites } from '../components/gc/GcTradeSow'
 import { GcBidTabs } from '../components/gc/GcBidTabs'
 import { GcOurNumber } from '../components/gc/GcOurNumber'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
@@ -79,6 +80,7 @@ import { setEmailSummary, type SetEmailCompany, type SetEmailInvite, type SetEma
 import {
   addGcCompany,
   askGcCompanies,
+  awardGcTrade,
   bringGcBack,
   carryGcTrade,
   answerChangeOrder,
@@ -134,7 +136,10 @@ import {
   recordGcPromise,
   sendOwnerPayApp,
   setOwnerRetainage,
+  sendGcSow,
 } from '../lib/gc/gcIo'
+import { sowEmailRequest } from '../lib/gc/sowEmail'
+import { gcTradeEmailRefusal } from '../lib/gc/tradeEmail'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
 import { scopeGaps } from '../lib/gc/plans'
@@ -300,6 +305,33 @@ export default function GcProjects() {
     carry: async (packageId, carry) => {
       await carryGcTrade(packageId, carry)
       await reloadProjects()
+    },
+    // Award (B6-a-ii): a dev's only while the Board is built, as `gc_award` says. It writes the trade, so the projects reload.
+    ...(role === 'dev'
+      ? {
+          award: async (inviteId: string, estimatorId: string | null) => {
+            await awardGcTrade(inviteId, estimatorId)
+            await reloadProjects()
+          },
+        }
+      : {}),
+  }
+  // A trade's statement of work (B6-a-ii): Send marks it sent, and emails it when asked (the box shows once the
+  // Portal's sign screen is live). A refused email is said after the board reads the send.
+  const sowWrites: SowWrites = {
+    send: async (packageId, email) => {
+      const sowId = await sendGcSow(packageId, today)
+      let refused: string | null = null
+      if (email && canSendGcTradeEmail(role) && board) {
+        const project = board.projects.find((p) => p.packages.some((k) => k.id === packageId))
+        const pkg = project?.packages.find((k) => k.id === packageId)
+        const companyId = pkg?.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId
+        const req = project && companyId ? sowEmailRequest(board, project.id, packageId, sowId, langs[companyId] ?? 'en') : null
+        const answer = req ? await sendGcTradeEmail(req) : null
+        if (answer && !answer.ok) refused = `Sent to their portal. The email did not go: ${gcTradeEmailRefusal(answer.key)}`
+      }
+      await refreshBoard()
+      if (refused) throw new Error(refused)
     },
   }
   // Our number (the Board's B5-c), opened on a project's card for the money team; its inputs reload the board.
@@ -1040,6 +1072,8 @@ export default function GcProjects() {
                       </li>
                     ))}
                   </ul>
+                  {/* The trade's statement of work once it is awarded (B6-a-ii): only a dev reads one while the Board is built. */}
+                  {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canEmail={canSendGcTradeEmail(role)} />}
                   {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
                   {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
                 </div>
@@ -1088,7 +1122,15 @@ export default function GcProjects() {
         />
       )}
       {comparing && board && (
-        <GcCompareQuotes key={comparing.packageId} state={board} projectId={comparing.projectId} packageId={comparing.packageId} writes={compareWrites} onClose={() => setComparing(null)} />
+        <GcCompareQuotes
+          key={comparing.packageId}
+          state={board}
+          projectId={comparing.projectId}
+          packageId={comparing.packageId}
+          writes={compareWrites}
+          team={{ team: loaded?.team ?? [], me: user?.id ?? null }}
+          onClose={() => setComparing(null)}
+        />
       )}
       {asking && board && (
         <GcAskCompanies

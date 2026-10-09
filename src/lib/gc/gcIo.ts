@@ -389,7 +389,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const packageIds = projects.flatMap((p) => p.trades.map((t) => t.id))
   const named = [...new Set(projects.flatMap((p) => [p.customerId, p.architectId]).filter((id): id is string => Boolean(id)))]
   const none = Promise.resolve({ data: [], error: null })
-  const [dates, customers, companies, invites, promises] = await Promise.all([
+  const [dates, customers, companies, invites, promises, sows] = await Promise.all([
     ids.length
       ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, lost_why, won_by').in('project_id', ids)
       : none,
@@ -400,16 +400,29 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
       .order('name'),
     packageIds.length ? supabase.from('gc_invites').select('*').in('package_id', packageIds) : none,
     supabase.from('gc_trade_promises').select('*'),
+    // The statements of work (B6-a): dev only while the Board is built, so anyone else reads none.
+    packageIds.length
+      ? supabase
+          .from('gc_sows')
+          .select('id, package_id, status, price, retainage_pct, based_on_rev, their_sov, excluded, sent_on, signed_on, accepted_on')
+          .in('package_id', packageIds)
+      : none,
   ])
   const dateRows = taken(dates, 'load the board’s dates')
   const inviteRows = taken(invites, 'load the asks')
   const promiseRows = taken(promises, 'load the promises')
   const companyRows = taken(companies, 'load the trade partners')
+  const sowRows = taken(sows, 'load the statements of work')
   const inviteIds = inviteRows.map((i) => i.id)
   const promiseIds = promiseRows.map((p) => p.id)
-  const deciders = [...new Set(companyRows.map((c) => c.vetting_decided_by).filter((id): id is string => Boolean(id)))]
+  const deciders = [
+    ...new Set(
+      [...companyRows.map((c) => c.vetting_decided_by), ...projects.flatMap((p) => p.trades.map((t) => t.awardedBy))].filter((id): id is string => Boolean(id)),
+    ),
+  ]
   const waiting = companyRows.filter((c) => c.vetting_status === 'new').map((c) => c.id)
-  const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews] = await Promise.all([
+  const sowIds = sowRows.map((s) => s.id)
+  const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews, sowLines] = await Promise.all([
     inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
     supabase.from('gc_company_contacts').select('*'),
     promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
@@ -423,6 +436,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     // The bid tabs shared, and who opened each (B5-d).
     packageIds.length ? supabase.from('gc_bid_tabs').select('package_id, shared_on, show_names').in('package_id', packageIds) : none,
     packageIds.length ? supabase.from('gc_bid_tab_views').select('package_id, company_id, seen_on').in('package_id', packageIds) : none,
+    // Each statement of work's lines (B6-a).
+    sowIds.length ? supabase.from('gc_sow_lines').select('id, sow_id, position, label, amount, scope_item_id, change_order_id').in('sow_id', sowIds) : none,
   ])
   return {
     today,
@@ -442,6 +457,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     moneyShown: money,
     bidTabs: taken(tabs, 'load the bid tabs'),
     bidTabViews: taken(tabViews, 'load who opened the bid tabs'),
+    sows: sowRows as BoardRows['sows'],
+    sowLines: taken(sowLines, 'load the statements of work’s lines') as BoardRows['sowLines'],
   }
 }
 
@@ -783,6 +800,29 @@ export async function setGcAskTakenAlternates(inviteId: string, taken_alternates
 export async function carryGcTrade(packageId: string, carry: { inviteId: string } | 'budget' | null): Promise<void> {
   const row = carry === 'budget' ? { carried_invite_id: null, carry_budget: true } : { carried_invite_id: carry?.inviteId ?? null, carry_budget: false }
   taken(await supabase.from('gc_trade_packages').update(row).eq('id', packageId).select('id').single(), 'save what we carry')
+}
+
+/**
+ * Award a trade to one ask's quote (the Board's B6-a-ii, on B6-a's `gc_award`): the database re-checks the gate in
+ * `canAward`'s words, writes the award and drafts the statement of work. Its id. The estimator is who decided; unset,
+ * the one pressing.
+ */
+export async function awardGcTrade(inviteId: string, estimatorId: string | null): Promise<string> {
+  return taken(await supabase.rpc('gc_award', { p_invite_id: inviteId, ...(estimatorId ? { p_estimator: estimatorId } : {}) }), 'award the trade')
+}
+
+/**
+ * Send a trade's drafted statement of work to its portal to sign (B6-a-ii): draft to sent with the company's day, a
+ * plain update under the dev policy, found by its trade (one a trade). Its id, for the email's key.
+ */
+export async function sendGcSow(packageId: string, today: string): Promise<string> {
+  const rows = taken(
+    await supabase.from('gc_sows').update({ status: 'sent', sent_on: today }).eq('package_id', packageId).eq('status', 'draft').select('id'),
+    'send the statement of work',
+  )
+  const id = rows[0]?.id
+  if (!id) throw new Error('That statement of work is not a draft any more. Read the board again.')
+  return id
 }
 
 // ---------------------------------------------------------------------------------------------

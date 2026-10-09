@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { proposalTotals, packageCoverage } from './bids'
+import { carriedAmount, proposalTotals, packageCoverage } from './bids'
 import { boardStateFromRows, stageOf } from './boardRows'
-import { clinicBoardRows as rows } from './boardTestRows'
+import { awardedClinicBoardRows, clinicBoardRows as rows } from './boardTestRows'
 import { followUps, wordRecord } from './followUp'
 import { travelFor } from './map'
 import { priceStanding } from './priceStanding'
@@ -122,6 +122,51 @@ describe('the board read from its rows', () => {
     expect([sitework!.carried, concrete!.carried, plumbing!.carried]).toEqual(['i1', 'plug', 'self'])
     expect(sitework!.invites[0]!.bid?.exclusionsAnswered).toEqual(['Dewatering'])
     expect(boardStateFromRows(base).projects[0]!.packages[0]!.carried).toBeNull()
+  })
+
+  it('an award carries its ask, who decided and the day, and the statement of work reads back as gc_award drafts it', () => {
+    // The bed's Lonestar award (supabase/tests/gc_award): 66,500 all in, split 33,200 and 33,300.
+    const awarded = awardedClinicBoardRows()
+    const sitework = boardStateFromRows(awarded).projects[0]!.packages[0]!
+    // The award carries its ask, over what was carried while we bid (the prototype's award does the same).
+    expect([sitework.carried, sitework.awardedInviteId, sitework.awardedBy, sitework.awardedOn]).toEqual(['i1', 'i1', 'Rosa', '2026-10-08'])
+    expect(sitework.sow).toEqual({
+      status: 'sent',
+      price: 66500,
+      retainagePct: 10,
+      basedOnRev: 0,
+      sov: [
+        { id: 's1', label: 'Clearing and grading', amount: 33200, pctReported: 0, pctBilled: 0 },
+        { id: 's2', label: 'Paving', amount: 33300, pctReported: 0, pctBilled: 0 },
+      ],
+      signedOn: null,
+      draws: [],
+      sentOn: '2026-10-09',
+      theirSov: [
+        { label: 'Mobilize', amount: 5000 },
+        { label: 'Grading', amount: 47000 },
+      ],
+      excluded: [
+        { name: 'Dewatering', by: null },
+        { name: 'Rock', by: null, unitPrice: { amount: 38, unit: 'cy' } },
+      ],
+    })
+    // What the trade carries is now the statement of work's price.
+    expect(carriedAmount(sitework)).toBe(66500)
+  })
+
+  it('a cancelled statement of work reads as none, and a trade not awarded has none', () => {
+    const sow = { id: 'w1', package_id: 'k1', status: 'cancelled', price: 1, retainage_pct: 10, based_on_rev: 0, their_sov: null, excluded: null, sent_on: null, signed_on: null, accepted_on: null }
+    const [sitework, concrete] = boardStateFromRows(rows({ sows: [sow] })).projects[0]!.packages
+    expect([sitework!.sow, sitework!.awardedInviteId, concrete!.sow]).toEqual([null, null, null])
+    // A change order's line keeps its own id, since it has no scope item.
+    const signed = boardStateFromRows(
+      rows({
+        sows: [{ ...sow, status: 'signed', signed_on: '2026-10-12' }],
+        sowLines: [{ id: 'l9', sow_id: 'w1', position: 0, label: 'Change order 1', amount: 1, scope_item_id: null, change_order_id: 'co1' }],
+      }),
+    ).projects[0]!.packages[0]!.sow
+    expect([signed?.status, signed?.signedOn, signed?.sov[0]]).toEqual(['signed', '2026-10-12', { id: 'l9', label: 'Change order 1', amount: 1, pctReported: 0, pctBilled: 0, changeOrderId: 'co1' }])
   })
 
   it('a promise with the day it moved from', () => {
