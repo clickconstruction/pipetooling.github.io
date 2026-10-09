@@ -788,7 +788,7 @@ const response = await supabase.functions.invoke('login-as-user', {
 
 ### dev-login
 
-**Purpose**: Password-free sign-in when running in development mode. No existing auth required. Used for local testing (e.g. checklist, E2E) without credentials. **Frontend identity is fixed (v2.1517)**: `src/pages/DevLogin.tsx` always sends `robert@douglasmining.com` (`DEV_LOGIN_EMAIL` constant) — the `?as=` value and the old email input no longer pick the account; `as`'s presence just triggers the auto-login. The function itself still accepts any existing user's email if invoked directly with the secret.
+**Purpose**: Password-free sign-in when running in development mode. No existing auth required. Used for local testing (e.g. checklist, E2E) without credentials. **Frontend identity is fixed (v2.1517)**: `src/pages/DevLogin.tsx` always sends `robert@douglasmining.com` (`DEV_LOGIN_EMAIL` constant) — the `?as=` value and the old email input no longer pick the account; `as`'s presence just triggers the auto-login, but for `?as=twin:<role>[:<n>]`, which signs in as that twin's account (v2.2426, `twinAliasEmail`). It signs in once per URL (v2.4993, `signedInFor`): StrictMode's second run minted a second link, which cancelled the first. The function itself still accepts any existing user's email if invoked directly with the secret.
 
 **Endpoint**: `POST /functions/v1/dev-login`
 
@@ -1516,7 +1516,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### submit-sub-portal
 
-> **v2.5042 — redeploy after merge**: each dispatch note now calls [`notify-dispatch-request`](#notify-dispatch-request) as an internal caller, with the service-role key as its bearer, through [`_shared/internalFunctionCall.ts`](../supabase/functions/_shared/internalFunctionCall.ts). The notes are availability, a day off under a pick, work done, a progress note, a declined offer and a signed order.
+> **v2.5042 — redeploy after merge**: each dispatch note now calls [`notify-dispatch-request`](#notify-dispatch-request) as an internal caller, with the service-role key as its bearer, through [`_shared/internalFunctionCall.ts`](../supabase/functions/_shared/internalFunctionCall.ts). The notes are availability, a day off under a pick, work done, a progress note, a declined offer, a signed order, picked or moved dates (`sub_dates_picked`) and a can't-do-these-dates ask (`sub_dates_askback`).
 > - Before, the call carried no `Authorization` header, so the notifier answered 401 and no phone heard a sub's note. The inbox row was always written.
 > - A non-2xx answer is now logged as `notify-dispatch-request refused <status> <body>`.
 > - Handler test: `src/lib/subs/subPortalDispatchNotify.run.test.ts`.

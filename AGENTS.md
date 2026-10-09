@@ -15,8 +15,8 @@
 **Need an authenticated session to run, test, or verify the app? Do not stop at the email/password screen.** Local dev has a built-in login:
 
 1. Start the app: `npm run dev` (use the port Vite prints — usually `5173`; any port works, so parallel sessions run on 5174/5177/…).
-2. Open `http://localhost:<port>/dev-login?as=1&to=/<path>` — e.g. `http://localhost:5173/dev-login?as=1&to=/settings`. It fires on page load: mints a magic link via the `dev-login` Edge Function, verifies the token on the current origin, and lands on `to=` (default `/dashboard`).
-3. The identity is fixed: dev login **always signs in as `robert@douglasmining.com`** (`as=` only triggers it). That is a **prod account on prod data** — verify read-only unless the task is a write.
+2. Open `http://localhost:<port>/dev-login?as=1&to=/<path>` — e.g. `http://localhost:5173/dev-login?as=1&to=/settings`. It fires on page load, once per URL: mints a magic link via the `dev-login` Edge Function, verifies the token on the current origin, and lands on `to=` (default `/dashboard`).
+3. The identity is fixed: dev login **always signs in as `robert@douglasmining.com`** (`as=` only triggers it; `as=twin:<role>[:<n>]` signs in as that twin instead). That is a **prod account on prod data** — verify read-only unless the task is a write.
 
 **Requirements:** `VITE_DEV_LOGIN_SECRET` in `.env.local` + server-side `DEV_LOGIN_SECRET`. **Safety:** gated on `import.meta.env.DEV`; production builds redirect `/dev-login` → sign-in. Details: [`docs/EDGE_FUNCTIONS.md`](./docs/EDGE_FUNCTIONS.md) → dev-login · [`src/pages/DevLogin.tsx`](./src/pages/DevLogin.tsx) · [`supabase/functions/dev-login/index.ts`](./supabase/functions/dev-login/index.ts).
 
