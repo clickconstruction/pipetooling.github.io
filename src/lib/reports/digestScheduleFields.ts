@@ -8,8 +8,8 @@ import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /** Matches Edge + DB constraint on `activity_scope`. */
 export type ActivityScope = 'calendar_yesterday' | 'calendar_today' | 'calendar_week' | 'calendar_last_week'
-/** Matches Edge + DB constraint on `crew_filter`. */
-export type CrewFilter = 'all_users' | 'my_team'
+/** Matches Edge + DB constraint on `crew_filter` (the team filter was retired in v2.4981). */
+export type CrewFilter = 'all_users'
 
 export const ACTIVITY_SCOPE_UI: readonly { value: ActivityScope; label: string }[] = [
   { value: 'calendar_yesterday', label: 'Jobs yesterday' },
@@ -18,17 +18,8 @@ export const ACTIVITY_SCOPE_UI: readonly { value: ActivityScope; label: string }
   { value: 'calendar_last_week', label: 'Jobs last week (Sun–Sat)' },
 ] as const
 
-export const CREW_FILTER_UI: readonly { value: CrewFilter; label: string }[] = [
-  { value: 'all_users', label: 'All users' },
-  { value: 'my_team', label: 'My team (people you lead)' },
-] as const
-
 export function parseActivityScope(v: unknown): ActivityScope {
   return v === 'calendar_yesterday' || v === 'calendar_today' || v === 'calendar_week' || v === 'calendar_last_week' ? v : 'calendar_yesterday'
-}
-
-export function parseCrewFilter(v: unknown): CrewFilter {
-  return v === 'all_users' || v === 'my_team' ? v : 'all_users'
 }
 
 /** `time` HH:MM (15-minute step expected) → Postgres `HH:MM:SS`. */

@@ -34,7 +34,7 @@ export type PersonKeyPersonRow = {
 export type PersonGap =
   /** No `people` row: HR file, portal, compliance docs, work orders and employment dates cannot exist. */
   | 'no_roster_row'
-  /** No `users` row: sessions, schedule, team lead, vehicle, housing, write-ups cannot exist. */
+  /** No `users` row: sessions, schedule, vehicle, housing, write-ups cannot exist. */
   | 'no_login'
   /** A roster row shares the account's email but `account_user_id` is null — two identities until linked. */
   | 'unlinked_email_match'
@@ -142,12 +142,12 @@ export function describePersonGap(
         ? {
             label: 'No login',
             action: 'Ask a dev to invite',
-            detail: 'Without an account there are no clock sessions, schedule, team lead, vehicle or housing. Only a dev can send the invite.',
+            detail: 'Without an account there are no clock sessions, schedule, vehicle or housing. Only a dev can send the invite.',
           }
         : {
             label: 'No login',
             action: 'Invite as user',
-            detail: 'Without an account there are no clock sessions, schedule, team lead, vehicle or housing. Invite from the Users row.',
+            detail: 'Without an account there are no clock sessions, schedule, vehicle or housing. Invite from the Users row.',
           }
     case 'unlinked_email_match':
       return {

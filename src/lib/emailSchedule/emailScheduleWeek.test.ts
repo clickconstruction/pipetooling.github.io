@@ -181,8 +181,8 @@ describe('field report emails (v2.3472)', () => {
       ],
     })
     expect(subs.reportEmails).toEqual([
-      { enabled: true, autoSend: false, allAuthors: false, authors: ['Darren', 'Paige'], teamLeads: [] },
-      { enabled: false, autoSend: true, allAuthors: true, authors: [], teamLeads: [] },
+      { enabled: true, autoSend: false, allAuthors: false, authors: ['Darren', 'Paige'] },
+      { enabled: false, autoSend: true, allAuthors: true, authors: [] },
     ])
   })
 
@@ -192,51 +192,28 @@ describe('field report emails (v2.3472)', () => {
   })
 
   it('describes a subscription', () => {
-    expect(describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: true, authors: [], teamLeads: [] })).toBe(
+    expect(describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: true, authors: [] })).toBe(
       'every report anyone files',
     )
     expect(
-      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren'], teamLeads: [] }),
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren'] }),
     ).toBe('reports from Darren')
     expect(
-      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren', 'Paige'], teamLeads: [] }),
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: ['Darren', 'Paige'] }),
     ).toBe('reports from Darren and Paige')
     expect(
       describeReportEmailSubscription({
         enabled: true,
         autoSend: true,
-        allAuthors: false, authors: ['A', 'B', 'C', 'D', 'E'], teamLeads: [],
+        allAuthors: false, authors: ['A', 'B', 'C', 'D', 'E'],
       }),
     ).toBe('reports from A, B, C and 2 more')
     expect(
-      describeReportEmailSubscription({ enabled: false, autoSend: false, allAuthors: true, authors: [], teamLeads: [] }),
+      describeReportEmailSubscription({ enabled: false, autoSend: false, allAuthors: true, authors: [] }),
     ).toBe('every report anyone files · sent on demand only · paused')
     expect(
-      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: [], teamLeads: [] }),
+      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: [] }),
     ).toBe('reports from nobody yet')
-  })
-
-  it('describes team leads (v2.3480)', () => {
-    expect(
-      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: [], teamLeads: ['Todd'] }),
-    ).toBe('reports from everyone Todd leads')
-    expect(
-      describeReportEmailSubscription({ enabled: true, autoSend: true, allAuthors: false, authors: [], teamLeads: ['Todd', 'Sam'] }),
-    ).toBe('reports from everyone Todd and Sam lead')
-    expect(
-      describeReportEmailSubscription({
-        enabled: true,
-        autoSend: true,
-        allAuthors: false,
-        authors: ['Darren', 'Paige'],
-        teamLeads: ['Todd'],
-      }),
-    ).toBe('reports from Darren and Paige, and everyone Todd leads')
-    const subs = normalizeMyEmailSubscriptions({
-      events: { paid_in_full: false, payment_received: false },
-      report_emails: [{ enabled: true, auto_send: true, all_authors: false, authors: [], team_leads: ['Todd', ''] }],
-    })
-    expect(subs.reportEmails[0]?.teamLeads).toEqual(['Todd'])
   })
 })
 
@@ -250,8 +227,8 @@ describe('digest descriptions (v2.3472)', () => {
   })
 
   it('describes the recipient scope, tolerating a pre-v2.3472 payload with no crew_filter', () => {
-    expect(describeDigestScope({ activity_scope: 'calendar_yesterday', crew_filter: 'my_team', include_costs: true })).toBe(
-      'jobs yesterday · my team · with costs',
+    expect(describeDigestScope({ activity_scope: 'calendar_yesterday', crew_filter: 'all_users', include_costs: true })).toBe(
+      'jobs yesterday · all users · with costs',
     )
     expect(describeDigestScope({ activity_scope: 'calendar_last_week', crew_filter: 'all_users', include_costs: false })).toBe(
       'jobs last week · all users',
@@ -270,9 +247,9 @@ describe('digest descriptions (v2.3472)', () => {
         timezone: APP_CALENDAR_TZ,
         include_costs: false,
         activity_scope: 'calendar_yesterday',
-        crew_filter: 'my_team',
+        crew_filter: 'all_users',
       }),
-    ).toBe('Daily recap — Mon–Fri · 7:00 AM · jobs yesterday · my team')
+    ).toBe('Daily recap — Mon–Fri · 7:00 AM · jobs yesterday · all users')
     expect(
       describeDigestSchedule({
         name: 'Week wrap',

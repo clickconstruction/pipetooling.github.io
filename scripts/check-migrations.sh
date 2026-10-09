@@ -14,6 +14,8 @@
 #      dropped that day (20260714200000), but the baseline's function bodies
 #      still carry it, and a body borrowed from the baseline compiles fine and
 #      raises "function does not exist" on first call (v2.1400, v2.2672, v2.3812).
+#   5. Migrations versioned after 20261009190000 must not name the dropped Team leads
+#      list, its tables or helpers outside a comment (the same gotcha as 4, v2.4981).
 #
 # It does NOT check remote drift (that needs the linked access token). For that,
 # run `supabase migration list` locally; see AGENTS.md "Migration history drift".
@@ -75,6 +77,24 @@ done
 if [ -n "${helper_refs//[$'\n']/}" ]; then
   echo "::error::$DROPPED_HELPER() was dropped by $DROPPED_HELPER_VERSION; a body that names it compiles but fails on first call. Gate on is_dev() OR is_pay_approved_master() OR is_assistant() instead (never copy a baseline function body's role gate). Offenders:"
   printf '%s' "$helper_refs" | sed 's/^/  /'
+  fail=1
+fi
+
+# 5. The Team leads list, dropped by 20261009190000 (v2.4981): the same gotcha as 4. Older
+#    bodies of the clock-session RPCs, merge_user_accounts and the schedule RPCs name it.
+TEAM_LEADS_DROPPED_VERSION="20261009190000"
+TEAM_LEADS_NAMES='is_team_lead_for_member|is_team_lead_for_person_name|can_manage_team_leader_assignments|list_report_email_team_leads|team_leader_assignments|team_leader_clock_notify_prefs|report_email_subscription_team_leads'
+team_refs=""
+for f in $names; do
+  ver="${f%%_*}"
+  [ "$ver" \> "$TEAM_LEADS_DROPPED_VERSION" ] || continue
+  if sed 's/--.*$//' "$MIG_DIR/$f" | grep -qE "$TEAM_LEADS_NAMES"; then
+    team_refs="$team_refs$f"$'\n'
+  fi
+done
+if [ -n "${team_refs//[$'\n']/}" ]; then
+  echo "::error::The Team leads list and its helpers were dropped by $TEAM_LEADS_DROPPED_VERSION; a body that names them compiles but fails on first call. Start from the live body (pg_get_functiondef), not an older migration's. Offenders:"
+  printf '%s' "$team_refs" | sed 's/^/  /'
   fail=1
 fi
 

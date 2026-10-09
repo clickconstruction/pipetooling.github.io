@@ -4,7 +4,7 @@
  * Two streams, one question: *who gets report email, and what?* A **digest** is a slice of a
  * `recurring_job_report_schedules` row per recipient (`recurring_job_report_schedule_recipients`:
  * scope · crew filter · costs); **every report** is a `report_email_subscriptions` row (an app
- * user or an outside address; all authors, or named authors and team leads). This kernel folds
+ * user or an outside address; all authors, or named authors). This kernel folds
  * both into one row per person, sorted by name, so the modal can show the answer as a table
  * and open one editor per person. An outside address is its own row with no digest cell —
  * the digest recipient is a user FK.
@@ -15,7 +15,7 @@
  */
 import { describeDigestScope, describeReportEmailSubscription } from '../emailSchedule/emailScheduleWeek'
 import { normalizeEmail, type SubscriptionWithAuthors } from '../reportEmailSubscriptions'
-import { parseActivityScope, parseCrewFilter, type ActivityScope, type CrewFilter } from './digestScheduleFields'
+import { parseActivityScope, type ActivityScope, type CrewFilter } from './digestScheduleFields'
 
 export type RosterUser = { id: string; name: string | null; email: string | null }
 export type ScheduleLite = { id: string; name: string }
@@ -41,7 +41,7 @@ export type PersonDigest = {
 
 export type PersonEveryReport = {
   subscriptionId: string
-  /** "every report anyone files", "reports from Darren, and everyone Abraham leads · paused" */
+  /** "every report anyone files", "reports from Darren and Paige · paused" */
   text: string
   enabled: boolean
 }
@@ -75,8 +75,6 @@ export function buildEmailReportPeople(input: {
   schedules: readonly ScheduleLite[]
   digestRecipients: readonly DigestRecipientRow[]
   subscriptions: readonly SubscriptionWithAuthors[]
-  /** Team-lead names by user id (the roster covers most; the RPC's list is the fallback). */
-  teamLeadNames?: ReadonlyMap<string, string>
 }): EmailReportPerson[] {
   const userById = new Map(input.roster.map((u) => [u.id, u]))
   const scheduleById = new Map(input.schedules.map((s) => [s.id, s]))
@@ -103,7 +101,7 @@ export function buildEmailReportPeople(input: {
       scheduleName: s.name,
       text: describeDigestScope({ activity_scope: r.activity_scope, crew_filter: r.crew_filter, include_costs: r.include_costs }),
       activityScope: parseActivityScope(r.activity_scope),
-      crewFilter: parseCrewFilter(r.crew_filter),
+      crewFilter: 'all_users',
       includeCosts: r.include_costs === true,
     })
   }
@@ -124,10 +122,9 @@ export function buildEmailReportPeople(input: {
       p = q
     }
     const authors = s.authorUserIds.map((id) => nameOf(userById.get(id), 'someone'))
-    const teamLeads = s.teamLeadUserIds.map((id) => (input.teamLeadNames?.get(id) ?? '').trim() || nameOf(userById.get(id), 'a team lead'))
     p.everyReport = {
       subscriptionId: sub.id,
-      text: describeReportEmailSubscription({ enabled: sub.enabled, autoSend: sub.auto_send, allAuthors: sub.all_authors, authors, teamLeads }),
+      text: describeReportEmailSubscription({ enabled: sub.enabled, autoSend: sub.auto_send, allAuthors: sub.all_authors, authors }),
       enabled: sub.enabled,
     }
   }

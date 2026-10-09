@@ -24,7 +24,8 @@ export type ActivityScopeMode =
   | 'calendar_week'
   | 'calendar_last_week'
 
-export type CrewFilterMode = 'all_users' | 'my_team'
+/** 'my_team' (the people the recipient led) went with the Team leads list in v2.4981. */
+export type CrewFilterMode = 'all_users'
 
 export interface ReportingWindowUtc {
   windowStartUtc: string
@@ -175,23 +176,6 @@ export async function getReportingWindowForActivityScope(
   return null
 }
 
-async function crewUserIdsForFilter(
-  admin: SupabaseClient,
-  recipientUserId: string,
-  crewFilter: CrewFilterMode,
-): Promise<string[] | null> {
-  if (crewFilter === 'all_users') return null
-  const { data } = await admin
-    .from('team_leader_assignments')
-    .select('member_user_id')
-    .eq('leader_user_id', recipientUserId)
-  const ids = new Set<string>([recipientUserId])
-  for (const r of data ?? []) {
-    ids.add((r as { member_user_id: string }).member_user_id)
-  }
-  return [...ids]
-}
-
 export async function buildRecurringJobReportPayload(
   admin: SupabaseClient,
   params: {
@@ -203,7 +187,7 @@ export async function buildRecurringJobReportPayload(
     includeCosts?: boolean
   },
 ): Promise<RecurringJobReportPayload> {
-  const { scopeMasterUserId, recipientUserId, crewFilter, window, includeCosts = false } = params
+  const { scopeMasterUserId, window, includeCosts = false } = params
   const ws = window.windowStartUtc
   const we = window.windowEndUtc
   const periodKind: ReportingPeriodKind = window.periodKind ?? 'daily'
@@ -235,13 +219,12 @@ export async function buildRecurringJobReportPayload(
     return { ...payloadHead(), jobs: [] }
   }
 
-  const crewIds = await crewUserIdsForFilter(admin, recipientUserId, crewFilter)
   const jobById = new Map(masterJobs.map((j) => [j.id, j]))
 
   const sessions: SessionRow[] = []
   for (let i = 0; i < masterIds.length; i += ID_CHUNK) {
     const chunk = masterIds.slice(i, i + ID_CHUNK)
-    let q = admin
+    const q = admin
       .from('clock_sessions')
       .select('id, user_id, job_ledger_id, clocked_in_at, clocked_out_at, notes')
       .in('job_ledger_id', chunk)
@@ -251,9 +234,6 @@ export async function buildRecurringJobReportPayload(
       .gt('clocked_out_at', ws)
       .is('revoked_at', null)
       .is('rejected_at', null)
-    if (crewIds && crewIds.length > 0) {
-      q = q.in('user_id', crewIds)
-    }
     const { data } = await q
     sessions.push(...((data ?? []) as SessionRow[]))
   }
@@ -261,16 +241,13 @@ export async function buildRecurringJobReportPayload(
   const reportsBare: Array<Omit<ReportRow, 'report_templates'>> = []
   for (let i = 0; i < masterIds.length; i += ID_CHUNK) {
     const chunk = masterIds.slice(i, i + ID_CHUNK)
-    let q = admin
+    const q = admin
       .from('reports')
       .select('id, job_ledger_id, created_at, created_by_user_id, field_values, template_id')
       .in('job_ledger_id', chunk)
       .gte('created_at', ws)
       .lt('created_at', we)
       .order('created_at', { ascending: false })
-    if (crewIds && crewIds.length > 0) {
-      q = q.in('created_by_user_id', crewIds)
-    }
     const { data } = await q
     reportsBare.push(...((data ?? []) as Array<Omit<ReportRow, 'report_templates'>>))
   }

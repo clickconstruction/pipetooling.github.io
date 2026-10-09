@@ -2603,8 +2603,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 **Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Jobs → Reports → **Email reports** → the person's row, or the Dashboard → Recent Reports mail button — one modal since v2.3570, one list by person since v2.3595). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
 
-- **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors`, or (v2.3480) the author is, or is led by, a leader in `report_email_subscription_team_leads` (`team_leader_assignments` read at send time) — skipping any already in the dispatch log. The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
-- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors plus each named team lead and everyone they lead.
+- **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors` — skipping any already in the dispatch log. (The v2.3480 team-lead scope went with the Team leads list in v2.4981.) The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
+- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors.
 
 **Endpoint**: `POST /functions/v1/send-report-email`
 
@@ -2799,9 +2799,9 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 
 ### notify-team-lead-clock
 
-**Purpose**: When a team member **clocks in** (`clock_sessions` INSERT with `clocked_in_at`) or **clocks out** (`clocked_out_at` becomes non-null on UPDATE), send Web Push to each **leader** who opted in via `team_leader_clock_notify_prefs` for that leader–member assignment. **Frozen since v2.3616** (Supervision retired the Team leads list; no UI writes assignments or prefs any more) — it keeps serving the rows that exist until the table is dropped (`to-dos/team-leads-table-retirement.md`). Intended to be invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser.
+**Purpose**: The try-out loop's push when a trial helper **clocks out** (`clocked_out_at` becomes non-null on UPDATE). Invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser; every other event is skipped. Until v2.4981 it also pushed *Team clock in / out* to leaders who opted in on the Team leads list (`team_leader_assignments` + `team_leader_clock_notify_prefs`); that flow went with the list (migration `20261009190000`), and the name stayed so the webhook needs no rewiring.
 
-**Try-out branch (v2.3650)** — independent of the list, and not frozen: when the member clocking **out** has `users.trial_prospect_id` (a trial helper — the try-out loop, `recent-features/v2.3627.md` and its follow-ons; the to-do closed 2026-09-26), the function calls `trial_helper_supervisors(helper, work_date)` (service role only) for everyone who could run a job the helper worked that day — a master, or a helper / sub with `needs_supervision` off, listed or clocked on the same job — skips anyone who already has a `team_prospect_trial_verdicts` row for that card and day, and pushes the rest *Bryan clocked out of Oak St — take Bryan again?* (`_shared/trialVerdictPush.ts`, shared with the client card) opening `/dashboard#trial-verdicts`. One `tag` per card and day, so a second clock-out replaces the notification rather than stacking; `notification_history.template_type = 'trial_helper_verdict'`. Best-effort: a failure here never stops the opted-in leader flow, and the response carries `trial: { leads, pushed }`. **When the Team leads tables are dropped, this branch stays** — remove the leader flow, not the function or its webhook.
+**Try-out branch (v2.3650)**: when the member clocking **out** has `users.trial_prospect_id` (a trial helper — the try-out loop, `recent-features/v2.3627.md` and its follow-ons; the to-do closed 2026-09-26), the function calls `trial_helper_supervisors(helper, work_date)` (service role only) for everyone who could run a job the helper worked that day — a master, or a helper / sub with `needs_supervision` off, listed or clocked on the same job — skips anyone who already has a `team_prospect_trial_verdicts` row for that card and day, and pushes the rest *Bryan clocked out of Oak St — take Bryan again?* (`_shared/trialVerdictPush.ts`, shared with the client card) opening `/dashboard#trial-verdicts`. One `tag` per card and day, so a second clock-out replaces the notification rather than stacking; `notification_history.template_type = 'trial_helper_verdict'`. Best-effort: a failure is logged, never thrown at the webhook, and the response carries `trial: { leads, pushed }`.
 
 **Endpoint**: `POST /functions/v1/notify-team-lead-clock`
 
@@ -2810,7 +2810,7 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 **Required Secrets**:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, returns 200 with `push_sent: 0`)
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, nothing is pushed: `trial.pushed` is 0)
 - Optional: `TEAM_LEAD_CLOCK_WEBHOOK_SECRET` — if set, webhook can send this instead of the service role key.
 
 **Verify JWT**: `false` (uses shared secret / service role only)
@@ -2832,16 +2832,15 @@ For **clock out**, `type` is `UPDATE`, `old_record.clocked_out_at` is null, and 
 #### Success response
 
 ```json
-{ "success": true, "push_sent": 2, "leaders": 1, "kind": "clock_in" }
+{ "success": true, "kind": "clock_out", "trial": { "leads": 1, "pushed": 2 } }
 ```
 
-Skipped events return 200 with `skipped: true` (e.g. not a clock-in/out transition).
+Skipped events return 200 with `skipped: true` (anything but a clock-out).
 
 #### Deployment / wiring
 
 1. Deploy the function: `supabase functions deploy notify-team-lead-clock`
 2. In Supabase Dashboard → Database → Webhooks: add webhooks on `clock_sessions` for **Insert** and **Update**, HTTP POST to `https://<project-ref>.supabase.co/functions/v1/notify-team-lead-clock`, header `Authorization: Bearer <SERVICE_ROLE_KEY>` or the webhook secret.
-3. Leaders enable **Notify on clock in/out** per member on Dashboard → My Team.
 
 ---
 
@@ -2909,8 +2908,8 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 **Body (JSON)**:
 - `scope_master_user_id` (uuid, required) — org (**`jobs_ledger.master_user_id`**) universe
 - **`activity_scope`** (required): **`calendar_yesterday`** \| **`calendar_today`** \| **`calendar_week`** \| **`calendar_last_week`** — calendar window in **`timezone`** (half-open local midnights → UTC; **`calendar_week`** is Sun–Sat week **containing** **`anchor_date`**; **`calendar_last_week`** is the **prior** Sun–Sat week).
-- **`crew_filter`** (required): **`all_users`** \| **`my_team`** — **`my_team`** = **`recipient_user_id`** plus **`team_leader_assignments.member_user_id`** where **`leader_user_id = recipient_user_id`** (Dashboard **My team** roster); **`all_users`** does not restrict activity rows by user.
-- `recipient_user_id` (optional) — defaults to caller; affects **`my_team`** resolution only.
+- **`crew_filter`** (required): **`all_users`**, which does not restrict activity rows by user. **`my_team`** (the recipient plus the people they led on the Team leads list) went with the list in v2.4981; the column's check allows `all_users` only.
+- `recipient_user_id` (optional) — defaults to caller.
 - `timezone` (optional, default **`America/Chicago`**).
 - **`anchor_date`** (**`YYYY-MM-DD`**, civil date in **`timezone`**, required when not sending a manual **`window`**) — **“today”** in zone for resolving yesterday / today / week bounds.
 - Manual **`window`** (optional) overrides RPC bounds (**advanced testing**): provide **`window_start_utc`** / **`window_end_utc`** (ISO); optional **`period_kind`**: **`daily`** (default) \| **`weekly`** for **`reporting_date`** idempotency semantics when dispatching.

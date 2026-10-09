@@ -76,8 +76,6 @@ type GlobalEmailSchedule = {
     auto_send: boolean
     all_authors: boolean
     authors: string[]
-    /** Team leads (v2.3480) — everyone they lead, plus themselves. */
-    team_leads?: string[]
   }>
 }
 
@@ -142,19 +140,13 @@ function RecipientChip({ label, extra, onRemove, removeLabel }: { label: string;
   )
 }
 
-/** "2 people · 1 team" — the scope tag on a Field report emails chip. */
-function reportScopeCounts(authors: string[], teamLeads: string[]): string {
-  const parts: string[] = []
-  if (authors.length > 0) parts.push(`${authors.length} ${authors.length === 1 ? 'person' : 'people'}`)
-  if (teamLeads.length > 0) parts.push(`${teamLeads.length} ${teamLeads.length === 1 ? 'team' : 'teams'}`)
-  return parts.length > 0 ? parts.join(' · ') : 'nobody yet'
+/** "2 people" — the scope tag on a Field report emails chip. */
+function reportScopeCounts(authors: string[]): string {
+  return authors.length > 0 ? `${authors.length} ${authors.length === 1 ? 'person' : 'people'}` : 'nobody yet'
 }
 
-function reportScopeTitle(authors: string[], teamLeads: string[]): string {
-  const parts: string[] = []
-  if (authors.length > 0) parts.push(authors.join(', '))
-  if (teamLeads.length > 0) parts.push(teamLeads.map((l) => `${l}'s team`).join(', '))
-  return parts.join(' · ')
+function reportScopeTitle(authors: string[]): string {
+  return authors.join(', ')
 }
 
 function MiniTag({ tone, title, children }: { tone: 'muted' | 'amber'; title?: string; children: ReactNode }) {
@@ -561,8 +553,8 @@ export default function SettingsEmailStreamsSection({ focus }: {
                 extra={
                   <>
                     {r.external ? <MiniTag tone="muted">outside</MiniTag> : null}
-                    <MiniTag tone="muted" title={r.all_authors ? undefined : reportScopeTitle(r.authors, r.team_leads ?? [])}>
-                      {r.all_authors ? 'all reports' : `from ${reportScopeCounts(r.authors, r.team_leads ?? [])}`}
+                    <MiniTag tone="muted" title={r.all_authors ? undefined : reportScopeTitle(r.authors)}>
+                      {r.all_authors ? 'all reports' : `from ${reportScopeCounts(r.authors)}`}
                     </MiniTag>
                     {!r.auto_send ? <MiniTag tone="amber">on demand</MiniTag> : null}
                     {!r.enabled ? <MiniTag tone="amber">paused</MiniTag> : null}

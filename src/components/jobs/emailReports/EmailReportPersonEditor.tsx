@@ -10,9 +10,8 @@ import {
   validateSubscriptionDraft,
   type SubscriptionDraft,
   type SubscriptionWithAuthors,
-  type TeamLeadOption,
 } from '../../../lib/reportEmailSubscriptions'
-import { ACTIVITY_SCOPE_UI, CREW_FILTER_UI, describeScheduleWhen, type ActivityScope, type CrewFilter } from '../../../lib/reports/digestScheduleFields'
+import { ACTIVITY_SCOPE_UI, describeScheduleWhen, type ActivityScope } from '../../../lib/reports/digestScheduleFields'
 import { digestDraftsFor, personKeyForEmail, personKeyForUser, planDigestRowWrites, type EmailReportPerson, type PersonDigestDraft, type RosterUser } from '../../../lib/reports/emailReportPeople'
 import type { ScheduleRow } from './useEmailReportsData'
 
@@ -31,7 +30,6 @@ function draftFromSubscription(s: SubscriptionWithAuthors | null, person: EmailR
     label: s?.subscription.label ?? (person?.outside ? person.name : ''),
     allAuthors: s?.subscription.all_authors ?? true,
     authorUserIds: s?.authorUserIds ?? [],
-    teamLeadUserIds: s?.teamLeadUserIds ?? [],
     autoSend: s?.subscription.auto_send ?? true,
     enabled: s?.subscription.enabled ?? true,
   }
@@ -39,7 +37,7 @@ function draftFromSubscription(s: SubscriptionWithAuthors | null, person: EmailR
 
 /**
  * One person's report email (v2.3595 — Option B's editor): the digests they are on, one line
- * per schedule with their own scope · filter · costs, and their every-report subscription.
+ * per schedule with their own scope · costs, and their every-report subscription.
  * Saving writes digest rows **one by one** — insert, update or delete by id — so editing one
  * person never rewrites the schedule's other recipients; the subscription goes through the
  * same kernel the old cards used. An outside address has no digest section (the digest
@@ -50,7 +48,6 @@ export function EmailReportPersonEditor({
   roster,
   schedules,
   subscriptions,
-  teamLeads,
   people,
   authUserId,
   onDone,
@@ -61,7 +58,6 @@ export function EmailReportPersonEditor({
   roster: readonly RosterUser[]
   schedules: readonly ScheduleRow[]
   subscriptions: readonly SubscriptionWithAuthors[]
-  teamLeads: readonly TeamLeadOption[]
   people: readonly EmailReportPerson[]
   authUserId: string | undefined
   onDone: () => void | Promise<void>
@@ -90,7 +86,6 @@ export function EmailReportPersonEditor({
     [roster, isNew, listedKeys],
   )
   const authorOptions = useMemo(() => roster.map((u) => ({ value: u.id, label: u.email ? `${u.name ?? ''} (${u.email})`.trim() : u.name ?? u.id })), [roster])
-  const teamLeadOptions = useMemo(() => teamLeads.map((l) => ({ value: l.user_id, label: `${l.name} — leads ${l.member_count} ${l.member_count === 1 ? 'person' : 'people'}` })), [teamLeads])
 
   function patchDigest(scheduleId: string, patch: Partial<PersonDigestDraft>) {
     setDigests((d) => d.map((x) => (x.scheduleId === scheduleId ? { ...x, ...patch } : x)))
@@ -250,13 +245,6 @@ export function EmailReportPersonEditor({
                           ))}
                         </select>
                       </td>
-                      <td style={{ padding: 6 }}>
-                        <select value={d.crewFilter} disabled={!d.on} onChange={(e) => patchDigest(s.id, { crewFilter: e.target.value as CrewFilter })} style={{ padding: '0.3rem' }} aria-label={`Filter on ${s.name}`}>
-                          {CREW_FILTER_UI.map((o) => (
-                            <option key={o.value} value={o.value}>{o.label}</option>
-                          ))}
-                        </select>
-                      </td>
                       <td style={{ padding: 6, whiteSpace: 'nowrap' }}>
                         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }} title="Add a Cost column: hours × hourly wage from People pay config">
                           <input type="checkbox" checked={d.includeCosts} disabled={!d.on} onChange={(e) => patchDigest(s.id, { includeCosts: e.target.checked })} aria-label={`Costs on ${s.name}`} />
@@ -289,23 +277,13 @@ export function EmailReportPersonEditor({
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', fontSize: '0.875rem' }}>
                 <input type="radio" name="every-scope" checked={!sub.allAuthors} onChange={() => patchSub({ allAuthors: false })} />
-                Only from selected people or teams
+                Only from selected people
               </label>
             </div>
             {!sub.allAuthors ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <div>
-                  <span style={LABEL}>People</span>
-                  <SearchableMultiSelect options={authorOptions} value={sub.authorUserIds} onChange={(ids) => patchSub({ authorUserIds: ids })} listAriaLabel="Report authors" searchPlaceholder="Search people…" pinSelectedToTop />
-                </div>
-                <div>
-                  <span style={LABEL}>Team leads — their whole team, kept current</span>
-                  {teamLeadOptions.length > 0 ? (
-                    <SearchableMultiSelect options={teamLeadOptions} value={sub.teamLeadUserIds} onChange={(ids) => patchSub({ teamLeadUserIds: ids })} listAriaLabel="Team leads" searchPlaceholder="Search team leads…" pinSelectedToTop />
-                  ) : (
-                    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>No team leads set up yet — People → Users → Team leads.</span>
-                  )}
-                </div>
+              <div>
+                <span style={LABEL}>People</span>
+                <SearchableMultiSelect options={authorOptions} value={sub.authorUserIds} onChange={(ids) => patchSub({ authorUserIds: ids })} listAriaLabel="Report authors" searchPlaceholder="Search people…" pinSelectedToTop />
               </div>
             ) : null}
             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.6rem', flexWrap: 'wrap' }}>
