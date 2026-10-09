@@ -9,6 +9,9 @@ import type { BidTab, PlanQuestion, Town } from '../gc/types'
 import type { BackCharge, PartnerPerson, PortalMailGroup, TradeChangeRequest } from '../gc/types'
 import type { PreBidMeeting } from '../gc/types'
 import type { TheirSovLine } from '../gc/types'
+import type { CustomerSend } from '../gc/types'
+export type { CustomerSend } from '../gc/types'
+
 export type { TheirSovLine } from '../gc/types'
 
 export type { PreBidMeeting } from '../gc/types'
@@ -320,24 +323,6 @@ export interface Partner {
   people?: PartnerPerson[]
   /** The emails the main contact gets. Unset: every kind. */
   contactGets?: PortalMailGroup[]
-}
-/**
- * A paper sent to a customer from its window (the owner, 2026-10-04): our contract to sign in their
- * portal (the first send, then reminders), or a reminder on a change order waiting on their signature.
- */
-export interface CustomerSend {
-  id: string
-  customerId: string
-  projectId: string
-  paper: 'contract' | 'changeOrder'
-  /** A change order's reminder: which one. */
-  changeOrderId?: string
-  /** Our contract's first send; later ones are reminders. */
-  first?: boolean
-  on: string
-  /** The day we asked them to sign by. */
-  by: string
-  note: string
 }
 /**
  * One company, one record: the app's own customers. The same row can be the owner we build for,

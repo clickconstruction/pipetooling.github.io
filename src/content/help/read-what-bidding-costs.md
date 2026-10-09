@@ -2,7 +2,7 @@
 title: read what bidding costs
 category: Office
 roles: dev, master_technician, controller, assistant, estimator
-keywords: bid costs, pursuit, cost to bid, estimating time, clocked against a bid, hours bidding, spent bidding, hit rate, won of decided, spent on lost, card charges, robot bids, estimator rail, per bid, window, cost to win, by estimator, by GC, per $1k won, which GCs award, bid vs actual, predicted hours, recorded hours, over the book, not costed, cost it, check the count sheet, linked jobs, priced margin, priced at, went out at, history, forecast, win rate by month, expected wins, odds by size, time to decision, still deciding, stale bids, click a bar
+keywords: bid costs, pursuit, cost to bid, estimating time, clocked against a bid, hours bidding, spent bidding, hit rate, won of decided, spent on lost, card charges, robot bids, estimator rail, per bid, window, cost to win, by estimator, by GC, per $1k won, which GCs award, bid vs actual, predicted hours, recorded hours, over the book, not costed, cost it, check the count sheet, linked jobs, priced margin, priced at, went out at, direct margin, at completion, by section, earned value, by stage, rough in, top out, trim set, history, forecast, win rate by month, expected wins, odds by size, time to decision, still deciding, stale bids, click a bar
 order: 73
 ---
 Bids → Bid Costs is the pursuit ledger. It shows what it costs us to bid.
@@ -67,6 +67,7 @@ A bid nobody clocked against still won or lost, so it counts toward the hit rate
 - **Cost to bid**, or time to bid: the pursuit spend from the ledger.
 - **Bid value**: the job's price.
 - **Priced**: the margin the bid was priced at on the Workbench. It is kept on the bid when it is sent. Under it are our cost and the price it came from. *no labor rate* or *on rows with no cost* means it reads high. *not priced on the Workbench* means the bid has none.
+- **Direct**: the job's direct margin at completion, read the way its Costs tab reads it. It is the price less spent ÷ % done, with no overhead in it. Under it are the dollars, and how many points the job runs under or over the priced margin. Dollar roles only.
 - **Predicted h** and **Recorded h**: the field hours the bid's count sheet predicted, and the hours actually recorded. The recorded hours are what the crew has put on the job.
 - **Predicted direct $**: what the bid's snapshot said the job would cost us directly. Dollar roles only. *materials only* means a takeoff was priced but no count sheet was filled. A takeoff is the parts list counted from the plans.
 - **Done**: the job's % complete. Billed and paid jobs read 100%.
@@ -81,6 +82,10 @@ A count sheet that predicts more than 15 field hours for every $1,000 of price c
 :::
 
 You click a job to open its window. The first tile links to Settings → Data when more jobs need linking. The second tile also counts the bids priced on the Workbench.
+
+Press **▸** beside a job to open its row. Dollar roles see the job's spend by section, the same table its Costs tab shows. The sections are labor, materials, subs and other. Each one has its spend so far, its cost at completion and the bid's figure.
+
+Every role sees **earned value by stage** in hours. It earns each stage's bid hours at that stage's progress. Then it sets the earned hours against the hours recorded. A stage's progress comes from field reports on the billing lines named for it. Those are lines like *Rough in*, *Top out* or *Trim set*. A billing line that names no stage is listed and left out. *no stage progress reported* means no report has set a stage's progress yet. It never reads as 0%.
 
 ## History & forecast
 

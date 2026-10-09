@@ -5,9 +5,12 @@
  * send has the day to sign by, a line of your own and the email as they will get it. Payment
  * reminders are Owner Billing's (gcOwnerBillingRemind.ts).
  */
-import type { ChangeOrder, CustomerSend, GcCustomer, GcProject, GcState } from './gcTypes'
+import type { ChangeOrder, GcCustomer, GcProject, GcState } from './gcTypes'
 import { daysUntil, money, shortDate, weekdayDate } from './gcWords'
 import { priceToOwner } from './gcCustomers'
+// What moved to main (the real build) is re-exported from there, so there is one copy.
+import { customerSendsFor } from '../gc/customerSend'
+export { contractWaitingOn, customerReminderLate, customerSendsFor, customerSentWords } from '../gc/customerSend'
 
 export interface CustomerStep {
   docKey: string
@@ -41,18 +44,6 @@ export function changeOrdersWaitingOn(state: GcState, customer: GcCustomer): { p
   return state.projects
     .filter((p) => p.customerId === customer.id && !p.lostOn)
     .flatMap((project) => (project.changeOrders ?? []).filter((co) => co.status === 'sent').map((co) => ({ project, co })))
-}
-
-/** Every send of one paper to one customer, oldest first: a change order by its id, our contract by its job. */
-export function customerSendsFor(state: GcState, customerId: string, paper: 'contract' | 'changeOrder', projectId: string, changeOrderId?: string): CustomerSend[] {
-  return (state.customerSends ?? []).filter(
-    (s) => s.customerId === customerId && s.paper === paper && s.projectId === projectId && (paper === 'contract' || s.changeOrderId === changeOrderId),
-  )
-}
-
-/** Our contract is out to sign on this job: won, sent, not signed. */
-export function contractWaitingOn(project: GcProject): boolean {
-  return project.stage !== 'pursuing' && !project.lostOn && !project.ownerContractSignedOn && Boolean(project.ownerContractSentOn)
 }
 
 /**
@@ -136,19 +127,4 @@ export function contractEmail(customer: GcCustomer, project: GcProject, first: b
       'Open your portal to read it and sign it. Your bills, change orders and papers for the job will be there too.',
     ],
   }
-}
-
-/** The Documents row's line once something went: "Reminded today · sign by Fri Oct 9." */
-export function customerSentWords(state: GcState, customerId: string, paper: 'contract' | 'changeOrder', projectId: string, changeOrderId?: string): string | null {
-  const sends = customerSendsFor(state, customerId, paper, projectId, changeOrderId)
-  const last = sends[sends.length - 1]
-  if (!last) return null
-  return `${last.first ? 'Sent' : 'Reminded'} ${ago(last.on, state.today)} · sign by ${weekdayDate(last.by)}.`
-}
-
-/** The day we asked them to sign by passed, still unsigned: the customer reads late. */
-export function customerReminderLate(state: GcState, customerId: string, paper: 'contract' | 'changeOrder', projectId: string, changeOrderId?: string): boolean {
-  const sends = customerSendsFor(state, customerId, paper, projectId, changeOrderId)
-  const last = sends[sends.length - 1]
-  return Boolean(last && daysUntil(last.by, state.today) < 0)
 }

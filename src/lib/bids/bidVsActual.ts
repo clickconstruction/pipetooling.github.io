@@ -14,6 +14,7 @@
  * workbench and kept at send), shown beside the burn read.
  */
 import type { BidPricedMargin } from './pricedMargin'
+import type { JobBudgetRowLike } from '../jobs/jobBudget'
 
 export type BidVsActualJobInput = {
   id: string
@@ -34,6 +35,20 @@ export type BidVsActualBudgetInput = {
   subs_usd: number | string | null
   total_direct_usd: number | string | null
   completeness: unknown
+  // v2.5046 · the whole row is read, so each job's burn resolves its budget as its Costs tab does.
+  kind?: string | null
+  bid_version_id?: string | null
+  labor_rate?: number | string | null
+  other_usd?: number | string | null
+  taken_at?: string | null
+  taken_by?: string | null
+  note?: string | null
+}
+
+/** The budget row as `resolveJobBudget` reads it (v2.5046); null without a row or its kind. */
+export function budgetRowLikeOf(b: BidVsActualBudgetInput | null | undefined): JobBudgetRowLike | null {
+  if (!b || !b.kind) return null
+  return { ...b, kind: b.kind, other_usd: b.other_usd ?? null }
 }
 
 export type BidVsActualBidInput = {

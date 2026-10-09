@@ -47,6 +47,8 @@ function partnerOf(slice: TradePortalSlice): Partner {
     w9: false,
     invited: slice.invites.length,
     bids: new Set(slice.quotes.map((q) => str(q.invite_id))).size,
+    // The Board's B6-a-ii counts the awards; the portal shows none of them.
+    won: 0,
     promisesMade: 0,
     promisesKept: 0,
     address: str(c.address),
@@ -170,24 +172,32 @@ function sowOf(slice: TradePortalSlice, packageId: string): Sow | null {
 const REASONS: ChangeOrderReason[] = ['owner', 'field', 'plans']
 const reasonOf = (v: unknown): ChangeOrderReason => ((REASONS as string[]).includes(str(v)) ? (str(v) as ChangeOrderReason) : 'field')
 
+/**
+ * One change request as its row holds it (`gc_trade_change_requests`), the company read from the row. The portal's slice
+ * and Owner Billing's Change orders window (O3b) map the table's rows with this one function.
+ */
+export function changeRequestFromRow(r: Row): TradeChangeRequest {
+  return {
+    id: str(r.id),
+    packageId: str(r.package_id),
+    partnerId: str(r.company_id),
+    askedOn: str(r.asked_on),
+    description: str(r.description),
+    reason: reasonOf(r.reason),
+    amount: num(r.amount),
+    days: num(r.days),
+    file: strOrNull(r.file_url),
+    changeOrderId: strOrNull(r.change_order_id),
+    turnedDown: strOrNull(r.turned_down_on) ? { on: str(r.turned_down_on), note: str(r.turned_down_note) } : null,
+  }
+}
+
 /** The changes the company asked for on a project, oldest first, as `portalChangeRequests` reads them. */
-function changeRequestsOf(slice: TradePortalSlice, companyId: string, projectId: string): TradeChangeRequest[] {
+function changeRequestsOf(slice: TradePortalSlice, projectId: string): TradeChangeRequest[] {
   return (slice.changeRequests ?? [])
     .filter((r) => str(r.project_id) === projectId)
     .sort((a, b) => str(a.asked_on).localeCompare(str(b.asked_on)) || str(a.created_at).localeCompare(str(b.created_at)))
-    .map((r) => ({
-      id: str(r.id),
-      packageId: str(r.package_id),
-      partnerId: companyId,
-      askedOn: str(r.asked_on),
-      description: str(r.description),
-      reason: reasonOf(r.reason),
-      amount: num(r.amount),
-      days: num(r.days),
-      file: strOrNull(r.file_url),
-      changeOrderId: strOrNull(r.change_order_id),
-      turnedDown: strOrNull(r.turned_down_on) ? { on: str(r.turned_down_on), note: str(r.turned_down_note) } : null,
-    }))
+    .map(changeRequestFromRow)
 }
 
 /**
@@ -240,7 +250,7 @@ function projectOf(slice: TradePortalSlice, companyId: string, entry: TradePorta
     }
   })
   const lostWhy = strOrNull(gc.lost_why)
-  const changeRequests = changeRequestsOf(slice, companyId, id)
+  const changeRequests = changeRequestsOf(slice, id)
   return {
     id,
     name: str(project.name),

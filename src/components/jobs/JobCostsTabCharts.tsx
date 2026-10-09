@@ -10,7 +10,6 @@ import { useJobChargesTimelineInputs, type JobChargesTimelineInputsState } from 
 import { withLiveJobFormValues, type JobCostsLiveValues } from '../../lib/jobs/jobCostsLiveInputs'
 import { resolveJobBudget, spendByComponent } from '../../lib/jobs/jobBudget'
 import { buildCostsVerdict } from '../../lib/jobs/jobCostsVerdict'
-import { JOB_SUMMARY_VIEW_STORAGE_KEY, readJobSummaryViewPrefs } from '../../lib/jobs/jobSummaryLedgerView'
 import { resolveJobCurrentPercentFallback } from '../../lib/jobSummaryPercentComplete'
 import { newestPercentEvent } from '../../lib/jobChargesTimeline'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -18,7 +17,8 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import JobChargesTimelineStandalone from './JobChargesTimelineStandalone'
 import { JobBudgetCard } from './JobBudgetCard'
 import { JobCostsVerdict } from './JobCostsVerdict'
-import { buildBurnForVerdict, firstEventYmdOf, JobCostsBurnSection } from './JobCostsBurnSection'
+import { firstEventYmdOf, JobCostsBurnSection } from './JobCostsBurnSection'
+import { buildBurnForVerdict, readTargetMarginPct } from '../../lib/jobs/jobBurnForVerdict'
 
 /**
  * The Costs tab (v2.3361 — the honest tab): the verdict (true margin · spent ·
@@ -33,15 +33,6 @@ import { buildBurnForVerdict, firstEventYmdOf, JobCostsBurnSection } from './Job
  */
 const DETAIL_PREF_KEY = 'job_costs_detail_open_v1'
 
-function readTargetMarginPct(): number | null {
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(JOB_SUMMARY_VIEW_STORAGE_KEY) : null
-    const t = readJobSummaryViewPrefs(raw).targetTrueMarginPct
-    return t > 0 ? t : null
-  } catch {
-    return null
-  }
-}
 function readDetailPref(): boolean {
   try {
     return typeof localStorage !== 'undefined' && localStorage.getItem(DETAIL_PREF_KEY) === '1'

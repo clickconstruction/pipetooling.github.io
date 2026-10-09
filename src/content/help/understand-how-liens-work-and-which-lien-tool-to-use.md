@@ -72,4 +72,4 @@ J650 ran June through September for a GC and nothing is paid. June's notice is d
 - *file a lien and never miss its deadlines*: the job's Lien window. That window covers notice, affidavit, service and release of record.
 - *give a customer a lien release*: conditional and unconditional releases, signing, the Needs you follow-through.
 - *send a sub the right lien waiver*: the four Texas waiver forms when you pay a sub.
-- *see when a customer will pay*: the forecast's work-month panel the desk reads from.
+- *see which months need a lien notice*: the forecast's work-month panel the desk reads from.

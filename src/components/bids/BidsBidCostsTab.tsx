@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -26,9 +26,13 @@ import {
 } from '../../lib/bids/bidPursuit'
 import { COST_TO_WIN_GROUP_LABELS, costToWinRows, costToWinTotal, costToWinWords, type CostToWinGroup, type CostToWinRow } from '../../lib/bids/bidCostToWin'
 import { Link } from 'react-router-dom'
-import { BID_VS_ACTUAL_READ_LABELS, bidVsActualTiles, buildBidVsActualRows, type BidVsActualBidInput, type BidVsActualRead, type BidVsActualRow } from '../../lib/bids/bidVsActual'
+import { BID_VS_ACTUAL_READ_LABELS, bidVsActualTiles, budgetRowLikeOf, buildBidVsActualRows, type BidVsActualBidInput, type BidVsActualRead, type BidVsActualRow } from '../../lib/bids/bidVsActual'
 import { useBidVsActual } from '../../hooks/useBidVsActual'
-import { pricedMarginDetailWords, pricedMarginPctWords } from '../../lib/bids/pricedMargin'
+import { pricedMarginDetailWords, pricedMarginPctWords, pricedVsDirectWords } from '../../lib/bids/pricedMargin'
+import { useBidVsActualBurnInputs } from '../../hooks/useBidVsActualBurnInputs'
+import { bidVsActualDirectWords, bidVsActualJobVerdict } from '../../lib/bids/bidVsActualBurn'
+import type { CostsVerdict } from '../../lib/jobs/jobCostsVerdict'
+import { BidVsActualRowDetail } from './BidVsActualRowDetail'
 import { BidsForecastLens } from './BidsForecastLens'
 
 /**
@@ -120,6 +124,21 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
     return buildBidVsActualRows({ jobs: bva.jobs, budgets: bva.budgets, bids: byBid, hoursByJob: bva.hoursByJob, pursuitByBid, pricedByBid: bva.pricedByBid })
   }, [bva, rows])
   const bvaTiles = useMemo(() => bidVsActualTiles(bvaRows), [bvaRows])
+  // v2.5046 (Burn against the bid, piece 2): each linked job's dollar burn, read and built as its
+  // Costs tab reads and builds it. Only while the lens is open, and only for the roles that read wages.
+  const bvaBurn = useBidVsActualBurnInputs(lens === 'bid-vs-actual' && showDollars, bva.jobs.map((j) => j.id))
+  const bvaVerdicts = useMemo(() => {
+    const budgetByJob = new Map(bva.budgets.map((b) => [b.job_id, b]))
+    const bidNumberById = new Map<string, string | null>(rows.map((r) => [r.bidId, r.bidNumber]))
+    for (const [id, b] of bva.bidsById) if (!bidNumberById.has(id)) bidNumberById.set(id, b.bid_number)
+    const out = new Map<string, CostsVerdict | 'error'>()
+    for (const r of bvaRows) {
+      const inputs = bvaBurn.inputsByJob.get(r.jobId)
+      if (inputs === undefined) continue
+      out.set(r.jobId, inputs === 'error' ? 'error' : bidVsActualJobVerdict({ inputs, budgetRow: budgetRowLikeOf(budgetByJob.get(r.jobId)), status: r.jobStatus, bidNumber: bidNumberById.get(r.bidId) ?? null, todayYmd }))
+    }
+    return out
+  }, [bvaRows, bvaBurn.inputsByJob, bva.budgets, bva.bidsById, rows, todayYmd])
 
   const outcomeCounts = useMemo(() => {
     const counts: Record<PursuitOutcome, number> = { unsent: 0, open: 0, won: 0, lost: 0 }
@@ -187,7 +206,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
       )}
 
       {lens === 'bid-vs-actual' && (
-        <BidVsActualView rows={bvaRows} tiles={bvaTiles} loading={bva.loading && !bva.loaded} showDollars={showDollars} onCostIt={(bidId) => { const b = bidById.get(bidId); if (b) onCostIt(b) }} canCostIt={(bidId) => bidById.has(bidId)} />
+        <BidVsActualView rows={bvaRows} tiles={bvaTiles} loading={bva.loading && !bva.loaded} showDollars={showDollars} verdicts={bvaVerdicts} burnLoading={bvaBurn.loading} onCostIt={(bidId) => { const b = bidById.get(bidId); if (b) onCostIt(b) }} canCostIt={(bidId) => bidById.has(bidId)} />
       )}
 
       {lens === 'cost-to-win' && (
@@ -452,15 +471,27 @@ const READ_COLORS: Record<BidVsActualRead, { fg: string; bg: string }> = {
   under: { fg: 'var(--text-link)', bg: 'var(--bg-subtle)' },
 }
 
-function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostIt }: {
+function BidVsActualView({ rows, tiles, loading, showDollars, verdicts, burnLoading, onCostIt, canCostIt }: {
   rows: BidVsActualRow[]
   tiles: ReturnType<typeof bidVsActualTiles>
   loading: boolean
   showDollars: boolean
+  /** v2.5046 · each job's Costs verdict (overhead left out) as it lands; 'error' when its read failed. */
+  verdicts: ReadonlyMap<string, CostsVerdict | 'error'>
+  burnLoading: boolean
   onCostIt: (bidId: string) => void
   canCostIt: (bidId: string) => boolean
 }) {
   const hrs = (n: number) => (n > 0 ? Math.round(n).toLocaleString('en-US') : '—')
+  const [openRows, setOpenRows] = useState<ReadonlySet<string>>(() => new Set())
+  const toggleRow = (jobId: string) =>
+    setOpenRows((prev) => {
+      const next = new Set(prev)
+      if (next.has(jobId)) next.delete(jobId)
+      else next.add(jobId)
+      return next
+    })
+  const colCount = showDollars ? 10 : 8
   return (
     <>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, marginBottom: 14 }}>
@@ -493,6 +524,7 @@ function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostI
               <th style={thNum}>{showDollars ? 'Cost to bid' : 'Time to bid'}</th>
               <th style={thNum}>Bid value</th>
               <th style={thNum} title="The margin the bid was priced at on the Pricing workbench, kept at send: (price − our cost) ÷ price">Priced</th>
+              {showDollars && <th style={thNum} title="The job's direct margin at completion at today's pace, as its Costs tab reads it: the price less spent ÷ % done, overhead left out">Direct</th>}
               <th style={thNum} title="Field hours the bid's count sheet predicted">Predicted h</th>
               <th style={thNum} title="Recorded field hours on the job">Recorded h</th>
               {showDollars && <th style={thNum} title="Direct cost the bid predicted (◆ snapshot at link time)">Predicted direct $</th>}
@@ -502,16 +534,20 @@ function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostI
           </thead>
           <tbody>
             {loading && rows.length === 0 ? (
-              <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-muted)' }}>Loading linked jobs…</td></tr>
+              <tr><td colSpan={colCount} style={{ ...cellStyle, color: 'var(--text-muted)' }}>Loading linked jobs…</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-muted)', whiteSpace: 'normal' }}>No job is linked to a bid yet. Link them in <Link to={SETTINGS_BACKFILL_HREF} style={{ color: 'var(--text-link)' }}>Settings → Data → Link jobs to their bids</Link>, or from a won bid's row on the Bid Board.</td></tr>
+              <tr><td colSpan={colCount} style={{ ...cellStyle, color: 'var(--text-muted)', whiteSpace: 'normal' }}>No job is linked to a bid yet. Link them in <Link to={SETTINGS_BACKFILL_HREF} style={{ color: 'var(--text-link)' }}>Settings → Data → Link jobs to their bids</Link>, or from a won bid's row on the Bid Board.</td></tr>
             ) : (
               rows.map((r) => {
                 const c = READ_COLORS[r.read]
                 const offer = (r.read === 'not-costed' || r.read === 'hours-missing') && canCostIt(r.bidId)
+                const open = openRows.has(r.jobId)
+                const verdict = verdicts.get(r.jobId)
                 return (
-                  <tr key={r.jobId}>
+                  <Fragment key={r.jobId}>
+                  <tr>
                     <td style={{ ...cellStyle, whiteSpace: 'normal' }}>
+                      <button type="button" onClick={() => toggleRow(r.jobId)} aria-expanded={open} aria-label={`${open ? 'Close' : 'Open'} ${r.jobLabel}'s burn`} title={showDollars ? 'By section and by stage' : 'Earned value by stage'} style={{ border: 'none', background: 'none', padding: '0 4px 0 0', cursor: 'pointer', color: 'var(--text-muted)', font: 'inherit' }}>{open ? '▾' : '▸'}</button>
                       <Link to={jobWindowHref(r.jobId)} style={{ color: 'inherit', textDecoration: 'none', fontWeight: 500 }}>{r.jobLabel}</Link>
                       <span style={subStyle}>← {r.bidLabel}{r.estimatorName ? ` · ${r.estimatorName}` : ''}</span>
                     </td>
@@ -521,6 +557,20 @@ function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostI
                       {r.priced ? pricedMarginPctWords(r.priced) : '—'}
                       <span style={{ ...subStyle, textAlign: 'right' }}>{r.priced ? pricedMarginDetailWords(r.priced) : 'not priced on the Workbench'}</span>
                     </td>
+                    {showDollars && (
+                      <td style={{ ...numStyle, whiteSpace: 'normal', minWidth: 120 }} data-testid="bva-direct">
+                        {verdict == null ? (burnLoading ? '…' : '—') : verdict === 'error' ? <span style={{ ...subStyle, textAlign: 'right' }}>costs not read</span> : (() => {
+                          const w = bidVsActualDirectWords(verdict)
+                          const vs = verdict.directMargin ? pricedVsDirectWords(verdict.directMargin.pct, r.priced) : null
+                          return (
+                            <>
+                              {w.big}
+                              <span style={{ ...subStyle, textAlign: 'right' }}>{w.sub}{vs ? ` · ${vs}` : ''}</span>
+                            </>
+                          )
+                        })()}
+                      </td>
+                    )}
                     <td style={numStyle}>{r.predictedHours != null ? hrs(r.predictedHours) : '—'}</td>
                     <td style={numStyle}>{hrs(r.recordedHours)}</td>
                     {showDollars && <td style={numStyle}>{r.predictedDirectUsd != null ? usd(r.predictedDirectUsd) : '—'}{r.materialsOnly && <span style={{ ...subStyle, textAlign: 'right' }}>materials only</span>}</td>}
@@ -533,6 +583,14 @@ function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostI
                       {(r.detail || r.read === 'outlier') && <span style={subStyle}>{r.read === 'outlier' ? `${r.words} · ${r.detail}` : r.detail}</span>}
                     </td>
                   </tr>
+                  {open && (
+                    <tr>
+                      <td colSpan={colCount} style={{ padding: '0 0.6rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-page)' }}>
+                        <BidVsActualRowDetail jobId={r.jobId} bidId={r.bidId} recordedHours={r.recordedHours} verdict={verdict ?? null} showDollars={showDollars} />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 )
               })
             )}

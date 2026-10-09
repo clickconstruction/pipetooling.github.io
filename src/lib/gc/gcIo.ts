@@ -14,16 +14,16 @@ import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
 import { inviteAsks, type AskOutcome, type NewAsk } from './askEmail'
 import type { BoardRows } from './boardRows'
 import type { TradeEmailAnswer } from './tradeEmail'
-import type { ChangeOrderDraft, ChangeOrderRow } from './changeOrderRows'
+import type { ChangeOrderDraft, ChangeOrderRow, ChangeRequestDraft, ChangeRequestRow } from './changeOrderRows'
 import { gcProjectFromRows, questionRowOf, type GcProjectRows, type GcProjectView } from './projectRows'
-import type { DeclineReason, GcLostWhy, OwnerRetainageStep, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
+import type { DeclineReason, GcLostWhy, OwnerRetainageStep, ScopeBookEdit, ScopeBookStore, ScopeExclusion, TradeChangeRequest } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
 import { gcCustomerEmailCopyKinds } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import type { BillingRows, ContractLineRow, OwnerTermsRow, PayAppSend } from './billCustomer'
 import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
 import { paymentRefusalWords } from './moneyIn'
-import { gcTradeEmailRefusal, tradeMailLang } from './tradeEmail'
+import { changeAskEmail, changeAskEmailKey, gcTradeEmailRefusal, tradeMailLang, type ChangeAskEmailStage } from './tradeEmail'
 import type { MoneyMondayRequestRow } from './moneyMondayEmail'
 import { sendGcTradeEmail } from './tradeEmailIo'
 import {
@@ -936,6 +936,73 @@ export async function setChangeOrderPct(changeOrderId: string, pct: number): Pro
 /** A draft taken off: one that went to the customer stays (the database refuses it). */
 export async function deleteChangeOrderDraft(changeOrderId: string): Promise<void> {
   taken(await supabase.from('gc_change_orders').delete().eq('id', changeOrderId).select('id').single(), 'delete the draft')
+}
+
+// ---------------------------------------------------------------------------------------------
+// Owner Billing's O3b: a trade's ask for a change, answered by the office (migration 20261010014000). The asks are the
+// Portal's P4a (gc_trade_change_requests), whose policy gives rows to a dev only until the trade wave; the two presses
+// refuse anyone but the money team, then anyone but a dev, in words.
+// ---------------------------------------------------------------------------------------------
+
+/** The trades' asks for a change on these projects, as their rows hold them. */
+export async function loadGcChangeRequests(projectIds: string[]): Promise<ChangeRequestRow[]> {
+  if (projectIds.length === 0) return []
+  return taken(await supabase.from('gc_trade_change_requests').select('*').in('project_id', projectIds).order('asked_on'), 'load the trades’ asks for a change')
+}
+
+/** The emails about these asks that went to their company (`<request id>:<stage>`), with the day each went. */
+export async function loadGcChangeRequestEmails(requestIds: string[]): Promise<{ key: string; on: string }[]> {
+  if (requestIds.length === 0) return []
+  const stages: ChangeAskEmailStage[] = ['down', 'sent', 'no']
+  const keys = requestIds.flatMap((id) => stages.map((stage) => changeAskEmailKey(id, stage)))
+  const rows = taken(await supabase.from('gc_trade_messages').select('msg_key, sent_on').eq('kind', 'changeAsk').in('msg_key', keys), 'load the emails about the asks')
+  return rows.map((r) => ({ key: r.msg_key, on: r.sent_on }))
+}
+
+/**
+ * Make a trade's ask a draft change order on its own trade and reason, at the words, cost, price and days the office
+ * confirmed. Returns the change order's id. Through the untyped client until the types regenerate after 20261010014000's
+ * push.
+ */
+export async function draftChangeOrderFromRequest(requestId: string, draft: ChangeRequestDraft): Promise<string> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db.rpc('gc_draft_change_order_from_request', { p_request_id: requestId, p_draft: draft })
+  return taken(result as { data: string | null; error: SupabaseResultError | null }, 'make the change order')
+}
+
+/** Turn a trade's ask down, with why, in words the company reads. Through the untyped client until the types regenerate. */
+export async function turnDownChangeRequest(requestId: string, note: string): Promise<void> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db.rpc('gc_turn_down_change_request', { p_request_id: requestId, p_note: note })
+  taken(result as { data: null; error: SupabaseResultError | null }, 'turn the ask down')
+}
+
+/**
+ * Tell the company where its ask stands (P4b-iii's `changeAskEmail`, kind `changeAsk`), in its language, once a stage by
+ * `<request id>:<stage>`: `down` with the turn-down, `sent` when its change order went to the customer, `no` when the
+ * customer declined it. Null when the ask is not at that stage. A refusal comes back in the answer, never thrown.
+ */
+export async function emailChangeAsk(a: {
+  projectId: string
+  project: string
+  trade: string
+  request: TradeChangeRequest
+  stage: ChangeAskEmailStage
+  changeOrder?: { number: number; cost: number } | null
+}): Promise<TradeEmailAnswer | null> {
+  const { data } = await supabase.from('gc_companies').select('lang').eq('id', a.request.partnerId).maybeSingle()
+  const lang = tradeMailLang(data?.lang)
+  const mail = changeAskEmail(a.stage, { project: a.project, trade: a.trade, request: a.request, changeOrder: a.changeOrder ?? null }, lang)
+  if (!mail) return null
+  return sendGcTradeEmail({
+    companyId: a.request.partnerId,
+    kind: 'changeAsk',
+    key: changeAskEmailKey(a.request.id, a.stage),
+    projectId: a.projectId,
+    lang,
+    subject: mail.subject,
+    lines: mail.lines,
+  })
 }
 
 /** Our number's three inputs on a project (the Board's B5-c), for the money team: general conditions in dollars, contingency and fee in percent. */
