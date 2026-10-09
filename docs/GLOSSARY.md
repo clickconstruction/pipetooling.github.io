@@ -1095,7 +1095,7 @@ Bids → Pricing tab → Share ▾ → **Division 22 codes** (v2.2598). The rule
   - The form refuses an empty pattern, an unknown section, a bad order and a duplicate. It warns on a two-letter pattern and on an order shared with a rule that catches the same names.
   - **Sections**: *Add a section* and *Rename*. *Delete* is refused while any rule files names under the section, and the words say how many, because its rules would go with it (`ON DELETE CASCADE`).
 - **Writers**: dev, master, assistant, controller and estimator, under RLS. A deleted rule or section is restorable for 90 days (v2.5056).
-- **The manager train**: [`to-dos/division-22-rules-manager.md`](../to-dos/division-22-rules-manager.md).
+- **The manager**: built in five PRs, v2.5054 (kernel), v2.5056 (archive), v2.5058 (read side), v2.5061 (write side) and v2.5063 (guide and the owner's seed). Its guide is [*keep the Division 22 codes right*](../src/content/help/manage-division-22-codes.md).
 
 ### Bid Pricing Package send — "Share with a teammate"
 Bids → Pricing tab → the green **Share with a teammate** button (v2.2937; was "Share" with the audience in a hover title, opening a modal titled "Package and send"). Shares an external pricing package with a teammate — **it does not send anything to the GC and never marks the bid sent** (not an input to the sent count, see *Sent (bid)*): the bid's Job Plans link plus a 4-column table (**Fixture or Tie-in**, **Count**, **Unit price**, **Revenue**). External by design — no Margin %, no Our cost, no Price book entry; hidden submission fixtures (`bid_count_row_submission_hides`) are dropped, but the footer total still reflects the live Pricing tab.
