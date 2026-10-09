@@ -1491,7 +1491,7 @@ The jobs pipeline postdates the schema sections above; its column semantics are 
 #### `public.jobs_ledger`
 - One row per job; `status` runs waiting → working → ready_to_bill → billed → paid via the `update_job_status` RPC.
 - Every status change is audited in `job_status_events` (single-writer trigger since v2.1435).
-- `revenue` is the canonical job total; `payments_made` is a trigger-maintained cache of payment rows. A lien claim is not `revenue − payments_made`: since v2.4969 every lien reader takes `lien_billed_open()`, what the sent bills still owe ([`20261009150000_lien_claim_is_billed.md`](./migrations/20261009150000_lien_claim_is_billed.md)).
+- `revenue` is the canonical job total; `payments_made` is a trigger-maintained cache of payment rows. A lien claim is not `revenue − payments_made`: since v2.4969 every lien reader takes `lien_billed_open()`, what the sent bills still owe, under the payment rule since v2.5093 ([`20261010024000_lien_claim_follows_the_rule.md`](./migrations/20261010024000_lien_claim_follows_the_rule.md)) ([`20261009150000_lien_claim_is_billed.md`](./migrations/20261009150000_lien_claim_is_billed.md)).
 - `hcp_number` and `click_number` combine into the effective job number (HCP wins when both are set).
 - `last_work_date` is trigger-maintained from approved clock sessions; the manual `last_bill_date` column was retired in v2.1154 (nothing reads or writes it).
 - `collections_at` / `collections_by` / `collections_note` — the Collections flag on a `billed` job (not a status): set and cleared by `set_job_collections_flag`, cleared by trigger when the job pays; the rules in [BILLING_FLOWS.md](./BILLING_FLOWS.md) → *Collections*, the term in [GLOSSARY.md](./GLOSSARY.md) → *Collections*.
