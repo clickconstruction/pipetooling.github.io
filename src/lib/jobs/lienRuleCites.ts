@@ -21,7 +21,7 @@ export const LIEN_RULE_CITES = {
   '§ 392': 'What a letter to a homeowner may not say',
   '§ 28.004': 'Interest at 1.5 percent a month on an unpaid bill',
   '§ 302.002': 'Interest at 6 percent a year when no bill was sent',
-  '§ 31.04': 'Theft of service stays off the letter',
+  '§ 31.04': 'Theft of service is off unless you tick it',
   '§ 27.031': 'What a justice court can hear',
   residential: 'A house moves every date up a month',
   delivery: 'When certified mail is required',

@@ -28,7 +28,7 @@ This card was first numbered #85. The legal-portal train had already named its c
 
 ## Where each item stands (2026-10-06)
 
-- **Shipped:** E and F (v2.4675), I (v2.4659), J (v2.4697), N (v2.4698), M (v2.4679, still to be seen live). Of the four
+- **Shipped:** E and F (v2.4675), I (v2.4659), J (v2.4697), N (v2.4698), M (v2.4679, still to be seen live), H (v2.5030: the owner kept the tick on 2026-10-09, so only the words changed). Of the four
   decisions held in the guide PRs, the owner chose on 2026-10-06 to fix the app for all four:
   C (*Cancel request* unlocks a waiver its own request minted) shipped in v2.4661, D (*Issue
   unconditional* selects every covered bill) in v2.4674, and B (the GC's courtesy PDF from the run)
@@ -36,7 +36,7 @@ This card was first numbered #85. The legal-portal train had already named its c
   copy.
 - **In other hands:** A (a fee or cost the firm adds can be acknowledged) is built into the
   legal-portal train's #4637, which rewrites the Legal desk's fees table.
-- **The owner's calls:** G, H, K and L (L also counsel's).
+- **The owner's calls:** G, K and L (L also counsel's).
 
 ## The items
 
@@ -61,7 +61,7 @@ This card was first numbered #85. The legal-portal train had already named its c
 - The guide *send lien notices from the Lien desk* repeats the promise in an example (*He still sees every send in his list*). It is held as written until this is decided.
 - The owner's call: build the list, or change the hint and the guide's example.
 
-**H. The demand letter's theft-of-services line is not tied to the attorney.** The guide *read the Texas lien rules the app follows* says the line stays off until the attorney package. It does ship off, but the office can tick it on any demand letter while the job has no payment, and nothing ties it to the Legal desk.
+~~**H. The demand letter's theft-of-services line is not tied to the attorney.**~~ Closed in v2.5030, the owner's call of 2026-10-09: the office keeps the tick. The guides *read the Texas lien rules the app follows* and *send a final demand letter* now say the line starts off and may be ticked on a job with no payment, and `demandLetter.ts`'s comment on `includeTheftOfServices` reads the same. As found: the guide *read the Texas lien rules the app follows* says the line stays off until the attorney package. It does ship off, but the office can tick it on any demand letter while the job has no payment, and nothing ties it to the Legal desk.
 
 - `src/lib/jobsDocuments/demandLetter.ts:1139` sets `includeTheftOfServices: false`, and the comment at `:92` says *OFF until attorney sign-off*.
 - `src/components/jobs/LienInstrumentsModal.tsx:1259-1275` offers the box whenever no payment is on the job.
