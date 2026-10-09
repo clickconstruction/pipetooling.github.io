@@ -150,7 +150,7 @@ Core lien guides:
 
 Guides that describe a lien door or signal in passing:
 - read-the-pipeline-money-view — read the Pipeline's money view
-- see-when-a-customer-will-pay — see when a customer will pay
+- see-which-months-need-a-lien-notice — see which months need a lien notice (the months-worked section moved out of *see when a customer will pay* in v2.5052)
 - work-the-pipeline-from-my-phone — work the Pipeline from my phone
 - search-the-stages-board — search jobs on the Pipeline board
 - needs-you-card — work the Needs you list on the dashboard

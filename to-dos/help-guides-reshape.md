@@ -8,10 +8,10 @@ summary: >
   opening, a split where it holds two or three guides, and cuts. The three slices' reviewers
   proposed all three per guide. They are gathered here for the owner's call.
 size: M (13 guides, about 20,000 prose words; one PR per guide)
-ver: v2.4589 · 4597 · 4601
+ver: v2.4589 · 4597 · 4601 · 5052
 mockup: not required — words only; each guide renders as it does today
 group: ready
-status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · nothing built yet
+status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · 1 of 13 shipped (v2.5052)
 next: One PR per guide, thirteen in all (the owner, 2026-10-09): the do-this-first opening above everything else, and the split where the reviewers proposed one, each new guide with its own title and share card; no cuts — a sentence a reader may rely on stays, moved below a *Reference* line at most. Each PR gets an independent old-against-new read.
 blocker: None.
 opinion: build — openings and splits are safe; the cuts were the risk and are off the table.
@@ -34,9 +34,9 @@ title. A **cut** removes text or moves it below a *Reference* line. The proposal
 the PR bodies of #4575 (rows 46–67), #4586 (rows 1–23) and #4589 (rows 24–45). The openings
 for the #4589 guides are written here; that PR named only the split and the cuts.
 
-### see when a customer will pay
+### ~~see when a customer will pay~~ — shipped v2.5052
 
-`see-when-a-customer-will-pay` · 2,545 words · #4586
+`see-when-a-customer-will-pay` · 2,545 words · #4586 · now the opening and four guides: the core (1,117 words), *read the payment forecast*, *see which customers pay slowly*, *record payments so they count*, and the months-worked section as the lien guide *see which months need a lien notice*. Nothing cut.
 
 - **Opening:** "Each billed row on the Pipeline says when the customer will likely pay. You read the
   Expected line, and you record a date when the customer names one."

@@ -3,6 +3,7 @@
  * Render smoke for the Share step's body, moved out of `BidsSubmittalsTab.tsx` (2026-10-04): the
  * seam pinned. It draws what it is handed and reports each press; nothing is written here.
  */
+import { readFileSync } from 'node:fs'
 import { describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -137,5 +138,42 @@ describe('SubmittalRoomPanel · v2.5026 Send the link (decision 11)', () => {
     }
     mount({ onSendLink })
     expect(screen.getByTestId('send-link-open').textContent).toBe('Send the link')
+  })
+})
+
+describe('SubmittalRoomPanel · v2.5051 the deciding / watching switch reads in both themes', () => {
+  // The pressed watching segment was white on --text-strong, which is near-white in dark mode: a blank white box.
+  const css = readFileSync('src/index.css', 'utf8')
+  const block = (opener: string) => css.slice(css.indexOf(opener), css.indexOf('}', css.indexOf(opener)))
+  const themes = { light: block("[data-theme='light'] {"), dark: block(":root[data-theme='dark'] {") }
+  const hexOf = (theme: string, value: string) => {
+    const name = /^var\((--[\w-]+)\)$/.exec(value)?.[1]
+    expect(name, `${value} is a theme token`).toBeTruthy()
+    const hex = new RegExp(`\\s${name}:\\s*#([0-9a-f]{6});`, 'i').exec(theme)?.[1]
+    expect(hex, `${name} is set in the theme`).toBeTruthy()
+    return hex!
+  }
+  const channel = (hex: string, i: number) => {
+    const c = parseInt(hex.slice(i, i + 2), 16) / 255
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+  }
+  const luminance = (hex: string) => 0.2126 * channel(hex, 0) + 0.7152 * channel(hex, 2) + 0.0722 * channel(hex, 4)
+  const contrast = (a: string, b: string) => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05)
+  const pat = { ...dana, id: 'p2', name: 'Pat Ortega', email: 'pat@owner.test', role: 'owners_rep', may_decide: false } as SubmittalPersonRow
+  const segment = (who: string, name: string) => within(screen.getByRole('group', { name: `${who} may` })).getByRole('button', { name })
+
+  it('watching, pressed or not, is theme tokens that read in light and dark; deciding keeps its green', () => {
+    mount({ people: [dana, pat] })
+    const pressed = segment('Pat Ortega', 'watching')
+    const unpressed = segment('Dana Whitfield', 'watching')
+    expect([pressed.getAttribute('aria-pressed'), unpressed.getAttribute('aria-pressed')]).toEqual(['true', 'false'])
+    for (const [theme, vars] of Object.entries(themes)) {
+      for (const b of [pressed, unpressed]) {
+        const ratio = contrast(hexOf(vars, b.style.color), hexOf(vars, b.style.background))
+        expect(ratio, `${theme} · ${b.style.color} on ${b.style.background}`).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+    const deciding = segment('Dana Whitfield', 'deciding')
+    expect([deciding.getAttribute('aria-pressed'), deciding.style.background, deciding.style.color]).toEqual(['true', 'rgb(22, 163, 74)', 'white'])
   })
 })

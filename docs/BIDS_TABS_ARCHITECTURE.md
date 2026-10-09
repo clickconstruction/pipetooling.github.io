@@ -187,7 +187,7 @@ Sizes are `wc -l` @ f423bd6e5. "Own map" = that file's internals are mapped else
 - **Render location:** 1997–2010 behind `canSeeBidCosts(myRole)` (office roles, v2.3336); `bidsTabBounce` sends everyone else to the board without a word.
 - **Props:** `bids`, `teamLaborData={teamLaborDataForBids}`, `bidAssignedCosts`, `onSelectBid={setSharedBid}`, `onCostIt` (`setSharedBid` + `selectBidsTab('labor')`), `onOpenBid` (Bid window on its Bid face), `showDollars={canSeeBidCostDollars(myRole)}`.
 - **Data:** `teamLaborDataForBids` and `bidAssignedCosts` load inside `useBidPricingEngine` (its effects gate on `pricing`/`labor`/`bid-costs` and `bid-costs`), not in the parent.
-- **Status:** **Done.** Lens internals (pursuit, cost-to-win, bid-vs-actual, forecast) are in the child over `lib/bids/bidPursuit.ts`, `bidCostToWin.ts`, `bidVsActual.ts`, `bidForecast.ts`; Bid vs actual's **Priced** column (v2.5043) reads `pricedMargin.ts` through `useBidVsActual`.
+- **Status:** **Done.** Lens internals (pursuit, cost-to-win, bid-vs-actual, forecast) are in the child over `lib/bids/bidPursuit.ts`, `bidCostToWin.ts`, `bidVsActual.ts`, `bidForecast.ts`; Bid vs actual's **Priced** column (v2.5043) reads `pricedMargin.ts` through `useBidVsActual`, and its **Direct** column and opened rows (v2.5046) read `bidVsActualBurn.ts` and `stageEarnedValue.ts` through `useBidVsActualBurnInputs` and `useJobStageEarnedValue` (`BidVsActualRowDetail`).
 
 ### `day-book` — Day book (v2.3735)
 

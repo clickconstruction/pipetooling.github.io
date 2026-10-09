@@ -24,7 +24,7 @@ import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { GcQuestionsWindow, type AnswerReach } from '../components/gc/GcQuestions'
 import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
 import { GcScheduleWindow } from '../components/gc/GcScheduleWindow'
-import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
+import { withChangeOrders, withChangeRequests, type ChangeOrderRow, type ChangeRequestRow } from '../lib/gc/changeOrderRows'
 import { GcDailyLogWindow } from '../components/gc/GcDailyLog'
 import { dailyLogPayload, withDailyLogs, type DailyLogRow } from '../lib/gc/dailyLogRows'
 import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
@@ -91,10 +91,15 @@ import {
   answerChangeOrder,
   deleteChangeOrderDraft,
   draftChangeOrder,
+  draftChangeOrderFromRequest,
+  emailChangeAsk,
   loadGcChangeOrders,
   loadGcChangeOrderEmails,
+  loadGcChangeRequestEmails,
+  loadGcChangeRequests,
   sendChangeOrder,
   setChangeOrderPct,
+  turnDownChangeRequest,
   checkDriveAccess,
   createGcProject,
   declineGcAsk,
@@ -149,12 +154,13 @@ import {
   sendGcSow,
 } from '../lib/gc/gcIo'
 import { sowEmailRequest } from '../lib/gc/sowEmail'
-import { gcTradeEmailRefusal } from '../lib/gc/tradeEmail'
+import { gcTradeEmailRefusal, type ChangeAskEmailStage } from '../lib/gc/tradeEmail'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
-import type { DailyLog, GcProject, GcState, ScopeBookStore } from '../lib/gc/types'
+import type { DailyLog, GcProject, GcState, ScopeBookStore, TradeChangeRequest } from '../lib/gc/types'
+import { partnerById } from '../lib/gc/lookups'
 import { gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
 
 interface Loaded {
@@ -494,26 +500,38 @@ export default function GcProjects() {
   const changesProjectId = params.get('changes')
   const [changeOrderRows, setChangeOrderRows] = useState<ChangeOrderRow[]>([])
   const [changeEmails, setChangeEmails] = useState<{ source_id: string; recipient_name: string | null; sent_at: string }[]>([])
+  // The trades' asks for a change (O3b), and the day each email about one went to its company, by key.
+  const [changeRequestRows, setChangeRequestRows] = useState<ChangeRequestRow[]>([])
+  const [askEmails, setAskEmails] = useState<{ key: string; on: string }[]>([])
   const [changeBusy, setChangeBusy] = useState<string | null>(null)
   const [changeProblem, setChangeProblem] = useState<string | null>(null)
   const loadChangeOrders = useCallback(async () => {
     // Change orders are the money team's (the Owner Billing door): nobody else reads them.
     if (!board || !canSeeGcMoney(role)) return
-    const rows = await loadGcChangeOrders(board.projects.map((p) => p.id))
+    const projectIds = board.projects.map((p) => p.id)
+    const rows = await loadGcChangeOrders(projectIds)
     setChangeOrderRows(rows)
     // Who each was emailed to (O4b-2), from its sent copies.
     setChangeEmails(await loadGcChangeOrderEmails(rows.map((r) => r.id)))
+    // The asks are dev only until the trade wave (P4a's policy), so anyone else reads none.
+    const asks = await loadGcChangeRequests(projectIds)
+    setChangeRequestRows(asks)
+    setAskEmails(await loadGcChangeRequestEmails(asks.map((r) => r.id)))
   }, [board, role])
   useEffect(() => {
     void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
   }, [loadChangeOrders])
-  const boardWithChanges = useMemo(() => (board ? withChangeOrders(board, changeOrderRows) : null), [board, changeOrderRows])
+  const boardWithChanges = useMemo(
+    () => (board ? withChangeRequests(withChangeOrders(board, changeOrderRows), changeRequestRows) : null),
+    [board, changeOrderRows, changeRequestRows],
+  )
   const changesProject = changesProjectId ? (boardWithChanges?.projects.find((p) => p.id === changesProjectId) ?? null) : null
   const changeEmailed = useMemo(() => {
     const out: Record<string, { to: string; on: string }[]> = {}
     for (const e of changeEmails) (out[e.source_id] ??= []).push({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) })
     return out
   }, [changeEmails])
+  const askEmailed = useMemo(() => Object.fromEntries(askEmails.map((e) => [e.key, e.on])), [askEmails])
   const setChangesWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('changes', projectId)
@@ -529,6 +547,38 @@ export default function GcProjects() {
       .then(() => loadChangeOrders())
       .catch((e) => setChangeProblem(formatErrorMessage(e, failed)))
       .finally(() => setChangeBusy(null))
+  }
+  /** A write that also emails (O3b): the words it returns, an email that did not go, are said after the read. */
+  const changeWriteSaying = (id: string, work: () => Promise<string | null>, failed: string) => {
+    setChangeBusy(id)
+    setChangeProblem(null)
+    void (async () => {
+      try {
+        const said = await work()
+        await loadChangeOrders()
+        if (said) setChangeProblem(said)
+      } catch (e) {
+        setChangeProblem(formatErrorMessage(e, failed))
+      } finally {
+        setChangeBusy(null)
+      }
+    })()
+  }
+  /**
+   * Tell a company where its ask for a change stands (O3b), once a stage: null when the email went or went before, else
+   * the words for the window.
+   */
+  const tellAsk = async (
+    state: GcState,
+    project: GcProject,
+    request: TradeChangeRequest,
+    stage: ChangeAskEmailStage,
+    changeOrder: { number: number; cost: number } | null = null,
+  ): Promise<string | null> => {
+    const trade = project.packages.find((k) => k.id === request.packageId)?.trade ?? ''
+    const answer = await emailChangeAsk({ projectId: project.id, project: project.name, trade, request, stage, changeOrder })
+    if (!answer || answer.ok) return null
+    return `${partnerById(state, request.partnerId)?.company ?? 'The company'} did not get the email. ${gcTradeEmailRefusal(answer.key)}`
   }
 
   // The daily log (Building's U3a-ii): read beside the board for a dev, laid over the board's projects
@@ -1233,6 +1283,7 @@ export default function GcProjects() {
           busy={changeBusy}
           problem={changeProblem}
           emailed={changeEmailed}
+          askEmailed={askEmailed}
           onClose={() => setChangesWindow(null)}
           writes={{
             onDraft: (draft) => changeWrite('new', draftChangeOrder(changesProject.id, draft), 'The change order was not drafted.'),
@@ -1251,6 +1302,12 @@ export default function GcProjects() {
                     const a = await sendGcCustomerEmail({ projectId: changesProject.id, kind: 'change_order', sourceId: id, subject: mail.subject, lines: mail.lines, pdf: null })
                     if (!a.ok) emailProblem = `The change order is marked sent, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`
                   }
+                  // Made of a trade's ask (O3b): the company hears it went to the customer, with its part.
+                  const asked = (changesProject.changeRequests ?? []).find((r) => r.changeOrderId === id)
+                  if (asked && co) {
+                    const told = await tellAsk(boardWithChanges, changesProject, asked, 'sent', { number: co.number, cost: co.cost })
+                    if (told) emailProblem = `${emailProblem ?? 'The change order is marked sent.'} ${told}`
+                  }
                   await loadChangeOrders()
                   if (emailProblem) setChangeProblem(emailProblem)
                 } catch (e) {
@@ -1260,9 +1317,43 @@ export default function GcProjects() {
                 }
               })()
             },
-            onAnswer: (id, signed, on) => changeWrite(id, answerChangeOrder(id, signed, on), 'Their answer was not recorded.'),
+            onAnswer: (id, signed, on) => {
+              const co = projectChangeOrders(changesProject).find((c) => c.id === id)
+              const asked = (changesProject.changeRequests ?? []).find((r) => r.changeOrderId === id)
+              changeWriteSaying(
+                id,
+                async () => {
+                  await answerChangeOrder(id, signed, on)
+                  // The customer said no to a change order made of a trade's ask (O3b): the company hears it.
+                  if (signed || !asked || !co) return null
+                  const told = await tellAsk(boardWithChanges, changesProject, asked, 'no', { number: co.number, cost: co.cost })
+                  return told ? `Their answer is recorded. ${told}` : null
+                },
+                'Their answer was not recorded.',
+              )
+            },
             onSetPct: (id, pct) => changeWrite(id, setChangeOrderPct(id, pct), 'The percent done was not saved.'),
             onDelete: (id) => changeWrite(id, deleteChangeOrderDraft(id), 'The draft was not deleted.'),
+            onDraftFromRequest: (requestId, draft) => changeWrite(requestId, draftChangeOrderFromRequest(requestId, draft), 'The change order was not made.'),
+            onTurnDown: (requestId, note) => {
+              const request = (changesProject.changeRequests ?? []).find((r) => r.id === requestId)
+              changeWriteSaying(
+                requestId,
+                async () => {
+                  await turnDownChangeRequest(requestId, note)
+                  if (!request) return null
+                  const told = await tellAsk(boardWithChanges, changesProject, { ...request, turnedDown: { on: today, note } }, 'down')
+                  return told ? `It is turned down. ${told}` : null
+                },
+                'The ask was not turned down.',
+              )
+            },
+            onTell: (requestId, stage) => {
+              const request = (changesProject.changeRequests ?? []).find((r) => r.id === requestId)
+              const co = request ? projectChangeOrders(changesProject).find((c) => c.id === request.changeOrderId) : undefined
+              if (!request || !co) return
+              changeWriteSaying(co.id, () => tellAsk(boardWithChanges, changesProject, request, stage, { number: co.number, cost: co.cost }), 'The email did not go.')
+            },
           }}
         />
       )}

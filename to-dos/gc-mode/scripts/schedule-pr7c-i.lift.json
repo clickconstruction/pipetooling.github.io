@@ -148,6 +148,9 @@
     }
   ],
   "pin": {
+    "main": "c3d28e501e0271bded74040b846f38d4eceeeca3",
+    "spike": "501326cd0966ac4af5dc2d6a7417b9a6cb58b6db",
+    "about": "#5143 merged; the spike before its follow-up (spike/schedule-pr7c-i-follow)",
     "known": {
       "PlanSheet": "its discipline and page comments are New project's PR 1b words on main (v2.4696), not the spike's; the fields are the same",
       "CustomerRole": "its doc comment is New project's PR 1b words on main (v2.4696), not the spike's; the type is the same",

@@ -17,6 +17,12 @@ const DATA: GcState = {
       payDays: 38,
       retainagePct: 10,
       address: '200 Main Plaza, Suite 300, Boerne',
+      phone: '(830) 555-0142',
+      email: 'elena@cibolocreekpartners.example',
+      contacts: [
+        { on: '2026-09-29', by: 'Robert', note: 'Elena sent Addendum 1. She wants the price to hold for 60 days.' },
+        { on: '2026-09-18', by: 'Robert', note: 'Walked the site. Pad B will follow about two weeks behind the shell.' },
+      ],
     },
     {
       id: 'raman',
@@ -26,6 +32,15 @@ const DATA: GcState = {
       payDays: 21,
       retainagePct: 10,
       address: '9811 Bandera Rd, Suite 140, Helotes',
+      phone: '(210) 555-0177',
+      email: 'priya@helotesdental.example',
+      contacts: [
+        {
+          on: '2026-09-26',
+          by: 'Robert',
+          note: 'She asked to move the opening to December 1. Told her millwork is the long lead.',
+        },
+      ],
     },
     {
       id: 'marshvale',
@@ -35,6 +50,20 @@ const DATA: GcState = {
       payDays: null,
       retainagePct: null,
       address: '410 Broadway, Suite 210, San Antonio',
+      phone: '(210) 555-0119',
+      email: 'jonah@marshvale.example',
+      contacts: [
+        {
+          on: '2026-09-29',
+          by: 'Robert',
+          note: 'Jonah issued Addendum 1. He expects one more addendum before bid day.',
+        },
+        {
+          on: '2026-08-14',
+          by: 'Wendi',
+          note: 'Called about the water heater schedule on a plumbing bid. Jonah answered the same day.',
+        },
+      ],
     },
     {
       id: 'ocotillo',
@@ -44,6 +73,9 @@ const DATA: GcState = {
       payDays: null,
       retainagePct: null,
       address: '88 Pearl Pkwy, San Antonio',
+      phone: '(210) 555-0163',
+      email: 'camila@studioocotillo.example',
+      contacts: [],
     },
     {
       id: 'hollis',
@@ -53,6 +85,15 @@ const DATA: GcState = {
       payDays: 18,
       retainagePct: 10,
       address: '20811 Stone Oak Pkwy, Suite 104, San Antonio',
+      phone: '(210) 555-0142',
+      email: 'dana@hollispharmacy.example',
+      contacts: [
+        {
+          on: '2026-09-29',
+          by: 'Robert',
+          note: 'Dana wants to open October 20. She asked what is left before the last bill.',
+        },
+      ],
     },
     {
       id: 'mesquite',
@@ -62,6 +103,9 @@ const DATA: GcState = {
       payDays: null,
       retainagePct: null,
       address: '1202 S Alamo St, San Antonio',
+      phone: '(210) 555-0188',
+      email: 'theo@mesquitedesign.example',
+      contacts: [],
     },
   ],
   projects: [
@@ -2575,6 +2619,7 @@ const DATA: GcState = {
       promisesKept: 2,
       base: 'San Antonio',
       maxMiles: 75,
+      won: 2,
     },
     {
       id: 'tricounty',
@@ -2591,6 +2636,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'New Braunfels',
       maxMiles: 100,
+      won: 1,
     },
     {
       id: 'hillside',
@@ -2607,6 +2653,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'Kerrville',
       maxMiles: 50,
+      won: 0,
     },
     {
       id: 'alamo',
@@ -2623,6 +2670,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'San Antonio',
       maxMiles: 100,
+      won: 3,
     },
     {
       id: 'guadalupe',
@@ -2639,6 +2687,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'Seguin',
       maxMiles: 75,
+      won: 0,
     },
     {
       id: 'bexar',
@@ -2655,6 +2704,7 @@ const DATA: GcState = {
       promisesKept: 1,
       base: 'San Antonio',
       maxMiles: 150,
+      won: 1,
     },
     {
       id: 'comal',
@@ -2671,6 +2721,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'New Braunfels',
       maxMiles: 50,
+      won: 0,
     },
     {
       id: 'ironhorse',
@@ -2687,6 +2738,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'Austin',
       maxMiles: 150,
+      won: 0,
     },
     {
       id: 'summit',
@@ -2703,6 +2755,7 @@ const DATA: GcState = {
       promisesKept: 2,
       base: 'San Antonio',
       maxMiles: 100,
+      won: 2,
     },
     {
       id: 'bluebonnet',
@@ -2720,6 +2773,7 @@ const DATA: GcState = {
       msaSentOn: '2026-09-30',
       base: 'Austin',
       maxMiles: 75,
+      won: 0,
     },
     {
       id: 'coolbreeze',
@@ -2736,6 +2790,7 @@ const DATA: GcState = {
       promisesKept: 3,
       base: 'San Antonio',
       maxMiles: 100,
+      won: 1,
     },
     {
       id: 'kendall',
@@ -2753,6 +2808,7 @@ const DATA: GcState = {
       msaSentOn: '2026-09-29',
       base: 'Boerne',
       maxMiles: 75,
+      won: 1,
     },
     {
       id: 'voltage',
@@ -2769,6 +2825,7 @@ const DATA: GcState = {
       promisesKept: 4,
       base: 'San Antonio',
       maxMiles: 120,
+      won: 2,
     },
     {
       id: 'brightline',
@@ -2785,6 +2842,7 @@ const DATA: GcState = {
       promisesKept: 4,
       base: 'San Marcos',
       maxMiles: 100,
+      won: 3,
     },
     {
       id: 'tejas',
@@ -2801,6 +2859,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'Laredo',
       maxMiles: 200,
+      won: 0,
     },
     {
       id: 'redline',
@@ -2817,6 +2876,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'San Antonio',
       maxMiles: 100,
+      won: 2,
     },
     {
       id: 'aquashield',
@@ -2833,6 +2893,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'Waco',
       maxMiles: 100,
+      won: 0,
     },
     {
       id: 'hillcountry',
@@ -2849,6 +2910,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'Boerne',
       maxMiles: 60,
+      won: 3,
     },
     {
       id: 'cedar',
@@ -2865,6 +2927,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'Fredericksburg',
       maxMiles: 80,
+      won: 0,
     },
     {
       id: 'sawtooth',
@@ -2881,6 +2944,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'San Antonio',
       maxMiles: 100,
+      won: 1,
     },
     {
       id: 'pecanvalley',
@@ -2907,6 +2971,7 @@ const DATA: GcState = {
         },
       ],
       contactGets: ['quotes', 'job', 'contracts'],
+      won: 1,
     },
     {
       id: 'liveoak',
@@ -2923,6 +2988,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'San Antonio',
       maxMiles: 60,
+      won: 1,
     },
     {
       id: 'westside',
@@ -2939,6 +3005,7 @@ const DATA: GcState = {
       promisesKept: 0,
       base: 'San Antonio',
       maxMiles: 80,
+      won: 1,
     },
   ],
 }

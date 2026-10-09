@@ -29,3 +29,7 @@ It is the controller audit's form (`20260927230000`): each function is its live 
 - the customer's usual days to pay as the dev reads them, and the controller reading the same, with an estimator still reading nothing;
 - the promise as the dev reads it, the controller reading the same, and an estimator nothing; the controller reading Their word's records;
 - the controller's own promise landing; an estimator's refused in its words; a controller in training mode writing nothing.
+
+## Status
+
+**Applied to prod 2026-10-09 at 13:43 UTC** by the lead (GC MODE) from a clean checkout at main's tip (59273584a) with `scripts/db-push.sh` (`--include-all`); drift 826/826 after. Verified through the management API, rolled back: step 1, `can_read_payment_promises`, `can_write_payment_promises` and `get_billed_customer_pay_speeds` each name the controller; as a controller, reads true, writes true and the pay speeds not null; as an estimator, reads false and writes false. No types change (the signatures are unchanged) and no deploy. Step 2, the screens read-only side by side as a controller and a dev, is the lane's, on the first certified GC bill.

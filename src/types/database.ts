@@ -9064,6 +9064,7 @@ export type Database = {
           created_by: string | null
           days: number
           days_on_chart: string[] | null
+          declined_note: string
           description: string
           id: string
           number: number
@@ -9085,6 +9086,7 @@ export type Database = {
           created_by?: string | null
           days?: number
           days_on_chart?: string[] | null
+          declined_note?: string
           description: string
           id?: string
           number: number
@@ -9106,6 +9108,7 @@ export type Database = {
           created_by?: string | null
           days?: number
           days_on_chart?: string[] | null
+          declined_note?: string
           description?: string
           id?: string
           number?: number
@@ -10722,6 +10725,7 @@ export type Database = {
           answered_on: string | null
           asked_by_company_id: string | null
           asked_on: string
+          change_order_id: string | null
           cost: number
           created_at: string
           days: number
@@ -10743,6 +10747,7 @@ export type Database = {
           answered_on?: string | null
           asked_by_company_id?: string | null
           asked_on: string
+          change_order_id?: string | null
           cost?: number
           created_at?: string
           days?: number
@@ -10764,6 +10769,7 @@ export type Database = {
           answered_on?: string | null
           asked_by_company_id?: string | null
           asked_on?: string
+          change_order_id?: string | null
           cost?: number
           created_at?: string
           days?: number
@@ -10785,6 +10791,13 @@ export type Database = {
             columns: ["asked_by_company_id"]
             isOneToOne: false
             referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_rfis_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "gc_change_orders"
             referencedColumns: ["id"]
           },
           {
@@ -29360,12 +29373,20 @@ export type Database = {
         Returns: Json
       }
       gc_add_company: { Args: { company: Json }; Returns: string }
+      gc_add_rfi: { Args: { r: Json }; Returns: string }
       gc_add_submittal: { Args: { s: Json }; Returns: string }
       gc_answer_change_order: {
-        Args: { p_how?: string; p_id: string; p_on: string; p_signed: boolean }
+        Args: {
+          p_how?: string
+          p_id: string
+          p_note?: string
+          p_on: string
+          p_signed: boolean
+        }
         Returns: undefined
       }
       gc_answer_question: { Args: { q: Json }; Returns: string }
+      gc_answer_rfi: { Args: { a: Json; p_rfi_id: string }; Returns: string }
       gc_answer_submittal: {
         Args: { p_answer: string; p_note?: string; p_submittal_id: string }
         Returns: string
@@ -29489,6 +29510,10 @@ export type Database = {
         Returns: string
       }
       gc_review_week_status: { Args: { p_week_start: string }; Returns: Json }
+      gc_rfi_change_order: {
+        Args: { p_description: string; p_price: number; p_rfi_id: string }
+        Returns: string
+      }
       gc_save_daily_log: { Args: { log: Json }; Returns: string }
       gc_schedule_add_activity: {
         Args: {
@@ -29658,6 +29683,10 @@ export type Database = {
         Args: { p_app: Json; p_project_id: string }
         Returns: string
       }
+      gc_send_rfi_to_architect: {
+        Args: { p_email_send_log_id?: string; p_rfi_id: string }
+        Returns: string
+      }
       gc_send_submittal_to_architect: {
         Args: { p_email_send_log_id?: string; p_submittal_id: string }
         Returns: string
@@ -29786,6 +29815,15 @@ export type Database = {
       gc_trade_remove_person: {
         Args: { p_company_id: string; p_person_id: string }
         Returns: undefined
+      }
+      gc_trade_rfi_ask: {
+        Args: {
+          p_company_id: string
+          p_package_id: string
+          p_question: string
+          p_sheets?: string[]
+        }
+        Returns: string
       }
       gc_trade_set_gets: {
         Args: { p_company_id: string; p_gets: string[]; p_person_id: string }

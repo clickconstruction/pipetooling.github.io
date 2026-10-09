@@ -4,6 +4,7 @@
  * kernels in ./ownerBilling.ts and the schedule's change-order days read it unchanged.
  */
 import type { Database } from '../../types/database'
+import { changeRequestFromRow } from './tradePortalState'
 import type { ChangeOrder, ChangeOrderReason, GcState } from './types'
 
 export type ChangeOrderRow = Database['public']['Tables']['gc_change_orders']['Row']
@@ -66,5 +67,31 @@ export function withChangeOrders(state: GcState, rows: ChangeOrderRow[]): GcStat
   return {
     ...state,
     projects: state.projects.map((project) => ({ ...project, changeOrders: changeOrdersFromRows(rows.filter((row) => row.project_id === project.id)) })),
+  }
+}
+
+/** A trade's ask for a change as its row holds it (`gc_trade_change_requests`, the Portal's P4a, migration 20261010006000). */
+export type ChangeRequestRow = Database['public']['Tables']['gc_trade_change_requests']['Row']
+
+/**
+ * A change order made of a trade's ask, as `gc_draft_change_order_from_request` takes it (O3b): the words, cost, price and
+ * days the office confirmed. The trade and the reason are the ask's own.
+ */
+export type ChangeRequestDraft = Pick<ChangeOrderDraft, 'description' | 'cost' | 'price' | 'days'>
+
+/**
+ * The board's projects with the trades' asks for a change laid over them (O3b), oldest first, each mapped by the portal's
+ * own `changeRequestFromRow`.
+ */
+export function withChangeRequests(state: GcState, rows: ChangeRequestRow[]): GcState {
+  return {
+    ...state,
+    projects: state.projects.map((project) => ({
+      ...project,
+      changeRequests: rows
+        .filter((row) => row.project_id === project.id)
+        .sort((a, b) => a.asked_on.localeCompare(b.asked_on) || a.created_at.localeCompare(b.created_at))
+        .map(changeRequestFromRow),
+    })),
   }
 }

@@ -551,6 +551,7 @@ export interface Partner {
   w9: boolean
   invited: number
   bids: number
+  won: number
   /** Promises of a quote date before today's live asks: how many they made, how many they kept. */
   promisesMade: number
   promisesKept: number
@@ -564,6 +565,8 @@ export interface Partner {
   msaSentOn?: string
   /** Whether we have checked them (question 3). Unset: a company we know, approved. */
   vetting?: PartnerVetting
+  /** Calls and notes with the company itself, not about one ask (the company window, 2026-10-04). Newest first. */
+  contacts?: { on: string; by: string; note: string }[]
   /** The contact's phone and email, for Follow up's Call, Text and Email (the owner, 2026-10-04). Unset: a made-up one stands in (`partnerReach`). */
   phone?: string
   email?: string
@@ -605,11 +608,15 @@ export interface GcCustomer {
   id: string
   name: string
   contact: string
+  phone: string
+  email: string
   address: string
   /** Average days from our bill to their payment. Null: they have not paid us yet. */
   payDays: number | null
   retainagePct: number | null
   portalOn: boolean
+  /** One call log, whatever they are to us. */
+  contacts: { on: string; by: string; note: string }[]
 }
 
 export interface GcProject {
@@ -828,6 +835,8 @@ export interface GcState {
   tradePromises?: TradePromise[]
   /** Papers sent from a company window, oldest first (the owner, 2026-10-04). */
   paperSends?: PaperSend[]
+  /** Reminders sent to customers from their window, oldest first (the owner, 2026-10-04). */
+  customerSends?: CustomerSend[]
   /** Schedule templates, oldest first (G-44): a job's shape for the next job like it. Unset: none saved. */
   scheduleTemplates?: ScheduleTemplate[]
 }
@@ -991,4 +1000,23 @@ export interface Rfi {
   answer: { on: string; text: string; by: 'architect' | 'us'; impact: RfiImpact; cost: number; days: number } | null
   /** The change order a cost answer started. Null: none yet. */
   changeOrderId: string | null
+}
+
+/**
+ * A paper sent to a customer from its window (the owner, 2026-10-04): our contract to sign in their
+ * portal (the first send, then reminders), or a reminder on a change order waiting on their signature.
+ */
+export interface CustomerSend {
+  id: string
+  customerId: string
+  projectId: string
+  paper: 'contract' | 'changeOrder'
+  /** A change order's reminder: which one. */
+  changeOrderId?: string
+  /** Our contract's first send; later ones are reminders. */
+  first?: boolean
+  on: string
+  /** The day we asked them to sign by. */
+  by: string
+  note: string
 }

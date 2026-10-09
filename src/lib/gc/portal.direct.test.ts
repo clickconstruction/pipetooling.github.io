@@ -42,6 +42,7 @@ const partner: Partner = {
   w9: true,
   invited: 1,
   bids: 0,
+  won: 0,
   promisesMade: 0,
   promisesKept: 0,
   base: null,

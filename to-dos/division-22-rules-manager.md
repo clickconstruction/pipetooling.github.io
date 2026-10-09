@@ -2,9 +2,9 @@
 name: Division 22 rules manager
 number: 2
 group: ready
-status: the full rules manager approved by the owner 2026-10-09 (the decisions sitting); not started
+status: the full rules manager approved by the owner 2026-10-09 (the decisions sitting); building — PR 1 of 5 (the kernel, v2.5054)
 summary: Rules manager UI; RH / EDF / med-gas seed call. Gas and the Needs You card shipped.
-next: Build the full rules manager from the plan below; seed RH / EDF and the med-gas rule with it.
+next: PR 2, the archive-on-delete trigger on both ledger tables; then the manager window (PRs 3–4) and the guide and seed (PR 5), per the train below.
 size: M
 blocker: None.
 ver: coverage 73%
@@ -31,6 +31,14 @@ Copy fixtures for text groups by Division 22 spec section (v2.2587) and the audi
 ## Decision needed
 
 Whether Wendi wants the manager at all, or pinning from the audit modal is enough. The RH / EDF / med-gas seed call is the owner's.
+
+## The train (approved by Punchlist 2026-10-09)
+
+1. **The kernel** (v2.5054, `src/lib/specSectionRules.ts`): each rule's standing (deciding, shadowed or idle), the preview of a draft add / edit / delete (the names that move, coverage before and after), draft validation, the priority bands, the rules grouped by section.
+2. **The archive-on-delete trigger** on `spec_section_match_rules` and `spec_sections`, before any write UI: a rule or section deleted in the manager is restorable for 90 days from Recently deleted. Today neither table has it.
+3. **The manager, read side**: the Division 22 window gets three tabs, *Names* (today's audit), *Rules* (grouped by section, with each rule's standing) and *Sections*.
+4. **The manager, write side**: add, edit and delete a rule with the preview before saving; add and rename a section. A section with rules cannot be deleted (its rules would go with it, `ON DELETE CASCADE`): the refusal says how many rules it holds.
+5. **The guide and the seed**: the help guide, the glossary and access lines, then RH / EDF / med gas, once the owner names their sections.
 
 ## Where it plugs in
 
