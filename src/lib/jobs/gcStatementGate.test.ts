@@ -8,12 +8,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   GC_STATEMENT_UNCHECKED_WORDS,
+  gcBulkHeldLines,
+  gcBulkHeldSummary,
   gcCertWeekStartYmd,
   gcStatementGate,
   gcStatementRefusedNote,
   type GcStatementCertIn,
 } from '../../../supabase/functions/_shared/gcStatementGate'
-import { readGcStatementGate } from '../../../supabase/functions/_shared/gcStatementGateIo'
+import { readGcStatementGate, readGcStatementHolds } from '../../../supabase/functions/_shared/gcStatementGateIo'
 import { todayYmdInAppTz } from '../../../supabase/functions/_shared/appTimeZone'
 import { gcReviewWeekStartYmd } from './gcReviewCertification'
 
@@ -106,6 +108,18 @@ describe('gcStatementGate', () => {
     expect(gcStatementGate([{ jobId: 'j1', remaining: 900 }], [noJobIds]).ok).toBe(true)
   })
 
+  it('the bulk doors’ summary and the whole report’s lines count and name the held GCs by why', () => {
+    expect(gcBulkHeldSummary('sent', 3, ['not_checked', 'not_checked'])).toBe('3 sent · 2 held: not checked this week')
+    expect(gcBulkHeldSummary('printed', 4, ['changed', 'not_checked'])).toBe('4 printed · 1 held: not checked this week · 1 held: changed since it was checked')
+    expect(gcBulkHeldSummary('sent', 5, [])).toBe('5 sent')
+    expect(gcBulkHeldLines([
+      { name: 'TF Harper', why: 'not_checked' },
+      { name: 'Done Right Foundation', why: 'changed' },
+      { name: 'Loberg Contracting', why: 'not_checked' },
+    ])).toEqual(['Held, not checked this week: TF Harper, Loberg Contracting', 'Held, changed since it was checked: Done Right Foundation'])
+    expect(gcBulkHeldLines([])).toEqual([])
+  })
+
   it('the dispatch’s note names the words and why', () => {
     const gate = gcStatementGate([{ jobId: 'j1', remaining: 10 }], [])
     if (gate.ok) throw new Error('expected a hold')
@@ -190,6 +204,26 @@ describe('readGcStatementGate — the dispatch hands in the group it built', () 
   it('a read that fails throws, so the attempt is tried again rather than sent', async () => {
     const admin = fakeAdmin({ certErr: 'timeout' })
     await expect(readGcStatementGate(admin, 'gc-1', { rows: [], now: ON_FRIDAY })).rejects.toThrow('gc_review_certifications: timeout')
+  })
+})
+
+describe('readGcStatementHolds — the whole report, every GC section in one read', () => {
+  it('holds the sections the week’s checks do not stand behind; the no-GC bucket is never held', async () => {
+    const admin = fakeAdmin({ certs: [{ gc_customer_id: 'gc-knight', ...cert([{ key: 'job-k', jobId: 'job-k', remaining: 900 }]) }] })
+    const group = (id: string | null, rows: unknown[]) => ({ entity_id: id, entity_name: id ?? 'Not billed to a GC', is_no_entity: id == null, job_count: 1, subtotal: 0, oldest_age_days: null, rows })
+    const holds = await readGcStatementHolds(admin, [
+      group('gc-knight', [payloadRow({ job_id: 'job-k', row_key: 'b-k', remaining: 900 })]),
+      group('gc-harper', [payloadRow({ job_id: 'job-h', row_key: 'b-h', remaining: 3000 })]),
+      group(null, [payloadRow({ job_id: 'job-n', row_key: 'b-n', remaining: 50 })]),
+    ] as never[], { now: ON_FRIDAY })
+    expect([...holds.entries()].map(([id, g]) => [id, g.ok ? g.why : g.why])).toEqual([
+      ['gc-knight', 'checked'],
+      ['gc-harper', 'not_checked'],
+    ])
+    expect(admin.reads[0]!.steps.filter(([m]) => m === 'in' || m === 'eq')).toEqual([
+      ['in', ['gc_customer_id', ['gc-knight', 'gc-harper']]],
+      ['eq', ['week_start', '2026-10-05']],
+    ])
   })
 })
 

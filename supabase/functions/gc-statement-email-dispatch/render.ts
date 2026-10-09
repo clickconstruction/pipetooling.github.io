@@ -23,6 +23,7 @@ export { applyPaymentRule, attachJobTotals, payloadJobIds } from '../_shared/gcS
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { billPaidByWords } from '../_shared/billPaidBy.ts'
 import { billPaymentSlices } from '../_shared/paymentAttribution.ts'
+import { gcBulkHeldLines, type GcStatementHeldWhy } from '../_shared/gcStatementGate.ts'
 import type { GcStatementPayload, GcStatementPayloadGroup, GcStatementPayloadRow } from '../_shared/gcStatementPayload.ts'
 import {
   GC_STATEMENT_COMPANY_NAME,
@@ -208,7 +209,10 @@ export function renderGcStatementText(group: GcStatementPayloadGroup, dateStr: s
 }
 
 /** Whole-report email — mirror of buildGcReviewShareAllEmailHtml. */
-export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: string, officePhone?: string | null, introText?: string | null): string {
+/** The GCs the whole report left out (v2.5022): held until their bills are checked — mirror of the client's `GcReportHeld`. */
+export type GcReportHeld = ReadonlyArray<{ name: string; why: GcStatementHeldWhy }>
+
+export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: string, officePhone?: string | null, introText?: string | null, held?: GcReportHeld): string {
   const scope = payload.group_by === 'development' ? 'development' : 'GC'
   const sectionsHtml = payload.groups
     .map(
@@ -222,7 +226,7 @@ export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: strin
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
   ${gcStatementIntroHtml(introText)}<p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
   <p style="margin:2px 0 4px;font-size:13px;color:#4b5563">Open balances by ${scope} · ${escapeHtml(dateStr)}</p>
-  ${sectionsHtml}
+  ${gcBulkHeldLines(held ?? []).map((line) => `<p style="margin:2px 0 4px;font-size:12px;color:#92400e">${escapeHtml(line)}</p>`).join('')}${sectionsHtml}
   <table style="width:100%;border-collapse:collapse;margin-top:14px">
     <tbody>
       <tr>
@@ -235,7 +239,7 @@ export function renderGcShareAllHtml(payload: GcStatementPayload, dateStr: strin
 </div>`
 }
 
-export function renderGcShareAllText(payload: GcStatementPayload, dateStr: string, officePhone?: string | null, introText?: string | null): string {
+export function renderGcShareAllText(payload: GcStatementPayload, dateStr: string, officePhone?: string | null, introText?: string | null, held?: GcReportHeld): string {
   const scope = payload.group_by === 'development' ? 'development' : 'GC'
   const sections = payload.groups.flatMap((g) => [
     `${g.entity_name} · ${g.job_count} job${g.job_count === 1 ? '' : 's'} · $${formatCurrency(g.subtotal)}`,
@@ -246,6 +250,7 @@ export function renderGcShareAllText(payload: GcStatementPayload, dateStr: strin
     ...introTextLines(introText),
     GC_STATEMENT_COMPANY_NAME,
     `Open balances by ${scope} · ${dateStr}`,
+    ...gcBulkHeldLines(held ?? []),
     '',
     ...sections,
     `Total owed: $${formatCurrency(payload.grand_total)}`,

@@ -29,9 +29,16 @@ export type GcStatementCertIn = { certified_at: string; total: number | string; 
 /** One row of the GC's statement now, outside Collections, netted by the one payment rule. */
 export type GcStatementLiveRowIn = { jobId: string; remaining: number | string }
 
+/** Why a statement is held, and the words each reason reads in a stamp, a summary and the whole report. */
+export type GcStatementHeldWhy = 'not_checked' | 'changed'
+export const GC_STATEMENT_HELD_WHY: Readonly<Record<GcStatementHeldWhy, string>> = {
+  not_checked: 'not checked this week',
+  changed: 'changed since it was checked',
+}
+
 export type GcStatementGateResult =
   | { ok: true; why: 'checked' | 'nothing_to_check' }
-  | { ok: false; why: 'not_checked' | 'changed'; words: string; note: string }
+  | { ok: false; why: GcStatementHeldWhy; words: string; note: string }
 
 const cents = (n: unknown): number => {
   const v = Math.round(Number(n) * 100)
@@ -59,8 +66,8 @@ function snapshotRows(snapshot: unknown): GcStatementLiveRowIn[] | null {
   return out
 }
 
-function refuse(why: 'not_checked' | 'changed'): GcStatementGateResult {
-  return { ok: false, why, words: GC_STATEMENT_UNCHECKED_WORDS, note: why === 'not_checked' ? 'not checked this week' : 'changed since it was checked' }
+function refuse(why: GcStatementHeldWhy): GcStatementGateResult {
+  return { ok: false, why, words: GC_STATEMENT_UNCHECKED_WORDS, note: GC_STATEMENT_HELD_WHY[why] }
 }
 
 /**
@@ -87,4 +94,27 @@ export function gcStatementGate(live: readonly GcStatementLiveRowIn[], weekCerts
 /** The note a held scheduled send is stamped with — the dispatch's log of why it did not go. */
 export function gcStatementRefusedNote(gate: Extract<GcStatementGateResult, { ok: false }>): string {
   return `refused: ${gate.words} (${gate.note})`
+}
+
+/**
+ * The bulk doors (Share all, Print all and the scheduled whole report) skip a held GC and say so
+ * (v2.5022, Punchlist's addition): "3 sent · 2 held: not checked this week". The checked GCs still go.
+ */
+export function gcBulkHeldSummary(verb: string, going: number, held: readonly GcStatementHeldWhy[]): string {
+  const parts = [`${going} ${verb}`]
+  for (const why of ['not_checked', 'changed'] as const) {
+    const n = held.filter((w) => w === why).length
+    if (n > 0) parts.push(`${n} held: ${GC_STATEMENT_HELD_WHY[why]}`)
+  }
+  return parts.join(' · ')
+}
+
+/** The whole report's own lines naming who was left out, one per reason: "Held, not checked this week: TF Harper, Loberg". */
+export function gcBulkHeldLines(held: ReadonlyArray<{ name: string; why: GcStatementHeldWhy }>): string[] {
+  const out: string[] = []
+  for (const why of ['not_checked', 'changed'] as const) {
+    const names = held.filter((h) => h.why === why).map((h) => h.name)
+    if (names.length > 0) out.push(`Held, ${GC_STATEMENT_HELD_WHY[why]}: ${names.join(', ')}`)
+  }
+  return out
 }

@@ -14,6 +14,7 @@ import {
   type StatementReceivedIn,
 } from '../../../supabase/functions/_shared/gcStatementByProperty'
 import { ymdPlusDays } from '../../../supabase/functions/_shared/customerSample'
+import { gcBulkHeldLines, type GcStatementHeldWhy } from '../../../supabase/functions/_shared/gcStatementGate'
 import { buildGcChecksReport } from '../jobs/gcChecksApplied'
 import type { GcChecksInputs } from '../jobs/gcChecksAppliedIo'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -233,8 +234,11 @@ export function gcReviewShareAllEmailSubject(groupBy: GcReviewGroupBy, dateStr: 
   return `Open balances (${scope}) — ${GC_STATEMENT_COMPANY_NAME} — ${dateStr}`
 }
 
+/** The GCs a whole report left out (v2.5022): held until their bills are checked, and why. */
+export type GcReportHeld = ReadonlyArray<{ name: string; why: GcStatementHeldWhy }>
+
 export function buildGcReviewShareAllEmailHtml(
-  report: { groups: GcReviewGroup[]; grandTotal: number },
+  report: { groups: GcReviewGroup[]; grandTotal: number; held?: GcReportHeld },
   opts?: GcStatementEmailOpts,
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -251,7 +255,7 @@ export function buildGcReviewShareAllEmailHtml(
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
   ${gcStatementIntroHtml(opts?.introText)}<p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
   <p style="margin:2px 0 4px;font-size:13px;color:#4b5563">Open balances by ${scope} · ${escapeHtml(dateStr)}</p>
-  ${sectionsHtml}
+  ${gcBulkHeldLines(report.held ?? []).map((line) => `<p style="margin:2px 0 4px;font-size:12px;color:#92400e">${escapeHtml(line)}</p>`).join('')}${sectionsHtml}
   <table style="width:100%;border-collapse:collapse;margin-top:14px">
     <tbody>
       <tr>
@@ -270,7 +274,7 @@ const introTextLines = (introText: string | null | undefined): string[] => {
 }
 
 export function buildGcReviewShareAllEmailText(
-  report: { groups: GcReviewGroup[]; grandTotal: number },
+  report: { groups: GcReviewGroup[]; grandTotal: number; held?: GcReportHeld },
   opts?: GcStatementEmailOpts,
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -284,6 +288,7 @@ export function buildGcReviewShareAllEmailText(
     ...introTextLines(opts?.introText),
     GC_STATEMENT_COMPANY_NAME,
     `Open balances by ${scope} · ${dateStr}`,
+    ...gcBulkHeldLines(report.held ?? []),
     '',
     ...sections,
     `Total owed: $${formatCurrency(report.grandTotal)}`,

@@ -74,7 +74,7 @@ import {
   latestCertByGc,
   type GcReviewCertRow,
 } from '../../lib/jobs/gcReviewCertification'
-import { GC_STATEMENT_UNCHECKED_WORDS } from '../../../supabase/functions/_shared/gcStatementGate'
+import { GC_STATEMENT_UNCHECKED_WORDS, gcBulkHeldLines, gcBulkHeldSummary, type GcStatementHeldWhy } from '../../../supabase/functions/_shared/gcStatementGate'
 import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
 import GcReviewCertifyModal from './GcReviewCertifyModal'
 import GcStatementMarkSentForm from './GcStatementMarkSentForm'
@@ -1090,6 +1090,34 @@ export function JobsGcReviewModal({
     if (certsRead === 'failed') return 'This week’s checks could not be read. Close GC Review and open it again.'
     return GC_STATEMENT_UNCHECKED_WORDS
   }
+  /** Why a GC's section is held from the bulk doors (v2.5022): the same rule as its row's doors. */
+  const heldWhyFor = (g: GcReviewGroup): GcStatementHeldWhy | null => {
+    if (byDevelopment || g.isNoGc || !g.gcId) return null
+    const certGroup = certGroupByGc.get(g.gcId)
+    const cert = certsByGc.get(g.gcId)
+    if (!certGroup || !gcStatementHeld(certGroup, cert)) return null
+    return gcGroupCertStatus(certGroup, cert).state === 'changed' ? 'changed' : 'not_checked'
+  }
+  /**
+   * Share all and Print all by GC (v2.5022, Punchlist's addition): the checked sections go, and a held GC
+   * is left out and said — "3 sent · 2 held: not checked this week". Development reports are not held.
+   */
+  const bulk = (() => {
+    const going: GcReviewGroup[] = []
+    const held: Array<{ name: string; why: GcStatementHeldWhy }> = []
+    for (const g of rollup.groups) {
+      const why = heldWhyFor(g)
+      if (why) held.push({ name: g.gcName, why })
+      else going.push(g)
+    }
+    return { going, held, grandTotal: going.reduce((t, g) => t + g.subtotal, 0) }
+  })()
+  /** The bulk doors wait while the week's checks are not in hand, rather than hold every GC on a missing read. */
+  const bulkWaitNote = !byDevelopment && certsRead !== 'read' ? (certsRead === 'reading' ? 'Reading this week’s checks…' : 'This week’s checks could not be read. Close GC Review and open it again.') : null
+  const printAll = () => {
+    onPrint(bulk.going, effectiveGroupBy)
+    if (bulk.held.length > 0) showToast(gcBulkHeldSummary('printed', bulk.going.length, bulk.held.map((h) => h.why)), 'warning')
+  }
   /** The opened row: the statement's chips and its actions, then its bills. */
   const groupDetail = (g: GcReviewGroup) => (
     <>
@@ -1654,8 +1682,9 @@ export function JobsGcReviewModal({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onPrint(rollup.groups, effectiveGroupBy)}
-                  title={byDevelopment ? 'Print every development section as one report' : 'Print every GC section as one report'}
+                  disabled={bulkWaitNote != null}
+                  onClick={printAll}
+                  title={bulkWaitNote ?? (byDevelopment ? 'Print every development section as one report' : 'Print every checked GC section as one report — a GC not checked this week is left out')}
                   style={{
                     padding: '0.25rem 0.7rem',
                     fontSize: '0.8125rem',
@@ -1663,7 +1692,8 @@ export function JobsGcReviewModal({
                     border: '1px solid var(--border-strong)',
                     borderRadius: 4,
                     background: 'var(--surface)',
-                    cursor: 'pointer',
+                    cursor: bulkWaitNote ? 'not-allowed' : 'pointer',
+                    opacity: bulkWaitNote ? 0.55 : 1,
                     color: 'var(--text-700)',
                   }}
                 >
@@ -2240,14 +2270,26 @@ export function JobsGcReviewModal({
           <div style={{ background: 'var(--surface)', padding: '1.25rem 1.5rem', borderRadius: 8, minWidth: 340, maxWidth: 520, width: 'calc(100vw - 3rem)', maxHeight: 'min(90vh, 100%)', overflow: 'auto' }}>
             <h3 style={{ margin: '0 0 0.35rem', fontSize: '1.05rem' }}>Share the whole report</h3>
             <p style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-              {rollup.groups.length} {byDevelopment ? 'development' : 'GC'} section{rollup.groups.length === 1 ? '' : 's'} ·{' '}
-              ${formatCurrency(rollup.grandTotal)} outstanding
+              {bulk.going.length} {byDevelopment ? 'development' : 'GC'} section{bulk.going.length === 1 ? '' : 's'} ·{' '}
+              ${formatCurrency(bulk.grandTotal)} outstanding
               {includeCollections ? ' (Collections included)' : ''}
             </p>
+            {bulkWaitNote || bulk.held.length > 0 ? (
+              <div role="note" data-testid="gc-report-held" style={{ margin: '0 0 0.85rem', padding: '0.45rem 0.65rem', fontSize: '0.8125rem', lineHeight: 1.4, borderRadius: 4, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>
+                {bulkWaitNote ?? (
+                  <>
+                    {gcBulkHeldLines(bulk.held).map((line) => (
+                      <div key={line}>{line}</div>
+                    ))}
+                    <div>Left out of the report. {GC_STATEMENT_UNCHECKED_WORDS}.</div>
+                  </>
+                )}
+              </div>
+            ) : null}
             <button
               type="button"
-              disabled={shareAllSending}
-              onClick={() => onPrint(rollup.groups, effectiveGroupBy)}
+              disabled={shareAllSending || bulkWaitNote != null}
+              onClick={printAll}
               title="Opens the print window — choose Save as PDF there to download a copy"
               style={{
                 width: '100%',
@@ -2315,7 +2357,7 @@ export function JobsGcReviewModal({
                 </button>
                 <button
                   type="button"
-                  disabled={shareAllSending || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareAllTo.trim())}
+                  disabled={shareAllSending || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shareAllTo.trim()) || (bulkWaitNote != null && shareAllWhen === 'now')}
                   onClick={() => {
                     if (shareAllWhen === 'schedule') {
                       const built = buildGcStatementRequestInsert({
@@ -2349,7 +2391,7 @@ export function JobsGcReviewModal({
                       return
                     }
                     const dateStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    const report = { groups: rollup.groups, grandTotal: rollup.grandTotal }
+                    const report = { groups: bulk.going, grandTotal: bulk.grandTotal, held: bulk.held }
                     setShareAllSending(true)
                     setShareAllError(null)
                     void onSendStatement({
@@ -2360,12 +2402,13 @@ export function JobsGcReviewModal({
                       subject: shareAllSubject.trim() || gcReviewShareAllEmailSubject(effectiveGroupBy, dateStr),
                       emailHtml: buildGcReviewShareAllEmailHtml(report, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone }),
                       emailText: buildGcReviewShareAllEmailText(report, { dateStr, groupBy: effectiveGroupBy, officePhone: getPhysicalInvoiceIssuerForDocument().phone }),
-                      total: rollup.grandTotal,
-                      jobCount: rollup.groups.reduce((s, g) => s + g.jobCount, 0),
+                      total: bulk.grandTotal,
+                      jobCount: bulk.going.reduce((s, g) => s + g.jobCount, 0),
                     }).then((res) => {
                       setShareAllSending(false)
                       if (res.ok) {
                         setShareAllOpen(false)
+                        if (bulk.held.length > 0) showToast(gcBulkHeldSummary('sent', bulk.going.length, bulk.held.map((h) => h.why)), 'warning')
                       } else {
                         setShareAllError(res.error || 'Send failed — try again.')
                       }

@@ -14,6 +14,7 @@ import { todayYmdInAppTz } from '../../../supabase/functions/_shared/appTimeZone
 type Handler = (req: Request) => Promise<Response>
 const box: { handler: Handler | null; db: FakeDb; payloads: Record<string, unknown>; certsFail: boolean } = { handler: null, db: makeFakeDb(), payloads: {}, certsFail: false }
 const mail: string[][] = []
+const bodies: string[] = []
 
 vi.mock('https://deno.land/std@0.168.0/http/server.ts', () => ({ serve: (h: Handler) => void (box.handler = h) }))
 vi.mock('https://esm.sh/@supabase/supabase-js@2', () => ({
@@ -55,7 +56,9 @@ beforeAll(async () => {
   // sent copy (Supabase REST and Storage): answer "not ok", which each treats as nothing to read or keep.
   globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (String(input) === 'https://api.resend.com/emails') {
-      mail.push((JSON.parse(String(init?.body)) as { to: string[] }).to)
+      const sentMail = JSON.parse(String(init?.body)) as { to: string[]; html: string }
+      mail.push(sentMail.to)
+      bodies.push(sentMail.html)
       return new Response(JSON.stringify({ id: `mail-${mail.length}` }), { status: 200 })
     }
     return new Response('{}', { status: 503 })
@@ -106,6 +109,7 @@ const queued = (id: string, gcId: string, name: string, over: Record<string, unk
 
 beforeEach(() => {
   mail.length = 0
+  bodies.length = 0
   box.certsFail = false
   box.db = makeFakeDb()
   const week = gcCertWeekStartYmd(todayYmdInAppTz())
@@ -168,6 +172,20 @@ describe('gc-statement-email-dispatch holds a GC’s statement until it is check
     await runCron()
     const booked = box.db.writes.filter((w) => w.op === 'insert' && w.table === 'gc_statement_email_requests').map((w) => w.values)
     expect(booked).toEqual([expect.objectContaining({ gc_customer_id: 'gc-harper', send_at: '2026-10-15T12:00:00.000Z', repeat_weekly: true })])
+  })
+
+  it('the whole report by GC leaves out the GCs not checked, names them at the top, and the checked ones still go', async () => {
+    const harper = payloadFor('gc-harper', 'TF Harper', [row('j-harper', 'b-harper', 30000)]).groups[0]!
+    const knight = payloadFor('gc-knight', 'Knight Contracting', [row('j-knight', 'b-knight', 26000)]).groups[0]!
+    const noGc = { ...payloadFor('', 'Not billed to a GC', [row('j-none', 'b-none', 250)]).groups[0]!, entity_id: null, is_no_entity: true }
+    box.payloads[''] = { generated_at: '2026-10-09T15:00:00Z', group_by: 'gc', include_collections: false, grand_total: 56250, groups: [harper, knight, noGc] }
+    box.db.tables.gc_statement_email_requests = [queued('q-all', null as never, 'All GCs', { gc_customer_id: null })]
+    expect((await runCron()).body).toMatchObject({ processed: 1, sent: 1, refused: 0, errors: [] })
+    expect(bodies[0]).toContain('Held, not checked this week: TF Harper')
+    expect(bodies[0]).toContain('>Knight Contracting <span')
+    expect(bodies[0]).not.toContain('>TF Harper <span')
+    const audit = box.db.writes.find((w) => w.op === 'insert' && w.table === 'gc_statement_emails')!.values
+    expect(audit).toMatchObject({ group_by: 'all', gc_name: 'All GCs', total: 26250, job_count: 2 })
   })
 
   it('a check that cannot be read fails the attempt: nothing sent, the row tried again', async () => {

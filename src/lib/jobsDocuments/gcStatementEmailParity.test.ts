@@ -219,6 +219,22 @@ describe('GC statement — the client builders and the dispatcher render the sam
     expect(buildGcReviewShareAllEmailHtml(report, { dateStr: DATE, groupBy: 'gc', officePhone: PHONE, introText: INTRO })).toBe(renderGcShareAllHtml(payload, DATE, PHONE, INTRO))
     expect(buildGcReviewShareAllEmailText(report, { dateStr: DATE, groupBy: 'gc', officePhone: PHONE, introText: INTRO })).toBe(renderGcShareAllText(payload, DATE, PHONE, INTRO))
   })
+
+  it('a whole report that left GCs out names them alike, escaped, under the date (v2.5022)', () => {
+    const payload: GcStatementPayload = { generated_at: '2026-09-05T12:00:00Z', group_by: 'gc', include_collections: true, grand_total: 7_300, groups: [payloadGroup] }
+    const held = [
+      { name: 'TF Harper', why: 'not_checked' as const },
+      { name: 'H & I Construction', why: 'changed' as const },
+    ]
+    const report = { groups: [clientGroup], grandTotal: 7_300, held }
+    const html = buildGcReviewShareAllEmailHtml(report, { dateStr: DATE, groupBy: 'gc', officePhone: PHONE, introText: INTRO })
+    expect(html).toBe(renderGcShareAllHtml(payload, DATE, PHONE, INTRO, held))
+    expect(html).toContain('>Held, not checked this week: TF Harper</p>')
+    expect(html).toContain('>Held, changed since it was checked: H &amp; I Construction</p>')
+    const text = buildGcReviewShareAllEmailText(report, { dateStr: DATE, groupBy: 'gc', officePhone: PHONE, introText: INTRO })
+    expect(text).toBe(renderGcShareAllText(payload, DATE, PHONE, INTRO, held))
+    expect(text).toContain(`Open balances by GC · ${DATE}\nHeld, not checked this week: TF Harper\nHeld, changed since it was checked: H & I Construction\n\n`)
+  })
 })
 
 describe('the dispatcher reads each job\u2019s total beside the payload (v2.4536)', () => {
