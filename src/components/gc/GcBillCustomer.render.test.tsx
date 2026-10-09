@@ -14,7 +14,7 @@ function setup(
   over: Partial<GcProject> = {},
   waived: number[] = [],
   lastApp: Partial<OwnerPayAppSent> = {},
-  extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[]; emailed?: Record<number, { what: 'payApp' | 'certified'; to: string; on: string }[]>; interestEmailed?: Record<number, { to: string; on: string }[]> } = {},
+  extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[]; emailed?: Record<number, { what: 'payApp' | 'certified'; to: string; on: string }[]>; interestEmailed?: Record<number, { to: string; on: string }[]>; scheduleRead?: boolean } = {},
 ) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
@@ -27,8 +27,8 @@ function setup(
     ...over,
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
-  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn(), onBillInterest: vi.fn() }
-  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} interestEmailed={extra.interestEmailed} onClose={() => undefined} />)
+  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn(), onBillInterest: vi.fn(), onSetLateFee: vi.fn() }
+  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} interestEmailed={extra.interestEmailed} scheduleRead={extra.scheduleRead} onClose={() => undefined} />)
   return { writes, last }
 }
 
@@ -147,6 +147,24 @@ describe('GcBillCustomerWindow', () => {
     expect(document.body.textContent).toContain('Interest bill 1 · Oct 1')
     expect(document.body.textContent).toContain('Emailed to Cibolo Creek Partners on Oct 1.')
     expect(screen.getByText('paid Oct 2')).toBeTruthy()
+  })
+
+  it('types the late fee, and says the finish that counts once the schedule is read (O6b-3)', () => {
+    const { writes } = setup({}, [], {}, { scheduleRead: false })
+    expect(document.body.textContent).toContain('No late fee is entered from the contract.')
+    expect(document.body.textContent).toContain('Reading the schedule…')
+    fireEvent.click(screen.getByRole('button', { name: 'Change the late fee' }))
+    const field = screen.getByLabelText('The contract’s late fee a day, in dollars')
+    fireEvent.change(field, { target: { value: '0' } })
+    expect((screen.getByRole('button', { name: 'Save the late fee' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(field, { target: { value: '500' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the late fee' }))
+    expect(writes.onSetLateFee).toHaveBeenCalledWith(500)
+    cleanup()
+    // Fair Oaks D's projected finish is its contract's Fri Dec 11: on the day, so nothing costs yet.
+    setup({ ownerLateFinish: { perDay: 500 } })
+    expect(document.body.textContent).toContain(`${money(500)} a day past the contract's substantial completion.`)
+    expect(document.body.textContent).toContain('The schedule finishes Fri Dec 11, on the contract\'s Fri Dec 11.')
   })
 
   it('makes our conditional waiver for a sent one, and says when it went', () => {

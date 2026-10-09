@@ -11,7 +11,7 @@
  */
 import { type OwnerLineKind, type OwnerPayApp, ownerPayAppToSend } from './ownerBilling'
 import { type OwnerBillingRows, ownerBillingFromRows } from './ownerBillingRows'
-import type { GcCustomer, GcState, OwnerRetainageStep } from './types'
+import type { GcCustomer, GcProject, GcState, OwnerRetainageStep } from './types'
 
 /** The project's terms with the customer: O1's columns on `gc_projects`. */
 export interface OwnerTermsRow {
@@ -100,6 +100,22 @@ export function billingStateForAll(state: GcState, rows: BillingRows, projectIds
     }
   })
   return { ...state, customers: [...state.customers, ...copies], projects }
+}
+
+/**
+ * The jobs' schedules laid on the money's state (O6b-3), read beside it (`loadSchedule`), so the late finish can
+ * count. A job read with no schedule has none; a job not read is left as it was.
+ */
+export function withSchedules(state: GcState, schedules: ReadonlyMap<string, GcProject['schedule'] | null>): GcState {
+  return {
+    ...state,
+    projects: state.projects.map((p) => {
+      if (!schedules.has(p.id)) return p
+      const { schedule: _schedule, ...rest } = p
+      const schedule = schedules.get(p.id)
+      return schedule ? { ...rest, schedule } : rest
+    }),
+  }
 }
 
 /** The same for one job: what Bill the customer reads. */

@@ -31,7 +31,8 @@ import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
-import { billingStateFor, billingStateForAll, payAppSendPayload, type BillingRows } from '../lib/gc/billCustomer'
+import { billingStateFor, billingStateForAll, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
+import { loadSchedule } from '../lib/gc/scheduleIo'
 import { ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
 import { downloadPayAppExcel, downloadPayAppPdf, payAppPdf } from '../lib/gc/payAppFileWriters'
 import { payAppFileName } from '../lib/gc/payAppFile'
@@ -127,6 +128,7 @@ import {
   remindCustomerToPay,
   setOwnerPayDays,
   setOwnerLateInterest,
+  setOwnerLateFinish,
   sendOwnerInterestBill,
   recordGcPayment,
   recordGcPromise,
@@ -137,7 +139,7 @@ import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
-import type { DailyLog, GcState, ScopeBookStore } from '../lib/gc/types'
+import type { DailyLog, GcProject, GcState, ScopeBookStore } from '../lib/gc/types'
 import { gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
 
 interface Loaded {
@@ -539,7 +541,30 @@ export default function GcProjects() {
       live = false
     }
   }, [devView, board, ourIds, role])
-  const moneyState = useMemo(() => (boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null), [boardWithChanges, moneyRows, ourIds])
+  // Their schedules (O6b-3), read beside the money only while the lens is open, all at once: each job's late finish
+  // counts from them. A job whose read fails shows as having none.
+  const [moneySchedules, setMoneySchedules] = useState<Map<string, GcProject['schedule'] | null> | null>(null)
+  useEffect(() => {
+    if (devView !== 'money' || !board || !canSeeGcMoney(role)) return
+    let live = true
+    setMoneySchedules(null)
+    void Promise.all(
+      ourIds.map((id) =>
+        loadSchedule(board, id)
+          .then((read) => [id, read?.project.schedule ?? null] as const)
+          .catch(() => [id, null] as const),
+      ),
+    ).then((pairs) => {
+      if (live) setMoneySchedules(new Map(pairs))
+    })
+    return () => {
+      live = false
+    }
+  }, [devView, board, ourIds, role])
+  const moneyState = useMemo(() => {
+    const laid = boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null
+    return laid && moneySchedules ? withSchedules(laid, moneySchedules) : laid
+  }, [boardWithChanges, moneyRows, ourIds, moneySchedules])
 
   // Bill the customer (Owner Billing's O4a): the project's terms, its price as signed and its bills, read when
   // the window opens at `bill=<projectId>` and laid over the board's project with its change orders. The money
@@ -558,10 +583,27 @@ export default function GcProjects() {
   useEffect(() => {
     void loadBill().catch((e) => setBillProblem(formatErrorMessage(e, 'The bills did not load.')))
   }, [loadBill])
-  const billState = useMemo(
-    () => (boardWithChanges && billProjectId && billRows ? billingStateFor(boardWithChanges, billProjectId, billRows) : null),
-    [boardWithChanges, billProjectId, billRows],
-  )
+  // The job's schedule (O6b-3), read when the window opens, so its late finish counts. A failed read shows none.
+  const [billSchedule, setBillSchedule] = useState<{ id: string; schedule: GcProject['schedule'] | null } | null>(null)
+  useEffect(() => {
+    if (!billProjectId || !board || !canSeeGcMoney(role)) return
+    let live = true
+    loadSchedule(board, billProjectId)
+      .then((read) => {
+        if (live) setBillSchedule({ id: billProjectId, schedule: read?.project.schedule ?? null })
+      })
+      .catch(() => {
+        if (live) setBillSchedule({ id: billProjectId, schedule: null })
+      })
+    return () => {
+      live = false
+    }
+  }, [billProjectId, board, role])
+  const billScheduleRead = billSchedule !== null && billSchedule.id === billProjectId
+  const billState = useMemo(() => {
+    const laid = boardWithChanges && billProjectId && billRows ? billingStateFor(boardWithChanges, billProjectId, billRows) : null
+    return laid && billSchedule && billSchedule.id === billProjectId ? withSchedules(laid, new Map([[billProjectId, billSchedule.schedule]])) : laid
+  }, [boardWithChanges, billProjectId, billRows, billSchedule])
   const billProject = billProjectId ? (billState?.projects.find((p) => p.id === billProjectId) ?? null) : null
   // Money in on the billing job (O5c): each sent one's bill, our unconditional waivers naming it, and a payment that names no bill.
   const billOwn = billProjectId ? billRows?.billing.get(billProjectId) : undefined
@@ -816,7 +858,7 @@ export default function GcProjects() {
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
-                <GcMoney state={moneyState} />
+                <GcMoney state={moneyState} schedulesRead={moneySchedules !== null} />
               ) : moneyProblem ? (
                 <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{moneyProblem}</div>
               ) : (
@@ -1140,6 +1182,7 @@ export default function GcProjects() {
           unbilled={billUnbilled}
           emailed={billEmailed}
           interestEmailed={billInterestEmailed}
+          scheduleRead={billScheduleRead}
           onClose={() => setBillWindow(null)}
           writes={{
             onSend: (email) => {
@@ -1229,6 +1272,7 @@ export default function GcProjects() {
             onSetRetainage: (pct, step) => billWrite('retainage', () => setOwnerRetainage(billProject.id, pct, step), 'The retainage was not saved.'),
             onSetPayDays: (days) => billWrite('paydays', () => setOwnerPayDays(billProject.id, days), 'The days to pay were not saved.'),
             onSetInterest: (pct) => billWrite('interest', () => setOwnerLateInterest(billProject.id, pct), 'The interest was not saved.'),
+            onSetLateFee: (perDay) => billWrite('latefee', () => setOwnerLateFinish(billProject.id, perDay), 'The late fee was not saved.'),
             onBillInterest: (amount, email) => {
               // The interest bill is filed first, with its bill on the billing job (O6b-2); the tick, off to start, emails
               // it to the customer. The bills are read again either way, and an email that did not go is said after.

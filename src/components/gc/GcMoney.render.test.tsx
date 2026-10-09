@@ -44,6 +44,26 @@ describe('GcMoney', () => {
     expect(document.body.textContent).toContain('None runs until the contract’s days to pay are typed.')
   })
 
+  it('shows each job\'s late finish once the schedules are read, one line for a job with none (O6b-3)', () => {
+    const state = initialGcState()
+    render(<GcMoney state={state} schedulesRead={false} />)
+    expect(document.body.textContent).toContain('Reading the jobs’ schedules…')
+    cleanup()
+    const fair = state.projects.find((p) => p.id === 'fairoaksd')!
+    const laid = {
+      ...state,
+      projects: state.projects.map((p) => {
+        if (p.id === 'fairoaksd') return { ...p, ownerLateFinish: { perDay: 500 }, schedule: { ...fair.schedule!, milestones: fair.schedule!.milestones.map((m) => (m.label === 'Substantial completion' ? { ...m, metOn: '2026-12-14' } : m)) } }
+        const { schedule: _schedule, ...rest } = p
+        return rest
+      }),
+    }
+    render(<GcMoney state={laid} />)
+    expect(document.body.textContent).toContain('We reached substantial completion Mon Dec 14, 3 days past the contract\'s Fri Dec 11.')
+    expect(document.body.textContent).toContain(`At ${money(500)} a day, the 3 days cost ${money(1500)}.`)
+    expect(screen.getAllByText('No schedule yet.').length).toBe(allJobsMoney(laid).jobs.length - 1)
+  })
+
   it('says nothing moved yet when no customer paid and no trade drew, and offers no bill without the window', () => {
     const state = initialGcState()
     const real = { ...state, projects: state.projects.map((p) => ({ ...p, ownerBilling: null, packages: p.packages.map((k) => ({ ...k, sow: null })) })) }

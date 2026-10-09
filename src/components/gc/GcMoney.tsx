@@ -2,6 +2,7 @@ import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { GcMoneyAhead } from './GcMoneyAhead'
 import { GcMoneyMargin } from './GcMoneyMargin'
 import { GcMoneyInterest } from './GcMoneyInterest'
+import { GcMoneyLateFinish } from './GcMoneyLateFinish'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import { allJobsMoney, ownerAccount, ownerPayApp, type JobMoney, type OwedBill } from '../../lib/gc/ownerBilling'
 import { billDay } from '../../lib/gc/ownerBillingDay'
@@ -13,9 +14,10 @@ import { money, shortDate, weekdayDate } from '../../lib/gc/words'
  * Money lens on `/gc`. Ported read only from the prototype's `GcOwnerBillingMoney.tsx` and its pieces (branch
  * spike/gc-mode). Every number comes from the kernels over real rows (`billingStateForAll`). A section whose
  * data is not in the app yet says so in one line and shows no number: the month-by-month forecast waits on the
- * schedule, and the late finish on its fee (O6b-3). Interest on late bills is O6b-1's card (`GcMoneyInterest`).
+ * schedule. Interest on late bills is O6b-1's card (`GcMoneyInterest`), the late finish O6b-3's (`GcMoneyLateFinish`),
+ * over the jobs' schedules read beside the money when the lens opens.
  */
-export function GcMoney({ state, onOpenBill }: { state: GcState; onOpenBill?: (projectId: string) => void }) {
+export function GcMoney({ state, onOpenBill, schedulesRead = true }: { state: GcState; onOpenBill?: (projectId: string) => void; schedulesRead?: boolean }) {
   const m = allJobsMoney(state)
   const narrow = useMatchMedia('(max-width: 640px)')
   const t = m.totals
@@ -135,11 +137,12 @@ export function GcMoney({ state, onOpenBill }: { state: GcState; onOpenBill?: (p
 
       <GcMoneyInterest state={state} />
 
+      <GcMoneyLateFinish state={state} schedulesRead={schedulesRead} />
+
       <Card>
         <div style={{ fontWeight: 700, fontSize: '1rem', marginBottom: '0.4rem' }}>Coming later</div>
         <div style={{ display: 'grid', gap: '0.3rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>
           <div>What we bill, month by month, comes once each job&rsquo;s schedule is in the app.</div>
-          <div>The late finish comes once we bill the customer from the app.</div>
         </div>
       </Card>
     </div>
