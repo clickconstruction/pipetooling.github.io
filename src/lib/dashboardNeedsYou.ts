@@ -94,6 +94,7 @@ export type NeedsYouItem = {
     | 'lien-window-missed'
     | 'lien-notice-draft'
     | 'lien-notice-approve'
+    | 'lien-notice-sign'
     | 'lien-notice-batch'
     | 'lien-file-window'
     | 'owner-records-signed'
@@ -179,6 +180,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'lien-window-missed': 40,
   'lien-notice-draft': 40,
   'lien-notice-approve': 40,
+  // The leader's signature on an approved notice (v2.5087): the run holds it until his name is on it; one press each.
+  'lien-notice-sign': 30,
   'lien-notice-batch': 40,
   'lien-file-window': 40,
   // An owner signed for our records on their portal and is waiting on us for the packet (punch list #86).
@@ -737,6 +740,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `${money} open. ${l.earliestDeadline ? `The earliest window closes ${l.earliestDeadline}.` : ''} Approve, hold, or set a standing rule so the office stops asking for that GC.`,
       figure: String(jobs),
       actionLabel: 'Decide',
+    })
+  }
+
+  if (inputs.lienDeskEnabled && inputs.lienDeskLeader && inputs.lienDesk && (inputs.lienDesk.leader.toSign ?? 0) > 0) {
+    const n = inputs.lienDesk.leader.toSign ?? 0
+    items.push({
+      key: 'lien-notice-sign',
+      severity: 'blue',
+      kicker: 'Lien deadlines · your signature',
+      title: n === 1 ? 'Sign a lien notice before the run' : `Sign ${n} lien notices before the run`,
+      detail: n === 1 ? 'Approved, but the run holds it until your name is on it. One press on the notice.' : 'Approved, but the run holds them until your name is on them. One press each.',
+      figure: String(n),
+      actionLabel: n === 1 ? 'Sign it' : 'Sign them',
     })
   }
 

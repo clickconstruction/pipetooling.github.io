@@ -3,6 +3,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { daysBetweenYmd } from './billedExpectedPay'
 import { NOTICE_CLOSING_DAYS, NOTICE_DUE_DAYS } from './forecastWorkMonths'
 import { ownerKind } from './ownerConfirm'
+import { lienChipSigned, lienFieldsHash, signatureColumnsOf } from './lienNoticeSignature'
 
 /**
  * The Lien desk (pure kernel): the queue of § 53.056 notices the law says
@@ -421,6 +422,8 @@ export type LienDeskNeedsYou = {
     earliestDeadline: string | null
     /** Put a GC on notice (v2.3479): awaiting items the office prepared as one run per GC, one card each for the leader. Set by the hooks (`lienDeskBatches`). */
     batches?: LienDeskBatch[]
+    /** Approved notices the leader has not signed (v2.5087): the run holds them until his name is on them. */
+    toSign?: number
   }
   held: number
   /** Windows that closed with nothing recorded (v2.3679) — the loss the Dashboard names until someone notes it. */
@@ -483,6 +486,7 @@ export function summarizeLienDeskForNeedsYou(queue: LienDeskQueue): LienDeskNeed
       jobs: queue.piles.awaiting.length,
       dollars: queue.piles.awaiting.reduce((s, e) => s + e.openBalance, 0),
       earliestDeadline: awaitingDeadlines[0] ?? null,
+      toSign: queue.piles.ready.filter((e) => e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned').length,
     },
     held: queue.piles.held.length,
     missed: lienDeskMissedSummary(queue),
