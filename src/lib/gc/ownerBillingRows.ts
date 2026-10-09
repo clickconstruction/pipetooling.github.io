@@ -116,7 +116,7 @@ export function payAppFromRows(app: OwnerPayAppRow, lines: OwnerPayAppLineRow[],
   const sentReminders = reminders
     .filter((r) => r.pay_app_id === app.id)
     .sort((a, b) => a.created_at.localeCompare(b.created_at))
-    .map((r) => ({ on: r.sent_on, by: r.pay_by, note: r.note, subject: r.subject, lines: r.lines }))
+    .map((r) => ({ on: r.sent_on, by: r.pay_by, note: r.note, subject: r.subject, lines: r.lines, emailed: r.email_send_log_id !== null }))
   const { payments, paidOn } = billMoney(money, app.invoice_id)
   const promises = app.invoice_id ? promisesOnBill(money, app.certified_on, paidOn) : []
   return {

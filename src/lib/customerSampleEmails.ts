@@ -33,6 +33,7 @@ import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPla
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
 import { buildGcCustomerEmail, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
 import { certifiedMail, certifyAskMail, changeOrderMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
+import { payReminderMail } from './gc/ownerBillingRemind'
 import { gcTradePortalSample, gcTradePortalSampleRows } from '../../supabase/functions/_shared/gcTradePortalSample'
 import { mailboxWithName } from '../../supabase/functions/_shared/mailboxWithName'
 import { inviteMessage, mailRecipients, portalMailGroup } from './gc/portal'
@@ -324,7 +325,8 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
-  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order' || id === 'gc-reminder')
+    return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
 
@@ -386,6 +388,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)
   if (id === 'gc-trade-email') return buildSampleGcTradeEmail(ctx)
   if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return buildSampleGcCustomerEmail(id, ctx)
+  if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }
 
@@ -416,4 +419,30 @@ export function buildSampleGcCustomerEmail(id: 'gc-pay-app' | 'gc-certify-ask' |
           : changeOrderMail({ job: facts.job, greeting: facts.greeting, number: 2, description: 'Add a coffee bar cabinet, per the customer', price: 1100, days: 3, timeOnly: false })
   const portalUrl = id === 'gc-certified' ? `${PORTAL_SHORT_ORIGIN}sample-owner` : null
   return buildGcCustomerEmail({ subject: mail.subject, lines: mail.lines, signer: String(ctx.sender?.name ?? 'The project manager'), gc: GC_CUSTOMER_EMAIL_FROM_NAME, portalUrl })
+}
+
+/**
+ * GC mode (O5b): our reminder to pay a late bill, as `gc-customer-email` sends it: the reminder kernel's words
+ * (`payReminderMail`) on a made-up late bill, with the portal line, as when the customer has a link.
+ */
+export function buildSampleGcReminderEmail(ctx: SampleEmailContext): BuiltEmail {
+  const mail = payReminderMail({
+    greeting: 'Elena',
+    job: 'Sample Retail Shell',
+    bill: 'pay application 3',
+    open: 43740,
+    dueOn: ymdPlusDays(ctx.todayYmd, -4),
+    promised: false,
+    lastPaid: null,
+    interest: null,
+    by: ymdPlusDays(ctx.todayYmd, 5),
+    note: '',
+  })
+  return buildGcCustomerEmail({
+    subject: mail.subject,
+    lines: mail.lines,
+    signer: String(ctx.sender?.name ?? 'The project manager'),
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+  })
 }

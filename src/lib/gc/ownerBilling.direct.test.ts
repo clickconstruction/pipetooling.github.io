@@ -251,8 +251,8 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
                'Pay application 3 for Fair Oaks Shops, Building D has $288,879 still open. It was due Wed Sep 30, the day you gave.',
                'Please pay it by Wed Oct 7.',
                'Thank you for your help.',
-               'Pay it in your portal, by card or bank transfer.',
-               'Our unconditional lien waiver for it comes to you the day it is paid.',
+               'Reply with the day you will pay.',
+               'Our unconditional lien waiver for it follows once it is paid.',
              ],
     })
   })

@@ -89,7 +89,8 @@ function rowsOf(state: GcState, project: GcProject): OwnerBillingRows {
         note: r.note,
         subject: r.subject ?? '',
         lines: r.lines ?? [],
-        email_send_log_id: null,
+        // A made-up reminder went (its email with it) unless it says otherwise.
+        email_send_log_id: r.emailed === false ? null : `log-${app.number}-${i}`,
         created_at: `${r.on}T15:00:0${i}Z`,
       })),
     ),
@@ -111,7 +112,7 @@ const kept = (app: OwnerPayAppSent) => ({
   final: app.final === true,
   storedByLine: app.storedByLine,
   retainageStep: app.retainageStep,
-  reminders: app.reminders,
+  reminders: app.reminders?.map((r) => ({ ...r, emailed: r.emailed ?? true })),
 })
 
 describe('our bills to the customer, read back from their rows', () => {
@@ -165,7 +166,8 @@ describe('our bills to the customer, read back from their rows', () => {
     const app = waiting.payApps![0]!
     expect([app.certified, app.certifiedOn, app.retainageStep]).toEqual([null, null, { atPct: 50, toPct: 5, way: 'after' }])
     expect(Object.values(app.storedByLine ?? {})).toEqual([1200])
-    expect(app.reminders).toEqual([{ on: '2026-10-02', by: '2026-10-07', note: 'Thank you.', subject: 'Reminder', lines: ['Hello'] }])
+    // No log on it: filed, but its email did not go (O5b).
+    expect(app.reminders).toEqual([{ on: '2026-10-02', by: '2026-10-07', note: 'Thank you.', subject: 'Reminder', lines: ['Hello'], emailed: false }])
     expect([waiting.interestBills, waiting.acceptedOn]).toEqual([[{ number: 1, sentOn: '2026-10-02', amount: 412.5, paidOn: null }], '2026-10-01'])
   })
 

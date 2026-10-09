@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Btn, Chip, Stat, input } from './gcUi'
 import { GcBillMoneyIn, type MoneyInWrites } from './GcBillMoneyIn'
+import { GcBillRemind, type RemindWrites } from './GcBillRemind'
 import {
   appCertified,
   ownerAccount,
@@ -24,7 +25,7 @@ import { emailedWords, type BillEmailed } from '../../lib/gc/customerEmail'
  * (O4b), the office sends the form from its own email. Money in on each certified bill (O5c) is `GcBillMoneyIn`.
  */
 
-export interface BillCustomerWrites extends MoneyInWrites {
+export interface BillCustomerWrites extends MoneyInWrites, RemindWrites {
   /** Send this month's pay application; with `email`, email it to the customer and the architect with its form (O4b). */
   onSend: (email: boolean) => void
   /** Record the architect's certificate; with `email`, email the customer the certified bill (O4b-2). */
@@ -363,6 +364,7 @@ function SentRow({
         </div>
       ))}
       <GcBillMoneyIn state={state} project={project} app={app} writes={writes} unconditional={unconditional} busy={busy} />
+      <GcBillRemind state={state} project={project} app={app} writes={writes} busy={busy} />
       {certified === null && (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <label style={{ display: 'grid', gap: '0.2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>

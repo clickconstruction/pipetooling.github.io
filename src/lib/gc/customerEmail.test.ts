@@ -176,7 +176,7 @@ describe('what gc-customer-email reads and sends', () => {
   it('takes a request with its form, and refuses one that is not whole', () => {
     const read = parseCustomerEmail({ ...ok, pdf: { filename: 'Fair Oaks pay application 3.pdf', base64: 'JVBERi0xLjQK' } })
     expect(read.ok && [read.req.kind, read.req.pdf?.filename]).toEqual(['pay_app', 'Fair Oaks pay application 3.pdf'])
-    expect(parseCustomerEmail({ ...ok, kind: 'reminder' }).ok).toBe(false)
+    expect(parseCustomerEmail({ ...ok, kind: 'interest_bill' }).ok).toBe(false)
     expect([parseCustomerEmail({ ...ok, kind: 'certified' }).ok, parseCustomerEmail({ ...ok, kind: 'change_order' }).ok]).toEqual([true, true])
     expect(parseCustomerEmail({ ...ok, projectId: 'not-an-id' }).ok).toBe(false)
     expect(parseCustomerEmail({ ...ok, lines: [] }).ok).toBe(false)
@@ -186,19 +186,21 @@ describe('what gc-customer-email reads and sends', () => {
     expect(parseCustomerEmail(null).ok).toBe(false)
   })
 
-  it('sends each kind to its party about its row, the bills filed under Bills and the change order under Contracts', () => {
+  it('sends each kind to its party about its row, the bills and reminders filed under Bills and the change order under Contracts', () => {
     const each = GC_CUSTOMER_EMAIL_KINDS.map((k) => [k, GC_CUSTOMER_EMAIL_TO[k], GC_CUSTOMER_EMAIL_SOURCE[k], GC_CUSTOMER_EMAIL_FILED_AS[k], sentKindGroup(GC_CUSTOMER_EMAIL_FILED_AS[k])])
     expect(each).toEqual([
       ['pay_app', 'customer', 'gc_owner_pay_apps', 'bill_gc_pay_app', 'bills'],
       ['certify_ask', 'architect', 'gc_owner_pay_apps', 'bill_gc_pay_app', 'bills'],
       ['certified', 'customer', 'gc_owner_pay_apps', 'bill_gc_certified', 'bills'],
       ['change_order', 'customer', 'gc_change_orders', 'job_contract_gc_change_order', 'contracts'],
+      ['reminder', 'customer', 'gc_owner_pay_reminders', 'bill_gc_reminder', 'bills'],
     ])
     // Never the Pipeline's G702 workbook copy, whose history reads its own kind.
     expect(GC_CUSTOMER_EMAIL_KINDS.some((k) => isPayApplicationCopy({ kind: GC_CUSTOMER_EMAIL_FILED_AS[k] }))).toBe(false)
     expect(gcCustomerEmailCopyKinds('gc_owner_pay_apps')).toEqual(['bill_gc_pay_app', 'bill_gc_certified'])
     expect(gcCustomerEmailCopyKinds('gc_change_orders')).toEqual(['job_contract_gc_change_order'])
-    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified'])
+    expect(gcCustomerEmailCopyKinds('gc_owner_pay_reminders')).toEqual(['bill_gc_reminder'])
+    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder'])
   })
 
   it('adds the customer’s portal link before the signature when there is one, and only an https one', () => {
@@ -230,6 +232,10 @@ describe('what gc-customer-email reads and sends', () => {
     expect(readCustomerEmailAnswer(null, { error: 'mystery', detail: 'x' })).toEqual({ ok: false, key: 'failed', detail: 'x' })
     expect(gcCustomerEmailRefusal('noEmail')).toBe('There is no email address on file for them. Add one on the customer, then send it again.')
     expect(readCustomerEmailAnswer(null, { error: 'notCertified' })).toEqual({ ok: false, key: 'notCertified' })
-    expect([gcCustomerEmailRefusal('notSent'), gcCustomerEmailRefusal('otherProject')]).toEqual(['That change order is not waiting on their signature.', 'That belongs to another job.'])
+    expect([gcCustomerEmailRefusal('notSent'), gcCustomerEmailRefusal('otherProject'), gcCustomerEmailRefusal('alreadySent')]).toEqual([
+      'That change order is not waiting on their signature.',
+      'That belongs to another job.',
+      'That reminder went already.',
+    ])
   })
 })
