@@ -30,7 +30,10 @@ import { dailyLogPayload, withDailyLogs, type DailyLogRow } from '../lib/gc/dail
 import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
-import { billingStateForAll, type BillingRows } from '../lib/gc/billCustomer'
+import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
+import { billingStateFor, billingStateForAll, payAppSendPayload, type BillingRows } from '../lib/gc/billCustomer'
+import { ownerPayApp, ownerPayAppForm, ownerPayAppParties } from '../lib/gc/ownerBilling'
+import { downloadPayAppExcel, downloadPayAppPdf } from '../lib/gc/payAppFileWriters'
 import { openQuestions, questionsCloseOn, type PlanQuestionView } from '../lib/gc/questions'
 import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
 import { emailTheAnswer, sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
@@ -97,6 +100,9 @@ import {
   type GcPickerCustomer,
   type GcTeamMember,
   loadGcBillingRows,
+  recordCertificate,
+  sendOwnerPayApp,
+  setOwnerRetainage,
 } from '../lib/gc/gcIo'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
@@ -497,6 +503,45 @@ export default function GcProjects() {
   }, [devView, board, ourIds, role])
   const moneyState = useMemo(() => (boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null), [boardWithChanges, moneyRows, ourIds])
 
+  // Bill the customer (Owner Billing's O4a): the project's terms, its price as signed and its bills, read when
+  // the window opens at `bill=<projectId>` and laid over the board's project with its change orders. The money
+  // team's, like Change orders (the Owner Billing door).
+  const billProjectId = params.get('bill')
+  const [billRows, setBillRows] = useState<BillingRows | null>(null)
+  const [billBusy, setBillBusy] = useState<string | null>(null)
+  const [billProblem, setBillProblem] = useState<string | null>(null)
+  const loadBill = useCallback(async () => {
+    if (!billProjectId || !canSeeGcMoney(role)) {
+      setBillRows(null)
+      return
+    }
+    setBillRows(await loadGcBillingRows([billProjectId]))
+  }, [billProjectId, role])
+  useEffect(() => {
+    void loadBill().catch((e) => setBillProblem(formatErrorMessage(e, 'The bills did not load.')))
+  }, [loadBill])
+  const billState = useMemo(
+    () => (boardWithChanges && billProjectId && billRows ? billingStateFor(boardWithChanges, billProjectId, billRows) : null),
+    [boardWithChanges, billProjectId, billRows],
+  )
+  const billProject = billProjectId ? (billState?.projects.find((p) => p.id === billProjectId) ?? null) : null
+  const setBillWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('bill', projectId)
+    else next.delete('bill')
+    setParams(next, { replace: true })
+    setBillProblem(null)
+  }
+  /** A Bill the customer press: run it, read the bills again when it wrote, and say the problem in the window. */
+  const billWrite = (id: string, work: () => Promise<unknown>, failed: string, reload = true) => {
+    setBillBusy(id)
+    setBillProblem(null)
+    void work()
+      .then(() => (reload ? loadBill() : undefined))
+      .catch((e) => setBillProblem(formatErrorMessage(e, failed)))
+      .finally(() => setBillBusy(null))
+  }
+
   if (authLoading) return null
   if (!canOpenGcProjects(role)) return <Navigate to="/dashboard" replace />
 
@@ -723,6 +768,11 @@ export default function GcProjects() {
                   })()}
                 </Btn>
               )}
+              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
+                <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
+                  Bill the customer
+                </Btn>
+              )}
               {(p.sqFt || p.sizeNote) && (
                 <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
               )}
@@ -931,6 +981,31 @@ export default function GcProjects() {
           problem={logProblem}
           onSave={(log) => saveLog(logProject.id, log)}
           onClose={() => setLogWindow(null)}
+        />
+      )}
+
+      {canSeeGcMoney(role) && billProject && billState && (
+        <GcBillCustomerWindow
+          state={billState}
+          project={billProject}
+          today={today}
+          busy={billBusy}
+          problem={billProblem}
+          onClose={() => setBillWindow(null)}
+          writes={{
+            onSend: () => billWrite('send', () => sendOwnerPayApp(billProject.id, payAppSendPayload(ownerPayApp(billState, billProject), today)), 'The pay application did not go.'),
+            onCertify: (number, amount, on, note) => {
+              const id = billRows?.billing.get(billProject.id)?.payApps.find((a) => a.number === number)?.id
+              if (id) billWrite(`cert-${number}`, () => recordCertificate(id, amount, on, note), 'The certificate was not recorded.')
+            },
+            onSetRetainage: (pct, step) => billWrite('retainage', () => setOwnerRetainage(billProject.id, pct, step), 'The retainage was not saved.'),
+            onDownload: (which, kind) => {
+              const form = ownerPayAppForm(billState, billProject, which)
+              if (!form) return
+              const parties = ownerPayAppParties(billState, billProject, form)
+              billWrite('file', () => (kind === 'xlsx' ? downloadPayAppExcel : downloadPayAppPdf)(form.app, parties), 'The form did not download.', false)
+            },
+          }}
         />
       )}
 
