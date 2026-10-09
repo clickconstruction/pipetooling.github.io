@@ -444,6 +444,9 @@ export function bidHistoryCaption(rows: ReadonlyArray<BidHistoryRow>): string {
     case 'put-back': {
       // A removed row put back (PR 5) comes back as inserts, with what was removed with it.
       if (rows.every((r) => r.op === 'insert')) {
+        // Several count rows back at once (an Undo of the removal of an import's rows) are counted, not named by one of them.
+        const countRowsBack = rows.filter((r) => r.table === 'bids_count_rows').length
+        if (countRowsBack > 1 && !rows.some((r) => r.table === 'bid_versions' || r.table === 'cost_estimates')) return `Put back ${noun('bids_count_rows', countRowsBack)}`
         const head = ['bid_versions', 'cost_estimates', 'bids_count_rows'].map((t) => rows.find((r) => r.table === t)).find(Boolean) ?? first
         const name = head.label?.trim() || 'a removed row'
         return rows.length > 1 ? `Put back ${name} and what hung on it` : `Put back ${name}`

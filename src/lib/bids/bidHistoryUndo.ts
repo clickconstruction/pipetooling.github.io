@@ -218,7 +218,10 @@ export function bidUndoPlan(
       cannotRemove.push(r.table)
       continue
     }
-    const hangs = laterByPeople.filter((x) => x.op !== 'delete' && (rowKey(x) === rowKey(r) || (r.table === 'bids_count_rows' && x.countRowId === r.recordId)))
+    // The row's own put back since (removed, then put back) is the same row again, not work hung on it.
+    const hangs = laterByPeople.filter(
+      (x) => x.op !== 'delete' && !(x.op === 'insert' && rowKey(x) === rowKey(r)) && (rowKey(x) === rowKey(r) || (r.table === 'bids_count_rows' && x.countRowId === r.recordId)),
+    )
     if (hangs.length > 0) {
       hanging.push(...hangs)
       continue

@@ -308,6 +308,8 @@ describe('bidHistoryCaption · PR 5', () => {
     expect(bidHistoryCaption([back('bid_count_row_custom_prices', 'SUMP'), back('bids_count_rows', 'SUMP'), back('bids_takeoff_rough_part_lines', 'Sump pump')])).toBe('Put back SUMP and what hung on it')
     expect(bidHistoryCaption([back('bids_count_rows', 'LAV-1'), back('bid_versions', 'Value engineered')])).toBe('Put back Value engineered and what hung on it')
     expect(bidHistoryCaption([row({ table: 'cost_estimate_labor_rows', op: 'insert', label: null, action: 'put-back', byApp: false })])).toBe('Put back a removed row')
+    // An Undo of an Undo's removal brings several count rows back in one burst.
+    expect(bidHistoryCaption([back('bids_count_rows', 'Undo walk A'), back('bids_count_rows', 'Undo walk B'), back('bid_count_row_custom_prices', 'Undo walk A')])).toBe('Put back 2 count rows')
   })
 
   it('an Undo’s removal of the rows an action added says so, and an Undo of several kinds counts its changes', () => {

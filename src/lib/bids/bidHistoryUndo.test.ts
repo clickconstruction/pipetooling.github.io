@@ -170,6 +170,14 @@ describe('bidUndoPlan · added rows', () => {
     expect(ready(plan(imported(), [minted])).removes).toBe(3)
   })
 
+  it('offers Undo again once its rows were removed and put back since: the same rows, nothing hung on them', () => {
+    const later = imported().flatMap((r) => [
+      row({ table: 'bids_count_rows', recordId: r.recordId, countRowId: r.recordId, op: 'delete', label: r.label, changedAt: at(120), action: 'put-back' }),
+      row({ table: 'bids_count_rows', recordId: r.recordId, countRowId: r.recordId, op: 'insert', label: r.label, changedAt: at(180), action: 'put-back' }),
+    ])
+    expect(ready(plan(imported(), later)).removes).toBe(3)
+  })
+
   it('skips a row removed since, and what hung on it went with it', () => {
     const later = [
       row({ recordId: 'p-new', countRowId: 'c-2', op: 'insert', label: 'Lav-2', changedAt: at(120) }),
