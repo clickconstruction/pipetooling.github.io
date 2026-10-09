@@ -29,7 +29,10 @@ import type {
   PlanQuestion,
   PortalMailGroup,
   PromiseKind,
+  Sow,
+  SovLine,
   SubBid,
+  TheirSovLine,
   Town,
   TradePackage,
   TradePromise,
@@ -181,6 +184,32 @@ export interface BidTabViewRow {
   seen_on: string
 }
 
+/** `gc_sows` (B6-a): a trade's statement of work with the company awarded, drafted by `gc_award`. */
+export interface SowRow {
+  id: string
+  package_id: string
+  status: string
+  price: number | string
+  retainage_pct: number | string
+  based_on_rev: number
+  their_sov: TheirSovLine[] | null
+  excluded: NonNullable<Sow['excluded']> | null
+  sent_on: string | null
+  signed_on: string | null
+  accepted_on: string | null
+}
+
+/** `gc_sow_lines` (B6-a): a statement of work's line, on a scope item or on a change order. */
+export interface SowLineRow {
+  id: string
+  sow_id: string
+  position: number
+  label: string
+  amount: number | string
+  scope_item_id: string | null
+  change_order_id: string | null
+}
+
 export interface BoardRows {
   today: string
   projects: GcProjectView[]
@@ -212,6 +241,9 @@ export interface BoardRows {
   /** The bid tabs shared (B5-d), and who opened each. Missing: none shared. */
   bidTabs?: BidTabShareRow[]
   bidTabViews?: BidTabViewRow[]
+  /** The statements of work (B6-a) and their lines. Missing: none read, so no trade has one. */
+  sows?: SowRow[]
+  sowLines?: SowLineRow[]
 }
 
 const num = (v: number | string | null | undefined): number => {
@@ -387,10 +419,13 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     // Our own trade's number is its Trades mode bid; until the board reads that bid, our budget stands in, not priced.
     selfPerform: t.ours ? { ref: t.ownBidId ?? '', value: t.budget, note: 'Our own crew.', priced: false } : null,
     invites: invitesByPackage.get(t.id) ?? [],
-    // What we carry (B5): our own trade, the quote on an ask, our budget, or nothing yet.
-    carried: t.ours ? 'self' : (t.carriedInviteId ?? (t.carryBudget ? 'plug' : null)),
-    awardedInviteId: null,
-    sow: null,
+    // What we carry (B5): our own trade, the quote on an ask, our budget, or nothing yet. An award carries
+    // the ask it went to (B6-a), as the prototype's award does.
+    carried: t.ours ? 'self' : (t.awardedInviteId ?? t.carriedInviteId ?? (t.carryBudget ? 'plug' : null)),
+    awardedInviteId: t.awardedInviteId ?? null,
+    ...(t.awardedBy ? { awardedBy: rows.userNames?.[t.awardedBy] ?? 'Someone on our team' } : {}),
+    ...(t.awardedOn ? { awardedOn: t.awardedOn } : {}),
+    sow: sowOf(rows, t.id),
     ...(t.excludes.length ? { excludes: t.excludes } : {}),
   }))
   const questions: PlanQuestion[] = view.questions.map((q) => ({
@@ -434,6 +469,40 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     lostOn: view.lostOn,
     lostWhy,
     wonBy: dates?.won_by ?? null,
+  }
+}
+
+/**
+ * A trade's statement of work (B6-a) as the kernels read it. Each line's id is its scope item's
+ * (`SovLine.id`), or the line's own on a change order's line. Nothing is reported or billed until
+ * Building's draws (U6). A cancelled one reads as none.
+ */
+function sowOf(rows: BoardRows, packageId: string): Sow | null {
+  const row = rows.sows?.find((s) => s.package_id === packageId)
+  if (!row || (row.status !== 'draft' && row.status !== 'sent' && row.status !== 'signed')) return null
+  const sov: SovLine[] = (rows.sowLines ?? [])
+    .filter((l) => l.sow_id === row.id)
+    .sort((a, b) => a.position - b.position)
+    .map((l) => ({
+      id: l.scope_item_id ?? l.id,
+      label: l.label,
+      amount: num(l.amount),
+      pctReported: 0,
+      pctBilled: 0,
+      ...(l.change_order_id ? { changeOrderId: l.change_order_id } : {}),
+    }))
+  return {
+    status: row.status,
+    price: num(row.price),
+    retainagePct: num(row.retainage_pct),
+    basedOnRev: row.based_on_rev,
+    sov,
+    signedOn: row.signed_on,
+    draws: [],
+    ...(row.accepted_on ? { acceptedOn: row.accepted_on } : {}),
+    ...(row.sent_on ? { sentOn: row.sent_on } : {}),
+    ...(row.their_sov && row.their_sov.length ? { theirSov: row.their_sov } : {}),
+    ...(row.excluded && row.excluded.length ? { excluded: row.excluded } : {}),
   }
 }
 

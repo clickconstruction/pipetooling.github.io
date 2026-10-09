@@ -63,3 +63,46 @@ export function clinicBoardRows(over: Partial<BoardRows> = {}): BoardRows {
     ...over,
   }
 }
+
+/**
+ * The clinic won and its sitework awarded to Lonestar (B6-a-ii), with the statement of work the gc_award bed
+ * drafts (supabase/tests/gc_award): 66,500 all in, split 33,200 and 33,300, their own schedule of values, and
+ * what they will not do. Sent to sign, not signed yet.
+ */
+export function awardedClinicBoardRows(over: Partial<BoardRows> = {}): BoardRows {
+  const base = clinicBoardRows()
+  return clinicBoardRows({
+    projects: base.projects.map((p) => ({
+      ...p,
+      stage: 'buyout',
+      trades: p.trades.map((t) => (t.id === 'k1' ? { ...t, carriedInviteId: 'i2', awardedInviteId: 'i1', awardedBy: 'u1', awardedOn: '2026-10-08' } : t)),
+    })),
+    userNames: { u1: 'Rosa' },
+    sows: [
+      {
+        id: 'w1',
+        package_id: 'k1',
+        status: 'sent',
+        price: '66500',
+        retainage_pct: 10,
+        based_on_rev: 0,
+        their_sov: [
+          { label: 'Mobilize', amount: 5000 },
+          { label: 'Grading', amount: 47000 },
+        ],
+        excluded: [
+          { name: 'Dewatering', by: null },
+          { name: 'Rock', by: null, unitPrice: { amount: 38, unit: 'cy' } },
+        ],
+        sent_on: '2026-10-09',
+        signed_on: null,
+        accepted_on: null,
+      },
+    ],
+    sowLines: [
+      { id: 'l2', sow_id: 'w1', position: 1, label: 'Paving', amount: '33300', scope_item_id: 's2', change_order_id: null },
+      { id: 'l1', sow_id: 'w1', position: 0, label: 'Clearing and grading', amount: 33200, scope_item_id: 's1', change_order_id: null },
+    ],
+    ...over,
+  })
+}

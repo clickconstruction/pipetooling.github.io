@@ -62,4 +62,4 @@ The board and the price card mark the trade with a plus sign and a question mark
 
 ## What comes next
 
-Awarding a trade comes in a later step. So do asking a company to confirm its number, and typing in a quote that came by email.
+Once the job is won, you award a trade instead of carrying one. See [award a trade on a GC project](/help/award-a-trade-on-a-gc-project). Asking a company to confirm its number comes in a later step. So does typing in a quote that came by email.

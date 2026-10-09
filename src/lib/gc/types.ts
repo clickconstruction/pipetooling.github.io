@@ -479,6 +479,11 @@ export interface Sow {
   /** The day we sent it to the trade to sign. Unset: not sent, or before the day was kept. */
   sentOn?: string
   /**
+   * The trade's own first schedule of values (the owner, 2026-10-04, question 4), from its quote at
+   * award or sent later from its portal. Shown beside ours; draws stay by percent on ours.
+   */
+  theirSov?: TheirSovLine[]
+  /**
    * What the contract says they will not do (the owner, 2026-10-04: "once we've got the job, we send
    * them a contract specifying what they're going to do"): their exclusions, each with who does it
    * instead when we know. Set at award from their quote.
@@ -515,6 +520,10 @@ export interface TradePackage {
   /** An invite id, 'plug' (our budget) or 'self'. */
   carried: string | null
   awardedInviteId: string | null
+  /** The estimator who awarded it (question 7). Unset: awarded before the prototype kept it. */
+  awardedBy?: string
+  /** The day it was awarded, for the company's Activity (2026-10-04). Unset: awarded before the prototype kept it. */
+  awardedOn?: string
   sow: Sow | null
   /** Work this trade's quote leaves out, and who does it instead. Missing: none said. */
   excludes?: ScopeExclusion[]

@@ -9,7 +9,7 @@ installDomShims()
 
 const rows: GcProjectRows = {
   project: { id: 'p1', name: 'Clinic', address: null, customer_id: 'c1', plans_link: null },
-  gc: { stage: 'bidding', bid_due: '2026-10-20', sq_ft: null, size_note: '', customer_role: 'owner', property_owner_customer_id: null, architect_customer_id: 'a1', project_manager_user_id: null, general_conditions: 0, contingency_pct: 0, fee_pct: 0, drive_folder_url: '', lost_on: null },
+  gc: { stage: 'bidding', bid_due: '2026-10-20', sq_ft: null, size_note: '', customer_role: 'owner', property_owner_customer_id: null, architect_customer_id: 'a1', project_manager_user_id: null, drive_folder_url: '', lost_on: null },
   packages: [{ id: 'elec', trade: 'Electrical', position: 0, budget: 0, ours: false, own_bid_id: null }],
   scopeItems: [],
   exclusions: [],
