@@ -3,7 +3,8 @@
  * v2.4005: the Workflow page's projections as a hook. Pins the seam — dev and master only, and
  * nothing is read for anyone else; the first read waits for the workflow; a save checks the
  * workflow before the words, writes the fields the kernel builds, closes the window and re-reads;
- * a delete re-reads whether or not it was refused; every failure goes to onError.
+ * a delete re-reads whether or not it was refused; every failure goes to onError — a refused delete
+ * too since v2.5103 (it said nothing before; the map's quirk 24).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, screen } from '@testing-library/react'
@@ -226,7 +227,7 @@ describe('useWorkflowProjections', () => {
     expect(screen.getByTestId('p').textContent).toBe('list:a=100 window:new')
   })
 
-  it('a delete removes the row and re-reads; a refused delete is not reported, and the re-read shows the row still there', async () => {
+  it('a delete removes the row and re-reads; a refused delete is reported, and the re-read shows the row still there', async () => {
     world([row('a', 1), row('b', 2)])
     renderWithProviders(<Probe workflowId="w1" userRole="dev" />)
     await screen.findByText('list:a=100,b=100 window:closed')
@@ -247,7 +248,8 @@ describe('useWorkflowProjections', () => {
     await act(async () => {
       await latest.deleteProjection('a')
     })
-    expect(onError).not.toHaveBeenCalled()
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenLastCalledWith('Failed to delete projection: rls')
     expect(reads().length).toBe(readsBefore + 1)
     expect(screen.getByTestId('p').textContent).toBe('list:a=100 window:closed')
   })

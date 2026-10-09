@@ -21,6 +21,7 @@ export interface GcTableDoor {
 
 const SCHEDULE_OPENS = 'the schedule’s PR 10, its team door (SCHEDULE_REAL_BUILD.md)'
 const BUILDING_OPENS = 'Building’s door, when a job is being built (BUILDING_REAL_BUILD.md)'
+const BUILDING_MONEY_OPENS = 'Building’s door, to the money roles: dev, the leaders and the controller (BUILDING_REAL_BUILD.md decision 4)'
 const PORTAL_OPENS = 'the trade wave, when the Portal lane says the portal is ready (PORTAL_REAL_BUILD.md)'
 const AWARD_OPENS = 'award’s door: estimators, the leaders and dev, the owner’s call W (mockups/board-b6.md)'
 
@@ -100,6 +101,10 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_rfis: dev('Building', BUILDING_OPENS),
   gc_rfi_holds: dev('Building', BUILDING_OPENS),
   gc_weekly_reports: dev('Building', BUILDING_OPENS),
+  gc_draws: dev('Building', BUILDING_MONEY_OPENS),
+  gc_draw_lines: dev('Building', BUILDING_MONEY_OPENS),
+  gc_sow_line_reports: dev('Building', BUILDING_MONEY_OPENS),
+  gc_change_order_trade_sends: dev('Building', BUILDING_MONEY_OPENS),
 
   // Owner Billing.
   gc_owner_contract_lines: { lane: 'Owner Billing', door: 'money' },

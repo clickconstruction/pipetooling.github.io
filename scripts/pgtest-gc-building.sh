@@ -23,15 +23,15 @@ PRESSES=(
   supabase/migrations/*_gc_save_daily_log.sql
   supabase/migrations/*_gc_submittal_writes.sql
   supabase/migrations/*_gc_rfi_writes.sql
+  supabase/migrations/*_gc_trade_draws.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
-# The registry rate-limits a burst of pulls (every bed in sql-beds.yml pulls this image at once), so a
-# refused pull waits and tries again before the bed gives up.
-for i in 1 2 3 4 5; do docker pull -q "$IMAGE" >/dev/null 2>&1 && break; [ "$i" = 5 ] && { echo "could not pull $IMAGE"; exit 1; }; sleep $((i * 15)); done
+. scripts/pgtest-pull.sh
+pgtest_pull_supabase "$IMAGE"
 docker run -d --name "$NAME" -e POSTGRES_PASSWORD=pg -p "$PORT:5432" "$IMAGE" >/dev/null
 [ -n "${PGTEST_KEEP:-}" ] || trap 'docker rm -f "$NAME" >/dev/null 2>&1' EXIT
 for _ in $(seq 1 90); do docker exec "$NAME" pg_isready -U postgres -h localhost >/dev/null 2>&1 && break; sleep 1; done

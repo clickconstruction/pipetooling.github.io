@@ -6,7 +6,8 @@
  * the Monday after next, and its line in the log is the prototype's. The opened bar's card says
  * what the chart's hover card says, with what holds the bar, its parts and its place. A move's,
  * an undo's and a redo's lines in the log (the schedule's PR 8a) are the prototype's too, and so are
- * the job's own work's and a failed inspection's (PR 9a).
+ * the job's own work's and a failed inspection's (PR 9a), and a split's, a join's and a new
+ * baseline's (PR 9b), with a new wait as the reducer makes it.
  */
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { addDays } from '../building'
@@ -16,11 +17,13 @@ import { actualWords } from './actualDates'
 import { lastFinishDay, type GanttBar } from './gantt'
 import { moveActivityName, moveRecord, planMove, spanWords, type MovePlan } from './moves'
 import { addedActivityProblem, nextOwnId } from './addedActivity'
+import { withNewBaseline } from './baseline'
 import { daysBetween, pushAfter, pushedAfterWords } from './network'
 import { placeGuess, takesPlace } from './places'
 import { mondayOf } from './schedule'
-import { movedParts, partFacts } from './splitBars'
-import type { InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason } from './types'
+import { movedParts, partFacts, splitParts } from './splitBars'
+import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason, ScheduleWait, WaitKind } from './types'
+import { nextWaitId, waitKind } from './waits'
 
 // ---------------------------------------------------------------------------------------------
 // The first draft
@@ -179,6 +182,75 @@ export function failInspectionPress(
     activities: pushed.activities,
     words: `The ${inspection.label.toLowerCase()} failed on ${project.name}: ${note.replace(/[.\s]+$/, '')}.${whose} Re-inspection ${weekdayDate(input.reinspectOn)}.${movedOut > 0 ? ` ${movedOut} ${movedOut === 1 ? 'activity after it moves' : 'activities after it move'} out.` : ''}`,
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Waits, parts and the baseline (PR 9b)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Something the work waits on from outside the trades (G-73 to G-75), as the prototype's reducer makes it
+ * (`addScheduleWait`): its kind, its name, whose work it is for, who we wait on (the kind's own when left blank), the
+ * day it is expected and the day it was asked for, and the lines it holds, known ones only. A delivery starts not
+ * shipped. Null: no name, or no day it is expected.
+ */
+export function newWait(
+  project: GcProject,
+  input: { kind: WaitKind; title: string; packageId: string | null; who: string; lineIds: string[]; expectedOn: string; askedOn: string | null; note?: string },
+): ScheduleWait | null {
+  const title = input.title.trim()
+  if (!title || !input.expectedOn) return null
+  const ids = new Set((project.schedule?.activities ?? []).map((a) => a.lineId))
+  const lineIds = [...new Set(input.lineIds)].filter((id) => ids.has(id))
+  return {
+    id: nextWaitId(project),
+    kind: input.kind,
+    title,
+    packageId: input.packageId,
+    who: input.who.trim() || waitKind(input.kind).who,
+    lineIds,
+    askedOn: input.askedOn ?? null,
+    expectedOn: input.expectedOn,
+    ...(input.kind === 'delivery' ? { shippedOn: null } : {}),
+    doneOn: null,
+    ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+  }
+}
+
+/**
+ * A trade's line split into parts (G-39), as the prototype's reducer does it (`splitActivity`): each part with its name
+ * and dates, starting from the line's percent so the line keeps it (`splitParts`), with the reducer's line in the log.
+ * Its problem in words when it cannot be split.
+ */
+export function splitPress(
+  project: GcProject,
+  lineId: string,
+  drafts: { name: string; start: string; finish: string }[],
+  pct: number,
+  by: string,
+): { parts: ActivityPart[]; words: string } | { problem: string } {
+  const activity = project.schedule?.activities.find((a) => a.lineId === lineId)
+  if (!activity || activity.inspection || activity.added || activity.parts) return { problem: 'Only a trade’s line that is one bar splits into parts.' }
+  const made = splitParts(activity, drafts.map((d) => ({ name: d.name.trim(), start: d.start, finish: d.finish })), Math.round(pct))
+  if ('problem' in made) return made
+  return { parts: made.parts, words: `${by} split ${moveActivityName(project, lineId)} on ${project.name} into ${made.parts.length} parts: ${made.parts.map((x) => x.name).join(', ')}.` }
+}
+
+/** A split line made one bar again, the reducer's line in the log (`joinActivity`). */
+export function joinWords(project: GcProject, lineId: string, by: string): string {
+  return `${by} made ${moveActivityName(project, lineId)} on ${project.name} one bar again.`
+}
+
+/**
+ * A new baseline after a signed change order (G-41, the reducer's `setScheduleBaseline`): its line in the log, or null
+ * when none is taken (no name, or no plan at Start kept yet: `withNewBaseline`). Why ends with its own full stop, which
+ * the prototype's line left out.
+ */
+export function baselinePress(project: GcProject, name: string, why: string, by: string, today: string): string | null {
+  const schedule = project.schedule
+  if (!schedule || !withNewBaseline(schedule, name, why, by, today)) return null
+  const said = why.trim().replace(/[.\s]+$/, '')
+  return `${by} set a new baseline on ${project.name}, ${name.trim()}${said ? `: ${said}.` : '.'} The plan at Start is kept.`
 }
 
 /** When a change someone else saved was made, on the company's clock (G-134's refusal): "2:14 pm". Empty for a time it cannot read. */

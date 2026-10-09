@@ -210,7 +210,7 @@ After the gates come the months with the claim and the line that says who gets t
 
 While the notice is a draft, the four yellow values are boxes in the preview's side list. Type there, and both the page and the desk change as you go. {{button:blue|Save draft}} in the preview keeps them. Once the notice has gone for approval, the boxes are read only. Pull it back to a draft to change the wording.
 
-**The claim is what is billed.** The notice claims what the job's sent bills still owe. It never claims the job's price. Work not billed yet is not claimed until it is billed. Under the claim box, **The bills behind the claim** lists each sent bill. Each line shows what was billed, what is paid and what is still owed. The owed column adds up to the claim. A last line in amber names the part of the job no sent bill carries.
+**The claim is what is billed.** The notice claims what the job's sent bills still owe. It never claims the job's price. A payment with no bill picked counts too. It pays the work not billed first, then the oldest bill. Work not billed yet is not claimed until it is billed. Under the claim box, **The bills behind the claim** lists each sent bill. Each line shows what was billed, what is paid and what is still owed. The owed column adds up to the claim. A last line in amber names the part of the job no sent bill carries.
 
 - Press {{button:outline|Bill it from here ›}} on that line to bill it without leaving the desk. The Bill Customer window opens over the desk. Bill only work that is done.
 - When the bill goes, the desk reads the job again. The claim, the row and the pay page fill in by themselves.
@@ -278,7 +278,7 @@ Approved notices go out together. {{button:blue|Send the run · N}} sits on the 
 
 The run makes one envelope per name and address, with its notices listed under it. Every notice goes to its owner of record and to the original contractor. Two jobs at one property share the owner's envelope. The original contractor gets one envelope with every notice inside. Each envelope has a method and a box for its tracking number. The method is certified mail with return receipt unless you change it.
 
-**The courtesy email.** The original contractor's envelope has a box under its address that reads **Courtesy PDF to** and their email. Ticked, the app emails them a PDF of their copy when you record the run. The email says the notice itself comes on paper, and it ends with the office's phone number. Press **Preview the email ›** after the box to read it first. It opens in a new tab, as they would get it, with the PDF it attaches. Nothing is sent.
+**The courtesy email.** The original contractor's envelope has a box under its address that reads **Courtesy PDF to** and their email. Ticked, the app emails them a PDF of their copy when you record the run. The email says the notice itself comes on paper, and it ends with the office's phone number. A reply to it goes to the office inbox, office@clickplumbing.com. Press **Preview the email ›** after the box to read it first. It opens in a new tab, as they would get it, with the PDF it attaches. Nothing is sent.
 
 Three steps run across the top of the run.
 

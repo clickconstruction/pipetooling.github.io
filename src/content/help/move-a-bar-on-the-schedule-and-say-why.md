@@ -2,7 +2,7 @@
 title: move a bar on the schedule and say why
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, schedule, gantt, chart, move, bar, drag, why it moved, reason, link, push, undo, redo, the schedule changed, form, not before, must finish by, gap, real days, part, split
+keywords: gc mode, schedule, gantt, chart, move, bar, drag, why it moved, reason, link, push, undo, redo, the schedule changed, form, not before, must finish by, gap, real days, part, split, place, where the work is
 order: 104
 ---
 Each GC project has a schedule. You move a bar by dragging it on the chart, or by changing it in its form. The app asks why it moved before it saves. Every move stays on the schedule's record with who made it and why.
@@ -44,6 +44,10 @@ Press a bar on the chart. The bar's form opens under the chart.
 5. Press {{button:blue|Save, and say why}}.
 
 The **Why it moved** window opens next, as it does for a drag. The form also shows what a slip of 5 or 10 days would do.
+
+## Say where the work is
+
+A trade's bar has a **Place** line in its form, like Roof or Level 2. Type the place and press **Set the place**. A guess shows until you set one. The **Where the work is** card under the chart sets every bar's place at once. The chart then flags a day with too many trades in one place.
 
 ## Keep the days it really ran
 

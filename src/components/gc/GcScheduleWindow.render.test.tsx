@@ -4,13 +4,15 @@
  * schedule's reads and its one press stood in for (`scheduleIo`). Fair Oaks D read back, a bar
  * pressed, the list on a phone, Helotes' first draft, Boerne while we bid, a lost job, a read that
  * fails, and a draw someone else beat. Since 7c-ii, the call list grouped by company, with Call only.
- * Since 9a, an inspection passed or failed, the job's own work and the dates to meet, for a dev.
+ * Since 9a, an inspection passed or failed, the job's own work and the dates to meet, for a dev. Since
+ * 9b, a bar's place, a split, a wait and a new baseline.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcScheduleWindow } from './GcScheduleWindow'
 import {
   addScheduleActivity,
+  addScheduleWait,
   drawSchedule,
   failScheduleInspection,
   loadSchedule,
@@ -18,7 +20,10 @@ import {
   removeScheduleActivity,
   saveScheduleMove,
   setOwnWorkDone,
+  setScheduleBaseline,
   setScheduleMilestone,
+  setSchedulePlaces,
+  splitScheduleBar,
   undoScheduleMove,
 } from '../../lib/gc/scheduleIo'
 import { addDays } from '../../lib/gc/building'
@@ -47,6 +52,13 @@ vi.mock('../../lib/gc/scheduleIo', () => ({
   failScheduleInspection: vi.fn(),
   setScheduleMilestone: vi.fn(),
   removeScheduleMilestone: vi.fn(),
+  addScheduleWait: vi.fn(),
+  setScheduleWaitStep: vi.fn(),
+  removeScheduleWait: vi.fn(),
+  setSchedulePlaces: vi.fn(),
+  splitScheduleBar: vi.fn(),
+  joinScheduleBar: vi.fn(),
+  setScheduleBaseline: vi.fn(),
 }))
 
 const realMatchMedia = window.matchMedia
@@ -62,6 +74,7 @@ afterEach(() => {
   vi.mocked(saveScheduleMove).mockReset()
   vi.mocked(undoScheduleMove).mockReset()
   for (const press of [addScheduleActivity, removeScheduleActivity, setOwnWorkDone, passScheduleInspection, failScheduleInspection, setScheduleMilestone]) vi.mocked(press).mockReset()
+  for (const press of [addScheduleWait, setSchedulePlaces, splitScheduleBar, setScheduleBaseline]) vi.mocked(press).mockReset()
 })
 
 const s = initialGcState()
@@ -445,5 +458,79 @@ describe('the job’s own work, an inspection and the dates to meet in the windo
     fireEvent.click(container.querySelector('[data-gantt-bar="fairoaksd-insp-roughin"]') as HTMLElement)
     expect(container.querySelector('[data-gc-opened-activity="fairoaksd-insp-roughin"]')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'It passed today' })).toBeNull()
+  })
+})
+
+describe('waits, places, parts and the baseline in the window (PR 9b)', () => {
+  async function open() {
+    const read = readOf(s, 'fairoaksd', 3)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    const view = openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    return { ...view, read }
+  }
+  function pressBar(container: HTMLElement, id: string): HTMLElement {
+    fireEvent.click(screen.getByText('Open all'))
+    fireEvent.click(container.querySelector(`[data-gantt-bar="${id}"]`) as HTMLElement)
+    return container.querySelector(`[data-gc-activity-editor="${id}"]`) as HTMLElement
+  }
+
+  it('sets a bar’s place from its form, a record', async () => {
+    vi.mocked(setSchedulePlaces).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    const { container, read } = await open()
+    const editor = pressBar(container, 'froof-3')
+    fireEvent.click(within(editor).getByRole('button', { name: 'Set the place' }))
+    await waitFor(() => expect(setSchedulePlaces).toHaveBeenCalledWith(read.state, 'fairoaksd', [{ lineId: 'froof-3', place: 'Roof' }]))
+  })
+
+  it('splits a line from its parts card with the version read and the log’s words', async () => {
+    vi.mocked(splitScheduleBar).mockResolvedValue(readOf(s, 'fairoaksd', 4))
+    const { container, read } = await open()
+    pressBar(container, 'froof-1')
+    fireEvent.click(screen.getByRole('button', { name: 'Split into parts…' }))
+    fireEvent.click(within(screen.getByRole('dialog', { name: /^Split .* into parts$/ })).getByRole('button', { name: 'Split it' }))
+    await waitFor(() => expect(splitScheduleBar).toHaveBeenCalledTimes(1))
+    const [state, id, press, activityId, parts] = vi.mocked(splitScheduleBar).mock.calls[0]!
+    expect(state).toBe(read.state)
+    expect(id).toBe('fairoaksd')
+    expect(press.version).toBe(3)
+    expect(press.words).toMatch(/^Robert Douglas split Roofing · TPO membrane on .* into 2 parts: /)
+    expect(activityId).toBe('froof-1')
+    expect(parts).toHaveLength(2)
+  })
+
+  it('adds what the work waits on, a record', async () => {
+    vi.mocked(addScheduleWait).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    const { read } = await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add one' }))
+    fireEvent.change(screen.getByLabelText('What it is'), { target: { value: 'Storefront glass' } })
+    fireEvent.change(screen.getByLabelText('The day it is expected'), { target: { value: '2026-11-06' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Put it on the schedule' }))
+    await waitFor(() => expect(addScheduleWait).toHaveBeenCalledWith(read.state, 'fairoaksd', expect.objectContaining({ kind: 'delivery', title: 'Storefront glass', expectedOn: '2026-11-06' })))
+  })
+
+  it('takes a new baseline with the version read and the log’s words', async () => {
+    vi.mocked(setScheduleBaseline).mockResolvedValue(readOf(s, 'fairoaksd', 4))
+    const { read } = await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Set a new baseline' }))
+    fireEvent.change(screen.getByLabelText('Why a new baseline'), { target: { value: 'Change order 2 added a canopy' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Take the plan as it stands' }))
+    await waitFor(() => expect(setScheduleBaseline).toHaveBeenCalledTimes(1))
+    const [state, id, press, name, why] = vi.mocked(setScheduleBaseline).mock.calls[0]!
+    expect(state).toBe(read.state)
+    expect(id).toBe('fairoaksd')
+    expect(press).toEqual({ version: 3, words: `Robert Douglas set a new baseline on ${job(s, 'fairoaksd').name}, ${name}: Change order 2 added a canopy. The plan at Start is kept.` })
+    expect(why).toBe('Change order 2 added a canopy')
+  })
+
+  it('shows none of them to someone who may not move a bar', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    const { container } = openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    for (const name of ['Add one', 'Look at the places', 'Set a new baseline']) expect(screen.queryByRole('button', { name })).toBeNull()
+    fireEvent.click(screen.getByText('Open all'))
+    fireEvent.click(container.querySelector('[data-gantt-bar="froof-1"]') as HTMLElement)
+    expect(screen.queryByRole('button', { name: 'Split into parts…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Set the place' })).toBeNull()
   })
 })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   answeredByEmailAt,
+  hasReviewerFile,
   isOnRecord,
   isReviewerAnswer,
   isTypedAnswer,
@@ -45,6 +46,21 @@ describe('the GC’s record: the rule', () => {
     expect(recordStanding({ shared_at: null, package_path: null, hasAnswer: true })).toBe('waits_for_package')
     expect(recordStanding({ shared_at: null, package_path: 'p.pdf', hasAnswer: false })).toBe('never')
     expect(['shared', 'answered_by_email', 'waits_for_package', 'never'].map((s) => isOnRecord(s as Parameters<typeof isOnRecord>[0]))).toEqual([true, true, false, false])
+  })
+
+  it('2026-10-09 · (b): a reviewer’s file kept on the revision stands in for the package; a file with no answer does not publish it', () => {
+    expect(recordStanding({ shared_at: null, package_path: null, hasAnswer: true, hasReviewerFile: true })).toBe('answered_by_email')
+    expect(recordStanding({ shared_at: null, package_path: 'p.pdf', hasAnswer: true, hasReviewerFile: true })).toBe('answered_by_email')
+    expect(recordStanding({ shared_at: null, package_path: null, hasAnswer: false, hasReviewerFile: true })).toBe('never')
+    expect(recordStanding({ shared_at: null, package_path: null, hasAnswer: true, hasReviewerFile: false })).toBe('waits_for_package')
+  })
+
+  it('a reviewer’s file is an entry with a path, as the tab reads them', () => {
+    expect(hasReviewerFile([{ path: 'b398/r3/reviewer/0-GC_email.eml', name: 'GC email.eml', kind: 'email' }])).toBe(true)
+    expect(hasReviewerFile([null, { name: 'no path' }, { path: '' }])).toBe(false)
+    expect(hasReviewerFile([])).toBe(false)
+    expect(hasReviewerFile(null)).toBe(false)
+    expect(hasReviewerFile('[]')).toBe(false)
   })
 
   it('every revision with its standing, newest first, dated by its newest typed answer', () => {
@@ -112,10 +128,10 @@ function fakeDb(tables: Record<string, Array<Record<string, unknown>>>, opts: { 
 }
 
 /** BP398's shape (2026-10-06): Rev 2 shared Sep 16; Rev 3 answered by email Oct 2, never shared, its package built; Rev 4 a draft. */
-const bp398Tables = (o: { rev4Shared?: boolean; rev3Package?: boolean } = {}) => ({
+const bp398Tables = (o: { rev4Shared?: boolean; rev3Package?: boolean; rev3Files?: unknown } = {}) => ({
   bid_submittals: [
-    { id: 'r4', bid_id: 'b398', rev_number: 4, shared_at: o.rev4Shared ? '2026-10-06T15:00:00Z' : null, package_path: null },
-    { id: 'r3', bid_id: 'b398', rev_number: 3, shared_at: null, package_path: o.rev3Package === false ? null : 'b398/r3/package.pdf' },
+    { id: 'r4', bid_id: 'b398', rev_number: 4, shared_at: o.rev4Shared ? '2026-10-06T15:00:00Z' : null, package_path: null, reviewer_files: [] },
+    { id: 'r3', bid_id: 'b398', rev_number: 3, shared_at: null, package_path: o.rev3Package === false ? null : 'b398/r3/package.pdf', reviewer_files: o.rev3Files ?? [] },
     { id: 'r2', bid_id: 'b398', rev_number: 2, shared_at: '2026-09-16T03:03:49.265Z', package_path: 'b398/r2/package.pdf' },
     { id: 'rx', bid_id: 'other', rev_number: 9, shared_at: null, package_path: 'x.pdf' },
   ],
@@ -148,6 +164,8 @@ describe('the GC’s record: the loader the three functions and the tab share', 
     // Only the revisions nobody shared are read for their calls, and parts only by a typed source.
     expect(calls.find((c) => c.table === 'bid_submittal_items')!.filters).toEqual([['in', 'submittal_id', ['r4', 'r3']]])
     expect(calls.find((c) => c.table === 'bid_submittal_item_parts')!.filters).toContainEqual(['in', 'decision_source', ['entered', 'robot', 'room']])
+    // The revisions are read with their reviewer files, the second way onto the record.
+    expect(calls.find((c) => c.table === 'bid_submittals')!.select).toContain('reviewer_files')
   })
 
   it('BP398 after Rev 4 is shared: Rev 4 current, then Rev 3 answered by email, then Rev 2', async () => {
@@ -159,6 +177,15 @@ describe('the GC’s record: the loader the three functions and the tab share', 
     const list = await loadRevisionStandings(fakeDb(bp398Tables({ rev3Package: false })).db, 'b398')
     expect(list.find((r) => r.rev_number === 3)!.standing).toBe('waits_for_package')
     expect(linkShows(list)).toEqual({ rev: 2, byEmail: false, answeredAt: null })
+  })
+
+  it('2026-10-09 · BP398 as it is: Rev 3 has no package, and the GC’s Oct 2 email dropped on it puts it on the record', async () => {
+    const file = { path: 'b398/r3/reviewer/0-Re_Submittal_Rev_3.eml', name: 'Re: Submittal Rev 3.eml', kind: 'email', dropped_at: '2026-10-09T15:00:00Z' }
+    const list = await loadRevisionStandings(fakeDb(bp398Tables({ rev3Package: false, rev3Files: [file] })).db, 'b398')
+    expect(list.find((r) => r.rev_number === 3)).toMatchObject({ standing: 'answered_by_email', hasReviewerFile: true, package_path: null, typedAnswerAt: '2026-10-02T18:00:00Z' })
+    expect(linkShows(list)).toEqual({ rev: 3, byEmail: true, answeredAt: '2026-10-02T18:00:00Z' })
+    // Rev 4's draft has no file and no answer of its own: still not on their page.
+    expect(list.find((r) => r.rev_number === 4)).toMatchObject({ standing: 'never', hasReviewerFile: false })
   })
 
   it('once on the record by email, the GC answering it on the link keeps it there', async () => {

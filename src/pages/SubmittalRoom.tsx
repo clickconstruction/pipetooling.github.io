@@ -385,6 +385,9 @@ export default function SubmittalRoom() {
                 <a href={pdfHref(rev)} target="_blank" rel="noreferrer" data-testid="room-pdf" style={{ fontSize: '0.85rem', fontWeight: 700, color: COPPER }}>
                   Download Rev {rev.rev} PDF ↗
                 </a>
+              ) : rev.answeredByEmailAt ? (
+                // 2026-10-09 · on the record by a reviewer's file kept in step 6, with no package built: nothing will come here to download.
+                <span style={quiet} data-testid="room-pdf-by-email">This revision went out by email. Its PDF is not here.</span>
               ) : (
                 <span style={quiet}>The PDF is on its way.</span>
               )}

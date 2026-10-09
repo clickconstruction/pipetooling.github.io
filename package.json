@@ -51,6 +51,7 @@
     "test:pg:gc-award": "bash scripts/pgtest-gc-award.sh",
     "test:pg:gc-back-charges": "bash scripts/pgtest-gc-back-charges.sh",
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
+    "test:pg:lien-claim": "bash scripts/pgtest-lien-claim.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",

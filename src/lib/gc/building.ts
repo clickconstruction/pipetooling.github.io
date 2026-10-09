@@ -183,7 +183,10 @@ export function payApplication(sow: Sow, number: number, toPct: Record<string, n
     balance: sum((l) => l.balance),
     retainage: sum((l) => l.retainage),
   }
-  const previousCertificates = sow.draws.filter((d) => d.number < number).reduce((s, d) => s + d.net, 0)
+  // Line 7: what earlier applications were certified for, before any back-charge came off what we paid.
+  const previousCertificates = sow.draws
+    .filter((d) => d.number < number)
+    .reduce((s, d) => s + d.net + (d.backCharges ?? []).reduce((t, b) => t + b.amount, 0), 0)
   // Line 2: the change orders signed into the statement of work. Line 3 adds them to the original.
   const changeOrders = changeOrderLines(sow).reduce((s, l) => s + l.amount, 0)
   const sumToDate = sow.price + changeOrders
@@ -242,9 +245,9 @@ export function drawMoney(sow: Sow, app: PayApplication): { gross: number; retai
   return { gross, retainage, net: gross - retainage }
 }
 
-/** The lines a draw keeps: each with work this period or materials stored. */
+/** The lines a draw keeps: each whose work moved this period (a credit's too, so it is taken once), or with materials stored. */
 export function drawLinesOf(app: PayApplication): { sovId: string; toPct: number; stored?: number }[] {
-  return app.lines.filter((l) => l.thisPeriod > 0 || l.stored > 0).map((l) => ({ sovId: l.sovId, toPct: l.pct, ...(l.stored > 0 ? { stored: l.stored } : {}) }))
+  return app.lines.filter((l) => l.thisPeriod !== 0 || l.stored > 0).map((l) => ({ sovId: l.sovId, toPct: l.pct, ...(l.stored > 0 ? { stored: l.stored } : {}) }))
 }
 
 /**

@@ -26,6 +26,25 @@ const job = {
 } as unknown as JobWithDetails
 
 describe('lienClaimBills (v2.4969)', () => {
+  it('the paid column is the rule’s (v2.5093): money with no bill picked pays the work on no bill, then the oldest bill', () => {
+    // Job 273's shape: $56,365, bills of $13,420, $665 and $3,500, $39,680 paid with no bill picked.
+    const j273 = {
+      ...job,
+      id: 'j273',
+      revenue: 56365,
+      payments_made: 39680,
+      invoices: [inv('b1', 13420, 1), inv('b2', 665, 2), inv('b3', 3500, 3)],
+      payments: [{ invoice_id: null, amount: 39680, paid_on: '2026-03-10' }],
+    } as unknown as JobWithDetails
+    const bills = lienClaimBills(j273)
+    expect(bills.map((b) => [b.invoiceId, b.billed, b.paid, b.owed])).toEqual([
+      ['b1', 13420, 900, 12520],
+      ['b2', 665, 0, 665],
+      ['b3', 3500, 0, 3500],
+    ])
+    expect(lienClaimBillsOwed(bills)).toBe(16685)
+  })
+
   it('lists every sent bill, oldest first, with billed, paid and owed; a draft at Ready to Bill is not a bill', () => {
     const bills = lienClaimBills(job, { rough: { invoiceNumber: '922-2609241309', dueYmd: '2026-09-24' } })
     expect(bills.map((b) => [b.invoiceId, b.billed, b.paid, b.owed, b.stripe])).toEqual([

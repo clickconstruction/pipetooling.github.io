@@ -27,7 +27,7 @@ export async function fetchMyStatementRound(): Promise<StatementRoundPayload | n
  */
 export async function fetchMyStatementWeek(): Promise<{ week: OfficeWeekPayload | null; missing: boolean }> {
   try {
-    const { data, error } = await supabase.rpc('get_my_statement_week' as never)
+    const { data, error } = await supabase.rpc('get_my_statement_week')
     if (error) {
       const e = error as { code?: string; message?: string }
       const missing = e.code === 'PGRST202' || e.code === '42883' || /could not find the function|does not exist/i.test(e.message ?? '')

@@ -3,6 +3,7 @@ import {
   nextProjectionSequence,
   projectionAnchorFields,
   projectionSaveProblem,
+  projectionWriteError,
   projectionWriteFields,
   seedEditingProjection,
 } from './projectionEdit'
@@ -112,5 +113,19 @@ describe('nextProjectionSequence', () => {
   it('is one past the highest in hand, and 1 for the first', () => {
     expect(nextProjectionSequence([{ sequence_order: 3 }, { sequence_order: 7 }, { sequence_order: 1 }])).toBe(8)
     expect(nextProjectionSequence([])).toBe(1)
+  })
+})
+
+describe('projectionWriteError', () => {
+  it('names the write and quotes the refusal', () => {
+    expect(projectionWriteError('insert', { message: 'rls' })).toBe('Failed to insert projection: rls')
+    expect(projectionWriteError('update', { message: 'rls' })).toBe('Failed to update projection: rls')
+    expect(projectionWriteError('delete', { message: 'permission denied for table workflow_projections' })).toBe(
+      'Failed to delete projection: permission denied for table workflow_projections',
+    )
+  })
+
+  it('is null when the write went through', () => {
+    expect(projectionWriteError('delete', null)).toBeNull()
   })
 })

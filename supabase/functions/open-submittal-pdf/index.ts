@@ -52,6 +52,7 @@ serve(async (req) => {
     const s = rev as { id: string; bid_id: string; rev_number: number; shared_at: string | null; package_path: string | null } | null
     if (!s || s.bid_id !== bidId || !s.package_path) return textResponse('This package is not available.', 404)
     // A revision answered by email is on the GC's record with its package (2026-10-06): serve it as a shared one.
+    // One on it by a reviewer's file alone (2026-10-09) has no package, so the check above already says no.
     if (!s.shared_at && !onRecord(await loadRevisionStandings(admin, bidId)).some((r) => r.id === s.id)) return textResponse('This package is not available.', 404)
 
     const { data: bid } = await admin.from('bids').select('bid_number, project_name').eq('id', bidId).maybeSingle()

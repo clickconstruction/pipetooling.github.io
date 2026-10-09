@@ -1,7 +1,7 @@
 ---
 name: "See what they see: a live view of the GC's room (and the portal) while you work"
 number: 62
-status: DONE 2026-10-05 — the five pieces shipped: v2.4593 (the line and the window say what the link shows), v2.4595 (the sample through the room's kernel, deployed), v2.4599 (the room refuses the office's session and the preview, deployed), v2.4606 (the page's own header and chips in the window), v2.4608 (the door to the real page in preview; the "What customers see" rule in GLOSSARY) · Layers 3 and 4 dropped by the owner 2026-10-06 · v2.4667 (2026-10-06, its three functions deployed): a revision answered by email joins the GC's page as the record once it has a built package · open: BP398's Rev 3 has none and the office cannot build one, so the owner picks how it joins (below)
+status: DONE 2026-10-05 — the five pieces shipped: v2.4593 (the line and the window say what the link shows), v2.4595 (the sample through the room's kernel, deployed), v2.4599 (the room refuses the office's session and the preview, deployed), v2.4606 (the page's own header and chips in the window), v2.4608 (the door to the real page in preview; the "What customers see" rule in GLOSSARY) · Layers 3 and 4 dropped by the owner 2026-10-06 · v2.4667 (2026-10-06, its three functions deployed): a revision answered by email joins the GC's page as the record once it has a built package · v2.5095 (2026-10-09, the owner's pick (b), built; its three functions not yet deployed): or a reviewer's file kept on it in step 6 · open: deploy the three, then drop the GC's Oct 2 email on BP398's Rev 3 and read the GC's page
 summary: >
   On Bids → Submittals the office edits rows and never sees what the GC or the architect will
   see until after sharing. The owner's ask (2026-09-29): "an active view of what they change and
@@ -11,11 +11,11 @@ summary: >
   and the sample views in What customers see — all rendered from the same kernels the real pages
   use, so a preview can never lie.
 size: M (Layer 1 S; Layer 2 M; Layers 3–5 S each)
-ver: v2.4174 · 4187 · 4189 · 4593 · 4595 · 4599 · 4606 · 4608 · 4667
+ver: v2.4174 · 4187 · 4189 · 4593 · 4595 · 4599 · 4606 · 4608 · 4667 · 5095
 opinion: soon — Wendi and Stephen are on the tab this week and first shares are coming; the pane is what teaches "why the reason matters" without a tour.
 group: ready
 blocker: None — the owner picked (b) on 2026-10-09.
-next: Build (b), the owner's pick of 2026-10-09: a revision joins the GC's record when it is shared, or holds a reviewer's answer and a built package or a reviewer's file — one line in `recordStanding`, the loader reading `reviewer_files`, the same three function deploys; then drop a reviewer file on BP398's Rev 3 and read the GC's page. Then delete this folder. The other hand-built samples in What customers see (the bid room, the customer portal) built through their kernels is a new row still to write.
+next: (b) is built as v2.5095. Deploy `get-submittal-room`, `open-submittal-pdf` and `submit-submittal-review` together; then drop the GC's Oct 2 email on BP398's Rev 3 and read the GC's page. Then delete this folder. The other hand-built samples in What customers see (the bid room, the customer portal) built through their kernels is a new row still to write.
 ---
 
 # See what they see
@@ -85,6 +85,8 @@ file* is offered on any revision past draft.
 - **(b) A built package or a reviewer file.** The rule becomes: shared, or a reviewer's answer and
   either a built package or a file dropped in step 6 (`bid_submittals.reviewer_files`), the
   office's own evidence that the revision went out and came back. For BP398 the office drops the
-  GC's Oct 2 email on Rev 3. Recommended.
+  GC's Oct 2 email on Rev 3. Recommended. **Picked 2026-10-09; built as v2.5095.** A revision on
+  the record by its file alone has no package, so the GC's page reads *This revision went out by
+  email. Its PDF is not here.* where the download would be.
 - **(c) Build package on an older revision.** A gate change in `stageGate` and `draftFacts`. The
   PDF would be built today from Rev 3's rows: a reconstruction, not the file that went out.
