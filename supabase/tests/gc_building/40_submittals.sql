@@ -30,9 +30,9 @@ UPDATE public.users SET is_digital_twin = true WHERE id = '00000000-0000-0000-00
 INSERT INTO public.customers (id, name, master_user_id) VALUES ('00000000-0000-0000-0000-0000000007c1', 'Submittals Test Owner', '00000000-0000-0000-0000-0000000007d1');
 INSERT INTO public.projects (id, name, customer_id) VALUES ('00000000-0000-0000-0000-0000000007a1', 'Submittals test A', '00000000-0000-0000-0000-0000000007c1');
 INSERT INTO public.gc_projects (project_id, stage, started_on) VALUES ('00000000-0000-0000-0000-0000000007a1', 'building', public.app_today() - 3);
-INSERT INTO public.gc_companies (id, name) VALUES
-  ('00000000-0000-0000-0000-0000000007e1', 'Ridgeway Concrete'),
-  ('00000000-0000-0000-0000-0000000007e2', 'Halverson Steel');
+INSERT INTO public.gc_companies (id, name, trades) VALUES
+  ('00000000-0000-0000-0000-0000000007e1', 'Ridgeway Concrete', ARRAY['Concrete']),
+  ('00000000-0000-0000-0000-0000000007e2', 'Halverson Steel', ARRAY['Steel']);
 INSERT INTO public.gc_trade_packages (id, project_id, trade, position, ours) VALUES
   ('00000000-0000-0000-0000-0000000007b1', '00000000-0000-0000-0000-0000000007a1', 'Concrete', 0, false),
   ('00000000-0000-0000-0000-0000000007b2', '00000000-0000-0000-0000-0000000007a1', 'Steel', 1, false),
