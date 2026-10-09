@@ -71,6 +71,46 @@ export function customerGreeting(customer: GcCustomer | undefined, fallback: str
   return titled ? `${words[0]} ${words[words.length - 1]}` : (words[0] ?? fallback)
 }
 
+/**
+ * What a reminder's email says, read off the bill by `payReminderEmail`. Plain facts, so What customers see's sample
+ * uses the same words.
+ */
+export interface PayReminderMailFacts {
+  greeting: string
+  job: string
+  /** "pay application 3", "the final pay application". */
+  bill: string
+  open: number
+  /** The day it was due: their word, or the day we expected it. */
+  dueOn: string | null
+  promised: boolean
+  lastPaid: { amount: number; on: string } | null
+  interest: { pctPerMonth: number; from: string; amount: number } | null
+  by: string
+  note: string
+}
+
+/** The reminder's words from its facts. */
+export function payReminderMail(f: PayReminderMailFacts): { subject: string; lines: string[] } {
+  const Bill = f.bill.charAt(0).toUpperCase() + f.bill.slice(1)
+  return {
+    subject: `Reminder: ${f.bill} for ${f.job}, ${money(f.open)}`,
+    lines: [
+      `Hello ${f.greeting},`,
+      `${Bill} for ${f.job} has ${money(f.open)} still open. It was due ${weekdayDate(f.dueOn)}, ${f.promised ? 'the day you gave' : 'the day we expected it'}.`,
+      ...(f.lastPaid ? [`Thank you for the ${money(f.lastPaid.amount)} you paid ${shortDate(f.lastPaid.on)}.`] : []),
+      ...(f.interest ? [`Interest of ${f.interest.pctPerMonth}% a month runs on it from ${shortDate(f.interest.from)}. ${money(f.interest.amount)} has built up so far.`] : []),
+      `Please pay it by ${weekdayDate(f.by)}.`,
+      ...(f.note.trim() ? [f.note.trim()] : []),
+      // No Pay yet (O5b, the lead's call A): the bill is not on Stripe, so they reply with their day, and
+      // gc-customer-email adds their portal link when they have one. The waiver is a press after the payment
+      // (call B): the email never promises what a press has to do.
+      'Reply with the day you will pay.',
+      'Our unconditional lien waiver for it follows once it is paid.',
+    ],
+  }
+}
+
 /** The reminder as the customer will read it. */
 export function payReminderEmail(
   state: GcState,
@@ -83,26 +123,22 @@ export function payReminderEmail(
   const app = billOf(project, number)
   if (!app) return { subject: '', lines: [] }
   const due = ownerPayDue(state, project, app)
-  const open = appOpen(app)
-  const name = billName(app)
-  const Name = name.charAt(0).toUpperCase() + name.slice(1)
   const paidPart = (app.payments ?? []).filter((p) => p.amount > 0)
   const lastPaid = paidPart[paidPart.length - 1]
   const pct = project.ownerLateInterest?.pctPerMonth
   const interest = pct ? ownerInterestOnBill(state, project, app, pct) : null
-  return {
-    subject: `Reminder: ${name} for ${project.name}, ${money(open)}`,
-    lines: [
-      `Hello ${customerGreeting(customer, project.owner)},`,
-      `${Name} for ${project.name} has ${money(open)} still open. It was due ${weekdayDate(due.on)}, ${due.promised ? 'the day you gave' : 'the day we expected it'}.`,
-      ...(lastPaid ? [`Thank you for the ${money(lastPaid.amount)} you paid ${shortDate(lastPaid.on)}.`] : []),
-      ...(interest && pct ? [`Interest of ${pct}% a month runs on it from ${shortDate(interest.from)}. ${money(interest.amount)} has built up so far.`] : []),
-      `Please pay it by ${weekdayDate(by)}.`,
-      ...(note.trim() ? [note.trim()] : []),
-      customer?.portalOn ? 'Pay it in your portal, by card or bank transfer.' : 'Reply with the day you will pay.',
-      'Our unconditional lien waiver for it comes to you the day it is paid.',
-    ],
-  }
+  return payReminderMail({
+    greeting: customerGreeting(customer, project.owner),
+    job: project.name,
+    bill: billName(app),
+    open: appOpen(app),
+    dueOn: due.on,
+    promised: due.promised,
+    lastPaid: lastPaid ? { amount: lastPaid.amount, on: lastPaid.on } : null,
+    interest: interest && pct ? { pctPerMonth: pct, from: interest.from, amount: interest.amount } : null,
+    by,
+    note,
+  })
 }
 
 export interface LatePayApp {

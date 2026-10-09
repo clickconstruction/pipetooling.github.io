@@ -220,6 +220,7 @@ const REFUSALS: Record<CustomerEmailErrorKey, string> = {
   otherProject: 'That belongs to another job.',
   notCertified: 'That pay application has no certified bill to send.',
   notSent: 'That change order is not waiting on their signature.',
+  alreadySent: 'That reminder went already.',
   noEmail: 'There is no email address on file for them. Add one on the customer, then send it again.',
   sendFailed: 'The email service said no. Try again in a minute.',
   failed: 'The email was not sent.',

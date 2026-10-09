@@ -25,15 +25,16 @@ import {
  * words; this frames them, sends and files the sent copy. O4b-1's kinds: `pay_app` (to the customer, the form
  * attached) and `certify_ask` (to the architect, the form attached). O4b-2's: `certified` (the bill the architect
  * certified, to the customer, with their portal link when they already have one) and `change_order` (to the customer,
- * to sign by reply).
+ * to sign by reply). O5b's: `reminder` (to the customer, the words `gc_remind_customer_to_pay` filed, with their portal
+ * link when they have one; its email's log is written back on the reminder).
  *
  *   POST { projectId, kind, sourceId, subject, lines, pdf? }   staff JWT
  *     → { to, email, resendEmailId }
  *     → { error: key } with CUSTOMER_EMAIL_ERRORS' status
  *
  * In order: the caller (the money team; never a training account or a digital twin), the shape, the project, the row
- * the kind is about (this project's pay application, certified for `certified`; or this project's change order, sent
- * and not yet answered), who gets the kind (the customer's billing email, else its contact email; the architect's the
+ * the kind is about (this project's pay application, certified for `certified`; this project's change order, sent and
+ * not yet answered; or this project's reminder, not emailed yet), who gets the kind (the customer's billing email, else its contact email; the architect's the
  * same way), the email, the send, then its sent copy (docs/SENT_COPIES.md, `GC_CUSTOMER_EMAIL_FILED_AS`, on the
  * billing job). The service role reads here, so the read-only blocks and the twin fence never see it. Nothing
  * is written but the send's own log and copy: the sent copies are the record of what went.
@@ -84,18 +85,27 @@ serve(async (req) => {
 
     // The row the kind is about. A pay application is sent once it exists (gc_send_owner_pay_app files it as it goes);
     // `certified` wants a certificate with a bill behind it (nothing certified makes no bill). A change order must be out
-    // for their signature, not a draft and not answered.
+    // for their signature, not a draft and not answered. A reminder goes once, in the words gc_remind_customer_to_pay
+    // filed; every other kind goes in the window's.
+    let words = { subject: m.subject, lines: m.lines }
     const source = GC_CUSTOMER_EMAIL_SOURCE[m.kind]
     if (source === 'gc_owner_pay_apps') {
       const { data: app } = await admin.from('gc_owner_pay_apps').select('id, project_id, certified').eq('id', m.sourceId).maybeSingle()
       if (!app) return refuse('notFound')
       if (app.project_id !== m.projectId) return refuse('otherProject')
       if (m.kind === 'certified' && !(Number(app.certified) > 0)) return refuse('notCertified')
-    } else {
+    } else if (source === 'gc_change_orders') {
       const { data: co } = await admin.from('gc_change_orders').select('id, project_id, status').eq('id', m.sourceId).maybeSingle()
       if (!co) return refuse('notFound')
       if (co.project_id !== m.projectId) return refuse('otherProject')
       if (co.status !== 'sent') return refuse('notSent')
+    } else {
+      const { data: rem } = await admin.from('gc_owner_pay_reminders').select('id, pay_app_id, subject, lines, email_send_log_id').eq('id', m.sourceId).maybeSingle()
+      if (!rem) return refuse('notFound')
+      const { data: app } = await admin.from('gc_owner_pay_apps').select('project_id').eq('id', rem.pay_app_id).maybeSingle()
+      if (!app || app.project_id !== m.projectId) return refuse('otherProject')
+      if (rem.email_send_log_id) return refuse('alreadySent')
+      words = { subject: String(rem.subject), lines: (rem.lines ?? []).map(String) }
     }
 
     // Who gets it: the project's customer, or its architect, at the address the Pipeline bills.
@@ -114,7 +124,7 @@ serve(async (req) => {
     const portalUrl = GC_CUSTOMER_EMAIL_PORTAL_LINE[m.kind]
       ? await loadPortalReturnUrl(admin, recipient.id, Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com', { paid: false })
       : null
-    const email = buildGcCustomerEmail({ subject: m.subject, lines: m.lines, signer, gc: GC_CUSTOMER_EMAIL_FROM_NAME, portalUrl })
+    const email = buildGcCustomerEmail({ subject: words.subject, lines: words.lines, signer, gc: GC_CUSTOMER_EMAIL_FROM_NAME, portalUrl })
 
     const from = mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, EMAIL_FROM)
     const attachments = m.pdf ? [{ filename: m.pdf.filename, content: m.pdf.base64 }] : undefined
@@ -140,6 +150,11 @@ serve(async (req) => {
       },
       { to: [address], from, subject: email.subject, html: email.html, attachments, resendEmailId: sent.resendEmailId ?? null },
     )
+    // A reminder keeps the email it went in (O1's column grant): the send's log row, found by its Resend id.
+    if (source === 'gc_owner_pay_reminders' && sent.resendEmailId) {
+      const { data: log } = await admin.from('email_send_log').select('id').eq('resend_email_id', sent.resendEmailId).maybeSingle()
+      if (log?.id) await admin.from('gc_owner_pay_reminders').update({ email_send_log_id: log.id }).eq('id', m.sourceId)
+    }
     return json({ to: String(recipient.name ?? ''), email: address, resendEmailId: sent.resendEmailId ?? null })
   } catch (e) {
     return refuse('failed', e instanceof Error ? e.message : String(e))

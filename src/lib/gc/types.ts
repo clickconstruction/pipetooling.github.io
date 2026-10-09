@@ -890,8 +890,11 @@ export interface OwnerPayAppSent {
   retainageStep?: OwnerRetainageStep
   /** Materials stored on site, not yet in place, on each line when it went (column F). Absent: none. */
   storedByLine?: Record<string, number>
-  /** Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise. */
-  reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[] }[]
+  /**
+   * Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise.
+   * `emailed` false: filed, but its email did not go (O5b: no log written back on it).
+   */
+  reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[]; emailed?: boolean }[]
 }
 
 /** Why the work changed, in the words the app's change orders already use. */

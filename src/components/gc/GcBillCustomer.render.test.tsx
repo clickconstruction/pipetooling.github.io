@@ -27,7 +27,7 @@ function setup(
     ...over,
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
-  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn() }
+  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn() }
   render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} onClose={() => undefined} />)
   return { writes, last }
 }
@@ -138,6 +138,35 @@ describe('GcBillCustomerWindow', () => {
     fireEvent.change(screen.getByLabelText(`What they said about pay application ${last.number}`), { target: { value: 'Elena, the controller' } })
     fireEvent.click(screen.getByRole('button', { name: 'Record it' }))
     expect(writes.onPromise).toHaveBeenCalledWith(last.number, '2026-10-09', 'Elena, the controller', 'phone')
+  })
+
+  it('reminds them to pay a late bill: the pay-by day five days out, a line of our own, the email as they read it', () => {
+    const last = lastSent()
+    const { writes } = setup({}, [], partPaid(last))
+    fireEvent.click(screen.getByRole('button', { name: 'Remind them to pay' }))
+    expect(document.body.textContent).toContain('This is our ask, not their promise.')
+    const day = screen.getByLabelText(`The day to pay pay application ${last.number} by`) as HTMLInputElement
+    expect(day.value).toBe('2026-10-07')
+    fireEvent.change(day, { target: { value: '2026-10-09' } })
+    fireEvent.change(screen.getByLabelText(`Your line in the reminder on pay application ${last.number}`), { target: { value: ' Our lien deadline is close. ' } })
+    // The email as it will read: no Pay, and the waiver follows the payment (O5b's calls A and B).
+    expect(document.body.textContent).toContain(`Reminder: pay application ${last.number} for Fair Oaks Shops, Building D`)
+    expect(document.body.textContent).toContain('Please pay it by Fri Oct 9.')
+    expect(document.body.textContent).toContain('Our lien deadline is close.')
+    expect(document.body.textContent).toContain('Reply with the day you will pay.')
+    expect(document.body.textContent).toContain('Our unconditional lien waiver for it follows once it is paid.')
+    fireEvent.click(screen.getByRole('button', { name: 'Send the reminder' }))
+    expect(writes.onRemind).toHaveBeenCalledWith(last.number, '2026-10-09', 'Our lien deadline is close.')
+  })
+
+  it('says when a reminder went, and when its email did not', () => {
+    const last = lastSent()
+    setup({}, [], { ...partPaid(last), reminders: [{ on: '2026-10-01', by: '2026-10-06', note: '', emailed: false }] })
+    expect(document.body.textContent).toContain('Reminded yesterday · pay by Tue Oct 6. The email did not go.')
+    cleanup()
+    setup({}, [], { ...partPaid(last), reminders: [{ on: '2026-10-01', by: '2026-10-06', note: '', emailed: true }] })
+    expect(document.body.textContent).toContain('Reminded yesterday · pay by Tue Oct 6.')
+    expect(document.body.textContent).not.toContain('The email did not go.')
   })
 
   it('makes our unconditional waiver for a payment, and says when it went', () => {

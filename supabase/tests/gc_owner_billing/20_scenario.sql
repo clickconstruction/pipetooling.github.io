@@ -1,8 +1,9 @@
 -- Our bill to the customer (GC mode, Owner Billing's O4a-1): sending a pay application files it with its
 -- lines and opens the project's billing job the first time, billing-only and kept at the contract; the
--- architect's certificate makes the bill on that job; the links and the certificate stay once written; and
--- every refusal comes in its words. Presses run through RLS as a dev, the controller, an estimator and a dev
--- in training mode; the fixture is made as postgres; everything runs inside one transaction that rolls back.
+-- architect's certificate makes the bill on that job; the links and the certificate stay once written; a
+-- reminder to pay (O5b) files as it went with its chase touch; and every refusal comes in its words. Presses
+-- run through RLS as a dev, the controller, an estimator and a dev in training mode; the fixture is made as
+-- postgres; everything runs inside one transaction that rolls back.
 -- Raises on the first failed assertion; ends with "gc_owner_billing PASSED". See
 -- scripts/pgtest-gc-owner-billing.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -117,6 +118,18 @@ CREATE FUNCTION gob.app_lines(p_project uuid, p_number int) RETURNS text LANGUAG
   WHERE a.project_id = p_project AND a.number = p_number $$;
 CREATE FUNCTION gob.count_of(p_sql text) RETURNS text LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
 DECLARE v bigint; BEGIN EXECUTE p_sql INTO v; RETURN v::text; END $$;
+-- O5b: a reminder as it went, and the touches on a customer's chase list.
+CREATE FUNCTION gob.reminder(p_id uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT concat_ws(' | ', (r.sent_on = public.app_today())::text, r.pay_by - public.app_today(), r.note, r.subject,
+    array_to_string(r.lines, ' / '),
+    CASE r.sent_by WHEN '00000000-0000-0000-0000-0000000004d4' THEN 'by the controller' ELSE coalesce(r.sent_by::text, 'by nobody') END)
+  FROM public.gc_owner_pay_reminders r WHERE r.id = p_id $$;
+CREATE FUNCTION gob.touches(p_customer uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT coalesce(string_agg(concat_ws(' | ', t.outcome, t.note,
+    CASE WHEN t.job_id = gob.job('00000000-0000-0000-0000-0000000004a1') THEN 'on the billing job' ELSE coalesce(t.job_id::text, 'no job') END,
+    CASE t.created_by WHEN '00000000-0000-0000-0000-0000000004d4' THEN 'by the controller' ELSE coalesce(t.created_by::text, 'by nobody') END,
+    coalesce(t.promised_date::text, 'no promise')), E'\n' ORDER BY t.created_at), 'none')
+  FROM public.job_payment_chase_touches t WHERE t.customer_id = p_customer $$;
 GRANT USAGE ON SCHEMA gob TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA gob TO authenticated;
 -- What a press returned, for the steps after it: a statement never sees what a function it calls wrote, so
@@ -139,6 +152,10 @@ SELECT gob.same('the links: their column grants, and no other column opened',
   'true true false false');
 SELECT gob.same('the links-once trigger is there',
   (SELECT count(*)::text FROM pg_trigger WHERE tgname = 'gc_owner_pay_apps_links_once' AND NOT tgisinternal), '1');
+SELECT gob.same('the reminder (O5b): one function, the caller''s rights, nobody signed out',
+  (SELECT count(*) || ' ' || bool_and(NOT prosecdef)::text FROM pg_proc WHERE proname = 'gc_remind_customer_to_pay') || ' ' ||
+  has_function_privilege('anon', 'public.gc_remind_customer_to_pay(uuid, date, date, text, text, text[])', 'EXECUTE')::text,
+  '1 true false');
 SELECT gob.same('anon reaches none of the three functions',
   has_function_privilege('anon', 'public.gc_send_owner_pay_app(uuid, jsonb)', 'EXECUTE')::text || ' ' ||
   has_function_privilege('anon', 'public.gc_record_certificate(uuid, numeric, date, text)', 'EXECUTE')::text || ' ' ||
@@ -356,6 +373,9 @@ SELECT gob.same('the same billing job, its revenue now the contract with change 
   gob.count_of($q$SELECT count(*) FROM public.jobs_ledger WHERE billing_only$q$) || ' ' ||
   (SELECT gob.m(revenue) FROM public.jobs_ledger WHERE id = (SELECT id FROM ids WHERE k = 'job')),
   '1 187500.00');
+SELECT gob.refused('a reminder while it waits on the architect (O5b)',
+  $q$SELECT public.gc_remind_customer_to_pay((SELECT id FROM ids WHERE k = 'app2'), public.app_today(), public.app_today() + 5, '', 'Reminder', ARRAY['Hello,'])$q$,
+  'Pay application 2 waits on the architect. There is nothing to pay on it yet.');
 INSERT INTO ids SELECT 'bill2', public.gc_record_certificate((SELECT id FROM ids WHERE k = 'app2'), 15390, DATE '2026-10-05', '');
 SELECT gob.same('the controller''s certificate makes the second bill',
   gob.bills('00000000-0000-0000-0000-0000000004a1'), E'0 billed 45000.00 2026-09-30 true\n1 billed 15390.00 2026-10-05 true');
@@ -378,6 +398,34 @@ SELECT gob.same('a certificate of nothing makes no bill',
   gob.count_of($q$SELECT count(*) FROM public.jobs_ledger_invoices WHERE job_id = (SELECT billing_job_id FROM public.gc_projects WHERE project_id = '00000000-0000-0000-0000-0000000004a1')$q$),
   'no bill | 3 | false | 2026-10-06 | 2026-10-06 | 10.00 | 7290.00 | 72900.00 | 5220.00 | 0.00 | 2026-10-07 | Nothing certified this month, per the architect. | by the controller | no bill | 2');
 
+-- 8b · Remind them to pay (O5b), as the controller: a certificate of nothing has no bill to remind, and a
+-- reminder goes today. Pay application 1's reminder files as it went, trimmed, with one note on the chase
+-- list: the customer's, on the billing job, never a promise. Once the Pipeline marks its bill paid in full,
+-- a reminder is refused.
+SELECT gob.refused('a reminder on a certificate of nothing',
+  $q$SELECT public.gc_remind_customer_to_pay((SELECT id FROM ids WHERE k = 'app3'), public.app_today(), public.app_today() + 5, '', 'Reminder', ARRAY['Hello,'])$q$,
+  'The architect certified nothing on pay application 3, so there is no bill to pay.');
+SELECT gob.refused('a reminder dated yesterday',
+  $q$SELECT public.gc_remind_customer_to_pay((SELECT id FROM ids WHERE k = 'app1'), public.app_today() - 1, public.app_today() + 5, '', 'Reminder', ARRAY['Hello,'])$q$,
+  'A reminder goes today.');
+SELECT gob.refused('a reminder with no lines',
+  $q$SELECT public.gc_remind_customer_to_pay((SELECT id FROM ids WHERE k = 'app1'), public.app_today(), public.app_today() + 5, '', 'Reminder', ARRAY[' '])$q$,
+  'The reminder needs its email: a subject and its lines.');
+INSERT INTO ids SELECT 'rem1', public.gc_remind_customer_to_pay((SELECT id FROM ids WHERE k = 'app1'), public.app_today(), public.app_today() + 5,
+  ' Our lien deadline is close. ', ' Reminder: pay application 1 for Billing test P, $45,000 ', ARRAY['Hello,', ' ', 'Please pay it.']);
+SELECT gob.same('the reminder as it went, by the controller',
+  gob.reminder((SELECT id FROM ids WHERE k = 'rem1')),
+  'true | 5 | Our lien deadline is close. | Reminder: pay application 1 for Billing test P, $45,000 | Hello, / Please pay it. | by the controller');
+SELECT gob.same('one note on the chase list: the customer''s, on the billing job, never a promise',
+  gob.touches('00000000-0000-0000-0000-0000000004c1'),
+  'note | Reminder: pay application 1 for Billing test P, $45,000 · pay by ' || to_char(public.app_today() + 5, 'Dy Mon FMDD') ||
+  ' | on the billing job | by the controller | no promise');
+SELECT gob.same('the Pipeline marks bill 1 paid in full',
+  coalesce(public.mark_invoice_paid((SELECT id FROM ids WHERE k = 'bill1'), NULL::numeric, DATE '2026-10-07') ->> 'error', 'paid'), 'paid');
+SELECT gob.refused('a reminder on a bill paid in full',
+  $q$SELECT public.gc_remind_customer_to_pay((SELECT id FROM ids WHERE k = 'app1'), public.app_today(), public.app_today() + 5, '', 'Reminder', ARRAY['Hello,'])$q$,
+  'Pay application 1 is paid in full.');
+
 -- 9 · Outside the money team: an estimator reaches neither press, and a dev in training mode writes nothing.
 SELECT gob.as_user('00000000-0000-0000-0000-0000000004d3');
 SELECT gob.refused('an estimator''s send',
@@ -386,6 +434,9 @@ SELECT gob.refused('an estimator''s send',
   'row-level security');
 SELECT gob.refused('an estimator''s certificate',
   $q$SELECT public.gc_record_certificate((SELECT id FROM ids WHERE k = 'app3'), 0, DATE '2026-10-07', 'no')$q$,
+  'That pay application is not there.');
+SELECT gob.refused('an estimator''s reminder',
+  $q$SELECT public.gc_remind_customer_to_pay((SELECT id FROM ids WHERE k = 'app2'), public.app_today(), public.app_today() + 5, '', 'Reminder', ARRAY['Hello,'])$q$,
   'That pay application is not there.');
 SELECT gob.as_user('00000000-0000-0000-0000-0000000004d2');
 DO $$
@@ -399,8 +450,21 @@ BEGIN
   END;
   RAISE EXCEPTION 'a dev in training mode sent a pay application';
 END $$;
+DO $$
+BEGIN
+  BEGIN
+    PERFORM public.gc_remind_customer_to_pay((SELECT id FROM ids WHERE k = 'app2'), public.app_today(), public.app_today() + 5, '', 'Reminder', ARRAY['Hello,']);
+  EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'ok: a dev in training mode reminds no one (%)', SQLERRM;
+    RETURN;
+  END;
+  RAISE EXCEPTION 'a dev in training mode sent a reminder';
+END $$;
 SELECT gob.same('nothing written outside the money team',
-  gob.count_of($q$SELECT count(*) FROM public.gc_owner_pay_apps$q$), '3');
+  gob.count_of($q$SELECT count(*) FROM public.gc_owner_pay_apps$q$) || ' ' ||
+  gob.count_of($q$SELECT count(*) FROM public.gc_owner_pay_reminders$q$) || ' ' ||
+  gob.count_of($q$SELECT count(*) FROM public.job_payment_chase_touches WHERE customer_id = '00000000-0000-0000-0000-0000000004c1'$q$),
+  '3 1 1');
 
 -- 10 · A link goes to null only when its bill is deleted; the project's delete takes its pay applications
 -- and lines, and the billing job stays with its history.

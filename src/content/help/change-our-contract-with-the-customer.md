@@ -27,7 +27,7 @@ A draft can be deleted. Press {{button:outline|Delete the draft}} under it.
 1. Tick **Email it to the customer now** on the draft to email it to them. The tick starts off.
 2. Press {{button:blue|Send for signature}}.
 
-With the tick on, the customer gets an email from Click Construction. The email says the change, the price and the days. They reply to sign it. The change order then says who it was emailed to.
+With the tick on, the customer gets an email from Click Construction. The email says the change, the price and the days. The customer replies to sign it. The change order then says who it was emailed to.
 
 With the tick off, copy the words the window shows. Send them from your own email. The change order now waits on the customer either way.
 

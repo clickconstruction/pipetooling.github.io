@@ -4,7 +4,7 @@ name: SQL beds
 # reach it. GitHub's runners have it. A PR that touches a bed's SQL runs the beds here before its
 # migration is pushed: the schedule's (its PR 5), bid history's ledger (#73 PR 0b on), the
 # unbanked check cases (#76 piece 3), the Stripe cases (#76 piece 1), Building's daily log (GC mode U3a-i),
-# Owner Billing's bill to the customer (GC mode O4a-1) and GC award (the Board's B6-a).
+# Owner Billing's bill to the customer (GC mode O4a-1) with its reminders (O5b) and GC award (the Board's B6-a).
 on:
   pull_request:
     paths:
@@ -28,6 +28,7 @@ on:
       - 'supabase/tests/gc_building/**'
       - 'scripts/pgtest-gc-building.sh'
       - 'supabase/migrations/*gc_owner*'
+      - 'supabase/migrations/*gc_remind*'
       - 'supabase/tests/gc_owner_billing/**'
       - 'scripts/pgtest-gc-owner-billing.sh'
       - 'supabase/migrations/*gc_award*'

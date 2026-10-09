@@ -49,6 +49,7 @@ import {
 import { GC_CUSTOMER_EMAIL_FILED_AS } from '../../supabase/functions/_shared/gcCustomerEmails'
 import { pdfBase64, sendGcCustomerEmail } from '../lib/gc/customerEmailIo'
 import { unbilledPayments } from '../lib/gc/ownerBillingRows'
+import { payReminderEmail } from '../lib/gc/ownerBillingRemind'
 import LienReleaseModal from '../components/jobs/LienReleaseModal'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import type { JobWithDetails } from '../types/jobWithDetails'
@@ -121,6 +122,7 @@ import {
   linkPayAppWaiver,
   loadGcBillingRows,
   recordCertificate,
+  remindCustomerToPay,
   recordGcPayment,
   recordGcPromise,
   sendOwnerPayApp,
@@ -1182,6 +1184,28 @@ export default function GcProjects() {
                   if (emailProblem) setBillProblem(emailProblem)
                 } catch (e) {
                   setBillProblem(formatErrorMessage(e, 'The certificate was not recorded.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
+            },
+            onRemind: (number, by, note) => {
+              const id = billRows?.billing.get(billProject.id)?.payApps.find((a) => a.number === number)?.id
+              if (!id) return
+              // The reminder is filed first, with its note on the chase list (O5b); then gc-customer-email sends it in the
+              // words it was filed with. The bills are read again either way, and an email that did not go is said after.
+              const customer = billState.customers.find((c) => c.id === billProject.customerId)
+              const mail = payReminderEmail(billState, customer, billProject, number, by, note)
+              setBillBusy(`remind-${number}`)
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  const reminderId = await remindCustomerToPay(id, today, by, note, mail.subject, mail.lines)
+                  const a = await sendGcCustomerEmail({ projectId: billProject.id, kind: 'reminder', sourceId: reminderId, subject: mail.subject, lines: mail.lines, pdf: null })
+                  await loadBill()
+                  if (!a.ok) setBillProblem(`The reminder is filed, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The reminder was not filed.'))
                 } finally {
                   setBillBusy(null)
                 }

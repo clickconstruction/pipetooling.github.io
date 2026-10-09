@@ -4,6 +4,7 @@
  * read back through `gcProjectFromRows`), sends the draft through `gc_create_project`, and saves
  * a line to the scope book. Nothing here decides anything: the kernels in `src/lib/gc/` do.
  */
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import type { Database, Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
@@ -591,6 +592,17 @@ export async function sendOwnerPayApp(projectId: string, app: PayAppSend): Promi
 /** The architect's certificate: the bill on the billing job is made for what they certified. */
 export async function recordCertificate(payAppId: string, amount: number, on: string, note: string): Promise<void> {
   taken(await supabase.rpc('gc_record_certificate', { p_pay_app_id: payAppId, p_amount: amount, p_on: on, p_note: note }), 'record the certificate')
+}
+
+/**
+ * Our reminder to pay a late bill (O5b): filed with the pay-by day, the office's line and the email as the window
+ * drafted it, with one note on the chase list. Returns the reminder's id, which gc-customer-email sends. Through the
+ * untyped client until the types regenerate after 20261009210000's push.
+ */
+export async function remindCustomerToPay(payAppId: string, on: string, payBy: string, note: string, subject: string, lines: string[]): Promise<string> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db.rpc('gc_remind_customer_to_pay', { p_pay_app_id: payAppId, p_on: on, p_pay_by: payBy, p_note: note, p_subject: subject, p_lines: lines })
+  return taken(result as { data: string | null; error: SupabaseResultError | null }, 'file the reminder')
 }
 
 /** Our conditional waiver, minted on the billing job, linked to the pay application it went with. Once only. */
