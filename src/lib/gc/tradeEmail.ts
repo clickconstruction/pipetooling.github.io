@@ -5,9 +5,10 @@
  * the questions window read one copy (`gcTradeEmail.test.ts`).
  */
 import type { TradeEmailErrorKey, TradeEmailLine } from '../../../supabase/functions/_shared/gcTradeEmail'
-import { portalShownLang, pt, type PortalLang } from './portalI18n'
+import { portalShownLang, pt, pWeekday, type PortalLang } from './portalI18n'
 import type { PortalMessage } from './portal'
-import type { GcState } from './types'
+import type { BackCharge, GcState, TradeChangeRequest } from './types'
+import { money } from './words'
 
 export type { TradeEmailErrorKey, TradeEmailKind, TradeEmailLine, TradeEmailRequest, TradeMailGroup } from '../../../supabase/functions/_shared/gcTradeEmail'
 
@@ -128,3 +129,77 @@ export function answerSentWords(sent: string[], refused: { company: string; key:
     problem: refused.length > 0 ? refused.map((r) => `${r.company}: ${gcTradeEmailRefusal(r.key)}`).join(' ') : null,
   }
 }
+
+/** A note as a sentence: it ends with a stop, so the words after it read (`portal.ts`' asSentence, which stays private there). */
+function asSentence(text: string): string {
+  const t = text.trim()
+  return t === '' || /[.!?]$/.test(t) ? t : `${t}.`
+}
+
+/** The emails a back-charge can send (P4b-iii): when it goes, when the office keeps or drops it, and when it comes off a draw. */
+export type BackChargeEmailStage = 'sent' | 'settled' | 'taken'
+
+/**
+ * A back-charge's email in a company's language (kind `backCharge`, to the people who get pay emails), from the prototype's
+ * `portalMessages` word for word, without the greeting the function writes. `sent` is Building's charge, `settled` its keep
+ * or drop, `taken` U6's draw. Null when the charge is not at that stage.
+ */
+export function backChargeEmail(
+  stage: BackChargeEmailStage,
+  a: { project: string; trade: string; charge: BackCharge; drawNumber?: number | null },
+  lang: PortalLang,
+): { subject: string; lines: TradeEmailLine[] } | null {
+  const c = a.charge
+  const amount = money(c.amount)
+  if (stage === 'sent') {
+    return {
+      subject: pt(lang, 'mBcSubject', { project: a.project, amount }),
+      lines: [pt(lang, 'mBcWhat', { amount, trade: a.trade, reason: asSentence(c.reason) }), pt(lang, 'mBcAnswer', { date: pWeekday(lang, c.answerBy) }), pt(lang, 'mBcOpen')],
+    }
+  }
+  if (stage === 'settled') {
+    if (!c.settled || (c.status !== 'kept' && c.status !== 'dropped')) return null
+    const kept = c.status === 'kept'
+    return {
+      subject: pt(lang, kept ? 'mBcKeptSubject' : 'mBcDroppedSubject', { project: a.project }),
+      lines: [pt(lang, kept ? 'mBcKept' : 'mBcDropped', { amount, note: asSentence(c.settled.note) }), pt(lang, 'mBcOpen')],
+    }
+  }
+  if (!c.taken || a.drawNumber === null || a.drawNumber === undefined) return null
+  return {
+    subject: pt(lang, 'mBcTakenSubject', { n: a.drawNumber, project: a.project, amount }),
+    lines: [pt(lang, 'mBcTaken', { amount, n: a.drawNumber, reason: asSentence(c.reason) }), pt(lang, 'mBcOpen')],
+  }
+}
+
+/** The key each back-charge email is sent once by, per company. */
+export const backChargeEmailKey = (chargeId: string, stage: BackChargeEmailStage): string => `${chargeId}:${stage}`
+
+/** The emails a change request can send (P4b-iii): turned down, sent to the customer, or the customer said no. */
+export type ChangeAskEmailStage = 'down' | 'sent' | 'no'
+
+/**
+ * The office's answer to a change a company asked for, in its language (kind `changeAsk`, to the people who get contract
+ * emails), from the prototype's `portalMessages` word for word, without the greeting. `down` and `sent` are Owner Billing's
+ * answers, `no` the customer's. Its part of a change order is the cost, never our price to the customer. Null when the
+ * request is not at that stage.
+ */
+export function changeAskEmail(
+  stage: ChangeAskEmailStage,
+  a: { project: string; trade: string; request: TradeChangeRequest; changeOrder?: { number: number; cost: number } | null },
+  lang: PortalLang,
+): { subject: string; lines: TradeEmailLine[] } | null {
+  const r = a.request
+  const youAsked = pt(lang, 'mCrYouAsked', { trade: a.trade, what: r.description.replace(/\.$/, ''), amount: money(r.amount) })
+  if (stage === 'down') {
+    if (!r.turnedDown) return null
+    return { subject: pt(lang, 'mCrDownSubject', { project: a.project }), lines: [youAsked, pt(lang, 'mCrDown', { note: r.turnedDown.note }), pt(lang, 'mCrOpen')] }
+  }
+  const co = a.changeOrder
+  if (!co) return null
+  if (stage === 'sent') return { subject: pt(lang, 'mCrSentSubject', { project: a.project }), lines: [youAsked, pt(lang, 'mCrSent', { n: co.number, part: money(co.cost) }), pt(lang, 'mCrOpen')] }
+  return { subject: pt(lang, 'mCrNoSubject', { n: co.number }), lines: [pt(lang, 'mCrNo', { n: co.number, project: a.project }), pt(lang, 'mCrOpen')] }
+}
+
+/** The key each change request email is sent once by, per company. */
+export const changeAskEmailKey = (requestId: string, stage: ChangeAskEmailStage): string => `${requestId}:${stage}`
