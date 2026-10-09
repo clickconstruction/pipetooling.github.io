@@ -411,6 +411,10 @@ export function blankSubmittalItem(submittalId: string, sequenceOrder: number): 
     decision_entered_by: null,
     decision_entered_by_name: null,
     order_only: false,
+    call_by: null,
+    signoff_name: null,
+    signoff_on: null,
+    signoff_via: null,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
