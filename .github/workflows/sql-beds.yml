@@ -5,7 +5,8 @@ name: SQL beds
 # migration is pushed: the schedule's (its PR 5), bid history's ledger (#73 PR 0b on), the
 # unbanked check cases (#76 piece 3), the Stripe cases (#76 piece 1), Building's daily log (GC mode U3a-i),
 # Owner Billing's bill to the customer (GC mode O4a-1) with its reminders (O5b), GC award (the Board's B6-a)
-# and the AIA pay applications (the bill an application became, v2.5032).
+# the AIA pay applications (the bill an application became, v2.5032) and the trade portal's back-charges and
+# change requests (the Portal's P4a).
 on:
   pull_request:
     paths:
@@ -38,6 +39,9 @@ on:
       - 'supabase/migrations/*job_pay_applications*'
       - 'supabase/tests/pay_applications/**'
       - 'scripts/pgtest-pay-applications.sh'
+      - 'supabase/migrations/*gc_back_charges*'
+      - 'supabase/tests/gc_back_charges/**'
+      - 'scripts/pgtest-gc-back-charges.sh'
       - '.github/workflows/sql-beds.yml'
   workflow_dispatch:
 
@@ -113,3 +117,12 @@ jobs:
         uses: actions/checkout@v4
       - name: The AIA pay applications against every migration
         run: bash scripts/pgtest-pay-applications.sh
+
+  gc-back-charges:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: GC back-charges and change requests against every migration
+        run: bash scripts/pgtest-gc-back-charges.sh

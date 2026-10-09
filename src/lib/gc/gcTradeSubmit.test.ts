@@ -3,12 +3,15 @@
  * `gc_trade_<verb>`, its hourly cap, its refusal keys and Spanish's hold. The words for every key are in
  * `tradePortalPage.test.ts`; the link rule is `gcTradeLink.test.ts`.
  */
+import { readdirSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { sampleStateFromToken } from '../../../supabase/functions/_shared/customerSample'
 import {
   FREE_TEXT_KINDS,
   PORTAL_SPANISH_ON as FUNCTION_SPANISH_ON,
   TRADE_HOURLY_CAP,
+  TRADE_SQL_ERRORS,
   TRADE_SUBMIT_ERROR_KEYS,
   TRADE_SUBMIT_KINDS,
   isHoneypot,
@@ -150,5 +153,39 @@ describe('the verb’s refusals', () => {
   it('lists every key once, the function’s and the SQL’s', () => {
     expect(new Set(TRADE_SUBMIT_ERROR_KEYS).size).toBe(TRADE_SUBMIT_ERROR_KEYS.length)
     expect(TRADE_SUBMIT_ERROR_KEYS).toEqual(expect.arrayContaining(['badRequest', 'linkOff', 'spanishHeld', 'tooMany', 'failed', 'notYours', 'everyKindNeedsSomeone', 'tooLong']))
+  })
+
+  /**
+   * Keys a `gc_trade_<verb>` raises before the portal can say them, each with the PR that gives it its
+   * status in TRADE_SQL_ERRORS and its words in TRADE_ERROR_WORDS. A lane whose migration adds a trade
+   * verb lists its new keys here in the same PR; the PR that maps one takes it off.
+   */
+  const WAITING: Record<string, string> = {
+    alreadyAnswered: 'P4b',
+    descriptionNeeded: 'P4b',
+    notAwarded: 'P4b',
+    noteNeeded: 'P4b',
+    // Building's U4a, gc_trade_submittal_send, listed ahead of it so the order the two land in does not matter.
+    fileNeeded: 'P5',
+    notYourMove: 'P5',
+  }
+
+  it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {
+    const dir = join(process.cwd(), 'supabase', 'migrations')
+    const bodies = new Map<string, string>()
+    for (const f of readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) {
+      const sql = readFileSync(join(dir, f), 'utf8')
+      for (const m of sql.matchAll(/CREATE OR REPLACE FUNCTION public\.(gc_trade_[a-z_]+)\([\s\S]*?\$\$([\s\S]*?)\$\$;/g)) bodies.set(m[1]!, m[2]!)
+    }
+    const raised = [...bodies].flatMap(([verb, body]) => [...body.matchAll(/RAISE EXCEPTION '(\w+)' USING ERRCODE = 'P0001'/g)].map((m) => ({ verb, key: m[1]! })))
+    expect(raised.length).toBeGreaterThan(40)
+    const unsaid = raised
+      .filter(({ key }) => !Object.prototype.hasOwnProperty.call(TRADE_SQL_ERRORS, key) && !WAITING[key])
+      .map(({ verb, key }) => `${verb}: ${key}`)
+    expect(unsaid, 'map each key in TRADE_SQL_ERRORS and TRADE_ERROR_WORDS, or list it in WAITING with the PR that will').toEqual([])
+  })
+
+  it('takes a key off WAITING once it is mapped', () => {
+    expect(Object.keys(WAITING).filter((k) => Object.prototype.hasOwnProperty.call(TRADE_SQL_ERRORS, k))).toEqual([])
   })
 })
