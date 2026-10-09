@@ -98,6 +98,8 @@ Each is one PR, one open at a time on the lane, behind the dev gate. Each has it
 
 The fail, the add, the take-off, a split, a join and a baseline are plan writes. They show 8a's refusal (`GcScheduleRefusal`), keep what the person typed, and read the schedule again. The records never conflict.
 
+**A failed inspection pushes with main's `pushAfter`** (the lead's pick, 2026-10-09): only what waits on the inspection moves, down the line, each gap kept and done work left alone, as 8a's moves already push. The prototype's `failInspection` pushes with New project's `pushSchedule`, which walks the whole plan, ignores a wait's gap and moves done work. On a real job it would undo days back and move finished bars: a defect, not a spec. 9a names it as its known difference. The spike's reducer switches to `pushAfter` in a later follow-up, so the golden walk matches, when the lead says.
+
 **Guides**, each with its share card:
 
 - 9a: *record an inspection on the schedule*, and *add the job's own work to the schedule* (with its dates to meet).
