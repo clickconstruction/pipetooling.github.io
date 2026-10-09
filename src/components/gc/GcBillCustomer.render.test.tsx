@@ -14,7 +14,7 @@ function setup(
   over: Partial<GcProject> = {},
   waived: number[] = [],
   lastApp: Partial<OwnerPayAppSent> = {},
-  extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[]; emailed?: Record<number, { what: 'payApp' | 'certified'; to: string; on: string }[]> } = {},
+  extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[]; emailed?: Record<number, { what: 'payApp' | 'certified'; to: string; on: string }[]>; interestEmailed?: Record<number, { to: string; on: string }[]> } = {},
 ) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
@@ -27,8 +27,8 @@ function setup(
     ...over,
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
-  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn() }
-  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} onClose={() => undefined} />)
+  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn(), onBillInterest: vi.fn() }
+  render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} interestEmailed={extra.interestEmailed} onClose={() => undefined} />)
   return { writes, last }
 }
 
@@ -122,6 +122,31 @@ describe('GcBillCustomerWindow', () => {
     fireEvent.change(screen.getByLabelText('Interest on a late bill, a percent a month'), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save the interest' }))
     expect(again.writes.onSetInterest).toHaveBeenCalledWith(null)
+  })
+
+  it('bills the interest that built up, the email off to start, and lists each interest bill (O6b-2)', () => {
+    const last = lastSent()
+    // Certified Sep 20 with 5 days to pay: due Sep 25, a week late by the state's Oct 2, at 1.5% a month.
+    const { writes } = setup({ ownerLateInterest: { pctPerMonth: 1.5 }, ownerPayDays: 5 }, [], { ...partPaid(last), certifiedOn: '2026-09-20', promises: [] })
+    const bill = screen.getByRole('button', { name: /^Bill the interest / })
+    fireEvent.click(bill)
+    const amount = writes.onBillInterest.mock.calls[0]![0] as number
+    expect([amount > 1, writes.onBillInterest.mock.calls[0]![1]]).toEqual([true, false])
+    expect(document.body.textContent).toContain(`${money(amount)} of interest has built up and is not billed yet.`)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Email the customer the bill now' }))
+    fireEvent.click(bill)
+    expect(writes.onBillInterest).toHaveBeenLastCalledWith(amount, true)
+    cleanup()
+    const fair = initialGcState().projects.find((p) => p.id === 'fairoaksd')!
+    setup(
+      { ownerLateInterest: { pctPerMonth: 1.5 }, ownerPayDays: 5, ownerBilling: { ...fair.ownerBilling!, interestBills: [{ number: 1, sentOn: '2026-10-01', amount: 120, paidOn: null }, { number: 2, sentOn: '2026-10-02', amount: 80, paidOn: '2026-10-02' }] } },
+      [],
+      {},
+      { interestEmailed: { 1: [{ to: 'Cibolo Creek Partners', on: '2026-10-01' }] } },
+    )
+    expect(document.body.textContent).toContain('Interest bill 1 · Oct 1')
+    expect(document.body.textContent).toContain('Emailed to Cibolo Creek Partners on Oct 1.')
+    expect(screen.getByText('paid Oct 2')).toBeTruthy()
   })
 
   it('makes our conditional waiver for a sent one, and says when it went', () => {

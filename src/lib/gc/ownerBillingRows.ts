@@ -46,6 +46,8 @@ export interface OwnerBillingRows {
    * (the application's own, or the certified bill's), who and when.
    */
   emails?: { source_id: string; kind: string; recipient_name: string | null; sent_at: string }[]
+  /** The sent copies of our interest bills' emails (O6b-2), by the interest bill's id: who and when. */
+  interestEmails?: { source_id: string; recipient_name: string | null; sent_at: string }[]
 }
 
 /** One bill's payments, oldest first, and the day it was paid in full: the payment that closed it. */

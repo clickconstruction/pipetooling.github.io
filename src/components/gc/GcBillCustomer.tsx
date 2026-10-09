@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Btn, Chip, Stat, input } from './gcUi'
 import { GcBillMoneyIn, type MoneyInWrites } from './GcBillMoneyIn'
 import { GcBillRemind, type RemindWrites } from './GcBillRemind'
+import { GcBillInterest, type InterestWrites } from './GcBillInterest'
 import {
   appCertified,
   ownerAccount,
@@ -27,7 +28,7 @@ import { OWNER_INTEREST_DEFAULT_PCT, ownerInterestWords } from '../../lib/gc/own
  * (O4b), the office sends the form from its own email. Money in on each certified bill (O5c) is `GcBillMoneyIn`.
  */
 
-export interface BillCustomerWrites extends MoneyInWrites, RemindWrites {
+export interface BillCustomerWrites extends MoneyInWrites, RemindWrites, InterestWrites {
   /** Send this month's pay application; with `email`, email it to the customer and the architect with its form (O4b). */
   onSend: (email: boolean) => void
   /** Record the architect's certificate; with `email`, email the customer the certified bill (O4b-2). */
@@ -59,13 +60,15 @@ interface Props {
    * ask to certify it, then the certified bill.
    */
   emailed?: Record<number, BillEmailed[]>
-  /** What a write is working on: 'send', 'retainage', 'paydays', 'interest', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
+  /** Who each interest bill was emailed to and when, by number, from its sent copies (O6b-2). */
+  interestEmailed?: Record<number, { to: string; on: string }[]>
+  /** What a write is working on: 'send', 'retainage', 'paydays', 'interest', 'bill-interest', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
 }
 
-export function GcBillCustomerWindow({ state, project, today, writes, waived = [], unconditional = {}, unbilled = [], emailed = {}, busy, problem, onClose }: Props) {
+export function GcBillCustomerWindow({ state, project, today, writes, waived = [], unconditional = {}, unbilled = [], emailed = {}, interestEmailed = {}, busy, problem, onClose }: Props) {
   const sent = ownerPayAppsSent(project)
   const account = ownerAccount(project)
   const late = ownerLateBills(state, project)
@@ -140,6 +143,7 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
           <Retainage state={state} project={project} sentAny={sent.length > 0} writes={writes} busy={busy === 'retainage'} />
           <PayDays project={project} writes={writes} busy={busy === 'paydays'} />
           <Interest project={project} writes={writes} busy={busy === 'interest'} />
+          <GcBillInterest state={state} project={project} writes={writes} emailed={interestEmailed} busy={busy} />
 
           {sent.length > 0 && (
             <div style={{ display: 'grid', gap: '0.45rem' }}>

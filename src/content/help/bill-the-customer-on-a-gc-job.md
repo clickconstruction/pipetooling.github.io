@@ -84,6 +84,15 @@ A job charges interest on a late bill only when you set a rate. The rate is a pe
 
 Interest runs from the day after a bill falls due by the contract. That day is the certificate's day plus the days to pay. A day the customer promises never moves it. Without the days to pay, no interest runs. The Money screen shows what has built up on each job.
 
+## Bill the interest
+
+Once a dollar or more of interest has built up, the window shows what is not billed yet.
+
+1. Tick **Email the customer the bill now** to email it to them. The tick starts off.
+2. Press {{button:blue|Bill the interest}}.
+
+The interest bill goes on the billing job with the customer's other bills. The window lists each interest bill with its day, its amount and whether it is paid. The email asks them to reply with the day they will pay.
+
 ## Before the first bill
 
 The contract with the customer must be marked signed. The window says so until it is.

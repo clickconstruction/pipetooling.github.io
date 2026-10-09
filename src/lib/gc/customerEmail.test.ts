@@ -23,6 +23,8 @@ import {
   changeOrderMailFacts,
   emailedWords,
   gcCustomerEmailRefusal,
+  interestBillMail,
+  interestBillMailFacts,
   payAppMail,
   payAppMailFacts,
   readCustomerEmailAnswer,
@@ -156,6 +158,27 @@ describe('the words of a change order to sign', () => {
   })
 })
 
+describe('the words of an interest bill (O6b-2)', () => {
+  it('says the bills went past their day, what the interest comes to at the rate, and asks for their day: no Pay', () => {
+    expect(interestBillMail({ job: facts.job, greeting: 'Elena', amount: 284.92, pctPerMonth: 1.5 })).toEqual({
+      subject: `Interest on late bills for Fair Oaks Shops, Building D, ${money(284.92)}`,
+      lines: [
+        'Hello Elena,',
+        'Some of your bills on Fair Oaks Shops, Building D went past the day they were due by the contract.',
+        `The interest on them comes to ${money(284.92)}, at 1.5% a month.`,
+        'Reply with the day you will pay.',
+      ],
+    })
+    expect(interestBillMail({ job: 'J', greeting: 'E', amount: 10, pctPerMonth: null }).lines[2]).toBe(`The interest on them comes to ${money(10)}.`)
+  })
+
+  it('reads the rate off the job', () => {
+    const state = initialGcState()
+    const project = { ...state.projects.find((p) => p.id === 'fairoaksd')!, ownerLateInterest: { pctPerMonth: 1.5 } }
+    expect(interestBillMailFacts(state, project, 100)).toMatchObject({ job: project.name, amount: 100, pctPerMonth: 1.5 })
+  })
+})
+
 describe('the window’s line for each email that went', () => {
   it('names who got the pay application, then who got the certified bill, each once', () => {
     expect(emailedWords([])).toEqual([])
@@ -176,7 +199,7 @@ describe('what gc-customer-email reads and sends', () => {
   it('takes a request with its form, and refuses one that is not whole', () => {
     const read = parseCustomerEmail({ ...ok, pdf: { filename: 'Fair Oaks pay application 3.pdf', base64: 'JVBERi0xLjQK' } })
     expect(read.ok && [read.req.kind, read.req.pdf?.filename]).toEqual(['pay_app', 'Fair Oaks pay application 3.pdf'])
-    expect(parseCustomerEmail({ ...ok, kind: 'interest_bill' }).ok).toBe(false)
+    expect(parseCustomerEmail({ ...ok, kind: 'accept_work' }).ok).toBe(false)
     expect([parseCustomerEmail({ ...ok, kind: 'certified' }).ok, parseCustomerEmail({ ...ok, kind: 'change_order' }).ok]).toEqual([true, true])
     expect(parseCustomerEmail({ ...ok, projectId: 'not-an-id' }).ok).toBe(false)
     expect(parseCustomerEmail({ ...ok, lines: [] }).ok).toBe(false)
@@ -194,13 +217,15 @@ describe('what gc-customer-email reads and sends', () => {
       ['certified', 'customer', 'gc_owner_pay_apps', 'bill_gc_certified', 'bills'],
       ['change_order', 'customer', 'gc_change_orders', 'job_contract_gc_change_order', 'contracts'],
       ['reminder', 'customer', 'gc_owner_pay_reminders', 'bill_gc_reminder', 'bills'],
+      ['interest_bill', 'customer', 'gc_owner_interest_bills', 'bill_gc_interest', 'bills'],
     ])
     // Never the Pipeline's G702 workbook copy, whose history reads its own kind.
     expect(GC_CUSTOMER_EMAIL_KINDS.some((k) => isPayApplicationCopy({ kind: GC_CUSTOMER_EMAIL_FILED_AS[k] }))).toBe(false)
     expect(gcCustomerEmailCopyKinds('gc_owner_pay_apps')).toEqual(['bill_gc_pay_app', 'bill_gc_certified'])
     expect(gcCustomerEmailCopyKinds('gc_change_orders')).toEqual(['job_contract_gc_change_order'])
     expect(gcCustomerEmailCopyKinds('gc_owner_pay_reminders')).toEqual(['bill_gc_reminder'])
-    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder'])
+    expect(gcCustomerEmailCopyKinds('gc_owner_interest_bills')).toEqual(['bill_gc_interest'])
+    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder', 'interest_bill'])
   })
 
   it('adds the customer’s portal link before the signature when there is one, and only an https one', () => {

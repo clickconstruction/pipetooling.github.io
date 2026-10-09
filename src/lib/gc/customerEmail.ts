@@ -175,6 +175,34 @@ export function changeOrderMail(f: ChangeOrderMailFacts): { subject: string; lin
   }
 }
 
+/** What an interest bill's email says (O6b-2): the job, what it comes to, and the rate. */
+export interface InterestBillMailFacts {
+  job: string
+  greeting: string
+  amount: number
+  pctPerMonth: number | null
+}
+
+export function interestBillMailFacts(state: GcState, project: GcProject, amount: number): InterestBillMailFacts {
+  return { job: project.name, greeting: greetingOf(state, project), amount, pctPerMonth: project.ownerLateInterest?.pctPerMonth ?? null }
+}
+
+/**
+ * Our bill for the interest on late bills, in the prototype's words but two: the bills went past the day they were
+ * due (some are still open, not all paid late), and no Pay, so they reply with their day.
+ */
+export function interestBillMail(f: InterestBillMailFacts): { subject: string; lines: string[] } {
+  return {
+    subject: `Interest on late bills for ${f.job}, ${money(f.amount)}`,
+    lines: [
+      `Hello ${f.greeting},`,
+      `Some of your bills on ${f.job} went past the day they were due by the contract.`,
+      `The interest on them comes to ${money(f.amount)}${f.pctPerMonth ? `, at ${f.pctPerMonth}% a month` : ''}.`,
+      'Reply with the day you will pay.',
+    ],
+  }
+}
+
 /** One email about a sent pay application, from its sent copy: the pay application's own, or the certified bill. */
 export interface BillEmailed {
   what: 'payApp' | 'certified'

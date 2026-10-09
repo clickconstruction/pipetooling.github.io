@@ -17,9 +17,9 @@ export const GC_CUSTOMER_EMAIL_FROM_NAME = 'Click Construction'
 /**
  * The kinds. O4b-1: our pay application to the customer, and the ask to the architect to certify it. O4b-2: the bill
  * the architect certified, to the customer, and a change order for them to sign. O5b: our reminder to pay a late bill,
- * its words the ones `gc_remind_customer_to_pay` filed.
+ * its words the ones `gc_remind_customer_to_pay` filed. O6b-2: our bill for the interest on late bills.
  */
-export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask', 'certified', 'change_order', 'reminder'] as const
+export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask', 'certified', 'change_order', 'reminder', 'interest_bill'] as const
 export type GcCustomerEmailKind = (typeof GC_CUSTOMER_EMAIL_KINDS)[number]
 
 /** Who each kind goes to: the project's customer, or its architect (`gc_projects.architect_customer_id`). */
@@ -29,16 +29,18 @@ export const GC_CUSTOMER_EMAIL_TO: Record<GcCustomerEmailKind, 'customer' | 'arc
   certified: 'customer',
   change_order: 'customer',
   reminder: 'customer',
+  interest_bill: 'customer',
 }
 
-/** The row each kind is about: a pay application, a change order, or a reminder to pay. */
-export type GcCustomerEmailSource = 'gc_owner_pay_apps' | 'gc_change_orders' | 'gc_owner_pay_reminders'
+/** The row each kind is about: a pay application, a change order, a reminder to pay, or an interest bill. */
+export type GcCustomerEmailSource = 'gc_owner_pay_apps' | 'gc_change_orders' | 'gc_owner_pay_reminders' | 'gc_owner_interest_bills'
 export const GC_CUSTOMER_EMAIL_SOURCE: Record<GcCustomerEmailKind, GcCustomerEmailSource> = {
   pay_app: 'gc_owner_pay_apps',
   certify_ask: 'gc_owner_pay_apps',
   certified: 'gc_owner_pay_apps',
   change_order: 'gc_change_orders',
   reminder: 'gc_owner_pay_reminders',
+  interest_bill: 'gc_owner_interest_bills',
 }
 
 /**
@@ -46,7 +48,7 @@ export const GC_CUSTOMER_EMAIL_SOURCE: Record<GcCustomerEmailKind, GcCustomerEma
  * `bill_gc_pay_app`; the certified bill is its own kind, so the window tells the two apart. Both begin `bill`, so the
  * Documents page sorts them under Bills (`sentKindGroup`), and neither is `pay_application`, the Pipeline's G702
  * workbook. A change order changes our contract with the customer: `job_contract_gc_change_order`, under Contracts.
- * A reminder to pay is a bill's too: `bill_gc_reminder`, under Bills.
+ * A reminder to pay is a bill's too: `bill_gc_reminder`, under Bills, and so is an interest bill: `bill_gc_interest`.
  */
 export const GC_CUSTOMER_EMAIL_FILED_AS: Record<GcCustomerEmailKind, string> = {
   pay_app: 'bill_gc_pay_app',
@@ -54,6 +56,7 @@ export const GC_CUSTOMER_EMAIL_FILED_AS: Record<GcCustomerEmailKind, string> = {
   certified: 'bill_gc_certified',
   change_order: 'job_contract_gc_change_order',
   reminder: 'bill_gc_reminder',
+  interest_bill: 'bill_gc_interest',
 }
 
 /** The sent copies' kinds about rows of one table, for the window's *Emailed to* lines. */
@@ -62,8 +65,8 @@ export function gcCustomerEmailCopyKinds(table: GcCustomerEmailSource): string[]
 }
 
 /**
- * The kinds that add the customer's portal link when they already have one (never minted here): the certified bill and
- * the reminder to pay it, which the portal lists. It has no Pay there yet, since the bill is not on Stripe, so the line
+ * The kinds that add the customer's portal link when they already have one (never minted here): the certified bill,
+ * the reminder to pay it and the interest bill, which the portal lists. It has no Pay there yet, since the bill is not on Stripe, so the line
  * says *see*, not *pay*.
  */
 export const GC_CUSTOMER_EMAIL_PORTAL_LINE: Record<GcCustomerEmailKind, boolean> = {
@@ -72,6 +75,7 @@ export const GC_CUSTOMER_EMAIL_PORTAL_LINE: Record<GcCustomerEmailKind, boolean>
   certified: true,
   change_order: false,
   reminder: true,
+  interest_bill: true,
 }
 export const GC_CUSTOMER_EMAIL_PORTAL_WORDS = 'You can see this bill in your portal:'
 

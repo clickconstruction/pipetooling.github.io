@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certified' | 'gc-change-order' | 'gc-reminder'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certified' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certified', 'gc-change-order', 'gc-reminder']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certified', 'gc-change-order', 'gc-reminder', 'gc-interest-bill']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -423,6 +423,16 @@ export function customerJourneys(): Journey[] {
           guide: 'remind-a-customer-to-pay-a-gc-bill',
           reflects: ['The bill as certified, less what they paid', 'The pay-by day and the office’s own line', 'The customer’s portal link, when one is on'],
           render: { kind: 'email', email: 'gc-reminder' },
+        },
+        {
+          id: 'gc-interest-bill-email',
+          label: 'GC mode: our bill for the interest',
+          sublabel: 'GC projects → Bill the customer → Bill the interest, with the email tick on',
+          when: 'When interest has built up on late bills, on a job that charges it',
+          customerCan: 'Read what the interest on their late bills comes to and the rate, then reply with the day they will pay. Their portal link shows when they have one.',
+          guide: 'bill-the-customer-on-a-gc-job',
+          reflects: ['The job’s rate and the contract’s days to pay', 'What built up and was not billed yet', 'The customer’s portal link, when one is on'],
+          render: { kind: 'email', email: 'gc-interest-bill' },
         },
         {
           id: 'owner-notice',
