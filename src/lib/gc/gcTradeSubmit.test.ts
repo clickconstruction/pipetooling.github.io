@@ -200,6 +200,10 @@ describe('the verb’s refusals', () => {
     splitLine: 'P5',
     notPaidYet: 'P5',
     alreadySigned: 'P2c-ii',
+    // Building's U6c, the final pay application (gc_trade_final_pay_app, through gc_final_pay_app_ask): the final
+    // sent already, and asked before every line is billed and the work accepted.
+    finalSent: 'P5',
+    finalNotYet: 'P5',
   }
 
   it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {
