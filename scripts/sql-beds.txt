@@ -1,0 +1,12 @@
+# The whole-schema SQL beds that run in CI (.github/workflows/sql-beds.yml), one per line: the
+# name N runs scripts/pgtest-N.sh. Add a bed by adding its line here with its script and its
+# supabase/tests/<bed>/ folder; the workflow needs no edit. A line starting with # is a comment.
+gc-schedule
+bid-changes
+ar-unbanked-checks
+ar-stripe-cases
+gc-building
+gc-owner-billing
+gc-award
+pay-applications
+gc-back-charges
