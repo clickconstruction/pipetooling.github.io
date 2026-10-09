@@ -11,7 +11,8 @@ import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { lienPropertyOwnerDisplayName, resolveLienProperty } from '../../lib/jobs/lienProperty'
 import { canSendLienOnWord, holdUntilFor, isLienLeader, isLienOffice, submitOutcome } from '../../lib/jobs/lienDesk'
 import { contractEndedWords, paymentBondWords, retainageDeadlineWords, type LienRetainageEntry } from '../../lib/jobs/lienDeskRetainage'
-import { approveLienDeskItem, holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
+import { holdLienDeskItem, pullBackLienDeskItem, saveLienDeskDraft, sendLienDeskItemOnWord, submitLienDeskItem } from '../../lib/jobs/lienDeskIo'
+import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
 import { defaultWordNote, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienRetainageNoticeFieldsForJob, homesteadStatementApplies, lienRetainageCoverLetter } from '../../lib/jobs/lienNoticeDraft'
@@ -163,7 +164,17 @@ export default function LienDeskRetainagePane({
       policy === 'send' && !promise ? 'Approved by the standing rule — in the run.' : 'Sent for approval.',
     )
   const sendOnWord = () => run('Send on the leader’s word', async () => void (await sendLienDeskItemOnWord(await ensureDraft(), { note: wordNote, channel: wordChannel })), 'Recorded on the leader’s word — in the run.')
-  const approve = () => run('Approve', async () => void (await approveLienDeskItem(item ? item.id : await ensureDraft())), 'Approved — in the run.')
+  // Sign and approve (v2.5082): the draft is saved first so the mark binds to it, then one press under the leader's own sign-in signs and approves.
+  const approve = () =>
+    run(
+      'Sign and approve',
+      async () => {
+        const id = await ensureDraft()
+        const signed = await signLienDeskItem({ itemId: id, fields: { notice: fields, gcEmail: gc?.email ?? '' }, signer: { userId: authUserId, printedName: authName }, payload: { mode: 'type' }, onDevice: null, approve: true })
+        if (!signed.ok) throw new Error(signed.message)
+      },
+      'Signed and approved — in the run.',
+    )
   const hold = (reason: 'promised' | 'call_first') => run('Hold', async () => void (item && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, entry.deadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the window closes.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
 
@@ -205,7 +216,7 @@ export default function LienDeskRetainagePane({
           <span style={{ flex: 1 }} />
           {canWord ? <button type="button" onClick={() => { setWordNote(defaultWordNote(leaderName, demandDate(todayYmd))); setWordOpen(true) }} disabled={busy || blocked} style={btn('amber', busy || blocked)}>The leader said to send it ▸</button> : null}
           {leader ? (
-            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)}>Approve ▸</button>
+            <button type="button" onClick={approve} disabled={busy || blocked} style={btn('green', busy || blocked)}>Sign and approve ▸</button>
           ) : (
             <button type="button" onClick={submit} disabled={busy || blocked || !office} style={btn('primary', busy || blocked || !office)}>Send for approval ▸</button>
           )}
@@ -226,7 +237,7 @@ export default function LienDeskRetainagePane({
           <button type="button" onClick={() => setHoldOpen('call_first')} disabled={busy} style={btn('plain', busy)}>Hold — I'll call first</button>
           <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Back to the office</button>
           <span style={{ flex: 1 }} />
-          <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Approve ▸</button>
+          <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Sign and approve ▸</button>
         </div>
       )
     ) : (
@@ -250,7 +261,7 @@ export default function LienDeskRetainagePane({
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
         <span>Held{item?.hold_reason === 'promised' ? ' — they promised' : " — the leader will call first"} · asks again {item?.hold_until ? demandDate(item.hold_until) : ''}. {fuse}</span>
         <span style={{ flex: 1 }} />
-        {leader ? <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold and approve ▸</button> : null}
+        {leader ? <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold, sign and approve ▸</button> : null}
         <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Back to draft</button>
       </div>
     )

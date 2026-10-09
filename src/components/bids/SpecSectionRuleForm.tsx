@@ -1,6 +1,6 @@
 /**
- * Add or edit one Division 22 rule (v2.5061, the rules manager's write side — PR 4 of the train in
- * `to-dos/division-22-rules-manager.md`). Before anything is saved the form shows what the change would move:
+ * Add or edit one Division 22 rule (v2.5061, the rules manager's write side — PR 4 of the train,
+ * v2.5054–v2.5063). Before anything is saved the form shows what the change would move:
  * every name whose code changes and the coverage before and after (`previewRuleChange`), what stops it from
  * saving (`validateRuleDraft`) and an order shared with a rule that catches the same names (`orderTies`).
  */

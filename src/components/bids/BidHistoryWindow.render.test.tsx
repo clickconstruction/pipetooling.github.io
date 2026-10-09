@@ -10,7 +10,7 @@ import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { BidHistoryWindow } from './BidHistoryWindow'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { BidHistoryRow } from '../../lib/bids/bidHistory'
-import { BID_HISTORY_PUT_BACK_EVENT, type BidPutBackResult } from '../../lib/bids/bidHistoryPutBack'
+import { BID_HISTORY_PUT_BACK_EVENT, type BidPutBackResult, type BidRemovedRow, type BidRestoreResult } from '../../lib/bids/bidHistoryPutBack'
 
 afterEach(cleanup)
 
@@ -34,8 +34,13 @@ const rows: BidHistoryRow[] = [
   row({ changedAt: '2026-10-06T15:00:00.000Z', source: 'archive', id: null, archiveId: 'a1', op: 'delete', action: null, byApp: null, label: 'SUMP', oldValues: { fixture: 'SUMP', count: 2 }, newValues: null }),
 ]
 
-async function open(load: (id: string, from: number) => Promise<BidHistoryRow[]> = async () => rows, putBack?: (changeId: number, column: string) => Promise<BidPutBackResult>) {
-  renderWithProviders(<BidHistoryWindow bid={{ id: 'bid-1', label: 'Elm St · B494', bidNumber: 'B494' }} onClose={vi.fn()} load={load} putBack={putBack} now={NOW} />)
+async function open(
+  load: (id: string, from: number) => Promise<BidHistoryRow[]> = async () => rows,
+  putBack?: (changeId: number, column: string) => Promise<BidPutBackResult>,
+  loadRemoved: (bidId: string) => Promise<BidRemovedRow[]> = async () => [],
+  restoreRemoved?: (archiveId: string) => Promise<BidRestoreResult>,
+) {
+  renderWithProviders(<BidHistoryWindow bid={{ id: 'bid-1', label: 'Elm St · B494', bidNumber: 'B494' }} onClose={vi.fn()} load={load} putBack={putBack} loadRemoved={loadRemoved} restoreRemoved={restoreRemoved} now={NOW} />)
   await settle()
   return screen.getByRole('dialog')
 }
@@ -91,9 +96,10 @@ describe('BidHistoryWindow', () => {
     expect(within(d).getByRole('alert').textContent).toMatch(/could not be read: function list_bid_history does not exist/)
   })
 
-  it('only a changed value on this bid offers Put back', async () => {
+  it('a changed value and a removed row of this bid offer Put back; an addition and an adopted bid’s row do not', async () => {
     const d = await open()
-    expect(within(d).getAllByRole('button', { name: /^Put back/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Put back Lav-1 price to $9,800'])
+    // The removed SUMP is a dev's archive line here; PR 5 lets it come back.
+    expect(within(d).getAllByRole('button', { name: /^Put back/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Put back Lav-1 price to $9,800', 'Put back SUMP'])
   })
 
   it('Put back writes the old value, reads the history again, and tells the open bid’s tabs', async () => {
@@ -163,5 +169,69 @@ describe('BidHistoryWindow', () => {
   it('a bid with nothing yet says so', async () => {
     const d = await open(async () => [])
     expect(within(d).getByText('Nothing has changed on this bid since its history began.')).toBeTruthy()
+  })
+})
+
+describe('BidHistoryWindow · a removed row put back (punch list #73 PR 5)', () => {
+  // A delete of SUMP with its price, one action, in the ledger; and a labor row removed before the ledger.
+  const T = '2026-10-08T17:00:00.000Z'
+  const sumpRemoved = row({ changedAt: T, op: 'delete', recordId: 'c-sump', countRowId: 'c-sump', label: 'SUMP', oldValues: { fixture: 'SUMP', count: 2 }, newValues: null, action: null, byApp: null })
+  const priceRemoved = row({ changedAt: T, table: 'bid_count_row_custom_prices', op: 'delete', recordId: 'p-sump', countRowId: 'c-sump', label: 'SUMP', changed: ['unit_price'], oldValues: { unit_price: 3700 }, newValues: null, action: null, byApp: null })
+  const history = [sumpRemoved, priceRemoved]
+  const removedList: BidRemovedRow[] = [
+    { archiveId: 'ar-sump', table: 'bids_count_rows', recordId: 'c-sump', countRowId: 'c-sump', label: 'SUMP', oldValues: { fixture: 'SUMP', count: 2 }, changed: ['count', 'fixture'], changedBy: 'u-ann', changedByName: 'Ann', changedAt: '2026-10-08T17:00:00+00:00', inLedger: true },
+    { archiveId: 'ar-price', table: 'bid_count_row_custom_prices', recordId: 'p-sump', countRowId: 'c-sump', label: 'SUMP', oldValues: { unit_price: 3700 }, changed: ['unit_price'], changedBy: 'u-ann', changedByName: 'Ann', changedAt: '2026-10-08T17:00:00+00:00', inLedger: true },
+    { archiveId: 'ar-old', table: 'cost_estimate_labor_rows', recordId: 'l-old', countRowId: null, label: 'WC-2', oldValues: { fixture: 'WC-2', rough_in_hrs_per_unit: 1 }, changed: ['fixture'], changedBy: null, changedByName: null, changedAt: '2026-10-01T15:00:00.000Z', inLedger: false },
+  ]
+
+  it('someone who can edit the bid sees its removals from before the ledger, and Put back where it can bring the row back', async () => {
+    const d = await open(async () => history, undefined, async () => removedList)
+    // The removal of SUMP and its price is one action; its rows open to their Put back, as a changed value's do.
+    fireEvent.click(within(d).getByRole('button', { name: 'Show the 2 rows' }))
+    expect(within(d).getAllByRole('button', { name: /^Put back/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Put back SUMP', 'Put back WC-2'])
+    // The labor row from before the ledger joins the list, marked as the archive's, and the foot says why.
+    expect(within(d).getByText(/· from the delete archive/)).toBeTruthy()
+    expect(within(d).getByText(/Rows marked from the delete archive were removed before that/)).toBeTruthy()
+  })
+
+  it('someone who cannot edit the bid reads the removal with no Put back', async () => {
+    const d = await open(async () => history, undefined, async () => [])
+    fireEvent.click(within(d).getByRole('button', { name: 'Show the 2 rows' }))
+    expect(within(d).queryAllByRole('button', { name: /^Put back/ })).toEqual([])
+  })
+
+  it('Put back brings the row back with what hung on it, reads the history again, and tells the open bid’s tabs', async () => {
+    const load = vi.fn(async () => history)
+    const loadRemoved = vi.fn(async () => removedList)
+    const restoreRemoved = vi.fn(async (): Promise<BidRestoreResult> => ({ ok: true, bid_id: 'bid-1', restored: 3, tables: { bids_count_rows: 1, bid_count_row_custom_prices: 1, bid_submittal_takeoff_choices: 1 }, warnings: [] }))
+    const heard = vi.fn()
+    const hear = (e: Event) => heard((e as CustomEvent).detail)
+    window.addEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+    try {
+      const d = await open(load, undefined, loadRemoved, restoreRemoved)
+      fireEvent.click(within(d).getByRole('button', { name: 'Show the 2 rows' }))
+      fireEvent.click(within(d).getByRole('button', { name: 'Put back SUMP' }))
+      await settle()
+      expect(restoreRemoved).toHaveBeenCalledWith('ar-sump')
+      expect(within(d).getByRole('status').textContent).toBe('SUMP is back, with 2 rows that hung on it.')
+      expect(load).toHaveBeenCalledTimes(2)
+      expect(loadRemoved).toHaveBeenCalledTimes(2)
+      expect(heard).toHaveBeenCalledWith({ bidId: 'bid-1', table: 'bids_count_rows' })
+    } finally {
+      window.removeEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+    }
+  })
+
+  it('a refused put back says why, in the function’s words, and reads nothing again', async () => {
+    const load = vi.fn(async () => history)
+    const restoreRemoved = vi.fn(async (): Promise<BidRestoreResult> => {
+      throw new Error('That row, or one like it, is already on the bid, so it cannot come back.')
+    })
+    const d = await open(load, undefined, async () => removedList, restoreRemoved)
+    fireEvent.click(within(d).getByRole('button', { name: 'Put back WC-2' }))
+    await settle()
+    expect(restoreRemoved).toHaveBeenCalledWith('ar-old')
+    expect(within(d).getByRole('alert').textContent).toBe('That row, or one like it, is already on the bid, so it cannot come back.')
+    expect(load).toHaveBeenCalledTimes(1)
   })
 })

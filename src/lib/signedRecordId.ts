@@ -2,9 +2,9 @@
  * The short record ID printed inside a signature frame (v2.2724): ties the
  * mark on every surface — office view, customer page, PDF, email — to the
  * stored row without exposing the UUID. `E84-9F3A2C` for estimate #84,
- * `J922-1B0C4D` for a job contract. Not a secret; a lookup key.
+ * `J922-1B0C4D` for a job contract, `L878-4C2E91` for a lien notice (v2.5077). Not a secret; a lookup key.
  */
-export function signedRecordId(prefix: 'E' | 'J', number: string | number | null | undefined, rowId: string | null | undefined): string {
+export function signedRecordId(prefix: 'E' | 'J' | 'L', number: string | number | null | undefined, rowId: string | null | undefined): string {
   const n = String(number ?? '').replace(/[^a-zA-Z0-9]/g, '') || '0'
   const hex = (rowId ?? '').replace(/-/g, '').slice(0, 6).toUpperCase() || '000000'
   return `${prefix}${n}-${hex}`

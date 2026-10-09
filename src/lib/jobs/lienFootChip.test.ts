@@ -31,3 +31,18 @@ describe('the footer chip (v2.4855)', () => {
     expect(heldChip({ hold_reason: 'call_first' }, null).words).toBe('Held · the leader will call first')
   })
 })
+
+describe('the ready chip’s word on the signature (v2.5082)', () => {
+  it('signed with the day, unsigned in amber, nothing when the row says nothing', () => {
+    const base = readyChip({ approval_mode: 'leader', approved_at: '2026-10-09T18:00:00Z' }, 'Brightline', null)
+    expect(base.words).toBe('Approved · Oct 9')
+    const signed = readyChip({ approval_mode: 'leader', approved_at: '2026-10-09T18:00:00Z' }, 'Brightline', null, null, null, { at: '2026-10-09T19:14:00Z' })
+    expect(signed.words).toBe('Approved · Oct 9 · signed Oct 9')
+    expect(signed.tone).toBe('green')
+    expect(signed.title).toContain('Signed')
+    const unsigned = readyChip({ approval_mode: 'word', approved_at: '2026-10-08T18:00:00Z', word_note: 'Robert Douglas, October 8, 2026', word_channel: 'phone' }, 'Brightline', null, 'Robert', null, 'unsigned')
+    expect(unsigned.words).toBe('Approved · leader’s word · Oct 8 · unsigned')
+    expect(unsigned.tone).toBe('amber')
+    expect(unsigned.title).toContain('the run holds it until the leader signs')
+  })
+})

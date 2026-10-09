@@ -30,7 +30,6 @@ import {
   type LienDeskPile,
   type LienNoticePolicy, DATED_FROM_CREATION_WORDS, LIEN_DESK_LEAD_DAYS } from '../../lib/jobs/lienDesk'
 import {
-  approveLienDeskItem,
   holdLienDeskItem,
   pullBackLienDeskItem,
   saveLienDeskDraft,
@@ -44,6 +43,10 @@ import {
 } from '../../lib/jobs/lienDeskIo'
 import { defaultWordNote, lienFyiStrip, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
+import { signLienDeskItem, type LienDeskSignPayload } from '../../lib/jobs/lienDeskSignIo'
+import { lienChipSigned, lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature } from '../../lib/jobs/lienNoticeSignature'
+import { LienNoticeSignLine, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
+import { useLienDeskSignatureInks } from '../../hooks/useLienDeskSignatureInks'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
 import type { LienDeskData, LienDeskJob } from '../../hooks/useLienDeskData'
@@ -351,6 +354,8 @@ export default function LienDeskModal({
   // The pay offer (v2.4713): the leader's choice, written with the approval; read back from the item when one is selected.
   const [offer, setOffer] = useState<LienPayOffer | null>(null)
   const [wordOpen, setWordOpen] = useState(false)
+  // The notice's own signature line (v2.5082): read when Sign and approve ▸ or Sign ▸ is pressed.
+  const signRef = useRef<LienNoticeSignLineHandle>(null)
   const [wordNote, setWordNote] = useState('')
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
   // Record a notice that already went out (#35 PR 2): the paper was printed here and mailed by hand.
@@ -506,6 +511,8 @@ export default function LienDeskModal({
   }, [data, calendarRows])
   const suppliers = useLienJobSuppliers(supplierJobIds, open)
   // The conditional releases the drafts point at (v2.4729): the pane's page and the run's packet read them by row id.
+  // The drawn signatures' ink by item (v2.5082), for the pane's paper and the run's.
+  const inks = useLienDeskSignatureInks(data?.items ?? null, open)
   const releaseIds = useMemo(() => (data?.items ?? []).map((it) => parseLienDeskDraftFields(it.fields)?.releaseId ?? '').filter(Boolean), [data?.items])
   const releases = useNoticeReleases(releaseIds, open)
   const supplierMarks = useMemo(() => {
@@ -938,7 +945,15 @@ export default function LienDeskModal({
     const t = window.setTimeout(() => setRingField(null), 4000)
     return () => window.clearTimeout(t)
   }, [noticeFields])
-  const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras, { ghostOptional: !wordingLocked }), { marks: paperMarks }), [noticeFields, docExtras, paperMarks])
+  // The leader's signature on this notice (v2.5082), for the pane's paper and the chip: null while unsigned, or once the draft moved on after signing.
+  const paneSignature = useMemo(() => {
+    if (!item) return null
+    const cols = signatureColumnsOf(item)
+    const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
+    return lienNoticeSignatureFromRow(cols, { jobNumber, itemId: item.id, fieldsHash: lienFieldsHash(item.fields), onDeviceName: cols.signed_on_device_of ? (leaderNameFor?.(cols.signed_on_device_of) ?? null) : null, pngDataUrl: inks.get(item.id) ?? null })
+  }, [item, job, leaderNameFor, inks])
+  const paneSigned = useMemo(() => (paneSignature ? toFilingSignature(paneSignature) : null), [paneSignature])
+  const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras, { ghostOptional: !wordingLocked, signature: paneSigned }), { marks: paperMarks }), [noticeFields, docExtras, paperMarks, paneSigned, wordingLocked])
   /** Click a shaded box: the value becomes a box in its place. A Back button under a changed value puts the job's wording back. */
   const startEdit = (key: LienNoticeFieldKey) => {
     const wrap = paperRef.current
@@ -1024,10 +1039,11 @@ export default function LienDeskModal({
       extras: docExtras,
       coverNote: null,
       release: noticeRelease,
+      signature: paneSignature,
       coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWordFor(property?.propertyKind), trade: job?.service_type?.name, supplyHouses: housesInLetter ? supplierParagraph : '', conditionalRelease: noticeRelease ? conditionalReleaseParagraph(demandMoney(noticeFields.claimAmount)) : '' }) : null,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property, housesInLetter, supplierParagraph, noticeRelease])
+  }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property, housesInLetter, supplierParagraph, noticeRelease, paneSignature])
   const coverHtml = useMemo(() => (coverBlocks.length ? filingDocHtml(coverBlocks) : ''), [coverBlocks])
   // The pay page (punch list #35, PR 3): the page the run prints behind the owner's copy, from the job's unpaid bills — fetched once per job while the desk is open.
   const payPage = useNoticePayPage(selected?.jobId ?? null, open)
@@ -1238,15 +1254,37 @@ export default function LienDeskModal({
       },
       'Recorded on the leader’s word — it is in the run.',
     )
+  // Signing (v2.5082): one press under his own sign-in places his name in the cursive face; the line may hold a drawing instead.
+  const signerName = authName.trim() || leaderName
+  const signPayloadOrThrow = (): LienDeskSignPayload => {
+    const h = signRef.current
+    if (!h || h.mode === 'type') return { mode: 'type' }
+    const png = h.toDataURL()
+    if (!png) throw new Error('Sign on the line first.')
+    return { mode: 'draw', signaturePngBase64: png }
+  }
+  const signItem = async (itemId: string, fields: unknown, approveToo: boolean) => {
+    const r = await signLienDeskItem({ itemId, fields, signer: { userId: authUserId, printedName: signerName }, payload: signPayloadOrThrow(), onDevice: null, approve: approveToo })
+    if (!r.ok) throw new Error(r.message)
+  }
   const approve = () =>
     run(
-      'Approve',
+      'Sign and approve',
       async () => {
         if (!item) return
         await setLienDeskItemOffer(item.id, offer)
-        await approveLienDeskItem(item.id)
+        await signItem(item.id, item.fields, true)
       },
-      offer ? `Approved with a ${offer.pct}% offer — it is in the run.` : 'Approved — it is in the run.',
+      offer ? `Signed and approved with a ${offer.pct}% offer — it is in the run.` : 'Signed and approved — it is in the run.',
+    )
+  const signOnly = () =>
+    run(
+      'Sign',
+      async () => {
+        if (!item) return
+        await signItem(item.id, item.fields, false)
+      },
+      'Signed — it is in the run.',
     )
   const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
@@ -1261,7 +1299,7 @@ export default function LienDeskModal({
   // it changed. The desk stays the source of truth: it layers the edit on, and the effect below posts the
   // rebuilt pages back, so the preview only ever shows what these builders print.
   const previewInput = () => ({
-    blocks: buildLienNoticeBlocks(noticeFields, docExtras),
+    blocks: buildLienNoticeBlocks(noticeFields, docExtras, { signature: paneSigned }),
     fields: noticeFields,
     defaults: jobDefaults,
     editedBy: wordingEditedBy,
@@ -1474,11 +1512,13 @@ export default function LienDeskModal({
                 e.pile === 'awaiting'
                   ? `awaiting approval · ${e.item?.submitted_at ? formatYmdMonthDay(calendarYmdInAppTzFromIso(e.item.submitted_at)) : ''}`
                   : e.pile === 'ready'
-                    ? e.item?.approval_mode === 'word'
-                      ? wordRecordWords(e.item, leaderNameFor?.(data?.jobsById[e.jobId]?.master_user_id ?? null))
-                      : e.item?.approval_mode === 'rule'
-                        ? 'standing rule'
-                        : 'approved'
+                    ? `${
+                        e.item?.approval_mode === 'word'
+                          ? wordRecordWords(e.item, leaderNameFor?.(data?.jobsById[e.jobId]?.master_user_id ?? null))
+                          : e.item?.approval_mode === 'rule'
+                            ? 'standing rule'
+                            : 'approved'
+                      }${e.item && lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned' ? ' · unsigned' : ''}`
                     : e.pile === 'held'
                       ? `held · ${e.item?.hold_reason === 'promised' ? 'they promised' : 'call first'} · re-asks ${e.item?.hold_until ? formatYmdMonthDay(e.item.hold_until) : ''}`
                       : e.pile === 'sent'
@@ -2619,6 +2659,10 @@ export default function LienDeskModal({
     const affidavitDueOn = timeline?.steps.find((st) => st.kind === 'affidavit')?.date || null
     const offerAmounts = payPage.rows.filter((r) => r.payable).map((r) => r.openAmount)
     const offerProblem = offer ? lienOfferDayProblem(offer.by, todayYmd, affidavitDueOn) : null
+    // The notice's own signature line (v2.5082): his name waiting in cursive, or a pad; the press writes the mark and the record.
+    const signLine = (compact = false) => (
+      <LienNoticeSignLine ref={signRef} printedName={signerName} under={[noticeFields.contactPerson, noticeFields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} disabled={busy} compact={compact} />
+    )
     // v2.4745 (the owner's ask): the switch rides in the footer's bottom row; the details open above that row only while it is on.
     const offerBox = (onSave?: () => void, saved?: boolean) => (
       <LienOfferBox part="details" offer={offer} onChange={setOffer} todayYmd={todayYmd} affidavitDueOn={affidavitDueOn} amounts={offerAmounts} disabled={busy} onSave={onSave} saving={busy} saved={saved} />
@@ -2691,6 +2735,7 @@ export default function LienDeskModal({
           ) : (
             <>
             {leader && !blocked ? offerBox() : null}
+            {leader && !blocked ? signLine() : null}
             <div className="lienFootRow" data-lien-desk-next data-blocked={blocked ? 'yes' : 'no'}>
               <span className="lienFootState">
                 <span aria-hidden="true">{blocked ? '✗' : '→'}</span> {stateWords}
@@ -2717,8 +2762,8 @@ export default function LienDeskModal({
                     {firstBlocker ? `Go to gate ${firstBlocker.n} ▴` : 'Show what is missing ▴'}
                   </button>
                 ) : leader ? (
-                  <button type="button" onClick={() => run('Approve', async () => { const id = await ensureDraft(); await setLienDeskItemOffer(id, offer); await approveLienDeskItem(id) }, offer ? `Approved with a ${offer.pct}% offer — it is in the run.` : 'Approved — it is in the run.')} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>
-                    Approve ▸
+                  <button type="button" onClick={() => run('Sign and approve', async () => { const id = await ensureDraft(); await setLienDeskItemOffer(id, offer); await signItem(id, draftFields(), true) }, offer ? `Signed and approved with a ${offer.pct}% offer — it is in the run.` : 'Signed and approved — it is in the run.')} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>
+                    Sign and approve ▸
                   </button>
                 ) : (
                   <button type="button" onClick={sendToLeader} disabled={busy || !office} style={btn('primary', busy || !office)}>
@@ -2753,14 +2798,16 @@ export default function LienDeskModal({
               </div>
             ) : (
               <div data-lien-desk-phone-approve style={{ display: 'grid', gap: '0.5rem' }}>
+                {signLine(true)}
                 {detailsOpen ? offerSwitch() : null}
-                <button type="button" onClick={approve} disabled={busy || Boolean(offerProblem)} style={{ ...btn('green', busy || Boolean(offerProblem)), width: '100%', padding: '12px 14px', fontSize: '1rem' }}>Approve ▸</button>
+                <button type="button" onClick={approve} disabled={busy || Boolean(offerProblem)} style={{ ...btn('green', busy || Boolean(offerProblem)), width: '100%', padding: '12px 14px', fontSize: '1rem' }}>Sign and approve ▸</button>
                 <button type="button" onClick={() => setNotYetOpen(true)} disabled={busy} style={{ ...btn('plain', busy), width: '100%', padding: '10px 14px' }}>Not yet</button>
               </div>
             )
           ) : (
             <>
             {offerBox()}
+            {signLine()}
             <div className="lienFootRow" data-lien-desk-next data-blocked="no">
               <span className="lienFootState">
                 <span aria-hidden="true">→</span> Your call on {monthsWord}
@@ -2772,7 +2819,7 @@ export default function LienDeskModal({
               <button type="button" onClick={() => setHoldOpen('call_first')} disabled={busy} style={btn('plain', busy)}>Hold — I'll call first</button>
               <button type="button" onClick={pullBack} disabled={busy} style={btn('plain', busy)}>Back to the office</button>
               <button type="button" onClick={() => setByHandOpen(true)} disabled={busy} style={btn('plain', busy)} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of approving"><span className="lienByHandWords">Already mailed?{' '}<br />Record it…</span></button>
-              <button type="button" onClick={approve} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>Approve &amp; next ▸</button>
+              <button type="button" onClick={approve} disabled={busy || Boolean(offerProblem)} style={btn('green', busy || Boolean(offerProblem))}>Sign and approve &amp; next ▸</button>
             </div>
             </>
           )}
@@ -2823,16 +2870,21 @@ export default function LienDeskModal({
       ))
     } else if (state === 'ready') {
       const itemOffer = lienOfferFromItem(selected.item)
+      const readySigned = selected.item ? lienChipSigned(signatureColumnsOf(selected.item), lienFieldsHash(selected.item.fields)) : null
       footer = byHandPane ?? (
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
+        {leader && readySigned === 'unsigned' ? signLine() : null}
         <div className="lienFootRow" data-lien-desk-foot="ready">
-          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName, takenBackChipWords(runTakenBackOf(selected.item?.fields)))} data-lien-desk-ready-words />
+          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName, takenBackChipWords(runTakenBackOf(selected.item?.fields)), readySigned)} data-lien-desk-ready-words />
           {leader && selected.item?.approval_mode === 'word' ? (
             <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
           ) : null}
           <span className="lienFootSpacer" />
           {leader ? offerSwitch() : null}
+          {leader && readySigned === 'unsigned' ? (
+            <button type="button" onClick={signOnly} disabled={busy} style={btn('green', busy)} data-lien-desk-sign title="Approved on your word; your signature goes on the paper">Sign ▸</button>
+          ) : null}
           <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of sending the run">
             Already mailed? Record it ›
           </button>
@@ -2865,6 +2917,8 @@ export default function LienDeskModal({
       )
     } else if (state === 'held') {
       footer = byHandPane ?? (
+        <>
+        {leader ? signLine() : null}
         <div className="lienFootRow" data-lien-desk-foot="held">
           <FootChip chip={heldChip(selected.item, gc?.name)} data-lien-desk-held-words />
           {monthsList[0] ? <span className="lienFootRed">{`${workMonthLabel(monthsList[0])}'s lien right ends ${selected.earliestDeadline ? demandDate(selected.earliestDeadline) : ''}.`}</span> : null}
@@ -2875,12 +2929,13 @@ export default function LienDeskModal({
           {leader ? (
             <>
               <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy || !office}>Back to draft</button>
-              <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold and approve ▸</button>
+              <button type="button" onClick={approve} disabled={busy} style={btn('green', busy)}>Release the hold, sign and approve ▸</button>
             </>
           ) : (
             <button type="button" onClick={pullBack} disabled={busy || !office} style={btn('plain', busy || !office)}>Back to draft</button>
           )}
         </div>
+        </>
       )
     } else if (state === 'sent') {
       // Letter two (v2.3760): what has happened since the packet went out, and the two doors — the GC's written okay, or the second letter.
@@ -3366,7 +3421,7 @@ export default function LienDeskModal({
             onChanged()
             return n
           }}
-          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
+          notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId, inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: leaderNameFor?.(id) ?? '' }) }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor, { inks, onDeviceNameFor: (id) => leaderNameFor?.(id) ?? '', leaderFor: (id) => ({ userId: id, name: leaderNameFor?.(id) ?? '' }) })]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
@@ -3377,6 +3432,7 @@ export default function LienDeskModal({
           }}
           openOnTakeBack={runTakeBack}
           onRecorded={onChanged}
+          viewer={{ userId: authUserId, name: authName }}
         />
       ) : null}
     </div>

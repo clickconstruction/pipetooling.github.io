@@ -117,6 +117,8 @@ describe('buildLienDeskQueue', () => {
     expect(q2.entries[0]).toMatchObject({ pile: 'to_draft', missedMonths: ['2026-06'], missedUnrecorded: [] })
     expect(q2.counts.missed).toBe(1)
     expect(summarizeLienDeskForNeedsYou(q2).missed).toEqual({ jobs: 0, months: 0, dollars: 0, lines: [] })
+    // v2.5087: the leader's signatures still owed — the Ready pile's unsigned notices.
+    expect(summarizeLienDeskForNeedsYou(q2).leader.toSign).toBe(q2.piles.ready.length)
   })
 
   it('a live item decides the pile and its months decide the deadline; sent items stay 30 days then drop', () => {
@@ -197,7 +199,7 @@ describe('summarizeLienDeskForNeedsYou', () => {
     expect(s.office).toMatchObject({ jobs: 2, months: 4, dollars: 37_350, needsOwner: 1, earliestDeadline: '2026-09-15', ready: 0 })
     // The next deadline (v2.3704): both jobs close Sep 15; names are the hook's.
     expect(s.office.next).toEqual({ deadline: '2026-09-15', notices: 2, dollars: 37_350, gcIds: ['gc-1'], gcNames: [], toDraft: 1, needsOwner: 1 })
-    expect(s.leader).toEqual({ jobs: 1, dollars: 2_245, earliestDeadline: '2026-09-15' })
+    expect(s.leader).toEqual({ jobs: 1, dollars: 2_245, earliestDeadline: '2026-09-15', toSign: expect.any(Number) })
     expect(s.held).toBe(0)
   })
 })

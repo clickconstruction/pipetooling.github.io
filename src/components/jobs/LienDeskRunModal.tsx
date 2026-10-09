@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 import { noticeInvoiceDocs, noticeInvoicePrintSections, unpaidBilledInvoices, type NoticeInvoiceDoc } from '../../lib/jobs/noticeInvoiceEnclosure'
 import { fetchStripeInvoiceFacts } from '../../lib/stripeInvoiceFacts'
@@ -24,6 +24,9 @@ import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from
 import { useToastContext } from '../../contexts/ToastContext'
 import { runNoticesTakenBack, runPrintedItemIds, runTakeBackConfirm, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
 import LienRunPreviewOverlay, { type LienRunPreviewEntry } from './LienRunPreviewOverlay'
+import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
+import { lienNoticeSignatureAfterSigning } from '../../lib/jobs/lienNoticeSignature'
+import { LienNoticeSignLine, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
@@ -46,6 +49,7 @@ export default function LienDeskRunModal({
   openOnTakeBack = false,
   undo,
   stripeMode = 'live',
+  viewer = null,
 }: {
   notices: RunNotice[]
   issuer: PhysicalInvoiceIssuer | null
@@ -70,10 +74,15 @@ export default function LienDeskRunModal({
   undo?: { words: string; busy: boolean; onUndo: () => void }
   /** Which Stripe the enclosed bills' numbers are read from (v2.4852): a dev's test-mode pick, live for everyone else. */
   stripeMode?: BillingStripeModePref
+  /** Who is at this screen (v2.5086): Leader here, sign ▸ on a held row attributes the leader's drawing to him and names this sign-in as the screen. Null hides the door. */
+  viewer?: { userId: string | null; name: string } | null
 }) {
   const { showToast } = useToastContext()
   const [notices, setNotices] = useState<RunNotice[]>(initial)
   const [busy, setBusy] = useState(false)
+  // Leader here, sign ▸ (v2.5086): the held envelope whose sign sheet is open, and the line he draws on.
+  const [signOpen, setSignOpen] = useState<string | null>(null)
+  const signRef = useRef<LienNoticeSignLineHandle>(null)
   // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
   const [docUrl, setDocUrl] = useState('')
   const [docNote, setDocNote] = useState('')
@@ -233,6 +242,52 @@ export default function LienDeskRunModal({
   // stamped printed only once every copy of it has printed this sitting, so a half-printed notice never reads as in the mail.
   const [printedCopies, setPrintedCopies] = useState<ReadonlySet<string>>(() => new Set())
   const partsIds = (n: CombinedRunNotice) => partsOf(n) ?? [{ itemId: n.itemId, jobId: n.jobId }]
+  // The notices in an envelope the leader has not signed (v2.5086), by the run's own list so a combined notice's parts are found.
+  const unsignedIn = (env: RunEnvelope): RunNotice[] => {
+    const seen = new Set<string>()
+    const out: RunNotice[] = []
+    for (const c of env.contents) {
+      for (const p of partsIds(c.notice as CombinedRunNotice)) {
+        if (seen.has(p.itemId)) continue
+        seen.add(p.itemId)
+        const n = notices.find((x) => x.itemId === p.itemId)
+        if (n && n.signature === null) out.push(n)
+      }
+    }
+    return out
+  }
+  // Leader here, sign ▸: he draws on this screen; each unsigned notice in the envelope gets the mark, attributed to him, the row naming this sign-in's screen.
+  const signHere = async (env: RunEnvelope) => {
+    if (busy || !viewer) return
+    const targets = unsignedIn(env)
+    const leader = targets[0]?.leader ?? null
+    if (!leader) return
+    const png = signRef.current?.toDataURL() ?? null
+    if (!png) {
+      showToast('Sign on the line first.', 'error')
+      return
+    }
+    setBusy(true)
+    try {
+      const signed: RunNotice[] = []
+      for (const n of targets) {
+        const r = await signLienDeskItem({ itemId: n.itemId, fields: n.rowFields ?? null, signer: { userId: leader.userId, printedName: leader.name }, payload: { mode: 'draw', signaturePngBase64: png }, onDevice: { userId: viewer.userId, name: viewer.name }, approve: false })
+        if (!r.ok) {
+          showToast(r.message, 'error')
+          break
+        }
+        signed.push({ ...n, signature: lienNoticeSignatureAfterSigning({ mode: 'draw', printedName: leader.name, pngDataUrl: png, signedAtIso: r.signedAtIso, jobNumber: n.jobNumber, itemId: n.itemId, onDeviceName: viewer.name }) })
+      }
+      if (signed.length) {
+        setNotices((prev) => prev.map((n) => signed.find((x) => x.itemId === n.itemId) ?? n))
+        setSignOpen(null)
+        showToast(signed.length === 1 ? 'Signed — the notice is in the run.' : `Signed — ${signed.length} notices are in the run.`)
+        onRecorded()
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
   const notePrinted = (keys: string[]) => {
     const next = new Set(printedCopies)
     for (const k of keys) next.add(k)
@@ -378,7 +433,7 @@ export default function LienDeskRunModal({
             </div>
             {explainerOpen ? (
               <p data-testid="run-explainer" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-                One packet with every approved notice: a checklist sheet listing the {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}, then for each one a divider page with its face and what goes in it, in that order.{mailing.held.length ? ` ${mailing.held.length} ${mailing.held.length === 1 ? 'envelope is' : 'envelopes are'} held back — no mailing address, or nothing to claim — and listed in red.` : ''} The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
+                One packet with every approved notice: a checklist sheet listing the {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}, then for each one a divider page with its face and what goes in it, in that order.{mailing.held.length ? ` ${mailing.held.length} ${mailing.held.length === 1 ? 'envelope is' : 'envelopes are'} held back — no mailing address, nothing to claim, or unsigned — and listed in red.` : ''} The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
               </p>
             ) : null}
           </div>
@@ -473,6 +528,20 @@ export default function LienDeskRunModal({
                         <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem', fontWeight: 600 }} data-testid={`run-held-${env.n}`}>
                           Held · {heldWhy.get(env.key)}
                         </div>
+                      ) : null}
+                      {heldWhy.has(env.key) && viewer && unsignedIn(env)[0]?.leader ? (
+                        signOpen === env.key ? (
+                          <div data-testid={`run-sign-here-${env.n}`} style={{ marginTop: '0.45rem', display: 'grid', gap: '0.4rem', maxWidth: 480 }}>
+                            <LienNoticeSignLine ref={signRef} printedName={unsignedIn(env)[0]!.leader!.name} under={[unsignedIn(env)[0]!.fields.contactPerson, unsignedIn(env)[0]!.fields.claimantName]} signedLabel={`Signed ${demandDate(todayYmd)}`} allowPress={false} compact disabled={busy} />
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{unsignedIn(env)[0]!.leader!.name} draws on this screen. The record names {viewer.name || 'you'} as whose screen it was.</div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                              <button type="button" onClick={() => void signHere(env)} disabled={busy} data-testid={`run-sign-here-go-${env.n}`} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #15803d', background: '#15803d', color: '#fff', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>Sign ▸</button>
+                              <button type="button" onClick={() => setSignOpen(null)} disabled={busy} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.8125rem', cursor: 'pointer' }}>Cancel</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button type="button" onClick={() => setSignOpen(env.key)} data-testid={`run-leader-here-sign-${env.n}`} title="The leader is beside you: he draws his signature on this screen, and the record names yours" style={{ marginTop: '0.3rem', padding: '4px 11px', borderRadius: 7, border: '1px solid var(--text-link)', background: 'var(--surface)', color: 'var(--text-link)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Leader here, sign ▸</button>
+                        )
                       ) : null}
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
                         {env.address || (env.name ? 'no mailing address' : '')}{env.email ? ` · ${env.email}` : ''}

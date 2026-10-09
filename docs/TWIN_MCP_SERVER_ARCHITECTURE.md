@@ -8,7 +8,7 @@ covers:
   - supabase/functions/twin-mcp/index.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-09-25
+last_updated: 2026-10-09
 ---
 
 ## Overview
@@ -236,7 +236,7 @@ Each dossier gives the anchor, the verbs, the data touched, the helpers used, wh
 - **`get_answers` (1765–1822):** the last 50 questions of this twin, plus **blindness redaction** (1778–1820). Any question or answer that mentions `b<ref>` or a project name of 6 characters or more, belonging to a reference with an unsealed twin shell, comes back `{ redacted: true }`.
 - **Also filed elsewhere:** `finish_price_matrix` asks (1500–1514), and the `next_shadow` resume consumes answers.
 - **Extracted:** [`_shared/twinQuestionAudience.ts`](../supabase/functions/_shared/twinQuestionAudience.ts) (87), [`twinQuestionShape.ts`](../supabase/functions/_shared/twinQuestionShape.ts) (152, with the money scrub), [`twinQuestionKind.ts`](../supabase/functions/_shared/twinQuestionKind.ts) (75).
-- **Tests:** `src/lib/bids/twinQuestionAudience.test.ts` (8), `twinQuestionChoices.test.ts` (8, the shape gate), `twinQuestionKind.test.ts` (6), `twinQuestionMoney.test.ts` (7, the scrub and the sealed check). **Redaction is untested.**
+- **Tests:** `src/lib/bids/twinQuestionAudience.test.ts` (8), `twinQuestionChoices.test.ts` (8, the shape gate), `twinQuestionKind.test.ts` (6), `twinQuestionMoney.test.ts` (8, the scrub and the sealed check). **Redaction is untested.**
 - **Approach:** Stage A: `redactForBlindness(questions, refs)` into `_shared/twinBlindness.ts` with tests. Then `verbs/questions.ts`, with the ladder insert as one `insertTwinQuestion(ctx, row)` shared with `finish_price_matrix`.
 
 ### 10. Plan pages — partially extracted

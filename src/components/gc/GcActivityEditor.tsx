@@ -4,11 +4,11 @@
  * (`GcBuildingSchedule.tsx`), its words kept: the bar's dates, the day it cannot start before and the day it must
  * finish by (G-36), what it waits on with a gap after each (G-35, side by side below zero, G-82), what a slip would
  * cost (G-80), and the days it really ran (G-55). **Save, and say why** hands the change to the move's window
- * (`GcMoveExplain`), so a change is a move like a drag. The real days are a record and keep at once. Its trade's
- * papers (G-77), its place (G-83), the job's own bar's buttons (G-38) and an inspection's pass come with PR 9; the
- * what-if copy with PR 11.
+ * (`GcMoveExplain`), so a change is a move like a drag. The real days are a record and keep at once. Since PR 9a, the
+ * job's own bar's buttons (G-38) and an inspection's pass or failure sit at its foot (`extra`, `check`). Its trade's
+ * papers (G-77) and its place (G-83) come with PR 9b and 9d; the what-if copy with PR 11.
  */
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { addDays } from '../../lib/gc/building'
 import { actualProblem, actualWords } from '../../lib/gc/schedule/actualDates'
 import { whatIfSlips, type MoveLimits } from '../../lib/gc/schedule/moves'
@@ -31,6 +31,8 @@ export function GcActivityEditor({
   today,
   onSave,
   onActual,
+  check,
+  extra,
   onClose,
 }: {
   project: GcProject
@@ -41,6 +43,10 @@ export function GcActivityEditor({
   onSave: (start: string, finish: string, after: string[], limits: MoveLimits) => void
   /** The real start and finish, recorded (G-55). Null clears one. */
   onActual?: (actualStart: string | null, actualFinish: string | null) => Promise<void>
+  /** An inspection not passed yet, on a job being built: passed or failed, today. */
+  check?: ReactNode
+  /** An added activity's own buttons (G-38): done, not done, off the schedule. */
+  extra?: ReactNode
   onClose: () => void
 }) {
   const a = row.activity
@@ -216,6 +222,8 @@ export function GcActivityEditor({
             )}
           </div>
         )}
+        {extra && <div style={{ paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>{extra}</div>}
+        {check && <div style={{ paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>{check}</div>}
       </div>
     </Card>
   )

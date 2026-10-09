@@ -31,6 +31,7 @@ export function lienStepOfRow(row: Pick<LienNextUpRow, 'kind' | 'action'>): Lien
     case 'draft':
       return { ladder, step: 2 }
     case 'approve':
+    case 'sign':
       return { ladder, step: 3 }
     case 'send':
     case 'send_run':

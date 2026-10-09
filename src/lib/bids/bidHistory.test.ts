@@ -288,3 +288,25 @@ describe('filters, search and days', () => {
     expect(bidHistoryByDay(actions, now).map((d) => [d.day, d.actions.length])).toEqual([['Today', 3]])
   })
 })
+
+describe('bidHistoryCaption · PR 5', () => {
+  it('a brush stroke reads as one action over the prices it touched', () => {
+    const p = (countRowId: string) => row({ table: 'bid_pricing_assignments', op: 'update', countRowId, changed: ['unit_price_override'], action: 'price-brush', byApp: false })
+    expect(bidHistoryCaption([p('c1'), p('c2'), p('c3')])).toBe('Brushed 3 prices')
+    expect(bidHistoryCaption([p('c1')])).toBe('Brushed 1 price')
+  })
+
+  it('a book switch reads as one action, with the prices its copy brought', () => {
+    const copy = (t: string) => row({ table: t, op: 'insert', action: 'book-switch', byApp: false })
+    expect(bidHistoryCaption([row({ table: 'bids', op: 'update', label: null, changed: ['selected_price_book_version_id'], action: 'book-switch', byApp: false })])).toBe('Switched the price book')
+    expect(bidHistoryCaption([copy('bid_count_row_custom_prices'), copy('bid_pricing_assignments'), copy('bid_pricing_assignments')])).toBe('Switched the price book, copying 3 prices')
+  })
+
+  it('a removed row put back names it, and says what hung on it came too', () => {
+    const back = (table: string, label: string) => row({ table, op: 'insert', label, action: 'put-back', byApp: false })
+    expect(bidHistoryCaption([back('bids_count_rows', 'SUMP')])).toBe('Put back SUMP')
+    expect(bidHistoryCaption([back('bid_count_row_custom_prices', 'SUMP'), back('bids_count_rows', 'SUMP'), back('bids_takeoff_rough_part_lines', 'Sump pump')])).toBe('Put back SUMP and what hung on it')
+    expect(bidHistoryCaption([back('bids_count_rows', 'LAV-1'), back('bid_versions', 'Value engineered')])).toBe('Put back Value engineered and what hung on it')
+    expect(bidHistoryCaption([row({ table: 'cost_estimate_labor_rows', op: 'insert', label: null, action: 'put-back', byApp: false })])).toBe('Put back a removed row')
+  })
+})

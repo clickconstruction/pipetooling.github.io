@@ -9,6 +9,7 @@ import {
   AR_RETURNED_CHECK_FEE_STATUTE,
   arCaseFeeOffer,
   billFeeLines,
+  returnedCheckFeeCents,
   type ArCaseFeeBill,
   type ArCaseFeeRow,
 } from './arReturnCaseFee'
@@ -74,5 +75,35 @@ describe('the bill’s own fee lines (jobs_ledger_invoices.fee_lines)', () => {
     const doc = buildPhysicalInvoiceDocumentForBilledInvoice(job, inv as never)!
     expect(doc.serviceLines[doc.serviceLines.length - 1]).toEqual({ description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', qty: 1, unitPrice: 30, amount: 30 })
     expect(doc.serviceLines.slice(0, -1).reduce((t, l) => t + l.amount, 0)).toBeCloseTo(13680, 2)
+  })
+})
+
+describe('returnedCheckFeeCents (v2.5091): the fees a job’s revenue keeps through a rewrite', () => {
+  const FEE = (caseId: unknown, amount: unknown) => ({ description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', amount, case_id: caseId, added_at: '2026-10-09T15:00:00Z' })
+
+  it('sums every case’s fee line on every bill of the job', () => {
+    expect(returnedCheckFeeCents([{ id: 'b1', fee_lines: [FEE('tx-sp', 30)] }])).toBe(3_000)
+    expect(returnedCheckFeeCents([{ id: 'b1', fee_lines: [FEE('tx-1', 30), FEE('tx-2', 30)] }, { id: 'b2', fee_lines: [FEE('tx-3', 30)] }])).toBe(9_000)
+  })
+
+  it('a fee line that names no case is not a returned check fee', () => {
+    expect(returnedCheckFeeCents([{ fee_lines: [FEE(null, 30), FEE('', 30), FEE('   ', 30), FEE(42, 30), { description: 'Some other fee', amount: 30 }] }])).toBe(0)
+    expect(returnedCheckFeeCents([{ fee_lines: [FEE('tx-sp', 30), { description: 'Some other fee', amount: 45 }] }])).toBe(3_000)
+  })
+
+  it('an amount that does not read, or is not above zero, counts as nothing', () => {
+    expect(returnedCheckFeeCents([{ fee_lines: [FEE('tx-1', 'nope'), FEE('tx-2', null), FEE('tx-3', 0), FEE('tx-4', -30), FEE('tx-5', Number.NaN), FEE('tx-6', '30')] }])).toBe(3_000)
+  })
+
+  it('a bill with no fee lines, or lines that are not a list, adds nothing', () => {
+    expect(returnedCheckFeeCents([{ id: 'b1' }, { fee_lines: null }, { fee_lines: {} }, { fee_lines: [null, 'x', 7] }])).toBe(0)
+    expect(returnedCheckFeeCents([])).toBe(0)
+    expect(returnedCheckFeeCents(null)).toBe(0)
+    expect(returnedCheckFeeCents(undefined)).toBe(0)
+  })
+
+  it('counts in cents, so odd amounts never drift', () => {
+    expect(returnedCheckFeeCents([{ fee_lines: [FEE('tx-1', 0.1), FEE('tx-2', 0.2)] }])).toBe(30)
+    expect(returnedCheckFeeCents([{ fee_lines: [FEE('tx-1', 30.1)] }, { fee_lines: [FEE('tx-2', 30.2)] }])).toBe(6_030)
   })
 })

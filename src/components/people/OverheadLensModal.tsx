@@ -426,8 +426,11 @@ export function OverheadLensModal({
               {lens === 'C' && <li>A raise with the same pool lowers this ratio. Pair it with Method A when comparing crews.</li>}
               {detail && detail.pendingFieldHours > 0 && (
                 <li>
-                  <strong>{hours(detail.pendingFieldHours)}</strong> of field time is awaiting approval — missing from{' '}
-                  {lens === 'B' ? 'nothing here, but from A and C' : 'this denominator'} until someone works the queue (see the maintenance strip).
+                  <strong>{hours(detail.pendingFieldHours)}</strong> of field time is still awaiting approval —{' '}
+                  {lens === 'B'
+                    ? 'it doesn’t touch this lens, but A and C already count it as recorded time'
+                    : 'it already counts in this denominator as recorded time, and a rejection takes it out'}{' '}
+                  (see the maintenance strip).
                 </li>
               )}
               <li>

@@ -5,10 +5,22 @@
  * lost the hazmat fee's revenue when one copy recomputed from the line items alone).
  */
 import { revenueDollarsFromFixtures, type JobFixtureLineForRevenue } from '../revenueFromJobFixtures'
+import { returnedCheckFeeCents } from './arReturnCaseFee'
 
 /**
- * The Job Total with riders: the named line items' extended amounts plus the rider (hazmat)
- * fees. The line items round to cents; the sum with the fees is not rounded again.
+ * The riders: the fees that ride on the job beyond its line items. They are the hazmat fees
+ * (`sumHazmatRiderFees`, v2.1029) and every returned check fee on the job's bills
+ * (`returnedCheckFeeCents`, v2.5091). Each raised the job's revenue as it went on, so the Job
+ * Total and the revenue written on save add them back. Summed in cents.
+ */
+export function jobFormRiderFeesDollars(hazmatFeesDollars: number, bills: ReadonlyArray<object> | null | undefined): number {
+  return (Math.round((Number(hazmatFeesDollars) || 0) * 100) + returnedCheckFeeCents(bills)) / 100
+}
+
+/**
+ * The Job Total with riders: the named line items' extended amounts plus the rider fees
+ * (`jobFormRiderFeesDollars`). The line items round to cents; the sum with the fees is not
+ * rounded again.
  */
 export function jobFormRevenueDollars(fixtures: JobFixtureLineForRevenue[], riderFeesDollars: number): number {
   return revenueDollarsFromFixtures(fixtures) + riderFeesDollars

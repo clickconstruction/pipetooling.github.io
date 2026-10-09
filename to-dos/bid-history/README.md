@@ -2,7 +2,7 @@
 name: "Bid history: every value anyone entered on a bid, and a way to put one back"
 number: 73
 group: ready
-status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751; PR 0c archive coverage live 2026-10-07 (v2.4861 #4890, migration 20261008070000 pushed); PR 0b the Labor sync keeps typed hours live 2026-10-07 (v2.4864 #4899, migration 20261008071000 pushed; its race fixed v2.4903 #4936, migration 20261008091000 pushed); PR 2 the read-only History window live 2026-10-08 (v2.4948 #4994, migration 20261009060000 pushed); PR 3 Past values under the cells built (v2.4952 #5000, migration 20261009090000); PR 4 Put back for a value built (v2.4954, migration 20261009110000) · left: a removed row put back (restore_deleted_record, waits on Grace's archive call), PR 5
+status: live 2026-10-06 — PR 1 capture (v2.4598 #4583, migrations 20261007040000 / 041000), PR 1b the request tag (v2.4736 #4747, migration 20261007050000, twin-mcp deployed), PR 0a the Cover Letter's three boxes saved (v2.4737 #4749, migration 20261007060000), types regen #4751; PR 0c archive coverage live 2026-10-07 (v2.4861 #4890, migration 20261008070000 pushed); PR 0b the Labor sync keeps typed hours live 2026-10-07 (v2.4864 #4899, migration 20261008071000 pushed; its race fixed v2.4903 #4936, migration 20261008091000 pushed); PR 2 the read-only History window live 2026-10-08 (v2.4948 #4994, migration 20261009060000 pushed); PR 3 Past values under the cells built (v2.4952 #5000, migration 20261009090000); PR 4 Put back for a value built (v2.4954, migration 20261009110000); PR 5 a bid's removed rows for its editors with Put back, and the brush's and a book switch's tags, built (v2.5079, migration 20261010017000) · left: undo a whole action, its own PR
 summary: >
   Wendi lost work on a SpaceX bid after re-importing counts and there was no way to see what the
   bid had said before, or who changed it. Nothing on a bid keeps its old value: an edit overwrites,
@@ -17,11 +17,11 @@ next: >
   three years, then purge. (3) Anyone who can edit the bid may Put back. (4) The builder picks the
   default column set. (5) The pane follows the adopt and shows both bids' history, each row labelled
   with its bid number. PR 2 (the read-only window) and PR 3 (Past values under the cells) are
-  built on them; next PR 4 (Put back), PR 5 (undo a whole action). One question that is not among the
-  five: whether a non-dev sees the delete archive's removed rows in the window (today they reach a
-  dev only, the archive's own rule) — Grace's call.
-size: S (PR 0, three small fixes) + S (PR 1 capture) + M (PR 2 the pane) + M (PR 3 the switch on the cells) + M (PR 4 put back) + S (PR 5 action captions)
-blocker: None. (The archive's removed rows for non-devs wait on Grace; the window works without them.)
+  built on them, then PR 4 (Put back a value). A sixth call, answered 2026-10-09: a bid's editors
+  see the bid's own removed rows so they can Put them back (PR 5, with the brush's and a book
+  switch's tags). Next: undo a whole action, its own small PR.
+size: S (PR 0, three small fixes) + S (PR 1 capture) + M (PR 2 the pane) + M (PR 3 the switch on the cells) + M (PR 4 put back) + M (PR 5 removed rows and action captions) + S (PR 6 undo a whole action)
+blocker: None.
 ---
 
 # Bid history: every value anyone entered on a bid, and a way to put one back
@@ -149,7 +149,7 @@ edit the bid cannot put anything back) and the trigger logs it as a change by th
 refetches. No per-tab client code. A removed row comes back through a row-level version of the archive's restore
 (`restore_deleted_record(p_archive_id)` reusing the bundle machinery's FK checks and insert order),
 allowed to whoever can edit the bid; a row whose parent is gone reads "its count row was removed
-too — put that back first". Putting back a whole action (undo an import after the toast is gone)
+too — put that back first" (built in PR 5 as `restore_bid_removed_row`, behind `can_edit_bid`). Putting back a whole action (undo an import after the toast is gone)
 is the same loop over its rows and comes last.
 
 **Stop the losses at the source (PR 0, independent):**
@@ -180,7 +180,7 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 - Client: `BidsLensBar` (the pill; `useBidsLoadGates` for the pane's read), a new
   `BidHistoryPane.tsx`, small hooks into `BidsPricingTab` / `BidsCountsTab` / `BidsTakeoffTab` /
   `BidsLaborTab` for the under-cell lines (`useBidHistory(bidId)` → a map by `(table, record_id, column)`).
-- RPCs (new): `list_bid_history`, `latest_bid_cell_history`, `put_back_bid_change`, `restore_deleted_record`.
+- RPCs (new): `list_bid_history`, `latest_bid_cell_history`, `put_back_bid_change`, and for a removed row `can_edit_bid`, `list_bid_removed_rows` and `restore_bid_removed_row`.
 - The request tag: `src/lib/bids/bidActionHeader.ts` (`withBidAction(builder, 'counts-import')`), sent by
   the import, Clear all, the labor sync, the engine's resyncs, the margin brush; twin-mcp's `paste_counts`.
 - Docs: `docs/BIDS_SYSTEM.md` (a *History* section), `docs/BIDS_TABS_ARCHITECTURE.md`, the guide
@@ -198,8 +198,9 @@ numbers people type are enough); per-tab put-back code (one RPC does it for ever
 | 1b | The request tag on the bulk paths and the app's own writes (`x-bid-action`), read by the trigger — **live v2.4736** (import, Clear all, labor sync, fill from the book, robot paste; brush and book-switch copy left for PR 2's reader) | S |
 | 2 | `list_bid_history` + `bidHistory.ts` + the pane, read-only, with the archive's removed rows — **built v2.4948** (migration `20261009060000`; a window, not a side pane, and the archive's rows reach a dev only) | M |
 | 3 | The History pill and the under-cell lines on the four tabs (`latest_bid_cell_history`, the label fallback) — **built v2.4952** (migration `20261009090000`; a *Past values* switch beside the History button, per device; the fallback reads the ledger's own removals, not the archive) | M |
-| 4 | Put back: `put_back_bid_change` for a value, `restore_deleted_record` for a row — **value built v2.4954** (migration `20261009110000`; Put back on each changed value in the window; the row restore waits on Grace's archive call) | S–M |
-| 5 | Undo a whole action (the loop over its rows) | S |
+| 4 | Put back: `put_back_bid_change` for a value — **built v2.4954** (migration `20261009110000`; Put back on each changed value in the window) | S–M |
+| 5 | A bid's removed rows for its editors and Put back for a row (`can_edit_bid`, `list_bid_removed_rows`, `restore_bid_removed_row`), and the brush's and a book switch's tags — **built v2.5079** (migration `20261010017000`) | M |
+| 6 | Undo a whole action (the loop over its rows) — its own small PR after PR 5 (PUNCHLIST, 2026-10-09) | S |
 
 Each PR ships its release note and fragment; PR 1 its migration doc; PR 2 the guide paragraph.
 
@@ -213,6 +214,21 @@ Each PR ships its release note and fragment; PR 1 its migration doc; PR 2 the gu
   two earlier values; an estimator on another service type cannot read the bid's history (RLS).
 - PR 4: put a price back → the cell reads the old value and the pane shows the revert by the
   person who pressed it; put the removed count row back → its price and labor row come with it.
+- PR 5, the walk, once `20261010017000` is on prod. Push it with `--include-all`, since
+  `20261010020000` went first.
+  - Sign in as Robert on the dev server:
+    `/dev-login?as=1&to=%2Fbids%3Ftab%3Dcounts%26bidId%3Da5a3a840-0a7b-4c67-8b59-3e95d0d80150`.
+  - On BP398 ZZ Test's *To Plans* version, add a count row *History walk* (count 1). Delete it with
+    the trash, then **Delete**.
+  - Open **History**. The removal has **Put back**. The press is a write on prod, so ask first.
+  - After the press, the window says *History walk is back.* and the row is on the Counts tab again.
+    History reads *Put back History walk*, by Robert.
+  - Delete the row again, so ZZ Test ends as it was.
+  - Signed in with `?as=twin:estimator`, the same History lists no removed rows and no Put back.
+    Twin Estimator 1 neither made nor estimates ZZ Test. This step is read-only.
+  - The 2026-10-02 removals show as archive lines. A price or part line removed with its count row
+    has no Put back of its own. Do not press Put back on a *ZZ walk (delete me)* version: it brings
+    back about 83 rows.
 - Live data left in prod: none beyond the ZZ bid.
 
 ## Is this the best we can do? (the two passes)
@@ -274,4 +290,6 @@ Owner's calls open (front matter). PR 0 waits for Wendi's answer, so the right l
 
 **Live walk 2026-10-08, and v2.4978.** Past values (v2.4952), Put back (v2.4954) and the History paging (v2.4963) passed on ZZ Test, walked by Helper 3 for PUNCHLIST. A Labor hours cell changed 1 h → 1.25 h showed its own past, Put back set it to 1 h again, and the window listed both. **v2.4978** fixes what the walk found: the action cut at a full page's edge was drawn as if whole, and now waits for **Show older changes**. Left from the walk:
 
-- For PR 5, to take or drop with a reason: after a Put back the tab's read re-arms the labor autosave, which writes the same six rows back (204s, no ledger rows). Harmless, but a read should not count as an edit.
+- Left for its own small fix (PR 5's scope, set by PUNCHLIST on 2026-10-09, was the removed rows and the tags): after a Put back the tab's read re-arms the labor autosave, which writes the same six rows back (204s, no ledger rows). Harmless, but a read should not count as an edit.
+
+**PR 5 built 2026-10-09 as v2.5079**, after the owner's call that day (a bid's editors see the bid's own removed rows so they can Put them back), directed by PUNCHLIST. Migration `20261010017000` adds `can_edit_bid` (the bids update policy as one check: its roles, a primary's own bids, training mode, the twin fence), `list_bid_removed_rows` (the bid's own archive rows still out, for its editors; the archive's dev-only read stays) and `restore_bid_removed_row` (a row back with what was removed with it, parents first, a gone reference cleared or refused in words, tagged `put-back`). The window lays the removed rows over the history: a removal the ledger holds gains Put back by its archive row, paired on table, row and time, and one from before the ledger joins as an archive line. A row whose count row was removed in the same action waits for that count row's Put back. The margin brush's strokes (`price-brush`) and a book switch (`book-switch`, the copy and the bid's pick) are tagged, so each reads as one action (*Brushed 6 prices*, *Switched the price book, copying 31 prices*). Undo a whole action is out: its own PR. Push `20261010017000` after it merges, then regenerate the types.

@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { BID_ACTIONS, BID_ACTION_HEADER, BID_ACTION_SHAPE, BID_APP_ACTIONS, bidActionHeaders, withBidAction } from './bidActionHeader'
+import { BID_ACTIONS, BID_ACTION_HEADER, BID_ACTION_SHAPE, BID_APP_ACTIONS, bidActionHeaders, withBidAction, withBidActionIf } from './bidActionHeader'
 
 const ROOT = resolve(__dirname, '../../..')
 const MIGRATIONS = resolve(ROOT, 'supabase/migrations')
@@ -40,5 +40,24 @@ describe('bidActionHeader', () => {
     // A stub with no header method is handed back untouched.
     const bare = { then: () => undefined }
     expect(withBidAction(bare as unknown as { setHeader?: never }, BID_ACTIONS.countsImport)).toBe(bare)
+  })
+})
+
+describe('bidActionHeader · the brush and a book switch (punch list #73 PR 5)', () => {
+  it('are a person’s presses, never the app’s own', () => {
+    expect(BID_ACTIONS.priceBrush).toBe('price-brush')
+    expect(BID_ACTIONS.bookSwitch).toBe('book-switch')
+    expect(BID_APP_ACTIONS).not.toContain(BID_ACTIONS.priceBrush)
+    expect(BID_APP_ACTIONS).not.toContain(BID_ACTIONS.bookSwitch)
+  })
+
+  it('withBidActionIf tags only when there is an action', () => {
+    const setHeader = vi.fn()
+    const query = { setHeader: (name: string, value: string) => { setHeader(name, value); return query } }
+    expect(withBidActionIf(query, undefined)).toBe(query)
+    expect(withBidActionIf(query, null)).toBe(query)
+    expect(setHeader).not.toHaveBeenCalled()
+    expect(withBidActionIf(query, BID_ACTIONS.priceBrush)).toBe(query)
+    expect(setHeader).toHaveBeenCalledWith(BID_ACTION_HEADER, 'price-brush')
   })
 })

@@ -427,7 +427,23 @@ export function bidHistoryCaption(rows: ReadonlyArray<BidHistoryRow>): string {
       return `Took back ${noun('cost_estimate_labor_rows', labor('insert') || labor('delete'))} set aside before`
     case 'labor-use-parked':
       return 'Used set-aside hours on a fixture'
+    case 'price-brush': {
+      // The margin brush (PR 5): one stroke, or its Undo, over many rows' prices.
+      const priced = new Set(rows.map((r) => r.countRowId ?? r.recordId)).size
+      return `Brushed ${priced} ${priced === 1 ? 'price' : 'prices'}`
+    }
+    case 'book-switch': {
+      // The price book drawer's Use on this bid (PR 5): the bid's pick of a book, and the copy it makes.
+      const copied = rows.filter((r) => r.op === 'insert' && (r.table === 'bid_count_row_custom_prices' || r.table === 'bid_pricing_assignments')).length
+      return copied ? `Switched the price book, copying ${copied} ${copied === 1 ? 'price' : 'prices'}` : 'Switched the price book'
+    }
     case 'put-back': {
+      // A removed row put back (PR 5) comes back as inserts, with what was removed with it.
+      if (rows.every((r) => r.op === 'insert')) {
+        const head = ['bid_versions', 'cost_estimates', 'bids_count_rows'].map((t) => rows.find((r) => r.table === t)).find(Boolean) ?? first
+        const name = head.label?.trim() || 'a removed row'
+        return rows.length > 1 ? `Put back ${name} and what hung on it` : `Put back ${name}`
+      }
       // History's Put back (PR 4): one value per press, so the caption names it.
       if (rows.length > 1) return `Put back ${rows.length} values`
       const col = first.changed.find((c) => !STAMP_COLUMNS.has(c))

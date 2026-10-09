@@ -6,8 +6,10 @@
  * Export, and the bar pressed (`GcScheduleBar`). Its presses are Draw a first draft, closed while we
  * bid and on a lost job, and for those who may move a bar, a move through Why it moved with Undo and
  * Redo (PR 8a), and the bar's form and a part's own move (PR 8b). Grouped by company on a job being
- * built, the chart draws who to call, with Call (`GcCallList`, 7c-ii). The window frames it
- * (`GcScheduleWindow`); a project page mounts it unchanged the day the doors bring one.
+ * built, the chart draws who to call, with Call (`GcCallList`, 7c-ii). Since PR 9a, the same people
+ * record an inspection passed or failed, put the job's own work on the chart and keep the dates to
+ * meet (`GcScheduleCards`). The window frames it (`GcScheduleWindow`); a project page mounts it
+ * unchanged the day the doors bring one.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
@@ -30,17 +32,33 @@ import type { ScheduleRead } from '../../lib/gc/schedule/rows'
 import { planMove } from '../../lib/gc/schedule/moves'
 import { partMoveOf } from '../../lib/gc/schedule/splitBars'
 import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
-import { draftRefusal, draftStart, draftWords, redoWords, undoWords } from '../../lib/gc/schedule/scheduleWindow'
-import type { ScheduleActivity, ScheduleMove } from '../../lib/gc/schedule/types'
+import { draftRefusal, draftStart, draftWords, ownWorkOffWords, redoWords, undoWords } from '../../lib/gc/schedule/scheduleWindow'
+import type { InspectionFailure, ScheduleActivity, ScheduleMilestone, ScheduleMove } from '../../lib/gc/schedule/types'
 import { drawnFromWords } from '../../lib/gc/schedule/templates'
 import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
 import { waitRows } from '../../lib/gc/schedule/waits'
-import { drawSchedule, loadSchedule, redoScheduleMove, saveScheduleMove, setActualDates, undoScheduleMove } from '../../lib/gc/scheduleIo'
+import {
+  addScheduleActivity,
+  drawSchedule,
+  failScheduleInspection,
+  loadSchedule,
+  passScheduleInspection,
+  redoScheduleMove,
+  removeScheduleActivity,
+  removeScheduleMilestone,
+  saveScheduleMove,
+  setActualDates,
+  setOwnWorkDone,
+  setScheduleMilestone,
+  undoScheduleMove,
+  type SchedulePress,
+} from '../../lib/gc/scheduleIo'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcGantt } from './GcGantt'
 import { GcActivityEditor } from './GcActivityEditor'
 import { GcBarCaller, GcCallList } from './GcCallList'
+import { GcAddOwnWork, GcInspectionCheck, GcMilestones, GcOwnWorkButtons } from './GcScheduleCards'
 import { GcScheduleBar } from './GcScheduleBar'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
@@ -125,6 +143,28 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
     },
     [read, projectId],
   )
+  /**
+   * A plan write of 9a's (the job's own work put on or taken off, a failed inspection): against the version this window
+   * read, with its line in the log. It throws the database's refusal, which the card shows. `read.state` carries the
+   * bars the press was worked out from.
+   */
+  const planWrite = useCallback(
+    async (write: (st: GcState, press: SchedulePress) => Promise<ScheduleRead | null>, words: string) => {
+      if (!read || read.version === null) throw new Error('Nothing is drawn yet.')
+      const next = await write(read.state, { version: read.version, words })
+      if (next) setRead(next)
+    },
+    [read],
+  )
+  /** A record of 9a's (an inspection passed, the work done, a date to meet): no version, so two people never collide. */
+  const record = useCallback(
+    async (write: (st: GcState) => Promise<ScheduleRead | null>) => {
+      if (!read) return
+      const next = await write(read.state)
+      if (next) setRead(next)
+    },
+    [read],
+  )
   // Undo and Redo (G-40): replayed on the server from the move's own record, against the version read.
   const [replaying, setReplaying] = useState(false)
   const [replayRefused, setReplayRefused] = useState<ScheduleChange[] | null>(null)
@@ -173,6 +213,13 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
                 busy: replaying,
                 refused: replayRefused,
                 problem: replayProblem,
+                addOwn: (activities, words) => planWrite((st, press) => addScheduleActivity(st, projectId, press, activities), words),
+                removeOwn: (lineId, words) => planWrite((st, press) => removeScheduleActivity(st, projectId, press, lineId), words),
+                ownDone: (lineId, on) => record((st) => setOwnWorkDone(st, projectId, lineId, on)),
+                pass: (lineId) => record((st) => passScheduleInspection(st, projectId, lineId)),
+                fail: (lineId, failure, activities, words) => planWrite((st, press) => failScheduleInspection(st, projectId, press, lineId, failure, activities), words),
+                milestone: (m) => record((st) => setScheduleMilestone(st, projectId, m)),
+                removeMilestone: (id) => record((st) => removeScheduleMilestone(st, projectId, id)),
               }
             : null
         }
@@ -189,7 +236,10 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
   return <div style={{ fontSize: '0.875rem' }}>Loading the schedule…</div>
 }
 
-/** What a person who may move a bar presses (PR 8a): a move with why, reading again after a refusal, Undo and Redo. */
+/**
+ * What a person who may move a bar presses (PR 8a): a move with why, reading again after a refusal, Undo and Redo. Since
+ * 9a, the job's own work, an inspection passed or failed, and the dates to meet.
+ */
 interface MovePresses {
   save: (move: ScheduleMove, activities: ScheduleActivity[], words: string) => Promise<void>
   /** The real days (G-55, PR 8b). */
@@ -200,6 +250,19 @@ interface MovePresses {
   busy: boolean
   refused: ScheduleChange[] | null
   problem: string | null
+  /** The job's own work put on the chart (G-38, PR 9a): the bars as it leaves them, a plan write. */
+  addOwn: (activities: ScheduleActivity[], words: string) => Promise<void>
+  /** The job's own work taken off, a plan write. */
+  removeOwn: (lineId: string, words: string) => Promise<void>
+  /** The job's own work done that day, or not done after all (null): a record. */
+  ownDone: (lineId: string, on: string | null) => Promise<void>
+  /** An inspection passed today: a record. */
+  pass: (lineId: string) => Promise<void>
+  /** An inspection failed: the failure and the bars as it leaves them, a plan write. */
+  fail: (lineId: string, failure: InspectionFailure, activities: ScheduleActivity[], words: string) => Promise<void>
+  /** A date to meet set, new or changed, or taken off: records. */
+  milestone: (m: ScheduleMilestone) => Promise<void>
+  removeMilestone: (id: string) => Promise<void>
 }
 
 /**
@@ -361,6 +424,35 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
           today={state.today}
           onSave={(start, finish, after, limits) => setPending({ lineId: pickedBar.id, start, finish, after, limits })}
           onActual={(actualStart, actualFinish) => moves.actual(pickedBar.id, actualStart, actualFinish)}
+          extra={
+            // The job's own work's buttons (G-38, PR 9a): done, not done, off the schedule.
+            pickedBar.item.activity.added ? (
+              <GcOwnWorkButtons
+                activity={pickedBar.item.activity}
+                today={state.today}
+                onDone={(on) => moves.ownDone(pickedBar.id, on)}
+                onRemove={async () => {
+                  await moves.removeOwn(pickedBar.id, ownWorkOffWords(project, pickedBar.id))
+                  setPicked(null)
+                }}
+                onReload={moves.reload}
+              />
+            ) : undefined
+          }
+          check={
+            // An inspection not passed yet, on a job being built (PR 9a): passed or failed, today.
+            building && pickedBar.item.activity.inspection && !pickedBar.item.activity.inspection.passedOn ? (
+              <GcInspectionCheck
+                project={project}
+                activity={pickedBar.item.activity}
+                today={state.today}
+                hint="Our superintendent records it. A pass meets the milestone with the same name."
+                onPass={() => moves.pass(pickedBar.id)}
+                onFail={(failure, activities, words) => moves.fail(pickedBar.id, failure, activities, words)}
+                onReload={moves.reload}
+              />
+            ) : undefined
+          }
           onClose={() => setPicked(null)}
         />
       )}
@@ -371,6 +463,13 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
         <GcMoveHistory project={project} onUndo={moves.undo} onRedo={moves.redo} busy={moves.busy} refused={moves.refused} problem={moves.problem} />
       ) : (
         <GcMoveHistory project={project} />
+      )}
+      {/* The job's own work (G-38) and the dates to meet (PR 9a), for those who may move a bar. */}
+      {moves && (
+        <>
+          <GcAddOwnWork project={project} items={m.items} today={state.today} by={by} onAdd={moves.addOwn} onReload={moves.reload} />
+          <GcMilestones project={project} milestones={schedule.milestones} onSave={moves.milestone} onRemove={moves.removeMilestone} />
+        </>
       )}
       {/* The window keeps its reason and words while the schedule reads again under it: keyed by the bar only. */}
       {moves && pending && (

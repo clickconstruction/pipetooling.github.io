@@ -15,16 +15,23 @@ import {
   type BidHistoryRow,
   type BidHistoryTab,
 } from '../../lib/bids/bidHistory'
-import { loadBidHistory, putBackBidChange } from '../../lib/bids/loadBidHistory'
+import { loadBidHistory, loadBidRemovedRows, putBackBidChange, restoreBidRemovedRow } from '../../lib/bids/loadBidHistory'
 import {
   BID_HISTORY_PUT_BACK_EVENT,
   bidPutBackDoneWords,
   bidPutBackFailWords,
   bidPutBackLabel,
   bidPutBackTarget,
+  bidRemovedPutBackLabel,
+  bidRemovedPutBackTarget,
+  bidRestoreDoneWords,
+  mergeBidRemovedRows,
   type BidHistoryPutBackDetail,
   type BidPutBackResult,
   type BidPutBackTarget,
+  type BidRemovedPutBackTarget,
+  type BidRemovedRow,
+  type BidRestoreResult,
 } from '../../lib/bids/bidHistoryPutBack'
 
 const chip = (on: boolean): CSSProperties => ({
@@ -58,7 +65,9 @@ const dedupeRows = (rows: ReadonlyArray<BidHistoryRow>): BidHistoryRow[] => {
  * Filters by tab and by person, and a search over names and values. A bid adopted into this one
  * shows its history too, each action marked with its bid number. Every changed value on this bid
  * has **Put back** (PR 4): the value goes back, the history reads again, and the open bid's tabs
- * hear `BID_HISTORY_PUT_BACK_EVENT` and read the bid again.
+ * hear `BID_HISTORY_PUT_BACK_EVENT` and read the bid again. For someone who can edit the bid, each
+ * of its own removed rows has **Put back** too (PR 5): the row comes back with what was removed
+ * with it, and its removals from before the ledger show beside the rest.
  */
 export function BidHistoryWindow({
   bid,
@@ -66,6 +75,8 @@ export function BidHistoryWindow({
   initialSearch = '',
   load = loadBidHistory,
   putBack = putBackBidChange,
+  loadRemoved = loadBidRemovedRows,
+  restoreRemoved = restoreBidRemovedRow,
   now = currentTime,
 }: {
   bid: { id: string; label: string; bidNumber: string | null }
@@ -76,6 +87,10 @@ export function BidHistoryWindow({
   load?: (bidId: string, from: number) => Promise<BidHistoryRow[]>
   /** The put back; a test stands one in. */
   putBack?: (changeId: number, column: string) => Promise<BidPutBackResult>
+  /** The bid's own removed rows, for someone who can edit it (none otherwise); a test stands one in. */
+  loadRemoved?: (bidId: string) => Promise<BidRemovedRow[]>
+  /** A removed row's put back; a test stands one in. */
+  restoreRemoved?: (archiveId: string) => Promise<BidRestoreResult>
   now?: () => Date
 }) {
   const [rows, setRows] = useState<BidHistoryRow[] | null>(null)
@@ -87,6 +102,9 @@ export function BidHistoryWindow({
   // Put back: the line being written, and the word under the line last pressed.
   const [busy, setBusy] = useState<string | null>(null)
   const [note, setNote] = useState<{ lineKey: string; text: string; ok: boolean } | null>(null)
+  // A removed row's put back: what came back, said at the top, since its line can leave the list.
+  const [removedNote, setRemovedNote] = useState<{ text: string; ok: boolean } | null>(null)
+  const [removed, setRemoved] = useState<BidRemovedRow[]>([])
   // Read again after a put back, keeping the list on screen (and where it was scrolled) meanwhile.
   const [readNo, setReadNo] = useState(0)
   // The read comes a page at a time (PostgREST's 1,000-row cap): how many rows were read, and
@@ -110,6 +128,8 @@ export function BidHistoryWindow({
       setMore(full)
     }
     const fail = (e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : String(e)) }
+    // The bid's own removed rows, read beside the history every time; a failed read leaves them out.
+    loadRemoved(bid.id).then((got) => { if (!cancelled) setRemoved(got) }, () => { if (!cancelled) setRemoved([]) })
     if (readNo === 0) {
       // The first page.
       load(bid.id, 0).then((page) => apply(page, page.length >= BID_HISTORY_PAGE), fail)
@@ -127,7 +147,7 @@ export function BidHistoryWindow({
       })().catch(fail)
     }
     return () => { cancelled = true }
-  }, [bid.id, load, readNo])
+  }, [bid.id, load, loadRemoved, readNo])
 
   async function showOlder() {
     setOlderBusy(true)
@@ -158,15 +178,33 @@ export function BidHistoryWindow({
     }
   }
 
-  // While older rows remain, the action cut at the page's edge waits for them (bidHistoryWholeActions).
-  const actions = useMemo(() => bidHistoryWholeActions(groupBidHistory(rows ?? []), more), [rows, more])
+  async function pressRestore(lineKey: string, target: BidRemovedPutBackTarget, table: string) {
+    setBusy(lineKey)
+    setNote(null)
+    setRemovedNote(null)
+    try {
+      const result = await restoreRemoved(target.archiveId)
+      setRemovedNote({ text: bidRestoreDoneWords(target, result), ok: true })
+      window.dispatchEvent(new CustomEvent<BidHistoryPutBackDetail>(BID_HISTORY_PUT_BACK_EVENT, { detail: { bidId: bid.id, table } }))
+      setReadNo((n) => n + 1)
+    } catch (e) {
+      setRemovedNote({ text: bidPutBackFailWords(e instanceof Error ? e.message : String(e)), ok: false })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  // The removed rows laid over the history (PR 5), then the actions. While older rows remain, the
+  // action cut at the page's edge waits for them (bidHistoryWholeActions).
+  const merged = useMemo(() => mergeBidRemovedRows(rows ?? [], removed, { id: bid.id, bidNumber: bid.bidNumber }, more), [rows, removed, bid.id, bid.bidNumber, more])
+  const actions = useMemo(() => bidHistoryWholeActions(groupBidHistory(merged.rows), more), [merged, more])
   const shown = useMemo(() => filterBidHistory(actions, { tab, whoId, search }), [actions, tab, whoId, search])
   const days = useMemo(() => bidHistoryByDay(shown, now()), [shown, now])
   const authors = useMemo(() => bidHistoryAuthors(actions), [actions])
   const tabsPresent = useMemo(() => BID_HISTORY_TABS.filter((t) => actions.some((a) => a.rows.some((r) => bidHistoryTabOf(r) === t.key))), [actions])
   const otherBids = useMemo(() => new Set((rows ?? []).filter((r) => r.bidId !== bid.id).map((r) => r.bidNumber ?? 'an adopted bid')), [rows, bid.id])
   const firstLedger = useMemo(() => (rows ?? []).filter((r) => r.source === 'ledger').map((r) => r.changedAt).sort()[0] ?? null, [rows])
-  const hasArchive = (rows ?? []).some((r) => r.source === 'archive')
+  const hasArchive = merged.rows.some((r) => r.source === 'archive')
 
   const toggle = (key: string) => setOpen((cur) => {
     const next = new Set(cur)
@@ -178,7 +216,16 @@ export function BidHistoryWindow({
   const tabLabel = (key: BidHistoryTab) => BID_HISTORY_TABS.find((t) => t.key === key)?.label ?? key
 
   const actionView = (a: BidHistoryAction) => {
-    const lines = a.rows.flatMap((r) => bidHistoryLines(r).map((l) => ({ ...l, target: bidPutBackTarget(r, l.column, bid.id) })))
+    // A count row removed in this action brings back what hung on it, so those rows offer no Put back of their own.
+    const countRowsRemoved = new Set(a.rows.filter((r) => r.op === 'delete' && r.table === 'bids_count_rows').map((r) => r.recordId))
+    const lines = a.rows.flatMap((r) =>
+      bidHistoryLines(r).map((l, i) => ({
+        ...l,
+        target: bidPutBackTarget(r, l.column, bid.id),
+        restore: i === 0 ? bidRemovedPutBackTarget(r, bid.id, merged.restorable, countRowsRemoved) : null,
+        table: r.table,
+      })),
+    )
     const isOpen = open.has(a.key) || lines.length === 1
     return (
       <li key={a.key} style={{ padding: '0.55rem 0', borderTop: '1px solid var(--border)' }}>
@@ -221,6 +268,20 @@ export function BidHistoryWindow({
                       {busy === l.key ? 'Putting back…' : 'Put back'}
                     </button>
                   </>
+                ) : l.restore ? (
+                  <>
+                    {' '}
+                    <button
+                      type="button"
+                      onClick={() => void pressRestore(l.key, l.restore!, l.table)}
+                      disabled={busy !== null}
+                      aria-label={bidRemovedPutBackLabel(l.restore)}
+                      title={bidRemovedPutBackLabel(l.restore)}
+                      style={{ padding: '0 0.45rem', minHeight: 28, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.75rem', cursor: busy !== null ? 'default' : 'pointer', verticalAlign: 'middle' }}
+                    >
+                      {busy === l.key ? 'Putting back…' : 'Put back'}
+                    </button>
+                  </>
                 ) : null}
                 {note?.lineKey === l.key ? (
                   <div role={note.ok ? 'status' : 'alert'} style={{ fontSize: '0.75rem', color: note.ok ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{note.text}</div>
@@ -241,6 +302,9 @@ export function BidHistoryWindow({
         <p style={{ color: 'var(--text-muted)', margin: 0 }}>Loading…</p>
       ) : (
         <div style={{ display: 'grid', gap: '0.6rem' }}>
+          {removedNote ? (
+            <p role={removedNote.ok ? 'status' : 'alert'} style={{ margin: 0, fontSize: '0.8125rem', color: removedNote.ok ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{removedNote.text}</p>
+          ) : null}
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
             {actions.length === 0
               ? 'Nothing has changed on this bid since its history began.'

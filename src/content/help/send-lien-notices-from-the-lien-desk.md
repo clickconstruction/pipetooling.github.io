@@ -19,6 +19,7 @@ Open the Lien desk from the orange gavel on the Pipeline. It opens on its **Do n
 - A GC with two or more notices ready is one row. Its button reads {{button:blue|Send the run}}.
 - Two or more printed notices are one row too, tagged {{chip:yellow|Run}}. It says when they printed and asks whether they were mailed. {{button:blue|Record the mailing}} opens the run to type the tracking numbers. {{button:outline|Take back…}} opens the run on its take back question. Press **The N jobs** to see which jobs are in it. The find box opens that list.
 - Approving is the one step only the leader can take. The leader sees those rows first, under **Only you can approve**, each with {{button:blue|Approve}}. The office sees them last, under **Waiting on** and the leader's name. Each says since when and shows {{button:outline|Open}}. They are not in the office's count on the Do now tab.
+- Signing is the other step only the leader can take. An approved notice with no signature sits first, under **Only you can sign**, with {{button:blue|Sign}}. It opens the notice, where {{button:green|Sign ▸}} waits. The office's row says it waits on the leader by name. The Dashboard's Needs you carries the same count for the leader.
 - The job's number and name underline when you point at them. Press them to open the job itself, over the desk. Close the job and the desk reads its rows again. The same door is on every view of the desk.
 - A rail above the rows shows the four steps of a notice. They are Find the owner, Draft notice, Approve and Send the run. Each step shows how many rows stand on it. Send the run counts the notices ready and the ones printed. Press a step to see only those rows. Press it again to see every row. Affidavits get a rail of their own when one needs an act.
 - On a phone each row shows the four steps by name. Done steps have a tick. The step waiting on you says *you*. A step on someone else says *office* or *leader*. Press the row of steps to see the card.
@@ -142,7 +143,7 @@ The bar at the bottom shows the notice's state on the left. Most often it says t
 
 The same row has two answers for when the master stands beside you. One is *standing over me*, and the other is *typing it in*. The box already holds his name and today's date. Press {{button:blue|Approve on his word ▸}} to approve it. Nobody signs in. The record names you as the one who wrote it down. It names him as the one who decided. Then it goes to Ready to send on his word. Press **Preview the record ›** at the end of the row to see the record first. The card shows the words in every place they will show. The notice itself does not change.
 
-A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its footer. It is blue because it is the approval step. You need not pull it back first. A claim set by hand above the balance refuses a remembered word. That one needs him standing there or typing it in.
+A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its footer. It is blue because it is the approval step. You need not pull it back first. A claim set by hand above the balance refuses a remembered word. That one needs him standing there or typing it in. A notice approved this way is unsigned until he signs it. He signs from his phone, or draws on your screen from the run. See [What the run holds back](#sending-the-run).
 
 ## A notice sent by hand
 
@@ -242,10 +243,18 @@ Every other value is the statute's form or is filled from somewhere else. Hover 
 
 The desk shows the master only what needs a decision. He sees what is open with the GC, their word, the months and hours, and what a hold costs. He has four answers.
 
-- {{button:green|Approve & next ▸}} approves it and opens the next one.
+- {{button:green|Sign and approve & next ▸}} signs it, approves it and opens the next one.
 - {{button:outline|Hold — they promised…}} asks him again on the promise date.
 - {{button:outline|Hold — I'll call first}} asks him again three days before the deadline.
 - **Back to the office** sends it back to be fixed.
+
+### Signing a notice
+
+The notice's own signature line sits above the buttons. Your name waits on it in cursive. Press {{button:green|Sign and approve ▸}} and your name goes on the line with today's date. The record says who pressed, from which sign-in, and when. The notice, the cover letter and letter two print your name above the rule. It sits in a frame that reads **Signed electronically**. The frame carries a short record ID. Press **Draw instead** to sign with a finger or the mouse. Press **Press instead** to go back to the name.
+
+The chip on a ready notice reads **signed** with the day. Edit a signed notice and the chip reads **unsigned** again. Sign it again before the run.
+
+A notice approved on your word reaches Ready to send unsigned. Open it and press {{button:green|Sign ▸}} on its footer. Your name goes on the paper the same way.
 
 ## A discount if they pay before the lien
 
@@ -279,7 +288,7 @@ Three steps run across the top of the run.
 
 **Labels instead of the counter.** A certified mail label service prints the label, the postage and the 20-digit number at the desk. Press {{button:outline|Addresses for the labels}} on the run. It saves a spreadsheet with one row per envelope that goes out. Upload it to the service as a batch and print the labels. The trip to the counter becomes a drop in the slot. The envelope number and its jobs ride in the reference column, so the labels match the sheet.
 
-**What the run holds back.** An envelope with no mailing address cannot go out. A notice with nothing to claim has nothing to send. The run does not print either one. The sheet lists them in red at the end, with the reason beside each. The run window shows the same line on the envelope. Set the address on the customer, or pull the notice back to a draft, and print again.
+**What the run holds back.** An envelope with no mailing address cannot go out. A notice with nothing to claim has nothing to send. A notice the leader has not signed cannot go out either. The run does not print any of them. The sheet lists them in red at the end, with the reason beside each. The run window shows the same line on the envelope. Set the address on the customer, or pull the notice back to a draft, and print again. An unsigned notice waits for the leader. He signs it from his phone with {{button:green|Sign ▸}} on the notice. Or press **Leader here, sign ▸** on the held row when he is beside you. He draws his signature on your screen. The record names your screen. The envelope goes back into the run.
 2. **Mail them.** Back from the post office, type each envelope's tracking number in the run. The app checks it as you type, because a certified number has 20 digits. Type the day they went out once, in **Mailed on**.
 3. **Record the mailing.** The button names what it will do, like recording 2 mailed while 1 stays in the pile. Each envelope with a number is recorded now. Each notice is written to its job with every month it covered. The courtesy emails go out, and the row moves to **Sent**. An envelope with no number waits in the mail pile until its number is typed.
 
@@ -380,7 +389,7 @@ The window follows the order of the work. A bar of five steps stays pinned at th
 
 The footer says what the run takes. Then the buttons follow the role.
 
-- {{button:green|Approve all N and send the run ▸}} is for a dev or a master technician. Every ready job is approved, the ticks apply and the run opens.
+- {{button:green|Sign and approve all N and send the run ▸}} is for a dev or a master technician. Every ready job is signed and approved, the ticks apply and the run opens. Each notice gets its own signature from the one press.
 - {{button:outline|The leader said to send them…}} is for an assistant, a controller or a dev. Type who said it, when and how. Every notice then goes to Ready to send on his word.
 - {{button:blue|Send all N to the leader ▸}} puts one card on the master's Dashboard and in Quickfill. It opens the same window on his phone. His window shows the cover letter, the reason and the note as you sent them. Once he approves the set, the office prints the run.
 
@@ -390,9 +399,9 @@ Taunya hears that Harborline's Harbor Ridge draw went to another job. She filter
 
 Nothing is mailed or recorded until the run is recorded. Afterwards, the GC's row on Bids, Customer review shows {{chip:red|on notice since Sep 15 · 7}}. The desk's Affidavits tab carries the same jobs with their deadlines.
 
-### Pressed Approve all by mistake
+### Pressed Sign and approve all by mistake
 
-**Approve all** opens the run window. A strip under its title says what you just approved. Press {{button:outline|Undo the approval…}} there.
+**Sign and approve all** opens the run window. A strip under its title says what you just approved. Press {{button:outline|Undo the approval…}} there.
 
 A window asks first. It lists what goes back and what stays.
 
@@ -408,7 +417,7 @@ The offer lasts while Put a GC on notice stays open. It ends once the run is rec
 ## Who can do what
 
 - **Draft, send for approval and send on the leader's word:** a dev, an assistant or a controller. A master can draft and approve his own.
-- **Approve, hold and set a standing rule:** a dev or a master technician. The database refuses an approval from anyone else. It also refuses a send on a spoken word without a note.
+- **Sign, approve, hold and set a standing rule:** a dev or a master technician. The database refuses an approval from anyone else. It refuses a signature that is not the leader's own press or his own drawing. It also refuses a send on a spoken word without a note.
 - **Put a GC on notice:** the office opens it and readies the owners. Approving all of it is for the master or a dev. A send on the spoken word is for an assistant, a controller or a dev.
 
 A storefront on a row means a supply house is still owed on that job. The card that explains it is in [see which supply houses are owed on a lien job](/help/see-which-supply-houses-are-owed-on-a-lien-job).

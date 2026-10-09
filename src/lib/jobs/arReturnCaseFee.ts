@@ -84,6 +84,28 @@ export function arCaseFeeOffer(view: Pick<ArReturnCaseView, 'source'>, row: ArCa
   return { kind: 'blocked', words: 'The check paid no bill by name, so the fee has no bill to go on.', line, title }
 }
 
+/**
+ * The returned check fees on a job's bills, in cents: each `fee_lines` entry that names its case. That is the line
+ * `add_ar_return_case_fee` writes, and it raised the job's revenue by the same amount, so a rewrite of the revenue
+ * from the line items adds this back (`jobFormRiderFeesDollars`; `job_rider_fees` in SQL). A line that
+ * names no case is not a returned check fee. An amount that does not read counts as nothing.
+ */
+export function returnedCheckFeeCents(bills: ReadonlyArray<object> | null | undefined): number {
+  let cents = 0
+  for (const inv of bills ?? []) {
+    const lines = (inv as { fee_lines?: unknown }).fee_lines
+    if (!Array.isArray(lines)) continue
+    for (const l of lines) {
+      if (l == null || typeof l !== 'object') continue
+      const { case_id: caseId, amount: raw } = l as { case_id?: unknown; amount?: unknown }
+      if (typeof caseId !== 'string' || caseId.trim() === '') continue
+      const amount = Number(raw)
+      if (Number.isFinite(amount) && amount > 0) cents += Math.round(amount * 100)
+    }
+  }
+  return cents
+}
+
 /** The fee lines a billed bill carries (`jobs_ledger_invoices.fee_lines`), for the printed bill's own rows. */
 export function billFeeLines(inv: object | null | undefined): Array<{ description: string; amountDollars: number }> {
   const raw = (inv as { fee_lines?: unknown } | null | undefined)?.fee_lines

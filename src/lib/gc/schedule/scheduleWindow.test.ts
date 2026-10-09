@@ -1,6 +1,7 @@
 /**
  * GC mode, the real build, the schedule's PR 7b: the Schedule window's words. A first draft's
- * refusal, start day and log line, and the opened bar's card on Fair Oaks D, in plain words.
+ * refusal, start day and log line, and the opened bar's card on Fair Oaks D, in plain words. Since
+ * 9a, the job's own work put on the chart and a failed inspection, each with what it pushes.
  */
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
@@ -10,7 +11,7 @@ import { ganttBars, type GanttBar } from './gantt'
 import { draftSchedule, scheduleMeasures } from './schedule'
 import { addDays } from '../building'
 import { planMove } from './moves'
-import { barCardRows, changeTimeWords, draftRefusal, draftStart, draftWords, moveWords, partMovePress, redoWords, undoWords } from './scheduleWindow'
+import { barCardRows, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, moveWords, ownWorkOffWords, ownWorkPress, partMovePress, redoWords, undoWords } from './scheduleWindow'
 import { splitParts } from './splitBars'
 import { initialGcState } from './testState'
 
@@ -204,5 +205,66 @@ describe('a part of a split line moved (PR 8b)', () => {
     const p = job(st, 'fairoaksd')
     expect(partMovePress(p, 'froof-1', 'froof-1-p1', '2026-09-21', '2026-09-30', why, st.today)).toBeNull()
     expect(partMovePress(job(s, 'fairoaksd'), 'froof-1', 'froof-1-p1', '2026-09-22', '2026-09-30', why, s.today)).toBeNull()
+  })
+})
+
+describe('the job’s own work and a failed inspection (PR 9a)', () => {
+  const fairOaks = job(s, 'fairoaksd')
+  const bar = (p: GcProject, id: string) => p.schedule!.activities.find((a) => a.lineId === id)!
+  const withBars = (p: GcProject, activities: NonNullable<GcProject['schedule']>['activities']): GcProject => ({ ...p, schedule: { ...p.schedule!, activities } })
+
+  it('puts the job’s own work on the chart with its waits, and pushes what waits on it from now on', () => {
+    const made = ownWorkPress(fairOaks, { label: ' Slab cure ', who: 'Cure time', start: '2026-10-05', finish: '2026-10-14', after: ['froof-1'], holdsUp: ['froof-3'] }, 'Robert')!
+    const own = made.activities.find((a) => a.added)!
+    expect(own).toMatchObject({ lineId: 'fairoaksd-own-1', start: '2026-10-05', finish: '2026-10-14', after: ['froof-1'], added: { label: 'Slab cure', who: 'Cure time', doneOn: null } })
+    // Sheet metal waits on it from now on, so it starts the day after the cure ends, its length kept.
+    expect(bar(withBars(fairOaks, made.activities), 'froof-3')).toMatchObject({ start: '2026-10-15', finish: '2026-10-24', after: ['froof-1', 'fairoaksd-own-1'] })
+    expect(made.words.startsWith(`Robert put Slab cure on ${fairOaks.name}'s schedule, Mon Oct 5 to Wed Oct 14, Cure time. 1 activity waits on it. `)).toBe(true)
+    expect(made.words).toMatch(/Sheet metal and flashing moves to Thu Oct 15 to Sat Oct 24\.$/)
+    expect(ownWorkOffWords(withBars(fairOaks, made.activities), own.lineId)).toBe(`Slab cure came off ${fairOaks.name}'s schedule.`)
+  })
+
+  it('puts nothing on the chart with no name, nobody’s, or a finish before its start', () => {
+    const base = { label: 'Slab cure', who: 'Cure time', start: '2026-10-05', finish: '2026-10-14', after: [], holdsUp: [] }
+    expect(ownWorkPress(fairOaks, { ...base, label: ' ' }, 'Robert')).toBeNull()
+    expect(ownWorkPress(fairOaks, { ...base, who: '' }, 'Robert')).toBeNull()
+    expect(ownWorkPress(fairOaks, { ...base, finish: '2026-10-01' }, 'Robert')).toBeNull()
+  })
+
+  it('moves a failed inspection to its re-inspection day, its days kept, and what waits on it out, with the reducer’s line', () => {
+    const failed = failInspectionPress(fairOaks, 'fairoaksd-insp-roughin', { note: 'The bonding jumper is missing.', packageIds: ['felec', 'nope'], reinspectOn: '2026-11-02' }, s.today)!
+    expect(failed.failure).toEqual({ on: s.today, note: 'The bonding jumper is missing.', packageIds: ['felec'], reinspectOn: '2026-11-02' })
+    const after = withBars(fairOaks, failed.activities)
+    expect(bar(after, 'fairoaksd-insp-roughin')).toMatchObject({ start: '2026-11-02', finish: '2026-11-03' })
+    expect(bar(after, 'felec-4')).toMatchObject({ start: '2026-11-04', finish: '2026-11-22' })
+    expect(bar(after, 'fhvac-3')).toMatchObject({ start: '2026-11-04', finish: '2026-11-15' })
+    // Trim starts after the re-inspection already: it keeps its days.
+    expect(bar(after, 'fplumb-4')).toEqual(bar(fairOaks, 'fplumb-4'))
+    expect(failed.words).toBe(`The rough-in inspection failed on ${fairOaks.name}: The bonding jumper is missing. It was Electrical's work. Re-inspection Mon Nov 2. 2 activities after it move out.`)
+  })
+
+  it('keeps each gap down the line and leaves the rest of the plan alone: the known difference from the prototype’s whole-plan push', () => {
+    // Fire alarm keeps 5 days after the inspection; Sheet metal starts beside TPO membrane, 3 days before it finishes (G-82).
+    const gapped = withBars(
+      fairOaks,
+      fairOaks.schedule!.activities.map((a) =>
+        a.lineId === 'felec-4' ? { ...a, lag: { 'fairoaksd-insp-roughin': 5 } } : a.lineId === 'froof-3' ? { ...a, start: '2026-10-07', finish: '2026-10-16', lag: { 'froof-1': -3 } } : a,
+      ),
+    )
+    const failed = failInspectionPress(gapped, 'fairoaksd-insp-roughin', { note: 'Failed.', packageIds: [], reinspectOn: '2026-11-02' }, s.today)!
+    const after = withBars(gapped, failed.activities)
+    expect(bar(after, 'felec-4')).toMatchObject({ start: '2026-11-09', finish: '2026-11-27' })
+    expect(bar(after, 'froof-3')).toEqual(bar(gapped, 'froof-3'))
+    expect(failed.words).not.toMatch(/It was/)
+  })
+
+  it('records no failure for a passed inspection, a bar that is no inspection, no note, or a re-inspection not after today', () => {
+    const input = { note: 'Failed.', packageIds: [], reinspectOn: '2026-11-02' }
+    const passed = withBars(fairOaks, fairOaks.schedule!.activities.map((a) => (a.lineId === 'fairoaksd-insp-roughin' ? { ...a, inspection: { ...a.inspection!, passedOn: s.today } } : a)))
+    expect(failInspectionPress(passed, 'fairoaksd-insp-roughin', input, s.today)).toBeNull()
+    expect(failInspectionPress(fairOaks, 'froof-3', input, s.today)).toBeNull()
+    expect(failInspectionPress(fairOaks, 'fairoaksd-insp-roughin', { ...input, note: '  ' }, s.today)).toBeNull()
+    expect(failInspectionPress(fairOaks, 'fairoaksd-insp-roughin', { ...input, reinspectOn: s.today }, s.today)).toBeNull()
+    expect(failInspectionPress({ ...fairOaks, stage: 'buyout' }, 'fairoaksd-insp-roughin', input, s.today)).toBeNull()
   })
 })

@@ -5,9 +5,9 @@ roles: dev, controller
 keywords: day book, office, outcomes, billed, deposits, contracts, approvals, clock, people, look back, week, month, rhythm, gaps, coverage, estimators, bids sent, hit rate, estimating strip
 order: 41
 ---
-The **Day book** lists what each office person got done on each day. Nobody types anything into it.
+The **Day book** lists what each office person got done on each day. You pick a day and read its lines.
 
-The Day book reads the records the app already keeps. You find it under **People → People**. The same view sits under **Bids → Day book** for the estimating side.
+Nobody types anything into it. The Day book reads the records the app already keeps. You find it under **People → People**. The same view sits under **Bids → Day book** for the estimating side.
 
 :::example One person's day
 **Taunya** · 8.6h · 7:52a – 4:31p
@@ -54,12 +54,6 @@ The row of controls at the top does everything:
 
 The strip under the controls totals the range. The strip counts office hours, bills, deposits, contracts, approvals, status moves and schedule blocks changed. The strip never counts quiet days.
 
-On **today's** rows, a line can end with what is still waiting. The line uses the same counts the Dashboard's Needs You card reads. An approvals line can end {{chip:gray|48 still waiting}}. A deposits line can end {{chip:gray|1 left to match}}.
-
-On a **past** day, the Approved line ends with a count. The count is how many sessions were still waiting at the end of that day. The app works that out from the sessions' own clock-out and approval times.
-
-Deposits, contracts and bills carry history too. The history comes from the days a dev or controller opened the Dashboard. On those days the app records the Needs You card's counts once a day. The app records the Ready to Bill stage's count too. So a past Applied line can end {{chip:gray|1 left to match}}. A Sent contracts line can end {{chip:gray|103 jobs still without one}}. A Billed line can end {{chip:gray|13 left to bill}}. A day nobody looked has no figure. Bills have no live count here, so today's Billed line reads the same way.
-
 ## Estimators
 
 Estimators are on the same tab, on the days they clock into a bid. The clock line names the bid: *1:00p – 5:00p (BP483)*. An estimator's lines are the things that mean something for a bid:
@@ -90,7 +84,7 @@ Each measure is set against that person's own earlier window, as in *was 34%*. N
 
 ## Reading a month
 
-**Month** turns the range into a grid. There is one row per kind of work: Billing, Deposits, Contracts and Approvals. There is one column per day. Each cell holds the initials of who did that work that day. The grid answers *is the work getting done, by whom, and where are the gaps*. Nobody is scored by how much.
+**Month** turns the range into a grid. There is one row per kind of work: Billing, Deposits, Contracts, Approvals, Schedule and Estimating. There is one column per day. Each cell holds the initials of who did that work that day. The grid answers *is the work getting done, by whom, and where are the gaps*. Nobody is scored by how much.
 
 :::example One row of the grid
 **Deposits** · applied on 9 of 20 working days
@@ -98,9 +92,19 @@ Each measure is set against that person's own earlier window, as in *was 34%*. N
 :::
 
 - A grey dot is a day nobody in the office clocked in, like a weekend or a holiday. A grey dot neither breaks nor extends a run.
-- {{chip:yellow|—}} amber marks a gap. A gap is three straight working days with nothing on that row **while that kind of work was waiting**. For approvals, the app knows that from the sessions' own timestamps. For deposits, contracts and billing, the app knows from the counts it recorded that day. The recorded counts start from the day a dev or controller first opened the Dashboard. So those rows can go amber. A day nobody looked stays plain.
+- {{chip:yellow|—}} amber marks a gap. A gap is three straight working days with nothing on that row **while that kind of work was waiting**.
 - Today is outlined and never amber. The day is not over.
 - You tap any cell to open that day's list. You pick a person and the grid shows only their initials. So a manager reads coverage, and a person reads their own rhythm. The grid never puts two people side by side.
+
+## Why a figure can be missing
+
+On **today's** rows, a line can end with what is still waiting. The line uses the same counts the Dashboard's Needs You card reads. An approvals line can end {{chip:gray|48 still waiting}}. A deposits line can end {{chip:gray|1 left to match}}.
+
+On a **past** day, the Approved line ends with a count. The count is how many sessions were still waiting at the end of that day. The app works that out from the sessions' own clock-out and approval times.
+
+Deposits, contracts and bills carry history too. The history comes from the days a dev or controller opened the Dashboard. On those days the app records the Needs You card's counts once a day. The app records the Ready to Bill stage's count too. So a past Applied line can end {{chip:gray|1 left to match}}. A Sent contracts line can end {{chip:gray|103 jobs still without one}}. A Billed line can end {{chip:gray|13 left to bill}}. A day nobody looked has no figure. Bills have no live count here, so today's Billed line reads the same way.
+
+Amber in **Month** needs to know that work was waiting. For approvals, the app knows that from the sessions' own timestamps. For deposits, contracts and billing, the app knows from the counts it recorded that day. The recorded counts start from the day a dev or controller first opened the Dashboard. So those rows can go amber. A day nobody looked stays plain.
 
 ## Who sees what
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
-import { BID_ACTIONS, withBidAction } from '../../lib/bids/bidActionHeader'
+import { BID_ACTIONS, withBidAction, withBidActionIf, type BidAction } from '../../lib/bids/bidActionHeader'
 import { createPortal } from 'react-dom'
 import { supabase } from '../../lib/supabase'
 import { formatCurrency } from '../../lib/format'
@@ -177,7 +177,7 @@ type BidsPricingTabProps = {
   /** Re-run a failed resolve (the error panel's Retry). */
   onRetryResolve: () => void
   /** Resolves false when nothing was saved — e.g. a price that is not the active version's own (v2.4377). */
-  saveBidSelectedPriceBookVersion: (bidId: string, versionId: string | null) => Promise<boolean>
+  saveBidSelectedPriceBookVersion: (bidId: string, versionId: string | null, action?: BidAction) => Promise<boolean>
   // Shared pricing-rows calc (from useBidPricingRows)
   pricingRowsForGrid: ComputeBidPricingRowsResult | null
   pricingPackageSource: { rows: PackageAndSendPricingRowInput[]; totalRevenue: number } | null
@@ -572,7 +572,8 @@ export function BidsPricingTab({
     clearSolveLanding: () => setWbSolveLanding(null),
     bidId: selectedBidForPricing?.id,
     pricingVersionId: selectedPricingVersionId,
-    writePrice: writeUnitPriceOverrideRow,
+    // Each stroke's prices read as one brushed action in the history (punch list #73 PR 5).
+    writePrice: (countRowId, value) => writeUnitPriceOverrideRow(countRowId, value, BID_ACTIONS.priceBrush),
     wbPreview,
     wbPreviewVeto,
     setAndStashWbPreview,
@@ -871,8 +872,9 @@ export function BidsPricingTab({
     }
   }
 
-  /** One row's price write (no reload) — shared by the single-row editor and the margin bulk apply (v2.1769). */
-  async function writeUnitPriceOverrideRow(countRowId: string, value: number | null): Promise<{ message: string } | null> {
+  /** One row's price write (no reload) — shared by the single-row editor and the margin bulk apply (v2.1769). `action` tags its writes for the history (the brush's, PR 5). */
+  async function writeUnitPriceOverrideRow(countRowId: string, value: number | null, action?: BidAction): Promise<{ message: string } | null> {
+    const tag = <Q extends { setHeader?(name: string, value: string): Q }>(q: Q): Q => withBidActionIf(q, action)
     const bidId = selectedBidForPricing?.id
     const versionId = selectedPricingVersionId
     if (!bidId || !versionId) return { message: 'No bid or pricing version selected' }
@@ -881,37 +883,39 @@ export function BidsPricingTab({
     const existingCustom = bidCountRowCustomPrices.find((c) => c.count_row_id === countRowId && c.price_book_version_id === versionId)
 
     if (existing) {
-      const res = await supabase.from('bid_pricing_assignments').update({ unit_price_override: value }).eq('id', existing.id)
+      const res = await tag(supabase.from('bid_pricing_assignments').update({ unit_price_override: value }).eq('id', existing.id))
       if (res.error) return res.error
       if (existingCustom) {
-        await supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id)
+        await tag(supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id))
       }
       return null
     }
     if (entry) {
-      const res = await supabase.from('bid_pricing_assignments').insert({
-        bid_id: bidId,
-        count_row_id: countRowId,
-        price_book_entry_id: entry.id,
-        price_book_version_id: versionId,
-        unit_price_override: value,
-      })
+      const res = await tag(
+        supabase.from('bid_pricing_assignments').insert({
+          bid_id: bidId,
+          count_row_id: countRowId,
+          price_book_entry_id: entry.id,
+          price_book_version_id: versionId,
+          unit_price_override: value,
+        }),
+      )
       if (res.error) return res.error
       if (existingCustom) {
-        await supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id)
+        await tag(supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id))
       }
       return null
     }
     if (value == null) {
       if (existingCustom) {
-        const res = await supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id)
+        const res = await tag(supabase.from('bid_count_row_custom_prices').delete().eq('id', existingCustom.id))
         return res.error
       }
       return null
     }
     const res = existingCustom
-      ? await supabase.from('bid_count_row_custom_prices').update({ unit_price: value }).eq('id', existingCustom.id)
-      : await supabase.from('bid_count_row_custom_prices').insert({ bid_id: bidId, count_row_id: countRowId, price_book_version_id: versionId, unit_price: value })
+      ? await tag(supabase.from('bid_count_row_custom_prices').update({ unit_price: value }).eq('id', existingCustom.id))
+      : await tag(supabase.from('bid_count_row_custom_prices').insert({ bid_id: bidId, count_row_id: countRowId, price_book_version_id: versionId, unit_price: value }))
     return res.error
   }
 
@@ -1340,7 +1344,7 @@ export function BidsPricingTab({
     return true
   }
 
-  async function handlePricingVersionChange(bidId: string, versionId: string) {
+  async function handlePricingVersionChange(bidId: string, versionId: string, action?: BidAction) {
     // A solver preview belongs to the scenario it was solved on — counts are
     // shared across scenarios, so it must never Apply onto another one. The
     // stash keys previews by version id, and the restore effect swaps in the
@@ -1349,7 +1353,7 @@ export function BidsPricingTab({
     setWbSolveLanding(null)
     setSelectedPricingVersionId(versionId)
     await loadPriceBookEntries(versionId)
-    await saveBidSelectedPriceBookVersion(bidId, versionId)
+    await saveBidSelectedPriceBookVersion(bidId, versionId, action)
     armPricedMarginStamp()
   }
 
@@ -1359,14 +1363,14 @@ export function BidsPricingTab({
    * activate + persist + load its entries. Shared by the "Set up pricing" modal and the toolbar
    * price-book dropdown.
    */
-  async function attachAndActivateNewBidPricing(bidId: string, newId: string | null) {
+  async function attachAndActivateNewBidPricing(bidId: string, newId: string | null, action?: BidAction) {
     if (newId && selectedBidVersionId) {
       await supabase.from('price_book_versions').update({ bid_version_id: selectedBidVersionId }).eq('id', newId)
     }
     await loadBidPricings(bidId)
     if (newId) {
       setSelectedPricingVersionId(newId)
-      await saveBidSelectedPriceBookVersion(bidId, newId)
+      await saveBidSelectedPriceBookVersion(bidId, newId, action)
       await loadPriceBookEntries(newId)
       armPricedMarginStamp()
     }
@@ -1402,17 +1406,19 @@ export function BidsPricingTab({
   }
 
   /** Clone a price-book version (template or other pricing) into the active bid and activate it. */
-  async function cloneTemplateIntoBidAndActivate(sourceVersionId: string, name: string): Promise<string | null> {
+  async function cloneTemplateIntoBidAndActivate(sourceVersionId: string, name: string, action?: BidAction): Promise<string | null> {
     const bid = selectedBidForPricing
     if (!bid) { setError('Select a bid first'); return null }
-    const { data, error: err } = await supabase.rpc('clone_price_book_version_to_bid', {
+    const clone = supabase.rpc('clone_price_book_version_to_bid', {
       p_source_version_id: sourceVersionId,
       p_bid_id: bid.id,
       p_name: name,
     })
+    // `action` tags every row the copy writes for the history (a book switch, punch list #73 PR 5).
+    const { data, error: err } = await withBidActionIf(clone, action)
     if (err) { setError(err.message); return null }
     const newId = (data as string) ?? null
-    await attachAndActivateNewBidPricing(bid.id, newId)
+    await attachAndActivateNewBidPricing(bid.id, newId, action)
     return newId
   }
 
@@ -1437,12 +1443,13 @@ export function BidsPricingTab({
           resolvePriceBookTemplateRoot({ pricingId: p.id, bidPricings: priceBookVersions, templateIds, templates: templatePriceBookVersions }) ===
             templateId,
       )
+      // The switch, and the copy it makes, read as one action in the history (punch list #73 PR 5).
       if (existing) {
-        await handlePricingVersionChange(bid.id, existing.id)
+        await handlePricingVersionChange(bid.id, existing.id, BID_ACTIONS.bookSwitch)
         return
       }
       const tmpl = templatePriceBookVersions.find((t) => t.id === templateId)
-      await cloneTemplateIntoBidAndActivate(templateId, tmpl?.name ?? 'Pricing')
+      await cloneTemplateIntoBidAndActivate(templateId, tmpl?.name ?? 'Pricing', BID_ACTIONS.bookSwitch)
     } finally {
       setPricebookSwitchBusy(false)
     }

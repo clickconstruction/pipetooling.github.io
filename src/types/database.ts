@@ -15015,6 +15015,13 @@ export type Database = {
           pulled_back_by: string | null
           sent_at: string | null
           sent_filing_id: string | null
+          signed_at: string | null
+          signed_by: string | null
+          signed_fields_hash: string | null
+          signed_on_device_of: string | null
+          signer_printed_name: string | null
+          signer_signature_mode: string | null
+          signer_signature_storage_path: string | null
           status: string
           submitted_at: string | null
           updated_at: string
@@ -15049,6 +15056,13 @@ export type Database = {
           pulled_back_by?: string | null
           sent_at?: string | null
           sent_filing_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_fields_hash?: string | null
+          signed_on_device_of?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
           status?: string
           submitted_at?: string | null
           updated_at?: string
@@ -15083,6 +15097,13 @@ export type Database = {
           pulled_back_by?: string | null
           sent_at?: string | null
           sent_filing_id?: string | null
+          signed_at?: string | null
+          signed_by?: string | null
+          signed_fields_hash?: string | null
+          signed_on_device_of?: string | null
+          signer_printed_name?: string | null
+          signer_signature_mode?: string | null
+          signer_signature_storage_path?: string | null
           status?: string
           submitted_at?: string | null
           updated_at?: string
@@ -15145,6 +15166,20 @@ export type Database = {
             columns: ["sent_filing_id"]
             isOneToOne: false
             referencedRelation: "job_lien_filings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_signed_by_fkey"
+            columns: ["signed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_lien_desk_items_signed_on_device_of_fkey"
+            columns: ["signed_on_device_of"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -28906,6 +28941,7 @@ export type Database = {
         Returns: boolean
       }
       can_define_task_style_checklist_items: { Args: never; Returns: boolean }
+      can_edit_bid: { Args: { p_bid_id: string }; Returns: boolean }
       can_edit_checklist_tech_tree_structure_for_roadmap: {
         Args: { p_roadmap_id: string }
         Returns: boolean
@@ -29410,6 +29446,10 @@ export type Database = {
         Args: { p_draft: Json; p_project_id: string }
         Returns: string
       }
+      gc_draft_change_order_from_request: {
+        Args: { p_draft: Json; p_request_id: string }
+        Returns: string
+      }
       gc_draft_time_extension: {
         Args: {
           p_days: number
@@ -29846,6 +29886,10 @@ export type Database = {
           p_submittal_id: string
         }
         Returns: string
+      }
+      gc_turn_down_change_request: {
+        Args: { p_note: string; p_request_id: string }
+        Returns: undefined
       }
       gc_vet_company: {
         Args: {
@@ -30684,6 +30728,22 @@ export type Database = {
           requested_at: string
           status: string
           supply_house_id: string
+        }[]
+      }
+      list_bid_removed_rows: {
+        Args: { p_bid_id: string }
+        Returns: {
+          archive_id: string
+          changed: string[]
+          changed_at: string
+          changed_by: string
+          changed_by_name: string
+          count_row_id: string
+          in_ledger: boolean
+          label: string
+          old_values: Json
+          record_id: string
+          table_name: string
         }[]
       }
       list_bulk_deletion_alerts: {
@@ -32153,6 +32213,7 @@ export type Database = {
         Args: { p_accept: boolean; p_commitment_id: string; p_reason?: string }
         Returns: Json
       }
+      restore_bid_removed_row: { Args: { p_archive_id: string }; Returns: Json }
       restore_deleted_records: {
         Args: { p_dry_run?: boolean; p_group_key: string }
         Returns: Json
