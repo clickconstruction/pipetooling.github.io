@@ -75,7 +75,7 @@ Every card opens, including a **Next release** card. Under the step's name the e
 2. Switch {{button:outline|Phone}} / {{button:outline|Desktop}} in the toolbar to see it at either width.
 3. {{button:outline|Open in new tab}} opens a page on its own. Emails show their plain-text part underneath.
 
-Pages open with a **sample token** and carry an orange *Sample* strip. You can click through them. You pick an option, sign, decline, send a request, or accept an offer. Nothing is saved. The sample customer is **Sam Sample**. The sample bid is **Cedar Bend Apartments** for **Sample Contracting**. The sample sub is **Sam's Plumbing LLC**. None of them exist in the database.
+Pages open with a **sample token** and carry an orange *Sample* strip. You can click through them. You pick an option, sign, decline, send a request, or accept an offer. Nothing is saved. The sample customer is **Sam Sample**. The sample bid is **Cedar Bend Apartments** for **Sample Contracting**. The sample sub is **Sam's Plumbing LLC**. None of them exist in the database. The sample portals' bills, waivers and payments run through the same code as a real portal. So they show only what a real one would.
 
 ## Email yourself a test report
 

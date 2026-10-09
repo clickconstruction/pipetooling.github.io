@@ -8,6 +8,10 @@ import { estimateOptionsDraftPersistFields } from './estimateOptionsPersist.ts'
 import { rollUpPartDecisions, roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, type RoomRow, type SubmittalRoomPayload } from './submittalRoomPayload.ts'
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_OWNER, SAMPLE_SUB, SAMPLE_TOKEN, SAMPLE_TOKEN_OWNER, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
+import { buildPortalBills, buildPortalSharedBills, type PortalBillOut, type PortalInvoiceRow, type PortalJobRow, type PortalSharedBillOut } from './portalMergedBills.ts'
+import { buildPortalWaivers, type PortalWaiverReleaseRow, type PortalWaiverRow } from './portalWaivers.ts'
+import { buildPortalChecks, type PortalChecksEventRow, type PortalChecksOut, type PortalChecksPaymentRow } from './portalChecks.ts'
+import { openBillJobIds, PORTAL_OPEN_INVOICE_STATUS } from './portalBillMembership.ts'
 import { resolveEstimateCustomerExperience, toClientCustomerExperience } from './estimateCustomerExperience.ts'
 import { parseSharedBidRoomPayload } from './bidRoomPayload.ts'
 import { buildBidRoomRevisionPayload } from './bidRoomPublish.ts'
@@ -247,25 +251,147 @@ function sampleGcStages(todayYmd: string, jobLabel: string, jobAddress: string) 
   return [{ jobId: 'sample-job-open', jobLabel, jobAddress, view: out.view, askWindowId: out.askWindowId, askWindow: { start: d(13), end: d(23) }, entries: [] }]
 }
 
-/** customer-portal, sample token: the homeowner's statement (one fresh bill, one partly paid), or (`gc`) the contractor's view of the properties they GC. */
-type SampleWaiverHalf = { state: 'signed' | 'sent'; ymd: string; formType: string }
-/** One sample waiver row (v2.4304), the shape `_shared/portalWaivers.ts` sends after the PDF links are signed. */
-function sampleWaiver(
-  audience: 'payer' | 'owner',
-  jobId: string,
-  bill: { jobLabel: string; jobAddress: string },
-  invoiceId: string,
-  billLabel: string,
-  amount: number,
-  billedYmd: string,
-  paid: boolean,
-  final: boolean,
-  conditional: SampleWaiverHalf | null,
-  unconditional: SampleWaiverHalf | null,
-): Record<string, unknown> {
-  const half = (h: SampleWaiverHalf | null) =>
-    h ? { state: h.state, ymd: h.ymd, pdfUrl: null, releaseId: null, formType: h.formType, signerName: 'Malachi Whites' } : { state: 'none', ymd: null, pdfUrl: null, releaseId: null, formType: null, signerName: null }
-  return { audience, jobId, jobLabel: bill.jobLabel, jobAddress: bill.jobAddress, invoiceId, billLabel, amount, billedYmd, paid, final, conditional: half(conditional), unconditional: half(unconditional) }
+/**
+ * The rows a sample portal's money is built from (What customers see #103, PR 2): the jobs, every
+ * sent bill, the payments, the signed waivers and the payment moves `customer-portal` reads for a
+ * real viewer. Nothing below writes a bill, a waiver or a check by hand: `samplePortalMoney` runs
+ * these rows through the four builders the function calls, so the sample cannot say what a real
+ * portal would not. The sample names stay in `customerSample.ts`.
+ */
+export type SamplePortalMoneyRows = {
+  viewerCustomerId: string
+  /** The link's audience: the homeowner's merged link, the GC's scoped one, the GC-mode owner's. */
+  audience: 'all' | 'gc' | 'customer'
+  jobs: PortalJobRow[]
+  /** Every sent bill on these jobs, billed or paid. */
+  sentInvoices: PortalInvoiceRow[]
+  payments: PortalChecksPaymentRow[]
+  releases: PortalWaiverReleaseRow[]
+  events: PortalChecksEventRow[]
+  /** customer_id → name for every other party on these jobs. */
+  partyNames: Record<string, string>
+}
+
+const SAMPLE_PORTAL_IDS = { homeowner: 'sample-homeowner', gc: 'sample-gc', owner: 'sample-owner', cedarOwner: 'sample-cedar-owner', hunterOwner: 'sample-hunter-owner' } as const
+
+function samplePortalJob(p: Pick<PortalJobRow, 'id' | 'hcp_number' | 'job_name' | 'job_address' | 'status' | 'revenue' | 'payments_made' | 'customer_id'> & Partial<PortalJobRow>): PortalJobRow {
+  return { click_number: null, service_types: { name: 'Plumbing' }, gc_customer_id: null, gc_shares_stage_dates: false, bill_to_party: 'customer', show_bills_to_other_party: false, lien_retainage_held: null, ...p }
+}
+
+function samplePortalInvoice(p: Pick<PortalInvoiceRow, 'id' | 'job_id' | 'amount' | 'status' | 'billed_at' | 'sequence_order'> & Partial<PortalInvoiceRow>): PortalInvoiceRow {
+  return { hosted_invoice_url: null, bill_to_party: null, bill_to_email: null, bill_to_name: null, shown_to_party: null, ...p }
+}
+
+function samplePortalRelease(id: string, jobId: string, invoiceId: string, formType: string, signedAt: string, sentAt: string | null): PortalWaiverReleaseRow {
+  return { id, job_id: jobId, form_type: formType, status: 'signed', invoice_ids: [invoiceId], created_at: signedAt, signed_at: signedAt, sent_to_customer_at: sentAt, signed_pdf_path: null, voided_at: null, signer_printed_name: 'Malachi Whites' }
+}
+
+/**
+ * The sample portals' rows. The homeowner: one fresh bill and one partly paid by card. The GC: a
+ * job in progress with its second of three bills open (its first paid by check, the third a change
+ * order the owner pays and the office shared with the GC), and a finished job partly paid, with the
+ * waivers each bill carries. The GC-mode owner: our pay application, not yet paid.
+ */
+export function samplePortalMoneyRows(state: SampleState, todayYmd: string, appOrigin: string): SamplePortalMoneyRows {
+  const d = (n: number) => ymdPlusDays(todayYmd, n)
+  // Mid-morning in Texas, so each instant falls on the day it names.
+  const at = (n: number) => `${d(n)}T15:00:00Z`
+  const origin = appOrigin.replace(/\/$/, '')
+  if (state === 'owner') {
+    const id = SAMPLE_PORTAL_IDS.owner
+    return {
+      viewerCustomerId: id,
+      audience: 'customer',
+      jobs: [samplePortalJob({ id: 'sample-job-owner', hcp_number: '1010', job_name: `${SAMPLE_OWNER.job} (GC)`, job_address: SAMPLE_OWNER.address, status: 'billed', revenue: 45_000, payments_made: 0, customer_id: id })],
+      sentInvoices: [samplePortalInvoice({ id: 'sample-inv-owner', job_id: 'sample-job-owner', amount: 45_000, status: 'billed', billed_at: at(-6), sequence_order: 1, hosted_invoice_url: `${origin}/portal?t=${SAMPLE_TOKEN_OWNER}#pay` })],
+      payments: [],
+      releases: [],
+      events: [],
+      partyNames: {},
+    }
+  }
+  const payUrl = `${origin}/portal?t=${SAMPLE_TOKEN}#pay`
+  if (state === 'gc') {
+    const id = SAMPLE_PORTAL_IDS.gc
+    const asGc = { gc_customer_id: id, bill_to_party: 'gc' }
+    return {
+      viewerCustomerId: id,
+      audience: 'gc',
+      jobs: [
+        samplePortalJob({ id: 'sample-job-open', hcp_number: '1002', job_name: 'Cedar Bend Apartments', job_address: SAMPLE_BID.projectAddress, status: 'working', revenue: 56_343, payments_made: 14_050, customer_id: SAMPLE_PORTAL_IDS.cedarOwner, gc_shares_stage_dates: true, ...asGc }),
+        samplePortalJob({ id: 'sample-job-paid', hcp_number: '0998', job_name: 'Hunter Road Studios', job_address: '1900 Hunter Rd, San Marcos, TX 78666', status: 'billed', revenue: 12_200, payments_made: 9_640, customer_id: SAMPLE_PORTAL_IDS.hunterOwner, ...asGc }),
+      ],
+      sentInvoices: [
+        samplePortalInvoice({ id: 'sample-inv-open-1', job_id: 'sample-job-open', amount: 14_050, status: 'paid', billed_at: at(-30), sequence_order: 1 }),
+        samplePortalInvoice({ id: 'sample-inv-open', job_id: 'sample-job-open', amount: 18_200, status: 'billed', billed_at: at(-3), sequence_order: 2, hosted_invoice_url: payUrl }),
+        // A change order the owner pays, shown to the GC (Share this bill, v2.3375).
+        samplePortalInvoice({ id: 'sample-inv-open-co', job_id: 'sample-job-open', amount: 1_850, status: 'billed', billed_at: at(-2), sequence_order: 3, bill_to_party: 'customer', shown_to_party: 'gc' }),
+        samplePortalInvoice({ id: 'sample-inv-paid', job_id: 'sample-job-paid', amount: 12_200, status: 'billed', billed_at: at(-40), sequence_order: 1, hosted_invoice_url: payUrl }),
+      ],
+      payments: [
+        { id: 'sample-pay-open-1', job_id: 'sample-job-open', invoice_id: 'sample-inv-open-1', amount: 14_050, paid_on: d(-16), sent_on: null, payment_type: 'check', reference_number: '4417', sequence_order: 1 },
+        { id: 'sample-pay-paid', job_id: 'sample-job-paid', invoice_id: 'sample-inv-paid', amount: 9_640, paid_on: d(-31), sent_on: null, payment_type: 'check', reference_number: '4398', sequence_order: 1 },
+      ],
+      releases: [
+        samplePortalRelease('sample-release-open-c', 'sample-job-open', 'sample-inv-open', 'conditional_progress', at(-2), null),
+        samplePortalRelease('sample-release-paid-c', 'sample-job-paid', 'sample-inv-paid', 'conditional_final', at(-40), at(-40)),
+        samplePortalRelease('sample-release-open-1-c', 'sample-job-open', 'sample-inv-open-1', 'conditional_progress', at(-27), at(-26)),
+        samplePortalRelease('sample-release-open-1-u', 'sample-job-open', 'sample-inv-open-1', 'unconditional_progress', at(-14), at(-13)),
+      ],
+      events: [],
+      partyNames: { [SAMPLE_PORTAL_IDS.cedarOwner]: 'Cedar Bend Owner LLC', [SAMPLE_PORTAL_IDS.hunterOwner]: 'Hunter Road Partners' },
+    }
+  }
+  const id = SAMPLE_PORTAL_IDS.homeowner
+  return {
+    viewerCustomerId: id,
+    audience: 'all',
+    jobs: [
+      samplePortalJob({ id: 'sample-job-open', hcp_number: '1001', job_name: 'Water heater replacement', job_address: SAMPLE_HOMEOWNER.address, status: 'billed', revenue: 4_380, payments_made: 0, customer_id: id }),
+      samplePortalJob({ id: 'sample-job-paid', hcp_number: '0994', job_name: 'Kitchen faucet and disposal', job_address: SAMPLE_HOMEOWNER.address, status: 'billed', revenue: 1_200, payments_made: 640, customer_id: id }),
+    ],
+    sentInvoices: [
+      samplePortalInvoice({ id: 'sample-inv-open', job_id: 'sample-job-open', amount: 4_380, status: 'billed', billed_at: at(-3), sequence_order: 1, hosted_invoice_url: payUrl }),
+      samplePortalInvoice({ id: 'sample-inv-paid', job_id: 'sample-job-paid', amount: 1_200, status: 'billed', billed_at: at(-40), sequence_order: 1, hosted_invoice_url: payUrl }),
+    ],
+    payments: [{ id: 'sample-pay-paid', job_id: 'sample-job-paid', invoice_id: 'sample-inv-paid', amount: 640, paid_on: d(-31), sent_on: null, payment_type: 'card', reference_number: null, sequence_order: 1 }],
+    releases: [],
+    events: [],
+    partyNames: {},
+  }
+}
+
+/** A sample waiver as the page receives it: the function signs each PDF into a link, and a sample has no files behind it. */
+export type SamplePortalWaiver = PortalWaiverRow & {
+  conditional: PortalWaiverRow['conditional'] & { pdfUrl: string | null }
+  unconditional: PortalWaiverRow['unconditional'] & { pdfUrl: string | null }
+}
+
+/**
+ * A portal's money from its rows, the calls `customer-portal` makes for a real viewer: the open
+ * bills (billed, on jobs that carry open bills) and their jobs' payments through the bill
+ * builders, every sent bill as the payment rule's list; every sent bill and payment through the
+ * checks and waiver builders. Only the merged link tags the bills it pays as the GC.
+ */
+export function samplePortalMoney(r: SamplePortalMoneyRows): { bills: PortalBillOut[]; sharedBills: PortalSharedBillOut[]; totalDue: number; checks: PortalChecksOut; waivers: SamplePortalWaiver[] } {
+  const openJobs = new Set(openBillJobIds(r.jobs))
+  const openInvoices = r.sentInvoices.filter((i) => i.status === PORTAL_OPEN_INVOICE_STATUS && openJobs.has(i.job_id))
+  const openInvoiceJobs = new Set(openInvoices.map((i) => i.job_id))
+  const billPayments = r.payments.filter((p) => openInvoiceJobs.has(p.job_id))
+  const ownerNames: Record<string, string> = {}
+  if (r.audience === 'all') {
+    for (const j of r.jobs) if (j.customer_id && j.customer_id !== r.viewerCustomerId && r.partyNames[j.customer_id]) ownerNames[j.customer_id] = r.partyNames[j.customer_id]!
+  }
+  const bills = buildPortalBills({ jobs: r.jobs, invoices: openInvoices, payments: billPayments, viewerCustomerId: r.viewerCustomerId, markGcRows: r.audience === 'all', ownerNames, sentBills: r.sentInvoices })
+  const sharedBills = buildPortalSharedBills({ jobs: r.jobs, invoices: openInvoices, payments: billPayments, viewerCustomerId: r.viewerCustomerId, partyNames: r.partyNames, sentBills: r.sentInvoices })
+  const checks = buildPortalChecks({ jobs: r.jobs, invoices: r.sentInvoices, payments: r.payments, events: r.events, viewerCustomerId: r.viewerCustomerId })
+  const waivers = buildPortalWaivers({ jobs: r.jobs, invoices: r.sentInvoices, payments: r.payments, releases: r.releases, viewerCustomerId: r.viewerCustomerId }).map((w) => ({
+    ...w,
+    conditional: { ...w.conditional, pdfUrl: null, pdfPath: null },
+    unconditional: { ...w.unconditional, pdfUrl: null, pdfPath: null },
+  }))
+  const totalDue = Math.round(bills.reduce((sum, b) => sum + b.amount, 0) * 100) / 100
+  return { bills, sharedBills, totalDue, checks, waivers }
 }
 
 /**
@@ -273,37 +399,23 @@ function sampleWaiver(
  * waiting on them and the work to accept, so What customers see shows both presses. Sample presses only say thank you.
  */
 function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: string, appOrigin: string): Record<string, unknown> {
-  const bill = {
-    invoiceId: 'sample-inv-owner',
-    jobLabel: `${SAMPLE_OWNER.job} (GC) · Job 1010`,
-    jobNumber: '1010',
-    jobName: `${SAMPLE_OWNER.job} (GC)`,
-    serviceTag: 'plum',
-    jobAddress: SAMPLE_OWNER.address,
-    amount: 45_000,
-    billedOn: ymdPlusDays(todayYmd, -6),
-    payUrl: `${appOrigin.replace(/\/$/, '')}/portal?t=${SAMPLE_TOKEN_OWNER}#pay`,
-    checkRef: 'SR-1010',
-    asGc: false,
-    billedTo: null,
-    ownerName: null,
-    payments: [],
-    totalPaid: 0,
-  }
+  const money = samplePortalMoney(samplePortalMoneyRows('owner', todayYmd, appOrigin))
   return {
     company,
     customerName: SAMPLE_OWNER.company,
     customerPhone: '(512) 555-0177',
     audience: 'customer',
-    bills: [bill],
-    totalDue: bill.amount,
+    bills: money.bills,
+    sharedBills: money.sharedBills,
+    totalDue: money.totalDue,
     requestableJobs: [],
     requestableProperties: [],
     requestToken: SAMPLE_TOKEN_OWNER,
     slug: SAMPLE_OWNER.portalSlug,
     agreements: [],
     testReports: [],
-    waivers: [],
+    waivers: money.waivers,
+    checks: money.checks,
     stages: [],
     bankTransfer: null,
     gcJobs: [
@@ -323,49 +435,19 @@ function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: strin
 export function sampleCustomerPortalResponse(company: SamplePortalCompany, state: SampleState, todayYmd: string, appOrigin: string): Record<string, unknown> {
   if (state === 'owner') return sampleOwnerPortalResponse(company, todayYmd, appOrigin)
   const gc = state === 'gc'
-  const payUrl = `${appOrigin.replace(/\/$/, '')}/portal?t=${SAMPLE_TOKEN}#pay`
-  const openBill = {
-    invoiceId: 'sample-inv-open',
-    jobLabel: gc ? 'Cedar Bend Apartments · Job 1002' : 'Water heater replacement · Job 1001',
-    jobNumber: gc ? '1002' : '1001',
-    jobName: gc ? 'Cedar Bend Apartments' : 'Water heater replacement',
-    serviceTag: 'plum',
-    jobAddress: gc ? SAMPLE_BID.projectAddress : SAMPLE_HOMEOWNER.address,
-    amount: gc ? 18_200 : 4_380,
-    billedOn: ymdPlusDays(todayYmd, -3),
-    payUrl,
-    checkRef: gc ? 'CB-1002' : 'WH-1001',
-    asGc: gc,
-    billedTo: null,
-    ownerName: gc ? 'Cedar Bend Owner LLC' : null,
-    payments: [],
-    totalPaid: 0,
-  }
-  const paidBill = {
-    invoiceId: 'sample-inv-paid',
-    jobLabel: gc ? 'Hunter Road Studios · Job 0998' : 'Kitchen faucet and disposal · Job 0994',
-    jobNumber: gc ? '0998' : '0994',
-    jobName: gc ? 'Hunter Road Studios' : 'Kitchen faucet and disposal',
-    serviceTag: 'plum',
-    jobAddress: gc ? '1900 Hunter Rd, San Marcos, TX 78666' : SAMPLE_HOMEOWNER.address,
-    amount: gc ? 2_560 : 560,
-    billedOn: ymdPlusDays(todayYmd, -40),
-    payUrl,
-    checkRef: gc ? 'HR-0998' : 'KF-0994',
-    asGc: gc,
-    billedTo: null,
-    ownerName: gc ? 'Hunter Road Partners' : null,
-    payments: [{ date: ymdPlusDays(todayYmd, -31), method: gc ? 'check' : 'card', amount: gc ? 9_640 : 640 }],
-    totalPaid: gc ? 9_640 : 640,
-  }
+  // #103 PR 2: the bills, shared bills, waivers and checks come from rows, through the function's builders.
+  const money = samplePortalMoney(samplePortalMoneyRows(state, todayYmd, appOrigin))
+  const openBill = money.bills.find((b) => b.invoiceId === 'sample-inv-open')!
+  const paidBill = money.bills.find((b) => b.invoiceId === 'sample-inv-paid')!
   return {
     company,
     customerName: gc ? SAMPLE_GC.company : SAMPLE_HOMEOWNER.name,
     // Customer Waiting (v2.3249): the number on file, so the sample form shows the prefill.
     customerPhone: gc ? '(512) 555-0188' : '(512) 555-0142',
     audience: gc ? 'gc' : 'all',
-    bills: [openBill, paidBill],
-    totalDue: openBill.amount + paidBill.amount,
+    bills: money.bills,
+    sharedBills: money.sharedBills,
+    totalDue: money.totalDue,
     requestableJobs: [{ id: 'sample-job-open', label: openBill.jobLabel }],
     requestableProperties: gc
       ? [
@@ -385,15 +467,10 @@ export function sampleCustomerPortalResponse(company: SamplePortalCompany, state
           { id: 'sample-report-2', jobId: 'sample-job-paid', jobNumber: paidBill.jobNumber, jobLabel: paidBill.jobLabel, jobAddress: paidBill.jobAddress, reportLabel: 'Sewer Post-Test Hydrostatic', title: 'Sewer Post-Test Hydrostatic Test Report', result: 'pass', testDateYmd: ymdPlusDays(todayYmd, -41), certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: ymdPlusDays(todayYmd, -40) },
         ]
       : [{ id: 'sample-report-1', jobId: 'sample-job-open', jobNumber: openBill.jobNumber, jobLabel: openBill.jobLabel, jobAddress: openBill.jobAddress, reportLabel: 'Gas Test', title: 'Gas Test Report', result: null, testDateYmd: ymdPlusDays(todayYmd, -4), certifierName: 'Malachi Whites', certifierLicense: '#RMP41130', sentAt: ymdPlusDays(todayYmd, -3) }],
-    // Lien waivers (v2.4304): the GC's signed waivers — a note on each open bill and the Your papers rows. No files behind sample rows.
-    waivers: gc
-      ? [
-          sampleWaiver('payer', 'sample-job-open', openBill, 'sample-inv-open', 'Bill 2 of 3', 18_200, ymdPlusDays(todayYmd, -3), false, false, { state: 'signed', ymd: ymdPlusDays(todayYmd, -2), formType: 'conditional_progress' }, null),
-          sampleWaiver('payer', 'sample-job-paid', paidBill, 'sample-inv-paid', 'Bill', 12_200, ymdPlusDays(todayYmd, -40), false, true, { state: 'sent', ymd: ymdPlusDays(todayYmd, -40), formType: 'conditional_final' }, null),
-          sampleWaiver('payer', 'sample-job-open', openBill, 'sample-inv-open-1', 'Bill 1 of 3', 14_050, ymdPlusDays(todayYmd, -30), true, false, { state: 'sent', ymd: ymdPlusDays(todayYmd, -26), formType: 'conditional_progress' }, { state: 'sent', ymd: ymdPlusDays(todayYmd, -13), formType: 'unconditional_progress' }),
-        ]
-      : [],
-    stages: gc ? sampleGcStages(todayYmd, openBill.jobLabel, openBill.jobAddress) : [],
+    // Lien waivers (v2.4304) and Your payments (v2.4053), through their builders.
+    waivers: money.waivers,
+    checks: money.checks,
+    stages: gc ? sampleGcStages(todayYmd, openBill.jobLabel, openBill.jobAddress ?? '') : [],
     // Bank transfer details (v2.3308): invented numbers so the walkthrough shows the collapsed
     // card; the live row lives in company_bank_transfer_details, never in this file.
     bankTransfer: {
