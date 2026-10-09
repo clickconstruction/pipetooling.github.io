@@ -13,7 +13,8 @@ import type { BidPricedMargin } from '../lib/bids/pricedMargin'
  * comes back empty and the lens says "not costed" / "0 h" rather than
  * breaking. The kernel (`bidVsActual.ts`) does the reading. Since v2.5043 it
  * also reads each linked bid's priced-margin stamp (`bids.priced_*`), fail-soft
- * to none.
+ * to none. Since v2.5046 it reads the whole `job_budgets` row, so each job's burn
+ * resolves its budget as its Costs tab does.
  */
 export type BidVsActualMinimalBid = { id: string; bid_number: string | null; project_name: string | null }
 
@@ -48,7 +49,7 @@ export function useBidVsActual(enabled: boolean, gen = 0): BidVsActualState {
         const jobIds = jobs.map((j) => j.id)
         const bidIds = [...new Set(jobs.map((j) => j.bid_id).filter((x): x is string => !!x))]
         const [budgetsRes, hoursRes, bidsRes, pricedByBid] = await Promise.all([
-          jobIds.length ? supabase.from('job_budgets').select('job_id, bid_id, labor_hours, labor_usd, materials_usd, subs_usd, total_direct_usd, completeness').in('job_id', jobIds) : Promise.resolve({ data: [], error: null }),
+          jobIds.length ? supabase.from('job_budgets').select('*').in('job_id', jobIds) : Promise.resolve({ data: [], error: null }),
           supabase.rpc('get_man_hours_by_job'),
           bidIds.length ? supabase.from('bids').select('id, bid_number, project_name').in('id', bidIds) : Promise.resolve({ data: [], error: null }),
           loadBidPricedMargins(bidIds),

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { HOURS_PER_THOUSAND_OUTLIER, bidVsActualTiles, buildBidVsActualRows, readBidVsActual, type BidVsActualBudgetInput, type BidVsActualJobInput } from './bidVsActual'
+import { HOURS_PER_THOUSAND_OUTLIER, bidVsActualTiles, budgetRowLikeOf, buildBidVsActualRows, readBidVsActual, type BidVsActualBudgetInput, type BidVsActualJobInput } from './bidVsActual'
 
 // Today's linked jobs, trimmed to the shapes that matter.
 const job = (o: Partial<BidVsActualJobInput> & { id: string; bid_id: string }): BidVsActualJobInput => ({ hcp_number: null, job_name: null, revenue: null, status: 'working', pct_complete: null, ...o })
@@ -78,5 +78,15 @@ describe('v2.5043 · the margin each bid was priced at', () => {
   it('without stamps every row reads none', () => {
     expect(rows.every((r) => r.priced === null)).toBe(true)
     expect(bidVsActualTiles(rows).priced).toBe(0)
+  })
+})
+
+describe('budgetRowLikeOf (v2.5046)', () => {
+  it('hands the whole row on as the budget the Costs tab resolves; no row or no kind is none', () => {
+    const row = { ...budget({ job_id: 'j879', labor_hours: 36 }), kind: 'bid', labor_rate: 35, other_usd: 12 }
+    expect(budgetRowLikeOf(row)).toEqual({ ...row, kind: 'bid', other_usd: 12 })
+    expect(budgetRowLikeOf({ ...row, other_usd: undefined })!.other_usd).toBeNull()
+    expect(budgetRowLikeOf(budget({ job_id: 'j1' }))).toBeNull()
+    expect(budgetRowLikeOf(undefined)).toBeNull()
   })
 })

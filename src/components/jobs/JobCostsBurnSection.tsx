@@ -4,7 +4,7 @@ import type { JobChargesTimelineInputsState } from '../../hooks/useJobChargesTim
 import type { JobBurnOverheadState } from '../../hooks/useJobBurnOverhead'
 import { buildJobBurn, resolveJobBurnBudget, type JobBurnModel } from '../../lib/jobs/jobBurn'
 import { budgetForBurn, JOB_BUDGET_SOURCE_WORDS, type ResolvedJobBudget } from '../../lib/jobs/jobBudget'
-import { JOB_SUMMARY_VIEW_STORAGE_KEY, readJobSummaryViewPrefs } from '../../lib/jobs/jobSummaryLedgerView'
+import { readTargetMarginPct } from '../../lib/jobs/jobBurnForVerdict'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
@@ -50,15 +50,6 @@ const BLUE = '#2563eb'
 const VIOLET = '#a855f7'
 const AMBER = '#f59e0b'
 
-function readTargetMarginPct(): number | null {
-  try {
-    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(JOB_SUMMARY_VIEW_STORAGE_KEY) : null
-    const t = readJobSummaryViewPrefs(raw).targetTrueMarginPct
-    return t > 0 ? t : null
-  } catch {
-    return null
-  }
-}
 
 type DailyTipProps = { active?: boolean; payload?: Array<{ payload: JobBurnModel['daily'][number] }> }
 function DailyTooltip({ active, payload }: DailyTipProps) {
@@ -87,11 +78,6 @@ function CumTooltip({ active, payload }: CumTipProps) {
   )
 }
 
-/** The burn model the Costs tab's verdict reads (v2.3361) — the same build the chart uses, earned off the price. */
-export function buildBurnForVerdict(inputs: NonNullable<Extract<JobChargesTimelineInputsState, { kind: 'ready' }>['inputs']>, overhead: JobBurnOverheadState['overhead'], jobBudget: ResolvedJobBudget | null | undefined): JobBurnModel {
-  const budget = resolveJobBurnBudget({ priceUsd: inputs.revenue, bidEstimateUsd: jobBudget ? budgetForBurn(jobBudget) : null, targetMarginPct: readTargetMarginPct() })
-  return buildJobBurn({ chargeEvents: inputs.chargeEvents, valueEvents: inputs.valueEvents, fallbackPercent: inputs.fallbackPercent, priceUsd: inputs.revenue, budget, overhead, todayYmd: todayYmdInAppTz(), earnedBasis: 'price' })
-}
 
 /** The first dated event on the job — charge, payment or report — which says whether the overhead window's start cut history off (v2.3289). */
 export function firstEventYmdOf(inputsState: JobChargesTimelineInputsState): string | null {
