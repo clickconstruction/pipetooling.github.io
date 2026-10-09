@@ -32,7 +32,7 @@ export const BID_ACTIONS = {
   bookFill: 'book-fill',
   /** twin-mcp's paste_counts: a robot's rows and their book assignments. */
   robotPaste: 'robot-paste',
-  /** History's Put back (PR 4, a value; PR 5, a removed row): set by `put_back_bid_change` and `restore_bid_removed_row` on their writes, never sent by the client. */
+  /** History's Put back (PR 4, a value; PR 5, a removed row): set by `put_back_bid_change` and `restore_bid_removed_row` on their writes. The client sends it only on the rows History's Undo removes (PR 6). */
   putBack: 'put-back',
   /** The Pricing tab's margin brush (PR 5): every price one stroke, or its Undo, writes. A person's press. */
   priceBrush: 'price-brush',
