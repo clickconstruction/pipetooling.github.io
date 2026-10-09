@@ -9,7 +9,7 @@ import { todayYmdInAppTz, ymdAddDays } from '../_shared/appTimeZone.ts'
 import { classifyTwinQuestionAudience, isTwinQuestionAudience } from '../_shared/twinQuestionAudience.ts'
 import { backtestRunLabelOwner, isBacktestLockNote } from '../_shared/twinBacktestScoreGate.ts'
 import { referenceWhole, referenceWholeLabel } from '../_shared/referenceWhole.ts'
-import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionChoices } from '../_shared/twinQuestionShape.ts'
+import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionChoices, questionTouchesSealedShadow, scrubMoney, type SealedShadow } from '../_shared/twinQuestionShape.ts'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
@@ -257,7 +257,7 @@ const TOOLS = [
   {
     name: 'ask_question',
     description:
-      "Park a question instead of stalling — the INTERNAL lane (RFIs to the GC are the external lane, drafted in the app's RFI tab). Two audiences (v1.3.14): audience 'estimator' = a judgment about the JOB (scope, counts, pricing, packages, which sheet governs) — she reads it on Bids → Audits, so write it for her: ONE decision, two sentences, name the project and the sheet, never a run code, table name or tool name. audience 'operator' = the MACHINE is in your way (sandbox, sign-in, the write fence, a table you can't write, a file the service account can't read, a verb that doesn't exist) — pair it with a heartbeat state 'blocked'. A blocker with both halves is TWO questions. Never park a finding or an answer here (that is add_bid_note / submit_report). Omit audience and the text decides. Answers arrive asynchronously: pull them next run with get_answers. Asking is always better than guessing. SHAPE (v1.3.15): an estimator question is REFUSED unless it is ONE decision under 320 characters with `choices` — 2–4 short labels she can tap (≤40 chars each) — and ideally `recommended`, your own pick among them; the refusal names what to fix. A three-part ask is three calls; the working detail (numbers, sheet refs, the pattern) goes in add_bid_note on your shell, not in the question. KIND (v1.3.16): `kind: 'plans'` when what you need is a different or additional plan set on THIS bid (wrong set filed, plumbing sheets missing, a file the intake account can't open) — it goes to that bid's robot needs sheet next to Edit bid and Copy intake address, not to Standing rulings, and gets default taps ('Attached — rerun' / 'Use what is on the bid' / 'Skip this bid') if you give none. Everything else is `kind: 'decision'`. Omit it and the text decides.",
+      "Park a question instead of stalling — the INTERNAL lane (RFIs to the GC are the external lane, drafted in the app's RFI tab). Two audiences (v1.3.14): audience 'estimator' = a judgment about the JOB (scope, counts, pricing, packages, which sheet governs) — she reads it on Bids → Audits, so write it for her: ONE decision, two sentences, name the project and the sheet, never a run code, table name or tool name. audience 'operator' = the MACHINE is in your way (sandbox, sign-in, the write fence, a table you can't write, a file the service account can't read, a verb that doesn't exist) — pair it with a heartbeat state 'blocked'. A blocker with both halves is TWO questions. Never park a finding or an answer here (that is add_bid_note / submit_report). Omit audience and the text decides. Answers arrive asynchronously: pull them next run with get_answers. Asking is always better than guessing. SHAPE (v1.3.15): an estimator question is REFUSED unless it is ONE decision under 320 characters with `choices` — 2–4 short labels she can tap (≤40 chars each) — and ideally `recommended`, your own pick among them; the refusal names what to fix. A three-part ask is three calls; the working detail (numbers, sheet refs, the pattern) goes in add_bid_note on your shell, not in the question. KIND (v1.3.16): `kind: 'plans'` when what you need is a different or additional plan set on THIS bid (wrong set filed, plumbing sheets missing, a file the intake account can't open) — it goes to that bid's robot needs sheet next to Edit bid and Copy intake address, not to Standing rulings, and gets default taps ('Attached — rerun' / 'Use what is on the bid' / 'Skip this bid') if you give none. Everything else is `kind: 'decision'`. Omit it and the text decides. On a SEALED shadow (v1.4.6) — a question about a live bid a shadow run has not been scored on, or naming its number — dollar figures are scrubbed from the question and the choices before they are filed: keep your size guess in add_bid_note on your shell.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -942,6 +942,23 @@ async function createShadowShell(
     notes: `[shadow STG-0] Shadow of live b${refBid.bid_number} (${refBid.project_name}) opened by ${twin.email}. Axis: ${axis || 'unclassified'}. Lock the blind total with lock_shadow BEFORE the human bid is sent; score_shadows finishes the loop automatically.`,
   }).then(() => {}, () => {})
   return { id: created.id as string, bid_number: String(created.bid_number) }
+}
+
+/**
+ * The shadow runs still sealed (v1.4.6 / v2.5020): not scored, with both bids' numbers, fleet-wide —
+ * a question that touches one has its dollar figures scrubbed (`questionTouchesSealedShadow`). Null
+ * when the read fails: the caller scrubs anyway, because an over-scrub is safe and a leak is not.
+ */
+async function loadSealedShadows(admin: ReturnType<typeof createClient>): Promise<SealedShadow[] | null> {
+  const { data: runs, error } = await admin.from('twin_shadow_runs').select('shadow_bid_id, reference_bid_id').is('scored_at', null)
+  if (error) return null
+  const rows = (runs ?? []) as Array<{ shadow_bid_id: string; reference_bid_id: string }>
+  if (rows.length === 0) return []
+  const ids = [...new Set(rows.flatMap((r) => [r.shadow_bid_id, r.reference_bid_id]))]
+  const { data: bids, error: bidErr } = await admin.from('bids').select('id, bid_number').in('id', ids)
+  if (bidErr) return null
+  const numberOf = new Map(((bids ?? []) as Array<{ id: string; bid_number: number | string | null }>).map((b) => [b.id, b.bid_number == null ? null : String(b.bid_number)]))
+  return rows.map((r) => ({ shadowBidId: r.shadow_bid_id, referenceBidId: r.reference_bid_id, shadowNumber: numberOf.get(r.shadow_bid_id) ?? null, referenceNumber: numberOf.get(r.reference_bid_id) ?? null }))
 }
 
 // ---------------------------------------------------------------------------
@@ -1734,22 +1751,48 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       const kindClassified = classifyTwinQuestionKind(q)
       const kind = isTwinQuestionKind(args.kind) ? args.kind : kindClassified.kind
       const plansDefaults = kind === 'plans' && !Array.isArray(args.choices)
+      // v1.4.6 / v2.5020 (the owner's call of 2026-10-09): a question raised on a sealed shadow carries no
+      // dollar figures — the robot's size guess for a bid nobody has priced must not reach the estimator.
+      const sealedShadows = await loadSealedShadows(admin)
+      const onSealedShadow = sealedShadows === null || questionTouchesSealedShadow({ aboutBidId, texts: [q, String(args.mission ?? '')] }, sealedShadows)
+      let question = q
+      let moneyRemoved = 0
+      let rawChoices: unknown = args.choices
+      let rawRecommended: unknown = args.recommended
+      if (onSealedShadow) {
+        const scrubbed = scrubMoney(q)
+        question = scrubbed.text
+        moneyRemoved += scrubbed.removed
+        if (Array.isArray(args.choices)) {
+          rawChoices = (args.choices as unknown[]).map((c) => {
+            if (typeof c !== 'string') return c
+            const r = scrubMoney(c)
+            moneyRemoved += r.removed
+            return r.text
+          })
+        }
+        if (typeof args.recommended === 'string') rawRecommended = scrubMoney(args.recommended).text
+      }
       let choices: string[] | null = null
       let recommended: string | null = null
       if (audience === 'estimator') {
         const shape = checkEstimatorQuestionShape({
-          question: q,
-          choices: plansDefaults ? [...PLANS_ASK_DEFAULT_CHOICES] : args.choices,
-          recommended: plansDefaults ? PLANS_ASK_DEFAULT_RECOMMENDED : args.recommended,
+          question,
+          choices: plansDefaults ? [...PLANS_ASK_DEFAULT_CHOICES] : rawChoices,
+          recommended: plansDefaults ? PLANS_ASK_DEFAULT_RECOMMENDED : rawRecommended,
         })
-        if (!shape.ok) return textContent(`Question NOT filed for the estimator — ${shape.problems.join('; ')}. ${shape.hint}`, true)
+        if (!shape.ok) {
+          // A scrub can merge two choices that differed only by an amount: say why they read alike.
+          const scrubbedNote = moneyRemoved > 0 ? ` (Dollar figures were removed first: this bid's shadow is sealed until it is scored. Write the question and choices without amounts.)` : ''
+          return textContent(`Question NOT filed for the estimator — ${shape.problems.join('; ')}. ${shape.hint}${scrubbedNote}`, true)
+        }
         choices = shape.choices
         recommended = shape.recommended
       } else {
-        choices = normalizeTwinQuestionChoices(args.choices)
-        recommended = choices ? matchRecommended(args.recommended, choices) : null
+        choices = normalizeTwinQuestionChoices(rawChoices)
+        recommended = choices ? matchRecommended(rawRecommended, choices) : null
       }
-      const base = { twin_user_id: twin.twinUserId, about_bid_id: aboutBidId, mission: (args.mission as string) ?? null, question: q, topic }
+      const base = { twin_user_id: twin.twinUserId, about_bid_id: aboutBidId, mission: (args.mission as string) ?? null, question, topic }
       // Column ladder: choices/recommended land with 20260909233000, audience with
       // 20260909045818 — retry without whichever the insert is refused for (edge
       // deployed ahead of push).
@@ -1764,7 +1807,10 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         : kind === 'plans'
           ? `Filed as a PLANS ask (${isTwinQuestionKind(args.kind) ? 'your call' : `classified: ${kindClassified.signals.join(', ')}`}) — it shows on ${aboutBidId ? 'the bid\'s' : 'a'} robot needs sheet (the amber icon on the Bid Board) with ${choices?.length ?? 0} taps${plansDefaults ? ' (the standard three)' : ''}, not on Standing rulings.${aboutBidId ? '' : ' You passed no bid — a plans ask without a bid has no sheet to land on; pass bid next time.'}`
           : `Filed for the ESTIMATOR — it shows on Bids → Audits → Standing rulings as ${choices?.length ?? 0} tap${choices?.length === 1 ? '' : 's'}${recommended ? ` (your pick "${recommended}" first)` : ''}.`
-      return textContent(`Question parked (id ${(row as { id: string }).id.slice(0, 8)}). ${lane} Pull answers with get_answers on your next run. Keep working what you can.`)
+      const scrubNote = moneyRemoved > 0
+        ? ` ${moneyRemoved} dollar figure${moneyRemoved === 1 ? '' : 's'} removed: the bid's shadow is sealed until it is scored, so the estimator never sees a robot's size guess — keep yours in add_bid_note on your shell.`
+        : ''
+      return textContent(`Question parked (id ${(row as { id: string }).id.slice(0, 8)}). ${lane}${scrubNote} Pull answers with get_answers on your next run. Keep working what you can.`)
     }
     case 'get_answers': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -3354,7 +3400,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.5' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.4.6' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
