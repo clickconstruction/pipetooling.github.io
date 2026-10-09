@@ -83,6 +83,9 @@ vi.mock('../lib/gc/gcIo', async () => {
     bringGcBack: vi.fn(),
     shareGcBidTab: vi.fn(() => Promise.resolve()),
     loadGcChangeOrders: vi.fn(none),
+    loadGcChangeOrderEmails: vi.fn(none),
+    loadGcChangeRequests: vi.fn(none),
+    loadGcChangeRequestEmails: vi.fn(none),
     loadGcBillingRows: vi.fn(() => Promise.resolve({ terms: [], contract: [], billing: new Map(), names: {}, payDays: {} })),
   }
 })
