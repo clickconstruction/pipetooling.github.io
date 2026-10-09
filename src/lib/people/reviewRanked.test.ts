@@ -320,7 +320,7 @@ describe('wheels on labor (v2.2735; v2.4653 fuel stays on the jobs)', () => {
     const r = row({ name: 'New', totalHours: 40, fieldHours: 40, gross: 1000, net: 500, overheadBurden: -200, vehicleArrangement: 'company', vehicleRate: 0, vehicleFuelOffJobs: -12, vehicleCost: -12 })
     const l = buildReviewPersonMath(r, { partsRate: 5 }).lines.find((x) => x.key === 'wheels')!
     expect(l.usd).toBe(-12)
-    expect(l.why).toBe('no insurance, registration or service on file for the truck + $12.00 of their fuel on no job in the period; their fuel on jobs is in the ⛽ line above')
+    expect(l.why).toBe('no insurance, registration, service or replacement value on file for the truck + $12.00 of their fuel on no job in the period; their fuel on jobs is in the ⛽ line above')
   })
 
   it('an own vehicle with a manual fixed rate shows both parts', () => {

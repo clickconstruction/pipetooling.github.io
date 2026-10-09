@@ -23,7 +23,7 @@ import {
 import { isFootageRow, laborEstimateCompleteness, revenuePerFieldHourWords, summarizeBidLabor, type LaborMaterialsSource } from '../../lib/bids/bidLaborSummary'
 import { directCostKindWords, sumDirectCosts, type CostEstimateDirectCostRow, type DirectCostKind } from '../../lib/bids/costEstimateDirectCosts'
 import { computeBidCostBreakdown, directCostRowsFromTables, type StageAmountRow } from '../../lib/bids/bidTotalCostBreakdown'
-import { crewRateWords, effectiveLaborRate, type CrewRate } from '../../lib/bids/crewRate'
+import { crewRateWords, effectiveLaborRate, fleetTruckRateWords, type CrewRate, type FleetTruckRateRead } from '../../lib/bids/crewRate'
 import { bookMultiplier, bookMultiplierWords, calibratedEntryHours, entryEvidence, type CalibrationJob } from '../../lib/bids/laborBookCalibration'
 import { bookSummaryWords, calibrationNote, calibrationProposalWords, calibrationSetPlan, laborBookRights, type CalibrationProposal } from '../../lib/bids/laborEntryProvenance'
 import type { CostEstimate, CostEstimateLaborRow, LaborBookEntryWithFixture } from '../../lib/bids/bidPricingEngineTypes'
@@ -85,6 +85,8 @@ export type BidsLaborNewViewProps = {
   /** The company crew rate (v2.3294): 90-day recorded field wage × burden, with lens-A overhead per field hour. Null while loading or when nothing is recorded. */
   crewRate?: CrewRate | null
   crewRateLoading?: boolean
+  /** Wheels PR 3 (v2.5039): what the company's trucks cost per field hour. Shown beside the rate, never added — the burden and the driving line carry the truck. */
+  fleetTruckRate?: FleetTruckRateRead | null
   /** The labor book's per-$1k reading from kept job baselines (v2.3367): the words for the Jobs baseline tile. */
   baselineWords?: string | null
   /** Writes the company rate onto the bid's rate box (the tab's autosave persists it). */
@@ -610,6 +612,12 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
           ) : (
             <span style={{ color: 'var(--text-muted)' }}>{p.crewRateLoading ? 'reading People…' : p.crewRate ? crewRateWords(p.crewRate, formatCurrency) : 'company rate unavailable'}</span>
           )}
+          {p.fleetTruckRate?.rate != null ? (
+            <span data-testid="labor-fleet-truck-rate" title="The burden factor and the driving line already carry the trucks, so this is not added to the bid">
+              <span style={{ color: 'var(--text-muted)' }}>·</span> trucks <b>${formatCurrency(p.fleetTruckRate.rate)}/field h</b>{' '}
+              <span style={{ color: 'var(--text-muted)' }}>= {fleetTruckRateWords(p.fleetTruckRate, formatCurrency)} · shown, not added</span>
+            </span>
+          ) : null}
           <span style={{ color: 'var(--text-muted)' }}>·</span>
           {eff.source === 'override' && eff.rate != null ? (
             <span>

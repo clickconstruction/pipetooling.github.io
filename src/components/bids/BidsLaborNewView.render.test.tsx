@@ -161,6 +161,26 @@ describe('BidsLaborNewView · the crew rate and the bottom line (v2.3294)', () =
     expect(within(screen.getByTestId('labor-crew-rate')).getByText('no rate')).toBeTruthy()
     expect(screen.getByText('no labor rate')).toBeTruthy()
   })
+  it('shows what the trucks cost per field hour beside the rate, and adds none of it (Wheels PR 3, v2.5039)', async () => {
+    renderView({ ratePerHour: null, crewRate, fleetTruckRate: { rate: 2.5, fixedUsd: 2996.28, fieldHours: 1199.6, trucks: 13, days: 90 }, countRowsLength: 4 })
+    await settle()
+    const trucks = within(screen.getByTestId('labor-crew-rate')).getByTestId('labor-fleet-truck-rate')
+    expect(within(trucks).getByText('$2.50/field h')).toBeTruthy()
+    expect(within(trucks).getByText('= $2,996.28 insurance, registration, service and wear on 13 trucks ÷ 1,200 field h (90 d) · shown, not added')).toBeTruthy()
+    // 32 h at the company rate, as without the trucks: $1,144.32, never 32 h × $38.26 = $1,224.32
+    const line = screen.getByTestId('labor-bottom-line')
+    expect(within(line).getAllByText('$1,144.32').length).toBeGreaterThan(0)
+    expect(within(line).queryByText('$1,224.32')).toBeNull()
+  })
+  it('no truck line when the read failed or the crew logged no field hours', async () => {
+    const { unmount } = renderView({ crewRate, fleetTruckRate: null })
+    await settle()
+    expect(screen.queryByTestId('labor-fleet-truck-rate')).toBeNull()
+    unmount()
+    renderView({ crewRate, fleetTruckRate: { rate: null, fixedUsd: 109.29, fieldHours: 0, trucks: 4, days: 90 } })
+    await settle()
+    expect(screen.queryByTestId('labor-fleet-truck-rate')).toBeNull()
+  })
 })
 
 describe('BidsLaborNewView · calibration (v2.3307)', () => {

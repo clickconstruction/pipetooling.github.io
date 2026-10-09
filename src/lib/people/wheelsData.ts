@@ -17,11 +17,13 @@ import { currentInsurancePeriod, currentPossession, isMotorPoolPossession, vehic
 import {
   buildWheelsRows,
   fieldHoursByUser,
+  fleetTruckRate,
   parseVehicleArrangement,
   splitFuelFamily,
   sumFuelByUser,
   truckRunningCost,
   unattributedFuelByCard,
+  type FleetTruckInput,
   type FuelFamilyTx,
   wheelsComparison,
   wheelsWindow,
@@ -58,7 +60,12 @@ export type WheelsSnapshot = {
   offCardFuelFamily: { usd: number; n: number; top: Array<{ counterparty: string; usd: number }> }
   /** Purchases on company cards (management tools) — not fuel; by card nickname. v2.2750 */
   companyCardSpend: { usd: number; n: number; byCard: Array<{ cardId: string; label: string; usd: number }> }
+  /** v2.5039 · every truck's fixed costs and wear ÷ the whole crew's field hours: the rate the Bids crew-rate card shows (`fleet_truck_rate_per_field_hour`). */
+  fleet: WheelsFleetRate
 }
+
+/** What all the trucks cost per field hour (`fleetTruckRate`), with the totals it divides. */
+export type WheelsFleetRate = { fixedUsd: number; ratePerFieldHour: number | null; fieldHours: number; trucks: number }
 
 type PayConfigLite = { person_name: string; vehicle_arrangement?: unknown; vehicle_rate_override?: number | null }
 
@@ -66,7 +73,7 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
   const window = wheelsWindow(input.todayYmd)
   const endExclusive = ymdAddDays(window.end, 1)
 
-  const [payRows, tagData, txRows, sessions, vehicles, possessions, insPeriods, serviceEvents] = await Promise.all([
+  const [payRows, tagData, txRows, sessions, vehicles, possessions, insPeriods, serviceEvents, replacementValues] = await Promise.all([
     withSupabaseRetry(async () => await supabase.from('people_pay_config').select('*'), 'wheels pay config') as Promise<PayConfigLite[]>,
     loadCategoryTags(),
     paged<{ id: string; amount: number; kind: string; mercury_category: unknown; counterparty_name: string | null }>(
@@ -91,6 +98,7 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
       async () => await supabase.from('vehicle_service_events').select('vehicle_id, cost, service_date').gte('service_date', window.start).lte('service_date', window.end),
       'wheels service events',
     ),
+    loadReplacementValues(input.todayYmd),
   ])
 
   // Fuel = charges whose accounting label's tag, else bank category's tag, is the fuel family.
@@ -143,19 +151,70 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
     byCard: split.companyCard.byCard.map((c) => ({ cardId: c.cardId, label: nicknameByCard.get(c.cardId) ?? `card …${c.cardId.replace(/-/g, '').slice(-4)}`, usd: c.usd })),
   }
 
-  const hoursByUser = fieldHoursByUser(sessions)
-  const nameById = new Map(input.users.map((u) => [u.id, u.name]))
+  const { trucks, people, hoursByUser, fleet } = buildTrucksAndPeople({ todayYmd: input.todayYmd, days: window.days, users: input.users, payRows, sessions, vehicles, possessions, insPeriods, serviceEvents, replacementValues, fuelByUser })
+  const rows = buildWheelsRows(people, fuelByUser, hoursByUser, trucks)
+  return { window, rows, trucks, fuelTag, comparison: wheelsComparison(rows), unattributedFuelUsd, unattributedCards, offCardFuelFamily: split.offCard, companyCardSpend, fleet }
+}
+
+type VehicleLite = { id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number | null; weekly_registration_cost: number | null }
+
+/** v2.5039 · each vehicle's latest replacement value on or before today: its wear (`truckWearForWindow`). A latest reading of $0 ends the wear. Fail-soft to none. */
+async function loadReplacementValues(todayYmd: string): Promise<Map<string, number>> {
+  const out = new Map<string, number>()
+  try {
+    const rows = await withSupabaseRetry(
+      async () => await supabase.from('vehicle_replacement_value_entries').select('vehicle_id, replacement_value, read_date').lte('read_date', todayYmd).order('read_date', { ascending: false }),
+      'wheels replacement values',
+    )
+    const seen = new Set<string>()
+    for (const r of (rows ?? []) as Array<{ vehicle_id: string; replacement_value: number | null }>) {
+      if (seen.has(r.vehicle_id)) continue
+      seen.add(r.vehicle_id)
+      if (Number(r.replacement_value) > 0) out.set(r.vehicle_id, Number(r.replacement_value))
+    }
+  } catch {
+    // no values read: every truck's wear reads $0 and says so
+  }
+  return out
+}
+
+/** The trucks with their holders and running costs, and the people with their deals: what both loaders hand the kernel. */
+function buildTrucksAndPeople(i: {
+  todayYmd: string
+  days: number
+  users: ReadonlyArray<{ id: string; name: string }>
+  payRows: PayConfigLite[] | null
+  sessions: WheelsSessionRow[]
+  vehicles: unknown
+  possessions: unknown
+  insPeriods: unknown
+  serviceEvents: unknown
+  replacementValues: ReadonlyMap<string, number>
+  fuelByUser: ReadonlyMap<string, number>
+}): {
+  trucks: WheelsTruck[]
+  people: Array<{ name: string; userId: string | null; arrangement: ReturnType<typeof parseVehicleArrangement>; override: number | null }>
+  hoursByUser: Map<string, number>
+  fleet: WheelsFleetRate
+} {
+  const hoursByUser = fieldHoursByUser(i.sessions)
+  const nameById = new Map(i.users.map((u) => [u.id, u.name]))
 
   const possByVehicle = new Map<string, FleetPossession[]>()
-  for (const p of (possessions ?? []) as FleetPossession[]) possByVehicle.set(p.vehicle_id, [...(possByVehicle.get(p.vehicle_id) ?? []), p])
+  for (const p of (i.possessions ?? []) as FleetPossession[]) possByVehicle.set(p.vehicle_id, [...(possByVehicle.get(p.vehicle_id) ?? []), p])
   const insByVehicle = new Map<string, FleetInsurancePeriod[]>()
-  for (const p of (insPeriods ?? []) as FleetInsurancePeriod[]) insByVehicle.set(p.vehicle_id, [...(insByVehicle.get(p.vehicle_id) ?? []), p])
+  for (const p of (i.insPeriods ?? []) as FleetInsurancePeriod[]) insByVehicle.set(p.vehicle_id, [...(insByVehicle.get(p.vehicle_id) ?? []), p])
   const serviceByVehicle = new Map<string, number>()
-  for (const e of (serviceEvents ?? []) as Array<{ vehicle_id: string; cost: number | null }>) serviceByVehicle.set(e.vehicle_id, (serviceByVehicle.get(e.vehicle_id) ?? 0) + (e.cost ?? 0))
+  for (const e of (i.serviceEvents ?? []) as Array<{ vehicle_id: string; cost: number | null }>) serviceByVehicle.set(e.vehicle_id, (serviceByVehicle.get(e.vehicle_id) ?? 0) + (e.cost ?? 0))
 
   const trucks: WheelsTruck[] = []
-  for (const v of (vehicles ?? []) as Array<{ id: string; year: number | null; make: string; model: string; vin: string | null; weekly_insurance_cost: number | null; weekly_registration_cost: number | null }>) {
-    const holder = currentPossession(possByVehicle.get(v.id) ?? [], input.todayYmd)
+  const fleetInputs: FleetTruckInput[] = []
+  for (const v of (i.vehicles ?? []) as VehicleLite[]) {
+    const onPlan = currentInsurancePeriod(insByVehicle.get(v.id) ?? [], i.todayYmd) != null
+    const serviceUsd = serviceByVehicle.get(v.id) ?? 0
+    const replacementValueUsd = i.replacementValues.get(v.id) ?? null
+    fleetInputs.push({ weeklyInsurance: v.weekly_insurance_cost, weeklyRegistration: v.weekly_registration_cost, onPlan, serviceUsd, replacementValueUsd })
+    const holder = currentPossession(possByVehicle.get(v.id) ?? [], i.todayYmd)
     const holderUserId = holder && !isMotorPoolPossession(holder) ? holder.user_id : null
     const holderFieldHours = holderUserId ? (hoursByUser.get(holderUserId) ?? 0) : 0
     trucks.push({
@@ -165,27 +224,63 @@ export async function loadWheelsSnapshot(input: { todayYmd: string; users: Reado
       holderName: holderUserId ? (nameById.get(holderUserId) ?? null) : null,
       holderFieldHours,
       cost: truckRunningCost({
-        fuelUsd: holderUserId ? (fuelByUser.get(holderUserId) ?? 0) : 0,
+        fuelUsd: holderUserId ? (i.fuelByUser.get(holderUserId) ?? 0) : 0,
         weeklyInsurance: v.weekly_insurance_cost,
         weeklyRegistration: v.weekly_registration_cost,
-        onPlan: currentInsurancePeriod(insByVehicle.get(v.id) ?? [], input.todayYmd) != null,
-        days: window.days,
-        serviceUsd: serviceByVehicle.get(v.id) ?? 0,
+        onPlan,
+        days: i.days,
+        serviceUsd,
         holderFieldHours,
+        replacementValueUsd,
       }),
     })
   }
   trucks.sort((a, b) => (a.holderUserId ? 0 : 1) - (b.holderUserId ? 0 : 1) || b.cost.total - a.cost.total || a.name.localeCompare(b.name))
 
-  const userIdByName = new Map(input.users.map((u) => [u.name.trim(), u.id]))
-  const people = (payRows ?? []).map((r) => ({
+  const userIdByName = new Map(i.users.map((u) => [u.name.trim(), u.id]))
+  const people = (i.payRows ?? []).map((r) => ({
     name: r.person_name,
     userId: userIdByName.get(r.person_name.trim()) ?? null,
     arrangement: parseVehicleArrangement(r.vehicle_arrangement),
     override: r.vehicle_rate_override ?? null,
   }))
-  const rows = buildWheelsRows(people, fuelByUser, hoursByUser, trucks)
-  return { window, rows, trucks, fuelTag, comparison: wheelsComparison(rows), unattributedFuelUsd, unattributedCards, offCardFuelFamily: split.offCard, companyCardSpend }
+  // v2.5039 · the fleet's rate: every vehicle, motor pool and unheld included, over the whole crew's field hours.
+  const crewFieldHours = [...hoursByUser.values()].reduce((s, h) => s + h, 0)
+  const fleet = { ...fleetTruckRate(fleetInputs, crewFieldHours, i.days), fieldHours: Math.round(crewFieldHours * 10) / 10, trucks: fleetInputs.length }
+  return { trucks, people, hoursByUser, fleet }
+}
+
+/**
+ * Wheels PR 3 (v2.5039): each person's fixed vehicle rate per field hour, the rate Review charges
+ * besides fuel on no job, without the card-fuel read. Crew P&L prices its Vehicle line with it.
+ */
+export async function loadWheelsFixedRates(input: { todayYmd: string; users: ReadonlyArray<{ id: string; name: string }> }): Promise<{ window: { start: string; end: string; days: number }; rows: WheelsPersonRow[] }> {
+  const window = wheelsWindow(input.todayYmd)
+  const [payRows, sessions, vehicles, possessions, insPeriods, serviceEvents, replacementValues] = await Promise.all([
+    withSupabaseRetry(async () => await supabase.from('people_pay_config').select('*'), 'wheels pay config') as Promise<PayConfigLite[]>,
+    paged<WheelsSessionRow>(
+      (f, t) =>
+        supabase
+          .from('clock_sessions')
+          .select('user_id, job_ledger_id, bid_id, clocked_in_at, clocked_out_at, approved_at, rejected_at, revoked_at')
+          .gte('work_date', window.start)
+          .lte('work_date', window.end)
+          .order('id')
+          .range(f, t),
+      'wheels sessions',
+    ),
+    withSupabaseRetry(async () => await supabase.from('vehicles').select('id, year, make, model, vin, weekly_insurance_cost, weekly_registration_cost'), 'wheels vehicles'),
+    withSupabaseRetry(async () => await supabase.from('vehicle_possessions').select('*').order('start_date', { ascending: false }), 'wheels possessions'),
+    withSupabaseRetry(async () => await supabase.from('vehicle_insurance_periods').select('*').order('start_date', { ascending: false }), 'wheels insurance periods'),
+    withSupabaseRetry(
+      async () => await supabase.from('vehicle_service_events').select('vehicle_id, cost, service_date').gte('service_date', window.start).lte('service_date', window.end),
+      'wheels service events',
+    ),
+    loadReplacementValues(input.todayYmd),
+  ])
+  const noFuel = new Map<string, number>()
+  const { trucks, people, hoursByUser } = buildTrucksAndPeople({ todayYmd: input.todayYmd, days: window.days, users: input.users, payRows, sessions, vehicles, possessions, insPeriods, serviceEvents, replacementValues, fuelByUser: noFuel })
+  return { window, rows: buildWheelsRows(people, noFuel, hoursByUser, trucks) }
 }
 
 /** Manual $/field hour for a person; null clears it so the computed rate applies again. */

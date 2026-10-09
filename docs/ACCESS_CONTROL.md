@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-10-08
+last_updated: 2026-10-09
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -1014,6 +1014,8 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 **Payroll / Housing / Offsets (assistants):** since the v2.660–v2.663 pay-visibility overhaul, these tabs are hidden from assistants (`canAccessPay` in **`usePeopleAccess.ts`** is dev / controller / Pay-Approved-master only). **Payroll** and **Offsets** are also blocked at the DB — the pay-stub family and **`person_offsets`** require **`has_payroll_access()`** (migration **`20260714120000_assistant_pay_lockdown.sql`**). **Housing** table RLS still admits plain **assistant** (v2.661's **`20260714200000_dissolve_assistant_pay_linkage.sql`** rewrote the old master-linked checks to `is_assistant()`), but no assistant-visible UI reads those tables — the grant is latent. **Vehicles** left this bundle in v2.1650 (owner decision): the tab is gated by the new **`canAccessVehicles`** (dev / controller / Pay-Approved master / **assistant**), matching the `is_assistant()` table RLS that had been latent since v2.661. Master adoption confers nothing: `is_assistant_of_pay_approved_master()` was dropped in v2.661.
 
 **Vehicle holders (any role, v2.1648):** whoever currently holds a company vehicle (open `vehicle_possessions` row) gets scoped self-service via the `holds_vehicle()` policies (migration `20260814183650_vehicle_holder_access.sql`): SELECT on their vehicle + its readings/service events/problem reports + own possessions, INSERT odometer readings (`created_by = auth.uid()`), and INSERT problem reports (`reported_by = auth.uid()`). Surfaced as the Dashboard **My Vehicle** card (below My Time). No UPDATE/DELETE — office management stays with the office pool above.
+
+**The trucks' rate on Bids (v2.5039, `20261010008000_fleet_truck_rate.sql`):** `fleet_truck_rate_per_field_hour(p_today)` is a `SECURITY DEFINER` read behind `is_office_or_estimator()` (dev · master · assistant · controller · estimator) that returns one aggregate, every vehicle's insurance + registration + service + wear ÷ the crew's field hours over 90 days, with its totals and truck count, and never a vehicle's own figures. It is how an estimator, who reads no fleet table, sees the Bids crew-rate card's *trucks $X/field h*. Revoked from `anon`; no write.
 
 **Contracts (assistants):** **assistant** may use the tab but **cannot delete** person documents, packets (contract templates), Contract library documents, or remove packet checklist documents on save (**`canDeletePeopleContracts`** in **`People.tsx`** — **dev** and **master_technician** only; since v2.1411 the surfaces are the **Contract library** modal's Documents/Packets tabs and the **Assign packets** modal). **Unassign** (behind each assigned packet's ⋯ menu) is limited the same way (DB **DELETE** on contract tables excludes plain **assistant** — migration **`20260502070926_contract_tables_assistant_no_delete.sql`**).
 

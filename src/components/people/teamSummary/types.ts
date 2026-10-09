@@ -122,7 +122,7 @@ export type TeamSummaryRow = {
   overheadWage: number
   /** Wheels on Labor (v2.2735): the person's vehicle deal; `none` when they have no deal. */
   vehicleArrangement: 'none' | 'own_fuel_paid' | 'company'
-  /** The deal's fixed $/field h (company truck: insurance + registration + service ÷ field h, 90-day; own: $0); the override wins. null when unknown. Fuel is never in it (v2.4653). */
+  /** The deal's fixed $/field h (company truck: insurance + registration + service + wear ÷ field h, 90-day, v2.5039; own: $0); the override wins. null when unknown. Fuel is never in it (v2.4653). */
   vehicleRate: number | null
   vehicleTruckName: string | null
   /** −(field hours × vehicleRate); 0 with no deal or no fixed rate. Stored negative. */
@@ -168,7 +168,7 @@ export type TeamSummaryBreakdown = {
   allocatedByTag: Record<string, number>
   /** Wheels on Labor (v2.2735): the person's vehicle deal; `none` when they have no deal. */
   vehicleArrangement: 'none' | 'own_fuel_paid' | 'company'
-  /** The deal's fixed $/field h (company truck: insurance + registration + service ÷ field h, 90-day; own: $0); the override wins. null when unknown. Fuel is never in it (v2.4653). */
+  /** The deal's fixed $/field h (company truck: insurance + registration + service + wear ÷ field h, 90-day, v2.5039; own: $0); the override wins. null when unknown. Fuel is never in it (v2.4653). */
   vehicleRate: number | null
   vehicleTruckName: string | null
   /** −(field hours × vehicleRate); 0 with no deal or no fixed rate. Stored negative. */

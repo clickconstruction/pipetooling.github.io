@@ -3,7 +3,9 @@
 // truck table behind those rates. Read-only report; the arrangement itself is
 // set on Payroll → Pay config, the fixed-rate override inline here. Since v2.4653
 // fuel stays on the jobs it was put on; Review's vehicle line charges the fixed
-// rate per field hour plus the person's fuel on no job.
+// rate per field hour plus the person's fuel on no job. Since v2.5039 (Wheels PR 3) a
+// truck's fixed part carries its wear, and the fleet's rate below the trucks is the
+// number the Bids crew-rate card shows.
 
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/format'
@@ -204,7 +206,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                       <th style={thNum}>Fuel · 90d</th>
                       <th style={thNum}>Field h</th>
                       <th style={thNum}>Fuel / field h</th>
-                      <th style={thNum} title="What Review charges per field hour besides the person's fuel on no job: a company truck's insurance + registration + service ÷ the holder's field hours; own vehicle $0. A manual rate wins. Fuel stays on the jobs.">Fixed / field h</th>
+                      <th style={thNum} title="What Review and Crew P&L charge per field hour besides the person's fuel on no job: a company truck's insurance + registration + service + wear ÷ the holder's field hours; own vehicle $0. A manual rate wins. Fuel stays on the jobs.">Fixed / field h</th>
                       <th style={thNum} title="Manual fixed $/field hour; blank = computed">Override</th>
                       <th style={th}>Why</th>
                     </tr>
@@ -259,6 +261,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                         <th style={thNum}>Fuel</th>
                         <th style={thNum} title="Weekly insurance while on a plan + weekly registration, pro-rated over the window">Ins + reg</th>
                         <th style={thNum}>Service</th>
+                        <th style={thNum} title="The truck's latest replacement value spread over five years, for the window. — when no value is on file.">Wear</th>
                         <th style={thNum}>Total</th>
                         <th style={thNum}>Holder field h</th>
                         <th style={thNum} title="All-in, fuel included, for comparison. Review charges only the fixed part plus the holder's fuel on no job.">$ / field h</th>
@@ -267,7 +270,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                     <tbody>
                       {heldTrucks.length === 0 && idleTrucks.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ ...td, color: 'var(--text-muted)' }}>No vehicles yet.</td>
+                          <td colSpan={9} style={{ ...td, color: 'var(--text-muted)' }}>No vehicles yet.</td>
                         </tr>
                       ) : null}
                       {heldTrucks.map((t) => (
@@ -277,6 +280,7 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                           <td style={tdNum}>{usd(t.cost.fuel)}</td>
                           <td style={tdNum}>{usd(t.cost.insurance + t.cost.registration)}</td>
                           <td style={tdNum}>{usd(t.cost.service)}</td>
+                          <td style={tdNum}>{t.cost.hasReplacementValue ? usd(t.cost.wear) : <span title="No replacement value on file: add one on the vehicle and its wear counts" style={{ color: 'var(--text-faint)' }}>—</span>}</td>
                           <td style={{ ...tdNum, fontWeight: 600 }}>{usd(t.cost.total)}</td>
                           <td style={tdNum}>{fmtH(t.holderFieldHours)}</td>
                           <td style={{ ...tdNum, fontWeight: 600 }}>{t.cost.ratePerFieldHour != null ? `$${t.cost.ratePerFieldHour.toFixed(2)}` : <span title="No field hours for the holder in the window">—</span>}</td>
@@ -284,17 +288,22 @@ export function PeopleVehiclesWheelsSection({ users, onOpenPayConfig }: { users:
                       ))}
                       {idleTrucks.length > 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ ...td, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
-                            {idleTrucks.length} parked or unassigned: {idleTrucks.map((t) => `${t.name} (${usd(t.cost.insurance + t.cost.registration + t.cost.service)} carried in the window)`).join(', ')}
+                          <td colSpan={9} style={{ ...td, color: 'var(--text-muted)', fontSize: '0.8125rem' }}>
+                            {idleTrucks.length} parked or unassigned: {idleTrucks.map((t) => `${t.name} (${usd(t.cost.insurance + t.cost.registration + t.cost.service + t.cost.wear)} carried in the window)`).join(', ')}
                           </td>
                         </tr>
                       ) : null}
                     </tbody>
                   </table>
                 </div>
+                <div style={{ marginTop: 6, fontSize: '0.875rem', color: 'var(--text-muted)' }} data-testid="wheels-fleet-rate">
+                  All {snap.fleet.trucks} {snap.fleet.trucks === 1 ? 'vehicle' : 'vehicles'}: {usd(snap.fleet.fixedUsd)} insurance, registration, service and wear ÷{' '}
+                  {snap.fleet.fieldHours.toLocaleString('en-US', { maximumFractionDigits: 1 })} crew field h ={' '}
+                  <b style={{ color: 'var(--text-700)' }}>{snap.fleet.ratePerFieldHour != null ? `$${snap.fleet.ratePerFieldHour.toFixed(2)}/field h` : 'no rate without field hours'}</b>. Bids shows this beside the crew rate and never adds it.
+                </div>
               </div>
               <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '72ch' }}>
-                Fuel is every card charge in the fuel tag attributed to the person (Banking → Accounting): a purchase adds and a refund comes off. Payments that were not on a card never count. Field hours are approved job sessions. A truck's fuel is its holder's fuel; insurance counts only while the truck is on a plan. Wear is not included yet. Fuel stays on the jobs it was put on: Review's vehicle line charges the fixed rate per field hour plus the person's fuel on no job.
+                Fuel is every card charge in the fuel tag attributed to the person (Banking → Accounting): a purchase adds and a refund comes off. Payments that were not on a card never count. Field hours are approved job sessions. A truck's fuel is its holder's fuel; insurance counts only while the truck is on a plan. Wear is the truck's latest replacement value spread over five years, for the 90 days; a truck with no value on file adds none. Fuel stays on the jobs it was put on: Review's vehicle line charges the fixed rate per field hour plus the person's fuel on no job, and Crew P&L charges the fixed rate on each person's field hours.
               </p>
             </>
           ) : null}
