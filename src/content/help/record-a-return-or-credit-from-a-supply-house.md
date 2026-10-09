@@ -2,7 +2,7 @@
 title: record a return or credit from a supply house
 category: Billing & Money
 roles: assistant, controller, master_technician
-keywords: credit, credit memo, return, returned parts, refund, negative, restock, price correction, supply house, invoice, reece, ferguson, hughes, morrison
+keywords: credit, credit memo, return, returned parts, refund, negative, restock, price correction, supply house, invoice, reece, ferguson, hughes, morrison, credits invoice, pair, which invoice
 ---
 When parts go back to a supply house, the house issues a credit memo. You record it the same way you record an invoice, and say it is a credit.
 
@@ -17,10 +17,17 @@ You open **Materials → Supply houses**, open the house and press {{button:blue
 3. Add the job the parts came back from, under *Which job gets it back*.
 4. Before you save, the form tells you exactly what it will do. For example, it reads *Takes $888.10 off what we owe Reece, and $888.10 off J878's parts cost.* You read that line. It is the quickest way to catch a wrong house or a wrong job.
 5. Paste the credit memo's PDF link under **Paperwork**, the same as an invoice.
+6. Under **Credits invoice…**, pick the invoice this credit takes money off. The list shows this house's invoices, newest first. Leave it on *Not paired yet* if you do not know which one it is.
 
 :::example The form, filled in
 **Reece · Credit # S124460299.001 · 09/04/2026 · − $888.10**, purchase order *Return*, job **J878 Take 5 Seguin**, status *Open — still on the account*.
 :::
+
+## The credit and its invoice
+
+Once you pair them, each row names the other in the house's invoice list. The credit reads *Credits S123148787.003*. The invoice reads *Credited by S123396858.002 (−$120.00)*. An invoice with two credits names both. On a phone the same words sit in the row's second line. A credit pairs only to an invoice from the same house. To change the pair, edit the credit and pick another invoice, or *Not paired yet*.
+
+An older row may hold an invoice and its return in one number, like *S123148787.003/ Return S123396858.002*. Its amount is the two netted together. Split it by hand. Edit that row to the invoice's own number and amount. Then add the credit with its own number, and pair it to the invoice.
 
 ## What a credit does
 
