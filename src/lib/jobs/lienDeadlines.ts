@@ -19,6 +19,11 @@ import { sendsTrackingOwed } from './lienSendTracking'
  * Honest approximation, stated in the UI: the app does not track per-month
  * billing, so the clock keys on the job's LAST work month; the recorded
  * notice's `months_covered` is what the office attests it covers.
+ *
+ * A property whose kind is not set dates as residential (v2.5031; the owner's call of
+ * 2026-10-09): the earlier date is the safe one — a house read as commercial loses its
+ * lien a month late. Only `non_residential` gets the later month, here and in the SQL
+ * twins `lien_notice_deadline` / `lien_filing_deadline`; every screen still asks for the kind.
  */
 
 export type JobLienFilingRow = Database['public']['Tables']['job_lien_filings']['Row']
@@ -38,12 +43,17 @@ export function statutoryFifteenth(furnishYmd: string, monthsAfter: number): str
   return rollWeekend(base).toISOString().slice(0, 10)
 }
 
+/** True when the later, commercial clock applies — only a property set `non_residential`; a blank kind is read as a house. */
+export function lienCommercialClock(propertyKind: string | null | undefined): boolean {
+  return (propertyKind ?? '').trim() === 'non_residential'
+}
+
 export function noticeDeadlineForMonth(furnishYmd: string, propertyKind: string): string {
-  return statutoryFifteenth(furnishYmd, propertyKind === 'residential' ? 2 : 3)
+  return statutoryFifteenth(furnishYmd, lienCommercialClock(propertyKind) ? 3 : 2)
 }
 
 export function filingDeadlineForMonth(furnishYmd: string, propertyKind: string): string {
-  return statutoryFifteenth(furnishYmd, propertyKind === 'residential' ? 3 : 4)
+  return statutoryFifteenth(furnishYmd, lienCommercialClock(propertyKind) ? 4 : 3)
 }
 
 /**

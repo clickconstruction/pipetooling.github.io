@@ -188,7 +188,7 @@ describe("the cover letter — counsel's wording (v2.3482 · v2.3745)", () => {
   })
 
   it('residential, homestead and unresponsive letters carry their own sentences; the kind follows the property', async () => {
-    const { defaultGcNoticeCoverLetter, coverLetterKindFor, affidavitMonthWord } = await import('./gcOnNotice')
+    const { defaultGcNoticeCoverLetter, coverLetterKindFor, affidavitMonthWordFor } = await import('./gcOnNotice')
     const base = { gcName: 'Harborline Builders', claimantName: 'Click Plumbing and Electrical' }
     expect(defaultGcNoticeCoverLetter({ ...base, kind: 'residential' })).toContain('10% retainage the Code already tells you to reserve')
     expect(defaultGcNoticeCoverLetter({ ...base, kind: 'homestead' })).toContain('statement required by § 53.254(g)')
@@ -207,8 +207,12 @@ describe("the cover letter — counsel's wording (v2.3482 · v2.3745)", () => {
     expect(coverLetterKindFor({ propertyKind: 'residential', homestead: false })).toBe('residential')
     expect(coverLetterKindFor({ propertyKind: 'residential', homestead: true })).toBe('homestead')
     expect(coverLetterKindFor(null)).toBe('commercial')
-    expect(affidavitMonthWord('commercial')).toBe('fourth')
-    expect(affidavitMonthWord('residential')).toBe('third')
+    // The month the letter names follows the property's kind, not the letter's tone (v2.5031): an unset kind gets the
+    // commercial letter and the residential, third month — the date every screen shows.
+    expect(affidavitMonthWordFor('non_residential')).toBe('fourth')
+    expect(affidavitMonthWordFor('residential')).toBe('third')
+    expect(affidavitMonthWordFor('')).toBe('third')
+    expect(coverLetterKindFor({ propertyKind: '', homestead: false })).toBe('commercial')
   })
 
   it('the form claims the whole balance and names every month, a closed one as information (owner, 2026-09-25)', () => {
@@ -270,7 +274,9 @@ describe('buildGcOnNotice · a job with no clock hours is dated from its creatio
     expect(j.months).toEqual([{ key: '2026-08', hours: 0, deadline: '2026-10-15', closed: false, fromCreation: true }])
     expect(j.datedFromCreation).toBe(true)
     expect(j.readiness).toBe('ready')
-    expect(j.affidavitBy).toBe('2026-12-15')
+    // No property kind on the row: the affidavit dates as residential, the 3rd month (Nov 15 is a Sunday) — the same clock
+    // as the row's own Oct 15 notice date (v2.5031). Commercial would be Dec 15.
+    expect(j.affidavitBy).toBe('2026-11-16')
     expect(summary).toMatchObject({ ready: 1, claimTotal: 7_902, unpaidMonths: 1, earliestOpenDeadline: '2026-10-15' })
     expect(j).toMatchObject({ timelyMonths: ['2026-08'], staleMonths: [] })
     expect(gcNoticeFormClaim(j)).toMatchObject({ months: ['2026-08'], openBalance: 7_902 })

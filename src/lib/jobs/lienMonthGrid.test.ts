@@ -52,20 +52,20 @@ describe('buildLienMonthGrid · months down, papers across (#38)', () => {
   it('a skip and a noted miss read from the desk items; an unlettered draft with no papers is column A; a sent item is not a second column', () => {
     const skip = item({ id: 'sk', status: 'missed', months: ['2026-05'], fields: { notice: {}, gcEmail: '', skipReason: 'GC paid May by check', skippedBy: { name: 'Taunya', at: '2026-08-01T15:00:00Z' } } as never })
     const noted = item({ id: 'nt', status: 'missed', months: ['2026-06'], fields: { notice: {}, gcEmail: '', windowClosed: { name: 'Taunya', at: '2026-09-20T15:00:00Z' } } as never })
-    const grid = buildLienMonthGrid({ jobId: 'j273', months: [month('2026-08', '2026-11-16')], items: [skip, noted], filings: [], checked: new Set(['2026-08']), thisItem: null, thisPile: 'to_draft', propertyKind: '', todayYmd: TODAY })
+    const grid = buildLienMonthGrid({ jobId: 'j273', months: [month('2026-08', '2026-11-16')], items: [skip, noted], filings: [], checked: new Set(['2026-08']), thisItem: null, thisPile: 'to_draft', propertyKind: 'non_residential', todayYmd: TODAY })
     expect(grid.papers.map((p) => [p.letter, p.kind])).toEqual([['A', 'this']])
     const by = Object.fromEntries(grid.rows.map((r) => [r.month, r]))
     expect(by['2026-05']!.window).toMatchObject({ state: 'closed', skipped: true, skipReason: 'GC paid May by check', skippedBy: 'Taunya' })
     expect(by['2026-06']!.window).toMatchObject({ state: 'closed', noted: true, notedBy: 'Taunya' })
     expect(by['2026-08']!.thisNotice).toEqual({ on: true, locked: false, info: false, late: false })
-    const sent = buildLienMonthGrid({ jobId: 'j273', months: [], items: [item({ status: 'sent', sent_at: '2026-09-01T00:00:00Z', months: ['2026-06'] })], filings: [filing({ id: 'fS', months_covered: ['2026-06'], sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407', sent_on: '2026-09-01' }] })], checked: new Set(), thisItem: item({ status: 'sent' }), thisPile: 'sent', propertyKind: '', todayYmd: TODAY })
+    const sent = buildLienMonthGrid({ jobId: 'j273', months: [], items: [item({ status: 'sent', sent_at: '2026-09-01T00:00:00Z', months: ['2026-06'] })], filings: [filing({ id: 'fS', months_covered: ['2026-06'], sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407', sent_on: '2026-09-01' }] })], checked: new Set(), thisItem: item({ status: 'sent' }), thisPile: 'sent', propertyKind: 'non_residential', todayYmd: TODAY })
     expect(sent.papers.map((p) => p.kind)).toEqual(['filing'])
     expect(sent.rows[0]!.cells).toEqual({ fS: 'named', this: 'blank' })
   })
   it('words a paper', () => {
     const money = (n: number) => `$${n.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
     const label = (m: string) => ({ mail: 'mail', certified_mail: 'certified mail' })[m] ?? m
-    const grid = buildLienMonthGrid({ jobId: 'j273', months: [], items: [], filings: [lenox], allFilings: [lenox, ...siblings], checked: new Set(), thisItem: null, thisPile: 'to_draft', propertyKind: '', todayYmd: TODAY })
+    const grid = buildLienMonthGrid({ jobId: 'j273', months: [], items: [], filings: [lenox], allFilings: [lenox, ...siblings], checked: new Set(), thisItem: null, thisPile: 'to_draft', propertyKind: 'non_residential', todayYmd: TODAY })
     expect(lienGridPaperTitle(grid.papers[0]!, (d) => d)).toBe('Sent 2026-09-22 · by hand')
     expect(lienGridPaperWords(grid.papers[0]!, money, label)).toBe('$28,987 with 2 more jobs · mail')
     expect(lienGridPaperTitle(grid.papers[1]!, (d) => d)).toBe('This notice')

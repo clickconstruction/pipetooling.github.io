@@ -109,7 +109,8 @@ describe('legalLienGridCells', () => {
 
   it('marks a kind the office has not entered, and a job whose every window closed', () => {
     const c = cell('j702')
-    expect(c.kind).toBe('Commercial')
+    // A kind not set dates as residential (v2.5031), so it reads Residential, flagged as not entered.
+    expect(c.kind).toBe('Residential')
     expect(c.kindUnknown).toBe(true)
     expect(c.notices).toEqual([])
     expect(c.allClosed).toBe(true)

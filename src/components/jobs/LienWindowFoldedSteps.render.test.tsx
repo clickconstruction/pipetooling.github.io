@@ -14,7 +14,7 @@ afterEach(() => cleanup())
 const timeline = buildLienTimeline({
   todayYmd: '2026-10-02',
   isSub: true,
-  propertyKind: 'commercial',
+  propertyKind: 'non_residential',
   lastMonth: '2026-09',
   lastMonthFromCreation: false,
   months: [

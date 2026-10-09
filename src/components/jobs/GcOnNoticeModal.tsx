@@ -666,6 +666,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
             jobAddress: job?.job_address,
             homesteadStatement: homesteadStatementApplies(propertyFactsFor(job, data.desk.addressesById)),
             letterKind: letterKindFor(job),
+            propertyKind: propertyFactsFor(job, data.desk.addressesById)?.propertyKind ?? '',
             phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(),
             retainageHeld: job?.lien_retainage_held ?? null,
             serviceTypeName: job?.service_type?.name,

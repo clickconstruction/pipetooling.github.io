@@ -25,7 +25,8 @@ describe('buildLienTimelineFromWindow (v2.3781)', () => {
   it('a job with no sessions is dated from its creation month, and a filed affidavit runs the tail', () => {
     const t = buildLienTimelineFromWindow({ workMonths: null, filings: [], job: { id: 'j1', created_at: '2026-07-09T14:00:00Z', last_work_date: null }, isSub: true, propertyKind: '', openBalance: 4_100, todayYmd: TODAY })
     expect(t.steps[0]!.words).toBe('dated from the job’s creation · no clock hours')
-    expect(t.steps.find((s) => s.kind === 'notice')?.date).toBe('2026-10-15')
+    // No kind set: July's notice dates as residential, the 2nd month (v2.5031); commercial would be Oct 15.
+    expect(t.steps.find((s) => s.kind === 'notice')?.date).toBe('2026-09-15')
     expect(t.kindUnknown).toBe(true)
     const filed = buildLienTimelineFromWindow({ workMonths: null, filings: [filing({ id: 'a', kind: 'affidavit', filed_at: '2026-07-14', served_at: '2026-07-16', recording_number: '2026-0412', county: 'Comal' })], job: { id: 'j1', created_at: '2026-01-05T00:00:00Z', last_work_date: '2026-03-28' }, isSub: true, propertyKind: 'non_residential', openBalance: 12_400, todayYmd: TODAY })
     expect(filed.steps.find((s) => s.kind === 'affidavit')?.dateWords).toBe('filed Jul 14')

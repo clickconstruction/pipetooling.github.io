@@ -533,7 +533,7 @@ const SAMPLE_LEGAL = {
 const LEGAL_GC = { company: 'Brazos Ridge Contracting', contact: 'Pat Holloway', email: 'pat.holloway@brazosridge.example.com', phone: '(512) 555-0142', office: '1150 Hunter Rd, Suite 300, San Marcos, TX 78666' } as const
 
 /** The building's record, the job's own property (#85 item 6 reads it from `jobAddresses`). */
-const LEGAL_PROPERTY_ROW = { id: 'sample-legal-property', customer_id: 'sample-legal-owner', address: '200 Creekside Pkwy, Suite 200, Kyle, TX 78640', county: 'Hays', legal_description: 'Lot 4, Block B, Creekside Commerce Park, Section 2, Hays County, Texas', property_kind: 'commercial', homestead: false, owner_mode: 'building_owner', owner_name: 'Jordan Reyes', owner_company: 'Alvarado Holdings LLC', owner_mailing_address: 'PO Box 4100, San Marcos, TX 78667', parcel_id: 'R104417', is_primary: true, sequence_order: 0, jp_precinct: '2', jp_precinct_note: '' } as const
+const LEGAL_PROPERTY_ROW = { id: 'sample-legal-property', customer_id: 'sample-legal-owner', address: '200 Creekside Pkwy, Suite 200, Kyle, TX 78640', county: 'Hays', legal_description: 'Lot 4, Block B, Creekside Commerce Park, Section 2, Hays County, Texas', property_kind: 'non_residential', homestead: false, owner_mode: 'building_owner', owner_name: 'Jordan Reyes', owner_company: 'Alvarado Holdings LLC', owner_mailing_address: 'PO Box 4100, San Marcos, TX 78667', parcel_id: 'R104417', is_primary: true, sequence_order: 0, jp_precinct: '2', jp_precinct_note: '' } as const
 
 /**
  * The one sample matter (v2.3639; one coherent story since v2.4638): the shape `parseLegalPortalPayload`
@@ -705,7 +705,7 @@ function sampleLegalLienBook(todayYmd: string): Record<string, unknown> {
   const repipeJob = 'sample-book-job-repipe'
   const matterMonths = [...new Set([-110, -96, -82, -66].map((n) => d(n).slice(0, 7)))].sort()
   const monthRow = (job: string, month: string, kind: string, gc: string | null, customer: string, open: number, noticed: boolean, item: string | null) => ({
-    job_id: job, work_month: month, approved_hours: 16, deadline: sampleStatutoryFifteenth(`${month}-01`, kind === 'residential' ? 2 : 3), noticed, open_balance: open, customer_id: customer, gc_customer_id: gc, property_kind: kind, has_owner: true, desk_item_id: item, desk_status: item ? 'sent' : null, desk_months: item ? matterMonths : null, month_source: 'hours',
+    job_id: job, work_month: month, approved_hours: 16, deadline: sampleStatutoryFifteenth(`${month}-01`, kind === 'non_residential' ? 3 : 2), noticed, open_balance: open, customer_id: customer, gc_customer_id: gc, property_kind: kind, has_owner: true, desk_item_id: item, desk_status: item ? 'sent' : null, desk_months: item ? matterMonths : null, month_source: 'hours',
   })
   // Another GC's job with its next notice due inside the desk's 30-day lead: the work month whose deadline is the first one not yet passed.
   const monthStart = (offset: number) => {
@@ -716,11 +716,11 @@ function sampleLegalLienBook(todayYmd: string): Record<string, unknown> {
   const dentalMonth = dentalWork.slice(0, 7)
   return {
     rows: [
-      ...matterMonths.map((m) => monthRow(jobId, m, 'commercial', gcId, SAMPLE_LEGAL.ownerCustomerId, 14_400, true, SAMPLE_LEGAL.noticeItemId)),
-      monthRow(dentalJob, dentalMonth, 'commercial', gc2, 'sample-book-owner-2', 6_200, false, null),
+      ...matterMonths.map((m) => monthRow(jobId, m, 'non_residential', gcId, SAMPLE_LEGAL.ownerCustomerId, 14_400, true, SAMPLE_LEGAL.noticeItemId)),
+      monthRow(dentalJob, dentalMonth, 'non_residential', gc2, 'sample-book-owner-2', 6_200, false, null),
     ],
     affidavitRows: [
-      { job_id: jobId, last_month: d(-66).slice(0, 7), deadline: sampleStatutoryFifteenth(d(-66), 4), is_sub: true, noticed: true, filed: false, open_balance: 14_400, customer_id: SAMPLE_LEGAL.ownerCustomerId, gc_customer_id: gcId, property_kind: 'commercial', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null, month_source: 'hours' },
+      { job_id: jobId, last_month: d(-66).slice(0, 7), deadline: sampleStatutoryFifteenth(d(-66), 4), is_sub: true, noticed: true, filed: false, open_balance: 14_400, customer_id: SAMPLE_LEGAL.ownerCustomerId, gc_customer_id: gcId, property_kind: 'non_residential', has_owner: true, has_legal: true, homestead: false, desk_item_id: null, desk_status: null, month_source: 'hours' },
       { job_id: repipeJob, last_month: d(-35).slice(0, 7), deadline: sampleStatutoryFifteenth(d(-35), 3), is_sub: false, noticed: false, filed: true, open_balance: 3_850, customer_id: 'sample-book-homeowner', gc_customer_id: null, property_kind: 'residential', has_owner: true, has_legal: false, homestead: false, desk_item_id: null, desk_status: null, month_source: 'hours' },
     ],
     items: [{ id: SAMPLE_LEGAL.noticeItemId, job_id: jobId, kind: 'notice_53_056', status: 'sent', months: matterMonths, sent_at: at(-40), sent_filing_id: SAMPLE_LEGAL.noticeFilingId, hold_until: null, created_at: at(-44), voided_at: null }],

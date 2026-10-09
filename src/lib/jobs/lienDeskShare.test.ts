@@ -73,7 +73,9 @@ const data = {
   summary: summarizeLienDeskForNeedsYou(queue),
   affidavits: buildLienAffidavitQueue(affidavitRows, [], TODAY),
   retainage: EMPTY_LIEN_RETAINAGE_QUEUE(),
-  jobsById: Object.fromEntries([job(878, 'Take 5- Seguin'), job(273, 'Dudley (Lennox)'), job(650, 'ATI Schertz'), job(927, 'Mike Holub- Candelria'), job(801, 'Mailed one'), job(802, 'Approved one'), job(803, 'Gone one'), job(838, 'Bruce Hall'), job(881, 'Dudley Mason')].map((j) => [j.id, j])),
+  jobsById: Object.fromEntries([job(878, 'Take 5- Seguin'), job(273, 'Dudley (Lennox)'), { ...job(650, 'ATI Schertz'), customer_address_id: 'addr-650' }, job(927, 'Mike Holub- Candelria'), job(801, 'Mailed one'), job(802, 'Approved one'), job(803, 'Gone one'), job(838, 'Bruce Hall'), job(881, 'Dudley Mason')].map((j) => [j.id, j])),
+  // ATI Schertz is commercial: its houses' windows run on the 3rd month (a kind not set would date them a month earlier, v2.5031).
+  addressesById: { 'addr-650': { id: 'addr-650', property_kind: 'non_residential' } },
   gcsById: {
     [GC.SP]: { id: GC.SP, name: 'Southern Post Construction' },
     [GC.RMC]: { id: GC.RMC, name: 'RMC- Dudley Mason' },
@@ -207,7 +209,8 @@ describe('the houses choice — lien jobs where a supply house is also owed (v2.
     // Two houses owed; Reece's July window is the one still open.
     expect(j650).toMatchObject({ name: 'ATI Schertz', gc: 'Loberg Contracting', owed: 15722, housesOwed: 10500, houses: 2, house: 'Reece', byYmd: '2026-10-15', jobAccount: false })
     // A Calendar-only job takes its words from its row.
-    expect(houses.find((h) => h.number === '977')).toMatchObject({ owed: 15406, housesOwed: 700, houses: 1, house: 'Winn Supply', byYmd: '2026-11-16', jobAccount: true })
+    // 977 has no property kind (the Calendar assumes residential): its house's August window closes Oct 15, as the Calendar reads it (v2.5031).
+    expect(houses.find((h) => h.number === '977')).toMatchObject({ owed: 15406, housesOwed: 700, houses: 1, house: 'Winn Supply', byYmd: '2026-10-15', jobAccount: true })
   })
 
   it('is the second thing to send, and only when there is one', () => {

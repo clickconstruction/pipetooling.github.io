@@ -112,6 +112,11 @@ describe('buildLegalPacket', () => {
     payments: [{ id: 'p1', invoice_id: 'inv-b', amount: 200, paid_on: '2026-06-02', payment_type: 'check', reference_number: '1044' }],
   })
   const account = groupCollectionsByPayer([tleJobA, tleJobB], new Map(), TODAY)[0] as LegalAccountSummary
+  const addr = (over: Partial<CustomerAddressRow>): CustomerAddressRow =>
+      ({ id: 'a1', customer_id: 'tle', address: '15054 State Hwy 71, Bee Cave, TX', county: 'Travis', county_source: 'manual', legal_description: 'Lot 4, Block B', owner_mode: 'company', owner_name: '', owner_company: 'TLE Holdings', owner_mailing_address: 'PO Box 1', parcel_id: 'R123', parcel_source: 'cad', parcel_tax_year: '2026', parcel_looked_up_at: null, homestead: false, property_kind: 'non_residential', is_primary: true, note: null, sequence_order: 0, created_at: null, updated_at: null, ...over }) as CustomerAddressRow
+  // TLE's Hwy 71 site is commercial: linked to its record the jobs run the 4th-month clock. A job with no property
+  // record reads a kind not set — residential, a month earlier (v2.5031).
+  const onCommercialSite = { ...account, jobs: account.jobs.map((j) => ({ ...j, customer_address_id: 'a1' })) }
   const withEvidence = { clockSessions: [gpsSession('job-a', '2026-04-09'), gpsSession('job-b', '2026-04-10')] }
 
   it('assembles the account: contacts, ledger in date order, totals, aging, primary invoice', () => {
@@ -205,7 +210,7 @@ describe('buildLegalPacket', () => {
   })
 
   it('lien clock: an original contractor has no monthly notice; the affidavit window is the 15th of the 4th month after the last work', () => {
-    const packet = buildLegalPacket(baseInput(account, { clockSessions: [gpsSession('job-a', '2026-06-12'), gpsSession('job-b', '2026-04-10')] }))
+    const packet = buildLegalPacket(baseInput(onCommercialSite, { jobAddresses: [addr({})], clockSessions: [gpsSession('job-a', '2026-06-12'), gpsSession('job-b', '2026-04-10')] }))
     const a = packet.paper.lienClock.find((c) => c.jobId === 'job-a')
     expect(a).toEqual(expect.objectContaining({ lastWorkYmd: '2026-06-12', noticeDeadline: '', filingDeadline: '2026-10-15', status: 'affidavit_open' }))
     expect(a?.filingLeft).toBe(daysBetweenYmd(TODAY, '2026-10-15'))
@@ -215,8 +220,9 @@ describe('buildLegalPacket', () => {
     const subJob = collectionsJob({ id: 'job-s', hcp_number: '905', customer_id: 'own', customer_name: 'Owner', gc_customer_id: 'gc', gcCustomer: { id: 'gc', name: 'Hilltop' }, invoices: [billedInvoice('inv-s', 6200, '2026-05-30')] })
     const subAcc = groupCollectionsByPayer([subJob], new Map(), TODAY)[0] as LegalAccountSummary
     const sub = buildLegalPacket(baseInput(subAcc, { clockSessions: [gpsSession('job-s', '2026-07-29')] }))
-    expect(sub.paper.lienClock[0]).toEqual(expect.objectContaining({ noticeDeadline: '2026-10-15', status: 'notice_open' }))
-    expect(sub.gaps.find((g) => g.key === 'lien:job-s')?.label).toMatch(/§ 53.056 notice due 2026-10-15/)
+    // No property record on 905: a kind not set dates as residential, the 2nd month after July (v2.5031).
+    expect(sub.paper.lienClock[0]).toEqual(expect.objectContaining({ noticeDeadline: '2026-09-15', status: 'notice_open' }))
+    expect(sub.gaps.find((g) => g.key === 'lien:job-s')?.label).toMatch(/§ 53.056 notice due 2026-09-15/)
   })
 
   it('their word reads each instant on the company calendar: a call or promise the evening before the first bill is that evening', () => {
@@ -290,8 +296,6 @@ describe('buildLegalPacket', () => {
   })
 
   it('property records: incomplete warns with what is missing; complete is silent and lien-ready', () => {
-    const addr = (over: Partial<CustomerAddressRow>): CustomerAddressRow =>
-      ({ id: 'a1', customer_id: 'tle', address: '15054 State Hwy 71, Bee Cave, TX', county: 'Travis', county_source: 'manual', legal_description: 'Lot 4, Block B', owner_mode: 'company', owner_name: '', owner_company: 'TLE Holdings', owner_mailing_address: 'PO Box 1', parcel_id: 'R123', parcel_source: 'cad', parcel_tax_year: '2026', parcel_looked_up_at: null, homestead: false, property_kind: 'non_residential', is_primary: true, note: null, sequence_order: 0, created_at: null, updated_at: null, ...over }) as CustomerAddressRow
     // Item 6: the property is the record each job names, whoever's record it is; both jobs stand on it.
     const linked = { ...account, jobs: account.jobs.map((j) => ({ ...j, customer_address_id: 'a1' })) }
     const complete = buildLegalPacket(baseInput(linked, { jobAddresses: [addr({})] }))
@@ -304,7 +308,7 @@ describe('buildLegalPacket', () => {
 
   it('a filed affidavit carries the § 53.158 date and its words say served, counsel, or that the year ran out', () => {
     const filed = { id: 'aff', job_id: 'job-a', kind: 'affidavit', filed_at: '2026-11-20', served_at: '2026-11-23', serve_due: '2026-11-25', months_covered: ['2026-06'], invoice_ids: [], amount: 5000, fields: {}, sends: [], county: 'Comal', recording_number: '2026-0412', created_by: null, created_at: '2026-11-20T12:00:00Z', voided_at: null } as never
-    const packet = buildLegalPacket(baseInput(account, { clockSessions: [gpsSession('job-a', '2026-06-12')], lienFilings: [filed] }))
+    const packet = buildLegalPacket(baseInput(onCommercialSite, { jobAddresses: [addr({})], clockSessions: [gpsSession('job-a', '2026-06-12')], lienFilings: [filed] }))
     const a = packet.paper.lienClock.find((c) => c.jobId === 'job-a')!
     expect(a).toEqual(expect.objectContaining({ status: 'filed', filingDeadline: '2026-10-15', suitDeadline: '2027-10-15', served: true, released: false }))
     expect(legalLienClockWords({ ...a, suitLeft: 200 })).toEqual({ text: 'filed · served · suit in 200d', tone: 'ok' })

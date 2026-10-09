@@ -12,7 +12,7 @@ import { buildLienTimeline } from '../../lib/jobs/lienTimeline'
 const timeline = buildLienTimeline({
   todayYmd: '2026-09-27',
   isSub: true,
-  propertyKind: 'commercial',
+  propertyKind: 'non_residential',
   lastMonth: '2026-07',
   lastMonthFromCreation: false,
   months: [

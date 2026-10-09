@@ -188,7 +188,7 @@ export default function LegalPortalLienGrid({ raw, todayYmd, companyName, initia
         </CardCell>
         {factTd('owner', c.owner)}
         <CardCell label={labelOf('kind')} style={td}>
-          <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{c.kind}{c.kindUnknown ? <> {unknown('The office has not entered the property kind — commercial dates shown; a residential property is a month earlier')}</> : null}</span>
+          <span style={{ display: 'block', whiteSpace: 'nowrap' }}>{c.kind}{c.kindUnknown ? <> {unknown('The office has not entered the property kind — residential dates shown, the earlier ones; a commercial property is a month later')}</> : null}</span>
           {c.homestead ? <span style={{ display: 'block', color: MUTED, fontSize: portalSmall(10.5), whiteSpace: 'nowrap' }}>{c.homestead}</span> : null}
         </CardCell>
         <CardCell label={labelOf('court')} style={td} data-legal-grid-court>
