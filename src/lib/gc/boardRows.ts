@@ -10,6 +10,8 @@
  * was last chased (the newest office line on it), and a company's papers until B6 keys them to the
  * company (none on file yet).
  */
+import type { Json } from '../../types/database'
+import { extractContactFromCustomer } from '../customerContactDisplay'
 import { townFromAddress } from './map'
 import type { GcProjectView } from './projectRows'
 import type {
@@ -215,8 +217,8 @@ export interface BoardRows {
   projects: GcProjectView[]
   /** The Board's columns on each project, by project id. A project missing here reads as nothing set. */
   boardDates: Record<string, BoardDatesRow>
-  /** The customers and architects the projects name. */
-  customers: { id: string; name: string; contact?: string }[]
+  /** The customers and architects the projects name, with the phone and email on their customer record. */
+  customers: { id: string; name: string; contact?: string; contact_info?: Json | null }[]
   companies: CompanyRow[]
   invites: InviteRow[]
   quotes: QuoteRow[]
@@ -530,8 +532,8 @@ export function boardStateFromRows(rows: BoardRows): GcState {
     list.push(inviteFromRows(i, rows.quotes, rows.contacts))
     invitesByPackage.set(i.package_id, list)
   }
-  // Phone, email and the call log come with the schedule's 7c-ii, which reads them for the call list's Call.
-  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', phone: '', email: '', payDays: null, portalOn: false, retainagePct: null, address: '', contacts: [] }))
+  // Phone and email from the customer record (the schedule's 7c-ii), for the call list's Call. No call log is kept for a customer yet.
+  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', ...extractContactFromCustomer({ contact_info: c.contact_info ?? null }), payDays: null, portalOn: false, retainagePct: null, address: '', contacts: [] }))
   return {
     today: rows.today,
     customers,

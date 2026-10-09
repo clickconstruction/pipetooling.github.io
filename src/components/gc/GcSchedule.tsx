@@ -5,11 +5,13 @@
  * measures, the chart with its links, spare days and holds, the list on a phone, Print or PDF,
  * Export, and the bar pressed (`GcScheduleBar`). Its presses are Draw a first draft, closed while we
  * bid and on a lost job, and for those who may move a bar, a move through Why it moved with Undo and
- * Redo (PR 8a), and the bar's form and a part's own move (PR 8b). The window frames it
+ * Redo (PR 8a), and the bar's form and a part's own move (PR 8b). Grouped by company on a job being
+ * built, the chart draws who to call, with Call (`GcCallList`, 7c-ii). The window frames it
  * (`GcScheduleWindow`); a project page mounts it unchanged the day the doors bring one.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
+import { barCaller, callList } from '../../lib/gc/schedule/callList'
 import { changeOrderTails } from '../../lib/gc/schedule/changeOrderDays'
 import { chartHolds } from '../../lib/gc/schedule/chartHolds'
 import { crewCountsNow } from '../../lib/gc/schedule/crewCounts'
@@ -38,6 +40,7 @@ import type { GcProject, GcState } from '../../lib/gc/types'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcGantt } from './GcGantt'
 import { GcActivityEditor } from './GcActivityEditor'
+import { GcBarCaller, GcCallList } from './GcCallList'
 import { GcScheduleBar } from './GcScheduleBar'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
@@ -227,8 +230,12 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
   // The chart's bars, for the card of the bar pressed: the chart draws the same ones.
   const bars = useMemo(() => ganttBars(m.items, m.float, holds, state.today, building, tails), [m, holds, state.today, building, tails])
   const [picked, setPicked] = useState<string | null>(null)
-  // The chart's one company (G-13), held here so the call list (7c) can pick it.
+  // The chart's one company (G-13): its picker and the call list's Their work share it.
   const [company, setCompany] = useState<string | undefined>(undefined)
+  const chartCompanies = useMemo(() => new Set(m.items.map((i) => i.company)), [m.items])
+  // By company as a call list (G-115, 7c-ii): whoever's answer moves the chart, from the chart's own holds, on a job being
+  // built. The Follow up sheet is the Board lane's and not here yet, so Call only dials.
+  const calls = useMemo(() => (building ? callList(state, project, holds) : null), [state, project, holds, building])
   // A move waiting on why it moved (PR 8a): every drag, pulled end and link goes through the window first.
   const [pending, setPending] = useState<PendingMove | null>(null)
   // What a dragged bar would push and do to the finish, drawn while it is dragged.
@@ -279,6 +286,8 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
   }
 
   const pickedBar = bars.find((b) => b.id === picked) ?? null
+  // The opened bar's company, with Call (G-115), while its work is not done.
+  const caller = calls && pickedBar && pickedBar.item.actual < 100 ? barCaller(state, project, pickedBar.id) : null
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       <ScheduleWhy />
@@ -313,6 +322,12 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
           building={building}
           picked={picked}
           onPick={setPicked}
+          callList={
+            calls ? (
+              // A line about a bar opens it; Their work shows only that company on the chart (G-13).
+              <GcCallList list={calls} onReason={setPicked} theirWork={(person) => (chartCompanies.has(person.company) ? () => setCompany(person.company) : null)} />
+            ) : undefined
+          }
           {...(moves && project.schedule
             ? {
                 onMove: (lineId: string, start: string, finish: string) => setPending({ lineId, start, finish, after: project.schedule?.activities.find((a) => a.lineId === lineId)?.after ?? [] }),
@@ -349,7 +364,9 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
           onClose={() => setPicked(null)}
         />
       )}
-      {pickedBar && <GcScheduleBar bar={pickedBar} all={bars} today={state.today} building={building} onClose={() => setPicked(null)} />}
+      {pickedBar && (
+        <GcScheduleBar bar={pickedBar} all={bars} today={state.today} building={building} caller={caller ? <GcBarCaller caller={caller} /> : undefined} onClose={() => setPicked(null)} />
+      )}
       {moves ? (
         <GcMoveHistory project={project} onUndo={moves.undo} onRedo={moves.redo} busy={moves.busy} refused={moves.refused} problem={moves.problem} />
       ) : (

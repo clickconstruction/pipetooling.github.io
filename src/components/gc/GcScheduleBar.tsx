@@ -3,9 +3,9 @@
  * to-dos/gc-mode/mockups/schedule-pr7.md on branch spike/gc-mode). A card under the chart for the
  * bar pressed: its name, its trade and company, then what the chart's hover card says about it,
  * what holds it, its parts and its place (`barCardRows`). The editor comes with the schedule's PR 8,
- * for those who may move a bar.
+ * for those who may move a bar. Since 7c-ii, the company doing it, with Call (`GcBarCaller`).
  */
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import type { GanttBar } from '../../lib/gc/schedule/gantt'
 import { barCardRows } from '../../lib/gc/schedule/scheduleWindow'
 import { Btn, Card, Chip } from './gcUi'
@@ -13,7 +13,22 @@ import { Btn, Card, Chip } from './gcUi'
 /** The colours the chart's hover card gives a line. */
 const TONE = { red: 'var(--text-red-700)', amber: 'var(--text-amber-800)', green: 'var(--text-green-800)' } as const
 
-export function GcScheduleBar({ bar, all, today, building, onClose }: { bar: GanttBar; all: GanttBar[]; today: string; building: boolean; onClose: () => void }) {
+export function GcScheduleBar({
+  bar,
+  all,
+  today,
+  building,
+  caller,
+  onClose,
+}: {
+  bar: GanttBar
+  all: GanttBar[]
+  today: string
+  building: boolean
+  /** The company doing it, with Call, while its work is not done (G-115). Unset: none. */
+  caller?: ReactNode
+  onClose: () => void
+}) {
   const rows = barCardRows(bar, all, today, building)
   return (
     <Card>
@@ -29,6 +44,7 @@ export function GcScheduleBar({ bar, all, today, building, onClose }: { bar: Gan
         <div style={{ color: 'var(--text-muted)' }}>
           {bar.item.trade} · {bar.item.company}
         </div>
+        {caller}
         <dl style={{ margin: 0, display: 'grid', gridTemplateColumns: '6.5rem minmax(0, 1fr)', gap: '0.2rem 0.6rem' }}>
           {rows.map((r, i) => (
             <Fragment key={`${r.label}:${i}`}>
