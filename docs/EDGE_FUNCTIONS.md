@@ -1477,6 +1477,11 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### submit-sub-portal
 
+> **v2.5042 — redeploy after merge**: each dispatch note now calls [`notify-dispatch-request`](#notify-dispatch-request) as an internal caller, with the service-role key as its bearer, through [`_shared/internalFunctionCall.ts`](../supabase/functions/_shared/internalFunctionCall.ts). The notes are availability, a day off under a pick, work done, a progress note, a declined offer and a signed order.
+> - Before, the call carried no `Authorization` header, so the notifier answered 401 and no phone heard a sub's note. The inbox row was always written.
+> - A non-2xx answer is now logged as `notify-dispatch-request refused <status> <body>`.
+> - Handler test: `src/lib/subs/subPortalDispatchNotify.run.test.ts`.
+
 > **v2.4458 — redeploy only**: bundles [`_shared/subPortalStatement.ts`](../supabase/functions/_shared/subPortalStatement.ts), whose sheet cards now read their days in `APP_CALENDAR_TZ` ([sub-portal](#sub-portal)). Nothing this function writes or returns changes; redeploy after merge so the bundle matches the repo.
 
 **Job link (v2.3080)**: `mark_work_done` and `progress` find the sheet's job through `people_labor_jobs.job_ledger_id` (watcher notifications, the `sub_progress` activity event); the case-sensitive `hcp_number = job_number` lookups are gone — a sheet with no link notifies nobody and writes no event.
@@ -2772,7 +2777,7 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 **Endpoint**: `POST /functions/v1/notify-dispatch-request`
 
-**Internal caller** (v2.3246): a request whose bearer **is the service-role key** is trusted as an internal caller — `submit-portal-request` uses it, since the customer has no session. Internal callers may only run the `created` fan-out (the row is read with the service role and the author check is skipped); `closed` / `reopened` stay user-only. **Redeploy required.**
+**Internal caller** (v2.3246): a request whose bearer **is the service-role key** is trusted as an internal caller. `submit-portal-request` uses it, since the customer has no session, and so does `submit-sub-portal` since v2.5042, for a sub's dispatch notes. Internal callers may only run the `created` fan-out (the row is read with the service role and the author check is skipped); `closed` / `reopened` stay user-only. **Redeploy required.**
 
 **Required Role**: `mode` omitted / `'created'`: authenticated user who is the request author (`from_user_id` on the row). `mode: 'closed' | 'reopened'`: a dispatch group member, a dev, or the row's `closed_by_user_id` (checked with the service role after the RLS-scoped row read).
 
