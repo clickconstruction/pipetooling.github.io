@@ -72,6 +72,7 @@ Open the sheet with **Edit sheet**. The expanded row only lists the payments. Ev
 
 - {{button:outline|Move…}} opens **Move this payment**. The same sub's other sheets are listed first. Search finds any other sheet by job number, address or sub. Pick one and a **What changes** panel reads both sheets before and after, like *880: paid $2,000.00 → $0.00, owed $2,200.00 → $4,200.00 · 922: paid $0.00 → $2,000.00, owed $2,000.00 → $0.00 · paid in full*. The amount, date, memo and portal-visibility setting travel with it. Say why, and press {{button:blue|Move $2,000.00 to 922}}. The reason starts as *wrong job*.
 - {{button:outline|Remove}} opens **Remove this payment?** with a reason: {{chip:blue|Duplicate entry}}, {{chip:gray|Wrong amount}} or {{chip:gray|Something else}}. The window also has **Wrong job → Move it instead**, which is the door to Move. A removal can be undone for 30 days.
+- A backcharge stays on the sheet it was raised on. Its {{button:outline|Move…}} says so on the row and opens nothing. To take one off, use {{button:outline|Remove}}.
 
 A move and a removal both leave a grey **trace line** under the sheet's payments. The line reads like *Moved → 922 Michael Palmer · Taunya · wrong job*, *Moved here from 880 Reliant Health-HVAC* or *Removed · Taunya · Duplicate entry*. So a balance that jumped explains itself. A removed line carries {{button:gray|Undo}} while it can still come back.
 
