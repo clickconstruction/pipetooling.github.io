@@ -36,6 +36,15 @@ export function cutSheetFileName(tag: string): string {
   return `${name} cut sheet.pdf`
 }
 
+/**
+ * The line after a cut sheet is saved. v2.5027 (the owner's call of 2026-10-09): it is for reading,
+ * or for the GC's own system, never an invitation to email it; a submittal leaves only through
+ * Share or Send the link.
+ */
+export function cutSheetSavedLine(name: string, pages: number): string {
+  return `Saved ${name} · ${pages} page${pages === 1 ? '' : 's'}, to read or to file in the GC’s own system.`
+}
+
 type PdfLib = typeof import('pdf-lib')
 export type LoadPdfLib = () => Promise<PdfLib>
 const defaultLoad: LoadPdfLib = async () => await import('pdf-lib')
