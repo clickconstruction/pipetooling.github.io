@@ -13,7 +13,28 @@ vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: 'dev', user: { i
 vi.mock('../../contexts/JobFormModalContext', () => ({ useJobFormModal: () => null }))
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
-  return { supabase: makeSupabaseStub() }
+  const stub = makeSupabaseStub() as unknown as Record<string, unknown> & { from: (table: string) => Record<string, unknown> }
+  const stubFrom = stub.from.bind(stub)
+  return {
+    supabase: {
+      ...stub,
+      from: (table: string) => {
+        const b = stubFrom(table)
+        if (table !== 'jobs_ledger') return b
+        // The terms bar's given-up read (v2.5015): 881's open $3,000, only when it asks for the GC's bills.
+        let asksForGc = false
+        const or = b.or as (...a: unknown[]) => unknown
+        b.or = (expr: string) => {
+          asksForGc = expr.includes('and(gc_customer_id.eq.gc-rmc,bill_to_party.eq.gc)')
+          or(expr)
+          return b
+        }
+        b.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) =>
+          Promise.resolve({ data: asksForGc ? [{ revenue: 3000, payments_made: 0 }] : [], error: null }).then(ok, bad)
+        return b
+      },
+    },
+  }
 })
 
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
@@ -241,5 +262,18 @@ describe('BidFormModal footer — Archive from board (v2.4266)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Put back on board' }))
     expect(onRequestUnarchiveFromBoard).toHaveBeenCalledTimes(1)
     expect(onRequestArchiveFromUnsentWorking).not.toHaveBeenCalled()
+  })
+})
+
+describe('New Bid · the terms bar reads the GC the job billed (the owner’s call of 2026-10-09)', () => {
+  it('881’s shape: picking RMC- Dudley Mason shows the Deposit required? nudge for the bill it owed', async () => {
+    const form = makeForm()
+    const props = baseProps({
+      form: { ...form, values: { ...values, gcCustomerId: 'gc-rmc' } },
+      customers: [{ id: 'gc-rmc', name: 'RMC- Dudley Mason' } as unknown as BidFormModalProps['customers'][number]],
+    })
+    renderWithProviders(<BidFormModal {...props} />)
+    await settle()
+    expect(await screen.findByText('The office gave up on 1 bill from this customer ($3,000) — set Deposit required?')).toBeTruthy()
   })
 })
