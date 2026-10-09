@@ -41,3 +41,7 @@ It is additive and idempotent: one table, its index and three policies, one payl
 - another customer's bill on the contract's 45 days; the order late, on time, waiting on the architect;
 - last week's send and certificate;
 - the requests' policies (an estimator, a wrong name, a client update), the owner's schedule and Email streams listing it, and the owner stopping it.
+
+## Status
+
+**Applied to prod 2026-10-09 at 12:19 UTC** by the lead (GC MODE) from a clean checkout at main's tip (9f3f555c8) with `scripts/db-push.sh` (`--include-all`); drift 823/823 after. `gc-money-monday-email` deployed the same minute with its `verify_jwt = false` entry, and `dev-mcp` with the catalog; edge drift 145/145. Verified through the management API: step 1, nine policies on `gc_money_monday_email_requests` (its three, the three twin fences, the three read-only blocks); step 2, the payload executable by the service role only; step 3, the cron `gc-money-monday-email` on `3-58/5 * * * *`, active; step 4, the payload read as the service role, rolled back, is empty today (no bills, sends or certificates; the week Sep 28 to Oct 4), which matches the Money lens, where no GC bill exists yet. The first send waits on Grace's yes in Helper 15's chat; the types ride PUNCHLIST's regeneration with 008000 and 010000.
