@@ -8,10 +8,10 @@ summary: >
   opening, a split where it holds two or three guides, and cuts. The three slices' reviewers
   proposed all three per guide. They are gathered here for the owner's call.
 size: M (13 guides, about 20,000 prose words; one PR per guide)
-ver: v2.4589 · 4597 · 4601 · 5052 · 5057 · 5062
+ver: v2.4589 · 4597 · 4601 · 5052 · 5057 · 5062 · 5064 · 5065 · 5068 · 5071
 mockup: not required — words only; each guide renders as it does today
 group: ready
-status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · 3 of 13 shipped (v2.5052, v2.5057, v2.5062)
+status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · 7 of 13 shipped (v2.5052, v2.5057, v2.5062, v2.5064, v2.5065, v2.5068, v2.5071)
 next: One PR per guide, thirteen in all (the owner, 2026-10-09): the do-this-first opening above everything else, and the split where the reviewers proposed one, each new guide with its own title and share card; no cuts — a sentence a reader may rely on stays, moved below a *Reference* line at most. Each PR gets an independent old-against-new read.
 blocker: None.
 opinion: build — openings and splits are safe; the cuts were the risk and are off the table.
@@ -68,9 +68,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   Standing copies. This guide would keep "set a GC" and "where the GC shows up", plus a link.
 - **First:** a fact pass, flagged in #4575.
 
-### share a sub their portal
+### ~~share a sub their portal~~ — shipped v2.5071
 
-`share-a-sub-their-portal` · 1,973 words · #4589
+`share-a-sub-their-portal` · 1,973 words · #4589 · now the opening and two guides: the office side (the core) and *see what a sub sees on their portal* (what feeds it, the card, the stages, an offer's window, days off, progress). *Sign to accept work* moved to *assemble a sub work order*. The window went to the new guide, since the window guide already says most of it. Nothing cut: the CountTooling sentence stays in place.
 
 - **Opening:** "Every subcontractor can have a private Work & pay portal, a page they open without
   signing in. You create the link from the globe beside their name on People → Subs and text it

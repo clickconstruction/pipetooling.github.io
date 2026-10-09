@@ -48,7 +48,7 @@ describe('plain words: a help guide', () => {
   })
 
   it("a table row's pipes are cell walls, not words", () => {
-    // share-a-sub-their-portal's row is 19 words; its three pipes made it count 22.
+    // see-what-a-sub-sees-on-their-portal's row is 19 words; its three pipes made it count 22.
     const row = '| {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: *"Queued for the pay run — the date is right below."* |'
     expect(helpGuideLineForCounting(row).split(/\s+/)).toHaveLength(19)
     expect(helpGuidePlainWordsFailures(['---', 'title: x', '---', '| On Sub Labor | What the sub reads |', '| --- | --- |', row].join('\n'))).toEqual([])
