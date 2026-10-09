@@ -3,7 +3,8 @@
  * frames. The first frame keeps the row's signer_* columns; the second has co_signer_*. Either
  * may sign first; the row reads signed only when every frame is filled. Pure: the chips, the
  * pill, the window, the paper and the customer's page all read the frames from here, and every
- * line that names who signed reads `signerNamesLine` (v2.4590).
+ * line that names who signed reads `signerNamesLine` (v2.4590). Each frame keeps its own way
+ * (`signer_mode`, `co_signer_mode`): one may be a link signature and the other paper (v2.5101).
  *
  * One file for both sides (v2.4590): the app reads it through `src/lib/jobs/jobContractSigners.ts`
  * (a re-export; the tests sit there), and the edge functions import it here. No imports, so
@@ -113,6 +114,21 @@ export function framesWaitingLine(row: SignerFramesRow): string {
   const p = framesProgress(row)
   if (!p || p.done === 0 || p.done === p.of) return ''
   return `${signerNamesLine(row)} signed · waiting on ${joinSignerNames(p.waitingOn)}`
+}
+
+/**
+ * The record's document is a paper on file, a scan or a link (v2.5101). Every frame was filed from
+ * it, or only the second, after the first signed through the link. The doors, the chip and the
+ * shared copy read the paper; each frame's own line still says how that frame was signed.
+ */
+export function filedOnPaper(row: Pick<SignerFramesRow, 'signer_mode' | 'co_signer_mode'>): boolean {
+  return row.signer_mode === 'paper' || row.co_signer_mode === 'paper'
+}
+
+/** Both frames filled, one through the link and one on paper (v2.5101), in either order. */
+export function partLinkPartPaper(row: SignerFramesRow): boolean {
+  const filled = signerFrames(row).filter(frameFilled)
+  return filled.length === 2 && filled.some((f) => f.mode === 'paper') && filled.some((f) => f.mode !== 'paper')
 }
 
 /** The audit-line shape for one frame (jobContractSignatureAuditLine reads signer_* names). */

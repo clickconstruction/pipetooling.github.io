@@ -73,7 +73,7 @@ import { effectiveWindowWay, emailLooksValid, jobTakesTheirSubcontract, phoneLoo
 import JobContractSigningRail from './JobContractSigningRail'
 import JobContractPaper from './JobContractPaper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { frameAsSignerRow, framesLabel, framesProgress, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
+import { filedOnPaper, frameAsSignerRow, framesLabel, framesProgress, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
 
 type TemplateRow = Pick<
   Database['public']['Tables']['contract_template_documents']['Row'],
@@ -346,11 +346,11 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const signedRows = rows.filter((r) => jobContractStatus(r) === 'signed')
   const signedCoverage: SignedCoverage | null = coverage && coverage.kind === 'signed' && (coverage.source === 'estimate' || coverage.source === 'bid_room') ? coverage : null
   const signedView: SignedView | null = recordRow
-    ? { source: recordRow.signer_mode === 'paper' ? 'paper' : 'contract', row: recordRow }
+    ? { source: filedOnPaper(recordRow) ? 'paper' : 'contract', row: recordRow }
     : liveRow || startNew || !rowsLoaded
       ? null
       : signedRows[0]
-        ? { source: signedRows[0].signer_mode === 'paper' ? 'paper' : 'contract', row: signedRows[0] }
+        ? { source: filedOnPaper(signedRows[0]) ? 'paper' : 'contract', row: signedRows[0] }
         : signedCoverage
           ? { source: signedCoverage.source as 'estimate' | 'bid_room', coverage: signedCoverage }
           : null
@@ -361,7 +361,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const paperRow = shownRow ?? (liveRow && !editable ? liveRow : null)
   const paperEditable = editable && rowsLoaded && !signedView
   /** A record filed from an outside document: the paper prints a note, not a body it never held. */
-  const filedDoc = shownRow?.signer_mode === 'paper' && shownRow.signed_document_url ? { what: isGoogleDocsUrl(shownRow.signed_document_url) ? 'Google Doc' : 'document' } : null
+  const filedDoc = shownRow && filedOnPaper(shownRow) && shownRow.signed_document_url ? { what: isGoogleDocsUrl(shownRow.signed_document_url) ? 'Google Doc' : 'document' } : null
   const selectedTemplate = templates.find((t) => t.id === templateId) ?? null
   const bodyHtml = selectedTemplate ? selectedTemplate.book_body_html ?? '' : DEFAULT_JOB_CONTRACT_TERMS_PLAIN
   const bodyFormat = selectedTemplate ? selectedTemplate.book_body_format : 'plain'
@@ -1093,9 +1093,12 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
                   : undefined
               }
               // A second frame filed from the paper is named in the paper's one mark, as its print does (v2.4657);
-              // one signed through the link keeps its own mark.
+              // one signed through the link keeps its own mark, and so does one filed from the paper after the
+              // first signed through the link (v2.5101): the print's blocks say which.
               coSignature={
-                paperRow?.co_signer_name && paperRow.co_signed_at && paperRow.co_signer_mode !== 'paper'
+                shownRow?.signed_at
+                  ? jobContractSignatureBlocks(shownRow, { coSignatureUrl: recordUrls.coSignatureUrl }).coSignature
+                  : paperRow?.co_signer_name && paperRow.co_signed_at && paperRow.co_signer_mode !== 'paper'
                   ? { printedName: paperRow.co_signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(frameAsSignerRow(signerFrames(paperRow)[1]!)) ?? '', imageUrl: recordUrls.coSignatureUrl }
                   : null
               }

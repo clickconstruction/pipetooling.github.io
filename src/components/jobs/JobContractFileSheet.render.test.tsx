@@ -2,7 +2,8 @@
 /**
  * The filing sheet and a paper signed by two (v2.4657): the Second signer box starts with the
  * second signer the draft named, the office clears it when one person signed, and a second
- * signature already given through the link is shown and kept instead of a box.
+ * signature already given through the link is shown and kept instead of a box. A first signature
+ * given there is kept the same way, and the paper's signer goes in the Second signer box (v2.5101).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -108,5 +109,27 @@ describe('JobContractFileSheet — a paper signed by two', () => {
     fireEvent.click(screen.getByTestId('contract-file-record'))
     await waitFor(() => expect(onFiled).toHaveBeenCalled())
     expect(fileSpy.mock.calls[0]![0]).toMatchObject({ signerName: 'Sam Owner', coSignerName: '' })
+  })
+
+  it('shows a first signature already given through the link, keeps it, and files the paper’s signer as the second (v2.5101)', async () => {
+    const out = draft({ status: 'sent', sent_channel: 'pdf_email', co_signer_name: 'Alex Owner', signer_printed_name: 'Sam Owner', signer_mode: 'draw', signer_consented_at: '2026-10-01T15:00:00Z' })
+    const { onFiled } = await renderSheet({ defaultCoSignerName: 'Alex Owner', existingDraft: out })
+    expect(screen.queryByLabelText('Who signed')).toBeNull()
+    expect(screen.getByTestId('contract-file-first-on-file').textContent).toBe('Sam Owner signed through the link on Oct 1. That signature stays.')
+    expect(secondBox().value).toBe('Alex Owner')
+    expect(secondBox().placeholder).toBe('Who signed the paper')
+    fireEvent.click(screen.getByTestId('contract-file-record'))
+    await waitFor(() => expect(onFiled).toHaveBeenCalled())
+    expect(fileSpy.mock.calls[0]![0]).toMatchObject({ signerName: 'Alex Owner', coSignerName: 'Alex Owner' })
+  })
+
+  it('asks who signed the paper before it files, with the first signature on file and the box cleared (v2.5101)', async () => {
+    const out = draft({ status: 'sent', sent_channel: 'pdf_email', co_signer_name: 'Alex Owner', signer_printed_name: 'Sam Owner', signer_mode: 'draw', signer_consented_at: '2026-10-01T15:00:00Z' })
+    await renderSheet({ defaultCoSignerName: 'Alex Owner', existingDraft: out })
+    fireEvent.change(secondBox(), { target: { value: '' } })
+    const button = screen.getByTestId('contract-file-record') as HTMLButtonElement
+    expect(button.disabled).toBe(true)
+    expect(button.title).toBe('Enter who signed the paper')
+    expect(fileSpy).not.toHaveBeenCalled()
   })
 })

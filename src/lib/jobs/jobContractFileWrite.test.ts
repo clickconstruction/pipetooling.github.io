@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { coSignatureOnFile, expectedCoSignerName, fileSignedContractDateBlocks, fileSignedContractReady, paperCoSignerFields, paperUploadPath } from './jobContractFileWrite'
+import { coSignatureOnFile, expectedCoSignerName, fileSignedContractDateBlocks, fileSignedContractReady, firstSignatureOnFile, paperCoSignerFields, paperFrameColumns, paperSignerAfterLink, paperUploadPath } from './jobContractFileWrite'
+import type { JobContractRow } from './jobContractLifecycle'
 
 describe('filing a signed contract', () => {
   it('names the upload by the row and a safe extension', () => {
@@ -70,6 +71,67 @@ describe('filing a signed contract', () => {
       expect(coSignatureOnFile(open)).toBeNull()
       expect(coSignatureOnFile(null)).toBeNull()
       expect(coSignatureOnFile({ co_signed_at: '2026-10-01T15:00:00Z', co_signer_printed_name: '  ' })).toBeNull()
+    })
+  })
+  describe('the first signer signed through the link before the paper came back (v2.5101)', () => {
+    const at = '2026-10-09T12:00:00Z'
+    // A PDF emailed to sign by hand, still out: the recipient signed through its link, the second frame is open.
+    const out = {
+      status: 'sent',
+      sent_channel: 'pdf_email',
+      voided_at: null,
+      recipient_name: 'Sam Owner',
+      signer_printed_name: 'Sam Owner',
+      signer_mode: 'draw',
+      signer_consented_at: '2026-10-01T15:00:00Z',
+      co_signer_name: 'Alex Owner',
+      co_signed_at: null,
+      co_signer_printed_name: null,
+    } as unknown as JobContractRow
+
+    it('reads the first frame on file only on a row out on paper, signed through the link', () => {
+      expect(firstSignatureOnFile(out)).toEqual({ name: 'Sam Owner', signedAt: '2026-10-01T15:00:00Z' })
+      expect(firstSignatureOnFile({ ...out, sent_channel: 'link' })).toBeNull()
+      expect(firstSignatureOnFile({ ...out, sent_channel: 'handed' })).toEqual({ name: 'Sam Owner', signedAt: '2026-10-01T15:00:00Z' })
+      expect(firstSignatureOnFile({ ...out, status: 'signed' })).toBeNull()
+      expect(firstSignatureOnFile({ ...out, voided_at: '2026-10-02T00:00:00Z' })).toBeNull()
+      expect(firstSignatureOnFile({ ...out, signer_consented_at: null, signer_printed_name: null })).toBeNull()
+      expect(firstSignatureOnFile({ ...out, signer_mode: 'paper' })).toBeNull()
+      expect(firstSignatureOnFile(null)).toBeNull()
+    })
+
+    it('takes the paper’s signer from the second box, else a Signed by name that is not the one on file', () => {
+      const onFile = { name: 'Sam Owner' }
+      expect(paperSignerAfterLink({ signerName: 'Sam Owner', coSignerName: ' Alex Owner ', onFile })).toBe('Alex Owner')
+      expect(paperSignerAfterLink({ signerName: 'Alex Owner', coSignerName: '', onFile })).toBe('Alex Owner')
+      expect(paperSignerAfterLink({ signerName: ' sam owner ', coSignerName: null, onFile })).toBe('')
+    })
+
+    it('leaves the first frame and its consent stamp as they are, and files the paper as the second frame', () => {
+      const cols = paperFrameColumns({ signerName: 'Alex Owner', coSignerName: 'Alex Owner', signedAt: at, expectedName: 'Alex Owner', existing: out })
+      expect(cols).toEqual({ co_signer_name: 'Alex Owner', co_signer_printed_name: 'Alex Owner', co_signed_at: at, co_signer_mode: 'paper', co_signer_consented_at: null })
+      expect(cols).not.toHaveProperty('signer_mode')
+      expect(cols).not.toHaveProperty('signer_printed_name')
+      expect(cols).not.toHaveProperty('signer_consented_at')
+    })
+
+    it('files the first frame from the paper, as before, when it was not signed through the link', () => {
+      const open = { ...out, signer_printed_name: null, signer_mode: null, signer_consented_at: null } as JobContractRow
+      expect(paperFrameColumns({ signerName: ' Sam Owner ', coSignerName: 'Alex Owner', signedAt: at, expectedName: 'Alex Owner', existing: open })).toEqual({
+        signer_printed_name: 'Sam Owner',
+        signer_mode: 'paper',
+        signer_consented_at: null,
+        co_signer_name: 'Alex Owner',
+        co_signer_printed_name: 'Alex Owner',
+        co_signed_at: at,
+        co_signer_mode: 'paper',
+        co_signer_consented_at: null,
+      })
+      expect(paperFrameColumns({ signerName: 'Sam Owner', coSignerName: '', signedAt: at, expectedName: null, existing: null })).toEqual({
+        signer_printed_name: 'Sam Owner',
+        signer_mode: 'paper',
+        signer_consented_at: null,
+      })
     })
   })
 })

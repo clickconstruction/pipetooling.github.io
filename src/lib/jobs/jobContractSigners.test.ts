@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { frameAsSignerRow, framesLabel, framesProgress, framesWaitingLine, joinSignerNames, openFrames, signedNames, signerFrames, signerNamesLine } from './jobContractSigners'
+import { filedOnPaper, frameAsSignerRow, framesLabel, framesProgress, framesWaitingLine, joinSignerNames, openFrames, partLinkPartPaper, signedNames, signerFrames, signerNamesLine } from './jobContractSigners'
 
 const one = { recipient_name: 'Sam Owner', signer_printed_name: null, signer_mode: null, signer_consented_at: null, signed_at: null }
 const two = { ...one, co_signer_name: 'Alex Owner', co_signer_email: 'alex@example.com' }
@@ -100,5 +100,43 @@ describe('signerNamesLine — who signed, in the words after "signed by" (v2.459
     expect(joinSignerNames([' Sam ', null, ''])).toBe('Sam')
     expect(joinSignerNames(['Sam', 'Alex'])).toBe('Sam and Alex')
     expect(joinSignerNames(['Sam', 'Alex', 'Jo'])).toBe('Sam, Alex and Jo')
+  })
+})
+
+describe('a record part link, part paper (v2.5101)', () => {
+  const linkFirst = {
+    recipient_name: 'Sam Owner',
+    signed_at: '2026-10-09T12:00:00Z',
+    signer_printed_name: 'Sam Owner',
+    signer_mode: 'draw',
+    signer_consented_at: '2026-10-01T15:00:00Z',
+    co_signer_name: 'Alex Owner',
+    co_signed_at: '2026-10-09T12:00:00Z',
+    co_signer_printed_name: 'Alex Owner',
+    co_signer_mode: 'paper',
+    co_signer_consented_at: null,
+  }
+  const paperFirst = { ...linkFirst, signer_mode: 'paper', signer_consented_at: null, co_signer_mode: 'type', co_signer_consented_at: '2026-10-01T15:00:00Z' }
+  const bothPaper = { ...linkFirst, signer_mode: 'paper', signer_consented_at: null }
+  const bothLink = { ...linkFirst, co_signer_mode: 'type', co_signer_consented_at: '2026-10-09T12:00:00Z' }
+
+  it('reads as filed on paper when either frame was filed from the paper', () => {
+    expect(filedOnPaper(linkFirst)).toBe(true)
+    expect(filedOnPaper(paperFirst)).toBe(true)
+    expect(filedOnPaper(bothPaper)).toBe(true)
+    expect(filedOnPaper(bothLink)).toBe(false)
+    expect(filedOnPaper({ signer_mode: 'type' })).toBe(false)
+  })
+
+  it('is part link, part paper only with both frames filled, one each way', () => {
+    expect(partLinkPartPaper(linkFirst)).toBe(true)
+    expect(partLinkPartPaper(paperFirst)).toBe(true)
+    expect(partLinkPartPaper(bothPaper)).toBe(false)
+    expect(partLinkPartPaper(bothLink)).toBe(false)
+    expect(partLinkPartPaper({ ...linkFirst, co_signed_at: null, co_signer_printed_name: null })).toBe(false)
+  })
+
+  it('names both signers in frame order', () => {
+    expect(signerNamesLine(linkFirst)).toBe('Sam Owner and Alex Owner')
   })
 })

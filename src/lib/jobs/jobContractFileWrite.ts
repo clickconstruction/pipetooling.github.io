@@ -7,7 +7,8 @@
  * handed over (v2.3629) or emailed as a PDF (v2.3631): it is the same document coming back signed — otherwise a fresh signed
  * row is inserted; the file lands in the private bucket at <contract_id>/paper.<ext>.
  * A paper signed by two fills both frames (v2.4657): the second name typed is the second frame,
- * marked paper.
+ * marked paper. A frame already signed through the link stays (v2.4657 the second, v2.5101 the
+ * first): the paper fills only the frame still open, and the record is part link, part paper.
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
@@ -40,6 +41,30 @@ export function fileSignedContractDateBlocks(signedOn: string, thisYear: number)
 export function coSignatureOnFile(row: Pick<JobContractRow, 'co_signed_at' | 'co_signer_printed_name'> | null | undefined): { name: string; signedAt: string } | null {
   const name = (row?.co_signer_printed_name ?? '').trim()
   return row?.co_signed_at && name ? { name, signedAt: row.co_signed_at } : null
+}
+
+/**
+ * The first frame already signed through the link (v2.5101), or null. A PDF emailed to sign by hand
+ * keeps its link, so the recipient can sign there while the second signer signs the paper. Only a
+ * row out on paper converts in place, so only that row keeps it.
+ */
+export function firstSignatureOnFile(
+  row: (Pick<JobContractRow, 'status' | 'voided_at' | 'signer_printed_name' | 'signer_mode' | 'signer_consented_at'> & { sent_channel?: string | null }) | null | undefined,
+): { name: string; signedAt: string } | null {
+  const name = (row?.signer_printed_name ?? '').trim()
+  if (!row || !isAwaitingPaperCopy(row) || !row.signer_consented_at || !name || row.signer_mode === 'paper') return null
+  return { name, signedAt: row.signer_consented_at }
+}
+
+/**
+ * Who signed the paper when the first frame signed through the link (v2.5101): the second signer
+ * typed, else the Signed by name unless it is the one already on file. '' when nobody is left.
+ */
+export function paperSignerAfterLink(input: { signerName: string; coSignerName: string | null | undefined; onFile: { name: string } }): string {
+  const co = (input.coSignerName ?? '').trim()
+  if (co) return co
+  const typed = input.signerName.trim()
+  return typed.toLowerCase() === input.onFile.name.trim().toLowerCase() ? '' : typed
 }
 
 /**
@@ -85,6 +110,36 @@ export function paperCoSignerFields(input: {
   }
 }
 
+export type PaperFrameColumns = Partial<PaperCoSignerFields> & {
+  signer_printed_name?: string
+  signer_mode?: 'paper'
+  signer_consented_at?: null
+}
+
+/**
+ * The frame columns a paper filing writes. The first frame is the paper's signer, and a second
+ * name typed is the second frame (v2.4657). When the first frame already signed through the link,
+ * its columns are left as they are, its consent stamp with them, and the paper's signer is the
+ * second frame (v2.5101).
+ */
+export function paperFrameColumns(input: {
+  signerName: string
+  coSignerName: string | null | undefined
+  signedAt: string
+  expectedName: string | null | undefined
+  existing: JobContractRow | null
+}): PaperFrameColumns {
+  const onFile = firstSignatureOnFile(input.existing)
+  const co = paperCoSignerFields({
+    coSignerName: onFile ? paperSignerAfterLink({ signerName: input.signerName, coSignerName: input.coSignerName, onFile }) : input.coSignerName,
+    signedAt: input.signedAt,
+    expectedName: input.expectedName,
+    existing: input.existing,
+  })
+  if (onFile) return { ...co }
+  return { signer_printed_name: input.signerName.trim(), signer_mode: 'paper', signer_consented_at: null, ...co }
+}
+
 export async function fileSignedJobContract(input: {
   jobId: string
   /** The job's live draft — or its row out on paper (handed v2.3629, PDF-emailed v2.3631) — if any; it converts in place. A row sent as a signing link never converts here. */
@@ -103,26 +158,23 @@ export async function fileSignedJobContract(input: {
   const nowIso = new Date().toISOString()
   const link = input.link.trim()
   const signedAt = input.signedOn ? `${input.signedOn}T12:00:00Z` : nowIso
-  const co = paperCoSignerFields({
+  const frames = paperFrameColumns({
+    signerName: input.signerName,
     coSignerName: input.coSignerName,
     signedAt,
     expectedName: expectedCoSignerName(input.basePayload, input.existingDraft),
     existing: input.existingDraft,
   })
-  const base = {
-    ...(input.basePayload ?? { job_id: input.jobId }),
+  const filing = {
     status: 'signed',
     signed_at: signedAt,
-    signer_printed_name: input.signerName.trim(),
-    signer_mode: 'paper',
-    signer_consented_at: null,
     paper_signed_on: input.signedOn || null,
     signed_document_url: isHttpUrl(link) ? link : null,
     recorded_by: input.authUserId,
     public_token: null,
     next_reminder_at: null,
-    ...co,
   }
+  const base = { ...(input.basePayload ?? { job_id: input.jobId }), ...filing, ...frames }
   let row: JobContractRow | null
   if (input.existingDraft && input.existingDraft.status === 'draft') {
     row = await withSupabaseRetry<JobContractRow>(
@@ -131,12 +183,11 @@ export async function fileSignedJobContract(input: {
     )
   } else if (isAwaitingPaperCopy(input.existingDraft)) {
     // The record keeps what was handed over: the sent row's own fields, terms and recipient stay.
-    const { status, signed_at, signer_printed_name, signer_mode, signer_consented_at, paper_signed_on, signed_document_url, recorded_by, public_token, next_reminder_at } = base
     row = await withSupabaseRetry<JobContractRow>(
       () =>
         supabase
           .from('job_contracts')
-          .update({ status, signed_at, signer_printed_name, signer_mode, signer_consented_at, paper_signed_on, signed_document_url, recorded_by, public_token, next_reminder_at, ...co })
+          .update({ ...filing, ...frames })
           .eq('id', input.existingDraft!.id)
           .eq('status', 'sent')
           .select('*')

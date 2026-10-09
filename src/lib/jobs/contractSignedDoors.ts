@@ -4,6 +4,7 @@
  * into the window, so one window carries every state. Pure; the rail renders it.
  */
 import { isGoogleDocsUrl, shortDocumentLabel } from './jobContractDocument'
+import { filedOnPaper, partLinkPartPaper, signerFrames, type SignerFramesRow } from './jobContractSigners'
 
 export type SignedSource = 'contract' | 'paper' | 'estimate' | 'bid_room'
 
@@ -12,7 +13,7 @@ export type SignedRowLike = {
   signed_document_url: string | null
   paper_upload_path: string | null
   public_token: string | null
-}
+} & SignerFramesRow
 
 export type SignedDoorsInput = {
   source: SignedSource
@@ -48,7 +49,8 @@ export type SignedDoors = {
 export function signedDoors(i: SignedDoorsInput): SignedDoors {
   const isContract = i.source === 'contract' || i.source === 'paper'
   const row = isContract ? i.row : null
-  const paper = row?.signer_mode === 'paper'
+  // v2.5101: a second frame filed from the paper makes the paper the record's document too.
+  const paper = row ? filedOnPaper(row) : false
   const hasLink = Boolean(row?.public_token)
   const hasTarget = isContract ? row != null : i.estimateId != null
   const docUrl = row?.signed_document_url ?? null
@@ -71,8 +73,14 @@ export function signedDoors(i: SignedDoorsInput): SignedDoors {
 }
 
 /** How it was signed, in the banner's words. */
-export function signedHowLine(i: { source: SignedSource; row: Pick<SignedRowLike, 'signer_mode' | 'signed_document_url'> | null; estimateDrawn: boolean }): string {
+export function signedHowLine(i: { source: SignedSource; row: (Pick<SignedRowLike, 'signer_mode' | 'signed_document_url'> & SignerFramesRow) | null; estimateDrawn: boolean }): string {
   if (i.source === 'contract' || i.source === 'paper') {
+    if (i.row && partLinkPartPaper(i.row)) {
+      // v2.5101: one frame through the link, the other on paper.
+      const linkMode = signerFrames(i.row).find((f) => f.mode !== 'paper')?.mode
+      const filed = i.row.signed_document_url ? `filed as a ${isGoogleDocsUrl(i.row.signed_document_url) ? 'Google Doc' : 'link'}` : 'uploaded by the office'
+      return `One signed ${linkMode === 'in_person' ? 'on our device' : 'on their phone'}, one on paper · ${filed}`
+    }
     const m = i.row?.signer_mode
     if (m === 'paper') {
       return i.row?.signed_document_url ? `Signed outside the app · filed as a ${isGoogleDocsUrl(i.row.signed_document_url) ? 'Google Doc' : 'link'}` : 'Signed on paper, uploaded by the office'

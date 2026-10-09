@@ -1854,6 +1854,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### share-job-contract
 
+> **v2.5101 — a record part link, part paper is shared as the paper**: a signed row with either frame filed from the paper (`filedOnPaper` in [`_shared/jobContractSigners.ts`](../supabase/functions/_shared/jobContractSigners.ts): `signer_mode` or `co_signer_mode` is `paper`) sends `paper_upload_path` or its `signed_document_url`, as a paper record always has. That covers a first signature given through the link with the second filed from the paper (punch list #64). It has no stored PDF, and the rebuild printed its paper frame as typed. The email still names both signers. **Redeploy required.**
+
 > **v2.4596 — the signed copy names both signers**: *Email a copy…* says *signed by Sam Owner and Alex Owner* on a two-frame agreement, through `signerNamesLine` from [`_shared/jobContractSigners.ts`](../supabase/functions/_shared/jobContractSigners.ts). The rebuilt PDF still prints each frame's own name. Since v2.4590 the window's *Download the PDF* and *Download & mark handed over* send the draft's `co_signer_name`. `draft_pdf` has read that since v2.4186, so that part needs no deploy. **Redeploy required** for the email's words.
 
 > **v2.4574 — a shared agreement is kept**: `send_to_sign` files the email with the unsigned PDF (`job_contract`); the share of a signed copy files the email with the signed PDF or its link (`job_contract_shared`; the contract, or the accepted estimate, as its source). `pdf_url` and `draft_pdf` send nothing and file nothing. The same change adds the missing import of `signedRecordId`: since v2.4186 the paths that rebuild a signed PDF (a contract whose stored PDF is missing, an accepted estimate's first share) threw. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
@@ -1870,7 +1872,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **Gateway**: `verify_jwt = false` (JWT validated in-body; rows read as the caller).
 
-**Behavior**: Contracts must be `signed`; the PDF is `signed_pdf_path` from `job-contract-documents` (rebuilt once with `_shared/jobContractPdf.ts` and stored when missing; paper records send `paper_upload_path`). Estimates must be `customer_accepted` with a consent stamp; their PDF is built once from the frozen line items / option / terms / acceptor fields and cached at `estimates/<id>/signed.pdf`. `pdf_url` → 1-hour signed URL. `email` → Resend with the attachment, reply-to = the sender, the durable link for contracts, optional note; then a `shared` `job_contract_events` row (contracts) and a `contract_shared` `job_activity_events` row (both, when a job is known) carrying `to`.
+**Behavior**: Contracts must be `signed`; the PDF is `signed_pdf_path` from `job-contract-documents` (rebuilt once with `_shared/jobContractPdf.ts` and stored when missing; a record with a frame filed from the paper sends `paper_upload_path`, else its document link). Estimates must be `customer_accepted` with a consent stamp; their PDF is built once from the frozen line items / option / terms / acceptor fields and cached at `estimates/<id>/signed.pdf`. `pdf_url` → 1-hour signed URL. `email` → Resend with the attachment, reply-to = the sender, the durable link for contracts, optional note; then a `shared` `job_contract_events` row (contracts) and a `contract_shared` `job_activity_events` row (both, when a job is known) carrying `to`.
 
 ---
 

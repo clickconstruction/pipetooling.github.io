@@ -9,7 +9,7 @@ import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtil
 import { esignAuditSuffix } from '../esignConsent'
 import { signedRecordId } from '../signedRecordId'
 import type { JobContractRenderInput } from './jobContractDocument'
-import { frameAsSignerRow, framesLabel, joinSignerNames, signerFrames, signerNamesLine, type SignerFrame, type SignerFramesRow } from './jobContractSigners'
+import { filedOnPaper, frameAsSignerRow, framesLabel, joinSignerNames, partLinkPartPaper, signerFrames, signerNamesLine, type SignerFrame, type SignerFramesRow } from './jobContractSigners'
 
 export type JobContractRow = Database['public']['Tables']['job_contracts']['Row']
 
@@ -54,7 +54,7 @@ export function jobContractChips(
     const opened = row.view_count > 0 ? ` · opened ${row.view_count}×` : ''
     return [{ label: `sent${row.send_count > 1 ? ` ×${row.send_count}` : ''}${opened}${framesSuffix}`, tone: 'sent' }]
   }
-  return [{ label: row.signer_mode === 'paper' ? 'on file · paper' : 'signed ✓', tone: 'signed' }]
+  return [{ label: filedOnPaper(row) ? 'on file · paper' : 'signed ✓', tone: 'signed' }]
 }
 
 /** Theme-token chip colors per tone — shared by the modal history and Documents rows. */
@@ -160,16 +160,29 @@ function paperSignerNames(row: SignerFramesRow): string {
   )
 }
 
+/** The *Signed on paper* line of a paper record: the frames filed from the paper, none signed through the link. */
+function paperRecordLine(row: Parameters<typeof jobContractSignatureAuditLine>[0] & SignerFramesRow): string | null {
+  return jobContractSignatureAuditLine({ ...row, signer_printed_name: paperSignerNames(row) || row.signer_printed_name })
+}
+
 /**
  * The agreement's audit line in a list — the window's History, Documents, the Job window's
  * Documents tab (v2.4590): every signer named. One frame reads `jobContractSignatureAuditLine`
  * unchanged (that one stays the line under ONE signature block); two frames name both and each
  * way they signed: *(typed and drawn)*. A paper record names the frames filed from the paper
- * (v2.4657): *Signed on paper by Sam Owner and Alex Owner*.
+ * (v2.4657): *Signed on paper by Sam Owner and Alex Owner*. A record signed partly through the link
+ * and partly on paper gives each frame its own line, in frame order (v2.5101).
  */
 export function jobContractSignersAuditLine(row: Parameters<typeof jobContractSignatureAuditLine>[0] & SignerFramesRow): string | null {
   const frames = signerFrames(row)
-  if (row.signer_mode === 'paper') return jobContractSignatureAuditLine({ ...row, signer_printed_name: paperSignerNames(row) || row.signer_printed_name })
+  if (row.signed_at && partLinkPartPaper(row)) {
+    return frames
+      .map((f) => jobContractSignatureAuditLine({ ...frameAsSignerRow(f), esign_consent: row.esign_consent }))
+      .filter((line): line is string => Boolean(line))
+      .map((line, i) => (i === 0 ? line : `${line.charAt(0).toLowerCase()}${line.slice(1)}`))
+      .join(' · ')
+  }
+  if (row.signer_mode === 'paper') return paperRecordLine(row)
   if (frames.length < 2) return jobContractSignatureAuditLine(row)
   if (!row.signed_at) return null
   const filled = frames.filter((f) => f.signedAt && (f.printedName ?? '').trim())
@@ -190,8 +203,10 @@ type SignatureBlock = NonNullable<JobContractRenderInput['signature']>
  * office named a second signer — each signed with its own stamp, or left open for a pen. One frame
  * reads exactly as before. A paper record draws one *Signed on paper* block: the signatures are on
  * the scan. Its name and line carry every frame filed from the paper (v2.4657), and a second frame
- * signed through the link before the paper came back draws its own block. `record` adds the record
- * id and the stamp beside the name (the record's print).
+ * signed through the link before the paper came back draws its own block. A first frame signed
+ * through the link keeps its block, and the second, filed from the paper, is a *Signed on paper*
+ * block of its own (v2.5101). `record` adds the record id and the stamp beside the name (the
+ * record's print).
  */
 export function jobContractSignatureBlocks(
   row: Pick<JobContractRow, 'id' | 'signed_at' | 'signer_printed_name' | 'signer_mode' | 'signer_consented_at'> & SignerFramesRow,
@@ -208,7 +223,7 @@ export function jobContractSignatureBlocks(
   const frames = signerFrames(row)
   const block = (f: SignerFrame, imageUrl: string | null): SignatureBlock | null =>
     f.signedAt && (f.printedName ?? '').trim()
-      ? { printedName: (f.printedName ?? '').trim(), auditLine: jobContractSignatureAuditLine(frameAsSignerRow(f)) ?? '', imageUrl, ...stamps(f.signedAt), paper: false }
+      ? { printedName: (f.printedName ?? '').trim(), auditLine: jobContractSignatureAuditLine(frameAsSignerRow(f)) ?? '', imageUrl, ...stamps(f.signedAt), paper: f.mode === 'paper' }
       : null
   if (frames.length < 2 || paper) {
     // A second frame signed through the link before the paper came back is its own signature (v2.4657).
@@ -218,7 +233,7 @@ export function jobContractSignatureBlocks(
       signature: row.signed_at
         ? {
             printedName: (paper ? paperSignerNames(row) : '') || (row.signer_printed_name ?? ''),
-            auditLine: (paper ? jobContractSignersAuditLine(row) : jobContractSignatureAuditLine(row)) ?? '',
+            auditLine: (paper ? paperRecordLine(row) : jobContractSignatureAuditLine(row)) ?? '',
             imageUrl: opts.signatureUrl ?? null,
             ...stamps(row.signed_at),
             paper,
