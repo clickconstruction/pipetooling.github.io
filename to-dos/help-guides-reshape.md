@@ -153,9 +153,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   (asked twice, opened elsewhere, primaries) and Tips go below a *Reference* line.
 - **First:** a fact pass on the submittals question.
 
-### write a change order and send it for signature
+### ~~write a change order and send it for signature~~ — shipped v2.5068
 
-`write-a-change-order` · 1,194 words · #4575
+`write-a-change-order` · 1,194 words · #4575 · now the three-step opening and two guides: the core, and *Starting from Bids* as *start a change order from Bids*. The numbered-guide walkthrough and the old estimate #1 paragraph moved whole below a *Reference* heading. The v2.2967 note was already gone. Nothing cut.
 
 - **Opening:**
   1. On **Estimates**, press **New change order** and pick the customer.
