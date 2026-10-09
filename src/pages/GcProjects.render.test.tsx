@@ -349,15 +349,16 @@ describe('GcProjects: the Project Board', () => {
     expect(loadSchedule).toHaveBeenCalledWith(expect.anything(), 'p1')
   })
 
-  it('the schedule’s PR 7b: the office team has no Schedule on a card until the schedule’s PR 10', async () => {
+  it('the schedule’s PR 10: the office team opens a project’s Schedule from its card, as a dev does', async () => {
     auth.role = 'assistant'
     const rows = clinicBoardRows()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
     const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
-    expect(within(card).getByRole('button', { name: 'The plans' })).toBeTruthy()
-    expect(within(card).queryByRole('button', { name: 'Schedule' })).toBeNull()
+    fireEvent.click(within(card).getByRole('button', { name: 'Schedule' }))
+    expect(await screen.findByRole('dialog', { name: `${rows.projects[0]!.name}: the schedule` })).toBeTruthy()
+    expect(loadSchedule).toHaveBeenCalledWith(expect.anything(), 'p1')
   })
 
   it('a dev marks our bid sent from the card, and the projects load again', async () => {

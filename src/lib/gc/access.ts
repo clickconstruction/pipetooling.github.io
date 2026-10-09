@@ -48,3 +48,16 @@ export const GC_BUILDING_TEAM: readonly UserRole[] = ['dev']
 export function canUseGcBuilding(role: UserRole | null | undefined): boolean {
   return role != null && GC_BUILDING_TEAM.includes(role)
 }
+
+/**
+ * GC mode, the schedule's PR 10 (v2.5114): who opens the **Schedule** window on a project's card and moves a bar
+ * in it (G-133). The client's copy of `gc_on_schedule_team()`'s office arm: the GC office, the same five roles as
+ * `GC_OFFICE_TEAM`. The database's helper also lets in the job's project manager, who is not a role, and who
+ * cannot open `/gc` from outside the office yet. Building's door adds the superintendent here and in the helper.
+ * `access.test.ts` fails when this list and the schedule's doors in `doors.ts` disagree.
+ */
+export const GC_SCHEDULE_TEAM: readonly UserRole[] = GC_OFFICE_TEAM
+
+export function canUseGcSchedule(role: UserRole | null | undefined): boolean {
+  return role != null && GC_SCHEDULE_TEAM.includes(role)
+}

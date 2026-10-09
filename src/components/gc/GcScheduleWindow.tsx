@@ -1,10 +1,10 @@
 /**
  * GC mode, the real build, the schedule's PR 7b: the Schedule window (call 1 of the plan,
- * to-dos/gc-mode/mockups/schedule-pr7.md on branch spike/gc-mode). A dev's **Schedule** on a project's
- * card opens it at `schedule=<projectId>`, the way the plans, the questions and the change orders open
+ * to-dos/gc-mode/mockups/schedule-pr7.md on branch spike/gc-mode). **Schedule** on a project's card
+ * opens it at `schedule=<projectId>`, the way the plans, the questions and the change orders open
  * theirs. It frames the schedule's body (`GcSchedule`), which reads the job's schedule over the board
- * the page already holds. A dev's only until the schedule's PR 10 opens it to the team (G-133); a dev moves a bar
- * in it since PR 8a, each move with why it moved.
+ * the page already holds. Since the schedule's PR 10 it is its team's (G-133, `canUseGcSchedule`): the
+ * office and estimators open it and move a bar in it, each move with why it moved (PR 8a).
  */
 import { useEffect } from 'react'
 import type { GcProject, GcState } from '../../lib/gc/types'

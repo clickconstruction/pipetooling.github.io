@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from '../lib/gc/access'
+import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding, canUseGcSchedule } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -217,7 +217,7 @@ export default function GcProjects() {
   const plansProjectId = params.get('plans')
   /** The questions window: `questions=<projectId>`. */
   const questionsProjectId = params.get('questions')
-  /** The schedule's window (the schedule's PR 7b): `schedule=<projectId>`, a dev's until the schedule's PR 10. */
+  /** The schedule's window (the schedule's PR 7b): `schedule=<projectId>`, the schedule's team's since its PR 10. */
   const scheduleProjectId = params.get('schedule')
   const [questionBusy, setQuestionBusy] = useState<string | null>(null)
   const [questionProblem, setQuestionProblem] = useState<string | null>(null)
@@ -966,8 +966,8 @@ export default function GcProjects() {
     else next.delete('schedule')
     setParams(next, { replace: true })
   }
-  // The schedule reads the board's job: a dev's only, as the gc_schedule_* tables are until the schedule's PR 10 (G-133).
-  const scheduleProject = scheduleProjectId && role === 'dev' ? (board?.projects.find((x) => x.id === scheduleProjectId) ?? null) : null
+  // The schedule reads the board's job: the schedule's team's, as the gc_schedule_* tables are since its PR 10 (G-133).
+  const scheduleProject = scheduleProjectId && canUseGcSchedule(role) ? (board?.projects.find((x) => x.id === scheduleProjectId) ?? null) : null
   const setSetWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('set', projectId)
@@ -1092,7 +1092,7 @@ export default function GcProjects() {
                   A new set of plans came in
                 </Btn>
               )}
-              {role === 'dev' && board && (
+              {canUseGcSchedule(role) && board && (
                 <Btn kind="quiet" onClick={() => setScheduleWindow(p.id)}>
                   Schedule
                 </Btn>
@@ -1267,7 +1267,7 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
-      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={role === 'dev'} onClose={() => setScheduleWindow(null)} />}
+      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={canUseGcSchedule(role)} onClose={() => setScheduleWindow(null)} />}
       {openCompany && board && (
         <GcCompanyWindow
           key={openCompany.id}

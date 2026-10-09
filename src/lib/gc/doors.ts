@@ -8,9 +8,11 @@
  * - `office`: `gc_office_team()`, the GC office: dev, the leaders, the assistants, the controller and
  *   estimators (doors 1 and 2).
  * - `money`: `gc_money_team()`, our number (B5-a) and Owner Billing (its door): dev, the leaders and the controller.
+ * - `schedule`: `gc_on_schedule_team(project)`, the schedule's team door (its PR 10, v2.5114): the GC office and the
+ *   job's project manager. Building's door adds the job's superintendent in that one helper.
  * - `dev`: `is_dev()` while its lane builds it. `opens` names the door that will open it.
  */
-export type GcDoor = 'office' | 'money' | 'dev'
+export type GcDoor = 'office' | 'money' | 'schedule' | 'dev'
 
 export interface GcTableDoor {
   lane: 'New project' | 'Board' | 'Portal' | 'Schedule' | 'Building' | 'Owner Billing'
@@ -19,13 +21,13 @@ export interface GcTableDoor {
   opens?: string
 }
 
-const SCHEDULE_OPENS = 'the schedule’s PR 10, its team door (SCHEDULE_REAL_BUILD.md)'
 const BUILDING_OPENS = 'Building’s door, when a job is being built (BUILDING_REAL_BUILD.md)'
 const BUILDING_MONEY_OPENS = 'Building’s door, to the money roles: dev, the leaders and the controller (BUILDING_REAL_BUILD.md decision 4)'
 const PORTAL_OPENS = 'the trade wave, when the Portal lane says the portal is ready (PORTAL_REAL_BUILD.md)'
 const AWARD_OPENS = 'award’s door: estimators, the leaders and dev, the owner’s call W (mockups/board-b6.md)'
 
 const office = (lane: GcTableDoor['lane']): GcTableDoor => ({ lane, door: 'office' })
+const schedule = (): GcTableDoor => ({ lane: 'Schedule', door: 'schedule' })
 const dev = (lane: GcTableDoor['lane'], opens: string): GcTableDoor => ({ lane, door: 'dev', opens })
 
 export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
@@ -65,30 +67,30 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_back_charges: dev('Portal', PORTAL_OPENS),
   gc_trade_change_requests: dev('Portal', PORTAL_OPENS),
 
-  // The schedule.
-  gc_schedules: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_activities: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_activity_parts: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_baselines: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_baseline_dates: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_changes: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_crew_counts: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_inspection_failures: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_late_notices: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_links: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_lookahead_marks: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_milestones: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_move_answers: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_move_pushes: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_move_tells: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_moves: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_sends: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_templates: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_wait_holds: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_waits: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_walks: dev('Schedule', SCHEDULE_OPENS),
-  gc_schedule_what_ifs: dev('Schedule', SCHEDULE_OPENS),
-  gc_rough_schedules: dev('Schedule', SCHEDULE_OPENS),
+  // The schedule, behind its team door (the schedule's PR 10).
+  gc_schedules: schedule(),
+  gc_schedule_activities: schedule(),
+  gc_schedule_activity_parts: schedule(),
+  gc_schedule_baselines: schedule(),
+  gc_schedule_baseline_dates: schedule(),
+  gc_schedule_changes: schedule(),
+  gc_schedule_crew_counts: schedule(),
+  gc_schedule_inspection_failures: schedule(),
+  gc_schedule_late_notices: schedule(),
+  gc_schedule_links: schedule(),
+  gc_schedule_lookahead_marks: schedule(),
+  gc_schedule_milestones: schedule(),
+  gc_schedule_move_answers: schedule(),
+  gc_schedule_move_pushes: schedule(),
+  gc_schedule_move_tells: schedule(),
+  gc_schedule_moves: schedule(),
+  gc_schedule_sends: schedule(),
+  gc_schedule_templates: schedule(),
+  gc_schedule_wait_holds: schedule(),
+  gc_schedule_waits: schedule(),
+  gc_schedule_walks: schedule(),
+  gc_schedule_what_ifs: schedule(),
+  gc_rough_schedules: schedule(),
 
   // Building.
   gc_daily_logs: dev('Building', BUILDING_OPENS),
@@ -115,6 +117,25 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_owner_interest_bills: { lane: 'Owner Billing', door: 'money' },
   gc_owner_acceptances: { lane: 'Owner Billing', door: 'money' },
   gc_money_monday_email_requests: { lane: 'Owner Billing', door: 'money' },
+}
+
+/**
+ * The schedule's append-only tables (the schedule's PR 10, v2.5114), and the only columns a person may change on each.
+ * Privileges hold them, not a policy: `authenticated` has no table-wide UPDATE, DELETE or TRUNCATE on any of them, so
+ * no door can open them by changing a policy. `doors.test.ts` reads every GRANT and REVOKE in the migrations and fails
+ * when one of these gains a table-wide write, or a column grant this list does not name.
+ */
+export const GC_SCHEDULE_APPEND_ONLY: Readonly<Record<string, readonly string[]>> = {
+  gc_schedule_changes: [],
+  gc_schedule_moves: ['undone_on', 'undone_by'],
+  gc_schedule_move_pushes: [],
+  gc_schedule_move_tells: [],
+  gc_schedule_move_answers: [],
+  gc_schedule_late_notices: ['pushed_back_on', 'pushed_back_by', 'pushed_back_note'],
+  gc_schedule_walks: [],
+  gc_schedule_crew_counts: [],
+  gc_schedule_sends: [],
+  gc_schedule_templates: ['name', 'aside_on'],
 }
 
 /**

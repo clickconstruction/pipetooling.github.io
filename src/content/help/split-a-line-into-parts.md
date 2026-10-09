@@ -1,13 +1,13 @@
 ---
 title: split a line into parts
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, schedule, split, parts, phase, east half, west half, one bar, gantt
 order: 108
 ---
 A trade's line can run in parts, like the east half and then the west half. Split its bar into parts on the schedule. Each part gets its own bar and its own dates.
 
-Only devs can split a line for now. The rest of the office gets the Schedule window later.
+The office and estimators can open the schedule. Superintendents get it later.
 
 ## Split a line
 
