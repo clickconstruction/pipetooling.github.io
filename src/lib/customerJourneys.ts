@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certified' | 'gc-change-order'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certified', 'gc-change-order']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -393,6 +393,26 @@ export function customerJourneys(): Journey[] {
           guide: 'bill-the-customer-on-a-gc-job',
           reflects: ['The pay application as it went', 'The architect on the GC project'],
           render: { kind: 'email', email: 'gc-certify-ask' },
+        },
+        {
+          id: 'gc-certified-email',
+          label: 'GC mode: the certified bill',
+          sublabel: 'GC projects → Bill the customer → Record the certificate, with the email tick on',
+          when: 'When the architect certifies a pay application',
+          customerCan: 'Read what the architect certified and when we expect it, then reply with the day they will pay. Their portal link shows when they have one.',
+          guide: 'bill-the-customer-on-a-gc-job',
+          reflects: ['The certificate as recorded', 'The customer’s usual days to pay', 'The customer’s portal link, when one is on'],
+          render: { kind: 'email', email: 'gc-certified' },
+        },
+        {
+          id: 'gc-change-order-email',
+          label: 'GC mode: a change order to sign',
+          sublabel: 'GC projects → Change orders → Send for signature, with the email tick on',
+          when: 'When the job changes',
+          customerCan: 'Read the change, what it adds to the price and to the job, and reply to sign it or ask.',
+          guide: 'change-our-contract-with-the-customer',
+          reflects: ['The change order as sent', 'The project manager on the GC project (the Reply-To and the signer)'],
+          render: { kind: 'email', email: 'gc-change-order' },
         },
         {
           id: 'owner-notice',

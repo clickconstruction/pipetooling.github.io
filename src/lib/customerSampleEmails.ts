@@ -32,7 +32,7 @@ import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
 import { buildGcCustomerEmail, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
-import { certifyAskMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
+import { certifiedMail, certifyAskMail, changeOrderMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
 import { gcTradePortalSample, gcTradePortalSampleRows } from '../../supabase/functions/_shared/gcTradePortalSample'
 import { mailboxWithName } from '../../supabase/functions/_shared/mailboxWithName'
 import { inviteMessage, mailRecipients, portalMailGroup } from './gc/portal'
@@ -324,7 +324,7 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
-  if (id === 'gc-pay-app' || id === 'gc-certify-ask') return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
 
@@ -385,15 +385,16 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
   if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)
   if (id === 'gc-trade-email') return buildSampleGcTradeEmail(ctx)
-  if (id === 'gc-pay-app' || id === 'gc-certify-ask') return buildSampleGcPayAppEmail(id, ctx)
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return buildSampleGcCustomerEmail(id, ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }
 
 /**
- * GC mode (O4b): our pay application to a GC project's customer, and the ask to its architect to certify it, as
- * `gc-customer-email` sends them. A made-up month on the sample project, through the same words and frame.
+ * GC mode (O4b): our emails to a GC project's customer and its architect, as `gc-customer-email` sends them: the pay
+ * application and the ask to certify it, the certified bill (with the customer's portal link, as when they have one)
+ * and a change order to sign. A made-up month on the sample project, through the same words and frame.
  */
-export function buildSampleGcPayAppEmail(id: 'gc-pay-app' | 'gc-certify-ask', ctx: SampleEmailContext): BuiltEmail {
+export function buildSampleGcCustomerEmail(id: 'gc-pay-app' | 'gc-certify-ask' | 'gc-certified' | 'gc-change-order', ctx: SampleEmailContext): BuiltEmail {
   const facts: PayAppMailFacts = {
     job: 'Sample Retail Shell',
     greeting: 'Elena',
@@ -405,6 +406,14 @@ export function buildSampleGcPayAppEmail(id: 'gc-pay-app' | 'gc-certify-ask', ct
     periodTo: ymdPlusDays(ctx.todayYmd, -5),
     retainagePct: 10,
   }
-  const mail = id === 'gc-pay-app' ? payAppMail(facts) : certifyAskMail(facts)
-  return buildGcCustomerEmail({ subject: mail.subject, lines: mail.lines, signer: String(ctx.sender?.name ?? 'The project manager'), gc: GC_CUSTOMER_EMAIL_FROM_NAME })
+  const mail =
+    id === 'gc-pay-app'
+      ? payAppMail(facts)
+      : id === 'gc-certify-ask'
+        ? certifyAskMail(facts)
+        : id === 'gc-certified'
+          ? certifiedMail({ ...facts, asked: facts.due, certified: 45000, expectOn: ymdPlusDays(ctx.todayYmd, 30) })
+          : changeOrderMail({ job: facts.job, greeting: facts.greeting, number: 2, description: 'Add a coffee bar cabinet, per the customer', price: 1100, days: 3, timeOnly: false })
+  const portalUrl = id === 'gc-certified' ? `${PORTAL_SHORT_ORIGIN}sample-owner` : null
+  return buildGcCustomerEmail({ subject: mail.subject, lines: mail.lines, signer: String(ctx.sender?.name ?? 'The project manager'), gc: GC_CUSTOMER_EMAIL_FROM_NAME, portalUrl })
 }

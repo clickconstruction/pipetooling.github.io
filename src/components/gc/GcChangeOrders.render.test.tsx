@@ -20,7 +20,7 @@ const base: Omit<ChangeOrder, 'id' | 'number' | 'status' | 'sentOn' | 'answeredO
   days: 3,
 }
 
-function setup() {
+function setup(emailed: Record<string, { to: string; on: string }[]> = {}) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
   const project = {
@@ -32,7 +32,7 @@ function setup() {
     ],
   }
   const writes = { onDraft: vi.fn(), onSend: vi.fn(), onAnswer: vi.fn(), onSetPct: vi.fn(), onDelete: vi.fn() }
-  render(<GcChangeOrdersWindow state={state} project={project} today="2026-10-02" writes={writes} onClose={() => undefined} />)
+  render(<GcChangeOrdersWindow state={state} project={project} today="2026-10-02" writes={writes} emailed={emailed} onClose={() => undefined} />)
   return { project, writes }
 }
 
@@ -42,15 +42,25 @@ describe('GcChangeOrdersWindow', () => {
     expect(screen.getByText('+$1,100 signed')).toBeTruthy()
     expect(screen.getByText('1 waiting on Cibolo Creek Partners')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Send for signature' }))
-    expect(writes.onSend).toHaveBeenCalledWith('co-1')
+    // The email starts off: an untouched Send emails no one.
+    expect(writes.onSend).toHaveBeenCalledWith('co-1', false)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Email it to the customer now' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send for signature' }))
+    expect(writes.onSend).toHaveBeenLastCalledWith('co-1', true)
     fireEvent.click(screen.getByRole('button', { name: 'Delete the draft' }))
     expect(writes.onDelete).toHaveBeenCalledWith('co-1')
-    expect(document.body.textContent).toContain('Send these words from your own email.')
+    expect(document.body.textContent).toContain('It went without an email. Send these words from your own email.')
     expect(document.body.textContent).toContain('Change order 2 for Fair Oaks Shops, Building D: Add a coffee bar cabinet, per the customer. It adds $1,100 to the price. It adds 3 days to the job.')
     fireEvent.click(screen.getByRole('button', { name: 'They signed' }))
     expect(writes.onAnswer).toHaveBeenCalledWith('co-2', true, '2026-10-02')
     fireEvent.change(screen.getByLabelText('How much of change order 3 is done'), { target: { value: '40' } })
     expect(writes.onSetPct).toHaveBeenCalledWith('co-3', 40)
+  })
+
+  it('says who an emailed one went to, in place of the words to send yourself', () => {
+    setup({ 'co-2': [{ to: 'Cibolo Creek Partners', on: '2026-10-01' }] })
+    expect(document.body.textContent).toContain('Emailed to Cibolo Creek Partners on Oct 1.')
+    expect(document.body.textContent).not.toContain('Send these words from your own email.')
   })
 
   it('drafts a new one at the cost plus the job’s fee unless the office types a price', () => {

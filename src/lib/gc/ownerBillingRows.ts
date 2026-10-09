@@ -41,8 +41,11 @@ export interface OwnerBillingRows {
   acceptance: OwnerAcceptanceRow | null
   /** The billing job's bills, payments and promises (O5c). Absent: nothing paid or promised yet. */
   money?: OwnerBillingMoney
-  /** The sent copies of our emails about each pay application (O4b, `sent_documents` by source): who and when. */
-  emails?: { source_id: string; recipient_name: string | null; sent_at: string }[]
+  /**
+   * The sent copies of our emails about each pay application (O4b, `sent_documents` by source): which kind of copy
+   * (the application's own, or the certified bill's), who and when.
+   */
+  emails?: { source_id: string; kind: string; recipient_name: string | null; sent_at: string }[]
 }
 
 /** One bill's payments, oldest first, and the day it was paid in full: the payment that closed it. */

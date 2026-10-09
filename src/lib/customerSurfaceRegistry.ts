@@ -93,7 +93,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // GC mode (P3-a): every email to a trade partner company, from one sender.
   { kind: 'sender', ref: 'gc-trade-email', audience: 'sub', steps: [S('gc-trade-email')] },
   // GC mode (O4b): our emails to a GC project's customer and its architect, from one sender.
-  { kind: 'sender', ref: 'gc-customer-email', audience: 'owner', steps: [G('gc-pay-app-email'), G('gc-certify-ask-email')] },
+  { kind: 'sender', ref: 'gc-customer-email', audience: 'owner', steps: [G('gc-pay-app-email'), G('gc-certify-ask-email'), G('gc-certified-email'), G('gc-change-order-email')] },
   { kind: 'sender', ref: 'submit-portal-request', audience: 'staff', exempt: 'Tells the office a portal request came in; the customer sees the portal\'s own thank-you.' },
   { kind: 'sender', ref: 'billed-report-email', audience: 'staff', exempt: 'The office\'s Billed Awaiting Payment report.' },
   { kind: 'sender', ref: 'crew-day-email-dispatch', audience: 'staff', exempt: 'The crew\'s day email.' },

@@ -13,6 +13,7 @@ import {
 } from '../../lib/gc/ownerBilling'
 import type { GcProject, GcState, OwnerPayAppSent, OwnerRetainageStep } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
+import { emailedWords, type BillEmailed } from '../../lib/gc/customerEmail'
 
 /**
  * GC mode, the real build, Owner Billing's O4a: Bill the customer, ported from the prototype's Bill the owner tab
@@ -26,7 +27,8 @@ import { money, shortDate } from '../../lib/gc/words'
 export interface BillCustomerWrites extends MoneyInWrites {
   /** Send this month's pay application; with `email`, email it to the customer and the architect with its form (O4b). */
   onSend: (email: boolean) => void
-  onCertify: (number: number, amount: number, on: string, note: string) => void
+  /** Record the architect's certificate; with `email`, email the customer the certified bill (O4b-2). */
+  onCertify: (number: number, amount: number, on: string, note: string, email: boolean) => void
   onSetRetainage: (pct: number, step: OwnerRetainageStep | null) => void
   onDownload: (which: number | 'draft', kind: 'xlsx' | 'pdf') => void
   /** Make our conditional waiver on progress payment for a sent one (`LienReleaseModal` on the billing job). */
@@ -45,8 +47,11 @@ interface Props {
   unconditional?: Record<number, number>
   /** Payments on the billing job that name no bill: shown as they are, never laid on a pay application (O5c). */
   unbilled?: { on: string | null; amount: number }[]
-  /** Who each sent one was emailed to and when, by number, read from its sent copies (O4b). */
-  emailed?: Record<number, { to: string; on: string }[]>
+  /**
+   * Who each sent one was emailed to and when, by number, read from its sent copies (O4b): the pay application and the
+   * ask to certify it, then the certified bill.
+   */
+  emailed?: Record<number, BillEmailed[]>
   /** What a write is working on: 'send', 'retainage', 'cert-<n>', 'waiver-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
@@ -308,7 +313,7 @@ function SentRow({
   writes: BillCustomerWrites
   waived: boolean
   unconditional: number
-  emailed: { to: string; on: string }[]
+  emailed: BillEmailed[]
   busy?: string | null
 }) {
   const certified = appCertified(app)
@@ -316,6 +321,8 @@ function SentRow({
   const [amount, setAmount] = useState(String(asked))
   const [on, setOn] = useState(today)
   const [note, setNote] = useState('')
+  // Off to start, as Send's: recording the certificate emails no one until it is ticked (O4b-2).
+  const [emailIt, setEmailIt] = useState(false)
   const amountNum = Number(amount)
   const less = amount.trim() !== '' && amountNum < asked
   const ready = amount.trim() !== '' && amountNum >= 0 && amountNum <= asked && on !== '' && (!less || note.trim() !== '')
@@ -350,9 +357,11 @@ function SentRow({
           PDF
         </Btn>
       </div>
-      {emailed.length > 0 && (
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{`Emailed to ${[...new Set(emailed.map((e) => e.to))].join(' and ')} on ${shortDate(emailed[0]!.on)}.`}</div>
-      )}
+      {emailedWords(emailed).map((w) => (
+        <div key={w} style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+          {w}
+        </div>
+      ))}
       <GcBillMoneyIn state={state} project={project} app={app} writes={writes} unconditional={unconditional} busy={busy} />
       {certified === null && (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -370,7 +379,11 @@ function SentRow({
               <input aria-label={`Why the certificate on pay application ${app.number} is less`} style={{ ...input, width: '100%', minWidth: 0 }} value={note} onChange={(e) => setNote(e.target.value)} />
             </label>
           )}
-          <Btn kind="primary" disabled={!ready || working} onClick={() => writes.onCertify(app.number, amountNum, on, note.trim())}>
+          <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+            <input type="checkbox" checked={emailIt && amountNum > 0} disabled={!(amountNum > 0)} onChange={(e) => setEmailIt(e.target.checked)} />
+            Email the customer the bill now
+          </label>
+          <Btn kind="primary" disabled={!ready || working} onClick={() => writes.onCertify(app.number, amountNum, on, note.trim(), emailIt && amountNum > 0)}>
             Record the certificate
           </Btn>
         </div>

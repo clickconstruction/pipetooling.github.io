@@ -477,6 +477,8 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     // GC mode (O4b): our pay application and the ask to certify it go to a GC project's customer and architect.
     steps['gc-pay-app-email'] = na('GC mode: read on the GC project')
     steps['gc-certify-ask-email'] = na('GC mode: read on the GC project')
+    steps['gc-certified-email'] = na('GC mode: read on the GC project')
+    steps['gc-change-order-email'] = na('GC mode: read on the GC project')
   }
 
   const liveJobs = rows.jobs.filter((j) => jobIdsOfCustomer.has(j.id) && j.status && j.status !== 'paid' && j.status !== 'archived').length

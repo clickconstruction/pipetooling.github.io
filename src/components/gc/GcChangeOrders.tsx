@@ -15,19 +15,22 @@ import { substantialCompletionOn } from '../../lib/gc/schedule/schedule'
 import { isTimeExtension, timeExtensionLines } from '../../lib/gc/timeExtension'
 import type { ChangeOrder, ChangeOrderReason, GcProject, GcState } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
+import { emailedTo } from '../../lib/gc/customerEmail'
 
 /**
  * GC mode, the real build, Owner Billing's O3-ui: change orders to the customer on real data, ported
  * from the prototype's `GcOwnerBillingChangeOrders.tsx` (branch spike/gc-mode). Draft one, send it,
  * record their answer, mark how much is done. The database's own functions check every step
- * (migration 20261008110000); the window only carries the press. Until the app emails it (O4b), a
- * sent change order shows the words to send from the office's own email. A trade's ask for a change
+ * (migration 20261008110000); the window only carries the press. Send's tick (O4b-2, off to start)
+ * emails it to the customer to sign by reply; one sent without it shows the words to send from the
+ * office's own email. A trade's ask for a change
  * joins here with the Portal's P4 (O3b).
  */
 
 export interface ChangeOrderWrites {
   onDraft: (draft: ChangeOrderDraft) => void
-  onSend: (changeOrderId: string) => void
+  /** Send it for their signature; with `email`, email it to the customer too (O4b-2). */
+  onSend: (changeOrderId: string, email: boolean) => void
   onAnswer: (changeOrderId: string, signed: boolean, on: string) => void
   onSetPct: (changeOrderId: string, pct: number) => void
   onDelete: (changeOrderId: string) => void
@@ -42,12 +45,14 @@ interface Props {
   /** The change order a write is working on, or 'new' for a draft. */
   busy?: string | null
   problem?: string | null
+  /** Who each was emailed to and when, by id, read from its sent copies (O4b-2). */
+  emailed?: Record<string, { to: string; on: string }[]>
   onClose: () => void
 }
 
 const PCT_STEPS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
-export function GcChangeOrdersWindow({ state, project, today, writes, busy, problem, onClose }: Props) {
+export function GcChangeOrdersWindow({ state, project, today, writes, busy, problem, emailed = {}, onClose }: Props) {
   const [adding, setAdding] = useState(false)
   const all = projectChangeOrders(project)
   const signed = all.filter((co) => co.status === 'signed').reduce((s, co) => s + co.price, 0)
@@ -119,7 +124,7 @@ export function GcChangeOrdersWindow({ state, project, today, writes, busy, prob
           {all.length === 0 && !adding && <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>No change orders yet.</div>}
           <div style={{ display: 'grid', gap: '0.45rem' }}>
             {all.map((co) => (
-              <ChangeOrderRow key={co.id} state={state} project={project} co={co} today={today} writes={writes} busy={busy === co.id} />
+              <ChangeOrderRow key={co.id} state={state} project={project} co={co} today={today} writes={writes} emailed={emailed[co.id] ?? []} busy={busy === co.id} />
             ))}
           </div>
         </div>
@@ -128,14 +133,33 @@ export function GcChangeOrdersWindow({ state, project, today, writes, busy, prob
   )
 }
 
-/** What the office sends the customer until the app emails it: the change, its price and its days. */
+/** What the office sends the customer from its own email when Send's tick was off: the change, its price and its days. */
 function sendWords(project: GcProject, co: ChangeOrder): string {
   const price = isTimeExtension(co) ? 'No change to the price.' : `${co.price < 0 ? 'It takes' : 'It adds'} ${money(Math.abs(co.price))} ${co.price < 0 ? 'off' : 'to'} the price.`
   return `Change order ${co.number} for ${project.name}: ${co.description.trim().replace(/[.\s]+$/, '')}. ${price} It ${changeOrderScheduleWords(co)}. Please sign it and send it back.`
 }
 
-function ChangeOrderRow({ state, project, co, today, writes, busy }: { state: GcState; project: GcProject; co: ChangeOrder; today: string; writes: ChangeOrderWrites; busy: boolean }) {
+function ChangeOrderRow({
+  state,
+  project,
+  co,
+  today,
+  writes,
+  emailed,
+  busy,
+}: {
+  state: GcState
+  project: GcProject
+  co: ChangeOrder
+  today: string
+  writes: ChangeOrderWrites
+  emailed: { to: string; on: string }[]
+  busy: boolean
+}) {
   const [answerOn, setAnswerOn] = useState(today)
+  // Off to start, as Bill the customer's: Send emails no one until it is ticked (O4b-2).
+  const [emailIt, setEmailIt] = useState(false)
+  const emailedLine = emailedTo(emailed)
   const credit = co.price < 0
   // A time extension (G-141): days only, already on the chart. No price, no work, so no % done.
   const timeOnly = isTimeExtension(co)
@@ -171,7 +195,11 @@ function ChangeOrderRow({ state, project, co, today, writes, busy }: { state: Gc
         {co.status === 'draft' && (
           <>
             <Chip tone="grey">draft</Chip>
-            <Btn kind="primary" disabled={busy} onClick={() => writes.onSend(co.id)}>
+            <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+              <input type="checkbox" checked={emailIt} onChange={(e) => setEmailIt(e.target.checked)} />
+              Email it to the customer now
+            </label>
+            <Btn kind="primary" disabled={busy} onClick={() => writes.onSend(co.id, emailIt)}>
               Send for signature
             </Btn>
             <Btn kind="quiet" disabled={busy} onClick={() => writes.onDelete(co.id)}>
@@ -215,9 +243,10 @@ function ChangeOrderRow({ state, project, co, today, writes, busy }: { state: Gc
           </>
         )}
       </div>
-      {co.status === 'sent' && (
+      {emailedLine && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{emailedLine}</div>}
+      {co.status === 'sent' && !emailedLine && (
         <div style={{ background: 'var(--surface-2, var(--surface))', border: '1px dashed var(--border)', borderRadius: 6, padding: '0.45rem 0.6rem' }}>
-          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Send these words from your own email. The app does not email change orders yet.</div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>It went without an email. Send these words from your own email.</div>
           <div style={{ userSelect: 'all' }}>{sendWords(project, co)}</div>
         </div>
       )}

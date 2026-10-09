@@ -14,7 +14,7 @@ function setup(
   over: Partial<GcProject> = {},
   waived: number[] = [],
   lastApp: Partial<OwnerPayAppSent> = {},
-  extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[]; emailed?: Record<number, { to: string; on: string }[]> } = {},
+  extra: { unconditional?: Record<number, number>; unbilled?: { on: string | null; amount: number }[]; emailed?: Record<number, { what: 'payApp' | 'certified'; to: string; on: string }[]> } = {},
 ) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
@@ -55,7 +55,22 @@ describe('GcBillCustomerWindow', () => {
     expect(record.disabled).toBe(true)
     fireEvent.change(screen.getByLabelText(`Why the certificate on pay application ${last.number} is less`), { target: { value: 'Held the framing' } })
     fireEvent.click(record)
-    expect(writes.onCertify).toHaveBeenCalledWith(last.number, 1000, '2026-10-26', 'Held the framing')
+    // The email starts off: recording the certificate emails no one until it is ticked.
+    expect(writes.onCertify).toHaveBeenCalledWith(last.number, 1000, '2026-10-26', 'Held the framing', false)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Email the customer the bill now' }))
+    fireEvent.click(record)
+    expect(writes.onCertify).toHaveBeenLastCalledWith(last.number, 1000, '2026-10-26', 'Held the framing', true)
+  })
+
+  it('emails no bill when the architect certified nothing, since nothing certified makes no bill', () => {
+    const { writes, last } = setup()
+    const tick = screen.getByRole('checkbox', { name: 'Email the customer the bill now' }) as HTMLInputElement
+    fireEvent.click(tick)
+    fireEvent.change(screen.getByLabelText(`What the architect certified on pay application ${last.number}`), { target: { value: '0' } })
+    expect([tick.disabled, tick.checked]).toEqual([true, false])
+    fireEvent.change(screen.getByLabelText(`Why the certificate on pay application ${last.number} is less`), { target: { value: 'Nothing done yet' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Record the certificate' }))
+    expect(writes.onCertify).toHaveBeenCalledWith(last.number, 0, '2026-10-26', 'Nothing done yet', false)
   })
 
   it('changes the retainage to one that goes down partway', () => {
@@ -149,8 +164,17 @@ describe('GcBillCustomerWindow', () => {
     expect(writes.onSend).toHaveBeenCalledWith(true)
   })
 
-  it('says who a sent one was emailed to, from its sent copies', () => {
-    setup({}, [], {}, { emailed: { 1: [{ to: 'Cibolo Creek Partners', on: '2026-07-25' }, { to: 'Garza Architects', on: '2026-07-25' }] } })
+  it('says who a sent one was emailed to, then who got the certified bill, from its sent copies', () => {
+    setup({}, [], {}, {
+      emailed: {
+        1: [
+          { what: 'payApp', to: 'Cibolo Creek Partners', on: '2026-07-25' },
+          { what: 'payApp', to: 'Garza Architects', on: '2026-07-25' },
+          { what: 'certified', to: 'Cibolo Creek Partners', on: '2026-08-02' },
+        ],
+      },
+    })
     expect(document.body.textContent).toContain('Emailed to Cibolo Creek Partners and Garza Architects on Jul 25.')
+    expect(document.body.textContent).toContain('The certified bill was emailed to Cibolo Creek Partners on Aug 2.')
   })
 })

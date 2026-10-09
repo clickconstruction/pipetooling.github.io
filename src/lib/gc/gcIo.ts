@@ -18,7 +18,7 @@ import { gcProjectFromRows, questionRowOf, type GcProjectRows, type GcProjectVie
 import type { DeclineReason, GcLostWhy, OwnerRetainageStep, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
-import { GC_CUSTOMER_EMAIL_FILED_AS } from '../../../supabase/functions/_shared/gcCustomerEmails'
+import { gcCustomerEmailCopyKinds } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import type { BillingRows, ContractLineRow, OwnerTermsRow, PayAppSend } from './billCustomer'
 import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
 import { paymentRefusalWords } from './moneyIn'
@@ -462,14 +462,14 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
   const [lines, reminders, emails] = await Promise.all([
     appIds.length ? supabase.from('gc_owner_pay_app_lines').select('*').in('pay_app_id', appIds).order('position') : Promise.resolve({ data: [], error: null }),
     appIds.length ? supabase.from('gc_owner_pay_reminders').select('*').in('pay_app_id', appIds).order('created_at') : Promise.resolve({ data: [], error: null }),
-    // Our emails about each pay application, from their sent copies (O4b: the copies are the record of what went). Every
-    // kind of them files as one kind, so a print filed against the same application is never read as an email.
+    // Our emails about each pay application, from their sent copies (O4b: the copies are the record of what went): the
+    // application's own and the certified bill's, each by its kind, so a print filed against it is never read as one.
     appIds.length
       ? supabase
           .from('sent_documents')
-          .select('source_id, recipient_name, sent_at')
+          .select('source_id, kind, recipient_name, sent_at')
           .eq('source_table', 'gc_owner_pay_apps')
-          .eq('kind', GC_CUSTOMER_EMAIL_FILED_AS.pay_app)
+          .in('kind', gcCustomerEmailCopyKinds('gc_owner_pay_apps'))
           .eq('how', 'email')
           .in('source_id', appIds)
           .order('sent_at')
@@ -477,14 +477,14 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
   ])
   const lineRows = taken(lines, 'load the pay application lines')
   const reminderRows = taken(reminders, 'load the reminders to pay')
-  const emailRows = (taken(emails, 'load the emails about the pay applications') ?? []) as { source_id: string | null; recipient_name: string | null; sent_at: string }[]
+  const emailRows = (taken(emails, 'load the emails about the pay applications') ?? []) as { source_id: string | null; kind: string; recipient_name: string | null; sent_at: string }[]
   for (const app of appRows) {
     const rows = out.get(app.project_id)
     if (!rows) continue
     rows.payApps.push(app)
     rows.lines.push(...lineRows.filter((l) => l.pay_app_id === app.id))
     rows.reminders.push(...reminderRows.filter((r) => r.pay_app_id === app.id))
-    const sentAbout = emailRows.filter((e) => e.source_id === app.id).map((e) => ({ source_id: app.id, recipient_name: e.recipient_name, sent_at: e.sent_at }))
+    const sentAbout = emailRows.filter((e) => e.source_id === app.id).map((e) => ({ source_id: app.id, kind: e.kind, recipient_name: e.recipient_name, sent_at: e.sent_at }))
     if (sentAbout.length > 0) rows.emails = [...(rows.emails ?? []), ...sentAbout]
   }
   for (const bill of taken(interestBills, 'load the interest bills')) out.get(bill.project_id)?.interestBills.push(bill)
@@ -728,6 +728,23 @@ export async function carryGcTrade(packageId: string, carry: { inviteId: string 
 export async function loadGcChangeOrders(projectIds: string[]): Promise<ChangeOrderRow[]> {
   if (projectIds.length === 0) return []
   return taken(await supabase.from('gc_change_orders').select('*').in('project_id', projectIds).order('number'), 'load the change orders')
+}
+
+/** Our emails about these change orders, from their sent copies (O4b-2): who each went to and when, oldest first. */
+export async function loadGcChangeOrderEmails(changeOrderIds: string[]): Promise<{ source_id: string; recipient_name: string | null; sent_at: string }[]> {
+  if (changeOrderIds.length === 0) return []
+  const rows = taken(
+    await supabase
+      .from('sent_documents')
+      .select('source_id, recipient_name, sent_at')
+      .eq('source_table', 'gc_change_orders')
+      .in('kind', gcCustomerEmailCopyKinds('gc_change_orders'))
+      .eq('how', 'email')
+      .in('source_id', changeOrderIds)
+      .order('sent_at'),
+    'load the emails about the change orders',
+  )
+  return rows.flatMap((r) => (r.source_id ? [{ source_id: r.source_id, recipient_name: r.recipient_name, sent_at: r.sent_at }] : []))
 }
 
 /** A new change order, as a draft, with the next number on the project. */

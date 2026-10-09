@@ -1110,27 +1110,32 @@ The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, a
 
 ### gc-customer-email
 
-**Purpose**: GC mode's sender for our emails to a GC project's customer and its architect (v2.4998, Owner Billing O4b-1 of `to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md` on branch `spike/gc-mode`). Bill the customer's **Send pay application**, with its tick **Email it to the customer and the architect now** on, emails the pay application to the customer and asks the architect to certify it, both with the G702 and G703 as a PDF. The window writes the words (`src/lib/gc/customerEmail.ts`, shared with What customers see's samples); the function frames them, sends and files the sent copy. O4b-2 adds the certified bill and the signed change order.
+**Purpose**: GC mode's sender for our emails to a GC project's customer and its architect (v2.4998, Owner Billing O4b of `to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md` on branch `spike/gc-mode`). Each press that sends one has its own tick, off to start:
+- Bill the customer's **Send pay application**, with **Email it to the customer and the architect now**, emails the pay application to the customer and asks the architect to certify it, both with the G702 and G703 as a PDF (O4b-1).
+- **Record the certificate**, with **Email the customer the bill now**, emails the customer the bill the architect certified (O4b-2, v2.4999). It has no Pay: the bill is not on Stripe, so the email asks for their day, with their portal link when they have one.
+- Change orders' **Send for signature**, with **Email it to the customer now**, emails the change order for them to sign by reply (O4b-2). There is no change order form yet: the words carry the change, the price and the days.
+
+The window writes the words (`src/lib/gc/customerEmail.ts`, shared with What customers see's samples); the function frames them, sends and files the sent copy. Reminders, interest bills and the work accepted come with O5b and O7.
 
 **Endpoint**: `POST /functions/v1/gc-customer-email` with `{ projectId, kind, sourceId, subject, lines, pdf? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { to, email, resendEmailId }` or `{ error: key, detail? }`.
 
-- `kind` is `pay_app` (to the customer) or `certify_ask` (to the architect). `sourceId` is the pay application, a `gc_owner_pay_apps` id.
+- `kind` is `pay_app`, `certified` or `change_order` (to the customer) or `certify_ask` (to the architect). `sourceId` is the row it is about (`GC_CUSTOMER_EMAIL_SOURCE`): a `gc_owner_pay_apps` id, or a `gc_change_orders` id for `change_order`.
 - `lines` are the paragraphs, the greeting first: 1 to 30, each at most 2,000 characters and none blank. `subject` is at most 200.
-- `pdf` is `{ filename, base64 }`: a `.pdf` name of at most 120 characters, and at most 6,000,000 base64 characters (the cap `send-lien-release-email` keeps).
+- `pdf`, with a pay application, is `{ filename, base64 }`: a `.pdf` name of at most 120 characters, and at most 6,000,000 base64 characters (the cap `send-lien-release-email` keeps).
 
 **In order**:
 1. Anything but `POST` answers `405 badRequest`.
 2. The caller: no session is `401 signIn`. Anyone off the money team is `403 moneyTeamOnly` (`GC_CUSTOMER_EMAIL_ROLES`: dev, master_technician, controller, held to the client's `GC_MONEY_TEAM` by `access.test.ts`). A training account or a digital twin is `403 readOnly`.
 3. The shape (`parseCustomerEmail` in `_shared/gcCustomerEmails.ts`) is `400 badRequest` when off.
-4. No project, or no GC project on it, is `404 notFound`. No pay application with that id is `404 notFound`, and another project's is `409 notSent`.
-5. Who gets it: `pay_app` goes to the project's customer and `certify_ask` to its architect (`gc_projects.architect_customer_id`), at the address the Pipeline bills (`customerBillingEmail`: the billing email, else the contact email). Nobody, or no address, is `422 noEmail`.
-6. The email (`buildGcCustomerEmail`): the lines as paragraphs, then *Thank you,*, the signer and Click Construction. The project manager signs, else the sender.
-7. The send: from `Click Construction <the EMAIL_FROM address>` (`mailboxWithName`), Reply-To the project manager else the sender, the form attached. A refusal from Resend is `502 sendFailed` with Resend's words in `detail`.
-8. The sent copy, after the send: kind `bill_gc_pay_app` (under Bills on the Documents page; never `pay_application`, the Pipeline's G702 workbook), the recipient's name and customer, the billing job (`gc_projects.billing_job_id`), source `gc_owner_pay_apps` and the pay application ([SENT_COPIES.md](./SENT_COPIES.md)). Nothing else is written: the copies are the record of what went, and Bill the customer reads them for each sent bill's *Emailed to* line.
+4. No project, or no GC project on it, is `404 notFound`. The row: none with that id is `404 notFound`, and another project's is `409 otherProject`. `certified` wants the pay application's certificate, above zero, since nothing certified makes no bill (`409 notCertified`), and `change_order` a change order out for their signature, not a draft and not answered (`409 notSent`).
+5. Who gets it: `certify_ask` goes to the project's architect (`gc_projects.architect_customer_id`) and every other kind to its customer, at the address the Pipeline bills (`customerBillingEmail`: the billing email, else the contact email). Nobody, or no address, is `422 noEmail`.
+6. The email (`buildGcCustomerEmail`): the lines as paragraphs; for `certified`, *You can see this bill in your portal:* and the customer's portal link when one is already on (`loadPortalReturnUrl`, `APP_ORIGIN`; never minted, and only an https address); then *Thank you,*, the signer and Click Construction. The project manager signs, else the sender.
+7. The send: from `Click Construction <the EMAIL_FROM address>` (`mailboxWithName`), Reply-To the project manager else the sender, the form attached when the request carries one. A refusal from Resend is `502 sendFailed` with Resend's words in `detail`.
+8. The sent copy, after the send ([SENT_COPIES.md](./SENT_COPIES.md)), by `GC_CUSTOMER_EMAIL_FILED_AS`: `bill_gc_pay_app` for the pay application and the ask, `bill_gc_certified` for the certified bill (both under Bills on the Documents page; never `pay_application`, the Pipeline's G702 workbook), and `job_contract_gc_change_order` under Contracts. Each carries the recipient's name and customer, the billing job (`gc_projects.billing_job_id`, when there is one) and its row as the source. Nothing else is written: the copies are the record of what went, and the windows read them for their *Emailed to* lines.
 
-The window sends the pay application first (`gc_send_owner_pay_app`), then the two emails. An email that does not go leaves the application sent, and the window says why with `gcCustomerEmailRefusal(key)`. It calls the function with `sendGcCustomerEmail` (`src/lib/gc/customerEmailIo.ts`), which never throws for a refusal.
+Each window does its own write first, then the email: the pay application (`gc_send_owner_pay_app`), the certificate (`gc_record_certificate`) or the change order's send (`gc_send_change_order`). An email that does not go leaves that write in place, and the window says why with `gcCustomerEmailRefusal(key)`. It calls the function with `sendGcCustomerEmail` (`src/lib/gc/customerEmailIo.ts`), which never throws for a refusal.
 
-**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`. Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_customer_email`.
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN` (the portal link's address; clicktooling.com when unset). Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_customer_email`.
 
 ---
 
