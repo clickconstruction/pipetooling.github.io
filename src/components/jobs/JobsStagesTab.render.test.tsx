@@ -82,6 +82,7 @@ import { listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatem
 import { gcReviewWeekStartYmd } from '../../lib/jobs/gcReviewCertification'
 import { trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
 import { emptyBillTruth } from '../../lib/billing/billTruth'
+import { supabase } from '../../lib/supabase'
 
 const authValue = makeUseAuthValue()
 
@@ -763,5 +764,53 @@ describe('JobsStagesTab — the round cards read through useGcStatementRound (v2
     await settle()
     expect(reads()).toEqual(before.map((n) => n + 2))
     expect(screen.queryByTestId('pipeline-round-ready-card')).toBeNull()
+  })
+
+  // The Email… dialog's transport is lib/sendGcStatementEmail (v2.5099, the map's step 7); the board keeps the toast and the last-sent read.
+  const sendKnightStatement = async (showToast: ReturnType<typeof vi.fn>) => {
+    renderWithProviders(<JobsStagesTab {...makeProps({ jobs: [knightJob()], showToast })} />)
+    fireEvent.click(within(await screen.findByTestId('pipeline-round-ready-card')).getByRole('button', { name: 'Open the list →' }))
+    const review = within(await screen.findByRole('dialog', { name: /^GC Review/ }))
+    await settle()
+    const knightRow = review.getAllByTestId('gc-worklist-row').find((el) => within(el).queryByText(KNIGHT.name))!
+    fireEvent.click(within(knightRow).getByRole('button', { name: 'Send' }))
+    const dialog = within(await screen.findByRole('dialog', { name: `Email statement to ${KNIGHT.name}` }))
+    fireEvent.click(dialog.getByRole('button', { name: '+ Pick who gets it' }))
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'ap@knight.example' } })
+    fireEvent.click(dialog.getByRole('option', { name: /^Use ap@knight\.example/ }))
+    const lastSentReads = () => vi.mocked(supabase.from).mock.calls.filter(([t]) => (t as string) === 'gc_statement_emails').length
+    const before = lastSentReads()
+    fireEvent.click(dialog.getByRole('button', { name: 'Send statement' }))
+    await settle()
+    return { dialog, lastSentReadsSinceSend: () => lastSentReads() - before }
+  }
+
+  const spied: Array<{ mockRestore: () => void }> = []
+  const spyOnSend = (answer: { data: unknown; error: unknown }) => {
+    const from = vi.spyOn(supabase, 'from')
+    const invoke = vi.spyOn(supabase.functions, 'invoke').mockResolvedValue(answer as never)
+    spied.push(from, invoke)
+    return invoke
+  }
+  afterEach(() => {
+    for (const s of spied.splice(0)) s.mockRestore()
+  })
+
+  it('Send statement goes to send-gc-statement-email; the board toasts and reads the last-sent dates again', async () => {
+    const invoke = spyOnSend({ data: { success: true, reply_to: null }, error: null })
+    const showToast = vi.fn()
+    const { lastSentReadsSinceSend } = await sendKnightStatement(showToast)
+    expect(invoke).toHaveBeenCalledWith('send-gc-statement-email', { body: expect.objectContaining({ gc_customer_id: KNIGHT.id, gc_name: KNIGHT.name, to_email: 'ap@knight.example', total: 26000, job_count: 1 }) })
+    expect(showToast).toHaveBeenCalledWith('Statement emailed to ap@knight.example.', 'success')
+    expect(lastSentReadsSinceSend()).toBe(1)
+  })
+
+  it('a send the function refuses shows its words in the dialog, with no toast and no re-read', async () => {
+    spyOnSend({ data: { error: 'No email on file for this GC' }, error: null })
+    const showToast = vi.fn()
+    const { dialog, lastSentReadsSinceSend } = await sendKnightStatement(showToast)
+    expect(await dialog.findByText('No email on file for this GC')).toBeTruthy()
+    expect(showToast).not.toHaveBeenCalledWith(expect.stringMatching(/^Statement emailed/), 'success')
+    expect(lastSentReadsSinceSend()).toBe(0)
   })
 })
