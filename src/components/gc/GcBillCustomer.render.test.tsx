@@ -27,7 +27,7 @@ function setup(
     ...over,
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
-  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn(), onBillInterest: vi.fn(), onSetLateFee: vi.fn() }
+  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn(), onBillInterest: vi.fn(), onSetLateFee: vi.fn(), onAccept: vi.fn(), onSendFinal: vi.fn() }
   render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} interestEmailed={extra.interestEmailed} scheduleRead={extra.scheduleRead} onClose={() => undefined} />)
   return { writes, last }
 }
@@ -44,6 +44,13 @@ describe('GcBillCustomerWindow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'See the form as a PDF' }))
     expect(writes.onDownload).toHaveBeenCalledWith('draft', 'pdf')
     expect(screen.getByText('This bill asks')).toBeTruthy()
+  })
+
+  it('offers no next bill once our final went (O7a)', () => {
+    const { last } = setup({}, [], { final: true })
+    expect(screen.getByText('Our final pay application went, so there is nothing more to bill.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: `Send pay application ${last.number + 1}` })).toBeNull()
+    expect(screen.getByText(`Pay application ${last.number}, final`)).toBeTruthy()
   })
 
   it('records the architect\'s certificate, and asks why when it is less', () => {

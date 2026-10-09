@@ -31,9 +31,9 @@ import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
-import { billingStateFor, billingStateForAll, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
+import { billingStateFor, billingStateForAll, finalPayAppForm, finalPayAppSendPayload, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
 import { loadSchedule } from '../lib/gc/scheduleIo'
-import { ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
+import { ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
 import { downloadPayAppExcel, downloadPayAppPdf, payAppPdf } from '../lib/gc/payAppFileWriters'
 import { payAppFileName } from '../lib/gc/payAppFile'
 import {
@@ -126,6 +126,7 @@ import {
   type GcTeamMember,
   linkPayAppWaiver,
   loadGcBillingRows,
+  recordAcceptance,
   recordCertificate,
   remindCustomerToPay,
   setOwnerPayDays,
@@ -700,7 +701,7 @@ export default function GcProjects() {
     ask: { amount: number; throughDate: string } | null
     /** Our unconditional waiver (O5c) names the bill the payments came on. */
     invoiceId: string | null
-    formType: 'conditional_progress' | 'unconditional_progress' | 'unconditional_final'
+    formType: 'conditional_progress' | 'conditional_final' | 'unconditional_progress' | 'unconditional_final'
   } | null>(null)
   const openWaiver = (number: number) => {
     if (!billProjectId) return
@@ -712,7 +713,8 @@ export default function GcProjects() {
       async () => {
         const job = await fetchJobWithDetailsById(jobId)
         if (!job) throw new Error('The billing job did not load.')
-        setWaiverFor({ job, payAppId: row.id, ask: { amount: Math.round(Number(row.due) * 100) / 100, throughDate: row.period_to }, invoiceId: null, formType: 'conditional_progress' })
+        // Our final pay application goes with our conditional waiver on final payment (O7a).
+        setWaiverFor({ job, payAppId: row.id, ask: { amount: Math.round(Number(row.due) * 100) / 100, throughDate: row.period_to }, invoiceId: null, formType: row.final ? 'conditional_final' : 'conditional_progress' })
       },
       'The waiver did not open.',
       false,
@@ -1306,6 +1308,40 @@ export default function GcProjects() {
                   if (!a.ok) setBillProblem(`The reminder is filed, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`)
                 } catch (e) {
                   setBillProblem(formatErrorMessage(e, 'The reminder was not filed.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
+            },
+            onAccept: (on, byName, note) => billWrite('accept', () => recordAcceptance(billProject.id, on, byName, note), 'The acceptance was not recorded.'),
+            onSendFinal: (email) => {
+              // Our final pay application (O7a): every line done, nothing held, it asks for the rest. The tick, off to start,
+              // also emails it with its form, as Send's. The bills are read again either way, and an email that did not go is said after.
+              const record = ownerFinalPayAppToSend(billState, billProject, today)
+              const form = finalPayAppForm(billState, billProject, today)
+              setBillBusy('send-final')
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  const id = await sendOwnerPayApp(billProject.id, finalPayAppSendPayload(billState, billProject, today))
+                  let emailProblem: string | null = null
+                  if (email && form) {
+                    try {
+                      const parties = ownerPayAppParties(billState, billProject, form)
+                      const pdf = { filename: payAppFileName(parties, 'pdf'), base64: pdfBase64(await payAppPdf(form.app, parties)) }
+                      const facts = payAppMailFacts(billState, billProject, record)
+                      for (const [kind, mail] of [['pay_app', payAppMail(facts)], ['certify_ask', certifyAskMail(facts)]] as const) {
+                        const a = await sendGcCustomerEmail({ projectId: billProject.id, kind, sourceId: id, subject: mail.subject, lines: mail.lines, pdf })
+                        if (!a.ok && !emailProblem) emailProblem = `The final pay application went, but an email did not. ${gcCustomerEmailRefusal(a.key)}`
+                      }
+                    } catch (e) {
+                      emailProblem = formatErrorMessage(e, 'The final pay application went, but its email did not.')
+                    }
+                  }
+                  await loadBill()
+                  if (emailProblem) setBillProblem(emailProblem)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The final pay application did not go.'))
                 } finally {
                   setBillBusy(null)
                 }

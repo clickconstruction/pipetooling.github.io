@@ -32,6 +32,7 @@ on:
       - 'scripts/pgtest-gc-building.sh'
       - 'supabase/migrations/*gc_owner*'
       - 'supabase/migrations/*gc_remind*'
+      - 'supabase/migrations/*gc_record_acceptance*'
       - 'supabase/tests/gc_owner_billing/**'
       - 'scripts/pgtest-gc-owner-billing.sh'
       - 'supabase/migrations/*gc_award*'

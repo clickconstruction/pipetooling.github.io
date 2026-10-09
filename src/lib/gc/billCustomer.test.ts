@@ -4,8 +4,8 @@
  * Bill the customer's Send hands the database, read back as the record it went as.
  */
 import { describe, expect, it } from 'vitest'
-import { type BillingRows, type OwnerTermsRow, billingStateFor, billingStateForAll, contractWorthFromRows, jobCustomerId, payAppSendPayload, withSchedules } from './billCustomer'
-import { allJobsMoney, ownerPayApp, ownerPayAppToSend, ownerRetainageWords } from './ownerBilling'
+import { type BillingRows, type OwnerTermsRow, billingStateFor, billingStateForAll, contractWorthFromRows, finalPayAppForm, finalPayAppSendPayload, jobCustomerId, payAppSendPayload, withSchedules } from './billCustomer'
+import { allJobsMoney, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppToSend, ownerRetainageWords } from './ownerBilling'
 import { type OwnerBillingRows, ownerBillingFromRows } from './ownerBillingRows'
 import { initialGcState } from './schedule/testState'
 
@@ -170,5 +170,27 @@ describe('the pay application Send hands the database', () => {
     const back = ownerBillingFromRows(rowsFromSend(PROJECT, send))!.payApps![0]!
     const record = ownerPayAppToSend(draft, TODAY)
     expect(back).toEqual({ ...record, certified: null, certifiedOn: null })
+  })
+
+  it('sends our final through the same Send: the same lines, nothing held, its bill day today, asking for the rest (O7a)', () => {
+    const s = initialGcState()
+    const project = s.projects.find((p) => p.id === PROJECT)!
+    const send = payAppSendPayload(ownerPayApp(s, project), TODAY)
+    const final = finalPayAppSendPayload(s, project, TODAY)
+    const record = ownerFinalPayAppToSend(s, project, TODAY)
+    expect([final.final, final.periodTo, final.retainage, final.due]).toEqual([true, TODAY, 0, record.due])
+    expect({ ...final, final: false, periodTo: send.periodTo, retainage: send.retainage, due: send.due }).toEqual(send)
+  })
+
+  it('draws our final’s form as it will go, holding nothing back, for its email (O7a)', () => {
+    const s = initialGcState()
+    const stoneOak = s.projects.find((p) => p.id === 'stoneoak')!
+    const record = ownerFinalPayAppToSend(s, stoneOak, TODAY)
+    const form = finalPayAppForm(s, stoneOak, TODAY)!
+    expect([form.app.number, form.app.final, form.sentOn, form.periodTo]).toEqual([record.number, true, TODAY, TODAY])
+    expect([form.app.totals.retainage, form.app.summary.retainage, form.app.summary.currentDue]).toEqual([0, 0, record.due])
+    // Every line done in full: nothing left to finish.
+    expect(form.app.totals.balance).toBe(0)
+    expect(finalPayAppForm(s, { ...stoneOak, ownerBilling: null }, TODAY)).toBeNull()
   })
 })
