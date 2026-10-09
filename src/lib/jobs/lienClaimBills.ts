@@ -6,6 +6,7 @@ import { fallbackInvoiceNumber } from '../jobsDocuments/demandLetter'
 import type { StripeInvoiceFacts } from '../stripeInvoiceFacts'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatUsdNoCents } from './jobFormatting'
+import { attributeJobPayments } from './paymentAttribution'
 
 /**
  * The bills behind a lien claim (v2.4969, the owner: "I can't lien work I have not done yet").
@@ -27,7 +28,7 @@ export type LienClaimBill = {
   /** Stripe's due day, 'YYYY-MM-DD'; '' when unknown. */
   dueYmd: string
   billed: number
-  /** The payments tied to this bill. */
+  /** What this bill has been paid under the payment rule (v2.5093): its linked payments in full and its share of the job's unlinked money, oldest bill first. */
   paid: number
   /** max(0, billed − paid) — the part of the claim this bill is. */
   owed: number
@@ -40,10 +41,9 @@ const round2 = (n: number) => Math.round(n * 100) / 100
  * the list owing nothing, so the reader sees the money that came in and the owed column adds up to the claim.
  */
 export function lienClaimBills(job: JobWithDetails, facts?: Readonly<Record<string, Pick<StripeInvoiceFacts, 'invoiceNumber' | 'dueYmd'>>>): LienClaimBill[] {
-  const applied = new Map<string, number>()
-  for (const p of job.payments ?? []) {
-    if (p.invoice_id) applied.set(p.invoice_id, (applied.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
-  }
+  // The one payment rule (v2.5093), as `lienBilledOpen` and `lien_billed_open()` read it: linked money is its bill's, and the job's
+  // unlinked money pays the part on no sent bill first, then the sent bills oldest first.
+  const byBill = attributeJobPayments(job.invoices ?? [], job.payments ?? [], job.revenue).byBill
   const billed = (job.invoices ?? []).filter((i) => i.status === 'billed' || i.status === 'paid').slice().sort((a, b) => a.sequence_order - b.sequence_order)
   const out: LienClaimBill[] = []
   // A job billed as one shell (status billed, no invoice rows): the job is the bill, price less payments — bill truth's shell row, `lien_billed_open()`'s second arm.
@@ -55,8 +55,9 @@ export function lienClaimBills(job: JobWithDetails, facts?: Readonly<Record<stri
   }
   for (const inv of billed) {
     const amount = round2(Number(inv.amount ?? 0))
-    // A bill marked paid is settled whatever payment rows it carries (bill truth); a billed one nets the payments tied to it.
-    const paid = inv.status === 'paid' ? Math.max(amount, round2(applied.get(inv.id) ?? 0)) : round2(applied.get(inv.id) ?? 0)
+    // A bill marked paid is settled whatever payment rows it carries (bill truth); a billed one nets what the rule says it was paid.
+    const applied = byBill.get(inv.id)?.applied ?? 0
+    const paid = inv.status === 'paid' ? Math.max(amount, round2(applied)) : round2(applied)
     let doc: PhysicalInvoiceDocument | null = null
     try {
       doc = buildPhysicalInvoiceDocumentForBilledInvoice(job, inv)

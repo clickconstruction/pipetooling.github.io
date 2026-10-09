@@ -1,27 +1,39 @@
-import { appliedByInvoiceId, openRemainder, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../billing/billTruth'
+import { openRemainder, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../billing/billTruth'
+import { attributeJobPayments } from './paymentAttribution'
+
+/** A bill as the claim reads it; a bill without its order fields walks last. */
+export type LienClaimInvoice = Pick<BillTruthInvoice, 'id' | 'job_id' | 'status' | 'amount'> & { sequence_order?: number | null; billed_at?: string | null }
 
 /**
  * What a job's sent bills still owe — the money every lien reader counts (the owner, 2026-10-08:
  * "I can't lien work I have not done yet"). The desk's RPCs compute it as `lien_billed_open()`
  * (v2.4969); the readers that take the job from the client — the Pipeline's Deadlines runway,
  * the Dashboard's lien reminder, Put a GC on notice — call this, the same rule: once any bill
- * has gone out (status `billed` or `paid`), each `billed` one net of the payments tied to it,
+ * has gone out (status `billed` or `paid`), each `billed` one net of what it has been paid,
  * clamped at zero, and the paid ones nothing — whatever the job's own status, since a sent bill
  * is a sent bill; a job billed as one shell (status `billed`, no bill ever sent) is price less
  * payments, as bill truth's shell row; anything else 0. Never the job's whole balance, and never
  * the part of a job its sent bills do not carry — that is work not yet billed, not a shell.
+ *
+ * What a bill has been paid follows the one payment rule (v2.5093, the owner's call of 2026-10-09:
+ * a payment put on the job with no bill picked is applied oldest bill first, everywhere):
+ * `attributeJobPayments` gives each bill its linked payments in full, and the job's unlinked money
+ * pays the part of the job on no sent bill first (its `revenue` less the sent bills), then the sent
+ * bills oldest first. Before, an unlinked payment lowered no claim (job 273 claimed $17,585 where
+ * its bills owe $16,685). The callers pass every payment on the job, linked or not, and each sent
+ * bill's `sequence_order` and `billed_at`, the order the rule walks.
  */
 export function lienBilledOpen(
   job: Pick<BillTruthJob, 'id' | 'status' | 'revenue' | 'payments_made'>,
-  invoices: ReadonlyArray<Pick<BillTruthInvoice, 'id' | 'job_id' | 'status' | 'amount'>>,
+  invoices: ReadonlyArray<LienClaimInvoice>,
   payments: ReadonlyArray<Pick<BillTruthPayment, 'invoice_id' | 'amount'>>,
 ): number {
   const sent = invoices.filter((i) => i.status === 'billed' || i.status === 'paid')
   let open = 0
   if (sent.length > 0) {
-    const applied = appliedByInvoiceId(payments)
+    const paid = attributeJobPayments(sent, payments, job.revenue).byBill
     for (const inv of sent) {
-      if (inv.status === 'billed') open += openRemainder(inv.amount, applied.get(inv.id) ?? 0)
+      if (inv.status === 'billed') open += openRemainder(inv.amount, paid.get(inv.id)?.applied ?? 0)
     }
   } else if (job.status === 'billed') {
     open = openRemainder(job.revenue, job.payments_made)
@@ -38,10 +50,10 @@ export function lienBilledOpen(
 export function gcNoticeRowsWithBilledOpen<R extends { job_id: string; is_billed: boolean; open_balance: number }>(
   rows: ReadonlyArray<R>,
   jobById: ReadonlyMap<string, Pick<BillTruthJob, 'id' | 'status' | 'revenue' | 'payments_made'>>,
-  invoices: ReadonlyArray<Pick<BillTruthInvoice, 'id' | 'job_id' | 'status' | 'amount'>>,
+  invoices: ReadonlyArray<LienClaimInvoice>,
   payments: ReadonlyArray<Pick<BillTruthPayment, 'invoice_id' | 'amount'> & { job_id: string }>,
 ): R[] {
-  const invByJob = new Map<string, Array<Pick<BillTruthInvoice, 'id' | 'job_id' | 'status' | 'amount'>>>()
+  const invByJob = new Map<string, LienClaimInvoice[]>()
   for (const i of invoices) {
     const list = invByJob.get(i.job_id) ?? []
     list.push(i)
