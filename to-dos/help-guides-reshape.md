@@ -8,10 +8,10 @@ summary: >
   opening, a split where it holds two or three guides, and cuts. The three slices' reviewers
   proposed all three per guide. They are gathered here for the owner's call.
 size: M (13 guides, about 20,000 prose words; one PR per guide)
-ver: v2.4589 · 4597 · 4601 · 5052
+ver: v2.4589 · 4597 · 4601 · 5052 · 5057 · 5062
 mockup: not required — words only; each guide renders as it does today
 group: ready
-status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · 1 of 13 shipped (v2.5052)
+status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · 3 of 13 shipped (v2.5052, v2.5057, v2.5062)
 next: One PR per guide, thirteen in all (the owner, 2026-10-09): the do-this-first opening above everything else, and the split where the reviewers proposed one, each new guide with its own title and share card; no cuts — a sentence a reader may rely on stays, moved below a *Reference* line at most. Each PR gets an independent old-against-new read.
 blocker: None.
 opinion: build — openings and splits are safe; the cuts were the risk and are off the table.
@@ -53,9 +53,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
 - **Split:** the office side (the link, the gear), what the customer sees (statement, payments,
   requests), and the owner-sharing switch.
 
-### track a general contractor on a job
+### ~~track a general contractor on a job~~ — shipped v2.5062
 
-`track-a-general-contractor-on-a-job` · 2,487 words · #4575
+`track-a-general-contractor-on-a-job` · 2,487 words · #4575 · now the three steps, then setting a GC, who gets the bills and where the GC shows up, with a link to the round guide. Everything from GC Review on sits whole under *Reference*. The fact pass corrected step 1 (the Edit tab's own **GC/Builder** row) and added the account-man grouping and the v2.5022 statement hold. Nothing cut.
 
 - **Opening:**
   1. Set a GC on a job: **Edit** → **Customer** → *GC/Builder (customer)*.
