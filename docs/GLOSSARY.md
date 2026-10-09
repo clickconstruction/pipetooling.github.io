@@ -312,7 +312,7 @@ The Settings tab (`settings-what-customers-see`) that draws every email and page
 
 1. **The real page, in preview**, wherever the record exists: the page itself opened through `withPreviewFlag` (`?preview=1`), which never counts as their open, and which the submittal room refuses every write from (v2.4599). The portal globe's Preview, the bid room panel, the legal portal's Preview ↗, the Submittals *Open their page ↗* (v2.4608).
 2. **A draft, drawn only through the page's own components and kernels**, for what does not exist yet: *Read it as the customer sees it* (Contracts & terms, v2.4098), the contract paper (v2.4175), *What the GC sees* on Bids → Submittals (v2.4189, its words v2.4593, the page's own header and chips v2.4606). Never a hand copy of the page: a copy drifts.
-3. **Samples, built only through the real kernels**, for learning without a record: the sample tokens on this tab answer from the functions' own sample branches, and their payloads run through the same kernels as a real record (the submittal room's through `roomRowsFrom`, v2.4595). Never written by hand.
+3. **Samples, built only through the real kernels**, for learning without a record: the sample tokens on this tab answer from the functions' own sample branches, and their payloads run through the same kernels as a real record (the submittal room's through `roomRowsFrom`, v2.4595; the portal's bills, shared bills, waivers and checks through the portal's four builders, v2.5110). Never written by hand.
 
 A preview that can differ from the real thing is worse than none.
 

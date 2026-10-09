@@ -1390,6 +1390,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### customer-portal
 
+> **v2.5110 — the sample portals' money through the builders** (What customers see #103, PR 2): the `sample`, `sample-gc` and `sample-owner` answers build `bills`, `sharedBills`, `waivers`, `checks` and `totalDue` from fixture rows (`samplePortalMoneyRows` in [`_shared/customerSampleFixtures.ts`](../supabase/functions/_shared/customerSampleFixtures.ts)) through `buildPortalBills`, `buildPortalSharedBills`, `buildPortalWaivers` and `buildPortalChecks`, called as the live branch calls them (`samplePortalMoney`). The samples now send `sharedBills` and `checks`. The live branch is unchanged. **Redeploy required.**
+
 > **v2.4650 — records for an owner**: the payload gains `ownerRecords` — the request the office offered on this portal and has not sent (`lien_owner_record_requests` for the link's customer with `file.offer` and no `sent_at`): `{ id, address, ownerName, offeredOn, signed: { on, name } | null }`, or null. The packet itself is never in the payload.
 >
 > **v2.4651 — sent on the portal**: `ownerRecords` is the latest offered request, sent or not; one sent *On their portal* (`file.sent.how = 'portal'`) carries `sent { on, downloadUrl }` — the packet's PDF copy in `sent_documents` (kind `owner_records_packet`, source the request), as a signed URL good for an hour with `download: true`; null while the copy is still being kept. A request sent any other way is left out: the owner has the paper.
