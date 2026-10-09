@@ -92,9 +92,9 @@ The papers are made by name (`gc-company:<id>`), so B6-b-i's trigger fills their
 
 ## P2c-ii: the portal's side
 
-**The slice** (`gc-trade-portal`): a new list, `sowLines` (`id`, `sow_id`, `position`, `label`, `amount`), only on the company's own statements of work that are not cancelled. `sows` gains `excluded`. Each field joins `TRADE_PORTAL_FIELDS`. The never-sees test plants a line on another company's statement of work.
+**The slice** (`gc-trade-portal`): a new list, `sowLines` (`id`, `sow_id`, `position`, `label`, `amount`, `scope_item_id`), only on the company's own statements of work that are not cancelled. `sows` gains `excluded`. Each field joins `TRADE_PORTAL_FIELDS`. The never-sees test plants a line on another company's statement of work.
 
-**The mapper** (`tradePortalState.ts`): `sow.sov` from the lines in position order, with `pctBilled` and `pctReported` 0 until U6. `sow.excluded` from the column. The partner's `msa` stays `'none'` until B6-b-ii reads the papers.
+**The mapper** (`tradePortalState.ts`): `sow.sov` from the lines in position order, with `pctBilled` and `pctReported` 0 until U6. Each line's id is the kernels' `SovLine.id` as Building's `gc_sow_line_of` (U6) reads it: its scope item, or the line's own id on a change order's line, as the prototype's `tradeChange.sovLineId` is. U6's report and pay application send that id back. `sow.excluded` from the column. The partner's `msa` stays `'none'` until B6-b-ii reads the papers.
 
 **The kind**: `sign_sow` takes `sowId`, `printedName`, an optional `signaturePngBase64` and `esignConsent`.
 
@@ -113,7 +113,7 @@ The papers are made by name (`gc-company:<id>`), so B6-b-i's trigger fills their
 
 Until B6-b-ii, the button shows and the verb refuses with `msaFirst`'s words, the prototype's rule. After it, the button is disabled with `signMsaFirst` beside it, as the prototype draws it.
 
-**The words**: every word above is on main from P0. `msaFirst` says `signMsaFirst`'s words. Three keys are new, each with its status and its English and Spanish words: `sowNotSent`, `alreadySigned` and `consentNeeded`. `nameNeeded` keeps its words ("Type the person’s name."), since the form needs a name before its button works.
+**The words**: every word above is on main from P0. `msaFirst` says `signMsaFirst`'s words. Three keys are new, each with its status and its English and Spanish words: `sowNotSent`, `alreadySigned` and `consentNeeded`. `alreadySigned` reads for any paper ("This is signed already." / "Esto ya está firmado."), since U6's unconditional waiver and signed change raise it too. `nameNeeded` keeps its words ("Type the person’s name."), since the form needs a name before its button works.
 
 **The flip**: `SOW_SIGN_SCREEN_LIVE` becomes true in `sowEmail.ts`, so Send to their portal to sign emails the company. This was agreed with Helper 12 on 2026-10-08.
 
@@ -122,7 +122,7 @@ Until B6-b-ii, the button shows and the verb refuses with `msaFirst`'s words, th
 | Key | Status | When |
 |---|---|---|
 | `sowNotSent` | 409 | a draft the office has not sent, or one it cancelled |
-| `alreadySigned` | 409 | signed already, or a second press |
+| `alreadySigned` | 409 | signed already, or a second press (U6's waiver and change raise it too) |
 | `msaFirst` | 409 | the company has not signed our master agreement |
 | `consentNeeded` | 400 | the submit function's own: a press without the e-sign consent (P2c-ii) |
 | `nameNeeded` | 400 | (exists) no name |
@@ -179,6 +179,8 @@ Until B6-b-ii, the button shows and the verb refuses with `msaFirst`'s words, th
 ## Status
 
 Plan written 2026-10-09 by Helper 13 (the Portal lane), after the lead approved the read-back with call 1 changed: the `msaFirst` gate from the start. P2c-i's SQL below passed all 16 checks of its bed on GitHub (`SQL beds` run 37932356974), over main and B6-b-i's migration, applied twice. P2c-i cuts after P4b-iii, once B6-b-i (#5115) is on main and prod. Its stamp is claimed at the cut.
+
+**Amended 2026-10-09 (afternoon), on Building U6's seams** (Helper 18): P2c-ii's lines carry `scope_item_id` and take the kernels' ids by U6's `gc_sow_line_of` rule, and `alreadySigned`'s words are shared with U6's waiver and change. One `WAITING` entry for it, labelled `'P2c-ii'`, whichever of P2c-i and U6a lands second. The SQL below is unchanged.
 
 ## P2c-i's SQL as built
 
