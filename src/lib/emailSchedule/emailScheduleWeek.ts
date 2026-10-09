@@ -20,7 +20,7 @@ export type MyEmailSchedulePayload = {
     timezone: string
     include_costs: boolean
     activity_scope: string
-    /** 'all_users' | 'my_team' (v2.3472; absent from pre-v2.3472 RPC payloads). */
+    /** 'all_users' (v2.3472; absent from pre-v2.3472 RPC payloads; the team filter was retired in v2.5088). */
     crew_filter?: string
   }>
   one_offs: Array<{
@@ -51,8 +51,6 @@ export type MyEmailSchedulePayload = {
     auto_send: boolean
     all_authors: boolean
     authors: string[]
-    /** Team leads (v2.3480; absent from pre-v2.3480 RPC payloads): everyone they lead, plus themselves. */
-    team_leads?: string[]
   }>
 }
 
@@ -62,7 +60,6 @@ export type MyReportEmailSubscription = {
   autoSend: boolean
   allAuthors: boolean
   authors: string[]
-  teamLeads: string[]
 }
 
 /**
@@ -92,7 +89,6 @@ export function normalizeMyEmailSubscriptions(
       autoSend: r?.auto_send !== false,
       allAuthors: r?.all_authors === true,
       authors: cleanNames(r?.authors),
-      teamLeads: cleanNames(r?.team_leads),
     }))
     .sort((a, b) => Number(b.enabled) - Number(a.enabled))
   return {
@@ -129,19 +125,11 @@ function joinNames(names: string[], shown = 3): string {
  * auto-send is off and " · paused" when the row is disabled.
  */
 export function describeReportEmailSubscription(sub: MyReportEmailSubscription): string {
-  const teams =
-    sub.teamLeads.length > 0
-      ? `everyone ${joinNames(sub.teamLeads)} ${sub.teamLeads.length === 1 ? 'leads' : 'lead'}`
-      : null
   const who = sub.allAuthors
     ? 'every report anyone files'
-    : sub.authors.length > 0 && teams
-      ? `reports from ${joinNames(sub.authors)}, and ${teams}`
-      : sub.authors.length > 0
-        ? `reports from ${joinNames(sub.authors)}`
-        : teams
-          ? `reports from ${teams}`
-          : 'reports from nobody yet'
+    : sub.authors.length > 0
+      ? `reports from ${joinNames(sub.authors)}`
+      : 'reports from nobody yet'
   const tail = [sub.autoSend ? null : 'sent on demand only', sub.enabled ? null : 'paused'].filter(Boolean)
   return tail.length > 0 ? `${who} · ${tail.join(' · ')}` : who
 }
@@ -153,11 +141,11 @@ const ACTIVITY_SCOPE_LABEL: Record<string, string> = {
   calendar_last_week: 'jobs last week',
 }
 
-/** "jobs yesterday · my team · with costs" — the recipient's own slice of a digest schedule. */
+/** "jobs yesterday · all users · with costs" — the recipient's own slice of a digest schedule. */
 export function describeDigestScope(w: { activity_scope: string; crew_filter?: string; include_costs: boolean }): string {
   const parts = [
     ACTIVITY_SCOPE_LABEL[w.activity_scope] ?? null,
-    w.crew_filter === 'my_team' ? 'my team' : w.crew_filter === 'all_users' ? 'all users' : null,
+    w.crew_filter === 'all_users' ? 'all users' : null,
     w.include_costs ? 'with costs' : null,
   ].filter((p): p is string => p != null)
   return parts.join(' · ')
@@ -174,7 +162,7 @@ export function describeDays(days: number[]): string {
 
 /**
  * The standing-row phrase for one digest schedule I'm on:
- * "Daily recap — Mon–Fri · 7:00 AM · jobs yesterday · my team (paused)".
+ * "Daily recap — Mon–Fri · 7:00 AM · jobs yesterday · all users (paused)".
  */
 export function describeDigestSchedule(w: MyEmailSchedulePayload['weekly'][number]): string {
   const minutes = parseHhMm(w.time_local)
