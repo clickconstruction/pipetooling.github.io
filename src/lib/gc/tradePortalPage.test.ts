@@ -65,8 +65,8 @@ describe('the plans’ links and the messages we sent', () => {
 describe('the home’s words', () => {
   const { jobs, bidding, past } = portalHomeGroups(portalAsks(state, partnerId))
 
-  it('puts the open ask under Asked to quote and the passed one under Before', () => {
-    expect([jobs.length, bidding.map((a) => a.project.name), past.map((a) => a.project.name)]).toEqual([0, ['Sample Retail Shell'], ['Sample Clinic Finish Out']])
+  it('puts the job under its jobs, the open ask under Asked to quote and the passed one under Before', () => {
+    expect([jobs.map((a) => a.project.name), bidding.map((a) => a.project.name), past.map((a) => a.project.name)]).toEqual([['Sample Dental Office'], ['Sample Retail Shell'], ['Sample Clinic Finish Out']])
     expect(pastWords(past[0]!, 'en')).toBe('you passed')
   })
 

@@ -4,7 +4,9 @@
  * service role, and this copies only the fields named here, so what the SQL let through is filtered a
  * second time. A trade never sees our price to the customer, our budgets, general conditions,
  * contingency or fee, the office's plugs, covers and taken alternates, another company or its number,
- * the office's call notes and notes on a quote or a decline, a lost bid's note or who won it.
+ * the office's call notes and notes on a quote or a decline, a lost bid's note or who won it. Of its
+ * work (P4b-i) it reads its own award, statement of work, charges and change requests, and of a change
+ * order made of its request only its part: never the customer's price.
  *
  * Pure, with no Deno or browser API: the edge function and `src/lib/gc/tradePortalSlice.test.ts` both
  * call it.
@@ -30,6 +32,14 @@ export interface TradePortalRows {
   messages: Row[]
   /** The sets New project's set email sent this company, and whether each changed its trade (gc_plan_set_sends). */
   setSends: Row[]
+  /**
+   * Its statements of work (B6-a's gc_sows), its charges and its change requests (P4a), and the change orders its
+   * requests became. Optional, so a caller with none (a test, an older sample) passes none.
+   */
+  sows?: Row[]
+  backCharges?: Row[]
+  changeRequests?: Row[]
+  changeOrders?: Row[]
 }
 
 export type SliceRow = Record<string, unknown>
@@ -50,6 +60,14 @@ export interface TradePortalSlice {
   questions: SliceRow[]
   messages: SliceRow[]
   setSends: SliceRow[]
+  /**
+   * Its own work (P4b-i). Absent from a slice the function sent before P4b-i was deployed: the page ships first,
+   * so it reads a missing list as none.
+   */
+  sows?: SliceRow[]
+  backCharges?: SliceRow[]
+  changeRequests?: SliceRow[]
+  changeOrders?: SliceRow[]
 }
 
 /** The fields that pass, table by table. Anything not named here never leaves the server. */
@@ -63,7 +81,8 @@ export const TRADE_PORTAL_FIELDS = {
   project: ['id', 'name', 'address'],
   gc: ['project_id', 'stage', 'bid_due', 'size_note', 'lost_on', 'lost_why'],
   team: ['role', 'name', 'phone', 'email'],
-  packages: ['id', 'project_id', 'trade', 'position'],
+  // The award: this company's own ask, or AWARDED_ELSEWHERE when another company holds it (`tradePortalSlice`).
+  packages: ['id', 'project_id', 'trade', 'position', 'awarded_invite_id'],
   scopeItems: ['id', 'package_id', 'position', 'label', 'sheets', 'specs', 'added_in_set_id'],
   exclusions: ['id', 'package_id', 'position', 'label', 'by'],
   sets: ['id', 'project_id', 'rev', 'label', 'kind', 'issued_on', 'note', 'drive_url'],
@@ -71,7 +90,27 @@ export const TRADE_PORTAL_FIELDS = {
   questions: ['id', 'project_id', 'package_id', 'text', 'sheets', 'asked_on', 'answered_on', 'answer', 'in_set_id'],
   messages: ['id', 'project_id', 'kind', 'mail_group', 'lang', 'subject', 'lines', 'to_names', 'sent_on'],
   setSends: ['set_id', 'touched'],
+  // Its own number on its own work: never the leveled total or another company's.
+  sows: ['id', 'package_id', 'invite_id', 'status', 'price', 'retainage_pct', 'based_on_rev', 'sent_on', 'signed_on'],
+  // Every column but who in the office made or settled it.
+  backCharges: ['id', 'project_id', 'package_id', 'company_id', 'sow_id', 'amount', 'reason', 'photo_url', 'sent_on', 'answer_by', 'status', 'answered_on', 'answer_note', 'settled_on', 'settled_note', 'taken_draw_id', 'taken_on', 'created_at'],
+  changeRequests: ['id', 'project_id', 'package_id', 'company_id', 'sow_id', 'asked_on', 'description', 'reason', 'amount', 'days', 'file_url', 'change_order_id', 'turned_down_on', 'turned_down_note', 'created_at'],
+  // "Your part" only: the change order's cost on the trade's work. Never its price to the customer, its percent
+  // done or the office's words to the customer.
+  changeOrders: ['id', 'number', 'status', 'sent_on', 'answered_on', 'cost'],
 } as const satisfies Record<string, readonly string[]>
+
+/**
+ * A trade awarded to another company: the portal reads its ask as lost (`portalAsks`' 'lost', the home's past group)
+ * and never learns which company or which ask.
+ */
+export const AWARDED_ELSEWHERE = 'elsewhere'
+
+/** The award as this company may read it: its own ask, another's as AWARDED_ELSEWHERE, or none. */
+function awardOf(p: Row, inviteIds: Set<string>): string | null {
+  const awarded = idOf(p, 'awarded_invite_id')
+  return awarded === '' ? null : inviteIds.has(awarded) ? awarded : AWARDED_ELSEWHERE
+}
 
 function pick(row: Row, fields: readonly string[]): SliceRow {
   const out: SliceRow = {}
@@ -96,9 +135,10 @@ function contactLine(r: Row): SliceRow {
 /**
  * The slice for one company. Every list is held to that company again here: its invites, the
  * packages and projects they are on, the quotes and lines on its invites, the sets of those
- * projects, its own questions in full and the answered ones sent to it without who asked.
+ * projects, its own questions in full and the answered ones sent to it without who asked. It always
+ * carries its work's four lists; only a slice from an older function lacks them.
  */
-export function tradePortalSlice(rows: TradePortalRows, companyId: string): TradePortalSlice {
+export function tradePortalSlice(rows: TradePortalRows, companyId: string): Required<TradePortalSlice> {
   const invites = rows.invites.filter((i) => idOf(i, 'company_id') === companyId)
   const inviteIds = new Set(invites.map((i) => idOf(i)))
   const packageIds = new Set(invites.map((i) => idOf(i, 'package_id')))
@@ -116,7 +156,7 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Trad
     contacts: rows.contacts.filter((c) => idOf(c, 'company_id') === companyId && inviteIds.has(idOf(c, 'invite_id'))).map(contactLine),
     promises: rows.promises.filter((p) => idOf(p, 'company_id') === companyId).map((p) => pick(p, TRADE_PORTAL_FIELDS.promises)),
     projects: projects.map((p) => ({ project: pick(p.project, TRADE_PORTAL_FIELDS.project), gc: pick(p.gc, TRADE_PORTAL_FIELDS.gc), team: p.team.map((t) => pick(t, TRADE_PORTAL_FIELDS.team)) })),
-    packages: packages.map((p) => pick(p, TRADE_PORTAL_FIELDS.packages)),
+    packages: packages.map((p) => ({ ...pick(p, TRADE_PORTAL_FIELDS.packages), awarded_invite_id: awardOf(p, inviteIds) })),
     scopeItems: rows.scopeItems.filter((s) => packageIds.has(idOf(s, 'package_id'))).map((s) => pick(s, TRADE_PORTAL_FIELDS.scopeItems)),
     exclusions: rows.exclusions.filter((x) => packageIds.has(idOf(x, 'package_id'))).map((x) => pick(x, TRADE_PORTAL_FIELDS.exclusions)),
     sets: rows.sets.filter((s) => setIds.has(idOf(s))).map((s) => pick(s, TRADE_PORTAL_FIELDS.sets)),
@@ -126,5 +166,24 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Trad
       .map((q) => ({ ...pick(q, TRADE_PORTAL_FIELDS.questions), mine: ownQuestion(q) })),
     messages: rows.messages.filter((m) => idOf(m, 'company_id') === companyId).map((m) => pick(m, TRADE_PORTAL_FIELDS.messages)),
     setSends: rows.setSends.filter((s) => idOf(s, 'company_id') === companyId && setIds.has(idOf(s, 'set_id'))).map((s) => pick(s, TRADE_PORTAL_FIELDS.setSends)),
+    ...ownWork(rows, companyId, packageIds),
+  }
+}
+
+/**
+ * Its own work: the statements of work, charges and change requests that are this company's, on its trades,
+ * and the change orders its requests became, as their part only. A statement of work that was cancelled is
+ * not one (main's `Sow` has no such status).
+ */
+function ownWork(rows: TradePortalRows, companyId: string, packageIds: Set<string>): Required<Pick<TradePortalSlice, 'sows' | 'backCharges' | 'changeRequests' | 'changeOrders'>> {
+  const own = (r: Row) => idOf(r, 'company_id') === companyId && packageIds.has(idOf(r, 'package_id'))
+  const sows = (rows.sows ?? []).filter((s) => own(s) && s.status !== 'cancelled')
+  const requests = (rows.changeRequests ?? []).filter(own)
+  const orderIds = new Set(requests.map((r) => idOf(r, 'change_order_id')).filter(Boolean))
+  return {
+    sows: sows.map((s) => pick(s, TRADE_PORTAL_FIELDS.sows)),
+    backCharges: (rows.backCharges ?? []).filter(own).map((c) => pick(c, TRADE_PORTAL_FIELDS.backCharges)),
+    changeRequests: requests.map((r) => pick(r, TRADE_PORTAL_FIELDS.changeRequests)),
+    changeOrders: (rows.changeOrders ?? []).filter((o) => orderIds.has(idOf(o))).map((o) => pick(o, TRADE_PORTAL_FIELDS.changeOrders)),
   }
 }

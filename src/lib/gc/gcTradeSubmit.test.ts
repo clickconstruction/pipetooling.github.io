@@ -33,6 +33,8 @@ const call = (kind: string, fields: Record<string, unknown> = {}) => {
   return parsed.ok ? parsed.call : null
 }
 
+const CHARGE = '55555555-5555-4555-8555-555555555555'
+
 describe('each kind, read into its verb', () => {
   it('reads every kind the portal sends', () => {
     expect(call('got_it')).toEqual({ rpc: 'gc_trade_got_it', params: {} })
@@ -52,7 +54,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(12)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(14)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -90,6 +92,23 @@ describe('each kind, read into its verb', () => {
     expect(call('submit_quote', { inviteId: ASK, quote: {} })).toEqual({ rpc: 'gc_trade_submit_quote', params: { p_invite_id: ASK, q: { amount: null, includes: {}, note: '', alternates: [] } } })
   })
 
+  it('reads a charge’s answer and a change asked for (P4b-i)', () => {
+    expect(call('answer_back_charge', { chargeId: CHARGE, agree: false, note: ' We swept before we left. ' })).toEqual({
+      rpc: 'gc_trade_answer_back_charge',
+      params: { p_charge_id: CHARGE, p_agree: false, p_note: 'We swept before we left.' },
+    })
+    expect(call('answer_back_charge', { chargeId: CHARGE, agree: true })).toEqual({ rpc: 'gc_trade_answer_back_charge', params: { p_charge_id: CHARGE, p_agree: true, p_note: '' } })
+    expect(call('ask_change', { packageId: TRADE, description: ' Hidden rot behind the east wall. ', reason: 'field', amount: 14820, days: 2 })).toEqual({
+      rpc: 'gc_trade_ask_change',
+      params: { p_package_id: TRADE, p_description: 'Hidden rot behind the east wall.', p_reason: 'field', p_amount: 14820, p_days: 2 },
+    })
+    // No days is none; no amount goes to the SQL, which says amountNeeded in the company's words.
+    expect(call('ask_change', { packageId: TRADE, description: 'Rot', reason: 'owner' })).toEqual({
+      rpc: 'gc_trade_ask_change',
+      params: { p_package_id: TRADE, p_description: 'Rot', p_reason: 'owner', p_amount: null, p_days: 0 },
+    })
+  })
+
   it('refuses a shape the portal never sends', () => {
     const bad = [
       { kind: 'drop_table' },
@@ -107,6 +126,13 @@ describe('each kind, read into its verb', () => {
       { kind: 'submit_quote', inviteId: ASK, quote: { amount: 1, sov: [{ label: 'Rough', amount: 'lots' }] } },
       { kind: 'submit_quote', inviteId: ASK, quote: { amount: 1, alternates: 'none' } },
       { kind: 'submit_quote', inviteId: ASK, quote: { amount: 1, exclusions: [{ name: '' }] } },
+      { kind: 'answer_back_charge', chargeId: CHARGE, agree: 'yes' },
+      { kind: 'answer_back_charge', chargeId: 'not-a-charge', agree: true },
+      { kind: 'answer_back_charge', chargeId: CHARGE, agree: false, note: 'x'.repeat(2001) },
+      { kind: 'ask_change', packageId: TRADE, description: 'Rot', reason: 'weather', amount: 100, days: 0 },
+      { kind: 'ask_change', packageId: TRADE, description: 'Rot', reason: 'field', amount: '100', days: 0 },
+      { kind: 'ask_change', packageId: TRADE, description: 'Rot', reason: 'field', amount: 100, days: 1.5 },
+      { kind: 'ask_change', packageId: TRADE, description: 'x'.repeat(2001), reason: 'field', amount: 100, days: 0 },
     ]
     for (const fields of bad) expect(parseTradeSubmit({ token: TOKEN, ...fields }), JSON.stringify(fields).slice(0, 80)).toEqual({ ok: false })
     expect(parseTradeSubmit(null)).toEqual({ ok: false })
@@ -131,7 +157,7 @@ describe('before the verb', () => {
     expect(overHourlyCap([3, 2, 1, 3])).toBe(false)
     expect(overHourlyCap([4, 2, 1, 3])).toBe(true)
     expect(overHourlyCap([null, undefined, 10, 0])).toBe(true)
-    expect([...FREE_TEXT_KINDS].sort()).toEqual(['add_person', 'ask_question', 'quote_day', 'submit_quote'])
+    expect([...FREE_TEXT_KINDS].sort()).toEqual(['add_person', 'ask_change', 'ask_question', 'quote_day', 'submit_quote'])
   })
 })
 
@@ -161,10 +187,6 @@ describe('the verb’s refusals', () => {
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
   const WAITING: Record<string, string> = {
-    alreadyAnswered: 'P4b',
-    descriptionNeeded: 'P4b',
-    notAwarded: 'P4b',
-    noteNeeded: 'P4b',
     // Building's U4a, gc_trade_submittal_send, listed ahead of it so the order the two land in does not matter.
     fileNeeded: 'P5',
     notYourMove: 'P5',

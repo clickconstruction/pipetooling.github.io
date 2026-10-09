@@ -1020,7 +1020,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### gc-trade-portal
 
-**Purpose**: GC mode's trade partner portal, the read (v2.4916, P1b-ii of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`). One no-password link per trade partner company (`gc_trade_portal_links`, the sub portal's spine keyed to `gc_companies`) opens that company's slice: its asks and quotes, the quote days it gave, the asked projects with their trades, scope lines, known exclusions, plan sets, questions it may read, who to call, its people and the emails we sent it. The read never carries our price to the customer, our budgets, fee, plugs or covers, another company or the office's notes. Every query is held to the link's company, then `_shared/gcTradePortalSlice.ts` copies only the fields named in `TRADE_PORTAL_FIELDS` (its never-sees test plants a marked value in each field outside the list).
+**Purpose**: GC mode's trade partner portal, the read (v2.4916, P1b-ii of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`). One no-password link per trade partner company (`gc_trade_portal_links`, the sub portal's spine keyed to `gc_companies`) opens that company's slice: its asks and quotes, the quote days it gave, the asked projects with their trades, scope lines, known exclusions, plan sets, questions it may read, who to call, its people and the emails we sent it. Since P4b-i (v2.5044) it also reads its own work: the award of each trade it was asked to quote (its own ask, or `elsewhere` when another company holds it, so the portal reads the ask as lost and never learns who won), its statement of work, the charges to it and the changes it asked for, and of a change order one became only its part (the number, the status, the days sent and answered, and the cost). The read never carries our price to the customer, a change order's price, our budgets, fee, plugs or covers, another company or the office's notes. Every query is held to the link's company, then `_shared/gcTradePortalSlice.ts` copies only the fields named in `TRADE_PORTAL_FIELDS` (its never-sees test plants a marked value in each field outside the list).
 
 **Endpoint**: `GET /functions/v1/gc-trade-portal?t=<token>[&preview=1]` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. The token is resolved with the service role (raw token, then its SHA-256 hash) by `_shared/gcTradeLink.ts`, the one rule the writes share (v2.4925). A turned-off or unknown link answers `404 {error: 'linkOff'}`, a malformed one `400 {error: 'badRequest'}`, and a failure `500 {error: 'failed'}`. Errors are keys the page says in the company's language. A staff bearer or `preview=1` is only a "who is looking" hint for view counting. **Response**: `{ today, slice }`. The page maps the slice with `src/lib/gc/tradePortalState.ts` and reads it with the portal's kernels (`src/lib/gc/portal.ts`).
 
@@ -1032,7 +1032,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Doors**: links are made only through `mint_gc_trade_portal_link` (dev only until the portal's door, migration `20261008050000_gc_trade_portal_links`), so no real trade can open one before then. The page at `/t/:token` (`src/pages/GcTradePortal.tsx`, v2.4920) reads it, and a dev makes, copies, remakes or turns off a company's link in its company window's **Their portal** on `/gc` (the **Trade portals** pill is gone since v2.4942), or `gc-trade-email` makes it on the company's first email.
 
-**Status**: deployed 2026-10-08 after #4946 merged. Probed on prod: `?t=sample` answers 200 with today and Sample Electric Co.'s slice; an unknown 64-character token answers `{"error":"linkOff"}`.
+**Status**: deployed 2026-10-08 after #4946 merged. Probed on prod: `?t=sample` answers 200 with today and Sample Electric Co.'s slice; an unknown 64-character token answers `{"error":"linkOff"}`. P4b-i (v2.5044) adds four reads (`gc_sows`, `gc_back_charges` and `gc_trade_change_requests` by the company, and `gc_change_orders` by its requests) and the sample's job; redeployed after it merges. The page ships first and reads a slice without the four lists as no work.
 
 ---
 
@@ -1049,7 +1049,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 4. A token under 16 or over 128 characters answers `400 badRequest`.
 5. The link is resolved by `_shared/gcTradeLink.ts`: the raw token, then its hash. An unknown or turned-off link answers `404 linkOff`.
 6. `set_lang` with `es` while Spanish is held answers `400 spanishHeld`.
-7. The hourly cap: a free-text kind (`submit_quote`, `quote_day`, `add_person`, `ask_question`) answers `429 tooMany` once the company has made 10 free-text writes in the last hour. The count is its questions, the people it added, its quotes and its portal contact lines.
+7. The hourly cap: a free-text kind (`submit_quote`, `quote_day`, `add_person`, `ask_question`, `ask_change`) answers `429 tooMany` once the company has made 10 free-text writes in the last hour. The count is its questions, the people it added, its quotes, its portal contact lines and the changes it asked for.
 8. The verb runs. Its refusal is `P0001` with a key, which `tradeErrorOf` passes through with its status: 409 for a state, 400 for a field, 404 for `notFound`. Anything else answers `500 failed` and is logged.
 
 **Kinds**:
@@ -1066,6 +1066,8 @@ The function reads and writes with the service role, so every bid-scoped verb en
 | `submit_quote` | `inviteId`, `quote` |
 | `answer_lines` | `inviteId`, `answers` |
 | `ask_question` | `packageId`, `text`, `sheets[]` |
+| `answer_back_charge` (P4b-i) | `chargeId`, `agree`, `note` (a dispute needs one) |
+| `ask_change` (P4b-i) | `packageId`, `description`, `reason` (`owner`, `field` or `plans`), `amount`, `days` (a whole number, none is 0) |
 
 The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/lib/gc/tradePortalPage.ts`). A test fails when a key has no words.
 
@@ -1078,6 +1080,8 @@ The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/l
 - the sample's `submit_quote` answered the same;
 - an unknown 64-character token's `got_it` answered `404 {error: "linkOff"}`;
 - an unknown kind answered `400 {error: "badRequest"}`.
+
+P4b-i (v2.5044) adds the two kinds above on P4a's verbs, `ask_change` under the cap, and the keys `alreadyAnswered` and `notAwarded` (409), `noteNeeded` and `descriptionNeeded` (400); redeployed after it merges.
 
 ---
 

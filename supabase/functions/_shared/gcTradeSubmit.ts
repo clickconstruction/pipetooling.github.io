@@ -27,12 +27,15 @@ export const TRADE_SUBMIT_KINDS = [
   'answer_lines',
   'decline',
   'ask_question',
+  // P4b-i: a charge agreed or disputed, and a change asked for (P4a's verbs).
+  'answer_back_charge',
+  'ask_change',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
 
 /** The kinds that write a company's own words, under the hourly cap. The rest are clicks. */
-export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question'])
+export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question', 'ask_change'])
 
 /** The function's own refusals. */
 export const TRADE_FUNCTION_ERRORS = { badRequest: 400, linkOff: 404, spanishHeld: 400, tooMany: 429, failed: 500 } as const
@@ -51,6 +54,8 @@ export const TRADE_SQL_ERRORS = {
   notOnTrade: 409,
   questionsClosed: 409,
   everyKindNeedsSomeone: 409,
+  alreadyAnswered: 409,
+  notAwarded: 409,
   amountNeeded: 400,
   answerEach: 400,
   sovMustAdd: 400,
@@ -59,6 +64,8 @@ export const TRADE_SQL_ERRORS = {
   pickAKind: 400,
   questionNeeded: 400,
   tooLong: 400,
+  noteNeeded: 400,
+  descriptionNeeded: 400,
   badRequest: 400,
 } as const
 
@@ -96,6 +103,7 @@ export interface TradeCall {
 export type TradeSubmitParsed = { ok: true; token: string; kind: TradeSubmitKind; call: TradeCall } | { ok: false }
 
 const MAIL_GROUPS = ['quotes', 'job', 'contracts', 'pay']
+const CHANGE_REASONS = ['owner', 'field', 'plans']
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 
@@ -224,6 +232,19 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
         rpc: 'gc_trade_ask_question',
         params: { p_package_id: uuid(b.packageId), p_text: text(b.text, 2000), p_sheets: list(b.sheets, 20).map((s) => text(s, 20)).filter((s) => s !== '') },
       }
+    case 'answer_back_charge':
+      if (typeof b.agree !== 'boolean') throw new Bad()
+      return { rpc: 'gc_trade_answer_back_charge', params: { p_charge_id: uuid(b.chargeId), p_agree: b.agree, p_note: text(b.note, 2000) } }
+    case 'ask_change': {
+      // The SQL says what a missing amount or a blank description means; a fourth reason or part of a day is not the form's.
+      if (typeof b.reason !== 'string' || !CHANGE_REASONS.includes(b.reason)) throw new Bad()
+      const days = num(b.days) ?? 0
+      if (!Number.isInteger(days)) throw new Bad()
+      return {
+        rpc: 'gc_trade_ask_change',
+        params: { p_package_id: uuid(b.packageId), p_description: text(b.description, 2000), p_reason: b.reason, p_amount: num(b.amount), p_days: days },
+      }
+    }
   }
 }
 
