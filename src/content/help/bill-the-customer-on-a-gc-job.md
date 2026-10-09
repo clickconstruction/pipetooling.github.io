@@ -2,7 +2,7 @@
 title: bill the customer on a GC job
 category: Bids & Estimating
 roles: dev, master_technician, controller
-keywords: gc mode, pay application, bill, customer, architect, certificate, retainage, aia, g702, g703, excel, pdf
+keywords: gc mode, pay application, bill, customer, architect, certificate, retainage, aia, g702, g703, excel, pdf, email
 order: 99
 ---
 Once a month, send the customer our pay application for the work done so far. The architect certifies it, and what they certify is the bill the customer pays.
@@ -15,10 +15,14 @@ Each pay application goes on the AIA form. It has a line for each trade, our own
 2. Read the lines. Each one shows its worth, the work this month and the work so far.
 3. Check what the bill asks. It is the work so far, less what they hold back and less earlier certificates.
 4. Press {{button:outline|See the form in Excel}} or {{button:outline|See the form as a PDF}} to look at the form.
-5. Press {{button:blue|Send pay application}}.
-6. Email the form to the customer and the architect from your own email.
+5. Tick **Email it to the customer and the architect now** to email them the form. The tick starts off.
+6. Press {{button:blue|Send pay application}}.
 
-The app does not email pay applications yet. The first bill on a job opens its billing job on the Pipeline. Its bills show there with the customer's other bills.
+With the tick on, the customer gets the pay application with the form. The architect gets the same form and an ask to certify it. Both emails come from Click Construction. Their replies go to the project manager. The bill under **Sent** then says who it was emailed to and when.
+
+With the tick off, email the form to them from your own email. When an email does not go, the pay application still went. The window says why.
+
+The app keeps a copy of each email on the billing job's **Documents** tab. The first bill on a job opens its billing job on the Pipeline. Its bills show there with the customer's other bills.
 
 ## Record the certificate
 

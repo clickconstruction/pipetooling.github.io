@@ -31,6 +31,8 @@ import { bytesToBase64, qrPngBytes } from '../../supabase/functions/_shared/qrPn
 import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
+import { buildGcCustomerEmail, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
+import { certifyAskMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
 import { gcTradePortalSample, gcTradePortalSampleRows } from '../../supabase/functions/_shared/gcTradePortalSample'
 import { mailboxWithName } from '../../supabase/functions/_shared/mailboxWithName'
 import { inviteMessage, mailRecipients, portalMailGroup } from './gc/portal'
@@ -322,6 +324,7 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask') return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
 
@@ -382,5 +385,26 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
   if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)
   if (id === 'gc-trade-email') return buildSampleGcTradeEmail(ctx)
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask') return buildSampleGcPayAppEmail(id, ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
+}
+
+/**
+ * GC mode (O4b): our pay application to a GC project's customer, and the ask to its architect to certify it, as
+ * `gc-customer-email` sends them. A made-up month on the sample project, through the same words and frame.
+ */
+export function buildSampleGcPayAppEmail(id: 'gc-pay-app' | 'gc-certify-ask', ctx: SampleEmailContext): BuiltEmail {
+  const facts: PayAppMailFacts = {
+    job: 'Sample Retail Shell',
+    greeting: 'Elena',
+    owner: 'Sample Owner LLC',
+    architect: 'Sample Architects',
+    number: 3,
+    final: false,
+    due: 48600,
+    periodTo: ymdPlusDays(ctx.todayYmd, -5),
+    retainagePct: 10,
+  }
+  const mail = id === 'gc-pay-app' ? payAppMail(facts) : certifyAskMail(facts)
+  return buildGcCustomerEmail({ subject: mail.subject, lines: mail.lines, signer: String(ctx.sender?.name ?? 'The project manager'), gc: GC_CUSTOMER_EMAIL_FROM_NAME })
 }

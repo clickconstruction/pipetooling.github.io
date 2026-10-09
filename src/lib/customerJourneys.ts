@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-trade-email'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-trade-email']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -373,6 +373,26 @@ export function customerJourneys(): Journey[] {
           guide: 'ask-the-architect-about-the-plans',
           reflects: ['The project manager on the GC project (the Reply-To)', 'Sender name'],
           render: { kind: 'email', email: 'gc-plan-question' },
+        },
+        {
+          id: 'gc-pay-app-email',
+          label: 'GC mode: our pay application',
+          sublabel: 'GC projects → Bill the customer → Send pay application, with the email tick on',
+          when: 'Once a month, on bill day',
+          customerCan: 'Read what the pay application asks and why, with its form attached. The bill to pay comes once the architect certifies it.',
+          guide: 'bill-the-customer-on-a-gc-job',
+          reflects: ['The pay application as it went', 'The project manager on the GC project (the Reply-To and the signer)'],
+          render: { kind: 'email', email: 'gc-pay-app' },
+        },
+        {
+          id: 'gc-certify-ask-email',
+          label: 'GC mode: please certify',
+          sublabel: 'The same Send, to the project\'s architect',
+          when: 'With each pay application',
+          customerCan: 'Read what we asked the customer for, check the form attached, and reply with the certificate.',
+          guide: 'bill-the-customer-on-a-gc-job',
+          reflects: ['The pay application as it went', 'The architect on the GC project'],
+          render: { kind: 'email', email: 'gc-certify-ask' },
         },
         {
           id: 'owner-notice',

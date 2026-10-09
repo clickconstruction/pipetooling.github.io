@@ -474,6 +474,9 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
       : na('None')
     // GC mode (v2.4799): the question email goes to a GC project's architect; the GC projects' own record lands with the company record.
     steps['plan-question-email'] = na('GC mode: read on the GC project')
+    // GC mode (O4b): our pay application and the ask to certify it go to a GC project's customer and architect.
+    steps['gc-pay-app-email'] = na('GC mode: read on the GC project')
+    steps['gc-certify-ask-email'] = na('GC mode: read on the GC project')
   }
 
   const liveJobs = rows.jobs.filter((j) => jobIdsOfCustomer.has(j.id) && j.status && j.status !== 'paid' && j.status !== 'archived').length

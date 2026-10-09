@@ -16,7 +16,7 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../components/SpotlightTour'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
-import { todayYmdInAppTz } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { GcNewProjectWindow } from '../components/gc/GcNewProject'
 import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
@@ -32,8 +32,11 @@ import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, payAppSendPayload, type BillingRows } from '../lib/gc/billCustomer'
-import { ownerPayApp, ownerPayAppForm, ownerPayAppParties } from '../lib/gc/ownerBilling'
-import { downloadPayAppExcel, downloadPayAppPdf } from '../lib/gc/payAppFileWriters'
+import { ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppToSend } from '../lib/gc/ownerBilling'
+import { downloadPayAppExcel, downloadPayAppPdf, payAppPdf } from '../lib/gc/payAppFileWriters'
+import { payAppFileName } from '../lib/gc/payAppFile'
+import { certifyAskMail, gcCustomerEmailRefusal, payAppMail, payAppMailFacts } from '../lib/gc/customerEmail'
+import { pdfBase64, sendGcCustomerEmail } from '../lib/gc/customerEmailIo'
 import { unbilledPayments } from '../lib/gc/ownerBillingRows'
 import LienReleaseModal from '../components/jobs/LienReleaseModal'
 import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
@@ -547,6 +550,15 @@ export default function GcProjects() {
     [billOwn],
   )
   const billUnbilled = useMemo(() => unbilledPayments(billOwn?.money), [billOwn])
+  // Who each sent one was emailed to and when (O4b), from its sent copies.
+  const billEmailed = useMemo(() => {
+    const out: Record<number, { to: string; on: string }[]> = {}
+    for (const a of billOwn?.payApps ?? []) {
+      const sent = (billOwn?.emails ?? []).filter((e) => e.source_id === a.id)
+      if (sent.length > 0) out[a.number] = sent.map((e) => ({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) }))
+    }
+    return out
+  }, [billOwn])
   const setBillWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('bill', projectId)
@@ -1060,9 +1072,45 @@ export default function GcProjects() {
           waived={(billRows?.billing.get(billProject.id)?.payApps ?? []).filter((a) => a.conditional_waiver_id !== null).map((a) => a.number)}
           unconditional={billUnconditional}
           unbilled={billUnbilled}
+          emailed={billEmailed}
           onClose={() => setBillWindow(null)}
           writes={{
-            onSend: () => billWrite('send', () => sendOwnerPayApp(billProject.id, payAppSendPayload(ownerPayApp(billState, billProject), today)), 'The pay application did not go.'),
+            onSend: (email) => {
+              // Send files it; the tick (off to start) also emails it to the customer and the architect with its form
+              // (O4b). The bills are read again either way, and an email that did not go is said after.
+              const draft = ownerPayApp(billState, billProject)
+              const form = ownerPayAppForm(billState, billProject, 'draft')
+              setBillBusy('send')
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  const id = await sendOwnerPayApp(billProject.id, payAppSendPayload(draft, today))
+                  let emailProblem: string | null = null
+                  if (email && form) {
+                    try {
+                      // The form as it went: the draft's figures, dated the day Send recorded, as a later download draws it.
+                      const record = ownerPayAppToSend(draft, today)
+                      const sentForm = { ...form, sentOn: record.sentOn }
+                      const parties = ownerPayAppParties(billState, billProject, sentForm)
+                      const pdf = { filename: payAppFileName(parties, 'pdf'), base64: pdfBase64(await payAppPdf(sentForm.app, parties)) }
+                      const facts = payAppMailFacts(billState, billProject, record)
+                      for (const [kind, mail] of [['pay_app', payAppMail(facts)], ['certify_ask', certifyAskMail(facts)]] as const) {
+                        const a = await sendGcCustomerEmail({ projectId: billProject.id, kind, sourceId: id, subject: mail.subject, lines: mail.lines, pdf })
+                        if (!a.ok && !emailProblem) emailProblem = `The pay application went, but an email did not. ${gcCustomerEmailRefusal(a.key)}`
+                      }
+                    } catch (e) {
+                      emailProblem = formatErrorMessage(e, 'The pay application went, but its email did not.')
+                    }
+                  }
+                  await loadBill()
+                  if (emailProblem) setBillProblem(emailProblem)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The pay application did not go.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
+            },
             onCertify: (number, amount, on, note) => {
               const id = billRows?.billing.get(billProject.id)?.payApps.find((a) => a.number === number)?.id
               if (id) billWrite(`cert-${number}`, () => recordCertificate(id, amount, on, note), 'The certificate was not recorded.')
