@@ -67,6 +67,7 @@ import {
   type JobContractRow,
 } from '../../lib/jobs/jobContractLifecycle'
 import { isAwaitingPaperCopy, isHandedAwaitingPaper, jobContractSentChannel } from '../../lib/jobs/jobContractHandoff'
+import { freshJobContractLink } from '../../lib/jobs/jobContractLinkHandOut'
 import { CONTRACT_NOT_NEEDED_REASONS, type JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { clearJobContractNotNeeded, markJobContractNotNeeded } from '../../lib/jobs/jobContractNotNeeded'
 import { handoffBlocker, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
@@ -533,11 +534,16 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   )
 
   /**
-   * The link to hand out: the one this session made, else the one the sent row already carries,
-   * else a send mints it. Handing out a link the row has records nothing, so a PDF emailed to sign
-   * stays a PDF send (punch list #104, v2.5119).
+   * The link to hand out: the one this session made, else the one the sent row already carries
+   * (read again first, in case another tab moved it), else a send mints or renews it. Handing out a
+   * link the row has records nothing, so a PDF emailed to sign stays a PDF send (punch list #104,
+   * v2.5119).
    */
-  const linkToHandOut = async (): Promise<string | null> => lastLink ?? jobContractLinkOnRow(liveRow, window.location.origin) ?? (await invokeSend('link'))
+  const linkToHandOut = async (): Promise<string | null> => {
+    if (lastLink) return lastLink
+    const own = jobContractLinkOnRow(liveRow, window.location.origin) ? await freshJobContractLink(liveRow?.id, window.location.origin) : null
+    return own ?? (await invokeSend('link'))
+  }
 
   const copyLink = async () => {
     const url = await linkToHandOut()
