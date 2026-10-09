@@ -1,28 +1,20 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for By company as a call list (the Gantt's G-115; mock-up
- * `to-dos/gc-mode/mockups/G-115.md`): a row per person with Follow up's Call and Follow up, a line
- * about a bar that opens it, Hide, the opened bar's company, and the call form's answer on new dates.
+ * GC mode, the real build, the schedule's PR 7c-ii: the tests of the prototype's `GcCallList.render.test.tsx` (branch
+ * spike/gc-mode) that draw the call list alone, moved word for word on main's test state. A row per person with Call and
+ * Follow up, a line about a bar that opens it, Hide, Their work, and the opened bar's company. The call form's answer plays
+ * the prototype's reducer and its Follow up sheet, and stays on the spike; the window draws the list with Call only
+ * (`GcScheduleWindow.render.test.tsx`).
  */
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcBarCaller, GcCallList } from './GcCallList'
-import { GcFollowUpSheet } from './GcFollowUpSheet'
-import { initialGcState } from '../../lib/gcMode/gcFixture'
-import { gcReducer } from '../../lib/gcMode/gcReducer'
-import { addDays } from '../../lib/gcMode/gcBuilding'
-import { scheduleMeasures } from '../../lib/gcMode/gcBuildingSchedule'
-import { barCaller, callList, callListFollowPeople } from '../../lib/gcMode/gcCallList'
-import type { GcState } from '../../lib/gcMode/gcTypes'
+import { initialGcState } from '../../lib/gc/schedule/testState'
+import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
+import { barCaller, callList } from '../../lib/gc/schedule/callList'
+import type { GcState } from '../../lib/gc/types'
 
 afterEach(cleanup)
-
-beforeAll(() => {
-  // The Follow up sheet asks whether it is on a phone.
-  if (!window.matchMedia) {
-    window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
-  }
-})
 
 const ID = 'fairoaksd'
 const job = (s: GcState) => s.projects.find((p) => p.id === ID)!
@@ -111,26 +103,5 @@ describe('the opened bar’s company', () => {
     expect(onFollowUp).toHaveBeenLastCalledWith(true)
     fireEvent.click(screen.getByText('Follow up'))
     expect(onFollowUp).toHaveBeenLastCalledWith(false)
-  })
-})
-
-describe('the call form’s answer on new dates', () => {
-  it('They work, then Save the call, answers the dates the way the portal does', () => {
-    // The roof moved a month for the rain and Summit was told: its new dates wait on an answer.
-    let state = initialGcState()
-    const tpo = job(state).schedule!.activities.find((a) => a.lineId === lineOf(state, 'TPO membrane'))!
-    state = gcReducer(state, { type: 'setScheduleActivity', projectId: ID, lineId: tpo.lineId, start: addDays(tpo.start, 30), finish: addDays(tpo.finish, 30), after: tpo.after, why: { reason: 'weather', note: 'Rain stopped the roof for a week.', by: 'Robert' } })
-    const move = job(state).schedule!.moves![0]!
-    state = gcReducer(state, { type: 'tellTradesMoves', projectId: ID, moveIds: [move.id], by: 'Robert' })
-    const summit = state.partners.find((p) => p.company === 'Summit Roofing')!
-    const dispatch = vi.fn()
-    render(<GcFollowUpSheet state={state} dispatch={dispatch} startPartnerId={summit.id} startCalling onClose={vi.fn()} list={(s) => callListFollowPeople(s, job(s), new Map())} title={job(state).name} />)
-    expect(screen.getByRole('group', { name: 'On the new dates' })).toBeTruthy()
-    expect(screen.getByText('Save the call').closest('button')?.disabled).toBe(true)
-    fireEvent.click(screen.getByText('They work'))
-    fireEvent.click(screen.getByText('Save the call'))
-    const sent = dispatch.mock.calls.map((c) => c[0])
-    expect(sent).toContainEqual({ type: 'tradeAnswerDates', projectId: ID, partnerId: summit.id, moveId: move.id, ok: true, note: 'Said the new dates work.' })
-    expect(sent.some((a) => a.type === 'logPartnerContact' && a.partnerId === summit.id)).toBe(true)
   })
 })

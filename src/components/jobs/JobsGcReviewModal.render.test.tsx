@@ -10,7 +10,8 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { renderSettled, settle } from '../../test/renderSmokeMocks'
 import { gcReviewWeekStartYmd, type GcReviewCertRow } from '../../lib/jobs/gcReviewCertification'
-import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
+import { insertGcReviewCertification, listGcReviewCertifications } from '../../lib/gcReviewCertifications'
+import { deleteGcStatementRoundMark, listGcStatementRoundMarks, listGcStatementSenders, setGcStatementSender, upsertGcStatementRoundMark } from '../../lib/gcStatementRoundIo'
 import { GC_STATEMENT_UNCHECKED_WORDS } from '../../../supabase/functions/_shared/gcStatementGate'
 import type { RoundMarkRow } from '../../lib/jobs/gcStatementRounds'
 import type { StageRow } from '../../lib/jobsStagesBoard'
@@ -33,15 +34,20 @@ vi.mock('../../lib/fetchJobActivityEventsForJobLedger', () => ({ fetchJobActivit
 
 const certs = vi.hoisted(() => ({ rows: [] as unknown[] }))
 const marks = vi.hoisted(() => ({ rows: [] as unknown[] }))
+const senders = vi.hoisted(() => ({ map: new Map<string, string>() }))
 vi.mock('../../lib/gcReviewCertifications', async (original) => ({
   ...(await original<typeof import('../../lib/gcReviewCertifications')>()),
   listGcReviewCertifications: vi.fn(async () => certs.rows),
+  insertGcReviewCertification: vi.fn(async () => {}),
 }))
 vi.mock('../../lib/gcStatementRoundIo', async (original) => ({
   ...(await original<typeof import('../../lib/gcStatementRoundIo')>()),
   listGcStatementRoundMarks: vi.fn(async () => marks.rows),
   listGcStatementRoundMarksSince: vi.fn(async () => marks.rows),
-  listGcStatementSenders: vi.fn(async () => new Map()),
+  listGcStatementSenders: vi.fn(async () => senders.map),
+  upsertGcStatementRoundMark: vi.fn(async () => {}),
+  deleteGcStatementRoundMark: vi.fn(async () => {}),
+  setGcStatementSender: vi.fn(async () => {}),
 }))
 
 const WEEK = gcReviewWeekStartYmd()
@@ -110,6 +116,7 @@ const rowFor = (name: string) => rows().find((el) => within(el).queryByText(name
 beforeEach(() => {
   certs.rows = [cert(KNIGHT.id, 26000), cert(LOBERG.id, 22000)]
   marks.rows = [sentMark(LOBERG.id)]
+  senders.map = new Map()
 })
 
 describe('JobsGcReviewModal', () => {
@@ -435,5 +442,85 @@ describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)',
     fireEvent.click(dialog.getByRole('button', { name: 'Send statement' }))
     expect(await dialog.findByText(GC_STATEMENT_UNCHECKED_WORDS)).toBeTruthy()
     expect(onSendStatement).toHaveBeenCalledTimes(1)
+  })
+})
+
+/** How many times a mocked read has run, to see one more after a write. */
+const reads = (fn: (...a: never[]) => unknown) => vi.mocked(fn).mock.calls.length
+
+describe('JobsGcReviewModal — each write reads the round again through useGcStatementRound', () => {
+  it('every open reads the week afresh: the checks, the marks and the senders', async () => {
+    const view = await open()
+    const before = [reads(listGcReviewCertifications), reads(listGcStatementRoundMarks), reads(listGcStatementSenders)]
+    view.rerender(<JobsGcReviewModal {...props({ open: false })} />)
+    await settle()
+    expect([reads(listGcReviewCertifications), reads(listGcStatementRoundMarks), reads(listGcStatementSenders)]).toEqual(before)
+    view.rerender(<JobsGcReviewModal {...props()} />)
+    await screen.findByRole('button', { name: /^Check: 1 to check/ })
+    expect([reads(listGcReviewCertifications), reads(listGcStatementRoundMarks), reads(listGcStatementSenders)]).toEqual(before.map((n) => n + 1))
+  })
+
+  it('Save mark writes the mark, then the week’s marks are read again and the GC counts as sent', async () => {
+    await open()
+    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Show Knight Contracting’s bills' }))
+    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'or mark sent' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Mark Knight Contracting statement sent' }))
+    const before = reads(listGcStatementRoundMarks)
+    marks.rows = [sentMark(LOBERG.id), sentMark(KNIGHT.id)]
+    fireEvent.click(dialog.getByRole('button', { name: 'Save mark' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Mark Knight Contracting statement sent' })).toBeNull())
+    expect(vi.mocked(upsertGcStatementRoundMark)).toHaveBeenCalledWith(expect.objectContaining({ gc_customer_id: KNIGHT.id, action: 'sent', week_start: WEEK }))
+    expect(reads(listGcStatementRoundMarks)).toBe(before + 1)
+    expect(await screen.findByRole('button', { name: /^Send: .*2 of 3 done/ })).toBeTruthy()
+  })
+
+  it('undo clears the week’s mark, then the marks are read again and the GC waits to be sent', async () => {
+    await open()
+    fireEvent.click(within(rowFor('Loberg Contracting')).getByRole('button', { name: 'Show Loberg Contracting’s bills' }))
+    const before = reads(listGcStatementRoundMarks)
+    marks.rows = []
+    fireEvent.click(within(rowFor('Loberg Contracting')).getByRole('button', { name: 'undo' }))
+    await waitFor(() => expect(reads(listGcStatementRoundMarks)).toBe(before + 1))
+    expect(vi.mocked(deleteGcStatementRoundMark)).toHaveBeenCalledWith(WEEK, LOBERG.id)
+    expect(await screen.findByRole('button', { name: /^Send: 2 to send, 0 of 3 done/ })).toBeTruthy()
+  })
+
+  it('picking an account man saves it, then the senders are read again and the row names him', async () => {
+    await open()
+    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Show Knight Contracting’s bills' }))
+    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'pick an account man' }))
+    const before = reads(listGcStatementSenders)
+    senders.map = new Map([[KNIGHT.id, 'u-taunya']])
+    fireEvent.change(screen.getByRole('combobox', { name: 'Account man for Knight Contracting' }), { target: { value: 'u-taunya' } })
+    await waitFor(() => expect(reads(listGcStatementSenders)).toBe(before + 1))
+    expect(vi.mocked(setGcStatementSender)).toHaveBeenCalledWith(KNIGHT.id, 'u-taunya')
+    expect(await within(rowFor('Knight Contracting')).findByText(/account man: Taunya/)).toBeTruthy()
+  })
+
+  it('checking a GC’s bills saves the check, then the week’s checks are read again and the GC counts as checked', async () => {
+    await open()
+    fireEvent.click(within(rowFor('TF Harper')).getByRole('button', { name: 'Check bills' }))
+    const dialog = within(await screen.findByRole('dialog', { name: /TF Harper/ }))
+    fireEvent.click(dialog.getByRole('checkbox', { name: 'Reviewed 790 Terrell Rd' }))
+    const before = reads(listGcReviewCertifications)
+    certs.rows = [cert(KNIGHT.id, 26000), cert(LOBERG.id, 22000), cert(HARPER.id, 30000)]
+    fireEvent.click(dialog.getByRole('button', { name: 'Check only' }))
+    await waitFor(() => expect(reads(listGcReviewCertifications)).toBe(before + 1))
+    expect(vi.mocked(insertGcReviewCertification)).toHaveBeenCalledWith(expect.objectContaining({ gc_customer_id: HARPER.id, week_start: WEEK, total: 30000 }))
+    expect(await screen.findByRole('button', { name: /^Check: .*3 of 3 done/ })).toBeTruthy()
+  })
+
+  it('saving the call sheet writes each answer, then the week’s marks are read again', async () => {
+    await open()
+    fireEvent.click(screen.getByRole('button', { name: /Call sheet/ }))
+    const sheet = within(await screen.findByRole('dialog', { name: /^Call sheet/ }))
+    const knight = within(sheet.getAllByTestId('gc-call-sheet-row').find((el) => within(el).queryByText('Knight Contracting'))!)
+    fireEvent.click(knight.getByRole('radio', { name: 'Cool' }))
+    fireEvent.change(knight.getByLabelText('What was said about Knight Contracting'), { target: { value: 'Says the check goes out Friday.' } })
+    const before = reads(listGcStatementRoundMarks)
+    fireEvent.click(sheet.getByRole('button', { name: 'Save 1 answer' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: /^Call sheet/ })).toBeNull())
+    expect(vi.mocked(upsertGcStatementRoundMark)).toHaveBeenCalledWith(expect.objectContaining({ gc_customer_id: KNIGHT.id, action: 'contacted', temperature: 'cool' }))
+    expect(reads(listGcStatementRoundMarks)).toBe(before + 1)
   })
 })

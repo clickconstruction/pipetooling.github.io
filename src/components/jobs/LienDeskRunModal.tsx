@@ -5,7 +5,7 @@ import { fetchStripeInvoiceFacts } from '../../lib/stripeInvoiceFacts'
 import type { BillingStripeModePref } from '../../lib/billingStripeModePref'
 import type { PhysicalInvoiceIssuer } from '../../lib/physicalInvoiceIssuer'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
-import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
+import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runMailing } from '../../lib/jobs/lienRunPaper'
@@ -17,7 +17,9 @@ import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs
 import { buildPayPageAssets } from '../../lib/jobs/lienNoticePayPageAssets'
 import { filingDocHtml, type FilingDocBlock } from '../../lib/jobsDocuments/lienFilingDocuments'
 import { envelopeCourtesy, runCopies, runEnvelopes, type RunEnvelope } from '../../lib/jobs/runEnvelopes'
-import { recordLienDeskRun } from '../../lib/jobs/lienDeskRunIo'
+import { buildRunNoticePdf, recordLienDeskRun } from '../../lib/jobs/lienDeskRunIo'
+import { runCourtesyEmails, runCourtesyPreviewHtml, type RunCourtesyAttachment } from '../../lib/jobs/lienRunCourtesyPreview'
+import { COMPANY_EMAIL_FROM_LABEL } from '../../lib/customerEmailFrom'
 import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from '../../lib/jobs/lienNoticeCombine'
 import { useToastContext } from '../../contexts/ToastContext'
 import { runNoticesTakenBack, runPrintedItemIds, runTakeBackConfirm, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
@@ -94,6 +96,8 @@ export default function LienDeskRunModal({
   // The unpaid invoices behind each notice (v2.3437, § 53.056(a-3)) — loaded once per job.
   const [invoiceDocsByJob, setInvoiceDocsByJob] = useState<Record<string, NoticeInvoiceDoc[]>>({})
   const [payByJob, setPayByJob] = useState<Record<string, { rows: PayPageRow[]; assets: PayPageAssets }>>({})
+  // The bills and pay codes read once (v2.5073): until then a courtesy PDF would go without them, so its preview waits.
+  const [enclosuresRead, setEnclosuresRead] = useState(false)
   useEffect(() => {
     let cancelled = false
     const jobIds = Array.from(new Set(initial.map((n) => n.jobId)))
@@ -121,7 +125,10 @@ export default function LienDeskRunModal({
           pay[id] = { rows, assets: rows.some((r) => r.payable) ? await buildPayPageAssets(rows).catch(() => ({})) : {} }
         }),
       )
-      if (!cancelled) setPayByJob(pay)
+      if (!cancelled) {
+        setPayByJob(pay)
+        setEnclosuresRead(true)
+      }
     })()
     return () => {
       cancelled = true
@@ -195,6 +202,31 @@ export default function LienDeskRunModal({
   const setCourtesy = (env: RunEnvelope, on: boolean) => {
     const inside = new Set(env.contents.filter((c) => c.recipient.key === 'original_contractor').flatMap((c) => (partsOf(c.notice as CombinedRunNotice) ?? [{ itemId: c.notice.itemId }]).map((p) => p.itemId)))
     setNotices((prev) => prev.map((n) => (inside.has(n.itemId) ? { ...n, recipients: n.recipients.map((r) => (r.key === 'original_contractor' ? { ...r, courtesy: on } : r)) } : n)))
+  }
+  // Preview the courtesy email (v2.5073, the owner's ask): the emails this envelope's tick sends, in a new tab, as the
+  // original contractor gets them — the send's words and body, and the PDF the record attaches (`buildRunNoticePdf`).
+  const previewCourtesy = (env: RunEnvelope) => {
+    const emails = runCourtesyEmails(env)
+    if (emails.length === 0) return
+    const ticked = envelopeCourtesy(env)?.on ?? false
+    void openHtmlWindowWhenReady(async () => {
+      const attachments = await Promise.all(
+        emails.map(async (e): Promise<RunCourtesyAttachment> => {
+          try {
+            const blob = await buildRunNoticePdf(e.notice, e.recipient.key, invoiceDocsShown[e.notice.jobId] ?? [], payBlocksByJob[e.notice.jobId]?.[e.recipient.key] ?? [])
+            const url = URL.createObjectURL(blob)
+            // The tab shows the PDF from this window's object URL, so it is let go only after half an hour.
+            window.setTimeout(() => URL.revokeObjectURL(url), 30 * 60_000)
+            return { url, bytes: blob.size }
+          } catch (err) {
+            return { error: err instanceof Error && err.message ? err.message : 'the PDF did not build' }
+          }
+        }),
+      )
+      return runCourtesyPreviewHtml(emails, { from: COMPANY_EMAIL_FROM_LABEL, ticked, attachments })
+    }).then((opened) => {
+      if (!opened) showToast('Popup blocked — allow popups to preview the email.', 'error')
+    })
   }
 
   // One item at a time (v2.4853, the owner's ask): a copy or an envelope prints and is filed on its own. A notice is
@@ -453,12 +485,26 @@ export default function LienDeskRunModal({
                       {(() => {
                         const offer = envelopeCourtesy(env)
                         return offer ? (
-                          <label data-testid={`run-courtesy-${env.n}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginTop: 3, fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)', cursor: 'pointer' }}>
-                            <input type="checkbox" checked={offer.on} onChange={(ev) => setCourtesy(env, ev.target.checked)} aria-label={`${who} — courtesy PDF by email`} style={{ margin: 0 }} />
-                            <span>
-                              Courtesy PDF to {offer.emails.join(', ')}, emailed when the run is recorded{offer.copies > 1 ? ', one email per notice' : ''}
-                            </span>
-                          </label>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', columnGap: '0.35rem', marginTop: 3, fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-muted)' }}>
+                            <label data-testid={`run-courtesy-${env.n}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+                              <input type="checkbox" checked={offer.on} onChange={(ev) => setCourtesy(env, ev.target.checked)} aria-label={`${who} — courtesy PDF by email`} style={{ margin: 0 }} />
+                              <span>
+                                Courtesy PDF to {offer.emails.join(', ')}, emailed when the run is recorded{offer.copies > 1 ? ', one email per notice' : ''}
+                              </span>
+                            </label>
+                            {/* Outside the label, so pressing it never flips the tick (v2.5073). */}
+                            <span aria-hidden="true">·</span>
+                            <button
+                              type="button"
+                              data-testid={`run-courtesy-preview-${env.n}`}
+                              disabled={!enclosuresRead}
+                              onClick={() => previewCourtesy(env)}
+                              title={enclosuresRead ? `Opens in a new tab, as ${offer.emails.join(', ')} would get it. Nothing is sent.` : 'Reading the bills the PDF carries…'}
+                              style={{ background: 'none', border: 'none', padding: 0, cursor: enclosuresRead ? 'pointer' : 'default', color: enclosuresRead ? 'var(--text-link)' : 'var(--text-muted)', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}
+                            >
+                              {enclosuresRead ? 'Preview the email ›' : 'Preview the email · reading the bills…'}
+                            </button>
+                          </div>
                         ) : null
                       })()}
                     </td>

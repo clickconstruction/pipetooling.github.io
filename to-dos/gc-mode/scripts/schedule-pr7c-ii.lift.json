@@ -10,6 +10,9 @@
     { "from": "GcCallList.render.test.tsx", "to": "GcCallList.render.test.tsx" }
   ],
   "pin": {
+    "main": "74ef680ac0528c3c3db61aca8828ef8c3a1722e3",
+    "spike": "7396554f7d7923d9d4b1abfa42a427406236aa15",
+    "about": "#5164 merged; the spike before its follow-up (spike/schedule-pr7c-ii-follow)",
     "known": {
       "GcCallList": "onFollowUp and onWorkList are optional: unset, Call only dials and Work the list is not drawn, until the Board lane lifts the Follow up sheet (schedule-pr7c.md)",
       "GcBarCaller": "onFollowUp is optional: unset, Call only dials and Follow up is not drawn",

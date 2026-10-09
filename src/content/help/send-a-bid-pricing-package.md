@@ -67,6 +67,8 @@ When the toast says some names have no code, you open the same {{button:green|â–
 - Some things aren't Division 22 buyout items at all, like DEMO or safety line items. You tap {{button:gray|No code}} and they stop counting as gaps.
 - The coverage bar shows how close the ledger is to knowing everything. If you pin the top few names, it jumps.
 
+The window also shows every rule and section, and you can change them. See [keep the Division 22 codes right](/help/manage-division-22-codes).
+
 :::example Clearing the gas rows
 Wendi copies BP339's fixtures and the toast says 36 names have no code. She opens **Division 22 codes**, sees "11/2IN 90 GAS" at the top (17 bids), picks the section the specs use for gas piping, and pins it. Every gas fitting on every bid now files under that section â€” one pin, done forever.
 :::

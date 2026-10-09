@@ -58,15 +58,11 @@ import { JobsWeeklyMovementModal } from './JobsWeeklyMovementModal'
 import { JobsWeeklyMoneyModal } from './JobsWeeklyMoneyModal'
 import { buildGcStatementReportHtml } from '../../lib/jobsDocuments/gcStatementReport'
 import { buildGcReviewRollup } from '../../lib/gcReviewRollup'
-import { gcReviewWeekStartYmd, latestCertByGc, type GcReviewCertRow } from '../../lib/jobs/gcReviewCertification'
-import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
-import {
-  deriveGcAccountMen,
-  type RoundMarkRow,
-} from '../../lib/jobs/gcStatementRounds'
+import { gcReviewWeekStartYmd, latestCertByGc } from '../../lib/jobs/gcReviewCertification'
+import { deriveGcAccountMen } from '../../lib/jobs/gcStatementRounds'
 import { pipelineRoundCards } from '../../lib/jobs/gcWorklist'
-import { latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
-import { listGcStatementRoundMarks, listGcStatementRoundMarksSince, listGcStatementSenders } from '../../lib/gcStatementRoundIo'
+import { latestTemperatureByGc } from '../../lib/jobs/temperatureBoard'
+import { useGcStatementRound } from '../../hooks/useGcStatementRound'
 import {
   buildGcStatementEmailHtml,
   buildGcStatementEmailText,
@@ -1522,12 +1518,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Personal statement rounds (v2.2072): data for the two-stage money-opportunity cards. */
   const isRoundOfficeRole = stagesGates.isStagesOfficeRole(authRole)
   const roundWeekStart = gcReviewWeekStartYmd()
-  const [roundCertRows, setRoundCertRows] = useState<GcReviewCertRow[]>([])
-  const [roundMarks, setRoundMarks] = useState<RoundMarkRow[]>([])
-  /** Six weeks of marks for the GC temperature map (v2.2813) — the chase queue sorts cold GCs first. */
-  const [roundTempMarks, setRoundTempMarks] = useState<RoundMarkRow[]>([])
-  const gcTemperatureById = useMemo(() => latestTemperatureByGc(roundTempMarks), [roundTempMarks])
-  const [roundSenders, setRoundSenders] = useState<Map<string, string>>(new Map())
   // Full rows once the billed scope merges; the lean spine (first paint, id-only
   // GC stubs) until then — same lean-first pattern as the chase card.
   const roundBilledRows =
@@ -1536,47 +1526,24 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     () => (isRoundOfficeRole ? buildGcReviewRollup(roundBilledRows, [], { groupBy: 'gc' }) : null),
     [isRoundOfficeRole, roundBilledRows],
   )
-  useEffect(() => {
-    // Refetches when the modal toggles so the cards reflect round work done inside it.
-    if (!isRoundOfficeRole) return
-    let cancelled = false
-    void listGcReviewCertifications(roundWeekStart).then(
-      (r) => {
-        if (!cancelled) setRoundCertRows(r)
-      },
-      () => {},
-    )
-    void listGcStatementRoundMarks(roundWeekStart).then(
-      (r) => {
-        if (!cancelled) setRoundMarks(r)
-      },
-      () => {},
-    )
-    void listGcStatementRoundMarksSince(trailingWeekStarts(roundWeekStart, 6)[0] ?? roundWeekStart).then(
-      (r) => {
-        if (!cancelled) setRoundTempMarks(r)
-      },
-      () => {},
-    )
-    return () => {
-      cancelled = true
-    }
-  }, [isRoundOfficeRole, roundWeekStart, gcReviewModalOpen])
   const roundGcIds = useMemo(
     () => (roundRollup ? roundRollup.groups.flatMap((g) => (!g.isNoGc && g.gcId ? [g.gcId] : [])) : []),
     [roundRollup],
   )
   const roundGcIdsKey = useMemo(() => [...new Set(roundGcIds)].sort().join(','), [roundGcIds])
-  useEffect(() => {
-    if (!isRoundOfficeRole || roundGcIdsKey === '') return
-    let cancelled = false
-    void listGcStatementSenders(roundGcIdsKey.split(',')).then((m) => {
-      if (!cancelled) setRoundSenders(m)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [isRoundOfficeRole, roundGcIdsKey, gcReviewModalOpen])
+  /**
+   * The round's data through the hook GC Review reads (v2.5075, the Stages map's step 4). The board reads it
+   * while GC Review is shut, so closing the window reads the round again and the cards show what was done
+   * inside it. The ids are read by their sorted set, so a new array of the same GCs reads nothing.
+   */
+  const roundGcIdsRead = useMemo(() => (roundGcIdsKey === '' ? [] : roundGcIdsKey.split(',')), [roundGcIdsKey])
+  const { certRows: roundCertRows, roundMarks, boardMarks: roundTempMarks, roundSenders } = useGcStatementRound({
+    open: isRoundOfficeRole && !gcReviewModalOpen,
+    certWeekStart: roundWeekStart,
+    roundGcIds: roundGcIdsRead,
+  })
+  /** Six weeks of marks for the GC temperature map (v2.2813) — the chase queue sorts cold GCs first. */
+  const gcTemperatureById = useMemo(() => latestTemperatureByGc(roundTempMarks), [roundTempMarks])
   const gcRoundCards = useMemo(() => {
     if (!roundRollup) return null
     // The week's list, office-wide: what waits on a check, what is checked and waits on its statement.

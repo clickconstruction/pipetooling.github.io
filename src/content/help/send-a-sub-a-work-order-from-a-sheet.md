@@ -19,7 +19,7 @@ Most work orders now start on **Jobs → Subs → Work**, where signing creates 
    - **Exclusions** are the library's standing exclusions, ticked the same way.
    - **Terms**: the **amount is the sheet total and it's fixed at send**. So you add the work and cost first. You set the work window, how long the offer is good for, retainage, and whether a bond is furnished. Retainage is a share of the amount the office holds back for a while. The bond is a bonding company's promise that the sub finishes the work and pays its suppliers. Special provisions is a free line.
    - **Attached by reference** lists the Contract library documents for subs, like General Conditions, with their version dates. The section also lists the pay-schedule wording from Settings. The section lists the insurance requirement too, with the expiry of their COI, their certificate of insurance.
-   - **They confirm at signing** are the sentences the sub must tick before the signature button lights up.
+   - **They confirm at signing** are the sentences the sub must tick.
 3. {{button:blue|Send for signature}} sends the offer and emails the sub. The link opens the offer on their portal. {{button:outline|Save draft}} keeps it on the sheet without sending.
 
 :::example The two-click case

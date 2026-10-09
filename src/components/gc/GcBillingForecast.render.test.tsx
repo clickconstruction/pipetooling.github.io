@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcBillingForecastCard, GcBillingForecastMoney, GcBillingForecastPortal } from './GcBillingForecast'
-import { GcMoveExplain, GcMoveHistory } from './GcScheduleMoves'
+import { GcMoveExplain, GcMoveHistory } from './GcScheduleMoves.proto'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
 import { gcReducer } from '../../lib/gcMode/gcReducer'
 import type { GcState } from '../../lib/gcMode/gcTypes'

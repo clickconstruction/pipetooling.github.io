@@ -38,21 +38,11 @@ The office may offer you a job for a set amount. A **New offer** card then arriv
 
 **Your money** on the full Dashboard shows what you're owed, every sheet, and the payments and backcharges on each one. A sheet is the office's record of your work and pay on one job. A backcharge is money taken off your pay. The numbers are the same ones the office sees. See [what you're owed as a sub](/help/see-what-youre-owed-as-a-sub) for the details.
 
-## Say how far along you are
+## On your portal
 
-On your portal, each working job card asks **How far along is your part?** Tap 0, 25, 50 or 75. If you like, type a note. Nothing is sent until you press the send button under them. The button reads like {{button:blue|Send to office · 50% along, still working}}. Anything under 100% just keeps the office posted. The office keeps waiting on you. Tap **100% ✓** and the button turns green. The button reads {{button:green|✓ Send to office · work is done}}. Pressing it asks you to confirm with {{button:green|✓ Yes, ready for inspection}}. The button asks because 100% is what tells the office to call it in for inspection.
-
-## Pick your days
-
-Some work orders on your portal come with a **window**. A window is the span the office wants the stage done in. The card shows it as a calendar. The shaded weekdays are the window. The sentence above it says how many working days the job takes. Tap the day you can start and the days fill to the end. {{button:green|✍ Sign to accept this work}} carries your pick, so the office knows when you're coming.
-
-If none of the days work, tap **Can't do any of these days**. Say when you could, and the office will offer other dates.
-
-Once signed, your job card shows **Your dates**. The office may move the window under your days. Then the card says **The office needs new dates**, with the reason, and opens the calendar. Pick a start inside the new window and tap {{button:amber|Confirm new dates}}. You can move them inside the window yourself with {{button:outline|Change}}, until the day before you start. After that, call the office.
-
-## Your days
-
-On your portal, below your jobs, **Your days** shows the coming weeks. Each weekday says how many jobs land on it, like *one job* or *two jobs*, or *off*. Tap a day to see every job on it, with the address and a {{button:outline|Map ›}} link. If you can't work a day, tap it and tap {{button:outline|Mark this day off}}. The office board shows it, so nobody offers you work then. A day you picked for a job warns you first. Marking it off anyway tells the office to move that job.
+- Each working job card asks [how far along your part is](#say-how-far-along-you-are).
+- Some work orders let you [pick your days](#pick-your-days).
+- [Your days](#your-days) shows the coming weeks. You can mark a day off there.
 
 ## Tabs and pages
 
@@ -64,3 +54,21 @@ On your portal, below your jobs, **Your days** shows the coming weeks. Each week
 ## If something looks wrong
 
 Wrong numbers, a wrong schedule, or an assignment that isn't yours? Contact the office. The office sees the same records and can fix them. If the app itself misbehaves, try [fixing the app when it won't load](/help/fix-the-app-when-it-wont-load).
+
+## Reference
+
+### Say how far along you are
+
+On your portal, each working job card asks **How far along is your part?** Tap 0, 25, 50 or 75. If you like, type a note. Nothing is sent until you press the send button under them. The button reads like {{button:blue|Send to office · 50% along, still working}}. Anything under 100% just keeps the office posted. The office keeps waiting on you. Tap **100% ✓** and the button turns green. The button reads {{button:green|✓ Send to office · work is done}}. Pressing it asks you to confirm with {{button:green|✓ Yes, ready for inspection}}. The button asks because 100% is what tells the office to call it in for inspection.
+
+### Pick your days
+
+Some work orders on your portal come with a **window**. A window is the span the office wants the stage done in. The card shows it as a calendar. The shaded weekdays are the window. The sentence above it says how many working days the job takes. Tap the day you can start and the days fill to the end. {{button:green|✍ Sign to accept this work}} carries your pick, so the office knows when you're coming.
+
+If none of the days work, tap **Can't do any of these days**. Say when you could, and the office will offer other dates.
+
+Once signed, your job card shows **Your dates**. The office may move the window under your days. Then the card says **The office needs new dates**, with the reason, and opens the calendar. Pick a start inside the new window and tap {{button:amber|Confirm new dates}}. You can move them inside the window yourself with {{button:outline|Change}}, until the day before you start. After that, call the office.
+
+### Your days
+
+On your portal, below your jobs, **Your days** shows the coming weeks. Each weekday says how many jobs land on it, like *one job* or *two jobs*, or *off*. Tap a day to see every job on it, with the address and a {{button:outline|Map ›}} link. If you can't work a day, tap it and tap {{button:outline|Mark this day off}}. The office board shows it, so nobody offers you work then. A day you picked for a job warns you first. Marking it off anyway tells the office to move that job.

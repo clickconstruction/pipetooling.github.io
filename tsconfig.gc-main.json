@@ -25,6 +25,7 @@
     "src/lib/aiaPayApplications.ts",
     "src/lib/appSettingsKeys.ts",
     "src/lib/bids/bidContactInfo.ts",
+    "src/lib/customerContactDisplay.ts",
     "src/lib/emailSchedule/emailScheduleWeek.ts",
     "src/lib/errorClassTelemetry.ts",
     "src/lib/fillAiaG702G703Workbook.ts",

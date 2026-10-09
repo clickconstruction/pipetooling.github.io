@@ -17,13 +17,7 @@ You run the day from the office: dispatch, billing, people, and paperwork. Contr
 {{chip:red|3}} **3 dispatch requests have waited 2+ days**: field requests waiting on an answer
 :::
 
-1. **Dashboard** shows clocked-in crews, unallocated bank deposits, follow-ups, and anything flagged overnight. On a phone the Dashboard is in office order:
-   - The clock row is one line, ***Clocked in · 03:12:07***, with {{button:outline|Focus}} and {{button:outline|Clock out}}.
-   - My Schedule hides while you have no blocks.
-   - Everything under the money tiles is one line each, with {{button:outline|Open ▾}}. The lines are Who's in, Crew Day, My Inbox, Team inboxes, Recent reports, Billing pipeline and My Time.
-   - Every one of those lines says how many, like *Crew Day · 12 people · 14 jobs · 8 flags*, *Recent reports · 3 new · 12 listed* or *My Time · 6.2 h this week*.
-   - **Job report** and **Tally** are two small links under the clock row, instead of two squares.
-   - With Dispatch Mode on, **Needs you** is a one-line door to the Inbox tab. There the list walks one card at a time.
+1. **Dashboard** shows clocked-in crews, unallocated bank deposits, follow-ups, and anything flagged overnight. [How it reads on a phone](#the-dashboard-on-a-phone) is under Reference.
 2. **Jobs → Pipeline** is the busiest board in the app. The board shows every job by billing state, with search, GC and development filters, and print. A development is a neighborhood a builder is putting up. Set progress, bill, and collect from here.
 3. **Schedule** shows who is where, day by day. See [dispatch mode](/help/dispatch-mode) and [scheduling people onto jobs](/help/schedule-dispatch).
 4. **Quickfill** is the office's daily round. The page holds review sections, each with a button that says you've looked. See [run the office day with Quickfill](/help/quickfill).
@@ -57,3 +51,16 @@ A link may open a page your role can't use, like the owner's Crew P&L or the con
 ## Controller-only
 
 Payroll, wage detail, **Banking**, and the money visibility that assistants don't have. Banking holds User Sort, Drag Sort, Accounting, Card Review, Category Review, Reconciliation and Visuals. Everything else on this page is shared. The tabbed **Job window** is shared too. A controller opens the same {{chip:blue|Job · Edit · Bill · Costs · History · Documents}} window an assistant does.
+
+## Reference
+
+### The Dashboard on a phone
+
+On a phone the Dashboard is in office order:
+
+- The clock row is one line, ***Clocked in · 03:12:07***, with {{button:outline|Focus}} and {{button:outline|Clock out}}.
+- My Schedule hides while you have no blocks.
+- Everything under the money tiles is one line each, with {{button:outline|Open ▾}}. The lines are Who's in, Crew Day, My Inbox, Team inboxes, Recent reports, Billing pipeline and My Time.
+- Every one of those lines says how many, like *Crew Day · 12 people · 14 jobs · 8 flags*, *Recent reports · 3 new · 12 listed* or *My Time · 6.2 h this week*.
+- **Job report** and **Tally** are two small links under the clock row, instead of two squares.
+- With Dispatch Mode on, **Needs you** is a one-line door to the Inbox tab. There the list walks one card at a time.

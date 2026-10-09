@@ -3,13 +3,19 @@ import { classifySpecSection } from './classifySpecSection'
 import {
   DRAFT_RULE_ID,
   applyRuleChange,
+  defaultPriorityFor,
   groupRulesBySection,
+  orderTieWarning,
+  orderTies,
   orderRules,
   previewRuleChange,
   priorityBand,
   ruleCatches,
   ruleStandings,
+  sectionDeleteRefusal,
+  sectionTallies,
   validateRuleDraft,
+  validateSectionDraft,
   type LedgerRule,
 } from './specSectionRules'
 
@@ -209,5 +215,75 @@ describe('groupRulesBySection', () => {
       ['22 42 16', 'Commercial Lavatories and Sinks', ['wc-dup']],
       [null, 'No code (deliberately)', ['demo']],
     ])
+  })
+})
+
+describe('sectionTallies', () => {
+  it('totals each section\'s rules, the names they decide and the bids behind them', () => {
+    const sections = [
+      { code: '22 42 13', title: 'Commercial Water Closets and Urinals' },
+      { code: '22 31 00', title: 'Domestic Water Softeners' },
+    ]
+    const groups = groupRulesBySection(RULES, sections)
+    const tallies = sectionTallies(groups, ruleStandings(RULES, NAMES))
+    expect(tallies.find((t) => t.code === '22 42 13')).toEqual({ code: '22 42 13', title: 'Commercial Water Closets and Urinals', rules: 2, names: 2, bids: 14 })
+    expect(tallies.find((t) => t.code === '22 31 00')).toEqual({ code: '22 31 00', title: 'Domestic Water Softeners', rules: 0, names: 0, bids: 0 })
+    expect(tallies[tallies.length - 1]).toEqual({ code: null, title: 'No code (deliberately)', rules: 1, names: 1, bids: 2 })
+  })
+})
+
+describe('orderTies and orderTieWarning (v2.5061)', () => {
+  it('finds a rule at the same order that catches some of the same names', () => {
+    const draft = { pattern: 'WC', matchKind: 'contains' as const, sectionCode: '22 42 16', priority: 100 }
+    expect(orderTies(draft, RULES, NAMES).map((r) => r.id)).toEqual(['wc'])
+    expect(orderTieWarning(orderTies(draft, RULES, NAMES), 100)?.message).toBe(
+      'Order 100 is also held by “starts with WC-”, and they catch some of the same names. Pick another order so it is clear which rule decides.',
+    )
+  })
+
+  it('no tie when the order differs, the names differ, or the rule is the one being edited', () => {
+    const draft = { pattern: 'WC', matchKind: 'contains' as const, sectionCode: '22 42 16', priority: 101 }
+    expect(orderTies(draft, RULES, NAMES)).toEqual([])
+    expect(orderTies({ ...draft, pattern: 'MOP', priority: 100 }, RULES, NAMES)).toEqual([])
+    expect(orderTies({ ...draft, priority: 100 }, RULES, NAMES, 'wc')).toEqual([])
+    expect(orderTieWarning([], 100)).toBeNull()
+  })
+
+  it('counts the other tied rules in the words', () => {
+    const tied = [...RULES, rule('wc-also', 'WC-2', 'exact', '22 42 13', 100)]
+    const draft = { pattern: 'WC', matchKind: 'contains' as const, sectionCode: '22 42 16', priority: 100 }
+    expect(orderTieWarning(orderTies(draft, tied, NAMES), 100)?.message).toContain('“starts with WC-” and 1 more')
+  })
+})
+
+describe('defaultPriorityFor (v2.5061)', () => {
+  it('puts an exact name with the pins and a pattern after the last pattern, before the catch-alls', () => {
+    expect(defaultPriorityFor('exact', RULES)).toBe(60)
+    expect(defaultPriorityFor('contains', RULES)).toBe(301)
+    expect(defaultPriorityFor('starts_with', [])).toBe(100)
+    expect(defaultPriorityFor('contains', [rule('x', 'X', 'contains', null, 699)])).toBe(699)
+  })
+})
+
+describe('validateSectionDraft (v2.5061)', () => {
+  const sections = [{ code: '22 45 00' }, { code: '22 42 13' }]
+  it('a new section needs a number in the ledger\'s shape, a title, and a number not already listed', () => {
+    expect(validateSectionDraft({ code: '22 63 00', title: 'Gas Systems for Laboratory and Healthcare Facilities' }, sections)).toEqual([])
+    expect(validateSectionDraft({ code: '22 11 19.13', title: 'Hydrants' }, sections)).toEqual([])
+    expect(validateSectionDraft({ code: '', title: 'X' }, sections)[0]?.message).toBe('Type the section number, such as 22 45 00.')
+    expect(validateSectionDraft({ code: '226300', title: 'X' }, sections)[0]?.message).toBe('Write the number as three pairs of digits, such as 22 45 00.')
+    expect(validateSectionDraft({ code: '22 63 00', title: ' ' }, sections)[0]?.message).toBe('Type the section title.')
+    expect(validateSectionDraft({ code: '22 45 00', title: 'Again' }, sections)[0]?.message).toBe('Section 22 45 00 is already in the list.')
+  })
+  it('renaming keeps its own number', () => {
+    expect(validateSectionDraft({ code: '22 45 00', title: 'Emergency Fixtures' }, sections, '22 45 00')).toEqual([])
+  })
+})
+
+describe('sectionDeleteRefusal (v2.5061)', () => {
+  it('refuses while rules file names under the section, and says how many', () => {
+    expect(sectionDeleteRefusal('22 42 13', RULES)).toBe('22 42 13 holds 2 rules. Move them to another section or delete them first.')
+    expect(sectionDeleteRefusal('22 05 23', RULES)).toBe('22 05 23 holds 1 rule. Move it to another section or delete it first.')
+    expect(sectionDeleteRefusal('22 31 00', RULES)).toBeNull()
   })
 })

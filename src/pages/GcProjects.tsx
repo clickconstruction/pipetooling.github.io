@@ -31,6 +31,9 @@ import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { GcSubmittalsWindow } from '../components/gc/GcSubmittalsWindow'
 import { submittalRoundExtras, tradeSpecSections, withSubmittals, type SubmittalTables } from '../lib/gc/submittalRows'
 import { addSubmittal, answerSubmittal, loadGcSubmittals, markSubmittalSent, sendSubmittalToArchitect, submittalCameIn } from '../lib/gc/submittalsIo'
+import { GcRfisWindow } from '../components/gc/GcRfisWindow'
+import { rfiExtras, withRfis, type RfiTables } from '../lib/gc/rfiRows'
+import { addRfi, answerRfi, loadGcRfis, markRfiSent, sendRfiToArchitect, startRfiChangeOrder } from '../lib/gc/rfisIo'
 import type { ScheduleRead } from '../lib/gc/schedule/rows'
 import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
@@ -655,6 +658,45 @@ export default function GcProjects() {
       .finally(() => setSubmittalBusy(null))
   }
 
+  // RFIs (Building's U5b): a dev's on a job being built, opened at `rfis=<projectId>`. It reads the job's RFIs and its
+  // schedule when the window opens, so an RFI is needed before the first start of the work it holds. The change orders
+  // are laid over as they are read, so a started one reads by its number for the money team, who alone read them.
+  const rfisProjectId = params.get('rfis')
+  const [rfiTables, setRfiTables] = useState<RfiTables>({ rfis: [], holds: [] })
+  const [rfiRead, setRfiRead] = useState<ScheduleRead | null>(null)
+  const [rfiBusy, setRfiBusy] = useState<string | null>(null)
+  const [rfiProblem, setRfiProblem] = useState<string | null>(null)
+  const loadRfis = useCallback(async () => {
+    if (!board || !canUseGcBuilding(role) || !rfisProjectId) return
+    const tables = await loadGcRfis([rfisProjectId])
+    setRfiTables(tables)
+    setRfiRead(await loadSchedule(withRfis(board, tables), rfisProjectId))
+  }, [board, role, rfisProjectId])
+  useEffect(() => {
+    void loadRfis().catch((e) => setRfiProblem(formatErrorMessage(e, 'The RFIs did not load.')))
+  }, [loadRfis])
+  const rfiView = useMemo(() => {
+    if (!rfiRead || rfiRead.project.id !== rfisProjectId) return null
+    const state = withChangeOrders(rfiRead.state, changeOrderRows)
+    return { state, project: state.projects.find((p) => p.id === rfiRead.project.id) ?? rfiRead.project }
+  }, [rfiRead, rfisProjectId, changeOrderRows])
+  const setRfisWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('rfis', projectId)
+    else next.delete('rfis')
+    setParams(next, { replace: true })
+    setRfiProblem(null)
+  }
+  /** An RFI press: run it, read the RFIs again, and say the problem in the window if there is one. */
+  const rfiWrite = (id: string, work: Promise<unknown>, failed: string) => {
+    setRfiBusy(id)
+    setRfiProblem(null)
+    void work
+      .then(() => loadRfis())
+      .catch((e) => setRfiProblem(formatErrorMessage(e, failed)))
+      .finally(() => setRfiBusy(null))
+  }
+
   // Money (Owner Billing's O6a): every job that is ours, with billing read when the lens opens and laid over
   // the board's projects and their change orders. Read only.
   const [moneyRows, setMoneyRows] = useState<BillingRows | null>(null)
@@ -1079,6 +1121,12 @@ export default function GcProjects() {
                   Submittals
                 </Btn>
               )}
+              {/* RFIs (Building's U5b): a dev's, on a job being built. */}
+              {canUseGcBuilding(role) && board && p.stage === 'building' && (
+                <Btn kind="quiet" onClick={() => setRfisWindow(p.id)}>
+                  RFIs
+                </Btn>
+              )}
               {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
                 <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
                   Bill the customer
@@ -1219,7 +1267,7 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
-      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} onClose={() => setScheduleWindow(null)} />}
+      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={role === 'dev'} onClose={() => setScheduleWindow(null)} />}
       {openCompany && board && (
         <GcCompanyWindow
           key={openCompany.id}
@@ -1391,6 +1439,38 @@ export default function GcProjects() {
               ),
             onMarkSent: (id) => submittalWrite(id, markSubmittalSent(id), 'It was not marked sent.'),
             onAnswer: (id, answer, note) => submittalWrite(id, answerSubmittal(id, answer, note), 'The answer was not recorded.'),
+          }}
+        />
+      )}
+
+      {canUseGcBuilding(role) && rfisProjectId && rfiView && (
+        <GcRfisWindow
+          state={rfiView.state}
+          project={rfiView.project}
+          extras={rfiExtras(rfiTables)}
+          lineSheets={Object.fromEntries((loaded?.projects.find((x) => x.id === rfisProjectId)?.trades ?? []).flatMap((t) => t.scope.map((l) => [l.id, l.sheets])))}
+          canStartChangeOrders={canSeeGcMoney(role)}
+          busy={rfiBusy}
+          problem={rfiProblem}
+          onClose={() => setRfisWindow(null)}
+          writes={{
+            onAsk: (draft) => rfiWrite('new', addRfi(draft), 'The question was not added.'),
+            onSendToArchitect: (id) => rfiWrite(id, sendRfiToArchitect(id).then((r) => showToast(`Sent to ${r.to}.`, 'success')), 'The RFI was not sent.'),
+            onMarkSent: (id) => rfiWrite(id, markRfiSent(id), 'It was not marked sent.'),
+            onAnswer: (id, answer) => rfiWrite(id, answerRfi(id, answer), 'The answer was not recorded.'),
+            // The draft opens in Change orders, to price and send (the money team's), which says its own read's problem.
+            onStartChangeOrder: (rfi) =>
+              rfiWrite(
+                rfi.id,
+                startRfiChangeOrder(rfiView.project, rfi).then(() => {
+                  const next = new URLSearchParams(params)
+                  next.delete('rfis')
+                  next.set('changes', rfiView.project.id)
+                  setParams(next, { replace: true })
+                  void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
+                }),
+                'The change order was not started.',
+              ),
           }}
         />
       )}

@@ -394,7 +394,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     ids.length
       ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, lost_why, won_by').in('project_id', ids)
       : none,
-    named.length ? supabase.from('customers').select('id, name').in('id', named) : none,
+    named.length ? supabase.from('customers').select('id, name, contact_info').in('id', named) : none,
     supabase
       .from('gc_companies')
       .select('id, name, trades, contact_name, phone, email, address, max_miles, license, lang, vetting_status, vetting_limit, vetting_decided_on, vetting_decided_by, vetting_note, contact_gets')

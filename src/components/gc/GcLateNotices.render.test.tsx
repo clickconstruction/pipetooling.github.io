@@ -8,7 +8,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcLateNotices } from './GcLateNotices'
-import { GcMoveExplain, GcMoveHistory } from './GcScheduleMoves'
+import { GcMoveExplain, GcMoveHistory } from './GcScheduleMoves.proto'
 import { GcGantt } from './GcGantt'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
 import { gcReducer } from '../../lib/gcMode/gcReducer'

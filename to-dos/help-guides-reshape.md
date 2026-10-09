@@ -8,10 +8,10 @@ summary: >
   opening, a split where it holds two or three guides, and cuts. The three slices' reviewers
   proposed all three per guide. They are gathered here for the owner's call.
 size: M (13 guides, about 20,000 prose words; one PR per guide)
-ver: v2.4589 · 4597 · 4601 · 5052
+ver: v2.4589 · 4597 · 4601 · 5052 · 5057 · 5062 · 5064 · 5065 · 5068 · 5071
 mockup: not required — words only; each guide renders as it does today
 group: ready
-status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · 1 of 13 shipped (v2.5052)
+status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · 7 of 13 shipped (v2.5052, v2.5057, v2.5062, v2.5064, v2.5065, v2.5068, v2.5071)
 next: One PR per guide, thirteen in all (the owner, 2026-10-09): the do-this-first opening above everything else, and the split where the reviewers proposed one, each new guide with its own title and share card; no cuts — a sentence a reader may rely on stays, moved below a *Reference* line at most. Each PR gets an independent old-against-new read.
 blocker: None.
 opinion: build — openings and splits are safe; the cuts were the risk and are off the table.
@@ -44,18 +44,18 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   with Data health, and recording payments.
 - **Move:** the months-worked lien section belongs with the lien guides.
 
-### share a customer their portal
+### ~~share a customer their portal~~ — shipped v2.5057
 
-`share-a-customer-their-portal` · 2,244 words · #4586
+`share-a-customer-their-portal` · 2,244 words · #4586 · now the opening and three guides: the office side (the core), *see what a customer sees on their portal* (statement, payments, requests) and *show an owner the bills their GC pays* (the owner switch and the lien notice card). Nothing cut.
 
 - **Opening:** "A customer's portal is a private page with their statement and Pay online buttons.
   You make the link from the globe next to their name."
 - **Split:** the office side (the link, the gear), what the customer sees (statement, payments,
   requests), and the owner-sharing switch.
 
-### track a general contractor on a job
+### ~~track a general contractor on a job~~ — shipped v2.5062
 
-`track-a-general-contractor-on-a-job` · 2,487 words · #4575
+`track-a-general-contractor-on-a-job` · 2,487 words · #4575 · now the three steps, then setting a GC, who gets the bills and where the GC shows up, with a link to the round guide. Everything from GC Review on sits whole under *Reference*. The fact pass corrected step 1 (the Edit tab's own **GC/Builder** row) and added the account-man grouping and the v2.5022 statement hold. Nothing cut.
 
 - **Opening:**
   1. Set a GC on a job: **Edit** → **Customer** → *GC/Builder (customer)*.
@@ -68,9 +68,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   Standing copies. This guide would keep "set a GC" and "where the GC shows up", plus a link.
 - **First:** a fact pass, flagged in #4575.
 
-### share a sub their portal
+### ~~share a sub their portal~~ — shipped v2.5071
 
-`share-a-sub-their-portal` · 1,973 words · #4589
+`share-a-sub-their-portal` · 1,973 words · #4589 · now the opening and two guides: the office side (the core) and *see what a sub sees on their portal* (what feeds it, the card, the stages, an offer's window, days off, progress). *Sign to accept work* moved to *assemble a sub work order*. The window went to the new guide, since the window guide already says most of it. Nothing cut: the CountTooling sentence stays in place.
 
 - **Opening:** "Every subcontractor can have a private Work & pay portal, a page they open without
   signing in. You create the link from the globe beside their name on People → Subs and text it
@@ -119,9 +119,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   today's live counts, past approvals rebuilt from timestamps, the Dashboard's daily snapshots,
   and amber needing a known waiting count.
 
-### stage a takeoff for a schedule of values
+### ~~stage a takeoff for a schedule of values~~ — shipped v2.5064
 
-`stage-a-takeoff-for-a-schedule-of-values` · 1,277 words · #4589
+`stage-a-takeoff-for-a-schedule-of-values` · 1,277 words · #4589 · now the opening and two guides: the core (the boxes, the rules and the book, the Stages panel, printing) and *put a schedule of values in the cover letter* (the pill, labor and material, My lines, scaling to the contract). *Use stage shares* went with the letter half, under its own heading, since no payment-schedule guide exists. Nothing cut.
 
 - **Opening:** "Every fixture on Bids → Takeoffs carries a stage, and the rail adds its material up
   by stage. You set each fixture's stage with its three boxes, then print the schedule or put it
@@ -131,9 +131,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   scaling to the contract.
 - **Move:** *Use stage shares* goes to the payment-schedule guide.
 
-### see what I still owe each sub contractor
+### ~~see what I still owe each sub contractor~~ — shipped v2.5065
 
-`sub-labor-outstanding` · 1,158 words · #4589
+`sub-labor-outstanding` · 1,158 words · #4589 · now the opening and three guides: the core (the tiles, Who's owed, the ledger, Pay when, paying), *fix a payment on the wrong sheet* (move, remove, undo) and the phone section as *work the Subs tab on a phone*. Nothing cut.
 
 - **Opening:** "Jobs → Subs → Pay shows who is owed what, and what you can pay right now. You press
   **Pay** beside a sub to pay their biggest ready sheet."
@@ -141,9 +141,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   paying. (b) *fix a payment on the wrong sheet*: move, remove, undo.
 - **Move:** the phone section, to a phone guide of its own.
 
-### turn a won bid into a job
+### ~~turn a won bid into a job~~ — shipped v2.5067
 
-`turn-a-won-bid-into-a-job` · 1,217 words · #4575
+`turn-a-won-bid-into-a-job` · 1,217 words · #4575 · now the three-step opening, with the Dispatch hand-off's edge cases and Tips moved whole below a *Reference* heading. The four places a win is recorded stay where they are, since they are step 1's where. The submittals question was checked against the code: one sentence said a takeoff-only bid is never asked, and now adds *with no fixture schedule*. Step 2 now starts *If New Job asks its price question*, since New Job asks only when the bid carries a figure. Nothing cut.
 
 - **Opening:**
   1. Mark the bid **Won**, then press **Open the job**.
@@ -153,9 +153,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   (asked twice, opened elsewhere, primaries) and Tips go below a *Reference* line.
 - **First:** a fact pass on the submittals question.
 
-### write a change order and send it for signature
+### ~~write a change order and send it for signature~~ — shipped v2.5068
 
-`write-a-change-order` · 1,194 words · #4575
+`write-a-change-order` · 1,194 words · #4575 · now the three-step opening and two guides: the core, and *Starting from Bids* as *start a change order from Bids*. The numbered-guide walkthrough and the old estimate #1 paragraph moved whole below a *Reference* heading. The v2.2967 note was already gone. Nothing cut.
 
 - **Opening:**
   1. On **Estimates**, press **New change order** and pick the customer.
@@ -166,17 +166,17 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   paragraph, the v2.2967 note.
 - **Split:** *Starting from Bids* becomes its own short guide.
 
-### get started as a sub or helper
+### ~~get started as a sub or helper~~ — shipped v2.5069
 
-`start-here-as-a-sub` · 1,143 words · #4589
+`start-here-as-a-sub` · 1,143 words · #4589 · the opening stays. *Say how far along you are*, *Pick your days* and *Your days* are now one line each under *On your portal*, each linking to its section, moved whole below a *Reference* heading. No sub-facing guide holds them, so they stay in this guide. Nothing cut.
 
 - A map, so no split; its opening stays.
 - **Cut:** *Say how far along you are*, *Pick your days* and *Your days* each become one line
   with a link to the guide that holds it.
 
-### get started in the office
+### ~~get started in the office~~ — shipped v2.5070
 
-`start-here-in-the-office` · 883 words · #4589
+`start-here-in-the-office` · 883 words · #4589 · the opening stays. Step 1 keeps its first sentence and links to the six phone-Dashboard bullets, moved whole with their lead-in below a *Reference* heading. No other guide holds them, so they stay in this guide. Nothing cut.
 
 - A map, so no split; its opening stays.
 - **Cut:** the six phone-Dashboard bullets become one line and a link.

@@ -12,7 +12,7 @@ import { lateDayAsked, lateDayChanged, lateNoticeMove, lateNoticeRows, type Late
 import { MOVE_NOTE_MIN } from '../../lib/gcMode/gcScheduleMoves'
 import { partnerReach, telHref } from '../../lib/gcMode/gcFollowUpSheet'
 import { Btn, Card, Chip, input } from './gcUi'
-import type { PendingMove } from './GcScheduleMoves'
+import type { PendingMove } from './GcScheduleMoves.proto'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
 function useMeName(): string | null {

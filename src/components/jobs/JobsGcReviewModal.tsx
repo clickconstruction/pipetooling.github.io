@@ -57,14 +57,7 @@ import {
 } from '../../lib/jobs/gcStatementRounds'
 import { buildTemperatureBoard, latestExpectedPayByGc, latestTemperatureByGc, trailingWeekStarts } from '../../lib/jobs/temperatureBoard'
 import GcTemperatureBoard, { TEMP_PILL } from './GcTemperatureBoard'
-import {
-  deleteGcStatementRoundMark,
-  listGcStatementRoundMarks,
-  listGcStatementRoundMarksSince,
-  listGcStatementSenders,
-  setGcStatementSender,
-  upsertGcStatementRoundMark,
-} from '../../lib/gcStatementRoundIo'
+import { deleteGcStatementRoundMark, setGcStatementSender, upsertGcStatementRoundMark } from '../../lib/gcStatementRoundIo'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import {
   gcGroupCertStatus,
@@ -72,10 +65,8 @@ import {
   gcReviewWeekStartYmd,
   gcStatementHeld,
   latestCertByGc,
-  type GcReviewCertRow,
 } from '../../lib/jobs/gcReviewCertification'
 import { GC_STATEMENT_UNCHECKED_WORDS, gcBulkHeldLines, gcBulkHeldSummary, type GcStatementHeldWhy } from '../../../supabase/functions/_shared/gcStatementGate'
-import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
 import GcReviewCertifyModal from './GcReviewCertifyModal'
 import GcStatementMarkSentForm from './GcStatementMarkSentForm'
 import { groupStatementRoundChains, planStatementRoundChainEdit, type StatementRoundRequestRow } from '../../lib/statementRoundEmail'
@@ -116,6 +107,7 @@ import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
 import { useEmailPreview } from '../../hooks/useEmailPreview'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
 import { useGcStatementReceived } from '../../hooks/useGcStatementReceived'
+import { useGcStatementRound } from '../../hooks/useGcStatementRound'
 import { gcPortalLinkCaption } from '../../lib/portal/gcPortalLink'
 import { useToastContext } from '../../contexts/ToastContext'
 import { planGcUnpaidInvoicePrint } from '../../lib/jobs/gcUnpaidInvoicePrint'
@@ -386,22 +378,7 @@ export function JobsGcReviewModal({
   const [pendingSends, setPendingSends] = useState<PendingGcStatementSend[]>([])
   /** Wednesday certification (v2.1983): this week's attestations + the open checklist. */
   const certWeekStart = gcReviewWeekStartYmd()
-  const [certRows, setCertRows] = useState<GcReviewCertRow[]>([])
-  /** Whether the week's certifications were read (v2.5022): the statement doors wait for the read, and say so when it fails. */
-  const [certsRead, setCertsRead] = useState<'reading' | 'read' | 'failed'>('reading')
   const [certifyGroup, setCertifyGroup] = useState<GcReviewGroup | null>(null)
-  const refreshCerts = useCallback(() => {
-    listGcReviewCertifications(certWeekStart).then(
-      (rows) => {
-        setCertRows(rows)
-        setCertsRead('read')
-      },
-      () => {
-        setCertRows([])
-        setCertsRead('failed')
-      },
-    )
-  }, [certWeekStart])
   // Freeze the page behind the modal (v2.2144): the review scrolls inside its own panel; the Stages board under it must not.
   useBodyScrollLock(open)
   // Lien waivers per bill (v2.4280): what each GC holds and what we owe them — the jobs' release rows, read once per open.
@@ -425,14 +402,6 @@ export function JobsGcReviewModal({
       cancelled = true
     }
   }, [open, waiverJobIds])
-  useEffect(() => {
-    if (open) refreshCerts()
-  }, [open, refreshCerts])
-  /** Personal statement rounds (v2.2072): weekly marks + standing senders. */
-  const [roundMarks, setRoundMarks] = useState<RoundMarkRow[]>([])
-  /** Six weeks of marks (v2.2813): the temperature board's trend, the header temperature pills, the guardrail. */
-  const [boardMarks, setBoardMarks] = useState<RoundMarkRow[]>([])
-  const [roundSenders, setRoundSenders] = useState<Map<string, string>>(new Map())
   const [roundBusy, setRoundBusy] = useState(false)
   const [roundError, setRoundError] = useState<string | null>(null)
   const [assigningGcId, setAssigningGcId] = useState<string | null>(null)
@@ -481,13 +450,6 @@ export function JobsGcReviewModal({
   useEffect(() => {
     if (open) refreshRoundEmailRows()
   }, [open, refreshRoundEmailRows])
-  const refreshRoundMarks = useCallback(() => {
-    void listGcStatementRoundMarks(certWeekStart).then(setRoundMarks, () => setRoundMarks([]))
-    void listGcStatementRoundMarksSince(trailingWeekStarts(certWeekStart, 6)[0] ?? certWeekStart).then(setBoardMarks, () => setBoardMarks([]))
-  }, [certWeekStart])
-  useEffect(() => {
-    if (open) refreshRoundMarks()
-  }, [open, refreshRoundMarks])
   /** Standing copies form (v2.1431, dev-only): teammates + weekdays for recurring whole-report emails. */
   const [standingUserId, setStandingUserId] = useState('')
   const [standingOutsideEmail, setStandingOutsideEmail] = useState('')
@@ -601,8 +563,6 @@ export function JobsGcReviewModal({
     () => buildGcReviewRollup(billedActiveRows, collectionsRows, { includeCollections, groupBy: effectiveGroupBy }),
     [billedActiveRows, collectionsRows, includeCollections, effectiveGroupBy],
   )
-  /** Certification is per-GC — the strip/chips hide under the Development grouping. */
-  const certsByGc = latestCertByGc(certRows)
   // Personal statement rounds (v2.2072) ride the GC grouping regardless of the
   // Group-by pill, and personal "Sent it" marks count like app sends.
   const roundRollup = useMemo(
@@ -621,16 +581,10 @@ export function JobsGcReviewModal({
     () => roundRollup.groups.flatMap((g) => (!g.isNoGc && g.gcId ? [g.gcId] : [])),
     [roundRollup],
   )
-  useEffect(() => {
-    if (!open) return
-    let cancelled = false
-    void listGcStatementSenders(roundGcIds).then((m) => {
-      if (!cancelled) setRoundSenders(m)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [open, roundGcIds])
+  /** The round's data (the GC_REVIEW_MODAL map's step 8): the week's certifications, its marks, six weeks of marks and each GC's sender, read while the window is open. */
+  const { certRows, certsRead, refreshCerts, roundMarks, boardMarks, refreshRoundMarks, roundSenders, reloadSenders } = useGcStatementRound({ open, certWeekStart, roundGcIds })
+  /** Certification is per-GC — the strip/chips hide under the Development grouping. */
+  const certsByGc = latestCertByGc(certRows)
   /** Each GC's bills in Collections — the round leaves them out of what it counts, the call sheet lists them under the active ones. */
   const collectionsByGc = useMemo(() => {
     if (collectionsRows.length === 0) return new Map<string, GcReviewGroup['rows']>()
@@ -934,8 +888,7 @@ export function JobsGcReviewModal({
     setRoundError(null)
     try {
       await setGcStatementSender(gcId, userId)
-      const m = await listGcStatementSenders(roundGcIds)
-      setRoundSenders(m)
+      await reloadSenders()
     } catch (e) {
       setRoundError(e instanceof Error ? e.message : 'Could not assign — try again.')
     }

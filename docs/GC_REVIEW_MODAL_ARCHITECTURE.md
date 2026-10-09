@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobsGcReviewModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-01
+last_updated: 2026-10-09
 ---
 
 ## Overview
@@ -138,8 +138,8 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | Region | Symbols (lines) | Writes | Data (via lib) | Tests | Next action |
 |---|---|---|---|---|---|
 | View state + rollups | `includeCollections` 294, `groupBy` 295, `anyDevelopment` 486–489, `effectiveGroupBy`/`byDevelopment` 490–491, `rollup` 492–495, `roundRollup` 500–503 | — | — | `gcReviewRollup` 9 | **stays** |
-| Certification loader | `certWeekStart` 332, `certRows` 333, `refreshCerts` 335–337, effect 340–342, `certsByGc` 497, `certGroupByGc` 511, `certProgress` 557 | `certRows` | `gc_review_certifications` (select) | `gcReviewCertification` 10; IO ✗ | → `useGcStatementRound` (#8) |
-| Round engine | `roundMarks`/`boardMarks`/`roundSenders` 344–347, `refreshRoundMarks` 376–379, effect 380–382, senders effect 516–525, `roundGcIds` 512–515, `accountMen` 526, `mergedLastSent` 527, `roundItems` 528–531, `roundSummary` 532, `boardWeeks` 534, `boardRows` 535–538, `boardRowByGc` 539, `temperatureByGc` 540 | 3 data states | `gc_statement_round_marks` (select ×2), `customers.statement_sender_user_id` (select) | `gcStatementRounds` 14, `temperatureBoard` 4; IO ✗ | → `useGcStatementRound` (#8) |
+| Certification loader | `certWeekStart`, `certsByGc`, `certGroupByGc` stay; `certRows`, `certsRead`, `refreshCerts` and its effect are [`useGcStatementRound`](../src/hooks/useGcStatementRound.ts)'s | — (the hook's) | `gc_review_certifications` (select) | `gcReviewCertification` 10; hook render ✓ | **moved v2.5072** (#8) |
+| Round engine | the hook's: `roundMarks` / `boardMarks` / `roundSenders`, `refreshRoundMarks` and its effect, the senders effect, `reloadSenders`. The window's: `roundGcIds`, `accountMen`, `mergedLastSent`, `worklist`, `boardWeeks`, `boardRows`, `boardRowByGc`, `temperatureByGc`, `payByByGc` | — (the hook's) | `gc_statement_round_marks` (select ×2), `customers.statement_sender_user_id` (select) | `gcStatementRounds` 14, `temperatureBoard` 4; hook render ✓ (9) | **moved v2.5072** (#8); the memos stay, each consumer derives its own |
 | Round writes | `markRound` 581–609, `undoRoundMark` 619–629, `assignSender` 670–680, `thisWeekSentMark` 611–614, `markWhenLabel` 615–618, `userNameById` 579, `authUserName` 578 | `roundBusy`, `roundError`, `roundSenders`, `assigningGcId` | `gc_statement_round_marks` upsert/delete; `customers` update | ✗ (upsert payload rule 597–600 inline) | Stage A (#2), then the hook (#8) |
 | Deep link to one GC | `focusGcId` prop, `focusedGcId`, the focus effect | `callSheetGroupKey` | — | ✗ | **stays** (pointer plumbing) |
 | Scheduled sends | `pendingSends` 330, effect 391–403, `refreshPendingSends` 404–406, `standingGroups` 407, `standingRowIds` 408, `canCancelRow`/`canCancelStanding`/`requesterNameOf`/`requesterOf` 410–413 | `pendingSends` | `gc_statement_email_requests` (select, delete) | `groupStandingCopies` ✓; `canCancelStatementRequest` ✗ | → `useGcScheduledSends` (#4) |
@@ -164,7 +164,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 | `assigningGcId` | 352 | the worklist's account-man link | the worklist's select |
 | `shareMenuGroupKey` | 319 | Share button 1412 | one menu open at a time across all groups |
 
-**Data engine: the statement round.** `certRows` + `roundMarks` + `boardMarks` + `roundSenders` (4 states, 2 refreshers `refreshCerts` / `refreshRoundMarks`, 3 open-gated effects 340 / 380 / 516), derived over `roundRollup` into `roundItems` / `roundSummary` / `boardRows` / `temperatureByGc` / `mergedLastSent` / `certProgress`, and read by regions 2, 4, 5, 7a, 7b, 10, 13 and 14. **`markRound` 581–609 is the single write path** for the overlay (1986 Skip, 1999 Sent it), the Mark sent dialog (2386) and the **Draft Message auto-mark** (1870–1873). This engine is **triplicated across surfaces** (see [Hazards](#hazards)), so it is the hook seam to build (#8).
+**Data engine: the statement round.** `certRows` + `roundMarks` + `boardMarks` + `roundSenders` (4 states, 2 refreshers `refreshCerts` / `refreshRoundMarks`, 3 open-gated effects; since v2.5072 all in [`useGcStatementRound`](../src/hooks/useGcStatementRound.ts), with `reloadSenders` for an assign), derived over `roundRollup` into `roundItems` / `roundSummary` / `boardRows` / `temperatureByGc` / `mergedLastSent` / `certProgress`, and read by regions 2, 4, 5, 7a, 7b, 10, 13 and 14. **`markRound` 581–609 is the single write path** for the overlay (1986 Skip, 1999 Sent it), the Mark sent dialog (2386) and the **Draft Message auto-mark** (1870–1873). The writes stay in the window (`markRound`, `undoRoundMark`, `assignSender`, `saveCallSheet`, the Certify modal's `onCertified`), since they need its signed-in name, its toasts and the word promises; each reaches the data only through the hook's refreshers, and a render test holds each one to it. The engine is still read separately on two other surfaces (see [Hazards](#hazards)).
 
 **Secondary substrate:** `pendingSends` feeds both the Scheduled sends panel (6) and Standing copies (11a). `removeStanding` and `standingBusy` are used by both. It is refreshed by the Draft Message schedule (1836), the Share all schedule (2155) and the standing handlers.
 
@@ -353,7 +353,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 
 ## Recommended extraction order
 
-Per the playbook, Stage A comes before Stage B for each unit, and the lowest coupling goes first. Run `npm run typecheck && npm run lint && npm test` at every step, and make only behaviour-preserving changes. **Done so far:** 16 kernels in `lib/` (above), plus 5 extracted children: `GcTemperatureBoard`, `GcReviewCertifyModal`, `GcStatementMarkSentForm`, `GcWorklistPanel`, `GcStatementSendHistoryModal`.
+Per the playbook, Stage A comes before Stage B for each unit, and the lowest coupling goes first. Run `npm run typecheck && npm run lint && npm test` at every step, and make only behaviour-preserving changes. **Done so far:** 16 kernels in `lib/` (above), 5 extracted children (`GcTemperatureBoard`, `GcReviewCertifyModal`, `GcStatementMarkSentForm`, `GcWorklistPanel`, `GcStatementSendHistoryModal`), and the round's data hook (#8, v2.5072).
 
 | # | Unit | Lines out (approx.) | Coupling | Risk |
 |---|---|---|---|---|
@@ -364,7 +364,7 @@ Per the playbook, Stage A comes before Stage B for each unit, and the lowest cou
 | 5 | `useStatementRoundEmail()` (362–375, 630–669: 8 states) → `GcRoundEmailSection` (1054–1193); `GcSenderRoundCard.onSetupEmail` calls the hook's `openFor` | ~55 + 140 | 8 states; 1 cross-region opener | low-med |
 | 6 | `GcReviewShareAllDialog` (2034–2200), conditionally mounted; its 8 non-flag states init on mount (replaces the opener reset 850–861) | ~170 | `rollup`, `includeCollections`, `onSendStatement`, `refreshPendingSends` | med-high |
 | 7 | `GcDraftMessageDialog` (1652–1895 + 686–716), conditionally mounted on `emailDialogGroup`; 11 states move; `onSent(group)` → parent auto-mark; `emailReplyToUserId` moves with it | ~275 | 13 reads today → ~8 props + 3 callbacks | **high** |
-| 8 | **`useGcStatementRound({open, billedActiveRows, collectionsRows, lastSentByGcId, weekStart})`**: certs, marks, board marks, senders, 2 refreshers (`refreshCerts`, `refreshRoundMarks`), effects 340 / 380 / 516, the 10 derived memos, `markRound` / `undoRoundMark` / `assignSender`, `roundBusy` / `roundError`. Build it here first; a later PR can move `JobsStagesTab` 1648–1720 and `usePipelineMoneyOpportunities` 100–150 onto it | ~200 | read by 8 regions | med-high |
+| 8 | **Shipped v2.5072: [`useGcStatementRound({ open, certWeekStart, roundGcIds })`](../src/hooks/useGcStatementRound.ts)** holds the data: certs and whether they were read, marks, board marks, senders, the 2 refreshers and `reloadSenders`, and the 3 open-gated effects, moved verbatim. The derived memos and the writes (`markRound` / `undoRoundMark` / `assignSender`, `roundBusy` / `roundError`) stay in the window by decision: the Stages board derives different cards from the same data, and the writes need the window's name, toasts and word promises. The Stages board reads through it too (v2.5075, the Stages map's step 4); `usePipelineMoneyOpportunities` is next | ~50 | read by 8 regions | med-high |
 | 9 | `GcStatementRoundsCard` (900–1053) + `GcRoundOverlay` (1896–2033) + `GcMarkSentDialog` (2363–2395), all on the #8 hook | ~155 + 138 + 33 | pointer setters as callbacks | med |
 | 10 | `GcReviewGroupSection` (1271–1635) with a callbacks bag; `shareMenuGroupKey` stays in the parent (one menu open) | ~365 | ~15 props | med |
 
@@ -384,7 +384,7 @@ Per the playbook, Stage A comes before Stage B for each unit, and the lowest cou
    - (The dialog ↔ round-overlay bounce went with the overlay.)
    - 543–548 re-fires on `[open, startInRound, startInRoundGcId]`.
    - The senders effect 516–525 keys on the `roundGcIds` memo identity, which comes from `roundRollup`, which re-derives when the parent's rows change (e.g. after `onOpenJob` → `loadJobs`).
-   - The loader effects (340, 373, 380, 391, 516) are gated on `open`, and there is **no cancellation** in `refreshCerts` / `refreshRoundMarks` / `refreshRoundEmailRows` (only 391–403 and 516–525 carry a `cancelled` flag).
+   - The loader effects (340, 373, 380, 391, 516) are gated on `open`, and there is **no cancellation** in `refreshCerts` / `refreshRoundMarks` (moved verbatim into `useGcStatementRound`) or `refreshRoundEmailRows`; only the pending-sends effect and the hook's senders effect carry a `cancelled` flag.
 5. **Mounted while closed.** State survives close and reopen (see structural note 2). Conditionally mounting the extracted dialogs (#6, #7) changes *when* their fields reset. Only the reset-on-open behaviour needs to be kept, and the openers already do that.
 6. **Stale round focus (parent, code read).** `JobsStagesTab` never clears `gcReviewRoundGcId` (set only at 1371). A later **Start round** from the Stages round card re-focuses the old deep-linked GC if it is still ready.
 7. **Non-transactional multi-writes:**
@@ -403,5 +403,5 @@ Per the playbook, Stage A comes before Stage B for each unit, and the lowest cou
 12. **The z-ladder collides at 64.** The round overlay, Mark sent dialog and `GcStatementSendHistoryModal` all use 64 and are mutually exclusive only by flow. The Certify modal is at 70, Edit Job (via `onOpenJob`) at 1010, and the globe modal at 1300. **No Escape handling** exists in the modal or any inline overlay, except the email preview (z 66), whose Escape closes the preview alone.
 13. **Popup-blocker paths.** The two email previews open in the app (`EmailPreviewOverlay`) and open no window. The print paths still do: the call sheet (`openHtmlPrintWindow`) toasts here when blocked, and the statement print toasts in the parent.
 14. **Cross-surface duplication.**
-    - The round engine (certs + marks + senders → `buildStatementRound` / `summarizeStatementRound`) is loaded independently here (333–540), in `JobsStagesTab` (1648–1720, the stages map's seam "I") and in `usePipelineMoneyOpportunities` (100–150). They share no cache, and a mark made here refreshes only this copy.
+    - The round engine (certs + marks + senders) is loaded independently here (through `useGcStatementRound` since v2.5072), on the Stages board (the same hook since v2.5075, reading while the window is shut) and in `usePipelineMoneyOpportunities`. They share no cache, and a mark made here refreshes only this copy; the Stages board re-reads when the window closes.
     - The GC Review transport (`onSendStatement` edge invoke) lives in `JobsStagesTab` 4259–4288 (stages map extraction #7). Coordinate the two.

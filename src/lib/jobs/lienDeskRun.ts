@@ -17,6 +17,7 @@ import { runEnvelopes, type RunEnvelope } from './runEnvelopes'
 import { RUN_PAPER_CSS, runDividerHtml, runMailing, runPageFoot, runSheetHtml } from './lienRunPaper'
 import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
 import { lienOfferFromItem, type LienPayOffer } from './lienPayOffer'
+import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -459,14 +460,17 @@ const PAPER_ROUTE: Record<Exclude<RunSendMethod, 'email'>, string> = {
  * The courtesy email's subject and text: the form the notice is and how its paper copy travels.
  * The owner's wording (2026-10-06): the email says it is a courtesy copy and that the notice itself
  * goes on paper. The email function's own default names § 53.056 and certified mail whatever went.
+ * The owner's line of 2026-10-09 (v2.5073) ends it with the office's number, the letterhead's
+ * (`PORTAL_COMPANY.phone`); a blank number leaves the line off.
  */
-export function runCourtesyEmailWords(n: Pick<RunNotice, 'kind' | 'label'>, method: RunSendMethod): { subject: string; text: string } {
+export function runCourtesyEmailWords(n: Pick<RunNotice, 'kind' | 'label'>, method: RunSendMethod, officePhone: string = PORTAL_COMPANY.phone): { subject: string; text: string } {
   const form = runNoticeInstrumentWords(n.kind)
   const lower = `${form.charAt(0).toLowerCase()}${form.slice(1)}`
   const route = method === 'email' ? '' : PAPER_ROUTE[method]
+  const phone = officePhone.trim()
   return {
     subject: `Courtesy copy: ${lower.replace(/ \(.*\)$/, '')} — ${n.label}`,
-    text: `Attached is a courtesy copy of our ${lower}.${route ? ` The notice itself is being delivered ${route}.` : ''}`,
+    text: `Attached is a courtesy copy of our ${lower}.${route ? ` The notice itself is being delivered ${route}.` : ''}${phone ? ` For questions call the office: ${phone}` : ''}`,
   }
 }
 

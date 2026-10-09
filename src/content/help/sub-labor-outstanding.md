@@ -5,6 +5,8 @@ roles: dev, master_technician, assistant, superintendent
 keywords: sub labor, sub sheet ledger, outstanding, owed, contractor, backcharge, payment, due, pay run, ready, queued, payable after, friday, wrong job, move payment, remove payment, delete payment, undo
 order: 31
 ---
+Jobs → Subs → Pay shows who is owed what, and what you can pay right now. You press Pay beside a sub to pay their biggest ready sheet.
+
 **Jobs → Subs → Pay** is the Sub Sheet Ledger. The ledger answers two questions: **who is owed what**, and **what happened on those sheets**.
 
 The toolbar still shows one grand total, like {{chip:gray|Sub Labor Due: $47,050.00}}. The page reads the rest as a pay run, one round of paying subs. The page shows why each dollar isn't paid yet, and what you can pay right now.
@@ -66,29 +68,7 @@ The ⋯ on a row holds **Payment…** while money is due, **Back-charge…**, **
 
 When you record a payment, the **Date sent** field lets you backdate it. The date can go back to the day the money actually went out. The field starts on today. The ledger's Payments list shows that date. You can fix it later with **Edit** on the payment row, inside **Edit sheet**.
 
-## Fix a payment that landed on the wrong sheet
+## More on paying subs
 
-Open the sheet with **Edit sheet**. The expanded row only lists the payments. Every row in its **Payments** table is two lines. The first has the date, type and amount. The second has the memo beside three buttons: {{button:gray|Edit}}, {{button:outline|Move…}} and {{button:outline|Remove}}. On a phone it is Edit and a **⋯** menu. Nothing is retyped.
-
-- {{button:outline|Move…}} opens **Move this payment**. The same sub's other sheets are listed first. Search finds any other sheet by job number, address or sub. Pick one and a **What changes** panel reads both sheets before and after, like *880: paid $2,000.00 → $0.00, owed $2,200.00 → $4,200.00 · 922: paid $0.00 → $2,000.00, owed $2,000.00 → $0.00 · paid in full*. The amount, date, memo and portal-visibility setting travel with it. Say why, and press {{button:blue|Move $2,000.00 to 922}}. The reason starts as *wrong job*.
-- {{button:outline|Remove}} opens **Remove this payment?** with a reason: {{chip:blue|Duplicate entry}}, {{chip:gray|Wrong amount}} or {{chip:gray|Something else}}. The window also has **Wrong job → Move it instead**, which is the door to Move. A removal can be undone for 30 days.
-- A backcharge stays on the sheet it was raised on. Its {{button:outline|Move…}} says so on the row and opens nothing. To take one off, use {{button:outline|Remove}}.
-
-A move and a removal both leave a grey **trace line** under the sheet's payments. The line reads like *Moved → 922 Michael Palmer · Taunya · wrong job*, *Moved here from 880 Reliant Health-HVAC* or *Removed · Taunya · Duplicate entry*. So a balance that jumped explains itself. A removed line carries {{button:gray|Undo}} while it can still come back.
-
-:::example The check on the wrong job
-Taunya recorded Airfordable's $2,000 check on the 880 sheet; it was for 922. On 880 she presses Move…, picks 922 (top of the list — same sub), reads the panel, and moves it. 880 shows *Moved → 922 · Taunya · wrong job*; 922 shows the payment and *paid in full*.
-:::
-
-## On a phone
-
-The Pay view on a phone is a list, not a table.
-
-- **Who's owed** stacks: the name and the amount, the bar, then the {{button:green|Pay $1,500.00}} button.
-- Under it each sub is one row with what they are owed. Tap a sub to open their sheets.
-- A sheet is one row: its number and job, its pay-when chip, and one amount. Tap it and its actions come up from the bottom. The agreement comes first when nothing is in writing. Then come **Record payment**, **Set a payable-after date**, **Back-charge**, **Edit the sheet**, **Print**, **Story** and **Lien waiver**. A lien waiver releases the sub's lien rights for the money paid.
-
-The **Work** view is rows too. Under each job there is a row per sheet or stage. The row shows who, where it stands and its window, and what is open. Tap a row for its moves. The next move comes first, like {{button:blue|Get it in writing}}, {{button:blue|Send it}} or {{button:green|Pay}}. Then come **Set a window** and the offer's own actions. **Show the whole card** shows the rail and the money in full. A row opens its card by itself when a form or a builder's ask is waiting on it.
-
-On the **Work** view, more than one sheet may be on a handshake. Then {{button:amber|Get all 9 in writing}} sits above the cards. The button opens the list. Nothing is sent until you have read it and pressed send there.
-
+- [Fix a payment on the wrong sheet](/help/fix-a-payment-on-the-wrong-sheet): move it, remove it, or undo a removal.
+- [Work the Subs tab on a phone](/help/work-the-subs-tab-on-a-phone): the Pay and Work views as rows.

@@ -8,7 +8,9 @@ import type { GcProject, GcState } from '../types'
 import { chartHolds } from './chartHolds'
 import { ganttBars, type GanttBar } from './gantt'
 import { draftSchedule, scheduleMeasures } from './schedule'
-import { barCardRows, draftRefusal, draftStart, draftWords } from './scheduleWindow'
+import { addDays } from '../building'
+import { planMove } from './moves'
+import { barCardRows, changeTimeWords, draftRefusal, draftStart, draftWords, moveWords, partMovePress, redoWords, undoWords } from './scheduleWindow'
 import { splitParts } from './splitBars'
 import { initialGcState } from './testState'
 
@@ -122,5 +124,85 @@ describe('the opened bar’s card', () => {
     expect(words(rows, 'Spare')).toEqual([])
     expect(words(rows, 'Held')).toEqual([])
     expect(words(rows, 'Done')).toEqual(['100%'])
+  })
+})
+
+describe('a move’s, an undo’s and a redo’s line in the log (PR 8a)', () => {
+  const p = job(s, 'fairoaksd')
+  const a = p.schedule!.activities.find((x) => x.lineId === 'froof-1')!
+
+  it('says the bar’s new days, what it pushed and who said why, as the prototype’s reducer did', () => {
+    const plan = planMove(p, a.lineId, addDays(a.start, 7), addDays(a.finish, 7))!
+    expect(plan.problem).toBeNull()
+    const words = moveWords(p, a.lineId, plan, { by: 'Robert', note: '  Rain kept the roof open a week.  ' })
+    expect(words.startsWith(`Roofing · TPO membrane now runs Mon Sep 28 to Fri Oct 16.`)).toBe(true)
+    expect(words.endsWith(' Robert: Rain kept the roof open a week.')).toBe(true)
+    // What it pushed is said between, in the chart's words.
+    if (plan.pushed.length > 0) expect(words).toMatch(/now runs Mon Sep 28 to Fri Oct 16\. .+ Robert: /)
+  })
+
+  it('says a move that pushes nothing with no line between', () => {
+    const plan = { to: { start: '2026-11-02', finish: '2026-11-06' }, pushed: [] }
+    expect(moveWords(p, a.lineId, plan, { by: 'Ann', note: 'The tile came early.' })).toBe('Roofing · TPO membrane now runs Mon Nov 2 to Fri Nov 6. Ann: The tile came early.')
+  })
+
+  it('says Undo and Redo as the prototype’s reducer did', () => {
+    const move = { lineId: a.lineId, from: { start: '2026-09-21', finish: '2026-10-09' }, to: { start: '2026-09-28', finish: '2026-10-16' } }
+    expect(undoWords(p, move, 'Robert')).toBe('Robert undid a move: Roofing · TPO membrane is back to Sep 21 to Oct 9.')
+    expect(redoWords(p, move, 'Robert')).toBe('Robert put a move back: Roofing · TPO membrane is Sep 28 to Oct 16 again.')
+  })
+
+  it('says when a change was saved on the company’s clock, in the refusal’s words', () => {
+    // 20:14 UTC on Nov 2 is 2:14 pm in Texas (CST); in October it is 3:14 pm (CDT).
+    expect(changeTimeWords('2026-11-02T20:14:00+00:00')).toBe('2:14 pm')
+    expect(changeTimeWords('2026-10-08T20:14:00Z')).toBe('3:14 pm')
+    expect(changeTimeWords('2026-10-08T14:05:00Z')).toBe('9:05 am')
+    expect(changeTimeWords('no time')).toBe('')
+  })
+})
+
+describe('a part of a split line moved (PR 8b)', () => {
+  /** Fair Oaks D with TPO membrane split into an east and a west half, as gc_schedule_split leaves it. */
+  function split(): GcState {
+    const a = job(s, 'fairoaksd').schedule!.activities.find((x) => x.lineId === 'froof-1')!
+    const made = splitParts(a, [{ name: 'East half', start: a.start, finish: '2026-09-30' }, { name: 'West half', start: '2026-10-01', finish: a.finish }], 50)
+    if (!('parts' in made)) throw new Error(made.problem)
+    return withActivity('froof-1', (x) => ({ ...x, parts: made.parts }))
+  }
+  const why = { reason: 'weather' as const, note: 'Rain on the east side.', by: 'Robert' }
+
+  it('moves only the part when its line keeps its days, and names the part in the log', () => {
+    const st = split()
+    const p = job(st, 'fairoaksd')
+    // The west half a day later, still inside the line's days: the line keeps Sep 21 to Oct 9.
+    const press = partMovePress(p, 'froof-1', 'froof-1-p2', '2026-10-02', '2026-10-09', why, st.today)!
+    expect(press.words).toBe('Roofing · TPO membrane, West half now runs Fri Oct 2 to Fri Oct 9. Robert: Rain on the east side.')
+    expect(press.move.parts).toMatchObject({ id: 'froof-1-p2', was: [{ id: 'froof-1-p1', from: 0 }, { id: 'froof-1-p2', from: 10 }], now: [{ id: 'froof-1-p1', from: 0 }, { id: 'froof-1-p2', from: 11 }] })
+    expect(press.move).toMatchObject({ lineId: 'froof-1', reason: 'weather', by: 'Robert', from: { start: '2026-09-21', finish: '2026-10-09' }, to: { start: '2026-09-21', finish: '2026-10-09' } })
+    const line = press.activities.find((x) => x.lineId === 'froof-1')!
+    expect([line.start, line.finish]).toEqual(['2026-09-21', '2026-10-09'])
+    expect(line.parts?.find((x) => x.id === 'froof-1-p2')?.from).toBe(11)
+  })
+
+  it('moves the line when its first part starts later, as its start is its first part\'s', () => {
+    const st = split()
+    const press = partMovePress(job(st, 'fairoaksd'), 'froof-1', 'froof-1-p1', '2026-09-22', '2026-09-30', why, st.today)!
+    expect(press.words.startsWith('Roofing · TPO membrane now runs Tue Sep 22 to Fri Oct 9.')).toBe(true)
+  })
+
+  it('moves the line like any bar when the part goes past its end, pushes and all', () => {
+    const st = split()
+    const p = job(st, 'fairoaksd')
+    const press = partMovePress(p, 'froof-1', 'froof-1-p2', '2026-10-01', '2026-10-16', why, st.today)!
+    expect(press.words.startsWith('Roofing · TPO membrane now runs Mon Sep 21 to Fri Oct 16.')).toBe(true)
+    expect(press.move.to).toEqual({ start: '2026-09-21', finish: '2026-10-16' })
+    expect(press.move.parts?.id).toBe('froof-1-p2')
+  })
+
+  it('moves nothing for a part left where it was, or on a line with no parts', () => {
+    const st = split()
+    const p = job(st, 'fairoaksd')
+    expect(partMovePress(p, 'froof-1', 'froof-1-p1', '2026-09-21', '2026-09-30', why, st.today)).toBeNull()
+    expect(partMovePress(job(s, 'fairoaksd'), 'froof-1', 'froof-1-p1', '2026-09-22', '2026-09-30', why, s.today)).toBeNull()
   })
 })

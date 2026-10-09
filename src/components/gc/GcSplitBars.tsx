@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom'
 import { addDays, money, shortDate, weekdayDate, type GcAction, type GcProject, type ScheduleActivity, type SovLine } from '../../lib/gcMode/gcModel'
 import { draftShares, lineLabel, linePctOf, partMoveOf, partPcts, partSpans, partsSummary, splitActivityOf, splitDrafts, splitParts } from '../../lib/gcMode/gcSplitBars'
 import { Btn, Card, input } from './gcUi'
-import type { PendingMove } from './GcScheduleMoves'
+import type { PendingMove } from './GcScheduleMoves.proto'
 import { usePortalLang } from './gcPortalLang'
 
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const

@@ -11,7 +11,7 @@ import { weekdayDate, type GcAction, type GcProject, type GcState, type Schedule
 import { MOVE_REASONS, moveRows, moveWhyProblem } from '../../lib/gcMode/gcScheduleMoves'
 import { whatIfBaseChangedWords, whatIfBaseChanges, whatIfDiff, whatIfKeptWords, whatIfProject, whatIfTried } from '../../lib/gcMode/gcWhatIf'
 import { Btn, Chip, input } from './gcUi'
-import { GcTellTrades } from './GcScheduleMoves'
+import { GcTellTrades } from './GcScheduleMoves.proto'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */
 function useMeName(): string | null {
