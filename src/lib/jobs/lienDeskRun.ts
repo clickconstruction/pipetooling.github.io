@@ -1,4 +1,4 @@
-import { buildLienNoticeBlocks, filingDocHtml, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields, type LienNoticeInstrument } from '../jobsDocuments/lienFilingDocuments'
+import { buildLienNoticeBlocks, FILING_SIGNATURE_FONT_LINK, filingDocHtml, filingHtmlHasTypedSignature, filingLetterheadFromIssuer, type FilingDocBlock, type FilingDocExtras, type LienNoticeFields, type LienNoticeInstrument } from '../jobsDocuments/lienFilingDocuments'
 import { filingDocumentPayload } from './lienFilingDocumentLink'
 import { correctedClaim } from './lienClaimCorrection'
 import { demandDate, demandMoney } from '../jobsDocuments/demandLetter'
@@ -18,6 +18,7 @@ import { RUN_PAPER_CSS, runDividerHtml, runMailing, runPageFoot, runSheetHtml } 
 import { payPageBlocks, type PayPageAssets, type PayPageRow } from './lienNoticePayPage'
 import { lienOfferFromItem, type LienPayOffer } from './lienPayOffer'
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
+import { lienFieldsHash, lienNoticeSignatureFromRow, signatureColumnsOf, toFilingSignature, type LienNoticeSignature } from './lienNoticeSignature'
 
 /**
  * The run (pure kernel): every approved notice on the desk, its two
@@ -81,6 +82,8 @@ export type RunNotice = {
   payLines?: Record<string, string>
   /** When the packet with this notice printed (v2.4823, from `printed_at`): the run opens on recording, not printing, when every notice in it has one. Absent or null = not yet. */
   printedAt?: string | null
+  /** The leader's signature (v2.5077): null while unsigned, or once the draft changed after signing. The papers print it above the rule; the run holds a notice without one. */
+  signature?: LienNoticeSignature | null
 }
 
 /** Where the run opens (v2.4823): on printing when any notice has not printed, else on recording the mailing, with the newest print as the day it printed. */
@@ -96,6 +99,25 @@ export function runDoorWords(counts: { ready: number; printed: number; retReady:
   return { label: counts.ready + counts.retReady === 0 && counts.printed > 0 ? 'Record the mailing' : 'Send the run', count }
 }
 
+
+/** The signature's inputs the run builders take (v2.5077): the drawn inks by item id, and the name of whoever's screen a drawn one was made on. */
+export type RunBuildOpts = {
+  inks?: ReadonlyMap<string, string | null>
+  onDeviceNameFor?: (userId: string | null) => string
+}
+
+/** The leader's signature off the desk item, for the papers; null while unsigned or once the draft moved on. */
+function runNoticeSignature(item: { id: string; fields: unknown }, jobNumber: string, opts?: RunBuildOpts): LienNoticeSignature | null {
+  const cols = signatureColumnsOf(item)
+  return lienNoticeSignatureFromRow(cols, {
+    jobNumber,
+    itemId: item.id,
+    fieldsHash: lienFieldsHash(item.fields),
+    onDeviceName: cols.signed_on_device_of ? (opts?.onDeviceNameFor?.(cols.signed_on_device_of) ?? null) : null,
+    pngDataUrl: opts?.inks?.get(item.id) ?? null,
+  })
+}
+
 /** Every Ready-to-send entry as a run notice. Entries with no live approved item are skipped. */
 export function buildLienDeskRun(
   entries: ReadonlyArray<LienDeskEntry>,
@@ -106,7 +128,7 @@ export function buildLienDeskRun(
   /** The signer's own phone for `{{phone}}` (v2.3753); the letterhead's when absent. */
   signerPhoneFor?: (masterUserId: string | null) => string,
   /** The supply houses per job (v2.4725): the letter's `{{supply_houses}}` paragraph, unless the draft left it out. The releases by row id (v2.4729): the one the draft points at rides in the envelope. */
-  opts?: { suppliers?: ReadonlyMap<string, LienSupplierJob>; releases?: ReadonlyMap<string, NoticeRelease> },
+  opts?: RunBuildOpts & { suppliers?: ReadonlyMap<string, LienSupplierJob>; releases?: ReadonlyMap<string, NoticeRelease> },
 ): RunNotice[] {
   const out: RunNotice[] = []
   for (const e of entries) {
@@ -144,6 +166,7 @@ export function buildLienDeskRun(
       jobId: e.jobId,
       kind: 'notice_53_056',
       printedAt: (item as { printed_at?: string | null }).printed_at ?? null,
+      signature: runNoticeSignature(item, jobNumber, opts),
       label: name ? `${jobNumber} · ${name}` : jobNumber,
       jobNumber,
       months,
@@ -183,6 +206,7 @@ export function buildLienRetainageRun(
   todayYmd: string,
   /** The signing master's own phone (v2.3844), else the letterhead's — as the § 53.056 letter. */
   signerPhoneFor?: (masterUserId: string | null) => string,
+  opts?: RunBuildOpts,
 ): RunNotice[] {
   const out: RunNotice[] = []
   for (const e of entries) {
@@ -216,6 +240,7 @@ export function buildLienRetainageRun(
       itemId: item.id,
       jobId: e.jobId,
       kind: 'retainage_53_057',
+      signature: runNoticeSignature(item, jobNumber, opts),
       label: name ? `${jobNumber} · ${name}` : jobNumber,
       jobNumber,
       months: [],
@@ -274,7 +299,7 @@ export function runNoticeProblems(n: RunNotice): string[] {
  * first line as the salutation). Every § 53.056 notice carries counsel's letter (v2.3828); a § 53.057 notice its counsel note.
  */
 /** What the cover page needs — the run passes a whole notice; the desk passes the same six fields for the paper it shows (v2.3540). */
-export type CoverPageInput = Pick<RunNotice, 'label' | 'months' | 'fields' | 'extras' | 'coverNote' | 'coverLetter'> & Partial<Pick<RunNotice, 'kind' | 'release'>> & {
+export type CoverPageInput = Pick<RunNotice, 'label' | 'months' | 'fields' | 'extras' | 'coverNote' | 'coverLetter'> & Partial<Pick<RunNotice, 'kind' | 'release' | 'signature'>> & {
   /** Unpaid invoices ride behind the form (§ 53.056(a-3)): the letter's Enclosed line says so, as counsel's letter does (v2.3828). */
   withInvoices?: boolean
 }
@@ -290,7 +315,7 @@ export function runCoverNoteBlocks(n: CoverPageInput): FilingDocBlock[] {
       { kind: 'title', lines: [`Re: ${n.label}`, runNoticeWhatWords({ kind: n.kind ?? 'notice_53_056', months: n.months })] },
       ...paragraphs.map((text): FilingDocBlock => ({ kind: 'paragraph', text })),
       { kind: 'paragraph', text: `Enclosed: ${runNoticeInstrumentWords(n.kind ?? 'notice_53_056')}${n.withInvoices ? ', with invoices' : ''}${noticeReleaseEnclosureWords(n.release)}.` },
-      { kind: 'signature', lines: [n.fields.contactPerson, n.fields.claimantName].filter((l) => l) },
+      { kind: 'signature', lines: [n.fields.contactPerson, n.fields.claimantName].filter((l) => l), signed: n.signature ? toFilingSignature(n.signature) : null },
     ]
   }
   if (!n.coverNote) return []
@@ -298,14 +323,14 @@ export function runCoverNoteBlocks(n: CoverPageInput): FilingDocBlock[] {
     ...head,
     { kind: 'title', lines: [`Re: ${n.label}`, runNoticeWhatWords({ kind: n.kind ?? 'notice_53_056', months: n.months })] },
     { kind: 'paragraph', text: n.coverNote },
-    { kind: 'signature', lines: [n.fields.contactPerson, n.fields.claimantName].filter((l) => l) },
+    { kind: 'signature', lines: [n.fields.contactPerson, n.fields.claimantName].filter((l) => l), signed: n.signature ? toFilingSignature(n.signature) : null },
   ]
 }
 
 /** One notice's document for one recipient: the statutory form, the reference strip naming the copy. */
 export function runNoticeBlocks(n: RunNotice, r: RunRecipient): FilingDocBlock[] {
   const extras: FilingDocExtras = { ...n.extras, refItems: [...(n.extras.refItems ?? []), `Copy for: ${r.label}`] }
-  return buildLienNoticeBlocks(n.fields, extras, { instrument: n.kind })
+  return buildLienNoticeBlocks(n.fields, extras, { instrument: n.kind, signature: n.signature ? toFilingSignature(n.signature) : null })
 }
 
 /**
@@ -402,7 +427,7 @@ export function runPacketHtml(
 /** One print document from pages in order, each on its own sheet: the packet's shell, shared with a single copy or envelope (v2.4853). */
 export function runPagesHtml(pages: ReadonlyArray<string>, title: string): string {
   const body = pages.map((p, i) => `<section style="${i < pages.length - 1 ? 'page-break-after:always;' : ''}">${p}</section>`).join('')
-  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(title)}</title>
+  return `<!doctype html><html data-theme="light"><head><meta charset="utf-8"><title>${esc(title)}</title>${pages.some(filingHtmlHasTypedSignature) ? FILING_SIGNATURE_FONT_LINK : ''}
 <style>
   body { font-family: Georgia, 'Times New Roman', serif; color: #1a1a1a; background: #fff; max-width: 44rem; margin: 2.5rem auto; padding: 0 1.5rem; font-size: 0.95rem; line-height: 1.75; }
   section + section { margin-top: 3rem; }
