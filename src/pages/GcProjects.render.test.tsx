@@ -8,6 +8,7 @@ import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
 import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
 import { loadSchedule } from '../lib/gc/scheduleIo'
+import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -84,6 +85,12 @@ vi.mock('../lib/gc/gcIo', async () => {
     loadGcBillingRows: vi.fn(() => Promise.resolve({ terms: [], contract: [], billing: new Map(), names: {}, payDays: {} })),
   }
 })
+
+// Building's daily log: no log yet, and a save that goes through.
+vi.mock('../lib/gc/dailyLogIo', () => ({
+  loadGcDailyLogs: vi.fn(() => Promise.resolve([])),
+  saveGcDailyLog: vi.fn(() => Promise.resolve('log-1')),
+}))
 
 const loadedEmpty = { loaded: () => screen.findByText('No GC project yet. Press New project when the first plans come in.') }
 
@@ -340,5 +347,81 @@ describe('GcProjects: the Project Board', () => {
     await waitFor(() => expect(markGcBidSent).toHaveBeenCalledWith('p1'))
     expect(await within(card).findByText('our bid went in Oct 8')).toBeTruthy()
     vi.mocked(loadGcBoardRows).mockReset()
+  })
+})
+
+describe('GcProjects: the daily log (Building)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadGcDailyLogs).mockClear()
+    vi.mocked(saveGcDailyLog).mockClear()
+  })
+
+  /** The clinic being built: started long ago unless a test says otherwise, so its last five working days have no log. */
+  function building(startedOn: string | null = '2026-01-05') {
+    const base = clinicBoardRows()
+    return { ...base, projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })), boardDates: { p1: { ...base.boardDates.p1!, started_on: startedOn } } }
+  }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+
+  it('a dev sees Daily log on a job being built, with the working days in the last week that have no log', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    expect(await within(card).findByRole('button', { name: 'Daily log · 5 missed' })).toBeTruthy()
+    expect(loadGcDailyLogs).toHaveBeenCalledWith(['p1'])
+  })
+
+  it('a dev opens it before work starts, and the window says the log starts then', async () => {
+    const rows = building(null)
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(await within(card).findByRole('button', { name: 'Daily log' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: daily log' })
+    expect(within(dialog).getByText('The daily log starts once work starts.')).toBeTruthy()
+  })
+
+  it('a dev saves today’s log with our own crew, and only the logs are read again', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(await within(card).findByRole('button', { name: 'Daily log · 5 missed' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: daily log' })
+    // Until the Board's B6 signs a statement of work, our own Plumbing is the one trade a log may name.
+    expect(within(dialog).queryByRole('spinbutton', { name: 'Workers on site, Concrete' })).toBeNull()
+    fireEvent.change(within(dialog).getByRole('spinbutton', { name: 'Workers on site, Plumbing' }), { target: { value: '2' } })
+    const reads = vi.mocked(loadGcDailyLogs).mock.calls.length
+    const projectReads = vi.mocked(loadGcProjects).mock.calls.length
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save the log' }))
+    await waitFor(() => expect(saveGcDailyLog).toHaveBeenCalledTimes(1))
+    expect(saveGcDailyLog).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'p1', crews: [{ packageId: 'k3', workers: 2 }], done: '', delays: [] }))
+    await waitFor(() => expect(vi.mocked(loadGcDailyLogs).mock.calls.length).toBe(reads + 1))
+    expect(vi.mocked(loadGcProjects).mock.calls.length).toBe(projectReads)
+  })
+
+  it('an estimator never sees it, and its logs are not read', async () => {
+    auth.role = 'estimator'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: /^Daily log/ })).toBeNull()
+    expect(loadGcDailyLogs).not.toHaveBeenCalled()
+  })
+
+  it('a job still bidding has no Daily log, even for a dev', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: /^Daily log/ })).toBeNull()
   })
 })

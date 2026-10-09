@@ -3,7 +3,8 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
-import { GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail } from './access'
+import { GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from './access'
+import { GC_TABLE_DOORS } from './doors'
 
 describe('canOpenGcProjects', () => {
   it('opens for the office and estimators, as gc_office_team() does', () => {
@@ -78,5 +79,25 @@ describe('canSendGcTradeEmail', () => {
 
   it('names the same roles as gc-trade-email, so the two copies cannot drift', () => {
     expect([...GC_TRADE_EMAIL_TEAM].sort()).toEqual([...GC_TRADE_EMAIL_ROLES].sort())
+  })
+})
+
+describe('canUseGcBuilding', () => {
+  it('lets a dev write the daily log while Building is built', () => {
+    expect(canUseGcBuilding('dev')).toBe(true)
+  })
+
+  it('keeps everyone else and a session with no role yet out', () => {
+    for (const role of ['master_technician', 'assistant', 'controller', 'estimator', 'superintendent', 'primary', 'subcontractor', 'helpers'] as UserRole[]) {
+      expect(canUseGcBuilding(role)).toBe(false)
+    }
+    expect(canUseGcBuilding(null)).toBe(false)
+    expect(canUseGcBuilding(undefined)).toBe(false)
+  })
+
+  it('is a dev’s exactly while doors.ts keeps every Building table dev only, so Building’s door changes both', () => {
+    const building = Object.values(GC_TABLE_DOORS).filter((d) => d.lane === 'Building')
+    expect(building.length).toBeGreaterThan(0)
+    expect(building.every((d) => d.door === 'dev')).toBe(GC_BUILDING_TEAM.length === 1 && GC_BUILDING_TEAM[0] === 'dev')
   })
 })

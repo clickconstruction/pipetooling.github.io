@@ -36,3 +36,15 @@ export const GC_TRADE_EMAIL_TEAM: readonly UserRole[] = ['dev']
 export function canSendGcTradeEmail(role: UserRole | null | undefined): boolean {
   return role != null && GC_TRADE_EMAIL_TEAM.includes(role)
 }
+
+/**
+ * GC mode, the Building lane (U3a-ii): who opens Building's windows on a job being built, the Daily
+ * log first. A dev while Building is built, since every Building table's policy is `is_dev()` until
+ * Building's door (`doors.ts`). `access.test.ts` fails when this list and those doors disagree, so the
+ * door PR changes both. Every Building window takes this one gate.
+ */
+export const GC_BUILDING_TEAM: readonly UserRole[] = ['dev']
+
+export function canUseGcBuilding(role: UserRole | null | undefined): boolean {
+  return role != null && GC_BUILDING_TEAM.includes(role)
+}

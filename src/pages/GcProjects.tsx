@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail } from '../lib/gc/access'
+import { canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -25,6 +25,10 @@ import { GcQuestionsWindow, type AnswerReach } from '../components/gc/GcQuestion
 import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
 import { GcScheduleWindow } from '../components/gc/GcScheduleWindow'
 import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
+import { GcDailyLogWindow } from '../components/gc/GcDailyLog'
+import { dailyLogPayload, withDailyLogs, type DailyLogRow } from '../lib/gc/dailyLogRows'
+import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
 import { billingStateForAll, type BillingRows } from '../lib/gc/billCustomer'
 import { openQuestions, questionsCloseOn, type PlanQuestionView } from '../lib/gc/questions'
@@ -98,7 +102,7 @@ import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
-import type { GcState, ScopeBookStore } from '../lib/gc/types'
+import type { DailyLog, GcState, ScopeBookStore } from '../lib/gc/types'
 import { gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
 
 interface Loaded {
@@ -431,6 +435,46 @@ export default function GcProjects() {
       .finally(() => setChangeBusy(null))
   }
 
+  // The daily log (Building's U3a-ii): read beside the board for a dev, laid over the board's projects
+  // (boardProjectFromView maps the rest), and opened at `log=<projectId>`. A save writes no gc_projects
+  // row, so only the logs are read again.
+  const logProjectId = params.get('log')
+  const [dailyLogRows, setDailyLogRows] = useState<DailyLogRow[]>([])
+  const [logBusy, setLogBusy] = useState(false)
+  const [logProblem, setLogProblem] = useState<string | null>(null)
+  const loadDailyLogs = useCallback(async () => {
+    // Building is a dev's while it is built (canUseGcBuilding): nobody else reads its tables.
+    if (!board || !canUseGcBuilding(role)) return
+    setDailyLogRows(await loadGcDailyLogs(board.projects.filter((p) => p.stage === 'building').map((p) => p.id)))
+  }, [board, role])
+  useEffect(() => {
+    void loadDailyLogs().catch((e) => setLogProblem(formatErrorMessage(e, 'The daily logs did not load.')))
+  }, [loadDailyLogs])
+  const boardWithLogs = useMemo(() => (board ? withDailyLogs(board, dailyLogRows) : null), [board, dailyLogRows])
+  const logProject = logProjectId ? (boardWithLogs?.projects.find((p) => p.id === logProjectId) ?? null) : null
+  const setLogWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('log', projectId)
+    else next.delete('log')
+    setParams(next, { replace: true })
+    setLogProblem(null)
+  }
+  /** A day's log saved, then the logs read again. False keeps the window's form as typed, the problem above it. */
+  const saveLog = async (projectId: string, log: Omit<DailyLog, 'writtenOn'>): Promise<boolean> => {
+    setLogBusy(true)
+    setLogProblem(null)
+    try {
+      await saveGcDailyLog(dailyLogPayload(projectId, log, today))
+      await loadDailyLogs()
+      return true
+    } catch (e) {
+      setLogProblem(formatErrorMessage(e, 'The daily log was not saved.'))
+      return false
+    } finally {
+      setLogBusy(false)
+    }
+  }
+
   // Money (Owner Billing's O6a): every job that is ours, with billing read when the lens opens and laid over
   // the board's projects and their change orders. Read only.
   const [moneyRows, setMoneyRows] = useState<BillingRows | null>(null)
@@ -669,6 +713,16 @@ export default function GcProjects() {
                   })()}
                 </Btn>
               )}
+              {/* The daily log (Building's U3a-ii): a dev's, on a job being built (the view's own stage, so a closed job has none). */}
+              {canUseGcBuilding(role) && boardWithLogs && p.stage === 'building' && (
+                <Btn kind="quiet" onClick={() => setLogWindow(p.id)}>
+                  {(() => {
+                    const project = boardWithLogs.projects.find((x) => x.id === p.id)
+                    const missed = project ? missingLogs(project, today).length : 0
+                    return missed > 0 ? `Daily log · ${missed} missed` : 'Daily log'
+                  })()}
+                </Btn>
+              )}
               {(p.sqFt || p.sizeNote) && (
                 <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
               )}
@@ -865,6 +919,18 @@ export default function GcProjects() {
             onSetPct: (id, pct) => changeWrite(id, setChangeOrderPct(id, pct), 'The percent done was not saved.'),
             onDelete: (id) => changeWrite(id, deleteChangeOrderDraft(id), 'The draft was not deleted.'),
           }}
+        />
+      )}
+
+      {canUseGcBuilding(role) && logProject && boardWithLogs && (
+        <GcDailyLogWindow
+          state={boardWithLogs}
+          project={logProject}
+          today={today}
+          busy={logBusy}
+          problem={logProblem}
+          onSave={(log) => saveLog(logProject.id, log)}
+          onClose={() => setLogWindow(null)}
         />
       )}
 
