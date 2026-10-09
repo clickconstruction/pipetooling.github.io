@@ -164,6 +164,10 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   pickAKind: 'errPickAKind',
   questionNeeded: 'errQuestionNeeded',
   tooLong: 'errTooLong',
+  alreadyAnswered: 'errAlreadyAnswered',
+  notAwarded: 'errNotAwarded',
+  noteNeeded: 'errNoteNeeded',
+  descriptionNeeded: 'errDescriptionNeeded',
 }
 
 /** A refusal in the company's words. A key the page does not know reads as did not save. */

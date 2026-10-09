@@ -969,6 +969,10 @@ const S = {
   errPickAKind: { en: 'Pick at least one kind of email.', es: 'Elija al menos un tipo de correo.' },
   errQuestionNeeded: { en: 'Type your question first.', es: 'Primero escriba su pregunta.' },
   errTooLong: { en: 'That is too long. Make it shorter.', es: 'Es demasiado largo. Hágalo más corto.' },
+  errAlreadyAnswered: { en: 'This charge has its answer already. Reload the page.', es: 'Este cargo ya tiene su respuesta. Vuelva a cargar la página.' },
+  errNotAwarded: { en: 'You can ask for a change only on work you signed for.', es: 'Solo puede pedir un cambio en el trabajo que firmó.' },
+  errNoteNeeded: { en: 'Say why you dispute it.', es: 'Diga por qué lo disputa.' },
+  errDescriptionNeeded: { en: 'Say what changed.', es: 'Diga qué cambió.' },
   previewNothing: { en: 'Preview. Nothing is saved from here.', es: 'Vista previa. Desde aquí no se guarda nada.' },
   quoteTickHelp: { en: 'Tick what your quote covers. Untick what it leaves out.', es: 'Marque lo que incluye su cotización. Desmarque lo que no incluye.' },
 } satisfies Record<string, Record<PortalLang, string>>

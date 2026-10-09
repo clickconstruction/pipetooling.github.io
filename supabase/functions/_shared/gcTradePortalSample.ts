@@ -28,6 +28,15 @@ export const SAMPLE_TRADE_IDS = {
   questionOther: '00000000-5a00-4000-8000-000000000017',
   otherCompany: '00000000-5a00-4000-8000-000000000018',
   message: '00000000-5a00-4000-8000-000000000019',
+  // A job of ours (P4b-i): its award, its signed statement of work, a charge and a change request.
+  job: '00000000-5a00-4000-8000-000000000020',
+  jobTrade: '00000000-5a00-4000-8000-000000000021',
+  jobAsk: '00000000-5a00-4000-8000-000000000022',
+  jobQuote: '00000000-5a00-4000-8000-000000000023',
+  sow: '00000000-5a00-4000-8000-000000000024',
+  charge: '00000000-5a00-4000-8000-000000000025',
+  request: '00000000-5a00-4000-8000-000000000026',
+  changeOrder: '00000000-5a00-4000-8000-000000000027',
 } as const
 
 const ID = SAMPLE_TRADE_IDS
@@ -38,7 +47,11 @@ function addDays(ymd: string, n: number): string {
   return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + n)).toISOString().slice(0, 10)
 }
 
-/** The sample's rows: one company asked to quote one trade on one project, with what it has given and what we sent it. */
+/**
+ * The sample's rows: one company asked to quote one trade on one project, with what it has given and what we sent it,
+ * one ask it passed on, and one job of ours it was awarded and signed for, with a charge to answer and a change it asked
+ * for that is with the customer.
+ */
 export function gcTradePortalSampleRows(today: string): TradePortalRows {
   const d = (n: number) => addDays(today, n)
   return {
@@ -47,8 +60,11 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
     invites: [
       { id: ID.ask, package_id: ID.trade, company_id: COMPANY, status: 'opened', invited_on: d(-8), seen_rev: 0, declined_why: null, declined_on: null },
       { id: ID.askPassed, package_id: ID.trade2, company_id: COMPANY, status: 'declined', invited_on: d(-20), seen_rev: 0, declined_why: 'cant', declined_on: d(-18) },
+      { id: ID.jobAsk, package_id: ID.jobTrade, company_id: COMPANY, status: 'bid', invited_on: d(-60), seen_rev: 0, declined_why: null, declined_on: null },
     ],
-    quotes: [],
+    quotes: [
+      { id: ID.jobQuote, invite_id: ID.jobAsk, amount: 48600, based_on_rev: 0, submitted_on: d(-52), includes: {}, note: '', good_for_days: 30, alternates: [], quote_file: '', sov: null, exclusions: null, exclusions_answered: null, source: 'trade', created_at: `${d(-52)}T15:00:00Z` },
+    ],
     contacts: [{ id: ID.quoteDay, company_id: COMPANY, invite_id: ID.ask, contacted_on: d(-3), how: 'portal', note: 'Sending it Friday.', promised_by: d(4) }],
     promises: [],
     projects: [
@@ -62,10 +78,16 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
         gc: { project_id: ID.project2, stage: 'bidding', bid_due: d(5), size_note: '3,100 sq ft tenant finish out', lost_on: null, lost_why: null },
         team: [],
       },
+      {
+        project: { id: ID.job, name: 'Sample Dental Office', address: '3 Sample Ln, Fair Oaks Ranch' },
+        gc: { project_id: ID.job, stage: 'building', bid_due: d(-45), size_note: '4,200 sq ft dental office', lost_on: null, lost_why: null },
+        team: [{ role: 'superintendent', name: 'Jordan Reyes', phone: '(210) 555-0170', email: 'jordan@example.com' }],
+      },
     ],
     packages: [
       { id: ID.trade, project_id: ID.project, trade: 'Electrical', position: 0 },
       { id: ID.trade2, project_id: ID.project2, trade: 'Electrical', position: 0 },
+      { id: ID.jobTrade, project_id: ID.job, trade: 'Electrical', position: 0, awarded_invite_id: ID.jobAsk },
     ],
     scopeItems: [
       { id: ID.line1, package_id: ID.trade, position: 0, label: 'Service and gear', sheets: ['E-101'], specs: null, added_in_set_id: null },
@@ -97,6 +119,50 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
       },
     ],
     setSends: [{ set_id: ID.set1, company_id: COMPANY, touched: true }],
+    sows: [{ id: ID.sow, package_id: ID.jobTrade, invite_id: ID.jobAsk, company_id: COMPANY, status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 0, sent_on: d(-35), signed_on: d(-33) }],
+    backCharges: [
+      {
+        id: ID.charge,
+        project_id: ID.job,
+        package_id: ID.jobTrade,
+        company_id: COMPANY,
+        sow_id: ID.sow,
+        amount: 850,
+        reason: 'Cleanup after rough-in: wire scraps and boxes left in exam rooms 2 and 3.',
+        photo_url: 'https://drive.google.com/file/d/sample-photo',
+        sent_on: d(-2),
+        answer_by: d(3),
+        status: 'open',
+        answered_on: null,
+        answer_note: null,
+        settled_on: null,
+        settled_note: null,
+        taken_draw_id: null,
+        taken_on: null,
+        created_at: `${d(-2)}T15:00:00Z`,
+      },
+    ],
+    changeRequests: [
+      {
+        id: ID.request,
+        project_id: ID.job,
+        package_id: ID.jobTrade,
+        company_id: COMPANY,
+        sow_id: ID.sow,
+        asked_on: d(-10),
+        description: 'Two more circuits for the dental chairs the owner added in rooms 4 and 5.',
+        reason: 'owner',
+        amount: 3400,
+        days: 1,
+        file_url: null,
+        change_order_id: ID.changeOrder,
+        turned_down_on: null,
+        turned_down_note: null,
+        created_at: `${d(-10)}T15:00:00Z`,
+      },
+    ],
+    // Its price to the customer is here only to show the slice drops it: the company reads its part, $3,400.
+    changeOrders: [{ id: ID.changeOrder, number: 2, status: 'sent', sent_on: d(-6), answered_on: null, cost: 3400, price: 3910 }],
   }
 }
 

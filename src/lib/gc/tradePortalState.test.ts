@@ -3,9 +3,10 @@
  * builder and the mapper, then through the portal's kernels, the way the portal page will.
  */
 import { describe, expect, it } from 'vitest'
-import { tradePortalSlice, type TradePortalRows } from '../../../supabase/functions/_shared/gcTradePortalSlice'
+import { AWARDED_ELSEWHERE, tradePortalSlice, type TradePortalRows } from '../../../supabase/functions/_shared/gcTradePortalSlice'
 import { quotesWantedOn } from './planQuestions'
-import { inviteMessage, mailRecipients, portalAsks, portalPlanNews, portalPromiseLine, portalPromises, portalQuestions } from './portal'
+import { inviteMessage, mailRecipients, portalAsks, portalBackCharges, portalCanAskChange, portalChangeRequests, portalPlanNews, portalPromiseLine, portalPromises, portalQuestions } from './portal'
+import { portalHomeGroups } from './tradePortalPage'
 import { stageOf, tradePortalState } from './tradePortalState'
 
 const ME = 'co-me'
@@ -120,5 +121,69 @@ describe('through the portal’s kernels', () => {
 
   it('lists the company’s open promise', () => {
     expect(portalPromises(state, partnerId).map((r) => [r.p.kind, r.p.by, r.p.from])).toEqual([['insurance', '2026-10-10', 'trade']])
+  })
+})
+
+/**
+ * Its work (P4b-i): the same rows, with the trade awarded to this company and signed, a charge it disputed and the
+ * office kept, and a change it asked for that the customer has.
+ */
+function workRows(): TradePortalRows {
+  const r = rows()
+  return {
+    ...r,
+    projects: r.projects.map((p) => ({ ...p, gc: { ...p.gc, stage: 'building' } })),
+    packages: r.packages.map((p) => ({ ...p, awarded_invite_id: 'inv-1' })),
+    sows: [{ id: 'sow-1', package_id: 'pkg-elec', invite_id: 'inv-1', company_id: ME, status: 'signed', price: 64200, retainage_pct: 10, based_on_rev: 0, sent_on: '2026-10-05', signed_on: '2026-10-06' }],
+    backCharges: [
+      { id: 'bc-1', project_id: 'proj-1', package_id: 'pkg-elec', company_id: ME, sow_id: 'sow-1', amount: 1250, reason: 'Cleanup.', photo_url: 'https://drive.google.com/file/d/bc', sent_on: '2026-10-01', answer_by: '2026-10-06', status: 'kept', answered_on: '2026-10-02', answer_note: 'We swept.', settled_on: '2026-10-07', settled_note: 'Our photos show it.', taken_draw_id: null, taken_on: null },
+    ],
+    changeRequests: [
+      { id: 'cr-1', project_id: 'proj-1', package_id: 'pkg-elec', company_id: ME, sow_id: 'sow-1', asked_on: '2026-10-03', description: 'Hidden rot.', reason: 'field', amount: 14820, days: 2, file_url: null, change_order_id: 'co-1', turned_down_on: null, turned_down_note: null },
+    ],
+    changeOrders: [{ id: 'co-1', project_id: 'proj-1', number: 3, status: 'sent', sent_on: '2026-10-05', answered_on: null, cost: 14820, price: 16302, description: 'Rot repair, unit 3' }],
+  }
+}
+
+describe('its work, on the prototype’s shapes (P4b-i)', () => {
+  const { state, partnerId } = tradePortalState(tradePortalSlice(workRows(), ME), TODAY)
+  const project = state.projects[0]!
+  const pkg = project.packages[0]!
+
+  it('reads its own award and signed statement of work, so the job is its', () => {
+    expect([pkg.awardedInviteId, pkg.sow?.status, pkg.sow?.price, pkg.sow?.retainagePct, pkg.sow?.signedOn]).toEqual(['inv-1', 'signed', 64200, 10, '2026-10-06'])
+    expect(portalAsks(state, partnerId).map((a) => a.kind)).toEqual(['job'])
+    expect(portalCanAskChange(project, pkg, partnerId)).toBe(true)
+  })
+
+  it('reads a charge with its answer and the office’s keep', () => {
+    expect(pkg.sow?.backCharges).toEqual([
+      { id: 'bc-1', amount: 1250, reason: 'Cleanup.', photo: 'https://drive.google.com/file/d/bc', sentOn: '2026-10-01', answerBy: '2026-10-06', status: 'kept', answer: { on: '2026-10-02', note: 'We swept.' }, settled: { on: '2026-10-07', note: 'Our photos show it.' } },
+    ])
+    expect(portalBackCharges(project, pkg, partnerId, TODAY).map((r) => [r.state, r.canAnswer])).toEqual([['kept', false]])
+  })
+
+  it('reads a change it asked for and only its part of the change order, never the customer’s price or our words', () => {
+    expect(project.changeOrders).toEqual([
+      { id: 'co-1', number: 3, description: '', reason: 'field', schedule: '', packageId: 'pkg-elec', cost: 14820, price: 0, status: 'sent', sentOn: '2026-10-05', answeredOn: null, pctDone: 0 },
+    ])
+    const [row] = portalChangeRequests(project, pkg, partnerId)
+    expect(row?.state).toBe('withCustomer')
+    expect(row?.words).toContain('$14,820')
+  })
+
+  it('reads a trade awarded elsewhere as lost, under the home’s past asks', () => {
+    const lost = workRows()
+    const { state: lostState } = tradePortalState(tradePortalSlice({ ...lost, packages: lost.packages.map((p) => ({ ...p, awarded_invite_id: 'inv-other' })), sows: [], backCharges: [], changeRequests: [], changeOrders: [] }, ME), TODAY)
+    expect(lostState.projects[0]?.packages[0]?.awardedInviteId).toBe(AWARDED_ELSEWHERE)
+    const asks = portalAsks(lostState, ME)
+    expect(asks.map((a) => a.kind)).toEqual(['lost'])
+    expect(portalHomeGroups(asks).past).toHaveLength(1)
+  })
+
+  it('reads a slice from a function deployed before P4b-i as no work at all', () => {
+    const { sows: _s, backCharges: _b, changeRequests: _r, changeOrders: _o, ...older } = tradePortalSlice(rows(), ME)
+    const { state: olderState } = tradePortalState(older, TODAY)
+    expect([olderState.projects[0]?.packages[0]?.sow, olderState.projects[0]?.changeRequests, olderState.projects[0]?.changeOrders]).toEqual([null, [], []])
   })
 })
