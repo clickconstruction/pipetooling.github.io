@@ -88,6 +88,23 @@ describe('SeeWhatTheGcSees (v2.4189, #62 Layer 2)', () => {
     expect(screen.getByTestId('see-gc-why').textContent).toContain('Until you share Rev 4, the link shows Rev 3, answered by email.')
   })
 
+  it('2026-10-09 · BP398 as it is: Rev 3 has no package; with the GC’s email kept on it, it is on their list, and without it the line says what it waits for', () => {
+    const answered = new Map([['r3', [{ decision_source: 'entered', review_decision: 'approved', reviewed_at: '2026-10-02T17:00:00Z' }]]])
+    const revs = (rev3Files: unknown[]) => [
+      { id: 'r4', rev_number: 4, shared_at: null, package_path: null },
+      { id: 'r3', rev_number: 3, shared_at: null, package_path: null, reviewer_files: rev3Files },
+      { id: 'r2', rev_number: 2, shared_at: '2026-09-16T15:00:00Z', package_path: 'p2.pdf' },
+    ]
+    const withFile = revisionStandings(revs([{ path: 'b398/r3/reviewer/0-Re_Submittal.eml', name: 'Re: Submittal.eml', kind: 'email' }]), answered)
+    const { unmount } = render(<SeeWhatTheGcSees {...props} revNumber={4} revisions={withFile} link={{ linkShowsRev: 3, linkShowsByEmail: true, roomClosed: false }} />)
+    expect(within(screen.getByTestId('room-revisions')).getAllByRole('button').map((c) => c.textContent)).toEqual(['Rev 4 · current', 'Rev 3 · answered by email · Oct 2', expect.stringMatching(/^Rev 2 · /)])
+    expect(screen.getByTestId('see-gc-list-line').textContent).toBe('Older revisions stay under it as the record.')
+    unmount()
+    render(<SeeWhatTheGcSees {...props} revNumber={4} revisions={revisionStandings(revs([]), answered)} link={{ linkShowsRev: 2, roomClosed: false }} />)
+    expect(within(screen.getByTestId('room-revisions')).getAllByRole('button').map((c) => c.textContent)).toEqual(['Rev 4 · current', expect.stringMatching(/^Rev 2 · /)])
+    expect(screen.getByTestId('see-gc-list-line').textContent).toBe('Older revisions stay under it as the record. Rev 3 goes on their page once it has a package or a reviewer’s file.')
+  })
+
   it('v2.4608 · the door: their real page as it is now, flagged; only when the link shows something', () => {
     const token = 'c'.repeat(48)
     const { unmount } = render(<SeeWhatTheGcSees {...props} revNumber={4} roomToken={token} link={{ linkShowsRev: 2, roomClosed: false }} />)

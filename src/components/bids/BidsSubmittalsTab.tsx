@@ -77,7 +77,7 @@ import { SubmittalResubmitChooser } from './SubmittalResubmitChooser'
 import { describeRoomLine, roomLink, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, parseRoomMessage, threadOrder } from '../../lib/submittals/submittalRoom'
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
 import type { RoomMessage } from '../../../supabase/functions/_shared/submittalRoomPayload'
-import { isReviewerAnswer, loadRevisionStandings, revisionStandings, type RevisionStanding } from '../../../supabase/functions/_shared/submittalRecord'
+import { hasReviewerFile, isReviewerAnswer, loadRevisionStandings, revisionStandings, type RevisionStanding } from '../../../supabase/functions/_shared/submittalRecord'
 import { APP_CALENDAR_TZ as ROOM_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { boughtWords, gcRows, isOrderOnlyRow, orderOnlyInsert, orderOnlyRows } from '../../lib/submittals/orderOnly'
 import { revisionWasRead, rowsThatStand } from '../../lib/submittals/standingRows'
@@ -314,11 +314,11 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
   const [nextDraftRows, setNextDraftRows] = useState<ResubmitRows>('need')
 
   const bidId = selectedBid?.id ?? null
-  // 2026-10-06 · the GC's record: the revisions the room serves (shared, or answered by email with a package built),
-  // read by the three room functions' own rule (`_shared/submittalRecord.ts`). Read again when a share, a package
-  // or a typed answer changes; until it lands, the shared revisions stand in.
+  // 2026-10-06 · the GC's record: the revisions the room serves (shared, or answered by email with a package built
+  // or, since 2026-10-09, a reviewer's file kept), read by the three room functions' own rule (`_shared/submittalRecord.ts`).
+  // Read again when a share, a package, a reviewer's file or a typed answer changes; until it lands, the shared revisions stand in.
   const [standings, setStandings] = useState<{ bidId: string; list: RevisionStanding[] } | null>(null)
-  const revisionsKey = revisions.map((r) => `${r.id}:${r.shared_at ?? ''}:${r.package_path ?? ''}`).join('|')
+  const revisionsKey = revisions.map((r) => `${r.id}:${r.shared_at ?? ''}:${r.package_path ?? ''}:${hasReviewerFile(r.reviewer_files) ? 'f' : ''}`).join('|')
   const answersKey = [...items, ...parts].map((x) => `${x.id}:${x.review_decision ?? ''}:${x.decision_source ?? ''}`).join('|')
   useEffect(() => {
     if (!bidId) return
@@ -1228,7 +1228,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     if (!bidId || !selectedRev) return
     const f = reviewerFiles[index]
     if (!f) return
-    const ok = await confirm({ title: 'Remove this file', message: `${f.name} leaves the revision. The calls already entered from it stay on the rows.`, confirmLabel: 'Remove', danger: true })
+    // 2026-10-09 · the last file on a revision that reached the GC's page by it, with no package: it comes off their page.
+    const leavesTheirPage = reviewerFiles.length === 1 && !selectedRev.package_path && recordList.find((r) => r.id === selectedRev.id)?.standing === 'answered_by_email'
+    const ok = await confirm({ title: 'Remove this file', message: `${f.name} leaves the revision. The calls already entered from it stay on the rows.${leavesTheirPage ? ` Rev ${selectedRev.rev_number} then leaves the GC’s page, because it has no package.` : ''}`, confirmLabel: 'Remove', danger: true })
     if (!ok) return
     setBusy(true)
     try {
@@ -2575,7 +2577,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     isNewest={isNewest}
                     nextRev={selectedRev.rev_number + 1}
                     sharedLine={shareLine}
-                    recordLine={emailedRecordLine({ rev: selectedRev.rev_number, shared: !!selectedRev.shared_at, hasPackage: !!selectedRev.package_path, hasAnswer: items.some(isReviewerAnswer) || parts.some(isReviewerAnswer) })}
+                    recordLine={emailedRecordLine({ rev: selectedRev.rev_number, shared: !!selectedRev.shared_at, hasPackage: !!selectedRev.package_path, hasReviewerFile: reviewerFiles.length > 0, hasAnswer: items.some(isReviewerAnswer) || parts.some(isReviewerAnswer) })}
                     onEdit={setEditing}
                     onAnswer={setAnswering}
                     decisions={decisions}

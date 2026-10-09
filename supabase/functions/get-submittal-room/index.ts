@@ -1,7 +1,8 @@
 /**
  * The review room, public fetch (Submittals stage 4a — to-dos/submittals/README.md,
  * decisions 8–12). GET ?t=<token> serves the bid's submittal revisions on the GC's record (shared,
- * or answered by email with a package: `_shared/submittalRecord.ts`, 2026-10-06) in the
+ * or answered by email with a package or a reviewer's file: `_shared/submittalRecord.ts`,
+ * 2026-10-06 and 2026-10-09) in the
  * customer's words: the token is either the room's (the link the GC forwards) or a
  * person's (minted when the office named them or when they identified themselves).
  * No JWT — the token is the credential; service role behind it. Nothing about money,

@@ -5,11 +5,11 @@ import { revisionStandings, type TypedAnswerSource } from '../../../supabase/fun
 
 const typedOn = (at: string): TypedAnswerSource => ({ decision_source: 'entered', review_decision: 'approved', reviewed_at: at })
 /** BP398's shape (2026-10-06): Rev 2 shared Sep 16, Rev 3 answered by email Oct 2 and never shared, Rev 4 a draft, Rev 1 replaced unseen. */
-const bp398 = (o: { rev4Shared?: boolean; rev3Package?: boolean } = {}) =>
+const bp398 = (o: { rev4Shared?: boolean; rev3Package?: boolean; rev3File?: boolean } = {}) =>
   revisionStandings(
     [
       { id: 'r4', rev_number: 4, shared_at: o.rev4Shared ? '2026-10-06T15:00:00Z' : null, package_path: 'b/r4/package.pdf' },
-      { id: 'r3', rev_number: 3, shared_at: null, package_path: o.rev3Package === false ? null : 'b/r3/package.pdf' },
+      { id: 'r3', rev_number: 3, shared_at: null, package_path: o.rev3Package === false ? null : 'b/r3/package.pdf', reviewer_files: o.rev3File ? [{ path: 'b/r3/reviewer/0-GC_email.eml', name: 'GC email.eml', kind: 'email' }] : [] },
       { id: 'r2', rev_number: 2, shared_at: '2026-09-16T03:03:49.265Z', package_path: 'b/r2/package.pdf' },
       { id: 'r1', rev_number: 1, shared_at: null, package_path: null },
     ],
@@ -118,7 +118,14 @@ describe('the list the GC will see after the share (v2.4606, #62 PR 1b)', () => 
     const list = linkRevisionsAfterShare(bp398({ rev3Package: false }), 4)
     expect(list.chips.map((c) => c.rev)).toEqual([4, 2])
     expect(list.waitsForPackage).toEqual([3])
-    expect(linkListLine(list)).toBe('Older revisions stay under it as the record. Rev 1 is not on their page, because it was never shared. Rev 3 goes on their page once it has a package.')
+    expect(linkListLine(list)).toBe('Older revisions stay under it as the record. Rev 1 is not on their page, because it was never shared. Rev 3 goes on their page once it has a package or a reviewer’s file.')
+  })
+
+  it('2026-10-09 · Rev 3 with no package but the GC’s email dropped on it is on the list, answered by email', () => {
+    const list = linkRevisionsAfterShare(bp398({ rev3Package: false, rev3File: true }), 4)
+    expect(list.chips.map((c) => [c.rev, c.answeredByEmailAt ?? null])).toEqual([[4, null], [3, '2026-10-02T17:00:00Z'], [2, null]])
+    expect(list.waitsForPackage).toEqual([])
+    expect(linkViewOf(bp398({ rev3Package: false, rev3File: true }), false)).toEqual({ linkShowsRev: 3, linkShowsByEmail: true, roomClosed: false })
   })
 
   it('a first share lists one revision and says nothing; a shared newest lists the room as it is', () => {
@@ -135,9 +142,14 @@ describe('the list the GC will see after the share (v2.4606, #62 PR 1b)', () => 
 describe('the heads-up in Their call (2026-10-06)', () => {
   it('on a revision nobody shared, says what typing their answer does, before and after, with and without a package', () => {
     expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: true, hasAnswer: false })).toBe('Typing their answer puts Rev 3 on the GC’s page as the record.')
-    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: false, hasAnswer: false })).toBe('Typing their answer will put Rev 3 on the GC’s page once it has a package.')
+    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: false, hasAnswer: false })).toBe('Typing their answer will put Rev 3 on the GC’s page once it has a package or a reviewer’s file.')
     expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: true, hasAnswer: true })).toBe('Rev 3 is on the GC’s page as the record, answered by email.')
-    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: false, hasAnswer: true })).toBe('Rev 3 goes on the GC’s page as the record once it has a package.')
+    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: false, hasAnswer: true })).toBe('Rev 3 goes on the GC’s page as the record once it has a package or a reviewer’s file.')
+  })
+
+  it('2026-10-09 · a reviewer’s file kept on the revision counts as the package does', () => {
+    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: false, hasReviewerFile: true, hasAnswer: false })).toBe('Typing their answer puts Rev 3 on the GC’s page as the record.')
+    expect(emailedRecordLine({ rev: 3, shared: false, hasPackage: false, hasReviewerFile: true, hasAnswer: true })).toBe('Rev 3 is on the GC’s page as the record, answered by email.')
   })
 
   it('says nothing on a shared revision', () => {

@@ -1,9 +1,10 @@
 /**
  * The GC's record (2026-10-06, the owner's call on BP398): which of a bid's submittal revisions
  * the review room serves. A revision is on the record when the office shared it, or when it holds
- * an answer the office typed in from the reviewer's own words AND has a built package: it went out
- * by email as that package, and the answer came back the same way. The newest revision on the
- * record is the current one.
+ * an answer the office typed in from the reviewer's own words AND has a built package or a
+ * reviewer's file: it went out by email as that package, or the reviewer's redline or email kept on
+ * it in step 6 (`bid_submittals.reviewer_files`) shows it went out and came back. The newest
+ * revision on the record is the current one.
  *
  * One rule, here. `get-submittal-room` lists these revisions, `open-submittal-pdf` serves their
  * packages, `submit-submittal-review` takes answers on the current one, and the office's lines
@@ -13,8 +14,11 @@
  * and never shared, so the GC's page would have dropped it the day Rev 4 was shared, and its
  * procurement card would have lost Kitchen sinks and Toilets.
  *
- * The package is the guard. A typed answer on a draft that never had a package cannot publish it:
- * that revision waits (`waits_for_package`) and the office is told to build its package.
+ * The package or the file is the guard. A typed answer on a draft that never had either cannot
+ * publish it: that revision waits (`waits_for_package`) and the office is told to build its package
+ * or drop the reviewer's file. The file came second (2026-10-09, the owner's pick (b)): BP398's Rev 3
+ * was answered by email and superseded before it had a package, and Build package turns on only for
+ * the newest draft, so its one way onto the record is the GC's email dropped on it.
  *
  * The answers that count are the reviewer's, on a row or a part the GC sees: typed in by the office
  * from their email or marked-up PDF ('entered'), read from their file by the robot and confirmed by a
@@ -29,7 +33,7 @@
  */
 import type { RoomRevision, SubmittalRoomPayload } from './submittalRoomPayload.ts'
 
-/** Where a revision stands against the GC's page. */
+/** Where a revision stands against the GC's page. `waits_for_package`: answered, with no package and no reviewer's file yet. */
 export type RecordStanding = 'shared' | 'answered_by_email' | 'waits_for_package' | 'never'
 
 /** A row's or a part's call, as far as the record reads it. */
@@ -51,6 +55,8 @@ export type RevisionStanding = {
   package_path: string | null
   /** A reviewer's answer sits on a row or a part the GC sees (`isReviewerAnswer`). */
   hasAnswer: boolean
+  /** The office kept a reviewer's redline or email on it (`hasReviewerFile`). */
+  hasReviewerFile: boolean
   /** The day the GC's chip reads: the newest typed answer's own day ('entered' or 'robot', which the office may set), or the newest answer's when none was typed. */
   typedAnswerAt: string | null
   standing: RecordStanding
@@ -76,14 +82,22 @@ export function isTypedAnswer(a: TypedAnswerSource): boolean {
   return (a.decision_source === 'entered' || a.decision_source === 'robot') && isReviewerAnswer(a)
 }
 
-/** The rule. Shared, or answered by email with its package built; an answer with no package waits. */
-export function recordStanding(r: { shared_at: string | null; package_path: string | null; hasAnswer: boolean }): RecordStanding {
-  if (r.shared_at) return 'shared'
-  if (!r.hasAnswer) return 'never'
-  return r.package_path ? 'answered_by_email' : 'waits_for_package'
+/**
+ * A file on `bid_submittals.reviewer_files`, read as the tab reads them (`parseReviewerFiles`, which
+ * skips an entry with no path). Dependency-free, so the functions read it without the app's kernel.
+ */
+export function hasReviewerFile(json: unknown): boolean {
+  return Array.isArray(json) && json.some((f) => !!f && typeof f === 'object' && typeof (f as { path?: unknown }).path === 'string' && (f as { path: string }).path !== '')
 }
 
-/** On the GC's page: shared, or answered by email with a package. */
+/** The rule. Shared, or answered by email with its package built or a reviewer's file kept; an answer with neither waits. */
+export function recordStanding(r: { shared_at: string | null; package_path: string | null; hasAnswer: boolean; hasReviewerFile?: boolean }): RecordStanding {
+  if (r.shared_at) return 'shared'
+  if (!r.hasAnswer) return 'never'
+  return r.package_path || r.hasReviewerFile ? 'answered_by_email' : 'waits_for_package'
+}
+
+/** On the GC's page: shared, or answered by email with a package or a reviewer's file. */
 export function isOnRecord(standing: RecordStanding): boolean {
   return standing === 'shared' || standing === 'answered_by_email'
 }
@@ -97,9 +111,9 @@ function newestDay(days: ReadonlyArray<string | null | undefined>): string | nul
   return newest
 }
 
-/** Every revision with its standing, newest first, from the revisions and the calls on their rows and parts. */
+/** Every revision with its standing, newest first, from the revisions (with their reviewer files) and the calls on their rows and parts. */
 export function revisionStandings(
-  revisions: ReadonlyArray<{ id: string; rev_number: number; shared_at: string | null; package_path: string | null }>,
+  revisions: ReadonlyArray<{ id: string; rev_number: number; shared_at: string | null; package_path: string | null; reviewer_files?: unknown }>,
   answersByRevision: ReadonlyMap<string, ReadonlyArray<TypedAnswerSource>>,
 ): RevisionStanding[] {
   return [...revisions]
@@ -107,14 +121,16 @@ export function revisionStandings(
     .map((r) => {
       const answers = (answersByRevision.get(r.id) ?? []).filter(isReviewerAnswer)
       const hasAnswer = answers.length > 0
+      const fileKept = hasReviewerFile(r.reviewer_files)
       return {
         id: r.id,
         rev_number: r.rev_number,
         shared_at: r.shared_at,
         package_path: r.package_path,
         hasAnswer,
+        hasReviewerFile: fileKept,
         typedAnswerAt: newestDay(answers.filter(isTypedAnswer).map((a) => a.reviewed_at)) ?? newestDay(answers.map((a) => a.reviewed_at)),
-        standing: recordStanding({ shared_at: r.shared_at, package_path: r.package_path, hasAnswer }),
+        standing: recordStanding({ shared_at: r.shared_at, package_path: r.package_path, hasAnswer, hasReviewerFile: fileKept }),
       }
     })
 }
@@ -146,8 +162,8 @@ export type RecordDb = { from: (table: string) => any }
  * cannot be read counts as no parts.
  */
 export async function loadRevisionStandings(db: RecordDb, bidId: string): Promise<RevisionStanding[]> {
-  const { data: revData } = await db.from('bid_submittals').select('id, rev_number, shared_at, package_path').eq('bid_id', bidId).order('rev_number', { ascending: false })
-  const revisions = (revData ?? []) as Array<{ id: string; rev_number: number; shared_at: string | null; package_path: string | null }>
+  const { data: revData } = await db.from('bid_submittals').select('id, rev_number, shared_at, package_path, reviewer_files').eq('bid_id', bidId).order('rev_number', { ascending: false })
+  const revisions = (revData ?? []) as Array<{ id: string; rev_number: number; shared_at: string | null; package_path: string | null; reviewer_files: unknown }>
   const unshared = revisions.filter((r) => !r.shared_at).map((r) => r.id)
   const answers = new Map<string, TypedAnswerSource[]>()
   if (unshared.length > 0) {
