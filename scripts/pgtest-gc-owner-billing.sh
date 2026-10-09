@@ -1,18 +1,20 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/gc_owner_billing against a throwaway copy of the WHOLE schema (GC mode, Owner
-# Billing's O4a-1: our bill to the customer; O5b: our reminder to pay it; O6b-2: our bill for the interest).
+# Billing's O4a-1: our bill to the customer; O5b: our reminder to pay it; O6b-2: our bill for the interest; O7a: the
+# customer's acceptance of the work).
 #
 #   npm run test:pg:gc-owner-billing
 #
 # The same bed as scripts/pgtest-gc-schedule.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order (about a minute). O4a-1's, O5b's and O6b-2's migrations are then applied a
-# second time in their order, which must change nothing (one service type, one trigger, one function each, and
+# supabase/migrations applied in order (about a minute). O4a-1's, O5b's, O6b-2's and O7a's migrations are then
+# applied a second time in their order, which must change nothing (one service type, one trigger, one function each, and
 # O6b-2's restated send and certificate last). 20_scenario
 # sends pay applications, records certificates and reminds the customer to pay through RLS as a dev, the
 # controller, an estimator and a dev in training mode, inside one transaction that rolls back: the billing
 # job the first send opens, the bill each certificate makes, the links that stay once written, a reminder
 # with its chase touch, and every refusal in its words. 30_interest bills the interest: the revenue at the contract
-# plus the interest billed, kept by the restated send and certificate. Each raises on its first failed assertion
+# plus the interest billed, kept by the restated send and certificate. 40_closeout records the customer's acceptance
+# and sends the final on it. Each raises on its first failed assertion
 # and ends with its own "PASSED". PGTEST_KEEP=1 leaves the
 # container up. Needs docker; .github/workflows/sql-beds.yml runs it on a PR that touches Owner
 # Billing's SQL. Never touches prod.
@@ -25,6 +27,7 @@ IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 SEND="$(ls supabase/migrations/*_gc_owner_pay_app_send.sql)"
 REMIND="$(ls supabase/migrations/*_gc_remind_customer_to_pay.sql)"
 INTEREST="$(ls supabase/migrations/*_gc_send_owner_interest_bill.sql)"
+ACCEPT="$(ls supabase/migrations/*_gc_record_acceptance.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -45,7 +48,7 @@ for f in supabase/migrations/*.sql; do
 done
 # A second run must change nothing: the service type's insert skips the row it made, the columns and
 # the index are there, and every function and the trigger are replaced as they were.
-for f in "$SEND" "$REMIND" "$INTEREST"; do
+for f in "$SEND" "$REMIND" "$INTEREST" "$ACCEPT"; do
   psql_as postgres -f - < "$f" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
 done
 out="$(psql_as postgres -f - < supabase/tests/gc_owner_billing/20_scenario.sql 2>&1 || true)"
@@ -53,5 +56,8 @@ if ! grep -q "gc_owner_billing PASSED" <<<"$out"; then echo "$out" | tail -40; e
 grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/gc_owner_billing/30_interest.sql 2>&1 || true)"
 if ! grep -q "gc_owner_billing_interest PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/gc_owner_billing/40_closeout.sql 2>&1 || true)"
+if ! grep -q "gc_owner_billing_closeout PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "gc-owner-billing bed ok"

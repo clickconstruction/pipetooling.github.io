@@ -1118,13 +1118,13 @@ The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, a
 ### gc-customer-email
 
 **Purpose**: GC mode's sender for our emails to a GC project's customer and its architect (v2.4998, Owner Billing O4b of `to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md` on branch `spike/gc-mode`). Each press that sends one has its own tick, off to start:
-- Bill the customer's **Send pay application**, with **Email it to the customer and the architect now**, emails the pay application to the customer and asks the architect to certify it, both with the G702 and G703 as a PDF (O4b-1).
+- Bill the customer's **Send pay application**, with **Email it to the customer and the architect now**, emails the pay application to the customer and asks the architect to certify it, both with the G702 and G703 as a PDF (O4b-1). Closeout's **Send the final pay application** (O7a, v2.5019) emails our final the same way, its form drawn from the final's own record, with its tick off to start.
 - **Record the certificate**, with **Email the customer the bill now**, emails the customer the bill the architect certified (O4b-2, v2.4999). It has no Pay: the bill is not on Stripe, so the email asks for their day, with their portal link when they have one.
 - Change orders' **Send for signature**, with **Email it to the customer now**, emails the change order for them to sign by reply (O4b-2). There is no change order form yet: the words carry the change, the price and the days.
 - Bill the customer's **Remind them to pay** → **Send the reminder** files the reminder through `gc_remind_customer_to_pay` (O5b, v2.5000), then emails it in the words it was filed with, with their portal link when they have one. The reminder is the email, so it has no tick.
 - Bill the customer's **Bill the interest**, with **Email the customer the bill now**, files the interest bill through `gc_send_owner_interest_bill` (O6b-2, v2.5003), then emails it to the customer, with their portal link when they have one.
 
-The window writes the words (`src/lib/gc/customerEmail.ts` and the reminder's `payReminderMail` in `ownerBillingRemind.ts`, shared with What customers see's samples); the function frames them, sends and files the sent copy. The work accepted comes with O7.
+The window writes the words (`src/lib/gc/customerEmail.ts` and the reminder's `payReminderMail` in `ownerBillingRemind.ts`, shared with What customers see's samples); the function frames them, sends and files the sent copy. The customer's acceptance is the office's to record (O7a); their portal's press comes with O7c.
 
 **Endpoint**: `POST /functions/v1/gc-customer-email` with `{ projectId, kind, sourceId, subject, lines, pdf? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { to, email, resendEmailId }` or `{ error: key, detail? }`.
 

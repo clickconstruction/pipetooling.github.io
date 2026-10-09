@@ -644,6 +644,17 @@ export async function sendOwnerInterestBill(projectId: string, amount: number): 
   return taken(result as { data: string | null; error: SupabaseResultError | null }, 'bill the interest')
 }
 
+/**
+ * The customer accepted the work (O7a), recorded by our office: the day, who walked it, and a note. Refused until
+ * every line is billed, and once an acceptance is on file. Through the untyped client until the types regenerate
+ * after 20261009230000's push.
+ */
+export async function recordAcceptance(projectId: string, on: string, byName: string, note: string): Promise<void> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db.rpc('gc_record_acceptance', { p_project_id: projectId, p_on: on, p_by_name: byName, p_how: 'office', p_note: note })
+  taken(result as { data: null; error: SupabaseResultError | null }, 'record the acceptance')
+}
+
 /** The contract's late fee a day past substantial completion, or null for none (O6b-3). The money team's to change. */
 export async function setOwnerLateFinish(projectId: string, perDay: number | null): Promise<void> {
   taken(

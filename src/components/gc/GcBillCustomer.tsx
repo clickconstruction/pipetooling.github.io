@@ -3,6 +3,7 @@ import { Btn, Chip, Stat, input } from './gcUi'
 import { GcBillMoneyIn, type MoneyInWrites } from './GcBillMoneyIn'
 import { GcBillRemind, type RemindWrites } from './GcBillRemind'
 import { GcBillInterest, type InterestWrites } from './GcBillInterest'
+import { GcBillCloseout, type CloseoutWrites } from './GcBillCloseout'
 import {
   appCertified,
   ownerAccount,
@@ -27,10 +28,11 @@ import { lateFinish } from '../../lib/gc/lateFinish'
  * kernels, its form as Excel or PDF, Send, the architect's certificate, which makes the bill the customer pays
  * on the Pipeline's own billing job, and where we stand with them. The database's functions check every step
  * (`gc_send_owner_pay_app`, `gc_record_certificate`); the window only carries the press. Until the app emails it
- * (O4b), the office sends the form from its own email. Money in on each certified bill (O5c) is `GcBillMoneyIn`.
+ * (O4b), the office sends the form from its own email. Money in on each certified bill (O5c) is `GcBillMoneyIn`;
+ * Closeout, once every line is billed (O7a), is `GcBillCloseout`.
  */
 
-export interface BillCustomerWrites extends MoneyInWrites, RemindWrites, InterestWrites {
+export interface BillCustomerWrites extends MoneyInWrites, RemindWrites, InterestWrites, CloseoutWrites {
   /** Send this month's pay application; with `email`, email it to the customer and the architect with its form (O4b). */
   onSend: (email: boolean) => void
   /** Record the architect's certificate; with `email`, email the customer the certified bill (O4b-2). */
@@ -68,7 +70,7 @@ interface Props {
   interestEmailed?: Record<number, { to: string; on: string }[]>
   /** The job's schedule is laid on (O6b-3: read when the window opens), so its finish can count. */
   scheduleRead?: boolean
-  /** What a write is working on: 'send', 'retainage', 'paydays', 'interest', 'bill-interest', 'latefee', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
+  /** What a write is working on: 'send', 'retainage', 'paydays', 'interest', 'bill-interest', 'latefee', 'accept', 'send-final', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
@@ -140,7 +142,10 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
             </div>
           ))}
 
-          {signed ? (
+          {signed && sent.some((a) => a.final) ? (
+            // The server refuses another once the final went (O7a): nothing more to bill.
+            <div style={{ fontSize: '0.875rem' }}>Our final pay application went, so there is nothing more to bill.</div>
+          ) : signed ? (
             <ThisMonth state={state} project={project} writes={writes} busy={busy} />
           ) : (
             <div style={{ fontSize: '0.875rem' }}>The contract with {project.owner || 'the customer'} is not marked signed yet. Mark it signed before the first bill.</div>
@@ -160,6 +165,8 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
               ))}
             </div>
           )}
+
+          <GcBillCloseout state={state} project={project} today={today} writes={writes} busy={busy} />
         </div>
       </div>
     </div>

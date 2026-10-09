@@ -300,7 +300,7 @@ A GC project we build bills its customer through one Pipeline job, its **billing
   - billing-only, `working`, named "<project> (GC)";
   - for the project's customer, with no `project_id` (a superintendent's project would list it);
   - the company owner as master, the next job number, and the billing-only "General contracting" service type, found by its flag.
-- **Revenue is kept at the contract**, the signed lines and every signed change order (`gc_owner_contract_now`), by every send and every certificate. `mark_invoice_paid` marks a job paid once payments reach its revenue, so a short revenue would close it early.
+- **Revenue is kept at the contract plus the interest billed** (`gc_owner_billing_revenue`, v2.5003: the signed lines, every signed change order and every interest bill), by every send, every certificate and every interest bill. `mark_invoice_paid` marks a job paid once payments reach its revenue, so a short revenue would close it early.
 - **A bill is made by the architect's certificate** (`gc_record_certificate`), for what they certified:
   - inserted already `billed`, `billed_at` at noon Central on the certificate day, the next `sequence_order`;
   - no bill-to columns: the payer comes from the job's customer when it sends (`billToParty.ts`);
@@ -308,6 +308,7 @@ A GC project we build bills its customer through one Pipeline job, its **billing
 - **Our record stays ours.** The pay application and its lines, with our fee and contingency as lines of their own, are on `gc_owner_pay_apps` and `gc_owner_pay_app_lines`, the money team's (dev, the leaders, the controller). The bill carries only the amount the customer owes.
 - **Our conditional waiver** with each sent pay application is a `job_lien_releases` row on the billing job, made in `LienReleaseModal` with its `ask` (the pay application's amount and bill day, since no bill exists until the certificate) and linked once by `gc_owner_pay_apps.conditional_waiver_id` (v2.4996).
 - **Money in** (v2.4997): Bill the customer reads each bill's payments from `jobs_ledger_payments` by `invoice_id`, whichever door recorded them (the Billed list, Stripe, Mercury), and the billing job's live promises through `list_job_payment_promises`. A promise covers every bill open when it was made (decision 8). Its presses are the Pipeline's own: `mark_invoice_paid` on the app's day, and `add_job_payment_promise`. Our unconditional waiver for a payment is `LienReleaseModal` on the bill. A payment on the billing job that names no bill is shown as it is, never laid on a pay application. Migration `20261009200000_gc_owner_pay_app_send.sql`.
+- **The final bill** (v2.5019): once every line is billed, the customer accepts the work (`gc_record_acceptance`: the office's, or their portal's as the service role). Our final pay application waits for it and for every trade's final. It holds nothing back and asks for the rest, and its certificate makes the job's last bill like any other. Our conditional waiver with it is on the final payment form (`conditional_final`), and the unconditional one when they pay it (`unconditional_final`). The acceptance stays once the final went (`gc_owner_acceptances_keep`). Migration `20261009230000_gc_record_acceptance.sql`.
 
 ## System of record (the 2026-08-24 policy)
 

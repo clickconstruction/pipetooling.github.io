@@ -9,7 +9,7 @@
  * The kernels read retainage and the days to pay off the customer, so each job laid here reads its own
  * copy of its customer with the job's numbers. Pure: the reads are `gcIo.ts`'s.
  */
-import { type OwnerLineKind, type OwnerPayApp, ownerPayAppToSend } from './ownerBilling'
+import { type OwnerLineKind, type OwnerPayApp, type OwnerPayAppForm, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppToSend } from './ownerBilling'
 import { type OwnerBillingRows, ownerBillingFromRows } from './ownerBillingRows'
 import type { GcCustomer, GcProject, GcState, OwnerRetainageStep } from './types'
 
@@ -176,4 +176,27 @@ export function payAppSendPayload(app: OwnerPayApp, today: string): PayAppSend {
       }
     }),
   }
+}
+
+/**
+ * Our final pay application as it goes today (O7a): the draft's lines, every one done, through the same Send, but
+ * `ownerFinalPayAppToSend`'s record: nothing held, its bill day today, and it asks for the rest. The server refuses it
+ * before the customer accepts the work.
+ */
+export function finalPayAppSendPayload(state: GcState, project: GcProject, today: string): PayAppSend {
+  const record = ownerFinalPayAppToSend(state, project, today)
+  return { ...payAppSendPayload(ownerPayApp(state, project), today), final: true, periodTo: record.periodTo, retainage: record.retainage, due: record.due }
+}
+
+/**
+ * Our final pay application's form as it goes today, for its email: drawn from its record laid on the project, the
+ * way a later download draws it, so it holds nothing back. The draft's form would still show what they hold. Null
+ * before any bill went.
+ */
+export function finalPayAppForm(state: GcState, project: GcProject, today: string): OwnerPayAppForm | null {
+  const billing = project.ownerBilling
+  if (!billing) return null
+  const record = ownerFinalPayAppToSend(state, project, today)
+  const sent: GcProject = { ...project, ownerBilling: { ...billing, payApps: [...(billing.payApps ?? []), record] } }
+  return ownerPayAppForm({ ...state, projects: state.projects.map((p) => (p.id === project.id ? sent : p)) }, sent, record.number)
 }
