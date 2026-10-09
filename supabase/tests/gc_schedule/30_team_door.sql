@@ -10,7 +10,7 @@ BEGIN;
 
 -- Who: a dev who draws, an estimator, an assistant in training mode, an estimator who is a digital
 -- twin, the job's project manager (a superintendent by role, outside the office), the job's
--- superintendent, and a subcontractor.
+-- superintendent, a subcontractor, and a controller (the money team, for a time extension).
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000006d1', 'dev@door.test'),
   ('00000000-0000-0000-0000-0000000006d2', 'estimator@door.test'),
@@ -18,7 +18,8 @@ INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000006d4', 'twin@door.test'),
   ('00000000-0000-0000-0000-0000000006d5', 'pm@door.test'),
   ('00000000-0000-0000-0000-0000000006d6', 'super@door.test'),
-  ('00000000-0000-0000-0000-0000000006d7', 'sub@door.test');
+  ('00000000-0000-0000-0000-0000000006d7', 'sub@door.test'),
+  ('00000000-0000-0000-0000-0000000006d8', 'controller@door.test');
 INSERT INTO public.users (id, email, name, role) VALUES
   ('00000000-0000-0000-0000-0000000006d1', 'dev@door.test', 'Door Dev', 'dev'),
   ('00000000-0000-0000-0000-0000000006d2', 'estimator@door.test', 'Door Estimator', 'estimator'),
@@ -26,7 +27,8 @@ INSERT INTO public.users (id, email, name, role) VALUES
   ('00000000-0000-0000-0000-0000000006d4', 'twin@door.test', 'Door Twin', 'estimator'),
   ('00000000-0000-0000-0000-0000000006d5', 'pm@door.test', 'Door Project Manager', 'superintendent'),
   ('00000000-0000-0000-0000-0000000006d6', 'super@door.test', 'Door Superintendent', 'superintendent'),
-  ('00000000-0000-0000-0000-0000000006d7', 'sub@door.test', 'Door Sub', 'subcontractor')
+  ('00000000-0000-0000-0000-0000000006d7', 'sub@door.test', 'Door Sub', 'subcontractor'),
+  ('00000000-0000-0000-0000-0000000006d8', 'controller@door.test', 'Door Controller', 'controller')
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
 UPDATE public.users SET read_only = true WHERE id = '00000000-0000-0000-0000-0000000006d3';
 UPDATE public.users SET is_digital_twin = true WHERE id = '00000000-0000-0000-0000-0000000006d4';
@@ -205,8 +207,30 @@ SELECT gtd.refused('the words of a change rewritten', $q$UPDATE public.gc_schedu
 SELECT gtd.refused('a move deleted', $q$DELETE FROM public.gc_schedule_moves WHERE project_id = '00000000-0000-0000-0000-0000000006a1'$q$,
   'permission denied');
 
--- 9 · anon has no grant.
+-- 10 · A time extension (Owner Billing's gc_draft_time_extension) reads the job's moves as its caller and
+-- writes a change order, which is the money team's. Since the door a controller reads the moves and drafts
+-- one. An estimator reads them too, and the change orders' policy still refuses its draft, with nothing
+-- written. A move from another job is refused for everyone.
+SELECT gtd.as_user('00000000-0000-0000-0000-0000000006d8');
+SELECT gtd.same('a controller drafts a time extension on P''s own move',
+  (public.gc_draft_time_extension('00000000-0000-0000-0000-0000000006a1', 'The switchgear shipped two days late.', 'field', 2,
+     ARRAY[(SELECT id FROM public.gc_schedule_moves WHERE project_id = '00000000-0000-0000-0000-0000000006a1' AND schedule_version = 2)]) IS NOT NULL)::text, 'true');
+SELECT gtd.same('the time extension asks for its days, from that move',
+  (SELECT schedule_words || ' ' || cardinality(days_on_chart) FROM public.gc_change_orders WHERE project_id = '00000000-0000-0000-0000-0000000006a1'), '+2 days 1');
+SELECT gtd.refused('a controller''s time extension on another job''s move', $q$SELECT public.gc_draft_time_extension('00000000-0000-0000-0000-0000000006a2', 'The crew started a day late.', 'field', 1,
+    ARRAY[(SELECT id FROM public.gc_schedule_moves WHERE project_id = '00000000-0000-0000-0000-0000000006a1' AND schedule_version = 4)])$q$,
+  'Each move must be one of this job''s schedule moves');
+SELECT gtd.as_user('00000000-0000-0000-0000-0000000006d2');
+SELECT gtd.refused('an estimator''s time extension, by the change orders'' policy', $q$SELECT public.gc_draft_time_extension('00000000-0000-0000-0000-0000000006a1', 'The crew started a day late.', 'field', 1,
+    ARRAY[(SELECT id FROM public.gc_schedule_moves WHERE project_id = '00000000-0000-0000-0000-0000000006a1' AND schedule_version = 4)])$q$,
+  'row-level security');
+SELECT gtd.refused('an estimator''s time extension on another job''s move', $q$SELECT public.gc_draft_time_extension('00000000-0000-0000-0000-0000000006a2', 'The crew started a day late.', 'field', 1,
+    ARRAY[(SELECT id FROM public.gc_schedule_moves WHERE project_id = '00000000-0000-0000-0000-0000000006a1' AND schedule_version = 4)])$q$,
+  'Each move must be one of this job''s schedule moves');
 RESET ROLE;
+SELECT gtd.same('only the controller''s change order was written', (SELECT count(*)::text FROM public.gc_change_orders WHERE project_id IN ('00000000-0000-0000-0000-0000000006a1', '00000000-0000-0000-0000-0000000006a2')), '1');
+
+-- 9 · anon has no grant.
 SET LOCAL ROLE anon;
 SELECT gtd.refused('anon reads the schedules', $q$SELECT count(*) FROM public.gc_schedules$q$, 'permission denied');
 

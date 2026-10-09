@@ -8,8 +8,8 @@ const note: ReleaseNote = {
   highlights: [
     'The office and estimators can now open the Schedule on a GC project’s card.',
     'Draw it, move a bar and say why, record an inspection, split a line, and set a new baseline.',
-    'Print or PDF now keeps a copy in Documents. The customer’s pages are kept under their name.',
-    'Superintendents get the schedule later, with the daily log.',
+    'Leaders and the controller now see a job’s real late finish in Money and in Bill the customer.',
+    'Print or PDF now keeps a copy in Documents. Superintendents get the schedule later, with the daily log.',
   ],
 }
 

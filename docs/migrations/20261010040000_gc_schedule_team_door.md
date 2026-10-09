@@ -28,7 +28,7 @@
 
 ## Checked before the push: the bed
 
-`scripts/pgtest-gc-schedule.sh` applies every migration to the Supabase Postgres image, re-applies this one (it must change nothing), runs `supabase/tests/gc_schedule/20_scenario.sql` and then `30_team_door.sql`. Locally on 2026-10-09: 107 checks, both PASSED.
+`scripts/pgtest-gc-schedule.sh` applies every migration to the Supabase Postgres image, re-applies this one (it must change nothing), runs `supabase/tests/gc_schedule/20_scenario.sql` and then `30_team_door.sql`. Locally on 2026-10-09: 113 checks, both PASSED.
 
 - `20_scenario.sql` step 14, *a move by someone the policies keep out*, was an estimator. After this door an estimator is on the team, so it is a subcontractor now, with the same refusal.
 - `30_team_door.sql`, its own fixture, two jobs P and Q, rolled back:
@@ -43,6 +43,7 @@
 | subcontractor | nothing on any of the 23 | — |
 | what-if copy | the estimator reads its own; someone else on the team reads none | made for someone else: refused by the policy |
 | append-only | — | the estimator's `UPDATE` of a change's words and `DELETE` of a move: *permission denied* |
+| time extension (`gc_draft_time_extension`) | the controller and the estimator read the job's moves | the controller drafts one on P's own move; the estimator is refused by `gc_change_orders`' policy (*row-level security*), nothing written; both are refused on another job's move: *Each move must be one of this job's schedule moves* |
 | anon | *permission denied* | — |
 
 Five mutants of the migration, each run through the whole bed, each caught:
@@ -102,4 +103,4 @@ Not yet. The PR is a draft and arms only after the schedule's first live walk on
 
 ## Status
 
-- 2026-10-09: cut by gc 1 (the Schedule lane) from main at c5c29cc84. The bed green locally (107 checks) with five mutants each caught. Held as a draft.
+- 2026-10-09: cut by gc 1 (the Schedule lane) from main at c5c29cc84. The bed green locally (113 checks) with five mutants each caught. Held as a draft.
