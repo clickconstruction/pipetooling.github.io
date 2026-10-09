@@ -29267,11 +29267,16 @@ export type Database = {
         }[]
       }
       gc_add_company: { Args: { company: Json }; Returns: string }
+      gc_add_submittal: { Args: { s: Json }; Returns: string }
       gc_answer_change_order: {
         Args: { p_how?: string; p_id: string; p_on: string; p_signed: boolean }
         Returns: undefined
       }
       gc_answer_question: { Args: { q: Json }; Returns: string }
+      gc_answer_submittal: {
+        Args: { p_answer: string; p_note?: string; p_submittal_id: string }
+        Returns: string
+      }
       gc_award: {
         Args: { p_estimator?: string; p_invite_id: string }
         Returns: string
@@ -29358,6 +29363,16 @@ export type Database = {
       }
       gc_owner_contract_now: { Args: { p_project_id: string }; Returns: number }
       gc_questions_close_on: { Args: { p_project: string }; Returns: string }
+      gc_record_acceptance: {
+        Args: {
+          p_by_name: string
+          p_how?: string
+          p_note?: string
+          p_on: string
+          p_project_id: string
+        }
+        Returns: undefined
+      }
       gc_record_certificate: {
         Args: {
           p_amount: number
@@ -29550,10 +29565,16 @@ export type Database = {
         Args: { p_app: Json; p_project_id: string }
         Returns: string
       }
+      gc_send_submittal_to_architect: {
+        Args: { p_email_send_log_id?: string; p_submittal_id: string }
+        Returns: string
+      }
       gc_sign_owner_contract: {
         Args: { p_project_id: string; p_signed_on: string; p_worth?: Json }
         Returns: undefined
       }
+      gc_submittal_came_in: { Args: { r: Json }; Returns: string }
+      gc_submittal_move: { Args: { p_submittal_id: string }; Returns: string }
       gc_trade_add_person: {
         Args: {
           p_company_id: string
@@ -29683,6 +29704,16 @@ export type Database = {
       }
       gc_trade_submit_quote: {
         Args: { p_company_id: string; p_invite_id: string; q: Json }
+        Returns: string
+      }
+      gc_trade_submittal_send: {
+        Args: {
+          p_company_id: string
+          p_drive_url?: string
+          p_file_name: string
+          p_note?: string
+          p_submittal_id: string
+        }
         Returns: string
       }
       gc_vet_company: {
