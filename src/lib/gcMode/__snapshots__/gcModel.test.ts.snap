@@ -31,8 +31,8 @@ exports[`GC mode golden walk > a payment reminder on Cibolo's late pay applicati
         "Pay application 3 for Fair Oaks Shops, Building D has $288,879 still open. It was due Wed Sep 30, the day you gave.",
         "Please pay it by Wed Oct 7.",
         "Call me with any question.",
-        "Pay it in your portal, by card or bank transfer.",
-        "Our unconditional lien waiver for it comes to you the day it is paid.",
+        "Reply with the day you will pay.",
+        "Our unconditional lien waiver for it follows once it is paid.",
       ],
       "note": "Call me with any question.",
       "on": "2026-10-02",
@@ -9181,11 +9181,11 @@ exports[`GC mode golden walk > step 164: Fair Oaks D: Cibolo pays 1.5% a month o
 }
 `;
 
-exports[`GC mode golden walk > step 165: Bill Cibolo the interest on pay application 3 1`] = `
+exports[`GC mode golden walk > step 165: Bill Cibolo the interest on pay applications 1 and 2 1`] = `
 {
   "changed": {
     "lastLog.id": 161,
-    "lastLog.text": "Sent Cibolo Creek Partners interest bill 1 on Fair Oaks Shops, Building D: $285 on late bills.",
+    "lastLog.text": "Sent Cibolo Creek Partners interest bill 1 on Fair Oaks Shops, Building D: $2,065 on late bills.",
   },
   "removed": [],
 }
@@ -9195,7 +9195,7 @@ exports[`GC mode golden walk > step 166: Cibolo pays the interest bill 1`] = `
 {
   "changed": {
     "lastLog.id": 162,
-    "lastLog.text": "Cibolo Creek Partners paid interest bill 1: $285.",
+    "lastLog.text": "Cibolo Creek Partners paid interest bill 1: $2,065.",
   },
   "removed": [],
 }
@@ -12194,6 +12194,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "gc": 52000,
         "mill": 39800,
       },
+      "ownerPayDays": 30,
       "packages": [
         {
           "awardedInviteId": "dry-hillcountry",
@@ -13767,7 +13768,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
         "billed": 956327.91,
         "interestBills": [
           {
-            "amount": 284.92,
+            "amount": 2064.65,
             "number": 1,
             "paidOn": "2026-10-02",
             "sentOn": "2026-10-02",
@@ -13883,6 +13884,7 @@ exports[`GC mode golden walk > the whole state at the end 1`] = `
       "ownerLateInterest": {
         "pctPerMonth": 1.5,
       },
+      "ownerPayDays": 30,
       "ownerRetainageStep": {
         "atPct": 50,
         "toPct": 5,
@@ -16066,6 +16068,7 @@ Click Construction",
         "shvac": 31000,
         "splumb": 26000,
       },
+      "ownerPayDays": 30,
       "packages": [
         {
           "awardedInviteId": "sdry-liveoak",

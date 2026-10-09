@@ -40,8 +40,9 @@ export function GcOwnerBillingInterest({ state, project, dispatch }: { state: Gc
       {open && (
         <div style={{ marginTop: '0.6rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem', display: 'grid', gap: '0.5rem' }}>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-            It is ours to offer. Use the rate the contract with {project.owner} names. A bill is late the day after their first promise or
-            the day we expected it.
+            It is ours to offer. Use the rate the contract with {project.owner} names. A bill is late the day after the contract’s days to pay
+            run out. They count from the architect’s certificate, or from the day the bill went. A promise never moves it.
+            {project.ownerPayDays == null ? ' None runs until the contract’s days to pay are typed.' : ` The contract gives ${project.ownerPayDays === 1 ? '1 day' : `${project.ownerPayDays} days`}.`}
           </div>
           <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.875rem' }}>
             <input style={{ ...input, width: '4.5rem' }} type="number" min={0.1} max={5} step={0.1} value={pct} onChange={(e) => setPct(e.target.value)} />% a

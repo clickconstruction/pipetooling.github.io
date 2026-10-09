@@ -938,21 +938,30 @@ describe('interest on late bills, ours to choose per job', () => {
     expect(ownerInterest(state, fairOaks(state))).toMatchObject({ pctPerMonth: null, bills: [], builtUp: 0, toBill: 0 })
   })
 
-  it('runs from the first day it was due: Cibolo’s promise of Sep 30, two days late on what was certified', () => {
+  it('runs from the day after the contract’s days to pay (decision 7): Cibolo paid pay applications 1 and 2 a week late', () => {
     const state = charged()
     const i = ownerInterest(state, fairOaks(state))
-    expect(i.bills.map((b) => [b.app.number, b.from, b.days])).toEqual([[3, '2026-09-30', 2]])
-    expect(cents(i.builtUp)).toBe(cents(288_878.51 * perDay(1.5) * 2))
-    // A later promise does not move the day it runs from.
+    // 30 days after each went: due Aug 24 and Sep 24, paid Sep 1 and Oct 1.
+    expect(i.bills.map((b) => [b.app.number, b.from, b.days])).toEqual([
+      [1, '2026-08-24', 8],
+      [2, '2026-09-24', 7],
+    ])
+    expect(cents(i.builtUp)).toBe(cents(183_931.78 * perDay(1.5) * 8 + 387_884.83 * perDay(1.5) * 7))
+    // Pay application 3 falls due Oct 25: the Sep 30 they gave and missed starts nothing, and a later promise moves nothing.
+    const third = (s: GcState) => fairOaks(s).ownerBilling?.payApps?.[2] as OwnerPayAppSent
+    expect(ownerInterestFrom(state, fairOaks(state), third(state))).toBe('2026-10-25')
     const later = gcReducer(state, { type: 'ownerPromisePay', projectId: 'fairoaksd', number: 3, by: '2026-10-09', note: 'Next Friday', who: 'office' })
-    expect(ownerInterestFrom(later, fairOaks(later), fairOaks(later).ownerBilling?.payApps?.[2] as OwnerPayAppSent)).toBe('2026-09-30')
+    expect(ownerInterestFrom(later, fairOaks(later), third(later))).toBe('2026-10-25')
+    // None runs until the contract’s days to pay are typed.
+    expect(ownerInterest(state, { ...fairOaks(state), ownerPayDays: null }).bills).toEqual([])
   })
 
   it('runs on what is still open: a part payment lowers it from that day', () => {
     let state = charged()
-    state = gcReducer({ ...state, today: '2026-10-02' }, { type: 'ownerPayPart', projectId: 'fairoaksd', number: 3, amount: 88_878.51 })
-    state = { ...state, today: '2026-10-12' }
-    const b = ownerInterest(state, fairOaks(state)).bills[0]
+    // Pay application 3 falls due Oct 25. Cibolo pays part of it two days later; ten days after that it is Nov 6.
+    state = gcReducer({ ...state, today: '2026-10-27' }, { type: 'ownerPayPart', projectId: 'fairoaksd', number: 3, amount: 88_878.51 })
+    state = { ...state, today: '2026-11-06' }
+    const b = ownerInterest(state, fairOaks(state)).bills.find((x) => x.app.number === 3)
     expect([b?.days, cents(b?.amount ?? 0)]).toEqual([12, cents(288_878.51 * perDay(1.5) * 2 + 200_000 * perDay(1.5) * 10)])
   })
 
@@ -1145,16 +1154,26 @@ describe('reminding a customer to pay a late bill', () => {
       'Pay application 3 for Fair Oaks Shops, Building D has $288,879 still open. It was due Wed Sep 30, the day you gave.',
       'Please pay it by Wed Oct 7.',
       'Elena, a call this week would help.',
-      'Pay it in your portal, by card or bank transfer.',
-      'Our unconditional lien waiver for it comes to you the day it is paid.',
+      // O5b's words (the lead's calls A and B): no Pay on the bill yet, and the waiver is a press after the payment.
+      'Reply with the day you will pay.',
+      'Our unconditional lien waiver for it follows once it is paid.',
     ])
     state = gcReducer(state, { type: 'setOwnerLateInterest', projectId: 'fairoaksd', pctPerMonth: 1.5 })
     state = gcReducer(state, { type: 'ownerPayPart', projectId: 'fairoaksd', number: 3, amount: 88_878.51 })
+    // Past the day they gave, not yet past the contract’s 30 days: no interest on it yet (decision 7).
     mail = payReminderEmail(state, cibolo(state), fairOaks(state), 3, '2026-10-07', '')
     expect(mail.lines.slice(1, 4)).toEqual([
       'Pay application 3 for Fair Oaks Shops, Building D has $200,000 still open. It was due Wed Sep 30, the day you gave.',
       'Thank you for the $88,879 you paid Oct 2.',
-      'Interest of 1.5% a month runs on it from Sep 30. $285 has built up so far.',
+      'Please pay it by Wed Oct 7.',
+    ])
+    // Nov 6, past the contract’s day of Oct 25: interest runs from it on what is still open.
+    state = { ...state, today: '2026-11-06' }
+    mail = payReminderEmail(state, cibolo(state), fairOaks(state), 3, '2026-11-11', '')
+    expect(mail.lines.slice(1, 4)).toEqual([
+      'Pay application 3 for Fair Oaks Shops, Building D has $200,000 still open. It was due Wed Sep 30, the day you gave.',
+      'Thank you for the $88,879 you paid Oct 2.',
+      'Interest of 1.5% a month runs on it from Oct 25. $1,184 has built up so far.',
     ])
   })
 
@@ -1208,7 +1227,8 @@ describe('the customer’s messages, written out', () => {
     const top = customerMessages(late, job(late, 'fairoaksd')).slice(0, 3)
     expect(top.map((m) => m.kind)).toEqual(['interestPaid', 'interest', 'reminder'])
     expect(top[2]?.lines).toContain('Call me')
-    expect(top[1]?.lines[2]).toBe('The interest on them comes to $285, at 1.5% a month.')
+    // Pay applications 1 and 2, each paid a week past the contract’s 30 days (decision 7).
+    expect(top[1]?.lines[2]).toBe('The interest on them comes to $2,065, at 1.5% a month.')
   })
 
   it('a change order to sign, with its price and days', () => {

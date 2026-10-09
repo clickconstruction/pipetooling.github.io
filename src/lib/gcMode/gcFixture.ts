@@ -270,6 +270,8 @@ export function initialGcState(): GcState {
     ourBidSentOn: '2026-08-27',
     ownerContractSignedOn: '2026-09-04',
     ownerContractWorth: { dry: 64_200, delec: 56_900, dhvac: 47_600, dplumb: 38_500, mill: 39_800, gc: 52_000, contingency: 8_970, fee: 30_797 },
+    // The contract's days to pay after the architect's certificate (decision 7, O6b-1).
+    ownerPayDays: 30,
     permitOn: null,
     startDate: null,
     startedOn: null,
@@ -457,6 +459,8 @@ export function initialGcState(): GcState {
     ourBidSentOn: '2026-05-14',
     ownerContractSignedOn: '2026-05-29',
     ownerContractWorth: { sdry: 42_000, selec: 38_000, shvac: 31_000, splumb: 26_000, gc: 24_000, contingency: 4_830, fee: 16_583 },
+    // The contract's days to pay after the architect's certificate (decision 7, O6b-1). Hollis pays well inside them.
+    ownerPayDays: 30,
     permitOn: '2026-06-05',
     startDate: '2026-06-15',
     startedOn: '2026-06-12',
@@ -1041,6 +1045,10 @@ export function initialGcState(): GcState {
       contingency: 39_420,
       fee: 135_342,
     },
+    // The contract's days to pay after the architect's certificate (decision 7, O6b-1). Cibolo pays in
+    // about 38, so pay applications 1 and 2 were paid 8 and 7 days late, and pay application 3 falls
+    // due Oct 25: the Sep 30 they gave and missed is a reminder's business, never interest's.
+    ownerPayDays: 30,
     permitOn: '2026-06-20',
     startDate: '2026-07-06',
     startedOn: '2026-07-01',

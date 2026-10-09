@@ -395,6 +395,11 @@ export interface GcProject {
   ownerRetainageStep?: OwnerRetainageStep
   /** Interest on the owner's late bills, if we chose to charge it on this job: a percent a month. Absent: none. */
   ownerLateInterest?: { pctPerMonth: number }
+  /**
+   * The contract's days to pay after the architect's certificate (`gc_projects.owner_pay_days`, decision 7). It stands
+   * in for the customer's usual days to pay when they have never paid us (O5d). Null or absent: not typed.
+   */
+  ownerPayDays?: number | null
   /** The owner contract's fee a day for finishing past substantial completion (liquidated damages), as we entered it. Absent: none. */
   ownerLateFinish?: { perDay: number }
   permitOn: string | null

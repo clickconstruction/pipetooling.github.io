@@ -605,9 +605,10 @@ const STEPS: Step[] = [
     },
   },
   { label: 'Fair Oaks D: retainage drops to 5% on the work after half done', action: { type: 'setOwnerRetainageStep', projectId: 'fairoaksd', step: { atPct: 50, toPct: 5, way: 'after' } } },
-  // Interest on late bills (the owner, 2026-10-04): ours to choose per job, on a bill of its own.
+  // Interest on late bills (the owner, 2026-10-04): ours to choose per job, on a bill of its own. It runs from
+  // the day after the contract's 30 days (decision 7, O6b-1), so on the two bills Cibolo paid a week past them.
   { label: 'Fair Oaks D: Cibolo pays 1.5% a month on a late bill', action: { type: 'setOwnerLateInterest', projectId: 'fairoaksd', pctPerMonth: 1.5 } },
-  { label: 'Bill Cibolo the interest on pay application 3', action: { type: 'sendOwnerInterestBill', projectId: 'fairoaksd' } },
+  { label: 'Bill Cibolo the interest on pay applications 1 and 2', action: { type: 'sendOwnerInterestBill', projectId: 'fairoaksd' } },
   { label: 'Cibolo pays the interest bill', action: { type: 'ownerPaidInterest', projectId: 'fairoaksd', number: 1 } },
   // Question 4 (the owner, 2026-10-04): a trade's own schedule of values, beside ours.
   {

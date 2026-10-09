@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '../types/database'
 import { makeConsoleRowCapReporter, wrapFetchWithRowCapTripwire } from './supabaseRowCapTripwire'
 import { wrapFetchCountingWrites } from './unsavedWork'
@@ -19,7 +19,9 @@ if (!url || !anonKey) {
 // silently truncating (see src/lib/supabaseRowCapTripwire.ts). Outside it, every non-GET
 // request is counted while in flight so the auto-reload never lands mid-save (v2.3741,
 // src/lib/unsavedWork.ts).
-export const supabase = createClient<Database>(url, anonKey, {
+// The type is written out, the same as createClient<Database> infers: inferred, it grew past what tsc will write
+// into a declaration file (TS7056, the GC spike's tsconfig.gc-main.json build, after #5127's types).
+export const supabase: SupabaseClient<Database> = createClient<Database>(url, anonKey, {
   db: { schema: 'public' },
   global: {
     fetch: wrapFetchCountingWrites(wrapFetchWithRowCapTripwire((input, init) => fetch(input, init), makeConsoleRowCapReporter())),
