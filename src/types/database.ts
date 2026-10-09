@@ -8833,6 +8833,118 @@ export type Database = {
           },
         ]
       }
+      gc_back_charges: {
+        Row: {
+          amount: number
+          answer_by: string
+          answer_note: string | null
+          answered_on: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          package_id: string
+          photo_url: string | null
+          project_id: string
+          reason: string
+          sent_on: string
+          settled_by: string | null
+          settled_note: string | null
+          settled_on: string | null
+          sow_id: string
+          status: string
+          taken_draw_id: string | null
+          taken_on: string | null
+        }
+        Insert: {
+          amount: number
+          answer_by?: string
+          answer_note?: string | null
+          answered_on?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          package_id: string
+          photo_url?: string | null
+          project_id: string
+          reason: string
+          sent_on: string
+          settled_by?: string | null
+          settled_note?: string | null
+          settled_on?: string | null
+          sow_id: string
+          status?: string
+          taken_draw_id?: string | null
+          taken_on?: string | null
+        }
+        Update: {
+          amount?: number
+          answer_by?: string
+          answer_note?: string | null
+          answered_on?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          package_id?: string
+          photo_url?: string | null
+          project_id?: string
+          reason?: string
+          sent_on?: string
+          settled_by?: string | null
+          settled_note?: string | null
+          settled_on?: string | null
+          sow_id?: string
+          status?: string
+          taken_draw_id?: string | null
+          taken_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_back_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_back_charges_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_back_charges_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_back_charges_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_back_charges_settled_by_fkey"
+            columns: ["settled_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_back_charges_sow_id_fkey"
+            columns: ["sow_id"]
+            isOneToOne: false
+            referencedRelation: "gc_sows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_bid_tab_views: {
         Row: {
           company_id: string
@@ -12785,6 +12897,96 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "gc_projects"
             referencedColumns: ["project_id"]
+          },
+        ]
+      }
+      gc_trade_change_requests: {
+        Row: {
+          amount: number
+          asked_on: string
+          change_order_id: string | null
+          company_id: string
+          created_at: string
+          days: number
+          description: string
+          file_url: string | null
+          id: string
+          package_id: string
+          project_id: string
+          reason: string
+          sow_id: string
+          turned_down_note: string | null
+          turned_down_on: string | null
+        }
+        Insert: {
+          amount: number
+          asked_on: string
+          change_order_id?: string | null
+          company_id: string
+          created_at?: string
+          days?: number
+          description: string
+          file_url?: string | null
+          id?: string
+          package_id: string
+          project_id: string
+          reason: string
+          sow_id: string
+          turned_down_note?: string | null
+          turned_down_on?: string | null
+        }
+        Update: {
+          amount?: number
+          asked_on?: string
+          change_order_id?: string | null
+          company_id?: string
+          created_at?: string
+          days?: number
+          description?: string
+          file_url?: string | null
+          id?: string
+          package_id?: string
+          project_id?: string
+          reason?: string
+          sow_id?: string
+          turned_down_note?: string | null
+          turned_down_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_trade_change_requests_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "gc_change_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_trade_change_requests_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_trade_change_requests_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_trade_change_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_trade_change_requests_sow_id_fkey"
+            columns: ["sow_id"]
+            isOneToOne: false
+            referencedRelation: "gc_sows"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -24961,6 +25163,7 @@ export type Database = {
         Row: {
           amount: number
           created_at: string | null
+          credits_invoice_id: string | null
           document_kind: string
           due_date: string | null
           id: string
@@ -24978,6 +25181,7 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string | null
+          credits_invoice_id?: string | null
           document_kind?: string
           due_date?: string | null
           id?: string
@@ -24995,6 +25199,7 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string | null
+          credits_invoice_id?: string | null
           document_kind?: string
           due_date?: string | null
           id?: string
@@ -25010,6 +25215,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "supply_house_invoices_credits_invoice_id_fkey"
+            columns: ["credits_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "supply_house_invoices_supply_house_id_fkey"
             columns: ["supply_house_id"]
@@ -29064,6 +29276,15 @@ export type Database = {
         Args: { p_estimator?: string; p_invite_id: string }
         Returns: string
       }
+      gc_back_charge: {
+        Args: {
+          p_amount: number
+          p_package_id: string
+          p_photo_url?: string
+          p_reason: string
+        }
+        Returns: string
+      }
       gc_bring_back: { Args: { p_project_id: string }; Returns: undefined }
       gc_create_project: { Args: { draft: Json }; Returns: string }
       gc_draft_change_order: {
@@ -29080,12 +29301,20 @@ export type Database = {
         }
         Returns: string
       }
+      gc_drop_back_charge: {
+        Args: { p_id: string; p_note: string }
+        Returns: undefined
+      }
       gc_exclusion_key: { Args: { p_words: string }; Returns: string }
       gc_invite_companies: {
         Args: { p_company_ids: string[]; p_package_id: string }
         Returns: string[]
       }
       gc_issue_plan_set: { Args: { set_in: Json }; Returns: string }
+      gc_keep_back_charge: {
+        Args: { p_id: string; p_note: string }
+        Returns: undefined
+      }
       gc_keep_promise: {
         Args: { p_on?: string; p_promise_id: string }
         Returns: undefined
@@ -29335,6 +29564,15 @@ export type Database = {
         }
         Returns: string
       }
+      gc_trade_answer_back_charge: {
+        Args: {
+          p_agree: boolean
+          p_charge_id: string
+          p_company_id: string
+          p_note: string
+        }
+        Returns: undefined
+      }
       gc_trade_answer_lines: {
         Args: { p_answers: Json; p_company_id: string; p_invite_id: string }
         Returns: string
@@ -29364,6 +29602,17 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      gc_trade_ask_change: {
+        Args: {
+          p_amount: number
+          p_company_id: string
+          p_days: number
+          p_description: string
+          p_package_id: string
+          p_reason: string
+        }
+        Returns: string
       }
       gc_trade_ask_question: {
         Args: {
