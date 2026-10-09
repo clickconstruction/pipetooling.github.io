@@ -121,6 +121,9 @@ up jobs. A dev can still see the office's view through *View as*.
     bank-returned payments and test reports ready.
   - Customers: a ZZ customer's row on the list, and a ZZ job on a real customer's page.
   - If PR 2 runs long, ship the Dashboard's money and the switch first (2a) and the doors after (2b).
+  - The name rule disagrees by one case (review on #5226). The client trims a name before `/^zz/i`, but the
+    server's `ilike 'ZZ%'` does not, so a name with leading spaces is hidden on the board and missed by
+    the ZZ read. PR 2 makes the two agree, or a ZZ name is held to start at its first character.
 - **Tests**: the switch's kernel and its localStorage default; a render smoke on the modal's line
   and both chips; `useBilledTotal` and `dashboardFinancials` kernels with a ZZ job in and out;
   render smokes on the header search and the Customers list as an assistant.

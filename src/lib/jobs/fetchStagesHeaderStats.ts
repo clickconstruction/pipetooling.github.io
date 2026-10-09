@@ -29,7 +29,10 @@
  * role but dev, and the ZZ test jobs drop out with their bills and payments
  * (`withoutZzTestJobMoney`). A fifth read names every ZZ job the caller can see
  * by name on the server, so a paid one leaves the paid head-count and its
- * payments leave collected-by-day, which never see job rows.
+ * payments leave collected-by-day, which never see job rows. That read takes no
+ * customer filter, like the invoice and payment reads it cleans: under a filter
+ * collected-by-day still reads every customer's payments, so it must lose every
+ * customer's ZZ ones. Only the paid subtraction counts the filtered customer's.
  */
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
@@ -105,17 +108,31 @@ export type FetchStagesHeaderStatsOptions = {
   excludeZzTestJobs?: boolean
 }
 
-type ZzNamedJobRow = { id: string; status: string | null; job_name: string | null; customer_name: string | null }
+type ZzNamedJobRow = {
+  id: string
+  status: string | null
+  job_name: string | null
+  customer_name: string | null
+  customer_id: string | null
+}
 
-/** Every ZZ test job the caller can see, any status, by the name rule on the server, re-checked here. */
-async function fetchZzTestJobRows(customerFilter: string | null): Promise<ZzNamedJobRow[]> {
+/**
+ * Every ZZ test job the caller can see, any status and any customer, by the name rule on the
+ * server, re-checked here. No customer filter: see the header.
+ */
+async function fetchZzTestJobRows(): Promise<ZzNamedJobRow[]> {
   const rows = await fetchAllRows(
     async (from, to) => ({
-      data: (await withSupabaseRetry(async () => {
-        let q = supabase.from('jobs_ledger').select('id, status, job_name, customer_name').or(ZZ_TEST_JOBS_OR_FILTER)
-        if (customerFilter) q = q.eq('customer_id', customerFilter)
-        return q.order('id').range(from, to)
-      }, 'stages header stats: zz test jobs')) as unknown as ZzNamedJobRow[] | null,
+      data: (await withSupabaseRetry(
+        async () =>
+          supabase
+            .from('jobs_ledger')
+            .select('id, status, job_name, customer_name, customer_id')
+            .or(ZZ_TEST_JOBS_OR_FILTER)
+            .order('id')
+            .range(from, to),
+        'stages header stats: zz test jobs',
+      )) as unknown as ZzNamedJobRow[] | null,
       error: null,
     }),
     'stages header stats: zz test jobs',
@@ -189,7 +206,7 @@ export async function fetchStagesHeaderStats(
         }),
         'stages header stats: payments',
       ),
-      options.excludeZzTestJobs ? fetchZzTestJobRows(customerFilter) : Promise.resolve([] as ZzNamedJobRow[]),
+      options.excludeZzTestJobs ? fetchZzTestJobRows() : Promise.resolve([] as ZzNamedJobRow[]),
     ])
     const withUnlinked = await addUnlinkedMoneyRows(
       (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],
@@ -205,7 +222,9 @@ export async function fetchStagesHeaderStats(
       invoices: invoicesAll,
       payments,
     } = options.excludeZzTestJobs ? withoutZzTestJobMoney(allMoney, zzRows.map((r) => r.id)) : allMoney
-    const paidCount = paidCountAll - zzRows.filter((r) => r.status === 'paid').length
+    // The head-count is the filtered customer's, so it loses only that customer's paid ZZ jobs.
+    const paidCount =
+      paidCountAll - zzRows.filter((r) => r.status === 'paid' && (!customerFilter || r.customer_id === customerFilter)).length
     const jobs = assembleLeanStatsJobs(leanJobRows, invoicesAll, payments)
     // v2.3809: the Working jobs' line items and stage-plan inputs, so a job
     // split into Order stages reads its plan for *capable to bill* exactly as

@@ -217,7 +217,8 @@ describe('fetchStagesHeaderStats', () => {
 
 describe('fetchStagesHeaderStats · excludeZzTestJobs (punch list #61, v2.5116)', () => {
   // Made-up jobs. A is real and billed; Z is a ZZ job by its own name, billed for a $2,200 test bid;
-  // Y is a ZZ job only by its customer's name, ready to bill; P is a paid ZZ job the active read never ships.
+  // Y is a ZZ job only by its customer's name, ready to bill; P is a paid ZZ job of another customer
+  // (c2) the active read never ships.
   const job = (id: string, status: string, revenue: number, paid: number, jobName: string, customerName: string) => ({
     id, status, revenue, payments_made: paid, pct_complete: 100, collections_at: null, hcp_number: id, click_number: null,
     customer_id: 'c1', gc_customer_id: null, job_name: jobName, customer_name: customerName,
@@ -228,9 +229,9 @@ describe('fetchStagesHeaderStats · excludeZzTestJobs (punch list #61, v2.5116)'
     job('Y', 'ready_to_bill', 300, 0, 'Hill Street remodel', 'zz Test Customer'),
   ]
   const zzRows = [
-    { id: 'Z', status: 'billed', job_name: 'ZZ TEST billed', customer_name: 'Ann Lee' },
-    { id: 'Y', status: 'ready_to_bill', job_name: 'Hill Street remodel', customer_name: 'zz Test Customer' },
-    { id: 'P', status: 'paid', job_name: 'ZZ TEST paid', customer_name: 'Ann Lee' },
+    { id: 'Z', status: 'billed', job_name: 'ZZ TEST billed', customer_name: 'Ann Lee', customer_id: 'c1' },
+    { id: 'Y', status: 'ready_to_bill', job_name: 'Hill Street remodel', customer_name: 'zz Test Customer', customer_id: 'c1' },
+    { id: 'P', status: 'paid', job_name: 'ZZ TEST paid', customer_name: 'Bo Ray', customer_id: 'c2' },
   ]
   const invoice = (id: string, jobId: string, amount: number, status: string) => ({
     id, job_id: jobId, amount, status, sequence_order: 1, is_primary_rtb_bundle: false, estimated_bill_date: null, billed_at: status === 'billed' ? '2026-09-01' : null,
@@ -271,7 +272,7 @@ describe('fetchStagesHeaderStats · excludeZzTestJobs (punch list #61, v2.5116)'
     const r = await fetchStagesHeaderStats(null, now, { excludeZzTestJobs: true })
     if (!r.ok) throw new Error(r.error)
     const zzRead = queries.find((x) => x.table === 'jobs_ledger' && isZzRead(x.steps))!
-    expect(argsOf(zzRead.steps, 'select')).toEqual([['id, status, job_name, customer_name']])
+    expect(argsOf(zzRead.steps, 'select')).toEqual([['id, status, job_name, customer_name, customer_id']])
     expect(argsOf(zzRead.steps, 'order')).toEqual([['id']])
     expect(argsOf(zzRead.steps, 'range')).toEqual([[0, 999]])
     expect(argsOf(zzRead.steps, 'eq')).toEqual([])
@@ -283,10 +284,20 @@ describe('fetchStagesHeaderStats · excludeZzTestJobs (punch list #61, v2.5116)'
     expect(collected(r.stats.collectedByDay)).toBe(200) // Z's $100 and P's $50 leave collected-by-day
   })
 
-  it('a customer filter narrows the ZZ read too', async () => {
-    await fetchStagesHeaderStats('c1', now, { excludeZzTestJobs: true })
+  it('under a customer filter the ZZ read takes none: every customer’s ZZ payments leave collected-by-day, and the paid count loses only that customer’s', async () => {
+    // Q is a paid ZZ job of the filtered customer; P (c2) is another customer's.
+    const withQ = [...zzRows, { id: 'Q', status: 'paid', job_name: 'ZZ TEST paid too', customer_name: 'Ann Lee', customer_id: 'c1' }]
+    route = (table, steps) => (table === 'jobs_ledger' && !isHead(steps) && isZzRead(steps) ? { data: withQ, error: null } : zzScenario(table, steps))
+    const r = await fetchStagesHeaderStats('c1', now, { excludeZzTestJobs: true })
+    if (!r.ok) throw new Error(r.error)
     const zzRead = queries.find((x) => x.table === 'jobs_ledger' && isZzRead(x.steps))!
-    expect(argsOf(zzRead.steps, 'eq')).toEqual([['customer_id', 'c1']])
+    expect(argsOf(zzRead.steps, 'eq')).toEqual([])
+    expect(argsOf(q('jobs_ledger', true).steps, 'eq')).toEqual([
+      ['status', 'paid'],
+      ['customer_id', 'c1'],
+    ])
+    expect(r.stats.paid).toEqual({ count: 6 }) // the head-count's 7 less Q; P is c2's and was never in it
+    expect(collected(r.stats.collectedByDay)).toBe(200) // P's $50 leaves too, though P is another customer's
   })
 })
 

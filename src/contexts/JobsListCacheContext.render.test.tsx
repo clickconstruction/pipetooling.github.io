@@ -95,6 +95,27 @@ describe('JobsListCacheProvider · ZZ test jobs (punch list #61)', () => {
     expect(fetchStats).toHaveBeenCalledWith(null, undefined, { excludeZzTestJobs: false })
   })
 
+  it('a role that lands after the load: hidden while it is null, every row for the dev once it lands, with no second read', async () => {
+    role = null
+    const tree = (
+      <JobsListCacheProvider>
+        <Probe />
+      </JobsListCacheProvider>
+    )
+    const { rerender } = render(tree)
+    fireEvent.click(screen.getByRole('button', { name: 'Load' }))
+    await waitFor(() => expect(screen.getByTestId('returned').textContent).toBe('A'))
+    expect(screen.getByTestId('jobs').textContent).toBe('A')
+    role = 'dev'
+    rerender(
+      <JobsListCacheProvider>
+        <Probe />
+      </JobsListCacheProvider>,
+    )
+    await waitFor(() => expect(screen.getByTestId('jobs').textContent).toBe('Z,A,Y'))
+    expect(fetchFull).toHaveBeenCalledTimes(1)
+  })
+
   it('paints an assistant’s remembered board without ZZ jobs while the fetch is still out', async () => {
     fetchFull.mockReturnValue(new Promise(() => {}))
     readSnapshot.mockResolvedValue({ key: 'u-1:all', scopes: ['waiting', 'working'], jobs: [REAL, ZZ_BY_NAME], savedAt: 1 })
