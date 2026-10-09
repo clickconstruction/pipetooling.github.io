@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Json } from '../../types/database'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatWorkDateYmdWeekdayShortFriendly } from '../../utils/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -96,7 +96,9 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
   const [lineErrors, setLineErrors] = useState<Map<string, string>>(() => new Map())
   const [busyCard, setBusyCard] = useState<string | null>(null)
   const [undoBusyIds, setUndoBusyIds] = useState<ReadonlySet<string>>(() => new Set())
-  const [payBusyHolder, setPayBusyHolder] = useState<string | null>(null)
+  /** The cards whose pay sends are being marked: one entry per bar, so two bars never share a busy flag. */
+  const [payBusyHolders, setPayBusyHolders] = useState<ReadonlySet<string>>(() => new Set())
+  const payBusyRef = useRef(new Set<string>())
   const [allocRow, setAllocRow] = useState<StaleStaffRow | null>(null)
   const [invoiceRow, setInvoiceRow] = useState<StaleStaffRow | null>(null)
   const [backchargeBusyId, setBackchargeBusyId] = useState<string | null>(null)
@@ -205,46 +207,64 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
     [showToast, load, refetchStale],
   )
 
-  /** `set_tally_payroll_flag` per charge, one call each; the ids written and how many failed. */
-  const writePayrollFlags = useCallback(async (chargeIds: readonly string[], isPayroll: boolean) => {
-    const done: string[] = []
-    let failed = 0
-    for (const id of chargeIds) {
-      try {
-        await withSupabaseRetry(
-          async () => supabase.rpc('set_tally_payroll_flag', { p_mercury_transaction_id: id, p_is_payroll: isPayroll }),
-          isPayroll ? 'tally team queue mark pay sends' : 'tally team queue unmark pay sends',
-        )
-        done.push(id)
-      } catch {
-        failed += 1
-      }
-    }
-    return { done, failed }
-  }, [])
-
+  /**
+   * Undo a press: delete the manual payroll marks it made, so the sends are undecided again and a
+   * payroll rule may still mark them later (a `false` mark would leave a tombstone rules skip). The
+   * flags table admits payroll-access roles for every write (`20260906130000`), the bar's own gate.
+   */
   const unmarkPaySends = useCallback(
     async (chargeIds: readonly string[]) => {
-      const { done, failed } = await writePayrollFlags(chargeIds, false)
-      const toast = tallyPayUnmarkToast(done.length, failed)
+      let done = 0
+      let error: string | null = null
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('mercury_tally_payroll_flags')
+              .delete()
+              .in('mercury_transaction_id', [...chargeIds])
+              .eq('source', 'manual')
+              .eq('is_payroll', true)
+              .select('mercury_transaction_id'),
+          'tally team queue undo pay sends',
+        )
+        done = (rows ?? []).length
+      } catch (e) {
+        error = formatErrorMessage(e, 'Could not undo the marks')
+      }
+      const toast = tallyPayUnmarkToast(done, chargeIds.length - done, error)
       showToast(toast.message, toast.type)
-      if (done.length > 0) {
+      if (done > 0) {
         void load()
         void refetchStale()
       }
     },
-    [writePayrollFlags, showToast, load, refetchStale],
+    [showToast, load, refetchStale],
   )
 
   const markPaySends = useCallback(
     async (group: TallyPaySendGroup) => {
-      setPayBusyHolder(group.holderId)
-      const { done, failed } = await writePayrollFlags(
-        group.sends.map((s) => s.chargeId),
-        true,
+      if (payBusyRef.current.has(group.holderId)) return
+      payBusyRef.current.add(group.holderId)
+      setPayBusyHolders(new Set(payBusyRef.current))
+      // Every send at once; `set_tally_payroll_flag` refuses one already on a job, and keeps the rest.
+      const results = await Promise.allSettled(
+        group.sends.map((send) =>
+          withSupabaseRetry(
+            async () => supabase.rpc('set_tally_payroll_flag', { p_mercury_transaction_id: send.chargeId, p_is_payroll: true }),
+            'tally team queue mark pay sends',
+          ).then(() => send.chargeId),
+        ),
       )
-      setPayBusyHolder(null)
-      const toast = tallyPayMarkToast(done.length, failed)
+      payBusyRef.current.delete(group.holderId)
+      setPayBusyHolders(new Set(payBusyRef.current))
+      const done = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
+      const firstRefusal = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+      const toast = tallyPayMarkToast(
+        done.length,
+        results.length - done.length,
+        firstRefusal ? formatErrorMessage(firstRefusal.reason, 'Could not mark it') : null,
+      )
       if (done.length > 0) showActionToast(toast.message, { label: 'Undo', onClick: () => void unmarkPaySends(done) }, { type: toast.type })
       else showToast(toast.message, toast.type)
       if (done.length > 0) {
@@ -252,7 +272,7 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
         void refetchStale()
       }
     },
-    [writePayrollFlags, showActionToast, showToast, unmarkPaySends, load, refetchStale],
+    [showActionToast, showToast, unmarkPaySends, load, refetchStale],
   )
 
   const sortDay = useCallback(
@@ -429,7 +449,7 @@ export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: bo
             <TallyPayBar
               key={group.holderId}
               group={group}
-              busy={payBusyHolder === group.holderId}
+              busy={payBusyHolders.has(group.holderId)}
               onMark={() => void markPaySends(group)}
             />
           ))}

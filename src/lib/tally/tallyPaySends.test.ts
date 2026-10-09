@@ -45,6 +45,11 @@ describe('isTallyPaySend', () => {
     expect(isTallyPaySend(row('d', 'u-rob', 'Ridge Supply', -88.2, 'RIDGE SUPPLY #12'))).toBe(false)
     expect(isTallyPaySend(row('e', 'u-rob', 'Corner Fuel', -31.47, null))).toBe(false)
   })
+
+  it('is not money coming in by Cash App', () => {
+    expect(isTallyPaySend(row('f', 'u-rob', 'Cash App', 120, 'CASH APP*BO RAY'))).toBe(false)
+    expect(isTallyPaySend(row('g', 'u-rob', 'Cash App', 0, null))).toBe(false)
+  })
 })
 
 describe('tallyPaySendPayee', () => {
@@ -62,9 +67,13 @@ describe('tallyPaySendPayee', () => {
 })
 
 describe('tallyPaySendGroups', () => {
-  it('gathers each card holder’s sends across their days, by name, and skips a card with none', () => {
+  it('gathers each card holder’s sends across their days, by name, and skips a card with none and a credit', () => {
     const groups = tallyPaySendGroups([
-      card('u-rob', 'Rob', [row('p1', 'u-rob', 'Cash App', -500, 'CASH APP*ISAIAH WHITES'), row('s1', 'u-rob', 'Ridge Supply', -88.2, null)]),
+      card('u-rob', 'Rob', [
+        row('p1', 'u-rob', 'Cash App', -500, 'CASH APP*ISAIAH WHITES'),
+        row('s1', 'u-rob', 'Ridge Supply', -88.2, null),
+        row('c1', 'u-rob', 'Cash App', 75, 'CASH APP*BO RAY'),
+      ]),
       card('u-ann', 'Ann', [row('s2', 'u-ann', 'Corner Fuel', -31.47, null)]),
       card('u-rob', 'Rob', [row('p2', 'u-rob', 'Cash App', -250.5, 'CASH APP*PAIGE DOE')]),
     ])
@@ -110,10 +119,14 @@ describe('tallyPayBarWords', () => {
 })
 
 describe('the messages', () => {
-  it('after marking', () => {
+  it('after marking, with the server’s own words for the first refusal', () => {
     expect(tallyPayMarkToast(1, 0)).toEqual({ message: 'Marked 1 Cash App pay send as payroll.', type: 'success' })
     expect(tallyPayMarkToast(3, 0)).toEqual({ message: 'Marked 3 Cash App pay sends as payroll.', type: 'success' })
-    expect(tallyPayMarkToast(2, 1)).toEqual({ message: 'Marked 2 of 3 as payroll. The rest need another look.', type: 'error' })
+    expect(tallyPayMarkToast(2, 1, 'Transaction is allocated to jobs; remove job splits before marking payroll')).toEqual({
+      message: 'Marked 2 of 3 as payroll. Transaction is allocated to jobs; remove job splits before marking payroll.',
+      type: 'error',
+    })
+    expect(tallyPayMarkToast(0, 2, 'Not authorized.')).toEqual({ message: 'Nothing was marked. Not authorized.', type: 'error' })
     expect(tallyPayMarkToast(0, 2)).toEqual({ message: 'Nothing was marked. Try again.', type: 'error' })
   })
 
@@ -121,6 +134,7 @@ describe('the messages', () => {
     expect(tallyPayUnmarkToast(1, 0)).toEqual({ message: '1 pay send is back to sort.', type: 'success' })
     expect(tallyPayUnmarkToast(3, 0)).toEqual({ message: '3 pay sends are back to sort.', type: 'success' })
     expect(tallyPayUnmarkToast(2, 1)).toEqual({ message: '2 of 3 are back to sort. The rest could not be undone.', type: 'error' })
+    expect(tallyPayUnmarkToast(0, 1, 'timeout')).toEqual({ message: 'Nothing was undone. timeout.', type: 'error' })
     expect(tallyPayUnmarkToast(0, 1)).toEqual({ message: 'Nothing was undone. Try again.', type: 'error' })
   })
 })

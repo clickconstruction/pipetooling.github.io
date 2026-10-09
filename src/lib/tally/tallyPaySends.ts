@@ -28,8 +28,12 @@ export type TallyPaySendGroup = {
   total: number
 }
 
-/** A Cash App send on the card: the counterparty or Mercury's bank description names Cash App. */
-export function isTallyPaySend(row: { counterparty_name: string | null; raw: Json | null }): boolean {
+/**
+ * A Cash App send on the card: money out (an incoming Cash App credit is not pay), and the
+ * counterparty or Mercury's bank description names Cash App.
+ */
+export function isTallyPaySend(row: { counterparty_name: string | null; raw: Json | null; amount: number | string | null }): boolean {
+  if (!(Number(row.amount) < 0)) return false
   if (CASH_APP.test(row.counterparty_name ?? '')) return true
   return CASH_APP.test(mercuryBankDescriptionFromRaw(row.raw) ?? '')
 }
@@ -91,16 +95,19 @@ export function tallyPayBarWords(group: TallyPaySendGroup): { title: string; pay
   }
 }
 
-/** The message after marking: how many went to payroll, and whether any could not. */
-export function tallyPayMarkToast(done: number, failed: number): { message: string; type: 'success' | 'error' } {
-  if (done === 0) return { message: 'Nothing was marked. Try again.', type: 'error' }
-  if (failed > 0) return { message: `Marked ${done} of ${done + failed} as payroll. The rest need another look.`, type: 'error' }
+/** The server's own words for the first refusal, after the count, so the reason reaches the person. */
+const because = (reason: string | null | undefined) => (reason ? ` ${reason.trim().replace(/\.?$/, '.')}` : '')
+
+/** The message after marking: how many went to payroll, and the first refusal's words when any could not. */
+export function tallyPayMarkToast(done: number, failed: number, reason?: string | null): { message: string; type: 'success' | 'error' } {
+  if (done === 0) return { message: `Nothing was marked.${because(reason) || ' Try again.'}`, type: 'error' }
+  if (failed > 0) return { message: `Marked ${done} of ${done + failed} as payroll.${because(reason)}`, type: 'error' }
   return { message: `Marked ${sendsWords(done)} as payroll.`, type: 'success' }
 }
 
 /** The message after undoing a mark: the sends are back to sort. */
-export function tallyPayUnmarkToast(done: number, failed: number): { message: string; type: 'success' | 'error' } {
-  if (done === 0) return { message: 'Nothing was undone. Try again.', type: 'error' }
-  if (failed > 0) return { message: `${done} of ${done + failed} are back to sort. The rest could not be undone.`, type: 'error' }
+export function tallyPayUnmarkToast(done: number, failed: number, reason?: string | null): { message: string; type: 'success' | 'error' } {
+  if (done === 0) return { message: `Nothing was undone.${because(reason) || ' Try again.'}`, type: 'error' }
+  if (failed > 0) return { message: `${done} of ${done + failed} are back to sort.${because(reason) || ' The rest could not be undone.'}`, type: 'error' }
   return { message: done === 1 ? '1 pay send is back to sort.' : `${done} pay sends are back to sort.`, type: 'success' }
 }

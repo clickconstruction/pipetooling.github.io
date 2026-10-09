@@ -189,7 +189,7 @@ Assign window, which is what the After replaces.
    left out on purpose by `20260714120000`, and they still sort a pay send one at a time. One bar per
    card gathers its Cash App sends, found by the counterparty or Mercury's bank description, with
    the payees from the description (`tallyPaySends.ts`, `TallyPayBar`). It marks them through
-   `set_tally_payroll_flag`, and the message's Undo unmarks them. It does not widen a rule: the rules
+   `set_tally_payroll_flag`, and the message's Undo deletes the marks that press made. It does not widen a rule: the rules
    table is dev-only configuration (`20260906130000`), edited in Payroll rules on My card.
 4. **PR 4 — the holder's card gains the day's chip**: phone cards, Sort mode, the pre-clock-out
    sheet, one component over the same kernel. Found 2026-10-06 while building 2a: Mercury keeps a
