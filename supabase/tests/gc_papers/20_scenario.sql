@@ -1,4 +1,4 @@
--- A trade partner company's papers (v2.NNNN, the Board's B6-b-i, migration 20261010009000): the company's paper under a
+-- A trade partner company's papers (v2.5041, the Board's B6-b-i, migration 20261010009000): the company's paper under a
 -- name no person can have, held both ways; the person trigger deriving the company and leaving a person's paper as it
 -- was; every send of a paper with its promise; who may send; and a project's or a company's delete. Presses run as a dev
 -- (or an estimator) through RLS; the fixture is made as postgres; everything rolls back. Raises on the first failed
