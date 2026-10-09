@@ -7,7 +7,8 @@
  */
 import { describe, expect, it } from 'vitest'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import { buildJobsStagesBoardLists, billedStageRowRemainingAmount, type StageRow } from '../jobsStagesBoard'
+import { buildJobsStagesBoardLists, billedStageRowRemainingAmount, jobCapableToBillAmounts, jobOpenBillingRemainderDollars, type StageRow } from '../jobsStagesBoard'
+import { jobsMapJobs, jobsMapOwedLine } from './jobsMap'
 import { jobBilledUnpaidDollars, stageRowBilledRemainingAmount } from './invoiceBilling'
 import { billAppliedOnJob } from './billApplied'
 import { appliedByInvoiceUnderRule, computeBillTruth, computeBillTruthFromJobs } from '../billing/billTruth'
@@ -213,5 +214,34 @@ describe('the scheduled statement nets each bill by the rule', () => {
     applyPaymentRule(p)
     expect(p.groups[0]!.rows.map((r) => r.remaining)).toEqual([13420, 665, 3500])
     expect(p.grand_total).toBe(17585)
+  })
+})
+
+describe('the open asks and the map read the rule too (v2.5017)', () => {
+  it("job 273's open asks are $16,685, so its map pin says $16,685 owed", () => {
+    const j = makeJob('273', J273)
+    expect(jobOpenBillingRemainderDollars(j)).toBe(16685)
+    const mapped = jobsMapJobs([j], new Date('2026-10-09T12:00:00Z')).jobs.concat(jobsMapJobs([j], new Date('2026-10-09T12:00:00Z')).noAddress)
+    expect(mapped.map((m) => jobsMapOwedLine(m))).toEqual(['$16,685 owed'])
+  })
+
+  it('capable to bill takes the money off once: a fully billed and paid job reads 0, not −$900', () => {
+    const working = { ...makeJob('273', J273), status: 'working', pct_complete: 100 } as JobWithDetails
+    const { toBill, openBilling } = jobCapableToBillAmounts(working)
+    expect(openBilling).toBe(16685)
+    expect(toBill).toBe(0)
+  })
+
+  it('a draft keeps its linked money; unlinked money does not reach it', () => {
+    const j = makeJob('d', {
+      revenue: 1800,
+      bills: [
+        { id: 'd0', amount: 1000 },
+        { id: 'd1', amount: 300, status: 'ready_to_bill', linked: 50 },
+      ],
+      untied: [[1200, '2026-05-01']],
+    })
+    // Off-bill work is $800 (the job less its one sent bill); $400 of the $1,200 reaches the sent bill.
+    expect(jobOpenBillingRemainderDollars(j)).toBe(600 + 250)
   })
 })

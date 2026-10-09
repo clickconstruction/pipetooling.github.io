@@ -10,8 +10,8 @@ summary: >
   and said out loud in the fragments; this card is so they are not forgotten.
 next: >
   Print all (every GC's sheet at once) stays unbuilt: per GC was the ask. (1) shipped as v2.4100,
-  (2) as v2.4912, (3)'s PDF as v2.4913. (4), the capable-to-bill double count found under v2.5006,
-  is a bug with its own PR.
+  (2) as v2.4912, (3)'s PDF as v2.4913. (4), the open-ask double count found under v2.5006,
+  shipped as v2.5017.
 size: S (Print all — one PDF over every GC's sheet)
 blocker: None.
 opinion: leave Print all until someone asks for every GC's sheet at once.
@@ -32,9 +32,9 @@ Find a check and its sheet are offered on a development's Share menu too: `fetch
 
 The sheet is a PDF now (`gcChecksAppliedPdf.ts`), opened in a tab and filed as the sent copy, so the browser's "about:blank" footer is gone. **Print all** (every GC's sheet at once) was in the mock-up and not built — it would read every GC's jobs in one go; per GC was the ask.
 
-### 4. Capable to bill counts money put on the job twice — a bug, its own PR after v2.5006
+### 4. The open asks count money put on the job — shipped, v2.5017
 
-`jobOpenBillingRemainderDollars` (`src/lib/jobsStagesBoard.ts`) nets each ready-to-bill draft and billed bill against its **linked** payments only, and `jobCapableToBillAmounts` subtracts that open-ask total **and** `payments_made` (every payment) from the value the work created. A payment put on the job with no bill picked therefore comes off twice: once as a payment, and again because the bill it paid still asks for it in full. The Working section's *capable to bill* (the header, the Capable list, the Ready-to-ask tile) reads low by that money. v2.5006 made the Billed board count such money oldest bill first and left this reader alone on purpose. The fix: net the sent bills by `billAppliedOnJob` (the rule) and keep drafts on their linked money, with tests on job 273's shape.
+`jobOpenBillingRemainderDollars` (`src/lib/jobsStagesBoard.ts`) netted each draft and billed bill against its **linked** payments only, so a bill that money put on the job had paid (v2.5006's rule) still asked for it in full. It now nets a sent bill by `billAppliedOnJob`; a draft keeps its linked money. What shows: the map's *$X owed* on a pin and its *to collect* totals (job 273: $17,585 → $16,685). Filed here as a *capable to bill reads low* bug — that was overstated: unlinked money only reaches a bill once it has paid all the work on no sent bill, and such a job has nothing left to bill (its capable to bill is at most value created − revenue − drafts, never positive), so the Working header, the Capable list and the Ready-to-ask tile read the same before and after; only the job's own negative figure stops double-counting.
 
 ## Where it plugs in
 
