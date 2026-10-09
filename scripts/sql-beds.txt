@@ -11,3 +11,4 @@ gc-award
 pay-applications
 gc-back-charges
 lien-claim
+gc-papers

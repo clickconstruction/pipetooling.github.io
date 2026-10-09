@@ -5,7 +5,7 @@ file: docs/CONTRACT_FORMS.md
 type: Specialist
 purpose: How a Contract Book entry becomes a fillable form (an uploaded PDF plus dev-placed entry boxes), the FormSchema reference, the agent workflow for drafting a form from a PDF, and the out-of-band storage setup.
 audience: Developers, AI Agents
-last_updated: 2026-09-29
+last_updated: 2026-10-09
 key_sections:
   - name: "What a form is"
   - name: "FormSchema reference"
@@ -24,6 +24,8 @@ key_sections:
 ## What a form is
 
 A **form** is a Contract Book entry (`contract_template_documents`) whose `form_template_id` points at a `contract_form_templates` row: an uploaded PDF in the private `contract-form-templates` bucket plus a `schema jsonb` describing the entry boxes a dev placed on it. Person copies (`person_contract_documents`) inherit `form_template_id` through the `set_form_template_on_write` trigger, so packets, quick send, "Sign now", and the compliance pills work as they do for prose entries. The signer fills the **real page**; on submit the answers are written into the PDF (by field name where the PDF has fields, drawn at coordinates where it does not), the result is flattened and filed in the private `contract-form-pdfs` bucket, and only the non-sensitive answers are stored on the row (`form_values`), with the last four of each sensitive answer in `form_hints`.
+
+A trade partner company's copy (GC mode, the Board's B6-b-i, v2.5041) is the same kind of row, keyed to the company (`company_id`) and stored as `gc-company:<id>` with no person; `gc_company_paper` makes it from the Book entry, so a W-9's form and `doc_type` come through the same trigger. The signing page prefills a company's W-9 with the company's name, and its PDF downloads under that name.
 
 Plan and status: [`CONTRACT_FORMS_PLAN.md`](./CONTRACT_FORMS_PLAN.md).
 
