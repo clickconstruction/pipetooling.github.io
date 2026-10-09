@@ -530,6 +530,10 @@ migration a day on this lane. "Check" is how the reviewer sees it work.
     `gc_change_order_answer` and `gc_accept_work`, which call O3's and O7's RPCs as the service
     role, checked against the portal link's customer. The lead deploys both functions. *Check:* the
     test customer's portal link signs a test change order, and the office sees it signed.
+11. **O8, the customer pays a certified bill by card** (after O7c; the owner's answer to the Stripe
+    question, 2026-10-09). From their portal, the customer turns a certified bill into a card-only
+    Stripe invoice with a "Credit card fee (3%)" line, and staff never convert one. Three PRs, O8a
+    to O8c: `mockups/owner-billing-o8.md`. *Check:* there, on Grace's yes, in Stripe test mode.
 
 **The door** (its own PR when the lead says the trade side is real): the policies swap
 `is_dev()` for the owner and controller predicate, with `ACCESS_CONTROL.md` in the same PR, the
@@ -616,6 +620,8 @@ and the controller sees. It could be better three ways:
    would show each as a touch.
 
 ## Status
+
+**2026-10-09, evening.** Every Owner Billing PR through O7c and O5e is merged, and gcIo's last untyped calls go typed in #5198 (v2.5096). O8, card payment from the customer's portal, is planned in `mockups/owner-billing-o8.md`. It waits on the owner's answer on card only or card or bank, and on the surcharge rules check.
 
 **2026-10-08.**
 - **O1 is live.** #4851 is applied and verified, Status in #4877.
