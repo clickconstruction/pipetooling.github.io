@@ -80,6 +80,26 @@ export function jobContractSigningUrl(origin: string, rawToken: string): string 
   return `${origin.replace(/\/$/, '')}/contract/sign?t=${encodeURIComponent(rawToken)}`
 }
 
+/**
+ * The signing link a sent agreement already carries (punch list #104, v2.5119). The Contract
+ * window's Copy link, Text the link and Sign here, now hand it out as it is and record nothing,
+ * as the signed rail does. So a PDF emailed to sign stays a PDF send, and the paper still converts
+ * it. Null for a row that is not out, has no token, or whose link has lapsed: those go through
+ * `send-job-contract`, which mints or renews the link and stamps the send.
+ */
+export function jobContractLinkOnRow(
+  row: Pick<JobContractRow, 'status' | 'voided_at' | 'public_token' | 'public_token_expires_at'> | null | undefined,
+  origin: string,
+  nowMs: number = Date.now(),
+): string | null {
+  if (!row || jobContractStatus(row) !== 'sent') return null
+  const token = (row.public_token ?? '').trim()
+  if (!token) return null
+  const expires = row.public_token_expires_at ? Date.parse(row.public_token_expires_at) : Number.NaN
+  if (Number.isFinite(expires) && expires <= nowMs) return null
+  return jobContractSigningUrl(origin, token)
+}
+
 export function formatContractStamp(iso: string | null | undefined): string | null {
   if (!iso) return null
   const d = new Date(iso)

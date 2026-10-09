@@ -58,6 +58,7 @@ import {
   jobContractChips,
   jobContractIsEditable,
   jobContractIsLive,
+  jobContractLinkOnRow,
   jobContractSignatureAuditLine,
   jobContractSignatureBlocks,
   jobContractSignersAuditLine,
@@ -531,8 +532,15 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     [job, editable, unfinishedDateStops, flushDraft, liveRow, recipientEmail, recipientName, ccList, message, showToast, loadRows, onChanged],
   )
 
+  /**
+   * The link to hand out: the one this session made, else the one the sent row already carries,
+   * else a send mints it. Handing out a link the row has records nothing, so a PDF emailed to sign
+   * stays a PDF send (punch list #104, v2.5119).
+   */
+  const linkToHandOut = async (): Promise<string | null> => lastLink ?? jobContractLinkOnRow(liveRow, window.location.origin) ?? (await invokeSend('link'))
+
   const copyLink = async () => {
-    const url = lastLink ?? (await invokeSend('link'))
+    const url = await linkToHandOut()
     if (!url) return
     try {
       await navigator.clipboard.writeText(url)
@@ -543,7 +551,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   }
 
   const textLink = async () => {
-    const url = lastLink ?? (await invokeSend('link'))
+    const url = await linkToHandOut()
     if (!url) return
     const phone = recipientPhone.replace(/[^\d+]/g, '')
     const body = `Here is your service agreement for ${job?.job_address || 'your project'} — review and sign here: ${url}`
@@ -551,7 +559,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   }
 
   const signInPerson = async () => {
-    const url = lastLink ?? (await invokeSend('link'))
+    const url = await linkToHandOut()
     if (!url) return
     window.open(`${url}&inperson=1`, '_blank', 'noopener')
   }
@@ -865,7 +873,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       return
     }
     if (phone) {
-      const url = lastLink ?? (await invokeSend('link'))
+      const url = await linkToHandOut()
       if (url) openSms(phone, url)
     }
   }
