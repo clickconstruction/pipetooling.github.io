@@ -21,6 +21,15 @@ describe('the board read from its rows', () => {
     expect([stageOf('buyout'), stageOf('closed'), stageOf('bidding')]).toEqual(['buyout', 'building', 'pursuing'])
   })
 
+  it('a customer carries the phone and email on its customer record, for the call list’s Call (the schedule’s 7c-ii)', () => {
+    const base = rows()
+    const s = boardStateFromRows(rows({ customers: base.customers.map((c) => (c.id === 'c1' ? { ...c, contact_info: { phone: '(210) 555-0190', email: 'ops@oakstreet.test' } } : c)) }))
+    expect(s.customers.map((c) => [c.name, c.phone, c.email])).toEqual([
+      ['Oak Street Partners', '(210) 555-0190', 'ops@oakstreet.test'],
+      ['Studio Ocotillo', '', ''],
+    ])
+  })
+
   it('an ask carries its newest quote, the office’s plug, its story newest first and the day it was last chased', () => {
     const s = boardStateFromRows(rows())
     const site = s.projects[0]!.packages[0]!

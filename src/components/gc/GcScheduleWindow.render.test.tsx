@@ -3,14 +3,17 @@
  * GC mode, the real build, the schedule's PR 7b: the Schedule window on main's test state, with the
  * schedule's reads and its one press stood in for (`scheduleIo`). Fair Oaks D read back, a bar
  * pressed, the list on a phone, Helotes' first draft, Boerne while we bid, a lost job, a read that
- * fails, and a draw someone else beat.
+ * fails, and a draw someone else beat. Since 7c-ii, the call list grouped by company, with Call only.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcScheduleWindow } from './GcScheduleWindow'
 import { drawSchedule, loadSchedule, saveScheduleMove, undoScheduleMove } from '../../lib/gc/scheduleIo'
 import { addDays } from '../../lib/gc/building'
+import { callList } from '../../lib/gc/schedule/callList'
+import { chartHolds } from '../../lib/gc/schedule/chartHolds'
 import { moveRecord, planMove } from '../../lib/gc/schedule/moves'
+import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { plainWordsFailures } from '../../lib/plainWords'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { SCHEDULE_CHANGED } from '../../lib/gc/schedule/versionRefusal'
@@ -272,5 +275,49 @@ describe('moving a bar in the window (PR 8a)', () => {
     expect(screen.queryByRole('dialog', { name: 'Why it moved' })).toBeNull()
     expect(screen.getByText(/Changes to the schedule/)).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Undo' })).toBeNull()
+  })
+})
+
+describe('the call list in the window (7c-ii)', () => {
+  const fairOaks = job(s, 'fairoaksd')
+  const lineOf = (label: string) => scheduleMeasures(s, fairOaks).items.find((i) => i.label === label)!.activity.lineId
+  /** Fair Oaks D grouped by company, where the chart draws who to call. */
+  async function byCompany(st: GcState = s) {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(st, 'fairoaksd'))
+    const view = openWindow(job(st, 'fairoaksd'))
+    fireEvent.click(within(await screen.findByRole('group', { name: 'Group the chart' })).getByRole('button', { name: 'By company' }))
+    return { ...view, list: () => screen.getByRole('region', { name: 'Who to call about the schedule' }) }
+  }
+
+  it('lists who to call with Call only: no Follow up and no Work the list until the Board lane’s sheet', async () => {
+    const { list } = await byCompany()
+    const calls = list().querySelectorAll('a[href^="tel:"]')
+    expect(calls.length).toBe(callList(s, fairOaks, chartHolds(s, fairOaks)).count)
+    for (const a of calls) expect(a.getAttribute('href')).toMatch(/^tel:\d+$/)
+    expect(within(list()).queryByText('Follow up')).toBeNull()
+    expect(within(list()).queryByText('Work the list')).toBeNull()
+  })
+
+  it('a line about a bar opens its card, with the company doing it and Call', async () => {
+    const { container, list } = await byCompany()
+    fireEvent.click(within(list()).getByText('Lighting is behind: 40% done against 48% in the plan. It is due Fri Oct 23.'))
+    const card = container.querySelector(`[data-gc-opened-activity="${lineOf('Lighting')}"]`) as HTMLElement
+    expect(within(card).getByText('Pecan Valley Electric')).toBeTruthy()
+    expect(card.querySelector('[data-tour="gc-bar-caller"] a[href^="tel:"]')?.textContent).toMatch(/^Call \S+$/)
+    expect(within(card).queryByText('Follow up')).toBeNull()
+  })
+
+  it('Their work shows only that company on the chart (G-13)', async () => {
+    const { list } = await byCompany()
+    const onChart = new Set(scheduleMeasures(s, fairOaks).items.map((i) => i.company))
+    const first = callList(s, fairOaks, chartHolds(s, fairOaks)).people.find((p) => onChart.has(p.company))!
+    fireEvent.click(within(list()).getAllByText('Their work')[0]!)
+    expect((screen.getByRole('combobox', { name: 'One company' }) as HTMLSelectElement).value).toBe(first.company)
+  })
+
+  it('has no call list on a job not being built', async () => {
+    await byCompany(withJob('fairoaksd', (p) => ({ ...p, stage: 'buyout' })))
+    expect(screen.queryByRole('region', { name: 'Who to call about the schedule' })).toBeNull()
+    expect(document.querySelector('[data-tour="gc-call-list"]')).toBeNull()
   })
 })

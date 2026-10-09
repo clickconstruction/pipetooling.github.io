@@ -211,6 +211,9 @@ The first words a GC job's schedule shows (the **Schedule** window on a project'
 ### Move · push (GC mode, the schedule)
 A **move** is new days for a bar on a GC job's schedule, saved with why it moved: a reason and the person's own words (`gc_schedule_moves`, since v2.5066, a dev's until the schedule's PR 10). Dragging a bar, pulling one of its ends, drawing a link, dragging one part of a split bar or changing the bar in its form makes one, and **Why it moved** asks for the reason before anything saves. A move **pushes** the bars that wait on it: each starts the day after what it waits on finishes and keeps its length, and work already done stays put. Every move stays on the schedule's record with who made it, and the newest can be undone while nothing it moved has moved since. The guide is `src/content/help/move-a-bar-on-the-schedule-and-say-why.md`.
 
+### Call list (GC mode, the schedule)
+The **call list** is everyone whose answer moves a GC job's schedule, drawn over the chart while it is grouped **By company** on a job being built (G-115, `GcCallList.tsx`, since v2.5078). Each person has every reason under their name, late first, and **Call**. A line about a bar opens it, and **Their work** shows only that company's bars (G-13). The bar's card names its company with **Call**. **Follow up** and **Work the list** come with the Board lane's Follow up sheet.
+
 ### Plan set (bid set · pricing set · permit set · addendum · bulletin)
 One issue of a GC project's plans (`gc_plan_sets`, rev 0 first). The first set is a **bid**, **pricing** or **permit** set; a later one is an **addendum** (while we bid), a **bulletin** (once the job is ours), or a whole **revised**, **permit** or **construction** set. Each set lists what it did to each sheet and spec section (issued, revised, added, removed, renamed), carries the Google Drive link of its files, and names who on our team checked it.
 
