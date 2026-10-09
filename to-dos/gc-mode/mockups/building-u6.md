@@ -2,7 +2,7 @@
 name: "Building U6: the trades' draws and pay applications"
 rows: BUILDING_REAL_BUILD.md, The PRs in order, 6; decisions 3, 4, 5, 9 and 12; The tables (U6); Writing it (the trades' writes, U6's office writes); the owner's calls, 5; PORTAL_REAL_BUILD.md (P5a, P5c, the 37 trade actions); mockups/portal-p2c.md
 branch: the plan on spike/building-u6-plan (from origin/spike/gc-mode at d4e4efca5); U6a from origin/main once this plan merges, pushed on its merge; U6b on U6a's types; U6c and U6d after
-status: plan 2026-10-09 by Helper 18 at the lead's ask. The read-back was approved the same day at all seven picks. U6a's SQL below ran green on main's real GC migration chain in PGlite (99 assertions; ten planted bugs each failed it; U4a's and U5a's scenarios still passed beside it). U6c's SQL follows in its own amendment. Nothing is cut or claimed. Amendment 1, the same day: the comment on gc_sow_lines.change_order_id that says the kernels' line id (Helper 13), and seq on the draws and the reports, so the newest report and a resend's place never hang on the clock (a same-millisecond tie made the bed flaky once); the bed ran green three times after it. Amendment 2, the same day: U6c's SQL in full (closeout: 70_closeout.sql, 46 assertions, green beside U6a's 99; ten planted bugs each failed it), the kernel's line 7 fix, and U6d's window.
+status: plan 2026-10-09 by Helper 18 at the lead's ask. The read-back was approved the same day at all seven picks. U6a's SQL below ran green on main's real GC migration chain in PGlite (99 assertions; ten planted bugs each failed it; U4a's and U5a's scenarios still passed beside it). U6c's SQL follows in its own amendment. Nothing is cut or claimed. Amendment 1, the same day: the comment on gc_sow_lines.change_order_id that says the kernels' line id (Helper 13), and seq on the draws and the reports, so the newest report and a resend's place never hang on the clock (a same-millisecond tie made the bed flaky once); the bed ran green three times after it. Amendment 2, the same day: U6c's SQL in full (closeout: 70_closeout.sql, 46 assertions, green beside U6a's 99; ten planted bugs each failed it), the kernel's line 7 fix, and U6d's window. Amendment 3, the same day: gc_trade_change_signed_in, the office's twin of the trade's change signature (the lead's call), and Helper 15's progress-bill case; 70_closeout.sql 53 assertions, three runs green, fourteen planted bugs each failed.
 ---
 
 # Building U6: the trades' draws and pay applications
@@ -1920,6 +1920,11 @@ window is U6d.
   - a signed-in caller records it only as themselves.
 - `gc_approve_retainage`: 10 days after the customer pays our final pay application (`TRADE_RETAINAGE_WAIT_DAYS`).
   U6a's `gc_pay_draw` pays it, and U6a's waivers take its unconditional final release.
+- `gc_trade_change_signed_in` (amendment 3): a change the trade signed on paper or by email, recorded by the office, as
+  a pay application and a waiver that came in are. It makes the same line as `gc_trade_sign_change`, with a credit
+  reported done, and keeps who of ours recorded it and the file it came as (three new columns on
+  `gc_change_order_trade_sends`). Without it a change sent before P5c could never be signed, leaving its credit line
+  and the statement of work stuck.
 - `gc_close_job`: the stage `closed` and `closed_on` today. It writes the office's `gc_projects`, so it names the dev
   while Building is built. Building's door makes it the money roles' (`gc_money_team()`), with the tables. The window
   offers it once every trade is closed out (`jobCloseout`), as the prototype's reducer trusts its screen.
@@ -1943,7 +1948,7 @@ Its test in `building.direct.test.ts`, on the scenario's statement of work: with
 is $3,000, equal to `retainageHeldNow` (main today: $3,500). Owner Billing reads closeout only through
 `tradeCloseout`, which does not read line 7. The trade's G702 in the pay application window shows the new line 7.
 
-**The refusals, in plain words:** 42 sentences, 0 failing (`plainWordsFailures`, the office's mapped words
+**The refusals, in plain words:** 46 sentences, 0 failing (`plainWordsFailures`, the office's mapped words
 included).
 
 ### The SQL as it will be (U6c)
@@ -1958,14 +1963,15 @@ SET lock_timeout = '3s';
 -- statement of work is billed, we accept the work when its punch list is done; the trade asks for the retainage we
 -- hold with its final pay application; we approve it 10 days after the customer pays us ours and pay it; its
 -- unconditional final release keeps the promise of its closeout papers (U6a's gc_draw_waiver_signed). Then we close
--- the job. Each refuses in words what the prototype's reducer refuses (acceptWork, tradeSendFinalPayApp,
--- approveRetainage, closeJob). The release is the retainage held (retainageHeldNow), so a back-charge taken off a draw
--- is never paid back; the kernels' finalPayApplication says the same once its line 7 counts what was certified before
--- the charges. The office's presses are SECURITY INVOKER, so RLS decides who may: dev only until Building's door,
--- then the money roles (decision 4). Closing a job writes the office's gc_projects, so it names the dev until that
--- door. The trade's press is the service role's only, with keys as the Portal's P2a verbs. Plan:
--- to-dos/gc-mode/mockups/building-u6.md on spike/gc-mode. The draws: U6a (<U6a stamp>). The punch list: U1
--- (20261008030000). Our bills to the customer: 20261008010000 and 20261009200000.
+-- the job. A change the trade signed on paper is recorded by the office, as a pay application and a waiver that came
+-- in are, so its line never waits for the portal. Each refuses in words what the prototype's reducer refuses
+-- (acceptWork, tradeSendFinalPayApp, approveRetainage, closeJob, tradeSignChange). The release is the retainage held
+-- (retainageHeldNow), so a back-charge taken off a draw is never paid back; the kernels' finalPayApplication says the
+-- same once its line 7 counts what was certified before the charges. The office's presses are SECURITY INVOKER, so
+-- RLS decides who may: dev only until Building's door, then the money roles (decision 4). Closing a job writes the
+-- office's gc_projects, so it names the dev until that door. The trade's press is the service role's only, with keys
+-- as the Portal's P2a verbs. Plan: to-dos/gc-mode/mockups/building-u6.md on spike/gc-mode. The draws: U6a
+-- (<U6a stamp>). The punch list: U1 (20261008030000). Our bills to the customer: 20261008010000 and 20261009200000.
 
 -- The day we closed the job (decision 12), set with the stage `closed` by gc_close_job.
 ALTER TABLE public.gc_projects ADD COLUMN IF NOT EXISTS closed_on date;
@@ -1978,6 +1984,16 @@ END $$;
 
 COMMENT ON COLUMN public.gc_projects.closed_on IS
   'GC mode (v2.NNNN, Building U6c): the day we closed the job (GcProject.closedOn), set with the stage closed by gc_close_job. Null: not closed, or closed before U6c.';
+
+-- A change the trade signed on paper or by email: who of ours recorded it, and the file it came as. Null: signed in the
+-- portal (gc_trade_sign_change), or not signed yet.
+ALTER TABLE public.gc_change_order_trade_sends
+  ADD COLUMN IF NOT EXISTS recorded_by uuid REFERENCES public.users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS file_name text,
+  ADD COLUMN IF NOT EXISTS drive_url text;
+
+COMMENT ON COLUMN public.gc_change_order_trade_sends.recorded_by IS
+  'GC mode (v2.NNNN, Building U6c): who of ours recorded the trade''s signature on paper or by email (gc_trade_change_signed_in). Null: signed in the portal, or not signed yet.';
 
 -- What we hold on a trade (retainageHeldNow): the retainage on every approved or paid draw, less a release once paid.
 CREATE OR REPLACE FUNCTION public.gc_retainage_held(p_sow_id uuid)
@@ -2271,6 +2287,62 @@ BEGIN
 END;
 $$;
 
+-- A change the trade signed on paper or by email (new beside the prototype, the office's twin of gc_trade_sign_change, as
+-- the pay application's and the waiver's came-in presses are): the same line on their statement of work for what the
+-- change costs us, a credit counted as done at once, and who of ours recorded it with the file it came as.
+CREATE OR REPLACE FUNCTION public.gc_trade_change_signed_in(p_change_order_id uuid, p_file_name text DEFAULT NULL, p_drive_url text DEFAULT NULL)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_send public.gc_change_order_trade_sends%ROWTYPE;
+  v_sow public.gc_sows%ROWTYPE;
+  co public.gc_change_orders%ROWTYPE;
+  v_line uuid;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Sign in first.' USING ERRCODE = 'P0001';
+  END IF;
+  IF public.is_read_only() THEN
+    RAISE EXCEPTION 'A training account cannot record a signature.' USING ERRCODE = '42501';
+  END IF;
+  IF public.is_digital_twin() THEN
+    RAISE EXCEPTION 'A digital twin cannot record a signature.' USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO v_send FROM public.gc_change_order_trade_sends WHERE change_order_id = p_change_order_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Send the change to the trade first.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_send.signed_on IS NOT NULL THEN
+    RAISE EXCEPTION 'They signed it already.' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT * INTO v_sow FROM public.gc_sows WHERE id = v_send.sow_id;
+  SELECT * INTO co FROM public.gc_change_orders WHERE id = p_change_order_id;
+  -- The same steps as gc_trade_sign_change: the change's line, and a credit reported done.
+  INSERT INTO public.gc_sow_lines (sow_id, position, label, amount, change_order_id)
+  VALUES (
+    v_sow.id,
+    (SELECT coalesce(max(position), -1) + 1 FROM public.gc_sow_lines WHERE sow_id = v_sow.id),
+    'Change order ' || co.number || ': ' || co.description,
+    co.cost,
+    co.id
+  )
+  RETURNING id INTO v_line;
+  IF co.cost < 0 THEN
+    INSERT INTO public.gc_sow_line_reports (sow_line_id, pct, reported_on, company_id, recorded_by)
+    VALUES (v_line, 100, public.app_today(), v_sow.company_id, v_uid);
+  END IF;
+  UPDATE public.gc_change_order_trade_sends
+  SET signed_on = public.app_today(), sow_line_id = v_line, recorded_by = v_uid,
+      file_name = nullif(btrim(coalesce(p_file_name, '')), ''), drive_url = nullif(btrim(coalesce(p_drive_url, '')), '')
+  WHERE change_order_id = p_change_order_id;
+  RETURN v_line;
+END;
+$$;
+
 -- Close the job (closeJob): one we are building leaves Building for its own section on the board. The window offers
 -- it once every trade is closed out (jobCloseout), as the prototype's reducer trusts its screen. It writes the
 -- office's gc_projects, so it names the dev while Building is built; Building's door names the money roles.
@@ -2326,6 +2398,8 @@ COMMENT ON FUNCTION public.gc_final_pay_app_came_in(uuid, jsonb) IS
   'GC mode (v2.NNNN): record a final pay application that came by email or on paper, by the trade''s own rules, in the office''s words. SECURITY INVOKER: RLS decides who may.';
 COMMENT ON FUNCTION public.gc_approve_retainage(uuid) IS
   'GC mode (v2.NNNN): approve the retainage release (approveRetainage) 10 days after the customer paid us ours. SECURITY INVOKER: RLS decides who may.';
+COMMENT ON FUNCTION public.gc_trade_change_signed_in(uuid, text, text) IS
+  'GC mode (v2.NNNN): a change the trade signed on paper or by email, recorded by the office (the twin of gc_trade_sign_change): its line on their statement of work, a credit done at once, who recorded it and the file. Not before it was sent, nor twice. SECURITY INVOKER: RLS decides who may.';
 COMMENT ON FUNCTION public.gc_close_job(uuid) IS
   'GC mode (v2.NNNN): close a job we are building (closeJob): the stage closed and closed_on today. A dev''s while Building is built. SECURITY INVOKER.';
 
@@ -2343,7 +2417,7 @@ DECLARE
   f text;
 BEGIN
   FOREACH f IN ARRAY ARRAY['public.gc_accept_work(uuid)', 'public.gc_final_pay_app_came_in(uuid, jsonb)', 'public.gc_approve_retainage(uuid)',
-    'public.gc_close_job(uuid)'] LOOP
+    'public.gc_trade_change_signed_in(uuid, text, text)', 'public.gc_close_job(uuid)'] LOOP
     EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', f);
   END LOOP;
@@ -2365,11 +2439,12 @@ trade step runs signed out, as the portal's calls are:
 -- Closeout (v2.NNNN, the Building lane's U6c): every line billed, the work accepted once the punch list is done, the
 -- trade's final pay application for the retainage we hold (never less a back-charge taken off a draw), its release
 -- approved 10 days after the customer pays us ours (the day by billMoney's rule), paid, its unconditional final
--- release keeping the promise of the closeout papers, and the job closed. Each press refuses in words, or the
--- trade's in keys, what the prototype's reducer refuses. A training account, a digital twin and a role outside
--- Building's dev door are refused; the trade's press is the service role's only. Presses run through RLS, the fixture
--- made as postgres; everything runs inside one transaction that rolls back. Raises on the first failed assertion;
--- ends with "gc_building PASSED". See scripts/pgtest-gc-building.sh. Never against prod.
+-- release keeping the promise of the closeout papers, and the job closed. A change the trade signed on paper,
+-- recorded by the office into a line of its statement of work. Each press refuses in words, or the trade's in keys,
+-- what the prototype's reducer refuses. A training account, a digital twin and a role outside Building's dev door are
+-- refused; the trade's press is the service role's only. Presses run through RLS, the fixture made as postgres;
+-- everything runs inside one transaction that rolls back. Raises on the first failed assertion; ends with
+-- "gc_building PASSED". See scripts/pgtest-gc-building.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -2427,6 +2502,22 @@ INSERT INTO public.gc_draw_lines (draw_id, sow_line_id, to_pct) VALUES
   ('00000000-0000-0000-0000-0000000ac402', '00000000-0000-0000-0000-0000000ac302', 90);
 INSERT INTO public.gc_back_charges (id, project_id, package_id, company_id, sow_id, amount, reason, sent_on, status, answered_on, taken_draw_id, taken_on) VALUES
   ('00000000-0000-0000-0000-0000000ac501', '00000000-0000-0000-0000-0000000aca01', '00000000-0000-0000-0000-0000000acb01', '00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000ac201', 500, 'Washout on the street', public.app_today() - 12, 'agreed', public.app_today() - 10, '00000000-0000-0000-0000-0000000ac402', public.app_today() - 4);
+-- C's Masonry, awarded to Ridgeway with a signed statement of work, and two change orders the customer signed on it:
+-- a $400 credit and a $900 add.
+INSERT INTO public.gc_trade_packages (id, project_id, trade, position, ours) VALUES
+  ('00000000-0000-0000-0000-0000000acb05', '00000000-0000-0000-0000-0000000aca03', 'Masonry', 0, false);
+INSERT INTO public.gc_invites (id, package_id, company_id) VALUES
+  ('00000000-0000-0000-0000-0000000acf03', '00000000-0000-0000-0000-0000000acb05', '00000000-0000-0000-0000-0000000ace01');
+UPDATE public.gc_trade_packages SET awarded_invite_id = '00000000-0000-0000-0000-0000000acf03', awarded_on = public.app_today() - 110 WHERE id = '00000000-0000-0000-0000-0000000acb05';
+INSERT INTO public.gc_scope_items (id, package_id, label, position) VALUES
+  ('00000000-0000-0000-0000-0000000ac105', '00000000-0000-0000-0000-0000000acb05', 'Block walls', 0);
+INSERT INTO public.gc_sows (id, package_id, invite_id, company_id, status, price, retainage_pct, sent_on, signed_on) VALUES
+  ('00000000-0000-0000-0000-0000000ac205', '00000000-0000-0000-0000-0000000acb05', '00000000-0000-0000-0000-0000000acf03', '00000000-0000-0000-0000-0000000ace01', 'signed', 20000, 10, public.app_today() - 105, public.app_today() - 100);
+INSERT INTO public.gc_sow_lines (id, sow_id, position, label, amount, scope_item_id) VALUES
+  ('00000000-0000-0000-0000-0000000ac305', '00000000-0000-0000-0000-0000000ac205', 0, 'Block walls', 20000, '00000000-0000-0000-0000-0000000ac105');
+INSERT INTO public.gc_change_orders (id, project_id, number, description, reason, package_id, cost, price, status, sent_on, answered_on, answered_how) VALUES
+  ('00000000-0000-0000-0000-0000000ad301', '00000000-0000-0000-0000-0000000aca03', 1, 'Leave out the lintel', 'owner', '00000000-0000-0000-0000-0000000acb05', -400, -440, 'signed', public.app_today() - 9, public.app_today() - 7, 'office'),
+  ('00000000-0000-0000-0000-0000000ad302', '00000000-0000-0000-0000-0000000aca03', 2, 'Add a bond beam', 'field', '00000000-0000-0000-0000-0000000acb05', 900, 990, 'signed', public.app_today() - 9, public.app_today() - 7, 'office');
 -- One punch item on Concrete, still to fix.
 INSERT INTO public.gc_punch_items (id, project_id, package_id, text, added_on) VALUES
   ('00000000-0000-0000-0000-0000000ac601', '00000000-0000-0000-0000-0000000aca01', '00000000-0000-0000-0000-0000000acb01', 'Patch the slab edge at grid C', public.app_today() - 3);
@@ -2622,6 +2713,16 @@ INSERT INTO public.jobs_ledger_payments (id, job_id, invoice_id, amount, paid_on
   ('00000000-0000-0000-0000-0000000ad103', '00000000-0000-0000-0000-0000000ac902', '00000000-0000-0000-0000-0000000ad002', 20000, public.app_today() - 30),
   ('00000000-0000-0000-0000-0000000ad104', '00000000-0000-0000-0000-0000000ac902', '00000000-0000-0000-0000-0000000ad002', 25000, public.app_today() - 18);
 SELECT gbt.same('C''s bill, marked paid at $45,000 of $50,000: paid on its last payment', (public.gc_owner_retainage_paid_on('00000000-0000-0000-0000-0000000aca03') - public.app_today())::text, '-18');
+-- B's progress bill, paid in full, opens no trade's retainage: only our final pay application's bill does (Helper 15).
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name) VALUES
+  ('00000000-0000-0000-0000-0000000ac903', '00000000-0000-0000-0000-0000000acd01', '00000000-0000-0000-0000-0000000ac801', 'Closeout test B (GC)');
+INSERT INTO public.jobs_ledger_invoices (id, job_id, amount, sequence_order, status) VALUES
+  ('00000000-0000-0000-0000-0000000ad003', '00000000-0000-0000-0000-0000000ac903', 40000, 1, 'paid');
+INSERT INTO public.gc_owner_pay_apps (id, project_id, number, final, period_to, sent_on, retainage_pct, retainage, work_to_date, due, invoice_id) VALUES
+  ('00000000-0000-0000-0000-0000000ad203', '00000000-0000-0000-0000-0000000aca02', 1, false, public.app_today() - 30, public.app_today() - 30, 10, 4000, 44000, 40000, '00000000-0000-0000-0000-0000000ad003');
+INSERT INTO public.jobs_ledger_payments (id, job_id, invoice_id, amount, paid_on) VALUES
+  ('00000000-0000-0000-0000-0000000ad105', '00000000-0000-0000-0000-0000000ac903', '00000000-0000-0000-0000-0000000ad003', 40000, public.app_today() - 20);
+SELECT gbt.same('a paid progress bill and no final: not paid', coalesce(public.gc_owner_retainage_paid_on('00000000-0000-0000-0000-0000000aca02')::text, 'not paid'), 'not paid');
 SET LOCAL ROLE authenticated;
 SELECT gbt.same('the release approved 12 days after the customer paid us', (public.gc_approve_retainage(gbt.draw(4)) - public.app_today())::text, '0');
 SELECT gbt.refused('approved twice', $s$SELECT public.gc_approve_retainage(gbt.draw(4))$s$, 'Only a pay application waiting on us is approved');
@@ -2658,13 +2759,43 @@ RESET ROLE;
 SELECT gbt.same('the job reads closed today', (SELECT stage || ' ' || (closed_on = public.app_today()) FROM public.gc_projects WHERE project_id = '00000000-0000-0000-0000-0000000aca01'), 'closed true');
 SELECT gbt.refused('a closed day on a job not closed', $s$UPDATE public.gc_projects SET closed_on = public.app_today() WHERE project_id = '00000000-0000-0000-0000-0000000aca03'$s$, 'gc_projects_closed_on_when_closed');
 
+-- 8. A change Ridgeway signed on paper: the office records it into a line of their Masonry statement of work.
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd01');
+SET LOCAL ROLE authenticated;
+SELECT public.gc_send_trade_change('00000000-0000-0000-0000-0000000ad301');
+SELECT gbt.refused('a change never sent to them', $s$SELECT public.gc_trade_change_signed_in('00000000-0000-0000-0000-0000000ad302')$s$, 'Send the change to the trade first');
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd02');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('a training account records a signature', $s$SELECT public.gc_trade_change_signed_in('00000000-0000-0000-0000-0000000ad301')$s$, 'A training account cannot record a signature');
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd03');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('a digital twin records a signature', $s$SELECT public.gc_trade_change_signed_in('00000000-0000-0000-0000-0000000ad301')$s$, 'A digital twin cannot record a signature');
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd01');
+SET LOCAL ROLE authenticated;
+SELECT public.gc_trade_change_signed_in('00000000-0000-0000-0000-0000000ad301', ' CO-1 signed.pdf ', 'https://drive.google.com/file/d/co1/view');
+SELECT gbt.refused('signed in twice', $s$SELECT public.gc_trade_change_signed_in('00000000-0000-0000-0000-0000000ad301')$s$, 'They signed it already');
+RESET ROLE;
+SELECT gbt.same('the credit is a line of their statement of work, done at once, recorded by us with its file',
+  (SELECT l.position || ' ' || l.label || ' ' || trim_scale(l.amount) FROM public.gc_sow_lines l WHERE l.change_order_id = '00000000-0000-0000-0000-0000000ad301')
+    || ' | ' || (SELECT trim_scale(r.pct) || ' ' || (r.recorded_by = '00000000-0000-0000-0000-0000000acd01') FROM public.gc_sow_line_reports r JOIN public.gc_sow_lines l ON l.id = r.sow_line_id WHERE l.change_order_id = '00000000-0000-0000-0000-0000000ad301')
+    || ' | ' || (SELECT (t.signed_on = public.app_today()) || ' ' || (t.recorded_by = '00000000-0000-0000-0000-0000000acd01') || ' ' || t.file_name || ' ' || t.drive_url
+                 FROM public.gc_change_order_trade_sends t WHERE t.change_order_id = '00000000-0000-0000-0000-0000000ad301'),
+  '1 Change order 1: Leave out the lintel -400 | 100 true | true true CO-1 signed.pdf https://drive.google.com/file/d/co1/view');
+SELECT gbt.as_user(NULL);
+SET LOCAL ROLE service_role;
+SELECT gbt.trade_refused('the trade signs one we recorded', $s$SELECT public.gc_trade_sign_change('00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000ad301')$s$, 'alreadySigned', 'You signed it already.');
+RESET ROLE;
+
 DO $$ BEGIN RAISE NOTICE 'gc_building PASSED'; END $$;
 ROLLBACK;
 ```
 
 **Run here first**, in the same PGlite bed on main's GC chain at 6186bb429, with a stand-in for the Pipeline's
-`jobs_ledger_payments`. U6a and U6c each applied twice. `60_draws.sql` passed its 99 and `70_closeout.sql` its 46.
-Ten planted bugs each failed it:
+`jobs_ledger_payments`. U6a and U6c each applied twice. `60_draws.sql` passed its 99 and `70_closeout.sql` its 53,
+three runs in a row. Fourteen planted bugs each failed it:
 - the release less the charges taken;
 - a fixed item counted as done;
 - no 10 days' wait;
@@ -2674,14 +2805,18 @@ Ten planted bugs each failed it:
 - the final keeping no promise;
 - anyone recorded as anyone;
 - a second final allowed;
-- accepted before every line is billed.
+- accepted before every line is billed;
+- a progress bill's payment counted as our final's (Helper 15's case);
+- a change signed in before it was sent;
+- a signed-in credit not reported done;
+- no one named as its recorder.
 
 ### The migration doc as it will be (U6c)
 
 ````markdown
 # <stamp>_gc_trade_closeout.sql (2026-10-09, v2.NNNN)
 
-GC mode, the real build, the Building lane's U6c: closeout (`to-dos/gc-mode/mockups/building-u6.md` on branch `spike/gc-mode`, amendment 2). One column, a check, and nine functions on U6a's draws (`<U6a stamp>_gc_trade_draws`). The punch list is U1's (`20261008030000`). Our bills to the customer are Owner Billing's (`20261008010000`, `20261009200000`).
+GC mode, the real build, the Building lane's U6c: closeout (`to-dos/gc-mode/mockups/building-u6.md` on branch `spike/gc-mode`, amendments 2 and 3). Four columns, a check, and ten functions on U6a's draws (`<U6a stamp>_gc_trade_draws`). The punch list is U1's (`20261008030000`). Our bills to the customer are Owner Billing's (`20261008010000`, `20261009200000`).
 
 - **`gc_projects.closed_on`**: the day we closed the job (`GcProject.closedOn`), only on a closed one (`gc_projects_closed_on_when_closed`).
 - **The helpers**, read only:
@@ -2698,6 +2833,7 @@ GC mode, the real build, the Building lane's U6c: closeout (`to-dos/gc-mode/mock
 - **`gc_trade_final_pay_app(p_company_id uuid, p_package_id uuid, p_app jsonb)`**: the trade's, the service role's only, after `notFound`, `notOnTrade`, `sowNotSigned` and `jobNotBuilding`.
 - **`gc_final_pay_app_came_in(p_package_id uuid, p jsonb)`**: the office's, in its own words.
 - **`gc_approve_retainage(p_draw_id uuid)`**: the release, 10 days after the customer paid us ours.
+- **`gc_trade_change_signed_in(p_change_order_id uuid, p_file_name text DEFAULT NULL, p_drive_url text DEFAULT NULL)`**: a change the trade signed on paper or by email, the office's twin of `gc_trade_sign_change`. It makes the same line, reports a credit done, and keeps who recorded it and the file in `gc_change_order_trade_sends`' new `recorded_by`, `file_name` and `drive_url`. Not before the change was sent, nor twice.
 - **`gc_close_job(p_project_id uuid)`**: the stage `closed` and `closed_on` today, for a job we are building. A dev's while Building is built.
 
 `SECURITY INVOKER`, every one. The office's presses and the helpers go to `authenticated`, and the trade's to the service role only. `finalSent` and `finalNotYet` wait in WAITING as `'P5'`.
@@ -2708,7 +2844,7 @@ Apply order: after U6a. `gc_projects` gains a nullable column and a check that e
 
 ## Verify after the push
 
-1. **The column, its check and the nine functions**, with invoker's rights and the right callers. Use the same query as U6a's step 1 on these names, and `SELECT conname FROM pg_constraint WHERE conname = 'gc_projects_closed_on_when_closed'`.
+1. **The columns, the check and the ten functions**, with invoker's rights and the right callers. Use the same query as U6a's step 1 on these names, and `SELECT conname FROM pg_constraint WHERE conname = 'gc_projects_closed_on_when_closed'`, and `SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'public' AND (table_name, column_name) IN (('gc_projects', 'closed_on'), ('gc_change_order_trade_sends', 'recorded_by'), ('gc_change_order_trade_sends', 'file_name'), ('gc_change_order_trade_sends', 'drive_url'))`, four rows.
 2. **The customer's paid day, read only, as a dev**: `gc_owner_retainage_paid_on` on a project with a final pay application, if one exists on prod. It should equal Bill the customer's paid day.
 3. **A training account's call is refused in words**: `gc_close_job` gives *A training account cannot close a job.* (`42501`).
 4. **The trade's press is the service role's only**: as a dev, `gc_trade_final_pay_app` gives *permission denied*.
@@ -2717,6 +2853,7 @@ Apply order: after U6a. `gc_projects` gains a nullable column and a check that e
 
 ```sql
 DROP FUNCTION IF EXISTS public.gc_close_job(uuid);
+DROP FUNCTION IF EXISTS public.gc_trade_change_signed_in(uuid, text, text);
 DROP FUNCTION IF EXISTS public.gc_approve_retainage(uuid);
 DROP FUNCTION IF EXISTS public.gc_final_pay_app_came_in(uuid, jsonb);
 DROP FUNCTION IF EXISTS public.gc_trade_final_pay_app(uuid, uuid, jsonb);
@@ -2727,6 +2864,7 @@ DROP FUNCTION IF EXISTS public.gc_sow_all_billed(uuid);
 DROP FUNCTION IF EXISTS public.gc_retainage_held(uuid);
 ALTER TABLE public.gc_projects DROP CONSTRAINT IF EXISTS gc_projects_closed_on_when_closed;
 ALTER TABLE public.gc_projects DROP COLUMN IF EXISTS closed_on;
+ALTER TABLE public.gc_change_order_trade_sends DROP COLUMN IF EXISTS recorded_by, DROP COLUMN IF EXISTS file_name, DROP COLUMN IF EXISTS drive_url;
 ```
 
 ## Status
