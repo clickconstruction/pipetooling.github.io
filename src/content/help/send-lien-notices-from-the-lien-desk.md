@@ -278,7 +278,7 @@ Approved notices go out together. {{button:blue|Send the run · N}} sits on the 
 
 The run makes one envelope per name and address, with its notices listed under it. Every notice goes to its owner of record and to the original contractor. Two jobs at one property share the owner's envelope. The original contractor gets one envelope with every notice inside. Each envelope has a method and a box for its tracking number. The method is certified mail with return receipt unless you change it.
 
-**The courtesy email.** The original contractor's envelope has a box under its address that reads **Courtesy PDF to** and their email. Ticked, the app emails them a PDF of their copy when you record the run. The email says the notice itself comes on paper, and it ends with the office's phone number. Press **Preview the email ›** after the box to read it first. It opens in a new tab, as they would get it, with the PDF it attaches. Nothing is sent.
+**The courtesy email.** The original contractor's envelope has a box under its address that reads **Courtesy PDF to** and their email. Ticked, the app emails them a PDF of their copy when you record the run. The email says the notice itself comes on paper, and it ends with the office's phone number. A reply to it goes to the office inbox, office@clickplumbing.com. Press **Preview the email ›** after the box to read it first. It opens in a new tab, as they would get it, with the PDF it attaches. Nothing is sent.
 
 Three steps run across the top of the run.
 

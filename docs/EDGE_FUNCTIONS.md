@@ -3700,6 +3700,8 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 
 ### send-lien-filing-email
 
+> **v2.5092 — a reply reaches the office**: every email goes with `reply_to: LIEN_FILING_REPLY_TO` (`office@clickplumbing.com`, [`_shared/lienFilingEmail.ts`](../supabase/functions/_shared/lienFilingEmail.ts)): the notice of claim, the run's courtesy copy and the demand letter. The sender has no mailbox, so a reply reached no one before. The run's courtesy preview names the same address. **Redeploy required.**
+
 > **v2.5073 — the body the preview draws**: the HTML body and the attachment's cleaned name come from [`_shared/lienFilingEmail.ts`](../supabase/functions/_shared/lienFilingEmail.ts) (`lienFilingEmailHtml`, `lienFilingAttachmentName`), which the Lien desk run's **Preview the email ›** draws with too ([`lienRunCourtesyPreview.ts`](../src/lib/jobs/lienRunCourtesyPreview.ts)), so the preview is the send. The bytes sent are unchanged. The courtesy words the run passes (`runCourtesyEmailWords`) now end with *For questions call the office:* and `PORTAL_COMPANY.phone`. **Redeploy required.**
 
 > **v2.4574 — the notice is kept as it went**: after a successful send the function files the email and its PDF — `kind` `lien_notice`, or `demand_letter` for `email_type: 'demand_letter'` — keyed to the job, with `recipient_label` as the name it went to. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**

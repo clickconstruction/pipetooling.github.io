@@ -1,4 +1,4 @@
-import { lienFilingAttachmentName, lienFilingEmailHtml } from '../../../supabase/functions/_shared/lienFilingEmail'
+import { LIEN_FILING_REPLY_TO, lienFilingAttachmentName, lienFilingEmailHtml } from '../../../supabase/functions/_shared/lienFilingEmail'
 import { filingPdfFilename } from '../jobsDocuments/lienFilingDocuments'
 import { runCourtesyEmailWords, type RunNotice, type RunRecipient } from './lienDeskRun'
 import type { RunEnvelope } from './runEnvelopes'
@@ -77,7 +77,7 @@ body{margin:0;background:#f3f4f6;color:#111827;font:14px/1.5 -apple-system,"Sego
 .mail{background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden}
 .head{padding:14px 18px 10px;border-bottom:1px solid #e5e7eb}
 .subject{font-size:17px;font-weight:600;line-height:1.3;margin:0 0 8px}
-.meta{display:grid;grid-template-columns:56px minmax(0,1fr);gap:2px 10px;margin:0;font-size:13px}
+.meta{display:grid;grid-template-columns:76px minmax(0,1fr);gap:2px 10px;margin:0;font-size:13px}
 .meta dt{color:#6b7280}
 .meta dd{margin:0;color:#374151;overflow-wrap:anywhere}
 .body{padding:16px 18px;font:14px/1.5 Arial,Helvetica,sans-serif;color:#111}
@@ -110,7 +110,7 @@ export function runCourtesyPreviewHtml(
       a && 'url' in a
         ? `<div class="att-row"><span class="badge">PDF</span><span class="att-name">${esc(e.filename)}</span><span class="att-size">${esc(courtesyFileSizeWords(a.bytes))}</span><a href="${esc(a.url)}" target="_blank" rel="noopener" data-courtesy-preview-open>Open it in its own tab ›</a></div><iframe class="pdf" src="${esc(a.url)}" title="${esc(e.filename)}"></iframe>`
         : `<div class="att-row"><span class="badge">PDF</span><span class="att-name">${esc(e.filename)}</span><span class="att-error">The PDF could not be built here${a && 'error' in a && a.error ? `: ${esc(a.error)}` : ''}.</span></div>`
-    return `${many ? `<div class="count">Email ${i + 1} of ${emails.length}</div>` : ''}<article class="mail" data-courtesy-preview-email="${i + 1}"><header class="head"><h1 class="subject">${esc(e.subject)}</h1><dl class="meta"><dt>From</dt><dd>${esc(opts.from)}</dd><dt>To</dt><dd>${esc(e.to)}</dd><dt>Sent</dt><dd>when the run is recorded</dd></dl></header><div class="body" data-courtesy-preview-body>${e.html}</div><div class="att">${att}</div></article>`
+    return `${many ? `<div class="count">Email ${i + 1} of ${emails.length}</div>` : ''}<article class="mail" data-courtesy-preview-email="${i + 1}"><header class="head"><h1 class="subject">${esc(e.subject)}</h1><dl class="meta"><dt>From</dt><dd>${esc(opts.from)}</dd><dt>To</dt><dd>${esc(e.to)}</dd><dt>Replies to</dt><dd>${esc(LIEN_FILING_REPLY_TO)}</dd><dt>Sent</dt><dd>when the run is recorded</dd></dl></header><div class="body" data-courtesy-preview-body>${e.html}</div><div class="att">${att}</div></article>`
   })
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><style>${PAGE_CSS}</style></head><body><div class="wrap"><div class="strip${opts.ticked ? '' : ' off'}" data-courtesy-preview-strip>${esc(courtesyPreviewStripWords(emails, opts.ticked))}</div>${mails.join('')}</div></body></html>`
 }

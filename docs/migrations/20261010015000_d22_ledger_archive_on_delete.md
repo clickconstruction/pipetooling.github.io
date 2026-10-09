@@ -56,4 +56,4 @@ CREATE TRIGGER zzz_archive_on_delete BEFORE DELETE ON public.spec_section_match_
 CREATE TRIGGER zzz_archive_on_delete BEFORE DELETE ON public.spec_sections FOR EACH ROW EXECUTE FUNCTION archive_deleted_record('code')
 ```
 
-The first screen that deletes a rule or a section is the manager's write side, v2.5061 (#5147), which merged at 16:10 UTC. So the archive was in place before the manager could delete anything.
+The first screen that deletes a rule or a section is the manager's write side, v2.5061 (#5147), which merged at 16:41 UTC. So the archive was in place before the manager could delete anything.

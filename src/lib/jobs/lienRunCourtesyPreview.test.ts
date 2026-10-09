@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest'
 import { courtesyFileSizeWords, courtesyPreviewStripWords, runCourtesyEmails, runCourtesyPreviewHtml } from './lienRunCourtesyPreview'
 import { runEnvelopes } from './runEnvelopes'
 import type { RunNotice } from './lienDeskRun'
-import { lienFilingAttachmentName, lienFilingEmailHtml } from '../../../supabase/functions/_shared/lienFilingEmail'
+import { LIEN_FILING_REPLY_TO, lienFilingAttachmentName, lienFilingEmailHtml } from '../../../supabase/functions/_shared/lienFilingEmail'
 import { COMPANY_EMAIL_FROM_LABEL } from '../customerEmailFrom'
 
 function notice(partial: Partial<RunNotice> = {}): RunNotice {
@@ -95,7 +95,7 @@ describe('runCourtesyPreviewHtml · the tab', () => {
     expect(html).toContain('<title>Email preview — Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz</title>')
     expect(html).toContain('Preview — nothing has been sent. This email goes to office@loberg.test when you record the run, while Courtesy PDF stays ticked.')
     expect(html).toContain('<dt>From</dt><dd>Click Plumbing and Electrical &lt;team@noreply.clicktooling.com&gt;</dd>')
-    expect(html).toContain('<dt>To</dt><dd>office@loberg.test</dd>')
+    expect(html).toContain('<dt>To</dt><dd>office@loberg.test</dd><dt>Replies to</dt><dd>office@clickplumbing.com</dd>')
     expect(html).toContain(`<div class="body" data-courtesy-preview-body><p>${TEXT}</p></div>`)
     expect(html).toContain('<span class="att-name">notice-53-056-650.pdf</span><span class="att-size">412 KB</span>')
     expect(html).toContain('<iframe class="pdf" src="blob:https://app.test/pdf-1" title="notice-53-056-650.pdf"></iframe>')
@@ -141,9 +141,14 @@ describe('runCourtesyPreviewHtml · the tab', () => {
 describe('send-lien-filing-email, as written', () => {
   const src = readFileSync(resolve(__dirname, '../../../supabase/functions/send-lien-filing-email/index.ts'), 'utf8')
   it('builds the body and the attachment’s name with the shared builders the preview draws with', () => {
-    expect(src).toContain("import { lienFilingAttachmentName, lienFilingEmailHtml } from '../_shared/lienFilingEmail.ts'")
+    expect(src).toContain("lienFilingAttachmentName, lienFilingEmailHtml } from '../_shared/lienFilingEmail.ts'")
     expect(src).toContain('const htmlBody = lienFilingEmailHtml(textPlain)')
     expect(src).toContain('filename: lienFilingAttachmentName(pdfFilename)')
     expect(src).not.toContain(".replace(/</g, '&lt;')")
+  })
+  it('sends every lien email with the office as its reply-to (v2.5092), the address the preview names', () => {
+    expect(LIEN_FILING_REPLY_TO).toBe('office@clickplumbing.com')
+    expect(src).toContain("import { LIEN_FILING_REPLY_TO, lienFilingAttachmentName, lienFilingEmailHtml } from '../_shared/lienFilingEmail.ts'")
+    expect(src).toContain('reply_to: LIEN_FILING_REPLY_TO,')
   })
 })
