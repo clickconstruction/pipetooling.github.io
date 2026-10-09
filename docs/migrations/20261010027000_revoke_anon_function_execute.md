@@ -1,4 +1,4 @@
-# 20261010007000_revoke_anon_function_execute.sql (2026-10-09, v2.5040)
+# 20261010027000_revoke_anon_function_execute.sql (2026-10-09, v2.5040)
 
 The blanket revoke, the owner's call of 2026-10-09 (sent by Punchlist): **anon keeps EXECUTE only on the functions granted to it by name.** Supabase's defaults had given every new public function EXECUTE for `PUBLIC` and `anon`. So the publishable key, which ships in the client bundle, could call 524 of prod's 868 public functions.
 

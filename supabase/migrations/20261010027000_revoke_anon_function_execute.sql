@@ -1,7 +1,7 @@
 SET lock_timeout = '3s';
 
 -- Signed-out callers reach only the functions granted to anon by name (v2.5040; the owner's call of 2026-10-09,
--- sent by Punchlist). The evidence is the bed in docs/migrations/20261010007000_revoke_anon_function_execute.md.
+-- sent by Punchlist). The evidence is the bed in docs/migrations/20261010027000_revoke_anon_function_execute.md.
 --
 -- Until now Supabase's defaults gave every new public function EXECUTE for PUBLIC and for anon, so the publishable
 -- key could call 524 of the 868 public functions. A signed-out page calls one: /hazmat-notice's
