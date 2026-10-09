@@ -1,0 +1,29 @@
+{
+  "about": "The Portal lane's P4b-iii (to-dos/gc-mode/mockups/portal-p4.md, P4b split in three, approved 2026-10-09): the dashboard's two Needs-you kernels for back-charges and change requests, lifted to src/lib/gc word for word, no database. The Board's B2b reads them for the Needs you line. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/portal-p4b-iii.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "files": [
+    {
+      "from": "gcBackChargesWaiting",
+      "to": "backChargesWaiting.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build: the back-charges waiting on the office, for the dashboard's Needs you line (the Board's B2b),\n * moved word for word from the GC mode prototype (branch spike/gc-mode, `gcBackChargesWaiting.ts`) by the Portal lane's\n * P4b-iii.\n */"
+    },
+    {
+      "from": "gcChangeRequestsWaiting",
+      "to": "changeRequestsWaiting.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build: the change requests waiting on us, for the dashboard's Needs you line (the Board's B2b), moved\n * word for word from the GC mode prototype (branch spike/gc-mode, `gcChangeRequestsWaiting.ts`) by the Portal lane's\n * P4b-iii.\n */"
+    }
+  ],
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts"
+  },
+  "pin": {
+    "main": "8aee8944531f6b52578d1cf3d961f9d4c367851f",
+    "spike": "7b53d4759d59d0451ae5d41494b4a170977ffcec",
+    "about": "#5130 merged; the spike before its follow-up (spike/portal-p4b-iii-follow)"
+  }
+}
