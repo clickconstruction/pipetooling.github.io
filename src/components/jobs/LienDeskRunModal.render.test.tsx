@@ -28,6 +28,27 @@ vi.mock('../../lib/sent/sentCopiesIo', async () => {
 const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [] as { itemId: string; label: string; email: string }[], courtesyFailed: [] as { itemId: string; label: string; email: string; reason: string }[] }))
 // The courtesy preview's PDF (v2.5073) is the send's own builder; here it hands back a stand-in.
 const buildPdfMock = vi.fn(async (..._args: unknown[]) => new Blob(['%PDF-1.4 courtesy']))
+// Leader here, sign ▸ (v2.5086): the drawing's write, watched.
+const signMock = vi.fn(async (_args: unknown) => ({ ok: true as const, signedAtIso: '2026-10-09T19:14:00Z' }))
+vi.mock('../../lib/jobs/lienDeskSignIo', () => ({ signLienDeskItem: (args: unknown) => signMock(args) }))
+vi.mock('signature_pad', () => ({
+  default: class {
+    constructor(_c: HTMLCanvasElement) {}
+    off() {}
+    on() {}
+    isEmpty() {
+      return false
+    }
+    toDataURL() {
+      return 'data:image/png;base64,AAAA'
+    }
+    toData() {
+      return []
+    }
+    fromData() {}
+    clear() {}
+  },
+}))
 vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])), buildRunNoticePdf: (...args: unknown[]) => buildPdfMock(...args) }))
 vi.mock('../../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: vi.fn(async () => null) }))
 vi.mock('../../lib/stripeInvoiceFacts', () => ({ fetchStripeInvoiceFacts: vi.fn(async () => ({})) }))
@@ -565,5 +586,50 @@ describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852
       urlApi.createObjectURL = hadCreate
       urlApi.revokeObjectURL = hadRevoke
     }
+  })
+})
+
+describe('an unsigned notice at the run (v2.5086)', () => {
+  it('its envelopes are held and listed in red with the reason; with the leader beside her, Leader here, sign ▸ opens the pad, and Sign ▸ records his drawing on her screen for every unsigned notice in the envelope', async () => {
+    signMock.mockClear()
+    renderWithProviders(
+      <LienDeskRunModal
+        notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' }, rowFields: { notice: { claimAmount: '33500' } } })]}
+        issuer={null}
+        todayYmd="2026-10-09"
+        userId="u-taunya"
+        viewer={{ userId: 'u-taunya', name: 'Taunya' }}
+        onClose={() => {}}
+        onRecorded={() => {}}
+      />,
+    )
+    await settle()
+    expect(screen.getByTestId('run-held-1').textContent).toContain('Unsigned: the leader signs it from his phone')
+    expect(screen.getByTestId('run-held-2').textContent).toContain('Unsigned')
+    expect(screen.getByRole('button', { name: /Print the packet · 0 envelopes/ })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('run-leader-here-sign-1'))
+    const sheet = screen.getByTestId('run-sign-here-1')
+    expect(sheet.textContent).toContain('Robert Douglas draws on this screen. The record names Taunya as whose screen it was.')
+    expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('draw')
+    expect(screen.queryByTestId('lien-sign-line-toggle')).toBeNull()
+    fireEvent.click(screen.getByTestId('run-sign-here-go-1'))
+    await waitFor(() => expect(signMock).toHaveBeenCalledTimes(1))
+    const args = signMock.mock.calls[0]![0] as { itemId: string; approve: boolean; payload: { mode: string }; signer: { userId: string; printedName: string }; onDevice: { userId: string; name: string }; fields: unknown }
+    expect(args.itemId).toBe('it1')
+    expect(args.approve).toBe(false)
+    expect(args.payload.mode).toBe('draw')
+    expect(args.signer).toEqual({ userId: 'u-robert', printedName: 'Robert Douglas' })
+    expect(args.onDevice).toEqual({ userId: 'u-taunya', name: 'Taunya' })
+    expect(args.fields).toEqual({ notice: { claimAmount: '33500' } })
+    // Signed: the envelopes go back into the run, numbered 1 and 2, nothing held.
+    await waitFor(() => expect(screen.queryByTestId('run-held-1')).toBeNull())
+    expect(screen.getByRole('button', { name: /Print the packet · 2 envelopes/ })).toBeTruthy()
+  })
+
+  it('without a viewer, or a notice whose builder said nothing about signing, there is no door and nothing held for it', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[notice({ signature: null, leader: { userId: 'u-robert', name: 'Robert Douglas' } })]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.getByTestId('run-held-1')).toBeTruthy()
+    expect(screen.queryByTestId('run-leader-here-sign-1')).toBeNull()
   })
 })

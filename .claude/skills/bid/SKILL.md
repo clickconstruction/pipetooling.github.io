@@ -61,7 +61,7 @@ yourself, resuming directly is fine too — never reclaim the human bid.
 
 **STG-3 · takeoff.** Counters first, traced runs, every sheet accounted for, RFIs as notes at the exact spot. `ct_finish_takeoff` ALWAYS with `self_assessment`. Oversized set → `stage_plan_pdf` → `ct_finish_takeoff(pdf_url)`.
 
-**STG-5 · counts + prices.** `get_robot_book(bid)` for real prices; a genuinely missing tag → `extend_robot_book(bid, entries, mirror_note)` with mirrored prices only, source named. Then `paste_counts(bid, rows, expected_total)` with `expected_total` = your lock total, always. Travel is ONE row, count 1, the LESSER of $80 × miles and 10% of building.
+**STG-5 · counts + prices.** `get_robot_book(bid)` for real prices; a genuinely missing tag → `extend_robot_book(bid, entries, mirror_note)` with mirrored prices only, source named. Then `paste_counts(bid, rows, expected_total)` with `expected_total` = your lock total, always. Travel is ONE row: the book's `Travel & Rentals (per mile from office)` entry at count = miles from the office × job days — $1.40 a count = $0.70 a mile, round trip, once per job day (45 mi × 12 job days → count 540, $756). Job days = the days a crew is on site: the bid's schedule, else estimated from the labor (say how), never fewer than 1. The miles, the job days and the travel line go in the LOCK note.
 
 **LOCK.** `add_bid_note` `[STG-3..5 + LOCK] $NN,NNN — <building> + <travel> — <set class, census, tiers, exclusions, assumptions>`. Then `lock_shadow(bid, total)` (shadow) with the same total. The lock happens THIS session — never leave a shell open and unlocked.
 

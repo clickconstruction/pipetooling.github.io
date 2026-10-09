@@ -4,11 +4,23 @@
  * schedule's reads and its one press stood in for (`scheduleIo`). Fair Oaks D read back, a bar
  * pressed, the list on a phone, Helotes' first draft, Boerne while we bid, a lost job, a read that
  * fails, and a draw someone else beat. Since 7c-ii, the call list grouped by company, with Call only.
+ * Since 9a, an inspection passed or failed, the job's own work and the dates to meet, for a dev.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcScheduleWindow } from './GcScheduleWindow'
-import { drawSchedule, loadSchedule, saveScheduleMove, undoScheduleMove } from '../../lib/gc/scheduleIo'
+import {
+  addScheduleActivity,
+  drawSchedule,
+  failScheduleInspection,
+  loadSchedule,
+  passScheduleInspection,
+  removeScheduleActivity,
+  saveScheduleMove,
+  setOwnWorkDone,
+  setScheduleMilestone,
+  undoScheduleMove,
+} from '../../lib/gc/scheduleIo'
 import { addDays } from '../../lib/gc/building'
 import { callList } from '../../lib/gc/schedule/callList'
 import { chartHolds } from '../../lib/gc/schedule/chartHolds'
@@ -21,7 +33,21 @@ import type { ProjectSchedule } from '../../lib/gc/schedule/types'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { checkSupabaseError } from '../../utils/errorHandling'
 
-vi.mock('../../lib/gc/scheduleIo', () => ({ loadSchedule: vi.fn(), drawSchedule: vi.fn(), saveScheduleMove: vi.fn(), undoScheduleMove: vi.fn(), redoScheduleMove: vi.fn() }))
+vi.mock('../../lib/gc/scheduleIo', () => ({
+  loadSchedule: vi.fn(),
+  drawSchedule: vi.fn(),
+  saveScheduleMove: vi.fn(),
+  undoScheduleMove: vi.fn(),
+  redoScheduleMove: vi.fn(),
+  setActualDates: vi.fn(),
+  addScheduleActivity: vi.fn(),
+  removeScheduleActivity: vi.fn(),
+  setOwnWorkDone: vi.fn(),
+  passScheduleInspection: vi.fn(),
+  failScheduleInspection: vi.fn(),
+  setScheduleMilestone: vi.fn(),
+  removeScheduleMilestone: vi.fn(),
+}))
 
 const realMatchMedia = window.matchMedia
 const asPhone = (phone: boolean) => {
@@ -35,6 +61,7 @@ afterEach(() => {
   vi.mocked(drawSchedule).mockReset()
   vi.mocked(saveScheduleMove).mockReset()
   vi.mocked(undoScheduleMove).mockReset()
+  for (const press of [addScheduleActivity, removeScheduleActivity, setOwnWorkDone, passScheduleInspection, failScheduleInspection, setScheduleMilestone]) vi.mocked(press).mockReset()
 })
 
 const s = initialGcState()
@@ -319,5 +346,104 @@ describe('the call list in the window (7c-ii)', () => {
     await byCompany(withJob('fairoaksd', (p) => ({ ...p, stage: 'buyout' })))
     expect(screen.queryByRole('region', { name: 'Who to call about the schedule' })).toBeNull()
     expect(document.querySelector('[data-tour="gc-call-list"]')).toBeNull()
+  })
+})
+
+describe('the job’s own work, an inspection and the dates to meet in the window (PR 9a)', () => {
+  /** Fair Oaks D open for a dev, read at version 3. */
+  async function open(st: GcState = s) {
+    const read = readOf(st, 'fairoaksd', 3)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    const view = openWindow(job(st, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    return { ...view, read }
+  }
+  /** A bar pressed on the chart: its form. */
+  function pressBar(container: HTMLElement, id: string): HTMLElement {
+    fireEvent.click(screen.getByText('Open all'))
+    fireEvent.click(container.querySelector(`[data-gantt-bar="${id}"]`) as HTMLElement)
+    return container.querySelector(`[data-gc-activity-editor="${id}"]`) as HTMLElement
+  }
+
+  it('records an inspection passed from its form, a record', async () => {
+    vi.mocked(passScheduleInspection).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    const { container, read } = await open()
+    const editor = pressBar(container, 'fairoaksd-insp-roughin')
+    fireEvent.click(within(editor).getByRole('button', { name: 'It passed today' }))
+    await waitFor(() => expect(passScheduleInspection).toHaveBeenCalledWith(read.state, 'fairoaksd', 'fairoaksd-insp-roughin'))
+  })
+
+  it('records a failed inspection with the version read, the bars it leaves and the log’s words', async () => {
+    vi.mocked(failScheduleInspection).mockResolvedValue(readOf(s, 'fairoaksd', 4))
+    const { container, read } = await open()
+    const editor = pressBar(container, 'fairoaksd-insp-roughin')
+    fireEvent.click(within(editor).getByRole('button', { name: 'It failed' }))
+    fireEvent.change(within(editor).getByRole('textbox'), { target: { value: 'The bonding jumper is missing.' } })
+    fireEvent.change(within(editor).getByDisplayValue(addDays(s.today, 3)), { target: { value: '2026-11-02' } })
+    fireEvent.click(within(editor).getByRole('button', { name: 'Record the failure' }))
+    await waitFor(() => expect(failScheduleInspection).toHaveBeenCalledTimes(1))
+    const [state, id, press, activityId, failure, activities] = vi.mocked(failScheduleInspection).mock.calls[0]!
+    expect(state).toBe(read.state)
+    expect(id).toBe('fairoaksd')
+    expect(press.version).toBe(3)
+    expect(press.words).toMatch(/^The rough-in inspection failed on .*: The bonding jumper is missing\. .*Re-inspection Mon Nov 2\./)
+    expect(activityId).toBe('fairoaksd-insp-roughin')
+    expect(failure).toMatchObject({ note: 'The bonding jumper is missing.', reinspectOn: '2026-11-02' })
+    expect(activities.find((a) => a.lineId === 'fairoaksd-insp-roughin')).toMatchObject({ start: '2026-11-02', finish: '2026-11-03' })
+  })
+
+  it('puts the job’s own work on the chart with the version read and the log’s words', async () => {
+    vi.mocked(addScheduleActivity).mockResolvedValue(readOf(s, 'fairoaksd', 4))
+    const { read } = await open()
+    fireEvent.click(screen.getByRole('button', { name: 'Add an activity' }))
+    fireEvent.change(screen.getByLabelText('What it is'), { target: { value: 'Slab cure' } })
+    fireEvent.change(screen.getByLabelText('The day it starts'), { target: { value: '2026-10-05' } })
+    fireEvent.change(screen.getByLabelText('The day it finishes'), { target: { value: '2026-10-14' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Put it on the schedule' }))
+    await waitFor(() => expect(addScheduleActivity).toHaveBeenCalledTimes(1))
+    const [state, id, press, activities] = vi.mocked(addScheduleActivity).mock.calls[0]!
+    expect(state).toBe(read.state)
+    expect(id).toBe('fairoaksd')
+    expect(press).toEqual({ version: 3, words: `Robert Douglas put Slab cure on ${job(s, 'fairoaksd').name}'s schedule, Mon Oct 5 to Wed Oct 14, Cure time.` })
+    expect(activities.find((a) => a.added)).toMatchObject({ added: { label: 'Slab cure', who: 'Cure time', doneOn: null } })
+  })
+
+  it('marks the job’s own work done in its form, a record, and takes it off with the version read', async () => {
+    const own = { lineId: 'fairoaksd-own-1', packageId: '', start: '2026-10-05', finish: '2026-10-14', after: [], added: { label: 'Slab cure', who: 'Cure time', doneOn: null } }
+    const st = withJob('fairoaksd', (p) => ({ ...p, schedule: { ...p.schedule!, activities: [...p.schedule!.activities, own] } }))
+    vi.mocked(setOwnWorkDone).mockResolvedValue(readOf(st, 'fairoaksd', 3))
+    vi.mocked(removeScheduleActivity).mockResolvedValue(readOf(s, 'fairoaksd', 4))
+    const { container, read } = await open(st)
+    const editor = pressBar(container, 'fairoaksd-own-1')
+    fireEvent.click(within(editor).getByRole('button', { name: 'Mark it done today' }))
+    await waitFor(() => expect(setOwnWorkDone).toHaveBeenCalledWith(read.state, 'fairoaksd', 'fairoaksd-own-1', s.today))
+    await waitFor(() => expect((within(editor).getByRole('button', { name: 'Take it off the schedule' }) as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(within(editor).getByRole('button', { name: 'Take it off the schedule' }))
+    await waitFor(() => expect(removeScheduleActivity).toHaveBeenCalledTimes(1))
+    const [, , press, activityId] = vi.mocked(removeScheduleActivity).mock.calls[0]!
+    expect(press).toEqual({ version: 3, words: `Slab cure came off ${job(s, 'fairoaksd').name}'s schedule.` })
+    expect(activityId).toBe('fairoaksd-own-1')
+    await waitFor(() => expect(container.querySelector('[data-gc-activity-editor]')).toBeNull())
+  })
+
+  it('adds a date to meet, a record', async () => {
+    vi.mocked(setScheduleMilestone).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    const { read } = await open()
+    fireEvent.change(screen.getByLabelText('New milestone'), { target: { value: 'Storefront glazed' } })
+    fireEvent.change(screen.getByLabelText("New milestone's day"), { target: { value: '2026-11-06' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add milestone' }))
+    await waitFor(() => expect(setScheduleMilestone).toHaveBeenCalledWith(read.state, 'fairoaksd', expect.objectContaining({ label: 'Storefront glazed', planned: '2026-11-06', packageId: null })))
+  })
+
+  it('shows none of them to someone who may not move a bar', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    const { container } = openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    expect(screen.queryByRole('button', { name: 'Add an activity' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add milestone' })).toBeNull()
+    fireEvent.click(screen.getByText('Open all'))
+    fireEvent.click(container.querySelector('[data-gantt-bar="fairoaksd-insp-roughin"]') as HTMLElement)
+    expect(container.querySelector('[data-gc-opened-activity="fairoaksd-insp-roughin"]')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'It passed today' })).toBeNull()
   })
 })

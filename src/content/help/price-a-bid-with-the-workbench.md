@@ -102,6 +102,8 @@ Every bid tab has a {{button:gray|History}} button beside the bid's name. Press 
 
 Pick a tab to see only its changes, or a person to see only theirs. Type in the search box to find a fixture or a value. A bid adopted into this one shows its changes too, marked with its own number. A long history shows its newest 1,000 changes first. Press {{button:gray|Show older changes}} at the bottom to see more. History starts the day it was switched on, so older changes are not there.
 
-Each changed value has a {{button:gray|Put back}} button beside it. Press it to set the value back to what it was before that change. The tab you are on shows the old value again. Your put back shows in History too, so you can put it back the same way. A removed row cannot come back from here yet.
+Each changed value has a {{button:gray|Put back}} button beside it. Press it to set the value back to what it was before that change. The tab you are on shows the old value again. Your put back shows in History too, so you can put it back the same way.
+
+A removed row has {{button:gray|Put back}} too, if you can edit the bid. The row comes back with what was removed with it. A count row brings back its price and its part lines. A price whose count row is still out waits for that count row's {{button:gray|Put back}}. Rows removed before History began show here too, marked as from the delete archive.
 
 Press {{button:gray|Past values off}} beside it to see earlier values under the boxes. It works on prices, counts, takeoff quantities and prices, and labor hours. Each box shows up to two earlier values, with who typed them and when. A box that never changed shows nothing. A row brought back by a new import shows what the old row of that name said, in italics. A labor row whose hours were cleared moves to the *rows need hours* list. Its boxes there show the earlier hours too. Press *+2 more* under a box to open History on that row. The button stays on or off on this device.

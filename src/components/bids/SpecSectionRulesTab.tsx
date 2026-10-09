@@ -1,6 +1,6 @@
 /**
- * The Division 22 window's Rules tab (v2.5058, the rules manager's read side — PR 3 of the train in
- * `to-dos/division-22-rules-manager.md`). Every rule in the ledger under its section, in the order the rules
+ * The Division 22 window's Rules tab (v2.5058, the rules manager's read side — PR 3 of the train,
+ * v2.5054–v2.5063). Every rule in the ledger under its section, in the order the rules
  * decide, each with its standing from `ruleStandings`: the names it decides, or the rule that gets its names
  * first, or nothing caught yet. Since v2.5061 (PR 4) it writes too: **Add a rule**, and **Edit** or **Delete** on
  * each rule, each showing what it would move before anything is saved. A deleted rule can be put back for 90 days.

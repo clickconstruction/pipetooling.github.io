@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BID_ACTIONS, withBidAction } from '../lib/bids/bidActionHeader'
+import { BID_ACTIONS, withBidAction, withBidActionIf, type BidAction } from '../lib/bids/bidActionHeader'
 import { jobScopeRows } from '../lib/bids/alternateAcceptance'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -1128,7 +1128,8 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   }
 
   /** Save the ★. Resolves false when nothing was saved (the reason is in `error`). */
-  async function saveBidSelectedPriceBookVersion(bidId: string, versionId: string | null): Promise<boolean> {
+  /** `action` tags the save for the history (a book switch, punch list #73 PR 5); no tag, as before. */
+  async function saveBidSelectedPriceBookVersion(bidId: string, versionId: string | null, action?: BidAction): Promise<boolean> {
     // The version the save is for, read once: a switch mid-save must not stamp the next version.
     const activeVersionId = resolveTaggedVersion(selectedBidVersionIdRef.current, bidId)
     // v2.4377: a version's ★ is one of its own prices. Ask the database who owns the price —
@@ -1144,11 +1145,14 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
         return false
       }
     }
-    const { data: rows, error: err } = await supabase
-      .from('bids')
-      .update({ selected_price_book_version_id: versionId })
-      .eq('id', bidId)
-      .select('id')
+    const { data: rows, error: err } = await withBidActionIf(
+      supabase
+        .from('bids')
+        .update({ selected_price_book_version_id: versionId })
+        .eq('id', bidId)
+        .select('id'),
+      action,
+    )
     if (err) {
       setError(`Failed to save version: ${err.message}`)
       return false
@@ -1160,7 +1164,7 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
     // v2.2117: the ★ is per version. Stamp the active version's own star so switching
     // versions no longer loses it (the bid-level column stays = the active version's ★).
     if (activeVersionId) {
-      const { error: starErr } = await supabase.from('bid_versions').update({ starred_price_book_version_id: versionId }).eq('id', activeVersionId)
+      const { error: starErr } = await withBidActionIf(supabase.from('bid_versions').update({ starred_price_book_version_id: versionId }).eq('id', activeVersionId), action)
       if (starErr) {
         setError(`Failed to save version: ${starErr.message}`)
         return false

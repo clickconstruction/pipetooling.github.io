@@ -29,7 +29,9 @@ import {
   gcNoticeSavedRun,
   type CoverLetterKind,
 } from '../../lib/jobs/gcOnNotice'
-import { approveLienDeskItem, markLienDeskItemsPrinted, takeBackLienDeskItems, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
+import { markLienDeskItemsPrinted, takeBackLienDeskItems, saveLienDeskDraft, sendLienDeskItemOnWord, setCustomerLienNoticePolicy, submitLienDeskItem, undoLienDeskApprovals } from '../../lib/jobs/lienDeskIo'
+import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
+import { useLienDeskSignatureInks } from '../../hooks/useLienDeskSignatureInks'
 import { leaderPresent, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienNoticeFieldsForJob, DEFAULT_CLAIMANT_NAME, homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
@@ -209,6 +211,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
     if (rereadKey > 0) refetch()
   }, [rereadKey, refetch])
   const leader = isLienLeader(authRole)
+  // The drawn signatures' ink by item (v2.5082), for the run's papers.
+  const inks = useLienDeskSignatureInks(data?.desk.items ?? null, open)
   const office = isLienOffice(authRole)
   const canWord = canSendLienOnWord(authRole)
 
@@ -507,7 +511,11 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
         receipt.itemIds.push(id)
         // A claim over the app's balance goes to the leader whatever the mode: never a remembered word (v2.3682's gate, kept here) —
         // but a leader standing at the desk or typing it in (v2.3813) is the leader deciding it.
-        if (mode === 'leader') await approveLienDeskItem(id)
+        // Sign and approve (v2.5082): one press under the leader's own sign-in places his name on every notice in the batch, each its own record.
+        if (mode === 'leader') {
+          const signed = await signLienDeskItem({ itemId: id, fields, signer: { userId: authUserId, printedName: authName }, payload: { mode: 'type' }, onDevice: null, approve: true })
+          if (!signed.ok) throw new Error(signed.message)
+        }
         else if (mode === 'word' && (!j.claimOver || leaderPresent(wordChannel))) await sendLienDeskItemOnWord(id, { note: wordNote, channel: wordChannel })
         else await submitLienDeskItem(id, { status: 'awaiting_approval', reason: j.claimOver ? 'claim_by_hand' : data.gcHasPriorNotice ? 'no_rule' : 'first_notice' })
         // Approving the run is a person looking at every claim: a carried correction counts as looked at.
@@ -1204,7 +1212,7 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
                     <button type="button" onClick={() => { setWordNote(`${authName ? '' : ''}the leader, ${demandDate(todayYmd)}`); setWordOpen(true) }} disabled={blocked} style={footBtn('plain', blocked)}>The leader said to send them…</button>
                   ) : null}
                   {office && !leader ? <button type="button" onClick={() => void approveAll('to_leader')} disabled={blocked} style={footBtn('primary', blocked)}>Send all {readyCount} to the leader ▸</button> : null}
-                  {leader ? <button type="button" onClick={() => void approveAll('leader')} disabled={blocked} style={footBtn('green', blocked)} data-testid="gc-notice-approve-all">Approve all {readyCount} and send the run ▸</button> : null}
+                  {leader ? <button type="button" onClick={() => void approveAll('leader')} disabled={blocked} style={footBtn('green', blocked)} data-testid="gc-notice-approve-all">Sign and approve all {readyCount} and send the run ▸</button> : null}
                 </div>
               )}
             </div>
@@ -1231,7 +1239,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       ) : null}
       {runOpen && data ? (
         <LienDeskRunModal
-          notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob })}
+          notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, inks, leaderFor: (id) => ({ userId: id, name: signerNameFor(id).split(',')[0]?.trim() ?? '' }) })}
+          viewer={{ userId: authUserId, name: authName }}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}

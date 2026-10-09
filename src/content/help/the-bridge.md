@@ -5,6 +5,10 @@ roles: dev
 keywords: bridge, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
+1. Type today's bank balance in **Cash on hand today** and press **Set**. The cash line starts from it.
+2. Read the cash readout: the lowest cash point in the next 8 weeks, and whether it clears your floor.
+3. Read the Truth check verdict: *steer by the profit rate*, *bill it to see it*, or *not a number to steer by yet*.
+
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
 
 The Bridge is for devs only for now. You open it from the compass icon in the header, or **Bridge** in the ☰ menu. The page's address is `/bridge`.
@@ -56,27 +60,20 @@ An amber **≈** on Earned or Contribution means some of it rests on a job with 
 +$125k field contribution on 50 approved hours — but ≈ $124k of it is one person's day on a job with no % complete, and 166h are still waiting on approval, so most rows read "—". The number becomes real when the % is set and the hours are approved.
 :::
 
-Materials and sub sheets are job costs, not anyone's vector, so contribution here is labor-only. Some invoice sends were written by the system with no signed-in sender. Those sends, and bids with no estimator, are listed under the table as *not on anyone's row*.
+Materials and sub sheets are job costs, not anyone's vector, so contribution here is labor-only.
 
 ## Vectors by the day — was each person's day worth it
 
 Under the Vectors table, the same rule runs one day at a time. The view is a grid with one row per field person and one cell per day of the month. Each cell is **green when the day's hours earned more than they cost, red when they cost more**. The shade is set by dollars per hour. A **wk** column after every Saturday sums the week. The month's total sits at the end, with the hours and $/h under it.
 
-The zoom row beside the title changes the columns. **Days** is the month. **Weeks** is the last thirteen pay weeks, one cell per person per week. **Months** is the last twelve months. A week or month cell is the same days folded together. So a person's month equals the sum of their week columns. ‹ › steps a month, thirteen weeks or twelve months at a time. The running period reads *so far*.
-
 - You click a cell and a card opens under the grid. The card lists the jobs worked, each at its earned rate beside the wage. The card also shows the labor line and the contribution. A sentence says why the day reads the way it does. The card has doors to open the job, set its % complete, or see that day on People → Review. The {{chip:yellow|≈}} hatch means part of it rests on a job with no % complete.
 - Under each name, a **Why** line counts the red days by job. *7 red · all on 990* is a pricing problem, not a slow person.
-- A **↻** on a day means last week's rates read it the other way. A % update or the hours landing since then re-priced every day on that job.
 - **A grey cell with hours** is an office or bid day. That day costs a wage and earns nothing here, so it is never judged.
-- **A salaried person's day** costs the flat workday, the way payroll prices it, whatever the clock says.
-- The **Field crew** row at the bottom is the company line day by day.
-- The grid reads **recorded time**. Recorded time counts every closed session not rejected or revoked, the way job costing does. This week is on the grid before approvals catch up. Hours still waiting draw with a dashed border and say so. {{button:outline|Approved only}} beside the zoom row switches to what payroll paid. This browser remembers that choice. The Vectors table above always reads approved time, so the two never disagree about what was paid.
+- The grid reads **recorded time**. Recorded time counts every closed session not rejected or revoked, the way job costing does. This week is on the grid before approvals catch up. Hours still waiting draw with a dashed border and say so. {{button:outline|Approved only}} beside the title switches to what payroll paid. This browser remembers that choice. The Vectors table above always reads approved time, so the two never disagree about what was paid.
 
 :::example Reading a red day
 Tristen's Tuesday reads −53: 7.5 h on J1044 at $31 an hour, against a $38 wage. That is the job's price against the hours it is taking, not how fast the day went — everyone on J1044 reads red this month. The job has no % complete, so its expected hours are a guess: set the % and the rate firms up either way.
 :::
-
-A red day is a job's verdict, not a person's. Every hour on a job earns the same rate. A day goes red only when the job's rate is under the wage. The job's rate falls under the wage when the job is priced low or has no contract price. The rate also falls under when the job has run past its expected hours. And the past moves. A job's rate is its contract ÷ its expected hours. A job's expected hours are its hours to date ÷ % complete. So every new hour and every % update re-prices every day ever worked on that job. The grid is always as of today.
 
 ## Cash — next 8 weeks
 
@@ -99,3 +96,19 @@ When the amber strip shows, the numbers read low or thin. The gaps are these:
 - a typed cash figure that's a few days old
 
 Insurance, rent, and card bills aren't scheduled as bills yet. These bills arrive as bank transfers and only show once sorted.
+
+## Reference
+
+### Vectors
+
+Some invoice sends were written by the system with no signed-in sender. Those sends, and bids with no estimator, are listed under the table as *not on anyone's row*.
+
+### Vectors by the day
+
+The zoom row beside the title changes the columns. **Days** is the month. **Weeks** is the last thirteen pay weeks, one cell per person per week. **Months** is the last twelve months. A week or month cell is the same days folded together. So a person's month equals the sum of their week columns. ‹ › steps a month, thirteen weeks or twelve months at a time. The running period reads *so far*.
+
+- A **↻** on a day means last week's rates read it the other way. A % update or the hours landing since then re-priced every day on that job.
+- **A salaried person's day** costs the flat workday, the way payroll prices it, whatever the clock says.
+- The **Field crew** row at the bottom is the company line day by day.
+
+A red day is a job's verdict, not a person's. Every hour on a job earns the same rate. A day goes red only when the job's rate is under the wage. The job's rate falls under the wage when the job is priced low or has no contract price. The rate also falls under when the job has run past its expected hours. And the past moves. A job's rate is its contract ÷ its expected hours. A job's expected hours are its hours to date ÷ % complete. So every new hour and every % update re-prices every day ever worked on that job. The grid is always as of today.

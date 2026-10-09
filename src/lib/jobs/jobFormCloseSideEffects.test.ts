@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { closeDateMetBackfillNeeded, closeDemoteToBilledNeeded } from './jobFormCloseSideEffects'
+import { jobFormRiderFeesDollars } from './jobFormMoneyTotals'
 
 describe('closeDateMetBackfillNeeded', () => {
   const customers = [
@@ -32,6 +33,13 @@ describe('closeDemoteToBilledNeeded', () => {
   it('the rider fees count toward what is due', () => {
     expect(closeDemoteToBilledNeeded({ status: 'paid', fixtures, riderFeesDollars: 0, payments: [{ amount: 1_000 }] })).toBe(false)
     expect(closeDemoteToBilledNeeded({ status: 'paid', fixtures, riderFeesDollars: 75, payments: [{ amount: 1_000 }] })).toBe(true)
+  })
+
+  it('a returned check fee still owed keeps the job from reading Paid (v2.5091)', () => {
+    const bill = { id: 'b1', amount: 1_030, fee_lines: [{ description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', amount: 30, case_id: 'tx-sp' }] }
+    const riderFeesDollars = jobFormRiderFeesDollars(0, [bill])
+    expect(closeDemoteToBilledNeeded({ status: 'paid', fixtures, riderFeesDollars, payments: [{ amount: 1_000 }] })).toBe(true)
+    expect(closeDemoteToBilledNeeded({ status: 'paid', fixtures, riderFeesDollars, payments: [{ amount: 1_030 }] })).toBe(false)
   })
 
   it('a cent of slack is not a balance', () => {

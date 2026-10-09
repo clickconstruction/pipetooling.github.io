@@ -1,6 +1,6 @@
 /**
- * The Division 22 window's Sections tab (v2.5058, the rules manager's read side — PR 3 of the train in
- * `to-dos/division-22-rules-manager.md`). Every spec section with the rules filed under it and the names and
+ * The Division 22 window's Sections tab (v2.5058, the rules manager's read side — PR 3 of the train,
+ * v2.5054–v2.5063). Every spec section with the rules filed under it and the names and
  * bids those rules decide (`sectionTallies`), the deliberate no-code rules last.
  *
  * Since v2.5061 (PR 4) it writes too: **Add a section**, **Rename** a title, and **Delete** a section that no rule

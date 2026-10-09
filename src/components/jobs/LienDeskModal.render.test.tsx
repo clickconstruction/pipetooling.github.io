@@ -79,12 +79,19 @@ const gcOkayMock = vi.fn()
 const ownerCallMock = vi.fn()
 const clearPrintedMock = vi.fn()
 const saveDraftMock = vi.fn(async () => 'it-new')
+const signMock = vi.fn()
 const submitMock = vi.fn(async () => undefined)
 const tellLeaderMock = vi.fn(async () => ({ pushSent: 1, emailSent: false, leaderName: 'Malachi Whites' }))
 vi.mock('../../lib/jobs/lienDeskIo', async () => {
   const actual = await vi.importActual<typeof import('../../lib/jobs/lienDeskIo')>('../../lib/jobs/lienDeskIo')
   return { ...actual, saveLienDeskDraft: (...args: unknown[]) => saveDraftMock(...(args as [])), submitLienDeskItem: (...args: unknown[]) => submitMock(...(args as [])), tellLeaderOfLienApproval: (...args: unknown[]) => tellLeaderMock(...(args as [])), clearLienDeskItemPrinted: (id: string) => clearPrintedMock(id), startLetterTwo: (input: unknown) => startTwoMock(input), noteGcAuthorizedDirectPay: (...args: unknown[]) => gcOkayMock(...args), noteOwnerCall: (...args: unknown[]) => ownerCallMock(...args) }
 })
+vi.mock('../../lib/jobs/lienDeskSignIo', () => ({
+  signLienDeskItem: async ({ itemId, approve }: { itemId: string; approve: boolean }) => {
+    signMock(itemId, approve)
+    return { ok: true, signedAtIso: '2026-10-09T19:14:00Z' }
+  },
+}))
 vi.mock('../../lib/jobs/ownerConfirmWrite', () => ({
   confirmOwnerForProperty: (input: unknown) => confirmMock(input),
   stampOwnerConfirmed: (id: string, userId: string | null) => stampMock(id, userId),
@@ -467,8 +474,10 @@ describe('LienDeskModal', () => {
       const tiles = Array.from(card.querySelectorAll('.lienStepTile')).map((t) => `${t.textContent}:${t.getAttribute('data-state')}`)
       expect(tiles).toEqual(['✓Owner:done', '✓Drafted:done', 'youApprove:now', '\u00a0Mail:todo'])
       // The footer: two buttons, and nothing of the computer's row.
-      expect(screen.getByRole('button', { name: 'Approve ▸' })).toBeTruthy()
-      expect(screen.queryByRole('button', { name: /Approve & next/ })).toBeNull()
+      expect(screen.getByRole('button', { name: 'Sign and approve ▸' })).toBeTruthy()
+      // The notice's own signature line sits on the card (v2.5082): his name in cursive, one tap signs and approves.
+      expect(screen.getByTestId('lien-sign-line').getAttribute('data-lien-sign-mode')).toBe('type')
+      expect(screen.queryByRole('button', { name: /Sign and approve & next/ })).toBeNull()
       fireEvent.click(screen.getByRole('button', { name: 'Not yet' }))
       expect(screen.getByRole('button', { name: /Hold — they promised/ })).toBeTruthy()
       expect(screen.getByRole('button', { name: 'Back to the office' })).toBeTruthy()
@@ -520,7 +529,7 @@ describe('LienDeskModal', () => {
     expect(screen.getByText(/Jun 2026's lien right ends September 15, 2026/)).toBeTruthy()
     expect(screen.getByText(/Standing rule for Loberg Contracting/)).toBeTruthy()
     expect(screen.getByRole('radio', { name: 'Send notices without asking' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Approve & next/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Sign and approve & next/ })).toBeTruthy()
     // The pay offer (v2.4713): off until he ticks it, then the sentence as the page prints it. v2.4745: the switch sits in the
     // footer's bottom row and the box opens above that row only once it is on.
     expect(screen.queryByTestId('lien-offer-box')).toBeNull()
@@ -580,7 +589,7 @@ describe('LienDeskModal', () => {
     const chip = document.querySelector('[data-lien-desk-awaiting-words]') as HTMLElement
     expect(chip.textContent).toContain('Waiting on the leader · since')
     expect(chip.title).toMatch(/^Waiting on the leader since /)
-    expect(screen.queryByRole('button', { name: /Approve & next/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Sign and approve & next/ })).toBeNull()
     // Blue, the desk's primary: it is the approval step, not a side act (v2.4850, the owner's ask).
     const leaderHere = screen.getByRole('button', { name: /Leader here, Approve/ })
     expect(leaderHere.style.background).toBe('rgb(37, 99, 235)')
@@ -619,7 +628,7 @@ describe('LienDeskModal', () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={data(J650, [awaiting], true)} />)
     await settle()
     expect(screen.queryByRole('button', { name: /Leader here/ })).toBeNull()
-    expect(screen.getByRole('button', { name: /Approve & next/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Sign and approve & next/ })).toBeTruthy()
   })
 })
 

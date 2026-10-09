@@ -38,6 +38,15 @@ class FakeJsPDF {
   rect(x: number, y: number, w: number, h: number, style?: string) {
     this.rects.push({ x, y, w, h, style })
   }
+  roundedRect(x: number, y: number, w: number, h: number, _rx: number, _ry: number, style?: string) {
+    this.rects.push({ x, y, w, h, style: style ?? 'round' })
+  }
+  getTextWidth(t: string) {
+    return t.length * 1.2
+  }
+  getImageProperties() {
+    return { width: 400, height: 100 }
+  }
   addImage(data: string, type: string, x: number, y: number, w: number, h: number) {
     this.images.push({ data, type, x, y, w, h })
   }
@@ -63,5 +72,31 @@ describe('the pay page in PDF', () => {
     expect(pdf.texts).toContain('clicktooling.com/pay/inv-1')
     expect(pdf.texts.some((t) => t.includes('pay by check'))).toBe(true)
     expect(pdf.texts).toContain('Please pay these only if the GC says so.')
+  })
+})
+
+describe('the signed frame in PDF (v2.5077)', () => {
+  const signed = { mode: 'type' as const, printedName: 'Robert Douglas', pngDataUrl: null, signedWords: 'Signed October 9, 2026 at 2:14 PM CT', recordId: 'L878-4C2E91', auditLine: 'Placed by Robert Douglas with one press under his own sign-in to ClickTooling on October 9, 2026 at 2:14 PM CT.' }
+
+  it('pressed: the rounded frame, the tag, the name in type, the names and the day, the record ID, the audit line; drawn: the ink as an image inside the frame', async () => {
+    await filingDocPdfBlob([{ kind: 'paragraph', text: 'Before.' }, { kind: 'signature', lines: ['Robert Douglas, Owner', 'Click Plumbing'], signed }])
+    const pdf = FakeJsPDF.last!
+    expect(pdf.rects.filter((r) => r.style === 'round')).toHaveLength(1)
+    expect(pdf.texts).toContain('SIGNED ELECTRONICALLY')
+    expect(pdf.texts).toContain('Robert Douglas')
+    expect(pdf.texts).toContain('Robert Douglas, Owner')
+    expect(pdf.texts).toContain('Signed October 9, 2026 at 2:14 PM CT')
+    expect(pdf.texts).toContain('L878-4C2E91')
+    expect(pdf.texts.some((t) => t.startsWith('Placed by Robert Douglas'))).toBe(true)
+    expect(pdf.images).toEqual([])
+    await filingDocPdfBlob([{ kind: 'signature', lines: ['Robert Douglas, Owner'], signed: { ...signed, mode: 'draw', pngDataUrl: 'data:image/png;base64,AAAA' } }])
+    const drawn = FakeJsPDF.last!
+    expect(drawn.images).toHaveLength(1)
+    expect(drawn.images[0]!.data).toBe('data:image/png;base64,AAAA')
+    expect(drawn.images[0]!.h).toBeCloseTo(14, 6)
+    expect(drawn.texts).not.toContain('Robert Douglas')
+    // Unsigned stays the rule and the names, no frame.
+    await filingDocPdfBlob([{ kind: 'signature', lines: ['Robert Douglas, Owner'] }])
+    expect(FakeJsPDF.last!.rects.filter((r) => r.style === 'round')).toHaveLength(0)
   })
 })

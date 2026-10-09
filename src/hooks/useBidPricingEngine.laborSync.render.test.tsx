@@ -287,3 +287,34 @@ describe('useBidPricingEngine · the Labor sync keeps typed hours, and moves eac
     expect(result.current.costEstimateLaborRows.find((r) => r.id === 'l1')?.top_out_hrs_per_unit).toBe(6)
   })
 })
+
+describe('useBidPricingEngine · a book switch tags the bid’s pick of its price book (punch list #73 PR 5)', () => {
+  beforeEach(() => {
+    queries.length = 0
+    for (const k of Object.keys(db)) delete db[k]
+    for (const k of Object.keys(tableErrors)) delete tableErrors[k]
+    db.bids = [{ id: 'b1' }]
+    db.bid_versions = [{ id: 'v1', bid_id: 'b1' }]
+    db.price_book_versions = [{ id: 'pv1', bid_version_id: 'v1' }]
+  })
+
+  it('with the book-switch tag, the bid’s pick and its version’s star carry it', async () => {
+    const view = mount()
+    act(() => view.result.current.setSelectedBidVersionId('b1', 'v1'))
+    await act(async () => {
+      expect(await view.result.current.saveBidSelectedPriceBookVersion('b1', 'pv1', 'book-switch')).toBe(true)
+    })
+    expect(writes('bids', 'update').map((q) => q.tag)).toEqual(['book-switch'])
+    expect(writes('bid_versions', 'update').map((q) => q.tag)).toEqual(['book-switch'])
+  })
+
+  it('with no tag, the save is untagged, as before', async () => {
+    const view = mount()
+    act(() => view.result.current.setSelectedBidVersionId('b1', 'v1'))
+    await act(async () => {
+      expect(await view.result.current.saveBidSelectedPriceBookVersion('b1', 'pv1')).toBe(true)
+    })
+    expect(writes('bids', 'update').map((q) => q.tag)).toEqual([null])
+    expect(writes('bid_versions', 'update').map((q) => q.tag)).toEqual([null])
+  })
+})

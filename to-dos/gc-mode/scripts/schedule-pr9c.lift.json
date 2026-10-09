@@ -41,5 +41,10 @@
       "to": "schedule/recovery.test.ts",
       "header": "/**\n * The tests of `gcRecovery.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a, and PR 9c for the offers). The data is `testState.ts`. The tests that\n * play the prototype's reducer stay on the spike, where they run against these kernels.\n */"
     }
-  ]
+  ],
+  "pin": {
+    "main": "4c85d5c3c6164bd8e4bd76755345a196798f9ce1",
+    "spike": "e9b9b69bf44c81744d9d3afef5fafc454f276b06",
+    "about": "#5170 merged; the spike before its follow-up (spike/schedule-pr9c-follow)"
+  }
 }

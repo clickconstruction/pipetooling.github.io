@@ -29,7 +29,7 @@ There is no new table, so there are no `apply_read_only_*` or digital-twin foote
 ## Checked before the PR
 
 - **Read-only on prod:** both tables exist and have no archive trigger yet. `archive_deleted_record()` is the trigger function the other archived tables use.
-- **The local Postgres bed could not start,** because the Mac's shared memory is used up by other servers. The DO-block is the `20261008070000` block with two table names changed. The SQL beds workflow was dispatched on the branch to apply it in the full migration chain.
+- **The local Postgres bed could not start,** because the Mac's shared memory is used up by other servers. The DO-block is the `20261008070000` block with two table names changed. The SQL beds workflow, dispatched on the branch, applied it in the full migration chain and passed 9 of 9 jobs.
 - **The label tests pass,** and each of two mutants fails one.
 
 ## Push
@@ -44,3 +44,16 @@ WHERE t.tgname = 'zzz_archive_on_delete' AND c.relname IN ('spec_section_match_r
 ```
 
 That returns two rows, keyed `('section_code')` and `('code')`.
+
+## Status
+
+Merged as v2.5056 (#5141) and pushed to prod by Punchlist at 15:09 UTC on 2026-10-09. The migration writes no row, so that time is Punchlist's word.
+
+**Verified read-only over the pooler**: both tables carry the trigger, with the group keys above.
+
+```
+CREATE TRIGGER zzz_archive_on_delete BEFORE DELETE ON public.spec_section_match_rules FOR EACH ROW EXECUTE FUNCTION archive_deleted_record('section_code')
+CREATE TRIGGER zzz_archive_on_delete BEFORE DELETE ON public.spec_sections FOR EACH ROW EXECUTE FUNCTION archive_deleted_record('code')
+```
+
+The first screen that deletes a rule or a section is the manager's write side, v2.5061 (#5147), which merged at 16:10 UTC. So the archive was in place before the manager could delete anything.

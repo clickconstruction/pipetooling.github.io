@@ -77,7 +77,7 @@ import {
 } from '../../lib/jobs/jobDevelopments'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { revenueDollarsFromFixtures } from '../../lib/revenueFromJobFixtures'
-import { jobFormPaidDollars, jobFormRevenueDollars } from '../../lib/jobs/jobFormMoneyTotals'
+import { jobFormPaidDollars, jobFormRevenueDollars, jobFormRiderFeesDollars } from '../../lib/jobs/jobFormMoneyTotals'
 import { mergePaymentRowUpdate, paymentRowsAfterRemove } from '../../lib/jobs/jobFormPaymentActions'
 import { NEW_JOB_CHILD_ROW_FAILURE_TOAST_MS, newJobChildRowFailureWords, writeNewJobChildRows } from '../../lib/jobs/jobFormSliceWrites'
 import { closeDateMetBackfillNeeded, closeDemoteToBilledNeeded } from '../../lib/jobs/jobFormCloseSideEffects'
@@ -542,7 +542,11 @@ export default function JobFormModal({
   // v2.1029: rider (hazmat) fees count toward the Job Total — display, billing
   // math, AND the revenue written on save (previously saving recomputed
   // revenue from fixtures alone, silently wiping the fee's revenue bump).
-  const riderFeesDollars = useMemo(() => sumHazmatRiderFees(hazmatIncidents), [hazmatIncidents])
+  // v2.5091: a returned check's fee on a bill is a rider too — the same save
+  // wiped its $30 while the bill kept it. The ② bar's riders block stays the
+  // hazmat fees it names; the check fee is already on its bill.
+  const hazmatFeesDollars = useMemo(() => sumHazmatRiderFees(hazmatIncidents), [hazmatIncidents])
+  const riderFeesDollars = useMemo(() => jobFormRiderFeesDollars(hazmatFeesDollars, editing?.invoices), [hazmatFeesDollars, editing?.invoices])
   const jobTotalWithRidersDollars = useMemo(() => jobFormRevenueDollars(fixtures, riderFeesDollars), [fixtures, riderFeesDollars])
   /** Live money-lifecycle figures for the billing header bar (fixtures total + this form's payments + the job's invoices). */
   const billingBar = useMemo(
@@ -570,8 +574,8 @@ export default function JobFormModal({
   // One segments build feeds the % done bar's boundary ticks (v2.1130) and the
   // ② Invoices dollar-coverage model (v2.1132).
   const billingSegments = useMemo(
-    () => buildJobSegmentsBar({ fixtures, riderFeesDollars, invoiceStatusById: fixtureInvoiceStatusById }),
-    [fixtures, riderFeesDollars, fixtureInvoiceStatusById],
+    () => buildJobSegmentsBar({ fixtures, riderFeesDollars: hazmatFeesDollars, invoiceStatusById: fixtureInvoiceStatusById }),
+    [fixtures, hazmatFeesDollars, fixtureInvoiceStatusById],
   )
   const billingBarMarks = useMemo(() => segmentBoundaryMarks(billingSegments), [billingSegments])
   // Money paid or invoiced by dollar amount (no line-item links): hatches the
@@ -613,8 +617,8 @@ export default function JobFormModal({
     const byId = new Map(fixtures.map((f) => [f.id, f] as const))
     const inPlan = stagePlan.rows.map((r) => byId.get(r.fixtureId)).filter((f): f is FixtureRow => !!f)
     const seen = new Set(inPlan.map((f) => f.id))
-    return buildJobSegmentsBar({ fixtures: [...inPlan, ...fixtures.filter((f) => !seen.has(f.id))], riderFeesDollars, invoiceStatusById: fixtureInvoiceStatusById })
-  }, [fixtures, stagePlan, riderFeesDollars, fixtureInvoiceStatusById])
+    return buildJobSegmentsBar({ fixtures: [...inPlan, ...fixtures.filter((f) => !seen.has(f.id))], riderFeesDollars: hazmatFeesDollars, invoiceStatusById: fixtureInvoiceStatusById })
+  }, [fixtures, stagePlan, hazmatFeesDollars, fixtureInvoiceStatusById])
   const billTabLineRows = useMemo(
     () => billTabLines({ segments: billTabSegments, coverage: segmentCoverage, plan: stagePlan }),
     [billTabSegments, segmentCoverage, stagePlan],
