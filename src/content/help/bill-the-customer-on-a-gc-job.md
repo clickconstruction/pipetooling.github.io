@@ -18,11 +18,11 @@ Each pay application goes on the AIA form. It has a line for each trade, our own
 5. Tick **Email it to the customer and the architect now** to email them the form. The tick starts off.
 6. Press {{button:blue|Send pay application}}.
 
-With the tick on, the customer gets the pay application with the form. The architect gets the same form and an ask to certify it. Both emails come from Click Construction. Their replies go to the project manager. The bill under **Sent** then says who it was emailed to and when.
+With the tick on, the customer gets the pay application with the form. The architect gets the same form and an ask to certify it. Both emails come from Click Construction. The project manager gets their replies. The bill under **Sent** then says who it was emailed to and when.
 
 With the tick off, email the form to them from your own email. When an email does not go, the pay application still went. The window says why.
 
-The app keeps a copy of each email on the billing job's **Documents** tab. The first bill on a job opens its billing job on the Pipeline. Its bills show there with the customer's other bills.
+The app keeps a copy of each email on the billing job's **Documents** tab. The first bill on a job opens its billing job on the Pipeline. The billing job's bills show there with the customer's other bills.
 
 ## Record the certificate
 
@@ -32,9 +32,12 @@ The architect signs a certificate for what they approve. Record it when it comes
 2. Type what they certified. It starts at what we asked.
 3. Pick the day they signed it.
 4. When they certified less, say why in the box that shows.
-5. Press {{button:blue|Record the certificate}}.
+5. Tick **Email the customer the bill now** to email it to them. The tick starts off.
+6. Press {{button:blue|Record the certificate}}.
 
-The certificate makes the bill the customer pays. It shows on their statement with **Pay**. What the architect left out comes back on the next pay application.
+The certificate makes the bill the customer pays. The bill shows on their statement in their portal. What the architect left out comes back on the next pay application.
+
+With the tick on, the customer gets the bill by email. The email says what the architect certified and when we expect it. The email asks them to reply with the day they will pay. A customer with a portal link gets the link too. The email has no Pay button yet.
 
 When they pay, [record what they paid](/help/record-what-a-gc-customer-paid).
 

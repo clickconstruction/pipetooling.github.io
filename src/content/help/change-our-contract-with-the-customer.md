@@ -2,7 +2,7 @@
 title: change our contract with the customer on a GC job
 category: Bids & Estimating
 roles: dev, master_technician, controller
-keywords: gc mode, change order, customer, contract, signed, declined, credit, days, price, fee, percent done
+keywords: gc mode, change order, customer, contract, signed, declined, credit, days, price, fee, percent done, email
 order: 98
 ---
 When the work on a GC job changes, write a change order and send it to the customer to sign. A signed one changes their price.
@@ -24,10 +24,12 @@ A draft can be deleted. Press {{button:outline|Delete the draft}} under it.
 
 ## Send it to the customer
 
-1. Press {{button:blue|Send for signature}} on the draft.
-2. Copy the words the window shows. Send them from your own email with the change order.
+1. Tick **Email it to the customer now** on the draft to email it to them. The tick starts off.
+2. Press {{button:blue|Send for signature}}.
 
-The app does not email change orders yet. The change order now waits on the customer.
+With the tick on, the customer gets an email from Click Construction. The email says the change, the price and the days. They reply to sign it. The change order then says who it was emailed to.
+
+With the tick off, copy the words the window shows. Send them from your own email. The change order now waits on the customer either way.
 
 ## Record their answer
 

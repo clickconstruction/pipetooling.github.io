@@ -32,10 +32,21 @@ import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, payAppSendPayload, type BillingRows } from '../lib/gc/billCustomer'
-import { ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppToSend } from '../lib/gc/ownerBilling'
+import { ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
 import { downloadPayAppExcel, downloadPayAppPdf, payAppPdf } from '../lib/gc/payAppFileWriters'
 import { payAppFileName } from '../lib/gc/payAppFile'
-import { certifyAskMail, gcCustomerEmailRefusal, payAppMail, payAppMailFacts } from '../lib/gc/customerEmail'
+import {
+  certifiedMail,
+  certifiedMailFacts,
+  certifyAskMail,
+  changeOrderMail,
+  changeOrderMailFacts,
+  gcCustomerEmailRefusal,
+  payAppMail,
+  payAppMailFacts,
+  type BillEmailed,
+} from '../lib/gc/customerEmail'
+import { GC_CUSTOMER_EMAIL_FILED_AS } from '../../supabase/functions/_shared/gcCustomerEmails'
 import { pdfBase64, sendGcCustomerEmail } from '../lib/gc/customerEmailIo'
 import { unbilledPayments } from '../lib/gc/ownerBillingRows'
 import LienReleaseModal from '../components/jobs/LienReleaseModal'
@@ -70,6 +81,7 @@ import {
   deleteChangeOrderDraft,
   draftChangeOrder,
   loadGcChangeOrders,
+  loadGcChangeOrderEmails,
   sendChangeOrder,
   setChangeOrderPct,
   checkDriveAccess,
@@ -422,18 +434,27 @@ export default function GcProjects() {
   // the board's projects (boardProjectFromView maps the rest), and opened at `changes=<projectId>`.
   const changesProjectId = params.get('changes')
   const [changeOrderRows, setChangeOrderRows] = useState<ChangeOrderRow[]>([])
+  const [changeEmails, setChangeEmails] = useState<{ source_id: string; recipient_name: string | null; sent_at: string }[]>([])
   const [changeBusy, setChangeBusy] = useState<string | null>(null)
   const [changeProblem, setChangeProblem] = useState<string | null>(null)
   const loadChangeOrders = useCallback(async () => {
     // Change orders are the money team's (the Owner Billing door): nobody else reads them.
     if (!board || !canSeeGcMoney(role)) return
-    setChangeOrderRows(await loadGcChangeOrders(board.projects.map((p) => p.id)))
+    const rows = await loadGcChangeOrders(board.projects.map((p) => p.id))
+    setChangeOrderRows(rows)
+    // Who each was emailed to (O4b-2), from its sent copies.
+    setChangeEmails(await loadGcChangeOrderEmails(rows.map((r) => r.id)))
   }, [board, role])
   useEffect(() => {
     void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
   }, [loadChangeOrders])
   const boardWithChanges = useMemo(() => (board ? withChangeOrders(board, changeOrderRows) : null), [board, changeOrderRows])
   const changesProject = changesProjectId ? (boardWithChanges?.projects.find((p) => p.id === changesProjectId) ?? null) : null
+  const changeEmailed = useMemo(() => {
+    const out: Record<string, { to: string; on: string }[]> = {}
+    for (const e of changeEmails) (out[e.source_id] ??= []).push({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) })
+    return out
+  }, [changeEmails])
   const setChangesWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('changes', projectId)
@@ -550,12 +571,17 @@ export default function GcProjects() {
     [billOwn],
   )
   const billUnbilled = useMemo(() => unbilledPayments(billOwn?.money), [billOwn])
-  // Who each sent one was emailed to and when (O4b), from its sent copies.
+  // Who each sent one was emailed to and when (O4b), from its sent copies: the pay application's own, then the certified bill.
   const billEmailed = useMemo(() => {
-    const out: Record<number, { to: string; on: string }[]> = {}
+    const out: Record<number, BillEmailed[]> = {}
     for (const a of billOwn?.payApps ?? []) {
       const sent = (billOwn?.emails ?? []).filter((e) => e.source_id === a.id)
-      if (sent.length > 0) out[a.number] = sent.map((e) => ({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) }))
+      if (sent.length > 0)
+        out[a.number] = sent.map((e) => ({
+          what: e.kind === GC_CUSTOMER_EMAIL_FILED_AS.certified ? 'certified' : 'payApp',
+          to: e.recipient_name ?? '',
+          on: calendarYmdInAppTzFromIso(e.sent_at),
+        }))
     }
     return out
   }, [billOwn])
@@ -1038,10 +1064,34 @@ export default function GcProjects() {
           today={today}
           busy={changeBusy}
           problem={changeProblem}
+          emailed={changeEmailed}
           onClose={() => setChangesWindow(null)}
           writes={{
             onDraft: (draft) => changeWrite('new', draftChangeOrder(changesProject.id, draft), 'The change order was not drafted.'),
-            onSend: (id) => changeWrite(id, sendChangeOrder(id, today), 'The change order was not marked sent.'),
+            onSend: (id, email) => {
+              // The tick (off to start) also emails it to the customer to sign by reply (O4b-2). The change orders are
+              // read again either way, and an email that did not go is said after.
+              const co = projectChangeOrders(changesProject).find((c) => c.id === id)
+              setChangeBusy(id)
+              setChangeProblem(null)
+              void (async () => {
+                try {
+                  await sendChangeOrder(id, today)
+                  let emailProblem: string | null = null
+                  if (email && co) {
+                    const mail = changeOrderMail(changeOrderMailFacts(boardWithChanges, changesProject, co))
+                    const a = await sendGcCustomerEmail({ projectId: changesProject.id, kind: 'change_order', sourceId: id, subject: mail.subject, lines: mail.lines, pdf: null })
+                    if (!a.ok) emailProblem = `The change order is marked sent, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`
+                  }
+                  await loadChangeOrders()
+                  if (emailProblem) setChangeProblem(emailProblem)
+                } catch (e) {
+                  setChangeProblem(formatErrorMessage(e, 'The change order was not marked sent.'))
+                } finally {
+                  setChangeBusy(null)
+                }
+              })()
+            },
             onAnswer: (id, signed, on) => changeWrite(id, answerChangeOrder(id, signed, on), 'Their answer was not recorded.'),
             onSetPct: (id, pct) => changeWrite(id, setChangeOrderPct(id, pct), 'The percent done was not saved.'),
             onDelete: (id) => changeWrite(id, deleteChangeOrderDraft(id), 'The draft was not deleted.'),
@@ -1111,9 +1161,31 @@ export default function GcProjects() {
                 }
               })()
             },
-            onCertify: (number, amount, on, note) => {
+            onCertify: (number, amount, on, note, email) => {
               const id = billRows?.billing.get(billProject.id)?.payApps.find((a) => a.number === number)?.id
-              if (id) billWrite(`cert-${number}`, () => recordCertificate(id, amount, on, note), 'The certificate was not recorded.')
+              const app = ownerPayAppsSent(billProject).find((a) => a.number === number)
+              if (!id) return
+              // The tick (off to start) also emails the customer the certified bill (O4b-2), when there is one: nothing
+              // certified makes no bill. The bills are read again either way, and an email that did not go is said after.
+              setBillBusy(`cert-${number}`)
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  await recordCertificate(id, amount, on, note)
+                  let emailProblem: string | null = null
+                  if (email && app && amount > 0) {
+                    const mail = certifiedMail(certifiedMailFacts(billState, billProject, app, amount, on))
+                    const a = await sendGcCustomerEmail({ projectId: billProject.id, kind: 'certified', sourceId: id, subject: mail.subject, lines: mail.lines, pdf: null })
+                    if (!a.ok) emailProblem = `The certificate is recorded, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`
+                  }
+                  await loadBill()
+                  if (emailProblem) setBillProblem(emailProblem)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The certificate was not recorded.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
             },
             onSetRetainage: (pct, step) => billWrite('retainage', () => setOwnerRetainage(billProject.id, pct, step), 'The retainage was not saved.'),
             onDownload: (which, kind) => {

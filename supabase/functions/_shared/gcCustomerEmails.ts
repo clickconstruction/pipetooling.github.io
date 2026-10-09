@@ -1,8 +1,8 @@
 /**
  * gc-customer-email's pure half (GC mode, Owner Billing's O4b): who may send, what a request may carry, who gets each
- * kind, and the email around the lines the window wrote. The words are the window's (`src/lib/gc/customerEmail.ts`);
- * this frames them the way `gc-trade-email` frames a trade partner's. Dependency-free, so the app's tests import it
- * straight from here.
+ * kind and what it is about, and the email around the lines the window wrote. The words are the window's
+ * (`src/lib/gc/customerEmail.ts`); this frames them the way `gc-trade-email` frames a trade partner's. Dependency-free,
+ * so the app's tests import it straight from here.
  */
 
 /**
@@ -14,24 +14,59 @@ export const GC_CUSTOMER_EMAIL_ROLES: readonly string[] = ['dev', 'master_techni
 /** The GC entity's name on every email to a GC customer (the owner's call 12: Click Construction). */
 export const GC_CUSTOMER_EMAIL_FROM_NAME = 'Click Construction'
 
-/** O4b-1's kinds: our pay application to the customer, and the ask to the architect to certify it. */
-export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask'] as const
+/**
+ * The kinds. O4b-1: our pay application to the customer, and the ask to the architect to certify it. O4b-2: the bill
+ * the architect certified, to the customer, and a change order for them to sign.
+ */
+export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask', 'certified', 'change_order'] as const
 export type GcCustomerEmailKind = (typeof GC_CUSTOMER_EMAIL_KINDS)[number]
 
 /** Who each kind goes to: the project's customer, or its architect (`gc_projects.architect_customer_id`). */
 export const GC_CUSTOMER_EMAIL_TO: Record<GcCustomerEmailKind, 'customer' | 'architect'> = {
   pay_app: 'customer',
   certify_ask: 'architect',
+  certified: 'customer',
+  change_order: 'customer',
+}
+
+/** The row each kind is about: a pay application, or a change order. */
+export type GcCustomerEmailSource = 'gc_owner_pay_apps' | 'gc_change_orders'
+export const GC_CUSTOMER_EMAIL_SOURCE: Record<GcCustomerEmailKind, GcCustomerEmailSource> = {
+  pay_app: 'gc_owner_pay_apps',
+  certify_ask: 'gc_owner_pay_apps',
+  certified: 'gc_owner_pay_apps',
+  change_order: 'gc_change_orders',
 }
 
 /**
- * The sent copy's kind (docs/SENT_COPIES.md) for each email kind: both carry the pay application. It begins `bill`, so
- * the Documents page sorts it under Bills (`sentKindGroup`); never `pay_application`, the Pipeline's G702 workbook.
+ * The sent copy's kind (docs/SENT_COPIES.md) for each email kind. The pay application and the ask carry the form,
+ * `bill_gc_pay_app`; the certified bill is its own kind, so the window tells the two apart. Both begin `bill`, so the
+ * Documents page sorts them under Bills (`sentKindGroup`), and neither is `pay_application`, the Pipeline's G702
+ * workbook. A change order changes our contract with the customer: `job_contract_gc_change_order`, under Contracts.
  */
 export const GC_CUSTOMER_EMAIL_FILED_AS: Record<GcCustomerEmailKind, string> = {
   pay_app: 'bill_gc_pay_app',
   certify_ask: 'bill_gc_pay_app',
+  certified: 'bill_gc_certified',
+  change_order: 'job_contract_gc_change_order',
 }
+
+/** The sent copies' kinds about rows of one table, for the window's *Emailed to* lines. */
+export function gcCustomerEmailCopyKinds(table: GcCustomerEmailSource): string[] {
+  return [...new Set(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_SOURCE[k] === table).map((k) => GC_CUSTOMER_EMAIL_FILED_AS[k]))]
+}
+
+/**
+ * The kinds that add the customer's portal link when they already have one (never minted here): the certified bill,
+ * which the portal lists. It has no Pay there yet, since the bill is not on Stripe, so the line says *see*, not *pay*.
+ */
+export const GC_CUSTOMER_EMAIL_PORTAL_LINE: Record<GcCustomerEmailKind, boolean> = {
+  pay_app: false,
+  certify_ask: false,
+  certified: true,
+  change_order: false,
+}
+export const GC_CUSTOMER_EMAIL_PORTAL_WORDS = 'You can see this bill in your portal:'
 
 /** The form's PDF, base64, under the same cap `send-lien-release-email` keeps. */
 export const GC_CUSTOMER_EMAIL_MAX_PDF_BASE64 = 6_000_000
@@ -43,6 +78,8 @@ export const CUSTOMER_EMAIL_ERRORS = {
   readOnly: 403,
   badRequest: 400,
   notFound: 404,
+  otherProject: 409,
+  notCertified: 409,
   notSent: 409,
   noEmail: 422,
   sendFailed: 502,
@@ -53,12 +90,12 @@ export type CustomerEmailErrorKey = keyof typeof CUSTOMER_EMAIL_ERRORS
 export interface GcCustomerEmailRequest {
   projectId: string
   kind: GcCustomerEmailKind
-  /** The pay application the email is about (`gc_owner_pay_apps.id`). */
+  /** The row the email is about: a pay application or a change order, by `GC_CUSTOMER_EMAIL_SOURCE`. */
   sourceId: string
   subject: string
   /** The email, one paragraph a line, the greeting first. */
   lines: string[]
-  /** The form, made in the window (`payAppPdf`). */
+  /** The pay application's form, made in the window (`payAppPdf`). */
   pdf: { filename: string; base64: string } | null
 }
 
@@ -105,13 +142,23 @@ export interface GcCustomerEmailInput {
   signer: string
   /** Our name: `GC_CUSTOMER_EMAIL_FROM_NAME`. */
   gc: string
+  /** The customer's portal, for the kinds that link it (`GC_CUSTOMER_EMAIL_PORTAL_LINE`). Null: no line. */
+  portalUrl?: string | null
 }
 
-/** The email a GC customer or its architect reads: our name on top, the window's lines, then who it is from. */
+/**
+ * The email a GC customer or its architect reads: our name on top, the window's lines, the portal line when there is
+ * one, then who it is from.
+ */
 export function buildGcCustomerEmail(input: GcCustomerEmailInput): { subject: string; text: string; html: string } {
   const subject = input.subject.trim()
-  const text = [...input.lines.flatMap((l) => [l, '']), 'Thank you,', input.signer, input.gc].join('\n')
+  const portal = /^https:\/\/\S+$/.test((input.portalUrl ?? '').trim()) ? input.portalUrl!.trim() : null
+  const shown = portal ? portal.replace(/^https:\/\//, '').replace(/\/$/, '') : ''
+  const text = [...input.lines.flatMap((l) => [l, '']), ...(portal ? [`${GC_CUSTOMER_EMAIL_PORTAL_WORDS} ${portal}`, ''] : []), 'Thank you,', input.signer, input.gc].join('\n')
   const p = (s: string) => `<p style="margin:0 0 12px">${esc(s)}</p>`
+  const portalP = portal
+    ? `<p style="margin:0 0 12px">${esc(GC_CUSTOMER_EMAIL_PORTAL_WORDS)} <a href="${esc(portal)}" style="color:${INK}">${esc(shown)}</a></p>`
+    : ''
   const html =
     `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>` +
     `<body style="margin:0;padding:0;background:#ffffff">` +
@@ -120,6 +167,7 @@ export function buildGcCustomerEmail(input: GcCustomerEmailInput): { subject: st
     `<div style="background:${INK};color:${PAPER};padding:10px 16px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase">${esc(input.gc)}</div>` +
     `<div style="padding:16px;font-size:15px;line-height:1.5">` +
     input.lines.map(p).join('') +
+    portalP +
     `<p style="margin:0;padding-top:10px;border-top:1px solid ${HAIR};color:${MUTED};font-size:13px">Thank you,<br>${esc(input.signer)}<br>${esc(input.gc)}</p>` +
     `</div></div></div></body></html>`
   return { subject, text, html }
