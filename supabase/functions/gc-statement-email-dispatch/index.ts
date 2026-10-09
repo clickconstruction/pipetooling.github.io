@@ -54,6 +54,7 @@ import {
   renderGcShareAllText,
   renderGcStatementHtml,
   renderGcStatementText,
+  applyPaymentRule,
   attachJobTotals,
   payloadJobIds,
   type GcStatementPayload,
@@ -314,6 +315,8 @@ serve(async (req) => {
         } catch {
           /* the statement still goes, worded by the bills alone */
         }
+        // v2.5006: each bill netted by the one payment rule, as the board and GC Review show it.
+        applyPaymentRule(payload)
 
         const dateStr = chicagoDateStr()
         const isSingle = entityId != null

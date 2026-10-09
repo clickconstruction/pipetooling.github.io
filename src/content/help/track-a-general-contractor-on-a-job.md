@@ -68,7 +68,7 @@ Job 1058 · Service Visit · Sep 21 · $2,000.00
 - **The job's name** shows only when it says something. *Trip Charges* stays. A repeat of the GC's own name is left off. A repeat of the address that heads the block is left off too.
 - **A payment shows under the bill it was recorded against**, with the check number and the day. A bill with nothing paid is one plain line.
 - **Payments we have received.** Under the total is every payment the GC sent in the last 30 days, newest first. Each payment has the check number, the day, and the property and job it went to. A check that paid a job off says *now paid in full*. When none came, the statement says so and asks the GC to reply if they sent one. The list is read as you open the GC's row, so Copy carries it too.
-- **Paid on the job, not on a bill.** A job may carry a payment that was never put on a bill. The Draft Message dialog says so before you send. The warning reads *Paid on the job, not on a bill: Job 1042 $3,000.00.* The statement still shows that job's bills as owed in full. If the money was for those bills, you match it in Edit Job → Payments, then send.
+- **Paid on the job with no bill picked.** A job may carry a payment that was never put on a bill. The Draft Message dialog names those jobs before you send. The note reads *Paid on the job with no bill picked: Job 1042 $3,000.00.* The statement counts that money the way the portal does. It pays the work on no bill first, then the oldest bills. To put a payment on a different bill, pick the bill in Edit Job → Payments, then send.
 
 ## Print a GC's unpaid invoices
 
