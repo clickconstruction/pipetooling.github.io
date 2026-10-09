@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing O5: money in — payments, promises, reminders"
 parent: to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md (PR 7, O5)
-status: planned 2026-10-08 by Helper 5 at the lead's ask, written so the part that needs neither O4a's bills nor the owner's billing-job answer can ship first (O5a) · nothing built
+status: planned 2026-10-08 by Helper 5 at the lead's ask, written so the part that needs neither O4a's bills nor the owner's billing-job answer can ship first (O5a) · O5a and O5c built; O5b as built below, its SQL word for word (Helper 15, 2026-10-08)
 ---
 
 # O5: money in
@@ -80,48 +80,146 @@ There is no migration, no screen and no guide. The release note and fragment say
 
 ## O5b — remind them to pay (after O4a)
 
-**The migration, a draft until O4a's columns are on main.** Its final SQL comes in O5b's own mockup
-then, for the byte-for-byte check. Its shape:
+**As built (Helper 15, 2026-10-08), after the lead's go and two word calls.** One PR: the migration, `gc-customer-email`'s `reminder` kind, the window and the guide. The migration's SQL follows under *O5b's SQL as built*, word for word, for the byte-for-byte compare. It goes in the lead's morning batch.
 
-```sql
--- gc_remind_customer_to_pay: our ask to pay a late bill, with its email as it went. Never a
--- promise: the day it was due stays. SECURITY INVOKER (O1's dev-only RLS on the reminders).
-CREATE OR REPLACE FUNCTION public.gc_remind_customer_to_pay(
-  p_pay_app_id uuid, p_on date, p_pay_by date, p_note text, p_subject text, p_lines text[]
-) RETURNS uuid
--- Refuses, in words:
---   a pay application that is not there;
---   one still waiting on the architect ("nothing to pay yet");
---   one paid in full (its bill's status, read through O4a's invoice_id);
---   a pay-by day before today;
---   an email with no subject or no lines.
--- Writes:
---   the gc_owner_pay_reminders row;
---   one chase touch through the Pipeline's own add_payment_chase_touch(customer, job, 'note',
---     '<subject> · pay by <day>', NULL, NULL). The customer is projects.customer_id. The job is
---     gc_projects.billing_job_id when there is one, and null when not: the touch is then the
---     customer's alone, which the chase list already reads.
-```
+**The function:** `gc_remind_customer_to_pay(p_pay_app_id, p_on, p_pay_by, p_note, p_subject, p_lines)` returns
+the reminder's id. It is SECURITY INVOKER: the money team's policy on `gc_owner_pay_reminders` (the Owner Billing
+door) is its gate, and O1's read-only and twin blocks hold. It refuses, in words:
+- a pay application that is not there;
+- one still waiting on the architect;
+- one certified at nothing, which has no bill;
+- one paid in full, read from its bill's status through `invoice_id`;
+- a day other than today, and a pay-by day before today;
+- an email with no subject or no lines;
+- a project with no customer.
 
-"Late" itself stays the kernel's (`payReminderStep`: certified, open, past its due day). The
-database checks only what cannot be argued with. The window offers **Remind them to pay** only
-where the kernel says the bill can be reminded.
+It writes the reminder (the lines trimmed, blank ones dropped) and one chase touch through the Pipeline's own
+`add_payment_chase_touch(customer, billing job, 'note', '<subject> · pay by <Dy Mon D>', NULL, NULL)`, which lets the
+whole money team in (`is_assistant()` counts the controller).
 
-**The email:** `gc-customer-email` (O4b) gains the kind `reminder`. Its words are
-`payReminderEmail`'s, moved to `supabase/functions/_shared/gcCustomerEmails.ts` and read by both
-sides. It gets a sent copy, a `CUSTOMER_SURFACES` entry, a journey step with a sample email, and
-an answer in `personJourney.ts` (HANDOFF's list). The function writes `email_send_log_id` back on
-the reminder, through O1's column grant.
+"Late" itself stays the kernel's (`payReminderStep`: certified, open, past its due day). The database checks only what
+cannot be argued with. The window offers **Remind them to pay** only where the kernel says the bill can be reminded.
 
-**The window:** on Bill the customer, a late bill shows **Remind them to pay**. The send view (the
-Board's `GcCustomerSend` pattern) has the pay-by day set 5 days out (`PAY_REMINDER_DAYS`), the
-office's line, and the email as it will read. Once sent, the bill's line reads
-`payReminderSentWords`: "Reminded today · pay by Wed Oct 14." The guide is
+**The email:** `gc-customer-email` (O4b) gains the kind `reminder`, its source the reminder row.
+- It sends the subject and lines the function filed, not the request's, so the email is the record.
+- It adds the customer's portal line when they already have a link (never minted), as the certified bill's does.
+- It refuses a reminder already emailed (`alreadySent`).
+- It files the copy as `bill_gc_reminder`, under Bills, and writes `email_send_log_id` back on the reminder through
+  O1's column grant.
+
+The words stay in the client kernel (`payReminderMail` in `ownerBillingRemind.ts`), built from plain facts so What
+customers see's sample uses them. The reminder row carries them to the function, so nothing moves to the shared file.
+It has a `CUSTOMER_SURFACES` step, a journey step with a sample email and an answer in `personJourney.ts`.
+
+**The two word calls (the lead, 2026-10-08):**
+- **A, no Pay.** The prototype's "Pay it in your portal, by card or bank transfer." becomes always "Reply with the day
+  you will pay.", with the function's portal line when they have a link. The bill is not on Stripe, so neither
+  `/pay/<id>` nor the portal can take the money yet. Making the bill a Stripe invoice is the owner's call, as its own PR.
+- **B, the waiver.** "Our unconditional lien waiver for it comes to you the day it is paid." becomes "Our unconditional
+  lien waiver for it follows once it is paid." The waiver is a press after the payment (O5c), and the app never
+  promises what a press has to do.
+
+**The window:** on Bill the customer, a late bill shows **Remind them to pay** (`GcBillRemind.tsx`). The send panel
+has the pay-by day set 5 days out (`PAY_REMINDER_DAYS`), **Your line in it**, and the email as it will read, then
+**Send the reminder**: the function first, then the email. Once sent, the bill's line reads `payReminderSentWords`:
+"Reminded today · pay by Wed Oct 14.", with "The email did not go." when the reminder has no log. The guide is
 `remind-a-customer-to-pay-a-gc-bill`.
 
-*Check:* on the test project's certified test bill, held late, one reminder to the lead's test
-address, on the owner's yes. Its row, its chase touch on the customer and its sent copy are all
-there. A second press on a paid bill is refused.
+*Check:* on the test project's certified test bill, held late, one reminder to bids@clickplumbing.com, on Grace's yes
+in Helper 15's chat. Its row, its chase touch and its sent copy are all there. A press on a paid bill is refused, which
+the SQL bed proves once `mark_invoice_paid` pays the bill in full.
+
+### O5b's SQL as built
+
+`supabase/migrations/20261009210000_gc_remind_customer_to_pay.sql`, word for word:
+
+```sql
+SET lock_timeout = '3s';
+
+-- GC mode, Owner Billing's O5b (to-dos/gc-mode/mockups/owner-billing-o5.md → O5b, on spike/gc-mode): our ask
+-- to pay a late bill. The window drafts the email (payReminderEmail); this files it with the pay-by day and
+-- the office's line, and puts one touch on the Pipeline's chase list, before gc-customer-email sends it and
+-- writes its email_send_log_id back. Never a promise: the day the bill was due stays. "Late" is the kernel's
+-- (payReminderStep: certified, open, past its due day); the database checks only what cannot be argued with.
+-- SECURITY INVOKER: the money team's policy on gc_owner_pay_reminders is its gate, and O1's read-only and twin
+-- blocks hold for it. The chase touch goes through the Pipeline's own add_payment_chase_touch, which lets the
+-- money team in (is_assistant() counts the controller).
+CREATE OR REPLACE FUNCTION public.gc_remind_customer_to_pay(
+  p_pay_app_id uuid,
+  p_on date,
+  p_pay_by date,
+  p_note text,
+  p_subject text,
+  p_lines text[]
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_app public.gc_owner_pay_apps%ROWTYPE;
+  v_status text;
+  v_customer uuid;
+  v_job uuid;
+  v_subject text := btrim(COALESCE(p_subject, ''));
+  v_lines text[];
+  v_id uuid;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sign in to remind them to pay.';
+  END IF;
+  SELECT * INTO v_app FROM public.gc_owner_pay_apps WHERE id = p_pay_app_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'That pay application is not there.';
+  END IF;
+  IF v_app.certified IS NULL THEN
+    RAISE EXCEPTION 'Pay application % waits on the architect. There is nothing to pay on it yet.', v_app.number;
+  END IF;
+  IF v_app.invoice_id IS NULL THEN
+    RAISE EXCEPTION 'The architect certified nothing on pay application %, so there is no bill to pay.', v_app.number;
+  END IF;
+  SELECT status INTO v_status FROM public.jobs_ledger_invoices WHERE id = v_app.invoice_id;
+  IF v_status = 'paid' THEN
+    RAISE EXCEPTION 'Pay application % is paid in full.', v_app.number;
+  END IF;
+  IF p_on IS DISTINCT FROM public.app_today() THEN
+    RAISE EXCEPTION 'A reminder goes today.';
+  END IF;
+  IF p_pay_by IS NULL OR p_pay_by < public.app_today() THEN
+    RAISE EXCEPTION 'The pay-by day cannot be before today.';
+  END IF;
+  SELECT array_agg(btrim(l) ORDER BY n) INTO v_lines
+  FROM unnest(p_lines) WITH ORDINALITY AS t(l, n)
+  WHERE btrim(COALESCE(l, '')) <> '';
+  IF v_subject = '' OR v_lines IS NULL THEN
+    RAISE EXCEPTION 'The reminder needs its email: a subject and its lines.';
+  END IF;
+  SELECT p.customer_id, g.billing_job_id INTO v_customer, v_job
+  FROM public.projects p JOIN public.gc_projects g ON g.project_id = p.id
+  WHERE p.id = v_app.project_id;
+  IF v_customer IS NULL THEN
+    RAISE EXCEPTION 'This project has no customer to remind.';
+  END IF;
+
+  INSERT INTO public.gc_owner_pay_reminders (pay_app_id, sent_on, sent_by, pay_by, note, subject, lines)
+  VALUES (p_pay_app_id, p_on, auth.uid(), p_pay_by, btrim(COALESCE(p_note, '')), v_subject, v_lines)
+  RETURNING id INTO v_id;
+
+  -- One touch on the chase list: the customer's, pinned to the billing job.
+  PERFORM public.add_payment_chase_touch(v_customer, v_job, 'note', v_subject || ' · pay by ' || to_char(p_pay_by, 'Dy Mon FMDD'), NULL, NULL);
+
+  RETURN v_id;
+END;
+$$;
+
+COMMENT ON FUNCTION public.gc_remind_customer_to_pay(uuid, date, date, text, text, text[]) IS
+  'GC mode (O5b): our ask to pay a certified bill that is not paid, filed with the pay-by day, the office''s line and the email as the window drafted it, with one note on the Pipeline''s chase list. Never a promise: the day it was due stays. Refuses a pay application waiting on the architect, one with no bill, one paid in full, a day other than today, a pay-by day before today and an email with no subject or lines. Returns the reminder''s id. SECURITY INVOKER.';
+
+REVOKE ALL ON FUNCTION public.gc_remind_customer_to_pay(uuid, date, date, text, text, text[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.gc_remind_customer_to_pay(uuid, date, date, text, text, text[]) FROM anon;
+GRANT EXECUTE ON FUNCTION public.gc_remind_customer_to_pay(uuid, date, date, text, text, text[]) TO authenticated;
+```
 
 ## O5c — payments, promises, waivers (after O4a, and the owner's yes to decision 1)
 
@@ -167,12 +265,14 @@ and day and `invoice_ids` naming the bill. It is signed with the stored ink and 
 ## Docs each PR touches
 
 - **O5a:** the release note and fragment.
-- **O5b:**
+- **O5b** (as built):
   - the migration doc;
   - `docs/EDGE_FUNCTIONS.md` (the new kind);
-  - `docs/SENT_COPIES.md` (`gc_pay_reminder`);
-  - the guide;
-  - the journeys.
+  - the guide `remind-a-customer-to-pay-a-gc-bill`;
+  - the journeys;
+  - `ACCESS_CONTROL.md`, `PROJECT_DOCUMENTATION.md` and `docs/twins/APP_DIRECTORY.md`.
+
+  The copy's kind, `bill_gc_reminder`, needs no `docs/SENT_COPIES.md` line: that doc keeps no list of kinds.
 - **O5c:**
   - `docs/BILLING_FLOWS.md` (a GC bill's payments, promises and waivers on the billing job);
   - the guide `record-what-a-gc-customer-paid`;
