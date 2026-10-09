@@ -13,7 +13,8 @@ import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { COMPANY_EMAIL_FROM_LABEL, CUSTOMER_EMAIL_FROM_ADDRESS, estimateEmailFrom } from './customerEmailFrom'
 import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
-import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, TRADE_PORTAL_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
+import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, SUBMITTAL_ROOM_SAMPLE_PATH, TRADE_PORTAL_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
+import { buildSubmittalRoomLinkEmail, roomLinkBidLabel } from '../../supabase/functions/_shared/submittalRoomLinkEmail'
 import { buildJobContractPaperEmail, buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail, type BuiltEmail } from './jobContractEmail'
 import { SAMPLE_JOB_CONTRACT } from './customerSample'
 import { testReportSampleEmail } from './jobs/testReportSample'
@@ -367,6 +368,20 @@ export function buildSampleGcTradeEmail(ctx: SampleEmailContext): BuiltEmail {
   })
 }
 
+/** v2.5026 (Submittals decision 11): a named reviewer's own room link, as `send-submittal-room-link` sends it, to the sample room. */
+export function buildSampleSubmittalRoomLinkEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildSubmittalRoomLinkEmail({
+    companyName: PORTAL_COMPANY.name,
+    phone: PORTAL_COMPANY.phone,
+    bidLabel: roomLinkBidLabel({ bid_number: 'P482', project_name: SAMPLE_BID.projectName }),
+    revNumber: 2,
+    personName: 'Alex Sample',
+    mayDecide: true,
+    link: `${ctx.origin}${SUBMITTAL_ROOM_SAMPLE_PATH}`,
+    note: '',
+  })
+}
+
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string; from: string } {
   return { ...buildSampleEmailBody(id, ctx), from: sampleEmailFrom(id) }
 }
@@ -390,6 +405,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return buildSampleGcCustomerEmail(id, ctx)
   if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
   if (id === 'gc-interest-bill') return buildSampleGcInterestBillEmail(ctx)
+  if (id === 'submittal-room-link') return buildSampleSubmittalRoomLinkEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }
 

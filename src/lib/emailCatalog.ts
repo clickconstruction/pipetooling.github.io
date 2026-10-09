@@ -345,6 +345,18 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Pricing — {{bid}}',
   },
   {
+    // v2.5026 (Submittals decision 11): a named reviewer's own link to the review room, from Share.
+    id: 'submittal_room_link',
+    name: 'Submittal review link',
+    group: 'bids',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'send-submittal-room-link',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Click Plumbing and Electrical shared Rev 2 of the submittal for {{bid}}',
+    variants: ['the box on the Share window, one email per person on the room'],
+  },
+  {
     id: 'gc_word_ask',
     name: 'Ask an account man where his GCs stand (the link)',
     group: 'billing',

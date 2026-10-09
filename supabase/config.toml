@@ -913,6 +913,10 @@ verify_jwt = false
 [functions.gc-customer-email]
 verify_jwt = false
 
+# The submittal room link to one named reviewer (v2.5026, Submittals decision 11): reads the staff JWT itself, like gc-trade-email.
+[functions.send-submittal-room-link]
+verify_jwt = false
+
 # pg_cron callers: the call carries X-Cron-Secret and no JWT, and each function checks the secret itself.
 # Without these blocks a plain `supabase functions deploy` turns the gateway check on and every cron call is refused (v2.4817).
 [functions.crew-day-email-dispatch]

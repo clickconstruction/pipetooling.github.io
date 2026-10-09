@@ -46,7 +46,8 @@ describe('EMAIL_CATALOG', () => {
     // +1 (v2.4624): the law firm's portal link, sent from the Legal desk (legal-send-firm-link).
     // +1 (v2.4936): every email to a GC mode trade partner (gc-trade-email).
     // +1 (v2.4998): our emails to a GC customer and its architect (gc-customer-email).
-    expect(EMAIL_CATALOG).toHaveLength(47)
+    // +1 (v2.5026): a submittal reviewer's own link to the review room (send-submittal-room-link).
+    expect(EMAIL_CATALOG).toHaveLength(48)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)

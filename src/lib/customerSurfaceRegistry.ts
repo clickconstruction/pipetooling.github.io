@@ -77,6 +77,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'send-bid-room-link', audience: 'gc', steps: [G('bid-room-email'), G('bid-room-revised-email')] },
   // Stage 5a (v2.3528): the office's answer to a question asked on the review room — lands in the reviewer's inbox with their own room link.
   { kind: 'sender', ref: 'send-submittal-reply-email', audience: 'gc', steps: [G('submittal-room')] },
+  // v2.5026 (Submittals decision 11): a named reviewer's own room link, from the Share step or the box on the Share window.
+  { kind: 'sender', ref: 'send-submittal-room-link', audience: 'gc', steps: [G('submittal-room-email')] },
   { kind: 'sender', ref: 'sign-bid-room', audience: 'gc', steps: [G('bid-room-signed')] },
   { kind: 'sender', ref: 'send-bid-pricing-package', audience: 'gc', steps: [G('pricing-package-email')] },
   { kind: 'sender', ref: 'send-test-report', audience: 'gc', steps: [G('test-report-email')] },

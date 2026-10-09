@@ -4,8 +4,10 @@
  * people the office already knows (a personal link each; the room recognises their email
  * if they arrive through the GC's forward), and does two things before the revision goes
  * out — Done with this file on any untrimmed vendor PDF, and a package rebuild. Marks the
- * revision shared; earlier shared revisions read superseded. Nothing is emailed by the app
- * (the owner's switch is not built); the office sends the link its own way.
+ * revision shared; earlier shared revisions read superseded. v2.5026 (decision 11, the owner's
+ * call of 2026-10-09): a box emails each person on the room their own link after the share. It
+ * starts unticked on a bid until the office has pressed Send the link there once, and ticked
+ * after. Nothing is emailed unless it is ticked when Share is pressed.
  */
 import { useState, type CSSProperties } from 'react'
 import { useLeaveGuard } from '../../hooks/useLeaveGuard'
@@ -15,7 +17,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
-import { newRoomToken, roomLink, ROOM_ROLE_LABELS, type RoomRole, type SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
+import { newRoomToken, roomLink, ROOM_ROLE_LABELS, type RoomRole, type SubmittalPersonRow, type SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
+import { canEmailLink, sendRoomLink, sharedLinksLine } from '../../lib/submittals/sendRoomLink'
+import type { RoomLinkErrorKey } from '../../../supabase/functions/_shared/submittalRoomLinkEmail'
 import { ROOM_ROLES } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import type { SubmittalRevisionRow } from '../../lib/submittals/submittalRevision'
 
@@ -35,6 +39,8 @@ export function SubmittalShareModal({
   bidId,
   revision,
   room,
+  people: onRoom = [],
+  sentLinkBefore = false,
   untrimmedFiles,
   onClose,
   onDoneWithFiles,
@@ -44,6 +50,10 @@ export function SubmittalShareModal({
   bidId: string
   revision: SubmittalRevisionRow
   room: SubmittalRoomRow | null
+  /** v2.5026 · the people already on the room: the box emails each one with an open link and an address. */
+  people?: ReadonlyArray<SubmittalPersonRow>
+  /** v2.5026 · the office has pressed Send the link on this bid before: the box starts ticked. */
+  sentLinkBefore?: boolean
   /** Vendor PDFs on the revision not yet trimmed to the pages on rows. */
   untrimmedFiles: number
   onClose: () => void
@@ -58,6 +68,7 @@ export function SubmittalShareModal({
   const [people, setPeople] = useState<NewPerson[]>([emptyPerson()])
   const [doneFiles, setDoneFiles] = useState(untrimmedFiles > 0)
   const [rebuild, setRebuild] = useState(true)
+  const [emailLinks, setEmailLinks] = useState(sentLinkBefore)
   const [busy, setBusy] = useState(false)
   // 2026-10-04 · a person typed and not yet on the room: a stray click outside asks before it loses them.
   const guard = useLeaveGuard({ dirty: people.some((p) => p.name.trim() !== '' || p.email.trim() !== ''), onClose, busy })
@@ -65,6 +76,10 @@ export function SubmittalShareModal({
   const existingLink = room ? roomLink(origin, room.token) : null
   const filled = people.filter((p) => p.name.trim() && p.email.trim())
   const bad = people.filter((p) => (p.name.trim() || p.email.trim()) && !(p.name.trim() && /\S+@\S+\.\S+/.test(p.email.trim())))
+  // v2.5026 · who the box would email: everyone on the room it can reach, and each new address typed here.
+  const reachable = onRoom.filter(canEmailLink)
+  const reach = reachable.length + filled.filter((p) => !onRoom.some((o) => (o.email ?? '').toLowerCase() === p.email.trim().toLowerCase())).length
+  const willEmail = emailLinks && reach > 0
 
   async function copy(text: string) {
     try {
@@ -95,6 +110,8 @@ export function SubmittalShareModal({
         if (error) throw error
         theRoom = { ...theRoom, shared_at: now, shared_by: user?.id ?? null }
       }
+      // v2.5026 · the people the box emails once the revision is shared: those already on the room, then the new ones.
+      const toEmail: Array<{ id: string; name: string }> = onRoom.filter(canEmailLink).map((p) => ({ id: p.id, name: p.name }))
       if (filled.length > 0) {
         // The room's uniqueness is on lower(email) — an expression, which PostgREST's
         // on_conflict cannot name — so read who is already in and insert only the new.
@@ -103,10 +120,11 @@ export function SubmittalShareModal({
         const have = new Set(((already ?? []) as Array<{ email: string | null }>).map((p) => (p.email ?? '').toLowerCase()).filter(Boolean))
         const fresh = filled.filter((p) => !have.has(p.email.trim().toLowerCase()))
         if (fresh.length > 0) {
-          const { error } = await db.from('bid_submittal_people').insert(
+          const { data: made, error } = await db.from('bid_submittal_people').insert(
             fresh.map((p) => ({ room_id: (theRoom as SubmittalRoomRow).id, name: p.name.trim(), email: p.email.trim().toLowerCase(), role: p.role, may_decide: !p.watching, token: newRoomToken(), how: 'named', invited_by: user?.id ?? null })),
-          )
+          ).select('id, name')
           if (error) throw error
+          toEmail.push(...((made ?? []) as Array<{ id: string; name: string }>))
         }
       }
       // Earlier shared revisions read superseded; this one reads shared.
@@ -123,8 +141,21 @@ export function SubmittalShareModal({
       } catch {
         /* a checkout without the function client — the tab's File in Drive still works */
       }
+      // v2.5026 · ticked at the moment of sharing: each person gets their own link, one email at a time.
+      let linksLine: string | null = null
+      if (willEmail && toEmail.length > 0) {
+        let sent = 0
+        const refused: Array<{ name: string; key: RoomLinkErrorKey }> = []
+        for (const p of toEmail) {
+          const a = await sendRoomLink(p.id)
+          if (a.ok) sent += 1
+          else refused.push({ name: p.name, key: a.key })
+        }
+        linksLine = sharedLinksLine(sent, refused)
+      }
       onShared(theRoom)
       await copy(roomLink(origin, theRoom.token))
+      if (linksLine) showToast(linksLine, linksLine.includes('Not sent') ? 'error' : 'success')
     } catch (e) {
       const msg = e && typeof e === 'object' && 'message' in e && typeof (e as { message?: unknown }).message === 'string' ? (e as { message: string }).message : ''
       showToast(msg ? `Could not share the revision — ${msg}` : 'Could not share the revision.', 'error')
@@ -190,7 +221,10 @@ export function SubmittalShareModal({
 
         {guard.asking ? <LeaveQuestion what="The people you typed are not on the room yet." onLeave={onClose} onKeep={guard.keep} /> : null}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
-          <span style={smallMuted}>No email leaves the app — paste the link into the chain you are already in.</span>
+          <label style={{ ...smallMuted, display: 'flex', gap: 6, alignItems: 'center' }} data-testid="email-links" title={reach === 0 ? 'Name someone with an email first.' : undefined}>
+            <input type="checkbox" aria-label="Email each person their link" checked={willEmail} disabled={reach === 0 || busy} onChange={(e) => setEmailLinks(e.target.checked)} />
+            {willEmail ? `Emails ${reach === 1 ? 'one person' : `${reach} people`} their own link when you share.` : 'No email leaves the app until you tick this.'}
+          </label>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button type="button" disabled={busy} onClick={guard.requestClose} style={btn}>Not now</button>
             <button type="button" disabled={busy} onClick={() => void share()} style={{ ...btnPrimary, opacity: busy ? 0.6 : 1 }}>
