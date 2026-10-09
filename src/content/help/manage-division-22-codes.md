@@ -20,7 +20,7 @@ On a bid's **Pricing** tab, open the {{button:green|▾}} menu and pick **Divisi
 
 ## Rules
 
-Each rule looks for some words in a fixture name. It files the names it catches under one section. Rules decide in order, the lowest number first. The first rule that catches a name decides it.
+Each rule looks for some words in a fixture name. The rule files the names it catches under one section. Rules decide in order, the lowest number first. The first rule that catches a name decides it.
 
 Each rule shows how it is doing.
 
@@ -34,7 +34,7 @@ A rule says it never decides, because "starts with WH-" gets its names first. It
 
 ### Add or change a rule
 
-Tap {{button:outline|Add a rule}}, or **Edit** on a rule. Fill in what it looks for, how it matches, the section and the order. Before you save, the form lists every name whose code would change. It also shows the coverage before and after.
+Tap {{button:outline|Add a rule}}, or **Edit** on a rule. Fill in what it looks for, how it matches, the section and the order. Before you save, the form lists every name whose code would change. The form also shows the coverage before and after.
 
 The form stops you in three cases:
 
@@ -42,7 +42,7 @@ The form stops you in three cases:
 - The section does not exist yet.
 - Another rule already looks for the same words the same way.
 
-It warns you when the words are very short. "CO" also catches COPPER. It also warns when another rule holds the same order and catches some of the same names.
+The form warns you when the words are very short. "CO" also catches COPPER. The form also warns when another rule holds the same order and catches some of the same names.
 
 ### Delete a rule
 
