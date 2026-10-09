@@ -15089,6 +15089,7 @@ export type Database = {
           fields: Json
           files: Json
           id: string
+          invoice_id: string | null
           job_id: string
           lines: Json
           name: string
@@ -15115,6 +15116,7 @@ export type Database = {
           fields?: Json
           files?: Json
           id?: string
+          invoice_id?: string | null
           job_id: string
           lines?: Json
           name?: string
@@ -15141,6 +15143,7 @@ export type Database = {
           fields?: Json
           files?: Json
           id?: string
+          invoice_id?: string | null
           job_id?: string
           lines?: Json
           name?: string
@@ -15167,6 +15170,13 @@ export type Database = {
             columns: ["deleted_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_pay_applications_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
             referencedColumns: ["id"]
           },
           {
@@ -16548,6 +16558,7 @@ export type Database = {
           estimated_bill_date: string | null
           external_send_channel: string | null
           external_send_note: string | null
+          fee_lines: Json | null
           hosted_invoice_url: string | null
           id: string
           is_primary_rtb_bundle: boolean
@@ -16590,6 +16601,7 @@ export type Database = {
           estimated_bill_date?: string | null
           external_send_channel?: string | null
           external_send_note?: string | null
+          fee_lines?: Json | null
           hosted_invoice_url?: string | null
           id?: string
           is_primary_rtb_bundle?: boolean
@@ -16632,6 +16644,7 @@ export type Database = {
           estimated_bill_date?: string | null
           external_send_channel?: string | null
           external_send_note?: string | null
+          fee_lines?: Json | null
           hosted_invoice_url?: string | null
           id?: string
           is_primary_rtb_bundle?: boolean
@@ -19205,6 +19218,10 @@ export type Database = {
           closed_by: string | null
           closed_note: string | null
           closed_reason: string | null
+          fee_added_at: string | null
+          fee_added_by: string | null
+          fee_amount: number | null
+          fee_invoice_id: string | null
           mercury_transaction_id: string
           opened_at: string | null
           replaced_by_mercury_transaction_id: string | null
@@ -19219,6 +19236,10 @@ export type Database = {
           closed_by?: string | null
           closed_note?: string | null
           closed_reason?: string | null
+          fee_added_at?: string | null
+          fee_added_by?: string | null
+          fee_amount?: number | null
+          fee_invoice_id?: string | null
           mercury_transaction_id: string
           opened_at?: string | null
           replaced_by_mercury_transaction_id?: string | null
@@ -19233,6 +19254,10 @@ export type Database = {
           closed_by?: string | null
           closed_note?: string | null
           closed_reason?: string | null
+          fee_added_at?: string | null
+          fee_added_by?: string | null
+          fee_amount?: number | null
+          fee_invoice_id?: string | null
           mercury_transaction_id?: string
           opened_at?: string | null
           replaced_by_mercury_transaction_id?: string | null
@@ -19254,6 +19279,20 @@ export type Database = {
             columns: ["closed_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_returned_fee_added_by_fkey"
+            columns: ["fee_added_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mercury_transaction_ar_returned_fee_invoice_id_fkey"
+            columns: ["fee_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_invoices"
             referencedColumns: ["id"]
           },
           {
@@ -28266,6 +28305,10 @@ export type Database = {
         Args: { p_pay_stub_id: string }
         Returns: Json
       }
+      add_ar_return_case_fee: {
+        Args: { p_case_id: string; p_invoice_id: string }
+        Returns: Json
+      }
       add_collect_payment_fixture_from_job_book: {
         Args: { p_job_book_entry_id: string; p_job_id: string }
         Returns: Json
@@ -30088,6 +30131,17 @@ export type Database = {
           reference_number: string
           removed_at: string
           removed_by: string
+        }[]
+      }
+      list_ar_return_case_fees: {
+        Args: { p_case_ids: string[] }
+        Returns: {
+          bills: Json
+          case_id: string
+          fee_added_at: string
+          fee_added_by: string
+          fee_amount: number
+          fee_invoice_id: string
         }[]
       }
       list_ar_return_cases: {
