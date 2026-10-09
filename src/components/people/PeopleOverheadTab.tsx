@@ -1133,7 +1133,7 @@ export default function PeopleOverheadTab({
       ? `${overheadRateLenses.windowStart} → ${overheadRateLenses.windowEnd}`
       : 'trailing 90 days'
   const lensPoolLabel = `the 90-day overhead pool (office labor + bid labor + office parts, ${lensWindowLabel})`
-  const lensInclusionRule = 'Sessions counted: approved, not revoked, not rejected, clocked out.'
+  const lensInclusionRule = 'Sessions counted: recorded — clocked out, not rejected, not revoked, whether approved or still awaiting approval.'
   const fmtLens = (v: number | null, render: (n: number) => string) =>
     lensLoading ? '…' : v == null ? '—' : render(v)
   // Live cents interpolation for the Method C blurb ("…"/"—" fallbacks).
@@ -1151,7 +1151,7 @@ export default function PeopleOverheadTab({
       formula: 'pool ÷ billable field hours',
       blurb:
         'Best for pricing labor. Every field hour must carry this much overhead — steady even when billing is lumpy, and it maps directly onto your hourly rates.',
-      title: `Method A = ${lensPoolLabel} ÷ billable field hours: approved clock hours on non-office jobs-ledger work in the same 90-day window. ${lensInclusionRule}`,
+      title: `Method A = ${lensPoolLabel} ÷ billable field hours: recorded clock hours on non-office jobs-ledger work in the same 90-day window. ${lensInclusionRule}`,
     },
     {
       key: 'B',
@@ -1202,8 +1202,8 @@ export default function PeopleOverheadTab({
         key: 'unpriced',
         label: 'Unpriced hours (90d)',
         value: `${formatOverheadHygienePersonNames(unpriced.personNames)} · ${fmtHygieneHours(unpriced.hours)} at $0`,
-        hint: 'Set wages in People → Pay config.',
-        title: `Recorded (closed, not rejected) sessions in the 90-day window (${lensWindowLabel}) whose person has no wage match in pay config — the hours still count (Method A's denominator stays full) but the dollars price at $0, deflating the overhead pool and Method C.`,
+        hint: 'Set wages in People → Users → Pay.',
+        title: `Recorded (closed, not rejected) sessions in the 90-day window (${lensWindowLabel}) whose person has no wage match on People → Users → Pay — the hours still count (Method A's denominator stays full) but the dollars price at $0, deflating the overhead pool and Method C.`,
       })
     }
     if (unassignedSalary && unassignedSalary.sessionCount > 0) {

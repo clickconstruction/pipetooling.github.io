@@ -20,7 +20,7 @@ Every labor hour and dollar in those numbers comes from **recorded** clock sessi
 :::example What the strip looks like
 ⚠ Maintenance — worth a review before you trust the 90-day numbers above
 **Pending approvals (90d)** · 14 closed sessions · 52.5h + 2 still open — Already counted as recorded time; approve, or reject to remove, in {{button:blue|People → Hours}}
-**Unpriced hours (90d)** · Sam R, Tony V · 31.0h at $0 — Set wages in {{button:blue|People → Pay config}}
+**Unpriced hours (90d)** · Sam R, Tony V · 31.0h at $0 — Set wages in {{button:blue|People → Users → Pay}}
 **Unassigned salary time (90d)** · 12 sessions · 96.0h · 1 person — Assign in My Time
 :::
 
