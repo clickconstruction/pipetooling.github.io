@@ -13,6 +13,8 @@ status: plan 2026-10-09 by Helper 12 (the Board lane). The lead approved the rea
   - `person_contract_documents.company_id`, with a CHECK both ways and the person trigger keeping a company's paper free of any person.
   - `gc_paper_sends`, every send of a paper, and `gc_send_paper`, which records a send and its promise in one transaction.
   - `gc_company_paper`, which makes a company's copy of one Contract Book entry (the Master Subcontract Agreement, or the W-9 form).
+  - `gc_company_paper_kept`, a trigger: a company's paper, signed or filed, keeps its promise (msa, w9, insurance) in the same transaction; a person's paper never reaches it.
+  - `gc_record_company_coi`, the office filing a company's insurance certificate.
   - The six places a company's paper would show its stored name, guarded before any company row can exist.
   - `send-contract-for-signature` learns a company branch (call S, A): the signing link goes to the company's contracts people in GC's words.
 - **B6-b-ii, the screens** (no migration): the mapper reads a company's papers; the company window's Documents tab; Send a paper; Record their insurance; the guide "send a trade its papers".
@@ -246,7 +248,71 @@ REVOKE ALL ON FUNCTION public.gc_company_paper(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.gc_send_paper(jsonb) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.gc_company_paper(uuid, uuid) TO authenticated;
 
--- 7) Training mode and digital twins: gc_paper_sends gets its blocks; the three create only what is missing.
+-- 7) A company's paper, signed or filed, keeps its promise in the same transaction (the prototype's promisesKeptBy:
+-- tradeSignMsa keeps msa, tradeSignW9 w9, tradeUploadCoi insurance). The WHEN lets only a company's paper through, so a
+-- person's signing (accept-contract, the person path) never reaches it and accept-contract is untouched.
+CREATE OR REPLACE FUNCTION public.gc_company_paper_kept()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF TG_OP = 'UPDATE' AND OLD.status = 'signed' THEN
+    RETURN NULL;
+  END IF;
+  PERFORM public.gc_keep_promises(NEW.company_id, CASE NEW.doc_type WHEN 'w9' THEN 'w9' WHEN 'coi' THEN 'insurance' ELSE 'msa' END);
+  RETURN NULL;
+END;
+$$;
+
+CREATE OR REPLACE TRIGGER gc_company_paper_kept
+  AFTER INSERT OR UPDATE OF status ON public.person_contract_documents
+  FOR EACH ROW
+  WHEN (NEW.company_id IS NOT NULL AND NEW.status = 'signed')
+  EXECUTE FUNCTION public.gc_company_paper_kept();
+
+-- 8) The office files a company's insurance certificate, as SubDocumentAddForm files a sub's: a company paper, signed, with
+-- its expiry and its https link. The trigger above keeps the insurance promise.
+CREATE OR REPLACE FUNCTION public.gc_record_company_coi(p_company_id uuid, p_expires_on date, p_url text)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_url text := btrim(coalesce(p_url, ''));
+  v_id uuid;
+BEGIN
+  IF NOT public.is_dev() THEN
+    RAISE EXCEPTION 'Only a dev sends a trade its papers while GC mode is built.' USING ERRCODE = 'P0001';
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.gc_companies WHERE id = p_company_id) THEN
+    RAISE EXCEPTION 'No company with that id.' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_expires_on IS NULL THEN
+    RAISE EXCEPTION 'Say the day their insurance runs out.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_url !~ '^https://' THEN
+    RAISE EXCEPTION 'Paste the link to their certificate. It starts with https.' USING ERRCODE = 'P0001';
+  END IF;
+  INSERT INTO public.person_contract_documents (
+    person_name, company_id, document_name, doc_type, expires_at, url, status, signed_at, contract_lineage_id, lineage_version
+  ) VALUES (
+    'gc-company:' || p_company_id::text, p_company_id, 'COI (filed)', 'coi', p_expires_on, v_url, 'signed', public.app_today(), gen_random_uuid(), 1
+  )
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+COMMENT ON FUNCTION public.gc_record_company_coi(uuid, date, text) IS
+  'GC mode (B6-b-i): the office files a trade partner company''s insurance certificate (a signed coi paper with its expiry and link); gc_company_paper_kept keeps the insurance promise. Dev only until the papers'' door. SECURITY INVOKER.';
+
+REVOKE ALL ON FUNCTION public.gc_record_company_coi(uuid, date, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.gc_record_company_coi(uuid, date, text) TO authenticated;
+
+-- 9) Training mode and digital twins: gc_paper_sends gets its blocks; the three create only what is missing.
 SELECT public.apply_read_only_write_blocks();
 SELECT public.apply_read_only_stmt_blocks();
 SELECT public.apply_digital_twin_write_blocks();
@@ -293,7 +359,8 @@ Every migration, this one twice, then:
 - `gc_send_paper` writes the send and adds its promise, a second send moves the promise and keeps the first day, and a waiver's promise is closeout;
 - each refusal in words: a non-dev, no company, an unknown paper, a statement of work with no trade, no day;
 - only a dev reads or writes `gc_paper_sends`; a training-mode dev and a twin are refused;
-- a project delete still cascades through `gc_paper_sends`.
+- a project delete still cascades through `gc_paper_sends`;
+- a company's master agreement signed keeps its msa promise, a W-9 its w9, and a certificate filed through `gc_record_company_coi` its insurance; a person's paper signed leaves every promise alone; a second update of a signed paper keeps nothing twice; and `gc_record_company_coi`'s refusals in words (a non-dev, no company, no expiry, a link that is not https).
 
 ## Verify after the push (the migration doc)
 
@@ -321,5 +388,7 @@ Every migration, this one twice, then:
 - **B.** By name and doc_type, no constant.
 
 ## Status
+
+**Amended 2026-10-09 (afternoon), on the lead's call 1 to the B6-b-ii read-back:** sections 7 and 8 of the SQL, the promise kept by a trigger on a company's signed paper (the gap found while planning B6-b-ii: `accept-contract` is the person path and keeps no GC promise), and the office's certificate write. #5115 takes the same SQL after this merges.
 
 Plan written 2026-10-09 by Helper 12. B6-b-i is cut after #5109 merges; its push is the evening batch after 23:00 UTC, with the three function deploys, the lead's. B6-b-ii follows its types; B6-c (Get started) after B6-b.
