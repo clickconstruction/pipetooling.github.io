@@ -460,7 +460,9 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
   ])
   const appRows = taken(payApps, 'load the pay applications')
   const appIds = appRows.map((a) => a.id)
-  const [lines, reminders, emails] = await Promise.all([
+  const interestRows = taken(interestBills, 'load the interest bills')
+  const interestIds = interestRows.map((b) => b.id)
+  const [lines, reminders, emails, interestEmails] = await Promise.all([
     appIds.length ? supabase.from('gc_owner_pay_app_lines').select('*').in('pay_app_id', appIds).order('position') : Promise.resolve({ data: [], error: null }),
     appIds.length ? supabase.from('gc_owner_pay_reminders').select('*').in('pay_app_id', appIds).order('created_at') : Promise.resolve({ data: [], error: null }),
     // Our emails about each pay application, from their sent copies (O4b: the copies are the record of what went): the
@@ -473,6 +475,17 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
           .in('kind', gcCustomerEmailCopyKinds('gc_owner_pay_apps'))
           .eq('how', 'email')
           .in('source_id', appIds)
+          .order('sent_at')
+      : Promise.resolve({ data: [], error: null }),
+    // And about each interest bill (O6b-2), the same way.
+    interestIds.length
+      ? supabase
+          .from('sent_documents')
+          .select('source_id, recipient_name, sent_at')
+          .eq('source_table', 'gc_owner_interest_bills')
+          .in('kind', gcCustomerEmailCopyKinds('gc_owner_interest_bills'))
+          .eq('how', 'email')
+          .in('source_id', interestIds)
           .order('sent_at')
       : Promise.resolve({ data: [], error: null }),
   ])
@@ -488,7 +501,14 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
     const sentAbout = emailRows.filter((e) => e.source_id === app.id).map((e) => ({ source_id: app.id, kind: e.kind, recipient_name: e.recipient_name, sent_at: e.sent_at }))
     if (sentAbout.length > 0) rows.emails = [...(rows.emails ?? []), ...sentAbout]
   }
-  for (const bill of taken(interestBills, 'load the interest bills')) out.get(bill.project_id)?.interestBills.push(bill)
+  const interestEmailRows = (taken(interestEmails, 'load the emails about the interest bills') ?? []) as { source_id: string | null; recipient_name: string | null; sent_at: string }[]
+  for (const bill of interestRows) {
+    const rows = out.get(bill.project_id)
+    if (!rows) continue
+    rows.interestBills.push(bill)
+    const sentAbout = interestEmailRows.filter((e) => e.source_id === bill.id).map((e) => ({ source_id: bill.id, recipient_name: e.recipient_name, sent_at: e.sent_at }))
+    if (sentAbout.length > 0) rows.interestEmails = [...(rows.interestEmails ?? []), ...sentAbout]
+  }
   for (const acceptance of taken(acceptances, 'load the acceptances')) {
     const rows = out.get(acceptance.project_id)
     if (rows) rows.acceptance = acceptance
@@ -594,6 +614,17 @@ export async function sendOwnerPayApp(projectId: string, app: PayAppSend): Promi
 /** The architect's certificate: the bill on the billing job is made for what they certified. */
 export async function recordCertificate(payAppId: string, amount: number, on: string, note: string): Promise<void> {
   taken(await supabase.rpc('gc_record_certificate', { p_pay_app_id: payAppId, p_amount: amount, p_on: on, p_note: note }), 'record the certificate')
+}
+
+/**
+ * Bill the interest (O6b-2): what has built up and is not billed, as the job's next interest bill with its bill on the
+ * billing job. Returns the interest bill's id, which gc-customer-email sends. Through the untyped client until the
+ * types regenerate after 20261009220000's push.
+ */
+export async function sendOwnerInterestBill(projectId: string, amount: number): Promise<string> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db.rpc('gc_send_owner_interest_bill', { p_project_id: projectId, p_amount: amount })
+  return taken(result as { data: string | null; error: SupabaseResultError | null }, 'bill the interest')
 }
 
 /** Interest on the job's late bills, a percent a month, or null for none (O6b-1). The money team's to change. */

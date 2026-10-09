@@ -26,7 +26,8 @@ import {
  * attached) and `certify_ask` (to the architect, the form attached). O4b-2's: `certified` (the bill the architect
  * certified, to the customer, with their portal link when they already have one) and `change_order` (to the customer,
  * to sign by reply). O5b's: `reminder` (to the customer, the words `gc_remind_customer_to_pay` filed, with their portal
- * link when they have one; its email's log is written back on the reminder).
+ * link when they have one; its email's log is written back on the reminder). O6b-2's: `interest_bill` (to the
+ * customer, with their portal link when they have one).
  *
  *   POST { projectId, kind, sourceId, subject, lines, pdf? }   staff JWT
  *     → { to, email, resendEmailId }
@@ -34,7 +35,7 @@ import {
  *
  * In order: the caller (the money team; never a training account or a digital twin), the shape, the project, the row
  * the kind is about (this project's pay application, certified for `certified`; this project's change order, sent and
- * not yet answered; or this project's reminder, not emailed yet), who gets the kind (the customer's billing email, else its contact email; the architect's the
+ * not yet answered; this project's reminder, not emailed yet; or this project's interest bill), who gets the kind (the customer's billing email, else its contact email; the architect's the
  * same way), the email, the send, then its sent copy (docs/SENT_COPIES.md, `GC_CUSTOMER_EMAIL_FILED_AS`, on the
  * billing job). The service role reads here, so the read-only blocks and the twin fence never see it. Nothing
  * is written but the send's own log and copy: the sent copies are the record of what went.
@@ -99,6 +100,10 @@ serve(async (req) => {
       if (!co) return refuse('notFound')
       if (co.project_id !== m.projectId) return refuse('otherProject')
       if (co.status !== 'sent') return refuse('notSent')
+    } else if (source === 'gc_owner_interest_bills') {
+      const { data: bill } = await admin.from('gc_owner_interest_bills').select('id, project_id').eq('id', m.sourceId).maybeSingle()
+      if (!bill) return refuse('notFound')
+      if (bill.project_id !== m.projectId) return refuse('otherProject')
     } else {
       const { data: rem } = await admin.from('gc_owner_pay_reminders').select('id, pay_app_id, subject, lines, email_send_log_id').eq('id', m.sourceId).maybeSingle()
       if (!rem) return refuse('notFound')

@@ -42,6 +42,8 @@ import {
   changeOrderMail,
   changeOrderMailFacts,
   gcCustomerEmailRefusal,
+  interestBillMail,
+  interestBillMailFacts,
   payAppMail,
   payAppMailFacts,
   type BillEmailed,
@@ -125,6 +127,7 @@ import {
   remindCustomerToPay,
   setOwnerPayDays,
   setOwnerLateInterest,
+  sendOwnerInterestBill,
   recordGcPayment,
   recordGcPromise,
   sendOwnerPayApp,
@@ -586,6 +589,15 @@ export default function GcProjects() {
           to: e.recipient_name ?? '',
           on: calendarYmdInAppTzFromIso(e.sent_at),
         }))
+    }
+    return out
+  }, [billOwn])
+  // Who each interest bill was emailed to and when (O6b-2), from its sent copies.
+  const billInterestEmailed = useMemo(() => {
+    const out: Record<number, { to: string; on: string }[]> = {}
+    for (const b of billOwn?.interestBills ?? []) {
+      const sent = (billOwn?.interestEmails ?? []).filter((e) => e.source_id === b.id)
+      if (sent.length > 0) out[b.number] = sent.map((e) => ({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) }))
     }
     return out
   }, [billOwn])
@@ -1127,6 +1139,7 @@ export default function GcProjects() {
           unconditional={billUnconditional}
           unbilled={billUnbilled}
           emailed={billEmailed}
+          interestEmailed={billInterestEmailed}
           onClose={() => setBillWindow(null)}
           writes={{
             onSend: (email) => {
@@ -1216,6 +1229,29 @@ export default function GcProjects() {
             onSetRetainage: (pct, step) => billWrite('retainage', () => setOwnerRetainage(billProject.id, pct, step), 'The retainage was not saved.'),
             onSetPayDays: (days) => billWrite('paydays', () => setOwnerPayDays(billProject.id, days), 'The days to pay were not saved.'),
             onSetInterest: (pct) => billWrite('interest', () => setOwnerLateInterest(billProject.id, pct), 'The interest was not saved.'),
+            onBillInterest: (amount, email) => {
+              // The interest bill is filed first, with its bill on the billing job (O6b-2); the tick, off to start, emails
+              // it to the customer. The bills are read again either way, and an email that did not go is said after.
+              setBillBusy('bill-interest')
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  const id = await sendOwnerInterestBill(billProject.id, amount)
+                  let emailProblem: string | null = null
+                  if (email) {
+                    const mail = interestBillMail(interestBillMailFacts(billState, billProject, amount))
+                    const a = await sendGcCustomerEmail({ projectId: billProject.id, kind: 'interest_bill', sourceId: id, subject: mail.subject, lines: mail.lines, pdf: null })
+                    if (!a.ok) emailProblem = `The interest bill is filed, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`
+                  }
+                  await loadBill()
+                  if (emailProblem) setBillProblem(emailProblem)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The interest bill was not filed.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
+            },
             onDownload: (which, kind) => {
               const form = ownerPayAppForm(billState, billProject, which)
               if (!form) return
