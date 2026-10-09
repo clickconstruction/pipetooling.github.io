@@ -177,10 +177,22 @@ WHERE p.pronamespace = 'public'::regnamespace AND has_function_privilege('anon',
 - That lists exactly `get_hazmat_notice_by_token(uuid)` and `list_my_contract_dashboard_prompts()`.
 - `has_function_privilege` is true for `cost_agent` on `is_primary()` and `primary_can_access_job(uuid)`, and for `hr_agent` on `is_dev()`, `is_digital_twin()` and `is_read_only()`.
 - `pg_default_acl` for postgres's functions reads `{postgres=X/postgres}` globally, and `{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}` in public.
-- With the publishable key and no user token:
-  - `POST /rest/v1/rpc/get_hazmat_notice_by_token` with a random `p_token` answers `200 null`.
-  - `POST /rest/v1/rpc/is_dev` answers `401` with `42501`.
 - Signed in, the Dashboard loads, and a hazmat notice link opens signed out.
+
+**The publishable-key probes.** These send the same two headers supabase-js sends for a signed-out visitor. Run them from a checkout with `.env.local`:
+
+```bash
+ANON="$(grep -E '^VITE_SUPABASE_ANON_KEY=' .env.local | cut -d= -f2- | tr -d "\"'")"; U=https://yewfzhbofbbyvkvtaatw.supabase.co/rest/v1/rpc
+curl -s -w ' | HTTP %{http_code}\n' -X POST "$U/get_hazmat_notice_by_token" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H 'Content-Type: application/json' -d '{"p_token":"00000000-0000-0000-0000-000000000000"}'
+curl -s -w ' | HTTP %{http_code}\n' -X POST "$U/is_dev" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H 'Content-Type: application/json' -d '{}'
+curl -s -w ' | HTTP %{http_code}\n' -X POST "$U/is_office_staff" -H "apikey: $ANON" -H "Authorization: Bearer $ANON" -H 'Content-Type: application/json' -d '{}'
+```
+
+| RPC | Before the push (read 2026-10-09 10:57 UTC) | After the push |
+|---|---|---|
+| `get_hazmat_notice_by_token` | `null`, HTTP 200 | `null`, HTTP 200 (still granted) |
+| `is_dev` | `false`, HTTP 200 (anon could run it) | HTTP 401, `"code":"42501"` |
+| `is_office_staff` | `false`, HTTP 200 | HTTP 401, `"code":"42501"`. `court-precinct-nightly` reads this as "not staff" and still answers 401. |
 
 ## Roll back
 
