@@ -143,7 +143,8 @@ export default function EstimateOptionsPicker({ options, selectedKeys, onToggle,
               />
             )}
             {o.name.trim() || 'Option'}
-            {o.recommended ? <span style={{ ...badgeStyle, color: '#9a5b13', background: '#fdeed9' }}>Recommended</span> : null}
+            {/* v2.5018: an add-on the office pre-ticked wears the badge too; it starts ticked and unticks freely. */}
+            {o.recommended || (isAddOn && o.preticked) ? <span style={{ ...badgeStyle, color: '#9a5b13', background: '#fdeed9' }}>Recommended</span> : null}
             {isAddOn && hasChoices ? <span style={{ ...badgeStyle, color: 'var(--text-blue-800)', background: 'var(--bg-blue-200)' }}>Add-on</span> : null}
           </span>
           <span style={{ fontWeight: 800, fontSize: '1.02rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>

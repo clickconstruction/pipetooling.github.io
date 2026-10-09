@@ -29,6 +29,8 @@ export type SharedEstimateOption = {
   description: string
   recommended: boolean
   kind: SharedEstimateOptionKind
+  /** v2.5018: an add-on the office pre-ticked; it starts ticked on the customer page. Add-ons only. */
+  preticked?: boolean
   line_items: EstimateOptionLine[]
 }
 
@@ -68,12 +70,14 @@ export function normalizeSharedEstimateOptions(x: unknown): SharedEstimateOption
     const key = typeof o.key === 'string' ? o.key.trim() : ''
     if (!key) continue
     if (out.some((p) => p.key === key)) continue
+    const kind: SharedEstimateOptionKind = o.kind === 'add_on' ? 'add_on' : 'choice'
     out.push({
       key,
       name: typeof o.name === 'string' ? o.name : '',
       description: typeof o.description === 'string' ? o.description : '',
       recommended: o.recommended === true,
-      kind: o.kind === 'add_on' ? 'add_on' : 'choice',
+      kind,
+      ...(kind === 'add_on' && o.preticked === true ? { preticked: true } : {}),
       line_items: Array.isArray(o.line_items) ? o.line_items.map(normalizeLine) : [],
     })
     if (out.length === MAX_ESTIMATE_OPTIONS) break

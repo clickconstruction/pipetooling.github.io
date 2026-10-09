@@ -60,11 +60,13 @@ const rawMixed = [
     name: 'Hose bibs (2)',
     description: '',
     kind: 'add_on',
+    // v2.5018: the office pre-ticked this one; both sides keep the mark on an add-on only.
+    preticked: true,
     line_items: [{ line_item: '', description: 'Sillcocks', quantity: 2, unit_price_cents: 19500, amount_cents: 39000 }],
   },
 ]
 const rawAllAddOns = [
-  { key: 'kitchen', name: 'Kitchen rough-in', kind: 'add_on', line_items: [{ line_item: '', description: 'Kitchen', quantity: 1, unit_price_cents: 420000, amount_cents: 420000 }] },
+  { key: 'kitchen', name: 'Kitchen rough-in', kind: 'add_on', preticked: 'yes', line_items: [{ line_item: '', description: 'Kitchen', quantity: 1, unit_price_cents: 420000, amount_cents: 420000 }] },
   { key: 'bath', name: 'Hall bath', kind: 'add_on', recommended: true, line_items: [{ line_item: '', description: 'Bath', quantity: 1, unit_price_cents: 365000, amount_cents: 365000 }] },
 ]
 

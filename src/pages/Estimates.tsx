@@ -144,6 +144,7 @@ import {
   newEstimateOptionKey,
   normalizeEstimateOptionsFromJson,
   recommendedEstimateOption,
+  setEstimateAddOnPreticked,
   setEstimateOptionKind,
   setRecommendedEstimateOption,
   toggleEstimateOptionSelection,
@@ -3752,7 +3753,7 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                       {(
                         [
                           ['choice', 'One of the choices', 'The customer picks exactly one choice; the ★ one is pre-selected'],
-                          ['add_on', 'An add-on', 'Rides along with whatever they choose — they tick any; none is pre-ticked'],
+                          ['add_on', 'An add-on', 'Rides along with whatever they choose — they tick any; one you mark Start ticked begins ticked'],
                         ] as const
                       ).map(([kind, label, title]) => {
                         const on = viewedOption.kind === kind
@@ -3811,6 +3812,34 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                         </button>
                       )
                     })()}
+                    {/* v2.5018 (the owner's call of 2026-10-09): the office may pre-tick a recommended add-on; the customer unticks freely. */}
+                    {viewedOption.kind === 'add_on' ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setEstimateOptions((prev) => {
+                            const next = setEstimateAddOnPreticked(prev, viewedOption.key, !viewedOption.preticked)
+                            setPreviewSelectedOptionKeys(defaultEstimateSelection(next))
+                            return next
+                          })
+                        }
+                        aria-pressed={viewedOption.preticked === true}
+                        title={viewedOption.preticked ? 'Recommended: it starts ticked on the customer page, and they can untick it' : 'Recommend this add-on: it starts ticked on the customer page'}
+                        style={{
+                          font: 'inherit',
+                          fontSize: '0.78rem',
+                          fontWeight: 600,
+                          border: '1px solid var(--border-strong)',
+                          borderRadius: 6,
+                          padding: '0.3rem 0.6rem',
+                          background: viewedOption.preticked ? 'var(--bg-amber-tint)' : 'var(--surface)',
+                          color: viewedOption.preticked ? 'var(--text-amber-700)' : 'var(--text-muted)',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        ✓ Start ticked
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       onClick={removeViewedOption}
