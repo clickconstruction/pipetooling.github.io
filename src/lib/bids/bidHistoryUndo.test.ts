@@ -95,6 +95,26 @@ describe('bidUndoPlan · removed rows', () => {
     expect(plan([sump, price, wc], [], new Map())).toEqual({ ready: false, reason: 'Undo is off. 2 rows it removed can no longer come back. The archive keeps a removed row 90 days.' })
   })
 
+  it('restores a removed version first, and its rows of the same delete ride with it', () => {
+    const version = row({ table: 'bid_versions', recordId: 'v-9', countRowId: null, op: 'delete', oldValues: { name: 'ZZ walk' }, newValues: null, label: 'ZZ walk', changedAt: T })
+    const onIt = row({ table: 'bids_count_rows', recordId: 'c-on', countRowId: 'c-on', op: 'delete', oldValues: { fixture: 'Tub', bid_version_id: 'v-9' }, newValues: null, label: 'Tub', changedAt: T })
+    const before = row({ table: 'bids_count_rows', recordId: 'c-early', countRowId: 'c-early', op: 'delete', oldValues: { fixture: 'WC', bid_version_id: 'v-9' }, newValues: null, label: 'WC', changedAt: at(-1) })
+    const keys = new Map([
+      [bidRemovalKey('bid_versions', 'v-9', T), 'ar-v'],
+      [bidRemovalKey('bids_count_rows', 'c-on', T), 'ar-on'],
+      [bidRemovalKey('bids_count_rows', 'c-early', at(-1)), 'ar-early'],
+    ])
+    // c-on went in the version's delete; c-early went a second before, in a delete of its own.
+    expect(ready(plan([onIt, version, before], [], keys)).steps.map((s) => s.what)).toEqual(['ZZ walk', 'WC'])
+  })
+
+  it('says nothing of a row put back and removed again since: the later line’s Undo answers for it', () => {
+    const back = row({ table: 'bids_count_rows', recordId: 'c-wc', countRowId: 'c-wc', op: 'insert', action: 'put-back', changedAt: at(60) })
+    const again = row({ table: 'bids_count_rows', recordId: 'c-wc', countRowId: 'c-wc', op: 'delete', changedAt: at(90) })
+    expect(plan([wc, row({ table: 'bids_count_rows', recordId: 'c-x', countRowId: 'c-x', op: 'delete', changedAt: at(1), label: 'X' })], [back, again], new Map())).toEqual({ ready: false, reason: 'Undo is off. A row it removed can no longer come back. The archive keeps a removed row 90 days.' })
+    expect(plan([wc], [back, again], new Map())).toBeNull()
+  })
+
   it('is off for a removed schedule line, which the archive does not keep', () => {
     const lines = [0, 1].map((i) => row({ table: 'bid_sov_lines', recordId: `s-${i}`, countRowId: null, op: 'delete', newValues: null, label: null, changedAt: at(i) }))
     expect(plan(lines)).toEqual({ ready: false, reason: 'Undo is off. It removed 2 schedule lines, and the archive does not keep those.' })
@@ -212,6 +232,15 @@ describe('runBidUndo', () => {
     })
     expect(calls).toEqual(['remove bids_count_rows c-1,c-2', 'value 7 null', 'restore ar-1'])
     expect(out).toEqual({ done: 3, refusals: [], tables: ['bids_count_rows', 'bid_count_row_custom_prices'], removed: 2, cleared: 1 })
+  })
+
+  it('a row already back, brought by its parent earlier in the run, counts as done', async () => {
+    const out = await runBidUndo({ ...p, steps: p.steps.slice(2) }, {
+      putBack: async () => result,
+      restore: async () => { throw new Error('That removed row is not waiting to be put back.') },
+      remove: async () => 0,
+    })
+    expect(out).toMatchObject({ done: 1, refusals: [] })
   })
 
   it('says each refusal in the function’s words and still runs the rest', async () => {

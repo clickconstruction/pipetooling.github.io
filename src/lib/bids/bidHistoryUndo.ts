@@ -5,7 +5,8 @@
  *
  * - a changed value goes back through `put_back_bid_change` (every column the change touched);
  * - a removed row comes back through `restore_bid_removed_row`, with what was removed with it, so a
- *   row whose count row was removed in the same action rides with that count row;
+ *   row whose count row, version or estimate was removed in the same delete rides with that parent,
+ *   and parents go first;
  * - a row the action added is removed from the client under the presser's own policies, tagged
  *   `put-back` (PUNCHLIST, 2026-10-09). Only from a table the delete archive keeps, so the removal
  *   lands there and each row's own Put back brings it back. An added count row takes what the action
@@ -77,6 +78,10 @@ export type BidUndoPlan =
 const rowKey = (r: Pick<BidHistoryRow, 'table' | 'recordId'>) => `${r.table}:${r.recordId}`
 const lineKey = (r: BidHistoryRow) => `${r.source}-${r.id ?? r.archiveId}`
 const newestFirst = (a: BidHistoryRow, b: BidHistoryRow) => Date.parse(b.changedAt) - Date.parse(a.changedAt) || (b.id ?? 0) - (a.id ?? 0)
+/** Within one moment, parents first: a version's or an estimate's restore brings what hangs on it. */
+const PARENT_RANK: Record<string, number> = { bid_versions: 0, cost_estimates: 1, bids_count_rows: 2 }
+const undoOrder = (a: BidHistoryRow, b: BidHistoryRow) =>
+  Date.parse(b.changedAt) - Date.parse(a.changedAt) || (PARENT_RANK[a.table] ?? 3) - (PARENT_RANK[b.table] ?? 3) || (b.id ?? 0) - (a.id ?? 0)
 
 /** A later change in words: "Lav-1 price" (an addition, by its table), "Lav-1 count" (a change, by its column). */
 function laterWords(r: BidHistoryRow): string {
@@ -117,11 +122,23 @@ export function bidUndoPlan(
   // are made again whenever they are missing, so Undo may take them with a row and write over them.
   const laterByPeople = later.filter((r) => !r.byApp)
 
-  const rows = [...action.rows].sort(newestFirst)
+  const rows = [...action.rows].sort(undoOrder)
   const inserted = new Set(rows.filter((r) => r.op === 'insert').map(rowKey))
   const deleted = new Set(rows.filter((r) => r.op === 'delete').map(rowKey))
   const countRowsAdded = new Set(rows.filter((r) => r.op === 'insert' && r.table === 'bids_count_rows').map((r) => r.recordId))
-  const countRowsRemoved = new Set(rows.filter((r) => r.op === 'delete' && r.table === 'bids_count_rows').map((r) => r.recordId))
+  // A parent removed in the action, by its id, at the moment of its delete: a row of the same delete
+  // that hangs on it comes back with its restore (restore_bid_removed_row bundles them).
+  const removedAt = new Map<string, number>()
+  for (const r of rows) if (r.op === 'delete' && r.table in PARENT_RANK) removedAt.set(`${r.table}:${r.recordId}`, Date.parse(r.changedAt))
+  const ridesWithParent = (r: BidHistoryRow) => {
+    const at = Date.parse(r.changedAt)
+    const parents: Array<[string, unknown]> = [
+      ['bid_versions', r.oldValues?.bid_version_id],
+      ['cost_estimates', r.oldValues?.cost_estimate_id],
+      ['bids_count_rows', r.countRowId],
+    ]
+    return parents.some(([table, id]) => table !== r.table && typeof id === 'string' && removedAt.get(`${table}:${id}`) === at)
+  }
   /** A row of a count row the action added: it goes when that count row goes. */
   const onAddedCountRow = (r: BidHistoryRow) => r.table !== 'bids_count_rows' && r.countRowId != null && countRowsAdded.has(r.countRowId)
 
@@ -160,8 +177,8 @@ export function bidUndoPlan(
     if (r.op === 'delete') {
       // Added and removed inside the action: nothing to take back.
       if (inserted.has(rowKey(r))) continue
-      // Its count row's Put back brings it back.
-      if (r.table !== 'bids_count_rows' && r.countRowId && countRowsRemoved.has(r.countRowId)) {
+      // Its count row's, version's or estimate's restore brings it back.
+      if (ridesWithParent(r)) {
         changes += 1
         continue
       }
@@ -169,16 +186,14 @@ export function bidUndoPlan(
         notKept.push(r.table)
         continue
       }
-      const target = bidRemovedPutBackTarget(r, ctx.openBidId, ctx.restorable, countRowsRemoved)
+      const target = bidRemovedPutBackTarget(r, ctx.openBidId, ctx.restorable)
       if (target) {
         steps.push({ kind: 'restore', archiveId: target.archiveId, table: r.table, what: target.what })
         changes += 1
-      } else if (lastLater.has(rowKey(r)) && !goneNow(r)) {
-        // Put back since: it is on the bid again.
-        continue
-      } else {
+      } else if (!lastLater.has(rowKey(r))) {
         gone += 1
       }
+      // Else it came back since (and may have gone again, which that later line's Undo answers).
       continue
     }
 
@@ -284,8 +299,13 @@ export async function runBidUndo(plan: Extract<BidUndoPlan, { ready: true }>, io
       if (step.kind === 'value') {
         await io.putBack(step.changeId, null)
       } else if (step.kind === 'restore') {
-        const result = await io.restore(step.archiveId)
-        out.cleared += result.warnings?.length ?? 0
+        try {
+          const result = await io.restore(step.archiveId)
+          out.cleared += result.warnings?.length ?? 0
+        } catch (e) {
+          // Already back: an earlier step brought it with its parent, or someone put it back meanwhile.
+          if (!/not waiting to be put back/i.test(e instanceof Error ? e.message : String(e))) throw e
+        }
       } else {
         const n = await io.remove(step.table, step.ids)
         if (n === 0) {
