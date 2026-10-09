@@ -2,9 +2,9 @@
 name: Division 22 rules manager
 number: 2
 group: ready
-status: the full rules manager approved by the owner 2026-10-09 (the decisions sitting); building — PRs 1–4 of 5 (the kernel v2.5054, the archive v2.5056, the read side v2.5058, the write side v2.5061)
+status: the full rules manager approved by the owner 2026-10-09 (the decisions sitting); built — all five PRs (the kernel v2.5054, the archive v2.5056, the read side v2.5058, the write side v2.5061, the guide and seed v2.5063)
 summary: Rules manager UI; RH / EDF / med-gas seed call. Gas and the Needs You card shipped.
-next: PR 5, the guide and the seed — EDF → 22 45 00, RH → 22 11 19, med gas → a new 22 63 00 (the owner named them 2026-10-09).
+next: Punchlist pushes 20261010016000 (the seed); verify its counts (1,264 → 1,244 uncoded), then close the card.
 size: M
 blocker: None.
 ver: coverage 73%
