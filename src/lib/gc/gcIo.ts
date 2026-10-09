@@ -560,7 +560,9 @@ export async function loadGcBillingRows(projectIds: string[]): Promise<BillingRo
   const [terms, contract, billing, speeds] = await Promise.all([
     supabase
       .from('gc_projects')
-      .select('project_id, owner_retainage_pct, owner_retainage_step_at_pct, owner_retainage_step_to_pct, owner_retainage_step_way, owner_pay_days, billing_job_id, property_owner_customer_id')
+      .select(
+        'project_id, owner_retainage_pct, owner_retainage_step_at_pct, owner_retainage_step_to_pct, owner_retainage_step_way, owner_pay_days, owner_late_interest_pct_per_month, owner_late_finish_per_day, billing_job_id, property_owner_customer_id',
+      )
       .in('project_id', projectIds),
     supabase.from('gc_owner_contract_lines').select('project_id, line, package_id, worth').in('project_id', projectIds),
     loadGcOwnerBillingRows(projectIds),
@@ -592,6 +594,14 @@ export async function sendOwnerPayApp(projectId: string, app: PayAppSend): Promi
 /** The architect's certificate: the bill on the billing job is made for what they certified. */
 export async function recordCertificate(payAppId: string, amount: number, on: string, note: string): Promise<void> {
   taken(await supabase.rpc('gc_record_certificate', { p_pay_app_id: payAppId, p_amount: amount, p_on: on, p_note: note }), 'record the certificate')
+}
+
+/** Interest on the job's late bills, a percent a month, or null for none (O6b-1). The money team's to change. */
+export async function setOwnerLateInterest(projectId: string, pctPerMonth: number | null): Promise<void> {
+  taken(
+    await supabase.from('gc_projects').update({ owner_late_interest_pct_per_month: pctPerMonth }).eq('project_id', projectId).select('project_id').single(),
+    'save the interest',
+  )
 }
 
 /** The contract's days to pay after the certificate (O5d), or null when it does not say. The money team's to change. */

@@ -16,6 +16,7 @@ import {
 import type { GcProject, GcState, OwnerPayAppSent, OwnerRetainageStep } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
 import { emailedWords, type BillEmailed } from '../../lib/gc/customerEmail'
+import { OWNER_INTEREST_DEFAULT_PCT, ownerInterestWords } from '../../lib/gc/ownerBillingInterest'
 
 /**
  * GC mode, the real build, Owner Billing's O4a: Bill the customer, ported from the prototype's Bill the owner tab
@@ -34,6 +35,8 @@ export interface BillCustomerWrites extends MoneyInWrites, RemindWrites {
   onSetRetainage: (pct: number, step: OwnerRetainageStep | null) => void
   /** The contract's days to pay after the certificate, or null when it does not say (O5d). */
   onSetPayDays: (days: number | null) => void
+  /** Interest on the job's late bills, a percent a month, or null for none (O6b-1). */
+  onSetInterest: (pctPerMonth: number | null) => void
   onDownload: (which: number | 'draft', kind: 'xlsx' | 'pdf') => void
   /** Make our conditional waiver on progress payment for a sent one (`LienReleaseModal` on the billing job). */
   onWaiver: (number: number) => void
@@ -56,7 +59,7 @@ interface Props {
    * ask to certify it, then the certified bill.
    */
   emailed?: Record<number, BillEmailed[]>
-  /** What a write is working on: 'send', 'retainage', 'paydays', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
+  /** What a write is working on: 'send', 'retainage', 'paydays', 'interest', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
@@ -136,6 +139,7 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
 
           <Retainage state={state} project={project} sentAny={sent.length > 0} writes={writes} busy={busy === 'retainage'} />
           <PayDays project={project} writes={writes} busy={busy === 'paydays'} />
+          <Interest project={project} writes={writes} busy={busy === 'interest'} />
 
           {sent.length > 0 && (
             <div style={{ display: 'grid', gap: '0.45rem' }}>
@@ -335,6 +339,53 @@ function PayDays({ project, writes, busy }: { project: GcProject; writes: BillCu
               }}
             >
               Save the days to pay
+            </Btn>
+            <Btn kind="quiet" onClick={() => setOpen(false)}>
+              Cancel
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** Interest on the job's late bills (O6b-1): off until typed, from the day after a bill falls due by the contract. */
+function Interest({ project, writes, busy }: { project: GcProject; writes: BillCustomerWrites; busy: boolean }) {
+  const [open, setOpen] = useState(false)
+  // The field starts at the usual rate, but nothing is saved until Save (the owner's call 3).
+  const [pct, setPct] = useState(String(project.ownerLateInterest?.pctPerMonth ?? OWNER_INTEREST_DEFAULT_PCT))
+  const blank = pct.trim() === ''
+  const pctNum = Number(pct)
+  const ready = blank || (Number.isFinite(pctNum) && pctNum > 0 && pctNum <= 10)
+  return (
+    <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <strong>Interest</strong>
+        <span>{ownerInterestWords(project.ownerLateInterest?.pctPerMonth, project.ownerPayDays)}</span>
+        {!open && (
+          <Btn kind="quiet" onClick={() => setOpen(true)}>
+            Change the interest
+          </Btn>
+        )}
+      </div>
+      {open && (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem', display: 'grid', gap: '0.5rem' }}>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Interest on a late bill, a percent a month
+            <input style={{ ...input, width: '6rem' }} type="number" min={0} max={10} step={0.05} value={pct} onChange={(e) => setPct(e.target.value)} />
+          </label>
+          <div style={{ color: 'var(--text-muted)' }}>Leave it blank for no interest. It runs from the day after a bill falls due by the contract.</div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Btn
+              kind="primary"
+              disabled={!ready || busy}
+              onClick={() => {
+                writes.onSetInterest(blank ? null : pctNum)
+                setOpen(false)
+              }}
+            >
+              Save the interest
             </Btn>
             <Btn kind="quiet" onClick={() => setOpen(false)}>
               Cancel

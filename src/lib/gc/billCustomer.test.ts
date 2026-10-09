@@ -16,6 +16,8 @@ const terms = (projectId: string, over: Partial<OwnerTermsRow> = {}): OwnerTerms
   owner_retainage_step_to_pct: null,
   owner_retainage_step_way: null,
   owner_pay_days: null,
+  owner_late_interest_pct_per_month: null,
+  owner_late_finish_per_day: null,
   billing_job_id: null,
   property_owner_customer_id: null,
   ...over,
@@ -33,6 +35,22 @@ describe('the state our money screens read', () => {
       ]),
     ).toEqual({ 'pkg-1': 100000, gc: 10000, fee: 8800 })
     expect(contractWorthFromRows([])).toBeUndefined()
+  })
+
+  it('lays the interest and the late fee on a job that has them, and none on one that does not (O6b-1)', () => {
+    const s = initialGcState()
+    const rows: BillingRows = {
+      terms: [terms('fairoaksd', { owner_late_interest_pct_per_month: 1.5, owner_late_finish_per_day: 500 }), terms('helotes')],
+      contract: [],
+      billing: new Map(),
+      names: {},
+      payDays: {},
+    }
+    const laid = billingStateForAll(s, rows)
+    const fair = laid.projects.find((p) => p.id === 'fairoaksd')!
+    const helotes = laid.projects.find((p) => p.id === 'helotes')!
+    expect([fair.ownerLateInterest, fair.ownerLateFinish]).toEqual([{ pctPerMonth: 1.5 }, { perDay: 500 }])
+    expect([helotes.ownerLateInterest, helotes.ownerLateFinish]).toEqual([s.projects.find((p) => p.id === 'helotes')!.ownerLateInterest, s.projects.find((p) => p.id === 'helotes')!.ownerLateFinish])
   })
 
   it('lays the contract\'s days to pay on each job, standing in while the customer has never paid us (O5d)', () => {
