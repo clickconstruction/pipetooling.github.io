@@ -106,6 +106,8 @@ export function RoomRowCard({ row, local, localParts = {}, onDecide, readOnly = 
       ) : null}
       {row.why ? <div style={{ ...roomQuiet, marginTop: 4 }}>{row.kind === 'differs' ? 'Why: ' : ''}{row.why}</div> : null}
       {row.performanceChange ? <div style={{ marginTop: 4, fontSize: '0.8rem', color: '#b42318' }}>This changes a performance value on the plans.</div> : null}
+      {/* v2.5023 (decision 11): whose call the design change is, and the sign-off the office recorded. */}
+      {row.designCall ? <div data-testid="room-design-call" style={{ marginTop: 4, fontSize: '0.8rem', color: 'var(--text-strong)' }}>{row.designCall}</div> : null}
       {row.decision && parts.length === 0 ? (
         <div style={{ marginTop: 8, fontSize: '0.8rem', color: 'var(--text-strong)' }}>
           <b>{row.decision.kind === 'revise' ? 'Revise' : row.decision.kind === 'approved' ? 'Approved' : 'Rejected'}</b>

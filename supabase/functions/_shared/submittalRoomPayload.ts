@@ -42,6 +42,11 @@ export type RoomItemSource = {
   reviewed_at: string | null
   /** 2026-10-02 · the office buys it and the GC never sees it: the row never reaches the room. */
   order_only?: boolean | null
+  /** v2.5023 (decision 11): on a design change, whose call it is, and the sign-off the office recorded. */
+  call_by?: string | null
+  signoff_name?: string | null
+  signoff_on?: string | null
+  signoff_via?: string | null
 }
 
 /**
@@ -154,6 +159,8 @@ export type RoomRow = {
   why: string
   /** True when a performance value changed (a design change) — the card says so. */
   performanceChange: boolean
+  /** v2.5023: on a design change, whose call it is and the sign-off, in one line; absent when nothing is recorded. */
+  designCall?: string
   /** How many sheet pages this row carries in the package (0 = to follow). */
   sheetPages: number
   decision: { kind: 'approved' | 'revise' | 'rejected'; note: string | null; byName: string | null; byPersonId: string | null; at: string | null } | null
@@ -197,6 +204,49 @@ export function roomKindOf(status: string): RoomRowKind {
     default:
       return 'differs'
   }
+}
+
+/** Whose call a design change is (decision 11, the owner's call of 2026-10-09). */
+export type DesignCallBy = 'architect' | 'engineer' | 'gc' | 'owner'
+export const DESIGN_CALL_BY: ReadonlyArray<DesignCallBy> = ['architect', 'engineer', 'gc', 'owner']
+export const DESIGN_CALL_BY_LABELS: Record<DesignCallBy, string> = { architect: 'Architect', engineer: 'Engineer', gc: 'GC', owner: 'Owner' }
+const DESIGN_CALL_WORDS: Record<DesignCallBy, string> = { architect: "The architect's call", engineer: "The engineer's call", gc: "The GC's call", owner: "The owner's call" }
+export function asDesignCallBy(v: unknown): DesignCallBy | null {
+  return typeof v === 'string' && (DESIGN_CALL_BY as ReadonlyArray<string>).includes(v) ? (v as DesignCallBy) : null
+}
+
+/** How a design change's sign-off came. */
+export type SignoffVia = 'email' | 'letter' | 'stamped_drawing' | 'meeting' | 'phone'
+export const SIGNOFF_VIA: ReadonlyArray<SignoffVia> = ['email', 'letter', 'stamped_drawing', 'meeting', 'phone']
+export const SIGNOFF_VIA_LABELS: Record<SignoffVia, string> = { email: 'Email', letter: 'Letter', stamped_drawing: 'Stamped drawing', meeting: 'Meeting', phone: 'Phone' }
+const SIGNOFF_VIA_WORDS: Record<SignoffVia, string> = { email: 'by email', letter: 'by letter', stamped_drawing: 'on a stamped drawing', meeting: 'in a meeting', phone: 'by phone' }
+export function asSignoffVia(v: unknown): SignoffVia | null {
+  return typeof v === 'string' && (SIGNOFF_VIA as ReadonlyArray<string>).includes(v) ? (v as SignoffVia) : null
+}
+
+/** 'Oct 9, 2026' from a stored day; '' for anything else. */
+function signoffDay(ymd: string | null | undefined): string {
+  if (!ymd || !/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return ''
+  return new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+}
+
+/**
+ * A design-change card's line (decision 11): whose call it is, and the sign-off the office
+ * recorded — "The engineer's call · signed off by Pat Lee on Oct 9, 2026, by email." Null on any
+ * other row, or when nothing is recorded.
+ */
+export function designCallLine(item: Pick<RoomItemSource, 'status' | 'call_by' | 'signoff_name' | 'signoff_on' | 'signoff_via'>): string | null {
+  if (item.status !== 'design_change') return null
+  const call = asDesignCallBy(item.call_by)
+  const name = (item.signoff_name ?? '').trim()
+  const day = signoffDay(item.signoff_on)
+  const via = asSignoffVia(item.signoff_via)
+  const signedBits = [name ? `by ${name}` : '', day ? `on ${day}` : ''].filter(Boolean).join(' ')
+  const signed = name || day || via ? ['signed off', signedBits].filter(Boolean).join(' ') + (via ? `${signedBits ? ',' : ''} ${SIGNOFF_VIA_WORDS[via]}` : '') : ''
+  const parts = [call ? DESIGN_CALL_WORDS[call] : '', signed].filter(Boolean)
+  if (parts.length === 0) return null
+  const first = parts[0] ?? ''
+  return `${[first.charAt(0).toUpperCase() + first.slice(1), ...parts.slice(1)].join(' · ')}.`
 }
 
 /** The why sentence for a differing row: the status's own words first, then the reason, the note, the lead time. */
@@ -245,6 +295,7 @@ export function roomRowFrom(item: RoomItemSource, parts: ReadonlyArray<RoomPartS
   const decided = asKind(item.review_decision)
   const decision = decided ? { kind: decided, note: item.review_note, byName: item.reviewed_by_name, byPersonId: item.reviewed_by_person_id, at: item.reviewed_at } : null
   const gcParts = roomPartsFrom(parts)
+  const designCall = designCallLine(item)
   return {
     id: item.id,
     tag: item.tag.trim(),
@@ -253,6 +304,7 @@ export function roomRowFrom(item: RoomItemSource, parts: ReadonlyArray<RoomPartS
     proposed,
     why: kind === 'differs' ? whySentence(item) : kind === 'added' ? 'Required by the fixture; the plans leave it to the contractor.' : kind === 'not_quoted' ? 'No product yet — to follow.' : kind === 'proposed' ? 'This is the product we intend to install.' : '',
     performanceChange: item.status === 'design_change',
+    ...(designCall ? { designCall } : {}),
     sheetPages: (item.sheet_pages ?? []).length,
     decision,
     leadTimeDays: item.lead_time_days ?? null,

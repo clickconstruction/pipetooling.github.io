@@ -122,6 +122,7 @@ import {
   type SourceFile,
   type SubmittalItemRow,
   type SubmittalRevisionRow, blankSubmittalItem, carriedRowInsert, NEW_ROW_ID, rowsToCarry } from '../../lib/submittals/submittalRevision'
+import { designCallCarry, type DesignCallFields } from '../../lib/submittals/designCall'
 
 // The stage 1–2 tables are hand-typed until the regen chore; the untyped client keeps a checkout ahead of the push honest.
 const db = supabase as unknown as SupabaseClient
@@ -879,6 +880,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         status: it.status, reason_kind: it.reason_kind, reason_note: it.reason_note, lead_time_days: it.lead_time_days,
         sheet_file: it.sheet_file, sheet_pages: it.sheet_pages, sheet_source: it.sheet_source,
         ...orderOnlyInsert(it),
+        ...(designCallCarry(it.status, it as SubmittalItemRow & DesignCallFields) ?? {}),
       }))).select('id, sequence_order')
       if (error) throw error
       // Each tag's row gets the fixture's parts; each is bought on its own, so only the first keeps the procurement line.

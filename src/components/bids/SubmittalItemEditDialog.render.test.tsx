@@ -400,3 +400,26 @@ describe('SubmittalItemEditDialog · the window keeps what was typed (2026-10-03
     expect(onClose).not.toHaveBeenCalled()
   })
 })
+
+describe('SubmittalItemEditDialog · a design change asks whose call it is and records the sign-off (decision 11)', () => {
+  it('shows the fields on a design change and saves what the office set', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item({ status: 'design_change', reason_kind: 'lead_time' })} sourceFiles={[]} onSave={onSave} onClose={() => {}} />)
+    const box = screen.getByTestId('design-call')
+    expect(['Whose call', 'Signed off', 'How it came'].every((t) => within(box).getAllByText(t).length > 0)).toBe(true)
+    fireEvent.click(within(box).getByRole('button', { name: 'Engineer' }))
+    fireEvent.change(within(box).getByLabelText('Signed off by'), { target: { value: 'Pat Lee' } })
+    fireEvent.change(within(box).getByLabelText('Signed off on'), { target: { value: '2026-10-09' } })
+    fireEvent.click(within(box).getByRole('button', { name: 'Email' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSave.mock.calls[0]![0]).toMatchObject({ status: 'design_change', call_by: 'engineer', signoff_name: 'Pat Lee', signoff_on: '2026-10-09', signoff_via: 'email' })
+  })
+
+  it('another status shows no fields and its save names none of the columns', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} onSave={onSave} onClose={() => {}} />)
+    expect(screen.queryByTestId('design-call')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect('call_by' in onSave.mock.calls[0]![0]).toBe(false)
+  })
+})

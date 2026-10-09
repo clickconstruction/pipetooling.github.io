@@ -35,6 +35,8 @@ import { LeaveQuestion } from './SubmittalLeaveGuard'
 import { SubmittalPartsEditor } from './SubmittalPartsEditor'
 import { assemblyLine, keptPartDrafts, partCallsLine, partLeadTextsBad, partToDraft, rollUpFromParts, type PartDraft, type PartLeadTexts, type SubmittalPartRow } from '../../lib/submittals/itemParts'
 import { editStatusChoices, editWindowTitle, newRowIsBlank, partCallMark, type PartCallMark } from '../../lib/submittals/partsEditorGroups'
+import { designCallDraft, designCallPatch, type DesignCallFields } from '../../lib/submittals/designCall'
+import { DESIGN_CALL_BY, DESIGN_CALL_BY_LABELS, SIGNOFF_VIA, SIGNOFF_VIA_LABELS } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 const Z = 10060
 
@@ -55,7 +57,7 @@ export type SubmittalItemPatch = {
   thenAnswer?: boolean
   /** The row's parts as the editor left them (2026-10-01); absent when the row has none. */
   parts?: PartDraft[]
-}
+} & DesignCallFields
 
 const REASON_CHIP_LABELS: Record<ReasonKind, string> = {
   lead_time: 'Long lead time',
@@ -98,6 +100,8 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
   const [status, setStatus] = useState<ProductStatus>(asStatus(item.status))
   const [reasonKind, setReasonKind] = useState<ReasonKind | null>(asReason(item.reason_kind))
   const [note, setNote] = useState(item.reason_note ?? '')
+  // v2.5023 (decision 11): on a design change, whose call it is and the sign-off.
+  const [designCall, setDesignCall] = useState(() => designCallDraft(item as SubmittalItemRow & DesignCallFields))
   const presetDays = new Set(LEAD_TIME_PRESETS.map((p) => p.days))
   const [leadDays, setLeadDays] = useState<number | null>(item.lead_time_days)
   const [leadText, setLeadText] = useState(item.lead_time_days != null && !presetDays.has(item.lead_time_days) ? (describeLeadTime(item.lead_time_days) ?? '') : '')
@@ -134,9 +138,10 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
       ...(houseChanged && partDrafts == null ? { supply_house_id: houseId } : {}),
       ...(partDrafts != null ? { parts: partDrafts } : {}),
       ...(thenAnswer ? { thenAnswer: true } : {}),
+      ...(designCallPatch(status, designCall, item as SubmittalItemRow & DesignCallFields) ?? {}),
     })
   // 2026-10-03 · what the window opened with, read once: any difference is typing a stray click must not lose.
-  const typed = JSON.stringify([tagText, submittedText, houseId, partDrafts, partLeadTexts, status, reasonKind, note, leadDays, leadText, sheetFile, pagesText])
+  const typed = JSON.stringify([tagText, submittedText, houseId, partDrafts, partLeadTexts, status, reasonKind, note, leadDays, leadText, sheetFile, pagesText, designCall])
   const opened = useRef(typed)
   const guard = useLeaveGuard({ dirty: typed !== opened.current, onClose, busy })
   const houseRef = useRef<HTMLSelectElement | null>(null)
@@ -217,6 +222,32 @@ export function SubmittalItemEditDialog({ item, sourceFiles, houses = [], parts 
                   {(Object.keys(REASON_LABELS) as ReasonKind[]).map((k) => (
                     <button key={k} type="button" aria-pressed={reasonKind === k} onClick={() => setReasonKind(reasonKind === k ? null : k)} style={chipButton(reasonKind === k)}>
                       {REASON_CHIP_LABELS[k]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {status === 'design_change' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }} data-testid="design-call">
+                <span style={fieldLabel}>Whose call</span>
+                <div role="group" aria-label="Whose call" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {DESIGN_CALL_BY.map((k) => (
+                    <button key={k} type="button" aria-pressed={designCall.callBy === k} onClick={() => setDesignCall((d) => ({ ...d, callBy: d.callBy === k ? null : k }))} style={chipButton(designCall.callBy === k)}>
+                      {DESIGN_CALL_BY_LABELS[k]}
+                    </button>
+                  ))}
+                </div>
+                <span style={fieldLabel}>Signed off</span>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <input type="text" aria-label="Signed off by" value={designCall.signoffName} maxLength={120} onChange={(e) => setDesignCall((d) => ({ ...d, signoffName: e.target.value }))} placeholder="Who signed off" style={{ ...inputStyle, minWidth: '12rem', flex: '1 1 12rem' }} />
+                  <input type="date" aria-label="Signed off on" value={designCall.signoffOn} onChange={(e) => setDesignCall((d) => ({ ...d, signoffOn: e.target.value }))} style={inputStyle} />
+                </div>
+                <span style={fieldLabel}>How it came</span>
+                <div role="group" aria-label="How it came" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  {SIGNOFF_VIA.map((v) => (
+                    <button key={v} type="button" aria-pressed={designCall.signoffVia === v} onClick={() => setDesignCall((d) => ({ ...d, signoffVia: d.signoffVia === v ? null : v }))} style={chipButton(designCall.signoffVia === v)}>
+                      {SIGNOFF_VIA_LABELS[v]}
                     </button>
                   ))}
                 </div>

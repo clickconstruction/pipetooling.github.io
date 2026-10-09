@@ -8,6 +8,7 @@ import type { Database } from '../../types/database'
 import type { PreviousItem, SubmittalRowDraft } from './buildSubmittalRows'
 import type { ProductStatus, ReasonKind } from './productStatus'
 import { isOrderOnlyRow, orderOnlyInsert } from './orderOnly'
+import { designCallCarry, type DesignCallFields } from './designCall'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 export type SubmittalRevisionRow = Database['public']['Tables']['bid_submittals']['Row']
@@ -83,6 +84,7 @@ export function serializeSourceFiles(files: ReadonlyArray<SourceFile>): Array<Re
 
 /** A stored item as the row kernel's "previous revision" input. */
 export function itemToPrevious(item: SubmittalItemRow): PreviousItem {
+  const designCall = designCallCarry(item.status, item as SubmittalItemRow & DesignCallFields)
   return {
     id: item.id,
     tag: item.tag,
@@ -99,6 +101,7 @@ export function itemToPrevious(item: SubmittalItemRow): PreviousItem {
     supplyHouseId: item.supply_house_id,
     sourceQuoteLineId: item.source_quote_line_id,
     orderOnly: isOrderOnlyRow(item),
+    ...(designCall ? { designCall } : {}),
   }
 }
 
@@ -125,6 +128,7 @@ export function draftToItemInsert(draft: SubmittalRowDraft, submittalId: string)
     sheet_source: draft.sheetPages.length > 0 ? 'estimator' : null,
     carried_from_item_id: draft.carriedFromItemId,
     ...(draft.orderOnly ? { order_only: true } : {}),
+    ...(designCallCarry(draft.status, draft.designCall ?? {}) ?? {}),
   }
 }
 
@@ -163,6 +167,7 @@ export function carriedRowInsert(it: SubmittalItemRow, submittalId: string, sequ
     sheet_source: it.sheet_source,
     carried_from_item_id: it.id,
     ...orderOnlyInsert(it),
+    ...(designCallCarry(it.status, it as SubmittalItemRow & DesignCallFields) ?? {}),
   }
 }
 

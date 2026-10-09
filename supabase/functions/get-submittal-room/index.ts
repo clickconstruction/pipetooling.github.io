@@ -94,7 +94,7 @@ serve(async (req) => {
     const ids = revRows.map((r) => r.id)
     const { data: items } = await admin
       .from('bid_submittal_items')
-      .select('id, submittal_id, tag, sequence_order, specified_manufacturer, specified_model, specified_description, submitted_manufacturer, submitted_model, submitted_label, status, reason_kind, reason_note, lead_time_days, sheet_pages, review_decision, review_note, reviewed_by_name, reviewed_by_person_id, reviewed_at, order_only')
+      .select('id, submittal_id, tag, sequence_order, specified_manufacturer, specified_model, specified_description, submitted_manufacturer, submitted_model, submitted_label, status, reason_kind, reason_note, lead_time_days, sheet_pages, review_decision, review_note, reviewed_by_name, reviewed_by_person_id, reviewed_at, order_only, call_by, signoff_name, signoff_on, signoff_via')
       .in('submittal_id', ids)
     // 2026-10-02 · an order-only row is the office's alone: it never leaves this function, and neither do its parts or its log lines.
     const allItems = (items ?? []) as Array<RoomItemSource & { submittal_id: string }>

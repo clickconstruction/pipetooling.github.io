@@ -12,6 +12,7 @@
  */
 import { deriveProductStatus, normalizeModel, sameUnitNear } from './productStatus'
 import type { ProductStatus, ReasonKind, StatusOverride } from './productStatus'
+import type { DesignCallFields } from './designCall'
 
 export type SpecifiedInput = {
   tag: string
@@ -50,6 +51,8 @@ export type PreviousItem = {
   sourceQuoteLineId?: string | null
   /** 2026-10-02 · the row was order only: a rebuild keeps it so. */
   orderOnly?: boolean
+  /** v2.5023 · a design change's call and sign-off; absent when the row held none. */
+  designCall?: Required<DesignCallFields>
 }
 
 export type ChangeNote = 'new row' | 'product changed' | 'status changed' | 'reason added' | 'now missing'
@@ -80,6 +83,8 @@ export type SubmittalRowDraft = {
   carriedFromItemId: string | null
   /** 2026-10-02 · carried from the previous row: bought, never shown to the GC. */
   orderOnly?: boolean
+  /** v2.5023 · the call and sign-off, carried like the sheet: a design change with the product unchanged. */
+  designCall?: Required<DesignCallFields>
   changed: boolean
   changeNote: ChangeNote | null
 }
@@ -204,6 +209,7 @@ export function buildSubmittalRows(args: {
     const sameProduct = prev !== null && submittedModel !== null && normalizeModel(prev.submittedModel) === normalizeModel(submittedModel)
     const sheetFile = sameProduct ? prev.sheetFile : null
     const sheetPages = sameProduct ? [...prev.sheetPages] : []
+    const designCall = sameProduct && status === 'design_change' ? prev.designCall ?? null : null
 
     const partial = { submittedModel, submittedLabel, status, reasonKind }
     const changeNote = changeNoteFor(prev, partial)
@@ -229,6 +235,7 @@ export function buildSubmittalRows(args: {
       sheetPages,
       carriedFromItemId: prev?.id ?? null,
       ...(prev?.orderOnly ? { orderOnly: true } : {}),
+      ...(designCall ? { designCall } : {}),
       changed: changeNote !== null,
       changeNote,
     })
