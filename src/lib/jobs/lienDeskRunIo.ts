@@ -20,7 +20,12 @@ import { issueNoticeRelease } from './lienNoticeReleaseIo'
  * un-records its notice; the caller gets every list.
  */
 
-async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', toEmail: string, invoiceDocs: readonly NoticeInvoiceDoc[], payBlocks: readonly FilingDocBlock[] = [], words?: { subject: string; text: string }): Promise<string> {
+/**
+ * The PDF one copy of a notice travels as by email: the copy's form with its letter, release,
+ * pay page and unpaid bills stacked as the printed packet stacks them. The send attaches it, and
+ * the run window's courtesy-email preview (v2.5073) shows it, so the preview is the attachment.
+ */
+export async function buildRunNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', invoiceDocs: readonly NoticeInvoiceDoc[], payBlocks: readonly FilingDocBlock[] = []): Promise<Blob> {
   const r = n.recipients.find((x) => x.key === recipientKey)!
   const form = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter(n.kind) })
   // The run's cover letter (v2.3482) rides in front of the owner's copy, as the printed packet prints it;
@@ -35,7 +40,11 @@ async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_co
   if (payBlocks.length > 0) parts.push(await filingDocPdfBlob([...payBlocks], { footer: filingDocFooter(n.kind) }))
   const notice = parts.length > 1 ? await mergePdfBlobs(parts) : form
   // The unpaid invoices ride behind the notice, stamped INVOICE (v2.3437, § 53.056(a-3)).
-  const blob = invoiceDocs.length > 0 ? (await buildDemandLetterPacket(notice, await noticeInvoiceExhibitInputs(invoiceDocs, buildPhysicalInvoicePdfBlob))).blob : notice
+  return invoiceDocs.length > 0 ? (await buildDemandLetterPacket(notice, await noticeInvoiceExhibitInputs(invoiceDocs, buildPhysicalInvoicePdfBlob))).blob : notice
+}
+
+async function emailNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', toEmail: string, invoiceDocs: readonly NoticeInvoiceDoc[], payBlocks: readonly FilingDocBlock[] = [], words?: { subject: string; text: string }): Promise<string> {
+  const blob = await buildRunNoticePdf(n, recipientKey, invoiceDocs, payBlocks)
   const buf = new Uint8Array(await blob.arrayBuffer())
   let binary = ''
   for (let i = 0; i < buf.length; i += 0x8000) binary += String.fromCharCode(...buf.subarray(i, i + 0x8000))

@@ -10,6 +10,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskRunModal from './LienDeskRunModal'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
+import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 
 vi.mock('../../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
@@ -25,7 +26,9 @@ vi.mock('../../lib/sent/sentCopiesIo', async () => {
   return { ...actual, printAndFile: (html: string, filing: unknown) => printMock(html, filing) }
 })
 const recordMock = vi.fn(async () => ({ recorded: ['it1'], failed: [], releaseFailed: [] as { label: string; reason: string }[], courtesySent: [] as { itemId: string; label: string; email: string }[], courtesyFailed: [] as { itemId: string; label: string; email: string; reason: string }[] }))
-vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])) }))
+// The courtesy preview's PDF (v2.5073) is the send's own builder; here it hands back a stand-in.
+const buildPdfMock = vi.fn(async (..._args: unknown[]) => new Blob(['%PDF-1.4 courtesy']))
+vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])), buildRunNoticePdf: (...args: unknown[]) => buildPdfMock(...args) }))
 vi.mock('../../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: vi.fn(async () => null) }))
 vi.mock('../../lib/stripeInvoiceFacts', () => ({ fetchStripeInvoiceFacts: vi.fn(async () => ({})) }))
 
@@ -171,6 +174,94 @@ describe('LienDeskRunModal · the courtesy PDF to the original contractor (punch
     await settle()
     fireEvent.click(screen.getByRole('button', { name: /Record the run/ }))
     expect(await screen.findByText('Courtesy PDF not emailed: 650 · ATI Schertz to office@loberg.test (Resend 502). That notice is recorded all the same.')).toBeTruthy()
+  })
+
+  // The preview tab (v2.5073): a stand-in window that keeps what is written to it, and object URLs jsdom does not have.
+  const stubTab = () => {
+    const writes: string[] = []
+    const tab = { document: { open: vi.fn(), write: (h: string) => void writes.push(h), close: vi.fn(), images: [] }, focus: vi.fn(), close: vi.fn() }
+    const open = vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window)
+    const urls = URL as unknown as { createObjectURL?: (b: Blob) => string; revokeObjectURL?: (u: string) => void }
+    const before = { create: urls.createObjectURL, revoke: urls.revokeObjectURL }
+    urls.createObjectURL = vi.fn(() => 'blob:preview-1')
+    urls.revokeObjectURL = vi.fn()
+    const page = () => writes.find((h) => h.includes('data-courtesy-preview-strip')) ?? ''
+    const restore = () => {
+      open.mockRestore()
+      urls.createObjectURL = before.create
+      urls.revokeObjectURL = before.revoke
+    }
+    return { open, page, restore }
+  }
+
+  it('Preview the email › sits after the line, outside the tick, and opens the email as the GC gets it: the send\u2019s words and the PDF the record attaches (v2.5073)', async () => {
+    buildPdfMock.mockClear()
+    const tab = stubTab()
+    try {
+      renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+      await settle()
+      expect(screen.queryByTestId('run-courtesy-preview-1')).toBeNull()
+      const door = screen.getByTestId('run-courtesy-preview-2') as HTMLButtonElement
+      await waitFor(() => expect(door.disabled).toBe(false))
+      expect(door.textContent).toBe('Preview the email ›')
+      expect(door.title).toBe('Opens in a new tab, as office@loberg.test would get it. Nothing is sent.')
+      expect(screen.getByTestId('run-courtesy-2').contains(door)).toBe(false)
+      fireEvent.click(door)
+      expect(tab.open).toHaveBeenCalledWith('', '_blank')
+      await waitFor(() => expect(tab.page()).not.toBe(''))
+      const page = tab.page()
+      expect(page).toContain('This email goes to office@loberg.test when you record the run, while Courtesy PDF stays ticked.')
+      expect(page).toContain('<dt>To</dt><dd>office@loberg.test</dd>')
+      expect(page).toContain('<h1 class="subject">Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz</h1>')
+      expect(page).toContain('The notice itself is being delivered by certified mail. For questions call the office: (512) 360-0599</p>')
+      expect(page).toContain('<iframe class="pdf" src="blob:preview-1" title="notice-53-056-650.pdf"></iframe>')
+      expect(buildPdfMock).toHaveBeenCalledTimes(1)
+      const [n, copy, docs, pay] = buildPdfMock.mock.calls[0] as unknown as [RunNotice, string, unknown[], unknown[]]
+      expect([n.itemId, copy, docs, pay]).toEqual(['it1', 'original_contractor', [], []])
+      // Pressing the door never flips the tick.
+      expect((screen.getByLabelText(tickLabel) as HTMLInputElement).checked).toBe(true)
+    } finally {
+      tab.restore()
+    }
+  })
+
+  it('the door waits while the bills are read; an unticked box still previews, saying the email will not go', async () => {
+    vi.mocked(fetchJobWithDetailsById).mockImplementationOnce(() => new Promise(() => {}))
+    const view = renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    const waiting = screen.getByTestId('run-courtesy-preview-2') as HTMLButtonElement
+    expect(waiting.disabled).toBe(true)
+    expect(waiting.textContent).toBe('Preview the email · reading the bills…')
+    view.unmount()
+    const tab = stubTab()
+    try {
+      renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+      await settle()
+      fireEvent.click(screen.getByLabelText(tickLabel))
+      const door = screen.getByTestId('run-courtesy-preview-2') as HTMLButtonElement
+      await waitFor(() => expect(door.disabled).toBe(false))
+      fireEvent.click(door)
+      await waitFor(() => expect(tab.page()).not.toBe(''))
+      expect(tab.page()).toContain('<div class="strip off" data-courtesy-preview-strip>Preview — nothing has been sent. Courtesy PDF is not ticked, so this email will not go. Tick it in the run window to send it.</div>')
+    } finally {
+      tab.restore()
+    }
+  })
+
+  it('a blocked popup says so and builds nothing', async () => {
+    buildPdfMock.mockClear()
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    try {
+      renderWithProviders(<LienDeskRunModal notices={[ticked()]} issuer={null} todayYmd="2026-10-09" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+      await settle()
+      const door = screen.getByTestId('run-courtesy-preview-2') as HTMLButtonElement
+      await waitFor(() => expect(door.disabled).toBe(false))
+      fireEvent.click(door)
+      expect(await screen.findByText('Popup blocked — allow popups to preview the email.')).toBeTruthy()
+      expect(buildPdfMock).not.toHaveBeenCalled()
+    } finally {
+      open.mockRestore()
+    }
   })
 })
 

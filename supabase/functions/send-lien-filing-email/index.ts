@@ -3,6 +3,7 @@ import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { lienFilingAttachmentName, lienFilingEmailHtml } from '../_shared/lienFilingEmail.ts'
 
 // Email a lien-instrument PDF (v2.2645 — the § 53.056 notice; v2.3436 — the
 // final demand letter packet, `email_type: 'demand_letter'`) to a named
@@ -97,9 +98,10 @@ serve(async (req) => {
         : emailType === 'demand_letter'
           ? 'Please find attached our final demand for payment, with the invoice and its exhibits, as one PDF.'
           : 'Please find the attached notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). A copy is also being delivered by certified mail.'
-    const htmlBody = `<p>${textPlain.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>')}</p>`
+    // One builder with the run window's courtesy-email preview (v2.5073), so the preview is the send.
+    const htmlBody = lienFilingEmailHtml(textPlain)
 
-    const attachments = [{ filename: pdfFilename.replace(/[^a-zA-Z0-9._-]/g, '_'), content: pdfBase64 }]
+    const attachments = [{ filename: lienFilingAttachmentName(pdfFilename), content: pdfBase64 }]
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {

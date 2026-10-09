@@ -56,7 +56,7 @@ vi.mock('../jobsDocuments/lienFilingDocuments', async (importOriginal) => ({
 vi.mock('./lienDeskIo', () => ({ markLienDeskItemSent: async (itemId: string) => void db.events.push(`sent ${itemId}`) }))
 vi.mock('./lienClaimCorrectionIo', () => ({ clearOneShotLienClaimCorrection: async () => undefined }))
 
-import { recordLienDeskRun } from './lienDeskRunIo'
+import { buildRunNoticePdf, recordLienDeskRun } from './lienDeskRunIo'
 
 function notice(partial: Partial<RunNotice> = {}): RunNotice {
   return {
@@ -102,7 +102,7 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
       to_email: 'office@loberg.test',
       recipient_label: 'original_contractor',
       subject: 'Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz',
-      email_text: 'Attached is a courtesy copy of our notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). The notice itself is being delivered by certified mail.',
+      email_text: 'Attached is a courtesy copy of our notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). The notice itself is being delivered by certified mail. For questions call the office: (512) 360-0599',
     })
     // The statutory record is the paper: the courtesy email is not one of the sends.
     expect((db.inserts[0] as { sends: { recipient: string; method: string; tracking: string }[] }).sends).toEqual([
@@ -165,5 +165,15 @@ describe('recordLienDeskRun · the courtesy PDF (punch list #87 B)', () => {
     expect(result.recorded).toEqual(['it1'])
     expect(result.offers).toHaveLength(1)
     expect(result.offers[0]).toMatchObject({ jobId: 'j650' })
+  })
+})
+
+describe('buildRunNoticePdf · the attachment the courtesy preview shows (v2.5073)', () => {
+  it('is the PDF the courtesy email attaches, byte for byte', async () => {
+    const shown = await buildRunNoticePdf(notice(), 'original_contractor', [], [])
+    await recordLienDeskRun([notice()], OPTS)
+    expect(db.invokes).toHaveLength(1)
+    expect(btoa(await shown.text())).toBe(db.invokes[0]!.body.pdf_base64)
+    expect(db.invokes[0]!.body.pdf_filename).toBe('notice-53-056-650.pdf')
   })
 })

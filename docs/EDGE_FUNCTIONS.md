@@ -3698,6 +3698,8 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 
 ### send-lien-filing-email
 
+> **v2.5073 — the body the preview draws**: the HTML body and the attachment's cleaned name come from [`_shared/lienFilingEmail.ts`](../supabase/functions/_shared/lienFilingEmail.ts) (`lienFilingEmailHtml`, `lienFilingAttachmentName`), which the Lien desk run's **Preview the email ›** draws with too ([`lienRunCourtesyPreview.ts`](../src/lib/jobs/lienRunCourtesyPreview.ts)), so the preview is the send. The bytes sent are unchanged. The courtesy words the run passes (`runCourtesyEmailWords`) now end with *For questions call the office:* and `PORTAL_COMPANY.phone`. **Redeploy required.**
+
 > **v2.4574 — the notice is kept as it went**: after a successful send the function files the email and its PDF — `kind` `lien_notice`, or `demand_letter` for `email_type: 'demand_letter'` — keyed to the job, with `recipient_label` as the name it went to. Best effort. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4132 — sends as the company**: the From is [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (punch list #53, PR 2); `email_send_log.from_email` records it.

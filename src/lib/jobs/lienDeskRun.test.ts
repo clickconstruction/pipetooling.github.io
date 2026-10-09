@@ -432,16 +432,19 @@ describe('the courtesy PDF to the original contractor (punch list #87 B)', () =>
     expect(runCourtesyCopies({ recipients: n.recipients.map((r) => ({ ...r, courtesy: true, email: ' ' })) })).toEqual([])
   })
 
-  it('the email says it is a courtesy copy, names the form, and says how the notice itself travels (the owner\u2019s wording, 2026-10-06)', () => {
+  it('the email says it is a courtesy copy, names the form, says how the notice itself travels (the owner\u2019s wording, 2026-10-06), and ends with the office\u2019s number (2026-10-09)', () => {
     expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650 · ATI Schertz' }, 'certified_mail')).toEqual({
       subject: 'Courtesy copy: notice of claim for unpaid labor or materials — 650 · ATI Schertz',
-      text: 'Attached is a courtesy copy of our notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). The notice itself is being delivered by certified mail.',
+      text: 'Attached is a courtesy copy of our notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). The notice itself is being delivered by certified mail. For questions call the office: (512) 360-0599',
     })
     expect(runCourtesyEmailWords({ kind: 'retainage_53_057', label: '650 · ATI Schertz' }, 'traceable_courier')).toEqual({
       subject: 'Courtesy copy: notice of claim for unpaid retainage — 650 · ATI Schertz',
-      text: 'Attached is a courtesy copy of our notice of claim for unpaid retainage (Tex. Prop. Code § 53.057). The notice itself is being delivered by traceable courier.',
+      text: 'Attached is a courtesy copy of our notice of claim for unpaid retainage (Tex. Prop. Code § 53.057). The notice itself is being delivered by traceable courier. For questions call the office: (512) 360-0599',
     })
-    expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650' }, 'hand').text).toContain('The notice itself is being delivered by hand.')
+    expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650' }, 'hand').text).toContain('The notice itself is being delivered by hand. For questions')
+    // The number is the letterhead's; a blank one leaves the line off rather than print an empty number.
+    expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650' }, 'certified_mail', '512 555 0100').text).toMatch(/certified mail\. For questions call the office: 512 555 0100$/)
+    expect(runCourtesyEmailWords({ kind: 'notice_53_056', label: '650' }, 'certified_mail', '  ').text).toMatch(/certified mail\.$/)
   })
 
   it('the record says who got one and which did not go, and that a failed one leaves the notice recorded', () => {
