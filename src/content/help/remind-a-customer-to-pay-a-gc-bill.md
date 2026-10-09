@@ -27,4 +27,4 @@ The bill says when you reminded them and the pay-by day. A note goes on the cust
 
 When the email does not go, the bill says so. The window says why. Fix that, then remind them again.
 
-{{button:outline|Remind them to pay}} shows only on a bill that is certified, open and past the day it was due. When they pay, [record what they paid](/help/record-what-a-gc-customer-paid).
+{{button:outline|Remind them to pay}} shows only on a bill that is certified, open and past the day it was due. When the customer pays, [record what they paid](/help/record-what-a-gc-customer-paid).

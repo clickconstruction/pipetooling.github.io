@@ -123,6 +123,7 @@ import {
   loadGcBillingRows,
   recordCertificate,
   remindCustomerToPay,
+  setOwnerPayDays,
   recordGcPayment,
   recordGcPromise,
   sendOwnerPayApp,
@@ -1212,6 +1213,7 @@ export default function GcProjects() {
               })()
             },
             onSetRetainage: (pct, step) => billWrite('retainage', () => setOwnerRetainage(billProject.id, pct, step), 'The retainage was not saved.'),
+            onSetPayDays: (days) => billWrite('paydays', () => setOwnerPayDays(billProject.id, days), 'The days to pay were not saved.'),
             onDownload: (which, kind) => {
               const form = ownerPayAppForm(billState, billProject, which)
               if (!form) return

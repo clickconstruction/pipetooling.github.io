@@ -10,6 +10,7 @@ import {
   ownerPayApp,
   ownerPayAppHasWork,
   ownerPayAppsSent,
+  ownerPayDaysWords,
   ownerRetainageWords,
 } from '../../lib/gc/ownerBilling'
 import type { GcProject, GcState, OwnerPayAppSent, OwnerRetainageStep } from '../../lib/gc/types'
@@ -31,6 +32,8 @@ export interface BillCustomerWrites extends MoneyInWrites, RemindWrites {
   /** Record the architect's certificate; with `email`, email the customer the certified bill (O4b-2). */
   onCertify: (number: number, amount: number, on: string, note: string, email: boolean) => void
   onSetRetainage: (pct: number, step: OwnerRetainageStep | null) => void
+  /** The contract's days to pay after the certificate, or null when it does not say (O5d). */
+  onSetPayDays: (days: number | null) => void
   onDownload: (which: number | 'draft', kind: 'xlsx' | 'pdf') => void
   /** Make our conditional waiver on progress payment for a sent one (`LienReleaseModal` on the billing job). */
   onWaiver: (number: number) => void
@@ -53,7 +56,7 @@ interface Props {
    * ask to certify it, then the certified bill.
    */
   emailed?: Record<number, BillEmailed[]>
-  /** What a write is working on: 'send', 'retainage', 'cert-<n>', 'waiver-<n>' or 'file'. */
+  /** What a write is working on: 'send', 'retainage', 'paydays', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
@@ -132,6 +135,7 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
           )}
 
           <Retainage state={state} project={project} sentAny={sent.length > 0} writes={writes} busy={busy === 'retainage'} />
+          <PayDays project={project} writes={writes} busy={busy === 'paydays'} />
 
           {sent.length > 0 && (
             <div style={{ display: 'grid', gap: '0.45rem' }}>
@@ -285,6 +289,52 @@ function Retainage({ state, project, sentAny, writes, busy }: { state: GcState; 
               }}
             >
               Save the retainage
+            </Btn>
+            <Btn kind="quiet" onClick={() => setOpen(false)}>
+              Cancel
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** The contract's days to pay after the certificate (O5d): a first-time customer's bills fall due by them. */
+function PayDays({ project, writes, busy }: { project: GcProject; writes: BillCustomerWrites; busy: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [days, setDays] = useState(project.ownerPayDays == null ? '' : String(project.ownerPayDays))
+  const blank = days.trim() === ''
+  const daysNum = Number(days)
+  const ready = blank || (Number.isInteger(daysNum) && daysNum >= 0 && daysNum <= 365)
+  return (
+    <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <strong>Days to pay</strong>
+        <span>{ownerPayDaysWords(project.ownerPayDays)}</span>
+        {!open && (
+          <Btn kind="quiet" onClick={() => setOpen(true)}>
+            Change the days to pay
+          </Btn>
+        )}
+      </div>
+      {open && (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem', display: 'grid', gap: '0.5rem' }}>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            Days they have to pay after the certificate
+            <input style={{ ...input, width: '6rem' }} type="number" min={0} max={365} step={1} value={days} onChange={(e) => setDays(e.target.value)} />
+          </label>
+          <div style={{ color: 'var(--text-muted)' }}>Leave it blank when the contract does not say. Once they have paid us, their own days count first.</div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Btn
+              kind="primary"
+              disabled={!ready || busy}
+              onClick={() => {
+                writes.onSetPayDays(blank ? null : daysNum)
+                setOpen(false)
+              }}
+            >
+              Save the days to pay
             </Btn>
             <Btn kind="quiet" onClick={() => setOpen(false)}>
               Cancel

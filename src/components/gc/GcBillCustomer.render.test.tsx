@@ -27,7 +27,7 @@ function setup(
     ...over,
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
-  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn() }
+  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn() }
   render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} onClose={() => undefined} />)
   return { writes, last }
 }
@@ -82,6 +82,25 @@ describe('GcBillCustomerWindow', () => {
     expect(screen.getByText('They will hold 5% until the work is half done, then 2.5% on the rest.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Save the retainage' }))
     expect(writes.onSetRetainage).toHaveBeenCalledWith(5, { atPct: 50, toPct: 2.5, way: 'after' })
+  })
+
+  it('types the contract\'s days to pay in the terms, or clears them, in whole days', () => {
+    const { writes } = setup()
+    expect(document.body.textContent).toContain('Type the contract\'s days to pay so a first bill can go late.')
+    fireEvent.click(screen.getByRole('button', { name: 'Change the days to pay' }))
+    const field = screen.getByLabelText('Days they have to pay after the certificate')
+    fireEvent.change(field, { target: { value: '2.5' } })
+    expect((screen.getByRole('button', { name: 'Save the days to pay' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(field, { target: { value: '30' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the days to pay' }))
+    expect(writes.onSetPayDays).toHaveBeenCalledWith(30)
+    cleanup()
+    const again = setup({ ownerPayDays: 30 })
+    expect(document.body.textContent).toContain('They pay within 30 days of the certificate, by the contract.')
+    fireEvent.click(screen.getByRole('button', { name: 'Change the days to pay' }))
+    fireEvent.change(screen.getByLabelText('Days they have to pay after the certificate'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the days to pay' }))
+    expect(again.writes.onSetPayDays).toHaveBeenCalledWith(null)
   })
 
   it('makes our conditional waiver for a sent one, and says when it went', () => {

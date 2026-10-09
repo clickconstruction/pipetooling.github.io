@@ -35,6 +35,14 @@ describe('the state our money screens read', () => {
     expect(contractWorthFromRows([])).toBeUndefined()
   })
 
+  it('lays the contract\'s days to pay on each job, standing in while the customer has never paid us (O5d)', () => {
+    const s = initialGcState()
+    const rows: BillingRows = { terms: [terms('fairoaksd', { owner_pay_days: 30 }), terms('helotes', { owner_pay_days: 45 })], contract: [], billing: new Map(), names: {}, payDays: { cibolo: 41 } }
+    const laid = billingStateForAll(s, rows)
+    expect(['fairoaksd', 'helotes'].map((id) => laid.projects.find((p) => p.id === id)!.ownerPayDays)).toEqual([30, 45])
+    expect(billingStateForAll(s, { ...rows, terms: [terms('fairoaksd')] }).projects.find((p) => p.id === 'fairoaksd')!.ownerPayDays).toBeNull()
+  })
+
   it('gives two jobs of one customer each its own retainage, and the customer\'s days to pay to both', () => {
     const s = initialGcState()
     const rows: BillingRows = {
