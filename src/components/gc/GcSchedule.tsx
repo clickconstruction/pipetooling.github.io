@@ -79,7 +79,7 @@ import { Btn, Card, input } from './gcUi'
 
 /**
  * The board's state (`boardStateFromRows`), the job to read, who prints and moves (the paper's foot, the move's name),
- * and whether this person may move a bar (a dev's until the schedule's PR 10).
+ * and whether this person may move a bar (the schedule's team since its PR 10).
  */
 export function GcSchedule({ state, projectId, by, canMove = false }: { state: GcState; projectId: string; by: string; canMove?: boolean }) {
   const [read, setRead] = useState<ScheduleRead | null>(null)
@@ -411,6 +411,7 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
           peopleOf={peopleOf}
           crowded={crowded}
           {...(printJob ? { print: printJob } : {})}
+          printFiling={{ projectId: project.id, customerId: project.customerId || null, customerName: project.owner || null }}
           company={company}
           onCompany={setCompany}
           today={state.today}

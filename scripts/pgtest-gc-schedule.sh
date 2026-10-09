@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Runs supabase/tests/gc_schedule against a throwaway copy of the WHOLE schema (v2.4848, the schedule's PR 5).
+# Runs supabase/tests/gc_schedule against a throwaway copy of the WHOLE schema (v2.4848, the schedule's PR 5;
+# the team door, v2.5114, the schedule's PR 10).
 #
 #   npm run test:pg:gc-schedule
 #
@@ -7,8 +8,9 @@
 # supabase/migrations applied in order (about a minute). The schedule's writes are then applied a
 # second time, which must change nothing. The scenario draws, moves, undoes, splits and keeps as a dev
 # through RLS, inside one transaction that rolls back: two presses on one version, the refusals in the
-# kernels' words, the plan at Start, the records that touch several rows, and the guard. It raises on
-# its first failed assertion and ends with "gc_schedule PASSED". PGTEST_KEEP=1 leaves the container
+# kernels' words, the plan at Start, the records that touch several rows, and the guard. The team door
+# (30_team_door.sql) then proves who the 23 tables let in, on its own fixture. Each raises on its first
+# failed assertion and ends with its PASSED line. PGTEST_KEEP=1 leaves the container
 # up. Needs docker; .github/workflows/sql-beds.yml runs it on a PR that touches the schedule's SQL.
 # Never touches prod.
 set -euo pipefail
@@ -18,6 +20,7 @@ PORT="${PGTEST_PORT:-55443}"
 NAME="pgtest-gc-schedule"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_gc_schedule_writes.sql)"
+DOOR="$(ls supabase/migrations/*_gc_schedule_team_door.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -38,7 +41,12 @@ done
 # A second run must change nothing: every function is replaced as it was, and the guard's DO block
 # makes no second trigger.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
+# The team door too: each policy dropped and made again, each function replaced as it was.
+psql_as postgres -f - < "$DOOR" >/dev/null 2>"/tmp/$NAME.err" || { echo "FAILED re-applying $DOOR"; grep -E -A6 "ERROR|FATAL" "/tmp/$NAME.err" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/gc_schedule/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_schedule PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/gc_schedule/30_team_door.sql 2>&1 || true)"
+if ! grep -q "gc_schedule team door PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "gc-schedule bed ok"

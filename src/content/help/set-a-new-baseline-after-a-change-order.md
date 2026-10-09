@@ -1,13 +1,13 @@
 ---
 title: set a new baseline after a change order
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, schedule, baseline, change order, plan at start, measures, gantt
 order: 109
 ---
 The baseline is the plan every measure on the schedule reads against. Start keeps the first one. After a signed change order adds days, take a new baseline from the plan as it stands.
 
-Only devs can set a baseline for now. The rest of the office gets the Schedule window later.
+The office and estimators can open the schedule. Superintendents get it later.
 
 ## Set a new baseline
 

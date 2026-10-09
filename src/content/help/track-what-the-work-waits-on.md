@@ -1,13 +1,13 @@
 ---
 title: track what the work waits on
 category: Bids & Estimating
-roles: dev
+roles: dev, master_technician, assistant, controller, estimator
 keywords: gc mode, schedule, wait, delivery, decision, permit, utility, expected, shipped, holds
 order: 110
 ---
 Some work waits on things outside the trades. A delivery, the customer's decision, a permit and the utility's work can each hold it. Put them on the schedule, and the chart holds the work until they are in.
 
-Only devs can change the schedule for now. The rest of the office gets the Schedule window later.
+The office and estimators can open the schedule. Superintendents get it later.
 
 ## Add what the work waits on
 

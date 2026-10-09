@@ -3,7 +3,8 @@
  * GC mode, the real build, the schedule's PR 7a: Print or PDF's render tests on the chart alone.
  * The ones that render the prototype's Schedule tab stay on the spike. Moved word for word from the
  * GC mode prototype (branch spike/gc-mode, `GcGanttPrint.render.test.tsx`); the plan is
- * to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
+ * to-dos/gc-mode/mockups/schedule-pr7.md on that branch. Since the schedule's PR 10 the print files a copy
+ * (`printAndFile`, mocked here): the job's team's pages under the team, the customer's under their name.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
@@ -14,14 +15,28 @@ import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gc/schedule/customerSchedule'
 import type { GanttHold } from '../../lib/gc/schedule/gantt'
 import type { GanttPrintJob } from '../../lib/gc/schedule/ganttPrint'
+import type { GanttPrintFiling } from './GcGanttPrint'
 import { plainWordsFailures } from '../../lib/plainWords'
+
+const io = vi.hoisted(() => ({ opens: true, printed: [] as { html: string; filing: Record<string, unknown> }[] }))
+vi.mock('../../lib/sent/sentCopiesIo', () => ({
+  printAndFile: (html: string, filing: Record<string, unknown>) => {
+    if (!io.opens) return false
+    io.printed.push({ html, filing })
+    return true
+  },
+}))
 
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  io.opens = true
+  io.printed.length = 0
 })
 
-function chart({ print = true, hold, logNote }: { print?: boolean; hold?: string; logNote?: { label: string; note: string } } = {}) {
+const FILING: GanttPrintFiling = { projectId: 'proj-fair-oaks-d', customerId: 'cust-cibolo', customerName: 'Cibolo Creek Partners' }
+
+function chart({ print = true, hold, logNote, filing }: { print?: boolean; hold?: string; logNote?: { label: string; note: string }; filing?: GanttPrintFiling } = {}) {
   const state = initialGcState()
   const project = state.projects.find((p) => p.name === 'Fair Oaks Shops, Building D')!
   const m = scheduleMeasures(state, project)
@@ -39,7 +54,7 @@ function chart({ print = true, hold, logNote }: { print?: boolean; hold?: string
     doneWords: customerDoneWords(customerStanding(state, project)),
     customer: customerSchedulePicture(state, project),
   }
-  return render(<GcGantt items={m.items} float={m.float} milestones={m.milestones} holds={holds} today={state.today} building picked={null} onPick={vi.fn()} {...(print ? { print: job } : {})} {...(logNotes ? { logNotes } : {})} />)
+  return render(<GcGantt items={m.items} float={m.float} milestones={m.milestones} holds={holds} today={state.today} building picked={null} onPick={vi.fn()} {...(print ? { print: job } : {})} {...(filing ? { printFiling: filing } : {})} {...(logNotes ? { logNotes } : {})} />)
 }
 
 const printButton = () => screen.getByRole('button', { name: 'Print or PDF' })
@@ -93,17 +108,41 @@ describe('Print or PDF on the chart (G-21)', () => {
     expect(within(dialog()).getByText('1 landscape page, letter size.')).toBeTruthy()
   })
 
-  it('Print or PDF writes the pages into a new window, prints them and closes the window', () => {
-    const doc = { write: vi.fn(), close: vi.fn() }
-    const win = { document: doc, focus: vi.fn(), print: vi.fn(), close: vi.fn(), onafterprint: null }
-    const open = vi.spyOn(window, 'open').mockReturnValue(win as unknown as Window)
-    chart()
+  it('Print or PDF prints the pages and files a copy under the job’s team, then closes the window (the schedule’s PR 10)', () => {
+    chart({ filing: FILING })
     fireEvent.click(printButton())
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Print or PDF' }))
-    expect(open).toHaveBeenCalledTimes(1)
-    expect(String(doc.write.mock.calls[0]?.[0])).toContain('@page { size: letter landscape; margin: 0.4in; }')
-    expect(win.print).toHaveBeenCalledTimes(1)
+    expect(io.printed).toHaveLength(1)
+    const { html, filing } = io.printed[0]!
+    expect(html).toContain('@page { size: letter landscape; margin: 0.4in; }')
+    expect(filing).toEqual({
+      kind: 'gc_schedule_print',
+      title: expect.any(String),
+      recipientName: 'The job’s team',
+      customerId: 'cust-cibolo',
+      source: { table: 'gc_schedules', id: 'proj-fair-oaks-d' },
+    })
+    expect(html).toContain(`<title>${String(filing.title)}</title>`)
     expect(screen.queryByRole('dialog', { name: 'Print the chart' })).toBeNull()
+  })
+
+  it('the customer’s pages file under the customer’s name', () => {
+    chart({ filing: FILING })
+    fireEvent.click(printButton())
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'The customer' }))
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Print or PDF' }))
+    expect(io.printed[0]?.filing).toMatchObject({ kind: 'gc_schedule_print', recipientName: 'Cibolo Creek Partners', customerId: 'cust-cibolo' })
+    expect(io.printed[0]?.html).toContain('Fair Oaks Shops, Building D: your schedule')
+  })
+
+  it('a blocked pop-up files nothing, keeps the window open and says what to do', () => {
+    io.opens = false
+    chart({ filing: FILING })
+    fireEvent.click(printButton())
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Print or PDF' }))
+    expect(io.printed).toHaveLength(0)
+    expect(within(dialog()).getByRole('alert').textContent).toBe('The print window was blocked. Allow pop-ups for this site and press it again.')
+    expect(plainWordsFailures(within(dialog()).getByRole('alert').textContent ?? '')).toEqual([])
   })
 
   it('prints the chart’s own note beside a bar, what the daily log says included (G-60)', () => {

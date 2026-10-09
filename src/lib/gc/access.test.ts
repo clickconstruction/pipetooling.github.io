@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
-import { GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from './access'
+import { GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_SCHEDULE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding, canUseGcSchedule } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
 describe('canOpenGcProjects', () => {
@@ -104,5 +104,28 @@ describe('canUseGcBuilding', () => {
     const building = Object.values(GC_TABLE_DOORS).filter((d) => d.lane === 'Building')
     expect(building.length).toBeGreaterThan(0)
     expect(building.every((d) => d.door === 'dev')).toBe(GC_BUILDING_TEAM.length === 1 && GC_BUILDING_TEAM[0] === 'dev')
+  })
+})
+
+describe('canUseGcSchedule', () => {
+  it('opens the schedule to the office and estimators, as gc_on_schedule_team()’s office arm does', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as UserRole[]) {
+      expect(canUseGcSchedule(role)).toBe(true)
+    }
+  })
+
+  it('keeps the field, the subs and a session with no role yet out, the superintendent until Building’s door', () => {
+    for (const role of ['superintendent', 'primary', 'subcontractor', 'helpers'] as UserRole[]) {
+      expect(canUseGcSchedule(role)).toBe(false)
+    }
+    expect(canUseGcSchedule(null)).toBe(false)
+    expect(canUseGcSchedule(undefined)).toBe(false)
+  })
+
+  it('is the office team exactly while doors.ts puts every schedule table behind the schedule’s door, so Building’s door changes both', () => {
+    const schedule = Object.values(GC_TABLE_DOORS).filter((d) => d.lane === 'Schedule')
+    expect(schedule).toHaveLength(23)
+    expect(schedule.every((d) => d.door === 'schedule')).toBe(true)
+    expect([...GC_SCHEDULE_TEAM].sort()).toEqual(teamInSql('gc_office_team').sort())
   })
 })

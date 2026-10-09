@@ -8,15 +8,15 @@
 \set ON_ERROR_STOP 1
 BEGIN;
 
--- Who: a dev, a dev in training mode, and an estimator (no policy on the schedule's tables yet).
+-- Who: a dev, a dev in training mode, and a subcontractor (no policy on the schedule's tables lets one in).
 INSERT INTO auth.users (id, email) VALUES
   ('00000000-0000-0000-0000-0000000005d1', 'dev@schedule.test'),
   ('00000000-0000-0000-0000-0000000005d2', 'trainee@schedule.test'),
-  ('00000000-0000-0000-0000-0000000005d3', 'estimator@schedule.test');
+  ('00000000-0000-0000-0000-0000000005d3', 'sub@schedule.test');
 INSERT INTO public.users (id, email, name, role) VALUES
   ('00000000-0000-0000-0000-0000000005d1', 'dev@schedule.test', 'Schedule Dev', 'dev'),
   ('00000000-0000-0000-0000-0000000005d2', 'trainee@schedule.test', 'Schedule Trainee', 'dev'),
-  ('00000000-0000-0000-0000-0000000005d3', 'estimator@schedule.test', 'Schedule Estimator', 'estimator')
+  ('00000000-0000-0000-0000-0000000005d3', 'sub@schedule.test', 'Schedule Sub', 'subcontractor')
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
 UPDATE public.users SET read_only = true WHERE id = '00000000-0000-0000-0000-0000000005d2';
 
