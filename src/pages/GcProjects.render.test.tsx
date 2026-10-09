@@ -10,6 +10,7 @@ import { clinicBoardRows } from '../lib/gc/boardTestRows'
 import { loadSchedule } from '../lib/gc/scheduleIo'
 import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { loadGcSubmittals } from '../lib/gc/submittalsIo'
+import { loadGcRfis, startRfiChangeOrder } from '../lib/gc/rfisIo'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -104,6 +105,16 @@ vi.mock('../lib/gc/submittalsIo', () => ({
   sendSubmittalToArchitect: vi.fn(() => Promise.resolve({ to: 'architect@example.com' })),
   markSubmittalSent: vi.fn(() => Promise.resolve()),
   answerSubmittal: vi.fn(() => Promise.resolve()),
+}))
+
+// Building's RFIs: none asked, and every press going through.
+vi.mock('../lib/gc/rfisIo', () => ({
+  loadGcRfis: vi.fn(() => Promise.resolve({ rfis: [], holds: [] })),
+  addRfi: vi.fn(() => Promise.resolve('rfi-1')),
+  sendRfiToArchitect: vi.fn(() => Promise.resolve({ to: 'architect@example.com' })),
+  markRfiSent: vi.fn(() => Promise.resolve()),
+  answerRfi: vi.fn(() => Promise.resolve()),
+  startRfiChangeOrder: vi.fn(() => Promise.resolve('co-1')),
 }))
 
 const loadedEmpty = { loaded: () => screen.findByText('No GC project yet. Press New project when the first plans come in.') }
@@ -484,5 +495,74 @@ describe('GcProjects: submittals (Building)', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, loaded)
     expect(screen.queryByRole('button', { name: 'Submittals' })).toBeNull()
+  })
+})
+
+describe('GcProjects: RFIs (Building)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadGcRfis).mockReset()
+    vi.mocked(loadGcRfis).mockImplementation(() => Promise.resolve({ rfis: [], holds: [] }))
+    vi.mocked(startRfiChangeOrder).mockClear()
+    vi.mocked(loadSchedule).mockClear()
+  })
+
+  const building = () => {
+    const base = clinicBoardRows()
+    return { ...base, projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })) }
+  }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+
+  it('a dev opens RFIs on a job being built, and the window reads the job’s RFIs and its schedule', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    expect(loadGcRfis).not.toHaveBeenCalled()
+    fireEvent.click(await within(card).findByRole('button', { name: 'RFIs' }))
+    expect(await screen.findByRole('dialog', { name: 'Hill Country Clinic: RFIs' })).toBeTruthy()
+    expect(loadGcRfis).toHaveBeenCalledWith(['p1'])
+    expect(vi.mocked(loadSchedule).mock.calls.some(([, id]) => id === 'p1')).toBe(true)
+  })
+
+  it('a cost answer starts a change order, and Change orders opens in place of the RFIs', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    const rfi = {
+      id: 'r1', project_id: 'p1', number: 1, question: 'Cap the old gas line or take it out?', sheets: ['C-101'], package_id: null, asked_by_company_id: null,
+      recorded_by: 'u1', asked_on: '2026-10-01', needed_days: 3, sent_to_architect_on: '2026-10-01', email_send_log_id: null, answered_on: '2026-10-05',
+      answer_text: 'Take it out.', answered_by: 'architect', impact: 'cost', cost: 3800, days: 2, change_order_id: null, created_at: '2026-10-01T00:00:00Z',
+    }
+    vi.mocked(loadGcRfis).mockResolvedValue({ rfis: [rfi], holds: [] })
+    await renderSettled(<GcProjects />, loaded)
+    fireEvent.click(await within(document.querySelector('[data-gc-project="p1"]') as HTMLElement).findByRole('button', { name: 'RFIs' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: RFIs' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Start a change order' }))
+    expect(await screen.findByRole('dialog', { name: 'Hill Country Clinic: change orders' })).toBeTruthy()
+    expect(vi.mocked(startRfiChangeOrder).mock.calls[0]?.[0].id).toBe('p1')
+    expect(vi.mocked(startRfiChangeOrder).mock.calls[0]?.[1]).toMatchObject({ id: 'r1', answer: { impact: 'cost', cost: 3800, days: 2 } })
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Hill Country Clinic: RFIs' })).toBeNull())
+  })
+
+  it('an estimator never sees RFIs, and none are read', async () => {
+    auth.role = 'estimator'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'RFIs' })).toBeNull()
+    expect(loadGcRfis).not.toHaveBeenCalled()
+  })
+
+  it('a job still bidding has no RFIs, even for a dev', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'RFIs' })).toBeNull()
   })
 })

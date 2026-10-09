@@ -93,7 +93,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   // GC mode (v2.4799): the office's question about the plans, to the owner's architect on the customer record.
   { kind: 'sender', ref: 'gc-plan-question-email', audience: 'owner', steps: [G('plan-question-email')] },
   // GC mode (the Building lane's U4b): a trade's submittal, to the owner's architect on the customer record.
-  { kind: 'sender', ref: 'gc-architect-email', audience: 'owner', steps: [G('submittal-email')] },
+  { kind: 'sender', ref: 'gc-architect-email', audience: 'owner', steps: [G('submittal-email'), G('rfi-email')] },
   // GC mode (P3-a): every email to a trade partner company, from one sender.
   { kind: 'sender', ref: 'gc-trade-email', audience: 'sub', steps: [S('gc-trade-email')] },
   // GC mode (O4b): our emails to a GC project's customer and its architect, from one sender.

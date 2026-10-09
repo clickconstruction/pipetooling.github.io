@@ -31,7 +31,7 @@ import { qrMatrix } from '../../supabase/functions/_shared/qrMatrix'
 import { bytesToBase64, qrPngBytes } from '../../supabase/functions/_shared/qrPng'
 import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
-import { buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
+import { buildGcRfiEmail, buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
 import { buildGcCustomerEmail, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
 import { certifiedMail, certifyAskMail, changeOrderMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
@@ -366,6 +366,23 @@ export function buildSampleGcSubmittalEmail(ctx: SampleEmailContext): BuiltEmail
   })
 }
 
+/** GC mode (the Building lane's U5b): a question during construction to the project's architect, as `gc-architect-email` sends it. */
+export function buildSampleGcRfiEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildGcRfiEmail({
+    architectName: 'Avery Lin',
+    projectName: 'Fair Oaks Clinic',
+    projectAddress: '1 Sample Rd, Boerne',
+    label: 'RFI-004',
+    question: 'The roof curb on A-501 is 48 by 60 inches. The approved rooftop unit needs 54 by 72. Which size do we set?',
+    sheets: ['A-501', 'M-101'],
+    from: 'Summit Roofing, Roofing',
+    holds: ['Roof curbs'],
+    neededBy: 'Fri, Oct 9',
+    signer: ctx.sender?.name || 'The project manager',
+    companyName: 'Click Construction',
+  })
+}
+
 /**
  * GC mode (P3-a): an email to a trade partner, as `gc-trade-email` sends it. The sample company's invitation from the
  * portal's own kernels, to who gets its kind, through the same frame, linking the sample portal.
@@ -423,6 +440,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
   if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)
   if (id === 'gc-submittal') return buildSampleGcSubmittalEmail(ctx)
+  if (id === 'gc-rfi') return buildSampleGcRfiEmail(ctx)
   if (id === 'gc-trade-email') return buildSampleGcTradeEmail(ctx)
   if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return buildSampleGcCustomerEmail(id, ctx)
   if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
