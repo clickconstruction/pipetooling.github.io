@@ -5,7 +5,7 @@ file: docs/PAGE_DECOMPOSITION_PLAYBOOK.md
 type: Engineering / Refactor Process
 purpose: A repeatable, generic process for breaking a multi-thousand-line "God component" page into per-tab components + shared hooks + tested pure logic, without re-deriving the strategy each time. Generalizes the method proven on Bids.tsx (~18,800 lines at the start) and People.tsx (~21,435). Also the one home for the large-file inventory and the seams that cut across maps.
 audience: Developers, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-10-09
 ---
 
 ## What this is
@@ -42,7 +42,7 @@ The repo still has several God components:
 |---|---|---|---|
 | `src/components/bids/BidsTakeoffTab.tsx` | 3,186 | [`BIDS_TAKEOFF_TAB_ARCHITECTURE.md`](./BIDS_TAKEOFF_TAB_ARCHITECTURE.md) | T0–T9 seams shipped, then features regrew it — one materials-by-stage input builder (Stage A), then `useTakeoffMaterialsByStage` + `useTakeoffViewState` |
 | `src/components/people/PeopleReviewTab.tsx` (+ `teamSummary/drilldowns.tsx` 1,625, `buildTeamSummaryHtml.ts` 1,575) | 4,167 | [`PEOPLE_REVIEW_TAB_ARCHITECTURE.md`](./PEOPLE_REVIEW_TAB_ARCHITECTURE.md) | popup builder, kernels and drilldowns out, then it regrew — the dead `forTeamSummary` path is deleted, the Stage A sweep is done, `loadTeamReviewUnion` is in `lib/people` and the 90-day overhead scan is a hook, and the per-person read is `loadReviewPersonData` over the pure `reviewPersonAllocation` kernel, all in `lib/people` with tests; next `ReviewJobExpandedDetail` (the twin 235-line grids), then `PeopleReviewPersonPanel` |
-| `src/components/jobs/JobsStagesTab.tsx` (+ `jobsStagesRowShared` 1,518) | 4,869 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | toolbar, dialogs and rows out, but back to 120 `useState` — Stage-A sweep II, the billed-money reads (`useBilledMoneyData`, v2.4099), then the round's data (`useGcStatementRound`, v2.5075); the always-mounted contract is the hazard |
+| `src/components/jobs/JobsStagesTab.tsx` (+ `jobsStagesRowShared` 1,661) | 4,869 | [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md) | toolbar, dialogs, rows, the billed-money reads (`useBilledMoneyData`, v2.4099), the billed-money windows (`StagesBilledMoneyModals`, v2.4991) and the round's data (`useGcStatementRound`, v2.5075) out, but still 112 `useState` — Stage-A sweep II next, then GC Review's send IO; the always-mounted contract is the hazard |
 | `src/components/people/PeopleContractsTab.tsx` + `PeopleOverheadTab.tsx` | 3,670 + 2,557 | [`PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md`](./PEOPLE_CONTRACTS_OVERHEAD_TABS_ARCHITECTURE.md) | Contracts has no Stage A yet; Overhead mostly out with tests — Stage A both tabs' untested money/row math, then `ContractSendForSignatureModal` |
 | `src/components/jobs/JobsJobSummaryTab.tsx` | 3,276 | [`JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md`](./JOBS_JOB_SUMMARY_TAB_ARCHITECTURE.md) | zero hooks; views, toolbar and Job cell out, the expanded row inline — decide the dead person-filter state, then the person-footer kernel + `JobSummaryAltView` |
 | `src/components/bids/BidsPricingTab.tsx` + `BidsLaborTab.tsx` (+ `useBidPricingEngine` 1,819) | 5,122 + 1,451 | [`BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md`](./BIDS_PRICING_LABOR_TABS_ARCHITECTURE.md) | P3–P5, L5, L6 out — Stage A `scenarioPricingRows` (the money adapter is hand-written 4× in Pricing; one copy shipped a $0.00 bug), then a dead-code PR |

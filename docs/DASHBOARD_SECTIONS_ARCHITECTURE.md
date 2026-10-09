@@ -10,7 +10,7 @@ covers:
   - src/lib/dashboardNeedsYou.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-06
+last_updated: 2026-10-09
 ---
 
 ## Overview
@@ -159,7 +159,7 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 - **Render location:** the pinned row's `interstitial` slot 1407–1420: `showFinancials` → `dash-notifications` anchor + `<DashboardFinancialsSection overheadCard={dev/master ? <DashboardOverheadCard …/> : null} />`. The row renders the slot between the banners and the pins/quick-action row.
 - **Owned state:** none in parent. The component's props are only `{ overheadCard?: React.ReactNode }`; it self-loads.
 - **Other mount:** `src/components/dispatchMode/DispatchModeHome.tsx:148` (same `showFinancials` gate, no overhead card).
-- **Money source (v2.2862):** the AR card's buckets (`useDashboardFinancials` → `buildArBuckets` → `computeBillTruth`) and the parent's Billed pin (`useBilledTotal`) are the bill-truth kernel (`src/lib/billing/billTruth.ts`) — the same `billed` / `collections` / `owed` the Pipeline strip and Quickfill show. The card's detail lines add "N bills on paid or missing jobs excluded ($X)" when the kernel kept bills out of Owed (`arExcluded`); the Stage 2/3 lists' paid-job exclusion (`isDashboardBillOnPaidJob`) reads the same predicate.
+- **Money source (v2.2862):** the AR card's buckets (`useDashboardFinancials` → `buildArBuckets` → `computeBillTruth`) and the parent's Billed pin (`useBilledTotal`) are the bill-truth kernel (`src/lib/billing/billTruth.ts`) — the same `billed` / `collections` / `owed` the Pipeline strip and Quickfill show. Since v2.5010 both reads add `loadUnlinkedMoney`'s rows, so a payment with no bill picked counts oldest bill first there too; Stage 3's *Applied* / *Open* (`dashboardBilledInvoiceAmounts`) still nets each bill's linked payments only. The card's detail lines add "N bills on paid or missing jobs excluded ($X)" when the kernel kept bills out of Owed (`arExcluded`); the Stage 2/3 lists' paid-job exclusion (`isDashboardBillOnPaidJob`) reads the same predicate.
 - **Extraction status:** mount **done**; the file's own decomposition is [§F](#f-dashboardfinancialssectiontsx-internal-regions).
 
 ### 3. Banners + tally icon + Job Report + quick actions + pins row

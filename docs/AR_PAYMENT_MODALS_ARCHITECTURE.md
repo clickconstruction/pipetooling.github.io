@@ -9,7 +9,7 @@ covers:
   - src/components/jobs/CollectPaymentModal.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-08
+last_updated: 2026-10-09
 ---
 
 > **Line numbers are as of `f423bd6e5`** (read from `npm run map` fact sheets generated at that commit). They rot — **search the symbol**, then trust the range only as a hint. Regenerate with `npm run map -- <file>`.
@@ -310,12 +310,12 @@ Gates after every step: `npm run typecheck && npm run lint && npm test`.
 ## Hazards
 
 **Money paths (BankPaymentsModal)**
-- Ten write endpoints, fourteen call sites: `apply_mercury_bank_payment_allocations` (manual `submitApply` + serial sweep), `record_job_tip_from_deposit`, `record-stripe-invoice-out-of-band-payment`, `close_out_ar_deposit`, `set_mercury_transaction_ar_closed` (the close-out's fallback + reopen), `ar_book_applied_deposit_income`, `set_mercury_transaction_ar_returned` (the list tick + It did not bounce), `take_returned_check_off_jobs`, `close_ar_return_case` (by hand + after a replacing apply), `remove_jobs_ledger_payment_and_reconcile`. The RPC `p_paid_on` is the deposit's posted day — never user-editable (`applyDisabled` requires it). A deposit that came back (Mercury `failed`, or marked returned) can be linked by none of them: `canAllocateRemaining` is false for it and trigger `jobs_ledger_payments_refuse_returned_deposit` raises (v2.4313). A selected case (B12) replaces the deposit pane and hides Apply.
+- Fourteen write endpoints, eighteen call sites: `apply_mercury_bank_payment_allocations` (manual `submitApply` + serial sweep), `record_job_tip_from_deposit`, `record-stripe-invoice-out-of-band-payment`, `close_out_ar_deposit`, `set_mercury_transaction_ar_closed` (the close-out's fallback + reopen), `ar_book_applied_deposit_income`, `set_mercury_transaction_ar_returned` (the list tick + It did not bounce), `take_returned_check_off_jobs`, `close_ar_return_case` (by hand + after a replacing apply), `remove_jobs_ledger_payment_and_reconcile`, Close's other two, `close_ar_unbanked_check_case` (v2.4902) and `close_ar_stripe_case` (v2.4950), `put_back_lost_dispute_bill` (v2.4950) and `add_ar_return_case_fee` (v2.5033, the returned check fee). The RPC `p_paid_on` is the deposit's posted day — never user-editable (`applyDisabled` requires it). A deposit that came back (Mercury `failed`, or marked returned) can be linked by none of them: `canAllocateRemaining` is false for it and trigger `jobs_ledger_payments_refuse_returned_deposit` raises (v2.4313). A selected case (B12) replaces the deposit pane and hides Apply.
 - **`replacingRef` is invisible state.** `fillReplacementLines` sets it even when no line was filled, and only selecting another deposit clears it; the next apply on that deposit then closes the case as `replaced`, whatever bills the lines name by then. Keep it beside `submitApply` and clear it on the same rule when moving.
 - **`p_allow_stripe_hosted`** is `stripeAllocationSelected` in `submitApply` (only reachable after the confirmation checkbox) and hard `false` in the sweep. Keep both.
 - **Apply first, Stripe close second.** A failed OOB close leaves the allocation standing and parks the modal on the retry panel; `applyDisabled` includes `stripeCloseResults != null`, so a second apply can't fire. `retryFailedStripeCloses` closes the modal on success (no "next").
 - **Sweep double-apply guard:** prior `ok` results carry forward (639–643) and `sweepPairsPending` excludes them — preserve when moving.
-- **Both refreshes after a write:** `onApplied()` (parent's billed rows → `targets`) and `refreshList()` (deposit remainders). `addTipLine` awaits both; `closeOutDeposit`/`reopenDeposit` only `refreshList`; `bookAppliedIncome` neither (it re-reads the label and the booking); `submitApply` calls `onApplied` then `finishApply` (which refreshes only for "next"); the case writes go through `afterCaseWrite` (cases + list, and `onApplied` only when payments came off a job).
+- **Both refreshes after a write:** `onApplied()` (parent's billed rows → `targets`) and `refreshList()` (deposit remainders). `addTipLine` awaits both; `closeOutDeposit`/`reopenDeposit` only `refreshList`; `bookAppliedIncome` neither (it re-reads the label and the booking); `submitApply` calls `onApplied` then `finishApply` (which refreshes only for "next"); the case writes go through `afterCaseWrite` (cases + list, and `onApplied` only when money moved: payments off a job, a recorded payment taken off, a lost dispute's bill put back, or the returned check fee since v2.5033).
 - `validationMessage` tolerances (+0.01) and the EPS constants are part of the money contract with the server — preserve exactly.
 
 **Money paths (CollectPaymentModal)**
