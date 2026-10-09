@@ -22,7 +22,7 @@ export function isNotThereYetError(error: PgError): boolean {
 
 export async function listGcWordAsks(weekStartYmd: string): Promise<{ asks: GcWordAskRow[]; missing: boolean }> {
   const { data, error } = await supabase
-    .from('gc_word_asks' as never)
+    .from('gc_word_asks')
     .select(ASK_SELECT)
     .eq('week_start', weekStartYmd)
     .order('created_at', { ascending: true })
@@ -34,7 +34,7 @@ export async function listGcWordAsks(weekStartYmd: string): Promise<{ asks: GcWo
 export type MintGcWordAskResult = { ok: true; askId: string; token: string; expiresAt: string; reused: boolean } | { ok: false; error: string; missing: boolean }
 
 export async function mintGcWordAsk(ownerUserId: string, gcIds: readonly string[], rotate = false): Promise<MintGcWordAskResult> {
-  const { data, error } = await supabase.rpc('mint_gc_word_ask' as never, { p_owner_user_id: ownerUserId, p_gc_ids: [...gcIds], p_rotate: rotate } as never)
+  const { data, error } = await supabase.rpc('mint_gc_word_ask', { p_owner_user_id: ownerUserId, p_gc_ids: [...gcIds], p_rotate: rotate })
   if (error) {
     const missing = isNotThereYetError(error)
     return { ok: false, error: missing ? 'Asking by link is not switched on yet — the database update has not been applied.' : error.message || 'Could not make the link.', missing }
@@ -45,7 +45,7 @@ export async function mintGcWordAsk(ownerUserId: string, gcIds: readonly string[
 }
 
 export async function revokeGcWordAsk(askId: string): Promise<{ ok: boolean; error?: string }> {
-  const { data, error } = await supabase.rpc('revoke_gc_word_ask' as never, { p_ask_id: askId } as never)
+  const { data, error } = await supabase.rpc('revoke_gc_word_ask', { p_ask_id: askId })
   if (error) return { ok: false, error: error.message }
   const r = (data ?? {}) as { revoked?: boolean; error?: string }
   return r.error ? { ok: false, error: r.error } : { ok: true }
@@ -67,8 +67,8 @@ export async function emailGcWordAsk(askId: string): Promise<{ ok: true; emailed
 export async function decideGcWordAnswers(answerIds: readonly string[], status: 'accepted' | 'dismissed', me: { id: string; name: string }): Promise<{ ok: boolean; error?: string }> {
   if (answerIds.length === 0) return { ok: true }
   const { error } = await supabase
-    .from('gc_word_ask_answers' as never)
-    .update({ status, decided_by: me.id, decided_by_name: me.name, decided_at: new Date().toISOString() } as never)
+    .from('gc_word_ask_answers')
+    .update({ status, decided_by: me.id, decided_by_name: me.name, decided_at: new Date().toISOString() })
     .in('id', [...answerIds])
   return error ? { ok: false, error: error.message } : { ok: true }
 }

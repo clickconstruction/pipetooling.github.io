@@ -2,7 +2,7 @@
 name: "GC Review for one operator: the assistant drives, the account man is the source"
 number: 49
 group: waiting
-status: steps 1–7 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 / v2.3971 / v2.3976 / v2.3985 · migrations applied and the three functions deployed 2026-09-28 · follow-ons v2.3991 / v2.4012 / v2.4016 / v2.4097 · the casts and the old per-sender functions still in place 2026-09-29
+status: steps 1–7 shipped v2.3950 / v2.3954 / v2.3957 / v2.3959 / v2.3960 / v2.3961 / v2.3971 / v2.3976 / v2.3985 · migrations applied and the three functions deployed 2026-09-28 · follow-ons v2.3991 / v2.4012 / v2.4016 / v2.4097 · (a) the `as never` casts dropped v2.5106 · (b) the per-sender fallbacks and (c) dropping the old per-sender functions wait on a Wednesday of use: zero round marks and zero word asks with a week since 2026-09-20, read 2026-10-09
 summary: >
   The weekly statement round was built for the account man opening the app. Only the assistant
   works GC Review; when the knowledge is his, she phones him and types the answer in. So the
@@ -10,10 +10,10 @@ summary: >
   keyboard: one worklist (Check · Send · Word per GC, grouped by who to ask), the account man's
   word recorded as his with who entered it, a call sheet for one call per account man, check and
   send from the row, broken promises in red, and the prompts re-aimed at the office.
-next: Run a Wednesday on it. Then drop the `as never` casts in `gcWordAskIo.ts` / `statementRoundEmailClient.ts` (the types have the new tables), retire `get_statement_round_for_user` / `get_my_statement_round`, and retire this to-do.
+next: Run a Wednesday on it. Then remove the per-sender fallbacks in `useStatementRoundNudge` and `statement-round-email-dispatch` (with its deploy), retire `get_statement_round_for_user` / `get_my_statement_round` in a migration pushed after both, and retire this to-do. Retiring them without a week of use is the owner's call.
 size: S–M · M · M · S–M · S · M · L
 blocker: none — it needs a week of use.
-ver: v2.3950 · v2.3954 · v2.3957 · v2.3959 · v2.3960 · v2.3961 · v2.3971 · v2.3976 · v2.3985 · v2.4262
+ver: v2.3950 · v2.3954 · v2.3957 · v2.3959 · v2.3960 · v2.3961 · v2.3971 · v2.3976 · v2.3985 · v2.4262 · v2.5106
 opinion: built; apply the deploys and watch one Wednesday before retiring the old per-sender database functions.
 ---
 
