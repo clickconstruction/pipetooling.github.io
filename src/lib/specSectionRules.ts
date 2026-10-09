@@ -242,3 +242,26 @@ export function groupRulesBySection(
   groups.push({ code: null, title: 'No code (deliberately)', rules: ordered.filter((r) => r.sectionCode == null) })
   return groups
 }
+
+export type SectionTally = {
+  /** Null for the deliberate no-code rules. */
+  code: string | null
+  title: string
+  /** Rules filed under the section. */
+  rules: number
+  /** Names those rules decide. */
+  names: number
+  /** Bids behind those names. */
+  bids: number
+}
+
+/** Per-section totals for the manager's Sections tab (v2.5058), in the same order as the groups. */
+export function sectionTallies(groups: ReadonlyArray<SectionRuleGroup>, standings: ReadonlyMap<string, RuleStanding>): SectionTally[] {
+  return groups.map((g) => ({
+    code: g.code,
+    title: g.title,
+    rules: g.rules.length,
+    names: g.rules.reduce((s, r) => s + (standings.get(r.id)?.wins ?? 0), 0),
+    bids: g.rules.reduce((s, r) => s + (standings.get(r.id)?.winBids ?? 0), 0),
+  }))
+}

@@ -1080,6 +1080,16 @@ Link between a count row and a price book entry. Stores fixture-to-pricing mappi
 
 **Purpose**: Persist which price book entry applies to each fixture count
 
+### Division 22 codes (the rules ledger)
+Bids → Pricing tab → Share ▾ → **Division 22 codes** (v2.2598). The rules ledger files every fixture name ever counted under a Division 22 spec section (`spec_section_match_rules` → `spec_sections`).
+- **How a name is filed**: the first rule by priority whose pattern catches the name decides it ([`classifySpecSection.ts`](../src/lib/classifySpecSection.ts)). A rule with no section is a deliberate *no code*, such as DEMO.
+- **The window's three tabs** (v2.5058):
+  - **Names**: the audit. Uncoded names come first, with *Pin it* and *No code*.
+  - **Rules**: every rule under its section, with its standing ([`specSectionRules.ts`](../src/lib/specSectionRules.ts)). A rule decides N names on M bids, or never decides because an earlier rule gets its names first, or catches no name yet.
+  - **Sections**: each section's rules, names and bids.
+- **Writers**: dev, master, assistant, controller and estimator, under RLS. A deleted rule or section is restorable for 90 days, once the archive trigger is in (PR 2 of the train).
+- **The manager train**: [`to-dos/division-22-rules-manager.md`](../to-dos/division-22-rules-manager.md).
+
 ### Bid Pricing Package send — "Share with a teammate"
 Bids → Pricing tab → the green **Share with a teammate** button (v2.2937; was "Share" with the audience in a hover title, opening a modal titled "Package and send"). Shares an external pricing package with a teammate — **it does not send anything to the GC and never marks the bid sent** (not an input to the sent count, see *Sent (bid)*): the bid's Job Plans link plus a 4-column table (**Fixture or Tie-in**, **Count**, **Unit price**, **Revenue**). External by design — no Margin %, no Our cost, no Price book entry; hidden submission fixtures (`bid_count_row_submission_hides`) are dropped, but the footer total still reflects the live Pricing tab.
 

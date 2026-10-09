@@ -9,6 +9,7 @@ import {
   priorityBand,
   ruleCatches,
   ruleStandings,
+  sectionTallies,
   validateRuleDraft,
   type LedgerRule,
 } from './specSectionRules'
@@ -209,5 +210,19 @@ describe('groupRulesBySection', () => {
       ['22 42 16', 'Commercial Lavatories and Sinks', ['wc-dup']],
       [null, 'No code (deliberately)', ['demo']],
     ])
+  })
+})
+
+describe('sectionTallies', () => {
+  it('totals each section\'s rules, the names they decide and the bids behind them', () => {
+    const sections = [
+      { code: '22 42 13', title: 'Commercial Water Closets and Urinals' },
+      { code: '22 31 00', title: 'Domestic Water Softeners' },
+    ]
+    const groups = groupRulesBySection(RULES, sections)
+    const tallies = sectionTallies(groups, ruleStandings(RULES, NAMES))
+    expect(tallies.find((t) => t.code === '22 42 13')).toEqual({ code: '22 42 13', title: 'Commercial Water Closets and Urinals', rules: 2, names: 2, bids: 14 })
+    expect(tallies.find((t) => t.code === '22 31 00')).toEqual({ code: '22 31 00', title: 'Domestic Water Softeners', rules: 0, names: 0, bids: 0 })
+    expect(tallies[tallies.length - 1]).toEqual({ code: null, title: 'No code (deliberately)', rules: 1, names: 1, bids: 2 })
   })
 })

@@ -2,9 +2,9 @@
 name: Division 22 rules manager
 number: 2
 group: ready
-status: the full rules manager approved by the owner 2026-10-09 (the decisions sitting); building — PR 1 of 5 (the kernel, v2.5054)
+status: the full rules manager approved by the owner 2026-10-09 (the decisions sitting); building — PRs 1–3 of 5 (the kernel v2.5054, the archive trigger, the read side v2.5058)
 summary: Rules manager UI; RH / EDF / med-gas seed call. Gas and the Needs You card shipped.
-next: PR 2, the archive-on-delete trigger on both ledger tables; then the manager window (PRs 3–4) and the guide and seed (PR 5), per the train below.
+next: PR 4, the write side (add / edit / delete a rule with the preview; add / rename a section, refusing to delete one that has rules); then the guide and seed (PR 5).
 size: M
 blocker: None.
 ver: coverage 73%

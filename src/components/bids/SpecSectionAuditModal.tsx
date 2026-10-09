@@ -7,17 +7,23 @@
  * and every past and future bid picks the code up instantly. "No code" pins an
  * exact rule with a NULL section (the DEMO pattern), so the name stops counting
  * as a gap without ever getting a section.
+ *
+ * Since v2.5058 the window is the rules manager's read side too: **Names** (the audit above), **Rules** (every
+ * rule under its section with its standing) and **Sections** (each section's rules, names and bids).
  */
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 
-import { type SpecSectionMatchKind, type SpecSectionMatchRule } from '../../lib/classifySpecSection'
+import { type SpecSectionMatchKind } from '../../lib/classifySpecSection'
 import {
   AUDIT_PIN_PRIORITY,
   buildFixtureNameAudit,
   type FixtureNameAudit,
   type FixtureNameAuditRow,
 } from '../../lib/specSectionAudit'
+import { groupRulesBySection, ruleStandings, sectionTallies, type LedgerRule } from '../../lib/specSectionRules'
+import { SpecSectionRulesTab } from './SpecSectionRulesTab'
+import { SpecSectionSectionsTab } from './SpecSectionSectionsTab'
 import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
 import { fetchAllRows } from '../../lib/supabasePaging'
 import { supabase } from '../../lib/supabase'
@@ -55,10 +61,12 @@ type SectionRow = { code: string; title: string }
 const KNOWN_KINDS = new Set<string>(['starts_with', 'contains', 'exact'])
 const UNCODED_PAGE = 75
 
-function toMatchRules(rows: ReadonlyArray<RuleRow>): SpecSectionMatchRule[] {
+/** The ledger in deciding order (the select sorts it), each rule keeping its id for the manager's tabs. */
+function toLedgerRules(rows: ReadonlyArray<RuleRow>): LedgerRule[] {
   return rows
     .filter((r) => KNOWN_KINDS.has(r.match_kind))
     .map((r) => ({
+      id: r.id,
       pattern: r.pattern,
       matchKind: r.match_kind as SpecSectionMatchKind,
       sectionCode: r.section_code,
@@ -79,6 +87,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
   // Historic naming is varied — the uncoded list can run to many hundreds of rows,
   // each with its own select. Render in slabs so the modal opens instantly.
   const [uncodedShown, setUncodedShown] = useState(UNCODED_PAGE)
+  const [tab, setTab] = useState<'names' | 'rules' | 'sections'>('names')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -100,7 +109,13 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
           'load fixture name audit',
         ),
         withSupabaseRetry(
-          () => supabase.from('spec_section_match_rules').select('id, pattern, match_kind, section_code, priority'),
+          // Priority, then age: ties (none today) decide the same way on every load.
+          () =>
+            supabase
+              .from('spec_section_match_rules')
+              .select('id, pattern, match_kind, section_code, priority')
+              .order('priority', { ascending: true })
+              .order('created_at', { ascending: true }),
           'load spec section match rules',
         ),
         withSupabaseRetry(() => supabase.from('spec_sections').select('code, title').order('code'), 'load spec sections'),
@@ -129,8 +144,13 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
     return () => document.removeEventListener('keydown', onKey)
   }, [open, onClose])
 
-  const matchRules = useMemo(() => toMatchRules(ruleRows), [ruleRows])
-  const audit: FixtureNameAudit = useMemo(() => buildFixtureNameAudit(names, matchRules), [names, matchRules])
+  const ledgerRules = useMemo(() => toLedgerRules(ruleRows), [ruleRows])
+  const audit: FixtureNameAudit = useMemo(() => buildFixtureNameAudit(names, ledgerRules), [names, ledgerRules])
+  // The manager's read side (v2.5058): each rule's standing against the same names, grouped under its section.
+  const standings = useMemo(() => ruleStandings(ledgerRules, names), [ledgerRules, names])
+  const groups = useMemo(() => groupRulesBySection(ledgerRules, sections), [ledgerRules, sections])
+  const tallies = useMemo(() => sectionTallies(groups, standings), [groups, standings])
+  const rulesById = useMemo(() => new Map(ledgerRules.map((r) => [r.id, r])), [ledgerRules])
 
   const sectionOptions: SearchableSelectOption[] = useMemo(
     () => sections.map((s) => ({ value: s.code, label: `${s.code} · ${s.title}` })),
@@ -163,7 +183,12 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
       }
       // Refresh rules only — the name list is unchanged; classification re-runs locally.
       const rules = await withSupabaseRetry(
-        () => supabase.from('spec_section_match_rules').select('id, pattern, match_kind, section_code, priority'),
+        () =>
+          supabase
+            .from('spec_section_match_rules')
+            .select('id, pattern, match_kind, section_code, priority')
+            .order('priority', { ascending: true })
+            .order('created_at', { ascending: true }),
         'reload spec section match rules',
       )
       setRuleRows(rules ?? [])
@@ -233,6 +258,47 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
           </div>
         ) : (
           <>
+            <div role="tablist" aria-label="Division 22 views" style={{ display: 'flex', gap: '0.25rem', borderBottom: '1px solid var(--border)' }}>
+              {(
+                [
+                  ['names', 'Names'],
+                  ['rules', 'Rules'],
+                  ['sections', 'Sections'],
+                ] as const
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === key}
+                  onClick={() => setTab(key)}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: tab === key ? '2px solid #16a34a' : '2px solid transparent',
+                    marginBottom: -1,
+                    cursor: 'pointer',
+                    font: 'inherit',
+                    fontSize: '0.875rem',
+                    fontWeight: tab === key ? 600 : 400,
+                    color: tab === key ? 'var(--text-strong)' : 'var(--text-muted)',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {tab === 'rules' ? (
+              <div role="tabpanel" aria-label="Rules">
+                <SpecSectionRulesTab groups={groups} standings={standings} rulesById={rulesById} />
+              </div>
+            ) : tab === 'sections' ? (
+              <div role="tabpanel" aria-label="Sections">
+                <SpecSectionSectionsTab tallies={tallies} />
+              </div>
+            ) : (
+            <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ flex: 1, height: 10, background: 'var(--bg-muted)', borderRadius: 999, overflow: 'hidden', border: '1px solid var(--border)' }}>
                 <div style={{ width: `${audit.coveragePct}%`, height: '100%', background: '#16a34a' }} />
@@ -353,6 +419,8 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
                 {showCoded ? 'Hide coded names' : `Show ${audit.codedCount} coded names`}
               </button>
             </div>
+            </>
+            )}
           </>
         )}
       </div>
