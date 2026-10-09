@@ -40,6 +40,9 @@ the next row. Nobody but the lead pushes to `spike/gc-mode`.
 - **A lift's follow-up pins its config**: `"pin": { "main": <the lift's merge commit>, "spike": <the
   spike just before the follow-up> }`, with any inequality the pair already had in `pin.known` and its
   reason, so `node to-dos/gc-mode/scripts/lift-same.cjs --all` stays green and shows only new drift.
+- **A stand-in proves only what it copies.** A bed run on PGlite or a hand-made table outside GC mode lets pass a
+  value the real table's CHECK refuses: U6c's scenario inserted a bill as `'open'`, which `jobs_ledger_invoices`
+  refuses (amendment 4). Copy the real table's CHECKs into the stand-in, or run the real bed before the read-back.
 - Tests: `VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vitest run src/lib/gcMode src/components/gc`.
   Lint: `npx eslint <your files>`. Typecheck: `npm run typecheck` in the background; it takes 10 to
   25 minutes on a loaded machine; read its exit line. Run it on a quiet tree before you push. It checks
