@@ -5,7 +5,9 @@
  * the due date of the bid they wait on), Digesting (finished, waiting on the robot's
  * receipts) and Digested (folded). Rows are named for the job, not the robot's copy, with the
  * delta as the one number and a why line: questions · notes · the kind of job and its gate
- * state · needs a fix first · the slate. Pure: no React, no supabase.
+ * state · needs a fix first · the slate. A backtest slate can be parked (v2.5016, the owner's call
+ * of 2026-10-09): its rows leave Up next for a Parked fold until Bring it back. Pure: no React, no
+ * supabase.
  */
 import { GATE_B_STREAK } from './confidenceBoard'
 import { jobTypeLabel } from './robotScoreboard'
@@ -36,13 +38,20 @@ export type AuditQueueItem = {
   needsFix: boolean
 }
 
+/** A parked slate: its key ('slate Aug 31') and its workable rows, in the stake order. */
+export type ParkedSlate = { key: string; items: AuditQueueItem[] }
+
 export type AuditQueueSections = {
   now: AuditQueueItem | null
-  /** Where the open card sits in the stake order, 1-based, over the workable pending list. */
+  /** Where the open card sits in the stake order, 1-based, over the workable pending list (parked slates left out). */
   nowPosition: number | null
   workableCount: number
   upNext: AuditQueueItem[]
+  /** The slates with rows in Up next, in the order they first appear there: the Skip this slate doors. */
+  upNextSlates: Array<{ key: string; count: number }>
   sealed: AuditQueueItem[]
+  /** The parked slates, folded, each with Bring it back. */
+  parked: ParkedSlate[]
   digesting: AuditQueueItem[]
   digested: AuditQueueItem[]
 }
@@ -74,6 +83,11 @@ export function slateLabel(item: Pick<AuditQueueItem, 'shellName' | 'requestedAt
     return `${rebid ? 're-bid' : 'slate'} ${monDay(item.requestedAt)}`
   }
   return item.refSentDate ? `shadow · sent ${mmdd(item.refSentDate)}` : 'shadow'
+}
+
+/** A backtest slate's key is its label ('re-bid Sep 5', 'slate Aug 31'), so the slate parks as one; a shadow has none. */
+export function slateKey(item: Pick<AuditQueueItem, 'shellName' | 'requestedAt' | 'refSentDate'>): string | null {
+  return auditKind(item) === 'backtest' ? slateLabel(item) : null
 }
 
 /** The gate word for a kind of job: 'Vet clinic, 1 of 5 in a row' · 'Fitness club · earned first drafts' · 'Schools & libraries'. */
@@ -114,20 +128,44 @@ export function deltaWord(deltaPct: number | null): string | null {
 
 /**
  * The sections. `items` come in the tab's stake order (pending first, by what a verdict
- * unblocks; then done; then digested newest first); `openId` is the card open now.
+ * unblocks; then done; then digested newest first); `openId` is the card open now; `parkedSlates`
+ * holds the keys of the slates the estimator parked.
  */
-export function buildAuditQueue(items: readonly AuditQueueItem[], openId: string | null): AuditQueueSections {
+export function buildAuditQueue(items: readonly AuditQueueItem[], openId: string | null, parkedSlates: ReadonlySet<string> = new Set()): AuditQueueSections {
   const pending = items.filter((i) => i.status === 'pending')
   const sealed = pending.filter((i) => i.sealed)
-  const workable = pending.filter((i) => !i.sealed)
+  const isParked = (i: AuditQueueItem) => {
+    const key = slateKey(i)
+    return key != null && parkedSlates.has(key)
+  }
+  const workable = pending.filter((i) => !i.sealed && !isParked(i))
   const now = openId ? (items.find((i) => i.id === openId) ?? null) : null
   const nowIndex = now ? workable.findIndex((i) => i.id === now.id) : -1
+  const upNext = workable.filter((i) => i.id !== now?.id)
+  const upNextSlates: Array<{ key: string; count: number }> = []
+  for (const i of upNext) {
+    const key = slateKey(i)
+    if (!key) continue
+    const slate = upNextSlates.find((x) => x.key === key)
+    if (slate) slate.count++
+    else upNextSlates.push({ key, count: 1 })
+  }
+  const parked: ParkedSlate[] = []
+  for (const i of pending) {
+    if (i.sealed || !isParked(i) || i.id === now?.id) continue
+    const key = slateKey(i)!
+    const slate = parked.find((x) => x.key === key)
+    if (slate) slate.items.push(i)
+    else parked.push({ key, items: [i] })
+  }
   return {
     now,
     nowPosition: nowIndex >= 0 ? nowIndex + 1 : null,
     workableCount: workable.length,
-    upNext: workable.filter((i) => i.id !== now?.id),
+    upNext,
+    upNextSlates,
     sealed,
+    parked,
     digesting: items.filter((i) => i.status === 'done' && i.id !== now?.id),
     digested: items.filter((i) => i.status === 'digested' && i.id !== now?.id),
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { auditKind, buildAuditQueue, deltaWord, finishLabel, jobNameFromShell, jobTypeWords, sealedLine, slateLabel, whyLine, type AuditQueueItem } from './auditQueue'
+import { auditKind, buildAuditQueue, deltaWord, finishLabel, jobNameFromShell, jobTypeWords, sealedLine, slateKey, slateLabel, whyLine, type AuditQueueItem } from './auditQueue'
 
 const item = (over: Partial<AuditQueueItem> & { id: string }): AuditQueueItem => ({
   status: 'pending',
@@ -95,5 +95,57 @@ describe('buildAuditQueue', () => {
     expect(q.now?.id).toBe('d1')
     expect(q.nowPosition).toBeNull()
     expect(q.digesting).toEqual([])
+  })
+})
+
+describe('parking a slate (the owner’s call of 2026-10-09)', () => {
+  // Stake order: two rows with questions, then the Aug 31 slate's tail; one re-bid, one shadow, one sealed shadow.
+  const aug31 = (id: string, over: Partial<AuditQueueItem> = {}) => item({ id, shellName: `ZZ Twin ${id} (backtest)`, requestedAt: '2026-08-31T15:00:00Z', ...over })
+  const items = [
+    item({ id: 'casa', openQuestions: 10 }),
+    item({ id: 'galloway', shellName: 'ZZ Shadow Galloway Park', openQuestions: 9 }),
+    aug31('schertz', { openQuestions: 2 }),
+    item({ id: 'tye' }),
+    aug31('garcia'),
+    aug31('livarg'),
+    item({ id: 'sealed-1', shellName: 'ZZ Shadow Patagonia', sealed: true }),
+    item({ id: 'done-1', status: 'done' }),
+  ]
+
+  it('a slate’s key is its label; a shadow has none', () => {
+    expect(slateKey(aug31('x'))).toBe('slate Aug 31')
+    expect(slateKey(item({ id: 'y' }))).toBe('re-bid Sep 5')
+    expect(slateKey(item({ id: 'z', shellName: 'ZZ Shadow Z' }))).toBeNull()
+  })
+
+  it('Up next names each slate it holds, with its count, in the order the slates first appear', () => {
+    const q = buildAuditQueue(items, 'casa')
+    expect(q.upNextSlates).toEqual([{ key: 'slate Aug 31', count: 3 }, { key: 're-bid Sep 5', count: 1 }])
+    expect(q.parked).toEqual([])
+  })
+
+  it('Skip this slate: the whole slate leaves Up next and the count, questions and all, and waits in Parked in stake order', () => {
+    const q = buildAuditQueue(items, 'casa', new Set(['slate Aug 31']))
+    expect(q.upNext.map((i) => i.id)).toEqual(['galloway', 'tye'])
+    expect(q.upNextSlates).toEqual([{ key: 're-bid Sep 5', count: 1 }])
+    expect(q.parked.map((s) => [s.key, s.items.map((i) => i.id)])).toEqual([['slate Aug 31', ['schertz', 'garcia', 'livarg']]])
+    expect([q.nowPosition, q.workableCount]).toEqual([1, 3])
+    expect(q.sealed.map((i) => i.id)).toEqual(['sealed-1'])
+    expect(finishLabel(q)).toBe('Finish audit → next: Galloway Park')
+  })
+
+  it('a parked row opened from the fold is Now, with no position, and leaves its group', () => {
+    const q = buildAuditQueue(items, 'garcia', new Set(['slate Aug 31']))
+    expect(q.now?.id).toBe('garcia')
+    expect(q.nowPosition).toBeNull()
+    expect(q.parked[0]!.items.map((i) => i.id)).toEqual(['schertz', 'livarg'])
+    expect(q.upNext.map((i) => i.id)).toEqual(['casa', 'galloway', 'tye'])
+  })
+
+  it('Bring it back: the rows return to Up next in their old places', () => {
+    const before = buildAuditQueue(items, 'casa').upNext.map((i) => i.id)
+    const back = buildAuditQueue(items, 'casa', new Set()).upNext.map((i) => i.id)
+    expect(back).toEqual(before)
+    expect(back).toEqual(['galloway', 'schertz', 'tye', 'garcia', 'livarg'])
   })
 })
