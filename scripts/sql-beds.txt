@@ -15,3 +15,4 @@ gc-papers
 gc-trade-sign-sow
 revenue-riders
 gc-portal-p5
+gc-start
