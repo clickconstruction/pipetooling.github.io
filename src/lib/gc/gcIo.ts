@@ -24,6 +24,7 @@ import type { BillingRows, ContractLineRow, OwnerTermsRow, PayAppSend } from './
 import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
 import { paymentRefusalWords } from './moneyIn'
 import { gcTradeEmailRefusal, tradeMailLang } from './tradeEmail'
+import type { MoneyMondayRequestRow } from './moneyMondayEmail'
 import { sendGcTradeEmail } from './tradeEmailIo'
 import {
   setEmailKey,
@@ -708,6 +709,54 @@ export async function setOwnerRetainage(projectId: string, pct: number, step: Ow
       .single(),
     'save the retainage',
   )
+}
+
+// ---------------------------------------------------------------------------------------------
+// Owner Billing's O7b: the Monday money email (migration gc_money_monday_email). Its requests are plain rows under
+// the money team's policies, one weekly chain per weekday and recipient; gc-money-monday-email sends each one when
+// it falls due, and draws Preview and the test. Through the untyped client until the types regenerate after
+// 20261009233000's push.
+// ---------------------------------------------------------------------------------------------
+
+/** The pending sends the caller may see: the ones they asked for, the ones to them, and every one for a dev. */
+export async function listMoneyMondayRequests(): Promise<MoneyMondayRequestRow[]> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db
+    .from('gc_money_monday_email_requests')
+    .select('id, requested_by, recipient_user_id, send_at, repeat_weekly')
+    .is('sent_at', null)
+    .order('send_at', { ascending: true })
+  return taken(result as { data: MoneyMondayRequestRow[] | null; error: SupabaseResultError | null }, 'load the Monday emails') ?? []
+}
+
+/** A change to the weekly chains: the new ones first, then the stopped ones, so a failed insert leaves the old ones going. */
+export async function applyMoneyMondayPlan(plan: { inserts: Omit<MoneyMondayRequestRow, 'id'>[]; cancelIds: string[] }): Promise<void> {
+  const db = supabase as unknown as SupabaseClient
+  if (plan.inserts.length > 0) {
+    const added = await db.from('gc_money_monday_email_requests').insert(plan.inserts).select('id')
+    taken(added as { data: unknown; error: SupabaseResultError | null }, 'save the Monday email')
+  }
+  if (plan.cancelIds.length > 0) {
+    const stopped = await db.from('gc_money_monday_email_requests').delete().in('id', plan.cancelIds).is('sent_at', null).select('id')
+    taken(stopped as { data: unknown; error: SupabaseResultError | null }, 'stop the Monday email')
+  }
+}
+
+/** The email as it would go now, for the signed-in member of the money team: its subject and its page. */
+export async function previewMoneyMonday(): Promise<{ subject: string; html: string }> {
+  const r = (await supabase.functions.invoke('gc-money-monday-email', { body: { mode: 'preview' } })) as FnResult
+  const problem = await fnProblem(r, 'The email did not load.')
+  if (problem) throw new Error(problem)
+  const data = r.data as { subject?: string; html?: string } | null
+  if (!data?.html) throw new Error('The email did not load.')
+  return { subject: data.subject ?? '', html: data.html }
+}
+
+/** A copy marked [TEST] to the signed-in member only. */
+export async function sendMoneyMondayTest(): Promise<void> {
+  const r = (await supabase.functions.invoke('gc-money-monday-email', { body: { mode: 'test_send' } })) as FnResult
+  const problem = await fnProblem(r, 'The test did not go.')
+  if (problem) throw new Error(problem)
 }
 
 /** What Add a company sends (the Board's B3-b): `gc_add_company`'s draft. Not `known`: the company quotes, then waits for approval. */

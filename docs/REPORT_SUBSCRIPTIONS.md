@@ -5,7 +5,7 @@ file: REPORT_SUBSCRIPTIONS.md
 type: Architecture/Reference
 purpose: Names and defines the app's recurring/scheduled report-email pattern — streams, request tables, cron dispatchers, fresh-at-send builds, and the My Email Schedule surface — and the checklist for adding a new stream
 audience: Developers, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-10-09
 key_sections:
   - name: "What the system is"
   - name: "The five pieces"
@@ -54,6 +54,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `legal_referral` | event | `legal_notification_queue` (triggers on `legal_matters.stage` → referred / pulled, office `answer` entries) + `legal_firm_recipients` rules (v2.3325) | `legal-notify-dispatch` (`1-56/5` lane) | — | — (outside recipients: the firm's own Notifications page; office sees them read-only on the Legal desk) |
 | `legal_digest` | fixed weekly per recipient | `legal_firm_recipients.digest_weekday/time` (no request table — the recipient row is the schedule; `last_digest_at` dedupes) | `legal-notify-dispatch` | — | — |
 | `statement_round` | scheduled report | `statement_round_email_requests` (v2.2771; internal `recipient_user_id`; **per-recipient payload** — `get_statement_round_for_user` rebuilds the sender's round; office-only both sides; requester OR recipient may cancel) | `statement-round-email-dispatch` | ✅ recipient-scoped | — (scheduled report) |
+| `gc_money_monday` | scheduled report | `gc_money_monday_email_requests` (v2.5024; internal `recipient_user_id`; the money team both sides; one payload for every recipient, `get_gc_money_monday_payload()`; requester OR recipient may cancel) | `gc-money-monday-email` (:03 lane) | ✅ recipient-scoped | — (scheduled report) |
 
 ## Design rules
 
@@ -69,7 +70,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 
 1. **Payload RPC** (migration): service-role-only SECURITY DEFINER function reproducing the surface's math; verify fidelity against the live surface read-only before proceeding.
 2. **Request table** (migration): `send_at timestamptz`, recipient (`recipient_user_id` or `sent_to text`), `repeat_weekly boolean default false`, `sent_at`, `requested_by`, stream-specific params. RLS: requester can SELECT/INSERT/DELETE own pending rows; both read-only block sweeps.
-3. **Dispatcher edge function** + pg_cron entry (5-minute cadence; `X-Cron-Secret`): due-row scan → payload RPC → HTML render → Resend → stamp `sent_at` → weekly re-insert → audit. There is no tighter delivery SLA than the cron tick — a send lands within one tick of `send_at`. **Minute lanes**: the v2.1919 stagger filled all five */5 lanes (:00 salary anchor, :01 billed, :02 gc, :03 movement, :04 money + payment_forecast since v2.2223) — check `select jobname, schedule from cron.job` and co-ride the least-active lane, documenting the choice; the stagger's goal is breaking the everyone-at-once volley, not one-lane-per-job purity.
+3. **Dispatcher edge function** + pg_cron entry (5-minute cadence; `X-Cron-Secret`): due-row scan → payload RPC → HTML render → Resend → stamp `sent_at` → weekly re-insert → audit. There is no tighter delivery SLA than the cron tick — a send lands within one tick of `send_at`. **Minute lanes**: the v2.1919 stagger filled all five */5 lanes (:00 salary anchor, :01 billed, :02 gc, :03 movement + gc_money_monday since v2.5024, :04 money + payment_forecast since v2.2223) — check `select jobname, schedule from cron.job` and co-ride the least-active lane, documenting the choice; the stagger's goal is breaking the everyone-at-once volley, not one-lane-per-job purity.
 4. **Share modal scheduling UI**: Send now | Schedule… + Repeat weekly + pending list with Cancel (copy the `BilledReportShareModal` shape).
 5. **Schedule integration**: extend `get_my_email_schedule()` and `get_global_email_schedule()`; add the stream's tone/label in `SettingsMyEmailScheduleSection.tsx` and, for event-like behavior, `normalizeMyEmailSubscriptions`.
 6. **Docs**: EDGE_FUNCTIONS.md section, MIGRATIONS.md entries, help guide, RECENT_FEATURES + release note, and a row in this doc's inventory table.
@@ -91,3 +92,7 @@ Built 2026-08-24 (v2.2223 schema + v2.2225 dispatcher + v2.2226 UI): the Stages 
 Since v2.3976 (punch list #49) the stream sends **the office's week** — `get_statement_week_for_office()`, one payload for every recipient — in place of each sender's own round; the chains, the table and the cron are unchanged. What follows is the stream as built.
 
 Built 2026-09-04 (v2.2771): the GC Review personal round (v2.2072) as a morning email to its sender. Distinctives: the payload RPC (`get_statement_round_for_user`) is a **server-side mirror of a client kernel** (`buildStatementRound` / `gcGroupCertStatus`) built on top of `get_gc_statement_email_payload`, which gained `row_key` per row for the certification snapshot diff; fidelity checked against the GC Review panel per sender before first dispatch. The scheduling UI is not a share modal but an **"Email me my round…"** block inside GC Review's Weekly statement rounds panel: weekday chips + a Central time → one `repeat_weekly` chain per weekday (the v2.1430 standing-copies shape, kernel `statementRoundEmail.ts`), Preview / Email me a test via the dispatcher's JWT modes, Edit / Stop emailing; certifier roles can set it up for another sender. Lists on the recipient's My email schedule. The same RPC, self-scoped (`get_my_statement_round`), powers the Dashboard Needs You row. Cron co-rides the :02 lane.
+
+## The GC money stream (`gc_money_monday`) — SHIPPED
+
+Built 2026-10-09 (v2.5024, GC mode's Owner Billing O7b): the Monday money email about the GC jobs that are ours. The money team (dev, the leaders, the controller) asks for it on **Money** in GC projects, for themselves or a teammate. Weekday chips and a Central time make one `repeat_weekly` chain per weekday, statement round's shape and its kernel (`src/lib/gc/moneyMondayEmail.ts` reuses `groupStatementRoundChains` and `planStatementRoundChainEdit`). The block has **See the email as it would go now** and **Email me a test** through the dispatcher's JWT modes. Distinctives: the payload, `get_gc_money_monday_payload()`, is one for every recipient and mirrors the Money lens's *Who owes us* in SQL (`allJobsMoney`'s owed bills and `ownerPayDue`'s day: the newest promise since the certificate, else the customer's median days to pay inlined from `pay_speed_samples()`, else the contract's `owner_pay_days`), plus last week's sends and certificates. The lead checks its fidelity against the lens, read-only, after the push. Cron co-rides the :03 lane, the least-active in `cron.job` on 2026-10-09. No six weeks line yet: that waits for `cashAhead` on the server.

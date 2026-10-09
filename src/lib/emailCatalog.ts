@@ -472,6 +472,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Weekly money movement — week of {{week_start}}',
   },
   {
+    id: 'gc_money_monday',
+    name: 'Our GC money (the Monday money email)',
+    group: 'digests',
+    audience: 'internal',
+    builtWhere: 'server',
+    sender: 'gc-money-monday-email',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Our GC money, Mon Oct 12',
+  },
+  {
     id: 'weekly_movement',
     name: 'Weekly movement',
     group: 'digests',
