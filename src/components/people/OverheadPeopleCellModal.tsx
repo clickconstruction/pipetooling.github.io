@@ -17,11 +17,12 @@ import {
 } from '../../lib/overheadPeopleCellModel'
 import type { OverheadSessionDetailLine } from '../../lib/overheadDailyLabor'
 import type { OverheadPeoplePartsInput, OverheadPeopleTable } from '../../lib/overheadPeopleTable'
+import { USERS_TAB_PAY_LENS_PATH } from '../../lib/people/usersTabLens'
 
 /**
  * Behind the cell (v2.3264): the sessions and purchases that add up to one cell
  * of "Who makes up overhead". Read-only; the fixes live where they already do
- * (People → Hours, Pay config, Banking → Accounting) and the flags lead there.
+ * (People → Hours, People → Users → Pay, Banking → Accounting) and the flags lead there.
  */
 type Props = {
   table: OverheadPeopleTable
@@ -221,8 +222,8 @@ export function OverheadPeopleCellModal({ table, person, unattributed, column, l
               {model.counts.noWage > 0 ? (
                 <span style={{ ...chipWarn, marginLeft: 0, padding: '0.05rem 0.5rem' }}>
                   {model.counts.noWage} session{model.counts.noWage === 1 ? '' : 's'} with no wage on file — hours count, dollars read $0 ·{' '}
-                  <Link to="/people?tab=pay_stubs" style={{ color: 'inherit', fontWeight: 700 }}>
-                    set in Pay config
+                  <Link to={USERS_TAB_PAY_LENS_PATH} style={{ color: 'inherit', fontWeight: 700 }}>
+                    set on the Pay lens
                   </Link>
                 </span>
               ) : null}

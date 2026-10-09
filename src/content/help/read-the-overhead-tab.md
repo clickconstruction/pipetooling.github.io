@@ -54,7 +54,7 @@ Every dollar in the table is a door. You click Taunya's office labor and a windo
 
 The header proves the number: hours × the average rate. The footer says whether the lines tie to the cell. Pills across the top move between the person's columns without closing.
 
-Anything that needs a human is chipped on its line and counted in the header. {{chip:yellow|awaiting approval}} is counted as recorded time, and a rejection removes it. {{chip:yellow|no wage on file}} means the hours count but the dollars read $0. {{chip:yellow|13.2 h — forgotten clock-out?}} marks any session over ten hours. Each flag links to where the fix lives: People → Hours, Pay config, or Banking → Accounting. You switch to {{chip:gray|Largest first}} to bring the outliers to the top. You type in the filter box to find one note, bid, or merchant. {{button:outline|Copy as CSV}} takes the lines to a spreadsheet.
+Anything that needs a human is chipped on its line and counted in the header. {{chip:yellow|awaiting approval}} is counted as recorded time, and a rejection removes it. {{chip:yellow|no wage on file}} means the hours count but the dollars read $0. {{chip:yellow|13.2 h — forgotten clock-out?}} marks any session over ten hours. Each flag links to where the fix lives: People → Hours, People → Users → Pay, or Banking → Accounting. You switch to {{chip:gray|Largest first}} to bring the outliers to the top. You type in the filter box to find one note, bid, or merchant. {{button:outline|Copy as CSV}} takes the lines to a spreadsheet.
 
 :::example Finding the odd one
 Malachi's office parts read high this month. Open the cell, sort largest first: the top line is a $900 Ferguson charge on the card that should have gone to a job. Banking → Accounting is one click away to move it.
