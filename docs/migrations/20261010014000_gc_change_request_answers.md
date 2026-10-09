@@ -46,3 +46,5 @@ It ran first on PGlite over main's GC chain at 6186bb429 (38 checks; four mutant
 ## Status
 
 Cut 2026-10-09 by Helper 15 (the Owner Billing lane). The lead pushes it once the PR merges.
+
+**Applied to prod 2026-10-09 at 15:26 UTC** by the lead (GC MODE) from a clean checkout at main's tip (58f5956a4) with `scripts/db-push.sh` (`--include-all`, since 015000 was applied first); drift 830/830 after. Verified the same minute through the management API, every write rolled back: step 1, both functions once, SECURITY INVOKER, closed to `anon`; step 2, as an estimator *Only the money team answers a trade's ask for a change.* (`42501`), as the controller *Only a dev answers a trade's ask while GC mode is built.* (`42501`), and as a dev a made-up id gave *No change request with that id.*; 0 requests after. A live answer and its email wait on Grace's yes in Helper 15's chat. The types ride Helper 17's regeneration tonight.
