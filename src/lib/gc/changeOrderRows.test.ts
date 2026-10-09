@@ -18,6 +18,7 @@ const row = (over: Partial<ChangeOrderRow>): ChangeOrderRow => ({
   sent_on: null,
   answered_on: null,
   answered_how: null,
+  declined_note: '',
   pct_done: 0,
   days: 3,
   days_on_chart: null,
