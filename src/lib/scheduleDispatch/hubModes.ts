@@ -5,10 +5,10 @@
  * changes a mode, one column per flag. `on` is the row's own flag (the hook sets it), `end` is
  * what the row ends, and `keep` is what it leaves alone.
  *
- * The rule is the page's as it stood before the move, gaps included, but for a to c: the three
- * that left two strips on screen were fixed in v2.4989. Gaps d to f, the owner's calls, are named
- * on their rows (`to-dos/dispatch-residuals.md`); changing one is a change to its row here and
- * the same flip in `hubModes.test.ts`.
+ * The rule is the page's as it stood before the move, but for its six gaps: a to c, which left
+ * two strips on screen, were fixed in v2.4989, and d to f, the owner's calls of 2026-10-09, in
+ * v2.5009, each named on its row. A change to the rule is a change to its row here and the same
+ * flip in `hubModes.test.ts`.
  */
 
 /** The columns. The first five are the modes; the rest travel with them. */
@@ -38,7 +38,7 @@ export const HUB_MODE_FLAGS = [
 ] as const
 export type HubModeFlag = (typeof HUB_MODE_FLAGS)[number]
 
-/** The five flags that are modes: at most one should be on (the gaps aside). */
+/** The five flags that are modes: at most one is on, but for the cases `hubModes.test.ts` names. */
 export const HUB_MODES = ['placement', 'linkedCopy', 'assignPlacement', 'multiCell', 'picker'] as const satisfies readonly HubModeFlag[]
 export type HubMode = (typeof HUB_MODES)[number]
 
@@ -60,8 +60,8 @@ const RULE = {
   startMultiCell:    [ E,        E,       E,         E,              O,        E,     E,           E,          _,       E,            _ ],
   /** The toolbar's + Add job (`onRequestHubAddJob`). */
   openToolbarPicker: [ E,        E,       E,         E,              E,        O,     O,           E,          _,       E,            _ ],
-  /** A cell's + (`onHubEmptyCellOpenChoice`). Gap e: it ends nothing. */
-  openCellPicker:    [ _,        _,       _,         _,              _,        O,     O,           O,          _,       _,            _ ],
+  /** A cell's + (`onHubEmptyCellOpenChoice`): the picker for that cell, ending every other mode (gap e, fixed v2.5009). */
+  openCellPicker:    [ E,        E,       E,         E,              E,        O,     O,           O,          _,       E,            _ ],
   /** The multi-cell bar's Choose job (`onRequestHubMultiCellAddChooseJob`). */
   openMultiPicker:   [ _,        _,       _,         _,              _,        O,     O,           E,          _,       _,            _ ],
   /** A job picked in the toolbar picker: the placing strip. */
@@ -91,11 +91,13 @@ const RULE = {
   closePicker:       [ _,        _,       _,         _,              E,        E,     E,           E,          _,       _,            _ ],
   /** The multi-cell add was written (`applyHubMultiCellJob`). */
   multiCellApplied:  [ _,        _,       _,         _,              E,        E,     E,           E,          _,       _,            _ ],
-  /** Esc while moving, copying or placing. Gap f: it also ends the placing strip and the param. */
-  escapePlacement:   [ E,        E,       _,         E,              _,        _,     _,           E,          _,       E,            _ ],
-  /** Esc in linked copy. Gap f: only its own mode. */
+  /** Esc while moving or copying: only that mode, as its Cancel does (gap f, fixed v2.5009). */
+  escapePlacement:   [ E,        E,       _,         _,              _,        _,     _,           _,          _,       _,            _ ],
+  /** Esc on the placing strip: only that mode and its `?placeJob=`, as its Cancel does (gap f, fixed v2.5009). */
+  escapeAssign:      [ _,        _,       _,         E,              _,        _,     _,           _,          _,       E,            _ ],
+  /** Esc in linked copy: only its own mode. */
   escapeLinkedCopy:  [ _,        _,       E,         _,              _,        _,     _,           _,          _,       _,            _ ],
-  /** Esc in multi-cell. Gap f: only its own mode. */
+  /** Esc in multi-cell: only its own mode. */
   escapeMultiCell:   [ _,        _,       _,         _,              E,        _,     _,           _,          _,       _,            _ ],
   // The page around the modes
   /** The add-block window opens (`openAddBlock`), ending linked copy and the param too (gap b, fixed v2.4989). */
@@ -104,9 +106,9 @@ const RULE = {
   closeAddBlock:     [ _,        _,       _,         _,              _,        _,     _,           _,          E,       E,            _ ],
   /** The Jobs or Day tab (`setHubTab`), ending linked copy and the picker too (gap c, fixed v2.4989). */
   tabAway:           [ E,        E,       E,         E,              E,        E,     _,           _,          _,       E,            _ ],
-  /** The week arrows or This week (`shiftWeek`, `goThisWeek`); the new URL they write drops the param. Gap d: multi-cell waits for `weekChanged`. */
-  weekNav:           [ E,        E,       E,         E,              _,        _,     _,           _,          _,       _,            E ],
-  /** The week in the URL changed. */
+  /** The week arrows or This week (`shiftWeek`, `goThisWeek`); the new URL they write drops the param. Multi-cell ends at once too (gap d, fixed v2.5009). */
+  weekNav:           [ E,        E,       E,         E,              E,        _,     _,           _,          _,       _,            E ],
+  /** The week in the URL changed, by the arrows or by Back and Forward. */
   weekChanged:       [ _,        _,       _,         _,              E,        _,     _,           _,          _,       _,            _ ],
   /** No `?placeJob=`, or the tomorrow embed: the arm forgets its last job. */
   urlIdle:           [ _,        _,       _,         _,              _,        _,     _,           _,          _,       _,            E ],
