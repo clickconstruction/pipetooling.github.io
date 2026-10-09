@@ -6,6 +6,7 @@ import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSection
 import { formatCurrency } from '../../lib/format'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { fetchStagesHeaderStats } from '../../lib/jobs/fetchStagesHeaderStats'
+import { hidesZzTestJobs } from '../../lib/jobs/zzTestJobVisibility'
 import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildBilledByCustomerBreakdown, billedBreakdownTotal, type BilledBreakdownCustomerGroup } from '../../lib/jobs/billedByCustomerBreakdown'
@@ -55,7 +56,7 @@ export function BilledAwaitingPaymentSection() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetchStagesHeaderStats(null)
+        const res = await fetchStagesHeaderStats(null, undefined, { excludeZzTestJobs: hidesZzTestJobs(role) })
         if (cancelled) return
         if (!res.ok) {
           setError(res.error)

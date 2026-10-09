@@ -12,6 +12,7 @@ import { supabase } from '../lib/supabase'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
+import { hidesZzTestJobs } from '../lib/jobs/zzTestJobVisibility'
 import type { StagesHeaderStats } from '../lib/jobs/stagesHeaderStats'
 import type { StageRow } from '../lib/jobsStagesBoard'
 import { buildPipelineMoneyMoves, type PipelineMove } from '../lib/jobs/pipelineOverview'
@@ -79,7 +80,7 @@ export function usePipelineMoneyOpportunities(opts: {
     if (!enabled || !authUserId) return
     setLoading(true)
     setError(null)
-    const res = await fetchStagesHeaderStats(null)
+    const res = await fetchStagesHeaderStats(null, undefined, { excludeZzTestJobs: hidesZzTestJobs(authRole) })
     if (res.ok) {
       setStats(res.stats)
       setLeanBilledRows(res.leanBilledRows)
@@ -103,7 +104,7 @@ export function usePipelineMoneyOpportunities(opts: {
       listGcReviewCertifications(weekStart).then(setCertRows, () => {}),
       listGcStatementRoundMarksSince(trailingWeekStarts(weekStart, 6)[0] ?? weekStart).then(setRecentMarks, () => {}),
     ])
-  }, [enabled, authUserId, isOffice])
+  }, [enabled, authUserId, authRole, isOffice])
 
   useEffect(() => {
     void load()

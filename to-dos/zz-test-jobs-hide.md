@@ -1,8 +1,8 @@
 ---
 name: "ZZ test jobs off the Pipeline for everyone but a dev"
 number: 61
-group: gated
-status: parked 2026-09-29 — the owner took the three calls (the ZZ prefix is the rule, any switch is dev only, the sweep first) and the sweep shipped the same day (v2.4157, Settings → Data & recovery → ZZ test jobs) · the gate is met 2026-10-09 (five ZZ jobs on jobs_ledger, one 10 days old, past the sweep's week) · the build is planned below as three PRs and waits on Todd's go
+group: ready
+status: parked 2026-09-29 — the owner took the three calls (the ZZ prefix is the rule, any switch is dev only, the sweep first) and the sweep shipped the same day (v2.4157, Settings → Data & recovery → ZZ test jobs) · the gate is met 2026-10-09 (five ZZ jobs on jobs_ledger, one 10 days old, past the sweep's week) · the build is planned below as three PRs; Todd's go 2026-10-09 · PR 1 shipped v2.5116 (the Pipeline, its strip and Quickfill's money without ZZ jobs for every role but dev; the paid head-count and collected-by-day too) · PR 2 next
 summary: >
   Jobs → Pipeline shows every ZZ test job the live passes and robot runs leave behind — rows the
   office scrolls past, and $2,200 test bids inside "Ready to ask for", the stage counts and the
@@ -14,12 +14,13 @@ summary: >
   shown. The mockup beside this card shows the Ready to Bill section before, after for the
   office, and after for a dev.
 next: >
-  Todd's go, then PR 1 (The build, below): the Pipeline, its strip and Quickfill's two money
-  sections without ZZ jobs for every role but dev, with no change for a dev and none to the
-  Dashboard yet. PR 2 brings the Dashboard's money and the other office doors in line and gives a
-  dev the switch. PR 3, the Lien desk, waits for a quiet lien lane.
+  PR 2 (The build, below): the dev's switch in Hide groups… with its chips, the Dashboard's Billed
+  pin, AR / Unbilled card and Ready to bill / Billed lists, and the other office doors. Until it
+  ships, a non-dev's Pipeline strip and Quickfill read lower than those Dashboard cards by the ZZ
+  money. PR 3, the Lien desk, waits for a quiet lien lane.
 size: M–L (three PRs)
-blocker: Todd's go on the plan.
+ver: v2.5116 (PR 1)
+blocker: None for PR 2. PR 3 waits for a quiet lien lane.
 opinion: build — the sweep did not keep the board clean, and PR 1 alone gives the office an honest Pipeline.
 ---
 
@@ -49,7 +50,7 @@ both are plain `jobs_ledger` columns, so no join is needed).
 ZZ rows, so they must keep reading them. The hide happens where the office's screens load and add
 up jobs. A dev can still see the office's view through *View as*.
 
-### PR 1 — the Pipeline for the office (the smallest safe piece, M)
+### PR 1 — the Pipeline for the office (the smallest safe piece, M) — shipped v2.5116
 
 - **Kernel** `src/lib/jobs/zzTestJobVisibility.ts` (pure):
   - `hidesZzTestJobs(role)` is true for every role but dev.
@@ -120,6 +121,9 @@ up jobs. A dev can still see the office's view through *View as*.
     bank-returned payments and test reports ready.
   - Customers: a ZZ customer's row on the list, and a ZZ job on a real customer's page.
   - If PR 2 runs long, ship the Dashboard's money and the switch first (2a) and the doors after (2b).
+  - The name rule disagrees by one case (review on #5226). The client trims a name before `/^zz/i`, but the
+    server's `ilike 'ZZ%'` does not, so a name with leading spaces is hidden on the board and missed by
+    the ZZ read. PR 2 makes the two agree, or a ZZ name is held to start at its first character.
 - **Tests**: the switch's kernel and its localStorage default; a render smoke on the modal's line
   and both chips; `useBilledTotal` and `dashboardFinancials` kernels with a ZZ job in and out;
   render smokes on the header search and the Customers list as an assistant.
