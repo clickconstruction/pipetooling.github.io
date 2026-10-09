@@ -35,6 +35,8 @@ describe('TeamPurchasesSortedList', () => {
     const onInvoices = vi.fn()
     renderWithProviders(<TeamPurchasesSortedList rows={ROWS} isNarrow={false} windowDays={30} onChangeJobs={onChangeJobs} onInvoices={onInvoices} />)
     expect(screen.getAllByTestId('team-purchases-sorted-row')).toHaveLength(2)
+    // The Dashboard window passes no onUndo, so no row offers Undo there.
+    expect(screen.queryByTestId('team-purchases-sorted-undo')).toBeNull()
     expect(screen.getByText('$183.44 of the charge has no invoice yet')).toBeTruthy()
     expect(screen.getByText(/1048 · Loberg remodel/)).toBeTruthy()
 
