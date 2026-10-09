@@ -324,13 +324,13 @@ export async function saveScopeSet(trade: string, name: string, lines: string[],
 
 // --- Google Drive, through the gc-drive-access edge function (step 5) ---
 
-interface FnResult {
+export interface FnResult {
   data: unknown
   error: { message?: string; context?: { json?: () => Promise<unknown> } } | null
 }
 
 /** The function's own words for what went wrong, or the transport's. */
-async function fnProblem(r: FnResult, fallback: string): Promise<string | null> {
+export async function fnProblem(r: FnResult, fallback: string): Promise<string | null> {
   const data = r.data as { error?: string } | null
   if (data?.error) return data.error
   if (!r.error) return null

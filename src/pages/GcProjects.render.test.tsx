@@ -9,6 +9,7 @@ import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBi
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
 import { loadSchedule } from '../lib/gc/scheduleIo'
 import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { loadGcSubmittals } from '../lib/gc/submittalsIo'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -90,6 +91,16 @@ vi.mock('../lib/gc/gcIo', async () => {
 vi.mock('../lib/gc/dailyLogIo', () => ({
   loadGcDailyLogs: vi.fn(() => Promise.resolve([])),
   saveGcDailyLog: vi.fn(() => Promise.resolve('log-1')),
+}))
+
+// Building's submittals: an empty register, and every press going through.
+vi.mock('../lib/gc/submittalsIo', () => ({
+  loadGcSubmittals: vi.fn(() => Promise.resolve({ submittals: [], holds: [], rounds: [] })),
+  addSubmittal: vi.fn(() => Promise.resolve('sub-1')),
+  submittalCameIn: vi.fn(() => Promise.resolve('round-1')),
+  sendSubmittalToArchitect: vi.fn(() => Promise.resolve({ to: 'architect@example.com' })),
+  markSubmittalSent: vi.fn(() => Promise.resolve()),
+  answerSubmittal: vi.fn(() => Promise.resolve()),
 }))
 
 const loadedEmpty = { loaded: () => screen.findByText('No GC project yet. Press New project when the first plans come in.') }
@@ -423,5 +434,52 @@ describe('GcProjects: the daily log (Building)', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, loaded)
     expect(screen.queryByRole('button', { name: /^Daily log/ })).toBeNull()
+  })
+})
+
+describe('GcProjects: submittals (Building)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadGcSubmittals).mockClear()
+    vi.mocked(loadSchedule).mockClear()
+  })
+
+  const building = () => {
+    const base = clinicBoardRows()
+    return { ...base, projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })) }
+  }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+
+  it('a dev opens Submittals on a job being built, and the window reads the job’s register and its schedule', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    expect(loadGcSubmittals).not.toHaveBeenCalled()
+    fireEvent.click(await within(card).findByRole('button', { name: 'Submittals' }))
+    expect(await screen.findByRole('dialog', { name: 'Hill Country Clinic: submittals' })).toBeTruthy()
+    expect(loadGcSubmittals).toHaveBeenCalledWith(['p1'])
+    expect(vi.mocked(loadSchedule).mock.calls.some(([, id]) => id === 'p1')).toBe(true)
+  })
+
+  it('an estimator never sees Submittals, and no register is read', async () => {
+    auth.role = 'estimator'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Submittals' })).toBeNull()
+    expect(loadGcSubmittals).not.toHaveBeenCalled()
+  })
+
+  it('a job still bidding has no Submittals, even for a dev', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Submittals' })).toBeNull()
   })
 })

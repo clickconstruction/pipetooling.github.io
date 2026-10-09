@@ -31,6 +31,7 @@ import { qrMatrix } from '../../supabase/functions/_shared/qrMatrix'
 import { bytesToBase64, qrPngBytes } from '../../supabase/functions/_shared/qrPng'
 import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
+import { buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
 import { buildGcCustomerEmail, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
 import { certifiedMail, certifyAskMail, changeOrderMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
@@ -345,6 +346,26 @@ export function buildSampleGcPlanQuestionEmail(ctx: SampleEmailContext): BuiltEm
   })
 }
 
+/** GC mode (the Building lane's U4b): a trade's submittal to the project's architect, as `gc-architect-email` sends it. */
+export function buildSampleGcSubmittalEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildGcSubmittalEmail({
+    architectName: 'Avery Lin',
+    projectName: 'Fair Oaks Clinic',
+    projectAddress: '1 Sample Rd, Boerne',
+    number: '26 24 16-01',
+    title: 'Panelboards',
+    kind: 'product data',
+    from: 'Electrical, Pedernales Valley Electric',
+    round: 2,
+    file: 'PVE-panelboards-r1.pdf',
+    driveUrl: 'https://drive.google.com/file/d/sample-panelboards/view',
+    note: 'Ratings added.',
+    neededBy: 'Mon, Oct 20',
+    signer: ctx.sender?.name || 'The project manager',
+    companyName: 'Click Construction',
+  })
+}
+
 /**
  * GC mode (P3-a): an email to a trade partner, as `gc-trade-email` sends it. The sample company's invitation from the
  * portal's own kernels, to who gets its kind, through the same frame, linking the sample portal.
@@ -401,6 +422,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'legal-welcome' || id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
   if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)
+  if (id === 'gc-submittal') return buildSampleGcSubmittalEmail(ctx)
   if (id === 'gc-trade-email') return buildSampleGcTradeEmail(ctx)
   if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return buildSampleGcCustomerEmail(id, ctx)
   if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
