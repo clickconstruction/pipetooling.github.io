@@ -8981,6 +8981,13 @@ export type Database = {
             referencedRelation: "gc_sows"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "gc_back_charges_taken_draw_fkey"
+            columns: ["taken_draw_id"]
+            isOneToOne: false
+            referencedRelation: "gc_draws"
+            referencedColumns: ["id"]
+          },
         ]
       }
       gc_bid_tab_views: {
@@ -9051,6 +9058,62 @@ export type Database = {
             columns: ["shared_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_change_order_trade_sends: {
+        Row: {
+          change_order_id: string
+          sent_by: string | null
+          sent_on: string
+          signed_on: string | null
+          sow_id: string
+          sow_line_id: string | null
+        }
+        Insert: {
+          change_order_id: string
+          sent_by?: string | null
+          sent_on: string
+          signed_on?: string | null
+          sow_id: string
+          sow_line_id?: string | null
+        }
+        Update: {
+          change_order_id?: string
+          sent_by?: string | null
+          sent_on?: string
+          signed_on?: string | null
+          sow_id?: string
+          sow_line_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_change_order_trade_sends_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: true
+            referencedRelation: "gc_change_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_change_order_trade_sends_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_change_order_trade_sends_sow_id_fkey"
+            columns: ["sow_id"]
+            isOneToOne: false
+            referencedRelation: "gc_sows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_change_order_trade_sends_sow_line_id_fkey"
+            columns: ["sow_line_id"]
+            isOneToOne: false
+            referencedRelation: "gc_sow_lines"
             referencedColumns: ["id"]
           },
         ]
@@ -9514,6 +9577,150 @@ export type Database = {
             columns: ["written_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_draw_lines: {
+        Row: {
+          draw_id: string
+          sow_line_id: string
+          stored: number
+          to_pct: number
+          we_see: number | null
+        }
+        Insert: {
+          draw_id: string
+          sow_line_id: string
+          stored?: number
+          to_pct: number
+          we_see?: number | null
+        }
+        Update: {
+          draw_id?: string
+          sow_line_id?: string
+          stored?: number
+          to_pct?: number
+          we_see?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_draw_lines_draw_id_fkey"
+            columns: ["draw_id"]
+            isOneToOne: false
+            referencedRelation: "gc_draws"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_draw_lines_sow_line_id_fkey"
+            columns: ["sow_line_id"]
+            isOneToOne: false
+            referencedRelation: "gc_sow_lines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_draws: {
+        Row: {
+          address: string
+          approved_on: string | null
+          asked: Json | null
+          created_at: string
+          drive_url: string | null
+          file_name: string | null
+          final: boolean
+          gross: number
+          id: string
+          license: string
+          net: number
+          number: number
+          paid_on: string | null
+          period_to: string
+          recorded_by: string | null
+          requested_on: string
+          retainage: number
+          sent_back_note: string | null
+          sent_back_on: string | null
+          seq: number
+          signed_by: string
+          signed_on: string
+          signed_title: string
+          sow_id: string
+          status: string
+          waiver: string
+          waiver_on: string | null
+        }
+        Insert: {
+          address?: string
+          approved_on?: string | null
+          asked?: Json | null
+          created_at?: string
+          drive_url?: string | null
+          file_name?: string | null
+          final?: boolean
+          gross: number
+          id?: string
+          license?: string
+          net: number
+          number: number
+          paid_on?: string | null
+          period_to: string
+          recorded_by?: string | null
+          requested_on: string
+          retainage: number
+          sent_back_note?: string | null
+          sent_back_on?: string | null
+          seq?: never
+          signed_by: string
+          signed_on: string
+          signed_title?: string
+          sow_id: string
+          status?: string
+          waiver?: string
+          waiver_on?: string | null
+        }
+        Update: {
+          address?: string
+          approved_on?: string | null
+          asked?: Json | null
+          created_at?: string
+          drive_url?: string | null
+          file_name?: string | null
+          final?: boolean
+          gross?: number
+          id?: string
+          license?: string
+          net?: number
+          number?: number
+          paid_on?: string | null
+          period_to?: string
+          recorded_by?: string | null
+          requested_on?: string
+          retainage?: number
+          sent_back_note?: string | null
+          sent_back_on?: string | null
+          seq?: never
+          signed_by?: string
+          signed_on?: string
+          signed_title?: string
+          sow_id?: string
+          status?: string
+          waiver?: string
+          waiver_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_draws_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_draws_sow_id_fkey"
+            columns: ["sow_id"]
+            isOneToOne: false
+            referencedRelation: "gc_sows"
             referencedColumns: ["id"]
           },
         ]
@@ -12440,6 +12647,61 @@ export type Database = {
             columns: ["saved_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_sow_line_reports: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          pct: number
+          recorded_by: string | null
+          reported_on: string
+          seq: number
+          sow_line_id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          pct: number
+          recorded_by?: string | null
+          reported_on: string
+          seq?: never
+          sow_line_id: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          pct?: number
+          recorded_by?: string | null
+          reported_on?: string
+          seq?: never
+          sow_line_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_sow_line_reports_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_sow_line_reports_recorded_by_fkey"
+            columns: ["recorded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_sow_line_reports_sow_line_id_fkey"
+            columns: ["sow_line_id"]
+            isOneToOne: false
+            referencedRelation: "gc_sow_lines"
             referencedColumns: ["id"]
           },
         ]
@@ -29427,6 +29689,11 @@ export type Database = {
         Args: { p_answer: string; p_note?: string; p_submittal_id: string }
         Returns: string
       }
+      gc_approve_draw: { Args: { p_draw_id: string }; Returns: string }
+      gc_approve_draw_less: {
+        Args: { p_draw_id: string; p_note: string; p_we_approve: Json }
+        Returns: string
+      }
       gc_award: {
         Args: { p_estimator?: string; p_invite_id: string }
         Returns: string
@@ -29460,6 +29727,20 @@ export type Database = {
         }
         Returns: string
       }
+      gc_draw_came_in: {
+        Args: { p: Json; p_package_id: string }
+        Returns: string
+      }
+      gc_draw_claim: {
+        Args: { p_lines: Json; p_sow_id: string }
+        Returns: Json
+      }
+      gc_draw_money: {
+        Args: { p_claim: Json; p_number: number; p_sow_id: string }
+        Returns: Json
+      }
+      gc_draw_waiver_in: { Args: { p_draw_id: string }; Returns: string }
+      gc_draw_waiver_signed: { Args: { p_draw_id: string }; Returns: string }
       gc_drop_back_charge: {
         Args: { p_id: string; p_note: string }
         Returns: undefined
@@ -29516,6 +29797,7 @@ export type Database = {
         Returns: number
       }
       gc_owner_contract_now: { Args: { p_project_id: string }; Returns: number }
+      gc_pay_draw: { Args: { p_draw_id: string }; Returns: string }
       gc_questions_close_on: { Args: { p_project: string }; Returns: string }
       gc_record_acceptance: {
         Args: {
@@ -29715,6 +29997,10 @@ export type Database = {
         Args: { p_id: string; p_on: string }
         Returns: undefined
       }
+      gc_send_draw_back: {
+        Args: { p_draw_id: string; p_note: string; p_we_see: Json }
+        Returns: string
+      }
       gc_send_owner_interest_bill: {
         Args: { p_amount: number; p_project_id: string }
         Returns: string
@@ -29731,12 +30017,24 @@ export type Database = {
         Args: { p_email_send_log_id?: string; p_submittal_id: string }
         Returns: string
       }
+      gc_send_trade_change: {
+        Args: { p_change_order_id: string }
+        Returns: string
+      }
       gc_sign_owner_contract: {
         Args: { p_project_id: string; p_signed_on: string; p_worth?: Json }
         Returns: undefined
       }
+      gc_sow_line_of: {
+        Args: { p_key: string; p_sow_id: string }
+        Returns: string
+      }
       gc_submittal_came_in: { Args: { r: Json }; Returns: string }
       gc_submittal_move: { Args: { p_submittal_id: string }; Returns: string }
+      gc_take_back_charge: {
+        Args: { p_charge_id: string; p_draw_id: string }
+        Returns: string
+      }
       gc_trade_add_person: {
         Args: {
           p_company_id: string
@@ -29848,6 +30146,10 @@ export type Database = {
         Args: { p_company_id: string; p_invite_id: string }
         Returns: number
       }
+      gc_trade_pay_app: {
+        Args: { p_app: Json; p_company_id: string; p_package_id: string }
+        Returns: string
+      }
       gc_trade_quote_day: {
         Args: { p_by: string; p_company_id: string; p_invite_id: string }
         Returns: string
@@ -29873,6 +30175,19 @@ export type Database = {
         Args: { p_company_id: string; p_lang: string }
         Returns: undefined
       }
+      gc_trade_sign_change: {
+        Args: { p_change_order_id: string; p_company_id: string }
+        Returns: string
+      }
+      gc_trade_sow_report: {
+        Args: {
+          p_company_id: string
+          p_line: string
+          p_package_id: string
+          p_pct: number
+        }
+        Returns: number
+      }
       gc_trade_submit_quote: {
         Args: { p_company_id: string; p_invite_id: string; q: Json }
         Returns: string
@@ -29885,6 +30200,10 @@ export type Database = {
           p_note?: string
           p_submittal_id: string
         }
+        Returns: string
+      }
+      gc_trade_unconditional_waiver: {
+        Args: { p_company_id: string; p_draw_id: string }
         Returns: string
       }
       gc_turn_down_change_request: {
