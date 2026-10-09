@@ -43,3 +43,7 @@ On a test pair, or read-only against a real case:
 ## Checked before the PR
 
 On Homebrew Postgres 15, with stand-ins for `users`, `auth.uid()`, `is_read_only()`, `is_digital_twin()` and the five tables, the file was applied twice. One press on an open bank case taken off bill 1 moved the bill from $13,680 to $13,710 with its line, and the job's revenue from $38,625 to $38,655. It set the case's fee and wrote the history line. Then (a) refused twice, for a rejected check and a closed case, and (b), (c) and (d) refused in turn. A subcontractor and a training account were refused. Nothing changed after the first press.
+
+## Status
+
+Merged as v2.5033 (#5102) and pushed with 002000 and 004000 on 2026-10-09 (drift 817 of 817). Verified read-only: the four case columns and `jobs_ledger_invoices.fee_lines` are present; no case carries a fee yet. Both RPCs refuse a signed-out caller over the pooler (*not authenticated* / *Sign in first.*), so the four refusals stand on the PG15 bed and are re-read on the first real press. Types: PR #5111; the `JOBS_LEDGER_INVOICES_EMBED` follow-up adds `fee_lines` after it.

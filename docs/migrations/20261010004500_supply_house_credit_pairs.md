@@ -38,6 +38,10 @@ Other edits to a paired credit went through, and deleting the invoice unpaired t
 
 Then run `npm run check:migration-drift` and the types PR for the column.
 
+## Status
+
+Merged as v2.5035 (#5108) and pushed on 2026-10-09 at 10:43 UTC (drift 819 of 819; GC MODE's 006000 rode the same push). Verified read-only: `credits_invoice_id` present, `supply_house_invoices_credit_pair_guard` in place, nothing paired yet. Types: PR #5111.
+
 ## Rollback
 
 A one-off migration drops the trigger, its function, the check, the index and the column. The client sends the column only on a change and reads `*`, so it keeps working without it.
