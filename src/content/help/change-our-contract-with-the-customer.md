@@ -43,3 +43,7 @@ A signed change order adds its price and its days. Pick how much of its work is 
 A change order waiting on the customer shows in their portal, under the job. The customer can sign it or decline it there. A decline can say why in one line, or say nothing.
 
 The answer shows here right away. The chip says {{chip:green|signed Oct 7 in their portal}} or {{chip:red|declined Oct 7 in their portal}}. A reason they gave shows beside a decline.
+
+## When a trade partner asks for a change
+
+A trade partner can ask for a change from its portal. The ask shows above the change orders. See [answer a trade partner's change request](/help/answer-a-trade-partners-change-request).
