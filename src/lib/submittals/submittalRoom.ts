@@ -52,21 +52,25 @@ export type PersonTrail = {
   lastOpenedAt: string | null
   decided: number
   asked: number
+  /** v2.5026 · the newest day the app emailed them their link; absent when it never did. */
+  linkSentAt?: string
 }
 
-/** One person's trail from the events (views, decisions, replies) and the items they decided. */
+/** One person's trail from the events (views, decisions, replies, links sent) and the items they decided. */
 export function personTrail(personId: string, events: ReadonlyArray<Pick<SubmittalEventRow, 'person_id' | 'event_type' | 'occurred_at' | 'metadata'>>, decidedCount: number): PersonTrail {
   let opened = 0
   let lastOpenedAt: string | null = null
   let asked = 0
+  let linkSentAt: string | null = null
   for (const e of events) {
     if (e.person_id !== personId) continue
     if (e.event_type === 'view') {
       opened += 1
       if (!lastOpenedAt || e.occurred_at > lastOpenedAt) lastOpenedAt = e.occurred_at
     } else if (e.event_type === 'reply') asked += 1
+    else if (e.event_type === 'link_sent' && (!linkSentAt || e.occurred_at > linkSentAt)) linkSentAt = e.occurred_at
   }
-  return { opened, lastOpenedAt, decided: decidedCount, asked }
+  return { opened, lastOpenedAt, decided: decidedCount, asked, ...(linkSentAt ? { linkSentAt } : {}) }
 }
 
 /** Opens by people who did not say who they were. */
@@ -80,9 +84,10 @@ function short(iso: string | null | undefined, tz: string): string {
   return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: tz })
 }
 
-/** "opened Sep 16 · 3× · decided 22 · asked 1" — "not opened yet" when nothing. */
+/** "link sent Sep 15 · opened Sep 16 · 3× · decided 22 · asked 1" — "not opened yet" when nothing. */
 export function describeTrail(t: PersonTrail, tz: string): string {
   const parts: string[] = []
+  if (t.linkSentAt) parts.push(`link sent ${short(t.linkSentAt, tz)}`)
   if (t.opened > 0) parts.push(`opened ${short(t.lastOpenedAt, tz)}${t.opened > 1 ? ` · ${t.opened}×` : ''}`.trim())
   else parts.push('not opened yet')
   if (t.decided > 0) parts.push(`decided ${t.decided}`)

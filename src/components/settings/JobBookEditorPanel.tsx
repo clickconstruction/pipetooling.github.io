@@ -224,7 +224,7 @@ export default function JobBookEditorPanel({
         ),
         withSupabaseRetry(
           async () =>
-            supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true }),
+            supabase.from('service_types').select('id, name').eq('billing_only', false).order('sequence_order', { ascending: true }),
           'service_types select job book editor',
         ),
       ])

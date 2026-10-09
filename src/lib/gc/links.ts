@@ -16,10 +16,16 @@ export function gcFocusFromSearch(search: URLSearchParams): string | null {
 /** Follow up on the GC projects page: the companies to call about a quote (the Dashboard's Needs you line). */
 export const GC_FOLLOW_UP_HREF = '/gc?view=followUp'
 
-/** Pure: the view a `?view=` on the GC projects page opens on, or the board. A dev's own views open from their pills only. */
-export function gcViewFromSearch(search: URLSearchParams): 'board' | 'partners' | 'followUp' {
+/** Money on the GC projects page, the money team's lens: the Monday money email's Open Money (O7b). */
+export const GC_MONEY_HREF = '/gc?view=money'
+
+/**
+ * Pure: the view a `?view=` on the GC projects page opens on, or the board. A dev's own views open from their pills
+ * only. Money opens for the money team; the page shows anyone else Follow up in its place.
+ */
+export function gcViewFromSearch(search: URLSearchParams): 'board' | 'partners' | 'followUp' | 'money' {
   const view = search.get('view')
-  return view === 'partners' || view === 'followUp' ? view : 'board'
+  return view === 'partners' || view === 'followUp' || view === 'money' ? view : 'board'
 }
 
 /** The words a GC project carries outside GC mode (the Projects page, the Workflow page, Edit project). */

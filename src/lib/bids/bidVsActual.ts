@@ -8,7 +8,12 @@
  * The read on each row is the honest one for today's data: most linked bids
  * were never costed, so the lens says so and offers the door ("Cost it →")
  * instead of pretending a comparison.
+ *
+ * Since v2.5043 (Burn against the bid, piece 1) each row also carries the
+ * margin its bid was priced at (`bids.priced_*`, stamped by the Pricing
+ * workbench and kept at send), shown beside the burn read.
  */
+import type { BidPricedMargin } from './pricedMargin'
 
 export type BidVsActualJobInput = {
   id: string
@@ -67,6 +72,8 @@ export type BidVsActualRow = {
   words: string
   /** Second line under the read; empty when nothing to add. */
   detail: string
+  /** v2.5043 · the margin the bid was priced at; null when it was never priced on the Workbench. */
+  priced: BidPricedMargin | null
 }
 
 /** A count sheet predicting more field hours than this per $1,000 of price cannot be right (603 h on $11.9k read 50.6). */
@@ -117,6 +124,8 @@ export function buildBidVsActualRows(args: {
   bids: ReadonlyMap<string, BidVsActualBidInput>
   hoursByJob: ReadonlyMap<string, number>
   pursuitByBid: ReadonlyMap<string, { usd: number; hours: number }>
+  /** v2.5043 · each bid's priced-margin stamp; absent = none. */
+  pricedByBid?: ReadonlyMap<string, BidPricedMargin>
 }): BidVsActualRow[] {
   const budgetByJob = new Map(args.budgets.map((b) => [b.job_id, b]))
   const rows: BidVsActualRow[] = []
@@ -151,6 +160,7 @@ export function buildBidVsActualRows(args: {
       pursuitUsd: pursuit?.usd ?? 0,
       pursuitHours: pursuit?.hours ?? 0,
       usable,
+      priced: args.pricedByBid?.get(j.bid_id) ?? null,
       ...base,
       ...read,
     })
@@ -169,10 +179,12 @@ export type BidVsActualTiles = {
   notCosted: number
   over: number
   outliers: number
+  /** v2.5043 · linked bids carrying a priced margin. */
+  priced: number
 }
 
 export function bidVsActualTiles(rows: ReadonlyArray<BidVsActualRow>): BidVsActualTiles {
-  const t: BidVsActualTiles = { linked: rows.length, withPredictedHours: 0, rateSet: 0, recordedHours: 0, predictedHoursWhereAny: 0, recordedHoursWhereAny: 0, notCosted: 0, over: 0, outliers: 0 }
+  const t: BidVsActualTiles = { linked: rows.length, withPredictedHours: 0, rateSet: 0, recordedHours: 0, predictedHoursWhereAny: 0, recordedHoursWhereAny: 0, notCosted: 0, over: 0, outliers: 0, priced: 0 }
   for (const r of rows) {
     t.recordedHours += r.recordedHours
     if (r.predictedHours != null) {
@@ -184,6 +196,7 @@ export function bidVsActualTiles(rows: ReadonlyArray<BidVsActualRow>): BidVsActu
     if (r.read === 'not-costed' || r.read === 'hours-missing') t.notCosted++
     if (r.read === 'over') t.over++
     if (r.read === 'outlier') t.outliers++
+    if (r.priced) t.priced++
   }
   return t
 }

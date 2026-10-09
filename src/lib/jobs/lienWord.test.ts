@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LIEN_WORD_CHANNELS, LIEN_WORD_CHANNEL_WORDS, LIEN_WORD_PRESENT_CHANNELS, defaultWordNote, isLienWordChannel, leaderPresent, presenceLine, wordRecordBlock, wordRecordPreview, wordRecordWords } from './lienWord'
+import { LIEN_WORD_CHANNELS, LIEN_WORD_CHANNEL_WORDS, LIEN_WORD_PRESENT_CHANNELS, defaultWordNote, isLienWordChannel, leaderPresent, presenceLine, wordRecordBlock, wordRecordPreview, wordRecordWords, lienFyiStrip } from './lienWord'
 
 describe('lienWord — the leader’s word and the two “he is here” declarations', () => {
   it('keeps the three remembered channels first and the two presence channels after them', () => {
@@ -64,5 +64,25 @@ describe('the preview of the record (v2.4856)', () => {
   it('the presence chips no longer say “he is”', () => {
     expect(LIEN_WORD_CHANNEL_WORDS.standing_over.pick).toBe('standing over me')
     expect(LIEN_WORD_CHANNEL_WORDS.typing.pick).toBe('typing it in')
+  })
+})
+
+describe('the leader’s FYI list in the title bar (v2.5028)', () => {
+  it('names the word sends, then each GC’s rule sends marked as that rule’s', () => {
+    expect(
+      lienFyiStrip([
+        { jobLabel: '650', by: 'word' },
+        { jobLabel: '702', by: 'rule', gcName: 'Loberg Contracting' },
+        { jobLabel: '878', by: 'word' },
+        { jobLabel: '715', by: 'rule', gcName: 'Loberg Contracting' },
+        { jobLabel: '801', by: 'rule', gcName: 'Knight Contracting' },
+      ]),
+    ).toBe('Sent on your word: 650, 878 · by Loberg Contracting’s rule: 702, 715 · by Knight Contracting’s rule: 801')
+  })
+
+  it('with only rule sends the rule leads; with nothing sent it is empty', () => {
+    expect(lienFyiStrip([{ jobLabel: '702', by: 'rule', gcName: 'Loberg Contracting' }])).toBe('Sent by Loberg Contracting’s rule: 702')
+    expect(lienFyiStrip([{ jobLabel: '702', by: 'rule', gcName: ' ' }])).toBe('Sent by the GC’s rule: 702')
+    expect(lienFyiStrip([])).toBe('')
   })
 })

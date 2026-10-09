@@ -108,18 +108,18 @@ export function resolveLegalJobProperties(
   return { byJob, properties: [...lines.values()] }
 }
 
-/** The kind in the firm's words: `residential`, `non-residential`, or '' when unknown. */
+/** The kind in the firm's words: `residential`, `commercial` (the owner's call of 2026-10-09: one word everywhere), or '' when unknown. */
 export function propertyKindWords(kind: string | null | undefined): string {
-  return kind === 'residential' ? 'residential' : kind ? 'non-residential' : ''
+  return kind === 'residential' ? 'residential' : kind ? 'commercial' : ''
 }
 
 /**
- * An unknown kind runs the later (commercial) calendar, as the lien timeline does; every reader says
- * so beside the kind, so nobody takes the dates for a residential job's (a month earlier).
+ * An unknown kind runs the earlier (residential) calendar, as every lien reader does since v2.5031 (the owner's
+ * call of 2026-10-09): a house read as commercial loses its lien a month late. Every reader says so beside the kind.
  */
-export const PROPERTY_KIND_UNKNOWN_WORDS = 'kind unknown · commercial dates shown (a residential property is a month earlier)'
+export const PROPERTY_KIND_UNKNOWN_WORDS = 'kind unknown · residential dates shown (a commercial property is a month later)'
 
-/** The kind cell: `residential`, `non-residential`, or the unknown words. */
+/** The kind cell: `residential`, `commercial`, or the unknown words. */
 export function propertyKindCell(kind: string | null | undefined): string {
   return propertyKindWords(kind) || PROPERTY_KIND_UNKNOWN_WORDS
 }

@@ -167,6 +167,7 @@ export default function LienReleaseModal({
   signerNameFallback,
   onIssued,
   initialFormType,
+  ask,
 }: {
   open: boolean
   onClose: () => void
@@ -177,10 +178,15 @@ export default function LienReleaseModal({
   invoiceIds?: readonly string[] | null
   /** Job master's People "Full name and title" with session-name fallback (same line the lien prefill uses). */
   signerNameFallback: string
-  /** Fired after a release row is recorded (v2.2582) so openers can refresh badges/strips. */
-  onIssued?: () => void
+  /** Fired after a release row is recorded (v2.2582) so openers can refresh badges/strips. Minting passes the row's id. */
+  onIssued?: (releaseId?: string) => void
   /** Open on this form type instead of conditional-progress (e.g. the unconditional follow-up). */
   initialFormType?: LienWaiverFormType
+  /**
+   * GC mode's pay application (Owner Billing's O4a): what it asked and its bill day. Our conditional waiver goes
+   * before any bill exists, so the window selects no bill and fills these in. The Pipeline's own openers never pass it.
+   */
+  ask?: { amount: number; throughDate: string } | null
 }) {
   const { role: authRole, user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
@@ -439,6 +445,7 @@ export default function LienReleaseModal({
 
   // Open-reset: default the selection to the row's invoice, else billed lines, else everything selectable.
   const invoiceIdsKey = (invoiceIds ?? []).join(',')
+  const askKey = ask ? `${ask.amount}|${ask.throughDate}` : ''
   useEffect(() => {
     if (!open || !job) return
     setReleaseRow(null)
@@ -463,8 +470,9 @@ export default function LienReleaseModal({
     })
     setFormType(opening.formType)
     openUnconditionalAskRef.current = opening.askUnconditional
-    setSelectedInvoiceIds(new Set(opening.invoiceIds))
-  }, [open, job?.id, invoice?.id, invoiceIdsKey, initialFormType])
+    // A pay application's waiver names no bill: none exists until the architect certifies it.
+    setSelectedInvoiceIds(new Set(askKey ? [] : opening.invoiceIds))
+  }, [open, job?.id, invoice?.id, invoiceIdsKey, initialFormType, askKey])
 
   // Resume the newest live draft (v2.2619) — and, since v2.2641, a pending
   // awaiting-signature release too: while a request is out, reopening the
@@ -587,6 +595,7 @@ export default function LienReleaseModal({
         ownerName,
         signerName: leaderName,
         signerTitle: sameAsCompany ? (issuer?.signerTitle ?? '') : '',
+        ask: askKey ? ask : null,
       })
       if (!prev) return next
       return {
@@ -595,7 +604,8 @@ export default function LienReleaseModal({
         signerTitle: signerTouchedRef.current ? prev.signerTitle : next.signerTitle,
       }
     })
-  }, [open, job, formType, selectedInvoices, issuer, ownerName, signerNameFallback, presentSigner])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `ask` is read through askKey, its value
+  }, [open, job, formType, selectedInvoices, issuer, ownerName, signerNameFallback, presentSigner, askKey])
 
   const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
 
@@ -775,7 +785,7 @@ export default function LienReleaseModal({
         setReleaseRow(row)
         setAutosaveState('saved')
         void loadHistory()
-        onIssued?.()
+        onIssued?.(row.id)
         // Audit copy of the minted (unsigned) document — best-effort.
         void (async () => {
           try {

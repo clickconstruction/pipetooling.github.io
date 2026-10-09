@@ -18,10 +18,12 @@
  * (`normalizeAddressKey` — the portal's rule). A job with no address stands alone.
  *
  * Money: `owed` is the row's amount as the board and GC Review count it, and
- * the payment line under a bill names only the payments recorded against THAT
- * bill — so paid and owed on one line always add up to the bill. Money on the
- * job that no bill carries is not worded here; the office is told before it
- * sends (`gcStatementUnmatchedPayments`, client).
+ * the payment line under a bill names the payments the one rule gives THAT
+ * bill (v2.5006): its linked payments, and its share of money put on the job
+ * with no bill picked, oldest bill first — so paid and owed on one line always
+ * add up to the bill. Unlinked money the rule leaves on no bill (the part of
+ * the job on no bill, a surplus) is not worded here; the office is told which
+ * jobs carry unlinked money before it sends (`gcStatementUnmatchedPayments`, client).
  *
  * Pure, no Deno: tested from `src/lib/jobsDocuments/gcStatementByProperty.test.ts`.
  */

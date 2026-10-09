@@ -5,7 +5,7 @@
  * TRADE_PORTAL_FIELDS, and naming one is a reviewed change.
  */
 import { describe, expect, it } from 'vitest'
-import { TRADE_PORTAL_FIELDS, tradePortalSlice, type TradePortalRows } from '../../../supabase/functions/_shared/gcTradePortalSlice'
+import { AWARDED_ELSEWHERE, TRADE_PORTAL_FIELDS, tradePortalSlice, type TradePortalRows } from '../../../supabase/functions/_shared/gcTradePortalSlice'
 
 const ME = 'co-me'
 const THEM = 'co-them'
@@ -38,6 +38,19 @@ const NEVER = {
   architect: 'arch-SECRET',
   projectManagerId: 'pm-user-SECRET',
   otherProject: 'OTHER-PROJECT-SECRET',
+  // Its work (P4b-i): of a change order made of its request it reads only its part.
+  changeOrderPct: 61.75,
+  changeOrderWords: 'CO-WORDS-TO-CUSTOMER-SECRET',
+  otherChangeOrderCost: 24242,
+  otherAward: 'inv-THEM-AWARD-SECRET',
+  otherSowPrice: 86420,
+  cancelledSowPrice: 97531,
+  otherChargeAmount: 13579,
+  otherCharge: 'OTHER-CHARGE-SECRET',
+  otherRequest: 'OTHER-REQUEST-SECRET',
+  chargeMadeBy: 'u-CHARGE-MAKER-SECRET',
+  chargeSettledBy: 'u-CHARGE-SETTLER-SECRET',
+  signerIp: 'SIGNER-IP-SECRET',
 } as const
 
 function rows(): TradePortalRows {
@@ -102,11 +115,54 @@ function rows(): TradePortalRows {
       { set_id: 'set-0', company_id: THEM, touched: false, email_send_log_id: 'log-3' },
       { set_id: 'set-x', company_id: ME, touched: true },
     ],
+    sows: [],
+    backCharges: [],
+    changeRequests: [],
+    changeOrders: [],
+  }
+}
+
+/**
+ * The same rows with work on them (P4b-i): a job of ours where this company's Electrical is awarded and
+ * signed, with a charge and a change request whose change order is with the customer; another company
+ * awarded Fair Oaks' Electrical, with its own statement of work, charge, request and change order; and a
+ * statement of work of ours that was cancelled.
+ */
+function workRows(): TradePortalRows {
+  const r = rows()
+  return {
+    ...r,
+    invites: [...r.invites, { id: 'inv-job', package_id: 'pkg-job', company_id: ME, status: 'bid', invited_on: '2026-08-01', seen_rev: 1, plugs: { 'si-9': NEVER.plug } }],
+    projects: [
+      ...r.projects,
+      { project: { id: 'proj-3', name: 'Hill Country Clinic', address: '3 Hill Rd', customer_id: NEVER.customerId }, gc: { project_id: 'proj-3', stage: 'building', bid_due: '2026-08-15', fee_pct: NEVER.feePct }, team: [] },
+    ],
+    packages: [
+      ...r.packages.map((p) => (p.id === 'pkg-elec' ? { ...p, awarded_invite_id: NEVER.otherAward } : p)),
+      { id: 'pkg-job', project_id: 'proj-3', trade: 'Electrical', position: 0, budget: NEVER.budget, awarded_invite_id: 'inv-job', awarded_by: 'u-office' },
+    ],
+    sows: [
+      { id: 'sow-me', package_id: 'pkg-job', invite_id: 'inv-job', company_id: ME, status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 1, sent_on: '2026-08-20', signed_on: '2026-08-22', signer_ip: NEVER.signerIp, created_by: 'u-office' },
+      { id: 'sow-cancelled', package_id: 'pkg-elec', invite_id: 'inv-me', company_id: ME, status: 'cancelled', price: NEVER.cancelledSowPrice, retainage_pct: 10, based_on_rev: 0 },
+      { id: 'sow-them', package_id: 'pkg-elec', invite_id: NEVER.otherAward, company_id: THEM, status: 'signed', price: NEVER.otherSowPrice, retainage_pct: 5, based_on_rev: 0 },
+    ],
+    backCharges: [
+      { id: 'bc-me', project_id: 'proj-3', package_id: 'pkg-job', company_id: ME, sow_id: 'sow-me', amount: 850, reason: 'Cleanup after rough-in.', photo_url: 'https://drive.google.com/file/d/bc', sent_on: '2026-10-01', answer_by: '2026-10-06', status: 'kept', answered_on: '2026-10-02', answer_note: 'We swept before we left.', settled_on: '2026-10-08', settled_note: 'Our photos show the scraps.', settled_by: NEVER.chargeSettledBy, taken_draw_id: null, taken_on: null, created_by: NEVER.chargeMadeBy, created_at: '2026-10-01T15:00:00Z' },
+      { id: 'bc-them', project_id: 'proj-1', package_id: 'pkg-elec', company_id: THEM, sow_id: 'sow-them', amount: NEVER.otherChargeAmount, reason: NEVER.otherCharge, sent_on: '2026-10-01', answer_by: '2026-10-06', status: 'open' },
+    ],
+    changeRequests: [
+      { id: 'cr-me', project_id: 'proj-3', package_id: 'pkg-job', company_id: ME, sow_id: 'sow-me', asked_on: '2026-09-30', description: 'Two more circuits for the added chairs.', reason: 'owner', amount: 3400, days: 1, file_url: null, change_order_id: 'co-me', turned_down_on: null, turned_down_note: null, created_at: '2026-09-30T15:00:00Z' },
+      { id: 'cr-them', project_id: 'proj-1', package_id: 'pkg-elec', company_id: THEM, sow_id: 'sow-them', asked_on: '2026-09-30', description: NEVER.otherRequest, reason: 'field', amount: 999, days: 0, change_order_id: 'co-them' },
+    ],
+    changeOrders: [
+      { id: 'co-me', project_id: 'proj-3', number: 2, description: NEVER.changeOrderWords, reason: 'owner', package_id: 'pkg-job', cost: 3400, price: NEVER.customerChangeOrderPrice, status: 'sent', sent_on: '2026-10-03', answered_on: null, pct_done: NEVER.changeOrderPct },
+      { id: 'co-them', project_id: 'proj-1', number: 3, description: NEVER.otherRequest, reason: 'field', package_id: 'pkg-elec', cost: NEVER.otherChangeOrderCost, price: NEVER.customerChangeOrderPrice, status: 'draft' },
+    ],
   }
 }
 
 describe('a trade never sees our price to the customer', () => {
-  const json = JSON.stringify(tradePortalSlice(rows(), ME))
+  const json = JSON.stringify(tradePortalSlice(workRows(), ME))
 
   it.each(Object.entries(NEVER))('never carries %s', (_name, value) => {
     expect(json).not.toContain(String(value))
@@ -114,7 +170,7 @@ describe('a trade never sees our price to the customer', () => {
 
   it('names only reviewed fields, never our money', () => {
     const named = Object.values(TRADE_PORTAL_FIELDS).flat()
-    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note']) {
+    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip']) {
       expect(named).not.toContain(f)
     }
   })
@@ -161,5 +217,39 @@ describe('what a company reads about itself', () => {
     expect(theirs.invites.map((i) => i.id)).toEqual(['inv-them'])
     expect(JSON.stringify(theirs)).not.toContain('64200')
     expect(JSON.stringify(theirs)).not.toContain('Friday at the latest')
+  })
+})
+
+describe('its own work, and only its part of a change order (P4b-i)', () => {
+  const slice = tradePortalSlice(workRows(), ME)
+
+  it('reads its own award, and another company’s only as elsewhere, never which ask', () => {
+    expect(slice.packages.map((p) => [p.id, p.awarded_invite_id])).toEqual([
+      ['pkg-elec', AWARDED_ELSEWHERE],
+      ['pkg-job', 'inv-job'],
+    ])
+    expect(tradePortalSlice(rows(), ME).packages.map((p) => p.awarded_invite_id)).toEqual([null])
+  })
+
+  it('reads its own statement of work, never one cancelled or another company’s', () => {
+    expect(slice.sows).toEqual([{ id: 'sow-me', package_id: 'pkg-job', invite_id: 'inv-job', status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 1, sent_on: '2026-08-20', signed_on: '2026-08-22' }])
+  })
+
+  it('reads its own charges with the office’s note, never who made or settled them', () => {
+    expect(slice.backCharges.map((c) => [c.id, c.amount, c.status, c.answer_note, c.settled_note])).toEqual([['bc-me', 850, 'kept', 'We swept before we left.', 'Our photos show the scraps.']])
+    expect(Object.keys(slice.backCharges[0] ?? {})).not.toEqual(expect.arrayContaining(['created_by']))
+    expect(Object.keys(slice.backCharges[0] ?? {})).not.toEqual(expect.arrayContaining(['settled_by']))
+  })
+
+  it('reads its own change requests, and of the change order one became only its part', () => {
+    expect(slice.changeRequests.map((r) => [r.id, r.change_order_id])).toEqual([['cr-me', 'co-me']])
+    expect(slice.changeOrders).toEqual([{ id: 'co-me', number: 2, status: 'sent', sent_on: '2026-10-03', answered_on: null, cost: 3400 }])
+  })
+
+  it('reads nothing of this company’s work when another company’s link opens', () => {
+    const theirs = tradePortalSlice(workRows(), THEM)
+    expect([theirs.sows.map((s) => s.id), theirs.backCharges.map((c) => c.id), theirs.changeRequests.map((r) => r.id), theirs.changeOrders.map((o) => o.id)]).toEqual([['sow-them'], ['bc-them'], ['cr-them'], ['co-them']])
+    const json = JSON.stringify(theirs)
+    for (const mine of ['Cleanup after rough-in.', 'Two more circuits for the added chairs.', '48600', 'Hill Country Clinic']) expect(json).not.toContain(mine)
   })
 })

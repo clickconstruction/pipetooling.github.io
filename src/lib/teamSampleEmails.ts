@@ -28,6 +28,7 @@ import { buildBankReturnNoticeEmail, type BankReturnNoticeInput } from '../../su
 import { renderCtRosterAuditEmail } from '../../supabase/functions/_shared/ctRosterAuditEmail'
 import type { CtRosterDiff } from '../../supabase/functions/_shared/ctRosterDiff'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
+import { gcMoneyMondaySubject, renderGcMoneyMondayHtml, renderGcMoneyMondayText, type GcMoneyMondayPayload } from '../../supabase/functions/_shared/gcMoneyMondayEmail'
 import { lienStatusEmailHtml, lienStatusEmailText, lienStatusSubject, type LienStatusPayload } from '../../supabase/functions/_shared/lienDeskStatus'
 import { ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
@@ -330,6 +331,32 @@ export function sampleWeeklyMoneyPayload(weekMonday: string): WeeklyMoneyPayload
   }
 }
 
+/**
+ * The Monday money email (O7b) on sample GC jobs: one bill late past a promise with one missed before it, one expected,
+ * one waiting on the architect, and last week's send and certificate.
+ */
+export function sampleGcMoneyMondayPayload(todayYmd: string): GcMoneyMondayPayload {
+  const monday = mondayOf(todayYmd)
+  const day = (n: number) => {
+    const d = new Date(`${monday}T12:00:00Z`)
+    d.setUTCDate(d.getUTCDate() + n)
+    return d.toISOString().slice(0, 10)
+  }
+  const bill = { projectId: 'gc-sample', architect: 'Lake Flato Architects', final: false, missed: 0, promised: false, waitingOnArchitect: false }
+  return {
+    today: monday,
+    weekFrom: day(-7),
+    weekTo: day(-1),
+    bills: [
+      { ...bill, project: 'Stone Oak Medical', customer: 'Stone Oak Partners', number: 2, sentOn: day(-40), certified: 25_000, certifiedOn: day(-38), open: 15_000, dueOn: day(-6), promised: true, daysLate: 6, missed: 1 },
+      { ...bill, project: 'Fair Oaks Clinic', customer: 'Fair Oaks Health', number: 1, sentOn: day(-30), certified: 36_000, certifiedOn: day(-4), open: 36_000, dueOn: day(41), daysLate: 0 },
+      { ...bill, project: 'Stone Oak Medical', customer: 'Stone Oak Partners', number: 3, sentOn: day(-5), certified: null, certifiedOn: null, open: 11_000, dueOn: day(15), daysLate: 0, waitingOnArchitect: true },
+    ],
+    sent: [{ project: 'Stone Oak Medical', number: 3, final: false, due: 11_000, sentOn: day(-5) }],
+    certified: [{ project: 'Fair Oaks Clinic', number: 1, final: false, certified: 36_000, certifiedOn: day(-4) }],
+  }
+}
+
 /** The Weekly movement payload (lift 6): the sample company's stage moves in one week, one sent back. */
 export function sampleWeeklyMovementPayload(weekMonday: string): WeeklyMovementPayload {
   const e = (event: string, job: string, display: string, address: string, weekday: string, mover: string, revenue: number, extra: Partial<WeeklyMovementPayloadEntry> = {}): WeeklyMovementPayloadEntry => ({ event_id: event, job_id: job, display, address, weekday, mover_name: mover, revenue, ...extra })
@@ -552,6 +579,11 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
       const p = sampleWeeklyMoneyPayload(monday)
       const week = weekLabelFromMonday(monday)
       return { subject: weeklyMoneySubject(week), html: renderWeeklyMoneyHtml(p, week, ctx.sender?.name || undefined), text: renderWeeklyMoneyText(p, week) }
+    }
+    case 'gc_money_monday': {
+      const p = sampleGcMoneyMondayPayload(ctx.todayYmd)
+      const moneyUrl = `${origin}/gc?view=money`
+      return { subject: gcMoneyMondaySubject(p), html: renderGcMoneyMondayHtml(p, moneyUrl, ctx.sender?.name || undefined), text: renderGcMoneyMondayText(p, moneyUrl) }
     }
     case 'billed_awaiting': {
       const p = sampleBilledReportPayload(ctx.todayYmd)

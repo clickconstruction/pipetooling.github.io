@@ -49,8 +49,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'route', ref: '/estimate/terms', audience: 'homeowner', steps: [H('estimate-terms')] },
   { kind: 'route', ref: '/contract/sign', audience: 'homeowner', steps: [H('job-contract-page'), H('job-contract-signed')] },
   { kind: 'route', ref: '/hazmat-notice', audience: 'homeowner', steps: [H('hazmat-notice')] },
-  { kind: 'route', ref: '/portal', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal')] },
-  { kind: 'route', ref: '/p/:slug', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal')] },
+  { kind: 'route', ref: '/portal', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
+  { kind: 'route', ref: '/p/:slug', audience: 'homeowner', steps: [H('customer-portal'), G('gc-portal'), G('gc-portal-change-order'), G('gc-portal-accept-work')] },
   { kind: 'route', ref: '/pay/:id', audience: 'homeowner', steps: [H('pay-code')] },
   { kind: 'route', ref: '/bid-room', audience: 'gc', steps: [G('bid-room'), G('bid-room-signed')] },
   { kind: 'route', ref: '/submittal', audience: 'gc', steps: [G('submittal-room'), G('submittal-decided')] },
@@ -77,6 +77,8 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'send-bid-room-link', audience: 'gc', steps: [G('bid-room-email'), G('bid-room-revised-email')] },
   // Stage 5a (v2.3528): the office's answer to a question asked on the review room — lands in the reviewer's inbox with their own room link.
   { kind: 'sender', ref: 'send-submittal-reply-email', audience: 'gc', steps: [G('submittal-room')] },
+  // v2.5026 (Submittals decision 11): a named reviewer's own room link, from the Share step or the box on the Share window.
+  { kind: 'sender', ref: 'send-submittal-room-link', audience: 'gc', steps: [G('submittal-room-email')] },
   { kind: 'sender', ref: 'sign-bid-room', audience: 'gc', steps: [G('bid-room-signed')] },
   { kind: 'sender', ref: 'send-bid-pricing-package', audience: 'gc', steps: [G('pricing-package-email')] },
   { kind: 'sender', ref: 'send-test-report', audience: 'gc', steps: [G('test-report-email')] },
@@ -90,8 +92,12 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'legal-send-firm-link', audience: 'firm', steps: [F('firm-welcome-email')] },
   // GC mode (v2.4799): the office's question about the plans, to the owner's architect on the customer record.
   { kind: 'sender', ref: 'gc-plan-question-email', audience: 'owner', steps: [G('plan-question-email')] },
+  // GC mode (the Building lane's U4b): a trade's submittal, to the owner's architect on the customer record.
+  { kind: 'sender', ref: 'gc-architect-email', audience: 'owner', steps: [G('submittal-email')] },
   // GC mode (P3-a): every email to a trade partner company, from one sender.
   { kind: 'sender', ref: 'gc-trade-email', audience: 'sub', steps: [S('gc-trade-email')] },
+  // GC mode (O4b): our emails to a GC project's customer and its architect, from one sender.
+  { kind: 'sender', ref: 'gc-customer-email', audience: 'owner', steps: [G('gc-pay-app-email'), G('gc-certify-ask-email'), G('gc-certified-email'), G('gc-change-order-email'), G('gc-reminder-email'), G('gc-interest-bill-email')] },
   { kind: 'sender', ref: 'submit-portal-request', audience: 'staff', exempt: 'Tells the office a portal request came in; the customer sees the portal\'s own thank-you.' },
   { kind: 'sender', ref: 'billed-report-email', audience: 'staff', exempt: 'The office\'s Billed Awaiting Payment report.' },
   { kind: 'sender', ref: 'crew-day-email-dispatch', audience: 'staff', exempt: 'The crew\'s day email.' },
@@ -113,6 +119,7 @@ export const CUSTOMER_SURFACES: readonly SurfaceEntry[] = [
   { kind: 'sender', ref: 'send-sign-in-email', audience: 'staff', exempt: 'Magic sign-in links for staff.' },
   { kind: 'sender', ref: 'send-workflow-notification', audience: 'staff', exempt: 'Workflow step notifications to app users.' },
   { kind: 'sender', ref: 'statement-round-email-dispatch', audience: 'staff', exempt: 'The office\'s "Your statement round" email.' },
+  { kind: 'sender', ref: 'gc-money-monday-email', audience: 'staff', exempt: 'The money team\'s Monday email about our GC jobs.' },
   { kind: 'sender', ref: 'gc-word-ask', audience: 'staff', exempt: 'The ask-by-link email to an account man — the office asking its own people.' },
   { kind: 'sender', ref: 'send-lien-desk-summary', audience: 'staff', exempt: 'Where the liens stand — the Lien desk’s Share emailing the people who use the desk.' },
   { kind: 'sender', ref: 'sync-resend-emails', audience: 'staff', exempt: 'Dev tooling: mirrors the Resend log.' },

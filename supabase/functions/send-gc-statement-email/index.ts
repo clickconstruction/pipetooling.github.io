@@ -12,6 +12,7 @@ import {
   type RecentStatementSend,
 } from '../_shared/gcStatementSendDedupe.ts'
 import { resolveStatementReplyTo, type ReplyToPerson } from '../_shared/gcStatementReplyTo.ts'
+import { readGcStatementGate } from '../_shared/gcStatementGateIo.ts'
 import { PORTAL_QR_CONTENT_ID, PORTAL_QR_FILENAME } from '../_shared/portalAccountCard.ts'
 import { qrMatrix } from '../_shared/qrMatrix.ts'
 import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
@@ -39,6 +40,12 @@ import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
  * `gcStatementSendDedupe` kernel — the same statement to the same address
  * inside the attended window (10 min, any lane) answers 200
  * `{ success: false, skipped: 'duplicate', error }` and nothing goes out.
+ *
+ * The gate (v2.5022, the owner's call of 2026-10-09): a statement for one GC goes
+ * out only when the GC's bills were checked this week and have not moved since
+ * (`_shared/gcStatementGate.ts`, over the payload the dispatcher builds). Held, it
+ * answers 200 `{ success: false, refused: 'unchecked', error }` with the worklist
+ * row's words and nothing goes out; a gate that cannot read answers 503.
  *
  * The QR code (v2.4255): a statement for one GC may come with `portal_url` and
  * `email_html_qr` — the same body whose account card loads `cid:portal-qr`.
@@ -195,6 +202,22 @@ serve(async (req) => {
     }
 
     const serviceClient = createClient(supabaseUrl, serviceKey)
+
+    // The gate (v2.5022): a GC's statement goes out only when this week's check stands — certified,
+    // and nothing moved since. Held, it answers 200 with the worklist's words, as a duplicate does.
+    if (groupBy === 'gc' && gcCustomerId) {
+      let gate
+      try {
+        gate = await readGcStatementGate(serviceClient, gcCustomerId)
+      } catch (gateErr) {
+        console.error('send-gc-statement-email gate read failed', gateErr)
+        return jsonResponse({ error: 'This week’s checks could not be read, so nothing was sent. Try again.' }, 503)
+      }
+      if (!gate.ok) {
+        console.log('send-gc-statement-email held', gcCustomerId, gate.note)
+        return jsonResponse({ success: false, refused: 'unchecked', error: gate.words })
+      }
+    }
 
     // Replies go to (punch list #49): the caller by default; a named office user takes them and the caller is copied.
     const replyToUserId = typeof body.reply_to_user_id === 'string' && body.reply_to_user_id.trim() ? body.reply_to_user_id.trim() : null

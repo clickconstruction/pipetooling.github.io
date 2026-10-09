@@ -14,6 +14,7 @@ import {
   type StatementReceivedIn,
 } from '../../../supabase/functions/_shared/gcStatementByProperty'
 import { ymdPlusDays } from '../../../supabase/functions/_shared/customerSample'
+import { gcBulkHeldLines, type GcStatementHeldWhy } from '../../../supabase/functions/_shared/gcStatementGate'
 import { buildGcChecksReport } from '../jobs/gcChecksApplied'
 import type { GcChecksInputs } from '../jobs/gcChecksAppliedIo'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -153,10 +154,10 @@ export function gcStatementBillsOf(group: GcReviewGroup): StatementBillIn[] {
 }
 
 /**
- * Money on a job that no bill carries — for the office, before it sends. The
- * statement counts a bill as paid only by payments recorded against it, so a
- * payment put on the job with no bill picked leaves its bills reading owed in
- * full. One entry per job, largest first.
+ * Money put on a job with no bill picked — for the office, before it sends. Since v2.5006 (the
+ * owner's call of 2026-10-09) the statement counts it the way the portal does: the part of the job
+ * on no bill first, then the oldest bills. This is information, not a warning: the office sees which
+ * jobs it applies to and can pick a bill instead. One entry per job, largest first.
  */
 export function gcStatementUnmatchedPayments(group: GcReviewGroup): Array<{ jobId: string; hcp: string; amount: number }> {
   const byJob = new Map<string, { jobId: string; hcp: string; amount: number }>()
@@ -172,7 +173,7 @@ export function gcStatementUnmatchedWords(group: GcReviewGroup): string {
   const jobs = gcStatementUnmatchedPayments(group)
   if (jobs.length === 0) return ''
   const list = jobs.map((j) => `${j.hcp && j.hcp !== '—' ? `Job ${j.hcp}` : 'A job with no number'} $${formatCurrency(j.amount)}`).join(' · ')
-  return `Paid on the job, not on a bill: ${list}. The statement shows ${jobs.length === 1 ? 'that job’s' : 'those jobs’'} bills as owed in full. If the money was for these bills, match it in Edit Job → Payments first.`
+  return `Paid on the job with no bill picked: ${list}. The statement counts it as the portal does, first for the work on no bill, then for the oldest bills. To put it on a different bill, pick the bill in Edit Job → Payments.`
 }
 
 const statementRowsHtml = (rows: GcReviewGroup['rows']): string =>
@@ -233,8 +234,11 @@ export function gcReviewShareAllEmailSubject(groupBy: GcReviewGroupBy, dateStr: 
   return `Open balances (${scope}) — ${GC_STATEMENT_COMPANY_NAME} — ${dateStr}`
 }
 
+/** The GCs a whole report left out (v2.5022): held until their bills are checked, and why. */
+export type GcReportHeld = ReadonlyArray<{ name: string; why: GcStatementHeldWhy }>
+
 export function buildGcReviewShareAllEmailHtml(
-  report: { groups: GcReviewGroup[]; grandTotal: number },
+  report: { groups: GcReviewGroup[]; grandTotal: number; held?: GcReportHeld },
   opts?: GcStatementEmailOpts,
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -251,7 +255,7 @@ export function buildGcReviewShareAllEmailHtml(
   return `<div style="font-family:Arial,Helvetica,sans-serif;max-width:560px">
   ${gcStatementIntroHtml(opts?.introText)}<p style="margin:0;font-size:16px;font-weight:bold;color:#111827">${escapeHtml(GC_STATEMENT_COMPANY_NAME)}</p>
   <p style="margin:2px 0 4px;font-size:13px;color:#4b5563">Open balances by ${scope} · ${escapeHtml(dateStr)}</p>
-  ${sectionsHtml}
+  ${gcBulkHeldLines(report.held ?? []).map((line) => `<p style="margin:2px 0 4px;font-size:12px;color:#92400e">${escapeHtml(line)}</p>`).join('')}${sectionsHtml}
   <table style="width:100%;border-collapse:collapse;margin-top:14px">
     <tbody>
       <tr>
@@ -270,7 +274,7 @@ const introTextLines = (introText: string | null | undefined): string[] => {
 }
 
 export function buildGcReviewShareAllEmailText(
-  report: { groups: GcReviewGroup[]; grandTotal: number },
+  report: { groups: GcReviewGroup[]; grandTotal: number; held?: GcReportHeld },
   opts?: GcStatementEmailOpts,
 ): string {
   const dateStr = opts?.dateStr ?? new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -284,6 +288,7 @@ export function buildGcReviewShareAllEmailText(
     ...introTextLines(opts?.introText),
     GC_STATEMENT_COMPANY_NAME,
     `Open balances by ${scope} · ${dateStr}`,
+    ...gcBulkHeldLines(report.held ?? []),
     '',
     ...sections,
     `Total owed: $${formatCurrency(report.grandTotal)}`,

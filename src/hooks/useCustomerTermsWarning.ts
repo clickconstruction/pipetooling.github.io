@@ -6,9 +6,10 @@ import { buildCustomerPromiseRecords, classifyPromises, parsePromiseRecordsRpc, 
 
 /**
  * "Their Word" PR 4 — the terms bar New Bid and New Job show for the customer
- * being picked. Fetches the customer's terms columns and the promise record
- * (office roles; the RPC returns NULL for anyone else) and folds them into
- * one warning. Fail-soft everywhere: a missing column or an unpushed RPC just
+ * being picked (a GC too: both forms pass the GC when the GC is the payer).
+ * Fetches the customer's terms columns, the promise record (office roles; the
+ * RPC returns NULL for anyone else) and the bills given up on where they were
+ * the customer or the GC the job billed, and folds them into one warning. Fail-soft everywhere: a missing column or an unpushed RPC just
  * means no bar. Re-runs when the customer changes; `refreshKey` forces a
  * reload after terms are edited.
  */
@@ -54,10 +55,12 @@ export function useCustomerTermsWarning(customerId: string | null | undefined, r
       }
       try {
         // Punch list #94 (v2.4795): bills the office gave up on — the nudge toward Deposit required on the next job.
+        // Since v2.5015 (the owner's call of 2026-10-09) a GC the job billed counts them too: the debtor on a
+        // GC-pays job is the GC (J1002 through Heron Construction Group, 881 through RMC- Dudley Mason).
         const { data } = await supabase
           .from('jobs_ledger')
           .select('revenue, payments_made' as never)
-          .eq('customer_id', customerId)
+          .or(`customer_id.eq.${customerId},and(gc_customer_id.eq.${customerId},bill_to_party.eq.gc)`)
           .eq('status', 'billed')
           .not('collections_at', 'is', null)
           .not('uncollectible_at', 'is', null)

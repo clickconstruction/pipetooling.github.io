@@ -13,6 +13,7 @@
  * HCP backfills included, as the strip counts them).
  */
 import { jobBilledContribution, lifetimeCollected } from '../billing/billTruth'
+import { attributeJobPayments } from '../jobs/paymentAttribution'
 
 export type CustomerInvoiceInput = {
   id: string
@@ -33,6 +34,8 @@ export type CustomerInvoicePaymentInput = {
   invoice_id: string | null
   amount: number | null
   paid_on: string | null
+  /** The payment's job — how money put on the job with no bill picked reaches a bill (v2.5010). */
+  job_id?: string | null
 }
 
 export type CustomerInvoiceJob = {
@@ -89,14 +92,38 @@ export function buildCustomerInvoiceRows(
   todayYmd: string,
 ): { rows: CustomerInvoiceRow[]; totals: CustomerInvoiceTotals } {
   const jobLabelById = new Map(jobs.map((j) => [j.id, j.label]))
+  // What paid each bill under the one rule (v2.5010; the owner's call of 2026-10-09): its linked
+  // payments, and the job's unlinked money — the part of the job on no bill first, then the sent
+  // bills oldest first (`attributeJobPayments`). The last-paid day is the newest payment the rule
+  // puts on the bill, so a bill paid by money on no bill still shows when.
   const appliedByInvoice = new Map<string, number>()
   const lastPaidByInvoice = new Map<string, string>()
+  const jobOfInvoice = new Map(invoices.map((i) => [i.id, i.job_id]))
+  const paymentsByJob = new Map<string, CustomerInvoicePaymentInput[]>()
   for (const p of payments) {
-    if (!p.invoice_id) continue
-    appliedByInvoice.set(p.invoice_id, (appliedByInvoice.get(p.invoice_id) ?? 0) + Number(p.amount ?? 0))
-    if (p.paid_on) {
-      const prev = lastPaidByInvoice.get(p.invoice_id)
-      if (!prev || p.paid_on > prev) lastPaidByInvoice.set(p.invoice_id, p.paid_on)
+    const jobId = p.job_id ?? (p.invoice_id ? jobOfInvoice.get(p.invoice_id) : undefined)
+    if (!jobId) continue
+    const list = paymentsByJob.get(jobId)
+    if (list) list.push(p)
+    else paymentsByJob.set(jobId, [p])
+  }
+  const invoicesOfJob = new Map<string, CustomerInvoiceInput[]>()
+  for (const inv of invoices) {
+    const list = invoicesOfJob.get(inv.job_id)
+    if (list) list.push(inv)
+    else invoicesOfJob.set(inv.job_id, [inv])
+  }
+  const revenueByJob = new Map(jobs.map((j) => [j.id, j.revenue ?? null]))
+  for (const [jobId, jobInvoices] of invoicesOfJob) {
+    const attribution = attributeJobPayments(jobInvoices, paymentsByJob.get(jobId) ?? [], revenueByJob.get(jobId) ?? null)
+    for (const [invoiceId, bill] of attribution.byBill) {
+      appliedByInvoice.set(invoiceId, bill.applied)
+      for (const slice of bill.slices) {
+        const paidOn = slice.payment.paid_on
+        if (!paidOn) continue
+        const prev = lastPaidByInvoice.get(invoiceId)
+        if (!prev || paidOn > prev) lastPaidByInvoice.set(invoiceId, paidOn)
+      }
     }
   }
 

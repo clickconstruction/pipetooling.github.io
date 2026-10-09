@@ -11,6 +11,7 @@ import {
   isValidEstimateSelection,
   normalizeEstimateOptionsFromJson,
   recommendedEstimateOption,
+  setEstimateAddOnPreticked,
   setEstimateOptionKind,
   setRecommendedEstimateOption,
   toggleEstimateOptionSelection,
@@ -290,5 +291,55 @@ describe('describeEstimateSelection', () => {
 
   it('an unnamed option reads as Option', () => {
     expect(describeEstimateSelection([opt('a', '  ', 1), opt('b', 'B', 2)], ['a']).label).toBe('"Option"')
+  })
+})
+
+describe('a recommended add-on starts ticked (v2.5018, the owner’s call of 2026-10-09)', () => {
+  // Replace (★) or Repair; a softener the office recommends, and hose bibs it does not.
+  const raw = [
+    { key: 'replace', name: 'Replace 50-gal', recommended: true, kind: 'choice', line_items: [line('Heater', 480000)] },
+    { key: 'repair', name: 'Repair', kind: 'choice', preticked: true, line_items: [line('Valve', 45000)] },
+    { key: 'softener', name: 'Water softener', kind: 'add_on', preticked: true, line_items: [line('Softener', 150000)] },
+    { key: 'bibs', name: 'Hose bibs', kind: 'add_on', preticked: 'yes', line_items: [line('Bibs', 24000)] },
+  ]
+  const options = normalizeEstimateOptionsFromJson(raw)
+
+  it('only an add-on keeps the mark, and only a true one', () => {
+    expect(options.map((o) => [o.key, o.preticked ?? false])).toEqual([['replace', false], ['repair', false], ['softener', true], ['bibs', false]])
+    expect('preticked' in options[1]!).toBe(false)
+  })
+
+  it('the page starts with the ★ choice and the pre-ticked add-on, in offered order', () => {
+    expect(defaultEstimateSelection(options)).toEqual(['replace', 'softener'])
+  })
+
+  it('an all-add-on estimate starts with its pre-ticked ones; with none marked it still starts empty', () => {
+    const addOnsOnly = normalizeEstimateOptionsFromJson(raw.filter((o) => o.kind === 'add_on'))
+    expect(defaultEstimateSelection(addOnsOnly)).toEqual(['softener'])
+    expect(defaultEstimateSelection(setEstimateAddOnPreticked(addOnsOnly, 'softener', false))).toEqual([])
+  })
+
+  it('the customer unticks it freely, and acceptance freezes only what was ticked', () => {
+    const start = defaultEstimateSelection(options)
+    expect(freezeAcceptedEstimateOptions(options, start)?.accepted_option_keys).toEqual(['replace', 'softener'])
+    expect(freezeAcceptedEstimateOptions(options, start)?.total_cents).toBe(480000 + 150000)
+    const unticked = toggleEstimateOptionSelection(options, start, 'softener')
+    expect(unticked).toEqual(['replace'])
+    expect(isValidEstimateSelection(options, unticked)).toEqual({ ok: true })
+    expect(freezeAcceptedEstimateOptions(options, unticked)?.accepted_option_keys).toEqual(['replace'])
+  })
+
+  it('the office marks and unmarks an add-on; a choice cannot be marked, and turning an add-on into a choice drops the mark', () => {
+    const marked = setEstimateAddOnPreticked(options, 'bibs', true)
+    expect(marked.find((o) => o.key === 'bibs')?.preticked).toBe(true)
+    expect(setEstimateAddOnPreticked(marked, 'bibs', false).find((o) => o.key === 'bibs')?.preticked).toBeUndefined()
+    expect(setEstimateAddOnPreticked(options, 'repair', true).find((o) => o.key === 'repair')?.preticked).toBeUndefined()
+    const asChoice = setEstimateOptionKind(options, 'softener', 'choice').find((o) => o.key === 'softener')!
+    expect([asChoice.kind, asChoice.preticked]).toEqual(['choice', undefined])
+  })
+
+  it('the office’s mark survives a save and a read back', () => {
+    const saved = estimateOptionsDraftPersistFields(options, null, []).options_snapshot
+    expect(normalizeEstimateOptionsFromJson(JSON.parse(JSON.stringify(saved))).find((o) => o.key === 'softener')?.preticked).toBe(true)
   })
 })

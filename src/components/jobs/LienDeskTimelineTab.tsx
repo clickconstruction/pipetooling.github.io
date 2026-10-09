@@ -124,7 +124,7 @@ export default function LienDeskTimelineTab({ book, loading, error, gcId, onGcId
                   Waiting on <strong style={{ color: 'var(--text-strong)' }}>{lienMoveWords(t.waitingOn.who)}</strong> — {t.waitingOn.words}
                 </span>
               ) : null}
-              {t.kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>commercial dates · a month earlier if residential</span> : null}
+              {t.kindUnknown ? <span style={{ color: 'var(--text-amber-800)' }}>kind not set · residential dates · a month later if commercial</span> : null}
             </span>
           </div>
         )

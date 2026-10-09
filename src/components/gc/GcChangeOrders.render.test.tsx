@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcChangeOrdersWindow } from './GcChangeOrders'
 import { changeOrderPrice } from '../../lib/gc/ownerBilling'
 import { initialGcState } from '../../lib/gc/schedule/testState'
@@ -20,7 +20,7 @@ const base: Omit<ChangeOrder, 'id' | 'number' | 'status' | 'sentOn' | 'answeredO
   days: 3,
 }
 
-function setup() {
+function setup(emailed: Record<string, { to: string; on: string }[]> = {}) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
   const project = {
@@ -32,25 +32,55 @@ function setup() {
     ],
   }
   const writes = { onDraft: vi.fn(), onSend: vi.fn(), onAnswer: vi.fn(), onSetPct: vi.fn(), onDelete: vi.fn() }
-  render(<GcChangeOrdersWindow state={state} project={project} today="2026-10-02" writes={writes} onClose={() => undefined} />)
+  render(<GcChangeOrdersWindow state={state} project={project} today="2026-10-02" writes={writes} emailed={emailed} onClose={() => undefined} />)
   return { project, writes }
 }
 
 describe('GcChangeOrdersWindow', () => {
+  it('says an answer came from their portal, and a decline’s reason (O7c)', () => {
+    const state = initialGcState()
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
+    const project = {
+      ...fairOaks,
+      changeOrders: [
+        { ...base, id: 'co-4', number: 4, status: 'declined' as const, sentOn: '2026-10-01', answeredOn: '2026-10-02', answeredInPortal: true, declinedNote: 'Over our budget this year' },
+        { ...base, id: 'co-5', number: 5, status: 'signed' as const, sentOn: '2026-10-01', answeredOn: '2026-10-02', answeredInPortal: true },
+        { ...base, id: 'co-6', number: 6, status: 'declined' as const, sentOn: '2026-10-01', answeredOn: '2026-10-02' },
+      ],
+    }
+    const writes = { onDraft: vi.fn(), onSend: vi.fn(), onAnswer: vi.fn(), onSetPct: vi.fn(), onDelete: vi.fn() }
+    render(<GcChangeOrdersWindow state={state} project={project} today="2026-10-02" writes={writes} emailed={{}} onClose={() => undefined} />)
+    expect(screen.getAllByText('declined Oct 2 in their portal')).toHaveLength(1)
+    expect(screen.getByText('Their reason: Over our budget this year')).toBeTruthy()
+    expect(screen.getByText('signed Oct 2 in their portal')).toBeTruthy()
+    expect(screen.getByText('declined Oct 2')).toBeTruthy()
+    cleanup()
+  })
+
   it('sends or deletes a draft, records the answer to a sent one, and marks how much of a signed one is done', () => {
     const { writes } = setup()
     expect(screen.getByText('+$1,100 signed')).toBeTruthy()
     expect(screen.getByText('1 waiting on Cibolo Creek Partners')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Send for signature' }))
-    expect(writes.onSend).toHaveBeenCalledWith('co-1')
+    // The email starts off: an untouched Send emails no one.
+    expect(writes.onSend).toHaveBeenCalledWith('co-1', false)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Email it to the customer now' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send for signature' }))
+    expect(writes.onSend).toHaveBeenLastCalledWith('co-1', true)
     fireEvent.click(screen.getByRole('button', { name: 'Delete the draft' }))
     expect(writes.onDelete).toHaveBeenCalledWith('co-1')
-    expect(document.body.textContent).toContain('Send these words from your own email.')
+    expect(document.body.textContent).toContain('It went without an email. Send these words from your own email.')
     expect(document.body.textContent).toContain('Change order 2 for Fair Oaks Shops, Building D: Add a coffee bar cabinet, per the customer. It adds $1,100 to the price. It adds 3 days to the job.')
     fireEvent.click(screen.getByRole('button', { name: 'They signed' }))
     expect(writes.onAnswer).toHaveBeenCalledWith('co-2', true, '2026-10-02')
     fireEvent.change(screen.getByLabelText('How much of change order 3 is done'), { target: { value: '40' } })
     expect(writes.onSetPct).toHaveBeenCalledWith('co-3', 40)
+  })
+
+  it('says who an emailed one went to, in place of the words to send yourself', () => {
+    setup({ 'co-2': [{ to: 'Cibolo Creek Partners', on: '2026-10-01' }] })
+    expect(document.body.textContent).toContain('Emailed to Cibolo Creek Partners on Oct 1.')
+    expect(document.body.textContent).not.toContain('Send these words from your own email.')
   })
 
   it('drafts a new one at the cost plus the job’s fee unless the office types a price', () => {

@@ -99,7 +99,7 @@ export function SupplyHouseForm({
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const { data: types } = await supabase.from('service_types').select('id, name').order('sequence_order', { ascending: true })
+      const { data: types } = await supabase.from('service_types').select('id, name').eq('billing_only', false).order('sequence_order', { ascending: true })
       if (cancelled) return
       setTradeTypes(((types ?? []) as TradeType[]))
       if (!editingSupplyHouse) return

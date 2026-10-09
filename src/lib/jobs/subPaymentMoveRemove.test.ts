@@ -1,11 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import {
+  SUB_BACKCHARGE_STAYS,
   SUB_PAYMENT_REMOVE_REASONS,
   canUndoSubPaymentRemoval,
   planSubPaymentMove,
   rankSubPaymentMoveDestinations,
   sheetLabel,
   sheetMoney,
+  subPaymentMoveRefusal,
   subPaymentRemoveReasonText,
   subPaymentTraceLines,
 } from './subPaymentMoveRemove'
@@ -30,6 +32,17 @@ const s880 = sheet({ id: 's880', payments: [pay('p1', 2000, 'ck#0401')] })
 const s922 = sheet({ id: 's922', job_number: '922', job_ledger_id: 'j922', address: '4218 Ridgecrest Dr', items: [{ fixture: 'x', count: 20, hrs_per_unit: 1 }], payments: [] })
 const s1001 = sheet({ id: 's1001', job_number: '1001', job_ledger_id: 'j1001', address: '200 Prospect Ave', job_date: '2026-09-12', items: [{ fixture: 'x', count: 64, hrs_per_unit: 1 }], payments: [pay('p9', 1000)] })
 const behar = sheet({ id: 'sB', assigned_to_name: 'Behar Kraja', job_number: '901', job_ledger_id: null, address: '9 Oak Ln', items: [{ fixture: 'x', count: 10, hrs_per_unit: 1 }] })
+
+describe('subPaymentMoveRefusal — a backcharge stays on its sheet (the owner’s call of 2026-10-09)', () => {
+  it('refuses a backcharge by its sign or its flag, in one line, and lets a payment move', () => {
+    expect(SUB_BACKCHARGE_STAYS).toBe('A backcharge stays on the sheet it was raised on.')
+    expect(subPaymentMoveRefusal({ amount: -75 })).toBe(SUB_BACKCHARGE_STAYS)
+    expect(subPaymentMoveRefusal({ amount: '-12.50' })).toBe(SUB_BACKCHARGE_STAYS)
+    expect(subPaymentMoveRefusal({ amount: 75, isBackcharge: true })).toBe(SUB_BACKCHARGE_STAYS)
+    expect(subPaymentMoveRefusal({ amount: 250 })).toBeNull()
+    expect(subPaymentMoveRefusal({ amount: 250, isBackcharge: false })).toBeNull()
+  })
+})
 
 describe('sheetMoney / sheetLabel', () => {
   it('reads the sheet the way the modal does', () => {

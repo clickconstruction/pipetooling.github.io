@@ -62,7 +62,7 @@ vi.mock('../banking/debitCards', () => ({ loadDebitCardDirectory: () => loadDire
 // The raw-payload parser has its own suite; here a card id rides on `raw.cardId`.
 vi.mock('../mercuryRawDebitCard', () => ({ mercuryDebitCardIdFromRaw: (raw: { cardId?: string } | null) => raw?.cardId ?? null }))
 
-import { loadWheelsSnapshot, saveVehicleRateOverride } from './wheelsData'
+import { loadWheelsFixedRates, loadWheelsSnapshot, saveVehicleRateOverride } from './wheelsData'
 
 const argsOf = (steps: Step[], m: string) => steps.filter((s) => s.method === m).map((s) => s.args)
 const q = (table: string, pred: (steps: Step[]) => boolean = () => true) => queries.find((x) => x.table === table && pred(x.steps))!
@@ -166,8 +166,8 @@ describe('loadWheelsSnapshot', () => {
       ['v2', 'Chevy Van', null, null, 0], // motor pool
     ])
     // 90 days = 12.857 weeks: insurance 35/wk on plan, registration 7/wk, one costed service, Bob has no fuel.
-    expect(snap.trucks[0]!.cost).toEqual({ fuel: 0, insurance: 450, registration: 90, service: 120, total: 660, ratePerFieldHour: 165, fixedRatePerFieldHour: 165 })
-    expect(snap.trucks[1]!.cost).toEqual({ fuel: 0, insurance: 0, registration: 0, service: 0, total: 0, ratePerFieldHour: null, fixedRatePerFieldHour: null }) // no insurance period: not on plan
+    expect(snap.trucks[0]!.cost).toEqual({ fuel: 0, insurance: 450, registration: 90, service: 120, wear: 0, hasReplacementValue: false, total: 660, ratePerFieldHour: 165, fixedRatePerFieldHour: 165 })
+    expect(snap.trucks[1]!.cost).toEqual({ fuel: 0, insurance: 0, registration: 0, service: 0, wear: 0, hasReplacementValue: false, total: 0, ratePerFieldHour: null, fixedRatePerFieldHour: null }) // no insurance period: not on plan
   })
 
   it('builds a row per pay-config person — company holders first — linking names to logins by trimmed name', async () => {
@@ -178,7 +178,7 @@ describe('loadWheelsSnapshot', () => {
       ['Ana', 'u-ana', 'own_fuel_paid', 50, 8, 0, 0],
       ['Cy', null, 'none', 0, 0, null, 2.5], // unknown arrangement → none; a manual fixed rate wins
     ])
-    expect(snap.rows[0]!.note).toBe('2022 Ford F-150 · $660 fixed ÷ 4.0 field h; fuel stays on the jobs')
+    expect(snap.rows[0]!.note).toBe('2022 Ford F-150 · $660 fixed ÷ 4.0 field h, no replacement value on file; fuel stays on the jobs')
     expect(snap.rows[2]!.note).toBe('manual fixed rate; fuel stays on the jobs')
     expect(snap.comparison).toEqual({ ownAvg: 6.25, companyAvg: 165 })
   })
@@ -230,5 +230,117 @@ describe('saveVehicleRateOverride', () => {
       throw new Error('read only')
     }
     await expect(saveVehicleRateOverride('Ana', 1)).rejects.toThrow('read only')
+  })
+})
+
+describe('v2.5039 · wear and the fixed rates alone', () => {
+  const values = [
+    { vehicle_id: 'v1', replacement_value: 30000, read_date: '2026-03-01' },
+    { vehicle_id: 'v1', replacement_value: 36500, read_date: '2026-08-01' },
+  ]
+  const withValues = (table: string, steps: Step[]): unknown => (table === 'vehicle_replacement_value_entries' ? [...values].reverse() : routeScenario(table, steps))
+  it('reads each truck’s latest replacement value up to today and prices its wear', async () => {
+    route = withValues
+    const snap = await loadWheelsSnapshot(input)
+    const rv = q('vehicle_replacement_value_entries')
+    expect(argsOf(rv.steps, 'lte')).toEqual([['read_date', '2026-09-07']])
+    expect(argsOf(rv.steps, 'order')).toEqual([['read_date', { ascending: false }]])
+    // $36,500 over a five-year life is $20 a day: $1,800 over the 90 days.
+    expect(snap.trucks[0]!.cost).toMatchObject({ wear: 1800, hasReplacementValue: true, total: 2460, fixedRatePerFieldHour: 615 })
+    expect(snap.rows.find((r) => r.name === 'Bob ')!.note).toBe('2022 Ford F-150 · $2,460 fixed ÷ 4.0 field h; fuel stays on the jobs')
+  })
+  it('the fixed rates alone read no card charges, and match the snapshot’s', async () => {
+    route = withValues
+    const { rows, window } = await loadWheelsFixedRates(input)
+    expect(window).toEqual({ start: '2026-06-10', end: '2026-09-07', days: 90 })
+    expect(queries.some((x) => x.table === 'mercury_transactions')).toBe(false)
+    expect(loadCategoryTags).not.toHaveBeenCalled()
+    expect(rows.map((r) => [r.name, r.arrangement, r.fixedRate])).toEqual([
+      ['Bob ', 'company', 615],
+      ['Ana', 'own_fuel_paid', 0],
+      ['Cy', 'none', 2.5],
+    ])
+  })
+  it('a read of the values that fails leaves every truck without wear, and the report still loads', async () => {
+    route = (table, steps) => {
+      if (table === 'vehicle_replacement_value_entries') throw new Error('no table')
+      return routeScenario(table, steps)
+    }
+    const snap = await loadWheelsSnapshot(input)
+    expect(snap.trucks[0]!.cost).toMatchObject({ wear: 0, hasReplacementValue: false })
+  })
+})
+
+describe('v2.5039 · the fleet rate (the fixture the SQL read was checked against)', () => {
+  // The same rows `fleet_truck_rate_per_field_hour('2026-10-09')` was run over on a local Postgres:
+  // both give $3,245.30 over 18 field hours. The route applies each read's date bounds and order,
+  // so a row outside the window is the query's to drop, as it is on the server.
+  const fx: Record<string, Array<Record<string, unknown>>> = {
+    vehicles: [
+      { id: 'f1', year: 2021, make: 'Ford', model: 'F-250', vin: null, weekly_insurance_cost: 50, weekly_registration_cost: 5 },
+      { id: 'f2', year: 2019, make: 'Ram', model: '1500', vin: null, weekly_insurance_cost: 40, weekly_registration_cost: 3.5 },
+      { id: 'f3', year: null, make: 'Trailer', model: '', vin: null, weekly_insurance_cost: null, weekly_registration_cost: null },
+      { id: 'f4', year: 2024, make: 'Ford', model: 'Transit', vin: null, weekly_insurance_cost: 30, weekly_registration_cost: -2 },
+    ],
+    vehicle_insurance_periods: [
+      { id: 'i1', vehicle_id: 'f1', start_date: '2026-01-01', end_date: null, created_at: null }, // on a plan today
+      { id: 'i2', vehicle_id: 'f2', start_date: '2026-01-01', end_date: '2026-09-30', created_at: null }, // ended: no premium
+      { id: 'i4', vehicle_id: 'f4', start_date: '2026-10-10', end_date: null, created_at: null }, // starts tomorrow
+    ],
+    vehicle_service_events: [
+      { vehicle_id: 'f1', cost: 120, service_date: '2026-08-01' },
+      { vehicle_id: 'f1', cost: 300, service_date: '2026-07-11' }, // the day before the window
+      { vehicle_id: 'f1', cost: 80, service_date: '2026-10-09' }, // today
+      { vehicle_id: 'f1', cost: null, service_date: '2026-09-01' },
+      { vehicle_id: 'f4', cost: -50, service_date: '2026-09-01' }, // a credit bigger than the bill: service floors at $0
+      { vehicle_id: 'f4', cost: 20, service_date: '2026-09-02' },
+      { vehicle_id: 'f2', cost: 999, service_date: '2026-10-10' }, // tomorrow
+    ],
+    vehicle_replacement_value_entries: [
+      { vehicle_id: 'f1', replacement_value: 30000, read_date: '2026-01-01' },
+      { vehicle_id: 'f1', replacement_value: 36500, read_date: '2026-06-01' },
+      { vehicle_id: 'f1', replacement_value: 50000, read_date: '2026-10-10' }, // tomorrow's reading
+      { vehicle_id: 'f2', replacement_value: 20000, read_date: '2026-03-01' },
+      { vehicle_id: 'f2', replacement_value: 0, read_date: '2026-09-01' }, // the latest reading is $0: no wear, whatever came before
+      { vehicle_id: 'f4', replacement_value: 10000, read_date: '2026-10-09' },
+    ],
+    clock_sessions: [
+      { id: 's01', work_date: '2026-08-03', ...session({ user_id: 'u-a', clocked_in_at: '2026-08-03T13:00:00Z', clocked_out_at: '2026-08-03T21:00:00Z' }) }, // 8 h
+      { id: 's02', work_date: '2026-10-09', ...session({ user_id: 'u-b', clocked_in_at: '2026-10-09T13:00:00Z', clocked_out_at: '2026-10-09T20:30:00Z' }) }, // 7.5 h
+      { id: 's03', work_date: '2026-07-11', ...session({ user_id: 'u-a', clocked_in_at: '2026-07-11T13:00:00Z', clocked_out_at: '2026-07-11T17:00:00Z' }) }, // before the window
+      { id: 's04', work_date: '2026-08-04', ...session({ user_id: 'u-a', bid_id: 'b1', clocked_in_at: '2026-08-04T13:00:00Z', clocked_out_at: '2026-08-04T16:00:00Z' }) },
+      { id: 's05', work_date: '2026-08-04', ...session({ user_id: 'u-b', job_ledger_id: null, clocked_in_at: '2026-08-04T13:00:00Z', clocked_out_at: '2026-08-04T15:00:00Z' }) },
+      { id: 's06', work_date: '2026-08-05', ...session({ user_id: 'u-a', rejected_at: '2026-08-06T00:00:00Z', clocked_in_at: '2026-08-05T13:00:00Z', clocked_out_at: '2026-08-05T18:00:00Z' }) },
+      { id: 's07', work_date: '2026-08-06', ...session({ user_id: 'u-a', revoked_at: '2026-08-07T00:00:00Z', clocked_in_at: '2026-08-06T13:00:00Z', clocked_out_at: '2026-08-06T18:00:00Z' }) },
+      { id: 's08', work_date: '2026-08-07', ...session({ user_id: 'u-a', approved_at: null, clocked_in_at: '2026-08-07T13:00:00Z', clocked_out_at: '2026-08-07T18:00:00Z' }) },
+      { id: 's09', work_date: '2026-08-08', ...session({ user_id: 'u-a', clocked_in_at: '2026-08-08T13:00:00Z', clocked_out_at: null }) },
+      { id: 's10', work_date: '2026-08-09', ...session({ user_id: 'u-a', clocked_in_at: '2026-08-09T18:00:00Z', clocked_out_at: '2026-08-09T13:00:00Z' }) },
+      { id: 's11', work_date: '2026-09-15', ...session({ user_id: 'u-c', job_ledger_id: 'j2', clocked_in_at: '2026-09-15T14:00:00Z', clocked_out_at: '2026-09-15T16:30:00Z' }) }, // 2.5 h
+    ],
+  }
+  const bounded = (rows: Array<Record<string, unknown>>, steps: Step[]) => {
+    let out = [...rows]
+    for (const { method, args } of steps) {
+      const field = String(args[0])
+      if (method === 'gte') out = out.filter((r) => String(r[field]) >= String(args[1]))
+      if (method === 'lte') out = out.filter((r) => String(r[field]) <= String(args[1]))
+      if (method === 'order') {
+        const dir = (args[1] as { ascending?: boolean } | undefined)?.ascending === false ? -1 : 1
+        out.sort((a, b) => dir * String(a[field]).localeCompare(String(b[field])))
+      }
+    }
+    return out
+  }
+  it('every vehicle’s fixed costs and wear over the whole crew’s field hours', async () => {
+    route = (table, steps) => bounded(fx[table] ?? [], steps)
+    const snap = await loadWheelsSnapshot({ todayYmd: '2026-10-09', users: [] })
+    // f1 $642.86 + $64.29 + $200 + $1,800 · f2 $45 · f3 nothing · f4 $493.15 = $3,245.30; 8 + 7.5 + 2.5 h.
+    expect(snap.fleet).toEqual({ fixedUsd: 3245.3, ratePerFieldHour: 180.29, fieldHours: 18, trucks: 4 })
+    expect(snap.trucks.find((t) => t.vehicleId === 'f2')!.cost).toMatchObject({ wear: 0, hasReplacementValue: false })
+  })
+  it('no field hours in the window: the totals, and no rate', async () => {
+    route = (table, steps) => (table === 'clock_sessions' ? [] : bounded(fx[table] ?? [], steps))
+    const snap = await loadWheelsSnapshot({ todayYmd: '2026-10-09', users: [] })
+    expect(snap.fleet).toEqual({ fixedUsd: 3245.3, ratePerFieldHour: null, fieldHours: 0, trucks: 4 })
   })
 })

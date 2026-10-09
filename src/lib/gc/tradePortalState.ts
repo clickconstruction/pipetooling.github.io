@@ -3,11 +3,13 @@
  * as `gc-trade-portal` returns it (`supabase/functions/_shared/gcTradePortalSlice.ts`), turned into the prototype's shapes
  * the portal's kernels read (`portal.ts`, `planQuestions.ts`). The slice never carries our money, so every money field
  * here is 0 and the kernels that would show it never see a real figure. What a later lane owns and the slice does not carry
- * yet (the award, the statement of work, the papers, the schedule) comes in empty, so its block stays hidden.
+ * yet (the papers, the draws, the schedule) comes in empty, so its block stays hidden. Since P4b-i the slice carries the
+ * company's own award, statement of work, charges and change requests, and of each change order its request became only
+ * its part, so a change order here has a cost and never a price.
  */
 import type { TradePortalSlice } from '../../../supabase/functions/_shared/gcTradePortalSlice'
 import type { PortalLang } from './portalI18n'
-import type { AskContact, GcProject, GcStage, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, SubBid, TradePackage, TradePromise } from './types'
+import type { AskContact, BackCharge, ChangeOrder, ChangeOrderReason, GcProject, GcStage, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, Sow, SubBid, TradeChangeRequest, TradePackage, TradePromise } from './types'
 
 type Row = Record<string, unknown>
 
@@ -128,6 +130,94 @@ function questionsOf(slice: TradePortalSlice, companyId: string, projectId: stri
     })
 }
 
+const CHARGE_STATUSES: BackCharge['status'][] = ['open', 'agreed', 'disputed', 'kept', 'dropped']
+
+/** A charge to the company, in the prototype's shape: its answer, the office's keep or drop, and the draw it came off. */
+function backChargeOf(c: Row): BackCharge {
+  const status = str(c.status) as BackCharge['status']
+  return {
+    id: str(c.id),
+    amount: num(c.amount),
+    reason: str(c.reason),
+    photo: strOrNull(c.photo_url),
+    sentOn: str(c.sent_on),
+    answerBy: str(c.answer_by),
+    status: CHARGE_STATUSES.includes(status) ? status : 'open',
+    ...(strOrNull(c.answered_on) ? { answer: { on: str(c.answered_on), note: str(c.answer_note) } } : {}),
+    ...(strOrNull(c.settled_on) ? { settled: { on: str(c.settled_on), note: str(c.settled_note) } } : {}),
+    ...(strOrNull(c.taken_on) ? { taken: { drawId: str(c.taken_draw_id), on: str(c.taken_on) } } : {}),
+  }
+}
+
+/** The trade's statement of work, with the charges on it. The lines and the draws come with Building's U6. */
+function sowOf(slice: TradePortalSlice, packageId: string): Sow | null {
+  const row = (slice.sows ?? []).find((s) => str(s.package_id) === packageId)
+  if (!row) return null
+  const status = str(row.status)
+  return {
+    status: status === 'sent' || status === 'signed' ? status : 'draft',
+    price: num(row.price),
+    retainagePct: num(row.retainage_pct),
+    basedOnRev: num(row.based_on_rev),
+    sov: [],
+    signedOn: strOrNull(row.signed_on),
+    draws: [],
+    ...(strOrNull(row.sent_on) ? { sentOn: str(row.sent_on) } : {}),
+    backCharges: (slice.backCharges ?? []).filter((c) => str(c.sow_id) === str(row.id)).sort((a, b) => str(a.sent_on).localeCompare(str(b.sent_on))).map(backChargeOf),
+  }
+}
+
+const REASONS: ChangeOrderReason[] = ['owner', 'field', 'plans']
+const reasonOf = (v: unknown): ChangeOrderReason => ((REASONS as string[]).includes(str(v)) ? (str(v) as ChangeOrderReason) : 'field')
+
+/** The changes the company asked for on a project, oldest first, as `portalChangeRequests` reads them. */
+function changeRequestsOf(slice: TradePortalSlice, companyId: string, projectId: string): TradeChangeRequest[] {
+  return (slice.changeRequests ?? [])
+    .filter((r) => str(r.project_id) === projectId)
+    .sort((a, b) => str(a.asked_on).localeCompare(str(b.asked_on)) || str(a.created_at).localeCompare(str(b.created_at)))
+    .map((r) => ({
+      id: str(r.id),
+      packageId: str(r.package_id),
+      partnerId: companyId,
+      askedOn: str(r.asked_on),
+      description: str(r.description),
+      reason: reasonOf(r.reason),
+      amount: num(r.amount),
+      days: num(r.days),
+      file: strOrNull(r.file_url),
+      changeOrderId: strOrNull(r.change_order_id),
+      turnedDown: strOrNull(r.turned_down_on) ? { on: str(r.turned_down_on), note: str(r.turned_down_note) } : null,
+    }))
+}
+
+/**
+ * The change orders the company’s requests became, as their part only: the slice carries the number, the status, the days
+ * sent and answered and the cost, so the price is 0 and the words are none. `portalChangeRequests` reads the cost as "Your part".
+ */
+function changeOrdersOf(slice: TradePortalSlice, requests: TradeChangeRequest[]): ChangeOrder[] {
+  return requests.flatMap((r) => {
+    const o = (slice.changeOrders ?? []).find((c) => str(c.id) === r.changeOrderId)
+    if (!o) return []
+    const status = str(o.status)
+    return [
+      {
+        id: str(o.id),
+        number: num(o.number),
+        description: '',
+        reason: r.reason,
+        schedule: '',
+        packageId: r.packageId,
+        cost: num(o.cost),
+        price: 0,
+        status: status === 'sent' || status === 'signed' || status === 'declined' ? status : 'draft',
+        sentOn: strOrNull(o.sent_on),
+        answeredOn: strOrNull(o.answered_on),
+        pctDone: 0,
+      },
+    ]
+  })
+}
+
 function projectOf(slice: TradePortalSlice, companyId: string, entry: TradePortalSlice['projects'][number]): GcProject {
   const { project, gc, team } = entry
   const id = str(project.id)
@@ -143,13 +233,14 @@ function projectOf(slice: TradePortalSlice, companyId: string, entry: TradePorta
       selfPerform: null,
       invites: slice.invites.filter((i) => str(i.package_id) === pid).map((i) => inviteOf(slice, companyId, i)),
       carried: null,
-      // The award is the Board's B6; until the slice carries it, no ask reads as a job.
-      awardedInviteId: null,
-      sow: null,
+      // The award (the Board's B6-a), only ever this company's own: the slice holds another company's to null.
+      awardedInviteId: strOrNull(p.awarded_invite_id),
+      sow: sowOf(slice, pid),
       excludes: slice.exclusions.filter((x) => str(x.package_id) === pid).sort((a, b) => num(a.position) - num(b.position)).map((x) => ({ label: str(x.label), by: str(x.by) })),
     }
   })
   const lostWhy = strOrNull(gc.lost_why)
+  const changeRequests = changeRequestsOf(slice, companyId, id)
   return {
     id,
     name: str(project.name),
@@ -177,6 +268,8 @@ function projectOf(slice: TradePortalSlice, companyId: string, entry: TradePorta
     team: team.map((t): ProjectContact => ({ role: t.role === 'superintendent' ? 'superintendent' : 'projectManager', name: str(t.name), phone: str(t.phone), ...(str(t.email) ? { email: str(t.email) } : {}) })),
     lostOn: strOrNull(gc.lost_on),
     ...(lostWhy ? { lostWhy: lostWhy as GcProject['lostWhy'] } : {}),
+    changeRequests,
+    changeOrders: changeOrdersOf(slice, changeRequests),
   }
 }
 

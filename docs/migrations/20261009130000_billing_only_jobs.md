@@ -4,7 +4,7 @@ A billing-only job, kept off every crew screen. The plan is `to-dos/gc-mode/mock
 
 GC mode gives each GC job we win one Pipeline job, its **billing job** (Owner Billing's decision 1), so our bills to the customer use the app's statement, Stripe, payments, promises, the chase list and the waiver train as they are. Nothing on main could keep such a job away from the crews. This migration closes every way in on the database side. Owner Billing's O4a comes next and is the first to set the column.
 
-The client's part comes in its own PR after the types are regenerated:
+The client's part is v2.4972 (BO-2), its own PR after the types were regenerated:
 - the money searches opt in;
 - the crew lists filter;
 - Stages' Working column leaves these jobs out;
@@ -86,6 +86,18 @@ ROLLBACK;
 
 Then run `npm run check:migration-drift` and the types PR: `database.ts` gains the two columns and the second argument, and the dev-mcp catalog is rebuilt. The client PR follows.
 
+## Status
+
+Merged as v2.4958 (#5007) and pushed to prod on 2026-10-08 (the types followed in #5013; the ledger read 806 of 806 at 20:30 UTC). The five verify steps ran on prod at 20:45 UTC as `postgres` over the session pooler, the stand-in job inside one transaction that rolled back; nothing stayed.
+
+1. **Passed.** `jobs_ledger`: 0 of 865 rows flagged; `service_types`: 0 of 3.
+2. **Passed.** The four triggers read `O`. A clock session, a schedule block and a crew member moved onto `…b1110` were each refused with *That job only carries a GC job's bills. Pick the job the work is on.*
+3. **Passed.** `UPDATE 1` on a clock session's own job. `billing_only = true` on a job with sessions was refused with *That job has hours, a schedule or a crew, so it cannot only carry bills.*; `…b1110` back to false with *A job that carries a GC job's bills stays that way.*
+4. **Passed.** `search_jobs_ledger('Billing check')` 0, with `true` 1; `search_jobs_for_self_schedule('Billing check')` 0; `search_jobs_ledger('')` 50.
+5. **Passed.** As `anon`, `search_jobs_ledger('a')` gave *permission denied for function search_jobs_ledger*.
+
+`npm run check:migration-drift`: fully applied. `npm run check:edge-drift`: all 142 current (dev-mcp's catalog carries the two columns and the second argument since #5013 / #5021).
+
 ## Rollback
 
 A one-off migration:
@@ -93,4 +105,4 @@ A one-off migration:
 - re-create `search_jobs_ledger(text)` from `20260905220000` and `search_jobs_for_self_schedule` from `20260811140701`;
 - leave the two columns.
 
-The columns read false and nothing else reads them before the client PR.
+The client (v2.4972) filters on the columns, so they stay. Its opt-in calls pass `include_billing_only`, which the one-argument search does not take, so a rollback reverts those calls in the same release.

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { buildLienSupplierJobs } from '../jobs/lienJobSuppliers'
 import { buildHouseAsks, houseAskChanges, houseAskMailto, houseAskMessage, houseAskStartingAnswer, houseAskSubject, pickAskRep, unpaidInvoiceNumbers, type HouseAskContact } from './houseAsk'
 
-// Today is 2026-10-02. Kind '' reads on the commercial clock: July is due Oct 15, August Nov 16, June closed Sep 15.
+// Today is 2026-10-02. Both jobs are commercial: July is due Oct 15, August Nov 16, June closed Sep 15. (A kind not set
+// reads residential since v2.5031 — a month earlier.)
 const TODAY = '2026-10-02'
 const HOUSES = [
   { id: 'reece', name: 'Reece' },
@@ -29,7 +30,8 @@ const JOBS = [
 const WORD = { houseId: 'reece', balance: 7393.33, noticeYmd: '2026-10-14', saidBy: 'Dana', note: 'on their list', notedByName: 'Grace', notedYmd: TODAY }
 function asks(words?: Parameters<typeof buildLienSupplierJobs>[0]['wordsByJob']) {
   const suppliers = buildLienSupplierJobs({ invoices: INVOICES, allocations: ALLOCATIONS, houses: HOUSES, wordsByJob: words })
-  return buildHouseAsks({ jobs: JOBS, suppliers, addressByJob: new Map([['j363', '12 Oak St, San Antonio.']]), invoiceNumbers: unpaidInvoiceNumbers(INVOICES, ALLOCATIONS), todayYmd: TODAY })
+  const kindByJob = new Map([['j650', 'non_residential'], ['j363', 'non_residential']])
+  return buildHouseAsks({ jobs: JOBS, suppliers, kindByJob, addressByJob: new Map([['j363', '12 Oak St, San Antonio.']]), invoiceNumbers: unpaidInvoiceNumbers(INVOICES, ALLOCATIONS), todayYmd: TODAY })
 }
 
 describe('unpaidInvoiceNumbers', () => {

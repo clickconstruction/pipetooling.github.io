@@ -30,6 +30,8 @@ import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import { useArReturnCases } from '../../hooks/useArReturnCases'
 import { depositClearsYmd } from '../../lib/jobs/checkClearing'
 import { arApplyClosesReplacedCase, arCaseDay, arCaseMoney, arCaseThisReplaces, arPayerCameBackNote, arReplacementFor, arReturnCaseView, type ArReturnCaseView } from '../../lib/jobs/arReturnCase'
+import { arCaseFeeOffer, type ArCaseFeeRow } from '../../lib/jobs/arReturnCaseFee'
+import { listArReturnCaseFees } from '../../lib/jobs/arReturnCaseFeeIo'
 import { ArHeaderMenu } from './ar/ArHeaderMenu'
 import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenToggle'
 import { ArDepositHeader } from './ar/ArDepositHeader'
@@ -416,8 +418,21 @@ export default function BankPaymentsModal({
     () => (selected && !selectedCaseView && !arDepositCameBack(selected) ? arCaseThisReplaces(selected, caseViews) : null),
     [selected, selectedCaseView, caseViews],
   )
-  const [caseBusy, setCaseBusy] = useState<'take_off' | 'close' | 'recorded' | 'unmark' | 'put_back' | null>(null)
+  const [caseBusy, setCaseBusy] = useState<'take_off' | 'close' | 'recorded' | 'unmark' | 'put_back' | 'fee' | null>(null)
   const [caseError, setCaseError] = useState<string | null>(null)
+  // The returned-check fee (v2.5033): each opened case's fee and the bills its check paid, read when the case opens.
+  const [caseFees, setCaseFees] = useState<Map<string, ArCaseFeeRow>>(() => new Map())
+  const selectedCaseId = selectedCaseView?.id ?? null
+  const selectedCaseCameBack = selectedCaseView?.source === 'bank' || selectedCaseView?.source === 'hand'
+  const reloadCaseFee = useCallback(async (caseId: string) => {
+    const m = await listArReturnCaseFees([caseId])
+    if (m) setCaseFees((cur) => new Map([...cur, ...m]))
+  }, [])
+  useEffect(() => {
+    if (!selectedCaseId || !selectedCaseCameBack || !canApply) return
+    void reloadCaseFee(selectedCaseId)
+  }, [selectedCaseId, selectedCaseCameBack, canApply, reloadCaseFee])
+  const caseFeeOffer = selectedCaseView ? arCaseFeeOffer(selectedCaseView, caseFees.get(selectedCaseView.id)) : null
   const [theySaidJob, setTheySaidJob] = useState<{ jobId: string; label: string } | null>(null)
   /** Use it as the new check: the case the deposit being applied replaces; closed when the apply lands. */
   const replacingRef = useRef<{ caseId: string; depositId: string } | null>(null)
@@ -1980,6 +1995,25 @@ export default function BankPaymentsModal({
     }
   }
 
+  /** Add the $30 fee to bill N (v2.5033): one press, once per case; the database refuses anything else. */
+  async function addCaseFee() {
+    if (!selectedCaseView || !canApply || caseFeeOffer?.kind !== 'offer') return
+    setCaseBusy('fee')
+    setCaseError(null)
+    try {
+      const res = await runCaseRpc('add_ar_return_case_fee', { p_case_id: selectedCaseView.id, p_invoice_id: caseFeeOffer.invoiceId })
+      if (!res.ok) {
+        setCaseError(res.message)
+        return
+      }
+      showToast(`The $30 fee is on ${typeof res.data?.bill === 'string' ? res.data.bill : 'the bill'}.`, 'success')
+      await reloadCaseFee(selectedCaseView.id)
+      await afterCaseWrite(true)
+    } finally {
+      setCaseBusy(null)
+    }
+  }
+
   async function closeCase(reason: ArCaseCloseReason, note: string) {
     if (!selectedCaseView || !canApply) return
     setCaseBusy('close')
@@ -2728,6 +2762,8 @@ export default function BankPaymentsModal({
                   onTakeRecordedOff={() => void takeRecordedPaymentOff()}
                   onNotBounced={() => void caseNotBounced()}
                   onPutBack={() => void putDisputedBillBack()}
+                  fee={caseFeeOffer}
+                  onAddFee={() => void addCaseFee()}
                   onOpenJob={onOpenEditJob}
                   onBack={narrow ? () => setMobilePane(false) : undefined}
                 />

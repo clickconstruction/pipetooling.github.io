@@ -41,6 +41,8 @@ standing questions yields doctrine that moves every future bid.
   "19 questions, about fifteen minutes" sentence with one button — the shape her
   productive 2026-09-04 pass actually took. The button runs them one at a time,
   shared first, with the robot's pick as the first tap.
+  Travel bands closed 2026-10-09 (the owner): $0.70 a mile, round trip, once per job
+  day — PLACEMENT.md's travel rule and the robot book's $1.40 entry.
 - **Audit queue triage by doctrine-at-stake** (shipped v2.2941; the open card is the
   top of the queue v2.4230; the queue's sections v2.4234): sort her pending queue by
   what a verdict unblocks (an axis gate, an open ruling, a book price) instead of

@@ -78,6 +78,9 @@ import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import type { BidCountRow } from '../../types/bids'
 import type { TeamLaborBidRow } from '../../utils/teamLabor'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { usePricedMarginStamp, type PricedMarginStampArm, type PricedMarginStampLatest } from '../../hooks/usePricedMarginStamp'
+import { pricedMarginStampOnScreen } from '../../lib/bids/pricedMargin'
+import { PricedMarginLine } from './PricedMarginLine'
 import type {
   CostEstimate,
   CostEstimateLaborRow,
@@ -508,6 +511,15 @@ export function BidsPricingTab({
   }, [selectedPricingVersionId])
   const [wbLocks, setWbLocks] = useState<Set<string>>(() => new Set())
   const [wbMarginPct, setWbMarginPct] = useState(45)
+  // Burn against the bid, piece 1 (v2.5043): the margin the bid is priced at, kept on the bid after
+  // this tab's own price writes land (never on open) and frozen at send — `usePricedMarginStamp`.
+  const [pricedStampArm, setPricedStampArm] = useState<PricedMarginStampArm | null>(null)
+  const pricedStampLatestRef = useRef<PricedMarginStampLatest | null>(null)
+  const pricedStamp = usePricedMarginStamp(selectedBidForPricing?.id ?? null, pricedStampArm, pricedStampLatestRef)
+  const armPricedMarginStamp = () => {
+    const id = selectedBidForPricing?.id
+    if (id) setPricedStampArm({ bidId: id, at: Date.now() })
+  }
   const [wbTargetTotalInput, setWbTargetTotalInput] = useState('')
   /** True while the "or total" box has focus — margin solves must not overwrite her typing (v2.2403). */
   const wbTargetTotalFocusedRef = useRef(false)
@@ -1338,6 +1350,7 @@ export function BidsPricingTab({
     setSelectedPricingVersionId(versionId)
     await loadPriceBookEntries(versionId)
     await saveBidSelectedPriceBookVersion(bidId, versionId)
+    armPricedMarginStamp()
   }
 
   /**
@@ -1355,6 +1368,7 @@ export function BidsPricingTab({
       setSelectedPricingVersionId(newId)
       await saveBidSelectedPriceBookVersion(bidId, newId)
       await loadPriceBookEntries(newId)
+      armPricedMarginStamp()
     }
   }
 
@@ -1370,6 +1384,8 @@ export function BidsPricingTab({
    * behind, inert, as the v2.2720 backfill left them.
    */
   async function freezeSharedPricingAfterWrite(): Promise<void> {
+    // Every price write ends here (the brush's too): the priced-margin stamp reads the settled strip.
+    armPricedMarginStamp()
     const bid = selectedBidForPricing
     if (!bid || freezingPricingRef.current) return
     const target = resolvePricingWriteTarget({ selectedPricingVersionId, bidPricings: priceBookVersions, templates: templatePriceBookVersions })
@@ -1500,6 +1516,7 @@ export function BidsPricingTab({
     // The base is never also an "offered alternate".
     await supabase.from('price_book_versions').update({ include_in_submission: false }).eq('id', v.id)
     await loadBidPricings(bid.id)
+    armPricedMarginStamp()
     showToast(`"${v.name}" is now ${gc}'s base price.`, 'success')
   }
 
@@ -2106,6 +2123,20 @@ export function BidsPricingTab({
                   })
     return { totalMaterials, rate, totalLaborHours, taxPercent, laborCost, distance, ratePerMile, hrsPerTrip, numTrips, drivingCost, estimatorCost, travelCost, equipmentRentalCost, permitCost, subcontractorCost, wasteCost, otherCost, teamLaborCost, totalCost, assignmentsForVersion, totalRevenue, rows, uncostedRevenueRows, uncostedRevenue, openRowBreakdown }
   }
+
+  // v2.5043: what the priced-margin stamp reads when a price write settles: the strip's numbers over
+  // saved prices, and whether this is the customer-facing price of the bid's own GC. Every commit.
+  const pricedStampLatest: PricedMarginStampLatest | null = pricedMarginStampOnScreen({
+    bid: selectedBidForPricing,
+    derived: selectedBidForPricing ? derivePricingWorkbench() : null,
+    selectedBidVersionId,
+    bidVersions,
+    viewingPricingId: selectedPricingVersionId,
+    customerFacingPricingId,
+  })
+  useEffect(() => {
+    pricedStampLatestRef.current = pricedStampLatest
+  })
 
   return (
     <>
@@ -2961,6 +2992,7 @@ export function BidsPricingTab({
                             )}
                           </div>
                           {altLine}
+                          <PricedMarginLine stamp={pricedStamp} sent={!!selectedBidForPricing?.bid_date_sent} />
                           </>
                         )
                       })()}

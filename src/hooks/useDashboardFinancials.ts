@@ -29,6 +29,7 @@ import {
 } from '../lib/dashboardFinancials'
 import type { ArExcluded } from '../lib/dashboardFinancials'
 import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderStats'
+import { loadUnlinkedMoney } from '../lib/billing/loadUnlinkedMoney'
 
 /** Detail for one unpaid supply-house bill — powers the AP row click-through modal. */
 export type DashboardApBill = {
@@ -129,7 +130,7 @@ export function useDashboardFinancials(
             async () =>
               await supabase
                 .from('jobs_ledger_invoices')
-                .select('id, job_id, amount, status, billed_at, bill_to_party, bill_to_email')
+                .select('id, job_id, amount, status, billed_at, sequence_order, bill_to_party, bill_to_email')
                 .in('status', ['ready_to_bill', 'billed']),
             'dashboard financials invoices',
           ),
@@ -348,7 +349,23 @@ export function useDashboardFinancials(
           nowMs: Date.now(),
         })
 
-        const arBuckets = buildArBuckets(jobs, invoices, invoicePayments)
+        // v2.5010: a payment put on the job with no bill picked pays its bills oldest first (the owner's call of
+        // 2026-10-09) — the AR buckets also read the unlinked money and the paid bills it walks.
+        const unlinked = await loadUnlinkedMoney<FinancialInvoicePaymentRow & { job_id: string }, FinancialInvoiceRow>(
+          invoices.filter((i) => i.status === 'billed').map((i) => i.job_id),
+          {
+            paymentColumns: 'job_id, invoice_id, amount, paid_on, sequence_order',
+            invoiceColumns: 'id, job_id, amount, status, billed_at, sequence_order, bill_to_party, bill_to_email',
+            label: 'dashboard financials',
+            withPaidBillPayments: true,
+          },
+        )
+        if (cancelled) return
+        const arBuckets = buildArBuckets(
+          jobs,
+          [...invoices, ...unlinked.paidBills],
+          [...invoicePayments, ...unlinked.unlinkedPayments, ...unlinked.paidBillPayments],
+        )
         const apBase = assistantAggregates
           ? buildApBucketFromAggregates(
               supplyInvoices,

@@ -27,7 +27,8 @@ A 9-year-old water heater fails. Option 1 "Repair" — new gas valve and anode, 
 Every option is offered one of two ways. You set it with the {{chip:gray|Offered as}} switch under the option's name:
 
 - {{button:blue|One of the choices}} means the customer picks **exactly one** of these. Repair or Replace. The {{chip:yellow|★ Recommended}} one is pre-selected. This is how every option starts.
-- {{button:outline|An add-on}} rides along with whichever choice they make. They **tick any**, and none is ticked for them. The card wears a blue {{chip:blue|Add-on}} badge. Its price shows with a **+**.
+- {{button:outline|An add-on}} rides along with whichever choice they make. They **tick any**. The card wears a blue {{chip:blue|Add-on}} badge. Its price shows with a **+**.
+- {{button:outline|✓ Start ticked}} sits beside an add-on you recommend. That add-on starts ticked on the customer page, with a {{chip:yellow|Recommended}} badge. The customer can untick it before they approve. The approval keeps only what is still ticked.
 
 You make **every** option an add-on when there is nothing to choose between. Five separate scopes on one estimate, say. Then the customer page simply asks them to pick what they want done. At least one tick is needed before they can approve. The star cannot sit on an add-on while the estimate has a choice. Add-ons are never pre-selected. On an all-add-on estimate the star marks the one whose total the office sees until the customer decides.
 

@@ -39,7 +39,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 - work **This week's GCs**: every GC with a balance, three steps a row (Check · Send · Word), grouped by the account man to ask (since v2.4149 every GC files under one — the standing pick, else the account man on most of its jobs, else the leader, the one live master — so the *Under $10,000* / *No account man yet* groups are gone and `ownerSource` says which rule chose) — whoever is signed in works every row
 - watch the **temperature board** (the Temperature tab)
 - manage **scheduled and standing statement emails** (the Scheduled tab)
-- send any GC's statement through **Draft Message** (app email, send now or scheduled), **Copy**, **Print** or the **portal link**, and open the GC's unpaid invoices as one PDF (**Print unpaid invoices**)
+- send any GC's statement through **Draft Message** (app email, send now or scheduled), **Copy**, **Print** or the **portal link** — the first three only once its bills are checked this week and unchanged (v2.5022, `statementHoldFor` over `gcStatementHeld`; both send functions hold it too; Share all and Print all by GC carry only the checked sections, `bulk`, and say who was held), and open the GC's unpaid invoices as one PDF (**Print unpaid invoices**)
 - **Share all**: print or email the whole report
 
 ### Host, openers, contract

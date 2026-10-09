@@ -56,6 +56,9 @@ export default function LienDeskNextUp({
   viewerIsLeader,
   onOpenPaper,
   gapsFor,
+  printed,
+  foldsOpen,
+  waitingOn,
 }: {
   rows: ReadonlyArray<LienNextUpRow>
   loading: boolean
@@ -76,6 +79,12 @@ export default function LienDeskNextUp({
   gapsFor?: (row: LienNextUpRow) => number | null
   /** The find (v2.4721): a row's title with the typed words marked. */
   markTitle?: (text: string) => ReactNode
+  /** Of the fourth rung's count, how many printed and wait on their tracking numbers (punch list #101). */
+  printed?: Partial<Record<LienStepLadder, number>>
+  /** Open every run row's list of jobs (the find is on, punch list #101). */
+  foldsOpen?: boolean
+  /** The leader the office's waiting rows wait on, by name, when they all wait on one (punch list #101 PR 3). */
+  waitingOn?: string | null
 }) {
   // The rung the list is narrowed to (v2.4631); session-only, cleared on a second press.
   const [on, setOn] = useState<LienStepAt | null>(null)
@@ -84,8 +93,10 @@ export default function LienDeskNextUp({
   const card = useLienStepCard(isMobile)
   // The row whose card is open, for the card's own button.
   const [openRow, setOpenRow] = useState<LienNextUpRow | null>(null)
+  // A run row's list of jobs (punch list #101), folded until pressed; the find opens them all.
+  const [folds, setFolds] = useState<ReadonlySet<string>>(() => new Set())
   if (loading) return <div style={{ padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
-  const groups = groupLienNextUp(rows)
+  const groups = groupLienNextUp(rows, { waitingOn })
   if (groups.length === 0) {
     return (
       <div data-lien-next-up="empty" style={{ padding: '2rem 1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
@@ -120,6 +131,7 @@ export default function LienDeskNextUp({
   }
   // The chip: a door to the paper when the desk offers one (v2.4632), ringed on hover, a red count of blanks or a tick.
   const chip = (r: LienNextUpRow) => {
+    if (r.jobs) return <span style={{ ...tag('retainage') }}>Run</span>
     const canOpen = onOpenPaper && r.jobId && r.kind !== 'retainage'
     if (!canOpen) return <span style={tag(r.kind)}>{KIND_WORDS[r.kind]}</span>
     const gaps = gapsFor?.(r) ?? null
@@ -157,6 +169,56 @@ export default function LienDeskNextUp({
       onHide={card.hide}
     />
   )
+  const secondary = (r: LienNextUpRow) =>
+    r.secondary ? (
+      <button
+        type="button"
+        onClick={(ev) => {
+          ev.stopPropagation()
+          onAct({ ...r, target: r.secondary!.target })
+        }}
+        style={{ ...openBtn, ...(isMobile ? { width: '100%', padding: '9px 12px', fontSize: '0.9rem' } : { padding: '2px 10px', fontSize: '0.78rem' }) }}
+        data-lien-next-up-secondary={r.key}
+      >
+        {r.secondary.words}
+      </button>
+    ) : null
+  // A run row's jobs (punch list #101): each a door to its job, with its day.
+  const fold = (r: LienNextUpRow) => {
+    if (!r.jobs || r.jobs.length === 0) return null
+    const open = Boolean(foldsOpen) || folds.has(r.key)
+    return (
+      <div style={{ gridColumn: '1 / -1', paddingLeft: isMobile ? 0 : 'calc(84px + 0.75rem)' }} onClick={(ev) => ev.stopPropagation()}>
+        {/* On a computer the row's question reads here in full: its own column is narrowed by the two buttons. */}
+        {/* …and its quieter button follows the question it answers, so the row's last column keeps one button. */}
+        {isMobile ? null : (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginRight: 10 }}>
+            <span data-lien-next-up-run-sub style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>{r.sub}</span>
+            {secondary(r)}
+          </span>
+        )}
+        <button
+          type="button"
+          aria-expanded={open}
+          data-lien-next-up-fold={r.key}
+          onClick={() => setFolds((prev) => { const next = new Set(prev); if (next.has(r.key)) next.delete(r.key); else next.add(r.key); return next })}
+          style={{ border: 'none', background: 'none', padding: '2px 0', font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-link)', cursor: 'pointer' }}
+        >
+          {open ? '▾' : '▸'} The {r.jobs.length} jobs
+        </button>
+        {open ? (
+          <div data-lien-next-up-fold-body={r.key} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '1px 12px', margin: '2px 0 4px', paddingLeft: 10, borderLeft: '2px solid var(--border)', fontSize: '0.8rem' }}>
+            {r.jobs.map((j) => (
+              <div key={j.jobId} style={{ display: 'contents' }}>
+                {title({ ...r, jobId: j.jobId, title: j.title }, { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' })}
+                <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{j.dueOn ? formatYmdMonthDay(j.dueOn) : ''}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
   const button = (r: LienNextUpRow) => (
     <button
       type="button"
@@ -174,10 +236,10 @@ export default function LienDeskNextUp({
   const cardButton = openCard ? openRow : null
   return (
     <div ref={card.hostRef} data-lien-next-up="list" style={{ position: 'relative', overflowY: 'auto', minHeight: 0, padding: isMobile ? '0.6rem 0.75rem 1rem' : '0.75rem 1.25rem 1.25rem' }}>
-      <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} />
+      <LienStepRail counts={counts} ladders={ladders} on={on} isMobile={isMobile} onPick={setOn} onOpenRun={onOpenRun} viewerIsLeader={viewerIsLeader} printed={printed} />
       {groups.map((g) => (
         <section key={g.group} aria-label={g.label} data-lien-next-up-group={g.group} style={{ marginBottom: '1rem' }}>
-          <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
+          <h3 style={{ margin: '0 0 0.4rem', fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: g.group === 'now' ? 'var(--text-red-600)' : g.group === 'mine' ? 'var(--text-link)' : 'var(--text-muted)' }}>
             {g.label} · {g.rows.length}
           </h3>
           <div style={{ display: 'grid', gap: isMobile ? 8 : 0, border: isMobile ? 'none' : '1px solid var(--border)', borderRadius: 9, overflow: 'hidden' }}>
@@ -194,6 +256,8 @@ export default function LienDeskNextUp({
                   {/* The four dots are four named tiles on a phone (v2.4881): no hover there, so the names are the card. */}
                   <LienStepRow at={lienStepOfRow(r)} ladder={r.kind} viewerIsLeader={Boolean(viewerIsLeader)} onPress={(el) => { setOpenRow(r); card.show(el, lienStepCard(r, factsFor?.(r))) }} />
                   <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{r.sub}</div>
+                  {fold(r)}
+                  {secondary(r)}
                   {button(r)}
                 </div>
               ) : (
@@ -205,11 +269,22 @@ export default function LienDeskNextUp({
                   style={{ display: 'grid', gridTemplateColumns: '84px minmax(0, 1.2fr) 86px minmax(0, 1.4fr) 170px auto', gap: '0.75rem', alignItems: 'center', padding: '0.5rem 0.8rem', borderTop: i === 0 ? 'none' : '1px solid var(--border)', background: 'var(--surface)', cursor: 'pointer', opacity: dim ? 0.3 : 1 }}
                 >
                   <span>{chip(r)}</span>
-                  <span style={{ minWidth: 0, overflow: 'hidden' }}>{title(r, { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' })}</span>
-                  <span>{mark(r)}</span>
-                  <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.sub}>{r.sub}</span>
+                  {r.jobs ? (
+                    // A run row's question reads on its second line, so its title takes the question's column too (punch list #101).
+                    <span style={{ gridColumn: '2 / 5', minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      {title(r, { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', minWidth: 0 })}
+                      {mark(r)}
+                    </span>
+                  ) : (
+                    <>
+                      <span style={{ minWidth: 0, overflow: 'hidden' }}>{title(r, { fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' })}</span>
+                      <span>{mark(r)}</span>
+                      <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={r.sub}>{r.sub}</span>
+                    </>
+                  )}
                   <span style={{ fontWeight: 600, color: dueColor(r), whiteSpace: 'nowrap' }}>{due}</span>
                   <span style={{ justifySelf: 'end' }}>{button(r)}</span>
+                  {fold(r)}
                 </div>
               )
             })}

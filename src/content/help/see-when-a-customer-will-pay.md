@@ -82,7 +82,7 @@ A lien is a legal claim on a property for unpaid work. Texas counts lien deadlin
 A sub row whose notice month closes within 14 days wears it on the row itself — {{chip:red|⏱ Jun notice due tomorrow}} — and one amber line above the buckets counts every month closing with the dollars riding on them. Rows with nothing closing look exactly as before.
 :::
 
-A {{chip:yellow|property kind unknown}} chip means no property record is linked. So the commercial dates are shown. A residential property is a month earlier on every line. You link the property on **Edit Job → Property record**. The rule itself is in *file a lien and never miss its deadlines*.
+A {{chip:yellow|property kind unknown}} chip means no property record is linked. So the residential dates are shown, the earlier ones. A commercial property would be a month later on every line. You link the property on **Edit Job → Property record**. The rule itself is in *file a lien and never miss its deadlines*.
 
 ## The pay-speeds breakdown
 

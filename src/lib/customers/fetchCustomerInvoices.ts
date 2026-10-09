@@ -53,7 +53,7 @@ export async function fetchCustomerInvoices(customerId: string): Promise<Custome
         'id, job_id, amount, status, sequence_order, billed_at, estimated_bill_date, created_at, sent_to_customer_at, external_send_channel, stripe_invoice_id, hosted_invoice_url',
       )
       .in('job_id', jobIds),
-    supabase.from('jobs_ledger_payments').select('invoice_id, amount, paid_on').in('job_id', jobIds),
+    supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', jobIds),
   ])
 
   return {

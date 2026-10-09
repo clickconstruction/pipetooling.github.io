@@ -39,6 +39,8 @@ const asks = buildHouseAsks({
     { jobId: 'j363', jobNumber: '363', jobName: 'Michael Palmer', billed: 31400, paidIn: 31400 },
   ],
   suppliers: buildLienSupplierJobs({ invoices, allocations, houses: [{ id: 'reece', name: 'Reece' }, { id: 'winn', name: 'Winn Supply' }] }),
+  // Both jobs are commercial: July is due Oct 15, August Nov 16 (a kind not set reads residential since v2.5031).
+  kindByJob: new Map([['j650', 'non_residential'], ['j363', 'non_residential']]),
   todayYmd: TODAY,
 })
 

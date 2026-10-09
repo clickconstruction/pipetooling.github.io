@@ -1,11 +1,12 @@
 /**
  * The state our money screens read (./billCustomer.ts): billing laid over the board's projects, each job with
- * its own copy of its customer carrying the job's retainage and the customer's usual days to pay.
+ * its own copy of its customer carrying the job's retainage and the customer's usual days to pay. And what
+ * Bill the customer's Send hands the database, read back as the record it went as.
  */
 import { describe, expect, it } from 'vitest'
-import { type BillingRows, type OwnerTermsRow, billingStateFor, billingStateForAll, contractWorthFromRows, jobCustomerId } from './billCustomer'
-import { allJobsMoney, ownerPayApp, ownerRetainageWords } from './ownerBilling'
-import type { OwnerBillingRows } from './ownerBillingRows'
+import { type BillingRows, type OwnerTermsRow, billingStateFor, billingStateForAll, contractWorthFromRows, finalPayAppForm, finalPayAppSendPayload, jobCustomerId, payAppSendPayload, withSchedules } from './billCustomer'
+import { allJobsMoney, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppToSend, ownerRetainageWords } from './ownerBilling'
+import { type OwnerBillingRows, ownerBillingFromRows } from './ownerBillingRows'
 import { initialGcState } from './schedule/testState'
 
 const terms = (projectId: string, over: Partial<OwnerTermsRow> = {}): OwnerTermsRow => ({
@@ -15,6 +16,8 @@ const terms = (projectId: string, over: Partial<OwnerTermsRow> = {}): OwnerTerms
   owner_retainage_step_to_pct: null,
   owner_retainage_step_way: null,
   owner_pay_days: null,
+  owner_late_interest_pct_per_month: null,
+  owner_late_finish_per_day: null,
   billing_job_id: null,
   property_owner_customer_id: null,
   ...over,
@@ -32,6 +35,39 @@ describe('the state our money screens read', () => {
       ]),
     ).toEqual({ 'pkg-1': 100000, gc: 10000, fee: 8800 })
     expect(contractWorthFromRows([])).toBeUndefined()
+  })
+
+  it('lays each job\'s schedule read beside the money, takes it off a job read with none, and leaves the rest (O6b-3)', () => {
+    const s = initialGcState()
+    const fair = s.projects.find((p) => p.id === 'fairoaksd')!
+    const laid = withSchedules(s, new Map([['fairoaksd', fair.schedule ?? null], ['helotes', null]]))
+    expect(laid.projects.find((p) => p.id === 'fairoaksd')!.schedule).toBe(fair.schedule)
+    expect('schedule' in laid.projects.find((p) => p.id === 'helotes')!).toBe(false)
+    expect(laid.projects.filter((p) => p.id !== 'fairoaksd' && p.id !== 'helotes')).toEqual(s.projects.filter((p) => p.id !== 'fairoaksd' && p.id !== 'helotes'))
+  })
+
+  it('lays the interest and the late fee on a job that has them, and none on one that does not (O6b-1)', () => {
+    const s = initialGcState()
+    const rows: BillingRows = {
+      terms: [terms('fairoaksd', { owner_late_interest_pct_per_month: 1.5, owner_late_finish_per_day: 500 }), terms('helotes')],
+      contract: [],
+      billing: new Map(),
+      names: {},
+      payDays: {},
+    }
+    const laid = billingStateForAll(s, rows)
+    const fair = laid.projects.find((p) => p.id === 'fairoaksd')!
+    const helotes = laid.projects.find((p) => p.id === 'helotes')!
+    expect([fair.ownerLateInterest, fair.ownerLateFinish]).toEqual([{ pctPerMonth: 1.5 }, { perDay: 500 }])
+    expect([helotes.ownerLateInterest, helotes.ownerLateFinish]).toEqual([s.projects.find((p) => p.id === 'helotes')!.ownerLateInterest, s.projects.find((p) => p.id === 'helotes')!.ownerLateFinish])
+  })
+
+  it('lays the contract\'s days to pay on each job, standing in while the customer has never paid us (O5d)', () => {
+    const s = initialGcState()
+    const rows: BillingRows = { terms: [terms('fairoaksd', { owner_pay_days: 30 }), terms('helotes', { owner_pay_days: 45 })], contract: [], billing: new Map(), names: {}, payDays: { cibolo: 41 } }
+    const laid = billingStateForAll(s, rows)
+    expect(['fairoaksd', 'helotes'].map((id) => laid.projects.find((p) => p.id === id)!.ownerPayDays)).toEqual([30, 45])
+    expect(billingStateForAll(s, { ...rows, terms: [terms('fairoaksd')] }).projects.find((p) => p.id === 'fairoaksd')!.ownerPayDays).toBeNull()
   })
 
   it('gives two jobs of one customer each its own retainage, and the customer\'s days to pay to both', () => {
@@ -67,5 +103,94 @@ describe('the state our money screens read', () => {
     // No bill went on either in the app: nothing owed, nothing paid.
     expect(money.owed).toEqual([])
     expect(money.totals.paidIn).toBe(0)
+  })
+})
+
+describe('the pay application Send hands the database', () => {
+  const PROJECT = 'fairoaksd'
+  const TODAY = '2026-10-25'
+
+  /** The payload as `gc_send_owner_pay_app` inserts it: one pay application and its lines in order. */
+  function rowsFromSend(projectId: string, send: ReturnType<typeof payAppSendPayload>): OwnerBillingRows {
+    const id = `app-${send.number}`
+    return {
+      payApps: [
+        {
+          id,
+          project_id: projectId,
+          number: send.number,
+          final: send.final,
+          period_to: send.periodTo,
+          sent_on: send.sentOn,
+          sent_by: null,
+          retainage_pct: send.retainagePct,
+          retainage_step_at_pct: send.retainageStep?.atPct ?? null,
+          retainage_step_to_pct: send.retainageStep?.toPct ?? null,
+          retainage_step_way: send.retainageStep?.way ?? null,
+          retainage: send.retainage,
+          work_to_date: send.workToDate,
+          due: send.due,
+          certified: null,
+          certified_on: null,
+          certified_note: '',
+          certified_by: null,
+          invoice_id: null,
+          conditional_waiver_id: null,
+          created_at: `${send.sentOn}T15:00:00Z`,
+        },
+      ],
+      lines: send.lines.map((l, i) => ({
+        id: `${id}-${i}`,
+        pay_app_id: id,
+        position: i + 1,
+        line: l.line,
+        package_id: l.packageId,
+        change_order_id: l.changeOrderId,
+        label: l.label,
+        worth: l.worth,
+        done_to_date: l.doneToDate,
+        stored: l.stored,
+      })),
+      reminders: [],
+      interestBills: [],
+      acceptance: null,
+    }
+  }
+
+  it('sends the draft as it will read back: the record ownerPayAppToSend makes, line for line', () => {
+    const s = initialGcState()
+    const project = s.projects.find((p) => p.id === PROJECT)!
+    const draft = ownerPayApp(s, project)
+    const send = payAppSendPayload(draft, TODAY)
+    // The server checks this sum against the lines.
+    expect(Math.abs(send.workToDate - send.lines.reduce((t, l) => t + l.doneToDate + l.stored, 0))).toBeLessThan(0.01)
+    expect(send.lines.map((l) => l.line)).toEqual(draft.lines.map((l) => ({ trade: 'trade', self: 'self', generalConditions: 'gc', contingency: 'contingency', fee: 'fee', changeOrder: 'change_order' })[l.kind]))
+    expect(send.lines.filter((l) => l.line === 'gc' || l.line === 'fee').every((l) => l.packageId === null && l.changeOrderId === null)).toBe(true)
+
+    const back = ownerBillingFromRows(rowsFromSend(PROJECT, send))!.payApps![0]!
+    const record = ownerPayAppToSend(draft, TODAY)
+    expect(back).toEqual({ ...record, certified: null, certifiedOn: null })
+  })
+
+  it('sends our final through the same Send: the same lines, nothing held, its bill day today, asking for the rest (O7a)', () => {
+    const s = initialGcState()
+    const project = s.projects.find((p) => p.id === PROJECT)!
+    const send = payAppSendPayload(ownerPayApp(s, project), TODAY)
+    const final = finalPayAppSendPayload(s, project, TODAY)
+    const record = ownerFinalPayAppToSend(s, project, TODAY)
+    expect([final.final, final.periodTo, final.retainage, final.due]).toEqual([true, TODAY, 0, record.due])
+    expect({ ...final, final: false, periodTo: send.periodTo, retainage: send.retainage, due: send.due }).toEqual(send)
+  })
+
+  it('draws our final’s form as it will go, holding nothing back, for its email (O7a)', () => {
+    const s = initialGcState()
+    const stoneOak = s.projects.find((p) => p.id === 'stoneoak')!
+    const record = ownerFinalPayAppToSend(s, stoneOak, TODAY)
+    const form = finalPayAppForm(s, stoneOak, TODAY)!
+    expect([form.app.number, form.app.final, form.sentOn, form.periodTo]).toEqual([record.number, true, TODAY, TODAY])
+    expect([form.app.totals.retainage, form.app.summary.retainage, form.app.summary.currentDue]).toEqual([0, 0, record.due])
+    // Every line done in full: nothing left to finish.
+    expect(form.app.totals.balance).toBe(0)
+    expect(finalPayAppForm(s, { ...stoneOak, ownerBilling: null }, TODAY)).toBeNull()
   })
 })

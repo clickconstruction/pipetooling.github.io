@@ -8,7 +8,7 @@ covers:
   - src/components/bids/BidsAuditsTab.tsx
 mapped_at: 7379b248f
 audience: Developers, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-10-09
 ---
 
 > **Line numbers are as of `7379b248f`** (the `mapped_at` commit) and drift with every edit — search the symbol named beside each range. Regenerate the fact sheet with `npm run map -- src/components/bids/BidsAuditsTab.tsx`. 28 commits in 90 days.
@@ -92,8 +92,8 @@ Render smoke: [`BidsAuditsTab.render.test.tsx`](../src/components/bids/BidsAudit
 ### E. The queue
 
 - **`queueItems` 665–691:** one `AuditQueueItem` per triaged audit — names, the reference's number and dates, `sealed`, `unpriced`, counts of open questions and notes, `deltaPct`, the `axis` (from `axisByShellNumber`: shadow runs first, scores over them), its `gate` (`gateByAxis` over `buildAxisCards`), and `needsFix` (an open plans ask on the twin or its reference).
-- **`queue` 692:** `buildAuditQueue(queueItems, expandedId)` → `now`, `nowPosition`, `workableCount`, `upNext`, `sealed`, `digesting`, `digested`.
-- **Render 1411–1485:** an IIFE with two local functions, `sectionHead` 1413 and `row` 1420 (`data-testid="audit-row"`; `whyLine`, or `🔒 sealedLine` for a sealed row). Sections carry `data-testid` `queue-now`, `queue-up-next`, `queue-sealed`, `queue-digesting`, `queue-digested`.
+- **`queue` 692:** `buildAuditQueue(queueItems, expandedId, parkedSlates)` → `now`, `nowPosition`, `workableCount`, `upNext`, `upNextSlates`, `sealed`, `parked`, `digesting`, `digested`. Since v2.5016 (the owner's call of 2026-10-09) a backtest slate can be parked: `slateKey` is its label (*slate Aug 31*), Up next's `queue-slates` line holds a *Skip this slate* door per slate, and the parked slate's rows leave Up next and the count for the folded `queue-parked` section, each slate with *Bring it back*. `useParkedAuditSlates` keeps the set on the device, per person; the open-card pick (`workable`) skips a parked row, so parking the open card's slate opens the next.
+- **Render 1411–1485:** an IIFE with two local functions, `sectionHead` 1413 and `row` 1420 (`data-testid="audit-row"`; `whyLine`, or `🔒 sealedLine` for a sealed row). Sections carry `data-testid` `queue-now`, `queue-up-next` (with `queue-slates`), `queue-sealed`, `queue-parked`, `queue-digesting`, `queue-digested`.
 - **Extraction:** Stage B `AuditQueueList({ queue, expandedId, pickedByHand, onOpen })` owning `sealedOpen` and `showDigested`. The memos stay until B is a hook.
 
 ### F. The open card

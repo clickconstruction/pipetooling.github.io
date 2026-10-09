@@ -1,18 +1,18 @@
 ---
 name: Dispatch residuals
 number: 12
-group: residual
-status: item 1 shipped v2.3567 (the phone self-heal) · item 3 shipped v2.3637 (the tag-slice refresh) · item 2 low
 summary: >
   Dispatch blocks / nudge history on the sheet rows. The phone-request self-heal shipped v2.3567
   (the inbox sweep covers add_job_phone as it covers link_job_pictures); the tag-slice refresh
-  shipped v2.3637.
-next: The sheet-row history when the feed or the email log grows a per-sheet key. The tag-slice refresh shipped v2.3637.
+  shipped v2.3637. The hub's mode gaps, item 6, are fixed: a to c in v2.4989, d to f in v2.5009.
 size: S
 blocker: None.
-ver: from v2.2880 / 83 · item 1 v2.3567 · item 3 v2.3637
-opinion: later — two of three shipped; the one left waits on a per-sheet key the feed and the email log do not carry yet.
+ver: from v2.2880 / 83 · item 1 v2.3567 · item 3 v2.3637 · item 6 v2.4986 · 4989 · 5009
 mockup: not required — draw the sheet-row history when it is picked up
+group: residual
+status: item 1 shipped v2.3567 (the phone self-heal) · item 3 shipped v2.3637 (the tag-slice refresh) · item 2 low · item 6, the hub's mode gaps: fixed v2.4989 and v2.5009
+next: The sheet-row history when the feed or the email log grows a per-sheet key.
+opinion: later — item 6 shipped; the rest waits on a per-sheet key the feed and the email log do not carry yet.
 ---
 
 # Dispatch: the small reads the inbox and the sheet rows never make
@@ -24,7 +24,9 @@ mockup: not required — draw the sheet-row history when it is picked up
 3. ~~**Tag slices on the bulk cost map**~~ — the staleness shipped v2.3637 (`tagSliceForOneJob`: the post-save refresh recomputes the job's slices with its total). A server-side `sum by job_id` remains the durable form for the bulk map's cost as the allocations table grows — not needed at 2,060 rows.
 4. **The move sheet's person list carries ZZ TEST and twin accounts** (from the phone look, #30, 2026-09-28): the press-and-hold Move sheet on a phone lists every person, sample and twin rows included; the schedule hub hides them (v2.3737) and the sheet should read the same list.
 5. **The *Add Task* banner takes the top of the phone page** (#30, 2026-09-28): on a phone the banner sits above the content instead of folding into the header; one small layout change.
+6. ~~**Modes exclusion**~~ — fixed v2.5009: a to c in v2.4989, d to f (the owner's calls of 2026-10-09) in v2.5009.
 
 ## Where it plugs in
 
 - `src/hooks/useDispatchInbox.ts`, the Subs → Work / Sub Labor rows (`src/components/jobs/`), the paged Banking loaders (v2.2870).
+- Item 6: the rule table `src/lib/scheduleDispatch/hubModes.ts` and its test, and `src/hooks/useScheduleDispatchHubModes.ts` with its render test, which names each gap on its rows.

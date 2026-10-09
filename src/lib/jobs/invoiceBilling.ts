@@ -5,6 +5,7 @@ import { calendarDaysSinceDateUtc, formatYmdOrIsoDateForPrintDisplay } from './j
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { billOnOpenJob, openRemainder } from '../billing/billTruth'
+import { billAppliedOnJob } from './billApplied'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -13,12 +14,9 @@ export function effectiveInvoiceEstBillDate(inv: JobsLedgerInvoice): string | nu
   return inv.estimated_bill_date ?? null
 }
 
+/** What a bill has been paid: its linked payments, plus the job's unlinked money oldest bill first (v2.5006, `billAppliedOnJob`). */
 export function sumInvoiceAppliedFromJobPayments(job: JobWithDetails, invoiceId: string): number {
-  let s = 0
-  for (const p of job.payments ?? []) {
-    if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
-  }
-  return s
+  return billAppliedOnJob(job, invoiceId)
 }
 
 export function invoiceOpenRemainingOnJob(inv: JobsLedgerInvoice, job: JobWithDetails): number {

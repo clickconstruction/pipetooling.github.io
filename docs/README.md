@@ -14,7 +14,7 @@
 
 | Doc | Purpose |
 |---|---|
-| [`PROJECT_DOCUMENTATION.md`](./PROJECT_DOCUMENTATION.md) | Full technical reference: schema, pages, features. Documents the core tables in depth; feature sections carry the rest. |
+| [`PROJECT_DOCUMENTATION.md`](./PROJECT_DOCUMENTATION.md) | Full technical reference: schema, pages, features. Documents the core tables in depth; feature sections carry the rest. §20 is GC mode (`/gc`; every GC table's door is `src/lib/gc/doors.ts`). |
 | [`ACCESS_CONTROL.md`](./ACCESS_CONTROL.md) | Authoritative role/permission matrices for all 9 roles, plus the database agent roles. Prefer this over role notes in other docs. |
 | [`ADDING_A_NEW_ROLE.md`](./ADDING_A_NEW_ROLE.md) | Step-by-step checklist for adding a role. |
 | [`GLOSSARY.md`](./GLOSSARY.md) | Domain terms, abbreviations, feature names. |
@@ -52,6 +52,7 @@
 | [`DB_FREEZE_RUNBOOK.md`](./DB_FREEZE_RUNBOOK.md) | App looks "database down": lock-pileup vs instance-stall triage (`/db-freeze` runs it). Read BEFORE restarting anything. |
 | [`runbooks/AGENT_APP_CRASH_INVESTIGATION.md`](./runbooks/AGENT_APP_CRASH_INVESTIGATION.md) | Ordered checklist for "why did the app crash" (503s, timeouts). |
 | [`runbooks/SUPABASE_INCIDENT_RUNBOOK.md`](./runbooks/SUPABASE_INCIDENT_RUNBOOK.md) | Deep Supabase incident inspection (CLI + Dashboard logs). |
+| [`runbooks/CLICKPLUMBING_SENDER.md`](./runbooks/CLICKPLUMBING_SENDER.md) | Customer email from billing@clickplumbing.com, with replies to office@: the Resend DNS records, the Google Workspace alias, the order of steps, the checks and the flip PR with its 57-function deploy. |
 | [`TROUBLESHOOTING.md`](./TROUBLESHOOTING.md) | White screen, RPC 404s, sign-in, load problems. |
 | [`REMOTE_SCHEMA_INSPECTION.md`](./REMOTE_SCHEMA_INSPECTION.md) | Obsolete incident snapshot; kept for its generic schema-inspection queries only. |
 | [`DOMAIN_CUTOVER.md`](./DOMAIN_CUTOVER.md) | The pipetooling.com → clicktooling.com cutover: exact steps, with the old domain kept as a path-preserving redirect. |
@@ -112,6 +113,7 @@ A plan's own status line (top of the file) is the one place its progress is reco
 
 | Plan | Purpose | Status |
 |---|---|---|
+| [`PUNCHLIST_HANDOFF_2026-10-08.md`](./PUNCHLIST_HANDOFF_2026-10-08.md) | The punch-list lead's hand-off of 2026-10-07/08: the owed pushes and deploys in order, open PRs, where every card stands, the owner questions filed, the gotchas. | handed off 2026-10-08 |
 | [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md) | Umbrella plan for the plans-to-proposal estimator-twin pipeline: five waves across PT/CT/twin-mcp/harness, each ending in a live test gate. | in progress (`twins/HANDOFF.md` runs the program) |
 | [`DIGITAL_TWINS_PLAN.md`](./DIGITAL_TWINS_PLAN.md) | Role-impersonating agent accounts: per-role briefs, app directory, twin identity in the schema, write fence. | in progress |
 | [`RFI_LOOP_PLAN.md`](./RFI_LOOP_PLAN.md) | Cross-app RFI loop: persisted `bids_rfis` queue, CT canvas flags, the internal question lane, ct-bridge auto-pull. | in progress (status log inside) |
@@ -141,4 +143,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-10-05
+last_updated: 2026-10-08

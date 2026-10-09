@@ -6,7 +6,7 @@
  * address on file.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskRunModal from './LienDeskRunModal'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
@@ -283,6 +283,77 @@ describe('LienDeskRunModal · a run of printed notices opens on recording (v2.48
   })
 })
 
+describe('LienDeskRunModal · take back a printed run (punch list #101)', () => {
+  const printedTwo = () => [
+    notice({ printedAt: '2026-10-07T16:00:00Z' }),
+    notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', printedAt: '2026-10-07T16:00:00Z', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Other Owner', address: '9 Other St', email: '', method: 'certified_mail', tracking: '' }] }),
+  ]
+
+  it('Take back… asks first, says what stays and what is dropped, then hands every printed item over and goes back to printing', async () => {
+    const taken: string[][] = []
+    renderWithProviders(<LienDeskRunModal notices={printedTwo()} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    await settle()
+    fireEvent.change(screen.getAllByLabelText(/tracking$/)[0]!, { target: { value: '9407111898765432101234' } })
+    fireEvent.click(screen.getByTestId('run-take-back'))
+    const confirm = screen.getByTestId('run-take-back-confirm')
+    expect(confirm.textContent).toContain('Take back the run?')
+    expect(confirm.textContent).toContain('The 2 notices go back to Ready to send. The approvals stand.')
+    expect(confirm.textContent).toContain('The copies printed Oct 7 stay in each job’s Documents, filed as printed.')
+    expect(confirm.textContent).toMatch(/tracking numbers? typed here (is|are) not saved/)
+    expect(taken).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+    expect(screen.queryByTestId('run-take-back-confirm')).toBeNull()
+    fireEvent.click(screen.getByTestId('run-take-back'))
+    fireEvent.click(screen.getByTestId('run-take-back-yes'))
+    await settle()
+    expect(taken).toEqual([['it1', 'it2']])
+    expect(screen.getByTestId('run-taken-back').textContent).toContain('Taken back. The 2 notices printed October 7, 2026 are in Ready to send again.')
+    expect(screen.getByRole('heading', { name: /^Send the run · 2 notices/ })).toBeTruthy()
+    expect(screen.getByTestId('run-steps').textContent).toContain('1 · Print the packet')
+    expect(screen.getByRole('button', { name: /^Print the packet · / })).toBeTruthy()
+    expect((screen.getAllByLabelText(/tracking$/)[0] as HTMLInputElement).value).toBe('')
+    expect(screen.queryByTestId('run-take-back')).toBeNull()
+  })
+
+  it('only what printed is taken back; a run with nothing printed, or a host without the door, offers none', async () => {
+    const taken: string[][] = []
+    const { unmount } = renderWithProviders(<LienDeskRunModal notices={[printedTwo()[0]!, notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651' })]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-take-back'))
+    expect(screen.getByTestId('run-take-back-confirm').textContent).toContain('Take back the 1 notice that printed?')
+    expect(screen.getByTestId('run-take-back-confirm').textContent).toContain('have not printed stay as they are')
+    fireEvent.click(screen.getByTestId('run-take-back-yes'))
+    await settle()
+    expect(taken).toEqual([['it1']])
+    unmount()
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async () => 0} />)
+    await settle()
+    expect(screen.queryByTestId('run-take-back')).toBeNull()
+  })
+
+  it('a packet printed in this sitting can be taken back at once', async () => {
+    const taken: string[][] = []
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onPrinted={() => {}} onTakeBack={async (ids) => { taken.push(ids); return ids.length }} />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: /^Print the packet · / }))
+    await settle()
+    fireEvent.click(screen.getByTestId('run-take-back'))
+    fireEvent.click(screen.getByTestId('run-take-back-yes'))
+    await settle()
+    expect(taken).toEqual([['it1']])
+  })
+
+  it('a failed take-back says so and keeps the run as it was', async () => {
+    renderWithProviders(<LienDeskRunModal notices={printedTwo()} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} onTakeBack={async () => { throw new Error('offline') }} />)
+    await settle()
+    fireEvent.click(screen.getByTestId('run-take-back'))
+    fireEvent.click(screen.getByTestId('run-take-back-yes'))
+    await settle()
+    expect(screen.getByRole('heading', { name: /^Record the mailing · 2 notices/ })).toBeTruthy()
+    expect(screen.queryByTestId('run-taken-back')).toBeNull()
+  })
+})
+
 describe('LienDeskRunModal · print one item (v2.4853)', () => {
   it('Print › on a copy prints and files that copy alone; the notice is stamped printed only once both copies have printed; the envelope door prints every copy inside', async () => {
     printMock.mockClear()
@@ -368,5 +439,40 @@ describe("LienDeskRunModal · the enclosed bill carries Stripe's number (v2.4852
     expect(overlay.textContent).toContain('#878-2609161138')
     expect(overlay.textContent).toContain('October 16, 2026')
     expect(overlay.textContent).not.toContain('#0')
+  })
+
+  it('Addresses for the labels saves one CSV row per envelope that goes out, in the label service’s columns (v2.4977)', async () => {
+    const two = [notice(), notice({ itemId: 'it2', jobId: 'j651', label: '651 · Other', jobNumber: '651', amount: 0, recipients: [{ key: 'owner', label: 'Owner of record', name: 'Nobody Home', address: '', email: '', method: 'certified_mail', tracking: '' }] })]
+    let saved = ''
+    const urlApi = URL as unknown as { createObjectURL?: (b: Blob) => string; revokeObjectURL?: (u: string) => void }
+    const hadCreate = urlApi.createObjectURL
+    const hadRevoke = urlApi.revokeObjectURL
+    urlApi.createObjectURL = (b: Blob) => {
+      // jsdom's Blob has no text(); FileReader reads it.
+      const r = new FileReader()
+      r.onload = () => { saved = String(r.result ?? '') }
+      r.readAsText(b)
+      return 'blob:labels'
+    }
+    urlApi.revokeObjectURL = () => {}
+    const clicks: string[] = []
+    const origClick = HTMLAnchorElement.prototype.click
+    HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) { clicks.push(this.getAttribute('download') ?? '') }
+    try {
+      renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+      await settle()
+      // The second notice's envelope is held (no address, $0): it is listed, never on the labels.
+      expect(screen.getByTestId('run-held-3').textContent).toMatch(/^Held · /)
+      fireEvent.click(screen.getByTestId('run-label-addresses'))
+      await waitFor(() => expect(saved).toContain('Company,Name,Address Line 1'))
+      expect(clicks).toEqual(['certified-labels_2026-10-08.csv'])
+      expect(saved).toContain('\r\n,Elbel Holdings LLC,4 Example Way,,"Schertz, TX",,,,Envelope 1 · 650\r\n')
+      expect(saved).toContain(',Loberg Contracting,2904 Corporate Cr,,,,,,Envelope 2 · 650\r\n')
+      expect(saved).not.toContain('Nobody Home')
+    } finally {
+      HTMLAnchorElement.prototype.click = origClick
+      urlApi.createObjectURL = hadCreate
+      urlApi.revokeObjectURL = hadRevoke
+    }
   })
 })

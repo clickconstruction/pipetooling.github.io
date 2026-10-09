@@ -28,7 +28,7 @@ A lien is a legal claim on the property for unpaid work. Every row in **Billed**
 *Lien by* is the last day the affidavit can be filed with the county clerk, not a day to send anything. An affidavit is the sworn lien paper. *Lien notice by* is the last day to send the § 53.056 notice to the owner and the GC. The deadline row and the bold line open the job's **Lien window** on its timeline. There the last work month, the property kind and the statute are spelled out. You hover a row for the same in a line.
 
 :::example A house with no property kind set
-The lien row shows the **residential** date — a month earlier than commercial — and the hover says *Property kind is not set, so the earlier (residential) date is shown*. That is the safe reading: a house read as commercial is a lien lost a month late. Open the job's Edit tab → **Property record** and pick {{button:outline|Residential}} or {{button:outline|Non-residential}} to confirm it.
+The lien row shows the **residential** date — a month earlier than commercial — and the hover says *Property kind is not set, so the earlier (residential) date is shown*. That is the safe reading: a house read as commercial is a lien lost a month late. Open the job's Edit tab → **Property record** and pick {{button:outline|Residential}} or {{button:outline|Commercial}} to confirm it.
 :::
 
 On a phone the row's one chip carries the verdict. It reads {{chip:red|file first}}, {{chip:red|lien gone}}, {{chip:yellow|notice in 17 d}}, {{chip:yellow|lien in 17 d}} or {{chip:green|12 d of room}}. It shows once the flag is inside three weeks or the money is due after it. A tap opens the Lien window.

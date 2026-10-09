@@ -77,6 +77,7 @@ import { ViewAsPanel } from '../components/layout/ViewAsPanel'
 import { isSettingsViewAsHash, settingsRailDoors } from '../lib/settingsRailDoors'
 import { hiddenTabsCount, hiddenTabsNote, landingTab, readRecentTabs, recentChips, rememberTab } from '../lib/settingsRail'
 import { pollScrollToSettingsAnchor, settingsSearchGuideQuery } from '../lib/settingsSearch'
+import { pickableServiceTypes } from '../lib/serviceTypePickers'
 
 type UserRole =
   | 'dev'
@@ -1054,9 +1055,10 @@ export default function Settings() {
   if (error && !myRole) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
 
   // For estimators with restrictions, only show approved service types in Material Part/Assembly Types
+  // A billing-only type has no materials; the catalog list below keeps every type to edit.
   const visibleServiceTypesForMaterials = myRole === 'estimator' && estimatorServiceTypeIds && estimatorServiceTypeIds.length > 0
-    ? serviceTypes.filter((st) => estimatorServiceTypeIds.includes(st.id))
-    : serviceTypes
+    ? pickableServiceTypes(serviceTypes).filter((st) => estimatorServiceTypeIds.includes(st.id))
+    : pickableServiceTypes(serviceTypes)
   const canDeleteMaterialTypes = myRole === 'dev'
 
 

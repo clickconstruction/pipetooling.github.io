@@ -78,7 +78,7 @@ describe('jobs without a linked record', () => {
     expect(pk.exhibits.find((x) => x.title === 'Property record')?.count).toBe(1)
   })
   it('says the kind in the firm\'s words', () => {
-    expect([propertyKindWords('residential'), propertyKindWords('non_residential'), propertyKindWords('')]).toEqual(['residential', 'non-residential', ''])
+    expect([propertyKindWords('residential'), propertyKindWords('non_residential'), propertyKindWords('')]).toEqual(['residential', 'commercial', ''])
   })
 })
 
@@ -112,8 +112,8 @@ describe('the source and the kind, said (integration pass)', () => {
     expect(propertySourceNote('matched')).toBe('matched by address, not linked')
     expect(propertySourceNote('job_address')).toBe('no property record linked')
     expect(propertySourceNote('linked')).toBe('')
-    expect(propertyKindCell('')).toMatch(/^kind unknown · commercial dates shown/)
+    expect(propertyKindCell('')).toMatch(/^kind unknown · residential dates shown/)
     expect(propertyKindCell('residential')).toBe('residential')
-    expect(propertyKindCell('commercial')).toBe('non-residential')
+    expect(propertyKindCell('commercial')).toBe('commercial')
   })
 })

@@ -33,7 +33,7 @@ afterEach(() => {
 
 const job = makeJob({ id: 'job-650', hcp_number: '650', job_name: 'ATI Schertz', job_address: '100 Main St, Schertz, TX 78154', status: 'billed', revenue: 15722.49 })
 // Every gate of the affidavit clears: an owner with a mailing address, the county, the legal description, not a homestead.
-const address = { id: 'addr-1', county: 'Guadalupe', legal_description: 'LOT 1 BLK 2 ATI SUBD', owner_name: 'ATI Holdings LLC', owner_company: '', owner_mailing_address: '1 Owner Way, Schertz, TX 78154', is_homestead: false, property_kind: 'commercial' }
+const address = { id: 'addr-1', county: 'Guadalupe', legal_description: 'LOT 1 BLK 2 ATI SUBD', owner_name: 'ATI Holdings LLC', owner_company: '', owner_mailing_address: '1 Owner Way, Schertz, TX 78154', is_homestead: false, property_kind: 'non_residential' }
 const sentNotice = { id: 'n1', kind: 'notice_53_056', months_covered: ['2026-07'], sends: [], voided_at: null, created_at: '2026-08-01T00:00:00Z', amount: 1 }
 
 type Props = Parameters<typeof LienFilingTabs>[0]

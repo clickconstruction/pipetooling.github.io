@@ -22,6 +22,7 @@ import { BidsLaborNewView } from './BidsLaborNewView'
 import { BidsLaborUnmatchedBand } from './BidsLaborUnmatchedBand'
 import { buildCostEstimateAutosavePayload, laborRowAutosaveUpdate, stageAmountRowAutosaveUpdate } from '../../lib/bids/costEstimateAutosavePayload'
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
+import { useFleetTruckRate } from '../../hooks/useFleetTruckRate'
 import { useLaborBookCalibration } from '../../hooks/useLaborBookCalibration'
 import { useJobBaselineRates } from '../../hooks/useJobBaselineRates'
 import { baselineReading, baselineReadingWords } from '../../lib/bids/bidBaselineRates'
@@ -252,6 +253,8 @@ export function BidsLaborTab({
   const bidTeamLabor = useMemo(() => (selectedBidForCostEstimate ? teamLaborDataForBids.find((r) => r.bidId === selectedBidForCostEstimate.id) ?? null : null), [teamLaborDataForBids, selectedBidForCostEstimate])
   // The company crew rate (v2.3294) — only the New view reads it; the hook is fail-soft.
   const { crewRate, loading: crewRateLoading } = useBidCrewRate(!!selectedBidForCostEstimate)
+  // The trucks per field hour (Wheels PR 3, v2.5039): shown beside the crew rate, never added.
+  const fleetTruckRate = useFleetTruckRate(!!selectedBidForCostEstimate)
   // Calibration (v2.3307): the jobs linked to bids that priced with the applied book — the New view's Book vs jobs tile and evidence chips.
   const calibration = useLaborBookCalibration(selectedLaborBookVersionId, !!selectedBidForCostEstimate)
   // Baselines (v2.3367): every billed job's hours per $1k — the book's fallback when this bid has no count sheet.
@@ -831,6 +834,7 @@ export function BidsLaborTab({
                     crewRate={crewRate}
                     baselineWords={baselineWords}
                     crewRateLoading={crewRateLoading}
+                    fleetTruckRate={fleetTruckRate}
                     onUseCompanyRate={(rate) => { markCell('rate:labor'); setLaborRateInput(rate.toFixed(2)) }}
                     onClearRate={() => { markCell('rate:labor'); setLaborRateInput('') }}
                     teamLabor={bidTeamLabor ? { hours: bidTeamLabor.manHours, cost: bidTeamLabor.bidCost, people: bidTeamLabor.people } : null}

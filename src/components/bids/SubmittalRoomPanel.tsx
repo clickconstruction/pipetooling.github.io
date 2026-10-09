@@ -2,28 +2,24 @@
  * The Share step's body (moved out of `BidsSubmittalsTab.tsx`, 2026-10-04, the split's step 3): the
  * Share button with its line, then the room — its link, Copy / Close / Reopen, and each person on
  * it with how they arrived, what they did, and whether they decide or watch. It draws what it is
- * handed and reports each press; the tab owns the room and every write.
+ * handed and reports each press; the tab owns the room and every write. v2.5027 (the owner's call of
+ * 2026-10-09): a submittal leaves only through Share or Send the link, so the "Sent by email on…"
+ * door is gone; a revision that already carries the day keeps it on the step's line.
  */
 import { useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { anonymousOpens, asPersonHow, asRoomRole, describeHow, describeTrail, personTrail, roomLink, roomPreviewLink, ROOM_ROLE_LABELS, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
 import type { StageGate } from '../../lib/submittals/submittalJourney'
 import { APP_CALENDAR_TZ as ROOM_TZ } from '../../utils/dateUtils'
-import { btn, btnPrimary, btnQuiet, smallMuted } from './submittalTabStyles'
-import { formatShortDate } from '../../lib/submittals/submittalRevision'
-import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { btn, btnPrimary, smallMuted } from './submittalTabStyles'
+import { canEmailLink } from '../../lib/submittals/sendRoomLink'
 
-// v2.4705 · the Sent by email door and its day box.
-const link: CSSProperties = { ...btnQuiet, color: 'var(--text-blue-700)', fontWeight: 600 }
+// v2.5026 · the Send the link form's box for a line of your own.
 const inp: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.15rem 0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)' }
 
 export type SubmittalRoomPanelProps = {
   /** The newest revision has rows: the Share button draws. */
   showShare: boolean
-  /** v2.4705 · `bid_submittals.sent_outside_at`: the revision went by email or on paper. */
-  sentOutsideAt?: string | null
-  /** v2.4705 · the office says the draft went out by email on a day (YYYY-MM-DD). Not given: no door. */
-  onSentOutside?: (ymd: string) => void
   /** That revision is already shared: the button reads "share again". */
   revisionShared: boolean
   shareGate: StageGate
@@ -40,12 +36,17 @@ export type SubmittalRoomPanelProps = {
   onReopenRoom: () => void
   onSetMayDecide: (personId: string, mayDecide: boolean) => void
   onClosePerson: (personId: string) => void
+  /** v2.5026 · email one person their link, with the office's own line; true once it went. Not given: no door. */
+  onSendLink?: (personId: string, note: string) => Promise<boolean>
 }
 
-export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room, roomLine, people, events, decidedBy, busy, onShare, onCloseRoom, onReopenRoom, onSetMayDecide, onClosePerson, sentOutsideAt = null, onSentOutside }: SubmittalRoomPanelProps) {
+export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room, roomLine, people, events, decidedBy, busy, onShare, onCloseRoom, onReopenRoom, onSetMayDecide, onClosePerson, onSendLink }: SubmittalRoomPanelProps) {
   const { showToast } = useToastContext()
-  // v2.4705 · "Sent by email on…": a day box opens in line; Save hands the day back.
-  const [sentOn, setSentOn] = useState<string | null>(null)
+  // v2.5026 · Send the link: the person whose short form is open, the line typed, and a send under way.
+  const [sendFor, setSendFor] = useState<string | null>(null)
+  const [sendNote, setSendNote] = useState('')
+  const [sending, setSending] = useState(false)
+  const canSend = Boolean(onSendLink && room && room.status === 'open' && room.shared_at)
   return (
     <>
       {showShare ? (
@@ -54,22 +55,6 @@ export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room,
             {revisionShared ? 'Shared · share again' : 'Share'}
           </button>
           <span style={smallMuted} data-testid="share-caption">{!shareGate.on ? shareGate.why : room ? 'The same link shows every later version.' : 'Makes the link for the GC and copies it. Paste it into your email.'}</span>
-          {onSentOutside && !revisionShared && !room?.shared_at ? (
-            sentOn == null ? (
-              <button type="button" disabled={busy} onClick={() => setSentOn(todayYmdInAppTz())} style={{ ...link, fontSize: '0.8125rem' }} title="You emailed the package yourself, or handed it over. Nothing is sent." data-testid="sent-outside-open">
-                {sentOutsideAt ? `Sent by email ${formatShortDate(sentOutsideAt)} · change` : 'Sent by email on…'}
-              </button>
-            ) : (
-              <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.8125rem' }} data-testid="sent-outside-form">
-                <label style={{ display: 'inline-flex', gap: '0.3rem', alignItems: 'center' }}>
-                  Sent by email on
-                  <input type="date" aria-label="Sent by email on" value={sentOn} onChange={(e) => setSentOn(e.target.value)} style={{ ...inp, width: 'auto' }} />
-                </label>
-                <button type="button" disabled={busy || !sentOn} onClick={() => { if (sentOn) onSentOutside(sentOn); setSentOn(null) }} style={{ ...btnPrimary, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }} data-testid="sent-outside-save">Save</button>
-                <button type="button" onClick={() => setSentOn(null)} style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '0.75rem' }}>Cancel</button>
-              </span>
-            )
-          ) : null}
         </div>
       ) : null}
       {room ? (
@@ -112,6 +97,11 @@ export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room,
                       <button type="button" aria-pressed={!p.may_decide} onClick={() => onSetMayDecide(p.id, false)} style={{ padding: '0.15rem 0.5rem', border: 'none', cursor: 'pointer', font: 'inherit', background: !p.may_decide ? 'var(--text-strong)' : 'var(--surface)', color: !p.may_decide ? 'white' : 'var(--text-muted)', fontWeight: !p.may_decide ? 700 : 500 }}>watching</button>
                     </span>
                     <span style={{ display: 'flex', gap: '0.3rem' }}>
+                      {canSend && canEmailLink(p) ? (
+                        <button type="button" disabled={sending} onClick={() => { setSendFor(sendFor === p.id ? null : p.id); setSendNote('') }} aria-expanded={sendFor === p.id} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem' }} data-testid="send-link-open">
+                          {t.linkSentAt ? 'Send it again' : 'Send the link'}
+                        </button>
+                      ) : null}
                       {p.token ? (
                         <button type="button" onClick={() => void navigator.clipboard.writeText(roomLink(window.location.origin, p.token as string)).then(() => showToast('Personal link copied.', 'success'), () => showToast(roomLink(window.location.origin, p.token as string), 'info'))} style={{ ...btn, padding: '0.1rem 0.45rem', fontSize: '0.7rem' }}>
                           Personal link
@@ -121,6 +111,18 @@ export function SubmittalRoomPanel({ showShare, revisionShared, shareGate, room,
                         ×
                       </button>
                     </span>
+                    {sendFor === p.id && onSendLink ? (
+                      <div style={{ gridColumn: '1 / -1', display: 'flex', flexDirection: 'column', gap: '0.35rem', padding: '0.45rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)' }} data-testid="send-link-form">
+                        <span style={{ color: 'var(--text-strong)' }}>Email {p.name} their own link at {p.email}. It comes from the company, and a reply comes back to you.</span>
+                        <textarea aria-label="A line of your own" value={sendNote} maxLength={1000} rows={2} onChange={(e) => setSendNote(e.target.value)} placeholder="A line of your own, optional" style={{ ...inp, width: '100%', resize: 'vertical', boxSizing: 'border-box' }} />
+                        <span style={{ display: 'flex', gap: '0.4rem' }}>
+                          <button type="button" disabled={sending} onClick={() => { setSending(true); void onSendLink(p.id, sendNote).catch(() => false).then((went) => { setSending(false); if (went) setSendFor(null) }) }} style={{ ...btnPrimary, padding: '0.2rem 0.6rem', fontSize: '0.75rem' }} data-testid="send-link-send">
+                            {sending ? 'Sending…' : t.linkSentAt ? 'Send it again' : 'Send the link'}
+                          </button>
+                          <button type="button" disabled={sending} onClick={() => setSendFor(null)} style={{ ...btn, padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>Cancel</button>
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 )
               })}

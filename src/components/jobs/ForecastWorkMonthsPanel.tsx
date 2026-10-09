@@ -177,7 +177,8 @@ export default function ForecastWorkMonthsPanel({
   const earlier = job.months.length - shown.length
   const maxWeekHours = Math.max(1, ...job.months.flatMap((m) => m.weeks.map((w) => w.hours)))
   const kindUnknown = !job.propertyKind
-  const residential = job.propertyKind === 'residential'
+  // A kind not set dates as residential, the earlier month (v2.5031); only commercial counts the 4th.
+  const residential = job.propertyKind !== 'non_residential'
   const affidavit = job.affidavitDue ? fmtLong(job.affidavitDue) : '—'
   const lastLabel = workMonthLabel(job.lastMonthKey)
   return (
@@ -232,7 +233,7 @@ export default function ForecastWorkMonthsPanel({
         )}
         {kindUnknown ? (
           <span
-            title="No property record is linked. Commercial dates are shown; a residential property would be a month earlier on every line. Link the property on Edit Job → Property record."
+            title="No property record is linked. Residential dates are shown, the earlier ones; a commercial property would be a month later on every line. Link the property on Edit Job → Property record."
             style={{ padding: '0 6px', borderRadius: 5, fontSize: '0.66rem', fontWeight: 600, lineHeight: '18px', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}
           >
             property kind unknown

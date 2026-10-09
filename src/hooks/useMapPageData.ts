@@ -100,7 +100,7 @@ export function useMapPageData(enabled: boolean) {
     try {
       const [jobRows, bidRows, estRows] = await Promise.all([
         withSupabaseRetry<JobRow[]>(
-          async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, status, collections_at').order('job_name'),
+          async () => supabase.from('jobs_ledger').select('id, hcp_number, job_name, job_address, status, collections_at').eq('billing_only', false).order('job_name'),
           'map jobs_ledger'
         ),
         withSupabaseRetry<BidRow[]>(

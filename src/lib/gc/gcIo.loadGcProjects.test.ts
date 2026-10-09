@@ -8,7 +8,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 const TABLES: Record<string, unknown[]> = {
   gc_projects: [
-    { project_id: 'p1', stage: 'bidding', bid_due: '2026-10-24', sq_ft: null, size_note: '', customer_role: 'owner', property_owner_customer_id: null, architect_customer_id: 'a1', project_manager_user_id: null, general_conditions: 0, contingency_pct: 0, fee_pct: 0, drive_folder_url: '', lost_on: null, created_at: '2026-10-08T00:00:00Z' },
+    { project_id: 'p1', stage: 'bidding', bid_due: '2026-10-24', sq_ft: null, size_note: '', customer_role: 'owner', property_owner_customer_id: null, architect_customer_id: 'a1', project_manager_user_id: null, drive_folder_url: '', lost_on: null, created_at: '2026-10-08T00:00:00Z' },
   ],
   projects: [{ id: 'p1', name: 'GC test bidding project, delete me', address: '100 Test St', customer_id: 'c-owner', plans_link: null }],
   gc_trade_packages: [{ id: 'conc', project_id: 'p1', trade: 'Concrete', position: 0, budget: 50000, ours: false, own_bid_id: null }],

@@ -68,7 +68,7 @@ Job 1058 · Service Visit · Sep 21 · $2,000.00
 - **The job's name** shows only when it says something. *Trip Charges* stays. A repeat of the GC's own name is left off. A repeat of the address that heads the block is left off too.
 - **A payment shows under the bill it was recorded against**, with the check number and the day. A bill with nothing paid is one plain line.
 - **Payments we have received.** Under the total is every payment the GC sent in the last 30 days, newest first. Each payment has the check number, the day, and the property and job it went to. A check that paid a job off says *now paid in full*. When none came, the statement says so and asks the GC to reply if they sent one. The list is read as you open the GC's row, so Copy carries it too.
-- **Paid on the job, not on a bill.** A job may carry a payment that was never put on a bill. The Draft Message dialog says so before you send. The warning reads *Paid on the job, not on a bill: Job 1042 $3,000.00.* The statement still shows that job's bills as owed in full. If the money was for those bills, you match it in Edit Job → Payments, then send.
+- **Paid on the job with no bill picked.** A job may carry a payment that was never put on a bill. The Draft Message dialog names those jobs before you send. The note reads *Paid on the job with no bill picked: Job 1042 $3,000.00.* The statement counts that money the way the portal does. It pays the work on no bill first, then the oldest bills. To put a payment on a different bill, pick the bill in Edit Job → Payments, then send.
 
 ## Print a GC's unpaid invoices
 
@@ -107,12 +107,12 @@ Don't want to remember to send it? You flip **When** to **Schedule…** and pick
 
 ## Share the whole report
 
-Two buttons beside the tabs at the top of GC Review handle the entire report at once. {{button:blue|⇪ Share all}} opens the whole-report dialog. {{button:outline|🖨 Print all}} prints every section as one report. The dialog holds:
+Two buttons beside the tabs at the top of GC Review handle the entire report at once. {{button:blue|⇪ Share all}} opens the whole-report dialog. {{button:outline|🖨 Print all}} prints every section as one report. Grouped by GC, both leave out a GC whose bills are not checked this week. A GC that changed since its check is left out too. The dialog names who is left out, and a message after says how many. Grouped by development, every section goes. The dialog holds:
 
 - **Print / save as PDF** opens the same one-report print that **Print all** makes. You choose *Save as PDF* in the print window to download a copy.
 - **Email once** sends every section as one email to **any address, inside or outside the company**. Its button reads **Send report**, or **Schedule send**. The email holds each GC with its jobs, bill-sent dates and amounts owed, plus the grand total. You tap one of the **teammate chips** above the To field to fill an office teammate's email in one tap. Or you just type any address. The email has the same clean table styling and GC-safe wording as the per-GC statement. The email is sent from **team@noreply.clicktooling.com** with your email as the reply-to.
 
-Devs also get a **Standing copies** section in the same dialog. You pick a teammate or type an outside email. You toggle the **weekdays**, say Mon and Wed for a Leader. You set the time and hit {{button:blue|Add}}. The report emails itself on those days, rebuilt fresh each send. The standing copy runs forever until you **Remove** it. Each standing copy shows as one line with Edit / Remove. The list on GC Review's **Scheduled** tab shows it grouped the same way.
+Devs also get a **Standing copies** section in the same dialog. You pick a teammate or type an outside email. You toggle the **weekdays**, say Mon and Wed for a Leader. You set the time and hit {{button:blue|Add}}. The report emails itself on those days, rebuilt fresh each send. Each send leaves out the GCs not checked that week and names them at the top. The standing copy runs forever until you **Remove** it. Each standing copy shows as one line with Edit / Remove. The list on GC Review's **Scheduled** tab shows it grouped the same way.
 
 ## Who gets the bills
 

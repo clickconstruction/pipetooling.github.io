@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail } from '../lib/gc/access'
+import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -16,16 +16,51 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../components/SpotlightTour'
 import { useToastContext } from '../contexts/ToastContext'
 import { formatErrorMessage } from '../utils/errorHandling'
-import { todayYmdInAppTz } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { GcNewProjectWindow } from '../components/gc/GcNewProject'
 import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
 import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { GcQuestionsWindow, type AnswerReach } from '../components/gc/GcQuestions'
 import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
+import { GcScheduleWindow } from '../components/gc/GcScheduleWindow'
 import { withChangeOrders, type ChangeOrderRow } from '../lib/gc/changeOrderRows'
+import { GcDailyLogWindow } from '../components/gc/GcDailyLog'
+import { dailyLogPayload, withDailyLogs, type DailyLogRow } from '../lib/gc/dailyLogRows'
+import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { GcSubmittalsWindow } from '../components/gc/GcSubmittalsWindow'
+import { submittalRoundExtras, tradeSpecSections, withSubmittals, type SubmittalTables } from '../lib/gc/submittalRows'
+import { addSubmittal, answerSubmittal, loadGcSubmittals, markSubmittalSent, sendSubmittalToArchitect, submittalCameIn } from '../lib/gc/submittalsIo'
+import type { ScheduleRead } from '../lib/gc/schedule/rows'
+import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
-import { billingStateForAll, type BillingRows } from '../lib/gc/billCustomer'
+import { GcMoneyMondayEmail, type MoneyMondayIo } from '../components/gc/GcMoneyMondayEmail'
+import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
+import { billingStateFor, billingStateForAll, finalPayAppForm, finalPayAppSendPayload, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
+import { loadSchedule } from '../lib/gc/scheduleIo'
+import { ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
+import { downloadPayAppExcel, downloadPayAppPdf, payAppPdf } from '../lib/gc/payAppFileWriters'
+import { payAppFileName } from '../lib/gc/payAppFile'
+import {
+  certifiedMail,
+  certifiedMailFacts,
+  certifyAskMail,
+  changeOrderMail,
+  changeOrderMailFacts,
+  gcCustomerEmailRefusal,
+  interestBillMail,
+  interestBillMailFacts,
+  payAppMail,
+  payAppMailFacts,
+  type BillEmailed,
+} from '../lib/gc/customerEmail'
+import { GC_CUSTOMER_EMAIL_FILED_AS } from '../../supabase/functions/_shared/gcCustomerEmails'
+import { pdfBase64, sendGcCustomerEmail } from '../lib/gc/customerEmailIo'
+import { unbilledPayments } from '../lib/gc/ownerBillingRows'
+import { payReminderEmail } from '../lib/gc/ownerBillingRemind'
+import LienReleaseModal from '../components/jobs/LienReleaseModal'
+import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
+import type { JobWithDetails } from '../types/jobWithDetails'
 import { openQuestions, questionsCloseOn, type PlanQuestionView } from '../lib/gc/questions'
 import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
 import { emailTheAnswer, sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
@@ -36,6 +71,7 @@ import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTra
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
+import { GcTradeSow, type SowWrites } from '../components/gc/GcTradeSow'
 import { GcBidTabs } from '../components/gc/GcBidTabs'
 import { GcOurNumber } from '../components/gc/GcOurNumber'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
@@ -49,12 +85,14 @@ import { setEmailSummary, type SetEmailCompany, type SetEmailInvite, type SetEma
 import {
   addGcCompany,
   askGcCompanies,
+  awardGcTrade,
   bringGcBack,
   carryGcTrade,
   answerChangeOrder,
   deleteChangeOrderDraft,
   draftChangeOrder,
   loadGcChangeOrders,
+  loadGcChangeOrderEmails,
   sendChangeOrder,
   setChangeOrderPct,
   checkDriveAccess,
@@ -63,6 +101,10 @@ import {
   editScopeBookLine,
   issuePlanSet,
   loadGcTeam,
+  listMoneyMondayRequests,
+  applyMoneyMondayPlan,
+  previewMoneyMonday,
+  sendMoneyMondayTest,
   answerQuestion,
   markQuestionSent,
   recordQuestion,
@@ -91,13 +133,28 @@ import {
   sendSetEmails,
   type GcPickerCustomer,
   type GcTeamMember,
+  linkPayAppWaiver,
   loadGcBillingRows,
+  recordAcceptance,
+  recordCertificate,
+  remindCustomerToPay,
+  setOwnerPayDays,
+  setOwnerLateInterest,
+  setOwnerLateFinish,
+  sendOwnerInterestBill,
+  recordGcPayment,
+  recordGcPromise,
+  sendOwnerPayApp,
+  setOwnerRetainage,
+  sendGcSow,
 } from '../lib/gc/gcIo'
+import { sowEmailRequest } from '../lib/gc/sowEmail'
+import { gcTradeEmailRefusal } from '../lib/gc/tradeEmail'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
 import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
-import type { GcState, ScopeBookStore } from '../lib/gc/types'
+import type { DailyLog, GcProject, GcState, ScopeBookStore } from '../lib/gc/types'
 import { gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
 
 interface Loaded {
@@ -109,6 +166,14 @@ interface Loaded {
 
 function money(n: number): string {
   return `$${Math.round(n).toLocaleString('en-US')}`
+}
+
+/** The Monday money email's reads and writes (O7b), gcIo's, one object for the page's life; each is read when called. */
+const MONEY_MONDAY_IO: MoneyMondayIo = {
+  list: () => listMoneyMondayRequests(),
+  apply: (plan) => applyMoneyMondayPlan(plan),
+  preview: () => previewMoneyMonday(),
+  test: () => sendMoneyMondayTest(),
 }
 
 export default function GcProjects() {
@@ -143,6 +208,8 @@ export default function GcProjects() {
   const plansProjectId = params.get('plans')
   /** The questions window: `questions=<projectId>`. */
   const questionsProjectId = params.get('questions')
+  /** The schedule's window (the schedule's PR 7b): `schedule=<projectId>`, a dev's until the schedule's PR 10. */
+  const scheduleProjectId = params.get('schedule')
   const [questionBusy, setQuestionBusy] = useState<string | null>(null)
   const [questionProblem, setQuestionProblem] = useState<string | null>(null)
   const [issuing, setIssuing] = useState(false)
@@ -256,6 +323,33 @@ export default function GcProjects() {
     carry: async (packageId, carry) => {
       await carryGcTrade(packageId, carry)
       await reloadProjects()
+    },
+    // Award (B6-a-ii): a dev's only while the Board is built, as `gc_award` says. It writes the trade, so the projects reload.
+    ...(role === 'dev'
+      ? {
+          award: async (inviteId: string, estimatorId: string | null) => {
+            await awardGcTrade(inviteId, estimatorId)
+            await reloadProjects()
+          },
+        }
+      : {}),
+  }
+  // A trade's statement of work (B6-a-ii): Send marks it sent, and emails it when asked (the box shows once the
+  // Portal's sign screen is live). A refused email is said after the board reads the send.
+  const sowWrites: SowWrites = {
+    send: async (packageId, email) => {
+      const sowId = await sendGcSow(packageId, today)
+      let refused: string | null = null
+      if (email && canSendGcTradeEmail(role) && board) {
+        const project = board.projects.find((p) => p.packages.some((k) => k.id === packageId))
+        const pkg = project?.packages.find((k) => k.id === packageId)
+        const companyId = pkg?.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId
+        const req = project && companyId ? sowEmailRequest(board, project.id, packageId, sowId, langs[companyId] ?? 'en') : null
+        const answer = req ? await sendGcTradeEmail(req) : null
+        if (answer && !answer.ok) refused = `Sent to their portal. The email did not go: ${gcTradeEmailRefusal(answer.key)}`
+      }
+      await refreshBoard()
+      if (refused) throw new Error(refused)
     },
   }
   // Our number (the Board's B5-c), opened on a project's card for the money team; its inputs reload the board.
@@ -399,18 +493,27 @@ export default function GcProjects() {
   // the board's projects (boardProjectFromView maps the rest), and opened at `changes=<projectId>`.
   const changesProjectId = params.get('changes')
   const [changeOrderRows, setChangeOrderRows] = useState<ChangeOrderRow[]>([])
+  const [changeEmails, setChangeEmails] = useState<{ source_id: string; recipient_name: string | null; sent_at: string }[]>([])
   const [changeBusy, setChangeBusy] = useState<string | null>(null)
   const [changeProblem, setChangeProblem] = useState<string | null>(null)
   const loadChangeOrders = useCallback(async () => {
     // Change orders are the money team's (the Owner Billing door): nobody else reads them.
     if (!board || !canSeeGcMoney(role)) return
-    setChangeOrderRows(await loadGcChangeOrders(board.projects.map((p) => p.id)))
+    const rows = await loadGcChangeOrders(board.projects.map((p) => p.id))
+    setChangeOrderRows(rows)
+    // Who each was emailed to (O4b-2), from its sent copies.
+    setChangeEmails(await loadGcChangeOrderEmails(rows.map((r) => r.id)))
   }, [board, role])
   useEffect(() => {
     void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
   }, [loadChangeOrders])
   const boardWithChanges = useMemo(() => (board ? withChangeOrders(board, changeOrderRows) : null), [board, changeOrderRows])
   const changesProject = changesProjectId ? (boardWithChanges?.projects.find((p) => p.id === changesProjectId) ?? null) : null
+  const changeEmailed = useMemo(() => {
+    const out: Record<string, { to: string; on: string }[]> = {}
+    for (const e of changeEmails) (out[e.source_id] ??= []).push({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) })
+    return out
+  }, [changeEmails])
   const setChangesWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('changes', projectId)
@@ -426,6 +529,80 @@ export default function GcProjects() {
       .then(() => loadChangeOrders())
       .catch((e) => setChangeProblem(formatErrorMessage(e, failed)))
       .finally(() => setChangeBusy(null))
+  }
+
+  // The daily log (Building's U3a-ii): read beside the board for a dev, laid over the board's projects
+  // (boardProjectFromView maps the rest), and opened at `log=<projectId>`. A save writes no gc_projects
+  // row, so only the logs are read again.
+  const logProjectId = params.get('log')
+  const [dailyLogRows, setDailyLogRows] = useState<DailyLogRow[]>([])
+  const [logBusy, setLogBusy] = useState(false)
+  const [logProblem, setLogProblem] = useState<string | null>(null)
+  const loadDailyLogs = useCallback(async () => {
+    // Building is a dev's while it is built (canUseGcBuilding): nobody else reads its tables.
+    if (!board || !canUseGcBuilding(role)) return
+    setDailyLogRows(await loadGcDailyLogs(board.projects.filter((p) => p.stage === 'building').map((p) => p.id)))
+  }, [board, role])
+  useEffect(() => {
+    void loadDailyLogs().catch((e) => setLogProblem(formatErrorMessage(e, 'The daily logs did not load.')))
+  }, [loadDailyLogs])
+  const boardWithLogs = useMemo(() => (board ? withDailyLogs(board, dailyLogRows) : null), [board, dailyLogRows])
+  const logProject = logProjectId ? (boardWithLogs?.projects.find((p) => p.id === logProjectId) ?? null) : null
+  const setLogWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('log', projectId)
+    else next.delete('log')
+    setParams(next, { replace: true })
+    setLogProblem(null)
+  }
+  /** A day's log saved, then the logs read again. False keeps the window's form as typed, the problem above it. */
+  const saveLog = async (projectId: string, log: Omit<DailyLog, 'writtenOn'>): Promise<boolean> => {
+    setLogBusy(true)
+    setLogProblem(null)
+    try {
+      await saveGcDailyLog(dailyLogPayload(projectId, log, today))
+      await loadDailyLogs()
+      return true
+    } catch (e) {
+      setLogProblem(formatErrorMessage(e, 'The daily log was not saved.'))
+      return false
+    } finally {
+      setLogBusy(false)
+    }
+  }
+
+  // The submittal register (Building's U4b): a dev's on a job being built, opened at `submittals=<projectId>`. It reads the
+  // job's register and its schedule when the window opens, so a submittal is needed by the first start of the work it
+  // holds. A press writes no gc_projects row, so only the register and the schedule are read again.
+  const submittalsProjectId = params.get('submittals')
+  const [submittalTables, setSubmittalTables] = useState<SubmittalTables>({ submittals: [], holds: [], rounds: [] })
+  const [submittalRead, setSubmittalRead] = useState<ScheduleRead | null>(null)
+  const [submittalBusy, setSubmittalBusy] = useState<string | null>(null)
+  const [submittalProblem, setSubmittalProblem] = useState<string | null>(null)
+  const loadSubmittals = useCallback(async () => {
+    if (!board || !canUseGcBuilding(role) || !submittalsProjectId) return
+    const tables = await loadGcSubmittals([submittalsProjectId])
+    setSubmittalTables(tables)
+    setSubmittalRead(await loadSchedule(withSubmittals(board, tables), submittalsProjectId))
+  }, [board, role, submittalsProjectId])
+  useEffect(() => {
+    void loadSubmittals().catch((e) => setSubmittalProblem(formatErrorMessage(e, 'The submittals did not load.')))
+  }, [loadSubmittals])
+  const setSubmittalsWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('submittals', projectId)
+    else next.delete('submittals')
+    setParams(next, { replace: true })
+    setSubmittalProblem(null)
+  }
+  /** A submittal press: run it, read the register again, and say the problem in the window if there is one. */
+  const submittalWrite = (id: string, work: Promise<unknown>, failed: string) => {
+    setSubmittalBusy(id)
+    setSubmittalProblem(null)
+    void work
+      .then(() => loadSubmittals())
+      .catch((e) => setSubmittalProblem(formatErrorMessage(e, failed)))
+      .finally(() => setSubmittalBusy(null))
   }
 
   // Money (Owner Billing's O6a): every job that is ours, with billing read when the lens opens and laid over
@@ -448,7 +625,168 @@ export default function GcProjects() {
       live = false
     }
   }, [devView, board, ourIds, role])
-  const moneyState = useMemo(() => (boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null), [boardWithChanges, moneyRows, ourIds])
+  // Their schedules (O6b-3), read beside the money only while the lens is open, all at once: each job's late finish
+  // counts from them. A job whose read fails shows as having none.
+  const [moneySchedules, setMoneySchedules] = useState<Map<string, GcProject['schedule'] | null> | null>(null)
+  useEffect(() => {
+    if (devView !== 'money' || !board || !canSeeGcMoney(role)) return
+    let live = true
+    setMoneySchedules(null)
+    void Promise.all(
+      ourIds.map((id) =>
+        loadSchedule(board, id)
+          .then((read) => [id, read?.project.schedule ?? null] as const)
+          .catch(() => [id, null] as const),
+      ),
+    ).then((pairs) => {
+      if (live) setMoneySchedules(new Map(pairs))
+    })
+    return () => {
+      live = false
+    }
+  }, [devView, board, ourIds, role])
+  const moneyState = useMemo(() => {
+    const laid = boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null
+    return laid && moneySchedules ? withSchedules(laid, moneySchedules) : laid
+  }, [boardWithChanges, moneyRows, ourIds, moneySchedules])
+
+  // Bill the customer (Owner Billing's O4a): the project's terms, its price as signed and its bills, read when
+  // the window opens at `bill=<projectId>` and laid over the board's project with its change orders. The money
+  // team's, like Change orders (the Owner Billing door).
+  const billProjectId = params.get('bill')
+  const [billRows, setBillRows] = useState<BillingRows | null>(null)
+  const [billBusy, setBillBusy] = useState<string | null>(null)
+  const [billProblem, setBillProblem] = useState<string | null>(null)
+  const loadBill = useCallback(async () => {
+    if (!billProjectId || !canSeeGcMoney(role)) {
+      setBillRows(null)
+      return
+    }
+    setBillRows(await loadGcBillingRows([billProjectId]))
+  }, [billProjectId, role])
+  useEffect(() => {
+    void loadBill().catch((e) => setBillProblem(formatErrorMessage(e, 'The bills did not load.')))
+  }, [loadBill])
+  // The job's schedule (O6b-3), read when the window opens, so its late finish counts. A failed read shows none.
+  const [billSchedule, setBillSchedule] = useState<{ id: string; schedule: GcProject['schedule'] | null } | null>(null)
+  useEffect(() => {
+    if (!billProjectId || !board || !canSeeGcMoney(role)) return
+    let live = true
+    loadSchedule(board, billProjectId)
+      .then((read) => {
+        if (live) setBillSchedule({ id: billProjectId, schedule: read?.project.schedule ?? null })
+      })
+      .catch(() => {
+        if (live) setBillSchedule({ id: billProjectId, schedule: null })
+      })
+    return () => {
+      live = false
+    }
+  }, [billProjectId, board, role])
+  const billScheduleRead = billSchedule !== null && billSchedule.id === billProjectId
+  const billState = useMemo(() => {
+    const laid = boardWithChanges && billProjectId && billRows ? billingStateFor(boardWithChanges, billProjectId, billRows) : null
+    return laid && billSchedule && billSchedule.id === billProjectId ? withSchedules(laid, new Map([[billProjectId, billSchedule.schedule]])) : laid
+  }, [boardWithChanges, billProjectId, billRows, billSchedule])
+  const billProject = billProjectId ? (billState?.projects.find((p) => p.id === billProjectId) ?? null) : null
+  // Money in on the billing job (O5c): each sent one's bill, our unconditional waivers naming it, and a payment that names no bill.
+  const billOwn = billProjectId ? billRows?.billing.get(billProjectId) : undefined
+  const billJobId = billRows?.terms.find((t) => t.project_id === billProjectId)?.billing_job_id ?? null
+  const billInvoiceOf = (number: number) => billOwn?.payApps.find((a) => a.number === number)?.invoice_id ?? null
+  const billUnconditional = useMemo(
+    () =>
+      Object.fromEntries(
+        (billOwn?.payApps ?? []).map((a) => [
+          a.number,
+          (billOwn?.money?.waivers ?? []).filter((w) => w.form_type.startsWith('unconditional') && a.invoice_id !== null && w.invoice_ids.includes(a.invoice_id)).length,
+        ]),
+      ),
+    [billOwn],
+  )
+  const billUnbilled = useMemo(() => unbilledPayments(billOwn?.money), [billOwn])
+  // Who each sent one was emailed to and when (O4b), from its sent copies: the pay application's own, then the certified bill.
+  const billEmailed = useMemo(() => {
+    const out: Record<number, BillEmailed[]> = {}
+    for (const a of billOwn?.payApps ?? []) {
+      const sent = (billOwn?.emails ?? []).filter((e) => e.source_id === a.id)
+      if (sent.length > 0)
+        out[a.number] = sent.map((e) => ({
+          what: e.kind === GC_CUSTOMER_EMAIL_FILED_AS.certified ? 'certified' : 'payApp',
+          to: e.recipient_name ?? '',
+          on: calendarYmdInAppTzFromIso(e.sent_at),
+        }))
+    }
+    return out
+  }, [billOwn])
+  // Who each interest bill was emailed to and when (O6b-2), from its sent copies.
+  const billInterestEmailed = useMemo(() => {
+    const out: Record<number, { to: string; on: string }[]> = {}
+    for (const b of billOwn?.interestBills ?? []) {
+      const sent = (billOwn?.interestEmails ?? []).filter((e) => e.source_id === b.id)
+      if (sent.length > 0) out[b.number] = sent.map((e) => ({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) }))
+    }
+    return out
+  }, [billOwn])
+  const setBillWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('bill', projectId)
+    else next.delete('bill')
+    setParams(next, { replace: true })
+    setBillProblem(null)
+  }
+  /** A Bill the customer press: run it, read the bills again when it wrote, and say the problem in the window. */
+  const billWrite = (id: string, work: () => Promise<unknown>, failed: string, reload = true) => {
+    setBillBusy(id)
+    setBillProblem(null)
+    void work()
+      .then(() => (reload ? loadBill() : undefined))
+      .catch((e) => setBillProblem(formatErrorMessage(e, failed)))
+      .finally(() => setBillBusy(null))
+  }
+  // Our conditional waiver with a sent pay application (O4a-4): the Pipeline's own waiver window on the
+  // billing job, filled in with what the bill asked and its bill day, since no bill exists until the certificate.
+  const [waiverFor, setWaiverFor] = useState<{
+    job: JobWithDetails
+    payAppId: string
+    /** Our conditional waiver goes before the bill exists: what it asked and its bill day. */
+    ask: { amount: number; throughDate: string } | null
+    /** Our unconditional waiver (O5c) names the bill the payments came on. */
+    invoiceId: string | null
+    formType: 'conditional_progress' | 'conditional_final' | 'unconditional_progress' | 'unconditional_final'
+  } | null>(null)
+  const openWaiver = (number: number) => {
+    if (!billProjectId) return
+    const row = billRows?.billing.get(billProjectId)?.payApps.find((a) => a.number === number)
+    const jobId = billRows?.terms.find((t) => t.project_id === billProjectId)?.billing_job_id
+    if (!row || !jobId) return
+    billWrite(
+      `waiver-${number}`,
+      async () => {
+        const job = await fetchJobWithDetailsById(jobId)
+        if (!job) throw new Error('The billing job did not load.')
+        // Our final pay application goes with our conditional waiver on final payment (O7a).
+        setWaiverFor({ job, payAppId: row.id, ask: { amount: Math.round(Number(row.due) * 100) / 100, throughDate: row.period_to }, invoiceId: null, formType: row.final ? 'conditional_final' : 'conditional_progress' })
+      },
+      'The waiver did not open.',
+      false,
+    )
+  }
+  // Our unconditional waiver for what they paid (O5c): the same window on the bill, the final form on the final pay application.
+  const openUnconditional = (number: number) => {
+    const row = billOwn?.payApps.find((a) => a.number === number)
+    if (!row?.invoice_id || !billJobId) return
+    const invoiceId = row.invoice_id
+    billWrite(
+      `unconditional-${number}`,
+      async () => {
+        const job = await fetchJobWithDetailsById(billJobId)
+        if (!job) throw new Error('The billing job did not load.')
+        setWaiverFor({ job, payAppId: row.id, ask: null, invoiceId, formType: row.final ? 'unconditional_final' : 'unconditional_progress' })
+      },
+      'The waiver did not open.',
+      false,
+    )
+  }
 
   if (authLoading) return null
   if (!canOpenGcProjects(role)) return <Navigate to="/dashboard" replace />
@@ -530,6 +868,14 @@ export default function GcProjects() {
     else next.delete('plans')
     setParams(next, { replace: true })
   }
+  const setScheduleWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('schedule', projectId)
+    else next.delete('schedule')
+    setParams(next, { replace: true })
+  }
+  // The schedule reads the board's job: a dev's only, as the gc_schedule_* tables are until the schedule's PR 10 (G-133).
+  const scheduleProject = scheduleProjectId && role === 'dev' ? (board?.projects.find((x) => x.id === scheduleProjectId) ?? null) : null
   const setSetWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('set', projectId)
@@ -597,7 +943,16 @@ export default function GcProjects() {
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
-                <GcMoney state={moneyState} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
+                  <GcMoney state={moneyState} schedulesRead={moneySchedules !== null} />
+                  {user && loaded && (
+                    <GcMoneyMondayEmail
+                      me={{ id: user.id, name: profileName ?? '' }}
+                      team={loaded.team.filter((p) => (GC_MONEY_TEAM as readonly string[]).includes(p.role))}
+                      io={MONEY_MONDAY_IO}
+                    />
+                  )}
+                </div>
               ) : moneyProblem ? (
                 <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{moneyProblem}</div>
               ) : (
@@ -645,12 +1000,38 @@ export default function GcProjects() {
                   A new set of plans came in
                 </Btn>
               )}
+              {role === 'dev' && board && (
+                <Btn kind="quiet" onClick={() => setScheduleWindow(p.id)}>
+                  Schedule
+                </Btn>
+              )}
               {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
                 <Btn kind="quiet" onClick={() => setChangesWindow(p.id)}>
                   {(() => {
                     const count = changeOrderRows.filter((r) => r.project_id === p.id).length
                     return count > 0 ? `Change orders · ${count}` : 'Change orders'
                   })()}
+                </Btn>
+              )}
+              {/* The daily log (Building's U3a-ii): a dev's, on a job being built (the view's own stage, so a closed job has none). */}
+              {canUseGcBuilding(role) && boardWithLogs && p.stage === 'building' && (
+                <Btn kind="quiet" onClick={() => setLogWindow(p.id)}>
+                  {(() => {
+                    const project = boardWithLogs.projects.find((x) => x.id === p.id)
+                    const missed = project ? missingLogs(project, today).length : 0
+                    return missed > 0 ? `Daily log · ${missed} missed` : 'Daily log'
+                  })()}
+                </Btn>
+              )}
+              {/* The submittal register (Building's U4b): a dev's, on a job being built. */}
+              {canUseGcBuilding(role) && board && p.stage === 'building' && (
+                <Btn kind="quiet" onClick={() => setSubmittalsWindow(p.id)}>
+                  Submittals
+                </Btn>
+              )}
+              {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
+                <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
+                  Bill the customer
                 </Btn>
               )}
               {(p.sqFt || p.sizeNote) && (
@@ -759,6 +1140,8 @@ export default function GcProjects() {
                       </li>
                     ))}
                   </ul>
+                  {/* The trade's statement of work once it is awarded (B6-a-ii): only a dev reads one while the Board is built. */}
+                  {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canEmail={canSendGcTradeEmail(role)} />}
                   {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
                   {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
                 </div>
@@ -786,6 +1169,7 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
+      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} onClose={() => setScheduleWindow(null)} />}
       {openCompany && board && (
         <GcCompanyWindow
           key={openCompany.id}
@@ -806,7 +1190,15 @@ export default function GcProjects() {
         />
       )}
       {comparing && board && (
-        <GcCompareQuotes key={comparing.packageId} state={board} projectId={comparing.projectId} packageId={comparing.packageId} writes={compareWrites} onClose={() => setComparing(null)} />
+        <GcCompareQuotes
+          key={comparing.packageId}
+          state={board}
+          projectId={comparing.projectId}
+          packageId={comparing.packageId}
+          writes={compareWrites}
+          team={{ team: loaded?.team ?? [], me: user?.id ?? null }}
+          onClose={() => setComparing(null)}
+        />
       )}
       {asking && board && (
         <GcAskCompanies
@@ -840,13 +1232,277 @@ export default function GcProjects() {
           today={today}
           busy={changeBusy}
           problem={changeProblem}
+          emailed={changeEmailed}
           onClose={() => setChangesWindow(null)}
           writes={{
             onDraft: (draft) => changeWrite('new', draftChangeOrder(changesProject.id, draft), 'The change order was not drafted.'),
-            onSend: (id) => changeWrite(id, sendChangeOrder(id, today), 'The change order was not marked sent.'),
+            onSend: (id, email) => {
+              // The tick (off to start) also emails it to the customer to sign by reply (O4b-2). The change orders are
+              // read again either way, and an email that did not go is said after.
+              const co = projectChangeOrders(changesProject).find((c) => c.id === id)
+              setChangeBusy(id)
+              setChangeProblem(null)
+              void (async () => {
+                try {
+                  await sendChangeOrder(id, today)
+                  let emailProblem: string | null = null
+                  if (email && co) {
+                    const mail = changeOrderMail(changeOrderMailFacts(boardWithChanges, changesProject, co))
+                    const a = await sendGcCustomerEmail({ projectId: changesProject.id, kind: 'change_order', sourceId: id, subject: mail.subject, lines: mail.lines, pdf: null })
+                    if (!a.ok) emailProblem = `The change order is marked sent, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`
+                  }
+                  await loadChangeOrders()
+                  if (emailProblem) setChangeProblem(emailProblem)
+                } catch (e) {
+                  setChangeProblem(formatErrorMessage(e, 'The change order was not marked sent.'))
+                } finally {
+                  setChangeBusy(null)
+                }
+              })()
+            },
             onAnswer: (id, signed, on) => changeWrite(id, answerChangeOrder(id, signed, on), 'Their answer was not recorded.'),
             onSetPct: (id, pct) => changeWrite(id, setChangeOrderPct(id, pct), 'The percent done was not saved.'),
             onDelete: (id) => changeWrite(id, deleteChangeOrderDraft(id), 'The draft was not deleted.'),
+          }}
+        />
+      )}
+
+      {canUseGcBuilding(role) && logProject && boardWithLogs && (
+        <GcDailyLogWindow
+          state={boardWithLogs}
+          project={logProject}
+          today={today}
+          busy={logBusy}
+          problem={logProblem}
+          onSave={(log) => saveLog(logProject.id, log)}
+          onClose={() => setLogWindow(null)}
+        />
+      )}
+
+      {canUseGcBuilding(role) && submittalsProjectId && submittalRead && (
+        <GcSubmittalsWindow
+          state={submittalRead.state}
+          project={submittalRead.project}
+          extras={submittalRoundExtras(submittalTables)}
+          sections={Object.fromEntries((loaded?.projects.find((x) => x.id === submittalsProjectId)?.trades ?? []).map((t) => [t.id, tradeSpecSections(t.scope)]))}
+          checkLink={async (url) => (await checkDriveAccess(url)).access}
+          busy={submittalBusy}
+          problem={submittalProblem}
+          onClose={() => setSubmittalsWindow(null)}
+          writes={{
+            onAdd: (draft) => submittalWrite('new', addSubmittal(draft), 'The submittal was not added.'),
+            onCameIn: (round) => submittalWrite(round.submittalId, submittalCameIn(round), 'The round was not recorded.'),
+            onSendToArchitect: (id) =>
+              submittalWrite(
+                id,
+                sendSubmittalToArchitect(id).then((r) => showToast(`Sent to ${r.to}.`, 'success')),
+                'The submittal was not sent.',
+              ),
+            onMarkSent: (id) => submittalWrite(id, markSubmittalSent(id), 'It was not marked sent.'),
+            onAnswer: (id, answer, note) => submittalWrite(id, answerSubmittal(id, answer, note), 'The answer was not recorded.'),
+          }}
+        />
+      )}
+
+      {/* The waiver window sits below ours (z 1100), so Bill the customer steps aside while it is open. */}
+      {canSeeGcMoney(role) && billProject && billState && !waiverFor && (
+        <GcBillCustomerWindow
+          state={billState}
+          project={billProject}
+          today={today}
+          busy={billBusy}
+          problem={billProblem}
+          waived={(billRows?.billing.get(billProject.id)?.payApps ?? []).filter((a) => a.conditional_waiver_id !== null).map((a) => a.number)}
+          unconditional={billUnconditional}
+          unbilled={billUnbilled}
+          emailed={billEmailed}
+          interestEmailed={billInterestEmailed}
+          scheduleRead={billScheduleRead}
+          onClose={() => setBillWindow(null)}
+          writes={{
+            onSend: (email) => {
+              // Send files it; the tick (off to start) also emails it to the customer and the architect with its form
+              // (O4b). The bills are read again either way, and an email that did not go is said after.
+              const draft = ownerPayApp(billState, billProject)
+              const form = ownerPayAppForm(billState, billProject, 'draft')
+              setBillBusy('send')
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  const id = await sendOwnerPayApp(billProject.id, payAppSendPayload(draft, today))
+                  let emailProblem: string | null = null
+                  if (email && form) {
+                    try {
+                      // The form as it went: the draft's figures, dated the day Send recorded, as a later download draws it.
+                      const record = ownerPayAppToSend(draft, today)
+                      const sentForm = { ...form, sentOn: record.sentOn }
+                      const parties = ownerPayAppParties(billState, billProject, sentForm)
+                      const pdf = { filename: payAppFileName(parties, 'pdf'), base64: pdfBase64(await payAppPdf(sentForm.app, parties)) }
+                      const facts = payAppMailFacts(billState, billProject, record)
+                      for (const [kind, mail] of [['pay_app', payAppMail(facts)], ['certify_ask', certifyAskMail(facts)]] as const) {
+                        const a = await sendGcCustomerEmail({ projectId: billProject.id, kind, sourceId: id, subject: mail.subject, lines: mail.lines, pdf })
+                        if (!a.ok && !emailProblem) emailProblem = `The pay application went, but an email did not. ${gcCustomerEmailRefusal(a.key)}`
+                      }
+                    } catch (e) {
+                      emailProblem = formatErrorMessage(e, 'The pay application went, but its email did not.')
+                    }
+                  }
+                  await loadBill()
+                  if (emailProblem) setBillProblem(emailProblem)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The pay application did not go.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
+            },
+            onCertify: (number, amount, on, note, email) => {
+              const id = billRows?.billing.get(billProject.id)?.payApps.find((a) => a.number === number)?.id
+              const app = ownerPayAppsSent(billProject).find((a) => a.number === number)
+              if (!id) return
+              // The tick (off to start) also emails the customer the certified bill (O4b-2), when there is one: nothing
+              // certified makes no bill. The bills are read again either way, and an email that did not go is said after.
+              setBillBusy(`cert-${number}`)
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  await recordCertificate(id, amount, on, note)
+                  let emailProblem: string | null = null
+                  if (email && app && amount > 0) {
+                    const mail = certifiedMail(certifiedMailFacts(billState, billProject, app, amount, on))
+                    const a = await sendGcCustomerEmail({ projectId: billProject.id, kind: 'certified', sourceId: id, subject: mail.subject, lines: mail.lines, pdf: null })
+                    if (!a.ok) emailProblem = `The certificate is recorded, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`
+                  }
+                  await loadBill()
+                  if (emailProblem) setBillProblem(emailProblem)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The certificate was not recorded.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
+            },
+            onRemind: (number, by, note) => {
+              const id = billRows?.billing.get(billProject.id)?.payApps.find((a) => a.number === number)?.id
+              if (!id) return
+              // The reminder is filed first, with its note on the chase list (O5b); then gc-customer-email sends it in the
+              // words it was filed with. The bills are read again either way, and an email that did not go is said after.
+              const customer = billState.customers.find((c) => c.id === billProject.customerId)
+              const mail = payReminderEmail(billState, customer, billProject, number, by, note)
+              setBillBusy(`remind-${number}`)
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  const reminderId = await remindCustomerToPay(id, today, by, note, mail.subject, mail.lines)
+                  const a = await sendGcCustomerEmail({ projectId: billProject.id, kind: 'reminder', sourceId: reminderId, subject: mail.subject, lines: mail.lines, pdf: null })
+                  await loadBill()
+                  if (!a.ok) setBillProblem(`The reminder is filed, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The reminder was not filed.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
+            },
+            onAccept: (on, byName, note) => billWrite('accept', () => recordAcceptance(billProject.id, on, byName, note), 'The acceptance was not recorded.'),
+            onSendFinal: (email) => {
+              // Our final pay application (O7a): every line done, nothing held, it asks for the rest. The tick, off to start,
+              // also emails it with its form, as Send's. The bills are read again either way, and an email that did not go is said after.
+              const record = ownerFinalPayAppToSend(billState, billProject, today)
+              const form = finalPayAppForm(billState, billProject, today)
+              setBillBusy('send-final')
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  const id = await sendOwnerPayApp(billProject.id, finalPayAppSendPayload(billState, billProject, today))
+                  let emailProblem: string | null = null
+                  if (email && form) {
+                    try {
+                      const parties = ownerPayAppParties(billState, billProject, form)
+                      const pdf = { filename: payAppFileName(parties, 'pdf'), base64: pdfBase64(await payAppPdf(form.app, parties)) }
+                      const facts = payAppMailFacts(billState, billProject, record)
+                      for (const [kind, mail] of [['pay_app', payAppMail(facts)], ['certify_ask', certifyAskMail(facts)]] as const) {
+                        const a = await sendGcCustomerEmail({ projectId: billProject.id, kind, sourceId: id, subject: mail.subject, lines: mail.lines, pdf })
+                        if (!a.ok && !emailProblem) emailProblem = `The final pay application went, but an email did not. ${gcCustomerEmailRefusal(a.key)}`
+                      }
+                    } catch (e) {
+                      emailProblem = formatErrorMessage(e, 'The final pay application went, but its email did not.')
+                    }
+                  }
+                  await loadBill()
+                  if (emailProblem) setBillProblem(emailProblem)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The final pay application did not go.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
+            },
+            onSetRetainage: (pct, step) => billWrite('retainage', () => setOwnerRetainage(billProject.id, pct, step), 'The retainage was not saved.'),
+            onSetPayDays: (days) => billWrite('paydays', () => setOwnerPayDays(billProject.id, days), 'The days to pay were not saved.'),
+            onSetInterest: (pct) => billWrite('interest', () => setOwnerLateInterest(billProject.id, pct), 'The interest was not saved.'),
+            onSetLateFee: (perDay) => billWrite('latefee', () => setOwnerLateFinish(billProject.id, perDay), 'The late fee was not saved.'),
+            onBillInterest: (amount, email) => {
+              // The interest bill is filed first, with its bill on the billing job (O6b-2); the tick, off to start, emails
+              // it to the customer. The bills are read again either way, and an email that did not go is said after.
+              setBillBusy('bill-interest')
+              setBillProblem(null)
+              void (async () => {
+                try {
+                  const id = await sendOwnerInterestBill(billProject.id, amount)
+                  let emailProblem: string | null = null
+                  if (email) {
+                    const mail = interestBillMail(interestBillMailFacts(billState, billProject, amount))
+                    const a = await sendGcCustomerEmail({ projectId: billProject.id, kind: 'interest_bill', sourceId: id, subject: mail.subject, lines: mail.lines, pdf: null })
+                    if (!a.ok) emailProblem = `The interest bill is filed, but its email did not go. ${gcCustomerEmailRefusal(a.key)}`
+                  }
+                  await loadBill()
+                  if (emailProblem) setBillProblem(emailProblem)
+                } catch (e) {
+                  setBillProblem(formatErrorMessage(e, 'The interest bill was not filed.'))
+                } finally {
+                  setBillBusy(null)
+                }
+              })()
+            },
+            onDownload: (which, kind) => {
+              const form = ownerPayAppForm(billState, billProject, which)
+              if (!form) return
+              const parties = ownerPayAppParties(billState, billProject, form)
+              billWrite('file', () => (kind === 'xlsx' ? downloadPayAppExcel : downloadPayAppPdf)(form.app, parties), 'The form did not download.', false)
+            },
+            onWaiver: openWaiver,
+            onPaid: (number) => {
+              const invoiceId = billInvoiceOf(number)
+              if (invoiceId) billWrite(`pay-${number}`, () => recordGcPayment(invoiceId, null, today), 'The payment was not recorded.')
+            },
+            onPayPart: (number, amount) => {
+              const invoiceId = billInvoiceOf(number)
+              if (invoiceId) billWrite(`pay-${number}`, () => recordGcPayment(invoiceId, amount, today), 'The payment was not recorded.')
+            },
+            onPromise: (number, by, note, channel) => {
+              if (billJobId) billWrite(`promise-${number}`, () => recordGcPromise(billJobId, by, note, channel), 'When they said they will pay was not recorded.')
+            },
+            onUnconditional: openUnconditional,
+          }}
+        />
+      )}
+
+      {canSeeGcMoney(role) && waiverFor && (
+        <LienReleaseModal
+          open
+          job={waiverFor.job}
+          invoice={waiverFor.invoiceId ? (waiverFor.job.invoices.find((i) => i.id === waiverFor.invoiceId) ?? null) : null}
+          invoiceIds={waiverFor.invoiceId ? [waiverFor.invoiceId] : []}
+          initialFormType={waiverFor.formType}
+          ask={waiverFor.ask}
+          signerNameFallback={(profileName ?? '').trim()}
+          onClose={() => setWaiverFor(null)}
+          onIssued={(releaseId) => {
+            // The conditional one links to its pay application once; an unconditional one names its bill, so the bills are read again.
+            if (waiverFor.ask) {
+              if (releaseId) billWrite('waiver', () => linkPayAppWaiver(waiverFor.payAppId, releaseId), 'The waiver was made, but not linked to its pay application.')
+            } else billWrite('waiver', () => Promise.resolve(), 'The bills did not load.')
           }}
         />
       )}

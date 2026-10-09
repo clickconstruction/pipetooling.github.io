@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import CustomerPortal from './CustomerPortal'
+import { sampleCustomerPortalResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
 
 const payload = {
   company: { name: 'Click Plumbing and Electrical', cityLine: 'San Antonio, Texas', licenseLine: '', phone: '', email: '' },
@@ -197,6 +198,18 @@ describe('CustomerPortal render smoke', () => {
     expect(card.textContent).toContain('You did not hire us, and this is not a lawsuit.')
     expect(card.textContent).toContain('We cannot take a joint check.')
     expect(card.querySelector('[data-portal-property-notice-call]')?.getAttribute('href')).toBe('tel:5123600599')
+  })
+
+  it('GC mode (O7c): the owner sample shows its GC job, the change order to sign and the work to accept', async () => {
+    const owner = sampleCustomerPortalResponse(payload.company, 'owner', '2026-10-09', 'https://app.example')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(owner), { status: 200 })))
+    mountAt('/portal?t=sample-owner')
+    await waitFor(() => expect(screen.getByText('Sample Owner LLC')).toBeTruthy())
+    const gc = screen.getByTestId('portal-gc-jobs')
+    expect(gc.textContent).toContain('Sample Retail Shell')
+    expect(gc.textContent).toContain('Change order 2')
+    expect(gc.textContent).toContain('Add a coffee bar cabinet, per the customer')
+    expect(screen.getByRole('button', { name: 'Accept the work' })).toBeTruthy()
   })
 
   it('revoked-link error body is shown to the customer', async () => {

@@ -3,9 +3,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import JobFormAddressPin from './JobFormAddressPin'
 
-const db = vi.hoisted(() => ({ cached: false, invoke: vi.fn(), refresh: vi.fn() }))
+const db = vi.hoisted(() => ({ cached: false, role: 'assistant', invoke: vi.fn(), refresh: vi.fn() }))
 
-vi.mock('../../hooks/useAuth', () => ({ useOptionalAuth: () => ({ role: 'assistant', user: { id: 'u1' }, loading: false }) }))
+vi.mock('../../hooks/useAuth', () => ({ useOptionalAuth: () => ({ role: db.role, user: { id: 'u1' }, loading: false }) }))
 vi.mock('../../lib/map/invokeGeocodeOneRefreshGoogleOnly', () => ({ invokeGeocodeOneRefreshGoogleOnly: (a: string) => db.refresh(a) }))
 vi.mock('../../lib/supabase', () => ({
   supabase: {
@@ -17,6 +17,7 @@ vi.mock('../../lib/supabase', () => ({
 afterEach(() => {
   cleanup()
   db.cached = false
+  db.role = 'assistant'
   db.invoke.mockReset()
   db.refresh.mockReset()
 })
@@ -56,6 +57,24 @@ describe('JobFormAddressPin (v2.4783)', () => {
     render(<JobFormAddressPin address="595 Cardinal Rd, Rosanky, TX 78953" />)
     await waitFor(() => expect(document.querySelector('[data-pin-state="placed"]')).not.toBeNull())
     expect(document.querySelector('[data-job-address-pin]')!.textContent).toContain('pinned earlier')
+    expect(db.invoke).not.toHaveBeenCalled()
+  })
+})
+
+describe('JobFormAddressPin shows to whoever may open /map (v2.4974)', () => {
+  it('a controller sees the line and the address is placed through geocode-one', async () => {
+    db.role = 'controller'
+    db.invoke.mockResolvedValue({ data: { ok: true, address_normalized: 'x', lat: 29.5, lng: -97.9, fromCache: false, source: 'nominatim', county: 'Guadalupe' }, error: null })
+    render(<JobFormAddressPin address="380 TX-123, Seguin, TX 78155" />)
+    await waitFor(() => expect(db.invoke).toHaveBeenCalledWith('geocode-one', { body: { address: '380 TX-123, Seguin, TX 78155' } }), { timeout: 3000 })
+    await waitFor(() => expect(document.querySelector('[data-pin-state="placed"]')).not.toBeNull())
+  })
+
+  it('a superintendent, who cannot open /map, sees no line and no lookup runs', async () => {
+    db.role = 'superintendent'
+    render(<JobFormAddressPin address="380 TX-123, Seguin, TX 78155" />)
+    await new Promise((r) => setTimeout(r, 1400))
+    expect(document.querySelector('[data-job-address-pin]')).toBeNull()
     expect(db.invoke).not.toHaveBeenCalled()
   })
 })

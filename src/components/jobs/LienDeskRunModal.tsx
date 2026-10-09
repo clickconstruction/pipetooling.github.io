@@ -9,6 +9,7 @@ import { openHtmlPrintWindow } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runMailing } from '../../lib/jobs/lienRunPaper'
+import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
 import { RUN_SEND_METHODS, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -19,6 +20,7 @@ import { envelopeCourtesy, runCopies, runEnvelopes, type RunEnvelope } from '../
 import { recordLienDeskRun } from '../../lib/jobs/lienDeskRunIo'
 import { combineNoticesByProperty, combineSummary, type CombinedRunNotice } from '../../lib/jobs/lienNoticeCombine'
 import { useToastContext } from '../../contexts/ToastContext'
+import { runNoticesTakenBack, runPrintedItemIds, runTakeBackConfirm, runTakenBackWords, runTypedTrackingCount } from '../../lib/jobs/lienRunTakeBack'
 import LienRunPreviewOverlay, { type LienRunPreviewEntry } from './LienRunPreviewOverlay'
 
 /**
@@ -38,6 +40,8 @@ export default function LienDeskRunModal({
   onClose,
   onRecorded,
   onPrinted,
+  onTakeBack,
+  openOnTakeBack = false,
   undo,
   stripeMode = 'live',
 }: {
@@ -50,6 +54,13 @@ export default function LienDeskRunModal({
   onRecorded: () => void
   /** The packet printed (v2.4119): the desk stamps these items printed so they sit in "In the mail · tracking owed" until recorded. */
   onPrinted?: (itemIds: string[]) => Promise<void> | void
+  /**
+   * Take back what printed (punch list #101): nothing was mailed, so these items go back to Ready
+   * to send with their approvals. The host writes it and re-reads; it returns how many it took back.
+   */
+  onTakeBack?: (itemIds: string[]) => Promise<number>
+  /** Open on the take-back confirm: Do now's run row pressed *Take back…* (punch list #101 PR 2). */
+  openOnTakeBack?: boolean
   /**
    * The run was started a moment ago by one click (Put a GC on notice's Approve all, v2.4541):
    * a strip under the title offers to undo that click. The opener owns what undo does.
@@ -67,8 +78,13 @@ export default function LienDeskRunModal({
   // The mailing (v2.4119): when the packet printed — in this sitting, or before it when every notice
   // handed in is already printed (v2.4823: the run then opens on recording, not on printing again) — and the day the envelopes went out.
   const opening = useMemo(() => runOpening(initial), [initial])
-  const recording = opening.step === 'record'
+  // Taken back in this sitting (punch list #101): the window goes back to printing, whatever the opening said.
+  const [takenBack, setTakenBack] = useState<{ count: number; printedAt: string | null } | null>(null)
+  const [takeBackOpen, setTakeBackOpen] = useState(openOnTakeBack)
+  const recording = opening.step === 'record' && takenBack == null
   const [printedAt, setPrintedAt] = useState<string | null>(opening.printedAt)
+  // The items whose every copy printed in this sitting: with the ones printed before it, what a take-back clears.
+  const [printedNow, setPrintedNow] = useState<string[]>([])
   const [mailedOn, setMailedOn] = useState(todayYmd)
   // One notice per property (#35 PR 3): off until the office ticks it — the form's claim changes when jobs combine.
   const [combine, setCombine] = useState(false)
@@ -191,7 +207,11 @@ export default function LienDeskRunModal({
     setPrintedCopies(next)
     const before = new Set(noticesFullyPrinted(notices, printedCopies).map((n) => n.itemId))
     const done = noticesFullyPrinted(notices, next).filter((n) => !before.has(n.itemId)).map((n) => n.itemId)
-    if (done.length) void Promise.resolve(onPrinted?.(done)).catch(() => undefined)
+    if (done.length) {
+      setPrintedNow((prev) => [...prev, ...done.filter((id) => !prev.includes(id))])
+      setTakenBack(null)
+      void Promise.resolve(onPrinted?.(done)).catch(() => undefined)
+    }
     if (noticesFullyPrinted(notices, next).length === notices.length && notices.length > 0) setPrintedAt((v) => v ?? new Date().toISOString())
   }
   const printPacket = () => {
@@ -223,9 +243,49 @@ export default function LienDeskRunModal({
     }
     notePrinted(env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key))))
   }
+  // The run's addresses for a certified-mail label service (v2.4977): one CSV row per envelope that goes out on paper,
+  // in the vendor's batch columns, numbered as the sheet is. Nothing is filed: the labels the service prints are the record.
+  const saveLabelAddresses = () => {
+    const rows = runLabelRows(mailing)
+    if (rows.length === 0) {
+      showToast(runLabelSavedWords(0), 'info')
+      return
+    }
+    const blob = new Blob([runLabelCsv(rows)], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = runLabelFilename(todayYmd)
+    a.setAttribute('data-run-labels-download', 'yes')
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast(runLabelSavedWords(rows.length), 'success')
+  }
   // The envelope faces are addresses, not a paper anyone reads: the packet is what is filed.
   const printEnvelopes = () => {
     if (!openHtmlPrintWindow(runEnvelopeFacesHtml(mailing.mailed, issuer))) showToast('Popup blocked — allow popups to print the envelopes.', 'error')
+  }
+  // Take back (punch list #101): every notice that printed — before this sitting or in it — and is still here, unrecorded.
+  const printedIds = useMemo(() => runPrintedItemIds(notices, printedNow), [notices, printedNow])
+  const lastPrintedAt = printedAt ?? notices.reduce<string | null>((m, n) => (n.printedAt && (!m || n.printedAt > m) ? n.printedAt : m), null)
+  const takeBackWords = runTakeBackConfirm({ count: printedIds.length, printedAt: lastPrintedAt, typed: runTypedTrackingCount(notices, printedIds), all: printedIds.length === notices.length })
+  const takeBack = async () => {
+    if (!onTakeBack || busy || printedIds.length === 0) return
+    setBusy(true)
+    try {
+      const ids = printedIds
+      const count = await onTakeBack(ids)
+      setNotices((prev) => runNoticesTakenBack(prev, ids))
+      setPrintedCopies(new Set())
+      setPrintedNow([])
+      setPrintedAt(null)
+      setTakeBackOpen(false)
+      setTakenBack({ count, printedAt: lastPrintedAt })
+    } catch (e) {
+      showToast(`Not taken back: ${e instanceof Error ? e.message : 'try again'}`, 'error')
+    } finally {
+      setBusy(false)
+    }
   }
   // Back from the post office (v2.4119): the envelopes with a number record now; the rest stay printed.
   const split = useMemo(() => runRecordSplit(shown), [shown])
@@ -314,10 +374,40 @@ export default function LienDeskRunModal({
                 {label}
                 {done ? ' ✓' : ''}
               </span>
+              {i === 0 && onTakeBack && printedIds.length > 0 && !takeBackOpen ? (
+                <button type="button" data-testid="run-take-back" onClick={() => setTakeBackOpen(true)} disabled={busy} title="Nothing was mailed? Put the printed notices back in Ready to send." style={{ border: 'none', background: 'none', padding: '0 2px', font: 'inherit', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: 2, cursor: busy ? 'not-allowed' : 'pointer' }}>
+                  Take back…
+                </button>
+              ) : null}
             </span>
           ))}
           {printedAt ? <span style={{ marginLeft: 'auto' }}>Back from the post office? Type each envelope’s number below — an envelope without one stays in the mail pile.</span> : null}
         </div>
+        {takeBackOpen && printedIds.length > 0 ? (
+          <div data-testid="run-take-back-confirm" role="group" aria-label={takeBackWords.title} style={{ margin: '0.6rem 1.25rem 0', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 2 }}>{takeBackWords.title}</div>
+            <div>Use this when none of {printedIds.length === 1 ? 'it' : 'these envelopes'} was mailed.</div>
+            <ul style={{ margin: '0.25rem 0 0.35rem', paddingLeft: '1.1rem' }}>
+              {takeBackWords.lines.map((l) => (
+                <li key={l}>{l}</li>
+              ))}
+            </ul>
+            <div style={{ color: 'var(--text-muted)' }}>Mailed some of them? Record those first. Then take back the rest.</div>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+              <button type="button" data-testid="run-take-back-yes" onClick={() => void takeBack()} disabled={busy} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #dc2626', background: '#dc2626', color: '#ffffff', font: 'inherit', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}>
+                {busy ? 'Taking back…' : takeBackWords.button}
+              </button>
+              <button type="button" onClick={() => setTakeBackOpen(false)} disabled={busy} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }}>
+                Keep it
+              </button>
+            </div>
+          </div>
+        ) : null}
+        {takenBack ? (
+          <div data-testid="run-taken-back" role="status" style={{ margin: '0.6rem 1.25rem 0', padding: '0.5rem 0.8rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)', fontSize: '0.8125rem' }}>
+            {runTakenBackWords(takenBack.count, takenBack.printedAt)}
+          </div>
+        ) : null}
         <div style={{ overflow: 'auto', padding: '0.5rem 1.25rem' }}>
           {notices.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>Nothing approved is waiting.</p> : null}
           {combinable.combined > 0 ? (
@@ -447,6 +537,9 @@ export default function LienDeskRunModal({
           </label>
           <button type="button" onClick={printEnvelopes} disabled={envelopes.length === 0} title="One page per envelope — the return address, the certified line, a blank for the article number, and the recipient as the notice names it" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
             Envelope faces
+          </button>
+          <button type="button" onClick={saveLabelAddresses} disabled={mailing.mailed.length === 0} data-testid="run-label-addresses" title="Saves a spreadsheet for a certified-mail label service: one row per envelope that goes out, the name and address as the envelope reads them, the envelope number and its jobs as the reference. Upload it as a batch; the labels print with the 20-digit number already on them." style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
+            Addresses for the labels
           </button>
           <button type="button" onClick={printPacket} disabled={notices.length === 0} title={printedAt ? 'It already printed. Print it again only if the first copy was lost; every copy is filed on the job.' : undefined} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: printedAt ? 400 : 600, cursor: 'pointer' }}>
             {printedAt ? 'Print it again' : 'Print the packet'} · {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}

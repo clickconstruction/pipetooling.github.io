@@ -5,6 +5,7 @@ import {
   crewPnlRangeForPreset,
   crewPnlRowIsEstimateLed,
   buildCrewPnlSummary,
+  crewPnlVehicleRatesFromWheels,
   looseCrewPnlName,
   resolveCrewPnlNameLoosely,
   ymdInRange,
@@ -476,5 +477,73 @@ describe('estimate-led rows and the banded sort (B8, J8-F1 / N1)', () => {
     const paige = s.rows.find((r) => r.key === 'p:per-paige')!
     const twin = { ...paige, key: 'p:twin', displayName: 'Aaron' }
     expect(compareCrewPnlRows(paige, twin, 'profit', 'desc')).toBeGreaterThan(0)
+  })
+})
+
+describe('the Vehicle part (Wheels PR 3, v2.5039)', () => {
+  // Mike: 8 h on j1 in June plus 3 h on the office job; Paige: 2 h on j1.
+  const teamLabor: CrewPnlTeamLaborInput[] = [
+    {
+      jobId: 'j1',
+      breakdown: [
+        { personName: 'Mike Z', byWorkDate: [{ workDate: '2026-06-01', hours: 6, cost: 180 }, { workDate: '2026-06-02', hours: 2, cost: 60 }] },
+        { personName: 'Paige', byWorkDate: [{ workDate: '2026-06-01', hours: 2, cost: 50 }] },
+      ],
+    },
+    { jobId: 'office', breakdown: [{ personName: 'Mike Z', byWorkDate: [{ workDate: '2026-06-03', hours: 3, cost: 90 }] }] },
+  ]
+  const base = { jobs: [job({ id: 'j1', revenue: 1000 }), job({ id: 'office', jobLabel: 'Office' })], teamLabor, subLabor: [], people, range: ALL }
+
+  it('the deal\'s rate × field hours, the office job left out; profit nets it and Labor stays wages', () => {
+    const s = buildCrewPnlSummary({ ...base, officeJobId: 'office', vehicleRates: [{ userId: 'user-mike', personName: 'Mike Z', ratePerFieldHour: 5.91 }] })
+    const mike = s.rows.find((r) => r.key === 'p:per-mike')!
+    expect(mike.hours).toBe(11)
+    expect(mike.fieldHours).toBe(8)
+    expect(mike.vehicleRate).toBe(5.91)
+    expect(mike.vehicleCost).toBe(47.28) // 8 h × $5.91
+    expect(mike.laborCost).toBe(330)
+    expect(mike.profit).toBeCloseTo(mike.billing - 330 - 47.28, 5)
+    const paige = s.rows.find((r) => r.key === 'p:per-paige')!
+    expect([paige.vehicleRate, paige.vehicleCost]).toEqual([null, 0])
+    expect(s.totals.vehicleCost).toBe(47.28)
+    expect(s.totals.profit).toBeCloseTo(s.totals.billing - s.totals.laborCost - s.totals.vehicleCost, 5)
+  })
+
+  it('a date range prices only the field hours in it; with no office job every job counts', () => {
+    const june2 = buildCrewPnlSummary({ ...base, range: { start: '2026-06-02', end: '2026-06-03' }, officeJobId: 'office', vehicleRates: [{ userId: 'user-mike', personName: 'Mike Z', ratePerFieldHour: 5 }] })
+    expect(june2.rows.find((r) => r.key === 'p:per-mike')!.vehicleCost).toBe(10) // 2 h on j1; the office day is not field
+    const noOffice = buildCrewPnlSummary({ ...base, vehicleRates: [{ userId: 'user-mike', personName: 'Mike Z', ratePerFieldHour: 5 }] })
+    expect(noOffice.rows.find((r) => r.key === 'p:per-mike')!.vehicleCost).toBe(55)
+  })
+
+  it('keys a person with no login by the pay-config name; $0 on their own vehicle; nothing without rates', () => {
+    const s = buildCrewPnlSummary({ ...base, officeJobId: 'office', vehicleRates: [{ userId: null, personName: 'Paige', ratePerFieldHour: 0 }, { userId: null, personName: 'Mike Z', ratePerFieldHour: 2.5 }] })
+    expect(s.rows.find((r) => r.key === 'p:per-paige')).toMatchObject({ vehicleRate: 0, vehicleCost: 0 })
+    expect(s.rows.find((r) => r.key === 'p:per-mike')).toMatchObject({ vehicleRate: 2.5, vehicleCost: 20 })
+    const none = buildCrewPnlSummary(base)
+    expect(none.rows.every((r) => r.vehicleRate == null && r.vehicleCost === 0)).toBe(true)
+    expect(none.totals.vehicleCost).toBe(0)
+  })
+
+  it('sorts by the Vehicle part like any money column', () => {
+    const s = buildCrewPnlSummary({ ...base, officeJobId: 'office', vehicleRates: [{ userId: null, personName: 'Paige', ratePerFieldHour: 30 }, { userId: 'user-mike', personName: 'Mike Z', ratePerFieldHour: 5 }] })
+    const desc = [...s.rows].sort((a, b) => compareCrewPnlRows(a, b, 'vehicleCost', 'desc')).map((r) => [r.key, r.vehicleCost])
+    expect(desc).toEqual([['p:per-paige', 60], ['p:per-mike', 40]])
+  })
+})
+
+describe('crewPnlVehicleRatesFromWheels (v2.5039)', () => {
+  it('every deal but None with a fixed rate, keyed by login and pay-config name', () => {
+    expect(
+      crewPnlVehicleRatesFromWheels([
+        { userId: 'u-bob', name: 'Bob ', arrangement: 'company', fixedRate: 615 },
+        { userId: 'u-ana', name: 'Ana', arrangement: 'own_fuel_paid', fixedRate: 0 },
+        { userId: null, name: 'Cy', arrangement: 'none', fixedRate: 2.5 }, // Review charges no deal on None, override or not
+        { userId: 'u-dee', name: 'Dee', arrangement: 'company', fixedRate: null }, // holds no truck
+      ]),
+    ).toEqual([
+      { userId: 'u-bob', personName: 'Bob ', ratePerFieldHour: 615 },
+      { userId: 'u-ana', personName: 'Ana', ratePerFieldHour: 0 },
+    ])
   })
 })

@@ -51,6 +51,13 @@ describe('a change order from its row', () => {
     expect([co.cost, co.price, co.daysOnChart]).toEqual([0, 0, ['move-1', 'move-2']])
   })
 
+  it('reads an answer pressed in their portal and a decline’s reason, trimmed (O7c)', () => {
+    const portal = changeOrderFromRow({ ...row({ status: 'declined', sent_on: '2026-10-08', answered_on: '2026-10-09', answered_how: 'portal' }), declined_note: ' Over our budget this year ' } as ChangeOrderRow)
+    expect([portal.answeredInPortal, portal.declinedNote]).toEqual([true, 'Over our budget this year'])
+    const office = changeOrderFromRow({ ...row({ status: 'signed', sent_on: '2026-10-08', answered_on: '2026-10-09', answered_how: 'office' }), declined_note: '' } as ChangeOrderRow)
+    expect(['answeredInPortal' in office, 'declinedNote' in office]).toEqual([false, false])
+  })
+
   it('refuses a status or a reason the app does not know', () => {
     expect(() => changeOrderFromRow(row({ status: 'maybe' }))).toThrow('status reads "maybe"')
     expect(() => changeOrderFromRow(row({ reason: 'whim' }))).toThrow('reason reads "whim"')

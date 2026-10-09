@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   addAllocation,
+  creditPairingLine,
+  creditableInvoices,
+  creditsInvoicePatch,
   applyPaymentUpdate,
   allocationTotal,
   dueDateHint,
@@ -390,5 +393,34 @@ describe('supplyHouseInvoiceForm · applyPaymentUpdate', () => {
     const update = applyPaymentUpdate('  https://example.com/receipt.pdf ')
     expect(update).toEqual({ is_paid: true, payment_link: 'https://example.com/receipt.pdf' })
     expect('link' in update).toBe(false)
+  })
+})
+
+describe('a credit pairs to the invoice it credits (v2.5035)', () => {
+  const rows = [
+    { id: 'i1', invoice_number: 'S123148787.003', amount: 2496.94, document_kind: 'invoice', invoice_date: '2026-04-06' },
+    { id: 'i2', invoice_number: 'S124000001.001', amount: 1204, document_kind: 'invoice', invoice_date: '2026-09-12' },
+    { id: 'c1', invoice_number: 'S123396858.002', amount: -120, document_kind: 'credit', invoice_date: '2026-04-09', credits_invoice_id: 'i1' },
+    { id: 'c2', invoice_number: 'CM-4471', amount: -150, document_kind: 'credit', invoice_date: '2026-09-20', credits_invoice_id: 'i1' },
+    { id: 'c3', invoice_number: 'CM-9', amount: -40, document_kind: 'credit', invoice_date: '2026-09-21', credits_invoice_id: null },
+  ]
+  it('offers this house’s invoices, newest first, never a credit or the credit itself', () => {
+    expect(creditableInvoices(rows, 'c3').map((o) => o.label)).toEqual(['S124000001.001 · $1,204.00 · Sep 12, 2026', 'S123148787.003 · $2,496.94 · Apr 6, 2026'])
+    expect(creditableInvoices(rows, 'i2').map((o) => o.id)).toEqual(['i1'])
+  })
+  it('a credit names its invoice, and the invoice names each credit against it', () => {
+    expect(creditPairingLine(rows[2]!, rows)).toBe('Credits S123148787.003')
+    expect(creditPairingLine(rows[0]!, rows)).toBe('Credited by S123396858.002 (−$120.00), CM-4471 (−$150.00)')
+    expect(creditPairingLine(rows[1]!, rows)).toBeNull()
+    expect(creditPairingLine(rows[4]!, rows)).toBeNull()
+    expect(creditPairingLine({ ...rows[4]!, credits_invoice_id: 'gone' }, rows)).toBe('Credits an invoice not on this list')
+  })
+  it('a save names the column only when the pair changes, and an invoice never carries one', () => {
+    expect(creditsInvoicePatch('credit', 'i1', null)).toEqual({ credits_invoice_id: 'i1' })
+    expect(creditsInvoicePatch('credit', '', null)).toEqual({})
+    expect(creditsInvoicePatch('credit', 'i1', { credits_invoice_id: 'i1' })).toEqual({})
+    expect(creditsInvoicePatch('credit', '', { credits_invoice_id: 'i1' })).toEqual({ credits_invoice_id: null })
+    expect(creditsInvoicePatch('invoice', 'i1', { credits_invoice_id: 'i1' })).toEqual({ credits_invoice_id: null })
+    expect(creditsInvoicePatch('invoice', 'i1', {})).toEqual({})
   })
 })

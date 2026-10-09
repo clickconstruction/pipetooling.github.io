@@ -968,6 +968,7 @@ export default function Prospects() {
     supabase
       .from('service_types' as any)
       .select('id, name')
+      .eq('billing_only', false)
       .order('sequence_order', { ascending: true })
       .then(({ data }) => setConvertServiceTypes((data as unknown as { id: string; name: string }[]) ?? []))
   }, [activeTab])

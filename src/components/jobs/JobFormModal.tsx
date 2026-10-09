@@ -127,6 +127,7 @@ import type {
   JobsLedgerInvoiceRow,
 } from '../../lib/jobs/jobFormTypes'
 import { pickDefaultServiceTypeId, visibleServiceTypesForJobForm } from '../../lib/jobs/jobFormServiceTypes'
+import { pickableServiceTypes } from '../../lib/serviceTypePickers'
 import {
   fixtureRowHasUserContent,
   materialRowHasUserContent,
@@ -1152,7 +1153,8 @@ export default function JobFormModal({
   const { editJobTeamLaborLoading, editJobTeamLaborRow, editJobTeamLaborError, editJobSubLaborLoading, editJobSubLaborData, editJobSubLaborError } = useJobFormLabor(editing?.id ?? null)
 
   const visibleJobFormServiceTypes = useMemo(
-    () => visibleServiceTypesForJobForm(serviceTypes, meServiceTypeColumns),
+    // A billing-only type is never offered; a job that carries one still reads it (the edit-mode lookup below).
+    () => visibleServiceTypesForJobForm(pickableServiceTypes(serviceTypes), meServiceTypeColumns),
     [serviceTypes, meServiceTypeColumns],
   )
 
@@ -1667,7 +1669,7 @@ export default function JobFormModal({
             .select('id, project_name, bid_number, service_type_id, customer_id, estimator_id, created_by, customers(name)')
             .order('updated_at', { ascending: false })
             .limit(800),
-          supabase.from('service_types').select('id, name, color, description, sequence_order').order('sequence_order', { ascending: true }),
+          supabase.from('service_types').select('id, name, color, description, sequence_order, billing_only').order('sequence_order', { ascending: true }),
           supabase
             .from('users')
             .select(
@@ -1715,7 +1717,7 @@ export default function JobFormModal({
             }
           })()
           const meSt = (meRow as MeServiceTypeColumns | null) ?? null
-          const vis = visibleServiceTypesForJobForm(allServiceTypes, meSt)
+          const vis = visibleServiceTypesForJobForm(pickableServiceTypes(allServiceTypes), meSt)
           const defId = pickDefaultServiceTypeId(vis) ?? ''
           initialNewJobServiceTypeIdRef.current = defId
           setFormServiceTypeId(defId)

@@ -31,6 +31,10 @@ const row = (o: Partial<SubmittalItemRow> & { id: string; tag: string }): Submit
   reviewed_at: null,
   created_at: '2026-10-01T00:00:00Z',
   updated_at: '2026-10-01T00:00:00Z',
+  call_by: null,
+  signoff_name: null,
+  signoff_on: null,
+  signoff_via: null,
   ...o,
 })
 

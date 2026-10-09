@@ -56,6 +56,7 @@ const BASE_INVOICE_FIELDS = {
   bill_to_stripe_customer_id: null,
   bill_to_party: null,
   shown_to_party: null,
+  fee_lines: null,
   is_primary_rtb_bundle: null,
 }
 
@@ -154,6 +155,12 @@ describe('mapJoinedInvoiceToDashboard', () => {
     expect(out.google_drive_link).toBe('https://drive')
     expect(out.job_plans_link).toBeNull()
     expect(out.job_status).toBe('billed')
+  })
+
+  it("carries the bill's fee lines, so a bill printed from the Dashboard lists the returned-check fee (v2.5033)", () => {
+    const lines = [{ description: 'Returned check fee', amount: 30 }]
+    expect(mapJoinedInvoiceToDashboard(mkJoinRow({ fee_lines: lines }), new Map()).fee_lines).toEqual(lines)
+    expect(mapJoinedInvoiceToDashboard(mkJoinRow(), new Map()).fee_lines).toBeNull()
   })
 
   it('flattens the parent job status so the unit builders can drop bills on paid jobs (J3-1)', () => {

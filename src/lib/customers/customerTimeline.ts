@@ -41,7 +41,7 @@
  */
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
-import { appliedByInvoiceId, isSettledRemainder, openBillRowsForJob, type BillTruthJob } from '../billing/billTruth'
+import { appliedByInvoiceUnderRule, isSettledRemainder, openBillRowsForJob, type BillTruthJob } from '../billing/billTruth'
 import { customerDaysToPay, type DaysToPay, type ProfileJob } from './customerProfileStats'
 
 export const TIMELINE_COLORED_LANES = 4
@@ -85,6 +85,8 @@ export type TimelineInvoiceInput = {
   jobId: string
   status: string | null
   amount: number | null
+  /** Bill order for the payment rule (v2.5010); billedAt, then id, break ties without it. */
+  sequenceOrder?: number | null
   /** Instant. */
   billedAt: string | null
   /** Instant: the latest send to the customer. */
@@ -771,10 +773,16 @@ export function buildCustomerTimeline(input: CustomerTimelineInput, todayYmd: st
       uncollectible_at: j.uncollectibleAt,
     }
     const invs = invoicesByJob.get(j.id) ?? []
+    const billRows = invs.map((i) => ({ id: i.id, job_id: j.id, status: i.status, amount: i.amount, sequence_order: i.sequenceOrder ?? undefined, billed_at: i.billedAt ?? undefined }))
+    // The one payment rule (v2.5010; the owner's call of 2026-10-09): money put on the job with no bill picked pays its bills too.
     const rows = openBillRowsForJob(
       btJob,
-      invs.map((i) => ({ id: i.id, job_id: j.id, status: i.status, amount: i.amount })),
-      appliedByInvoiceId((paymentsByJob.get(j.id) ?? []).map((p) => ({ invoice_id: p.invoiceId, amount: p.amount }))),
+      billRows,
+      appliedByInvoiceUnderRule(
+        [{ id: j.id, revenue: j.revenue }],
+        billRows,
+        (paymentsByJob.get(j.id) ?? []).map((p) => ({ invoice_id: p.invoiceId, amount: p.amount, job_id: j.id, paid_on: p.paidOn ?? undefined })),
+      ),
     )
     for (const row of rows) {
       if (row.invoiceId) remainingByInvoice.set(row.invoiceId, row.remaining)

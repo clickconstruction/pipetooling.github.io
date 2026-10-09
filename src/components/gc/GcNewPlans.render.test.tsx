@@ -10,7 +10,7 @@ installDomShims()
 /** A clinic as the mapper gives it: one set, four sheets, two trades. */
 const rows: GcProjectRows = {
   project: { id: 'p1', name: 'Fair Oaks Clinic', address: '1 Test St', customer_id: 'c1', plans_link: null },
-  gc: { stage: 'bidding', bid_due: null, sq_ft: null, size_note: '', customer_role: 'owner', property_owner_customer_id: null, architect_customer_id: null, project_manager_user_id: null, general_conditions: 0, contingency_pct: 0, fee_pct: 0, drive_folder_url: '', lost_on: null },
+  gc: { stage: 'bidding', bid_due: null, sq_ft: null, size_note: '', customer_role: 'owner', property_owner_customer_id: null, architect_customer_id: null, project_manager_user_id: null, drive_folder_url: '', lost_on: null },
   packages: [
     { id: 'site', trade: 'Sitework', position: 0, budget: 0, ours: false, own_bid_id: null },
     { id: 'elec', trade: 'Electrical', position: 1, budget: 0, ours: false, own_bid_id: null },

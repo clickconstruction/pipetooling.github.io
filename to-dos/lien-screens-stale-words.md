@@ -1,22 +1,19 @@
 ---
 name: "Lien screens: the app's own words that are stale"
 number: 87
-group: gated
 status: found 2026-10-05 by the lien-guide freshness pass (read against main's code, no live look); J, K and L added 2026-10-06; N added 2026-10-06 · shipped: E and F v2.4675, I v2.4659, J v2.4697, N v2.4698, M v2.4679 (waiting for a live look) · of the four held as the owner's decisions, C shipped v2.4661 and D v2.4674, A rides on the legal-portal train's #4637, and B shipped v2.4666 (the owner chose the tick on and the courtesy-copy wording)
 summary: >
   Three open places on the lien screens (G, H and K) where the app's own words promise something the
   app does not do or name a rule it no longer follows. The help guides were patched to say what the app
-  does today; these are the app's side, kept here so they are not lost. All three need the owner's call.
+  does today; these are the app's side, kept here so they are not lost. The owner answered all three on 2026-10-09: build G's list, keep H's tick and fix its guide, read a blank kind as residential everywhere (K).
   E, F, I, J and N shipped; L was built as option B (v2.4708); M is fixed and waits for a live look; A
   rides on the legal-portal train.
-next: >
-  G, H, K and L wait on the owner, L also on counsel. A lands with #4637. M: confirm it on a
-  waiting waiver live, then delete it. As each lands, the guide sentences held for it are made true
-  or rewritten (the guide PRs v2.4614, v2.4617, v2.4620 and v2.4623 list them).
 size: XS each
-blocker: G, H and K wait on the owner; A on #4637; M on a live look.
 opinion: G, H and K are your call — K has a deadline in it, and the earlier date is the safe one.
 mockup: not required — words and one focus on screens that exist
+group: ready
+next: G (the owner, 2026-10-09): build the list — Sent on your word also lists the notices a standing rule sent, marked as the rule's, so the hint and the guide's example come true. H (the owner, 2026-10-09): the office keeps the tick; the guide *read the Texas lien rules the app follows* stops saying the line waits on the attorney. K (the owner, 2026-10-09): a blank property kind reads residential — the earlier date — on every screen (the Lien window, the desk's gates and Timeline, the GC run, the timeline book, the Forecast panel), the "set the kind" warning kept; the guides follow. L was built as option B (v2.4708). A lands with #4637. M: confirm it on a waiting waiver live, then delete it.
+blocker: None on G, H and K; M waits on a live look; A on #4637.
 ---
 
 # Lien screens: the app's own words that are stale
@@ -31,7 +28,7 @@ This card was first numbered #85. The legal-portal train had already named its c
 
 ## Where each item stands (2026-10-06)
 
-- **Shipped:** E and F (v2.4675), I (v2.4659), J (v2.4697), N (v2.4698), M (v2.4679, still to be seen live). Of the four
+- **Shipped:** E and F (v2.4675), I (v2.4659), J (v2.4697), N (v2.4698), M (v2.4679, still to be seen live), H (v2.5030: the owner kept the tick on 2026-10-09, so only the words changed). Of the four
   decisions held in the guide PRs, the owner chose on 2026-10-06 to fix the app for all four:
   C (*Cancel request* unlocks a waiver its own request minted) shipped in v2.4661, D (*Issue
   unconditional* selects every covered bill) in v2.4674, and B (the GC's courtesy PDF from the run)
@@ -39,7 +36,7 @@ This card was first numbered #85. The legal-portal train had already named its c
   copy.
 - **In other hands:** A (a fee or cost the firm adds can be acknowledged) is built into the
   legal-portal train's #4637, which rewrites the Legal desk's fees table.
-- **The owner's calls:** G, H, K and L (L also counsel's).
+- **The owner's calls:** G, K and L (L also counsel's).
 
 ## The items
 
@@ -64,7 +61,7 @@ This card was first numbered #85. The legal-portal train had already named its c
 - The guide *send lien notices from the Lien desk* repeats the promise in an example (*He still sees every send in his list*). It is held as written until this is decided.
 - The owner's call: build the list, or change the hint and the guide's example.
 
-**H. The demand letter's theft-of-services line is not tied to the attorney.** The guide *read the Texas lien rules the app follows* says the line stays off until the attorney package. It does ship off, but the office can tick it on any demand letter while the job has no payment, and nothing ties it to the Legal desk.
+~~**H. The demand letter's theft-of-services line is not tied to the attorney.**~~ Closed in v2.5030, the owner's call of 2026-10-09: the office keeps the tick. The guides *read the Texas lien rules the app follows* and *send a final demand letter* now say the line starts off and may be ticked on a job with no payment, and `demandLetter.ts`'s comment on `includeTheftOfServices` reads the same. As found: the guide *read the Texas lien rules the app follows* says the line stays off until the attorney package. It does ship off, but the office can tick it on any demand letter while the job has no payment, and nothing ties it to the Legal desk.
 
 - `src/lib/jobsDocuments/demandLetter.ts:1139` sets `includeTheftOfServices: false`, and the comment at `:92` says *OFF until attorney sign-off*.
 - `src/components/jobs/LienInstrumentsModal.tsx:1259-1275` offers the box whenever no payment is on the job.

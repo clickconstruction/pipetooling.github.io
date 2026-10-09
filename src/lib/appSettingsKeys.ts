@@ -260,8 +260,8 @@ export const APP_SETTINGS_KEY_TEAM_REVIEW_CADENCE_DAYS = 'team_review_cadence_da
 
 /**
  * `value_num`: $/hr used by Crew P&L to impute equivalent hours for flat-rate sub sheets
- * (cost ÷ rate weighs a per-job sub like a clocked crew member; default 30 via
- * DEFAULT_SUB_LABOR_EQUIVALENT_RATE). Dev writes (inline gear on the dev-only Crew P&L tab);
+ * (cost ÷ rate weighs a per-job sub like a clocked crew member; default 50 via
+ * DEFAULT_SUB_LABOR_EQUIVALENT_RATE). Dev writes (the inline box's Save for everyone on the dev-only Crew P&L tab);
  * all authenticated read. @see `src/lib/crewPnlSummary.ts`
  */
 export const APP_SETTINGS_KEY_CREW_PNL_SUB_EQUIVALENT_RATE = 'crew_pnl_sub_equivalent_rate_v1' as const

@@ -479,6 +479,11 @@ export interface Sow {
   /** The day we sent it to the trade to sign. Unset: not sent, or before the day was kept. */
   sentOn?: string
   /**
+   * The trade's own first schedule of values (the owner, 2026-10-04, question 4), from its quote at
+   * award or sent later from its portal. Shown beside ours; draws stay by percent on ours.
+   */
+  theirSov?: TheirSovLine[]
+  /**
    * What the contract says they will not do (the owner, 2026-10-04: "once we've got the job, we send
    * them a contract specifying what they're going to do"): their exclusions, each with who does it
    * instead when we know. Set at award from their quote.
@@ -515,6 +520,10 @@ export interface TradePackage {
   /** An invite id, 'plug' (our budget) or 'self'. */
   carried: string | null
   awardedInviteId: string | null
+  /** The estimator who awarded it (question 7). Unset: awarded before the prototype kept it. */
+  awardedBy?: string
+  /** The day it was awarded, for the company's Activity (2026-10-04). Unset: awarded before the prototype kept it. */
+  awardedOn?: string
   sow: Sow | null
   /** Work this trade's quote leaves out, and who does it instead. Missing: none said. */
   excludes?: ScopeExclusion[]
@@ -571,8 +580,10 @@ export interface OwnerBilling {
   retainageHeld: number
   /** Our pay applications to the owner, oldest first, as each went. Absent: none sent yet. */
   payApps?: OwnerPayAppSent[]
-  /** The day the owner accepted the work in their portal. Absent: not yet. Our final pay application waits for it. */
+  /** The day the owner accepted the work, recorded by our office (O7a) or pressed in their portal (O7c). Absent: not yet. Our final pay application waits for it. */
   acceptedOn?: string
+  /** They accepted it in their portal (O7c). Absent: our office recorded it. */
+  acceptedInPortal?: boolean
   /** Interest on late bills we sent the owner, oldest first: a bill of its own, never on the pay application. */
   interestBills?: OwnerInterestBill[]
 }
@@ -628,6 +639,11 @@ export interface GcProject {
   ownerRetainageStep?: OwnerRetainageStep
   /** Interest on the owner's late bills, if we chose to charge it on this job: a percent a month. Absent: none. */
   ownerLateInterest?: { pctPerMonth: number }
+  /**
+   * The contract's days to pay after the architect's certificate (`gc_projects.owner_pay_days`, decision 7). It stands
+   * in for the customer's usual days to pay when they have never paid us (O5d). Null or absent: not typed.
+   */
+  ownerPayDays?: number | null
   /** The owner contract's fee a day for finishing past substantial completion (liquidated damages), as we entered it. Absent: none. */
   ownerLateFinish?: { perDay: number }
   permitOn: string | null
@@ -890,8 +906,11 @@ export interface OwnerPayAppSent {
   retainageStep?: OwnerRetainageStep
   /** Materials stored on site, not yet in place, on each line when it went (column F). Absent: none. */
   storedByLine?: Record<string, number>
-  /** Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise. */
-  reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[] }[]
+  /**
+   * Our reminders to pay it, oldest first: the day sent, the pay-by day we asked for, the office's line. Never a promise.
+   * `emailed` false: filed, but its email did not go (O5b: no log written back on it).
+   */
+  reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[]; emailed?: boolean }[]
 }
 
 /** Why the work changed, in the words the app's change orders already use. */
@@ -920,6 +939,10 @@ export interface ChangeOrder {
   sentOn: string | null
   /** The day the owner signed or declined it. */
   answeredOn: string | null
+  /** They pressed it in their portal (O7c). Absent: the office recorded it, or no answer yet. */
+  answeredInPortal?: boolean
+  /** The reason they gave for declining it, one line (O7c). Absent: none given. */
+  declinedNote?: string
   /** Percent of its work done, for the owner's bill. */
   pctDone: number
   /**

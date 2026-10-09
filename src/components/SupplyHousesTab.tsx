@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { summarizeSupplyHouseBalances, supplyHouseCardMoney, ordinalDay } from '../lib/materials/supplyHousePhone'
 import { SupplyHousePhoneScreen } from './materials/SupplyHousePhoneScreen'
+import { CreditPairPick } from './materials/CreditPairPick'
 import { telHrefFor } from '../lib/phoneContact'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
@@ -48,6 +49,8 @@ import {
   amountProblem,
   applyPaymentUpdate,
   creditEffectSentence,
+  creditPairingLine,
+  creditsInvoicePatch,
   documentKindFromRow,
   documentWords,
   signedAmountForSave,
@@ -200,6 +203,8 @@ export function SupplyHousesTab({
   const [invoiceAmount, setInvoiceAmount] = useState('')
   /** What the paper is (v2.3503). The amount box stays positive; this is what decides the sign. */
   const [invoiceDocumentKind, setInvoiceDocumentKind] = useState<SupplyDocumentKind>('invoice')
+  /** v2.5035 · on a credit, the same house's invoice it credits ('' = not paired). */
+  const [invoiceCreditsInvoiceId, setInvoiceCreditsInvoiceId] = useState('')
   const [invoicePurchaseOrderNumber, setInvoicePurchaseOrderNumber] = useState('')
   const [invoiceLink, setInvoiceLink] = useState('')
   const [invoiceIsPaid, setInvoiceIsPaid] = useState(false)
@@ -341,7 +346,7 @@ export function SupplyHousesTab({
   }
 
   async function loadFirstServiceType() {
-    const { data } = await supabase.from('service_types').select('id').order('sequence_order', { ascending: true }).limit(1)
+    const { data } = await supabase.from('service_types').select('id').eq('billing_only', false).order('sequence_order', { ascending: true }).limit(1)
     const first = (data as { id: string }[] | null)?.[0]
     setFirstServiceTypeId(first?.id ?? null)
   }
@@ -624,6 +629,7 @@ export function SupplyHousesTab({
     setInvoiceDueDate(paymentDay ? nextMonthlyPaymentDueYmd(paymentDay, todayYmd) : '')
     setInvoiceAmount('')
     setInvoiceDocumentKind('invoice')
+    setInvoiceCreditsInvoiceId('')
     setInvoiceLink('')
     setInvoiceIsPaid(false)
     setInvoicePaidOn('')
@@ -643,6 +649,7 @@ export function SupplyHousesTab({
     setInvoiceDueDate(inv.due_date ?? '')
     setInvoiceAmount(typedAmountFromStored(inv.amount))
     setInvoiceDocumentKind(documentKindFromRow(inv))
+    setInvoiceCreditsInvoiceId((inv as { credits_invoice_id?: string | null }).credits_invoice_id ?? '')
     setInvoiceLink(inv.link ?? '')
     setInvoiceIsPaid(inv.is_paid)
     setInvoicePaidOn(inv.is_paid ? paidOnYmdFromIso(inv.paid_at) : '')
@@ -727,6 +734,8 @@ export function SupplyHousesTab({
       // Sent only when it changes, so untouched saves keep working in the
       // merge-to-db-push window before the column exists in prod.
       ...(effectiveOnJobAccount !== priorOnJobAccount ? { on_job_account: effectiveOnJobAccount } : {}),
+      // v2.5035 · the credit's invoice, sent only when it changes (the same window rule as above).
+      ...creditsInvoicePatch(invoiceDocumentKind, invoiceCreditsInvoiceId, editingInvoice as { credits_invoice_id?: string | null } | null),
     }
     let invoiceId: string | null = null
     if (editingInvoice) {
@@ -1213,7 +1222,14 @@ export function SupplyHousesTab({
                                                   !poGeneratorCodesForSelectedHouse.has(poGenCode)
                                                 return (
                                               <tr key={inv.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                                <td style={{ padding: '0.5rem 0.75rem' }}>{inv.invoice_number}</td>
+                                                <td style={{ padding: '0.5rem 0.75rem' }}>
+                                                  {inv.invoice_number}
+                                                  {(() => {
+                                                    // v2.5035 · a credit and the invoice it credits name each other; read against every row, paid ones too.
+                                                    const pair = creditPairingLine(inv, supplyHouseInvoices)
+                                                    return pair ? <span data-testid="supply-credit-pair" style={{ display: 'block', fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{pair}</span> : null
+                                                  })()}
+                                                </td>
                                                 <td style={{ padding: '0.5rem 0.75rem' }}>
                                                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                                                     <span>{inv.purchase_order_number?.trim() ? inv.purchase_order_number : '—'}</span>
@@ -1530,6 +1546,9 @@ export function SupplyHousesTab({
                   </div>
                 </div>
               </div>
+              {invoiceDocumentKind === 'credit' ? (
+                <CreditPairPick rows={supplyHouseInvoices} creditId={editingInvoice?.id ?? null} value={invoiceCreditsInvoiceId} onChange={setInvoiceCreditsInvoiceId} />
+              ) : null}
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="invoice-po" style={INVOICE_LABEL_STYLE}>Purchase order #</label>
                 <input id="invoice-po" type="text" value={invoicePurchaseOrderNumber} onChange={(e) => setInvoicePurchaseOrderNumber(e.target.value)} placeholder="e.g. PO-12345" style={INVOICE_INPUT_STYLE} />

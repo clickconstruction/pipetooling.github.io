@@ -88,7 +88,6 @@ import { billedExpectedPayModel } from '../../lib/jobs/billedExpectedPay'
 import { buildBilledDatesLedger } from '../../lib/jobs/billedDatesLedger'
 import BilledDatesLedger from './BilledDatesLedger'
 import type { BilledRowBillLine } from './JobsStagesUnifiedTable'
-import SetPromisedPayDateModal from './SetPromisedPayDateModal'
 import JobContractModal from './JobContractModal'
 import AddJobContractSheet from './AddJobContractSheet'
 import { jobNumberLabel, streetOf } from '../../lib/jobs/jobContractCovers'
@@ -133,22 +132,13 @@ import JobsStagesCardList, { JobsStagesUnifiedCardList } from './JobsStagesCardL
 import { jobBillingContextFromJob } from '../../lib/jobBillingContext'
 import BankPaymentsModal from './BankPaymentsModal'
 import PaidInFullEmailSettingsModal from './PaidInFullEmailSettingsModal'
-import BilledAgingChartModal from './BilledAgingChartModal'
-import BilledPaymentForecastModal from './BilledPaymentForecastModal'
 import { useForecastWorkMonths } from '../../hooks/useForecastWorkMonths'
-import PaymentChaseModal from './PaymentChaseModal'
 import { buildPaymentChaseQueue, summarizePaymentChase } from '../../lib/jobs/paymentChase'
 import { buildReliabilityLine } from '../../lib/jobs/paymentReliability'
 import { payerReturnsWords } from '../../lib/jobs/arReturnedCheckPayers'
 import { useArReturnedCheckPayers } from '../../hooks/useArReturnedCheckPayers'
 import BilledReliabilityLine from './BilledReliabilityLine'
 import type { StagesMoneyMoveKey } from '../../lib/jobs/stagesMoneyMoveLink'
-import FixBillLinesModal from './FixBillLinesModal'
-import { buildFixBillLineItems } from '../../lib/jobs/fixBillLines'
-import BilledByCustomerBreakdownModal from './BilledByCustomerBreakdownModal'
-import PaidProfitChartModal from './PaidProfitChartModal'
-import BilledReportShareModal from './BilledReportShareModal'
-import PaymentForecastShareModal from './PaymentForecastShareModal'
 import JobBookModal from './JobBookModal'
 import LegalDeskModal from './legal/LegalDeskModal'
 import { legalRpc, useLegalMatters } from '../../hooks/useLegalMatters'
@@ -271,6 +261,7 @@ import { StagesCreatePartialInvoiceModal } from './StagesCreatePartialInvoiceMod
 import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
 import SessionNotesModal from './SessionNotesModal'
+import StagesBilledMoneyModals from './StagesBilledMoneyModals'
 import { StagesCrewModalContext } from '../../contexts/StagesCrewModalContext'
 import { StagesCrewModal } from './StagesCrewModal'
 import { SessionNotesOpenerContext } from './sessionNotesOpenerContext'
@@ -784,26 +775,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [billedShareModalOpen, setBilledShareModalOpen] = useState(false)
   const [billedAgingChartOpen, setBilledAgingChartOpen] = useState(false)
   const [billedPaymentForecastOpen, setBilledPaymentForecastOpen] = useState(false)
-  /** Email… on the Payment forecast header (v2.2226) — the payment_forecast stream's share modal. */
-  const [forecastShareModalOpen, setForecastShareModalOpen] = useState(false)
   // WAITING ON CUSTOMERS card → "who owes what" breakdown (v2.1929).
   const [billedBreakdownOpen, setBilledBreakdownOpen] = useState(false)
-  // The three billed money modals (aging chart / payment forecast / who owes
-  // what) work from a collapsed section too: while any is open, keep kicking
-  // the scope fetches until they merge — a one-shot call no-ops when the base
-  // board fetch is still in flight (fetchScopeIfNeeded's loadInFlight guard),
-  // so this mirrors the fetch-on-expand effect's retry-on-cache-change shape.
-  // ALL non-paid scopes, not just billed (v2.2035's chase-queue fix): billed
-  // invoices hang on working/waiting jobs too (a part-billed Working job is
-  // exactly the bill that falls through cracks), and the board kernel routes
-  // them into the billed section only when their job's scope is loaded.
-  const billedMoneyModalOpen = billedAgingChartOpen || billedPaymentForecastOpen || billedBreakdownOpen
-  useEffect(() => {
-    if (!billedMoneyModalOpen) return
-    for (const scope of NON_PAID_SCOPES) {
-      void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
-    }
-  }, [billedMoneyModalOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   // The ⚖ Legal desk (v2.3293) reads Collections rows — billed-status jobs the
   // board loads lazily — so opening it fetches the non-paid scopes the same way.
   useEffect(() => {
@@ -980,17 +953,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // v2.4328 (punch list #76): the payer's checks the bank sent back this past year, for the pay history.
   const returnsByPayer = useArReturnedCheckPayers(canMarkPromisedPay)
   const [chaseModalOpen, setChaseModalOpen] = useState(false)
-  // Call mode reads FULL rows (names + send evidence) from EVERY non-paid
-  // scope — billed invoices hang on working/waiting jobs too (a part-billed
-  // working job is exactly the bill that falls through cracks), and the
-  // board kernel routes them into the billed section only when their job's
-  // scope is loaded. Same retry-until-merged shape as the forecast.
-  useEffect(() => {
-    if (!chaseModalOpen) return
-    for (const scope of NON_PAID_SCOPES) {
-      void cacheFetchScopeIfNeeded(scope, customerFilterForFetch)
-    }
-  }, [chaseModalOpen, cacheMergedScopes, cacheScopeLoading, customerFilterForFetch, cacheFetchScopeIfNeeded])
   const [promisedPayModalJob, setPromisedPayModalJob] = useState<{
     jobId: string
     jobLabel: string
@@ -1510,19 +1472,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     : cacheHeaderStats
       ? formatCurrencyNoCents(cacheHeaderStats.capableToBill)
       : '…'
-  // Work months under the forecast's rows (the lien clock's evidence): one
-  // clock-sessions fetch for the open-bill jobs, only while the modal is open.
-  const forecastWorkMonthJobs = useMemo(() => {
-    if (!billedPaymentForecastOpen) return null
-    const seen = new Map<string, { id: string; gc_customer_id: string | null; customer_address_id: string | null }>()
-    for (const r of unfilteredBoardLists.billedActiveRows) {
-      if (r.kind === 'job' || seen.has(r.job.id)) continue
-      seen.set(r.job.id, { id: r.job.id, gc_customer_id: r.job.gc_customer_id ?? null, customer_address_id: r.job.customer_address_id ?? null })
-    }
-    return [...seen.values()]
-  }, [billedPaymentForecastOpen, unfilteredBoardLists])
   const forecastTodayYmd = calendarYmdInAppTzFromIso(new Date().toISOString())
-  const { byJob: forecastWorkMonths } = useForecastWorkMonths(forecastWorkMonthJobs, forecastTodayYmd)
   // The Lien desk (v2.3405): § 53.056 notices due per unpaid work month on sub
   // jobs. A light read keeps the menus' counts; the full read runs while open.
   const [lienDesk, setLienDesk] = useState<{ jobId: string | null; kind?: 'next' | 'notice' | 'affidavit' | 'retainage' | 'timeline' | 'calendar'; pile?: LienDeskPile | null; aim?: number } | null>(null)
@@ -1657,18 +1607,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       buildPaymentChaseQueue(cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById),
     )
   }, [canMarkPromisedPay, cacheLeanBilledRows, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById])
-  const nonPaidScopesMerged = NON_PAID_SCOPES.every((s) => cacheMergedScopes.has(s))
-  const chaseFullQueue = useMemo(() => {
-    if (!chaseModalOpen || !nonPaidScopesMerged) return null
-    return buildPaymentChaseQueue(
-      unfilteredBoardLists.billedActiveRows,
-      billedPaySpeeds,
-      promisedPayDates,
-      chaseTouches,
-      chaseTodayYmd,
-      gcTemperatureById,
-    )
-  }, [chaseModalOpen, nonPaidScopesMerged, unfilteredBoardLists, billedPaySpeeds, promisedPayDates, chaseTouches, chaseTodayYmd, gcTemperatureById])
 
   /** Jump-strip counts (v2.1959): stats-spine fallback for unfetched scopes — same rule as the section headers. */
   const jumpStripCounts = useMemo(() => {
@@ -4373,49 +4311,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       {readyToBillNotifySettingsOpen && (
         <PaidInFullEmailSettingsModal variant="ready_to_bill" onClose={() => setReadyToBillNotifySettingsOpen(false)} />
       )}
-      {billedBreakdownOpen && (
-        <BilledByCustomerBreakdownModal
-          rows={unfilteredBoardLists.billedActiveRows}
-          loading={!nonPaidScopesMerged}
-          canSeeCharts={stagesGates.canSeeStagesMoneyCharts(authRole)}
-          authRole={authRole}
-          onClose={() => setBilledBreakdownOpen(false)}
-          onOpenBill={(bill) => {
-            setBilledBreakdownOpen(false)
-            if (bill.invoiceId) {
-              applyStagesInvoiceFocus(bill.invoiceId)
-            } else {
-              setStagesSectionOpen((prev) => ({ ...prev, billed: true }))
-              setPendingStagesJobFocusId(bill.jobId)
-              setStagesJobFlashId(bill.jobId)
-            }
-          }}
-          onOpenAgingChart={() => {
-            setBilledBreakdownOpen(false)
-            setBilledAgingChartOpen(true)
-          }}
-          onShow90={() => {
-            setBilledBreakdownOpen(false)
-            setBilledAgingFilter('90')
-            focusStagesSection('billed')
-          }}
-          onGoToBilled={() => {
-            setBilledBreakdownOpen(false)
-            focusStagesSection('billed')
-          }}
-        />
-      )}
-      {billedAgingChartOpen && (
-        <BilledAgingChartModal
-          rows={unfilteredBoardLists.billedActiveRows}
-          loading={!nonPaidScopesMerged}
-          onClose={() => setBilledAgingChartOpen(false)}
-          onOpenInvoice={(invoiceId) => {
-            setBilledAgingChartOpen(false)
-            applyStagesInvoiceFocus(invoiceId)
-          }}
-        />
-      )}
       {sessionNotesModal ? (
         <SessionNotesModal
           initialJob={sessionNotesModal.job}
@@ -4428,118 +4323,55 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           onClose={() => setSessionNotesModal(null)}
         />
       ) : null}
-      {billedPaymentForecastOpen && (
-        <BilledPaymentForecastModal
-          rows={unfilteredBoardLists.billedActiveRows}
-          loading={!nonPaidScopesMerged}
-          paySpeeds={billedPaySpeeds}
-          promises={promisedPayDates}
-          slipByCustomer={promiseSlipByCustomer}
-          todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
-          onClose={() => setBilledPaymentForecastOpen(false)}
-          onOpenInvoice={(invoiceId) => {
-            setBilledPaymentForecastOpen(false)
-            applyStagesInvoiceFocus(invoiceId)
-          }}
-          onOpenJobDetail={(jobId) => {
-            // Land on the Bill tab (v2.2303, owner call): payments + invoice
-            // links are what these doors exist to fix.
-            setBilledPaymentForecastOpen(false)
-            tryOpenEditJob(jobId, { initialTab: 'bill' })
-          }}
-          canExcludePayments={stagesGates.isStagesOwnerRole(authRole)}
-          isDev={authRole === 'dev'}
-          canEmailMoneyWaiting={stagesGates.isStagesOfficeRole(authRole)}
-          onOpenJobStacked={(jobId, onSaved) => {
-            // v2.2311: the Job window (z 1010) stacks above the drill-down
-            // (z 780) — nothing closes, and every save refreshes the list.
-            tryOpenEditJob(jobId, { initialTab: 'bill', onSaved })
-          }}
-          onPaySpeedsChanged={() => void refreshBilledPaySpeeds()}
-          onEmail={
-            stagesGates.isStagesOfficeRole(authRole)
-              ? () => setForecastShareModalOpen(true)
-              : undefined
-          }
-          workMonths={forecastWorkMonths}
-          onOpenLienNotice={(jobId) => {
-            // The Lien desk on that job (v2.3405) — draft, approve, send; the
-            // forecast closes so the desk has the screen.
-            setBilledPaymentForecastOpen(false)
-            setLienDesk({ jobId })
-          }}
-        />
-      )}
-      {forecastShareModalOpen && <PaymentForecastShareModal onClose={() => setForecastShareModalOpen(false)} />}
-      {chaseModalOpen && (
-        <PaymentChaseModal
-          queue={chaseFullQueue}
-          loading={!nonPaidScopesMerged}
-          paySpeeds={billedPaySpeeds}
-          todayYmd={chaseTodayYmd}
-          authRole={authRole}
-          onClose={() => setChaseModalOpen(false)}
-          onRecorded={() => {
-            void loadChaseTouches()
-            void loadPromisedPayDates()
-          }}
-          onOpenInvoice={(invoiceId) => {
-            setChaseModalOpen(false)
-            applyStagesInvoiceFocus(invoiceId)
-          }}
-          // B6 / J4-7: the board's typed confirm layers over call mode (z 780 > 770);
-          // the session snapshot stays put while the flag writes.
-          onMoveToCollections={
-            // same office pool as the section's Collections button (server RPC is authoritative)
-            stagesGates.isStagesOfficeRole(authRole)
-              ? (jobId) => {
-                  const job = jobs.find((j) => j.id === jobId)
-                  if (!job) {
-                    showToast('That job is not on the board any more — refresh and try again.', 'warning')
-                    return
-                  }
-                  setCollectionsConfirm({ job, direction: 'to' })
-                }
-              : undefined
-          }
-        />
-      )}
-      {fixBillLinesOpen && (
-        <FixBillLinesModal
-          items={buildFixBillLineItems(stagesBoardLists.billedActiveRows)}
-          onClose={() => setFixBillLinesOpen(false)}
-          onAnyFixed={() => void loadJobs()}
-        />
-      )}
-      {promisedPayModalJob && (
-        <SetPromisedPayDateModal
-          jobId={promisedPayModalJob.jobId}
-          jobLabel={promisedPayModalJob.jobLabel}
-          initialYmd={promisedPayModalJob.initialYmd}
-          onClose={() => setPromisedPayModalJob(null)}
-          onSaved={() => {
-            void loadPromisedPayDates()
-            void loadPromiseRecords()
-          }}
-        />
-      )}
-      {paidProfitChartOpen && (
-        <PaidProfitChartModal
-          paidJobs={stagesBoardLists.paid}
-          onClose={() => setPaidProfitChartOpen(false)}
-          onOpenJob={(job) => {
-            setPaidProfitChartOpen(false)
-            openStagesDetailJobModal(job)
-          }}
-        />
-      )}
-      {billedShareModalOpen && (
-        <BilledReportShareModal
-          onClose={() => setBilledShareModalOpen(false)}
-          onPrint={() => printBilledAwaitingPaymentReport(stagesBoardLists.billedActiveRows, { searchFilter: stagesSearchQuery })}
-          printDisabled={stagesBoardLists.billedActiveRows.length === 0}
-        />
-      )}
+      {/* The billed-money windows (punch list #46 row 2, map step 8): the open flags stay here. */}
+      <StagesBilledMoneyModals
+        authRole={authRole}
+        jobs={jobs}
+        customerFilterForFetch={customerFilterForFetch}
+        unfilteredBoardLists={unfilteredBoardLists}
+        stagesBoardLists={stagesBoardLists}
+        stagesSearchQuery={stagesSearchQuery}
+        billedBreakdownOpen={billedBreakdownOpen}
+        setBilledBreakdownOpen={setBilledBreakdownOpen}
+        billedAgingChartOpen={billedAgingChartOpen}
+        setBilledAgingChartOpen={setBilledAgingChartOpen}
+        billedPaymentForecastOpen={billedPaymentForecastOpen}
+        setBilledPaymentForecastOpen={setBilledPaymentForecastOpen}
+        chaseModalOpen={chaseModalOpen}
+        setChaseModalOpen={setChaseModalOpen}
+        fixBillLinesOpen={fixBillLinesOpen}
+        setFixBillLinesOpen={setFixBillLinesOpen}
+        promisedPayModalJob={promisedPayModalJob}
+        setPromisedPayModalJob={setPromisedPayModalJob}
+        paidProfitChartOpen={paidProfitChartOpen}
+        setPaidProfitChartOpen={setPaidProfitChartOpen}
+        billedShareModalOpen={billedShareModalOpen}
+        setBilledShareModalOpen={setBilledShareModalOpen}
+        billedPaySpeeds={billedPaySpeeds}
+        refreshBilledPaySpeeds={refreshBilledPaySpeeds}
+        promisedPayDates={promisedPayDates}
+        loadPromisedPayDates={loadPromisedPayDates}
+        loadPromiseRecords={loadPromiseRecords}
+        promiseSlipByCustomer={promiseSlipByCustomer}
+        chaseTouches={chaseTouches}
+        loadChaseTouches={loadChaseTouches}
+        gcTemperatureById={gcTemperatureById}
+        chaseTodayYmd={chaseTodayYmd}
+        forecastTodayYmd={forecastTodayYmd}
+        applyStagesInvoiceFocus={applyStagesInvoiceFocus}
+        setStagesSectionOpen={setStagesSectionOpen}
+        setPendingStagesJobFocusId={setPendingStagesJobFocusId}
+        setStagesJobFlashId={setStagesJobFlashId}
+        setBilledAgingFilter={setBilledAgingFilter}
+        focusStagesSection={focusStagesSection}
+        tryOpenEditJob={tryOpenEditJob}
+        setLienDesk={setLienDesk}
+        setCollectionsConfirm={setCollectionsConfirm}
+        showToast={showToast}
+        loadJobs={loadJobs}
+        openStagesDetailJobModal={openStagesDetailJobModal}
+        printBilledAwaitingPaymentReport={printBilledAwaitingPaymentReport}
+      />
       <LegalDeskModal
         open={legalDesk != null}
         onClose={() => setLegalDesk(null)}

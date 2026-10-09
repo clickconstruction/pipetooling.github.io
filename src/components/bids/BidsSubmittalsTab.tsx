@@ -24,7 +24,7 @@ import { SubmittalRowsTable } from './SubmittalRowsTable'
 import { SubmittalRoomPanel } from './SubmittalRoomPanel'
 import { SubmittalSourcesPanel } from './SubmittalSourcesPanel'
 import { robotScheduleNote, scheduleReadHoldsStepOpen } from '../../lib/submittals/robotNote'
-import { buildRowCutSheet, cutSheetFileName, rowCutSheetPlan } from '../../lib/submittals/rowCutSheet'
+import { buildRowCutSheet, cutSheetFileName, cutSheetSavedLine, rowCutSheetPlan } from '../../lib/submittals/rowCutSheet'
 import { SubmittalTheirCallPanel } from './SubmittalTheirCallPanel'
 import { SpotlightTour, spotlightTourStepsPresent, type SpotlightTourStep } from '../SpotlightTour'
 import { robotSeatState, staleAsk, type RobotSeatRow, type RobotSeatState } from '../../lib/submittals/robotOffer'
@@ -72,6 +72,7 @@ import { SubmittalSheetStrip, type ThumbState } from './SubmittalSheetStrip'
 import { SubmittalAssignPagesModal } from './SubmittalAssignPagesModal'
 import type { ItemWrite } from '../../lib/submittals/assignPagesWalk'
 import { SubmittalShareModal } from './SubmittalShareModal'
+import { roomHasSentLink, roomLinkRefusalWords, sendRoomLink } from '../../lib/submittals/sendRoomLink'
 import { SubmittalResubmitChooser } from './SubmittalResubmitChooser'
 import { describeRoomLine, roomLink, type SubmittalEventRow, type SubmittalPersonRow, type SubmittalRoomRow, parseRoomMessage, threadOrder } from '../../lib/submittals/submittalRoom'
 import { replyToRoom } from '../../lib/submittals/replyToRoom'
@@ -122,6 +123,7 @@ import {
   type SourceFile,
   type SubmittalItemRow,
   type SubmittalRevisionRow, blankSubmittalItem, carriedRowInsert, NEW_ROW_ID, rowsToCarry } from '../../lib/submittals/submittalRevision'
+import { designCallCarry, type DesignCallFields } from '../../lib/submittals/designCall'
 
 // The stage 1–2 tables are hand-typed until the regen chore; the untyped client keeps a checkout ahead of the push honest.
 const db = supabase as unknown as SupabaseClient
@@ -879,6 +881,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
         status: it.status, reason_kind: it.reason_kind, reason_note: it.reason_note, lead_time_days: it.lead_time_days,
         sheet_file: it.sheet_file, sheet_pages: it.sheet_pages, sheet_source: it.sheet_source,
         ...orderOnlyInsert(it),
+        ...(designCallCarry(it.status, it as SubmittalItemRow & DesignCallFields) ?? {}),
       }))).select('id, sequence_order')
       if (error) throw error
       // Each tag's row gets the fixture's parts; each is bought on its own, so only the first keeps the procurement line.
@@ -1499,7 +1502,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
 
   /**
    * One row's cut sheet as a PDF of its own (2026-10-05): the row's pages cut out of the vendor's
-   * file and saved to the device, to attach to an email or a text. Nothing is written or sent.
+   * file and saved to the device, to read or to file in the GC's own system. Nothing is written or
+   * sent; the submittal itself leaves only through Share or Send the link (v2.5027).
    */
   async function saveRowCutSheet(it: SubmittalItemRow) {
     const plan = rowCutSheetPlan(it, partsOf.get(it.id) ?? [])
@@ -1513,7 +1517,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       })
       const name = cutSheetFileName(it.tag)
       saveBlobAs(new Blob([out.bytes as BlobPart], { type: 'application/pdf' }), name)
-      showToast(`Saved ${name} · ${out.pages} page${out.pages === 1 ? '' : 's'}. Attach it to your email or text.`, 'success')
+      showToast(cutSheetSavedLine(name, out.pages), 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'Could not save the cut sheet.', 'error')
     } finally {
@@ -1791,6 +1795,19 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
+  /** v2.5026 · Send the link: one person's own link by email, from the company; the step reads it back from the events. */
+  async function sendLinkTo(personId: string, note: string): Promise<boolean> {
+    const p = people.find((x) => x.id === personId)
+    const a = await sendRoomLink(personId, note)
+    if (!a.ok) {
+      showToast(roomLinkRefusalWords(a.key), 'error')
+      return false
+    }
+    showToast(`Link sent to ${p?.name ?? 'them'} at ${a.to}.${a.recorded ? '' : ' This step will not show it.'}`, a.recorded ? 'success' : 'info')
+    if (bidId) await loadRoom(bidId)
+    return true
+  }
+
   async function closeRoom() {
     if (!room || !bidId) return
     const ok = await confirm({ title: 'Close the review room', message: 'Every link to this bid\'s submittals reads "this review is closed". The decisions and the packages stay on the record. Reopen from here if you need to.', confirmLabel: 'Close the room', danger: true })
@@ -1903,7 +1920,6 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setApprovingAll(false)
       setItems(await loadItems(selectedRev.id))
       await loadRoom(bidId)
-      await markSentOutside(choice.on ?? null, { onlyIfUnset: true })
       showToast(`Approved on ${done.length} row${done.length === 1 ? '' : 's'} · ${person.name} · entered by ${profileName ?? 'you'}.`, 'success')
     } catch (e) {
       showToast(formatErrorMessage(e, 'Could not enter their approval'), 'error')
@@ -1912,24 +1928,9 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
     }
   }
 
-  /**
-   * v2.4705 · the revision went out by email or on paper: `sent_outside_at` on the draft. Typed
-   * answers set it on their day, once (`is null`); the office sets or changes it from step 5.
-   */
-  async function markSentOutside(ymd: string | null, opts: { onlyIfUnset?: boolean } = {}) {
-    if (!selectedRev || !bidId || asRevisionStatus(selectedRev.status) !== 'draft') return
-    if (opts.onlyIfUnset && selectedRev.sent_outside_at) return
-    const at = enteredDecisionAt(ymd, new Date(), todayYmdInAppTz())
-    let q = db.from('bid_submittals').update({ sent_outside_at: at }).eq('id', selectedRev.id)
-    if (opts.onlyIfUnset) q = q.is('sent_outside_at', null)
-    const { error } = await q
-    if (error) {
-      if (!opts.onlyIfUnset) showToast(formatErrorMessage(error, 'Could not record the day it was sent'), 'error')
-      return
-    }
-    setRevisions(await loadRevisions(bidId))
-    if (!opts.onlyIfUnset) showToast(`Rev ${selectedRev.rev_number} · sent by email. Nobody was emailed.`, 'success')
-  }
+  // v2.5027 (the owner's call of 2026-10-09): a submittal leaves only through Share or Send the link. The
+  // "Sent by email on…" door and the first typed answer no longer set `sent_outside_at`; a revision that
+  // already carries it keeps its chip, its step line and its record.
 
   /**
    * Their answer on one row, part by part (2026-10-02): each group of lines that share an answer
@@ -1969,8 +1970,6 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
       setItems(fresh)
       setParts(await loadItemParts(db, fresh.map((x) => x.id)))
       if (who) await loadRoom(bidId)
-      // v2.4705 · an answer typed on a draft means the draft went out by email: the header stops saying "draft".
-      if (who) await markSentOutside(save.on ?? null, { onlyIfUnset: true })
       const said = [writes.counts.approved ? `${writes.counts.approved} approved` : '', writes.counts.revise ? `${writes.counts.revise} revise` : '', writes.counts.rejected ? `${writes.counts.rejected} rejected` : ''].filter(Boolean).join(' · ')
       const tag = row.tag.trim() || 'the accessory'
       showToast(who ? `${said} on ${tag} · ${who.name} · entered by ${profileName ?? 'you'}. Nobody was emailed.` : `Taken back on ${tag}.`, 'success')
@@ -2550,8 +2549,6 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     shareGate={gates.share}
                     room={room}
                     roomLine={shareLine}
-                    sentOutsideAt={selectedRev.sent_outside_at}
-                    onSentOutside={isDraft && isNewest ? (ymd) => void markSentOutside(ymd) : undefined}
                     people={people}
                     events={events}
                     decidedBy={(personId) => items.filter((it) => it.reviewed_by_person_id === personId).length}
@@ -2561,6 +2558,7 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
                     onReopenRoom={() => void reopenRoom()}
                     onSetMayDecide={(personId, mayDecide) => void setMayDecide(personId, mayDecide)}
                     onClosePerson={(personId) => void closePerson(personId)}
+                    onSendLink={sendLinkTo}
                   />
                 ) : null}
               </RoadSection>
@@ -2752,6 +2750,8 @@ export function BidsSubmittalsTab({ bids, selectedBid, narrowViewport640, bidPre
           bidId={bidId}
           revision={selectedRev}
           room={room}
+          people={people}
+          sentLinkBefore={roomHasSentLink(events)}
           untrimmedFiles={sourceFiles.filter((f, i) => !f.trimmedAt && keptPages(assignmentsFromItems(items), i).length > 0).length}
           onClose={() => setSharing(false)}
           onDoneWithFiles={doneWithAllFiles}

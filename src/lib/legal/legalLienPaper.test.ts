@@ -94,7 +94,7 @@ describe('buildLegalEnvelopes', () => {
       filing({ id: 'f-aff', job_id: 'job-273', kind: 'affidavit', amount: 17585, months_covered: [], filed_at: '2026-11-20', served_at: '2026-11-23', serve_due: '2026-11-25', county: 'Comal', recording_number: '2026-0412', created_at: '2026-11-20T12:00:00Z' }),
       filing({ id: 'f-n', job_id: 'job-273', months_covered: ['2026-07'], sends: [{ recipient: 'owner', method: 'email', tracking: '', sent_on: '2026-08-10' }], created_at: '2026-08-10T12:00:00Z' }),
     ]
-    const out = buildLegalEnvelopes(rows, { labelOf, propertyKind: 'commercial' })
+    const out = buildLegalEnvelopes(rows, { labelOf, propertyKind: 'non_residential' })
     expect(out.map((e) => [e.letter, e.kind, e.wentOutYmd])).toEqual([['A', 'notice_53_056', '2026-08-10'], ['B', 'affidavit', '2026-11-20']])
     const notice = out[0]!
     const affidavit = out[1]!

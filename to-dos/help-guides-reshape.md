@@ -1,22 +1,20 @@
 ---
 name: "Help guides: give the long reference guides a do-this-first opening"
 number: 88
-group: gated
-status: open · proposed 2026-10-05 by the three plain-words slices (#75) · nothing built
 summary: >
   The plain-words sweep (#75) made every help guide readable sentence by sentence. Thirteen
   guides still do several jobs under one title, from 880 to 2,550 words each, so a first-timer
   meets five features before the one they opened the guide for. Each guide wants a do-this-first
   opening, a split where it holds two or three guides, and cuts. The three slices' reviewers
   proposed all three per guide. They are gathered here for the owner's call.
-next: >
-  The owner picks, guide by guide, which cuts and splits to make (or "openings only"). Then one
-  PR per guide, each with an independent old-against-new read.
 size: M (13 guides, about 20,000 prose words; one PR per guide)
-blocker: The owner's call on the cuts. A cut takes out facts a reader may rely on, and a split changes where a guide lives.
 ver: v2.4589 · 4597 · 4601
-opinion: your call — the openings are cheap and safe; the cuts are where a reader can lose something
 mockup: not required — words only; each guide renders as it does today
+group: ready
+status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · nothing built yet
+next: One PR per guide, thirteen in all (the owner, 2026-10-09): the do-this-first opening above everything else, and the split where the reviewers proposed one, each new guide with its own title and share card; no cuts — a sentence a reader may rely on stays, moved below a *Reference* line at most. Each PR gets an independent old-against-new read.
+blocker: None.
+opinion: build — openings and splits are safe; the cuts were the risk and are off the table.
 ---
 
 # Help guides: give the long reference guides a do-this-first opening

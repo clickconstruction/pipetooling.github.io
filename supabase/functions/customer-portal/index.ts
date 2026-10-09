@@ -26,6 +26,7 @@ import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { testReportShortLabel, testReportTitle, type TestReportSystem, type TestReportType } from '../_shared/testReport.ts'
 import { framesWaitingLine, signerNamesLine } from '../_shared/jobContractSigners.ts'
+import { loadGcPortalJobs, type PortalGcJob } from '../_shared/gcPortal.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -690,6 +691,10 @@ serve(async (req) => {
       }
     }
 
+    // GC mode (Owner Billing O7c, v2.5025): the GC jobs we build for this customer, with the change orders waiting on
+    // them and the work to accept. The customer's link only: a GC's link is Trades mode's.
+    const gcJobs: PortalGcJob[] = link.audience === 'gc' ? [] : await loadGcPortalJobs(admin, link.customer_id)
+
     return jsonResponse({
       company: PORTAL_COMPANY,
       customerName: (customer as { name: string | null }).name ?? 'Customer',
@@ -715,6 +720,7 @@ serve(async (req) => {
       promise,
       bankTransfer,
       ownerRecords,
+      gcJobs,
     })
   } catch (e) {
     console.error('customer-portal error', e)

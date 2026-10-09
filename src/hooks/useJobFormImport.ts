@@ -14,6 +14,7 @@ import { secondConversionMessage } from '../lib/bids/wonMomentActions'
 import { bidImportCarry, bidImportCarryQuestion, bidImportEffectiveGc, bidImportFirstLine, bidImportGcOptions, bidImportLabel, bidImportWinWrite, decideBidImportGc } from '../lib/bids/jobImportFromBid'
 import { estimateImportCustomerFields, estimateImportFixtureRows } from '../lib/jobs/jobImportFromEstimate'
 import { visibleServiceTypesForJobForm } from '../lib/jobs/jobFormServiceTypes'
+import { pickableServiceTypes } from '../lib/serviceTypePickers'
 import { normalizeFormFixtureRows } from '../lib/jobs/jobFormFixtureHydrate'
 import { normalizeEstimateLineItemsFromJson } from '../lib/estimateLineItemNormalize'
 import { fixturesPayloadForCreateJobFromEstimate } from '../lib/createJobFromEstimateSubmit'
@@ -281,7 +282,7 @@ export function useJobFormImport(args: JobFormImportArgs): JobFormImport {
           }
           return [opt, ...prev]
         })
-        const vis = visibleServiceTypesForJobForm(serviceTypes, meServiceTypeColumns)
+        const vis = visibleServiceTypesForJobForm(pickableServiceTypes(serviceTypes), meServiceTypeColumns)
         const allowed = new Set(vis.map((s) => s.id))
         if (b.service_type_id && allowed.has(b.service_type_id)) {
           setFormServiceTypeId(b.service_type_id)

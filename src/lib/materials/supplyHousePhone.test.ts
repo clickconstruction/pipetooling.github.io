@@ -67,3 +67,15 @@ describe('a house’s invoices as rows', () => {
     expect(supplyHousePhoneInvoiceRows(list, 'paid', opts)[0]).toMatchObject({ id: '5', sub: 'due Aug 1', pastDueDays: 0 })
   })
 })
+
+describe('v2.5035 · a credit and the invoice it credits name each other on the phone rows', () => {
+  it('in the row’s second line', () => {
+    const list: SupplyHousePhoneInvoice[] = [
+      { id: 'i1', invoice_number: '88121', purchase_order_number: null, due_date: '2026-10-02', amount: 1204, is_paid: false, document_kind: 'invoice' },
+      { id: 'c1', invoice_number: 'CM-4471', purchase_order_number: null, due_date: null, amount: -150, is_paid: false, document_kind: 'credit', credits_invoice_id: 'i1' },
+    ]
+    const opts = { todayYmd: '2026-09-27', jobLabel: (id: string) => id, formatMoney: (n: number) => `$${n}` }
+    expect(supplyHousePhoneInvoiceRows(list, 'unpaid', opts)[0]?.sub).toBe('due Oct 2 · credited by CM-4471 (−$150.00)')
+    expect(supplyHousePhoneInvoiceRows(list, 'credits', opts)[0]?.sub).toBe('credits 88121')
+  })
+})

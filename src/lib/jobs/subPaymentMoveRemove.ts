@@ -84,6 +84,17 @@ export function planSubPaymentMove(
   }
 }
 
+/** The one line the sheet shows when Move is refused (the owner's call of 2026-10-09). */
+export const SUB_BACKCHARGE_STAYS = 'A backcharge stays on the sheet it was raised on.'
+
+/**
+ * Why a payment may not move, or null when it may. A backcharge is pinned to the sheet it was
+ * raised on (the owner's call of 2026-10-09): Move refuses it, and Remove is its only way off.
+ */
+export function subPaymentMoveRefusal(payment: { amount: number | string; isBackcharge?: boolean }): string | null {
+  return payment.isBackcharge || Number(payment.amount) < 0 ? SUB_BACKCHARGE_STAYS : null
+}
+
 export type SubPaymentMoveDestination = { sheet: LaborJob; sameSub: boolean }
 
 /**

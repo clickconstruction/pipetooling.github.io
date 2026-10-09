@@ -6,7 +6,7 @@ const clear: LienDeskGatesInput = {
   ownerMailingAddress: '18500 Von Karman Ave Ste 550, Irvine, CA 92612',
   gcName: 'TF Harper',
   gcAddress: '',
-  propertyKind: 'commercial',
+  propertyKind: 'non_residential',
   county: 'Comal',
   monthLabels: ['Jul'],
   pickedMonthsCount: 1,
@@ -61,7 +61,8 @@ describe('the sections under the gates (v2.3670)', () => {
   it('gate 3 names the clock the kind sets, and keeps the caveat while it is unknown', () => {
     expect(propertyKindClockWords('non_residential', 'Comal')).toBe("Commercial · Comal County — each month's notice is due by the 15th of the 3rd month after the work.")
     expect(propertyKindClockWords('residential', '')).toBe("Residential — each month's notice is due by the 15th of the 2nd month after the work.")
-    expect(propertyKindClockWords('', 'Comal')).toBe('Commercial dates shown; a residential property is a month earlier.')
+    // A kind not set dates as residential, the earlier month, and still asks for the kind (v2.5031).
+    expect(propertyKindClockWords('', 'Comal')).toBe('Not set — residential dates shown, the earlier ones; a commercial property is a month later. Set the kind.')
   })
 
   it('gate 1 says where a filed owner came from', () => {

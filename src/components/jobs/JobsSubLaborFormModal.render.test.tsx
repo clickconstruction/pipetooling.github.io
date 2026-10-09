@@ -239,6 +239,30 @@ describe('JobsSubLaborFormModal render smoke', () => {
     expect(onOpenMovePayment).toHaveBeenCalledWith(expect.objectContaining({ id: 'pay-1', amount: 250 }))
   })
 
+  it('a backcharge stays on its sheet: Move… on it says why and opens nothing, while a payment still moves (the owner’s call of 2026-10-09)', async () => {
+    const onOpenMovePayment = vi.fn()
+    const { handleRef } = mountHarness({ onOpenMovePayment, onOpenRemovePayment: vi.fn() })
+    const laborJob = makeLaborJob({
+      job_number: 'HCP-12',
+      payments: [
+        { id: 'pay-1', amount: 250, memo: 'check 1041', payment_date: '2026-09-19', created_at: '2026-09-20T01:50:00Z' },
+        { id: 'bc-1', amount: -75, memo: 'cracked tub', payment_date: '2026-09-21', created_at: '2026-09-21T15:00:00Z' },
+      ],
+    })
+    await act(async () => handleRef.current!.openEdit(laborJob))
+    const [paymentRow, backchargeRow] = screen.getAllByTestId('sub-payment-row')
+    const backchargeLine = backchargeRow!.nextElementSibling as HTMLElement
+    expect(within(backchargeLine).queryByRole('status')).toBeNull()
+    fireEvent.click(within(backchargeLine).getByRole('button', { name: 'Move…' }))
+    expect(onOpenMovePayment).not.toHaveBeenCalled()
+    expect(within(backchargeLine).getByRole('status').textContent).toBe('A backcharge stays on the sheet it was raised on.')
+
+    const paymentLine = paymentRow!.nextElementSibling as HTMLElement
+    fireEvent.click(within(paymentLine).getByRole('button', { name: 'Move…' }))
+    expect(onOpenMovePayment).toHaveBeenCalledWith(expect.objectContaining({ id: 'pay-1', amount: 250 }))
+    expect(within(paymentLine).queryByRole('status')).toBeNull()
+  })
+
   it('edit mode: picking a job persists immediately with a confirming toast (closing without Save keeps it)', async () => {
     const { handleRef } = mountHarness()
     const laborJob = makeLaborJob({ assigned_to_name: 'Sub Sam', address: '230 Terrell Road', job_number: '944' })

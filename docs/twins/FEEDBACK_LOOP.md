@@ -161,7 +161,7 @@ discarding it:
   one-tap `[verdict:teach]` rows — plus one note on b425. Every note is undigested;
   the doctrine she taught is banked in PLACEMENT.md (site/civil never ours,
   scheduled = counted, ambiguous device → in scope, sawcut excluded, two packages →
-  ask, travel/rentals are human lines, interceptor prices, med gas self-performed,
+  ask, travel/rentals are human lines (travel re-ruled 2026-10-09: $0.70 a mile, round trip, per job day), interceptor prices, med gas self-performed,
   every 1/2" home run measured, 10 ft per POC, under-a-loss is light, plain-word
   questions). **Digested the same evening** (run `digest:2026-09-04`, credential
   bc18d402): 24 receipts posted as the twin, every note stamped (19 doctrine,

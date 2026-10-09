@@ -3,6 +3,7 @@ import { jobHasBillingParty } from './jobs/jobPartyExclusive'
 import type { Database } from '../types/database'
 import { billOnOpenJob, openRemainder } from './billing/billTruth'
 import { allocatedOpenCents } from './billing/openLineAllocation'
+import { billAppliedOnJob } from './jobs/billApplied'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { StagesBoardSortMode } from './jobsStagesSortMode'
 import { jobLedgerHasCustomerForBilling } from './jobLedgerCustomerForBilling'
@@ -211,13 +212,9 @@ export function buildReadyToBillStageRows(readyToBillJobs: JobWithDetails[]): St
   return rows
 }
 
-/** One row per display unit: sole billed invoice merges with job; 2+ invoices → invoice rows only; no invoices → job row. */
+/** What a bill has been paid under the one rule — unlinked money counts, oldest bill first (v2.5006, `billAppliedOnJob`). */
 function sumPaymentsForInvoiceOnJob(job: JobWithDetails, invoiceId: string): number {
-  let s = 0
-  for (const p of job.payments ?? []) {
-    if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
-  }
-  return s
+  return billAppliedOnJob(job, invoiceId)
 }
 
 /** Remaining dollars for a Billed Awaiting Payment stage row (job shell, merged billed, or invoice). */
@@ -568,7 +565,9 @@ export function buildJobsStagesBoardLists(
   )
   const status = (j: JobWithDetails) => (j.status ?? 'working') as string
   const waiting = filtered.filter((j) => status(j) === 'waiting')
-  const working = filtered.filter((j) => status(j) === 'working')
+  // A GC job's billing job stays working for good and has no work to do: it is left out (v2.4958, the owner's
+  // default). Its bills still show under Ready to Bill and Billed.
+  const working = filtered.filter((j) => status(j) === 'working' && !j.billing_only)
   const paid = filtered.filter((j) => status(j) === 'paid')
   const readyToBillJobs = filtered.filter(
     (j) => status(j) === 'ready_to_bill' || (status(j) === 'working' && jobHasReadyToBillInvoice(j)),
@@ -765,16 +764,18 @@ export function stagesSectionKeyForJobStatus(
  * net of payments applied to each line (same per-invoice remainder basis as
  * the Billed Awaiting Payment board). Money already asked for is not
  * "capable of being billed" again.
+ *
+ * v2.5017: a sent bill nets what the one payment rule gives it (`billAppliedOnJob`,
+ * the owner's call of 2026-10-09) — money put on the job with no bill picked counts,
+ * oldest bill first. Netting linked payments only, a bill that money paid still asked
+ * for it in full while `jobCapableToBillAmounts` also took it off as a payment, so
+ * capable to bill read low by it. A draft takes no unlinked money, as before.
  */
-export function jobOpenBillingRemainderDollars(job: Pick<JobWithDetails, 'invoices' | 'payments'>): number {
+export function jobOpenBillingRemainderDollars(job: Pick<JobWithDetails, 'invoices' | 'payments' | 'revenue'>): number {
   let s = 0
   for (const inv of job.invoices ?? []) {
     if (inv.status !== 'ready_to_bill' && inv.status !== 'billed') continue
-    let applied = 0
-    for (const p of job.payments ?? []) {
-      if (p.invoice_id === inv.id) applied += Number(p.amount ?? 0)
-    }
-    s += Math.max(0, Number(inv.amount ?? 0) - applied)
+    s += Math.max(0, Number(inv.amount ?? 0) - billAppliedOnJob(job, inv.id))
   }
   return s
 }

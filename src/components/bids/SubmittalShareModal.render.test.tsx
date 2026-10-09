@@ -5,13 +5,13 @@
  * each, watching → may_decide false), runs the before-it-goes steps, marks the revision
  * shared and the earlier shared one superseded; a second Share reuses the room.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { SubmittalShareModal } from './SubmittalShareModal'
 import type { SubmittalRevisionRow } from '../../lib/submittals/submittalRevision'
-import type { SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
+import type { SubmittalPersonRow, SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
 
 type Rec = { table: string; op: string; payload: unknown; filters: Array<[string, unknown]> }
 const state: { writes: Rec[] } = { writes: [] }
@@ -31,13 +31,14 @@ function builder(table: string) {
   const run = () => {
     state.writes.push(rec)
     if (rec.op === 'insert' && table === 'bid_submittal_rooms') return { data: { id: 'room-1', ...(rec.payload as object) }, error: null }
+    if (rec.op === 'insert' && table === 'bid_submittal_people') return { data: (rec.payload as Array<{ name: string }>).map((p, i) => ({ id: `new-${i + 1}`, name: p.name })), error: null }
     return { data: null, error: null }
   }
   b.single = () => Promise.resolve(run())
   b.then = (res: (v: unknown) => void, rej?: (e: unknown) => void) => Promise.resolve(run()).then(res, rej)
   return b
 }
-const invokeSpy = vi.fn(() => Promise.resolve({ data: { ok: true }, error: null }))
+const invokeSpy = vi.fn((..._args: unknown[]) => Promise.resolve<unknown>({ data: { ok: true }, error: null }))
 vi.mock('../../lib/supabase', () => ({ supabase: { from: (t: string) => builder(t), functions: { invoke: (...a: unknown[]) => invokeSpy(...(a as [])) } } }))
 
 const revision = { id: 'rev-2', bid_id: 'b398', rev_number: 2, status: 'draft', title: 'x', note: null, package_path: 'p', source_files: [], reviewer_files: [], drive_file_id: null, drive_file_url: null, drive_filed_at: null, sent_outside_at: null, shared_at: null, shared_by: null, job_ledger_id: null, created_by: null, created_at: '', updated_at: '' } as SubmittalRevisionRow
@@ -113,5 +114,67 @@ describe('SubmittalShareModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Not now' }))
     fireEvent.click(screen.getByTestId('leave-confirm'))
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('SubmittalShareModal · v2.5026 the box that emails each person their link (decision 11)', () => {
+  const sharedRoom = { id: 'room-1', bid_id: 'b398', token: 'ab'.repeat(24), status: 'open', shared_by: 'wendi', shared_at: '2026-09-16T00:00:00Z', closed_by: null, closed_at: null, created_at: '', updated_at: '' } as SubmittalRoomRow
+  const person = (o: Partial<SubmittalPersonRow>) => ({ id: 'p1', room_id: 'room-1', name: 'Dana Whitfield', email: 'dana@arch.test', role: 'architect', may_decide: true, token: 'b'.repeat(48), how: 'named', invited_by: null, first_seen_at: null, last_seen_at: null, open_count: 0, closed_at: null, created_at: '', updated_at: '', ...o }) as SubmittalPersonRow
+  const sends = () => invokeSpy.mock.calls.filter((c) => c[0] === 'send-submittal-room-link').map((c) => (c[1] as { body: { person_id: string } }).body.person_id)
+  const rev3 = { ...revision, rev_number: 3, id: 'rev-3' }
+  const box = () => screen.getByLabelText('Email each person their link') as HTMLInputElement
+  beforeEach(() => {
+    state.writes = []
+    invokeSpy.mockClear()
+    invokeSpy.mockImplementation((...args: unknown[]) => Promise.resolve<unknown>(args[0] === 'send-submittal-room-link' ? { data: { ok: true, to: 'x@arch.test', sentAt: '2026-10-09T15:00:00Z' }, error: null } : { data: { ok: true }, error: null }))
+  })
+
+  it('on a bid that never sent a link it starts unticked, says no email leaves the app, and the share sends none', async () => {
+    const shared = vi.fn()
+    renderWithProviders(<SubmittalShareModal bidId="b398" revision={rev3} room={sharedRoom} people={[person({})]} untrimmedFiles={0} onClose={() => {}} onDoneWithFiles={() => Promise.resolve()} onBuildPackage={() => Promise.resolve()} onShared={shared} />)
+    await settle()
+    expect(box().checked).toBe(false)
+    expect(screen.getByTestId('email-links').textContent).toBe('No email leaves the app until you tick this.')
+    fireEvent.click(screen.getByRole('button', { name: 'Share Rev 3' }))
+    await waitFor(() => expect(shared).toHaveBeenCalled())
+    expect(sends()).toEqual([])
+  })
+
+  it('once the office has sent one on this bid it starts ticked, and the share emails each person it can reach, a new one too', async () => {
+    const shared = vi.fn()
+    const onRoom = [person({}), person({ id: 'p2', name: 'Closed Link', email: 'closed@arch.test', closed_at: '2026-10-01T00:00:00Z' }), person({ id: 'p3', name: 'No Address', email: '' })]
+    renderWithProviders(<SubmittalShareModal bidId="b398" revision={rev3} room={sharedRoom} people={onRoom} sentLinkBefore untrimmedFiles={0} onClose={() => {}} onDoneWithFiles={() => Promise.resolve()} onBuildPackage={() => Promise.resolve()} onShared={shared} />)
+    await settle()
+    expect(box().checked).toBe(true)
+    expect(screen.getByTestId('email-links').textContent).toBe('Emails one person their own link when you share.')
+    fireEvent.change(screen.getByLabelText('Name 1'), { target: { value: 'Logan Parsons' } })
+    fireEvent.change(screen.getByLabelText('Email 1'), { target: { value: 'logan@structura.com' } })
+    expect(screen.getByTestId('email-links').textContent).toBe('Emails 2 people their own link when you share.')
+    fireEvent.click(screen.getByRole('button', { name: 'Share Rev 3' }))
+    await waitFor(() => expect(shared).toHaveBeenCalled())
+    expect(sends()).toEqual(['p1', 'new-1'])
+    expect(state.writes.some((w) => w.table === 'bid_submittals' && (w.payload as { status?: string } | null)?.status === 'shared')).toBe(true)
+  })
+
+  it('unticked at the moment of sharing, nothing is sent', async () => {
+    const shared = vi.fn()
+    renderWithProviders(<SubmittalShareModal bidId="b398" revision={rev3} room={sharedRoom} people={[person({})]} sentLinkBefore untrimmedFiles={0} onClose={() => {}} onDoneWithFiles={() => Promise.resolve()} onBuildPackage={() => Promise.resolve()} onShared={shared} />)
+    await settle()
+    fireEvent.click(box())
+    expect(screen.getByTestId('email-links').textContent).toBe('No email leaves the app until you tick this.')
+    fireEvent.click(screen.getByRole('button', { name: 'Share Rev 3' }))
+    await waitFor(() => expect(shared).toHaveBeenCalled())
+    expect(sends()).toEqual([])
+  })
+
+  it('with nobody it can reach the box is off and cannot be ticked, until an address is typed', async () => {
+    renderWithProviders(<SubmittalShareModal bidId="b398" revision={rev3} room={sharedRoom} people={[]} sentLinkBefore untrimmedFiles={0} onClose={() => {}} onDoneWithFiles={() => Promise.resolve()} onBuildPackage={() => Promise.resolve()} onShared={() => {}} />)
+    await settle()
+    expect(box().checked).toBe(false)
+    expect(box().disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Name 1'), { target: { value: 'Logan Parsons' } })
+    fireEvent.change(screen.getByLabelText('Email 1'), { target: { value: 'logan@structura.com' } })
+    expect(box().disabled).toBe(false)
+    expect(box().checked).toBe(true)
   })
 })

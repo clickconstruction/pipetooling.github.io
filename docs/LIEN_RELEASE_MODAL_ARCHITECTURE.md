@@ -19,7 +19,7 @@ last_updated: 2026-10-05
 
 ### Mounts and the parent contract
 
-Props (165–185): `open`, `onClose`, `job: JobWithDetails | null`, `invoice` (the bill to preselect), `invoiceIds?` (every bill to preselect, over `invoice`; #87 D), `signerNameFallback`, `onIssued?`, `initialFormType?`.
+Props (165–185): `open`, `onClose`, `job: JobWithDetails | null`, `invoice` (the bill to preselect), `invoiceIds?` (every bill to preselect, over `invoice`; #87 D), `signerNameFallback`, `onIssued?` (since v2.4996 it passes the minted row's id), `initialFormType?`, `ask?` (v2.4996: GC mode's pay application, what it asked and its bill day; the window then selects no bill and fills the amount and the through date with these, since no bill exists until the architect certifies it).
 
 | Mounted by | Line | Stays mounted | `invoice` | `initialFormType` | `onIssued` |
 |---|---|---|---|---|---|
@@ -29,8 +29,9 @@ Props (165–185): `open`, `onClose`, `job: JobWithDetails | null`, `invoice` (t
 | `BillCustomerWaiverFollowUp` | 29 | no (`open` literal) | passed through | — | — |
 | `BillPaperworkCard` | 197 | while `showWaiver`; `open={windowOpen}` | the bill's | — | `load` |
 | `JobFormInvoiceList` (Edit Job's bill rows) | 1066 | while `editing` | `waiverFor` | — | — |
+| [`GcProjects`](../src/pages/GcProjects.tsx) (Bill the customer → *Make our conditional waiver*, Owner Billing's O4a-4; *Make our unconditional waiver*, O5c) | 1095 | no (`open` literal under `waiverFor`) | conditional: `null`, `invoiceIds` `[]`, `ask` the pay application's; unconditional: the bill, `invoiceIds` `[it]` | `conditional_progress`; `unconditional_progress` (`unconditional_final` on the final pay application) | conditional: `linkPayAppWaiver` with the minted id; unconditional: reads the bills again |
 
-`signerNameFallback` is `lienDeskSignerFor(job.master_user_id)` from the Pipeline and the session's `profileName` from the other five. The Pipeline's mount is a row of §6 *The modal tail* in [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md); the Lien desk and its other neighbours are in [`LIEN_DESK_ARCHITECTURE.md`](./LIEN_DESK_ARCHITECTURE.md).
+`signerNameFallback` is `lienDeskSignerFor(job.master_user_id)` from the Pipeline and the session's `profileName` from the other six. The Pipeline's mount is a row of §6 *The modal tail* in [`JOBS_STAGES_TAB_ARCHITECTURE.md`](./JOBS_STAGES_TAB_ARCHITECTURE.md); the Lien desk and its other neighbours are in [`LIEN_DESK_ARCHITECTURE.md`](./LIEN_DESK_ARCHITECTURE.md).
 
 **Hook census (fact sheet @ 7379b248f):** 29 `useState` · 0 `useReducer` · 13 `useEffect` · 12 `useMemo` · 15 `useCallback` · 3 `useRef` (`userTouchedRef` 207, `signerTouchedRef` 209, `hydratedDraftRef` 211) · 4 custom hooks (`useAuth` 186, `useToastContext` 187, `useConfirmDialog` 188, `useNavigate` 930) · 26 local imports. One default-exported component `LienReleaseModal` (165–1607, 1,443 lines; render 1063–1606) plus module scope 76–163: types `JobsLedgerInvoice` 76 and `MasterOption` 99, styles `seg` 101–110 and `segWrap` 111, `FIELD_LABELS` 113–122, `FIELD_ORDER` 124–133, `lienChipStyle` 136–155, `selectableInvoices` 158–163. **Every read and write is a direct `supabase` call in this file** (tables `job_lien_releases`, `users`, `customers`, `job_property_owners`, `customer_addresses`, `jobs_ledger`; the storage bucket `LIEN_RELEASE_DOCUMENTS_BUCKET`); no RPC, no edge function called directly (the send goes through `sendLienReleaseEmailToCustomer`).
 

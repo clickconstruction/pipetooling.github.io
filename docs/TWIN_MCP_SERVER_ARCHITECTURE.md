@@ -114,7 +114,7 @@ The server has **no selection pointer and no cross-call state**. What the famili
 - `probePlansSweep`: `get_shadow_queue` and `next_shadow`.
 - `heldSubmittalTasks`: called only by `get_plan_pages` (2115). It reads the submittal robot's `bid_submittal_tasks`, but the submittal cases do not call it.
 - `sha256Hex`: auth, the CT/TT credential mirror, and the PDF `setKey`.
-- `checkEstimatorQuestionShape`: `ask_question` and `finish_price_matrix` asks.
+- `checkEstimatorQuestionShape`: `ask_question` and `finish_price_matrix` asks. `scrubMoney` and `questionTouchesSealedShadow` (v1.4.6): `ask_question` only.
 - The **PDF staging pipeline**: pricer and plan pages.
 - The **companion mint**: `mint_session` and both legs.
 
@@ -232,11 +232,11 @@ Each dossier gives the anchor, the verbs, the data touched, the helpers used, wh
 
 ### 9. Question lanes — partially extracted
 
-- **`ask_question` (1700–1764):** resolves the bid unfenced (1706–1714), slugs `topic`, classifies `audience` and `kind` (kernels), applies the estimator shape gate (`checkEstimatorQuestionShape`) or normalizes operator choices, then runs the **column-ladder insert** (1752–1755).
+- **`ask_question` (1700–1764):** resolves the bid unfenced (1706–1714), slugs `topic`, classifies `audience` and `kind` (kernels), applies the estimator shape gate (`checkEstimatorQuestionShape`) or normalizes operator choices, then runs the **column-ladder insert** (1752–1755). **No dollar figures on a sealed shadow (v1.4.6 / v2.5020, the owner's call of 2026-10-09):** before the shape gate it loads the unscored shadow runs fleet-wide (`loadSealedShadows`; a failed read counts as sealed), and when the question's bid is a shell or a reference of one, or its words name one's number, `scrubMoney` takes `$` amounts and spelled-out sums out of the question, the choices and the pick (b499's *an $800k restroom fit-out* reads *a restroom fit-out*); the robot is told how many went.
 - **`get_answers` (1765–1822):** the last 50 questions of this twin, plus **blindness redaction** (1778–1820). Any question or answer that mentions `b<ref>` or a project name of 6 characters or more, belonging to a reference with an unsealed twin shell, comes back `{ redacted: true }`.
 - **Also filed elsewhere:** `finish_price_matrix` asks (1500–1514), and the `next_shadow` resume consumes answers.
-- **Extracted:** [`_shared/twinQuestionAudience.ts`](../supabase/functions/_shared/twinQuestionAudience.ts) (87), [`twinQuestionShape.ts`](../supabase/functions/_shared/twinQuestionShape.ts) (87), [`twinQuestionKind.ts`](../supabase/functions/_shared/twinQuestionKind.ts) (75).
-- **Tests:** `src/lib/bids/twinQuestionAudience.test.ts` (8), `twinQuestionChoices.test.ts` (8, the shape gate), `twinQuestionKind.test.ts` (6). **Redaction is untested.**
+- **Extracted:** [`_shared/twinQuestionAudience.ts`](../supabase/functions/_shared/twinQuestionAudience.ts) (87), [`twinQuestionShape.ts`](../supabase/functions/_shared/twinQuestionShape.ts) (152, with the money scrub), [`twinQuestionKind.ts`](../supabase/functions/_shared/twinQuestionKind.ts) (75).
+- **Tests:** `src/lib/bids/twinQuestionAudience.test.ts` (8), `twinQuestionChoices.test.ts` (8, the shape gate), `twinQuestionKind.test.ts` (6), `twinQuestionMoney.test.ts` (7, the scrub and the sealed check). **Redaction is untested.**
 - **Approach:** Stage A: `redactForBlindness(questions, refs)` into `_shared/twinBlindness.ts` with tests. Then `verbs/questions.ts`, with the ladder insert as one `insertTwinQuestion(ctx, row)` shared with `finish_price_matrix`.
 
 ### 10. Plan pages — partially extracted

@@ -74,3 +74,40 @@ export function crewRateWords(r: CrewRate, fmt: (n: number) => string): string {
   if (r.companyRate == null || r.avgFieldWage == null) return `no recorded field hours in the last ${CREW_RATE_WINDOW_DAYS} days`
   return `$${fmt(r.avgFieldWage)} avg recorded field wage (${CREW_RATE_WINDOW_DAYS} d, ${Math.round(r.fieldHours).toLocaleString('en-US')} h) × ${r.burden.toFixed(2)} burden`
 }
+
+/**
+ * Wheels PR 3 (v2.5039, the owner's call of 2026-10-09): what the company's trucks cost per field
+ * hour — every vehicle's insurance, registration, service and wear over the last 90 days ÷ the
+ * crew's field hours (`fleet_truck_rate_per_field_hour`, the arithmetic of `fleetTruckRate` in
+ * people/wheels.ts). The card shows it beside the company rate and never adds it: the burden
+ * factor and the driving line already carry the truck, so adding it would count it twice.
+ */
+export type FleetTruckRateRead = {
+  /** $ per field hour; null when the crew logged no field hours in the window. */
+  rate: number | null
+  fixedUsd: number
+  fieldHours: number
+  trucks: number
+  days: number
+}
+
+/** The RPC's jsonb → the card's read. null for anything malformed (the card then shows no truck line). */
+export function parseFleetTruckRate(raw: unknown): FleetTruckRateRead | null {
+  if (raw == null || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const o = raw as Record<string, unknown>
+  const num = (v: unknown): number | null => (v == null || v === '' ? null : Number.isFinite(Number(v)) ? Number(v) : null)
+  const fixedUsd = num(o.fixed_usd)
+  const fieldHours = num(o.field_hours)
+  const trucks = num(o.trucks)
+  const days = num(o.days)
+  if (fixedUsd == null || fieldHours == null || trucks == null || days == null) return null
+  const rate = num(o.rate)
+  return { rate: rate != null && rate >= 0 ? rate : null, fixedUsd, fieldHours, trucks, days }
+}
+
+/** "$4,231.60 insurance, registration, service and wear on 4 trucks ÷ 18 field h (90 d)" — the arithmetic beside the truck rate. */
+export function fleetTruckRateWords(r: FleetTruckRateRead, fmt: (n: number) => string): string {
+  const trucks = `${r.trucks.toLocaleString('en-US')} ${r.trucks === 1 ? 'truck' : 'trucks'}`
+  if (r.rate == null) return `no recorded field hours in the last ${r.days} days`
+  return `$${fmt(r.fixedUsd)} insurance, registration, service and wear on ${trucks} ÷ ${Math.round(r.fieldHours).toLocaleString('en-US')} field h (${r.days} d)`
+}

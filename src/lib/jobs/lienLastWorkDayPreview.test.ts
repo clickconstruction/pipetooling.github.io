@@ -64,7 +64,7 @@ describe('lienLastWorkPreview — the dates that move', () => {
     expect(p.sayWords).toContain('Oct 2026 would join the notice with its window already closed, so it would read as missed.')
   })
   it('a job with no hours is measured from its creation day, and its one month is the new day’s', () => {
-    const p = lienLastWorkPreview(job922('2026-08-14', { currentDay: '2026-07-01', currentSource: 'created', lastSessionDay: null, clockMonths: [], propertyKind: 'commercial' }))
+    const p = lienLastWorkPreview(job922('2026-08-14', { currentDay: '2026-07-01', currentSource: 'created', lastSessionDay: null, clockMonths: [], propertyKind: 'non_residential' }))
     expect(p).toMatchObject({ verdict: 'fine', shiftWords: "Last day of work Aug 14 — 44 days later than the job's creation (Jul 1).", sayWords: 'The job has no clock hours, so this day is the one the lien dates hang on.' })
     expect(p.rows[1]).toMatchObject({ before: 'Jul 2026', after: 'Aug 2026', changed: true })
     expect(p.rows[2]).toMatchObject({ before: 'Jul 2026 · mail by Oct 15', after: 'Aug 2026 · mail by Nov 16' })

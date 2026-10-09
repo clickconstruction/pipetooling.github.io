@@ -28,6 +28,7 @@ import { COST_TO_WIN_GROUP_LABELS, costToWinRows, costToWinTotal, costToWinWords
 import { Link } from 'react-router-dom'
 import { BID_VS_ACTUAL_READ_LABELS, bidVsActualTiles, buildBidVsActualRows, type BidVsActualBidInput, type BidVsActualRead, type BidVsActualRow } from '../../lib/bids/bidVsActual'
 import { useBidVsActual } from '../../hooks/useBidVsActual'
+import { pricedMarginDetailWords, pricedMarginPctWords } from '../../lib/bids/pricedMargin'
 import { BidsForecastLens } from './BidsForecastLens'
 
 /**
@@ -116,7 +117,7 @@ export function BidsBidCostsTab({ bids, teamLaborData, bidAssignedCosts, onSelec
     for (const r of rows) byBid.set(r.bidId, { id: r.bidId, bid_number: r.bidNumber, project_name: r.projectName, estimatorName: r.estimatorName })
     for (const [id, b] of bva.bidsById) if (!byBid.has(id)) byBid.set(id, { id, bid_number: b.bid_number, project_name: b.project_name, estimatorName: null })
     const pursuitByBid = new Map(rows.map((r) => [r.bidId, { usd: r.totalUsd, hours: r.hours }]))
-    return buildBidVsActualRows({ jobs: bva.jobs, budgets: bva.budgets, bids: byBid, hoursByJob: bva.hoursByJob, pursuitByBid })
+    return buildBidVsActualRows({ jobs: bva.jobs, budgets: bva.budgets, bids: byBid, hoursByJob: bva.hoursByJob, pursuitByBid, pricedByBid: bva.pricedByBid })
   }, [bva, rows])
   const bvaTiles = useMemo(() => bidVsActualTiles(bvaRows), [bvaRows])
 
@@ -471,7 +472,7 @@ function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostI
         <div style={tileStyle}>
           <span style={tileN}>{tiles.withPredictedHours}</span>
           <span style={tileL}>bids with predicted hours</span>
-          <span style={{ ...tileL, display: 'block' }}>{tiles.rateSet} with a labor rate set</span>
+          <span style={{ ...tileL, display: 'block' }}>{tiles.rateSet} with a labor rate set · {tiles.priced} priced on the Workbench</span>
         </div>
         <div style={tileStyle}>
           <span style={tileN}>{hrs(tiles.recordedHours)} h</span>
@@ -491,6 +492,7 @@ function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostI
               <th style={thStyle}>Job ← Bid</th>
               <th style={thNum}>{showDollars ? 'Cost to bid' : 'Time to bid'}</th>
               <th style={thNum}>Bid value</th>
+              <th style={thNum} title="The margin the bid was priced at on the Pricing workbench, kept at send: (price − our cost) ÷ price">Priced</th>
               <th style={thNum} title="Field hours the bid's count sheet predicted">Predicted h</th>
               <th style={thNum} title="Recorded field hours on the job">Recorded h</th>
               {showDollars && <th style={thNum} title="Direct cost the bid predicted (◆ snapshot at link time)">Predicted direct $</th>}
@@ -500,9 +502,9 @@ function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostI
           </thead>
           <tbody>
             {loading && rows.length === 0 ? (
-              <tr><td colSpan={8} style={{ ...cellStyle, color: 'var(--text-muted)' }}>Loading linked jobs…</td></tr>
+              <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-muted)' }}>Loading linked jobs…</td></tr>
             ) : rows.length === 0 ? (
-              <tr><td colSpan={8} style={{ ...cellStyle, color: 'var(--text-muted)', whiteSpace: 'normal' }}>No job is linked to a bid yet. Link them in <Link to={SETTINGS_BACKFILL_HREF} style={{ color: 'var(--text-link)' }}>Settings → Data → Link jobs to their bids</Link>, or from a won bid's row on the Bid Board.</td></tr>
+              <tr><td colSpan={9} style={{ ...cellStyle, color: 'var(--text-muted)', whiteSpace: 'normal' }}>No job is linked to a bid yet. Link them in <Link to={SETTINGS_BACKFILL_HREF} style={{ color: 'var(--text-link)' }}>Settings → Data → Link jobs to their bids</Link>, or from a won bid's row on the Bid Board.</td></tr>
             ) : (
               rows.map((r) => {
                 const c = READ_COLORS[r.read]
@@ -515,6 +517,10 @@ function BidVsActualView({ rows, tiles, loading, showDollars, onCostIt, canCostI
                     </td>
                     <td style={numStyle}>{showDollars ? (r.pursuitUsd > 0 ? usd(r.pursuitUsd) : '—') : (r.pursuitHours > 0 ? formatPursuitHours(r.pursuitHours) : '—')}</td>
                     <td style={numStyle}>{r.revenue > 0 ? usd(r.revenue) : '—'}</td>
+                    <td style={{ ...numStyle, whiteSpace: 'normal', minWidth: 120 }} data-testid="bva-priced">
+                      {r.priced ? pricedMarginPctWords(r.priced) : '—'}
+                      <span style={{ ...subStyle, textAlign: 'right' }}>{r.priced ? pricedMarginDetailWords(r.priced) : 'not priced on the Workbench'}</span>
+                    </td>
                     <td style={numStyle}>{r.predictedHours != null ? hrs(r.predictedHours) : '—'}</td>
                     <td style={numStyle}>{hrs(r.recordedHours)}</td>
                     {showDollars && <td style={numStyle}>{r.predictedDirectUsd != null ? usd(r.predictedDirectUsd) : '—'}{r.materialsOnly && <span style={{ ...subStyle, textAlign: 'right' }}>materials only</span>}</td>}

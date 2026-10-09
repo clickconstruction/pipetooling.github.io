@@ -33,6 +33,10 @@ const item = (o: Partial<SubmittalItemRow>): SubmittalItemRow => ({
   reviewed_at: null,
   created_at: '2026-09-15T00:00:00Z',
   updated_at: '2026-09-15T00:00:00Z',
+  call_by: null,
+  signoff_name: null,
+  signoff_on: null,
+  signoff_via: null,
   ...o,
 })
 
@@ -192,6 +196,23 @@ describe('an order-only row keeps its state from revision to revision (2026-10-0
     const draft = { tag: 'WC-1', sequenceOrder: 1, specifiedManufacturer: null, specifiedModel: null, specifiedDescription: null, submittedManufacturer: null, submittedModel: null, submittedLabel: 'x', supplyHouseId: null, houseName: null, sourceQuoteLineId: null, status: 'as_specified', near: false, reasonKind: null, reasonNote: null, leadTimeDays: null, sheetFile: null, sheetPages: [], carriedFromItemId: 'i1', changed: false, changeNote: null } satisfies SubmittalRowDraft
     expect(draftToItemInsert({ ...draft, orderOnly: true }, 's2').order_only).toBe(true)
     expect('order_only' in draftToItemInsert(draft, 's2')).toBe(false)
+  })
+})
+
+describe('v2.5023 · a design change keeps its call and sign-off when the row moves', () => {
+  const rec = { call_by: 'engineer', signoff_name: 'Pat Lee', signoff_on: '2026-10-09', signoff_via: 'email' }
+  const signed = item({ status: 'design_change', source_quote_line_id: null, source_count_row_id: 'c1', ...rec } as Partial<SubmittalItemRow>)
+  it('the next revision reads it from the row before, only on a design change that holds one', () => {
+    expect(itemToPrevious(signed).designCall).toEqual(rec)
+    expect('designCall' in itemToPrevious(item({ status: 'design_change' }))).toBe(false)
+    expect('designCall' in itemToPrevious(item({ status: 'alternate', ...rec } as Partial<SubmittalItemRow>))).toBe(false)
+  })
+  it('a carried row and a rebuilt row write the four columns, and a row with none names none of them', () => {
+    expect(carriedRowInsert(signed, 's2', 1)).toMatchObject(rec)
+    expect('call_by' in carriedRowInsert(item({ status: 'design_change', source_quote_line_id: null, source_count_row_id: 'c1' }), 's2', 1)).toBe(false)
+    const draft = { tag: 'FV-1', sequenceOrder: 1, specifiedManufacturer: null, specifiedModel: null, specifiedDescription: null, submittedManufacturer: null, submittedModel: null, submittedLabel: 'x', supplyHouseId: null, houseName: null, sourceQuoteLineId: null, status: 'design_change', near: false, reasonKind: null, reasonNote: null, leadTimeDays: null, sheetFile: null, sheetPages: [], carriedFromItemId: 'i1', changed: false, changeNote: null } satisfies SubmittalRowDraft
+    expect(draftToItemInsert({ ...draft, designCall: rec }, 's2')).toMatchObject(rec)
+    expect('call_by' in draftToItemInsert(draft, 's2')).toBe(false)
   })
 })
 

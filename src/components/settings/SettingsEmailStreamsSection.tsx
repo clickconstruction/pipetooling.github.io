@@ -18,6 +18,7 @@ import { cancelBilledReportSend } from '../../lib/billedReportEmailClient'
 import { cancelGcStatementSend } from '../../lib/gcStatementEmailRequests'
 import { cancelWeeklyMovementSend } from '../../lib/weeklyMovementEmailRequests'
 import { cancelWeeklyMoneySend } from '../../lib/weeklyMoneyEmailRequests'
+import { applyMoneyMondayPlan } from '../../lib/gc/gcIo'
 import { formatMinutes, parseHhMm } from '../../lib/emailSchedule/emailScheduleWeek'
 import { emailStreamCardId, type EmailStreamKey } from '../../lib/emailLogStreamLink'
 import {
@@ -66,6 +67,8 @@ type GlobalEmailSchedule = {
   gc_statement_requests?: Array<{ id: string; entity_name: string | null; sent_to: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   weekly_movement_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   weekly_money_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
+  /** The Monday money email about our GC jobs (v2.5024) — optional so either deploy order of client vs migration degrades gracefully. */
+  gc_money_monday_requests?: Array<{ id: string; recipient_name: string; requested_by_name: string | null; send_at: string; repeat_weekly?: boolean }>
   /** Field report emails (v2.3472) — optional so either deploy order of client vs migration degrades gracefully. */
   report_email_subscriptions?: Array<{
     id: string
@@ -851,6 +854,29 @@ export default function SettingsEmailStreamsSection({ focus }: {
                 label={`→ ${r.recipient_name} · ${formatSendAt(r.send_at)}${r.repeat_weekly ? ' · weekly' : ''}`}
                 onRemove={() => void cancelRequest(() => cancelWeeklyMoneySend(r.id), r.recipient_name)}
                 removeLabel={`Cancel the scheduled weekly money send to ${r.recipient_name}`}
+              />
+            ))}
+      </StreamCard>
+
+      <StreamCard
+        id={emailStreamCardId('gc_money_monday')}
+        flash={flashKey === 'gc_money_monday'}
+        count={(data.gc_money_monday_requests ?? []).length}
+        noun="scheduled send"
+        open={!!openCards['gc_money_monday']}
+        onToggle={() => toggleCard('gc_money_monday')}
+        title="The Monday money email (GC jobs)"
+        cadence="weekly chains — the money team only"
+        manage="schedule more → GC projects → Money"
+      >
+        {(data.gc_money_monday_requests ?? []).length === 0
+          ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>Nothing scheduled.</span>
+          : (data.gc_money_monday_requests ?? []).map((r) => (
+              <RecipientChip
+                key={r.id}
+                label={`→ ${r.recipient_name} · ${formatSendAt(r.send_at)}${r.repeat_weekly ? ' · weekly' : ''}`}
+                onRemove={() => void cancelRequest(() => applyMoneyMondayPlan({ inserts: [], cancelIds: [r.id] }), r.recipient_name)}
+                removeLabel={`Cancel the scheduled Monday money email to ${r.recipient_name}`}
               />
             ))}
       </StreamCard>

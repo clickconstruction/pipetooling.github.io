@@ -1,7 +1,6 @@
 ---
 name: "See what they see: a live view of the GC's room (and the portal) while you work"
 number: 62
-group: gated
 status: DONE 2026-10-05 — the five pieces shipped: v2.4593 (the line and the window say what the link shows), v2.4595 (the sample through the room's kernel, deployed), v2.4599 (the room refuses the office's session and the preview, deployed), v2.4606 (the page's own header and chips in the window), v2.4608 (the door to the real page in preview; the "What customers see" rule in GLOSSARY) · Layers 3 and 4 dropped by the owner 2026-10-06 · v2.4667 (2026-10-06, its three functions deployed): a revision answered by email joins the GC's page as the record once it has a built package · open: BP398's Rev 3 has none and the office cannot build one, so the owner picks how it joins (below)
 summary: >
   On Bids → Submittals the office edits rows and never sees what the GC or the architect will
@@ -11,18 +10,12 @@ summary: >
   package cover and the portal card the same way, a what-changed-for-them line after a share,
   and the sample views in What customers see — all rendered from the same kernels the real pages
   use, so a preview can never lie.
-next: >
-  The owner picks how a revision answered by email but never built joins the GC's page (BP398's
-  Rev 3; the section "BP398's Rev 3" below): (a) drop the package guard, (b) a built package or a
-  reviewer file dropped on the revision, recommended, or (c) let Build package run on an older
-  revision that holds answers. Then one small PR (for (b), one line in `recordStanding` and the
-  loader reading `reviewer_files`) and the same three function deploys, and delete this folder.
-  The other hand-built samples in What customers see (the bid room, the customer portal) built
-  through their kernels is a new row still to write.
 size: M (Layer 1 S; Layer 2 M; Layers 3–5 S each)
-blocker: The owner's pick on Rev 3: (a), (b) or (c).
 ver: v2.4174 · 4187 · 4189 · 4593 · 4595 · 4599 · 4606 · 4608 · 4667
 opinion: soon — Wendi and Stephen are on the tab this week and first shares are coming; the pane is what teaches "why the reason matters" without a tour.
+group: ready
+blocker: None — the owner picked (b) on 2026-10-09.
+next: Build (b), the owner's pick of 2026-10-09: a revision joins the GC's record when it is shared, or holds a reviewer's answer and a built package or a reviewer's file — one line in `recordStanding`, the loader reading `reviewer_files`, the same three function deploys; then drop a reviewer file on BP398's Rev 3 and read the GC's page. Then delete this folder. The other hand-built samples in What customers see (the bid room, the customer portal) built through their kernels is a new row still to write.
 ---
 
 # See what they see

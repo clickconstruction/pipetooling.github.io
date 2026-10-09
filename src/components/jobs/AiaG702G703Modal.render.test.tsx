@@ -6,7 +6,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
+import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import AiaG702G703Modal from './AiaG702G703Modal'
 import { payApplicationWriteFromForm, savedPayApplicationFromRow, type PayApplicationRow, type PayApplicationWrite, type SavedPayApplication } from '../../lib/aiaPayApplications'
 import type { PayApplicationLine } from '../../lib/aiaPayApplicationLines'
@@ -14,7 +14,9 @@ import type { BidSchedule } from '../../lib/aiaBidSchedule'
 import type { SentCopy } from '../../lib/sent/sentCopies'
 import { payApplicationSnapshot } from '../../lib/aiaPayApplicationHistory'
 
-vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }) }))
+// v2.5032 · a test may sign in as a role that cannot write the applications.
+let authRole = 'dev'
+vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ user: { id: 'u1' }, role: authRole }) }))
 vi.mock('../../lib/physicalInvoiceIssuer', () => ({
   fetchPhysicalInvoiceIssuerFromAppSettings: () => Promise.resolve(),
   getPhysicalInvoiceIssuerDraft: () => ({
@@ -62,8 +64,14 @@ const restoreSpy = vi.fn((app: SavedPayApplication) => {
   onJob = [...onJob, { ...app, deletedAt: null, deletedByName: '' }]
   return Promise.resolve()
 })
+// v2.5032 · tie an application to a bill: the row moves to that bill on the next read.
+const tieSpy = vi.fn((appId: string, invoiceId: string | null) => {
+  onJob = onJob.map((a) => (a.id === appId ? { ...a, invoiceId } : a))
+  return Promise.resolve()
+})
 vi.mock('../../lib/aiaPayApplicationsIo', () => ({
   PayApplicationNumberTaken: TakenError,
+  tiePayApplicationBill: (appId: string, invoiceId: string | null) => tieSpy(appId, invoiceId),
   loadPayApplications: () => Promise.resolve(onJob),
   loadDeletedPayApplications: () => Promise.resolve(deletedOnJob),
   savePayApplication: (write: PayApplicationWrite, id: string | null) => saveSpy(write, id),
@@ -183,6 +191,8 @@ const openSaved = async (no: number) => fireEvent.click(await screen.findByRole(
 const toHistory = () => fireEvent.click(screen.getByRole('button', { name: '← Pay applications' }))
 
 beforeEach(() => {
+  authRole = 'dev'
+  tieSpy.mockClear()
   onJob = []
   sentOnJob = []
   deletedOnJob = []
@@ -1085,5 +1095,50 @@ describe('AiaG702G703Modal', () => {
     fireEvent.click(sourceRadio('bid'))
     await waitFor(() => expect(screen.getAllByTestId('aia-line')).toHaveLength(3))
     expect((screen.getByLabelText('Labor and material on their own rows') as HTMLInputElement).checked).toBe(true)
+  })
+})
+
+describe('AiaG702G703Modal · v2.5032 the bill an application became', () => {
+  // Application 1 asks for $17,460.00: 19,400 of work less 10% held.
+  const billOne = makeInvoice({ id: 'bill-1', amount: 17460, status: 'billed', sequence_order: 1, billed_at: '2026-10-03T15:00:00Z' })
+  const billTwo = makeInvoice({ id: 'bill-2', amount: 9000, status: 'billed', sequence_order: 2, billed_at: '2026-10-20T15:00:00Z' })
+  const payment = { id: 'p1', job_id: 'job-1', invoice_id: 'bill-1', amount: 17460, paid_on: '2026-10-22', sequence_order: 1, created_at: null, created_by: null, linked_at: null, linked_by: null, mercury_transaction_id: null, note: null, payment_type: 'check', reference_number: null, sent_on: null, stripe_credit_note_id: null }
+  const withBills = (payments: unknown[] = []) => makeJob({ job_name: 'Water Sample Test', revenue: 48500, hcp_number: '1023', invoices: [billOne, billTwo], payments })
+
+  it('a tied application reads its bill’s payments the way the job window does', async () => {
+    onJob = [{ ...savedOne(), invoiceId: 'bill-1' }]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={withBills([payment])} hcpForFilename="1023" />)
+    expect((await screen.findByTestId('aia-history-paid')).textContent).toBe('Paid $17,460.00 · Oct 22')
+    expect(screen.getByRole('button', { name: 'Change the bill for application 1' })).toBeTruthy()
+  })
+
+  it('an untied one says so; Tie a bill… is pre-filled with the bill of that amount, and Tie it writes it', async () => {
+    onJob = [{ ...savedOne(), invoiceId: null }]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={withBills()} hcpForFilename="1023" />)
+    expect((await screen.findByTestId('aia-history-paid')).textContent).toBe('Bill not yet tied')
+    fireEvent.click(screen.getByRole('button', { name: 'Tie a bill to application 1' }))
+    const pick = screen.getByLabelText('Bill for application 1') as HTMLSelectElement
+    expect(pick.value).toBe('bill-1')
+    expect([...pick.options].map((o) => o.textContent)).toEqual(['No bill', '#1 · $17,460.00 · sent Oct 3', '#2 · $9,000.00 · sent Oct 20'])
+    expect(screen.getByTestId('aia-history-bill-pick').textContent).toContain('This bill is the payment due, to the cent.')
+    fireEvent.click(screen.getByRole('button', { name: 'Tie it' }))
+    await waitFor(() => expect(tieSpy).toHaveBeenCalledWith('app-1', 'bill-1'))
+    expect((await screen.findByText('Billed $17,460.00 · nothing paid yet')).getAttribute('data-testid')).toBe('aia-history-paid')
+    expect(screen.queryByTestId('aia-history-bill-pick')).toBeNull()
+  })
+
+  it('a role that cannot write the applications reads the line and gets no pick', async () => {
+    authRole = 'primary'
+    onJob = [{ ...savedOne(), invoiceId: null }]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={withBills()} hcpForFilename="1023" />)
+    expect((await screen.findByTestId('aia-history-paid')).textContent).toBe('Bill not yet tied')
+    expect(screen.queryByRole('button', { name: 'Tie a bill to application 1' })).toBeNull()
+  })
+
+  it('no bill line when the read could not ask for the column', async () => {
+    onJob = [savedOne()]
+    renderWithProviders(<AiaG702G703Modal open onClose={() => undefined} job={withBills()} hcpForFilename="1023" />)
+    await screen.findAllByTestId('aia-history-line')
+    expect(screen.queryByTestId('aia-history-bill')).toBeNull()
   })
 })

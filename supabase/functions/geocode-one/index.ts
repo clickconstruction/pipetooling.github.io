@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle, type GoogleGeocodeErrorCode } from '../_shared/googleGeocode.ts'
 import { censusCountyFromPoint, geocodeWithCensus } from '../_shared/censusGeocode.ts'
+import { inUsPointBox, refusePointOutsideUs } from '../_shared/usPointBox.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -107,15 +108,19 @@ serve(async (req) => {
   if (profileErr) {
     return jsonResponse(500, { error: 'Could not load user role' })
   }
+  // The roles that may open /map — the client's `isPathAllowedForRole(role, '/map')`. The
+  // controller acts as an assistant everywhere (v2.662); v2.4974 names it here too, so the job
+  // form's *On the map* line and the Map page's Google refresh answer the controller as well.
   const mapGeocodeRole = (profile as { role: string } | null)?.role
   if (
     mapGeocodeRole !== 'dev' &&
     mapGeocodeRole !== 'master_technician' &&
     mapGeocodeRole !== 'assistant' &&
+    mapGeocodeRole !== 'controller' &&
     mapGeocodeRole !== 'estimator'
   ) {
     return jsonResponse(403, {
-      error: 'Map geocoding is restricted to dev, master_technician, assistant, and estimator roles',
+      error: 'Map geocoding is restricted to dev, master_technician, assistant, controller, and estimator roles',
     })
   }
 
@@ -182,7 +187,8 @@ serve(async (req) => {
   if (exErr) {
     return jsonResponse(500, { error: exErr.message })
   }
-  if (existing) {
+  // A cached point outside the lower 48 reads as none, so it is asked again and a good answer replaces it (v2.4975).
+  if (existing && inUsPointBox(existing.lat, existing.lng)) {
     const out: OkCache = {
       ok: true,
       address_normalized: key,
@@ -196,6 +202,8 @@ serve(async (req) => {
 
   const googleKey = Deno.env.get('GOOGLE_MAPS_API_KEY')?.trim() ?? ''
 
+  // Set when the street map placed it outside the lower 48 (v2.4975): a miss, carried into the answer.
+  let nominatimRefused = ''
   const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(display)}&limit=1&addressdetails=0`
   const r = await fetch(url, {
     headers: { 'User-Agent': 'PipeTooling/1.0 (https://github.com/Click-Construction; map page geocode-one)' },
@@ -205,7 +213,9 @@ serve(async (req) => {
     if (Array.isArray(arr) && arr.length > 0) {
       const lat = parseFloat(arr[0]!.lat)
       const lng = parseFloat(arr[0]!.lon)
-      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      if (Number.isFinite(lat) && Number.isFinite(lng) && !inUsPointBox(lat, lng)) {
+        nominatimRefused = refusePointOutsideUs('nominatim', display, lat, lng, arr[0])
+      } else if (Number.isFinite(lat) && Number.isFinite(lng)) {
         const { error: upErr } = await upsertGeocode(supabase, key, lat, lng)
         if (upErr) {
           return jsonResponse(500, { error: upErr.message })
@@ -267,20 +277,22 @@ serve(async (req) => {
     }
     return await answer(out)
   }
-  const censusNote = c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : 'no match from US Census'
+  const censusNote = c.error === 'census_upstream' ? `US Census: ${c.detail ?? 'service error'}` : (c.detail ?? 'no match from US Census')
+  // The street map's refusal leads, so the answer says why its point was not taken (v2.4975).
+  const missNote = nominatimRefused ? `${nominatimRefused}; ${censusNote}` : censusNote
 
   // Keep the more actionable Google failure as the primary error; note the Census outcome in the detail.
   if (googleFail) {
     const out: Fail = {
       ...googleFail,
-      detail: googleFail.detail ? `${googleFail.detail}; ${censusNote}` : censusNote,
+      detail: googleFail.detail ? `${googleFail.detail}; ${missNote}` : missNote,
     }
     return await answer(out)
   }
   if (!r.ok) {
-    const out: Fail = { ok: false, address_normalized: key, error: 'upstream', detail: censusNote }
+    const out: Fail = { ok: false, address_normalized: key, error: 'upstream', detail: missNote }
     return await answer(out)
   }
-  const out: Fail = { ok: false, address_normalized: key, error: 'not_found', detail: censusNote }
+  const out: Fail = { ok: false, address_normalized: key, error: 'not_found', detail: missNote }
   return await answer(out)
 })

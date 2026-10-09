@@ -28,6 +28,7 @@
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
+import { loadUnlinkedMoney } from '../billing/loadUnlinkedMoney'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { fetchWorkingStagePlanInputs } from './fetchWorkingStagePlanInputs'
 import type { WorkingStageInputs } from './capableToBillPlan'
@@ -67,6 +68,28 @@ export const LEAN_STATS_ACTIVE_INVOICE_STATUSES = ['ready_to_bill', 'billed'] as
 /** First day of the trailing collected window (payments fetch bound). */
 export function collectedWindowStartYmd(now = new Date()): string {
   return addDaysYmd(todayYmdInAppTz(now), -(COLLECTED_DAYS - 1))
+}
+
+/**
+ * The money the payment rule needs (v2.5006): the unlinked payments of every job with a billed bill,
+ * and the paid bills of each job that has unlinked money (`loadUnlinkedMoney`, shared v2.5010).
+ * Payments read twice (a recent unlinked payment is in the window read too) are kept once.
+ */
+async function addUnlinkedMoneyRows(
+  invoiceRows: LeanStatsInvoiceRow[],
+  paymentRows: LeanStatsPaymentRow[],
+): Promise<{ invoices: LeanStatsInvoiceRow[]; payments: LeanStatsPaymentRow[] }> {
+  const billedJobIds = invoiceRows.filter((i) => i.status === 'billed').map((i) => i.job_id)
+  const { unlinkedPayments, paidBills } = await loadUnlinkedMoney<LeanStatsPaymentRow, LeanStatsInvoiceRow>(billedJobIds, {
+    paymentColumns: LEAN_STATS_PAYMENT_COLUMNS,
+    invoiceColumns: LEAN_STATS_INVOICE_COLUMNS,
+    label: 'stages header stats',
+  })
+  const seen = new Set(paymentRows.map((p) => p.id).filter(Boolean))
+  return {
+    invoices: [...invoiceRows, ...paidBills],
+    payments: [...paymentRows, ...unlinkedPayments.filter((p) => !p.id || !seen.has(p.id))],
+  }
 }
 
 export async function fetchStagesHeaderStats(
@@ -135,12 +158,11 @@ export async function fetchStagesHeaderStats(
         'stages header stats: payments',
       ),
     ])
-    const payments = (paymentRows ?? []) as unknown as LeanStatsPaymentRow[]
-    const jobs = assembleLeanStatsJobs(
-      (jobRows ?? []) as unknown as LeanStatsJobRow[],
+    const { invoices: invoicesAll, payments } = await addUnlinkedMoneyRows(
       (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],
-      payments,
+      (paymentRows ?? []) as unknown as LeanStatsPaymentRow[],
     )
+    const jobs = assembleLeanStatsJobs((jobRows ?? []) as unknown as LeanStatsJobRow[], invoicesAll, payments)
     // v2.3809: the Working jobs' line items and stage-plan inputs, so a job
     // split into Order stages reads its plan for *capable to bill* exactly as
     // the Capable list does (Taunya, 2026-09-24: "$400 capable" over an empty
@@ -151,7 +173,7 @@ export async function fetchStagesHeaderStats(
     // from the flat rows — the assembled jobs dropped them already.
     const billTruth = computeBillTruth({
       jobs: (jobRows ?? []) as unknown as LeanStatsJobRow[],
-      invoices: (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],
+      invoices: invoicesAll,
       payments,
     })
     return {

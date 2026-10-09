@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { asRoomRole, gcRoomItems, officeOnlyTags, rollUpPartDecisions, roomCounts, roomHeadline, roomKindOf, roomPartsFrom, roomRowFrom, roomRowsFrom, roomSubline, splitPartLabel, whySentence, type RoomItemSource, type RoomPartSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { asRoomRole, designCallLine, gcRoomItems, officeOnlyTags, rollUpPartDecisions, roomCounts, roomHeadline, roomKindOf, roomPartsFrom, roomRowFrom, roomRowsFrom, roomSubline, splitPartLabel, whySentence, type RoomItemSource, type RoomPartSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 const item = (o: Partial<RoomItemSource>): RoomItemSource => ({
   id: 'i', tag: 'X-1', sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: null, submitted_manufacturer: null, submitted_model: null, submitted_label: null,
@@ -137,5 +137,28 @@ describe('an order-only row is the office\'s alone (2026-10-02)', () => {
     ]
     expect([...officeOnlyTags(stored, 'rev2')]).toEqual(['FCO'])
     expect(officeOnlyTags(stored, null).size).toBe(0)
+  })
+})
+
+describe('designCallLine — whose call a design change is, and its sign-off (decision 11, the owner’s call of 2026-10-09)', () => {
+  const dc = (o: Partial<RoomItemSource>) => item({ status: 'design_change', ...o })
+  it('reads the call and the whole sign-off as one line', () => {
+    expect(designCallLine(dc({ call_by: 'engineer', signoff_name: ' Pat Lee ', signoff_on: '2026-10-09', signoff_via: 'email' }))).toBe("The engineer's call · signed off by Pat Lee on Oct 9, 2026, by email.")
+  })
+  it('says what is there and leaves out what is not', () => {
+    expect(designCallLine(dc({ call_by: 'architect' }))).toBe("The architect's call.")
+    expect(designCallLine(dc({ call_by: 'gc', signoff_via: 'stamped_drawing' }))).toBe("The GC's call · signed off on a stamped drawing.")
+    expect(designCallLine(dc({ signoff_name: 'Dana Whitfield', signoff_via: 'meeting' }))).toBe('Signed off by Dana Whitfield, in a meeting.')
+    expect(designCallLine(dc({ call_by: 'owner', signoff_on: '2026-10-02' }))).toBe("The owner's call · signed off on Oct 2, 2026.")
+  })
+  it('nothing on another status, nothing recorded, or values it does not know', () => {
+    expect(designCallLine(item({ status: 'alternate', call_by: 'engineer', signoff_name: 'Pat Lee' }))).toBeNull()
+    expect(designCallLine(dc({}))).toBeNull()
+    expect(designCallLine(dc({ call_by: 'boss', signoff_on: '10/09/2026', signoff_via: 'fax' }))).toBeNull()
+  })
+  it('the room row carries it on a design change and leaves the field off otherwise', () => {
+    expect(roomRowFrom(dc({ call_by: 'engineer' })).designCall).toBe("The engineer's call.")
+    expect('designCall' in roomRowFrom(dc({}))).toBe(false)
+    expect('designCall' in roomRowFrom(item({ status: 'alternate', call_by: 'engineer' }))).toBe(false)
   })
 })

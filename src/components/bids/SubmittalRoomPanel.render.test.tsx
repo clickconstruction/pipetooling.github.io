@@ -4,7 +4,7 @@
  * seam pinned. It draws what it is handed and reports each press; nothing is written here.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SubmittalRoomPanel, type SubmittalRoomPanelProps } from './SubmittalRoomPanel'
 import type { SubmittalEventRow, SubmittalPersonRow, SubmittalRoomRow } from '../../lib/submittals/submittalRoom'
@@ -41,28 +41,13 @@ describe('SubmittalRoomPanel', () => {
     expect(on.onCloseRoom).toHaveBeenCalledTimes(1)
   })
 
-  it('v2.4705 · Sent by email on… opens a day box beside Share and hands the day back; once set it reads the day with change; a shared room has no door', () => {
-    const onSentOutside = vi.fn()
-    const { unmount } = (() => {
-      mount({ room: null, roomLine: '', people: [], events: [], onSentOutside })
-      return { unmount: () => undefined }
-    })()
-    expect(screen.getByTestId('sent-outside-open').textContent).toBe('Sent by email on…')
-    fireEvent.click(screen.getByTestId('sent-outside-open'))
-    fireEvent.change(screen.getByLabelText('Sent by email on'), { target: { value: '2026-09-29' } })
-    fireEvent.click(screen.getByTestId('sent-outside-save'))
-    expect(onSentOutside).toHaveBeenCalledWith('2026-09-29')
-    expect(screen.queryByTestId('sent-outside-form')).toBeNull()
-    unmount()
-  })
-
-  it('v2.4705 · once the day is set the door reads it with change; a room that shared a revision, or a shared revision, has no door', () => {
-    mount({ room: null, roomLine: '', people: [], events: [], onSentOutside: vi.fn(), sentOutsideAt: '2026-09-29T22:00:00Z' })
-    expect(screen.getByTestId('sent-outside-open').textContent).toBe('Sent by email Sep 29 · change')
-  })
-
-  it('v2.4705 · no door when the room has shared a revision, when the revision is shared, or when the tab hands none', () => {
-    mount({ onSentOutside: vi.fn() })
+  it('v2.5027 · a submittal leaves only through Share or Send the link: no Sent by email door on a draft, before or after a share', () => {
+    mount({ room: null, roomLine: '', people: [], events: [] })
+    expect(screen.getByTestId('share-button').textContent).toBe('Share')
+    expect(screen.queryByTestId('sent-outside-open')).toBeNull()
+    expect(screen.queryByText(/Sent by email/)).toBeNull()
+    cleanup()
+    mount()
     expect(screen.queryByTestId('sent-outside-open')).toBeNull()
   })
 
@@ -106,3 +91,51 @@ describe('SubmittalRoomPanel', () => {
   })
 })
 
+describe('SubmittalRoomPanel · v2.5026 Send the link (decision 11)', () => {
+  it('a person with an address gets the door; its short form sends their id and the line, and closes once it went', async () => {
+    const onSendLink = vi.fn(() => Promise.resolve(true))
+    mount({ onSendLink })
+    fireEvent.click(screen.getByTestId('send-link-open'))
+    const form = screen.getByTestId('send-link-form')
+    expect(form.textContent).toContain('Email Dana Whitfield their own link at dana@arch.test.')
+    fireEvent.change(within(form).getByLabelText('A line of your own'), { target: { value: 'Rev 2 is up.' } })
+    fireEvent.click(within(form).getByTestId('send-link-send'))
+    expect(onSendLink).toHaveBeenCalledWith('p1', 'Rev 2 is up.')
+    await waitFor(() => expect(screen.queryByTestId('send-link-form')).toBeNull())
+  })
+
+  it('a send that did not go keeps the form open', async () => {
+    const onSendLink = vi.fn(() => Promise.resolve(false))
+    mount({ onSendLink })
+    fireEvent.click(screen.getByTestId('send-link-open'))
+    fireEvent.click(screen.getByTestId('send-link-send'))
+    await waitFor(() => expect(onSendLink).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect((screen.getByTestId('send-link-send') as HTMLButtonElement).disabled).toBe(false))
+    expect(screen.getByTestId('send-link-form')).toBeTruthy()
+  })
+
+  it('once sent, the trail says when and the door reads Send it again', () => {
+    const sent = { ...view, id: 'e2', person_id: 'p1', event_type: 'link_sent', occurred_at: '2026-10-09T15:00:00Z' } as unknown as SubmittalEventRow
+    mount({ onSendLink: vi.fn(() => Promise.resolve(true)), events: [view, sent] })
+    expect(screen.getByTestId('room-people').textContent).toContain('link sent Oct 9')
+    expect(screen.getByTestId('send-link-open').textContent).toBe('Send it again')
+  })
+
+  it('no door without the tab’s handler, on a closed room or one never shared, for a closed link or a person with no address', () => {
+    const onSendLink = vi.fn(() => Promise.resolve(true))
+    const cases: Array<Partial<SubmittalRoomPanelProps>> = [
+      {},
+      { onSendLink, room: { ...room, status: 'closed' } as SubmittalRoomRow },
+      { onSendLink, room: { ...room, shared_at: null } as unknown as SubmittalRoomRow },
+      { onSendLink, people: [{ ...dana, closed_at: '2026-10-01T00:00:00Z' } as SubmittalPersonRow] },
+      { onSendLink, people: [{ ...dana, email: '' } as SubmittalPersonRow] },
+    ]
+    for (const c of cases) {
+      mount(c)
+      expect(screen.queryByTestId('send-link-open')).toBeNull()
+      cleanup()
+    }
+    mount({ onSendLink })
+    expect(screen.getByTestId('send-link-open').textContent).toBe('Send the link')
+  })
+})

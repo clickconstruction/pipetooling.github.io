@@ -34,6 +34,7 @@ export function lienStepOfRow(row: Pick<LienNextUpRow, 'kind' | 'action'>): Lien
       return { ladder, step: 3 }
     case 'send':
     case 'send_run':
+    case 'record_mailing':
     case 'file_affidavit':
       return { ladder, step: 4 }
     default:
@@ -212,6 +213,8 @@ export function lienStepCard(row: LienNextUpRow, facts: LienStepFacts = {}): Lie
     return { ...base, items: beside.items, blocked: null, foot: beside.foot }
   }
   const items = ladderItems(at.ladder, at.step, facts)
+  // The printed run (punch list #101): step 4 is half done — it printed — and the app cannot tell whether it was mailed.
+  if (row.action === 'record_mailing') items[3] = { state: 'now', title: 'Record the mailing', detail: `${row.title.replace(/^\d+ notices printed/, 'Printed')}. Mailed? Type each envelope’s number in the run. Not mailing them? Take the run back.` }
   const done = items.filter((i) => i.state === 'done').length
   const blocked = at.step === 1 ? (at.ladder === 'affidavit' ? 'the property record' : 'the owner of record') : null
   return { ...base, items, blocked, foot: `Step ${at.step} of 4 · ${done} done · ${4 - done} to go` }
@@ -240,4 +243,11 @@ export function lienStepTiles(at: LienStepAt | null, ladder: LienStepLadder, vie
     const who: LienStepTile['who'] = state !== 'now' ? null : leaders === viewerIsLeader ? 'you' : leaders ? 'leader' : 'office'
     return { n, label: names[n - 1]!, state, who }
   })
+}
+
+/** The run rung's word after its count (punch list #101): " ready", " printed", or " · 19 printed" when both wait. */
+export function lienRunRungWords(n: number, printed: number): string {
+  if (printed <= 0) return ' ready'
+  if (printed >= n) return ' printed'
+  return ` · ${printed} printed`
 }

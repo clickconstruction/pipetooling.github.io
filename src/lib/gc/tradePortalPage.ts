@@ -136,6 +136,12 @@ export function replyByEmailWords(project: GcProject, lang: PortalLang): string 
   return pm ? pt(lang, 'replyByEmail', { name: `${pm.name} (${pm.email})` }) : pt(lang, 'replyByEmailGc', { gc: GC_COMPANY.name })
 }
 
+/** Until P5a's files, a change's photo or ticket goes by email: to our project manager on the job, or to us (P4b-ii). */
+export function changeFileByEmailWords(project: GcProject, lang: PortalLang): string {
+  const pm = (project.team ?? []).find((c) => c.role === 'projectManager' && c.email)
+  return pm ? pt(lang, 'crFileByEmail', { name: `${pm.name} (${pm.email})` }) : pt(lang, 'crFileByEmailGc', { gc: GC_COMPANY.name })
+}
+
 /** The portal's words for each refusal `submit-gc-trade-portal` can answer (P2b-i). Where the page already says the
  * same thing (open the plans first, answer each line), the refusal reads the page's own words. */
 export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
@@ -164,6 +170,10 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   pickAKind: 'errPickAKind',
   questionNeeded: 'errQuestionNeeded',
   tooLong: 'errTooLong',
+  alreadyAnswered: 'errAlreadyAnswered',
+  notAwarded: 'errNotAwarded',
+  noteNeeded: 'errNoteNeeded',
+  descriptionNeeded: 'errDescriptionNeeded',
 }
 
 /** A refusal in the company's words. A key the page does not know reads as did not save. */

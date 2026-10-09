@@ -113,7 +113,7 @@ export type DemandLetterFields = {
   includeLien: boolean
   /** YYYY-MM-DD — when set, the Chapter 53 line quotes it. */
   lienFilingDeadline: string
-  /** Tex. Penal Code § 31.04 — OFF until attorney sign-off. */
+  /** Tex. Penal Code § 31.04 — off by default; the office may tick it on a job with no payment (the owner's call of 2026-10-09, v2.5030). */
   includeTheftOfServices: boolean
   includeLateFees: boolean
   includeNotarial: boolean
@@ -214,7 +214,8 @@ export function lienLineBlockedReason(input: { lienFilingDeadline: string; today
 export function lienFilingDeadlineForMonth(furnishYmd: string, propertyKind: string): string {
   const d = (furnishYmd ?? '').trim()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return ''
-  const months = propertyKind === 'residential' ? 3 : 4
+  // A kind not set reads as residential, the earlier month (v2.5031) — as `filingDeadlineForMonth` does.
+  const months = (propertyKind ?? '').trim() === 'non_residential' ? 4 : 3
   const base = new Date(d.slice(0, 7) + '-15T12:00:00')
   if (Number.isNaN(base.getTime())) return ''
   base.setMonth(base.getMonth() + months)

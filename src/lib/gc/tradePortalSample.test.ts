@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { parseTradeSubmit } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { TRADE_PORTAL_FIELDS } from '../../../supabase/functions/_shared/gcTradePortalSlice'
 import { gcTradePortalSample, SAMPLE_TRADE_IDS, gcTradePortalSampleRows } from '../../../supabase/functions/_shared/gcTradePortalSample'
-import { portalAsks, portalPlanNews, portalPromiseLine, portalQuestions } from './portal'
+import { portalAsks, portalBackCharges, portalCanAskChange, portalChangeRequests, portalPlanNews, portalPromiseLine, portalQuestions } from './portal'
 import { tradePortalState } from './tradePortalState'
 
 const TODAY = '2026-10-08'
@@ -23,7 +23,7 @@ describe('the trade portal’s sample', () => {
       else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { keys.add(k); if (k !== 'lines' && k !== 'includes') walk(x) }
     }
     walk(slice)
-    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'note', 'mine'].includes(k))).toEqual([])
+    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'backCharges', 'changeRequests', 'changeOrders', 'note', 'mine'].includes(k))).toEqual([])
   })
 
   it('stays current: its days count from today', () => {
@@ -34,6 +34,7 @@ describe('the trade portal’s sample', () => {
     expect(portalAsks(state, partnerId).map((a) => [a.project.name, a.kind])).toEqual([
       ['Sample Retail Shell', 'bidding'],
       ['Sample Clinic Finish Out', 'passed'],
+      ['Sample Dental Office', 'job'],
     ])
     const project = state.projects[0]!
     const pkg = project.packages[0]!
@@ -44,6 +45,24 @@ describe('the trade portal’s sample', () => {
       [true, 'asked'],
       [false, 'answered'],
     ])
+  })
+})
+
+describe('the sample’s job (P4b-i)', () => {
+  const job = state.projects.find((p) => p.id === SAMPLE_TRADE_IDS.job)!
+  const pkg = job.packages[0]!
+
+  it('is awarded to the sample company and signed, so it can be charged and can ask for a change', () => {
+    expect([pkg.awardedInviteId, pkg.sow?.status, pkg.sow?.price]).toEqual([SAMPLE_TRADE_IDS.jobAsk, 'signed', 48600])
+    expect(portalCanAskChange(job, pkg, partnerId)).toBe(true)
+  })
+
+  it('shows one open charge with its photo, and one change with the customer at the company’s part only', () => {
+    expect(portalBackCharges(job, pkg, partnerId, TODAY).map((r) => [r.state, r.canAnswer, r.charge.photo])).toEqual([['open', true, 'https://drive.google.com/file/d/sample-photo']])
+    const [row] = portalChangeRequests(job, pkg, partnerId)
+    expect(row?.state).toBe('withCustomer')
+    expect(row?.words).toContain('$3,400')
+    expect(JSON.stringify(slice)).not.toContain('3910')
   })
 })
 

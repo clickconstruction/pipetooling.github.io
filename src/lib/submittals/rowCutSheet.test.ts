@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { PDFDocument, StandardFonts } from 'pdf-lib'
-import { buildRowCutSheet, cutSheetFileName, cutSheetPageCount, rowCutSheetPlan } from './rowCutSheet'
+import { buildRowCutSheet, cutSheetFileName, cutSheetPageCount, rowCutSheetPlan, cutSheetSavedLine } from './rowCutSheet'
 
 async function pdfOf(pages: number, label: string): Promise<Uint8Array> {
   const doc = await PDFDocument.create()
@@ -59,5 +59,13 @@ describe('buildRowCutSheet', () => {
     await expect(buildRowCutSheet([], async () => new Uint8Array())).rejects.toThrow('This row has no cut sheet yet.')
     const house = await pdfOf(2, 'house')
     await expect(buildRowCutSheet([{ fileIndex: 0, pages: [7] }], async () => house)).rejects.toThrow('Those pages are not in the vendor file any more.')
+  })
+})
+
+describe('cutSheetSavedLine (v2.5027)', () => {
+  it('says what was saved and what it is for, never to email it', () => {
+    expect(cutSheetSavedLine('LAV-1 cut sheet.pdf', 3)).toBe('Saved LAV-1 cut sheet.pdf · 3 pages, to read or to file in the GC’s own system.')
+    expect(cutSheetSavedLine('FV-1 cut sheet.pdf', 1)).toBe('Saved FV-1 cut sheet.pdf · 1 page, to read or to file in the GC’s own system.')
+    expect(cutSheetSavedLine('x', 2)).not.toMatch(/email|text/i)
   })
 })

@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { geocodeWithGoogle } from '../_shared/googleGeocode.ts'
 import { geocodeWithCensus } from '../_shared/censusGeocode.ts'
+import { inUsPointBox } from '../_shared/usPointBox.ts'
 import type { ParcelRecord } from '../_shared/txParcelRecord.ts'
 import { identifyParcel } from '../_shared/txParcelIdentify.ts'
 
@@ -118,7 +119,8 @@ serve(async (req) => {
     .eq('address_normalized', key)
     .maybeSingle()
   const c = cached as { lat: number; lng: number } | null
-  if (c && Number.isFinite(c.lat) && Number.isFinite(c.lng)) {
+  // A cached point outside the lower 48 reads as none and is asked again (v2.4975).
+  if (c && inUsPointBox(c.lat, c.lng)) {
     lat = c.lat
     lng = c.lng
   }

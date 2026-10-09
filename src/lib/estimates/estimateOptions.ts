@@ -17,8 +17,9 @@
  * Add-ons (v2.3554, to-dos/estimate-options-approve-several/): each option carries a `kind`.
  * A **choice** is one of the alternatives — the customer picks exactly one, the ★ pre-selects
  * (everything above). An **add-on** rides along with whatever they choose — tick any, none
- * pre-ticked. An estimate whose options are all add-ons has nothing to choose between and
- * needs at least one tick. Acceptance freezes EVERY accepted option's lines, in offered order,
+ * pre-ticked unless the office marks one `preticked` (v2.5018, the owner's call of 2026-10-09),
+ * which starts ticked and unticks freely. An estimate whose options are all add-ons has nothing
+ * to choose between and needs at least one tick. Acceptance freezes EVERY accepted option's lines, in offered order,
  * into the same two fields, and stamps the list in `accepted_option_keys`; the old single key
  * keeps the chosen choice (null when there was no choice group). A snapshot written before
  * kinds existed reads as all choices.
@@ -40,6 +41,11 @@ export type EstimateOption = {
   recommended: boolean
   /** v2.3554: one of the choices (pick exactly one) or an add-on (tick any). */
   kind: EstimateOptionKind
+  /**
+   * v2.5018: an add-on the office recommends starts ticked on the customer page, and the
+   * customer can untick it. Add-ons only; absent means not pre-ticked.
+   */
+  preticked?: boolean
   line_items: EstimateLineItemNormalized[]
 }
 
@@ -92,12 +98,14 @@ export function normalizeEstimateOptionsFromJson(x: unknown): EstimateOption[] {
     const key = typeof o.key === 'string' ? o.key.trim() : ''
     if (!key) continue
     if (out.some((p) => p.key === key)) continue
+    const kind = normalizeEstimateOptionKind(o.kind)
     out.push({
       key,
       name: typeof o.name === 'string' ? o.name : '',
       description: typeof o.description === 'string' ? o.description : '',
       recommended: o.recommended === true,
-      kind: normalizeEstimateOptionKind(o.kind),
+      kind,
+      ...(kind === 'add_on' && o.preticked === true ? { preticked: true } : {}),
       line_items: normalizeEstimateLineItemsFromJson(o.line_items),
     })
     if (out.length === MAX_ESTIMATE_OPTIONS) break
@@ -123,14 +131,17 @@ export function estimateAddOnOptions(options: EstimateOption[]): EstimateOption[
 }
 
 /**
- * What the customer page starts with: the ★ choice, no add-ons. An all-add-on estimate starts
- * empty — nothing the customer never touched may end up in the freeze.
+ * What the customer page starts with: the ★ choice, and any add-on the office pre-ticked (the
+ * owner's call of 2026-10-09), in offered order. Nothing else starts ticked: an all-add-on
+ * estimate with none pre-ticked starts empty, so only what the customer saw ticked and kept can
+ * end up in the freeze.
  */
 export function defaultEstimateSelection(options: EstimateOption[]): string[] {
   const choices = estimateChoiceOptions(options)
-  if (choices.length === 0) return []
   const rec = choices.find((o) => o.recommended) ?? choices[0]
-  return rec ? [rec.key] : []
+  const keys = new Set(rec ? [rec.key] : [])
+  for (const o of options) if (o.kind === 'add_on' && o.preticked) keys.add(o.key)
+  return options.filter((o) => keys.has(o.key)).map((o) => o.key)
 }
 
 /**
@@ -289,5 +300,21 @@ export function setRecommendedEstimateOption(options: EstimateOption[], key: str
 /** Offer an option as a choice or an add-on; the star re-seats itself if the rule needs it. */
 export function setEstimateOptionKind(options: EstimateOption[], key: string, kind: EstimateOptionKind): EstimateOption[] {
   if (!options.some((o) => o.key === key)) return options
-  return repairRecommended(options.map((o) => (o.key === key ? { ...o, kind } : o)))
+  return repairRecommended(
+    options.map((o) => {
+      if (o.key !== key) return o
+      // A choice is never pre-ticked: the star does that job.
+      const { preticked: _preticked, ...rest } = o
+      return kind === 'add_on' ? { ...o, kind } : { ...rest, kind }
+    }),
+  )
+}
+
+/** v2.5018: the office marks an add-on to start ticked on the customer page, or unmarks it. A choice is left as it is. */
+export function setEstimateAddOnPreticked(options: EstimateOption[], key: string, on: boolean): EstimateOption[] {
+  return options.map((o) => {
+    if (o.key !== key || o.kind !== 'add_on') return o
+    const { preticked: _preticked, ...rest } = o
+    return on ? { ...rest, preticked: true } : rest
+  })
 }

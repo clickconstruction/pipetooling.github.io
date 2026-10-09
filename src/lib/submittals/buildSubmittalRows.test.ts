@@ -156,6 +156,19 @@ describe('buildSubmittalRows', () => {
     expect(dwh.changeNote).toBe('product changed')
   })
 
+  it('v2.5023 · a design change keeps its call and sign-off while the product is unchanged; a new product or another status drops them', () => {
+    const designCall = { call_by: 'engineer', signoff_name: 'Pat Lee', signoff_on: '2026-10-09', signoff_via: 'email' }
+    const previous: PreviousItem[] = [
+      prevItem('FV-1', { submittedModel: 'Royal 111-1.28', submittedLabel: 'SLOAN ROYAL 111-1.28 ESS SENSOR FLUSHOMETER', status: 'design_change', designCall }),
+      prevItem('WC-1', { submittedModel: 'CT705', submittedLabel: 'TOTO CT705', status: 'design_change', designCall }),
+    ]
+    const rows = buildSubmittalRows({ specified, picks, previous, overrides: { 'FV-1': 'design_change', 'WC-1': 'design_change' } })
+    expect(byTag(rows, 'FV-1').designCall).toEqual(designCall)
+    expect('designCall' in byTag(rows, 'WC-1')).toBe(false)
+    const later = buildSubmittalRows({ specified, picks, previous, overrides: { 'FV-1': 'superseded' } })
+    expect('designCall' in byTag(later, 'FV-1')).toBe(false)
+  })
+
   it('the previous reason and lead time carry when the new pick has none; the pick wins when it has one', () => {
     const previous: PreviousItem[] = [
       prevItem('LAV-1', { submittedModel: 'K-2210', status: 'as_specified', reasonKind: 'in_stock', reasonNote: 'had it on the shelf', leadTimeDays: 3 }),

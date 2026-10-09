@@ -28,8 +28,8 @@ function s(partial: Partial<WorkSessionInput> & { workDate: string; userId?: str
   }
 }
 
-const SUB: WorkMonthJobContext = { jobId: 'j650', isSub: true, propertyKind: '', noticedMonths: new Set() }
-const DIRECT: WorkMonthJobContext = { jobId: 'j273', isSub: false, propertyKind: '', noticedMonths: new Set() }
+const SUB: WorkMonthJobContext = { jobId: 'j650', isSub: true, propertyKind: 'non_residential', noticedMonths: new Set() }
+const DIRECT: WorkMonthJobContext = { jobId: 'j273', isSub: false, propertyKind: 'non_residential', noticedMonths: new Set() }
 
 // The live example that motivated the feature: J650 worked Jun–Sep, nothing paid.
 const J650 = [
@@ -151,7 +151,7 @@ describe('the row chip and the line above the buckets', () => {
   it('summarizeNoticeMonths counts months and jobs and sums the open dollars on those jobs', () => {
     const byJob = buildWorkMonthsByJob(
       [...J650, s({ jobId: 'j273', workDate: '2026-08-26' }), s({ jobId: 'j977', workDate: '2026-06-03' })],
-      [SUB, DIRECT, { jobId: 'j977', isSub: true, propertyKind: '', noticedMonths: new Set() }],
+      [SUB, DIRECT, { jobId: 'j977', isSub: true, propertyKind: 'non_residential', noticedMonths: new Set() }],
       NAMES,
       TODAY,
     )

@@ -6,6 +6,8 @@
  * Move: the same sub's other sheets first, a search for any other, and a "What changes" panel
  * that reads both sheets before and after (kernel `planSubPaymentMove`). Remove: reason chips,
  * "Wrong job" as the door to Move, and the promise of a 30-day Undo on the sheet's trace line.
+ * A backcharge never moves (`subPaymentMoveRefusal`, the owner's call of 2026-10-09): `openMove`
+ * refuses it, and its Remove dialog says why in place of the door.
  * Both write through one RPC each; the parent reloads the ledger.
  */
 import { forwardRef, useImperativeHandle, useMemo, useState, type CSSProperties, type ForwardedRef } from 'react'
@@ -18,6 +20,7 @@ import {
   planSubPaymentMove,
   rankSubPaymentMoveDestinations,
   sheetLabel,
+  subPaymentMoveRefusal,
   subPaymentRemoveReasonText,
   type SubPaymentRemoveReasonKey,
 } from '../../lib/jobs/subPaymentMoveRemove'
@@ -69,6 +72,7 @@ function SubLaborPaymentMoveRemoveModalsInner(
 
   useImperativeHandle(ref, () => ({
     openMove: (payment) => {
+      if (subPaymentMoveRefusal(payment)) return
       setError(null)
       setMoveQuery('')
       setMoveToId(null)
@@ -210,7 +214,7 @@ function SubLaborPaymentMoveRemoveModalsInner(
                     {r.label}
                   </button>
                 ))}
-                <button
+                {subPaymentMoveRefusal(removing) ? null : <button
                   type="button"
                   onClick={() => {
                     const p = removing
@@ -224,8 +228,9 @@ function SubLaborPaymentMoveRemoveModalsInner(
                   style={{ ...chip(false), border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', fontWeight: 600 }}
                 >
                   Wrong job → Move it instead
-                </button>
+                </button>}
               </div>
+              {subPaymentMoveRefusal(removing) ? <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{subPaymentMoveRefusal(removing)}</div> : null}
               <input type="text" value={removeNote} onChange={(e) => setRemoveNote(e.target.value)} placeholder="A few words (optional)" style={input} />
             </div>
             <div style={quiet}>The sheet keeps a grey line — <em>Removed · who · why</em> — with <strong>Undo</strong> on it for {SUB_PAYMENT_UNDO_DAYS} days. The portal shows the line without the reason.</div>

@@ -42,7 +42,7 @@ import {
   startLetterTwo,
   noteOwnerCall,
 } from '../../lib/jobs/lienDeskIo'
-import { defaultWordNote, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
+import { defaultWordNote, lienFyiStrip, wordRecordBlock, wordRecordPreview, wordRecordWords, type LienWordChannel } from '../../lib/jobs/lienWord'
 import { awaitingChip, heldChip, printedChip, readyChip, shortDay as footShortDay, type LienFootChip } from '../../lib/jobs/lienFootChip'
 import { LienWordRecordRow } from './LienWordRecordRow'
 import { buildLienAffidavitFieldsForJob, buildLienNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, parseLienDeskDraftFields, type LienDeskDraftFields } from '../../lib/jobs/lienNoticeDraft'
@@ -56,7 +56,7 @@ import { ModalFullScreenButton, useModalFullScreen } from '../ModalFullScreenTog
 import { LienJobHeading } from './LienJobNumber'
 import { getBillingStripeModePref } from '../../lib/billingStripeModePref'
 import { buildLienDeskRun, buildLienRetainageRun, runCoverNoteBlocks, runDoorWords } from '../../lib/jobs/lienDeskRun'
-import { affidavitMonthWord, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
+import { affidavitMonthWordFor, counselCoverLetterTemplate, coverLetterKindFor, fillCoverLetter, letterTwoTemplate } from '../../lib/jobs/gcOnNotice'
 import { LETTER_TWO_KINDS, letterTwoIsDue, letterTwoKindLabel, type LetterTwoKind } from '../../lib/jobs/lienLetterTwo'
 import { AFFIDAVIT_PILE_WORDS, affidavitPileFor, ownerCallWords } from '../../lib/jobs/lienOwnerCall'
 import { parsePaymentBond } from '../../lib/jobs/lienDeskRetainage'
@@ -65,11 +65,12 @@ import { LienCallerDoor } from './LienCallerDoor'
 import LienDeskCalendarTab from './LienDeskCalendarTab'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
-import { clearLienDeskItemPrinted, markLienDeskItemsPrinted } from '../../lib/jobs/lienDeskIo'
+import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
+import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
 import { lienOfferChipWords, lienOfferDayProblem, lienOfferFromItem, type LienPayOffer } from '../../lib/jobs/lienPayOffer'
 import { setLienDeskItemOffer } from '../../lib/jobs/lienPayOfferIo'
-import { buildLienNextUp, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
+import { buildLienNextUp, lienNextUpCount, type LienNextUpRow } from '../../lib/jobs/lienNextUp'
 import { lienStepDueWords, LIEN_STEP_LADDERS, lienStepOfRow, type LienStepFacts } from '../../lib/jobs/lienNextUpSteps'
 import { LienStepRow } from './LienDeskSteps'
 import { freshHtml, gapToken, lienPaperFilledSince, lienPaperFixWindow, lienPaperGaps, paintGaps, withFreshMarks, withGapTokens, type LienPaperFacts, type LienPaperFixWindow, type LienPaperGap } from '../../lib/jobs/lienPaperGaps'
@@ -409,6 +410,8 @@ export default function LienDeskModal({
   const [kindBusy, setKindBusy] = useState(false)
   // The run (v2.3410): every approved notice as one packet + one tracking form.
   const [runOpen, setRunOpen] = useState(false)
+  // The run row's Take back… (punch list #101) opens the run on its confirm.
+  const [runTakeBack, setRunTakeBack] = useState(false)
   // Share where the liens stand (v2.4311): the title bar's panel; the numbers are read each time it opens.
   const [shareOpen, setShareOpen] = useState(false)
   useEffect(() => {
@@ -627,8 +630,15 @@ export default function LienDeskModal({
       todayYmd,
       jobTitle: (jobId) => jobLabel(data.jobsById[jobId], jobId),
       gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
+      leaderName: (jobId) => leaderNameFor?.(data.jobsById[jobId]?.master_user_id ?? null)?.trim() || null,
     })
-  }, [data, authRole, todayYmd])
+  }, [data, authRole, todayYmd, leaderNameFor])
+  // The office's waiting rows (punch list #101 PR 3) close the list under the leader's name when they share one.
+  const nextUpWaitingOn = useMemo(() => {
+    if (!data || !leaderNameFor) return null
+    const names = new Set(nextUpRows.filter((r) => r.action === 'approve' && !r.button && r.jobId).map((r) => leaderNameFor(data.jobsById[r.jobId!]?.master_user_id ?? null)?.trim() || ''))
+    return names.size === 1 ? [...names][0] || null : null
+  }, [data, nextUpRows, leaderNameFor])
   // The paper behind a Do now chip (v2.4632): the notice or the affidavit as it stands, every statutory blank marked.
   const [paperOpen, setPaperOpen] = useState<number | null>(null)
   // A stop's paper (v2.4793): the index of the timeline stop whose window is open on the notice pane; null when closed.
@@ -645,7 +655,18 @@ export default function LienDeskModal({
     const at = paperRows.findIndex((r) => r.key === paperFilledFrom.key)
     if (at >= 0) setPaperOpen((cur) => (cur == null || cur === at ? cur : at))
   }, [paperRows, paperFilledFrom])
-  const nextUpRowsFound = useMemo(() => (finding ? nextUpRows.filter((r) => lienFindMatch(r.jobId ? findFactsFor(r.jobId, r.gcId, [r.title, r.sub]) : { shown: [r.title, r.sub], hidden: [] }, findWords).ok) : nextUpRows), [nextUpRows, finding, findWords, findFactsFor])
+  // A run row (punch list #101) is found by any job inside it.
+  const nextUpRowsFound = useMemo(
+    () =>
+      finding
+        ? nextUpRows.filter(
+            (r) =>
+              lienFindMatch(r.jobId ? findFactsFor(r.jobId, r.gcId, [r.title, r.sub]) : { shown: [r.title, r.sub], hidden: [] }, findWords).ok ||
+              (r.jobs ?? []).some((j) => lienFindMatch(findFactsFor(j.jobId, null, [j.title]), findWords).ok),
+          )
+        : nextUpRows,
+    [nextUpRows, finding, findWords, findFactsFor],
+  )
   const paperFactsFor = (row: LienNextUpRow): LienPaperFacts | null => {
     if (!data || !row.jobId) return null
     const rowJob = data.jobsById[row.jobId]
@@ -749,6 +770,7 @@ export default function LienDeskModal({
     const t = row.target
     setMobileListShown(false)
     if (t.open === 'run') {
+      setRunTakeBack(Boolean(t.takeBack))
       setRunOpen(true)
     } else if (t.open === 'lien_window') {
       ;(onOpenLienAffidavit ?? onOpenLienInstruments)(t.jobId)
@@ -1002,7 +1024,7 @@ export default function LienDeskModal({
       extras: docExtras,
       coverNote: null,
       release: noticeRelease,
-      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name, supplyHouses: housesInLetter ? supplierParagraph : '', conditionalRelease: noticeRelease ? conditionalReleaseParagraph(demandMoney(noticeFields.claimAmount)) : '' }) : null,
+      coverLetter: coverNote || storedDraft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: storedDraft?.coverLetter, gcName: gc?.name ?? noticeFields.originalContractorName, claimantName: noticeFields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(monthsList), job: jobNumber, amount: demandMoney(noticeFields.claimAmount), staleNote: storedDraft?.staleNote ?? '', contact: noticeFields.contactPerson, phone: signerPhoneFor ? signerPhoneFor(job?.master_user_id ?? null) : (issuer?.phone ?? '').trim(), affidavitMonth: affidavitMonthWordFor(property?.propertyKind), trade: job?.service_type?.name, supplyHouses: housesInLetter ? supplierParagraph : '', conditionalRelease: noticeRelease ? conditionalReleaseParagraph(demandMoney(noticeFields.claimAmount)) : '' }) : null,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected?.jobId, job, monthsList.join('|'), noticeFields, docExtras, coverNote, storedDraft?.coverLetter, signerPhoneFor, gc?.name, property, housesInLetter, supplierParagraph, noticeRelease])
@@ -1229,7 +1251,7 @@ export default function LienDeskModal({
   const saveOffer = () => run('The pay offer', async () => void (item && (await setLienDeskItemOffer(item.id, offer))), offer ? `Offer saved: ${lienOfferChipWords(offer)}.` : 'The offer is off.')
   const hold = (reason: 'promised' | 'call_first') =>
     run('Hold', async () => void (item && selected && (await holdLienDeskItem(item.id, { reason, until: holdUntilFor(reason, selected.earliestDeadline, promise?.promisedYmd ?? null, todayYmd) }))), 'Held — the desk re-asks before the deadline.')
-  const backToReady = () => run('Back to ready', async () => void (item && (await clearLienDeskItemPrinted(item.id))), 'Back in Ready to send.')
+  const backToReady = () => run('Back to ready', async () => void (item && (await clearLienDeskItemPrinted(item.id, { userId: authUserId, userName: authName || null }))), 'Back in Ready to send.')
   const pullBack = () => run('Pull back', async () => void (item && (await pullBackLienDeskItem(item.id, authUserId))), 'Back in the office’s drafts.')
   const saveRule = (policy: LienNoticePolicy) =>
     run('Standing rule', async () => void (selected?.gcCustomerId && (await setCustomerLienNoticePolicy(selected.gcCustomerId, policy, ''))), `Rule saved for ${gc?.name ?? 'this GC'}.`)
@@ -1364,7 +1386,9 @@ export default function LienDeskModal({
     const months = e?.item?.months?.length ? e.item.months : e?.dueMonths ?? []
     return { ...base, ownerName: rowOwner, months: months.length ? describeNoticeMonths(months) : null, draftedOn: e?.item?.drafted_at ?? null, approvedOn: e?.item?.approved_at ?? null, coverNote: e?.item?.cover_note ?? false, offer: lienOfferFromItem(e?.item) }
   }
-  const wordSent = entries.filter((e) => e.item?.approval_mode === 'word' && (e.pile === 'ready' || e.pile === 'sent'))
+  // The leader's FYI list (v2.5028): what reached Ready to send, the mail or Sent without his Approve — on his word, or by a
+  // GC's standing rule. In the mail counts: the printed pile (v2.4119) came after this list and had left it out.
+  const fyiSends = entries.filter((e) => (e.item?.approval_mode === 'word' || e.item?.approval_mode === 'rule') && (e.pile === 'ready' || e.pile === 'printed' || e.pile === 'sent'))
 
   // The piles with rows, in order; a title per pile sticks at `i` bars from the top once passed and `n-1-i` from the bottom while ahead (v2.4672).
   const PILE_HEAD_H = 30
@@ -2803,7 +2827,7 @@ export default function LienDeskModal({
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
         <div className="lienFootRow" data-lien-desk-foot="ready">
-          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName)} data-lien-desk-ready-words />
+          <FootChip chip={readyChip(selected.item, gc?.name, itemOffer ? lienOfferChipWords(itemOffer) : null, leaderName, takenBackChipWords(runTakenBackOf(selected.item?.fields)))} data-lien-desk-ready-words />
           {leader && selected.item?.approval_mode === 'word' ? (
             <button type="button" className="lienFootLink" onClick={pullBack} disabled={busy} title="Pull it back to the office's draft — it has not gone out">Not what I said</button>
           ) : null}
@@ -2996,7 +3020,7 @@ export default function LienDeskModal({
               const on = v === 'paper' ? paperShown : kind === v
               return (
                 <button key={v} type="button" role="tab" aria-selected={on} data-lien-desk-view={v} onClick={() => setKind(v === 'paper' ? lastPaperKind : v)} className="lienDeskKindTab" style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: on ? FILL.primary : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer' }} title={v === 'paper' ? 'Every notice, affidavit and retainage notice by its state, and the timeline of every job' : undefined}>
-                  {v === 'next' ? `Do now${data ? ` · ${nextUpRows.length}` : ''}` : v === 'calendar' ? 'Deadlines' : 'All filings'}
+                  {v === 'next' ? `Do now${data ? ` · ${lienNextUpCount(nextUpRows)}` : ''}` : v === 'calendar' ? 'Deadlines' : 'All filings'}
                 </button>
               )
             })}
@@ -3042,7 +3066,7 @@ export default function LienDeskModal({
             ) : null}
           </span>
           {/* The second line (v2.3817): on All filings the paper tabs, then the piles, then Put a GC on notice at the right (v2.4740: the run moved up to the title line; v2.4786: the owner-records door too). Off All filings it holds only the leader's spoken-word line, or the door on a phone. */}
-          {paperShown || (leader && wordSent.length > 0) || (isMobile && ownerRecordsDoor) ? (
+          {paperShown || (leader && fyiSends.length > 0) || (isMobile && ownerRecordsDoor) ? (
             <span aria-hidden data-lien-desk-header-break style={{ flexBasis: '100%', height: 0 }} />
           ) : null}
           {paperShown ? (
@@ -3127,9 +3151,15 @@ export default function LienDeskModal({
               ) : null}
             </div>
           ) : null}
-          {leader && wordSent.length > 0 ? (
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word">
-              Sent on your word: {wordSent.map((e) => jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0]).join(', ')}
+          {leader && fyiSends.length > 0 ? (
+            <span data-lien-fyi style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }} title="Notices the office sent on your spoken word, and notices a GC’s standing rule sent without asking you">
+              {lienFyiStrip(
+                fyiSends.map((e) => ({
+                  jobLabel: jobLabel(data?.jobsById[e.jobId], e.jobId).split(' · ')[0] ?? e.jobId,
+                  by: e.item?.approval_mode === 'rule' ? 'rule' : 'word',
+                  gcName: e.gcCustomerId ? data?.gcsById[e.gcCustomerId]?.name : null,
+                })),
+              )}
             </span>
           ) : null}
           {ownerRecordsUp ? null : ownerRecordsDoor}
@@ -3195,7 +3225,7 @@ export default function LienDeskModal({
           {kind === 'next' ? (
             <div style={{ display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr)', minHeight: 0, overflow: 'hidden' }}>
             <LienDeskFindBox value={find} onChange={setFind} matched={nextUpRowsFound.length} isMobile={isMobile} />
-            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: counts?.ready ?? 0, retainage: retReady }} onOpenRun={office ? () => setRunOpen(true) : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
+            <LienDeskNextUp rows={nextUpRowsFound} markTitle={(t) => <LienFindMarked text={t} words={findWords} />} loading={loading && !data} isMobile={isMobile} onAct={actOnNextUp} onOpenJob={onOpenJob} ready={{ notice: (counts?.ready ?? 0) + (counts?.printed ?? 0), retainage: retReady }} printed={{ notice: counts?.printed ?? 0 }} foldsOpen={finding} waitingOn={nextUpWaitingOn} onOpenRun={office ? () => { setRunTakeBack(false); setRunOpen(true) } : undefined} factsFor={stepFactsFor} viewerIsLeader={leader} onOpenPaper={(row) => setPaperOpen(Math.max(0, paperRows.findIndex((r) => r.key === row.key)))} gapsFor={paperGapCount} />
             </div>
           ) : kind === 'calendar' ? (
             <LienDeskCalendarTab
@@ -3331,12 +3361,21 @@ export default function LienDeskModal({
             await markLienDeskItemsPrinted(ids, authUserId).catch(() => undefined)
             onChanged()
           }}
+          onTakeBack={async (ids) => {
+            const n = await takeBackLienDeskItems(ids, { userId: authUserId, userName: authName || null })
+            onChanged()
+            return n
+          }}
           notices={[...buildLienDeskRun([...data.queue.piles.ready, ...data.queue.piles.printed], data, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, releases: releases.byId }), ...buildLienRetainageRun(data.retainage.piles.ready, data, issuer, signerNameFor, todayYmd, signerPhoneFor)]}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
           userId={authUserId}
-          onClose={() => setRunOpen(false)}
+          onClose={() => {
+            setRunOpen(false)
+            setRunTakeBack(false)
+          }}
+          openOnTakeBack={runTakeBack}
           onRecorded={onChanged}
         />
       ) : null}

@@ -46,8 +46,16 @@ export function awaitingChip(item: LienFootChipItem | null | undefined): LienFoo
   return { tone: 'blue', words: `Waiting on the leader${day ? ` · since ${day}` : ''}`, title: `Waiting on the leader since ${longDay(item?.submitted_at) || '—'}.` }
 }
 
-/** The ready footer: approved on the leader’s word, by the GC’s standing rule, or by the leader on a day; the offer rides along. */
-export function readyChip(item: LienFootChipItem | null | undefined, gcName: string | null | undefined, offerWords: string | null | undefined, leaderName?: string | null): LienFootChip {
+/**
+ * The ready footer: approved on the leader’s word, by the GC’s standing rule, or by the leader on a day; the offer rides along.
+ * A notice whose printed run was taken back (punch list #101) says so last: `takenBack` from `takenBackChipWords`.
+ */
+export function readyChip(item: LienFootChipItem | null | undefined, gcName: string | null | undefined, offerWords: string | null | undefined, leaderName?: string | null, takenBack?: { tail: string; sentence: string } | null): LienFootChip {
+  const chip = approvedChip(item, gcName, offerWords, leaderName)
+  return takenBack ? { ...chip, words: `${chip.words} · ${takenBack.tail}`, title: `${chip.title} ${takenBack.sentence}` } : chip
+}
+
+function approvedChip(item: LienFootChipItem | null | undefined, gcName: string | null | undefined, offerWords: string | null | undefined, leaderName?: string | null): LienFootChip {
   const offer = offerWords ? ` · ${offerWords}` : ''
   if (item?.approval_mode === 'word') {
     const day = shortDay(item.approved_at)

@@ -9,8 +9,9 @@
  * The kernels read retainage and the days to pay off the customer, so each job laid here reads its own
  * copy of its customer with the job's numbers. Pure: the reads are `gcIo.ts`'s.
  */
+import { type OwnerLineKind, type OwnerPayApp, type OwnerPayAppForm, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppToSend } from './ownerBilling'
 import { type OwnerBillingRows, ownerBillingFromRows } from './ownerBillingRows'
-import type { GcCustomer, GcState, OwnerRetainageStep } from './types'
+import type { GcCustomer, GcProject, GcState, OwnerRetainageStep } from './types'
 
 /** The project's terms with the customer: O1's columns on `gc_projects`. */
 export interface OwnerTermsRow {
@@ -21,6 +22,10 @@ export interface OwnerTermsRow {
   owner_retainage_step_way: string | null
   /** The contract's days to pay after the certificate (decision 7): when a bill falls due, read by O6b's interest. */
   owner_pay_days: number | null
+  /** Interest on a late bill, a percent a month (the owner's call 3). Null: none on this job. */
+  owner_late_interest_pct_per_month: number | null
+  /** The contract's fee a day for finishing past substantial completion. Null: none. */
+  owner_late_finish_per_day: number | null
   billing_job_id: string | null
   property_owner_customer_id: string | null
 }
@@ -86,6 +91,10 @@ export function billingStateForAll(state: GcState, rows: BillingRows, projectIds
       ...(own ? { customerId: own.id } : {}),
       ...(worth ? { ownerContractWorth: worth } : {}),
       ...(step ? { ownerRetainageStep: step } : {}),
+      // The contract's days to pay stand in for a first-time customer's (O5d), and start interest (O6b-1).
+      ...(terms ? { ownerPayDays: terms.owner_pay_days } : {}),
+      ...(terms?.owner_late_interest_pct_per_month != null ? { ownerLateInterest: { pctPerMonth: Number(terms.owner_late_interest_pct_per_month) } } : {}),
+      ...(terms?.owner_late_finish_per_day != null ? { ownerLateFinish: { perDay: Number(terms.owner_late_finish_per_day) } } : {}),
       ...(propertyOwner && propertyOwner !== p.owner ? { propertyOwner } : {}),
       ownerBilling: billing ? ownerBillingFromRows(billing) : null,
     }
@@ -93,7 +102,101 @@ export function billingStateForAll(state: GcState, rows: BillingRows, projectIds
   return { ...state, customers: [...state.customers, ...copies], projects }
 }
 
+/**
+ * The jobs' schedules laid on the money's state (O6b-3), read beside it (`loadSchedule`), so the late finish can
+ * count. A job read with no schedule has none; a job not read is left as it was.
+ */
+export function withSchedules(state: GcState, schedules: ReadonlyMap<string, GcProject['schedule'] | null>): GcState {
+  return {
+    ...state,
+    projects: state.projects.map((p) => {
+      if (!schedules.has(p.id)) return p
+      const { schedule: _schedule, ...rest } = p
+      const schedule = schedules.get(p.id)
+      return schedule ? { ...rest, schedule } : rest
+    }),
+  }
+}
+
 /** The same for one job: what Bill the customer reads. */
 export function billingStateFor(state: GcState, projectId: string, rows: BillingRows): GcState {
   return billingStateForAll(state, rows, [projectId])
+}
+
+/** A line's kind as `gc_owner_pay_app_lines.line` keeps it. */
+export const PAY_APP_LINE_OF: Record<OwnerLineKind, 'trade' | 'self' | 'gc' | 'contingency' | 'fee' | 'change_order'> = {
+  trade: 'trade',
+  self: 'self',
+  generalConditions: 'gc',
+  contingency: 'contingency',
+  fee: 'fee',
+  changeOrder: 'change_order',
+}
+
+/** What Send hands `gc_send_owner_pay_app`. */
+export interface PayAppSend {
+  number: number
+  final: boolean
+  periodTo: string
+  sentOn: string
+  retainagePct: number
+  retainageStep: OwnerRetainageStep | null
+  retainage: number
+  workToDate: number
+  due: number
+  lines: { line: (typeof PAY_APP_LINE_OF)[OwnerLineKind]; packageId: string | null; changeOrderId: string | null; label: string; worth: number; doneToDate: number; stored: number }[]
+}
+
+/**
+ * The draft as it goes today: `ownerPayAppToSend`'s record, with each line's kind, key and name as the window
+ * drew it. The server checks the work so far against the lines, so both come from the one draft.
+ */
+export function payAppSendPayload(app: OwnerPayApp, today: string): PayAppSend {
+  const record = ownerPayAppToSend(app, today)
+  return {
+    number: record.number,
+    final: false,
+    periodTo: record.periodTo,
+    sentOn: record.sentOn,
+    retainagePct: record.retainagePct,
+    retainageStep: record.retainageStep ?? null,
+    retainage: record.retainage,
+    workToDate: record.workToDate,
+    due: record.due,
+    lines: app.lines.map((l) => {
+      const line = PAY_APP_LINE_OF[l.kind]
+      return {
+        line,
+        packageId: line === 'trade' || line === 'self' ? l.id : null,
+        changeOrderId: line === 'change_order' ? (l.changeOrderId ?? l.id) : null,
+        label: l.label,
+        worth: l.worth,
+        doneToDate: l.doneToDate,
+        stored: l.stored ?? 0,
+      }
+    }),
+  }
+}
+
+/**
+ * Our final pay application as it goes today (O7a): the draft's lines, every one done, through the same Send, but
+ * `ownerFinalPayAppToSend`'s record: nothing held, its bill day today, and it asks for the rest. The server refuses it
+ * before the customer accepts the work.
+ */
+export function finalPayAppSendPayload(state: GcState, project: GcProject, today: string): PayAppSend {
+  const record = ownerFinalPayAppToSend(state, project, today)
+  return { ...payAppSendPayload(ownerPayApp(state, project), today), final: true, periodTo: record.periodTo, retainage: record.retainage, due: record.due }
+}
+
+/**
+ * Our final pay application's form as it goes today, for its email: drawn from its record laid on the project, the
+ * way a later download draws it, so it holds nothing back. The draft's form would still show what they hold. Null
+ * before any bill went.
+ */
+export function finalPayAppForm(state: GcState, project: GcProject, today: string): OwnerPayAppForm | null {
+  const billing = project.ownerBilling
+  if (!billing) return null
+  const record = ownerFinalPayAppToSend(state, project, today)
+  const sent: GcProject = { ...project, ownerBilling: { ...billing, payApps: [...(billing.payApps ?? []), record] } }
+  return ownerPayAppForm({ ...state, projects: state.projects.map((p) => (p.id === project.id ? sent : p)) }, sent, record.number)
 }

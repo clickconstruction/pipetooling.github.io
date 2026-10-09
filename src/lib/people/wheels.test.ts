@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  WHEELS_WEAR_LIFE_YEARS,
   buildWheelsRows,
   fieldHoursByUser,
+  fleetTruckRate,
+  truckWearForWindow,
   ownVehicleFuelRate,
   parseVehicleArrangement,
   sumFuelByUser,
@@ -54,8 +57,29 @@ describe('rates', () => {
   it('prices a company truck all-in per holder field hour, pro-rating weekly costs by the window', () => {
     const c = truckRunningCost({ fuelUsd: 3018, weeklyInsurance: 48, weeklyRegistration: 6, onPlan: true, days: 91, serviceUsd: 412, holderFieldHours: 496.5 })
     // All-in for the comparison; the fixed part (insurance + registration + service) is what Review charges besides fuel on no job.
-    expect(c).toEqual({ fuel: 3018, insurance: 624, registration: 78, service: 412, total: 4132, ratePerFieldHour: 8.32, fixedRatePerFieldHour: 2.24 })
+    expect(c).toEqual({ fuel: 3018, insurance: 624, registration: 78, service: 412, wear: 0, hasReplacementValue: false, total: 4132, ratePerFieldHour: 8.32, fixedRatePerFieldHour: 2.24 })
     expect(truckRunningCost({ fuelUsd: 100, weeklyInsurance: 48, weeklyRegistration: 6, onPlan: false, days: 7, serviceUsd: 0, holderFieldHours: 0 })).toMatchObject({ insurance: 0, registration: 6, ratePerFieldHour: null, fixedRatePerFieldHour: null })
+  })
+  it('v2.5039 · wear is the replacement value over a five-year life, for the window, and is in the fixed rate', () => {
+    expect(WHEELS_WEAR_LIFE_YEARS).toBe(5)
+    // $36,500 over 5 × 365 days is $20 a day; 90 days is $1,800.
+    expect(truckWearForWindow(36500, 90)).toBe(1800)
+    expect(truckWearForWindow(null, 90)).toBe(0)
+    expect(truckWearForWindow(0, 90)).toBe(0)
+    const c = truckRunningCost({ fuelUsd: 3018, weeklyInsurance: 48, weeklyRegistration: 6, onPlan: true, days: 91, serviceUsd: 412, holderFieldHours: 496.5, replacementValueUsd: 36500 })
+    expect(c).toMatchObject({ wear: 1820, hasReplacementValue: true, total: 5952 })
+    // (624 + 78 + 412 + 1,820) ÷ 496.5 field h
+    expect(c.fixedRatePerFieldHour).toBe(5.91)
+  })
+  it('v2.5039 · the fleet rate: every truck’s fixed costs and wear over the crew’s field hours, fuel left on the jobs', () => {
+    const trucks = [
+      { weeklyInsurance: 48, weeklyRegistration: 6, onPlan: true, serviceUsd: 412, replacementValueUsd: 36500 },
+      { weeklyInsurance: 60, weeklyRegistration: 7, onPlan: false, serviceUsd: 0, replacementValueUsd: null },
+    ]
+    // Truck 1: 617.14 + 77.14 + 412 + 1,800 = 2,906.28. Truck 2 is off its plan: registration only, 90.
+    expect(fleetTruckRate(trucks, 1200, 90)).toEqual({ fixedUsd: 2996.28, ratePerFieldHour: 2.5 })
+    expect(fleetTruckRate(trucks, 0, 90).ratePerFieldHour).toBeNull()
+    expect(fleetTruckRate([], 1200, 90)).toEqual({ fixedUsd: 0, ratePerFieldHour: 0 })
   })
   it('prices an own vehicle as fuel per field hour', () => {
     expect(ownVehicleFuelRate(1006, 165.5)).toBe(6.08)
@@ -100,7 +124,7 @@ describe('buildWheelsRows', () => {
     expect(mal.allInRate).toBe(8.32)
     expect(mal.computedFixedRate).toBe(2.24)
     expect(mal.fixedRate).toBe(2.24)
-    expect(mal.note).toBe('2019 Ford F-150 · $1,114 fixed ÷ 496.5 field h; fuel stays on the jobs')
+    expect(mal.note).toBe('2019 Ford F-150 · $1,114 fixed ÷ 496.5 field h, no replacement value on file; fuel stays on the jobs')
     const wen = rows[1]!
     expect(wen.computedFixedRate).toBeNull()
     expect(wen.fixedRate).toBe(7.5) // the override is the fixed part only
@@ -116,11 +140,17 @@ describe('buildWheelsRows', () => {
     expect(tau.fixedRate).toBeNull()
     expect(tau.note).toBe('fuel stays on the job as parts')
   })
+  it('v2.5039 · a truck with a replacement value names no gap, and its wear lifts the fixed rate', () => {
+    const valued: WheelsTruck = { ...truck, cost: truckRunningCost({ fuelUsd: 3018, weeklyInsurance: 48, weeklyRegistration: 6, onPlan: true, days: 91, serviceUsd: 412, holderFieldHours: 496.5, replacementValueUsd: 36500 }) }
+    const [row] = buildWheelsRows([{ name: 'Malachi', userId: 'u-mal', arrangement: 'company', override: null }], fuel, hours, [valued])
+    expect(row).toMatchObject({ computedFixedRate: 5.91, fixedRate: 5.91 })
+    expect(row!.note).toBe('2019 Ford F-150 · $2,934 fixed ÷ 496.5 field h; fuel stays on the jobs')
+  })
   it('a company truck with no fixed costs on file charges only the fuel on no job', () => {
     const bare: WheelsTruck = { ...truck, cost: truckRunningCost({ fuelUsd: 3018, weeklyInsurance: null, weeklyRegistration: null, onPlan: false, days: 90, serviceUsd: 0, holderFieldHours: 496.5 }) }
     const [row] = buildWheelsRows([{ name: 'Malachi', userId: 'u-mal', arrangement: 'company', override: null }], fuel, hours, [bare])
     expect(row).toMatchObject({ allInRate: 6.08, computedFixedRate: 0, fixedRate: 0 })
-    expect(row!.note).toBe('2019 Ford F-150 · no insurance, registration or service on file; Review charges only their fuel on no job')
+    expect(row!.note).toBe('2019 Ford F-150 · no insurance, registration, service or replacement value on file; Review charges only their fuel on no job')
   })
   it('averages the two deals all-in for the comparison line', () => {
     const rows = buildWheelsRows(

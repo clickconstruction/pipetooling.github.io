@@ -54,7 +54,7 @@ const bidLabel = (row: Row, prefixes: PrefixMap): string => formatBidLedgerNumbe
 // ---------------------------------------------------------------------------
 
 export async function findJob(reader: Reader, text: string) {
-  const [hits, prefixes] = await Promise.all([reader.rpc('search_jobs_ledger', { search_text: text.trim() }, FIND_LIMIT), part(() => prefixMap(reader))])
+  const [hits, prefixes] = await Promise.all([reader.rpc('search_jobs_ledger', { search_text: text.trim(), include_billing_only: true }, FIND_LIMIT), part(() => prefixMap(reader))])
   const map = failed(prefixes) ? {} : prefixes
   return { matches: asRows(hits).map((r) => ({ id: r.id, label: jobLabel(r, map), job_name: r.job_name, job_address: r.job_address, service_type: r.service_type_name })) }
 }
@@ -105,7 +105,7 @@ const JOB_SELECT =
   'id,hcp_number,click_number,job_name,job_address,status,pct_complete,revenue,payments_made,service_type_id,customer_id,gc_customer_id,created_at,' +
   'customer:customers!jobs_ledger_customer_id_fkey(id,name),' +
   'materials:jobs_ledger_materials(description,amount),' +
-  'invoices:jobs_ledger_invoices(id,status,amount,billed_at,estimated_bill_date),' +
+  'invoices:jobs_ledger_invoices(id,status,amount,billed_at,estimated_bill_date,sequence_order),' +
   'payments:jobs_ledger_payments(invoice_id,amount,paid_on),' +
   'team:jobs_ledger_team_members(users(name,role))'
 
@@ -190,7 +190,7 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
 // ---------------------------------------------------------------------------
 
 const CUSTOMER_JOBS_SELECT =
-  'id,hcp_number,click_number,job_name,status,revenue,payments_made,created_at,service_type_id,invoices:jobs_ledger_invoices(id,status,amount,billed_at,estimated_bill_date),payments:jobs_ledger_payments(invoice_id,amount,paid_on)'
+  'id,hcp_number,click_number,job_name,status,revenue,payments_made,created_at,service_type_id,invoices:jobs_ledger_invoices(id,status,amount,billed_at,estimated_bill_date,sequence_order),payments:jobs_ledger_payments(invoice_id,amount,paid_on)'
 
 export async function getCustomer(reader: Reader, ref: string, todayYmd: string) {
   const resolved = await resolve(ref, () => findCustomer(reader, ref) as Promise<{ matches: Row[] }>, 'customer')

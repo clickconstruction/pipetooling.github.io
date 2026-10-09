@@ -7,7 +7,7 @@
 //   own_fuel_paid — drives their own vehicle, the company pays fuel. The line is their fuel on
 //                   no job in the period (plus a manual fixed $/field h, if the office sets one).
 //   company       — drives a company truck. The line is the truck's fixed costs (insurance +
-//                   registration + service) per field hour, plus their fuel on no job.
+//                   registration + service + wear, v2.5039) per field hour, plus their fuel on no job.
 // This module is pure: the loader (`wheelsData.ts`) gathers the trailing-90-day
 // facts and these functions turn them into rates and report rows.
 
@@ -38,6 +38,20 @@ export function wheelsWindow(todayYmd: string): { start: string; end: string; da
 
 function round2(n: number): number {
   return Math.round(n * 100) / 100
+}
+
+/**
+ * Wheels PR 3 (v2.5039, the owner's call of 2026-10-09): wear is the truck's own value over its
+ * life — its latest replacement value spread over this many years, pro-rated to the window. The
+ * fleet's server read (`fleet_truck_rate_per_field_hour`) uses the same life.
+ */
+export const WHEELS_WEAR_LIFE_YEARS = 5
+
+/** A truck's wear in a window of `days`: its replacement value ÷ the life in days × the window. $0 with no value on file. */
+export function truckWearForWindow(replacementValueUsd: number | null | undefined, days: number): number {
+  const value = Number(replacementValueUsd ?? 0)
+  if (!Number.isFinite(value) || value <= 0) return 0
+  return round2((value / (WHEELS_WEAR_LIFE_YEARS * 365)) * Math.max(0, days))
 }
 
 /** Money out as cost: a purchase (negative on the bank's side) adds, a refund (positive) comes off — the one card rule's sign (`cardChargeCostUsd`). */
@@ -178,6 +192,8 @@ export type TruckRunningCostInput = {
   serviceUsd: number
   /** The holder's field hours in the window. */
   holderFieldHours: number
+  /** v2.5039 · the truck's latest replacement value: its wear. Absent or null adds none. */
+  replacementValueUsd?: number | null
 }
 
 export type TruckRunningCost = {
@@ -185,10 +201,14 @@ export type TruckRunningCost = {
   insurance: number
   registration: number
   service: number
+  /** v2.5039 · the truck's value over its life, for the window (`truckWearForWindow`); 0 with no replacement value. */
+  wear: number
+  /** A replacement value is on file, so wear could be priced. */
+  hasReplacementValue: boolean
   total: number
   /** The all-in rate, fuel included — the report's comparison. null when the holder logged no field hours. */
   ratePerFieldHour: number | null
-  /** Insurance + registration + service per field hour — what Review charges besides the holder's fuel on no job. null with no field hours. */
+  /** Insurance + registration + service + wear per field hour — what Review charges besides the holder's fuel on no job. null with no field hours. */
   fixedRatePerFieldHour: number | null
 }
 
@@ -198,10 +218,37 @@ export function truckRunningCost(i: TruckRunningCostInput): TruckRunningCost {
   const registration = round2(Math.max(0, i.weeklyRegistration ?? 0) * weeks)
   const fuel = round2(Math.max(0, i.fuelUsd))
   const service = round2(Math.max(0, i.serviceUsd))
-  const total = round2(fuel + insurance + registration + service)
+  const wear = truckWearForWindow(i.replacementValueUsd, i.days)
+  const hasReplacementValue = Number(i.replacementValueUsd ?? 0) > 0
+  const total = round2(fuel + insurance + registration + service + wear)
   const ratePerFieldHour = i.holderFieldHours > 0 ? round2(total / i.holderFieldHours) : null
-  const fixedRatePerFieldHour = i.holderFieldHours > 0 ? round2((insurance + registration + service) / i.holderFieldHours) : null
-  return { fuel, insurance, registration, service, total, ratePerFieldHour, fixedRatePerFieldHour }
+  const fixedRatePerFieldHour = i.holderFieldHours > 0 ? round2((insurance + registration + service + wear) / i.holderFieldHours) : null
+  return { fuel, insurance, registration, service, wear, hasReplacementValue, total, ratePerFieldHour, fixedRatePerFieldHour }
+}
+
+/** One company vehicle as the fleet rate reads it: its fixed costs and its value, no holder. */
+export type FleetTruckInput = {
+  weeklyInsurance: number | null | undefined
+  weeklyRegistration: number | null | undefined
+  onPlan: boolean
+  serviceUsd: number
+  replacementValueUsd: number | null | undefined
+}
+
+/**
+ * Wheels PR 3 (v2.5039): what the company's trucks cost per field hour, for the Bids crew-rate card.
+ * Every vehicle's fixed costs and wear in the window (`truckRunningCost`, fuel left on the jobs),
+ * divided by the whole crew's field hours in the same window. null with no field hours. The server
+ * read `fleet_truck_rate_per_field_hour` computes the same for roles that cannot read the fleet.
+ */
+export function fleetTruckRate(trucks: ReadonlyArray<FleetTruckInput>, crewFieldHours: number, days: number): { fixedUsd: number; ratePerFieldHour: number | null } {
+  const fixedUsd = round2(
+    trucks.reduce((sum, t) => {
+      const c = truckRunningCost({ fuelUsd: 0, weeklyInsurance: t.weeklyInsurance, weeklyRegistration: t.weeklyRegistration, onPlan: t.onPlan, days, serviceUsd: t.serviceUsd, holderFieldHours: 0, replacementValueUsd: t.replacementValueUsd })
+      return sum + c.insurance + c.registration + c.service + c.wear
+    }, 0),
+  )
+  return { fixedUsd, ratePerFieldHour: crewFieldHours > 0 ? round2(fixedUsd / crewFieldHours) : null }
 }
 
 /** Own vehicle, fuel paid: that person's fuel ÷ their field hours. */
@@ -272,13 +319,15 @@ export function buildWheelsRows(
       else {
         allInRate = truck.cost.ratePerFieldHour
         computedFixedRate = truck.cost.fixedRatePerFieldHour
-        const fixed = truck.cost.insurance + truck.cost.registration + truck.cost.service
+        const fixed = round2(truck.cost.insurance + truck.cost.registration + truck.cost.service + truck.cost.wear)
+        // v2.5039 · wear is in the fixed part; a truck with no replacement value on file says so.
+        const noWear = truck.cost.hasReplacementValue ? '' : ', no replacement value on file'
         note =
           truck.holderFieldHours <= 0
             ? `${truck.name} · no field hours in the window`
             : fixed > 0
-              ? `${truck.name} · $${fixed.toLocaleString('en-US')} fixed ÷ ${truck.holderFieldHours.toFixed(1)} field h; fuel stays on the jobs`
-              : `${truck.name} · no insurance, registration or service on file; Review charges only their fuel on no job`
+              ? `${truck.name} · $${fixed.toLocaleString('en-US')} fixed ÷ ${truck.holderFieldHours.toFixed(1)} field h${noWear}; fuel stays on the jobs`
+              : `${truck.name} · no insurance, registration, service or replacement value on file; Review charges only their fuel on no job`
       }
     } else {
       note = truck ? `holds ${truck.name} but is set to None` : fuelUsd > 0 ? 'fuel stays on the job as parts' : ''

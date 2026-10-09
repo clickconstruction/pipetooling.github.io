@@ -897,6 +897,10 @@ verify_jwt = false
 [functions.gc-plan-question-email]
 verify_jwt = false
 
+# The architect's emails while we build (GC mode, Building U4b): reads the staff JWT itself, like gc-plan-question-email.
+[functions.gc-architect-email]
+verify_jwt = false
+
 # The trade partner portal's read (GC mode P1b-ii): public, the link is the key, resolved in the function with the service role.
 [functions.gc-trade-portal]
 verify_jwt = false
@@ -907,6 +911,19 @@ verify_jwt = false
 
 # Every email to a trade partner (GC mode P3-a): reads the staff JWT itself, like gc-plan-question-email.
 [functions.gc-trade-email]
+verify_jwt = false
+
+# Our emails to a GC customer and its architect (GC mode, Owner Billing O4b): reads the staff JWT itself, like gc-trade-email.
+[functions.gc-customer-email]
+verify_jwt = false
+
+# The submittal room link to one named reviewer (v2.5026, Submittals decision 11): reads the staff JWT itself, like gc-trade-email.
+[functions.send-submittal-room-link]
+verify_jwt = false
+
+# The Monday money email (GC mode, Owner Billing O7b): the cron sends X-Cron-Secret and no JWT; Preview and the test
+# send read the staff JWT themselves, like statement-round-email-dispatch.
+[functions.gc-money-monday-email]
 verify_jwt = false
 
 # pg_cron callers: the call carries X-Cron-Secret and no JWT, and each function checks the secret itself.

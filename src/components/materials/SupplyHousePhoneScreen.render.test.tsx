@@ -50,6 +50,15 @@ describe('SupplyHousePhoneScreen', () => {
     expect(document.querySelector('[data-supply-house-phone-invoice="2"] [data-past-due]')?.textContent).toBe('22 d past due')
   })
 
+  it('v2.5035 · a credit and the invoice it credits name each other in their rows', () => {
+    const base = props().invoices
+    const invoices = base.map((i) => (i.id === '4' ? { ...i, document_kind: 'credit', credits_invoice_id: '1' } : i.id === '1' ? { ...i, document_kind: 'invoice' } : i))
+    render(<SupplyHousePhoneScreen {...props({ invoices })} />)
+    expect(document.querySelector('[data-supply-house-phone-invoice="1"]')?.textContent).toContain('credited by CM-4471 (−$150.00)')
+    fireEvent.click(screen.getByRole('tab', { name: 'Credits 1' }))
+    expect(document.querySelector('[data-supply-house-phone-invoice="4"]')?.textContent).toContain('credits 88121')
+  })
+
   it('a row opens one sheet: Mark paid, View, Edit — and each calls back with the invoice', () => {
     const p = props()
     render(<SupplyHousePhoneScreen {...p} />)

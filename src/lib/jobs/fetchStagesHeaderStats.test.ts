@@ -98,7 +98,7 @@ describe('fetchStagesHeaderStats', () => {
     expect(argsOf(inv.steps, 'range')).toEqual([[0, 999]])
 
     const pay = q('jobs_ledger_payments')
-    expect(argsOf(pay.steps, 'select')).toEqual([['job_id, invoice_id, amount, paid_on']])
+    expect(argsOf(pay.steps, 'select')).toEqual([['id, job_id, invoice_id, amount, paid_on']])
     expect(argsOf(pay.steps, 'or')).toEqual([['invoice_id.not.is.null,paid_on.gte.2026-08-09']])
     expect(argsOf(pay.steps, 'range')).toEqual([[0, 999]])
   })
@@ -122,6 +122,43 @@ describe('fetchStagesHeaderStats', () => {
     expect(typeof r.billTruth.billed.total).toBe('number')
     expect(Object.keys(r.stats.collectedByDay ?? {}).length + (r.stats.collectedByDay instanceof Map ? r.stats.collectedByDay.size : 0)).toBeGreaterThan(0)
     expect(r.leanBilledRows.map((row) => [row.kind, row.job.id])).toEqual([['job_with_merged_billed', 'A']]) // the billed job with its invoice merged, not the working one
+  })
+
+  it('adds the unlinked payments of jobs with a billed bill, and those jobs\' paid bills — the payment rule walks them (v2.5006)', async () => {
+    // Job 273's shape: three billed bills, no linked money, $39,680 put on the job with no bill picked.
+    const job273 = { id: 'J273', status: 'billed', revenue: 56365, payments_made: 39680, pct_complete: 100, collections_at: null, hcp_number: '273', click_number: null, customer_id: 'c1', gc_customer_id: null }
+    const bill = (id: string, amount: number, seq: number, status = 'billed') => ({ id, job_id: 'J273', amount, status, sequence_order: seq, is_primary_rtb_bundle: false, estimated_bill_date: null, billed_at: `2026-0${seq + 3}-16` })
+    const bills = [bill('b0', 13420, 0), bill('b1', 665, 1), bill('b2', 3500, 2)]
+    const unlinked = [12000, 1200, 8880, 17600].map((amount, i) => ({ id: `p${i}`, job_id: 'J273', invoice_id: null, amount, paid_on: `2025-1${i}-01` }))
+    route = (table, steps) => {
+      if (table === 'jobs_ledger') return isHead(steps) ? { count: 0, error: null } : { data: [job273], error: null }
+      if (table === 'jobs_ledger_invoices') {
+        const paidRead = argsOf(steps, 'eq').some(([c, v]) => c === 'status' && v === 'paid')
+        return { data: paidRead ? [] : bills, error: null }
+      }
+      if (table === 'jobs_ledger_payments') {
+        const unlinkedRead = argsOf(steps, 'is').some(([c, v]) => c === 'invoice_id' && v === null)
+        return { data: unlinkedRead ? unlinked : [], error: null }
+      }
+      return { data: [], error: null }
+    }
+    const r = await fetchStagesHeaderStats(null, now)
+    if (!r.ok) throw new Error(r.error)
+    const payReads = queries.filter((x) => x.table === 'jobs_ledger_payments')
+    expect(payReads).toHaveLength(2)
+    expect(argsOf(payReads[1]!.steps, 'is')).toEqual([['invoice_id', null]])
+    expect(argsOf(payReads[1]!.steps, 'in')).toEqual([['job_id', ['J273']]])
+    const invReads = queries.filter((x) => x.table === 'jobs_ledger_invoices')
+    expect(invReads).toHaveLength(2)
+    expect(argsOf(invReads[1]!.steps, 'eq')).toEqual([['status', 'paid']])
+    expect(argsOf(invReads[1]!.steps, 'in')).toEqual([['job_id', ['J273']]])
+    // $38,780 paid the part of the job on no bill; the $900 left went to the oldest bill.
+    expect(r.billTruth.billed.total).toBe(16685)
+    expect(r.billTruth.billed.rows.map((row) => [row.invoiceId, row.remaining])).toEqual([
+      ['b0', 12520],
+      ['b1', 665],
+      ['b2', 3500],
+    ])
   })
 
   it('a head-count of null reads as zero', async () => {

@@ -13,7 +13,8 @@ import { setLienTimelineView } from '../../hooks/useLienTimelineView'
 const timeline = buildLienTimeline({
   todayYmd: '2026-09-24',
   isSub: true,
-  propertyKind: '',
+  // Commercial: the months' own dates are the 3rd-month notices.
+  propertyKind: 'non_residential',
   lastMonth: '2026-08',
   lastMonthFromCreation: false,
   months: [
@@ -80,7 +81,7 @@ describe('LienTimelineStrip — whose move, the demand letter, Waiting on (v2.38
   const withLetter = buildLienTimeline({
     todayYmd: '2026-09-27',
     isSub: true,
-    propertyKind: 'commercial',
+    propertyKind: 'non_residential',
     lastMonth: '2026-07',
     lastMonthFromCreation: false,
     months: [

@@ -15,6 +15,8 @@ import { buildBilledStageRows } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 const calls = vi.hoisted(() => ({ rpc: [] as Array<{ fn: string; args: unknown }> }))
+/** The returned-check fee (v2.5033): flips once add_ar_return_case_fee is called. */
+const feeState = vi.hoisted(() => ({ added: false }))
 
 const deposit = (id: string, name: string, amount: number, postedAt: string) => ({
   mercury_transaction_id: id,
@@ -133,6 +135,21 @@ vi.mock('../../lib/supabase', async () => {
     if (fn === 'list_ar_return_cases') return Promise.resolve({ data: CASES, error: null })
     if (fn === 'list_ar_deposit_trails') return Promise.resolve({ data: TRAILS, error: null })
     if (fn === 'list_ar_allocations_for_mercury_transaction') return Promise.resolve({ data: [], error: null })
+    if (fn === 'list_ar_return_case_fees') {
+      return Promise.resolve({
+        data: [{
+          case_id: 'mtx-sp', fee_amount: feeState.added ? 30 : null, fee_invoice_id: feeState.added ? 'inv-878' : null,
+          fee_added_at: feeState.added ? '2026-10-09T15:00:00Z' : null, fee_added_by: feeState.added ? 'Taunya' : null,
+          bills: [{ invoice_id: 'inv-878', job_id: 'job-878', sequence_order: 0, status: 'billed', stripe: false, job_number: '878', job_name: 'Take 5- Seguin' }],
+        }],
+        error: null,
+      })
+    }
+    if (fn === 'add_ar_return_case_fee') {
+      calls.rpc.push({ fn, args: rest[0] })
+      feeState.added = true
+      return Promise.resolve({ data: { ok: true, bill: 'bill 1', amount: 30 }, error: null })
+    }
     if (['apply_mercury_bank_payment_allocations', 'close_ar_return_case', 'close_ar_unbanked_check_case', 'take_returned_check_off_jobs', 'set_mercury_transaction_ar_returned'].includes(fn)) {
       calls.rpc.push({ fn, args: rest[0] })
       if (fn === 'take_returned_check_off_jobs') return Promise.resolve({ data: { ok: true, removed: 2, jobs: [{}, {}] }, error: null })
@@ -291,5 +308,22 @@ describe('BankPaymentsModal · checks that came back are cases (render smoke)', 
     fireEvent.click(screen.getByLabelText('Returned: DRF'))
     fireEvent.click(within(await screen.findByTestId('ar-mark-ask')).getByRole('button', { name: 'Yes, it bounced' }))
     await waitFor(() => expect(calls.rpc).toEqual([{ fn: 'set_mercury_transaction_ar_returned', args: { p_mercury_transaction_id: 'mtx-drf', p_returned: true } }]))
+  })
+})
+
+describe('BankPaymentsModal · the returned-check fee (v2.5033)', () => {
+  it('a case off its bill offers Add the $30 fee to bill 1; one press adds it and the case says so', async () => {
+    calls.rpc.length = 0
+    feeState.added = false
+    await open()
+    fireEvent.click(caseRowFor(/Southern Post/))
+    const pane = await screen.findByTestId('ar-return-case-pane')
+    const press = await within(pane).findByRole('button', { name: 'Add the $30 fee to bill 1' })
+    expect(within(pane).getByTestId('ar-return-case-fee-line').textContent).toBe('$30 — the most Texas allows, Bus. & Com. Code § 3.506')
+    fireEvent.click(press)
+    await waitFor(() => expect(calls.rpc).toContainEqual({ fn: 'add_ar_return_case_fee', args: { p_case_id: 'mtx-sp', p_invoice_id: 'inv-878' } }))
+    expect(await screen.findByText('The $30 fee is on bill 1.')).toBeTruthy()
+    expect((await within(screen.getByTestId('ar-return-case-pane')).findByTestId('ar-return-case-fee-words')).textContent).toBe('The $30 fee is on bill 1, added Oct 9 by Taunya.')
+    expect(within(screen.getByTestId('ar-return-case-pane')).queryByRole('button', { name: /Add the \$30 fee/ })).toBeNull()
   })
 })

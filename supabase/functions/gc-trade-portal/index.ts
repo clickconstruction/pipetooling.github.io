@@ -39,23 +39,31 @@ const ids = (rows: R[], f = 'id'): string[] => [...new Set(rows.map((r) => Strin
 async function readRows(admin: SupabaseClient, companyId: string): Promise<TradePortalRows | null> {
   const company = (await admin.from('gc_companies').select('*').eq('id', companyId).maybeSingle()).data as R | null
   if (!company) return null
-  const [people, invites, contacts, promises, messages, setSends] = await Promise.all([
+  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests] = await Promise.all([
     admin.from('gc_company_people').select('*').eq('company_id', companyId).is('removed_at', null).then(rowsOf),
     admin.from('gc_invites').select('id, package_id, company_id, status, invited_on, seen_rev, declined_why, declined_on').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_company_contacts').select('id, company_id, invite_id, contacted_on, how, note, promised_by').eq('company_id', companyId).not('invite_id', 'is', null).then(rowsOf),
     admin.from('gc_trade_promises').select('*').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_trade_messages').select('*').eq('company_id', companyId).order('sent_at', { ascending: false }).limit(200).then(rowsOf),
     admin.from('gc_plan_set_sends').select('set_id, company_id, touched').eq('company_id', companyId).then(rowsOf),
+    // Its own work (P4b-i): its statements of work, the charges to it and the changes it asked for.
+    admin.from('gc_sows').select('id, package_id, invite_id, company_id, status, price, retainage_pct, based_on_rev, sent_on, signed_on').eq('company_id', companyId).then(rowsOf),
+    admin.from('gc_back_charges').select('*').eq('company_id', companyId).order('sent_on').then(rowsOf),
+    admin.from('gc_trade_change_requests').select('*').eq('company_id', companyId).order('asked_on').then(rowsOf),
   ])
+  // The change orders its requests became, as their part only: number, status, the day sent and answered, and the cost.
+  const orderIds = ids(changeRequests, 'change_order_id')
+  const changeOrders = orderIds.length ? await admin.from('gc_change_orders').select('id, number, status, sent_on, answered_on, cost').in('id', orderIds).then(rowsOf) : []
+  const work = { sows, backCharges, changeRequests, changeOrders }
   const inviteIds = ids(invites)
   const packageIds = ids(invites, 'package_id')
   const [quotes, packages] = await Promise.all([
     inviteIds.length ? admin.from('gc_quotes').select('*').in('invite_id', inviteIds).order('created_at', { ascending: false }).then(rowsOf) : [],
-    packageIds.length ? admin.from('gc_trade_packages').select('id, project_id, trade, position').in('id', packageIds).then(rowsOf) : [],
+    packageIds.length ? admin.from('gc_trade_packages').select('id, project_id, trade, position, awarded_invite_id').in('id', packageIds).then(rowsOf) : [],
   ])
   const projectIds = ids(packages, 'project_id')
   if (projectIds.length === 0) {
-    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends }
+    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, ...work }
   }
   const [projectRows, gcRows, scopeItems, exclusions, sets, questions, supers] = await Promise.all([
     admin.from('projects').select('id, name, address').in('id', projectIds).then(rowsOf),
@@ -83,7 +91,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     ].filter((t): t is NonNullable<typeof t> => t !== null)
     return { project, gc, team }
   })
-  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends }
+  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, ...work }
 }
 
 serve(async (req) => {

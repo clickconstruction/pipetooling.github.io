@@ -297,6 +297,7 @@ export default function Materials() {
     const { data, error } = await supabase
       .from('service_types')
       .select('*')
+      .eq('billing_only', false)
       .order('sequence_order', { ascending: true })
     
     if (error) {

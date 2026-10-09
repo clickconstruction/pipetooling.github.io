@@ -14,7 +14,7 @@ import { SubmittalItemEditDialog, type SubmittalItemPatch } from './SubmittalIte
 import type { SubmittalItemRow } from '../../lib/submittals/submittalRevision'
 import type { SubmittalPartRow } from '../../lib/submittals/itemParts'
 
-const item = (o: Partial<SubmittalItemRow> = {}): SubmittalItemRow => ({ id: 'i1', submittal_id: 'r2', tag: 'WC-1', sequence_order: 1, status: 'alternate', specified_manufacturer: 'TOTO', specified_model: 'CT708UVG#01', specified_description: 'WATER CLOSET', submitted_manufacturer: 'TOTO', submitted_model: 'CT728', submitted_label: 'TOTO CT728 kit', supply_house_id: null, source_quote_line_id: null, source_count_row_id: null, reason_kind: 'lead_time', reason_note: null, lead_time_days: 14, sheet_file: null, sheet_pages: [], sheet_source: null, review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, order_only: false, created_at: '', updated_at: '', ...o })
+const item = (o: Partial<SubmittalItemRow> = {}): SubmittalItemRow => ({ id: 'i1', submittal_id: 'r2', tag: 'WC-1', sequence_order: 1, status: 'alternate', specified_manufacturer: 'TOTO', specified_model: 'CT708UVG#01', specified_description: 'WATER CLOSET', submitted_manufacturer: 'TOTO', submitted_model: 'CT728', submitted_label: 'TOTO CT728 kit', supply_house_id: null, source_quote_line_id: null, source_count_row_id: null, reason_kind: 'lead_time', reason_note: null, lead_time_days: 14, sheet_file: null, sheet_pages: [], sheet_source: null, review_decision: null, review_note: null, reviewed_at: null, reviewed_by_name: null, reviewed_by_email: null, reviewed_by_person_id: null, carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, order_only: false, created_at: '', updated_at: '', call_by: null, signoff_name: null, signoff_on: null, signoff_via: null, ...o })
 
 describe('SubmittalItemEditDialog · their answer, read here and entered in its own window (2026-10-02)', () => {
   it('a row that does not exist yet shows no answer line', () => {
@@ -398,5 +398,28 @@ describe('SubmittalItemEditDialog · the window keeps what was typed (2026-10-03
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onSave).not.toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
+  })
+})
+
+describe('SubmittalItemEditDialog · a design change asks whose call it is and records the sign-off (decision 11)', () => {
+  it('shows the fields on a design change and saves what the office set', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item({ status: 'design_change', reason_kind: 'lead_time' })} sourceFiles={[]} onSave={onSave} onClose={() => {}} />)
+    const box = screen.getByTestId('design-call')
+    expect(['Whose call', 'Signed off', 'How it came'].every((t) => within(box).getAllByText(t).length > 0)).toBe(true)
+    fireEvent.click(within(box).getByRole('button', { name: 'Engineer' }))
+    fireEvent.change(within(box).getByLabelText('Signed off by'), { target: { value: 'Pat Lee' } })
+    fireEvent.change(within(box).getByLabelText('Signed off on'), { target: { value: '2026-10-09' } })
+    fireEvent.click(within(box).getByRole('button', { name: 'Email' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect(onSave.mock.calls[0]![0]).toMatchObject({ status: 'design_change', call_by: 'engineer', signoff_name: 'Pat Lee', signoff_on: '2026-10-09', signoff_via: 'email' })
+  })
+
+  it('another status shows no fields and its save names none of the columns', () => {
+    const onSave = vi.fn<(p: SubmittalItemPatch) => void>()
+    renderWithProviders(<SubmittalItemEditDialog item={item()} sourceFiles={[]} onSave={onSave} onClose={() => {}} />)
+    expect(screen.queryByTestId('design-call')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    expect('call_by' in onSave.mock.calls[0]![0]).toBe(false)
   })
 })

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams, Navigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { twinAliasEmail } from '../lib/twinLogin'
@@ -37,9 +37,18 @@ export default function DevLogin() {
 
   const secret = import.meta.env.VITE_DEV_LOGIN_SECRET as string | undefined
   const asParam = searchParams.get('as')
+  /**
+   * The URL this page last signed in for (v2.4993). React's StrictMode runs the effect twice on the
+   * dev server, and two `dev-login` calls mint two magic links: the newer cancels the older, so the
+   * older one's verify answered 403 in the console of every dev-login. One sign-in per URL.
+   */
+  const signedInFor = useRef<string | null>(null)
 
   useEffect(() => {
     if (asParam === null || !secret || !import.meta.env.DEV) return
+    const key = searchParams.toString()
+    if (signedInFor.current === key) return
+    signedInFor.current = key
     const to = searchParams.get('to') ?? '/dashboard'
     setRedirectTo(to)
     setLoading(true)

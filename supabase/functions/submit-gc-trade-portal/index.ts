@@ -31,20 +31,21 @@ const refuse = (key: keyof typeof TRADE_FUNCTION_ERRORS) => jsonResponse({ error
 
 type Count = { count: number | null }
 
-/** The company's free-text writes in the last hour: its questions, the people it added, its quotes and its quote days. */
+/** The company's free-text writes in the last hour: its questions, the people it added, its quotes, its quote days and the changes it asked for. */
 async function freeTextCounts(admin: SupabaseClient, companyId: string): Promise<(number | null)[]> {
   const hourAgo = new Date(Date.now() - 3600_000).toISOString()
   const invites = ((await admin.from('gc_invites').select('id').eq('company_id', companyId)).data ?? []) as { id: string }[]
   const head = { count: 'exact' as const, head: true }
-  const [questions, people, contacts, quotes] = await Promise.all([
+  const [questions, people, contacts, quotes, changes] = await Promise.all([
     admin.from('gc_plan_questions').select('id', head).eq('company_id', companyId).gte('created_at', hourAgo),
     admin.from('gc_company_people').select('id', head).eq('company_id', companyId).eq('added_by', 'trade').gte('created_at', hourAgo),
     admin.from('gc_company_contacts').select('id', head).eq('company_id', companyId).eq('how', 'portal').gte('created_at', hourAgo),
     invites.length
       ? admin.from('gc_quotes').select('id', head).in('invite_id', invites.map((i) => i.id)).eq('source', 'trade').gte('created_at', hourAgo)
       : Promise.resolve({ count: 0 } as Count),
+    admin.from('gc_trade_change_requests').select('id', head).eq('company_id', companyId).gte('created_at', hourAgo),
   ])
-  return [questions, people, contacts, quotes].map((r) => (r as Count).count)
+  return [questions, people, contacts, quotes, changes].map((r) => (r as Count).count)
 }
 
 serve(async (req) => {

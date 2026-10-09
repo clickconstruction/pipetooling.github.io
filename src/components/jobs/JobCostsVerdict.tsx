@@ -75,6 +75,13 @@ export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpe
             {marginIsTrue && v.overheadProjectedUsd != null ? ` + ${usd0(v.overheadToDateUsd + v.overheadProjectedUsd)} overhead share` : ''}
             {marginIsTrue && v.directMargin ? `. Direct margin alone ${usd0(v.directMargin.usd)}${pct0(v.directMargin.pct)}.` : ''}
           </div>
+          {v.priced ? (
+            <div style={sub} data-testid="verdict-priced">
+              The bid was priced at <b style={{ color: 'var(--text-strong)' }}>{v.priced.pctWords}</b> direct
+              {v.priced.vsWords ? ` · this job runs ${v.priced.vsWords}` : ''}
+              {v.priced.partialWords.length > 0 ? ` · it reads high: ${v.priced.partialWords.join(', ')}` : ''}
+            </div>
+          ) : null}
         </button>
         <div style={tile}>
           <div style={lab}>Spent so far</div>

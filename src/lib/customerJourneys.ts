@@ -16,13 +16,13 @@
  * Five audiences since v2.3505: homeowner, general contractor, subcontractor, supply house, and
  * the collections law firm. Collections paper sits at the end of the journey it belongs to.
  */
-import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC } from './customerSample'
+import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-trade-email'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certified' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'submittal-room-link'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-trade-email']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certified', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'submittal-room-link']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -61,6 +61,8 @@ export const BID_ROOM_SAMPLE_PATH = `/bid-room?t=${SAMPLE_TOKEN}`
 export const BID_ROOM_SAMPLE_DONE_PATH = `/bid-room?t=${SAMPLE_TOKEN_DONE}`
 export const CUSTOMER_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN}`
 export const GC_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN_GC}`
+/** GC mode (O7c): the portal as the customer of a GC job we build sees it, with a change order and the work to accept. */
+export const OWNER_PORTAL_SAMPLE_PATH = `/portal?t=${SAMPLE_TOKEN_OWNER}`
 export const SUB_PORTAL_SAMPLE_PATH = `/sub?t=${SAMPLE_TOKEN}`
 /** GC mode's trade partner portal (P1b-ii-b): `gc-trade-portal` answers the sample token with a made-up company. */
 export const TRADE_PORTAL_SAMPLE_PATH = `/t/${SAMPLE_TOKEN}`
@@ -315,6 +317,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: BID_ROOM_SAMPLE_DONE_PATH },
         },
         {
+          id: 'submittal-room-email',
+          label: 'Submittal link email',
+          sublabel: 'Bids → Submittals → Share → Send the link, or the box on the Share window',
+          when: 'After award, when a revision is shared',
+          customerCan: 'Open their own link to the review room, and reply to the person who sent it.',
+          guide: 'build-a-submittal-package',
+          reflects: ['Company name and phone', 'Sender name and email'],
+          render: { kind: 'email', email: 'submittal-room-link' },
+        },
+        {
           id: 'submittal-room',
           label: 'Submittal review room',
           sublabel: 'Bids → Submittals → Share — the one link the GC forwards to the architect',
@@ -373,6 +385,96 @@ export function customerJourneys(): Journey[] {
           guide: 'ask-the-architect-about-the-plans',
           reflects: ['The project manager on the GC project (the Reply-To)', 'Sender name'],
           render: { kind: 'email', email: 'gc-plan-question' },
+        },
+        {
+          id: 'submittal-email',
+          label: 'Submittal for review',
+          sublabel: 'GC mode · GC projects → Submittals → Send to the architect',
+          when: 'While we build a GC job',
+          customerCan: 'Open the file a trade sent from its Drive link and answer by replying: approved, approved as noted, or revise with what to change.',
+          guide: 'send-a-trades-submittal-to-the-architect',
+          reflects: ['The project manager on the GC project (the Reply-To)', 'Sender name'],
+          render: { kind: 'email', email: 'gc-submittal' },
+        },
+        {
+          id: 'gc-pay-app-email',
+          label: 'GC mode: our pay application',
+          sublabel: 'GC projects → Bill the customer → Send pay application, with the email tick on',
+          when: 'Once a month, on bill day',
+          customerCan: 'Read what the pay application asks and why, with its form attached. The bill to pay comes once the architect certifies it.',
+          guide: 'bill-the-customer-on-a-gc-job',
+          reflects: ['The pay application as it went', 'The project manager on the GC project (the Reply-To and the signer)'],
+          render: { kind: 'email', email: 'gc-pay-app' },
+        },
+        {
+          id: 'gc-certify-ask-email',
+          label: 'GC mode: please certify',
+          sublabel: 'The same Send, to the project\'s architect',
+          when: 'With each pay application',
+          customerCan: 'Read what we asked the customer for, check the form attached, and reply with the certificate.',
+          guide: 'bill-the-customer-on-a-gc-job',
+          reflects: ['The pay application as it went', 'The architect on the GC project'],
+          render: { kind: 'email', email: 'gc-certify-ask' },
+        },
+        {
+          id: 'gc-certified-email',
+          label: 'GC mode: the certified bill',
+          sublabel: 'GC projects → Bill the customer → Record the certificate, with the email tick on',
+          when: 'When the architect certifies a pay application',
+          customerCan: 'Read what the architect certified and when we expect it, then reply with the day they will pay. Their portal link shows when they have one.',
+          guide: 'bill-the-customer-on-a-gc-job',
+          reflects: ['The certificate as recorded', 'The customer’s usual days to pay', 'The customer’s portal link, when one is on'],
+          render: { kind: 'email', email: 'gc-certified' },
+        },
+        {
+          id: 'gc-change-order-email',
+          label: 'GC mode: a change order to sign',
+          sublabel: 'GC projects → Change orders → Send for signature, with the email tick on',
+          when: 'When the job changes',
+          customerCan: 'Read the change, what it adds to the price and to the job, and reply to sign it or ask.',
+          guide: 'change-our-contract-with-the-customer',
+          reflects: ['The change order as sent', 'The project manager on the GC project (the Reply-To and the signer)'],
+          render: { kind: 'email', email: 'gc-change-order' },
+        },
+        {
+          id: 'gc-reminder-email',
+          label: 'GC mode: a reminder to pay',
+          sublabel: 'GC projects → Bill the customer → Remind them to pay, on a late bill',
+          when: 'Once a certified bill is past the day it was due',
+          customerCan: 'Read what is still open and the day we ask them to pay by, then reply with the day they will pay. Their portal link shows when they have one.',
+          guide: 'remind-a-customer-to-pay-a-gc-bill',
+          reflects: ['The bill as certified, less what they paid', 'The pay-by day and the office’s own line', 'The customer’s portal link, when one is on'],
+          render: { kind: 'email', email: 'gc-reminder' },
+        },
+        {
+          id: 'gc-interest-bill-email',
+          label: 'GC mode: our bill for the interest',
+          sublabel: 'GC projects → Bill the customer → Bill the interest, with the email tick on',
+          when: 'When interest has built up on late bills, on a job that charges it',
+          customerCan: 'Read what the interest on their late bills comes to and the rate, then reply with the day they will pay. Their portal link shows when they have one.',
+          guide: 'bill-the-customer-on-a-gc-job',
+          reflects: ['The job’s rate and the contract’s days to pay', 'What built up and was not billed yet', 'The customer’s portal link, when one is on'],
+          render: { kind: 'email', email: 'gc-interest-bill' },
+        },
+        {
+          id: 'gc-portal-change-order',
+          label: 'GC mode: sign a change order in their portal',
+          sublabel: 'Their portal, under the GC job, while a change order waits on them',
+          when: 'When we send a change order',
+          customerCan: 'Sign or decline a change order we sent. A decline can say why in one line, or not at all.',
+          guide: 'change-our-contract-with-the-customer',
+          reflects: ['The change order as it went', 'The customer’s portal link'],
+          render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'gc-portal-accept-work',
+          label: 'GC mode: accept the work in their portal',
+          sublabel: 'Their portal, under the GC job, once every line is billed',
+          when: 'At the end of the job',
+          customerCan: 'Accept the work after walking the job, with their name and a note. Our final pay application waits for it.',
+          guide: 'close-out-a-gc-job-with-the-customer',
+          reflects: ['Every line billed on the job', 'The customer’s portal link'],
+          render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
         },
         {
           id: 'owner-notice',

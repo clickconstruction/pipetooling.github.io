@@ -69,7 +69,7 @@ export interface OwnerPayApp {
   number: number
   /** The day it goes to the owner: the next bill day after the last one, or on or after today. */
   billOn: string
-  /** The bill day plus the owner's usual days to pay. Null when they have never paid us. */
+  /** The bill day plus the owner's usual days to pay, or the contract's while they have never paid us. Null: neither is known. */
   expectPaidOn: string | null
   lines: OwnerLine[]
   /** Our price to the owner: every line's worth, signed change orders included. */
@@ -263,9 +263,12 @@ export function ownerAccount(project: GcProject): OwnerAccount | null {
   }
 }
 
-/** The day we expect the owner to pay a pay application: the day the architect certified it (or it went) plus their usual days. */
+/**
+ * The day we expect the owner to pay a pay application: the day the architect certified it (or it went) plus their
+ * usual days, or, when they have never paid us, the contract's days to pay (O5d). Null: neither is known.
+ */
 export function ownerExpectPaidOn(state: GcState, project: GcProject, app: OwnerPayAppSent): string | null {
-  const payDays = customerOf(state, project)?.payDays
+  const payDays = customerOf(state, project)?.payDays ?? project.ownerPayDays ?? null
   return payDays == null ? null : addDays(app.certifiedOn ?? app.sentOn, payDays)
 }
 
@@ -351,6 +354,11 @@ export const CHANGE_ORDER_REASON_WORDS: Record<ChangeOrder['reason'], string> = 
 /** Change-order lines on the bill are keyed by the change order's id, which starts "co-". */
 export function isChangeOrderLineId(id: string): boolean {
   return id.startsWith('co-')
+}
+
+/** The contract's days to pay in Bill the customer's terms (O5d), or the ask to type them. */
+export function ownerPayDaysWords(days: number | null | undefined): string {
+  return days == null ? 'Type the contract\'s days to pay so a first bill can go late.' : `They pay within ${daysWords(days)} of the certificate, by the contract.`
 }
 
 /** "1 day", "5 days". */
@@ -530,10 +538,12 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
   // Earlier certificates, not what we asked: what the architect cut comes back on this bill.
   const askedBefore = sent.reduce((s, a) => s + appClaimed(a), 0)
   const billOn = last ? nextOwnerBillDay(addDays(last.periodTo, 1)) : nextOwnerBillDay(state.today)
+  // Their usual days, or the contract's while they have never paid us (O5d's rule, O6b-1's forecast).
+  const payDays = customer?.payDays ?? project.ownerPayDays ?? null
   return {
     number: sent.length + 1,
     billOn,
-    expectPaidOn: customer?.payDays == null ? null : addDays(billOn, customer.payDays),
+    expectPaidOn: payDays == null ? null : addDays(billOn, payDays),
     lines,
     contract,
     originalContract: contract - changeOrdersTotal,
@@ -754,7 +764,9 @@ export function ownerCloseout(state: GcState, project: GcProject): OwnerCloseout
       label: 'The customer accepts the work',
       who: 'owner',
       done: acceptedOn !== null,
-      detail: acceptedOn ? `Accepted ${shortDate(acceptedOn)}.` : 'They walk it and accept it in their portal.',
+      detail: acceptedOn
+        ? `Accepted ${shortDate(acceptedOn)}${project.ownerBilling?.acceptedInPortal ? ' in their portal' : ''}.`
+        : 'They walk the job and accept it, here or in their portal.',
     },
     {
       key: 'finalApp',
@@ -779,7 +791,7 @@ export function ownerCloseout(state: GcState, project: GcProject): OwnerCloseout
     },
     {
       key: 'paid',
-      label: 'They pay it',
+      label: 'The customer pays it',
       who: 'owner',
       done: final?.paidOn != null,
       detail: final?.paidOn

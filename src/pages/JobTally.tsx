@@ -664,6 +664,7 @@ export default function JobTally() {
       supabase
         .from('jobs_ledger')
         .select('id, hcp_number, job_name, job_address')
+        .eq('billing_only', false)
         .order('hcp_number', { ascending: false })
         .then(({ data, error: err }) => {
           setJobsLoading(false)
@@ -692,6 +693,7 @@ export default function JobTally() {
     supabase
       .from('service_types')
       .select('id, name')
+      .eq('billing_only', false)
       .order('sequence_order', { ascending: true })
       .then(({ data, error: err }) => {
         if (err) {

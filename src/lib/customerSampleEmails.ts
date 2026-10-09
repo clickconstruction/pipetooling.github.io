@@ -13,7 +13,8 @@ import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import { COMPANY_EMAIL_FROM_LABEL, CUSTOMER_EMAIL_FROM_ADDRESS, estimateEmailFrom } from './customerEmailFrom'
 import { SAMPLE_BID, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_SUB, ymdPlusDays } from './customerSample'
-import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, TRADE_PORTAL_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
+import { BID_ROOM_SAMPLE_PATH, CONTRACT_SAMPLE_PATH, ESTIMATE_SAMPLE_PATH, JOB_CONTRACT_SAMPLE_PATH, SUBMITTAL_ROOM_SAMPLE_PATH, TRADE_PORTAL_SAMPLE_PATH, type SampleEmailId } from './customerJourneys'
+import { buildSubmittalRoomLinkEmail, roomLinkBidLabel } from '../../supabase/functions/_shared/submittalRoomLinkEmail'
 import { buildJobContractPaperEmail, buildJobContractReminderEmail, buildJobContractSendEmail, buildJobContractSignedCopyEmail, type BuiltEmail } from './jobContractEmail'
 import { SAMPLE_JOB_CONTRACT } from './customerSample'
 import { testReportSampleEmail } from './jobs/testReportSample'
@@ -30,7 +31,11 @@ import { qrMatrix } from '../../supabase/functions/_shared/qrMatrix'
 import { bytesToBase64, qrPngBytes } from '../../supabase/functions/_shared/qrPng'
 import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
+import { buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
+import { buildGcCustomerEmail, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
+import { certifiedMail, certifyAskMail, changeOrderMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
+import { payReminderMail } from './gc/ownerBillingRemind'
 import { gcTradePortalSample, gcTradePortalSampleRows } from '../../supabase/functions/_shared/gcTradePortalSample'
 import { mailboxWithName } from '../../supabase/functions/_shared/mailboxWithName'
 import { inviteMessage, mailRecipients, portalMailGroup } from './gc/portal'
@@ -322,6 +327,8 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill')
+    return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
 
@@ -334,6 +341,26 @@ export function buildSampleGcPlanQuestionEmail(ctx: SampleEmailContext): BuiltEm
     askedByName: SAMPLE_GC.company,
     about: 'S-101, S-102, Concrete',
     text: 'The foundation plan shows 18 in. piers at grid C; the detail on S-102 shows 24 in. Which one do we price?',
+    signer: ctx.sender?.name || 'The project manager',
+    companyName: 'Click Construction',
+  })
+}
+
+/** GC mode (the Building lane's U4b): a trade's submittal to the project's architect, as `gc-architect-email` sends it. */
+export function buildSampleGcSubmittalEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildGcSubmittalEmail({
+    architectName: 'Avery Lin',
+    projectName: 'Fair Oaks Clinic',
+    projectAddress: '1 Sample Rd, Boerne',
+    number: '26 24 16-01',
+    title: 'Panelboards',
+    kind: 'product data',
+    from: 'Electrical, Pedernales Valley Electric',
+    round: 2,
+    file: 'PVE-panelboards-r1.pdf',
+    driveUrl: 'https://drive.google.com/file/d/sample-panelboards/view',
+    note: 'Ratings added.',
+    neededBy: 'Mon, Oct 20',
     signer: ctx.sender?.name || 'The project manager',
     companyName: 'Click Construction',
   })
@@ -362,6 +389,20 @@ export function buildSampleGcTradeEmail(ctx: SampleEmailContext): BuiltEmail {
   })
 }
 
+/** v2.5026 (Submittals decision 11): a named reviewer's own room link, as `send-submittal-room-link` sends it, to the sample room. */
+export function buildSampleSubmittalRoomLinkEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildSubmittalRoomLinkEmail({
+    companyName: PORTAL_COMPANY.name,
+    phone: PORTAL_COMPANY.phone,
+    bidLabel: roomLinkBidLabel({ bid_number: 'P482', project_name: SAMPLE_BID.projectName }),
+    revNumber: 2,
+    personName: 'Alex Sample',
+    mayDecide: true,
+    link: `${ctx.origin}${SUBMITTAL_ROOM_SAMPLE_PATH}`,
+    note: '',
+  })
+}
+
 export function buildSampleEmail(id: SampleEmailId, ctx: SampleEmailContext): { subject: string; html: string; text: string; from: string } {
   return { ...buildSampleEmailBody(id, ctx), from: sampleEmailFrom(id) }
 }
@@ -381,6 +422,78 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'legal-welcome' || id === 'legal-confirm' || id === 'legal-now' || id === 'legal-digest') return buildSampleLegalEmail(id, ctx)
   if (id === 'bill-email') return buildSampleBillEmail(ctx)
   if (id === 'gc-plan-question') return buildSampleGcPlanQuestionEmail(ctx)
+  if (id === 'gc-submittal') return buildSampleGcSubmittalEmail(ctx)
   if (id === 'gc-trade-email') return buildSampleGcTradeEmail(ctx)
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return buildSampleGcCustomerEmail(id, ctx)
+  if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
+  if (id === 'gc-interest-bill') return buildSampleGcInterestBillEmail(ctx)
+  if (id === 'submittal-room-link') return buildSampleSubmittalRoomLinkEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
+}
+
+/**
+ * GC mode (O4b): our emails to a GC project's customer and its architect, as `gc-customer-email` sends them: the pay
+ * application and the ask to certify it, the certified bill (with the customer's portal link, as when they have one)
+ * and a change order to sign. A made-up month on the sample project, through the same words and frame.
+ */
+export function buildSampleGcCustomerEmail(id: 'gc-pay-app' | 'gc-certify-ask' | 'gc-certified' | 'gc-change-order', ctx: SampleEmailContext): BuiltEmail {
+  const facts: PayAppMailFacts = {
+    job: 'Sample Retail Shell',
+    greeting: 'Elena',
+    owner: 'Sample Owner LLC',
+    architect: 'Sample Architects',
+    number: 3,
+    final: false,
+    due: 48600,
+    periodTo: ymdPlusDays(ctx.todayYmd, -5),
+    retainagePct: 10,
+  }
+  const mail =
+    id === 'gc-pay-app'
+      ? payAppMail(facts)
+      : id === 'gc-certify-ask'
+        ? certifyAskMail(facts)
+        : id === 'gc-certified'
+          ? certifiedMail({ ...facts, asked: facts.due, certified: 45000, expectOn: ymdPlusDays(ctx.todayYmd, 30) })
+          : changeOrderMail({ job: facts.job, greeting: facts.greeting, number: 2, description: 'Add a coffee bar cabinet, per the customer', price: 1100, days: 3, timeOnly: false })
+  const portalUrl = id === 'gc-certified' ? `${PORTAL_SHORT_ORIGIN}sample-owner` : null
+  return buildGcCustomerEmail({ subject: mail.subject, lines: mail.lines, signer: String(ctx.sender?.name ?? 'The project manager'), gc: GC_CUSTOMER_EMAIL_FROM_NAME, portalUrl })
+}
+
+/**
+ * GC mode (O5b): our reminder to pay a late bill, as `gc-customer-email` sends it: the reminder kernel's words
+ * (`payReminderMail`) on a made-up late bill, with the portal line, as when the customer has a link.
+ */
+export function buildSampleGcReminderEmail(ctx: SampleEmailContext): BuiltEmail {
+  const mail = payReminderMail({
+    greeting: 'Elena',
+    job: 'Sample Retail Shell',
+    bill: 'pay application 3',
+    open: 43740,
+    dueOn: ymdPlusDays(ctx.todayYmd, -4),
+    promised: false,
+    lastPaid: null,
+    interest: null,
+    by: ymdPlusDays(ctx.todayYmd, 5),
+    note: '',
+  })
+  return buildGcCustomerEmail({
+    subject: mail.subject,
+    lines: mail.lines,
+    signer: String(ctx.sender?.name ?? 'The project manager'),
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+  })
+}
+
+/** GC mode (O6b-2): our bill for the interest on late bills, as `gc-customer-email` sends it, with the portal line. */
+export function buildSampleGcInterestBillEmail(ctx: SampleEmailContext): BuiltEmail {
+  const mail = interestBillMail({ job: 'Sample Retail Shell', greeting: 'Elena', amount: 284.92, pctPerMonth: 1.5 })
+  return buildGcCustomerEmail({
+    subject: mail.subject,
+    lines: mail.lines,
+    signer: String(ctx.sender?.name ?? 'The project manager'),
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+  })
 }

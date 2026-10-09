@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent } from 'react'
+import { useEffect, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { bidIsStale, bidsIn, compareBids, leveledTotal, lowLeveled, uncostedLines, uncostedWords } from '../../lib/gc/bids'
 import { exclusionRows, unitPriceWords } from '../../lib/gc/exclusions'
@@ -6,6 +6,7 @@ import { partnerById, planLabel } from '../../lib/gc/lookups'
 import { travelFor, travelWords } from '../../lib/gc/map'
 import { alternateWords, bidGoodUntil, bidRanOut } from '../../lib/gc/portal'
 import type { GcState, Includes, Invite, TradePackage } from '../../lib/gc/types'
+import { awardGate } from '../../lib/gc/vetting'
 import { money, shortDate } from '../../lib/gc/words'
 import { PartnerName } from './GcPartnerName'
 import { Btn, Chip, PlusUnknown, input, num, td, th, type Tone } from './gcUi'
@@ -16,7 +17,9 @@ import { Btn, Chip, PlusUnknown, input, num, td, th, type Tone } from './gcUi'
  * scope line. A line a quote leaves out takes a cost to cover it, an exclusion takes one too, and a
  * taken alternate counts, so *All in* compares like with like (`leveledTotal`). **Carry this number**
  * makes a quote the trade's number in our price; **Carry our budget** carries ours instead. The
- * office's numbers sit on the ask (B1), never on the quote. Award, nudges and a quote typed in from an
+ * office's numbers sit on the ask (B1), never on the quote. Once the job is won, **Award and draft the
+ * statement of work** takes Carry's place (B6-a-ii, from the spike's `LevelPanel` and `AwardButton`): `gc_award`
+ * re-checks the gate, and a company the gate stops shows `canAward`'s words. Nudges and a quote typed in from an
  * email come in later steps.
  */
 
@@ -26,6 +29,41 @@ export interface CompareWrites {
   setCovers: (inviteId: string, covers: Record<string, number>) => Promise<void>
   setTakenAlternates: (inviteId: string, labels: string[]) => Promise<void>
   carry: (packageId: string, carry: { inviteId: string } | 'budget' | null) => Promise<void>
+  /** Award the trade to an ask's quote, with who decided (B6-a-ii). Unset: the reader cannot award, and no Award shows. */
+  award?: (inviteId: string, estimatorId: string | null) => Promise<void>
+}
+
+/** Who may be named as deciding an award: our team, and the one pressing first. */
+export interface AwardTeam {
+  team: { id: string; name: string }[]
+  me: string | null
+}
+
+/** Award with the estimator who decided (the spike's `AwardButton`, question 7). */
+function AwardButton({ team, children, disabled, title, onAward }: { team: AwardTeam; children: ReactNode; disabled?: boolean; title?: string; onAward: (by: string | null) => void }) {
+  const [by, setBy] = useState(team.me && team.team.some((m) => m.id === team.me) ? team.me : (team.team[0]?.id ?? ''))
+  return (
+    <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+        Estimator{' '}
+        <select style={input} value={by} disabled={disabled} onChange={(e) => setBy(e.target.value)}>
+          {team.team.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <Btn kind="primary" disabled={disabled} title={title} onClick={() => onAward(by || null)}>
+        {children}
+      </Btn>
+    </span>
+  )
+}
+
+/** Why Award is off: the company is not vetted, was declined, or is past its limit (question 3). */
+function AwardBlocked({ why }: { why: string | null }) {
+  return why ? <div style={{ marginTop: '0.3rem', fontSize: '0.8rem', color: 'var(--text-amber-800)', maxWidth: '22rem' }}>{why}</div> : null
 }
 
 const INCLUDES_WORDS: Record<Includes, { tone: Tone; word: string }> = {
@@ -60,7 +98,22 @@ function CostBox({ value, label, onSave }: { value: number; label: string; onSav
   )
 }
 
-export function GcCompareQuotes({ state, projectId, packageId, writes, onClose }: { state: GcState; projectId: string; packageId: string; writes: CompareWrites; onClose: () => void }) {
+export function GcCompareQuotes({
+  state,
+  projectId,
+  packageId,
+  writes,
+  team = { team: [], me: null },
+  onClose,
+}: {
+  state: GcState
+  projectId: string
+  packageId: string
+  writes: CompareWrites
+  /** For Award's Estimator. Unset: nobody to name, so the award names the one pressing. */
+  team?: AwardTeam
+  onClose: () => void
+}) {
   const [problem, setProblem] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   useEffect(() => {
@@ -80,6 +133,9 @@ export function GcCompareQuotes({ state, projectId, packageId, writes, onClose }
   const excludes = (pkg.excludes ?? []).filter((x) => x.label.trim() !== '')
   // Carry while we bid. Once the job is ours, the trade is awarded instead (B6).
   const canCarry = project.stage === 'pursuing' && !project.lostOn
+  // Award once the job is won (B6-a-ii): for a reader who can award, or to show what was awarded.
+  const canAward = project.stage !== 'pursuing' && !project.lostOn && Boolean(writes.award)
+  const award = writes.award
   const act = (run: () => Promise<void>) => {
     setBusy(true)
     setProblem(null)
@@ -325,6 +381,29 @@ export function GcCompareQuotes({ state, projectId, packageId, writes, onClose }
                               <Btn kind={carried ? 'plain' : 'primary'} disabled={busy} onClick={() => act(() => writes.carry(pkg.id, carried ? null : { inviteId: inv.id }))}>
                                 {carried ? 'Carrying. Stop' : 'Carry this number'}
                               </Btn>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )}
+                    {(canAward || pkg.awardedInviteId !== null) && (
+                      <tr>
+                        <td style={{ ...td, borderBottom: 'none' }} />
+                        {bidders.map((inv) => {
+                          // A company not vetted, or past its limit, waits for approval (question 3).
+                          const gate = awardGate(state, pkg, inv)
+                          return (
+                            <td key={inv.id} data-gc-award={inv.id} style={{ ...td, borderBottom: 'none' }}>
+                              {pkg.awardedInviteId === inv.id ? (
+                                <Chip tone="green">Awarded</Chip>
+                              ) : canAward && award ? (
+                                <>
+                                  <AwardButton team={team} disabled={busy || pkg.awardedInviteId !== null || !gate.ok} title={gate.why ?? undefined} onAward={(by) => act(() => award(inv.id, by))}>
+                                    Award and draft the statement of work
+                                  </AwardButton>
+                                  {!gate.ok && pkg.awardedInviteId === null && <AwardBlocked why={gate.why} />}
+                                </>
+                              ) : null}
                             </td>
                           )
                         })}

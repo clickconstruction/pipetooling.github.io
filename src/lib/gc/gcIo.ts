@@ -4,6 +4,7 @@
  * read back through `gcProjectFromRows`), sends the draft through `gc_create_project`, and saves
  * a line to the scope book. Nothing here decides anything: the kernels in `src/lib/gc/` do.
  */
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import type { Database, Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
@@ -15,12 +16,15 @@ import type { BoardRows } from './boardRows'
 import type { TradeEmailAnswer } from './tradeEmail'
 import type { ChangeOrderDraft, ChangeOrderRow } from './changeOrderRows'
 import { gcProjectFromRows, questionRowOf, type GcProjectRows, type GcProjectView } from './projectRows'
-import type { DeclineReason, GcLostWhy, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
+import type { DeclineReason, GcLostWhy, OwnerRetainageStep, ScopeBookEdit, ScopeBookStore, ScopeExclusion } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
-import type { BillingRows, ContractLineRow, OwnerTermsRow } from './billCustomer'
+import { gcCustomerEmailCopyKinds } from '../../../supabase/functions/_shared/gcCustomerEmails'
+import type { BillingRows, ContractLineRow, OwnerTermsRow, PayAppSend } from './billCustomer'
 import { parsePaySpeedsRpc } from '../jobs/billedExpectedPay'
+import { paymentRefusalWords } from './moneyIn'
 import { gcTradeEmailRefusal, tradeMailLang } from './tradeEmail'
+import type { MoneyMondayRequestRow } from './moneyMondayEmail'
 import { sendGcTradeEmail } from './tradeEmailIo'
 import {
   setEmailKey,
@@ -320,13 +324,13 @@ export async function saveScopeSet(trade: string, name: string, lines: string[],
 
 // --- Google Drive, through the gc-drive-access edge function (step 5) ---
 
-interface FnResult {
+export interface FnResult {
   data: unknown
   error: { message?: string; context?: { json?: () => Promise<unknown> } } | null
 }
 
 /** The function's own words for what went wrong, or the transport's. */
-async function fnProblem(r: FnResult, fallback: string): Promise<string | null> {
+export async function fnProblem(r: FnResult, fallback: string): Promise<string | null> {
   const data = r.data as { error?: string } | null
   if (data?.error) return data.error
   if (!r.error) return null
@@ -386,7 +390,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const packageIds = projects.flatMap((p) => p.trades.map((t) => t.id))
   const named = [...new Set(projects.flatMap((p) => [p.customerId, p.architectId]).filter((id): id is string => Boolean(id)))]
   const none = Promise.resolve({ data: [], error: null })
-  const [dates, customers, companies, invites, promises] = await Promise.all([
+  const [dates, customers, companies, invites, promises, sows] = await Promise.all([
     ids.length
       ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, lost_why, won_by').in('project_id', ids)
       : none,
@@ -397,16 +401,29 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
       .order('name'),
     packageIds.length ? supabase.from('gc_invites').select('*').in('package_id', packageIds) : none,
     supabase.from('gc_trade_promises').select('*'),
+    // The statements of work (B6-a): dev only while the Board is built, so anyone else reads none.
+    packageIds.length
+      ? supabase
+          .from('gc_sows')
+          .select('id, package_id, status, price, retainage_pct, based_on_rev, their_sov, excluded, sent_on, signed_on, accepted_on')
+          .in('package_id', packageIds)
+      : none,
   ])
   const dateRows = taken(dates, 'load the board’s dates')
   const inviteRows = taken(invites, 'load the asks')
   const promiseRows = taken(promises, 'load the promises')
   const companyRows = taken(companies, 'load the trade partners')
+  const sowRows = taken(sows, 'load the statements of work')
   const inviteIds = inviteRows.map((i) => i.id)
   const promiseIds = promiseRows.map((p) => p.id)
-  const deciders = [...new Set(companyRows.map((c) => c.vetting_decided_by).filter((id): id is string => Boolean(id)))]
+  const deciders = [
+    ...new Set(
+      [...companyRows.map((c) => c.vetting_decided_by), ...projects.flatMap((p) => p.trades.map((t) => t.awardedBy))].filter((id): id is string => Boolean(id)),
+    ),
+  ]
   const waiting = companyRows.filter((c) => c.vetting_status === 'new').map((c) => c.id)
-  const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews] = await Promise.all([
+  const sowIds = sowRows.map((s) => s.id)
+  const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews, sowLines] = await Promise.all([
     inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
     supabase.from('gc_company_contacts').select('*'),
     promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
@@ -420,6 +437,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     // The bid tabs shared, and who opened each (B5-d).
     packageIds.length ? supabase.from('gc_bid_tabs').select('package_id, shared_on, show_names').in('package_id', packageIds) : none,
     packageIds.length ? supabase.from('gc_bid_tab_views').select('package_id, company_id, seen_on').in('package_id', packageIds) : none,
+    // Each statement of work's lines (B6-a).
+    sowIds.length ? supabase.from('gc_sow_lines').select('id, sow_id, position, label, amount, scope_item_id, change_order_id').in('sow_id', sowIds) : none,
   ])
   return {
     today,
@@ -439,6 +458,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     moneyShown: money,
     bidTabs: taken(tabs, 'load the bid tabs'),
     bidTabViews: taken(tabViews, 'load who opened the bid tabs'),
+    sows: sowRows as BoardRows['sows'],
+    sowLines: taken(sowLines, 'load the statements of work’s lines') as BoardRows['sowLines'],
   }
 }
 
@@ -457,25 +478,114 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
   ])
   const appRows = taken(payApps, 'load the pay applications')
   const appIds = appRows.map((a) => a.id)
-  const [lines, reminders] = await Promise.all([
+  const interestRows = taken(interestBills, 'load the interest bills')
+  const interestIds = interestRows.map((b) => b.id)
+  const [lines, reminders, emails, interestEmails] = await Promise.all([
     appIds.length ? supabase.from('gc_owner_pay_app_lines').select('*').in('pay_app_id', appIds).order('position') : Promise.resolve({ data: [], error: null }),
     appIds.length ? supabase.from('gc_owner_pay_reminders').select('*').in('pay_app_id', appIds).order('created_at') : Promise.resolve({ data: [], error: null }),
+    // Our emails about each pay application, from their sent copies (O4b: the copies are the record of what went): the
+    // application's own and the certified bill's, each by its kind, so a print filed against it is never read as one.
+    appIds.length
+      ? supabase
+          .from('sent_documents')
+          .select('source_id, kind, recipient_name, sent_at')
+          .eq('source_table', 'gc_owner_pay_apps')
+          .in('kind', gcCustomerEmailCopyKinds('gc_owner_pay_apps'))
+          .eq('how', 'email')
+          .in('source_id', appIds)
+          .order('sent_at')
+      : Promise.resolve({ data: [], error: null }),
+    // And about each interest bill (O6b-2), the same way.
+    interestIds.length
+      ? supabase
+          .from('sent_documents')
+          .select('source_id, recipient_name, sent_at')
+          .eq('source_table', 'gc_owner_interest_bills')
+          .in('kind', gcCustomerEmailCopyKinds('gc_owner_interest_bills'))
+          .eq('how', 'email')
+          .in('source_id', interestIds)
+          .order('sent_at')
+      : Promise.resolve({ data: [], error: null }),
   ])
   const lineRows = taken(lines, 'load the pay application lines')
   const reminderRows = taken(reminders, 'load the reminders to pay')
+  const emailRows = (taken(emails, 'load the emails about the pay applications') ?? []) as { source_id: string | null; kind: string; recipient_name: string | null; sent_at: string }[]
   for (const app of appRows) {
     const rows = out.get(app.project_id)
     if (!rows) continue
     rows.payApps.push(app)
     rows.lines.push(...lineRows.filter((l) => l.pay_app_id === app.id))
     rows.reminders.push(...reminderRows.filter((r) => r.pay_app_id === app.id))
+    const sentAbout = emailRows.filter((e) => e.source_id === app.id).map((e) => ({ source_id: app.id, kind: e.kind, recipient_name: e.recipient_name, sent_at: e.sent_at }))
+    if (sentAbout.length > 0) rows.emails = [...(rows.emails ?? []), ...sentAbout]
   }
-  for (const bill of taken(interestBills, 'load the interest bills')) out.get(bill.project_id)?.interestBills.push(bill)
+  const interestEmailRows = (taken(interestEmails, 'load the emails about the interest bills') ?? []) as { source_id: string | null; recipient_name: string | null; sent_at: string }[]
+  for (const bill of interestRows) {
+    const rows = out.get(bill.project_id)
+    if (!rows) continue
+    rows.interestBills.push(bill)
+    const sentAbout = interestEmailRows.filter((e) => e.source_id === bill.id).map((e) => ({ source_id: bill.id, recipient_name: e.recipient_name, sent_at: e.sent_at }))
+    if (sentAbout.length > 0) rows.interestEmails = [...(rows.interestEmails ?? []), ...sentAbout]
+  }
   for (const acceptance of taken(acceptances, 'load the acceptances')) {
     const rows = out.get(acceptance.project_id)
     if (rows) rows.acceptance = acceptance
   }
+  await loadGcBillingJobMoney(out)
   return out
+}
+
+/**
+ * Money in on each project's billing job (O5c), from the Pipeline's own records: its bills, every payment on it,
+ * the customer's live promises (`list_job_payment_promises`, the Pipeline's reader) and our waivers. Read, never
+ * copied: a payment made anywhere in the app shows here.
+ */
+async function loadGcBillingJobMoney(out: Map<string, OwnerBillingRows>): Promise<void> {
+  const projectIds = [...out.keys()]
+  const jobsOf = taken(await supabase.from('gc_projects').select('project_id, billing_job_id').in('project_id', projectIds), 'load the billing jobs')
+  const jobByProject = new Map(jobsOf.filter((r) => r.billing_job_id !== null).map((r) => [r.project_id, r.billing_job_id as string]))
+  const jobIds = [...new Set(jobByProject.values())]
+  if (jobIds.length === 0) return
+  const [bills, payments, promises, waivers] = await Promise.all([
+    supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status').in('job_id', jobIds),
+    supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', jobIds),
+    supabase.rpc('list_job_payment_promises'),
+    supabase.from('job_lien_releases').select('job_id, form_type, invoice_ids').in('job_id', jobIds),
+  ])
+  const billRows = taken(bills, 'load the bills on the billing job')
+  const paymentRows = taken(payments, 'load the payments on the billing job')
+  const promiseRows = (taken(promises, 'load the promises to pay') ?? []) as { jobId?: string; promisedYmd?: string; createdAt?: string; source?: string; note?: string | null }[]
+  const waiverRows = taken(waivers, 'load our waivers on the billing job')
+  for (const [projectId, jobId] of jobByProject) {
+    const rows = out.get(projectId)
+    if (!rows) continue
+    rows.money = {
+      bills: billRows.filter((b) => b.job_id === jobId).map((b) => ({ id: b.id, amount: Number(b.amount), status: b.status ?? '' })),
+      payments: paymentRows.filter((p) => p.job_id === jobId).map((p) => ({ invoice_id: p.invoice_id, amount: Number(p.amount), paid_on: p.paid_on })),
+      promises: promiseRows
+        .filter((p) => p.jobId === jobId && p.promisedYmd && p.createdAt)
+        .map((p) => ({ promisedYmd: p.promisedYmd ?? '', createdAt: p.createdAt ?? '', source: p.source ?? 'office', note: p.note ?? null })),
+      waivers: waiverRows.filter((w) => w.job_id === jobId).map((w) => ({ form_type: w.form_type, invoice_ids: w.invoice_ids ?? [] })),
+    }
+  }
+}
+
+/** A payment on a GC bill (O5c): the Pipeline's own `mark_invoice_paid`, on the app's day. No amount: the rest of it. */
+export async function recordGcPayment(invoiceId: string, amount: number | null, paidOn: string): Promise<void> {
+  const answer = taken(
+    await supabase.rpc('mark_invoice_paid', { p_invoice_id: invoiceId, p_paid_on: paidOn, ...(amount !== null ? { p_amount: amount } : {}) }),
+    'record the payment',
+  ) as { error?: string } | null
+  // It answers a refusal rather than raising one.
+  if (answer?.error) throw new Error(paymentRefusalWords(answer.error))
+}
+
+/** The customer's word on when they will pay (O5c): the Pipeline's own `add_job_payment_promise` on the billing job. */
+export async function recordGcPromise(jobId: string, date: string, note: string, channel: string | null): Promise<void> {
+  taken(
+    await supabase.rpc('add_job_payment_promise', { p_job_id: jobId, p_date: date, ...(note.trim() ? { p_note: note.trim() } : {}), ...(channel ? { p_channel: channel } : {}) }),
+    'record when they said they will pay',
+  )
 }
 
 /**
@@ -488,7 +598,9 @@ export async function loadGcBillingRows(projectIds: string[]): Promise<BillingRo
   const [terms, contract, billing, speeds] = await Promise.all([
     supabase
       .from('gc_projects')
-      .select('project_id, owner_retainage_pct, owner_retainage_step_at_pct, owner_retainage_step_to_pct, owner_retainage_step_way, owner_pay_days, billing_job_id, property_owner_customer_id')
+      .select(
+        'project_id, owner_retainage_pct, owner_retainage_step_at_pct, owner_retainage_step_to_pct, owner_retainage_step_way, owner_pay_days, owner_late_interest_pct_per_month, owner_late_finish_per_day, billing_job_id, property_owner_customer_id',
+      )
       .in('project_id', projectIds),
     supabase.from('gc_owner_contract_lines').select('project_id, line, package_id, worth').in('project_id', projectIds),
     loadGcOwnerBillingRows(projectIds),
@@ -505,6 +617,146 @@ export async function loadGcBillingRows(projectIds: string[]): Promise<BillingRo
   for (const [id, stat] of Object.entries(parsePaySpeedsRpc(taken(speeds, 'load how fast customers pay'))?.customers ?? {})) payDays[id] = Math.round(stat.medianDays)
   const contractRows: ContractLineRow[] = taken(contract, 'load the prices as signed')
   return { terms: termRows, contract: contractRows, billing, names, payDays }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Owner Billing's O4a: Bill the customer (migration gc_owner_pay_app_send). Sending and the certificate are
+// the database's own functions; the retainage is a plain update of the project's columns.
+// ---------------------------------------------------------------------------------------------
+
+/** Send the pay application: its record and lines go, and the first one opens the billing job. Its id comes back. */
+export async function sendOwnerPayApp(projectId: string, app: PayAppSend): Promise<string> {
+  return taken(await supabase.rpc('gc_send_owner_pay_app', { p_project_id: projectId, p_app: app as unknown as Json }), 'send the pay application')
+}
+
+/** The architect's certificate: the bill on the billing job is made for what they certified. */
+export async function recordCertificate(payAppId: string, amount: number, on: string, note: string): Promise<void> {
+  taken(await supabase.rpc('gc_record_certificate', { p_pay_app_id: payAppId, p_amount: amount, p_on: on, p_note: note }), 'record the certificate')
+}
+
+/**
+ * Bill the interest (O6b-2): what has built up and is not billed, as the job's next interest bill with its bill on the
+ * billing job. Returns the interest bill's id, which gc-customer-email sends. Through the untyped client until the
+ * types regenerate after 20261009220000's push.
+ */
+export async function sendOwnerInterestBill(projectId: string, amount: number): Promise<string> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db.rpc('gc_send_owner_interest_bill', { p_project_id: projectId, p_amount: amount })
+  return taken(result as { data: string | null; error: SupabaseResultError | null }, 'bill the interest')
+}
+
+/**
+ * The customer accepted the work (O7a), recorded by our office: the day, who walked it, and a note. Refused until
+ * every line is billed, and once an acceptance is on file. Through the untyped client until the types regenerate
+ * after 20261009230000's push.
+ */
+export async function recordAcceptance(projectId: string, on: string, byName: string, note: string): Promise<void> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db.rpc('gc_record_acceptance', { p_project_id: projectId, p_on: on, p_by_name: byName, p_how: 'office', p_note: note })
+  taken(result as { data: null; error: SupabaseResultError | null }, 'record the acceptance')
+}
+
+/** The contract's late fee a day past substantial completion, or null for none (O6b-3). The money team's to change. */
+export async function setOwnerLateFinish(projectId: string, perDay: number | null): Promise<void> {
+  taken(
+    await supabase.from('gc_projects').update({ owner_late_finish_per_day: perDay }).eq('project_id', projectId).select('project_id').single(),
+    'save the late fee',
+  )
+}
+
+/** Interest on the job's late bills, a percent a month, or null for none (O6b-1). The money team's to change. */
+export async function setOwnerLateInterest(projectId: string, pctPerMonth: number | null): Promise<void> {
+  taken(
+    await supabase.from('gc_projects').update({ owner_late_interest_pct_per_month: pctPerMonth }).eq('project_id', projectId).select('project_id').single(),
+    'save the interest',
+  )
+}
+
+/** The contract's days to pay after the certificate (O5d), or null when it does not say. The money team's to change. */
+export async function setOwnerPayDays(projectId: string, days: number | null): Promise<void> {
+  taken(await supabase.from('gc_projects').update({ owner_pay_days: days }).eq('project_id', projectId).select('project_id').single(), 'save the days to pay')
+}
+
+/**
+ * Our reminder to pay a late bill (O5b): filed with the pay-by day, the office's line and the email as the window
+ * drafted it, with one note on the chase list. Returns the reminder's id, which gc-customer-email sends. Through the
+ * untyped client until the types regenerate after 20261009210000's push.
+ */
+export async function remindCustomerToPay(payAppId: string, on: string, payBy: string, note: string, subject: string, lines: string[]): Promise<string> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db.rpc('gc_remind_customer_to_pay', { p_pay_app_id: payAppId, p_on: on, p_pay_by: payBy, p_note: note, p_subject: subject, p_lines: lines })
+  return taken(result as { data: string | null; error: SupabaseResultError | null }, 'file the reminder')
+}
+
+/** Our conditional waiver, minted on the billing job, linked to the pay application it went with. Once only. */
+export async function linkPayAppWaiver(payAppId: string, releaseId: string): Promise<void> {
+  taken(await supabase.from('gc_owner_pay_apps').update({ conditional_waiver_id: releaseId }).eq('id', payAppId).select('id').single(), 'link the waiver')
+}
+
+/** The job's retainage and its step (null: held at one percent to the end). */
+export async function setOwnerRetainage(projectId: string, pct: number, step: OwnerRetainageStep | null): Promise<void> {
+  taken(
+    await supabase
+      .from('gc_projects')
+      .update({
+        owner_retainage_pct: pct,
+        owner_retainage_step_at_pct: step?.atPct ?? null,
+        owner_retainage_step_to_pct: step?.toPct ?? null,
+        owner_retainage_step_way: step?.way ?? null,
+      })
+      .eq('project_id', projectId)
+      .select('project_id')
+      .single(),
+    'save the retainage',
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// Owner Billing's O7b: the Monday money email (migration gc_money_monday_email). Its requests are plain rows under
+// the money team's policies, one weekly chain per weekday and recipient; gc-money-monday-email sends each one when
+// it falls due, and draws Preview and the test. Through the untyped client until the types regenerate after
+// 20261009233000's push.
+// ---------------------------------------------------------------------------------------------
+
+/** The pending sends the caller may see: the ones they asked for, the ones to them, and every one for a dev. */
+export async function listMoneyMondayRequests(): Promise<MoneyMondayRequestRow[]> {
+  const db = supabase as unknown as SupabaseClient
+  const result = await db
+    .from('gc_money_monday_email_requests')
+    .select('id, requested_by, recipient_user_id, send_at, repeat_weekly')
+    .is('sent_at', null)
+    .order('send_at', { ascending: true })
+  return taken(result as { data: MoneyMondayRequestRow[] | null; error: SupabaseResultError | null }, 'load the Monday emails') ?? []
+}
+
+/** A change to the weekly chains: the new ones first, then the stopped ones, so a failed insert leaves the old ones going. */
+export async function applyMoneyMondayPlan(plan: { inserts: Omit<MoneyMondayRequestRow, 'id'>[]; cancelIds: string[] }): Promise<void> {
+  const db = supabase as unknown as SupabaseClient
+  if (plan.inserts.length > 0) {
+    const added = await db.from('gc_money_monday_email_requests').insert(plan.inserts).select('id')
+    taken(added as { data: unknown; error: SupabaseResultError | null }, 'save the Monday email')
+  }
+  if (plan.cancelIds.length > 0) {
+    const stopped = await db.from('gc_money_monday_email_requests').delete().in('id', plan.cancelIds).is('sent_at', null).select('id')
+    taken(stopped as { data: unknown; error: SupabaseResultError | null }, 'stop the Monday email')
+  }
+}
+
+/** The email as it would go now, for the signed-in member of the money team: its subject and its page. */
+export async function previewMoneyMonday(): Promise<{ subject: string; html: string }> {
+  const r = (await supabase.functions.invoke('gc-money-monday-email', { body: { mode: 'preview' } })) as FnResult
+  const problem = await fnProblem(r, 'The email did not load.')
+  if (problem) throw new Error(problem)
+  const data = r.data as { subject?: string; html?: string } | null
+  if (!data?.html) throw new Error('The email did not load.')
+  return { subject: data.subject ?? '', html: data.html }
+}
+
+/** A copy marked [TEST] to the signed-in member only. */
+export async function sendMoneyMondayTest(): Promise<void> {
+  const r = (await supabase.functions.invoke('gc-money-monday-email', { body: { mode: 'test_send' } })) as FnResult
+  const problem = await fnProblem(r, 'The test did not go.')
+  if (problem) throw new Error(problem)
 }
 
 /** What Add a company sends (the Board's B3-b): `gc_add_company`'s draft. Not `known`: the company quotes, then waits for approval. */
@@ -610,6 +862,29 @@ export async function carryGcTrade(packageId: string, carry: { inviteId: string 
   taken(await supabase.from('gc_trade_packages').update(row).eq('id', packageId).select('id').single(), 'save what we carry')
 }
 
+/**
+ * Award a trade to one ask's quote (the Board's B6-a-ii, on B6-a's `gc_award`): the database re-checks the gate in
+ * `canAward`'s words, writes the award and drafts the statement of work. Its id. The estimator is who decided; unset,
+ * the one pressing.
+ */
+export async function awardGcTrade(inviteId: string, estimatorId: string | null): Promise<string> {
+  return taken(await supabase.rpc('gc_award', { p_invite_id: inviteId, ...(estimatorId ? { p_estimator: estimatorId } : {}) }), 'award the trade')
+}
+
+/**
+ * Send a trade's drafted statement of work to its portal to sign (B6-a-ii): draft to sent with the company's day, a
+ * plain update under the dev policy, found by its trade (one a trade). Its id, for the email's key.
+ */
+export async function sendGcSow(packageId: string, today: string): Promise<string> {
+  const rows = taken(
+    await supabase.from('gc_sows').update({ status: 'sent', sent_on: today }).eq('package_id', packageId).eq('status', 'draft').select('id'),
+    'send the statement of work',
+  )
+  const id = rows[0]?.id
+  if (!id) throw new Error('That statement of work is not a draft any more. Read the board again.')
+  return id
+}
+
 // ---------------------------------------------------------------------------------------------
 // Owner Billing's O3-ui: change orders to the customer (migration 20261008110000). The steps and the
 // words are checked in the database's own functions; these only carry the press there.
@@ -619,6 +894,23 @@ export async function carryGcTrade(packageId: string, carry: { inviteId: string 
 export async function loadGcChangeOrders(projectIds: string[]): Promise<ChangeOrderRow[]> {
   if (projectIds.length === 0) return []
   return taken(await supabase.from('gc_change_orders').select('*').in('project_id', projectIds).order('number'), 'load the change orders')
+}
+
+/** Our emails about these change orders, from their sent copies (O4b-2): who each went to and when, oldest first. */
+export async function loadGcChangeOrderEmails(changeOrderIds: string[]): Promise<{ source_id: string; recipient_name: string | null; sent_at: string }[]> {
+  if (changeOrderIds.length === 0) return []
+  const rows = taken(
+    await supabase
+      .from('sent_documents')
+      .select('source_id, recipient_name, sent_at')
+      .eq('source_table', 'gc_change_orders')
+      .in('kind', gcCustomerEmailCopyKinds('gc_change_orders'))
+      .eq('how', 'email')
+      .in('source_id', changeOrderIds)
+      .order('sent_at'),
+    'load the emails about the change orders',
+  )
+  return rows.flatMap((r) => (r.source_id ? [{ source_id: r.source_id, recipient_name: r.recipient_name, sent_at: r.sent_at }] : []))
 }
 
 /** A new change order, as a draft, with the next number on the project. */

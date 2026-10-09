@@ -9,13 +9,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 type Handler = (req: Request) => Promise<Response>
 const box: { handler: Handler | null } = { handler: null }
-const db: { cached: { lat: number; lng: number } | null; upserts: string[] } = { cached: null, upserts: [] }
+const db: { cached: { lat: number; lng: number } | null; upserts: string[]; role: string } = { cached: null, upserts: [], role: 'dev' }
 
 type Chain = { [method: string]: (...args: unknown[]) => unknown }
 function table(name: string): Chain {
   const chain: Chain = {}
   for (const m of ['select', 'eq']) chain[m] = () => chain
-  chain.single = () => Promise.resolve({ data: name === 'users' ? { role: 'dev' } : null, error: null })
+  chain.single = () => Promise.resolve({ data: name === 'users' ? { role: db.role } : null, error: null })
   chain.maybeSingle = () => Promise.resolve({ data: name === 'address_geocodes' ? db.cached : null, error: null })
   chain.upsert = (row: unknown) => {
     db.upserts.push((row as { address_normalized: string }).address_normalized)
@@ -60,6 +60,7 @@ afterAll(() => {
 beforeEach(() => {
   db.cached = null
   db.upserts = []
+  db.role = 'dev'
   net.nominatim = []
   net.county = 'Travis County'
 })
@@ -92,5 +93,48 @@ describe('geocode-one answers with a 200 the browser can read (v2.4878)', () => 
     expect(res.status).toBe(200)
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
     expect(await res.json()).toMatchObject({ ok: false, error: 'not_found' })
+  })
+})
+
+describe('geocode-one admits the roles that may open /map (v2.4974)', () => {
+  it('a controller is answered like an assistant, not refused', async () => {
+    db.role = 'controller'
+    db.cached = { lat: 30.2642, lng: -97.7437 }
+    const res = await post('100 Congress Ave, Austin, TX 78701')
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, fromCache: true })
+  })
+
+  it('a superintendent, who cannot open /map, is refused with a 403 the browser can read', async () => {
+    db.role = 'superintendent'
+    db.cached = { lat: 30.2642, lng: -97.7437 }
+    const res = await post('100 Congress Ave, Austin, TX 78701')
+    expect(res.status).toBe(403)
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*')
+    expect(db.upserts).toEqual([])
+  })
+})
+
+describe('geocode-one keeps only points in the lower 48 (v2.4975)', () => {
+  it("the street map's point in Assam is a miss: not stored, and the answer says why", async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    net.nominatim = [{ lat: '26.7813', lon: '91.9274' }]
+    const res = await post('1 Main Street')
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body).toMatchObject({ ok: false, error: 'not_found' })
+    expect(body.detail).toContain('OpenStreetMap placed it outside the lower 48 (26.7813, 91.9274)')
+    expect(db.upserts).toEqual([])
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('a cached point in Assam is asked again, and the good answer replaces it', async () => {
+    db.cached = { lat: 26.7813, lng: 91.9274 }
+    net.nominatim = [{ lat: '29.5688', lon: '-97.9647' }]
+    net.county = 'Guadalupe County'
+    const res = await post('123 Main St, Seguin, TX 78155')
+    expect(await res.json()).toMatchObject({ ok: true, fromCache: false, source: 'nominatim', lat: 29.5688, lng: -97.9647, county: 'Guadalupe' })
+    expect(db.upserts).toEqual(['123 main st, seguin, tx 78155'])
   })
 })

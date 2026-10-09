@@ -296,6 +296,31 @@ describe('LienDeskModal', () => {
     await waitFor(() => expect(onChanged).toHaveBeenCalled())
   })
 
+  it('two printed notices are one Do now row; its Take back… opens the run on the confirm, and the rail counts them (punch list #101)', async () => {
+    const item = (id: string, job: string) =>
+      ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: 'u-malachi', approved_at: '2026-09-14T15:00:00Z', approval_mode: 'leader', word_note: '', word_channel: '', printed_at: '2026-09-14T16:00:00Z' }) as unknown as LienDeskItemRow
+    const rows = [...J650, row('j651', '2026-07', '2026-10-15')]
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(rows, [item('it1', 'j650'), item('it2', 'j651')], true)} initialKind="next" />)
+    await settle()
+    const run = document.querySelector('[data-lien-next-up-row="run:printed"]') as HTMLElement
+    expect(run.textContent).toContain('2 notices printed Sep 14')
+    expect(document.querySelectorAll('[data-lien-next-up-act="add_tracking"]').length).toBe(0)
+    expect(screen.getByTestId('lien-step-count-notice-4').textContent).toBe('2 printed')
+    fireEvent.click(within(run).getByRole('button', { name: 'Take back…' }))
+    await settle()
+    expect(screen.getByTestId('run-take-back-confirm').textContent).toContain('Take back the run?')
+  })
+
+  it('the office: a notice waiting on the leader closes Do now under his name and leaves the tab’s count (punch list #101 PR 3)', async () => {
+    const awaiting = { id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-07'], status: 'awaiting_approval', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-12T14:00:00Z', submitted_at: '2026-09-12T14:12:00Z' } as unknown as LienDeskItemRow
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650, [awaiting], true)} initialKind="next" leaderNameFor={() => 'Sam'} />)
+    await settle()
+    const titles = Array.from(document.querySelectorAll('[data-lien-next-up-group] h3')).map((h) => h.textContent)
+    expect(titles).toEqual(['Waiting on Sam · 1'])
+    expect((document.querySelector('[data-lien-next-up-row="notice:j650"]') as HTMLElement).textContent).toContain('Waiting on Sam · since Sep 12')
+    expect(screen.getByRole('tab', { name: /^Do now/ }).textContent).toBe('Do now · 0')
+  })
+
   it('Do now is the first tab (punch list #82; Next up until v2.4630): its count, and a row\u2019s button opens the Notices pane on that job and pile', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} initialKind="next" />)
     await settle()
@@ -511,6 +536,34 @@ describe('LienDeskModal', () => {
     expect(screen.getByRole('button', { name: 'Hold' })).toBeTruthy()
   })
 
+  it('the leader’s FYI list in the title bar names what went on his word and what a GC’s standing rule sent, marked as the rule’s (v2.5028)', async () => {
+    const item = (id: string, job: string, over: Record<string, unknown>) =>
+      ({ id, job_id: job, kind: 'notice_53_056', months: ['2026-06'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u-taunya', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:12:00Z', approved_by: null, approved_at: '2026-09-14T15:00:00Z', approval_mode: 'rule', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, printed_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T15:00:00Z', voided_at: null, ...over }) as unknown as LienDeskItemRow
+    const rows = [...J650, row('j651', '2026-06', '2026-09-15'), row('j652', '2026-06', '2026-09-15'), row('j653', '2026-06', '2026-09-15')]
+    const items = [
+      item('w1', 'j650', { approval_mode: 'word', word_note: 'Malachi Whites, Sep 14', word_channel: 'phone' }),
+      item('r1', 'j651', { approval_mode: 'rule' }),
+      item('r2', 'j652', { approval_mode: 'rule', status: 'sent', sent_at: '2026-09-14T16:00:00Z' }),
+      // Printed and in the mail, its tracking not yet typed: still a send (the printed pile came after this list, v2.4119).
+      item('w2', 'j653', { approval_mode: 'word', word_note: 'Malachi Whites, Sep 14', word_channel: 'text', printed_at: '2026-09-14T16:30:00Z' }),
+    ]
+    const withJobs = () => {
+      const d = data(rows, items, true)
+      d.jobsById.j651 = { ...d.jobsById.j650!, id: 'j651', hcp_number: '651', job_name: 'Palomino Trail' }
+      d.jobsById.j652 = { ...d.jobsById.j650!, id: 'j652', hcp_number: '652', job_name: 'Quarry Bend' }
+      d.jobsById.j653 = { ...d.jobsById.j650!, id: 'j653', hcp_number: '653', job_name: 'Heron Ct' }
+      return d
+    }
+    const view = renderWithProviders(<LienDeskModal {...baseProps} authRole="master_technician" data={withJobs()} />)
+    await settle()
+    expect((document.querySelector('[data-lien-fyi]') as HTMLElement).textContent).toBe('Sent on your word: 650, 653 · by Loberg Contracting’s rule: 651, 652')
+    view.unmount()
+    // The office drafts and sends; the list is the leader's.
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="controller" data={withJobs()} />)
+    await settle()
+    expect(document.querySelector('[data-lien-fyi]')).toBeNull()
+  })
+
   it('the office sees an awaiting item as waiting on the leader, and nothing due reads calm', async () => {
     renderWithProviders(<LienDeskModal {...baseProps} authRole="controller" data={data([])} />)
     await settle()
@@ -674,7 +727,8 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
     expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
     const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
     expect(timeline.textContent).toContain('File the affidavit — tomorrow · owner of record, legal description, the notice missing.')
-    expect(timeline.textContent).toContain('Commercial dates shown — a residential property is a month earlier.')
+    // The kind is not set: the timeline says residential dates are shown, the earlier ones (v2.5031).
+    expect(timeline.textContent).toContain('Property kind not set: residential dates shown, the earlier ones. Commercial would be a month later.')
     expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
     // v2.4724: the door opens the property record in a window over the desk, not Edit Job.
     fireEvent.click(screen.getAllByRole('button', { name: 'Fill in the record ›' })[0]!)
@@ -1405,7 +1459,8 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     })
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    // ATI Schertz on its commercial property record (a kind not set would date the house's July a month earlier, v2.5031).
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650, [], true)} />)
     await settle()
     const mark = document.querySelector('[data-lien-supplier-mark]')
     expect(mark?.textContent).toContain('1 house owed $9,612')

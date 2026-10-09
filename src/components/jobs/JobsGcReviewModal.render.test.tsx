@@ -6,10 +6,12 @@
  * stays on screen. The week's data is mocked at the IO modules.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { renderSettled, settle } from '../../test/renderSmokeMocks'
 import { gcReviewWeekStartYmd, type GcReviewCertRow } from '../../lib/jobs/gcReviewCertification'
+import { listGcReviewCertifications } from '../../lib/gcReviewCertifications'
+import { GC_STATEMENT_UNCHECKED_WORDS } from '../../../supabase/functions/_shared/gcStatementGate'
 import type { RoundMarkRow } from '../../lib/jobs/gcStatementRounds'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -306,5 +308,132 @@ describe('JobsGcReviewModal', () => {
     // Back under By GC the track is there again.
     fireEvent.click(screen.getByRole('button', { name: 'By GC' }))
     expect(screen.getByRole('group', { name: 'Where this week stands' })).toBeTruthy()
+  })
+})
+
+/** Opens a GC's statement and its Share menu (v2.5022): the menu holds the three doors a statement leaves by. */
+function openShare(name: string, row: () => HTMLElement) {
+  fireEvent.click(within(row()).getByRole('button', { name: `Show ${name}’s bills` }))
+  fireEvent.click(within(row()).getByRole('button', { name: `Share statement for ${name}` }))
+  return within(within(row()).getByRole('menu'))
+}
+const door = (menu: ReturnType<typeof openShare>, name: string) => menu.getByRole('button', { name }) as HTMLButtonElement
+
+describe('JobsGcReviewModal — a statement never goes out unchecked (v2.5022)', () => {
+  it('a GC not checked this week: Draft Message, Copy and Print say why, in the words of the row’s Send, and do nothing', async () => {
+    const onCopyForEmail = vi.fn()
+    const onPrint = vi.fn()
+    await open({ onCopyForEmail, onPrint })
+    expect(within(rowFor('TF Harper')).getByTitle(GC_STATEMENT_UNCHECKED_WORDS).getAttribute('data-state')).toBe('locked')
+    const menu = openShare('TF Harper', () => rowFor('TF Harper'))
+    expect(menu.getByTestId('gc-statement-held').textContent).toBe(GC_STATEMENT_UNCHECKED_WORDS)
+    for (const name of ['Draft Message', 'Copy', 'Print']) {
+      expect(door(menu, name).disabled).toBe(true)
+      fireEvent.click(door(menu, name))
+    }
+    expect(onCopyForEmail).not.toHaveBeenCalled()
+    expect(onPrint).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog', { name: 'Email statement to TF Harper' })).toBeNull()
+    // Only the statement waits: finding a check is not sending one.
+    expect(door(menu, 'Find a check…').disabled).toBe(false)
+  })
+
+  it('a checked GC’s statement goes out by every door', async () => {
+    const onCopyForEmail = vi.fn()
+    const onPrint = vi.fn()
+    await open({ onCopyForEmail, onPrint })
+    const knight = () => rowFor('Knight Contracting')
+    let menu = openShare('Knight Contracting', knight)
+    expect(menu.queryByTestId('gc-statement-held')).toBeNull()
+    fireEvent.click(door(menu, 'Copy'))
+    expect(onCopyForEmail).toHaveBeenCalledTimes(1)
+    expect(onCopyForEmail.mock.calls[0]![0]).toMatchObject({ gcId: KNIGHT.id })
+    fireEvent.click(within(knight()).getByRole('button', { name: 'Share statement for Knight Contracting' }))
+    menu = within(within(knight()).getByRole('menu'))
+    fireEvent.click(door(menu, 'Print'))
+    expect(onPrint).toHaveBeenCalledTimes(1)
+    fireEvent.click(within(knight()).getByRole('button', { name: 'Share statement for Knight Contracting' }))
+    menu = within(within(knight()).getByRole('menu'))
+    fireEvent.click(door(menu, 'Draft Message'))
+    expect(await screen.findByRole('dialog', { name: 'Email statement to Knight Contracting' })).toBeTruthy()
+  })
+
+  it('checked, then a bill landed: the doors wait for the re-check', async () => {
+    certs.rows = [cert(KNIGHT.id, 25000), cert(LOBERG.id, 22000)]
+    await renderSettled(<JobsGcReviewModal {...props()} />, { loaded: () => screen.findByRole('button', { name: /^Check: 2 to check/ }) })
+    const menu = openShare('Knight Contracting', () => rowFor('Knight Contracting'))
+    expect(menu.getByTestId('gc-statement-held').textContent).toBe(GC_STATEMENT_UNCHECKED_WORDS)
+    expect(door(menu, 'Copy').disabled).toBe(true)
+  })
+
+  it('a GC that owes only in Collections has nothing to check, and its doors stay open', async () => {
+    const onCopyForEmail = vi.fn()
+    await open({ onCopyForEmail })
+    const menu = openShare('Oldco Builders', () => screen.getByTestId('gc-review-other-row'))
+    expect(menu.queryByTestId('gc-statement-held')).toBeNull()
+    fireEvent.click(door(menu, 'Copy'))
+    expect(onCopyForEmail).toHaveBeenCalledTimes(1)
+  })
+
+  it('when the week’s checks cannot be read, the doors say that rather than calling a checked GC unchecked', async () => {
+    vi.mocked(listGcReviewCertifications).mockRejectedValueOnce(new Error('offline'))
+    await renderSettled(<JobsGcReviewModal {...props()} />, { loaded: () => screen.findByRole('button', { name: /^Check: 2 to check/ }) })
+    await settle()
+    const menu = openShare('Knight Contracting', () => rowFor('Knight Contracting'))
+    expect(menu.getByTestId('gc-statement-held').textContent).toBe('This week’s checks could not be read. Close GC Review and open it again.')
+    expect(door(menu, 'Draft Message').disabled).toBe(true)
+  })
+
+  it('Print all leaves out a GC not checked this week and says so; the checked ones still print', async () => {
+    const onPrint = vi.fn()
+    await open({ onPrint })
+    fireEvent.click(screen.getByRole('button', { name: 'Print all' }))
+    expect(onPrint).toHaveBeenCalledTimes(1)
+    expect((onPrint.mock.calls[0]![0] as Array<{ gcName: string }>).map((g) => g.gcName)).toEqual(['Knight Contracting', 'Loberg Contracting', 'Oldco Builders'])
+    expect(await screen.findByText('3 printed · 1 held: not checked this week')).toBeTruthy()
+  })
+
+  it('Share all names the held GC, and its email carries the checked GCs with the held line on top', async () => {
+    const onSendStatement = vi.fn(async (_p: { groupBy: string; emailHtml: string; total: number }) => ({ ok: true }))
+    await open({ onSendStatement })
+    fireEvent.click(screen.getByRole('button', { name: 'Share the whole GC Review report' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Share the whole GC Review report' }))
+    expect(dialog.getByTestId('gc-report-held').textContent).toContain('Held, not checked this week: TF Harper')
+    expect(dialog.getByText(/^3 GC sections/)).toBeTruthy()
+    fireEvent.change(dialog.getByPlaceholderText('name@example.com'), { target: { value: 'office@example.com' } })
+    fireEvent.click(dialog.getByRole('button', { name: 'Send report' }))
+    await waitFor(() => expect(onSendStatement).toHaveBeenCalledTimes(1))
+    const sent = onSendStatement.mock.calls[0]![0]
+    expect(sent.groupBy).toBe('all')
+    expect(sent.emailHtml).toContain('Held, not checked this week: TF Harper')
+    expect(sent.emailHtml).toContain('Palomino Trail')
+    expect(sent.emailHtml).not.toContain('Terrell Rd')
+    expect(sent.total).toBe(26000 + 22000 + 5000)
+    expect(await screen.findByText('3 sent · 1 held: not checked this week')).toBeTruthy()
+  })
+
+  it('By Development, Print all prints every section: development statements are not held', async () => {
+    const onPrint = vi.fn()
+    const SAGE = { id: 'dev-sage', name: 'Sage Meadows' }
+    const withDevelopment = [invRow('i-knight', job({ id: 'j-knight', gcCustomer: KNIGHT, development: SAGE, hcp_number: '651', job_name: 'Palomino Trail' }), 26000), ...billedActiveRows.slice(1)]
+    await open({ billedActiveRows: withDevelopment, onPrint })
+    fireEvent.click(screen.getByRole('button', { name: 'By Development' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Print all' }))
+    const printed = onPrint.mock.calls[0]![0] as Array<{ gcName: string; subtotal: number }>
+    expect(printed.reduce((t, g) => t + g.subtotal, 0)).toBe(30000 + 26000 + 22000 + 5000)
+    expect(screen.queryByText(/held: not checked this week/)).toBeNull()
+  })
+
+  it('a send the server holds shows its words in the dialog', async () => {
+    const onSendStatement = vi.fn(async () => ({ ok: false, error: GC_STATEMENT_UNCHECKED_WORDS }))
+    await open({ onSendStatement })
+    fireEvent.click(within(rowFor('Knight Contracting')).getByRole('button', { name: 'Send' }))
+    const dialog = within(await screen.findByRole('dialog', { name: 'Email statement to Knight Contracting' }))
+    fireEvent.click(dialog.getByRole('button', { name: '+ Pick who gets it' }))
+    fireEvent.change(dialog.getByRole('textbox', { name: 'Search a name or type an address' }), { target: { value: 'ap@knight.example' } })
+    fireEvent.click(dialog.getByRole('option', { name: /^Use ap@knight\.example/ }))
+    fireEvent.click(dialog.getByRole('button', { name: 'Send statement' }))
+    expect(await dialog.findByText(GC_STATEMENT_UNCHECKED_WORDS)).toBeTruthy()
+    expect(onSendStatement).toHaveBeenCalledTimes(1)
   })
 })

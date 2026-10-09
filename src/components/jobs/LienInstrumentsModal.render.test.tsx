@@ -110,8 +110,9 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     await screen.findByTestId('lien-rules-modal')
     const strip = await screen.findByTestId('lien-rules-job')
     expect(strip.textContent).toContain('Sub job')
-    expect(screen.getByTestId('lien-rules-job-notice').textContent).toBe('Oct 15')
-    expect(screen.getByTestId('lien-rules-job-lien').textContent).toBe('Nov 16')
+    // The job's property kind is not set: the residential dates, a month earlier than commercial (v2.5031).
+    expect(screen.getByTestId('lien-rules-job-notice').textContent).toBe('Sep 15')
+    expect(screen.getByTestId('lien-rules-job-lien').textContent).toBe('Oct 15')
     const lit = screen.getByTestId('lien-rules-body').querySelector('table[data-live-dates] tr[data-lit="yes"]')
     expect(lit?.firstElementChild?.textContent).toBe('July')
   })

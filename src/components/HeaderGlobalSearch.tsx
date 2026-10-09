@@ -307,7 +307,8 @@ export function HeaderGlobalSearchProvider({
         return
       }
       void Promise.all([
-        supabase.rpc('search_jobs_ledger', { search_text: q }),
+        // The office's search finds a GC job's billing job too; the field lookup above never does.
+        supabase.rpc('search_jobs_ledger', { search_text: q, include_billing_only: true }),
         supabase.rpc('search_bids_for_clock', bidsParams),
         supabase.rpc('search_estimates_for_nav', { search_text: q }),
         customersPromise,

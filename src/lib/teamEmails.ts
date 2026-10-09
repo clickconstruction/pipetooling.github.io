@@ -50,6 +50,7 @@ export type TeamSampleEmailId =
   | 'signed_agreement_staff'
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
+  | 'gc_money_monday'
   | 'lien_desk_summary'
   | 'bid_room_activity_staff'
   | 'portal_request_staff'
@@ -341,6 +342,17 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     manage: emails('GC Review → Ask'),
     reflects: ['GC Review’s worklist'],
     guide: 'run-your-gc-statement-round',
+  },
+  {
+    id: 'gc_money_monday',
+    label: 'Our GC money',
+    when: { kind: 'weekly', label: 'On the days its people pick', order: 34 },
+    recipients: { roles: ['dev', 'master_technician', 'controller'], decidedBy: 'role', rule: 'The money team: devs, leaders and the controller, each on the days they or a teammate pick.' },
+    sampleSubject: (c) => `Our GC money, ${shortDayLabel(c.todayYmd, 0).replace(',', '')}`,
+    render: { kind: 'sample', sample: 'gc_money_monday' },
+    manage: stream('gc_money_monday', 'GC projects → Money → The Monday money email'),
+    reflects: ['the bills on our GC jobs', 'Money in GC projects'],
+    guide: 'get-our-gc-money-by-email-each-week',
   },
   {
     id: 'recurring_job_report',

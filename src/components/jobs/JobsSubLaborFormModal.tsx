@@ -10,7 +10,7 @@ import {
   type SetStateAction,
   useMemo,
 } from 'react'
-import { subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
+import { subPaymentMoveRefusal, subPaymentTraceLines } from '../../lib/jobs/subPaymentMoveRemove'
 import { isOnBench } from '../../lib/people/subBench'
 import { useIsMobile } from '../../hooks/useIsMobile'
 import { supabase } from '../../lib/supabase'
@@ -177,6 +177,8 @@ function JobsSubLaborFormModalInner(
   // v2.3562: the phone ⋯ menu on a payment row, and the sheet map the trace lines label from.
   const isMobileForPayments = useIsMobile()
   const [paymentMenuId, setPaymentMenuId] = useState<string | null>(null)
+  /** The payment whose Move was just refused (a backcharge stays on its sheet), so its row says why. */
+  const [moveRefusedId, setMoveRefusedId] = useState<string | null>(null)
   const sheetsByIdForTrace = useMemo(() => new Map((allLaborJobs ?? []).map((j) => [j.id, j] as const)), [allLaborJobs])
   const confirmDialog = useConfirmDialog()
   const { showToast } = useToastContext()
@@ -431,7 +433,7 @@ function JobsSubLaborFormModalInner(
   const laborModalOfficeTeamShown = filterLaborCrewNames(laborModalOfficeTeamAll, laborCrewSearchLower)
 
   async function loadServiceTypes() {
-    const { data, error } = await supabase.from('service_types' as any).select('*').order('sequence_order', { ascending: true })
+    const { data, error } = await supabase.from('service_types' as any).select('*').eq('billing_only', false).order('sequence_order', { ascending: true })
     if (error) {
       setError(`Failed to load service types: ${error.message}`)
       return
@@ -2070,6 +2072,11 @@ function JobsSubLaborFormModalInner(
                                     {(() => {
                                       // v2.3562: Edit · Move… · Remove on the row; on a phone, Edit and a ⋯ menu.
                                       const target: EditingPaymentTarget = { id: p.id, jobId: editingLaborJob.id, amount: Number(p.amount), memo: p.memo, isBackcharge: Number(p.amount) < 0, paymentDate: p.payment_date ?? null, createdAt: p.created_at ?? null }
+                                      // A backcharge stays on the sheet it was raised on: Move says so on the row instead of opening.
+                                      const tryMove = () => {
+                                        if (subPaymentMoveRefusal(target)) setMoveRefusedId(p.id)
+                                        else onOpenMovePayment?.(target)
+                                      }
                                       const small = { font: 'inherit', padding: '0.25rem 0.55rem', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' } as const
                                       const editBtn = (
                                         <button type="button" onClick={() => onOpenEditPayment(target, String(Math.abs(Number(p.amount))), p.memo ?? '')} style={{ ...small, background: 'var(--bg-200)', color: 'var(--text-700)', border: 'none' }}>Edit</button>
@@ -2083,7 +2090,7 @@ function JobsSubLaborFormModalInner(
                                             <button type="button" aria-label="More actions" aria-haspopup="menu" aria-expanded={open} onClick={() => setPaymentMenuId(open ? null : p.id)} style={{ ...small, minWidth: 36, background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', fontWeight: 700 }}>⋯</button>
                                             {open ? (
                                               <div role="menu" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 5, minWidth: 200, background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 10px 24px rgba(0,0,0,0.14)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                                                {onOpenMovePayment ? <button type="button" role="menuitem" onClick={() => { setPaymentMenuId(null); onOpenMovePayment(target) }} style={{ font: 'inherit', minHeight: 44, padding: '0 0.9rem', textAlign: 'left', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--text-blue-800)', cursor: 'pointer' }}>Move to another sheet…</button> : null}
+                                                {onOpenMovePayment ? <button type="button" role="menuitem" onClick={() => { setPaymentMenuId(null); tryMove() }} style={{ font: 'inherit', minHeight: 44, padding: '0 0.9rem', textAlign: 'left', background: 'var(--surface)', border: 'none', borderBottom: '1px solid var(--border)', color: 'var(--text-blue-800)', cursor: 'pointer' }}>Move to another sheet…</button> : null}
                                                 {onOpenRemovePayment ? <button type="button" role="menuitem" onClick={() => { setPaymentMenuId(null); onOpenRemovePayment(target) }} style={{ font: 'inherit', minHeight: 44, padding: '0 0.9rem', textAlign: 'left', background: 'var(--surface)', border: 'none', color: 'var(--text-red-700)', cursor: 'pointer' }}>Remove {Number(p.amount) < 0 ? 'backcharge' : 'payment'}…</button> : null}
                                               </div>
                                             ) : null}
@@ -2093,12 +2100,15 @@ function JobsSubLaborFormModalInner(
                                       return (
                                         <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                                           {editBtn}
-                                          {onOpenMovePayment ? <button type="button" onClick={() => onOpenMovePayment(target)} style={{ ...small, background: 'var(--surface)', color: 'var(--text-blue-800)', border: '1px solid var(--border-blue)' }}>Move…</button> : null}
+                                          {onOpenMovePayment ? <button type="button" onClick={tryMove} style={{ ...small, background: 'var(--surface)', color: 'var(--text-blue-800)', border: '1px solid var(--border-blue)' }}>Move…</button> : null}
                                           {onOpenRemovePayment ? <button type="button" onClick={() => onOpenRemovePayment(target)} style={{ ...small, background: 'var(--surface)', color: 'var(--text-red-700)', border: '1px solid var(--border-red)' }}>Remove</button> : null}
                                         </div>
                                       )
                                     })()}
                                     </div>
+                                    {moveRefusedId === p.id ? (
+                                      <div role="status" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', paddingTop: '0.25rem' }}>{subPaymentMoveRefusal({ amount: Number(p.amount) })}</div>
+                                    ) : null}
                                   </td>
                                 </tr>
                                 </Fragment>

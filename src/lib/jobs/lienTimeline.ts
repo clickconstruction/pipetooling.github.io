@@ -37,7 +37,7 @@ import { workMonthShort } from './forecastWorkMonths'
  *
  * What it must not do (owner rulings): re-date a missed month (v2.3681),
  * mark a miss without a person's name (v2.3679), guess a property kind
- * (v2.3670). An unknown kind shows commercial dates and says so.
+ * (v2.3670). An unknown kind shows residential dates, the earlier ones, and says so (v2.5031).
  */
 
 export type LienTimelineStepKind = 'last_work' | 'notice' | 'retainage' | 'affidavit' | 'serve' | 'hold' | 'suit' | 'release' | 'demand'
@@ -143,7 +143,7 @@ export interface LienTimelineNext {
 export interface LienTimeline {
   steps: LienTimelineStep[]
   next: LienTimelineNext
-  /** Commercial dates shown on a property of unknown kind — say so. */
+  /** Residential dates shown on a property of unknown kind (v2.5031) — say so. */
   kindUnknown: boolean
   /** A sub job whose every notice window closed with nothing sent: no affidavit can follow. */
   lienGone: boolean
@@ -744,7 +744,7 @@ export function lienTimelineNextLine(t: LienTimeline): string {
 }
 
 /** The warning the Next line carries when the property kind is not set (the strip and the Lien window's folded strip both print it). */
-export const LIEN_KIND_UNKNOWN_WORDS = 'Commercial dates shown — a residential property is a month earlier.'
+export const LIEN_KIND_UNKNOWN_WORDS = 'Property kind not set: residential dates shown, the earlier ones. Commercial would be a month later.'
 
 /** What the Lien window's folded strip says on a phone (v2.4398): the next step, and beside it the facts a fold must never hide. */
 export interface LienTimelineFoldSummary {

@@ -459,3 +459,55 @@ export function creditEffectSentence(args: {
   }
   return `Takes ${dollars} off what we owe ${house}, and ${dollars} off ${args.jobLabel}’s parts cost.`
 }
+
+// ---------------------------------------------------------------------------
+// A credit pairs to the invoice it credits (v2.5035, the owner's call of 2026-10-09):
+// `supply_house_invoices.credits_invoice_id` on a credit names the same house's invoice it takes
+// money off. The credit form's Credits invoice… pick sets it, and both rows show the pair.
+// ---------------------------------------------------------------------------
+
+/** A house's row as the pairing reads it. The column is optional until the types regenerate. */
+export type PairableSupplyRow = {
+  id: string
+  invoice_number: string | null
+  amount: number
+  document_kind?: string | null
+  credits_invoice_id?: string | null
+}
+
+const pairDollars = (n: number): string => `$${Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+const pairNumber = (r: PairableSupplyRow): string => (r.invoice_number ?? '').trim() || 'no number'
+
+/** The invoices a credit may pair to: this house's invoices, never a credit and never itself, newest first. */
+export function creditableInvoices(rows: ReadonlyArray<PairableSupplyRow & { invoice_date: string }>, creditId: string | null): Array<{ id: string; label: string }> {
+  return rows
+    .filter((r) => r.id !== creditId && documentKindFromRow(r) === 'invoice')
+    .sort((a, b) => b.invoice_date.localeCompare(a.invoice_date) || pairNumber(a).localeCompare(pairNumber(b)))
+    .map((r) => ({ id: r.id, label: `${pairNumber(r)} · ${pairDollars(r.amount)} · ${formatYmdShort(r.invoice_date)}, ${r.invoice_date.slice(0, 4)}` }))
+}
+
+/**
+ * The pair a row shows. A credit names the invoice it credits ("Credits S123148787.003"); an
+ * invoice names each credit against it ("Credited by C-778 (−$120.00)"). Null when unpaired.
+ */
+export function creditPairingLine(row: PairableSupplyRow, rows: ReadonlyArray<PairableSupplyRow>): string | null {
+  if (documentKindFromRow(row) === 'credit') {
+    if (!row.credits_invoice_id) return null
+    const invoice = rows.find((r) => r.id === row.credits_invoice_id)
+    return invoice ? `Credits ${pairNumber(invoice)}` : 'Credits an invoice not on this list'
+  }
+  const credits = rows.filter((r) => r.credits_invoice_id === row.id)
+  if (credits.length === 0) return null
+  return `Credited by ${credits.map((c) => `${pairNumber(c)} (−${pairDollars(c.amount)})`).join(', ')}`
+}
+
+/**
+ * What a save writes about the pair: only a credit carries one, and the column goes in the payload
+ * only when it changes, so a save before the column exists names no new column. An invoice clears
+ * a pair it held.
+ */
+export function creditsInvoicePatch(kind: SupplyDocumentKind, choice: string, before: { credits_invoice_id?: string | null } | null): { credits_invoice_id: string | null } | Record<string, never> {
+  const next = kind === 'credit' ? choice || null : null
+  const prior = before?.credits_invoice_id ?? null
+  return next === prior ? {} : { credits_invoice_id: next }
+}

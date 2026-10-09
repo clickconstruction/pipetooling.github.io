@@ -140,6 +140,16 @@ describe('sample emails (What customers see)', () => {
   })
 })
 
+describe('v2.5026 · the submittal link email (Submittals decision 11)', () => {
+  it('is the send function\u2019s builder over the sample room, from the company', () => {
+    const m = buildSampleEmail('submittal-room-link', ctx)
+    expect(m.subject).toBe('Click Plumbing and Electrical shared Rev 2 of the submittal for BP482 Cedar Bend Apartments')
+    expect(m.text.split('\n')[0]).toBe('Hi Alex,')
+    expect(m.html).toContain('href="https://clicktooling.com/submittal?t=sample"')
+    expect(m.from).toBe('Click Plumbing and Electrical <team@noreply.clicktooling.com>')
+  })
+})
+
 describe('sample emails carry the From line the inbox shows (v2.4138)', () => {
   it('the estimate is the plumbing brand; every other sample is the company', () => {
     expect(buildSampleEmail('estimate', ctx).from).toBe('Click Plumbing <team@noreply.clicktooling.com>')

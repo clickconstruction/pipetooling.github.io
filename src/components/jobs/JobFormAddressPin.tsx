@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useOptionalAuth } from '../../hooks/useAuth'
-import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { isPathAllowedForRole } from '../../lib/layoutRouteAccess'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
 import { invokeGeocodeOneRefreshGoogleOnly, type GeocodeOneResponse } from '../../lib/map/invokeGeocodeOneRefreshGoogleOnly'
 import { ADDRESS_PIN_PAUSE_MS, addressLooksWhole, addressPinFailureReason, addressPinWords, type AddressPinState } from '../../lib/jobs/addressPinWords'
@@ -13,12 +13,15 @@ import { ADDRESS_PIN_PAUSE_MS, addressLooksWhole, addressPinFailureReason, addre
  * address, and says the county it landed in so a wrong pin is seen at the desk.
  * Advice, never law: nothing here blocks a save, and nothing is written on the job;
  * the pin lives in `address_geocodes` under the address, where the Map page and the
- * court map read it. Only the roles the function admits see the line.
+ * court map read it. The line shows to whoever may open /map — the same rule the
+ * nav, the Bid map and the Who's in map read (`isPathAllowedForRole`), and the
+ * list `geocode-one` admits (v2.4974: the controller was on one side and not the other).
  */
 export default function JobFormAddressPin({ address, blurSignal = 0 }: { address: string; blurSignal?: number }) {
   // Outside an AuthProvider (render smokes of the form) there is no role and the line stays silent.
   const role = useOptionalAuth()?.role ?? null
-  const allowed = role === 'dev' || role === 'master_technician' || role === 'estimator' || isAssistantLike(role)
+  // `/map` is on the estimator's list with or without prospects access, so `false` is safe here.
+  const allowed = isPathAllowedForRole(role, '/map', false)
   const [state, setState] = useState<AddressPinState>({ kind: 'idle' })
   const [lastRunFor, setLastRunFor] = useState('')
   const timer = useRef<number | null>(null)

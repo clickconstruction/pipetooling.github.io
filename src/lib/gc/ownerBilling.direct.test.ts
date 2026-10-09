@@ -34,7 +34,7 @@ import {
   spreadMarkup,
   type OwnerPayApp,
 } from './ownerBilling'
-import { OWNER_INTEREST_DEFAULT_PCT, ownerInterestFrom, ownerInterestOnBill } from './ownerBillingInterest'
+import { OWNER_INTEREST_DEFAULT_PCT, ownerInterestFrom, ownerInterestOnBill, ownerInterestWords } from './ownerBillingInterest'
 import { customerGreeting, latePayApps, PAY_REMINDER_DAYS, payReminderEmail, payReminderSentWords, payReminderStep } from './ownerBillingRemind'
 import { initialGcState } from './schedule/testState'
 import type { ChangeOrder, GcState } from './types'
@@ -210,12 +210,32 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
     ])
   })
 
-  it('runs interest on the late bill from the day after it was due', () => {
+  it('runs interest on the late bill from the day after it falls due by the contract (decision 7, O6b-1)', () => {
     const s = initialGcState()
-    const p = { ...job(s, 'fairoaksd'), ownerLateInterest: { pctPerMonth: 1.5 } }
+    // Pay application 3 went Sep 25: with 5 days to pay by the contract, it fell due Sep 30.
+    const p = { ...job(s, 'fairoaksd'), ownerLateInterest: { pctPerMonth: 1.5 }, ownerPayDays: 5 }
     const app = ownerPayAppsSent(p)[2]!
     const bill = ownerInterestOnBill(s, p, app, 1.5)
     expect([ownerInterestFrom(s, p, app), bill && [bill.from, bill.days, cents(bill.amount)], OWNER_INTEREST_DEFAULT_PCT]).toEqual(['2026-09-30', ['2026-09-30', 2, 284.92], 1.5])
+  })
+
+  it('never starts interest on a promise or the customer\'s usual days, nor before the contract\'s days are typed', () => {
+    const s = initialGcState()
+    const p = job(s, 'fairoaksd')
+    const app = ownerPayAppsSent(p)[2]!
+    // Their Sep 30 promise and their 38 usual days start nothing on their own.
+    expect([ownerInterestFrom(s, p, app), ownerInterestOnBill(s, p, app, 1.5)]).toEqual([null, null])
+    // 10 contract days put it due Oct 5, after their Sep 30 promise: still not late on Oct 2.
+    const later = { ...p, ownerPayDays: 10 }
+    expect([ownerInterestFrom(s, later, app), ownerInterestOnBill(s, later, app, 1.5)]).toEqual(['2026-10-05', null])
+  })
+
+  it('says the job\'s interest in its terms', () => {
+    expect([ownerInterestWords(null, 30), ownerInterestWords(1.5, null), ownerInterestWords(1.5, 30)]).toEqual([
+      'No interest on late bills.',
+      '1.5% a month on a late bill, once the contract\'s days to pay are typed.',
+      '1.5% a month on a late bill, from the day after it falls due by the contract.',
+    ])
   })
 
   it('offers a reminder on the late bill only', () => {
@@ -251,8 +271,8 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
                'Pay application 3 for Fair Oaks Shops, Building D has $288,879 still open. It was due Wed Sep 30, the day you gave.',
                'Please pay it by Wed Oct 7.',
                'Thank you for your help.',
-               'Pay it in your portal, by card or bank transfer.',
-               'Our unconditional lien waiver for it comes to you the day it is paid.',
+               'Reply with the day you will pay.',
+               'Our unconditional lien waiver for it follows once it is paid.',
              ],
     })
   })
