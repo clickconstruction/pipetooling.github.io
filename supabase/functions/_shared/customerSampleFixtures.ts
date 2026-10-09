@@ -9,7 +9,8 @@ import { rollUpPartDecisions, roomCounts, roomRowsFrom, type RoomItemSource, typ
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_OWNER, SAMPLE_SUB, SAMPLE_TOKEN, SAMPLE_TOKEN_OWNER, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
 import { resolveEstimateCustomerExperience, toClientCustomerExperience } from './estimateCustomerExperience.ts'
-import type { SharedBidRoomPayload } from './bidRoomPayload.ts'
+import { parseSharedBidRoomPayload } from './bidRoomPayload.ts'
+import { buildBidRoomRevisionPayload } from './bidRoomPublish.ts'
 
 export type AppSettingRow = { key: string; value_text: string | null }
 
@@ -108,29 +109,77 @@ export function sampleEstimateResponse(rows: AppSettingRow[], state: SampleState
   }
 }
 
-/** get-bid-proposal-room, sample token: the room with one pending change order; `done` = signed. */
+/**
+ * The sample letter's with-and-without alternate and each section's bid version (v2.5105, punch
+ * list #103): what a published room carries that `SAMPLE_BID` does not. They sit here, not in
+ * `customerSample.ts`, so the functions that only read the sample names keep their bundle.
+ */
+const SAMPLE_BID_VERSION_IDS: Record<string, string> = { base: 'sample-bid-version-to-plans', 'alt-1': 'sample-bid-version-pex' }
+const SAMPLE_BID_ADD_ONS = [
+  {
+    tag: 'Clubhouse',
+    label: 'Alternate 2 — Clubhouse restrooms',
+    revenueSum: 4_850,
+    fixtureRows: [
+      { fixture: 'Water closet', count: 2 },
+      { fixture: 'Lavatory', count: 2 },
+      { fixture: 'Urinal', count: 1 },
+    ],
+  },
+]
+
+/**
+ * get-bid-proposal-room, sample token: the room with one pending change order; `done` = signed.
+ * The payload takes a real revision's path (v2.5105, punch list #103): `SAMPLE_BID`'s two priced
+ * sections and the add-on go through `buildBidRoomRevisionPayload`, the kernel the Cover Letter
+ * tab publishes with, then `parseSharedBidRoomPayload`, the read this function makes of a stored
+ * revision. The builder, not this file, decides the room's keys, totals, brand and add-ons.
+ */
 export function sampleBidRoomResponse(rows: AppSettingRow[], state: SampleState, nowIso: string, todayYmd: string): Record<string, unknown> {
-  const payload: SharedBidRoomPayload = {
-    v: 1,
-    add_ons: [],
-    project_name: SAMPLE_BID.projectName,
-    project_address: SAMPLE_BID.projectAddress,
-    gc_name: SAMPLE_GC.company,
-    service_type_name: SAMPLE_BID.serviceTypeName,
-    options: SAMPLE_BID.options.map((o) => ({ key: o.key, name: o.name, is_base: o.is_base, total_cents: o.total_cents, fixture_rows: o.fixture_rows.map((r) => ({ ...r })) })),
+  const built = buildBidRoomRevisionPayload({
+    projectName: SAMPLE_BID.projectName,
+    projectAddress: SAMPLE_BID.projectAddress,
+    gcName: SAMPLE_GC.company,
+    serviceTypeName: SAMPLE_BID.serviceTypeName,
+    sections: SAMPLE_BID.options.map((o) => ({
+      name: o.name,
+      isAlternate: !o.is_base,
+      revenueSum: o.total_cents / 100,
+      bidVersionId: SAMPLE_BID_VERSION_IDS[o.key] ?? null,
+      fixtureRows: o.fixture_rows.map((r) => ({ ...r })),
+    })),
     inclusions: SAMPLE_BID.inclusions,
     exclusions: setting(rows, BID_COVER_LETTER_EXCLUSIONS_KEY) ?? SAMPLE_BID.exclusionsFallback,
     terms: setting(rows, BID_COVER_LETTER_TERMS_KEY) ?? SAMPLE_BID.termsFallback,
-    header_brand: SAMPLE_BID.headerBrand,
-  }
-  const base = SAMPLE_BID.options[0]
+    addOns: SAMPLE_BID_ADD_ONS.map((a) => ({ ...a, fixtureRows: a.fixtureRows.map((r) => ({ ...r })) })),
+  })
+  // The stored revision is jsonb: the round trip is the one a published payload takes.
+  const payload = built ? parseSharedBidRoomPayload(JSON.parse(JSON.stringify(built))) : null
+  if (!payload) throw new Error('the sample bid room did not build')
+  const base = payload.options.find((o) => o.is_base) ?? payload.options[0]!
   const signed = state === 'done'
+  // The room ticks every add-on to start, so a signature that keeps the default takes them; the
+  // metadata is the shape `sign-bid-room` writes on the signed event.
+  const taken = payload.add_ons
   return {
     revision: { id: 'sample-revision', rev_number: signed ? 2 : 1, note: signed ? SAMPLE_BID.revisionNote : '', published_at: nowIso },
     payload,
     attachment: null,
     outcome: signed
-      ? { event_type: 'signed', metadata: { option_key: base.key, option_name: base.name, total_cents: base.total_cents, printed_name: SAMPLE_GC.contact }, occurred_at: nowIso }
+      ? {
+          event_type: 'signed',
+          metadata: {
+            option_key: base.key,
+            option_name: base.name,
+            ...(base.bid_version_id ? { option_version_id: base.bid_version_id } : {}),
+            total_cents: base.total_cents + taken.reduce((s, a) => s + a.total_cents, 0),
+            add_ons_taken: taken.map((a) => a.name),
+            add_on_keys: taken.map((a) => a.key),
+            rev_number: 2,
+            printed_name: SAMPLE_GC.contact,
+          },
+          occurred_at: nowIso,
+        }
       : null,
     documents: [
       {
