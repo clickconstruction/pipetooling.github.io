@@ -3,6 +3,8 @@
  * see, Settings dev tab). Each one lays the live Settings over `customerSample.ts` so the page
  * renders exactly what a real customer would get with today's copy, terms, footer and brand.
  */
+import { normalizeSharedEstimateOptions } from './estimateOptions.ts'
+import { estimateOptionsDraftPersistFields } from './estimateOptionsPersist.ts'
 import { rollUpPartDecisions, roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, type RoomRow, type SubmittalRoomPayload } from './submittalRoomPayload.ts'
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_OWNER, SAMPLE_SUB, SAMPLE_TOKEN, SAMPLE_TOKEN_OWNER, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
@@ -21,21 +23,79 @@ function setting(rows: AppSettingRow[], key: string): string | null {
   return t ? t : null
 }
 
-/** get-estimate-for-customer, sample token: 200 with the live estimate, or the 409 the thank-you page reads. */
+const sampleEstimateLine = (line_item: string, description: string, quantity: number, unit_price_cents: number) => ({
+  line_item,
+  description,
+  quantity,
+  unit_price_cents,
+  amount_cents: quantity * unit_price_cents,
+})
+
+/**
+ * The sample estimate's options (v2.5112, punch list #103): two choices, the ★ on the like-for-like
+ * tank (`SAMPLE_ESTIMATE`'s own lines), and one add-on. They sit here, not in `customerSample.ts`,
+ * so the functions that only read the sample names keep their bundle.
+ */
+const SAMPLE_ESTIMATE_OPTIONS = [
+  {
+    key: 'sample-option-tank',
+    name: '50-gal gas tank, like for like',
+    description: 'The same size and fuel as today, installed in a day.',
+    recommended: true,
+    kind: 'choice' as const,
+    line_items: SAMPLE_ESTIMATE.lines.map((l) => ({ ...l })),
+  },
+  {
+    key: 'sample-option-tankless',
+    name: 'Tankless gas heater',
+    description: 'Hot water that does not run out, and a smaller footprint. It needs a larger gas line and new venting.',
+    recommended: false,
+    kind: 'choice' as const,
+    line_items: [
+      sampleEstimateLine('Remove existing water heater', 'Drain, disconnect and haul off the existing 50-gal gas heater', 1, 25_000),
+      sampleEstimateLine('Tankless gas water heater, installed', 'Condensing tankless gas heater on the wall, isolation valves and flush kit', 1, 465_000),
+      sampleEstimateLine('Gas line and venting', 'Upsize the gas line to the heater and run new PVC venting', 1, 110_000),
+      sampleEstimateLine('Permit and inspection', 'City of Kyle mechanical permit and inspection visit', 1, 20_000),
+    ],
+  },
+  {
+    key: 'sample-option-recirc',
+    name: 'Hot water recirculation pump',
+    description: 'Hot water at the far bath in seconds instead of a minute.',
+    recommended: false,
+    kind: 'add_on' as const,
+    line_items: [sampleEstimateLine('Recirculation pump, installed', 'Under-sink pump at the far bath, with a timer', 1, 65_000)],
+  },
+]
+
+/**
+ * get-estimate-for-customer, sample token: 200 with the live estimate, or the 409 the thank-you page reads.
+ * Since v2.5112 (punch list #103) the estimate takes a real one's path: the options are saved by
+ * `estimateOptionsDraftPersistFields`, the office's save, which also writes the recommended
+ * option's lines and total; the stored row is read back the way this function reads one, the
+ * options through `normalizeSharedEstimateOptions`.
+ */
 export function sampleEstimateResponse(rows: AppSettingRow[], state: SampleState, todayYmd: string): { status: number; body: Record<string, unknown> } {
   const resolved = resolveEstimateCustomerExperience(rows, null, { acceptUrl: '', title: SAMPLE_ESTIMATE.title, estimateNumber: SAMPLE_ESTIMATE.number }, { docKind: 'estimate' })
   const customer_experience = toClientCustomerExperience(resolved)
   if (state === 'done') {
     return { status: 409, body: { error: 'Already accepted', code: 'already_accepted', customer_experience, accept_header_brand: 'plum' } }
   }
+  const saved = estimateOptionsDraftPersistFields(
+    SAMPLE_ESTIMATE_OPTIONS.map((o) => ({ ...o, line_items: o.line_items.map((l) => ({ ...l })) })),
+    null,
+    [],
+  )
+  // The estimates row is jsonb: the round trip is the one a saved snapshot takes.
+  const stored = JSON.parse(JSON.stringify(saved)) as typeof saved
   return {
     status: 200,
     body: {
       id: SAMPLE_ESTIMATE.id,
       title: SAMPLE_ESTIMATE.title,
-      line_items_snapshot: SAMPLE_ESTIMATE.lines,
+      line_items_snapshot: stored.line_items_snapshot,
       terms_snapshot: setting(rows, ESTIMATE_PUBLIC_TERMS_KEY) ?? SAMPLE_ESTIMATE.termsFallback,
-      total_cents: SAMPLE_ESTIMATE.totalCents,
+      total_cents: stored.total_cents,
       valid_until: ymdPlusDays(todayYmd, SAMPLE_ESTIMATE.validDays),
       for_line: SAMPLE_HOMEOWNER.address,
       customer_experience,
@@ -43,7 +103,7 @@ export function sampleEstimateResponse(rows: AppSettingRow[], state: SampleState
       customer_attachment: null,
       doc_kind: 'estimate',
       change_order_fields: null,
-      options: [],
+      options: normalizeSharedEstimateOptions(stored.options_snapshot),
     },
   }
 }

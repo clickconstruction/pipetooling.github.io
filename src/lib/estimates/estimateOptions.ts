@@ -28,6 +28,7 @@ import {
   normalizeEstimateLineItemsFromJson,
   type EstimateLineItemNormalized,
 } from '../estimateLineItemNormalize'
+import { estimateOptionsDraftPersistFields as sharedEstimateOptionsDraftPersistFields } from '../../../supabase/functions/_shared/estimateOptionsPersist'
 
 export type EstimateOptionKind = 'choice' | 'add_on'
 
@@ -265,10 +266,10 @@ export function describeEstimateSelection(options: EstimateOption[], selected: s
 }
 
 /**
- * What saveDraft persists (owner decision 3): the snapshot itself, plus the recommended
- * option mirrored into the legacy fields so every existing reader shows the number you'd
- * forecast. `viewedKey`/`viewedLines` fold the editor's live lines (the option being edited)
- * back into the snapshot first.
+ * What saveDraft persists (owner decision 3): the snapshot itself, plus the recommended option
+ * mirrored into the legacy fields. The kernel lives in `_shared/` since v2.5112 (punch list #103),
+ * so the sample estimate in Settings → What customers see is saved by the same code as a real one;
+ * this is its client signature.
  */
 export function estimateOptionsDraftPersistFields(
   options: EstimateOption[],
@@ -279,14 +280,7 @@ export function estimateOptionsDraftPersistFields(
   line_items_snapshot: EstimateLineItemNormalized[] | null
   total_cents: number | null
 } {
-  if (options.length === 0) return { options_snapshot: null, line_items_snapshot: null, total_cents: null }
-  const synced = options.map((o) => (o.key === viewedKey ? { ...o, line_items: viewedLines } : o))
-  const rec = recommendedEstimateOption(synced)
-  return {
-    options_snapshot: synced,
-    line_items_snapshot: rec ? rec.line_items : [],
-    total_cents: rec ? estimateOptionTotalCents(rec) : 0,
-  }
+  return sharedEstimateOptionsDraftPersistFields(options, viewedKey, viewedLines)
 }
 
 /** Mark exactly one option recommended. A star asked onto an add-on while choices exist stays put. */
