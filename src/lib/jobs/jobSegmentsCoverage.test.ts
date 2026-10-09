@@ -3,6 +3,7 @@ import {
   buildJobSegmentsBar,
   dollarCoverageForSegments,
   exactSingleSegmentMatchForAmount,
+  fixtureSequencePositions,
   linkableSelectedIds,
   segmentBoundaryMarks,
   segmentSelectionNetSummary,
@@ -480,5 +481,14 @@ describe('v2.3775 — dollarCoverageForSegments nets a partly paid billed line',
     // Spoken for: 2,999 paid + 53.63 still open on the line = 3,052.63; 577.37 left.
     expect(coverage.unattributedDollars).toBeCloseTo(3052.63, 2)
     expect(coverage.remainingDollars).toBeCloseTo(577.37, 2)
+  })
+})
+
+describe('fixtureSequencePositions (v2.5021, the final draw’s discount sweep)', () => {
+  it('the saved positions of the rows asked for, whatever their dollars; unnamed rows take no position', () => {
+    const rows = [line({ id: 'a' }), line({ id: 'blank', name: '  ' }), line({ id: 'b' }), line({ id: 'disc', name: 'Discount', line_unit_price: -150 })]
+    expect(fixtureSequencePositions(rows, ['disc', 'a'])).toEqual([0, 2])
+    expect(fixtureSequencePositions(rows, ['blank'])).toEqual([])
+    expect(fixtureSequencePositions(rows, [])).toEqual([])
   })
 })

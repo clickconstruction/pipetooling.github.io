@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FixtureRow } from './jobFormTypes'
-import { drawLabelsByInvoiceId, fixtureStageFields, formFixtureKind, stagePlanFixturesFromForm, stagePlanFromForm, upcomingDrawRows } from './stagePlanForm'
+import { drawLabelsByInvoiceId, finalDrawDiscountSweep, fixtureStageFields, formFixtureKind, stagePlanFixturesFromForm, stagePlanFromForm, upcomingDrawRows } from './stagePlanForm'
 
 const row = (over: Partial<FixtureRow> & { id: string; name: string }): FixtureRow => ({
   count: 1,
@@ -160,5 +160,43 @@ describe('Still to bill counts money billed by amount (v2.4303)', () => {
       ['rough', 'ready'],
       ['top', 'waits'],
     ])
+  })
+})
+
+describe('finalDrawDiscountSweep (Stage Plan item 3, the owner’s call of 2026-10-09)', () => {
+  // Rough-in billed; Top-out is the last Order stage; a $150 discount over every work row.
+  const rough = row({ id: 'rough', name: 'Rough-in', stage_kind: 'order', invoice_id: 'inv-0' })
+  const top = row({ id: 'top', name: 'Top-out', line_unit_price: 500, stage_kind: 'order' })
+  const discount = row({ id: 'disc', name: 'Negotiated discount', line_kind: 'discount', line_unit_price: -150, stage_kind: null })
+
+  it('Bill it on the last Order stage takes the discount', () => {
+    expect(finalDrawDiscountSweep([rough, top, discount], 'top')).toEqual(['disc'])
+  })
+
+  it('not the final draw while another Order stage is open; an Any-time row is no Order draw', () => {
+    const open = { ...rough, invoice_id: null }
+    expect(finalDrawDiscountSweep([open, top, discount], 'top')).toEqual([])
+    const extra = row({ id: 'extra', name: 'Hose bibs', stage_kind: 'any' })
+    expect(finalDrawDiscountSweep([rough, top, extra, discount], 'extra')).toEqual([])
+    expect(finalDrawDiscountSweep([rough, top, discount], 'disc')).toEqual([])
+  })
+
+  it('a discount whose basis still has an unbilled row keeps its row open; one on the Order rows alone sweeps', () => {
+    const extra = row({ id: 'extra', name: 'Hose bibs', stage_kind: 'any' })
+    const onOrders = row({ id: 'disc-orders', name: 'Referral thank-you', line_kind: 'discount', line_unit_price: -50, stage_kind: null, discount_basis_ids: ['rough', 'top'] })
+    expect(finalDrawDiscountSweep([rough, top, extra, discount, onOrders], 'top')).toEqual(['disc-orders'])
+  })
+
+  it('each guard on its own: an Any-time bill after every Order stage is billed, and a discount on this stage alone while another Order stage is open', () => {
+    const billedTop = { ...top, invoice_id: 'inv-1' }
+    const extra = row({ id: 'extra', name: 'Hose bibs', stage_kind: 'any' })
+    expect(finalDrawDiscountSweep([rough, billedTop, extra, discount], 'extra')).toEqual([])
+    const onTop = row({ id: 'disc-top', name: 'Goodwill discount', line_kind: 'discount', line_unit_price: -25, stage_kind: null, discount_basis_ids: ['top'] })
+    expect(finalDrawDiscountSweep([{ ...rough, invoice_id: null }, top, onTop], 'top')).toEqual([])
+  })
+
+  it('a discount already on a bill, or a stage already billed, sweeps nothing', () => {
+    expect(finalDrawDiscountSweep([rough, top, { ...discount, invoice_id: 'inv-0' }], 'top')).toEqual([])
+    expect(finalDrawDiscountSweep([rough, { ...top, invoice_id: 'inv-1' }, discount], 'top')).toEqual([])
   })
 })

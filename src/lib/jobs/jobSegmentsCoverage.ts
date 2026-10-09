@@ -334,6 +334,26 @@ export function linkableSelectedIds(
 }
 
 /**
+ * sequence_order positions of the given rows after a save flush, whatever their dollars — the
+ * final draw's discount sweep (v2.5021) links rows the selection rules leave out. Same position
+ * rule as `selectedSegmentSequencePositions`: named rows only, in array order.
+ */
+export function fixtureSequencePositions(
+  fixtures: Array<SegmentFixtureLine & { line_description?: string }>,
+  ids: readonly string[],
+): number[] {
+  const want = new Set(ids)
+  const positions: number[] = []
+  let i = 0
+  for (const f of fixtures) {
+    if (!(f.name ?? '').trim()) continue
+    if (want.has(f.id)) positions.push(i)
+    i += 1
+  }
+  return positions
+}
+
+/**
  * sequence_order positions the selected rows will occupy after a save flush.
  * MUST mirror the save engine's filter exactly (named rows only, in array
  * order) — the linking UPDATE keys on these positions right after a flush.
