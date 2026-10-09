@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { useBidCrewRate } from '../../hooks/useBidCrewRate'
+import { useBidPricedMargin } from '../../hooks/useBidPricedMargin'
 import { useJobBaseline } from '../../hooks/useJobBaseline'
 import { useJobBudget } from '../../hooks/useJobBudget'
 import { useJobBurnOverhead } from '../../hooks/useJobBurnOverhead'
@@ -62,6 +63,8 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
   const budget = useJobBudget(job.id, job.bid_id ?? null, includeTeamLabor)
   const kept = useJobBaseline(job.id, includeTeamLabor)
   const { crewRate } = useBidCrewRate(includeTeamLabor)
+  // v2.5043: the margin the linked bid was priced at, beside the direct margin at completion.
+  const priced = useBidPricedMargin(job.bid_id ?? null, includeTeamLabor)
   const inputs = inputsState.kind === 'ready' ? inputsState.inputs : null
   const priceUsd = inputs?.revenue ?? live?.priceUsd ?? (job.revenue != null ? Number(job.revenue) : null)
   const resolved = useMemo(() => resolveJobBudget({ row: budget.row, priceUsd, targetMarginPct: readTargetMarginPct() }), [budget.row, priceUsd])
@@ -93,8 +96,8 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
     // office's hand-set is newer (v2.3372) so the verdict reads "(set on the job)".
     const newest = newestPercentEvent(inputs.valueEvents)
     const latestReportYmd = newest && newest.kind !== 'manual' ? newest.dateKey : null
-    return buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz() })
-  }, [inputs, overheadState.overhead, resolved, priceUsd, teamPeople, job.linkedBid?.bid_number, finished])
+    return buildCostsVerdict({ burn, priceUsd, spend: spendByComponent(inputs.chargeEvents), teamHours: inputs.teamHours, teamPeople, resolved, bidLabel: job.linkedBid?.bid_number ?? null, latestReportYmd, jobPct: inputs.fallbackPercent ?? resolveJobCurrentPercentFallback(job), jobFinished: finished, todayYmd: todayYmdInAppTz(), priced })
+  }, [inputs, overheadState.overhead, resolved, priceUsd, teamPeople, job.linkedBid?.bid_number, finished, priced])
 
   const linkedBid = job.linkedBid ? { id: job.linkedBid.id, bid_number: job.linkedBid.bid_number, project_name: job.linkedBid.project_name } : null
   const doorway = (

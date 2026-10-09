@@ -7,7 +7,7 @@ file: GLOSSARY.md
 type: Reference
 purpose: Comprehensive definitions of all domain-specific terms and technical concepts
 audience: All users (especially new developers and AI agents)
-last_updated: 2026-10-08
+last_updated: 2026-10-09
 estimated_read_time: 15-20 minutes (reference only)
 difficulty: Beginner
 
@@ -1067,6 +1067,8 @@ Profitability metric comparing revenue to cost.
 - Green: ≥ 40% (good profitability)
 
 **Tab**: Analyzed in Pricing tab (5th tab)
+
+**Priced margin** (v2.5043): the Workbench strip's margin kept on the bid (`bids.priced_*`, with the revenue, our cost, the revenue on rows with no cost and whether a labor rate was set). The workbench stamps it when its own price writes land, for the ★ price of the bid's own GC, and it freezes at send: the margin the bid went out at. The job's Costs verdict and Bids → Bid Costs → Bid vs actual read it beside the job's burn.
 
 ### Bid Assignment / Pricing Assignment
 Link between a count row and a price book entry. Stores fixture-to-pricing mappings for margin analysis.

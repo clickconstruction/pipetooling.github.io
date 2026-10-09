@@ -66,3 +66,17 @@ describe('buildBidVsActualRows', () => {
     expect(t).toMatchObject({ linked: 7, withPredictedHours: 4, rateSet: 1, notCosted: 3, over: 1, outliers: 1, recordedHours: 1410, predictedHoursWhereAny: 699, recordedHoursWhereAny: 67 })
   })
 })
+
+describe('v2.5043 · the margin each bid was priced at', () => {
+  const stamp = { pct: 31.42, revenueUsd: 41_550, costUsd: 28_495, uncostedUsd: 0, rateSet: true, bidVersionId: null, at: '2026-08-01T15:00:00Z' }
+  it('rides on the row of the job its bid became; a bid never priced on the Workbench reads none', () => {
+    const withPriced = buildBidVsActualRows({ jobs, budgets, bids, hoursByJob, pursuitByBid, pricedByBid: new Map([['b76', stamp]]) })
+    expect(withPriced.find((r) => r.jobId === 'j879')!.priced).toEqual(stamp)
+    expect(withPriced.filter((r) => r.jobId !== 'j879').every((r) => r.priced === null)).toBe(true)
+    expect(bidVsActualTiles(withPriced).priced).toBe(1)
+  })
+  it('without stamps every row reads none', () => {
+    expect(rows.every((r) => r.priced === null)).toBe(true)
+    expect(bidVsActualTiles(rows).priced).toBe(0)
+  })
+})
