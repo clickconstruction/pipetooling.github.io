@@ -2,7 +2,7 @@
 name: "Building U6: the trades' draws and pay applications"
 rows: BUILDING_REAL_BUILD.md, The PRs in order, 6; decisions 3, 4, 5, 9 and 12; The tables (U6); Writing it (the trades' writes, U6's office writes); the owner's calls, 5; PORTAL_REAL_BUILD.md (P5a, P5c, the 37 trade actions); mockups/portal-p2c.md
 branch: the plan on spike/building-u6-plan (from origin/spike/gc-mode at d4e4efca5); U6a from origin/main once this plan merges, pushed on its merge; U6b on U6a's types; U6c and U6d after
-status: plan 2026-10-09 by Helper 18 at the lead's ask. The read-back was approved the same day at all seven picks. U6a's SQL below ran green on main's real GC migration chain in PGlite (99 assertions; ten planted bugs each failed it; U4a's and U5a's scenarios still passed beside it). U6c's SQL follows in its own amendment. Nothing is cut or claimed. Amendment 1, the same day: the comment on gc_sow_lines.change_order_id that says the kernels' line id (Helper 13), and seq on the draws and the reports, so the newest report and a resend's place never hang on the clock (a same-millisecond tie made the bed flaky once); the bed ran green three times after it.
+status: plan 2026-10-09 by Helper 18 at the lead's ask. The read-back was approved the same day at all seven picks. U6a's SQL below ran green on main's real GC migration chain in PGlite (99 assertions; ten planted bugs each failed it; U4a's and U5a's scenarios still passed beside it). U6c's SQL follows in its own amendment. Nothing is cut or claimed. Amendment 1, the same day: the comment on gc_sow_lines.change_order_id that says the kernels' line id (Helper 13), and seq on the draws and the reports, so the newest report and a resend's place never hang on the clock (a same-millisecond tie made the bed flaky once); the bed ran green three times after it. Amendment 2, the same day: U6c's SQL in full (closeout: 70_closeout.sql, 46 assertions, green beside U6a's 99; ten planted bugs each failed it), the kernel's line 7 fix, and U6d's window.
 ---
 
 # Building U6: the trades' draws and pay applications
@@ -1898,21 +1898,853 @@ from the spike's `gcPortal.ts` with the Portal (Helper 13). Each live send waits
 words the same), `GcDrawsWindow.render.test.tsx` (each draw's presses, the came-in form, the blockers, plain words),
 and the page's cases.
 
-## U6c and U6d: closeout
+## U6c: closeout's presses (amendment 2)
 
-U6c's SQL comes in an amendment to this plan, with these presses:
-- `gc_trade_final_pay_app` (the trade's) and `gc_final_pay_app_came_in` (the office's): the retainage release, once
-  every line is billed, the work is accepted and retainage is held (`tradeCloseout`'s `canAskFinal`). Its money is the
-  retainage held, so a back-charge taken off a draw is never paid back (above).
-- The release approved only 10 days after the customer pays our final pay application (`TRADE_RETAINAGE_WAIT_DAYS`),
-  read from Owner Billing's `gc_owner_pay_apps`.
-- `gc_accept_work`: `gc_sows.accepted_on`, once every line is billed and the trade's punch list is clear
-  (`punchClear`; U3b's punch presses, Helper 14's, are not on main yet, so an empty list reads clear).
-- `gc_close_job`: the stage `closed` and `gc_projects.closed_on` (decision 12), with `jobCloseout`'s words for what is
-  still open.
-- The unconditional final release keeps the closeout promise (`tradeSendFinalPayApp`'s rule).
+One migration, `<stamp>_gc_trade_closeout.sql`, and the kernel's line 7 fix. It needs U6a on prod. The closeout
+window is U6d.
 
-U6d ports `GcCloseout.tsx` (301 lines): each trade's closeout steps, Accept the work, the release, and **Close the job**.
+**What it adds:**
+- `gc_projects.closed_on` (decision 12), only on a closed job (`gc_projects_closed_on_when_closed`).
+- Three read-only helpers:
+  - `gc_retainage_held` (`retainageHeldNow`);
+  - `gc_sow_all_billed` (`workAllBilled`);
+  - `gc_owner_retainage_paid_on` (`ownerRetainagePaidOn` by `billMoney`'s rule, word for word, which Helper 15
+    keeps equal on their side).
+- `gc_accept_work`: once every line is billed and nothing on the trade's punch list lacks its check. That is
+  `punchClear` in SQL, Helper 14's rule: no status column, done is `checked_on` set.
+- The final pay application, both ways in, through one shared `gc_final_pay_app_ask`:
+  - its money is the retainage held, so a back-charge taken off a draw is never paid back;
+  - with no waiver owed, it keeps the closeout promise (`tradeSendFinalPayApp`'s rule);
+  - the trade's `gc_trade_final_pay_app` is the service role's only;
+  - the office's `gc_final_pay_app_came_in` maps the shared keys to its own words;
+  - a signed-in caller records it only as themselves.
+- `gc_approve_retainage`: 10 days after the customer pays our final pay application (`TRADE_RETAINAGE_WAIT_DAYS`).
+  U6a's `gc_pay_draw` pays it, and U6a's waivers take its unconditional final release.
+- `gc_close_job`: the stage `closed` and `closed_on` today. It writes the office's `gc_projects`, so it names the dev
+  while Building is built. Building's door makes it the money roles' (`gc_money_team()`), with the tables. The window
+  offers it once every trade is closed out (`jobCloseout`), as the prototype's reducer trusts its screen.
+
+**New trade keys**, in WAITING as `'P5'`: `finalSent` and `finalNotYet`. The rest are U6a's or the portal's
+already: `notFound`, `notOnTrade`, `sowNotSigned`, `jobNotBuilding`, `drawWaiting`, `nothingToBill`, `badRequest`,
+`nameNeeded`.
+
+**The kernel's line 7.** `payApplication`'s previous certificates sum each earlier draw's `net`. `takeBackCharge`
+lowers a draw's `net` by the charge, so the retainage release (`finalPayApplication`'s line 8) asked for the charge
+back. Line 7 now counts what each earlier application was certified for, before a charge came off what we paid:
+
+```ts
+  // Line 7: what earlier applications were certified for, before any back-charge came off what we paid.
+  const previousCertificates = sow.draws
+    .filter((d) => d.number < number)
+    .reduce((s, d) => s + d.net + (d.backCharges ?? []).reduce((t, b) => t + b.amount, 0), 0)
+```
+
+Its test in `building.direct.test.ts`, on the scenario's statement of work: with a $500 charge off draw 2, the release
+is $3,000, equal to `retainageHeldNow` (main today: $3,500). Owner Billing reads closeout only through
+`tradeCloseout`, which does not read line 7. The trade's G702 in the pay application window shows the new line 7.
+
+**The refusals, in plain words:** 42 sentences, 0 failing (`plainWordsFailures`, the office's mapped words
+included).
+
+### The SQL as it will be (U6c)
+
+`supabase/migrations/<stamp>_gc_trade_closeout.sql`. The stamp, U6a's stamp and `v2.NNNN` are the only things that
+change at the cut.
+
+```sql
+SET lock_timeout = '3s';
+
+-- GC mode, the real build, the Building lane's U6c (v2.NNNN): closeout on real data. Once every line of a trade's
+-- statement of work is billed, we accept the work when its punch list is done; the trade asks for the retainage we
+-- hold with its final pay application; we approve it 10 days after the customer pays us ours and pay it; its
+-- unconditional final release keeps the promise of its closeout papers (U6a's gc_draw_waiver_signed). Then we close
+-- the job. Each refuses in words what the prototype's reducer refuses (acceptWork, tradeSendFinalPayApp,
+-- approveRetainage, closeJob). The release is the retainage held (retainageHeldNow), so a back-charge taken off a draw
+-- is never paid back; the kernels' finalPayApplication says the same once its line 7 counts what was certified before
+-- the charges. The office's presses are SECURITY INVOKER, so RLS decides who may: dev only until Building's door,
+-- then the money roles (decision 4). Closing a job writes the office's gc_projects, so it names the dev until that
+-- door. The trade's press is the service role's only, with keys as the Portal's P2a verbs. Plan:
+-- to-dos/gc-mode/mockups/building-u6.md on spike/gc-mode. The draws: U6a (<U6a stamp>). The punch list: U1
+-- (20261008030000). Our bills to the customer: 20261008010000 and 20261009200000.
+
+-- The day we closed the job (decision 12), set with the stage `closed` by gc_close_job.
+ALTER TABLE public.gc_projects ADD COLUMN IF NOT EXISTS closed_on date;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'gc_projects_closed_on_when_closed' AND conrelid = 'public.gc_projects'::regclass) THEN
+    ALTER TABLE public.gc_projects ADD CONSTRAINT gc_projects_closed_on_when_closed CHECK (closed_on IS NULL OR stage = 'closed');
+  END IF;
+END $$;
+
+COMMENT ON COLUMN public.gc_projects.closed_on IS
+  'GC mode (v2.NNNN, Building U6c): the day we closed the job (GcProject.closedOn), set with the stage closed by gc_close_job. Null: not closed, or closed before U6c.';
+
+-- What we hold on a trade (retainageHeldNow): the retainage on every approved or paid draw, less a release once paid.
+CREATE OR REPLACE FUNCTION public.gc_retainage_held(p_sow_id uuid)
+RETURNS numeric
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+  SELECT coalesce(sum(retainage) FILTER (WHERE NOT final AND status IN ('approved', 'paid')), 0)
+       - coalesce(sum(net) FILTER (WHERE final AND status = 'paid'), 0)
+  FROM public.gc_draws WHERE sow_id = p_sow_id
+$$;
+
+-- Every line billed (workAllBilled): each line of the statement of work at 100% on an approved or paid draw.
+CREATE OR REPLACE FUNCTION public.gc_sow_all_billed(p_sow_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+  SELECT count(*) > 0 AND bool_and(coalesce(b.pct, 0) >= 100)
+  FROM public.gc_sow_lines l
+  LEFT JOIN LATERAL (
+    SELECT max(dl.to_pct) AS pct FROM public.gc_draw_lines dl JOIN public.gc_draws d ON d.id = dl.draw_id
+    WHERE dl.sow_line_id = l.id AND d.status IN ('approved', 'paid') AND NOT d.final
+  ) b ON true
+  WHERE l.sow_id = p_sow_id
+$$;
+
+-- The day the customer paid us the retainage they held (ownerRetainagePaidOn): our final pay application's bill,
+-- paid on the day its payments reach its amount, or on its last payment's day once it is marked paid for less
+-- (billMoney in src/lib/gc/ownerBillingRows.ts, word for word; Owner Billing keeps the two equal). Null: not yet.
+CREATE OR REPLACE FUNCTION public.gc_owner_retainage_paid_on(p_project_id uuid)
+RETURNS date
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+  WITH bill AS (
+    SELECT i.id, i.amount, i.status
+    FROM public.gc_owner_pay_apps a JOIN public.jobs_ledger_invoices i ON i.id = a.invoice_id
+    WHERE a.project_id = p_project_id AND a.final
+    ORDER BY a.number DESC LIMIT 1
+  ),
+  paid AS (
+    SELECT p.paid_on, sum(p.amount) OVER (ORDER BY p.paid_on ROWS UNBOUNDED PRECEDING) AS so_far
+    FROM public.jobs_ledger_payments p JOIN bill b ON p.invoice_id = b.id
+    WHERE p.paid_on IS NOT NULL
+  )
+  SELECT coalesce(
+    (SELECT min(p.paid_on) FROM paid p CROSS JOIN bill b WHERE p.so_far >= b.amount - 0.005),
+    (SELECT max(p.paid_on) FROM paid p CROSS JOIN bill b WHERE b.status = 'paid')
+  )
+$$;
+
+-- Accept a trade's work (acceptWork): once every line is billed, and while nothing on its punch list waits to be
+-- fixed or checked (punchClear: no item on the trade without its check). Not twice.
+CREATE OR REPLACE FUNCTION public.gc_accept_work(p_package_id uuid)
+RETURNS date
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_sow public.gc_sows%ROWTYPE;
+  v_left integer;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sign in first.' USING ERRCODE = 'P0001';
+  END IF;
+  IF public.is_read_only() THEN
+    RAISE EXCEPTION 'A training account cannot accept a trade''s work.' USING ERRCODE = '42501';
+  END IF;
+  IF public.is_digital_twin() THEN
+    RAISE EXCEPTION 'A digital twin cannot accept a trade''s work.' USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO v_sow FROM public.gc_sows WHERE package_id = p_package_id FOR UPDATE;
+  IF NOT FOUND OR v_sow.status <> 'signed' THEN
+    RAISE EXCEPTION 'Their statement of work is not signed yet.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_sow.accepted_on IS NOT NULL THEN
+    RAISE EXCEPTION 'We accepted their work already.' USING ERRCODE = 'P0001';
+  END IF;
+  IF NOT public.gc_sow_all_billed(v_sow.id) THEN
+    RAISE EXCEPTION 'Accept the work once every line is billed.' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT count(*) INTO v_left FROM public.gc_punch_items WHERE package_id = p_package_id AND checked_on IS NULL;
+  IF v_left > 0 THEN
+    RAISE EXCEPTION 'Their punch list has % % to fix or check first.', v_left, CASE WHEN v_left = 1 THEN 'item' ELSE 'items' END USING ERRCODE = 'P0001';
+  END IF;
+  UPDATE public.gc_sows SET accepted_on = public.app_today() WHERE id = v_sow.id;
+  RETURN public.app_today();
+END;
+$$;
+
+-- A final pay application (tradeSendFinalPayApp): the retainage we hold, with the conditional final release of lien.
+-- Its gross is none, its retainage the release taken back, its net the release. The rules both ways in share it:
+-- every line billed, the work accepted, no release asked yet, no draw waiting, and retainage held. With no waiver
+-- owed, it keeps the promise of their closeout papers. Returns the draw, or raises its key and words.
+CREATE OR REPLACE FUNCTION public.gc_final_pay_app_ask(p_sow_id uuid, p jsonb, p_recorded_by uuid)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_sow public.gc_sows%ROWTYPE;
+  v_project uuid;
+  v_period date;
+  v_signed_by text := btrim(coalesce(p->>'signedBy', ''));
+  v_held numeric;
+  v_number integer;
+  v_id uuid;
+BEGIN
+  -- One of ours records it as themselves; the portal (the service role, no one signed in) records no one.
+  IF auth.uid() IS DISTINCT FROM p_recorded_by THEN
+    RAISE EXCEPTION 'badRequest' USING ERRCODE = 'P0001', DETAIL = 'Record it as yourself.';
+  END IF;
+  SELECT * INTO v_sow FROM public.gc_sows WHERE id = p_sow_id FOR UPDATE;
+  SELECT project_id INTO v_project FROM public.gc_trade_packages WHERE id = v_sow.package_id;
+  IF EXISTS (SELECT 1 FROM public.gc_draws WHERE sow_id = p_sow_id AND final AND status <> 'sent_back') THEN
+    RAISE EXCEPTION 'finalSent' USING ERRCODE = 'P0001', DETAIL = 'The final pay application went already.';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.gc_draws WHERE sow_id = p_sow_id AND status = 'requested') THEN
+    RAISE EXCEPTION 'drawWaiting' USING ERRCODE = 'P0001', DETAIL = 'The last pay application is still with us.';
+  END IF;
+  IF NOT public.gc_sow_all_billed(p_sow_id) OR v_sow.accepted_on IS NULL THEN
+    RAISE EXCEPTION 'finalNotYet' USING ERRCODE = 'P0001', DETAIL = 'The final pay application opens once every line is billed and the work is accepted.';
+  END IF;
+  v_held := public.gc_retainage_held(p_sow_id);
+  IF v_held <= 0 THEN
+    RAISE EXCEPTION 'nothingToBill' USING ERRCODE = 'P0001', DETAIL = 'No retainage is held to pay back.';
+  END IF;
+  BEGIN
+    v_period := nullif(btrim(coalesce(p->>'periodTo', '')), '')::date;
+  EXCEPTION WHEN invalid_datetime_format OR datetime_field_overflow THEN
+    v_period := NULL;
+  END;
+  IF v_period IS NULL THEN
+    RAISE EXCEPTION 'badRequest' USING ERRCODE = 'P0001', DETAIL = 'The pay application needs its period.';
+  END IF;
+  IF v_signed_by = '' THEN
+    RAISE EXCEPTION 'nameNeeded' USING ERRCODE = 'P0001', DETAIL = 'Type the name of who signs it.';
+  END IF;
+  SELECT count(*) + 1 INTO v_number FROM public.gc_draws WHERE sow_id = p_sow_id AND status <> 'sent_back';
+  INSERT INTO public.gc_draws (sow_id, number, requested_on, gross, retainage, net, final, period_to, address, license, signed_by, signed_title, signed_on, file_name, drive_url, recorded_by)
+  VALUES (
+    p_sow_id, v_number, public.app_today(), 0, -v_held, v_held, true,
+    v_period, btrim(coalesce(p->>'address', '')), btrim(coalesce(p->>'license', '')), v_signed_by,
+    btrim(coalesce(p->>'signedTitle', '')), public.app_today(),
+    nullif(btrim(coalesce(p->>'fileName', '')), ''), nullif(btrim(coalesce(p->>'driveUrl', '')), ''), p_recorded_by
+  )
+  RETURNING id INTO v_id;
+  IF NOT EXISTS (SELECT 1 FROM public.gc_draws WHERE sow_id = p_sow_id AND status = 'paid' AND waiver = 'conditional') THEN
+    PERFORM public.gc_keep_promises(v_sow.company_id, 'closeout', v_project, v_sow.package_id, public.app_today());
+  END IF;
+  RETURN v_id;
+END;
+$$;
+
+-- The trade's final pay application from its portal: the company on its statement of work, on a job being built.
+CREATE OR REPLACE FUNCTION public.gc_trade_final_pay_app(p_company_id uuid, p_package_id uuid, p_app jsonb)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_stage text;
+  v_sow public.gc_sows%ROWTYPE;
+BEGIN
+  SELECT g.stage INTO v_stage
+  FROM public.gc_trade_packages k JOIN public.gc_projects g ON g.project_id = k.project_id
+  WHERE k.id = p_package_id;
+  SELECT * INTO v_sow FROM public.gc_sows WHERE package_id = p_package_id;
+  IF v_stage IS NULL OR v_sow.id IS NULL THEN
+    RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001', DETAIL = 'No statement of work for that trade.';
+  END IF;
+  IF v_sow.company_id IS DISTINCT FROM p_company_id
+     OR NOT EXISTS (SELECT 1 FROM public.gc_trade_packages WHERE id = p_package_id AND awarded_invite_id = v_sow.invite_id) THEN
+    RAISE EXCEPTION 'notOnTrade' USING ERRCODE = 'P0001', DETAIL = 'Only the company we awarded this trade can send its pay application.';
+  END IF;
+  IF v_sow.status <> 'signed' THEN
+    RAISE EXCEPTION 'sowNotSigned' USING ERRCODE = 'P0001', DETAIL = 'Sign your statement of work first.';
+  END IF;
+  IF v_stage <> 'building' THEN
+    RAISE EXCEPTION 'jobNotBuilding' USING ERRCODE = 'P0001', DETAIL = 'Pay applications open once we are building the job.';
+  END IF;
+  RETURN public.gc_final_pay_app_ask(v_sow.id, p_app, NULL);
+END;
+$$;
+
+-- A final pay application that came by email or on paper (new beside the prototype, as U6a's came-in is), in the
+-- office's words.
+CREATE OR REPLACE FUNCTION public.gc_final_pay_app_came_in(p_package_id uuid, p jsonb)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_uid uuid := auth.uid();
+  v_stage text;
+  v_sow public.gc_sows%ROWTYPE;
+  v_detail text;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'Sign in first.' USING ERRCODE = 'P0001';
+  END IF;
+  IF public.is_read_only() THEN
+    RAISE EXCEPTION 'A training account cannot record a pay application.' USING ERRCODE = '42501';
+  END IF;
+  IF public.is_digital_twin() THEN
+    RAISE EXCEPTION 'A digital twin cannot record a pay application.' USING ERRCODE = '42501';
+  END IF;
+  SELECT g.stage INTO v_stage
+  FROM public.gc_trade_packages k JOIN public.gc_projects g ON g.project_id = k.project_id
+  WHERE k.id = p_package_id;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No trade with that id.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_stage <> 'building' THEN
+    RAISE EXCEPTION 'Pay applications are for a job we are building.' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT * INTO v_sow FROM public.gc_sows WHERE package_id = p_package_id;
+  IF NOT FOUND OR v_sow.status <> 'signed' THEN
+    RAISE EXCEPTION 'Their statement of work is not signed yet.' USING ERRCODE = 'P0001';
+  END IF;
+  BEGIN
+    RETURN public.gc_final_pay_app_ask(v_sow.id, p, v_uid);
+  EXCEPTION WHEN raise_exception THEN
+    -- The shared rules' keys, in the office's words.
+    GET STACKED DIAGNOSTICS v_detail = PG_EXCEPTION_DETAIL;
+    RAISE EXCEPTION '%', CASE SQLERRM
+      WHEN 'finalSent' THEN 'Their final pay application is in already.'
+      WHEN 'drawWaiting' THEN 'A pay application is waiting on us. Approve it or send it back first.'
+      WHEN 'finalNotYet' THEN 'The final pay application comes once every line is billed and we accept the work.'
+      WHEN 'nothingToBill' THEN 'We hold no retainage on this trade to pay back.'
+      WHEN 'badRequest' THEN 'Say the day the pay application runs to.'
+      WHEN 'nameNeeded' THEN 'Say who signed it.'
+      ELSE coalesce(nullif(v_detail, ''), SQLERRM) END USING ERRCODE = 'P0001';
+  END;
+END;
+$$;
+
+-- Approve the retainage release (approveRetainage): 10 days after the customer pays us ours
+-- (TRADE_RETAINAGE_WAIT_DAYS, tradeCloseout's canPay).
+CREATE OR REPLACE FUNCTION public.gc_approve_retainage(p_draw_id uuid)
+RETURNS date
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v public.gc_draws%ROWTYPE;
+  v_project uuid;
+  v_paid date;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sign in first.' USING ERRCODE = 'P0001';
+  END IF;
+  IF public.is_read_only() THEN
+    RAISE EXCEPTION 'A training account cannot approve a pay application.' USING ERRCODE = '42501';
+  END IF;
+  IF public.is_digital_twin() THEN
+    RAISE EXCEPTION 'A digital twin cannot approve a pay application.' USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO v FROM public.gc_draws WHERE id = p_draw_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No pay application with that id.' USING ERRCODE = 'P0001';
+  END IF;
+  IF NOT v.final THEN
+    RAISE EXCEPTION 'Only a retainage release is approved here.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v.status <> 'requested' THEN
+    RAISE EXCEPTION 'Only a pay application waiting on us is approved.' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT k.project_id INTO v_project FROM public.gc_sows s JOIN public.gc_trade_packages k ON k.id = s.package_id WHERE s.id = v.sow_id;
+  v_paid := public.gc_owner_retainage_paid_on(v_project);
+  IF v_paid IS NULL THEN
+    RAISE EXCEPTION 'The customer has not paid us our retainage yet.' USING ERRCODE = 'P0001';
+  END IF;
+  IF public.app_today() < v_paid + 10 THEN
+    RAISE EXCEPTION 'We pay their retainage from %, 10 days after the customer paid us ours.', to_char(v_paid + 10, 'Mon FMDD') USING ERRCODE = 'P0001';
+  END IF;
+  UPDATE public.gc_draws SET status = 'approved', approved_on = public.app_today() WHERE id = p_draw_id;
+  RETURN public.app_today();
+END;
+$$;
+
+-- Close the job (closeJob): one we are building leaves Building for its own section on the board. The window offers
+-- it once every trade is closed out (jobCloseout), as the prototype's reducer trusts its screen. It writes the
+-- office's gc_projects, so it names the dev while Building is built; Building's door names the money roles.
+CREATE OR REPLACE FUNCTION public.gc_close_job(p_project_id uuid)
+RETURNS date
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_stage text;
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Sign in first.' USING ERRCODE = 'P0001';
+  END IF;
+  IF public.is_read_only() THEN
+    RAISE EXCEPTION 'A training account cannot close a job.' USING ERRCODE = '42501';
+  END IF;
+  IF public.is_digital_twin() THEN
+    RAISE EXCEPTION 'A digital twin cannot close a job.' USING ERRCODE = '42501';
+  END IF;
+  IF NOT public.is_dev() THEN
+    RAISE EXCEPTION 'Closing a job is a dev''s while Building is built.' USING ERRCODE = '42501';
+  END IF;
+  SELECT stage INTO v_stage FROM public.gc_projects WHERE project_id = p_project_id FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No GC project with that id.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_stage = 'closed' THEN
+    RAISE EXCEPTION 'This job is closed already.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_stage <> 'building' THEN
+    RAISE EXCEPTION 'Only a job we are building is closed.' USING ERRCODE = 'P0001';
+  END IF;
+  UPDATE public.gc_projects SET stage = 'closed', closed_on = public.app_today() WHERE project_id = p_project_id;
+  RETURN public.app_today();
+END;
+$$;
+
+COMMENT ON FUNCTION public.gc_retainage_held(uuid) IS
+  'GC mode (v2.NNNN, Building U6c): what we hold on a trade (retainageHeldNow): the retainage on approved and paid draws, less a release once paid.';
+COMMENT ON FUNCTION public.gc_sow_all_billed(uuid) IS
+  'GC mode (v2.NNNN, Building U6c): every line of the statement of work at 100% on an approved or paid draw (workAllBilled).';
+COMMENT ON FUNCTION public.gc_owner_retainage_paid_on(uuid) IS
+  'GC mode (v2.NNNN, Building U6c): the day the customer paid our final pay application''s bill (ownerRetainagePaidOn by billMoney''s rule in src/lib/gc/ownerBillingRows.ts, kept equal with Owner Billing). Null: not yet.';
+COMMENT ON FUNCTION public.gc_accept_work(uuid) IS
+  'GC mode (v2.NNNN): accept a trade''s work (acceptWork) once every line is billed and its punch list is done (no item without its check). Not twice. SECURITY INVOKER: RLS decides who may.';
+COMMENT ON FUNCTION public.gc_final_pay_app_ask(uuid, jsonb, uuid) IS
+  'GC mode (v2.NNNN): the final pay application''s rules, shared by the trade''s and the office''s: the retainage held, once every line is billed and the work is accepted, one at a time; it keeps the closeout promise when no waiver is owed. Raises keys. SECURITY INVOKER.';
+COMMENT ON FUNCTION public.gc_trade_final_pay_app(uuid, uuid, jsonb) IS
+  'GC mode (v2.NNNN): the trade''s final pay application (tradeSendFinalPayApp): notFound, notOnTrade, sowNotSigned, jobNotBuilding, finalSent, drawWaiting, finalNotYet, nothingToBill, badRequest, nameNeeded. Service role only.';
+COMMENT ON FUNCTION public.gc_final_pay_app_came_in(uuid, jsonb) IS
+  'GC mode (v2.NNNN): record a final pay application that came by email or on paper, by the trade''s own rules, in the office''s words. SECURITY INVOKER: RLS decides who may.';
+COMMENT ON FUNCTION public.gc_approve_retainage(uuid) IS
+  'GC mode (v2.NNNN): approve the retainage release (approveRetainage) 10 days after the customer paid us ours. SECURITY INVOKER: RLS decides who may.';
+COMMENT ON FUNCTION public.gc_close_job(uuid) IS
+  'GC mode (v2.NNNN): close a job we are building (closeJob): the stage closed and closed_on today. A dev''s while Building is built. SECURITY INVOKER.';
+
+REVOKE ALL ON FUNCTION public.gc_retainage_held(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.gc_retainage_held(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.gc_sow_all_billed(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.gc_sow_all_billed(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.gc_owner_retainage_paid_on(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.gc_owner_retainage_paid_on(uuid) TO authenticated, service_role;
+REVOKE ALL ON FUNCTION public.gc_final_pay_app_ask(uuid, jsonb, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.gc_final_pay_app_ask(uuid, jsonb, uuid) TO authenticated, service_role;
+
+DO $$
+DECLARE
+  f text;
+BEGIN
+  FOREACH f IN ARRAY ARRAY['public.gc_accept_work(uuid)', 'public.gc_final_pay_app_came_in(uuid, jsonb)', 'public.gc_approve_retainage(uuid)',
+    'public.gc_close_job(uuid)'] LOOP
+    EXECUTE format('REVOKE ALL ON FUNCTION %s FROM PUBLIC, anon', f);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated', f);
+  END LOOP;
+  -- Only the service role: the portal's submit function, after it has turned a link into its company.
+  EXECUTE 'REVOKE ALL ON FUNCTION public.gc_trade_final_pay_app(uuid, uuid, jsonb) FROM PUBLIC, anon, authenticated';
+  EXECUTE 'GRANT EXECUTE ON FUNCTION public.gc_trade_final_pay_app(uuid, uuid, jsonb) TO service_role';
+END $$;
+```
+
+### The SQL tests (U6c)
+
+U6c adds one line to `PRESSES`, `supabase/migrations/*_gc_trade_closeout.sql`, one path to `sql-beds.yml`,
+`- 'supabase/migrations/*gc_trade_closeout*'`, and `finalSent` and `finalNotYet` to WAITING. Its scenario,
+`supabase/tests/gc_building/70_closeout.sql`, inserts the customer's bills and payments directly (a billing job, its
+bill and the payments on it). The real bed on the PR checks that the Pipeline's own triggers take them as written. Each
+trade step runs signed out, as the portal's calls are:
+
+```sql
+-- Closeout (v2.NNNN, the Building lane's U6c): every line billed, the work accepted once the punch list is done, the
+-- trade's final pay application for the retainage we hold (never less a back-charge taken off a draw), its release
+-- approved 10 days after the customer pays us ours (the day by billMoney's rule), paid, its unconditional final
+-- release keeping the promise of the closeout papers, and the job closed. Each press refuses in words, or the
+-- trade's in keys, what the prototype's reducer refuses. A training account, a digital twin and a role outside
+-- Building's dev door are refused; the trade's press is the service role's only. Presses run through RLS, the fixture
+-- made as postgres; everything runs inside one transaction that rolls back. Raises on the first failed assertion;
+-- ends with "gc_building PASSED". See scripts/pgtest-gc-building.sh. Never against prod.
+\set ON_ERROR_STOP 1
+BEGIN;
+
+INSERT INTO auth.users (id, email) VALUES
+  ('00000000-0000-0000-0000-0000000acd01', 'dev@closeout.test'),
+  ('00000000-0000-0000-0000-0000000acd02', 'trainee@closeout.test'),
+  ('00000000-0000-0000-0000-0000000acd03', 'twin@closeout.test'),
+  ('00000000-0000-0000-0000-0000000acd04', 'estimator@closeout.test');
+INSERT INTO public.users (id, email, name, role) VALUES
+  ('00000000-0000-0000-0000-0000000acd01', 'dev@closeout.test', 'Closeout Dev', 'dev'),
+  ('00000000-0000-0000-0000-0000000acd02', 'trainee@closeout.test', 'Closeout Trainee', 'dev'),
+  ('00000000-0000-0000-0000-0000000acd03', 'twin@closeout.test', 'Closeout Twin', 'dev'),
+  ('00000000-0000-0000-0000-0000000acd04', 'estimator@closeout.test', 'Closeout Estimator', 'estimator')
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
+UPDATE public.users SET read_only = true WHERE id = '00000000-0000-0000-0000-0000000acd02';
+UPDATE public.users SET is_digital_twin = true WHERE id = '00000000-0000-0000-0000-0000000acd03';
+
+-- Three GC jobs. A is being built: Concrete awarded to Ridgeway Concrete with a signed statement of work at 10%
+-- retainage (Footings $12,000, Slab $18,000), and our own Plumbing. B is still bidding. C is being built, for the
+-- customer's bill paid for less.
+INSERT INTO public.customers (id, name, master_user_id) VALUES ('00000000-0000-0000-0000-0000000acc01', 'Closeout Test Owner', '00000000-0000-0000-0000-0000000acd01');
+INSERT INTO public.projects (id, name, customer_id) VALUES
+  ('00000000-0000-0000-0000-0000000aca01', 'Closeout test A', '00000000-0000-0000-0000-0000000acc01'),
+  ('00000000-0000-0000-0000-0000000aca02', 'Closeout test B', '00000000-0000-0000-0000-0000000acc01'),
+  ('00000000-0000-0000-0000-0000000aca03', 'Closeout test C', '00000000-0000-0000-0000-0000000acc01');
+INSERT INTO public.gc_projects (project_id, stage, started_on) VALUES
+  ('00000000-0000-0000-0000-0000000aca01', 'building', public.app_today() - 90),
+  ('00000000-0000-0000-0000-0000000aca02', 'bidding', NULL),
+  ('00000000-0000-0000-0000-0000000aca03', 'building', public.app_today() - 120);
+INSERT INTO public.gc_companies (id, name, trades) VALUES ('00000000-0000-0000-0000-0000000ace01', 'Ridgeway Concrete', ARRAY['Concrete']);
+INSERT INTO public.gc_trade_packages (id, project_id, trade, position, ours) VALUES
+  ('00000000-0000-0000-0000-0000000acb01', '00000000-0000-0000-0000-0000000aca01', 'Concrete', 0, false),
+  ('00000000-0000-0000-0000-0000000acb02', '00000000-0000-0000-0000-0000000aca01', 'Plumbing', 1, true),
+  ('00000000-0000-0000-0000-0000000acb03', '00000000-0000-0000-0000-0000000aca02', 'Electrical', 0, false);
+INSERT INTO public.gc_invites (id, package_id, company_id) VALUES
+  ('00000000-0000-0000-0000-0000000acf01', '00000000-0000-0000-0000-0000000acb01', '00000000-0000-0000-0000-0000000ace01');
+UPDATE public.gc_trade_packages SET awarded_invite_id = '00000000-0000-0000-0000-0000000acf01', awarded_on = public.app_today() - 85 WHERE id = '00000000-0000-0000-0000-0000000acb01';
+INSERT INTO public.gc_scope_items (id, package_id, label, position) VALUES
+  ('00000000-0000-0000-0000-0000000ac101', '00000000-0000-0000-0000-0000000acb01', 'Footings', 0),
+  ('00000000-0000-0000-0000-0000000ac102', '00000000-0000-0000-0000-0000000acb01', 'Slab', 1);
+INSERT INTO public.gc_sows (id, package_id, invite_id, company_id, status, price, retainage_pct, sent_on, signed_on) VALUES
+  ('00000000-0000-0000-0000-0000000ac201', '00000000-0000-0000-0000-0000000acb01', '00000000-0000-0000-0000-0000000acf01', '00000000-0000-0000-0000-0000000ace01', 'signed', 30000, 10, public.app_today() - 82, public.app_today() - 80);
+INSERT INTO public.gc_sow_lines (id, sow_id, position, label, amount, scope_item_id) VALUES
+  ('00000000-0000-0000-0000-0000000ac301', '00000000-0000-0000-0000-0000000ac201', 0, 'Footings', 12000, '00000000-0000-0000-0000-0000000ac101'),
+  ('00000000-0000-0000-0000-0000000ac302', '00000000-0000-0000-0000-0000000ac201', 1, 'Slab', 18000, '00000000-0000-0000-0000-0000000ac102');
+-- Its draws so far: 1 paid with its unconditional waiver in (Footings and Slab to 50%), and 2 approved (Footings to
+-- 100%, Slab to 90%), with a $500 back-charge taken off it.
+INSERT INTO public.gc_draws (id, sow_id, number, requested_on, status, gross, retainage, net, waiver, waiver_on, approved_on, paid_on, period_to, signed_by, signed_on) VALUES
+  ('00000000-0000-0000-0000-0000000ac401', '00000000-0000-0000-0000-0000000ac201', 1, public.app_today() - 31, 'paid', 15000, 1500, 13500, 'unconditional', public.app_today() - 27, public.app_today() - 30, public.app_today() - 28, public.app_today() - 31, 'Pat Ridgeway', public.app_today() - 31),
+  ('00000000-0000-0000-0000-0000000ac402', '00000000-0000-0000-0000-0000000ac201', 2, public.app_today() - 6, 'approved', 13200, 1320, 11880, 'conditional', NULL, public.app_today() - 5, NULL, public.app_today() - 6, 'Pat Ridgeway', public.app_today() - 6);
+INSERT INTO public.gc_draw_lines (draw_id, sow_line_id, to_pct) VALUES
+  ('00000000-0000-0000-0000-0000000ac401', '00000000-0000-0000-0000-0000000ac301', 50),
+  ('00000000-0000-0000-0000-0000000ac401', '00000000-0000-0000-0000-0000000ac302', 50),
+  ('00000000-0000-0000-0000-0000000ac402', '00000000-0000-0000-0000-0000000ac301', 100),
+  ('00000000-0000-0000-0000-0000000ac402', '00000000-0000-0000-0000-0000000ac302', 90);
+INSERT INTO public.gc_back_charges (id, project_id, package_id, company_id, sow_id, amount, reason, sent_on, status, answered_on, taken_draw_id, taken_on) VALUES
+  ('00000000-0000-0000-0000-0000000ac501', '00000000-0000-0000-0000-0000000aca01', '00000000-0000-0000-0000-0000000acb01', '00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000ac201', 500, 'Washout on the street', public.app_today() - 12, 'agreed', public.app_today() - 10, '00000000-0000-0000-0000-0000000ac402', public.app_today() - 4);
+-- One punch item on Concrete, still to fix.
+INSERT INTO public.gc_punch_items (id, project_id, package_id, text, added_on) VALUES
+  ('00000000-0000-0000-0000-0000000ac601', '00000000-0000-0000-0000-0000000aca01', '00000000-0000-0000-0000-0000000acb01', 'Patch the slab edge at grid C', public.app_today() - 3);
+-- Ridgeway's promise of its closeout papers.
+INSERT INTO public.gc_trade_promises (id, company_id, kind, project_id, package_id, what, due_on, source) VALUES
+  ('00000000-0000-0000-0000-0000000ac701', '00000000-0000-0000-0000-0000000ace01', 'closeout', '00000000-0000-0000-0000-0000000aca01', '00000000-0000-0000-0000-0000000acb01', 'the final pay application and the waivers', public.app_today() + 10, 'office');
+
+CREATE SCHEMA gbt;
+CREATE FUNCTION gbt.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  IF got IS DISTINCT FROM want THEN RAISE EXCEPTION E'% differs.\n--- got ---\n%\n--- want ---\n%', label, got, want; END IF;
+  RAISE NOTICE 'ok: %', label;
+END $$;
+-- A statement refused with words that hold `want`. Its own writes go with the refusal (a subtransaction).
+CREATE FUNCTION gbt.refused(label text, stmt text, want text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  BEGIN
+    EXECUTE stmt;
+  EXCEPTION WHEN OTHERS THEN
+    IF position(want IN SQLERRM) = 0 THEN RAISE EXCEPTION '% was refused for another reason: %', label, SQLERRM; END IF;
+    RAISE NOTICE 'ok: %', label;
+    RETURN;
+  END;
+  RAISE EXCEPTION '% was allowed', label;
+END $$;
+-- A trade's refusal: its key, and the reason in plain words the key carries.
+CREATE FUNCTION gbt.trade_refused(label text, stmt text, want_key text, want_detail text) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_detail text;
+BEGIN
+  BEGIN
+    EXECUTE stmt;
+  EXCEPTION WHEN OTHERS THEN
+    GET STACKED DIAGNOSTICS v_detail = PG_EXCEPTION_DETAIL;
+    IF SQLERRM IS DISTINCT FROM want_key OR v_detail IS DISTINCT FROM want_detail THEN
+      RAISE EXCEPTION '% was refused as % (%), not % (%)', label, SQLERRM, v_detail, want_key, want_detail;
+    END IF;
+    RAISE NOTICE 'ok: %', label;
+    RETURN;
+  END;
+  RAISE EXCEPTION '% was allowed', label;
+END $$;
+CREATE FUNCTION gbt.as_user(p_user uuid) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
+  PERFORM set_config('request.jwt.claim.sub', coalesce(p_user::text, ''), true);
+END $$;
+-- A final pay application as the window or the portal sends it.
+CREATE FUNCTION gbt.final(extra jsonb DEFAULT '{}'::jsonb) RETURNS jsonb LANGUAGE sql STABLE AS $$
+  SELECT jsonb_build_object('periodTo', public.app_today()::text, 'address', '12 Mill Rd, Boerne', 'license', 'TX-4471', 'signedBy', 'Pat Ridgeway', 'signedTitle', 'Owner') || extra $$;
+-- The draw that stands on Concrete by its number.
+CREATE FUNCTION gbt.draw(p_number integer) RETURNS uuid LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT id FROM public.gc_draws WHERE sow_id = '00000000-0000-0000-0000-0000000ac201' AND number = p_number AND status <> 'sent_back' $$;
+-- Concrete's draws: number, final, status, waiver and money.
+CREATE FUNCTION gbt.draws() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT string_agg('D' || number || CASE WHEN final THEN ' release' ELSE '' END || ' ' || status || ' ' || waiver || ' '
+    || trim_scale(gross) || '/' || trim_scale(retainage) || '/' || trim_scale(net), E'\n' ORDER BY number, seq)
+  FROM public.gc_draws WHERE sow_id = '00000000-0000-0000-0000-0000000ac201' $$;
+-- Whether Ridgeway's closeout promise is kept today, or still open.
+CREATE FUNCTION gbt.promise() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT CASE WHEN kept_on IS NULL THEN 'open' WHEN kept_on = public.app_today() THEN 'kept today' ELSE 'kept ' || kept_on END
+  FROM public.gc_trade_promises WHERE id = '00000000-0000-0000-0000-0000000ac701' $$;
+GRANT USAGE ON SCHEMA gbt TO authenticated, service_role;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA gbt TO authenticated, service_role;
+
+-- The functions themselves: invoker's rights; the office's presses and the helpers for signed-in callers, the
+-- trade's for the service role only. The closed day is new, and only on a closed job.
+SELECT gbt.same('every function runs with the caller''s rights',
+  (SELECT string_agg(DISTINCT prosecdef::text, ',') FROM pg_proc WHERE proname IN ('gc_retainage_held', 'gc_sow_all_billed', 'gc_owner_retainage_paid_on',
+    'gc_accept_work', 'gc_final_pay_app_ask', 'gc_trade_final_pay_app', 'gc_final_pay_app_came_in', 'gc_approve_retainage', 'gc_close_job')),
+  'false');
+SELECT gbt.same('who runs each: signed out, signed in, the service role',
+  (SELECT string_agg(f || ':' || has_function_privilege('anon', f, 'EXECUTE') || '/' || has_function_privilege('authenticated', f, 'EXECUTE') || '/' || has_function_privilege('service_role', f, 'EXECUTE'), ',')
+   FROM unnest(ARRAY['public.gc_accept_work(uuid)', 'public.gc_approve_retainage(uuid)', 'public.gc_close_job(uuid)', 'public.gc_trade_final_pay_app(uuid, uuid, jsonb)']) f),
+  'public.gc_accept_work(uuid):false/true/true,public.gc_approve_retainage(uuid):false/true/true,public.gc_close_job(uuid):false/true/true,public.gc_trade_final_pay_app(uuid, uuid, jsonb):false/false/true');
+SELECT gbt.same('the day we closed a job, kept only on a closed one',
+  (SELECT string_agg(conname, ',') FROM pg_constraint WHERE conname = 'gc_projects_closed_on_when_closed') || ' '
+    || (SELECT count(*) FROM information_schema.columns WHERE table_name = 'gc_projects' AND column_name = 'closed_on'),
+  'gc_projects_closed_on_when_closed 1');
+SELECT gbt.same('what we hold before the last draw: draw 1''s and draw 2''s retainage, the charge taken off draw 2 aside',
+  trim_scale(public.gc_retainage_held('00000000-0000-0000-0000-0000000ac201'))::text || ' ' || public.gc_sow_all_billed('00000000-0000-0000-0000-0000000ac201'), '2820 false');
+
+-- 1. Not every line is billed yet: Slab is at 90%.
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd01');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('accepted before every line is billed', $s$SELECT public.gc_accept_work('00000000-0000-0000-0000-0000000acb01')$s$, 'Accept the work once every line is billed');
+RESET ROLE;
+SELECT gbt.as_user(NULL);
+SET LOCAL ROLE service_role;
+SELECT gbt.trade_refused('the final before every line is billed', $s$SELECT public.gc_trade_final_pay_app('00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000acb01', gbt.final())$s$, 'finalNotYet', 'The final pay application opens once every line is billed and the work is accepted.');
+-- The last of the Slab: $1,800 less $180 held.
+SELECT public.gc_trade_pay_app('00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000acb01',
+  jsonb_build_object('lines', jsonb_build_array(jsonb_build_object('line', '00000000-0000-0000-0000-0000000ac102', 'toPct', 100)),
+    'periodTo', public.app_today()::text, 'signedBy', 'Pat Ridgeway'));
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd01');
+SET LOCAL ROLE authenticated;
+SELECT public.gc_approve_draw(gbt.draw(3));
+SELECT public.gc_pay_draw(gbt.draw(2));
+SELECT public.gc_pay_draw(gbt.draw(3));
+SELECT gbt.same('every line billed, and what we hold', public.gc_sow_all_billed('00000000-0000-0000-0000-0000000ac201') || ' ' || trim_scale(public.gc_retainage_held('00000000-0000-0000-0000-0000000ac201')), 'true 3000');
+
+-- 2. The punch list holds the acceptance until its item is fixed and checked.
+SELECT gbt.refused('accepted with the punch list open', $s$SELECT public.gc_accept_work('00000000-0000-0000-0000-0000000acb01')$s$, 'Their punch list has 1 item to fix or check first');
+RESET ROLE;
+UPDATE public.gc_punch_items SET fixed_on = public.app_today() - 1 WHERE id = '00000000-0000-0000-0000-0000000ac601';
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('accepted with an item fixed, not checked', $s$SELECT public.gc_accept_work('00000000-0000-0000-0000-0000000acb01')$s$, 'Their punch list has 1 item to fix or check first');
+RESET ROLE;
+UPDATE public.gc_punch_items SET checked_on = public.app_today(), checked_by = '00000000-0000-0000-0000-0000000acd01' WHERE id = '00000000-0000-0000-0000-0000000ac601';
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd02');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('a training account accepts', $s$SELECT public.gc_accept_work('00000000-0000-0000-0000-0000000acb01')$s$, 'A training account cannot accept a trade''s work');
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd03');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('a digital twin accepts', $s$SELECT public.gc_accept_work('00000000-0000-0000-0000-0000000acb01')$s$, 'A digital twin cannot accept a trade''s work');
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd01');
+SET LOCAL ROLE authenticated;
+SELECT gbt.same('accepted today', (public.gc_accept_work('00000000-0000-0000-0000-0000000acb01') - public.app_today())::text, '0');
+SELECT gbt.refused('accepted twice', $s$SELECT public.gc_accept_work('00000000-0000-0000-0000-0000000acb01')$s$, 'We accepted their work already');
+SELECT gbt.refused('our own work', $s$SELECT public.gc_accept_work('00000000-0000-0000-0000-0000000acb02')$s$, 'Their statement of work is not signed yet');
+RESET ROLE;
+
+-- 3. The waivers come in for draws 2 and 3. The promise asked for the final pay application too, so it stays open.
+SELECT gbt.as_user(NULL);
+SET LOCAL ROLE service_role;
+SELECT public.gc_trade_unconditional_waiver('00000000-0000-0000-0000-0000000ace01', gbt.draw(2));
+SELECT public.gc_trade_unconditional_waiver('00000000-0000-0000-0000-0000000ace01', gbt.draw(3));
+RESET ROLE;
+SELECT gbt.same('the final pay application is still owed', gbt.promise(), 'open');
+
+-- 4. The final pay application's refusals, both ways in.
+SELECT gbt.as_user(NULL);
+SET LOCAL ROLE service_role;
+SELECT gbt.trade_refused('no period', $s$SELECT public.gc_trade_final_pay_app('00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000acb01', gbt.final('{"periodTo": " "}'))$s$, 'badRequest', 'The pay application needs its period.');
+SELECT gbt.trade_refused('no one signs it', $s$SELECT public.gc_trade_final_pay_app('00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000acb01', gbt.final('{"signedBy": ""}'))$s$, 'nameNeeded', 'Type the name of who signs it.');
+SELECT gbt.trade_refused('a trade with no statement of work', $s$SELECT public.gc_trade_final_pay_app('00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000acb03', gbt.final())$s$, 'notFound', 'No statement of work for that trade.');
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd01');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('no period', $s$SELECT public.gc_final_pay_app_came_in('00000000-0000-0000-0000-0000000acb01', gbt.final('{"periodTo": "someday"}'))$s$, 'Say the day the pay application runs to');
+SELECT gbt.refused('no one signed it', $s$SELECT public.gc_final_pay_app_came_in('00000000-0000-0000-0000-0000000acb01', gbt.final('{"signedBy": " "}'))$s$, 'Say who signed it');
+SELECT gbt.refused('a job not being built', $s$SELECT public.gc_final_pay_app_came_in('00000000-0000-0000-0000-0000000acb03', gbt.final())$s$, 'Pay applications are for a job we are building');
+SELECT gbt.refused('one of ours recording it as someone else', $s$SELECT public.gc_final_pay_app_ask('00000000-0000-0000-0000-0000000ac201', gbt.final(), '00000000-0000-0000-0000-0000000acd04')$s$, 'badRequest');
+RESET ROLE;
+
+-- 5. The final pay application from the portal: the $3,000 we hold, the $500 charge never paid back. With no waiver
+-- owed, it keeps the promise.
+SELECT gbt.as_user(NULL);
+SET LOCAL ROLE service_role;
+SELECT public.gc_trade_final_pay_app('00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000acb01', gbt.final());
+SELECT gbt.trade_refused('a second final', $s$SELECT public.gc_trade_final_pay_app('00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000acb01', gbt.final())$s$, 'finalSent', 'The final pay application went already.');
+RESET ROLE;
+SELECT gbt.same('the release: the retainage we hold', gbt.draws(),
+  E'D1 paid unconditional 15000/1500/13500\nD2 paid unconditional 13200/1320/11880\nD3 paid unconditional 1800/180/1620\nD4 release requested conditional 0/-3000/3000');
+SELECT gbt.same('the final pay application keeps the promise', gbt.promise(), 'kept today');
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd01');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('a final that came by email, twice', $s$SELECT public.gc_final_pay_app_came_in('00000000-0000-0000-0000-0000000acb01', gbt.final())$s$, 'Their final pay application is in already');
+
+-- 6. Its approval waits for the customer to pay us ours, and 10 days.
+SELECT gbt.refused('a draw that is not the release', $s$SELECT public.gc_approve_retainage(gbt.draw(3))$s$, 'Only a retainage release is approved here');
+SELECT gbt.refused('the customer has not paid us', $s$SELECT public.gc_approve_retainage(gbt.draw(4))$s$, 'The customer has not paid us our retainage yet');
+RESET ROLE;
+-- Our final pay application to the customer, its bill on the billing job, and $20,000 of the $50,000 paid.
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000ac801', 'Closeout Bed Billing');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name) VALUES
+  ('00000000-0000-0000-0000-0000000ac901', '00000000-0000-0000-0000-0000000acd01', '00000000-0000-0000-0000-0000000ac801', 'Closeout test A (GC)'),
+  ('00000000-0000-0000-0000-0000000ac902', '00000000-0000-0000-0000-0000000acd01', '00000000-0000-0000-0000-0000000ac801', 'Closeout test C (GC)');
+INSERT INTO public.jobs_ledger_invoices (id, job_id, amount, sequence_order, status) VALUES
+  ('00000000-0000-0000-0000-0000000ad001', '00000000-0000-0000-0000-0000000ac901', 50000, 1, 'open'),
+  ('00000000-0000-0000-0000-0000000ad002', '00000000-0000-0000-0000-0000000ac902', 50000, 1, 'paid');
+INSERT INTO public.gc_owner_pay_apps (id, project_id, number, final, period_to, sent_on, retainage_pct, retainage, work_to_date, due, invoice_id) VALUES
+  ('00000000-0000-0000-0000-0000000ad201', '00000000-0000-0000-0000-0000000aca01', 4, true, public.app_today() - 25, public.app_today() - 25, 10, 0, 500000, 50000, '00000000-0000-0000-0000-0000000ad001'),
+  ('00000000-0000-0000-0000-0000000ad202', '00000000-0000-0000-0000-0000000aca03', 6, true, public.app_today() - 40, public.app_today() - 40, 10, 0, 500000, 50000, '00000000-0000-0000-0000-0000000ad002');
+INSERT INTO public.jobs_ledger_payments (id, job_id, invoice_id, amount, paid_on) VALUES
+  ('00000000-0000-0000-0000-0000000ad101', '00000000-0000-0000-0000-0000000ac901', '00000000-0000-0000-0000-0000000ad001', 20000, public.app_today() - 20);
+SELECT gbt.same('a bill paid in part is not paid', coalesce(public.gc_owner_retainage_paid_on('00000000-0000-0000-0000-0000000aca01')::text, 'not paid'), 'not paid');
+-- The rest comes in 5 days ago: too soon.
+INSERT INTO public.jobs_ledger_payments (id, job_id, invoice_id, amount, paid_on) VALUES
+  ('00000000-0000-0000-0000-0000000ad102', '00000000-0000-0000-0000-0000000ac901', '00000000-0000-0000-0000-0000000ad001', 30000, public.app_today() - 5);
+SELECT gbt.same('paid the day the payments reach the bill', (public.gc_owner_retainage_paid_on('00000000-0000-0000-0000-0000000aca01') - public.app_today())::text, '-5');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('the release before its 10 days', $s$SELECT public.gc_approve_retainage(gbt.draw(4))$s$, 'We pay their retainage from');
+RESET ROLE;
+UPDATE public.jobs_ledger_payments SET paid_on = public.app_today() - 12 WHERE id = '00000000-0000-0000-0000-0000000ad102';
+SELECT gbt.same('the payments reach A''s bill 12 days ago, and C''s has none yet', (SELECT string_agg(x, ' ') FROM (VALUES
+  ((public.gc_owner_retainage_paid_on('00000000-0000-0000-0000-0000000aca01') - public.app_today())::text),
+  (coalesce((public.gc_owner_retainage_paid_on('00000000-0000-0000-0000-0000000aca03') - public.app_today())::text, 'none'))) v(x)), '-12 none');
+INSERT INTO public.jobs_ledger_payments (id, job_id, invoice_id, amount, paid_on) VALUES
+  ('00000000-0000-0000-0000-0000000ad103', '00000000-0000-0000-0000-0000000ac902', '00000000-0000-0000-0000-0000000ad002', 20000, public.app_today() - 30),
+  ('00000000-0000-0000-0000-0000000ad104', '00000000-0000-0000-0000-0000000ac902', '00000000-0000-0000-0000-0000000ad002', 25000, public.app_today() - 18);
+SELECT gbt.same('C''s bill, marked paid at $45,000 of $50,000: paid on its last payment', (public.gc_owner_retainage_paid_on('00000000-0000-0000-0000-0000000aca03') - public.app_today())::text, '-18');
+SET LOCAL ROLE authenticated;
+SELECT gbt.same('the release approved 12 days after the customer paid us', (public.gc_approve_retainage(gbt.draw(4)) - public.app_today())::text, '0');
+SELECT gbt.refused('approved twice', $s$SELECT public.gc_approve_retainage(gbt.draw(4))$s$, 'Only a pay application waiting on us is approved');
+SELECT public.gc_pay_draw(gbt.draw(4));
+RESET ROLE;
+SELECT gbt.as_user(NULL);
+SET LOCAL ROLE service_role;
+SELECT public.gc_trade_unconditional_waiver('00000000-0000-0000-0000-0000000ace01', gbt.draw(4));
+RESET ROLE;
+SELECT gbt.same('paid back: nothing held, the final release in', trim_scale(public.gc_retainage_held('00000000-0000-0000-0000-0000000ac201'))::text || ' | '
+  || (SELECT string_agg(x, E'\n') FROM unnest(string_to_array(gbt.draws(), E'\n')) x WHERE x LIKE 'D4 %'), '0 | D4 release paid unconditional 0/-3000/3000');
+
+-- 7. Close the job: a dev's while Building is built, once.
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd04');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('an estimator closes a job', $s$SELECT public.gc_close_job('00000000-0000-0000-0000-0000000aca01')$s$, 'Closing a job is a dev''s while Building is built');
+SELECT gbt.refused('a signed-in caller cannot be the trade', $s$SELECT public.gc_trade_final_pay_app('00000000-0000-0000-0000-0000000ace01', '00000000-0000-0000-0000-0000000acb01', gbt.final())$s$, 'permission denied');
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd02');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('a training account closes a job', $s$SELECT public.gc_close_job('00000000-0000-0000-0000-0000000aca01')$s$, 'A training account cannot close a job');
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd03');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('a digital twin closes a job', $s$SELECT public.gc_close_job('00000000-0000-0000-0000-0000000aca01')$s$, 'A digital twin cannot close a job');
+RESET ROLE;
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000acd01');
+SET LOCAL ROLE authenticated;
+SELECT gbt.refused('a job still bidding', $s$SELECT public.gc_close_job('00000000-0000-0000-0000-0000000aca02')$s$, 'Only a job we are building is closed');
+SELECT gbt.refused('a job that does not exist', $s$SELECT public.gc_close_job('00000000-0000-0000-0000-0000000acaff')$s$, 'No GC project with that id');
+SELECT gbt.same('closed today', (public.gc_close_job('00000000-0000-0000-0000-0000000aca01') - public.app_today())::text, '0');
+SELECT gbt.refused('closed twice', $s$SELECT public.gc_close_job('00000000-0000-0000-0000-0000000aca01')$s$, 'This job is closed already');
+RESET ROLE;
+SELECT gbt.same('the job reads closed today', (SELECT stage || ' ' || (closed_on = public.app_today()) FROM public.gc_projects WHERE project_id = '00000000-0000-0000-0000-0000000aca01'), 'closed true');
+SELECT gbt.refused('a closed day on a job not closed', $s$UPDATE public.gc_projects SET closed_on = public.app_today() WHERE project_id = '00000000-0000-0000-0000-0000000aca03'$s$, 'gc_projects_closed_on_when_closed');
+
+DO $$ BEGIN RAISE NOTICE 'gc_building PASSED'; END $$;
+ROLLBACK;
+```
+
+**Run here first**, in the same PGlite bed on main's GC chain at 6186bb429, with a stand-in for the Pipeline's
+`jobs_ledger_payments`. U6a and U6c each applied twice. `60_draws.sql` passed its 99 and `70_closeout.sql` its 46.
+Ten planted bugs each failed it:
+- the release less the charges taken;
+- a fixed item counted as done;
+- no 10 days' wait;
+- paid on the first payment;
+- a bill paid for less never paid;
+- anyone closes a job;
+- the final keeping no promise;
+- anyone recorded as anyone;
+- a second final allowed;
+- accepted before every line is billed.
+
+### The migration doc as it will be (U6c)
+
+````markdown
+# <stamp>_gc_trade_closeout.sql (2026-10-09, v2.NNNN)
+
+GC mode, the real build, the Building lane's U6c: closeout (`to-dos/gc-mode/mockups/building-u6.md` on branch `spike/gc-mode`, amendment 2). One column, a check, and nine functions on U6a's draws (`<U6a stamp>_gc_trade_draws`). The punch list is U1's (`20261008030000`). Our bills to the customer are Owner Billing's (`20261008010000`, `20261009200000`).
+
+- **`gc_projects.closed_on`**: the day we closed the job (`GcProject.closedOn`), only on a closed one (`gc_projects_closed_on_when_closed`).
+- **The helpers**, read only:
+  - `gc_retainage_held(sow)`: what we hold (`retainageHeldNow`);
+  - `gc_sow_all_billed(sow)`: every line billed (`workAllBilled`);
+  - `gc_owner_retainage_paid_on(project)`: the day the customer paid our final pay application's bill, by `billMoney`'s rule in `src/lib/gc/ownerBillingRows.ts`. That is the day the payments reach the bill, or the last payment's day once it is marked paid for less.
+- **`gc_accept_work(p_package_id uuid)`**: once every line is billed and no punch item on the trade lacks its check. Not twice.
+- **`gc_final_pay_app_ask(p_sow_id uuid, p jsonb, p_recorded_by uuid)`**: the final pay application's rules, shared.
+  - Its money is the retainage held: gross none, retainage the release taken back, net the release.
+  - It comes once every line is billed and the work is accepted, once, with no draw waiting and retainage held.
+  - With no waiver owed, it keeps the closeout promise.
+  - A signed-in caller records it only as themselves.
+  - It raises keys: `finalSent`, `drawWaiting`, `finalNotYet`, `nothingToBill`, `badRequest`, `nameNeeded`.
+- **`gc_trade_final_pay_app(p_company_id uuid, p_package_id uuid, p_app jsonb)`**: the trade's, the service role's only, after `notFound`, `notOnTrade`, `sowNotSigned` and `jobNotBuilding`.
+- **`gc_final_pay_app_came_in(p_package_id uuid, p jsonb)`**: the office's, in its own words.
+- **`gc_approve_retainage(p_draw_id uuid)`**: the release, 10 days after the customer paid us ours.
+- **`gc_close_job(p_project_id uuid)`**: the stage `closed` and `closed_on` today, for a job we are building. A dev's while Building is built.
+
+`SECURITY INVOKER`, every one. The office's presses and the helpers go to `authenticated`, and the trade's to the service role only. `finalSent` and `finalNotYet` wait in WAITING as `'P5'`.
+
+Apply order: after U6a. `gc_projects` gains a nullable column and a check that every row passes. It locks the table briefly behind `lock_timeout 3s`. The rest is `CREATE OR REPLACE`. It is idempotent.
+
+**Before the push**, the SQL bed plays `70_closeout.sql` beside the other Building scenarios. It walks a trade from its last draw through acceptance, the waivers, its final pay application, the customer's payment and 10 days, the release paid and its final release, to the job closed. It checks each refusal and the customer's paid day both ways. It ends `gc_building PASSED`.
+
+## Verify after the push
+
+1. **The column, its check and the nine functions**, with invoker's rights and the right callers. Use the same query as U6a's step 1 on these names, and `SELECT conname FROM pg_constraint WHERE conname = 'gc_projects_closed_on_when_closed'`.
+2. **The customer's paid day, read only, as a dev**: `gc_owner_retainage_paid_on` on a project with a final pay application, if one exists on prod. It should equal Bill the customer's paid day.
+3. **A training account's call is refused in words**: `gc_close_job` gives *A training account cannot close a job.* (`42501`).
+4. **The trade's press is the service role's only**: as a dev, `gc_trade_final_pay_app` gives *permission denied*.
+
+## Rollback
+
+```sql
+DROP FUNCTION IF EXISTS public.gc_close_job(uuid);
+DROP FUNCTION IF EXISTS public.gc_approve_retainage(uuid);
+DROP FUNCTION IF EXISTS public.gc_final_pay_app_came_in(uuid, jsonb);
+DROP FUNCTION IF EXISTS public.gc_trade_final_pay_app(uuid, uuid, jsonb);
+DROP FUNCTION IF EXISTS public.gc_final_pay_app_ask(uuid, jsonb, uuid);
+DROP FUNCTION IF EXISTS public.gc_accept_work(uuid);
+DROP FUNCTION IF EXISTS public.gc_owner_retainage_paid_on(uuid);
+DROP FUNCTION IF EXISTS public.gc_sow_all_billed(uuid);
+DROP FUNCTION IF EXISTS public.gc_retainage_held(uuid);
+ALTER TABLE public.gc_projects DROP CONSTRAINT IF EXISTS gc_projects_closed_on_when_closed;
+ALTER TABLE public.gc_projects DROP COLUMN IF EXISTS closed_on;
+```
+
+## Status
+
+Written for the Building lane's U6c; not applied. The lead pushes it after the merge and records here what steps 1 to 4 said.
+````
+
+## U6d: the closeout window
+
+U6d ports `GcCloseout.tsx` (301 lines) as the **Closeout** window, at `?closeout=<projectId>`, behind the same two gates
+as Draws:
+- each trade's closeout steps (`tradeCloseout`);
+- **Accept the work**, held by the punch list in its words (`punchWords`);
+- the final pay application to read, the release's **Approve** held until its day, and **Mark paid**;
+- **Close the job** once `jobCloseout` is ready, with what is left in words until then.
+
+The mapper reads `gc_projects.closed_on` into `GcProject.closedOn`. A closed job leaves Building for its own section on
+the board.
 
 ## Drift from `BUILDING_REAL_BUILD.md`
 
