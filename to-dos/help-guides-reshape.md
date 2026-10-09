@@ -8,10 +8,10 @@ summary: >
   opening, a split where it holds two or three guides, and cuts. The three slices' reviewers
   proposed all three per guide. They are gathered here for the owner's call.
 size: M (13 guides, about 20,000 prose words; one PR per guide)
-ver: v2.4589 · 4597 · 4601 · 5052 · 5057 · 5062 · 5064 · 5065 · 5068 · 5071
+ver: v2.4589 · 4597 · 4601 · 5052 · 5057 · 5062 · 5064 · 5065 · 5067 · 5068 · 5069 · 5070 · 5071 · 5081
 mockup: not required — words only; each guide renders as it does today
 group: ready
-status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · 7 of 13 shipped (v2.5052, v2.5057, v2.5062, v2.5064, v2.5065, v2.5068, v2.5071)
+status: open · proposed 2026-10-05 by the three plain-words slices (#75) · the owner's rule 2026-10-09: openings and splits for all thirteen, no cuts · 11 of 13 shipped (v2.5052, v2.5057, v2.5062, v2.5064, v2.5065, v2.5067, v2.5068, v2.5069, v2.5070, v2.5071, v2.5081)
 next: One PR per guide, thirteen in all (the owner, 2026-10-09): the do-this-first opening above everything else, and the split where the reviewers proposed one, each new guide with its own title and share card; no cuts — a sentence a reader may rely on stays, moved below a *Reference* line at most. Each PR gets an independent old-against-new read.
 blocker: None.
 opinion: build — openings and splits are safe; the cuts were the risk and are off the table.
@@ -109,9 +109,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   Overhead tab* guide: the lens math window (How it moved, What moves it, Watch-outs), the
   bar-click panel, and the Behind any cell drill-down.
 
-### see what the office got done on any day
+### ~~see what the office got done on any day~~ — shipped v2.5081
 
-`see-what-the-office-got-done` · 1,056 words · #4586
+`see-what-the-office-got-done` · 1,056 words · #4586 · now the two-sentence opening (the old first sentence standing for the card's restatement of it) and the four record-keeping passages together in *Why a figure can be missing*, with one lead-in for amber. Nothing cut.
 
 - **Opening:** "The Day book shows what each office person did each day. You pick a day and read its
   lines."
