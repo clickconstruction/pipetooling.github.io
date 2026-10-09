@@ -3752,6 +3752,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ### gc-statement-email-dispatch
 
+> **v2.5006 — each bill netted by the one payment rule**: the RPC's `remaining` counts linked payments only; after `attachJobTotals`, `applyPaymentRule` (`render.ts`) re-nets every bill row with `attributeJobPayments` over the row's `job_bills`, `job_payments` and job total — the part of the job on no bill first, then the sent bills oldest first — and sums the subtotals and the grand total again. A row whose job total was not read keeps the RPC figure. The line under each bill names the rule's slices (`billPaymentSlices`). Same figures as the board and GC Review (the owner's call of 2026-10-09). **Redeploy after merge.**
+
 > **v2.4574 — the statement is kept as it went**: each scheduled statement is filed the same way as a manual one (`gc_statement`, the GC as `customer_id`, the requester as the sender). **Redeploy required.**
 
 > **v2.4534 — the job's total in the received block**: `receivedFor` selects `revenue` with each job, so [`_shared/gcChecksApplied.ts`](../supabase/functions/_shared/gcChecksApplied.ts) applies unlinked money to the part of the job on no bill before a bill (`_shared/paymentAttribution.ts`). The *paid by* line under a bill (`render.ts` `rowPaidBy`) reads the total too since v2.4536: the RPC's rows do not carry it, so the dispatcher selects `id, revenue` for `payloadJobIds(payload)` and `attachJobTotals` sets each row's `job_total`; a failed read leaves the rows as they came and the statement still goes.

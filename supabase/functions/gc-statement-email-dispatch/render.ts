@@ -62,6 +62,7 @@ export type GcStatementPayload = {
 
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { billPaidByWords, type PaidByBill, type PaidByPayment } from '../_shared/billPaidBy.ts'
+import { attributeJobPayments, billPaymentSlices } from '../_shared/paymentAttribution.ts'
 import {
   GC_STATEMENT_COMPANY_NAME,
   escapeHtml,
@@ -162,6 +163,34 @@ export function attachJobTotals(payload: Pick<GcStatementPayload, 'groups'>, tot
   }
 }
 
+const round2 = (n: number): number => Math.round(n * 100) / 100
+
+/**
+ * The one payment rule on the payload (v2.5006; the owner's call of 2026-10-09). The RPC nets each
+ * bill against its linked payments only; this nets it as the board, GC Review and the portal do —
+ * linked money in full, then the job's unlinked money to the part of the job on no bill and to the
+ * sent bills oldest first (`attributeJobPayments` over the row's `job_bills` and `job_payments`).
+ * Only rows whose job total was read (`attachJobTotals`) move: without the total, money that paid
+ * work on no bill would land on the bills. Every row stays (membership is by status, as on the
+ * board); the subtotals and the grand total are summed again from the rows.
+ */
+export function applyPaymentRule(payload: Pick<GcStatementPayload, 'groups' | 'grand_total'>): void {
+  let grand = 0
+  for (const g of payload.groups) {
+    let sub = 0
+    for (const r of g.rows) {
+      if (r.invoice_id && r.job_total != null && (r.job_bills || r.job_payments)) {
+        const applied = attributeJobPayments(r.job_bills ?? [], r.job_payments ?? [], r.job_total).byBill.get(r.invoice_id)?.applied ?? 0
+        r.remaining = round2(Math.max(0, Number(r.invoice_amount ?? 0) - applied))
+      }
+      sub = round2(sub + Number(r.remaining ?? 0))
+    }
+    g.subtotal = sub
+    grand = round2(grand + sub)
+  }
+  payload.grand_total = grand
+}
+
 const rowsHtml = (rows: GcStatementPayloadRow[]): string =>
   rows
     .map((r) => {
@@ -221,7 +250,12 @@ export function statementBillsOf(group: GcStatementPayloadGroup, propertyIdByJob
       sentIsEstimate: r.ref_is_estimate,
       billed: !decorated ? r.remaining : r.invoice_id ? r.invoice_amount ?? r.remaining : null,
       owed: r.remaining,
-      payments: !decorated ? [] : r.invoice_id ? jobPayments.filter((p) => p.invoice_id === r.invoice_id) : jobPayments,
+      // What paid the bill under the one rule (v2.5006) — mirror of the client's `GcReviewRow.billPayments`.
+      payments: !decorated
+        ? []
+        : r.invoice_id
+          ? billPaymentSlices(r.job_bills ?? [], jobPayments, r.invoice_id, r.job_total).map((slice) => ({ ...slice.payment, amount: slice.amount }))
+          : jobPayments,
       retainageHeld: r.retainage_held ?? null,
     }
   })

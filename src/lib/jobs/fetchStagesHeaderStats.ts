@@ -69,6 +69,50 @@ export function collectedWindowStartYmd(now = new Date()): string {
   return addDaysYmd(todayYmdInAppTz(now), -(COLLECTED_DAYS - 1))
 }
 
+/**
+ * The money the payment rule needs (v2.5006; the owner's call of 2026-10-09): a payment put on the
+ * job with no bill picked pays the job's bills oldest first. The reads above hold linked payments and
+ * the last 30 days only, and open bills only — so for every job with a billed bill, add its unlinked
+ * payments; and for each job that has unlinked money, its paid bills, because the rule walks every
+ * sent bill (`appliedByInvoiceUnderRule`). A job with no unlinked money reads as before.
+ */
+async function addUnlinkedMoneyRows(
+  invoiceRows: LeanStatsInvoiceRow[],
+  paymentRows: LeanStatsPaymentRow[],
+): Promise<{ invoices: LeanStatsInvoiceRow[]; payments: LeanStatsPaymentRow[] }> {
+  const billedJobIds = [...new Set(invoiceRows.filter((i) => i.status === 'billed').map((i) => i.job_id))]
+  if (billedJobIds.length === 0) return { invoices: invoiceRows, payments: paymentRows }
+  const unlinked = (await fetchAllRowsChunkedIn(
+    billedJobIds,
+    async (chunk, from, to) => ({
+      data: (await withSupabaseRetry(
+        async () =>
+          supabase.from('jobs_ledger_payments').select(LEAN_STATS_PAYMENT_COLUMNS).is('invoice_id', null).in('job_id', chunk).order('id').range(from, to),
+        'stages header stats: unlinked payments',
+      )) as unknown as LeanStatsPaymentRow[] | null,
+      error: null,
+    }),
+    'stages header stats: unlinked payments',
+  )).filter((p) => !p.invoice_id) as LeanStatsPaymentRow[]
+  const seen = new Set(paymentRows.map((p) => p.id).filter(Boolean))
+  const payments = [...paymentRows, ...unlinked.filter((p) => !p.id || !seen.has(p.id))]
+  const unlinkedJobIds = [...new Set(unlinked.filter((p) => Number(p.amount ?? 0) > 0).map((p) => p.job_id))]
+  if (unlinkedJobIds.length === 0) return { invoices: invoiceRows, payments }
+  const paidBills = (await fetchAllRowsChunkedIn(
+    unlinkedJobIds,
+    async (chunk, from, to) => ({
+      data: (await withSupabaseRetry(
+        async () =>
+          supabase.from('jobs_ledger_invoices').select(LEAN_STATS_INVOICE_COLUMNS).eq('status', 'paid').in('job_id', chunk).order('id').range(from, to),
+        'stages header stats: paid bills',
+      )) as unknown as LeanStatsInvoiceRow[] | null,
+      error: null,
+    }),
+    'stages header stats: paid bills',
+  )).filter((i) => i.status === 'paid') as LeanStatsInvoiceRow[]
+  return { invoices: [...invoiceRows, ...paidBills], payments }
+}
+
 export async function fetchStagesHeaderStats(
   customerFilter: string | null,
   now = new Date(),
@@ -135,12 +179,11 @@ export async function fetchStagesHeaderStats(
         'stages header stats: payments',
       ),
     ])
-    const payments = (paymentRows ?? []) as unknown as LeanStatsPaymentRow[]
-    const jobs = assembleLeanStatsJobs(
-      (jobRows ?? []) as unknown as LeanStatsJobRow[],
+    const { invoices: invoicesAll, payments } = await addUnlinkedMoneyRows(
       (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],
-      payments,
+      (paymentRows ?? []) as unknown as LeanStatsPaymentRow[],
     )
+    const jobs = assembleLeanStatsJobs((jobRows ?? []) as unknown as LeanStatsJobRow[], invoicesAll, payments)
     // v2.3809: the Working jobs' line items and stage-plan inputs, so a job
     // split into Order stages reads its plan for *capable to bill* exactly as
     // the Capable list does (Taunya, 2026-09-24: "$400 capable" over an empty
@@ -151,7 +194,7 @@ export async function fetchStagesHeaderStats(
     // from the flat rows — the assembled jobs dropped them already.
     const billTruth = computeBillTruth({
       jobs: (jobRows ?? []) as unknown as LeanStatsJobRow[],
-      invoices: (invoiceRows ?? []) as unknown as LeanStatsInvoiceRow[],
+      invoices: invoicesAll,
       payments,
     })
     return {

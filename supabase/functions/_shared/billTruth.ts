@@ -35,8 +35,11 @@
  *   that is fully paid but never marked Paid stays a member with
  *   `remaining 0` and `settled: true` (it needs a Mark Paid, not a chase),
  *   so the count is the same on every surface and no surface ages it.
- * - **Owed** — per row, `max(0, billed − applied)`: invoice rows net their
- *   invoice-linked payments, shell rows net `payments_made`. This is the ONLY
+ * - **Owed** — per row, `max(0, billed − applied)`: invoice rows net what the
+ *   one payment rule gives them (`appliedByInvoiceUnderRule`, v2.5006 — their
+ *   linked payments, plus the job's unlinked money oldest bill first after the
+ *   part of the job on no bill; `paymentAttribution.ts`), shell rows net
+ *   `payments_made`. This is the ONLY
  *   place a bill balance is clamped at zero; every surface sums these
  *   remainders and never clamps again. Over-payments therefore never net
  *   against another job's balance (the Hub's old behaviour) and a customer's
@@ -65,7 +68,7 @@
  * the board coalesces a NULL / empty job status to `working`, so
  * `billOnOpenJob(null)` is true here while the SQL mirror excludes NULL.
  *
- * Pure — no imports beyond the two `_shared` twins; tests in `billTruth.test.ts`.
+ * Pure — no imports beyond the two `_shared` twins and the payment rule; tests in `billTruth.test.ts`.
  */
 import { isPaidJobStatus } from './paidJobBillGuard.ts'
 import {
@@ -73,6 +76,7 @@ import {
   jobPrintsShellRemainder,
   PORTAL_OPEN_INVOICE_STATUS,
 } from './portalBillMembership.ts'
+import { attributeJobPayments } from './paymentAttribution.ts'
 
 /** Below this a remainder reads as settled (the Dashboard's long-standing EPSILON). */
 export const BILL_TRUTH_EPSILON = 0.005
@@ -97,11 +101,18 @@ export type BillTruthInvoice = {
   job_id: string
   status: string | null
   amount: number | null
+  /** Bill order for the payment rule (oldest first); optional — billed_at, then id, break ties. */
+  sequence_order?: number | null
+  billed_at?: string | null
 }
 
 export type BillTruthPayment = {
   invoice_id: string | null
   amount: number | null
+  /** The payment's job — needed to give an unlinked payment to a bill (v2.5006); without it the payment counts for no bill, as before. */
+  job_id?: string | null
+  paid_on?: string | null
+  sequence_order?: number | null
 }
 
 export type BillTruthOpenRow = {
@@ -111,7 +122,7 @@ export type BillTruthOpenRow = {
   jobId: string
   /** Face value: the invoice amount, or the job's revenue on a shell row. */
   billed: number
-  /** Invoice-linked payments (invoice row) or `payments_made` (shell row). */
+  /** What the payment rule gives the bill (invoice row, `appliedByInvoiceUnderRule`) or `payments_made` (shell row). */
   applied: number
   /** max(0, billed − applied) — clamped here and nowhere else. */
   remaining: number
@@ -208,6 +219,46 @@ export function appliedByInvoiceId(payments: ReadonlyArray<BillTruthPayment>): M
 }
 
 /**
+ * What each bill has been paid under the one rule (v2.5006; the owner's call of 2026-10-09): a
+ * payment put on the job with no bill picked counts too. Linked money is its bill's, in full; a
+ * job's unlinked money pays the part of the job on no sent bill first (given its `revenue`), then
+ * its sent bills oldest first (`attributeJobPayments`). A job with no unlinked money reads exactly
+ * as `appliedByInvoiceId`, so a caller that loads only linked payments sees no change; a job with
+ * unlinked money needs every sent bill (billed and paid) and every payment, each payment carrying
+ * its `job_id`.
+ */
+export function appliedByInvoiceUnderRule(
+  jobs: ReadonlyArray<Pick<BillTruthJob, 'id' | 'revenue'>>,
+  invoices: ReadonlyArray<BillTruthInvoice>,
+  payments: ReadonlyArray<BillTruthPayment>,
+): Map<string, number> {
+  const out = appliedByInvoiceId(payments)
+  const unlinkedJobs = new Set<string>()
+  for (const p of payments) if (!p.invoice_id && p.job_id && Number(p.amount ?? 0) > 0) unlinkedJobs.add(p.job_id)
+  if (unlinkedJobs.size === 0) return out
+  const invoicesByJob = new Map<string, BillTruthInvoice[]>()
+  for (const inv of invoices) {
+    if (!unlinkedJobs.has(inv.job_id)) continue
+    const list = invoicesByJob.get(inv.job_id)
+    if (list) list.push(inv)
+    else invoicesByJob.set(inv.job_id, [inv])
+  }
+  const paymentsByJob = new Map<string, BillTruthPayment[]>()
+  for (const p of payments) {
+    if (!p.job_id || !unlinkedJobs.has(p.job_id)) continue
+    const list = paymentsByJob.get(p.job_id)
+    if (list) list.push(p)
+    else paymentsByJob.set(p.job_id, [p])
+  }
+  for (const job of jobs) {
+    if (!unlinkedJobs.has(job.id)) continue
+    const attribution = attributeJobPayments(invoicesByJob.get(job.id) ?? [], paymentsByJob.get(job.id) ?? [], job.revenue)
+    for (const [invoiceId, bill] of attribution.byBill) out.set(invoiceId, bill.applied)
+  }
+  return out
+}
+
+/**
  * Lifetime billed on ONE job: Σ billed/paid invoice amounts, else the shell
  * `revenue` once the job itself is billed/paid. 0 for everything else.
  */
@@ -234,9 +285,10 @@ export function lifetimeCollected(payments: ReadonlyArray<Pick<BillTruthPayment,
 
 /**
  * The open-bill rows ONE job contributes: nothing on a paid job; each `billed`
- * invoice row netted against its linked payments; or, when a `billed` job has
+ * invoice row netted against what the payment rule gives it; or, when a `billed` job has
  * no billed invoice rows, one shell row. `applied` is the invoice_id → Σ map
- * from `appliedByInvoiceId` (pass an empty map when payments are unknown).
+ * from `appliedByInvoiceUnderRule` (v2.5006; `appliedByInvoiceId` counts linked
+ * payments only — pass an empty map when payments are unknown).
  */
 export function openBillRowsForJob(
   job: BillTruthJob,
@@ -345,7 +397,7 @@ export function computeBillTruth(input: BillTruthInput): BillTruth {
     else invoicesByJob.set(inv.job_id, [inv])
   }
 
-  const applied = appliedByInvoiceId(input.payments)
+  const applied = appliedByInvoiceUnderRule(input.jobs, input.invoices, input.payments)
   const billedRows: BillTruthOpenRow[] = []
   const collectionsRows: BillTruthOpenRow[] = []
   const uncollectibleRows: BillTruthOpenRow[] = []
@@ -401,9 +453,9 @@ export function computeBillTruthFromJobs(jobs: ReadonlyArray<BillTruthJobWithRow
   const payments: BillTruthPayment[] = []
   for (const j of jobs) {
     for (const inv of j.invoices ?? []) {
-      invoices.push({ id: inv.id, job_id: inv.job_id ?? j.id, status: inv.status, amount: inv.amount })
+      invoices.push({ id: inv.id, job_id: inv.job_id ?? j.id, status: inv.status, amount: inv.amount, sequence_order: inv.sequence_order ?? undefined, billed_at: inv.billed_at ?? undefined })
     }
-    for (const p of j.payments ?? []) payments.push({ invoice_id: p.invoice_id, amount: p.amount })
+    for (const p of j.payments ?? []) payments.push({ invoice_id: p.invoice_id, amount: p.amount, job_id: j.id, paid_on: p.paid_on ?? undefined, sequence_order: p.sequence_order ?? undefined })
   }
   return computeBillTruth({ jobs, invoices, payments })
 }

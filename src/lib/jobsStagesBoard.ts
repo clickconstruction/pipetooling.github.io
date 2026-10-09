@@ -3,6 +3,7 @@ import { jobHasBillingParty } from './jobs/jobPartyExclusive'
 import type { Database } from '../types/database'
 import { billOnOpenJob, openRemainder } from './billing/billTruth'
 import { allocatedOpenCents } from './billing/openLineAllocation'
+import { billAppliedOnJob } from './jobs/billApplied'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import type { StagesBoardSortMode } from './jobsStagesSortMode'
 import { jobLedgerHasCustomerForBilling } from './jobLedgerCustomerForBilling'
@@ -211,13 +212,9 @@ export function buildReadyToBillStageRows(readyToBillJobs: JobWithDetails[]): St
   return rows
 }
 
-/** One row per display unit: sole billed invoice merges with job; 2+ invoices → invoice rows only; no invoices → job row. */
+/** What a bill has been paid under the one rule — unlinked money counts, oldest bill first (v2.5006, `billAppliedOnJob`). */
 function sumPaymentsForInvoiceOnJob(job: JobWithDetails, invoiceId: string): number {
-  let s = 0
-  for (const p of job.payments ?? []) {
-    if (p.invoice_id === invoiceId) s += Number(p.amount ?? 0)
-  }
-  return s
+  return billAppliedOnJob(job, invoiceId)
 }
 
 /** Remaining dollars for a Billed Awaiting Payment stage row (job shell, merged billed, or invoice). */

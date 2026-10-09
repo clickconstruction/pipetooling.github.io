@@ -3,6 +3,7 @@ import { billedRowReferenceYmd, printBilledRowReferenceDate, stageRowBilledRemai
 import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 import { effectiveInvoiceParty } from './jobs/billToParty'
 import { billPaidByWords } from './jobs/gcChecksApplied'
+import { billPaymentSlices } from './jobs/paymentAttribution'
 
 /**
  * GC Review (v2.1181): group the Billed Awaiting Payment board rows by the
@@ -49,10 +50,14 @@ export type GcReviewRow = {
   referenceIsEstimate?: boolean
   /** The bill's amount; null for a job balance with no bill behind it. */
   billed?: number | null
-  /** Payments recorded against this bill; for a job balance, every payment on the job. */
+  /**
+   * What paid this bill under the one rule (v2.5006): its linked payments, and its share of money put
+   * on the job with no bill picked (the slice's amount, oldest bill first). For a job balance, every
+   * payment on the job.
+   */
   billPayments?: GcReviewRowPayment[]
   retainageHeld?: number | null
-  /** Money on the job that no bill carries — the statement cannot count it toward this bill. 0 for a job balance. */
+  /** Money put on the job with no bill picked — the office is told which jobs, before it sends. 0 for a job balance. */
   unmatchedOnJob?: number
 }
 
@@ -98,16 +103,19 @@ function toReviewRow(r: StageRow, inCollections: boolean, now: Date): GcReviewRo
   const refYmd = billedRowReferenceYmd(r)
   const invoiceId = r.kind === 'job' ? null : r.inv.id
   const jobPayments = r.job.payments ?? []
-  const billPayments: GcReviewRowPayment[] = jobPayments
-    .filter((p) => invoiceId == null || p.invoice_id === invoiceId)
-    .map((p) => ({
-      invoice_id: p.invoice_id ?? null,
-      amount: p.amount,
-      paid_on: p.paid_on ?? null,
-      payment_type: p.payment_type ?? null,
-      reference_number: p.reference_number ?? null,
-      sequence_order: p.sequence_order ?? null,
-    }))
+  const toRowPayment = (p: (typeof jobPayments)[number], amount: GcReviewRowPayment['amount'] | undefined): GcReviewRowPayment => ({
+    invoice_id: p.invoice_id ?? null,
+    amount: amount ?? null,
+    paid_on: p.paid_on ?? null,
+    payment_type: p.payment_type ?? null,
+    reference_number: p.reference_number ?? null,
+    sequence_order: p.sequence_order ?? null,
+  })
+  // A bill's payments are what the rule gives it — its linked payments and its share of the unlinked money (v2.5006).
+  const billPayments: GcReviewRowPayment[] =
+    invoiceId == null
+      ? jobPayments.map((p) => toRowPayment(p, p.amount))
+      : billPaymentSlices(r.job.invoices ?? [], jobPayments, invoiceId, r.job.revenue).map((slice) => toRowPayment(slice.payment, slice.amount))
   return {
     key: gcReviewRowKey(r),
     jobId: r.job.id,

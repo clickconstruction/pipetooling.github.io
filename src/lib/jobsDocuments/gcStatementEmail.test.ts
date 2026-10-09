@@ -115,7 +115,7 @@ describe('money on the job that no bill carries — the office is told before it
       { jobId: 'j881', hcp: '881', amount: 500 },
     ])
     expect(gcStatementUnmatchedWords(g)).toBe(
-      'Paid on the job, not on a bill: Job 273 $38,780.00 · Job 881 $500.00. The statement shows those jobs’ bills as owed in full. If the money was for these bills, match it in Edit Job → Payments first.',
+      'Paid on the job with no bill picked: Job 273 $38,780.00 · Job 881 $500.00. The statement counts it as the portal does, first for the work on no bill, then for the oldest bills. To put it on a different bill, pick the bill in Edit Job → Payments.',
     )
     expect(gcStatementUnmatchedWords(group())).toBe('')
   })
