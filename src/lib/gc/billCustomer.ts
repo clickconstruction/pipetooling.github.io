@@ -87,6 +87,8 @@ export function billingStateForAll(state: GcState, rows: BillingRows, projectIds
       ...(own ? { customerId: own.id } : {}),
       ...(worth ? { ownerContractWorth: worth } : {}),
       ...(step ? { ownerRetainageStep: step } : {}),
+      // The contract's days to pay stand in for a first-time customer's (O5d).
+      ...(terms ? { ownerPayDays: terms.owner_pay_days } : {}),
       ...(propertyOwner && propertyOwner !== p.owner ? { propertyOwner } : {}),
       ownerBilling: billing ? ownerBillingFromRows(billing) : null,
     }

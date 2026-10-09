@@ -263,9 +263,12 @@ export function ownerAccount(project: GcProject): OwnerAccount | null {
   }
 }
 
-/** The day we expect the owner to pay a pay application: the day the architect certified it (or it went) plus their usual days. */
+/**
+ * The day we expect the owner to pay a pay application: the day the architect certified it (or it went) plus their
+ * usual days, or, when they have never paid us, the contract's days to pay (O5d). Null: neither is known.
+ */
 export function ownerExpectPaidOn(state: GcState, project: GcProject, app: OwnerPayAppSent): string | null {
-  const payDays = customerOf(state, project)?.payDays
+  const payDays = customerOf(state, project)?.payDays ?? project.ownerPayDays ?? null
   return payDays == null ? null : addDays(app.certifiedOn ?? app.sentOn, payDays)
 }
 
@@ -351,6 +354,11 @@ export const CHANGE_ORDER_REASON_WORDS: Record<ChangeOrder['reason'], string> = 
 /** Change-order lines on the bill are keyed by the change order's id, which starts "co-". */
 export function isChangeOrderLineId(id: string): boolean {
   return id.startsWith('co-')
+}
+
+/** The contract's days to pay in Bill the customer's terms (O5d), or the ask to type them. */
+export function ownerPayDaysWords(days: number | null | undefined): string {
+  return days == null ? 'Type the contract\'s days to pay so a first bill can go late.' : `They pay within ${daysWords(days)} of the certificate, by the contract.`
 }
 
 /** "1 day", "5 days". */

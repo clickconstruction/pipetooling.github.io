@@ -594,6 +594,11 @@ export async function recordCertificate(payAppId: string, amount: number, on: st
   taken(await supabase.rpc('gc_record_certificate', { p_pay_app_id: payAppId, p_amount: amount, p_on: on, p_note: note }), 'record the certificate')
 }
 
+/** The contract's days to pay after the certificate (O5d), or null when it does not say. The money team's to change. */
+export async function setOwnerPayDays(projectId: string, days: number | null): Promise<void> {
+  taken(await supabase.from('gc_projects').update({ owner_pay_days: days }).eq('project_id', projectId).select('project_id').single(), 'save the days to pay')
+}
+
 /**
  * Our reminder to pay a late bill (O5b): filed with the pay-by day, the office's line and the email as the window
  * drafted it, with one note on the chase list. Returns the reminder's id, which gc-customer-email sends. Through the

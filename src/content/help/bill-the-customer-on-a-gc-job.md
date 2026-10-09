@@ -2,7 +2,7 @@
 title: bill the customer on a GC job
 category: Bids & Estimating
 roles: dev, master_technician, controller
-keywords: gc mode, pay application, bill, customer, architect, certificate, retainage, aia, g702, g703, excel, pdf, email
+keywords: gc mode, pay application, bill, customer, architect, certificate, retainage, aia, g702, g703, excel, pdf, email, days to pay, due
 order: 99
 ---
 Once a month, send the customer our pay application for the work done so far. The architect certifies it, and what they certify is the bill the customer pays.
@@ -62,6 +62,16 @@ The customer holds back part of every bill until the end. It starts at 10 percen
 4. Press {{button:blue|Save the retainage}}.
 
 Bills that already went keep the retainage they went with.
+
+## The days they have to pay
+
+The contract says how many days the customer has to pay after the certificate. Type that number here.
+
+1. Press {{button:outline|Change the days to pay}}.
+2. Type the days they have after the certificate. Leave it blank when the contract does not say.
+3. Press {{button:blue|Save the days to pay}}.
+
+The window counts a bill's due day from the certificate. A customer who paid us before is counted by the days they really take. A day they promise always comes first. Without the days to pay, a first bill to a new customer never shows as late.
 
 ## Before the first bill
 
