@@ -2493,6 +2493,7 @@ export type Database = {
       }
       bid_submittal_items: {
         Row: {
+          call_by: string | null
           carried_from_item_id: string | null
           created_at: string
           decision_entered_by: string | null
@@ -2513,6 +2514,9 @@ export type Database = {
           sheet_file: number | null
           sheet_pages: number[]
           sheet_source: string | null
+          signoff_name: string | null
+          signoff_on: string | null
+          signoff_via: string | null
           source_count_row_id: string | null
           source_quote_line_id: string | null
           specified_description: string | null
@@ -2528,6 +2532,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          call_by?: string | null
           carried_from_item_id?: string | null
           created_at?: string
           decision_entered_by?: string | null
@@ -2548,6 +2553,9 @@ export type Database = {
           sheet_file?: number | null
           sheet_pages?: number[]
           sheet_source?: string | null
+          signoff_name?: string | null
+          signoff_on?: string | null
+          signoff_via?: string | null
           source_count_row_id?: string | null
           source_quote_line_id?: string | null
           specified_description?: string | null
@@ -2563,6 +2571,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          call_by?: string | null
           carried_from_item_id?: string | null
           created_at?: string
           decision_entered_by?: string | null
@@ -2583,6 +2592,9 @@ export type Database = {
           sheet_file?: number | null
           sheet_pages?: number[]
           sheet_source?: string | null
+          signoff_name?: string | null
+          signoff_on?: string | null
+          signoff_via?: string | null
           source_count_row_id?: string | null
           source_quote_line_id?: string | null
           specified_description?: string | null
@@ -10107,13 +10119,10 @@ export type Database = {
           architect_customer_id: string | null
           bid_due: string | null
           billing_job_id: string | null
-          contingency_pct: number
           created_at: string
           created_by: string | null
           customer_role: string
           drive_folder_url: string
-          fee_pct: number
-          general_conditions: number
           lost_note: string | null
           lost_on: string | null
           lost_why: string | null
@@ -10145,13 +10154,10 @@ export type Database = {
           architect_customer_id?: string | null
           bid_due?: string | null
           billing_job_id?: string | null
-          contingency_pct?: number
           created_at?: string
           created_by?: string | null
           customer_role?: string
           drive_folder_url?: string
-          fee_pct?: number
-          general_conditions?: number
           lost_note?: string | null
           lost_on?: string | null
           lost_why?: string | null
@@ -10183,13 +10189,10 @@ export type Database = {
           architect_customer_id?: string | null
           bid_due?: string | null
           billing_job_id?: string | null
-          contingency_pct?: number
           created_at?: string
           created_by?: string | null
           customer_role?: string
           drive_folder_url?: string
-          fee_pct?: number
-          general_conditions?: number
           lost_note?: string | null
           lost_on?: string | null
           lost_why?: string | null
@@ -12227,6 +12230,163 @@ export type Database = {
           },
         ]
       }
+      gc_sow_lines: {
+        Row: {
+          amount: number
+          change_order_id: string | null
+          id: string
+          label: string
+          position: number
+          scope_item_id: string | null
+          sow_id: string
+        }
+        Insert: {
+          amount: number
+          change_order_id?: string | null
+          id?: string
+          label: string
+          position?: number
+          scope_item_id?: string | null
+          sow_id: string
+        }
+        Update: {
+          amount?: number
+          change_order_id?: string | null
+          id?: string
+          label?: string
+          position?: number
+          scope_item_id?: string | null
+          sow_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_sow_lines_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "gc_change_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_sow_lines_scope_item_id_fkey"
+            columns: ["scope_item_id"]
+            isOneToOne: false
+            referencedRelation: "gc_scope_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_sow_lines_sow_id_fkey"
+            columns: ["sow_id"]
+            isOneToOne: false
+            referencedRelation: "gc_sows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_sows: {
+        Row: {
+          accepted_on: string | null
+          based_on_rev: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          excluded: Json | null
+          id: string
+          invite_id: string
+          package_id: string
+          price: number
+          retainage_pct: number
+          sent_on: string | null
+          signed_on: string | null
+          signer_consented_at: string | null
+          signer_ip: string | null
+          signer_printed_name: string | null
+          signer_signature_storage_path: string | null
+          signer_user_agent: string | null
+          status: string
+          their_sov: Json | null
+        }
+        Insert: {
+          accepted_on?: string | null
+          based_on_rev?: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          excluded?: Json | null
+          id?: string
+          invite_id: string
+          package_id: string
+          price: number
+          retainage_pct?: number
+          sent_on?: string | null
+          signed_on?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_printed_name?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
+          status?: string
+          their_sov?: Json | null
+        }
+        Update: {
+          accepted_on?: string | null
+          based_on_rev?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          excluded?: Json | null
+          id?: string
+          invite_id?: string
+          package_id?: string
+          price?: number
+          retainage_pct?: number
+          sent_on?: string | null
+          signed_on?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_printed_name?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
+          status?: string
+          their_sov?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_sows_ask_of_company"
+            columns: ["invite_id", "company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_invites"
+            referencedColumns: ["id", "company_id"]
+          },
+          {
+            foreignKeyName: "gc_sows_ask_on_trade"
+            columns: ["invite_id", "package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_invites"
+            referencedColumns: ["id", "package_id"]
+          },
+          {
+            foreignKeyName: "gc_sows_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_sows_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_sows_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: true
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_statement_email_requests: {
         Row: {
           attempts: number
@@ -12710,6 +12870,9 @@ export type Database = {
       }
       gc_trade_packages: {
         Row: {
+          awarded_by: string | null
+          awarded_invite_id: string | null
+          awarded_on: string | null
           budget: number
           carried_invite_id: string | null
           carry_budget: boolean
@@ -12722,6 +12885,9 @@ export type Database = {
           trade: string
         }
         Insert: {
+          awarded_by?: string | null
+          awarded_invite_id?: string | null
+          awarded_on?: string | null
           budget?: number
           carried_invite_id?: string | null
           carry_budget?: boolean
@@ -12734,6 +12900,9 @@ export type Database = {
           trade: string
         }
         Update: {
+          awarded_by?: string | null
+          awarded_invite_id?: string | null
+          awarded_on?: string | null
           budget?: number
           carried_invite_id?: string | null
           carry_budget?: boolean
@@ -12746,6 +12915,20 @@ export type Database = {
           trade?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "gc_trade_packages_awarded_by_fkey"
+            columns: ["awarded_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_trade_packages_awarded_on_this_trade"
+            columns: ["awarded_invite_id", "id"]
+            isOneToOne: false
+            referencedRelation: "gc_invites"
+            referencedColumns: ["id", "package_id"]
+          },
           {
             foreignKeyName: "gc_trade_packages_carried_on_this_trade"
             columns: ["carried_invite_id", "id"]
@@ -28834,6 +29017,10 @@ export type Database = {
         Returns: undefined
       }
       gc_answer_question: { Args: { q: Json }; Returns: string }
+      gc_award: {
+        Args: { p_estimator?: string; p_invite_id: string }
+        Returns: string
+      }
       gc_bring_back: { Args: { p_project_id: string }; Returns: undefined }
       gc_create_project: { Args: { draft: Json }; Returns: string }
       gc_draft_change_order: {
@@ -28850,6 +29037,7 @@ export type Database = {
         }
         Returns: string
       }
+      gc_exclusion_key: { Args: { p_words: string }; Returns: string }
       gc_invite_companies: {
         Args: { p_company_ids: string[]; p_package_id: string }
         Returns: string[]
@@ -28869,6 +29057,7 @@ export type Database = {
         }
         Returns: string
       }
+      gc_leveled_total: { Args: { p_invite_id: string }; Returns: number }
       gc_mark_bid_sent: { Args: { p_project_id: string }; Returns: undefined }
       gc_mark_lost: {
         Args: {
@@ -28891,6 +29080,10 @@ export type Database = {
         Returns: undefined
       }
       gc_office_team: { Args: never; Returns: boolean }
+      gc_owner_billing_revenue: {
+        Args: { p_project_id: string }
+        Returns: number
+      }
       gc_owner_contract_now: { Args: { p_project_id: string }; Returns: number }
       gc_questions_close_on: { Args: { p_project: string }; Returns: string }
       gc_record_certificate: {
@@ -28904,6 +29097,17 @@ export type Database = {
       }
       gc_record_promise: { Args: { p: Json }; Returns: string }
       gc_record_question: { Args: { q: Json }; Returns: string }
+      gc_remind_customer_to_pay: {
+        Args: {
+          p_lines: string[]
+          p_note: string
+          p_on: string
+          p_pay_app_id: string
+          p_pay_by: string
+          p_subject: string
+        }
+        Returns: string
+      }
       gc_review_week_status: { Args: { p_week_start: string }; Returns: Json }
       gc_save_daily_log: { Args: { log: Json }; Returns: string }
       gc_schedule_add_activity: {
@@ -29065,6 +29269,10 @@ export type Database = {
       gc_send_change_order: {
         Args: { p_id: string; p_on: string }
         Returns: undefined
+      }
+      gc_send_owner_interest_bill: {
+        Args: { p_amount: number; p_project_id: string }
+        Returns: string
       }
       gc_send_owner_pay_app: {
         Args: { p_app: Json; p_project_id: string }

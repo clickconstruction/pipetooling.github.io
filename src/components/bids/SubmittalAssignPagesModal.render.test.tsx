@@ -30,7 +30,7 @@ vi.mock('../../lib/submittals/pdfThumbnails', () => ({
 const item = (o: Partial<SubmittalItemRow>): SubmittalItemRow => ({
   id: 'x', submittal_id: 'rev-1', tag: 'X-1', sequence_order: 1, specified_manufacturer: null, specified_model: null, specified_description: null, submitted_manufacturer: null, submitted_model: null, submitted_label: null,
   supply_house_id: null, source_quote_line_id: null, source_count_row_id: null, status: 'alternate', reason_kind: null, reason_note: null, lead_time_days: null, sheet_file: null, sheet_pages: [], sheet_source: null, carried_from_item_id: null, decision_source: 'room', decision_entered_by: null, decision_entered_by_name: null, order_only: false,
-  review_decision: null, review_note: null, reviewed_by_name: null, reviewed_by_person_id: null, reviewed_by_email: null, reviewed_at: null, created_at: '', updated_at: '', ...o,
+  review_decision: null, review_note: null, reviewed_by_name: null, reviewed_by_person_id: null, reviewed_by_email: null, reviewed_at: null, created_at: '', updated_at: '', call_by: null, signoff_name: null, signoff_on: null, signoff_via: null, ...o,
 })
 const items = [
   item({ id: 'wha500', tag: 'WHA-500', submitted_model: 'Z1700-500-OV', submitted_label: 'Zurn Z1700-500-OV', status: 'as_specified' }),
