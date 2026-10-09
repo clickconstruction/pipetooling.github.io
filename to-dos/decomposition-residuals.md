@@ -2,7 +2,7 @@
 name: "Decomposition residuals: the Workbench block, the Workflow page's leftovers"
 number: 21
 group: residual
-status: the two trains closed 2026-09-17 (Stages v2.3530–v2.3549; Pricing/Labor v2.3546, v2.3547, v2.3550, v2.3563, v2.3564, v2.3565) · the picker sweep shipped v2.4034 · the Workflow train (#46 row 9, v2.3907–v2.4081) closed 2026-09-28 with four leftovers added here · re-checked 2026-09-29: the queue card's roll-up is done (this sweep), the other three leftovers and both behaviour fixes are still open · what is left is by decision, not by shortfall
+status: the two trains closed 2026-09-17 (Stages v2.3530–v2.3549; Pricing/Labor v2.3546, v2.3547, v2.3550, v2.3563, v2.3564, v2.3565) · the picker sweep shipped v2.4034 · the Workflow train (#46 row 9, v2.3907–v2.4081) closed 2026-09-28 with four leftovers added here · re-checked 2026-09-29: the queue card's roll-up is done (this sweep) · the contact modal moved v2.5094; the WorkflowStageCard and both behaviour fixes are still open · what is left is by decision, not by shortfall
 summary: >
   What the two decomposition trains left on purpose: the Pricing tab's Workbench block (P2 —
   1,975 lines over 77 state values, re-mapped into nine blocks in the architecture map, not
