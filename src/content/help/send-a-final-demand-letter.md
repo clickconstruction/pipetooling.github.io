@@ -91,7 +91,7 @@ Every exhibit page is stamped with its letter. The letter names the exhibits und
 
 {{button:outline-blue|Email with the PDF…}} opens a strip at the foot of the window. The **To** box is filled with the payer's email from the bill. The send button counts the documents, like {{button:blue|Send · 3 documents}}. Press it, and the letter and every exhibit go as one attachment.
 
-The send is recorded on the job, with the email's id as its tracking. The deadline watch starts at once.
+The send is recorded on the job, with the email's id as its tracking. The deadline watch starts at once. A reply to the email goes to the office inbox, office@clickplumbing.com.
 
 Email is a second channel, not a replacement. Certified mail with a return receipt is what proves delivery. The § 31.04 presumption and a chapter 53 notice both require it.
 
