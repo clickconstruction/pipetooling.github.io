@@ -9,7 +9,8 @@
 /**
  * `jobs_ledger_invoices` — full row (small fixed set). `stripe_mode` (v2.1114) rides along
  * because the Split Bill modal voids the Stripe bill under the row's recorded mode (v2.3056);
- * without it the modal silently fell back to the role default for every bill.
+ * without it the modal silently fell back to the role default for every bill. `fee_lines` (v2.5033)
+ * carries a bill's added fees — the returned-check fee — so the printed bill lists them as its own rows.
  */
 export const JOBS_LEDGER_INVOICES_EMBED = [
   'agreed_write_down_at',
@@ -26,6 +27,7 @@ export const JOBS_LEDGER_INVOICES_EMBED = [
   'estimated_bill_date',
   'external_send_channel',
   'external_send_note',
+  'fee_lines',
   'hosted_invoice_url',
   'id',
   'is_primary_rtb_bundle',
