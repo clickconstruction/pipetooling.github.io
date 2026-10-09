@@ -1,136 +1,82 @@
 name: SQL beds
 
 # The whole-schema SQL beds (scripts/pgtest-*.sh) need Docker, and no session on the office Mac can
-# reach it. GitHub's runners have it. A PR that touches a bed's SQL runs the beds here before its
-# migration is pushed: the schedule's (its PR 5), bid history's ledger (#73 PR 0b on), the
-# unbanked check cases (#76 piece 3), the Stripe cases (#76 piece 1), Building's presses (GC mode U3a-i on: the daily log, the submittals, the RFIs),
-# Owner Billing's bill to the customer (GC mode O4a-1) with its reminders (O5b), GC award (the Board's B6-a)
-# the AIA pay applications (the bill an application became, v2.5032) and the trade portal's back-charges and
-# change requests (the Portal's P4a).
+# reach it. GitHub's runners have it. Each bed applies every migration and then plays its scenario,
+# so any migration can break any bed: when a PR touches a migration, a bed's test folder, a bed
+# script or this workflow, every bed in scripts/sql-beds.txt runs. The one job branch protection
+# requires is `sql-beds`, the gate at the bottom: it reports on every pull request and every
+# merge-queue build (a required check that never reports would block the merge), passes when the
+# beds passed or were not needed, and fails when any bed failed or was cancelled (2026-10-09, the
+# owner's call after a red bed could have merged).
+#
+# To add a bed: its script scripts/pgtest-<name>.sh, its folder supabase/tests/<name>/, and one
+# line in scripts/sql-beds.txt. This file does not change.
 on:
   pull_request:
-    paths:
-      - 'supabase/migrations/*gc_schedule*'
-      - 'supabase/tests/gc_schedule/**'
-      - 'scripts/pgtest-gc-schedule.sh'
-      - 'supabase/migrations/*bid_changes*'
-      - 'supabase/migrations/*labor_rows_unmatched*'
-      - 'supabase/migrations/*list_bid_history*'
-      - 'supabase/migrations/*latest_bid_cell_history*'
-      - 'supabase/migrations/*put_back_bid_change*'
-      - 'supabase/migrations/*bid_removed_rows*'
-      - 'supabase/tests/bid_changes/**'
-      - 'scripts/pgtest-bid-changes.sh'
-      - 'supabase/migrations/*ar_unbanked_check*'
-      - 'supabase/tests/ar_unbanked_checks/**'
-      - 'scripts/pgtest-ar-unbanked-checks.sh'
-      - 'supabase/migrations/*ar_stripe_cases*'
-      - 'supabase/tests/ar_stripe_cases/**'
-      - 'scripts/pgtest-ar-stripe-cases.sh'
-      - 'supabase/migrations/*gc_save_daily_log*'
-      - 'supabase/migrations/*gc_submittal_writes*'
-      - 'supabase/migrations/*gc_rfi_writes*'
-      - 'supabase/tests/gc_building/**'
-      - 'scripts/pgtest-gc-building.sh'
-      - 'supabase/migrations/*gc_owner*'
-      - 'supabase/migrations/*gc_remind*'
-      - 'supabase/migrations/*gc_record_acceptance*'
-      - 'supabase/migrations/*gc_money_monday*'
-      - 'supabase/migrations/*gc_change_order_portal*'
-      - 'supabase/migrations/*gc_controller_pay_speeds*'
-      - 'supabase/migrations/*gc_change_request_answers*'
-      - 'supabase/tests/gc_owner_billing/**'
-      - 'scripts/pgtest-gc-owner-billing.sh'
-      - 'supabase/migrations/*gc_award*'
-      - 'supabase/tests/gc_award/**'
-      - 'scripts/pgtest-gc-award.sh'
-      - 'supabase/migrations/*job_pay_applications*'
-      - 'supabase/tests/pay_applications/**'
-      - 'scripts/pgtest-pay-applications.sh'
-      - 'supabase/migrations/*gc_back_charges*'
-      - 'supabase/tests/gc_back_charges/**'
-      - 'scripts/pgtest-gc-back-charges.sh'
-      - '.github/workflows/sql-beds.yml'
+  merge_group:
   workflow_dispatch:
 
 jobs:
-  gc-schedule:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      beds: ${{ steps.filter.outputs.beds }}
+      matrix: ${{ steps.filter.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Which beds, and did a bed's file change?
+        id: filter
+        shell: bash
+        run: |
+          MATRIX=$(grep -v '^\s*#' scripts/sql-beds.txt | grep -v '^\s*$' | jq -R . | jq -cs .)
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "beds=true" >> "$GITHUB_OUTPUT"; echo "beds=true (dispatch) $MATRIX"; exit 0
+          fi
+          BASE="${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
+          HEAD="${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}"
+          BEDS=false
+          while IFS= read -r f; do
+            case "$f" in
+              supabase/migrations/*|supabase/tests/*|scripts/pgtest-*|scripts/sql-beds.txt|.github/workflows/sql-beds.yml) BEDS=true ;;
+            esac
+          done < <(git diff --name-only "$BASE" "$HEAD")
+          echo "beds=$BEDS" >> "$GITHUB_OUTPUT"
+          echo "beds=$BEDS ($BASE..$HEAD) $MATRIX"
+
+  bed:
+    needs: changes
+    if: needs.changes.outputs.beds == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        bed: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    name: ${{ matrix.bed }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: The schedule's writes against every migration
-        run: bash scripts/pgtest-gc-schedule.sh
+      - name: ${{ matrix.bed }} against every migration
+        run: bash scripts/pgtest-${{ matrix.bed }}.sh
 
-  bid-changes:
+  # The one check branch protection requires.
+  sql-beds:
+    needs: [changes, bed]
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Bid history's ledger against every migration
-        run: bash scripts/pgtest-bid-changes.sh
-
-  ar-unbanked-checks:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: The unbanked check sweep, its self-closes and the list rows
-        run: bash scripts/pgtest-ar-unbanked-checks.sh
-
-  ar-stripe-cases:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: The Stripe cases against stand-in tables
-        run: bash scripts/pgtest-ar-stripe-cases.sh
-
-  gc-building:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Building's presses against every migration
-        run: bash scripts/pgtest-gc-building.sh
-
-  gc-owner-billing:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Our bill to the customer against every migration
-        run: bash scripts/pgtest-gc-owner-billing.sh
-
-  gc-award:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: GC award's gate and statement of work against every migration
-        run: bash scripts/pgtest-gc-award.sh
-
-  pay-applications:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: The AIA pay applications against every migration
-        run: bash scripts/pgtest-pay-applications.sh
-
-  gc-back-charges:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: GC back-charges and change requests against every migration
-        run: bash scripts/pgtest-gc-back-charges.sh
+      - name: Every bed passed or was not needed
+        shell: bash
+        run: |
+          echo 'bed: ${{ needs.bed.result }} · changes: ${{ needs.changes.result }}'
+          case '${{ needs.bed.result }}' in
+            failure|cancelled) echo "a bed failed or was cancelled"; exit 1 ;;
+          esac
+          case '${{ needs.changes.result }}' in
+            failure|cancelled) echo "the changes job failed"; exit 1 ;;
+          esac
+          echo ok
