@@ -1087,7 +1087,7 @@ Bids → Pricing tab → Share ▾ → **Division 22 codes** (v2.2598). The rule
   - **Names**: the audit. Uncoded names come first, with *Pin it* and *No code*.
   - **Rules**: every rule under its section, with its standing ([`specSectionRules.ts`](../src/lib/specSectionRules.ts)). A rule decides N names on M bids, or never decides because an earlier rule gets its names first, or catches no name yet.
   - **Sections**: each section's rules, names and bids.
-- **Writers**: dev, master, assistant, controller and estimator, under RLS. A deleted rule or section is restorable for 90 days, once the archive trigger is in (PR 2 of the train).
+- **Writers**: dev, master, assistant, controller and estimator, under RLS. A deleted rule or section is restorable for 90 days (v2.5056).
 - **The manager train**: [`to-dos/division-22-rules-manager.md`](../to-dos/division-22-rules-manager.md).
 
 ### Bid Pricing Package send — "Share with a teammate"
