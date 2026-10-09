@@ -40,6 +40,13 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
   const [steps, setSteps] = useState<Step[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  /**
+   * A load that leaves nothing to draw (v2.5108): the project, the workflow or the steps could not be
+   * read or made on the first load, or a subcontractor has no step here. The page shows only this;
+   * `error` is for an action on a page already drawn, a failed re-read among them, and the page shows
+   * it as a banner (the map's quirk 21).
+   */
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [commitmentsByStep, setCommitmentsByStep] = useState<Record<string, StepCommitmentRow[]>>({})
   const [commitmentPaymentsByLaborJobId, setCommitmentPaymentsByLaborJobId] = useState<Record<string, Array<{ amount: number }>>>({})
   const [userSubscriptions, setUserSubscriptions] = useState<Record<string, { notify_when_started: boolean; notify_when_complete: boolean; notify_when_reopened: boolean }>>({})
@@ -55,6 +62,10 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
   
   // Track which workflow_id we've already loaded steps for to prevent redundant loads
   const lastLoadedWorkflowId = useRef<string | null>(null)
+
+  // The steps have been drawn for this project (v2.5108): a re-read that fails after that, such as the
+  // refresh after a write, keeps the last steps and goes to `error` (the banner), not `loadError`.
+  const stepsDrawn = useRef(false)
 
   async function ensureWorkflow(pid: string) {
     // Check if there's already a pending call for this project
@@ -76,7 +87,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
         ])
         if (queryError) {
           console.error('Error querying workflows:', queryError)
-          setError(`Failed to load workflow: ${queryError.message}`)
+          setLoadError(`Failed to load workflow: ${queryError.message}`)
           return null
         }
         if (wfs && wfs.length > 0) {
@@ -94,7 +105,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
         const { data: proj, error: projError } = await supabase.from('projects').select('name').eq('id', pid).single()
         if (projError) {
           console.error('Error loading project:', projError)
-          setError(`Failed to load project: ${projError.message}`)
+          setLoadError(`Failed to load project: ${projError.message}`)
           return null
         }
         const name = (proj as { name?: string } | null)?.name ? `${(proj as { name: string }).name} workflow` : 'Workflow'
@@ -106,7 +117,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
           const { data: wfsRetry, error: retryError } = await supabase.from('project_workflows').select('*').eq('project_id', pid)
           if (retryError) {
             console.error('Error querying workflows on retry:', retryError)
-            setError(`Failed to create workflow: ${insertError.message}`)
+            setLoadError(`Failed to create workflow: ${insertError.message}`)
             return null
           }
           if (wfsRetry && wfsRetry.length > 0) {
@@ -118,7 +129,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
           }
           // Still not found, return error
           console.error('Error creating workflow:', insertError)
-          setError(`Failed to create workflow: ${insertError.message}`)
+          setLoadError(`Failed to create workflow: ${insertError.message}`)
           return null
         }
         const w = inserted as Workflow
@@ -142,7 +153,8 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
       .eq('id', pid)
       .single()
     if (e) {
-      setError(e.message)
+      if (stepsDrawn.current) setError(e.message)
+      else setLoadError(e.message)
       setLoading(false)
       return false
     }
@@ -169,7 +181,8 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     
     const { data, error: e } = await query.order('sequence_order', { ascending: true })
     if (e) {
-      setError(`Failed to load steps: ${e.message}`)
+      if (stepsDrawn.current) setError(`Failed to load steps: ${e.message}`)
+      else setLoadError(`Failed to load steps: ${e.message}`)
       console.error('Error loading steps:', e)
       return
     }
@@ -178,7 +191,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     
     // Only subcontractors need this check (assistants see all stages if they have project access)
     if (isSubcontractorLikeRole(userRole) && stepData.length === 0) {
-      setError('You do not have access to this workflow. You can only view workflows where you are assigned to at least one step.')
+      setLoadError('You do not have access to this workflow. You can only view workflows where you are assigned to at least one step.')
       setSteps([])
       // Track that we've loaded steps for this workflow_id (even if empty)
       lastLoadedWorkflowId.current = wfId
@@ -186,6 +199,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     }
     
     setSteps(stepData)
+    stepsDrawn.current = true
     
     // Track that we've loaded steps for this workflow_id
     lastLoadedWorkflowId.current = wfId
@@ -332,7 +346,10 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     let cancelled = false
     ;(async () => {
       // Reset tracking when projectId changes (new project = need to load)
-      if (project?.id !== projectId) lastLoadedWorkflowId.current = null
+      if (project?.id !== projectId) {
+        lastLoadedWorkflowId.current = null
+        stepsDrawn.current = false
+      }
       // Run loadProject and ensureWorkflow in parallel (saves ~1 round-trip)
       const [projectOk, wfIdOrNull] = await Promise.all([
         loadProject(projectId),
@@ -491,6 +508,7 @@ export function useWorkflowStepsEngine({ projectId, authUserId, userRole, curren
     steps,
     setSteps,
     loading,
+    loadError,
     error,
     setError,
     lineItems,
