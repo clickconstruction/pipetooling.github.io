@@ -81,9 +81,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
 - **Move:** signing a work order and the date window go to the work-order guides.
 - **Cut:** the CountTooling access-log sentence.
 
-### read the Bridge
+### ~~read the Bridge~~ — shipped v2.5076
 
-`the-bridge` · 1,698 words · #4575
+`the-bridge` · 1,698 words · #4575 · now the three steps on top, and the card's items whole under *Reference* at the end, each under a short heading naming its section. Nothing cut.
 
 - **Opening:**
   1. Type today's bank balance in **Cash on hand today** and press **Set**. The cash line starts
