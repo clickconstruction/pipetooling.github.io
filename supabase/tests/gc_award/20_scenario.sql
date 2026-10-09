@@ -4,6 +4,8 @@
 -- and reads the numbers and words below from this file, so the two copies cannot drift. Presses run
 -- as a dev through RLS; the fixture is made as postgres; everything rolls back. Raises on the first
 -- failed assertion; ends with "gc_award PASSED". See scripts/pgtest-gc-award.sh. Never against prod.
+-- The award guard (v2.5100, 20261010025000) is played here too: a signed-in person's plain write of the three
+-- award columns is refused, a dev's as well, and only gc_award's own write and a key letting go pass.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -113,6 +115,17 @@ SELECT gat.as_user('00000000-0000-0000-0000-0000000006d2');
 SET LOCAL ROLE authenticated;
 SELECT gat.refused('an estimator, until call W', $q$SELECT public.gc_award('00000000-0000-0000-0000-000000000621')$q$,
   'Only a dev awards a trade while GC mode is built.');
+-- 0b · The award guard: the office team writes the trades, but not their award. A plain write of any of the
+-- three columns is refused, and so is a trade made with one.
+SELECT gat.refused('an estimator sets an award by hand', $q$UPDATE public.gc_trade_packages
+  SET awarded_invite_id = '00000000-0000-0000-0000-000000000621', awarded_by = '00000000-0000-0000-0000-0000000006d2', awarded_on = public.app_today()
+  WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$,
+  'A trade''s award changes only through Award and draft the statement of work in Compare quotes.');
+SELECT gat.refused('an estimator names who awarded by hand', $q$UPDATE public.gc_trade_packages SET awarded_by = '00000000-0000-0000-0000-0000000006d2' WHERE id = '00000000-0000-0000-0000-0000000006b2'$q$,
+  'A trade''s award changes only through Award and draft the statement of work in Compare quotes.');
+SELECT gat.refused('an estimator makes a trade already awarded', $q$INSERT INTO public.gc_trade_packages (project_id, trade, awarded_by)
+  VALUES ('00000000-0000-0000-0000-0000000006a1', 'Roofing', '00000000-0000-0000-0000-0000000006d2')$q$,
+  'A trade''s award changes only through Award and draft the statement of work in Compare quotes.');
 RESET ROLE;
 
 SELECT gat.as_user('00000000-0000-0000-0000-0000000006d1');
@@ -141,12 +154,18 @@ SELECT gat.refused('a lost project', $q$SELECT public.gc_award('00000000-0000-00
   'Award test lost job is lost. Bring it back before you award a trade.');
 SELECT gat.refused('an ask with no quote', $q$SELECT public.gc_award('00000000-0000-0000-0000-000000000626')$q$,
   'Lonestar Earthworks has not sent a quote for Concrete.');
+-- No role passes the guard: a dev's plain write would skip the gate above and draft no statement of work.
+SELECT gat.refused('a dev sets an award by hand', $q$UPDATE public.gc_trade_packages
+  SET awarded_invite_id = '00000000-0000-0000-0000-000000000621', awarded_by = '00000000-0000-0000-0000-0000000006d1', awarded_on = public.app_today()
+  WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$,
+  'A trade''s award changes only through Award and draft the statement of work in Compare quotes.');
 SELECT gat.same('nothing awarded by a refusal', (SELECT count(*)::text FROM public.gc_trade_packages WHERE awarded_invite_id IS NOT NULL), '0');
 
 -- 3 · Award Lonestar: the award, then the statement of work as sowFromBid draws it.
 SELECT public.gc_award('00000000-0000-0000-0000-000000000621', '00000000-0000-0000-0000-0000000006d1') IS NOT NULL AS awarded;
 SELECT gat.same('the award', (SELECT awarded_invite_id || ' ' || awarded_by || ' ' || (awarded_on = public.app_today()) FROM public.gc_trade_packages WHERE id = '00000000-0000-0000-0000-0000000006b1'),
   '00000000-0000-0000-0000-000000000621 00000000-0000-0000-0000-0000000006d1 true');
+SELECT gat.same('gc_award turns its flag off before it returns', coalesce(current_setting('gc.award_write', true), ''), '');
 SELECT gat.same('the statement of work', (SELECT status || ' ' || price || ' ' || retainage_pct || ' rev ' || based_on_rev FROM public.gc_sows WHERE package_id = '00000000-0000-0000-0000-0000000006b1'),
   'draft 66500 10 rev 1');
 -- sow lines: Clearing and grading 33200, Paving 33300
@@ -158,14 +177,37 @@ SELECT gat.same('their schedule of values rides along', (SELECT their_sov::text 
 SELECT gat.same('what they will not do, with who does the Known one', (SELECT excluded::text FROM public.gc_sows WHERE package_id = '00000000-0000-0000-0000-0000000006b1'),
   '[{"by": null, "name": "Dewatering"}, {"by": "the owner", "name": "Permits and fees"}, {"by": null, "name": "Rock", "unitPrice": {"unit": "cy", "amount": 38}}]');
 SELECT gat.refused('a trade awarded twice', $q$SELECT public.gc_award('00000000-0000-0000-0000-000000000622')$q$, 'Sitework is already awarded.');
+SELECT gat.refused('a dev clears the award by hand', $q$UPDATE public.gc_trade_packages SET awarded_invite_id = NULL, awarded_on = NULL
+  WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$,
+  'A trade''s award changes only through Award and draft the statement of work in Compare quotes.');
 
+-- 3b · The award guard after the award: the office team still edits the trade, and cannot clear, move or rename
+-- its award.
 RESET ROLE;
+SELECT gat.as_user('00000000-0000-0000-0000-0000000006d2');
+SET LOCAL ROLE authenticated;
+SELECT gat.refused('an estimator clears the award by hand', $q$UPDATE public.gc_trade_packages SET awarded_invite_id = NULL, awarded_on = NULL
+  WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$,
+  'A trade''s award changes only through Award and draft the statement of work in Compare quotes.');
+SELECT gat.refused('an estimator moves the award day', $q$UPDATE public.gc_trade_packages SET awarded_on = awarded_on - 1 WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$,
+  'A trade''s award changes only through Award and draft the statement of work in Compare quotes.');
+SELECT gat.refused('an estimator renames who awarded', $q$UPDATE public.gc_trade_packages SET awarded_by = '00000000-0000-0000-0000-0000000006d2' WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$,
+  'A trade''s award changes only through Award and draft the statement of work in Compare quotes.');
+UPDATE public.gc_trade_packages SET budget = budget + 1 WHERE id = '00000000-0000-0000-0000-0000000006b1';
+SELECT gat.same('an estimator still edits the awarded trade', (SELECT budget || ' ' || awarded_invite_id || ' ' || awarded_by FROM public.gc_trade_packages WHERE id = '00000000-0000-0000-0000-0000000006b1'),
+  '60001 00000000-0000-0000-0000-000000000621 00000000-0000-0000-0000-0000000006d1');
+RESET ROLE;
+SELECT gat.as_user('00000000-0000-0000-0000-0000000006d1');
 SELECT gat.refused('our own trade', $q$UPDATE public.gc_invites SET package_id = '00000000-0000-0000-0000-0000000006b3' WHERE id = '00000000-0000-0000-0000-000000000626';
   SELECT public.gc_award('00000000-0000-0000-0000-000000000626')$q$, 'We do Plumbing ourselves, so it is not awarded.');
 -- The award lets go of its ask (SET NULL), so the award's day can refuse first (23514); else the statement
 -- of work's key does (23503).
 SELECT gat.refused_code('an awarded ask cannot be deleted', $q$DELETE FROM public.gc_invites WHERE id = '00000000-0000-0000-0000-000000000621'$q$, '23503,23514');
-SELECT gat.refused_code('an award needs its day', $q$UPDATE public.gc_trade_packages SET awarded_on = NULL WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$, '23514');
+-- The award's day CHECK still holds behind gc_award: under gc_award's own flag (which the guard lets through), a
+-- cleared day is refused. The flag goes with the refusal's subtransaction.
+SELECT gat.refused_code('an award needs its day', $q$SELECT set_config('gc.award_write', 'on', true);
+  UPDATE public.gc_trade_packages SET awarded_on = NULL WHERE id = '00000000-0000-0000-0000-0000000006b1'$q$, '23514');
+SELECT gat.same('the flag went with the refusal', coalesce(current_setting('gc.award_write', true), ''), '');
 -- A scope item on a statement of work is still kept. Its check waits for the end of the transaction, so
 -- the bed asks for it at once (SET CONSTRAINTS … IMMEDIATE) inside the refusal's subtransaction.
 SELECT gat.refused_code('a scope item on a statement of work cannot be deleted', $q$DELETE FROM public.gc_scope_items WHERE id = '00000000-0000-0000-0000-0000000006e1';
@@ -175,6 +217,20 @@ SELECT gat.same('a signed statement of work can be consented to', (
   SELECT pg_get_constraintdef(oid) LIKE '%''gc_sow''%' FROM pg_constraint WHERE conname = 'esign_consents_record_type_check')::text, 'true');
 SELECT gat.same('our number''s old columns are gone', (
   SELECT count(*)::text FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'gc_projects' AND column_name IN ('general_conditions', 'contingency_pct', 'fee_pct')), '0');
+
+-- 3c · A key letting go passes the guard. A person who awarded is deleted: awarded_by goes null through its ON
+-- DELETE SET NULL, inside the key's own trigger, though someone is signed in. The fixture is written under the flag.
+INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-0000000006d3', 'gone@award.test');
+INSERT INTO public.users (id, email, name, role) VALUES ('00000000-0000-0000-0000-0000000006d3', 'gone@award.test', 'Award Gone', 'estimator')
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
+SELECT set_config('gc.award_write', 'on', true);
+UPDATE public.gc_trade_packages SET awarded_by = '00000000-0000-0000-0000-0000000006d3' WHERE id = '00000000-0000-0000-0000-0000000006b1';
+SELECT set_config('gc.award_write', '', true);
+SELECT gat.as_user('00000000-0000-0000-0000-0000000006d2');
+DELETE FROM public.users WHERE id = '00000000-0000-0000-0000-0000000006d3';
+SELECT gat.same('a person''s delete lets go of who awarded', (SELECT coalesce(awarded_by::text, 'null') || ' ' || awarded_invite_id FROM public.gc_trade_packages WHERE id = '00000000-0000-0000-0000-0000000006b1'),
+  'null 00000000-0000-0000-0000-000000000621');
+SELECT gat.as_user('00000000-0000-0000-0000-0000000006d1');
 
 -- 4 · The sweep of the test rows (call 4) deletes an awarded project in one statement: its trades, asks,
 -- quotes, award, statement of work and lines all go by cascade, and no key refuses it, neither during the
