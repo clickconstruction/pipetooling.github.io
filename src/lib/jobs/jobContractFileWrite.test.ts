@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { coSignatureOnFile, expectedCoSignerName, fileSignedContractDateBlocks, fileSignedContractReady, firstSignatureOnFile, paperCoSignerFields, paperFrameColumns, paperSignerAfterLink, paperUploadPath } from './jobContractFileWrite'
+import { coSignatureOnFile, expectedCoSignerName, fileSignedContractDateBlocks, fileSignedContractReady, fileSignedJobContract, firstSignatureOnFile, paperCoSignerFields, paperFilingRefusal, paperFrameColumns, paperSignerAfterLink, paperUploadPath } from './jobContractFileWrite'
 import type { JobContractRow } from './jobContractLifecycle'
 
 describe('filing a signed contract', () => {
@@ -113,6 +113,16 @@ describe('filing a signed contract', () => {
       expect(cols).not.toHaveProperty('signer_mode')
       expect(cols).not.toHaveProperty('signer_printed_name')
       expect(cols).not.toHaveProperty('signer_consented_at')
+    })
+
+    it('refuses, in words and before any write, a filing that names nobody for the paper', async () => {
+      const refusal = 'Sam Owner signed through the link. Enter who signed the paper.'
+      expect(paperFilingRefusal({ existing: out, signerName: 'Sam Owner', coSignerName: '' })).toBe(refusal)
+      expect(paperFilingRefusal({ existing: out, signerName: 'Sam Owner', coSignerName: 'Alex Owner' })).toBeNull()
+      expect(paperFilingRefusal({ existing: { ...out, sent_channel: 'link' } as JobContractRow, signerName: 'Sam Owner', coSignerName: '' })).toBeNull()
+      await expect(
+        fileSignedJobContract({ jobId: 'j1', existingDraft: out, basePayload: null, signerName: 'Sam Owner', coSignerName: ' ', signedOn: '2026-10-09', link: 'https://docs.google.com/document/d/1', file: null, authUserId: 'u1' }),
+      ).rejects.toThrow(refusal)
     })
 
     it('files the first frame from the paper, as before, when it was not signed through the link', () => {

@@ -5,6 +5,7 @@ const note: ReleaseNote = {
   date: '2026-10-09',
   title: 'Contracts: one spouse signs through the link, the other on paper, and both signatures stay',
   kind: 'fix',
+  roles: ['dev', 'master_technician', 'assistant', 'controller'],
   highlights: [
     'A PDF emailed to sign by hand keeps its link. When the customer signed there first, filing the paper no longer replaces that signature or its consent record.',
     'The filing sheet shows the link signature in place of the Signed by box. The person who signed the paper goes in Second signer.',

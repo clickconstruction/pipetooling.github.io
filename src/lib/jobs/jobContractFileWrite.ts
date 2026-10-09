@@ -68,6 +68,16 @@ export function paperSignerAfterLink(input: { signerName: string; coSignerName: 
 }
 
 /**
+ * Why a paper filing cannot be written, or null (v2.5101). With the first frame signed through the
+ * link, the paper must name who signed it, or the row would read signed with its second frame open.
+ */
+export function paperFilingRefusal(input: { existing: JobContractRow | null; signerName: string; coSignerName?: string | null }): string | null {
+  const onFile = firstSignatureOnFile(input.existing)
+  if (!onFile || paperSignerAfterLink({ signerName: input.signerName, coSignerName: input.coSignerName, onFile })) return null
+  return `${onFile.name} signed through the link. Enter who signed the paper.`
+}
+
+/**
  * The name the second frame expects: the caller's payload when it carries the key (the Contract
  * window's; a null there is the second signer taken off and not yet saved), else the row's own.
  */
@@ -155,6 +165,9 @@ export async function fileSignedJobContract(input: {
   file: File | null
   authUserId: string | null
 }): Promise<{ row: JobContractRow | null; uploadError: string | null }> {
+  // v2.5101: refused before any write, whichever door files it.
+  const refusal = paperFilingRefusal({ existing: input.existingDraft, signerName: input.signerName, coSignerName: input.coSignerName })
+  if (refusal) throw new Error(refusal)
   const nowIso = new Date().toISOString()
   const link = input.link.trim()
   const signedAt = input.signedOn ? `${input.signedOn}T12:00:00Z` : nowIso
