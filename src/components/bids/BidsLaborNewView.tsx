@@ -724,22 +724,25 @@ export function BidsLaborNewView(p: BidsLaborNewViewProps) {
                     <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>A subcontractor's line — no field hours of ours. Price it under Direct costs → Subcontractors below.</span>
                   ) : (
                     STAGE_KEYS.map((k, i) => (
-                      <input
-                        key={k}
-                        type="number"
-                        min={0}
-                        step={0.25}
-                        value={d.hrs[i]}
-                        placeholder={STAGE_SHORT[k]}
-                        onChange={(e) => {
-                          const hrs = [...d.hrs] as [string, string, string]
-                          hrs[i] = e.target.value
-                          patchDraft(row.id, row, { hrs })
-                        }}
-                        onWheel={(e) => e.currentTarget.blur()}
-                        aria-label={laborCellAriaLabel(`${STAGE_LONG[k]} hours ${d.kind === 'task' ? 'for the line' : d.unit === 'per_100ft' ? 'per 100 ft' : 'per unit'}`, row.fixture)}
-                        style={cellInput}
-                      />
+                      <span key={k} style={{ display: 'inline-flex', flexDirection: 'column' }}>
+                        <input
+                          type="number"
+                          min={0}
+                          step={0.25}
+                          value={d.hrs[i]}
+                          placeholder={STAGE_SHORT[k]}
+                          onChange={(e) => {
+                            const hrs = [...d.hrs] as [string, string, string]
+                            hrs[i] = e.target.value
+                            patchDraft(row.id, row, { hrs })
+                          }}
+                          onWheel={(e) => e.currentTarget.blur()}
+                          aria-label={laborCellAriaLabel(`${STAGE_LONG[k]} hours ${d.kind === 'task' ? 'for the line' : d.unit === 'per_100ft' ? 'per 100 ft' : 'per unit'}`, row.fixture)}
+                          style={cellInput}
+                        />
+                        {/* A row whose hours were wiped still shows what they were (the owner's call of 2026-10-09). */}
+                        <BidCellPast keys={laborCellKeys(row.id, k, row.fixture)} label={row.fixture} />
+                      </span>
                     ))
                   )}
                 </div>

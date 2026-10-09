@@ -5,8 +5,9 @@
  * guess, the grid shows a source chip per filled row. Supabase is stubbed; the
  * applied book comes back empty, so every zero row is "no match".
  */
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
+import type { JSXElementConstructor, ReactNode } from 'react'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -16,13 +17,15 @@ vi.mock('../../lib/supabase', async () => {
 import { BidsLaborNewView } from './BidsLaborNewView'
 import type { CostEstimateLaborRow } from '../../lib/bids/bidPricingEngineTypes'
 import { settle } from '../../test/renderSmokeMocks'
+import { BidCellHistoryProvider } from '../../hooks/useBidHistoryCells'
+import type { BidCellHistoryRpcRow } from '../../lib/bids/bidCellHistory'
 
 const row = (id: string, fixture: string, count: number, hrs: [number, number, number], extra: Partial<CostEstimateLaborRow> = {}): CostEstimateLaborRow =>
   ({ id, cost_estimate_id: 'ce-1', fixture, count, rough_in_hrs_per_unit: hrs[0], top_out_hrs_per_unit: hrs[1], trim_set_hrs_per_unit: hrs[2], is_fixed: false, kind: 'fixture', unit: 'each', source: null, source_note: null, sequence_order: 0, created_at: null, ...extra }) as CostEstimateLaborRow
 
 const rows = [row('r1', 'Toilets', 4, [1, 1, 1]), row('r2', 'Gas drops', 5, [3, 1, 0]), row('r3', 'WHA-500', 1, [0, 0, 0]), row('r4', 'SAWCUTTING', 1, [0, 0, 0])]
 
-function renderView(over: Partial<Parameters<typeof BidsLaborNewView>[0]> = {}) {
+function renderView(over: Partial<Parameters<typeof BidsLaborNewView>[0]> = {}, wrapper?: JSXElementConstructor<{ children: ReactNode }>) {
   return render(
     <BidsLaborNewView
       bidId="bid-1"
@@ -43,6 +46,7 @@ function renderView(over: Partial<Parameters<typeof BidsLaborNewView>[0]> = {}) 
       rowJumpFlashDomId={null}
       {...over}
     />,
+    { wrapper },
   )
 }
 
@@ -267,5 +271,57 @@ describe('BidsLaborNewView · one book and who may recalibrate (v2.3597)', () =>
     renderView({ countRows: [{ fixture: 'Toilets', count: 4, group_tag: 'Restroom A' }], alternateTags: [] })
     await settle()
     expect(screen.queryByTestId('labor-alt-split')).toBeNull()
+  })
+})
+
+describe('BidsLaborNewView · Past values on the needs-hours rows (the owner’s call of 2026-10-09)', () => {
+  // ZZ Test's WH: 2.25 h of rough in, wiped to 0 h on Wed 2026-10-07, so the row sits in the queue.
+  const wh = row('r-wh', 'WH', 1, [0, 0, 0])
+  const pastOf = (over: Partial<BidCellHistoryRpcRow> = {}): BidCellHistoryRpcRow => ({
+    cell_key: 'labor:r-wh:rough_in_hrs_per_unit', name_key: 'labor:wh:rough_in_hrs_per_unit', kind: 'changed', column_name: 'rough_in_hrs_per_unit', label: 'WH', value: 2.25,
+    changed_by_name: 'Robert', changed_at: '2026-10-07T15:00:00.000Z', rank: 1, total: 1, ...over,
+  })
+  const withHistory = (load: (bidId: string) => Promise<BidCellHistoryRpcRow[]>) =>
+    function HistoryOn({ children }: { children: ReactNode }) {
+      return <BidCellHistoryProvider bidId="bid-1" load={load}>{children}</BidCellHistoryProvider>
+    }
+
+  afterEach(() => {
+    vi.useRealTimers()
+    localStorage.clear()
+  })
+
+  it('a wiped row shows its earlier hours under its own stage box in the queue', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-09T18:00:00.000Z'))
+    localStorage.setItem('bid_history_cells_v1', 'on')
+    renderView({ rows: [row('r1', 'Toilets', 4, [1, 1, 1]), wh] }, withHistory(async () => [pastOf()]))
+    await settle()
+    const queue = screen.getByTestId('labor-queue')
+    expect(within(queue).getByText('WH')).toBeTruthy()
+    const past = within(queue).getAllByTestId('bid-cell-past')
+    expect(past.map((el) => el.textContent)).toEqual(['2.25 h · Robert · Wed'])
+    // Under Rough In, the stage whose hours were wiped, and not under Top Out or Trim Set.
+    expect(past[0]!.previousElementSibling?.getAttribute('aria-label')).toMatch(/^Rough In hours/)
+  })
+
+  it('a re-imported WH, a new row with no past of its own, borrows the removed row’s hours by name', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-09T18:00:00.000Z'))
+    localStorage.setItem('bid_history_cells_v1', 'on')
+    const removed = pastOf({ cell_key: 'labor:r-old:rough_in_hrs_per_unit', kind: 'removed' })
+    renderView({ rows: [wh] }, withHistory(async () => [removed]))
+    await settle()
+    const past = within(screen.getByTestId('labor-queue')).getAllByTestId('bid-cell-past')
+    expect(past.map((el) => el.textContent)).toEqual(['an earlier WH row · 2.25 h · removed Wed'])
+    expect(past[0]!.style.fontStyle).toBe('italic')
+  })
+
+  it('with Past values off the queue reads nothing and draws nothing', async () => {
+    const load = vi.fn(async () => [pastOf()])
+    renderView({ rows: [wh] }, withHistory(load))
+    await settle()
+    expect(load).not.toHaveBeenCalled()
+    expect(within(screen.getByTestId('labor-queue')).queryByTestId('bid-cell-past')).toBeNull()
   })
 })

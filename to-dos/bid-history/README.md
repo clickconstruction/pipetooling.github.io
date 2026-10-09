@@ -274,5 +274,4 @@ Owner's calls open (front matter). PR 0 waits for Wendi's answer, so the right l
 
 **Live walk 2026-10-08, and v2.4978.** Past values (v2.4952), Put back (v2.4954) and the History paging (v2.4963) passed on ZZ Test, walked by Helper 3 for PUNCHLIST. A Labor hours cell changed 1 h → 1.25 h showed its own past, Put back set it to 1 h again, and the window listed both. **v2.4978** fixes what the walk found: the action cut at a full page's edge was drawn as if whole, and now waits for **Show older changes**. Left from the walk:
 
-- An owner call, in [`owner-decisions-pending.md`](../owner-decisions-pending.md): a labor row whose hours were wiped hides its past.
 - For PR 5, to take or drop with a reason: after a Put back the tab's read re-arms the labor autosave, which writes the same six rows back (204s, no ledger rows). Harmless, but a read should not count as an edit.
