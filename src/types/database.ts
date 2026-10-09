@@ -3510,6 +3510,14 @@ export type Database = {
           plans_robot_probe_note: string | null
           plans_robot_probed_at: string | null
           plans_robot_readable: boolean | null
+          priced_at: string | null
+          priced_bid_version_id: string | null
+          priced_by: string | null
+          priced_cost_usd: number | null
+          priced_margin_pct: number | null
+          priced_rate_set: boolean | null
+          priced_revenue_usd: number | null
+          priced_uncosted_usd: number | null
           profit: number | null
           project_id: string | null
           project_name: string | null
@@ -3604,6 +3612,14 @@ export type Database = {
           plans_robot_probe_note?: string | null
           plans_robot_probed_at?: string | null
           plans_robot_readable?: boolean | null
+          priced_at?: string | null
+          priced_bid_version_id?: string | null
+          priced_by?: string | null
+          priced_cost_usd?: number | null
+          priced_margin_pct?: number | null
+          priced_rate_set?: boolean | null
+          priced_revenue_usd?: number | null
+          priced_uncosted_usd?: number | null
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
@@ -3698,6 +3714,14 @@ export type Database = {
           plans_robot_probe_note?: string | null
           plans_robot_probed_at?: string | null
           plans_robot_readable?: boolean | null
+          priced_at?: string | null
+          priced_bid_version_id?: string | null
+          priced_by?: string | null
+          priced_cost_usd?: number | null
+          priced_margin_pct?: number | null
+          priced_rate_set?: boolean | null
+          priced_revenue_usd?: number | null
+          priced_uncosted_usd?: number | null
           profit?: number | null
           project_id?: string | null
           project_name?: string | null
@@ -3807,6 +3831,20 @@ export type Database = {
             columns: ["next_followup_contact_person_id"]
             isOneToOne: false
             referencedRelation: "customer_contact_persons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_priced_bid_version_id_fkey"
+            columns: ["priced_bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_priced_by_fkey"
+            columns: ["priced_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -9549,6 +9587,57 @@ export type Database = {
             columns: ["package_id"]
             isOneToOne: false
             referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gc_money_monday_email_requests: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          id: string
+          recipient_user_id: string
+          repeat_weekly: boolean
+          requested_by: string
+          send_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id: string
+          repeat_weekly?: boolean
+          requested_by: string
+          send_at: string
+          sent_at?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          id?: string
+          recipient_user_id?: string
+          repeat_weekly?: boolean
+          requested_by?: string
+          send_at?: string
+          sent_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_money_monday_email_requests_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_money_monday_email_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
         ]
@@ -29266,6 +29355,10 @@ export type Database = {
           manual_involved: boolean
         }[]
       }
+      fleet_truck_rate_per_field_hour: {
+        Args: { p_today: string }
+        Returns: Json
+      }
       gc_add_company: { Args: { company: Json }; Returns: string }
       gc_add_submittal: { Args: { s: Json }; Returns: string }
       gc_answer_change_order: {
@@ -29817,6 +29910,7 @@ export type Database = {
         Args: { p_day: string; p_user_id: string }
         Returns: Json
       }
+      get_gc_money_monday_payload: { Args: never; Returns: Json }
       get_gc_statement_email_payload: {
         Args: {
           p_entity_id?: string
@@ -32424,6 +32518,17 @@ export type Database = {
       staff_can_view_user_for_tally_followup: {
         Args: { p_target: string; p_viewer: string }
         Returns: boolean
+      }
+      stamp_bid_priced_margin: {
+        Args: {
+          p_bid_id: string
+          p_bid_version_id: string
+          p_cost_usd: number
+          p_rate_set: boolean
+          p_revenue_usd: number
+          p_uncosted_usd: number
+        }
+        Returns: Json
       }
       step_assignee_matches_user: {
         Args: {
