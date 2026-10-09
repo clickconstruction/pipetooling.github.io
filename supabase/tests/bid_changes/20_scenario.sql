@@ -590,5 +590,31 @@ SELECT bct.refused('removed rows: a row already put back is not waiting',
 RESET ROLE;
 UPDATE mark SET id = bct.last();
 
+-- 21 · Undo a whole action (PR 6, v2.5098, no migration): History's Undo removes an action's added
+--      rows from the client, only from the tables BID_UNDO_REMOVABLE_TABLES lists
+--      (src/lib/bids/bidHistoryUndo.ts), so each removal lands in the delete archive and has Put
+--      back. On the schema main builds, every one of them still has its archive trigger. And what
+--      hangs on a count row outside the ledger, which a removed count row takes or empties unseen,
+--      is exactly what Undo reads before it removes one (BID_UNDO_UNSEEN_TABLES). bidHistoryUndo.test.ts
+--      holds both lists here equal to the kernel's.
+SELECT bct.same('undo: every table Undo removes from keeps its removals in the archive',
+  (SELECT COALESCE(string_agg(t, ' ' ORDER BY t), 'all archived')
+     FROM unnest(ARRAY[
+       'bids_count_rows', 'bid_count_row_custom_prices', 'bid_count_row_custom_costs', 'bid_pricing_assignments',
+       'bids_takeoff_rough_part_lines', 'bid_takeoff_stage_splits', 'cost_estimate_labor_rows', 'cost_estimate_labor_rows_unmatched',
+       'cost_estimate_equipment_rows', 'cost_estimate_other_rows', 'cost_estimate_permit_rows', 'cost_estimate_subcontractor_rows',
+       'cost_estimate_waste_rows', 'bid_payment_schedule_rows'
+     ]::text[]) AS t
+    WHERE NOT EXISTS (SELECT 1 FROM pg_trigger g WHERE g.tgrelid = to_regclass('public.' || t) AND g.tgname = 'zzz_archive_on_delete' AND NOT g.tgisinternal)),
+  'all archived');
+SELECT bct.same('undo: what hangs on a count row outside the ledger is what Undo reads first',
+  (SELECT string_agg(cl.relname || '.' || a.attname, ' ' ORDER BY cl.relname::text COLLATE "C", a.attname::text COLLATE "C")
+     FROM pg_constraint c
+     JOIN pg_class cl ON cl.oid = c.conrelid
+     JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+    WHERE c.contype = 'f' AND c.confrelid = 'public.bids_count_rows'::regclass
+      AND NOT (cl.relname::text = ANY (public.bid_changes_tables()))),
+  'bid_count_row_submission_hides.count_row_id bid_submittal_items.source_count_row_id bid_submittal_takeoff_choices.count_row_id bids_takeoff_template_mappings.count_row_id');
+
 SELECT 'bid_changes PASSED' AS result;
 ROLLBACK;

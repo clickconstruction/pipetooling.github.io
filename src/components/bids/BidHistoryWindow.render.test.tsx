@@ -12,6 +12,7 @@ import { BidHistoryWindow } from './BidHistoryWindow'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import type { BidHistoryRow } from '../../lib/bids/bidHistory'
 import { BID_HISTORY_PUT_BACK_EVENT, type BidPutBackResult, type BidRemovedRow, type BidRestoreResult } from '../../lib/bids/bidHistoryPutBack'
+import { BID_UNDO_UNSEEN_NONE, type BidUndoUnseen } from '../../lib/bids/bidHistoryUndo'
 
 afterEach(cleanup)
 
@@ -40,7 +41,11 @@ async function open(
   putBack?: (changeId: number, column: string | null) => Promise<BidPutBackResult>,
   loadRemoved: (bidId: string) => Promise<BidRemovedRow[]> = async () => [],
   restoreRemoved?: (archiveId: string) => Promise<BidRestoreResult>,
-  more: { canEdit?: boolean; removeAdded?: (table: string, ids: ReadonlyArray<string>) => Promise<number> } = {},
+  more: {
+    canEdit?: boolean
+    removeAdded?: (table: string, ids: ReadonlyArray<string>) => Promise<number>
+    loadUnseen?: (ids: ReadonlyArray<string>) => Promise<Map<string, BidUndoUnseen>>
+  } = {},
 ) {
   renderWithProviders(
     <BidHistoryWindow
@@ -52,6 +57,7 @@ async function open(
       restoreRemoved={restoreRemoved}
       loadCanEdit={async () => more.canEdit ?? false}
       removeAdded={more.removeAdded}
+      loadUnseen={more.loadUnseen ?? (async () => new Map())}
       now={NOW}
     />,
   )
@@ -269,6 +275,13 @@ describe('BidHistoryWindow · Undo a whole action (punch list #73 PR 6)', () => 
     expect(undoButtons(d)).toEqual(['Undo Brushed 2 prices', 'Undo Imported 2 rows from CountTooling'])
   })
 
+  it('a single line with no Put back of its own, such as the active version, gets Undo; one with Put back does not', async () => {
+    const pick = row({ changedAt: T(30), table: 'bids', recordId: 'bid-1', op: 'update', changed: ['selected_bid_version_id'], oldValues: { selected_bid_version_id: 'v-1' }, newValues: { selected_bid_version_id: 'v-2' }, label: null, action: null, byApp: null })
+    const price = row({ changedAt: T(90), table: 'bid_count_row_custom_prices', recordId: 'p-c', op: 'update', changed: ['unit_price'], label: 'Sink', action: null, byApp: null })
+    const d = await open(async () => [price, pick], undefined, async () => [], undefined, { canEdit: true })
+    expect(undoButtons(d)).toEqual(['Undo Edit Bid · active version'])
+  })
+
   it('someone who cannot edit it gets none', async () => {
     const d = await open(async () => history)
     expect(undoButtons(d)).toEqual([])
@@ -309,8 +322,28 @@ describe('BidHistoryWindow · Undo a whole action (punch list #73 PR 6)', () => 
   it('a later change on a row it added turns Undo off, and the line names it', async () => {
     const later = row({ changedAt: T(600), table: 'bid_count_row_custom_prices', recordId: 'p-new', countRowId: 'c-1', label: 'Tub', action: null, byApp: null, changedBy: 'u-ben', changedByName: 'Ben' })
     const d = await open(async () => [later, ...history], undefined, async () => [], undefined, { canEdit: true })
-    expect(undoButtons(d)).toEqual(['Undo Brushed 2 prices'])
+    // The later price is a single added row: no Put back of its own, so its Undo removes it.
+    expect(undoButtons(d)).toEqual(['Undo Added Tub', 'Undo Brushed 2 prices'])
     expect(within(d).getByText('Undo is off. A later change hangs on rows it added: Tub price.')).toBeTruthy()
+  })
+
+  it('a submittal tick on a row it added turns Undo off, and the line says so', async () => {
+    const loadUnseen = vi.fn(async () => new Map([['c-2', { ...BID_UNDO_UNSEEN_NONE, ticks: 1 }]]))
+    const d = await open(async () => history, undefined, async () => [], undefined, { canEdit: true, loadUnseen })
+    expect(loadUnseen).toHaveBeenCalledWith(['c-1', 'c-2'])
+    expect(undoButtons(d)).toEqual(['Undo Brushed 2 prices'])
+    expect(within(d).getByText('Undo is off. Rows it added carry work History cannot see: 1 submittal tick.')).toBeTruthy()
+  })
+
+  it('reads what hangs on its rows again on the press, and a tick made since stops it', async () => {
+    let calls = 0
+    const loadUnseen = vi.fn(async () => (++calls === 1 ? new Map() : new Map([['c-1', { ...BID_UNDO_UNSEEN_NONE, items: 2 }]])))
+    const removeAdded = vi.fn(async (_t: string, ids: ReadonlyArray<string>) => ids.length)
+    const d = await open(async () => history, undefined, async () => [], undefined, { canEdit: true, loadUnseen, removeAdded })
+    fireEvent.click(within(d).getByRole('button', { name: 'Undo Imported 2 rows from CountTooling' }))
+    await settle()
+    expect(removeAdded).not.toHaveBeenCalled()
+    expect(within(d).getByRole('alert').textContent).toBe('Undo is off. Rows it added carry work History cannot see: 2 submittal items.')
   })
 
   it('a refusal reads in the function’s words, and nothing is read again', async () => {

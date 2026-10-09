@@ -4,6 +4,7 @@ import type { Database } from '../../types/database'
 import { BID_ACTIONS, withBidAction } from './bidActionHeader'
 import { BID_HISTORY_PAGE, bidHistoryRowFromRpc, type BidHistoryRow, type BidHistoryRpcRow } from './bidHistory'
 import { bidRemovedRowFromRpc, type BidPutBackResult, type BidRemovedRow, type BidRemovedRpcRow, type BidRestoreResult } from './bidHistoryPutBack'
+import { BID_UNDO_UNSEEN_NONE, BID_UNDO_UNSEEN_TABLES, type BidUndoUnseen } from './bidHistoryUndo'
 
 /**
  * One page of a bid's history (punch list #73, PR 2; paged since the row-cap fix):
@@ -89,4 +90,30 @@ export async function removeBidAddedRows(table: string, ids: ReadonlyArray<strin
     removed += (data ?? []).length
   }
   return removed
+}
+
+/**
+ * What hangs on each count row outside the ledger (punch list #73, PR 6): the submittal ticks and
+ * items, the rows hidden from the pricing page and the old By Stage picks, read for the count rows
+ * an Undo would remove, before it is offered and again on the press. A row with none is left out.
+ * Throws a failed read, so Undo stays off rather than guess.
+ */
+export async function loadBidUndoUnseen(countRowIds: ReadonlyArray<string>, client: SupabaseClient<Database> = supabase): Promise<Map<string, BidUndoUnseen>> {
+  const out = new Map<string, BidUndoUnseen>()
+  // The tables are named at run time.
+  const untyped = client as unknown as SupabaseClient
+  for (const { table, column, key } of BID_UNDO_UNSEEN_TABLES) {
+    for (let i = 0; i < countRowIds.length; i += REMOVE_CHUNK) {
+      const { data, error } = await untyped.from(table).select(column).in(column, countRowIds.slice(i, i + REMOVE_CHUNK))
+      if (error) throw new Error(error.message)
+      for (const r of (data ?? []) as unknown as Array<Record<string, string | null>>) {
+        const id = r[column]
+        if (!id) continue
+        const cur = out.get(id) ?? { ...BID_UNDO_UNSEEN_NONE }
+        cur[key] += 1
+        out.set(id, cur)
+      }
+    }
+  }
+  return out
 }

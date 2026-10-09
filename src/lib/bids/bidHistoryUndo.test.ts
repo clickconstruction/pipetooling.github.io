@@ -3,7 +3,21 @@ import { resolve } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { groupBidHistory, type BidHistoryAction, type BidHistoryRow } from './bidHistory'
 import { bidRemovalKey, type BidPutBackResult, type BidRestoreResult } from './bidHistoryPutBack'
-import { BID_UNDO_REMOVABLE_TABLES, bidUndoDoneWords, bidUndoLabel, bidUndoPlan, bidUndoTitle, runBidUndo, type BidUndoPlan } from './bidHistoryUndo'
+import {
+  BID_UNDO_REMOVABLE_TABLES,
+  BID_UNDO_UNSEEN_NONE,
+  BID_UNDO_UNSEEN_TABLES,
+  BID_UNDO_UNSEEN_UNREAD,
+  bidUndoDoneWords,
+  bidUndoGateUnseen,
+  bidUndoLabel,
+  bidUndoPlan,
+  bidUndoRemovedCountRows,
+  bidUndoTitle,
+  bidUndoUnseenReason,
+  runBidUndo,
+  type BidUndoPlan,
+} from './bidHistoryUndo'
 
 // Made-up people, bids and values.
 let n = 0
@@ -39,8 +53,8 @@ describe('bidUndoPlan · changed values', () => {
     const rows = [row({ changedAt: at(0), label: 'Lav-1' }), row({ changedAt: at(1), label: 'WC-1', recordId: 'p-wc' })]
     const p = ready(plan(rows))
     expect(p.steps).toEqual([
-      { kind: 'value', changeId: rows[1]!.id, table: 'bid_count_row_custom_prices', what: 'WC-1' },
-      { kind: 'value', changeId: rows[0]!.id, table: 'bid_count_row_custom_prices', what: 'Lav-1' },
+      { kind: 'value', changeId: rows[1]!.id, table: 'bid_count_row_custom_prices', what: 'WC-1', writesOver: 0 },
+      { kind: 'value', changeId: rows[0]!.id, table: 'bid_count_row_custom_prices', what: 'Lav-1', writesOver: 0 },
     ])
     expect(p).toMatchObject({ changes: 2, writesOver: 0, removes: 0 })
     expect(bidUndoTitle(p)).toBe('Puts back its 2 changes, newest first.')
@@ -50,7 +64,9 @@ describe('bidUndoPlan · changed values', () => {
     const rows = [row({ changedAt: at(0), recordId: 'p-a' }), row({ changedAt: at(1), recordId: 'p-b' })]
     const person = row({ changedAt: at(60), recordId: 'p-a', changedBy: 'u-ben', changedByName: 'Ben' })
     const app = row({ changedAt: at(70), recordId: 'p-b', byApp: true, action: 'labor-sync' })
-    expect(ready(plan(rows, [person, app])).writesOver).toBe(1)
+    const p = ready(plan(rows, [person, app]))
+    expect(p.writesOver).toBe(1)
+    expect(p.steps.map((s) => (s.kind === 'value' ? s.writesOver : null))).toEqual([0, 1])
   })
 
   it('is off when a row it changed was removed since, and says to put it back first', () => {
@@ -172,6 +188,8 @@ describe('bidUndoPlan · added rows', () => {
     expect(plan(lines)).toEqual({ ready: false, reason: 'Undo is off. It added 2 schedule lines, and Undo cannot remove those.' })
     const version = [row({ table: 'bid_versions', recordId: 'v-2', countRowId: null, op: 'insert', oldValues: null, label: 'To Plans', changedAt: at(0) }), ...imported().map((r) => ({ ...r, action: null, changedAt: at(1) }))]
     expect(plan(version)).toEqual({ ready: false, reason: 'Undo is off. It added a version, and Undo cannot remove that.' })
+    const estimate = [row({ table: 'cost_estimates', recordId: 'e-2', countRowId: null, op: 'insert', oldValues: null, label: null, changedAt: at(0) }), row({ table: 'cost_estimate_labor_rows', recordId: 'l-2', countRowId: null, op: 'insert', oldValues: null, label: 'Tub', changedAt: at(1) })]
+    expect(plan(estimate)).toEqual({ ready: false, reason: 'Undo is off. It added an estimate, and Undo cannot remove that.' })
   })
 })
 
@@ -185,26 +203,61 @@ describe('bidUndoPlan · none', () => {
   })
 })
 
-describe('the list of tables Undo removes from', () => {
-  const MIGRATIONS = resolve(__dirname, '../../../supabase/migrations')
-  const sql = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort().map((f) => readFileSync(resolve(MIGRATIONS, f), 'utf8'))
-  const archive = sql.filter((s) => s.includes('zzz_archive_on_delete'))
-  const archived = (t: string) => archive.some((s) => new RegExp(`\\('${t}',\\s+ARRAY\\[|zzz_archive_on_delete BEFORE DELETE ON public\\.${t}\\b`).test(s))
-  const ledger = (() => {
-    const marker = 'CREATE OR REPLACE FUNCTION public.bid_changes_tables()'
-    const s = sql.filter((x) => x.includes(marker)).pop()!
-    return [...(/ARRAY\[([\s\S]*?)\]::text\[\]/.exec(s.slice(s.indexOf(marker)))![1]!).matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]!)
-  })()
+describe('the lists the SQL bed holds to the schema', () => {
+  // supabase/tests/bid_changes case 21 runs on the schema main builds (the sql-beds check): every
+  // table Undo removes from still has zzz_archive_on_delete, and what hangs on a count row outside
+  // the ledger is exactly BID_UNDO_UNSEEN_TABLES. These keep the bed's lists and the kernel's equal.
+  const bed = readFileSync(resolve(__dirname, '../../../supabase/tests/bid_changes/20_scenario.sql'), 'utf8')
+  const caseText = bed.slice(bed.indexOf('-- 21 · Undo a whole action'))
 
-  it('are ledger tables the delete archive keeps, so each removal can be put back', () => {
-    for (const t of BID_UNDO_REMOVABLE_TABLES) {
-      expect(ledger, t).toContain(t)
-      expect(archived(t), `${t} has zzz_archive_on_delete`).toBe(true)
-    }
+  it('the archived tables are the ones Undo removes from', () => {
+    const list = /unnest\(ARRAY\[([\s\S]*?)\]::text\[\]\)/.exec(caseText)
+    expect(list, 'case 21 lists the tables').not.toBeNull()
+    expect([...list![1]!.matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]).sort()).toEqual([...BID_UNDO_REMOVABLE_TABLES].sort())
   })
 
-  it('leave out the schedule lines, which the archive does not keep (add them here when it does)', () => {
-    expect(archived('bid_sov_lines')).toBe(false)
+  it('the keys outside the ledger that hang on a count row are the ones Undo reads first', () => {
+    const want = /'undo: what hangs on a count row outside the ledger[^']*',[\s\S]*?'([a-z0-9_. ]+)'\);/.exec(caseText)
+    expect(want, 'case 21 names the keys').not.toBeNull()
+    expect(want![1]).toBe(BID_UNDO_UNSEEN_TABLES.map((t) => `${t.table}.${t.column}`).sort().join(' '))
+  })
+
+  it('every table Undo removes from is a ledger table', () => {
+    const sql = readdirSync(resolve(__dirname, '../../../supabase/migrations')).filter((f) => f.endsWith('.sql')).sort().map((f) => readFileSync(resolve(__dirname, '../../../supabase/migrations', f), 'utf8'))
+    const marker = 'CREATE OR REPLACE FUNCTION public.bid_changes_tables()'
+    const def = sql.filter((x) => x.includes(marker)).pop()!
+    const ledger = [...(/ARRAY\[([\s\S]*?)\]::text\[\]/.exec(def.slice(def.indexOf(marker)))![1]!).matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]!)
+    for (const t of BID_UNDO_REMOVABLE_TABLES) expect(ledger, t).toContain(t)
+  })
+})
+
+describe('what hangs on a count row outside the ledger', () => {
+  const removing: Extract<BidUndoPlan, { ready: true }> = {
+    ready: true, changes: 2, writesOver: 0, removes: 2,
+    steps: [{ kind: 'remove', table: 'bids_count_rows', ids: ['c-1', 'c-2'], what: '2 count rows' }, { kind: 'remove', table: 'bid_count_row_custom_prices', ids: ['p-9'], what: 'Lav-9' }],
+  }
+  const read = (id: string, over: Partial<typeof BID_UNDO_UNSEEN_NONE>) => new Map([[id, { ...BID_UNDO_UNSEEN_NONE, ...over }]])
+
+  it('is read for the count rows a plan removes, and only those', () => {
+    expect(bidUndoRemovedCountRows(removing)).toEqual(['c-1', 'c-2'])
+    expect(bidUndoRemovedCountRows({ ready: false, reason: 'x' })).toEqual([])
+  })
+
+  it('turns Undo off for each kind, and names it', () => {
+    expect(bidUndoGateUnseen(removing, read('c-1', { ticks: 2 }))).toEqual({ ready: false, reason: 'Undo is off. Rows it added carry work History cannot see: 2 submittal ticks.' })
+    expect(bidUndoGateUnseen(removing, read('c-2', { items: 1 }))).toEqual({ ready: false, reason: 'Undo is off. Rows it added carry work History cannot see: 1 submittal item.' })
+    expect(bidUndoGateUnseen(removing, read('c-1', { hides: 1 }))).toEqual({ ready: false, reason: 'Undo is off. Rows it added carry work History cannot see: 1 row hidden from the pricing page.' })
+    expect(bidUndoGateUnseen(removing, read('c-2', { mappings: 3 }))).toEqual({ ready: false, reason: 'Undo is off. Rows it added carry work History cannot see: 3 By Stage picks.' })
+    expect(bidUndoUnseenReason({ ticks: 1, hides: 0, items: 2, mappings: 0 })).toBe('Undo is off. Rows it added carry work History cannot see: 1 submittal tick and 2 submittal items.')
+  })
+
+  it('offers Undo when nothing hangs there, waits while the read is out, and stays off when it failed', () => {
+    expect(bidUndoGateUnseen(removing, new Map())).toBe(removing)
+    expect(bidUndoGateUnseen(removing, read('c-other', { ticks: 1 }))).toBe(removing)
+    expect(bidUndoGateUnseen(removing, null)).toBeNull()
+    expect(bidUndoGateUnseen(removing, 'failed')).toEqual({ ready: false, reason: BID_UNDO_UNSEEN_UNREAD })
+    const noCountRows: BidUndoPlan = { ...removing, steps: [removing.steps[1]!] }
+    expect(bidUndoGateUnseen(noCountRows, null)).toBe(noCountRows)
   })
 })
 
@@ -218,7 +271,7 @@ describe('runBidUndo', () => {
     removes: 2,
     steps: [
       { kind: 'remove', table: 'bids_count_rows', ids: ['c-1', 'c-2'], what: '2 count rows' },
-      { kind: 'value', changeId: 7, table: 'bid_count_row_custom_prices', what: 'Lav-1' },
+      { kind: 'value', changeId: 7, table: 'bid_count_row_custom_prices', what: 'Lav-1', writesOver: 1 },
       { kind: 'restore', archiveId: 'ar-1', table: 'bids_count_rows', what: 'SUMP' },
     ],
   }
@@ -231,7 +284,7 @@ describe('runBidUndo', () => {
       remove: vi.fn(async (t: string, ids: ReadonlyArray<string>) => { calls.push(`remove ${t} ${ids.join(',')}`); return ids.length }),
     })
     expect(calls).toEqual(['remove bids_count_rows c-1,c-2', 'value 7 null', 'restore ar-1'])
-    expect(out).toEqual({ done: 3, refusals: [], tables: ['bids_count_rows', 'bid_count_row_custom_prices'], removed: 2, cleared: 1 })
+    expect(out).toEqual({ done: 3, refusals: [], tables: ['bids_count_rows', 'bid_count_row_custom_prices'], removed: 2, cleared: 1, wroteOver: 1 })
   })
 
   it('a row already back, brought by its parent earlier in the run, counts as done', async () => {
@@ -243,6 +296,12 @@ describe('runBidUndo', () => {
     expect(out).toMatchObject({ done: 1, refusals: [] })
   })
 
+  it('a removal that took only some of its rows counts what went and says the rest', async () => {
+    const out = await runBidUndo({ ...p, steps: p.steps.slice(0, 1) }, { putBack: async () => result, restore: async () => restored, remove: async () => 1 })
+    expect(out).toMatchObject({ done: 1, removed: 1, refusals: [{ what: '2 count rows', words: 'Only 1 of 2 were removed. You cannot change this bid, or the rest are gone already.' }] })
+    expect(bidUndoDoneWords({ caption: 'Imported 2 rows from CountTooling' }, out).text).toBe('“Imported 2 rows from CountTooling” is partly undone. 2 count rows: Only 1 of 2 were removed. You cannot change this bid, or the rest are gone already. The row it added is in the delete archive now. Its Put back brings it back.')
+  })
+
   it('says each refusal in the function’s words and still runs the rest', async () => {
     const out = await runBidUndo(p, {
       putBack: async () => { throw new Error('That row was removed since. Put the row back first.') },
@@ -250,6 +309,8 @@ describe('runBidUndo', () => {
       remove: async () => 0,
     })
     expect(out.done).toBe(1)
+    // The refused put back wrote over nothing.
+    expect(out.wroteOver).toBe(0)
     expect(out.refusals).toEqual([
       { what: '2 count rows', words: 'You cannot change this bid, or those rows are gone already.' },
       { what: 'Lav-1', words: 'That row was removed since. Put the row back first.' },
@@ -259,22 +320,21 @@ describe('runBidUndo', () => {
 
 describe('bidUndoDoneWords', () => {
   const a = { caption: 'Imported 3 rows from CountTooling' }
-  const p = (over: Partial<Extract<BidUndoPlan, { ready: true }>> = {}): Extract<BidUndoPlan, { ready: true }> => ({ ready: true, steps: [], changes: 3, writesOver: 0, removes: 3, ...over })
-  const out = { done: 1, refusals: [], tables: ['bids_count_rows'], removed: 0, cleared: 0 }
+  const out = { done: 1, refusals: [], tables: ['bids_count_rows'], removed: 0, cleared: 0, wroteOver: 0 }
 
   it('says it is undone, and where removed rows went', () => {
-    expect(bidUndoDoneWords(a, p(), out)).toEqual({ text: '“Imported 3 rows from CountTooling” is undone.', ok: true })
-    expect(bidUndoDoneWords(a, p(), { ...out, removed: 3 }).text).toBe('“Imported 3 rows from CountTooling” is undone. The 3 rows it added are in the delete archive now. Each one\'s Put back brings it back.')
-    expect(bidUndoDoneWords(a, p(), { ...out, removed: 1 }).text).toMatch(/The row it added is in the delete archive now\. Its Put back brings it back\.$/)
+    expect(bidUndoDoneWords(a, out)).toEqual({ text: '“Imported 3 rows from CountTooling” is undone.', ok: true })
+    expect(bidUndoDoneWords(a, { ...out, removed: 3 }).text).toBe('“Imported 3 rows from CountTooling” is undone. The 3 rows it added are in the delete archive now. Each one\'s Put back brings it back.')
+    expect(bidUndoDoneWords(a, { ...out, removed: 1 }).text).toMatch(/The row it added is in the delete archive now\. Its Put back brings it back\.$/)
   })
 
   it('says what it wrote over, and fields that came back empty', () => {
-    expect(bidUndoDoneWords(a, p({ writesOver: 2 }), { ...out, cleared: 1 }).text).toBe('“Imported 3 rows from CountTooling” is undone. 2 of its values had changed again since. Undo wrote over those later changes. One field pointed at a row that is gone, so it is empty now.')
+    expect(bidUndoDoneWords(a, { ...out, wroteOver: 2, cleared: 1 }).text).toBe('“Imported 3 rows from CountTooling” is undone. 2 of its values had changed again since. Undo wrote over those later changes. One field pointed at a row that is gone, so it is empty now.')
   })
 
   it('says a refusal in the function’s words, partly or wholly', () => {
     const refusals = [{ what: 'SUMP', words: 'That row, or one like it, is already on the bid, so it cannot come back.' }, { what: 'Lav-1', words: 'x' }]
-    expect(bidUndoDoneWords(a, p(), { ...out, refusals })).toEqual({ text: '“Imported 3 rows from CountTooling” is partly undone. SUMP: That row, or one like it, is already on the bid, so it cannot come back. 1 more step could not be undone.', ok: false })
-    expect(bidUndoDoneWords(a, p({ writesOver: 1 }), { ...out, done: 0, refusals: refusals.slice(0, 1) })).toEqual({ text: 'Nothing was undone. SUMP: That row, or one like it, is already on the bid, so it cannot come back.', ok: false })
+    expect(bidUndoDoneWords(a, { ...out, refusals })).toEqual({ text: '“Imported 3 rows from CountTooling” is partly undone. SUMP: That row, or one like it, is already on the bid, so it cannot come back. 1 more step could not be undone.', ok: false })
+    expect(bidUndoDoneWords(a, { ...out, done: 0, refusals: refusals.slice(0, 1) })).toEqual({ text: 'Nothing was undone. SUMP: That row, or one like it, is already on the bid, so it cannot come back.', ok: false })
   })
 })

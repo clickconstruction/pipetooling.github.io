@@ -15,7 +15,7 @@ import {
   type BidHistoryRow,
   type BidHistoryTab,
 } from '../../lib/bids/bidHistory'
-import { loadBidHistory, loadBidRemovedRows, loadCanEditBid, putBackBidChange, removeBidAddedRows, restoreBidRemovedRow } from '../../lib/bids/loadBidHistory'
+import { loadBidHistory, loadBidRemovedRows, loadBidUndoUnseen, loadCanEditBid, putBackBidChange, removeBidAddedRows, restoreBidRemovedRow } from '../../lib/bids/loadBidHistory'
 import {
   BID_HISTORY_PUT_BACK_EVENT,
   bidPutBackDoneWords,
@@ -33,7 +33,18 @@ import {
   type BidRemovedRow,
   type BidRestoreResult,
 } from '../../lib/bids/bidHistoryPutBack'
-import { bidUndoDoneWords, bidUndoLabel, bidUndoPlan, bidUndoTitle, runBidUndo, type BidUndoPlan } from '../../lib/bids/bidHistoryUndo'
+import {
+  BID_UNDO_UNSEEN_UNREAD,
+  bidUndoDoneWords,
+  bidUndoGateUnseen,
+  bidUndoLabel,
+  bidUndoPlan,
+  bidUndoRemovedCountRows,
+  bidUndoTitle,
+  runBidUndo,
+  type BidUndoPlan,
+  type BidUndoUnseen,
+} from '../../lib/bids/bidHistoryUndo'
 
 const chip = (on: boolean): CSSProperties => ({
   padding: '0.25rem 0.6rem',
@@ -82,6 +93,7 @@ export function BidHistoryWindow({
   restoreRemoved = restoreBidRemovedRow,
   loadCanEdit = loadCanEditBid,
   removeAdded = removeBidAddedRows,
+  loadUnseen = loadBidUndoUnseen,
   now = currentTime,
 }: {
   bid: { id: string; label: string; bidNumber: string | null }
@@ -100,6 +112,8 @@ export function BidHistoryWindow({
   loadCanEdit?: (bidId: string) => Promise<boolean>
   /** Undo's removal of rows an action added; resolves how many went. A test stands one in. */
   removeAdded?: (table: string, ids: ReadonlyArray<string>) => Promise<number>
+  /** What hangs on count rows outside the ledger, read before Undo removes any. A test stands one in. */
+  loadUnseen?: (countRowIds: ReadonlyArray<string>) => Promise<Map<string, BidUndoUnseen>>
   now?: () => Date
 }) {
   const [rows, setRows] = useState<BidHistoryRow[] | null>(null)
@@ -115,6 +129,8 @@ export function BidHistoryWindow({
   const [topNote, setTopNote] = useState<{ text: string; ok: boolean } | null>(null)
   const [removed, setRemoved] = useState<BidRemovedRow[]>([])
   const [canEdit, setCanEdit] = useState(false)
+  // What hangs outside the ledger on the count rows the Undo plans would remove, keyed by those ids.
+  const [unseen, setUnseen] = useState<{ key: string; read: Map<string, BidUndoUnseen> | 'failed' } | null>(null)
   // Read again after a put back, keeping the list on screen (and where it was scrolled) meanwhile.
   const [readNo, setReadNo] = useState(0)
   // The read comes a page at a time (PostgREST's 1,000-row cap): how many rows were read, and
@@ -216,8 +232,23 @@ export function BidHistoryWindow({
     setNote(null)
     setTopNote(null)
     try {
+      // What hangs on its count rows outside the ledger, read again: a tick made since the window opened stops it.
+      const ids = bidUndoRemovedCountRows(plan)
+      if (ids.length > 0) {
+        let gate: BidUndoPlan | null
+        try {
+          gate = bidUndoGateUnseen(plan, await loadUnseen(ids))
+        } catch {
+          gate = { ready: false, reason: BID_UNDO_UNSEEN_UNREAD }
+        }
+        if (!gate?.ready) {
+          setTopNote({ text: gate?.reason ?? BID_UNDO_UNSEEN_UNREAD, ok: false })
+          setUnseen(null)
+          return
+        }
+      }
       const outcome = await runBidUndo(plan, { putBack, restore: restoreRemoved, remove: removeAdded })
-      setTopNote(bidUndoDoneWords(a, plan, outcome))
+      setTopNote(bidUndoDoneWords(a, outcome))
       if (outcome.done > 0) {
         // One word to the open bid's tabs: the bid itself when Undo touched it, else what it touched first.
         const table = outcome.tables.includes('bids') ? 'bids' : outcome.tables[0]!
@@ -240,8 +271,8 @@ export function BidHistoryWindow({
   const otherBids = useMemo(() => new Set((rows ?? []).filter((r) => r.bidId !== bid.id).map((r) => r.bidNumber ?? 'an adopted bid')), [rows, bid.id])
   const firstLedger = useMemo(() => (rows ?? []).filter((r) => r.source === 'ledger').map((r) => r.changedAt).sort()[0] ?? null, [rows])
   const hasArchive = merged.rows.some((r) => r.source === 'archive')
-  // Undo for each action of several changes, for someone who can edit the bid (PR 6).
-  const undoPlans = useMemo(() => {
+  // Undo for each action, for someone who can edit the bid (PR 6).
+  const rawUndoPlans = useMemo(() => {
     const out = new Map<string, BidUndoPlan>()
     if (!canEdit) return out
     for (const a of actions) {
@@ -250,6 +281,26 @@ export function BidHistoryWindow({
     }
     return out
   }, [canEdit, actions, bid.id, merged])
+  // The count rows those plans would remove, whose hangers outside the ledger are read before Undo is offered.
+  const unseenKey = useMemo(() => [...new Set([...rawUndoPlans.values()].flatMap(bidUndoRemovedCountRows))].sort().join(','), [rawUndoPlans])
+  useEffect(() => {
+    if (!unseenKey || unseen?.key === unseenKey) return
+    let cancelled = false
+    loadUnseen(unseenKey.split(',')).then(
+      (read) => { if (!cancelled) setUnseen({ key: unseenKey, read }) },
+      () => { if (!cancelled) setUnseen({ key: unseenKey, read: 'failed' }) },
+    )
+    return () => { cancelled = true }
+  }, [unseenKey, unseen?.key, loadUnseen])
+  const undoPlans = useMemo(() => {
+    const read = unseen?.key === unseenKey ? unseen.read : null
+    const out = new Map<string, BidUndoPlan>()
+    for (const [k, plan] of rawUndoPlans) {
+      const gated = bidUndoGateUnseen(plan, read)
+      if (gated) out.set(k, gated)
+    }
+    return out
+  }, [rawUndoPlans, unseen, unseenKey])
 
   const toggle = (key: string) => setOpen((cur) => {
     const next = new Set(cur)
@@ -272,8 +323,8 @@ export function BidHistoryWindow({
       })),
     )
     const isOpen = open.has(a.key) || lines.length === 1
-    // A single line's own Put back is its undo.
-    const undo = lines.length > 1 ? (undoPlans.get(a.key) ?? null) : null
+    // A single line's own Put back is its undo; a line with none (a pick Edit Bid does not show) gets Undo.
+    const undo = lines.length > 1 || !(lines[0]?.target || lines[0]?.restore) ? (undoPlans.get(a.key) ?? null) : null
     return (
       <li key={a.key} style={{ padding: '0.55rem 0', borderTop: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>

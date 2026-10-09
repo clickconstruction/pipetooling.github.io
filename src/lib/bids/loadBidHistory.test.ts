@@ -2,7 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { describe, expect, it } from 'vitest'
 import { makeFakeRowCapSupabase } from '../../test/fakeRowCapSupabase'
 import type { Database } from '../../types/database'
-import { loadBidHistory, loadBidRemovedRows, loadCanEditBid, removeBidAddedRows } from './loadBidHistory'
+import { loadBidHistory, loadBidRemovedRows, loadBidUndoUnseen, loadCanEditBid, removeBidAddedRows } from './loadBidHistory'
 import { BID_HISTORY_PAGE } from './bidHistory'
 import { loadBidCellHistory } from '../../hooks/useBidHistoryCells'
 
@@ -120,5 +120,50 @@ describe('loadCanEditBid (PR 6)', () => {
     expect(await loadCanEditBid('bid-1', rpcStub({ data: true, error: null }))).toBe(true)
     expect(await loadCanEditBid('bid-1', rpcStub({ data: false, error: null }))).toBe(false)
     expect(await loadCanEditBid('bid-1', rpcStub({ data: null, error: { message: 'no such function' } }))).toBe(false)
+  })
+})
+
+describe('loadBidUndoUnseen (PR 6)', () => {
+  /** Each table answers the rows that name the asked ids. */
+  function selectStub(rows: Record<string, Array<Record<string, string>>>, failOn?: string) {
+    const asked: string[] = []
+    const client = {
+      from(table: string) {
+        let col = ''
+        let ids: string[] = []
+        const b = {
+          select: (c: string) => { col = c; return b },
+          in: (_c: string, v: string[]) => { ids = v; return b },
+          then: (resolve: (v: unknown) => void) => {
+            asked.push(`${table}.${col}:${ids.length}`)
+            resolve(table === failOn ? { data: null, error: { message: 'permission denied' } } : { data: (rows[table] ?? []).filter((r) => ids.includes(r[col]!)), error: null })
+          },
+        }
+        return b
+      },
+    }
+    return { client: client as unknown as SupabaseClient<Database>, asked }
+  }
+
+  it('counts each kind per count row, reading every table in chunks of 100', async () => {
+    const ids = Array.from({ length: 150 }, (_, i) => `c${i}`)
+    const { client, asked } = selectStub({
+      bid_submittal_takeoff_choices: [{ count_row_id: 'c1' }, { count_row_id: 'c120' }],
+      bid_submittal_items: [{ source_count_row_id: 'c1' }, { source_count_row_id: 'c1' }],
+      bid_count_row_submission_hides: [{ count_row_id: 'c-not-asked' }],
+    })
+    const got = await loadBidUndoUnseen(ids, client)
+    expect(asked).toEqual([
+      'bid_count_row_submission_hides.count_row_id:100', 'bid_count_row_submission_hides.count_row_id:50',
+      'bid_submittal_items.source_count_row_id:100', 'bid_submittal_items.source_count_row_id:50',
+      'bid_submittal_takeoff_choices.count_row_id:100', 'bid_submittal_takeoff_choices.count_row_id:50',
+      'bids_takeoff_template_mappings.count_row_id:100', 'bids_takeoff_template_mappings.count_row_id:50',
+    ])
+    expect(Object.fromEntries(got)).toEqual({ c1: { ticks: 1, hides: 0, items: 2, mappings: 0 }, c120: { ticks: 1, hides: 0, items: 0, mappings: 0 } })
+  })
+
+  it('throws a failed read, so Undo stays off', async () => {
+    const { client } = selectStub({}, 'bid_submittal_items')
+    await expect(loadBidUndoUnseen(['c1'], client)).rejects.toThrow('permission denied')
   })
 })

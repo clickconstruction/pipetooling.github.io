@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
 
 const load = vi.fn(async (_bidId: string) => [] as unknown[])
-vi.mock('../../lib/bids/loadBidHistory', () => ({ loadBidHistory: (id: string) => load(id), putBackBidChange: vi.fn(), loadBidRemovedRows: async () => [], restoreBidRemovedRow: vi.fn(), loadCanEditBid: async () => false, removeBidAddedRows: vi.fn() }))
+vi.mock('../../lib/bids/loadBidHistory', () => ({ loadBidHistory: (id: string) => load(id), putBackBidChange: vi.fn(), loadBidRemovedRows: async () => [], restoreBidRemovedRow: vi.fn(), loadCanEditBid: async () => false, removeBidAddedRows: vi.fn(), loadBidUndoUnseen: async () => new Map() }))
 
 import { BidHistoryDoor } from './BidHistoryDoor'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'

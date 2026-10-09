@@ -396,6 +396,7 @@ const NOUNS: Record<string, [string, string]> = {
   bid_sov_lines: ['schedule line', 'schedule lines'],
   bid_payment_schedule_rows: ['payment line', 'payment lines'],
   bid_versions: ['version', 'versions'],
+  cost_estimates: ['estimate', 'estimates'],
 }
 const noun = (table: string, n: number) => `${n} ${bidHistoryNoun(table, n)}`
 
