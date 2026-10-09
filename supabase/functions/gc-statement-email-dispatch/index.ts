@@ -16,6 +16,13 @@
  *      unattended dedupe window (12 h, by ANY lane — journey-map #45) is
  *      stamped `skipped: duplicate — …` via the shared gcStatementSendDedupe
  *      kernel, and the chain still advances.
+ *   2b. A GC's statement whose bills were not checked this week, or moved
+ *      since (v2.5022, `_shared/gcStatementGate.ts`), is refused: the row is
+ *      stamped `refused: <the worklist's words> (<why>)`, counted, and the chain
+ *      still advances — never sent, never skipped without a word. A gate that
+ *      cannot read fails the attempt, so the row is tried again. The whole
+ *      report by GC leaves such a GC's section out and names it at the top;
+ *      the checked ones still go (development reports are not held).
  *   3. Send via Resend from the EMAIL_FROM sender with the REQUESTER's
  *      email as reply-to (matches send-gc-statement-email).
  *   4. Audit into gc_statement_emails (group_by 'all' when no entity id) and
@@ -45,6 +52,8 @@ import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
 import { buildGcChecksReport, type ChecksDepositIn, type ChecksEventIn, type ChecksJobIn } from '../_shared/gcChecksApplied.ts'
 import { STATEMENT_RECEIVED_DAYS, statementReceivedFromChecks, type StatementReceivedIn } from '../_shared/gcStatementByProperty.ts'
 import { ymdPlusDays } from '../_shared/customerSample.ts'
+import { gcBulkHeldSummary, gcStatementRefusedNote, type GcStatementHeldWhy } from '../_shared/gcStatementGate.ts'
+import { readGcStatementGate, readGcStatementHolds } from '../_shared/gcStatementGateIo.ts'
 import {
   chicagoDateStr,
   chicagoTodayYmd,
@@ -231,6 +240,7 @@ serve(async (req) => {
     let sent = 0
     let skipped = 0
     let duplicates = 0
+    let refused = 0
     const errors: string[] = []
 
     /** Recent audit rows for one recipient, shaped for the dedupe kernel. Fails open (empty) on a read error. */
@@ -333,6 +343,40 @@ serve(async (req) => {
           continue
         }
 
+        // The gate (v2.5022): a GC's statement goes only on this week's standing check. The rows are
+        // the group just built, netted by the rule; a failed read throws to the retry below.
+        if (isSingle && row.group_by === 'gc' && row.gc_customer_id) {
+          const gate = await readGcStatementGate(admin, row.gc_customer_id, { rows: singleGroup!.rows })
+          if (!gate.ok) {
+            const note = gcStatementRefusedNote(gate)
+            console.log('gc-statement-email-dispatch', row.id, note)
+            await admin
+              .from('gc_statement_email_requests')
+              .update({ sent_at: new Date().toISOString(), error: note.slice(0, 900) })
+              .eq('id', row.id)
+            await enqueueNextWeek(row)
+            refused += 1
+            continue
+          }
+        }
+
+        // The whole report by GC (v2.5022): a GC section the week's check does not stand behind is left
+        // out and named at the top of the report; the checked sections still go.
+        const heldInReport: Array<{ name: string; why: GcStatementHeldWhy }> = []
+        if (!isSingle && payload.group_by === 'gc') {
+          const holds = await readGcStatementHolds(admin, payload.groups)
+          const kept = payload.groups.filter((g) => {
+            const gate = g.entity_id ? holds.get(g.entity_id) : undefined
+            if (gate && !gate.ok) heldInReport.push({ name: g.entity_name, why: gate.why })
+            return !gate || gate.ok
+          })
+          if (heldInReport.length > 0) {
+            payload.groups = kept
+            payload.grand_total = Math.round(kept.reduce((t, g) => t + Number(g.subtotal ?? 0), 0) * 100) / 100
+            console.log('gc-statement-email-dispatch', row.id, gcBulkHeldSummary('in the report', kept.length, heldInReport.map((h) => h.why)))
+          }
+        }
+
         // Send-time dedupe (journey-map #45): same statement, same address,
         // inside the unattended window, by any lane → skip; the chain advances.
         const auditGcName = isSingle
@@ -381,8 +425,8 @@ serve(async (req) => {
         // "Payments we have received" (v2.4260) — a GC's statement only; a development has no one payer to read.
         const received = isSingle && row.group_by === 'gc' && row.gc_customer_id ? await receivedFor(admin, row.gc_customer_id, chicagoTodayYmd()) : null
         const extras = { propertyIdByJob, qrImgSrc: qrModules ? `cid:${PORTAL_QR_CONTENT_ID}` : null, ...(received ?? {}) }
-        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl, wording.introText, extras) : renderGcShareAllHtml(payload, dateStr, officePhone, wording.introText)
-        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl, wording.introText, extras) : renderGcShareAllText(payload, dateStr, officePhone, wording.introText)
+        const html = isSingle ? renderGcStatementHtml(singleGroup!, dateStr, officePhone, portalUrl, wording.introText, extras) : renderGcShareAllHtml(payload, dateStr, officePhone, wording.introText, heldInReport)
+        const text = isSingle ? renderGcStatementText(singleGroup!, dateStr, officePhone, portalUrl, wording.introText, extras) : renderGcShareAllText(payload, dateStr, officePhone, wording.introText, heldInReport)
 
         const { data: requester } = await admin
           .from('users')
@@ -464,7 +508,7 @@ serve(async (req) => {
       }
     }
 
-    return jsonResponse({ ok: true, processed: rows.length, sent, skipped, duplicates, errors })
+    return jsonResponse({ ok: true, processed: rows.length, sent, skipped, duplicates, refused, errors })
   } catch (e) {
     console.error('gc-statement-email-dispatch', e)
     return jsonResponse({ error: e instanceof Error ? e.message : String(e) }, 500)

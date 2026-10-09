@@ -107,12 +107,12 @@ Don't want to remember to send it? You flip **When** to **Schedule…** and pick
 
 ## Share the whole report
 
-Two buttons beside the tabs at the top of GC Review handle the entire report at once. {{button:blue|⇪ Share all}} opens the whole-report dialog. {{button:outline|🖨 Print all}} prints every section as one report. The dialog holds:
+Two buttons beside the tabs at the top of GC Review handle the entire report at once. {{button:blue|⇪ Share all}} opens the whole-report dialog. {{button:outline|🖨 Print all}} prints every section as one report. Grouped by GC, both leave out a GC whose bills are not checked this week. A GC that changed since its check is left out too. The dialog names who is left out, and a message after says how many. Grouped by development, every section goes. The dialog holds:
 
 - **Print / save as PDF** opens the same one-report print that **Print all** makes. You choose *Save as PDF* in the print window to download a copy.
 - **Email once** sends every section as one email to **any address, inside or outside the company**. Its button reads **Send report**, or **Schedule send**. The email holds each GC with its jobs, bill-sent dates and amounts owed, plus the grand total. You tap one of the **teammate chips** above the To field to fill an office teammate's email in one tap. Or you just type any address. The email has the same clean table styling and GC-safe wording as the per-GC statement. The email is sent from **team@noreply.clicktooling.com** with your email as the reply-to.
 
-Devs also get a **Standing copies** section in the same dialog. You pick a teammate or type an outside email. You toggle the **weekdays**, say Mon and Wed for a Leader. You set the time and hit {{button:blue|Add}}. The report emails itself on those days, rebuilt fresh each send. The standing copy runs forever until you **Remove** it. Each standing copy shows as one line with Edit / Remove. The list on GC Review's **Scheduled** tab shows it grouped the same way.
+Devs also get a **Standing copies** section in the same dialog. You pick a teammate or type an outside email. You toggle the **weekdays**, say Mon and Wed for a Leader. You set the time and hit {{button:blue|Add}}. The report emails itself on those days, rebuilt fresh each send. Each send leaves out the GCs not checked that week and names them at the top. The standing copy runs forever until you **Remove** it. Each standing copy shows as one line with Edit / Remove. The list on GC Review's **Scheduled** tab shows it grouped the same way.
 
 ## Who gets the bills
 
