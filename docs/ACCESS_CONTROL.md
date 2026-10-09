@@ -130,7 +130,11 @@ Two `LOGIN NOINHERIT` roles exist for AI agents that write records rather than c
 | **`hr_agent`** | v2.2232, `20260824141540` | `people`, `person_files`, `person_file_entries`, `person_file_revisions`, `person_file_attachments`, `person_reports` | `hr_agent_write(jsonb)` — append entries (append-only by policy), rewrite summary/narrative; direct INSERT on entries/attachments, UPDATE on `person_files`/`person_reports` | [`HR_FILES.md`](./HR_FILES.md) |
 | **`cost_agent`** | v2.3196, `20260909161532` | `cost_batches`, `cost_batch_ops`, `mercury_transactions`, `mercury_transaction_job_allocations`, `jobs_ledger`, `jobs_ledger_payments`, `jobs_ledger_invoices`, `jobs_ledger_materials`, `jobs_ledger_thread_notes`, `supply_houses`, `supply_house_invoices`, `supply_house_invoice_job_allocations`, `clock_sessions`, `users`, `people`, `customers` | **None directly.** `cost_batch_apply(jsonb, boolean)` / `cost_batch_revert(uuid, text)` only — five op types, before-image audit, one-shot revert; payments tables unreachable | [`COST_BATCHES.md`](./COST_BATCHES.md) |
 
-Credentials: created without a password by the migration; set out-of-band (`ALTER ROLE <role> WITH LOGIN PASSWORD '…'`) and kept only in `.env.local` (`HR_AGENT_DB_PASSWORD`, `COST_AGENT_DB_PASSWORD`). Connect via the session pooler as `<role>.yewfzhbofbbyvkvtaatw`. Revoking access is `ALTER ROLE <role> NOLOGIN`. Read-only (training) mode does not apply to them (no session), but every RPC they call still runs the statement/row blocks — which are no-ops without a session — so the guardrails for these roles are the RPC validations and the policy absences, not training mode.
+Credentials: created without a password by the migration; set out-of-band (`ALTER ROLE <role> WITH LOGIN PASSWORD '…'`) and kept only in `.env.local` (`HR_AGENT_DB_PASSWORD`, `COST_AGENT_DB_PASSWORD`). Connect via the session pooler as `<role>.yewfzhbofbbyvkvtaatw`. Revoking access is `ALTER ROLE <role> NOLOGIN`. Read-only (training) mode does not apply to them (no session), but every RPC they call still runs the statement/row blocks — which are no-ops without a session — so the guardrails for these roles are the RPC validations and the policy absences, not training mode. Since v2.5040 neither role holds `PUBLIC`'s EXECUTE. Each is granted, by name, the policy helpers its reads and writes evaluate:
+- `cost_agent`: `is_primary()` and `primary_can_access_job(uuid)`
+- `hr_agent`: `is_dev()`, `is_digital_twin()` and `is_read_only()`
+
+A new policy on their tables that calls another helper grants it to them too.
 
 ### Dev MCP keys (a dev's agent reads as the dev — no new role)
 
@@ -1403,13 +1407,20 @@ Default recipients of the "<who> signed $…" email (customer accepted an estima
 
 ## SECURITY DEFINER RPCs and the anon key (v2.2954)
 
-Supabase grants `EXECUTE` on every new function to `PUBLIC`, so the `anon` role — whoever holds the publishable key, which ships in the client bundle — can call any RPC. A `SECURITY DEFINER` body runs as its owner and bypasses RLS, so **the body is the whole boundary**: if it does not check the caller, the anon key gets the owner's view. The 2026-09-06 audit found 28 such RPCs answering or reachable with no session (the paid jobs ledger, the job / bid searches, customer hours, the roster); `20260906180000_revoke_anon_rpc_exposure.sql` revoked them. The three CREATE TABLE sweep helpers (`apply_read_only_write_blocks`, `apply_read_only_stmt_blocks`, `apply_digital_twin_write_blocks`) slipped that audit; since v2.4686 (`20261006160500`) only the migration owner and the service role can call them.
+Supabase's defaults granted `EXECUTE` on every new function to `PUBLIC` and `anon`, so whoever held the publishable key (it ships in the client bundle) could call any RPC. Since v2.5040 (`20261010007000`), `anon` holds EXECUTE only where it is granted by name. A new function postgres creates gets `authenticated` and `service_role` in `public`, and its owner alone anywhere else. A `SECURITY DEFINER` body runs as its owner and bypasses RLS, so **the body is the whole boundary**: if it does not check the caller, the anon key gets the owner's view. The 2026-09-06 audit found 28 such RPCs answering or reachable with no session (the paid jobs ledger, the job / bid searches, customer hours, the roster); `20260906180000_revoke_anon_rpc_exposure.sql` revoked them. The three CREATE TABLE sweep helpers (`apply_read_only_write_blocks`, `apply_read_only_stmt_blocks`, `apply_digital_twin_write_blocks`) slipped that audit; since v2.4686 (`20261006160500`) only the migration owner and the service role can call them.
 
 Rules for every RPC, existing or new:
 
 - **Gate inside the body, as an allow-list.** `WHERE public.is_dev()`, `auth.uid() = …`, `IF NOT (is_dev() OR is_banking_staff()) THEN RAISE …`. A deny-list (`NOT EXISTS (… WHERE id = auth.uid() AND role IN ('helpers','subcontractor'))`) passes when there is no session at all — that is exactly how `search_jobs_for_tally_mercury_assign` leaked.
-- **No anonymous consumer → `REVOKE EXECUTE ON FUNCTION … FROM PUBLIC, anon;`** in the same migration that creates it (`authenticated` and `service_role` keep the default grants). Service-role-only RPCs also revoke `authenticated` (precedent: the Stripe webhook pair, `20260730160048`; `claim_dev_attempt`).
-- **The public pages need exactly two RPCs**: `get_hazmat_notice_by_token(uuid)` (exact-token lookup) and `list_my_contract_dashboard_prompts()` (session-gated inside). Everything else a public page reads goes through an edge function with the service role. Adding a third is a deliberate choice recorded here.
+- **A signed-out caller → `GRANT EXECUTE ON FUNCTION … TO anon;` by name** in the migration that creates it, with a line in the next rule. No other function needs a revoke, since the defaults no longer grant `PUBLIC` or `anon` (v2.5040).
+  - Service-role-only RPCs still revoke `authenticated` (precedent: the Stripe webhook pair, `20260730160048`; `claim_dev_attempt`).
+  - A function another role calls is granted to that role by name: one outside `public`, a database agent role's policy helper, a bed's helper.
+  - A `DROP` and `CREATE` starts from the defaults, so it re-grants what anon or an agent role needs.
+- **Anon holds exactly two** (v2.5040):
+  - `get_hazmat_notice_by_token(uuid)`, an exact-token lookup. It is the one call a signed-out page makes (`/hazmat-notice`).
+  - `list_my_contract_dashboard_prompts()`, which is gated on the session inside. Only signed-in pages call it.
+  
+  Everything else a public page reads goes through an edge function with the service role. Adding a third is a deliberate choice recorded here.
 - **Verify like the audit did**: `POST /rest/v1/rpc/<name>` with the anon key and no `Authorization` bearer of a user — the correct answers are `401 42501` (revoked) or zero rows / `P0001` (gated). Rows back means a hole.
 
 ## One company (v2.2967)

@@ -498,6 +498,8 @@ UPDATE mark SET id = bct.last();
 CREATE FUNCTION pg_temp.price_change() RETURNS bigint LANGUAGE sql STABLE AS $$
   SELECT id FROM public.bid_changes WHERE table_name = 'bid_count_row_custom_prices' AND record_id = '00000000-0000-0000-0000-00000000c711'
     AND op = 'update' AND (new_values ->> 'unit_price')::numeric = 10450 ORDER BY id DESC LIMIT 1 $$;
+-- A new function carries no PUBLIC EXECUTE since 20261010007000, so the role that calls it is granted it.
+GRANT EXECUTE ON FUNCTION pg_temp.price_change() TO authenticated;
 SET LOCAL ROLE authenticated;
 SELECT bct.same('put back: the price, before and after',
   (SELECT trim_scale((r -> 'before' ->> 'unit_price')::numeric) || ' -> ' || trim_scale((r -> 'after' ->> 'unit_price')::numeric)
