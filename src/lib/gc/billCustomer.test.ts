@@ -4,7 +4,7 @@
  * Bill the customer's Send hands the database, read back as the record it went as.
  */
 import { describe, expect, it } from 'vitest'
-import { type BillingRows, type OwnerTermsRow, billingStateFor, billingStateForAll, contractWorthFromRows, jobCustomerId, payAppSendPayload } from './billCustomer'
+import { type BillingRows, type OwnerTermsRow, billingStateFor, billingStateForAll, contractWorthFromRows, jobCustomerId, payAppSendPayload, withSchedules } from './billCustomer'
 import { allJobsMoney, ownerPayApp, ownerPayAppToSend, ownerRetainageWords } from './ownerBilling'
 import { type OwnerBillingRows, ownerBillingFromRows } from './ownerBillingRows'
 import { initialGcState } from './schedule/testState'
@@ -35,6 +35,15 @@ describe('the state our money screens read', () => {
       ]),
     ).toEqual({ 'pkg-1': 100000, gc: 10000, fee: 8800 })
     expect(contractWorthFromRows([])).toBeUndefined()
+  })
+
+  it('lays each job\'s schedule read beside the money, takes it off a job read with none, and leaves the rest (O6b-3)', () => {
+    const s = initialGcState()
+    const fair = s.projects.find((p) => p.id === 'fairoaksd')!
+    const laid = withSchedules(s, new Map([['fairoaksd', fair.schedule ?? null], ['helotes', null]]))
+    expect(laid.projects.find((p) => p.id === 'fairoaksd')!.schedule).toBe(fair.schedule)
+    expect('schedule' in laid.projects.find((p) => p.id === 'helotes')!).toBe(false)
+    expect(laid.projects.filter((p) => p.id !== 'fairoaksd' && p.id !== 'helotes')).toEqual(s.projects.filter((p) => p.id !== 'fairoaksd' && p.id !== 'helotes'))
   })
 
   it('lays the interest and the late fee on a job that has them, and none on one that does not (O6b-1)', () => {

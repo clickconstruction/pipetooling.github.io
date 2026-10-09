@@ -18,6 +18,8 @@ import type { GcProject, GcState, OwnerPayAppSent, OwnerRetainageStep } from '..
 import { money, shortDate } from '../../lib/gc/words'
 import { emailedWords, type BillEmailed } from '../../lib/gc/customerEmail'
 import { OWNER_INTEREST_DEFAULT_PCT, ownerInterestWords } from '../../lib/gc/ownerBillingInterest'
+import { ownerFinishRisk, ownerFinishWords, ownerLateFeeWords } from '../../lib/gc/ownerBillingFinish'
+import { lateFinish } from '../../lib/gc/lateFinish'
 
 /**
  * GC mode, the real build, Owner Billing's O4a: Bill the customer, ported from the prototype's Bill the owner tab
@@ -38,6 +40,8 @@ export interface BillCustomerWrites extends MoneyInWrites, RemindWrites, Interes
   onSetPayDays: (days: number | null) => void
   /** Interest on the job's late bills, a percent a month, or null for none (O6b-1). */
   onSetInterest: (pctPerMonth: number | null) => void
+  /** The contract's late fee a day past substantial completion, or null for none (O6b-3). */
+  onSetLateFee: (perDay: number | null) => void
   onDownload: (which: number | 'draft', kind: 'xlsx' | 'pdf') => void
   /** Make our conditional waiver on progress payment for a sent one (`LienReleaseModal` on the billing job). */
   onWaiver: (number: number) => void
@@ -62,13 +66,15 @@ interface Props {
   emailed?: Record<number, BillEmailed[]>
   /** Who each interest bill was emailed to and when, by number, from its sent copies (O6b-2). */
   interestEmailed?: Record<number, { to: string; on: string }[]>
-  /** What a write is working on: 'send', 'retainage', 'paydays', 'interest', 'bill-interest', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
+  /** The job's schedule is laid on (O6b-3: read when the window opens), so its finish can count. */
+  scheduleRead?: boolean
+  /** What a write is working on: 'send', 'retainage', 'paydays', 'interest', 'bill-interest', 'latefee', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
 }
 
-export function GcBillCustomerWindow({ state, project, today, writes, waived = [], unconditional = {}, unbilled = [], emailed = {}, interestEmailed = {}, busy, problem, onClose }: Props) {
+export function GcBillCustomerWindow({ state, project, today, writes, waived = [], unconditional = {}, unbilled = [], emailed = {}, interestEmailed = {}, scheduleRead = true, busy, problem, onClose }: Props) {
   const sent = ownerPayAppsSent(project)
   const account = ownerAccount(project)
   const late = ownerLateBills(state, project)
@@ -144,6 +150,7 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
           <PayDays project={project} writes={writes} busy={busy === 'paydays'} />
           <Interest project={project} writes={writes} busy={busy === 'interest'} />
           <GcBillInterest state={state} project={project} writes={writes} emailed={interestEmailed} busy={busy} />
+          <LateFee state={state} project={project} writes={writes} scheduleRead={scheduleRead} busy={busy === 'latefee'} />
 
           {sent.length > 0 && (
             <div style={{ display: 'grid', gap: '0.45rem' }}>
@@ -390,6 +397,60 @@ function Interest({ project, writes, busy }: { project: GcProject; writes: BillC
               }}
             >
               Save the interest
+            </Btn>
+            <Btn kind="quiet" onClick={() => setOpen(false)}>
+              Cancel
+            </Btn>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * The contract's late fee a day past substantial completion (O6b-3), and the job's finish against the contract: the day
+ * we reached it once Building has it, the schedule's projected finish until then, priced at the fee.
+ */
+function LateFee({ state, project, writes, scheduleRead, busy }: { state: GcState; project: GcProject; writes: BillCustomerWrites; scheduleRead: boolean; busy: boolean }) {
+  const [open, setOpen] = useState(false)
+  const [fee, setFee] = useState(project.ownerLateFinish?.perDay == null ? '' : String(project.ownerLateFinish.perDay))
+  const blank = fee.trim() === ''
+  const feeNum = Number(fee)
+  const ready = blank || (Number.isFinite(feeNum) && feeNum > 0)
+  const late = scheduleRead ? lateFinish(state, project) : null
+  const lines = late ? [ownerFinishWords(ownerFinishRisk(state, project)), ...(late.perDay ? late.words : [])] : []
+  return (
+    <div style={{ display: 'grid', gap: '0.4rem', fontSize: '0.875rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <strong>Late fee</strong>
+        <span>{ownerLateFeeWords(project.ownerLateFinish?.perDay)}</span>
+        {!open && (
+          <Btn kind="quiet" onClick={() => setOpen(true)}>
+            Change the late fee
+          </Btn>
+        )}
+      </div>
+      <div style={{ display: 'grid', gap: '0.15rem', color: 'var(--text-muted)' }}>
+        {scheduleRead ? lines.map((w) => <div key={w}>{w}</div>) : <div>Reading the schedule…</div>}
+      </div>
+      {open && (
+        <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem', display: 'grid', gap: '0.5rem' }}>
+          <label style={{ display: 'grid', gap: '0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            The contract&rsquo;s late fee a day, in dollars
+            <input style={{ ...input, width: '8rem' }} type="number" min={0} step={1} value={fee} onChange={(e) => setFee(e.target.value)} />
+          </label>
+          <div style={{ color: 'var(--text-muted)' }}>Leave it blank when the contract has no late fee. It counts each day past substantial completion.</div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <Btn
+              kind="primary"
+              disabled={!ready || busy}
+              onClick={() => {
+                writes.onSetLateFee(blank ? null : feeNum)
+                setOpen(false)
+              }}
+            >
+              Save the late fee
             </Btn>
             <Btn kind="quiet" onClick={() => setOpen(false)}>
               Cancel

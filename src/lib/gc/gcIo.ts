@@ -627,6 +627,14 @@ export async function sendOwnerInterestBill(projectId: string, amount: number): 
   return taken(result as { data: string | null; error: SupabaseResultError | null }, 'bill the interest')
 }
 
+/** The contract's late fee a day past substantial completion, or null for none (O6b-3). The money team's to change. */
+export async function setOwnerLateFinish(projectId: string, perDay: number | null): Promise<void> {
+  taken(
+    await supabase.from('gc_projects').update({ owner_late_finish_per_day: perDay }).eq('project_id', projectId).select('project_id').single(),
+    'save the late fee',
+  )
+}
+
 /** Interest on the job's late bills, a percent a month, or null for none (O6b-1). The money team's to change. */
 export async function setOwnerLateInterest(projectId: string, pctPerMonth: number | null): Promise<void> {
   taken(

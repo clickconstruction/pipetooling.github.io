@@ -328,6 +328,8 @@ describe('Billing the customer, the rest, on the made-up jobs, Fri Oct 2', () =>
                           from: 'pace',
                           why: 'The work runs 3 days behind the plan. At that pace it finishes Fri Dec 11.',
                         },
+              metOn: null,
+              finish: { on: '2026-12-11', from: 'projected' },
               past: 0,
               perDay: null,
               atRisk: 0,

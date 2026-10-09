@@ -2,7 +2,7 @@
 title: bill the customer on a GC job
 category: Bids & Estimating
 roles: dev, master_technician, controller
-keywords: gc mode, pay application, bill, customer, architect, certificate, retainage, aia, g702, g703, excel, pdf, email, days to pay, due, interest
+keywords: gc mode, pay application, bill, customer, architect, certificate, retainage, aia, g702, g703, excel, pdf, email, days to pay, due, interest, late fee, substantial completion
 order: 99
 ---
 Once a month, send the customer our pay application for the work done so far. The architect certifies it, and what they certify is the bill the customer pays.
@@ -92,6 +92,16 @@ Once a dollar or more of interest has built up, the window shows what is not bil
 2. Press {{button:blue|Bill the interest}}.
 
 The interest bill goes on the billing job with the customer's other bills. The window lists each interest bill with its day, its amount and whether it is paid. The email asks them to reply with the day they will pay.
+
+## The late fee
+
+Some contracts charge us a fee for each day we finish past substantial completion. Type that fee here.
+
+1. Press {{button:outline|Change the late fee}}.
+2. Type the fee a day in dollars. Leave it blank when the contract has none.
+3. Press {{button:blue|Save the late fee}}.
+
+The window reads the job's schedule when it opens. The finish that counts is the day we reached substantial completion. Until that day is on the schedule, the schedule's projected finish counts. With a fee typed, the window says what the late days cost and whose they are.
 
 ## Before the first bill
 
