@@ -15,7 +15,7 @@ Texas counts every lien deadline from the **month the work was done**, never fro
 - A job that ran June, July and August has three separate clocks, one per month. The three clocks hold even if the job was billed once at the end.
 - The clock goes by **approved clock sessions**. Hours still awaiting approval do not count, so approving the week's hours is part of protecting the money.
 
-A **residential** property shortens every deadline by a month. Residential means a house, duplex, triplex, fourplex, or a condo unit the owner lives in. The app reads the property kind from the property record. When the kind is unknown, the app shows the commercial dates and says so.
+A **residential** property shortens every deadline by a month. Residential means a house, duplex, triplex, fourplex, or a condo unit the owner lives in. The app reads the property kind from the property record. When the kind is unknown, the app shows the residential dates, the earlier ones, and says so.
 
 ## Who we are on the job decides which paper
 

@@ -759,7 +759,7 @@ export default function LienFilingTabs({
             <>
               <div style={{ border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', borderRadius: 8, padding: '0.5rem 0.7rem', fontSize: '0.75rem', marginBottom: '0.8rem' }}>
                 <b>Role: subcontractor</b> — GC {originalContractorName || '—'}. Unpaid months need this notice by the
-                15th of the {property.propertyKind === 'residential' ? '2nd' : '3rd'} month after the work
+                15th of the {property.propertyKind === 'non_residential' ? '3rd' : '2nd'} month after the work{property.propertyKind ? '' : ' (kind not set, so the residential date)'}
                 {clock.noticeDeadline ? ` — ${clock.workMonth} is due ${demandDate(clock.noticeDeadline)}` : ''}.
               </div>
               <div style={{ fontSize: '0.8125rem', marginBottom: '0.6rem' }}>

@@ -93,7 +93,7 @@ A house, a duplex, a triplex, a fourplex or a condo its owner lives in is reside
 
 **What it says.** Some properties are residential. They are a house, a duplex, a triplex, a fourplex and a condo unit its owner lives in. On a residential property every deadline moves a month earlier.
 
-**What you do.** Set the kind on the property record. The notice date and the filing date shift a month earlier on their own. When the kind is not set, the app shows the commercial dates and says so. [Open the Lien desk](/jobs?tab=stages&liendesk=1) and press a red *Fix the property* gate to set it.
+**What you do.** Set the kind on the property record. A commercial pick moves the notice date and the filing date a month later on their own. When the kind is not set, the app shows the residential dates, the earlier ones, and says so. [Open the Lien desk](/jobs?tab=stages&liendesk=1) and press a red *Fix the property* gate to set it.
 
 **Cite.** *§ 53.001(10), § 53.052(b), § 53.056(a-1)*
 

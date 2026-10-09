@@ -154,7 +154,8 @@ export interface LienGridRow {
 }
 
 function kindWords(job: LienBookJob): string {
-  const k = job.propertyKind === 'residential' ? 'Res' : job.propertyKind ? 'Com' : 'Com?'
+  // A kind not set dates as residential (v2.5031): `Res?` until someone sets it.
+  const k = job.propertyKind === 'residential' ? 'Res' : job.propertyKind ? 'Com' : 'Res?'
   return `${k} · ${job.homestead ? 'homestead' : '—'}`
 }
 
@@ -231,7 +232,7 @@ export function lienGridHtml(rows: ReadonlyArray<LienTimelineBookRow>, opts: { t
   p.foot { margin: 8px 0 0; color: #6B7280; font-size: 9.5px; }
 </style></head><body>
 <h1>Lien grid — ${esc(opts.title)} · ${rows.length} ${rows.length === 1 ? 'job' : 'jobs'} · ${esc(formatUsdNoCents(open))} open</h1>
-<p class="lede">${esc(opts.companyName)} · ${esc(lienDateWords(opts.todayYmd, opts.todayYmd))}, ${opts.todayYmd.slice(0, 4)}. Deadlines are per job and per work month (§ 53.056, § 53.052); weekends roll to the next business day. <i>Com?</i> is a property of unknown kind — commercial dates shown; a residential property is a month earlier.</p>
+<p class="lede">${esc(opts.companyName)} · ${esc(lienDateWords(opts.todayYmd, opts.todayYmd))}, ${opts.todayYmd.slice(0, 4)}. Deadlines are per job and per work month (§ 53.056, § 53.052); weekends roll to the next business day. <i>Res?</i> is a property of unknown kind — residential dates shown, the earlier ones; a commercial property is a month later.</p>
 <table><thead><tr>${head}</tr></thead><tbody>
 ${body}
 </tbody></table>

@@ -10,7 +10,7 @@ import type { LienDeskEntry } from './lienDesk'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
 import { buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, describeNoticeMonths, homesteadStatementApplies, lienRetainageCoverLetter, parseLienDeskDraftFields } from './lienNoticeDraft'
 import type { LienRetainageEntry } from './lienDeskRetainage'
-import { affidavitMonthWord, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
+import { affidavitMonthWordFor, coverLetterKindFor, coverLetterParagraphs, counselCoverLetterTemplate, fillCoverLetter } from './gcOnNotice'
 import { lienSupplierLetterParagraphFor, type LienSupplierJob } from './lienJobSuppliers'
 import { conditionalReleaseParagraph, noticeReleaseEnclosureWords, noticeReleaseLabel, noticeReleasePageHtml, type NoticeRelease } from './lienNoticeRelease'
 import { runEnvelopes, type RunEnvelope } from './runEnvelopes'
@@ -154,7 +154,7 @@ export function buildLienDeskRun(
       },
       // Counsel's letter everywhere (v2.3828): the box on the desk now turns counsel's letter on or off; the short routine note is gone.
       coverNote: null,
-      coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWord(coverLetterKindFor(property)), trade: job?.service_type?.name, supplyHouses: draft?.housesInLetter === false ? '' : lienSupplierLetterParagraphFor(opts?.suppliers?.get(e.jobId), { propertyKind: property.propertyKind ?? '', todayYmd, payerName: gc?.name ?? fields.originalContractorName, claim: moneyNumber(fields.claimAmount) }), conditionalRelease: release ? conditionalReleaseParagraph(demandMoney(fields.claimAmount)) : '' }) : null,
+      coverLetter: item.cover_note || draft?.coverLetter ? fillCoverLetter(counselCoverLetterTemplate({ stored: draft?.coverLetter, gcName: gc?.name ?? fields.originalContractorName, claimantName: fields.claimantName, property }), { property: (job?.job_address ?? '').trim(), months: describeNoticeMonths(months), job: jobNumber, amount: demandMoney(fields.claimAmount), staleNote: draft?.staleNote ?? '', contact: fields.contactPerson, phone, affidavitMonth: affidavitMonthWordFor(property?.propertyKind), trade: job?.service_type?.name, supplyHouses: draft?.housesInLetter === false ? '' : lienSupplierLetterParagraphFor(opts?.suppliers?.get(e.jobId), { propertyKind: property.propertyKind ?? '', todayYmd, payerName: gc?.name ?? fields.originalContractorName, claim: moneyNumber(fields.claimAmount) }), conditionalRelease: release ? conditionalReleaseParagraph(demandMoney(fields.claimAmount)) : '' }) : null,
       ownerUnconfirmed: property.owner.source === 'property_record' && ownerFromRollUnconfirmed(address),
       offer: lienOfferFromItem(item),
       release,

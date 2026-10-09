@@ -7,7 +7,7 @@ function entry(over: Partial<LienDeskEntry> & { jobId: string; gcCustomerId: str
     customerId: null,
     openBalance: 1000,
     hasOwner: true,
-    propertyKind: 'commercial',
+    propertyKind: 'non_residential',
     months: [],
     datedFromCreation: false,
     dueMonths: ['2026-07'],

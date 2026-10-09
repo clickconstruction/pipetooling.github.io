@@ -727,7 +727,8 @@ describe('LienDeskModal affidavits (v2.3412)', () => {
     expect(screen.getByText(/missing owner, legal, notice/)).toBeTruthy()
     const timeline = document.querySelector('[data-lien-desk-timeline]') as HTMLElement
     expect(timeline.textContent).toContain('File the affidavit — tomorrow · owner of record, legal description, the notice missing.')
-    expect(timeline.textContent).toContain('Commercial dates shown — a residential property is a month earlier.')
+    // The kind is not set: the timeline says residential dates are shown, the earlier ones (v2.5031).
+    expect(timeline.textContent).toContain('Property kind not set: residential dates shown, the earlier ones. Commercial would be a month later.')
     expect(screen.getByText(/Before this affidavit can be generated/)).toBeTruthy()
     // v2.4724: the door opens the property record in a window over the desk, not Edit Job.
     fireEvent.click(screen.getAllByRole('button', { name: 'Fill in the record ›' })[0]!)
@@ -1458,7 +1459,8 @@ describe('LienDeskModal the owner’s call and the piles (v2.3767)', () => {
     })
     const writeText = vi.fn().mockResolvedValue(undefined)
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
-    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650)} />)
+    // ATI Schertz on its commercial property record (a kind not set would date the house's July a month earlier, v2.5031).
+    renderWithProviders(<LienDeskModal {...baseProps} authRole="assistant" data={data(J650, [], true)} />)
     await settle()
     const mark = document.querySelector('[data-lien-supplier-mark]')
     expect(mark?.textContent).toContain('1 house owed $9,612')

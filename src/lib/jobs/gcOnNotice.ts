@@ -392,9 +392,13 @@ export function counselCoverLetterTemplate(args: { stored?: string | null; gcNam
   return defaultGcNoticeCoverLetter({ gcName: args.gcName, claimantName: args.claimantName, kind: coverLetterKindFor(args.property) })
 }
 
-/** The § 53.052 affidavit month the letter names: the fourth month after the last work month on commercial work, the third on residential. */
-export function affidavitMonthWord(kind: CoverLetterKind): 'fourth' | 'third' {
-  return kind === 'commercial' ? 'fourth' : 'third'
+/**
+ * The § 53.052 affidavit month the letter names: the fourth month after the last work month on commercial work,
+ * the third on residential — and on a property whose kind is not set, the third, as every date on the desk reads it
+ * (v2.5031). It reads the property's kind, not the letter's tone: an unset kind still gets the commercial letter.
+ */
+export function affidavitMonthWordFor(propertyKind: string | null | undefined): 'fourth' | 'third' {
+  return (propertyKind ?? '').trim() === 'non_residential' ? 'fourth' : 'third'
 }
 
 /**

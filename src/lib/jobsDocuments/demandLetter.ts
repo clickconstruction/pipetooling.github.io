@@ -214,7 +214,8 @@ export function lienLineBlockedReason(input: { lienFilingDeadline: string; today
 export function lienFilingDeadlineForMonth(furnishYmd: string, propertyKind: string): string {
   const d = (furnishYmd ?? '').trim()
   if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return ''
-  const months = propertyKind === 'residential' ? 3 : 4
+  // A kind not set reads as residential, the earlier month (v2.5031) — as `filingDeadlineForMonth` does.
+  const months = (propertyKind ?? '').trim() === 'non_residential' ? 4 : 3
   const base = new Date(d.slice(0, 7) + '-15T12:00:00')
   if (Number.isNaN(base.getTime())) return ''
   base.setMonth(base.getMonth() + months)

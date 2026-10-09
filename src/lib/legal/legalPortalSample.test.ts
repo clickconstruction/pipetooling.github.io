@@ -45,7 +45,7 @@ describe('sampleLegalPortalResponse — one referred matter, one story', () => {
 
       // The property record: county, owner of record, legal description, parcel, ready for a lien.
       expect(p.account.properties).toHaveLength(1)
-      expect(p.account.properties[0]).toMatchObject({ county: 'Hays', propertyKind: 'commercial', lienReady: true })
+      expect(p.account.properties[0]).toMatchObject({ county: 'Hays', propertyKind: 'non_residential', lienReady: true })
       expect(p.account.properties[0]!.owner).toMatch(/Alvarado Holdings LLC/)
       expect(p.account.properties[0]!.legalDescription).toMatch(/Lot 4, Block B/)
       expect(p.account.properties[0]!.parcelId).toMatch(/R104417/)

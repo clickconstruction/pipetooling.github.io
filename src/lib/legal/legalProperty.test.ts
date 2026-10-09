@@ -112,7 +112,7 @@ describe('the source and the kind, said (integration pass)', () => {
     expect(propertySourceNote('matched')).toBe('matched by address, not linked')
     expect(propertySourceNote('job_address')).toBe('no property record linked')
     expect(propertySourceNote('linked')).toBe('')
-    expect(propertyKindCell('')).toMatch(/^kind unknown · commercial dates shown/)
+    expect(propertyKindCell('')).toMatch(/^kind unknown · residential dates shown/)
     expect(propertyKindCell('residential')).toBe('residential')
     expect(propertyKindCell('commercial')).toBe('commercial')
   })

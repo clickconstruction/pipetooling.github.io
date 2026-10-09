@@ -235,8 +235,9 @@ const workMonths = buildWorkMonthsByJob(
     session('j1', '2026-08-04', 'u1', 8),
   ],
   [
-    { jobId: 'j650', isSub: true, propertyKind: '', noticedMonths: new Set() },
-    { jobId: 'j1', isSub: false, propertyKind: '', noticedMonths: new Set() },
+    // ATI Schertz and Pondhill are commercial: the 3rd-month notice, the 4th-month affidavit.
+    { jobId: 'j650', isSub: true, propertyKind: 'non_residential', noticedMonths: new Set() },
+    { jobId: 'j1', isSub: false, propertyKind: 'non_residential', noticedMonths: new Set() },
   ],
   NAMES,
   TODAY,
@@ -291,7 +292,7 @@ describe('BilledPaymentForecastModal work months', () => {
     // The role line teaches the rule and the affidavit date from the last month.
     expect(panel.textContent).toContain('Sub job')
     expect(panel.textContent).toContain('affidavit for all of it by Jan 15, 2027')
-    expect(panel.textContent).toContain('property kind unknown')
+    expect(panel.textContent).not.toContain('property kind unknown')
     fireEvent.click(screen.getAllByRole('button', { name: 'Send notice…' })[0]!)
     expect(onOpenLienNotice).toHaveBeenCalledWith('j650')
     fireEvent.click(screen.getByRole('button', { name: 'Hide work months for 650 · ATI Schertz' }))
@@ -317,6 +318,20 @@ describe('BilledPaymentForecastModal work months', () => {
     // Knight is commercial: the "set the GC on the job" prompt shows.
     expect(panel.textContent).toContain('if Knight Contracting is a GC and someone else owns the site')
     expect(screen.queryByRole('button', { name: 'Send notice…' })).toBeNull()
+  })
+
+  it('a sub job whose property kind is not set dates as residential, the earlier month, and says so (v2.5031)', () => {
+    const row = subRow() as Extract<StageRow, { kind: 'invoice' }>
+    const unknownKind = { ...row, job: { ...row.job, id: 'j652', hcp_number: '652', job_name: 'Heron Ct' }, inv: { ...row.inv, id: 'inv652', job_id: 'j652' } } as unknown as StageRow
+    const months = buildWorkMonthsByJob([session('j652', '2026-08-20', 'u1', 8)], [{ jobId: 'j652', isSub: true, propertyKind: '', noticedMonths: new Set() }], NAMES, TODAY)
+    render(<BilledPaymentForecastModal rows={[unknownKind]} paySpeeds={speeds} todayYmd={TODAY} onClose={vi.fn()} onOpenInvoice={vi.fn()} workMonths={months} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Show work months for 652 · Heron Ct' }))
+    const panel = screen.getByRole('region', { name: 'Work months' })
+    // August's notice closes Oct 15 and the affidavit the 15th of the 3rd month, Nov 15 — a Sunday, so Nov 16.
+    expect(screen.getByTestId('work-month-2026-08').textContent).toContain('by Oct 15')
+    expect(panel.textContent).toContain('affidavit for all of it by Nov 16, 2026 (3rd month after')
+    const chip = screen.getByText('property kind unknown')
+    expect(chip.getAttribute('title')).toContain('Residential dates are shown, the earlier ones')
   })
 
   it('rows without sessions get no chevron, and the footer says when months are still loading', () => {

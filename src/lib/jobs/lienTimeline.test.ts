@@ -7,7 +7,7 @@ function base(over: Partial<LienTimelineInput> = {}): LienTimelineInput {
   return {
     todayYmd: TODAY,
     isSub: true,
-    propertyKind: 'commercial',
+    propertyKind: 'non_residential',
     lastMonth: '2026-08',
     lastMonthFromCreation: false,
     months: [
@@ -159,19 +159,20 @@ describe('buildLienTimeline — unknown kind, dated from creation, owner missing
   const t = buildLienTimeline(
     base({
       propertyKind: '',
-      lastMonth: '2026-07',
+      // A kind not set dates as residential (v2.5031): August's notice closes Oct 15, the affidavit Nov 15 (a Sunday, so Nov 16).
+      lastMonth: '2026-08',
       lastMonthFromCreation: true,
-      months: [{ key: '2026-07', deadline: '2026-10-15', fromCreation: true, outcome: 'open', at: '' }],
+      months: [{ key: '2026-08', deadline: '2026-10-15', fromCreation: true, outcome: 'open', at: '' }],
       noticeState: 'needs_owner',
     }),
   )
-  it('shows commercial dates and says the kind is unknown', () => {
+  it('shows residential dates, the earlier ones, and says the kind is unknown', () => {
     expect(t.kindUnknown).toBe(true)
     const by = Object.fromEntries(t.steps.map((s) => [s.key, s]))
     expect(by['last_work']!.words).toBe('dated from the job’s creation · no clock hours')
-    expect(by['notice:2026-07']!.words).toBe('22 days · owner of record missing · dated from creation')
+    expect(by['notice:2026-08']!.words).toBe('22 days · owner of record missing · dated from creation')
     expect(by['affidavit']!.date).toBe('2026-11-16')
-    expect(t.next.words).toBe('Find the owner, then send the Jul notice — 22 days.')
+    expect(t.next.words).toBe('Find the owner, then send the Aug notice — 22 days.')
   })
 })
 

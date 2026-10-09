@@ -82,7 +82,8 @@ export function legalLienGridCells(rows: ReadonlyArray<LienTimelineBookRow>, tod
       street,
       cityLine,
       owner: g.owner,
-      kind: residential ? 'Residential' : 'Commercial',
+      // A kind not set dates as residential (v2.5031), so it reads Residential with `kindUnknown`.
+      kind: residential || !kindKnown ? 'Residential' : 'Commercial',
       kindUnknown: !kindKnown,
       homestead: residential ? (r.job.homestead ? 'Homestead' : 'No homestead') : r.job.homestead ? 'Homestead' : '',
       lastOnSite: g.lastOnSite,

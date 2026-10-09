@@ -80,7 +80,7 @@ export function buildLienDeskGates(input: LienDeskGatesInput): { gates: LienGate
   const kindWord = kind === 'residential' ? 'Residential' : kind ? 'Commercial' : ''
   const kindGate: LienGate = kindWord
     ? { n: 3, key: 'kind', label: 'Property kind', value: county ? `${kindWord} · ${county}` : kindWord, tone: 'ok', title: kind === 'residential' ? 'Residential — the 2nd-month clock' : 'Commercial' }
-    : { n: 3, key: 'kind', label: 'Property kind', value: 'Unknown', tone: 'check', title: 'Unknown — commercial dates shown; a residential property is a month earlier' }
+    : { n: 3, key: 'kind', label: 'Property kind', value: 'Unknown', tone: 'check', title: 'Unknown — residential dates shown, the earlier ones; a commercial property is a month later' }
 
   const monthsGate: LienGate =
     input.pickedMonthsCount > 0
@@ -141,7 +141,7 @@ export function propertyKindClockWords(propertyKind: string | null | undefined, 
   const where = county.trim() ? ` · ${county.trim()} County` : ''
   if (kind === 'residential') return `Residential${where} — each month's notice is due by the 15th of the 2nd month after the work.`
   if (kind) return `Commercial${where} — each month's notice is due by the 15th of the 3rd month after the work.`
-  return 'Commercial dates shown; a residential property is a month earlier.'
+  return 'Not set — residential dates shown, the earlier ones; a commercial property is a month later. Set the kind.'
 }
 
 /** Gate 1, owner on file: where the name came from, so a job-level override is never mistaken for the record. */
@@ -164,7 +164,7 @@ export function propertyKindRuleWords(propertyKind: string | null | undefined): 
   const kind = (propertyKind ?? '').trim()
   if (kind === 'residential') return 'Notice due the 15th of the 2nd month after the work'
   if (kind) return 'Notice due the 15th of the 3rd month after the work'
-  return 'Commercial dates shown; a residential property is a month earlier'
+  return 'Kind not set — residential dates shown; commercial is a month later'
 }
 
 /** What the other kind would do to the dates — said while the chooser is open, since every deadline on the job moves with it. */
