@@ -11,7 +11,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Deep technical reference — schema, RLS, auth, DB functions, client patterns, gotchas; feature surfaces route to specialist docs
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-10-08
+last_updated: 2026-10-09
 key_sections:
   - name: "Database Schema"
   - name: "Authentication & Authorization"
@@ -2737,7 +2737,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
    - **Solution**: Centralized error handling/toast system
 3. **Styling**: Inline styles make maintenance difficult
    - **Solution**: Consider CSS modules or Tailwind
-4. **Testing**: ~2,600 `*.test.ts(x)` files run via vitest (`npm test`); repo convention is to extract logic into pure `.ts` kernels with unit tests as the primary pattern, plus component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`)
+4. **Testing**: ~2,650 `*.test.ts(x)` files run via vitest (`npm test`); repo convention is to extract logic into pure `.ts` kernels with unit tests as the primary pattern, plus component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`)
 5. **Edge Function Error Messages**: Inconsistent error format
    - **Solution**: Standardize error response format
 
@@ -2808,7 +2808,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `RESEND_API_KEY` - Resend API key (set as Supabase secret for Edge Functions)
 
 ### Edge Functions
-There are **~140** Edge Functions in `supabase/functions/` (142 function folders on 2026-10-08; `npm run check:edge-drift` counts them) — see [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the full annotated reference (an inline list here goes stale). Frequently referenced examples:
+There are **~145** Edge Functions in `supabase/functions/` (146 function folders on 2026-10-09; `npm run check:edge-drift` counts them) — see [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the full annotated reference (an inline list here goes stale). Frequently referenced examples:
 - `create-user` - Manually create user; **role** must be one of the 9 valid roles: `dev`, `master_technician`, `assistant`, `subcontractor`, `helpers`, `estimator`, `primary`, `superintendent`, `controller`
 - `invite-user`, `archive-user`, `restore-user`, `set-user-password`, `login-as-user` - Account lifecycle
 - `claim-dev` - Break-glass dev promotion (audited; see Security Considerations)
