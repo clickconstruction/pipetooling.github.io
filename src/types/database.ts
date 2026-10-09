@@ -9897,6 +9897,79 @@ export type Database = {
           },
         ]
       }
+      gc_owner_card_bills: {
+        Row: {
+          base: number
+          chosen_how: string
+          chosen_on: string
+          created_at: string
+          fee: number
+          fee_pct: number
+          invoice_id: string
+          on_card_at: string | null
+          project_id: string
+          started_at: string
+          status: string
+          stripe_invoice_id: string | null
+          undone_by: string | null
+          undone_on: string | null
+        }
+        Insert: {
+          base: number
+          chosen_how?: string
+          chosen_on: string
+          created_at?: string
+          fee: number
+          fee_pct?: number
+          invoice_id: string
+          on_card_at?: string | null
+          project_id: string
+          started_at?: string
+          status?: string
+          stripe_invoice_id?: string | null
+          undone_by?: string | null
+          undone_on?: string | null
+        }
+        Update: {
+          base?: number
+          chosen_how?: string
+          chosen_on?: string
+          created_at?: string
+          fee?: number
+          fee_pct?: number
+          invoice_id?: string
+          on_card_at?: string | null
+          project_id?: string
+          started_at?: string
+          status?: string
+          stripe_invoice_id?: string | null
+          undone_by?: string | null
+          undone_on?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_owner_card_bills_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: true
+            referencedRelation: "jobs_ledger_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_owner_card_bills_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_owner_card_bills_undone_by_fkey"
+            columns: ["undone_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_owner_contract_lines: {
         Row: {
           created_at: string
@@ -29708,6 +29781,18 @@ export type Database = {
         Returns: string
       }
       gc_bring_back: { Args: { p_project_id: string }; Returns: undefined }
+      gc_card_bill_begin: { Args: { p_invoice_id: string }; Returns: Json }
+      gc_card_bill_finish: {
+        Args: {
+          p_hosted_url: string
+          p_invoice_id: string
+          p_mode: string
+          p_stripe_invoice_id: string
+          p_stripe_status: string
+        }
+        Returns: undefined
+      }
+      gc_card_bill_undo: { Args: { p_invoice_id: string }; Returns: undefined }
       gc_create_project: { Args: { draft: Json }; Returns: string }
       gc_draft_change_order: {
         Args: { p_draft: Json; p_project_id: string }
