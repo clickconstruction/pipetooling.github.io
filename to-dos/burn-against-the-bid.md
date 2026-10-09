@@ -41,6 +41,10 @@ Fragment: `docs/recent-features/v2.5046.md`.
 
 `resolveJobBurnBudget` takes ◆ bid · ✎ typed · ≈ assumed. A job whose linked bid carries a stamp but no usable estimate could budget at price × (1 − priced margin), the margin the estimator actually priced at, instead of the company's 35 % target. It moves the Costs tab, Job Summary's Burn and the Pipeline card onto a fourth glyph. A stamp that reads high (no labor rate, uncosted rows) must not become a budget. Build it when real stamps exist to test against.
 
+## Residuals
+
+- **No price, no priced margin** (Punchlist's call, 2026-10-09). A price write that takes an unsent bid's revenue to $0 now stamps nothing (`stamp_bid_priced_margin` answers `no_revenue`), so the bid keeps its last stamp and the strip's line still shows it. The rule is that such a write clears the eight `priced_*` columns. Build it in the next migration that touches `bids`, or on its own once the lens shows a stale stamp on a real bid. The first stale example is the test bid B464 *ZZ Takeoffs Test*, left at −9,921% by the v2.5043 live check.
+
 ## Where it plugs in
 
 - `src/lib/bids/pricedMargin.ts` and `pricedMarginIo.ts`, `src/hooks/usePricedMarginStamp.ts`, `src/components/bids/PricedMarginLine.tsx`. The arm points are in `BidsPricingTab.tsx`.
