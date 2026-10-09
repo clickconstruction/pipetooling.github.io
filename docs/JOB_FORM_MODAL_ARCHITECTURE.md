@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-08
+last_updated: 2026-10-09
 ---
 
 ## Overview
@@ -103,7 +103,7 @@ Render regions in JSX order (all line ranges @ `a05cef4c4`). Status legend: `ext
 | 10–11 | Invoice list | `JobFormInvoiceList` 4469–4490 | **extracted** (#430; row list v2.3478) | 17 props (10 callbacks/setters incl. `setEditing`) | render | high | Done |
 | 12 | ③ Other money on the job (payments on no bill; since v2.4293 a payment a bill counts is a `JobFormPaymentLine` under that bill in `JobFormInvoiceList`) | `JobFormPaymentsTable` in the highlight wrapper | **extracted** (#431) | `payments`, `bankFacts`, lock inputs, 8 callbacks | render | high | Done |
 | 12a | Payment action modals | `UndoStripePartPaymentModal` 4513–4532, `BilledPaymentConfirmationModal` 4533–4560, `JobPaymentMoveModal` 4561–4577, `ApplyPaymentToStripeBillModal` ~3097 (v2.4847) | **extracted**; open state + success refetch **shell** | `undoPartPaymentRow`, `recordPaymentTarget`, `paymentMoveRow`, `applyToStripeTarget` | Confirmation render only | high | Stays — the open states are the shell's; the success handler is `finishRecordPaymentOnBill` (the hook's) |
-| 13 | Costs top (charts) | `JobFormLaborCostPanel` (wrapper → `JobCostsTabCharts`) | **extracted** | `editing`, `editJobTeamLaborRow`, and since v2.4010 the form's live price and other job charges (`jobTotalWithRidersDollars`, `materials`) | render + `jobCostsLiveInputs` kernel | low | Done |
+| 13 | Costs top (charts) | `JobFormLaborCostPanel` (wrapper → `JobCostsTabCharts`) | **extracted** | `editing`, `editJobTeamLaborRow`, and since v2.4010 the form's live price and other job charges (`jobTotalWithRidersDollars`, `materials`) | render + `jobCostsLiveInputs` kernel; since v2.5046 the verdict's build (`lib/jobs/jobBurnForVerdict.ts`) and the loader (`loadJobChargesTimelineInputs`) are shared with Bids → Bid vs actual | low | Done |
 | 14 | Parts + labor cost | `JobFormPartsCostSection` 4585–4608 (team/sub labor lines render here since v2.3361) | **extracted** (#432); snapshot → **`useJobCostSnapshot`** hook (#427); labor loader → **`useJobFormLabor`** (v2.3871) | snapshot values, `teamLabor`/`subLabor` objects, materials rows | render | med | Labor loader → hook (order #1) |
 | 15a | Close-flush error banner | `JobFormFooter` (drawn on `closeFlushState === 'error'`) | **extracted** (v2.3908) | `closeFlushState` + 3 callbacks | render | low | — |
 | 15 | Footer | `JobFormFooter`: Delete, Undo cluster, required list, autosave status, Close / Cancel + Create Job | **extracted** (v2.3908) | 13 values + 7 callbacks | render + `jobFormFooter` kernel | low | — |
