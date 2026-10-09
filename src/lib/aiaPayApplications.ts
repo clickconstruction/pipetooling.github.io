@@ -48,6 +48,11 @@ export type SavedPayApplication = {
   /** When the office took it off the job and who did (v2.4715); null and '' while it is live. */
   deletedAt: string | null
   deletedByName: string
+  /**
+   * The bill it became (v2.5032, `invoice_id`), or null while untied. Absent when the read could
+   * not ask for the column (before its migration): the window then offers no tie.
+   */
+  invoiceId?: string | null
 }
 
 /** One kept file beside an application. Today that is a pasted link. */
@@ -83,6 +88,8 @@ export type PayApplicationRow = {
   deleted_at?: string | null
   deleted_by?: string | null
   deleted_by_user?: { name: string | null } | null
+  /** The bill it became (v2.5032); older reads leave it out. Never part of a save's write. */
+  invoice_id?: string | null
 }
 
 /** What the window holds for one application: the header boxes, the lines, and how the lines print. */
@@ -160,6 +167,7 @@ export function savedPayApplicationFromRow(row: PayApplicationRow): SavedPayAppl
     updatedByName: (row.updated_by_user?.name ?? '').trim(),
     deletedAt: row.deleted_at ?? null,
     deletedByName: (row.deleted_by_user?.name ?? '').trim(),
+    ...('invoice_id' in row ? { invoiceId: row.invoice_id ?? null } : {}),
   }
 }
 

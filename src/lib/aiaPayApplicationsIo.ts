@@ -31,8 +31,11 @@ const COLS_WITH_NAME = `${COLS_WITH_LINES}, name`
 const COLS_WITH_STAMPS = `${COLS_WITH_NAME}, created_at, created_by, updated_by, created_by_user:users!job_pay_applications_created_by_fkey(name), updated_by_user:users!job_pay_applications_updated_by_fkey(name)`
 // Delete marks the row (v2.4715): `deleted_at` / `deleted_by`, read with the name behind it. The
 // live list reads the rows that are not marked; without the column the read goes again unfiltered.
-const COLS = `${COLS_WITH_STAMPS}, deleted_at, deleted_by, deleted_by_user:users!job_pay_applications_deleted_by_fkey(name)`
-const COLUMN_SETS = [COLS, COLS_WITH_STAMPS, COLS_WITH_NAME, COLS_WITH_LINES, COLS_WITH_REASON, BASE_COLS] as const
+const COLS_WITH_DELETED = `${COLS_WITH_STAMPS}, deleted_at, deleted_by, deleted_by_user:users!job_pay_applications_deleted_by_fkey(name)`
+// The bill the application became (v2.5032). Without the column the read goes again without it,
+// and the application carries no `invoiceId`, so the window offers no tie.
+const COLS = `${COLS_WITH_DELETED}, invoice_id`
+const COLUMN_SETS = [COLS, COLS_WITH_DELETED, COLS_WITH_STAMPS, COLS_WITH_NAME, COLS_WITH_LINES, COLS_WITH_REASON, BASE_COLS] as const
 const hasDeleted = (cols: string): boolean => cols.includes('deleted_at')
 const isUnknownColumn = (code: string | undefined): boolean => code === '42703' || code === 'PGRST204' || code === 'PGRST200'
 
@@ -69,9 +72,13 @@ export async function loadPayApplications(jobId: string): Promise<SavedPayApplic
 
 /** The applications taken off the job (v2.4715), in number order; none on a database without the mark. */
 export async function loadDeletedPayApplications(jobId: string): Promise<SavedPayApplication[]> {
-  const { data, error } = await supabase.from('job_pay_applications').select(COLS).eq('job_id', jobId).not('deleted_at', 'is', null).order('application_number').limit(500)
-  if (error) return []
-  return sortPayApplications(((data ?? []) as unknown as PayApplicationRow[]).map(savedPayApplicationFromRow))
+  for (const cols of [COLS, COLS_WITH_DELETED]) {
+    const { data, error } = await supabase.from('job_pay_applications').select(cols).eq('job_id', jobId).not('deleted_at', 'is', null).order('application_number').limit(500)
+    if (error && isUnknownColumn(error.code)) continue
+    if (error) return []
+    return sortPayApplications(((data ?? []) as unknown as PayApplicationRow[]).map(savedPayApplicationFromRow))
+  }
+  return []
 }
 
 /**
@@ -92,14 +99,17 @@ export async function savePayApplication(write: PayApplicationWrite, id: string 
   const needsLines = (Array.isArray(lines) && lines.length > 1) || split_labor_material === true
   const attempts: Array<[Record<string, unknown>, string]> = [
     [write, COLS],
+    [write, COLS_WITH_DELETED],
     [write, COLS_WITH_STAMPS],
     [write, COLS_WITH_NAME],
     [withLines, COLS_WITH_LINES],
     [carry_reason === undefined ? base : { ...base, carry_reason }, COLS_WITH_REASON],
     [base, BASE_COLS],
   ]
+  // The attempts after COLS_WITH_LINES drop the lines.
+  const lastWithLines = attempts.findIndex(([, cols]) => cols === COLS_WITH_LINES)
   for (const [i, [payload, cols]] of attempts.entries()) {
-    if (i > 3 && needsLines) throw new PayApplicationLinesNotReady()
+    if (i > lastWithLines && needsLines) throw new PayApplicationLinesNotReady()
     const { data, error } = await send(payload, cols)
     if (error && isUnknownColumn(error.code) && i < attempts.length - 1) continue
     if (error) {
@@ -132,5 +142,34 @@ export async function restorePayApplication(app: Pick<SavedPayApplication, 'id' 
   const { error } = await supabase.from('job_pay_applications').update({ deleted_at: null } as never).eq('id', app.id)
   if (!error) return
   if (error.code === '23505') throw new PayApplicationNumberTaken(app.applicationNumber)
+  throw error
+}
+
+/** Another live application already holds that bill (the one-bill-one-application index). */
+export class PayApplicationBillTaken extends Error {
+  constructor() {
+    super('Another application on this job is already tied to that bill.')
+    this.name = 'PayApplicationBillTaken'
+  }
+}
+
+/** The database cannot keep the bill yet (its migration is not applied). */
+export class PayApplicationTieNotReady extends Error {
+  constructor() {
+    super('The database is being updated to keep the bill. Try again in a few minutes.')
+    this.name = 'PayApplicationTieNotReady'
+  }
+}
+
+/**
+ * Tie an application to the bill it became (v2.5032), or untie it with null. Only `invoice_id`
+ * moves, so the stamp trigger keeps the saved stamps and the history does not read it as a save.
+ * The trigger refuses a bill on another job (check_violation, its own words).
+ */
+export async function tiePayApplicationBill(appId: string, invoiceId: string | null): Promise<void> {
+  const { error } = await supabase.from('job_pay_applications').update({ invoice_id: invoiceId } as never).eq('id', appId)
+  if (!error) return
+  if (error.code === '23505') throw new PayApplicationBillTaken()
+  if (isUnknownColumn(error.code)) throw new PayApplicationTieNotReady()
   throw error
 }

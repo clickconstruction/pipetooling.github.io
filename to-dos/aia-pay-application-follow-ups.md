@@ -2,7 +2,7 @@
 name: "AIA G702-G703: what the history train left"
 number: 92
 group: ready
-status: the history train shipped 2026-10-06 (v2.4710 #4720, v2.4714 #4723, v2.4715 #4724, types #4731; both migrations pushed) · Restore (v2.4883) and Put the amounts back (v2.4885) shipped 2026-10-07 · left: a paid line (the owner's call), Taunya's look on a phone
+status: the history train shipped 2026-10-06 (v2.4710 #4720, v2.4714 #4723, v2.4715 #4724, types #4731; both migrations pushed) · Restore (v2.4883) and Put the amounts back (v2.4885) shipped 2026-10-07 · the paid line shipped 2026-10-09 (v2.5032) · left: Taunya's look on a phone
 summary: >
   The pay application window now opens on the job's history: where the job stands, one line per
   application with who saved it and each workbook that went out, a warning naming what changed
@@ -10,10 +10,10 @@ summary: >
   or raised and left: putting a deleted application back, showing what the GC actually paid on
   each application, a one-press "put the amounts back" on the changed-after warning, and whether
   a phone should land on the history or the form.
-next: build 2 — the owner chose on 2026-10-09 that the office picks the bill an application became (a nullable `job_pay_applications.invoice_id`, set on the application or from Bill Customer), with the amount-and-date match pre-filling the pick; a migration and one PR. Taunya's look on her phone decides item 4.
-size: M (2) · a look (4)
-blocker: Item 4 waits on Taunya; none on item 2.
-ver: v2.4710 · v2.4714 · v2.4715
+next: Taunya's look on her phone decides item 4.
+size: a look (4)
+blocker: Item 4 waits on Taunya.
+ver: v2.4710 · v2.4714 · v2.4715 · v2.5032
 opinion: later — the history answers the owner's question today; build 3 the first time someone hits the warning, 2 when the office asks what was paid on an application.
 mockup: the train's mock-up and its critique — https://claude.ai/artifact/7x1hxdFQbgdoh9RRhhLHeB (section C)
 ---
@@ -44,11 +44,12 @@ as three PRs. This file holds what C drew or the critique raised but the train d
 1. **Restore a deleted application** — shipped v2.4883 (*Put it back* on the deleted line, in the
    window's history and on the Documents tab; the history also opens when only deleted
    applications remain).
-2. **A paid line** (M, the owner's call first). C drew *Paid $13,588.20 · Aug 22* under each
-   application with a dotted edge, *bill not yet tied*. No application is tied to a bill today.
-   The call: does the office pick the bill an application became (a nullable
-   `job_pay_applications.invoice_id`), or does the app match by amount and date? Then the line reads
-   the bill's payments the way the job window's money card does.
+2. **A paid line** — shipped v2.5032 (the owner's call of 2026-10-09: the office picks the bill an
+   application became). `job_pay_applications.invoice_id` is set on the application's line in the
+   history (**Tie a bill…**) or from Bill Customer's *This bill is pay application* line, and the
+   amount-and-date match only pre-fills the pick. The history reads *Paid $13,588.20 · Aug 22* under a
+   tied application from the bill's payments the way the job window's bills do, and *Bill not yet
+   tied* on a dashed edge under an untied one. Section C was the drawing.
 3. **Put the amounts back** — shipped v2.4885 (the open form names what moved since the newest
    workbook went out, and *Put the amounts back* rebuilds it from that workbook's snapshot, unsaved).
 4. **History or form first on a phone** (a look). C opens the history first everywhere a job has

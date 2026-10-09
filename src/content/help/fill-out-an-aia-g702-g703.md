@@ -2,7 +2,7 @@
 title: fill out an AIA G702-G703
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: aia, g702, g703, pay application, pay app, application for payment, continuation sheet, retainage, schedule of values, change orders, workbook
+keywords: aia, g702, g703, pay application, pay app, application for payment, continuation sheet, retainage, schedule of values, change orders, workbook, tie a bill, which bill, paid line, bill not yet tied, bill customer
 ---
 Some general contractors pay from an AIA G702-G703. That is an application for payment with a continuation sheet. You fill it in one window and download it as a workbook.
 
@@ -150,6 +150,20 @@ A warning under a line means it no longer matches the application before it. The
 A workbook you generated with no application number shows at the bottom. It belongs to no application.
 
 Press {{button:green|New application}} to start the next one. It starts from the last one saved.
+
+## Tie each application to its bill
+
+Each application in the history can show the bill it became. Under a tied application, a line says what that bill was paid and when, like *Paid $13,588.20 · Aug 22*. It counts each payment on the bill. Then it counts money paid on the job with no bill picked, oldest bill first. The bills in the job window count the same way.
+
+An application with no bill reads *Bill not yet tied* in a dashed box. Press **Tie a bill…** to pick its bill from the list. The list starts on the bill whose amount is the payment due, to the cent. When two bills match, it starts on the one sent nearest the application's date. Check the pick, then press **Tie it**. To pick another bill later, press **change** under the line. To take the bill off, choose **No bill** and press **Untie it**.
+
+Bill Customer can tie it for you. On a job with saved applications, it shows *This bill is pay application* with a list. It starts on the application whose payment due is the bill's amount. Change it, or choose **none**. When the bill goes out, the app ties that application to it. If the tie fails, the bill still goes, and a message says the tie did not.
+
+A bill belongs to one application. Tying a bill changes no amount, and the history does not count it as a save. Only the office roles that save applications can tie one.
+
+:::example job 892, application 2
+Application 2 asks for *$13,588.20 due*. Its line read *Bill not yet tied*. Taunya presses **Tie a bill…**, and the list starts on *#2 · $13,588.20 · sent Aug 2*. She presses **Tie it**. The GC paid on Aug 22, so the line now reads *Paid $13,588.20 · Aug 22*.
+:::
 
 ## Name an application
 

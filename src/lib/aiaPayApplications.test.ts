@@ -118,6 +118,16 @@ describe('payApplicationWriteFromForm', () => {
 })
 
 describe('savedPayApplicationFromRow', () => {
+  it('v2.5032 · reads the bill it became when the row carries the column, and leaves the key off when the read could not ask for it', () => {
+    const row = { id: 'a1', job_id: 'j', application_number: 1, period_to: null, application_date: null, fields: {}, contract_sum_to_date: 0, total_completed_and_stored: 0, retainage_pct: 0, retainage_held: 0, total_earned_less_retainage: 0, current_payment_due: 0, updated_at: null } as PayApplicationRow
+    expect(savedPayApplicationFromRow({ ...row, invoice_id: 'b1' }).invoiceId).toBe('b1')
+    expect(savedPayApplicationFromRow({ ...row, invoice_id: null }).invoiceId).toBeNull()
+    expect('invoiceId' in savedPayApplicationFromRow(row)).toBe(false)
+  })
+  it('v2.5032 · a save never writes the bill: the form has no say in it', () => {
+    const w = payApplicationWriteFromForm('job-1', APP_1)
+    expect(w.ok && 'invoice_id' in w.row).toBe(false)
+  })
   const base = { id: 'x', job_id: 'job-1', application_number: 2, period_to: null, application_date: null, contract_sum_to_date: '48500.00', total_completed_and_stored: '29100.00', retainage_pct: '10.000', retainage_held: '2910.00', total_earned_less_retainage: '26190.00', current_payment_due: '8730.00', updated_at: null }
 
   it('reads numerics the database sends as text, and only the form\'s own keys', () => {
