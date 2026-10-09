@@ -1,62 +1,37 @@
 /**
  * GC mode, the real build, the schedule's PR 9a: the job's own work (G-38), an inspection passed or failed, and the dates
- * to meet, on real data (the plan is to-dos/gc-mode/mockups/schedule-pr9.md on branch spike/gc-mode). Ported from the GC
- * mode prototype's `GcBuildingSchedule.tsx` (`AddActivityCard`, `MilestonesCard`, `InspectionCheck` and the opened
- * activity's own buttons), their words kept: the prototype dispatched each press to its reducer, and here each is a
- * callback the Schedule window carries to the database. A plan write someone else beat says what changed, keeps what the
- * person typed and reads the schedule again (G-134). A failed inspection pushes with main's `pushAfter`, the known
- * difference (`failInspectionPress`).
+ * to meet, on real data (the plan is to-dos/gc-mode/mockups/schedule-pr9.md on branch spike/gc-mode). Since 9b, what the
+ * work waits on (G-73 to G-75) and the baseline (G-41). Ported from the GC mode prototype's `GcBuildingSchedule.tsx`
+ * (`AddActivityCard`, `MilestonesCard`, `InspectionCheck` and the opened activity's own buttons; `WaitsCard`, `NewWait`
+ * and `BaselineCard`), their words kept: the prototype dispatched each press to its reducer, and here each is a callback
+ * the Schedule window carries to the database. A plan write someone else beat says what changed, keeps what the person
+ * typed and reads the schedule again (G-134). A failed inspection pushes with main's `pushAfter`, the known difference
+ * (`failInspectionPress`).
  */
 import { useState, type ReactNode } from 'react'
 import { addDays } from '../../lib/gc/building'
 import { ADDED_WHO, addedActivityProblem } from '../../lib/gc/schedule/addedActivity'
+import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '../../lib/gc/schedule/baseline'
 import { daysBetween } from '../../lib/gc/schedule/network'
 import { activityName, inspectedTrades, substantialCompletionOn, type ScheduleItem } from '../../lib/gc/schedule/schedule'
-import { failInspectionPress, ownWorkPress } from '../../lib/gc/schedule/scheduleWindow'
-import type { InspectionFailure, ScheduleActivity, ScheduleMilestone } from '../../lib/gc/schedule/types'
-import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
-import type { GcProject } from '../../lib/gc/types'
+import { baselinePress, failInspectionPress, newWait, ownWorkPress } from '../../lib/gc/schedule/scheduleWindow'
+import type { InspectionFailure, ScheduleActivity, ScheduleMilestone, ScheduleWait, WaitKind } from '../../lib/gc/schedule/types'
+import { WAIT_KINDS, waitKind, waitWhoDefault, type WaitRow } from '../../lib/gc/schedule/waits'
+import type { WaitStep } from '../../lib/gc/schedule/writes'
+import type { ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
+import type { GcProject, GcState } from '../../lib/gc/types'
 import { shortDate } from '../../lib/gc/words'
-import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcScheduleRefusal } from './GcScheduleMoves'
-import { Btn, Card, input } from './gcUi'
+import { Btn, Card, Chip, input } from './gcUi'
+import { useSchedulePress } from './useSchedulePress'
 
 const rowBox = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 
 /** What a plan write someone else beat says under its buttons: nothing of this press saved, and the chart reads again. */
 const NOT_SAVED = 'Nothing was saved. The chart shows the new dates now. Try it again on them.'
 
-/**
- * A press's state: busy while it saves, what someone else changed when a plan write was refused (the schedule then reads
- * again), or a failure's words. `run` says whether the press saved.
- */
-function usePress(onReload?: () => void) {
-  const [busy, setBusy] = useState(false)
-  const [refused, setRefused] = useState<ScheduleChange[] | null>(null)
-  const [failed, setFailed] = useState<string | null>(null)
-  const run = async (press: () => Promise<void>, fallback: string): Promise<boolean> => {
-    setBusy(true)
-    setRefused(null)
-    setFailed(null)
-    try {
-      await press()
-      return true
-    } catch (e) {
-      const refusal = scheduleChangedRefusal(e)
-      if (refusal) {
-        setRefused(refusal.changes)
-        onReload?.()
-      } else setFailed(formatErrorMessage(e, fallback))
-      return false
-    } finally {
-      setBusy(false)
-    }
-  }
-  return { busy, refused, failed, run }
-}
-
 /** A press's refusal or failure, in its words, under its buttons. */
-function PressNote({ refused, failed }: { refused: ScheduleChange[] | null; failed: string | null }) {
+export function PressNote({ refused, failed }: { refused: ScheduleChange[] | null; failed: string | null }) {
   return (
     <>
       {refused && <GcScheduleRefusal changes={refused} what={NOT_SAVED} />}
@@ -98,7 +73,7 @@ export function GcInspectionCheck({
   onReload?: () => void
 }) {
   const [failing, setFailing] = useState(false)
-  const press = usePress(onReload)
+  const press = useSchedulePress(onReload)
   const fails = activity.inspection?.failed ?? []
   const last = fails[fails.length - 1]
   const whose = (ids: string[]) =>
@@ -231,7 +206,7 @@ export function GcOwnWorkButtons({
   onRemove: () => Promise<void>
   onReload?: () => void
 }) {
-  const press = usePress(onReload)
+  const press = useSchedulePress(onReload)
   const added = activity.added
   if (!added) return null
   return (
@@ -284,7 +259,7 @@ export function GcAddOwnWork({
   const [finish, setFinish] = useState(today)
   const [after, setAfter] = useState<string[]>([])
   const [holdsUp, setHoldsUp] = useState<string[]>([])
-  const press = usePress(onReload)
+  const press = useSchedulePress(onReload)
   const who = whoPick === 'Someone else' ? whoText : whoPick
   const problem = addedActivityProblem(label, who, start, finish)
   const candidates = items.filter((r) => r.actual < 100)
@@ -406,7 +381,7 @@ export function GcMilestones({
   const [label, setLabel] = useState('')
   const [planned, setPlanned] = useState('')
   const [packageId, setPackageId] = useState('')
-  const press = usePress()
+  const press = useSchedulePress()
   const save = (m: ScheduleMilestone) => press.run(() => onSave(m), 'The milestone did not save.')
   const sorted = [...milestones].sort((a, b) => (a.planned < b.planned ? -1 : 1))
   return (
@@ -492,5 +467,320 @@ function TradePick({ project, value, onChange }: { project: GcProject; value: st
         </option>
       ))}
     </select>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// What the work waits on (G-73 to G-75, PR 9b)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * What the work waits on from outside the trades (the Gantt, G-73 to G-75): deliveries on order,
+ * the decisions the customer owes, permits, the utility. Each with where it stands, its next step,
+ * a new expected day, and a way off. Add one with the work it holds.
+ */
+export function GcWaits({
+  state,
+  project,
+  rows,
+  items,
+  onAdd,
+  onStep,
+  onRemove,
+}: {
+  state: GcState
+  project: GcProject
+  rows: WaitRow[]
+  items: ScheduleItem[]
+  /** A wait added with the lines it holds (`newWait`): a record. */
+  onAdd: (wait: ScheduleWait) => Promise<void>
+  /** Its next step on a day, or a new expected day with who said so: a record. */
+  onStep: (waitId: string, step: WaitStep, on: string, note?: string) => Promise<void>
+  /** Off the schedule, with the bars it held: a record. */
+  onRemove: (waitId: string) => Promise<void>
+}) {
+  const [adding, setAdding] = useState(false)
+  const [redating, setRedating] = useState<string | null>(null)
+  const [newDay, setNewDay] = useState('')
+  const [newNote, setNewNote] = useState('')
+  const press = useSchedulePress()
+  const late = rows.filter((r) => r.state !== 'done' && r.late).length
+  const open = rows.filter((r) => r.state !== 'done').length
+  const step = (r: WaitRow) => {
+    const next = r.nextStep
+    if (!next) return
+    void press.run(() => onStep(r.wait.id, next.step, state.today), 'The step did not save.')
+  }
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        <strong>What the work waits on{rows.length > 0 ? ` (${open} open)` : ''}</strong>
+        {late > 0 && <Chip tone="red">{late} {late === 1 ? 'comes' : 'come'} late</Chip>}
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', flex: '1 1 16rem' }}>Deliveries on order, decisions the customer owes, permits, the utility's work. Each holds the work that needs it, and shows on the chart beside the day that work starts.</span>
+        {!adding && <Btn onClick={() => setAdding(true)}>Add one</Btn>}
+      </div>
+      {adding && <NewWait state={state} project={project} items={items} onAdd={onAdd} onDone={() => setAdding(false)} />}
+      {rows.length === 0 && !adding && <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Nothing yet. A long-lead item, a tile the customer has to pick, the service permit: put it here and the chart holds the work until it is in.</div>}
+      <div style={{ display: 'grid' }}>
+        {rows.map((r) => (
+          <div key={r.wait.id} data-gc-wait={r.wait.id} style={{ display: 'grid', gap: '0.2rem', padding: '0.5rem 0', borderTop: '1px solid var(--border)', fontSize: '0.875rem', opacity: r.state === 'done' ? 0.7 : 1 }}>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+              <Chip tone="violet">{waitKind(r.wait.kind).label}</Chip>
+              <strong>{r.wait.title}</strong>
+              <span style={{ color: 'var(--text-muted)' }}>
+                · {r.wait.who} · for {r.trade}
+              </span>
+              <Chip tone={r.tone}>{r.stateWords}</Chip>
+            </div>
+            <div style={{ color: r.late && r.state !== 'done' ? 'var(--text-red-700)' : 'var(--text-muted)' }}>
+              {r.words}
+              {r.wait.note ? ` ${r.wait.note}` : ''}
+            </div>
+            {r.holds.length > 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>Holds {r.holds.map((h) => `${h.name} (${shortDate(h.start)})`).join(', ')}.</div>}
+            {r.state !== 'done' && (
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                {r.nextStep && (
+                  <Btn kind="primary" disabled={press.busy} onClick={() => step(r)} title={`Mark it ${r.nextStep.label.toLowerCase()} today.`}>
+                    {r.nextStep.label} today
+                  </Btn>
+                )}
+                {redating === r.wait.id ? (
+                  <>
+                    <input type="date" value={newDay} onChange={(e) => setNewDay(e.target.value)} aria-label="The new expected day" style={rowBox} />
+                    <input value={newNote} onChange={(e) => setNewNote(e.target.value)} placeholder="Who said so" aria-label="Who said the new day" style={{ ...rowBox, width: '14rem' }} />
+                    <Btn
+                      kind="primary"
+                      disabled={!newDay || press.busy}
+                      onClick={() => {
+                        void press.run(() => onStep(r.wait.id, 'expected', newDay, newNote), 'The new day did not save.').then((saved) => {
+                          if (!saved) return
+                          setRedating(null)
+                          setNewDay('')
+                          setNewNote('')
+                        })
+                      }}
+                    >
+                      Save the day
+                    </Btn>
+                    <Btn kind="quiet" onClick={() => setRedating(null)}>
+                      Cancel
+                    </Btn>
+                  </>
+                ) : (
+                  <Btn
+                    kind="plain"
+                    onClick={() => {
+                      setRedating(r.wait.id)
+                      setNewDay(r.wait.expectedOn)
+                      setNewNote('')
+                    }}
+                  >
+                    A new expected day
+                  </Btn>
+                )}
+                <Btn kind="quiet" disabled={press.busy} onClick={() => void press.run(() => onRemove(r.wait.id), 'It did not come off.')}>
+                  Take it off
+                </Btn>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <PressNote refused={press.refused} failed={press.failed} />
+    </Card>
+  )
+}
+
+/** One thing the work waits on, added: its kind, its name, whose work it is for, who we wait on, the day it is expected, and the lines it holds. */
+function NewWait({ state, project, items, onAdd, onDone }: { state: GcState; project: GcProject; items: ScheduleItem[]; onAdd: (wait: ScheduleWait) => Promise<void>; onDone: () => void }) {
+  const [kind, setKind] = useState<WaitKind>('delivery')
+  const [title, setTitle] = useState('')
+  const [packageId, setPackageId] = useState<string>(project.packages[0]?.id ?? '')
+  const [who, setWho] = useState('')
+  const [expectedOn, setExpectedOn] = useState('')
+  const [askedOn, setAskedOn] = useState('')
+  const [lineIds, setLineIds] = useState<string[]>([])
+  const press = useSchedulePress()
+  const k = waitKind(kind)
+  const pkgId = packageId || null
+  const whoDefault = waitWhoDefault(state, project, kind, pkgId)
+  // The lines it can hold: the trade's own, or every line left to do for the job's own.
+  const candidates = items.filter((r) => r.actual < 100 && !r.activity.inspection && (pkgId ? r.pkg?.id === pkgId : true))
+  const problem = !title.trim() ? 'Give it a name.' : !expectedOn ? 'Say when it is expected.' : null
+  return (
+    <div style={{ display: 'grid', gap: '0.55rem', padding: '0.7rem', border: '1px solid var(--border)', borderRadius: 8, marginBottom: '0.6rem', fontSize: '0.875rem' }}>
+      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }} role="group" aria-label="What kind of wait">
+        {WAIT_KINDS.map((w) => {
+          const on = kind === w.key
+          return (
+            <button key={w.key} type="button" aria-pressed={on} onClick={() => setKind(w.key)} style={{ border: `1px solid ${on ? 'transparent' : 'var(--border)'}`, borderRadius: 999, padding: '0.25rem 0.7rem', fontSize: '0.82rem', cursor: 'pointer', fontWeight: on ? 600 : 400, background: on ? 'var(--bg-blue-200)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-base)' }}>
+              {w.label}
+            </button>
+          )
+        })}
+      </div>
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={kind === 'delivery' ? 'Rooftop units' : kind === 'decision' ? 'The restroom tile' : kind === 'permit' ? 'Electrical service permit' : 'The transformer'} aria-label="What it is" style={{ ...rowBox, width: '16rem' }} />
+        <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)' }}>For</span>
+          <select
+            value={packageId}
+            onChange={(e) => {
+              setPackageId(e.target.value)
+              setLineIds([])
+            }}
+            aria-label="Whose work it is for"
+            style={rowBox}
+          >
+            {project.packages.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.trade}
+              </option>
+            ))}
+            <option value="">The job's own</option>
+          </select>
+        </label>
+        <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)' }}>From</span>
+          <input value={who} onChange={(e) => setWho(e.target.value)} placeholder={whoDefault} aria-label="Who we wait on" style={{ ...rowBox, width: '14rem' }} />
+        </label>
+      </div>
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)' }}>Expected</span>
+          <input type="date" value={expectedOn} onChange={(e) => setExpectedOn(e.target.value)} aria-label="The day it is expected" style={rowBox} />
+        </label>
+        <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)' }}>{k.asked.charAt(0).toUpperCase() + k.asked.slice(1)} on</span>
+          <input type="date" value={askedOn} onChange={(e) => setAskedOn(e.target.value)} aria-label={`The day it was ${k.asked}`} style={rowBox} />
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>blank: not yet</span>
+        </label>
+      </div>
+      <div>
+        <div style={{ color: 'var(--text-muted)', marginBottom: '0.25rem' }}>The work that cannot start without it</div>
+        {candidates.length === 0 ? (
+          <div style={{ color: 'var(--text-muted)' }}>Nothing left to do on this trade's lines.</div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(14rem, 1fr))', gap: '0.15rem 0.75rem' }}>
+            {candidates.map((r) => (
+              <label key={r.activity.lineId} style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                <input type="checkbox" checked={lineIds.includes(r.activity.lineId)} onChange={(e) => setLineIds((list) => (e.target.checked ? [...list, r.activity.lineId] : list.filter((id) => id !== r.activity.lineId)))} />
+                <span>
+                  {activityName(r)} <span style={{ color: 'var(--text-muted)' }}>· starts {shortDate(r.activity.start)}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <Btn
+          kind="primary"
+          disabled={problem !== null || press.busy}
+          title={problem ?? undefined}
+          onClick={() => {
+            const wait = newWait(project, { kind, title, packageId: pkgId, who: who.trim() || whoDefault, lineIds, expectedOn, askedOn: askedOn || null })
+            if (!wait) return
+            void press.run(() => onAdd(wait), 'The wait did not go on the schedule.').then((saved) => {
+              if (saved) onDone()
+            })
+          }}
+        >
+          Put it on the schedule
+        </Btn>
+        <Btn kind="quiet" onClick={onDone}>
+          Cancel
+        </Btn>
+        {problem && <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{problem}</span>}
+      </div>
+      <PressNote refused={press.refused} failed={press.failed} />
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// The baseline (G-41, PR 9b)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * The baseline (the Gantt, G-41): the plan every measure reads against, locked at Start. After a
+ * signed change order's days go on the schedule, a new one takes the plan as it stands; the old
+ * ones are kept and named. Anyone on our team may set one, like a move (the owner's call 9 is open).
+ */
+export function GcBaseline({
+  project,
+  today,
+  by,
+  onBaseline,
+  onReload,
+}: {
+  project: GcProject
+  today: string
+  by: string
+  /** The new baseline's name and why, with its line in the log (`baselinePress`): a plan write. */
+  onBaseline: (name: string, why: string, words: string) => Promise<void>
+  onReload?: () => void
+}) {
+  const schedule = project.schedule
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [why, setWhy] = useState('')
+  const press = useSchedulePress(onReload)
+  if (!schedule?.baseline) return null
+  const history = baselineHistory(schedule)
+  const due = baselineDue(project, today)
+  const offered = nextBaselineName(project, today)
+  return (
+    <Card>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+        <strong>The baseline</strong>
+        {due && <Chip tone="amber">a new one is due</Chip>}
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', flex: '1 1 16rem' }}>The plan every measure reads against: work done against plan, spare days, where a bar sat. A signed change order's days call for a new one; the old ones are kept.</span>
+        {!open && (
+          <Btn
+            kind={due ? 'primary' : 'plain'}
+            onClick={() => {
+              setName(offered)
+              setWhy('')
+              setOpen(true)
+            }}
+          >
+            Set a new baseline
+          </Btn>
+        )}
+      </div>
+      {due && <div style={{ color: 'var(--text-amber-800)', fontSize: '0.875rem', marginBottom: '0.4rem' }}>{due}</div>}
+      <div style={{ display: 'grid', gap: '0.15rem', fontSize: '0.875rem' }}>
+        {history.map((b, i) => (
+          <div key={`${b.lockedOn}:${b.name ?? ''}`} style={{ color: i === history.length - 1 ? 'var(--text-base)' : 'var(--text-muted)' }}>
+            {i === history.length - 1 ? <strong>Now: </strong> : 'Before: '}
+            {baselineWords(b)}
+          </div>
+        ))}
+      </div>
+      {open && (
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.6rem', fontSize: '0.875rem' }}>
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="After change order 2" aria-label="The new baseline's name" style={{ ...rowBox, width: '14rem' }} />
+          <input value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Why, in a few words" aria-label="Why a new baseline" style={{ ...rowBox, width: '18rem' }} />
+          <Btn
+            kind="primary"
+            disabled={!name.trim() || press.busy}
+            onClick={() => {
+              const words = baselinePress(project, name, why, by, today)
+              if (!words) return
+              void press.run(() => onBaseline(name.trim(), why.trim(), words), 'The baseline did not save.').then((saved) => {
+                if (saved) setOpen(false)
+              })
+            }}
+          >
+            Take the plan as it stands
+          </Btn>
+          <Btn kind="quiet" onClick={() => setOpen(false)}>
+            Cancel
+          </Btn>
+        </div>
+      )}
+      <PressNote refused={press.refused} failed={press.failed} />
+    </Card>
   )
 }
