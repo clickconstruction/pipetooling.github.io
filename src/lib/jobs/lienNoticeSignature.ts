@@ -172,3 +172,23 @@ export function lienChipSigned(row: LienDeskSignatureColumns, fieldsHash: string
   if (!row.signed_at || !(row.signer_printed_name ?? '').trim() || lienSignatureStale(row, fieldsHash)) return 'unsigned'
   return { at: row.signed_at }
 }
+
+/**
+ * The signature as the run shows it the moment after a drawing is recorded from the run window
+ * (v2.5086): the window keeps its own list of notices, so it dresses the signed one from what it
+ * just wrote rather than waiting on the desk's re-read.
+ */
+export function lienNoticeSignatureAfterSigning(args: { mode: 'type' | 'draw'; printedName: string; pngDataUrl: string | null; signedAtIso: string; jobNumber: string; itemId: string; onDeviceName: string | null }): LienNoticeSignature {
+  const { day, clock } = lienSignatureWhen(args.signedAtIso)
+  const onDeviceOf = (args.onDeviceName ?? '').trim() || null
+  return {
+    mode: args.mode,
+    printedName: args.printedName,
+    pngDataUrl: args.mode === 'draw' ? args.pngDataUrl : null,
+    signedAtIso: args.signedAtIso,
+    recordId: lienSignedRecordId(args.jobNumber, args.itemId),
+    signedWords: `Signed ${day} at ${clock} CT`,
+    auditLine: lienSignatureAuditLine({ mode: args.mode, printedName: args.printedName, signedAtIso: args.signedAtIso }, onDeviceOf),
+    onDeviceOf,
+  }
+}

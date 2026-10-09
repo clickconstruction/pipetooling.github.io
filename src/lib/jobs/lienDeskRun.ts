@@ -84,6 +84,10 @@ export type RunNotice = {
   printedAt?: string | null
   /** The leader's signature (v2.5077): null while unsigned, or once the draft changed after signing. The papers print it above the rule; the run holds a notice without one. */
   signature?: LienNoticeSignature | null
+  /** The job's leader (v2.5086), for Leader here, sign ▸ on a held row of the run: who the drawing is attributed to. */
+  leader?: { userId: string | null; name: string } | null
+  /** The desk item's `fields` as stored (v2.5086): what a signature made from the run binds to. */
+  rowFields?: unknown
 }
 
 /** Where the run opens (v2.4823): on printing when any notice has not printed, else on recording the mailing, with the newest print as the day it printed. */
@@ -104,6 +108,8 @@ export function runDoorWords(counts: { ready: number; printed: number; retReady:
 export type RunBuildOpts = {
   inks?: ReadonlyMap<string, string | null>
   onDeviceNameFor?: (userId: string | null) => string
+  /** The job's leader by master user id (v2.5086): the run's Leader here, sign ▸ attributes the drawing to him. */
+  leaderFor?: (masterUserId: string | null) => { userId: string | null; name: string } | null
 }
 
 /** The leader's signature off the desk item, for the papers; null while unsigned or once the draft moved on. */
@@ -167,6 +173,8 @@ export function buildLienDeskRun(
       kind: 'notice_53_056',
       printedAt: (item as { printed_at?: string | null }).printed_at ?? null,
       signature: runNoticeSignature(item, jobNumber, opts),
+      leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
+      rowFields: item.fields,
       label: name ? `${jobNumber} · ${name}` : jobNumber,
       jobNumber,
       months,
@@ -241,6 +249,8 @@ export function buildLienRetainageRun(
       jobId: e.jobId,
       kind: 'retainage_53_057',
       signature: runNoticeSignature(item, jobNumber, opts),
+      leader: opts?.leaderFor?.(job?.master_user_id ?? null) ?? null,
+      rowFields: item.fields,
       label: name ? `${jobNumber} · ${name}` : jobNumber,
       jobNumber,
       months: [],
@@ -282,9 +292,14 @@ export function runNoticeWhatWords(n: Pick<RunNotice, 'kind' | 'months'>): strin
 export const RUN_OWNER_UNCONFIRMED_PROBLEM = 'Owner of record: from the roll, unconfirmed — press Confirm on the desk first'
 
 /** A recipient sent by email needs an address; everything else can go without a tracking number (typed later). An owner nobody confirmed (v2.3450) blocks the record. */
+/** The run's word for a notice the leader has not signed (v2.5086): the envelope is held, and the run does not record it. */
+export const RUN_UNSIGNED_PROBLEM = 'Unsigned: the leader signs it from his phone, or draws it here with Leader here, sign ▸.'
+
 export function runNoticeProblems(n: RunNotice): string[] {
   const out: string[] = []
   if (n.ownerUnconfirmed) out.push(RUN_OWNER_UNCONFIRMED_PROBLEM)
+  // v2.5086: a builder said the leader has not signed it; a notice the builder said nothing about (undefined) is not held for it.
+  if (n.signature === null) out.push(RUN_UNSIGNED_PROBLEM)
   for (const r of n.recipients) {
     if (!r.name && !r.address) out.push(`${r.label}: nobody to send to`)
     else if (r.method === 'email' && !r.email) out.push(`${r.label}: no email on file`)

@@ -50,7 +50,7 @@ Then `npm run check:migration-drift`.
 
 ## Status
 
-Pending push.
+Merged in #5166 and pushed to prod 2026-10-09 18:3x UTC (`supabase db push` took it alone; drift check 832/832). Verified read-only over the pooler: the seven `sign*` columns present, the mode CHECK present, the guard's source carries the v2.5077 rule, zero rows signed.
 
 ## Rollback
 

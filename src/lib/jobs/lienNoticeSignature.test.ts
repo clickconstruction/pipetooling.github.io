@@ -3,6 +3,7 @@ import {
   LIEN_DESK_SIGNATURE_CLEAR,
   lienChipSigned,
   lienFieldsHash,
+  lienNoticeSignatureAfterSigning,
   lienNoticeSignatureFromRow,
   lienSignatureAuditLine,
   lienSignatureStale,
@@ -112,5 +113,16 @@ describe('the chip’s word and the clearing patch (v2.5082)', () => {
     expect(lienChipSigned(signed({ signed_at: null }), hash)).toBe('unsigned')
     expect(Object.values(LIEN_DESK_SIGNATURE_CLEAR).every((v) => v === null)).toBe(true)
     expect(Object.keys(LIEN_DESK_SIGNATURE_CLEAR).sort()).toEqual(['signed_at', 'signed_by', 'signed_fields_hash', 'signed_on_device_of', 'signer_printed_name', 'signer_signature_mode', 'signer_signature_storage_path'])
+  })
+})
+
+describe('the signature the run dresses a notice with right after signing (v2.5086)', () => {
+  it('a drawing at the office’s screen: the ink, the record ID, the words and the sentence naming whose screen', () => {
+    const sig = lienNoticeSignatureAfterSigning({ mode: 'draw', printedName: 'Robert Douglas', pngDataUrl: 'data:image/png;base64,AAAA', signedAtIso: SIGNED_AT, jobNumber: '878', itemId: '4c2e91aa-0000-4000-8000-000000000000', onDeviceName: 'Taunya' })
+    expect(sig.recordId).toBe('L878-4C2E91')
+    expect(sig.pngDataUrl).toBe('data:image/png;base64,AAAA')
+    expect(sig.signedWords).toBe('Signed October 9, 2026 at 2:14 PM CT')
+    expect(sig.auditLine).toBe('Drawn by Robert Douglas in ClickTooling on October 9, 2026 at 2:14 PM CT, on Taunya’s screen.')
+    expect(sig.onDeviceOf).toBe('Taunya')
   })
 })

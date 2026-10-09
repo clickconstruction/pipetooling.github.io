@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
@@ -16,8 +16,10 @@ function row(job_id: string, work_month: string, deadline: string): LienNoticeMo
 }
 
 const approved = {
-  id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u1', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:10:00Z', approved_by: 'u-robert', approved_at: '2026-09-14T14:20:00Z', approval_mode: 'leader', word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:20:00Z', voided_at: null,
-} as LienDeskItemRow
+  id: 'it1', job_id: 'j650', kind: 'notice_53_056', months: ['2026-06', '2026-07'], status: 'approved', fields: {}, cover_note: true, drafted_by: 'u1', drafted_at: '2026-09-14T14:00:00Z', submitted_at: '2026-09-14T14:10:00Z', approved_by: 'u-robert', approved_at: '2026-09-14T14:20:00Z', approval_mode: 'leader', signed_at: '2026-09-14T14:20:00Z', signed_by: 'u-robert', signed_on_device_of: null, signer_printed_name: 'Robert Douglas', signer_signature_mode: 'type', signer_signature_storage_path: null, signed_fields_hash: null, word_note: '', word_channel: '', held_by: null, held_at: null, hold_reason: '', hold_until: null, sent_filing_id: null, sent_at: null, pulled_back_by: null, pulled_back_at: null, created_at: '2026-09-14T14:00:00Z', updated_at: '2026-09-14T14:20:00Z', voided_at: null,
+} as unknown as LienDeskItemRow
+// The same row before the leader signed (v2.5086): the run holds it.
+const unsigned = { ...approved, signed_at: null, signed_by: null, signer_printed_name: null, signer_signature_mode: null } as LienDeskItemRow
 
 function data(items: LienDeskItemRow[]): LienDeskData {
   const rows = [row('j650', '2026-06', '2026-09-15'), row('j650', '2026-07', '2026-10-15')]
@@ -597,8 +599,8 @@ describe('the leader’s signature rides with the notice (v2.5077)', () => {
     expect(formSig && formSig.kind === 'signature' ? formSig.signed?.recordId : null).toBe(sig!.recordId)
     const letterSig = runCoverNoteBlocks(run[0]!).find((b) => b.kind === 'signature')
     expect(letterSig && letterSig.kind === 'signature' ? letterSig.signed?.printedName : null).toBe('Robert Douglas')
-    expect(build(approved)[0]!.signature).toBeNull()
-    const unsignedForm = runNoticeBlocks(build(approved)[0]!, run[0]!.recipients[0]!).find((b) => b.kind === 'signature')
+    expect(build(unsigned)[0]!.signature).toBeNull()
+    const unsignedForm = runNoticeBlocks(build(unsigned)[0]!, run[0]!.recipients[0]!).find((b) => b.kind === 'signature')
     expect(unsignedForm && unsignedForm.kind === 'signature' ? unsignedForm.signed ?? null : 'missing').toBeNull()
   })
 
@@ -608,6 +610,18 @@ describe('the leader’s signature rides with the notice (v2.5077)', () => {
     const signedItem = { ...approved, ...signedCols, signed_fields_hash: lienFieldsHash(approved.fields) } as LienDeskItemRow
     const signedRun = build(signedItem)
     expect(runPacketHtml(signedRun, TODAY, null)).toContain('fonts.googleapis.com/css2?family=Great+Vibes')
-    expect(runPacketHtml(build(approved), TODAY, null)).not.toContain('Great+Vibes')
+    expect(runPacketHtml(build(unsigned), TODAY, null)).not.toContain('Great+Vibes')
+  })
+})
+
+describe('the run and an unsigned notice (v2.5086)', () => {
+  it('the builders name the job’s leader and carry the row’s fields; an unsigned notice is a problem that blocks recording, one the builder said nothing about is not', () => {
+    const d = data([unsigned])
+    const run = buildLienDeskRun(d.queue.piles.ready, d, null, () => 'Robert Douglas, Owner', TODAY, undefined, { leaderFor: (id) => ({ userId: id, name: 'Robert Douglas' }) })
+    expect(run[0]!.leader).toEqual({ userId: d.jobsById['j650']!.master_user_id ?? null, name: 'Robert Douglas' })
+    expect(run[0]!.rowFields).toEqual(unsigned.fields)
+    expect(run[0]!.signature).toBeNull()
+    expect(runNoticeProblems(run[0]!)).toContain(RUN_UNSIGNED_PROBLEM)
+    expect(runNoticeProblems({ ...run[0]!, signature: undefined })).not.toContain(RUN_UNSIGNED_PROBLEM)
   })
 })

@@ -1239,7 +1239,8 @@ export default function GcOnNoticeModal({ open, gcId, onClose, todayYmd, authRol
       ) : null}
       {runOpen && data ? (
         <LienDeskRunModal
-          notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, inks })}
+          notices={buildLienDeskRun(runEntries, data.desk, issuer, signerNameFor, todayYmd, signerPhoneFor, { suppliers: suppliers.byJob, inks, leaderFor: (id) => ({ userId: id, name: signerNameFor(id).split(',')[0]?.trim() ?? '' }) })}
+          viewer={{ userId: authUserId, name: authName }}
           stripeMode={authRole === 'dev' ? getBillingStripeModePref() : 'live'}
           issuer={issuer}
           todayYmd={todayYmd}
