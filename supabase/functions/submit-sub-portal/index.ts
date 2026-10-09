@@ -5,6 +5,7 @@ import { parseScopeExtras } from '../_shared/subPortalStatement.ts'
 import { canChangePick, evaluatePick, pickProblemMessage, pickWindowFor } from '../_shared/subPick.ts'
 import { notifyJobWatchers } from '../_shared/jobWatchers.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
+import { internalFunctionCall } from '../_shared/internalFunctionCall.ts'
 
 /**
  * Sub portal intake (sub-portal train): everything a sub can DO from the
@@ -168,12 +169,14 @@ async function insertDispatchNote(
     console.error('sub portal dispatch note failed', error)
     return
   }
+  // The push fan-out, as an internal caller: a sub has no session, so the service key is the bearer (v2.5042).
+  // Without it notify-dispatch-request answered 401 and no phone heard the note. The row is in the inbox either way.
   try {
-    await fetch(`${Deno.env.get('SUPABASE_URL')!}/functions/v1/notify-dispatch-request`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dispatch_request_id: (inserted as { id: string }).id }),
+    const call = internalFunctionCall(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, 'notify-dispatch-request', {
+      dispatch_request_id: (inserted as { id: string }).id,
     })
+    const res = await fetch(call.url, call.init)
+    if (!res.ok) console.error('notify-dispatch-request refused', res.status, await res.text().catch(() => ''))
   } catch (e) {
     console.error('notify-dispatch-request call failed', e)
   }
