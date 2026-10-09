@@ -5,8 +5,8 @@
  * finish by (G-36), what it waits on with a gap after each (G-35, side by side below zero, G-82), what a slip would
  * cost (G-80), and the days it really ran (G-55). **Save, and say why** hands the change to the move's window
  * (`GcMoveExplain`), so a change is a move like a drag. The real days are a record and keep at once. Since PR 9a, the
- * job's own bar's buttons (G-38) and an inspection's pass or failure sit at its foot (`extra`, `check`). Its trade's
- * papers (G-77) and its place (G-83) come with PR 9b and 9d; the what-if copy with PR 11.
+ * job's own bar's buttons (G-38) and an inspection's pass or failure sit at its foot (`extra`, `check`); since 9b, its
+ * place (G-83, `place`). Its trade's papers (G-77) come with PR 9d; the what-if copy with PR 11.
  */
 import { useState, type ReactNode } from 'react'
 import { addDays } from '../../lib/gc/building'
@@ -33,6 +33,7 @@ export function GcActivityEditor({
   onActual,
   check,
   extra,
+  place,
   onClose,
 }: {
   project: GcProject
@@ -47,6 +48,8 @@ export function GcActivityEditor({
   check?: ReactNode
   /** An added activity's own buttons (G-38): done, not done, off the schedule. */
   extra?: ReactNode
+  /** Where its work is (G-83): the place line. Unset: none, as for an inspection or in a what-if copy. */
+  place?: ReactNode
   onClose: () => void
 }) {
   const a = row.activity
@@ -130,6 +133,7 @@ export function GcActivityEditor({
           </label>
           {mustFinishBy && finish > mustFinishBy && <span style={{ color: 'var(--text-amber-800)' }}>It finishes {daysBetween(mustFinishBy, finish)} days past that.</span>}
         </div>
+        {place}
         <div>
           <div style={{ color: 'var(--text-muted)', marginBottom: '0.25rem' }}>It waits on</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(14rem, 1fr))', gap: '0.15rem 0.75rem' }}>

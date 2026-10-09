@@ -1,7 +1,8 @@
 /**
  * GC mode, the real build, the schedule's PR 7b: the Schedule window's words. A first draft's
  * refusal, start day and log line, and the opened bar's card on Fair Oaks D, in plain words. Since
- * 9a, the job's own work put on the chart and a failed inspection, each with what it pushes.
+ * 9a, the job's own work put on the chart and a failed inspection, each with what it pushes. Since
+ * 9b, a new wait, a split, a join and a new baseline, each with the reducer's line.
  */
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
@@ -11,7 +12,8 @@ import { ganttBars, type GanttBar } from './gantt'
 import { draftSchedule, scheduleMeasures } from './schedule'
 import { addDays } from '../building'
 import { planMove } from './moves'
-import { barCardRows, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, moveWords, ownWorkOffWords, ownWorkPress, partMovePress, redoWords, undoWords } from './scheduleWindow'
+import { barCardRows, baselinePress, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, joinWords, moveWords, newWait, ownWorkOffWords, ownWorkPress, partMovePress, redoWords, splitPress, undoWords } from './scheduleWindow'
+import { waitKind } from './waits'
 import { splitParts } from './splitBars'
 import { initialGcState } from './testState'
 
@@ -266,5 +268,37 @@ describe('the job’s own work and a failed inspection (PR 9a)', () => {
     expect(failInspectionPress(fairOaks, 'fairoaksd-insp-roughin', { ...input, note: '  ' }, s.today)).toBeNull()
     expect(failInspectionPress(fairOaks, 'fairoaksd-insp-roughin', { ...input, reinspectOn: s.today }, s.today)).toBeNull()
     expect(failInspectionPress({ ...fairOaks, stage: 'buyout' }, 'fairoaksd-insp-roughin', input, s.today)).toBeNull()
+  })
+})
+
+describe('a wait, a split, a join and a new baseline (PR 9b)', () => {
+  const fairOaks = job(s, 'fairoaksd')
+
+  it('makes a wait as the reducer does: the kind’s own who when left blank, known lines only, a delivery not shipped', () => {
+    const wait = newWait(fairOaks, { kind: 'delivery', title: ' Rooftop units ', packageId: 'fhvac', who: ' ', lineIds: ['fhvac-1', 'nope', 'fhvac-1'], expectedOn: '2026-10-20', askedOn: null })!
+    expect(wait).toMatchObject({ kind: 'delivery', title: 'Rooftop units', packageId: 'fhvac', who: waitKind('delivery').who, lineIds: ['fhvac-1'], askedOn: null, expectedOn: '2026-10-20', shippedOn: null, doneOn: null })
+    expect(wait.id).toBeTruthy()
+    expect(newWait(fairOaks, { kind: 'permit', title: 'Service permit', packageId: null, who: 'The city', lineIds: [], expectedOn: '2026-10-20', askedOn: '2026-10-01' })).not.toHaveProperty('shippedOn')
+    expect(newWait(fairOaks, { kind: 'decision', title: ' ', packageId: null, who: '', lineIds: [], expectedOn: '2026-10-20', askedOn: null })).toBeNull()
+    expect(newWait(fairOaks, { kind: 'decision', title: 'Tile', packageId: null, who: '', lineIds: [], expectedOn: '', askedOn: null })).toBeNull()
+  })
+
+  it('splits a trade’s line into named parts with the reducer’s line, and says why it cannot', () => {
+    const tpo = fairOaks.schedule!.activities.find((a) => a.lineId === 'froof-1')!
+    const made = splitPress(fairOaks, 'froof-1', [{ name: ' East half ', start: tpo.start, finish: '2026-09-30' }, { name: 'West half', start: '2026-10-01', finish: tpo.finish }], 49.6, 'Robert')
+    if ('problem' in made) throw new Error(made.problem)
+    expect(made.parts.map((p) => p.name)).toEqual(['East half', 'West half'])
+    expect(made.words).toBe(`Robert split Roofing · TPO membrane on ${fairOaks.name} into 2 parts: East half, West half.`)
+    expect(splitPress(fairOaks, 'fairoaksd-insp-roughin', [], 0, 'Robert')).toHaveProperty('problem')
+    expect(splitPress(fairOaks, 'froof-1', [{ name: 'Only', start: tpo.start, finish: tpo.finish }], 50, 'Robert')).toHaveProperty('problem')
+    expect(joinWords(fairOaks, 'froof-1', 'Robert')).toBe(`Robert made Roofing · TPO membrane on ${fairOaks.name} one bar again.`)
+  })
+
+  it('takes a new baseline only once the plan at Start is kept and it has a name, with its line', () => {
+    const kept = { ...fairOaks, schedule: { ...fairOaks.schedule!, baseline: fairOaks.schedule!.baseline ?? { lockedOn: '2026-07-06', activities: {} } } }
+    expect(baselinePress(kept, ' After change order 2 ', 'The owner added a canopy.', 'Robert', s.today)).toBe(`Robert set a new baseline on ${fairOaks.name}, After change order 2: The owner added a canopy. The plan at Start is kept.`)
+    expect(baselinePress(kept, 'After change order 2', ' ', 'Robert', s.today)).toBe(`Robert set a new baseline on ${fairOaks.name}, After change order 2. The plan at Start is kept.`)
+    expect(baselinePress(kept, ' ', 'Why', 'Robert', s.today)).toBeNull()
+    expect(baselinePress({ ...kept, schedule: { ...kept.schedule, baseline: null } }, 'After change order 2', '', 'Robert', s.today)).toBeNull()
   })
 })
