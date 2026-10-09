@@ -8,7 +8,7 @@ covers:
   - src/pages/Bids.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-10-09
 ---
 
 ## Overview
@@ -187,7 +187,7 @@ Sizes are `wc -l` @ f423bd6e5. "Own map" = that file's internals are mapped else
 - **Render location:** 1997–2010 behind `canSeeBidCosts(myRole)` (office roles, v2.3336); `bidsTabBounce` sends everyone else to the board without a word.
 - **Props:** `bids`, `teamLaborData={teamLaborDataForBids}`, `bidAssignedCosts`, `onSelectBid={setSharedBid}`, `onCostIt` (`setSharedBid` + `selectBidsTab('labor')`), `onOpenBid` (Bid window on its Bid face), `showDollars={canSeeBidCostDollars(myRole)}`.
 - **Data:** `teamLaborDataForBids` and `bidAssignedCosts` load inside `useBidPricingEngine` (its effects gate on `pricing`/`labor`/`bid-costs` and `bid-costs`), not in the parent.
-- **Status:** **Done.** Lens internals (pursuit, cost-to-win, bid-vs-actual, forecast) are in the child over `lib/bids/bidPursuit.ts`, `bidCostToWin.ts`, `bidVsActual.ts`, `bidForecast.ts`.
+- **Status:** **Done.** Lens internals (pursuit, cost-to-win, bid-vs-actual, forecast) are in the child over `lib/bids/bidPursuit.ts`, `bidCostToWin.ts`, `bidVsActual.ts`, `bidForecast.ts`; Bid vs actual's **Priced** column (v2.5043) reads `pricedMargin.ts` through `useBidVsActual`.
 
 ### `day-book` — Day book (v2.3735)
 

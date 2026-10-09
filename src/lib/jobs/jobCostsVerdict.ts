@@ -17,6 +17,7 @@
  */
 import type { JobBurnModel } from './jobBurn'
 import { componentBurn, type ResolvedJobBudget, type SpendByComponent } from './jobBudget'
+import { pricedMarginPartialWords, pricedMarginPctWords, pricedVsDirectWords, type BidPricedMargin } from '../bids/pricedMargin'
 
 export type VerdictMoney = { usd: number; pct: number | null }
 
@@ -58,6 +59,11 @@ export type CostsVerdict = {
   earned: { usd: number; aheadUsd: number } | null
   /** True margin so far: earned − spent − overhead to date; null without earned. */
   trueMarginSoFar: VerdictMoney | null
+  /**
+   * The margin the linked bid was priced at (v2.5043, `bids.priced_*`), beside the direct margin at
+   * completion it compares with; null when the bid carries no stamp.
+   */
+  priced: { pctWords: string; vsWords: string | null; partialWords: string[] } | null
   timeLeft: { workLeftFieldDays: number | null; progressPerFieldDay: number | null; burnPerFieldDayUsd: number | null; fieldDays: number; early: boolean; idle: boolean }
   sections: VerdictSection[]
   /** Where the bid's figures come from, for the section table's column head. */
@@ -104,6 +110,8 @@ export function buildCostsVerdict(args: {
   /** Billed or paid — the % came from the job being finished when no report or job % existed. */
   jobFinished?: boolean
   todayYmd: string
+  /** The linked bid's priced-margin stamp (v2.5043); null / omitted with none. */
+  priced?: BidPricedMargin | null
 }): CostsVerdict {
   const { burn: m, priceUsd, spend, resolved: r } = args
   const c = r.components
@@ -151,6 +159,7 @@ export function buildCostsVerdict(args: {
     spent: { usd: m.spentUsd, pctOfPrice: pctOf(m.spentUsd, priceUsd), teamHours: args.teamHours, materialsUsd: spend.partsUsd },
     earned,
     trueMarginSoFar: soFar != null ? { usd: soFar, pct: pctOf(soFar, priceUsd) } : null,
+    priced: args.priced ? { pctWords: pricedMarginPctWords(args.priced), vsWords: pricedVsDirectWords(m.marginPct, args.priced), partialWords: pricedMarginPartialWords(args.priced) } : null,
     timeLeft: { workLeftFieldDays: m.workLeftFieldDays, progressPerFieldDay: m.progressPerFieldDay, burnPerFieldDayUsd: m.burnPerFieldDayUsd, fieldDays: m.fieldDays, early: m.status === 'early', idle: m.fieldDays > 0 && m.burnPerFieldDayUsd == null },
     sections,
     budgetSource: r.source,

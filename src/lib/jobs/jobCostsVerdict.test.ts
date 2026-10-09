@@ -77,3 +77,19 @@ describe('buildCostsVerdict', () => {
     expect(pctDoneWords({ pctDone: 40, pctSource: 'job', pctReport: null, pctJob: null, finished: false }, (d) => d)).toBe('40% done (set on the job)')
   })
 })
+
+describe('v2.5043 · the margin the bid was priced at, beside the direct margin at completion', () => {
+  const stamp = { pct: 31.42, revenueUsd: 123_600, costUsd: 84_765, uncostedUsd: 0, rateSet: true, bidVersionId: null, at: '2026-08-01T15:00:00Z' }
+  it('says the priced margin and how far the job runs from it, in whole points', () => {
+    // direct at completion 15.3% vs priced 31%: 15 − 31 = 16 points under
+    expect(buildCostsVerdict({ ...base, priced: stamp }).priced).toEqual({ pctWords: '31%', vsWords: '16 pts under the price', partialWords: [] })
+  })
+  it('a stamp that reads high says why; no projection yet means no comparison', () => {
+    const early = buildCostsVerdict({ ...base, burn: { ...burn, marginUsd: null, marginPct: null }, priced: { ...stamp, rateSet: false, uncostedUsd: 1_200 } })
+    expect(early.priced).toEqual({ pctWords: '31%', vsWords: null, partialWords: ['no labor rate', '$1,200 on rows with no cost'] })
+  })
+  it('no stamp, no line', () => {
+    expect(buildCostsVerdict(base).priced).toBeNull()
+    expect(buildCostsVerdict({ ...base, priced: null }).priced).toBeNull()
+  })
+})
