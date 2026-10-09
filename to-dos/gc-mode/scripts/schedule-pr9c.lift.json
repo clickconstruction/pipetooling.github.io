@@ -1,0 +1,45 @@
+{
+  "about": "The schedule's PR 9c (to-dos/gc-mode/mockups/schedule-pr9.md): the pull and days-back offers lifted to src/lib/gc/schedule word for word, with no caller. Way 3 is dropped: everything they read is on main. pullHolds, planPull and pullBehind append to pullEarlier.ts, and recoveryOffers and recoveryFollowPeople to recovery.ts; 1a placed both files and left these five to stay. Run: LIFT_PLACEMENTS=<file> node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/schedule-pr9c.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "files": [
+    {
+      "from": "gcPullEarlier",
+      "to": "schedule/pullEarlier.ts",
+      "append": true,
+      "moves": [
+        "pullHolds",
+        "planPull",
+        "pullBehind"
+      ]
+    },
+    {
+      "from": "gcRecovery",
+      "to": "schedule/recovery.ts",
+      "append": true,
+      "moves": [
+        "recoveryOffers",
+        "recoveryFollowPeople"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "from": "gcPullEarlier.test.ts",
+      "to": "schedule/pullEarlier.test.ts",
+      "header": "/**\n * The tests of `gcPullEarlier.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a, and PR 9c for the offer itself). The data is `testState.ts`. The tests\n * that play the prototype's reducer stay on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcRecovery.test.ts",
+      "to": "schedule/recovery.test.ts",
+      "header": "/**\n * The tests of `gcRecovery.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data,\n * moved word for word (the schedule's PR 1a, and PR 9c for the offers). The data is `testState.ts`. The tests that\n * play the prototype's reducer stay on the spike, where they run against these kernels.\n */"
+    }
+  ]
+}
