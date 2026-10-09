@@ -132,6 +132,11 @@ export function toRoomItemSource(item: RoomItemSource): RoomItemSource {
     reviewed_by_person_id: item.reviewed_by_person_id ?? null,
     reviewed_at: item.reviewed_at ?? null,
     order_only: item.order_only === true,
+    // v2.5023: a design change's call and sign-off, so the preview prints the line the room does.
+    call_by: item.call_by ?? null,
+    signoff_name: item.signoff_name ?? null,
+    signoff_on: item.signoff_on ?? null,
+    signoff_via: item.signoff_via ?? null,
   }
 }
 

@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { RoomRevisionBody, RoomRowCard } from './SubmittalRoomView'
-import { roomCounts, type RoomRevision, type RoomRow } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { roomCounts, roomRowFrom, type RoomRevision, type RoomRow } from '../../../supabase/functions/_shared/submittalRoomPayload'
 
 const row = (o: Partial<RoomRow> & Pick<RoomRow, 'id' | 'tag' | 'kind'>): RoomRow => ({
   plans: '', proposed: '', why: '', performanceChange: false, sheetPages: 0, decision: null, ...o,
@@ -87,5 +87,18 @@ describe('RoomRowCard · the GC calls each part (2026-10-01)', () => {
     unmount()
     render(<RoomRowCard row={wc} readOnly />)
     expect(screen.queryByRole('group', { name: /Your call on/ })).toBeNull()
+  })
+})
+
+describe('RoomRowCard · a design change says whose call it is (decision 11, the owner’s call of 2026-10-09)', () => {
+  const stored = { id: 'dc', tag: 'WH-1', sequence_order: 1, specified_manufacturer: 'Rheem', specified_model: 'RH375', specified_description: '75 gal', submitted_manufacturer: 'Rheem', submitted_model: 'RH350', submitted_label: null, status: 'design_change', reason_kind: 'lead_time', reason_note: null, lead_time_days: null, sheet_pages: [], review_decision: null, review_note: null, reviewed_by_name: null, reviewed_by_person_id: null, reviewed_at: null }
+  it('prints the call and the sign-off under the performance line', () => {
+    render(<RoomRowCard row={roomRowFrom({ ...stored, call_by: 'engineer', signoff_name: 'Pat Lee', signoff_on: '2026-10-09', signoff_via: 'email' })} readOnly />)
+    expect(screen.getByTestId('room-row').textContent).toContain('This changes a performance value on the plans.')
+    expect(screen.getByTestId('room-design-call').textContent).toBe("The engineer's call · signed off by Pat Lee on Oct 9, 2026, by email.")
+  })
+  it('a design change with nothing recorded prints no line', () => {
+    render(<RoomRowCard row={roomRowFrom(stored)} readOnly />)
+    expect(screen.queryByTestId('room-design-call')).toBeNull()
   })
 })

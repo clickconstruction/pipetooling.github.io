@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { describeForReviewer, emailedRecordLine, isRoomClosed, linkListLine, linkRevisionsAfterShare, linkShowsRevOf, linkViewOf } from './seeWhatTheySee'
-import type { RoomItemSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
+import { describeForReviewer, emailedRecordLine, isRoomClosed, linkListLine, linkRevisionsAfterShare, linkShowsRevOf, linkViewOf, toRoomItemSource } from './seeWhatTheySee'
+import { roomRowFrom, type RoomItemSource } from '../../../supabase/functions/_shared/submittalRoomPayload'
 import { revisionStandings, type TypedAnswerSource } from '../../../supabase/functions/_shared/submittalRecord'
 
 const typedOn = (at: string): TypedAnswerSource => ({ decision_source: 'entered', review_decision: 'approved', reviewed_at: at })
@@ -142,5 +142,12 @@ describe('the heads-up in Their call (2026-10-06)', () => {
 
   it('says nothing on a shared revision', () => {
     expect(emailedRecordLine({ rev: 2, shared: true, hasPackage: true, hasAnswer: true })).toBe('')
+  })
+})
+
+describe('v2.5023 · the preview prints a design change’s call and sign-off as the room does', () => {
+  it('keeps the four columns on the way to the room row', () => {
+    const stored = item({ id: 'dc', tag: 'FV-1', status: 'design_change', call_by: 'engineer', signoff_name: 'Pat Lee', signoff_on: '2026-10-09', signoff_via: 'email' })
+    expect(roomRowFrom(toRoomItemSource(stored)).designCall).toBe("The engineer's call · signed off by Pat Lee on Oct 9, 2026, by email.")
   })
 })

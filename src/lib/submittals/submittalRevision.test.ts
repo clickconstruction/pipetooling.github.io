@@ -195,6 +195,23 @@ describe('an order-only row keeps its state from revision to revision (2026-10-0
   })
 })
 
+describe('v2.5023 · a design change keeps its call and sign-off when the row moves', () => {
+  const rec = { call_by: 'engineer', signoff_name: 'Pat Lee', signoff_on: '2026-10-09', signoff_via: 'email' }
+  const signed = item({ status: 'design_change', source_quote_line_id: null, source_count_row_id: 'c1', ...rec } as Partial<SubmittalItemRow>)
+  it('the next revision reads it from the row before, only on a design change that holds one', () => {
+    expect(itemToPrevious(signed).designCall).toEqual(rec)
+    expect('designCall' in itemToPrevious(item({ status: 'design_change' }))).toBe(false)
+    expect('designCall' in itemToPrevious(item({ status: 'alternate', ...rec } as Partial<SubmittalItemRow>))).toBe(false)
+  })
+  it('a carried row and a rebuilt row write the four columns, and a row with none names none of them', () => {
+    expect(carriedRowInsert(signed, 's2', 1)).toMatchObject(rec)
+    expect('call_by' in carriedRowInsert(item({ status: 'design_change', source_quote_line_id: null, source_count_row_id: 'c1' }), 's2', 1)).toBe(false)
+    const draft = { tag: 'FV-1', sequenceOrder: 1, specifiedManufacturer: null, specifiedModel: null, specifiedDescription: null, submittedManufacturer: null, submittedModel: null, submittedLabel: 'x', supplyHouseId: null, houseName: null, sourceQuoteLineId: null, status: 'design_change', near: false, reasonKind: null, reasonNote: null, leadTimeDays: null, sheetFile: null, sheetPages: [], carriedFromItemId: 'i1', changed: false, changeNote: null } satisfies SubmittalRowDraft
+    expect(draftToItemInsert({ ...draft, designCall: rec }, 's2')).toMatchObject(rec)
+    expect('call_by' in draftToItemInsert(draft, 's2')).toBe(false)
+  })
+})
+
 describe('2026-10-04 · a package built with cut sheets still to follow', () => {
   it('names the rows that want a cut sheet and have none; a row with no product is not one of them', () => {
     const rows = [
