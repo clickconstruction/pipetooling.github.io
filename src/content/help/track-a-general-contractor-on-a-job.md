@@ -5,6 +5,10 @@ roles: dev, master_technician, assistant, controller
 keywords: GC, general contractor, replies go to, reply-to, on behalf, check and send, builder, gc/builder, second customer, manage by gc, hard hat, stages, job customer, statement, draft message, pay online, nothing owed, portal card, email template, print unpaid invoices, print invoices, all invoices, invoice pdf
 order: 73
 ---
+1. Set a GC on a job: open its **Edit** tab and pick the GC in the **GC/Builder** row.
+2. Each week, open **GC Review** from Billed Awaiting Payment and certify each GC's bills by Wednesday.
+3. Send the statement from the GC's opened row: **Share** → **Draft Message**, or **Copy** to paste it yourself.
+
 A job's **customer** is the party the work is for. On commercial work, a second party often matters day to day: the **General Contractor** running the site.
 
 You can link a GC to any job. The job's **Bills go to** row then decides whether the bills go to the customer or the GC. See [Who gets the bills](#who-gets-the-bills).
@@ -22,6 +26,12 @@ On **New Job**, the same pick sits in the Customer section, under ***GC/Builder 
 Jobs **created from a bid** inherit the bid's GC/Builder automatically, and **Bills go to** is set to the GC. A bid sent to several GCs asks *Which GC gave you this job?* first. Linking a bid to an existing job fills the GC if it's empty. For anything else, the {{chip:blue|Use bid's GC: Knight Homes}} button copies it over in one click.
 :::
 
+## Who gets the bills
+
+Setting a GC does not move the bills by itself. The job's **Bills go to** row on the Edit tab decides that. It reads *This customer*, the GC by name, or *Split by line*. A job made from a won bid bills the GC. So does a GC job with no customer. You may pick the job's customer as its GC. Then the customer link clears and Bills go to becomes the GC.
+
+For one bill, use {{button:outline|Bill to ▾}} on its draft row in the job window's **Bill** tab. It offers the customer, the GC when the job has its own GC, and *Someone else…*. Bill Customer follows that choice. GC Review lists a job under its GC only when the GC pays.
+
 ## Where the GC shows up
 
 - **Jobs → Pipeline**: under the customer name in the Job column, marked with a hard-hat icon.
@@ -29,15 +39,20 @@ Jobs **created from a bid** inherit the bid's GC/Builder automatically, and **Bi
 - **Pipeline search**: typing a GC's name surfaces every job under that GC.
 - **Pipeline GC filter**: the filter is there once any job has a GC. You open the **⋯** menu at the right end of the search bar. A **Filters** group, under **Sort**, holds the hard-hat GC dropdown. You pick a GC to see only their jobs. Every section and total follows. Or you pick **No GC set** to see the jobs still needing one. While a filter is on, a blue chip with the GC's name sits in the search bar. You tap its × to clear it.
 
-## GC Review — outstanding money by GC
+The week's round with each GC is in [run your weekly GC statement round](/help/run-your-gc-statement-round).
 
-On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button. The button sits next to Accounts Receivable. GC Review groups everything awaiting payment by the GC that **pays** it. The payer comes from the job's **Bills go to** setting, or the bill's own *Bill to* pick. GC Review shows when each bill went out, how many days ago, and the GC's outstanding total. Each GC is **one row**. The row holds its balance, its three steps for the week and the next thing to do. You **click the row** to open its bills.
+## Reference
+
+### GC Review — outstanding money by GC
+
+On **Jobs → Pipeline**, the **Billed Awaiting Payment** section header has a {{button:outline|GC Review}} button. The button sits next to Accounts Receivable. GC Review groups everything awaiting payment by the GC that **pays** it. The payer comes from the job's **Bills go to** setting, or the bill's own *Bill to* pick. GC Review shows when each bill went out, how many days ago, and the GC's outstanding total. Each GC is **one row**. The row holds its balance, its three steps for the week and the next thing to do. You **click the row** to open its bills. The rows are grouped by **account man**, the teammate who knows the GC.
 
 Jobs without a GC gather in a **Not billed to a GC** bucket, under *Nothing to check this week* at the bottom. Jobs whose GC is on the job but the owner pays gather there too. **Total outstanding** is pinned at the bottom of the window. The total matches the section header when Include Collections is unticked and no search or filter is on. That bucket doubles as your list of jobs to go set GCs on, or Bills go to. You open the bucket and **click any job** to open Edit Job right on top. You set the GC or fix anything else. The report refreshes itself when you save.
 
 - **Include Collections** sits at the bottom, beside **Total outstanding**. The box is ticked by default. Hard-to-collect jobs then ride along in the view and in Share all and Print all. On screen they wear a red Collections chip. You untick it to see active billing only. Certification and the weekly statement rounds always look at active jobs only, whichever way the box is set.
+- When any job has a **development** set, two pills appear, **By GC** and **By Development**. A development is a named group of jobs, like a subdivision. You press **By Development** to see the same rollup per development instead.
 
-## Certify each GC — the Wednesday ritual
+### Certify each GC — the Wednesday ritual
 
 Every week, the office certifies each GC's group before sending statements. Certification is due Wednesday. Certifying means you confirm each bill belongs to this GC and the amount is right. Certifying is the office's own sign-off, not the GC's. The week's list, its stage track and the word are in [run your weekly GC statement round](/help/run-your-gc-statement-round). Each unchecked GC's row has a {{button:blue|Check bills}} button. The opened row has a {{button:blue|Certify}} button inside it:
 
@@ -48,9 +63,10 @@ Every week, the office certifies each GC's group before sending statements. Cert
 The opened row then shows {{chip:green|✓ Certified · Taunya · 7:02 AM}}. A bill may land or a payment may post **after** sign-off. Then the chip flips to {{chip:yellow|Changed since certified · +$2,700.00}} with a Re-certify button. So a sent statement never silently drifts from what was reviewed. Certifications reset each week.
 
 **The Dashboard reminds you**: starting Wednesday, office staff see an amber item in the **Needs you** card. The item reads *GC review is due today*, or *GC review is still due this week* from Thursday. Under the title, a line says how far along you are, like *3 of 9 GCs certified · 2 statements sent*. **Open GC Review** opens it in one click. The item turns green for the rest of Wednesday once every GC is certified and sent. Sent can mean by **Draft Message** or by a scheduled send to that GC. Sent can also mean a statement marked sent on the **This week** tab. A "Spoke with them" mark doesn't count. Nor does an "All GCs" office copy. Then the card stays away until the next week's ritual.
-- You open a GC's row. Every sharing action for that GC lives behind its {{button:outline|Share}} dropdown. The actions are **Draft Message**, **Copy**, **Print**, **Print unpaid invoices**, **Find a check…** and **Mark sent / spoke with them…**. **Copy portal link** sits under *Portal*. The {{icon:help|globe}} next to the GC's name is their portal, same as everywhere else. A portal is the GC's own web page of open bills and payments.
 
-## Send a statement to a GC
+### Send a statement to a GC
+
+You open a GC's row. Every sharing action for that GC lives behind its {{button:outline|Share}} dropdown. The actions are **Draft Message**, **Copy**, **Print**, **Print unpaid invoices**, **Find a check…** and **Mark sent / spoke with them…**. **Copy portal link** sits under *Portal*. The {{icon:help|globe}} next to the GC's name is their portal, same as everywhere else. A portal is the GC's own web page of open bills and payments. **Draft Message**, **Copy** and **Print** wait until the GC's bills are checked this week and unchanged since.
 
 You open the GC's row and pick **Copy** from its {{button:outline|Share}} menu. One click copies a **GC-facing statement**. A statement lists the GC's open bills and what is owed. The statement opens with what is owed. Then the statement reads one property at a time. Each property shows the street once, with that property's own subtotal. Under the street is a line for each open bill. The line has the job number, the day the bill was sent, and what is still owed. You paste it into Gmail, Outlook, or Apple Mail and it lands as a clean formatted table. A suggested subject line rides at the top of the copy. You can cut it into the subject field. This version is written for the GC's eyes, with no internal chips or days-past-due language. **Print** in the same menu makes that GC's printable statement.
 
@@ -70,20 +86,6 @@ Job 1058 · Service Visit · Sep 21 · $2,000.00
 - **Payments we have received.** Under the total is every payment the GC sent in the last 30 days, newest first. Each payment has the check number, the day, and the property and job it went to. A check that paid a job off says *now paid in full*. When none came, the statement says so and asks the GC to reply if they sent one. The list is read as you open the GC's row, so Copy carries it too.
 - **Paid on the job with no bill picked.** A job may carry a payment that was never put on a bill. The Draft Message dialog names those jobs before you send. The note reads *Paid on the job with no bill picked: Job 1042 $3,000.00.* The statement counts that money the way the portal does. It pays the work on no bill first, then the oldest bills. To put a payment on a different bill, pick the bill in Edit Job → Payments, then send.
 
-## Print a GC's unpaid invoices
-
-The statement lists what is owed. Sometimes the GC wants the bills themselves. You pick **Print unpaid invoices** from the GC's {{button:outline|Share}} menu. A new tab opens with **every unpaid invoice on that GC's statement as one PDF**. Each invoice is the same one you get from View bill, one after another, in the statement's order. You print it or save it from the PDF's own toolbar.
-
-- The PDF prints what the statement shows. With **Include Collections** ticked, the hard-to-collect bills are in the stack. Unticked, those bills are left out.
-- Each job is re-read as the PDF builds. So a bill paid or sent back since you opened GC Review is left out. A part-paid bill still prints, with its payments and the balance due.
-- A row that is a job balance with no bill behind it has no invoice to print. The message that follows says how many invoices printed and names anything left out.
-
-:::example After the PDF opens
-19 unpaid invoices for RMC- Dudley Mason.
-:::
-
-If the tab does not open, you allow pop-ups for the app and pick it again.
-
 Prefer the app to send it? You choose **Draft Message** from the same Share menu. The top of the dialog reads like the email it becomes: **From**, **To**, **Cc**, **Reply to**, **Subject**. From is the company name the GC sees and cannot be changed. To is the GC's address from their customer record. The To line shows their name with the address beside it. You press **Change** to pick someone else.
 
 One menu serves To and Cc. The GC's own contact people come first, then the office. The contacts come from Customers → contacts. The ones ticked *Gets a copy of every bill* wear a *gets bill copies* mark here. You type a name to find one. Or you type a whole address and pick **Use …** to send anywhere. A sentence under the header says the send back before it goes. The sentence reads *Goes to RMC- Dudley Mason. Their reply goes to Malachi. You get a copy*. You hit {{button:blue|Send statement}} and the app emails the same table from the company's address.
@@ -102,10 +104,23 @@ Open Draft Message on a GC whose total is $0.00 and the dialog says **Nothing ow
 
 Want the statement to open with a line of your own? A dev sets it in {{icon:gear}} ***Settings → Email templates & testing → GC statement (Draft Message + scheduled)***. The template holds the subject and an intro paragraph. Saved once, both Draft Message and the scheduled sends carry it. The subject prefills in the dialog. You can still edit it for a send now. A scheduled send uses the standard subject. {{button:outline|Preview}} shows the intro in place.
 
-Don't want to remember to send it? You flip **When** to **Schedule…** and pick a date and time, in Central time. You can also tick **Repeat weekly**. The app then sends the statement by itself. The statement is rebuilt fresh at send time, so it always shows that morning's numbers. A GC with nothing outstanding is skipped, never emailed an empty statement. Draft Message applies the same rule before you click. Every office scheduled send appears in the **Scheduled statement sends** list on GC Review's **Scheduled** tab. Only whoever scheduled a send, or a dev, sees its **Cancel**. Cancelling ends a weekly repeat. The **Share all** dialog's email can be scheduled the same way.
-- When any job has a **development** set, two pills appear, **By GC** and **By Development**. A development is a named group of jobs, like a subdivision. You press **By Development** to see the same rollup per development instead.
+Don't want to remember to send it? You flip **When** to **Schedule…** and pick a date and time, in Central time. You can also tick **Repeat weekly**. The app then sends the statement by itself. The statement is rebuilt fresh at send time, so it always shows that morning's numbers. A GC with nothing outstanding is skipped, never emailed an empty statement. Draft Message applies the same rule before you click. A GC whose bills are not checked that week, or changed since, is skipped too. Every office scheduled send appears in the **Scheduled statement sends** list on GC Review's **Scheduled** tab. Only whoever scheduled a send, or a dev, sees its **Cancel**. Cancelling ends a weekly repeat. The **Share all** dialog's email can be scheduled the same way.
 
-## Share the whole report
+### Print a GC's unpaid invoices
+
+The statement lists what is owed. Sometimes the GC wants the bills themselves. You pick **Print unpaid invoices** from the GC's {{button:outline|Share}} menu. A new tab opens with **every unpaid invoice on that GC's statement as one PDF**. Each invoice is the same one you get from View bill, one after another, in the statement's order. You print it or save it from the PDF's own toolbar.
+
+- The PDF prints what the statement shows. With **Include Collections** ticked, the hard-to-collect bills are in the stack. Unticked, those bills are left out.
+- Each job is re-read as the PDF builds. So a bill paid or sent back since you opened GC Review is left out. A part-paid bill still prints, with its payments and the balance due.
+- A row that is a job balance with no bill behind it has no invoice to print. The message that follows says how many invoices printed and names anything left out.
+
+:::example After the PDF opens
+19 unpaid invoices for RMC- Dudley Mason.
+:::
+
+If the tab does not open, you allow pop-ups for the app and pick it again.
+
+### Share the whole report
 
 Two buttons beside the tabs at the top of GC Review handle the entire report at once. {{button:blue|⇪ Share all}} opens the whole-report dialog. {{button:outline|🖨 Print all}} prints every section as one report. Grouped by GC, both leave out a GC whose bills are not checked this week. A GC that changed since its check is left out too. The dialog names who is left out, and a message after says how many. Grouped by development, every section goes. The dialog holds:
 
@@ -113,9 +128,3 @@ Two buttons beside the tabs at the top of GC Review handle the entire report at 
 - **Email once** sends every section as one email to **any address, inside or outside the company**. Its button reads **Send report**, or **Schedule send**. The email holds each GC with its jobs, bill-sent dates and amounts owed, plus the grand total. You tap one of the **teammate chips** above the To field to fill an office teammate's email in one tap. Or you just type any address. The email has the same clean table styling and GC-safe wording as the per-GC statement. The email is sent from **team@noreply.clicktooling.com** with your email as the reply-to.
 
 Devs also get a **Standing copies** section in the same dialog. You pick a teammate or type an outside email. You toggle the **weekdays**, say Mon and Wed for a Leader. You set the time and hit {{button:blue|Add}}. The report emails itself on those days, rebuilt fresh each send. Each send leaves out the GCs not checked that week and names them at the top. The standing copy runs forever until you **Remove** it. Each standing copy shows as one line with Edit / Remove. The list on GC Review's **Scheduled** tab shows it grouped the same way.
-
-## Who gets the bills
-
-Setting a GC does not move the bills by itself. The job's **Bills go to** row on the Edit tab decides that. It reads *This customer*, the GC by name, or *Split by line*. A job made from a won bid bills the GC. So does a GC job with no customer. You may pick the job's customer as its GC. Then the customer link clears and Bills go to becomes the GC.
-
-For one bill, use {{button:outline|Bill to ▾}} on its draft row in the job window's **Bill** tab. It offers the customer, the GC when the job has its own GC, and *Someone else…*. Bill Customer follows that choice. GC Review lists a job under its GC only when the GC pays.
