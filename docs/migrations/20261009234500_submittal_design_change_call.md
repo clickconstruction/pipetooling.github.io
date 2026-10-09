@@ -36,6 +36,16 @@ The stand-in was `bid_submittal_items (id, status)` with 27 rows, and the migrat
 
 Then `npm run check:migration-drift`, the `get-submittal-room` deploy and the types PR.
 
+## Status
+
+Merged as v2.5023 (#5093) and pushed to prod in GC MODE's 09:12 UTC batch on 2026-10-09 (drift 813 of 813 at 09:13). `get-submittal-room` and the ten bundles that import `_shared/submittalRoomPayload.ts` deployed from the main checkout at 09:14 UTC (edge drift all 144 current). The verify steps ran read-only over the session pooler at 09:16 UTC:
+
+1. **Passed.** Four columns: `call_by` text, `signoff_name` text, `signoff_on` date, `signoff_via` text.
+2. **Passed.** The three CHECK constraints are present.
+3. **Passed.** No row carries any of the four — nothing written.
+
+The types PR rides with the batch's five migrations (Helper 17, the GC crew).
+
 ## Rollback
 
 A one-off migration drops the three constraints and the four columns, after `get-submittal-room` is redeployed without them in its select.
