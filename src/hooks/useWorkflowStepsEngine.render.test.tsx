@@ -6,9 +6,9 @@
  * or adopted after a lost insert race, and one find-or-create per project at a time; line items
  * for the roles that see them, an RLS refusal swallowed; refreshSteps forcing a re-read; and the
  * lifecycle runner (updates in order, the first failure stops it, then the action rows). Since
- * v2.5108 a load that leaves nothing to draw (a failed steps read, a subcontractor with no step
- * here) lands in `loadError`, which the page shows instead of itself; every other failure stays in
- * `error`, which the page shows as a banner.
+ * v2.5108 a load that leaves nothing to draw (a failed first steps read, a subcontractor with no
+ * step here) lands in `loadError`, which the page shows instead of itself; every other failure,
+ * a failed re-read after a write among them, stays in `error`, which the page shows as a banner.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, screen, waitFor } from '@testing-library/react'
@@ -178,7 +178,7 @@ describe('useWorkflowStepsEngine', () => {
     expect(screen.getByTestId('e').textContent).toMatch(/error:-$/)
   })
 
-  it('puts a failed steps read in loadError, not error', async () => {
+  it('puts a failed first steps read in loadError, not error', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     world({ stepsReadFails: true })
     renderWithProviders(<Probe role="dev" />)
@@ -228,6 +228,29 @@ describe('useWorkflowStepsEngine', () => {
       expect(await latest.refreshSteps()).toBeNull()
     })
     expect(reads('project_workflow_steps').length).toBe(before + 1)
+  })
+
+  it('a re-read that fails after a write keeps the steps and goes to error, not loadError', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    world()
+    renderWithProviders(<Probe role="dev" />)
+    await screen.findByText(/^wf:w1 steps:s1,s2,s3 /)
+    await settle()
+    let okRun = false
+    await act(async () => {
+      okRun = await latest.executeLifecyclePlan(
+        { updates: [{ stepId: 's2', update: { status: 'completed' } }], actions: [], notifications: [] } as never,
+        new Map(latest.steps.map((s) => [s.id, s])),
+      )
+    })
+    expect(okRun).toBe(true)
+    world({ stepsReadFails: true })
+    await act(async () => {
+      await latest.refreshSteps()
+    })
+    expect(screen.getByTestId('e').textContent).toMatch(/^wf:w1 steps:s1,s2,s3 .* error:Failed to load steps: timeout$/)
+    expect(screen.getByTestId('load').textContent).toBe('load:-')
   })
 
   it('runs a lifecycle plan: updates in order, then the action rows; the first failed update stops it', async () => {

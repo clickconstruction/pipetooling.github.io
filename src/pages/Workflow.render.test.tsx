@@ -34,6 +34,8 @@ const world = vi.hoisted(() => ({
   gcProject: false,
   /** Every update to a step is refused (v2.5108, the banner). */
   refuseStepUpdates: false,
+  /** Every read of the steps fails (v2.5108: a re-read after a write keeps the page). */
+  failStepReads: false,
 }))
 
 vi.mock('../lib/supabase', () => {
@@ -78,6 +80,7 @@ vi.mock('../lib/supabase', () => {
         return list(world.gcProject ? [{ project_id: 'p1' }] : [])
       case 'project_workflow_steps': {
         world.stepReads.push(steps)
+        if (world.failStepReads) return { data: null, error: { message: 'timeout' } }
         const who = eqValue(steps, 'assigned_to_name')
         const rows = world.steps
           .filter((s) => who === undefined || s.assigned_to_name === who)
@@ -225,6 +228,7 @@ afterEach(() => {
   world.noWorkflow = false
   world.gcProject = false
   world.refuseStepUpdates = false
+  world.failStepReads = false
   vi.restoreAllMocks()
 })
 
@@ -337,6 +341,23 @@ describe('Workflow page', () => {
     for (const id of ['s1', 's2', 's3', 's4']) expect(document.getElementById(`step-${id}`)).toBeTruthy()
     fireEvent.click(within(banner).getByRole('button', { name: 'Dismiss' }))
     expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a write that lands but whose re-read fails keeps the page and its cards, with the banner (v2.5108)', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    Element.prototype.scrollIntoView = vi.fn()
+    renderWorkflow('dev', fourSteps())
+    await stagesLoaded('s3')
+    world.failStepReads = true
+    const card = document.getElementById('step-s3')!
+    await act(async () => {
+      fireEvent.click(within(card).getByRole('button', { name: 'Approve' }))
+    })
+    const banner = await screen.findByRole('alert')
+    expect(banner.textContent).toContain('Failed to load steps: timeout')
+    expect(world.writes.some((w) => w.table === 'project_workflow_steps' && w.method === 'update' && w.id === 's3')).toBe(true)
+    expect(screen.getByRole('heading', { name: 'Elm Street \u2013 Workflow' })).toBeTruthy()
+    for (const id of ['s1', 's2', 's3', 's4']) expect(document.getElementById(`step-${id}`)).toBeTruthy()
   })
 
   it('an empty workflow offers the templates, and creating from one adds its steps in order', async () => {
