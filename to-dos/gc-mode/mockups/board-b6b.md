@@ -13,7 +13,7 @@ status: plan 2026-10-09 by Helper 12 (the Board lane). The lead approved the rea
   - `person_contract_documents.company_id`, with a CHECK both ways and the person trigger keeping a company's paper free of any person.
   - `gc_paper_sends`, every send of a paper, and `gc_send_paper`, which records a send and its promise in one transaction.
   - `gc_company_paper`, which makes a company's copy of one Contract Book entry (the Master Subcontract Agreement, or the W-9 form).
-  - `gc_company_paper_kept`, a trigger: a company's paper, signed or filed, keeps its promise (msa, w9, insurance) in the same transaction; a person's paper never reaches it.
+  - `gc_company_paper_kept`, a trigger: a company's agreement, W-9 or certificate, signed or filed, keeps its promise (msa, w9, insurance) in the same transaction. A person's paper never reaches it, and neither does a company's license or 'other' paper.
   - `gc_record_company_coi`, the office filing a company's insurance certificate.
   - The six places a company's paper would show its stored name, guarded before any company row can exist.
   - `send-contract-for-signature` learns a company branch (call S, A): the signing link goes to the company's contracts people in GC's words.
@@ -250,7 +250,9 @@ GRANT EXECUTE ON FUNCTION public.gc_company_paper(uuid, uuid) TO authenticated;
 
 -- 7) A company's paper, signed or filed, keeps its promise in the same transaction (the prototype's promisesKeptBy:
 -- tradeSignMsa keeps msa, tradeSignW9 w9, tradeUploadCoi insurance). The WHEN lets only a company's paper through, so a
--- person's signing (accept-contract, the person path) never reaches it and accept-contract is untouched.
+-- person's signing (accept-contract, the person path) never reaches it and accept-contract is untouched, and only an
+-- agreement, a W-9 or a certificate: a signed license or 'other' paper keeps nothing. An agreement keeps msa, the rule
+-- the Portal's msaFirst gate reads (gc_trade_sign_sow, doc_type agreement).
 CREATE OR REPLACE FUNCTION public.gc_company_paper_kept()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -261,7 +263,7 @@ BEGIN
   IF TG_OP = 'UPDATE' AND OLD.status = 'signed' THEN
     RETURN NULL;
   END IF;
-  PERFORM public.gc_keep_promises(NEW.company_id, CASE NEW.doc_type WHEN 'w9' THEN 'w9' WHEN 'coi' THEN 'insurance' ELSE 'msa' END);
+  PERFORM public.gc_keep_promises(NEW.company_id, CASE NEW.doc_type WHEN 'agreement' THEN 'msa' WHEN 'w9' THEN 'w9' WHEN 'coi' THEN 'insurance' END);
   RETURN NULL;
 END;
 $$;
@@ -269,7 +271,7 @@ $$;
 CREATE OR REPLACE TRIGGER gc_company_paper_kept
   AFTER INSERT OR UPDATE OF status ON public.person_contract_documents
   FOR EACH ROW
-  WHEN (NEW.company_id IS NOT NULL AND NEW.status = 'signed')
+  WHEN (NEW.company_id IS NOT NULL AND NEW.status = 'signed' AND NEW.doc_type IN ('agreement', 'w9', 'coi'))
   EXECUTE FUNCTION public.gc_company_paper_kept();
 
 -- 8) The office files a company's insurance certificate, as SubDocumentAddForm files a sub's: a company paper, signed, with
@@ -360,7 +362,7 @@ Every migration, this one twice, then:
 - each refusal in words: a non-dev, no company, an unknown paper, a statement of work with no trade, no day;
 - only a dev reads or writes `gc_paper_sends`; a training-mode dev and a twin are refused;
 - a project delete still cascades through `gc_paper_sends`;
-- a company's master agreement signed keeps its msa promise, a W-9 its w9, and a certificate filed through `gc_record_company_coi` its insurance; a person's paper signed leaves every promise alone; a second update of a signed paper keeps nothing twice; and `gc_record_company_coi`'s refusals in words (a non-dev, no company, no expiry, a link that is not https).
+- a company's master agreement signed keeps its msa promise, a W-9 its w9, and a certificate filed through `gc_record_company_coi` its insurance; a person's paper signed leaves every promise alone; a second update of a signed paper keeps nothing twice; a signed 'other' company paper keeps nothing; and `gc_record_company_coi`'s refusals in words (a non-dev, no company, no expiry, a link that is not https).
 
 ## Verify after the push (the migration doc)
 
@@ -378,6 +380,7 @@ Every migration, this one twice, then:
 - The mapper:
   - `msa` is `signed` when the company has a signed agreement paper of its own (`company_id`, `doc_type` `agreement`, status `signed`), and `msaSignedOn` is the newest one's day. That is the Portal's `msaFirst` gate in `gc_trade_sign_sow` (`portal-p2c.md`), so the window and the gate never disagree. It is not found by the Book entry's name.
   - Otherwise `msa` is `sent` while an agreement paper of its own is `sent`, and `msaSentOn` is that one's day. Otherwise it is `none`.
+  - **A known limit:** the keep trigger, the gate and the mapper all read a company's signed `agreement` paper as its master agreement. A second agreement-type entry in the Subs packet would read the same way. Today the packet holds one.
   - `w9` from a signed `w9` paper; `coiExpires` from the newest `coi` paper's `expires_at`; `paperSends` from `gc_paper_sends`.
 - The company window gains its Documents tab (`partnerDocuments`, `paperStep`'s verbs), and **Send a paper**, ported from the spike's `GcPaperSend.tsx`: Sign by with three days, Your line, the email as they get it, Send to sign or Send the reminder or Send the ask. The first master agreement calls `gc_company_paper`, then `send-contract-for-signature`, then `gc_send_paper`.
 - **Record their insurance**: the office files a certificate with its expiry and link, as `SubDocumentAddForm` does for a sub.
@@ -391,6 +394,8 @@ Every migration, this one twice, then:
 - **B.** By name and doc_type, no constant.
 
 ## Status
+
+**Amended 2026-10-09, on the lead's yes before the push:** section 7's trigger names its three types. An agreement keeps msa, a W-9 w9 and a certificate insurance, in its WHEN and its CASE. A license or 'other' paper keeps nothing, which is the rule the Portal's `msaFirst` gate reads. The bed proves a signed 'other' company paper keeps nothing, and #5115 takes the same SQL.
 
 **Amended 2026-10-09, on the lead's word after the Portal's P2c:** B6-b-ii's mapper reads `msa` as `gc_trade_sign_sow`'s `msaFirst` gate does: the newest signed agreement paper of the company's own, not the Book's entry by name.
 
