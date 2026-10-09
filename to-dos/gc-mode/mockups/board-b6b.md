@@ -393,6 +393,13 @@ Every migration, this one twice, then:
 - **R.** Accepted: a company's papers follow the table's own policies.
 - **B.** By name and doc_type, no constant.
 
+**B6-b-ii's calls (2026-10-09, evening; the read-back by Helper 2, the Board lane on the new crew):**
+
+- **A, the master agreement's Book entry: the owner's.** Prod's Book has no "Master Subcontract Agreement". Its Subs packet holds *Subcontractor Agreement (External)* and *General Conditions for Subcontractors*, and a company's copy of any non-form entry reads as its master agreement once signed (doc_type defaults to agreement). The owner, in his words: "We need to make a new master services agreement, I will have to provide you one." So the master agreement is a new entry titled **Master Services Agreement**, a text entry or a Contract Form whose doc_type is agreement (`docs/CONTRACT_FORMS.md`). Until it is in the Book, its row reads *Waiting on the agreement* with no Send, and Send turns on when the entry exists, never by a flag (`GC_MASTER_AGREEMENT_TITLE`, `loadCompanyPaperEntries` in `papersIo.ts`).
+- **B, the order of a send: the lead's.** `gc_company_paper`, then `gc_send_paper`, then the email, for the first send and the reminders alike. B6-b-i keys a company paper's email `<gc_paper_sends id>:<paper>`, so the send's row comes first, and every master agreement or W-9 send carries a fresh signing link. A failed email leaves the send and its promise on record, and the screen says *On record, the email did not go: … Send the reminder to try again.*
+- **C, insurance: the lead's.** The real portal cannot take a certificate yet, so an ask says *Reply to this email with the certificate.* (new words, on PORTAL_SPANISH's list), and the office files it with **Record their insurance**. No hold.
+- **D to G, as read back.** The W-9 goes to sign as the master agreement does (the Subs packet's W-9 form). A statement of work's send is the trade card's, with `gc_send_paper`, and emails nothing while `SOW_SIGN_SCREEN_LIVE` is off. Lien waivers wait for the draws. The tabs are About, Documents and Their portal, with no Activity until its kernel. The sends are a dev's.
+
 ## Status
 
 **Amended 2026-10-09, on the lead's yes before the push:** section 7's trigger names its three types. An agreement keeps msa, a W-9 w9 and a certificate insurance, in its WHEN and its CASE. A license or 'other' paper keeps nothing, which is the rule the Portal's `msaFirst` gate reads. The bed proves a signed 'other' company paper keeps nothing, and #5115 takes the same SQL.
@@ -400,5 +407,7 @@ Every migration, this one twice, then:
 **Amended 2026-10-09, on the lead's word after the Portal's P2c:** B6-b-ii's mapper reads `msa` as `gc_trade_sign_sow`'s `msaFirst` gate does: the newest signed agreement paper of the company's own, not the Book's entry by name.
 
 **Amended 2026-10-09 (afternoon), on the lead's call 1 to the B6-b-ii read-back:** sections 7 and 8 of the SQL, the promise kept by a trigger on a company's signed paper (the gap found while planning B6-b-ii: `accept-contract` is the person path and keeps no GC promise), and the office's certificate write. #5115 takes the same SQL after this merges.
+
+**Amended 2026-10-09, evening, by Helper 2:** B6-b-ii's calls A to G above, after the lead's answers and the owner's word on A. B6-b-ii is built as two PRs, both held until #5115 is on main and 009000 on prod: ii-a (`companyPapers`, the mapper, the loader and the portal's slice) and ii-b (the screens).
 
 Plan written 2026-10-09 by Helper 12. B6-b-i is cut after #5109 merges; its push is the evening batch after 23:00 UTC, with the three function deploys, the lead's. B6-b-ii follows its types; B6-c (Get started) after B6-b.
