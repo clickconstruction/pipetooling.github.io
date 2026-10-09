@@ -545,3 +545,4 @@ green the whole time** — this is the first partial stall on record.
 - The `supabase inspect db outliers` view only sees the `postgres` role's
   queries — app (PostgREST) traffic is invisible there; use Dashboard →
   Observability → Query Performance for all-role query stats.
+
