@@ -174,9 +174,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
 - **Cut:** *Say how far along you are*, *Pick your days* and *Your days* each become one line
   with a link to the guide that holds it.
 
-### get started in the office
+### ~~get started in the office~~ — shipped v2.5070
 
-`start-here-in-the-office` · 883 words · #4589
+`start-here-in-the-office` · 883 words · #4589 · the opening stays. Step 1 keeps its first sentence and links to the six phone-Dashboard bullets, moved whole with their lead-in below a *Reference* heading. No other guide holds them, so they stay in this guide. Nothing cut.
 
 - A map, so no split; its opening stays.
 - **Cut:** the six phone-Dashboard bullets become one line and a link.
