@@ -204,9 +204,10 @@ SELECT gpt.refused('a certificate''s link is https', $q$SELECT public.gc_record_
 RESET ROLE;
 
 -- 6 · Deletes: a project's sends go with it; a company with papers stays (its signed papers are kept).
+-- The company's own five: the master agreement and its reminder (2), then 5b's W-9, insurance and second master agreement (3).
 DELETE FROM public.projects WHERE id = '00000000-0000-0000-0000-0000000007a9';
 SELECT gpt.same('a project''s delete takes its sends, and the company''s own stay', (
-  SELECT count(*) FILTER (WHERE package_id IS NOT NULL) || ' ' || count(*) FILTER (WHERE package_id IS NULL) FROM public.gc_paper_sends), '0 2');
+  SELECT count(*) FILTER (WHERE package_id IS NOT NULL) || ' ' || count(*) FILTER (WHERE package_id IS NULL) FROM public.gc_paper_sends), '0 5');
 SELECT gpt.refused_code('a company with papers is not deleted', $q$DELETE FROM public.gc_companies WHERE id = '00000000-0000-0000-0000-000000000711'$q$, '23503');
 
 DO $$ BEGIN RAISE NOTICE 'gc_papers PASSED'; END $$;
