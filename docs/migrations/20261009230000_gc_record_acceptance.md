@@ -35,3 +35,7 @@ It is additive and idempotent: one function and one trigger function created or 
 - the acceptance kept after the final, against an update and a delete;
 - an estimator stopped, and the portal's way as the service role stopping at the billing check;
 - the project's delete taking the acceptance.
+
+## Status
+
+**Applied to prod 2026-10-09 at 11:34 UTC** by the lead (GC MODE) from a clean checkout at main's tip (5925fce59) with `scripts/db-push.sh` (`--include-all`, since the stamp sorts below the day's applied ones); drift 821/821 after. Verified the same minute through the management API: step 1, `gc_record_acceptance` once, SECURITY INVOKER, not executable by `anon`; step 2, the keep trigger there; step 3, no acceptance on prod. As a dev, rolled back, the test project refused *Bill every line first. They accept the work once our pay applications have billed all of it.* The types ride Helper 17's PR with 20261010005000.
