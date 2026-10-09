@@ -7,6 +7,7 @@ import { useScheduleDispatchHubData } from '../../hooks/useScheduleDispatchHubDa
 import { useScheduleDispatchNotComingIn } from '../../hooks/useScheduleDispatchNotComingIn'
 import { useScheduleDispatchHubModes } from '../../hooks/useScheduleDispatchHubModes'
 import { useScheduleDispatchAddBlockModal } from '../../hooks/useScheduleDispatchAddBlockModal'
+import { useScheduleDispatchAssignJobPicker } from '../../hooks/useScheduleDispatchAssignJobPicker'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { useAuth } from '../../hooks/useAuth'
 import { OPEN_BID_EDIT_QUERY } from '../../contexts/BidPreviewModalContext'
@@ -38,14 +39,9 @@ import { ScheduleShareModal } from './ScheduleShareModal'
 import { ScheduleDispatchModeBanners, ScheduleDispatchMultiCellBar } from './ScheduleDispatchModeBanners'
 import {
   hubPersonDayKey,
-  findDuplicateJobAddress,
 } from '../../lib/scheduleDispatchHub'
-import { buildHubBidPickerRows, filterHubJobPickerRows, hubJobPickerSubline } from '../../lib/scheduleDispatch/hubJobPicker'
-import {
-  fetchJobSearchEvidence,
-  jobSearchEvidenceModeForRole,
-  type JobSearchEvidence,
-} from '../../lib/jobSearchEvidence'
+import { hubJobPickerSubline } from '../../lib/scheduleDispatch/hubJobPicker'
+import { jobSearchEvidenceModeForRole } from '../../lib/jobSearchEvidence'
 import { HUB_EXPECTED_MANPOWER_ALL_WEEK } from '../../lib/scheduleDispatchExpectedManpower'
 import { pickDayForScheduleDispatchUrl } from '../../lib/scheduleDispatchColumnFocus'
 import {
@@ -360,15 +356,11 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
   const [blockNoteEdit, setBlockNoteEdit] = useState<JobScheduleBlockRow | null>(null)
   const [blockNoteBusy, setBlockNoteBusy] = useState(false)
   const [blockNoteError, setBlockNoteError] = useState<string | null>(null)
-  const [hubAssignJobPickerSearch, setHubAssignJobPickerSearch] = useState('')
-  /** Money-rail evidence for picker rows, accumulated per job id (fetched only for short result lists). */
-  const [hubJobEvidence, setHubJobEvidence] = useState<Map<string, JobSearchEvidence>>(() => new Map())
-  const [hubAssignJobPickerNumberQuery, setHubAssignJobPickerNumberQuery] = useState('')
-  /** The picker's search and number query start empty each time it opens; they stay page-owned. */
-  const onPickerOpened = useCallback(() => {
-    setHubAssignJobPickerSearch('')
-    setHubAssignJobPickerNumberQuery('')
-  }, [])
+  // The picker's list (search, number query, evidence) lives in useScheduleDispatchAssignJobPicker,
+  // after the modes hook that opens the picker. The modes hook resets the list as it opens the
+  // picker, so it reaches the reset through this bridge, which that hook below fills.
+  const onPickerOpenedRef = useRef<() => void>(() => {})
+  const onPickerOpened = useCallback(() => onPickerOpenedRef.current(), [])
   // The add-block window and the modes end each other: a placement shuts the window, and the
   // window ends the modes (the mode rule's `addBlock` column). The modes hook comes first, so it
   // reaches the window's closer through this bridge, which the window's hook below fills.
@@ -461,6 +453,31 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     leaveModesFor,
   })
   closeAddBlockWindowRef.current = closeAddBlockWindowNow
+  // The picker's list (SCHEDULE_DISPATCH map, step 6), in useScheduleDispatchAssignJobPicker since
+  // v2.4994, beside the modes hook that owns whether the picker is open, why, and for which cell.
+  const {
+    hubAssignJobPickerSearch,
+    setHubAssignJobPickerSearch,
+    hubAssignJobPickerNumberQuery,
+    setHubAssignJobPickerNumberQuery,
+    hubJobEvidence,
+    hubAssignJobPickerRows,
+    hubAssignBidPickerRows,
+    hubAssignJobPickerDuplicateAddressNotice,
+    hubAssignJobPickerSubtitle,
+    onPickerOpened: onPickerOpenedNow,
+  } = useScheduleDispatchAssignJobPicker({
+    hubAssignJobPickerOpen,
+    hubAssignJobPickerIntent,
+    hubCellAddContext,
+    hubMultiCellAddSelection,
+    hubMergedRows,
+    hubBids,
+    hubWeekBlocks,
+    hubPeopleNameById,
+    role,
+  })
+  onPickerOpenedRef.current = onPickerOpenedNow
 
   useEffect(() => {
     if (deleteBlockId == null) return
@@ -545,91 +562,6 @@ export function ScheduleDispatchHubPage({ variant = 'url' }: { variant?: 'url' |
     applyHubMultiCellJob,
     leaveModesFor,
     placeNewJob,
-  ])
-
-  const hubAssignJobPickerRows = useMemo(
-    () => filterHubJobPickerRows(hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery),
-    [hubMergedRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery],
-  )
-
-  /**
-   * Bid rows for the assign picker (v2.1613): same generic row shape the modal
-   * renders, listed after every job row under their violet "Bid" chip. Search
-   * matches bid number / project / address; the digits-only number query
-   * matches bid_number.
-   */
-  const hubAssignBidPickerRows = useMemo(
-    () => buildHubBidPickerRows(hubBids, hubWeekBlocks, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery),
-    [hubBids, hubWeekBlocks, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery],
-  )
-
-  /** Enrich visible picker rows with money-rail evidence — short lists only, debounced, accumulating, failure-silent. */
-  useEffect(() => {
-    if (!hubAssignJobPickerOpen) return
-    if (hubAssignJobPickerRows.length === 0 || hubAssignJobPickerRows.length > 30) return
-    const missing = hubAssignJobPickerRows.filter((r) => !hubJobEvidence.has(r.id)).map((r) => r.id)
-    if (missing.length === 0) return
-    let cancelled = false
-    const t = window.setTimeout(() => {
-      void (async () => {
-        try {
-          const got = await fetchJobSearchEvidence(missing, jobSearchEvidenceModeForRole(role))
-          if (cancelled) return
-          setHubJobEvidence((prev) => {
-            const next = new Map(prev)
-            for (const [k, v] of got) next.set(k, v)
-            return next
-          })
-        } catch {
-          // Rows simply render without the rail.
-        }
-      })()
-    }, 250)
-    return () => {
-      cancelled = true
-      window.clearTimeout(t)
-    }
-  }, [hubAssignJobPickerOpen, hubAssignJobPickerRows, hubJobEvidence, role])
-
-  /** Same-address ambiguity warning — only while a search narrows the list (the full ledger always has repeats). */
-  const hubAssignJobPickerDuplicateAddressNotice = useMemo(() => {
-    const searching =
-      hubAssignJobPickerSearch.trim() !== '' || hubAssignJobPickerNumberQuery.replace(/\D/g, '') !== ''
-    if (!searching || hubAssignJobPickerRows.length > 8) return null
-    const dup = findDuplicateJobAddress(hubAssignJobPickerRows)
-    return dup ? `${dup.count} jobs at ${dup.address} — check the status before picking` : null
-  }, [hubAssignJobPickerRows, hubAssignJobPickerSearch, hubAssignJobPickerNumberQuery])
-
-  const hubEmptyCellChoiceSubtitle = useMemo(() => {
-    if (!hubCellAddContext) return ''
-    const name = hubPeopleNameById.get(hubCellAddContext.assigneeUserId) ?? 'Unknown'
-    return `${name} · ${scheduleFormatWeekdayLong(hubCellAddContext.workDate)} (${hubCellAddContext.workDate})`
-  }, [hubCellAddContext, hubPeopleNameById])
-
-  const hubAssignJobPickerSubtitle = useMemo(() => {
-    if (!hubAssignJobPickerOpen) return null
-    if (hubAssignJobPickerIntent === 'multi') {
-      return (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-600)' }}>
-          Adding the same job to <strong>{hubMultiCellAddSelection.size}</strong> selected person/day cell
-          {hubMultiCellAddSelection.size === 1 ? '' : 's'} (this week&apos;s hub list).
-        </p>
-      )
-    }
-    if (hubCellAddContext) {
-      return (
-        <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-600)' }}>
-          Pick a job to add a block for <strong>{hubEmptyCellChoiceSubtitle}</strong> (this week&apos;s hub list).
-        </p>
-      )
-    }
-    return null
-  }, [
-    hubAssignJobPickerOpen,
-    hubAssignJobPickerIntent,
-    hubMultiCellAddSelection.size,
-    hubCellAddContext,
-    hubEmptyCellChoiceSubtitle,
   ])
 
   // Not coming in, NCNS and their undo (SCHEDULE_DISPATCH map, step 4).
