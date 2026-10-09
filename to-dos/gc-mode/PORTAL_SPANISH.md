@@ -1363,7 +1363,7 @@ they were written in. The portal does not translate them.
 | awarded | adjudicada |
 | Another company | Otra empresa |
 
-### The papers the office sends from a company window (the Board lane's words, `gcPaperSend.ts`)
+### The papers the office sends from a company window (the Board lane's words, `gcPaperSend.ts`; on main since B6-b-ii in `src/lib/gc/paperEmail.ts`, `PAPER_EMAIL_WORDS`)
 
 | English | Español |
 |---|---|
@@ -1375,6 +1375,7 @@ they were written in. The portal does not translate them.
 | Your insurance certificate for {gc} | Su certificado de seguro para {gc} |
 | Please send us your renewed insurance certificate by {date}. | Por favor envíenos su certificado de seguro renovado a más tardar el {date}. |
 | Please send us your insurance certificate by {date}. Nothing you do for us is covered until it comes. | Por favor envíenos su certificado de seguro a más tardar el {date}. Nada de lo que haga para nosotros está cubierto hasta que llegue. |
+| Reply to this email with the certificate. (new 2026-10-09, B6-b-ii: the real portal cannot take a certificate yet, the lead's call C) | Responda a este correo con el certificado. |
 | Your W-9 for {gc} | Su W-9 para {gc} |
 | Please fill in and sign your W-9 by {date}. We need it before we can pay you. | Por favor llene y firme su W-9 a más tardar el {date}. Lo necesitamos antes de poder pagarle. |
 | Open your portal to fill it in and sign it. | Abra su portal para llenarlo y firmarlo. |
