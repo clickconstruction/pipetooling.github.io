@@ -141,9 +141,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   paying. (b) *fix a payment on the wrong sheet*: move, remove, undo.
 - **Move:** the phone section, to a phone guide of its own.
 
-### turn a won bid into a job
+### ~~turn a won bid into a job~~ — shipped v2.5067
 
-`turn-a-won-bid-into-a-job` · 1,217 words · #4575
+`turn-a-won-bid-into-a-job` · 1,217 words · #4575 · now the three-step opening, with the Dispatch hand-off's edge cases and Tips moved whole below a *Reference* heading. The four places a win is recorded stay where they are, since they are step 1's where. The submittals question was checked against the code: one sentence said a takeoff-only bid is never asked, and now adds *with no fixture schedule*. Step 2 now starts *If New Job asks its price question*, since New Job asks only when the bid carries a figure. Nothing cut.
 
 - **Opening:**
   1. Mark the bid **Won**, then press **Open the job**.

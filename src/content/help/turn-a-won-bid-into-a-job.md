@@ -5,6 +5,10 @@ roles: dev, master_technician, assistant, controller, estimator
 keywords: won, win, bid, job, scheduled visits, move visits, schedule blocks, open the job, convert, import, new job, J number, opened from this bid, cancel import, which GC gave you this job, ask dispatch, dispatch inbox, hand off, to-do
 order: 72
 ---
+1. Mark the bid **Won**, then press **Open the job**.
+2. If New Job asks its price question, carry the bid price over, or start at $0.
+3. Fill in the crew and press **Create Job**. The job is born linked to the bid.
+
 The one sentence: **wherever you mark a bid Won, "Open the job" is right there**. One tap opens New Job with the GC, address, plans and folder filled in.
 
 The bid comes linked on the job.
@@ -38,9 +42,7 @@ Won it but not the one who sets up the crew? Beside {{button:green|Open the job}
 On the Dashboard's Dispatch inbox (and Dispatch Mode → Inbox) the to-do carries one button: {{button:outline|Open the job}}. It opens New Job filled in from the bid exactly as it would from the bid itself — customer, address, links, the price question, and *which GC* on a multi-GC bid. Press **Create Job** and the to-do closes on its own: *J1007 opened from B398 · ZZ Test*, and you get the "Handled" push.
 :::
 
-- **Asked twice?** The app says *Dispatch already has this one* instead of stacking a second to-do.
-- **Someone opened the job another way?** The inbox notices a job already carrying the bid and closes the to-do itself, noting *J1007 was opened from B398 · ZZ Test elsewhere — nothing left to do*.
-- **Primaries** can mark a bid Won but have no New Job form. A primary's login sees only the bids and jobs they run. For a primary, the hand-off is the only button. Marking Won on Edit Bid's Win / Loss row sends the bid to Dispatch automatically. A Won set per GC under *Sent — per GC* does not.
+Three more cases are under [Reference](#when-you-hand-it-to-dispatch): asking twice, a job opened another way, and primaries.
 
 ## The bid shows its job
 
@@ -66,7 +68,7 @@ A bid may be sent to more than one GC with no GC marked won yet. Then Open the j
 
 ## The submittals question
 
-After the contract and job-accounts questions may come a third one, about submittals. A submittal is the product paperwork the GC approves before anything is ordered. The question reads ***Submittals for 964 · Pondhill?***. It comes only when the bid has picked lines or a fixture schedule and no submittal yet. A bid priced only from the takeoff gets no question. Build its Rev 1 on the Submittals tab with **Choose from the takeoff**. See [build a submittal package](/help/build-a-submittal-package).
+After the contract and job-accounts questions may come a third one, about submittals. A submittal is the product paperwork the GC approves before anything is ordered. The question reads ***Submittals for 964 · Pondhill?***. It comes only when the bid has picked lines or a fixture schedule and no submittal yet. A bid priced only from the takeoff, with no fixture schedule, gets no question. Build its Rev 1 on the Submittals tab with **Choose from the takeoff**. See [build a submittal package](/help/build-a-submittal-package).
 
 Rev 1, the first version, is built from what Pricing already knows on the bid. Pricing knows the fixture schedule and the products from the supply houses you picked. Pricing also holds the reasons and lead times you gave at the pick. A lead time is how long a product takes to arrive. Each answer does something different:
 
@@ -81,7 +83,15 @@ Nobody is asked for the reviewer here. The reviewer turns up later in the GC's e
 
 Dev, leaders, assistants, controllers, and **estimators** can open a job from a bid. Estimators get the New Job form even though they do not have the Jobs page. Superintendents keep their read-only board and see no button. The **J####** chip that opens an existing job shows for the roles that can open Jobs. Estimators don't see that chip.
 
-## Tips
+## Reference
+
+### When you hand it to Dispatch
+
+- **Asked twice?** The app says *Dispatch already has this one* instead of stacking a second to-do.
+- **Someone opened the job another way?** The inbox notices a job already carrying the bid and closes the to-do itself, noting *J1007 was opened from B398 · ZZ Test elsewhere — nothing left to do*.
+- **Primaries** can mark a bid Won but have no New Job form. A primary's login sees only the bids and jobs they run. For a primary, the hand-off is the only button. Marking Won on Edit Bid's Win / Loss row sends the bid to Dispatch automatically. A Won set per GC under *Sent — per GC* does not.
+
+### Tips
 
 - The other way in still works: Jobs → **New Job** → **Import** → pick the bid. Import runs the exact same fill. Once you have typed anything on a New Job, **Import** greys out instead of disappearing. You hover or tap it, and it tells you to clear the form, or open a fresh New Job, first.
 - The **C#** box reads *finding…* for a moment while New Job looks up the next number. If you already know the number, you type it. The suggestion never overwrites what you typed.
