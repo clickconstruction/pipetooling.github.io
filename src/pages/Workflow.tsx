@@ -44,6 +44,7 @@ import { useWorkflowRoster } from '../hooks/useWorkflowRoster'
 import { useWorkflowStepsEngine } from '../hooks/useWorkflowStepsEngine'
 import { useWorkflowStepWrites } from '../hooks/useWorkflowStepWrites'
 import { StepFormModal } from '../components/workflow/StepFormModal'
+import { WorkflowErrorBanner } from '../components/workflow/WorkflowErrorBanner'
 import type { PersonContactInfo } from '../components/workflow/PersonDisplayWithContact'
 import { PersonContactModal } from '../components/workflow/PersonContactModal'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
@@ -68,6 +69,7 @@ export default function Workflow() {
     steps,
     setSteps,
     loading,
+    loadError,
     error,
     setError,
     lineItems,
@@ -630,7 +632,8 @@ export default function Workflow() {
   )
 
   if (loading) return <p>Loading...</p>
-  if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
+  // A load that left nothing to draw replaces the page; an action's error is the banner below (v2.5108, quirk 21).
+  if (loadError) return <p style={{ color: 'var(--text-red-700)' }}>{loadError}</p>
   // A GC project gets no plumbing workflow (v2.4846): say where it lives instead of making one.
   if (gcProjectId) {
     return (
@@ -654,6 +657,7 @@ export default function Workflow() {
 
   return (
     <div className="workflow">
+      <WorkflowErrorBanner message={error} onDismiss={() => setError(null)} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <Link to="/projects">{"\u2190"} Projects</Link>
         <button

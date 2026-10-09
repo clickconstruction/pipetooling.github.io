@@ -5,7 +5,8 @@
  * `/workflows/:projectId` against a stateful Supabase stand-in and reads what a viewer sees:
  * the header, the stage list per role, the Hide Old Steps summary, the Projections & Ledger bar,
  * a subcontractor's filtered view, and what Approve does to the list — the approved card folds,
- * the next one opens. Not a test of every region.
+ * the next one opens; a refused write shows a banner over the page, while a denied load still
+ * replaces it (v2.5108). Not a test of every region.
  */
 import type { ReactNode } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -31,6 +32,8 @@ const world = vi.hoisted(() => ({
   noWorkflow: false,
   /** The project is a GC project (a gc_projects row, v2.4846). */
   gcProject: false,
+  /** Every update to a step is refused (v2.5108, the banner). */
+  refuseStepUpdates: false,
 }))
 
 vi.mock('../lib/supabase', () => {
@@ -38,13 +41,14 @@ vi.mock('../lib/supabase', () => {
   const arg = (steps: Step[], m: string, i = 0) => steps.find((s) => s.method === m)?.args[i]
   const eqValue = (steps: Step[], col: string) => steps.find((s) => s.method === 'eq' && s.args[0] === col)?.args[1]
 
-  function answer(table: string, steps: Step[]): { data: unknown; error: null } {
+  function answer(table: string, steps: Step[]): { data: unknown; error: { message: string } | null } {
     const single = has(steps, 'single') || has(steps, 'maybeSingle')
     const list = (rows: Row[]) => ({ data: single ? (rows[0] ?? null) : rows, error: null })
     for (const m of ['insert', 'update', 'delete', 'upsert']) {
       if (has(steps, m)) {
         world.writes.push({ table, method: m, payload: arg(steps, m), id: eqValue(steps, 'id') })
         if (table === 'project_workflow_steps' && m === 'update') {
+          if (world.refuseStepUpdates) return { data: null, error: { message: 'rls' } }
           const id = eqValue(steps, 'id')
           world.steps = world.steps.map((s) => (s.id === id ? { ...s, ...(arg(steps, m) as Row) } : s))
         }
@@ -220,6 +224,7 @@ afterEach(() => {
   world.templateSteps = []
   world.noWorkflow = false
   world.gcProject = false
+  world.refuseStepUpdates = false
   vi.restoreAllMocks()
 })
 
@@ -294,6 +299,9 @@ describe('Workflow page', () => {
     try {
       renderWorkflow('subcontractor', fourSteps())
       expect(await screen.findByText(/You do not have access to this workflow/)).toBeTruthy()
+      // A load that leaves nothing to draw still replaces the page: no title, no banner (v2.5108).
+      expect(screen.queryByRole('heading', { name: /Workflow/ })).toBeNull()
+      expect(screen.queryByRole('alert')).toBeNull()
     } finally {
       world.userName = 'Pat Office'
     }
@@ -315,6 +323,22 @@ describe('Workflow page', () => {
     expect(world.writes.some((w) => w.table === 'project_workflow_step_actions' && (w.payload as Row).action_type === 'approved')).toBe(true)
     await waitFor(() => expect(scrolled).toHaveBeenCalled())
   })
+  it('a refused write shows a banner over the page instead of replacing it, and Dismiss clears it (v2.5108)', async () => {
+    world.refuseStepUpdates = true
+    renderWorkflow('dev', fourSteps())
+    await stagesLoaded('s3')
+    const card = document.getElementById('step-s3')!
+    await act(async () => {
+      fireEvent.click(within(card).getByRole('button', { name: 'Approve' }))
+    })
+    const banner = await screen.findByRole('alert')
+    expect(banner.textContent).toContain('Failed to update step: rls')
+    expect(screen.getByRole('heading', { name: 'Elm Street \u2013 Workflow' })).toBeTruthy()
+    for (const id of ['s1', 's2', 's3', 's4']) expect(document.getElementById(`step-${id}`)).toBeTruthy()
+    fireEvent.click(within(banner).getByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('an empty workflow offers the templates, and creating from one adds its steps in order', async () => {
     world.templates = [{ id: 't1', name: 'Standard rough' }]
     world.templateSteps = [
