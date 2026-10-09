@@ -2,7 +2,7 @@
 title: see the money on our GC jobs
 category: Bids & Estimating
 roles: dev, master_technician, controller
-keywords: gc mode, money, paid, owed, retainage, bill day, margin, cash, weeks, customer
+keywords: gc mode, money, paid, owed, retainage, bill day, margin, cash, weeks, customer, interest
 order: 100
 ---
 See every GC job that is ours on one screen. It shows what the customers paid us, what we paid the trades and who owes us.
@@ -22,6 +22,7 @@ The owner, the leaders and the controller see it.
 - **The next weeks** show what comes in and goes out each week.
 - **Each job** shows its price, what we billed, what the customer owes and where we stand.
 - **What each job makes us** shows our fee, what buying out saved and the change orders.
+- **Interest on late bills** shows each job that charges interest. It shows what has built up, what we billed, what they paid and what is left to bill. [Set a job's rate](/help/bill-the-customer-on-a-gc-job#interest-on-late-bills) in its Bill the customer.
 
 ## What comes later
 
@@ -31,4 +32,4 @@ Some parts wait on work still being built. Each one says so in one line and show
 - Paid out counts once the trades draw in the app.
 - Until the trades report their work, a bill carries only the signed change orders.
 - What we bill month by month comes once each job's schedule is in the app.
-- Interest on late bills and the late finish come once we bill the customer from the app.
+- The late finish comes once we bill the customer from the app.

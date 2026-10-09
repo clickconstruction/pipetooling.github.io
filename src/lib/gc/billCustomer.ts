@@ -22,6 +22,10 @@ export interface OwnerTermsRow {
   owner_retainage_step_way: string | null
   /** The contract's days to pay after the certificate (decision 7): when a bill falls due, read by O6b's interest. */
   owner_pay_days: number | null
+  /** Interest on a late bill, a percent a month (the owner's call 3). Null: none on this job. */
+  owner_late_interest_pct_per_month: number | null
+  /** The contract's fee a day for finishing past substantial completion. Null: none. */
+  owner_late_finish_per_day: number | null
   billing_job_id: string | null
   property_owner_customer_id: string | null
 }
@@ -87,8 +91,10 @@ export function billingStateForAll(state: GcState, rows: BillingRows, projectIds
       ...(own ? { customerId: own.id } : {}),
       ...(worth ? { ownerContractWorth: worth } : {}),
       ...(step ? { ownerRetainageStep: step } : {}),
-      // The contract's days to pay stand in for a first-time customer's (O5d).
+      // The contract's days to pay stand in for a first-time customer's (O5d), and start interest (O6b-1).
       ...(terms ? { ownerPayDays: terms.owner_pay_days } : {}),
+      ...(terms?.owner_late_interest_pct_per_month != null ? { ownerLateInterest: { pctPerMonth: Number(terms.owner_late_interest_pct_per_month) } } : {}),
+      ...(terms?.owner_late_finish_per_day != null ? { ownerLateFinish: { perDay: Number(terms.owner_late_finish_per_day) } } : {}),
       ...(propertyOwner && propertyOwner !== p.owner ? { propertyOwner } : {}),
       ownerBilling: billing ? ownerBillingFromRows(billing) : null,
     }

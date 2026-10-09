@@ -1,11 +1,13 @@
 /**
  * GC mode, the real build, Owner Billing's O2a: interest on the customer's late bills, moved word for word from the GC mode
- * prototype (branch spike/gc-mode, `gcOwnerBillingInterest.ts`).
+ * prototype (branch spike/gc-mode, `gcOwnerBillingInterest.ts`). O6b-1 made decision 7 the rule: interest runs from the
+ * day after a bill falls due by the contract, and a promise never moves it.
  */
-import { appCertified, ownerExpectPaidOn, ownerPayAppsSent } from './ownerBilling'
+import { addDays } from './building'
+import { appCertified, ownerPayAppsSent } from './ownerBilling'
 import type { GcProject, GcState, OwnerPayAppSent } from './types'
 
-/** The rate the office starts from, a month. Ours to change to what the contract says. */
+/** The rate the office starts from, a month (the owner's call 3: off on a job until it is typed). Ours to change to what the contract says. */
 export const OWNER_INTEREST_DEFAULT_PCT = 1.5
 
 function dayNumber(iso: string): number {
@@ -13,10 +15,21 @@ function dayNumber(iso: string): number {
   return Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1) / 86_400_000
 }
 
-/** The first day the bill was due: their first promise or the day we expected it, whichever came first. */
-export function ownerInterestFrom(state: GcState, project: GcProject, app: OwnerPayAppSent): string | null {
-  const days = [app.promises?.[0]?.by ?? null, ownerExpectPaidOn(state, project, app)].filter((d): d is string => d !== null).sort()
-  return days[0] ?? null
+/**
+ * The day a bill falls due by the contract (decision 7, O6b-1): its certificate's day, or the day it went, plus the
+ * contract's days to pay. Interest runs from the day after. A promise never moves it, and the customer's usual days
+ * (the day we expect the money) never start it. Null: the contract's days to pay are not typed, so no interest yet.
+ */
+export function ownerInterestFrom(_state: GcState, project: GcProject, app: OwnerPayAppSent): string | null {
+  return project.ownerPayDays == null ? null : addDays(app.certifiedOn ?? app.sentOn, project.ownerPayDays)
+}
+
+/** The job's interest in Bill the customer's terms (O6b-1): the rate and when it runs, or none. */
+export function ownerInterestWords(pctPerMonth: number | null | undefined, payDays: number | null | undefined): string {
+  if (pctPerMonth == null) return 'No interest on late bills.'
+  return payDays == null
+    ? `${pctPerMonth}% a month on a late bill, once the contract's days to pay are typed.`
+    : `${pctPerMonth}% a month on a late bill, from the day after it falls due by the contract.`
 }
 
 export interface OwnerInterestOnBill {

@@ -27,7 +27,7 @@ function setup(
     ...over,
   }
   const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
-  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn() }
+  const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn() }
   render(<GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} waived={waived} unconditional={extra.unconditional} unbilled={extra.unbilled} emailed={extra.emailed} onClose={() => undefined} />)
   return { writes, last }
 }
@@ -101,6 +101,27 @@ describe('GcBillCustomerWindow', () => {
     fireEvent.change(screen.getByLabelText('Days they have to pay after the certificate'), { target: { value: '' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save the days to pay' }))
     expect(again.writes.onSetPayDays).toHaveBeenCalledWith(null)
+  })
+
+  it('types the interest in the terms: 1.5 to start, nothing saved until Save, blank for none (O6b-1)', () => {
+    const { writes } = setup()
+    expect(document.body.textContent).toContain('No interest on late bills.')
+    fireEvent.click(screen.getByRole('button', { name: 'Change the interest' }))
+    const field = screen.getByLabelText('Interest on a late bill, a percent a month') as HTMLInputElement
+    expect(field.value).toBe('1.5')
+    expect(writes.onSetInterest).not.toHaveBeenCalled()
+    fireEvent.change(field, { target: { value: '0' } })
+    expect((screen.getByRole('button', { name: 'Save the interest' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(field, { target: { value: '1.5' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the interest' }))
+    expect(writes.onSetInterest).toHaveBeenCalledWith(1.5)
+    cleanup()
+    const again = setup({ ownerLateInterest: { pctPerMonth: 1.5 }, ownerPayDays: 30 })
+    expect(document.body.textContent).toContain('1.5% a month on a late bill, from the day after it falls due by the contract.')
+    fireEvent.click(screen.getByRole('button', { name: 'Change the interest' }))
+    fireEvent.change(screen.getByLabelText('Interest on a late bill, a percent a month'), { target: { value: '' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the interest' }))
+    expect(again.writes.onSetInterest).toHaveBeenCalledWith(null)
   })
 
   it('makes our conditional waiver for a sent one, and says when it went', () => {

@@ -27,9 +27,12 @@ export function seenPct(sow: Sow, line: Pick<SovLine, 'id' | 'pctReported'>): nu
 
 const base = { waitingOnArchitect: false, askedOn: null, final: false, expected: true } as const
 
-/** The day a customer's bill is paid: the bill day plus their usual days to pay. Null: they have never paid us. */
+/**
+ * The day a customer's bill is paid: the bill day plus their usual days to pay, or the contract's while they have
+ * never paid us (O5d's rule, O6b-1). Null: neither is known.
+ */
 function paidOn(state: GcState, project: GcProject, billOn: string): string | null {
-  const days = state.customers.find((c) => c.id === project.customerId)?.payDays
+  const days = state.customers.find((c) => c.id === project.customerId)?.payDays ?? project.ownerPayDays ?? null
   return days == null ? null : addDays(billOn, days)
 }
 

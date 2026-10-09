@@ -69,7 +69,7 @@ export interface OwnerPayApp {
   number: number
   /** The day it goes to the owner: the next bill day after the last one, or on or after today. */
   billOn: string
-  /** The bill day plus the owner's usual days to pay. Null when they have never paid us. */
+  /** The bill day plus the owner's usual days to pay, or the contract's while they have never paid us. Null: neither is known. */
   expectPaidOn: string | null
   lines: OwnerLine[]
   /** Our price to the owner: every line's worth, signed change orders included. */
@@ -538,10 +538,12 @@ export function ownerPayApp(state: GcState, project: GcProject): OwnerPayApp {
   // Earlier certificates, not what we asked: what the architect cut comes back on this bill.
   const askedBefore = sent.reduce((s, a) => s + appClaimed(a), 0)
   const billOn = last ? nextOwnerBillDay(addDays(last.periodTo, 1)) : nextOwnerBillDay(state.today)
+  // Their usual days, or the contract's while they have never paid us (O5d's rule, O6b-1's forecast).
+  const payDays = customer?.payDays ?? project.ownerPayDays ?? null
   return {
     number: sent.length + 1,
     billOn,
-    expectPaidOn: customer?.payDays == null ? null : addDays(billOn, customer.payDays),
+    expectPaidOn: payDays == null ? null : addDays(billOn, payDays),
     lines,
     contract,
     originalContract: contract - changeOrdersTotal,

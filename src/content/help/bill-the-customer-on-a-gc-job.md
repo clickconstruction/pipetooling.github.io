@@ -2,7 +2,7 @@
 title: bill the customer on a GC job
 category: Bids & Estimating
 roles: dev, master_technician, controller
-keywords: gc mode, pay application, bill, customer, architect, certificate, retainage, aia, g702, g703, excel, pdf, email, days to pay, due
+keywords: gc mode, pay application, bill, customer, architect, certificate, retainage, aia, g702, g703, excel, pdf, email, days to pay, due, interest
 order: 99
 ---
 Once a month, send the customer our pay application for the work done so far. The architect certifies it, and what they certify is the bill the customer pays.
@@ -72,6 +72,17 @@ The contract says how many days the customer has to pay after the certificate. T
 3. Press {{button:blue|Save the days to pay}}.
 
 The window counts a bill's due day from the certificate. A customer who paid us before is counted by the days they really take. A day they promise always comes first. Without the days to pay, a first bill to a new customer never shows as late.
+
+## Interest on late bills
+
+A job charges interest on a late bill only when you set a rate. The rate is a percent a month.
+
+1. Press {{button:outline|Change the interest}}.
+2. Read the rate. The field starts at 1.5 percent a month, and nothing is saved yet.
+3. Type the rate the contract gives. Leave it blank for no interest.
+4. Press {{button:blue|Save the interest}}.
+
+Interest runs from the day after a bill falls due by the contract. That day is the certificate's day plus the days to pay. A day the customer promises never moves it. Without the days to pay, no interest runs. The Money screen shows what has built up on each job.
 
 ## Before the first bill
 
