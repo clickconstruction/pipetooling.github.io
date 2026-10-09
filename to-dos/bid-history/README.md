@@ -213,6 +213,21 @@ Each PR ships its release note and fragment; PR 1 its migration doc; PR 2 the gu
   two earlier values; an estimator on another service type cannot read the bid's history (RLS).
 - PR 4: put a price back → the cell reads the old value and the pane shows the revert by the
   person who pressed it; put the removed count row back → its price and labor row come with it.
+- PR 5, the walk, once `20261010017000` is on prod. Push it with `--include-all`, since
+  `20261010020000` went first.
+  - Sign in as Robert on the dev server:
+    `/dev-login?as=1&to=%2Fbids%3Ftab%3Dcounts%26bidId%3Da5a3a840-0a7b-4c67-8b59-3e95d0d80150`.
+  - On BP398 ZZ Test's *To Plans* version, add a count row *History walk* (count 1). Delete it with
+    the trash, then **Delete**.
+  - Open **History**. The removal has **Put back**. The press is a write on prod, so ask first.
+  - After the press, the window says *History walk is back.* and the row is on the Counts tab again.
+    History reads *Put back History walk*, by Robert.
+  - Delete the row again, so ZZ Test ends as it was.
+  - Signed in with `?as=twin:estimator`, the same History lists no removed rows and no Put back.
+    Twin Estimator 1 neither made nor estimates ZZ Test. This step is read-only.
+  - The 2026-10-02 removals show as archive lines. A price or part line removed with its count row
+    has no Put back of its own. Do not press Put back on a *ZZ walk (delete me)* version: it brings
+    back about 83 rows.
 - Live data left in prod: none beyond the ZZ bid.
 
 ## Is this the best we can do? (the two passes)
