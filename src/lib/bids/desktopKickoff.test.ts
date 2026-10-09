@@ -149,6 +149,19 @@ describe('docs/twins/kickoffs/code-operator.md (the Claude Code kickoff, v2.4231
   })
 })
 
+describe('the travel rule both kickoffs give STG-5 (v2.5090: v2.5034’s rule, the owner’s call of 2026-10-09)', () => {
+  for (const [name, doc] of [['desktop-operator.md', kickoffDoc], ['code-operator.md', codeKickoffDoc]] as const) {
+    it(`${name} rows the book’s per-mile entry at the miles × the job days, never the retired $80 rule`, () => {
+      expect(doc).toContain("Travel is ONE row: the book's `Travel & Rentals (per mile from office)` entry, at a count equal to the miles from the office × the job days.")
+      expect(doc).toContain('$1.40 a count, which is $0.70 a mile, round trip, once per job day')
+      expect(doc).toContain("Take them from the bid's schedule, else estimate them from the labor and say how, never fewer than 1.")
+      expect(doc).toContain('The miles, the job days and the travel line go in the lock note.')
+      expect(doc).not.toContain('$80 × miles')
+      expect(doc).not.toContain('10% of building')
+    })
+  }
+})
+
 describe('buildDesktopSetupCommand', () => {
   const cmd = buildDesktopSetupCommand({ connectorUrl: 'https://abc.supabase.co/functions/v1/twin-mcp' })
 
