@@ -1,0 +1,19 @@
+{
+  "about": "The schedule's PR 7c-ii (to-dos/gc-mode/mockups/schedule-pr7c.md): the call list in the Schedule window. GcCallList.tsx moves whole, and PeopleRows with its TONE and initials moves to GcPeopleRows.tsx, the Board lane's name, word for word but for one known difference: onFollowUp (and onWorkList on the list) is optional, so Call only dials until the Board lane lifts the Follow up sheet. Placed by hand, two files; lift-same reads a .tsx. The tests that draw the list alone move; the call form's answer plays the reducer and its sheet, and stays. Not in LIFTS: no shape moved.",
+  "spikeDir": "src/components/gc",
+  "mainBase": "src/components/gc",
+  "files": [
+    { "from": "GcCallList.tsx", "to": "GcCallList.tsx" },
+    { "from": "GcPeoplePill.tsx", "to": "GcPeopleRows.tsx", "moves": ["PeopleRows", "TONE", "initials"] }
+  ],
+  "tests": [
+    { "from": "GcCallList.render.test.tsx", "to": "GcCallList.render.test.tsx" }
+  ],
+  "pin": {
+    "known": {
+      "GcCallList": "onFollowUp and onWorkList are optional: unset, Call only dials and Work the list is not drawn, until the Board lane lifts the Follow up sheet (schedule-pr7c.md)",
+      "GcBarCaller": "onFollowUp is optional: unset, Call only dials and Follow up is not drawn",
+      "PeopleRows": "onFollowUp is optional, with a doc line saying so: unset, Call only dials and Follow up is not drawn"
+    }
+  }
+}
