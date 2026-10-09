@@ -74,7 +74,7 @@ Review counts a person's revenue the way the Bridge does. So the two agree to th
 
 - **Value created on a job** = the contract × how far along it is. A job that is ready to bill, billed, or paid is 100% whatever its % says. A job with a % uses it. A job with no % is counted as **half done** and marked *(assumed)*. You set the % and the mark goes away.
 - **Your share of that value** = your clock hours on the job this period ÷ the job's lifetime clock hours. Lifetime clock hours count every person on the job. Wages play no part. So two people with the same hours on the same job get the same share.
-- **Sub labor sheets** are a job cost. They have no clock hours, so they never earn a share of revenue. They show on the cost side.
+- **Sub labor sheets** are a job cost. They have no clock hours, so they never earn a share of revenue. They show on the cost side. A sheet with several names on it counts an equal share for each. Four names on a $2,150 sheet put $537.50 on each person's review.
 
 :::example The Gross drilldown
 Job · Total bill $10,000 · % complete 40% · Value created $4,000 · Your hours (period) 8.0 · Job hours (lifetime) 100.0 · Share 8.0% · Allocated $320

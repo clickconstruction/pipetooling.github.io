@@ -11,7 +11,7 @@ import type { CrewJobAssignment, CrewJobRow } from '../../utils/teamLabor'
 import { laborJobSubCost } from '../jobs/subLaborCost'
 import { summarizeCardChargeAllocations, type CardChargeExclusions } from '../jobs/cardChargeAllocationFilter'
 import { netCardChargesByJobId } from '../jobs/netCardChargesByJob'
-import { laborJobMatchesPerson } from './laborJobPersonMatch'
+import { laborJobMatchesPerson, laborJobShareOfMatchedPerson } from './laborJobPersonMatch'
 import { reviewJobEarned, reviewShareRatio } from './reviewEarned'
 import { laborRowJobId } from './reviewLoaderQueries'
 import type { ReviewCrewJob, ReviewLaborContributor, ReviewLaborJob, ReviewReport, ReviewTask } from './reviewPersonTypes'
@@ -145,6 +145,7 @@ export function buildReviewPersonAllocation(rows: ReviewPersonRows): ReviewPerso
     onlyPaidJobs,
     payConfig,
     officeJobLedgerId,
+    junctionJobIds,
     allLaborRowsForCostAllTime,
     allCrewRowsForCostAllTime,
     hoursRows,
@@ -167,6 +168,9 @@ export function buildReviewPersonAllocation(rows: ReviewPersonRows): ReviewPerso
     allLaborItems,
   } = rows
   const personNameTrimmed = personName.trim()
+  // A sheet under several names books an equal share to each (the owner's call of 2026-10-09), as
+  // Team Summary does; the contributors window below keeps the sheet as one row under all the names.
+  const shareOf = (r: ReviewSheetRow) => laborJobShareOfMatchedPerson(r, junctionJobIds, personName)
 
   // Id-first pay-config resolution (matches utils/teamLabor.ts): crew rows
   // carry person_id post-Phase-B, so a renamed pay-config row still finds
@@ -297,9 +301,10 @@ export function buildReviewPersonAllocation(rows: ReviewPersonRows): ReviewPerso
     const items = itemsByJob.get(r.id) ?? []
     const rate = r.labor_rate ?? 0
     const miles = Number(r.distance_miles) || 0
-    const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
+    const share = shareOf(r)
+    const driveCost = (miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0) * share
     // Jobs-page costing (v2.2686): line rate overrides + direct $ lines + drive.
-    const laborCost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile)
+    const laborCost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile) * share
     personSubLaborCostByJobId.set(jobId, (personSubLaborCostByJobId.get(jobId) ?? 0) + laborCost)
     personLaborCostByJobId.set(jobId, (personLaborCostByJobId.get(jobId) ?? 0) + laborCost)
     if (driveCost > 0) personDriveCostByJobId.set(jobId, (personDriveCostByJobId.get(jobId) ?? 0) + driveCost)
@@ -324,7 +329,7 @@ export function buildReviewPersonAllocation(rows: ReviewPersonRows): ReviewPerso
     const jobId = laborRowJobId(r)
     if (!jobId) continue
     const items = itemsByJob.get(r.id) ?? []
-    const hrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
+    const hrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0) * shareOf(r)
     personHoursOnJobAllTime.set(jobId, (personHoursOnJobAllTime.get(jobId) ?? 0) + hrs)
   }
   for (const r of allCrewRowsForCostAllTime) {
@@ -369,15 +374,16 @@ export function buildReviewPersonAllocation(rows: ReviewPersonRows): ReviewPerso
     : laborRowsOfficeFiltered
   const laborJobs: ReviewLaborJob[] = laborRowsFiltered.map((r) => {
     const items = itemsByJob.get(r.id) ?? []
-    const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0)
+    const share = shareOf(r)
+    const totalHrs = items.reduce((s, i) => s + (i.is_fixed ? i.hrs_per_unit : i.count * i.hrs_per_unit), 0) * share
     const hoursInfo = items.length > 0 ? `${totalHrs.toFixed(2)} (${items.length} items)` : '—'
     const jobId = laborRowJobId(r)
     const job = jobId ? jobsById.get(jobId) : null
     const rate = r.labor_rate ?? 0
     const miles = Number(r.distance_miles) || 0
-    const driveCost = miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0
+    const driveCost = (miles > 0 && rate > 0 ? miles * mileageCost + miles * timePerMile * rate : miles > 0 ? miles * mileageCost : 0) * share
     // Jobs-page costing (v2.2686): line rate overrides + direct $ lines + drive.
-    const laborCost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile)
+    const laborCost = laborJobSubCost({ labor_rate: r.labor_rate, items, distance_miles: r.distance_miles }, mileageCost, timePerMile) * share
     const partsCost = jobId ? (partsCostByJobId.get(jobId) ?? 0) + (invoiceAmountByJob[jobId] ?? 0) + (billedMaterialsByJobId.get(jobId) ?? 0) + (cardChargesByJobId.get(jobId) ?? 0) : 0
     const totalBill = job?.revenue != null ? Number(job.revenue) : 0
     // The Bridge's rule (v2.3360): finished → 100%, a set % → that %, nothing → 50%.
