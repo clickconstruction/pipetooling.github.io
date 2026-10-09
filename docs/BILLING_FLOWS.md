@@ -5,7 +5,7 @@ file: BILLING_FLOWS.md
 type: System Documentation
 purpose: End-to-end map of the billing system — job lifecycle, invoices, the three billing channels, Stripe test/live plumbing, payments, send-backs, routes, cleanup — plus a live-test safety brief and optimization candidates
 audience: Developers, AI Agents, anyone running a live end-to-end billing test (there is no staging)
-last_updated: 2026-10-06
+last_updated: 2026-10-09
 
 key_sections:
   - name: "Job billing lifecycle"
@@ -294,7 +294,7 @@ Its service type carries `service_types.billing_only`, which keeps it out of the
 
 ## GC mode: a project's billing job (v2.4984)
 
-A GC project we build bills its customer through one Pipeline job, its **billing job** (`gc_projects.billing_job_id`), a billing-only job (above). Every bill on it uses this page's machinery as it is: the statement and **Pay**, Stripe, payments, promises, the chase list and the waiver train. **Bill the customer** on a won job's card at `/gc` (v2.4995, the money team's) sends the pay applications and records the certificates.
+A GC project we build bills its customer through one Pipeline job, its **billing job** (`gc_projects.billing_job_id`), a billing-only job (above). Every bill on it uses this page's machinery as it is: the statement, payments, promises, the chase list and the waiver train. Its bills are not on Stripe: a certificate's bill and an interest bill go in `billed` with no Stripe invoice (v2.4984, v2.5003), so the statement shows no **PAY ONLINE** for them, `/pay/<id>` answers not found, and our emails ask the customer for their day instead (v2.4999). **Bill the customer** on a won job's card at `/gc` (v2.4995, the money team's) sends the pay applications and records the certificates.
 
 - **Opened by the first pay application** (`gc_send_owner_pay_app`), never before:
   - billing-only, `working`, named "<project> (GC)";
@@ -305,9 +305,11 @@ A GC project we build bills its customer through one Pipeline job, its **billing
   - inserted already `billed`, `billed_at` at noon Central on the certificate day, the next `sequence_order`;
   - no bill-to columns: the payer comes from the job's customer when it sends (`billToParty.ts`);
   - the pay application keeps its link (`gc_owner_pay_apps.invoice_id`) once, and a certificate of nothing makes no bill.
+- **An interest bill** (v2.5003, `gc_send_owner_interest_bill`) is the billing job's other kind of bill: billed at noon Central on the day it goes, linked once by `gc_owner_interest_bills.invoice_id`. It refuses a job with no rate, no billing job or nothing to bill. Migration `20261009220000_gc_send_owner_interest_bill.sql`.
 - **Our record stays ours.** The pay application and its lines, with our fee and contingency as lines of their own, are on `gc_owner_pay_apps` and `gc_owner_pay_app_lines`, the money team's (dev, the leaders, the controller). The bill carries only the amount the customer owes.
 - **Our conditional waiver** with each sent pay application is a `job_lien_releases` row on the billing job, made in `LienReleaseModal` with its `ask` (the pay application's amount and bill day, since no bill exists until the certificate) and linked once by `gc_owner_pay_apps.conditional_waiver_id` (v2.4996).
 - **Money in** (v2.4997): Bill the customer reads each bill's payments from `jobs_ledger_payments` by `invoice_id`, whichever door recorded them (the Billed list, Stripe, Mercury), and the billing job's live promises through `list_job_payment_promises`. A promise covers every bill open when it was made (decision 8). Its presses are the Pipeline's own: `mark_invoice_paid` on the app's day, and `add_job_payment_promise`. Our unconditional waiver for a payment is `LienReleaseModal` on the bill. A payment on the billing job that names no bill is shown as it is, never laid on a pay application. Migration `20261009200000_gc_owner_pay_app_send.sql`.
+- **A reminder to pay** (v2.5000): `gc_remind_customer_to_pay` files the reminder on a certified bill not paid in full and puts one note on the chase list through `add_payment_chase_touch`, the customer's, on the billing job. It is never a promise: the day the bill was due stays. `gc-customer-email` sends it. Migration `20261009210000_gc_remind_customer_to_pay.sql`.
 - **The final bill** (v2.5019): once every line is billed, the customer accepts the work (`gc_record_acceptance`: the office's, or their portal's as the service role). Our final pay application waits for it and for every trade's final. It holds nothing back and asks for the rest, and its certificate makes the job's last bill like any other. Our conditional waiver with it is on the final payment form (`conditional_final`), and the unconditional one when they pay it (`unconditional_final`). The acceptance stays once the final went (`gc_owner_acceptances_keep`). Migration `20261009230000_gc_record_acceptance.sql`.
 
 ## System of record (the 2026-08-24 policy)
