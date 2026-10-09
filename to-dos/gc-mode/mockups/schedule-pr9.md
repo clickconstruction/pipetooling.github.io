@@ -83,7 +83,7 @@ So the kernels keep their own signatures, and the spike re-exports them unchange
    - the time extension (PR 16)
    - the customer's letter (PR 15)
    - the what-if copy (PR 11)
-   - Days back's *who has to agree* opens the Follow up sheet, which 7c-ii brings.
+   - Days back's *who has to agree* opens the Follow up sheet in the prototype, from **Call** and **Follow up**. That sheet is the Board lane's Follow up by person. It is not on main, and 7c-ii does not bring it: its call list leaves **Follow up** off until the sheet is there (`mockups/schedule-pr7c.md`). So 9d's offers show **Call**, a `tel:` link, and no **Follow up**, the same known difference as 7c-ii's. `recoveryFollowPeople` (9c) waits for the sheet.
 
 ## The four cuts
 
@@ -94,7 +94,7 @@ Each is one PR, one open at a time on the lane, behind the dev gate. Each has it
 | **9a** | An inspection's pass and fail, with its re-inspection day. The job's own work: added with what it waits on and what waits on it, done or not, taken off. Dates to meet set and taken off. | `InspectionCheck`, `InspectionFailForm`, `AddActivityCard`, `MilestonesCard` with `MilestoneLine` and `TradePick` (`GcBuildingSchedule.tsx`), and the form's G-38 buttons | 350 lines |
 | **9b** | Waits: added, each step, taken off. Places: in the form and on the places card, refused whole. A line split into parts and made one again, without the percent pickers. A new baseline with its name and why. | `WaitsCard`, `NewWait`, `BaselineCard` (`GcBuildingSchedule.tsx`), `GcPlaces.proto.tsx` (into main's `GcPlaces.tsx`), `GcSplitBars.tsx` | 715 lines |
 | **9c** | The five kernels lifted with no caller, a lift config, and its spike follow-up | `gcPullEarlier.ts`, `gcRecovery.ts` and their tests | 400 lines of kernel, 53 tests |
-| **9d** | The walk (G-52). Pull earlier (G-37). Days back on a late job (G-82). The not-ready block in the form (G-77, its paper buttons once B6-b-ii's company window sends a paper). The holds' io (catch 2). After B6-b-ii. | `GcScheduleWalk.tsx`, `GcPullEarlier.tsx`, `GcRecovery.tsx`, `GcNotReady.tsx` | 940 lines |
+| **9d** | The walk (G-52). Pull earlier (G-37). Days back on a late job (G-82). The not-ready block in the form (G-77, its paper buttons once B6-b-ii's company window sends a paper). Who has to agree with **Call** only, until the Board lane lifts the Follow up sheet. The holds' io (catch 2). After B6-b-ii. | `GcScheduleWalk.tsx`, `GcPullEarlier.tsx`, `GcRecovery.tsx`, `GcNotReady.tsx` | 940 lines |
 
 The fail, the add, the take-off, a split, a join and a baseline are plan writes. They show 8a's refusal (`GcScheduleRefusal`), keep what the person typed, and read the schedule again. The records never conflict.
 
@@ -118,4 +118,4 @@ The fail, the add, the take-off, a split, a join and a baseline are plan writes.
 - 9c: `lift-same.cjs` green, and the moved tests pass on main's test state.
 - 9d: the plan's own check, the walk on a real project with one bar kept and one moved. That writes prod rows on "GC test project, delete me", so it waits on Grace's own yes in the lane's chat.
 
-**Order on the lane** (the lead's, 2026-10-09): 8b after 8a (#5151) merges, then 7c-ii (the call list in the window, whose Follow up sheet 9d's days back opens), then 9a, 9b and 9c, then 9d once B6-b-ii is in.
+**Order on the lane** (the lead's, 2026-10-09): 8b after 8a (#5151) merges, then 7c-ii (the call list in the window), then 9a, 9b and 9c, then 9d once B6-b-ii is in.
