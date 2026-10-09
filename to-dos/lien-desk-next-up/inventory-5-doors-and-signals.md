@@ -162,6 +162,7 @@ Guides that describe a lien door or signal in passing:
 - find-a-bid-on-the-workflow-tabs — find a bid on the workflow tabs
 - run-your-gc-statement-round — run your weekly GC statement round
 - sub-labor-outstanding — see what I still owe each sub contractor
+- work-the-subs-tab-on-a-phone — work the Subs tab on a phone (the phone section, with its lien waiver line, moved out of *see what I still owe each sub contractor* in v2.5065)
 - build-a-fillable-form — build a fillable form from a PDF
 - job-address-city-line-breaks — make job addresses wrap at the city name
 - mark-an-invoice-on-a-job-account — mark an invoice as on a job account

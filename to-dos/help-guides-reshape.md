@@ -131,9 +131,9 @@ for the #4589 guides are written here; that PR named only the split and the cuts
   scaling to the contract.
 - **Move:** *Use stage shares* goes to the payment-schedule guide.
 
-### see what I still owe each sub contractor
+### ~~see what I still owe each sub contractor~~ — shipped v2.5065
 
-`sub-labor-outstanding` · 1,158 words · #4589
+`sub-labor-outstanding` · 1,158 words · #4589 · now the opening and three guides: the core (the tiles, Who's owed, the ledger, Pay when, paying), *fix a payment on the wrong sheet* (move, remove, undo) and the phone section as *work the Subs tab on a phone*. Nothing cut.
 
 - **Opening:** "Jobs → Subs → Pay shows who is owed what, and what you can pay right now. You press
   **Pay** beside a sub to pay their biggest ready sheet."
