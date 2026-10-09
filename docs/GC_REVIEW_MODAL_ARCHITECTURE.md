@@ -59,7 +59,7 @@ The office opens GC Review from the Stages board's Billed section. There they:
 | `open` / `onClose` | `gcReviewModalOpen`; close also clears `gcReviewStartRound` | `if (!open) return null` at 717, **after** all hooks |
 | `billedActiveRows`, `collectionsRows: StageRow[]` | `unfilteredBoardLists` | money-never-hides: the board's filters/search don't shrink the rollup |
 | `lastSentByGcId` | `gcLastSentByGcId`: `gc_statement_emails` loaded on open (JobsStagesTab 693–716) | merged with round marks → `mergedLastSent` 527 |
-| `onSendStatement(payload)` | **inline edge invoke `send-gc-statement-email`** (4259–4288) → toast + `refreshGcLastSent` | the modal builds the payload, and the parent is the transport |
+| `onSendStatement(payload)` | [`sendGcStatementEmail`](../src/lib/sendGcStatementEmail.ts) (edge `send-gc-statement-email`; v2.5099, the Stages map's step 7) → toast + `refreshGcLastSent` | the modal builds the payload, the lib is the transport, and the parent keeps the toast and the last-sent read |
 | `onPrint(groups, groupBy)` | `buildGcStatementReportHtml` → `openHtmlPrintWindow` | |
 | `onCopyForEmail(group, groupBy, {portalUrl})` | subject + `buildGcStatementEmailHtml/Text` → `copyRichHtmlToClipboard` | `groupBy` is ignored by the parent (`_groupBy`) |
 | `emailForGc(gcId)` | `extractContactFromCustomer(customer).email` | To prefill + GC chip |
@@ -345,7 +345,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
   - `gc_word_asks` + `gc_word_ask_answers`: select (embedded), update of an answer's decision; rpc `mint_gc_word_ask`, `revoke_gc_word_ask`; edge `gc-word-ask` (email mode) — all through `lib/gcWordAskIo.ts`
   - `jobs_ledger` (full detail select): `fetchJobWithDetailsById`, one read per job on the statement, five at a time, only when Print unpaid invoices runs (`lib/jobs/gcUnpaidInvoicePrintIo.ts`)
 - **RPC (direct):** `mark_customer_portal_slug_shared` (569).
-- **Edge functions:** `statement-round-email-dispatch` (preview, `test_send`). `send-gc-statement-email` is **invoked by the parent** through `onSendStatement`. The scheduled dispatcher (`gc-statement-email-dispatch`) rebuilds at send time and skips an entity (per-GC / per-development) statement with nothing outstanding (233–242); a whole-report row is never skipped for amount.
+- **Edge functions:** `statement-round-email-dispatch` (preview, `test_send`). `send-gc-statement-email` is **invoked by the parent** through `onSendStatement`, by `lib/sendGcStatementEmail.ts` (v2.5099). The scheduled dispatcher (`gc-statement-email-dispatch`) rebuilds at send time and skips an entity (per-GC / per-development) statement with nothing outstanding (233–242); a whole-report row is never skipped for amount.
 - **Parent-side read:** `gc_statement_emails` (last-sent hints).
 - **No realtime channels.** Freshness is refetch-on-open (effects 340, 373, 380, 391, 516, 683 all gate on `open`) plus refetch-after-action: `refreshRoundMarks`, `refreshCerts`, `refreshPendingSends`, `refreshRoundEmailRows`, `refreshPortalLinks`, and the parent's `refreshGcLastSent` / `loadJobs`.
 
@@ -404,4 +404,4 @@ Per the playbook, Stage A comes before Stage B for each unit, and the lowest cou
 13. **Popup-blocker paths.** The two email previews open in the app (`EmailPreviewOverlay`) and open no window. The print paths still do: the call sheet (`openHtmlPrintWindow`) toasts here when blocked, and the statement print toasts in the parent.
 14. **Cross-surface duplication.**
     - The round engine (certs + marks + senders) is loaded independently here (through `useGcStatementRound` since v2.5072), on the Stages board (the same hook since v2.5075, reading while the window is shut) and in `usePipelineMoneyOpportunities`. They share no cache, and a mark made here refreshes only this copy; the Stages board re-reads when the window closes.
-    - The GC Review transport (`onSendStatement` edge invoke) lives in `JobsStagesTab` 4259–4288 (stages map extraction #7). Coordinate the two.
+    - The GC Review transport (`onSendStatement` edge invoke) moved from `JobsStagesTab` to [`lib/sendGcStatementEmail.ts`](../src/lib/sendGcStatementEmail.ts) in v2.5099 (the Stages map's step 7; 9 tests, and two tab render cases that send through this window). The payload type `SendGcStatementPayload` stays exported here.

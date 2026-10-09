@@ -157,7 +157,7 @@ Cluster N's 52 states: 18 single-job opener targets (`activityExpandJob`, `crewM
 |---|---|---|
 | `JobsWeeklyMovementModal` | 3963–3969 | `canSchedule` = office gate |
 | `JobsWeeklyMoneyModal` | 3970–3976 | `initialMondayYmd` from the handle / ☰ menu |
-| `JobsGcReviewModal` | 3977–4069 | mapped in [`GC_REVIEW_MODAL_ARCHITECTURE.md`](./GC_REVIEW_MODAL_ARCHITECTURE.md). Tab-side: unfiltered billed + collections rows; `onPrint` → `buildGcStatementReportHtml`; `onCopyForEmail` → `gcStatementEmailSubject` / `…Html` / `…Text` + `copyRichHtmlToClipboard`; **`onSendStatement` invokes edge fn `send-gc-statement-email` inline (4035–4068)** then `refreshGcLastSent` |
+| `JobsGcReviewModal` | 3977–4069 | mapped in [`GC_REVIEW_MODAL_ARCHITECTURE.md`](./GC_REVIEW_MODAL_ARCHITECTURE.md). Tab-side: unfiltered billed + collections rows; `onPrint` → `buildGcStatementReportHtml`; `onCopyForEmail` → `gcStatementEmailSubject` / `…Html` / `…Text` + `copyRichHtmlToClipboard`; `onSendStatement` → [`sendGcStatementEmail`](../src/lib/sendGcStatementEmail.ts) (edge fn `send-gc-statement-email`, v2.5099), then the toast and `refreshGcLastSent` |
 | `StagesBilledTotalByNameModal` | 4070–4083 | v2.3530; kernel `buildBilledTotalByNameEntries` (tested) |
 | `StagesCapableToBillModal` | 4084–4105 | v2.3530; rows `buildCapableToBillBreakdownRowsWithPlans` |
 | `StagesEstBillDateModal` | 4106–4125 | v2.3530; `setInvoiceEstimatedBillDate` (mutation prop) |
@@ -256,7 +256,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 
 ## Supabase tables, RPCs and edge functions touched by `JobsStagesTab` directly
 
-(Everything else flows through the mutation / thread-notes engines, the cache context, custom hooks and the extracted modals; the four rows marked with a hook file are reads the tab used to make itself and now makes through that hook. `jobsStagesRowShared.tsx` and both tables touch none.)
+(Everything else flows through the mutation / thread-notes engines, the cache context, custom hooks and the extracted modals; the rows that name a hook or lib file are calls the tab used to make itself and now makes through that file. `jobsStagesRowShared.tsx` and both tables touch none.)
 
 | Where | Table / RPC / edge fn | Verb |
 |---|---|---|
@@ -268,7 +268,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 | send-back effect 2054 | `job_status_events` (+ `users(name)`) | SELECT latest |
 | `loadStagesManHours` 2085 | RPC `get_man_hours_by_job` | read (RLS-scoped) |
 | `createInvoiceFromModal` 2231 | `jobs_ledger_invoices`; RPC `ensure_single_ready_to_bill_invoice_for_job` | **INSERT**; RPC |
-| GC Review `onSendStatement` 4035 | edge fn `send-gc-statement-email` | invoke |
+| GC Review `onSendStatement` (through `lib/sendGcStatementEmail.ts`, v2.5099) | edge fn `send-gc-statement-email` | invoke |
 | Lien desk `legalSignoff.ask` 4546 | `legalRpc('legal_add_entry')` | write |
 | `confirmCollectionsMove` 2844 | RPC `set_job_collections_flag` via `lib/setJobCollectionsFlag` | write |
 | `confirmSendBackJob` 2904 | edge functions via `prepareBilledInvoicesBeforeJobRevertToReadyToBill` | Stripe void prep |
@@ -294,7 +294,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase �
 | Section IIFE | 3324–3962 | ~640 | highest | — | stays; seam done (v2.3538) |
 | Follow-up deck rows (4b) | 2699–2799 | 101 | high | med | dedupe with §4 |
 | Phone board (4c) | 1252–1265, 2461–2530 | ~85 | med | low | stays |
-| IIFE dialogs (5) | 3963–4129 | 167 | low-med | low | children **extracted**; GC send IO → lib |
+| IIFE dialogs (5) | 3963–4129 | 167 | low-med | low | children **extracted**; GC send IO → lib (**shipped v2.5099**) |
 | Modal tail (6) | 4132–4906 | 775 | med | low per item | inline dialogs all **extracted**; money group → host |
 | Job-only table | `JobsStagesTable.tsx` | 529 | high (prop fan-in) | low-med | extracted; single typed prop open |
 | Unified table | `JobsStagesUnifiedTable.tsx` + 2 row files | 467 + 796 | highest | — | **row kinds split** (v2.3548) |
@@ -354,7 +354,7 @@ Already-extracted lib (add tests only where missing): `buildJobsStagesBoardLists
 4. **GC statement round seam** (cluster I) — **shipped v2.5075.** The board reads the round's data through [`useGcStatementRound`](../src/hooks/useGcStatementRound.ts), which the [GC Review map](./GC_REVIEW_MODAL_ARCHITECTURE.md)'s step 8 built (v2.5072). It passes `open: isRoundOfficeRole && !gcReviewModalOpen`, so every close of GC Review reads the round again, and the GC ids by their sorted set. `gcTemperatureById` and the round cards stay the board's own memos over the hook's lists, so step 2 reads `gcTemperatureById` as before.
 5. **Deep-link consumer** (cluster K). **Shipped v2.4080:** [`useStagesDeepLinkParams`](../src/hooks/useStagesDeepLinkParams.ts) runs the seven modal doors (one effect, the old order, one consumed set for the mount) over the Stage-A table; `useStagesRtbFocus` keeps the `rtb` strip, window arm and poll at the tab's old site, after `focusStagesSection`.
 6. **Section action props, once** — **shipped v2.4117:** `stagesSectionActionProps` (waiting, working, readyToBill, billed, collections) built at tab scope by a script from the section sites and spread into both the §4 sites and `renderFollowupStageRow` (§4b); the ~100-line duplicate is gone.
-7. **GC Review send IO → lib** (`onSendStatement` 4035–4068: edge invoke + response parse), so the IIFE only wires callbacks. Coordinate with the GC Review map.
+7. **GC Review send IO → lib** — **shipped v2.5099:** [`sendGcStatementEmail`](../src/lib/sendGcStatementEmail.ts) builds the function's body, invokes `send-gc-statement-email` and reads its answer (the function's own refusal ahead of the transport's error; the reply-to echo handed back for the toast). `onSendStatement` keeps the toast and `refreshGcLastSent`, so the IIFE only wires callbacks. 9 lib tests (8 mutants killed) and two tab render cases that send through GC Review (5 mutants); the [GC Review map](./GC_REVIEW_MODAL_ARCHITECTURE.md)'s transport lines say the same. The tab 4,869 → 4,845 lines.
 8. **Billed-money modal host** — **shipped v2.4991:** [`StagesBilledMoneyModals`](../src/components/jobs/StagesBilledMoneyModals.tsx) draws the nine windows (who owes what, the aging chart, the forecast and its Email… window, call mode, Fix bill lines, the promised pay date, the paid profit chart, the billed share), verbatim, with what only they read: the forecast's share flag, the two scope kicks, call mode's full queue and the forecast's work months. The open flags stay in the tab. 12 render cases, ten mutants killed; the tab 5,070 → 4,902 lines.
 9. **Row renderers → components** in `jobsStagesRowShared`: `renderStagesQuickActionsStack` (174), `renderStagesJobCellActivityFooter` (180), `renderStagesFieldAndBillingLines` (168); pull the duplicated GC / development / Account-Man block out of the two customer-line renderers.
 10. **Tables take the shared bundle as one typed prop** (§7 / §8).

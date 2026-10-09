@@ -69,6 +69,7 @@ import {
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
 import { describeReplyToOutcome } from '../../lib/gcStatementReplyTo'
+import { sendGcStatementEmail } from '../../lib/sendGcStatementEmail'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import {
@@ -4075,37 +4076,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   }}
                   lastSentByGcId={gcLastSentByGcId}
                   onSendStatement={async (p) => {
-                    try {
-                      const { data, error: fnErr } = await supabase.functions.invoke('send-gc-statement-email', {
-                        body: {
-                          gc_customer_id: p.gcCustomerId,
-                          gc_name: p.gcName,
-                          group_by: p.groupBy,
-                          to_email: p.toEmail,
-                          cc_emails: p.ccEmails ?? [],
-                          subject: p.subject,
-                          email_html: p.emailHtml,
-                          ...(p.emailHtmlQr && p.portalUrl ? { email_html_qr: p.emailHtmlQr, portal_url: p.portalUrl } : {}),
-                          email_text: p.emailText,
-                          total: p.total,
-                          job_count: p.jobCount,
-                          reply_to_user_id: p.replyTo?.id ?? null,
-                        },
-                      })
-                      const resp = data as { success?: boolean; error?: string; reply_to?: string | null } | null
-                      if (resp && typeof resp.error === 'string' && resp.error.length > 0) {
-                        return { ok: false, error: resp.error }
-                      }
-                      if (fnErr) {
-                        return { ok: false, error: fnErr.message || 'Send failed' }
-                      }
-                      // The function echoes where replies go; one from before "Replies go to" echoes nothing, and the toast says so.
-                      showToast(`Statement emailed to ${p.toEmail}.${describeReplyToOutcome(p.replyTo ?? null, authUser?.id ?? '', resp?.reply_to)}`, 'success')
-                      void refreshGcLastSent()
-                      return { ok: true }
-                    } catch (e) {
-                      return { ok: false, error: e instanceof Error ? e.message : 'Send failed' }
-                    }
+                    const sent = await sendGcStatementEmail(p)
+                    if (!sent.ok) return sent
+                    // The function echoes where replies go; one from before "Replies go to" echoes nothing, and the toast says so.
+                    showToast(`Statement emailed to ${p.toEmail}.${describeReplyToOutcome(p.replyTo ?? null, authUser?.id ?? '', sent.replyTo)}`, 'success')
+                    void refreshGcLastSent()
+                    return { ok: true }
                   }}
                 />
                 {billedTotalByNameModalOpen && (
