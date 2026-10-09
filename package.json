@@ -49,6 +49,7 @@
     "test:pg:gc-building": "bash scripts/pgtest-gc-building.sh",
     "test:pg:gc-owner-billing": "bash scripts/pgtest-gc-owner-billing.sh",
     "test:pg:gc-award": "bash scripts/pgtest-gc-award.sh",
+    "test:pg:gc-start": "bash scripts/pgtest-gc-start.sh",
     "test:pg:gc-back-charges": "bash scripts/pgtest-gc-back-charges.sh",
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",

@@ -4,9 +4,9 @@ name: SQL beds
 # reach it. GitHub's runners have it. A PR that touches a bed's SQL runs the beds here before its
 # migration is pushed: the schedule's (its PR 5), bid history's ledger (#73 PR 0b on), the
 # unbanked check cases (#76 piece 3), the Stripe cases (#76 piece 1), Building's presses (GC mode U3a-i on: the daily log, the submittals),
-# Owner Billing's bill to the customer (GC mode O4a-1) with its reminders (O5b), GC award (the Board's B6-a)
-# the AIA pay applications (the bill an application became, v2.5032) and the trade portal's back-charges and
-# change requests (the Portal's P4a).
+# Owner Billing's bill to the customer (GC mode O4a-1) with its reminders (O5b), GC award (the Board's B6-a),
+# Start and Start anyway (B6-c-i), the AIA pay applications (the bill an application became, v2.5032) and the
+# trade portal's back-charges and change requests (the Portal's P4a).
 on:
   pull_request:
     paths:
@@ -43,6 +43,9 @@ on:
       - 'supabase/migrations/*gc_back_charges*'
       - 'supabase/tests/gc_back_charges/**'
       - 'scripts/pgtest-gc-back-charges.sh'
+      - 'supabase/migrations/*gc_start_project*'
+      - 'supabase/tests/gc_start/**'
+      - 'scripts/pgtest-gc-start.sh'
       - '.github/workflows/sql-beds.yml'
   workflow_dispatch:
 
@@ -127,3 +130,12 @@ jobs:
         uses: actions/checkout@v4
       - name: GC back-charges and change requests against every migration
         run: bash scripts/pgtest-gc-back-charges.sh
+
+  gc-start:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Start and Start anyway against every migration
+        run: bash scripts/pgtest-gc-start.sh
