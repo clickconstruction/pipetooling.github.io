@@ -231,6 +231,39 @@ describe('moving a bar in the window (PR 8a)', () => {
     expect(vi.mocked(undoScheduleMove).mock.calls[0]).toEqual([read.state, 'fairoaksd', { version: 7, words: 'Robert Douglas undid a move: Roofing · TPO membrane is back to Sep 21 to Oct 9.' }, 'move-row-1'])
   })
 
+  it('a bar pressed opens its form for a dev; a change goes through Why it moved and saves (8b)', async () => {
+    const read = readOf(s, 'fairoaksd', 3)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(saveScheduleMove).mockResolvedValue(readOf(s, 'fairoaksd', 4))
+    const { container } = openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    fireEvent.click(screen.getByText('Open all'))
+    fireEvent.click(container.querySelector('[data-gantt-bar="froof-1"]') as HTMLElement)
+    const editor = container.querySelector('[data-gc-activity-editor="froof-1"]') as HTMLElement
+    expect(editor).toBeTruthy()
+    // The bar's card stays under it, with its facts.
+    expect(container.querySelector('[data-gc-opened-activity="froof-1"]')).toBeTruthy()
+    fireEvent.change(within(editor).getByLabelText('Finishes'), { target: { value: '2026-10-16' } })
+    fireEvent.click(within(editor).getByRole('button', { name: 'Save, and say why' }))
+    const dialog = await whyIt()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save the move' }))
+    await waitFor(() => expect(saveScheduleMove).toHaveBeenCalledTimes(1))
+    const [state, , press, move] = vi.mocked(saveScheduleMove).mock.calls[0]!
+    expect(state).toBe(read.state)
+    expect(press.version).toBe(3)
+    expect(move).toMatchObject({ lineId: 'froof-1', to: { start: '2026-09-21', finish: '2026-10-16' } })
+  })
+
+  it('a bar pressed opens no form for someone who may not move it, only its card', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    const { container } = openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    fireEvent.click(screen.getByText('Open all'))
+    fireEvent.click(container.querySelector('[data-gantt-bar="froof-1"]') as HTMLElement)
+    expect(container.querySelector('[data-gc-opened-activity="froof-1"]')).toBeTruthy()
+    expect(container.querySelector('[data-gc-activity-editor]')).toBeNull()
+  })
+
   it('someone who may not move a bar drags nothing and has no Undo', async () => {
     vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd', 3))
     const { container } = openWindow(job(s, 'fairoaksd'))

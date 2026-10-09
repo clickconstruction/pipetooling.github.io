@@ -4,15 +4,16 @@
  * window every move goes through (what it does, why, in whose words) and the list of every move made, with Undo
  * and Redo. The prototype sent each press to its reducer; here each press is a callback the schedule's body sends
  * through the schedule's io (`saveScheduleMove`, `undoScheduleMove`, `redoScheduleMove`). A save someone else beat
- * stays open and says what they changed (G-134). A part's own move and the form come with PR 8b, telling the trades
- * with PR 13, and the what-if copy with PR 11. What a move does to the bills (G-97) is Owner Billing's.
+ * stays open and says what they changed (G-134). A part's own move (PR 8b) goes through the same window. Telling the
+ * trades comes with PR 13 and the what-if copy with PR 11. What a move does to the bills (G-97) is Owner Billing's.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MOVE_REASONS, moveActivityName, moveRecord, moveRows, moveWhyProblem, planMove, redoableMove, spanWords, undoableMove, type MoveLimits } from '../../lib/gc/schedule/moves'
 import { daysBetween } from '../../lib/gc/schedule/network'
 import { crowdingAfterMove } from '../../lib/gc/schedule/places'
-import { changeTimeWords, moveWords } from '../../lib/gc/schedule/scheduleWindow'
+import { changeTimeWords, moveWords, partMovePress } from '../../lib/gc/schedule/scheduleWindow'
+import { lineLabel } from '../../lib/gc/schedule/splitBars'
 import type { ScheduleActivity, ScheduleMove, ScheduleMoveReason } from '../../lib/gc/schedule/types'
 import { SCHEDULE_CHANGED, scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
 import type { GcProject, GcState } from '../../lib/gc/types'
@@ -28,6 +29,8 @@ export interface PendingMove {
   after: string[]
   /** The gap after each wait, the day it cannot start before, the day it must finish by, when the form set them (PR 8b). */
   limits?: MoveLimits
+  /** A split line's part moved (G-39, PR 8b): the part, its dates before, and its new ones. The move's start and finish are then its line's new span. */
+  part?: { id: string; name: string; from: { start: string; finish: string }; start: string; finish: string }
 }
 
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
@@ -94,11 +97,12 @@ export function GcMoveExplain({
   const plan = planMove(project, pending.lineId, pending.start, pending.finish, pending.after, pending.limits)
   // What the move does to a place with too many trades (G-83), said before it saves.
   const crowding = useMemo(() => (state && plan && !plan.problem && !plan.same ? crowdingAfterMove(state, project, plan.activities) : []), [state, project, pending]) // eslint-disable-line react-hooks/exhaustive-deps
-  if (!plan || plan.same || !project.schedule) return null
+  // A part moved inside its line's span (G-39) leaves the line's dates as they are: still a move, with its reason.
+  if (!plan || (plan.same && !pending.part) || !project.schedule) return null
   const schedule = project.schedule
   const problem = plan.problem ?? moveWhyProblem(reason, note)
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
-  const dated = plan.from.start !== plan.to.start || plan.from.finish !== plan.to.finish
+  const dated = plan.from.start !== plan.to.start || plan.from.finish !== plan.to.finish || Boolean(pending.part)
   const shift = daysBetween(plan.from.finish, plan.to.finish)
   const longer = daysBetween(plan.to.start, plan.to.finish) - daysBetween(plan.from.start, plan.from.finish)
   const save = async () => {
@@ -108,7 +112,12 @@ export function GcMoveExplain({
     setRefused(null)
     setFailed(null)
     try {
-      await onSave(moveRecord(schedule, pending.lineId, plan, why, today), plan.activities, moveWords(project, pending.lineId, plan, why))
+      if (pending.part) {
+        // A part's move (G-39): its line's span moves like any bar, and the parts' days come along, for Undo and Redo.
+        const press = partMovePress(project, pending.lineId, pending.part.id, pending.part.start, pending.part.finish, why, today)
+        if (!press) throw new Error('This part does not move. Close this and drag it again.')
+        await onSave(press.move, press.activities, press.words)
+      } else await onSave(moveRecord(schedule, pending.lineId, plan, why, today), plan.activities, moveWords(project, pending.lineId, plan, why))
       onClose()
     } catch (e) {
       const refusal = scheduleChangedRefusal(e)
@@ -137,11 +146,14 @@ export function GcMoveExplain({
         <div>
           <h3 style={{ margin: 0, fontSize: '1.05rem' }}>
             {dated ? 'Move' : 'Change'} {moveActivityName(project, pending.lineId)}
+            {pending.part ? `, ${pending.part.name}` : ''}
           </h3>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>A move is saved with why it moved. Both stay on the schedule&apos;s record.</div>
         </div>
         <div style={{ display: 'grid', gap: '0.3rem', background: 'var(--bg-subtle)', borderRadius: 8, padding: '0.6rem 0.7rem' }}>
-          {dated ? (
+          {pending.part ? (
+            <GcPartMoveLines project={project} pending={pending} part={pending.part} plan={plan} />
+          ) : dated ? (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
               <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{spanWords(plan.from)}</span>
               <span aria-hidden>→</span>
@@ -259,7 +271,7 @@ export function GcMoveHistory({
   if (rows.length === 0) {
     return (
       <Card>
-        <strong>Changes to the schedule</strong> <span style={{ color: 'var(--text-muted)' }}>None yet. Drag a bar on the chart. Every move is kept here with who made it and why.</span>
+        <strong>Changes to the schedule</strong> <span style={{ color: 'var(--text-muted)' }}>None yet. Drag a bar on the chart, or press one to change its dates. Every move is kept here with who made it and why.</span>
       </Card>
     )
   }
@@ -309,5 +321,34 @@ export function GcMoveHistory({
         </div>
       )}
     </Card>
+  )
+}
+
+/** A part's move (G-39, PR 8b): the part's days before and after, then what its line does. Ported from the prototype with its words. */
+function GcPartMoveLines({ project, pending, part, plan }: { project: GcProject; pending: PendingMove; part: NonNullable<PendingMove['part']>; plan: { same: boolean; from: { start: string; finish: string }; to: { start: string; finish: string } } }) {
+  const shift = daysBetween(part.from.finish, part.finish)
+  const longer = daysBetween(part.start, part.finish) - daysBetween(part.from.start, part.from.finish)
+  const name = lineLabel(project, pending.lineId)
+  const lineWords = plan.same
+    ? `${name} keeps its dates, ${spanWords(plan.from)}. Nothing after it moves.`
+    : plan.from.start === plan.to.start
+      ? `${name} now ends ${weekdayDate(plan.to.finish)}.`
+      : plan.from.finish === plan.to.finish
+        ? `${name} now starts ${weekdayDate(plan.to.start)}.`
+        : `${name} now runs ${weekdayDate(plan.to.start)} to ${weekdayDate(plan.to.finish)}.`
+  return (
+    <>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <span>{part.name}</span>
+        <span style={{ color: 'var(--text-muted)', textDecoration: 'line-through' }}>{spanWords(part.from)}</span>
+        <span aria-hidden>→</span>
+        <strong>
+          {weekdayDate(part.start)} to {weekdayDate(part.finish)}
+        </strong>
+        {shift !== 0 && <Chip tone={shift > 0 ? 'amber' : 'green'}>{Math.abs(shift)} {Math.abs(shift) === 1 ? 'day' : 'days'} {shift > 0 ? 'later' : 'sooner'}</Chip>}
+        {longer !== 0 && <Chip tone="grey">{Math.abs(longer)} {Math.abs(longer) === 1 ? 'day' : 'days'} {longer > 0 ? 'longer' : 'shorter'}</Chip>}
+      </div>
+      <div data-gc-part-line>{lineWords}</div>
+    </>
   )
 }

@@ -13,12 +13,12 @@ import type { GcProject } from '../types'
 import { shortDate, weekdayDate } from '../words'
 import { actualWords } from './actualDates'
 import { lastFinishDay, type GanttBar } from './gantt'
-import { moveActivityName, spanWords, type MovePlan } from './moves'
+import { moveActivityName, moveRecord, planMove, spanWords, type MovePlan } from './moves'
 import { daysBetween, pushedAfterWords } from './network'
 import { placeGuess, takesPlace } from './places'
 import { mondayOf } from './schedule'
-import { partFacts } from './splitBars'
-import type { ProjectSchedule, ScheduleMove } from './types'
+import { movedParts, partFacts } from './splitBars'
+import type { ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason } from './types'
 
 // ---------------------------------------------------------------------------------------------
 // The first draft
@@ -66,6 +66,41 @@ export function undoWords(project: GcProject, move: Pick<ScheduleMove, 'lineId' 
 /** Redo's line in the log (G-40), as the prototype's reducer wrote it. */
 export function redoWords(project: GcProject, move: Pick<ScheduleMove, 'lineId' | 'to'>, by: string): string {
   return `${by} put a move back: ${moveActivityName(project, move.lineId)} is ${spanWords(move.to)} again.`
+}
+
+/**
+ * A part of a split line moved (G-39, the schedule's PR 8b), as the prototype's reducer recorded it
+ * (`moveActivityPart`): the line's span becomes its parts' span and moves like any bar, pushes and all.
+ * When the span holds, only the part moves, still a move with its reason, and its line in the log names
+ * the part. Either way the move keeps the parts' days before and after, for Undo and Redo. Null: nothing
+ * moves, or the line's new span cannot be saved.
+ */
+export function partMovePress(
+  project: GcProject,
+  lineId: string,
+  partId: string,
+  start: string,
+  finish: string,
+  why: { reason: ScheduleMoveReason; note: string; by: string },
+  today: string,
+): { move: ScheduleMove; activities: ScheduleActivity[]; words: string } | null {
+  const schedule = project.schedule
+  const activity = schedule?.activities.find((a) => a.lineId === lineId)
+  const moved = activity?.parts ? movedParts(activity, partId, start, finish) : null
+  if (!schedule || !activity?.parts || !moved) return null
+  const offsets = (list: { id: string; from: number; days: number }[]) => list.map((x) => ({ id: x.id, from: x.from, days: x.days }))
+  const was = offsets(activity.parts)
+  const now = offsets(moved.parts)
+  if (JSON.stringify(was) === JSON.stringify(now)) return null
+  const plan = planMove(project, lineId, moved.start, moved.finish, activity.after)
+  if (!plan || plan.problem) return null
+  const move: ScheduleMove = { ...moveRecord(schedule, lineId, plan, why, today), parts: { id: partId, was, now } }
+  const activities = plan.activities.map((a) => (a.lineId === lineId ? { ...a, parts: moved.parts } : a))
+  const spanMoved = moved.start !== activity.start || moved.finish !== activity.finish
+  const words = spanMoved
+    ? moveWords(project, lineId, plan, why)
+    : `${moveActivityName(project, lineId)}, ${activity.parts.find((x) => x.id === partId)?.name ?? 'a part'} now runs ${weekdayDate(start)} to ${weekdayDate(finish)}. ${why.by}: ${why.note.trim()}`
+  return { move, activities, words }
 }
 
 /** When a change someone else saved was made, on the company's clock (G-134's refusal): "2:14 pm". Empty for a time it cannot read. */
