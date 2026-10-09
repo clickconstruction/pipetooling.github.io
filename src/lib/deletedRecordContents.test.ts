@@ -179,6 +179,28 @@ describe('alert-window helpers', () => {
   })
 })
 
+describe('the Division 22 ledger in Recently deleted (v2.5056)', () => {
+  it('names the two tables', () => {
+    expect(humanizeArchiveTable('spec_section_match_rules')).toBe('Division 22 rules')
+    expect(describeDeletedBundleKind('spec_sections')).toBe('Division 22 sections')
+  })
+
+  it('summarizes a rule in the audit window\'s words, with where it filed its names', () => {
+    expect(summarizeDeletedRowForTable('spec_section_match_rules', { pattern: 'FD-', match_kind: 'contains', section_code: '22 13 19', priority: 200 })).toBe(
+      'contains FD- → 22 13 19',
+    )
+    expect(summarizeDeletedRowForTable('spec_section_match_rules', { pattern: 'DEMO', match_kind: 'exact', section_code: null })).toBe('exactly DEMO → no code')
+    expect(summarizeDeletedRowForTable('spec_section_match_rules', { pattern: 'WC-', match_kind: 'starts_with', section_code: '22 42 13' })).toBe(
+      'starts with WC- → 22 42 13',
+    )
+  })
+
+  it('summarizes a section by its code and title', () => {
+    expect(summarizeDeletedRowForTable('spec_sections', { code: '22 45 00', title: 'Emergency Plumbing Fixtures' })).toBe('22 45 00 Emergency Plumbing Fixtures')
+    expect(summarizeDeletedRowForTable('spec_sections', {})).toBe('section')
+  })
+})
+
 describe('summarizeDeletedRowForTable (v2.1566 type-aware summaries)', () => {
   const users = new Map([['u-paige', 'Paige'], ['u-taunya', 'Taunya']])
 

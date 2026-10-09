@@ -11,6 +11,7 @@
  * deletions burst by burst.
  */
 import { formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
+import { ruleLabel } from './specSectionAudit'
 
 /** Human names for archive table_name values; anything unmapped falls back to underscores → spaces. */
 const ARCHIVE_TABLE_LABELS: Record<string, string> = {
@@ -53,6 +54,9 @@ const ARCHIVE_TABLE_LABELS: Record<string, string> = {
   bid_count_row_custom_costs: 'quoted costs',
   bid_takeoff_stage_splits: 'takeoff stage splits',
   bid_submittal_takeoff_choices: 'submittal picks',
+  // Division 22 rules manager PR 2: the ledger joined the archive (20261010015000).
+  spec_section_match_rules: 'Division 22 rules',
+  spec_sections: 'Division 22 sections',
 }
 
 export function humanizeArchiveTable(tableName: string): string {
@@ -264,6 +268,17 @@ export function summarizeDeletedRowForTable(
     const parts = [cents != null ? `quoted cost ${formatMoney(cents / 100)}` : 'quoted cost']
     if (house) parts.push(house)
     return parts.join(' · ')
+  }
+  if (tableName === 'spec_section_match_rules') {
+    // The audit window's own wording ("contains FD-"), then where the rule filed its names.
+    const kind = rowData.match_kind
+    const pattern = nonEmptyString(rowData.pattern) ?? ''
+    const code = nonEmptyString(rowData.section_code)
+    const rule = kind === 'exact' || kind === 'starts_with' || kind === 'contains' ? ruleLabel({ pattern, matchKind: kind, sectionCode: code, priority: 0 }) : pattern
+    return `${rule} → ${code ?? 'no code'}`
+  }
+  if (tableName === 'spec_sections') {
+    return [nonEmptyString(rowData.code), nonEmptyString(rowData.title)].filter(Boolean).join(' ') || 'section'
   }
   return summarizeDeletedRow(rowData)
 }
