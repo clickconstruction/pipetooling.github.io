@@ -214,6 +214,9 @@ A **move** is new days for a bar on a GC job's schedule, saved with why it moved
 ### Call list (GC mode, the schedule)
 The **call list** is everyone whose answer moves a GC job's schedule, drawn over the chart while it is grouped **By company** on a job being built (G-115, `GcCallList.tsx`, since v2.5078). Each person has every reason under their name, late first, and **Call**. A line about a bar opens it, and **Their work** shows only that company's bars (G-13). The bar's card names its company with **Call**. **Follow up** and **Work the list** come with the Board lane's Follow up sheet.
 
+### Wait · place · part · baseline (GC mode, the schedule)
+A **wait** is something a GC job's work waits on from outside the trades: a delivery, the customer's decision, a permit or the utility's work (`gc_schedule_waits`, G-73 to G-75, since v2.5104). It holds the bars that need it until it is in. A **place** is where a bar's work is, kept by the office, so the chart flags a day with too many trades in one place (G-83). A **part** is one of the bars a trade's line splits into, with its own dates and its share of the work (G-39); the line keeps its dates and its percent. The **baseline** is the plan every measure reads against, kept at Start; a new one is taken after a signed change order's days, and the old ones stay, named (G-41).
+
 ### Plan set (bid set · pricing set · permit set · addendum · bulletin)
 One issue of a GC project's plans (`gc_plan_sets`, rev 0 first). The first set is a **bid**, **pricing** or **permit** set; a later one is an **addendum** (while we bid), a **bulletin** (once the job is ours), or a whole **revised**, **permit** or **construction** set. Each set lists what it did to each sheet and spec section (issued, revised, added, removed, renamed), carries the Google Drive link of its files, and names who on our team checked it.
 

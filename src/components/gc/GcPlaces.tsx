@@ -1,13 +1,33 @@
 /**
  * GC mode, the real build, the schedule's PR 7a: the chart's lane of too many trades in one place
- * (G-83). The places card and the opened bar's place line come with the schedule's PR 9. Moved word
- * for word from the GC mode prototype (branch spike/gc-mode, `GcPlaces.tsx`); the plan is
- * to-dos/gc-mode/mockups/schedule-pr7.md on that branch.
+ * (G-83). Moved word for word from the GC mode prototype (branch spike/gc-mode, `GcPlaces.tsx`); the
+ * plan is to-dos/gc-mode/mockups/schedule-pr7.md on that branch. Since the schedule's PR 9b, the card
+ * under the chart, its window where the office keeps a place on each bar, and the opened bar's place
+ * line, ported from the prototype's `GcPlaces.proto.tsx` with their words: each keep is a callback
+ * here, where the prototype dispatched to its reducer, and it is refused whole (`placeChanges`).
  */
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { daysBetween } from '../../lib/gc/schedule/schedule'
-import { PLACE_RULE, crowdedPlaces, crowdedSpells, type CrowdedWeek } from '../../lib/gc/schedule/places'
+import {
+  PLACE_RULE,
+  cleanPlace,
+  crowdedPlaces,
+  crowdedSpells,
+  keptPlaces,
+  placeChanges,
+  placeGuess,
+  placeProblem,
+  placeRows,
+  placesSummary,
+  takesPlace,
+  type CrowdedWeek,
+  type PlaceChange,
+} from '../../lib/gc/schedule/places'
+import type { GcProject, GcState } from '../../lib/gc/types'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { twoLines } from './gcBuildingCss'
+import { Btn, Card, input } from './gcUi'
 
 /** Saturated on purpose, as the chart's own amber: the same in both themes. */
 const AMBER = '#d97706'
@@ -96,6 +116,186 @@ function CrowdedCard({ week, at }: { week: CrowdedWeek; at: { x: number; y: numb
           </span>
         </div>
       ))}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------------------------
+// The office's places (PR 9b)
+// ---------------------------------------------------------------------------------------------
+
+/** The places on the job and the guesses, offered as the office types. */
+function placeList(state: GcState, project: GcProject): string[] {
+  const guesses = placeRows(state, project).flatMap((r) => (r.guess ? [r.guess.place] : []))
+  return [...new Set([...keptPlaces(project).values(), ...guesses])].sort((a, b) => a.localeCompare(b))
+}
+
+/** The card under the chart: how many bars have a place, the rule, and the runs of too many. */
+export function GcPlacesCard({ state, project, crowded, onPlaces }: { state: GcState; project: GcProject; crowded: CrowdedWeek[]; onPlaces: (changes: PlaceChange[]) => Promise<void> }) {
+  const [open, setOpen] = useState(false)
+  const rows = useMemo(() => placeRows(state, project), [state, project])
+  if (rows.length === 0 && keptPlaces(project).size === 0) return null
+  const lines = placesSummary(rows, crowded)
+  return (
+    <Card dataTour="gc-places">
+      <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.875rem' }}>
+        <strong>Where the work is</strong>
+        <span style={{ color: 'var(--text-muted)' }}>Give each bar a place, and the chart flags a day with too many trades in one place. {PLACE_RULE}</span>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <span data-places-summary style={{ flex: '1 1 16rem', minWidth: 0 }}>
+            {lines.map((l) => (
+              <span key={l.words} style={l.crowded ? { color: 'var(--text-amber-800)', fontWeight: 600 } : undefined}>
+                {l.words}{' '}
+              </span>
+            ))}
+          </span>
+          <Btn kind="plain" onClick={() => setOpen(true)}>
+            Look at the places
+          </Btn>
+        </div>
+      </div>
+      {open && <GcPlacesWindow state={state} project={project} onPlaces={onPlaces} onClose={() => setOpen(false)} />}
+    </Card>
+  )
+}
+
+/** Every bar not done, with its place or its guess in a box: Keep these places sends what changed. */
+function GcPlacesWindow({ state, project, onPlaces, onClose }: { state: GcState; project: GcProject; onPlaces: (changes: PlaceChange[]) => Promise<void>; onClose: () => void }) {
+  const rows = useMemo(() => placeRows(state, project), [state, project])
+  const known = useMemo(() => placeList(state, project), [state, project])
+  const [boxes, setBoxes] = useState<Record<string, string>>(() => Object.fromEntries(rows.map((r) => [r.lineId, r.kept ?? r.guess?.place ?? ''])))
+  const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState<string | null>(null)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+  const changes: Record<string, string | null> = {}
+  for (const r of rows) {
+    const now = cleanPlace(boxes[r.lineId] ?? '')
+    if (now !== (r.kept ?? '')) changes[r.lineId] = now === '' ? null : now
+  }
+  const problem = rows.map((r) => placeProblem(boxes[r.lineId] ?? '')).find((p) => p !== null) ?? null
+  const count = Object.keys(changes).length
+  const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 640px)').matches
+  const listId = `gc-places-${project.id}`
+  const keep = async () => {
+    const kept = placeChanges(project.schedule?.activities ?? [], changes)
+    if (problem || count === 0 || !kept || kept.length === 0) return
+    setSaving(true)
+    setFailed(null)
+    try {
+      await onPlaces(kept)
+      onClose()
+    } catch (e) {
+      setFailed(formatErrorMessage(e, 'The places did not save.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+  return createPortal(
+    <div
+      role="presentation"
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Where the work is"
+        onClick={(e) => e.stopPropagation()}
+        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 'min(720px, 100%)', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.75rem', fontSize: '0.9rem' }}
+      >
+        <div>
+          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Where the work is</h3>
+          <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Each bar not done, with its place. A guess counts once you keep it.</div>
+        </div>
+        <datalist id={listId}>
+          {known.map((p) => (
+            <option key={p} value={p} />
+          ))}
+        </datalist>
+        <div style={{ display: 'grid', gap: '0.45rem' }}>
+          {rows.map((r) => {
+            const box = boxes[r.lineId] ?? ''
+            const hint = r.kept ? (cleanPlace(box) === r.kept ? 'kept' : '') : r.guess ? (cleanPlace(box) === r.guess.place ? `a guess from its ${r.guess.from}` : '') : 'no guess'
+            const bad = placeProblem(box)
+            return (
+              <div key={r.lineId} data-place-row={r.lineId} style={{ display: 'flex', gap: '0.35rem 0.6rem', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.4rem' }}>
+                <span style={{ flex: '1 1 14rem', minWidth: 0 }}>
+                  {r.name} <span style={{ color: 'var(--text-muted)' }}>· {r.company}</span>
+                </span>
+                <input value={box} onChange={(e) => setBoxes((was) => ({ ...was, [r.lineId]: e.target.value }))} list={listId} aria-label={`Where ${r.name} is`} placeholder="Roof, Inside, Level 2" style={{ ...input, width: '11rem' }} />
+                <span style={{ flex: '0 1 11rem', fontSize: '0.8rem', color: bad ? 'var(--text-red-700)' : 'var(--text-muted)' }}>{bad ?? hint}</span>
+              </div>
+            )
+          })}
+        </div>
+        {failed && (
+          <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+            {failed}
+          </div>
+        )}
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <Btn kind="plain" onClick={onClose}>
+            Cancel
+          </Btn>
+          <Btn kind="primary" disabled={problem !== null || count === 0 || saving} onClick={() => void keep()}>
+            Keep these places
+          </Btn>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  )
+}
+
+/** The opened bar's place (G-83): its place, or its guess to set. Nothing for an inspection or the job's own bar. */
+export function GcPlaceLine({ project, lineId, trade, label, onPlaces }: { project: GcProject; lineId: string; trade: string; label: string; onPlaces: (changes: PlaceChange[]) => Promise<void> }) {
+  const a = project.schedule?.activities.find((x) => x.lineId === lineId)
+  const guess = a && !a.place ? placeGuess(trade, label) : null
+  const [value, setValue] = useState(a?.place ?? guess?.place ?? '')
+  const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState<string | null>(null)
+  if (!a || !takesPlace(a)) return null
+  const clean = cleanPlace(value)
+  const problem = placeProblem(value)
+  const changed = clean !== (a.place ?? '')
+  const set = async () => {
+    const kept = placeChanges(project.schedule?.activities ?? [], { [lineId]: clean === '' ? null : clean })
+    if (!kept || kept.length === 0) return
+    setSaving(true)
+    setFailed(null)
+    try {
+      await onPlaces(kept)
+    } catch (e) {
+      setFailed(formatErrorMessage(e, 'The place did not save.'))
+    } finally {
+      setSaving(false)
+    }
+  }
+  return (
+    <div data-place-line style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+        <span style={{ color: 'var(--text-muted)' }}>Place</span>
+        <input value={value} onChange={(e) => setValue(e.target.value)} aria-label="Where its work is" placeholder="Roof, Inside, Level 2" style={{ ...input, width: '11rem' }} />
+      </label>
+      <Btn kind={changed ? 'primary' : 'plain'} disabled={!changed || problem !== null || saving} onClick={() => void set()}>
+        Set the place
+      </Btn>
+      {problem ? (
+        <span style={{ color: 'var(--text-red-700)' }}>{problem}</span>
+      ) : guess && clean === guess.place ? (
+        <span style={{ color: 'var(--text-muted)' }}>A guess from its {guess.from}. It counts once you set it.</span>
+      ) : null}
+      {failed && (
+        <span role="alert" style={{ color: 'var(--text-red-700)' }}>
+          {failed}
+        </span>
+      )}
     </div>
   )
 }
