@@ -2,7 +2,7 @@
 title: share a trade partner its portal
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, trade portal, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor
+keywords: gc mode, trade partner, trade portal, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request
 order: 96
 ---
 Every trade partner company can have one private portal link. The company opens it without signing in and sees everything it has with us.
@@ -14,8 +14,9 @@ Only a dev makes links while the portal is built.
 The link opens on the company's home. The home shows:
 
 - Each project it is asked to quote, with the day its quote is due.
+- Each job of ours it is signed for.
 - Who at the company gets our emails.
-- The asks it passed on, and jobs we did not win, under **Before**.
+- The asks it passed on, jobs we did not win, and trades we gave another company, under **Before**.
 
 A project opens its own page. The page shows the latest plans and the questions about them. It also shows the lines the quote should cover and who to call. Messages lists every email we sent the company.
 
@@ -26,8 +27,10 @@ From its portal the company can:
 - Answer a line of its quote we could not read.
 - Ask about the plans until questions close.
 - Choose who at the company gets our emails.
+- On a job, press **Agree** on a charge from us, or **Dispute it** and say why.
+- On a job, press **Ask for a change** to the work it signed for.
 
-Its own quote file still goes by email to our project manager. [See what a trade partner sends from its portal](/help/see-what-a-trade-partner-sends-from-its-portal) shows where each thing lands.
+Its own quote file still goes by email to our project manager. So does a photo or a ticket for a change. [See what a trade partner sends from its portal](/help/see-what-a-trade-partner-sends-from-its-portal) shows where each thing lands.
 
 ## Make the link
 

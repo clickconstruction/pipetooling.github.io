@@ -147,3 +147,94 @@ describe('the presses', () => {
     })
   })
 })
+
+describe('the job’s presses (P4b-ii)', () => {
+  const openJob = async () => {
+    fireEvent.click(await screen.findByRole('button', { name: /Sample Dental Office/ }))
+    return screen.findByRole('region', { name: 'Electrical · charges from Click' })
+  }
+
+  it('agrees to a charge with one press, and opens its photo on Drive', async () => {
+    open()
+    const charges = within(await openJob())
+    expect(charges.getByRole('link', { name: /See the photo/ }).getAttribute('href')).toBe('https://drive.google.com/file/d/sample-photo')
+    fireEvent.click(charges.getByRole('button', { name: 'Agree' }))
+    await waitFor(() => expect(posts).toEqual([{ token: TOKEN, kind: 'answer_back_charge', chargeId: ID.charge, agree: true, note: '' }]))
+    await waitFor(() => expect(reads).toHaveLength(2))
+  })
+
+  it('disputes a charge only with its reason', async () => {
+    open()
+    const charges = within(await openJob())
+    fireEvent.click(charges.getByRole('button', { name: 'Dispute it' }))
+    const send = charges.getByRole('button', { name: 'Send to Click' })
+    expect((send as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(charges.getByLabelText('Why you dispute it'), { target: { value: ' We swept before we left. ' } })
+    fireEvent.click(send)
+    await waitFor(() => expect(posts).toEqual([{ token: TOKEN, kind: 'answer_back_charge', chargeId: ID.charge, agree: false, note: 'We swept before we left.' }]))
+  })
+
+  it('asks for a change: what changed, why, what it asks and whole working days, with no file yet', async () => {
+    open()
+    await openJob()
+    const changes = block('Electrical · changes to your work')
+    // Its part of the change order with the customer, never the customer's price.
+    expect(changes.getByText(/as change order 2 on .*\. Your part: \$3,400\./)).toBeTruthy()
+    expect(changes.queryByText(/3,910/)).toBeNull()
+    fireEvent.click(changes.getByRole('button', { name: 'Ask for a change' }))
+    expect(changes.queryByText('A photo or ticket, if you have one')).toBeNull()
+    expect(changes.getByText('Have a photo or a ticket? Email it to Click Construction.')).toBeTruthy()
+    fireEvent.change(changes.getByLabelText('What changed'), { target: { value: ' Two more outlets in the break room. ' } })
+    fireEvent.click(changes.getByLabelText('The customer asked for more'))
+    fireEvent.change(changes.getByLabelText('What you ask for it'), { target: { value: '$1,250' } })
+    fireEvent.change(changes.getByLabelText('Working days it adds'), { target: { value: '1.5' } })
+    const send = changes.getByRole('button', { name: 'Send to Click' })
+    expect((send as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(changes.getByLabelText('Working days it adds'), { target: { value: '2' } })
+    fireEvent.click(send)
+    await waitFor(() =>
+      expect(posts).toEqual([{ token: TOKEN, kind: 'ask_change', packageId: ID.jobTrade, description: 'Two more outlets in the break room.', reason: 'owner', amount: 1250, days: 2 }]),
+    )
+  })
+
+  it('shows a refusal in the company’s words under the press', async () => {
+    postAnswer = { ok: false, body: { error: 'alreadyAnswered' } }
+    open()
+    const charges = within(await openJob())
+    fireEvent.click(charges.getByRole('button', { name: 'Agree' }))
+    expect(await charges.findByText('This charge has its answer already. Reload the page.')).toBeTruthy()
+    expect(reads).toHaveLength(1)
+  })
+
+  it('posts nothing from the office’s preview, and says so', async () => {
+    open(`/t/${TOKEN}?preview=1`)
+    const charges = within(await openJob())
+    fireEvent.click(charges.getByRole('button', { name: 'Agree' }))
+    expect(await charges.findByText('Preview. Nothing is saved from here.')).toBeTruthy()
+    expect(posts).toEqual([])
+  })
+
+  it('asks nothing more of the quote on its own job', async () => {
+    open()
+    await openJob()
+    expect(screen.queryByRole('region', { name: 'Electrical · invitation to quote' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Send it again' })).toBeNull()
+  })
+
+  it('reads a trade we gave another company as its result, with no questions to ask', async () => {
+    slice = { ...slice, packages: slice.packages.map((p) => (p.id === ID.trade ? { ...p, awarded_invite_id: 'elsewhere' } : p)) }
+    open()
+    fireEvent.click(await screen.findByRole('button', { name: /Sample Retail Shell/ }))
+    const result = await screen.findByRole('region', { name: 'Electrical · result' })
+    expect(within(result).getByText('This one went to another company. Thank you for your quote.')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Electrical · questions about the plans' })).toBeNull()
+    expect(screen.queryByRole('region', { name: 'Electrical · invitation to quote' })).toBeNull()
+  })
+
+  it('shows no charges and no changes on a trade that is not the company’s', async () => {
+    open()
+    await openProject()
+    expect(screen.queryByRole('region', { name: /charges from Click/ })).toBeNull()
+    expect(screen.queryByRole('region', { name: /changes to your work/ })).toBeNull()
+  })
+})
