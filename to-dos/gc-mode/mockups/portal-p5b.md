@@ -75,9 +75,12 @@ no line), the certificate's chip from `portalInsurance`, the master agreement's 
   spike. Once sent, the line reads *Click is checking it · sent Oct 10*. A company approved or declined sees
   *approved* (with its limit) or *Click cannot work with you right now*, and no button.
 - **Read and sign** (a master agreement the office sent) and **Fill in your W-9** (whether the office sent one
-  or not) open the signing page, `/contract/accept`, in a new tab, through the kind `paper_link`. It is the same
-  page the emailed link opens: the master agreement's words, or the W-9 filled on the page, the e-sign consent,
-  and the signature. Back on the portal, a reload reads it signed.
+  or not) open the signing page, `/contract/accept`, in the same tab, through the kind `paper_link`: the page
+  checks that `signPath` starts with `/contract/accept?` and sets `window.location.href`, as the sub portal's
+  `sign_link` does (`SubPortal.tsx:1502-1506`). A new tab opened after the answer comes back is blocked by
+  Safari on an iPhone, which is how trades open the portal (gc 3). It is the same page the emailed link opens:
+  the master agreement's words, or the W-9 filled on the page, the e-sign consent, and the signature. Back on
+  the portal, a reload reads it signed.
 - **Send your certificate** opens the spike's form: *A photo or PDF of the certificate* (the P5a-1 picker,
   `GcTradePortalFile.tsx`), *The day the policy runs out* (a year from today to start, `aYearFrom`), **Send it
   to Click** and **Not now**. The file goes up first through the kind `file`, then the kind `coi` files it.
@@ -110,23 +113,27 @@ signed on `/contract/accept`, one paper system.
 - **`coi`** files the certificate with the link of the company's own upload, never a typed one, and ties the
   upload to the paper.
 
-**The keys** (status, raised by, English; the Spanish joins `PORTAL_SPANISH.md`'s list, held until call 9):
+**The keys** (status, raised by, the words as `portalI18n.ts` holds them, `err<Key>`, with `{gc}` and never a name,
+both languages written now; `PORTAL_SPANISH_ON` holds the Spanish back, and each joins `PORTAL_SPANISH.md`'s list):
 
-| Key | Status | Raised by | Words (EN) |
-|---|---|---|---|
-| `vetDecided` | 409 | vetting_form | Click has decided already. Reload the page. |
-| `formIncomplete` | 400 | vetting_form | Fill in every line. |
-| `msaNotSent` | 409 | paper_link | Click sends the master agreement when they pick your quote. |
-| `noW9Form` | 409 | paper_link | The W-9 form is not ready yet. Ask Click for it. |
-| `coiDayNeeded` | 400 | coi | Pick the day the policy runs out. |
-| `coiPast` | 400 | coi | That day has passed. Pick the day the policy runs out. |
-| `coiTooFar` | 400 | coi | That day is more than three years away. Check the certificate. |
-| `certNeeded` | 400 | coi | Add a photo or PDF of the certificate. |
-| `alreadySigned` (have) | 409 | paper_link | This is signed already. |
-| `tooLong` (have) | 400 | vetting_form | That is too long. Make it shorter. |
+| Key | Status | Raised by | EN | ES |
+|---|---|---|---|---|
+| `vetDecided` | 409 | vetting_form | {gc} has decided already. Reload the page. | {gc} ya decidió. Vuelva a cargar la página. |
+| `formIncomplete` | 400 | vetting_form | Fill in every line. | Llene cada línea. |
+| `msaNotSent` | 409 | paper_link | {gc} sends the master agreement when they pick your quote. | {gc} envía el contrato maestro cuando elige su cotización. |
+| `noW9Form` | 409 | paper_link | The W-9 form is not ready yet. Ask {gc} for it. | El formulario W-9 todavía no está listo. Pídaselo a {gc}. |
+| `coiDayNeeded` | 400 | coi | Pick the day the policy runs out. | Elija el día que vence la póliza. |
+| `coiPast` | 400 | coi | That certificate has run out. Send the current one. | Ese certificado ya venció. Envíe el vigente. |
+| `coiTooFar` | 400 | coi | That day is more than three years away. Check the certificate. | Ese día está a más de tres años. Revise el certificado. |
+| `certNeeded` | 400 | coi | Add a photo or PDF of the certificate. | Agregue una foto o PDF del certificado de seguro. |
+| `alreadySigned` (have) | 409 | paper_link | This is signed already. | Esto ya está firmado. |
+| `tooLong` (have) | 400 | vetting_form | That is too long. Make it shorter. | Es demasiado largo. Hágalo más corto. |
 
 Each new key goes in `TRADE_SQL_ERRORS` with its status, `TRADE_ERROR_WORDS` and `portalI18n.ts`. The guard
-test that reads every `gc_trade_*` body for its keys covers the three new verbs.
+test that reads every `gc_trade_*` body for its keys covers the three new verbs, so **P5b-m parks the eight new
+keys in `WAITING` as `'P5b'`** (`gcTradeSubmit.test.ts:444`, where 13a parked `datesTakenBack` and `dayNeeded`
+as `'P5d'`), or main fails between P5b-m and P5b-1. P5b-1 maps them and takes them off; the test fails if one
+stays (gc 3).
 
 ## P5b-m, the migration
 
@@ -363,16 +370,26 @@ By HELPERS.md's rule, the PR also runs every bed that touches what it changes: `
 - **Needs you**: a paper's to-do (`projectId` null) opens `#paperwork` on the home.
 - **The certificate's line** shows its chip and no button until P5b-2. A block whose kind is not live is hidden
   (`PORTAL_REAL_BUILD.md`).
+- **The signing page's dead link** (gc 3, decision B): `/contract/accept` says the bare *Not found* when a token
+  was replaced (`get-contract-for-signer` answers 404, `ContractAccept.tsx` shows its `error`). P5b-1 makes the
+  page say, on a 404, *This link no longer works. A newer link may have replaced it. Open the paper from your
+  portal, or ask the office for a new link.* It is the whole app's signing page, so the words name no company,
+  and every signer whose link was resent reads them.
 
 ## The certificate (P5b-2)
 
 - `parseTradeFile`'s `for` gains `coi`, with no record id; `fileHome` claims it for the link's company with no
-  job; `tradeFileFolders('coi', company)` is `['GC trade partners', <company>]` under `DRIVE_JOBS_FOLDER_ID`
-  in place of the job's folder. A missing root is `failed`, logged, as a missing service account is.
+  job, its answer's `projectId` and `packageId` now `string | null`; `tradeFileFolders('coi', company)` is
+  `['GC trade partners', <company>]` under `DRIVE_JOBS_FOLDER_ID` in place of the job's folder. A missing root is
+  `failed`, logged, as a missing service account is; a certificate is never `noJobFolder`. The upload is
+  `made_by` `trade`, so it counts under P5a-1's file cap (a signed waiver, `portal`, does not).
 - The kind `coi` and its form, as above.
-- **The office's insurance ask** (`paperEmail.ts`) says, once a company has a live link,
-  *Send it from your portal with the link below. Or reply to this email with it.* in place of `coiReply`. The
-  flip is `COI_PORTAL_LIVE` in `paperEmail.ts`, true in this PR, as `DRAW_PORTAL_LIVE` flipped with its screens.
+- **The office's insurance ask** (`paperEmail.ts`) says *Send it from your portal with the link below. Or reply
+  to this email with it.* (es *Envíelo desde su portal con el enlace de abajo. O responda a este correo con él.*)
+  in place of `coiReply`, **only when the email carries the company's portal link**; with none it keeps
+  *Reply to this email with the certificate.* (gc 2). Both are pinned in `paperEmail`'s tests, and the sample
+  email in `customerSampleEmails` follows if it shows this ask. The flip is `COI_PORTAL_LIVE` in `paperEmail.ts`,
+  true in this PR, as `DRAW_PORTAL_LIVE` flipped with its screens.
 - The office sees the certificate in the company window's Documents tab as *COI (from their portal)*, with its
   Drive link and its day, and the insurance promise kept. **Record their insurance** stays for one that comes by
   email.
@@ -443,9 +460,13 @@ A. **Where a certificate goes in Drive**: **GC trade partners → <company>** un
    A certificate is the company's, on no job, and the office finds every company's papers in one place. *The
    other way:* the newest job's **Team only → From trades → <company>**. Not taken: a company with no job yet
    could not send one, and its papers would scatter across jobs.
-B. **The newest signing link wins**, as the sub portal's `sign_link` and the office's resend do. The emailed link
-   stops working once the trade opens the paper from its portal. *The other way:* keep the emailed token. Not
-   possible: only its hash is kept.
+B. **The newest signing link wins**, as the sub portal's `sign_link` and the office's resend do. A token is minted
+   only on the trade's press, so the emailed link stops working only once the trade opens the paper from its
+   portal, and then the page says so in plain words (P5b-1). *The other ways* (gc 2's ask, 2026-10-10): sign
+   from the portal on the portal's own proof, or a second token column, so the emailed link lives on. Not
+   taken: either changes the app's shared signing functions (`get-contract-for-signer`, `accept-contract`) or
+   `person_contract_documents`, a live table, for a link the trade has already left for its portal. The lead's
+   call, put to it again with gc 2's ask.
 C. **A master agreement opens from the portal only once the office sent it.** A W-9 opens any time, and is copied
    from the Book when the company has none, as the prototype lets a trade fill its W-9 unasked. An `unsent`
    master agreement reads *Click sends it when they pick your quote*, as `companyPapers` reads it.
@@ -461,6 +482,10 @@ G. **The vetting form's answers never pass back to the portal.** Only its day do
 
 1. **The live checks**: the owner's yes, typed in the pressing helper's chat, before any press on the test link.
 2. **The Drive folder** (decision A): *GC trade partners* at the root of the jobs Shared Drive.
+3. **A certificate from the portal counts as in at once** (gc 2's question): for the start gate, Follow up and the
+   insurance promise, as the prototype's `tradeUploadCoi` does. *The other way:* a `received` status before
+   `signed`, so the office looks first. Default: in at once, and *COI (from their portal)* on the Documents tab
+   is the office's cue.
 
 ## Is this the best we can do?
 
@@ -479,3 +504,12 @@ Three ways it could be better:
 ## Status
 
 Planned 2026-10-10 by gc 6, read from origin/main de411a24e. Waits on gc 3's co-sign and the lead's read-back.
+
+**Amendment 1, 2026-10-10, with gc 3's co-sign and gc 2's nod** (after the lead's approval at e664fb89a): the
+signing page opens in the same tab; the words take `{gc}` and both languages now; P5b-m parks the eight keys
+in `WAITING`; `fileHome`'s answer may have no job; `coiPast` reads *That certificate has run out. Send the
+current one.*; the insurance ask's new line only with the portal link; the signing page's dead link in plain
+words; decision B put to the lead again with gc 2's ask; the owner's call 3. gc 2 checked: `gc_trade_coi` sets
+`signed_at` to the upload day, as `gc_record_company_coi` does, so `companyPapers` sorts it newest; and the
+office's W-9 send reuses the one the trade opened, since `gc_company_paper` finds the company's newest copy by
+the Book entry's name. gc 2 will make `paperStep` say *Started in their portal <day>* for a sent W-9 with no send.
