@@ -2,7 +2,7 @@
 name: "Building's door: Building opens to the job's team, its money to the money team, and /gc to the field"
 rows: BUILDING_REAL_BUILD.md, decision 4 (who may read and write), The PRs in order, 9 (the door), the owner's calls 1 and 5; mockups/schedule-pr10.md (the shape, and "What Building's door adds"); mockups/schedule-pr9d.md, call 1 (the schedule team's read half); mockups/building-u8.md (the crew's counts and percents); mockups/door-owner-billing.md and O9 (20261010050000, the money team's reads)
 branch: the plan on claude/gc-building-door-plan (from origin/spike/gc-mode at ecf57865b); the PRs from origin/main, after the schedule's PR 10 and the live walk
-status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Co-signs owed beyond gc 4: the Board (gc 2) for calls 3 and 6, the Portal for call 5, Owner Billing (gc 5) for call 4.
+status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. The lead approved its shape the same day (D1 then D2; calls 3, 4, 7 and 8 at their picks). Amendment 1 the same day: the Board's (gc 2) co-sign on call 3 with its gates, and call 6 reshaped to a function; the Portal's (gc 3) co-sign on call 5 with its notes. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Owed: gc 4's co-sign and its amendment-3 line on gc_link_crew_job, and the owner's word on call 2.
 ---
 
 # Building's door
@@ -59,12 +59,19 @@ for every verb, `USING` and `WITH CHECK` alike, as PR 10's are.
 
 The three lookups are `STABLE SECURITY DEFINER`, return the row's job and nothing more, as PR 10's two are.
 
-### The four money tables: `_dev` to `_money`
+### The money tables: `_dev` to `_money`
 
 `gc_draws`, `gc_draw_lines`, `gc_sow_line_reports` and `gc_change_order_trade_sends`: each `<table>_dev` goes, and a
 `<table>_money` policy for every verb on `(SELECT public.gc_money_team())` takes its place. O9's `<table>_money_read`
 goes with it, since the new policy reads too. The money team's audience is one place already (`gc_money_team()`), and
 the draws carry no job column that a per-job team would need.
+
+**The Portal's `gc_back_charges`** goes the same way (call 5, the Portal's notes): only its two permissive policies go,
+`gc_back_charges_dev` and `gc_back_charges_money_read`, and `gc_back_charges_money` (`FOR ALL`, `gc_money_team()`)
+takes their place. Its restrictive training and twin fences stay; the migration re-runs the three `apply_*` calls. The
+money team then has the plain writes a dev has today on P4a's granted columns (insert on the eight, update on `status`
+and `settled_*`, and U6a's `taken_*`), and the table's CHECKs still hold the states: the migration doc says so in a
+sentence. The trade answers only through `gc_trade_answer_back_charge`. `gc_trade_change_requests` is untouched.
 
 ### What stays
 
@@ -75,8 +82,7 @@ the draws carry no job column that a per-job team would need.
 - **The trades and the customer** have no policy. They reach their slice through their portals' functions, run by the
   service role.
 - **anon** has no grant on any of the fourteen.
-- **The Board's `gc_sows` and `gc_sow_lines` and the Portal's `gc_back_charges`** keep O9's money read. Their writes
-  are their lanes' doors, but for call 5.
+- **The Board's `gc_sows` and `gc_sow_lines`** keep O9's money read. Their writes are the Board's award door.
 
 ## D1: the functions
 
@@ -87,16 +93,27 @@ decide the rest. Swapping the policies is their gate too, with these exceptions:
    - `gc_save_daily_log`, `gc_add_punch_item` and `gc_punch_fixed_ask` read `gc_sows` to find a signed statement of
      work. A member outside the money team reads none, so a superintendent's log with a trade on it would be refused
      *A trade on this log has no signed statement of work.* They read it through a new `STABLE SECURITY DEFINER`
-     `gc_package_sow_signed(p_package_id) RETURNS boolean` instead, which says yes or no and nothing of the price.
+     `gc_package_sow_signed(p_package_id uuid) RETURNS boolean` instead, which says yes or no and nothing of the price.
+     It answers false for anyone outside `gc_on_any_schedule_team()` or `gc_office_team()`, so a subcontractor or a crew
+     member cannot ask about a package (the Board's condition). `REVOKE ALL FROM PUBLIC, anon`, granted to
+     `authenticated`.
    - `gc_save_daily_log` keeps the trades' start promises through the Board's `gc_keep_promises`, which writes
      `gc_trade_promises`, an office table. A superintendent outside the office would have the whole save refused. It
-     calls a new `SECURITY DEFINER` `gc_keep_log_promises(p_project_id, p_date, p_package_ids)` instead, which keeps only
-     the start promises of the trades on that day's log, on that job.
+     calls a new `SECURITY DEFINER` `gc_keep_log_promises(p_project_id uuid, p_date date)` instead (the Board's
+     conditions):
+     - it never takes a list of trades from its caller: it reads the trades from that day's saved log crews on that job;
+     - it keeps only `kind = 'start'` promises of those trades on that job;
+     - as a definer the restrictive blocks do not stop it, so it refuses a training account and a twin in words itself,
+       and refuses a caller not on the job's team (`gc_on_schedule_team(p_project_id)`), before any write;
+     - `REVOKE ALL FROM PUBLIC, anon`, granted to `authenticated`.
    - gc 4 lists every press that reads `gc_sows` or writes `gc_trade_promises` before the cut, so none is missed.
 2. **Functions that name the dev in their body.**
    - `gc_close_job`: *Closing a job is a dev's while Building is built.* becomes `gc_money_team()`, *Only the money team
      closes a job.* Closeout is the money team's window.
-   - The Portal's `gc_back_charge`, `gc_keep_back_charge` and `gc_drop_back_charge` (call 5).
+   - The Portal's `gc_back_charge`, `gc_keep_back_charge` and `gc_drop_back_charge` (call 5): `is_dev()` becomes
+     `gc_money_team()`, with the sign-in, training and twin checks Building's presses carry, and the key `devOnly` becomes
+     `moneyOnly` with its words (*Only the money team charges a trade.*, keeps a charge, drops a charge). Nothing on the
+     client maps the key; only the DETAIL shows.
    - U8's `gc_crew_on_site`, if it is on main by then: `is_dev()` becomes `gc_on_schedule_team(p_project_id)`, the twin
      still refused. `gc_link_crew_job` stays the office's.
 3. **Unchanged**: `gc_rfi_change_order` keeps its money-team check; its write of `gc_rfis` now passes the team policy.
@@ -106,9 +123,15 @@ decide the rest. Swapping the policies is their gate too, with these exceptions:
 
 - **Submittals and RFIs**: the team policies above (9d's call 1). The schedule's chart, Pull earlier and Days back read
   real holds for every member.
-- **A company's papers** (call 6): `person_contract_documents` reads a person's paper for the pay roles. A company's
-  paper (`company_id IS NOT NULL`) gains a `FOR SELECT` for `gc_on_any_schedule_team()`, so a controller's, an
-  estimator's or a superintendent's chart reads a trade's papers as a dev's does.
+- **A company's papers** (call 6, the Board's shape): no policy on `person_contract_documents`, since a row policy would
+  give the team every column of a company's paper, a W-9's `form_hints` (its tax number's last four), the answers' PDF
+  path and the signer's IP and agent among them. Instead `gc_company_paper_states(p_company_ids uuid[] DEFAULT NULL)
+  RETURNS TABLE (id uuid, company_id uuid, doc_type text, status text, sent_at timestamptz, signed_at date, expires_at
+  date)`, `STABLE SECURITY DEFINER`: company rows only (`company_id IS NOT NULL`), `doc_type IN ('agreement', 'w9',
+  'coi')` (the three `companyPapers` reads), for `gc_on_any_schedule_team()` or `gc_office_team()`, empty for anyone
+  else; `REVOKE ALL FROM PUBLIC, anon`, granted to `authenticated`. The row is `CompanyPaperRow` already. The Board's
+  loader (`loadGcBoardRows`) switches its `person_contract_documents` read to it in a small Board PR after D1's types,
+  so a controller's, an estimator's or a superintendent's chart reads a trade's papers as a dev's does.
 - **Our crew** (U8): its percent reads `list_job_stage_progress`, which already admits superintendents and estimators.
   The page reads it for `canUseGcBuilding(role) || canSeeGcMoney(role)`, and `canUseGcBuilding` becomes the team.
   Its counts follow `gc_crew_on_site`'s new gate.
@@ -122,8 +145,8 @@ decide the rest. Swapping the policies is their gate too, with these exceptions:
 - **`src/pages/GcProjects.tsx`**: the six Building gates stay `canUseGcBuilding`. Draws and Closeout stay
   `canUseGcBuilding && canSeeGcMoney`, so the money team. The schedule's `canPull` becomes `canMove` (9d's call 1:
   every member reads the holds now).
-- **`src/lib/gc/doors.ts`**: the ten records read door `schedule`, opens unset. The four money tables read door `money`,
-  with no `reads`. `BUILDING_OPENS` and `BUILDING_MONEY_OPENS` go. `doors.test.ts`'s O9 test keeps the Board's and the
+- **`src/lib/gc/doors.ts`**: the ten records read door `schedule`, opens unset. The four money tables and `gc_back_charges`
+  read door `money`, with no `reads` (`gc_back_charges` with lane Portal, opened by Building's door). `BUILDING_OPENS` and `BUILDING_MONEY_OPENS` go. `doors.test.ts`'s O9 test keeps the Board's and the
   Portal's three, and gains one in door 2's shape: the ten read `schedule`, the four read `money`.
 - **The guides**: Building's guides' `roles: dev` become the team's roles, and their *Only devs … for now* sentence
   becomes *The office, estimators and the job's superintendent can open it.* Draws and Closeout guides become the money
@@ -173,8 +196,17 @@ Our number.
      `gc_sow_line_reports` are refused *permission denied*.
   8. A company's paper reads for the superintendent on P; a person's paper does not.
   9. anon gets *permission denied* on `gc_daily_logs`.
+  10. **The helpers** (the Board's cases): a superintendent's log with a signed trade saves and keeps that trade's start
+      promise; a trade not on that day's log keeps nothing; a training account and a twin are refused by
+      `gc_keep_log_promises` in words; a subcontractor's `gc_package_sow_signed` answers false; anon can call neither.
+  11. **A company's papers**: a superintendent on P calls `gc_company_paper_states` and gets the seven columns of the
+      company's agreement, W-9 and certificate rows, nothing like `form_hints`, and never a person's paper; a
+      subcontractor gets none.
 - **The schedule's bed** (`gc_schedule/30_team_door.sql`, PR 10's): its case 5, the superintendent reading 0, flips to
   reading P's bars. The schedule lane edits that one case in D1.
+- **The back-charges' bed** (`gc_back_charges/20_scenario.sql`): its four `devOnly` cases flip to a controller and a
+  master who charge, keep and drop, an estimator or assistant refused in the money team's words, and training and a twin
+  refused.
 - **O9's bed** (`gc_owner_billing/92_money_reads.sql`): the controller's approval is no longer refused. Its §4 becomes
   "the controller approves", and the estimator's refusal stays.
 
@@ -190,7 +222,8 @@ client is on Pages.
 
 - D1: `docs/migrations/<stamp>_gc_building_door.md` (what it opens, what stays, the bed's matrix, the verify steps, the
   rollback that re-creates the `_dev` policies); `docs/ACCESS_CONTROL.md`'s GC door line, amended where it says
-  Building's tables stay dev only; `PROJECT_DOCUMENTATION.md`'s Building windows; `GLOSSARY.md` (*the job's team*);
+  Building's tables stay dev only, and its back-charges bullet becoming *written and read by the money team since
+  Building's door (`gc_back_charges_money`); the trade answers only through `gc_trade_answer_back_charge`*; `PROJECT_DOCUMENTATION.md`'s Building windows; `GLOSSARY.md` (*the job's team*);
   the guides; the release note and fragment.
 - D2: `docs/ACCESS_CONTROL.md` (the superintendent's `/gc`), `docs/twins/APP_DIRECTORY.md` if the field view counts as a
   page of its own (it does not: it is `/gc`), the guide *see your GC jobs as a superintendent*, the release note and
@@ -205,18 +238,21 @@ client is on Pages.
    the Board or the money. The reads through `gc_field_rows()`, not wider policies on the New project and Board tables,
    whose rows carry money. **My pick: the function.** The owner's word on what a superintendent sees is owed before D2.
 3. **The cross-lane reads in Building's presses**: `gc_package_sow_signed` and `gc_keep_log_promises`, both `SECURITY
-   DEFINER`, so `gc_sows` stays the Board's and `gc_trade_promises` the office's. **My pick: both.** The Board co-signs.
+   DEFINER`, so `gc_sows` stays the Board's and `gc_trade_promises` the office's. **The lead's pick: both. The Board
+   co-signs (gc 2, amendment 1)**, with its gates: each answers only the team, the keeper reads its trades from the
+   saved log and refuses training and twins itself.
 4. **The weekly report's email to the customer** (gc 5's question): `gc-customer-email`'s weekly kind reads the report
    as the caller, so after D1 a superintendent could email the customer. **My pick:** the weekly kind also needs
    `gc_office_team()` or the job's project manager. A superintendent writes the report; the office sends it. Owner Billing
    (gc 5) co-signs, and the owner may say otherwise.
-5. **Back-charges in Draws**: the Portal's `gc_back_charge`, `gc_keep_back_charge` and `gc_drop_back_charge` refuse
+5. **Back-charges in Draws** (**the Portal co-signs, gc 3, amendment 1**, without waiting for its own door, whose
+   business is the trades and their links): the Portal's `gc_back_charge`, `gc_keep_back_charge` and `gc_drop_back_charge` refuse
    anyone but a dev in their body, and `gc_back_charges` writes are a dev's. Draws opens to the money team, so a
    controller's charge would fail. **My pick:** D1 moves those three to `gc_money_team()` with the training and twin
    checks the Building presses have, and `gc_back_charges` writes to the money team. The Portal co-signs.
-6. **A company's papers for the schedule's team** (9d's call 1): a `FOR SELECT` on `person_contract_documents` for
-   company rows only, for `gc_on_any_schedule_team()`. A person's paper stays the pay roles'. **My pick: yes.** The Board
-   co-signs, since B6-b keys those rows.
+6. **A company's papers for the schedule's team** (9d's call 1): **the Board's shape (gc 2, amendment 1)**, a function
+   with the seven columns `companyPapers` reads, not a row policy that would show a W-9's tax hints and the signer's
+   details. A person's paper stays the pay roles'. The Board's loader switches to it after D1's types.
 7. **An RFI answer's cost**: the whole team, superintendents included (Building's call 1, its default). Unchanged.
 8. **The architect's email from a superintendent**: `gc-architect-email` reads the submittal or RFI as the caller, so after
    D1 the team sends to the architect. **Default: yes**, since an RFI is the superintendent's.
