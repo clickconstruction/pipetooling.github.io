@@ -261,6 +261,18 @@ The lead split B6-d-iii in two, so B6-d is four cuts: i (v2.5160, #5314), ii (v2
   - **The send pane:** a box, **Email it to them now, with their portal link**, which starts off as every GC send's does, with the email beside it. The press keeps the send, makes the link (D6, amended), then emails, saying who it went to or why not.
   - **Deploy:** gc-customer-email, the lead's, right on the merge.
 
+## For award's door (Owner Billing's checklist, 2026-10-10)
+
+What B6-d leaves dev-only. The door PR that opens award to its audience opens our contract to the money team, never wider:
+- **The sends table and the bucket:** `gc_owner_contract_sends`' `_dev` policy and `gc-owner-contracts`' two storage policies move from `is_dev()` to `gc_money_team()`. `doors.ts` moves its row from dev to money.
+- **The send:** `gc_send_owner_contract`'s dev refusal becomes the money team's, in words. On the client, the window's send moves from `canUseGcBoardWrites` to the money team. Our number is read already.
+- **The link (D6), the door's decision:** `mint_customer_portal_link` takes dev, assistant or master, not the controller. A controller's send would keep the send, then fail the mint, so no link and no email. Two ways:
+  - **(a)** the send makes the link in its own path: a definer step that `gc_send_owner_contract` calls, gated by the send's own gate;
+  - **(b)** the Pipeline's function widens for the controller.
+
+  *My pick:* (a). It leaves the Pipeline's function untouched and keeps one gate. (b) needs the Pipeline lane's OK.
+- **The email** is already the money team's (`GC_CUSTOMER_EMAIL_ROLES`). Nothing changes there.
+
 ## Status
 
 Plan written 2026-10-10 by Helper 2 (gc 2), from:
