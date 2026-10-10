@@ -30,6 +30,11 @@ export function TallyPayBar({ group, busy, onMark }: { group: TallyPaySendGroup;
         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
           {words.payees ? `${words.payees} ` : ''}Pay goes to payroll, not to a job.
         </div>
+        {words.leftOff ? (
+          <div data-testid="tally-pay-bar-left-off" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+            {words.leftOff}
+          </div>
+        ) : null}
       </div>
       <button
         type="button"

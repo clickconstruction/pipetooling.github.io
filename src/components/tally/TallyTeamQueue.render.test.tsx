@@ -347,6 +347,22 @@ describe('TallyTeamQueue', () => {
       expect(flagWrites()).toHaveLength(2)
     })
 
+    it('a mixed card: only the send to a person is on the bar; the gas send is counted off it and never marked', async () => {
+      rpc.mockResolvedValue({ data: null, error: null })
+      const gasRow: StaleStaffRow = {
+        ...staffRow('t-gas', '12:40', -42.5, 'Cash App', 'Other'),
+        note: 'gas',
+        raw: { mercuryCategory: 'Other', createdAt: new Date(at('12:40')).toISOString(), bankDescription: 'CASH APP*PAIGE DOE' },
+      }
+      reads = { ...READS, queue: [...READS.queue, cashRow, gasRow] }
+      renderWithProviders(<TallyTeamQueue canMarkPayroll />)
+      const bar = await screen.findByTestId('tally-pay-bar')
+      expect(bar.textContent).toContain('1 Cash App pay send on Ann’s card · $500.00')
+      expect(within(bar).getByTestId('tally-pay-bar-left-off').textContent).toBe('One more send has a note like gas or Home Depot. Sort it by hand.')
+      fireEvent.click(within(bar).getByTestId('tally-pay-bar-mark'))
+      await waitFor(() => expect(flagWrites()).toEqual([{ p_mercury_transaction_id: 't-cash', p_is_payroll: true }]))
+    })
+
     it('a card with no Cash App send has no bar', async () => {
       renderWithProviders(<TallyTeamQueue canMarkPayroll />)
       await screen.findByTestId('tally-team-day-card')

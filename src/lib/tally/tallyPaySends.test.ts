@@ -3,6 +3,7 @@ import type { TallyQueueCard } from './tallyTeamQueue'
 import type { StaleStaffRow } from './teamPurchaseRows'
 import {
   isTallyPaySend,
+  tallyCashAppSendKind,
   tallyPayBarWords,
   tallyPayMarkToast,
   tallyPaySendGroups,
@@ -11,8 +12,9 @@ import {
 } from './tallyPaySends'
 
 // Made-up holders, payees and amounts.
-const row = (id: string, holder: string, store: string, amount: number, bank: string | null): StaleStaffRow =>
+const row = (id: string, holder: string, store: string, amount: number, bank: string | null, note = ''): StaleStaffRow =>
   ({
+    note,
     target_user_id: holder,
     target_name: holder === 'u-rob' ? 'Rob' : 'Ann',
     mercury_transaction_id: id,
@@ -52,6 +54,25 @@ describe('isTallyPaySend', () => {
   })
 })
 
+describe('a send to a person, or an expense (the owner, 2026-10-09)', () => {
+  it('a send with no note, or a pay or advance note, goes to a person', () => {
+    expect(tallyCashAppSendKind(row('a', 'u-rob', 'Cash App', -500, 'CASH APP*ISAIAH WHITES'))).toBe('pay')
+    expect(tallyCashAppSendKind(row('b', 'u-rob', 'Cash App', -500, 'CASH APP*ISAIAH WHITES', 'Week of 9/29'))).toBe('pay')
+    expect(tallyCashAppSendKind(row('c', 'u-rob', 'Cash App', -200, 'CASH APP*ISAIAH WHITES', 'advance'))).toBe('pay')
+  })
+
+  it('a send whose note reads as an expense stays off the bar', () => {
+    for (const note of ['gas', 'Home Depot run', 'materials for Hill St', 'Reimbursement', 'lunch']) {
+      expect(tallyCashAppSendKind(row('d', 'u-rob', 'Cash App', -40, 'CASH APP*PAIGE DOE', note))).toBe('expense')
+      expect(isTallyPaySend(row('d', 'u-rob', 'Cash App', -40, 'CASH APP*PAIGE DOE', note))).toBe(false)
+    }
+  })
+
+  it('a store charge is neither', () => {
+    expect(tallyCashAppSendKind(row('e', 'u-rob', 'Ridge Supply', -88.2, null, 'gas'))).toBeNull()
+  })
+})
+
 describe('tallyPaySendPayee', () => {
   it('reads the name after the star, in title case', () => {
     expect(tallyPaySendPayee({ bankDescription: 'CASH APP*ISAIAH WHITES' })).toBe('Isaiah Whites')
@@ -86,8 +107,28 @@ describe('tallyPaySendGroups', () => {
           { chargeId: 'p2', payee: 'Paige Doe', amount: -250.5 },
         ],
         total: -750.5,
+        expenseSends: 0,
       },
     ])
+  })
+
+  it('a mixed card: the sends to a person make the bar, and the expense sends are counted off it', () => {
+    const groups = tallyPaySendGroups([
+      card('u-rob', 'Rob', [
+        row('p1', 'u-rob', 'Cash App', -500, 'CASH APP*ISAIAH WHITES'),
+        row('x1', 'u-rob', 'Cash App', -42.5, 'CASH APP*PAIGE DOE', 'gas'),
+        row('x2', 'u-rob', 'Cash App', -88, 'CASH APP*PAIGE DOE', 'Home Depot'),
+      ]),
+    ])
+    expect(groups).toHaveLength(1)
+    expect(groups[0]!.sends.map((s) => s.chargeId)).toEqual(['p1'])
+    expect(groups[0]!.total).toBe(-500)
+    expect(groups[0]!.expenseSends).toBe(2)
+    expect(tallyPayBarWords(groups[0]!).leftOff).toBe('2 more sends have a note like gas or Home Depot. Sort them by hand.')
+  })
+
+  it('a card whose Cash App sends are all expenses has no bar', () => {
+    expect(tallyPaySendGroups([card('u-rob', 'Rob', [row('x1', 'u-rob', 'Cash App', -42.5, 'CASH APP*PAIGE DOE', 'gas')])])).toEqual([])
   })
 })
 
@@ -97,17 +138,20 @@ describe('tallyPayBarWords', () => {
     holderName: 'Rob',
     sends: payees.map((payee, i) => ({ chargeId: `p${i}`, payee, amount: -100 })),
     total: -100 * payees.length,
+    expenseSends: 0,
   })
 
   it('says what, whose and how much, who it went to, and counts the button', () => {
     expect(tallyPayBarWords(group(['Isaiah Whites', 'Paige Doe']))).toEqual({
       title: '2 Cash App pay sends on Rob’s card · $200.00',
       payees: 'To Isaiah Whites and Paige Doe.',
+      leftOff: '',
       button: 'Mark 2 payroll',
     })
     expect(tallyPayBarWords(group(['Isaiah Whites']))).toEqual({
       title: '1 Cash App pay send on Rob’s card · $100.00',
       payees: 'To Isaiah Whites.',
+      leftOff: '',
       button: 'Mark it payroll',
     })
   })

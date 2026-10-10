@@ -39,6 +39,8 @@ To Isaiah Whites and Paige Doe. Pay goes to payroll, not to a job.
 2. Press {{button:purple|Mark 2 payroll}}. The button counts the sends. They leave the list.
 3. Marked the wrong ones? Press **Undo** on the message. The sends go back to sort.
 
+The bar only takes sends to a person. A send whose note says gas, Home Depot, materials or a reimbursement stays off it. The bar counts those, and you sort them like any other purchase.
+
 The bar marks the sends. It does not change a rule. Only people who can mark payroll see the bar. Everyone else sorts the sends one at a time.
 
 ## Turning one mark into a rule
