@@ -6,7 +6,8 @@
  * fails, and a draw someone else beat. Since 7c-ii, the call list grouped by company, with Call only.
  * Since 9a, an inspection passed or failed, the job's own work and the dates to meet, for a dev. Since
  * 9b, a bar's place, a split, a wait and a new baseline. Since 9d, the holds' read, the walk's line, Pull earlier only
- * with `canPull`, and a trade not ready in the bar's form.
+ * with `canPull`, and a trade not ready in the bar's form. Since 12a, a first draft from a template, and the Templates
+ * card's save and set aside, for a dev.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -22,6 +23,8 @@ import {
   passScheduleInspection,
   removeScheduleActivity,
   saveScheduleMove,
+  saveScheduleTemplate,
+  setAsideScheduleTemplate,
   setOwnWorkDone,
   setScheduleBaseline,
   setScheduleMilestone,
@@ -38,7 +41,8 @@ import { plainWordsFailures } from '../../lib/plainWords'
 import { withLineReported } from '../../lib/gc/schedule/testReports'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { SCHEDULE_CHANGED } from '../../lib/gc/schedule/versionRefusal'
-import type { ProjectSchedule } from '../../lib/gc/schedule/types'
+import { templateShape } from '../../lib/gc/schedule/templates'
+import type { ProjectSchedule, ScheduleTemplate } from '../../lib/gc/schedule/types'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { checkSupabaseError } from '../../utils/errorHandling'
 
@@ -68,6 +72,9 @@ vi.mock('../../lib/gc/scheduleIo', () => {
     splitScheduleBar: vi.fn(),
     joinScheduleBar: vi.fn(),
     setScheduleBaseline: vi.fn(),
+    saveScheduleTemplate: vi.fn(),
+    renameScheduleTemplate: vi.fn(),
+    setAsideScheduleTemplate: vi.fn(),
   }
 })
 
@@ -85,6 +92,7 @@ afterEach(() => {
   vi.mocked(undoScheduleMove).mockReset()
   for (const press of [addScheduleActivity, removeScheduleActivity, setOwnWorkDone, passScheduleInspection, failScheduleInspection, setScheduleMilestone]) vi.mocked(press).mockReset()
   for (const press of [addScheduleWait, setSchedulePlaces, splitScheduleBar, setScheduleBaseline]) vi.mocked(press).mockReset()
+  for (const press of [saveScheduleTemplate, setAsideScheduleTemplate]) vi.mocked(press).mockReset()
 })
 
 const s = initialGcState()
@@ -608,5 +616,59 @@ describe('the walk, Pull earlier and a trade not ready in the window (PR 9d)', (
     expect(block.textContent).toContain('Pecan Valley Electric is not ready to start this on Mon Oct 19.')
     fireEvent.click(within(block).getByRole('button', { name: 'Ask for it' }))
     expect(openPartner).toHaveBeenCalledWith('pecanvalley', { tab: 'documents', doc: 'insurance', send: true })
+  })
+})
+
+describe('templates in the window (PR 12a, G-44)', () => {
+  // Fair Oaks D saved as a template, as `loadSchedule` lays every template over the board.
+  const template: ScheduleTemplate = { id: 'tpl-1', name: 'Fair Oaks Shops, Building D', on: s.today, by: 'Robert Douglas', ...templateShape(s, job(s, 'fairoaksd'))! }
+  const withTemplate: GcState = { ...s, scheduleTemplates: [template] }
+
+  it('draws Helotes’ first draft from a template, with no version, its name on the schedule and the log’s words', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(withTemplate, 'helotes', null))
+    let sent: ProjectSchedule | null = null
+    vi.mocked(drawSchedule).mockImplementation(async (_state, _id, _press, schedule) => {
+      sent = schedule
+      return readOf({ ...withTemplate, projects: withTemplate.projects.map((p) => (p.id === 'helotes' ? { ...p, schedule } : p)) }, 'helotes', 1)
+    })
+    openWindow(job(s, 'helotes'))
+    const press = await screen.findByRole('button', { name: 'Draw a first draft' })
+    fireEvent.change(screen.getByRole('combobox', { name: 'Start from a template' }), { target: { value: 'tpl-1' } })
+    expect(document.querySelector('[data-template-fit]')?.textContent).toMatch(/^The template Fair Oaks Shops, Building D covers 8 of the 17 lines here\./)
+    fireEvent.click(press)
+    await waitFor(() => expect(drawSchedule).toHaveBeenCalledTimes(1))
+    const [state, id, words] = vi.mocked(drawSchedule).mock.calls[0]!
+    expect([state, id]).toEqual([withTemplate, 'helotes'])
+    expect(sent!.template).toEqual({ id: 'tpl-1', name: 'Fair Oaks Shops, Building D', on: s.today })
+    expect(words).toEqual({ version: null, words: `Drew a first draft of the schedule on Helotes Dental Office: ${sent!.activities.length} activities from Mon Oct 5. It is drawn from the template Fair Oaks Shops, Building D.` })
+  })
+
+  it('saves Fair Oaks D as a template from its Templates card, a record', async () => {
+    const read = readOf(s, 'fairoaksd', 3)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(saveScheduleTemplate).mockResolvedValue(readOf(withTemplate, 'fairoaksd', 3))
+    openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    const card = document.querySelector('[data-tour="gc-templates"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Save as a template' }))
+    await waitFor(() => expect(saveScheduleTemplate).toHaveBeenCalledWith(read.state, 'fairoaksd', 'Fair Oaks Shops, Building D'))
+    await waitFor(() => expect(document.querySelector('[data-template="tpl-1"]')).toBeTruthy())
+  })
+
+  it('sets a template aside from the card, a record', async () => {
+    const read = readOf(withTemplate, 'fairoaksd', 3)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(setAsideScheduleTemplate).mockResolvedValue(read)
+    openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    fireEvent.click(within(document.querySelector('[data-template="tpl-1"]') as HTMLElement).getByRole('button', { name: 'Set it aside' }))
+    await waitFor(() => expect(setAsideScheduleTemplate).toHaveBeenCalledWith(read.state, 'fairoaksd', 'tpl-1', true))
+  })
+
+  it('shows no Templates card to someone who may not move a bar', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(withTemplate, 'fairoaksd', 3))
+    openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    expect(document.querySelector('[data-tour="gc-templates"]')).toBeNull()
   })
 })

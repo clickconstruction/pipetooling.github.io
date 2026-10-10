@@ -2,7 +2,8 @@
  * GC mode, the real build, the schedule's PR 7b: the Schedule window's words. A first draft's
  * refusal, start day and log line, and the opened bar's card on Fair Oaks D, in plain words. Since
  * 9a, the job's own work put on the chart and a failed inspection, each with what it pushes. Since
- * 9b, a new wait, a split, a join and a new baseline, each with the reducer's line.
+ * 9b, a new wait, a split, a join and a new baseline, each with the reducer's line. Since 12a, a first draft from a
+ * template, as the reducer drew it.
  */
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
@@ -12,12 +13,15 @@ import { ganttBars, type GanttBar } from './gantt'
 import { draftSchedule, scheduleMeasures } from './schedule'
 import { addDays } from '../building'
 import { planMove } from './moves'
-import { barCardRows, baselinePress, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, joinWords, moveWords, newWait, ownWorkOffWords, ownWorkPress, partMovePress, pullLogWords, recoveryLogWords, redoWords, splitPress, undoWords } from './scheduleWindow'
+import { TEMPLATE_GONE, barCardRows, baselinePress, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, joinWords, moveWords, newWait, ownWorkOffWords, ownWorkPress, partMovePress, pullLogWords, recoveryLogWords, redoWords, splitPress, undoWords, templateDraftPress } from './scheduleWindow'
 import { planPull } from './pullEarlier'
 import { withLineReported } from './testReports'
 import { waitKind } from './waits'
 import { splitParts } from './splitBars'
 import { initialGcState } from './testState'
+import { SCHEDULE_STAGES } from './draft'
+import { templateShape } from './templates'
+import type { ScheduleTemplate } from './types'
 
 const s = initialGcState()
 const job = (st: GcState, id: string) => st.projects.find((p) => p.id === id)!
@@ -316,5 +320,55 @@ describe('a pull’s and days got back’s lines in the log (PR 9d)', () => {
     const offer = { daysBack: 1, words: { title: 'A second crew on Test and balance.', detail: '', who: '', worth: '' } }
     expect(recoveryLogWords({ name: 'Fair Oaks Shops, Building D' }, offer, 'Rosa')).toBe('Rosa got 1 day back on Fair Oaks Shops, Building D. A second crew on Test and balance.')
     expect(recoveryLogWords({ name: 'Fair Oaks Shops, Building D' }, { ...offer, daysBack: 3 }, 'Rosa')).toBe('Rosa got 3 days back on Fair Oaks Shops, Building D. A second crew on Test and balance.')
+  })
+})
+
+describe('a first draft from a template (PR 12a, G-44)', () => {
+  // Fair Oaks D's shape saved as a template, as Save as a template keeps it, and Helotes drawn from it.
+  const fair = job(s, 'fairoaksd')
+  const template: ScheduleTemplate = { id: 'tpl-fair', name: 'Fair Oaks shape', on: '2026-10-01', by: 'Robert Douglas', ...templateShape(s, fair)! }
+  const st: GcState = { ...s, scheduleTemplates: [template] }
+  const helotes = job(st, 'helotes')
+  const start = '2026-11-02'
+
+  it('with no template, it is the usual first draft and its line', () => {
+    const r = templateDraftPress(st, helotes, start, null)
+    if (!('schedule' in r)) throw new Error(r.problem)
+    expect(r.schedule).toEqual(draftSchedule(helotes, start))
+    expect(r.words).toBe(draftWords(helotes, r.schedule, start))
+  })
+
+  it('from an offered template: its lines, its name and today on the schedule, and its line names it', () => {
+    const r = templateDraftPress(st, helotes, start, 'tpl-fair')
+    if (!('schedule' in r)) throw new Error(r.problem)
+    expect(r.schedule.template).toEqual({ id: 'tpl-fair', name: 'Fair Oaks shape', on: st.today })
+    expect(r.schedule.activities).toEqual(draftSchedule(helotes, start, undefined, template.lines).activities)
+    expect(r.schedule.activities).not.toEqual(draftSchedule(helotes, start).activities)
+    expect(r.words).toBe(`${draftWords(helotes, r.schedule, start)} It is drawn from the template Fair Oaks shape.`)
+    expect(plainWordsFailures(r.words)).toEqual([])
+  })
+
+  it('from the rough’s own copy of the lines, even once that template is set aside', () => {
+    const aside: GcState = { ...st, scheduleTemplates: [{ ...template, asideOn: '2026-10-05' }] }
+    const rough = { start, days: {}, by: 'Robert Douglas', on: '2026-10-01', template: { id: 'tpl-fair', name: 'Fair Oaks shape', on: '2026-10-01' }, like: template.lines }
+    const r = templateDraftPress(aside, { ...helotes, rough }, start, 'tpl-fair')
+    if (!('schedule' in r)) throw new Error(r.problem)
+    expect(r.schedule.template).toEqual({ id: 'tpl-fair', name: 'Fair Oaks shape', on: st.today })
+    expect(r.schedule.activities).toEqual(draftSchedule({ ...helotes, rough }, start, {}, template.lines).activities)
+  })
+
+  it('takes the rough’s stage days when we bid one (G-45)', () => {
+    const first = SCHEDULE_STAGES[0]!
+    const rough = { start, days: { [first.key]: first.days + 5 }, by: 'Robert Douglas', on: '2026-10-01' }
+    const r = templateDraftPress(st, { ...helotes, rough }, start, null)
+    if (!('schedule' in r)) throw new Error(r.problem)
+    expect(r.schedule.activities).toEqual(draftSchedule(helotes, start, rough.days).activities)
+  })
+
+  it('a template set aside, or one that is gone, is refused in words', () => {
+    const aside: GcState = { ...st, scheduleTemplates: [{ ...template, asideOn: '2026-10-05' }] }
+    expect(templateDraftPress(aside, helotes, start, 'tpl-fair')).toEqual({ problem: TEMPLATE_GONE })
+    expect(templateDraftPress(st, helotes, start, 'tpl-nobody')).toEqual({ problem: TEMPLATE_GONE })
+    expect(plainWordsFailures(TEMPLATE_GONE)).toEqual([])
   })
 })

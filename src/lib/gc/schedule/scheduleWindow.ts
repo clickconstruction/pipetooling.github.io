@@ -8,11 +8,11 @@
  * an undo's and a redo's lines in the log (the schedule's PR 8a) are the prototype's too, and so are
  * the job's own work's and a failed inspection's (PR 9a), and a split's, a join's and a new
  * baseline's (PR 9b), with a new wait as the reducer makes it. A pull's and days got back's lines (PR 9d) are the
- * reducer's too.
+ * reducer's too. A first draft from a template (PR 12a) draws as the reducer drew it, its line naming the template.
  */
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { addDays } from '../building'
-import type { GcProject } from '../types'
+import type { GcProject, GcState } from '../types'
 import { shortDate, weekdayDate } from '../words'
 import { actualWords } from './actualDates'
 import { lastFinishDay, type GanttBar } from './gantt'
@@ -23,9 +23,10 @@ import { daysBetween, pushAfter, pushedAfterWords } from './network'
 import { placeGuess, takesPlace } from './places'
 import { pullCountWords, type PullOffer } from './pullEarlier'
 import type { RecoveryOffer } from './recovery'
-import { mondayOf } from './schedule'
+import { draftSchedule, mondayOf } from './schedule'
 import { movedParts, partFacts, splitParts } from './splitBars'
-import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason, ScheduleWait, WaitKind } from './types'
+import { templatesOffered } from './templates'
+import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason, ScheduleWait, TemplateUse, WaitKind } from './types'
 import { nextWaitId, waitKind } from './waits'
 
 // ---------------------------------------------------------------------------------------------
@@ -50,6 +51,25 @@ export function draftStart(project: Pick<GcProject, 'startDate' | 'rough'>, toda
 /** The first draft's line in the schedule's log, as the prototype's reducer wrote it. */
 export function draftWords(project: Pick<GcProject, 'name'>, schedule: ProjectSchedule, start: string): string {
   return `Drew a first draft of the schedule on ${project.name}: ${schedule.activities.length} activities from ${weekdayDate(start)}.`
+}
+
+/** A first draft from a template that is no longer offered: someone set it aside while the window was open. */
+export const TEMPLATE_GONE = 'That template is not offered any more. Pick another, or draw without one.'
+
+/**
+ * The first draft as the prototype's reducer drew it (PR 12a, G-44): from the rough's own copy of a template's lines
+ * when the rough was drawn from that template, else from an offered template's lines, with the rough's stage days when
+ * we bid one (G-45). The schedule carries the template's name and today, which `gc_schedule_draft` keeps, and its line
+ * in the log names the template. No template: the usual first draft. One no longer offered: its problem.
+ */
+export function templateDraftPress(state: GcState, project: GcProject, start: string, templateId: string | null): { schedule: ProjectSchedule; words: string } | { problem: string } {
+  const own = templateId && project.rough?.template?.id === templateId && project.rough.like ? project.rough : undefined
+  const template = templateId && !own ? templatesOffered(state).find((t) => t.id === templateId) : undefined
+  if (templateId && !own && !template) return { problem: TEMPLATE_GONE }
+  const use: TemplateUse | null = own?.template ? { ...own.template, on: state.today } : template ? { id: template.id, name: template.name, on: state.today } : null
+  const drawn = draftSchedule(project, start, project.rough?.days, own?.like ?? template?.lines)
+  const schedule = use ? { ...drawn, template: use } : drawn
+  return { schedule, words: `${draftWords(project, schedule, start)}${use ? ` It is drawn from the template ${use.name}.` : ''}` }
 }
 
 // ---------------------------------------------------------------------------------------------
