@@ -7,7 +7,7 @@ order: 98
 ---
 A trade sends product data, shop drawings or samples for the architect to approve before its work. You keep each one in the trade's register, send it to the architect and record the answer.
 
-The trade can also send a submittal from its portal. It types the file's name and its Drive link, and the round lands in the register.
+The trade can also send a submittal from its portal. It picks the file, or types the file's name and its Drive link. A picked file goes into the job's **Submittals** folder in Drive. The round lands in the register with the file's link.
 
 Each submittal holds the work it covers on the schedule until it is approved. Only devs see the window for now.
 

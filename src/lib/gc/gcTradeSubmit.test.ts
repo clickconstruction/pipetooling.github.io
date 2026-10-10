@@ -10,6 +10,7 @@ import { sampleStateFromToken } from '../../../supabase/functions/_shared/custom
 import {
   FREE_TEXT_KINDS,
   PORTAL_SPANISH_ON as FUNCTION_SPANISH_ON,
+  TRADE_FUNCTION_ERRORS,
   TRADE_HOURLY_CAP,
   TRADE_SQL_ERRORS,
   TRADE_SUBMIT_ERROR_KEYS,
@@ -59,7 +60,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(23)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(24)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -252,6 +253,50 @@ describe('each kind, read into its verb', () => {
       expect(tradeErrorOf({ code: 'P0001', message: 'sowNotSigned' })).toEqual({ key: 'sowNotSigned', status: 409 })
       expect(tradeErrorOf({ code: 'P0001', message: 'splitLine' })).toEqual({ key: 'splitLine', status: 409 })
       expect(tradeErrorOf({ code: 'P0001', message: 'notPaidYet' })).toEqual({ key: 'notPaidYet', status: 409 })
+    })
+  })
+
+  describe('a file and the links that carry it (P5a-1)', () => {
+    const PDF = btoa(String.fromCharCode(0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x37))
+
+    it('reads a file for a change as the kind the function places, with no verb', () => {
+      const parsed = parseTradeSubmit({ token: TOKEN, kind: 'file', for: 'change', packageId: TRADE, name: ' chairs.pdf ', base64: PDF })
+      expect(parsed.ok && parsed.kind).toBe('file')
+      expect(parsed.ok && parsed.call).toEqual({ rpc: '', params: {} })
+      expect(parsed.ok && parsed.file && { for: parsed.file.for, recordId: parsed.file.recordId, name: parsed.file.name, mime: parsed.file.mime, bytes: parsed.file.bytes.length }).toEqual({
+        for: 'change',
+        recordId: TRADE,
+        name: 'chairs.pdf',
+        mime: 'application/pdf',
+        bytes: 8,
+      })
+      expect(FREE_TEXT_KINDS.has('file')).toBe(false)
+    })
+
+    it('says a file of another type or over the cap in the company’s words, and refuses a shape the page never sends', () => {
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'file', for: 'change', packageId: TRADE, name: 'a.pdf', base64: btoa('PK\u0003\u0004 a zip') })).toEqual({ ok: false, key: 'fileType' })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'file', for: 'change', packageId: TRADE, name: 'a.pdf', base64: 'A'.repeat(14_000_400) })).toEqual({ ok: false, key: 'fileTooBig' })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'file', for: 'warranty', packageId: TRADE, name: 'a.pdf', base64: PDF })).toEqual({ ok: false })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'file', for: 'submittal', packageId: TRADE, name: 'a.pdf', base64: PDF })).toEqual({ ok: false })
+    })
+
+    it('carries a change’s photo link and a quote’s file link, https only, and leaves them out when none', () => {
+      expect(call('ask_change', { packageId: TRADE, description: 'More circuits.', reason: 'owner', amount: 3400, days: 1, fileUrl: ' https://drive.google.com/file/d/x/view ' })?.params).toEqual({
+        p_package_id: TRADE,
+        p_description: 'More circuits.',
+        p_reason: 'owner',
+        p_amount: 3400,
+        p_days: 1,
+        p_file_url: 'https://drive.google.com/file/d/x/view',
+      })
+      expect(call('ask_change', { packageId: TRADE, description: 'x', reason: 'owner', amount: 1, fileUrl: '' })?.params).not.toHaveProperty('p_file_url')
+      expect(call('ask_change', { packageId: TRADE, description: 'x', reason: 'owner', amount: 1, fileUrl: 'http://x' })).toBeNull()
+      expect(call('submit_quote', { inviteId: ASK, quote: { amount: 1, includes: {}, file: 'https://drive.google.com/file/d/q/view' } })?.params.q).toMatchObject({ file: 'https://drive.google.com/file/d/q/view' })
+      expect(call('submit_quote', { inviteId: ASK, quote: { amount: 1, includes: {} } })?.params.q).not.toHaveProperty('file')
+    })
+
+    it('says the three keys with their statuses', () => {
+      expect([TRADE_FUNCTION_ERRORS.fileType, TRADE_FUNCTION_ERRORS.fileTooBig, TRADE_FUNCTION_ERRORS.noJobFolder]).toEqual([400, 400, 409])
     })
   })
 

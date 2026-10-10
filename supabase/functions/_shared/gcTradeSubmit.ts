@@ -11,6 +11,8 @@
  *     test keeps each pair equal).
  */
 
+import { parseTradeFile, type TradeFileUpload } from './gcTradeFile.ts'
+
 /** Copy of `PORTAL_SPANISH_ON` in `src/lib/gc/portalI18n.ts`: the edge functions cannot import `src`. */
 export const PORTAL_SPANISH_ON = false
 
@@ -56,6 +58,8 @@ export const TRADE_SUBMIT_KINDS = [
   // P5c-3c-ii: a pay application and the final one (U6a's and U6c's verbs), each signing its conditional waiver.
   'pay_app',
   'final_pay_app',
+  // P5a-1: a file into the job's Drive folder (gcTradeFile.ts); the function places it, with no verb.
+  'file',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
@@ -64,7 +68,18 @@ export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
 export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question', 'ask_change', 'submittal_send', 'rfi_ask'])
 
 /** The function's own refusals. `consentNeeded`: a signature without the e-sign consent (P2c-ii), refused before any write. */
-export const TRADE_FUNCTION_ERRORS = { badRequest: 400, linkOff: 404, spanishHeld: 400, tooMany: 429, consentNeeded: 400, failed: 500 } as const
+export const TRADE_FUNCTION_ERRORS = {
+  badRequest: 400,
+  linkOff: 404,
+  spanishHeld: 400,
+  tooMany: 429,
+  consentNeeded: 400,
+  failed: 500,
+  // P5a-1: a file that is none the portal takes, one over 10 MB, and a job with no Drive folder yet.
+  fileType: 400,
+  fileTooBig: 400,
+  noJobFolder: 409,
+} as const
 
 /** The SQL's refusals (P2a's `gc_trade_<verb>`), raised as P0001 with the key as the message. */
 export const TRADE_SQL_ERRORS = {
@@ -160,9 +175,13 @@ export interface TradeSignature {
   printedName: string
 }
 
+/**
+ * The request read. A signature carries `sign`; a file (P5a-1) carries `file` and no verb (its `call` is empty), since
+ * the function places it in Drive itself.
+ */
 export type TradeSubmitParsed =
-  | { ok: true; token: string; kind: TradeSubmitKind; call: TradeCall; sign?: TradeSignature }
-  | { ok: false; key?: 'consentNeeded' }
+  | { ok: true; token: string; kind: TradeSubmitKind; call: TradeCall; sign?: TradeSignature; file?: TradeFileUpload }
+  | { ok: false; key?: 'consentNeeded' | 'fileType' | 'fileTooBig' }
 
 /** The most a drawn signature may weigh, as `accept-contract` holds it. */
 export const SIGNATURE_PNG_MAX_BYTES = 512 * 1024
@@ -300,6 +319,9 @@ function quote(v: unknown): Record<string, unknown> {
     note: text(v.note, 2000),
     alternates: labelAmounts(v.alternates, 20),
   }
+  // P5a-1: its PDF's link, the file kind's answer (P5a-m reads it into quote_file).
+  const file = httpsOrNull(v.file)
+  if (file) out.file = file
   const good = num(v.goodForDays)
   if (good !== null) out.goodForDays = good
   if (v.sov !== undefined && v.sov !== null) out.sov = labelAmounts(v.sov, 40)
@@ -361,9 +383,18 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
       if (typeof b.reason !== 'string' || !CHANGE_REASONS.includes(b.reason)) throw new Bad()
       const days = num(b.days) ?? 0
       if (!Number.isInteger(days)) throw new Bad()
+      // P5a-1: its photo or ticket's link, the file kind's answer or a link the trade typed (P5a-m's p_file_url).
+      const fileUrl = httpsOrNull(b.fileUrl)
       return {
         rpc: 'gc_trade_ask_change',
-        params: { p_package_id: uuid(b.packageId), p_description: text(b.description, 2000), p_reason: b.reason, p_amount: num(b.amount), p_days: days },
+        params: {
+          p_package_id: uuid(b.packageId),
+          p_description: text(b.description, 2000),
+          p_reason: b.reason,
+          p_amount: num(b.amount),
+          p_days: days,
+          ...(fileUrl ? { p_file_url: fileUrl } : {}),
+        },
       }
     }
     case 'punch_fixed':
@@ -393,6 +424,9 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
       return { rpc: 'gc_trade_pay_app', params: { p_package_id: uuid(b.packageId), p_app: payAppOf(b.app, true) } }
     case 'final_pay_app':
       return { rpc: 'gc_trade_final_pay_app', params: { p_package_id: uuid(b.packageId), p_app: payAppOf(b.app, false) } }
+    case 'file':
+      // Read by parseTradeFile before callOf; never reached.
+      throw new Bad()
     case 'sign_sow':
       // The function fills the image's path, the IP and the browser from what it stored and the request.
       return { rpc: 'gc_trade_sign_sow', params: { p_sow_id: uuid(b.sowId), p_printed_name: text(b.printedName, 200), p_signature_path: null, p_ip: null, p_user_agent: null } }
@@ -440,6 +474,12 @@ export function parseTradeSubmit(body: unknown): TradeSubmitParsed {
   if (token === '' || typeof kind !== 'string' || !(TRADE_SUBMIT_KINDS as readonly string[]).includes(kind)) return { ok: false }
   try {
     const k = kind as TradeSubmitKind
+    if (k === 'file') {
+      const file = parseTradeFile(body)
+      if (file === null) return { ok: false }
+      if (typeof file === 'string') return { ok: false, key: file }
+      return { ok: true, token, kind: 'file', call: { rpc: '', params: {} }, file }
+    }
     const call = callOf(k, body)
     const record = SIGNED[k]
     if (!record) return { ok: true, token, kind: k, call }
