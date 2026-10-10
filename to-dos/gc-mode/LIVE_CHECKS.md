@@ -252,8 +252,8 @@ trade's signing in its portal (the Board's and the Portal's walks).
 
 ## Not walkable yet
 
-- **O7c's Accept the work** (walkable after step 13 now: see S3). It shows in the portal only once the bills reach the whole contract. On the test
-  project every trade bills $0 until it is awarded and drawn to 100%. Its bed holds it until a job gets there.
+- **O7c's Accept the work: walkable after step 13 now.** It shows in the portal only once the bills reach the whole
+  contract. Since S3 the whole contract is the two change orders, $10,100, and pay application 4 bills both at 100%.
 - **O10's architect reminder and the project manager's notice, today.** They need a pay application 3 and 5 days old.
   Steps 18 and 19 read them on days 4 and 6, with O10c's day field (#5337).
 - **O10's bill-day notice.** It is due on the 23rd and 24th, to the project manager or, with none, the company's
