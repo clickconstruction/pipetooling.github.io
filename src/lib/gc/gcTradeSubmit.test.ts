@@ -443,7 +443,8 @@ describe('the verb’s refusals', () => {
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
   // The schedule's PR 13a: gc_trade_answer_dates raises two keys the portal maps in P5d. The Portal's P5b-m:
-  // gc_trade_coi, gc_trade_vetting_form and gc_trade_paper_open raise eight the portal maps in P5b-1.
+  // gc_trade_coi, gc_trade_vetting_form and gc_trade_paper_open raise eight the portal maps in P5b-1. The schedule's
+  // PR 14a: the trade's four writes (say_late, keep_day, crew_count, mark_lookahead) raise eight more, for P5d-ii.
   const WAITING: Record<string, string> = {
     datesTakenBack: 'P5d',
     dayNeeded: 'P5d',
@@ -455,6 +456,14 @@ describe('the verb’s refusals', () => {
     formIncomplete: 'P5b',
     msaNotSent: 'P5b',
     noW9Form: 'P5b',
+    workDone: 'P5d',
+    lateLaterDay: 'P5d',
+    pickWhy: 'P5d',
+    notPushedBack: 'P5d',
+    noticeClosed: 'P5d',
+    weekClosed: 'P5d',
+    crewWhole: 'P5d',
+    alreadyChecked: 'P5d',
   }
 
   /**
