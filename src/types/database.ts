@@ -30170,6 +30170,19 @@ export type Database = {
         Args: { p_book_entry_id: string; p_company_id: string }
         Returns: string
       }
+      gc_company_paper_states: {
+        Args: { p_company_ids?: string[] }
+        Returns: {
+          company_id: string
+          created_at: string
+          doc_type: string
+          expires_at: string
+          id: string
+          sent_at: string
+          signed_at: string
+          status: string
+        }[]
+      }
       gc_create_project: { Args: { draft: Json }; Returns: string }
       gc_crew_on_site: {
         Args: { p_from: string; p_project_id: string; p_to: string }
