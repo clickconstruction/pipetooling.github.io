@@ -104,18 +104,17 @@ describe('the words for every refusal a press can get (P2b-i)', () => {
   })
 })
 
-describe('the home’s to-dos while the owner’s call holds the waivers (P5c-3c-i)', () => {
+describe('the home’s to-dos whose press is a waiver (P5c-3c-i, the owner’s call 2)', () => {
   it('names the to-dos whose press is a waiver: a draw to ask for, one to fix and send again, the final, both waivers', () => {
     for (const key of ['ask1:draw', 'ask1:back', 'ask1:final', 'ask1:finalwaiver', 'ask1:waiver:d1']) expect(todoWaitsOnWaivers(key), key).toBe(true)
     for (const key of ['ask1:punch', 'ask1:submittals', 'ask1:less:d1', 'co1:sign', 'charge1:answer', 'ask1:sow', 'msa']) expect(todoWaitsOnWaivers(key), key).toBe(false)
   })
 
-  it('leaves them out of the sample’s Needs you while held, and keeps the rest', () => {
-    expect(WAIVER_SIGN_LIVE).toBe(false)
+  it('keeps them in the sample’s Needs you since the owner’s call 2', () => {
+    expect(WAIVER_SIGN_LIVE).toBe(true)
     const asks = portalAsks(state, partnerId)
-    expect(portalTodos(state, partnerId, asks, 'en').filter((t) => todoWaitsOnWaivers(t.key)).length).toBeGreaterThan(0)
-    const todos = portalHomeTodos(state, partnerId, asks, 'en')
-    expect(todos.some((t) => t.key.endsWith(':punch'))).toBe(true)
-    expect(todos.filter((t) => todoWaitsOnWaivers(t.key))).toEqual([])
+    const all = portalTodos(state, partnerId, asks, 'en')
+    expect(all.filter((t) => todoWaitsOnWaivers(t.key)).length).toBeGreaterThan(0)
+    expect(portalHomeTodos(state, partnerId, asks, 'en')).toEqual(all)
   })
 })

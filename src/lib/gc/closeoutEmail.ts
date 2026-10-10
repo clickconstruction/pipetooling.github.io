@@ -4,8 +4,8 @@
  * `<sow id>:accepted`): what we hold, that its final pay application asks for it, and when the retainage comes, never the
  * customer's day. Its final pay application came in by email or on paper (`finalIn`, keyed `<draw id>:finalIn`): what
  * it asks, when we pay it, and the final release after. A final the trade sends from its portal needs no email: the
- * portal shows it. While `WAIVER_SIGN_LIVE` holds every waiver a trade signs, each says to email what the portal cannot
- * take yet. Pure, in the company's language: the sends are Building's Closeout window's, through `emailTheTrade` with its
+ * portal shows it. Each asks for the final pay application and the final release in the portal; with `WAIVER_SIGN_LIVE`
+ * off (on since the owner's call 2), it says to email them. Pure, in the company's language: the sends are Building's Closeout window's, through `emailTheTrade` with its
  * tick (GcProjects.tsx, `closeoutWrite`).
  */
 import { TRADE_RETAINAGE_WAIT_DAYS } from './building'

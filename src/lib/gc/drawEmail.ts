@@ -21,17 +21,18 @@ import { money } from './words'
 export const DRAW_PORTAL_LIVE = true
 
 /**
- * The trade signs its unconditional waiver in its portal, on the app's own waiver paper (P5c-3b). Held until the owner
- * says a trade may sign its lien waiver electronically (portal-p5.md, the owner's call 2): until then the portal draws
- * no waiver press, `submit-gc-trade-portal` refuses the kind (its copy in `_shared/gcTradeSubmit.ts`), and a paid
- * draw's email leaves out the line that asks for the waiver there. A one-line follow-up turns it on.
+ * The trade signs its lien waivers in its portal, on the app's own waiver paper: the unconditional one on a paid draw
+ * (P5c-3b) and the conditional one a pay application signs (P5c-3c-ii). On since the owner's call 2 (portal-p5.md),
+ * answered 2026-10-10: "a trade partner may sign its lien waivers electronically in its portal" (v2.5178). Off, the
+ * portal draws no waiver press and its pay application goes by email, `submit-gc-trade-portal` refuses the kinds (its
+ * copy in `_shared/gcTradeSubmit.ts`), and the emails ask for the waivers by email instead of in the portal.
  */
-export const WAIVER_SIGN_LIVE = false
+export const WAIVER_SIGN_LIVE = true
 
 /**
  * The trade reads a pay application we sent back in its portal, our note and the lines we doubt (the Portal's P5c-3c-i,
  * the pay application's door). Before then the Draws window's send-back form told the office to call or email them with
- * it too. The fixed one comes back by email until `WAIVER_SIGN_LIVE`, since a pay application signs a waiver.
+ * it too. The fixed one comes back from the portal while `WAIVER_SIGN_LIVE` is on, since a pay application signs a waiver.
  */
 export const PAY_APP_PORTAL_LIVE = true
 

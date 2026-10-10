@@ -88,15 +88,15 @@ export function sentMessages(slice: TradePortalSlice): SentMessage[] {
 
 /** The home's three lists: jobs that are theirs, asks still open, and what came before. */
 /**
- * A to-do whose press waits on the owner's call (P5c-3c-i): every lien waiver a trade signs, the pay application's
- * conditional one with it, is held by `WAIVER_SIGN_LIVE`. So the home leaves out a draw to ask for, a pay application
- * to fix and send again, the final one, and both unconditional waivers, until it is on.
+ * A to-do whose press is a lien waiver (P5c-3c-i): a draw to ask for, a pay application to fix and send again, the final
+ * one, and both unconditional waivers, since the pay application signs its conditional one. With `WAIVER_SIGN_LIVE` off
+ * the home leaves them out. It is on since the owner's call 2 (v2.5178).
  */
 export function todoWaitsOnWaivers(key: string): boolean {
   return /:(draw|back|final|finalwaiver)$/.test(key) || key.includes(':waiver:')
 }
 
-/** The home's Needs you: `portalTodos` (P5c-3a's lift), less what waits on the owner's call while it does. */
+/** The home's Needs you: `portalTodos` (P5c-3a's lift), less the waivers' to-dos while `WAIVER_SIGN_LIVE` is off. */
 export function portalHomeTodos(state: GcState, partnerId: string, asks: PortalAsk[], lang: PortalLang): PortalTodo[] {
   const todos = portalTodos(state, partnerId, asks, lang)
   return WAIVER_SIGN_LIVE ? todos : todos.filter((t) => !todoWaitsOnWaivers(t.key))
