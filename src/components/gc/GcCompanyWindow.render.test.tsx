@@ -200,3 +200,49 @@ describe('GcCompanyWindow · Documents (B6-b-ii)', () => {
     expect(onClose).toHaveBeenCalled()
   })
 })
+
+describe('GcCompanyWindow · opened at a paper (the opener’s CompanyAt)', () => {
+  function openAt(at: { tab?: 'about' | 'documents' | 'portal'; doc?: string; send?: boolean }, entries: CompanyPapersDoor['entries'] | 'none' = { msa: null, w9: 'entry-w9' }) {
+    const state = boardStateFromRows(rows())
+    const partner = state.partners.find((p) => p.id === 'hillside')!
+    const papers = (e: CompanyPapersDoor['entries']): CompanyPapersDoor => ({ entries: e, onSend: vi.fn((): Promise<PaperSendOutcome> => Promise.resolve({ ok: true, to: [], emailed: true })), onRecordInsurance: vi.fn(() => Promise.resolve()) })
+    const view = (e: CompanyPapersDoor['entries'] | 'none') => (
+      <GcCompanyWindow state={state} partner={partner} lang="en" onLanguage={vi.fn()} onClose={vi.fn()} onOpenProject={() => undefined} {...(e === 'none' ? {} : { papers: papers(e) })} at={at} />
+    )
+    const r = render(view(entries))
+    const dialog = screen.getByRole('dialog', { name: partner.company })
+    return { dialog, rerender: (e: CompanyPapersDoor['entries']) => r.rerender(view(e)) }
+  }
+
+  it('opens Documents with the W-9’s send open, as a not-ready bar asks', () => {
+    const { dialog } = openAt({ tab: 'documents', doc: 'w9', send: true })
+    expect(within(dialog).getByRole('tab', { name: /^Documents/ }).getAttribute('aria-selected')).toBe('true')
+    expect(dialog.querySelector('[data-gc-paper-send="w9"]')).toBeTruthy()
+  })
+
+  it('opens Documents for a paper named without a tab, and waits for the Book’s entries before it opens the send', () => {
+    const { dialog, rerender } = openAt({ doc: 'w9', send: true }, null)
+    expect(within(dialog).getByRole('tab', { name: /^Documents/ }).getAttribute('aria-selected')).toBe('true')
+    expect(dialog.querySelector('[data-gc-paper-send]')).toBeNull()
+    rerender({ msa: null, w9: 'entry-w9' })
+    expect(dialog.querySelector('[data-gc-paper-send="w9"]')).toBeTruthy()
+  })
+
+  it('opens at the master agreement’s row with no send while the Book has no agreement', () => {
+    const { dialog } = openAt({ tab: 'documents', doc: 'msa', send: true })
+    expect(dialog.querySelector('[data-gc-paper-send]')).toBeNull()
+    expect(within(dialog.querySelector('[data-gc-doc="msa"]') as HTMLElement).getByText('Waiting on the agreement')).toBeTruthy()
+  })
+
+  it('opens at the row, read only, for a reader with no presses', () => {
+    const { dialog } = openAt({ tab: 'documents', doc: 'insurance', send: true }, 'none')
+    expect(within(dialog).getByRole('tab', { name: /^Documents/ }).getAttribute('aria-selected')).toBe('true')
+    expect(dialog.querySelector('[data-gc-paper-send]')).toBeNull()
+    expect(within(dialog).queryByRole('button', { name: 'Ask for it' })).toBeNull()
+  })
+
+  it('opens on About when only the company is named, as every caller did before', () => {
+    const { dialog } = openAt({})
+    expect(within(dialog).getByRole('tab', { name: 'About' }).getAttribute('aria-selected')).toBe('true')
+  })
+})

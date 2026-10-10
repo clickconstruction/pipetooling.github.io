@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import type { CompanyDoc, CompanyDocGroup, DocStatus } from '../../lib/gc/companyFile'
+import type { CompanyTab } from './gcCompanyOpener'
 
 /**
  * GC mode, the real build, the Board's B6-b-ii: the company window's tabs and its Documents list, from the design
@@ -8,7 +9,7 @@ import type { CompanyDoc, CompanyDocGroup, DocStatus } from '../../lib/gc/compan
  * send, or the certificate form, in its place.
  */
 
-export type CompanyTab = 'about' | 'documents' | 'portal'
+export type { CompanyTab } from './gcCompanyOpener'
 
 export function CompanyTabStrip({ tab, onTab, toGet, portal }: { tab: CompanyTab; onTab: (t: CompanyTab) => void; toGet: number; portal: boolean }) {
   const tabs: { key: CompanyTab; label: string }[] = [
