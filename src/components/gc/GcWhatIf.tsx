@@ -5,8 +5,8 @@
  * with Keep and Throw it away; and the window Keep goes through. The prototype sent each press to its reducer; here each
  * is a callback the Schedule window sends through the copy's own presses, never the real move save (call 3). Keep asks
  * the kernel first (`keepWhatIf`), so its refusals are said here in its words (call 5). The kept line with Tell the
- * trades waits for the schedule's PR 13 (call 8). The money team's sentence about the bills comes in from the money
- * state (call 7).
+ * trades came with the schedule's PR 13b (`GcWhatIfKept`, PR 11's call 8). The money team's sentence about the bills
+ * comes in from the money state (call 7).
  */
 import { useEffect, useState, type CSSProperties } from 'react'
 import { createPortal } from 'react-dom'
@@ -15,7 +15,8 @@ import type { ProjectSchedule, ScheduleMove, ScheduleMoveReason } from '../../li
 import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
 import { keepWhatIf, whatIfBaseChangedWords, whatIfBaseChanges, whatIfProject, whatIfTried } from '../../lib/gc/schedule/whatIf'
 import { whatIfLineWords } from '../../lib/gc/schedule/whatIfWindow'
-import type { GcProject } from '../../lib/gc/types'
+import { keptNotToldWords } from '../../lib/gc/schedule/tellWindow'
+import type { GcProject, GcState } from '../../lib/gc/types'
 import { weekdayDate } from '../../lib/gc/words'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcScheduleRefusal } from './GcScheduleMoves'
@@ -294,5 +295,23 @@ export function GcWhatIfKeep({
       </div>
     </div>,
     document.body,
+  )
+}
+
+/**
+ * Once kept (PR 11's call 8, PR 13b): over the chart until each company is told, the companies the kept moves changed
+ * days for, and Tell the trades. `project` is the real one.
+ */
+export function GcWhatIfKept({ state, project, onTell }: { state: GcState; project: GcProject; onTell: () => void }) {
+  const kept = keptNotToldWords(state, project)
+  if (!kept) return null
+  return (
+    <div data-what-if-kept style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.55rem 0.75rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-violet-100)' }}>
+      <Chip tone="violet">kept</Chip>
+      <span style={{ fontSize: '0.875rem', flex: '1 1 14rem' }}>{kept.words}</span>
+      <Btn kind="primary" onClick={onTell} title="Each company whose days moved gets one email with its old and new days and why.">
+        Tell the trades
+      </Btn>
+    </div>
   )
 }

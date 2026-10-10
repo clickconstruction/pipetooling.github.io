@@ -1895,6 +1895,7 @@ export default function GcProjects() {
           by={profileName ?? 'The office'}
           canMove={role === 'dev'}
           canPull={canUseGcBuilding(role)}
+          canTell={canSendGcTradeEmail(role)}
           reads={scheduleReads}
           onClose={() => setScheduleWindow(null)}
         />
