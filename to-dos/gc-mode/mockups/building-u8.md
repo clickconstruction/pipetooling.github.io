@@ -2,7 +2,7 @@
 name: "Building U8: our own crew from its Pipeline job"
 rows: BUILDING_REAL_BUILD.md, The PRs in order, 8; decision 11; "U8: one column"; README.md, Where it plugs in (our own crew's percent done); SCHEDULE_REAL_BUILD.md, PR 16 (our crew, G-51) and the daily log's readers; GANTT_FEATURES.md G-51
 branch: the plan on claude/gc-building-u8-plan (from origin/spike/gc-mode at afd58dbba), merged to the spike by the lead; U8a from origin/main after U7c and U3b-ii are cut; U8b after U8a's push and gc 7's types regen
-status: plan 2026-10-10 by gc 4 (the Building lane) at the lead's ask. The count's shape agreed with gc 10 (holding Schedule) before it was written, with gc 10's four changes written in (calls 1 to 5). U8a's SQL ran on the real bed on main at 06ab01043: 23 assertions pass, and 19 of 19 planted bugs fail them. Nothing built yet.
+status: plan 2026-10-10 by gc 4 (the Building lane) at the lead's ask. The count's shape agreed with gc 10 (holding Schedule) before it was written, with gc 10's four changes written in (calls 1 to 5). U8a's SQL ran on the real bed on main at 06ab01043: 23 assertions pass, and 19 of 19 planted bugs fail them. Amendment 1 (2026-10-10): the lead approved calls 6 to 9 and 11 to 13 and changed 10 to a guard on the column, now in U8a (28 assertions, 25 of 25 planted bugs); gc 10 signed off with call 12 made exact (the `board` variable itself) and a page test. Nothing built yet.
 ---
 
 # Building U8: our own crew from its Pipeline job
@@ -20,9 +20,9 @@ A trade our own crew does (`gc_trade_packages.ours`) names the Pipeline job it r
 
 Two PRs, the lane's usual split:
 
-- **U8a, the column and two functions** (one migration, no screen): `gc_trade_packages.job_ledger_id`,
-  `gc_link_crew_job` (SECURITY INVOKER) and `gc_crew_on_site` (SECURITY DEFINER, counts only). The SQL bed gains
-  `90_crew.sql`.
+- **U8a, the column, its guard and two functions** (one migration, no screen): `gc_trade_packages.job_ledger_id`,
+  its guard trigger (call 10), `gc_link_crew_job` (SECURITY INVOKER) and `gc_crew_on_site` (SECURITY DEFINER, counts
+  only). The SQL bed gains `90_crew.sql`.
 - **U8b, the mapper, the io and the screens** (no migration): `withCrewClockIns` in `dailyLogRows.ts`,
   `withCrewPercents` in a new `crewJobRows.ts`, their io, the **Our own crew** card on Draws with the Pipeline-job
   picker, our crew's read-only row on the daily log, a guide and the docs.
@@ -58,7 +58,7 @@ Nothing in U8 writes a bar's real days (call 4) or touches payroll. The count ne
 5. **The percent from `list_job_stage_progress` by `stageRank`,** with the whole job's percent when the job has no
    stages.
 
-**gc 4's picks, for the lead:**
+**gc 4's picks, approved by the lead (2026-10-10) with 10 changed:**
 
 6. **The log never stores our crew's count on a day with clock-ins.** Decision 11 says "read and never stored". The
    save leaves our crew's row off the payload on any day that has a count (`crewsToSave`), so a count that changes
@@ -79,14 +79,20 @@ Nothing in U8 writes a bar's real days (call 4) or touches payroll. The count ne
    linking is the office's job. It suggests first a Pipeline job on this project (`jobs_ledger.project_id`) or from our
    own bid (`jobs_ledger.bid_id = own_bid_id`), then searches with `search_jobs_ledger`, which leaves billing-only jobs
    out. The daily log only says where the count comes from.
-10. **No guard trigger on the column.** The board's own policy (door 1, `gc_office_team()`) lets the office team write
-    `gc_trade_packages` with a plain UPDATE. `gc_link_crew_job` exists for its checks and its words. Every reader also
-    asks `ours`, and a billing-only job counts nobody, so a plain write can do no more than a wrong pick could. The
-    door can add a guard like the award's (`gc_trade_packages_award_guard`) if gc 5 wants one.
+10. **A guard on the column, in the award guard's shape** (the lead's change: a wrong link changes what the owner's
+    bill reads for our crew). The board's own policy (door 1, `gc_office_team()`) lets the office team write
+    `gc_trade_packages` with a plain UPDATE, so `gc_trade_packages_crew_job_guard` refuses any signed-in change to
+    `job_ledger_id`, in words, unless `gc_link_crew_job` turned the transaction's `gc.crew_job_write` flag on for its
+    UPDATE. The job's `ON DELETE SET NULL` passes (a cascade, `pg_trigger_depth() > 1`), and so does server code with
+    no person (`auth.uid() IS NULL`). No role is named, so a dev's plain write is refused too, and the door inherits
+    it, changing only the link's gate. Every other column writes as today.
 11. **Two GC jobs may name one Pipeline job.** Each then counts the same people. It is not refused: one Pipeline job
     can run the plumbing for two buildings.
 12. **The percents are laid over the board itself on the page,** before any window reads it, so Draws, Closeout, Bill
     the owner, the money margin and the Schedule all read one percent. Read for a dev only while Building is built.
+    gc 10's condition: it is the `board` variable itself that is laid, the one the Schedule mount reads
+    (`GcScheduleWindow state={board}`), never a second memo beside it, so the chart and 9d's pull offers read our
+    crew's `pctByLine` from the same read as Draws and the bill. A page test opens Schedule after a crew read.
 13. **The count's days run from the job's first day to today.** `gc_projects.started_on` is the first day a log may
     have (the press refuses one before it), so pages from it to today cover every log and every new log's form. Read
     with the logs, for the building jobs that have a linked crew.
@@ -103,7 +109,7 @@ SET lock_timeout = '3s';
 -- GC mode, the Building lane's U8 (v2.NNNN): our own crew from its Pipeline job
 -- (to-dos/gc-mode/mockups/building-u8.md on branch spike/gc-mode). A trade our own crew does names the
 -- Pipeline job it runs on. Then the daily log reads how many of our people clocked in on that job each
--- day, and the stages read that job's percent. One column and two functions. No table is created.
+-- day, and the stages read that job's percent. One column, its guard and two functions. No table is created.
 --
 -- PUSH IN A QUIET MOMENT: the foreign key takes a brief SHARE ROW EXCLUSIVE lock on jobs_ledger, which
 -- holds the office's job writes for the instant it is added. The new column is null on every row, so
@@ -115,9 +121,44 @@ ALTER TABLE public.gc_trade_packages
 CREATE INDEX IF NOT EXISTS gc_trade_packages_job_ledger_idx ON public.gc_trade_packages (job_ledger_id)
   WHERE job_ledger_id IS NOT NULL;
 COMMENT ON COLUMN public.gc_trade_packages.job_ledger_id IS
-  'GC mode (v2.NNNN, Building U8): the Pipeline job a trade our own crew does (ours) runs on. Its clock-ins are our crew''s head count on the daily log (gc_crew_on_site), and its stage progress is our crew''s percent. Set through gc_link_crew_job. Null: not linked yet. Every reader also asks for ours.';
+  'GC mode (v2.NNNN, Building U8): the Pipeline job a trade our own crew does (ours) runs on. Its clock-ins are our crew''s head count on the daily log (gc_crew_on_site), and its stage progress is our crew''s percent, which Bill the owner bills from. A signed-in person changes it only through gc_link_crew_job (gc_trade_packages_crew_job_guard). Null: not linked yet. Every reader also asks for ours.';
 
--- 2) Link our crew's trade to its Pipeline job, or let go of it (p_job_ledger_id null). SECURITY
+-- 2) The guard. A wrong link changes what the owner's bill reads for our crew, so a signed-in person changes the
+-- column only inside gc_link_crew_job, which turns this transaction's gc.crew_job_write flag on for its UPDATE and
+-- off after it (the award guard's shape, 20261010025000). Two writes pass without it: the key letting go inside its
+-- own trigger (the job's ON DELETE SET NULL), and server code with no person (auth.uid() IS NULL: the service
+-- role, a migration, a bed's fixtures). No role is named, so a dev's plain UPDATE is refused too, and Building's
+-- door changes only gc_link_crew_job's gate.
+CREATE OR REPLACE FUNCTION public.gc_trade_packages_crew_job_guard()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_changed boolean;
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    v_changed := NEW.job_ledger_id IS NOT NULL;
+  ELSE
+    v_changed := NEW.job_ledger_id IS DISTINCT FROM OLD.job_ledger_id;
+  END IF;
+  IF v_changed AND current_setting('gc.crew_job_write', true) IS DISTINCT FROM 'on'
+     AND pg_trigger_depth() < 2 AND auth.uid() IS NOT NULL THEN
+    RAISE EXCEPTION 'Our crew''s Pipeline job changes only through Pick its Pipeline job on Draws.' USING ERRCODE = '42501';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+COMMENT ON FUNCTION public.gc_trade_packages_crew_job_guard() IS
+  'GC mode (v2.NNNN, Building U8): the trigger that lets a signed-in person change gc_trade_packages.job_ledger_id only inside gc_link_crew_job, which sets gc.crew_job_write for its UPDATE. A cascade passes (pg_trigger_depth() > 1), and so does server code with no person (auth.uid() IS NULL). No role is named.';
+
+-- Every row of every INSERT and UPDATE, not UPDATE OF, so no other trigger's change slips past it.
+CREATE OR REPLACE TRIGGER gc_trade_packages_crew_job_guard BEFORE INSERT OR UPDATE ON public.gc_trade_packages
+  FOR EACH ROW EXECUTE FUNCTION public.gc_trade_packages_crew_job_guard();
+
+-- 3) Link our crew's trade to its Pipeline job, or let go of it (p_job_ledger_id null). SECURITY
 -- INVOKER, so the trade's own policy decides who may write it as well.
 CREATE OR REPLACE FUNCTION public.gc_link_crew_job(p_package_id uuid, p_job_ledger_id uuid)
 RETURNS void
@@ -160,16 +201,18 @@ BEGIN
     END IF;
   END IF;
 
+  PERFORM set_config('gc.crew_job_write', 'on', true);
   UPDATE public.gc_trade_packages SET job_ledger_id = p_job_ledger_id WHERE id = p_package_id;
+  PERFORM set_config('gc.crew_job_write', '', true);
 END;
 $$;
 
 REVOKE ALL ON FUNCTION public.gc_link_crew_job(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.gc_link_crew_job(uuid, uuid) TO authenticated;
 COMMENT ON FUNCTION public.gc_link_crew_job(uuid, uuid) IS
-  'GC mode (v2.NNNN, Building U8): names the Pipeline job a trade our own crew does runs on, or lets go of it (null). Refuses a training account, a digital twin, anyone but a dev while Building is built, a trade we hire, a job that does not exist and a billing-only job. SECURITY INVOKER: the trade''s own policy applies too.';
+  'GC mode (v2.NNNN, Building U8): names the Pipeline job a trade our own crew does runs on, or lets go of it (null). Refuses a training account, a digital twin, anyone but a dev while Building is built, a trade we hire, a job that does not exist and a billing-only job. Writes under gc.crew_job_write, the flag gc_trade_packages_crew_job_guard reads. SECURITY INVOKER: the trade''s own policy applies too.';
 
--- 3) How many of our people clocked in on our crew's Pipeline job, a trade and a day at a time. Counts
+-- 4) How many of our people clocked in on our crew's Pipeline job, a trade and a day at a time. Counts
 -- only, never a name, an hour or pay, so its door can open wider than clock_sessions' own policy.
 -- A person counts once a day however many times they punched. A punch counts while it waits for
 -- approval. A revoked or rejected session does not count, nor a salary day the app fills in itself
@@ -224,17 +267,20 @@ COMMENT ON FUNCTION public.gc_crew_on_site(uuid, date, date) IS
 
 `supabase/tests/gc_building/90_crew.sql`, and `scripts/pgtest-gc-building.sh`'s PRESSES gains
 `supabase/migrations/*_gc_crew_job.sql`, as every Building migration's line does. On main at 06ab01043 the bed ran
-every scenario with this file, and its 23 assertions passed. Then each of these 19 bugs, planted one at a time in the
+every scenario with this file, and its 28 assertions passed. Then each of these 25 bugs, planted one at a time in the
 migration, failed them: a hired trade counts, another project counts, a person counts twice a day, a revoked, rejected,
 salary or quick-add session counts, a sample or twin person counts, a twin dev or an estimator reads the counts, 93 days
 in one call, the days the wrong way round, anon runs the count, a training account or an estimator links, a hired trade
-or a billing-only job is linked, and a missing job says the wrong words. The deleted job letting go is the column's
-`ON DELETE SET NULL`, checked once and not mutated.
+or a billing-only job is linked, the guard is off, a new trade may name a job, the link never turns its flag on or
+leaves it on, the job's delete or server code is refused, and a missing job says the wrong words. The deleted job
+letting go is the column's `ON DELETE SET NULL`, checked once (with someone signed in, so the guard's cascade rule is
+on the path) and not mutated.
 
 ```sql
 -- Our own crew from its Pipeline job (v2.NNNN, the Building lane's U8): gc_link_crew_job names the job a
 -- trade our own crew does runs on, and refuses in words a training account, a digital twin, anyone but a
--- dev, a trade we hire, a job that does not exist and a billing-only job. gc_crew_on_site counts the
+-- dev, a trade we hire, a job that does not exist and a billing-only job, and its guard refuses any other
+-- signed-in write to the column while letting the job's delete and server code through. gc_crew_on_site counts the
 -- people who clocked in on that job, a trade and a day at a time: a person once a day, a punch waiting
 -- for approval in, and a revoked or rejected session, a salary day, a quick add, a sample account, a
 -- twin, another job and a hired trade out. Counts only, a dev's, never a twin's, 92 days at most. Presses
@@ -360,6 +406,15 @@ SELECT gbt.same('null lets go', gbt.jobs(), 'Concrete:- Plumbing:- Plumbing:-');
 SELECT public.gc_link_crew_job(gbt.k('b2'), '00000000-0000-0000-0000-000000000901');
 SELECT public.gc_link_crew_job(gbt.k('b3'), '00000000-0000-0000-0000-000000000901');
 SELECT gbt.same('linked again, and B''s too', gbt.jobs(), 'Concrete:- Plumbing:901 Plumbing:901');
+
+-- The guard: only the link changes the column, and its flag is off again once it returns.
+SELECT gbt.same('the link turns its flag off before it returns', coalesce(current_setting('gc.crew_job_write', true), ''), '');
+SELECT gbt.refused('a dev''s plain write to the column', $s$UPDATE public.gc_trade_packages SET job_ledger_id = '00000000-0000-0000-0000-000000000903' WHERE id = gbt.k('b2')$s$, 'Our crew''s Pipeline job changes only through Pick its Pipeline job on Draws.');
+SELECT gbt.refused('a new trade that names a job', $s$INSERT INTO public.gc_trade_packages (project_id, trade, position, ours, job_ledger_id) VALUES ('00000000-0000-0000-0000-0000000009a1', 'Gas', 2, true, '00000000-0000-0000-0000-000000000903')$s$, 'Our crew''s Pipeline job changes only through');
+UPDATE public.gc_trade_packages SET budget = 26000 WHERE id = gbt.k('b2');
+SELECT gbt.same('a plain write to another column passes, the job kept', gbt.jobs(), 'Concrete:- Plumbing:901 Plumbing:901');
+SELECT gbt.as_user('00000000-0000-0000-0000-0000000009d4');
+SELECT gbt.refused('the office team''s plain write, which its policy allows', $s$UPDATE public.gc_trade_packages SET job_ledger_id = NULL WHERE id = gbt.k('b2')$s$, 'Our crew''s Pipeline job changes only through');
 RESET ROLE;
 
 -- The fixture's punches are made by no one signed in, as server code would.
@@ -379,7 +434,8 @@ UPDATE public.clock_sessions SET origin = 'salary_schedule' WHERE notes = 'salar
 INSERT INTO public.clock_sessions (user_id, clocked_in_at, clocked_out_at, work_date, notes, job_ledger_id, quick_add_minutes)
   VALUES ('00000000-0000-0000-0000-0000000009e1', current_date + time '19:00', current_date + time '19:15', current_date, 'quick', '00000000-0000-0000-0000-000000000901', 15);
 SELECT gbt.punch('e1', '901', -3, 'before the range');
--- A trade we hire with a job set past the function (a plain write as postgres): it never counts.
+-- A trade we hire with a job set past the function (server code, no one signed in, which the guard lets
+-- through): it never counts.
 UPDATE public.gc_trade_packages SET job_ledger_id = '00000000-0000-0000-0000-000000000901' WHERE id = gbt.k('b1');
 
 -- 4) The counts.
@@ -403,7 +459,7 @@ SET LOCAL ROLE anon;
 SELECT gbt.refused('anon', $s$SELECT * FROM public.gc_crew_on_site('00000000-0000-0000-0000-0000000009a1', current_date, current_date)$s$, 'permission denied');
 RESET ROLE;
 
--- 5) A job deleted lets go of the trade.
+-- 5) A job deleted lets go of the trade, with someone signed in: the guard lets its own key go.
 SET LOCAL ROLE authenticated;
 SELECT gbt.as_user('00000000-0000-0000-0000-0000000009d1');
 SELECT public.gc_link_crew_job(gbt.k('b3'), '00000000-0000-0000-0000-000000000904');
@@ -417,7 +473,7 @@ ROLLBACK;
 
 ### The migration doc as it will be
 
-`docs/migrations/<stamp>_gc_crew_job.md`: what it adds (the column, the two functions), the lock note, who may call each,
+`docs/migrations/<stamp>_gc_crew_job.md`: what it adds (the column, its guard, the two functions), the lock note, who may call each,
 the bed's numbers, and the checks after the push (below). Its first line is `# <stamp>_gc_crew_job.sql (<date>, v2.NNNN)`.
 
 ### Verify after the push (the lead)
@@ -426,6 +482,8 @@ the bed's numbers, and the checks after the push (below). Its first line is `# <
   DELETE SET NULL`) and `gc_trade_packages_job_ledger_idx`.
 - `gc_crew_on_site` is `SECURITY DEFINER` and `STABLE`; `gc_link_crew_job` is `SECURITY INVOKER`. For both,
   `has_function_privilege('anon', …, 'execute')` is false and `authenticated` is true.
+- `gc_trade_packages` carries `gc_trade_packages_crew_job_guard` (BEFORE INSERT OR UPDATE, each row) beside
+  `gc_trade_packages_award_guard`.
 - As a dev, `SELECT * FROM gc_crew_on_site('<the test project>', app_today() - 7, app_today())` returns no rows (nothing
   linked), and `app_today() - 92` to `app_today()` is refused with "Count at most 92 days at a time."
 - `npm run check:migration-drift` is clean.
@@ -433,8 +491,9 @@ the bed's numbers, and the checks after the push (below). Its first line is `# <
 ### Rollback
 
 `DROP FUNCTION public.gc_crew_on_site(uuid, date, date); DROP FUNCTION public.gc_link_crew_job(uuid, uuid);
-ALTER TABLE public.gc_trade_packages DROP COLUMN job_ledger_id;` The last line forgets every link, which a dev makes
-again on Draws. Nothing else reads the column until U8b.
+DROP TRIGGER gc_trade_packages_crew_job_guard ON public.gc_trade_packages; DROP FUNCTION
+public.gc_trade_packages_crew_job_guard(); ALTER TABLE public.gc_trade_packages DROP COLUMN job_ledger_id;` The last
+line forgets every link, which a dev makes again on Draws. Nothing else reads the column until U8b.
 
 ## U8b: the mapper, the io and the screens
 
@@ -524,7 +583,8 @@ export function withCrewPercents(state: GcState, reads: CrewJobRead[]): GcState
 ### The page (`GcProjects.tsx`)
 
 - **The percents**: once the board loads, for a dev (`canUseGcBuilding`), `loadCrewJobs` reads every linked trade
-  our own crew does, and the board the windows read is `withCrewPercents(board, reads)` (call 12). A failed read
+  our own crew does, and the `board` variable itself becomes `withCrewPercents(loadedBoard, reads)` (call 12): every
+  window, the Schedule mount among them, reads that one value, and no second memo stands beside it. A failed read
   leaves the board as it was and says so once.
 - **The counts**: `loadDailyLogs` also reads `loadGcCrewOnSite` for each building job with a linked crew, from its
   `startedOn` to today (call 13). `boardWithLogs` becomes `withCrewClockIns(withDailyLogs(board, logRows), crewRows)`.
@@ -588,8 +648,8 @@ Plumbing · our own crew   [Pipeline job J 1071]  Change          Our number $26
 - `GcOwnCrew.render.test.tsx`: the stages read only with their days, the words in plain words, the suggested job
   first, a search and **Use this job** calling the link, **Unlink it**, a refusal shown.
 - `GcDailyLog.render.test.tsx`: the counted row has no box, the save leaves it off, the linked and the unlinked notes.
-- `GcProjects.render.test.tsx`: the page reads the counts in pages for a building job with a linked crew, and the
-  board's percent reaches Draws.
+- `GcProjects.render.test.tsx`: the page reads the counts in pages for a building job with a linked crew, the
+  board's percent reaches Draws, and Schedule opened after a crew read shows the stage's percent on its bar (gc 10).
 
 ## Drift from `BUILDING_REAL_BUILD.md`
 
@@ -629,7 +689,10 @@ After U7c and U3b-ii (the lead's order). U8a: number from `origin/main`, claim o
   linked trade it now reads the Pipeline's percent instead of nothing. An unlinked trade bills as today.
 - **The Board and money lane**: "our own crew at its Pipeline cost in jobMargin" (LEDGER, after Building's U8) can read
   `job_ledger_id`.
-- **Building's door**: both functions' gates (call 2, call 9), and a guard on the column if gc 5 asks (call 10).
+- **Building's door**: both functions' gates (call 2, call 9). The column's guard comes with U8a, and the door
+  inherits it (call 10). The percents read for a dev only, so after the schedule's PR 10 an office user's chart shows
+  our crew's bars at 0% and its pull offers never see our crew finish (gc 10, the class of 9d's call 1). The read half
+  of Building's door closes it, with the submittals and the RFIs.
 
 ## Is this the best we can do?
 
@@ -644,5 +707,7 @@ After U7c and U3b-ii (the lead's order). U8a: number from `origin/main`, claim o
 ## Status
 
 Plan 2026-10-10, gc 4. The count's shape agreed with gc 10, whose four changes are calls 1 to 5. U8a's SQL bed-tested
-on main at 06ab01043. The screen's and the refusals' words above pass `plainWordsFailures`. Waiting on the lead's
-read of calls 6 to 13. Nothing built.
+on main at 06ab01043. The screen's and the refusals' words above pass `plainWordsFailures`. Amendment 1
+(2026-10-10): the lead approved calls 6 to 9 and 11 to 13 and changed 10 to the column's guard, now in U8a and
+bed-tested (28 assertions, 25 of 25 planted bugs). gc 10 signed off, with call 12 made exact and a page test added.
+Cut after U7c and U3b-ii, as ordered. Nothing built.
