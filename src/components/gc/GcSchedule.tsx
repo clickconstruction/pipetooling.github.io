@@ -21,7 +21,9 @@
  * still bidding shows its rough schedule (`GcRoughSchedule`, G-45) in place of the first draft, drawn and redrawn there,
  * and a rough whose weeks were not kept when our bid went in is kept with **Keep the weeks as sent**. Since PR 12c, a
  * schedule the customer or the architect handed us makes the first one, or replaces one drawn before Start
- * (`GcScheduleImport`, G-137), and a job being built takes only their dates to meet (`GcTheirDatesDoor`, G-145).
+ * (`GcScheduleImport`, G-137), and a job being built takes only their dates to meet (`GcTheirDatesDoor`, G-145). Since
+ * PR 14c, on a job being built, the same people answer a trade that says it will be late (`GcLateNotices`, G-117) and
+ * check the trades' look-ahead marks, our crew's own and the inspections due (`GcVerifyCard`), on the real schedule only.
  * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
  * bring one.
  */
@@ -57,7 +59,7 @@ import { partMoveOf } from '../../lib/gc/schedule/splitBars'
 import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { draftRefusal, draftStart, ownWorkOffWords, redoWords, templateDraftPress, undoWords } from '../../lib/gc/schedule/scheduleWindow'
 import type { PlaceChange } from '../../lib/gc/schedule/places'
-import type { ActivityPart, InspectionFailure, ProjectSchedule, RoughSchedule, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleTemplate, ScheduleWait, ScheduleWalk } from '../../lib/gc/schedule/types'
+import type { ActivityPart, InspectionFailure, LookAheadMark, ProjectSchedule, RoughSchedule, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleTemplate, ScheduleWait, ScheduleWalk } from '../../lib/gc/schedule/types'
 import type { WaitStep } from '../../lib/gc/schedule/writes'
 import { drawnFromWords, templatesOffered } from '../../lib/gc/schedule/templates'
 import { whatIfCopy, whatIfGhosts, whatIfProject } from '../../lib/gc/schedule/whatIf'
@@ -71,12 +73,14 @@ import { waitRows } from '../../lib/gc/schedule/waits'
 import {
   addScheduleActivity,
   addScheduleWait,
+  crewMarkLookAhead,
   drawSchedule,
   failScheduleInspection,
   joinScheduleBar,
   keepScheduleWhatIf,
   loadScheduleWithHolds,
   passScheduleInspection,
+  pushBackLateNotice,
   recordScheduleWalk,
   redoScheduleMove,
   removeScheduleActivity,
@@ -100,6 +104,7 @@ import {
   throwAwayWhatIf,
   tryInWhatIf,
   undoScheduleMove,
+  verifyLookAhead,
   type SchedulePress,
   type ScheduleReads,
   loadScheduleMoney,
@@ -123,6 +128,8 @@ import { GcDaysBack, GcRecoveryWindow } from './GcRecovery'
 import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { GcScheduleBar } from './GcScheduleBar'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
+import { GcLateNotices } from './GcLateNotices'
+import { GcVerifyCard } from './GcVerifyCard'
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
 import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfKept, GcWhatIfLine } from './GcWhatIf'
 import { GcTellTrades } from './GcTellTrades'
@@ -444,6 +451,9 @@ export function GcSchedule({
                 drawRough: (rough) => record((st) => setRoughSchedule(st, projectId, rough)),
                 keepRough: (kept) => record((st) => keepRoughLater(st, projectId, kept)),
                 theirDates: (dates, milestones) => record((st) => takeTheirDates(st, projectId, dates, milestones)),
+                pushBack: (noticeId, note) => record((st) => pushBackLateNotice(st, projectId, noticeId, note)),
+                verify: (mark) => record((st) => verifyLookAhead(st, projectId, mark)),
+                crewMark: (mark) => record((st) => crewMarkLookAhead(st, projectId, mark)),
               }
             : null
         }
@@ -519,6 +529,11 @@ interface MovePresses {
   keepRough: (kept: NonNullable<RoughSchedule['kept']>) => Promise<void>
   /** Their dates to meet from a file (G-145, PR 12c): one record, refused whole. */
   theirDates: TakeTheirDates
+  /** The office's words back to a trade that says it will be late (G-117, PR 14c): a record, today. */
+  pushBack: (noticeId: string, note: string) => Promise<void>
+  /** Our superintendent's check of a trade's look-ahead mark, and our own crew's mark (PR 14c): records. */
+  verify: (mark: LookAheadMark) => Promise<void>
+  crewMark: (mark: LookAheadMark) => Promise<void>
 }
 
 /** The what-if copy's own presses (G-81, PR 11, call 3), apart from `MovePresses`: a move tried is not a move until Keep. */
@@ -915,6 +930,8 @@ function ScheduleView({
       {pickedBar && (
         <GcScheduleBar bar={pickedBar} all={bars} today={state.today} building={building} caller={caller ? <GcBarCaller caller={caller} /> : undefined} onClose={() => setPicked(null)} />
       )}
+      {/* Trades say they will be late (G-117, PR 14c): take the day as a move, or push back. The real schedule's only. */}
+      {moves && building && !inCopy && <GcLateNotices state={state} project={project} onTake={setPending} onPushBack={moves.pushBack} onReload={moves.reload} />}
       {inCopy && copy ? (
         <GcMoveHistory project={project} onUndo={copy.undo} onRedo={copy.redo} busy={copy.busy} trying />
       ) : moves ? (
@@ -954,6 +971,8 @@ function ScheduleView({
           {schedule.baseline && <GcBaseline project={project} today={state.today} by={by} onBaseline={moves.baseline} onReload={moves.reload} />}
           {/* Templates (G-44, PR 12a): a job being built saves its schedule as one; every template is renamed or set aside here. */}
           {building && <GcTemplatesCard state={state} project={project} onSave={moves.saveTemplate} onRename={moves.renameTemplate} onSetAside={moves.setAsideTemplate} />}
+          {/* Our superintendent's check (PR 14c): the trades' marks, our crew's own and the inspections due this week. */}
+          {building && <GcVerifyCard project={project} rows={m.rows} today={state.today} onVerify={moves.verify} onCrewMark={moves.crewMark} onPass={moves.pass} onFail={moves.fail} onReload={moves.reload} />}
         </>
       )}
       {/* The window keeps its reason and words while the schedule reads again under it: keyed by the bar only. */}
