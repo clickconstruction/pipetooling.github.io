@@ -10726,6 +10726,7 @@ export type Database = {
           contingency_pct: number
           fee_pct: number
           general_conditions: number
+          general_conditions_job_id: string | null
           project_id: string
           updated_at: string
           updated_by: string | null
@@ -10734,6 +10735,7 @@ export type Database = {
           contingency_pct?: number
           fee_pct?: number
           general_conditions?: number
+          general_conditions_job_id?: string | null
           project_id: string
           updated_at?: string
           updated_by?: string | null
@@ -10742,11 +10744,19 @@ export type Database = {
           contingency_pct?: number
           fee_pct?: number
           general_conditions?: number
+          general_conditions_job_id?: string | null
           project_id?: string
           updated_at?: string
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "gc_project_money_general_conditions_job_id_fkey"
+            columns: ["general_conditions_job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "gc_project_money_project_id_fkey"
             columns: ["project_id"]
@@ -30250,6 +30260,10 @@ export type Database = {
       gc_sow_all_billed: { Args: { p_sow_id: string }; Returns: boolean }
       gc_sow_line_of: {
         Args: { p_key: string; p_sow_id: string }
+        Returns: string
+      }
+      gc_start_project: {
+        Args: { p_anyway?: Json; p_project_id: string }
         Returns: string
       }
       gc_submittal_came_in: { Args: { r: Json }; Returns: string }
