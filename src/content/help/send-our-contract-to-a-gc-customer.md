@@ -45,11 +45,23 @@ The row says **Our price changed after we sent it.** Press {{button:blue|Send th
 
 Press **Mark it signed** on Get started instead. [Get a GC job ready to start](/help/get-a-gc-job-ready-to-start) shows where it is.
 
+## Email it to them
+
+Tick **Email it to them now, with their portal link** before you press the send button. The box starts unticked. The email they get shows under it.
+
+The email says the price and the sign by day. The contract file is attached. A link to their portal comes under it. Their first send makes the portal link if they have none.
+
+The line at the top says who it went to. If the email did not go, the words say why. The send is kept either way.
+
+## When the email did not go
+
+The row reads **Not emailed** with the reason. Fix what it says, then press {{button:blue|Email it now}} on the row. It emails the same contract with its price and file. Nothing is sent anew.
+
 ## What the customer gets
 
-Our contract waits in their portal under the job. They see the price, how billing works and the sign by day. They read the file, then sign with their name typed or drawn.
+Our contract waits in their portal under the job. They see the price, every term we bill by and the sign by day. They read the file, then sign with their name typed or drawn.
 
-No email goes yet. Until it does, they find it only when they open their portal.
+Without the email, they find it only when they open their portal.
 
 ## Once they sign
 

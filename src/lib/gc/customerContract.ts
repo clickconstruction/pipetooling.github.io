@@ -4,6 +4,10 @@
  * real rows (`gc_owner_contract_sends`, B6-d-i). One row per won job of theirs, with its next step: **Send to sign**,
  * **Remind them**, or **Send the new price** once our price moved after a send (call D2: each send keeps the price it
  * went with, and their portal offers only the newest). Pure.
+ *
+ * B6-d-iii-b: a send whose email did not go (none ticked, or refused) reads "not emailed", and its next step, for
+ * someone who may email the customer, is **Email it now**: the same send emailed, never a second one (Owner Billing's
+ * call, as a reminder to pay is the row first and its email retried).
  */
 import { customerReminderLate, customerSendsFor, customerSentWords } from './customerSend'
 import type { CompanyDoc, CompanyDocGroup } from './companyFile'
@@ -11,11 +15,11 @@ import { ownerContractWorthNow } from './ownerBilling'
 import type { CustomerSend, GcCustomer, GcProject, GcState } from './types'
 import { daysUntil, shortDate, weekdayDate } from './words'
 
-/** A send of our contract: its first, a reminder at the same price, or the new price after ours moved. */
+/** A send of our contract: its first, a reminder at the same price, the new price after ours moved, or the newest send emailed. */
 export interface ContractStep {
   docKey: string
   projectId: string
-  mode: 'first' | 'reminder' | 'newPrice'
+  mode: 'first' | 'reminder' | 'newPrice' | 'emailAgain'
   /** The row's button. */
   verb: string
   title: string
@@ -58,8 +62,11 @@ export function contractPriceChanged(state: GcState, project: GcProject): boolea
   return !sameWorth(newest.worth, ownerContractWorthNow(project))
 }
 
-/** The next send of our contract on one of the customer's jobs. Null: nothing to send (signed, lost, still bidding). */
-export function contractStep(state: GcState, customer: GcCustomer, projectId: string): ContractStep | null {
+/**
+ * The next send of our contract on one of the customer's jobs. Null: nothing to send (signed, lost, still bidding).
+ * `canEmail`: the reader may email the customer, so a send not emailed yet is emailed rather than sent again.
+ */
+export function contractStep(state: GcState, customer: GcCustomer, projectId: string, { canEmail = false }: { canEmail?: boolean } = {}): ContractStep | null {
   const project = state.projects.find((p) => p.id === projectId)
   if (!project || project.customerId !== customer.id || project.stage === 'pursuing' || project.lostOn || project.ownerContractSignedOn) return null
   const base = { docKey: contractDocKey(project.id), projectId: project.id, dayWord: 'Sign by' as const }
@@ -77,6 +84,17 @@ export function contractStep(state: GcState, customer: GcCustomer, projectId: st
       sendLabel: 'Send the new price',
     }
   }
+  const newest = newestContractSend(state, project)
+  if (canEmail && newest && !newest.emailed) {
+    return {
+      ...base,
+      mode: 'emailAgain',
+      verb: 'Email it now',
+      title: 'Email our contract to them',
+      history: `${sent} Not emailed yet. This emails the same contract, with its price and its file.`,
+      sendLabel: 'Send the email',
+    }
+  }
   const reminders = customerSendsFor(state, customer.id, 'contract', project.id).filter((s) => !s.first)
   const last = reminders[reminders.length - 1]
   return {
@@ -90,7 +108,7 @@ export function contractStep(state: GcState, customer: GcCustomer, projectId: st
 }
 
 /** Our contract's row on one job, as the spike words it, with a late wording once the sign-by day passed. */
-function contractDoc(state: GcState, customer: GcCustomer, project: GcProject): CompanyDoc {
+function contractDoc(state: GcState, customer: GcCustomer, project: GcProject, notEmailed: string | undefined): CompanyDoc {
   const key = contractDocKey(project.id)
   const newest = newestContractSend(state, project)
   if (project.ownerContractSignedOn) {
@@ -113,13 +131,20 @@ function contractDoc(state: GcState, customer: GcCustomer, project: GcProject): 
     title: 'Our contract with them',
     status: 'missing',
     statusWords: late && newest ? `late, asked to sign by ${weekdayDate(newest.by)}` : 'waiting on their signature',
-    meta: contractPriceChanged(state, project) ? 'Our price changed after we sent it.' : `${sentWords ? `${sentWords} ` : ''}They sign it in their portal.`,
+    meta: contractPriceChanged(state, project)
+      ? 'Our price changed after we sent it.'
+      : newest && !newest.emailed
+        ? `${sentWords ? `${sentWords} ` : ''}${notEmailed ? `Not emailed: ${notEmailed}` : 'Not emailed yet.'}`
+        : `${sentWords ? `${sentWords} ` : ''}They sign it in their portal.`,
     projectId: project.id,
   }
 }
 
-/** The customer's Documents: one group per won job, and how many papers are still to get. */
-export function customerDocuments(state: GcState, customer: GcCustomer): { groups: CompanyDocGroup[]; toGet: number } {
-  const groups = contractJobs(state, customer.id).map((project) => ({ title: project.name, docs: [contractDoc(state, customer, project)] }))
+/**
+ * The customer's Documents: one group per won job, and how many papers are still to get. `notEmailed`: why a send's
+ * email did not go just now, by job, as the window heard it.
+ */
+export function customerDocuments(state: GcState, customer: GcCustomer, notEmailed: Record<string, string> = {}): { groups: CompanyDocGroup[]; toGet: number } {
+  const groups = contractJobs(state, customer.id).map((project) => ({ title: project.name, docs: [contractDoc(state, customer, project, notEmailed[project.id])] }))
   return { groups, toGet: groups.reduce((n, g) => n + g.docs.filter((d) => d.status !== 'ok').length, 0) }
 }

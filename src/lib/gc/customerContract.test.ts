@@ -11,9 +11,16 @@ const owner = (rows: BoardRows) => {
   const state = boardStateFromRows(rows)
   return { state, customer: state.customers.find((c) => c.id === 'c1')!, project: state.projects[0]! }
 }
-const sentRows = (sends: Parameters<typeof contractSendRow>[0][], dates: Partial<BoardRows['boardDates'][string]> = { owner_contract_sent_on: '2026-10-05' }) => {
+/** The clinic with these sends, each emailed (its sent copy) unless `emailed: false`. */
+const sentRows = (sends: (Parameters<typeof contractSendRow>[0] & { emailed?: boolean })[], dates: Partial<BoardRows['boardDates'][string]> = { owner_contract_sent_on: '2026-10-05' }) => {
   const base = awardedClinicBoardRows()
-  return { ...base, boardDates: { p1: { ...base.boardDates.p1!, ...dates } }, ownerContractSends: sends.map((s) => contractSendRow(s)) }
+  const rows = sends.map(({ emailed: _e, ...s }) => contractSendRow(s))
+  return {
+    ...base,
+    boardDates: { p1: { ...base.boardDates.p1!, ...dates } },
+    ownerContractSends: rows,
+    ownerContractEmails: rows.filter((_r, i) => sends[i]!.emailed !== false).map((r) => ({ source_id: r.id, sent_on: r.sent_on, recipient_name: 'Pat Oak' })),
+  }
 }
 
 describe('the sends, mapped', () => {
@@ -21,6 +28,14 @@ describe('the sends, mapped', () => {
     const { state, project } = owner(sentRows([{ id: 'cs2', first: false, sent_on: '2026-10-07', created_at: '2026-10-07T15:00:00Z', signed_on: '2026-10-08', signer_printed_name: 'Pat Oak' }, {}]))
     expect(state.customerSends?.map((s) => s.id)).toEqual(['cs1', 'cs2'])
     expect(newestContractSend(state, project)).toMatchObject({ id: 'cs2', customerId: 'c1', paper: 'contract', first: false, by: '2026-10-12', worth: CLINIC_WORTH_NOW, file: { name: 'Clinic contract.pdf' }, signedOn: '2026-10-08', signer: 'Pat Oak' })
+  })
+
+  it('read emailed from their sent copy, and not emailed without one', () => {
+    const { state } = owner(sentRows([{}, { id: 'cs2', first: false, created_at: '2026-10-07T15:00:00Z', emailed: false }]))
+    expect(state.customerSends?.map((s) => [s.id, s.emailed?.to ?? null])).toEqual([
+      ['cs1', 'Pat Oak'],
+      ['cs2', null],
+    ])
   })
 
   it('go to the job’s customer when the send names none', () => {
@@ -44,6 +59,14 @@ describe('our contract’s row and next step', () => {
     expect(contractStep(first.state, first.customer, 'p1')).toMatchObject({ mode: 'reminder', verb: 'Remind them', history: 'Sent Oct 5, 3 days ago. This is the first reminder.' })
     const again = owner(sentRows([{}, { id: 'cs2', first: false, sent_on: '2026-10-07', created_at: '2026-10-07T15:00:00Z' }]))
     expect(contractStep(again.state, again.customer, 'p1')?.history).toBe('Sent Oct 5, 3 days ago. Reminded once, last Oct 7.')
+  })
+
+  it('a send not emailed: the row says so, with why when the window heard it, and Email it now for someone who may email', () => {
+    const { state, customer } = owner(sentRows([{ emailed: false }]))
+    expect(customerDocuments(state, customer).groups[0]?.docs[0]?.meta).toBe('Sent 3 days ago · sign by Mon Oct 12. Not emailed yet.')
+    expect(customerDocuments(state, customer, { p1: 'They have no portal link yet.' }).groups[0]?.docs[0]?.meta).toBe('Sent 3 days ago · sign by Mon Oct 12. Not emailed: They have no portal link yet.')
+    expect(contractStep(state, customer, 'p1', { canEmail: true })).toMatchObject({ mode: 'emailAgain', verb: 'Email it now', sendLabel: 'Send the email' })
+    expect(contractStep(state, customer, 'p1')?.mode).toBe('reminder')
   })
 
   it('late once the sign-by day passed', () => {

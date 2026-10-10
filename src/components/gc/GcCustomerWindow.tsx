@@ -5,7 +5,7 @@ import { contractStep, customerDocuments } from '../../lib/gc/customerContract'
 import { telHref } from '../../lib/gc/followUpSheet'
 import type { GcCustomer, GcState } from '../../lib/gc/types'
 import { CompanyDocuments, CompanyTabStrip } from './GcCompanyDocuments'
-import { GcCustomerContractSend, type ContractSendInput } from './GcCustomerContractSend'
+import { GcCustomerContractSend, type ContractSendInput, type ContractSendOutcome } from './GcCustomerContractSend'
 import type { CustomerAt, CustomerTab } from './gcCustomerOpener'
 import { Btn, Chip } from './gcUi'
 
@@ -23,6 +23,7 @@ export function GcCustomerWindow({
   customer,
   at,
   sendContract,
+  canEmail = false,
   onOpenProject,
   onClose,
 }: {
@@ -30,13 +31,17 @@ export function GcCustomerWindow({
   customer: GcCustomer
   at?: CustomerAt
   /** Our contract's send, for those who send it (a dev while the Board is built, with Our number read). Unset: it reads only. */
-  sendContract?: (projectId: string, input: ContractSendInput) => Promise<void>
+  sendContract?: (projectId: string, input: ContractSendInput) => Promise<ContractSendOutcome>
+  /** The reader may email the customer with the send (the money team, B6-d-iii-b). */
+  canEmail?: boolean
   onOpenProject: (projectId: string) => void
   onClose: () => void
 }) {
   const [tab, setTab] = useState<CustomerTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
   const [sending, setSending] = useState<string | null>(at?.send && at.doc && sendContract ? at.doc : null)
   const [done, setDone] = useState<string | null>(null)
+  // Why an email did not go just now, by job: said on its row until the board reads it emailed.
+  const [notEmailed, setNotEmailed] = useState<Record<string, string>>({})
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
@@ -47,14 +52,14 @@ export function GcCustomerWindow({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, sending])
-  const docs = customerDocuments(state, customer)
+  const docs = customerDocuments(state, customer, notEmailed)
   const projectOf = (docKey: string) => state.projects.find((p) => `contract-${p.id}` === docKey)
   const sendingProject = sending ? projectOf(sending) : undefined
-  const step = sendingProject ? contractStep(state, customer, sendingProject.id) : null
+  const step = sendingProject ? contractStep(state, customer, sendingProject.id, { canEmail }) : null
 
   const ask = (d: CompanyDoc): ReactNode => {
     if (!sendContract || !d.projectId || sending === d.key) return null
-    const next = contractStep(state, customer, d.projectId)
+    const next = contractStep(state, customer, d.projectId, { canEmail })
     return next ? (
       <Btn
         kind="primary"
@@ -131,8 +136,15 @@ export function GcCustomerWindow({
                         project={sendingProject}
                         step={step}
                         onSend={(input) => sendContract(sendingProject.id, input)}
-                        onDone={(words) => {
-                          setDone(words)
+                        canEmail={canEmail}
+                        onDone={(outcome) => {
+                          setDone(outcome.words)
+                          setNotEmailed((was) => {
+                            const next = { ...was }
+                            if (outcome.notEmailed) next[sendingProject.id] = outcome.notEmailed
+                            else delete next[sendingProject.id]
+                            return next
+                          })
                           setSending(null)
                         }}
                         onCancel={() => setSending(null)}

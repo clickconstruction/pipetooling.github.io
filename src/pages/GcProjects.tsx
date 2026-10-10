@@ -82,6 +82,8 @@ import {
   certifyAskMail,
   changeOrderMail,
   changeOrderMailFacts,
+  contractMail,
+  contractMailFacts,
   gcCustomerEmailRefusal,
   interestBillMail,
   interestBillMailFacts,
@@ -118,8 +120,9 @@ import { loadCompanyPaperEntries, recordCompanyInsurance, sendCompanyPaper, type
 import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
-import type { ContractSendInput } from '../components/gc/GcCustomerContractSend'
+import type { ContractSendInput, ContractSendOutcome } from '../components/gc/GcCustomerContractSend'
 import { sendGcOwnerContract } from '../lib/gc/ownerContractIo'
+import { mintCustomerPortalLink } from '../lib/portal/mintCustomerPortalLink'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
@@ -531,11 +534,33 @@ export default function GcProjects() {
   const [customerWin, setCustomerWin] = useState<{ id: string; at: CustomerAt | null } | null>(null)
   const customerOpener: CustomerOpener | null = canUseGcBoardWrites(role) && board ? { openCustomer: (id, at) => setCustomerWin({ id, at: at ?? null }) } : null
   const openCustomer = customerWin && board ? (board.customers.find((c) => c.id === customerWin.id) ?? null) : null
+  // With its tick (B6-d-iii-b), the send emails them: their portal link made first if they have none (call D6, the
+  // merged link, as every door makes one), then gc-customer-email's contract kind, which attaches the send's own file.
+  // A refusal is said after the board reads the send, which stays on record either way.
   const sendContract =
     canUseGcBoardWrites(role) && canSeeGcMoney(role) && moneyShown
-      ? async (projectId: string, input: ContractSendInput) => {
-          await sendGcOwnerContract({ projectId, ...input })
+      ? async (projectId: string, input: ContractSendInput): Promise<ContractSendOutcome> => {
+          // Email it now (Owner Billing's call): the newest send as it is, emailed with nothing sent anew.
+          const sendId = input.sendId ?? (await sendGcOwnerContract({ projectId, ...input }))
+          let outcome: ContractSendOutcome = { words: 'On record with its price and file. No email went: they find it when they open their portal.' }
+          const project = board?.projects.find((x) => x.id === projectId)
+          if (input.email && board && project) {
+            try {
+              await mintCustomerPortalLink(project.customerId, 'all')
+              const mail = contractMail(contractMailFacts(board, project, { mode: input.mode, price: input.total, signBy: input.signBy, note: input.note }))
+              const answer = await sendGcCustomerEmail({ projectId, kind: 'contract', sourceId: sendId, subject: mail.subject, lines: mail.lines, pdf: null })
+              if (answer.ok) outcome = { words: `On record, and sent to ${answer.to || answer.email}.` }
+              else {
+                const why = gcCustomerEmailRefusal(answer.key)
+                outcome = { words: `On record. The email did not go: ${why}`, notEmailed: why }
+              }
+            } catch (e) {
+              const why = `Their portal link was not made: ${formatErrorMessage(e, 'try again')}`
+              outcome = { words: `On record. No email went. ${why}`, notEmailed: why }
+            }
+          }
           await refreshBoard()
+          return outcome
         }
       : undefined
   // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
@@ -1872,6 +1897,7 @@ export default function GcProjects() {
           customer={openCustomer}
           {...(customerWin?.at ? { at: customerWin.at } : {})}
           {...(sendContract ? { sendContract } : {})}
+          canEmail={canSeeGcMoney(role)}
           onOpenProject={(projectId) => {
             setCustomerWin(null)
             openProjectCard(projectId)

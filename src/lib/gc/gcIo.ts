@@ -8,6 +8,7 @@ import { supabase } from '../supabase'
 import { jobNumberLabel } from '../jobs/jobSummaryCycle'
 import type { Database, Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { extractContactInfo } from '../bids/bidContactInfo'
 import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
 import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
@@ -457,6 +458,14 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
           .order('created_at')
       : none,
   ])
+  // Which of our contract's sends were emailed (B6-d-iii-b): each email's sent copy, under the sent copies' own policy.
+  const contractSendRows = taken(contractSends, 'load our contract’s sends')
+  const contractEmails = contractSendRows.length
+    ? taken(
+        await supabase.from('sent_documents').select('source_id, sent_at, recipient_name').eq('source_table', 'gc_owner_contract_sends').in('source_id', contractSendRows.map((s) => s.id)),
+        'load our contract’s emails',
+      ).map((e) => ({ source_id: e.source_id, sent_on: calendarYmdInAppTzFromIso(e.sent_at), recipient_name: e.recipient_name }))
+    : []
   return {
     today,
     projects,
@@ -480,7 +489,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     ownBids: taken(ownBids, 'load our own trades’ bids'),
     papers: taken(papers, 'load the trade partners’ papers'),
     paperSends: taken(paperSends, 'load the papers we sent'),
-    ownerContractSends: taken(contractSends, 'load our contract’s sends'),
+    ownerContractSends: contractSendRows,
+    ownerContractEmails: contractEmails,
   }
 }
 

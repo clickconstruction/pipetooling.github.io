@@ -2,9 +2,15 @@
  * Our emails to a GC customer and its architect (O4b): the words (./customerEmail.ts), and what `gc-customer-email`
  * reads from a request and wraps around them (supabase/functions/_shared/gcCustomerEmails.ts).
  */
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   buildGcCustomerEmail,
+  bytesBase64,
+  gcContractAttachmentName,
+  gcContractPortalUrl,
+  GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
   gcCustomerEmailCc,
   gcCustomerEmailCopyKinds,
   gcCustomerEmailTestSubject,
@@ -28,6 +34,7 @@ import {
   certifyAskMail,
   changeOrderMail,
   changeOrderMailFacts,
+  contractMail,
   emailedWords,
   gcCustomerEmailRefusal,
   interestBillMail,
@@ -226,6 +233,7 @@ describe('what gc-customer-email reads and sends', () => {
       ['reminder', 'customer', 'gc_owner_pay_reminders', 'bill_gc_reminder', 'bills'],
       ['interest_bill', 'customer', 'gc_owner_interest_bills', 'bill_gc_interest', 'bills'],
       ['weekly', 'customer', 'gc_weekly_reports', 'field_report_gc_weekly', 'statements'],
+      ['contract', 'customer', 'gc_owner_contract_sends', 'gc_owner_contract', 'other'],
     ])
     // Never the Pipeline's G702 workbook copy, whose history reads its own kind.
     expect(GC_CUSTOMER_EMAIL_KINDS.some((k) => isPayApplicationCopy({ kind: GC_CUSTOMER_EMAIL_FILED_AS[k] }))).toBe(false)
@@ -234,15 +242,78 @@ describe('what gc-customer-email reads and sends', () => {
     expect(gcCustomerEmailCopyKinds('gc_owner_pay_reminders')).toEqual(['bill_gc_reminder'])
     expect(gcCustomerEmailCopyKinds('gc_owner_interest_bills')).toEqual(['bill_gc_interest'])
     expect(gcCustomerEmailCopyKinds('gc_weekly_reports')).toEqual(['field_report_gc_weekly'])
-    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder', 'interest_bill'])
+    expect(gcCustomerEmailCopyKinds('gc_owner_contract_sends')).toEqual(['gc_owner_contract'])
+    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder', 'interest_bill', 'contract'])
   })
 
   it('sends the weekly report as Building’s (U7b): its row decides who may, to the contact first, unframed, no portal line yet', () => {
-    const others = GC_CUSTOMER_EMAIL_KINDS.filter((k) => k !== 'weekly')
+    const others = GC_CUSTOMER_EMAIL_KINDS.filter((k) => k !== 'weekly' && k !== 'contract')
     expect(others.every((k) => GC_CUSTOMER_EMAIL_GATE[k] === 'moneyTeam' && GC_CUSTOMER_EMAIL_ADDRESS[k] === 'billing' && GC_CUSTOMER_EMAIL_FRAMED[k])).toBe(true)
     expect([GC_CUSTOMER_EMAIL_GATE.weekly, GC_CUSTOMER_EMAIL_ADDRESS.weekly, GC_CUSTOMER_EMAIL_FRAMED.weekly, GC_CUSTOMER_EMAIL_PORTAL_LINE.weekly]).toEqual(['row', 'contact', false, false])
     const read = parseCustomerEmail({ ...ok, kind: 'weekly' })
     expect(read.ok && read.req.kind).toBe('weekly')
+  })
+
+  it('sends our contract (B6-d-iii-b): the money team’s, to the contact first, framed, its portal line required, never a PDF from the window', () => {
+    expect([GC_CUSTOMER_EMAIL_GATE.contract, GC_CUSTOMER_EMAIL_ADDRESS.contract, GC_CUSTOMER_EMAIL_FRAMED.contract, GC_CUSTOMER_EMAIL_PORTAL_LINE.contract]).toEqual(['moneyTeam', 'contact', true, true])
+    expect(parseCustomerEmail({ ...ok, kind: 'contract' })).toMatchObject({ ok: true, req: { kind: 'contract', pdf: null } })
+    expect(parseCustomerEmail({ ...ok, kind: 'contract', pdf: { filename: 'c.pdf', base64: 'JVBERi0xLjQK' } })).toEqual({ ok: false })
+    const email = buildGcCustomerEmail({ subject: 'Your contract for Fair Oaks', lines: ['Hello Elena,'], signer: 'Rosa', gc: 'Click Construction', portalUrl: 'https://my.clickplumbing.com/fair-oaks', portalWords: GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS })
+    expect(email.text).toContain('Read it and sign it in your portal: https://my.clickplumbing.com/fair-oaks')
+  })
+
+  it('links our contract only where their GC jobs show: the merged link first, then a customer view, never a GC view', () => {
+    const app = 'https://clicktooling.com'
+    const short = 'https://my.clickplumbing.com/'
+    expect(gcContractPortalUrl([{ audience: 'all', token: 'tok-all' }], 'fair-oaks', app, short)).toBe('https://my.clickplumbing.com/fair-oaks')
+    expect(gcContractPortalUrl([{ audience: 'all', token: 'tok-all' }], null, app, short)).toBe('https://clicktooling.com/portal?t=tok-all')
+    expect(gcContractPortalUrl([{ audience: 'customer', token: 'tok-c' }, { audience: 'gc', token: 'tok-g' }], 'x', app, short)).toBe('https://clicktooling.com/portal?t=tok-c')
+    expect(gcContractPortalUrl([{ audience: 'gc', token: 'tok-g' }], 'x', app, short)).toBeNull()
+    expect(gcContractPortalUrl([{ audience: 'all', token: 'tok-all', revoked_at: '2026-10-01T00:00:00Z' }], 'x', app, short)).toBeNull()
+  })
+
+  it('attaches the contract under the office’s file name, always a PDF, and as base64 of its bytes', () => {
+    expect(gcContractAttachmentName('Clinic contract v2.pdf')).toBe('Clinic contract v2.pdf')
+    expect(gcContractAttachmentName('Owner/GC agreement: final!.PDF')).toBe('Owner GC agreement final.pdf')
+    expect(gcContractAttachmentName('***')).toBe('Our contract.pdf')
+    expect(bytesBase64(new TextEncoder().encode('abc'))).toBe('YWJj')
+  })
+
+  it('words our contract’s email: the first, a reminder and a new price, each with its day and the file', () => {
+    const base = { job: 'Fair Oaks', greeting: 'Elena', price: 187000, signBy: '2026-10-16', note: '' }
+    expect(contractMail({ ...base, mode: 'first' })).toEqual({
+      subject: 'Your contract for Fair Oaks',
+      lines: [
+        'Hello Elena,',
+        'Thank you for choosing us for Fair Oaks. Here is our contract for it: $187,000.',
+        `Please sign it by ${weekdayDate('2026-10-16')}.`,
+        'The contract is attached. Your bills and change orders for the job will be in your portal too.',
+      ],
+    })
+    expect(contractMail({ ...base, mode: 'reminder', note: ' Call me with questions. ' }).lines).toEqual([
+      'Hello Elena,',
+      'Our contract for Fair Oaks is still waiting on your signature: $187,000.',
+      `Please sign it by ${weekdayDate('2026-10-16')}.`,
+      'Call me with questions.',
+      'The contract is attached. Your bills and change orders for the job will be in your portal too.',
+    ])
+    expect(contractMail({ ...base, mode: 'newPrice' }).subject).toBe('Your contract for Fair Oaks, with our new price')
+  })
+
+  it('never puts a card line on our contract: it is not a bill, and the function offers the card only for a certified bill or a reminder', () => {
+    const email = buildGcCustomerEmail({ subject: 'Your contract for Fair Oaks', lines: ['Hello Elena,'], signer: 'Rosa', gc: 'Click Construction', portalUrl: 'https://my.clickplumbing.com/fair-oaks', portalWords: GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS, cardFee: 8666.37 })
+    expect(email.text).not.toMatch(/card/i)
+    expect(email.html).not.toMatch(/card/i)
+    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    expect(fn).toContain("if (portalUrl && billId && (m.kind === 'certified' || m.kind === 'reminder')) {")
+  })
+
+  it('says each new refusal of our contract’s email in the window’s words', () => {
+    expect(gcCustomerEmailRefusal('noPortal')).toBe('They have no portal link yet. Send it from their window first.')
+    expect(gcCustomerEmailRefusal('fileChanged')).toBe('The contract file changed after it was sent. Send it again with the file.')
+    expect(gcCustomerEmailRefusal('notNewest')).toBe('A newer contract went after this one. Send the newest one.')
+    expect(gcCustomerEmailRefusal('alreadySigned')).toBe('They signed our contract already.')
+    expect(gcCustomerEmailRefusal('tooLarge')).toBe('The contract is too large to email. Their portal has it.')
   })
 
   it('splits a weekly report into its paragraphs, each keeping its own lines', () => {

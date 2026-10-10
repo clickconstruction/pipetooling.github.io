@@ -18,9 +18,10 @@ export const GC_CUSTOMER_EMAIL_FROM_NAME = 'Click Construction'
  * The kinds. O4b-1: our pay application to the customer, and the ask to the architect to certify it. O4b-2: the bill
  * the architect certified, to the customer, and a change order for them to sign. O5b: our reminder to pay a late bill,
  * its words the ones `gc_remind_customer_to_pay` filed. O6b-2: our bill for the interest on late bills. Building's U7b:
- * the weekly report on a job we are building, its words the `gc_weekly_reports` row the window kept.
+ * the weekly report on a job we are building, its words the `gc_weekly_reports` row the window kept. The Board's
+ * B6-d-iii-b: our contract to sign in their portal, the send's own file attached by the function.
  */
-export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask', 'certified', 'change_order', 'reminder', 'interest_bill', 'weekly'] as const
+export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask', 'certified', 'change_order', 'reminder', 'interest_bill', 'weekly', 'contract'] as const
 export type GcCustomerEmailKind = (typeof GC_CUSTOMER_EMAIL_KINDS)[number]
 
 /** Who each kind goes to: the project's customer, or its architect (`gc_projects.architect_customer_id`). */
@@ -32,10 +33,11 @@ export const GC_CUSTOMER_EMAIL_TO: Record<GcCustomerEmailKind, 'customer' | 'arc
   reminder: 'customer',
   interest_bill: 'customer',
   weekly: 'customer',
+  contract: 'customer',
 }
 
-/** The row each kind is about: a pay application, a change order, a reminder to pay, an interest bill, or a weekly report. */
-export type GcCustomerEmailSource = 'gc_owner_pay_apps' | 'gc_change_orders' | 'gc_owner_pay_reminders' | 'gc_owner_interest_bills' | 'gc_weekly_reports'
+/** The row each kind is about: a pay application, a change order, a reminder to pay, an interest bill, a weekly report, or a send of our contract. */
+export type GcCustomerEmailSource = 'gc_owner_pay_apps' | 'gc_change_orders' | 'gc_owner_pay_reminders' | 'gc_owner_interest_bills' | 'gc_weekly_reports' | 'gc_owner_contract_sends'
 export const GC_CUSTOMER_EMAIL_SOURCE: Record<GcCustomerEmailKind, GcCustomerEmailSource> = {
   pay_app: 'gc_owner_pay_apps',
   certify_ask: 'gc_owner_pay_apps',
@@ -44,6 +46,7 @@ export const GC_CUSTOMER_EMAIL_SOURCE: Record<GcCustomerEmailKind, GcCustomerEma
   reminder: 'gc_owner_pay_reminders',
   interest_bill: 'gc_owner_interest_bills',
   weekly: 'gc_weekly_reports',
+  contract: 'gc_owner_contract_sends',
 }
 
 /**
@@ -59,11 +62,14 @@ export const GC_CUSTOMER_EMAIL_GATE: Record<GcCustomerEmailKind, 'moneyTeam' | '
   reminder: 'moneyTeam',
   interest_bill: 'moneyTeam',
   weekly: 'row',
+  // Our contract goes with the price by line, Our number's.
+  contract: 'moneyTeam',
 }
 
 /**
  * Which of a customer row's addresses each kind goes to: the billing address first for a bill, the contact first for the
- * weekly report, which is for the person who runs the job for them (`customerContactEmail`).
+ * weekly report, which is for the person who runs the job for them (`customerContactEmail`), and for our contract, whose
+ * signer is their owner, not their payables.
  */
 export const GC_CUSTOMER_EMAIL_ADDRESS: Record<GcCustomerEmailKind, 'billing' | 'contact'> = {
   pay_app: 'billing',
@@ -73,6 +79,7 @@ export const GC_CUSTOMER_EMAIL_ADDRESS: Record<GcCustomerEmailKind, 'billing' | 
   reminder: 'billing',
   interest_bill: 'billing',
   weekly: 'contact',
+  contract: 'contact',
 }
 
 /**
@@ -87,6 +94,7 @@ export const GC_CUSTOMER_EMAIL_FRAMED: Record<GcCustomerEmailKind, boolean> = {
   reminder: true,
   interest_bill: true,
   weekly: false,
+  contract: true,
 }
 
 /**
@@ -105,6 +113,8 @@ export const GC_CUSTOMER_EMAIL_FILED_AS: Record<GcCustomerEmailKind, string> = {
   interest_bill: 'bill_gc_interest',
   // A report on the job, not a bill: `field_report`'s prefix, so the Documents page sorts it under Statements.
   weekly: 'field_report_gc_weekly',
+  // Our contract with the customer, kept in Documents until SENT_COPIES' step 4 lists it.
+  contract: 'gc_owner_contract',
 }
 
 /** The sent copies' kinds about rows of one table, for the window's *Emailed to* lines. */
@@ -126,8 +136,47 @@ export const GC_CUSTOMER_EMAIL_PORTAL_LINE: Record<GcCustomerEmailKind, boolean>
   interest_bill: true,
   // Until the customer's portal shows the reports (the schedule's PR 15).
   weekly: false,
+  // Required, never left off: they sign it there. With no link where GC jobs show, the kind refuses noPortal.
+  contract: true,
 }
 export const GC_CUSTOMER_EMAIL_PORTAL_WORDS = 'You can see this bill in your portal:'
+/** Our contract's portal line: they sign it there. */
+export const GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS = 'Read it and sign it in your portal:'
+
+/**
+ * The link our contract goes with: one where their GC jobs show. The merged link (`all`) first, at its short address
+ * when it has one, then a customer view (`customer`). Never a general contractor's view (`gc`), which shows no GC job of
+ * ours. Null: none on, and the kind refuses noPortal.
+ */
+export function gcContractPortalUrl(
+  links: ReadonlyArray<{ audience: string; token: string | null; revoked_at?: string | null }>,
+  slug: string | null | undefined,
+  appOrigin: string,
+  shortOrigin: string,
+): string | null {
+  const active = links.filter((l) => l.revoked_at == null && !!(l.token ?? '').trim())
+  const origin = appOrigin.replace(/\/+$/, '')
+  const all = active.find((l) => l.audience === 'all')
+  if (all?.token) return (slug ?? '').trim() ? `${shortOrigin}${(slug ?? '').trim()}` : `${origin}/portal?t=${all.token.trim()}`
+  const customer = active.find((l) => l.audience === 'customer')
+  return customer?.token ? `${origin}/portal?t=${customer.token.trim()}` : null
+}
+
+/** The largest contract file an email attaches, under Resend's message limit. Over it: `tooLarge`. */
+export const GC_CUSTOMER_EMAIL_MAX_CONTRACT_BYTES = 30 * 1024 * 1024
+
+/** Our contract's attachment name: the office's file name as Resend takes one, always a .pdf. */
+export function gcContractAttachmentName(name: string): string {
+  const base = name.replace(/\.pdf$/i, '').replace(/[^\w.() -]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 110)
+  return `${base || 'Our contract'}.pdf`
+}
+
+/** A file's bytes as base64 for an attachment, a chunk at a time so a long file never overflows the call stack. */
+export function bytesBase64(bytes: Uint8Array): string {
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return btoa(binary)
+}
 
 /** The form's PDF, base64, under the same cap `send-lien-release-email` keeps. */
 export const GC_CUSTOMER_EMAIL_MAX_PDF_BASE64 = 6_000_000
@@ -144,6 +193,14 @@ export const CUSTOMER_EMAIL_ERRORS = {
   notSent: 409,
   alreadySent: 409,
   noEmail: 422,
+  // Our contract (B6-d-iii-b): no link where GC jobs show; the send's file is not the bytes it hashed; a newer send went;
+  // they signed it already.
+  noPortal: 422,
+  fileChanged: 409,
+  notNewest: 409,
+  alreadySigned: 409,
+  // The stored file is over what one email carries (Resend takes about 40 MB a message): their portal has it.
+  tooLarge: 413,
   sendFailed: 502,
   failed: 500,
 } as const
@@ -157,7 +214,7 @@ export interface GcCustomerEmailRequest {
   subject: string
   /** The email, one paragraph a line, the greeting first. */
   lines: string[]
-  /** The pay application's form, made in the window (`payAppPdf`). */
+  /** The pay application's form, made in the window (`payAppPdf`). Never with our contract: the function attaches its file. */
   pdf: { filename: string; base64: string } | null
   /**
    * A test copy: built as the real email would be, to the caller's own address only, `[TEST]` before the subject, with no
@@ -218,6 +275,8 @@ export function parseCustomerEmail(body: unknown): { ok: true; req: GcCustomerEm
     if (!base64 || base64.length > GC_CUSTOMER_EMAIL_MAX_PDF_BASE64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return { ok: false }
     pdf = { filename, base64 }
   }
+  // Our contract goes with the send's own file, read and checked by the function, never one the window sends.
+  if (kind === 'contract' && pdf) return { ok: false }
   return { ok: true, req: { projectId, kind: kind as GcCustomerEmailKind, sourceId, subject, lines, pdf, ...(b.test === true ? { test: true } : {}) } }
 }
 
@@ -243,6 +302,8 @@ export interface GcCustomerEmailInput {
   framed?: boolean
   /** The customer's portal, for the kinds that link it (`GC_CUSTOMER_EMAIL_PORTAL_LINE`). Null: no line. */
   portalUrl?: string | null
+  /** The portal line's words. Unset: a bill's (`GC_CUSTOMER_EMAIL_PORTAL_WORDS`). */
+  portalWords?: string
   /**
    * The bill's card fee when their portal offers Pay by card (O8c: the switch on, the bill certified, not on Stripe
    * and nothing paid). With a portal link, the portal line says they may pay by card there, and the fee follows.
@@ -266,8 +327,9 @@ export function buildGcCustomerEmail(input: GcCustomerEmailInput): { subject: st
   const subject = input.subject.trim()
   const portal = /^https:\/\/\S+$/.test((input.portalUrl ?? '').trim()) ? input.portalUrl!.trim() : null
   const shown = portal ? portal.replace(/^https:\/\//, '').replace(/\/$/, '') : ''
-  const fee = portal && typeof input.cardFee === 'number' && input.cardFee > 0 ? input.cardFee : null
-  const words = fee !== null ? GC_CUSTOMER_EMAIL_CARD_PORTAL_WORDS : GC_CUSTOMER_EMAIL_PORTAL_WORDS
+  // A card offer goes only with a bill's portal line, never under other words (our contract is not a bill).
+  const fee = portal && input.portalWords === undefined && typeof input.cardFee === 'number' && input.cardFee > 0 ? input.cardFee : null
+  const words = fee !== null ? GC_CUSTOMER_EMAIL_CARD_PORTAL_WORDS : (input.portalWords ?? GC_CUSTOMER_EMAIL_PORTAL_WORDS)
   const feeLine = fee !== null ? gcCustomerEmailCardFeeLine(fee) : null
   const framed = input.framed !== false
   const text = [
