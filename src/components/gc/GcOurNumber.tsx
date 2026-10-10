@@ -1,19 +1,22 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import { carriedAmount, carriedUncosted, proposalTotals, proposalUncosted, proposalUncostedWords, uncostedWords } from '../../lib/gc/bids'
 import { ownBidPriced, partnerById } from '../../lib/gc/lookups'
+import { proposalWeeksWords, roughWeeks, roughWeeksWords } from '../../lib/gc/schedule/rough'
 import type { GcProject, GcState, TradePackage } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
 import type { PipelineJobHit } from '../../lib/gc/gcIo'
 import { GcGeneralConditionsJob } from './GcGeneralConditionsJob'
-import { Card, Chip, PlusUnknown, Stat, Why, input, num, td, th } from './gcUi'
+import { Btn, Card, Chip, PlusUnknown, Stat, Why, input, num, td, th } from './gcUi'
 
 /**
  * GC mode, the real build (the Board's B5-c): Our number on a project, from the design spike's
  * `GcNumberTab` (`GcOfficeTabs.tsx`). The trades we carry, plus general conditions, contingency and fee,
  * make the price we give the customer (`proposalTotals`). The three inputs live in `gc_project_money`,
  * which only the money team reads, so the page draws this for them alone. The outcome buttons sit on the
- * project's head instead (call D), where the rest of the office will see them without the money. Weeks
- * to build waits for the schedule's kernels on main, and *signed for* for Owner Billing's O3.
+ * project's head instead (call D), where the rest of the office will see them without the money. Weeks to build (G-45,
+ * the schedule's PR 12b) comes from the job's rough, which the page lays on the project when Our number opens: the
+ * stat, the rough's sentence and the line for the proposal with Copy, after the price card's own rows. *Signed for* waits
+ * for Owner Billing's O3.
  */
 
 export interface OurNumberValues {
@@ -90,6 +93,10 @@ export function GcOurNumber({ state, project, onSave, gcJob }: { state: GcState;
   const uncosted = proposalUncostedWords(project)
   const values: OurNumberValues = { generalConditions: project.generalConditions, contingencyPct: project.contingencyPct, feePct: project.feePct }
   const save = (key: Key) => (n: number) => onSave({ ...values, [key]: n })
+  // Weeks to build, from the rough schedule while we bid (G-45): one count, kept as it went with the bid.
+  const weeks = roughWeeks(project)
+  const proposal = proposalWeeksWords(project)
+  const [copied, setCopied] = useState(false)
   return (
     <div data-gc-our-number={project.id} style={{ display: 'grid', gap: '0.75rem' }}>
       <Card>
@@ -143,6 +150,31 @@ export function GcOurNumber({ state, project, onSave, gcJob }: { state: GcState;
         {gcJob && (
           <div style={{ marginTop: '0.75rem' }}>
             <GcGeneralConditionsJob jobId={project.generalConditionsJobId ?? null} {...gcJob} />
+          </div>
+        )}
+        {(weeks || project.stage === 'pursuing') && (
+          <div data-tour="gc-bid-weeks" style={{ marginTop: '0.9rem', display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
+            <Stat label="Weeks to build" value={weeks ? String(weeks.weeks) : 'not drawn'} />
+            {weeks && proposal ? (
+              <>
+                <span>{roughWeeksWords(project)}</span>
+                <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'baseline', flexWrap: 'wrap' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>For the proposal:</span>
+                  <span>{proposal}</span>
+                  <Btn
+                    kind="quiet"
+                    onClick={() => {
+                      void navigator.clipboard?.writeText(proposal)
+                      setCopied(true)
+                    }}
+                  >
+                    {copied ? 'Copied' : 'Copy'}
+                  </Btn>
+                </span>
+              </>
+            ) : !project.lostOn ? (
+              <span style={{ color: 'var(--text-muted)' }}>Weeks to build: not drawn yet. Draw a rough schedule from the project&apos;s Schedule.</span>
+            ) : null}
           </div>
         )}
       </Card>

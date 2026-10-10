@@ -9,6 +9,8 @@ When a certified bill on a GC job is past the day it was due, send the customer 
 
 A reminder is our ask, not their promise. The day the bill was due stays the same. The owner, the leaders and the controller see the window.
 
+Before a bill is due, the app can tell the customer by itself. See [the reminders the app sends](/help/bill-the-customer-on-a-gc-job#the-reminders-the-app-sends).
+
 ## Send a reminder
 
 1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:outline|Bill the customer}} on the job's card.

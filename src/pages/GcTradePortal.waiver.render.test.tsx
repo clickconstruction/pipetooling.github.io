@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
- * The trade portal's unconditional waiver (P5c-3b, to-dos/gc-mode/mockups/portal-p5.md), with `WAIVER_SIGN_LIVE` turned on
- * as the owner's call will: a paid draw with its conditional waiver shows Sign the unconditional waiver; the plain lines
- * explain the paper, the paper is the Release of Lien window's own form filled from the draw, and the press posts the
- * typed name and the e-sign consent. While the call holds it, `GcTradePortal.job.render.test.tsx` finds no press.
+ * The trade portal's unconditional waiver (P5c-3b, to-dos/gc-mode/mockups/portal-p5.md), on since the owner's call 2
+ * (`WAIVER_SIGN_LIVE`, v2.5178): a paid draw with its conditional waiver shows Sign the unconditional waiver; the plain
+ * lines explain the paper, the paper is the Release of Lien window's own form filled from the draw, and the press posts
+ * the typed name and the e-sign consent.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -12,7 +12,6 @@ import { gcTradePortalSample, SAMPLE_TRADE_IDS as ID } from '../../supabase/func
 import type { TradePortalSlice } from '../../supabase/functions/_shared/gcTradePortalSlice'
 
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: async () => ({ apikey: 'anon', Authorization: 'Bearer anon' }) }))
-vi.mock('../lib/gc/drawEmail', async (original) => ({ ...(await original<typeof import('../lib/gc/drawEmail')>()), WAIVER_SIGN_LIVE: true }))
 
 import GcTradePortal from './GcTradePortal'
 

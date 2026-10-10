@@ -49,7 +49,9 @@ On a job of ours, the company can press **Agree** on a charge from us. It can al
 
 ## Its report, or a change it signed
 
-On a job we are building, the company picks each line's percent done. The Draws window shows it as reported. It signs a change we sent it, and the change becomes a line of its statement of work. [Pay a trade's draw](/help/pay-a-trades-draw) says what comes next.
+On a job we are building, the company picks each line's percent done. The Draws window shows it as reported. It signs a change we sent it, and the change becomes a line of its statement of work.
+
+It also sends its pay application from its portal, with the conditional waiver it signs. The draw waits on us in the Draws window. Once we pay, it signs its unconditional waiver there, and the draw reads it in. The final pay application and the final release come the same way. [Pay a trade's draw](/help/pay-a-trades-draw) says what comes next.
 
 ## Its files
 

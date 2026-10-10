@@ -187,10 +187,10 @@ describe('report, waiver and change (P5c-3b)', () => {
     expect(reads).toHaveLength(1)
   })
 
-  it('draws no waiver press while the owner’s call holds it (WAIVER_SIGN_LIVE)', async () => {
+  it('draws the waiver press on a paid draw since the owner’s call 2 (WAIVER_SIGN_LIVE)', async () => {
     const report = await openJob()
     expect(report.getByText('Draw 1')).toBeTruthy()
-    expect(report.queryByRole('button', { name: 'Sign the unconditional waiver' })).toBeNull()
+    expect(report.getByRole('button', { name: 'Sign the unconditional waiver' })).toBeTruthy()
   })
 
   it('reads a waiver signed, with no press', async () => {

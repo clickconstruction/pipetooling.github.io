@@ -2,9 +2,10 @@
 /**
  * The trade portal's pay application door (P5c-3c-i, to-dos/gc-mode/mockups/portal-p5.md), lifted from the spike's
  * `GcBuildingPayApp.tsx`: where its pay application stands under its report, one sent read in its window (the G702 and
- * G703), one we sent back with our note, and the closeout. While `WAIVER_SIGN_LIVE` holds every waiver a trade signs,
- * a pay application (a conditional waiver itself) goes by email: no Fill out button, one line that says so. The home's
- * Needs you lists the company's to-dos, less those whose press waits on the owner's call, each opening its project.
+ * G703), one we sent back with our note, and the closeout. These run with `WAIVER_SIGN_LIVE` off, as it would be
+ * should the owner take the waivers back: a pay application (a conditional waiver itself) goes by email, no Fill out
+ * button, one line that says so, and the home's Needs you leaves out the to-dos whose press is a waiver. It is on since
+ * the owner's call 2 (v2.5178); `GcTradePortal.payAppSend.render.test.tsx` holds the door and its window with it on.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
@@ -13,6 +14,7 @@ import { gcTradePortalSample, SAMPLE_TRADE_IDS as ID } from '../../supabase/func
 import type { SliceRow, TradePortalSlice } from '../../supabase/functions/_shared/gcTradePortalSlice'
 
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: async () => ({ apikey: 'anon', Authorization: 'Bearer anon' }) }))
+vi.mock('../lib/gc/drawEmail', async (original) => ({ ...(await original<typeof import('../lib/gc/drawEmail')>()), WAIVER_SIGN_LIVE: false }))
 
 import GcTradePortal from './GcTradePortal'
 
@@ -49,7 +51,7 @@ function draw2(change: SliceRow): SliceRow {
 }
 
 describe('the pay application door (P5c-3c-i)', () => {
-  it('says what it can ask for, and to email the pay application while the owner’s call holds it', async () => {
+  it('says what it can ask for, and to email the pay application with the waivers off', async () => {
     const report = await openJob()
     expect(report.getByText(/You can ask for/)).toBeTruthy()
     expect(report.queryByText(/Most of the pay application is filled in/)).toBeNull()
@@ -118,7 +120,7 @@ describe('the home’s Needs you (P5c-3c-i)', () => {
     return within(await screen.findByRole('region', { name: /^Needs you/ }))
   }
 
-  it('lists its to-dos, leaving out a draw to ask for and the waiver while the owner’s call holds them', async () => {
+  it('lists its to-dos, leaving out a draw to ask for and the waiver with the waivers off', async () => {
     const needs = await home()
     expect(needs.getByText('1 punch item to fix on Electrical for Sample Dental Office.')).toBeTruthy()
     expect(needs.queryByText(/You can ask Click for/)).toBeNull()

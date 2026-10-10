@@ -85,8 +85,11 @@ export interface OwnerBillingRows {
   emails?: { source_id: string; kind: string; recipient_name: string | null; sent_at: string }[]
   /** The sent copies of our interest bills' emails (O6b-2), by the interest bill's id: who and when. */
   interestEmails?: { source_id: string; recipient_name: string | null; sent_at: string }[]
-  /** The architect's reminders the app sent (O10, `gc_office_notices`), by pay application. */
-  notices?: { pay_app_id: string | null; kind: string; created_at: string }[]
+  /**
+   * The notices the app sent about a pay application (`gc_office_notices`): the architect's reminders (O10) and the
+   * customer's notice before it was due (O12), with the day it named.
+   */
+  notices?: { pay_app_id: string | null; kind: string; created_at: string; due_on?: string | null }[]
 }
 
 /**
@@ -183,6 +186,8 @@ export function payAppFromRows(
   const card = billCard(money, app.invoice_id)
   // The day the app reminded the architect to certify it (O10), in the office's day.
   const reminded = (notices ?? []).find((n) => n.pay_app_id === app.id && n.kind === 'certify_reminder')
+  // The day the app told the customer it was due soon, and the due day it named (O12).
+  const told = (notices ?? []).find((n) => n.pay_app_id === app.id && n.kind === 'pay_soon' && n.due_on)
   return {
     number: app.number,
     periodTo: app.period_to,
@@ -206,6 +211,7 @@ export function payAppFromRows(
     ...(promises.length > 0 ? { promises } : {}),
     ...(card ? { card } : {}),
     ...(reminded ? { architectRemindedOn: calendarYmdInAppTzFromIso(reminded.created_at) } : {}),
+    ...(told?.due_on ? { customerToldDue: { on: calendarYmdInAppTzFromIso(told.created_at), due: told.due_on } } : {}),
   }
 }
 

@@ -67,6 +67,7 @@ import TestReportSettingsBlock from '../components/settings/TestReportSettingsBl
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
 import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
 import GcOfficeNoticesSettingsBlock from '../components/settings/GcOfficeNoticesSettingsBlock'
+import GcCustomerDueNoticesSettingsBlock from '../components/settings/GcCustomerDueNoticesSettingsBlock'
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
@@ -1552,6 +1553,7 @@ export default function Settings() {
       {/* GC mode (O8c): Pay by card's switch for GC customers, off on day one — the owner and dev. */}
       {(myRole === 'dev' || myRole === 'master_technician') && <GcCardBillSettingsBlock />}
       {(myRole === 'dev' || myRole === 'master_technician') && <GcOfficeNoticesSettingsBlock />}
+      {(myRole === 'dev' || myRole === 'master_technician') && <GcCustomerDueNoticesSettingsBlock />}
       {myRole === 'dev' && (
         <>
           <StripeInvoiceFooterDevSettingsBlock />

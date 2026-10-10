@@ -386,8 +386,8 @@ export async function checkDriveAccess(url: string, at?: { projectId: string; re
 /**
  * `money` (B5-c): the reader is on the money team (`canSeeGcMoney`), so our number's inputs are read.
  * Anyone else skips the read: the policy would return no row, and the screens show the trades alone.
- * The four reads on no job's ids (the companies, the promises, the papers sent and the call log) page past PostgREST's
- * 1,000-row cap (B2b-ii-b, as the Takeoff parts catalog taught in v2.2755), each in a stable order.
+ * The five reads on no job's ids (the companies, the promises, the companies' papers, the papers sent and the call log)
+ * page past PostgREST's 1,000-row cap (B2b-ii-b, as the Takeoff parts catalog taught in v2.2755), each in a stable order.
  */
 export async function loadGcBoardRows(projects: GcProjectView[], today: string, { money = false }: { money?: boolean } = {}): Promise<BoardRows> {
   const ids = projects.map((p) => p.id)
@@ -418,8 +418,10 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
           .select('id, package_id, status, price, retainage_pct, based_on_rev, their_sov, excluded, sent_on, signed_on, accepted_on')
           .in('package_id', packageIds)
       : none,
-    // The companies' own papers (B6-b-ii): what person_contract_documents' own policies let the reader see (call R).
-    supabase.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at, created_at').not('company_id', 'is', null),
+    // The companies' own papers (B6-b-ii), as their states only (`gc_company_paper_states`, v2.5179): a company's agreement,
+    // W-9 and certificate rows, the eight columns `companyPapers` reads, for the whole office team. The table's own policies
+    // read for the pay roles only, so an estimator's board showed every paper missing (call R). Paged in the function's order.
+    fetchAllRows((from, to) => supabase.rpc('gc_company_paper_states', {}).range(from, to), 'load the trade partners’ papers'),
     // Every send of a paper (B6-b-i): dev only while the Board is built, so anyone else reads none.
     fetchAllRows(
       (from, to) =>
@@ -506,7 +508,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     sows: sowRows as BoardRows['sows'],
     sowLines: taken(sowLines, 'load the statements of work’s lines') as BoardRows['sowLines'],
     ownBids: taken(ownBids, 'load our own trades’ bids'),
-    papers: taken(papers, 'load the trade partners’ papers'),
+    papers,
     paperSends,
     ownerContractSends: contractSendRows,
     ownerContractEmails: contractEmails,
@@ -556,15 +558,15 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
           .in('source_id', interestIds)
           .order('sent_at')
       : Promise.resolve({ data: [], error: null }),
-    // The architect's reminders the app sent (O10's office notices), so a sent bill says when.
+    // The architect's reminders and the customer's notice the app sent (O10, O12), so a sent bill says when.
     appIds.length
-      ? supabase.from('gc_office_notices').select('pay_app_id, kind, created_at').eq('kind', 'certify_reminder').in('pay_app_id', appIds)
+      ? supabase.from('gc_office_notices').select('pay_app_id, kind, created_at, due_on').in('kind', ['certify_reminder', 'pay_soon']).in('pay_app_id', appIds)
       : Promise.resolve({ data: [], error: null }),
   ])
   const lineRows = taken(lines, 'load the pay application lines')
   const reminderRows = taken(reminders, 'load the reminders to pay')
   const emailRows = (taken(emails, 'load the emails about the pay applications') ?? []) as { source_id: string | null; kind: string; recipient_name: string | null; sent_at: string }[]
-  const noticeRows = (taken(notices, 'load the architect’s reminders') ?? []) as { pay_app_id: string | null; kind: string; created_at: string }[]
+  const noticeRows = (taken(notices, 'load the architect’s reminders') ?? []) as { pay_app_id: string | null; kind: string; created_at: string; due_on: string | null }[]
   for (const app of appRows) {
     const rows = out.get(app.project_id)
     if (!rows) continue
@@ -846,9 +848,13 @@ export interface OfficeNoticePreview {
   text: string
 }
 
-/** Today's notices as they would go, as if on since `since` (O10c), else the switch's day, else today. */
-export async function previewOfficeNotices(since?: string): Promise<{ since: string; notices: OfficeNoticePreview[] }> {
-  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'preview', ...(since ? { since } : {}) } })) as FnResult
+/**
+ * Today's notices as they would go, as if on since `since` (O10c), else the switch's day, else today. `notices`:
+ * the office's (default) or the customer's notice before a bill is due (O12).
+ */
+export async function previewOfficeNotices(since?: string, notices: 'office' | 'customer' = 'office'): Promise<{ since: string; notices: OfficeNoticePreview[] }> {
+  const body = { mode: 'preview', ...(since ? { since } : {}), ...(notices === 'customer' ? { notices } : {}) }
+  const r = (await supabase.functions.invoke('gc-office-notices', { body })) as FnResult
   const problem = await fnProblem(r, 'The notices did not load.')
   if (problem) throw new Error(problem)
   const data = r.data as { since?: string; notices?: OfficeNoticePreview[] } | null
@@ -856,8 +862,9 @@ export async function previewOfficeNotices(since?: string): Promise<{ since: str
 }
 
 /** Each of today's notices marked [TEST], to the signed-in member only, as if on since `since` as Preview. How many went. */
-export async function sendOfficeNoticesTest(since?: string): Promise<number> {
-  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'test_send', ...(since ? { since } : {}) } })) as FnResult
+export async function sendOfficeNoticesTest(since?: string, notices: 'office' | 'customer' = 'office'): Promise<number> {
+  const body = { mode: 'test_send', ...(since ? { since } : {}), ...(notices === 'customer' ? { notices } : {}) }
+  const r = (await supabase.functions.invoke('gc-office-notices', { body })) as FnResult
   const problem = await fnProblem(r, 'The test did not go.')
   if (problem) throw new Error(problem)
   return Number((r.data as { sent?: number } | null)?.sent ?? 0)

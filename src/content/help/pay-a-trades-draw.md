@@ -5,7 +5,7 @@ roles: dev
 keywords: gc mode, draw, draws, pay application, pay a trade, trade partner, retainage, stored materials, lien waiver, unconditional waiver, approve less, send back, back-charge, change order
 order: 99
 ---
-A trade on a job we are building asks to be paid with a pay application. You approve it, pay it and record its waiver in the Draws window.
+A trade on a job we are building asks to be paid with a pay application. It sends one from its portal, with the conditional waiver it signs there. You approve it and pay it in the Draws window.
 
 Each trade with a signed statement of work has a card there. Only devs see the window for now.
 
@@ -42,7 +42,7 @@ Approve waits on the company's papers. A red line says which one is missing, lik
 ## Mark it paid
 
 1. Press {{button:blue|Mark paid}} when the payment goes out. We pay an approved draw within 10 days.
-2. Their unconditional waiver comes after we pay. Press {{button:outline|Their unconditional waiver came in}} when it does.
+2. Their unconditional waiver comes after we pay. They sign it in their portal, and the draw reads it in. If it comes on paper or by email, press {{button:outline|Their unconditional waiver came in}}.
 
 A waiver the trade signs in its portal is kept as a PDF in the job's Drive folder. Its link sits beside the waiver's chip. The link is named for the form, like **Unconditional waiver PDF**.
 
