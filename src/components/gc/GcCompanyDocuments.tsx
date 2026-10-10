@@ -1,19 +1,36 @@
-import { useEffect, useRef, type ReactNode } from 'react'
-import type { CompanyDoc, CompanyDocGroup, DocStatus } from '../../lib/gc/companyFile'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import type { ActivityKind, CompanyDoc, CompanyDocGroup, CompanyEvent, DocStatus } from '../../lib/gc/companyFile'
+import { shortDate } from '../../lib/gc/words'
 import type { CompanyTab } from './gcCompanyOpener'
+import { Btn, input } from './gcUi'
 
 /**
  * GC mode, the real build, the Board's B6-b-ii: the company window's tabs and its Documents list, from the design
  * spike's `GcCompanyFile.tsx` (`CompanyTabStrip`, `CompanyDocuments`). Documents leads with what is missing; a paper's
  * next step opens beside the list. The spike's made-up paper beside the list is left there: the real build shows the
- * send, or the certificate form, in its place.
+ * send, or the certificate form, in its place. Since B2b-iv, Activity (`CompanyActivity`): everything with the company
+ * in one timeline, and a box to log a call.
  */
 
 export type { CompanyTab } from './gcCompanyOpener'
 
-export function CompanyTabStrip({ tab, onTab, toGet, portal }: { tab: CompanyTab; onTab: (t: CompanyTab) => void; toGet: number; portal: boolean }) {
+export function CompanyTabStrip({
+  tab,
+  onTab,
+  activity,
+  toGet,
+  portal,
+}: {
+  tab: CompanyTab
+  onTab: (t: CompanyTab) => void
+  /** How many lines Activity holds. Unset: no Activity tab (the customer window's, until B2b-v). */
+  activity?: number
+  toGet: number
+  portal: boolean
+}) {
   const tabs: { key: CompanyTab; label: string }[] = [
     { key: 'about', label: 'About' },
+    ...(activity === undefined ? [] : [{ key: 'activity' as const, label: `Activity (${activity})` }]),
     { key: 'documents', label: toGet > 0 ? `Documents · ${toGet} to get` : 'Documents' },
     ...(portal ? [{ key: 'portal' as const, label: 'Their portal' }] : []),
   ]
@@ -122,6 +139,158 @@ export function CompanyDocuments({
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+const KIND_WORDS: { key: ActivityKind | 'all'; label: string }[] = [
+  { key: 'all', label: 'Everything' },
+  { key: 'note', label: 'Calls and notes' },
+  { key: 'quote', label: 'Quotes and bids' },
+  { key: 'paper', label: 'Paperwork' },
+  { key: 'money', label: 'Money' },
+  { key: 'work', label: 'On the job' },
+]
+
+const KIND_DOT: Record<ActivityKind, string> = {
+  note: 'var(--text-blue-500)',
+  quote: 'var(--text-violet-700)',
+  paper: 'var(--text-amber-700)',
+  money: 'var(--text-green-700)',
+  work: 'var(--text-red-700)',
+}
+
+const linkBtn = { background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: 2 } as const
+
+/** How the office reached them: the call log's `how`. */
+export type ContactHow = 'call' | 'text' | 'email'
+
+/**
+ * Activity (the Board's B2b-iv), from the design spike's `CompanyActivity`: one timeline, newest first, with filters,
+ * a link to each job, and a box to log a contact. The real build's box asks how they were reached, as the call log
+ * keeps it. `onLog` unset: no box.
+ */
+export function CompanyActivity({
+  events,
+  onOpenProject,
+  onLog,
+  focus,
+}: {
+  events: CompanyEvent[]
+  onOpenProject?: (projectId: string) => void
+  onLog?: (how: ContactHow, note: string) => Promise<void>
+  /** The line it was opened at (a promise, say): lit and scrolled to. */
+  focus?: string
+}) {
+  const [kind, setKind] = useState<ActivityKind | 'all'>('all')
+  const [how, setHow] = useState<ContactHow>('call')
+  const [note, setNote] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const lit = useRef<HTMLLIElement | null>(null)
+  useEffect(() => {
+    lit.current?.scrollIntoView({ block: 'center' })
+  }, [focus])
+  const shown = kind === 'all' ? events : events.filter((e) => e.kind === kind)
+  const log = async () => {
+    if (!onLog || note.trim() === '') return
+    setBusy(true)
+    setProblem(null)
+    try {
+      await onLog(how, note.trim())
+      setNote('')
+    } catch (e) {
+      // The note stays in the box, to try again.
+      setProblem(`The contact was not logged: ${e instanceof Error ? e.message : 'try again.'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div style={{ display: 'grid', gap: '0.75rem' }}>
+      {onLog && (
+        <div style={{ display: 'grid', gap: '0.35rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <select value={how} onChange={(e) => setHow(e.target.value as ContactHow)} style={input} aria-label="How you reached them">
+              <option value="call">Call</option>
+              <option value="text">Text</option>
+              <option value="email">Email</option>
+            </select>
+            <input style={{ ...input, flex: '1 1 18rem' }} placeholder="What was said, in a sentence" aria-label="What was said" value={note} onChange={(e) => setNote(e.target.value)} />
+            <Btn kind="primary" disabled={busy || note.trim() === ''} onClick={() => void log()}>
+              {busy ? 'Logging…' : 'Log a contact'}
+            </Btn>
+          </div>
+          {problem && (
+            <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+              {problem}
+            </div>
+          )}
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }} role="group" aria-label="Show">
+        {KIND_WORDS.map((k) => {
+          const on = kind === k.key
+          const n = k.key === 'all' ? events.length : events.filter((e) => e.kind === k.key).length
+          return (
+            <button
+              key={k.key}
+              type="button"
+              aria-pressed={on}
+              onClick={() => setKind(k.key)}
+              style={{
+                padding: '0.2rem 0.65rem',
+                borderRadius: 999,
+                border: `1px solid ${on ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
+                background: on ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
+                fontWeight: on ? 600 : 400,
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+              }}
+            >
+              {k.label} {n}
+            </button>
+          )
+        })}
+      </div>
+      {shown.length === 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nothing here yet.</div>}
+      <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: '0.1rem' }}>
+        {shown.map((e, i) => (
+          <li
+            key={`${e.on}-${i}`}
+            ref={focus && e.id === focus ? lit : undefined}
+            data-tour={focus && e.id === focus ? 'gc-activity-focus' : undefined}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '5.5rem minmax(0, 1fr)',
+              gap: '0.6rem',
+              padding: '0.4rem 0.35rem',
+              borderBottom: '1px solid var(--border)',
+              ...(focus && e.id === focus ? { background: 'var(--bg-amber-tint)', borderRadius: 6, boxShadow: 'inset 3px 0 0 var(--text-amber-700)' } : {}),
+            }}
+          >
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', fontVariantNumeric: 'tabular-nums' }}>{shortDate(e.on)}</span>
+            <span style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', minWidth: 0 }}>
+              <span aria-hidden style={{ flex: 'none', width: 8, height: 8, borderRadius: 999, background: KIND_DOT[e.kind], transform: 'translateY(-1px)' }} />
+              <span style={{ minWidth: 0, fontSize: '0.9rem' }}>
+                {e.text}
+                {e.where && (
+                  <span style={{ display: 'block', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    {e.projectId && onOpenProject ? (
+                      <button type="button" onClick={() => onOpenProject(e.projectId ?? '')} style={linkBtn}>
+                        {e.where}
+                      </button>
+                    ) : (
+                      e.where
+                    )}
+                  </span>
+                )}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ol>
     </div>
   )
 }

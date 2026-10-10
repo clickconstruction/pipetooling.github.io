@@ -19,7 +19,9 @@
  * what they answered. Since PR 12a, the first draft can start from a template (`GcTemplatePick`, G-44), and a job being
  * built saves its schedule as one, with every template renamed or set aside there (`GcTemplatesCard`). Since PR 12b, a job
  * still bidding shows its rough schedule (`GcRoughSchedule`, G-45) in place of the first draft, drawn and redrawn there,
- * and a rough whose weeks were not kept when our bid went in is kept with **Keep the weeks as sent**.
+ * and a rough whose weeks were not kept when our bid went in is kept with **Keep the weeks as sent**. Since PR 12c, a
+ * schedule the customer or the architect handed us makes the first one, or replaces one drawn before Start
+ * (`GcScheduleImport`, G-137), and a job being built takes only their dates to meet (`GcTheirDatesDoor`, G-145).
  * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
  * bring one.
  */
@@ -81,6 +83,7 @@ import {
   removeScheduleMilestone,
   removeScheduleWait,
   keepRoughLater,
+  takeTheirDates,
   renameScheduleTemplate,
   saveScheduleMove,
   saveScheduleTemplate,
@@ -111,6 +114,9 @@ import { GcAddOwnWork, GcBaseline, GcInspectionCheck, GcMilestones, GcOwnWorkBut
 import { GcPartsCard } from './GcSplitBars'
 import { GcTemplatePick, GcTemplatesCard } from './GcScheduleTemplates'
 import { GcRoughKeep, GcRoughSchedule } from './GcRoughSchedule'
+import { GcScheduleImport } from './GcScheduleImport'
+import { GcTheirDatesDoor, type TakeTheirDates } from './GcTheirDates'
+import { importRefusal } from '../../lib/gc/schedule/import'
 import { GcNotReady } from './GcNotReady'
 import { GcPullBox, GcPullLine, GcPullWindow, type ScheduleSave } from './GcPullEarlier'
 import { GcDaysBack, GcRecoveryWindow } from './GcRecovery'
@@ -206,6 +212,18 @@ export function GcSchedule({
     [state, read, projectId],
   )
 
+  /**
+   * A schedule they handed us (G-137, PR 12c): through `gc_schedule_draft`, the first one with no version, one in place of
+   * a draft before Start against the version read. It throws the database's refusal, which the window shows.
+   */
+  const bringIn = useCallback(
+    async (schedule: ProjectSchedule, words: string, replacing: boolean) => {
+      const st = read?.state ?? state
+      const next = await drawSchedule(st, projectId, { version: replacing ? (read?.version ?? null) : null, words }, schedule)
+      if (next) setRead(next)
+    },
+    [read, state, projectId],
+  )
   /**
    * A move with why (PR 8a): the kernel's record and the bars it leaves, against the version this window read.
    * It throws the database's refusal, which the move's window shows. `read.state` carries the bars the move
@@ -393,6 +411,7 @@ export function GcSchedule({
         drawing={drawing}
         drawProblem={drawProblem}
         onDraw={(start, templateId) => void draw(read.project, start, templateId)}
+        onBringIn={bringIn}
         moves={
           canMove
             ? {
@@ -424,6 +443,7 @@ export function GcSchedule({
                 setAsideTemplate: (templateId, aside) => record((st) => setAsideScheduleTemplate(st, projectId, templateId, aside)),
                 drawRough: (rough) => record((st) => setRoughSchedule(st, projectId, rough)),
                 keepRough: (kept) => record((st) => keepRoughLater(st, projectId, kept)),
+                theirDates: (dates, milestones) => record((st) => takeTheirDates(st, projectId, dates, milestones)),
               }
             : null
         }
@@ -497,6 +517,8 @@ interface MovePresses {
   drawRough: (rough: RoughSchedule) => Promise<void>
   /** A rough's weeks kept later, with the day our bid went (PR 12b, gc 4's note): a record. */
   keepRough: (kept: NonNullable<RoughSchedule['kept']>) => Promise<void>
+  /** Their dates to meet from a file (G-145, PR 12c): one record, refused whole. */
+  theirDates: TakeTheirDates
 }
 
 /** The what-if copy's own presses (G-81, PR 11, call 3), apart from `MovePresses`: a move tried is not a move until Keep. */
@@ -526,6 +548,7 @@ function ScheduleView({
   drawing,
   drawProblem,
   onDraw,
+  onBringIn,
   moves,
   canPull,
   ask,
@@ -540,6 +563,8 @@ function ScheduleView({
   drawing: boolean
   drawProblem: string | null
   onDraw: (start: string, templateId: string | null) => void
+  /** Make the schedule from one they handed us (G-137, PR 12c): the first, or one in place of a draft before Start. */
+  onBringIn: (schedule: ProjectSchedule, words: string, replacing: boolean) => Promise<void>
   moves: MovePresses | null
   /** Pull earlier and Days back too (PR 9d's call 1): only with `moves`. */
   canPull: boolean
@@ -632,6 +657,8 @@ function ScheduleView({
   const [recovering, setRecovering] = useState<string | null>(null)
   // A move waiting on why it moved (PR 8a): every drag, pulled end and link goes through the window first.
   const [pending, setPending] = useState<PendingMove | null>(null)
+  // Bring in their schedule (G-137, PR 12c): the first one, or one in place of a draft before Start.
+  const [importing, setImporting] = useState<'first' | 'instead' | null>(null)
   // In or out of the copy: a window open on the other schedule closes, so nothing it shows is the wrong one's.
   const showCopy = (on: boolean) => {
     setPending(null)
@@ -687,10 +714,28 @@ function ScheduleView({
           </Card>
         ) : (
           <>
-            <DraftCard project={project} today={state.today} offered={templatesOffered(state)} busy={drawing} problem={drawProblem} onDraw={onDraw} />
+            <DraftCard
+              project={project}
+              today={state.today}
+              offered={templatesOffered(state)}
+              busy={drawing}
+              problem={drawProblem}
+              onDraw={onDraw}
+              {...(importRefusal(realProject) ? {} : { onImport: () => setImporting('first') })}
+            />
             {/* We won it and the rough's weeks were not kept (PR 12b, gc 4's note): kept here with the day our bid went. */}
             {moves && <GcRoughKeep project={project} onKeep={moves.keepRough} />}
           </>
+        )}
+        {importing && (
+          <GcScheduleImport
+            state={state}
+            project={realProject}
+            replacing={importing === 'instead'}
+            defaultStart={importing === 'instead' ? (realProject.startDate ?? realProject.schedule?.activities[0]?.start ?? draftStart(realProject, state.today)) : draftStart(realProject, state.today)}
+            onMake={(schedule, words) => onBringIn(schedule, words, importing === 'instead')}
+            onClose={() => setImporting(null)}
+          />
         )}
       </div>
     )
@@ -724,6 +769,14 @@ function ScheduleView({
           {/* The first draft against the weeks we bid (G-45), and the template it was drawn from (G-44). */}
           {firstDraftAgainstBid(project) && <div style={{ marginTop: '0.35rem' }}>{firstDraftAgainstBid(project)}</div>}
           {schedule.template && <div style={{ marginTop: '0.35rem' }}>{drawnFromWords(schedule.template)}</div>}
+          {/* Their schedule in its place (G-137, PR 12c): before Start, while nobody has walked or moved it. */}
+          {moves && !inCopy && !importRefusal(realProject) && (
+            <div style={{ marginTop: '0.4rem' }}>
+              <Btn kind="quiet" onClick={() => setImporting('instead')}>
+                Bring in their schedule instead
+              </Btn>
+            </div>
+          )}
         </Card>
       )}
       {/* Days back on a late job (G-82, PR 9d): under the measures. */}
@@ -891,7 +944,13 @@ function ScheduleView({
           <GcWaits state={state} project={project} rows={waits} items={m.items} onAdd={moves.addWait} onStep={moves.waitStep} onRemove={moves.removeWait} />
           <GcPlacesCard state={state} project={project} crowded={crowded} onPlaces={moves.places} />
           <GcAddOwnWork project={project} items={m.items} today={state.today} by={by} onAdd={moves.addOwn} onReload={moves.reload} />
-          <GcMilestones project={project} milestones={schedule.milestones} onSave={moves.milestone} onRemove={moves.removeMilestone} />
+          <GcMilestones
+            project={project}
+            milestones={schedule.milestones}
+            onSave={moves.milestone}
+            onRemove={moves.removeMilestone}
+            door={<GcTheirDatesDoor state={state} project={realProject} onTake={moves.theirDates} />}
+          />
           {schedule.baseline && <GcBaseline project={project} today={state.today} by={by} onBaseline={moves.baseline} onReload={moves.reload} />}
           {/* Templates (G-44, PR 12a): a job being built saves its schedule as one; every template is renamed or set aside here. */}
           {building && <GcTemplatesCard state={state} project={project} onSave={moves.saveTemplate} onRename={moves.renameTemplate} onSetAside={moves.setAsideTemplate} />}
@@ -902,6 +961,16 @@ function ScheduleView({
         <GcMoveExplain key={pending.lineId} state={state} project={project} pending={pending} by={by} today={state.today} trying={inCopy} onSave={async (move, activities, words) => {
             await (inCopy && copy ? copy.save : moves.save)(move, activities, words)
           }} onReload={moves.reload} onClose={() => setPending(null)} />
+      )}
+      {importing && (
+        <GcScheduleImport
+          state={state}
+          project={realProject}
+          replacing={importing === 'instead'}
+          defaultStart={importing === 'instead' ? (realProject.startDate ?? realProject.schedule?.activities[0]?.start ?? draftStart(realProject, state.today)) : draftStart(realProject, state.today)}
+          onMake={(schedule, words) => onBringIn(schedule, words, importing === 'instead')}
+          onClose={() => setImporting(null)}
+        />
       )}
       {/* The walk, a pull and days back (PR 9d): each saves through the one move save, and the walk keeps its record. */}
       {moves && walking && !inCopy && (
@@ -954,6 +1023,7 @@ function DraftCard({
   busy,
   problem,
   onDraw,
+  onImport,
 }: {
   project: GcProject
   today: string
@@ -962,6 +1032,8 @@ function DraftCard({
   busy: boolean
   problem: string | null
   onDraw: (start: string, templateId: string | null) => void
+  /** Bring in their schedule (G-137, PR 12c). Unset: the job may not take one. */
+  onImport?: () => void
 }) {
   const [start, setStart] = useState(() => draftStart(project, today))
   const rough = roughFirstDraftWords(project)
@@ -985,6 +1057,14 @@ function DraftCard({
             {busy ? 'Drawing…' : 'Draw a first draft'}
           </Btn>
         </div>
+        {onImport && (
+          <div style={{ display: 'grid', gap: '0.35rem', justifyItems: 'start' }}>
+            <span style={{ color: 'var(--text-600)' }}>Or start from the schedule the customer or the architect handed us.</span>
+            <Btn kind="plain" onClick={onImport}>
+              Bring in their schedule
+            </Btn>
+          </div>
+        )}
         {problem && (
           <div role="alert" style={{ color: 'var(--text-red-700)' }}>
             {problem}
