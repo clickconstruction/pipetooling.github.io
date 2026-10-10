@@ -764,3 +764,26 @@ the kernel (`templateSaveProblem`). *Writing it* above is amended to match. It w
 clickconstruction/pipetooling.github.io#4866 (v2.4848, migration `20261008040000_gc_schedule_writes`),
 its SQL byte for byte the plan's. Its SQL bed runs on the PR in the new *SQL beds* workflow, and it is
 armed once that is green. Its push is in day 2's batch.
+
+Held 2026-10-10 by gc 10 while gc 1 was away, at the lead's ask. 9d merged as v2.5142
+(clickconstruction/pipetooling.github.io#5279: the walk, Pull earlier, Days back, the not-ready
+block and the holds' io, `mockups/schedule-pr9d.md`), its opener follow-up as v2.5149 (#5287:
+a not-ready paper opens the company's window at that paper), and its spike follow-up as dc58c5838
+(the four screens forked to `.proto`, with B6-b-ii-b's `GcPaperSend`). PR 9 is done. Three things
+for whoever picks the lane up:
+
+1. **PR 10's draft, #5231 (v2.5114),** was cut on f3bd5183b, before 9d. It meets 9d only in
+   `GcScheduleWindow.tsx`'s and `GcSchedule.tsx`'s header comments and its `printFiling` prop. On its
+   rebase keep 9d's `canPull` prop and line, and keep `canPull={canUseGcBuilding(role)}` at the page's
+   mount beside the new team gate.
+2. **9d's Not done** (`docs/recent-features/v2.5142.md`): Follow up on Days back waits for the Board's
+   Follow up sheet, and the pull's and days back's billing line for the schedule to read bills (PR 16).
+   The walk's *Add the N lost days* waits for the daily log laid over the schedule (PR 16), which
+   composes U8's `withCrewClockIns` after `withDailyLogs` (`mockups/building-u8.md`, agreed with gc 4).
+3. **The read half of Building's door for the schedule's team** (`mockups/schedule-pr9d.md`, call 1):
+   a `FOR SELECT` for the team on `gc_submittals`, `gc_rfis` and their holds, and the Board's word on a
+   company's papers in `person_contract_documents` (a controller and an estimator read none today).
+   Then Pull earlier and Days back move from `canPull` to `canMove`. U8's crew percents and counts read
+   for a dev only too, and the same door covers them. Building's door is planned next
+   (`mockups/building-door.md`, gc 10 with gc 4).
+
