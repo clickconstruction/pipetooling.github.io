@@ -50,10 +50,20 @@ P5d-iii (`report_part` with the schedule's PR 16) stays its own.
 The job's block, top to bottom: the chart (14b), with **We will be late** under each of the company's own bars (the
 `ownRow` slot); **Your dates moved** while a told move waits for its answer; **Your next three weeks** (the look-ahead),
 with the crew count beside each coming week; then the blocks P5c put there. Needs you lists the four schedule to-dos,
-each opening the job at its block (`dates`, `late`, `lookahead`).
+each opening the job where its portalTodos anchor points: `dates`, the chart (`schedule`) for a push back, the top for
+the look-ahead.
+
+**The order differs from the spike** (amendment 2). The prototype draws *Your dates moved* and the look-ahead above the
+chart. The real page keeps 14b's pick of the chart first, under the job's name, because its dates frame everything below
+it, and the late door now sits on the chart itself. The two blocks that ask something of the company follow straight
+after it.
 
 The screens are the spike's four components, lifted, not redrawn. Their `dispatch` is swapped for the press hook
-(`usePress`), and they read the answer below in place of a state, as P1b and P5c lifted theirs.
+(`usePress`), and they read the answer below in place of a state, as P1b and P5c lifted theirs. Their kernels run on the
+server (call 1), so they are lifts of the screen and not word for word: no spike re-export and no `lift-same` entry, and
+the spike keeps its prototypes. The two checks the late door runs in the browser, `lateNoticeProblem` and `lateTarget`,
+read only a bar's day, start and finish, so the door passes them a narrow cast with a comment, and no lifted kernel
+changes.
 
 ## The calls (each with the other way)
 
@@ -260,3 +270,7 @@ approved it the same day with decisions A to D. Nothing cut or claimed.
 - the preview reads one job (call 4);
 - the slot's shape, and `GcTradePortalProject`'s new prop (call 6);
 - the dates message is rebuilt in today's language (call 3).
+
+**Amendment 2 (the lead's read-back of P5d-ii-2, 2026-10-10):** the chart first and the two asking blocks after it, not
+above it as on the spike; the screens as lifts with no `lift-same` entry; the narrow cast into the two lifted checks
+(*What a trade sees*).
