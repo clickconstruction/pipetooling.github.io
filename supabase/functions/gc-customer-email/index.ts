@@ -13,7 +13,6 @@ import {
   buildGcCustomerEmail,
   bytesBase64,
   CUSTOMER_EMAIL_ERRORS,
-  GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
   GC_CUSTOMER_EMAIL_MAX_CONTRACT_BYTES,
   gcContractAttachmentName,
   gcJobsPortalUrl,
@@ -22,7 +21,8 @@ import {
   GC_CUSTOMER_EMAIL_FRAMED,
   GC_CUSTOMER_EMAIL_FROM_NAME,
   GC_CUSTOMER_EMAIL_GATE,
-  GC_CUSTOMER_EMAIL_PORTAL_LINE,
+  gcCustomerEmailPortalOn,
+  gcCustomerEmailPortalWords,
   GC_CUSTOMER_EMAIL_ROLES,
   GC_CUSTOMER_EMAIL_SOURCE,
   GC_CUSTOMER_EMAIL_TEST_TYPE,
@@ -213,7 +213,10 @@ serve(async (req) => {
     // one (the window makes it at the first send, D6); with none it does not go. A bill with none goes with no line.
     const appOrigin = Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com'
     let portalUrl: string | null = null
-    if (m.kind === 'contract' || GC_CUSTOMER_EMAIL_PORTAL_LINE[m.kind]) {
+    // The schedule's and the Friday report's line (15b): only on a job whose schedule is drawn, as their portal shows it.
+    const scheduleDrawn =
+      m.kind === 'schedule' || m.kind === 'weekly' ? Boolean((await admin.from('gc_schedules').select('project_id').eq('project_id', m.projectId).maybeSingle()).data) : false
+    if (m.kind === 'contract' || gcCustomerEmailPortalOn({ kind: m.kind, copyArchitect, scheduleDrawn })) {
       const [{ data: links }, { data: slugRow }] = await Promise.all([
         admin.from('customer_portal_links').select('audience, token, revoked_at').eq('customer_id', recipient.id).is('revoked_at', null),
         admin.from('customer_portal_slugs').select('slug').eq('customer_id', recipient.id).maybeSingle(),
@@ -244,8 +247,10 @@ serve(async (req) => {
       ])
       cardFee = gcEmailCardFee({ on: gcCardBillOn(setting?.value_text), bill: bill ?? null, paid: (paidCount ?? 0) > 0, cardStatus: card?.status ?? null })
     }
-    // Our contract's portal line says they sign it there; every other kind's says they can see the bill.
-    const portalWords = m.kind === 'contract' ? { portalWords: GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS } : {}
+    // Our contract's portal line says they sign it there, the schedule's and the Friday report's that they can see their
+    // schedule; every other kind's says they can see the bill.
+    const ownWords = gcCustomerEmailPortalWords(m.kind)
+    const portalWords = ownWords ? { portalWords: ownWords } : {}
     const email = buildGcCustomerEmail({ ...portalWords, subject: words.subject, lines: words.lines, signer, gc: GC_CUSTOMER_EMAIL_FROM_NAME, framed: GC_CUSTOMER_EMAIL_FRAMED[m.kind], portalUrl, cardFee })
     const subject = m.test ? gcCustomerEmailTestSubject(email.subject) : email.subject
 

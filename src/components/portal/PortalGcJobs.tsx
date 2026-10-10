@@ -9,6 +9,9 @@
  * `GcCustomerContractSign`: the job and its price as one number, how billing works, the day we asked them to sign by,
  * the file to read, and `/contract/accept`'s form (a name typed or drawn, and the e-sign consent). It posts
  * `gc_owner_contract_sign`; once signed it reads who signed and when.
+ *
+ * The schedule's PR 15b: a job being built with a schedule drawn opens on *Your schedule* (`PortalGcSchedule`), the
+ * picture `customer-portal` works out, words and dates only.
  */
 import { useState } from 'react'
 import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
@@ -17,6 +20,7 @@ import { formatPortalDate, type PortalGcChangeOrder, type PortalGcContract, type
 import { gcContractTermsLines } from '../../../supabase/functions/_shared/gcPortal'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
+import { PortalGcSchedule } from './PortalGcSchedule'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
@@ -217,6 +221,8 @@ export function PortalGcJobs({ token, jobs, formatUsd }: { token: string; jobs: 
       {jobs.map((job) => (
         <div key={job.projectId} style={{ border: `1px solid ${HAIR}`, borderRadius: 8, background: PAPER, padding: '10px 12px', display: 'grid', gap: 8, fontSize: 13 }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: INK }}>{job.name}</div>
+          {/* Their schedule opens a job being built (the schedule's PR 15b, call 7): its dates frame what follows. */}
+          {job.schedule && <PortalGcSchedule schedule={job.schedule} />}
           {job.contract && <OurContract token={token} job={job} contract={job.contract} formatUsd={formatUsd} />}
           {job.changeOrders.map((co) => (
             <ChangeOrderRow key={co.id} token={token} co={co} formatUsd={formatUsd} />

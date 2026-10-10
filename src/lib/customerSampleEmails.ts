@@ -35,7 +35,7 @@ import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
 import { buildGcRfiEmail, buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
-import { buildGcCustomerEmail, gcWeeklyReportLines, GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
+import { buildGcCustomerEmail, gcWeeklyReportLines, GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS, GC_CUSTOMER_EMAIL_FROM_NAME, GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS } from '../../supabase/functions/_shared/gcCustomerEmails'
 import { certifiedMail, certifyAskMail, changeOrderMail, contractMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
 import { payReminderMail } from './gc/ownerBillingRemind'
 import { weeklyReportText, type WeeklyReport } from './gc/buildingWeekly'
@@ -621,6 +621,9 @@ export function buildSampleGcWeeklyEmail(ctx: SampleEmailContext): BuiltEmail {
     signer: String(ctx.sender?.name ?? 'The project manager'),
     gc: GC_CUSTOMER_EMAIL_FROM_NAME,
     framed: false,
+    // Their portal shows the schedule (the schedule's PR 15b): the line comes after the report's own sign-off.
+    portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+    portalWords: GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS,
   })
 }
 
@@ -653,5 +656,8 @@ export function buildSampleGcScheduleEmail(ctx: SampleEmailContext): BuiltEmail 
     signer,
     gc: GC_CUSTOMER_EMAIL_FROM_NAME,
     framed: false,
+    // The schedule's PR 15b: their portal shows the same schedule.
+    portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+    portalWords: GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS,
   })
 }

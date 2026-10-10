@@ -6,7 +6,8 @@ import { tradePortalSlice, type TradePortalRows } from '../_shared/gcTradePortal
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { gcTradePortalSample, gcTradePortalSampleSchedules, gcTradePortalSampleScheduleWork } from '../_shared/gcTradePortalSample.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
-import { lateWaitingFromRows, portalScheduleJobs, portalSchedulesFromRows, portalScheduleWorkFromRows, type TradeScheduleRows } from '../_shared/gcTradePortalSchedule.ts'
+import { lateWaitingFromRows, portalScheduleJobs, portalSchedulesFromRows, portalScheduleWorkFromRows } from '../_shared/gcTradePortalSchedule.ts'
+import { readScheduleRows } from '../_shared/gcScheduleRead.ts'
 
 /**
  * GC mode, the trade partner portal's read (P1b-ii, to-dos/gc-mode/PORTAL_REAL_BUILD.md): resolves a
@@ -158,119 +159,6 @@ async function readJobWork(admin: SupabaseClient, awarded: string[]): Promise<Pi
   return { submittals, submittalHolds, submittalRounds, rfis, rfiHolds, punch }
 }
 
-// Reads past PostgREST's 1,000 rows (the schedule's PR 14b): ids in chunks, each chunk a page at a time, in a stable order.
-const IN_CHUNK = 150
-const PAGE = 1000
-type Page = PromiseLike<{ data: unknown; error: unknown }>
-async function readAll(ids: string[], read: (chunk: string[], from: number, to: number) => Page): Promise<R[]> {
-  const out: R[] = []
-  for (let i = 0; i < ids.length; i += IN_CHUNK) {
-    const chunk = ids.slice(i, i + IN_CHUNK)
-    for (let from = 0; ; from += PAGE) {
-      const { data, error } = await read(chunk, from, from + PAGE - 1)
-      if (error) throw error
-      const rows = (data ?? []) as R[]
-      out.push(...rows)
-      if (rows.length < PAGE) break
-    }
-  }
-  return out
-}
-
-/**
- * The rows the company's chart reads (the schedule's PR 14b, call 4), held to its jobs being built: each job and its
- * trades, only the awarded invites and those companies' names, the awarded trades' statements of work with their
- * draws and reports for each line's percent, and the bars with what they wait on and the baselines. No other schedule
- * table, no bid, no contact and no note is read.
- */
-async function readScheduleRows(admin: SupabaseClient, jobIds: string[], companyId: string): Promise<TradeScheduleRows> {
-  const [projects, gcRows, packages, schedules, activities, links, baselines] = await Promise.all([
-    admin.from('projects').select('id, name, address, customer_id, plans_link').in('id', jobIds).then(rowsOf),
-    admin.from('gc_projects').select('project_id, stage, bid_due, sq_ft, size_note, customer_role, property_owner_customer_id, architect_customer_id, project_manager_user_id, drive_folder_url, lost_on').in('project_id', jobIds).then(rowsOf),
-    readAll(jobIds, (c, from, to) => admin.from('gc_trade_packages').select('id, project_id, trade, position, budget, ours, own_bid_id, job_ledger_id, carried_invite_id, carry_budget, awarded_invite_id, awarded_by, awarded_on').in('project_id', c).order('id').range(from, to)),
-    admin.from('gc_schedules').select('project_id, version, template_id, template_name, template_used_on').in('project_id', jobIds).then(rowsOf),
-    readAll(jobIds, (c, from, to) => admin.from('gc_schedule_activities').select('id, project_id, kind, position, package_id, start, finish, not_before, must_finish_by, actual_start, actual_finish, place, label, passed_on, who, done_on').in('project_id', c).order('id').range(from, to)),
-    readAll(jobIds, (c, from, to) => admin.from('gc_schedule_links').select('project_id, from_activity_id, to_activity_id, gap, created_at').in('project_id', c).order('from_activity_id').order('to_activity_id').range(from, to)),
-    admin.from('gc_schedule_baselines').select('id, project_id, name, locked_on, locked_by, why, created_at').in('project_id', jobIds).then(rowsOf),
-  ])
-  const packageIds = ids(packages)
-  const awardedIds = ids(packages, 'awarded_invite_id')
-  const [scopeItems, invites, sows, baselineDates] = await Promise.all([
-    readAll(packageIds, (c, from, to) => admin.from('gc_scope_items').select('id, package_id, position, label, sheets, specs, added_in_set_id').in('package_id', c).order('id').range(from, to)),
-    readAll(awardedIds, (c, from, to) => admin.from('gc_invites').select('id, package_id, company_id, status, invited_on').in('id', c).order('id').range(from, to)),
-    readAll(packageIds, (c, from, to) => admin.from('gc_sows').select('id, package_id, status, price, retainage_pct, based_on_rev, their_sov, excluded, sent_on, signed_on, accepted_on').in('package_id', c).order('id').range(from, to)),
-    readAll(ids(baselines), (c, from, to) => admin.from('gc_schedule_baseline_dates').select('baseline_id, activity_id, start, finish').in('baseline_id', c).order('baseline_id').order('activity_id').range(from, to)),
-  ])
-  const sowIds = ids(sows)
-  const [companies, sowLines, draws] = await Promise.all([
-    readAll(ids(invites, 'company_id'), (c, from, to) => admin.from('gc_companies').select('id, name').in('id', c).order('id').range(from, to)),
-    readAll(sowIds, (c, from, to) => admin.from('gc_sow_lines').select('id, sow_id, position, label, amount, scope_item_id, change_order_id').in('sow_id', c).order('id').range(from, to)),
-    readAll(sowIds, (c, from, to) => admin.from('gc_draws').select('*').in('sow_id', c).order('id').range(from, to)),
-  ])
-  const [drawLines, reports] = await Promise.all([
-    readAll(ids(draws), (c, from, to) => admin.from('gc_draw_lines').select('*').in('draw_id', c).order('draw_id').order('sow_line_id').range(from, to)),
-    readAll(ids(sowLines), (c, from, to) => admin.from('gc_sow_line_reports').select('*').in('sow_line_id', c).order('id').range(from, to)),
-  ])
-  // The trade's side of the schedule (P5d-ii, call 2): every move with its pushes and its own bars' parts, as the told
-  // dates are rebuilt from them; of the company's own, only its tells, answers, notices, counts and marks.
-  const ownPackages = new Set(packages.filter((k) => invites.some((i) => i.id === k.awarded_invite_id && i.company_id === companyId)).map((k) => k.id))
-  const ownBars = activities.filter((a) => ownPackages.has(a.package_id)).map((a) => String(a.id))
-  const [moves, notices, crewCounts, marks, parts] = await Promise.all([
-    readAll(jobIds, (c, from, to) => admin.from('gc_schedule_moves').select('*').in('project_id', c).order('id').range(from, to)),
-    readAll(jobIds, (c, from, to) => admin.from('gc_schedule_late_notices').select('*').in('project_id', c).eq('company_id', companyId).order('id').range(from, to)),
-    readAll(jobIds, (c, from, to) => admin.from('gc_schedule_crew_counts').select('project_id, package_id, company_id, week_of, count, said_on, created_at').in('project_id', c).eq('company_id', companyId).order('created_at').range(from, to)),
-    readAll(ownBars, (c, from, to) => admin.from('gc_schedule_lookahead_marks').select('activity_id, week_of, done, reason, marked_on, verified_on, verified_done, verified_reason, created_at').in('activity_id', c).order('activity_id').order('week_of').range(from, to)),
-    readAll(ownBars, (c, from, to) => admin.from('gc_schedule_activity_parts').select('id, activity_id, position, name, from_day, days, share, pct, actual_start, actual_finish').in('activity_id', c).order('id').range(from, to)),
-  ])
-  const moveIds = ids(moves)
-  const [pushes, tells, answers] = await Promise.all([
-    readAll(moveIds, (c, from, to) => admin.from('gc_schedule_move_pushes').select('move_id, activity_id, from_start, from_finish, to_start, to_finish').in('move_id', c).order('move_id').order('activity_id').range(from, to)),
-    readAll(moveIds, (c, from, to) => admin.from('gc_schedule_move_tells').select('move_id, company_id, told_on, created_at').in('move_id', c).eq('company_id', companyId).order('move_id').range(from, to)),
-    readAll(moveIds, (c, from, to) => admin.from('gc_schedule_move_answers').select('move_id, company_id, answered_on, ok, day, note, created_at').in('move_id', c).eq('company_id', companyId).order('move_id').range(from, to)),
-  ])
-  const of = (rows: R[], projectId: string, f = 'project_id') => rows.filter((r) => r[f] === projectId)
-  const jobs = projects.flatMap((project) => {
-    const gc = gcRows.find((g) => g.project_id === project.id)
-    if (!gc) return []
-    const mine = of(packages, String(project.id))
-    const mineIds = new Set(mine.map((k) => k.id))
-    const bars = of(activities, String(project.id))
-    const barIds = new Set(bars.map((a) => a.id))
-    const lines = of(baselines, String(project.id))
-    const lineIds = new Set(lines.map((b) => b.id))
-    const jobMoves = of(moves, String(project.id))
-    const jobMoveIds = new Set(jobMoves.map((m) => m.id))
-    const onMoves = (rows: R[]) => rows.filter((r) => jobMoveIds.has(r.move_id))
-    const onBars = (rows: R[]) => rows.filter((r) => barIds.has(r.activity_id))
-    return [
-      {
-        project: { project, gc, packages: mine, scopeItems: scopeItems.filter((i) => mineIds.has(i.package_id)), exclusions: [], sets: [], setItems: [], questions: [] },
-        schedule: {
-          schedule: gcScheduleOf(schedules, String(project.id)),
-          activities: bars,
-          links: of(links, String(project.id)),
-          baselines: lines,
-          baselineDates: baselineDates.filter((d) => lineIds.has(d.baseline_id)),
-          moves: jobMoves,
-          pushes: onMoves(pushes),
-          tells: onMoves(tells),
-          answers: onMoves(answers),
-          lateNotices: of(notices, String(project.id)),
-          crewCounts: of(crewCounts, String(project.id)),
-          marks: onBars(marks),
-          parts: onBars(parts),
-        },
-      },
-    ]
-  })
-  return { jobs, invites, companies, sows, sowLines, draws: { draws, drawLines, reports } } as unknown as TradeScheduleRows
-}
-
-/** A job's own schedule row, or null while nothing is drawn. */
-function gcScheduleOf(schedules: R[], projectId: string): R | null {
-  return schedules.find((s) => s.project_id === projectId) ?? null
-}
-
 const NO_SCHEDULE = { schedules: {}, scheduleWork: {}, scheduleTodos: [] }
 
 /**
@@ -282,7 +170,7 @@ async function scheduleFor(admin: SupabaseClient, companyId: string, rows: Trade
     const stages = rows.projects.map((p) => p.gc as { project_id: string; stage?: string | null })
     const jobIds = portalScheduleJobs(rows.packages as { id: string; project_id: string; awarded_invite_id?: string | null }[], ids(rows.invites), stages)
     if (jobIds.length === 0) return NO_SCHEDULE
-    const read = await readScheduleRows(admin, jobIds, companyId)
+    const read = await readScheduleRows(admin, jobIds, { trade: { companyId } })
     const lang = (rows.company as { lang?: string }).lang === 'es' ? 'es' : 'en'
     const { work, todos } = portalScheduleWorkFromRows(read, companyId, today, lang)
     return { schedules: portalSchedulesFromRows(read, companyId, today), scheduleWork: work, scheduleTodos: todos }
@@ -308,7 +196,7 @@ async function lateWaitingFor(admin: SupabaseClient, companyId: string, lineId: 
   ])
   const jobs = portalScheduleJobs(packages as { id: string; project_id: string; awarded_invite_id?: string | null }[], ids(invites), gc as { project_id: string; stage?: string | null }[])
   if (!jobs.includes(projectId)) return {}
-  const waiting = lateWaitingFromRows(await readScheduleRows(admin, [projectId], companyId), companyId, today, lineId, day)
+  const waiting = lateWaitingFromRows(await readScheduleRows(admin, [projectId], { trade: { companyId } }), companyId, today, lineId, day)
   return waiting ? { waiting } : {}
 }
 

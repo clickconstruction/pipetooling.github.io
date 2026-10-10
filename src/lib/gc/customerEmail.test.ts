@@ -14,6 +14,8 @@ import {
   gcCustomerEmailCc,
   gcCustomerEmailCopyKinds,
   gcCustomerEmailMaxLines,
+  gcCustomerEmailPortalOn,
+  gcCustomerEmailPortalWords,
   gcCustomerEmailTestSubject,
   gcWeeklyReportLines,
   GC_CUSTOMER_EMAIL_ADDRESS,
@@ -246,19 +248,19 @@ describe('what gc-customer-email reads and sends', () => {
     expect(gcCustomerEmailCopyKinds('gc_weekly_reports')).toEqual(['field_report_gc_weekly'])
     expect(gcCustomerEmailCopyKinds('gc_owner_contract_sends')).toEqual(['gc_owner_contract'])
     expect(gcCustomerEmailCopyKinds('gc_schedule_sends')).toEqual(['field_report_gc_schedule'])
-    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder', 'interest_bill', 'contract'])
+    expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder', 'interest_bill', 'weekly', 'contract', 'schedule'])
   })
 
-  it('sends the weekly report as Building’s (U7b): its row decides who may, to the contact first, unframed, no portal line yet', () => {
+  it('sends the weekly report as Building’s (U7b): its row decides who may, to the contact first, unframed, its portal line since PR 15b', () => {
     const others = GC_CUSTOMER_EMAIL_KINDS.filter((k) => k !== 'weekly' && k !== 'contract' && k !== 'schedule')
     expect(others.every((k) => GC_CUSTOMER_EMAIL_GATE[k] === 'moneyTeam' && GC_CUSTOMER_EMAIL_ADDRESS[k] === 'billing' && GC_CUSTOMER_EMAIL_FRAMED[k])).toBe(true)
-    expect([GC_CUSTOMER_EMAIL_GATE.weekly, GC_CUSTOMER_EMAIL_ADDRESS.weekly, GC_CUSTOMER_EMAIL_FRAMED.weekly, GC_CUSTOMER_EMAIL_PORTAL_LINE.weekly]).toEqual(['row', 'contact', false, false])
+    expect([GC_CUSTOMER_EMAIL_GATE.weekly, GC_CUSTOMER_EMAIL_ADDRESS.weekly, GC_CUSTOMER_EMAIL_FRAMED.weekly, GC_CUSTOMER_EMAIL_PORTAL_LINE.weekly]).toEqual(['row', 'contact', false, true])
     const read = parseCustomerEmail({ ...ok, kind: 'weekly' })
     expect(read.ok && read.req.kind).toBe('weekly')
   })
 
-  it('sends the customer’s schedule as the Schedule’s (PR 15a): its row decides who may, to the contact, unframed, no portal line yet', () => {
-    expect([GC_CUSTOMER_EMAIL_GATE.schedule, GC_CUSTOMER_EMAIL_ADDRESS.schedule, GC_CUSTOMER_EMAIL_FRAMED.schedule, GC_CUSTOMER_EMAIL_PORTAL_LINE.schedule]).toEqual(['row', 'contact', false, false])
+  it('sends the customer’s schedule as the Schedule’s (PR 15a): its row decides who may, to the contact, unframed, its portal line since PR 15b', () => {
+    expect([GC_CUSTOMER_EMAIL_GATE.schedule, GC_CUSTOMER_EMAIL_ADDRESS.schedule, GC_CUSTOMER_EMAIL_FRAMED.schedule, GC_CUSTOMER_EMAIL_PORTAL_LINE.schedule]).toEqual(['row', 'contact', false, true])
     expect(parseCustomerEmail({ ...ok, kind: 'schedule' })).toMatchObject({ ok: true, req: { kind: 'schedule', pdf: null } })
     // A line a stage and a date to meet: a long job's letter goes, where a bill's 31 lines do not.
     const long = Array.from({ length: 31 }, (_, i) => `Line ${i + 1}.`)
@@ -271,6 +273,31 @@ describe('what gc-customer-email reads and sends', () => {
     expect(fn).toContain("await anon.from('gc_schedule_sends').select('id, project_id, subject, lines, email_send_log_id, created_at')")
     expect(fn).toContain("if (letter.email_send_log_id && !m.test) return refuse('alreadySent')")
     expect(fn).toContain("source === 'gc_weekly_reports' || source === 'gc_schedule_sends') && sent.resendEmailId")
+  })
+
+  it('links their schedule from the letter and the Friday report (PR 15b), on Building’s two conditions, in its own words', () => {
+    // Never when the row copies the architect, and only on a job with a schedule drawn.
+    expect(gcCustomerEmailPortalOn({ kind: 'weekly', copyArchitect: false, scheduleDrawn: true })).toBe(true)
+    expect(gcCustomerEmailPortalOn({ kind: 'weekly', copyArchitect: true, scheduleDrawn: true })).toBe(false)
+    expect(gcCustomerEmailPortalOn({ kind: 'weekly', copyArchitect: false, scheduleDrawn: false })).toBe(false)
+    expect(gcCustomerEmailPortalOn({ kind: 'schedule', copyArchitect: false, scheduleDrawn: true })).toBe(true)
+    expect(gcCustomerEmailPortalOn({ kind: 'schedule', copyArchitect: false, scheduleDrawn: false })).toBe(false)
+    // The bills keep their line as before, and the kinds with none have none.
+    expect(gcCustomerEmailPortalOn({ kind: 'certified', copyArchitect: false, scheduleDrawn: false })).toBe(true)
+    expect(gcCustomerEmailPortalOn({ kind: 'pay_app', copyArchitect: false, scheduleDrawn: true })).toBe(false)
+    expect([gcCustomerEmailPortalWords('schedule'), gcCustomerEmailPortalWords('weekly'), gcCustomerEmailPortalWords('contract'), gcCustomerEmailPortalWords('certified')]).toEqual([
+      'You can see your schedule in your portal:',
+      'You can see your schedule in your portal:',
+      GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
+      undefined,
+    ])
+    // Unframed, the line lands after the letter's own sign-off, and never with a card's offer.
+    const email = buildGcCustomerEmail({ subject: 'Your schedule on Fair Oaks', lines: ['Hello Elena,', 'Call me with any question.', 'Robert Douglas, Click Construction'], signer: 'Robert', gc: 'Click Construction', framed: false, portalUrl: 'https://my.clickplumbing.com/fair-oaks', portalWords: gcCustomerEmailPortalWords('schedule'), cardFee: 8666.37 })
+    expect(email.text).toBe('Hello Elena,\n\nCall me with any question.\n\nRobert Douglas, Click Construction\n\nYou can see your schedule in your portal: https://my.clickplumbing.com/fair-oaks')
+    expect(email.text).not.toMatch(/card/i)
+    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    expect(fn).toContain("admin.from('gc_schedules').select('project_id').eq('project_id', m.projectId).maybeSingle()")
+    expect(fn).toContain("if (m.kind === 'contract' || gcCustomerEmailPortalOn({ kind: m.kind, copyArchitect, scheduleDrawn })) {")
   })
 
   it('sends our contract (B6-d-iii-b): the money team’s, to the contact first, framed, its portal line required, never a PDF from the window', () => {
@@ -304,7 +331,7 @@ describe('what gc-customer-email reads and sends', () => {
       expect(src).toContain('gcJobsPortalUrl(')
     }
     const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
-    expect(fn).toContain("if (m.kind === 'contract' || GC_CUSTOMER_EMAIL_PORTAL_LINE[m.kind]) {")
+    expect(fn).toContain("if (m.kind === 'contract' || gcCustomerEmailPortalOn({ kind: m.kind, copyArchitect, scheduleDrawn })) {")
     expect(fn).toContain("if (m.kind === 'contract' && !portalUrl) return refuse('noPortal')")
   })
 
