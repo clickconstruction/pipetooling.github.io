@@ -38,4 +38,4 @@ It ran on a local Docker copy of the whole schema with every migration applied; 
 
 ## Status
 
-Cut 2026-10-09 by Helper 5 (the Owner Billing lane). The lead pushes it once the PR merges.
+Cut 2026-10-09 by Helper 5 (the Owner Billing lane). Merged 2026-10-10 at about 02:55 UTC (#5247). Pushed to prod at 03:02 UTC by the GC MODE lead with `bash scripts/db-push.sh`, plain, the only pending file (drift 843 local / 843 remote, fully applied). Verified the same minute with the spike's `to-dos/gc-mode/scripts/verify/verify-042000.mjs`, writes rolled back: 1 `gc_card_bill_on_v1` reads `false`; 2 the policy `master_or_dev_update_gc_card_bill_on` is UPDATE for `authenticated` with the key and `is_master_or_dev()` in both `qual` and `with_check`; 3 the controller's UPDATE reaches 0 rows and the owner's reaches 1, and the row still reads `false` after. `gc-card-bill`, `customer-portal` and `gc-customer-email` deployed at 03:03 UTC with `--use-api`; no `GC_CARD_BILL_ON` secret exists on the project, so the row is the only switch, and it is off. A dry types gen is byte-equal to main, so no types PR follows.
