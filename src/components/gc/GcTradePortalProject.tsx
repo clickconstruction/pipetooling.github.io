@@ -5,10 +5,9 @@ import { questionsCloseOn } from '../../lib/gc/planQuestions'
 import { bidIsStale } from '../../lib/gc/bids'
 import { bidGoodUntil, bidRanOut, portalClosedWords, portalContacts, portalLeavesOut, portalPlanNews, portalPromiseLine, portalQuestions, portalQuoteDue, portalVetting, unclearLines } from '../../lib/gc/portal'
 import { pDate, pWeekday } from '../../lib/gc/portalI18n'
-import { replyByEmailWords } from '../../lib/gc/tradePortalPage'
 import type { GcProject, Invite, Partner, TradePackage } from '../../lib/gc/types'
 import { daysUntil, money } from '../../lib/gc/words'
-import { COPPER, HAIR, MUTED } from '../../lib/portal/portalTheme'
+import { HAIR, MUTED } from '../../lib/portal/portalTheme'
 import { Btn, Chip } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
@@ -297,7 +296,6 @@ function AskBlock({
         )}
         {press && !bid && <QuoteDay invite={invite} today={today} />}
         {press && !bid && <PassOnAsk invite={invite} />}
-        <div style={{ fontSize: '0.85rem', borderTop: `1px solid ${HAIR}`, paddingTop: '0.45rem', color: COPPER }}>{replyByEmailWords(project, lang)}</div>
       </div>
     </PortalBlock>
   )

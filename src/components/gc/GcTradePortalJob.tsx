@@ -18,6 +18,8 @@ import { HAIR, MUTED } from '../../lib/portal/portalTheme'
 import { Btn, Chip, input } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
+import { PortalFilePick } from './GcTradePortalFile'
+import { portalFileUpload, type PickedFile } from '../../lib/gc/tradePortalFile'
 import { GcBuildingPayAppDoor } from './GcTradePortalPayApp'
 import { TradeWaiverPaperView } from './GcTradeWaiverPaper'
 import { PortalBlock } from './GcTradePortalUi'
@@ -375,29 +377,39 @@ function SubmittalLine({ row, lang, w }: { row: SubmittalRow; lang: PortalLang; 
 }
 
 /**
- * The round it owes, sent (`submittal_send`): the file's name, its Drive link if it has one, and a note. Until P5a's upload
- * the file itself goes by its link or by email; the SQL refuses a blank name (fileNeeded).
+ * The round it owes, sent (`submittal_send`): the file picked (P5a-1, into the job's Submittals folder) or its name and
+ * Drive link typed, and a note. A picked file goes up first (`file`), and its link rides with the round; a refused upload
+ * sends nothing, so what was typed stays. The SQL refuses a blank name (fileNeeded).
  */
 function SendRound({ submittalId, w }: { submittalId: string; w: (key: BuildingWordKey, vars?: Record<string, string | number>) => string }) {
   const { t } = usePortalLang()
   const press = usePortalPress()
-  const { busy, problem, run } = usePress()
+  const { busy, problem, runWithFile } = usePress()
+  const [picked, setPicked] = useState<PickedFile | null>(null)
   const [file, setFile] = useState('')
   const [link, setLink] = useState('')
   const [note, setNote] = useState('')
   if (!press) return null
+  const name = file.trim() || picked?.name || ''
   return (
     <div style={{ display: 'grid', gap: '0.35rem' }}>
-      <input value={file} onChange={(e) => setFile(e.target.value)} placeholder={w('subFile')} aria-label={w('subFile')} style={FIELD} />
-      <input value={link} onChange={(e) => setLink(e.target.value)} placeholder={t('subDriveLink')} aria-label={t('subDriveLink')} inputMode="url" style={FIELD} />
+      <PortalFilePick label={t('subPickFile')} picked={picked} onPick={setPicked} disabled={busy} />
+      <input value={file} onChange={(e) => setFile(e.target.value)} placeholder={picked?.name ?? w('subFile')} aria-label={w('subFile')} style={FIELD} />
+      {!picked && <input value={link} onChange={(e) => setLink(e.target.value)} placeholder={t('subDriveLink')} aria-label={t('subDriveLink')} inputMode="url" style={FIELD} />}
       <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={w('subNote')} aria-label={w('subNote')} style={FIELD} />
       <div>
         <Btn
           kind="primary"
-          disabled={busy || file.trim() === ''}
+          disabled={busy || name === ''}
           onClick={() => {
-            void run('submittal_send', { submittalId, fileName: file.trim(), driveUrl: link.trim(), note: note.trim() }).then((ok) => {
+            void runWithFile(portalFileUpload('submittal', submittalId, picked), 'submittal_send', (placed) => ({
+              submittalId,
+              fileName: name,
+              driveUrl: placed?.url ?? (picked ? '' : link.trim()),
+              note: note.trim(),
+            })).then((ok) => {
               if (ok) {
+                setPicked(null)
                 setFile('')
                 setLink('')
                 setNote('')

@@ -5,7 +5,7 @@ import { PortalPressContext, type PortalPress } from '../components/gc/gcTradePo
 import { GC_COMPANY } from '../lib/gc/company'
 import { portalShownLang, pt, type PortalLang } from '../lib/gc/portalI18n'
 import { readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
-import { submitTradePortal } from '../lib/gc/tradePortalSubmit'
+import { submitTradePortal, tradeFilePlaced } from '../lib/gc/tradePortalSubmit'
 import { tradePortalState } from '../lib/gc/tradePortalState'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
@@ -69,6 +69,12 @@ export default function GcTradePortal() {
         const answer = await read()
         setPage(answer)
         return null
+      },
+      upload: async (fields) => {
+        if (preview) return { problem: pt(lang, 'previewNothing'), file: null }
+        const result = await submitTradePortal(token, 'file', fields)
+        if (!result.ok) return { problem: tradeErrorWords(result.key, lang), file: null }
+        return { problem: null, file: tradeFilePlaced(result.value) }
       },
     }),
     [preview, lang, token, read],

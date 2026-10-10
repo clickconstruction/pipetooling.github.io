@@ -2,7 +2,7 @@
 title: see what a trade partner sends from its portal
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, portal, quote, quote day, pass, question, plans, who gets our emails, follow up, compare quotes, charge, back-charge, dispute, change request, percent done, report, change order signed
+keywords: gc mode, trade partner, portal, quote, quote day, pass, question, plans, who gets our emails, follow up, compare quotes, charge, back-charge, dispute, change request, percent done, report, change order signed, file, upload, drive
 order: 97
 ---
 A trade partner can answer us from its portal. This guide shows where each thing it sends lands for the office.
@@ -51,6 +51,10 @@ On a job of ours, the company can press **Agree** on a charge from us. It can al
 
 On a job we are building, the company picks each line's percent done. The Draws window shows it as reported. It signs a change we sent it, and the change becomes a line of its statement of work. [Pay a trade's draw](/help/pay-a-trades-draw) says what comes next.
 
-## What the company cannot send yet
+## Its files
 
-Its own quote file still goes by email to our project manager. The portal says so under the quote. A photo or a ticket for a change goes by email too. The change form says so.
+The company can pick a file with its quote, a change it asks for, or a submittal it owes. It sends a PDF or a photo of 10 MB at most.
+
+Each file goes into the job's folder in Drive. A submittal's file goes in **Submittals**. Any other goes in **Team only**, under **From trades** and the company's name.
+
+The quote, the change and the submittal each show the file's link. A file over 10 MB still comes by email, or as a Drive link the company pastes.

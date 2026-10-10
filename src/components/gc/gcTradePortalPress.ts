@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from 'react'
 import type { TradeSubmitKind } from '../../../supabase/functions/_shared/gcTradeSubmit'
+import type { TradeFilePlaced } from '../../lib/gc/tradePortalSubmit'
 
 /**
  * GC mode, the trade partner portal (P2b-ii): what a press does. The page provides it: it posts the kind to
@@ -8,6 +9,11 @@ import type { TradeSubmitKind } from '../../../supabase/functions/_shared/gcTrad
  */
 export interface PortalPress {
   send: (kind: TradeSubmitKind, fields?: Record<string, unknown>) => Promise<string | null>
+  /**
+   * A file into the job's Drive folder (P5a-1): its link, or the refusal in the company's words. It reads nothing again:
+   * the kind that stores the link does. `file` is null when the answer carried none (the sample).
+   */
+  upload: (fields: Record<string, unknown>) => Promise<{ problem: string | null; file: TradeFilePlaced | null }>
   /** The office's preview: presses are drawn, and each says nothing is saved. */
   preview: boolean
 }
@@ -18,8 +24,18 @@ export function usePortalPress(): PortalPress | null {
   return useContext(PortalPressContext)
 }
 
-/** One control's press: busy while it goes, and the words when it was refused, shown under the control. */
-export function usePress(): { busy: boolean; problem: string | null; run: (kind: TradeSubmitKind, fields?: Record<string, unknown>) => Promise<boolean>; clear: () => void } {
+/**
+ * One control's press: busy while it goes, and the words when it was refused, shown under the control. `runWithFile`
+ * (P5a-1) puts the trade's file in Drive first and hands its link to the kind's fields; a refused upload sends nothing
+ * else, so what the trade typed stays in the form.
+ */
+export function usePress(): {
+  busy: boolean
+  problem: string | null
+  run: (kind: TradeSubmitKind, fields?: Record<string, unknown>) => Promise<boolean>
+  runWithFile: (upload: Record<string, unknown> | null, kind: TradeSubmitKind, fields: (file: TradeFilePlaced | null) => Record<string, unknown>) => Promise<boolean>
+  clear: () => void
+} {
   const press = usePortalPress()
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -35,5 +51,26 @@ export function usePress(): { busy: boolean; problem: string | null; run: (kind:
       setBusy(false)
     }
   }
-  return { busy, problem, run, clear: () => setProblem(null) }
+  const runWithFile = async (upload: Record<string, unknown> | null, kind: TradeSubmitKind, fields: (file: TradeFilePlaced | null) => Record<string, unknown>) => {
+    if (!press) return false
+    setBusy(true)
+    setProblem(null)
+    try {
+      let file: TradeFilePlaced | null = null
+      if (upload) {
+        const placed = await press.upload(upload)
+        if (placed.problem) {
+          setProblem(placed.problem)
+          return false
+        }
+        file = placed.file
+      }
+      const refused = await press.send(kind, fields(file))
+      setProblem(refused)
+      return refused === null
+    } finally {
+      setBusy(false)
+    }
+  }
+  return { busy, problem, run, runWithFile, clear: () => setProblem(null) }
 }
