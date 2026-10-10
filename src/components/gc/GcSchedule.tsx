@@ -16,7 +16,8 @@
  * Since PR 11, the same people try moves on their own what-if copy (`GcWhatIf`, G-81) through the copy's own presses,
  * never the real move save, and keep them as real moves or throw the copy away. Since PR 13b, with `canTell`, they tell
  * the trades their new dates (`GcTellTrades`, through `gc-trade-email`), and the record of moves says who was told and
- * what they answered.
+ * what they answered. Since PR 12a, the first draft can start from a template (`GcTemplatePick`, G-44), and a job being
+ * built saves its schedule as one, with every template renamed or set aside there (`GcTemplatesCard`).
  * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
  * bring one.
  */
@@ -49,12 +50,12 @@ import { planPull } from '../../lib/gc/schedule/pullEarlier'
 import { recoveryOffers } from '../../lib/gc/schedule/recovery'
 import { savedMoveId } from '../../lib/gc/schedule/savedMove'
 import { partMoveOf } from '../../lib/gc/schedule/splitBars'
-import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
-import { draftRefusal, draftStart, draftWords, ownWorkOffWords, redoWords, undoWords } from '../../lib/gc/schedule/scheduleWindow'
+import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
+import { draftRefusal, draftStart, ownWorkOffWords, redoWords, templateDraftPress, undoWords } from '../../lib/gc/schedule/scheduleWindow'
 import type { PlaceChange } from '../../lib/gc/schedule/places'
-import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleWait, ScheduleWalk } from '../../lib/gc/schedule/types'
+import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleTemplate, ScheduleWait, ScheduleWalk } from '../../lib/gc/schedule/types'
 import type { WaitStep } from '../../lib/gc/schedule/writes'
-import { drawnFromWords } from '../../lib/gc/schedule/templates'
+import { drawnFromWords, templatesOffered } from '../../lib/gc/schedule/templates'
 import { whatIfCopy, whatIfGhosts, whatIfProject } from '../../lib/gc/schedule/whatIf'
 import { moveAnswerWords } from '../../lib/gc/schedule/tellTrades'
 import { companiesNotTold, toldThenUndone } from '../../lib/gc/schedule/tellWindow'
@@ -77,7 +78,10 @@ import {
   removeScheduleActivity,
   removeScheduleMilestone,
   removeScheduleWait,
+  renameScheduleTemplate,
   saveScheduleMove,
+  saveScheduleTemplate,
+  setAsideScheduleTemplate,
   setActualDates,
   setOwnWorkDone,
   setScheduleBaseline,
@@ -101,6 +105,7 @@ import { GcBarCaller, GcCallList } from './GcCallList'
 import { GcPlaceLine, GcPlacesCard } from './GcPlaces'
 import { GcAddOwnWork, GcBaseline, GcInspectionCheck, GcMilestones, GcOwnWorkButtons, GcWaits } from './GcScheduleCards'
 import { GcPartsCard } from './GcSplitBars'
+import { GcTemplatePick, GcTemplatesCard } from './GcScheduleTemplates'
 import { GcNotReady } from './GcNotReady'
 import { GcPullBox, GcPullLine, GcPullWindow, type ScheduleSave } from './GcPullEarlier'
 import { GcDaysBack, GcRecoveryWindow } from './GcRecovery'
@@ -167,15 +172,23 @@ export function GcSchedule({
     }
   }, [state, projectId, reads, reloads])
 
-  /** The first draft (call 2): the kernel's draft on the board's job, sent with no version and the log's words. */
+  /**
+   * The first draft (call 2): the kernel's draft on the board's job, sent with no version and the log's words. From a
+   * template since PR 12a (`templateDraftPress`): its lines, and its name kept on the schedule.
+   */
   const draw = useCallback(
-    async (project: GcProject, start: string) => {
-      const draft = draftSchedule(project, start)
-      setDrawing(true)
+    async (project: GcProject, start: string, templateId: string | null) => {
+      // The read's state carries the job's submittals and RFIs, so the drawn schedule keeps their holds, and the templates.
+      const st = read?.state ?? state
+      const pressed = templateDraftPress(st, project, start, templateId)
       setDrawProblem(null)
+      if ('problem' in pressed) {
+        setDrawProblem(pressed.problem)
+        return
+      }
+      setDrawing(true)
       try {
-        // The read's state carries the job's submittals and RFIs, so the drawn schedule keeps their holds.
-        const next = await drawSchedule(read?.state ?? state, projectId, { version: null, words: draftWords(project, draft, start) }, draft)
+        const next = await drawSchedule(st, projectId, { version: null, words: pressed.words }, pressed.schedule)
         if (next) setRead(next)
       } catch (e) {
         setDrawProblem(formatErrorMessage(e, 'The first draft did not save.'))
@@ -374,7 +387,7 @@ export function GcSchedule({
         by={by}
         drawing={drawing}
         drawProblem={drawProblem}
-        onDraw={(start) => void draw(read.project, start)}
+        onDraw={(start, templateId) => void draw(read.project, start, templateId)}
         moves={
           canMove
             ? {
@@ -401,6 +414,9 @@ export function GcSchedule({
                 join: (lineId, words) => planWrite((st, press) => joinScheduleBar(st, projectId, press, lineId), words),
                 baseline: (name, why, words) => planWrite((st, press) => setScheduleBaseline(st, projectId, press, name, why), words),
                 walk: (w) => record((st) => recordScheduleWalk(st, projectId, w)),
+                saveTemplate: (name) => record((st) => saveScheduleTemplate(st, projectId, name)),
+                renameTemplate: (templateId, name) => record((st) => renameScheduleTemplate(st, projectId, templateId, name)),
+                setAsideTemplate: (templateId, aside) => record((st) => setAsideScheduleTemplate(st, projectId, templateId, aside)),
               }
             : null
         }
@@ -466,6 +482,10 @@ interface MovePresses {
   baseline: (name: string, why: string, words: string) => Promise<void>
   /** The week walked (G-52, PR 9d): what was kept, the moves made, what was not looked at. A record. */
   walk: (walk: Pick<ScheduleWalk, 'on' | 'kept' | 'moveIds' | 'skipped' | 'keptEarly'>) => Promise<void>
+  /** A job being built saved as a template, a template renamed, set aside or brought back (G-44, PR 12a): records. */
+  saveTemplate: (name: string) => Promise<void>
+  renameTemplate: (templateId: string, name: string) => Promise<void>
+  setAsideTemplate: (templateId: string, aside: boolean) => Promise<void>
 }
 
 /** The what-if copy's own presses (G-81, PR 11, call 3), apart from `MovePresses`: a move tried is not a move until Keep. */
@@ -508,7 +528,7 @@ function ScheduleView({
   by: string
   drawing: boolean
   drawProblem: string | null
-  onDraw: (start: string) => void
+  onDraw: (start: string, templateId: string | null) => void
   moves: MovePresses | null
   /** Pull earlier and Days back too (PR 9d's call 1): only with `moves`. */
   canPull: boolean
@@ -652,7 +672,7 @@ function ScheduleView({
             </div>
           </Card>
         ) : (
-          <DraftCard project={project} today={state.today} busy={drawing} problem={drawProblem} onDraw={onDraw} />
+          <DraftCard project={project} today={state.today} offered={templatesOffered(state)} busy={drawing} problem={drawProblem} onDraw={onDraw} />
         )}
       </div>
     )
@@ -855,6 +875,8 @@ function ScheduleView({
           <GcAddOwnWork project={project} items={m.items} today={state.today} by={by} onAdd={moves.addOwn} onReload={moves.reload} />
           <GcMilestones project={project} milestones={schedule.milestones} onSave={moves.milestone} onRemove={moves.removeMilestone} />
           {schedule.baseline && <GcBaseline project={project} today={state.today} by={by} onBaseline={moves.baseline} onReload={moves.reload} />}
+          {/* Templates (G-44, PR 12a): a job being built saves its schedule as one; every template is renamed or set aside here. */}
+          {building && <GcTemplatesCard state={state} project={project} onSave={moves.saveTemplate} onRename={moves.renameTemplate} onSetAside={moves.setAsideTemplate} />}
         </>
       )}
       {/* The window keeps its reason and words while the schedule reads again under it: keyed by the bar only. */}
@@ -907,9 +929,27 @@ function ScheduleView({
 }
 
 /** Nothing drawn yet: the day the work starts, and a first draft from every line of every trade. */
-function DraftCard({ project, today, busy, problem, onDraw }: { project: GcProject; today: string; busy: boolean; problem: string | null; onDraw: (start: string) => void }) {
+function DraftCard({
+  project,
+  today,
+  offered,
+  busy,
+  problem,
+  onDraw,
+}: {
+  project: GcProject
+  today: string
+  /** The templates to start from (G-44, PR 12a). */
+  offered: ScheduleTemplate[]
+  busy: boolean
+  problem: string | null
+  onDraw: (start: string, templateId: string | null) => void
+}) {
   const [start, setStart] = useState(() => draftStart(project, today))
   const rough = roughFirstDraftWords(project)
+  // From a template (G-44): the one the rough was drawn from, until another is picked.
+  const own = project.rough?.template && project.rough.like ? { use: project.rough.template, lines: project.rough.like } : undefined
+  const [templateId, setTemplateId] = useState(own?.use.id ?? '')
   return (
     <Card>
       <div style={{ display: 'grid', gap: '0.5rem', fontSize: '0.9rem' }}>
@@ -922,7 +962,8 @@ function DraftCard({ project, today, busy, problem, onDraw }: { project: GcProje
             <span style={{ color: 'var(--text-muted)' }}>Work starts</span>
             <input type="date" value={start} onChange={(e) => setStart(e.target.value)} style={{ ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' }} />
           </label>
-          <Btn kind="primary" disabled={!start || busy} onClick={() => onDraw(start)}>
+          <GcTemplatePick project={project} start={start} {...(project.rough ? { stageDays: project.rough.days } : {})} offered={offered} {...(own ? { own } : {})} value={templateId} onChange={setTemplateId} />
+          <Btn kind="primary" disabled={!start || busy} onClick={() => onDraw(start, templateId || null)}>
             {busy ? 'Drawing…' : 'Draw a first draft'}
           </Btn>
         </div>
