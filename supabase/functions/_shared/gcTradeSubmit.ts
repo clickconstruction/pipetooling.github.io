@@ -2,7 +2,8 @@
  * GC mode, the trade partner portal's writes (P2b-i, to-dos/gc-mode/mockups/portal-p2b.md): the rules
  * `submit-gc-trade-portal` applies before it calls a `gc_trade_<verb>` (P2a). Pure, with no Deno or browser API,
  * so `src/lib/gc/gcTradeSubmit.test.ts` holds them:
- *   - the shape of each kind, read into the verb's call (the company is added by the function, from the link);
+ *   - the shape of each kind, read into the verb's call (the company is added by the function, from the link), and
+ *     for a signature (P2c-ii) the drawn image and the e-sign consent the function handles around the verb;
  *   - the hourly cap on free-text writes;
  *   - the refusal keys, each with its status, as the page says them in the company's language (decision 11);
  *   - Spanish's hold, copied from `src/lib/gc/portalI18n.ts` (a test keeps the two equal).
@@ -30,6 +31,8 @@ export const TRADE_SUBMIT_KINDS = [
   // P4b-i: a charge agreed or disputed, and a change asked for (P4a's verbs).
   'answer_back_charge',
   'ask_change',
+  // P2c-ii: the company signs its statement of work (P2c-i's verb).
+  'sign_sow',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
@@ -37,8 +40,8 @@ export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
 /** The kinds that write a company's own words, under the hourly cap. The rest are clicks. */
 export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question', 'ask_change'])
 
-/** The function's own refusals. */
-export const TRADE_FUNCTION_ERRORS = { badRequest: 400, linkOff: 404, spanishHeld: 400, tooMany: 429, failed: 500 } as const
+/** The function's own refusals. `consentNeeded`: a signature without the e-sign consent (P2c-ii), refused before any write. */
+export const TRADE_FUNCTION_ERRORS = { badRequest: 400, linkOff: 404, spanishHeld: 400, tooMany: 429, consentNeeded: 400, failed: 500 } as const
 
 /** The SQL's refusals (P2a's `gc_trade_<verb>`), raised as P0001 with the key as the message. */
 export const TRADE_SQL_ERRORS = {
@@ -56,6 +59,10 @@ export const TRADE_SQL_ERRORS = {
   everyKindNeedsSomeone: 409,
   alreadyAnswered: 409,
   notAwarded: 409,
+  // P2c-i's gc_trade_sign_sow. alreadySigned reads for any paper: U6's waiver and signed change raise it too.
+  sowNotSent: 409,
+  alreadySigned: 409,
+  msaFirst: 409,
   amountNeeded: 400,
   answerEach: 400,
   sovMustAdd: 400,
@@ -100,7 +107,40 @@ export interface TradeCall {
   params: Record<string, unknown>
 }
 
-export type TradeSubmitParsed = { ok: true; token: string; kind: TradeSubmitKind; call: TradeCall } | { ok: false }
+/**
+ * A signature's part the function handles around the verb (P2c-ii): the drawn image it stores before the verb and
+ * deletes if the verb refuses, or none for a typed one, and the e-sign consent words for the ledger row after.
+ */
+export interface TradeSignature {
+  png: Uint8Array | null
+  consent: Record<string, unknown>
+}
+
+export type TradeSubmitParsed =
+  | { ok: true; token: string; kind: TradeSubmitKind; call: TradeCall; sign?: TradeSignature }
+  | { ok: false; key?: 'consentNeeded' }
+
+/** The most a drawn signature may weigh, as `accept-contract` holds it. */
+export const SIGNATURE_PNG_MAX_BYTES = 512 * 1024
+
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
+
+/** A drawn signature as the pad sends it (a data URL or bare base64), or null when it is not a PNG of a size we keep. */
+export function signaturePngOf(v: string): Uint8Array | null {
+  const raw = v.trim()
+  const b64 = /^data:image\/png;base64,/i.test(raw) ? raw.slice(raw.indexOf(',') + 1) : raw.startsWith('data:') ? '' : raw
+  if (b64 === '') return null
+  let bytes: Uint8Array
+  try {
+    const bin = atob(b64)
+    bytes = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  } catch {
+    return null
+  }
+  if (bytes.length > SIGNATURE_PNG_MAX_BYTES || bytes.length < PNG_MAGIC.length || PNG_MAGIC.some((m, i) => bytes[i] !== m)) return null
+  return bytes
+}
 
 const MAIL_GROUPS = ['quotes', 'job', 'contracts', 'pay']
 const CHANGE_REASONS = ['owner', 'field', 'plans']
@@ -245,7 +285,28 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
         params: { p_package_id: uuid(b.packageId), p_description: text(b.description, 2000), p_reason: b.reason, p_amount: num(b.amount), p_days: days },
       }
     }
+    case 'sign_sow':
+      // The function fills the image's path, the IP and the browser from what it stored and the request.
+      return { rpc: 'gc_trade_sign_sow', params: { p_sow_id: uuid(b.sowId), p_printed_name: text(b.printedName, 200), p_signature_path: null, p_ip: null, p_user_agent: null } }
   }
+}
+
+/**
+ * A signature's image and consent (P2c-ii). The consent is required, as `sign-owner-records` requires it: without it the
+ * press is refused with consentNeeded. The function reads its words again with `parseEsignConsent` for the ledger row.
+ * An image that is not a PNG we keep is a shape the portal never sends.
+ */
+function signatureOf(b: Record<string, unknown>): TradeSignature | 'consentNeeded' {
+  const raw = b.signaturePngBase64
+  let png: Uint8Array | null = null
+  if (raw !== undefined && raw !== null && raw !== '') {
+    if (typeof raw !== 'string') throw new Bad()
+    png = signaturePngOf(raw)
+    if (!png) throw new Bad()
+  }
+  const consent = b.esignConsent
+  if (!isObject(consent) || typeof consent.clauseText !== 'string' || consent.clauseText.trim() === '') return 'consentNeeded'
+  return { png, consent }
 }
 
 /** The request read: its token, its kind and the verb's call, or not a shape the portal sends. */
@@ -255,7 +316,10 @@ export function parseTradeSubmit(body: unknown): TradeSubmitParsed {
   const kind = body.kind
   if (token === '' || typeof kind !== 'string' || !(TRADE_SUBMIT_KINDS as readonly string[]).includes(kind)) return { ok: false }
   try {
-    return { ok: true, token, kind: kind as TradeSubmitKind, call: callOf(kind as TradeSubmitKind, body) }
+    const call = callOf(kind as TradeSubmitKind, body)
+    if (kind !== 'sign_sow') return { ok: true, token, kind: kind as TradeSubmitKind, call }
+    const sign = signatureOf(body)
+    return sign === 'consentNeeded' ? { ok: false, key: 'consentNeeded' } : { ok: true, token, kind: 'sign_sow', call, sign }
   } catch (e) {
     if (e instanceof Bad) return { ok: false }
     throw e

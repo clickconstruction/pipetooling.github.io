@@ -5,13 +5,19 @@
  * and the company's templates, and lays them over the board's state through the mapper
  * (`schedule/rows.ts`). The job itself is the board's (`boardProjectFromView`): this never re-reads
  * it. Each press has one function here. It sends the kernel's answer (`schedule/writes.ts`) and returns
- * the job read back. Nothing here decides anything: the kernels in `src/lib/gc/schedule/` do.
+ * the job read back. Nothing here decides anything: the kernels in `src/lib/gc/schedule/` do. Since the schedule's
+ * PR 9d, the window reads the job's submittals and RFIs over the board first (`loadScheduleWithHolds`), so their holds
+ * stop a pull as they hold a start.
  */
 import { supabase } from '../supabase'
 import type { Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import type { PlaceChange } from './schedule/places'
 import { withScheduleRows, type ScheduleRead, type ScheduleRows } from './schedule/rows'
+import { withRfis } from './rfiRows'
+import { loadGcRfis } from './rfisIo'
+import { withSubmittals } from './submittalRows'
+import { loadGcSubmittals } from './submittalsIo'
 import { TEMPLATE_NAME_TAKEN, cleanTemplateName, templateNameProblem, templateSaveProblem, templateShape } from './schedule/templates'
 import type { TheirDate } from './schedule/theirDates'
 import type {
@@ -71,6 +77,16 @@ async function rowsIn<T>(ids: string[], read: (chunk: string[]) => PromiseLike<{
   const out: T[] = []
   for (let i = 0; i < ids.length; i += IN_CHUNK) out.push(...taken(await read(ids.slice(i, i + IN_CHUNK)), operation))
   return out
+}
+
+/**
+ * One job's schedule with what holds its bars (catch 2 of the schedule's PR 9, `mockups/schedule-pr9.md`): the job's
+ * submittals and RFIs laid over the board as their own windows read them, then the schedule. Building's tables are a
+ * dev's until its door, so anyone else reads none and their holds read empty.
+ */
+export async function loadScheduleWithHolds(state: GcState, projectId: string): Promise<ScheduleRead | null> {
+  const [submittals, rfis] = await Promise.all([loadGcSubmittals([projectId]), loadGcRfis([projectId])])
+  return loadSchedule(withRfis(withSubmittals(state, submittals), rfis), projectId)
 }
 
 /**

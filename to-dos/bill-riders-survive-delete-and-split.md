@@ -2,7 +2,7 @@
 name: "A fee on a bill survives the bill being deleted or split"
 number: 105
 group: ready
-status: found 2026-10-09 while building the trip charge rider (PR #5255) · nothing built
+status: found 2026-10-09 while building the trip charge rider (PR #5255) · gap 2 (the split) built v2.5140: a trip charge moves to a part, a bill with a GC card fee is refused (GC mode's half) · gap 1 (the delete) and the write-down cap left
 summary: >
   A fee rides on its bill: a returned check fee, a GC card fee, a turnaway trip charge. Each is a
   fee_lines entry that job_rider_fees counts, so every rewrite of the job's total keeps it. Two ways
@@ -10,7 +10,7 @@ summary: >
   still says the fee is on, and the office cannot add it again. Splitting a bill makes parts that
   carry no fee entry, so a trip charge or a card fee on that bill drops out of the total at the next
   change.
-next: Build both as one small PR each, the delete first, since it blocks the office; then the write-down cap from After #5255.
+next: Gap 1, the delete (a migration), since it blocks the office; then the write-down cap from After #5255. Gap 2 then wants a live split of a ZZ TEST trip charge.
 size: S–M (the delete, a migration) · S (the split, client only)
 blocker: None.
 ver: v2.5033 · 5091 · 5113

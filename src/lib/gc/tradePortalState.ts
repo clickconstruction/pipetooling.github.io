@@ -11,7 +11,7 @@
 import type { TradePortalSlice } from '../../../supabase/functions/_shared/gcTradePortalSlice'
 import { companyPapers } from './companyPapers'
 import type { PortalLang } from './portalI18n'
-import type { AskContact, BackCharge, ChangeOrder, ChangeOrderReason, GcProject, GcStage, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, Sow, SubBid, TradeChangeRequest, TradePackage, TradePromise } from './types'
+import type { AskContact, BackCharge, ChangeOrder, ChangeOrderReason, GcProject, GcStage, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, Sow, SovLine, SubBid, TradeChangeRequest, TradePackage, TradePromise } from './types'
 
 type Row = Record<string, unknown>
 
@@ -153,20 +153,45 @@ export function backChargeOf(c: Row): BackCharge {
   }
 }
 
-/** The trade's statement of work, with the charges on it. The lines and the draws come with Building's U6. */
+/**
+ * A statement of work's lines in position order (P2c-ii). Each line's id is the kernels' `SovLine.id`, as Building's
+ * `gc_sow_line_of` (U6) reads it: its scope item, or the line's own id on a change order's line. What was reported and
+ * billed is 0 until U6's report and draws.
+ */
+function sovOf(slice: TradePortalSlice, sowId: string): SovLine[] {
+  return (slice.sowLines ?? [])
+    .filter((l) => str(l.sow_id) === sowId)
+    .sort((a, b) => num(a.position) - num(b.position))
+    .map((l) => ({ id: strOrNull(l.scope_item_id) ?? str(l.id), label: str(l.label), amount: num(l.amount), pctReported: 0, pctBilled: 0 }))
+}
+
+/** What the statement of work says the company will not do (`gc_sows.excluded`, from its quote): each with who does it. */
+function excludedOf(v: unknown): NonNullable<Sow['excluded']> {
+  return list<Row>(v)
+    .filter((x) => typeof x === 'object' && x !== null && str(x.name).trim() !== '')
+    .map((x) => {
+      const unit = x.unitPrice && typeof x.unitPrice === 'object' ? (x.unitPrice as Row) : null
+      return { name: str(x.name), by: strOrNull(x.by), ...(unit ? { unitPrice: { amount: num(unit.amount), unit: str(unit.unit) } } : {}) }
+    })
+}
+
+/** The trade's statement of work, with its lines and the charges on it. The draws come with Building's U6. */
 function sowOf(slice: TradePortalSlice, packageId: string): Sow | null {
   const row = (slice.sows ?? []).find((s) => str(s.package_id) === packageId)
   if (!row) return null
   const status = str(row.status)
+  const excluded = excludedOf(row.excluded)
   return {
+    id: str(row.id),
     status: status === 'sent' || status === 'signed' ? status : 'draft',
     price: num(row.price),
     retainagePct: num(row.retainage_pct),
     basedOnRev: num(row.based_on_rev),
-    sov: [],
+    sov: sovOf(slice, str(row.id)),
     signedOn: strOrNull(row.signed_on),
     draws: [],
     ...(strOrNull(row.sent_on) ? { sentOn: str(row.sent_on) } : {}),
+    ...(excluded.length > 0 ? { excluded } : {}),
     backCharges: (slice.backCharges ?? []).filter((c) => str(c.sow_id) === str(row.id)).sort((a, b) => str(a.sent_on).localeCompare(str(b.sent_on))).map(backChargeOf),
   }
 }

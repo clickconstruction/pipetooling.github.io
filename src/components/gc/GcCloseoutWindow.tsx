@@ -2,6 +2,7 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Btn, Card, Chip, Stat, Why, input } from './gcUi'
 import type { LinkAccess } from './GcDrawForms'
 import { GcDrawPayApp } from './GcDrawPayApp'
+import { GcPunchList, type PunchWrites } from './GcPunchList'
 import { partnerBlockers } from '../../lib/gc/bench'
 import { jobCloseout, ownCrewWork, ownerRetainagePaidOn, projectCloseout, TRADE_RETAINAGE_WAIT_DAYS, tradeRetainageOpensOn, type CloseoutRow } from '../../lib/gc/building'
 import { punchCounts } from '../../lib/gc/buildingPunch'
@@ -52,10 +53,12 @@ interface Props {
   problem?: string | null
   /** Opens Bill the customer, where the customer's payment of our retainage is recorded. Absent: no button. */
   onSeeBill?: () => void
+  /** The punch list's presses (U3b-ii), shown under each trade's steps. Absent: no list. */
+  punchWrites?: PunchWrites
   onClose: () => void
 }
 
-export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick = null, billsRead = true, writes, busy = null, problem = null, onSeeBill, onClose }: Props) {
+export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick = null, billsRead = true, writes, busy = null, problem = null, onSeeBill, punchWrites, onClose }: Props) {
   // The final pay application open to read.
   const [looking, setLooking] = useState<{ row: CloseoutRow; draw: Draw } | null>(null)
   const c = projectCloseout(state, project)
@@ -153,6 +156,7 @@ export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick 
                   writes={writes}
                   busy={busy}
                   onSeeBill={onSeeBill}
+                  punchWrites={punchWrites}
                   onLook={(draw) => setLooking({ row, draw })}
                 />
               ))}
@@ -258,6 +262,7 @@ function TradeCloseoutCard({
   writes,
   busy,
   onSeeBill,
+  punchWrites,
   onLook,
 }: {
   row: CloseoutRow
@@ -268,6 +273,7 @@ function TradeCloseoutCard({
   writes: CloseoutWrites
   busy: string | null
   onSeeBill?: () => void
+  punchWrites?: PunchWrites
   onLook: (draw: Draw) => void
 }) {
   const [cameIn, setCameIn] = useState(false)
@@ -414,6 +420,7 @@ function TradeCloseoutCard({
             })}
           </ol>
         )}
+        {punchWrites && <GcPunchList project={project} pkg={pkg} company={company} writes={punchWrites} busy={busy} />}
       </div>
     </Card>
   )

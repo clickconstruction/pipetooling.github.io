@@ -47,7 +47,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     admin.from('gc_trade_messages').select('*').eq('company_id', companyId).order('sent_at', { ascending: false }).limit(200).then(rowsOf),
     admin.from('gc_plan_set_sends').select('set_id, company_id, touched').eq('company_id', companyId).then(rowsOf),
     // Its own work (P4b-i): its statements of work, the charges to it and the changes it asked for.
-    admin.from('gc_sows').select('id, package_id, invite_id, company_id, status, price, retainage_pct, based_on_rev, sent_on, signed_on').eq('company_id', companyId).then(rowsOf),
+    admin.from('gc_sows').select('id, package_id, invite_id, company_id, status, price, retainage_pct, based_on_rev, sent_on, signed_on, excluded').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_back_charges').select('*').eq('company_id', companyId).order('sent_on').then(rowsOf),
     admin.from('gc_trade_change_requests').select('*').eq('company_id', companyId).order('asked_on').then(rowsOf),
     // Its own papers (B6-b-ii), where each stands: for its master agreement first.
@@ -55,8 +55,13 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
   ])
   // The change orders its requests became, as their part only: number, status, the day sent and answered, and the cost.
   const orderIds = ids(changeRequests, 'change_order_id')
-  const changeOrders = orderIds.length ? await admin.from('gc_change_orders').select('id, number, status, sent_on, answered_on, cost').in('id', orderIds).then(rowsOf) : []
-  const work = { sows, backCharges, changeRequests, changeOrders }
+  // The lines of its own statements of work (P2c-ii), for the sign screen and, with U6, its report and draws.
+  const sowIds = ids(sows)
+  const [changeOrders, sowLines] = await Promise.all([
+    orderIds.length ? admin.from('gc_change_orders').select('id, number, status, sent_on, answered_on, cost').in('id', orderIds).then(rowsOf) : [],
+    sowIds.length ? admin.from('gc_sow_lines').select('id, sow_id, position, label, amount, scope_item_id').in('sow_id', sowIds).order('position').then(rowsOf) : [],
+  ])
+  const work = { sows, sowLines, backCharges, changeRequests, changeOrders }
   const inviteIds = ids(invites)
   const packageIds = ids(invites, 'package_id')
   const [quotes, packages] = await Promise.all([

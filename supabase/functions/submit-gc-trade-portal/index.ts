@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHeld, TRADE_FUNCTION_ERRORS, tradeErrorOf } from '../_shared/gcTradeSubmit.ts'
 
@@ -15,7 +17,15 @@ import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHe
  * es; a free-text kind is refused past the hourly cap (tooMany). Then the kind's `gc_trade_<verb>` (P2a) runs with the
  * link's company first, and its refusal key comes back as the page's key (`tradeErrorOf`). Errors are keys the
  * page says in the company's language (decision 11).
+ *
+ * A signature (`sign_sow`, P2c-ii, plan to-dos/gc-mode/mockups/portal-p2c.md) does what `accept-contract` does around the
+ * write: no consent is consentNeeded before any write; a drawn image goes to the signatures bucket first and is deleted
+ * if the verb refuses; the verb gets the IP and the browser; and after it the e-sign ledger row takes the consent time the
+ * verb wrote, so the two match.
  */
+
+/** Where a trade's drawn signature on its statement of work is kept: `gc-sows/<sow id>/<uuid>.png`. */
+const SIGNATURE_BUCKET = 'contract-signer-signatures'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -55,7 +65,7 @@ serve(async (req) => {
     const body = (await req.json().catch(() => null)) as unknown
     if (isHoneypot(body)) return jsonResponse({ ok: true })
     const parsed = parseTradeSubmit(body)
-    if (!parsed.ok) return refuse('badRequest')
+    if (!parsed.ok) return refuse(parsed.key ?? 'badRequest')
     // The sample (What customers see) writes nothing and never errors (decision 12).
     if (sampleStateFromToken(parsed.token)) return jsonResponse({ ok: true, sample: true })
     if (parsed.token.length < 16 || parsed.token.length > 128) return refuse('badRequest')
@@ -69,11 +79,42 @@ serve(async (req) => {
     if (spanishHeld(parsed.call)) return refuse('spanishHeld')
     if (FREE_TEXT_KINDS.has(parsed.kind) && overHourlyCap(await freeTextCounts(admin, link.company_id))) return refuse('tooMany')
 
-    const { data, error } = await admin.rpc(parsed.call.rpc, { p_company_id: link.company_id, ...parsed.call.params })
+    // A signature: the consent words as the ledger keeps them, then the drawn image, before the verb.
+    const sign = parsed.sign
+    const consent = sign ? parseEsignConsent(sign.consent) : null
+    if (sign && !consent) return refuse('consentNeeded')
+    const ip = sign ? clientIpFromEdgeRequest(req) : null
+    const userAgent = sign ? req.headers.get('user-agent') : null
+    let signaturePath: string | null = null
+    if (sign?.png) {
+      signaturePath = `gc-sows/${String(parsed.call.params.p_sow_id)}/${crypto.randomUUID()}.png`
+      const { error: upErr } = await admin.storage.from(SIGNATURE_BUCKET).upload(signaturePath, sign.png, { contentType: 'image/png', upsert: false })
+      if (upErr) {
+        console.error('submit-gc-trade-portal: the signature was not stored', upErr)
+        return refuse('failed')
+      }
+    }
+    const params = sign ? { ...parsed.call.params, p_signature_path: signaturePath, p_ip: ip, p_user_agent: userAgent } : parsed.call.params
+
+    const { data, error } = await admin.rpc(parsed.call.rpc, { p_company_id: link.company_id, ...params })
     if (error) {
+      if (signaturePath) await admin.storage.from(SIGNATURE_BUCKET).remove([signaturePath])
       const refusal = tradeErrorOf(error)
       if (refusal.key === 'failed') console.error('submit-gc-trade-portal: the verb failed', parsed.kind, error)
       return jsonResponse({ error: refusal.key }, refusal.status)
+    }
+    if (sign && consent) {
+      // Best-effort, as every signing function keeps it: the row's own stamp is the act, this row is the words.
+      await recordEsignConsent(admin, {
+        recordType: 'gc_sow',
+        recordId: String(parsed.call.params.p_sow_id),
+        consent,
+        printedName: String(parsed.call.params.p_printed_name),
+        method: sign.png ? 'draw' : 'type',
+        consentedAt: String(data),
+        ip,
+        userAgent,
+      })
     }
     return jsonResponse({ ok: true, ...(data === null || data === undefined || data === '' ? {} : { value: data }) })
   } catch (e) {

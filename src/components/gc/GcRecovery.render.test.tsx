@@ -1,109 +1,96 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for how to get days back (the Gantt's G-82; mock-up `to-dos/gc-mode/mockups/G-82.md`):
- * the Days back card under the measures on a late job and its worth in the Projected finish
- * measure, the window a recovery is saved from, who has to agree on the Follow up sheet, and a
- * side-by-side wait read in words in the editor and on the chart.
+ * The schedule's PR 9d: days back on a late job (G-82) on main's test state, ported from the prototype's test. The Days
+ * back card on a late job, with Call only (the Follow up sheet is the Board's and not here yet); the window a recovery
+ * is saved from, Getting days back pressed, saved as one move through the one save with its line in the log.
  */
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { GcBuildingScheduleTab } from './GcBuildingSchedule'
-import { initialGcState } from '../../lib/gcMode/gcFixture'
-import { gcReducer } from '../../lib/gcMode/gcReducer'
-import { addDays } from '../../lib/gcMode/gcBuilding'
-import { scheduleMeasures } from '../../lib/gcMode/gcBuildingSchedule'
-import { CREW_RULE } from '../../lib/gcMode/gcRecovery'
-import type { GcState, ScheduleActivity, ScheduleMoveReason } from '../../lib/gcMode/gcTypes'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { GcDaysBack, GcRecoveryWindow } from './GcRecovery'
+import { addDays } from '../../lib/gc/building'
+import { lateFinish } from '../../lib/gc/lateFinish'
+import { planMove } from '../../lib/gc/schedule/moves'
+import { CREW_RULE, recoveryOffers } from '../../lib/gc/schedule/recovery'
+import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
+import { initialGcState } from '../../lib/gc/schedule/testState'
+import type { GcState } from '../../lib/gc/types'
+import { plainWordsFailures } from '../../lib/plainWords'
+import { installDomShims } from '../../test/renderSmokeMocks'
 
+installDomShims()
 afterEach(cleanup)
-
-beforeAll(() => {
-  if (!window.matchMedia) {
-    window.matchMedia = ((query: string) => ({ matches: false, media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
-  }
-})
 
 const ID = 'fairoaksd'
 const job = (s: GcState) => s.projects.find((p) => p.id === ID)!
 
-function moveBy(s: GcState, label: string, days: number, reason: ScheduleMoveReason, note: string): GcState {
+/** A bar moved later by `days`, what waits on it pushed as a move pushes it. */
+function moveBy(s: GcState, label: string, days: number): GcState {
   const a = scheduleMeasures(s, job(s)).items.find((i) => i.label === label)!.activity
-  return gcReducer(s, { type: 'setScheduleActivity', projectId: ID, lineId: a.lineId, start: addDays(a.start, days), finish: addDays(a.finish, days), after: a.after, why: { reason, note, by: 'Robert' } })
+  const plan = planMove(job(s), a.lineId, addDays(a.start, days), addDays(a.finish, days))!
+  return { ...s, projects: s.projects.map((p) => (p.id === ID && p.schedule ? { ...p, schedule: { ...p.schedule, activities: plan.activities } } : p)) }
 }
 
-/** G-98's late job: Tue Dec 15, 4 days past the contract. */
-function lateJob(): GcState {
-  const s = moveBy(initialGcState(), 'Trim', 7, 'customer', 'Waiting on the restroom tile decision.')
-  return moveBy(s, 'Test and balance', 9, 'weather', 'Rain kept the roof open a week.')
-}
+/** The prototype's late job: Trim a week out, Test and balance nine days: the finish 4 days past its date to meet. */
+const lateJob = () => moveBy(moveBy(initialGcState(), 'Trim', 7), 'Test and balance', 9)
 
-/** Sheet metal and flashing, then Controls, then Trim, nothing else on the schedule: 7 days past the contract. */
-function chain(): GcState {
-  const s = initialGcState()
-  const keep = new Map(job(s).schedule!.activities.map((a) => [a.lineId, a]))
-  const line = (id: string, start: string, finish: string, after: string[]): ScheduleActivity => {
-    const { lag: _lag, ...base } = keep.get(id) as ScheduleActivity
-    return { ...base, lineId: id, start, finish, after }
-  }
-  const activities = [line('froof-3', '2026-11-30', '2026-12-06', []), line('fhvac-3', '2026-12-07', '2026-12-13', ['froof-3']), line('fplumb-4', '2026-12-14', '2026-12-18', ['fhvac-3'])]
-  return { ...s, projects: s.projects.map((p) => (p.id === ID && p.schedule ? { ...p, schedule: { ...p.schedule, activities, moves: [], walks: [], baseline: null }, waits: [], submittals: [], rfis: [] } : p)) }
-}
-
-/** Press a `tel:` link without jsdom trying to follow it. */
-function press(link: Element) {
-  link.addEventListener('click', (e) => e.preventDefault(), { once: true })
-  fireEvent.click(link)
-}
-
-describe('days back on the Schedule tab', () => {
-  it('the late job: the card under the measures, and the best offer’s worth in the Projected finish measure', () => {
-    const { container } = render(<GcBuildingScheduleTab state={lateJob()} project={job(lateJob())} dispatch={vi.fn()} />)
-    const card = container.querySelector('[data-tour="gc-days-back"]') as HTMLElement
-    expect(card).toBeTruthy()
-    const inCard = within(card)
-    expect(inCard.getByText('1 way to bring the finish in. Each stands alone: save one and the list reads again.')).toBeTruthy()
-    expect(inCard.getByText('A second crew on Test and balance.')).toBeTruthy()
-    expect(inCard.getByText('1 day back')).toBeTruthy()
-    expect(inCard.getByText(`It would finish Sat Dec 12, not Sun Dec 13. ${CREW_RULE}`)).toBeTruthy()
-    expect(inCard.getByText('Cool Breeze Mechanical has to agree: Andre Wallace.')).toBeTruthy()
-    expect(inCard.getByText('Call Andre')).toBeTruthy()
-    expect(screen.getByText('Getting 1 day back brings the finish to Mon Dec 14, still 3 days past the contract.')).toBeTruthy()
-  })
-
-  it('on time there is no card', () => {
-    const s = initialGcState()
-    const { container } = render(<GcBuildingScheduleTab state={s} project={job(s)} dispatch={vi.fn()} />)
-    expect(container.querySelector('[data-tour="gc-days-back"]')).toBeNull()
-  })
-
-  it('Look at it opens the window; Save the move sends the offer by its key, Getting days back preset', () => {
-    const dispatch = vi.fn()
+describe('GcDaysBack: the card on a late job', () => {
+  it('lists each way to bring the finish in, with Call and no Follow up', () => {
     const s = lateJob()
-    render(<GcBuildingScheduleTab state={s} project={job(s)} dispatch={dispatch} />)
-    fireEvent.click(screen.getByText('Look at it'))
+    expect(lateFinish(s, job(s)).late).toBe(4)
+    const offers = recoveryOffers(s, job(s))
+    const onLook = vi.fn()
+    const { container } = render(<GcDaysBack state={s} project={job(s)} offers={offers} onLook={onLook} />)
+    const card = within(container.querySelector('[data-days-back]') as HTMLElement)
+    expect(card.getByText('1 way to bring the finish in. Each stands alone: save one and the list reads again.')).toBeTruthy()
+    expect(card.getByText('A second crew on Test and balance.')).toBeTruthy()
+    expect(card.getByText('1 day back')).toBeTruthy()
+    expect(card.getByText(`It would finish Sat Dec 12, not Sun Dec 13. ${CREW_RULE}`)).toBeTruthy()
+    expect(card.getByText('Cool Breeze Mechanical has to agree: Andre Wallace.')).toBeTruthy()
+    expect(card.getByText('Call Andre').getAttribute('href')).toMatch(/^tel:/)
+    expect(card.queryByRole('button', { name: 'Follow up' })).toBeNull()
+    fireEvent.click(card.getByRole('button', { name: 'Look at it' }))
+    expect(onLook).toHaveBeenCalledWith('crew:fhvac-4')
+  })
+
+  it('says why when nothing on the red chain can come in', () => {
+    const s = lateJob()
+    render(<GcDaysBack state={s} project={job(s)} offers={[]} onLook={vi.fn()} />)
+    expect(screen.getByText(/^Nothing on the red chain can come in yet\./)).toBeTruthy()
+  })
+})
+
+describe('GcRecoveryWindow: the window a recovery is saved from', () => {
+  it('shows the move in full, Getting days back pressed, and saves it through the one save with its line in the log', async () => {
+    const s = lateJob()
+    const onSave = vi.fn(() => Promise.resolve('db-9'))
+    const onClose = vi.fn()
+    render(<GcRecoveryWindow state={s} project={job(s)} offerKey="crew:fhvac-4" by="Rosa" onSave={onSave} onReload={vi.fn()} onClose={onClose} />)
     const dialog = screen.getByRole('dialog', { name: 'Get days back' })
     expect(within(dialog).getByText('Comes in behind it')).toBeTruthy()
     expect(within(dialog).getByText('The finish: Tue Dec 15 → Mon Dec 14.')).toBeTruthy()
     expect(within(dialog).getByRole('button', { name: 'Getting days back' }).getAttribute('aria-pressed')).toBe('true')
-    fireEvent.click(within(dialog).getByText('Save the move'))
-    expect(dispatch).toHaveBeenCalledWith({ type: 'recoverScheduleDays', projectId: ID, key: 'crew:fhvac-4', why: { reason: 'recovery', note: 'A second crew on Test and balance, to finish it Sat Dec 12.', by: 'The office' } })
+    expect(within(dialog).getByText('Cool Breeze Mechanical has to agree: Andre Wallace. Ask them before you save it.')).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save the move' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    const [move, , words] = onSave.mock.calls[0] as unknown as [{ lineId: string; reason: string; note: string; recovery?: { how: string } }, unknown, string]
+    expect(move).toMatchObject({ lineId: 'fhvac-4', reason: 'recovery', note: 'A second crew on Test and balance, to finish it Sat Dec 12.', recovery: { how: 'crew' } })
+    expect(words).toBe('Rosa got 1 day back on Fair Oaks Shops, Building D. A second crew on Test and balance.')
   })
 
-  it('who has to agree: Call and Follow up open the Follow up sheet on the days back', () => {
-    const s = lateJob()
-    const { container } = render(<GcBuildingScheduleTab state={s} project={job(s)} dispatch={vi.fn()} />)
-    const card = container.querySelector('[data-tour="gc-days-back"]') as HTMLElement
-    press(within(card).getByText('Call Andre'))
-    const sheet = screen.getByRole('dialog', { name: 'Follow up' })
-    expect(within(sheet).getByText('What did Andre say?')).toBeTruthy()
-    expect(within(sheet).getAllByText('Days back · Fair Oaks Shops, Building D').length).toBeGreaterThan(0)
+  it('shows nothing for an offer the schedule no longer has', () => {
+    const s = initialGcState()
+    const { container } = render(<GcRecoveryWindow state={s} project={job(s)} offerKey="crew:fhvac-4" by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={vi.fn()} />)
+    expect(container.textContent).toBe('')
   })
 
-  it('a saved side-by-side wait reads in words in the editor, and −3 on the chart', () => {
-    const s = gcReducer(chain(), { type: 'recoverScheduleDays', projectId: ID, key: 'side:fhvac-3:froof-3', why: { reason: 'recovery', note: 'Controls starts beside the flashing.', by: 'Robert' } })
-    const { container } = render(<GcBuildingScheduleTab state={s} project={job(s)} dispatch={vi.fn()} />)
-    expect([...container.querySelectorAll('svg text')].some((t) => t.textContent === '−3')).toBe(true)
-    fireEvent.click(container.querySelector('[data-gantt-bar="fhvac-3"]') as HTMLElement)
-    expect(screen.getByText(': starts 3 days before Sheet metal and flashing finishes')).toBeTruthy()
+  it('says each thing a first-timer reads in plain words', () => {
+    const said = [
+      '1 way to bring the finish in. Each stands alone: save one and the list reads again.',
+      '2 ways to bring the finish in. Each stands alone: save one and the list reads again.',
+      'Saved as one move by Rosa, today. Undo puts every date back.',
+      'Cool Breeze Mechanical has to agree: Andre Wallace. Ask them before you save it.',
+      'Your move was not saved. The chart shows the new dates now. Look at it again on them.',
+    ]
+    for (const words of said) expect(plainWordsFailures(words), words).toEqual([])
   })
 })

@@ -9868,6 +9868,81 @@ export type Database = {
           },
         ]
       }
+      gc_office_notices: {
+        Row: {
+          bill_day: string | null
+          created_at: string
+          email_send_log_id: string | null
+          id: string
+          kind: string
+          pay_app_id: string | null
+          project_id: string
+          recipient_customer_id: string | null
+          recipient_email: string
+          recipient_user_id: string | null
+        }
+        Insert: {
+          bill_day?: string | null
+          created_at?: string
+          email_send_log_id?: string | null
+          id?: string
+          kind: string
+          pay_app_id?: string | null
+          project_id: string
+          recipient_customer_id?: string | null
+          recipient_email: string
+          recipient_user_id?: string | null
+        }
+        Update: {
+          bill_day?: string | null
+          created_at?: string
+          email_send_log_id?: string | null
+          id?: string
+          kind?: string
+          pay_app_id?: string | null
+          project_id?: string
+          recipient_customer_id?: string | null
+          recipient_email?: string
+          recipient_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_office_notices_email_send_log_id_fkey"
+            columns: ["email_send_log_id"]
+            isOneToOne: false
+            referencedRelation: "email_send_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_office_notices_pay_app_id_fkey"
+            columns: ["pay_app_id"]
+            isOneToOne: false
+            referencedRelation: "gc_owner_pay_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_office_notices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_office_notices_recipient_customer_id_fkey"
+            columns: ["recipient_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_office_notices_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_owner_acceptances: {
         Row: {
           accepted_by_name: string
@@ -10862,6 +10937,8 @@ export type Database = {
           photo_url: string | null
           position: number
           project_id: string
+          removed_at: string | null
+          removed_by: string | null
           sent_back_note: string | null
           sent_back_on: string | null
           sent_back_times: number
@@ -10880,6 +10957,8 @@ export type Database = {
           photo_url?: string | null
           position?: number
           project_id: string
+          removed_at?: string | null
+          removed_by?: string | null
           sent_back_note?: string | null
           sent_back_on?: string | null
           sent_back_times?: number
@@ -10898,6 +10977,8 @@ export type Database = {
           photo_url?: string | null
           position?: number
           project_id?: string
+          removed_at?: string | null
+          removed_by?: string | null
           sent_back_note?: string | null
           sent_back_on?: string | null
           sent_back_times?: number
@@ -10932,6 +11013,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "gc_projects"
             referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_punch_items_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -29733,6 +29821,7 @@ export type Database = {
       }
       gc_accept_work: { Args: { p_package_id: string }; Returns: string }
       gc_add_company: { Args: { company: Json }; Returns: string }
+      gc_add_punch_item: { Args: { p: Json }; Returns: string }
       gc_add_rfi: { Args: { r: Json }; Returns: string }
       gc_add_submittal: { Args: { s: Json }; Returns: string }
       gc_answer_change_order: {
@@ -29783,6 +29872,10 @@ export type Database = {
         Returns: undefined
       }
       gc_card_bill_undo: { Args: { p_invoice_id: string }; Returns: undefined }
+      gc_check_punch_item: {
+        Args: { p_fixed: boolean; p_item_id: string; p_note?: string }
+        Returns: string
+      }
       gc_close_job: { Args: { p_project_id: string }; Returns: string }
       gc_company_paper: {
         Args: { p_book_entry_id: string; p_company_id: string }
@@ -29890,6 +29983,11 @@ export type Database = {
         Returns: string
       }
       gc_pay_draw: { Args: { p_draw_id: string }; Returns: string }
+      gc_punch_fixed_ask: {
+        Args: { p_company_id: string; p_item_id: string }
+        Returns: string
+      }
+      gc_punch_fixed_in: { Args: { p_item_id: string }; Returns: string }
       gc_questions_close_on: { Args: { p_project: string }; Returns: string }
       gc_record_acceptance: {
         Args: {
@@ -29927,6 +30025,7 @@ export type Database = {
         }
         Returns: string
       }
+      gc_remove_punch_item: { Args: { p_item_id: string }; Returns: undefined }
       gc_retainage_held: { Args: { p_sow_id: string }; Returns: number }
       gc_review_week_status: { Args: { p_week_start: string }; Returns: Json }
       gc_rfi_change_order: {
@@ -30261,6 +30360,10 @@ export type Database = {
         Args: { p_app: Json; p_company_id: string; p_package_id: string }
         Returns: string
       }
+      gc_trade_punch_fixed: {
+        Args: { p_company_id: string; p_item_id: string }
+        Returns: string
+      }
       gc_trade_quote_day: {
         Args: { p_by: string; p_company_id: string; p_invite_id: string }
         Returns: string
@@ -30434,6 +30537,10 @@ export type Database = {
         Returns: Json
       }
       get_gc_money_monday_payload: { Args: never; Returns: Json }
+      get_gc_office_notices_due: {
+        Args: { p_since?: string; p_today?: string }
+        Returns: Json
+      }
       get_gc_statement_email_payload: {
         Args: {
           p_entity_id?: string

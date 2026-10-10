@@ -181,6 +181,32 @@ describe('its work, on the prototype’s shapes (P4b-i)', () => {
     expect(portalHomeGroups(asks).past).toHaveLength(1)
   })
 
+  it('reads its statement of work’s lines in order, each by its scope item or its own id, and what it will not do (P2c-ii)', () => {
+    const r = workRows()
+    const withLines: TradePortalRows = {
+      ...r,
+      sows: (r.sows ?? []).map((s) => ({ ...s, status: 'sent', signed_on: null, excluded: [{ name: 'Permits and fees', by: 'the owner' }, { name: 'Trenching', by: null, unitPrice: { amount: 18, unit: 'ft' } }, { name: '' }] })),
+      sowLines: [
+        { id: 'sl-co', sow_id: 'sow-1', position: 2, label: 'Rot repair', amount: 14820, scope_item_id: null },
+        { id: 'sl-1', sow_id: 'sow-1', position: 0, label: 'Panels and feeders', amount: 40000, scope_item_id: 'si-1' },
+        { id: 'sl-2', sow_id: 'sow-1', position: 1, label: 'Lighting', amount: 24200, scope_item_id: 'si-2' },
+      ],
+    }
+    const sow = tradePortalState(tradePortalSlice(withLines, ME), TODAY).state.projects[0]?.packages[0]?.sow
+    expect([sow?.id, sow?.status, sow?.signedOn]).toEqual(['sow-1', 'sent', null])
+    expect(sow?.sov).toEqual([
+      { id: 'si-1', label: 'Panels and feeders', amount: 40000, pctReported: 0, pctBilled: 0 },
+      { id: 'si-2', label: 'Lighting', amount: 24200, pctReported: 0, pctBilled: 0 },
+      { id: 'sl-co', label: 'Rot repair', amount: 14820, pctReported: 0, pctBilled: 0 },
+    ])
+    expect(sow?.excluded).toEqual([
+      { name: 'Permits and fees', by: 'the owner' },
+      { name: 'Trenching', by: null, unitPrice: { amount: 18, unit: 'ft' } },
+    ])
+    // None excluded and no lines: no list, and an empty schedule of values.
+    expect([pkg.sow?.excluded, pkg.sow?.sov]).toEqual([undefined, []])
+  })
+
   it('reads a slice from a function deployed before P4b-i as no work at all', () => {
     const { sows: _s, backCharges: _b, changeRequests: _r, changeOrders: _o, ...older } = tradePortalSlice(rows(), ME)
     const { state: olderState } = tradePortalState(older, TODAY)

@@ -32,7 +32,7 @@ import {
 } from '../../lib/gcMode/gcModel'
 import { CompanyActivity, CompanyDocuments, CompanyPortalPanel, CompanyTabStrip } from './GcCompanyFile'
 import { GcTradePortal } from './GcTradePortal'
-import { GcPaperSend } from './GcPaperSend'
+import { GcPaperSend } from './GcPaperSend.proto'
 import type { CompanyTab } from './gcCompanyOpener.proto'
 import { Btn, Chip, Stat, type Tone } from './gcUi'
 import { VettingChip } from './GcVetting'
