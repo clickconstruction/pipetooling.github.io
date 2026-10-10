@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing O12: the customer's notice 3 days before a bill is due"
 parent: to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md (PR 15, O12, after O10 and O11)
-status: planned 2026-10-10 by Helper 5 (gc 5) at the lead's ask, on the owner's word the same day ("Yes, build it", behind a switch he turns on after a test copy) · O12a's SQL below ran in a local bed against main ce97107b4 with its bed 95 (24 checks; O10's bed 93 unchanged at 32; 10 of 11 mutants caught, the eleventh equivalent) · waits on the lead's read-back · nothing cut
+status: planned 2026-10-10 by Helper 5 (gc 5) at the lead's ask, on the owner's word the same day ("Yes, build it", behind a switch he turns on after a test copy) · O12a's SQL below ran in a local bed against main ce97107b4 with its bed (24 checks; O10's bed 93 unchanged at 32; 10 of 11 mutants caught, the eleventh equivalent) · approved by the lead 2026-10-10, the seven calls at their defaults · amended at the cut: both checks NOT VALID, then validated (the lead's call), and the bed is 96 · O12a is #5342 (v2.5184, migration 20261010130000)
 ---
 
 # O12: the customer's notice 3 days before a bill is due
@@ -92,11 +92,15 @@ SET lock_timeout = '3s';
 
 ALTER TABLE public.gc_office_notices ADD COLUMN IF NOT EXISTS due_on date;
 
+-- Each check goes on NOT VALID, so the swap holds the table's lock for no scan, then is validated under the lighter
+-- lock (the lead's call).
 ALTER TABLE public.gc_office_notices
   DROP CONSTRAINT IF EXISTS gc_office_notices_kind_known,
-  ADD CONSTRAINT gc_office_notices_kind_known CHECK (kind IN ('bill_day', 'certify_reminder', 'certify_late', 'pay_soon')),
+  ADD CONSTRAINT gc_office_notices_kind_known CHECK (kind IN ('bill_day', 'certify_reminder', 'certify_late', 'pay_soon')) NOT VALID,
   DROP CONSTRAINT IF EXISTS gc_office_notices_due_said,
-  ADD CONSTRAINT gc_office_notices_due_said CHECK ((kind = 'pay_soon') = (due_on IS NOT NULL));
+  ADD CONSTRAINT gc_office_notices_due_said CHECK ((kind = 'pay_soon') = (due_on IS NOT NULL)) NOT VALID;
+ALTER TABLE public.gc_office_notices VALIDATE CONSTRAINT gc_office_notices_kind_known;
+ALTER TABLE public.gc_office_notices VALIDATE CONSTRAINT gc_office_notices_due_said;
 
 COMMENT ON TABLE public.gc_office_notices IS
   'GC mode (v2.5137, Owner Billing O10a; pay_soon v2.NNNN, O12a): one row per notice sent by gc-office-notices (the office''s bill_day, certify_reminder and certify_late; the customer''s pay_soon), written before its send so the unique indexes make each go once. The service role writes; the money team reads.';
@@ -187,7 +191,7 @@ CREATE POLICY "master_or_dev_update_gc_customer_due_notices_on"
   WITH CHECK (key = 'gc_customer_due_notices_on_v1' AND public.is_master_or_dev());
 ```
 
-## O12a's bed: `supabase/tests/gc_owner_billing/95_customer_due_notices.sql`
+## O12a's bed: `supabase/tests/gc_owner_billing/96_customer_due_notices.sql`
 
 Eight GC jobs of one customer, each with one pay application, days fixed in October 2026, the list read for a named
 day (the payload's due day does not depend on the day it runs). The billing jobs carry no customer, so no payment
@@ -217,7 +221,7 @@ switch read for this one; and the grant left to `authenticated`. One survives by
 `NOT waitingOnArchitect` changes nothing, since a bill with the architect has no certificate day and fails the
 since and certificate-day tests. It stays, for the reader.
 
-`scripts/pgtest-gc-owner-billing.sh` adds the migration to its run-twice list and bed 95 to its list.
+`scripts/pgtest-gc-owner-billing.sh` adds the migration to its run-twice list and bed 96 to its list (95 is the schedule's office view).
 
 ## O12b, the sender
 
@@ -268,7 +272,7 @@ since and certificate-day tests. It stays, for the reader.
 
 ## Tests
 
-- O12a: bed 95 above, and the bed script's lists.
+- O12a: bed 96 above, and the bed script's lists.
 - O12b:
   - `gcOfficeNotices.test.ts`: the words, promised or not, final or not, part paid; the frame's portal and card
     lines; `[TEST]`.
