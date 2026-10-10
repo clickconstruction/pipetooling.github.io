@@ -30780,7 +30780,21 @@ export type Database = {
         Returns: string
       }
       gc_trade_got_it: { Args: { p_company_id: string }; Returns: string }
+      gc_trade_keep_day: {
+        Args: { p_company_id: string; p_notice_id: string }
+        Returns: undefined
+      }
       gc_trade_mail_groups: { Args: { p_groups: string[] }; Returns: string[] }
+      gc_trade_mark_lookahead: {
+        Args: {
+          p_activity_id: string
+          p_company_id: string
+          p_done: boolean
+          p_reason: string
+          p_week_of: string
+        }
+        Returns: undefined
+      }
       gc_trade_newest_quote: {
         Args: { p_invite_id: string }
         Returns: {
@@ -30845,6 +30859,25 @@ export type Database = {
           p_sheets?: string[]
         }
         Returns: string
+      }
+      gc_trade_say_late: {
+        Args: {
+          p_activity_id: string
+          p_company_id: string
+          p_day: string
+          p_note: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      gc_trade_set_crew_count: {
+        Args: {
+          p_company_id: string
+          p_count: number
+          p_package_id: string
+          p_week_of: string
+        }
+        Returns: undefined
       }
       gc_trade_set_gets: {
         Args: { p_company_id: string; p_gets: string[]; p_person_id: string }
