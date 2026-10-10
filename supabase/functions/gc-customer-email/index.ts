@@ -6,23 +6,23 @@ import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { customerBillingEmail, customerContactEmail } from '../_shared/billToParty.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
-import { loadPortalReturnUrl, PORTAL_RETURN_SHORT_ORIGIN } from '../_shared/customerPortalReturnUrl.ts'
+import { PORTAL_RETURN_SHORT_ORIGIN } from '../_shared/customerPortalReturnUrl.ts'
 import { bytesSha256Hex } from '../_shared/gcPortal.ts'
 import { GC_CARD_BILL_SETTING_KEY, gcCardBillOn, gcEmailCardFee } from '../_shared/gcCardBill.ts'
 import {
   buildGcCustomerEmail,
   bytesBase64,
   CUSTOMER_EMAIL_ERRORS,
-  GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
   GC_CUSTOMER_EMAIL_MAX_CONTRACT_BYTES,
   gcContractAttachmentName,
-  gcContractPortalUrl,
+  gcJobsPortalUrl,
   GC_CUSTOMER_EMAIL_ADDRESS,
   GC_CUSTOMER_EMAIL_FILED_AS,
   GC_CUSTOMER_EMAIL_FRAMED,
   GC_CUSTOMER_EMAIL_FROM_NAME,
   GC_CUSTOMER_EMAIL_GATE,
-  GC_CUSTOMER_EMAIL_PORTAL_LINE,
+  gcCustomerEmailPortalOn,
+  gcCustomerEmailPortalWords,
   GC_CUSTOMER_EMAIL_ROLES,
   GC_CUSTOMER_EMAIL_SOURCE,
   GC_CUSTOMER_EMAIL_TEST_TYPE,
@@ -208,19 +208,21 @@ serve(async (req) => {
     const pm = gc.project_manager_user_id ? (await admin.from('users').select('name, email').eq('id', gc.project_manager_user_id).maybeSingle()).data : null
     const replyTo = (pm?.email || who.email || '').trim() || undefined
     const signer = (pm?.name || who.name || GC_CUSTOMER_EMAIL_FROM_NAME).trim()
-    // The customer's portal, for the kinds that link it, only when a link is already on: never minted here. Our contract
-    // needs one where their GC jobs show (the window makes it at the first send, D6); with none it does not go.
+    // The customer's portal, for the kinds that link it, only when a link is already on: never minted here, and only one
+    // where their GC jobs show (`gcJobsPortalUrl`), never a GC view, which shows no GC job of ours. Our contract needs
+    // one (the window makes it at the first send, D6); with none it does not go. A bill with none goes with no line.
     const appOrigin = Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com'
     let portalUrl: string | null = null
-    if (m.kind === 'contract') {
+    // The schedule's and the Friday report's line (15b): only on a job whose schedule is drawn, as their portal shows it.
+    const scheduleDrawn =
+      m.kind === 'schedule' || m.kind === 'weekly' ? Boolean((await admin.from('gc_schedules').select('project_id').eq('project_id', m.projectId).maybeSingle()).data) : false
+    if (m.kind === 'contract' || gcCustomerEmailPortalOn({ kind: m.kind, copyArchitect, scheduleDrawn })) {
       const [{ data: links }, { data: slugRow }] = await Promise.all([
         admin.from('customer_portal_links').select('audience, token, revoked_at').eq('customer_id', recipient.id).is('revoked_at', null),
         admin.from('customer_portal_slugs').select('slug').eq('customer_id', recipient.id).maybeSingle(),
       ])
-      portalUrl = gcContractPortalUrl((links ?? []) as { audience: string; token: string | null }[], (slugRow as { slug?: string } | null)?.slug ?? null, appOrigin, PORTAL_RETURN_SHORT_ORIGIN)
-      if (!portalUrl) return refuse('noPortal')
-    } else if (GC_CUSTOMER_EMAIL_PORTAL_LINE[m.kind]) {
-      portalUrl = await loadPortalReturnUrl(admin, recipient.id, appOrigin, { paid: false })
+      portalUrl = gcJobsPortalUrl((links ?? []) as { audience: string; token: string | null }[], (slugRow as { slug?: string } | null)?.slug ?? null, appOrigin, PORTAL_RETURN_SHORT_ORIGIN)
+      if (m.kind === 'contract' && !portalUrl) return refuse('noPortal')
     }
     // Our contract's file, read as the service role: its bytes must still be the ones the send hashed, so the email
     // carries exactly what the signature binds to (a test copy too).
@@ -245,8 +247,10 @@ serve(async (req) => {
       ])
       cardFee = gcEmailCardFee({ on: gcCardBillOn(setting?.value_text), bill: bill ?? null, paid: (paidCount ?? 0) > 0, cardStatus: card?.status ?? null })
     }
-    // Our contract's portal line says they sign it there; every other kind's says they can see the bill.
-    const portalWords = m.kind === 'contract' ? { portalWords: GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS } : {}
+    // Our contract's portal line says they sign it there, the schedule's and the Friday report's that they can see their
+    // schedule; every other kind's says they can see the bill.
+    const ownWords = gcCustomerEmailPortalWords(m.kind)
+    const portalWords = ownWords ? { portalWords: ownWords } : {}
     const email = buildGcCustomerEmail({ ...portalWords, subject: words.subject, lines: words.lines, signer, gc: GC_CUSTOMER_EMAIL_FROM_NAME, framed: GC_CUSTOMER_EMAIL_FRAMED[m.kind], portalUrl, cardFee })
     const subject = m.test ? gcCustomerEmailTestSubject(email.subject) : email.subject
 

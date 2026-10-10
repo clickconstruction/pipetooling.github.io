@@ -44,6 +44,12 @@ import { customerBillingEmail } from '../_shared/billToParty.ts'
  * ?slug= resolves my.clickplumbing.com/<slug> → customer_portal_slugs → the
  * active 'all' link. First public resolve locks the slug (belt and
  * suspenders with the modal's Copy — catches links shared by screenshot).
+ *
+ * GC mode, the schedule's PR 15b: each GC job being built with a schedule drawn
+ * carries the customer's schedule (`schedule`, G-90 to G-93), words and dates
+ * only, worked out by `_shared/gcCustomerSchedule.ts` with the generated copy of
+ * the kernels. That file loads with a dynamic import only for a customer with a
+ * GC job of ours, so a homeowner's portal boots as before.
  */
 
 const corsHeaders = {
@@ -696,6 +702,17 @@ serve(async (req) => {
     // GC mode (Owner Billing O7c, v2.5025): the GC jobs we build for this customer, with the change orders waiting on
     // them and the work to accept. The customer's link only: a GC's link is Trades mode's.
     const gcJobs: PortalGcJob[] = link.audience === 'gc' ? [] : await loadGcPortalJobs(admin, link.customer_id)
+    // The schedule's PR 15b: their schedule on each GC job being built (G-90 to G-93), worked out with the generated
+    // copy of the kernels. Loaded only for a customer with a GC job of ours, so a homeowner's portal boots as before.
+    if (gcJobs.length > 0) {
+      try {
+        const { loadCustomerSchedules } = await import('../_shared/gcCustomerSchedule.ts')
+        const schedules = await loadCustomerSchedules(admin, link.customer_id, todayYmdInAppTz())
+        for (const job of gcJobs) if (schedules[job.projectId]) job.schedule = schedules[job.projectId]
+      } catch (e) {
+        console.error('customer-portal: the schedule did not load', e)
+      }
+    }
 
     // GC mode (Owner Billing O8b, v2.5123): the certified GC bills they may pay by card, with its 3% fee, and the
     // ones on card already (their fee shown under the bill). The offer needs the switch, the app_settings row

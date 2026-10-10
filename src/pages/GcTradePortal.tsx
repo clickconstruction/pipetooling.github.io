@@ -4,7 +4,7 @@ import { GcTradePortalView } from '../components/gc/GcTradePortalView'
 import { PortalPressContext, type PortalPress } from '../components/gc/gcTradePortalPress'
 import { GC_COMPANY } from '../lib/gc/company'
 import { portalShownLang, pt, type PortalLang } from '../lib/gc/portalI18n'
-import { readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
+import { lateWaitingOf, readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
 import { goToSignPath, submitTradePortal, tradeFilePlaced, tradeSignPath } from '../lib/gc/tradePortalSubmit'
 import { tradePortalState } from '../lib/gc/tradePortalState'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
@@ -86,6 +86,18 @@ export default function GcTradePortal() {
         if (path) goToSignPath(path)
         return null
       },
+      // The late door's second look (P5d-ii-2): a read for one day on one bar, which counts no visit and writes nothing.
+      lateWaiting: async (lineId, day) => {
+        if (preview) return []
+        try {
+          const res = await fetch(`${supabaseUrl}/functions/v1/gc-trade-portal?t=${encodeURIComponent(token)}&late=${encodeURIComponent(lineId)}&day=${encodeURIComponent(day)}`, {
+            headers: await staffAwarePublicHeaders(),
+          })
+          return res.ok ? lateWaitingOf(await res.json().catch(() => null)) : []
+        } catch {
+          return []
+        }
+      },
     }),
     [preview, lang, token, read],
   )
@@ -113,6 +125,8 @@ export default function GcTradePortal() {
           planUrl={planUrl}
           banner={page.sample ? pt(lang, 'samplePortal') : preview ? pt(lang, 'officePreview') : undefined}
           schedules={page.schedules}
+          scheduleWork={page.scheduleWork}
+          scheduleTodos={page.scheduleTodos}
         />
         </PortalPressContext.Provider>
       ) : null}

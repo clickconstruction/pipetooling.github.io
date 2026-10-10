@@ -63,12 +63,19 @@ export const TRADE_SUBMIT_KINDS = [
   // P5b-1: a company new to us sends its vetting form, and a company opens its master agreement or W-9 to sign (P5b-m's verbs).
   'vetting_form',
   'paper_link',
+  // P5d-ii: the trade's side of the schedule. New dates answered (13a's verb), and a bar late, the day kept after a push
+  // back, a crew count and a look-ahead mark (14a's).
+  'answer_dates',
+  'say_late',
+  'keep_day',
+  'crew_count',
+  'mark_lookahead',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
 
 /** The kinds that write a company's own words, under the hourly cap. The rest are clicks. */
-export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question', 'ask_change', 'submittal_send', 'rfi_ask'])
+export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question', 'ask_change', 'submittal_send', 'rfi_ask', 'say_late'])
 
 /** The function's own refusals. `consentNeeded`: a signature without the e-sign consent (P2c-ii), refused before any write. */
 export const TRADE_FUNCTION_ERRORS = {
@@ -118,6 +125,18 @@ export const TRADE_SQL_ERRORS = {
   nothingToBill: 409,
   finalSent: 409,
   finalNotYet: 409,
+  // P5d-ii: the schedule's 13a (new dates taken back) and 14a (a bar done, a notice not pushed back or closed since, a
+  // week no longer open, a mark our superintendent checked).
+  datesTakenBack: 409,
+  workDone: 409,
+  notPushedBack: 409,
+  noticeClosed: 409,
+  weekClosed: 409,
+  alreadyChecked: 409,
+  dayNeeded: 400,
+  lateLaterDay: 400,
+  pickWhy: 400,
+  crewWhole: 400,
   fileNeeded: 400,
   amountNeeded: 400,
   answerEach: 400,
@@ -219,6 +238,8 @@ export function signaturePngOf(v: string): Uint8Array | null {
 
 const MAIL_GROUPS = ['quotes', 'job', 'contracts', 'pay']
 const CHANGE_REASONS = ['owner', 'field', 'plans']
+/** Copy of `LATE_REASONS` in `src/lib/gc/schedule/lateNotices.ts` (a test keeps the two equal): why a bar is late or not done. */
+export const SCHEDULE_REASONS: readonly string[] = ['weather', 'trade before', 'materials', 'crew', 'other']
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const HTTPS = /^https:\/\/\S+$/i
 const YMD = /^\d{4}-\d{2}-\d{2}$/
@@ -244,6 +265,20 @@ function text(v: unknown, max: number): string {
   if (v === undefined || v === null) return ''
   if (typeof v !== 'string' || v.trim().length > max) throw new Bad()
   return v.trim()
+}
+
+/** A week's Monday, as the look-ahead and the crew counts key a week. */
+function monday(v: unknown): string {
+  const day = ymd(v)
+  if (new Date(`${day}T00:00:00Z`).getUTCDay() !== 1) throw new Bad()
+  return day
+}
+
+/** A reason from the five, or none: the SQL says pickWhy for none where one is needed. */
+function reasonOrNull(v: unknown): string | null {
+  if (v === undefined || v === null || v === '') return null
+  if (typeof v !== 'string' || !SCHEDULE_REASONS.includes(v)) throw new Bad()
+  return v
 }
 
 function num(v: unknown): number | null {
@@ -458,6 +493,27 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
       // The function adds the token's hash and expiry it mints (gcTradePaper.ts) before the verb.
       if (b.paper !== 'msa' && b.paper !== 'w9') throw new Bad()
       return { rpc: 'gc_trade_paper_open', params: { p_paper: b.paper } }
+    case 'answer_dates':
+      // The dates work, or another day: the SQL says dayNeeded for none and dayPassed for one gone.
+      if (typeof b.ok !== 'boolean') throw new Bad()
+      return {
+        rpc: 'gc_trade_answer_dates',
+        params: { p_move_id: uuid(b.moveId), p_ok: b.ok, p_day: b.ok || b.day === undefined || b.day === null || b.day === '' ? null : ymd(b.day), p_note: text(b.note, 2000) },
+      }
+    case 'say_late':
+      // The day's order, a missing reason and a short sentence are the SQL's to say, in the kernel's order.
+      return { rpc: 'gc_trade_say_late', params: { p_activity_id: uuid(b.activityId), p_day: ymd(b.day), p_reason: reasonOrNull(b.reason), p_note: text(b.note, 2000) } }
+    case 'keep_day':
+      return { rpc: 'gc_trade_keep_day', params: { p_notice_id: uuid(b.noticeId) } }
+    case 'crew_count': {
+      // A whole number outside 0 to 50 reaches the SQL, which says crewWhole; part of a person is not the form's.
+      const count = num(b.count)
+      if (count === null || !Number.isInteger(count)) throw new Bad()
+      return { rpc: 'gc_trade_set_crew_count', params: { p_package_id: uuid(b.packageId), p_week_of: monday(b.weekOf), p_count: count } }
+    }
+    case 'mark_lookahead':
+      if (typeof b.done !== 'boolean') throw new Bad()
+      return { rpc: 'gc_trade_mark_lookahead', params: { p_activity_id: uuid(b.activityId), p_week_of: monday(b.weekOf), p_done: b.done, p_reason: reasonOrNull(b.reason) } }
     case 'sign_sow':
       // The function fills the image's path, the IP and the browser from what it stored and the request.
       return { rpc: 'gc_trade_sign_sow', params: { p_sow_id: uuid(b.sowId), p_printed_name: text(b.printedName, 200), p_signature_path: null, p_ip: null, p_user_agent: null } }

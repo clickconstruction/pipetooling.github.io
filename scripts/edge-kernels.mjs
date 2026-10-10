@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url'
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
 /** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['gc-trade-portal']
+export const IMPORTERS = ['customer-portal', 'gc-trade-portal']
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {
@@ -36,6 +36,16 @@ export const ENTRIES = {
   'lib/gc/boardRows.ts': { values: ['boardStateFromRows'], types: ['BoardRows', 'CompanyRow', 'InviteRow', 'SowRow', 'SowLineRow'] },
   'lib/gc/drawRows.ts': { values: ['withDraws'], types: ['DrawTables', 'DrawTableRow', 'DrawLineRow', 'LineReportRow'] },
   'lib/gc/schedule/rows.ts': { values: ['withScheduleRows'], types: ['ScheduleRows'] },
+  // The Portal's P5d-ii: the trade's side of the schedule, worked out where every bar is.
+  'lib/gc/schedule/tellTrades.ts': { values: ['datesNotices'], types: ['DatesNotice'] },
+  'lib/gc/schedule/lateNotices.ts': { values: ['lateDoor', 'lateTarget', 'lateWaiting', 'portalLateNotice'], types: ['LateDoor', 'LateWaiting'] },
+  'lib/gc/schedule/crewCounts.ts': { values: ['portalCrewAsks'], types: ['PortalCrewWeek'] },
+  'lib/gc/portal.ts': { values: ['portalLookAhead', 'portalTodos'], types: ['PortalLookAheadWeek', 'PortalTodo'] },
+  // The customer's picture in their portal (the schedule's PR 15b): the picture, a bar in their words, the late
+  // finish's customer words, and a change order's non-money half laid on the board.
+  'lib/gc/schedule/customerSchedule.ts': { values: ['customerSchedulePicture', 'customerBarWords'], types: ['CustomerSchedulePicture', 'CustomerStage', 'CustomerStanding'] },
+  'lib/gc/lateFinish.ts': { values: ['lateFinish'], types: ['LateFinish'] },
+  'lib/gc/changeOrderOfficeRows.ts': { values: ['withOfficeChangeOrders', 'CHANGE_ORDER_OFFICE_COLUMNS'], types: ['ChangeOrderOfficeRow'] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

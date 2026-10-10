@@ -77,7 +77,8 @@ type Count = { count: number | null }
 /**
  * The company's free-text writes in the last hour: its questions, the people it added, its quotes, its quote days and the
  * changes it asked for, and since P5c-2 its questions while we build and the submittal rounds it sent. A round carries no
- * company of its own, so it is counted on the submittals of the trades its statements of work are for.
+ * company of its own, so it is counted on the submittals of the trades its statements of work are for. Since P5d-ii, the
+ * late notices it sent (14's call 8).
  */
 async function freeTextCounts(admin: SupabaseClient, companyId: string): Promise<(number | null)[]> {
   const hourAgo = new Date(Date.now() - 3600_000).toISOString()
@@ -87,7 +88,7 @@ async function freeTextCounts(admin: SupabaseClient, companyId: string): Promise
   const submittals = sowPackages.length
     ? (((await admin.from('gc_submittals').select('id').in('package_id', sowPackages.map((s) => s.package_id))).data ?? []) as { id: string }[])
     : []
-  const [questions, people, contacts, quotes, changes, rfis, rounds] = await Promise.all([
+  const [questions, people, contacts, quotes, changes, rfis, rounds, late] = await Promise.all([
     admin.from('gc_plan_questions').select('id', head).eq('company_id', companyId).gte('created_at', hourAgo),
     admin.from('gc_company_people').select('id', head).eq('company_id', companyId).eq('added_by', 'trade').gte('created_at', hourAgo),
     admin.from('gc_company_contacts').select('id', head).eq('company_id', companyId).eq('how', 'portal').gte('created_at', hourAgo),
@@ -99,8 +100,9 @@ async function freeTextCounts(admin: SupabaseClient, companyId: string): Promise
     submittals.length
       ? admin.from('gc_submittal_rounds').select('id', head).in('submittal_id', submittals.map((x) => x.id)).eq('sent_by', 'trade').gte('created_at', hourAgo)
       : Promise.resolve({ count: 0 } as Count),
+    admin.from('gc_schedule_late_notices').select('id', head).eq('company_id', companyId).gte('created_at', hourAgo),
   ])
-  return [questions, people, contacts, quotes, changes, rfis, rounds].map((r) => (r as Count).count)
+  return [questions, people, contacts, quotes, changes, rfis, rounds, late].map((r) => (r as Count).count)
 }
 
 type Refusal = { error: string; status: number }

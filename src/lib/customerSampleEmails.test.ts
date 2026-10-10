@@ -166,8 +166,8 @@ describe('v2.5198 · the customer’s schedule on its own (the schedule’s PR 1
     const paragraphs = m.text.split('\n\n')
     expect(paragraphs[0]).toBe('Hello Elena,')
     expect(paragraphs[1]).toBe('Here is where Sample Retail Shell stands as of Fri Sep 4.')
-    // The letter signs itself: nothing is framed after it, and no dollar is in it.
-    expect(paragraphs.slice(-2)).toEqual(['Call me with any question.', 'Wendi Douglas, Click Construction'])
+    // The letter signs itself: nothing is framed after it but their portal's line (the schedule's PR 15b), and no dollar is in it.
+    expect(paragraphs.slice(-3)).toEqual(['Call me with any question.', 'Wendi Douglas, Click Construction', 'You can see your schedule in your portal: https://my.clickplumbing.com/sample-owner'])
     expect(m.text).not.toContain('Thank you,')
     expect(m.text).not.toContain('$')
     expect(m.from).toBe('Click Construction <team@noreply.clicktooling.com>')

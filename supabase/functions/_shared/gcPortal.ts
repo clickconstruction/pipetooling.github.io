@@ -9,7 +9,12 @@
  * with its price as one number (never by line: board-b5.md:248), the terms they sign to, the sign-by day and the file
  * to read, until they sign it here (`gc_owner_contract_sign`, `gcContractSignWords`). A job with only that to show
  * shows.
+ *
+ * The schedule's PR 15b adds `schedule` to a job being built: `customer-portal` lays it on after this read, from
+ * `gcCustomerSchedule.ts`, so this file never loads the copy of the kernels and none of its importers do.
  */
+
+import type { PortalGcSchedule } from './gcCustomerSchedule.ts'
 
 export type PortalGcChangeOrder = {
   id: string
@@ -63,6 +68,11 @@ export type PortalGcJob = {
   canAccept: boolean
   /** The day the work was accepted, and whether at the office or here. Null before. */
   accepted: { on: string; how: 'office' | 'portal' } | null
+  /**
+   * Their schedule on a job being built with one drawn (the schedule's PR 15b): words and dates only. Absent: none to
+   * show. `customer-portal` lays it on after this read, with the copy of the kernels loaded only for a GC customer.
+   */
+  schedule?: PortalGcSchedule
 }
 
 export type GcPortalRows = {

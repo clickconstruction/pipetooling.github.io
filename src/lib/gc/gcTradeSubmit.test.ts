@@ -22,11 +22,13 @@ import {
   signaturePngOf,
   spanishHeld,
   tradeErrorOf,
+  SCHEDULE_REASONS,
   WAIVER_KINDS,
   WAIVER_SIGN_LIVE as FUNCTION_WAIVER_SIGN_LIVE,
   waiverHeld,
 } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
+import { LATE_REASONS } from './schedule/lateNotices'
 import { PORTAL_SPANISH_ON } from './portalI18n'
 
 const TOKEN = '0123456789abcdef0123456789abcdef'
@@ -61,7 +63,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(26)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(31)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -441,6 +443,66 @@ describe('each kind, read into its verb', () => {
   })
 })
 
+describe('the schedule’s kinds (P5d-ii)', () => {
+  const MOVE = '66666666-6666-4666-8666-666666666666'
+  const BAR = '77777777-7777-4777-8777-777777777777'
+  const NOTICE = '88888888-8888-4888-8888-888888888888'
+  const MONDAY = '2026-10-12'
+
+  it('answers new dates: they work, or another day with a word', () => {
+    expect(call('answer_dates', { moveId: MOVE, ok: true, day: '2026-10-20', note: '' })).toEqual({ rpc: 'gc_trade_answer_dates', params: { p_move_id: MOVE, p_ok: true, p_day: null, p_note: '' } })
+    expect(call('answer_dates', { moveId: MOVE, ok: false, day: '2026-10-20', note: ' Our crew is on another job. ' })?.params).toEqual({ p_move_id: MOVE, p_ok: false, p_day: '2026-10-20', p_note: 'Our crew is on another job.' })
+    // No day reaches the SQL, which says dayNeeded.
+    expect(call('answer_dates', { moveId: MOVE, ok: false })?.params.p_day).toBeNull()
+    expect(call('answer_dates', { moveId: MOVE })).toBeNull()
+    expect(call('answer_dates', { moveId: MOVE, ok: false, day: 'soon' })).toBeNull()
+  })
+
+  it('says a bar will be late with its day, a reason from the five and a sentence', () => {
+    expect(call('say_late', { activityId: BAR, day: '2026-10-21', reason: 'trade before', note: ' The framing ran long. ' })).toEqual({
+      rpc: 'gc_trade_say_late',
+      params: { p_activity_id: BAR, p_day: '2026-10-21', p_reason: 'trade before', p_note: 'The framing ran long.' },
+    })
+    // No reason reaches the SQL, which says pickWhy; a sixth is no shape the form sends.
+    expect(call('say_late', { activityId: BAR, day: '2026-10-21', note: 'x' })?.params.p_reason).toBeNull()
+    expect(call('say_late', { activityId: BAR, day: '2026-10-21', reason: 'vacation', note: 'x' })).toBeNull()
+    expect(call('say_late', { activityId: BAR, reason: 'crew', note: 'x' })).toBeNull()
+    expect(call('say_late', { activityId: BAR, day: '2026-10-21', reason: 'crew', note: 'x'.repeat(2001) })).toBeNull()
+  })
+
+  it('keeps the day after a push back', () => {
+    expect(call('keep_day', { noticeId: NOTICE })).toEqual({ rpc: 'gc_trade_keep_day', params: { p_notice_id: NOTICE } })
+    expect(call('keep_day', { noticeId: 'late-1' })).toBeNull()
+  })
+
+  it('gives a crew count for a week by its Monday, a whole number the SQL holds to 0 to 50', () => {
+    expect(call('crew_count', { packageId: TRADE, weekOf: MONDAY, count: 4 })).toEqual({ rpc: 'gc_trade_set_crew_count', params: { p_package_id: TRADE, p_week_of: MONDAY, p_count: 4 } })
+    expect(call('crew_count', { packageId: TRADE, weekOf: MONDAY, count: 60 })?.params.p_count).toBe(60)
+    expect(call('crew_count', { packageId: TRADE, weekOf: MONDAY, count: 2.5 })).toBeNull()
+    expect(call('crew_count', { packageId: TRADE, weekOf: MONDAY })).toBeNull()
+    expect(call('crew_count', { packageId: TRADE, weekOf: '2026-10-13', count: 4 })).toBeNull()
+  })
+
+  it('marks a look-ahead bar done, or not done and why', () => {
+    expect(call('mark_lookahead', { activityId: BAR, weekOf: MONDAY, done: false, reason: 'weather' })).toEqual({
+      rpc: 'gc_trade_mark_lookahead',
+      params: { p_activity_id: BAR, p_week_of: MONDAY, p_done: false, p_reason: 'weather' },
+    })
+    expect(call('mark_lookahead', { activityId: BAR, weekOf: MONDAY, done: true })?.params.p_reason).toBeNull()
+    expect(call('mark_lookahead', { activityId: BAR, weekOf: MONDAY })).toBeNull()
+    expect(call('mark_lookahead', { activityId: BAR, weekOf: '2026-10-14', done: true })).toBeNull()
+  })
+
+  it('reads the same five reasons as the late notice kernel', () => {
+    expect([...SCHEDULE_REASONS]).toEqual([...LATE_REASONS])
+  })
+
+  it('maps each schedule key with its status and words', () => {
+    for (const key of ['datesTakenBack', 'workDone', 'notPushedBack', 'noticeClosed', 'weekClosed', 'alreadyChecked'] as const) expect(TRADE_SQL_ERRORS[key], key).toBe(409)
+    for (const key of ['dayNeeded', 'lateLaterDay', 'pickWhy', 'crewWhole'] as const) expect(TRADE_SQL_ERRORS[key], key).toBe(400)
+  })
+})
+
 describe('before the verb', () => {
   it('answers a filled honeypot as if it worked, and knows the sample token', () => {
     expect([isHoneypot({ website: 'http://spam' }), isHoneypot({ website: ' ' }), isHoneypot({})]).toEqual([true, false, false])
@@ -465,7 +527,7 @@ describe('before the verb', () => {
     expect(overHourlyCap([3, 2, 1, 3])).toBe(false)
     expect(overHourlyCap([4, 2, 1, 3])).toBe(true)
     expect(overHourlyCap([null, undefined, 10, 0])).toBe(true)
-    expect([...FREE_TEXT_KINDS].sort()).toEqual(['add_person', 'ask_change', 'ask_question', 'quote_day', 'rfi_ask', 'submit_quote', 'submittal_send'])
+    expect([...FREE_TEXT_KINDS].sort()).toEqual(['add_person', 'ask_change', 'ask_question', 'quote_day', 'rfi_ask', 'say_late', 'submit_quote', 'submittal_send'])
   })
 })
 
@@ -494,21 +556,8 @@ describe('the verb’s refusals', () => {
    * status in TRADE_SQL_ERRORS and its words in TRADE_ERROR_WORDS. A lane whose migration adds a trade
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
-  // The schedule's PR 13a: gc_trade_answer_dates raises two keys the portal maps in P5d. The schedule's PR 14a: the
-  // trade's four writes (say_late, keep_day, crew_count, mark_lookahead) raise eight more, for P5d-ii. (The Portal's
-  // P5b-1 mapped P5b-m's eight.)
-  const WAITING: Record<string, string> = {
-    datesTakenBack: 'P5d',
-    dayNeeded: 'P5d',
-    workDone: 'P5d',
-    lateLaterDay: 'P5d',
-    pickWhy: 'P5d',
-    notPushedBack: 'P5d',
-    noticeClosed: 'P5d',
-    weekClosed: 'P5d',
-    crewWhole: 'P5d',
-    alreadyChecked: 'P5d',
-  }
+  // The Portal's P5b-1 mapped P5b-m's eight keys, and P5d-ii the ten the schedule's 13a and 14a raised: none waits.
+  const WAITING: Record<string, string> = {}
 
   /**
    * Every key a trade verb raises, its own and those of the `*_ask` helpers it returns through (P5c-2: U3b-i's

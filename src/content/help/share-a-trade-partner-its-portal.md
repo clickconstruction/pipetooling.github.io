@@ -35,6 +35,8 @@ To sign, the company types its name and signs by typing or drawing. It also tick
 
 On a job we are building, the job page opens on **Your schedule on this job**. It shows the company's own bars and the work right before and after them. Other companies show by name, never by price. Their notes and contacts never show.
 
+Under each of its own bars the company can press **We will be late**. It gives the new day, picks why and says what happened. Before it sends, it sees what that day would push back. After we push back, it can press **We will make** the day. **Your dates moved** shows the new dates we sent it. It answers **These dates work** or **I need another day**. **Your next three weeks** lists its work for this week and the next two. It marks each bar **Done** or **Not done** at the week's end. It also says how many people a day it will have on site.
+
 Once its statement of work is signed, the job page shows the job too. It shows each line's percent done and what we paid through. It shows the punch list, the submittals it owes, its draws and its questions while we build.
 
 On the job the company can:

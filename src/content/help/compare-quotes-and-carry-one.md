@@ -29,6 +29,10 @@ Each company has a column. Each line of the trade's scope has a row.
 
 The box at the top says what the quotes really cost. The box names the lowest once every line has a cost.
 
+The **Plans they priced** row names the set of plans each quote is on. When a newer set changed the trade, that set shows in yellow. Under it the row says *Newer plans changed this trade*. Call the company and ask them to confirm their number.
+
+A set we sent changes the trades we ticked when it went out. A set we have not sent yet changes the trades its sheets point to.
+
 ## Put a cost on what a quote leaves out
 
 1. Find a line marked left out or not clear.

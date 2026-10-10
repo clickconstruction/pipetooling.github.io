@@ -38,9 +38,9 @@ import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { customerBillingEmail } from '../_shared/billToParty.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { officeHour, officeYmd } from '../_shared/bidFollowupReminder.ts'
-import { GC_CUSTOMER_EMAIL_FROM_NAME, GC_CUSTOMER_EMAIL_ROLES } from '../_shared/gcCustomerEmails.ts'
+import { GC_CUSTOMER_EMAIL_FROM_NAME, GC_CUSTOMER_EMAIL_ROLES, gcJobsPortalUrl } from '../_shared/gcCustomerEmails.ts'
 import { GC_CARD_BILL_SETTING_KEY, gcCardBillOn, gcEmailCardFee } from '../_shared/gcCardBill.ts'
-import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
+import { PORTAL_RETURN_SHORT_ORIGIN } from '../_shared/customerPortalReturnUrl.ts'
 import {
   billTheCustomerUrl,
   buildCustomerDueEmail,
@@ -138,7 +138,8 @@ async function loadCustomerPayload(admin: Admin, since: string | null): Promise<
 
 /**
  * The customer's notice as it would go (O12b): their billing email (else contact), the architect who certified it,
- * their portal when a link is on (never minted here), and the card line by the certified email's offer rule.
+ * their portal when a link where their GC jobs show is on (never minted here), and the card line by the certified
+ * email's offer rule.
  */
 async function customerMailOf(admin: Admin, n: GcCustomerDueNotice) {
   const [{ data: customer }, { data: gc }, { data: app }] = await Promise.all([
@@ -150,7 +151,12 @@ async function customerMailOf(admin: Admin, n: GcCustomerDueNotice) {
   const architect = gc?.architect_customer_id
     ? (await admin.from('customers').select('name').eq('id', gc.architect_customer_id).maybeSingle()).data?.name ?? null
     : null
-  const portalUrl = await loadPortalReturnUrl(admin, n.to.customerId, APP_ORIGIN, { paid: false })
+  // Their portal only where their GC jobs show (`gcJobsPortalUrl`), never a GC view: none on, no line.
+  const [{ data: links }, { data: slugRow }] = await Promise.all([
+    admin.from('customer_portal_links').select('audience, token, revoked_at').eq('customer_id', n.to.customerId).is('revoked_at', null),
+    admin.from('customer_portal_slugs').select('slug').eq('customer_id', n.to.customerId).maybeSingle(),
+  ])
+  const portalUrl = gcJobsPortalUrl((links ?? []) as { audience: string; token: string | null }[], (slugRow as { slug?: string } | null)?.slug ?? null, APP_ORIGIN, PORTAL_RETURN_SHORT_ORIGIN)
   let cardFee: number | null = null
   const billId = app?.invoice_id ?? null
   if (portalUrl && billId) {
