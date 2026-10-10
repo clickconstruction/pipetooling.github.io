@@ -174,6 +174,11 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   notAwarded: 'errNotAwarded',
   noteNeeded: 'errNoteNeeded',
   descriptionNeeded: 'errDescriptionNeeded',
+  // P2c-ii: a signature. msaFirst reads the words the prototype drew beside the button.
+  consentNeeded: 'errConsentNeeded',
+  sowNotSent: 'errSowNotSent',
+  alreadySigned: 'errAlreadySigned',
+  msaFirst: 'signMsaFirst',
 }
 
 /** A refusal in the company's words. A key the page does not know reads as did not save. */

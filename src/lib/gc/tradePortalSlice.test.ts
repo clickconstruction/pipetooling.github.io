@@ -56,6 +56,12 @@ const NEVER = {
   paperValues: 'PAPER-FORM-VALUES-SECRET',
   paperBody: 'PAPER-BODY-SECRET',
   otherPaper: 'paper-THEM-SECRET',
+  // Its statement of work's lines (P2c-ii): never another company's, never a cancelled one's, never the signer's image.
+  otherSowLine: 'OTHER-SOW-LINE-SECRET',
+  otherSowLineAmount: 31313,
+  cancelledSowLine: 'CANCELLED-SOW-LINE-SECRET',
+  signerSignaturePath: 'gc-sows/SIGNATURE-PATH-SECRET.png',
+  lineChangeOrder: 'co-LINE-SECRET',
 } as const
 
 function rows(): TradePortalRows {
@@ -147,9 +153,16 @@ function workRows(): TradePortalRows {
       { id: 'pkg-job', project_id: 'proj-3', trade: 'Electrical', position: 0, budget: NEVER.budget, awarded_invite_id: 'inv-job', awarded_by: 'u-office' },
     ],
     sows: [
-      { id: 'sow-me', package_id: 'pkg-job', invite_id: 'inv-job', company_id: ME, status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 1, sent_on: '2026-08-20', signed_on: '2026-08-22', signer_ip: NEVER.signerIp, created_by: 'u-office' },
+      { id: 'sow-me', package_id: 'pkg-job', invite_id: 'inv-job', company_id: ME, status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 1, sent_on: '2026-08-20', signed_on: '2026-08-22', excluded: [{ name: 'Permits and fees', by: 'the owner' }], signer_ip: NEVER.signerIp, signer_signature_storage_path: NEVER.signerSignaturePath, created_by: 'u-office' },
       { id: 'sow-cancelled', package_id: 'pkg-elec', invite_id: 'inv-me', company_id: ME, status: 'cancelled', price: NEVER.cancelledSowPrice, retainage_pct: 10, based_on_rev: 0 },
       { id: 'sow-them', package_id: 'pkg-elec', invite_id: NEVER.otherAward, company_id: THEM, status: 'signed', price: NEVER.otherSowPrice, retainage_pct: 5, based_on_rev: 0 },
+    ],
+    sowLines: [
+      { id: 'sl-2', sow_id: 'sow-me', position: 1, label: 'Trim', amount: 18600, scope_item_id: 'si-9', change_order_id: null },
+      { id: 'sl-1', sow_id: 'sow-me', position: 0, label: 'Rough-in', amount: 30000, scope_item_id: 'si-8', change_order_id: null },
+      { id: 'sl-co', sow_id: 'sow-me', position: 2, label: 'Two more circuits', amount: 3400, scope_item_id: null, change_order_id: NEVER.lineChangeOrder },
+      { id: 'sl-them', sow_id: 'sow-them', position: 0, label: NEVER.otherSowLine, amount: NEVER.otherSowLineAmount, scope_item_id: null },
+      { id: 'sl-cancelled', sow_id: 'sow-cancelled', position: 0, label: NEVER.cancelledSowLine, amount: 1, scope_item_id: null },
     ],
     backCharges: [
       { id: 'bc-me', project_id: 'proj-3', package_id: 'pkg-job', company_id: ME, sow_id: 'sow-me', amount: 850, reason: 'Cleanup after rough-in.', photo_url: 'https://drive.google.com/file/d/bc', sent_on: '2026-10-01', answer_by: '2026-10-06', status: 'kept', answered_on: '2026-10-02', answer_note: 'We swept before we left.', settled_on: '2026-10-08', settled_note: 'Our photos show the scraps.', settled_by: NEVER.chargeSettledBy, taken_draw_id: null, taken_on: null, created_by: NEVER.chargeMadeBy, created_at: '2026-10-01T15:00:00Z' },
@@ -179,7 +192,7 @@ describe('a trade never sees our price to the customer', () => {
 
   it('names only reviewed fields, never our money', () => {
     const named = Object.values(TRADE_PORTAL_FIELDS).flat()
-    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip', 'url', 'form_values', 'signing_body_html', 'person_name', 'public_token_hash']) {
+    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip', 'url', 'form_values', 'signing_body_html', 'person_name', 'public_token_hash', 'signer_signature_storage_path', 'signer_user_agent', 'their_sov']) {
       expect(named).not.toContain(f)
     }
   })
@@ -241,7 +254,18 @@ describe('its own work, and only its part of a change order (P4b-i)', () => {
   })
 
   it('reads its own statement of work, never one cancelled or another company’s', () => {
-    expect(slice.sows).toEqual([{ id: 'sow-me', package_id: 'pkg-job', invite_id: 'inv-job', status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 1, sent_on: '2026-08-20', signed_on: '2026-08-22' }])
+    expect(slice.sows).toEqual([
+      { id: 'sow-me', package_id: 'pkg-job', invite_id: 'inv-job', status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 1, sent_on: '2026-08-20', signed_on: '2026-08-22', excluded: [{ name: 'Permits and fees', by: 'the owner' }] },
+    ])
+  })
+
+  it('reads the lines of its own statement of work only, with the scope item each one is (P2c-ii)', () => {
+    expect(slice.sowLines.map((l) => [l.id, l.label, l.amount, l.scope_item_id])).toEqual([
+      ['sl-2', 'Trim', 18600, 'si-9'],
+      ['sl-1', 'Rough-in', 30000, 'si-8'],
+      ['sl-co', 'Two more circuits', 3400, null],
+    ])
+    expect(Object.keys(slice.sowLines[0] ?? {})).toEqual(['id', 'sow_id', 'position', 'label', 'amount', 'scope_item_id'])
   })
 
   it('reads its own charges with the office’s note, never who made or settled them', () => {
@@ -261,8 +285,14 @@ describe('its own work, and only its part of a change order (P4b-i)', () => {
 
   it('reads nothing of this company’s work when another company’s link opens', () => {
     const theirs = tradePortalSlice(workRows(), THEM)
-    expect([theirs.sows.map((s) => s.id), theirs.backCharges.map((c) => c.id), theirs.changeRequests.map((r) => r.id), theirs.changeOrders.map((o) => o.id)]).toEqual([['sow-them'], ['bc-them'], ['cr-them'], ['co-them']])
+    expect([theirs.sows.map((s) => s.id), theirs.sowLines.map((l) => l.id), theirs.backCharges.map((c) => c.id), theirs.changeRequests.map((r) => r.id), theirs.changeOrders.map((o) => o.id)]).toEqual([
+      ['sow-them'],
+      ['sl-them'],
+      ['bc-them'],
+      ['cr-them'],
+      ['co-them'],
+    ])
     const json = JSON.stringify(theirs)
-    for (const mine of ['Cleanup after rough-in.', 'Two more circuits for the added chairs.', '48600', 'Hill Country Clinic']) expect(json).not.toContain(mine)
+    for (const mine of ['Cleanup after rough-in.', 'Two more circuits for the added chairs.', '48600', 'Hill Country Clinic', 'Rough-in', '18600']) expect(json).not.toContain(mine)
   })
 })

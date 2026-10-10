@@ -40,6 +40,11 @@ export const SAMPLE_TRADE_IDS = {
   msa: '00000000-5a00-4000-8000-000000000028',
   w9: '00000000-5a00-4000-8000-000000000029',
   coi: '00000000-5a00-4000-8000-000000000030',
+  // The job's scope and its statement of work's lines (P2c-ii).
+  jobLine1: '00000000-5a00-4000-8000-000000000031',
+  jobLine2: '00000000-5a00-4000-8000-000000000032',
+  sowLine1: '00000000-5a00-4000-8000-000000000033',
+  sowLine2: '00000000-5a00-4000-8000-000000000034',
 } as const
 
 const ID = SAMPLE_TRADE_IDS
@@ -96,6 +101,8 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
       { id: ID.line1, package_id: ID.trade, position: 0, label: 'Service and gear', sheets: ['E-101'], specs: null, added_in_set_id: null },
       { id: ID.line2, package_id: ID.trade, position: 1, label: 'Panels and feeders', sheets: ['E-201'], specs: null, added_in_set_id: null },
       { id: ID.line3, package_id: ID.trade, position: 2, label: 'Lighting', sheets: ['E-301'], specs: null, added_in_set_id: ID.set1 },
+      { id: ID.jobLine1, package_id: ID.jobTrade, position: 0, label: 'Rough-in', sheets: ['E-101'], specs: null, added_in_set_id: null },
+      { id: ID.jobLine2, package_id: ID.jobTrade, position: 1, label: 'Trim and fixtures', sheets: ['E-301'], specs: null, added_in_set_id: null },
     ],
     exclusions: [{ id: ID.exclusion, package_id: ID.trade, position: 0, label: 'Permits and fees', by: 'the owner' }],
     sets: [
@@ -122,7 +129,11 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
       },
     ],
     setSends: [{ set_id: ID.set1, company_id: COMPANY, touched: true }],
-    sows: [{ id: ID.sow, package_id: ID.jobTrade, invite_id: ID.jobAsk, company_id: COMPANY, status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 0, sent_on: d(-35), signed_on: d(-33) }],
+    sows: [{ id: ID.sow, package_id: ID.jobTrade, invite_id: ID.jobAsk, company_id: COMPANY, status: 'signed', price: 48600, retainage_pct: 10, based_on_rev: 0, sent_on: d(-35), signed_on: d(-33), excluded: null }],
+    sowLines: [
+      { id: ID.sowLine1, sow_id: ID.sow, position: 0, label: 'Rough-in', amount: 29160, scope_item_id: ID.jobLine1 },
+      { id: ID.sowLine2, sow_id: ID.sow, position: 1, label: 'Trim and fixtures', amount: 19440, scope_item_id: ID.jobLine2 },
+    ],
     backCharges: [
       {
         id: ID.charge,
