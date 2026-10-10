@@ -7,8 +7,8 @@ import { createContext, useContext } from 'react'
  * stay plain.
  */
 
-/** The customer window's tabs, first cut: B2b adds the rest. */
-export type CustomerTab = 'about' | 'documents'
+/** The customer window's tabs. Activity since the Board's B2b-v-ii. */
+export type CustomerTab = 'about' | 'activity' | 'documents'
 
 /** Where the window opens. `doc` is a Documents row's key (`contract-<project id>`); `send` opens its send. Unset: About. */
 export interface CustomerAt {

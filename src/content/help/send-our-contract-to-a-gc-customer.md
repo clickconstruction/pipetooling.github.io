@@ -2,7 +2,7 @@
 title: send our contract to a GC customer to sign
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, customer, owner, our contract, send to sign, remind them, send the new price, sign by, contract file, pdf, get started, customer window, documents
+keywords: gc mode, customer, owner, our contract, send to sign, remind them, send the new price, sign by, contract file, pdf, get started, customer window, documents, activity, log a contact, call
 order: 99
 ---
 Once we win a GC job, the customer signs our contract. You send it from the customer's window with the contract file. The price it goes with is kept with it.
@@ -14,7 +14,16 @@ Sending our contract shows to a dev while it is built.
 - Press the customer's name on the board. Their window opens.
 - Or press {{button:blue|Send to sign}} on the contract row of Get started. The window opens at that job's contract.
 
-**About** lists their jobs with us. **Documents** has our contract on each job we won.
+**About** lists their jobs with us. **Activity** has everything with them, with the newest on top. **Documents** has our contract on each job we won.
+
+## Log a call with a customer
+
+1. Press **Activity** in the customer's window.
+2. Pick **Call**, **Text** or **Email** under **How you reached them**.
+3. Type what was said in one sentence.
+4. Press {{button:blue|Log a contact}}.
+
+The line goes on their Activity with your name and today's date. A line is never changed once it is in. If it does not save, the window says why and keeps your words.
 
 ## Send it to sign
 

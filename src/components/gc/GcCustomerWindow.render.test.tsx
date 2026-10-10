@@ -154,3 +154,50 @@ describe('GcCustomerWindow', () => {
     expect(within(dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement).queryByRole('button')).toBeNull()
   })
 })
+
+describe('GcCustomerWindow · Activity (the Board’s B2b-v-ii)', () => {
+  /** The clinic with two lines in Oak Street's call log, and one in another customer's. */
+  const logged = (): BoardRows => ({
+    ...awardedClinicBoardRows(),
+    customerContacts: [
+      { customer_id: 'c1', contacted_on: '2026-10-06', by_name: 'Rosa', note: 'Wants the start moved a week.', created_at: '2026-10-06T15:00:00Z' },
+      { customer_id: 'c1', contacted_on: '2026-10-08', by_name: 'Abe', note: 'Signed copy coming Friday.', created_at: '2026-10-08T15:00:00Z' },
+      { customer_id: 'c2', contacted_on: '2026-10-07', by_name: 'Rosa', note: 'Not theirs.', created_at: '2026-10-07T15:00:00Z' },
+    ],
+  })
+  function openActivity(onLogContact?: (how: 'call' | 'text' | 'email', note: string) => Promise<void>) {
+    const state = boardStateFromRows(logged())
+    const customer = state.customers.find((c) => c.id === 'c1')!
+    renderWithProviders(
+      <GcCustomerWindow state={state} customer={customer} onOpenProject={() => undefined} onClose={() => undefined} {...(onLogContact ? { onLogContact } : {})} />,
+    )
+    const dialog = screen.getByRole('dialog', { name: 'Oak Street Partners' })
+    const tab = within(dialog).getByRole('tab', { name: /^Activity \(\d+\)$/ })
+    fireEvent.click(tab)
+    return { dialog, tab }
+  }
+
+  it('sits between About and Documents, with their call log newest first and no other customer’s', () => {
+    const { dialog, tab } = openActivity()
+    expect(within(dialog).getAllByRole('tab').map((t) => t.getAttribute('data-gc-company-tab'))).toEqual(['about', 'activity', 'documents'])
+    const lines = within(dialog).getAllByRole('listitem').map((li) => li.textContent ?? '')
+    expect(tab.textContent).toBe(`Activity (${lines.length})`)
+    const calls = lines.filter((l) => l.includes('Rosa:') || l.includes('Abe:'))
+    expect(calls).toEqual([expect.stringContaining('Abe: Signed copy coming Friday.'), expect.stringContaining('Rosa: Wants the start moved a week.')])
+    expect(within(dialog).queryByText(/Not theirs\./)).toBeNull()
+  })
+
+  it('logs a contact with how they were reached, and has no box without the write', async () => {
+    const log = vi.fn(() => Promise.resolve())
+    const { dialog } = openActivity(log)
+    fireEvent.change(within(dialog).getByRole('combobox', { name: 'How you reached them' }), { target: { value: 'email' } })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'What was said' }), { target: { value: 'Sent the revised schedule.' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Log a contact' }))
+    await waitFor(() => expect(log).toHaveBeenCalledWith('email', 'Sent the revised schedule.'))
+  })
+
+  it('shows no box when the page gives no write', () => {
+    const { dialog } = openActivity()
+    expect(within(dialog).queryByRole('button', { name: 'Log a contact' })).toBeNull()
+  })
+})
