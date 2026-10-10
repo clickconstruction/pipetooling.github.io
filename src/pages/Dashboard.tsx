@@ -373,6 +373,8 @@ export default function Dashboard() {
     superintendentJobs,
     setSuperintendentJobs,
     superintendentJobsLoading,
+    zzTestJobsReadFailed,
+    retryZzTestJobs,
     refreshDashboardAssignedJobLists,
     refreshAssignedReadyToBill,
     resyncDashboardAfterUpdateJobStatusFailureRef,
@@ -1630,6 +1632,23 @@ export default function Dashboard() {
       </PhoneFold>
       {userError && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{userError}</p>}
 
+      {zzTestJobsReadFailed ? (
+        // Punch list #61 (review on #5246): the job lists below are held, not empty — say so, with a retry.
+        <div
+          role="alert"
+          data-testid="dashboard-zz-read-failed"
+          style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', marginBottom: '0.75rem', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', fontSize: '0.875rem' }}
+        >
+          <span>Could not read the test-job list, so your job lists are held.</span>
+          <button
+            type="button"
+            onClick={retryZzTestJobs}
+            style={{ padding: '0.25rem 0.6rem', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+          >
+            Try again
+          </button>
+        </div>
+      ) : null}
       <DashboardTeamReadyToBillSection
         reportCountByJobId={reportCountByJobId}
         role={role}

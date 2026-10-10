@@ -53,4 +53,9 @@ describe('customer page ZZ test jobs', () => {
     expect(customerPageDataWithoutZz(plain, null)).toBe(plain)
     expect(customerPageZzJobs(null)).toBeNull()
   })
+
+  it('a real customer’s job whose stored customer name is a ZZ name leaves too, as it leaves the list (review on #5246)', () => {
+    const relinked = { customer: { name: 'Ann Lee' }, jobs: [{ id: 'A', job_name: '101 Hill Street' }, { id: 'R', job_name: 'Hill Street remodel', customer_name: 'ZZ Test Customer' }] }
+    expect(customerPageZzJobs(relinked)).toEqual(new Set(['R']))
+  })
 })

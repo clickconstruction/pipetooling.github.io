@@ -64,16 +64,18 @@ export function useTestReportsReadyNudge(
       return
     }
     try {
-      const { data, error } = await supabase
+      // The ZZ ids leave in the query (review on #5246), so test drafts cannot fill the 200-row read and push
+      // real ones out; the embedded name catches any the ids missed.
+      const zzIds = hideZzTestJobs ? await loadZzTestJobIds(userId) : null
+      let query = supabase
         .from('job_test_reports')
         .select('*, jobs_ledger:job_id(hcp_number, job_name)')
         .eq('status', 'draft')
-        .order('created_at', { ascending: false })
-        .limit(200)
+      if (zzIds && zzIds.size > 0) query = query.not('job_id', 'in', `(${[...zzIds].join(',')})`)
+      const { data, error } = await query.order('created_at', { ascending: false }).limit(200)
       if (error) throw error
       const read = (data ?? []) as unknown as DraftRow[]
-      const zzIds = hideZzTestJobs ? await loadZzTestJobIds(userId) : null
-      const rows = zzIds ? read.filter((r) => !(isZzTestJob(r.jobs_ledger ?? {}) || zzIds.has(r.job_id))) : read
+      const rows = hideZzTestJobs ? read.filter((r) => !isZzTestJob(r.jobs_ledger ?? {})) : read
       setDrafts(summarizeTestReportDrafts(rows))
     } catch {
       setDrafts(null)

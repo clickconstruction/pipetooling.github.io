@@ -48,4 +48,27 @@ describe('useDashboardAssignedJobs · ZZ test jobs', () => {
     const { result } = render()
     await waitFor(() => expect(result.current.assignedJobs.map((j) => j.id)).toEqual(['A', 'Z', 'Y']))
   })
+
+  it('the first render after enabling (status off) reads as loading, not as nothing assigned (review on #5246)', async () => {
+    hidden = true
+    zz = { ids: null, status: 'off', retry: () => {} }
+    const { result } = render()
+    expect(result.current.assignedJobs).toEqual([])
+    expect(result.current.assignedJobsLoading).toBe(true)
+    expect(result.current.zzTestJobsReadFailed).toBe(false)
+  })
+
+  it('a failed read says so and hands the retry through, not an empty list that reads as nothing assigned', async () => {
+    hidden = true
+    const retry = vi.fn()
+    zz = { ids: null, status: 'failed', retry }
+    const { result } = render()
+    await new Promise((r) => setTimeout(r, 20))
+    expect(result.current.assignedJobs).toEqual([])
+    expect(result.current.zzTestJobsReadFailed).toBe(true)
+    expect(result.current.assignedJobsLoading).toBe(false)
+    result.current.retryZzTestJobs()
+    expect(retry).toHaveBeenCalledTimes(1)
+  })
 })
+

@@ -1,12 +1,13 @@
 // Punch list #61 (v2.5122): a customer's page without its ZZ test jobs. The page knows its customer, so a job is
-// a test job when its own name is a ZZ name or the customer's is (`isZzTestJob` / `isZzTestName`); no shared
-// read is needed. The jobs leave the page and its money, and their bills and payments leave the Invoices tab.
+// a test job when its own name, its stored customer name (the rule the list's shared ids use, review on #5246) or
+// the page customer's name is a ZZ name; no shared read is needed. The jobs leave the page and its money, and
+// their bills and payments leave the Invoices tab.
 // Pure: the page (`CustomerDetail.tsx`) calls it for every role but a dev who shows them.
 
 import { isZzTestJob, isZzTestName } from '../jobs/zzTestJobSweep'
 import type { CustomerInvoicesData } from './fetchCustomerInvoices'
 
-type PageData = { customer: { name: string | null }; jobs: Array<{ id: string; job_name: string | null }> }
+type PageData = { customer: { name: string | null }; jobs: Array<{ id: string; job_name: string | null; customer_name?: string | null }> }
 
 /** The ZZ jobs on the page: `all` for a ZZ customer, the ids otherwise, null when there is none. */
 export function customerPageZzJobs(data: PageData | null): ReadonlySet<string> | 'all' | null {

@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, useMemo } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, useMemo } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import CustomerPortalGlobeButton from '../components/customers/CustomerPortalGlobeButton'
 import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
@@ -357,11 +357,16 @@ export default function Customers() {
     }
   }
 
+  /** The newest load (review on #5246): the role landing or a dev's flip starts another, and only the newest writes. */
+  const fetchGenRef = useRef(0)
   async function fetchCustomers() {
+    const gen = ++fetchGenRef.current
+    const stale = () => gen !== fetchGenRef.current
     const { data, error: err } = await supabase
       .from('customers')
       .select('*, users!customers_master_user_id_fkey(id, name, email)')
       .order('name')
+    if (stale()) return
     if (err) {
       setError(err.message)
       setLoading(false)
@@ -376,7 +381,8 @@ export default function Customers() {
     // The list is readable now (v2.3365): show it, and let the counts and money
     // chips arrive behind it instead of holding the whole page on them.
     setLoading(false)
-    const customerIds = customersWithMasters.map((c) => c.id)
+    // A hidden ZZ customer's details are never read (punch list #61).
+    const customerIds = (hideZz ? customersWithMasters.filter((c) => !isZzTestName(c.name)) : customersWithMasters).map((c) => c.id)
     if (customerIds.length === 0) {
       setDetailsLoading(false)
       return
@@ -385,6 +391,7 @@ export default function Customers() {
     try {
       const read = await loadCustomersListBundle(customerIds)
       const bundle = hideZz ? withoutZzTestJobsInBundle(read, await loadZzTestJobIds(authUser?.id ?? null)) : read
+      if (stale()) return
       const derived = deriveCustomersList(bundle, customerIds)
       setCountsByCustomerId(derived.countsByCustomerId)
       setRollupByCustomerId(derived.rollupByCustomerId)
@@ -392,9 +399,9 @@ export default function Customers() {
       setUnrecordedPaidCount(derived.unrecordedPaidCount)
       setUnlinkedJobsCount(derived.unlinkedJobsCount)
     } catch (e) {
-      setError(formatErrorMessage(e))
+      if (!stale()) setError(formatErrorMessage(e))
     } finally {
-      setDetailsLoading(false)
+      if (!stale()) setDetailsLoading(false)
     }
   }
 

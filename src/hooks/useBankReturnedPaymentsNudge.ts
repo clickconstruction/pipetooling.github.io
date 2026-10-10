@@ -22,7 +22,8 @@ import { isZzTestJob } from '../lib/jobs/zzTestJobSweep'
  * role that cannot read it gets no card.
  */
 // `hideZzTestJobs` (punch list #61, v2.5122): a returned payment on a ZZ test job leaves the count, by the job's
-// names and the shared ids; a failed id read empties the card like any other failed read. The open return
+// names and the shared ids. A returned deposit warns about real money (and feeds the Pipeline's Billed badges),
+// so a failed id read falls back to the names rather than emptying the card (review on #5246). The open return
 // cases (`list_ar_return_cases`) carry no job, so they are left as they are.
 export function useBankReturnedPaymentsNudge(
   enabled: boolean,
@@ -71,11 +72,11 @@ export function useBankReturnedPaymentsNudge(
         if (jobError) throw jobError
         for (const j of (jobRows ?? []) as BankReturnedJobRow[]) jobsById.set(j.id, j)
       }
-      const zzIds = hideZzTestJobs && payments.length > 0 ? await loadZzTestJobIds(userId) : null
-      const shown = zzIds
+      const zzIds = hideZzTestJobs && payments.length > 0 ? await loadZzTestJobIds(userId).catch(() => null) : null
+      const shown = hideZzTestJobs
         ? payments.filter((p) => {
             const job = jobsById.get(p.job_id)
-            return !((job && isZzTestJob(job)) || zzIds.has(p.job_id))
+            return !((job && isZzTestJob(job)) || zzIds?.has(p.job_id))
           })
         : payments
       setReturned(summarizeBankReturnedPayments(shown, txById, jobsById))

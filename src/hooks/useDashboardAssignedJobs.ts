@@ -55,7 +55,9 @@ export function useDashboardAssignedJobs({ authUserId, role }: UseDashboardAssig
       !hideZz ? rows : zzHeld ? NO_ROWS : withoutZzTestJobRows(rows, (j) => j.id, zzJobIds),
     [hideZz, zzHeld, zzJobIds],
   )
-  const zzLoading = hideZz && zz.status === 'loading'
+  // Anything but ready or failed reads as loading, the first render after enabling ('off') too, so a held
+  // list never flashes "nothing assigned" (review on #5246); a failure is said once on the Dashboard, with retry.
+  const zzLoading = hideZz && zz.status !== 'ready' && zz.status !== 'failed'
   const [assignedJobsAll, setAssignedJobs] = useState<DashboardTeamAssignedJobRow[]>([])
   const assignedJobs = useMemo(() => shown(assignedJobsAll), [shown, assignedJobsAll])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
@@ -159,5 +161,8 @@ export function useDashboardAssignedJobs({ authUserId, role }: UseDashboardAssig
     refreshDashboardAssignedJobLists,
     refreshAssignedReadyToBill,
     resyncDashboardAfterUpdateJobStatusFailureRef,
+    /** The ZZ test-job list could not be read, so the three lists are held (punch list #61). */
+    zzTestJobsReadFailed: hideZz && zz.status === 'failed',
+    retryZzTestJobs: zz.retry,
   }
 }

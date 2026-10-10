@@ -277,6 +277,16 @@ export default function CustomerDetail() {
       </p>
     )
   }
+  // A ZZ test customer reached by a link (punch list #61, review on #5246): the whole page is a test, so for
+  // every role but a dev who shows them it is not drawn at all, rather than half (its feed and bids without its jobs).
+  if (zzJobs === 'all') {
+    return (
+      <div data-testid="customer-zz-test-hidden">
+        <p style={{ color: 'var(--text-muted)' }}>This is a ZZ test customer. Only a dev who shows test jobs sees it.</p>
+        <Link to="/customers">← Back to Customers</Link>
+      </div>
+    )
+  }
 
   const customer = data.customer
 
