@@ -2,7 +2,7 @@
 name: "The schedule's PR 15: the customer's side"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 15, decision 10 and The schedule's sends; GANTT_FEATURES.md G-90 to G-94; mockups/building-u7.md (U7b, the `weekly` kind); mockups/schedule-pr13.md, call 1 (no new sender); mockups/schedule-pr14.md, call 9 (the copy of the kernels)
 branch: the plan on claude/gc-schedule-pr15-plan (from origin/spike/gc-mode at 0b45adbae); the code from origin/main in two cuts, neither with a migration
-status: plan 2026-10-10 by helper 1 at the lead's ask. Amendment 1 (2026-10-10): gc 4, holding Schedule, co-signed every call, checked on main at 411839c0d and on the spike, with three notes written in (the letter from the read's state and never the money state, the seam with 14c, and a send twice after a failed write-back). Calls 1, 2, 5 and 6 wait on gc 5 (Owner Billing), and call 9 on gc 3 (Portal). Then the lead's read-back. Nothing cut or claimed.
+status: plan 2026-10-10 by helper 1 at the lead's ask. Amendment 1 (2026-10-10): gc 4, holding Schedule, co-signed every call, checked on main at 411839c0d and on the spike, with three notes written in (the letter from the read's state and never the money state, the seam with 14c, and a send twice after a failed write-back). Amendment 2 (2026-10-10): gc 5, holding Owner Billing, co-signed calls 1, 2, 5 and 6 as written, with two notes written in (15b's portal line through the frame's own words, and a job with no billing job), and takes note 3's fix as a follow-up of their own right after 15a. Call 9 waits on gc 3 (Portal), and it is 15b's. For the lead's read-back. Nothing cut or claimed.
 ---
 
 # The schedule's PR 15: the customer's side
@@ -38,7 +38,7 @@ Nothing writes a send, and nothing draws the letter or the portal's picture. Two
 
 ## The calls
 
-**Co-signed by gc 4 (Schedule), every call (amendment 1); for gc 5 (Owner Billing), calls 1, 2, 5 and 6; for gc 3 (Portal), call 9. Each with the other way:**
+**Co-signed by gc 4 (Schedule), every call (amendment 1), and gc 5 (Owner Billing), calls 1, 2, 5 and 6 (amendment 2); for gc 3 (Portal), call 9. Each with the other way:**
 
 1. **No new sender: the letter goes through `gc-customer-email`, kind `schedule`.** It is the one sender for every email
    to a GC customer (O4b). It already sends a row's own words unframed (the `weekly` kind), to the contact's address,
@@ -76,10 +76,13 @@ Nothing writes a send, and nothing draws the letter or the portal's picture. Two
    runs the job for them. `GC_CUSTOMER_EMAIL_PORTAL_LINE.schedule` is `false` until their portal shows the schedule.
    15b turns the line on for `schedule` and for `weekly`, which waits on this PR (v2.5139: *No portal line until the
    schedule's PR 15*). The line gets its own words, *You can see your schedule in your portal:*, never the bill's.
+   They go through the frame's `portalWords`, as our contract's do, which also keeps the card's offer off it: the frame
+   offers a card only under a bill's words (gc 5).
    *Other way:* the portal line now, to a portal with no schedule in it.
 6. **Filed as `field_report_gc_schedule`, under Statements**, beside the weekly report's `field_report_gc_weekly`. It is
    filed with the billing job and the row as its source (docs/SENT_COPIES.md), so the card's *Emailed to* line reads
-   the copies (`gcCustomerEmailCopyKinds('gc_schedule_sends')`). Not framed (`GC_CUSTOMER_EMAIL_FRAMED.schedule` is
+   the copies (`gcCustomerEmailCopyKinds('gc_schedule_sends')`). A job early in building may have no billing job yet.
+   Its copy then files with no job, and the line still reads it by its source (gc 5). Not framed (`GC_CUSTOMER_EMAIL_FRAMED.schedule` is
    `false`): the letter carries its own greeting and sign-off. *Other way:* framed, which signs the letter twice.
 7. **Print or PDF keeps no row.** It opens the letter as a light page (`customerScheduleHtml`) to print or save. A
    print is not a send, so the record of sends holds only letters that went or were meant to. The chart's print
@@ -187,8 +190,13 @@ real customer gets a letter without the owner's yes.
 - A failed send never makes a second row for the same letter, and a row whose log is written is never sent again.
 - One gap, gc 4's note 3, for gc 5: Resend accepts the send, then the write-back of the log fails. The row still
   reads unsent, so a press again sends twice. The weekly report has the same gap (`gc-customer-email`, the write-back
-  after the send). An email key per row (`schedule:<rowId>`, `weekly:<rowId>`), sent once as `gc-trade-email`'s is,
-  would close it for both kinds. It is gc 5's call whether 15a carries it.
+  after the send). gc 5 closes it for both kinds in a `gc-customer-email` follow-up of their own, cut right after 15a,
+  so 15a stays lean (amendment 2). It needs no key, no migration and no change to `_shared/resendSendEmail.ts`,
+  because `sendEmailViaResend` writes `email_send_log` right after the send, before the write-back. Before sending a
+  row whose log is unset, and never for a test, the function looks for a log row since the row was made, to the same
+  address with the row's own subject. If one is there, it writes that id back and answers `alreadySent`. Every kind
+  logs as `gc_customer_email`, so the address, the subject and the time do the matching. The rule is a pure helper
+  tested from vitest. The gap left is the log and the write-back both failing, which is rare enough to leave.
 - What it does not do: their picture in their portal before 14b (15b), a letter in Spanish, or a letter sent on a
   schedule by itself. Their Friday report already carries the schedule's section every week (G-93, U7c).
 - *Call me* is signed by the sender, while a reply goes to the project manager, as on every customer email. On a job
@@ -198,5 +206,6 @@ real customer gets a letter without the owner's yes.
 
 Plan 2026-10-10, helper 1, at the lead's ask. Amendment 1 the same day: gc 4 co-signed every call, checked on main at
 411839c0d and the spike (the table's grants, the greeting's bug, `scheduleSends`' only readers), and their three notes
-are written in. Waiting on gc 5's co-sign of calls 1, 2, 5 and 6 and gc 3's of call 9, then the lead's read-back.
-Nothing cut or claimed.
+are written in. Amendment 2: gc 5 co-signed calls 1, 2, 5 and 6 as written. Their two notes are written in, and note 3's fix is theirs,
+right after 15a. Call 9 is with gc 3, and it is 15b's, so it does not hold 15a. For the lead's read-back. Nothing cut or
+claimed.
