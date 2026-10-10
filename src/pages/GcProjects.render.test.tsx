@@ -300,7 +300,8 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(line).getByRole('button', { name: 'Lonestar Earthworks' }))
     const dialog = screen.getByRole('dialog', { name: 'Lonestar Earthworks' })
     expect(within(dialog).getByText('Who gets our emails')).toBeTruthy()
-    expect(within(dialog).getByText('Their portal')).toBeTruthy()
+    // Their portal is its own tab since B6-b-ii, beside About and Documents.
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Their portal' }))
     expect(await within(dialog).findByRole('button', { name: 'Make the link' })).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Lonestar Earthworks' })).toBeNull()
