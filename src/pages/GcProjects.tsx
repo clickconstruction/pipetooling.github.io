@@ -107,6 +107,8 @@ import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
 import { useRingLayers } from '../components/gc/useRingLayers'
+import { GcStageHealth } from '../components/gc/GcStageHealth'
+import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
@@ -1806,6 +1808,44 @@ export default function GcProjects() {
                 </Btn>
               )}
             </div>
+            {/* How the stage is going (the Board's B2b-vii), under the title: the ring's own state (B2b-vi-c), drawn
+                only for a stage whose every layer this reader has read, so the strip and the ring give one answer. */}
+            {(() => {
+              const ringProject = ringState?.state.projects.find((x) => x.id === p.id)
+              if (!ringState || !ringProject || !ringState.ready.has(ringProject.stage)) return null
+              // Each next step opens what the card's own buttons open, behind the same doors; words alone otherwise.
+              const opens: Partial<Record<HealthTarget, () => void>> = {
+                trades: () => document.querySelector(`[data-gc-project="${CSS.escape(p.id)}"] [data-gc-trade-asks]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+                plans: () => setPlansWindow(p.id),
+                ...(showNumber ? { number: () => setNumberOpen(p.id) } : {}),
+                ...(tabs > 0 ? { bidTabs: () => setTabsOpen(p.id) } : {}),
+                ...(role === 'dev' && board ? { schedule: () => setScheduleWindow(p.id) } : {}),
+                ...(role === 'dev' && board && (p.stage === 'buyout' || p.stage === 'building') && !p.lostOn ? { start: () => setStartWindow(p.id) } : {}),
+                ...(canUseGcBuilding(role) && boardWithLogs && p.stage === 'building' ? { log: () => setLogWindow(p.id) } : {}),
+                ...(canUseGcBuilding(role) && board && p.stage === 'building' ? { submittals: () => setSubmittalsWindow(p.id) } : {}),
+                ...(canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && p.stage === 'building' ? { draws: () => setDrawsWindow(p.id) } : {}),
+                ...(canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && (p.stage === 'building' || p.stage === 'closed') ? { closeout: () => setCloseoutWindow(p.id) } : {}),
+                ...(canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn ? { bill: () => setBillWindow(p.id) } : {}),
+              }
+              return (
+                <GcStageHealth
+                  state={ringState.state}
+                  project={ringProject}
+                  canOpen={(tab) => Boolean(opens[healthTabTarget(tab)])}
+                  onTab={(tab) => opens[healthTabTarget(tab)]?.()}
+                  // Its one write is Get started's own press, behind Get started's door (a dev's until award's door).
+                  {...(role === 'dev'
+                    ? {
+                        onSetStartDate: async (date: string) => {
+                          await setGcProjectStartItem(p.id, { start_date: date })
+                          await reloadProjects()
+                        },
+                      }
+                    : {})}
+                  moneyShown={canSeeGcMoney(role) && moneyShown}
+                />
+              )
+            })()}
             {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
             {roughKeepLines[p.id] && (
               <div role="status" data-rough-not-kept style={{ color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
