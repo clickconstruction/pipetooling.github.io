@@ -1,7 +1,7 @@
 ---
 name: "GC mode, the live checks: one walk"
 parent: to-dos/gc-mode/LEDGER_2026-10-09.md
-status: run sheet, written by Helper 5 (gc 5) 13:30 UTC 2026-10-10 from main's code and a read-only look at prod · nothing on it has been pressed
+status: run sheet, written by Helper 5 (gc 5) 13:30 UTC 2026-10-10 from main's code and a read-only look at prod · the schedule's steps 23 to 27 added by helper 1 (gc 1) from main at 2b2477a63 · nothing on it has been pressed
 ---
 
 # GC mode, the live checks: one walk
@@ -226,7 +226,7 @@ me a test**: "2 tests went to your email." Both go to the presser alone.
 
 ## When the other lanes' walks are done
 
-**20. Schedule PR 11, a what-if copy.** After the schedule lane draws the test project's schedule on its own yes.
+**20. Schedule PR 11, a what-if copy.** After step 23 draws the test project's schedule.
 Schedule → **What if…** → drag one bar → **Throw it away** → confirm. *Reads*: "A copy of the schedule to try moves
 on. Nothing here reaches the trades or the customer." The real schedule is unchanged. *Writes*: one
 `gc_schedule_what_ifs` row (the presser's), deleted by Throw it away. **Keep** is not walked: it moves the real
@@ -272,6 +272,80 @@ trade's signing in its portal (the Board's and the Portal's walks).
   - one `email_send_log` row for the test.
 - The 5 days also move interest's start on the open bills to 5 days after their certificates. Interest bill 1 keeps
   its amount.
+
+## The schedule (after S3)
+
+Written by helper 1 (gc 1) 2026-10-10 from main at 2b2477a63, for gc 5 to press on Grace's yes. Nothing on it has been
+pressed. The Schedule window is a dev's until its door (#5231), so a dev presses 23 to 25. Step 26 is the test trade's
+link and step 27 the test customer's, each in a private window.
+
+**Read first (helper 5, read only).** The draw takes its bars from each trade's lines: its statement of work's lines,
+else its scope lines (`gc_scope_items`). It starts on the job's start day. Before step 23, read:
+- `gc_trade_packages` on ef8905d1: the five trades, and `gc_scope_items` under each. A trade with no line draws no bar.
+- `gc_projects` ef8905d1: `start_date`, `started_on` (2026-10-05), `stage` building, `lost_on` null, `customer_role`.
+  The role decides step 27's **See every bar**, which shows only for `gc` or `ownersRep`.
+- `gc_schedules` on ef8905d1: none. A schedule drawn already turns step 23 into a read.
+
+If a trade has no line, stop and tell the lead. Adding scope lines is the Board's, not this walk's.
+
+**23. Draw the schedule** (PR 7b). `/gc` → the building project's card → **Schedule** → **Draw a first draft**,
+with no template. *Reads*: the chart, one bar per trade line, the rough-in inspection when the job has rough-in work,
+and the final inspection, from the job's start day. **Milestones** lists Dry-in and Rough-in inspection when the job
+has that work, and Substantial completion.
+*Writes*:
+- a `gc_schedules` row (version 1);
+- one `gc_schedule_activities` row per bar, and the `gc_schedule_links` between them;
+- the `gc_schedule_milestones`;
+- one `gc_schedule_changes` row, "Drew a first draft of the schedule on GC test project, delete me: N activities
+  from …".
+
+*Ids for the lead*: the schedule's version, the activities' count, and the change row's id.
+
+**24. One move that pushes** (PR 8a). On the chart, press the first trade's first bar. Its form opens. Move
+**Finishes** 3 days later. The form says "On Save:" and names the bars after it that move out too. Press **Save, and
+say why**. Then **Why it moved**: **Weather**. **What happened, in your words**: "Test move, delete me". Press **Save
+the move**. *Reads*: under **Changes to the schedule**, the move with Weather and the words, and **Undo**. The bars
+after it sit 3 days later, and the measures say what it did to the finish. *Writes*:
+- a `gc_schedule_moves` row (reason `weather`);
+- one `gc_schedule_move_pushes` row per bar it pushed;
+- the bars' new dates on `gc_schedule_activities`;
+- `gc_schedules.version` 2 and its `gc_schedule_changes` row.
+
+Leave **Tell the trades** alone: it emails the trades. *Ids*: the move, its pushes and the change row.
+
+**25. Send the customer their schedule** (PR 15a, with 15b's line). On the Schedule window, the card **Send GC Test
+Owner LLC their schedule** under **Milestones**:
+- **Read the letter**. *Reads*: "To GC Test Owner LLC" and "Hello," while the customer row has no contact's name
+  (with one, the letter greets the contact's first name and the button below names them). Then the finish, each
+  stage, the dates to meet, and "What changed this week:" with step 24's move. No company and no dollar.
+- **Send a test to me**. *Reads*: "A test copy went to" the presser's address. The card keeps the letter as "not
+  emailed yet". The `[TEST]` email reaches the presser alone.
+- **Send to GC Test Owner LLC**. *Reads*: "Sent to GC Test Owner LLC at bids@clickplumbing.com." The card then lists
+  the send. The email "Your schedule on GC test project, delete me, …" goes to bids@clickplumbing.com. It ends with
+  "You can see your schedule in your portal:" and S2's link.
+
+*Writes*:
+- one `gc_schedule_sends` row, kept at the test and emailed at the send, its `email_send_log_id` then set;
+- two `email_send_log` rows, the test's and the send's;
+- the send's sent copy (`sent_documents`, kind `field_report_gc_schedule`) under Documents → Statements.
+
+The test sends no copy. *Ids*: the send row, both log rows and the sent copy. **Print the letter** files a print copy
+too; skip it unless the lead asks.
+
+**26. The trade's chart in its portal** (PR 14b). After the Board's award on the building project, as in step 21,
+since the chart shows only on a job with a trade awarded to the company. Open the test company's link `/t/<token>` in
+a private window, not "Open it as the office". *Reads*: the job's block opens on the chart. It shows the company's own
+bars with the office's dates, step 24's moved dates among them. The bars right before and after show by company name
+and percent. No dollar shows. *Writes*: one `public_page_views` row, counted as outside. *Ids*: that row.
+
+**27. The customer's schedule in their portal** (PR 15b; it proves the deployed `import()`). Reload S2's private
+window. *Reads*: the building project opens on **Your schedule**: **We finish** with the contract's day, **Work
+done**, the stages on one axis with Today, the dates to meet, and **What changed this week** with step 24's move in
+the customer's words. There is **See every bar** only if the role read first is `gc` or `ownersRep`. No company, no
+dollar, no spare day. The lead then reads `customer-portal`'s logs: neither "the schedule did not load" (the bundle
+dropped the `import()`) nor "the schedule did not read". A portal that loads with no **Your schedule** on this job is
+the failure, not a 500. The lead then makes the import static. *Writes*: the portal's view row, if it counts one.
+*Ids*: that row, and the log lines' times.
 
 ## After the walk
 
