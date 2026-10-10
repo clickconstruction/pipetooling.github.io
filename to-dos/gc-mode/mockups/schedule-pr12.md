@@ -117,7 +117,7 @@ press kernels beside 9a's and 9b's in `scheduleWindow.ts`; and two seams with th
      `keepRoughAt` reads one row of `gc_rough_schedules` by project, maps it with `rows.ts`'s `roughOf` (exported as
      `roughFromRow`), lays it on the board's project, runs `keepRough` and writes only what changed.
    - **A missed keep can be kept later.** The locked rough card, while its weeks are not kept, shows **Keep the weeks as
-     sent**, through `lateKeepPress(project)` in `scheduleWindow.ts`.
+     sent**, through `roughKeepPress(project)` in `scheduleWindow.ts`.
      - It keeps with the day our bid went, `ourBidSentOn`, never the press's day, so the kept day reads true. `gc_mark_won`
        sets `our_bid_sent_on` to the day we won when no bid was marked sent, so that day is right after an award too.
      - It is refused while the job still bids with no bid sent, when the rough is kept already, and when none was
@@ -189,7 +189,7 @@ press kernels beside 9a's and 9b's in `scheduleWindow.ts`; and two seams with th
 | Cut | Ported from the spike (each forked to `.proto` in its follow-up) | Main's files |
 |---|---|---|
 | 12a | `GcScheduleTemplates.tsx` (186 lines: `GcTemplatesCard`, `GcTemplatePick`) and its render test (5) | new `GcScheduleTemplates.tsx`; `GcSchedule.tsx` (the card on a job being built, the pick on `DraftCard`, two presses); `scheduleWindow.ts` (+2 kernels) |
-| 12b | `GcRoughSchedule.tsx` (165) and its render test (5) | new `GcRoughSchedule.tsx` (with **Keep the weeks as sent**); `GcSchedule.tsx` (a bidding job shows it in place of *No schedule is drawn*); `scheduleWindow.ts` (+2: `roughPress`, `lateKeepPress`); `rows.ts` (`roughFromRow` exported); `scheduleIo.ts` (`keepRoughAt`, `loadRoughs`); `GcProjects.tsx` (the keep after the two outcome presses, the roughs for Our number); `GcOurNumber.tsx` (the stat and the line) |
+| 12b | `GcRoughSchedule.tsx` (165) and its render test (5) | new `GcRoughSchedule.tsx` (with **Keep the weeks as sent**); `GcSchedule.tsx` (a bidding job shows it in place of *No schedule is drawn*); `scheduleWindow.ts` (+2: `roughPress`, `roughKeepPress`); `rows.ts` (`roughFromRow` exported); `scheduleIo.ts` (`keepRoughAt`, `loadRoughs`); `GcProjects.tsx` (the keep after the two outcome presses, the roughs for Our number); `GcOurNumber.tsx` (the stat and the line) |
 | 12c | `GcScheduleImport.tsx` (268) and `GcTheirDates.tsx` (173) with their render tests (5 and 6) | two new files; `GcSchedule.tsx` (*Bring in their schedule* on `DraftCard` and on a drawn schedule before Start, **Their dates** on `GcMilestones`); `GcScheduleCards.tsx` (`GcMilestones` gains a `door` slot); `scheduleWindow.ts` (+2) |
 
 Each port keeps the prototype's words. Each `dispatch({ type })` becomes a callback the window passes, as 9a and 9b did.
@@ -202,7 +202,7 @@ Each window passes the five window checks before its PR opens: the status-bar ru
   - 12a: a draw from a template, from the rough's own copy, and with an unknown template refused; a save, its name refused
     when taken, and its shape.
   - 12b: a rough drawn, redrawn with the same template, with another, and with none; refused after our bid or once lost;
-    only the days that differ kept. A late keep with the bid's day; refused while still bidding, when kept, and with no
+    only the days that differ kept. A keep made later, with the bid's day; refused while still bidding, when kept, and with no
     rough. `keepRoughAt` writes nothing when nothing changed.
   - 12c: an import drawn and refused (moves, after Start, nothing kept), and their dates taken and refused.
 - **Render** (each port's own tests from the spike, re-pointed at main's test state, plus):
