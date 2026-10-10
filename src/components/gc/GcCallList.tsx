@@ -2,7 +2,8 @@
  * GC mode, the real build, the schedule's PR 7c-ii: by company as a call list (G-115) over the Schedule window's chart, and the
  * opened bar's company. Moved word for word from the GC mode prototype (branch spike/gc-mode, `GcCallList.tsx`); the plan is
  * to-dos/gc-mode/mockups/schedule-pr7c.md on that branch. One known difference: `onFollowUp` and `onWorkList` are optional.
- * Unset, Call only dials, and neither Follow up nor Work the list is drawn, until the Board lane lifts the Follow up sheet.
+ * Unset, Call only dials, and neither Follow up nor Work the list is drawn. The schedule sets them with the Follow up sheet
+ * (the Board's B2b-viii-a) where the reader may log.
  */
 import { useState } from 'react'
 import { telHref } from '../../lib/gc/followUpSheet'

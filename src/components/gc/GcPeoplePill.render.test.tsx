@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
  * Who to call on a board row (the Board's B2b-ii), from the design spike's `GcCounts.render.test.tsx`: the card carries
- * Pecan Valley Electric's schedule reasons and what Cibolo owes, grouped, and **Open Follow up** opens Follow up. Follow up
- * and Work the list come with the Follow up sheet (B2b-viii), so Call only dials here.
+ * Pecan Valley Electric's schedule reasons and what Cibolo owes, grouped, and **Open Follow up** opens Follow up. Without
+ * the Follow up sheet's presses (B2b-viii-a sets them on the board), Call only dials here.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
@@ -47,7 +47,7 @@ describe('Who to call on a board row', () => {
     expect(groupsOf(dialog, 'Cibolo Creek Partners')).toEqual([['owed', 'Owed to us']])
   })
 
-  it('has no Work the list or Follow up yet, and Open Follow up opens Follow up', () => {
+  it('has no Work the list or Follow up without the sheet, and Open Follow up opens Follow up', () => {
     const { dialog, onOpenFollowUp } = card()
     expect(within(dialog).queryByRole('button', { name: 'Work the list' })).toBeNull()
     expect(within(dialog).queryByRole('button', { name: /^Follow up$/ })).toBeNull()

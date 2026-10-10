@@ -5,7 +5,7 @@ import GcProjects from './GcProjects'
 import { renderSettled, settle } from '../test/renderSmokeMocks'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
-import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
+import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, logGcAskContact, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
 import { boardStateFromRows } from '../lib/gc/boardRows'
 import { keepRoughAt, loadSchedule, loadScheduleWithHolds } from '../lib/gc/scheduleIo'
@@ -95,7 +95,9 @@ vi.mock('../lib/gc/gcIo', async () => {
     addGcCompany: vi.fn(),
     vetGcCompany: vi.fn(),
     setGcCompanyCoverage: vi.fn(),
-    logGcAskContact: vi.fn(),
+    logGcAskContact: vi.fn(() => Promise.resolve()),
+    logGcCustomerContact: vi.fn(() => Promise.resolve()),
+    recordGcTradePromise: vi.fn(() => Promise.resolve('pr1')),
     askGcCompanies: vi.fn(() => Promise.resolve()),
     declineGcAsk: vi.fn(),
     setGcCompanyLanguage: vi.fn(),
@@ -316,6 +318,27 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Follow up (1)' }))
     expect(screen.getByRole('heading', { name: 'Follow up' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Late on their word (1)' })).toBeTruthy()
+  })
+
+  it('the office team works the list on the Follow up sheet, and a call it logs reads the board again (B2b-viii-a)', async () => {
+    auth.role = 'estimator'
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Follow up (1)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'By people · 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Work the list · 1 person' }))
+    const sheet = screen.getByRole('dialog', { name: 'Follow up' })
+    expect(within(sheet).getByRole('heading', { name: 'Follow up with Dee Park' })).toBeTruthy()
+    const reads = vi.mocked(loadGcBoardRows).mock.calls.length
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Log a call' }))
+    fireEvent.change(within(sheet).getByLabelText('What Dee said'), { target: { value: 'Pricing it now.' } })
+    fireEvent.click(within(sheet).getByRole('button', { name: 'Save the call' }))
+    await waitFor(() => expect(logGcAskContact).toHaveBeenCalledTimes(1))
+    expect(logGcAskContact).toHaveBeenCalledWith({ companyId: 'hillside', inviteId: 'i2', on: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), byName: 'Smoke Dev', how: 'call', note: 'Pricing it now.', promisedBy: null })
+    await waitFor(() => expect(vi.mocked(loadGcBoardRows).mock.calls.length).toBeGreaterThan(reads))
+    vi.mocked(loadGcBoardRows).mockReset()
   })
 
   it('a dev asks for quotes from a project’s trade, and the window records the asks', async () => {

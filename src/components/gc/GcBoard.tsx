@@ -18,7 +18,8 @@ import { lostWords } from '../../lib/gc/lost'
 import type { GcProject, GcStage, GcState } from '../../lib/gc/types'
 import { daysUntil, money, shortDate, weekdayDate } from '../../lib/gc/words'
 import { GcBoardStrip, GcCustomerHeading, GcStageHeading, GcStageSubheading, type BoardStripItem, type StageStripItem } from './GcBoardStages'
-import { projectPeople } from '../../lib/gc/projectPeople'
+import { projectPeople, type ProjectPerson } from '../../lib/gc/projectPeople'
+import { callSheetId } from '../../lib/gc/schedule/callList'
 import { useCustomerOpener } from './gcCustomerOpener'
 import { GcPeoplePill } from './GcPeoplePill'
 import { GcProgressRing } from './GcProgressRing'
@@ -40,7 +41,8 @@ import { usePriceCard } from './usePriceCard'
  * so the two keep one number. Since B2b-iii the strip's **By stage | By customer** switch (the owner, 2026-10-04; By
  * stage each time the board opens) shows the same rows under each customer we build for, a heading per stage they
  * have jobs in, their closed and lost jobs on one quiet line. A section and a customer are worth `priceToOwner`'s price
- * (gc 5's read). The ring comes with a later cut.
+ * (gc 5's read). The ring comes with a later cut. Since B2b-viii-a (`onFollowUpJob`) the Who to call card's Follow up and
+ * **Work the list** open the Follow up sheet on the job's people.
  */
 
 const SECTIONS: Record<BoardSection, { label: string; tone: Tone; number?: number; blurb: string; empty: string; order: (a: GcProject, b: GcProject) => number }> = {
@@ -138,6 +140,7 @@ export function GcBoard({
   moneyShown = true,
   folderUrls = {},
   onChase,
+  onFollowUpJob,
   ring,
 }: {
   state: GcState
@@ -152,6 +155,11 @@ export function GcBoard({
   folderUrls?: Record<string, string>
   /** Opens Follow up, from a row's Who to call card (B2b-ii). Unset: rows draw no Who to call. */
   onChase?: () => void
+  /**
+   * The Follow up sheet on one job's people, at a person (a company's id, or `customer:<id>`), on "What did they say?" after a
+   * Call (B2b-viii-a). Unset: the Who to call card's Call only dials, and it has no Work the list.
+   */
+  onFollowUpJob?: (projectId: string, partnerId: string, calling: boolean) => void
   /** The rings' read (B2b-vi-c, `useRingLayers`): each row's ring, from the board with what it counts laid over it. Unset: no ring column. */
   ring?: RingRead | null
 }) {
@@ -198,6 +206,7 @@ export function GcBoard({
       folderUrl={folderUrls[p.id] ?? ''}
       byCustomer={byCustomer}
       {...(onChase ? { onChase } : {})}
+      {...(onFollowUpJob ? { onFollowUp: (partnerId: string, calling: boolean) => onFollowUpJob(p.id, partnerId, calling) } : {})}
       {...(ring ? { ring } : {})}
     />
   )
@@ -425,6 +434,7 @@ function ProjectRow({
   folderUrl,
   byCustomer = false,
   onChase,
+  onFollowUp,
   ring,
 }: {
   project: GcProject
@@ -437,11 +447,17 @@ function ProjectRow({
   /** On By customer the heading names the customer, so the row leaves their name out (B2b-iii). */
   byCustomer?: boolean
   onChase?: () => void
+  /** The Follow up sheet on this job's people, at a person (`callSheetId`). */
+  onFollowUp?: (partnerId: string, calling: boolean) => void
   ring?: RingRead
 }) {
   // Outside the money team the price is the trades alone (B5-c), so its words say so.
   const soFar = moneyShown ? 'so far' : 'trades so far'
   const totals = proposalTotals(project)
+  // Who to call on this job, and Work the list from the first of them (B2b-viii-a): the sheet walks the job's people.
+  const people = onChase && !project.lostOn ? projectPeople(state, project) : null
+  const firstPerson = people?.people[0]
+  const workList = onFollowUp && firstPerson ? () => onFollowUp(callSheetId(firstPerson), false) : null
   const card = usePriceCard()
   // The customer's name opens their window (the Board's B6-d-ii) where the page gives one; plain words otherwise.
   const customers = useCustomerOpener()
@@ -514,9 +530,9 @@ function ProjectRow({
           </span>
         )}
         {/* Everyone we are waiting on for this job, in one count (the owner, 2026-10-04). */}
-        {onChase && !project.lostOn && (
+        {onChase && people && (
           <span data-gc-board-people={project.id} style={{ display: 'block', marginTop: '0.35rem' }}>
-            <GcPeoplePill summary={projectPeople(state, project)} projectName={project.name} onWorkList={null} onOpenFollowUp={onChase} />
+            <GcPeoplePill summary={people} projectName={project.name} onWorkList={workList} onOpenFollowUp={onChase} {...(onFollowUp ? { onFollowUp: (person: ProjectPerson, calling: boolean) => onFollowUp(callSheetId(person), calling) } : {})} />
           </span>
         )}
       </span>

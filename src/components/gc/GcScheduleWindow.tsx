@@ -11,7 +11,7 @@
 import { useEffect } from 'react'
 import type { ScheduleReads } from '../../lib/gc/scheduleIo'
 import type { GcProject, GcState } from '../../lib/gc/types'
-import { GcSchedule } from './GcSchedule'
+import { GcSchedule, type ScheduleFollowUp } from './GcSchedule'
 
 export function GcScheduleWindow({
   state,
@@ -21,6 +21,7 @@ export function GcScheduleWindow({
   canPull = false,
   canTell = false,
   reads,
+  followUp,
   onClose,
 }: {
   state: GcState
@@ -32,6 +33,8 @@ export function GcScheduleWindow({
   canTell?: boolean
   /** What this reader may read over the schedule (PR 16), memoized by the page. */
   reads?: ScheduleReads
+  /** The Follow up sheet's log (the Board's B2b-viii-a): the call list's Follow up and Work the list. */
+  followUp?: ScheduleFollowUp
   onClose: () => void
 }) {
   useEffect(() => {
@@ -64,7 +67,7 @@ export function GcScheduleWindow({
           </button>
         </div>
         <div style={{ padding: '0.8rem 1rem', overflowY: 'auto' }}>
-          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} canPull={canPull} canTell={canTell} {...(reads ? { reads } : {})} />
+          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} canPull={canPull} canTell={canTell} {...(reads ? { reads } : {})} {...(followUp ? { followUp } : {})} />
         </div>
       </div>
     </div>

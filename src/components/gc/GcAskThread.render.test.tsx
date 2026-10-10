@@ -105,6 +105,39 @@ describe('GcFollowUp, By people (the Board’s B2b-ii-b)', () => {
   })
 })
 
+describe('GcFollowUp, the ways onto the Follow up sheet (the Board’s B2b-viii-a)', () => {
+  it('Work the list opens everyone; each person’s Follow up and Call open it at them', () => {
+    const state = initialGcState()
+    const onFollowUp = vi.fn()
+    render(<GcFollowUp state={state} writes={writes()} onWhoElse={() => undefined} onFollowUp={onFollowUp} />)
+    // On By urgency the list's button is not drawn: it sits with the people.
+    expect(screen.queryByRole('button', { name: /Work the list/ })).toBeNull()
+    const count = allPeople(state).count
+    fireEvent.click(screen.getByRole('button', { name: `By people · ${count}` }))
+    fireEvent.click(screen.getByRole('button', { name: `Work the list · ${count} people` }))
+    expect(onFollowUp).toHaveBeenLastCalledWith()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Follow up' })[0]!)
+    expect(onFollowUp).toHaveBeenLastCalledWith('hillside', false)
+  })
+
+  it('ends By urgency with everyone waited on for something other than a quote', () => {
+    const state = initialGcState()
+    const onFollowUp = vi.fn()
+    render(<GcFollowUp state={state} writes={writes()} onWhoElse={() => undefined} onFollowUp={onFollowUp} />)
+    const more = screen.getByRole('region', { name: 'More to follow up on' })
+    // Everyone but Bexar Steel, who owes only a quote, which its card shows.
+    expect(within(more).getByRole('heading', { name: `More to follow up on (${allPeople(state).count - 1})` })).toBeTruthy()
+    expect(within(more).queryByText('Tom Riddle')).toBeNull()
+    expect(within(more).getByText('Marcus Bell')).toBeTruthy()
+    expect(within(more).getByText('Elena Marchetti')).toBeTruthy()
+    // Greg's quote is on his card above; here, only the plans he has not opened.
+    expect(within(more).queryByText(/Promised a quote/)).toBeNull()
+    const customerRow = within(more).getByText('Elena Marchetti').closest('span[style*="grid-template-columns"]') as HTMLElement
+    fireEvent.click(within(customerRow).getByRole('button', { name: 'Follow up' }))
+    expect(onFollowUp).toHaveBeenLastCalledWith('customer:cibolo', false)
+  })
+})
+
 describe('GcTradeAsks', () => {
   it('lists each company asked on the trade: a quote in without the buttons, an open ask with its story and the buttons', () => {
     render(<GcTradeAsks state={boardStateFromRows(clinicBoardRows())} projectId="p1" packageId="k1" writes={writes()} />)
