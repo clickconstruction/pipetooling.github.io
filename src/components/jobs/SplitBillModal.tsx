@@ -18,7 +18,6 @@ import {
   MAX_SPLIT_BILL_PARTS,
   dollarsInputToCents,
   formatCentsAsDollars,
-  splitBillFeeLinesByPart,
   splitBillIssuedAtMs,
   splitBillPartMemo,
   splitBillRemainderCents,
@@ -27,6 +26,16 @@ import {
 import type { StripeInvoiceDetailsSuccess } from '../../lib/stripeInvoiceDetailsResponse'
 import type { Json } from '../../types/database'
 import type { InvoiceWithJobForBillView } from './HostedStripeBillPanel'
+
+type FeeLinesRead = { ok: true; lines: unknown } | { ok: false; error: string }
+
+/** The bill's `fee_lines` (punch list #105). A bill row that is not there stops the split, as a failed read does. */
+async function readSplitBillFeeLines(invoiceId: string): Promise<FeeLinesRead> {
+  const { data, error } = await supabase.from('jobs_ledger_invoices').select('fee_lines').eq('id', invoiceId).maybeSingle()
+  if (error) return { ok: false, error: `Could not read the bill's fees, so nothing was split: ${formatErrorMessage(error, 'read failed')}` }
+  if (!data) return { ok: false, error: 'The bill is not on the job any more, so nothing was split. Close this and open the job again.' }
+  return { ok: true, lines: (data as { fee_lines?: unknown }).fee_lines ?? null }
+}
 
 const inputStyle = {
   padding: '0.4rem 0.6rem',
@@ -77,6 +86,20 @@ export function SplitBillModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [didMutate, setDidMutate] = useState(false)
+  /** The bill's fee lines as read on open (punch list #105), null while they load; the press reads them again. */
+  const [feeLines, setFeeLines] = useState<FeeLinesRead | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    let cancelled = false
+    setFeeLines(null)
+    void readSplitBillFeeLines(inv.id).then((read) => {
+      if (!cancelled) setFeeLines(read)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [open, inv.id])
 
   useEffect(() => {
     if (!open) return
@@ -117,9 +140,11 @@ export function SplitBillModal({
   const enteredCents = partInputs.map((s) => dollarsInputToCents(s))
   const remainderCents = splitBillRemainderCents(totalCents, enteredCents)
   const partCount = partInputs.length + 1
-  const validation = validateSplitBillParts(totalCents, enteredCents)
+  const validation = validateSplitBillParts(totalCents, enteredCents, feeLines?.ok ? feeLines.lines : undefined)
   const dueDateOk = /^\d{4}-\d{2}-\d{2}$/.test(dueDate.trim())
-  const canSubmit = validation.ok && dueDateOk && !busy
+  const canSubmit = validation.ok && dueDateOk && !busy && feeLines?.ok === true
+  // What holds the press because of the bill's fees, in words (the amount checks only hold the button).
+  const feeWords = feeLines === null ? null : !feeLines.ok ? feeLines.error : !validation.ok && validation.fees ? validation.error : null
 
   const runSplit = async () => {
     if (!validation.ok || busy) return
@@ -151,14 +176,20 @@ export function SplitBillModal({
       const originalMemo = (inv.stripe_invoice_memo ?? '').trim() || (stripeDetail.memo ?? '').trim() || null
       const footer = (inv.stripe_invoice_footer ?? '').trim() || (stripeDetail.footer ?? '').trim() || undefined
 
-      // 0) The bill's fee lines, read before its row goes (punch list #105): a fee that rides on the bill moves onto
-      // the parts, or the next rewrite of the job's total drops it. Nothing is voided when they cannot be read.
-      const { data: feeRow, error: feeErr } = await supabase.from('jobs_ledger_invoices').select('fee_lines').eq('id', inv.id).maybeSingle()
-      if (feeErr) {
-        setError(`Could not read the bill's fees, so nothing was split: ${formatErrorMessage(feeErr, 'read failed')}`)
+      // 0) The bill's fee lines, read again just before its row goes (punch list #105): a fee that rides on the bill
+      // moves onto a part, or the next rewrite of the job's total drops it. Nothing is voided when they cannot be read,
+      // when the bill carries a GC card fee, or when a fee has no part with room for it.
+      const fresh = await readSplitBillFeeLines(inv.id)
+      if (!fresh.ok) {
+        setError(fresh.error)
         return
       }
-      const feeLinesByPart = splitBillFeeLinesByPart((feeRow as { fee_lines?: unknown } | null)?.fee_lines, partsCents)
+      const recheck = validateSplitBillParts(totalCents, enteredCents, fresh.lines)
+      if (!recheck.ok) {
+        setError(recheck.error)
+        return
+      }
+      const feeLinesByPart = recheck.feeLinesByPart
 
       // 1) Void the current Stripe bill and remove its ledger line (existing send-back path).
       const voided = await invokeVoidStripeInvoiceForRevert({
@@ -347,6 +378,13 @@ export function SplitBillModal({
         <p style={{ margin: '0 0 0.85rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
           Parts must add up to ${formatCentsAsDollars(totalCents)}. The last part fills in automatically.
         </p>
+        {feeLines === null ? (
+          <p style={{ margin: '0 0 0.85rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Reading the bill’s fees…</p>
+        ) : feeWords ? (
+          <p role="alert" style={{ margin: '0 0 0.85rem', fontSize: '0.8125rem', color: 'var(--text-red-700)', lineHeight: 1.4 }}>
+            {feeWords}
+          </p>
+        ) : null}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', marginBottom: '0.85rem' }}>
           <label htmlFor="split-bill-due-date" style={{ fontSize: '0.875rem' }}>
             Due date (all parts)

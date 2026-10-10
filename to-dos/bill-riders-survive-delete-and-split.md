@@ -2,7 +2,7 @@
 name: "A fee on a bill survives the bill being deleted or split"
 number: 105
 group: ready
-status: found 2026-10-09 while building the trip charge rider (PR #5255) · gap 2 (the split) built v2.5140 · gap 1 (the delete) and the write-down cap left
+status: found 2026-10-09 while building the trip charge rider (PR #5255) · gap 2 (the split) built v2.5140: a trip charge moves to a part, a bill with a GC card fee is refused (GC mode's half) · gap 1 (the delete) and the write-down cap left
 summary: >
   A fee rides on its bill: a returned check fee, a GC card fee, a turnaway trip charge. Each is a
   fee_lines entry that job_rider_fees counts, so every rewrite of the job's total keeps it. Two ways

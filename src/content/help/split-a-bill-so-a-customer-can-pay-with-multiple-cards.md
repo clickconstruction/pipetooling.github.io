@@ -25,7 +25,8 @@ The original Stripe bill is voided so its old pay link can't be paid. Two new bi
 ## Good to know
 
 - **Nothing is emailed by the split itself.** You choose when and how each part goes out.
-- **A fee on the bill moves to a part.** A trip charge or a card fee goes onto the first part big enough to hold it. So the job's total still counts the fee.
+- **A fee on the bill moves to a part.** A trip charge goes onto the first part big enough to hold it. So the job's total still counts the fee. If no part is big enough, Split says so. Make one part bigger.
+- **A bill with a GC's card fee stays one bill.** Split says so and cannot be pressed.
 - **Each part pays separately.** As each card goes through, that part flips to Paid on its own. The job goes to **Paid in Full** when the last part is paid.
 - **Splitting is only possible before any money lands.** Once a payment is applied to a bill, split is hidden. Void or unwind the payment first if you really need to restructure.
 - **Changed your mind?** Each part is a normal bill. You can void a part and re-bill it from **Bill Customer**, like any Ready-to-Bill line.

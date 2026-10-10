@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 /**
  * Split keeps a bill's riders (punch list #105, gap 2): a fee that rides on the bill (here a turnaway trip charge, a
- * `fee_lines` entry) moves onto a part, read from the bill before its row goes. Otherwise the next rewrite of the
- * job's total drops it while the parts still add up to it. The void, the clean-up and Stripe are stand-ins.
+ * `fee_lines` entry) moves onto a part, read from the bill on open and again before its row goes. Otherwise the next
+ * rewrite of the job's total drops it while the parts still add up to it. A GC card fee, a fee no part can hold, a
+ * failed read and a missing bill row each stop it in words before anything is voided (review on #5274). The void,
+ * the clean-up and Stripe are stand-ins.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -15,6 +17,7 @@ import type { StripeInvoiceDetailsSuccess } from '../../lib/stripeInvoiceDetails
 const TRIP = { trip_charge: 'client_not_home', amount: 150 }
 let feeLines: unknown = [TRIP]
 let feeReadFails = false
+let feeRowMissing = false
 const inserted: Record<string, unknown>[][] = []
 const voided = vi.fn()
 
@@ -23,7 +26,8 @@ vi.mock('../../lib/supabase', () => ({
     from: () => ({
       select: () => ({
         eq: () => ({
-          maybeSingle: async () => (feeReadFails ? { data: null, error: { message: 'down' } } : { data: { fee_lines: feeLines }, error: null }),
+          maybeSingle: async () =>
+            feeReadFails ? { data: null, error: { message: 'down' } } : feeRowMissing ? { data: null, error: null } : { data: { fee_lines: feeLines }, error: null },
         }),
       }),
       insert: (rows: Record<string, unknown>[]) => {
@@ -76,6 +80,7 @@ const split = async (part1: string) => {
 beforeEach(() => {
   feeLines = [TRIP]
   feeReadFails = false
+  feeRowMissing = false
   inserted.length = 0
   voided.mockClear()
 })
@@ -103,7 +108,31 @@ describe('SplitBillModal · the bill’s riders', () => {
     feeReadFails = true
     await split('100')
     expect(await screen.findByText(/Could not read the bill's fees, so nothing was split/)).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Split into 2 bills' }) as HTMLButtonElement).disabled).toBe(true)
     expect(voided).not.toHaveBeenCalled()
     expect(inserted).toHaveLength(0)
+  })
+
+  it('a bill row that is not there stops it too, though the read raised no error', async () => {
+    feeRowMissing = true
+    await split('100')
+    expect(await screen.findByText(/The bill is not on the job any more, so nothing was split/)).toBeTruthy()
+    expect(voided).not.toHaveBeenCalled()
+  })
+
+  it('a bill carrying a GC card fee is not split, in words', async () => {
+    feeLines = [{ card_bill: 'cb-1', amount: 30, description: 'Credit card fee (3%)' }]
+    await split('100')
+    expect(await screen.findByText(/carries the GC’s card fee, so it cannot be split/)).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Split into 2 bills' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(voided).not.toHaveBeenCalled()
+  })
+
+  it('no part holds more fees than its own amount: a $200 charge split $100 / $150 is refused in words', async () => {
+    feeLines = [{ trip_charge: 'site_not_ready', amount: 200 }]
+    await split('100')
+    expect(await screen.findByText('The $200.00 trip charge on this bill needs a part of at least $200.00.')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Split into 2 bills' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(voided).not.toHaveBeenCalled()
   })
 })

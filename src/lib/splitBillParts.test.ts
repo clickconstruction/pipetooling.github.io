@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   dollarsInputToCents,
   formatCentsAsDollars,
-  splitBillFeeLinesByPart,
+  placeSplitBillFeeLines,
+  splitBillCardFeeRefusal,
   splitBillIssuedAtMs,
   splitBillPartMemo,
   splitBillRemainderCents,
@@ -38,11 +39,11 @@ describe('splitBillRemainderCents', () => {
 describe('validateSplitBillParts', () => {
   it('accepts a clean 2-way split and returns full parts', () => {
     const v = validateSplitBillParts(500000, [200000])
-    expect(v).toEqual({ ok: true, partsCents: [200000, 300000] })
+    expect(v).toEqual({ ok: true, partsCents: [200000, 300000], feeLinesByPart: [null, null] })
   })
   it('accepts up to 4 parts', () => {
     const v = validateSplitBillParts(500000, [100000, 100000, 100000])
-    expect(v).toEqual({ ok: true, partsCents: [100000, 100000, 100000, 200000] })
+    expect(v).toEqual({ ok: true, partsCents: [100000, 100000, 100000, 200000], feeLinesByPart: [null, null, null, null] })
   })
   it('rejects blank, sub-minimum, and overshooting parts', () => {
     expect(validateSplitBillParts(500000, [null])).toMatchObject({ ok: false })
@@ -80,25 +81,39 @@ describe('formatCentsAsDollars', () => {
   })
 })
 
-describe('splitBillFeeLinesByPart (punch list #105)', () => {
+describe('the bill’s fee lines on a split (punch list #105)', () => {
   const trip = { trip_charge: 'client_not_home', amount: 150 }
+  const small = { description: 'Permit pull', amount: 30 }
   const card = { card_bill: 'cb-1', amount: 30, description: 'Credit card fee (3%)' }
 
   it('puts every fee line on the first part when it has room', () => {
-    expect(splitBillFeeLinesByPart([trip, card], [20000, 30000])).toEqual([[trip, card], null])
+    expect(placeSplitBillFeeLines([trip, small], [20000, 30000])).toEqual({ ok: true, byPart: [[trip, small], null] })
   })
 
   it('hands a fee larger than the first part to the next part with room', () => {
-    expect(splitBillFeeLinesByPart([trip], [10000, 5000, 20000])).toEqual([null, null, [trip]])
-    expect(splitBillFeeLinesByPart([trip, card], [15000, 5000])).toEqual([[trip], [card]])
+    expect(placeSplitBillFeeLines([trip], [10000, 5000, 20000])).toEqual({ ok: true, byPart: [null, null, [trip]] })
+    expect(placeSplitBillFeeLines([trip, small], [15000, 5000])).toEqual({ ok: true, byPart: [[trip], [small]] })
   })
 
-  it('puts a fee no part can hold on the part with the most room, so it is never lost', () => {
-    expect(splitBillFeeLinesByPart([{ trip_charge: 'site_not_ready', amount: 500 }], [20000, 30000])).toEqual([null, [{ trip_charge: 'site_not_ready', amount: 500 }]])
+  it('refuses, in words, a fee no part has room for: no part holds more than its own amount', () => {
+    const r = placeSplitBillFeeLines([{ trip_charge: 'site_not_ready', amount: 99 }], [5000, 5000])
+    expect(r).toEqual({ ok: false, error: 'The $99.00 trip charge on this bill needs a part of at least $99.00.' })
   })
 
   it('carries nothing when the bill has no fee lines', () => {
-    expect(splitBillFeeLinesByPart(null, [100, 200])).toEqual([null, null])
-    expect(splitBillFeeLinesByPart([], [100, 200])).toEqual([null, null])
+    expect(placeSplitBillFeeLines(null, [100, 200])).toEqual({ ok: true, byPart: [null, null] })
+    expect(placeSplitBillFeeLines([], [100, 200])).toEqual({ ok: true, byPart: [null, null] })
+  })
+
+  it('refuses a bill that carries a GC card fee, and nothing else', () => {
+    expect(splitBillCardFeeRefusal([trip, card])).toMatch(/GC’s card fee, so it cannot be split/)
+    expect(splitBillCardFeeRefusal([trip, small])).toBeNull()
+    expect(splitBillCardFeeRefusal(null)).toBeNull()
+  })
+
+  it('validateSplitBillParts says both refusals as fee refusals, and hands back where each fee goes', () => {
+    expect(validateSplitBillParts(25000, [10000], [card])).toMatchObject({ ok: false, fees: true })
+    expect(validateSplitBillParts(14900, [6000], [{ trip_charge: 'site_not_ready', amount: 99 }])).toMatchObject({ ok: false, fees: true, error: expect.stringMatching(/\$99\.00 trip charge/) })
+    expect(validateSplitBillParts(25000, [10000], [trip])).toEqual({ ok: true, partsCents: [10000, 15000], feeLinesByPart: [null, [trip]] })
   })
 })
