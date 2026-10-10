@@ -275,13 +275,26 @@ export interface PlanSet {
   rev: number
   label: string
   issuedOn: string
+  /** Optional on main (the prototype's is required): a set mapped without it changes no sheet. */
+  changedSheets?: string[]
   /** Package ids whose scope this set changed. A bid priced on an older set is stale for them. */
   touches: string[]
+  /** Scope lines this set adds to trades already on the job. Quotes in before it never answered them. */
+  addedLines?: { packageId: string; scopeId: string }[]
+  /** Sections of the project manual this set revises, like "09 91 23". */
+  changedSpecs?: string[]
 }
 
 export interface ScopeItem {
   id: string
   label: string
+  /**
+   * The sheets this line reads from. Missing: not said, so a guess from the line's words is shown.
+   * Empty: the trade's sheets as a whole, no one sheet in particular.
+   */
+  sheets?: string[]
+  /** The sections of the project manual this line reads from. Missing: not said. */
+  specs?: string[]
 }
 
 /** A line of a trade's own schedule of values, as it wrote it (question 4): often rough-in, top out, trim. */
@@ -695,6 +708,12 @@ export interface GcProject {
   bidDue: string | null
   sizeNote: string
   planSets: PlanSet[]
+  /**
+   * The plans' index and the project manual as they stand after the newest set (the real build: the view's own, the Board's
+   * B2b-vi), for what changed under a quote (`stale.ts`'s `reachOf`). Main's only: the prototype keeps the first set's index and
+   * walks its sets forward instead (`sheetsAtRev`). Absent: not mapped, so a line's guess reads no sheet.
+   */
+  index?: { sheets: PlanSheet[]; specs: SpecSection[] }
   packages: TradePackage[]
   generalConditions: number
   /** The Pipeline job our general conditions are spent on (O11b), the money team's to name. Unset: none named. */
