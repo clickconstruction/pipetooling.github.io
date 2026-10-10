@@ -24,7 +24,8 @@ import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHe
  * verb wrote, so the two match. The unconditional waiver and a change signed (P5c-3b, plan
  * to-dos/gc-mode/mockups/portal-p5.md) are typed and keep no image; their verbs return no time, so their ledger rows
  * (`gc_draw` keyed by the draw, `gc_trade_change` keyed by the change order) take the function's. The waiver is refused as
- * badRequest while `WAIVER_SIGN_LIVE` holds it for the owner's call.
+ * badRequest while `WAIVER_SIGN_LIVE` holds it for the owner's call. A pay application and the final one (P5c-3c-ii) sign
+ * their conditional waiver the same way, held the same: their ledger row is keyed by the draw the verb returns.
  */
 
 /** Where a trade's drawn signature on its statement of work is kept: `gc-sows/<sow id>/<uuid>.png`. */
@@ -81,7 +82,7 @@ serve(async (req) => {
     if (isHoneypot(body)) return jsonResponse({ ok: true })
     const parsed = parseTradeSubmit(body)
     if (!parsed.ok) return refuse(parsed.key ?? 'badRequest')
-    // The unconditional waiver waits on the owner's call (WAIVER_SIGN_LIVE): until then the page sends no such press.
+    // Every lien waiver waits on the owner's call (WAIVER_SIGN_LIVE): until then the page sends no such press.
     if (waiverHeld(parsed.kind)) return refuse('badRequest')
     // The sample (What customers see) writes nothing and never errors (decision 12).
     if (sampleStateFromToken(parsed.token)) return jsonResponse({ ok: true, sample: true })
@@ -124,7 +125,7 @@ serve(async (req) => {
       // Best-effort, as every signing function keeps it: the row's own stamp is the act, this row is the words.
       await recordEsignConsent(admin, {
         recordType: sign.record.type,
-        recordId: sign.record.id,
+        recordId: sign.record.id ?? String(data),
         consent,
         printedName: sign.printedName,
         method: sign.png ? 'draw' : 'type',

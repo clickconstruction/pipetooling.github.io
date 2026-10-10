@@ -204,6 +204,11 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   sowNotSigned: 'errSowNotSigned',
   splitLine: 'errSplitLine',
   notPaidYet: 'errNotPaidYet',
+  // P5c-3c-ii: a pay application and the final one.
+  drawWaiting: 'errDrawWaiting',
+  nothingToBill: 'errNothingToBill',
+  finalSent: 'errFinalSent',
+  finalNotYet: 'errFinalNotYet',
 }
 
 /** A refusal in the company's words. A key the page does not know reads as did not save. */

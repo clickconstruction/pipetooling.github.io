@@ -24,16 +24,21 @@ import {
 import { bw, type BuildingWordKey } from '../../lib/gc/buildingWords'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { WAIVER_SIGN_LIVE } from '../../lib/gc/drawEmail'
+import { esignConsentPayload, esignConsentText, type EsignConsentPayload } from '../../lib/esignConsent'
 import { downloadPayAppExcel, downloadPayAppPdf } from '../../lib/gc/payAppFileWriters'
 import { pDate, pt } from '../../lib/gc/portalI18n'
 import { openInspectionFailures } from '../../lib/gc/schedule/schedule'
+import { tradePayAppWaiverPaper } from '../../lib/gc/tradeWaiverPaper'
 import type { Draw, DrawPayApp, DrawSentBack, GcProject, Partner, TradePackage } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
 import type { ReleaseStep } from '../../lib/jobs/lienReleaseSteps'
+import { EsignConsentLine } from '../EsignConsentLine'
 import { LienReleaseStepRow } from '../jobs/LienReleaseStepRow'
 import { Btn, input as inputStyle } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
+import { usePress } from './gcTradePortalPress'
 import { GcPayAppNotary } from './GcPayAppNotary'
+import { TradeWaiverPaperView } from './GcTradeWaiverPaper'
 
 /**
  * GC mode, the trade partner portal (P5c-3c-i, to-dos/gc-mode/mockups/portal-p5.md): the pay application a trade sends
@@ -42,8 +47,9 @@ import { GcPayAppNotary } from './GcPayAppNotary'
  * G703 beside them. The office reads a trade's pay application in Building's own `GcDrawPayApp.tsx`, so on main this is
  * the trade's half only. What differs from the spike (pinned in portal-p5c-3c-i.lift.json once merged):
  *   - the door draws no punch list, submittals or changes to sign: `GcTradePortalJob.tsx` draws them (P5c-2, P5c-3b);
- *   - the window sends through `onSend`, the submit adapter, in place of the prototype's dispatch; P5c-3c-ii gives it
- *     the kinds `pay_app` and `final_pay_app` and the sign step on the app's conditional waiver paper;
+ *   - the window sends through `onSend`, the submit adapter (`pay_app`, `final_pay_app`), in place of the prototype's
+ *     dispatch, and stays open with the refusal in the company's words; its sign step lays out the conditional waiver
+ *     it signs as the app's own paper with the e-sign consent, never the spike's tick (P5c-3c-ii);
  *   - while `WAIVER_SIGN_LIVE` holds every waiver a trade signs for the owner's call, a pay application is a waiver
  *     too, so the door and the closeout say to email it in place of their buttons;
  *   - the office's view beside their own schedule of values (`GcSovSideBySide`) is left out: only the office drew it.
@@ -115,8 +121,16 @@ export function GcBuildingPayAppDoor({
   // Its key says which application it is for: a new one, a resend after we sent one back, the final.
   const [held, setHeld] = useState<{ key: string; input: PayAppInput } | null>(null)
   const { lang, w } = useWords()
+  // The submit adapter (P5c-3c-ii): the window's draft as `pay_app` or `final_pay_app`, with the waiver's e-sign consent.
+  const { busy: sending, problem: sendProblem, run } = usePress()
   const sow = pkg.sow
   if (!sow || sow.status !== 'signed') return null
+  const onSend = (input: PayAppInput, final: boolean, esignConsent: EsignConsentPayload) => {
+    const app = { periodTo: input.periodTo, address: input.address, license: input.license, signedBy: input.signedBy, signedTitle: input.signedTitle }
+    if (final) return run('final_pay_app', { packageId: pkg.id, app, esignConsent })
+    const lines = Object.entries(input.toPct).map(([line, toPct]) => ({ line, toPct, ...(input.stored?.[line] ? { stored: input.stored[line] } : {}) }))
+    return run('pay_app', { packageId: pkg.id, app: { ...app, lines }, esignConsent })
+  }
   const waiting = sow.draws.find((d) => d.status === 'requested')
   const back = sentBackOpen(sow)
   const keyFor = (which: 'draft' | 'final') =>
@@ -205,6 +219,9 @@ export function GcBuildingPayAppDoor({
           project={project}
           pkg={pkg}
           partner={partner}
+          onSend={onSend}
+          sending={sending}
+          sendProblem={sendProblem}
           draw={null}
           final={open === 'final'}
           sentBack={open === 'draft' ? back : null}
@@ -340,6 +357,8 @@ export function GcBuildingPayAppWindow({
   pkg,
   partner,
   onSend,
+  sending = false,
+  sendProblem = null,
   draw,
   final: finalProp = false,
   sentBack = null,
@@ -352,8 +371,15 @@ export function GcBuildingPayAppWindow({
   project: GcProject
   pkg: TradePackage
   partner: Partner
-  /** The submit adapter: sends the trade's draft, a pay application or the final one. None: nothing to send from here. */
-  onSend?: (input: PayAppInput, final: boolean) => void
+  /**
+   * The submit adapter: sends the trade's draft, a pay application or the final one, with the waiver's e-sign consent,
+   * and answers whether it went through. None: nothing to send from here.
+   */
+  onSend?: (input: PayAppInput, final: boolean, esignConsent: EsignConsentPayload) => Promise<boolean>
+  /** The send is on its way. */
+  sending?: boolean
+  /** Why the send was refused, in the company's words. */
+  sendProblem?: string | null
   /** A sent application to look at. Null: the trade is filling out a new one. */
   draw: Draw | null
   /** A new final pay application: it asks for the retainage, every line at 100%. */
@@ -381,6 +407,8 @@ export function GcBuildingPayAppWindow({
   const [pick, setPick] = useState<{ page: Page; at: PayAppStepKey | null } | null>(null)
   // Materials stored on site (question 12): shown once asked for, or when some are already in.
   const [showStored, setShowStored] = useState(() => Object.values(heldDraft?.stored ?? {}).some((v) => v > 0))
+  // The e-sign consent the conditional waiver is signed with (P5c-3c-ii), ticked in the sign step.
+  const [consented, setConsented] = useState(false)
   // The AIA form as a file (question 12): which one is being made, and why it could not be.
   const [saving, setSaving] = useState<'xlsx' | 'pdf' | null>(null)
   const [saveError, setSaveError] = useState('')
@@ -425,11 +453,14 @@ export function GcBuildingPayAppWindow({
     // The rail draws the lien window's step; its key names a lien step, so any one serves.
     return { n: s?.n ?? 1, key: 'details', state: s?.state ?? 'wait', waitsFor: null, folded: false }
   }
+  const consentText = esignConsentText({ audience: 'sub', lang, documentNoun: pt(lang, final ? 'condFinalConsentNoun' : 'condConsentNoun') })
   const send = () => {
-    if (!onSend || !ready) return
-    onSend(draft, final)
-    onSent?.()
-    onClose()
+    if (!onSend || !ready || !consented || sending) return
+    void onSend(draft, final, esignConsentPayload(consentText)).then((ok) => {
+      if (!ok) return
+      onSent?.()
+      onClose()
+    })
   }
   const net = app.summary.currentDue
   const title = `${w(final ? 'titleFinal' : 'title', { n: app.number })}${returnedAs ? w('stampBack') : revised ? w('stampRevised') : ''}`
@@ -710,10 +741,13 @@ export function GcBuildingPayAppWindow({
                       <input type="text" value={draft.signedTitle} onChange={(e) => set({ signedTitle: e.target.value })} placeholder={w('titleHint')} style={input_} />
                     </Field>
                   </div>
+                  {/* The conditional waiver it signs is the app's own paper, the Release of Lien window's form (P5c-3c-ii). */}
+                  <TradeWaiverPaperView paper={tradePayAppWaiverPaper({ final, amount: net, periodTo: draft.periodTo }, project, partner.company, draft.signedBy, '')} />
                   <label style={{ display: 'flex', gap: '0.45rem', alignItems: 'flex-start' }}>
                     <input type="checkbox" checked={draft.waiverSigned} onChange={(e) => set({ waiverSigned: e.target.checked })} style={{ marginTop: '0.2rem' }} />
-                    <span>{w('iSign', { waiver: waiverWords, amount: money(net) })}</span>
+                    <span>{pt(lang, final ? 'uncondFinalAgree' : 'uncondAgree')}</span>
                   </label>
+                  <EsignConsentLine text={consentText} checkbox={{ checked: consented, onChange: setConsented }} />
                 </div>
               </LienReleaseStepRow>
 
@@ -729,10 +763,11 @@ export function GcBuildingPayAppWindow({
                     {final ? withBold(w('askAllHeld'), money(net)) : withBold(w('askHolds', { pct: sow.retainagePct }), money(net))}
                   </div>
                   <div>
-                    <Btn kind="primary" disabled={!ready || !onSend} onClick={send}>
+                    <Btn kind="primary" disabled={!ready || !onSend || !consented || sending} onClick={send}>
                       {w('sendTo')}
                     </Btn>
                   </div>
+                  {sendProblem && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{sendProblem}</span>}
                 </div>
               </LienReleaseStepRow>
             </div>

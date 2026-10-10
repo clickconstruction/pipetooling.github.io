@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from 'react'
 import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
-import { LienWaiverFootPreview } from '../jobs/LienWaiverFootPreview'
 import { esignConsentText } from '../../lib/esignConsent'
 import { sowMoney } from '../../lib/gc/bids'
 import { sowContractSum, tradeChangesFor } from '../../lib/gc/building'
@@ -20,6 +19,7 @@ import { Btn, Chip, input } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcBuildingPayAppDoor } from './GcTradePortalPayApp'
+import { TradeWaiverPaperView } from './GcTradeWaiverPaper'
 import { PortalBlock } from './GcTradePortalUi'
 
 /**
@@ -514,30 +514,7 @@ function AskRfi({ packageId, none }: { packageId: string; none: boolean }) {
   )
 }
 
-/** The waiver as the Release of Lien window draws its paper: the form's title, its paragraphs and the foot to sign on. */
+/** The unconditional waiver as the app's paper (`GcTradeWaiverPaper.tsx`), the name on its foot as it is typed. */
 function WaiverPaper({ draw, project, company, signer, today }: { draw: Draw; project: GcProject; company: string; signer: string; today: string }) {
-  const paper = tradeWaiverPaper(draw, project, company, signer, today)
-  return (
-    <div
-      data-trade-waiver-paper={paper.formType}
-      style={{
-        background: 'var(--surface)',
-        color: 'var(--text-base)',
-        border: `1px solid ${HAIR}`,
-        borderRadius: 4,
-        padding: '1rem 1.1rem',
-        fontFamily: "Georgia, 'Times New Roman', serif",
-        fontSize: '0.8125rem',
-        lineHeight: 1.7,
-      }}
-    >
-      <p style={{ textAlign: 'center', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 0.9em' }}>{paper.title}</p>
-      {paper.paragraphs.map((text, i) => (
-        <p key={i} style={{ margin: '0 0 0.7em' }}>
-          {text}
-        </p>
-      ))}
-      <LienWaiverFootPreview foot={paper.foot} />
-    </div>
-  )
+  return <TradeWaiverPaperView paper={tradeWaiverPaper(draw, project, company, signer, today)} />
 }

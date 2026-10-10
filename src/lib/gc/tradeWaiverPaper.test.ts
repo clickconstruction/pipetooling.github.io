@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { buildLienWaiverParagraphs, lienWaiverTitle } from '../jobsDocuments/lienWaiverRelease'
-import { tradeWaiverPaper } from './tradeWaiverPaper'
+import { tradePayAppWaiverPaper, tradeWaiverPaper } from './tradeWaiverPaper'
 import type { Draw } from './types'
 
 const draw = (change: Partial<Draw> = {}): Draw => ({
@@ -55,5 +55,23 @@ describe('the trade’s unconditional waiver on the app’s paper', () => {
     expect(paper.formType).toBe('unconditional_final')
     expect(paper.title).toBe('Unconditional Waiver and Release on Final Payment')
     expect(paper.paragraphs.join(' ')).toContain('final payment of $4,860.00')
+  })
+})
+
+describe('the conditional waiver a pay application signs (P5c-3c-ii)', () => {
+  it('fills the progress form on our check for what it asks, through its period', () => {
+    const paper = tradePayAppWaiverPaper({ final: false, amount: 5248.8, periodTo: '2026-10-05' }, job, 'Bright Line Electric', 'Dana Ortiz', '2026-10-08')
+    expect(paper.formType).toBe('conditional_progress')
+    expect(paper.title).toBe('Conditional Waiver and Release on Progress Payment')
+    expect(paper.paragraphs[0]).toBe(
+      'Upon receipt by the undersigned of a check from Click Construction in the sum of $5,248.80 payable to Bright Line Electric and when the check has been properly endorsed and has cleared the bank, this document shall become effective to waive and release any lien, stop payment notice, or bond right the undersigned has on the project described as:',
+    )
+    expect(paper.paragraphs[2]).toContain('through: October 5, 2026')
+  })
+
+  it('fills the final form on the final pay application', () => {
+    const paper = tradePayAppWaiverPaper({ final: true, amount: 4860, periodTo: '2026-11-02' }, job, 'Bright Line Electric', 'Dana Ortiz', '2026-11-03')
+    expect(paper.formType).toBe('conditional_final')
+    expect(paper.paragraphs.join(' ')).toContain('This is the final payment.')
   })
 })
