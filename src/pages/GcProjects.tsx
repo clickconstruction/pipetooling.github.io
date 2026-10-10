@@ -101,6 +101,7 @@ import { GcOurNumber } from '../components/gc/GcOurNumber'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
+import { loadCompanyPaperEntries, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
 import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
@@ -419,6 +420,18 @@ export default function GcProjects() {
   const [companyId, setCompanyId] = useState<string | null>(null)
   const companyOpener: CompanyOpener | null = canOpenGcProjects(role) && board ? { openPartner: setCompanyId } : null
   const openCompany = companyId && board ? (board.partners.find((p) => p.id === companyId) ?? null) : null
+  // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
+  const [paperEntries, setPaperEntries] = useState<CompanyPaperEntries | null>(null)
+  useEffect(() => {
+    if (!openCompany || !canUseGcBoardWrites(role) || paperEntries) return
+    let live = true
+    loadCompanyPaperEntries()
+      .then((e) => live && setPaperEntries(e))
+      .catch(() => live && setPaperEntries({ msa: null, w9: null }))
+    return () => {
+      live = false
+    }
+  }, [openCompany, role, paperEntries])
   const partnerWrites: TradePartnerWrites = {
     addCompany: async (draft) => {
       await addGcCompany(draft)
@@ -1454,6 +1467,24 @@ export default function GcProjects() {
           onClose={() => setCompanyId(null)}
           // Their portal stays a dev's until the trade wave: its links' table is dev only (door 2).
           portal={role === 'dev' ? <GcTheirPortal companyId={openCompany.id} /> : undefined}
+          // Its papers' sends and certificate (B6-b-ii): the Board's writes (canUseGcBoardWrites, O9), as B6-b-i's functions
+          // are a dev's today. Each reads the board again.
+          papers={
+            canUseGcBoardWrites(role)
+              ? {
+                  entries: paperEntries,
+                  onSend: async (step, by, note) => {
+                    const outcome = await sendCompanyPaper({ state: board, partner: openCompany, step, by, note, lang: langs[openCompany.id] ?? 'en', entries: paperEntries ?? { msa: null, w9: null } })
+                    if (outcome.ok || outcome.recorded) await refreshBoard()
+                    return outcome
+                  },
+                  onRecordInsurance: async (expiresOn, url) => {
+                    await recordCompanyInsurance(openCompany.id, expiresOn, url)
+                    await refreshBoard()
+                  },
+                }
+              : undefined
+          }
           onOpenProject={(projectId) => {
             setCompanyId(null)
             openProjectCard(projectId)

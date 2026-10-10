@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { GcCompanyWindow } from './GcCompanyWindow'
+import { GcCompanyWindow, type CompanyPapersDoor } from './GcCompanyWindow'
 import { PartnerName } from './GcPartnerName'
 import { GcCompanyOpenerContext } from './gcCompanyOpener'
 import { boardStateFromRows, type BoardRows } from '../../lib/gc/boardRows'
 import { clinicBoardRows } from '../../lib/gc/boardTestRows'
+import { paperDayChoices } from '../../lib/gc/paperSend'
+import type { PaperSendOutcome } from '../../lib/gc/papersIo'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
 installDomShims()
@@ -68,16 +70,17 @@ describe('GcCompanyWindow', () => {
     await within(dialog).findByText('That did not save.')
   })
 
-  it('shows their portal when the page passes it, and no such section when it does not', () => {
+  it('shows their portal on its own tab when the page passes it, and no such tab when it does not', () => {
     const state = boardStateFromRows(rows())
     const partner = state.partners.find((p) => p.id === 'lonestar')!
     const { unmount } = render(<GcCompanyWindow state={state} partner={partner} lang="en" onLanguage={vi.fn()} onClose={vi.fn()} onOpenProject={() => undefined} portal={<p>The link is on.</p>} />)
     const dialog = screen.getByRole('dialog', { name: 'Lonestar Earthworks' })
-    expect(within(dialog).getByText('Their portal')).toBeTruthy()
+    expect(within(dialog).queryByText('The link is on.')).toBeNull()
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Their portal' }))
     expect(within(dialog).getByText('The link is on.')).toBeTruthy()
     unmount()
     const { dialog: plain } = open('lonestar')
-    expect(within(plain).queryByText('Their portal')).toBeNull()
+    expect(within(plain).queryByRole('tab', { name: 'Their portal' })).toBeNull()
   })
 
   it('closes on Escape and on its close button', () => {
@@ -103,5 +106,97 @@ describe('PartnerName', () => {
     expect(screen.getByText('Plain Co').tagName).toBe('STRONG')
     fireEvent.click(screen.getByRole('button', { name: 'Linked Co' }))
     await waitFor(() => expect(onOpen).toHaveBeenCalledWith('linked'))
+  })
+})
+
+describe('GcCompanyWindow · Documents (B6-b-ii)', () => {
+  /** Hillside: no paper on file and nothing asked yet. The Book has its W-9 form and no master services agreement. */
+  function openDocs(over: { papers?: Partial<CompanyPapersDoor> | null; outcome?: PaperSendOutcome } = {}) {
+    const state = boardStateFromRows(rows())
+    const partner = state.partners.find((p) => p.id === 'hillside')!
+    const onSend = vi.fn((): Promise<PaperSendOutcome> => Promise.resolve(over.outcome ?? { ok: true, to: ['Dee Park'], emailed: true }))
+    const onRecordInsurance = vi.fn(() => Promise.resolve())
+    const onClose = vi.fn()
+    const papers = over.papers === null ? undefined : { entries: { msa: null, w9: 'entry-w9' }, onSend, onRecordInsurance, ...over.papers }
+    render(<GcCompanyWindow state={state} partner={partner} lang="en" onLanguage={vi.fn()} onClose={onClose} onOpenProject={() => undefined} {...(papers ? { papers } : {})} at={{ tab: 'documents' }} />)
+    const dialog = screen.getByRole('dialog', { name: partner.company })
+    const row = (key: string) => within(dialog.querySelector(`[data-gc-doc="${key}"]`) as HTMLElement)
+    return { state, onSend, onRecordInsurance, onClose, dialog, row }
+  }
+
+  it('counts what is missing on its tab, and shows each company paper with where it stands', () => {
+    const { dialog, row } = openDocs()
+    expect(within(dialog).getByRole('tab', { name: /^Documents · \d+ to get$/ }).getAttribute('aria-selected')).toBe('true')
+    expect(row('msa').getByText('not sent')).toBeTruthy()
+    expect(row('insurance').getByText('none on file')).toBeTruthy()
+    expect(row('w9').getByText('none on file')).toBeTruthy()
+  })
+
+  it('shows the master agreement waiting on the agreement, with no send, until the Contract Book has it', () => {
+    const { row } = openDocs()
+    expect(row('msa').getByText('Waiting on the agreement')).toBeTruthy()
+    expect(row('msa').queryByRole('button')).toBeNull()
+  })
+
+  it('asks for the W-9 with its email shown as they get it, then says who it went to', async () => {
+    const { state, dialog, row, onSend } = openDocs()
+    fireEvent.click(row('w9').getByRole('button', { name: 'Ask for it' }))
+    const send = within(dialog.querySelector('[data-gc-paper-send="w9"]') as HTMLElement)
+    expect(send.getByText('Your W-9 for Click Construction')).toBeTruthy()
+    expect(send.getByText('Read and sign')).toBeTruthy()
+    fireEvent.change(send.getByLabelText('Your line, added to the email'), { target: { value: 'Thank you.' } })
+    expect(within(dialog.querySelector('[data-gc-paper-email]') as HTMLElement).getByText('Thank you.')).toBeTruthy()
+    fireEvent.click(send.getByRole('button', { name: 'Send the ask' }))
+    await waitFor(() => expect(within(dialog).getByRole('status').textContent).toBe('Sent to Dee Park.'))
+    expect(onSend).toHaveBeenCalledWith(expect.objectContaining({ paper: 'w9', mode: 'first' }), paperDayChoices(state.today)[1]!.on, 'Thank you.')
+    expect(dialog.querySelector('[data-gc-paper-send]')).toBeNull()
+  })
+
+  it('says when a send is on record and its email did not go, so a reminder tries again', async () => {
+    const { dialog, row } = openDocs({ outcome: { ok: false, recorded: true, why: 'No one at the company gets this kind of email.' } })
+    fireEvent.click(row('insurance').getByRole('button', { name: 'Ask for it' }))
+    fireEvent.click(within(dialog.querySelector('[data-gc-paper-send="insurance"]') as HTMLElement).getByRole('button', { name: 'Send the ask' }))
+    await waitFor(() => expect(within(dialog).getByRole('status').textContent).toBe('On record, the email did not go: No one at the company gets this kind of email. Send the reminder to try again.'))
+  })
+
+  it('keeps the send open with the words when nothing went on record', async () => {
+    const { dialog, row } = openDocs({ outcome: { ok: false, recorded: false, why: 'Spanish emails wait until a native speaker reads them. Send it in English.' } })
+    fireEvent.click(row('w9').getByRole('button', { name: 'Ask for it' }))
+    const send = within(dialog.querySelector('[data-gc-paper-send="w9"]') as HTMLElement)
+    fireEvent.click(send.getByRole('button', { name: 'Send the ask' }))
+    await waitFor(() => expect(send.getByRole('alert').textContent).toContain('Spanish emails wait'))
+  })
+
+  it('files a certificate that came by email, refusing in words without its day or its link', async () => {
+    const { dialog, row, onRecordInsurance } = openDocs()
+    fireEvent.click(row('insurance').getByRole('button', { name: 'Record their insurance' }))
+    const form = within(dialog.querySelector('[data-gc-record-insurance="hillside"]') as HTMLElement)
+    fireEvent.click(form.getByRole('button', { name: 'File the certificate' }))
+    expect(form.getByRole('alert').textContent).toBe('Say the day their insurance runs out.')
+    fireEvent.change(form.getByLabelText('The day their insurance runs out'), { target: { value: '2027-04-30' } })
+    fireEvent.change(form.getByLabelText('Link to the certificate'), { target: { value: 'drive.google.com/file/d/coi' } })
+    fireEvent.click(form.getByRole('button', { name: 'File the certificate' }))
+    expect(form.getByRole('alert').textContent).toBe('Paste the link to their certificate. It starts with https.')
+    fireEvent.change(form.getByLabelText('Link to the certificate'), { target: { value: 'https://drive.google.com/file/d/coi' } })
+    fireEvent.click(form.getByRole('button', { name: 'File the certificate' }))
+    await waitFor(() => expect(within(dialog).getByRole('status').textContent).toBe('Filed. Hillside Excavation’s insurance is good to Apr 30.'))
+    expect(onRecordInsurance).toHaveBeenCalledWith('2027-04-30', 'https://drive.google.com/file/d/coi')
+  })
+
+  it('is read only without the papers’ presses: no step on any row', () => {
+    const { dialog } = openDocs({ papers: null })
+    expect(within(dialog).queryByRole('button', { name: 'Ask for it' })).toBeNull()
+    expect(within(dialog).queryByRole('button', { name: 'Record their insurance' })).toBeNull()
+    expect(within(dialog).queryByText('Waiting on the agreement')).toBeNull()
+  })
+
+  it('steps out of a send on Escape before it closes the window', () => {
+    const { dialog, row, onClose } = openDocs()
+    fireEvent.click(row('w9').getByRole('button', { name: 'Ask for it' }))
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(dialog.querySelector('[data-gc-paper-send]')).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.keyDown(window, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalled()
   })
 })
