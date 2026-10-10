@@ -34,3 +34,10 @@ export function find(state: GcState, projectId: string, packageId: string, invit
   const partner = invite ? partnerById(state, invite.partnerId) : undefined
   return { project, pkg, invite, partner }
 }
+
+/** How many invited trade partners have opened the newest set. */
+export function plansReach(project: GcProject): { have: number; of: number } {
+  const rev = currentRev(project)
+  const invites = project.packages.flatMap((p) => p.invites).filter((i) => i.status !== 'declined')
+  return { have: invites.filter((i) => i.seenRev === rev).length, of: invites.length }
+}
