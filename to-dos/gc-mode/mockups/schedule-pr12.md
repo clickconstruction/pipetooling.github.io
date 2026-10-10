@@ -2,7 +2,7 @@
 name: "The schedule's PR 12: before the job, the rough while we bid, templates, a schedule they hand us and their dates to meet"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 12, and What if and before the job (the rough and the templates); mockups/G-44.md (templates), G-45.md (the rough), G-137.md (a schedule they hand us), G-145.md (their dates to meet only); GANTT_FEATURES.md G-44, G-45, G-137, G-145
 branch: the plan on claude/gc-schedule-pr12-plan (from origin/spike/gc-mode at 3a1fad434); the code from origin/main in three cuts, no migration
-status: plan 2026-10-10 by gc 1 at the lead's ask, checked against main at a699ca854. For gc 4's co-sign (the Schedule lane's holder) and gc 2's nod on the two Board seams (calls 5 and 6), then the lead's read-back. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 1 at the lead's ask, checked against main at a699ca854. Amendment 1 (2026-10-10): gc 2 nodded calls 5 and 6 at their picks, with four conditions written in. For gc 4's co-sign (the Schedule lane's holder), then the lead's read-back. Nothing cut or claimed.
 ---
 
 # The schedule's PR 12: before the job
@@ -100,8 +100,16 @@ press kernels beside 9a's and 9b's in `scheduleWindow.ts`; and two seams with th
      live, which is true.
 
    *Other way:* the Board's `gc_mark_bid_sent` takes the kept weeks from the client in one transaction: a migration on
-   the Board's function, and the client works the weeks out either way. gc 2's nod either way, since both touch the
-   outcome presses.
+   the Board's function, and the client works the weeks out either way.
+
+   **gc 2's nod (amendment 1): the pick.** There is no migration on `gc_mark_bid_sent`, and it and the award guard stay
+   as they are. gc 2's three conditions:
+   - The keep runs only after the outcome press resolves, and it never throws into the handler. The outcome's own words
+     and the board's reload come first. The keep's one line sits beside the strip and replaces neither.
+   - A second **We sent our bid** does whatever `keepRough` says for a re-keep. Nothing is written when nothing changed:
+     `keepRoughAt` writes only when `keepRough`'s result differs from the rough it read.
+   - The edit stays inside the two outcome handlers, so a small hunk rebases clean under B2b-iii and later, which also
+     touch `GcProjects.tsx`.
 
 6. **Weeks to build on Our number: in 12b, with gc 2's nod.**
    - `GcOurNumber.tsx`'s header says *Weeks to build waits for the schedule's kernels on main*. They are there:
@@ -115,6 +123,13 @@ press kernels beside 9a's and 9b's in `scheduleWindow.ts`; and two seams with th
 
    *Other way:* the Board lane adds it in its own PR, with 12b exporting the read. Either way it is one stat and one
    line in the Board's file.
+
+   **gc 2's nod (amendment 1): the pick.**
+   - 12b adds the stat and the line with **Copy**, and drops the header's *waits for the schedule's kernels on main* in
+     the same PR.
+   - Our number's money gate stays as it is. The page lays the roughs over the board for the money team only.
+   - The new rows go after Our number's existing lines, not between them, so the price card's tests keep their order.
+   - Nothing in B2b touches `GcOurNumber.tsx`. 12b's PR number goes to gc 2 when it opens.
 
 7. **A file read in the browser, not kept.**
    - `readScheduleFile` reads the CSV or XML in the page. Nothing is uploaded.
@@ -229,3 +244,5 @@ Three ways it could be better:
 
 - 2026-10-10: planned by gc 1 at the lead's ask, from main at a699ca854 and the spike at 3a1fad434. Not cut, not claimed.
   For gc 4's co-sign and gc 2's nod on calls 5 and 6, then the lead's read-back.
+- 2026-10-10, amendment 1: gc 2 nodded calls 5 and 6 at their picks, with three conditions on the keep and one on where
+  Our number's new rows go. Each is written into its call.
