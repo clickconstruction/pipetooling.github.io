@@ -2,16 +2,16 @@
 name: "Decomposition residuals: the Workbench block, the Workflow page's leftovers"
 number: 21
 group: residual
-status: the two trains closed 2026-09-17 (Stages v2.3530–v2.3549; Pricing/Labor v2.3546, v2.3547, v2.3550, v2.3563, v2.3564, v2.3565) · the picker sweep shipped v2.4034 · the Workflow train (#46 row 9, v2.3907–v2.4081) closed 2026-09-28 with four leftovers added here · re-checked 2026-09-29: the queue card's roll-up is done (this sweep) · 2026-10-09: the contact modal moved v2.5094, the refused-delete message v2.5103, the error banner v2.5108 · the WorkflowStageCard is the one Workflow leftover still open · what is left is by decision, not by shortfall
+status: the two trains closed 2026-09-17 (Stages v2.3530–v2.3549; Pricing/Labor v2.3546, v2.3547, v2.3550, v2.3563, v2.3564, v2.3565) · the picker sweep shipped v2.4034 · the Workflow train (#46 row 9, v2.3907–v2.4081) closed 2026-09-28 with four leftovers added here · re-checked 2026-09-29: the queue card's roll-up is done (this sweep) · 2026-10-09: the contact modal moved v2.5094, the refused-delete message v2.5103, the error banner v2.5108, the Stages map's optional component settled v2.5109 · the WorkflowStageCard is the one Workflow leftover still open · what is left is by decision, not by shortfall
 summary: >
   What the two decomposition trains left on purpose: the Pricing tab's Workbench block (P2 —
   1,975 lines over 77 state values, re-mapped into nine blocks in the architecture map, not
   worth cutting until a Workbench feature train needs a smaller file), the L4 box components (18
-  props for 253 lines — the formulas were the duplication and they are one kernel now), the
-  optional renderStagesFieldAndBillingLines component on the Stages map, and the Workflow page
-  train's separate WorkflowStageCard. The rest of the Workflow leftovers is done: the contact
-  modal (v2.5094), the queue-card roll-up and two behaviour fixes (a refused projection delete
-  says why, v2.5103; an action's error is a banner, not the whole page, v2.5108).
+  props for 253 lines — the formulas were the duplication and they are one kernel now), and the
+  Workflow page train's separate WorkflowStageCard. The rest is done: the Stages map's optional
+  renderStagesFieldAndBillingLines (v2.5109), the contact modal (v2.5094), the queue-card
+  roll-up and two behaviour fixes (a refused projection delete says why, v2.5103; an action's
+  error is a banner, not the whole page, v2.5108).
 next: >
   Nothing scheduled. The Workbench cut starts as PR 1 of the next Workbench feature train, from
   the nine-block table in the map's P2 dossier. The WorkflowStageCard waits for a feature on the
