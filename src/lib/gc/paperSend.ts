@@ -93,7 +93,7 @@ export function paperStep(state: GcState, partner: Partner, docKey: string): Pap
     // good; a W-9 they started in their portal, with no send of ours, says so.
     const portal =
       paper === 'insurance' && partner.coiReceived
-        ? `Came in from their portal ${shortDate(partner.coiReceived.sentOn)}. It counts once you mark it good.`
+        ? `Came in from their portal ${shortDate(partner.coiReceived.sentOn)}. It counts once it is marked good.`
         : paper === 'w9' && sends.length === 0 && partner.w9SentOn
           ? `Started in their portal ${shortDate(partner.w9SentOn)}.`
           : null

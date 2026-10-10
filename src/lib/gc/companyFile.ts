@@ -54,6 +54,15 @@ function sentWordsFor(state: GcState, partnerId: string, key: string): string | 
   return null
 }
 
+/** Whether a link is an https URL, the only kind a Documents row opens. A string that is no URL is not. */
+export function isHttpsLink(href: string): boolean {
+  try {
+    return new URL(href).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 /**
  * A trade's file: its company papers, then each job's papers, then its quotes. `links.coiReceived` is the Drive link of a
  * certificate it sent from its portal, read from its upload (P5b-2); the board's paper states never carry a link.
@@ -83,14 +92,15 @@ export function partnerDocuments(state: GcState, partner: Partner, links: { coiR
   // the insurance row above still reads as owed and this one is not counted as to get.
   if (partner.coiReceived) {
     const r = partner.coiReceived
-    const link = links.coiReceived ? { link: { href: links.coiReceived, label: 'Open the certificate' } } : {}
+    // Only an https link is drawn: the row renders whatever the upload's column holds (gc 2).
+    const link = links.coiReceived && isHttpsLink(links.coiReceived) ? { link: { href: links.coiReceived, label: 'Open the certificate' } } : {}
     company.push({
       key: DOC_KEYS.insuranceReceived,
       // The paper is stored as "COI (from their portal)"; the row reads without the parentheses the guides cannot quote.
       title: 'Certificate from their portal',
       status: 'info',
       statusWords: 'waiting for your look',
-      meta: `Came in ${shortDate(r.sentOn)}${r.expires ? ` · good to ${shortDate(r.expires)}` : ''}. It counts once you mark it good.`,
+      meta: `Came in ${shortDate(r.sentOn)}${r.expires ? ` · good to ${shortDate(r.expires)}` : ''}. It counts once it is marked good.`,
       ...link,
     })
   }

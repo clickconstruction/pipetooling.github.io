@@ -145,13 +145,20 @@ describe('GcCompanyWindow · Documents (B6-b-ii)', () => {
     const r = row('insurance-received')
     expect(r.getByText('Certificate from their portal')).toBeTruthy()
     expect(r.getByText('waiting for your look')).toBeTruthy()
-    expect(r.getByText(/Came in Oct 9 · good to Oct 9\. It counts once you mark it good\./)).toBeTruthy()
+    expect(r.getByText(/Came in Oct 9 · good to Oct 9\. It counts once it is marked good\./)).toBeTruthy()
     expect(r.getByRole('link', { name: 'Open the certificate' }).getAttribute('href')).toBe('https://drive.google.com/file/d/up/view')
     // The insurance row still reads as owed until it is marked good.
     expect(row('insurance').getByText('none on file')).toBeTruthy()
     fireEvent.click(r.getByRole('button', { name: 'Mark it good' }))
     await waitFor(() => expect(onMarkCoiGood).toHaveBeenCalledWith('paper-waiting'))
     expect(await within(dialog).findByText('Marked good. Their insurance counts now, good to Oct 9.')).toBeTruthy()
+  })
+
+  it('draws the certificate’s link only when it is https (gc 2)', () => {
+    const waiting = { coiReceived: { id: 'paper-waiting', sentOn: '2026-10-09', expires: '2027-10-09' } }
+    const { row } = openDocs({ partner: waiting, coiLink: 'javascript:alert(1)' })
+    expect(row('insurance-received').getByText('Certificate from their portal')).toBeTruthy()
+    expect(row('insurance-received').queryByRole('link')).toBeNull()
   })
 
   it('shows the waiting certificate with no Mark it good to a reader without the presses', () => {

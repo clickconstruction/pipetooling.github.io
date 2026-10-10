@@ -45,7 +45,7 @@ describe('a paper its portal started or sent (P5b-2)', () => {
     const state = initialGcState()
     const p = { ...partner(state, 'pecanvalley'), coiReceived: { id: 'paper-1', sentOn: '2026-10-01', expires: '2027-10-01' } }
     const s = paperStep(state, p, 'insurance')
-    expect(s).toMatchObject({ mode: 'first', verb: 'Ask for it', history: 'Came in from their portal Oct 1. It counts once you mark it good.' })
+    expect(s).toMatchObject({ mode: 'first', verb: 'Ask for it', history: 'Came in from their portal Oct 1. It counts once it is marked good.' })
   })
 
   it('reads a W-9 started in the portal, with no send of ours, as started there', () => {
