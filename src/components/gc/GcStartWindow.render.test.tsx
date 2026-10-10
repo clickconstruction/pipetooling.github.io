@@ -141,6 +141,25 @@ describe('GcStartWindow', () => {
     expect(within(dialog).queryByRole('button', { name: 'Send again' })).toBeNull()
   })
 
+  it('started without Start anyway and our contract unsigned: it can still be sent or marked signed (the walk, 10-11)', async () => {
+    // A job started before Start anyway existed (started_on set straight), as the test project was on 10-08.
+    const state = stateOf(readyRows({ started_on: '2026-10-08', owner_contract_signed_on: null }))
+    const { p, openCustomer, dialog } = open({ ...state, projects: state.projects.map((x) => ({ ...x, stage: 'building' as const })) })
+    const contract = dialog.querySelector('[data-gc-start-owner="ownerContract"]') as HTMLElement
+    fireEvent.click(within(contract).getByRole('button', { name: 'Send to sign' }))
+    expect(openCustomer).toHaveBeenCalledWith('c1', { tab: 'documents', doc: 'contract-p1', send: true })
+    fireEvent.click(within(contract).getByRole('button', { name: 'Mark it signed' }))
+    await waitFor(() => expect(p?.signContract).toHaveBeenCalledWith(true))
+  })
+
+  it('started without Start anyway and our contract signed: no Undo, as before', () => {
+    const state = stateOf(readyRows({ started_on: '2026-10-08' }))
+    const { dialog } = open({ ...state, projects: state.projects.map((x) => ({ ...x, stage: 'building' as const })) })
+    const contract = dialog.querySelector('[data-gc-start-owner="ownerContract"]') as HTMLElement
+    expect(within(contract).queryByRole('button', { name: 'Undo' })).toBeNull()
+    expect(within(contract).queryByRole('button', { name: /Send to sign|Remind them/ })).toBeNull()
+  })
+
   it('names a company the start email missed, with why', async () => {
     const start = vi.fn(() => Promise.resolve({ told: [], missed: [{ company: 'Lonestar Earthworks', why: 'No one at the company has an email for this kind of message. Call them.' }] }))
     const { dialog } = open(stateOf(readyRows()), presses({ start }))
