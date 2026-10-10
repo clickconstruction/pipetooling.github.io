@@ -1,111 +1,83 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for Bring in their schedule (the Gantt's G-137, `to-dos/gc-mode/mockups/G-137.md`):
- * the first-draft card's door, the window reading Studio Ocotillo's file for Helotes Dental Office,
- * what it found shown before anything is written with the rows to look at first, the office placing
- * a row, Make the schedule from it drawing the chart through a real reducer, and the doors shut.
+ * GC mode, the real build, the schedule's PR 12c: Bring in their schedule (G-137) on main's test state, the window
+ * rendered alone with its press stood in for. Ported from the prototype's render test (branch spike/gc-mode,
+ * `GcScheduleImport.render.test.tsx`), whose sample file is the spike's: here a small Project file is written in the
+ * test, and the words it should read are worked out by the same kernels. The window's doors are the Schedule window's.
  */
-import { useReducer } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { GcBuildingScheduleTab } from './GcBuildingSchedule'
-import { initialGcState } from '../../lib/gcMode/gcFixture'
-import { gcReducer } from '../../lib/gcMode/gcReducer'
-import { importLines } from '../../lib/gcMode/gcScheduleImport'
-import { HELOTES_SAMPLE_FILE, HELOTES_SAMPLE_XML } from '../../lib/gcMode/gcScheduleImportSample'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { GcScheduleImport } from './GcScheduleImport'
+import { IMPORT_REPLACES, importHoldsWords, readScheduleFile, type ScheduleFileReading } from '../../lib/gc/schedule/import'
+import { initialGcState } from '../../lib/gc/schedule/testState'
+import type { ProjectSchedule } from '../../lib/gc/schedule/types'
 import { plainWordsFailures } from '../../lib/plainWords'
-import type { GcState } from '../../lib/gcMode/gcTypes'
 
 afterEach(cleanup)
 
-function Shell({ id, initial }: { id: string; initial?: GcState }) {
-  const [state, dispatch] = useReducer(gcReducer, initial ?? initialGcState())
-  const project = state.projects.find((p) => p.id === id)!
-  return (
-    <>
-      <GcBuildingScheduleTab state={state} project={project} dispatch={dispatch} />
-      <output data-testid="log">{state.log[0]?.text}</output>
-    </>
-  )
-}
+const s = initialGcState()
+const helotes = s.projects.find((p) => p.id === 'helotes')!
+const task = (uid: number, name: string, extra: string) => `<Task><UID>${uid}</UID><Name>${name}</Name><OutlineLevel>1</OutlineLevel>${extra}</Task>`
+const dates = (start: string, finish: string) => `<Start>${start}T08:00:00</Start><Finish>${finish}T17:00:00</Finish>`
+/** Their file: two of our lines by name, one that is not ours, and one date to meet. */
+const XML = `<?xml version="1.0"?><Project xmlns="http://schemas.microsoft.com/project"><MinutesPerDay>480</MinutesPerDay><Tasks>
+  ${task(1, 'Framing', dates('2026-11-02', '2026-11-13'))}
+  ${task(2, 'Lighting', `${dates('2026-11-16', '2026-11-20')}<PredecessorLink><PredecessorUID>1</PredecessorUID><Type>1</Type><CrossProject>0</CrossProject><LinkLag>0</LinkLag><LagFormat>7</LagFormat></PredecessorLink>`)}
+  ${task(3, 'Dental equipment, by owner', dates('2026-12-01', '2026-12-04'))}
+  ${task(4, 'Substantial completion', `<Milestone>1</Milestone>${dates('2027-01-29', '2027-01-29')}`)}
+</Tasks></Project>`
 
 const dialog = () => screen.getByRole('dialog', { name: 'Bring in a schedule' })
-const helotesLine = (label: string) => `line:${importLines(initialGcState().projects.find((p) => p.id === 'helotes')!).find((l) => l.label === label)?.lineId}`
-
-async function chooseFile(text: string, name: string) {
+function open({ replacing = false, onMake = vi.fn(async () => {}), onClose = vi.fn() } = {}) {
+  render(<GcScheduleImport state={s} project={helotes} replacing={replacing} defaultStart="2026-11-02" onMake={onMake} onClose={onClose} />)
+  return { onMake, onClose }
+}
+async function choose(text: string, name: string) {
   fireEvent.change(within(dialog()).getByLabelText('Choose a file'), { target: { files: [new File([text], name, { type: 'application/xml' })] } })
 }
 
-async function openWithSample() {
-  render(<Shell id="helotes" />)
-  fireEvent.click(screen.getByRole('button', { name: 'Bring in their schedule' }))
-  await chooseFile(HELOTES_SAMPLE_XML, HELOTES_SAMPLE_FILE)
-  await within(dialog()).findByText('What it holds: 13 activities, 14 waits between them and 4 dates.')
-}
-
-describe('Bring in their schedule (G-137)', () => {
-  it('is a second way in on the first-draft card of a job with no schedule', () => {
-    render(<Shell id="helotes" />)
-    expect(screen.getByText('Or start from the schedule the customer or the architect handed us.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'Draw a first draft' })).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Bring in their schedule' }))
-    expect(within(dialog()).getByText('Nothing is sent to the trades or the customer.')).toBeTruthy()
-    expect(within(dialog()).queryByText('It takes the place of the schedule drawn now. The changes made to it are lost.')).toBeNull()
+describe('Bring in their schedule (PR 12c, G-137)', () => {
+  it('reads their file and shows what it holds before anything is written, in a first-timer’s words', async () => {
+    const { onMake } = open()
+    await choose(XML, 'helotes.xml')
+    const reading = readScheduleFile(XML, 'helotes.xml') as ScheduleFileReading
+    expect(await within(dialog()).findByText(importHoldsWords(reading))).toBeTruthy()
+    expect(dialog().querySelectorAll('[data-import-row]')).toHaveLength(3)
+    expect(onMake).not.toHaveBeenCalled()
+    const sentences = [...dialog().querySelectorAll('div, span, strong')].filter((el) => el.children.length === 0).map((el) => el.textContent ?? '').filter(Boolean)
+    for (const sentence of sentences) expect(plainWordsFailures(sentence), sentence).toEqual([])
   })
 
-  it('shows what the file holds before anything is written: the rows with no place first, each with why we guessed it', async () => {
-    await openWithSample()
-    const d = dialog()
-    expect([...d.querySelectorAll('[data-import-row]')].slice(0, 3).map((r) => r.getAttribute('data-import-row'))).toEqual(['MEP rough-in', 'Casework install', 'Punch list'])
-    expect((within(d).getByLabelText('Where Underground plumbing goes') as HTMLSelectElement).value).toBe(helotesLine('Underground'))
-    expect((within(d).getByLabelText('Where Dental equipment, by owner goes') as HTMLSelectElement).value).toBe('out')
-    expect(within(d).getByText("rough is in Electrical's lines and in Plumbing's")).toBeTruthy()
-    expect(within(d).getByText('after MEP rough-in and HVAC ductwork')).toBeTruthy()
-    expect(within(d).getByText('3 of theirs are not placed. They stay out unless you pick a place.')).toBeTruthy()
-    expect(within(d).getByText('What it could not read: 2')).toBeTruthy()
-    expect(within(d).getByText('Our lines not in it: 10')).toBeTruthy()
-    expect(within(d).getByText('It takes the place of our own substantial completion.')).toBeTruthy()
-    expect(within(d).getAllByRole('checkbox').map((c) => (c as HTMLInputElement).checked)).toEqual([true, true, true, true])
-    // Nothing is written yet: the job still has no schedule, and the log is as it was.
-    expect(document.querySelector('[data-tour="gc-gantt-toolbar"]')).toBeNull()
-    expect(screen.getByTestId('log').textContent).not.toMatch(/^Drew the schedule/)
-    // Every sentence the window says is a first-timer's.
-    const sentences = [...d.querySelectorAll('div, span, strong')].filter((el) => el.children.length === 0).map((el) => el.textContent ?? '').filter(Boolean)
-    expect(sentences.length).toBeGreaterThan(20)
-    for (const s of sentences) expect(plainWordsFailures(s)).toEqual([])
+  it('Make the schedule from it sends the kernel’s schedule and its line naming the file, then closes', async () => {
+    const { onMake, onClose } = open()
+    await choose(XML, 'helotes.xml')
+    await within(dialog()).findByText(/^What it holds:/)
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Make the schedule from it' }))
+    await waitFor(() => expect(onMake).toHaveBeenCalledTimes(1))
+    const [schedule, words] = onMake.mock.calls[0] as unknown as [ProjectSchedule, string]
+    expect(schedule.activities.length).toBeGreaterThan(0)
+    expect(words).toMatch(/^Drew the schedule on Helotes Dental Office from .+ file helotes\.xml\./)
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1))
   })
 
-  it('takes the office’s picks, then Make the schedule from it draws the chart in one press', async () => {
-    await openWithSample()
-    const d = dialog()
-    fireEvent.change(within(d).getByLabelText('Who handed it'), { target: { value: 'Studio Ocotillo' } })
-    fireEvent.change(within(d).getByLabelText('Where MEP rough-in goes'), { target: { value: helotesLine('Rough in') } })
-    fireEvent.change(within(d).getByLabelText('Where Casework install goes'), { target: { value: helotesLine('Reception desk') } })
-    expect(within(d).getByText('1 of theirs is not placed. It stays out unless you pick a place.')).toBeTruthy()
-    expect(within(d).getByText('Our lines not in it: 8')).toBeTruthy()
-    expect(within(d).getByText('Lighting and Controls run into their final inspection. Look at them before Start.')).toBeTruthy()
-    fireEvent.click(within(d).getByRole('button', { name: 'Make the schedule from it' }))
-    expect(screen.queryByRole('dialog', { name: 'Bring in a schedule' })).toBeNull()
-    expect(document.querySelector('[data-tour="gc-gantt-toolbar"]')).toBeTruthy()
-    expect(screen.getByTestId('log').textContent).toBe("Drew the schedule on Helotes Dental Office from Studio Ocotillo's file helotes-schedule.xml. 11 of their activities are on our schedule, with 4 dates to meet. 8 of our lines were drawn as the first draft draws them.")
-    // A first draft nobody has walked or moved: the second door is there, and it says what it replaces.
-    fireEvent.click(screen.getByRole('button', { name: 'Bring in their schedule instead' }))
-    expect(within(dialog()).getByText('It takes the place of the schedule drawn now. The changes made to it are lost.')).toBeTruthy()
+  it('keeps the window open with the database’s words when the make is refused', async () => {
+    const { onClose } = open({ onMake: vi.fn(async () => Promise.reject(new Error('The schedule has moves with their reasons. They stay as they are.'))) })
+    await choose(XML, 'helotes.xml')
+    await within(dialog()).findByText(/^What it holds:/)
+    fireEvent.click(within(dialog()).getByRole('button', { name: 'Make the schedule from it' }))
+    expect((await within(dialog()).findByRole('alert')).textContent).toBe('The schedule has moves with their reasons. They stay as they are.')
+    expect(onClose).not.toHaveBeenCalled()
   })
 
-  it('says what to ask for when it cannot read a file', async () => {
-    render(<Shell id="helotes" />)
-    fireEvent.click(screen.getByRole('button', { name: 'Bring in their schedule' }))
-    await chooseFile('binary', 'helotes.mpp')
+  it('says what to ask for when it cannot read a file, and makes nothing', async () => {
+    open()
+    await choose('binary', 'helotes.mpp')
     expect((await within(dialog()).findByRole('alert')).textContent).toBe('Only its own program opens this file. Ask them to save it from Project or Primavera with Save as XML.')
     expect((within(dialog()).getByRole('button', { name: 'Make the schedule from it' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('has no door on Fair Oaks D, started Jul 1, nor while bidding', () => {
-    render(<Shell id="fairoaksd" />)
-    expect(screen.queryByRole('button', { name: /Bring in their schedule/ })).toBeNull()
-    cleanup()
-    render(<Shell id="boerne" />)
-    expect(screen.queryByRole('button', { name: /Bring in their schedule/ })).toBeNull()
+  it('says what it replaces when it takes the place of a draft', () => {
+    open({ replacing: true })
+    expect(within(dialog()).getByText(IMPORT_REPLACES)).toBeTruthy()
   })
 })

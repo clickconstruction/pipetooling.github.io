@@ -9,7 +9,8 @@
  * the job's own work's and a failed inspection's (PR 9a), and a split's, a join's and a new
  * baseline's (PR 9b), with a new wait as the reducer makes it. A pull's and days got back's lines (PR 9d) are the
  * reducer's too. A first draft from a template (PR 12a) draws as the reducer drew it, its line naming the template. The
- * rough while we bid (PR 12b) draws and keeps as the reducer did.
+ * rough while we bid (PR 12b) draws and keeps as the reducer did, and a schedule they hand us and their dates to meet
+ * (PR 12c) are made and taken as it did.
  */
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { addDays } from '../building'
@@ -24,11 +25,13 @@ import { daysBetween, pushAfter, pushedAfterWords } from './network'
 import { placeGuess, takesPlace } from './places'
 import { pullCountWords, type PullOffer } from './pullEarlier'
 import { keepRough } from './rough'
+import { importRefusal, importedSchedule } from './import'
+import { theirDatesLogWords, theirDatesRefusal, withTheirDates, type TheirDate } from './theirDates'
 import type { RecoveryOffer } from './recovery'
 import { draftSchedule, mondayOf } from './schedule'
 import { movedParts, partFacts, splitParts } from './splitBars'
 import { templatesOffered } from './templates'
-import type { ActivityPart, InspectionFailure, ProjectSchedule, RoughSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason, ScheduleWait, TemplateUse, WaitKind } from './types'
+import type { ActivityPart, InspectionFailure, ProjectSchedule, RoughSchedule, ScheduleActivity, ScheduleImport, ScheduleMilestone, ScheduleMove, ScheduleMoveReason, ScheduleWait, TemplateUse, WaitKind } from './types'
 import { nextWaitId, waitKind } from './waits'
 
 // ---------------------------------------------------------------------------------------------
@@ -128,6 +131,43 @@ export function roughKeepPress(project: GcProject): { kept: NonNullable<RoughSch
 export function roughToKeep(project: GcProject, today: string, at: 'bid' | 'award'): NonNullable<RoughSchedule['kept']> | null {
   if (!project.rough || project.rough.kept) return null
   return keepRough(project, today, at)?.kept ?? null
+}
+
+// ---------------------------------------------------------------------------------------------
+// A schedule they hand us, and their dates to meet (PR 12c, G-137 and G-145)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * A schedule a customer or the architect handed us made the job's schedule, as the prototype's reducer made it
+ * (`importSchedule`): through the first draft's own kernel (`importedSchedule`), the first schedule or one drawn before
+ * Start that nobody walked or moved (`importRefusal`). Its line in the log names the file and who handed it. Refused with
+ * no day work starts, and when nothing in it goes on the schedule.
+ */
+export function importPress(project: GcProject, imported: ScheduleImport): { schedule: ProjectSchedule; words: string } | { problem: string } {
+  const refusal = importRefusal(project)
+  if (refusal) return { problem: refusal }
+  if (!imported.workStarts) return { problem: 'Pick the day work starts.' }
+  const made = importedSchedule(project, imported)
+  if (made.kept === 0 && imported.dates.length === 0) return { problem: 'Nothing in it goes on the schedule yet. Pick where their activities go.' }
+  return { schedule: made.schedule, words: made.words }
+}
+
+/**
+ * Their dates to meet taken from a file (G-145), as the prototype's reducer took them (`takeTheirDates`): on a job being
+ * built with no what-if copy open, only the dates to meet change. Answers the dates to meet as they would be, which
+ * `takeTheirDates` reads to send each of ours by its id, and the line naming the file. Refused with nothing ticked, with
+ * no file or no one who handed it, and when a date cannot be taken as it is.
+ */
+export function theirDatesPress(project: GcProject, input: { file: string; from: string; dates: TheirDate[] }): { milestones: ScheduleMilestone[]; words: string } | { problem: string } {
+  const refusal = theirDatesRefusal(project)
+  if (refusal) return { problem: refusal }
+  if (input.dates.length === 0) return { problem: 'Tick a date to take it.' }
+  const file = input.file.trim()
+  const from = input.from.trim()
+  if (!file || !from) return { problem: 'Choose the file and who handed it.' }
+  const milestones = withTheirDates(project, input.dates)
+  if (!milestones) return { problem: 'One of the dates cannot be taken as it is. Pick again.' }
+  return { milestones, words: theirDatesLogWords(project, from, file, input.dates) }
 }
 
 // ---------------------------------------------------------------------------------------------

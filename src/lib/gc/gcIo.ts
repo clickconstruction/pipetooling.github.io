@@ -897,8 +897,11 @@ export async function setGcCompanyCoverage(companyId: string, address: string, m
   taken(await supabase.from('gc_companies').update({ address, max_miles: maxMiles }).eq('id', companyId).select('id').single(), 'save the address')
 }
 
-/** One line on an ask's story (the Board's B4-b): a call, a text or an email, with the day they promised the quote by. */
-export async function logGcAskContact(line: { companyId: string; inviteId: string; on: string; byName: string; how: 'call' | 'text' | 'email'; note: string; promisedBy: string | null }): Promise<void> {
+/**
+ * One line on an ask's story (the Board's B4-b): a call, a text or an email, with the day they promised the quote by. With
+ * no ask (`inviteId` null, B2b-iv), a line of the company's own, logged on its window's Activity.
+ */
+export async function logGcAskContact(line: { companyId: string; inviteId: string | null; on: string; byName: string; how: 'call' | 'text' | 'email'; note: string; promisedBy: string | null }): Promise<void> {
   taken(
     await supabase
       .from('gc_company_contacts')

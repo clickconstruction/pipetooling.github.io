@@ -1,28 +1,22 @@
 /**
- * GC mode, the real build, the schedule's PR 12c: their dates to meet only, onto a running job (G-145), ported from the GC
- * mode prototype (branch spike/gc-mode, `GcTheirDates.tsx`) with its words; the plan is
- * to-dos/gc-mode/mockups/schedule-pr12.md on that branch. The Milestones card's door on a job being built, and its
- * window: their file read by G-137's reader in the browser, each of their dates beside ours with the difference in days,
- * ticked by the office. Take sends one record (`theirDatesPress`, then `gc_schedule_their_dates`, refused whole) that
- * writes only the dates to meet. Nothing else moves and nothing is sent.
+ * GC mode design spike: their dates to meet only, onto a running job (G-145; the kernel is
+ * `gcTheirDates.ts`, the mock-up `to-dos/gc-mode/mockups/G-145.md`). The Milestones card's door on
+ * a job being built, and its window: their file read by G-137's reader, each of their dates beside
+ * ours with the difference in days, ticked by the office. Take sends one action that writes only the
+ * dates to meet. Nothing else moves and nothing is sent.
+ *
+ * The prototype's copy, forked to `.proto` when the schedule's PR 12c ported their dates' door and window to main at
+ * `GcTheirDates.tsx` (#5357); the prototype's schedule tab and its render test read this one.
  */
-import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent, type Dispatch } from 'react'
 import { createPortal } from 'react-dom'
-import { readScheduleFile, type ScheduleFileResult } from '../../lib/gc/schedule/import'
-import { theirDatesPress } from '../../lib/gc/schedule/scheduleWindow'
-import { differenceWords, rowNotes, theirDates, theirDatesRefusal, type TheirDate } from '../../lib/gc/schedule/theirDates'
-import type { ScheduleMilestone } from '../../lib/gc/schedule/types'
-import type { GcProject, GcState } from '../../lib/gc/types'
-import { weekdayDate } from '../../lib/gc/words'
-import { PressNote } from './GcScheduleCards'
+import { weekdayDate, type GcAction, type GcProject, type GcState } from '../../lib/gcMode/gcModel'
+import { readScheduleFile, type ScheduleFileResult } from '../../lib/gcMode/gcScheduleImport'
+import { differenceWords, rowNotes, theirDates, theirDatesRefusal, type TheirDate } from '../../lib/gcMode/gcTheirDates'
 import { Btn, input } from './gcUi'
-import { useSchedulePress } from './useSchedulePress'
-
-/** Take their dates: the dates ticked and the dates to meet as they would be, which the record sends ours by. */
-export type TakeTheirDates = (dates: TheirDate[], milestones: ScheduleMilestone[]) => Promise<void>
 
 /** The Milestones card's door on a job being built: the button, or why it is closed. Nothing on any other job. */
-export function GcTheirDatesDoor({ state, project, onTake }: { state: GcState; project: GcProject; onTake: TakeTheirDates }) {
+export function GcTheirDatesDoor({ state, project, dispatch, by }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction>; by: string }) {
   const [open, setOpen] = useState(false)
   if (project.stage !== 'building' || !project.schedule) return null
   const refusal = theirDatesRefusal(project)
@@ -41,7 +35,7 @@ export function GcTheirDatesDoor({ state, project, onTake }: { state: GcState; p
           Bring in their dates…
         </Btn>
       </span>
-      {open && <GcTheirDatesWindow state={state} project={project} onTake={onTake} onClose={() => setOpen(false)} />}
+      {open && <GcTheirDatesWindow state={state} project={project} dispatch={dispatch} by={by} onClose={() => setOpen(false)} />}
     </>
   )
 }
@@ -50,7 +44,7 @@ function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`
 }
 
-function GcTheirDatesWindow({ state, project, onTake, onClose }: { state: GcState; project: GcProject; onTake: TakeTheirDates; onClose: () => void }) {
+function GcTheirDatesWindow({ state, project, dispatch, by, onClose }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction>; by: string; onClose: () => void }) {
   const customer = state.customers.find((c) => c.id === project.customerId)?.name ?? project.owner
   // The architect is one of the job's people, kept with the customers, as G-137's window reads it.
   const architect = state.customers.find((c) => c.id === project.architectId)?.name ?? null
@@ -88,30 +82,21 @@ function GcTheirDatesWindow({ state, project, onTake, onClose }: { state: GcStat
   const chosen: TheirDate[] = (theirs?.rows ?? []).filter((r) => !r.metOurs && ticks[r.key]).map((r) => ({ name: r.name, on: r.on, ours: picks[r.key] || null }))
   const twice = chosen.map((d) => d.ours).find((id, i, all) => id !== null && all.indexOf(id) !== i) ?? null
   const problem = file && 'problem' in file.result ? file.result.problem : theirs && theirs.rows.length === 0 ? 'This file has no dates to meet.' : null
-  const press = useSchedulePress()
-  const [refused, setRefused] = useState<string | null>(null)
   const take = () => {
     if (!file || chosen.length === 0 || twice) return
-    const pressed = theirDatesPress(project, { file: file.name, from, dates: chosen })
-    setRefused(null)
-    if ('problem' in pressed) {
-      setRefused(pressed.problem)
-      return
-    }
-    void press.run(() => onTake(chosen, pressed.milestones), 'Their dates did not save.').then((saved) => {
-      if (saved) onClose()
-    })
+    dispatch({ type: 'takeTheirDates', projectId: project.id, file: file.name, from, dates: chosen, by })
+    onClose()
   }
   const box = { ...input, minHeight: 30 }
 
   return createPortal(
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 0 : '1rem' }}>
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Their dates to meet"
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 'min(820px, 100%)', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.75rem', fontSize: '0.9rem' }}
+        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 'min(820px, 100%)', maxHeight: '92vh', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.75rem', fontSize: '0.9rem' }}
       >
         <div>
           <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Their dates to meet</h3>
@@ -180,16 +165,10 @@ function GcTheirDatesWindow({ state, project, onTake, onClose }: { state: GcStat
           <Btn kind="plain" onClick={onClose}>
             Cancel
           </Btn>
-          <Btn kind="primary" disabled={!theirs || chosen.length === 0 || twice !== null || press.busy} onClick={take}>
+          <Btn kind="primary" disabled={!theirs || chosen.length === 0 || twice !== null} onClick={take}>
             {chosen.length > 0 ? `Take ${plural(chosen.length, 'date', 'dates')}` : 'Take their dates'}
           </Btn>
         </div>
-        {refused && (
-          <div role="alert" style={{ color: 'var(--text-red-700)' }}>
-            {refused}
-          </div>
-        )}
-        <PressNote refused={press.refused} failed={press.failed} />
       </div>
     </div>,
     document.body,

@@ -8,7 +8,7 @@
  * 9b, a bar's place, a split, a wait and a new baseline. Since 9d, the holds' read, the walk's line, Pull earlier only
  * with `canPull`, and a trade not ready in the bar's form. Since 12a, a first draft from a template, and the Templates
  * card's save and set aside, for a dev. Since 12b, the rough while we bid drawn, the first draft after we win, and a
- * rough's weeks kept later.
+ * rough's weeks kept later. Since 12c, their schedule brought in, first or in place of a draft, and their dates' door.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -39,7 +39,7 @@ import { addDays } from '../../lib/gc/building'
 import { callList } from '../../lib/gc/schedule/callList'
 import { chartHolds } from '../../lib/gc/schedule/chartHolds'
 import { moveRecord, planMove } from '../../lib/gc/schedule/moves'
-import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
+import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { plainWordsFailures } from '../../lib/plainWords'
 import { withLineReported } from '../../lib/gc/schedule/testReports'
 import { initialGcState } from '../../lib/gc/schedule/testState'
@@ -712,5 +712,57 @@ describe('the rough while we bid in the window (PR 12b, G-45)', () => {
     openWindow(job(won, 'helotes'), vi.fn(), true)
     fireEvent.click(await screen.findByRole('button', { name: 'Keep the weeks as sent' }))
     await waitFor(() => expect(keepRoughLater).toHaveBeenCalledWith(read.state, 'helotes', expect.objectContaining({ on: '2026-09-28', at: 'bid' })))
+  })
+})
+
+describe('their schedule and their dates in the window (PR 12c, G-137 and G-145)', () => {
+  const XML = `<?xml version="1.0"?><Project xmlns="http://schemas.microsoft.com/project"><MinutesPerDay>480</MinutesPerDay><Tasks>
+    <Task><UID>1</UID><Name>Framing</Name><OutlineLevel>1</OutlineLevel><Start>2026-11-02T08:00:00</Start><Finish>2026-11-13T17:00:00</Finish></Task>
+    <Task><UID>2</UID><Name>Substantial completion</Name><OutlineLevel>1</OutlineLevel><Milestone>1</Milestone><Start>2027-01-29T08:00:00</Start><Finish>2027-01-29T08:00:00</Finish></Task>
+  </Tasks></Project>`
+  const importDialog = () => screen.getByRole('dialog', { name: 'Bring in a schedule' })
+
+  it('offers Bring in their schedule on Helotes’ first draft card, and makes the first one with no version', async () => {
+    const read = readOf(s, 'helotes', null)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(drawSchedule).mockResolvedValue(read)
+    openWindow(job(s, 'helotes'))
+    expect(await screen.findByText('Or start from the schedule the customer or the architect handed us.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Bring in their schedule' }))
+    fireEvent.change(within(importDialog()).getByLabelText('Choose a file'), { target: { files: [new File([XML], 'helotes.xml', { type: 'application/xml' })] } })
+    await within(importDialog()).findByText(/^What it holds:/)
+    fireEvent.click(within(importDialog()).getByRole('button', { name: 'Make the schedule from it' }))
+    await waitFor(() => expect(drawSchedule).toHaveBeenCalledTimes(1))
+    const [state, id, press] = vi.mocked(drawSchedule).mock.calls[0]!
+    expect([state, id, press.version]).toEqual([read.state, 'helotes', null])
+    expect(press.words).toMatch(/^Drew the schedule on Helotes Dental Office from .+ file helotes\.xml\./)
+  })
+
+  it('offers Bring in their schedule instead on a draft before Start, for a dev, and replaces it against the version read', async () => {
+    const drawn = withJob('helotes', (p) => ({ ...p, schedule: draftSchedule(p, '2026-11-02') }))
+    const read = readOf(drawn, 'helotes', 2)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(drawSchedule).mockResolvedValue(read)
+    openWindow(job(drawn, 'helotes'), vi.fn(), true)
+    fireEvent.click(await screen.findByRole('button', { name: 'Bring in their schedule instead' }))
+    expect(within(importDialog()).getByText('It takes the place of the schedule drawn now. The changes made to it are lost.')).toBeTruthy()
+    fireEvent.change(within(importDialog()).getByLabelText('Choose a file'), { target: { files: [new File([XML], 'helotes.xml', { type: 'application/xml' })] } })
+    await within(importDialog()).findByText(/^What it holds:/)
+    fireEvent.click(within(importDialog()).getByRole('button', { name: 'Make the schedule from it' }))
+    await waitFor(() => expect(drawSchedule).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(drawSchedule).mock.calls[0]![2].version).toBe(2)
+  })
+
+  it('shows the their-dates door on Fair Oaks D’s Milestones card to someone who may move a bar, and nobody else', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd', 3))
+    openWindow(job(s, 'fairoaksd'), vi.fn(), true)
+    await screen.findByText('Work done against the plan')
+    expect(screen.getByText('Bring in their dates…')).toBeTruthy()
+    // Fair Oaks D started, so their whole schedule never comes in in its place.
+    expect(screen.queryByRole('button', { name: 'Bring in their schedule instead' })).toBeNull()
+    cleanup()
+    openWindow(job(s, 'fairoaksd'))
+    await screen.findByText('Work done against the plan')
+    expect(screen.queryByText('Bring in their dates…')).toBeNull()
   })
 })

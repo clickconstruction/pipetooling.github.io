@@ -1,19 +1,17 @@
 /**
- * GC mode, the real build, the schedule's PR 12c: Bring in their schedule (G-137), ported from the GC mode prototype
- * (branch spike/gc-mode, `GcScheduleImport.tsx`) with its words; the plan is to-dos/gc-mode/mockups/schedule-pr12.md on
- * that branch. The window behind the first draft's Bring in their schedule (and, on a schedule drawn before Start that
- * nobody walked or moved, Bring in their schedule instead): who handed it, the file, what it holds, each of their
- * activities with where it goes and why we guessed it (the rows with no place first), their dates to meet, our lines not
- * in it, and what it could not read. The file is read in the browser and never kept; its name and who handed it go in
- * the draw's words. Nothing is written until Make the schedule from it, which sends the first draft's own kernel's
- * schedule (`importPress`) through `gc_schedule_draft`. `import.ts` reads, guesses and makes; this draws.
+ * GC mode design spike: Bring in a schedule, the Gantt's G-137 (mock-up and plan
+ * `to-dos/gc-mode/mockups/G-137.md`). The window behind the Schedule tab's Bring in their schedule:
+ * who handed it, the file, what it holds, each of their activities with where it goes and why we
+ * guessed it (the rows with no place first), their dates to meet, our lines not in it, and what it
+ * could not read. Nothing is written until Make the schedule from it, which sends one action
+ * through the first draft's own kernel. `gcScheduleImport.ts` reads, guesses and makes; this draws.
+ *
+ * The prototype's copy, forked to `.proto` when the schedule's PR 12c ported Bring in their schedule to main at
+ * `GcScheduleImport.tsx` (#5357); the prototype's schedule tab reads this one.
  */
-import { useMemo, useState, type ChangeEvent } from 'react'
+import { useMemo, useState, type ChangeEvent, type Dispatch } from 'react'
 import { createPortal } from 'react-dom'
-import { importPress } from '../../lib/gc/schedule/scheduleWindow'
-import type { ProjectSchedule, ScheduleImport, ScheduleImportPlace, ScheduleImportRow } from '../../lib/gc/schedule/types'
-import type { GcProject, GcState } from '../../lib/gc/types'
-import { shortDate, weekdayDate } from '../../lib/gc/words'
+import { shortDate, weekdayDate, type GcAction, type GcProject, type GcState, type ScheduleImport, type ScheduleImportPlace, type ScheduleImportRow } from '../../lib/gcMode/gcModel'
 import {
   IMPORT_INTRO,
   IMPORT_REPLACES,
@@ -28,10 +26,8 @@ import {
   type ImportChoice,
   type ImportGuess,
   type ScheduleFileResult,
-} from '../../lib/gc/schedule/import'
-import { PressNote } from './GcScheduleCards'
+} from '../../lib/gcMode/gcScheduleImport'
 import { Btn, input } from './gcUi'
-import { useSchedulePress } from './useSchedulePress'
 
 /** A row's place as the select holds it: '' not placed, `out`, a line by its id, or an inspection or the job's own. */
 function valueOf(place: ImportChoice | null | undefined): string {
@@ -57,23 +53,7 @@ function andList(words: string[]): string {
 
 const box = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 
-export function GcScheduleImport({
-  state,
-  project,
-  replacing,
-  defaultStart,
-  onMake,
-  onClose,
-}: {
-  state: GcState
-  project: GcProject
-  /** In place of a schedule drawn before Start that nobody walked or moved: a plan write against the version read. */
-  replacing: boolean
-  defaultStart: string
-  /** Make the schedule from it: the kernel's schedule and its line in the log. */
-  onMake: (schedule: ProjectSchedule, words: string) => Promise<void>
-  onClose: () => void
-}) {
+export function GcScheduleImport({ state, project, dispatch, replacing, by, defaultStart, onClose }: { state: GcState; project: GcProject; dispatch: Dispatch<GcAction>; replacing: boolean; by: string; defaultStart: string; onClose: () => void }) {
   const customer = state.customers.find((c) => c.id === project.customerId)?.name ?? project.owner
   // The architect is one of the job's people, kept with the customers, as the architect's portal reads it.
   const architect = state.customers.find((c) => c.id === project.architectId)?.name ?? null
@@ -128,19 +108,10 @@ export function GcScheduleImport({
   const ourDates = new Set((project.schedule?.milestones ?? []).map((m) => m.label.toLowerCase()).concat(['dry-in', 'rough-in inspection', 'substantial completion']))
   const canMake = Boolean(made && workStarts && (made.kept > 0 || (imported?.dates.length ?? 0) > 0))
 
-  const press = useSchedulePress()
-  const [problem, setProblem] = useState<string | null>(null)
   const make = () => {
     if (!imported || !canMake) return
-    const pressed = importPress(project, imported)
-    setProblem(null)
-    if ('problem' in pressed) {
-      setProblem(pressed.problem)
-      return
-    }
-    void press.run(() => onMake(pressed.schedule, pressed.words), 'The schedule did not save.').then((saved) => {
-      if (saved) onClose()
-    })
+    dispatch({ type: 'importSchedule', projectId: project.id, imported, by })
+    onClose()
   }
 
   const muted = { color: 'var(--text-muted)', fontSize: '0.8rem' } as const
@@ -148,14 +119,14 @@ export function GcScheduleImport({
     <div
       role="presentation"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 0 : '1rem' }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Bring in a schedule"
         onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 760, maxWidth: '100%', boxSizing: 'border-box', maxHeight: 'min(92vh, 100%)', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.8rem', fontSize: '0.9rem' }}
+        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: phone ? '12px 12px 0 0' : 12, width: phone ? '100%' : 760, maxWidth: '100%', boxSizing: 'border-box', maxHeight: '92vh', overflow: 'auto', boxShadow: '0 24px 48px rgba(0,0,0,0.22)', padding: '1rem', display: 'grid', gap: '0.8rem', fontSize: '0.9rem' }}
       >
         <div style={{ display: 'grid', gap: '0.15rem' }}>
           <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Bring in a schedule</h3>
@@ -289,16 +260,10 @@ export function GcScheduleImport({
           <Btn kind="quiet" onClick={onClose}>
             Cancel
           </Btn>
-          <Btn kind="primary" disabled={!canMake || press.busy} onClick={make}>
-            {press.busy ? 'Making it…' : 'Make the schedule from it'}
+          <Btn kind="primary" disabled={!canMake} onClick={make}>
+            Make the schedule from it
           </Btn>
         </div>
-        {problem && (
-          <div role="alert" style={{ color: 'var(--text-red-700)' }}>
-            {problem}
-          </div>
-        )}
-        <PressNote refused={press.refused} failed={press.failed} />
       </div>
     </div>,
     document.body,

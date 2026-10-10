@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { DOC_KEYS, partnerDocuments, partnerWork, type CompanyDoc } from '../../lib/gc/companyFile'
+import { DOC_KEYS, partnerActivity, partnerDocuments, partnerWork, type CompanyDoc } from '../../lib/gc/companyFile'
 import { companyPeople, mailGroupName } from '../../lib/gc/companyPeople'
 import { declineReasonWords, partnerDeclines } from '../../lib/gc/decline'
 import { telHref } from '../../lib/gc/followUpSheet'
@@ -12,7 +12,7 @@ import { answerRecord, type AnswerRecord } from '../../lib/gc/reliability'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { vettingOf } from '../../lib/gc/vetting'
 import { money, shortDate } from '../../lib/gc/words'
-import { CompanyDocuments, CompanyTabStrip, type CompanyTab } from './GcCompanyDocuments'
+import { CompanyActivity, CompanyDocuments, CompanyTabStrip, type CompanyTab, type ContactHow } from './GcCompanyDocuments'
 import type { CompanyAt } from './gcCompanyOpener'
 import { GcPaperSend } from './GcPaperSend'
 import { GcRecordInsurance } from './GcRecordInsurance'
@@ -25,8 +25,9 @@ import { VettingChip } from './GcTradePartners'
  * vetting and insurance, who at the company gets which emails, their work with us and the times they
  * passed. The office sets the company's language here. Their portal is the Portal lane's block, passed in
  * by the page (v2.4932). Documents (B6-b-ii) leads with what is missing, and a dev sends each paper's next step from
- * its row (Send a paper) or files a certificate that came by email (Record their insurance). Activity comes as its
- * kernel lands.
+ * its row (Send a paper) or files a certificate that came by email (Record their insurance). Activity (B2b-iv) is
+ * everything with the company, newest first (`partnerActivity`), with Log a contact: a line of the company's own in the
+ * call log.
  */
 
 /** The papers' presses (B6-b-ii), a dev's while the Board is built. Unset: Documents is read only. */
@@ -64,6 +65,7 @@ export function GcCompanyWindow({
   onOpenProject,
   portal,
   papers,
+  onLogContact,
   at,
 }: {
   state: GcState
@@ -77,6 +79,8 @@ export function GcCompanyWindow({
   /** Their portal (the Portal lane's `GcTheirPortal`): their link, where it stands, and what a dev can do with it. */
   portal?: ReactNode
   papers?: CompanyPapersDoor
+  /** Log a contact on Activity: a line of the company's own in the call log, on no ask. Unset: no box. */
+  onLogContact?: (how: ContactHow, note: string) => Promise<void>
   /** Where it opens (`CompanyAt`): a tab, and a paper with its send. Unset: About. */
   at?: CompanyAt
 }) {
@@ -110,6 +114,7 @@ export function GcCompanyWindow({
   }, [onClose, aside])
   const record = RECORD[answerRecord(partner)]
   const docs = partnerDocuments(state, partner)
+  const activity = partnerActivity(state, partner)
   const sending = aside?.kind === 'send' ? paperStep(state, partner, aside.key) : null
 
   /** A row's next step: its send, or why there is none yet, and Record their insurance on the certificate's row. */
@@ -194,9 +199,10 @@ export function GcCompanyWindow({
           </div>
           {problem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{problem}</div>}
         </div>
-        <CompanyTabStrip tab={tab} onTab={setTab} toGet={docs.toGet} portal={Boolean(portal)} />
+        <CompanyTabStrip tab={tab} onTab={setTab} activity={activity.length} toGet={docs.toGet} portal={Boolean(portal)} />
         <div style={{ padding: '1rem', overflowY: 'auto', minHeight: 0 }}>
           {tab === 'about' && <About state={state} partner={partner} onOpenProject={onOpenProject} />}
+          {tab === 'activity' && <CompanyActivity events={activity} onOpenProject={onOpenProject} {...(onLogContact ? { onLog: onLogContact } : {})} />}
           {tab === 'documents' && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               {done && (

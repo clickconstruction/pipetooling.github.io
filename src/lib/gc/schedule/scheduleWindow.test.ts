@@ -3,7 +3,8 @@
  * refusal, start day and log line, and the opened bar's card on Fair Oaks D, in plain words. Since
  * 9a, the job's own work put on the chart and a failed inspection, each with what it pushes. Since
  * 9b, a new wait, a split, a join and a new baseline, each with the reducer's line. Since 12a, a first draft from a
- * template, as the reducer drew it. Since 12b, the rough while we bid, drawn, refused and kept.
+ * template, as the reducer drew it. Since 12b, the rough while we bid, drawn, refused and kept. Since 12c, a schedule
+ * they hand us made, and their dates to meet taken.
  */
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
@@ -13,7 +14,7 @@ import { ganttBars, type GanttBar } from './gantt'
 import { draftSchedule, scheduleMeasures } from './schedule'
 import { addDays } from '../building'
 import { planMove } from './moves'
-import { TEMPLATE_GONE, barCardRows, baselinePress, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, joinWords, moveWords, newWait, ownWorkOffWords, ownWorkPress, partMovePress, pullLogWords, recoveryLogWords, redoWords, splitPress, undoWords, roughKeepPress, roughPress, roughRefusal, roughToKeep, templateDraftPress } from './scheduleWindow'
+import { TEMPLATE_GONE, barCardRows, baselinePress, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, joinWords, moveWords, newWait, ownWorkOffWords, ownWorkPress, partMovePress, pullLogWords, recoveryLogWords, redoWords, splitPress, undoWords, importPress, roughKeepPress, roughPress, roughRefusal, roughToKeep, templateDraftPress, theirDatesPress } from './scheduleWindow'
 import { planPull } from './pullEarlier'
 import { withLineReported } from './testReports'
 import { waitKind } from './waits'
@@ -22,6 +23,9 @@ import { initialGcState } from './testState'
 import { SCHEDULE_STAGES } from './draft'
 import { templateShape } from './templates'
 import { roughWeeks } from './rough'
+import { importLines, importedSchedule } from './import'
+import { theirDatesLogWords, withTheirDates } from './theirDates'
+import type { ScheduleImport } from './types'
 import type { ScheduleTemplate } from './types'
 
 const s = initialGcState()
@@ -432,5 +436,52 @@ describe('the rough while we bid (PR 12b, G-45)', () => {
     expect(roughToKeep({ ...boerne, rough }, '2026-10-09', 'award')).toEqual({ on: '2026-10-09', weeks: 14, finish: roughWeeks({ ...boerne, rough })!.finish, at: 'award' })
     expect(roughToKeep(boerne, '2026-10-09', 'bid')).toBeNull()
     expect(roughToKeep({ ...boerne, rough: { ...rough, kept: { on: '2026-10-01', weeks: 14, finish: '2027-02-05', at: 'bid' } } }, '2026-10-09', 'award')).toBeNull()
+  })
+})
+
+describe('a schedule they hand us and their dates to meet (PR 12c, G-137 and G-145)', () => {
+  const helotes = job(s, 'helotes')
+  const line = importLines(helotes)[0]!
+  /** Their file, read and placed: one activity on one of our lines, the rest of ours drawn as the first draft draws them. */
+  const imported = (change: Partial<ScheduleImport> = {}): ScheduleImport => ({
+    file: 'helotes-theirs.csv',
+    from: 'Cibolo Creek Partners',
+    workStarts: '2026-11-02',
+    rows: [{ key: 'r1', name: 'Their framing', start: '2026-11-02', finish: '2026-11-13', place: { kind: 'line', lineId: line.lineId }, after: [] }],
+    dates: [],
+    ...change,
+  })
+
+  it('makes Helotes’ schedule from their file through the first draft’s kernel, its line naming the file', () => {
+    const r = importPress(helotes, imported())
+    if (!('schedule' in r)) throw new Error(r.problem)
+    const made = importedSchedule(helotes, imported())
+    expect(r).toEqual({ schedule: made.schedule, words: made.words })
+    expect(r.words).toContain('helotes-theirs.csv')
+  })
+
+  it('refuses a job still bidding, no day work starts, and a file with nothing placed, in words', () => {
+    expect(importPress(job(s, 'boerne'), imported())).toEqual({ problem: 'While we bid, the rough schedule is the one to draw.' })
+    expect(importPress(helotes, imported({ workStarts: '' }))).toEqual({ problem: 'Pick the day work starts.' })
+    expect(importPress(helotes, imported({ rows: [] }))).toEqual({ problem: 'Nothing in it goes on the schedule yet. Pick where their activities go.' })
+    for (const words of ['Pick the day work starts.', 'Nothing in it goes on the schedule yet. Pick where their activities go.']) expect(plainWordsFailures(words), words).toEqual([])
+  })
+
+  it('takes their dates to meet on Fair Oaks D, one in place of ours and one new, and names the file', () => {
+    const fair = job(s, 'fairoaksd')
+    const ours = fair.schedule!.milestones.find((m) => !m.metOn)!
+    const dates = [{ name: ours.label, on: '2026-12-04', ours: ours.id }, { name: 'Owner walk-through', on: '2026-12-18', ours: null }]
+    const r = theirDatesPress(fair, { file: ' cibolo.xml ', from: 'Cibolo Creek Partners', dates })
+    expect(r).toEqual({ milestones: withTheirDates(fair, dates), words: theirDatesLogWords(fair, 'Cibolo Creek Partners', 'cibolo.xml', dates) })
+  })
+
+  it('refuses their dates off a job being built, with none ticked, with no file, and a date that cannot be taken', () => {
+    const fair = job(s, 'fairoaksd')
+    const one = [{ name: 'Owner walk-through', on: '2026-12-18', ours: null }]
+    expect(theirDatesPress(job(s, 'helotes'), { file: 'x.csv', from: 'Cibolo', dates: one })).toEqual({ problem: 'Their dates come in on a job being built.' })
+    expect(theirDatesPress(fair, { file: 'x.csv', from: 'Cibolo', dates: [] })).toEqual({ problem: 'Tick a date to take it.' })
+    expect(theirDatesPress(fair, { file: ' ', from: 'Cibolo', dates: one })).toEqual({ problem: 'Choose the file and who handed it.' })
+    expect(theirDatesPress(fair, { file: 'x.csv', from: 'Cibolo', dates: [{ name: 'Owner walk-through', on: 'Dec 18', ours: null }] })).toEqual({ problem: 'One of the dates cannot be taken as it is. Pick again.' })
+    for (const words of ['Tick a date to take it.', 'Choose the file and who handed it.', 'One of the dates cannot be taken as it is. Pick again.']) expect(plainWordsFailures(words), words).toEqual([])
   })
 })
