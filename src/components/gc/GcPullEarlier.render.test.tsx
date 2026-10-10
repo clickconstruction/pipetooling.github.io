@@ -96,6 +96,17 @@ describe('GcPullWindow: the window a pull is saved from', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
+  it('shows the billing line only with the money team’s reading of it, for the pull as the ticks have it (16c)', () => {
+    const s = earlyFinish()
+    const billingOf = vi.fn(() => '$4,000 of the Nov 1 bill moves to Oct 1.')
+    const { unmount } = render(<GcPullWindow state={s} project={job(s)} by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={() => undefined} billingOf={billingOf} />)
+    expect(document.querySelector('[data-pull-billing]')!.textContent).toBe('Billing: $4,000 of the Nov 1 bill moves to Oct 1.')
+    expect(billingOf).toHaveBeenCalledWith(expect.objectContaining({ activities: expect.any(Array) }))
+    unmount()
+    render(<GcPullWindow state={s} project={job(s)} by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={() => undefined} />)
+    expect(document.querySelector('[data-pull-billing]')).toBeNull()
+  })
+
   it('says each thing a first-timer reads in plain words', () => {
     const s = earlyFinish()
     render(<GcPullWindow state={s} project={job(s)} by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={() => undefined} />)

@@ -363,8 +363,12 @@ export default function GcProjects() {
   }, [crewLinks, role])
   const board = useMemo(() => (boardRead ? withCrewPercents(boardRead, crewReads) : null), [boardRead, crewReads])
   // What the Schedule reads over the board (its PR 16): the job's daily logs and our crew's clock-ins, Building's, for
-  // whoever may use Building; Ask for the days for the money team. Memoized, since a new one reads the schedule again.
-  const scheduleReads = useMemo<ScheduleReads>(() => ({ logs: canUseGcBuilding(role), money: canSeeGcMoney(role), today }), [role, today])
+  // whoever may use Building; Ask for the days and the money lines for the money team; the trades' percents behind the
+  // draws gate (O9). Memoized, since a new one reads the schedule again.
+  const scheduleReads = useMemo<ScheduleReads>(
+    () => ({ logs: canUseGcBuilding(role), money: canSeeGcMoney(role), draws: canUseGcBuilding(role) || canSeeGcMoney(role), today }),
+    [role, today],
+  )
   /** Each linked trade our own crew does, by its id, to its Pipeline job's number (null until read). */
   const crewJobLabels = useMemo(
     () => Object.fromEntries(crewLinks.map((l) => [l.packageId, crewReads.find((r) => r.packageId === l.packageId)?.label ?? null])),

@@ -27,6 +27,9 @@ import { lostDaysByLine } from '../../lib/gc/schedule/daysLost'
 import { lateFinish } from '../../lib/gc/lateFinish'
 import { draftTimeExtension } from '../../lib/gc/gcIo'
 import type { TimeExtensionAsk } from '../../lib/gc/timeExtension'
+import { planBillingShift, shiftWords } from '../../lib/gc/billingForecast'
+import { scheduleMoneyState, type ScheduleMoney } from '../../lib/gc/scheduleMoney'
+import type { MovePlan } from '../../lib/gc/schedule/moves'
 import { finishOutlook } from '../../lib/gc/schedule/finishOutlook'
 import { ganttBars } from '../../lib/gc/schedule/gantt'
 import type { GanttPrintJob } from '../../lib/gc/schedule/ganttPrint'
@@ -74,6 +77,7 @@ import {
   undoScheduleMove,
   type SchedulePress,
   type ScheduleReads,
+  loadScheduleMoney,
 } from '../../lib/gc/scheduleIo'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -216,6 +220,26 @@ export function GcSchedule({
     [read],
   )
   // Undo and Redo (G-40): replayed on the server from the move's own record, against the version read.
+  // The money team's own lines (16c): the bills, the full change orders and the trades' money, read once per open beside
+  // the schedule. A failed read leaves the chart whole with today's words.
+  const moneyOn = reads.money === true
+  const packageKey = state.projects.find((p) => p.id === projectId)?.packages.map((k) => k.id).join(',') ?? ''
+  const [money, setMoney] = useState<ScheduleMoney | null>(null)
+  useEffect(() => {
+    if (!moneyOn) return
+    let live = true
+    loadScheduleMoney(projectId, packageKey ? packageKey.split(',') : [])
+      .then((m) => {
+        if (live) setMoney(m)
+      })
+      .catch(() => {
+        if (live) setMoney(null)
+      })
+    return () => {
+      live = false
+    }
+  }, [moneyOn, projectId, packageKey])
+
   // Ask for the days (G-141, the schedule's PR 16b-ii): the money team's press drafts the time extension on Bill the
   // customer, then reads again, so the asked moves leave the ask.
   const [asking, setAsking] = useState(false)
@@ -304,6 +328,7 @@ export function GcSchedule({
         }
         canPull={canMove && canPull}
         ask={reads.money && canMove ? { onAsk: (ask) => void askForDays(ask), said: askSaid } : null}
+        money={moneyOn ? money : null}
       />
     )
   if (status === 'gone') return <div style={{ fontSize: '0.875rem' }}>That job is not on the board. Reload the board and try again.</div>
@@ -375,6 +400,7 @@ function ScheduleView({
   moves,
   canPull,
   ask,
+  money,
 }: {
   read: ScheduleRead
   by: string
@@ -386,6 +412,8 @@ function ScheduleView({
   canPull: boolean
   /** Ask for the days (PR 16b-ii): the money team's press and what it last said. Null: the line says who asks. */
   ask: { onAsk: (ask: TimeExtensionAsk) => void; said: string | null } | null
+  /** The money team's rows (16c). Null: no dollar on this chart. */
+  money: ScheduleMoney | null
 }) {
   const { state, project } = read
   const building = project.stage === 'building'
@@ -406,7 +434,14 @@ function ScheduleView({
   // The finish with weather and crews (G-57). The late finish's whose-days line (G-98) reads the change orders through the
   // office's view (PR 16b-ii); its money and the best offer wait for the money team's own state (16c).
   const outlook = useMemo(() => (building ? finishOutlook(state, project) : null), [state, project, building])
-  const late = useMemo(() => (building ? lateFinish(state, project) : null), [state, project, building])
+  // The money team's own state (16c, call 3): the chart's read with the money laid over it. Every dollar reads it, never the
+  // chart's state: the late fee, what a way to get days back saves, the billing line.
+  const moneyState = useMemo(() => (money ? scheduleMoneyState(state, project.id, money) : null), [money, state, project.id])
+  const moneyProject = moneyState?.projects.find((p) => p.id === project.id) ?? null
+  const late = useMemo(
+    () => (building ? (moneyState && moneyProject ? lateFinish(moneyState, moneyProject) : lateFinish(state, project)) : null),
+    [state, project, building, moneyState, moneyProject],
+  )
   const asked = late?.ask ?? null
   const peopleOf = useCallback((from: string, to: string) => peopleOnSite(state, project, from, to, crewCountsNow(project)), [state, project])
   // The chart's bars, for the card of the bar pressed: the chart draws the same ones.
@@ -423,7 +458,15 @@ function ScheduleView({
   const walkable = building && moves !== null
   const pullable = walkable && canPull
   const offer = useMemo(() => (pullable ? planPull(state, project) : null), [state, project, pullable])
-  const daysBack = useMemo(() => (pullable && (lateFinish(state, project).late ?? 0) > 0 ? recoveryOffers(state, project) : null), [state, project, pullable])
+  const daysBack = useMemo(
+    () => (pullable && (lateFinish(state, project).late ?? 0) > 0 ? (moneyState && moneyProject ? recoveryOffers(moneyState, moneyProject) : recoveryOffers(state, project)) : null),
+    [state, project, pullable, moneyState, moneyProject],
+  )
+  // The billing line under a pull or a days-back move (9d's, 16c): the money team's only.
+  const billingOf = useMemo(
+    () => (moneyState && moneyProject ? (plan: Pick<MovePlan, 'activities'>) => shiftWords(planBillingShift(moneyState, moneyProject, plan), 'will') : undefined),
+    [moneyState, moneyProject],
+  )
   const [walking, setWalking] = useState(false)
   const [pulling, setPulling] = useState(false)
   const [recovering, setRecovering] = useState<string | null>(null)
@@ -488,6 +531,7 @@ function ScheduleView({
             m={m}
             {...(outlook ? { outlook } : {})}
             {...(late ? { late } : {})}
+            {...(moneyState && daysBack?.[0] ? { best: daysBack[0] } : {})}
             {...(ask && asked ? { onAsk: () => ask.onAsk(asked) } : { askNote: 'The money team asks the customer for these days on Bill the customer.' })}
           />
           {ask?.said && (
@@ -505,7 +549,7 @@ function ScheduleView({
         </Card>
       )}
       {/* Days back on a late job (G-82, PR 9d): under the measures. */}
-      {daysBack && <GcDaysBack state={state} project={project} offers={daysBack} onLook={setRecovering} />}
+      {daysBack && <GcDaysBack state={moneyState ?? state} project={moneyProject ?? project} offers={daysBack} onLook={setRecovering} />}
       <Card>
         {/* The walk's line and the pull's (G-52, G-37, PR 9d), over the chart. */}
         {walkable && <GcWalkLine state={state} project={project} holds={holds} canPull={pullable} onWalk={() => setWalking(true)} />}
@@ -651,9 +695,21 @@ function ScheduleView({
       {moves && walking && (
         <GcScheduleWalk state={state} project={project} holds={holds} by={by} canPull={pullable} presses={{ save: moves.save, actual: moves.actual, walk: moves.walk, reload: moves.reload }} onClose={() => setWalking(false)} />
       )}
-      {moves && pulling && <GcPullWindow state={state} project={project} by={by} onSave={moves.save} onReload={moves.reload} onClose={() => setPulling(false)} />}
+      {moves && pulling && (
+        <GcPullWindow state={state} project={project} by={by} onSave={moves.save} onReload={moves.reload} onClose={() => setPulling(false)} {...(billingOf ? { billingOf } : {})} />
+      )}
       {moves && recovering && (
-        <GcRecoveryWindow key={recovering} state={state} project={project} offerKey={recovering} by={by} onSave={moves.save} onReload={moves.reload} onClose={() => setRecovering(null)} />
+        <GcRecoveryWindow
+          key={recovering}
+          state={moneyState ?? state}
+          project={moneyProject ?? project}
+          offerKey={recovering}
+          by={by}
+          onSave={moves.save}
+          onReload={moves.reload}
+          onClose={() => setRecovering(null)}
+          {...(billingOf ? { billingOf } : {})}
+        />
       )}
       {building && <LookAhead weeks={m.lookAhead} />}
     </div>
