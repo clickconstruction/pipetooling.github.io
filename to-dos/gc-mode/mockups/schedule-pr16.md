@@ -2,7 +2,7 @@
 name: "The schedule's PR 16: the readers (the daily log, our crew, change orders and the trades' percents on the schedule)"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 16, and 9d's three things for whoever picks the lane up; mockups/schedule-pr9d.md (Not done: Add the N lost days, the billing line); mockups/building-u8.md (calls 3a, 4 and 12); mockups/door-owner-billing.md (call C, the view; call D, Ask for the days); GANTT_FEATURES.md G-37, G-51, G-57, G-58, G-60, G-76, G-82, G-84, G-98, G-141
 branch: the plan on claude/gc-schedule-pr16-plan (from origin/spike/gc-mode at 2cf5d92c5); the code from origin/main in four cuts, one with a migration
-status: plan 2026-10-10 by gc 4 at the lead's ask, for gc 10 (holding Schedule while gc 1 is away) to co-sign. 16b-i's SQL ran on the real bed on main at 474486c9f: 16 assertions pass, and 6 of 6 planted bugs fail them. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 4 at the lead's ask, for gc 10 (holding Schedule while gc 1 is away) to co-sign. 16b-i's SQL ran on the real bed on main at 474486c9f: 16 assertions pass, and 6 of 6 planted bugs fail them. Amendment 1 (2026-10-10): gc 10 co-signed all seven calls at their picks, gc 5 co-signed 16b-i and 16c, and their notes are written in; the view's COMMENT says its words are shown as typed. Nothing cut or claimed.
 ---
 
 # The schedule's PR 16: the readers
@@ -42,7 +42,7 @@ Four cuts:
 
 ## The calls
 
-**For gc 10 to co-sign, as Schedule's holder (each my pick, with the other way):**
+**Co-signed by gc 10, as Schedule's holder, at their picks (amendment 1); each with the other way:**
 
 1. **The rows are read in the holds' io, not passed down as a laid board.** `loadScheduleWithHolds(state, projectId,
    reads)` reads the logs, the clock-ins, the change orders and the draws it may, and lays them before `loadSchedule`.
@@ -86,7 +86,10 @@ for the Portal's parts.
   project.startedOn, reads.today)` (U8's 92-day pages), both only with `reads.logs`. It lays
   `withCrewClockIns(withDailyLogs(state, logs), clockIns)` first, then the holds, then `loadSchedule`. Every write's
   reload keeps reading `read.state`, which carries them.
-- **`GcSchedule.tsx`**: takes `reads` and passes it on; its effect keys on it, so the page memoizes it.
+- **`GcSchedule.tsx`**: takes `reads` and passes it on; its effect keys on it, so the page memoizes it. `reads`
+  defaults to `{}`, so 9d's mocks, which call the two-argument form, still read as before.
+- **When the logs arrive**: the chart reads the logs when the window opens and whenever it reads again (a move, a walk,
+  Undo). A log saved in the Daily log window reaches an open Schedule window on its next read, not live.
 - **`GcProjects.tsx`**: the Schedule's mount passes `reads={scheduleReads}`, memoized on the role and today.
 - Nothing else changes: every reader above already reads `project.dailyLogs`.
 
@@ -118,7 +121,7 @@ REVOKE ALL ON public.gc_change_orders_office FROM PUBLIC, anon, authenticated;
 GRANT SELECT ON public.gc_change_orders_office TO authenticated;
 
 COMMENT ON VIEW public.gc_change_orders_office IS
-  'GC mode (v2.NNNN, the schedule''s PR 16b; Owner Billing''s door, call C): a change order''s non-money half, for the office team (gc_office_team()): its number, words, reason, trade, status, sent and answered days, days and days on the chart. Never cost, price or pct_done. Owner''s rights with a security barrier; read only for authenticated, nothing for anon.';
+  'GC mode (v2.NNNN, the schedule''s PR 16b; Owner Billing''s door, call C): a change order''s non-money half, for the office team (gc_office_team()): its number, words, reason, trade, status, sent and answered days, days and days on the chart. Never cost, price or pct_done. Its description and schedule_words are the money team''s words, shown as they typed them. Owner''s rights with a security barrier; read only for authenticated, nothing for anon.';
 ```
 
 ### The SQL test
@@ -302,8 +305,12 @@ no dollars.
 
 - **16a**: `PROJECT_DOCUMENTATION.md` (the Schedule reads the daily log); the guide *walk the schedule each week* gains
   the lost days' line.
-- **16b-i**: `docs/migrations/<stamp>_gc_change_orders_office.md`; `docs/ACCESS_CONTROL.md`, the Owner Billing bullet's
-  last sentence (the view, built).
+- **16b-i**: `docs/migrations/<stamp>_gc_change_orders_office.md`, with the revoke-then-grant finding in its words (the
+  lead's ask) and that the view shows `description` and `schedule_words` as the money team typed them (gc 5);
+  `docs/ACCESS_CONTROL.md`, the Owner Billing door's sentence about the view amended where it stands (gc 5's): it exists
+  since 16b-i, with its version and stamp, read only for `authenticated` (in the Owner Billing bullet once #5302 is on
+  main); `scripts/pgtest-gc-owner-billing.sh` runs `95_office_view.sql` after `94_gc_job.sql`, re-applies the view
+  beside `$GCJOB`, and its header's count of files moves with it.
 - **16b-ii**: `PROJECT_DOCUMENTATION.md` (change orders on the schedule, Ask for the days); `GLOSSARY.md` if *time
   extension* has no entry.
 - **16c**: `PROJECT_DOCUMENTATION.md` (the trades' percents, the money lines). `SCHEDULE_REAL_BUILD.md`'s PR 16 marked
@@ -316,8 +323,11 @@ no dollars.
 - **gc 5 (Owner Billing)**: co-signs the view (16b-i) and the money lines' reads (16c). The view is theirs to keep.
 - **Building's door (gc 10's plan, gc 4 co-signing)**: after the door, the office reads the logs (its team policies),
   the change orders (the view), but not the draws (money). A money-free `gc_team_line_percents(project)`, each line's
-  newest reported percent and nothing else, would bring the trades' percents to every member's chart. The door adds
-  it, or a later PR does.
+  newest reported percent and nothing else, would bring the trades' percents to every member's chart. gc 10 takes it
+  into the door's D1 as call 12 (amendment 1): each line's kernel id, its newest reported percent and our open
+  send-back's `we_see`, team-gated in call 9's family; D1 then moves `reads.draws` to `canSeeGcMoney`. D1 also replaces
+  the view's `WHERE` with `gc_on_schedule_team(c.project_id)`, so a superintendent on the job keeps the tails and the
+  late-finish line.
 - **Our crew**: U8b's `board` carries the percents; 16a adds the clock-ins. Nothing else from U8.
 
 ## Is this the best we can do?
@@ -331,5 +341,6 @@ no dollars.
 
 ## Status
 
-Plan 2026-10-10, gc 4, for gc 10's co-sign and the lead's read-back. 16b-i's SQL bed-tested on main at 474486c9f (16
+Plan 2026-10-10, gc 4. The lead approved its shape; gc 10 co-signed all seven calls and gc 5 co-signed 16b-i and 16c
+(amendment 1, their notes written in). 16a cuts first, then 16b-i on gc 5's co-sign, stamped past every open claim. 16b-i's SQL bed-tested on main at 474486c9f (16
 assertions, 6 of 6 planted bugs). Nothing cut or claimed.
