@@ -21,6 +21,10 @@ import { withCrewClockIns, withDailyLogs } from './dailyLogRows'
 import { loadGcCrewOnSite, loadGcDailyLogs } from './dailyLogIo'
 import { withOfficeChangeOrders } from './changeOrderOfficeRows'
 import { loadGcChangeOrdersOffice } from './changeOrderOfficeIo'
+import { withDraws, withTradeChanges } from './drawRows'
+import { loadGcDraws } from './drawsIo'
+import { loadGcBillingRows, loadGcChangeOrders } from './gcIo'
+import type { ScheduleMoney } from './scheduleMoney'
 import { loadGcRfis } from './rfisIo'
 import { withSubmittals } from './submittalRows'
 import { loadGcSubmittals } from './submittalsIo'
@@ -93,6 +97,8 @@ export interface ScheduleReads {
   today?: string
   /** The money team's: Ask for the days drafts a change order (PR 16b-ii), and the money lines read the bills (16c). */
   money?: boolean
+  /** The trades' reported percents on their bars (16c): the draws gate, `canUseGcBuilding || canSeeGcMoney` (O9). */
+  draws?: boolean
 }
 
 /**
@@ -103,15 +109,29 @@ export interface ScheduleReads {
  */
 export async function scheduleHoldsState(state: GcState, projectId: string, reads: ScheduleReads = {}): Promise<GcState> {
   const startedOn = state.projects.find((p) => p.id === projectId)?.startedOn ?? null
-  const [submittals, rfis, changeOrders, logs, clockIns] = await Promise.all([
+  const packageIds = state.projects.find((p) => p.id === projectId)?.packages.map((k) => k.id) ?? []
+  const [submittals, rfis, changeOrders, draws, logs, clockIns] = await Promise.all([
     loadGcSubmittals([projectId]),
     loadGcRfis([projectId]),
     loadGcChangeOrdersOffice([projectId]),
+    reads.draws ? loadGcDraws(packageIds) : Promise.resolve(null),
     reads.logs ? loadGcDailyLogs([projectId]) : Promise.resolve(null),
     reads.logs && startedOn && reads.today ? loadGcCrewOnSite(projectId, startedOn, reads.today) : Promise.resolve([]),
   ])
   const logged = logs ? withCrewClockIns(withDailyLogs(state, logs), clockIns) : state
-  return withRfis(withSubmittals(withOfficeChangeOrders(logged, changeOrders), submittals), rfis)
+  const ordered = withOfficeChangeOrders(logged, changeOrders)
+  // A hired trade's reported percent and our sent-back percent on its bar (16c), behind the draws gate.
+  const drawn = draws ? withTradeChanges(withDraws(ordered, draws), draws) : ordered
+  return withRfis(withSubmittals(drawn, submittals), rfis)
+}
+
+/**
+ * What the money team's lines read beside the chart (16c): the customer's bills, the full change orders and the trades'
+ * money. Only for `reads.money`; the money team reads the change orders' table, which the office's view leaves out.
+ */
+export async function loadScheduleMoney(projectId: string, packageIds: string[]): Promise<ScheduleMoney> {
+  const [bills, changeOrders, draws] = await Promise.all([loadGcBillingRows([projectId]), loadGcChangeOrders([projectId]), loadGcDraws(packageIds)])
+  return { bills, changeOrders, draws }
 }
 
 /**

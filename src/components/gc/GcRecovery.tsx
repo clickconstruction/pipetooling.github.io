@@ -6,12 +6,12 @@
  * the way a pull is: the dates, what comes in, what keeps its dates and why, the finish, then why. Saved as one move
  * (`recoveryMove`) through the window's one save, re-found by its key from the schedule as read. Who has to agree is on
  * every offer with **Call**, a phone link. Follow up waits for the Board lane's Follow up sheet, as the call list's
- * does (7c-ii), and the billing line for the schedule to read bills (PR 16).
+ * does (7c-ii). The billing line, the money team's only, came with the schedule's PR 16c (`billingOf`).
  */
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { telHref } from '../../lib/gc/followUpSheet'
-import { moveWhyProblem, spanWords } from '../../lib/gc/schedule/moves'
+import { moveWhyProblem, spanWords, type MovePlan } from '../../lib/gc/schedule/moves'
 import { daysBetween } from '../../lib/gc/schedule/network'
 import { recoveryMove, recoveryNoneWords, recoveryOffers, sideBySideWords, type RecoveryOffer } from '../../lib/gc/schedule/recovery'
 import { recoveryLogWords } from '../../lib/gc/schedule/scheduleWindow'
@@ -84,6 +84,7 @@ export function GcRecoveryWindow({
   onSave,
   onReload,
   onClose,
+  billingOf,
 }: {
   state: GcState
   project: GcProject
@@ -92,8 +93,11 @@ export function GcRecoveryWindow({
   onSave: ScheduleSave
   onReload: () => void
   onClose: () => void
+  /** What the move shifts between the customer's bills (9d's billing line, the schedule's PR 16c): the money team's only. */
+  billingOf?: (plan: Pick<MovePlan, 'activities'>) => string | null
 }) {
   const offer = useMemo(() => recoveryOffers(state, project).find((o) => o.key === offerKey) ?? null, [state, project, offerKey])
+  const billing = useMemo(() => (billingOf && offer ? billingOf(offer) : null), [billingOf, offer])
   const [reason, setReason] = useState<ScheduleMoveReason | null>('recovery')
   const [note, setNote] = useState(offer?.note ?? '')
   const [saving, setSaving] = useState(false)
@@ -190,6 +194,7 @@ export function GcRecoveryWindow({
             The finish: {weekdayDate(offer.finishFrom)} → {weekdayDate(offer.finishTo)}.
           </div>
           <div>{offer.words.worth}</div>
+          {billing && <div data-recovery-billing style={{ color: 'var(--text-600)' }}>Billing: {billing}</div>}
           <div style={{ color: 'var(--text-amber-800)' }}>{offer.words.who} Ask them before you save it.</div>
         </div>
         {refused && <GcScheduleRefusal changes={refused} what="Your move was not saved. The chart shows the new dates now. Look at it again on them." />}

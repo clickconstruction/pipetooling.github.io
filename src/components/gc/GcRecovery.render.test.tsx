@@ -77,6 +77,17 @@ describe('GcRecoveryWindow: the window a recovery is saved from', () => {
     expect(words).toBe('Rosa got 1 day back on Fair Oaks Shops, Building D. A second crew on Test and balance.')
   })
 
+  it('shows the billing line only with the money team’s reading of it, for the offer saved (16c)', () => {
+    const s = lateJob()
+    const billingOf = vi.fn(() => '$2,500 of the Dec 1 bill moves to Nov 1.')
+    const { unmount } = render(<GcRecoveryWindow state={s} project={job(s)} offerKey="crew:fhvac-4" by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={vi.fn()} billingOf={billingOf} />)
+    expect(document.querySelector('[data-recovery-billing]')!.textContent).toBe('Billing: $2,500 of the Dec 1 bill moves to Nov 1.')
+    expect(billingOf).toHaveBeenCalledWith(expect.objectContaining({ key: 'crew:fhvac-4', activities: expect.any(Array) }))
+    unmount()
+    render(<GcRecoveryWindow state={s} project={job(s)} offerKey="crew:fhvac-4" by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={vi.fn()} />)
+    expect(document.querySelector('[data-recovery-billing]')).toBeNull()
+  })
+
   it('shows nothing for an offer the schedule no longer has', () => {
     const s = initialGcState()
     const { container } = render(<GcRecoveryWindow state={s} project={job(s)} offerKey="crew:fhvac-4" by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={vi.fn()} />)

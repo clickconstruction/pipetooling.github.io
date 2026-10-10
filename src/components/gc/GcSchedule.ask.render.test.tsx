@@ -19,7 +19,8 @@ installDomShims()
 
 vi.mock('../../lib/gc/scheduleIo', () => {
   const loadSchedule = vi.fn()
-  return { loadSchedule, loadScheduleWithHolds: vi.fn((state: unknown, id: string) => loadSchedule(state, id)) }
+  // The money team's own read (16c) never answers here: these cases are the chart's words.
+  return { loadSchedule, loadScheduleWithHolds: vi.fn((state: unknown, id: string) => loadSchedule(state, id)), loadScheduleMoney: vi.fn(() => new Promise(() => undefined)) }
 })
 vi.mock('../../lib/gc/gcIo', () => ({ draftTimeExtension: vi.fn(() => Promise.resolve('co-9')) }))
 
