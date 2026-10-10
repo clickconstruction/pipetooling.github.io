@@ -41,6 +41,17 @@ A job our own crew already uses shows {{chip:gray|On Plumbing already}} and cann
 
 Labor costs show only to people who can see pay. Anyone else sees general conditions at their budget, with a line saying why.
 
+## What our own crew really costs
+
+A trade our own crew does runs on its own Pipeline job. [Link it to its Pipeline job](/help/link-our-own-crew-to-its-pipeline-job), and Money counts what the crew really costs.
+
+- Early on, the crew counts at its price. The line says how much is spent so far.
+- Once the job is 10% done with 3 days of work, the crew counts at today's pace. That is what is spent so far, grown to the whole job.
+- Once the crew is done, it counts at what it cost.
+- **Earned so far** counts it as what we billed for it less what it cost so far.
+
+The same rule runs on the job's Costs tab on the Pipeline, so both say the same number. Like general conditions, the crew's labor cost shows only to people who can see pay.
+
 ## What comes later
 
 Some parts wait on work still being built. Each one says so in one line and shows no number.

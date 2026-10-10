@@ -8,8 +8,8 @@ import { jobCloseout, ownCrewWork, ownerRetainagePaidOn, projectCloseout, TRADE_
 import { punchCounts } from '../../lib/gc/buildingPunch'
 import { finalCameInDraft, finalCameInMissing, type FinalCameIn } from '../../lib/gc/closeoutRows'
 import type { DrawExtra } from '../../lib/gc/drawRows'
-import { jobMargin } from '../../lib/gc/ownerBillingMargin'
-import { generalConditionsWords, type OwnWorkCosts } from '../../lib/gc/ownWorkCost'
+import { jobMadeWords, jobMargin } from '../../lib/gc/ownerBillingMargin'
+import { crewCloseoutWords, generalConditionsWords, type OwnWorkCosts } from '../../lib/gc/ownWorkCost'
 import type { Draw, GcProject, GcState } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
 
@@ -67,6 +67,12 @@ export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick 
   const [looking, setLooking] = useState<{ row: CloseoutRow; draw: Draw } | null>(null)
   const c = projectCloseout(state, project)
   const job = jobCloseout(state, project)
+  // What our own work cost (O11a, O11b), from the Pipeline jobs the page read.
+  const margin = jobMargin(state, project, own)
+  const crewSays = (pkgId: string) => {
+    const crew = margin.trades.find((t) => t.packageId === pkgId)?.crew
+    return crew ? crewCloseoutWords(crew) : null
+  }
   const punch = punchCounts(project)
 
   useEffect(() => {
@@ -145,7 +151,7 @@ export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick 
                 </div>
               </Card>
 
-              <CloseJobCard job={job} busy={busy === project.id} onClose={writes.onCloseJob} />
+              <CloseJobCard job={job} busy={busy === project.id} onClose={writes.onCloseJob} made={job.closedOn ? jobMadeWords(margin) : null} />
 
               {c.rows.length === 0 && <Card>No trade has a signed statement of work yet. Closeout starts once one does.</Card>}
 
@@ -174,15 +180,15 @@ export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick 
                   ))}
                   {c.ours.map((pkg) => (
                     <div key={pkg.id}>
-                      <strong style={{ color: 'var(--text-base)' }}>{pkg.trade}</strong>: our own crew, {ownCrewWork(pkg)?.pct ?? 0}% done. Nothing is held. Its
-                      closeout runs on the Pipeline.
+                      <strong style={{ color: 'var(--text-base)' }}>{pkg.trade}</strong>: our own crew, {ownCrewWork(pkg)?.pct ?? 0}% done.{' '}
+                      {crewSays(pkg.id) ? `${crewSays(pkg.id)} ` : ''}Nothing is held. Its closeout runs on the Pipeline.
                     </div>
                   ))}
                 </div>
               )}
               {/* General conditions at what they cost (O11b), from the Pipeline job our number names for them. */}
               <div data-closeout-general-conditions style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                {generalConditionsWords(jobMargin(state, project, own).generalConditionsCost)}
+                {generalConditionsWords(margin.generalConditionsCost)}
               </div>
             </>
           )}
@@ -226,12 +232,19 @@ function OwnerRetainageCard({ project, today, billsRead, onSeeBill }: { project:
 }
 
 /** Close the job once every trade is closed out (owner, 2026-10-02): it leaves Building for its own place on the board. */
-function CloseJobCard({ job, busy, onClose }: { job: { ready: boolean; left: string[]; closedOn: string | null }; busy: boolean; onClose: () => void }) {
+function CloseJobCard({ job, busy, onClose, made = null }: { job: { ready: boolean; left: string[]; closedOn: string | null }; busy: boolean; onClose: () => void; made?: string | null }) {
   if (job.closedOn) {
     return (
       <Card>
-        <div data-closeout-job="closed">
-          <Chip tone="green">job closed {shortDate(job.closedOn)}</Chip>
+        <div data-closeout-job="closed" style={{ display: 'grid', gap: '0.35rem' }}>
+          <span>
+            <Chip tone="green">job closed {shortDate(job.closedOn)}</Chip>
+          </span>
+          {made && (
+            <span data-closeout-made style={{ fontSize: '0.875rem' }}>
+              {made}
+            </span>
+          )}
         </div>
       </Card>
     )
