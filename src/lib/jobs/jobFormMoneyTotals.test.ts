@@ -28,6 +28,13 @@ describe('jobFormRiderFeesDollars (v2.5091)', () => {
     expect(jobFormRiderFeesDollars(0, [cardBill, billWithFees(30)])).toBe(1_312.5)
   })
 
+  it('a turnaway trip charge rides too (v2.5129): the entry create_turnaway_trip_charge writes on its own bill', () => {
+    const tripBill = { id: 'b7', amount: 99, fee_lines: [{ trip_charge: 'client_not_home', amount: 99 }] }
+    expect(jobFormRiderFeesDollars(0, [tripBill])).toBe(99)
+    expect(jobFormRiderFeesDollars(200, [tripBill, billWithFees(30)])).toBe(329)
+    expect(jobFormRevenueDollars([line('Rough-in', 1, 1_200), line('Final', 2, 800)], jobFormRiderFeesDollars(0, [tripBill]))).toBe(2_899)
+  })
+
   it('adds in cents, and an unreadable hazmat figure counts as nothing', () => {
     expect(jobFormRiderFeesDollars(0.1, [billWithFees(0.2)])).toBe(0.3)
     expect(jobFormRiderFeesDollars(Number.NaN, [billWithFees(30)])).toBe(30)

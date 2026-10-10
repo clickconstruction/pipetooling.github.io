@@ -14,7 +14,7 @@
 
 import { discountSharesByWorkRow, isDiscountRow, netWorkLineCents, type DiscountShare } from './discountLine'
 import { allocatedOpenCents, isOpenLine, isRtbPrimaryBundle, type LinkedPayment } from '../billing/openLineAllocation'
-import { returnedCheckFeeCents } from './arReturnCaseFee'
+import { riderFeeLineCents } from './arReturnCaseFee'
 
 export type SegmentFixtureLine = {
   id: string
@@ -145,7 +145,8 @@ export type JobDollarCoverage = {
  *    first. This is an interpretation — dollar invoices don't say which items
  *    they bought — so partially covered rows stay selectable; only rows
  *    covered to the last cent lock.
- *  - a returned check fee (v2.5033) is its bill's own line, not work: it is
+ *  - a rider on a bill (a returned check fee v2.5033, a GC card fee v2.5113, a
+ *    turnaway trip charge v2.5129) is its bill's own line, not work: it is
  *    attributed to its bill, so it never runs down the waterfall (v2.5102).
  */
 export function dollarCoverageForSegments(args: {
@@ -171,9 +172,10 @@ export function dollarCoverageForSegments(args: {
       { excludeRtbPrimary: true },
     ) / 100
   // v2.5102: a returned check fee is in its bill's amount, so it is spoken for, but it is no line's money.
-  // Left unattributed, the $30 on bill 1 read as "$30 of $2,000 covered" on the first unbilled line.
+  // Left unattributed, the $30 on bill 1 read as "$30 of $2,000 covered" on the first unbilled line. Every
+  // rider on a bill is the same (v2.5129): a trip charge's bill is all trip charge, and none of it covers a line.
   // Only a bill counted above carries it: paid, or open and not the elastic bundle.
-  const feeCents = returnedCheckFeeCents(
+  const feeCents = riderFeeLineCents(
     (invoices ?? []).filter((inv) => inv.status === 'paid' || (isOpenLine(inv) && !isRtbPrimaryBundle(inv))),
   )
   const attributedCents =

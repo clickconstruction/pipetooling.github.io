@@ -75,6 +75,20 @@ describe('every rewrite of the revenue from the line items keeps the riders (v2.
     expect(finish.body).toMatch(/'card_bill', p_invoice_id/)
   })
 
+  it('job_rider_fees counts a turnaway trip charge, and the function writes it on the trip charge\'s own bill (v2.5129)', () => {
+    const riders = newestBodies.get('job_rider_fees')!
+    expect(riders.file).toBe('20261010044000_trip_charge_rider.sql')
+    expect(riders.body).toMatch(/jsonb_typeof\(l->'trip_charge'\) = 'string' AND btrim\(l->>'trip_charge'\) <> ''/)
+    // The other riders stay counted: the restatement took the newest body.
+    expect(riders.body).toMatch(/jsonb_typeof\(l->'case_id'\) = 'string' AND btrim\(l->>'case_id'\) <> ''/)
+    expect(riders.body).toMatch(/jsonb_typeof\(l->'card_bill'\) = 'string' AND btrim\(l->>'card_bill'\) <> ''/)
+    const trip = newestBodies.get('create_turnaway_trip_charge')!
+    expect(trip.body).toMatch(/jsonb_build_object\('trip_charge', p_reason, 'amount', v_amount\)/)
+    expect(trip.body).toMatch(/SET revenue = COALESCE\(revenue, 0\) \+ v_amount/)
+    // No description: the paper draws no row of its own for it.
+    expect(trip.body).not.toMatch(/'description'/)
+  })
+
   it('the returned check fee still raises the revenue with its bill, so the riders have something to keep', () => {
     const { body } = newestBodies.get('add_ar_return_case_fee')!
     expect(body).toMatch(/SET revenue = coalesce\(revenue, 0\) \+ v_fee/)

@@ -98,6 +98,30 @@ describe('riderFeeLineCents (v2.5113): a returned check fee and a GC card fee bo
   })
 })
 
+describe('riderFeeLineCents (v2.5129): a turnaway trip charge rides too', () => {
+  const TRIP = (reason: unknown, amount: unknown) => ({ trip_charge: reason, amount })
+
+  it('sums an entry that names its trip charge beside the other riders', () => {
+    expect(riderFeeLineCents([{ fee_lines: [TRIP('client_not_home', 99)] }, { fee_lines: [TRIP('site_not_ready', '250.00')] }])).toBe(34_900)
+    expect(
+      riderFeeLineCents([{ fee_lines: [TRIP('client_not_home', 99), { description: 'Returned check fee', amount: 30, case_id: 'c1' }] }]),
+    ).toBe(12_900)
+  })
+
+  it('a trip charge is not a returned check fee', () => {
+    expect(returnedCheckFeeCents([{ fee_lines: [TRIP('client_not_home', 99)] }])).toBe(0)
+  })
+
+  it('an empty, blank or unreadable trip charge, or an amount that does not read above zero, is not a rider', () => {
+    expect(riderFeeLineCents([{ fee_lines: [TRIP(null, 99), TRIP('', 99), TRIP('  ', 99), TRIP(1, 99)] }])).toBe(0)
+    expect(riderFeeLineCents([{ fee_lines: [TRIP('client_not_home', 'nope'), TRIP('client_not_home', 0), TRIP('client_not_home', -5)] }])).toBe(0)
+  })
+
+  it('has no description, so the reprinted bill draws no row of its own for it', () => {
+    expect(billFeeLines({ fee_lines: [TRIP('client_not_home', 99)] })).toEqual([])
+  })
+})
+
 describe('returnedCheckFeeCents (v2.5091): the fees a job’s revenue keeps through a rewrite', () => {
   const FEE = (caseId: unknown, amount: unknown) => ({ description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', amount, case_id: caseId, added_at: '2026-10-09T15:00:00Z' })
 

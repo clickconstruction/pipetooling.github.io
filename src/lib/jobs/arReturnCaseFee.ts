@@ -114,13 +114,14 @@ export function returnedCheckFeeCents(bills: ReadonlyArray<object> | null | unde
 }
 
 /**
- * Every fee that rides on a job's bills, in cents: a returned check fee (an entry that names its case) and a GC card
- * fee (an entry that names its card bill, `gc_card_bill_finish`, v2.5113). Each raised the job's revenue as it went
- * on, so a rewrite of the revenue from the line items adds this back (`jobFormRiderFeesDollars`; `job_rider_fees` in
- * SQL). A line that names neither is not a rider.
+ * Every fee that rides on a job's bills, in cents: a returned check fee (an entry that names its case), a GC card fee
+ * (an entry that names its card bill, `gc_card_bill_finish`, v2.5113) and a turnaway trip charge (an entry that names
+ * its trip charge, on the trip charge's own bill, `create_turnaway_trip_charge`, v2.5129). Each raised the job's
+ * revenue as it went on, so a rewrite of the revenue from the line items adds this back (`jobFormRiderFeesDollars`;
+ * `job_rider_fees` in SQL). A line that names none of them is not a rider.
  */
 export function riderFeeLineCents(bills: ReadonlyArray<object> | null | undefined): number {
-  return feeLineCents(bills, ['case_id', 'card_bill'])
+  return feeLineCents(bills, ['case_id', 'card_bill', 'trip_charge'])
 }
 
 /** The fee lines a billed bill carries (`jobs_ledger_invoices.fee_lines`), for the printed bill's own rows. */
