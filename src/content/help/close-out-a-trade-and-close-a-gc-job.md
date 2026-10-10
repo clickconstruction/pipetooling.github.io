@@ -54,6 +54,8 @@ Approve the release waits until 10 days after the customer pays our final pay ap
 2. Press {{button:blue|Mark paid}} when the payment goes out.
 3. Press {{button:outline|Their final release came in}} when their unconditional final release of lien arrives.
 
+A final release the trade signs in its portal is kept as a PDF in the job's Drive folder. Press **Final release PDF** on its step to open it.
+
 Tick **Email the trade about what I press here** to email the trade. The tick starts off, and it is the same one the Draws window has. With it on, they get an email when you accept the work. They get one when you record their final pay application, and when you mark it paid.
 
 ## Close the job

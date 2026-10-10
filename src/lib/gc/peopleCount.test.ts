@@ -1,11 +1,12 @@
 /**
  * The one count (the Board's B2b, call E1): Needs you and Work the list each count `allPeople`, everyone the office waits
  * on, once a person across their jobs. A board row shows its job's share (`projectPeople`), so the rows' sum is not the
- * count: a person on two jobs is on both rows and counts once. B2b-ii puts Follow up's badge on the same number.
+ * count: a person on two jobs is on both rows and counts once. Since B2b-ii-b Follow up's badge and the Dashboard's line
+ * say the same number, read from the same rows.
  */
 import { describe, expect, it } from 'vitest'
 import { boardStateFromRows } from './boardRows'
-import { awardedClinicBoardRows } from './boardTestRows'
+import { awardedClinicBoardRows, clinicBoardRows } from './boardTestRows'
 import { gcNeedsYou } from './needsYou'
 import { allFollowPeople, allPeople, projectPeople } from './projectPeople'
 import { initialGcState } from './schedule/testState'
@@ -35,5 +36,12 @@ describe('the one count', () => {
     const state = initialGcState()
     const rows = state.projects.reduce((n, project) => n + projectPeople(state, project).count, 0)
     expect(rows).toBeGreaterThan(allPeople(state).count)
+  })
+
+  it('counts a company whose promised quote day passed, and not one waiting on a day still to come (the badge’s old rule)', () => {
+    expect(allPeople(boardStateFromRows(clinicBoardRows())).count).toBe(1)
+    const later = clinicBoardRows()
+    later.contacts = later.contacts.map((c) => (c.promised_by ? { ...c, promised_by: '2026-10-12' } : c))
+    expect(allPeople(boardStateFromRows(later)).count).toBe(0)
   })
 })

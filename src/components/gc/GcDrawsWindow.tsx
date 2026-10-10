@@ -15,6 +15,7 @@ import type { CrewJobRead } from '../../lib/gc/crewJobRows'
 import { drawCameInDraft, type DrawCameIn, type DrawExtra } from '../../lib/gc/drawRows'
 import { partnerById } from '../../lib/gc/lookups'
 import { backChargesToAct, PAY_WITHIN_DAYS } from '../../lib/gc/portal'
+import type { WaiverFile } from '../../lib/gc/tradeFiles'
 import type { Draw, GcProject, GcState, Partner, TradePackage } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
 
@@ -24,7 +25,8 @@ import { money, shortDate } from '../../lib/gc/words'
  * reports how far each line of its statement of work is and asks to be paid with a pay application. We approve it,
  * approve it for less, or send it back. We hold retainage, pay it, and take its unconditional waiver. One that came by
  * email or on paper is recorded here. The database's own functions check every press and work the money out (the
- * Building lane's U6a). The trade's own pay application comes from its portal with the Portal lane's P5c.
+ * Building lane's U6a). The trade's own pay application comes from its portal with the Portal lane's P5c, and a waiver
+ * it signs there is filed in the job's Drive folder as a PDF, linked quietly beside the waiver's chip (P5a-2).
  */
 
 export interface DrawWrites {
@@ -53,6 +55,8 @@ interface Props {
   project: GcProject
   /** Each draw's file and who of ours recorded it (`drawExtras`). */
   extras?: Map<string, DrawExtra>
+  /** The waivers each draw's trade signed in its portal, as PDFs (`waiverFilesByDraw`, P5a-2). Absent: no links. */
+  waiverFiles?: ReadonlyMap<string, WaiverFile[]>
   /** The back-charge a link opened the window at (`&charge=<id>`): outlined and scrolled to. */
   chargeId?: string | null
   /** Reads who can open a Drive link, for the warning under it. Absent: no check. */
@@ -74,7 +78,7 @@ interface Props {
   onClose: () => void
 }
 
-export function GcDrawsWindow({ state, project, extras, chargeId = null, checkLink, emailTick = null, writes, ownCrew, busy = null, problem = null, onClose }: Props) {
+export function GcDrawsWindow({ state, project, extras, waiverFiles, chargeId = null, checkLink, emailTick = null, writes, ownCrew, busy = null, problem = null, onClose }: Props) {
   // The pay application open to read: a draw that stands, or one we sent back.
   const [looking, setLooking] = useState<{ packageId: string; draw: Draw } | null>(null)
   const trades = project.packages.flatMap((pkg) => {
@@ -149,6 +153,7 @@ export function GcDrawsWindow({ state, project, extras, chargeId = null, checkLi
                   partner={partner}
                   chargeId={chargeId}
                   checkLink={checkLink}
+                  waiverFiles={waiverFiles}
                   emailOn={emailTick?.on ?? false}
                   writes={writes}
                   busy={busy}
@@ -253,6 +258,7 @@ function TradeCard({
   partner,
   chargeId,
   checkLink,
+  waiverFiles,
   emailOn,
   writes,
   busy,
@@ -264,6 +270,7 @@ function TradeCard({
   partner: Partner
   chargeId: string | null
   checkLink?: (url: string) => Promise<LinkAccess>
+  waiverFiles?: ReadonlyMap<string, WaiverFile[]>
   emailOn: boolean
   writes: DrawWrites
   busy: string | null
@@ -326,6 +333,7 @@ function TradeCard({
               pkg={pkg}
               company={partner.company}
               draw={d}
+              files={waiverFiles?.get(d.id) ?? []}
               today={state.today}
               blockers={blockers}
               formFor={formFor?.drawId === d.id ? formFor.mode : null}
@@ -401,6 +409,7 @@ function DrawRow({
   pkg,
   company,
   draw: d,
+  files,
   today,
   blockers,
   formFor,
@@ -414,6 +423,8 @@ function DrawRow({
   pkg: TradePackage
   company: string
   draw: Draw
+  /** The waivers its trade signed in its portal, as PDFs. */
+  files: WaiverFile[]
   today: string
   blockers: string[]
   formFor: 'back' | 'less' | null
@@ -448,6 +459,11 @@ function DrawRow({
       <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>{d.status === 'requested' ? 'waiting on us' : d.status}</Chip>
       <DrawDays project={project} pkg={pkg} draw={d} today={today} />
       <Chip tone={waiver.tone}>{waiver.word}</Chip>
+      {files.map((f) => (
+        <a key={f.paper} data-draw-waiver-file={f.paper} href={f.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.8rem' }}>
+          {f.label}
+        </a>
+      ))}
       {d.status === 'requested' && !formFor && (
         <>
           {d.final ? (

@@ -459,7 +459,7 @@ Shared modals that stay page-level (opened from 2+ sections) vs single-opener mo
 | v2.4700 (after `mapped_at`) | `vehicle-records-missing` | `vehicleRecordGapsEnabled` (dev, assistant, controller; `useVehicleRecordGapsNudge` over `lib/vehicleRecordGaps.ts`; both hosts) | gray |
 | 1364–1419 | `submittal-lead-time`, `-sent-back`, `-unopened`, `-not-started` | `submittalsEnabled`, `submittalNudge` | red, red, blue, amber |
 | 1421–1456 | `price-matrix-ready`, `price-requests-late` | each `…Enabled` | amber when a pick waits to settle, else blue; amber |
-| v2.4941 (after `mapped_at`) | `gc-follow-up` | `gcFollowUpEnabled` (the GC office team, `canOpenGcProjects`; `useGcFollowUpNeeds` over `lib/gc/followUpNeeds.ts`; the Dashboard host only) | red when a promised day passed or an ask sat unopened past three days, else amber |
+| v2.4941 (after `mapped_at`) | `gc-follow-up` | `gcFollowUpEnabled` (the GC office team, `canOpenGcProjects`; `useGcFollowUpNeeds` over `lib/gc/needsYou.ts` since v2.5187: everyone we wait on, once a person, from the GC projects page's own loaders, our contract's sends for the money team only; the Dashboard host only) | red when anyone is late (a day passed, an ask never opened, a bill past due, insurance run out), else amber |
 | 1458–1493 | `legal-firm-activity`, `legal-review` | each `…Enabled` | amber or blue |
 | 1495–1521 | `robot-backlog` | `robotBacklogEnabled` | amber when stuck or a request is over a week old, else blue; snooze / dismiss secondaries |
 | 1523–1540 | `test-reports-ready` | `testReportsEnabled` | blue when one is ready, else gray |

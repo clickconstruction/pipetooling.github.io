@@ -39,6 +39,8 @@ import { rfiExtras, withRfis, type RfiTables } from '../lib/gc/rfiRows'
 import { addRfi, answerRfi, loadGcRfis, markRfiSent, sendRfiToArchitect, startRfiChangeOrder } from '../lib/gc/rfisIo'
 import { GcDrawsWindow } from '../components/gc/GcDrawsWindow'
 import { drawExtras, NO_DRAWS, withDraws, withTradeChanges, type DrawTables } from '../lib/gc/drawRows'
+import { NO_WAIVER_FILES, waiverFilesByDraw, type WaiverFile } from '../lib/gc/tradeFiles'
+import { loadGcWaiverFiles } from '../lib/gc/tradeFilesIo'
 import {
   approveDraw,
   approveDrawLess,
@@ -123,7 +125,8 @@ import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import type { ContractSendInput, ContractSendOutcome } from '../components/gc/GcCustomerContractSend'
 import { sendGcOwnerContract } from '../lib/gc/ownerContractIo'
 import { mintCustomerPortalLink } from '../lib/portal/mintCustomerPortalLink'
-import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
+import { benchAnchor } from '../lib/gc/tradeViews'
+import { allPeople } from '../lib/gc/projectPeople'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
 import { setEmailSummary, type SetEmailCompany, type SetEmailInvite, type SetEmailRecipient, type SetEmailResult } from '../lib/gc/setEmail'
@@ -612,7 +615,9 @@ export default function GcProjects() {
     setDevView('partners')
     requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
   }
-  const toCall = board ? followUpsToCall(board) : 0
+  // Follow up's badge is the one count (the Board's B2b-ii-b, call E1): everyone we wait on, once a person across their
+  // jobs, as the Dashboard's Follow up line reads it from these same rows. Each board row shows its job's share.
+  const toCall = board ? allPeople(board).count : 0
   const devPill = (view: 'board' | 'partners' | 'followUp' | 'money', label: string) => {
     const on = devView === view
     return (
@@ -1096,6 +1101,23 @@ export default function GcProjects() {
     void loadCloseout().catch((e) => setCloseoutProblem(formatErrorMessage(e, 'The customer’s bills or the punch list did not load.')))
   }, [loadCloseout])
   const closeoutBillsRead = closeoutBills !== null && closeoutBills.id === closeoutProjectId
+  // The waivers a trade signed in its portal, as the PDFs the portal filed (Portal P5a-2): read for the job whose Draws
+  // or Closeout window is open, when it opens and again after each read of the draws. One that does not load links nothing.
+  const waiverFilesFor = drawsProjectId ?? closeoutProjectId
+  const [waiverFiles, setWaiverFiles] = useState<{ id: string; files: ReadonlyMap<string, WaiverFile[]> } | null>(null)
+  useEffect(() => {
+    if (!waiverFilesFor || !canUseGcBuilding(role) || !canSeeGcMoney(role)) return
+    let live = true
+    loadGcWaiverFiles(waiverFilesFor)
+      .then((rows) => {
+        if (live) setWaiverFiles({ id: waiverFilesFor, files: waiverFilesByDraw(rows) })
+      })
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [waiverFilesFor, drawTables, role])
+  const openWaiverFiles = waiverFiles && waiverFiles.id === waiverFilesFor ? waiverFiles.files : NO_WAIVER_FILES
   const closeoutState = useMemo(() => {
     if (!boardWithChanges || !closeoutProjectId) return null
     const billed = closeoutBills && closeoutBills.id === closeoutProjectId ? billingStateFor(boardWithChanges, closeoutProjectId, closeoutBills.rows) : boardWithChanges
@@ -2162,6 +2184,7 @@ export default function GcProjects() {
           state={boardWithChanges}
           project={drawsProject}
           extras={drawExtras(drawTables)}
+          waiverFiles={openWaiverFiles}
           chargeId={drawsChargeId}
           checkLink={async (url) => (await checkDriveAccess(url)).access}
           emailTick={canSendGcTradeEmail(role) ? { on: drawEmailOn, onChange: setDrawEmailOn } : null}
@@ -2230,6 +2253,7 @@ export default function GcProjects() {
           project={closeoutProject}
           own={ownWork}
           extras={drawExtras(drawTables)}
+          waiverFiles={openWaiverFiles}
           checkLink={async (url) => (await checkDriveAccess(url)).access}
           emailTick={canSendGcTradeEmail(role) ? { on: drawEmailOn, onChange: setDrawEmailOn } : null}
           billsRead={closeoutBillsRead}

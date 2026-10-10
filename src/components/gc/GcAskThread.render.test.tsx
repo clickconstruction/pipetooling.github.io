@@ -1,9 +1,11 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from './GcAskThread'
 import { boardStateFromRows } from '../../lib/gc/boardRows'
 import { clinicBoardRows } from '../../lib/gc/boardTestRows'
+import { allPeople } from '../../lib/gc/projectPeople'
+import { initialGcState } from '../../lib/gc/schedule/testState'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
 installDomShims()
@@ -71,6 +73,35 @@ describe('GcFollowUp', () => {
   it('says so when nobody is waited on', () => {
     render(<GcFollowUp state={boardStateFromRows(clinicBoardRows({ invites: [] }))} writes={writes()} onWhoElse={() => undefined} />)
     expect(screen.getByText('We are not waiting on anyone for a quote.')).toBeTruthy()
+    cleanup()
+    render(<GcFollowUp state={boardStateFromRows(clinicBoardRows({ invites: [] }))} writes={writes()} onWhoElse={() => undefined} />)
+    fireEvent.click(screen.getByRole('button', { name: 'By people · 0' }))
+    expect(screen.getByText('We are not waiting on anyone.')).toBeTruthy()
+  })
+})
+
+describe('GcFollowUp, By people (the Board’s B2b-ii-b)', () => {
+  it('counts everyone once, as the badge does, and lists them with the reason and Call only', () => {
+    const state = boardStateFromRows(clinicBoardRows())
+    render(<GcFollowUp state={state} writes={writes()} onWhoElse={() => undefined} />)
+    const people = screen.getByRole('button', { name: `By people · ${allPeople(state).count}` })
+    expect(people.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(people)
+    expect(people.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByRole('heading', { name: 'Late on their word (1)' })).toBeNull()
+    expect(screen.getByText('Dee Park')).toBeTruthy()
+    expect(screen.getByText('Hill Country Clinic: Promised a quote by Mon Oct 5. That was 3 days ago.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Follow up$/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Work the list/ })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'By urgency' }))
+    expect(screen.getByRole('heading', { name: 'Late on their word (1)' })).toBeTruthy()
+  })
+
+  it('lists who the ask cards never show: Pecan Valley’s insurance on the made-up data', () => {
+    const state = initialGcState()
+    render(<GcFollowUp state={state} writes={writes()} onWhoElse={() => undefined} />)
+    fireEvent.click(screen.getByRole('button', { name: `By people · ${allPeople(state).count}` }))
+    expect(screen.getAllByText(/Their insurance ran out Tue Sep 15\./).length).toBeGreaterThan(0)
   })
 })
 
