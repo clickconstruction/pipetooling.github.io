@@ -40,6 +40,9 @@ vi.mock('../hooks/useAuth', async () => {
 })
 
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
+// The board's rings read their own layers (the Board's B2b-vi-c, `useRingLayers.render.test.tsx`); here they read none, so each
+// window's lazy reads below keep their meaning.
+vi.mock('../components/gc/useRingLayers', () => ({ useRingLayers: () => null }))
 
 // The company window's Their portal loads one company's link; none is made yet.
 vi.mock('../lib/gc/tradePortalLinksIo', () => ({

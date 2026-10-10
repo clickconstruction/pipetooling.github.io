@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ProgressGroup, StageProgress } from '../../lib/gcMode/gcModel'
+import type { ProgressGroup, StageProgress } from '../../lib/gc/progress'
 
 /**
- * GC mode — design spike: the progress ring at the head of a Project Board row, drawn the way a
+ * GC mode, the real build, the Board's B2b-vi-c: the design spike's `GcProgressRing.tsx`, word for word but its import.
+ * The progress ring at the head of a Project Board row, drawn the way a
  * watch draws an activity ring. A dim track of the stage's color, a thick round-capped arc from
  * twelve o'clock, the count in the middle. It fills from empty when it first shows and slides
  * when the number changes. A closed ring draws a large hollow check over the count, which dims
