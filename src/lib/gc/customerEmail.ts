@@ -203,6 +203,45 @@ export function interestBillMail(f: InterestBillMailFacts): { subject: string; l
   }
 }
 
+/** What our contract's email says (the Board's B6-d-iii-b): the job, its price as one number, and the day to sign by. */
+export interface ContractMailFacts {
+  job: string
+  greeting: string
+  /** The price the send went with, as one number: never by line. */
+  price: number
+  /** The first send, a reminder at the same price, or a new price after ours moved. */
+  mode: 'first' | 'reminder' | 'newPrice'
+  signBy: string
+  /** The office's own line, kept with the send. */
+  note: string
+}
+
+export function contractMailFacts(state: GcState, project: GcProject, send: { mode: ContractMailFacts['mode']; price: number; signBy: string; note: string }): ContractMailFacts {
+  return { job: project.name, greeting: greetingOf(state, project), ...send }
+}
+
+/**
+ * Our contract to sign in their portal, in the design spike's words (`contractEmail`, gcCustomerSend.ts): the file goes
+ * with it, and the portal line under it is the function's, always on, since they sign it there.
+ */
+export function contractMail(f: ContractMailFacts): { subject: string; lines: string[] } {
+  const price = money(f.price)
+  return {
+    subject: f.mode === 'reminder' ? `Reminder: your contract for ${f.job}` : f.mode === 'newPrice' ? `Your contract for ${f.job}, with our new price` : `Your contract for ${f.job}`,
+    lines: [
+      `Hello ${f.greeting},`,
+      f.mode === 'first'
+        ? `Thank you for choosing us for ${f.job}. Here is our contract for it: ${price}.`
+        : f.mode === 'newPrice'
+          ? `Our price for ${f.job} changed. Here is our contract with the new price: ${price}. It takes the place of the one we sent before.`
+          : `Our contract for ${f.job} is still waiting on your signature: ${price}.`,
+      `Please sign it by ${weekdayDate(f.signBy)}.`,
+      ...(f.note.trim() ? [f.note.trim()] : []),
+      'The contract is attached. Your bills and change orders for the job will be in your portal too.',
+    ],
+  }
+}
+
 /** One email about a sent pay application, from its sent copy: the pay application's own, or the certified bill. */
 export interface BillEmailed {
   what: 'payApp' | 'certified'
@@ -255,6 +294,11 @@ const REFUSALS: Record<CustomerEmailErrorKey, string> = {
   notSent: 'That change order is not waiting on their signature.',
   alreadySent: 'That reminder went already.',
   noEmail: 'There is no email address on file for them. Add one on the customer, then send it again.',
+  noPortal: 'They have no portal link yet. Send it from their window first.',
+  fileChanged: 'The contract file changed after it was sent. Send it again with the file.',
+  notNewest: 'A newer contract went after this one. Send the newest one.',
+  alreadySigned: 'They signed our contract already.',
+  tooLarge: 'The contract is too large to email. Their portal has it.',
   sendFailed: 'The email service said no. Try again in a minute.',
   failed: 'The email was not sent.',
 }

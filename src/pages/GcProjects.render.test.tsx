@@ -51,8 +51,14 @@ vi.mock('../lib/gc/tradePortalLinksIo', () => ({
 // The schedule's window (PR 7b) reads the job's schedule over the board: nothing is drawn on the test board.
 vi.mock('../lib/gc/scheduleIo', () => {
   const loadSchedule = vi.fn((state: { projects: { id: string }[] }, id: string) => Promise.resolve({ state, project: state.projects.find((p) => p.id === id), version: null }))
-  // The window reads the job's submittals and RFIs first (PR 9d): here, the schedule's read alone.
-  return { loadSchedule, loadScheduleWithHolds: vi.fn((state: { projects: { id: string }[] }, id: string) => loadSchedule(state, id)), drawSchedule: vi.fn() }
+  // The window reads the job's submittals and RFIs first (PR 9d): here, the schedule's read alone. The money team's own
+  // read (16c) never answers.
+  return {
+    loadSchedule,
+    loadScheduleWithHolds: vi.fn((state: { projects: { id: string }[] }, id: string) => loadSchedule(state, id)),
+    loadScheduleMoney: vi.fn(() => new Promise(() => undefined)),
+    drawSchedule: vi.fn(),
+  }
 })
 
 // No GC project yet: the page loads empty, so the card stops show their missing words.
@@ -410,8 +416,8 @@ describe('GcProjects: the Project Board', () => {
     expect(await screen.findByRole('dialog', { name: `${rows.projects[0]!.name}: the schedule` })).toBeTruthy()
     expect(loadSchedule).toHaveBeenCalledWith(expect.anything(), 'p1')
     // The schedule's PR 16: a dev may use Building and is on the money team, so the window reads the job's logs and
-    // clock-ins over the board (16a) and offers Ask for the days (16b-ii).
-    expect(loadScheduleWithHolds).toHaveBeenCalledWith(expect.anything(), 'p1', { logs: true, money: true, today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
+    // clock-ins over the board (16a), offers Ask for the days (16b-ii) and reads the trades' percents and the money lines (16c).
+    expect(loadScheduleWithHolds).toHaveBeenCalledWith(expect.anything(), 'p1', { logs: true, money: true, draws: true, today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
   })
 
   it('the schedule’s PR 7b: the office team has no Schedule on a card until the schedule’s PR 10', async () => {

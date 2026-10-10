@@ -13,6 +13,7 @@ import { planMove } from '../../lib/gc/schedule/moves'
 import { CREW_RULE, recoveryOffers } from '../../lib/gc/schedule/recovery'
 import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { initialGcState } from '../../lib/gc/schedule/testState'
+import type { ScheduleActivity, ScheduleMove } from '../../lib/gc/schedule/types'
 import type { GcState } from '../../lib/gc/types'
 import { plainWordsFailures } from '../../lib/plainWords'
 import { installDomShims } from '../../test/renderSmokeMocks'
@@ -77,10 +78,36 @@ describe('GcRecoveryWindow: the window a recovery is saved from', () => {
     expect(words).toBe('Rosa got 1 day back on Fair Oaks Shops, Building D. A second crew on Test and balance.')
   })
 
+  it('shows the billing line only with the money team’s reading of it, for the offer saved (16c)', () => {
+    const s = lateJob()
+    const billingOf = vi.fn(() => '$2,500 of the Dec 1 bill moves to Nov 1.')
+    const { unmount } = render(<GcRecoveryWindow state={s} project={job(s)} offerKey="crew:fhvac-4" by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={vi.fn()} billingOf={billingOf} />)
+    expect(document.querySelector('[data-recovery-billing]')!.textContent).toBe('Billing: $2,500 of the Dec 1 bill moves to Nov 1.')
+    expect(billingOf).toHaveBeenCalledWith(expect.objectContaining({ key: 'crew:fhvac-4', activities: expect.any(Array) }))
+    unmount()
+    render(<GcRecoveryWindow state={s} project={job(s)} offerKey="crew:fhvac-4" by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={vi.fn()} />)
+    expect(document.querySelector('[data-recovery-billing]')).toBeNull()
+  })
+
   it('shows nothing for an offer the schedule no longer has', () => {
     const s = initialGcState()
     const { container } = render(<GcRecoveryWindow state={s} project={job(s)} offerKey="crew:fhvac-4" by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={vi.fn()} />)
     expect(container.textContent).toBe('')
+  })
+
+  it('tries the move on the what-if copy: its own words and its reason filled in (PR 11)', async () => {
+    const s = lateJob()
+    const onSave = vi.fn((_move: ScheduleMove, _activities: ScheduleActivity[], _words: string) => Promise.resolve(null))
+    const onClose = vi.fn()
+    render(<GcRecoveryWindow state={s} project={job(s)} offerKey="crew:fhvac-4" by="Rosa" onSave={onSave} onReload={vi.fn()} onClose={onClose} trying />)
+    const dialog = screen.getByRole('dialog', { name: 'Get days back' })
+    expect(dialog.textContent).toContain('Tried in the what-if. Keep puts it on the real schedule.')
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try it' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    const move = onSave.mock.calls[0]![0]
+    expect(move.reason).toBe('recovery')
+    expect(move.note.length).toBeGreaterThanOrEqual(8)
+    expect(move.recovery).toMatchObject({ how: 'crew' })
   })
 
   it('says each thing a first-timer reads in plain words', () => {

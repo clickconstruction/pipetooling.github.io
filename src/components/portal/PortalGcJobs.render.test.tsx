@@ -102,4 +102,50 @@ describe('PortalGcJobs', () => {
     const { container } = render(<PortalGcJobs token="tok-1234567890abcdef" jobs={[]} formatUsd={usd} />)
     expect(container.textContent).toBe('')
   })
+
+  it('our contract leads the job while it waits on them, and signing it posts its send, the name and the consent (B6-d-iii)', async () => {
+    const job: PortalGcJob = {
+      projectId: 'p-clinic',
+      name: 'Hill Country Clinic',
+      contract: { state: 'toSign', sendId: '00000000-0000-0000-0000-0000000000c5', signBy: '2026-10-16', total: 187000, fileName: 'Clinic contract.pdf', fileUrl: 'https://files.example/contract.pdf', retainagePct: 10, retainageStep: null, payDays: 30, lateInterestPctPerMonth: null, lateFinishPerDay: null },
+      changeOrders: [],
+      canAccept: false,
+      accepted: null,
+    }
+    render(<PortalGcJobs token={"t".repeat(32)} jobs={[job]} formatUsd={usd} />)
+    const block = screen.getByTestId('portal-gc-contract')
+    expect(block.textContent).toContain('Your contract · to sign')
+    expect(block.textContent).toContain('Our contract for Hill Country Clinic: $187,000.')
+    expect(block.textContent).toContain('We bill once a month for the work done. Part of each bill, 10%, is held until the end. Each bill is due 30 days after the architect certifies it.')
+    expect((screen.getByRole('link', { name: 'Read the contract (Clinic contract.pdf)' }) as HTMLAnchorElement).href).toBe('https://files.example/contract.pdf')
+    fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'Pat Oak' } })
+    for (const box of screen.getAllByRole('checkbox')) fireEvent.click(box)
+    fireEvent.click(screen.getByRole('button', { name: 'Sign the contract' }))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    const body = sent()
+    expect(body).toMatchObject({ kind: 'gc_owner_contract_sign', sendId: '00000000-0000-0000-0000-0000000000c5', printedName: 'Pat Oak' })
+    expect((body.esignConsent as { audience?: string } | undefined)?.audience).toBe('customer')
+    expect(await screen.findByText('You signed our contract. Thank you.')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Read what you signed (Clinic contract.pdf)' })).toBeTruthy()
+  })
+
+  it('once signed here, it reads who signed and when, with what they signed a press away', () => {
+    const job: PortalGcJob = { projectId: 'p-clinic', name: 'Hill Country Clinic', contract: { state: 'signed', signedOn: '2026-10-12', signer: 'Pat Oak', fileName: 'Clinic contract.pdf', fileUrl: 'https://files.example/contract.pdf' }, changeOrders: [], canAccept: false, accepted: null }
+    render(<PortalGcJobs token={"t".repeat(32)} jobs={[job]} formatUsd={usd} />)
+    expect(screen.getByTestId('portal-gc-contract').textContent).toMatch(/^You signed our contract on .+, as Pat Oak\.Read what you signed \(Clinic contract\.pdf\)$/)
+  })
+
+  it('a price that changed since the send shows no form to sign', () => {
+    const job: PortalGcJob = {
+      projectId: 'p-clinic',
+      name: 'Hill Country Clinic',
+      contract: { state: 'toSign', sendId: 's2', signBy: '2026-10-16', total: 187000, fileName: 'c.pdf', fileUrl: null, priceChanged: true, retainagePct: null, retainageStep: null, payDays: null, lateInterestPctPerMonth: null, lateFinishPerDay: null },
+      changeOrders: [],
+      canAccept: false,
+      accepted: null,
+    }
+    render(<PortalGcJobs token={"t".repeat(32)} jobs={[job]} formatUsd={usd} />)
+    expect(screen.getByText('Our price changed after we sent this. We will send you the new one.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Sign the contract' })).toBeNull()
+  })
 })

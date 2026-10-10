@@ -107,7 +107,7 @@ SELECT gbc.same('the office verbs are open to signed-in users, not to anon', (
   'true/false true/false true/false');
 SELECT gbc.same('the trade verbs are the service role''s alone', (
   SELECT string_agg(has_function_privilege('service_role', f, 'EXECUTE')::text || '/' || has_function_privilege('authenticated', f, 'EXECUTE')::text || '/' || has_function_privilege('anon', f, 'EXECUTE')::text, ' ' ORDER BY f)
-  FROM unnest(ARRAY['public.gc_trade_answer_back_charge(uuid, uuid, boolean, text)', 'public.gc_trade_ask_change(uuid, uuid, text, text, numeric, integer)']) f),
+  FROM unnest(ARRAY['public.gc_trade_answer_back_charge(uuid, uuid, boolean, text)', 'public.gc_trade_ask_change(uuid, uuid, text, text, numeric, integer, text)']) f),
   'true/false/false true/false/false');
 SELECT gbc.same('anon reads neither table', (
   SELECT has_table_privilege('anon', 'public.gc_back_charges', 'SELECT')::text || ' ' || has_table_privilege('anon', 'public.gc_trade_change_requests', 'SELECT')::text), 'false false');

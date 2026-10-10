@@ -41,6 +41,10 @@ done
 # A second run must change nothing: the tables and indexes exist, every function is replaced as it was,
 # and the policies, grants and blocks come out the same.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# P5a-m (20261010100000) replaced gc_trade_ask_change with a seven-argument one and dropped this one. The second run above
+# makes the six-argument one again beside it, which prod never does, so P5a-m runs again too and the schema is main's.
+LATER="$(ls supabase/migrations/*_gc_portal_p5a_files.sql)"
+psql_as postgres -f - < "$LATER" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $LATER"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/gc_back_charges/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_back_charges PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

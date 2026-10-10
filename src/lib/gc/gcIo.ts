@@ -8,6 +8,7 @@ import { supabase } from '../supabase'
 import { jobNumberLabel } from '../jobs/jobSummaryCycle'
 import type { Database, Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { extractContactInfo } from '../bids/bidContactInfo'
 import { draftForRpc, type NewProjectDraft } from './newProjectDraft'
 import { issueDraftForRpc, type IssuePlanSetDraft } from './planSetDraft'
@@ -431,7 +432,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const sowIds = sowRows.map((s) => s.id)
   // Our own trades' Trades mode bids (B6-c-ii, call C): each one's number, under bids' own policies.
   const ownBidIds = [...new Set(projects.flatMap((p) => p.trades.filter((t) => t.ours && t.ownBidId).map((t) => t.ownBidId as string)))]
-  const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews, sowLines, ownBids] = await Promise.all([
+  const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews, sowLines, ownBids, contractSends] = await Promise.all([
     inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
     supabase.from('gc_company_contacts').select('*'),
     promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
@@ -448,7 +449,23 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     // Each statement of work's lines (B6-a).
     sowIds.length ? supabase.from('gc_sow_lines').select('id, sow_id, position, label, amount, scope_item_id, change_order_id').in('sow_id', sowIds) : none,
     ownBidIds.length ? supabase.from('bids').select('id, bid_value, bid_number').in('id', ownBidIds) : none,
+    // Our contract's sends to the customer (B6-d-i): a dev's until award's door, then the money team's, so read for them.
+    money && ids.length
+      ? supabase
+          .from('gc_owner_contract_sends')
+          .select('id, project_id, customer_id, first, sent_on, sign_by, note, worth, file_path, file_name, file_sha256, signed_on, signer_printed_name, created_at')
+          .in('project_id', ids)
+          .order('created_at')
+      : none,
   ])
+  // Which of our contract's sends were emailed (B6-d-iii-b): each email's sent copy, under the sent copies' own policy.
+  const contractSendRows = taken(contractSends, 'load our contract’s sends')
+  const contractEmails = contractSendRows.length
+    ? taken(
+        await supabase.from('sent_documents').select('source_id, sent_at, recipient_name').eq('source_table', 'gc_owner_contract_sends').in('source_id', contractSendRows.map((s) => s.id)),
+        'load our contract’s emails',
+      ).map((e) => ({ source_id: e.source_id, sent_on: calendarYmdInAppTzFromIso(e.sent_at), recipient_name: e.recipient_name }))
+    : []
   return {
     today,
     projects,
@@ -472,6 +489,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     ownBids: taken(ownBids, 'load our own trades’ bids'),
     papers: taken(papers, 'load the trade partners’ papers'),
     paperSends: taken(paperSends, 'load the papers we sent'),
+    ownerContractSends: contractSendRows,
+    ownerContractEmails: contractEmails,
   }
 }
 

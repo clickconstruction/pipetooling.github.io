@@ -30,6 +30,9 @@ export const TRADE_EMAIL_KINDS = [
   'dates',
   'startSoon',
   'paper',
+  // P5c-4: the trade's closeout, in the pay group: we accepted its work, and its final pay application came in.
+  'accepted',
+  'finalIn',
 ] as const
 
 export type TradeEmailKind = (typeof TRADE_EMAIL_KINDS)[number]
@@ -59,6 +62,8 @@ const KIND_GROUP: Record<Exclude<TradeEmailKind, 'paper'>, TradeMailGroup> = {
   less: 'pay',
   coi: 'pay',
   backCharge: 'pay',
+  accepted: 'pay',
+  finalIn: 'pay',
 }
 
 /**

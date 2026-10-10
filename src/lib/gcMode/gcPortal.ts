@@ -93,7 +93,8 @@ export function portalHome(state: GcState, partnerId: string, lang: PortalLang =
   }
 }
 
-const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, backCharge: 3.6, dates: 3.8, startSoon: 3.9, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
+// accepted and finalIn are main's closeout emails (Portal's P5c-4, #5324): the prototype sends neither, so they sit by closed.
+const KIND_ORDER: Record<PortalMessage['kind'], number> = { vetted: -2, accepted: -1.2, finalIn: -1.1, closed: -1, preBid: -0.5, coi: 0, answer: 1, paid: 2, change: 3, changeAsk: 3.5, backCharge: 3.6, dates: 3.8, startSoon: 3.9, less: 4, start: 5, sow: 6, msa: 7, bidTab: 8, plans: 9, nudge: 10, invite: 11 }
 
 function firstName(contact: string): string {
   return contact.split(' ')[0] ?? contact

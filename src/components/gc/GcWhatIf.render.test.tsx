@@ -1,125 +1,149 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the what-if copy (G-81): the toolbar's way in and out, the violet line with Keep
- * and Throw it away, a move tried with no reason, Keep asking for the missing one, and the Schedule
- * tab hiding what belongs to the real schedule while the copy is shown.
+ * GC mode, the real build, the schedule's PR 11: the what-if copy's screen on main's test state (G-81). The way in and
+ * out in its three looks, the line over the chart with Throw it away asked once, and the window Keep goes through: it
+ * asks for each reason missing, says the kernel's refusal when the real schedule moved under the copy, hands the kernel's
+ * answer to the save, and stays open to read again when someone else saved first.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfKept, GcWhatIfLine } from './GcWhatIf'
-import { GcMoveExplain } from './GcScheduleMoves.proto'
-import { GcBuildingScheduleTab } from './GcBuildingSchedule'
-import { initialGcState } from '../../lib/gcMode/gcFixture'
-import { gcReducer } from '../../lib/gcMode/gcReducer'
-import { whatIfProject } from '../../lib/gcMode/gcWhatIf'
-import type { GcAction, GcState } from '../../lib/gcMode/gcTypes'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfLine } from './GcWhatIf'
+import { addDays } from '../../lib/gc/building'
+import { moveRecord, planMove } from '../../lib/gc/schedule/moves'
+import { initialGcState } from '../../lib/gc/schedule/testState'
+import { SCHEDULE_CHANGED } from '../../lib/gc/schedule/versionRefusal'
+import { WHAT_IF_NO_WHY, whatIfCopy, whatIfProject } from '../../lib/gc/schedule/whatIf'
+import { tryInCopy } from '../../lib/gc/schedule/whatIfWindow'
+import type { GcProject } from '../../lib/gc/types'
+import { plainWordsFailures } from '../../lib/plainWords'
+import { checkSupabaseError } from '../../utils/errorHandling'
 
 afterEach(cleanup)
 
-const ID = 'fairoaksd'
-const play = (state: GcState, ...actions: GcAction[]) => actions.reduce((s, a) => gcReducer(s, a), state)
-const job = (s: GcState) => s.projects.find((p) => p.id === ID)!
-function tryFinish(s: GcState, lineId: string, finish: string, why?: { reason: 'weather'; note: string; by: string }): GcState {
-  const a = job(s).whatIf!.schedule.activities.find((x) => x.lineId === lineId)!
-  return play(s, { type: 'inWhatIf', projectId: ID, by: 'Robert', action: { type: 'setScheduleActivity', projectId: ID, lineId, start: a.start, finish, after: a.after, ...(why ? { why } : {}) } })
+const s = initialGcState()
+const fairOaks = s.projects.find((p) => p.id === 'fairoaksd')!
+const opened: GcProject = { ...fairOaks, whatIf: whatIfCopy(fairOaks, 'Robert', s.today)! }
+
+/** A line moved `by` days on the copy: with a reason, or with none yet. */
+function tried(project: GcProject, lineId: string, by: number, why: { reason: 'weather'; note: string } | null): GcProject {
+  const onCopy = whatIfProject(project)!
+  const a = onCopy.schedule!.activities.find((x) => x.lineId === lineId)!
+  const plan = planMove(onCopy, lineId, addDays(a.start, by), addDays(a.finish, by))!
+  const move = { ...moveRecord(onCopy.schedule!, lineId, plan, { ...(why ?? WHAT_IF_NO_WHY), by: 'Robert' }, s.today), ...(why ? {} : { noWhy: true }) }
+  return { ...project, whatIf: tryInCopy(project, move, plan.activities)! }
 }
-const s0 = initialGcState()
-const s1 = play(s0, { type: 'startWhatIf', projectId: ID, by: 'Robert' })
-const s3 = tryFinish(tryFinish(s1, 'froof-1', '2026-10-16', { reason: 'weather', note: 'Rain is forecast all next week.', by: 'Robert' }), 'fplumb-3', '2026-10-12')
+/** TPO a few days later with a reason, then Rough-in plumbing with none. */
+const twoTried = tried(tried(opened, 'froof-1', 3, { reason: 'weather', note: 'Rain on the deck.' }), 'fplumb-3', 2, null)
 
-describe('the way in and out', () => {
-  it('makes a copy, opens the one there is, and goes back to the real schedule', () => {
-    const dispatch = vi.fn()
+/** `gc_schedule_bump`'s refusal as the io throws it. */
+function refusal(): unknown {
+  const details = JSON.stringify({ read: 3, version: 4, changes: [{ version: 4, at: '2026-11-02T20:14:00+00:00', by: null, name: 'Ann', words: 'Electrical · Lighting now runs Mon Sep 14 to Fri Oct 30.' }] })
+  try {
+    checkSupabaseError({ data: null, status: 400, error: { code: 'P0001', message: SCHEDULE_CHANGED, details, hint: null } }, 'keep the what-if')
+  } catch (e) {
+    return e
+  }
+  throw new Error('no refusal')
+}
+
+describe('GcWhatIfButton: the way in and out', () => {
+  it('makes a copy, opens the one there is, or goes back to the real schedule', () => {
+    const onStart = vi.fn()
     const onShow = vi.fn()
-    const first = render(<GcWhatIfButton project={job(s0)} shown={false} dispatch={dispatch} onShow={onShow} />)
-    fireEvent.click(screen.getByText('What if…'))
-    expect(dispatch).toHaveBeenCalledWith({ type: 'startWhatIf', projectId: ID, by: 'The office' })
-    expect(onShow).toHaveBeenCalledWith(true)
-    first.unmount()
-    const open = render(<GcWhatIfButton project={job(s3)} shown={false} dispatch={dispatch} onShow={onShow} />)
-    expect(screen.getByText('What if · 2')).toBeTruthy()
-    open.unmount()
-    render(<GcWhatIfButton project={job(s3)} shown dispatch={dispatch} onShow={onShow} />)
-    fireEvent.click(screen.getByText('See the real schedule'))
+    const { rerender } = render(<GcWhatIfButton project={fairOaks} shown={false} busy={false} onStart={onStart} onShow={onShow} />)
+    fireEvent.click(screen.getByRole('button', { name: 'What if…' }))
+    expect(onStart).toHaveBeenCalledTimes(1)
+    rerender(<GcWhatIfButton project={twoTried} shown={false} busy={false} onStart={onStart} onShow={onShow} />)
+    fireEvent.click(screen.getByRole('button', { name: 'What if · 2' }))
+    expect(onShow).toHaveBeenLastCalledWith(true)
+    rerender(<GcWhatIfButton project={twoTried} shown busy={false} onStart={onStart} onShow={onShow} />)
+    fireEvent.click(screen.getByRole('button', { name: 'See the real schedule' }))
     expect(onShow).toHaveBeenLastCalledWith(false)
+    rerender(<GcWhatIfButton project={fairOaks} shown={false} busy onStart={onStart} onShow={onShow} />)
+    expect((screen.getByRole('button', { name: 'What if…' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })
 
-describe('the line over the chart in the copy', () => {
-  it('says what the copy does, and Throw it away asks once', () => {
-    const dispatch = vi.fn()
-    const onReal = vi.fn()
-    render(<GcWhatIfLine state={s3} project={job(s3)} dispatch={dispatch} onKeep={() => undefined} onReal={onReal} />)
-    expect(screen.getByText(/2 moves tried\. 5 bars differ from the real schedule\./)).toBeTruthy()
-    expect(screen.getByText(/The bills: \$22,661 of the Oct 25 bill moves to Nov 25\./)).toBeTruthy()
-    expect(screen.getByText('Keep the 2 moves…')).toBeTruthy()
-    fireEvent.click(screen.getByText('Throw it away'))
-    expect(screen.getByText(/Throw away the copy and its 2 moves\? The real schedule stays as it is\./)).toBeTruthy()
-    expect(dispatch).not.toHaveBeenCalled()
-    fireEvent.click(screen.getAllByText('Throw it away').find((b) => b.closest('button')?.className !== undefined)!)
-    expect(dispatch).toHaveBeenCalledWith({ type: 'throwAwayWhatIf', projectId: ID, by: 'The office' })
-    expect(onReal).toHaveBeenCalled()
+describe('GcWhatIfLine: over the chart while the copy is shown', () => {
+  it('says what the copy does, with the money team’s bills only when handed in, and asks once before throwing it away', () => {
+    const onThrowAway = vi.fn()
+    const onKeep = vi.fn()
+    const { rerender } = render(<GcWhatIfLine project={twoTried} bills={null} busy={false} problem={null} onKeep={onKeep} onThrowAway={onThrowAway} onReal={vi.fn()} />)
+    const words = document.querySelector('[data-what-if-words]')!.textContent!
+    expect(words).toMatch(/^A copy of the schedule to try moves on\. Nothing here reaches the trades or the customer\. 2 moves tried\. .* 1 move has no reason yet\.$/)
+    expect(words).not.toContain('The bills')
+    rerender(<GcWhatIfLine project={twoTried} bills="$4,000 of the Nov 1 bill moves to Dec 1." busy={false} problem={null} onKeep={onKeep} onThrowAway={onThrowAway} onReal={vi.fn()} />)
+    expect(document.querySelector('[data-what-if-words]')!.textContent).toContain('The bills: $4,000 of the Nov 1 bill moves to Dec 1.')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep the 2 moves…' }))
+    expect(onKeep).toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Throw it away' }))
+    expect(onThrowAway).not.toHaveBeenCalled()
+    expect(screen.getByText('Throw away the copy and its 2 moves? The real schedule stays as it is.')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Throw it away' }))
+    expect(onThrowAway).toHaveBeenCalledTimes(1)
+  })
+
+  it('cannot keep a copy with nothing tried', () => {
+    render(<GcWhatIfLine project={opened} bills={null} busy={false} problem={null} onKeep={vi.fn()} onThrowAway={vi.fn()} onReal={vi.fn()} />)
+    expect((screen.getByRole('button', { name: 'Keep the moves…' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(document.querySelector('[data-what-if-words]')!.textContent).toContain('Move a bar to try something.')
   })
 })
 
-describe('a move tried in the copy', () => {
-  it('needs no reason: Try it saves without one', () => {
-    const copy = whatIfProject(job(s1))!
-    const a = copy.schedule!.activities.find((x) => x.lineId === 'froof-1')!
-    const dispatch = vi.fn()
-    render(<GcMoveExplain state={s1} project={copy} pending={{ lineId: 'froof-1', start: a.start, finish: '2026-10-16', after: a.after }} dispatch={dispatch} onClose={() => undefined} tryIt />)
-    expect(screen.getByText('Try moving Roofing · TPO membrane')).toBeTruthy()
-    expect(screen.getByText('In the what-if, a reason is optional. Keep asks for one.')).toBeTruthy()
-    const tryIt = screen.getByText('Try it').closest('button')!
-    expect(tryIt.disabled).toBe(false)
-    fireEvent.click(tryIt)
-    expect(dispatch).toHaveBeenCalledWith({ type: 'setScheduleActivity', projectId: ID, lineId: 'froof-1', start: a.start, finish: '2026-10-16', after: a.after })
-  })
-})
+describe('GcWhatIfKeep: the window Keep goes through', () => {
+  const keep = (project: GcProject, over: { onKeep?: ReturnType<typeof vi.fn>; onReload?: ReturnType<typeof vi.fn>; onClose?: ReturnType<typeof vi.fn>; onThrowAway?: ReturnType<typeof vi.fn> } = {}) => {
+    const onKeep = over.onKeep ?? vi.fn(() => Promise.resolve())
+    const onReload = over.onReload ?? vi.fn()
+    const onClose = over.onClose ?? vi.fn()
+    const onThrowAway = over.onThrowAway ?? vi.fn()
+    render(<GcWhatIfKeep project={project} by="Robert" today={s.today} onKeep={onKeep} onThrowAway={onThrowAway} onReload={onReload} onClose={onClose} />)
+    const dialog = screen.getByRole('dialog', { name: 'Keep the what-if' })
+    return { onKeep, onReload, onClose, onThrowAway, dialog, press: () => within(dialog).getByRole('button', { name: /^Keep the 2 moves$|Keeping/ }) as HTMLButtonElement }
+  }
 
-describe('Keep', () => {
-  it('asks for the missing reason, then keeps', () => {
-    const dispatch = vi.fn()
-    render(<GcWhatIfKeep state={s3} project={job(s3)} dispatch={dispatch} onClose={() => undefined} onKept={() => undefined} />)
-    expect(screen.getByRole('dialog', { name: 'Keep the what-if' })).toBeTruthy()
-    expect(screen.getByText('“Rain is forecast all next week.”')).toBeTruthy()
-    const keep = screen.getByText('Keep the 2 moves').closest('button')!
-    expect(keep.disabled).toBe(true)
-    expect(screen.getByText('Give each move a reason and a sentence.')).toBeTruthy()
-    fireEvent.click(screen.getByText('Crew'))
-    fireEvent.change(screen.getByPlaceholderText('What happened, in your words.'), { target: { value: 'Our crew is two men short next week.' } })
-    expect(keep.disabled).toBe(false)
-    fireEvent.click(keep)
-    const topOut = job(s3).whatIf!.schedule.moves![0]!.id
-    expect(dispatch).toHaveBeenCalledWith({ type: 'keepWhatIf', projectId: ID, by: 'The office', whys: { [topOut]: { reason: 'crew', note: 'Our crew is two men short next week.' } } })
+  it('lists the moves oldest first, asks for each reason missing, then hands the kernel’s answer over', async () => {
+    const { onKeep, onClose, dialog, press } = keep(twoTried)
+    expect([...dialog.querySelectorAll('[data-keep-move]')].map((li) => li.getAttribute('data-keep-move'))).toEqual(['move-1', 'move-2'])
+    expect(dialog.querySelector('[data-keep-problem]')!.textContent).toBe('Give each move a reason and a sentence.')
+    expect(press().disabled).toBe(true)
+    const group = within(dialog).getByRole('group', { name: /^Why it moved: / })
+    fireEvent.click(within(group).getByRole('button', { name: 'Crew' }))
+    fireEvent.change(within(dialog).getByRole('textbox'), { target: { value: 'Plumbing waits on the roof crew.' } })
+    expect(dialog.querySelector('[data-keep-problem]')!.textContent).toBe('Kept as moves by Robert, today. Undo takes them off one at a time.')
+    fireEvent.click(press())
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    const kept = onKeep.mock.calls[0]![0] as { kept: { lineId: string; reason: string; note: string; fromWhatIf?: string }[] }
+    expect(kept.kept.map((m) => [m.lineId, m.reason, m.note, m.fromWhatIf])).toEqual([
+      ['froof-1', 'weather', 'Rain on the deck.', s.today],
+      ['fplumb-3', 'crew', 'Plumbing waits on the roof crew.', s.today],
+    ])
+    for (const words of ['These moves go on the real schedule, oldest first, each with its reason.', 'Kept as moves by Robert, today. Undo takes them off one at a time.', 'Nothing was kept. The chart shows the new dates now. Press Keep again if the copy still holds.']) {
+      expect(plainWordsFailures(words), words).toEqual([])
+    }
   })
 
-  it('once kept, names the companies not told, with Tell the trades', () => {
-    const topOut = job(s3).whatIf!.schedule.moves![0]!.id
-    const kept = play(s3, { type: 'keepWhatIf', projectId: ID, by: 'Robert', whys: { [topOut]: { reason: 'crew', note: 'Our crew is two men short next week.' } } })
-    render(<GcWhatIfKept state={kept} project={job(kept)} dispatch={() => undefined} />)
-    expect(screen.getByText('2 moves kept from the what-if. Summit Roofing and Cool Breeze Mechanical have not been told.')).toBeTruthy()
-    fireEvent.click(screen.getByText('Tell the trades'))
-    expect(screen.getByRole('dialog', { name: 'Tell the trades' })).toBeTruthy()
+  it('says the real schedule moved under the copy in the kernel’s words, with Throw it away beside them', () => {
+    const real = twoTried.schedule!
+    const moved = { ...twoTried, schedule: { ...real, activities: real.activities.map((a) => (a.lineId === 'felec-3' ? { ...a, start: addDays(a.start, 2), finish: addDays(a.finish, 2) } : a)) } }
+    const { dialog, onKeep, onThrowAway, press } = keep(moved)
+    expect(dialog.querySelector('[data-keep-problem]')!.textContent).toMatch(/^The real schedule changed since this copy was made\. .+ moved there\. Throw this copy away and make a new one\.$/)
+    expect(press().disabled).toBe(true)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Throw it away' }))
+    expect(onThrowAway).toHaveBeenCalled()
+    expect(onKeep).not.toHaveBeenCalled()
   })
-})
 
-describe('the Schedule tab in the copy', () => {
-  it('shows the copy with its line and history, and hides what belongs to the real schedule', () => {
-    render(<GcBuildingScheduleTab state={s3} project={job(s3)} dispatch={() => undefined} />)
-    // The real schedule first, with the way into the copy.
-    expect(screen.getByText(/Update the week/)).toBeTruthy()
-    expect(screen.queryByText(/Tried in the what-if/)).toBeNull()
-    expect(screen.getAllByText('To verify').length).toBeGreaterThan(0)
-    fireEvent.click(screen.getByText('What if · 2'))
-    expect(screen.getByText(/A copy of the schedule to try moves on\./)).toBeTruthy()
-    expect(screen.getByText('Tried in the what-if (2)')).toBeTruthy()
-    expect(screen.queryByText(/Update the week/)).toBeNull()
-    expect(screen.queryByText('Days lost, by cause')).toBeNull()
-    // The cards that record what happened, or reach someone, are the real schedule's: the copy hides them.
-    for (const title of ['The baseline', 'To verify', 'Starting soon', "Something that is no trade's line"]) expect(screen.queryByText(title)).toBeNull()
-    expect(screen.queryByText('Print or PDF')).toBeNull()
-    fireEvent.click(screen.getAllByText('See the real schedule')[0]!)
-    expect(screen.getByText(/Update the week/)).toBeTruthy()
+  it('stays open and reads again when someone saved first, then keeps on the next press', async () => {
+    const reason = { reason: 'weather' as const, note: 'Rain on the deck.' }
+    const both = tried(tried(opened, 'froof-1', 3, reason), 'fplumb-3', 2, reason)
+    const onKeep = vi.fn().mockRejectedValueOnce(refusal()).mockResolvedValueOnce(undefined)
+    const { onReload, onClose, dialog, press } = keep(both, { onKeep })
+    fireEvent.click(press())
+    await waitFor(() => expect(onReload).toHaveBeenCalled())
+    expect(dialog.textContent).toContain('Nothing was kept. The chart shows the new dates now. Press Keep again if the copy still holds.')
+    expect(onClose).not.toHaveBeenCalled()
+    fireEvent.click(press())
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    expect(onKeep).toHaveBeenCalledTimes(2)
   })
 })

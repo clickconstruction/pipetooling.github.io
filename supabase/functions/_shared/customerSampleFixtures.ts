@@ -424,6 +424,20 @@ function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: strin
       {
         projectId: 'sample-gc-project',
         name: SAMPLE_OWNER.job,
+        // Our contract to sign (the Board's B6-d-iii). The sample's file opens the sample again: a press writes nothing.
+        contract: {
+          state: 'toSign',
+          sendId: 'sample-gc-contract',
+          signBy: ymdPlusDays(todayYmd, 5),
+          total: 187_000,
+          retainagePct: 10,
+          retainageStep: { atPct: 50, toPct: 5, way: 'rest' },
+          payDays: 30,
+          lateInterestPctPerMonth: null,
+          lateFinishPerDay: null,
+          fileName: 'Our contract.pdf',
+          fileUrl: `${appOrigin.replace(/\/$/, '')}/portal?t=${SAMPLE_TOKEN_OWNER}`,
+        },
         changeOrders: [
           { id: 'sample-gc-co-2', number: 2, description: 'Add a coffee bar cabinet, per the customer', price: 1_100, days: 3, sentOn: ymdPlusDays(todayYmd, -2) },
         ],
