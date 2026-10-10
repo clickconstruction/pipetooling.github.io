@@ -71,7 +71,7 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 | [#72 Job Parts Tally → Transactions](../to-dos/tally-transactions-refresh.md) | PR 3, the pay bar | Not sized | An owner call | Nobody |
 | [#77 By Stage is retired](../to-dos/retire-by-stage-materials.md) | Item 2, one material slot in place of three. Item 3, the robots stop naming the picks table, with a twin-mcp deploy. | S each | A quiet week | Nobody |
 | [#49 GC Review for one operator](../to-dos/gc-review-one-operator/README.md) | Drop the `as never` casts and retire the two old statement-round functions | Not sized | Run a Wednesday on it first | Helper 13 reads it |
-| [#61 ZZ test jobs off the Pipeline](../to-dos/zz-test-jobs-hide.md) | The hide, as the mock-up shows | M | Read the Pipeline as an assistant first. Build it only if ZZ rows still reach the board. | Helper 13 reads it |
+| #61 ZZ test jobs off the Pipeline — retired 2026-10-10 | Done: four PRs (v2.5116, v2.5120, v2.5122, v2.5124), legal-portal deployed, and the live look on 2026-10-10 passed as an assistant and as the dev with the switch off and on; the card is deleted and the fragments carry the record (the live look is in v2.5124's). | M | None | Helper 12 |
 | [#7 Per-GC bids](../to-dos/per-gc-bid-retirement.md) | One mechanical PR that retires `submitted_to` and `itb_links` | M | Real per-GC usage | Nobody |
 | [#102 Burn against the bid](../to-dos/burn-against-the-bid.md) | The fourth footing. A job whose bid has no usable estimate budgets at price × (1 − priced margin). | S | Priced-margin stamps on real bids | Nobody |
 | [#102 Burn against the bid](../to-dos/burn-against-the-bid.md) | "No price, no priced margin" | Not sized | The next bids migration | Nobody |
