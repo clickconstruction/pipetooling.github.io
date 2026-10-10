@@ -123,7 +123,8 @@ import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import type { ContractSendInput, ContractSendOutcome } from '../components/gc/GcCustomerContractSend'
 import { sendGcOwnerContract } from '../lib/gc/ownerContractIo'
 import { mintCustomerPortalLink } from '../lib/portal/mintCustomerPortalLink'
-import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
+import { benchAnchor } from '../lib/gc/tradeViews'
+import { allPeople } from '../lib/gc/projectPeople'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
 import { setEmailSummary, type SetEmailCompany, type SetEmailInvite, type SetEmailRecipient, type SetEmailResult } from '../lib/gc/setEmail'
@@ -612,7 +613,9 @@ export default function GcProjects() {
     setDevView('partners')
     requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
   }
-  const toCall = board ? followUpsToCall(board) : 0
+  // Follow up's badge is the one count (the Board's B2b-ii-b, call E1): everyone we wait on, once a person across their
+  // jobs, as the Dashboard's Follow up line reads it from these same rows. Each board row shows its job's share.
+  const toCall = board ? allPeople(board).count : 0
   const devPill = (view: 'board' | 'partners' | 'followUp' | 'money', label: string) => {
     const on = devView === view
     return (

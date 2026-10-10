@@ -46,7 +46,7 @@ import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
 import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
-import { canOpenGcProjects } from '../../lib/gc/access'
+import { canOpenGcProjects, canSeeGcMoney } from '../../lib/gc/access'
 import { GC_FOLLOW_UP_HREF } from '../../lib/gc/links'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
@@ -508,7 +508,7 @@ export function DashboardPinnedQuickRow({
   const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
   // GC mode's Follow up (v2.4941): the GC office team, the people who see the Follow up pill on /gc.
   const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && canOpenGcProjects(role)
-  const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
+  const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled, canSeeGcMoney(role))
   // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
   const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)

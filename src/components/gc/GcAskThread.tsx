@@ -3,10 +3,12 @@ import { bidsIn } from '../../lib/gc/bids'
 import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, followUps, promiseWords, wordRecord, type FollowUp, type FollowUpWhy, type PromiseState } from '../../lib/gc/followUp'
 import { telHref } from '../../lib/gc/followUpSheet'
+import { allPeople } from '../../lib/gc/projectPeople'
 import type { AskContact, DeclineReason, GcProject, GcState, Invite, Partner, TradePackage } from '../../lib/gc/types'
 import { daysUntil, shortDate, weekdayDate } from '../../lib/gc/words'
 import { GcDeclineForm } from './GcDeclineForm'
 import { PartnerName } from './GcPartnerName'
+import { PeopleRows } from './GcPeopleRows'
 import { Btn, Card, Chip, input, type Tone } from './gcUi'
 
 /**
@@ -14,8 +16,9 @@ import { Btn, Card, Chip, input, type Tone } from './gcUi'
  * spike's `GcAskThread.tsx`. Every call, text, email and portal answer is a line on the ask, newest
  * first. A line can carry their word ("quote by Monday"). When that day passes with no quote, the
  * ask lands at the top of Follow up. Will not do it and Cannot do it take a company off the ask with
- * the reason kept. Work the list, By people and the Follow up sheet come with the Board's B2b, so
- * Log a contact sits on each card until then.
+ * the reason kept. Since the Board's B2b-ii-b **By people · N** lists everyone we wait on, once a person across their jobs
+ * (`allPeople`), the number Follow up's badge and the Dashboard's line say; each person has Call. Work the list, Follow up
+ * on a person and the Follow up sheet come with B2b-viii, so Log a contact sits on each card until then.
  */
 
 /** What the asks write, through the company record (B1). */
@@ -263,12 +266,55 @@ const WHY_WORDS: Record<FollowUpWhy, { tone: Tone; title: string; blurb: string 
 
 const WHY_ORDER: FollowUpWhy[] = ['passed', 'today', 'silent', 'nodate', 'waiting']
 
-/** Follow up: every company we are waiting on for a quote, across every project, the ones to call first. */
+/**
+ * Follow up: every company we are waiting on for a quote, across every project, the ones to call first (By urgency); or
+ * everyone we wait on, each once with everything they owe (By people, the owner, 2026-10-05).
+ */
 export function GcFollowUp({ state, writes, onWhoElse }: { state: GcState; writes: AskWrites; onWhoElse: (trade: string) => void }) {
   const all = followUps(state)
+  // Everyone we are waiting on, each once across every job: Follow up's badge and the Dashboard's count ("make them match").
+  const everyone = allPeople(state)
+  const listCount = everyone.count
+  const [view, setView] = useState<'urgency' | 'people'>('urgency')
+  // A phone puts each person's buttons under their words. Read once: a test page may have no matchMedia.
+  const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 480px)').matches
   return (
     <section aria-label="Follow up" style={{ display: 'grid', gap: '0.9rem' }}>
-      {WHY_ORDER.map((why) => {
+      <span role="group" aria-label="Order Follow up" style={{ display: 'inline-flex', justifySelf: 'start', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
+        {(
+          [
+            { key: 'urgency', label: 'By urgency' },
+            { key: 'people', label: `By people · ${listCount}` },
+          ] as const
+        ).map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            aria-pressed={view === o.key}
+            onClick={() => setView(o.key)}
+            style={{
+              border: 'none',
+              padding: '0.25rem 0.8rem',
+              fontSize: '0.8rem',
+              fontWeight: view === o.key ? 600 : 400,
+              cursor: 'pointer',
+              background: view === o.key ? 'var(--bg-blue-tint)' : 'transparent',
+              color: view === o.key ? 'var(--text-blue-800)' : 'var(--text-muted)',
+            }}
+          >
+            {o.label}
+          </button>
+        ))}
+      </span>
+      {view === 'people' &&
+        (listCount > 0 ? (
+          <Card style={{ padding: '0.2rem 0.9rem' }}>
+            <PeopleRows people={everyone.people} narrow={phone} />
+          </Card>
+        ) : (
+          <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone.</Card>
+        ))}
+      {view === 'urgency' && WHY_ORDER.map((why) => {
         const rows = all.filter((f) => f.why === why)
         if (rows.length === 0) return null
         const words = WHY_WORDS[why]
@@ -288,7 +334,7 @@ export function GcFollowUp({ state, writes, onWhoElse }: { state: GcState; write
           </section>
         )
       })}
-      {all.length === 0 && <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone for a quote.</Card>}
+      {view === 'urgency' && all.length === 0 && <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone for a quote.</Card>}
     </section>
   )
 }
