@@ -9105,6 +9105,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gc_change_order_trade_sends_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: true
+            referencedRelation: "gc_change_orders_office"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "gc_change_order_trade_sends_recorded_by_fkey"
             columns: ["recorded_by"]
             isOneToOne: false
@@ -10204,6 +10211,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gc_owner_pay_app_lines_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "gc_change_orders_office"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "gc_owner_pay_app_lines_package_id_fkey"
             columns: ["package_id"]
             isOneToOne: false
@@ -11272,6 +11286,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gc_rfis_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "gc_change_orders_office"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "gc_rfis_email_send_log_id_fkey"
             columns: ["email_send_log_id"]
             isOneToOne: false
@@ -12253,6 +12274,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gc_schedule_moves_change_order_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "gc_change_orders_office"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "gc_schedule_moves_late_notice_id_fkey"
             columns: ["late_notice_id"]
             isOneToOne: false
@@ -13007,6 +13035,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gc_sow_lines_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "gc_change_orders_office"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "gc_sow_lines_scope_item_id_fkey"
             columns: ["scope_item_id"]
             isOneToOne: false
@@ -13586,6 +13621,13 @@ export type Database = {
             columns: ["change_order_id"]
             isOneToOne: false
             referencedRelation: "gc_change_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_trade_change_requests_change_order_id_fkey"
+            columns: ["change_order_id"]
+            isOneToOne: false
+            referencedRelation: "gc_change_orders_office"
             referencedColumns: ["id"]
           },
           {
@@ -28950,6 +28992,66 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: []
+      }
+      gc_change_orders_office: {
+        Row: {
+          answered_on: string | null
+          days: number | null
+          days_on_chart: string[] | null
+          description: string | null
+          id: string | null
+          number: number | null
+          package_id: string | null
+          project_id: string | null
+          reason: string | null
+          schedule_words: string | null
+          sent_on: string | null
+          status: string | null
+        }
+        Insert: {
+          answered_on?: string | null
+          days?: number | null
+          days_on_chart?: string[] | null
+          description?: string | null
+          id?: string | null
+          number?: number | null
+          package_id?: string | null
+          project_id?: string | null
+          reason?: string | null
+          schedule_words?: string | null
+          sent_on?: string | null
+          status?: string | null
+        }
+        Update: {
+          answered_on?: string | null
+          days?: number | null
+          days_on_chart?: string[] | null
+          description?: string | null
+          id?: string | null
+          number?: number | null
+          package_id?: string | null
+          project_id?: string | null
+          reason?: string | null
+          schedule_words?: string | null
+          sent_on?: string | null
+          status?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_change_orders_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_change_orders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+        ]
       }
       master_assistants: {
         Row: {
