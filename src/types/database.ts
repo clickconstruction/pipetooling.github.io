@@ -9463,6 +9463,64 @@ export type Database = {
           },
         ]
       }
+      gc_customer_contacts: {
+        Row: {
+          by_name: string
+          by_user_id: string | null
+          contacted_on: string
+          created_at: string
+          customer_id: string
+          how: string
+          id: string
+          note: string
+          project_id: string | null
+        }
+        Insert: {
+          by_name?: string
+          by_user_id?: string | null
+          contacted_on?: string
+          created_at?: string
+          customer_id: string
+          how: string
+          id?: string
+          note: string
+          project_id?: string | null
+        }
+        Update: {
+          by_name?: string
+          by_user_id?: string | null
+          contacted_on?: string
+          created_at?: string
+          customer_id?: string
+          how?: string
+          id?: string
+          note?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_customer_contacts_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_customer_contacts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_daily_log_crews: {
         Row: {
           log_id: string
