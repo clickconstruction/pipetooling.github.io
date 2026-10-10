@@ -4,6 +4,9 @@
  * a job being built, and its window: their file read by G-137's reader, each of their dates beside
  * ours with the difference in days, ticked by the office. Take sends one action that writes only the
  * dates to meet. Nothing else moves and nothing is sent.
+ *
+ * The prototype's copy, forked to `.proto` when the schedule's PR 12c ported their dates' door and window to main at
+ * `GcTheirDates.tsx` (#5357); the prototype's schedule tab and its render test read this one.
  */
 import { useEffect, useMemo, useState, type ChangeEvent, type Dispatch } from 'react'
 import { createPortal } from 'react-dom'

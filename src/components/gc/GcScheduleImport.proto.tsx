@@ -5,6 +5,9 @@
  * guessed it (the rows with no place first), their dates to meet, our lines not in it, and what it
  * could not read. Nothing is written until Make the schedule from it, which sends one action
  * through the first draft's own kernel. `gcScheduleImport.ts` reads, guesses and makes; this draws.
+ *
+ * The prototype's copy, forked to `.proto` when the schedule's PR 12c ported Bring in their schedule to main at
+ * `GcScheduleImport.tsx` (#5357); the prototype's schedule tab reads this one.
  */
 import { useMemo, useState, type ChangeEvent, type Dispatch } from 'react'
 import { createPortal } from 'react-dom'
