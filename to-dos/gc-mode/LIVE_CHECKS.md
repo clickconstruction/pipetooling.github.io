@@ -170,7 +170,7 @@ own address. No request row and no sent copy.
 
 **15. O10, Preview and its test.** Settings → **GC jobs · the office's notices** → **Preview today's notices**,
 then **Email me a test**. *Reads*: "Nothing is due today." and "Nothing is due today, so no test went." Writes
-nothing. See *Not walkable yet* for days 4 and 6.
+nothing. Steps 18 and 19 read the reminders on days 4 and 6.
 
 **16. O11, Our own work, as a pay reader and as one without pay.** Do it after the bills: while Plumbing is linked,
 Bill the customer shows its crew's percent as new work. Send nothing then.
@@ -198,15 +198,32 @@ its amount, the chip "open" and "Emailed to". *Writes*: a `jobs_ledger_invoices`
 `gc_owner_interest_bills` row. The email "Interest on late bills for GC test project, delete me, $X" and its sent
 copy also go. No undo.
 
+## Days 4 and 6 (O10's reminders, with O10c)
+
+These need O10c (#5337) live, its day field in Settings. Leave pay application 4's certificate unrecorded until day 6
+is read.
+
+**18. Day 4, the architect's reminder.** Settings → **GC jobs · the office's notices** → **Count pay applications sent
+since** → day 1 → **Preview today's notices**. *Reads*: "Pay application 4 for GC test project, delete me waits on
+your certificate · to GC Test Architects at bids@clickplumbing.com", then "As if the notices went on" day 1. Then
+**Email me a test**: "1 test went to your email." *Writes*: one `email_send_log` row. The [TEST] copy goes to the
+presser alone. No notice row and no sent copy.
+
+**19. Day 6, our late notice.** The same presses. *Reads*: the architect's reminder again, and "Pay application 4 for
+GC test project, delete me still waits on the architect · to Malachi" at his address. Malachi hears because the test
+project has no project manager. Its second line reads "They have no email on file, so they were not reminded." That
+is only because Preview never sends the reminder. With the switch on, it reads "We reminded them on" day 4. **Email
+me a test**: "2 tests went to your email." Both go to the presser alone.
+
 ## When the other lanes' walks are done
 
-**18. Schedule PR 11, a what-if copy.** After the schedule lane draws the test project's schedule on its own yes.
+**20. Schedule PR 11, a what-if copy.** After the schedule lane draws the test project's schedule on its own yes.
 Schedule → **What if…** → drag one bar → **Throw it away** → confirm. *Reads*: "A copy of the schedule to try moves
 on. Nothing here reaches the trades or the customer." The real schedule is unchanged. *Writes*: one
 `gc_schedule_what_ifs` row (the presser's), deleted by Throw it away. **Keep** is not walked: it moves the real
 schedule.
 
-**19. O3b, a trade's ask into a change order.** After the Board's award and Send on the building project and the
+**21. O3b, a trade's ask into a change order.** After the Board's award and Send on the building project and the
 trade's signing in its portal (the Board's and the Portal's walks).
 - The trade's link `/t/<token>`, in a private window, not "Open it as the office". **Ask for a change** → **What
   changed** "Test ask, delete me", a reason, **What you ask for it** $500, **Working days it adds** 1 → **Send to**.
@@ -223,13 +240,29 @@ trade's signing in its portal (the Board's and the Portal's walks).
 
 - **O7c's Accept the work.** It shows in the portal only once the bills reach the whole contract. On the test
   project every trade bills $0 until it is awarded and drawn to 100%. Its bed holds it until a job gets there.
-- **O10's architect reminder (day 4) and the project manager's notice (day 6).** While the switch is off, Preview
-  counts pay applications sent from today only. Pay application 4, sent on day 1, never shows. Turning the switch
-  on also starts its day then. A small client-only cut would fix this: Preview and its test take a "sent since"
-  day. The function already reads one. Its call is the lead's.
+- **O10's architect reminder and the project manager's notice, today.** They need a pay application 3 and 5 days old.
+  Steps 18 and 19 read them on days 4 and 6, with O10c's day field (#5337).
 - **O10's bill-day notice.** It is due on the 23rd and 24th, to the project manager or, with none, the company's
   owner (Malachi). With the switch off it goes nowhere, and Preview on those days shows it only while no pay application’s period
   reaches the 25th.
+
+## When O12 is in
+
+**22. O12, the customer's notice 3 days before a bill is due.** After O12a's push and O12b's deploy
+(`mockups/owner-billing-o12.md`).
+- On day 6, after step 19: Bill the customer → **Change the days to pay** → 5 → **Save the days to pay**.
+- Record pay application 4's certificate at $2,250, today, with its email tick off. It is due on day 11.
+- On day 8, 9 or 10: Settings → **GC jobs · the customer's notice before a bill is due** → **Count bills certified
+  since** → day 6 → **Preview today's notices**.
+- *Reads*: "Pay application 4 for GC test project, delete me is due" day 11, "· to GC Test Owner LLC at
+  bids@clickplumbing.com".
+- **Email me a test** brings the [TEST] copy to the presser alone. The owner reads his copy, then he turns it on.
+- *Writes*:
+  - `gc_projects.owner_pay_days` = 5;
+  - the certificate's `jobs_ledger_invoices` row;
+  - one `email_send_log` row for the test.
+- The 5 days also move interest's start on the open bills to 5 days after their certificates. Interest bill 1 keeps
+  its amount.
 
 ## After the walk
 
