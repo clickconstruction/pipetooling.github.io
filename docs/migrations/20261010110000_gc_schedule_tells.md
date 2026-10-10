@@ -53,3 +53,7 @@ Nothing calls either function until the schedule's PR 13b (the tell) and the Por
 DROP FUNCTION IF EXISTS public.gc_schedule_record_tells(uuid, uuid, uuid, jsonb);
 DROP FUNCTION IF EXISTS public.gc_trade_answer_dates(uuid, uuid, boolean, date, text);
 ```
+
+## Status
+
+Merged in #5328 and pushed to prod 2026-10-10 ~12:4x UTC (`supabase db push` took it with 20261010100000; drift check 858/858). Verified read-only through the management API (`to-dos/gc-mode/scripts/verify/verify-110000.mjs` on `spike/gc-mode`): `gc_schedule_record_tells` is INVOKER, executes for `authenticated`, not `anon`; `gc_trade_answer_dates` is INVOKER, executes for `service_role` alone; both carry the v2.5173 comment. Nothing calls either until 13b and P5d.
