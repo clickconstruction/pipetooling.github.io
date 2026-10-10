@@ -5,8 +5,15 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildGcCustomerEmail,
+  gcCustomerEmailCc,
   gcCustomerEmailCopyKinds,
+  gcCustomerEmailTestSubject,
+  gcWeeklyReportLines,
+  GC_CUSTOMER_EMAIL_ADDRESS,
   GC_CUSTOMER_EMAIL_FILED_AS,
+  GC_CUSTOMER_EMAIL_FRAMED,
+  GC_CUSTOMER_EMAIL_GATE,
+  GC_CUSTOMER_EMAIL_TEST_TYPE,
   GC_CUSTOMER_EMAIL_FROM_NAME,
   GC_CUSTOMER_EMAIL_KINDS,
   GC_CUSTOMER_EMAIL_MAX_PDF_BASE64,
@@ -218,6 +225,7 @@ describe('what gc-customer-email reads and sends', () => {
       ['change_order', 'customer', 'gc_change_orders', 'job_contract_gc_change_order', 'contracts'],
       ['reminder', 'customer', 'gc_owner_pay_reminders', 'bill_gc_reminder', 'bills'],
       ['interest_bill', 'customer', 'gc_owner_interest_bills', 'bill_gc_interest', 'bills'],
+      ['weekly', 'customer', 'gc_weekly_reports', 'field_report_gc_weekly', 'statements'],
     ])
     // Never the Pipeline's G702 workbook copy, whose history reads its own kind.
     expect(GC_CUSTOMER_EMAIL_KINDS.some((k) => isPayApplicationCopy({ kind: GC_CUSTOMER_EMAIL_FILED_AS[k] }))).toBe(false)
@@ -225,7 +233,49 @@ describe('what gc-customer-email reads and sends', () => {
     expect(gcCustomerEmailCopyKinds('gc_change_orders')).toEqual(['job_contract_gc_change_order'])
     expect(gcCustomerEmailCopyKinds('gc_owner_pay_reminders')).toEqual(['bill_gc_reminder'])
     expect(gcCustomerEmailCopyKinds('gc_owner_interest_bills')).toEqual(['bill_gc_interest'])
+    expect(gcCustomerEmailCopyKinds('gc_weekly_reports')).toEqual(['field_report_gc_weekly'])
     expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder', 'interest_bill'])
+  })
+
+  it('sends the weekly report as Building’s (U7b): its row decides who may, to the contact first, unframed, no portal line yet', () => {
+    const others = GC_CUSTOMER_EMAIL_KINDS.filter((k) => k !== 'weekly')
+    expect(others.every((k) => GC_CUSTOMER_EMAIL_GATE[k] === 'moneyTeam' && GC_CUSTOMER_EMAIL_ADDRESS[k] === 'billing' && GC_CUSTOMER_EMAIL_FRAMED[k])).toBe(true)
+    expect([GC_CUSTOMER_EMAIL_GATE.weekly, GC_CUSTOMER_EMAIL_ADDRESS.weekly, GC_CUSTOMER_EMAIL_FRAMED.weekly, GC_CUSTOMER_EMAIL_PORTAL_LINE.weekly]).toEqual(['row', 'contact', false, false])
+    const read = parseCustomerEmail({ ...ok, kind: 'weekly' })
+    expect(read.ok && read.req.kind).toBe('weekly')
+  })
+
+  it('splits a weekly report into its paragraphs, each keeping its own lines', () => {
+    const body = 'Hi Dana,\n\nHere is where it stands.\r\n\r\nAt a glance\n- Finish: about Fri Dec 18.\n- 62% done.\n  \nThanks,\nRosa\nClick Construction'
+    expect(gcWeeklyReportLines(body)).toEqual(['Hi Dana,', 'Here is where it stands.', 'At a glance\n- Finish: about Fri Dec 18.\n- 62% done.', 'Thanks,\nRosa\nClick Construction'])
+  })
+
+  it('frames nothing around an unframed email, escapes its text and keeps its line breaks', () => {
+    const email = buildGcCustomerEmail({ subject: 'Fair Oaks · week of Oct 5', lines: ['Hi Dana,', 'At a glance\n- Under <budget> & on time.', 'Thanks,\nRosa\nClick Construction'], signer: 'Robert', gc: 'Click Construction', framed: false })
+    expect(email.text).toBe('Hi Dana,\n\nAt a glance\n- Under <budget> & on time.\n\nThanks,\nRosa\nClick Construction')
+    expect(email.html).toContain('At a glance<br>- Under &lt;budget&gt; &amp; on time.')
+    expect(email.html).not.toContain('Under <budget>')
+    expect(email.html).not.toContain('Thank you,')
+    // A framed one keeps the signature as before.
+    expect(buildGcCustomerEmail({ subject: 'S', lines: ['Hello Elena,'], signer: 'Robert', gc: 'Click Construction' }).text).toBe('Hello Elena,\n\nThank you,\nRobert\nClick Construction')
+  })
+
+  it('makes a test copy of any kind: [TEST] before the subject, its own email type, and nobody copied', () => {
+    expect(gcCustomerEmailTestSubject(' Fair Oaks · week of Oct 5 ')).toBe('[TEST] Fair Oaks · week of Oct 5')
+    expect(GC_CUSTOMER_EMAIL_TEST_TYPE).toBe('gc_customer_email_test')
+    const read = parseCustomerEmail({ ...ok, test: true })
+    expect(read.ok && read.req.test).toBe(true)
+    const plain = parseCustomerEmail({ ...ok, test: 'yes' })
+    expect(plain.ok && plain.req.test).toBeUndefined()
+    expect(gcCustomerEmailCc({ copyArchitect: true, test: true, architectAddress: 'arch@mesquite.com', address: 'dana@cibolo.com' })).toEqual([])
+  })
+
+  it('copies the architect on a weekly report that says so, at an address of its own', () => {
+    const base = { copyArchitect: true, test: false, architectAddress: ' arch@mesquite.com ', address: 'dana@cibolo.com' }
+    expect(gcCustomerEmailCc(base)).toEqual(['arch@mesquite.com'])
+    expect(gcCustomerEmailCc({ ...base, copyArchitect: false })).toEqual([])
+    expect(gcCustomerEmailCc({ ...base, architectAddress: '' })).toEqual([])
+    expect(gcCustomerEmailCc({ ...base, architectAddress: 'DANA@cibolo.com' })).toEqual([])
   })
 
   it('adds the customer’s portal link before the signature when there is one, and only an https one', () => {

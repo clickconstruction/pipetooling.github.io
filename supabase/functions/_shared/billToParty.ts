@@ -90,6 +90,14 @@ export function customerBillingEmail(customer: CustomerBillingFields | null | un
   return explicit || contactInfoField(customer?.contact_info, 'email')
 }
 
+/**
+ * The address a customer row hears about its job at: the contact email, else `billing_email`. A GC job's Friday report
+ * goes to the person who runs the job for them, not to who pays (Building's U7b); every bill keeps `customerBillingEmail`.
+ */
+export function customerContactEmail(customer: CustomerBillingFields | null | undefined): string {
+  return contactInfoField(customer?.contact_info, 'email') || (customer?.billing_email ?? '').trim()
+}
+
 export function customerContactPhone(customer: CustomerBillingFields | null | undefined): string {
   return contactInfoField(customer?.contact_info, 'phone')
 }

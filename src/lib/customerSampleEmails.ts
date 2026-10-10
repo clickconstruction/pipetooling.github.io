@@ -34,9 +34,13 @@ import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
 import { buildGcRfiEmail, buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
-import { buildGcCustomerEmail, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
+import { buildGcCustomerEmail, gcWeeklyReportLines, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
 import { certifiedMail, certifyAskMail, changeOrderMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
 import { payReminderMail } from './gc/ownerBillingRemind'
+import { weeklyReportText, type WeeklyReport } from './gc/buildingWeekly'
+import { mondayOf } from './gc/schedule/schedule'
+import type { GcProject } from './gc/types'
+import { shortDate } from './gc/words'
 import { gcTradePortalSample, gcTradePortalSampleRows } from '../../supabase/functions/_shared/gcTradePortalSample'
 import { mailboxWithName } from '../../supabase/functions/_shared/mailboxWithName'
 import { inviteMessage, mailRecipients, portalMailGroup } from './gc/portal'
@@ -330,7 +334,7 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
-  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill')
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill' || id === 'gc-weekly')
     return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
@@ -448,6 +452,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return buildSampleGcCustomerEmail(id, ctx)
   if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
   if (id === 'gc-interest-bill') return buildSampleGcInterestBillEmail(ctx)
+  if (id === 'gc-weekly') return buildSampleGcWeeklyEmail(ctx)
   if (id === 'submittal-room-link') return buildSampleSubmittalRoomLinkEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }
@@ -516,5 +521,39 @@ export function buildSampleGcInterestBillEmail(ctx: SampleEmailContext): BuiltEm
     signer: String(ctx.sender?.name ?? 'The project manager'),
     gc: GC_CUSTOMER_EMAIL_FROM_NAME,
     portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+  })
+}
+
+/**
+ * GC mode (Building's U7b): the Friday report from Click Construction, as `gc-customer-email` sends it: the report
+ * kernel's own words (`weeklyReportText`) on a made-up week of the sample project, unframed, since the report carries its
+ * own greeting and sign-off.
+ */
+export function buildSampleGcWeeklyEmail(ctx: SampleEmailContext): BuiltEmail {
+  const weekOf = mondayOf(ctx.todayYmd)
+  const report: WeeklyReport = {
+    projectId: 'sample',
+    weekOf,
+    customer: null,
+    to: { name: 'Elena Ruiz', first: 'Elena', email: '' },
+    architect: null,
+    sections: [
+      { key: 'glance', title: 'At a glance', lines: ['Finish: about Fri Dec 18, 2 days ahead of the Dec 20 in your contract.', '62% of the work is done. 60% was planned by now, so we are 1 day ahead.'] },
+      { key: 'week', title: 'This week', lines: ['Mon: Footings poured on the east side.', 'Wed: Slab prep done. Under-slab plumbing inspected.', '8 to 12 people a day on site, from 3 trades.'] },
+      { key: 'next', title: 'Next week', lines: ['Concrete: the slab.', 'Steel: columns on the north line.'] },
+    ],
+    logs: 4,
+    missing: [],
+    hints: {},
+    nextTrades: ['Concrete', 'Steel'],
+    subject: `Sample Retail Shell · week of ${shortDate(weekOf)}`,
+  }
+  const text = weeklyReportText(report, { name: 'Sample Retail Shell' } as GcProject, { from: 'company', length: 'full', off: [], mine: '' }, null)
+  return buildGcCustomerEmail({
+    subject: text.subject,
+    lines: gcWeeklyReportLines(text.body),
+    signer: String(ctx.sender?.name ?? 'The project manager'),
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    framed: false,
   })
 }
