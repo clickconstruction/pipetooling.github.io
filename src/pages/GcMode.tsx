@@ -76,7 +76,7 @@ import {
 import { boardFollowPeople, pastContract as pastContractOf } from '../lib/gcMode/gcCounts'
 import { GC_TOUR_STEPS } from '../lib/gcMode/gcTour'
 import { GcProjectTour } from '../components/gc/GcProjectTour'
-import { GcStageHealth } from '../components/gc/GcStageHealth'
+import { GcStageHealth } from '../components/gc/GcStageHealth.proto'
 
 /**
  * GC mode — design spike (2026-10-02). Bids, mirrored: we are the general contractor, the plans

@@ -7,6 +7,7 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
 import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
+import { boardStateFromRows } from '../lib/gc/boardRows'
 import { keepRoughAt, loadSchedule, loadScheduleWithHolds } from '../lib/gc/scheduleIo'
 import { loadGcCrewOnSite, loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { linkCrewJob, loadCrewJobs, searchCrewJobs, suggestCrewJobs } from '../lib/gc/crewJobIo'
@@ -42,7 +43,9 @@ vi.mock('../hooks/useAuth', async () => {
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn() }))
 // The board's rings read their own layers (the Board's B2b-vi-c, `useRingLayers.render.test.tsx`); here they read none, so each
 // window's lazy reads below keep their meaning.
-vi.mock('../components/gc/useRingLayers', () => ({ useRingLayers: () => null }))
+// How the stage is going's tests (B2b-vii) lay a ring read of their own here; every other test reads none.
+const ringRead = vi.hoisted(() => ({ value: null as unknown }))
+vi.mock('../components/gc/useRingLayers', () => ({ useRingLayers: () => ringRead.value }))
 
 // The company window's Their portal loads one company's link; none is made yet.
 vi.mock('../lib/gc/tradePortalLinksIo', () => ({
@@ -1056,5 +1059,42 @@ describe('GcProjects: the customer window’s money (the Board’s B2b-v-iii)', 
     const dialog = await screen.findByRole('dialog', { name: 'Oak Street Partners' })
     await waitFor(() => expect(loadGcBillingRows).toHaveBeenCalledWith(['p1']))
     expect(await within(dialog).findByText('They owe us now')).toBeTruthy()
+  })
+})
+
+describe('GcProjects: How the stage is going under a project’s title (the Board’s B2b-vii)', () => {
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+  afterEach(() => {
+    auth.role = 'dev'
+    ringRead.value = null
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+  /** The clinic won and buying out, its ring's layers read for the stages given. */
+  async function open(ready: string[]) {
+    const rows = awardedClinicBoardRows()
+    ringRead.value = { state: boardStateFromRows(rows), shown: new Set(ready), ready: new Set(ready), failed: false }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    return document.querySelector('[data-gc-project="p1"]') as HTMLElement
+  }
+
+  it('draws under the title once the stage’s ring is read, and asks a dev for the start date', async () => {
+    const card = await open(['buyout'])
+    expect(card.querySelector('[data-tour="gc-stage-health"]')).toBeTruthy()
+    expect(within(card).getByLabelText('Set a start date')).toBeTruthy()
+  })
+
+  it('draws nothing while the stage’s ring is not read, as the ring draws nothing', async () => {
+    const card = await open([])
+    expect(card.querySelector('[data-tour="gc-stage-health"]')).toBeNull()
+  })
+
+  it('the next step opens what the card opens: the trades for anyone, the start date for a dev alone', async () => {
+    auth.role = 'estimator'
+    const card = await open(['buyout'])
+    // The clinic's next step is its unawarded trade, which every reader of the card can reach.
+    expect(within(card).getByRole('button', { name: 'Next: Award Concrete →' })).toBeTruthy()
+    expect(within(card).queryByLabelText('Set a start date')).toBeNull()
   })
 })
