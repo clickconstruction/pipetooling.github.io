@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import { projectPeople } from '../../lib/gc/projectPeople'
 import { GcBoard } from './GcBoard'
 import { GcCustomerOpenerContext } from './gcCustomerOpener'
 import { boardStateFromRows } from '../../lib/gc/boardRows'
@@ -54,6 +55,21 @@ describe('GcBoard', () => {
     unmount()
     render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} />)
     expect(document.querySelector('[data-gc-board-people]')).toBeNull()
+  })
+
+  it('opens the Follow up sheet on the row’s job: Work the list from the first person, Follow up at a person (B2b-viii-a)', () => {
+    const state = boardStateFromRows(awardedClinicBoardRows())
+    const first = projectPeople(state, state.projects.find((p) => p.id === 'p1')!).people[0]!
+    const onFollowUpJob = vi.fn()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} onChase={() => undefined} onFollowUpJob={onFollowUpJob} />)
+    const people = document.querySelector('[data-gc-board-people="p1"]') as HTMLElement
+    fireEvent.click(within(people).getByRole('button', { name: /^1 to call/ }))
+    fireEvent.click(within(people).getByRole('button', { name: 'Work the list' }))
+    expect(onFollowUpJob).toHaveBeenLastCalledWith('p1', first.partnerId ?? `customer:${first.customerId}`, false)
+    fireEvent.click(within(people).getByRole('button', { name: /^1 to call/ }))
+    fireEvent.click(within(people).getByRole('button', { name: 'Follow up' }))
+    expect(onFollowUpJob).toHaveBeenLastCalledWith('p1', first.partnerId ?? `customer:${first.customerId}`, false)
+    expect(onFollowUpJob).toHaveBeenCalledTimes(2)
   })
 
   it('marks a price with a missing cost as + ?, on the row and on the carried trade in the price card', () => {

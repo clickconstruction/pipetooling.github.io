@@ -40,7 +40,7 @@ Follow up opens on **By urgency**, with a card for each quote. **By people** sho
 
 1. Press {{button:outline|By people}} at the top of Follow up. Its number is the same as the one on the Follow up button.
 2. Each person shows every reason we need them. A reason about one job starts with that job's name.
-3. Press {{button:outline|Call}} to call that person.
+3. Press {{button:outline|Call}} to call that person. Press {{button:outline|Follow up}} to open the Follow up sheet at them.
 4. Press {{button:outline|By urgency}} to go back to the cards.
 
 By people also lists what the cards do not show. A company's insurance may have run out. A customer may not have signed our contract yet.
@@ -86,4 +86,4 @@ Each project card below the board lists its trades. Each trade also lists every 
 
 ## What comes next
 
-To ask more companies, see [Ask trade partners for a quote](/help/ask-trade-partners-for-a-quote). A list to work through every call in one sitting comes in a later step.
+To ask more companies, see [Ask trade partners for a quote](/help/ask-trade-partners-for-a-quote). To work through every call in one sitting, see [Work through everyone we wait on in one sitting](/help/work-through-everyone-we-wait-on).

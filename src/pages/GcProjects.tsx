@@ -109,6 +109,7 @@ import { GcBoard } from '../components/gc/GcBoard'
 import { useRingLayers } from '../components/gc/useRingLayers'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
+import { GcFollowUpSheet } from '../components/gc/GcFollowUpSheet'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
 import { GcTradeSow, type SowWrites } from '../components/gc/GcTradeSow'
@@ -130,6 +131,8 @@ import { newestContractSend } from '../lib/gc/customerContract'
 import { mintCustomerPortalLink } from '../lib/portal/mintCustomerPortalLink'
 import { benchAnchor } from '../lib/gc/tradeViews'
 import { allPeople } from '../lib/gc/projectPeople'
+import { boardFollowPeople } from '../lib/gc/schedule/counts'
+import type { FollowUpWriters } from '../lib/gc/followUpWrites'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
 import { setEmailSummary, type SetEmailCompany, type SetEmailInvite, type SetEmailRecipient, type SetEmailResult } from '../lib/gc/setEmail'
@@ -171,6 +174,7 @@ import {
   loadScopeBookStore,
   logGcAskContact,
   logGcCustomerContact,
+  recordGcTradePromise,
   makeDriveFolders,
   markGcBidSent,
   markGcLost,
@@ -632,6 +636,18 @@ export default function GcProjects() {
       await refreshBoard()
     },
   }
+  // The Follow up sheet (the Board's B2b-viii-a): one person at a time, a draft from me, Call, and the log. Its writes are
+  // main's presses; nothing is sent from Click. Opened from Follow up (everyone it counts), a board row (that job's people)
+  // or the schedule's call list, each at a person when one was pressed.
+  const followUpWriters: FollowUpWriters = {
+    logAsk: (line) => logGcAskContact({ ...line, on: today, byName: profileName ?? '' }),
+    logCustomer: (line) => logGcCustomerContact({ ...line, on: today, byName: profileName ?? '' }),
+    recordPromise: async (promise) => {
+      await recordGcTradePromise(promise)
+    },
+  }
+  const [followSheet, setFollowSheet] = useState<{ projectId?: string; partnerId?: string; calling: boolean } | null>(null)
+  const followSheetJob = followSheet?.projectId ? (board?.projects.find((p) => p.id === followSheet.projectId) ?? null) : null
   // Who else? on a Follow up card: Trade partners, at that trade's card.
   const showTrade = (trade: string) => {
     setDevView('partners')
@@ -1665,6 +1681,7 @@ export default function GcProjects() {
                 moneyShown={moneyShown}
                 folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
                 onChase={() => setDevView('followUp')}
+                onFollowUpJob={(projectId, partnerId, calling) => setFollowSheet({ projectId, partnerId, calling })}
                 ring={ringState}
               />
             ) : devView === 'partners' ? (
@@ -1687,7 +1704,7 @@ export default function GcProjects() {
                 <div style={{ fontSize: '0.875rem' }}>Loading the money…</div>
               )
             ) : (
-              <GcFollowUp state={board} writes={askWrites} onWhoElse={showTrade} />
+              <GcFollowUp state={board} writes={askWrites} onWhoElse={showTrade} onFollowUp={(partnerId, calling) => setFollowSheet({ ...(partnerId ? { partnerId } : {}), calling: calling ?? false })} />
             )
           ) : boardProblem ? (
             <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{boardProblem}</div>
@@ -1977,7 +1994,30 @@ export default function GcProjects() {
           canPull={canUseGcBuilding(role)}
           canTell={canSendGcTradeEmail(role)}
           reads={scheduleReads}
+          {...(canOpenGcProjects(role) ? { followUp: { writes: followUpWriters, me: profileName ?? null, onLogged: async () => void (await refreshBoard()) } } : {})}
           onClose={() => setScheduleWindow(null)}
+        />
+      )}
+      {followSheet && board && canOpenGcProjects(role) && (!followSheet.projectId || followSheetJob) && (
+        <GcFollowUpSheet
+          key={`${followSheet.projectId ?? 'all'}:${followSheet.partnerId ?? ''}`}
+          state={board}
+          writes={followUpWriters}
+          me={profileName ?? null}
+          {...(followSheet.partnerId ? { startPartnerId: followSheet.partnerId } : {})}
+          startCalling={followSheet.calling}
+          onClose={() => setFollowSheet(null)}
+          onLogged={async () => void (await refreshBoard())}
+          {...(followSheetJob
+            ? {
+                // What the row counts (G-146): the call list's people with its items, then Follow up's others.
+                list: (s: GcState) => {
+                  const job = s.projects.find((x) => x.id === followSheetJob.id)
+                  return job ? boardFollowPeople(s, job) : []
+                },
+                title: followSheetJob.name,
+              }
+            : {})}
         />
       )}
       {openCustomer && board && (

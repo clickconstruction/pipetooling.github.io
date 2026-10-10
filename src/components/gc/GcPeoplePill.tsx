@@ -8,8 +8,8 @@ import { PeopleRows } from './GcPeopleRows'
  * count of the people we are waiting on, in place of the row's chips (the owner, 2026-10-04: "say number of people to call
  * and then when a user hovers over it they see the details, much like the circle"; mock-up `people-to-call-mockup.html`).
  * It behaves like the ring: hover opens the card, a click pins it, Escape or a press elsewhere lets it go, and a tap opens
- * it on a phone. Each person has Call; Follow up and **Work the list** come with the Follow up sheet (B2b-viii), so until
- * then `onFollowUp` and `onWorkList` are unset and the card's **Open Follow up** opens the board's Follow up.
+ * it on a phone. Each person has Call. Since B2b-viii-a, with `onFollowUp` and `onWorkList`, each person's Follow up and
+ * **Work the list** open the Follow up sheet on the job's people; the card's **Open Follow up** opens the board's Follow up.
  */
 
 const TONE: Record<PeopleTone, { bg: string; fg: string; dot: string }> = {
