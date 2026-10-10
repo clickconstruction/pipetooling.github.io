@@ -497,6 +497,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
         },
         {
+          id: 'gc-portal-sign-contract',
+          label: 'GC mode: sign our contract in their portal',
+          sublabel: 'Their portal, under the GC job, once we send our contract from their window',
+          when: 'Once we win the job',
+          customerCan: 'Read our price, every term we bill by and the contract file, then sign it with their name typed or drawn. What they signed stays a press away.',
+          guide: 'send-our-contract-to-a-gc-customer',
+          reflects: ['Our contract as it went: its price and its file', 'Every term we bill by on the job', 'The customer’s portal link'],
+          render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
+        },
+        {
           id: 'gc-portal-pay-by-card',
           label: 'GC mode: pay a certified bill by card in their portal',
           sublabel: 'Their portal, beside a certified bill that is not on Stripe, once the owner turns the offer on',

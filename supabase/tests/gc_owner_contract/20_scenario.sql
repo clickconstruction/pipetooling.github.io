@@ -141,6 +141,13 @@ SELECT goc.same('anon calls none of the five', (
     'public.gc_owner_contract_keep(uuid, date, jsonb)',
     'public.gc_owner_contract_worth_ok(uuid, jsonb)',
     'public.gc_owner_contract_portal_signed_on(uuid)']) AS f), 'false false false false false');
+-- The customer's portal runs as the service role: it signs (B6-d-iii's kind) and checks a send's price ahead of time
+-- (customer-portal's loader), so a missing grant would leave the price warning failing quietly.
+SELECT goc.same('the service role signs and checks the price', (
+  SELECT string_agg(has_function_privilege('service_role', f, 'EXECUTE')::text, ' ') FROM unnest(ARRAY[
+    'public.gc_customer_sign_owner_contract(uuid, uuid, text, text, text, text)',
+    'public.gc_owner_contract_worth_ok(uuid, jsonb)',
+    'public.gc_owner_contract_keep(uuid, date, jsonb)']) AS f), 'true true true');
 
 -- 1 · As a dev: a job that is not there, one still bidding and a lost one, each in words.
 SELECT goc.as_user('00000000-0000-0000-0000-0000000009d1');

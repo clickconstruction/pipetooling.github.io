@@ -47,4 +47,10 @@ Press **Mark it signed** on Get started instead. [Get a GC job ready to start](/
 
 ## What the customer gets
 
-No email goes yet. Their portal cannot take a signature yet. The send is kept with its price and its file for when it can.
+Our contract waits in their portal under the job. They see the price, how billing works and the sign by day. They read the file, then sign with their name typed or drawn.
+
+No email goes yet. Until it does, they find it only when they open their portal.
+
+## Once they sign
+
+The row reads **signed** with the day and their name. The price they signed is kept. Get started shows the contract as signed. A contract they signed in their portal cannot be undone or moved on Get started.
