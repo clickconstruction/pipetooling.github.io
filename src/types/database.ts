@@ -13698,6 +13698,7 @@ export type Database = {
           carry_budget: boolean
           created_at: string
           id: string
+          job_ledger_id: string | null
           ours: boolean
           own_bid_id: string | null
           position: number
@@ -13713,6 +13714,7 @@ export type Database = {
           carry_budget?: boolean
           created_at?: string
           id?: string
+          job_ledger_id?: string | null
           ours?: boolean
           own_bid_id?: string | null
           position?: number
@@ -13728,6 +13730,7 @@ export type Database = {
           carry_budget?: boolean
           created_at?: string
           id?: string
+          job_ledger_id?: string | null
           ours?: boolean
           own_bid_id?: string | null
           position?: number
@@ -13755,6 +13758,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "gc_invites"
             referencedColumns: ["id", "package_id"]
+          },
+          {
+            foreignKeyName: "gc_trade_packages_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "gc_trade_packages_own_bid_id_fkey"
@@ -20076,6 +20086,7 @@ export type Database = {
           fee_added_at: string | null
           fee_added_by: string | null
           fee_amount: number | null
+          fee_came_off_at: string | null
           fee_invoice_id: string | null
           mercury_transaction_id: string
           opened_at: string | null
@@ -20094,6 +20105,7 @@ export type Database = {
           fee_added_at?: string | null
           fee_added_by?: string | null
           fee_amount?: number | null
+          fee_came_off_at?: string | null
           fee_invoice_id?: string | null
           mercury_transaction_id: string
           opened_at?: string | null
@@ -20112,6 +20124,7 @@ export type Database = {
           fee_added_at?: string | null
           fee_added_by?: string | null
           fee_amount?: number | null
+          fee_came_off_at?: string | null
           fee_invoice_id?: string | null
           mercury_transaction_id?: string
           opened_at?: string | null
@@ -29882,6 +29895,14 @@ export type Database = {
         Returns: string
       }
       gc_create_project: { Args: { draft: Json }; Returns: string }
+      gc_crew_on_site: {
+        Args: { p_from: string; p_project_id: string; p_to: string }
+        Returns: {
+          package_id: string
+          people: number
+          work_date: string
+        }[]
+      }
       gc_draft_change_order: {
         Args: { p_draft: Json; p_project_id: string }
         Returns: string
@@ -29951,6 +29972,10 @@ export type Database = {
         Returns: string
       }
       gc_leveled_total: { Args: { p_invite_id: string }; Returns: number }
+      gc_link_crew_job: {
+        Args: { p_job_ledger_id: string; p_package_id: string }
+        Returns: undefined
+      }
       gc_mark_bid_sent: { Args: { p_project_id: string }; Returns: undefined }
       gc_mark_lost: {
         Args: {
@@ -31138,6 +31163,7 @@ export type Database = {
           fee_added_at: string
           fee_added_by: string
           fee_amount: number
+          fee_came_off_at: string
           fee_invoice_id: string
         }[]
       }
