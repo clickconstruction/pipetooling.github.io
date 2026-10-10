@@ -2,7 +2,7 @@
 name: "The schedule's PR 13: Tell the trades and their answers"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 13, decision 9's trade writes and Writing it's two senders; PORTAL_REAL_BUILD.md, P5d and the trade emails (dates); mockups/schedule-pr11.md, call 8 (the kept line); GANTT_FEATURES.md G-81, G-113, G-132
 branch: the plan on claude/gc-schedule-pr13-plan (from origin/spike/gc-mode at d0047495e); the code from origin/main in two cuts, one with a migration
-status: plan 2026-10-10 by gc 4 at the lead's ask. Amendment 1 (2026-10-10): gc 10, holding Schedule, co-signed all ten calls at their picks and call 11 with its Call; their two checks are named in calls 2 and 3, the walk's sentence is a seam, and call 11 (a told move undone) is added. For gc 3's co-sign on the answer's half, then the lead's read-back. 13a's SQL ran on the real bed on main at e5e11fef4. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 4 at the lead's ask. Amendment 1 (2026-10-10): gc 10, holding Schedule, co-signed all ten calls at their picks and call 11 with its Call; their two checks are named in calls 2 and 3, the walk's sentence is a seam, and call 11 (a told move undone) is added. Amendment 2 (2026-10-10): gc 3, holding the Portal, co-signed the answer's half (calls 1, 2, 5 and the Seams); their note that the verb refuses a day before today (dayPassed) is in the SQL and its bed, which now reads its days from today. For the lead's read-back. 13a's SQL ran on the real bed on main at e5e11fef4. Nothing cut or claimed.
 ---
 
 # The schedule's PR 13: Tell the trades and their answers
@@ -65,8 +65,11 @@ Two cuts:
 5. **The answer's verb is this lane's, its kind the Portal's** (gc 3's seam, as in U3b to U6 and P5c). `gc_trade_answer_dates`
    (13a) is service role only and raises the portal's keys with their words as DETAIL: `notFound`, `notYours` (a
    company not told of that move), `datesTakenBack` (new: the move was undone since), `alreadyAnswered` (a race too),
-   `badRequest` (no yes or no, or a day with a yes), `dayNeeded` (new: another day asked with none) and `tooLong`. The
-   two new keys go in `WAITING` as `'P5d'`, and P5d maps them and takes them off. *Other way:* none; the table is ours.
+   `badRequest` (no yes or no, or a day with a yes), `dayNeeded` (new: another day asked with none), `dayPassed` (a day
+   before today, the key `gc_trade_quote_day` already raises: the portal's date input starts at today, but the verb is
+   the rule; gc 3's note) and `tooLong`. The two new keys go in `WAITING` as `'P5d'`, and P5d maps them and takes them
+   off. `alreadyAnswered` keeps its key; P5d makes its words general, since today they are the back charge's (gc 3's
+   note). *Other way:* none; the table is ours.
 6. **Every day is the company's** (`app_today()`), as on every record, so `told_on` and `answered_on` never come from a
    browser's clock. That is why the tell is an RPC and not a plain insert: the table's column has no default, and
    adding one would lock it (`lock_timeout`). Neither touches the plan or its version.
@@ -156,9 +159,9 @@ END;
 $$;
 
 -- A company's answer to its new dates from its portal (tradeAnswerDates, G-113): the dates work, or another day asked
--- for, with a note if it likes. Only for a move it was told of, while the move stands, and once. Its refusals are the
--- portal's keys, each with its words as DETAIL. Service role only: the submit function calls it once it has turned a
--- link into its company.
+-- for, today or later, with a note if it likes. Only for a move it was told of, while the move stands, and once. Its
+-- refusals are the portal's keys, each with its words as DETAIL. Service role only: the submit function calls it once it
+-- has turned a link into its company.
 CREATE OR REPLACE FUNCTION public.gc_trade_answer_dates(p_company_id uuid, p_move_id uuid, p_ok boolean, p_day date, p_note text)
 RETURNS void
 LANGUAGE plpgsql
@@ -188,6 +191,9 @@ BEGIN
   IF NOT p_ok AND p_day IS NULL THEN
     RAISE EXCEPTION 'dayNeeded' USING ERRCODE = 'P0001', DETAIL = 'Say which day works.';
   END IF;
+  IF NOT p_ok AND p_day < public.app_today() THEN
+    RAISE EXCEPTION 'dayPassed' USING ERRCODE = 'P0001', DETAIL = 'Pick today or a day after it.';
+  END IF;
   IF char_length(v_note) > 2000 THEN
     RAISE EXCEPTION 'tooLong' USING ERRCODE = 'P0001', DETAIL = 'Keep the note under 2,000 characters.';
   END IF;
@@ -203,7 +209,7 @@ $$;
 COMMENT ON FUNCTION public.gc_schedule_record_tells(uuid, uuid, uuid, jsonb) IS
   'GC mode (v2.NNNN): the companies told of moves (Tell the trades, G-132), after gc-trade-email sent each its dates. One row per move and company with the dates shown and the send''s log row; one already there stays. A move undone or on another job is refused. A record: no version. SECURITY INVOKER.';
 COMMENT ON FUNCTION public.gc_trade_answer_dates(uuid, uuid, boolean, date, text) IS
-  'GC mode (v2.NNNN): a company''s answer to its new dates from its portal (tradeAnswerDates, G-113): they work, or another day asked for. Only a move it was told of, while it stands, and once. Service role only.';
+  'GC mode (v2.NNNN): a company''s answer to its new dates from its portal (tradeAnswerDates, G-113): they work, or another day asked for, today or later. Only a move it was told of, while it stands, and once. Service role only.';
 
 -- The office's record: signed-in users, the tells' own policy deciding who.
 REVOKE ALL ON FUNCTION public.gc_schedule_record_tells(uuid, uuid, uuid, jsonb) FROM PUBLIC, anon;
@@ -217,17 +223,17 @@ GRANT EXECUTE ON FUNCTION public.gc_trade_answer_dates(uuid, uuid, boolean, date
 
 `supabase/tests/gc_schedule/30_tells.sql`, a job of its own in a transaction of its own, run by
 `scripts/pgtest-gc-schedule.sh` after `20_scenario.sql`; the script applies the migration a second time too. On main
-at e5e11fef4 its 22 assertions passed:
+at e5e11fef4 its 23 assertions passed. Its days are read from today, so it reads the same on any day it runs:
 - a tell of nothing, of another job's move, and of an undone move refused whole;
 - a tell's row with today and the dates shown;
 - the same tell again adds nothing and the first stays;
 - the version stays;
 - the answer refused to a signed-in user, for a move not there, from a company not told, on a move undone since,
-  with a day on a yes, with neither, with no day on a no, and with a long note;
+  with a day on a yes, with neither, with no day on a no, with a day before today, and with a long note;
 - another day asked with its note trimmed, and a second answer refused;
 - the grants.
 
-Ten bugs were planted one at a time, and eight failed it:
+Eleven bugs were planted one at a time, and nine failed it:
 - a tell of an undone move;
 - a tell of another job's move;
 - a tell that overwrites the first;
@@ -235,6 +241,7 @@ Ten bugs were planted one at a time, and eight failed it:
 - an answer on a move undone since;
 - a yes with a day (the table's check refuses it too);
 - a no with no day;
+- a no with a day before today;
 - the answer granted to signed-in users.
 
 Two did not, and neither is a hole:
@@ -325,5 +332,6 @@ dates work*; the move reads *Test Plumbing: the dates work.* No real trade is to
 ## Status
 
 Plan 2026-10-10, gc 4. Amendment 1 the same day: gc 10 co-signed the ten calls at their picks; their checks, the walk's
-sentence and call 11 are written in. For gc 3's co-sign and the lead's read-back. 13a's SQL bed-tested on main at
-e5e11fef4. Nothing cut or claimed.
+sentence and call 11 are written in. Amendment 2: gc 3 co-signed the answer's half, and the verb refuses a day before
+today. For the lead's read-back. 13a's SQL bed-tested on main at e5e11fef4 (23 assertions, 9 of 11 planted bugs; the
+two others explained). Nothing cut or claimed.
