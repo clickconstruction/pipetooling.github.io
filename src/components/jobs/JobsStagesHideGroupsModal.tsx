@@ -22,9 +22,14 @@ export type JobsStagesHideGroupsModalProps = {
   jobs: JobWithDetails[]
   filters: StagesExcludeFilters
   onChange: (next: StagesExcludeFilters) => void
+  /**
+   * A dev's ZZ test jobs line (punch list #61, v2.5120): hidden by default, per device. Null for
+   * every other role, who never see the jobs at all.
+   */
+  zzTestJobs?: { count: number; shown: boolean; onChange: (shown: boolean) => void } | null
 }
 
-export default function JobsStagesHideGroupsModal({ open, onClose, jobs, filters, onChange }: JobsStagesHideGroupsModalProps) {
+export default function JobsStagesHideGroupsModal({ open, onClose, jobs, filters, onChange, zzTestJobs }: JobsStagesHideGroupsModalProps) {
   if (!open) return null
   const options = stagesExcludeOptionsFromJobs(jobs, filters)
   const total = countStagesExclusions(filters)
@@ -75,6 +80,75 @@ export default function JobsStagesHideGroupsModal({ open, onClose, jobs, filters
           </p>
         </div>
         <div style={{ overflowY: 'auto', flex: 1, minHeight: 0, padding: '0.25rem 0.5rem 0.5rem' }}>
+          {zzTestJobs ? (
+            <div style={{ padding: '0.4rem 0 0.2rem' }}>
+              <div
+                style={{
+                  padding: '0.25rem 0.75rem 0.1rem',
+                  fontSize: '0.6875rem',
+                  fontWeight: 700,
+                  letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-faint)',
+                }}
+              >
+                Test jobs (dev only)
+              </div>
+              <button
+                type="button"
+                data-testid="stages-hide-zz-test-jobs"
+                aria-pressed={!zzTestJobs.shown}
+                onClick={() => zzTestJobs.onChange(!zzTestJobs.shown)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  width: '100%',
+                  padding: '0.35rem 0.75rem',
+                  border: 'none',
+                  borderRadius: 6,
+                  background: 'none',
+                  cursor: 'pointer',
+                  font: 'inherit',
+                  fontSize: '0.875rem',
+                  color: 'inherit',
+                  textAlign: 'left',
+                }}
+              >
+                <span
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    textDecoration: zzTestJobs.shown ? 'none' : 'line-through',
+                    color: zzTestJobs.shown ? 'inherit' : 'var(--text-faint)',
+                  }}
+                >
+                  ZZ test jobs
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)', flexShrink: 0 }}>
+                  {zzTestJobs.count} job{zzTestJobs.count === 1 ? '' : 's'}
+                </span>
+                <span
+                  style={{
+                    flexShrink: 0,
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: 6,
+                    border: zzTestJobs.shown ? '1px solid var(--border)' : '1px solid #dc2626',
+                    background: zzTestJobs.shown ? 'transparent' : '#dc2626',
+                    color: zzTestJobs.shown ? 'var(--text-muted)' : '#ffffff',
+                  }}
+                >
+                  {zzTestJobs.shown ? 'Hide' : 'Hidden'}
+                </span>
+              </button>
+              <div style={{ padding: '0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Every other role never sees them. Your choice also moves the strip, Quickfill and the Dashboard on this
+                device.
+              </div>
+            </div>
+          ) : null}
           {STAGES_EXCLUDE_DIMENSIONS.map((dim) => (
             <div key={dim} style={{ padding: '0.4rem 0 0.2rem' }}>
               <div

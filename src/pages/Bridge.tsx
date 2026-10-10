@@ -62,7 +62,7 @@ export default function Bridge() {
   const [daysInputs, setDaysInputs] = useState<VectorDaysInputs | null>(null)
   const [daysError, setDaysError] = useState<string | null>(null)
   const daysCacheRef = useRef(new Map<string, VectorDaysInputs>())
-  const fin = useDashboardFinancials(role === 'dev', refreshKey, role)
+  const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
 
   useEffect(() => {
     if (role !== 'dev' || !user?.id) return

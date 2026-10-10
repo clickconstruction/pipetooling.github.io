@@ -13,7 +13,8 @@ import {
 import { useAuth } from '../hooks/useAuth'
 import { fetchJobsLedgerStagesPrimary, fetchJobsLedgerWithDetailsForStages, fetchStagesEnrichment, primaryRowToJobWithDetails } from '../lib/fetchJobsLedgerWithDetailsForStages'
 import { fetchStagesHeaderStats } from '../lib/jobs/fetchStagesHeaderStats'
-import { hidesZzTestJobs, withoutZzTestJobs } from '../lib/jobs/zzTestJobVisibility'
+import { withoutZzTestJobs, zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
 import { mergeScopedRows, NON_PAID_SCOPES, type JobsBoardScope } from '../lib/jobs/boardScopes'
 import { applyStagesEnrichment, patchJobsById } from '../lib/jobs/stagesEnrichment'
 import { boardIsFreshForTab } from '../lib/jobs/boardRefetchTtl'
@@ -112,6 +113,11 @@ type JobsListCacheContextValue = {
    * this; other tabs keep runFetchJobs.
    */
   refreshMergedScopes: (customerFilter: string | null, options?: { kind?: 'default' | 'visibility' }) => Promise<void>
+  /**
+   * The ZZ test jobs the cache holds, shown or not (punch list #61, v2.5120). Only a dev ever sees
+   * them, so only a dev's Pipeline reads it: the chip that says how many are hidden.
+   */
+  zzTestJobCount: number
 }
 
 const JobsListCacheContext = createContext<JobsListCacheContextValue | null>(null)
@@ -119,14 +125,16 @@ const JobsListCacheContext = createContext<JobsListCacheContextValue | null>(nul
 export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const { user, role } = useAuth()
   /**
-   * Punch list #61 (v2.5116): ZZ test jobs are hidden from every role but dev. State keeps every row
-   * the reads return; the rule runs where the cache hands rows out (`jobs` below and runFetchJobs'
-   * result), so the remembered board, each scope merge, the full fetch and the enrichment patch all
-   * pass it, and a dev whose role lands late still gets the rows.
+   * Punch list #61 (v2.5116): ZZ test jobs are hidden from every role but dev, and from a dev too
+   * unless their switch shows them (v2.5120, `zzTestJobSwitch.ts`). State keeps every row the reads
+   * return; the rule runs where the cache hands rows out (`jobs` below and runFetchJobs' result), so
+   * the remembered board, each scope merge, the full fetch and the enrichment patch all pass it, a
+   * dev whose role lands late still gets the rows, and a flip of the switch needs no read.
    */
-  const hideZz = hidesZzTestJobs(role)
+  const hideZz = useZzTestJobsHidden(role)
   const [jobs, setJobs] = useState<JobWithDetails[]>([])
   const visibleJobs = useMemo(() => (hideZz ? withoutZzTestJobs(jobs) : jobs), [jobs, hideZz])
+  const zzTestJobCount = useMemo(() => zzTestJobIds(jobs).size, [jobs])
   const [jobsListLoading, setJobsListLoading] = useState(true)
   const [jobsListEnriching, setJobsListEnriching] = useState(false)
   const [jobsListRefreshing, setJobsListRefreshing] = useState(false)
@@ -138,6 +146,11 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const [headerStats, setHeaderStats] = useState<StagesHeaderStats | null>(null)
   const [leanBilledRows, setLeanBilledRows] = useState<StageRow[] | null>(null)
   const headerStatsInFlightRef = useRef(false)
+  /** The customer filter of the last stats read, so a flip of the dev's ZZ switch can read them again. */
+  const lastStatsFilterRef = useRef<string | null | undefined>(undefined)
+  /** The ZZ choice now, read when a stats read lands: one begun under the other choice is dropped and read again. */
+  const hideZzRef = useRef(hideZz)
+  hideZzRef.current = hideZz
   const headerStatsLastFetchRef = useRef<{ key: string; at: number } | null>(null)
 
   const loadInFlightRef = useRef(false)
@@ -371,6 +384,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const refreshHeaderStats = useCallback(
     async (customerFilter: string | null, options?: { force?: boolean }): Promise<void> => {
       if (!user?.id) return
+      lastStatsFilterRef.current = customerFilter
       if (headerStatsInFlightRef.current) return
       // Fresh-enough guard (v2.1917): the load/visibility piggyback callers
       // refire after every board fetch; stats only need to move when data
@@ -381,15 +395,20 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         return
       }
       headerStatsInFlightRef.current = true
+      // A flip of the dev's ZZ switch while this read is out (review on #5241): its answer is the old
+      // choice's, so it is dropped and read again under the new one.
+      let flippedMeanwhile = false
       try {
         const res = await fetchStagesHeaderStats(customerFilter, undefined, { excludeZzTestJobs: hideZz })
-        if (res.ok) {
+        flippedMeanwhile = hideZzRef.current !== hideZz
+        if (res.ok && !flippedMeanwhile) {
           headerStatsLastFetchRef.current = { key, at: Date.now() }
           setHeaderStats(res.stats)
           setLeanBilledRows(res.leanBilledRows)
         }
       } finally {
         headerStatsInFlightRef.current = false
+        if (flippedMeanwhile) void refreshHeaderStatsRef.current?.(customerFilter)
       }
     },
     [user?.id, hideZz],
@@ -510,6 +529,16 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   refreshHeaderStatsRef.current = refreshHeaderStats
   runFetchScopesRef.current = runFetchScopes
 
+  // A dev's flip of the ZZ switch (v2.5120): the rows follow on their own; the strip's stats are read
+  // again under the new key (it carries the choice, so the freshness guard lets it through).
+  const zzSwitchSeenRef = useRef(hideZz)
+  useEffect(() => {
+    if (zzSwitchSeenRef.current === hideZz) return
+    zzSwitchSeenRef.current = hideZz
+    if (lastStatsFilterRef.current === undefined) return
+    void refreshHeaderStatsRef.current?.(lastStatsFilterRef.current)
+  }, [hideZz])
+
   // Reset when auth user id changes
   useEffect(() => {
     if (!user?.id) {
@@ -565,6 +594,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     fetchScopeIfNeeded,
     runFetchScopes,
     refreshMergedScopes,
+    zzTestJobCount,
   }
 
   return <JobsListCacheContext.Provider value={value}>{children}</JobsListCacheContext.Provider>
