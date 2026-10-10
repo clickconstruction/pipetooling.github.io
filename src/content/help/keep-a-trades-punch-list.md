@@ -31,7 +31,7 @@ You can add to a list until we accept the trade's work. After that, anything wro
 
 ## When the trade says it is fixed
 
-The trade marks an item fixed in their portal once their portal takes it. Until then they tell us by phone or text.
+The trade marks an item fixed in their portal with **It is fixed**. They can also tell us by phone or text.
 
 Press {{button:outline|They say it is fixed}} on the item when they do. The item then waits on our check.
 

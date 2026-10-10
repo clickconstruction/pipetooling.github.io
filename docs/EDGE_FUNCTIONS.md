@@ -1070,7 +1070,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 4. A token under 16 or over 128 characters answers `400 badRequest`.
 5. The link is resolved by `_shared/gcTradeLink.ts`: the raw token, then its hash. An unknown or turned-off link answers `404 linkOff`.
 6. `set_lang` with `es` while Spanish is held answers `400 spanishHeld`.
-7. The hourly cap: a free-text kind (`submit_quote`, `quote_day`, `add_person`, `ask_question`, `ask_change`) answers `429 tooMany` once the company has made 10 free-text writes in the last hour. The count is its questions, the people it added, its quotes, its portal contact lines and the changes it asked for.
+7. The hourly cap: a free-text kind (`submit_quote`, `quote_day`, `add_person`, `ask_question`, `ask_change`, `submittal_send`, `rfi_ask`) answers `429 tooMany` once the company has made 10 free-text writes in the last hour. The count is its questions, the people it added, its quotes, its portal contact lines, the changes it asked for, and since P5c-2 its questions while we build (`gc_rfis.asked_by_company_id`) and the submittal rounds it sent on its statements of work's trades.
 8. A signature (`sign_sow`) does what `accept-contract` does around the write. The consent words are read again with `parseEsignConsent` (none: `400 consentNeeded`). A drawn signature is stored at `contract-signer-signatures/gc-sows/<sow id>/<uuid>.png` (a store that fails answers `500 failed`); a typed one stores no image. The verb gets the path, the IP and the browser.
 9. The verb runs. Its refusal is `P0001` with a key, which `tradeErrorOf` passes through with its status: 409 for a state, 400 for a field, 404 for `notFound`. Anything else answers `500 failed` and is logged. A refused signature's image is deleted. After a signature, `recordEsignConsent` writes the `esign_consents` row (record type `gc_sow`, method `draw` or `type`) with the consent time the verb returned, so the row and `gc_sows.signer_consented_at` match.
 
@@ -1090,6 +1090,9 @@ The function reads and writes with the service role, so every bid-scoped verb en
 | `ask_question` | `packageId`, `text`, `sheets[]` |
 | `answer_back_charge` (P4b-i) | `chargeId`, `agree`, `note` (a dispute needs one) |
 | `ask_change` (P4b-i) | `packageId`, `description`, `reason` (`owner`, `field` or `plans`), `amount`, `days` (a whole number, none is 0) |
+| `punch_fixed` (P5c-2) | `itemId`. Not under the cap: `punchNotOpen` holds a repeat |
+| `submittal_send` (P5c-2) | `submittalId`, `fileName` (200 at most; blank is the SQL's `fileNeeded`), `driveUrl` (https only, or none, until P5a's upload), `note` |
+| `rfi_ask` (P5c-2) | `packageId`, `question` (2,000 at most), `sheets[]` |
 | `sign_sow` (P2c-ii) | `sowId`, `printedName`, `signaturePngBase64` (drawn only), `esignConsent` (required). Not under the cap: a second press is `alreadySigned` |
 
 The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/lib/gc/tradePortalPage.ts`). A test fails when a key has no words.
@@ -1107,6 +1110,8 @@ The page says every key in the company's language (`TRADE_ERROR_WORDS` in `src/l
 P4b-i (v2.5044) adds the two kinds above on P4a's verbs, `ask_change` under the cap, and the keys `alreadyAnswered` and `notAwarded` (409), `noteNeeded` and `descriptionNeeded` (400); redeployed after it merges.
 
 P2c-ii (v2.5138) adds `sign_sow` on P2c-i's `gc_trade_sign_sow` (migration `20261010043000_gc_trade_sign_sow`), the function's own `consentNeeded` (400) and the verb's `sowNotSent`, `alreadySigned` and `msaFirst` (409). `_shared/esignConsent.ts` gains the record type `gc_sow`, a type only, which its six other importers carry too. After it merges the lead deploys all eight so `npm run check:edge-drift` reads clean: `gc-trade-portal`, `submit-gc-trade-portal`, `accept-contract`, `accept-estimate`, `sign-bid-room`, `sign-job-contract`, `sign-owner-records` and `submit-sub-portal`.
+
+P5c-2 (v2.5154) adds `punch_fixed`, `submittal_send` and `rfi_ask` on Building's U3b-i, U4a and U5a verbs (`gc_trade_punch_fixed`, `gc_trade_submittal_send`, `gc_trade_rfi_ask`), the keys `punchNotOpen`, `notYourMove` and `jobNotBuilding` (409) and `fileNeeded` (400), and the cap's two counts; redeployed after it merges with `gc-trade-portal`.
 
 ---
 

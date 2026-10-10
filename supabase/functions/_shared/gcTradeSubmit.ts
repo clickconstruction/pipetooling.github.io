@@ -33,12 +33,16 @@ export const TRADE_SUBMIT_KINDS = [
   'ask_change',
   // P2c-ii: the company signs its statement of work (P2c-i's verb).
   'sign_sow',
+  // P5c-2: Building's punch list, submittals and questions while we build (U3b-i's, U4a's and U5a's verbs).
+  'punch_fixed',
+  'submittal_send',
+  'rfi_ask',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
 
 /** The kinds that write a company's own words, under the hourly cap. The rest are clicks. */
-export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question', 'ask_change'])
+export const FREE_TEXT_KINDS: ReadonlySet<TradeSubmitKind> = new Set<TradeSubmitKind>(['submit_quote', 'quote_day', 'add_person', 'ask_question', 'ask_change', 'submittal_send', 'rfi_ask'])
 
 /** The function's own refusals. `consentNeeded`: a signature without the e-sign consent (P2c-ii), refused before any write. */
 export const TRADE_FUNCTION_ERRORS = { badRequest: 400, linkOff: 404, spanishHeld: 400, tooMany: 429, consentNeeded: 400, failed: 500 } as const
@@ -63,6 +67,12 @@ export const TRADE_SQL_ERRORS = {
   sowNotSent: 409,
   alreadySigned: 409,
   msaFirst: 409,
+  // P5c-2: Building's punch list (U3b-i), submittals (U4a) and questions while we build (U5a). jobNotBuilding is raised by
+  // every verb on a job we are building, the report's and the pay application's too (P5c-3).
+  punchNotOpen: 409,
+  notYourMove: 409,
+  jobNotBuilding: 409,
+  fileNeeded: 400,
   amountNeeded: 400,
   answerEach: 400,
   sovMustAdd: 400,
@@ -145,6 +155,7 @@ export function signaturePngOf(v: string): Uint8Array | null {
 const MAIL_GROUPS = ['quotes', 'job', 'contracts', 'pay']
 const CHANGE_REASONS = ['owner', 'field', 'plans']
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+const HTTPS = /^https:\/\/\S+$/i
 const YMD = /^\d{4}-\d{2}-\d{2}$/
 
 function isObject(v: unknown): v is Record<string, unknown> {
@@ -180,6 +191,14 @@ function list(v: unknown, max: number): unknown[] {
   if (v === undefined || v === null) return []
   if (!Array.isArray(v) || v.length > max) throw new Bad()
   return v
+}
+
+/** A Drive link the company types until P5a's upload: an https link, or none. */
+function httpsOrNull(v: unknown): string | null {
+  const t = text(v, 2000)
+  if (t === '') return null
+  if (!HTTPS.test(t)) throw new Bad()
+  return t
 }
 
 /** The kinds of email, the known ones only, in the portal's order. */
@@ -285,6 +304,19 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
         params: { p_package_id: uuid(b.packageId), p_description: text(b.description, 2000), p_reason: b.reason, p_amount: num(b.amount), p_days: days },
       }
     }
+    case 'punch_fixed':
+      return { rpc: 'gc_trade_punch_fixed', params: { p_item_id: uuid(b.itemId) } }
+    case 'submittal_send':
+      // A blank file name reaches the SQL, which says fileNeeded in the company's words.
+      return {
+        rpc: 'gc_trade_submittal_send',
+        params: { p_submittal_id: uuid(b.submittalId), p_file_name: text(b.fileName, 200), p_drive_url: httpsOrNull(b.driveUrl), p_note: text(b.note, 2000) },
+      }
+    case 'rfi_ask':
+      return {
+        rpc: 'gc_trade_rfi_ask',
+        params: { p_package_id: uuid(b.packageId), p_question: text(b.question, 2000), p_sheets: list(b.sheets, 20).map((x) => text(x, 20)).filter((x) => x !== '') },
+      }
     case 'sign_sow':
       // The function fills the image's path, the IP and the browser from what it stored and the request.
       return { rpc: 'gc_trade_sign_sow', params: { p_sow_id: uuid(b.sowId), p_printed_name: text(b.printedName, 200), p_signature_path: null, p_ip: null, p_user_agent: null } }

@@ -33,7 +33,15 @@ From its portal the company can:
 
 To sign, the company types its name and signs by typing or drawing. It also ticks that it agrees to sign electronically. It can sign only after it signs our master agreement. Once it signs, the statement of work shows the day it was signed.
 
-Once its statement of work is signed, the job page shows the job too. It shows each line's percent done and what we paid through. It shows the punch list, the submittals it owes, its draws and its questions while we build. For now the company reads these. Its buttons for them come in a later step.
+Once its statement of work is signed, the job page shows the job too. It shows each line's percent done and what we paid through. It shows the punch list, the submittals it owes, its draws and its questions while we build.
+
+On the job the company can:
+
+- Press **It is fixed** on a punch item.
+- Send a submittal it owes. It types the file's name and its Drive link.
+- Press **Ask Click a question** while we build.
+
+Its report, pay application and waivers come in a later step.
 
 Its own quote file still goes by email to our project manager. So does a photo or a ticket for a change. [See what a trade partner sends from its portal](/help/see-what-a-trade-partner-sends-from-its-portal) shows where each thing lands.
 

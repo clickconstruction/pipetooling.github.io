@@ -101,6 +101,10 @@ describe('a press on the sample (P2b-ii)', () => {
     expect(parseTradeSubmit({ token: 'sample', kind: 'submit_quote', inviteId: SAMPLE_TRADE_IDS.ask, quote }).ok).toBe(true)
     expect(parseTradeSubmit({ token: 'sample', kind: 'ask_question', packageId: SAMPLE_TRADE_IDS.trade, text: 'Q?' }).ok).toBe(true)
     expect(parseTradeSubmit({ token: 'sample', kind: 'remove_person', personId: SAMPLE_TRADE_IDS.person }).ok).toBe(true)
+    // The job's presses (P5c-2).
+    expect(parseTradeSubmit({ token: 'sample', kind: 'punch_fixed', itemId: SAMPLE_TRADE_IDS.punch1 }).ok).toBe(true)
+    expect(parseTradeSubmit({ token: 'sample', kind: 'submittal_send', submittalId: SAMPLE_TRADE_IDS.submittal1, fileName: 'panels.pdf' }).ok).toBe(true)
+    expect(parseTradeSubmit({ token: 'sample', kind: 'rfi_ask', packageId: SAMPLE_TRADE_IDS.jobTrade, question: 'Q?', sheets: [] }).ok).toBe(true)
   })
 })
 
