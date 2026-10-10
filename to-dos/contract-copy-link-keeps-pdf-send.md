@@ -2,14 +2,14 @@
 name: "Copy link on a PDF emailed to sign turns it into a link send"
 number: 104
 group: close
-status: found 2026-10-09 in v2.5101's live walk on J1064 · fix (a) built as v2.5119 (the four window doors and Hand the phone hand out the row's live link, with a 7-day margin) · follow-up 1 built as v2.5145 (send-job-contract's link mode stamps nothing on a row with a live link) · left: deploy send-job-contract, a live check; follow-up 2 only if a trace is wanted
+status: found 2026-10-09 in v2.5101's live walk on J1064 · fix (a) built as v2.5119 (the four window doors and Hand the phone hand out the row's live link, with a 7-day margin) · follow-up 1 built v2.5145, deployed 2026-10-10 ~06:30 UTC (send-job-contract's link mode stamps nothing on a row with a live link) · left: a live check; follow-up 2 only if a trace is wanted
 summary: >
   A job's agreement emailed as a PDF to sign by hand keeps its signing link. When the office
   presses Copy link, Text the link or Sign here, now in the Contract window, the app stamps the
   row as a link send. After that, File the signed copy no longer converts the row. Filing the paper adds a new
   signed agreement beside it, and the old one stays out with its reminders running. That breaks
   the case v2.5101 built, where one spouse signs through the link and the other on paper.
-next: Deploy send-job-contract after v2.5145 merges, then the live check in v2.5119's fragment on a ZZ TEST job. Retire the card unless a trace is wanted.
+next: The live check in v2.5119's fragment on a ZZ TEST job. Retire the card unless a trace or one of the small items below is wanted.
 size: S
 blocker: None.
 ver: v2.3631 · 3723 · 5101 · 5119 · 5145
@@ -32,6 +32,13 @@ The link counts only with more than `JOB_CONTRACT_LINK_HANDOUT_MARGIN_DAYS` (7) 
 
 1. **A guard in `send-job-contract`** — built as [v2.5145](../docs/recent-features/v2.5145.md). Its link mode answers a row already out with a live link with that link and writes nothing: no stamp, no count, no reminder, no `sent` event. The rule is `jobContractLiveToken` in `_shared/jobContractLinkLive.ts`, which the app's doors read too. A draft, a row with no token, or a link near its end still sends. It needs a deploy.
 2. **A trace for a hand-out**, if one is wanted. A copied or texted link records nothing today, by design, because its send was recorded when it went out. A trace needs a new `job_contract_events` type, and so a migration. The existing `shared` type cannot carry it: the customer journey (`personJourney.ts`) counts every `shared` event as the signed copy emailed again.
+
+**From v2.5145's review**, none blocking:
+
+1. **A reused link drops the request's recipient edits.** When link mode answers a live link it writes nothing, so a `recipient_email`, `recipient_name` or `cc_emails` in the request is not saved. Today no door sends one for a row that is out, because the window locks a sent row's fields. A door that did would need its own save. **XS**.
+2. **No record of the hand-out.** That is follow-up 2 above.
+3. **`reused` is unread.** The function answers `reused: true`, and no client reads it yet. A toast could say *the link already out* where it now says nothing. **XS**.
+4. **The handler is pinned only by its source text.** `jobContractLinkLive.test.ts` checks the order of `send-job-contract`'s lines, not its run. A Deno harness for the function, or an edge smoke after deploy, would cover the run. **S**: the harness is shared work across the functions.
 
 ## What happens
 
