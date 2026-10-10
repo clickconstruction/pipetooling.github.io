@@ -8,7 +8,7 @@
  */
 import type { Database } from '../../types/database'
 import { drawMoney, payAppKnown, payApplication } from './building'
-import { backChargeOf } from './tradePortalState'
+import { backChargeOf } from './backChargeRows'
 import type { BackCharge, ChangeOrder, Draw, DrawSentBack, GcState, Partner, Sow, SovLine } from './types'
 
 type Tables = Database['public']['Tables']

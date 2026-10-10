@@ -1,0 +1,34 @@
+/**
+ * GC mode: one back-charge as its row holds it (`gc_back_charges`, the Portal's P4a), in the prototype's `BackCharge` shape.
+ * The trade's portal (`tradePortalState.ts`) and Building's draws (`drawRows.ts`) map the table's rows with this one
+ * function. It lives on its own so the portal's mapper can read Building's draws without an import loop (P5c-1).
+ */
+import type { BackCharge } from './types'
+
+type Row = Record<string, unknown>
+
+const str = (v: unknown): string => (typeof v === 'string' ? v : v === null || v === undefined ? '' : String(v))
+const strOrNull = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null)
+const num = (v: unknown): number => {
+  const n = typeof v === 'string' ? Number(v) : typeof v === 'number' ? v : NaN
+  return Number.isFinite(n) ? n : 0
+}
+
+const CHARGE_STATUSES: BackCharge['status'][] = ['open', 'agreed', 'disputed', 'kept', 'dropped']
+
+/** A charge to the company, in the prototype's shape: its answer, the office's keep or drop, and the draw it came off. */
+export function backChargeOf(c: Row): BackCharge {
+  const status = str(c.status) as BackCharge['status']
+  return {
+    id: str(c.id),
+    amount: num(c.amount),
+    reason: str(c.reason),
+    photo: strOrNull(c.photo_url),
+    sentOn: str(c.sent_on),
+    answerBy: str(c.answer_by),
+    status: CHARGE_STATUSES.includes(status) ? status : 'open',
+    ...(strOrNull(c.answered_on) ? { answer: { on: str(c.answered_on), note: str(c.answer_note) } } : {}),
+    ...(strOrNull(c.settled_on) ? { settled: { on: str(c.settled_on), note: str(c.settled_note) } } : {}),
+    ...(strOrNull(c.taken_on) ? { taken: { drawId: str(c.taken_draw_id), on: str(c.taken_on) } } : {}),
+  }
+}

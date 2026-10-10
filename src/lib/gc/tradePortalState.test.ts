@@ -213,3 +213,69 @@ describe('its work, on the prototype’s shapes (P4b-i)', () => {
     expect([olderState.projects[0]?.packages[0]?.sow, olderState.projects[0]?.changeRequests, olderState.projects[0]?.changeOrders]).toEqual([null, [], []])
   })
 })
+
+describe('the job’s work, through Building’s own row mappers (P5c-1)', () => {
+  /** The same awarded, signed Electrical on a job being built, with each kind of the job's row on it. */
+  function jobRows(): TradePortalRows {
+    const r = workRows()
+    return {
+      ...r,
+      projects: r.projects.map((p) => ({ ...p, gc: { ...p.gc, stage: 'building', closed_on: null } })),
+      sows: (r.sows ?? []).map((s) => ({ ...s, accepted_on: '2026-10-07' })),
+      sowLines: [
+        { id: 'sl-1', sow_id: 'sow-1', position: 0, label: 'Panels and feeders', amount: 40000, scope_item_id: 'si-1' },
+        { id: 'sl-2', sow_id: 'sow-1', position: 1, label: 'Lighting', amount: 24200, scope_item_id: 'si-2' },
+        { id: 'sl-co', sow_id: 'sow-1', position: 2, label: 'Change order 5: Two outlets.', amount: 900, scope_item_id: null },
+      ],
+      draws: [
+        { id: 'dr-1', sow_id: 'sow-1', number: 1, seq: 1, requested_on: '2026-09-25', status: 'paid', gross: 20000, retainage: 2000, net: 18000, final: false, waiver: 'conditional', waiver_on: null, approved_on: '2026-09-27', paid_on: '2026-10-02', asked: null, sent_back_on: null, sent_back_note: null, period_to: '2026-09-25', address: '1 Main St', license: 'TECL 1', signed_by: 'Dana', signed_title: 'Owner', signed_on: '2026-09-25' },
+      ],
+      drawLines: [{ draw_id: 'dr-1', sow_line_id: 'sl-1', to_pct: 50, stored: 0, we_see: null }],
+      lineReports: [{ sow_line_id: 'sl-1', pct: 70, reported_on: '2026-10-08', seq: 4 }],
+      changeOrders: [...(r.changeOrders ?? []), { id: 'co-5', number: 5, status: 'signed', sent_on: '2026-10-05', answered_on: '2026-10-06', cost: 900, package_id: 'pkg-elec', reason: 'owner', description: 'Two outlets.' }],
+      changeSends: [{ change_order_id: 'co-5', sow_id: 'sow-1', sent_on: '2026-10-05', signed_on: '2026-10-06', sow_line_id: 'sl-co' }],
+      submittals: [{ id: 'sub-1', project_id: 'proj-1', package_id: 'pkg-elec', number: '26 24 16-01', title: 'Panelboards', kind: 'product data', spec_section: null, lead_days: 14, needed_by: '2026-10-20', asked_on: '2026-10-01', created_at: '2026-10-01T15:00:00Z' }],
+      submittalHolds: [{ submittal_id: 'sub-1', scope_item_id: 'si-1' }],
+      submittalRounds: [{ id: 'sr-1', submittal_id: 'sub-1', round: 1, sent_on: '2026-10-03', sent_by: 'trade', file_name: 'panels.pdf', drive_url: null, note: '', to_architect_on: '2026-10-04', answered_on: '2026-10-07', answer: 'revise', answer_note: 'Use the 42-circuit panel.' }],
+      rfis: [{ id: 'rfi-1', project_id: 'proj-1', package_id: 'pkg-elec', number: 3, question: 'Recessed panel?', sheets: ['E-201'], asked_on: '2026-10-05', needed_days: 3, sent_to_architect_on: '2026-10-05', answered_on: '2026-10-06', answer_text: 'Recessed.', answered_by: 'architect', impact: 'cost', days: 1, asked_by_company_id: ME }],
+      rfiHolds: [{ rfi_id: 'rfi-1', scope_item_id: 'si-1' }],
+      punch: [
+        { id: 'pu-2', project_id: 'proj-1', package_id: 'pkg-elec', position: 1, text: 'Label the panel.', where_on: null, added_on: '2026-10-08', fixed_on: '2026-10-09', checked_on: null, sent_back_times: 0, sent_back_note: null, sent_back_on: null },
+        { id: 'pu-1', project_id: 'proj-1', package_id: 'pkg-elec', position: 0, text: 'Cover plate missing.', where_on: 'Exam 2', added_on: '2026-10-08', fixed_on: null, checked_on: null, sent_back_times: 1, sent_back_note: 'Still loose.', sent_back_on: '2026-10-09' },
+      ],
+    }
+  }
+  const { state } = tradePortalState(tradePortalSlice(jobRows(), ME), TODAY)
+  const project = state.projects[0]!
+  const sow = project.packages[0]!.sow!
+
+  it('reads each line’s newest report and what its approved and paid draws billed, the draw, and the day we accepted the work', () => {
+    expect(sow.sov.map((l) => [l.id, l.pctReported, l.pctBilled])).toEqual([
+      ['si-1', 70, 50],
+      ['si-2', 0, 0],
+      ['sl-co', 0, 0],
+    ])
+    expect(sow.draws.map((d) => [d.id, d.number, d.status, d.net, d.waiver])).toEqual([['dr-1', 1, 'paid', 18000, 'conditional']])
+    expect(sow.acceptedOn).toBe('2026-10-07')
+  })
+
+  it('reads a change order sent to it with its words, signed, and the line it became', () => {
+    const co = project.changeOrders?.find((c) => c.id === 'co-5')
+    expect([co?.description, co?.price, co?.cost, co?.packageId, co?.tradeChange]).toEqual(['Two outlets.', 0, 900, 'pkg-elec', { status: 'signed', sentOn: '2026-10-05', signedOn: '2026-10-06', sovLineId: 'sl-co' }])
+  })
+
+  it('reads its submittals, its RFIs as its own with no cost, and its punch list in order', () => {
+    expect(project.submittals?.map((x) => [x.id, x.lineIds, x.rounds.map((r) => r.answer)])).toEqual([['sub-1', ['si-1'], ['revise']]])
+    expect(project.rfis?.map((r) => [r.id, r.partnerId, r.answer?.cost, r.holds])).toEqual([['rfi-1', ME, 0, ['si-1']]])
+    expect(project.punch?.map((p) => [p.id, p.fixedOn, p.sentBack?.note ?? null])).toEqual([
+      ['pu-1', null, 'Still loose.'],
+      ['pu-2', '2026-10-09', null],
+    ])
+  })
+
+  it('reads a slice from a function deployed before P5c-1 as no job work', () => {
+    const { state: older } = tradePortalState(tradePortalSlice(workRows(), ME), TODAY)
+    const p = older.projects[0]!
+    expect([p.submittals, p.rfis, p.punch, p.packages[0]?.sow?.draws]).toEqual([[], [], [], []])
+  })
+})

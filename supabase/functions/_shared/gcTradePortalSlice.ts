@@ -6,7 +6,9 @@
  * contingency or fee, the office's plugs, covers and taken alternates, another company or its number,
  * the office's call notes and notes on a quote or a decline, a lost bid's note or who won it. Of its
  * work (P4b-i) it reads its own award, statement of work and its lines (P2c-ii), charges and change requests,
- * and of a change order made of its request only its part: never the customer's price.
+ * and of a change order made of its request or sent to it only its part: never the customer's price. Of the job
+ * (P5c-1) it reads, on the trades awarded to it, the submittals, RFIs, punch items, draws and reports, never who of ours
+ * typed them or an RFI's cost.
  *
  * Pure, with no Deno or browser API: the edge function and `src/lib/gc/tradePortalSlice.test.ts` both
  * call it.
@@ -47,6 +49,22 @@ export interface TradePortalRows {
    * W-9 and insurance. Optional, so a caller with none passes none.
    */
   papers?: Row[]
+  /**
+   * The job's work on the trades awarded to it (P5c-1): Building's submittals with their holds and rounds, the RFIs
+   * on its trades with their holds, its punch items, the draws on its statements of work with their lines, each
+   * line's newest report, and the change orders sent to it (`changeSends`, whose orders ride in `changeOrders`).
+   * Optional, so a caller with none passes none.
+   */
+  submittals?: Row[]
+  submittalHolds?: Row[]
+  submittalRounds?: Row[]
+  rfis?: Row[]
+  rfiHolds?: Row[]
+  punch?: Row[]
+  draws?: Row[]
+  drawLines?: Row[]
+  lineReports?: Row[]
+  changeSends?: Row[]
 }
 
 export type SliceRow = Record<string, unknown>
@@ -79,6 +97,17 @@ export interface TradePortalSlice {
   changeOrders?: SliceRow[]
   /** Its own papers (B6-b-ii). Absent from a slice the function sent before B6-b-ii was deployed: the page reads none. */
   papers?: SliceRow[]
+  /** The job's work (P5c-1). Absent from a slice the function sent before P5c-1 was deployed: the page reads none. */
+  submittals?: SliceRow[]
+  submittalHolds?: SliceRow[]
+  submittalRounds?: SliceRow[]
+  rfis?: SliceRow[]
+  rfiHolds?: SliceRow[]
+  punch?: SliceRow[]
+  draws?: SliceRow[]
+  drawLines?: SliceRow[]
+  lineReports?: SliceRow[]
+  changeSends?: SliceRow[]
 }
 
 /** The fields that pass, table by table. Anything not named here never leaves the server. */
@@ -90,7 +119,8 @@ export const TRADE_PORTAL_FIELDS = {
   contacts: ['id', 'invite_id', 'contacted_on', 'how', 'promised_by'],
   promises: ['id', 'kind', 'project_id', 'package_id', 'what', 'due_on', 'made_on', 'source', 'kept_on'],
   project: ['id', 'name', 'address'],
-  gc: ['project_id', 'stage', 'bid_due', 'size_note', 'lost_on', 'lost_why'],
+  // The day we closed the job (U6d) ends its questions (P5c-1).
+  gc: ['project_id', 'stage', 'bid_due', 'size_note', 'lost_on', 'lost_why', 'closed_on'],
   team: ['role', 'name', 'phone', 'email'],
   // The award: this company's own ask, or AWARDED_ELSEWHERE when another company holds it (`tradePortalSlice`).
   packages: ['id', 'project_id', 'trade', 'position', 'awarded_invite_id'],
@@ -103,7 +133,8 @@ export const TRADE_PORTAL_FIELDS = {
   setSends: ['set_id', 'touched'],
   // Its own number on its own work: never the leveled total or another company's. What it will not do (P2c-ii) is
   // what its own quote left out. The signer's fields stay the server's.
-  sows: ['id', 'package_id', 'invite_id', 'status', 'price', 'retainage_pct', 'based_on_rev', 'sent_on', 'signed_on', 'excluded'],
+  // The day we accepted its work (U6d) opens its final pay application (P5c-1).
+  sows: ['id', 'package_id', 'invite_id', 'status', 'price', 'retainage_pct', 'based_on_rev', 'sent_on', 'signed_on', 'excluded', 'accepted_on'],
   // Its statement of work's lines (P2c-ii): each one's price on its own work, and the scope item it is, which the
   // kernels' SovLine.id reads.
   sowLines: ['id', 'sow_id', 'position', 'label', 'amount', 'scope_item_id'],
@@ -111,10 +142,25 @@ export const TRADE_PORTAL_FIELDS = {
   backCharges: ['id', 'project_id', 'package_id', 'company_id', 'sow_id', 'amount', 'reason', 'photo_url', 'sent_on', 'answer_by', 'status', 'answered_on', 'answer_note', 'settled_on', 'settled_note', 'taken_draw_id', 'taken_on', 'created_at'],
   changeRequests: ['id', 'project_id', 'package_id', 'company_id', 'sow_id', 'asked_on', 'description', 'reason', 'amount', 'days', 'file_url', 'change_order_id', 'turned_down_on', 'turned_down_note', 'created_at'],
   // "Your part" only: the change order's cost on the trade's work. Never its price to the customer, its percent
-  // done or the office's words to the customer.
-  changeOrders: ['id', 'number', 'status', 'sent_on', 'answered_on', 'cost'],
+  // done or the office's words to the customer. Its description passes only on a change sent to the trade, which
+  // already names its line by it (`tradePortalSlice`).
+  changeOrders: ['id', 'number', 'status', 'sent_on', 'answered_on', 'cost', 'package_id', 'reason'],
   // Where each of its papers stands, for its master agreement first (msaFirst): never the paper's link, body or values.
   papers: ['id', 'company_id', 'doc_type', 'status', 'sent_at', 'signed_at', 'expires_at'],
+  // The job's work (P5c-1), on the trades awarded to it. Never who of ours recorded, added, checked or took off a row,
+  // the email that carried it, an RFI's cost or the change order it became, nor who asked an RFI (`mine` says whether
+  // it did), nor a punch item taken off.
+  submittals: ['id', 'project_id', 'package_id', 'number', 'title', 'kind', 'spec_section', 'lead_days', 'needed_by', 'asked_on', 'created_at'],
+  submittalHolds: ['submittal_id', 'scope_item_id'],
+  submittalRounds: ['id', 'submittal_id', 'round', 'sent_on', 'sent_by', 'file_name', 'drive_url', 'note', 'to_architect_on', 'answered_on', 'answer', 'answer_note'],
+  rfis: ['id', 'project_id', 'package_id', 'number', 'question', 'sheets', 'asked_on', 'needed_days', 'sent_to_architect_on', 'answered_on', 'answer_text', 'answered_by', 'impact', 'days'],
+  rfiHolds: ['rfi_id', 'scope_item_id'],
+  punch: ['id', 'project_id', 'package_id', 'position', 'text', 'where_on', 'added_on', 'fixed_on', 'checked_on', 'sent_back_times', 'sent_back_note', 'sent_back_on'],
+  // Its own money on its own work: what it asked, what we approved and paid, and the pay application it signed.
+  draws: ['id', 'sow_id', 'number', 'seq', 'requested_on', 'status', 'gross', 'retainage', 'net', 'final', 'waiver', 'waiver_on', 'approved_on', 'paid_on', 'asked', 'sent_back_on', 'sent_back_note', 'period_to', 'address', 'license', 'signed_by', 'signed_title', 'signed_on', 'file_name', 'drive_url'],
+  drawLines: ['draw_id', 'sow_line_id', 'to_pct', 'stored', 'we_see'],
+  lineReports: ['sow_line_id', 'pct', 'reported_on', 'seq'],
+  changeSends: ['change_order_id', 'sow_id', 'sent_on', 'signed_on', 'sow_line_id'],
 } as const satisfies Record<string, readonly string[]>
 
 /**
@@ -153,7 +199,7 @@ function contactLine(r: Row): SliceRow {
  * The slice for one company. Every list is held to that company again here: its invites, the
  * packages and projects they are on, the quotes and lines on its invites, the sets of those
  * projects, its own questions in full and the answered ones sent to it without who asked. It always
- * carries its work's four lists; only a slice from an older function lacks them.
+ * carries its work's lists and the job's (P5c-1); only a slice from an older function lacks them.
  */
 export function tradePortalSlice(rows: TradePortalRows, companyId: string): Required<TradePortalSlice> {
   const invites = rows.invites.filter((i) => idOf(i, 'company_id') === companyId)
@@ -185,6 +231,7 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Requ
     setSends: rows.setSends.filter((s) => idOf(s, 'company_id') === companyId && setIds.has(idOf(s, 'set_id'))).map((s) => pick(s, TRADE_PORTAL_FIELDS.setSends)),
     papers: (rows.papers ?? []).filter((d) => idOf(d, 'company_id') === companyId).map((d) => pick(d, TRADE_PORTAL_FIELDS.papers)),
     ...ownWork(rows, companyId, packageIds),
+    ...jobWork(rows, companyId, new Set(packages.filter((p) => inviteIds.has(idOf(p, 'awarded_invite_id'))).map((p) => idOf(p)))),
   }
 }
 
@@ -193,17 +240,63 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Requ
  * lines of those statements of work, and the change orders its requests became, as their part only. A statement of work that was cancelled is
  * not one (main's `Sow` has no such status).
  */
-function ownWork(rows: TradePortalRows, companyId: string, packageIds: Set<string>): Required<Pick<TradePortalSlice, 'sows' | 'sowLines' | 'backCharges' | 'changeRequests' | 'changeOrders'>> {
+function ownWork(
+  rows: TradePortalRows,
+  companyId: string,
+  packageIds: Set<string>,
+): Required<Pick<TradePortalSlice, 'sows' | 'sowLines' | 'backCharges' | 'changeRequests' | 'changeOrders' | 'draws' | 'drawLines' | 'lineReports' | 'changeSends'>> {
   const own = (r: Row) => idOf(r, 'company_id') === companyId && packageIds.has(idOf(r, 'package_id'))
   const sows = (rows.sows ?? []).filter((s) => own(s) && s.status !== 'cancelled')
   const sowIds = new Set(sows.map((s) => idOf(s)))
+  const sowLines = (rows.sowLines ?? []).filter((l) => sowIds.has(idOf(l, 'sow_id')))
+  const lineIds = new Set(sowLines.map((l) => idOf(l)))
   const requests = (rows.changeRequests ?? []).filter(own)
-  const orderIds = new Set(requests.map((r) => idOf(r, 'change_order_id')).filter(Boolean))
+  // The change orders sent to it on its own statements of work (U6a), whose description it signs (P5c-1).
+  const changeSends = (rows.changeSends ?? []).filter((t) => sowIds.has(idOf(t, 'sow_id')))
+  const sentIds = new Set(changeSends.map((t) => idOf(t, 'change_order_id')))
+  const orderIds = new Set([...requests.map((r) => idOf(r, 'change_order_id')).filter(Boolean), ...sentIds])
+  const draws = (rows.draws ?? []).filter((d) => sowIds.has(idOf(d, 'sow_id')))
+  const drawIds = new Set(draws.map((d) => idOf(d)))
+  // Each line's newest report only: what it says now (`sowWithDraws` reads the newest by seq).
+  const newest = new Map<string, Row>()
+  for (const r of rows.lineReports ?? []) {
+    const line = idOf(r, 'sow_line_id')
+    if (!lineIds.has(line)) continue
+    const was = newest.get(line)
+    if (!was || Number(r.seq) > Number(was.seq)) newest.set(line, r)
+  }
   return {
     sows: sows.map((s) => pick(s, TRADE_PORTAL_FIELDS.sows)),
-    sowLines: (rows.sowLines ?? []).filter((l) => sowIds.has(idOf(l, 'sow_id'))).map((l) => pick(l, TRADE_PORTAL_FIELDS.sowLines)),
+    sowLines: sowLines.map((l) => pick(l, TRADE_PORTAL_FIELDS.sowLines)),
     backCharges: (rows.backCharges ?? []).filter(own).map((c) => pick(c, TRADE_PORTAL_FIELDS.backCharges)),
     changeRequests: requests.map((r) => pick(r, TRADE_PORTAL_FIELDS.changeRequests)),
-    changeOrders: (rows.changeOrders ?? []).filter((o) => orderIds.has(idOf(o))).map((o) => pick(o, TRADE_PORTAL_FIELDS.changeOrders)),
+    changeOrders: (rows.changeOrders ?? [])
+      .filter((o) => orderIds.has(idOf(o)))
+      .map((o) => ({ ...pick(o, TRADE_PORTAL_FIELDS.changeOrders), ...(sentIds.has(idOf(o)) ? { description: String(o.description ?? '') } : {}) })),
+    draws: draws.map((d) => pick(d, TRADE_PORTAL_FIELDS.draws)),
+    drawLines: (rows.drawLines ?? []).filter((l) => drawIds.has(idOf(l, 'draw_id'))).map((l) => pick(l, TRADE_PORTAL_FIELDS.drawLines)),
+    lineReports: [...newest.values()].map((r) => pick(r, TRADE_PORTAL_FIELDS.lineReports)),
+    changeSends: changeSends.map((t) => pick(t, TRADE_PORTAL_FIELDS.changeSends)),
+  }
+}
+
+/**
+ * The job's work on the trades awarded to this company (P5c-1): never a trade it was only asked to quote, nor one awarded
+ * to another company. Building's rows carry no company of their own, so they are held to the trade. An RFI on our own
+ * work (no trade) never passes, and a punch item taken off never does.
+ */
+function jobWork(rows: TradePortalRows, companyId: string, awarded: Set<string>): Required<Pick<TradePortalSlice, 'submittals' | 'submittalHolds' | 'submittalRounds' | 'rfis' | 'rfiHolds' | 'punch'>> {
+  const onAwarded = (r: Row) => awarded.has(idOf(r, 'package_id'))
+  const submittals = (rows.submittals ?? []).filter(onAwarded)
+  const submittalIds = new Set(submittals.map((x) => idOf(x)))
+  const rfis = (rows.rfis ?? []).filter(onAwarded)
+  const rfiIds = new Set(rfis.map((x) => idOf(x)))
+  return {
+    submittals: submittals.map((x) => pick(x, TRADE_PORTAL_FIELDS.submittals)),
+    submittalHolds: (rows.submittalHolds ?? []).filter((h) => submittalIds.has(idOf(h, 'submittal_id'))).map((h) => pick(h, TRADE_PORTAL_FIELDS.submittalHolds)),
+    submittalRounds: (rows.submittalRounds ?? []).filter((r) => submittalIds.has(idOf(r, 'submittal_id'))).map((r) => pick(r, TRADE_PORTAL_FIELDS.submittalRounds)),
+    rfis: rfis.map((x) => ({ ...pick(x, TRADE_PORTAL_FIELDS.rfis), mine: idOf(x, 'asked_by_company_id') === companyId })),
+    rfiHolds: (rows.rfiHolds ?? []).filter((h) => rfiIds.has(idOf(h, 'rfi_id'))).map((h) => pick(h, TRADE_PORTAL_FIELDS.rfiHolds)),
+    punch: (rows.punch ?? []).filter((x) => onAwarded(x) && !x.removed_at).map((x) => pick(x, TRADE_PORTAL_FIELDS.punch)),
   }
 }
