@@ -32,7 +32,7 @@ import { GcPriceCard, GcPriceLikely, GcPriceTrigger, type PriceCardTab } from '.
 import { usePriceCard } from '../components/gc/usePriceCard'
 import { useGcStore } from '../components/gc/useGcStore'
 import { useJumpStrip } from '../components/gc/useJumpStrip'
-import { GcPeoplePill } from '../components/gc/GcPeoplePill'
+import { GcPeoplePill } from '../components/gc/GcPeoplePill.proto'
 import { GcFollowUpSheet } from '../components/gc/GcFollowUpSheet'
 import { Btn, Card, Chip, PlusUnknown, Stat, type Tone } from '../components/gc/gcUi'
 import { GcBoardStrip, GcCustomerHeading, GcStageHeading, GcStageSubheading, type BoardStripItem, type StageStripItem } from '../components/gc/GcBoardStages.proto'
