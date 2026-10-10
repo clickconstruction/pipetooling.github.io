@@ -102,7 +102,7 @@ import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProject
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
 import { loadCompanyPaperEntries, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
-import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcCompanyOpener'
+import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
@@ -418,7 +418,17 @@ export default function GcProjects() {
   })
   // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for the GC office (door 2).
   const [companyId, setCompanyId] = useState<string | null>(null)
-  const companyOpener: CompanyOpener | null = canOpenGcProjects(role) && board ? { openPartner: setCompanyId } : null
+  // Where it opens (B6-b-ii's follow-up): a tab and a paper with its send, as a not-ready bar on the schedule asks.
+  const [companyAt, setCompanyAt] = useState<CompanyAt | null>(null)
+  const companyOpener: CompanyOpener | null =
+    canOpenGcProjects(role) && board
+      ? {
+          openPartner: (id, at) => {
+            setCompanyId(id)
+            setCompanyAt(at ?? null)
+          },
+        }
+      : null
   const openCompany = companyId && board ? (board.partners.find((p) => p.id === companyId) ?? null) : null
   // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
   const [paperEntries, setPaperEntries] = useState<CompanyPaperEntries | null>(null)
@@ -1456,7 +1466,7 @@ export default function GcProjects() {
       {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={role === 'dev'} onClose={() => setScheduleWindow(null)} />}
       {openCompany && board && (
         <GcCompanyWindow
-          key={openCompany.id}
+          key={`${openCompany.id}:${companyAt?.tab ?? ''}:${companyAt?.doc ?? ''}:${companyAt?.send ? 'send' : ''}`}
           state={board}
           partner={openCompany}
           lang={langs[openCompany.id] ?? 'en'}
@@ -1464,7 +1474,11 @@ export default function GcProjects() {
             await setGcCompanyLanguage(openCompany.id, lang)
             await refreshBoard()
           }}
-          onClose={() => setCompanyId(null)}
+          {...(companyAt ? { at: companyAt } : {})}
+          onClose={() => {
+            setCompanyId(null)
+            setCompanyAt(null)
+          }}
           // Their portal stays a dev's until the trade wave: its links' table is dev only (door 2).
           portal={role === 'dev' ? <GcTheirPortal companyId={openCompany.id} /> : undefined}
           // Its papers' sends and certificate (B6-b-ii): the Board's writes (canUseGcBoardWrites, O9), as B6-b-i's functions

@@ -13,6 +13,7 @@ import type { GcState, Partner } from '../../lib/gc/types'
 import { vettingOf } from '../../lib/gc/vetting'
 import { money, shortDate } from '../../lib/gc/words'
 import { CompanyDocuments, CompanyTabStrip, type CompanyTab } from './GcCompanyDocuments'
+import type { CompanyAt } from './gcCompanyOpener'
 import { GcPaperSend } from './GcPaperSend'
 import { GcRecordInsurance } from './GcRecordInsurance'
 import { Btn, Chip, Stat, type Tone } from './gcUi'
@@ -76,13 +77,27 @@ export function GcCompanyWindow({
   /** Their portal (the Portal lane's `GcTheirPortal`): their link, where it stands, and what a dev can do with it. */
   portal?: ReactNode
   papers?: CompanyPapersDoor
-  /** The tab it opens at. Unset: About. */
-  at?: { tab?: CompanyTab }
+  /** Where it opens (`CompanyAt`): a tab, and a paper with its send. Unset: About. */
+  at?: CompanyAt
 }) {
   const [problem, setProblem] = useState<string | null>(null)
-  const [tab, setTab] = useState<CompanyTab>(at?.tab ?? 'about')
+  const [tab, setTab] = useState<CompanyTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
   const [aside, setAside] = useState<Aside | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  // A paper it was opened at: shown as picked, and its send opened once the Book's entries are read and the step can
+  // be sent by this reader. A master agreement with no entry yet, or a reader with no presses, opens at the row.
+  const [pendingSend, setPendingSend] = useState<string | null>(at?.send && at.doc ? at.doc : null)
+  useEffect(() => {
+    if (!pendingSend) return
+    const step = papers ? paperStep(state, partner, pendingSend) : null
+    if (!papers || !step) return setPendingSend(null)
+    if (paperSendable(step, papers.entries)) {
+      setAside({ kind: 'send', key: pendingSend })
+      setPendingSend(null)
+    } else if (papers.entries) {
+      setPendingSend(null)
+    }
+  }, [pendingSend, papers, state, partner])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
@@ -191,7 +206,7 @@ export function GcCompanyWindow({
               )}
               <CompanyDocuments
                 groups={docs.groups}
-                selected={aside?.kind === 'send' ? aside.key : aside?.kind === 'insurance' ? DOC_KEYS.insurance : null}
+                selected={aside?.kind === 'send' ? aside.key : aside?.kind === 'insurance' ? DOC_KEYS.insurance : (at?.doc ?? null)}
                 ask={ask}
                 aside={
                   papers && sending ? (
