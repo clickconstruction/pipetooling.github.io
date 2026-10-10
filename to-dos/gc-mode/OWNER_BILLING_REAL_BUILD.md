@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing: the real build plan"
 parent: to-dos/gc-mode/README.md (punch list #81)
-status: planned 2026-10-07 by Helper 5 (Owner Billing lane) under the lead session *GC spike* (`PLAN_2026-10-07.md`) · nothing built · seams agreed the same evening with Helpers 1 to 4 (*The other lanes*) · waits on the lead's review and the owner's word on *Decisions*
+status: planned 2026-10-07 by Helper 5 (Owner Billing lane) under the lead session *GC spike* (`PLAN_2026-10-07.md`) · O1 to O11 and O10c built and merged by 2026-10-10, O12 planned (*Status*) · seams agreed the same evening with Helpers 1 to 4 (*The other lanes*) · waits on the lead's review and the owner's word on *Decisions*
 summary: >
   How Bill the customer, change orders, payments, promises, reminders, interest, the late finish,
   the customer's acceptance and the Money tab move from the prototype (made-up data on branch
@@ -557,7 +557,12 @@ schedule's PR 10 the pattern.
     conditions, one column): `mockups/owner-billing-o11.md`. *Check:* the margin's **Our own work** against the
     linked jobs' Costs tabs, for a reader who sees pay and one who does not.
 
-**Later, once the rest is in**: the customer's notice 3 days before a bill is due (O10's call 5).
+15. **O12, the customer's notice 3 days before a bill is due** (after O10 and O11; the owner's word, 2026-10-10: "Yes,
+    build it", behind a switch he turns on after a test copy). One email nobody presses, once per pay application, on
+    the due day the screens already read, in `gc-office-notices` behind its own switch. Two PRs, O12a (one column, the
+    function, the switch) and O12b (the sender, its Settings block with Preview and the test): `mockups/owner-billing-o12.md`.
+    *Check:* bed 95's notices on the right days, each once; then Preview and the test copy, on Grace's yes, before the
+    owner turns it on.
 
 ## Docs each PR touches
 
@@ -635,6 +640,13 @@ and the controller sees. It could be better three ways:
    would show each as a touch.
 
 ## Status
+
+**2026-10-10.**
+- **O8b is merged** (#5245, v2.5123, ~01:3x UTC): Pay by card in the customer's portal. `gc-card-bill`, `customer-portal` and `create-stripe-invoice` were deployed ~01:4x with the offer off and Stripe in test mode.
+- **O8c is merged** (#5247, v2.5125, ~02:55 UTC): the office's side, the switch and the three emails' card lines. `20261010042000` was on prod at 03:02 and verified, and its three functions were deployed at 03:03. The switch is the owner's and off.
+- **O9 to O11 are merged**: O9 #5262; O10a #5269; O10b #5286; O11b-1 #5290; O11b-2 #5309; the crew-held marks #5321; and O11a #5333 (v2.5177, 13:41 UTC). O10c #5337 (v2.5180) is armed.
+- **O12 is planned** in `mockups/owner-billing-o12.md`, on the owner's word the same day.
+- **The live walk** is `LIVE_CHECKS.md`. It runs on Grace's yes, typed in Helper 5's chat.
 
 **2026-10-09, evening.** Every Owner Billing PR through O7c and O5e is merged, and gcIo's last untyped calls go typed in #5198 (v2.5096). O8, card payment from the customer's portal, is planned in `mockups/owner-billing-o8.md`. It waits on the owner's answer on card only or card or bank, and on the surcharge rules check.
 
