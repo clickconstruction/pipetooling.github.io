@@ -1013,6 +1013,10 @@ const S = {
   changeSignLead: { en: 'By signing, this change becomes a line of your statement of work.', es: 'Al firmar, este cambio se vuelve una línea de su orden de trabajo.' },
   changeSignAgree: { en: 'I read this change and I agree to it.', es: 'Leí este cambio y estoy de acuerdo.' },
   changeConsentNoun: { en: 'this change order', es: 'esta orden de cambio' },
+  // P5c-3c-i: a pay application signs the conditional waiver, so it goes by email until the owner's call (WAIVER_SIGN_LIVE).
+  payAppByEmail: { en: 'For now, email your pay application to {gc}.', es: 'Por ahora, envíe su solicitud de pago a {gc} por correo.' },
+  payAppCanAsk: { en: 'You can ask for {amount} now.', es: 'Puede pedir {amount} ahora.' },
+  payAppReportFirst: { en: 'Report your work above to ask for a draw.', es: 'Reporte su avance arriba para pedir un pago.' },
   previewNothing: { en: 'Preview. Nothing is saved from here.', es: 'Vista previa. Desde aquí no se guarda nada.' },
   quoteTickHelp: { en: 'Tick what your quote covers. Untick what it leaves out.', es: 'Marque lo que incluye su cotización. Desmarque lo que no incluye.' },
 } satisfies Record<string, Record<PortalLang, string>>

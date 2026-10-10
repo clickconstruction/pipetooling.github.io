@@ -45,7 +45,7 @@ const openJob = async () => {
       </Routes>
     </MemoryRouter>,
   )
-  fireEvent.click(await screen.findByRole('button', { name: /Sample Dental Office/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
   return within(await screen.findByRole('region', { name: 'Electrical · report your work and get paid' }))
 }
 

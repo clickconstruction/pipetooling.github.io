@@ -35,7 +35,7 @@ Draw 2 {{chip:yellow|waiting on us}} {{button:blue|Approve}} {{button:outline|Ap
 
 - Press {{button:blue|Approve}} to approve it as it is.
 - Press {{button:outline|Approve less}} when a line is not as far along as they say. Pick the percent we approve on that line. Say why, then press the button with what we approve.
-- Press {{button:outline|Send back}} when it needs fixing. Pick the percent we see on each line we doubt. Say what is not right, then press {{button:blue|Send it back}}.
+- Press {{button:outline|Send back}} when it needs fixing. Pick the percent we see on each line we doubt. Say what is not right, then press {{button:blue|Send it back}}. The trade reads it in its portal.
 
 Approve waits on the company's papers. A red line says which one is missing, like insurance that ran out. A pay application we send back keeps its number. Their fixed one comes in with the same number.
 

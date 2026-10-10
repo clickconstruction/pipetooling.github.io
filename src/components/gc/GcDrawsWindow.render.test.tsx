@@ -222,6 +222,12 @@ describe('GcDrawsWindow', () => {
     expect(trade('fhvac').querySelector('[data-draw-charge-hint]')!.textContent).toContain('Cool Breeze Mechanical gets an email and has')
   })
 
+  it('says the trade reads a pay application we send back in its portal (P5c-3c-i)', () => {
+    setup()
+    fireEvent.click(within(draw('fsteel-draw-2')).getByRole('button', { name: 'Send back' }))
+    expect(document.querySelector('[data-draw-note-hint]')!.textContent).toBe('They read it in their portal.')
+  })
+
   it('says each thing a first-timer reads in plain words', () => {
     setup({ project: drawAt('fsteel', 'fsteel-draw-2', 'approved') })
     fireEvent.click(within(trade('fhvac')).getByRole('button', { name: 'Charge them' }))

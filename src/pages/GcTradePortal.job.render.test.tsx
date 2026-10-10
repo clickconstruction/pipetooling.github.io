@@ -55,7 +55,7 @@ const open = (path = `/t/${TOKEN}`) =>
 
 const openJob = async (path?: string) => {
   open(path)
-  fireEvent.click(await screen.findByRole('button', { name: /Sample Dental Office/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
   return within(await screen.findByRole('region', { name: 'Electrical · report your work and get paid' }))
 }
 
@@ -100,7 +100,7 @@ describe('the company’s job (P5c-1)', () => {
   it('shows no job before its statement of work is signed', async () => {
     slice = { ...slice, sows: (slice.sows ?? []).map((s) => ({ ...s, status: 'sent', signed_on: null })) }
     open()
-    fireEvent.click(await screen.findByRole('button', { name: /Sample Dental Office/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
     await screen.findByRole('region', { name: 'Electrical · statement of work' })
     expect(screen.queryByRole('region', { name: 'Electrical · report your work and get paid' })).toBeNull()
   })
@@ -160,7 +160,7 @@ describe('its presses (P5c-2)', () => {
   it('offers no question on a job we are not building yet', async () => {
     slice = { ...slice, projects: slice.projects.map((p) => (p.project.id === ID.job ? { ...p, gc: { ...p.gc, stage: 'buyout' } } : p)), rfis: [] }
     open()
-    fireEvent.click(await screen.findByRole('button', { name: /Sample Dental Office/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
     await screen.findByRole('region', { name: 'Electrical · statement of work' })
     expect(screen.queryByRole('button', { name: 'Ask Click a question' })).toBeNull()
   })

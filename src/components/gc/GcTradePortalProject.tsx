@@ -185,7 +185,7 @@ function TradeBlocks({
         <>
           <GcTradePortalSow project={project} pkg={pkg} />
           {/* The job once its statement of work is signed (P5c-1): the report, punch list, submittals, draws and RFIs. */}
-          <GcTradePortalJob project={project} pkg={pkg} partnerId={partner.id} company={partner.company} today={today} />
+          <GcTradePortalJob project={project} pkg={pkg} partner={partner} today={today} />
         </>
       ) : invite.status === 'declined' ? (
         <PortalBlock title={t('inviteTitle', { trade: pkg.trade })}>{t('youPassed')}</PortalBlock>

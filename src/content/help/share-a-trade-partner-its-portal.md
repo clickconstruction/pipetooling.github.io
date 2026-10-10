@@ -2,7 +2,7 @@
 title: share a trade partner its portal
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, trade portal, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request, statement of work, sign, signature, punch list, submittal, percent done, report, sign the change
+keywords: gc mode, trade partner, trade portal, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request, statement of work, sign, signature, punch list, submittal, percent done, report, sign the change, pay application, closeout, needs you
 order: 96
 ---
 Every trade partner company can have one private portal link. The company opens it without signing in and sees everything it has with us.
@@ -45,7 +45,9 @@ On the job the company can:
 
 To sign a change, the company reads it and types its name. It also ticks that it agrees to sign electronically.
 
-Its pay application and its waivers come in a later step.
+The job page also shows where its pay application stands. It can open one it sent and read the two pages of the form. When we send one back, it reads our note and the lines we doubt. Once every line is billed, it shows the closeout steps. For now, the company emails its pay application to us. Its waivers come in a later step.
+
+Its home has **Needs you** at the top. It lists what the company has to do, like a punch item to fix. Each one opens the job where it is.
 
 Its own quote file still goes by email to our project manager. So does a photo or a ticket for a change. [See what a trade partner sends from its portal](/help/see-what-a-trade-partner-sends-from-its-portal) shows where each thing lands.
 
