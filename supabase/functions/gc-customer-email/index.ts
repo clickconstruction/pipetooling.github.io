@@ -26,6 +26,8 @@ import {
   GC_CUSTOMER_EMAIL_ROLES,
   GC_CUSTOMER_EMAIL_SOURCE,
   GC_CUSTOMER_EMAIL_TEST_TYPE,
+  GC_CUSTOMER_EMAIL_TYPE,
+  gcCustomerEmailLoggedAlready,
   GC_CUSTOMER_EMAIL_TO,
   gcCustomerEmailCc,
   gcCustomerEmailTestSubject,
@@ -124,6 +126,8 @@ serve(async (req) => {
     let billId: string | null = null
     // Our contract's file (B6-d-iii-b), as the send kept it: attached here, never sent by the window.
     let contractFile: { path: string; name: string; sha256: string } | null = null
+    // A row kind's row, made before its send: when it was made, for the double-send guard below.
+    let rowMadeAt: string | null = null
     const source = GC_CUSTOMER_EMAIL_SOURCE[m.kind]
     if (source === 'gc_owner_pay_apps') {
       const { data: app } = await admin.from('gc_owner_pay_apps').select('id, project_id, certified, invoice_id').eq('id', m.sourceId).maybeSingle()
@@ -143,24 +147,26 @@ serve(async (req) => {
     } else if (source === 'gc_weekly_reports') {
       // The Friday report (Building's U7b), read as the caller, so RLS decides who may send it. A report from me went from
       // their own mail; one the company sent already answers alreadySent, except as a test.
-      const { data: rep } = await anon.from('gc_weekly_reports').select('id, project_id, sent_from, copied_architect, subject, body, email_send_log_id').eq('id', m.sourceId).maybeSingle()
+      const { data: rep } = await anon.from('gc_weekly_reports').select('id, project_id, sent_from, copied_architect, subject, body, email_send_log_id, created_at').eq('id', m.sourceId).maybeSingle()
       if (!rep) return refuse('notFound')
       if (rep.project_id !== m.projectId) return refuse('otherProject')
       if (rep.sent_from !== 'company') return refuse('badRequest')
       if (rep.email_send_log_id && !m.test) return refuse('alreadySent')
       words = { subject: String(rep.subject), lines: gcWeeklyReportLines(String(rep.body)) }
       copyArchitect = rep.copied_architect === true
+      rowMadeAt = rep.created_at ?? null
     } else if (source === 'gc_schedule_sends') {
       // The customer's schedule (the schedule's PR 15a), read as the caller, so RLS decides who may send it, as the weekly
       // report's. The letter as the window kept it goes, never the request's lines; a row emailed already answers
       // alreadySent, except as a test.
-      const { data: letter } = await anon.from('gc_schedule_sends').select('id, project_id, subject, lines, email_send_log_id').eq('id', m.sourceId).maybeSingle()
+      const { data: letter } = await anon.from('gc_schedule_sends').select('id, project_id, subject, lines, email_send_log_id, created_at').eq('id', m.sourceId).maybeSingle()
       if (!letter) return refuse('notFound')
       if (letter.project_id !== m.projectId) return refuse('otherProject')
       if (letter.email_send_log_id && !m.test) return refuse('alreadySent')
       const lines = ((letter.lines ?? []) as unknown[]).map(String).filter((l) => l.trim() !== '')
       if (lines.length === 0) return refuse('badRequest')
       words = { subject: String(letter.subject), lines }
+      rowMadeAt = letter.created_at ?? null
     } else if (source === 'gc_owner_contract_sends') {
       // Our contract (the Board's B6-d-iii-b): the project's newest send, not signed, on paper or in their portal.
       const { data: send } = await admin.from('gc_owner_contract_sends').select('id, project_id, signed_on, created_at, file_path, file_name, file_sha256').eq('id', m.sourceId).maybeSingle()
@@ -171,13 +177,14 @@ serve(async (req) => {
       if ((newer ?? []).length > 0) return refuse('notNewest')
       contractFile = { path: String(send.file_path), name: String(send.file_name), sha256: String(send.file_sha256) }
     } else {
-      const { data: rem } = await admin.from('gc_owner_pay_reminders').select('id, pay_app_id, subject, lines, email_send_log_id').eq('id', m.sourceId).maybeSingle()
+      const { data: rem } = await admin.from('gc_owner_pay_reminders').select('id, pay_app_id, subject, lines, email_send_log_id, created_at').eq('id', m.sourceId).maybeSingle()
       if (!rem) return refuse('notFound')
       const { data: app } = await admin.from('gc_owner_pay_apps').select('project_id, invoice_id').eq('id', rem.pay_app_id).maybeSingle()
       if (!app || app.project_id !== m.projectId) return refuse('otherProject')
       billId = app.invoice_id ?? null
       if (rem.email_send_log_id) return refuse('alreadySent')
       words = { subject: String(rem.subject), lines: (rem.lines ?? []).map(String) }
+      rowMadeAt = rem.created_at ?? null
     }
 
     // Who gets it: the project's customer, or its architect; a bill at the address the Pipeline bills, the weekly report
@@ -243,6 +250,25 @@ serve(async (req) => {
     const email = buildGcCustomerEmail({ ...portalWords, subject: words.subject, lines: words.lines, signer, gc: GC_CUSTOMER_EMAIL_FROM_NAME, framed: GC_CUSTOMER_EMAIL_FRAMED[m.kind], portalUrl, cardFee })
     const subject = m.test ? gcCustomerEmailTestSubject(email.subject) : email.subject
 
+    // The double-send guard: a row kind already sent whose log write-back failed still reads unsent here. Its send is in
+    // email_send_log (written by the send itself), so it is written back now and answers alreadySent, never sent twice.
+    const rowKind = source === 'gc_owner_pay_reminders' || source === 'gc_weekly_reports' || source === 'gc_schedule_sends'
+    if (rowKind && !m.test && rowMadeAt) {
+      const { data: logs } = await admin
+        .from('email_send_log')
+        .select('id, email_type, to_emails, subject, created_at')
+        .eq('email_type', GC_CUSTOMER_EMAIL_TYPE)
+        .eq('subject', email.subject)
+        .gte('created_at', rowMadeAt)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      const logged = gcCustomerEmailLoggedAlready(logs ?? [], { address, subject: email.subject, since: rowMadeAt })
+      if (logged) {
+        await admin.from(source).update({ email_send_log_id: logged }).eq('id', m.sourceId)
+        return refuse('alreadySent')
+      }
+    }
+
     const from = mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, EMAIL_FROM)
     const attachments = contractAttachment ? [contractAttachment] : m.pdf ? [{ filename: m.pdf.filename, content: m.pdf.base64 }] : undefined
     const sent = await sendEmailViaResend(m.test ? testAddress : address, subject, email.text, email.html, resendApiKey, {
@@ -250,7 +276,7 @@ serve(async (req) => {
       ...(replyTo ? { replyTo } : {}),
       ...(cc.length > 0 ? { cc } : {}),
       ...(attachments ? { attachments } : {}),
-      emailType: m.test ? GC_CUSTOMER_EMAIL_TEST_TYPE : 'gc_customer_email',
+      emailType: m.test ? GC_CUSTOMER_EMAIL_TEST_TYPE : GC_CUSTOMER_EMAIL_TYPE,
     })
     if (!sent.success) return refuse('sendFailed', sent.error ?? 'Resend said no')
     // A test copy: nothing filed, nothing written back.

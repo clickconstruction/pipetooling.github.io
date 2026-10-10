@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
-import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
+import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
 describe('canOpenGcProjects', () => {
@@ -142,5 +142,29 @@ describe('canUseGcBoardWrites', () => {
     const award = ['gc_sows', 'gc_sow_lines'].map((t) => GC_TABLE_DOORS[t])
     expect(award.every((d) => d?.lane === 'Board')).toBe(true)
     expect(award.every((d) => d?.door === 'dev')).toBe(GC_BOARD_WRITE_TEAM.length === 1 && GC_BOARD_WRITE_TEAM[0] === 'dev')
+  })
+})
+
+describe('canOpenOwnerContractFile (the Board’s B2b-v-iii)', () => {
+  /** The newest migration's `gc_owner_contracts_select` on storage.objects: what it reads by. */
+  function contractFileGate(): string {
+    const dir = join(process.cwd(), 'supabase', 'migrations')
+    const sql = readdirSync(dir)
+      .filter((f) => f.endsWith('.sql'))
+      .sort()
+      .reverse()
+      .map((f) => readFileSync(join(dir, f), 'utf8'))
+      .find((s) => s.includes('CREATE POLICY gc_owner_contracts_select'))
+    const using = sql?.match(/CREATE POLICY gc_owner_contracts_select[\s\S]*?USING \(([\s\S]*?)\);/)?.[1]
+    if (!using) throw new Error('no migration creates gc_owner_contracts_select')
+    return using.replace(/\s+/g, ' ').trim()
+  }
+
+  it('opens the file for a dev alone, as the bucket’s select policy reads by is_dev()', () => {
+    expect(contractFileGate()).toBe("bucket_id = 'gc-owner-contracts' AND public.is_dev()")
+    expect([...GC_OWNER_CONTRACT_FILE_TEAM]).toEqual(['dev'])
+    expect(canOpenOwnerContractFile('dev')).toBe(true)
+    for (const role of ['master_technician', 'controller', 'assistant', 'estimator', 'superintendent'] as UserRole[]) expect(canOpenOwnerContractFile(role)).toBe(false)
+    expect(canOpenOwnerContractFile(null)).toBe(false)
   })
 })

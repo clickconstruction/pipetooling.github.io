@@ -21,6 +21,7 @@
     "check:edge-drift": "node scripts/check-edge-function-drift.mjs",
     "check:workflow-parity": "node scripts/check-workflow-parity.mjs",
     "check:migration-drift": "node scripts/check-migration-drift.mjs",
+    "gen:edge-kernels": "node scripts/edge-kernels.mjs",
     "check:todos": "vite-node scripts/check-todos.ts",
     "check:pronouns": "vite-node scripts/check-pronoun-openers.ts",
     "check:nested-windows": "node --max-old-space-size=3072 scripts/check-nested-windows.mjs",

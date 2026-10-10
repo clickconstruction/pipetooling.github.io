@@ -268,7 +268,7 @@ describe('what gc-customer-email reads and sends', () => {
     expect(parseCustomerEmail({ ...ok, kind: 'schedule', lines: [...long, ...long, ...long] }).ok).toBe(false)
     // The function reads the letter's row as the caller, sends the row's words, and writes its log back on the row.
     const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
-    expect(fn).toContain("await anon.from('gc_schedule_sends').select('id, project_id, subject, lines, email_send_log_id')")
+    expect(fn).toContain("await anon.from('gc_schedule_sends').select('id, project_id, subject, lines, email_send_log_id, created_at')")
     expect(fn).toContain("if (letter.email_send_log_id && !m.test) return refuse('alreadySent')")
     expect(fn).toContain("source === 'gc_weekly_reports' || source === 'gc_schedule_sends') && sent.resendEmailId")
   })
@@ -405,4 +405,15 @@ describe('what gc-customer-email reads and sends', () => {
       'That reminder went already.',
     ])
   })
+  it('looks for a row kind’s send in the log before it sends, so a failed write-back never emails twice (the double-send guard)', () => {
+    const fn = readFileSync(resolve(process.cwd(), 'supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    const guard = fn.indexOf('gcCustomerEmailLoggedAlready(logs')
+    const send = fn.indexOf('await sendEmailViaResend(')
+    expect(guard).toBeGreaterThan(0)
+    expect(guard).toBeLessThan(send)
+    expect(fn).toContain(".eq('email_type', GC_CUSTOMER_EMAIL_TYPE)")
+    expect(fn).toContain("if (rowKind && !m.test && rowMadeAt)")
+    for (const table of ['gc_weekly_reports', 'gc_schedule_sends', 'gc_owner_pay_reminders']) expect(fn).toMatch(new RegExp(`from\\('${table}'\\)\\.select\\('[^']*created_at'\\)`))
+  })
+
 })

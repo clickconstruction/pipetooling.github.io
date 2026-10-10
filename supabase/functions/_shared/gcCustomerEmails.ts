@@ -239,6 +239,43 @@ export interface GcCustomerEmailRequest {
 /** A test copy's email type on `email_send_log`, so no reader counts it as a send. */
 export const GC_CUSTOMER_EMAIL_TEST_TYPE = 'gc_customer_email_test'
 
+/** The email type every kind logs on `email_send_log` when it goes for real. */
+export const GC_CUSTOMER_EMAIL_TYPE = 'gc_customer_email'
+
+/** One `email_send_log` row, as the double-send guard reads it. */
+export interface GcCustomerEmailLogRow {
+  id: string
+  email_type: string | null
+  to_emails: readonly string[] | null
+  subject: string | null
+  created_at: string
+}
+
+/**
+ * The double-send guard (gc 4's note 3 on the schedule's PR 15): a row kind (a reminder, a weekly report, the
+ * customer's schedule) whose send went through Resend but whose `email_send_log_id` write-back failed still reads
+ * unsent, so a second press would email them twice. Before it sends, the function looks for that send in the log:
+ * the live type (never a test's), the address it is about to send to, the row's own subject, logged no earlier than
+ * the row was made. The log row's id when one is there, else null. Only the case where the log failed too is left.
+ */
+export function gcCustomerEmailLoggedAlready(
+  logs: readonly GcCustomerEmailLogRow[],
+  sending: { address: string; subject: string; since: string },
+): string | null {
+  const address = sending.address.trim().toLowerCase()
+  const subject = sending.subject.trim()
+  const since = Date.parse(sending.since)
+  if (!address || !subject || Number.isNaN(since)) return null
+  const hit = logs.find(
+    (l) =>
+      l.email_type === GC_CUSTOMER_EMAIL_TYPE &&
+      (l.subject ?? '').trim() === subject &&
+      (l.to_emails ?? []).some((t) => t.trim().toLowerCase() === address) &&
+      Date.parse(l.created_at) >= since,
+  )
+  return hit ? hit.id : null
+}
+
 /** A test copy's subject. */
 export function gcCustomerEmailTestSubject(subject: string): string {
   return `[TEST] ${subject.trim()}`

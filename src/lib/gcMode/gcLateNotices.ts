@@ -11,21 +11,7 @@
  *
  * Its own file, out of the barrel: the reducer, the portal, Follow up and the walk read it.
  */
-import type { LookAheadReason } from './gcTypes'
-import { MOVE_NOTE_MIN } from './gcScheduleMoves'
-import type { PortalKey } from './gcPortalI18n'
-// What moved to main (the real build) is re-exported from there, so there is one copy.
-import type { LateDoor } from '../gc/schedule/lateNotices'
-import { LATE_REASONS } from '../gc/schedule/lateNotices'
+// What moved to main (the real build) is re-exported from there, so there is one copy. lateNoticeProblem since the
+// schedule's PR 14a (#5356, schedule-pr14a.lift.json).
 export type { LateDoor, LateNoticeRow, LateNoticeState, LateWaiting, OpenLateNotice } from '../gc/schedule/lateNotices'
-export { LATE_REASONS, companyLateNotice, lateAheadWords, lateDayAsked, lateDayChanged, lateDoor, lateKeepLogWords, lateMoveNote, lateNoticeLogWords, lateNoticeMove, lateNoticeMoveWords, lateNoticeReasons, lateNoticeRows, lateNoticeState, lateNoticeTails, lateNoticesToAnswer, latePushBackLogWords, lateSaysWords, lateTarget, lateWaiting, lateWalkFact, nextLateNoticeId, openLateNotices, portalLateNotice } from '../gc/schedule/lateNotices'
-
-/** What stops a notice from going, in the portal's words: the key, and the day it names. Null: it can go. */
-export function lateNoticeProblem(door: LateDoor, today: string, day: string, reason: LookAheadReason | null, note: string): { key: PortalKey; day?: string } | null {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { key: 'latePickDay' }
-  if (day <= door.day) return { key: 'lateLaterDay', day: door.day }
-  if (day < today) return { key: 'lateFromToday' }
-  if (!reason || !LATE_REASONS.includes(reason)) return { key: 'latePickWhy' }
-  if (note.trim().length < MOVE_NOTE_MIN) return { key: 'lateNote' }
-  return null
-}
+export { LATE_REASONS, companyLateNotice, lateAheadWords, lateDayAsked, lateDayChanged, lateDoor, lateKeepLogWords, lateMoveNote, lateNoticeLogWords, lateNoticeMove, lateNoticeMoveWords, lateNoticeProblem, lateNoticeReasons, lateNoticeRows, lateNoticeState, lateNoticeTails, lateNoticesToAnswer, latePushBackLogWords, lateSaysWords, lateTarget, lateWaiting, lateWalkFact, nextLateNoticeId, openLateNotices, portalLateNotice } from '../gc/schedule/lateNotices'
