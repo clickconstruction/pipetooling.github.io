@@ -24,6 +24,8 @@
  * (`GcScheduleImport`, G-137), and a job being built takes only their dates to meet (`GcTheirDatesDoor`, G-145). Since
  * PR 14c, on a job being built, the same people answer a trade that says it will be late (`GcLateNotices`, G-117) and
  * check the trades' look-ahead marks, our crew's own and the inspections due (`GcVerifyCard`), on the real schedule only.
+ * Since PR 15a, on a job being built, the same people send the customer their schedule as a dated letter
+ * (`GcScheduleLetter`, G-94), through `gc-customer-email`, with a test copy to themselves first.
  * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
  * bring one.
  */
@@ -66,6 +68,9 @@ import { whatIfCopy, whatIfGhosts, whatIfProject } from '../../lib/gc/schedule/w
 import { moveAnswerWords } from '../../lib/gc/schedule/tellTrades'
 import { companiesNotTold, toldThenUndone } from '../../lib/gc/schedule/tellWindow'
 import { tellTheTrades, type TellTheTrades } from '../../lib/gc/tellTradesIo'
+import type { CustomerEmailAnswer } from '../../lib/gc/customerEmail'
+import type { ScheduleLetter } from '../../lib/gc/schedule/customerScheduleSend'
+import { sendScheduleLetter } from '../../lib/gc/scheduleLetterIo'
 import type { CompanyToTell } from '../../lib/gc/schedule/tellTrades'
 import { copyRedone, copyUndone, tryInCopy, whatIfKeepWords } from '../../lib/gc/schedule/whatIfWindow'
 import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
@@ -118,6 +123,7 @@ import { GcPlaceLine, GcPlacesCard } from './GcPlaces'
 import { GcAddOwnWork, GcBaseline, GcInspectionCheck, GcMilestones, GcOwnWorkButtons, GcWaits } from './GcScheduleCards'
 import { GcPartsCard } from './GcSplitBars'
 import { GcTemplatePick, GcTemplatesCard } from './GcScheduleTemplates'
+import { GcScheduleLetter } from './GcScheduleLetter'
 import { GcRoughKeep, GcRoughSchedule } from './GcRoughSchedule'
 import { GcScheduleImport } from './GcScheduleImport'
 import { GcTheirDatesDoor, type TakeTheirDates } from './GcTheirDates'
@@ -454,6 +460,14 @@ export function GcSchedule({
                 pushBack: (noticeId, note) => record((st) => pushBackLateNotice(st, projectId, noticeId, note)),
                 verify: (mark) => record((st) => verifyLookAhead(st, projectId, mark)),
                 crewMark: (mark) => record((st) => crewMarkLookAhead(st, projectId, mark)),
+                sendLetter: async (letter, test) => {
+                  if (!read) throw new Error('The schedule is not read yet.')
+                  try {
+                    return await sendScheduleLetter(read.state, projectId, letter, test)
+                  } finally {
+                    setReloads((n) => n + 1)
+                  }
+                },
               }
             : null
         }
@@ -534,6 +548,11 @@ interface MovePresses {
   /** Our superintendent's check of a trade's look-ahead mark, and our own crew's mark (PR 14c): records. */
   verify: (mark: LookAheadMark) => Promise<void>
   crewMark: (mark: LookAheadMark) => Promise<void>
+  /**
+   * The customer's letter (G-94, PR 15a): kept as a row, or the row kept and not emailed found again, then emailed through
+   * `gc-customer-email`, or a test copy to the sender. A refusal comes back in the answer; the schedule reads again.
+   */
+  sendLetter: (letter: ScheduleLetter, test: boolean) => Promise<CustomerEmailAnswer>
 }
 
 /** The what-if copy's own presses (G-81, PR 11, call 3), apart from `MovePresses`: a move tried is not a move until Keep. */
@@ -968,6 +987,8 @@ function ScheduleView({
             onRemove={moves.removeMilestone}
             door={<GcTheirDatesDoor state={state} project={realProject} onTake={moves.theirDates} />}
           />
+          {/* The customer's schedule on its own (G-94, PR 15a), on a job being built: from the read's state, never the money read's. */}
+          {building && <GcScheduleLetter state={state} project={project} by={by} onSend={moves.sendLetter} />}
           {schedule.baseline && <GcBaseline project={project} today={state.today} by={by} onBaseline={moves.baseline} onReload={moves.reload} />}
           {/* Templates (G-44, PR 12a): a job being built saves its schedule as one; every template is renamed or set aside here. */}
           {building && <GcTemplatesCard state={state} project={project} onSave={moves.saveTemplate} onRename={moves.renameTemplate} onSetAside={moves.setAsideTemplate} />}

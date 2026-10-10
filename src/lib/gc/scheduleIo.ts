@@ -32,6 +32,7 @@ import { loadGcSubmittals } from './submittalsIo'
 import { TEMPLATE_NAME_TAKEN, cleanTemplateName, templateNameProblem, templateSaveProblem, templateShape } from './schedule/templates'
 import type { TheirDate } from './schedule/theirDates'
 import type { MovedLine } from './schedule/tellTrades'
+import type { ScheduleLetter } from './schedule/customerScheduleSend'
 import type {
   ActivityPart,
   InspectionFailure,
@@ -58,6 +59,7 @@ import {
   placesForRpc,
   pushBackOf,
   roughRowOf,
+  scheduleSendRowOf,
   templateRowOf,
   theirDatesForRpc,
   verifiedMarkOf,
@@ -456,6 +458,13 @@ export async function addScheduleWait(state: GcState, projectId: string, wait: S
 export async function recordScheduleWalk(state: GcState, projectId: string, walk: Pick<ScheduleWalk, 'on' | 'kept' | 'moveIds' | 'skipped' | 'keptEarly'>): Promise<ScheduleRead | null> {
   taken(await supabase.from('gc_schedule_walks').insert(walkRowOf(projectId, walk)), 'keep the walk')
   return loadSchedule(state, projectId)
+}
+
+/** The customer's letter kept before it is emailed (G-94, PR 15a): its row's id, for `gc-customer-email` to send. */
+export async function recordScheduleSend(projectId: string, letter: ScheduleLetter, today: string): Promise<string> {
+  const result = await supabase.from('gc_schedule_sends').insert(scheduleSendRowOf(projectId, letter, today)).select('id').single()
+  checkSupabaseError(result, 'keep the letter')
+  return result.data!.id
 }
 
 /** A bar's real days (G-55, after `actualProblem`): a day set, null to clear it, unset to leave it. */
