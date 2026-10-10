@@ -11,6 +11,7 @@ import { gcPortalOwns } from '../_shared/gcPortal.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import {
   GC_CARD_BILL_ERRORS,
+  GC_CARD_BILL_SETTING_KEY,
   GC_CARD_BILL_UNDO_ROLES,
   GC_CARD_BILL_WORDS,
   gcCardBillDbWords,
@@ -33,7 +34,7 @@ import {
  *
  *   POST { token, invoiceId }  — the customer's portal (no sign-in; the portal link is the capability).
  *     → { ok: true, url }       the Stripe card page to open
- *     The offer must be on (GC_CARD_BILL_ON), the link live, the bill the link's customer's, and the customer an
+ *     The offer must be on (the app_settings switch `gc_card_bill_on_v1`, O8c), the link live, the bill the link's customer's, and the customer an
  *     email for Stripe's receipt. gc_card_bill_begin checks the bill and writes the pending row; this makes the card
  *     only Stripe invoice (the bill's line, then "Credit card fee (3%)"); gc_card_bill_finish writes it onto the bill.
  *     If Stripe fails, the invoice it made is voided and the pending row cleared. A bill on card answers its page.
@@ -95,7 +96,9 @@ async function stripeCustomerFor(stripe: Stripe, admin: Admin, mode: StripeBilli
 }
 
 async function portalDoor(admin: Admin, token: string, invoiceId: string): Promise<Response> {
-  if (!gcCardBillOn(Deno.env.get('GC_CARD_BILL_ON'))) return refuse('off')
+  // The switch (O8c): the owner's own press in Settings, an app_settings row; a missing row is off.
+  const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', GC_CARD_BILL_SETTING_KEY).maybeSingle()
+  if (!gcCardBillOn((setting as { value_text?: string | null } | null)?.value_text)) return refuse('off')
 
   let { data: link } = await admin.from('customer_portal_links').select('id, customer_id, revoked_at').eq('token', token).maybeSingle()
   if (!link) link = (await admin.from('customer_portal_links').select('id, customer_id, revoked_at').eq('token_hash', await sha256Hex(token)).maybeSingle()).data

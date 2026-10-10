@@ -9,6 +9,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   GC_BILL_PORTAL_CARD_ONLY,
+  GC_CARD_BILL_SETTING_KEY,
   GC_CARD_BILL_UNDO_ROLES,
   GC_CARD_FEE_LINE,
   GC_CARD_FEE_PCT,
@@ -19,6 +20,7 @@ import {
   gcCardBillStripeMode,
   gcCardFee,
   gcCardShortDate,
+  gcEmailCardFee,
   gcPortalCardBills,
   parseGcCardBillBegun,
   parseGcCardBillRequest,
@@ -32,15 +34,21 @@ const FUNCTION = read('supabase/functions/gc-card-bill/index.ts')
 const PORTAL = read('supabase/functions/customer-portal/index.ts')
 const CREATE = read('supabase/functions/create-stripe-invoice/index.ts')
 const CONFIG = read('supabase/config.toml')
+const SWITCH = read('supabase/migrations/20261010042000_gc_card_bill_switch.sql')
+const EMAIL = read('supabase/functions/gc-customer-email/index.ts')
 
 const INV = '11111111-2222-3333-4444-555555555555'
 const TOKEN = 'abcdef1234567890abcdef'
 
 describe('the switch and the Stripe mode start off', () => {
-  it('the offer shows only when GC_CARD_BILL_ON says on', () => {
-    expect(gcCardBillOn('on')).toBe(true)
-    expect(gcCardBillOn(' ON ')).toBe(true)
-    for (const v of [undefined, null, '', 'off', 'true', '1', 'yes']) expect(gcCardBillOn(v as string | undefined)).toBe(false)
+  it('the offer shows only when the app_settings switch says true (O8c; a missing row is off)', () => {
+    expect(GC_CARD_BILL_SETTING_KEY).toBe('gc_card_bill_on_v1')
+    expect(gcCardBillOn('true')).toBe(true)
+    expect(gcCardBillOn(' TRUE ')).toBe(true)
+    for (const v of [undefined, null, '', 'false', 'on', '1', 'yes']) expect(gcCardBillOn(v as string | undefined)).toBe(false)
+    // The migration inserts it off, and the owner and dev flip it.
+    expect(SWITCH).toContain("VALUES ('gc_card_bill_on_v1', 'false')")
+    expect(SWITCH).toContain("USING (key = 'gc_card_bill_on_v1' AND public.is_master_or_dev())")
   })
 
   it('Stripe is in test mode unless GC_CARD_BILL_STRIPE_MODE says live', () => {
@@ -176,6 +184,32 @@ describe('the portal’s offers', () => {
   })
 })
 
+describe('the card offer in our emails (O8c)', () => {
+  const bill = (over: Partial<{ amount: number | string; status: string; stripe_invoice_id: string | null }> = {}) => ({ amount: '288879.00', status: 'billed', stripe_invoice_id: null, ...over })
+
+  it('a certified bill not on Stripe, with nothing paid, offers its 3%', () => {
+    expect(gcEmailCardFee({ on: true, bill: bill(), paid: false, cardStatus: null })).toBe(8_666.37)
+    // A turn still being made is still an offer.
+    expect(gcEmailCardFee({ on: true, bill: bill(), paid: false, cardStatus: 'pending' })).toBe(8_666.37)
+  })
+
+  it('no offer with the switch off, a payment, a Stripe bill, a bill not billed, one on card or taken back', () => {
+    expect(gcEmailCardFee({ on: false, bill: bill(), paid: false, cardStatus: null })).toBeNull()
+    expect(gcEmailCardFee({ on: true, bill: bill(), paid: true, cardStatus: null })).toBeNull()
+    expect(gcEmailCardFee({ on: true, bill: bill({ stripe_invoice_id: 'in_1' }), paid: false, cardStatus: null })).toBeNull()
+    expect(gcEmailCardFee({ on: true, bill: bill({ status: 'paid' }), paid: false, cardStatus: null })).toBeNull()
+    expect(gcEmailCardFee({ on: true, bill: bill(), paid: false, cardStatus: 'on_card' })).toBeNull()
+    expect(gcEmailCardFee({ on: true, bill: bill(), paid: false, cardStatus: 'undone' })).toBeNull()
+    expect(gcEmailCardFee({ on: true, bill: null, paid: false, cardStatus: null })).toBeNull()
+  })
+
+  it('gc-customer-email reads the switch and the bill for a certified email and a reminder, and passes the fee to the frame', () => {
+    expect(EMAIL).toContain(".eq('key', GC_CARD_BILL_SETTING_KEY)")
+    expect(EMAIL).toContain("(m.kind === 'certified' || m.kind === 'reminder')")
+    expect(EMAIL).toContain('portalUrl, cardFee })')
+  })
+})
+
 describe('the function, the portal and the staff refusal, read as text', () => {
   it('only the money team takes a bill back, the same team the client opens Money to', () => {
     expect([...GC_CARD_BILL_UNDO_ROLES].sort()).toEqual([...GC_MONEY_TEAM].sort())
@@ -183,7 +217,8 @@ describe('the function, the portal and the staff refusal, read as text', () => {
 
   it('gc-card-bill runs with verify_jwt off, checks the switch, the link and the customer, and is card only', () => {
     expect(CONFIG).toMatch(/\[functions\.gc-card-bill\]\nverify_jwt = false/)
-    expect(FUNCTION).toContain("gcCardBillOn(Deno.env.get('GC_CARD_BILL_ON'))")
+    expect(FUNCTION).toContain(".eq('key', GC_CARD_BILL_SETTING_KEY)")
+    expect(FUNCTION).not.toContain("Deno.env.get('GC_CARD_BILL_ON')")
     expect(FUNCTION).toContain("gcCardBillStripeMode(Deno.env.get('GC_CARD_BILL_STRIPE_MODE'))")
     expect(FUNCTION).toContain('gcPortalOwns(')
     expect(FUNCTION).toContain("payment_settings: { payment_method_types: ['card'] }")
@@ -198,7 +233,8 @@ describe('the function, the portal and the staff refusal, read as text', () => {
 
   it('customer-portal adds the offers behind the switch', () => {
     expect(PORTAL).toContain('gcPortalCardBills({')
-    expect(PORTAL).toContain("gcCardBillOn(Deno.env.get('GC_CARD_BILL_ON'))")
+    expect(PORTAL).toContain(".eq('key', GC_CARD_BILL_SETTING_KEY)")
+    expect(PORTAL).not.toContain("Deno.env.get('GC_CARD_BILL_ON')")
     expect(PORTAL).toMatch(/\n\s+cardBills,\n\s+\}\)/)
   })
 

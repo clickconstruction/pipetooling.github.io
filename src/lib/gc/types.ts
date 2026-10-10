@@ -922,6 +922,28 @@ export interface OwnerPayAppSent {
    * `emailed` false: filed, but its email did not go (O5b: no log written back on it).
    */
   reminders?: { on: string; by: string; note: string; subject?: string; lines?: string[]; emailed?: boolean }[]
+  /**
+   * The customer turned its bill to card in their portal (O8b): the bill as certified (`base`), the 3% card fee, what
+   * Stripe asks and its card page. `undone`: the office took it back to a check bill. Absent: never on card. The fee
+   * is a recovery of Stripe's cost: every figure reads the bill at its base (O8c).
+   */
+  card?: OwnerPayAppCard
+}
+
+/** A pay application's bill on card (O8b, O8c), as `gc_owner_card_bills` and the bill's row hold it. */
+export interface OwnerPayAppCard {
+  /** The bill's id (`jobs_ledger_invoices`), for its pay link and Back to a check bill. */
+  invoiceId: string
+  state: 'onCard' | 'undone'
+  base: number
+  fee: number
+  total: number
+  /** The day they chose card in their portal. */
+  chosenOn: string
+  /** The card page (`hosted_invoice_url`); null once taken back. */
+  payUrl: string | null
+  /** The day the office took it back to a check bill. */
+  undoneOn: string | null
 }
 
 /** Why the work changed, in the words the app's change orders already use. */

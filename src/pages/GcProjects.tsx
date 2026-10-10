@@ -172,7 +172,9 @@ import {
   sendOwnerPayApp,
   setOwnerRetainage,
   sendGcSow,
+  takeBillOffCard,
 } from '../lib/gc/gcIo'
+import { fetchGcCardBillOn } from '../lib/gc/cardBillSetting'
 import { sowEmailRequest } from '../lib/gc/sowEmail'
 import { gcTradeEmailRefusal, type ChangeAskEmailStage } from '../lib/gc/tradeEmail'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
@@ -852,6 +854,22 @@ export default function GcProjects() {
     }
   }, [billProjectId, board, role])
   const billScheduleRead = billSchedule !== null && billSchedule.id === billProjectId
+  // Pay by card's switch (O8c), the app_settings row the owner turns on: read when the window opens. Unknown is off.
+  const [billCardOfferOn, setBillCardOfferOn] = useState(false)
+  useEffect(() => {
+    if (!billProjectId || !canSeeGcMoney(role)) return
+    let live = true
+    fetchGcCardBillOn()
+      .then((on) => {
+        if (live) setBillCardOfferOn(on)
+      })
+      .catch(() => {
+        if (live) setBillCardOfferOn(false)
+      })
+    return () => {
+      live = false
+    }
+  }, [billProjectId, role])
   const billState = useMemo(() => {
     const laid = boardWithChanges && billProjectId && billRows ? billingStateFor(boardWithChanges, billProjectId, billRows) : null
     return laid && billSchedule && billSchedule.id === billProjectId ? withSchedules(laid, new Map([[billProjectId, billSchedule.schedule]])) : laid
@@ -1621,6 +1639,7 @@ export default function GcProjects() {
           emailed={billEmailed}
           interestEmailed={billInterestEmailed}
           scheduleRead={billScheduleRead}
+          cardOfferOn={billCardOfferOn}
           onClose={() => setBillWindow(null)}
           writes={{
             onSend: (email) => {
@@ -1782,6 +1801,11 @@ export default function GcProjects() {
             onPayPart: (number, amount) => {
               const invoiceId = billInvoiceOf(number)
               if (invoiceId) billWrite(`pay-${number}`, () => recordGcPayment(invoiceId, amount, today), 'The payment was not recorded.')
+            },
+            // Back to a check bill (O8c): gc-card-bill's undo door voids the Stripe invoice and takes the fee off.
+            onCardUndo: (number) => {
+              const invoiceId = billInvoiceOf(number)
+              if (invoiceId) billWrite(`card-${number}`, () => takeBillOffCard(invoiceId), 'The bill did not go back to a check bill.')
             },
             onPromise: (number, by, note, channel) => {
               if (billJobId) billWrite(`promise-${number}`, () => recordGcPromise(billJobId, by, note, channel), 'When they said they will pay was not recorded.')

@@ -65,6 +65,7 @@ import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeIn
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import TestReportSettingsBlock from '../components/settings/TestReportSettingsBlock'
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
+import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
@@ -1547,6 +1548,8 @@ export default function Settings() {
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && <TestReportSettingsBlock />}
       {/* Owner of record (v2.3450): the nightly save-from-the-roll switch, off on day one — master + dev. */}
       {(myRole === 'dev' || myRole === 'master_technician') && <OwnerAutoConfirmSettingsBlock />}
+      {/* GC mode (O8c): Pay by card's switch for GC customers, off on day one — the owner and dev. */}
+      {(myRole === 'dev' || myRole === 'master_technician') && <GcCardBillSettingsBlock />}
       {myRole === 'dev' && (
         <>
           <StripeInvoiceFooterDevSettingsBlock />

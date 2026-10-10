@@ -6,6 +6,7 @@ import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { customerBillingEmail } from '../_shared/billToParty.ts'
 import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
+import { GC_CARD_BILL_SETTING_KEY, gcCardBillOn, gcEmailCardFee } from '../_shared/gcCardBill.ts'
 import {
   buildGcCustomerEmail,
   CUSTOMER_EMAIL_ERRORS,
@@ -89,10 +90,13 @@ serve(async (req) => {
     // for their signature, not a draft and not answered. A reminder goes once, in the words gc_remind_customer_to_pay
     // filed; every other kind goes in the window's.
     let words = { subject: m.subject, lines: m.lines }
+    // The bill a certified email or a reminder is about, for Pay by card's offer in the portal line (O8c).
+    let billId: string | null = null
     const source = GC_CUSTOMER_EMAIL_SOURCE[m.kind]
     if (source === 'gc_owner_pay_apps') {
-      const { data: app } = await admin.from('gc_owner_pay_apps').select('id, project_id, certified').eq('id', m.sourceId).maybeSingle()
+      const { data: app } = await admin.from('gc_owner_pay_apps').select('id, project_id, certified, invoice_id').eq('id', m.sourceId).maybeSingle()
       if (!app) return refuse('notFound')
+      billId = app.invoice_id ?? null
       if (app.project_id !== m.projectId) return refuse('otherProject')
       if (m.kind === 'certified' && !(Number(app.certified) > 0)) return refuse('notCertified')
     } else if (source === 'gc_change_orders') {
@@ -107,8 +111,9 @@ serve(async (req) => {
     } else {
       const { data: rem } = await admin.from('gc_owner_pay_reminders').select('id, pay_app_id, subject, lines, email_send_log_id').eq('id', m.sourceId).maybeSingle()
       if (!rem) return refuse('notFound')
-      const { data: app } = await admin.from('gc_owner_pay_apps').select('project_id').eq('id', rem.pay_app_id).maybeSingle()
+      const { data: app } = await admin.from('gc_owner_pay_apps').select('project_id, invoice_id').eq('id', rem.pay_app_id).maybeSingle()
       if (!app || app.project_id !== m.projectId) return refuse('otherProject')
+      billId = app.invoice_id ?? null
       if (rem.email_send_log_id) return refuse('alreadySent')
       words = { subject: String(rem.subject), lines: (rem.lines ?? []).map(String) }
     }
@@ -129,7 +134,19 @@ serve(async (req) => {
     const portalUrl = GC_CUSTOMER_EMAIL_PORTAL_LINE[m.kind]
       ? await loadPortalReturnUrl(admin, recipient.id, Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com', { paid: false })
       : null
-    const email = buildGcCustomerEmail({ subject: words.subject, lines: words.lines, signer, gc: GC_CUSTOMER_EMAIL_FROM_NAME, portalUrl })
+    // Pay by card (O8c): with the switch on (app_settings, `GC_CARD_BILL_SETTING_KEY`) and a bill that can still turn,
+    // the portal line offers the card with its 3% fee. A bill on card already says where to pay in the window's words.
+    let cardFee: number | null = null
+    if (portalUrl && billId && (m.kind === 'certified' || m.kind === 'reminder')) {
+      const [{ data: setting }, { data: bill }, { count: paidCount }, { data: card }] = await Promise.all([
+        admin.from('app_settings').select('value_text').eq('key', GC_CARD_BILL_SETTING_KEY).maybeSingle(),
+        admin.from('jobs_ledger_invoices').select('amount, status, stripe_invoice_id').eq('id', billId).maybeSingle(),
+        admin.from('jobs_ledger_payments').select('id', { count: 'exact', head: true }).eq('invoice_id', billId),
+        admin.from('gc_owner_card_bills').select('status').eq('invoice_id', billId).maybeSingle(),
+      ])
+      cardFee = gcEmailCardFee({ on: gcCardBillOn(setting?.value_text), bill: bill ?? null, paid: (paidCount ?? 0) > 0, cardStatus: card?.status ?? null })
+    }
+    const email = buildGcCustomerEmail({ subject: words.subject, lines: words.lines, signer, gc: GC_CUSTOMER_EMAIL_FROM_NAME, portalUrl, cardFee })
 
     const from = mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, EMAIL_FROM)
     const attachments = m.pdf ? [{ filename: m.pdf.filename, content: m.pdf.base64 }] : undefined

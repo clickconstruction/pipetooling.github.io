@@ -14,9 +14,17 @@ export const GC_CARD_FEE_PCT = 3
 /** The fee's own line, on the Stripe invoice and in the bill's `fee_lines` (`gc_card_bill_finish`'s rider). */
 export const GC_CARD_FEE_LINE = 'Credit card fee (3%)'
 
-/** The offer shows only when `GC_CARD_BILL_ON` is `on`. Off to start, as every send is. */
+/**
+ * The switch (O8c): one `app_settings` row, `value_text` 'true' or 'false', inserted 'false' by migration
+ * 20261010042000. The owner turns it on in Settings → Jobs & billing (dev and the owner write). It replaced O8b's
+ * env value `GC_CARD_BILL_ON`. Both functions, `customer-portal`'s offer, `gc-customer-email`'s card lines and Bill
+ * the customer's hint read it.
+ */
+export const GC_CARD_BILL_SETTING_KEY = 'gc_card_bill_on_v1'
+
+/** The switch's `value_text` → on. Only 'true' (trimmed, any case) is on; a missing row is off. */
 export function gcCardBillOn(raw: string | null | undefined): boolean {
-  return (raw ?? '').trim().toLowerCase() === 'on'
+  return (raw ?? '').trim().toLowerCase() === 'true'
 }
 
 /** Stripe's test mode unless `GC_CARD_BILL_STRIPE_MODE` says `live`, which waits on the owner's word. */
@@ -198,6 +206,23 @@ export function gcCardBillStripeLines(begun: Pick<GcCardBillBegun, 'base' | 'fee
     { amountCents: Math.round(begun.base * 100), description: `${app}${begun.final ? ', final,' : ''}${job ? ` for ${job}` : ''}${certified}`.slice(0, 500) },
     { amountCents: Math.round(begun.fee * 100), description: GC_CARD_FEE_LINE },
   ]
+}
+
+/**
+ * The card fee an email may offer for a bill (O8c): the switch on, a bill a certificate made, billed, not on Stripe,
+ * nothing paid on it and never turned to card (a pending turn is still an offer). Null: no offer.
+ */
+export function gcEmailCardFee(args: {
+  on: boolean
+  bill: { amount: number | string; status: string; stripe_invoice_id: string | null } | null
+  paid: boolean
+  cardStatus: string | null
+}): number | null {
+  const { on, bill, paid, cardStatus } = args
+  if (!on || !bill || paid || bill.status !== 'billed' || (bill.stripe_invoice_id ?? '').trim() !== '') return null
+  if (cardStatus === 'on_card' || cardStatus === 'undone') return null
+  const amount = Number(bill.amount)
+  return amount > 0 ? gcCardFee(amount) : null
 }
 
 /** A bill on the portal that can turn to card, or one on card already. */
