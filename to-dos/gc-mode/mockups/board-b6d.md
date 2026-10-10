@@ -76,8 +76,8 @@ Call D (board-b6c.md): our contract to the customer goes out from the customer's
   - It adds one refusal to Undo: a contract the customer signed in their portal stays signed ("They signed it in their portal, so it stays signed.").
   - Needs Owner Billing's OK, since the function is theirs.
 - **D6. Their portal link: the first send makes one when they have none.** That is the prototype's "the first send turns their portal on".
-  - The send window calls the app's own `mint_customer_portal_link(customer, 'customer', false)`. That is a call into the Pipeline's function, not a change to it.
-  - A customer whose only link is audience `gc` is refused in words, since GC jobs never show on that link.
+  - The send window calls the app's own `mint_customer_portal_link(customer, 'all', false)`. That is a call into the Pipeline's function, not a change to it. It makes the merged link, the app's default since the custom-links train (`20260821233000`), and gives back the one already on, so every send may call it.
+  - (Amended 2026-10-10: the plan first said audience `customer` and a refusal for a customer whose only link is `gc`. A merged link shows their GC jobs, so no refusal is needed. The email links `all` first, else a `customer` view, never `gc`.)
 - **D7. E-sign as the trade's statement of work does it:**
   - record type `gc_owner_contract`, audience `customer`;
   - the signer's five fields on the signed send;
@@ -225,6 +225,42 @@ Call D (board-b6c.md): our contract to the customer goes out from the customer's
   - The bed has five mutants, each failed.
   - Owner Billing's bed passed unchanged, 294 checks.
 
+## As built: B6-d-iii in two cuts (2026-10-10)
+
+The lead split B6-d-iii in two, so B6-d is four cuts: i (v2.5160, #5314), ii (v2.5167, #5320), iii-a and iii-b.
+
+- **iii-a, the customer signs in their portal** (no email, no migration):
+  - **`_shared/gcPortal.ts`:**
+    - A won job's `contract` while the newest send is unsigned and the job is going: the price as one number, every term we bill by (`gcContractTermsLines`), the sign-by day, and a one-hour link to the file.
+    - `priceChanged` when `gc_owner_contract_worth_ok` says the send's price is no longer whole. The page then shows no sign form.
+    - Once signed there: who signed and when, with "Read what you signed".
+    - A contract signed on paper shows nothing.
+  - **`submit-portal-request` kind `gc_owner_contract_sign`:**
+    1. refuses a `gc` link;
+    2. `gcPortalOwns`;
+    3. the e-sign consent, required;
+    4. the file's SHA-256 against the send's, else `fileChanged`;
+    5. the drawn PNG stored, and taken back on a refusal;
+    6. `gc_customer_sign_owner_contract` as the service role;
+    7. the e-sign ledger row (`gc_owner_contract`) at its time.
+
+    No inbox row and no email.
+  - **`PortalGcJobs`** draws it with `ContractAcceptSignatureForm`, audience `customer`.
+  - **Also in iii-a:** the sample portal shows a contract to sign, and What customers see registers `gc-portal-sign-contract`.
+  - **Owner Billing's four changes:** the hash check before signing, every billing term, the signed copy's link, and the price pre-check.
+  - **The bed's check:** "the service role signs and checks the price" (69 checks).
+  - **Deploys:** customer-portal and submit-portal-request, the lead's.
+- **iii-b, the email** (`gc-customer-email` kind `contract`, with D8's five details):
+  1. The function attaches the send's own file after the same SHA-256 check (`fileChanged`), the client sends no PDF, and a test copy attaches the same file.
+  2. The portal line is required (`gcContractPortalUrl`: `all`, else `customer`, never `gc`; none is `noPortal`).
+  3. It goes to the contact first.
+  4. It is filed as `gc_owner_contract` with the send as its source.
+  5. The registries: the journey step `gc-contract-email`, the sample, personJourney and the kinds table.
+
+  The other refusals are `notNewest` and `alreadySigned`.
+  - **The send pane:** a box, **Email it to them now, with their portal link**, which starts off as every GC send's does, with the email beside it. The press keeps the send, makes the link (D6, amended), then emails, saying who it went to or why not.
+  - **Deploy:** gc-customer-email, the lead's, right on the merge.
+
 ## Status
 
 Plan written 2026-10-10 by Helper 2 (gc 2), from:
@@ -232,4 +268,4 @@ Plan written 2026-10-10 by Helper 2 (gc 2), from:
 - the spike's prototype (`gcReducer.ts:551-580`, `GcCustomerSend.tsx`, `GcCustomerContractSign.tsx`, `gcCustomerSend.ts:53-130`, `gcCompanyFile.ts:169-297`);
 - the plans named in `rows`.
 
-Calls answered 2026-10-10 (Amendments, above). B6-d-i is cut as v2.5160. B6-d-ii and B6-d-iii follow.
+Calls answered 2026-10-10 (Amendments, above). B6-d-i merged as v2.5160 (#5314), and 090000 is on prod. B6-d-ii is v2.5167 (#5320). B6-d-iii-a and iii-b are approved, and cut in that order once #5320 merges (As built, above).
