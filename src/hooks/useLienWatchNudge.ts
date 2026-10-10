@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { withoutZzTestJobs } from '../lib/jobs/zzTestJobVisibility'
 import { chunkIds } from '../lib/supabasePaging'
 import { lienBilledOpen } from '../lib/jobs/lienBilledOpen'
 import { supabase } from '../lib/supabase'
@@ -12,7 +13,11 @@ import { assessLienWatch, type JobLienFilingRow, type LienWatchJob, type LienWat
  * error so the cards stay quiet. The open balance is what the job's sent bills
  * owe (v2.4970, `lienBilledOpen`); property kind comes from the linked property record.
  */
-export function useLienWatchNudge(enabled: boolean): { watch: LienWatchResult | null } {
+/**
+ * `hideZzTestJobs` (punch list #61, PR 3): a ZZ test job leaves the watch, by the job's and the customer's names
+ * on its own read.
+ */
+export function useLienWatchNudge(enabled: boolean, hideZzTestJobs = false): { watch: LienWatchResult | null } {
   const [watch, setWatch] = useState<LienWatchResult | null>(null)
 
   useEffect(() => {
@@ -27,15 +32,17 @@ export function useLienWatchNudge(enabled: boolean): { watch: LienWatchResult | 
         const [{ data: jobRows, error: jobErr }, { data: filingRows, error: filErr }] = await Promise.all([
           supabase
             .from('jobs_ledger')
-            .select('id, status, gc_customer_id, last_work_date, lien_last_work_on, revenue, payments_made, customer_address_id')
+            .select('id, status, gc_customer_id, last_work_date, lien_last_work_on, revenue, payments_made, customer_address_id, job_name, customer_name')
             .in('status', ['billed']),
           supabase.from('job_lien_filings').select('*').is('voided_at', null),
         ])
         if (jobErr) throw jobErr
         if (filErr) throw filErr
         if (cancelled) return
-        const rawJobs = (jobRows ?? []) as {
+        const rawJobsRead = (jobRows ?? []) as {
           id: string
+          job_name?: string | null
+          customer_name?: string | null
           status: string | null
           gc_customer_id: string | null
           last_work_date: string | null
@@ -44,6 +51,7 @@ export function useLienWatchNudge(enabled: boolean): { watch: LienWatchResult | 
           payments_made: number | null
           customer_address_id: string | null
         }[]
+        const rawJobs = hideZzTestJobs ? withoutZzTestJobs(rawJobsRead) : rawJobsRead
         // The money is what each job's sent bills owe (v2.4970), the rule the desk and the Deadlines count by — so the bills and their payments are read too.
         const invoiceRows: { id: string; job_id: string; status: string | null; amount: number | null; sequence_order: number | null; billed_at: string | null }[] = []
         const paymentRows: { job_id: string; invoice_id: string | null; amount: number | null }[] = []
@@ -88,7 +96,7 @@ export function useLienWatchNudge(enabled: boolean): { watch: LienWatchResult | 
     return () => {
       cancelled = true
     }
-  }, [enabled])
+  }, [enabled, hideZzTestJobs])
 
   return { watch }
 }

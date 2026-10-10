@@ -26,6 +26,7 @@ import { parseLienClaimCorrection } from '../lib/jobs/lienClaimCorrectionIo'
 import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
 import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
+import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
 export type LienDeskJob = {
@@ -148,16 +149,21 @@ const EMPTY_QUEUE: LienDeskQueue = {
  * owner overrides, the promises, and which GCs we have noticed or held
  * before. `light` fetches only what the Dashboard count needs. Null while
  * loading; an empty queue on error so the cards stay quiet.
+ *
+ * `hideZzTestJobs` (punch list #61, PR 3): ZZ test jobs leave all four lists (the due months, the items,
+ * the affidavit and retainage windows) and the jobs, right after the jobs join, before any queue is built.
+ * The joined rows carry the job's and the customer's names, so no shared read is needed.
  */
 export function useLienDeskData(
   enabled: boolean,
   todayYmd: string,
-  opts?: { light?: boolean },
+  opts?: { light?: boolean; hideZzTestJobs?: boolean },
 ): { data: LienDeskData | null; loading: boolean; refetch: () => void } {
   const [data, setData] = useState<LienDeskData | null>(null)
   const [loading, setLoading] = useState(false)
   const [tick, setTick] = useState(0)
   const light = opts?.light === true
+  const hideZz = opts?.hideZzTestJobs === true
   const refetch = useCallback(() => setTick((t) => t + 1), [])
 
   useEffect(() => {
@@ -181,23 +187,19 @@ export function useLienDeskData(
           withSupabaseRetry(() => supabase.rpc('list_lien_retainage_windows' as never, { p_within_days: LIEN_DESK_LEAD_DAYS } as never), 'lien desk: retainage windows').catch(() => []),
         ])
         if (cancelled) return
-        const rows = ((rowsRaw ?? []) as unknown as LienNoticeMonthRow[]).map((r) => ({
+        const rowsRead = ((rowsRaw ?? []) as unknown as LienNoticeMonthRow[]).map((r) => ({
           ...r,
           approved_hours: Number(r.approved_hours) || 0,
           open_balance: Number(r.open_balance) || 0,
         }))
-        const allItems = (itemsRaw ?? []) as LienDeskItemRow[]
-        const items = allItems.filter((i) => i.kind === 'notice_53_056')
-        const affidavitRows = ((affRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 }))
-        const affidavits = buildLienAffidavitQueue(affidavitRows, allItems, todayYmd)
-        const retainageRows = ((retRaw ?? []) as unknown as LienRetainageRow[]).map((r) => ({ ...r, retainage_held: Number(r.retainage_held) || 0, open_balance: Number(r.open_balance) || 0 }))
-        const retainage = buildLienRetainageQueue(retainageRows, allItems, todayYmd)
-        const jobIds = [...new Set([...rows.map((r) => r.job_id), ...allItems.map((i) => i.job_id), ...affidavitRows.map((r) => r.job_id), ...retainageRows.map((r) => r.job_id)])]
-        const gcIds = new Set<string>(rows.map((r) => r.gc_customer_id).filter((v): v is string => Boolean(v)))
+        const itemsRead = (itemsRaw ?? []) as LienDeskItemRow[]
+        const affidavitRowsRead = ((affRaw ?? []) as unknown as LienAffidavitRow[]).map((r) => ({ ...r, open_balance: Number(r.open_balance) || 0 }))
+        const retainageRowsRead = ((retRaw ?? []) as unknown as LienRetainageRow[]).map((r) => ({ ...r, retainage_held: Number(r.retainage_held) || 0, open_balance: Number(r.open_balance) || 0 }))
+        const jobIdsRead = [...new Set([...rowsRead.map((r) => r.job_id), ...itemsRead.map((i) => i.job_id), ...affidavitRowsRead.map((r) => r.job_id), ...retainageRowsRead.map((r) => r.job_id)])]
 
         // The GCs' standing rules come with the jobs; everything else is the desk's own detail.
-        const jobs: LienDeskJob[] = []
-        for (const chunk of chunkIds(jobIds)) {
+        const jobsRead: LienDeskJob[] = []
+        for (const chunk of chunkIds(jobIdsRead)) {
           if (chunk.length === 0) continue
           const part = await withSupabaseRetry(
             () =>
@@ -207,8 +209,21 @@ export function useLienDeskData(
                 .in('id', chunk),
             'lien desk: jobs',
           )
-          jobs.push(...((part ?? []) as LienDeskJob[]))
+          jobsRead.push(...((part ?? []) as LienDeskJob[]))
         }
+        // ZZ test jobs (punch list #61, PR 3) leave every list here, by the joined rows' own names.
+        const zzJobIds = hideZz ? zzTestJobIds(jobsRead) : null
+        const kept = (jobId: string) => !zzJobIds?.has(jobId)
+        const rows = zzJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
+        const allItems = zzJobIds ? itemsRead.filter((i) => kept(i.job_id)) : itemsRead
+        const affidavitRows = zzJobIds ? affidavitRowsRead.filter((r) => kept(r.job_id)) : affidavitRowsRead
+        const retainageRows = zzJobIds ? retainageRowsRead.filter((r) => kept(r.job_id)) : retainageRowsRead
+        const jobs = zzJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
+        const jobIds = zzJobIds ? jobIdsRead.filter(kept) : jobIdsRead
+        const items = allItems.filter((i) => i.kind === 'notice_53_056')
+        const affidavits = buildLienAffidavitQueue(affidavitRows, allItems, todayYmd)
+        const retainage = buildLienRetainageQueue(retainageRows, allItems, todayYmd)
+        const gcIds = new Set<string>(rows.map((r) => r.gc_customer_id).filter((v): v is string => Boolean(v)))
         for (const j of jobs) if (j.gc_customer_id) gcIds.add(j.gc_customer_id)
         for (const r of affidavitRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
         for (const r of retainageRows) if (r.gc_customer_id) gcIds.add(r.gc_customer_id)
@@ -382,7 +397,7 @@ export function useLienDeskData(
     return () => {
       cancelled = true
     }
-  }, [enabled, todayYmd, light, tick])
+  }, [enabled, todayYmd, light, hideZz, tick])
 
   return useMemo(() => ({ data, loading, refetch }), [data, loading, refetch])
 }

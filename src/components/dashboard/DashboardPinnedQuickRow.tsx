@@ -441,7 +441,9 @@ export function DashboardPinnedQuickRow({
 
   // Cleared payments behind conditional lien releases (v2.2582) — office set.
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  /** ZZ test jobs off the nudges and the Lien desk's count for every role but a dev who shows them (punch list #61). */
+  const hideZzTestJobs = useZzTestJobsHidden(role)
+  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled, hideZzTestJobs)
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
   // Lien waivers awaiting MY signature (v2.4276): the leader's seat. Signers only — the lanes hook
   // already scopes to me; the enable keeps the read off the roles that never sign.
@@ -449,10 +451,10 @@ export function DashboardPinnedQuickRow({
   const { lanes: lienSignatureLanes, refetch: refetchLienSignatureLanes } = useLienSignatureLanes(lienWaiversToSignEnabled)
   const lienWaiversToSign = lienWaiversToSignEnabled ? { count: lienSignatureLanes.toSign.length, total: lienSignatureLanes.toSign.reduce((sum, r) => sum + Number(r.amount ?? 0), 0) } : null
   const [lienWaiversToSignOpen, setLienWaiversToSignOpen] = useState(false)
-  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
-  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled, hideZzTestJobs, authUserId)
+  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled, hideZzTestJobs)
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
-  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true })
+  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
   // Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet — office set.
   const contractNudgeEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled)
@@ -489,8 +491,6 @@ export function DashboardPinnedQuickRow({
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
   // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  /** ZZ test jobs off the nudges for every role but a dev who shows them (punch list #61, v2.5122). */
-  const hideZzTestJobs = useZzTestJobsHidden(role)
   const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId, hideZzTestJobs)
   // Field capacity under 60% three complete weeks running (Job Summary follow-up 3) — the roles that see Job Summary.
   const capacityUnderEnabled = !hideBanners && Boolean(authUserId) && officeEligible
@@ -520,7 +520,7 @@ export function DashboardPinnedQuickRow({
   const { activity: legalFirmActivity } = useLegalFirmActivityNudge(legalFirmActivityEnabled)
   // Owners who signed for our records on their portal (punch list #86) — the office set that works the Lien desk.
   const ownerRecordsSignedEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled)
+  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled, hideZzTestJobs, authUserId)
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled, hideZzTestJobs, authUserId)
