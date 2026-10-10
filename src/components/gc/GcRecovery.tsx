@@ -6,7 +6,8 @@
  * the way a pull is: the dates, what comes in, what keeps its dates and why, the finish, then why. Saved as one move
  * (`recoveryMove`) through the window's one save, re-found by its key from the schedule as read. Who has to agree is on
  * every offer with **Call**, a phone link. Follow up waits for the Board lane's Follow up sheet, as the call list's
- * does (7c-ii). The billing line, the money team's only, came with the schedule's PR 16c (`billingOf`).
+ * does (7c-ii). The billing line, the money team's only, came with the schedule's PR 16c (`billingOf`). Since PR 11 the
+ * window also tries a recovery on the what-if copy (`trying`), saved to the copy through its own save.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -85,6 +86,7 @@ export function GcRecoveryWindow({
   onReload,
   onClose,
   billingOf,
+  trying = false,
 }: {
   state: GcState
   project: GcProject
@@ -95,6 +97,8 @@ export function GcRecoveryWindow({
   onClose: () => void
   /** What the move shifts between the customer's bills (9d's billing line, the schedule's PR 16c): the money team's only. */
   billingOf?: (plan: Pick<MovePlan, 'activities'>) => string | null
+  /** In the what-if copy (G-81, PR 11): the move is tried on the copy. Its reason is filled in, so Keep never asks for one. */
+  trying?: boolean
 }) {
   const offer = useMemo(() => recoveryOffers(state, project).find((o) => o.key === offerKey) ?? null, [state, project, offerKey])
   const billing = useMemo(() => (billingOf && offer ? billingOf(offer) : null), [billingOf, offer])
@@ -218,12 +222,12 @@ export function GcRecoveryWindow({
           </div>
         )}
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>{problem ?? `Saved as one move by ${by}, today. Undo puts every date back.`}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>{problem ?? (trying ? 'Tried in the what-if. Keep puts it on the real schedule.' : `Saved as one move by ${by}, today. Undo puts every date back.`)}</span>
           <Btn kind="quiet" onClick={onClose}>
             Cancel
           </Btn>
           <Btn kind="primary" disabled={problem !== null || saving} onClick={() => void save()}>
-            Save the move
+            {trying ? 'Try it' : 'Save the move'}
           </Btn>
         </div>
       </div>

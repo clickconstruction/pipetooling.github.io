@@ -13,6 +13,8 @@
  * window reads the job's submittals and RFIs first, so they hold bars as they hold a start, and the same people walk the
  * week (`GcScheduleWalk`), see a trade not ready in the bar's form (`GcNotReady`), and, a dev while Building is built
  * (`canPull`), pull work in when it finished early (`GcPullEarlier`) and get days back on a late job (`GcRecovery`).
+ * Since PR 11, the same people try moves on their own what-if copy (`GcWhatIf`, G-81) through the copy's own presses,
+ * never the real move save, and keep them as real moves or throw the copy away.
  * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
  * bring one.
  */
@@ -48,9 +50,11 @@ import { partMoveOf } from '../../lib/gc/schedule/splitBars'
 import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { draftRefusal, draftStart, draftWords, ownWorkOffWords, redoWords, undoWords } from '../../lib/gc/schedule/scheduleWindow'
 import type { PlaceChange } from '../../lib/gc/schedule/places'
-import type { ActivityPart, InspectionFailure, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleWait, ScheduleWalk } from '../../lib/gc/schedule/types'
+import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleWait, ScheduleWalk } from '../../lib/gc/schedule/types'
 import type { WaitStep } from '../../lib/gc/schedule/writes'
 import { drawnFromWords } from '../../lib/gc/schedule/templates'
+import { whatIfCopy, whatIfGhosts, whatIfProject } from '../../lib/gc/schedule/whatIf'
+import { copyRedone, copyUndone, tryInCopy, whatIfKeepWords } from '../../lib/gc/schedule/whatIfWindow'
 import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
 import { waitRows } from '../../lib/gc/schedule/waits'
 import {
@@ -59,6 +63,7 @@ import {
   drawSchedule,
   failScheduleInspection,
   joinScheduleBar,
+  keepScheduleWhatIf,
   loadScheduleWithHolds,
   passScheduleInspection,
   recordScheduleWalk,
@@ -74,6 +79,9 @@ import {
   setSchedulePlaces,
   setScheduleWaitStep,
   splitScheduleBar,
+  startWhatIf,
+  throwAwayWhatIf,
+  tryInWhatIf,
   undoScheduleMove,
   type SchedulePress,
   type ScheduleReads,
@@ -94,6 +102,7 @@ import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { GcScheduleBar } from './GcScheduleBar'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
+import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfLine } from './GcWhatIf'
 import { Btn, Card, input } from './gcUi'
 
 /** No reads past the board's (the default): the schedule's own rows, its submittals and RFIs. */
@@ -288,6 +297,65 @@ export function GcSchedule({
     [read, projectId, by],
   )
 
+  // The what-if copy (G-81, PR 11): its own presses, never the real move save (call 3). Each writes the person's own copy
+  // and answers with the schedule read again. A move tried, and Keep, throw for the window that pressed them; the rest
+  // say their refusal on the line over the chart.
+  const [shown, setShown] = useState(false)
+  const [copyBusy, setCopyBusy] = useState(false)
+  const [copyProblem, setCopyProblem] = useState<string | null>(null)
+  const copyWrite = useCallback(
+    async (write: (st: GcState) => Promise<ScheduleRead | null>, failed: string): Promise<boolean> => {
+      if (!read) return false
+      setCopyBusy(true)
+      setCopyProblem(null)
+      try {
+        const next = await write(read.state)
+        if (next) setRead(next)
+        return true
+      } catch (e) {
+        setCopyProblem(formatErrorMessage(e, failed))
+        return false
+      } finally {
+        setCopyBusy(false)
+      }
+    },
+    [read],
+  )
+  const copy = useMemo<CopyPresses | null>(() => {
+    if (!read || read.version === null) return null
+    const { state: st, project, version } = read
+    return {
+      start: () => {
+        const made = whatIfCopy(project, by, st.today)
+        if (made) void copyWrite((s) => startWhatIf(s, projectId, version, made), 'The copy was not made.').then((ok) => ok && setShown(true))
+      },
+      save: async (move, activities) => {
+        const tried = tryInCopy(project, move, activities)
+        if (!tried) throw new Error('There is no what-if open.')
+        const next = await tryInWhatIf(st, projectId, tried)
+        if (next) setRead(next)
+        return null
+      },
+      undo: (move) => {
+        const back = copyUndone(project, move.id, by, st.today)
+        if (back) void copyWrite((s) => tryInWhatIf(s, projectId, back), 'The undo did not save.')
+      },
+      redo: (move) => {
+        const forward = copyRedone(project, move.id)
+        if (forward) void copyWrite((s) => tryInWhatIf(s, projectId, forward), 'The redo did not save.')
+      },
+      throwAway: () => void copyWrite((s) => throwAwayWhatIf(s, projectId), 'The copy was not thrown away.').then((ok) => ok && setShown(false)),
+      keep: async (kept) => {
+        const next = await keepScheduleWhatIf(st, projectId, { version, words: whatIfKeepWords(project, kept.kept, by) }, kept)
+        if (next) setRead(next)
+        setShown(false)
+      },
+      reload: () => setReloads((n) => n + 1),
+      busy: copyBusy,
+      problem: copyProblem,
+    }
+  }, [read, by, projectId, copyWrite, copyBusy, copyProblem])
+
   // What it last read stays on screen while it reads again.
   if (read)
     return (
@@ -329,6 +397,9 @@ export function GcSchedule({
         canPull={canMove && canPull}
         ask={reads.money && canMove ? { onAsk: (ask) => void askForDays(ask), said: askSaid } : null}
         money={moneyOn ? money : null}
+        copy={canMove ? copy : null}
+        shown={shown}
+        onShow={setShown}
       />
     )
   if (status === 'gone') return <div style={{ fontSize: '0.875rem' }}>That job is not on the board. Reload the board and try again.</div>
@@ -386,6 +457,22 @@ interface MovePresses {
   walk: (walk: Pick<ScheduleWalk, 'on' | 'kept' | 'moveIds' | 'skipped' | 'keptEarly'>) => Promise<void>
 }
 
+/** The what-if copy's own presses (G-81, PR 11, call 3), apart from `MovePresses`: a move tried is not a move until Keep. */
+interface CopyPresses {
+  /** The person's own copy, made from the schedule as read, with the version it copied. */
+  start: () => void
+  /** A move tried on the copy: `ScheduleSave`'s shape, so Why it moved, Pull earlier and Days back take it. Answers null. */
+  save: ScheduleSave
+  undo: (move: ScheduleMove) => void
+  redo: (move: ScheduleMove) => void
+  throwAway: () => void
+  /** Keep: the kernel's answer, against the version read. Throws the database's refusal for the window. */
+  keep: (kept: { schedule: ProjectSchedule; kept: ScheduleMove[] }) => Promise<void>
+  reload: () => void
+  busy: boolean
+  problem: string | null
+}
+
 /**
  * The schedule as read: the first draft's card while nothing is drawn, else the measures, the chart, the bar pressed
  * and the record of moves. With `moves`, a bar dragged, pulled at an end or linked, a part dragged, or a change in the
@@ -401,6 +488,9 @@ function ScheduleView({
   canPull,
   ask,
   money,
+  copy,
+  shown,
+  onShow,
 }: {
   read: ScheduleRead
   by: string
@@ -414,8 +504,17 @@ function ScheduleView({
   ask: { onAsk: (ask: TimeExtensionAsk) => void; said: string | null } | null
   /** The money team's rows (16c). Null: no dollar on this chart. */
   money: ScheduleMoney | null
+  /** The what-if copy's presses (PR 11): only with `moves`. */
+  copy: CopyPresses | null
+  /** The copy is shown: the window reads it, and its presses go to the copy. */
+  shown: boolean
+  onShow: (copy: boolean) => void
 }) {
-  const { state, project } = read
+  const { state, project: realProject } = read
+  // The what-if copy (G-81, PR 11, call 6): while it is shown, the window reads the copy, and every move goes to the copy.
+  const copyProject = useMemo(() => whatIfProject(realProject), [realProject])
+  const inCopy = Boolean(copy && shown && copyProject)
+  const project = inCopy && copyProject ? copyProject : realProject
   const building = project.stage === 'building'
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
   // What holds each bar: RFIs, submittals, waits, and a trade's papers not in (G-77).
@@ -439,8 +538,8 @@ function ScheduleView({
   const moneyState = useMemo(() => (money ? scheduleMoneyState(state, project.id, money) : null), [money, state, project.id])
   const moneyProject = moneyState?.projects.find((p) => p.id === project.id) ?? null
   const late = useMemo(
-    () => (building ? (moneyState && moneyProject ? lateFinish(moneyState, moneyProject) : lateFinish(state, project)) : null),
-    [state, project, building, moneyState, moneyProject],
+    () => (building ? (moneyState && moneyProject && !inCopy ? lateFinish(moneyState, moneyProject) : lateFinish(state, project)) : null),
+    [state, project, building, moneyState, moneyProject, inCopy],
   )
   const asked = late?.ask ?? null
   const peopleOf = useCallback((from: string, to: string) => peopleOnSite(state, project, from, to, crewCountsNow(project)), [state, project])
@@ -456,22 +555,41 @@ function ScheduleView({
   // The weekly walk (G-52), work that finished early (G-37) and days back on a late job (G-82), PR 9d: for those who may
   // move a bar on a job being built; the pull and the days back only with `canPull`.
   const walkable = building && moves !== null
+  // The walk records the real week, so it is not in the copy (PR 11, call 2); the pull and days back are moves, so they are.
+  const walkShown = walkable && !inCopy
   const pullable = walkable && canPull
   const offer = useMemo(() => (pullable ? planPull(state, project) : null), [state, project, pullable])
   const daysBack = useMemo(
-    () => (pullable && (lateFinish(state, project).late ?? 0) > 0 ? (moneyState && moneyProject ? recoveryOffers(moneyState, moneyProject) : recoveryOffers(state, project)) : null),
-    [state, project, pullable, moneyState, moneyProject],
+    () => (pullable && (lateFinish(state, project).late ?? 0) > 0 ? (moneyState && moneyProject && !inCopy ? recoveryOffers(moneyState, moneyProject) : recoveryOffers(state, project)) : null),
+    [state, project, pullable, moneyState, moneyProject, inCopy],
   )
-  // The billing line under a pull or a days-back move (9d's, 16c): the money team's only.
+  // The billing line under a pull or a days-back move (9d's, 16c): the money team's only, and never in the copy, whose
+  // plan the money state's real schedule cannot measure (PR 11, call 7).
   const billingOf = useMemo(
-    () => (moneyState && moneyProject ? (plan: Pick<MovePlan, 'activities'>) => shiftWords(planBillingShift(moneyState, moneyProject, plan), 'will') : undefined),
-    [moneyState, moneyProject],
+    () => (moneyState && moneyProject && !inCopy ? (plan: Pick<MovePlan, 'activities'>) => shiftWords(planBillingShift(moneyState, moneyProject, plan), 'will') : undefined),
+    [moneyState, moneyProject, inCopy],
   )
+  // What the whole copy does to the bills against the real schedule (call 7): the money team's sentence on the copy's line.
+  const copyBills = useMemo(
+    () => (inCopy && moneyState && moneyProject && copyProject?.schedule ? shiftWords(planBillingShift(moneyState, moneyProject, { activities: copyProject.schedule.activities }), 'will') : null),
+    [inCopy, moneyState, moneyProject, copyProject],
+  )
+  const ghosts = useMemo(() => (inCopy ? whatIfGhosts(realProject) : null), [inCopy, realProject])
+  const [keeping, setKeeping] = useState(false)
   const [walking, setWalking] = useState(false)
   const [pulling, setPulling] = useState(false)
   const [recovering, setRecovering] = useState<string | null>(null)
   // A move waiting on why it moved (PR 8a): every drag, pulled end and link goes through the window first.
   const [pending, setPending] = useState<PendingMove | null>(null)
+  // In or out of the copy: a window open on the other schedule closes, so nothing it shows is the wrong one's.
+  const showCopy = (on: boolean) => {
+    setPending(null)
+    setPulling(false)
+    setRecovering(null)
+    setWalking(false)
+    setKeeping(false)
+    onShow(on)
+  }
   // What a dragged bar would push and do to the finish, drawn while it is dragged.
   const planOf = useCallback(
     (lineId: string, start: string, finish: string) => {
@@ -531,8 +649,9 @@ function ScheduleView({
             m={m}
             {...(outlook ? { outlook } : {})}
             {...(late ? { late } : {})}
-            {...(moneyState && daysBack?.[0] ? { best: daysBack[0] } : {})}
-            {...(ask && asked ? { onAsk: () => ask.onAsk(asked) } : { askNote: 'The money team asks the customer for these days on Bill the customer.' })}
+            {...(moneyState && daysBack?.[0] && !inCopy ? { best: daysBack[0] } : {})}
+            // Ask for the days drafts a real change order, so never from the copy (PR 11, call 2).
+            {...(inCopy ? {} : ask && asked ? { onAsk: () => ask.onAsk(asked) } : { askNote: 'The money team asks the customer for these days on Bill the customer.' })}
           />
           {ask?.said && (
             <div data-ask-said role="status" style={{ fontSize: '0.85rem' }}>
@@ -549,10 +668,19 @@ function ScheduleView({
         </Card>
       )}
       {/* Days back on a late job (G-82, PR 9d): under the measures. */}
-      {daysBack && <GcDaysBack state={moneyState ?? state} project={moneyProject ?? project} offers={daysBack} onLook={setRecovering} />}
+      {daysBack && <GcDaysBack state={!inCopy && moneyState ? moneyState : state} project={!inCopy && moneyProject ? moneyProject : project} offers={daysBack} onLook={setRecovering} />}
       <Card>
         {/* The walk's line and the pull's (G-52, G-37, PR 9d), over the chart. */}
-        {walkable && <GcWalkLine state={state} project={project} holds={holds} canPull={pullable} onWalk={() => setWalking(true)} />}
+        {/* The copy's line (G-81, PR 11): what it does against the real schedule, Keep and Throw it away. */}
+        {inCopy && copy && (
+          <GcWhatIfLine project={realProject} bills={copyBills} busy={copy.busy} problem={copy.problem} onKeep={() => setKeeping(true)} onThrowAway={copy.throwAway} onReal={() => showCopy(false)} />
+        )}
+        {!inCopy && copy?.problem && (
+          <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem', padding: '0 0 0.4rem' }}>
+            {copy.problem}
+          </div>
+        )}
+        {walkShown && <GcWalkLine state={state} project={project} holds={holds} canPull={pullable} onWalk={() => setWalking(true)} />}
         {offer && <GcPullLine offer={offer} onPull={() => setPulling(true)} />}
         <GcGantt
           items={m.items}
@@ -567,7 +695,9 @@ function ScheduleView({
           uninsured={uninsured}
           peopleOf={peopleOf}
           crowded={crowded}
-          {...(printJob ? { print: printJob } : {})}
+          {...(printJob && !inCopy ? { print: printJob } : {})}
+          {...(ghosts ? { real: ghosts } : {})}
+          {...(copy ? { toolbarExtra: <GcWhatIfButton project={realProject} shown={inCopy} busy={copy.busy} onStart={copy.start} onShow={showCopy} /> } : {})}
           company={company}
           onCompany={setCompany}
           today={state.today}
@@ -612,16 +742,17 @@ function ScheduleView({
           started={Boolean(project.startedOn)}
           today={state.today}
           onSave={(start, finish, after, limits) => setPending({ lineId: pickedBar.id, start, finish, after, limits })}
-          onActual={(actualStart, actualFinish) => moves.actual(pickedBar.id, actualStart, actualFinish)}
+          // In the copy (PR 11, call 2): its dates and waits only; the real days, a place, the own work's and an inspection's buttons record what happened.
+          {...(inCopy ? {} : { onActual: (actualStart: string | null, actualFinish: string | null) => moves.actual(pickedBar.id, actualStart, actualFinish) })}
           // Its trade not ready to start, or at work uninsured (G-77, G-138, PR 9d): first, under its name.
           ready={<GcNotReady state={state} project={project} lineId={pickedBar.id} />}
           place={
             // Where its work is (G-83, PR 9b): a trade's line only.
-            pickedBar.item.pkg ? <GcPlaceLine project={project} lineId={pickedBar.id} trade={pickedBar.item.trade} label={pickedBar.item.label} onPlaces={moves.places} /> : undefined
+            !inCopy && pickedBar.item.pkg ? <GcPlaceLine project={project} lineId={pickedBar.id} trade={pickedBar.item.trade} label={pickedBar.item.label} onPlaces={moves.places} /> : undefined
           }
           extra={
             // The job's own work's buttons (G-38, PR 9a): done, not done, off the schedule.
-            pickedBar.item.activity.added ? (
+            !inCopy && pickedBar.item.activity.added ? (
               <GcOwnWorkButtons
                 activity={pickedBar.item.activity}
                 today={state.today}
@@ -636,7 +767,7 @@ function ScheduleView({
           }
           check={
             // An inspection not passed yet, on a job being built (PR 9a): passed or failed, today.
-            building && pickedBar.item.activity.inspection && !pickedBar.item.activity.inspection.passedOn ? (
+            !inCopy && building && pickedBar.item.activity.inspection && !pickedBar.item.activity.inspection.passedOn ? (
               <GcInspectionCheck
                 project={project}
                 activity={pickedBar.item.activity}
@@ -654,7 +785,7 @@ function ScheduleView({
       {/* The opened bar finished early, or right behind work that did (G-37, PR 9d). */}
       {pickedBar && offer && <GcPullBox offer={offer} lineId={pickedBar.id} onPull={() => setPulling(true)} />}
       {/* The opened line's parts (G-39, PR 9b): split, a part's dates through Why it moved, one bar again. */}
-      {pickedBar && moves && !pickedBar.item.activity.inspection && !pickedBar.item.activity.added && (
+      {pickedBar && moves && !inCopy && !pickedBar.item.activity.inspection && !pickedBar.item.activity.added && (
         <GcPartsCard
           key={`parts:${pickedBar.id}`}
           project={project}
@@ -670,13 +801,15 @@ function ScheduleView({
       {pickedBar && (
         <GcScheduleBar bar={pickedBar} all={bars} today={state.today} building={building} caller={caller ? <GcBarCaller caller={caller} /> : undefined} onClose={() => setPicked(null)} />
       )}
-      {moves ? (
+      {inCopy && copy ? (
+        <GcMoveHistory project={project} onUndo={copy.undo} onRedo={copy.redo} busy={copy.busy} trying />
+      ) : moves ? (
         <GcMoveHistory project={project} onUndo={moves.undo} onRedo={moves.redo} busy={moves.busy} refused={moves.refused} problem={moves.problem} />
       ) : (
         <GcMoveHistory project={project} />
       )}
       {/* What the work waits on and where it is (PR 9b), the job's own work and the dates to meet (PR 9a), and the baseline (9b), for those who may move a bar. */}
-      {moves && (
+      {moves && !inCopy && (
         <>
           <GcWaits state={state} project={project} rows={waits} items={m.items} onAdd={moves.addWait} onStep={moves.waitStep} onRemove={moves.removeWait} />
           <GcPlacesCard state={state} project={project} crowded={crowded} onPlaces={moves.places} />
@@ -687,28 +820,44 @@ function ScheduleView({
       )}
       {/* The window keeps its reason and words while the schedule reads again under it: keyed by the bar only. */}
       {moves && pending && (
-        <GcMoveExplain key={pending.lineId} state={state} project={project} pending={pending} by={by} today={state.today} onSave={async (move, activities, words) => {
-            await moves.save(move, activities, words)
+        <GcMoveExplain key={pending.lineId} state={state} project={project} pending={pending} by={by} today={state.today} trying={inCopy} onSave={async (move, activities, words) => {
+            await (inCopy && copy ? copy.save : moves.save)(move, activities, words)
           }} onReload={moves.reload} onClose={() => setPending(null)} />
       )}
       {/* The walk, a pull and days back (PR 9d): each saves through the one move save, and the walk keeps its record. */}
-      {moves && walking && (
+      {moves && walking && !inCopy && (
         <GcScheduleWalk state={state} project={project} holds={holds} by={by} canPull={pullable} presses={{ save: moves.save, actual: moves.actual, walk: moves.walk, reload: moves.reload }} onClose={() => setWalking(false)} />
       )}
       {moves && pulling && (
-        <GcPullWindow state={state} project={project} by={by} onSave={moves.save} onReload={moves.reload} onClose={() => setPulling(false)} {...(billingOf ? { billingOf } : {})} />
+        <GcPullWindow state={state} project={project} by={by} onSave={inCopy && copy ? copy.save : moves.save} onReload={moves.reload} onClose={() => setPulling(false)} trying={inCopy} {...(billingOf ? { billingOf } : {})} />
       )}
       {moves && recovering && (
         <GcRecoveryWindow
           key={recovering}
-          state={moneyState ?? state}
-          project={moneyProject ?? project}
+          state={!inCopy && moneyState ? moneyState : state}
+          project={!inCopy && moneyProject ? moneyProject : project}
           offerKey={recovering}
           by={by}
-          onSave={moves.save}
+          onSave={inCopy && copy ? copy.save : moves.save}
           onReload={moves.reload}
           onClose={() => setRecovering(null)}
+          trying={inCopy}
           {...(billingOf ? { billingOf } : {})}
+        />
+      )}
+      {/* Keep (G-81, PR 11): the kernel first, then the moves on the real schedule against the version read. */}
+      {inCopy && copy && keeping && (
+        <GcWhatIfKeep
+          project={realProject}
+          by={by}
+          today={state.today}
+          onKeep={copy.keep}
+          onThrowAway={() => {
+            setKeeping(false)
+            copy.throwAway()
+          }}
+          onReload={copy.reload}
+          onClose={() => setKeeping(false)}
         />
       )}
       {building && <LookAhead weeks={m.lookAhead} />}

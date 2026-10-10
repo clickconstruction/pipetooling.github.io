@@ -6,8 +6,9 @@
  * cost (G-80), and the days it really ran (G-55). **Save, and say why** hands the change to the move's window
  * (`GcMoveExplain`), so a change is a move like a drag. The real days are a record and keep at once. Since PR 9a, the
  * job's own bar's buttons (G-38) and an inspection's pass or failure sit at its foot (`extra`, `check`); since 9b, its
- * place (G-83, `place`); since 9d, first under its name, its trade's papers when they hold its start (G-77, `ready`). The
- * what-if copy comes with PR 11.
+ * place (G-83, `place`); since 9d, first under its name, its trade's papers when they hold its start (G-77, `ready`). In
+ * the what-if copy (PR 11) the form keeps its dates and waits; the real days, the place, and the own work's and an
+ * inspection's buttons record what happened, so the copy passes none of them.
  */
 import { useState, type ReactNode } from 'react'
 import { addDays } from '../../lib/gc/building'

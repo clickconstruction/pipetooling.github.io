@@ -6,7 +6,8 @@
  * with a tick each, what keeps its dates, then why), and a small box for one bar in the walk and in its form. A pull is
  * re-planned at the press from the schedule as read (`planPull`) and saved as one move (`pullMove`) through the
  * window's one save, against the version read; someone else's save first is refused and the schedule read again. The
- * billing line, the money team's only, came with the schedule's PR 16c (`billingOf`).
+ * billing line, the money team's only, came with the schedule's PR 16c (`billingOf`). Since PR 11 the window also tries
+ * a pull on the what-if copy (`trying`), saved to the copy through its own save.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -72,6 +73,7 @@ export function GcPullWindow({
   onClose,
   onSaved,
   billingOf,
+  trying = false,
 }: {
   state: GcState
   project: GcProject
@@ -83,6 +85,8 @@ export function GcPullWindow({
   onSaved?: (moveId: string | null) => void
   /** What a plan moves between the customer's bills (9d's billing line, the schedule's PR 16c): the money team's only. */
   billingOf?: (plan: Pick<MovePlan, 'activities'>) => string | null
+  /** In the what-if copy (G-81, PR 11): the pull is tried on the copy. Its reason is filled in, so Keep never asks for one. */
+  trying?: boolean
 }) {
   const [leaveOut, setLeaveOut] = useState<string[]>([])
   const [reason, setReason] = useState<ScheduleMoveReason | null>('early')
@@ -228,12 +232,12 @@ export function GcPullWindow({
           </div>
         )}
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>{problem ?? `Saved as one move by ${by}, today. Undo puts every date back.`}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>{problem ?? (trying ? 'Tried in the what-if. Keep puts it on the real schedule.' : `Saved as one move by ${by}, today. Undo puts every date back.`)}</span>
           <Btn kind="quiet" onClick={onClose}>
             Cancel
           </Btn>
           <Btn kind="primary" disabled={problem !== null || saving} onClick={() => void save()}>
-            Pull {pullCountWords(plan)} earlier
+            {trying ? `Try pulling ${pullCountWords(plan)} earlier` : `Pull ${pullCountWords(plan)} earlier`}
           </Btn>
         </div>
       </div>
