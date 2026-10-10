@@ -1,21 +1,30 @@
 /**
  * GC mode, the real build, the Building lane's U6d: the punch list as its rows hold it (`gc_punch_items`, U1's table),
  * read back into each project's `punch`, so the kernels in ./buildingPunch.ts read it unchanged. The Closeout window
- * reads it to hold Accept the work, as `gc_accept_work` does. Adding, fixing and checking an item are U3b's, with their
- * window. The plan: to-dos/gc-mode/mockups/building-u6.md on branch spike/gc-mode.
+ * reads it to hold Accept the work, as `gc_accept_work` does, and the Punch list window lays it under its presses (U3b-ii).
+ * An item taken off (`removed_at`, U3b-i) is kept in the table and read by no one. The plans:
+ * to-dos/gc-mode/mockups/building-u6.md and building-u3b.md on branch spike/gc-mode.
  */
 import type { Database } from '../../types/database'
-import type { GcState, PunchItem } from './types'
+import type { GcProject, GcState, PunchItem, TradePackage } from './types'
 
 type PunchTableRow = Database['public']['Tables']['gc_punch_items']['Row']
+
+/**
+ * May we add to this trade's list, as `gc_add_punch_item` holds: a job we are building, a trade we hired with a signed
+ * statement of work, its work not accepted.
+ */
+export function punchCanAdd(project: GcProject, pkg: TradePackage): boolean {
+  return project.stage === 'building' && !project.closedOn && !pkg.selfPerform && pkg.sow?.status === 'signed' && !pkg.sow.acceptedOn
+}
 
 /** The columns `loadGcPunch` reads. */
 export type PunchRow = Pick<
   PunchTableRow,
-  'id' | 'project_id' | 'package_id' | 'position' | 'text' | 'where_on' | 'added_on' | 'fixed_on' | 'checked_on' | 'sent_back_times' | 'sent_back_note' | 'sent_back_on'
+  'id' | 'project_id' | 'package_id' | 'position' | 'text' | 'where_on' | 'added_on' | 'fixed_on' | 'checked_on' | 'sent_back_times' | 'sent_back_note' | 'sent_back_on' | 'removed_at'
 >
 
-export const PUNCH_COLUMNS = 'id, project_id, package_id, position, text, where_on, added_on, fixed_on, checked_on, sent_back_times, sent_back_note, sent_back_on'
+export const PUNCH_COLUMNS = 'id, project_id, package_id, position, text, where_on, added_on, fixed_on, checked_on, sent_back_times, sent_back_note, sent_back_on, removed_at'
 
 /** One item as the kernels read it. The send-back's three columns go together (the table's check). */
 export function punchItemOf(row: PunchRow): PunchItem {
@@ -31,11 +40,14 @@ export function punchItemOf(row: PunchRow): PunchItem {
   }
 }
 
-/** Each project's punch list laid over the board's, in the order the items were added. A project with no rows keeps its own. */
+/**
+ * Each project's punch list laid over the board's, in the order the items were added, an item taken off left out. A project
+ * with no rows keeps its own.
+ */
 export function withPunch(state: GcState, rows: PunchRow[]): GcState {
   if (rows.length === 0) return state
   const byProject = new Map<string, PunchRow[]>()
-  for (const r of rows) byProject.set(r.project_id, [...(byProject.get(r.project_id) ?? []), r])
+  for (const r of rows) if (!r.removed_at) byProject.set(r.project_id, [...(byProject.get(r.project_id) ?? []), r])
   return {
     ...state,
     projects: state.projects.map((p) => {

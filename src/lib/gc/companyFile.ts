@@ -57,7 +57,7 @@ export function partnerDocuments(state: GcState, partner: Partner): { groups: Co
       ? { key: DOC_KEYS.msa, title: 'Master agreement', status: 'ok', statusWords: 'signed', meta: `Signed ${partner.msaSignedOn ? shortDate(partner.msaSignedOn) : ''} · covers every job with us` }
       : partner.msa === 'sent'
         ? { key: DOC_KEYS.msa, title: 'Master agreement', status: 'missing', statusWords: 'waiting on their signature', meta: `Sent ${partner.msaSentOn ? shortDate(partner.msaSentOn) : ''}. Nothing is awarded on paper until it is signed.` }
-        : { key: DOC_KEYS.msa, title: 'Master agreement', status: 'missing', statusWords: 'not sent', meta: 'Send it from Trade partners or Contracts. It is signed once and covers every job.' },
+        : { key: DOC_KEYS.msa, title: 'Master agreement', status: 'missing', statusWords: 'not sent', meta: 'Send it from here. It is signed once and covers every job.' },
   )
   if (!partner.coiExpires) {
     company.push({ key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'missing', statusWords: 'none on file', meta: 'Nothing they do for us is covered until one comes in.' })
@@ -74,7 +74,7 @@ export function partnerDocuments(state: GcState, partner: Partner): { groups: Co
   company.push(
     partner.w9
       ? { key: DOC_KEYS.w9, title: 'W-9', status: 'ok', statusWords: 'on file', meta: 'Signed in their portal. The tax number is never shown here.' }
-      : { key: DOC_KEYS.w9, title: 'W-9', status: 'missing', statusWords: 'none on file', meta: 'They fill it in and sign it in their portal.' },
+      : { key: DOC_KEYS.w9, title: 'W-9', status: 'missing', statusWords: 'none on file', meta: 'They fill it in and sign it from the link we email.' },
   )
   if (partner.vetting) {
     const form = partner.vetting.form

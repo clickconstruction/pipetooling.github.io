@@ -16,6 +16,7 @@ const row = (over: Partial<PunchRow>): PunchRow => ({
   sent_back_times: 0,
   sent_back_note: null,
   sent_back_on: null,
+  removed_at: null,
   ...over,
 })
 
@@ -50,6 +51,11 @@ describe('withPunch', () => {
     const c = punchCounts(stoneOak, 'sdry')
     expect(c).toEqual({ open: 1, fixed: 1, done: 1, total: 3 })
     expect(punchWords(c)).toBe('1 to fix, 1 fixed and waiting on our check, 1 checked')
+  })
+
+  it('drops an item taken off (U3b): it stays in the table and nobody reads it', () => {
+    const state = withPunch(initialGcState(), [row({ id: 'pi-1' }), row({ id: 'pi-2', position: 1, removed_at: '2026-10-09T20:00:00Z' })])
+    expect(state.projects.find((p) => p.id === 'stoneoak')!.punch?.map((i) => i.id)).toEqual(['pi-1'])
   })
 
   it('leaves a job with no rows as it was, and no rows at all returns the same state', () => {

@@ -17,6 +17,8 @@ import {
   isHoneypot,
   overHourlyCap,
   parseTradeSubmit,
+  SIGNATURE_PNG_MAX_BYTES,
+  signaturePngOf,
   spanishHeld,
   tradeErrorOf,
 } from '../../../supabase/functions/_shared/gcTradeSubmit'
@@ -54,7 +56,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(14)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(15)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -106,6 +108,50 @@ describe('each kind, read into its verb', () => {
     expect(call('ask_change', { packageId: TRADE, description: 'Rot', reason: 'owner' })).toEqual({
       rpc: 'gc_trade_ask_change',
       params: { p_package_id: TRADE, p_description: 'Rot', p_reason: 'owner', p_amount: null, p_days: 0 },
+    })
+  })
+
+  describe('a statement of work signed (P2c-ii)', () => {
+    const SOW = '66666666-6666-4666-8666-666666666666'
+    // The smallest PNG: its eight magic bytes and an empty IHDR's start, as the pad's data URL would carry it.
+    const PNG = `data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13))}`
+    const CONSENT = { version: 2, lang: 'en', audience: 'sub', documentNoun: 'this statement of work', clauseText: 'I agree to sign electronically.' }
+    const signCall = { rpc: 'gc_trade_sign_sow', params: { p_sow_id: SOW, p_printed_name: 'Dana Whitfield', p_signature_path: null, p_ip: null, p_user_agent: null } }
+
+    it('reads a typed signature: the name, the consent, no image, and the function fills the rest', () => {
+      const parsed = parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: SOW, printedName: ' Dana Whitfield ', esignConsent: CONSENT })
+      expect(parsed).toEqual({ ok: true, token: TOKEN, kind: 'sign_sow', call: signCall, sign: { png: null, consent: CONSENT } })
+    })
+
+    it('reads a drawn one as the PNG’s bytes', () => {
+      const parsed = parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: SOW, printedName: 'Dana Whitfield', signaturePngBase64: PNG, esignConsent: CONSENT })
+      expect(parsed.ok && parsed.call).toEqual(signCall)
+      expect(parsed.ok && [...(parsed.sign?.png ?? [])].slice(0, 4)).toEqual([0x89, 0x50, 0x4e, 0x47])
+    })
+
+    it('refuses an image that is not a PNG we keep as a shape the portal never sends', () => {
+      for (const bad of ['data:image/jpeg;base64,/9j/4AAQ', 'not base64 at all!', btoa('GIF89a, not a png'), 42]) {
+        expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: SOW, printedName: 'Dana', signaturePngBase64: bad, esignConsent: CONSENT })).toEqual({ ok: false })
+      }
+      expect(signaturePngOf(`data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a) + 'x'.repeat(SIGNATURE_PNG_MAX_BYTES))}`)).toBeNull()
+    })
+
+    it('refuses a signature without the e-sign consent, before any write', () => {
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: SOW, printedName: 'Dana', signaturePngBase64: PNG })).toEqual({ ok: false, key: 'consentNeeded' })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: SOW, printedName: 'Dana', esignConsent: { ...CONSENT, clauseText: ' ' } })).toEqual({ ok: false, key: 'consentNeeded' })
+    })
+
+    it('leaves a blank name to the SQL, and refuses one past its 200 characters or a statement of work that is no id', () => {
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: SOW, printedName: '', esignConsent: CONSENT }).ok).toBe(true)
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: SOW, printedName: 'x'.repeat(201), esignConsent: CONSENT })).toEqual({ ok: false })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: 'sow-1', printedName: 'Dana', esignConsent: CONSENT })).toEqual({ ok: false })
+    })
+
+    it('is not under the hourly cap: a second press is alreadySigned', () => {
+      expect(FREE_TEXT_KINDS.has('sign_sow')).toBe(false)
+      expect(tradeErrorOf({ code: 'P0001', message: 'alreadySigned' })).toEqual({ key: 'alreadySigned', status: 409 })
+      expect(tradeErrorOf({ code: 'P0001', message: 'msaFirst' })).toEqual({ key: 'msaFirst', status: 409 })
+      expect(tradeErrorOf({ code: 'P0001', message: 'sowNotSent' })).toEqual({ key: 'sowNotSent', status: 409 })
     })
   })
 
@@ -178,7 +224,7 @@ describe('the verb’s refusals', () => {
 
   it('lists every key once, the function’s and the SQL’s', () => {
     expect(new Set(TRADE_SUBMIT_ERROR_KEYS).size).toBe(TRADE_SUBMIT_ERROR_KEYS.length)
-    expect(TRADE_SUBMIT_ERROR_KEYS).toEqual(expect.arrayContaining(['badRequest', 'linkOff', 'spanishHeld', 'tooMany', 'failed', 'notYours', 'everyKindNeedsSomeone', 'tooLong']))
+    expect(TRADE_SUBMIT_ERROR_KEYS).toEqual(expect.arrayContaining(['badRequest', 'linkOff', 'spanishHeld', 'tooMany', 'consentNeeded', 'failed', 'notYours', 'everyKindNeedsSomeone', 'tooLong', 'alreadySigned']))
   })
 
   /**
@@ -193,20 +239,18 @@ describe('the verb’s refusals', () => {
     // Building's U5a, gc_trade_rfi_ask: a question on a job not being built.
     jobNotBuilding: 'P5',
     // Building's U6a, the trades' draws: a statement of work not signed, a draw waiting, nothing to bill, a split
-    // line, a waiver before payment, and a second signature (shared with P2c-i's gc_trade_sign_sow).
+    // line and a waiver before payment. Its second signature, alreadySigned, is mapped since P2c-ii.
     sowNotSigned: 'P5',
     drawWaiting: 'P5',
     nothingToBill: 'P5',
     splitLine: 'P5',
     notPaidYet: 'P5',
-    alreadySigned: 'P2c-ii',
     // Building's U6c, the final pay application (gc_trade_final_pay_app, through gc_final_pay_app_ask): the final
     // sent already, and asked before every line is billed and the work accepted.
     finalSent: 'P5',
     finalNotYet: 'P5',
-    // The Portal's P2c-i, gc_trade_sign_sow: P2c-ii's sign_sow kind says them (alreadySigned is listed with U6a's above).
-    msaFirst: 'P2c-ii',
-    sowNotSent: 'P2c-ii',
+    // Building's U3b-i, the punch list (gc_trade_punch_fixed, through gc_punch_fixed_ask): an item marked fixed already.
+    punchNotOpen: 'P5',
   }
 
   it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {

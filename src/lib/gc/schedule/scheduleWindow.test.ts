@@ -12,7 +12,9 @@ import { ganttBars, type GanttBar } from './gantt'
 import { draftSchedule, scheduleMeasures } from './schedule'
 import { addDays } from '../building'
 import { planMove } from './moves'
-import { barCardRows, baselinePress, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, joinWords, moveWords, newWait, ownWorkOffWords, ownWorkPress, partMovePress, redoWords, splitPress, undoWords } from './scheduleWindow'
+import { barCardRows, baselinePress, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, joinWords, moveWords, newWait, ownWorkOffWords, ownWorkPress, partMovePress, pullLogWords, recoveryLogWords, redoWords, splitPress, undoWords } from './scheduleWindow'
+import { planPull } from './pullEarlier'
+import { withLineReported } from './testReports'
 import { waitKind } from './waits'
 import { splitParts } from './splitBars'
 import { initialGcState } from './testState'
@@ -300,5 +302,19 @@ describe('a wait, a split, a join and a new baseline (PR 9b)', () => {
     expect(baselinePress(kept, 'After change order 2', ' ', 'Robert', s.today)).toBe(`Robert set a new baseline on ${fairOaks.name}, After change order 2. The plan at Start is kept.`)
     expect(baselinePress(kept, ' ', 'Why', 'Robert', s.today)).toBeNull()
     expect(baselinePress({ ...kept, schedule: { ...kept.schedule, baseline: null } }, 'After change order 2', '', 'Robert', s.today)).toBeNull()
+  })
+})
+
+describe('a pull’s and days got back’s lines in the log (PR 9d)', () => {
+  it('says who pulled how many in, and the finished sentences, as the prototype’s reducer did', () => {
+    const st = withLineReported(withLineReported(initialGcState(), 'fairoaksd', 'fhvac', 'fhvac-2', 100), 'fairoaksd', 'fplumb', 'fplumb-3', 100)
+    const job = st.projects.find((p) => p.id === 'fairoaksd')!
+    expect(pullLogWords(job, planPull(st, job)!, 'Rosa')).toBe('Rosa pulled 1 activity earlier on Fair Oaks Shops, Building D. Top out finished Fri Oct 2, 7 days early. Ductwork finished Fri Oct 2, 7 days early.')
+  })
+
+  it('says who got how many days back, and the offer’s title', () => {
+    const offer = { daysBack: 1, words: { title: 'A second crew on Test and balance.', detail: '', who: '', worth: '' } }
+    expect(recoveryLogWords({ name: 'Fair Oaks Shops, Building D' }, offer, 'Rosa')).toBe('Rosa got 1 day back on Fair Oaks Shops, Building D. A second crew on Test and balance.')
+    expect(recoveryLogWords({ name: 'Fair Oaks Shops, Building D' }, { ...offer, daysBack: 3 }, 'Rosa')).toBe('Rosa got 3 days back on Fair Oaks Shops, Building D. A second crew on Test and balance.')
   })
 })

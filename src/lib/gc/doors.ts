@@ -129,6 +129,8 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_owner_acceptances: { lane: 'Owner Billing', door: 'money' },
   gc_money_monday_email_requests: { lane: 'Owner Billing', door: 'money' },
   gc_owner_card_bills: { lane: 'Owner Billing', door: 'money' },
+  // The office's notices (O10a): the service role writes each before it sends; the money team reads them.
+  gc_office_notices: { lane: 'Owner Billing', door: 'money' },
 }
 
 /**

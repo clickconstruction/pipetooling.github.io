@@ -14,6 +14,7 @@ import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcTradePortalBackCharges } from './GcTradePortalBackCharges'
 import { GcTradePortalChanges } from './GcTradePortalChanges'
+import { GcTradePortalSow } from './GcTradePortalSow'
 import { AnswerLines, AskQuestion, ConfirmQuote, PassOnAsk, QuoteDay } from './GcTradePortalPresses'
 import { QuoteForm } from './GcTradePortalQuoteForm'
 import { PortalBlock, PortalNote } from './GcTradePortalUi'
@@ -167,7 +168,7 @@ function TradeBlocks({
         </PortalBlock>
       )}
 
-      {/* On its own job the quote asks nothing more; its statement of work's block comes with P2c. */}
+      {/* On its own job the quote asks nothing more: its statement of work stands in its place (P2c-ii). */}
       {closedWords ? (
         <PortalBlock title={t('resultTitle', { trade: pkg.trade })}>
           <div style={{ display: 'grid', gap: '0.3rem', fontSize: '0.9rem' }}>
@@ -177,7 +178,9 @@ function TradeBlocks({
         </PortalBlock>
       ) : awardedElsewhere ? (
         <PortalBlock title={t('resultTitle', { trade: pkg.trade })}>{t('wentElsewhere')}</PortalBlock>
-      ) : awardedToMe ? null : invite.status === 'declined' ? (
+      ) : awardedToMe ? (
+        <GcTradePortalSow project={project} pkg={pkg} />
+      ) : invite.status === 'declined' ? (
         <PortalBlock title={t('inviteTitle', { trade: pkg.trade })}>{t('youPassed')}</PortalBlock>
       ) : (
         <AskBlock project={project} pkg={pkg} invite={invite} today={today} openedNewest={!news.behind} notVetted={portalVetting(partner).state === 'send' || portalVetting(partner).state === 'checking'} />

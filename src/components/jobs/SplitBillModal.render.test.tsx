@@ -16,7 +16,9 @@ import type { StripeInvoiceDetailsSuccess } from '../../lib/stripeInvoiceDetails
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
-  return { supabase: makeSupabaseStub() }
+  // Split reads the bill's fee lines on open (punch list #105), and a bill row that is not there holds the press.
+  const feeRead = { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { fee_lines: null }, error: null }) }) }) }
+  return { supabase: { ...makeSupabaseStub(), from: () => feeRead } }
 })
 vi.mock('../../hooks/useAuth', () => ({
   useAuth: () => ({ user: { id: 'u1' }, role: 'dev' }),

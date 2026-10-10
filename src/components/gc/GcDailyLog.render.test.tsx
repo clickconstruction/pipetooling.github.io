@@ -59,6 +59,20 @@ describe('GcDailyLogWindow', () => {
     )
   })
 
+  it('reads a cleared High as blank, never 0, and holds Save until it has one (U3b)', async () => {
+    const { onSave } = setup()
+    const high = screen.getByRole('spinbutton', { name: 'High, degrees' }) as HTMLInputElement
+    fireEvent.change(high, { target: { value: '' } })
+    expect(high.value).toBe('')
+    const save = screen.getByRole('button', { name: 'Save the log' }) as HTMLButtonElement
+    expect(save.disabled).toBe(true)
+    fireEvent.click(save)
+    expect(onSave).not.toHaveBeenCalled()
+    fireEvent.change(high, { target: { value: '91' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the log' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ high: 91, low: 70 })))
+  })
+
   it('names only the trades a log may: a trade whose statement of work is not signed is left off, even from the day before', async () => {
     const { onSave } = setup({ project: (p) => ({ ...p, packages: p.packages.map((k) => (k.id === 'fhvac' ? { ...k, sow: null } : k)) }) })
     expect(screen.queryByRole('spinbutton', { name: 'Workers on site, HVAC' })).toBeNull()

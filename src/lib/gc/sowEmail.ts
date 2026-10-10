@@ -12,11 +12,11 @@ import type { GcState } from './types'
 import { money } from './words'
 
 /**
- * The trade signs a statement of work in its portal once the Portal's P2c is live (its sign screen and
- * `gc_trade_sign_sow`). Until then Send to their portal to sign marks it sent and emails nothing, since the email
- * tells the trade to open its portal and sign. P2c sets this to true in the PR that ships the sign screen.
+ * The trade signs a statement of work in its portal since the Portal's P2c-ii (its sign screen, on P2c-i's
+ * `gc_trade_sign_sow`). Before it, Send to their portal to sign marked it sent and emailed nothing, since the email
+ * tells the trade to open its portal and sign. Now a dev may tick Email it now beside the send; the box starts off.
  */
-export const SOW_SIGN_SCREEN_LIVE = false
+export const SOW_SIGN_SCREEN_LIVE = true
 
 export type SowEmail = Omit<TradeEmailRequest, 'group'>
 

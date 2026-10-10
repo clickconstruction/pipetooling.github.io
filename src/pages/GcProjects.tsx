@@ -53,7 +53,9 @@ import {
 import { changeEmail, chargeEmail, drawEmailFor, lessEmail, paidEmail, type DrawEmail, type DrawEmailTo } from '../lib/gc/drawEmail'
 import { GcCloseoutWindow } from '../components/gc/GcCloseoutWindow'
 import { acceptWork, approveRetainage, changeSignedIn, closeJob, finalPayAppCameIn } from '../lib/gc/closeoutIo'
-import { loadGcPunch } from '../lib/gc/punchIo'
+import { addPunchItem, checkPunchItem, loadGcPunch, punchFixedIn, removePunchItem } from '../lib/gc/punchIo'
+import { GcPunchWindow } from '../components/gc/GcPunchWindow'
+import type { PunchWrites } from '../components/gc/GcPunchList'
 import { withPunch, type PunchRow } from '../lib/gc/punchRows'
 import type { ScheduleRead } from '../lib/gc/schedule/rows'
 import { missingLogs } from '../lib/gc/buildingLog'
@@ -101,7 +103,8 @@ import { GcOurNumber } from '../components/gc/GcOurNumber'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
-import { GcCompanyOpenerContext, type CompanyOpener } from '../components/gc/gcCompanyOpener'
+import { loadCompanyPaperEntries, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
+import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
@@ -417,8 +420,30 @@ export default function GcProjects() {
   })
   // The company window (the Board's B3-c): a company's name opens it wherever the name shows, for the GC office (door 2).
   const [companyId, setCompanyId] = useState<string | null>(null)
-  const companyOpener: CompanyOpener | null = canOpenGcProjects(role) && board ? { openPartner: setCompanyId } : null
+  // Where it opens (B6-b-ii's follow-up): a tab and a paper with its send, as a not-ready bar on the schedule asks.
+  const [companyAt, setCompanyAt] = useState<CompanyAt | null>(null)
+  const companyOpener: CompanyOpener | null =
+    canOpenGcProjects(role) && board
+      ? {
+          openPartner: (id, at) => {
+            setCompanyId(id)
+            setCompanyAt(at ?? null)
+          },
+        }
+      : null
   const openCompany = companyId && board ? (board.partners.find((p) => p.id === companyId) ?? null) : null
+  // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
+  const [paperEntries, setPaperEntries] = useState<CompanyPaperEntries | null>(null)
+  useEffect(() => {
+    if (!openCompany || !canUseGcBoardWrites(role) || paperEntries) return
+    let live = true
+    loadCompanyPaperEntries()
+      .then((e) => live && setPaperEntries(e))
+      .catch(() => live && setPaperEntries({ msa: null, w9: null }))
+    return () => {
+      live = false
+    }
+  }, [openCompany, role, paperEntries])
   const partnerWrites: TradePartnerWrites = {
     addCompany: async (draft) => {
       await addGcCompany(draft)
@@ -660,6 +685,50 @@ export default function GcProjects() {
       return false
     } finally {
       setLogBusy(false)
+    }
+  }
+
+  // The punch list (Building's U3b-ii): a dev's on a job being built, opened at `punch=<projectId>`, behind Building's gate
+  // alone, since at Building's door it goes to the schedule's team while Closeout stays the money team's. It reads the
+  // job's punch list when the window opens. Closeout shows the same lists and reads them with its own.
+  const punchProjectId = params.get('punch')
+  const [punchRowsRead, setPunchRowsRead] = useState<{ id: string; rows: PunchRow[] } | null>(null)
+  const [punchBusy, setPunchBusy] = useState<string | null>(null)
+  const [punchProblem, setPunchProblem] = useState<string | null>(null)
+  const loadPunch = useCallback(async () => {
+    if (!punchProjectId || !canUseGcBuilding(role)) return
+    setPunchRowsRead({ id: punchProjectId, rows: await loadGcPunch([punchProjectId]) })
+  }, [punchProjectId, role])
+  useEffect(() => {
+    void loadPunch().catch((e) => setPunchProblem(formatErrorMessage(e, 'The punch list did not load.')))
+  }, [loadPunch])
+  const punchBoard = useMemo(
+    () => (board && punchProjectId ? withPunch(board, punchRowsRead && punchRowsRead.id === punchProjectId ? punchRowsRead.rows : []) : null),
+    [board, punchProjectId, punchRowsRead],
+  )
+  const punchProject = punchProjectId ? (punchBoard?.projects.find((p) => p.id === punchProjectId) ?? null) : null
+  const setPunchWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('punch', projectId)
+    else next.delete('punch')
+    setParams(next, { replace: true })
+    setPunchProblem(null)
+  }
+  /** The punch list's presses for a window: each runs, then that window's own reads run again, and a refusal shows there. */
+  const punchWritesFor = (setBusy: (id: string | null) => void, setProblem: (problem: string | null) => void, reread: () => Promise<unknown>): PunchWrites => {
+    const run = (busyId: string, work: () => Promise<unknown>, failed: string) => {
+      setBusy(busyId)
+      setProblem(null)
+      void work()
+        .then(reread)
+        .catch((e) => setProblem(formatErrorMessage(e, failed)))
+        .finally(() => setBusy(null))
+    }
+    return {
+      onAdd: (packageId, item) => run(packageId, () => addPunchItem(packageId, item), 'The item was not added.'),
+      onRemove: (itemId) => run(itemId, () => removePunchItem(itemId), 'The item was not taken off.'),
+      onFixedIn: (itemId) => run(itemId, () => punchFixedIn(itemId), 'The item was not recorded fixed.'),
+      onCheck: (itemId, fixed, note) => run(itemId, () => checkPunchItem(itemId, fixed, note), fixed ? 'The item was not checked.' : 'The item was not sent back.'),
     }
   }
 
@@ -1275,6 +1344,12 @@ export default function GcProjects() {
                   })()}
                 </Btn>
               )}
+              {/* The punch list (Building's U3b-ii): a dev's, on a job being built. */}
+              {canUseGcBuilding(role) && board && p.stage === 'building' && (
+                <Btn kind="quiet" onClick={() => setPunchWindow(p.id)}>
+                  Punch list
+                </Btn>
+              )}
               {/* The submittal register (Building's U4b): a dev's, on a job being built. */}
               {canUseGcBuilding(role) && board && p.stage === 'building' && (
                 <Btn kind="quiet" onClick={() => setSubmittalsWindow(p.id)}>
@@ -1440,10 +1515,10 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
-      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={role === 'dev'} onClose={() => setScheduleWindow(null)} />}
+      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={role === 'dev'} canPull={canUseGcBuilding(role)} onClose={() => setScheduleWindow(null)} />}
       {openCompany && board && (
         <GcCompanyWindow
-          key={openCompany.id}
+          key={`${openCompany.id}:${companyAt?.tab ?? ''}:${companyAt?.doc ?? ''}:${companyAt?.send ? 'send' : ''}`}
           state={board}
           partner={openCompany}
           lang={langs[openCompany.id] ?? 'en'}
@@ -1451,9 +1526,31 @@ export default function GcProjects() {
             await setGcCompanyLanguage(openCompany.id, lang)
             await refreshBoard()
           }}
-          onClose={() => setCompanyId(null)}
+          {...(companyAt ? { at: companyAt } : {})}
+          onClose={() => {
+            setCompanyId(null)
+            setCompanyAt(null)
+          }}
           // Their portal stays a dev's until the trade wave: its links' table is dev only (door 2).
           portal={role === 'dev' ? <GcTheirPortal companyId={openCompany.id} /> : undefined}
+          // Its papers' sends and certificate (B6-b-ii): the Board's writes (canUseGcBoardWrites, O9), as B6-b-i's functions
+          // are a dev's today. Each reads the board again.
+          papers={
+            canUseGcBoardWrites(role)
+              ? {
+                  entries: paperEntries,
+                  onSend: async (step, by, note) => {
+                    const outcome = await sendCompanyPaper({ state: board, partner: openCompany, step, by, note, lang: langs[openCompany.id] ?? 'en', entries: paperEntries ?? { msa: null, w9: null } })
+                    if (outcome.ok || outcome.recorded) await refreshBoard()
+                    return outcome
+                  },
+                  onRecordInsurance: async (expiresOn, url) => {
+                    await recordCompanyInsurance(openCompany.id, expiresOn, url)
+                    await refreshBoard()
+                  },
+                }
+              : undefined
+          }
           onOpenProject={(projectId) => {
             setCompanyId(null)
             openProjectCard(projectId)
@@ -1591,6 +1688,17 @@ export default function GcProjects() {
         />
       )}
 
+      {canUseGcBuilding(role) && punchProject && punchBoard && (
+        <GcPunchWindow
+          state={punchBoard}
+          project={punchProject}
+          writes={punchWritesFor(setPunchBusy, setPunchProblem, loadPunch)}
+          busy={punchBusy}
+          problem={punchProblem}
+          onClose={() => setPunchWindow(null)}
+        />
+      )}
+
       {canUseGcBuilding(role) && submittalsProjectId && submittalRead && (
         <GcSubmittalsWindow
           state={submittalRead.state}
@@ -1720,6 +1828,7 @@ export default function GcProjects() {
           busy={closeoutBusy}
           problem={closeoutProblem}
           onSeeBill={() => closeoutToBill(closeoutProject.id)}
+          punchWrites={punchWritesFor(setCloseoutBusy, setCloseoutProblem, loadCloseout)}
           onClose={() => setCloseoutWindow(null)}
           writes={{
             onAccept: (packageId) => closeoutWrite(packageId, acceptWork(packageId), 'The work was not accepted.', { board: true }),

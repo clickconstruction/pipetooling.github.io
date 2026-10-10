@@ -17,9 +17,10 @@ export const GC_CUSTOMER_EMAIL_FROM_NAME = 'Click Construction'
 /**
  * The kinds. O4b-1: our pay application to the customer, and the ask to the architect to certify it. O4b-2: the bill
  * the architect certified, to the customer, and a change order for them to sign. O5b: our reminder to pay a late bill,
- * its words the ones `gc_remind_customer_to_pay` filed. O6b-2: our bill for the interest on late bills.
+ * its words the ones `gc_remind_customer_to_pay` filed. O6b-2: our bill for the interest on late bills. Building's U7b:
+ * the weekly report on a job we are building, its words the `gc_weekly_reports` row the window kept.
  */
-export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask', 'certified', 'change_order', 'reminder', 'interest_bill'] as const
+export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask', 'certified', 'change_order', 'reminder', 'interest_bill', 'weekly'] as const
 export type GcCustomerEmailKind = (typeof GC_CUSTOMER_EMAIL_KINDS)[number]
 
 /** Who each kind goes to: the project's customer, or its architect (`gc_projects.architect_customer_id`). */
@@ -30,10 +31,11 @@ export const GC_CUSTOMER_EMAIL_TO: Record<GcCustomerEmailKind, 'customer' | 'arc
   change_order: 'customer',
   reminder: 'customer',
   interest_bill: 'customer',
+  weekly: 'customer',
 }
 
-/** The row each kind is about: a pay application, a change order, a reminder to pay, or an interest bill. */
-export type GcCustomerEmailSource = 'gc_owner_pay_apps' | 'gc_change_orders' | 'gc_owner_pay_reminders' | 'gc_owner_interest_bills'
+/** The row each kind is about: a pay application, a change order, a reminder to pay, an interest bill, or a weekly report. */
+export type GcCustomerEmailSource = 'gc_owner_pay_apps' | 'gc_change_orders' | 'gc_owner_pay_reminders' | 'gc_owner_interest_bills' | 'gc_weekly_reports'
 export const GC_CUSTOMER_EMAIL_SOURCE: Record<GcCustomerEmailKind, GcCustomerEmailSource> = {
   pay_app: 'gc_owner_pay_apps',
   certify_ask: 'gc_owner_pay_apps',
@@ -41,6 +43,50 @@ export const GC_CUSTOMER_EMAIL_SOURCE: Record<GcCustomerEmailKind, GcCustomerEma
   change_order: 'gc_change_orders',
   reminder: 'gc_owner_pay_reminders',
   interest_bill: 'gc_owner_interest_bills',
+  weekly: 'gc_weekly_reports',
+}
+
+/**
+ * Who may send each kind. The money team for every bill and change (`GC_CUSTOMER_EMAIL_ROLES`). The weekly report is
+ * Building's: whoever can read its row through RLS may send it (dev while Building is built; Building's door decides the
+ * schedule's team, and whether reading is still enough then). A test copy passes the same gate.
+ */
+export const GC_CUSTOMER_EMAIL_GATE: Record<GcCustomerEmailKind, 'moneyTeam' | 'row'> = {
+  pay_app: 'moneyTeam',
+  certify_ask: 'moneyTeam',
+  certified: 'moneyTeam',
+  change_order: 'moneyTeam',
+  reminder: 'moneyTeam',
+  interest_bill: 'moneyTeam',
+  weekly: 'row',
+}
+
+/**
+ * Which of a customer row's addresses each kind goes to: the billing address first for a bill, the contact first for the
+ * weekly report, which is for the person who runs the job for them (`customerContactEmail`).
+ */
+export const GC_CUSTOMER_EMAIL_ADDRESS: Record<GcCustomerEmailKind, 'billing' | 'contact'> = {
+  pay_app: 'billing',
+  certify_ask: 'billing',
+  certified: 'billing',
+  change_order: 'billing',
+  reminder: 'billing',
+  interest_bill: 'billing',
+  weekly: 'contact',
+}
+
+/**
+ * Whether the email is framed: our closing lines after the window's. The weekly report carries its own greeting and
+ * sign-off (`weeklyReportText`), so nothing is added after it.
+ */
+export const GC_CUSTOMER_EMAIL_FRAMED: Record<GcCustomerEmailKind, boolean> = {
+  pay_app: true,
+  certify_ask: true,
+  certified: true,
+  change_order: true,
+  reminder: true,
+  interest_bill: true,
+  weekly: false,
 }
 
 /**
@@ -57,6 +103,8 @@ export const GC_CUSTOMER_EMAIL_FILED_AS: Record<GcCustomerEmailKind, string> = {
   change_order: 'job_contract_gc_change_order',
   reminder: 'bill_gc_reminder',
   interest_bill: 'bill_gc_interest',
+  // A report on the job, not a bill: `field_report`'s prefix, so the Documents page sorts it under Statements.
+  weekly: 'field_report_gc_weekly',
 }
 
 /** The sent copies' kinds about rows of one table, for the window's *Emailed to* lines. */
@@ -76,6 +124,8 @@ export const GC_CUSTOMER_EMAIL_PORTAL_LINE: Record<GcCustomerEmailKind, boolean>
   change_order: false,
   reminder: true,
   interest_bill: true,
+  // Until the customer's portal shows the reports (the schedule's PR 15).
+  weekly: false,
 }
 export const GC_CUSTOMER_EMAIL_PORTAL_WORDS = 'You can see this bill in your portal:'
 
@@ -109,6 +159,38 @@ export interface GcCustomerEmailRequest {
   lines: string[]
   /** The pay application's form, made in the window (`payAppPdf`). */
   pdf: { filename: string; base64: string } | null
+  /**
+   * A test copy: built as the real email would be, to the caller's own address only, `[TEST]` before the subject, with no
+   * copy to anyone, nothing filed and nothing written back. The caller's gate runs as for a real send.
+   */
+  test?: boolean
+}
+
+/** A test copy's email type on `email_send_log`, so no reader counts it as a send. */
+export const GC_CUSTOMER_EMAIL_TEST_TYPE = 'gc_customer_email_test'
+
+/** A test copy's subject. */
+export function gcCustomerEmailTestSubject(subject: string): string {
+  return `[TEST] ${subject.trim()}`
+}
+
+/**
+ * Who is copied: the architect, on a weekly report whose row says so, at their address. Never on a test copy, never with
+ * no address, and never twice to the address it already goes to.
+ */
+export function gcCustomerEmailCc(input: { copyArchitect: boolean; test: boolean; architectAddress: string; address: string }): string[] {
+  const cc = input.architectAddress.trim()
+  if (!input.copyArchitect || input.test || !cc || cc.toLowerCase() === input.address.trim().toLowerCase()) return []
+  return [cc]
+}
+
+/** A weekly report's body as the email's paragraphs: split on blank lines, each kept with its own line breaks. */
+export function gcWeeklyReportLines(body: string): string[] {
+  return body
+    .replace(/\r\n/g, '\n')
+    .split(/\n[ \t]*\n/)
+    .map((para) => para.trim())
+    .filter(Boolean)
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -136,7 +218,7 @@ export function parseCustomerEmail(body: unknown): { ok: true; req: GcCustomerEm
     if (!base64 || base64.length > GC_CUSTOMER_EMAIL_MAX_PDF_BASE64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(base64)) return { ok: false }
     pdf = { filename, base64 }
   }
-  return { ok: true, req: { projectId, kind: kind as GcCustomerEmailKind, sourceId, subject, lines, pdf } }
+  return { ok: true, req: { projectId, kind: kind as GcCustomerEmailKind, sourceId, subject, lines, pdf, ...(b.test === true ? { test: true } : {}) } }
 }
 
 const INK = '#16283c'
@@ -154,6 +236,11 @@ export interface GcCustomerEmailInput {
   signer: string
   /** Our name: `GC_CUSTOMER_EMAIL_FROM_NAME`. */
   gc: string
+  /**
+   * With our closing lines after the window's (`GC_CUSTOMER_EMAIL_FRAMED`). False: the lines carry their own greeting and
+   * sign-off, each kept with its line breaks. Unset: framed.
+   */
+  framed?: boolean
   /** The customer's portal, for the kinds that link it (`GC_CUSTOMER_EMAIL_PORTAL_LINE`). Null: no line. */
   portalUrl?: string | null
   /**
@@ -182,15 +269,17 @@ export function buildGcCustomerEmail(input: GcCustomerEmailInput): { subject: st
   const fee = portal && typeof input.cardFee === 'number' && input.cardFee > 0 ? input.cardFee : null
   const words = fee !== null ? GC_CUSTOMER_EMAIL_CARD_PORTAL_WORDS : GC_CUSTOMER_EMAIL_PORTAL_WORDS
   const feeLine = fee !== null ? gcCustomerEmailCardFeeLine(fee) : null
+  const framed = input.framed !== false
   const text = [
     ...input.lines.flatMap((l) => [l, '']),
     ...(portal ? [`${words} ${portal}`, ''] : []),
     ...(feeLine ? [feeLine, ''] : []),
-    'Thank you,',
-    input.signer,
-    input.gc,
-  ].join('\n')
-  const p = (s: string) => `<p style="margin:0 0 12px">${esc(s)}</p>`
+    ...(framed ? ['Thank you,', input.signer, input.gc] : []),
+  ]
+    .join('\n')
+    .replace(/\n+$/, '')
+  // Unframed lines keep their own breaks (a section's title and its list); each is escaped before the break goes in.
+  const p = (s: string) => `<p style="margin:0 0 12px">${framed ? esc(s) : esc(s).replace(/\n/g, '<br>')}</p>`
   const portalP = portal
     ? `<p style="margin:0 0 12px">${esc(words)} <a href="${esc(portal)}" style="color:${INK}">${esc(shown)}</a></p>` + (feeLine ? p(feeLine) : '')
     : ''
@@ -203,7 +292,7 @@ export function buildGcCustomerEmail(input: GcCustomerEmailInput): { subject: st
     `<div style="padding:16px;font-size:15px;line-height:1.5">` +
     input.lines.map(p).join('') +
     portalP +
-    `<p style="margin:0;padding-top:10px;border-top:1px solid ${HAIR};color:${MUTED};font-size:13px">Thank you,<br>${esc(input.signer)}<br>${esc(input.gc)}</p>` +
+    (framed ? `<p style="margin:0;padding-top:10px;border-top:1px solid ${HAIR};color:${MUTED};font-size:13px">Thank you,<br>${esc(input.signer)}<br>${esc(input.gc)}</p>` : '') +
     `</div></div></div></body></html>`
   return { subject, text, html }
 }

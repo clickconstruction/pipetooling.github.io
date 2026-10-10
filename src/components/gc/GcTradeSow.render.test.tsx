@@ -39,12 +39,24 @@ describe('GcTradeSow', () => {
     expect(within(el).queryByRole('button', { name: 'Send to their portal to sign' })).toBeNull()
   })
 
-  it('a drafted one sends to their portal, with no email box until the portal can take a signature', async () => {
+  it('a drafted one sends to their portal, and emails it only when a dev ticks the box, which starts off (P2c-ii)', async () => {
     const { w, el } = card({ status: 'draft', sent_on: null })
     expect(within(el).getByText('Statement of work drafted')).toBeTruthy()
-    expect(within(el).queryByLabelText('Email it now')).toBeNull()
+    const box = within(el).getByLabelText('Email it now') as HTMLInputElement
+    expect(box.checked).toBe(false)
     fireEvent.click(within(el).getByRole('button', { name: 'Send to their portal to sign' }))
     await waitFor(() => expect(w.send).toHaveBeenCalledWith('k1', false))
+    fireEvent.click(box)
+    fireEvent.click(within(el).getByRole('button', { name: 'Send to their portal to sign' }))
+    await waitFor(() => expect(w.send).toHaveBeenLastCalledWith('k1', true))
+  })
+
+  it('shows no email box to a sender who may not email a trade', () => {
+    const base = awardedClinicBoardRows()
+    const state = boardStateFromRows({ ...base, sows: (base.sows ?? []).map((s) => ({ ...s, status: 'draft' as const, sent_on: null })) })
+    render(<GcTradeSow state={state} projectId="p1" packageId="k1" writes={writes()} canSend />)
+    expect(screen.queryByLabelText('Email it now')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Send to their portal to sign' })).toBeTruthy()
   })
 
   it('says the send’s refusal in its own words', async () => {

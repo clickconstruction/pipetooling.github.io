@@ -13,7 +13,7 @@ import { loadGcSubmittals } from '../lib/gc/submittalsIo'
 import { loadGcRfis, startRfiChangeOrder } from '../lib/gc/rfisIo'
 import { emailTheTrade, loadGcDraws, payDraw } from '../lib/gc/drawsIo'
 import { acceptWork } from '../lib/gc/closeoutIo'
-import { loadGcPunch } from '../lib/gc/punchIo'
+import { addPunchItem, loadGcPunch } from '../lib/gc/punchIo'
 import { loadGcBillingRows } from '../lib/gc/gcIo'
 import { awardedClinicBoardRows } from '../lib/gc/boardTestRows'
 import type { DrawTables } from '../lib/gc/drawRows'
@@ -45,10 +45,11 @@ vi.mock('../lib/gc/tradePortalLinksIo', () => ({
 }))
 
 // The schedule's window (PR 7b) reads the job's schedule over the board: nothing is drawn on the test board.
-vi.mock('../lib/gc/scheduleIo', () => ({
-  loadSchedule: vi.fn((state: { projects: { id: string }[] }, id: string) => Promise.resolve({ state, project: state.projects.find((p) => p.id === id), version: null })),
-  drawSchedule: vi.fn(),
-}))
+vi.mock('../lib/gc/scheduleIo', () => {
+  const loadSchedule = vi.fn((state: { projects: { id: string }[] }, id: string) => Promise.resolve({ state, project: state.projects.find((p) => p.id === id), version: null }))
+  // The window reads the job's submittals and RFIs first (PR 9d): here, the schedule's read alone.
+  return { loadSchedule, loadScheduleWithHolds: vi.fn((state: { projects: { id: string }[] }, id: string) => loadSchedule(state, id)), drawSchedule: vi.fn() }
+})
 
 // No GC project yet: the page loads empty, so the card stops show their missing words.
 vi.mock('../lib/gc/gcIo', async () => {
@@ -140,7 +141,13 @@ vi.mock('../lib/gc/drawsIo', () => ({
 }))
 
 // Building's closeout: no punch item, and every press going through.
-vi.mock('../lib/gc/punchIo', () => ({ loadGcPunch: vi.fn(() => Promise.resolve([])) }))
+vi.mock('../lib/gc/punchIo', () => ({
+  loadGcPunch: vi.fn(() => Promise.resolve([])),
+  addPunchItem: vi.fn(() => Promise.resolve('punch-new')),
+  removePunchItem: vi.fn(() => Promise.resolve()),
+  punchFixedIn: vi.fn(() => Promise.resolve()),
+  checkPunchItem: vi.fn(() => Promise.resolve()),
+}))
 vi.mock('../lib/gc/closeoutIo', () => ({
   acceptWork: vi.fn(() => Promise.resolve('2026-10-12')),
   finalPayAppCameIn: vi.fn(() => Promise.resolve('draw-final')),
@@ -300,7 +307,8 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(line).getByRole('button', { name: 'Lonestar Earthworks' }))
     const dialog = screen.getByRole('dialog', { name: 'Lonestar Earthworks' })
     expect(within(dialog).getByText('Who gets our emails')).toBeTruthy()
-    expect(within(dialog).getByText('Their portal')).toBeTruthy()
+    // Their portal is its own tab since B6-b-ii, beside About and Documents.
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Their portal' }))
     expect(await within(dialog).findByRole('button', { name: 'Make the link' })).toBeTruthy()
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByRole('dialog', { name: 'Lonestar Earthworks' })).toBeNull()
@@ -810,6 +818,58 @@ describe('GcProjects: Closeout (Building)', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, loaded)
     expect(screen.queryByRole('button', { name: 'Closeout' })).toBeNull()
+    expect(loadGcPunch).not.toHaveBeenCalled()
+  })
+})
+
+describe('GcProjects: Punch list (Building)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadGcPunch).mockClear()
+    vi.mocked(addPunchItem).mockClear()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  /** The clinic being built, its sitework's statement of work signed by Lonestar. */
+  const building = () => {
+    const base = awardedClinicBoardRows()
+    return {
+      ...base,
+      projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })),
+      sows: (base.sows ?? []).map((w) => ({ ...w, status: 'signed', signed_on: '2026-10-09' })),
+    }
+  }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+
+  it('a dev opens Punch list after Daily log, reads the job’s list, and a press reads it again', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const names = within(card).getAllByRole('button').map((b) => b.textContent ?? '')
+    expect(names.indexOf('Punch list')).toBe(names.findIndex((n) => n.startsWith('Daily log')) + 1)
+    expect(loadGcPunch).not.toHaveBeenCalled()
+    fireEvent.click(within(card).getByRole('button', { name: 'Punch list' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Punch list' })
+    await waitFor(() => expect(loadGcPunch).toHaveBeenCalledWith(['p1']))
+    const reads = vi.mocked(loadGcPunch).mock.calls.length
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add an item' }))
+    fireEvent.change(within(dialog).getByRole('textbox', { name: /A punch item for/ }), { target: { value: 'Rake the swale' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add to the punch list' }))
+    await waitFor(() => expect(addPunchItem).toHaveBeenCalledWith('k1', { text: 'Rake the swale', where: '', photoUrl: '' }))
+    await waitFor(() => expect(vi.mocked(loadGcPunch).mock.calls.length).toBeGreaterThan(reads))
+  })
+
+  it('an estimator sees no Punch list while Building is built, and no punch item is read', async () => {
+    auth.role = 'estimator'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Punch list' })).toBeNull()
     expect(loadGcPunch).not.toHaveBeenCalled()
   })
 })
