@@ -50,6 +50,7 @@
     "test:pg:gc-building": "bash scripts/pgtest-gc-building.sh",
     "test:pg:gc-owner-billing": "bash scripts/pgtest-gc-owner-billing.sh",
     "test:pg:gc-award": "bash scripts/pgtest-gc-award.sh",
+    "test:pg:gc-start": "bash scripts/pgtest-gc-start.sh",
     "test:pg:gc-back-charges": "bash scripts/pgtest-gc-back-charges.sh",
     "test:pg:gc-papers": "bash scripts/pgtest-gc-papers.sh",
     "test:pg:gc-trade-sign-sow": "bash scripts/pgtest-gc-trade-sign-sow.sh",
