@@ -16,7 +16,7 @@ function writes(): SowWrites {
 function card(sow: Partial<SowRow> = {}, w = writes()) {
   const base = awardedClinicBoardRows()
   const state = boardStateFromRows({ ...base, sows: (base.sows ?? []).map((s) => ({ ...s, ...sow })) })
-  render(<GcTradeSow state={state} projectId="p1" packageId="k1" writes={w} canEmail />)
+  render(<GcTradeSow state={state} projectId="p1" packageId="k1" writes={w} canSend canEmail />)
   return { w, el: document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement }
 }
 
@@ -52,6 +52,17 @@ describe('GcTradeSow', () => {
     const { el } = card({ status: 'draft', sent_on: null }, w)
     fireEvent.click(within(el).getByRole('button', { name: 'Send to their portal to sign' }))
     expect(await within(el).findByText('That statement of work is not a draft any more. Read the board again.')).toBeTruthy()
+  })
+
+  it('a drafted one reads only to someone who may not send it, the money team since O9', () => {
+    const base = awardedClinicBoardRows()
+    const state = boardStateFromRows({ ...base, sows: (base.sows ?? []).map((s) => ({ ...s, status: 'draft', sent_on: null })) })
+    render(<GcTradeSow state={state} projectId="p1" packageId="k1" writes={writes()} />)
+    const el = document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement
+    expect(within(el).getByText('Statement of work drafted')).toBeTruthy()
+    expect(within(el).getByText('$66,500')).toBeTruthy()
+    expect(within(el).queryByRole('button', { name: 'Send to their portal to sign' })).toBeNull()
+    expect(within(el).getByText('A dev sends it to their portal to sign.')).toBeTruthy()
   })
 
   it('a signed one reads its day', () => {

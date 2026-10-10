@@ -400,7 +400,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
       .order('name'),
     packageIds.length ? supabase.from('gc_invites').select('*').in('package_id', packageIds) : none,
     supabase.from('gc_trade_promises').select('*'),
-    // The statements of work (B6-a): dev only while the Board is built, so anyone else reads none.
+    // The statements of work (B6-a): a dev's and, since O9, the money team's to read, so anyone else reads none.
     packageIds.length
       ? supabase
           .from('gc_sows')

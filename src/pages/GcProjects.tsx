@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from '../lib/gc/access'
+import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -547,13 +547,13 @@ export default function GcProjects() {
   useEffect(() => {
     void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
   }, [loadChangeOrders])
-  // The trades' draws (Building's U6b): a dev's while Building is built, read for every job on the board so Money, Bill
-  // the customer and Closeout read the same draws the Draws window shows. Anyone else reads none, so a trade's lines
-  // read as unbilled to them until Building's door opens these tables.
+  // The trades' draws (Building's U6b), read for every job on the board so Money, Bill the customer and Closeout read the
+  // same draws the Draws window shows. A dev writes them while Building is built; the money team reads them since O9, so
+  // a leader's or the controller's bill bills each trade's reported work. Anyone else reads none.
   const [drawTables, setDrawTables] = useState<DrawTables>(NO_DRAWS)
   const [drawProblem, setDrawProblem] = useState<string | null>(null)
   const loadDraws = useCallback(async (): Promise<DrawTables> => {
-    if (!board || !canUseGcBuilding(role)) return NO_DRAWS
+    if (!board || !(canUseGcBuilding(role) || canSeeGcMoney(role))) return NO_DRAWS
     const tables = await loadGcDraws(board.projects.flatMap((p) => p.packages.map((k) => k.id)))
     setDrawTables(tables)
     return tables
@@ -1410,8 +1410,9 @@ export default function GcProjects() {
                       </li>
                     ))}
                   </ul>
-                  {/* The trade's statement of work once it is awarded (B6-a-ii): only a dev reads one while the Board is built. */}
-                  {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canEmail={canSendGcTradeEmail(role)} />}
+                  {/* The trade's statement of work once it is awarded (B6-a-ii): a dev and, since O9, the money team read one. Only
+                      a dev sends it until the award door. */}
+                  {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canSend={canUseGcBoardWrites(role)} canEmail={canSendGcTradeEmail(role)} />}
                   {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
                   {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
                 </div>
