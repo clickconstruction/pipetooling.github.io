@@ -114,6 +114,10 @@ import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
 import { loadCompanyPaperEntries, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
 import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
+import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
+import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
+import type { ContractSendInput } from '../components/gc/GcCustomerContractSend'
+import { sendGcOwnerContract } from '../lib/gc/ownerContractIo'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
@@ -512,6 +516,18 @@ export default function GcProjects() {
         }
       : null
   const openCompany = companyId && board ? (board.partners.find((p) => p.id === companyId) ?? null) : null
+  // The customer's window (the Board's B6-d-ii): a dev's while the Board is built, opened from Get started's contract
+  // row and the board's customer names. Our contract's send goes with Our number's price by line, so it needs that read.
+  const [customerWin, setCustomerWin] = useState<{ id: string; at: CustomerAt | null } | null>(null)
+  const customerOpener: CustomerOpener | null = canUseGcBoardWrites(role) && board ? { openCustomer: (id, at) => setCustomerWin({ id, at: at ?? null }) } : null
+  const openCustomer = customerWin && board ? (board.customers.find((c) => c.id === customerWin.id) ?? null) : null
+  const sendContract =
+    canUseGcBoardWrites(role) && canSeeGcMoney(role) && moneyShown
+      ? async (projectId: string, input: ContractSendInput) => {
+          await sendGcOwnerContract({ projectId, ...input })
+          await refreshBoard()
+        }
+      : undefined
   // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
   const [paperEntries, setPaperEntries] = useState<CompanyPaperEntries | null>(null)
   useEffect(() => {
@@ -1798,7 +1814,7 @@ export default function GcProjects() {
             const bidId = loaded?.projects.find((x) => x.id === startProject.id)?.trades.find((t) => t.id === packageId)?.ownBidId
             return bidId ? `/bids?tab=pricing&bidId=${encodeURIComponent(bidId)}` : null
           }}
-          covered={comparing !== null || openCompany !== null}
+          covered={comparing !== null || openCompany !== null || openCustomer !== null}
           onOpenSchedule={() => {
             const next = new URLSearchParams(params)
             next.delete('start')
@@ -1818,6 +1834,20 @@ export default function GcProjects() {
           canPull={canUseGcBuilding(role)}
           reads={scheduleReads}
           onClose={() => setScheduleWindow(null)}
+        />
+      )}
+      {openCustomer && board && (
+        <GcCustomerWindow
+          key={`${openCustomer.id}:${customerWin?.at?.doc ?? ''}:${customerWin?.at?.send ? 'send' : ''}`}
+          state={board}
+          customer={openCustomer}
+          {...(customerWin?.at ? { at: customerWin.at } : {})}
+          {...(sendContract ? { sendContract } : {})}
+          onOpenProject={(projectId) => {
+            setCustomerWin(null)
+            openProjectCard(projectId)
+          }}
+          onClose={() => setCustomerWin(null)}
         />
       )}
       {openCompany && board && (
@@ -2512,5 +2542,9 @@ export default function GcProjects() {
     </div>
   )
   // A company's name opens its window wherever it shows (the Board's B3-c), for a dev.
-  return <GcCompanyOpenerContext.Provider value={companyOpener}>{page}</GcCompanyOpenerContext.Provider>
+  return (
+    <GcCompanyOpenerContext.Provider value={companyOpener}>
+      <GcCustomerOpenerContext.Provider value={customerOpener}>{page}</GcCustomerOpenerContext.Provider>
+    </GcCompanyOpenerContext.Provider>
+  )
 }

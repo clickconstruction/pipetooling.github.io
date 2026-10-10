@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { GcStartWindow, type StartPresses } from './GcStartWindow'
 import { GcCompanyOpenerContext } from './gcCompanyOpener'
+import { GcCustomerOpenerContext } from './gcCustomerOpener'
 import { withSchedules } from '../../lib/gc/billCustomer'
 import { boardStateFromRows, type BoardRows } from '../../lib/gc/boardRows'
 import { awardedClinicBoardRows, readyClinicBoardRows as readyRows } from '../../lib/gc/boardTestRows'
@@ -39,12 +40,15 @@ function stateOf(rows: BoardRows, schedule = true): GcState {
 /** Null presses: the window reads only. */
 function open(state: GcState, p: StartPresses | null = presses(), told: string[] = []) {
   const openPartner = vi.fn()
+  const openCustomer = vi.fn()
   renderWithProviders(
     <GcCompanyOpenerContext.Provider value={{ openPartner }}>
+      <GcCustomerOpenerContext.Provider value={{ openCustomer }}>
       <GcStartWindow state={state} project={state.projects[0]!} {...(p ? { presses: p } : {})} told={told} ownBidHref={(id) => (id === 'k3' ? '/bids?tab=pricing&bidId=b7' : null)} onOpenSchedule={() => undefined} onClose={() => undefined} />
+      </GcCustomerOpenerContext.Provider>
     </GcCompanyOpenerContext.Provider>,
   )
-  return { p, openPartner, dialog: screen.getByRole('dialog', { name: 'Get started, Hill Country Clinic' }) }
+  return { p, openPartner, openCustomer, dialog: screen.getByRole('dialog', { name: 'Get started, Hill Country Clinic' }) }
 }
 
 describe('GcStartWindow', () => {
@@ -104,9 +108,21 @@ describe('GcStartWindow', () => {
     await waitFor(() => expect(p?.setStartDate).toHaveBeenCalledWith('2026-10-26'))
   })
 
+  it('our contract goes to sign from the customer’s window: Send to sign, then Remind them once it went (B6-d-ii)', () => {
+    const { openCustomer, dialog } = open(stateOf(readyRows({ owner_contract_signed_on: null })))
+    const contract = dialog.querySelector('[data-gc-start-owner="ownerContract"]') as HTMLElement
+    fireEvent.click(within(contract).getByRole('button', { name: 'Send to sign' }))
+    expect(openCustomer).toHaveBeenCalledWith('c1', { tab: 'documents', doc: 'contract-p1', send: true })
+  })
+
+  it('a contract sent and waiting reads Remind them', () => {
+    const { dialog } = open(stateOf(readyRows({ owner_contract_signed_on: null, owner_contract_sent_on: '2026-10-05' })))
+    expect(within(dialog.querySelector('[data-gc-start-owner="ownerContract"]') as HTMLElement).getByRole('button', { name: 'Remind them' })).toBeTruthy()
+  })
+
   it('without the money team’s press, our contract only reads', () => {
     const { dialog } = open(stateOf(readyRows({ owner_contract_signed_on: null })), presses({ signContract: undefined }))
-    expect(within(dialog.querySelector('[data-gc-start-owner="ownerContract"]') as HTMLElement).queryByRole('button')).toBeNull()
+    expect(within(dialog.querySelector('[data-gc-start-owner="ownerContract"]') as HTMLElement).queryByRole('button', { name: 'Mark it signed' })).toBeNull()
   })
 
   it('started: the day, who was told, Send again for anyone missed, and the table locked', async () => {

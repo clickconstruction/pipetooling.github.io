@@ -19,11 +19,13 @@ The bar at the top counts the steps done. It reads **Ready to start. Nothing is 
 
 ## With the customer
 
-- **Our contract with the customer is signed.** Press {{button:outline|Mark it signed}} once they sign it on paper.
+- **Our contract with the customer is signed.** Press {{button:blue|Send to sign}} to send it from the customer's window. Press {{button:outline|Mark it signed}} once they sign it on paper.
 - **The permit is in hand.** Press {{button:outline|Mark it done}} once you have it.
 - **A start date is set.** Pick the day work starts beside it.
 
 A step you marked shows {{button:outline|Undo}} in case it was a mistake.
+
+[Send our contract to a GC customer to sign](/help/send-our-contract-to-a-gc-customer) shows the send.
 
 ## The schedule
 

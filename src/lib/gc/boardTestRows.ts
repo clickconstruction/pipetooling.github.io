@@ -4,7 +4,7 @@
  * promise, as the company record's tables hold them (B1), and our number's inputs (B5). The board's
  * mapper test and its render test read it.
  */
-import type { BoardRows } from './boardRows'
+import type { BoardRows, OwnerContractSendRow } from './boardRows'
 import type { CompanyPaperRow } from './companyPapers'
 import { gcProjectFromRows, type GcProjectRows } from './projectRows'
 
@@ -129,5 +129,29 @@ export function readyClinicBoardRows(dates: Partial<BoardRows['boardDates'][stri
     sows: (base.sows ?? []).map((s) => ({ ...s, status: 'signed' as const, signed_on: '2026-10-09' })),
     ownBids: [{ id: 'b7', bid_value: 30000, bid_number: 'BP7' }],
     boardDates: { p1: { ...base.boardDates.p1!, owner_contract_signed_on: '2026-10-06', permit_on: '2026-10-07', start_date: '2026-10-19', ...dates } },
+  }
+}
+
+/** The clinic's price by line today, as the money team reads it: what a send of our contract goes with (B6-d). */
+export const CLINIC_WORTH_NOW = { k1: 66500, k2: 0, k3: 0, gc: 12000, contingency: 2355, fee: 6468.4 }
+
+/** A send of our contract on the clinic to Oak Street Partners (B6-d-i's gc_owner_contract_sends), the first by default. */
+export function contractSendRow(over: Partial<OwnerContractSendRow> = {}): OwnerContractSendRow {
+  return {
+    id: 'cs1',
+    project_id: 'p1',
+    customer_id: 'c1',
+    first: true,
+    sent_on: '2026-10-05',
+    sign_by: '2026-10-12',
+    note: '',
+    worth: CLINIC_WORTH_NOW,
+    file_path: 'p1/one.pdf',
+    file_name: 'Clinic contract.pdf',
+    file_sha256: 'ab'.repeat(32),
+    signed_on: null,
+    signer_printed_name: null,
+    created_at: '2026-10-05T15:00:00Z',
+    ...over,
   }
 }

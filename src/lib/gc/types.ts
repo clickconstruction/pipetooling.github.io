@@ -1058,4 +1058,11 @@ export interface CustomerSend {
   /** The day we asked them to sign by. */
   by: string
   note: string
+  /** Our contract's send on real rows (B6-d-i): the price by line it went with. */
+  worth?: Record<string, number>
+  /** The file it went with, in the gc-owner-contracts bucket, and a SHA-256 of its bytes. */
+  file?: { path: string; name: string; sha256: string }
+  /** The day the customer signed it in their portal, and the name they signed with. */
+  signedOn?: string
+  signer?: string
 }

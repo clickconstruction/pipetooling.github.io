@@ -18,6 +18,7 @@ import type { GcProjectView } from './projectRows'
 import type {
   AskContact,
   BidTab,
+  CustomerSend,
   DeclineReason,
   GcCustomer,
   GcLostWhy,
@@ -245,6 +246,24 @@ export interface PaperSendRow {
   created_at: string
 }
 
+/** A send of our contract to the customer (B6-d-i's gc_owner_contract_sends): a dev's until award's door, then the money team's. */
+export interface OwnerContractSendRow {
+  id: string
+  project_id: string
+  customer_id: string | null
+  first: boolean
+  sent_on: string
+  sign_by: string
+  note: string
+  worth: Json
+  file_path: string
+  file_name: string
+  file_sha256: string
+  signed_on: string | null
+  signer_printed_name: string | null
+  created_at: string
+}
+
 export interface BoardRows {
   today: string
   projects: GcProjectView[]
@@ -286,6 +305,8 @@ export interface BoardRows {
   papers?: CompanyPaperRow[]
   /** Every send of a paper (B6-b-i's gc_paper_sends), dev only while the Board is built. Missing: none read. */
   paperSends?: PaperSendRow[]
+  /** Every send of our contract to a customer (B6-d-i), for whoever its policy lets read them. Missing: none read. */
+  ownerContractSends?: OwnerContractSendRow[]
   /**
    * Our own trades' Trades mode bids (B6-c-ii, call C). A trade we do ourselves is priced once its bid's value is above 0.
    * Missing, or a bid this reader cannot see: our budget stands in, not priced.
@@ -443,6 +464,30 @@ export function partnerFromRows(
 }
 
 /** One send of a paper as the kernels read it (`PaperSend`). */
+/** A price by line from its jsonb: each line a number, anything else dropped. */
+function worthOf(j: Json): Record<string, number> {
+  if (!j || typeof j !== 'object' || Array.isArray(j)) return {}
+  return Object.fromEntries(Object.entries(j).filter((e): e is [string, number] => typeof e[1] === 'number'))
+}
+
+/** A send of our contract as the kernels read it (CustomerSend, paper contract), to the customer it went to. */
+export function ownerContractSendFromRow(s: OwnerContractSendRow, projectCustomer: string | undefined): CustomerSend {
+  return {
+    id: s.id,
+    customerId: s.customer_id ?? projectCustomer ?? '',
+    projectId: s.project_id,
+    paper: 'contract',
+    first: s.first,
+    on: s.sent_on,
+    by: s.sign_by,
+    note: s.note,
+    worth: worthOf(s.worth),
+    file: { path: s.file_path, name: s.file_name, sha256: s.file_sha256 },
+    ...(s.signed_on ? { signedOn: s.signed_on } : {}),
+    ...(s.signer_printed_name ? { signer: s.signer_printed_name } : {}),
+  }
+}
+
 export function paperSendFromRow(s: PaperSendRow): PaperSend {
   return {
     id: s.id,
@@ -626,6 +671,14 @@ export function boardStateFromRows(rows: BoardRows): GcState {
     // Oldest first, as the kernels read them (paperSendsFor, paperStep's history).
     ...(rows.paperSends
       ? { paperSends: [...rows.paperSends].sort((a, b) => a.sent_on.localeCompare(b.sent_on) || a.created_at.localeCompare(b.created_at)).map(paperSendFromRow) }
+      : {}),
+    // Oldest first too (customerSendsFor): the newest is the one their portal offers.
+    ...(rows.ownerContractSends
+      ? {
+          customerSends: [...rows.ownerContractSends]
+            .sort((a, b) => a.created_at.localeCompare(b.created_at))
+            .map((s) => ownerContractSendFromRow(s, rows.projects.find((p) => p.id === s.project_id)?.customerId)),
+        }
       : {}),
   }
 }
