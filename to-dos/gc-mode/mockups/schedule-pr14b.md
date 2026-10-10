@@ -2,7 +2,7 @@
 name: "The schedule's PR 14b: the trade's chart in its portal"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 14, decision 10 and The reads from outside; GANTT_FEATURES.md G-110; mockups/schedule-pr14.md, call 9 and amendment 1 (gc 3's two conditions); mockups/schedule-pr15.md, call 9 (customer-portal a second importer)
 branch: the plan on claude/gc-schedule-pr14b-plan (from origin/spike/gc-mode at bfb15c091); the code from origin/main in one cut, no migration
-status: plan 2026-10-10 by gc 4 at the lead's ask, for gc 3's co-sign (the Portal's function, slice and page) and the lead's read-back. Measured on main at 684ed093d. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 4 at the lead's ask. Amendment 1 (2026-10-10) - gc 3 co-signed every call from 96e0d4f31, with two additions written into call 6 (a neighbour's percent is its own report, never our send-back's; three more plants) and its picks for calls 8 and 9. For the lead's read-back. Measured on main at 684ed093d. Nothing cut or claimed.
 ---
 
 # The schedule's PR 14b: the trade's chart in its portal
@@ -97,6 +97,20 @@ Nothing draws the chart on main. One cut, with no migration. `gc-trade-portal` i
    It asserts the answer's JSON holds none of the planted words or figures. It also asserts the answer holds the
    neighbours' names and percents, so the test pins both sides. *Other way:* neighbours drawn without a name. The
    trade would then not know whom to call.
+
+   **A neighbour's percent is its own** (gc 3, amendment 1). `lineOf` reads the open send-back's `we_see` first, and a
+   send-back is between us and that trade. On a neighbour it would show another company that we doubted its draw,
+   and by how much. So before `portalSchedule` runs, the read drops the open send-back from every trade that is not
+   the company's (`withoutOthersSendBacks`). A neighbour's bar then reads its newest report, or what its pay
+   application claimed. The company's own bars keep `lineOf` as the office reads it, since its portal already shows
+   it our send-back. No lifted kernel changes. The never-sees test plants three more (gc 3), and none may reach the
+   answer:
+   - a neighbour's contacts, an email and a phone in `gc_company_people`;
+   - an open send-back on a neighbour, with a `we_see` that differs from its report and a `sent_back_note`;
+   - a neighbour's draw amounts.
+
+   It asserts the neighbour's percent is its report, and the company's own percent is the office's. The chart names
+   the company, and the trade calls our office, not the neighbour.
 7. **Our own crew as a neighbour** shows its name and dates, with no percent. The board alone reads none for our
    crew. Building's U8 reads it from the crew's Pipeline job (`crewJobRows.ts`, `list_job_stage_progress`), which
    a no-sign-in function should not read for a percent. At 0 the chart draws no fill and no percent, so the bar
@@ -105,15 +119,19 @@ Nothing draws the chart on main. One cut, with no migration. `gc-trade-portal` i
    from a state:
    - it has three groups (before you, yours, after you), with Today down the chart;
    - it is light, on the portal's paper, in the company's language;
-   - it sits in the job's block on a job being built, at the place gc 3 picks in `GcTradePortalJob.tsx`;
+   - it sits first in the job's block on a job being built, right under the job's name and above the report (gc 3's
+     pick, amendment 1). Its dates frame everything below it. The rows under *Needs you* still open the job at their
+     own blocks;
    - it has no press in 14b.
 
    `readTradePortalAnswer` passes `schedules` through, and the view hands each job its own.
 9. **The late door's seam with P5d-ii.** The prototype puts *We will be late* under each of the trade's own bars on
    the chart (`GcPortalLate`). P5d-ii ships its door first, on its own block. 14b gives each own row a slot
    (`ownRow`, a render prop). So P5d-ii's door can move under the bar without the chart knowing what the door does.
-   Whether it moves, and when, is gc 3's call. *Other way:* the door built into the chart, which ties 14b to P5d-ii's
-   presses.
+   gc 3's pick (amendment 1): whichever of 14b and P5d-ii lands second decides. If 14b is on main when P5d-ii cuts,
+   the door goes straight into `ownRow`, under the trade's own bar as the prototype has it. If P5d-ii lands first, its
+   door ships on its own block, and moving it under the bar is a small follow-up of gc 3's. *Other way:* the door
+   built into the chart, which ties 14b to P5d-ii's presses.
 10. **Boot time.** `gc-trade-portal` grows by about 9,200 lines of plain TypeScript. Its cold boot is measured on
     the local edge runtime before and after, and with `check_edge_boot` after the deploy. If it boots slowly, the
     chart moves to a function of its own, `gc-trade-schedule`, read beside the slice. *Other way:* a function of its
@@ -123,9 +141,9 @@ Nothing draws the chart on main. One cut, with no migration. `gc-trade-portal` i
 
 - **`scripts/edge-kernels.mjs`** (new) and `npm run gen:edge-kernels`. Then the copy itself,
   **`supabase/functions/_shared/gcKernels/`**, as it generates (calls 1 and 2).
-- **`supabase/functions/_shared/gcTradePortalSchedule.ts`** (new, pure): `portalScheduleJobs` (call 3) and
-  `portalSchedulesFromRows(rows, companyId, today)`. These build each job's state with the copy and return
-  `portalSchedule`'s answers.
+- **`supabase/functions/_shared/gcTradePortalSchedule.ts`** (new, pure): `portalScheduleJobs` (call 3),
+  `withoutOthersSendBacks` (call 6) and `portalSchedulesFromRows(rows, companyId, today)`. These build each job's
+  state with the copy and return `portalSchedule`'s answers.
 - **`supabase/functions/gc-trade-portal/index.ts`**: `readScheduleRows` (call 4) after `readRows`, and `schedules`
   on the answer (call 5). Its header names the chart.
 - **`supabase/functions/_shared/gcTradePortalSample.ts`**: the made-up job's schedule.
@@ -185,4 +203,7 @@ move on the office's chart shows on the trade's chart on its next read.
 
 ## Status
 
-Plan 2026-10-10, gc 4, at the lead's ask. For gc 3's co-sign, then the lead's read-back. Nothing cut or claimed.
+Plan 2026-10-10, gc 4, at the lead's ask. Amendment 1 the same day: gc 3 co-signed every call, with a neighbour's
+percent read from its own report and three more plants in the never-sees test (call 6), the chart first in the job's
+block (call 8), and the late door decided by whichever of 14b and P5d-ii lands second (call 9). For the lead's
+read-back. Nothing cut or claimed.
