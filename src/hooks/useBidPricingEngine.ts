@@ -48,6 +48,7 @@ import type {
   TakeoffRoughPartLineRow,
 } from '../lib/bids/bidPricingEngineTypes'
 import { asLaborEntryKind, asLaborUnit, type LaborEntryKind, type LaborUnit } from '../lib/bids/laborBookMatch'
+import { BID_HISTORY_PUT_BACK_EVENT, bidPutBackMovesBookPick, type BidHistoryPutBackDetail } from '../lib/bids/bidHistoryPutBack'
 
 export type UseBidPricingEngineDeps = {
   selectedBidForCounts: BidWithBuilder | null
@@ -1237,6 +1238,22 @@ export function useBidPricingEngine(deps: UseBidPricingEngineDeps) {
   function retryPricingResolve() {
     setPricingResolveRetryTick((t) => t + 1)
   }
+
+  // Bid history (punch list #73, v2.5130): a put back or an Undo that writes the bid's book pick
+  // (`bids`, or a version's ★ on `bid_versions`) moves which book the open tab should show. The
+  // resolve above re-reads the pick only when the bid changes, so unstamp the bid and re-fire it:
+  // the re-run takes the full path and reads the versions' ★ and the books afresh. Before this,
+  // Undo of a book switch left the tab on the switched-to book until a reload.
+  useEffect(() => {
+    const hear = (e: Event) => {
+      const d = (e as CustomEvent<BidHistoryPutBackDetail>).detail
+      if (!d?.bidId || d.bidId !== pricingBidIdRef.current || !bidPutBackMovesBookPick(d.table)) return
+      pricingBidIdRef.current = null
+      setPricingResolveRetryTick((t) => t + 1)
+    }
+    window.addEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+    return () => window.removeEventListener(BID_HISTORY_PUT_BACK_EVENT, hear)
+  }, [])
 
   async function switchActiveVersion(bidId: string, versionId: string | null) {
     setSelectedBidVersionId(bidId, versionId)
