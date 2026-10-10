@@ -1515,7 +1515,7 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
-      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={role === 'dev'} onClose={() => setScheduleWindow(null)} />}
+      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={role === 'dev'} canPull={canUseGcBuilding(role)} onClose={() => setScheduleWindow(null)} />}
       {openCompany && board && (
         <GcCompanyWindow
           key={`${openCompany.id}:${companyAt?.tab ?? ''}:${companyAt?.doc ?? ''}:${companyAt?.send ? 'send' : ''}`}

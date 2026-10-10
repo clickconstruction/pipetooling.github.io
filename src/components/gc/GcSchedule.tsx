@@ -9,7 +9,10 @@
  * built, the chart draws who to call, with Call (`GcCallList`, 7c-ii). Since PR 9a, the same people
  * record an inspection passed or failed, put the job's own work on the chart and keep the dates to
  * meet (`GcScheduleCards`). Since PR 9b, they keep what the work waits on and a new baseline
- * (`GcScheduleCards`), where each bar's work is (`GcPlaces`), and a line in parts (`GcSplitBars`).
+ * (`GcScheduleCards`), where each bar's work is (`GcPlaces`), and a line in parts (`GcSplitBars`). Since PR 9d, the
+ * window reads the job's submittals and RFIs first, so they hold bars as they hold a start, and the same people walk the
+ * week (`GcScheduleWalk`), see a trade not ready in the bar's form (`GcNotReady`), and, a dev while Building is built
+ * (`canPull`), pull work in when it finished early (`GcPullEarlier`) and get days back on a late job (`GcRecovery`).
  * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
  * bring one.
  */
@@ -21,6 +24,7 @@ import { chartHolds } from '../../lib/gc/schedule/chartHolds'
 import { crewCountsNow } from '../../lib/gc/schedule/crewCounts'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gc/schedule/customerSchedule'
 import { lostDaysByLine } from '../../lib/gc/schedule/daysLost'
+import { lateFinish } from '../../lib/gc/lateFinish'
 import { finishOutlook } from '../../lib/gc/schedule/finishOutlook'
 import { ganttBars } from '../../lib/gc/schedule/gantt'
 import type { GanttPrintJob } from '../../lib/gc/schedule/ganttPrint'
@@ -32,11 +36,14 @@ import { crowdedWeeks } from '../../lib/gc/schedule/places'
 import { firstDraftAgainstBid, roughFirstDraftWords } from '../../lib/gc/schedule/rough'
 import type { ScheduleRead } from '../../lib/gc/schedule/rows'
 import { planMove } from '../../lib/gc/schedule/moves'
+import { planPull } from '../../lib/gc/schedule/pullEarlier'
+import { recoveryOffers } from '../../lib/gc/schedule/recovery'
+import { savedMoveId } from '../../lib/gc/schedule/savedMove'
 import { partMoveOf } from '../../lib/gc/schedule/splitBars'
 import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { draftRefusal, draftStart, draftWords, ownWorkOffWords, redoWords, undoWords } from '../../lib/gc/schedule/scheduleWindow'
 import type { PlaceChange } from '../../lib/gc/schedule/places'
-import type { ActivityPart, InspectionFailure, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleWait } from '../../lib/gc/schedule/types'
+import type { ActivityPart, InspectionFailure, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleWait, ScheduleWalk } from '../../lib/gc/schedule/types'
 import type { WaitStep } from '../../lib/gc/schedule/writes'
 import { drawnFromWords } from '../../lib/gc/schedule/templates'
 import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
@@ -47,8 +54,9 @@ import {
   drawSchedule,
   failScheduleInspection,
   joinScheduleBar,
-  loadSchedule,
+  loadScheduleWithHolds,
   passScheduleInspection,
+  recordScheduleWalk,
   redoScheduleMove,
   removeScheduleActivity,
   removeScheduleMilestone,
@@ -72,6 +80,10 @@ import { GcBarCaller, GcCallList } from './GcCallList'
 import { GcPlaceLine, GcPlacesCard } from './GcPlaces'
 import { GcAddOwnWork, GcBaseline, GcInspectionCheck, GcMilestones, GcOwnWorkButtons, GcWaits } from './GcScheduleCards'
 import { GcPartsCard } from './GcSplitBars'
+import { GcNotReady } from './GcNotReady'
+import { GcPullBox, GcPullLine, GcPullWindow, type ScheduleSave } from './GcPullEarlier'
+import { GcDaysBack, GcRecoveryWindow } from './GcRecovery'
+import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { GcScheduleBar } from './GcScheduleBar'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
@@ -79,9 +91,10 @@ import { Btn, Card, input } from './gcUi'
 
 /**
  * The board's state (`boardStateFromRows`), the job to read, who prints and moves (the paper's foot, the move's name),
- * and whether this person may move a bar (a dev's until the schedule's PR 10).
+ * and whether this person may move a bar (a dev's until the schedule's PR 10). `canPull`: whether they may also pull work
+ * in and get days back (G-37, G-82), which read Building's submittals and RFIs, so a dev's until Building's door.
  */
-export function GcSchedule({ state, projectId, by, canMove = false }: { state: GcState; projectId: string; by: string; canMove?: boolean }) {
+export function GcSchedule({ state, projectId, by, canMove = false, canPull = false }: { state: GcState; projectId: string; by: string; canMove?: boolean; canPull?: boolean }) {
   const [read, setRead] = useState<ScheduleRead | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'gone' | 'failed'>('loading')
   const [problem, setProblem] = useState<string | null>(null)
@@ -94,7 +107,7 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
     let live = true
     setStatus('loading')
     setProblem(null)
-    loadSchedule(state, projectId)
+    loadScheduleWithHolds(state, projectId)
       .then((r) => {
         if (!live) return
         setRead(r)
@@ -117,7 +130,8 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
       setDrawing(true)
       setDrawProblem(null)
       try {
-        const next = await drawSchedule(state, projectId, { version: null, words: draftWords(project, draft, start) }, draft)
+        // The read's state carries the job's submittals and RFIs, so the drawn schedule keeps their holds.
+        const next = await drawSchedule(read?.state ?? state, projectId, { version: null, words: draftWords(project, draft, start) }, draft)
         if (next) setRead(next)
       } catch (e) {
         setDrawProblem(formatErrorMessage(e, 'The first draft did not save.'))
@@ -127,19 +141,21 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
         setDrawing(false)
       }
     },
-    [state, projectId],
+    [state, read, projectId],
   )
 
   /**
    * A move with why (PR 8a): the kernel's record and the bars it leaves, against the version this window read.
    * It throws the database's refusal, which the move's window shows. `read.state` carries the bars the move
-   * was worked out from, which the io measures the answer against.
+   * was worked out from, which the io measures the answer against. It answers the saved move's id, found in the read
+   * after it (`savedMoveId`, PR 9d), for the walk's record.
    */
   const saveMove = useCallback(
-    async (move: ScheduleMove, activities: ScheduleActivity[], words: string) => {
+    async (move: ScheduleMove, activities: ScheduleActivity[], words: string): Promise<string | null> => {
       if (!read || read.version === null) throw new Error('Nothing is drawn yet.')
       const next = await saveScheduleMove(read.state, projectId, { version: read.version, words }, move, activities)
       if (next) setRead(next)
+      return savedMoveId(read.project.schedule, next?.project.schedule, move)
     },
     [read, projectId],
   )
@@ -240,9 +256,11 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
                 split: (lineId, parts, words) => planWrite((st, press) => splitScheduleBar(st, projectId, press, lineId, parts), words),
                 join: (lineId, words) => planWrite((st, press) => joinScheduleBar(st, projectId, press, lineId), words),
                 baseline: (name, why, words) => planWrite((st, press) => setScheduleBaseline(st, projectId, press, name, why), words),
+                walk: (w) => record((st) => recordScheduleWalk(st, projectId, w)),
               }
             : null
         }
+        canPull={canMove && canPull}
       />
     )
   if (status === 'gone') return <div style={{ fontSize: '0.875rem' }}>That job is not on the board. Reload the board and try again.</div>
@@ -262,7 +280,8 @@ export function GcSchedule({ state, projectId, by, canMove = false }: { state: G
  * baseline.
  */
 interface MovePresses {
-  save: (move: ScheduleMove, activities: ScheduleActivity[], words: string) => Promise<void>
+  /** A move with why: answers the saved move's id when the read after it shows it (PR 9d). */
+  save: ScheduleSave
   /** The real days (G-55, PR 8b). */
   actual: (lineId: string, actualStart: string | null, actualFinish: string | null) => Promise<void>
   reload: () => void
@@ -295,6 +314,8 @@ interface MovePresses {
   join: (lineId: string, words: string) => Promise<void>
   /** A new baseline (G-41): a plan write. */
   baseline: (name: string, why: string, words: string) => Promise<void>
+  /** The week walked (G-52, PR 9d): what was kept, the moves made, what was not looked at. A record. */
+  walk: (walk: Pick<ScheduleWalk, 'on' | 'kept' | 'moveIds' | 'skipped' | 'keptEarly'>) => Promise<void>
 }
 
 /**
@@ -302,7 +323,24 @@ interface MovePresses {
  * and the record of moves. With `moves`, a bar dragged, pulled at an end or linked, a part dragged, or a change in the
  * bar's form opens Why it moved.
  */
-function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read: ScheduleRead; by: string; drawing: boolean; drawProblem: string | null; onDraw: (start: string) => void; moves: MovePresses | null }) {
+function ScheduleView({
+  read,
+  by,
+  drawing,
+  drawProblem,
+  onDraw,
+  moves,
+  canPull,
+}: {
+  read: ScheduleRead
+  by: string
+  drawing: boolean
+  drawProblem: string | null
+  onDraw: (start: string) => void
+  moves: MovePresses | null
+  /** Pull earlier and Days back too (PR 9d's call 1): only with `moves`. */
+  canPull: boolean
+}) {
   const { state, project } = read
   const building = project.stage === 'building'
   const m = useMemo(() => scheduleMeasures(state, project), [state, project])
@@ -331,6 +369,15 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
   // By company as a call list (G-115, 7c-ii): whoever's answer moves the chart, from the chart's own holds, on a job being
   // built. The Follow up sheet is the Board lane's and not here yet, so Call only dials.
   const calls = useMemo(() => (building ? callList(state, project, holds) : null), [state, project, holds, building])
+  // The weekly walk (G-52), work that finished early (G-37) and days back on a late job (G-82), PR 9d: for those who may
+  // move a bar on a job being built; the pull and the days back only with `canPull`.
+  const walkable = building && moves !== null
+  const pullable = walkable && canPull
+  const offer = useMemo(() => (pullable ? planPull(state, project) : null), [state, project, pullable])
+  const daysBack = useMemo(() => (pullable && (lateFinish(state, project).late ?? 0) > 0 ? recoveryOffers(state, project) : null), [state, project, pullable])
+  const [walking, setWalking] = useState(false)
+  const [pulling, setPulling] = useState(false)
+  const [recovering, setRecovering] = useState<string | null>(null)
   // A move waiting on why it moved (PR 8a): every drag, pulled end and link goes through the window first.
   const [pending, setPending] = useState<PendingMove | null>(null)
   // What a dragged bar would push and do to the finish, drawn while it is dragged.
@@ -396,7 +443,12 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
           {schedule.template && <div style={{ marginTop: '0.35rem' }}>{drawnFromWords(schedule.template)}</div>}
         </Card>
       )}
+      {/* Days back on a late job (G-82, PR 9d): under the measures. */}
+      {daysBack && <GcDaysBack state={state} project={project} offers={daysBack} onLook={setRecovering} />}
       <Card>
+        {/* The walk's line and the pull's (G-52, G-37, PR 9d), over the chart. */}
+        {walkable && <GcWalkLine state={state} project={project} holds={holds} canPull={pullable} onWalk={() => setWalking(true)} />}
+        {offer && <GcPullLine offer={offer} onPull={() => setPulling(true)} />}
         <GcGantt
           items={m.items}
           float={m.float}
@@ -456,6 +508,8 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
           today={state.today}
           onSave={(start, finish, after, limits) => setPending({ lineId: pickedBar.id, start, finish, after, limits })}
           onActual={(actualStart, actualFinish) => moves.actual(pickedBar.id, actualStart, actualFinish)}
+          // Its trade not ready to start, or at work uninsured (G-77, G-138, PR 9d): first, under its name.
+          ready={<GcNotReady state={state} project={project} lineId={pickedBar.id} />}
           place={
             // Where its work is (G-83, PR 9b): a trade's line only.
             pickedBar.item.pkg ? <GcPlaceLine project={project} lineId={pickedBar.id} trade={pickedBar.item.trade} label={pickedBar.item.label} onPlaces={moves.places} /> : undefined
@@ -492,6 +546,8 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
           onClose={() => setPicked(null)}
         />
       )}
+      {/* The opened bar finished early, or right behind work that did (G-37, PR 9d). */}
+      {pickedBar && offer && <GcPullBox offer={offer} lineId={pickedBar.id} onPull={() => setPulling(true)} />}
       {/* The opened line's parts (G-39, PR 9b): split, a part's dates through Why it moved, one bar again. */}
       {pickedBar && moves && !pickedBar.item.activity.inspection && !pickedBar.item.activity.added && (
         <GcPartsCard
@@ -526,7 +582,17 @@ function ScheduleView({ read, by, drawing, drawProblem, onDraw, moves }: { read:
       )}
       {/* The window keeps its reason and words while the schedule reads again under it: keyed by the bar only. */}
       {moves && pending && (
-        <GcMoveExplain key={pending.lineId} state={state} project={project} pending={pending} by={by} today={state.today} onSave={moves.save} onReload={moves.reload} onClose={() => setPending(null)} />
+        <GcMoveExplain key={pending.lineId} state={state} project={project} pending={pending} by={by} today={state.today} onSave={async (move, activities, words) => {
+            await moves.save(move, activities, words)
+          }} onReload={moves.reload} onClose={() => setPending(null)} />
+      )}
+      {/* The walk, a pull and days back (PR 9d): each saves through the one move save, and the walk keeps its record. */}
+      {moves && walking && (
+        <GcScheduleWalk state={state} project={project} holds={holds} by={by} canPull={pullable} presses={{ save: moves.save, actual: moves.actual, walk: moves.walk, reload: moves.reload }} onClose={() => setWalking(false)} />
+      )}
+      {moves && pulling && <GcPullWindow state={state} project={project} by={by} onSave={moves.save} onReload={moves.reload} onClose={() => setPulling(false)} />}
+      {moves && recovering && (
+        <GcRecoveryWindow key={recovering} state={state} project={project} offerKey={recovering} by={by} onSave={moves.save} onReload={moves.reload} onClose={() => setRecovering(null)} />
       )}
       {building && <LookAhead weeks={m.lookAhead} />}
     </div>

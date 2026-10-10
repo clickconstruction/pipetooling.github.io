@@ -45,10 +45,11 @@ vi.mock('../lib/gc/tradePortalLinksIo', () => ({
 }))
 
 // The schedule's window (PR 7b) reads the job's schedule over the board: nothing is drawn on the test board.
-vi.mock('../lib/gc/scheduleIo', () => ({
-  loadSchedule: vi.fn((state: { projects: { id: string }[] }, id: string) => Promise.resolve({ state, project: state.projects.find((p) => p.id === id), version: null })),
-  drawSchedule: vi.fn(),
-}))
+vi.mock('../lib/gc/scheduleIo', () => {
+  const loadSchedule = vi.fn((state: { projects: { id: string }[] }, id: string) => Promise.resolve({ state, project: state.projects.find((p) => p.id === id), version: null }))
+  // The window reads the job's submittals and RFIs first (PR 9d): here, the schedule's read alone.
+  return { loadSchedule, loadScheduleWithHolds: vi.fn((state: { projects: { id: string }[] }, id: string) => loadSchedule(state, id)), drawSchedule: vi.fn() }
+})
 
 // No GC project yet: the page loads empty, so the card stops show their missing words.
 vi.mock('../lib/gc/gcIo', async () => {

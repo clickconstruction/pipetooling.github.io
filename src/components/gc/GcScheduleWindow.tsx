@@ -4,13 +4,28 @@
  * card opens it at `schedule=<projectId>`, the way the plans, the questions and the change orders open
  * theirs. It frames the schedule's body (`GcSchedule`), which reads the job's schedule over the board
  * the page already holds. A dev's only until the schedule's PR 10 opens it to the team (G-133); a dev moves a bar
- * in it since PR 8a, each move with why it moved.
+ * in it since PR 8a, each move with why it moved. Since PR 9d, `canPull` adds Pull earlier and Days back (a dev's while
+ * Building is built, since they read its submittals and RFIs).
  */
 import { useEffect } from 'react'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { GcSchedule } from './GcSchedule'
 
-export function GcScheduleWindow({ state, project, by, canMove = false, onClose }: { state: GcState; project: GcProject; by: string; canMove?: boolean; onClose: () => void }) {
+export function GcScheduleWindow({
+  state,
+  project,
+  by,
+  canMove = false,
+  canPull = false,
+  onClose,
+}: {
+  state: GcState
+  project: GcProject
+  by: string
+  canMove?: boolean
+  canPull?: boolean
+  onClose: () => void
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && !e.defaultPrevented) onClose()
@@ -41,7 +56,7 @@ export function GcScheduleWindow({ state, project, by, canMove = false, onClose 
           </button>
         </div>
         <div style={{ padding: '0.8rem 1rem', overflowY: 'auto' }}>
-          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} />
+          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} canPull={canPull} />
         </div>
       </div>
     </div>
