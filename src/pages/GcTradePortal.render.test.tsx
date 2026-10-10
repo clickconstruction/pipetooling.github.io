@@ -57,7 +57,7 @@ describe('GcTradePortal', () => {
 
   it('opens a project’s page with its plans, the questions it may read, its ask and who to call', async () => {
     open()
-    fireEvent.click(await screen.findByRole('button', { name: /Sample Retail Shell/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Retail Shell/ }))
     expect(await screen.findByText(/1 Sample Rd, Boerne · 9,600 sq ft retail shell, four bays/)).toBeTruthy()
     const plans = block('Electrical · plans')
     // The newest set, and again in the note of what is new for its trade.

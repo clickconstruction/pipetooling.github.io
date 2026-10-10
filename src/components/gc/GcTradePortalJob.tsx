@@ -13,12 +13,13 @@ import { WAIVER_SIGN_LIVE } from '../../lib/gc/drawEmail'
 import { portalOnSite } from '../../lib/gc/portal'
 import { pDate, type PortalLang } from '../../lib/gc/portalI18n'
 import { tradeWaiverPaper } from '../../lib/gc/tradeWaiverPaper'
-import type { Draw, GcProject, SovLine, SubmittalKind, TradePackage } from '../../lib/gc/types'
+import type { Draw, GcProject, Partner, SovLine, SubmittalKind, TradePackage } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
 import { HAIR, MUTED } from '../../lib/portal/portalTheme'
 import { Btn, Chip, input } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
+import { GcBuildingPayAppDoor } from './GcTradePortalPayApp'
 import { PortalBlock } from './GcTradePortalUi'
 
 /**
@@ -30,7 +31,8 @@ import { PortalBlock } from './GcTradePortalUi'
  * a Drive link until P5a's upload) and asks a question (`rfi_ask`). Since P5c-3b it reports each line's percent
  * (`sow_report`) and signs a change we sent it (`sign_change`), typed with the e-sign consent. The unconditional waiver on
  * a paid draw (`unconditional_waiver`), on the app's own waiver paper, is drawn only once `WAIVER_SIGN_LIVE` is on, the
- * owner's call. The pay application gets its window in P5c-3c.
+ * owner's call. Since P5c-3c-i the pay application's door sits under the changes (`GcTradePortalPayApp.tsx`, lifted from
+ * the spike): where its pay application stands, a sent one read in its window, and the closeout.
  */
 
 const GC = GC_COMPANY.shortName
@@ -40,20 +42,21 @@ const FIELD = { ...input, width: '100%', minWidth: 0, boxSizing: 'border-box' } 
 
 const KIND_KEY: Record<SubmittalKind, BuildingWordKey> = { 'product data': 'subKindProduct', 'shop drawings': 'subKindShop', samples: 'subKindSamples' }
 
-export function GcTradePortalJob({ project, pkg, partnerId, company, today }: { project: GcProject; pkg: TradePackage; partnerId: string; company: string; today: string }) {
+export function GcTradePortalJob({ project, pkg, partner, today }: { project: GcProject; pkg: TradePackage; partner: Partner; today: string }) {
   return (
     <>
-      <Report project={project} pkg={pkg} company={company} today={today} />
-      <Rfis project={project} pkg={pkg} partnerId={partnerId} />
+      <Report project={project} pkg={pkg} partner={partner} today={today} />
+      <Rfis project={project} pkg={pkg} partnerId={partner.id} />
     </>
   )
 }
 
 /**
- * The report: each line's percent done and paid through, the punch list and submittals, the changes to sign, the draws
- * and the totals. A line's percent is a picker while we build the job; otherwise it reads as text.
+ * The report: each line's percent done and paid through, the punch list and submittals, the changes to sign, the pay
+ * application's door, the draws and the totals. A line's percent is a picker while we build the job; otherwise it reads
+ * as text.
  */
-function Report({ project, pkg, company, today }: { project: GcProject; pkg: TradePackage; company: string; today: string }) {
+function Report({ project, pkg, partner, today }: { project: GcProject; pkg: TradePackage; partner: Partner; today: string }) {
   const { lang, t } = usePortalLang()
   const press = usePortalPress()
   const sow = pkg.sow
@@ -73,6 +76,7 @@ function Report({ project, pkg, company, today }: { project: GcProject; pkg: Tra
           <Punch project={project} pkg={pkg} lang={lang} />
           <Submittals project={project} pkg={pkg} today={today} lang={lang} />
           <ChangesToSign project={project} pkg={pkg} lang={lang} />
+          <GcBuildingPayAppDoor project={project} pkg={pkg} partner={partner} today={today} />
           {sow.draws.map((d) => (
             <div key={d.id} style={{ display: 'grid', gap: '0.35rem' }}>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -89,7 +93,7 @@ function Report({ project, pkg, company, today }: { project: GcProject; pkg: Tra
                 </Chip>
                 {d.status === 'paid' && d.waiver === 'unconditional' && <span style={{ fontSize: '0.8rem', color: MUTED }}>{t(d.final ? 'uncondFinalSigned' : 'uncondSigned')}</span>}
               </div>
-              {WAIVER_SIGN_LIVE && d.status === 'paid' && d.waiver === 'conditional' && press && <SignWaiver draw={d} project={project} company={company} today={today} />}
+              {WAIVER_SIGN_LIVE && d.status === 'paid' && d.waiver === 'conditional' && press && <SignWaiver draw={d} project={project} company={partner.company} today={today} />}
             </div>
           ))}
           <div style={{ fontSize: '0.8rem', color: MUTED }}>{t('sowTotals', { paid: money(m.paid), held: money(m.retainageHeld), left: money(sowContractSum(sow) - m.billed) })}</div>

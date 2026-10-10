@@ -29,10 +29,11 @@ export const DRAW_PORTAL_LIVE = true
 export const WAIVER_SIGN_LIVE = false
 
 /**
- * The trade reads a pay application we sent back, and fixes it, in its portal (the Portal's P5c-3c, the pay application
- * window). Until then the Draws window's send-back form tells the office to call or email them with it too.
+ * The trade reads a pay application we sent back in its portal, our note and the lines we doubt (the Portal's P5c-3c-i,
+ * the pay application's door). Before then the Draws window's send-back form told the office to call or email them with
+ * it too. The fixed one comes back by email until `WAIVER_SIGN_LIVE`, since a pay application signs a waiver.
  */
-export const PAY_APP_PORTAL_LIVE = false
+export const PAY_APP_PORTAL_LIVE = true
 
 export type DrawEmail = Omit<TradeEmailRequest, 'group'>
 
