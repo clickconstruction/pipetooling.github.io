@@ -519,6 +519,11 @@ export interface TradePackage {
      * the trade is not a real number yet (the owner, 2026-10-02). Absent: priced.
      */
     priced?: boolean
+    /**
+     * Where the percent came from (Building's U8, `withCrewPercents`): the Pipeline job's stages, its crew report
+     * or its own percent, with the job's number and the day it was reported. Absent: not linked, or nothing read.
+     */
+    source?: { from: 'stages' | 'report' | 'job'; job: string; on: string | null }
   } | null
   invites: Invite[]
   /** An invite id, 'plug' (our budget) or 'self'. */

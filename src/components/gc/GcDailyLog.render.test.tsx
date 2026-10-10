@@ -4,18 +4,20 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { GcDailyLogWindow } from './GcDailyLog'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import type { GcProject } from '../../lib/gc/types'
+import type { OurCrewOnLog } from '../../lib/gc/dailyLogRows'
+import { plainWordsFailures } from '../../lib/plainWords'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
 installDomShims()
 
 /** Fair Oaks D on the test state's Friday, Oct 2: logs from Sep 21, Sep 30 missed, today not written yet. */
-function setup(opts: { project?: (p: GcProject) => GcProject; saved?: boolean; problem?: string | null } = {}) {
+function setup(opts: { project?: (p: GcProject) => GcProject; saved?: boolean; problem?: string | null; ourCrew?: OurCrewOnLog } = {}) {
   const state = initialGcState()
   const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
   const project = opts.project ? opts.project(fairOaks) : fairOaks
   const onSave = vi.fn(() => Promise.resolve(opts.saved ?? true))
   const onClose = vi.fn()
-  render(<GcDailyLogWindow state={state} project={project} today="2026-10-02" problem={opts.problem ?? null} onSave={onSave} onClose={onClose} />)
+  render(<GcDailyLogWindow state={state} project={project} today="2026-10-02" problem={opts.problem ?? null} onSave={onSave} ourCrew={opts.ourCrew ?? null} onClose={onClose} />)
   return { onSave, onClose }
 }
 
@@ -125,5 +127,43 @@ describe('GcDailyLogWindow', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onClose).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('our own crew’s count from its clock-ins (Building’s U8)', () => {
+  const today = (people: number, work_date = '2026-10-02'): OurCrewOnLog => ({ rows: [{ package_id: 'fplumb', work_date, people }], jobs: { fplumb: 'J 1088' } })
+  const note = () => document.querySelector('[data-our-crew-note="fplumb"]')!.textContent
+
+  it('shows a day’s count read only, says where it comes from, and the save leaves it off', async () => {
+    const { onSave } = setup({ ourCrew: today(4) })
+    expect(screen.queryByRole('spinbutton', { name: 'Workers on site, Plumbing' })).toBeNull()
+    expect(document.querySelector('[data-crew-clocked-in="fplumb"]')!.textContent).toContain('4 clocked in')
+    expect(note()).toBe('Our crew’s count is who clocked in on Pipeline job J 1088 that day. It changes only in the Pipeline.')
+    fireEvent.click(screen.getByRole('button', { name: 'Save the log' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    const saved = (onSave.mock.calls[0] as unknown as [{ crews: { packageId: string }[] }])[0]
+    expect(saved.crews.map((c) => c.packageId)).not.toContain('fplumb')
+    expect(saved.crews.length).toBeGreaterThan(0)
+  })
+
+  it('keeps the box on a day with no clock-ins, typed as before, and saves what is typed', async () => {
+    const { onSave } = setup({ ourCrew: today(4, '2026-10-01') })
+    expect(workersOn('Plumbing').value).toBe('3')
+    expect(note()).toBe('Nobody clocked in on Pipeline job J 1088 that day. Type the count if they were here.')
+    fireEvent.click(screen.getByRole('button', { name: 'Save the log' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ crews: expect.arrayContaining([{ packageId: 'fplumb', workers: 3 }]) })))
+  })
+
+  it('says the count is typed until Draws names the job, and says each note in plain words', () => {
+    setup({ ourCrew: { rows: [], jobs: {} } })
+    expect(workersOn('Plumbing')).toBeTruthy()
+    expect(note()).toBe('Our crew’s count is typed here until Draws names its Pipeline job.')
+    for (const words of [
+      'Our crew’s count is who clocked in on Pipeline job J 1088 that day. It changes only in the Pipeline.',
+      'Nobody clocked in on Pipeline job J 1088 that day. Type the count if they were here.',
+      'Our crew’s count is typed here until Draws names its Pipeline job.',
+    ]) {
+      expect(plainWordsFailures(words), words).toEqual([])
+    }
   })
 })

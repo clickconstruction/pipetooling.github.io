@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { dailyLogFromRow, dailyLogPayload, withDailyLogs, type DailyLogRow } from './dailyLogRows'
+import { crewCountPages, crewOnSiteOn, crewsToSave, dailyLogFromRow, dailyLogPayload, logWithClockIns, withCrewClockIns, withDailyLogs, type CrewOnSiteRow, type DailyLogRow } from './dailyLogRows'
 import { missingLogs, newDailyLog } from './buildingLog'
 import { initialGcState } from './schedule/testState'
 
@@ -138,5 +138,68 @@ describe('dailyLogPayload', () => {
     read.delete('photosUrl')
     expect([...read].sort()).toEqual(Object.keys(dailyLogPayload('fairoaksd', log, '2026-10-02')).sort())
     expect([...new Set([...body.matchAll(/\bx->>'(\w+)'/g)].map((m) => m[1]))].sort()).toEqual(['note', 'packageId', 'reason', 'workers'])
+  })
+})
+
+describe('our crew’s clock-ins on the log (Building’s U8)', () => {
+  const count = (package_id: string, work_date: string, people: number): CrewOnSiteRow => ({ package_id, work_date, people })
+  const logOn = (s: ReturnType<typeof initialGcState>, date: string) => s.projects.find((p) => p.id === 'fairoaksd')!.dailyLogs!.find((l) => l.date === date)!
+
+  it('on a day with a log and clock-ins, our crew’s workers are the count, in the job’s order of trades', () => {
+    const s = withCrewClockIns(initialGcState(), [count('fplumb', '2026-09-29', 5)])
+    expect(logOn(s, '2026-09-29').crews).toEqual([
+      { packageId: 'fsteel', workers: 4 },
+      { packageId: 'felec', workers: 2 },
+      { packageId: 'froof', workers: 5 },
+      { packageId: 'fplumb', workers: 5 },
+      { packageId: 'fhvac', workers: 3 },
+    ])
+  })
+
+  it('adds our crew to a log that had none, in its place among the trades', () => {
+    const s = withCrewClockIns(initialGcState(), [count('fplumb', '2026-09-25', 2)])
+    expect(logOn(s, '2026-09-25').crews).toEqual([
+      { packageId: 'felec', workers: 2 },
+      { packageId: 'fplumb', workers: 2 },
+    ])
+  })
+
+  it('keeps the typed count on a day with no clock-ins, and makes no log for clock-ins on a day with none', () => {
+    const before = initialGcState()
+    const s = withCrewClockIns(before, [count('fplumb', '2026-09-29', 5), count('fplumb', '2026-09-30', 4)])
+    expect(logOn(s, '2026-09-28')).toBe(logOn(before, '2026-09-28'))
+    expect(s.projects.find((p) => p.id === 'fairoaksd')!.dailyLogs!.some((l) => l.date === '2026-09-30')).toBe(false)
+    expect(missingLogs(s.projects.find((p) => p.id === 'fairoaksd')!, '2026-10-02')).toContain('2026-09-30')
+  })
+
+  it('reads only a trade our own crew does, and leaves every other job as it was', () => {
+    const before = initialGcState()
+    const s = withCrewClockIns(before, [count('felec', '2026-09-29', 9), count('splumb', '2026-09-29', 7)])
+    expect(logOn(s, '2026-09-29')).toBe(logOn(before, '2026-09-29'))
+    expect(s.projects.find((p) => p.id === 'stoneoak')).toBe(before.projects.find((p) => p.id === 'stoneoak'))
+    expect(withCrewClockIns(before, [])).toBe(before)
+  })
+
+  it('starts a new day’s log with the day’s count in place of the day before’s', () => {
+    const project = fairOaks()
+    const log = logWithClockIns(newDailyLog(project, '2026-10-02'), project, [count('fplumb', '2026-10-02', 4)])
+    expect(log.crews.find((c) => c.packageId === 'fplumb')).toEqual({ packageId: 'fplumb', workers: 4 })
+    expect(crewOnSiteOn([count('fplumb', '2026-10-02', 4)], 'fplumb', '2026-10-01')).toBeNull()
+  })
+
+  it('leaves the counted crew off what a save sends, so the count is never stored', () => {
+    const crews = [{ packageId: 'felec', workers: 2 }, { packageId: 'fplumb', workers: 4 }]
+    expect(crewsToSave(crews, [count('fplumb', '2026-10-02', 4)], '2026-10-02')).toEqual([{ packageId: 'felec', workers: 2 }])
+    expect(crewsToSave(crews, [count('fplumb', '2026-10-01', 4)], '2026-10-02')).toEqual(crews)
+  })
+
+  it('reads a long job in pages of 92 days, oldest first', () => {
+    expect(crewCountPages('2026-07-01', '2026-07-01')).toEqual([{ from: '2026-07-01', to: '2026-07-01' }])
+    expect(crewCountPages('2026-07-01', '2026-09-30')).toEqual([{ from: '2026-07-01', to: '2026-09-30' }])
+    expect(crewCountPages('2026-07-01', '2026-10-01')).toEqual([
+      { from: '2026-07-01', to: '2026-09-30' },
+      { from: '2026-10-01', to: '2026-10-01' },
+    ])
+    expect(crewCountPages('2026-10-02', '2026-10-01')).toEqual([])
   })
 })
