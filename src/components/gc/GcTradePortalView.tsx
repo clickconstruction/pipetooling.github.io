@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { portalAsks, portalFirstVisit } from '../../lib/gc/portal'
 import { pt, pWeekday, type PortalLang } from '../../lib/gc/portalI18n'
-import { askChips, askWhen, pastWords, paperworkLineOf, portalHomeGroups, portalHomeTodos, type PaperworkLine, type SentMessage } from '../../lib/gc/tradePortalPage'
+import { askChips, askWhen, pastWords, paperworkLineOf, portalHomeGroups, portalHomeTodos, withScheduleTodos, type PaperworkLine, type SentMessage } from '../../lib/gc/tradePortalPage'
+import type { ScheduleWork } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { PortalAsk, PortalTodo } from '../../lib/gc/portal'
 import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
 import type { GcState, Partner } from '../../lib/gc/types'
@@ -33,6 +34,8 @@ export function GcTradePortalView({
   planUrl,
   banner,
   schedules = {},
+  scheduleWork = {},
+  scheduleTodos = [],
 }: {
   state: GcState
   partnerId: string
@@ -44,6 +47,9 @@ export function GcTradePortalView({
   banner?: string
   /** The company's chart on each job being built, by the job's id (the schedule's PR 14b). */
   schedules?: Record<string, PortalSchedule>
+  /** Its side of the schedule on each job being built (P5d-ii), and the home's schedule to-dos the function works out. */
+  scheduleWork?: Record<string, ScheduleWork>
+  scheduleTodos?: PortalTodo[]
 }) {
   const partner = state.partners.find((p) => p.id === partnerId)
   const [viewId, setViewId] = useState<string | null>(null)
@@ -114,10 +120,10 @@ export function GcTradePortalView({
         ) : screen === 'papers' ? (
           <GcTradePortalPapersPage state={state} partner={partner} onHome={() => go(null)} onOpenProject={(id) => go(id)} />
         ) : shown ? (
-          <GcTradePortalProject project={shown} partner={partner} today={state.today} planUrl={(rev) => planUrl(shown.id, rev)} onHome={() => go(null)} schedule={schedules[shown.id] ?? null} />
+          <GcTradePortalProject project={shown} partner={partner} today={state.today} planUrl={(rev) => planUrl(shown.id, rev)} onHome={() => go(null)} schedule={schedules[shown.id] ?? null} work={scheduleWork[shown.id] ?? null} />
         ) : (
           <div style={{ padding: '0.9rem' }}>
-            <Home state={state} partner={partner} onOpenProject={go} onPapers={() => setScreen('papers')} />
+            <Home state={state} partner={partner} scheduleTodos={scheduleTodos} onOpenProject={go} onPapers={() => setScreen('papers')} />
           </div>
         )}
       </div>
@@ -126,11 +132,24 @@ export function GcTradePortalView({
 }
 
 /** The company's home: hello, its asks still open, who gets our emails, and what came before. */
-function Home({ state, partner, onOpenProject, onPapers }: { state: GcState; partner: Partner; onOpenProject: (id: string, anchor?: string) => void; onPapers: () => void }) {
+function Home({
+  state,
+  partner,
+  scheduleTodos,
+  onOpenProject,
+  onPapers,
+}: {
+  state: GcState
+  partner: Partner
+  scheduleTodos: PortalTodo[]
+  onOpenProject: (id: string, anchor?: string) => void
+  onPapers: () => void
+}) {
   const { lang, t } = usePortalLang()
   const asks = portalAsks(state, partner.id)
   const { jobs, bidding, past } = portalHomeGroups(asks)
-  const todos = portalHomeTodos(state, partner.id, asks, lang)
+  // The schedule's to-dos come worked out by the function (P5d-ii-2), in their place by portalTodos' own order.
+  const todos = withScheduleTodos(portalHomeTodos(state, partner.id, asks, lang), scheduleTodos)
   const press = usePortalPress()
   // The paperwork line a to-do opened (P5b-1): its block scrolls into view, and the vetting form opens.
   const [paperLine, setPaperLine] = useState<PaperworkLine | null>(null)
