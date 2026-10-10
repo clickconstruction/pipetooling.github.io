@@ -570,6 +570,47 @@ describe('v2.5102 — a returned check fee is its bill’s own line, never cover
   })
 })
 
+describe('v2.5129 — a turnaway trip charge is its own bill, never covered work', () => {
+  // Hawthorne: bill 1 bills the $1,200 rough-in; the $800 Final is not billed; a $99 trip charge has its own bill.
+  const TRIP = { trip_charge: 'client_not_home', amount: 99 }
+  const segments = () =>
+    buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'rough', name: 'Rough-in', line_unit_price: 1_200, invoice_id: 'inv-912' }),
+        line({ id: 'final', name: 'Final', line_unit_price: 800 }),
+      ],
+      riderFeesDollars: 99,
+      invoiceStatusById: { 'inv-912': 'billed' },
+    })
+
+  it('the trip charge bill covers nothing on the Final line, and $800 is left to bill', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: segments(),
+      grossDollars: 2_099,
+      paidDollars: 0,
+      invoices: [
+        { id: 'inv-912', status: 'billed', amount: 1_200 },
+        { id: 'inv-trip', status: 'ready_to_bill', amount: 99, is_primary_rtb_bundle: false, fee_lines: [TRIP] },
+      ],
+    })
+    expect(coverage).toEqual({ unattributedDollars: 0, remainingDollars: 800, bySegmentKey: {} })
+  })
+
+  it('once it is paid, the Final line is still uncovered', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: segments(),
+      grossDollars: 2_099,
+      paidDollars: 99,
+      invoices: [
+        { id: 'inv-912', status: 'billed', amount: 1_200 },
+        { id: 'inv-trip', status: 'paid', amount: 99, is_primary_rtb_bundle: false, fee_lines: [TRIP] },
+      ],
+      payments: [{ invoice_id: 'inv-trip', amount: 99 }],
+    })
+    expect(coverage).toEqual({ unattributedDollars: 0, remainingDollars: 800, bySegmentKey: {} })
+  })
+})
+
 describe('fixtureSequencePositions (v2.5021, the final draw’s discount sweep)', () => {
   it('the saved positions of the rows asked for, whatever their dollars; unnamed rows take no position', () => {
     const rows = [line({ id: 'a' }), line({ id: 'blank', name: '  ' }), line({ id: 'b' }), line({ id: 'disc', name: 'Discount', line_unit_price: -150 })]
