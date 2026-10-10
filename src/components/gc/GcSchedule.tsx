@@ -71,6 +71,7 @@ import {
   splitScheduleBar,
   undoScheduleMove,
   type SchedulePress,
+  type ScheduleReads,
 } from '../../lib/gc/scheduleIo'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -89,17 +90,35 @@ import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMove
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
 import { Btn, Card, input } from './gcUi'
 
+/** No reads past the board's (the default): the schedule's own rows, its submittals and RFIs. */
+const NO_READS: ScheduleReads = {}
+
 /**
  * The board's state (`boardStateFromRows`), the job to read, who prints and moves (the paper's foot, the move's name),
  * and whether this person may move a bar (a dev's until the schedule's PR 10). `canPull`: whether they may also pull work
  * in and get days back (G-37, G-82), which read Building's submittals and RFIs, so a dev's until Building's door.
  */
-export function GcSchedule({ state, projectId, by, canMove = false, canPull = false }: { state: GcState; projectId: string; by: string; canMove?: boolean; canPull?: boolean }) {
+export function GcSchedule({
+  state,
+  projectId,
+  by,
+  canMove = false,
+  canPull = false,
+  reads = NO_READS,
+}: {
+  state: GcState
+  projectId: string
+  by: string
+  canMove?: boolean
+  canPull?: boolean
+  /** What this reader may read over the schedule (PR 16): the page memoizes it, since a new one reads again. */
+  reads?: ScheduleReads
+}) {
   const [read, setRead] = useState<ScheduleRead | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'gone' | 'failed'>('loading')
   const [problem, setProblem] = useState<string | null>(null)
   // Try again, and a draw someone else beat, read the schedule again.
-  const [reads, setReads] = useState(0)
+  const [reloads, setReloads] = useState(0)
   const [drawing, setDrawing] = useState(false)
   const [drawProblem, setDrawProblem] = useState<string | null>(null)
 
@@ -107,7 +126,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
     let live = true
     setStatus('loading')
     setProblem(null)
-    loadScheduleWithHolds(state, projectId)
+    loadScheduleWithHolds(state, projectId, reads)
       .then((r) => {
         if (!live) return
         setRead(r)
@@ -121,7 +140,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
     return () => {
       live = false
     }
-  }, [state, projectId, reads])
+  }, [state, projectId, reads, reloads])
 
   /** The first draft (call 2): the kernel's draft on the board's job, sent with no version and the log's words. */
   const draw = useCallback(
@@ -136,7 +155,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
       } catch (e) {
         setDrawProblem(formatErrorMessage(e, 'The first draft did not save.'))
         // Someone drew it first: read it again, so the window shows theirs under the refusal.
-        if (scheduleChangedRefusal(e)) setReads((n) => n + 1)
+        if (scheduleChangedRefusal(e)) setReloads((n) => n + 1)
       } finally {
         setDrawing(false)
       }
@@ -213,7 +232,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
         if (refusal) {
           // Someone saved first: say what, and read the schedule again.
           setReplayRefused(refusal.changes)
-          setReads((n) => n + 1)
+          setReloads((n) => n + 1)
         } else setReplayProblem(formatErrorMessage(e, kind === 'undo' ? 'The undo did not save.' : 'The redo did not save.'))
       } finally {
         setReplaying(false)
@@ -236,7 +255,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
             ? {
                 save: saveMove,
                 actual: keepActual,
-                reload: () => setReads((n) => n + 1),
+                reload: () => setReloads((n) => n + 1),
                 undo: (move) => void replay('undo', move),
                 redo: (move) => void replay('redo', move),
                 busy: replaying,
@@ -268,7 +287,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
     return (
       <div role="alert" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
         <span style={{ color: 'var(--text-red-700)' }}>{problem}</span>
-        <Btn onClick={() => setReads((n) => n + 1)}>Try again</Btn>
+        <Btn onClick={() => setReloads((n) => n + 1)}>Try again</Btn>
       </div>
     )
   return <div style={{ fontSize: '0.875rem' }}>Loading the schedule…</div>

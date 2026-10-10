@@ -197,6 +197,17 @@ describe('the Schedule window', () => {
     await waitFor(() => expect(loadSchedule).toHaveBeenCalledTimes(2))
   })
 
+  it('reads what the page says this reader may read over the schedule (PR 16a), and nothing past the board without it', async () => {
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd'))
+    const reads = { logs: true, today: '2026-10-02' }
+    render(<GcScheduleWindow state={s} project={job(s, 'fairoaksd')} by="Robert Douglas" reads={reads} onClose={vi.fn()} />)
+    await screen.findByText('Work done against the plan')
+    expect(loadScheduleWithHolds).toHaveBeenCalledWith(s, 'fairoaksd', reads)
+    vi.mocked(loadScheduleWithHolds).mockClear()
+    openWindow(job(s, 'boerne'))
+    await waitFor(() => expect(loadScheduleWithHolds).toHaveBeenCalledWith(s, 'boerne', {}))
+  })
+
   it('closes on Close, on Escape and on the dark around it', async () => {
     vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'boerne', null))
     const { onClose, dialog } = openWindow(job(s, 'boerne'))
@@ -550,7 +561,8 @@ describe('the walk, Pull earlier and a trade not ready in the window (PR 9d)', (
     vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'fairoaksd'))
     openWindow(job(s, 'fairoaksd'))
     await screen.findByText('Work done against the plan')
-    expect(loadScheduleWithHolds).toHaveBeenCalledWith(s, 'fairoaksd')
+    // No reads past the board's from the page (PR 16a's default): the submittals and RFIs only.
+    expect(loadScheduleWithHolds).toHaveBeenCalledWith(s, 'fairoaksd', {})
   })
 
   it('shows the walk’s line on a job being built to someone who may move a bar, and to nobody else', async () => {
