@@ -2,7 +2,7 @@
 name: "The schedule's PR 11: the what-if copy on real data"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 11, decision 6 and the what-if table; mockups/G-81.md (the prototype's design); GANTT_FEATURES.md G-81, G-37, G-82, G-39, G-40
 branch: the plan on claude/gc-schedule-pr11-plan (from origin/spike/gc-mode at dcd82a074); the code from origin/main in one cut, no migration
-status: plan 2026-10-10 by gc 4 at the lead's ask, for gc 10 (Schedule's holder) to co-sign. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 4 at the lead's ask. Amendment 1 (2026-10-10): gc 10, holding Schedule, co-signed all eight calls at their picks, and call 2's three conditions are written in. For the lead's read-back. Nothing cut or claimed.
 ---
 
 # The schedule's PR 11: the what-if copy on real data
@@ -27,7 +27,7 @@ no migration, behind the window's dev gate and `moves` (whoever may move a bar),
 
 ## The calls
 
-**For gc 10, as Schedule's holder, each with the other way:**
+**Co-signed by gc 10, as Schedule's holder, at their picks (amendment 1); each with the other way:**
 
 1. **No migration, and no new read of the board's tables.** The table, the keep function and the io are PR 4's, 5's
    and 6's. `gc_schedule_keep_what_if` reads none of `gc_projects`, `gc_trade_packages`, `gc_scope_items` or
@@ -51,6 +51,25 @@ no migration, behind the window's dev gate and `moves` (whoever may move a bar),
    pull, and the prototype's reducer takes both (`WHAT_IF_ACTIONS`). *Other way:* the moves and undo only, with the
    pull and days back left for later. That is smaller by about ten lines, and leaves the two offers that most need
    trying.
+
+   gc 10's three conditions on the pull and days back in the copy (amendment 1):
+   - **The same gate.** They show only with `canPull` (a dev until Building's door), as on the real chart. The copy's
+     Days back also needs `lateFinish(state, copy).late > 0`, so a copy whose moves already bring the finish in shows
+     no card.
+   - **Trying words on both windows.** `GcPullWindow` and `GcRecoveryWindow` take `trying`, as `GcMoveExplain` does:
+     - their footer *Saved as one move by {by}, today. Undo puts every date back.* reads *Tried in the what-if. Keep
+       puts it on the real schedule.*;
+     - the pull's button reads *Try pulling {n} earlier* where it reads *Pull {n} earlier*;
+     - their render tests run the new words through `plainWordsFailures`;
+     - no `onSaved` in the copy, since the walk is not there.
+
+     Their reasons are filled in already: the pull's is `early` with the finished sentences, and Days back's is
+     `recovery` with the offer's note. Both are listed reasons with notes of 8 letters or more, so Keep never asks for a
+     reason on these two.
+   - **Keep keeps their fields.** `keepWhatIf` keeps `pull` and `recovery` on each kept move, `moveForRpc` sends them
+     as `pullFinished` and `recovery`, and `gc_schedule_keep_what_if` writes each through `gc_schedule_save_move`, the
+     same writer as a real move. So `pull_finished` and `recovery_how`, `after`, `gap_was` and `gap` survive Keep, and a
+     kept days back's Undo puts the gap back. Pinned twice (Tests).
 3. **The copy's presses are their own, never the real save** (gc 10's seam). `MovePresses.save` answers the saved
    move's id (9d), and a move in a copy is not a `gc_schedule_moves` row until Keep. So `GcSchedule` gets `copyPresses`:
    - `start`: `whatIfCopy(project, by, today)` through `startWhatIf` with the version this window read;
@@ -149,6 +168,15 @@ no migration, behind the window's dev gate and `moves` (whoever may move a bar),
   - someone without `moves` sees no button;
   - the money team's line has the bills sentence, and anyone else's has none.
 - **`GcScheduleMoves.render.test.tsx`**: `trying`'s words and its save with no reason.
+- **`GcPullEarlier.render.test.tsx`** and **`GcRecovery.render.test.tsx`**: `trying`'s button and footer words, through
+  `plainWordsFailures`, and no `onSaved` (amendment 1).
+- **Keep keeps the pull's and days back's fields** (amendment 1):
+  - `GcWhatIf.render.test.tsx`: a copy holding a pull and a side-by-side days back. Keep's payload to
+    `keepScheduleWhatIf` carries `pull` and `recovery` on its moves, through `moveForRpc`.
+  - `supabase/tests/gc_schedule/20_scenario.sql`: one case at the end of the file, so no earlier count moves. A copy
+    holding a side-by-side days back is kept. Undo on the real schedule reads the gap back as `gap_was`, and the kept
+    pull keeps its `pull_finished`. It is a test file only, so PR 11 still has no migration; the SQL beds workflow runs
+    it on the PR.
 
 ## Docs
 
@@ -191,4 +219,5 @@ no migration, behind the window's dev gate and `moves` (whoever may move a bar),
 
 ## Status
 
-Plan 2026-10-10, gc 4, for gc 10's co-sign and the lead's read-back. Nothing cut or claimed.
+Plan 2026-10-10, gc 4. Amendment 1 the same day: gc 10 co-signed the eight calls at their picks, with call 2's
+three conditions written in. For the lead's read-back. Nothing cut or claimed.
