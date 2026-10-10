@@ -1,0 +1,122 @@
+{
+  "about": "The Board's B2b-vi-a (to-dos/gc-mode/mockups/board-b2b-vi.md): the ring's kernel (stageProgress), How the stage is going's (stageHealth), what changed under a quote (gcStale), thousands and plansReach, lifted to src/lib/gc word for word with no screen. One line differs by hand, E3': stale.ts reads main's lineReach through reachOf(project), over the main-only GcProject.index; the spike keeps gcStale.ts and gcProgress.ts as its own. Of the tests the tool keeps, only the 13 that reach this lift stay; the rest (16 on main already, 11 that reach nothing here) are dropped by title, as the schedule's 9c dropped its 21: stageHealth.test.ts's 8, and one each in progress.log (says which working day this week has no log, on the ring card), progress.punch (reads how a trade stands, on Closeout and on the ring card), progress.submittals (holds the schedule lines it covers until approved, and the ring card says what waits on us), progress.stale (lists the jobs being built whose schedule nobody walked this week) and progress.changes (a trade's request is a Needs you line of its own and a line on the job's ring). Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/board-b2b-vi.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Invite": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcStage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Draw": "types.ts",
+    "src/lib/gcMode/gcNewProject.ts#lineReads": "lineReach.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "files": [
+    {
+      "from": "gcWords",
+      "to": "words.ts",
+      "append": true,
+      "moves": [
+        "thousands"
+      ]
+    },
+    {
+      "from": "gcPlans",
+      "to": "lookups.ts",
+      "append": true,
+      "moves": [
+        "plansReach"
+      ]
+    },
+    {
+      "from": "gcStale",
+      "to": "stale.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2b-vi: what changed under a quote priced on older plans, moved word for word from the\n * GC mode prototype (branch spike/gc-mode, `gcStale.ts`) but one line. The prototype reads New project's `lineReads` over its own\n * project, walking its sets from the first index; main reads `lineReach.ts` over the board's project through `reachOf`, the index\n * and manual as they stand after the newest set (`GcProject.index`, mapped from the view). The plan is\n * to-dos/gc-mode/mockups/board-b2b-vi.md on that branch (call E3').\n */"
+    },
+    {
+      "from": "gcProgress",
+      "to": "progress.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2b-vi: the progress ring on a Project Board row and its card, moved word for word from the\n * GC mode prototype (branch spike/gc-mode, `gcProgress.ts`). No screen draws it yet; the plan is\n * to-dos/gc-mode/mockups/board-b2b-vi.md on that branch.\n */"
+    },
+    {
+      "from": "gcStageHealth",
+      "to": "stageHealth.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2b-vi: how the stage is going, for the strip under a project's title, moved word for word\n * from the GC mode prototype (branch spike/gc-mode, `gcStageHealth.ts`). Its counts are the ring's own (`stageProgress`), so the\n * board and the project page never give two answers. No screen draws it yet; the Board's B2b-vii does\n * (to-dos/gc-mode/mockups/board-b2b.md on that branch).\n */"
+    }
+  ],
+  "types": [
+    {
+      "to": "types.ts",
+      "append": true,
+      "about": "ScopeItem and PlanSet as main's lifts trimmed them, written again with B2b-vi's fields added (each field word for word): a line's sheets and sections, and a set's changed sheets, changed sections and added lines, which staleChange reads. They replace main's in types.ts. changedSheets is required, as on the spike (B2b-vi-a-2, v2.5204: optional on main broke the spike's widening of main's shapes).",
+      "fields": {
+        "ScopeItem": [
+          "id",
+          "label",
+          "sheets",
+          "specs"
+        ],
+        "PlanSet": [
+          "rev",
+          "touches",
+          "label",
+          "issuedOn",
+          "changedSheets",
+          "addedLines",
+          "changedSpecs"
+        ]
+      },
+      "names": [
+        "ScopeItem",
+        "PlanSet"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "from": "gcStageHealth.test.ts",
+      "to": "stageHealth.test.ts",
+      "header": "/**\n * The tests of `gcStageHealth.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data, moved word for\n * word (the Board's B2b-vi). The data is `schedule/testState.ts`. The tests that play the prototype's reducer stay on the spike,\n * where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcBuildingLog.test.ts",
+      "to": "progress.log.test.ts",
+      "header": "/**\n * The test of `gcBuildingLog.test.ts` on branch spike/gc-mode that reads the ring's card, moved word for word (the Board's B2b-vi).\n * The data is `schedule/testState.ts`.\n */"
+    },
+    {
+      "from": "gcBuildingPunch.test.ts",
+      "to": "progress.punch.test.ts",
+      "header": "/**\n * The test of `gcBuildingPunch.test.ts` on branch spike/gc-mode that reads the ring's card, moved word for word (the Board's B2b-vi).\n * The data is `schedule/testState.ts`.\n */"
+    },
+    {
+      "from": "gcBuildingSubmittals.test.ts",
+      "to": "progress.submittals.test.ts",
+      "header": "/**\n * The test of `gcBuildingSubmittals.test.ts` on branch spike/gc-mode that reads the ring's card, moved word for word (the Board's\n * B2b-vi). The data is `schedule/testState.ts`.\n */"
+    },
+    {
+      "from": "gcStaleSchedules.test.ts",
+      "to": "progress.stale.test.ts",
+      "header": "/**\n * The test of `gcStaleSchedules.test.ts` on branch spike/gc-mode that reads the ring's card, moved word for word (the Board's\n * B2b-vi). The data is `schedule/testState.ts`.\n */"
+    },
+    {
+      "from": "gcChangeRequestsWaiting.test.ts",
+      "to": "progress.changes.test.ts",
+      "header": "/**\n * The test of `gcChangeRequestsWaiting.test.ts` on branch spike/gc-mode that reads the ring's card, moved word for word (the\n * Board's B2b-vi). The data is `schedule/testState.ts`.\n */"
+    }
+  ],
+  "pin": {
+    "main": "84b1e8ed1d26e6d0125d24537d57ab10f3a91d64",
+    "spike": "d59046095aff7ca97c0c9ebf247b332329389f96",
+    "about": "#5361 merged, and its fix #5369 (changedSheets required again); main at #5369's merge, the spike before its follow-up (claude/board-b2b-vi-follow)",
+    "known": {
+      "reachOf": "main's own (call E3'): what lineReach's lineReads reads of the board's project, the index and manual as they stand after the newest set (GcProject.index, main only); the prototype walks its sets from its first index instead, so the spike keeps gcStale.ts as its own",
+      "staleChange": "one line (call E3'): lineReads(reachOf(project), pkg, item) on main for lineReads(project, pkg, item) on the spike, since main's lineReads is lineReach.ts's over a ReachProject"
+    }
+  }
+}

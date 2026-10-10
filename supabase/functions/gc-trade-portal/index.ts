@@ -39,7 +39,7 @@ const ids = (rows: R[], f = 'id'): string[] => [...new Set(rows.map((r) => Strin
 async function readRows(admin: SupabaseClient, companyId: string): Promise<TradePortalRows | null> {
   const company = (await admin.from('gc_companies').select('*').eq('id', companyId).maybeSingle()).data as R | null
   if (!company) return null
-  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests, papers] = await Promise.all([
+  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests, papers, vettingForms] = await Promise.all([
     admin.from('gc_company_people').select('*').eq('company_id', companyId).is('removed_at', null).then(rowsOf),
     admin.from('gc_invites').select('id, package_id, company_id, status, invited_on, seen_rev, declined_why, declined_on').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_company_contacts').select('id, company_id, invite_id, contacted_on, how, note, promised_by').eq('company_id', companyId).not('invite_id', 'is', null).then(rowsOf),
@@ -52,7 +52,10 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     admin.from('gc_trade_change_requests').select('*').eq('company_id', companyId).order('asked_on').then(rowsOf),
     // Its own papers (B6-b-ii), where each stands: for its master agreement first.
     admin.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at').eq('company_id', companyId).then(rowsOf),
+    // Its vetting form (P5b-1): the day it sent it, never its answers.
+    admin.from('gc_company_vetting_forms').select('company_id, sent_on').eq('company_id', companyId).then(rowsOf),
   ])
+  const vettingForm = vettingForms[0] ?? null
   // The lines of its own statements of work (P2c-ii), for the sign screen and its report; the draws on them and the
   // change orders sent to it (P5c-1).
   const sowIds = ids(sows)
@@ -82,7 +85,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
   ])
   const projectIds = ids(packages, 'project_id')
   if (projectIds.length === 0) {
-    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, papers, ...work }
+    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, papers, vettingForm, ...work }
   }
   // The job's work (P5c-1) on the trades awarded to it: Building's rows carry no company, so they are read by its trades.
   const awarded = packages.filter((k) => inviteIds.includes(String(k.awarded_invite_id ?? ''))).map((k) => String(k.id))
@@ -114,7 +117,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     ].filter((t): t is NonNullable<typeof t> => t !== null)
     return { project, gc, team }
   })
-  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, ...work, ...job }
+  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, vettingForm, ...work, ...job }
 }
 
 /**

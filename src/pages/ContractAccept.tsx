@@ -16,6 +16,7 @@ import { esignConsentText } from '../lib/esignConsent'
 import { useAuth } from '../hooks/useAuth'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
+import { contractLinkErrorWords } from '../lib/contractAcceptLink'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -154,7 +155,7 @@ export default function ContractAccept() {
           return
         }
         if (!res.ok) {
-          setError(json.error || 'Unable to load contract.')
+          setError(contractLinkErrorWords(res.status, json.error))
           setPayload(null)
           setLoading(false)
           return

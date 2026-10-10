@@ -158,3 +158,18 @@ describe('sample emails carry the From line the inbox shows (v2.4138)', () => {
     }
   })
 })
+
+describe('v2.5198 · the customer’s schedule on its own (the schedule’s PR 15a)', () => {
+  it('is gc-customer-email’s builder over a made-up letter, unframed, from Click Construction', () => {
+    const m = buildSampleEmail('gc-schedule', ctx)
+    expect(m.subject).toBe('Your schedule on Sample Retail Shell, Sep 4')
+    const paragraphs = m.text.split('\n\n')
+    expect(paragraphs[0]).toBe('Hello Elena,')
+    expect(paragraphs[1]).toBe('Here is where Sample Retail Shell stands as of Fri Sep 4.')
+    // The letter signs itself: nothing is framed after it, and no dollar is in it.
+    expect(paragraphs.slice(-2)).toEqual(['Call me with any question.', 'Wendi Douglas, Click Construction'])
+    expect(m.text).not.toContain('Thank you,')
+    expect(m.text).not.toContain('$')
+    expect(m.from).toBe('Click Construction <team@noreply.clicktooling.com>')
+  })
+})

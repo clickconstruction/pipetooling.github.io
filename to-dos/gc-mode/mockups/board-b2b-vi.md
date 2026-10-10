@@ -2,7 +2,7 @@
 name: "B2b-vi: the ring on each board row, and the two kernels it and How the stage is going read"
 rows: mockups/board-b2b.md (call E3, PR 6 "B2b-vi, the ring", and vii's kernel); BOARD_REAL_BUILD.md (What waits: the ring and How the stage is going); GANTT_PLAN.md (G-59, the walk on the ring card)
 branch: this plan on claude/board-b2b-vi-plan (from origin/spike/gc-mode at 95e79f4b9); the code from origin/main in three cuts, none with a migration
-status: plan 2026-10-10 by gc 8 at the lead's ask (GC MODE). gc 2, holding the Board, co-signed the scope, E3′ and T by message before this file was written, with three conditions that are written in below (marked *gc 2*). For the lead's read-back. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 8 at the lead's ask (GC MODE). gc 2, holding the Board, co-signed the scope, E3′ and T by message before this file was written, with three conditions that are written in below (marked *gc 2*). Approved by the lead and merged to the spike (629d858af). vi-a merged as #5361 (v2.5199); its fix, vi-a-2, is #5369 (v2.5204).
 ---
 
 # B2b-vi: the ring
@@ -42,7 +42,7 @@ With it move the two kernels, `stageProgress` (the ring) and `stageHealth` (How 
 - **E3′. The stale words on main** (amends board-b2b.md's E3, which assumed the board carries what `lineReach` reads).
   - Main's `stale.ts` is the spike's word for word but one line: `lineReads(reachOf(project), pkg, item)`. `reachOf` is main's own: `{ sheets: project.index?.sheets ?? [], specs: project.index?.specs ?? [], trades: project.packages }`.
   - `GcProject` gains a main-only `index?: { sheets: PlanSheet[]; specs: SpecSection[] }`, the plans' index and manual as they stand after the newest set. It is a new name, never `sheets`. The prototype's `GcProject.sheets` is the *first* index, which `sheetsAtRev` walks forward. One name with two meanings would mislead the next lift.
-  - `ScopeItem` gains `sheets?` and `specs?`. `PlanSet` gains `changedSpecs?` and `addedLines?` in the spike's words, and `changedSheets?`, optional on main where the spike's is required. That way the trade portal's `setsOf` and its literals need no edit, and a set mapped without it changes no sheet.
+  - `ScopeItem` gains `sheets?` and `specs?`. `PlanSet` gains `changedSheets`, `changedSpecs?` and `addedLines?`, all in the spike's words. `changedSheets` stays required, as the spike's is: the board maps it from the view, and the trade portal's `setsOf` maps `[]`. (Amended by B2b-vi-a-2, v2.5204: vi-a first made it optional on main, which broke the spike's widening of main's shapes, `gcMainShapes.ts`. A field main lifts keeps the prototype's required or optional.)
   - The spike keeps `gcStale.ts` and `gcProgress.ts` as its own. Its copies walk its own sheets, so re-exporting main's would move the golden test. `gcStageHealth.ts` re-exports main's: it reads only `progress.share`, never the words.
   - *gc 2: co-signed, on condition the difference sits in the config's `pin.known` (as `schedule-pr7c-i` does) and in the fragment, so `lift-same` reads "the same (N known)" and nobody flags it again.*
 - **T. Which trades a set touches, on the board.**
@@ -73,18 +73,17 @@ With it move the two kernels, `stageProgress` (the ring) and `stageHealth` (How 
   - `gcStale` → `stale.ts` (all), `gcProgress` → `progress.ts` (all), `gcStageHealth` → `stageHealth.ts` (all; `quotesWantedOn` is main's already, `planQuestions.ts`).
   - `gcWords#thousands` → `words.ts` (append), `gcPlans#plansReach` → `lookups.ts` (append).
   - `existing`: the types main has, and `gcNewProject.ts#lineReads` → `lineReach.ts`, the one hand line (E3′).
-  - `types`: `ScopeItem` gains `sheets`, `specs`. `PlanSet` gains `changedSheets`, `changedSpecs`, `addedLines`. Each is written in the spike's words, then `changedSheets` is made optional by hand, and `pin.known` says so.
+  - `types`: `ScopeItem` gains `sheets`, `specs`. `PlanSet` gains `changedSheets`, `changedSpecs`, `addedLines`. Each is written in the spike's words.
   - `tests`: the five spike files with the 13 tests; the other tests the tool keeps are dropped by title by hand, as the schedule's 9c dropped its 21, and the config's `about` names the 13.
 - **By hand, and nowhere else:**
   - `stale.ts`'s `lineReads(reachOf(project), …)` and `reachOf`;
-  - `GcProject.index` in `types.ts`;
-  - `changedSheets?`.
+  - `GcProject.index` in `types.ts`.
 - **Test data:** `schedule/testState.ts` regenerated with `--with board-b2b-vi.lift.json`, keeping the earlier field order: pr7c-i's, then B2b-i's `GcCustomer.past` (*gc 2*). The generator also writes each project's `index` from the spike's own walk (`sheetsAtRev` and the manual at the newest set), so main's kernels read the same words on the same data. That is a small change to `schedule-test-state.ts`; gc 7 checks it as the scripts' keeper.
 - **Tests on main:**
   - the 13, moved: `stageHealth.test.ts`, then `progress.log.test.ts`, `progress.punch.test.ts`, `progress.submittals.test.ts`, `progress.stale.test.ts` and `progress.changes.test.ts`;
   - `progress.direct.test.ts`: each test project's ring as the golden reads it, with its center, headline, each group's done of total and its first items, and the *Also* lines. The readings are in *The check* below;
   - `stale.direct.test.ts`: the two Boerne quotes the golden names, word for word, and a project with no `index` naming no line but still the trade, so a board that maps no index never invents one.
-- **`lift-same`:** every moved declaration the same, with E3′'s three differences in `pin.known`.
+- **`lift-same`:** every moved declaration the same, with E3′'s two differences in `pin.known` (`reachOf`, and `staleChange`'s one line).
 - **Release note** (one bullet, the kernels behind the ring and How the stage is going); the fragment names E3′ and the `index` field.
 
 ## vi-b: the board's plan sets (gc 2's files, cut by gc 8; after v-ii)
@@ -197,7 +196,7 @@ From the spike at its head: merge main, `lift-reexport --write` for `words`, `lo
 
 ## The check
 
-- vi-a: `progress.direct.test.ts` pins the five test projects' rings as above: Boerne 14/25, Padb 1/6, Helotes 14/25, Fair Oaks 74%, Stone Oak 100% with its check. `lift-same` reads the same with three known.
+- vi-a: `progress.direct.test.ts` pins the five test projects' rings as above: Boerne 14/25, Padb 1/6, Helotes 14/25, Fair Oaks 74%, Stone Oak 100% with its check. `lift-same` reads the same with two known.
 - vi-b: on prod, read only. As a dev, Compare quotes on the bidding test project (c4117b0d) says what its sets' sends say. Nothing is pressed.
 - vi-c: at a desk and at 375 px on the dev server, as a dev and through View as an estimator. The estimator sees bidding rings only, and the rows line up.
 

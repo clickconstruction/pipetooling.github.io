@@ -1,10 +1,8 @@
 // What moved to main (the real build) is re-exported from there, so there is one copy.
+export { thousands } from '../gc/words'
+
 export { money } from '../gc/words'
 
 export { daysUntil } from '../gc/words'
 
 export { shortDate, weekdayDate } from '../gc/words'
-/** An amount in whole thousands, for a glance: 178400 reads "178", 1027746 reads "1,028". The K is drawn beside it. */
-export function thousands(n: number): string {
-  return Math.round(n / 1000).toLocaleString('en-US')
-}

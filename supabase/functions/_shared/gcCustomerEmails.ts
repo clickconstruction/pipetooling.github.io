@@ -19,9 +19,10 @@ export const GC_CUSTOMER_EMAIL_FROM_NAME = 'Click Construction'
  * the architect certified, to the customer, and a change order for them to sign. O5b: our reminder to pay a late bill,
  * its words the ones `gc_remind_customer_to_pay` filed. O6b-2: our bill for the interest on late bills. Building's U7b:
  * the weekly report on a job we are building, its words the `gc_weekly_reports` row the window kept. The Board's
- * B6-d-iii-b: our contract to sign in their portal, the send's own file attached by the function.
+ * B6-d-iii-b: our contract to sign in their portal, the send's own file attached by the function. The schedule's PR 15a:
+ * the customer's schedule on its own (G-94), its words the `gc_schedule_sends` row the Schedule window kept.
  */
-export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask', 'certified', 'change_order', 'reminder', 'interest_bill', 'weekly', 'contract'] as const
+export const GC_CUSTOMER_EMAIL_KINDS = ['pay_app', 'certify_ask', 'certified', 'change_order', 'reminder', 'interest_bill', 'weekly', 'contract', 'schedule'] as const
 export type GcCustomerEmailKind = (typeof GC_CUSTOMER_EMAIL_KINDS)[number]
 
 /** Who each kind goes to: the project's customer, or its architect (`gc_projects.architect_customer_id`). */
@@ -34,10 +35,11 @@ export const GC_CUSTOMER_EMAIL_TO: Record<GcCustomerEmailKind, 'customer' | 'arc
   interest_bill: 'customer',
   weekly: 'customer',
   contract: 'customer',
+  schedule: 'customer',
 }
 
-/** The row each kind is about: a pay application, a change order, a reminder to pay, an interest bill, a weekly report, or a send of our contract. */
-export type GcCustomerEmailSource = 'gc_owner_pay_apps' | 'gc_change_orders' | 'gc_owner_pay_reminders' | 'gc_owner_interest_bills' | 'gc_weekly_reports' | 'gc_owner_contract_sends'
+/** The row each kind is about: a pay application, a change order, a reminder to pay, an interest bill, a weekly report, a send of our contract, or the customer's schedule as sent. */
+export type GcCustomerEmailSource = 'gc_owner_pay_apps' | 'gc_change_orders' | 'gc_owner_pay_reminders' | 'gc_owner_interest_bills' | 'gc_weekly_reports' | 'gc_owner_contract_sends' | 'gc_schedule_sends'
 export const GC_CUSTOMER_EMAIL_SOURCE: Record<GcCustomerEmailKind, GcCustomerEmailSource> = {
   pay_app: 'gc_owner_pay_apps',
   certify_ask: 'gc_owner_pay_apps',
@@ -47,12 +49,15 @@ export const GC_CUSTOMER_EMAIL_SOURCE: Record<GcCustomerEmailKind, GcCustomerEma
   interest_bill: 'gc_owner_interest_bills',
   weekly: 'gc_weekly_reports',
   contract: 'gc_owner_contract_sends',
+  schedule: 'gc_schedule_sends',
 }
 
 /**
  * Who may send each kind. The money team for every bill and change (`GC_CUSTOMER_EMAIL_ROLES`). The weekly report is
  * Building's: whoever can read its row through RLS may send it (dev while Building is built; Building's door decides the
- * schedule's team, and whether reading is still enough then). A test copy passes the same gate.
+ * schedule's team, and whether reading is still enough then). The customer's schedule is the Schedule's, the same way: its
+ * row read through RLS (a dev until the schedule's PR 10, then the job's team). It carries no money. A test copy passes
+ * the same gate.
  */
 export const GC_CUSTOMER_EMAIL_GATE: Record<GcCustomerEmailKind, 'moneyTeam' | 'row'> = {
   pay_app: 'moneyTeam',
@@ -64,12 +69,13 @@ export const GC_CUSTOMER_EMAIL_GATE: Record<GcCustomerEmailKind, 'moneyTeam' | '
   weekly: 'row',
   // Our contract goes with the price by line, Our number's.
   contract: 'moneyTeam',
+  schedule: 'row',
 }
 
 /**
  * Which of a customer row's addresses each kind goes to: the billing address first for a bill, the contact first for the
- * weekly report, which is for the person who runs the job for them (`customerContactEmail`), and for our contract, whose
- * signer is their owner, not their payables.
+ * weekly report and the customer's schedule, which are for the person who runs the job for them (`customerContactEmail`),
+ * and for our contract, whose signer is their owner, not their payables.
  */
 export const GC_CUSTOMER_EMAIL_ADDRESS: Record<GcCustomerEmailKind, 'billing' | 'contact'> = {
   pay_app: 'billing',
@@ -80,11 +86,13 @@ export const GC_CUSTOMER_EMAIL_ADDRESS: Record<GcCustomerEmailKind, 'billing' | 
   interest_bill: 'billing',
   weekly: 'contact',
   contract: 'contact',
+  schedule: 'contact',
 }
 
 /**
  * Whether the email is framed: our closing lines after the window's. The weekly report carries its own greeting and
- * sign-off (`weeklyReportText`), so nothing is added after it.
+ * sign-off (`weeklyReportText`), and so does the customer's schedule (`customerScheduleLetter`), so nothing is added after
+ * either.
  */
 export const GC_CUSTOMER_EMAIL_FRAMED: Record<GcCustomerEmailKind, boolean> = {
   pay_app: true,
@@ -95,6 +103,7 @@ export const GC_CUSTOMER_EMAIL_FRAMED: Record<GcCustomerEmailKind, boolean> = {
   interest_bill: true,
   weekly: false,
   contract: true,
+  schedule: false,
 }
 
 /**
@@ -115,6 +124,8 @@ export const GC_CUSTOMER_EMAIL_FILED_AS: Record<GcCustomerEmailKind, string> = {
   weekly: 'field_report_gc_weekly',
   // Our contract with the customer, kept in Documents until SENT_COPIES' step 4 lists it.
   contract: 'gc_owner_contract',
+  // The customer's schedule on its own, beside the weekly report under Statements.
+  schedule: 'field_report_gc_schedule',
 }
 
 /** The sent copies' kinds about rows of one table, for the window's *Emailed to* lines. */
@@ -138,6 +149,8 @@ export const GC_CUSTOMER_EMAIL_PORTAL_LINE: Record<GcCustomerEmailKind, boolean>
   weekly: false,
   // Required, never left off: they sign it there. With no link where GC jobs show, the kind refuses noPortal.
   contract: true,
+  // Until the customer's portal shows the schedule (the schedule's PR 15b), with its own words.
+  schedule: false,
 }
 export const GC_CUSTOMER_EMAIL_PORTAL_WORDS = 'You can see this bill in your portal:'
 /** Our contract's portal line: they sign it there. */
@@ -250,6 +263,14 @@ export function gcWeeklyReportLines(body: string): string[] {
     .filter(Boolean)
 }
 
+/**
+ * The lines a request may carry: 30, and 80 for the customer's schedule, a line a stage and a date to meet. The function
+ * sends that kind's row, never the request's lines, but the request is checked first.
+ */
+export function gcCustomerEmailMaxLines(kind: GcCustomerEmailKind): number {
+  return kind === 'schedule' ? 80 : 30
+}
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** What a request may carry, checked before anything is read. */
@@ -263,7 +284,7 @@ export function parseCustomerEmail(body: unknown): { ok: true; req: GcCustomerEm
   if (!UUID.test(projectId) || !UUID.test(sourceId)) return { ok: false }
   const subject = typeof b.subject === 'string' ? b.subject.trim() : ''
   if (!subject || subject.length > 200) return { ok: false }
-  if (!Array.isArray(b.lines) || b.lines.length === 0 || b.lines.length > 30) return { ok: false }
+  if (!Array.isArray(b.lines) || b.lines.length === 0 || b.lines.length > gcCustomerEmailMaxLines(kind as GcCustomerEmailKind)) return { ok: false }
   const lines = b.lines.map((l) => (typeof l === 'string' ? l.trim() : ''))
   if (lines.some((l) => l === '' || l.length > 2000)) return { ok: false }
   let pdf: GcCustomerEmailRequest['pdf'] = null

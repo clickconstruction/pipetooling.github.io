@@ -9463,6 +9463,64 @@ export type Database = {
           },
         ]
       }
+      gc_customer_contacts: {
+        Row: {
+          by_name: string
+          by_user_id: string | null
+          contacted_on: string
+          created_at: string
+          customer_id: string
+          how: string
+          id: string
+          note: string
+          project_id: string | null
+        }
+        Insert: {
+          by_name?: string
+          by_user_id?: string | null
+          contacted_on?: string
+          created_at?: string
+          customer_id: string
+          how: string
+          id?: string
+          note: string
+          project_id?: string | null
+        }
+        Update: {
+          by_name?: string
+          by_user_id?: string | null
+          contacted_on?: string
+          created_at?: string
+          customer_id?: string
+          how?: string
+          id?: string
+          note?: string
+          project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_customer_contacts_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_customer_contacts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_customer_contacts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_daily_log_crews: {
         Row: {
           log_id: string
@@ -13766,7 +13824,7 @@ export type Database = {
           name: string
           package_id: string | null
           paper: string | null
-          project_id: string
+          project_id: string | null
           purpose: string
           record_id: string | null
           uploaded_at: string
@@ -13782,7 +13840,7 @@ export type Database = {
           name: string
           package_id?: string | null
           paper?: string | null
-          project_id: string
+          project_id?: string | null
           purpose: string
           record_id?: string | null
           uploaded_at?: string
@@ -13798,7 +13856,7 @@ export type Database = {
           name?: string
           package_id?: string | null
           paper?: string | null
-          project_id?: string
+          project_id?: string | null
           purpose?: string
           record_id?: string | null
           uploaded_at?: string
@@ -30694,6 +30752,10 @@ export type Database = {
         }
         Returns: string
       }
+      gc_trade_coi: {
+        Args: { p_company_id: string; p_expires_on: string; p_file_url: string }
+        Returns: string
+      }
       gc_trade_confirm_quote: {
         Args: { p_company_id: string; p_invite_id: string }
         Returns: string
@@ -30718,7 +30780,21 @@ export type Database = {
         Returns: string
       }
       gc_trade_got_it: { Args: { p_company_id: string }; Returns: string }
+      gc_trade_keep_day: {
+        Args: { p_company_id: string; p_notice_id: string }
+        Returns: undefined
+      }
       gc_trade_mail_groups: { Args: { p_groups: string[] }; Returns: string[] }
+      gc_trade_mark_lookahead: {
+        Args: {
+          p_activity_id: string
+          p_company_id: string
+          p_done: boolean
+          p_reason: string
+          p_week_of: string
+        }
+        Returns: undefined
+      }
       gc_trade_newest_quote: {
         Args: { p_invite_id: string }
         Returns: {
@@ -30750,6 +30826,15 @@ export type Database = {
         Args: { p_company_id: string; p_invite_id: string }
         Returns: number
       }
+      gc_trade_paper_open: {
+        Args: {
+          p_company_id: string
+          p_expires_at: string
+          p_paper: string
+          p_token_hash: string
+        }
+        Returns: string
+      }
       gc_trade_pay_app: {
         Args: { p_app: Json; p_company_id: string; p_package_id: string }
         Returns: string
@@ -30774,6 +30859,25 @@ export type Database = {
           p_sheets?: string[]
         }
         Returns: string
+      }
+      gc_trade_say_late: {
+        Args: {
+          p_activity_id: string
+          p_company_id: string
+          p_day: string
+          p_note: string
+          p_reason: string
+        }
+        Returns: string
+      }
+      gc_trade_set_crew_count: {
+        Args: {
+          p_company_id: string
+          p_count: number
+          p_package_id: string
+          p_week_of: string
+        }
+        Returns: undefined
       }
       gc_trade_set_gets: {
         Args: { p_company_id: string; p_gets: string[]; p_person_id: string }
@@ -30823,6 +30927,17 @@ export type Database = {
       }
       gc_trade_unconditional_waiver: {
         Args: { p_company_id: string; p_draw_id: string }
+        Returns: string
+      }
+      gc_trade_vetting_form: {
+        Args: {
+          p_company_id: string
+          p_insurance: string
+          p_license: string
+          p_past_jobs: string
+          p_references: string
+          p_years: number
+        }
         Returns: string
       }
       gc_turn_down_change_request: {

@@ -1,12 +1,15 @@
 /**
  * GC mode, the real build, the schedule's PR 1b: a trade's own crew count (G-142), moved word for word from the GC mode prototype
- * (branch spike/gc-mode, `gcCrewCounts.ts`). `portalCrewAsks` reads the trade's portal and waits for it.
+ * (branch spike/gc-mode, `gcCrewCounts.ts`). `crewCountProblem` and `portalCrewAsks` moved with the schedule's PR 14a, for
+ * the portal's crew block to check what `gc_trade_set_crew_count` checks and to ask each coming week with work.
  */
 import { addDays } from '../building'
 import { LOOKAHEAD_WEEKS, mondayOf } from './schedule'
 import type { CrewCount } from './types'
 import type { GcProject, GcState, Partner } from '../types'
 import { shortDate, weekdayDate } from '../words'
+import { portalLookAhead } from '../portal'
+import type { PortalKey } from '../portalI18n'
 
 /** The most people a day a count can say. */
 export const CREW_MAX = 50
@@ -105,4 +108,23 @@ export function crewCountLogWords(project: GcProject, partner: Partner, count: C
   const trade = project.packages.find((k) => k.id === count.packageId)?.trade ?? 'its trade'
   const how = count.count === 0 ? 'nobody' : `${count.count} a day`
   return `${partner.company} says ${how} on ${trade} at ${project.name}, the week of ${shortDate(count.weekOf)}.`
+}
+
+/** What is wrong with a count, in the portal's words: a whole number from 0 to 50. Null: it can go. */
+export function crewCountProblem(count: number): PortalKey | null {
+  return Number.isInteger(count) && count >= 0 && count <= CREW_MAX ? null : 'crewWhole'
+}
+
+export function portalCrewAsks(state: GcState, partnerId: string, project: GcProject): PortalCrewWeek[] {
+  const allowed = crewWeeks(state.today)
+  const now = crewCountsNow(project)
+  return portalLookAhead(state, partnerId, project)
+    .filter((w) => w.when !== 'last' && w.items.length > 0 && allowed.includes(w.weekOf))
+    .map((w) => {
+      const pkgs = [...new Map(w.items.map((i) => [i.row.pkg.id, i.row.pkg])).values()]
+      return {
+        weekOf: w.weekOf,
+        trades: pkgs.map((pkg) => ({ packageId: pkg.id, trade: pkg.trade, now: now.find((c) => c.packageId === pkg.id && c.weekOf === w.weekOf) ?? null })),
+      }
+    })
 }

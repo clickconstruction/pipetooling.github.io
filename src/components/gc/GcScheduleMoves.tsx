@@ -8,13 +8,15 @@
  * both take `trying` in the what-if copy (G-81): the reason is optional, a move with none keeps the stand-in marked
  * `noWhy`, and the record is the copy's. Since PR 13b the record says who was told of each move and what they answered,
  * a told move undone with Call, and **Tell the trades · N** in its head (`tell`). What a move does to the bills (G-97) is
- * Owner Billing's.
+ * Owner Billing's. Since PR 14c a trade's late notice opens the window with its day, reason and words, and the move
+ * names the notice it takes; one someone answered first leaves the window saying so.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { MOVE_REASONS, moveActivityName, moveRecord, moveRows, moveWhyProblem, planMove, redoableMove, spanWords, undoableMove, type MoveLimits } from '../../lib/gc/schedule/moves'
 import { daysBetween } from '../../lib/gc/schedule/network'
 import { crowdingAfterMove } from '../../lib/gc/schedule/places'
+import { lateNoticeGone, NOTICE_ANSWERED_FIRST, noticeTakenRefusal } from '../../lib/gc/schedule/lateWindow'
 import type { ToldThenUndone } from '../../lib/gc/schedule/tellWindow'
 import { telHref } from '../../lib/gc/followUpSheet'
 import { WHAT_IF_NO_WHY } from '../../lib/gc/schedule/whatIf'
@@ -37,6 +39,10 @@ export interface PendingMove {
   limits?: MoveLimits
   /** A split line's part moved (G-39, PR 8b): the part, its dates before, and its new ones. The move's start and finish are then its line's new span. */
   part?: { id: string; name: string; from: { start: string; finish: string }; start: string; finish: string }
+  /** A trade's late notice taken (G-117, PR 14c): its reason and words to start from, which the person may change. */
+  why?: { reason: ScheduleMoveReason; note: string }
+  /** The notice the move takes: the database refuses it once another standing move took it. */
+  lateNoticeId?: string
 }
 
 const label = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', color: 'var(--text-muted)', textTransform: 'uppercase' } as const
@@ -91,8 +97,8 @@ export function GcMoveExplain({
   /** In the what-if copy (G-81, PR 11): the move is tried on the copy, and its reason is optional. */
   trying?: boolean
 }) {
-  const [reason, setReason] = useState<ScheduleMoveReason | null>(null)
-  const [note, setNote] = useState('')
+  const [reason, setReason] = useState<ScheduleMoveReason | null>(pending.why?.reason ?? null)
+  const [note, setNote] = useState(pending.why?.note ?? '')
   const [saving, setSaving] = useState(false)
   const [refused, setRefused] = useState<ScheduleChange[] | null>(null)
   const [failed, setFailed] = useState<string | null>(null)
@@ -106,8 +112,11 @@ export function GcMoveExplain({
   const plan = planMove(project, pending.lineId, pending.start, pending.finish, pending.after, pending.limits)
   // What the move does to a place with too many trades (G-83), said before it saves.
   const crowding = useMemo(() => (state && plan && !plan.problem && !plan.same ? crowdingAfterMove(state, project, plan.activities) : []), [state, project, pending]) // eslint-disable-line react-hooks/exhaustive-deps
+  // A late notice someone answered first (PR 14c): after the refusal the schedule reads again, and the notice is off the
+  // card. The window stays to say so, even when the chart already shows the notice's days.
+  const noticeGone = Boolean(pending.lateNoticeId && (refused || failed) && lateNoticeGone(project, pending.lateNoticeId))
   // A part moved inside its line's span (G-39) leaves the line's dates as they are: still a move, with its reason.
-  if (!plan || (plan.same && !pending.part) || !project.schedule) return null
+  if (!plan || (plan.same && !pending.part && !noticeGone) || !project.schedule) return null
   const schedule = project.schedule
   // In the what-if a reason is optional: the move is tried with one when it is given whole, else with none yet.
   const whyGiven = moveWhyProblem(reason, note) === null
@@ -117,7 +126,7 @@ export function GcMoveExplain({
   const shift = daysBetween(plan.from.finish, plan.to.finish)
   const longer = daysBetween(plan.to.start, plan.to.finish) - daysBetween(plan.from.start, plan.from.finish)
   const save = async () => {
-    if (problem || (!trying && !reason) || saving) return
+    if (problem || (!trying && !reason) || saving || noticeGone) return
     const why = reason && whyGiven ? { reason, note: note.trim(), by } : { ...WHAT_IF_NO_WHY, by }
     const tried = (move: ScheduleMove): ScheduleMove => (trying && !(reason && whyGiven) ? { ...move, noWhy: true } : move)
     setSaving(true)
@@ -129,13 +138,17 @@ export function GcMoveExplain({
         const press = partMovePress(project, pending.lineId, pending.part.id, pending.part.start, pending.part.finish, why, today)
         if (!press) throw new Error('This part does not move. Close this and drag it again.')
         await onSave(tried(press.move), press.activities, press.words)
-      } else await onSave(tried(moveRecord(schedule, pending.lineId, plan, why, today)), plan.activities, moveWords(project, pending.lineId, plan, why))
+      } else await onSave(tried(moveRecord(schedule, pending.lineId, plan, why, today, undefined, pending.lateNoticeId)), plan.activities, moveWords(project, pending.lineId, plan, why))
       onClose()
     } catch (e) {
       const refusal = scheduleChangedRefusal(e)
       if (refusal) {
         // Someone saved first: their changes, and the chart reads again behind the window.
         setRefused(refusal.changes)
+        onReload()
+      } else if (pending.lateNoticeId && noticeTakenRefusal(e)) {
+        // Another move took the notice first (PR 14c): the card reads again and its row goes.
+        setFailed(NOTICE_ANSWERED_FIRST)
         onReload()
       } else setFailed(formatErrorMessage(e, 'The move did not save.'))
     } finally {
@@ -201,7 +214,7 @@ export function GcMoveExplain({
             </div>
           ))}
         </div>
-        {refused && <GcScheduleRefusal changes={refused} what="Your move was not saved. The chart shows the new dates now. Try it again on them." />}
+        {refused && <GcScheduleRefusal changes={refused} what={noticeGone ? NOTICE_ANSWERED_FIRST : 'Your move was not saved. The chart shows the new dates now. Try it again on them.'} />}
         <div style={{ display: 'grid', gap: '0.35rem' }}>
           <span style={label}>Why it moved</span>
           <div role="group" aria-label="Why it moved" style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -247,7 +260,7 @@ export function GcMoveExplain({
           <Btn kind="quiet" onClick={onClose}>
             Cancel
           </Btn>
-          <Btn kind="primary" disabled={problem !== null || saving} onClick={() => void save()}>
+          <Btn kind="primary" disabled={problem !== null || saving || noticeGone} onClick={() => void save()}>
             {saving ? 'Saving…' : trying ? 'Try it' : 'Save the move'}
           </Btn>
         </div>

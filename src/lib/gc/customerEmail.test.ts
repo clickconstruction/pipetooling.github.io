@@ -13,6 +13,7 @@ import {
   GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
   gcCustomerEmailCc,
   gcCustomerEmailCopyKinds,
+  gcCustomerEmailMaxLines,
   gcCustomerEmailTestSubject,
   gcWeeklyReportLines,
   GC_CUSTOMER_EMAIL_ADDRESS,
@@ -234,6 +235,7 @@ describe('what gc-customer-email reads and sends', () => {
       ['interest_bill', 'customer', 'gc_owner_interest_bills', 'bill_gc_interest', 'bills'],
       ['weekly', 'customer', 'gc_weekly_reports', 'field_report_gc_weekly', 'statements'],
       ['contract', 'customer', 'gc_owner_contract_sends', 'gc_owner_contract', 'other'],
+      ['schedule', 'customer', 'gc_schedule_sends', 'field_report_gc_schedule', 'statements'],
     ])
     // Never the Pipeline's G702 workbook copy, whose history reads its own kind.
     expect(GC_CUSTOMER_EMAIL_KINDS.some((k) => isPayApplicationCopy({ kind: GC_CUSTOMER_EMAIL_FILED_AS[k] }))).toBe(false)
@@ -243,15 +245,32 @@ describe('what gc-customer-email reads and sends', () => {
     expect(gcCustomerEmailCopyKinds('gc_owner_interest_bills')).toEqual(['bill_gc_interest'])
     expect(gcCustomerEmailCopyKinds('gc_weekly_reports')).toEqual(['field_report_gc_weekly'])
     expect(gcCustomerEmailCopyKinds('gc_owner_contract_sends')).toEqual(['gc_owner_contract'])
+    expect(gcCustomerEmailCopyKinds('gc_schedule_sends')).toEqual(['field_report_gc_schedule'])
     expect(GC_CUSTOMER_EMAIL_KINDS.filter((k) => GC_CUSTOMER_EMAIL_PORTAL_LINE[k])).toEqual(['certified', 'reminder', 'interest_bill', 'contract'])
   })
 
   it('sends the weekly report as Building’s (U7b): its row decides who may, to the contact first, unframed, no portal line yet', () => {
-    const others = GC_CUSTOMER_EMAIL_KINDS.filter((k) => k !== 'weekly' && k !== 'contract')
+    const others = GC_CUSTOMER_EMAIL_KINDS.filter((k) => k !== 'weekly' && k !== 'contract' && k !== 'schedule')
     expect(others.every((k) => GC_CUSTOMER_EMAIL_GATE[k] === 'moneyTeam' && GC_CUSTOMER_EMAIL_ADDRESS[k] === 'billing' && GC_CUSTOMER_EMAIL_FRAMED[k])).toBe(true)
     expect([GC_CUSTOMER_EMAIL_GATE.weekly, GC_CUSTOMER_EMAIL_ADDRESS.weekly, GC_CUSTOMER_EMAIL_FRAMED.weekly, GC_CUSTOMER_EMAIL_PORTAL_LINE.weekly]).toEqual(['row', 'contact', false, false])
     const read = parseCustomerEmail({ ...ok, kind: 'weekly' })
     expect(read.ok && read.req.kind).toBe('weekly')
+  })
+
+  it('sends the customer’s schedule as the Schedule’s (PR 15a): its row decides who may, to the contact, unframed, no portal line yet', () => {
+    expect([GC_CUSTOMER_EMAIL_GATE.schedule, GC_CUSTOMER_EMAIL_ADDRESS.schedule, GC_CUSTOMER_EMAIL_FRAMED.schedule, GC_CUSTOMER_EMAIL_PORTAL_LINE.schedule]).toEqual(['row', 'contact', false, false])
+    expect(parseCustomerEmail({ ...ok, kind: 'schedule' })).toMatchObject({ ok: true, req: { kind: 'schedule', pdf: null } })
+    // A line a stage and a date to meet: a long job's letter goes, where a bill's 31 lines do not.
+    const long = Array.from({ length: 31 }, (_, i) => `Line ${i + 1}.`)
+    expect(gcCustomerEmailMaxLines('schedule')).toBe(80)
+    expect(parseCustomerEmail({ ...ok, kind: 'schedule', lines: long }).ok).toBe(true)
+    expect(parseCustomerEmail({ ...ok, kind: 'weekly', lines: long }).ok).toBe(false)
+    expect(parseCustomerEmail({ ...ok, kind: 'schedule', lines: [...long, ...long, ...long] }).ok).toBe(false)
+    // The function reads the letter's row as the caller, sends the row's words, and writes its log back on the row.
+    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    expect(fn).toContain("await anon.from('gc_schedule_sends').select('id, project_id, subject, lines, email_send_log_id')")
+    expect(fn).toContain("if (letter.email_send_log_id && !m.test) return refuse('alreadySent')")
+    expect(fn).toContain("source === 'gc_weekly_reports' || source === 'gc_schedule_sends') && sent.resendEmailId")
   })
 
   it('sends our contract (B6-d-iii-b): the money team’s, to the contact first, framed, its portal line required, never a PDF from the window', () => {

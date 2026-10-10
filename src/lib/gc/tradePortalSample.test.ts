@@ -23,7 +23,7 @@ describe('the trade portal’s sample', () => {
       else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { keys.add(k); if (k !== 'lines' && k !== 'includes') walk(x) }
     }
     walk(slice)
-    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'sowLines', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'submittals', 'submittalHolds', 'submittalRounds', 'rfis', 'rfiHolds', 'punch', 'draws', 'drawLines', 'lineReports', 'changeSends', 'note', 'mine'].includes(k))).toEqual([])
+    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'sowLines', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'vettingForm', 'submittals', 'submittalHolds', 'submittalRounds', 'rfis', 'rfiHolds', 'punch', 'draws', 'drawLines', 'lineReports', 'changeSends', 'note', 'mine'].includes(k))).toEqual([])
   })
 
   it('stays current: its days count from today', () => {

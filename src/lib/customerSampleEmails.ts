@@ -41,7 +41,7 @@ import { payReminderMail } from './gc/ownerBillingRemind'
 import { weeklyReportText, type WeeklyReport } from './gc/buildingWeekly'
 import { mondayOf } from './gc/schedule/schedule'
 import type { GcProject } from './gc/types'
-import { shortDate } from './gc/words'
+import { shortDate, weekdayDate } from './gc/words'
 import { gcTradePortalSample, gcTradePortalSampleRows } from '../../supabase/functions/_shared/gcTradePortalSample'
 import { mailboxWithName } from '../../supabase/functions/_shared/mailboxWithName'
 import { inviteMessage, mailRecipients, portalMailGroup } from './gc/portal'
@@ -335,7 +335,7 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
-  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certify-reminder' || id === 'gc-certified' || id === 'gc-due-soon' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill' || id === 'gc-weekly' || id === 'gc-contract')
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certify-reminder' || id === 'gc-certified' || id === 'gc-due-soon' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill' || id === 'gc-weekly' || id === 'gc-schedule' || id === 'gc-contract')
     return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
@@ -456,6 +456,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
   if (id === 'gc-interest-bill') return buildSampleGcInterestBillEmail(ctx)
   if (id === 'gc-weekly') return buildSampleGcWeeklyEmail(ctx)
+  if (id === 'gc-schedule') return buildSampleGcScheduleEmail(ctx)
   if (id === 'gc-contract') return buildSampleGcContractEmail(ctx)
   if (id === 'submittal-room-link') return buildSampleSubmittalRoomLinkEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
@@ -618,6 +619,38 @@ export function buildSampleGcWeeklyEmail(ctx: SampleEmailContext): BuiltEmail {
     subject: text.subject,
     lines: gcWeeklyReportLines(text.body),
     signer: String(ctx.sender?.name ?? 'The project manager'),
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    framed: false,
+  })
+}
+
+/**
+ * GC mode (the schedule's PR 15a): the customer's schedule on its own, as `gc-customer-email` sends it: a made-up letter
+ * on the sample project in `customerScheduleLetter`'s shape, as the Friday report's sample writes its sections, unframed,
+ * since the letter carries its own greeting and sign-off.
+ */
+export function buildSampleGcScheduleEmail(ctx: SampleEmailContext): BuiltEmail {
+  const signer = String(ctx.sender?.name ?? 'The project manager')
+  return buildGcCustomerEmail({
+    subject: `Your schedule on Sample Retail Shell, ${shortDate(ctx.todayYmd)}`,
+    lines: [
+      'Hello Elena,',
+      `Here is where Sample Retail Shell stands as of ${weekdayDate(ctx.todayYmd)}.`,
+      'We finish Fri Dec 18. Your contract says Dec 20.',
+      '62% of the work is done. We planned 60% by today.',
+      'Foundations: done, Sep 8 to Sep 21.',
+      'Slab: done, Sep 22 to Sep 28.',
+      'Structure: under way, 40% done, Sep 29 to Oct 19.',
+      'Dry-in: starts Tue Oct 20, Oct 20 to Nov 2.',
+      'Rough-in: starts Tue Nov 3, Nov 3 to Nov 23.',
+      'Finishes: starts Tue Nov 24, Nov 24 to Dec 18.',
+      'Dried in: Nov 2.',
+      'What changed this week: Structure is 2 days later than planned, because of the weather. The finish holds.',
+      'We need from you: Your pick of the storefront glass, by Oct 23.',
+      'Call me with any question.',
+      `${signer}, ${GC_CUSTOMER_EMAIL_FROM_NAME}`,
+    ],
+    signer,
     gc: GC_CUSTOMER_EMAIL_FROM_NAME,
     framed: false,
   })
