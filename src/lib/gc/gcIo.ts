@@ -5,6 +5,7 @@
  * a line to the scope book. Nothing here decides anything: the kernels in `src/lib/gc/` do.
  */
 import { supabase } from '../supabase'
+import { fetchAllRows } from '../supabasePaging'
 import { jobNumberLabel } from '../jobs/jobSummaryCycle'
 import type { Database, Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
@@ -385,6 +386,8 @@ export async function checkDriveAccess(url: string, at?: { projectId: string; re
 /**
  * `money` (B5-c): the reader is on the money team (`canSeeGcMoney`), so our number's inputs are read.
  * Anyone else skips the read: the policy would return no row, and the screens show the trades alone.
+ * The four reads on no job's ids (the companies, the promises, the papers sent and the call log) page past PostgREST's
+ * 1,000-row cap (B2b-ii-b, as the Takeoff parts catalog taught in v2.2755), each in a stable order.
  */
 export async function loadGcBoardRows(projects: GcProjectView[], today: string, { money = false }: { money?: boolean } = {}): Promise<BoardRows> {
   const ids = projects.map((p) => p.id)
@@ -396,12 +399,18 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
       ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, started_anyway_by, started_anyway_reason, started_anyway_missing, lost_why, won_by, closed_on').in('project_id', ids)
       : none,
     named.length ? supabase.from('customers').select('id, name, contact_info').in('id', named) : none,
-    supabase
-      .from('gc_companies')
-      .select('id, name, trades, contact_name, phone, email, address, max_miles, license, lang, vetting_status, vetting_limit, vetting_decided_on, vetting_decided_by, vetting_note, contact_gets')
-      .order('name'),
+    fetchAllRows(
+      (from, to) =>
+        supabase
+          .from('gc_companies')
+          .select('id, name, trades, contact_name, phone, email, address, max_miles, license, lang, vetting_status, vetting_limit, vetting_decided_on, vetting_decided_by, vetting_note, contact_gets')
+          .order('name')
+          .order('id')
+          .range(from, to),
+      'load the trade partners',
+    ),
     packageIds.length ? supabase.from('gc_invites').select('*').in('package_id', packageIds) : none,
-    supabase.from('gc_trade_promises').select('*'),
+    fetchAllRows((from, to) => supabase.from('gc_trade_promises').select('*').order('created_at').order('id').range(from, to), 'load the promises'),
     // The statements of work (B6-a): a dev's and, since O9, the money team's to read, so anyone else reads none.
     packageIds.length
       ? supabase
@@ -412,12 +421,22 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     // The companies' own papers (B6-b-ii): what person_contract_documents' own policies let the reader see (call R).
     supabase.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at, created_at').not('company_id', 'is', null),
     // Every send of a paper (B6-b-i): dev only while the Board is built, so anyone else reads none.
-    supabase.from('gc_paper_sends').select('id, company_id, paper, project_id, package_id, sent_on, due_on, note, first, draws, created_at').order('sent_on'),
+    fetchAllRows(
+      (from, to) =>
+        supabase
+          .from('gc_paper_sends')
+          .select('id, company_id, paper, project_id, package_id, sent_on, due_on, note, first, draws, created_at')
+          .order('sent_on')
+          .order('created_at')
+          .order('id')
+          .range(from, to),
+      'load the papers we sent',
+    ),
   ])
   const dateRows = taken(dates, 'load the board’s dates')
   const inviteRows = taken(invites, 'load the asks')
-  const promiseRows = taken(promises, 'load the promises')
-  const companyRows = taken(companies, 'load the trade partners')
+  const promiseRows = promises
+  const companyRows = companies
   const sowRows = taken(sows, 'load the statements of work')
   const inviteIds = inviteRows.map((i) => i.id)
   const promiseIds = promiseRows.map((p) => p.id)
@@ -434,7 +453,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const ownBidIds = [...new Set(projects.flatMap((p) => p.trades.filter((t) => t.ours && t.ownBidId).map((t) => t.ownBidId as string)))]
   const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews, sowLines, ownBids, contractSends] = await Promise.all([
     inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
-    supabase.from('gc_company_contacts').select('*'),
+    fetchAllRows((from, to) => supabase.from('gc_company_contacts').select('*').order('created_at').order('id').range(from, to), 'load the call log'),
     promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
     deciders.length ? supabase.from('users').select('id, name').in('id', deciders) : none,
     // The forms of the companies still waiting on our decision, for the queue on Trade partners.
@@ -474,7 +493,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     companies: companyRows,
     invites: inviteRows as BoardRows['invites'],
     quotes: taken(quotes, 'load the quotes') as BoardRows['quotes'],
-    contacts: taken(contacts, 'load the call log'),
+    contacts,
     promises: promiseRows,
     promiseMoves: taken(moves, 'load the promises’ earlier days'),
     userNames: Object.fromEntries(taken(users, 'load our team').map((u) => [u.id, u.name ?? ''])),
@@ -488,7 +507,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     sowLines: taken(sowLines, 'load the statements of work’s lines') as BoardRows['sowLines'],
     ownBids: taken(ownBids, 'load our own trades’ bids'),
     papers: taken(papers, 'load the trade partners’ papers'),
-    paperSends: taken(paperSends, 'load the papers we sent'),
+    paperSends,
     ownerContractSends: contractSendRows,
     ownerContractEmails: contractEmails,
   }
