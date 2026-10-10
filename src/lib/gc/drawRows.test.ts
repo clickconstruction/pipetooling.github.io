@@ -157,8 +157,8 @@ describe('a change order’s trade side, and what rides beside the kernel', () =
       ...NO_DRAWS,
       sowLines: [{ id: 'co-line-1', sow_id: 'sow-fconc', position: 3, scope_item_id: null }],
       tradeSends: [
-        { change_order_id: first!.id, sow_id: 'sow-fconc', sent_on: '2026-10-01', sent_by: null, signed_on: '2026-10-03', sow_line_id: 'co-line-1' },
-        { change_order_id: second!.id, sow_id: 'sow-fconc', sent_on: '2026-10-05', sent_by: null, signed_on: null, sow_line_id: null },
+        { change_order_id: first!.id, sow_id: 'sow-fconc', sent_on: '2026-10-01', sent_by: null, signed_on: '2026-10-03', sow_line_id: 'co-line-1', recorded_by: null, file_name: null, drive_url: null },
+        { change_order_id: second!.id, sow_id: 'sow-fconc', sent_on: '2026-10-05', sent_by: null, signed_on: null, sow_line_id: null, recorded_by: null, file_name: null, drive_url: null },
       ],
     }
     const cos = fairOaks(withTradeChanges(state, tables)).changeOrders ?? []
