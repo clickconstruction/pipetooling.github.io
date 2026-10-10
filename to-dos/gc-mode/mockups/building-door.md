@@ -2,7 +2,7 @@
 name: "Building's door: Building opens to the job's team, its money to the money team, and /gc to the field"
 rows: BUILDING_REAL_BUILD.md, decision 4 (who may read and write), The PRs in order, 9 (the door), the owner's calls 1 and 5; mockups/schedule-pr10.md (the shape, and "What Building's door adds"); mockups/schedule-pr9d.md, call 1 (the schedule team's read half); mockups/building-u8.md (the crew's counts and percents); mockups/door-owner-billing.md and O9 (20261010050000, the money team's reads)
 branch: the plan on claude/gc-building-door-plan (from origin/spike/gc-mode at ecf57865b); the PRs from origin/main, after the schedule's PR 10 and the live walk
-status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. The lead approved its shape the same day (D1 then D2; calls 3, 4, 7 and 8 at their picks). Amendment 1 the same day: the Board's (gc 2) co-sign on call 3 with its gates, and call 6 reshaped to a function; the Portal's (gc 3) co-sign on call 5 with its notes. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Amendment 2 the same day: gc 4's co-sign with its scan (four presses read gc_sows; three keep promises; the presses and the schedule's writes read the office's job tables), the job's reads as definer functions (call 9), one promise keeper for Building's three kinds, gc_link_crew_job's one-crew-a-job refusal (call 11, gc 4's amendment 3), and call 4's client half. The lead approved calls 9 and 11 the same day. Amendment 3 the same day: call 9's columns, from gc 4's scan of Building's presses and gc 10's of the schedule's writes; PR 10's Status and #5231's body record the project manager gap. Owed: New project's and the Board's co-sign on call 9's columns, and the owner's word on call 2.
+status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. The lead approved its shape the same day (D1 then D2; calls 3, 4, 7 and 8 at their picks). Amendment 1 the same day: the Board's (gc 2) co-sign on call 3 with its gates, and call 6 reshaped to a function; the Portal's (gc 3) co-sign on call 5 with its notes. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Amendment 2 the same day: gc 4's co-sign with its scan (four presses read gc_sows; three keep promises; the presses and the schedule's writes read the office's job tables), the job's reads as definer functions (call 9), one promise keeper for Building's three kinds, gc_link_crew_job's one-crew-a-job refusal (call 11, gc 4's amendment 3), and call 4's client half. The lead approved calls 9 and 11 the same day. Amendment 3 the same day: call 9's columns, from gc 4's scan of Building's presses and gc 10's of the schedule's writes; PR 10's Status and #5231's body record the project manager gap. The Board co-signed call 9's trades (gc 2) with three conditions, in amendment 3. Owed: New project's co-sign on call 9's columns, and the owner's word on call 2.
 ---
 
 # Building's door
@@ -121,7 +121,11 @@ decide the rest. Swapping the policies is their gate too, with these exceptions:
      PUBLIC, anon`, granted to `authenticated`:
      - `gc_team_project(p_project_id)`: `project_id`, `stage`, `started_on`, `lost_on`;
      - `gc_team_trades(p_project_id)`: `id`, `project_id`, `position`, `ours`, `awarded_invite_id`, and the awarded
-       `company_id` (from `gc_invites`, which the presses read only for that);
+       `company_id` (from `gc_invites`, which the presses read only for that). The Board's conditions (gc 2): a `LEFT
+       JOIN` of `gc_invites` on `i.id = k.awarded_invite_id` alone, never on the trade, so no other company asked or
+       quoted on it ever shows, and a trade not awarded returns `company_id` null; nothing of the ask but `company_id`;
+       `SET search_path = public`, and an empty set, not an error, for a caller off the job's team. The six columns are
+       the whole contract, and the bed pins them;
      - `gc_team_scope_items(p_project_id)`: `id`, `package_id`.
 
      **The columns** are the union of what the presses read (gc 4's scan of each press's latest body on main at
@@ -246,9 +250,12 @@ Our number.
 - **U8's bed** (`gc_building/90_crew.sql`): *linked again, and B's too* (B3 on job 901) becomes the refusal case;
   *an estimator, while Building is built* (the link) and *an estimator* (the counts) now pass; a subcontractor is the
   outsider; a superintendent on the job reads the counts, and one not on it is refused.
-- **The team's reads**: in `90_door.sql`, a superintendent on P reads `gc_team_project(P)` with its money columns null,
-  `gc_team_trades(P)` with no budget, and nothing from `gc_team_project(Q)`; a subcontractor reads nothing; the
-  superintendent draws P's first schedule, adds an activity and records an inspection, which read the job through them.
+- **The team's reads**: in `90_door.sql`, a superintendent on P reads `gc_team_project(P)`'s four columns and nothing
+  from `gc_team_project(Q)`; the superintendent draws P's first schedule, adds an activity and records an inspection,
+  which read the job through them. `gc_team_trades` (the Board's cases): the superintendent on P reads P's trades and
+  none of Q's; an awarded trade returns its company and a trade not awarded returns null; a second company's ask on the
+  same trade never shows; the result has exactly the six columns; a subcontractor gets an empty set (an estimator is on
+  the team, so it is not the outsider); anon cannot call it.
 - **The back-charges' bed** (`gc_back_charges/20_scenario.sql`): its four `devOnly` cases flip to a controller and a
   master who charge, keep and drop, an estimator or assistant refused in the money team's words, and training and a twin
   refused.
