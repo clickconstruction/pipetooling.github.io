@@ -394,7 +394,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const packageIds = projects.flatMap((p) => p.trades.map((t) => t.id))
   const named = [...new Set(projects.flatMap((p) => [p.customerId, p.architectId]).filter((id): id is string => Boolean(id)))]
   const none = Promise.resolve({ data: [], error: null })
-  const [dates, customers, companies, invites, promises, sows, papers, paperSends] = await Promise.all([
+  const [dates, customers, companies, invites, promises, sows, papers, paperSends, customerContacts] = await Promise.all([
     ids.length
       ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, started_anyway_by, started_anyway_reason, started_anyway_missing, lost_why, won_by, closed_on').in('project_id', ids)
       : none,
@@ -434,6 +434,20 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
           .range(from, to),
       'load the papers we sent',
     ),
+    // The customers' call log (B2b-v-ii), the office team's: for the customers and architects the projects name, paged.
+    named.length
+      ? fetchAllRows(
+          (from, to) =>
+            supabase
+              .from('gc_customer_contacts')
+              .select('customer_id, contacted_on, by_name, note, created_at')
+              .in('customer_id', named)
+              .order('created_at')
+              .order('id')
+              .range(from, to),
+          'load the customers’ call log',
+        )
+      : Promise.resolve([]),
   ])
   const dateRows = taken(dates, 'load the board’s dates')
   const inviteRows = taken(invites, 'load the asks')
@@ -510,6 +524,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     ownBids: taken(ownBids, 'load our own trades’ bids'),
     papers,
     paperSends,
+    customerContacts,
     ownerContractSends: contractSendRows,
     ownerContractEmails: contractEmails,
   }
@@ -906,6 +921,21 @@ export async function logGcAskContact(line: { companyId: string; inviteId: strin
     await supabase
       .from('gc_company_contacts')
       .insert({ company_id: line.companyId, invite_id: line.inviteId, contacted_on: line.on, by_name: line.byName, how: line.how, note: line.note, promised_by: line.promisedBy })
+      .select('id')
+      .single(),
+    'log the contact',
+  )
+}
+
+/**
+ * One line in a customer's call log (the Board's B2b-v-ii, `gc_customer_contacts`): a call, a text, an email or a note,
+ * logged on the customer window's Activity. Who logged it and when are the table's: the sign-in and the clock.
+ */
+export async function logGcCustomerContact(line: { customerId: string; on: string; byName: string; how: 'call' | 'text' | 'email'; note: string }): Promise<void> {
+  taken(
+    await supabase
+      .from('gc_customer_contacts')
+      .insert({ customer_id: line.customerId, contacted_on: line.on, by_name: line.byName, how: line.how, note: line.note })
       .select('id')
       .single(),
     'log the contact',

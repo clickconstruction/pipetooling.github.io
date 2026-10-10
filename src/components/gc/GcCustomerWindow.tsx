@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import type { CompanyDoc } from '../../lib/gc/companyFile'
+import { customerActivity, type CompanyDoc } from '../../lib/gc/companyFile'
 import { contractStep, customerDocuments } from '../../lib/gc/customerContract'
 import { telHref } from '../../lib/gc/followUpSheet'
 import type { GcCustomer, GcState } from '../../lib/gc/types'
-import { CompanyDocuments, CompanyTabStrip } from './GcCompanyDocuments'
+import { CompanyActivity, CompanyDocuments, CompanyTabStrip, type ContactHow } from './GcCompanyDocuments'
 import { GcCustomerContractSend, type ContractSendInput, type ContractSendOutcome } from './GcCustomerContractSend'
 import type { CustomerAt, CustomerTab } from './gcCustomerOpener'
 import { Btn, Chip } from './gcUi'
@@ -13,7 +13,9 @@ import { Btn, Chip } from './gcUi'
  * GC mode, the real build, the Board's B6-d-ii: a customer's window, first cut, from the design spike's
  * `GcCustomerWindow.tsx`. **About** names who they are and the jobs they are the customer on; **Documents** holds our
  * contract on each won job, with its next step beside the list (call D: the send goes from the customer's window).
- * B2b adds their activity, their money and every other paper. Opened by `openCustomer` (`gcCustomerOpener.ts`).
+ * **Activity** (B2b-v-ii) is everything with them, newest first (`customerActivity`), with Log a contact: a line in
+ * their call log (`gc_customer_contacts`). B2b-v-iii adds their money and every other paper. Opened by `openCustomer`
+ * (`gcCustomerOpener.ts`).
  */
 
 const STAGE_WORDS: Record<string, string> = { pursuing: 'bidding', buyout: 'buying out', building: 'building' }
@@ -25,6 +27,7 @@ export function GcCustomerWindow({
   sendContract,
   canEmail = false,
   onOpenProject,
+  onLogContact,
   onClose,
 }: {
   state: GcState
@@ -35,6 +38,8 @@ export function GcCustomerWindow({
   /** The reader may email the customer with the send (the money team, B6-d-iii-b). */
   canEmail?: boolean
   onOpenProject: (projectId: string) => void
+  /** Log a contact on Activity: a line in their call log. Unset: no box. */
+  onLogContact?: (how: ContactHow, note: string) => Promise<void>
   onClose: () => void
 }) {
   const [tab, setTab] = useState<CustomerTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
@@ -53,6 +58,7 @@ export function GcCustomerWindow({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, sending])
   const docs = customerDocuments(state, customer, notEmailed)
+  const activity = customerActivity(state, customer)
   const projectOf = (docKey: string) => state.projects.find((p) => `contract-${p.id}` === docKey)
   const sendingProject = sending ? projectOf(sending) : undefined
   const step = sendingProject ? contractStep(state, customer, sendingProject.id, { canEmail }) : null
@@ -110,9 +116,10 @@ export function GcCustomerWindow({
             )}
           </div>
         </div>
-        <CompanyTabStrip tab={tab} onTab={(t) => setTab(t === 'documents' ? 'documents' : 'about')} toGet={docs.toGet} portal={false} />
+        <CompanyTabStrip tab={tab} onTab={(t) => setTab(t === 'documents' || t === 'activity' ? t : 'about')} activity={activity.length} toGet={docs.toGet} portal={false} />
         <div style={{ padding: '1rem', overflowY: 'auto', minHeight: 0 }}>
           {tab === 'about' && <About state={state} customer={customer} onOpenProject={onOpenProject} />}
+          {tab === 'activity' && <CompanyActivity events={activity} onOpenProject={onOpenProject} {...(onLogContact ? { onLog: onLogContact } : {})} />}
           {tab === 'documents' && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               {done && (
