@@ -51,6 +51,11 @@ const NEVER = {
   chargeMadeBy: 'u-CHARGE-MAKER-SECRET',
   chargeSettledBy: 'u-CHARGE-SETTLER-SECRET',
   signerIp: 'SIGNER-IP-SECRET',
+  // Its papers (B6-b-ii): where each stands, never its link, its body, its values or another company's.
+  paperLink: 'https://example.com/PAPER-LINK-SECRET',
+  paperValues: 'PAPER-FORM-VALUES-SECRET',
+  paperBody: 'PAPER-BODY-SECRET',
+  otherPaper: 'paper-THEM-SECRET',
 } as const
 
 function rows(): TradePortalRows {
@@ -158,6 +163,10 @@ function workRows(): TradePortalRows {
       { id: 'co-me', project_id: 'proj-3', number: 2, description: NEVER.changeOrderWords, reason: 'owner', package_id: 'pkg-job', cost: 3400, price: NEVER.customerChangeOrderPrice, status: 'sent', sent_on: '2026-10-03', answered_on: null, pct_done: NEVER.changeOrderPct },
       { id: 'co-them', project_id: 'proj-1', number: 3, description: NEVER.otherRequest, reason: 'field', package_id: 'pkg-elec', cost: NEVER.otherChangeOrderCost, price: NEVER.customerChangeOrderPrice, status: 'draft' },
     ],
+    papers: [
+      { id: 'paper-msa', company_id: ME, person_name: `gc-company:${ME}`, document_name: 'Master Subcontract Agreement', doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null, url: NEVER.paperLink, form_values: { name: NEVER.paperValues }, signing_body_html: NEVER.paperBody },
+      { id: NEVER.otherPaper, company_id: THEM, doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null },
+    ],
   }
 }
 
@@ -170,7 +179,7 @@ describe('a trade never sees our price to the customer', () => {
 
   it('names only reviewed fields, never our money', () => {
     const named = Object.values(TRADE_PORTAL_FIELDS).flat()
-    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip']) {
+    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip', 'url', 'form_values', 'signing_body_html', 'person_name', 'public_token_hash']) {
       expect(named).not.toContain(f)
     }
   })
@@ -244,6 +253,10 @@ describe('its own work, and only its part of a change order (P4b-i)', () => {
   it('reads its own change requests, and of the change order one became only its part', () => {
     expect(slice.changeRequests.map((r) => [r.id, r.change_order_id])).toEqual([['cr-me', 'co-me']])
     expect(slice.changeOrders).toEqual([{ id: 'co-me', number: 2, status: 'sent', sent_on: '2026-10-03', answered_on: null, cost: 3400 }])
+  })
+
+  it('reads where its own papers stand, never their link, body or values, nor another company’s papers', () => {
+    expect(slice.papers).toEqual([{ id: 'paper-msa', company_id: ME, doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null }])
   })
 
   it('reads nothing of this company’s work when another company’s link opens', () => {

@@ -39,7 +39,7 @@ const ids = (rows: R[], f = 'id'): string[] => [...new Set(rows.map((r) => Strin
 async function readRows(admin: SupabaseClient, companyId: string): Promise<TradePortalRows | null> {
   const company = (await admin.from('gc_companies').select('*').eq('id', companyId).maybeSingle()).data as R | null
   if (!company) return null
-  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests] = await Promise.all([
+  const [people, invites, contacts, promises, messages, setSends, sows, backCharges, changeRequests, papers] = await Promise.all([
     admin.from('gc_company_people').select('*').eq('company_id', companyId).is('removed_at', null).then(rowsOf),
     admin.from('gc_invites').select('id, package_id, company_id, status, invited_on, seen_rev, declined_why, declined_on').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_company_contacts').select('id, company_id, invite_id, contacted_on, how, note, promised_by').eq('company_id', companyId).not('invite_id', 'is', null).then(rowsOf),
@@ -50,6 +50,8 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     admin.from('gc_sows').select('id, package_id, invite_id, company_id, status, price, retainage_pct, based_on_rev, sent_on, signed_on').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_back_charges').select('*').eq('company_id', companyId).order('sent_on').then(rowsOf),
     admin.from('gc_trade_change_requests').select('*').eq('company_id', companyId).order('asked_on').then(rowsOf),
+    // Its own papers (B6-b-ii), where each stands: for its master agreement first.
+    admin.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at').eq('company_id', companyId).then(rowsOf),
   ])
   // The change orders its requests became, as their part only: number, status, the day sent and answered, and the cost.
   const orderIds = ids(changeRequests, 'change_order_id')
@@ -63,7 +65,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
   ])
   const projectIds = ids(packages, 'project_id')
   if (projectIds.length === 0) {
-    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, ...work }
+    return { company, people, invites, quotes, contacts, promises, projects: [], packages, scopeItems: [], exclusions: [], sets: [], setItems: [], questions: [], messages, setSends, papers, ...work }
   }
   const [projectRows, gcRows, scopeItems, exclusions, sets, questions, supers] = await Promise.all([
     admin.from('projects').select('id, name, address').in('id', projectIds).then(rowsOf),
@@ -91,7 +93,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     ].filter((t): t is NonNullable<typeof t> => t !== null)
     return { project, gc, team }
   })
-  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, ...work }
+  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, ...work }
 }
 
 serve(async (req) => {
