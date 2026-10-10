@@ -84,3 +84,7 @@ Nothing reads it until the Board's loader switches; roll the loader back first i
 ## Status
 
 Written 2026-10-10 with the migration. Not pushed.
+
+## Status
+
+Merged in #5335 and pushed to prod 2026-10-10 ~14:10 UTC (`supabase db push` took it alone; drift check 859/859). Verified read-only through the management API (`to-dos/gc-mode/scripts/verify/verify-120000.mjs` on `spike/gc-mode`): the function is SECURITY DEFINER, STABLE, `search_path=public`, returning the eight columns; `authenticated` may execute and `anon` may not; a controller's count equals the company papers' count (both 0 on prod today, no company paper filed yet); a subcontractor and an estimator read none. The types regen is the one regen owner's follow-up; the Board's loader switches on it.
