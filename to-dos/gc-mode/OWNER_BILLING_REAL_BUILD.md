@@ -545,10 +545,14 @@ migration a day on this lane. "Check" is how the reviewer sees it work.
 `is_dev()` for the owner and controller predicate, with `ACCESS_CONTROL.md` in the same PR, the
 schedule's PR 10 the pattern.
 
-**Later, once the rest is in**: the office's notifications in `README.md` → *Workflow steps not
-built yet* (bill day minus 2 days to the project manager, the architect reminded at 3 days and the
-project manager at 5, the customer 3 days before a bill is due); our own crew at its Pipeline cost
-in `jobMargin` (U8); general conditions at actual cost.
+13. **O10, the office's notices** (after O9; the lead's ask, 2026-10-09): bill day minus 2 days to the project
+    manager, the architect reminded at 3 days and the project manager at 5, from `README.md` → *Workflow steps not
+    built yet*. One record written before each send, so each goes once, behind a switch that starts off, with a
+    preview. Two PRs, O10a (the record and what is due) and O10b (the sender): `mockups/owner-billing-o10.md`.
+    *Check:* the bed's notices due on the right days to the right reader, each once; then Preview, on Grace's yes.
+
+**Later, once the rest is in**: the customer's notice 3 days before a bill is due (O10's call 5); our own crew at its
+Pipeline cost in `jobMargin` (U8); general conditions at actual cost.
 
 ## Docs each PR touches
 
