@@ -5,8 +5,8 @@
  * by when, each paper that is not in with its own next step, and that the bar stays held until they are. The words are
  * the kernel's (`notReadyBlock`, `uninsuredBlock`), which read the company's own papers since the Board's B6-b-ii.
  *
- * A paper's button opens the company's window (`useCompanyOpener`). Until the Board's opener takes a tab and a paper, it
- * opens About, and the paper's send is on its Documents tab.
+ * A paper's button opens the company's window on its Documents tab at that paper, with its send open when the reader
+ * may send it (`useCompanyOpener`'s `CompanyAt`, the Board's B6-b-ii).
  */
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { notReadyBlock, uninsuredBlock } from '../../lib/gc/schedule/notReady'
@@ -34,22 +34,26 @@ export function GcNotReady({ state, project, lineId }: { state: GcState; project
       }}
     >
       <strong style={{ color: block.late ? 'var(--text-red-700)' : 'var(--text-amber-800)' }}>{block.title}</strong>
-      {block.lines.map((l) => (
-        <div key={l.kind} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
-            <div>
-              {l.line}
-              {l.hint ? ` ${l.hint}` : ''}
+      {block.lines.map((l) => {
+        // The paper's Documents row: 'msa', 'insurance', 'w9' or 'sow-<package>'. Null (an award): no button.
+        const doc = l.doc
+        return (
+          <div key={l.kind} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ flex: '1 1 16rem', minWidth: 0 }}>
+              <div>
+                {l.line}
+                {l.hint ? ` ${l.hint}` : ''}
+              </div>
+              {l.promise && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{l.promise}</div>}
             </div>
-            {l.promise && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{l.promise}</div>}
+            {l.verb && doc && partner && opener && (
+              <Btn kind={l === first ? 'primary' : 'plain'} onClick={() => opener.openPartner(partner.id, { tab: 'documents', doc, send: true })}>
+                {l.verb}
+              </Btn>
+            )}
           </div>
-          {l.verb && l.doc && partner && opener && (
-            <Btn kind={l === first ? 'primary' : 'plain'} onClick={() => opener.openPartner(partner.id)}>
-              {l.verb}
-            </Btn>
-          )}
-        </div>
-      ))}
+        )
+      })}
       <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{block.last}</div>
     </div>
   )

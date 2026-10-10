@@ -54,7 +54,7 @@ Save one at a time. The list reads again after each one.
 
 Press a bar to open its form. When its trade's papers are not in, the form says so first. It names each paper that is missing, like a master agreement or current insurance.
 
-Press the paper's button, like **Ask for it**. The company's window opens. Send the paper from there.
+Press the paper's button, like **Ask for it**. The company's window opens at that paper. Send it from there.
 
 The bar stays held on the chart until the papers are in.
 
