@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Btn, Card, Chip, Stat, Why, type Tone } from './gcUi'
+import { Btn, Card, Chip, Stat, Why, input, type Tone } from './gcUi'
 import { BUILDING_CSS } from './gcBuildingCss'
 import { GcDrawBackCharges } from './GcDrawBackCharges'
 import { GcDrawCameInForm, GcDrawSendBackForm, GcDrawSentBackList, type LinkAccess } from './GcDrawForms'
@@ -9,6 +9,7 @@ import { sowMoney } from '../../lib/gc/bids'
 import { retainageHeldNow, sentBackOpen, sowContractSum, timesSentBack, tradeChangesFor, type TradeChange } from '../../lib/gc/building'
 import { drawPayDays, drawsToPay } from '../../lib/gc/buildingPay'
 import { DRAW_PORTAL_LIVE } from '../../lib/gc/drawEmail'
+import type { SignedFile } from '../../lib/gc/closeoutRows'
 import { drawCameInDraft, type DrawCameIn, type DrawExtra } from '../../lib/gc/drawRows'
 import { partnerById } from '../../lib/gc/lookups'
 import { backChargesToAct, PAY_WITHIN_DAYS } from '../../lib/gc/portal'
@@ -37,6 +38,11 @@ export interface DrawWrites {
   onTakeCharge: (packageId: string, chargeId: string, drawId: string) => void
   /** A change order the customer signed goes to its trade, as a change to its statement of work. */
   onSendChange: (packageId: string, changeOrderId: string) => void
+  /**
+   * They signed a change we sent them, on paper or by email (the Building lane's U6d, `gc_trade_change_signed_in`): its
+   * line on their statement of work, with the file it came as. Absent: no press shows.
+   */
+  onChangeSignedIn?: (packageId: string, changeOrderId: string, file: SignedFile) => void
 }
 
 interface Props {
@@ -337,7 +343,14 @@ function TradeCard({
               onCancel={() => setCameIn(false)}
             />
           )}
-          <TradeChanges changes={changes} company={partner.company} busy={busy} onSend={(id) => writes.onSendChange(pkg.id, id)} />
+          <TradeChanges
+            changes={changes}
+            company={partner.company}
+            busy={busy}
+            checkLink={checkLink}
+            onSend={(id) => writes.onSendChange(pkg.id, id)}
+            onSignedIn={writes.onChangeSignedIn ? (id, file) => writes.onChangeSignedIn?.(pkg.id, id, file) : undefined}
+          />
           <GcDrawBackCharges
             sow={sow}
             company={partner.company}
@@ -483,8 +496,27 @@ const CHANGE_WORDS: Record<TradeChange['state'], { tone: Tone; word: string }> =
   signed: { tone: 'green', word: 'on their statement of work' },
 }
 
-/** Each change order on the trade: with the customer, ours to send to the trade, waiting on its signature, or signed in. */
-function TradeChanges({ changes, company, busy, onSend }: { changes: TradeChange[]; company: string; busy: string | null; onSend: (changeOrderId: string) => void }) {
+/**
+ * Each change order on the trade: with the customer, ours to send to the trade, waiting on its signature, or signed in.
+ * One they signed on paper or by email is recorded here with **They signed it** (U6d).
+ */
+function TradeChanges({
+  changes,
+  company,
+  busy,
+  checkLink,
+  onSend,
+  onSignedIn,
+}: {
+  changes: TradeChange[]
+  company: string
+  busy: string | null
+  checkLink?: (url: string) => Promise<LinkAccess>
+  onSend: (changeOrderId: string) => void
+  onSignedIn?: (changeOrderId: string, file: SignedFile) => void
+}) {
+  // The change whose signature is being recorded, with the file it came as.
+  const [signing, setSigning] = useState<string | null>(null)
   if (changes.length === 0) return null
   return (
     <div data-draw-changes style={{ display: 'grid', gap: '0.3rem', fontSize: '0.85rem', paddingTop: '0.4rem', borderTop: '1px solid var(--border)' }}>
@@ -500,14 +532,89 @@ function TradeChanges({ changes, company, busy, onSend }: { changes: TradeChange
             </Btn>
           )}
           {state === 'sent' && co.tradeChange && <span style={{ color: 'var(--text-muted)' }}>sent {shortDate(co.tradeChange.sentOn)}</span>}
+          {state === 'sent' && onSignedIn && signing !== co.id && (
+            <Btn disabled={busy === co.id} onClick={() => setSigning(co.id)}>
+              They signed it
+            </Btn>
+          )}
           {state === 'signed' && co.tradeChange?.signedOn && <span style={{ color: 'var(--text-muted)' }}>signed {shortDate(co.tradeChange.signedOn)}</span>}
+          {state === 'sent' && onSignedIn && signing === co.id && (
+            <SignedInForm
+              company={company}
+              busy={busy === co.id}
+              checkLink={checkLink}
+              onRecord={(file) => {
+                onSignedIn(co.id, file)
+                setSigning(null)
+              }}
+              onCancel={() => setSigning(null)}
+            />
+          )}
         </div>
       ))}
       {!DRAW_PORTAL_LIVE && changes.some((c) => c.state === 'toSend' || c.state === 'sent') && (
         <span data-draw-change-hint style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          Their portal does not take signatures yet. Call them to sign it.
+          {onSignedIn
+            ? 'Their portal does not take signatures yet. Call them to sign it. Once they sign on paper or by email, press They signed it.'
+            : 'Their portal does not take signatures yet. Call them to sign it.'}
         </span>
       )}
+    </div>
+  )
+}
+
+/** A change they signed on paper or by email: the file it came as and its Drive link, both optional. */
+function SignedInForm({
+  company,
+  busy,
+  checkLink,
+  onRecord,
+  onCancel,
+}: {
+  company: string
+  busy: boolean
+  checkLink?: (url: string) => Promise<LinkAccess>
+  onRecord: (file: SignedFile) => void
+  onCancel: () => void
+}) {
+  const [file, setFile] = useState<SignedFile>({ fileName: '', driveUrl: '' })
+  const [access, setAccess] = useState<LinkAccess>(null)
+  const check = (url: string) => {
+    setAccess(null)
+    if (!checkLink || !url.trim()) return
+    void checkLink(url.trim())
+      .then(setAccess)
+      .catch(() => setAccess(null))
+  }
+  return (
+    <div data-draw-change-signed-form style={{ flexBasis: '100%', display: 'grid', gap: '0.4rem', padding: '0.55rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)' }}>
+      <span>
+        {company} signed it on paper or by email. It becomes a line of their statement of work. Add the file if you have it.
+      </span>
+      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <input value={file.fileName} onChange={(e) => setFile({ ...file, fileName: e.target.value })} placeholder="The file's name" aria-label="The signed file's name" style={{ ...input, flex: '1 1 12rem' }} />
+        <input
+          value={file.driveUrl}
+          onChange={(e) => setFile({ ...file, driveUrl: e.target.value })}
+          onBlur={(e) => check(e.target.value)}
+          placeholder="Its Drive link"
+          aria-label="The signed file's Drive link"
+          style={{ ...input, flex: '2 1 16rem' }}
+        />
+      </div>
+      {access === 'restricted' && (
+        <div data-draw-change-link-hint style={{ fontSize: '0.8rem', color: 'var(--text-amber-800)' }}>
+          Only people given access can open this link. Our office may not be one of them.
+        </div>
+      )}
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <Btn kind="primary" disabled={busy} onClick={() => onRecord(file)}>
+          Record their signature
+        </Btn>
+        <Btn kind="quiet" onClick={onCancel}>
+          Cancel
+        </Btn>
+      </div>
     </div>
   )
 }
