@@ -2,7 +2,7 @@
 name: "The schedule's PR 14: the trade's side in its portal"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 14, decisions 9 and 10, Keeping it true (late notices, crew counts, look-ahead marks) and The trade's writes; PORTAL_REAL_BUILD.md, P5d and the schedule's seam; GANTT_FEATURES.md G-110, G-114, G-117, G-142, G-146
 branch: the plan on claude/gc-schedule-pr14-plan (from origin/spike/gc-mode at 3d4c360cc); the code from origin/main in three cuts, one with a migration
-status: plan 2026-10-10 by gc 4 at the lead's ask, for gc 10 (Schedule) and gc 3 (Portal, calls 1, 8 and 9) to co-sign. 14a's SQL ran on the real bed on main at d61ad6467. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 4 at the lead's ask. Amendment 1 (2026-10-10): gc 3 co-signed calls 1, 8 and 9 and the Seams; gc 10 co-signed every call but 4, whose fix is written in (under way and done read the line's percent as lateDoor does), with their three smaller notes; gc 3's two conditions for 14b are in call 9. For the lead's read-back. 14a's SQL ran on the real bed on main at d61ad6467. Nothing cut or claimed.
 ---
 
 # The schedule's PR 14: the trade's side in its portal
@@ -36,7 +36,7 @@ Nothing writes a notice, a count or a trade's mark, and no screen offers the off
 
 ## The calls
 
-**For gc 10 (Schedule) and gc 3 (Portal, calls 1, 8 and 9), each with the other way:**
+**Co-signed by gc 10 (Schedule) and gc 3 (Portal, calls 1, 8 and 9) at their picks, call 4 as amended (amendment 1); each with the other way:**
 
 1. **The verbs are this lane's, their kinds the Portal's P5d-ii** (gc 3's seam, as in 13a, U3b to U6 and P5c). Each is
    `SECURITY INVOKER`, granted to `service_role` only, with the link's company first and a key raised as `P0001` with
@@ -48,9 +48,16 @@ Nothing writes a notice, a count or a trade's mark, and no screen offers the off
    to the portal's screen; the server makes them the rule. *Other way:* the reducer's checks only.
 3. **Days are the company's, weeks its ISO Mondays** (`app_today()`). A crew count is for this week or the next two
    (`crewWeeks`). A mark is for this week or last week (the portal's `canMark`), on a bar that runs that week.
-4. **A late notice is the kernel's** (`lateDoor`, `lateTarget`, and `lateNoticeProblem`'s order):
-   - its own line, not finished (no actual finish);
-   - under way means an actual start, which a trade's report sets (U6a). Then it asks a new finish, and the start stays;
+4. **A late notice is the kernel's** (`lateDoor`, `lateTarget`, and the order of the spike's `lateNoticeProblem`,
+   which 14a lifts):
+   - its own line, not done;
+   - under way and done read as `lateDoor` reads them (gc 10's fix, amendment 1): an actual start or finish, or the
+     line's percent as `lineOf` reads it. That is the percent we see on the line in the trade's pay application sent
+     back and not yet sent again (`sentBackOpen`'s `we_see`), else the newest report on the line
+     (`gc_sow_line_reports`: a trade's report, or a pay application's claim, which sets no real day), else none. Above
+     0 is under way, 100 is done. A trade that reports only through its pay applications, the usual way, reads under
+     way on the server as it does in its portal;
+   - under way, it asks a new finish, and the start stays;
    - not started, it asks a new start, and the bar moves whole, keeping its length;
    - the day is after the one it changes, and not before today;
    - a reason from the five, and a sentence of eight letters or more;
@@ -82,14 +89,18 @@ Nothing writes a notice, a count or a trade's mark, and no screen offers the off
      `rows.ts` are 28 files and 8,301 lines, all pure, with no package import.
 
    So 14b generates the copy (`scripts/edge-kernels.mjs` into `supabase/functions/_shared/gcKernels/`), with a test
-   that regenerates it and fails when it differs, as every generated file is kept. The read builds the board for the
-   company's awarded jobs and returns `portalSchedule`'s answer. 14b gets its own plan with gc 3, who co-signs the
-   slice. *Other way:* `.ts` extensions through `src/lib`, which touches every importer of 28 files and still leaves
+   that regenerates it and fails when it differs, as every generated file is kept. A change to any of those files is
+   then a regenerate in the same PR, and `check:edge-drift` names the function to redeploy. The read builds the board
+   for the company's awarded jobs and returns `portalSchedule`'s answer. 14b gets its own plan with gc 3, who co-signs
+   the slice, on gc 3's two conditions (amendment 1):
+   - the never-sees test plants another company's bars, names and dollars, and none reaches the answer;
+   - `gc-trade-portal` is the copy's only importer, so its deploy list stays one function. *Other way:* `.ts` extensions through `src/lib`, which touches every importer of 28 files and still leaves
    deploying files outside `supabase/` unproved.
 10. **The office's side is 14c**, on the io already on main:
     - the late notices card (`lateNoticeRows`): **Take {day}** opens *Why it moved* filled in with the notice
-      (`lateNoticeMove`, saved through `gc_schedule_move`); **Push back** with a sentence (`pushBackLateNotice`);
-      **Call**;
+      (`lateNoticeMove`), saved through `saveScheduleMove` with the version read: `gc_schedule_move`, whose
+      `gc_schedule_save_move` refuses a notice taken already. On that refusal the card reads again and the row goes;
+      **Push back** with a sentence (`pushBackLateNotice`); **Call**;
     - our superintendent's check (`verifyList`): a trade's mark verified or corrected (`verifyLookAhead`), our crew's
       own marked (`crewMarkLookAhead`), the inspections listed;
     - for those who may move a bar, never in the what-if copy.
@@ -112,9 +123,11 @@ SET lock_timeout = '3s';
 -- company's (app_today()). No table is created.
 
 -- A late notice from the company (tradeSayLate, G-117): its own trade's line, awarded to it, on a job being built, not
--- finished. Under way (an actual start: a trade's report sets one), it asks a new finish; not started, a new start, the
--- bar moving whole and keeping its length. The day is after the one it changes and not before today, with a reason and
--- a sentence. A second notice on the same bar replaces the first (lateNoticeState). Returns the notice's id.
+-- finished. Under way and done read as lateDoor reads them: an actual start or finish, or the line's percent as the
+-- kernels read it (lineOf): an open send-back's percent where we doubted the line, else the newest report on it (a
+-- trade's report or a pay application's claim). Under way, it asks a new finish; not started, a new start, the bar
+-- moving whole and keeping its length. The day is after the one it changes and not before today, with a reason and a
+-- sentence. A second notice on the same bar replaces the first (lateNoticeState). Returns the notice's id.
 CREATE OR REPLACE FUNCTION public.gc_trade_say_late(p_company_id uuid, p_activity_id uuid, p_day date, p_reason text, p_note text)
 RETURNS uuid
 LANGUAGE plpgsql
@@ -126,6 +139,10 @@ DECLARE
   v_ours boolean;
   v_stage text;
   v_company uuid;
+  v_sow uuid;
+  v_line uuid;
+  v_back uuid;
+  v_pct numeric;
   v_started boolean;
   v_day date;
   v_note text := btrim(coalesce(p_note, ''));
@@ -147,10 +164,24 @@ BEGIN
   IF v_stage <> 'building' THEN
     RAISE EXCEPTION 'jobNotBuilding' USING ERRCODE = 'P0001', DETAIL = 'A late notice opens once we are building the job.';
   END IF;
-  IF v_bar.actual_finish IS NOT NULL THEN
+  -- The line's percent: its statement of work's line, the draw sent back and not yet sent again (sentBackOpen), and
+  -- that draw's we_see on the line, else the newest report on the line, else none yet.
+  SELECT s.id, l.id INTO v_sow, v_line
+  FROM public.gc_sows s JOIN public.gc_sow_lines l ON l.sow_id = s.id
+  WHERE s.package_id = v_bar.package_id AND l.scope_item_id = v_bar.scope_item_id;
+  SELECT d.id INTO v_back FROM public.gc_draws d
+  WHERE d.sow_id = v_sow AND d.status = 'sent_back'
+    AND d.number = (SELECT count(*) + 1 FROM public.gc_draws x WHERE x.sow_id = v_sow AND x.status <> 'sent_back')
+  ORDER BY d.seq DESC LIMIT 1;
+  v_pct := coalesce(
+    (SELECT dl.we_see FROM public.gc_draw_lines dl WHERE dl.draw_id = v_back AND dl.sow_line_id = v_line),
+    (SELECT r.pct FROM public.gc_sow_line_reports r WHERE r.sow_line_id = v_line ORDER BY r.seq DESC LIMIT 1),
+    0
+  );
+  IF v_bar.actual_finish IS NOT NULL OR v_pct >= 100 THEN
     RAISE EXCEPTION 'workDone' USING ERRCODE = 'P0001', DETAIL = 'That work is done.';
   END IF;
-  v_started := v_bar.actual_start IS NOT NULL;
+  v_started := v_bar.actual_start IS NOT NULL OR v_pct > 0;
   v_day := CASE WHEN v_started THEN v_bar.finish ELSE v_bar.start END;
   IF p_day IS NULL THEN
     RAISE EXCEPTION 'badRequest' USING ERRCODE = 'P0001', DETAIL = 'Pick the day.';
@@ -248,7 +279,7 @@ BEGIN
   IF NOT FOUND THEN
     RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001', DETAIL = 'No trade with that id.';
   END IF;
-  IF v_ours OR v_company IS DISTINCT FROM p_company_id THEN
+  IF v_ours IS DISTINCT FROM false OR v_company IS DISTINCT FROM p_company_id THEN
     RAISE EXCEPTION 'notOnTrade' USING ERRCODE = 'P0001', DETAIL = 'Only the company we awarded this trade can give its crew.';
   END IF;
   IF v_stage <> 'building' THEN
@@ -342,7 +373,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.gc_trade_say_late(uuid, uuid, date, text, text) IS
-  'GC mode (v2.NNNN): a late notice from the trade''s portal (tradeSayLate, G-117) on its own line, awarded to it, on a job being built, not finished; a new finish under way, a new start not started; the day after the one it changes and not before today; a reason and a sentence. Returns the notice''s id. Service role only.';
+  'GC mode (v2.NNNN): a late notice from the trade''s portal (tradeSayLate, G-117) on its own line, awarded to it, on a job being built, not finished; under way and done read as lateDoor reads them (the actual days, or the line''s percent: an open send-back''s we_see, else the newest report); a new finish under way, a new start not started; the day after the one it changes and not before today; a reason and a sentence. Returns the notice''s id. Service role only.';
 COMMENT ON FUNCTION public.gc_trade_keep_day(uuid, uuid) IS
   'GC mode (v2.NNNN): the company keeps its day after the office pushed its notice back (tradeKeepDay): its own notice, pushed back, not kept, not taken, replaced or moved. Service role only.';
 COMMENT ON FUNCTION public.gc_trade_set_crew_count(uuid, uuid, date, integer) IS
@@ -372,7 +403,7 @@ $$;
 
 `supabase/tests/gc_schedule/40_trade_writes.sql`, a job of its own with every day read from today, run by
 `scripts/pgtest-gc-schedule.sh` after `30_tells.sql`; the script applies the migration a second time too. On main at
-d61ad6467 its 50 assertions passed:
+d61ad6467 its 53 assertions passed:
 - nothing before we build;
 - **the late notice:**
   - a bar not there, another company's trade, our crew's line (its trade still carrying an old award) and an
@@ -381,6 +412,9 @@ d61ad6467 its 50 assertions passed:
     note refused;
   - a notice not started moves the bar whole, keeping its length, sent by the contact, today;
   - one under way keeps its start;
+  - 30% by a pay application, with no real days on the bar, is under way, so the start stays (gc 10's case);
+  - an open send-back that sees 0 on the line wins over its 30%, so the bar moves whole;
+  - 100% by a pay application, with no real finish, is done;
   - the dates it was sent against, kept;
   - the version stays;
 - **the day kept:**
@@ -403,10 +437,10 @@ d61ad6467 its 50 assertions passed:
   - a checked mark refused, and it stays as it was;
 - **the grants:** a signed-in user refused, and each verb the service role's alone.
 
-Twenty-four bugs were planted one at a time, and twenty-three failed it:
+Twenty-seven bugs were planted one at a time, and twenty-six failed it:
 - **the late notice:** any company, our crew's line (its trade still carrying an old award, so `ours` is what refuses),
-  before we build, done work, a day not after the one it changes, a past day, any reason, no sentence, and work under
-  way read as not started;
+  before we build, done work, a day not after the one it changes, a past day, any reason, no sentence, work under way
+  read as not started, the line's percent ignored, the send-back's `we_see` ignored, and 100% not read as done;
 - **the day kept:** any company, before the push back, a notice a move took, one a newer notice replaced, and one
   whose bar moved;
 - **the crew count:** last week, over 50 (the table's check refuses it too), the same count twice kept, and another
@@ -421,6 +455,10 @@ it in the verb.
 
 ### Also in 14a
 
+- The portal form's two rules and its crew block's kernel, lifted word for word from the spike with their tests
+  (gc 10's note, amendment 1), so P5d-ii's forms import them from main and check what the verbs check before they send:
+  `lateNoticeProblem` (`gcLateNotices.ts`) into `lateNotices.ts`, and `crewCountProblem` and `portalCrewAsks`
+  (`gcCrewCounts.ts`) into `crewCounts.ts`. Their spike follow-up re-exports them.
 - `src/lib/gc/gcTradeSubmit.test.ts`: the eight new keys go in `WAITING` as `'P5d'`.
 - `docs/migrations/<stamp>_gc_schedule_trade_writes.md`, with the verify steps below.
 - `docs/ACCESS_CONTROL.md`'s Schedule bullet.
@@ -437,8 +475,9 @@ it in the verb.
 - **`GcVerifyCard.tsx`** (new), the prototype's *To verify*: `verifyList`'s waiting marks (`verifyLookAhead`), our
   crew's items this week (`crewMarkLookAhead`), and the inspections.
 - **`GcSchedule.tsx`**: both cards for `moves`, on a job being built, never in the copy.
-- **Tests:** the cards' render tests (Take into the move's window with the notice, Push back's sentence, a mark
-  verified and corrected, our crew's mark), and the window's: the cards for `moves` only, not in the copy.
+- **Tests:** the cards' render tests (Take into the move's window with the notice, and a notice taken already refused:
+  the card reads again and the row goes; Push back's sentence; a mark verified and corrected; our crew's mark), and the
+  window's: the cards for `moves` only, not in the copy.
 - **Docs:** the guide *answer a trade that says it will be late*; `PROJECT_DOCUMENTATION.md`'s Schedule paragraph;
   `GLOSSARY.md`'s *late notice*, *crew count* and *look-ahead mark*.
 
@@ -476,5 +515,6 @@ on the window, and see the portal's mark locked.
 
 ## Status
 
-Plan 2026-10-10, gc 4, for gc 10's and gc 3's co-signs and the lead's read-back. 14a's SQL bed-tested on main at
-d61ad6467. Nothing cut or claimed.
+Plan 2026-10-10, gc 4. Amendment 1 the same day: gc 3 and gc 10 co-signed; call 4's fix (the line's percent, the
+open send-back's we_see), gc 10's three notes and gc 3's two conditions for 14b are written in. For the lead's
+read-back. 14a's SQL bed-tested on main at d61ad6467. Nothing cut or claimed.
