@@ -142,12 +142,12 @@ export function netPositionLight(input: { deltaUsd: number | null; todayUsd: num
 }
 
 /** Constraint 2: cash never goes under the floor, read from the forecast's lowest point. */
-export function cashLight(input: { lowestUsd: number; lowestLabel: string; floorUsd: number; clearsFloor: boolean; daysUnderFloor: number; typedLabel: string | null; typedDaysAgo: number | null } | null): Light {
+export function cashLight(input: { lowestUsd: number; lowestLabel: string; floorUsd: number; clearsFloor: boolean; daysUnderFloor: number; typedLabel: string | null; typedDaysAgo: number | null; /** Cash on hand came from the bank today (v2.5218), so no typed caveat. */ synced?: boolean } | null): Light {
   const title = 'Cash stays above the floor'
   if (!input) return { tone: 'none', title, lead: 'not read yet', sentence: 'Type cash on hand to start the forecast.' }
   const lead = `lowest point ${shortK(input.lowestUsd)} on ${input.lowestLabel}`
-  const stale = input.typedDaysAgo != null && input.typedDaysAgo >= 7
-  const typed = input.typedLabel ? ` Cash on hand was typed ${input.typedLabel}${input.typedDaysAgo != null && input.typedDaysAgo > 0 ? `, ${input.typedDaysAgo} day${input.typedDaysAgo === 1 ? '' : 's'} ago` : ''}.` : ''
+  const stale = !input.synced && input.typedDaysAgo != null && input.typedDaysAgo >= 7
+  const typed = input.synced ? " Cash on hand is today's bank balance." : input.typedLabel ? ` Cash on hand was typed ${input.typedLabel}${input.typedDaysAgo != null && input.typedDaysAgo > 0 ? `, ${input.typedDaysAgo} day${input.typedDaysAgo === 1 ? '' : 's'} ago` : ''}.` : ''
   if (input.clearsFloor) return { tone: stale ? 'amber' : 'green', title, lead, sentence: `Above the ${shortK(input.floorUsd)} floor every day of the window.${typed}` }
   return { tone: 'red', title, lead, sentence: `${shortK(input.floorUsd - input.lowestUsd)} under the ${shortK(input.floorUsd)} floor, ${input.daysUnderFloor} day${input.daysUnderFloor === 1 ? '' : 's'} below it.${typed}` }
 }
