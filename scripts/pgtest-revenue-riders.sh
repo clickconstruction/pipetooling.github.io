@@ -7,7 +7,8 @@
 # for the tables and helpers they read; the three functions as main defined them before this bed's migration are
 # lifted from their migrations (job_rider_fees from 20261010026000, create_turnaway_trip_charge from 20260927230000,
 # apply_job_discount from 20261010023000); 15_seed.sql makes trip charges through them; then the migration is applied
-# twice (a second run must change nothing) and the scenario runs in one transaction that rolls back, ending with
+# twice (a second run must change nothing), then 20261010062000 (v2.5144, a deleted bill gives its returned check fee
+# back to its case) twice, and the scenario runs in one transaction that rolls back, ending with
 # "revenue_riders PASSED". Needs docker (the SQL beds workflow runs it on GitHub's runners);
 # PGTEST_PG_BIN=/usr/local/opt/postgresql@15/bin runs it on a local Postgres 15 instead. Never touches prod.
 set -euo pipefail
@@ -17,6 +18,7 @@ PORT="${PGTEST_PORT:-55457}"  # the local Postgres only; the container needs no 
 NAME="pgtest-revenue-riders"
 BED="supabase/tests/revenue_riders"
 MIGRATION="supabase/migrations/20261010044000_trip_charge_rider.sql"
+MIGRATION_CASE_FEE="supabase/migrations/20261010062000_case_fee_back_on_bill_delete.sql"
 TMP="$(mktemp -d)"
 
 python3 - "$TMP/10_main_functions.sql" <<'PY'
@@ -62,6 +64,8 @@ run_sql "$BED/15_seed.sql" >/dev/null
 run_sql "$MIGRATION" >/dev/null
 # A second run of the migration must change nothing.
 run_sql "$MIGRATION" >/dev/null
+run_sql "$MIGRATION_CASE_FEE" >/dev/null
+run_sql "$MIGRATION_CASE_FEE" >/dev/null
 export PGOPTIONS=''
 out="$(run_sql "$BED/20_scenario.sql" 2>&1 || true)"
 if ! grep -q "revenue_riders PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi

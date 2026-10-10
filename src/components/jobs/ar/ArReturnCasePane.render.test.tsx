@@ -175,6 +175,17 @@ describe('ArReturnCasePane — the returned-check fee (v2.5033)', () => {
     expect(screen.queryByTestId('ar-return-case-fee-add')).toBeNull()
   })
 
+  it('a fee that came off with its bill says so above the press, which adds it again (v2.5144)', () => {
+    const onAddFee = vi.fn()
+    pane({ fee: arCaseFeeOffer(view, feeRow({ fee_came_off_at: '2026-10-10T15:00:00Z' })), onAddFee })
+    expect(screen.getByTestId('ar-return-case-fee-note').textContent).toBe('The $30 fee came off with its bill on Oct 10. Add it again.')
+    fireEvent.click(screen.getByRole('button', { name: 'Add the $30 fee to bill 1' }))
+    expect(onAddFee).toHaveBeenCalledTimes(1)
+    cleanup()
+    pane({ fee: arCaseFeeOffer(view, feeRow()), onAddFee })
+    expect(screen.queryByTestId('ar-return-case-fee-note')).toBeNull()
+  })
+
   it('someone who cannot apply reads the line and gets no press; with no fee read there is no box', () => {
     pane({ fee: arCaseFeeOffer(view, feeRow()), onAddFee: vi.fn(), canApply: false })
     expect(screen.getByTestId('ar-return-case-fee-line')).toBeTruthy()

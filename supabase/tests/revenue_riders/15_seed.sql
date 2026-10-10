@@ -70,3 +70,21 @@ INSERT INTO public.dispatch_requests (job_ledger_id, status, closed_at, closed_n
   ('bbbbbbbb-0000-0000-0000-000000000001', 'closed', now(), 'Trip charge created — $50.00 (client not home)'),
   ('bbbbbbbb-0000-0000-0000-000000000001', 'closed', now(), 'Trip charge created — $45.00 (client not home)'),
   ('bbbbbbbb-0000-0000-0000-000000000001', 'closed', now(), 'Trip charge created — $35.00 (site not ready)');
+
+-- Returned check fees (v2.5144, punch list #105 gap 1). Job D: a $1,000 line, two bills of $530. Bill 1 carries
+-- case D's $30, which the case records; bill 2 carries case F's $30. Revenue $1,060 = 1,000 + 30 + 30.
+-- Case E's fee left with a bill before the trigger: no bill names it, fee_invoice_id is null, fee_added_at is set.
+-- Case F's fee_invoice_id is null too, but its entry still rides on a live bill, so the backfill leaves it.
+INSERT INTO public.jobs_ledger (id, status, master_user_id, revenue) VALUES
+  ('dddddddd-0000-0000-0000-000000000001', 'billed', '11111111-1111-1111-1111-111111111111', 1060);
+INSERT INTO public.jobs_ledger_fixtures (job_id, name, count, sequence_order, line_unit_price) VALUES
+  ('dddddddd-0000-0000-0000-000000000001', 'Repipe', 1, 0, 1000);
+INSERT INTO public.jobs_ledger_invoices (id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, fee_lines) VALUES
+  ('dddddddd-1111-0000-0000-000000000001', 'dddddddd-0000-0000-0000-000000000001', 530, 'billed', 0, true,
+   '[{"case_id": "cd000000-0000-0000-0000-00000000000d", "amount": 30, "description": "Returned check fee"}]'),
+  ('dddddddd-1111-0000-0000-000000000002', 'dddddddd-0000-0000-0000-000000000001', 530, 'billed', 1, false,
+   '[{"case_id": "cf000000-0000-0000-0000-00000000000f", "amount": 30, "description": "Returned check fee"}]');
+INSERT INTO public.mercury_transaction_ar_returned (mercury_transaction_id, source, fee_amount, fee_invoice_id, fee_added_at, fee_added_by) VALUES
+  ('cd000000-0000-0000-0000-00000000000d', 'bank', 30, 'dddddddd-1111-0000-0000-000000000001', now() - interval '1 hour', '11111111-1111-1111-1111-111111111111'),
+  ('ce000000-0000-0000-0000-00000000000e', 'bank', 30, NULL, now() - interval '1 day', '11111111-1111-1111-1111-111111111111'),
+  ('cf000000-0000-0000-0000-00000000000f', 'hand', 30, NULL, now() - interval '1 day', '11111111-1111-1111-1111-111111111111');
