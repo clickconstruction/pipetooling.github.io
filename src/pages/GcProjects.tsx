@@ -1590,6 +1590,7 @@ export default function GcProjects() {
                 onCompare={(projectId, packageId) => setComparing({ projectId, packageId })}
                 moneyShown={moneyShown}
                 folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
+                onChase={() => setDevView('followUp')}
               />
             ) : devView === 'partners' ? (
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />

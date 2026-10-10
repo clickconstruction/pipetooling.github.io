@@ -7,7 +7,9 @@ import { lostWords } from '../../lib/gc/lost'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { daysUntil, money, shortDate, weekdayDate } from '../../lib/gc/words'
 import { GcBoardStrip, GcStageHeading, type StageStripItem } from './GcBoardStages'
+import { projectPeople } from '../../lib/gc/projectPeople'
 import { useCustomerOpener } from './gcCustomerOpener'
+import { GcPeoplePill } from './GcPeoplePill'
 import { GcPriceCard, GcPriceLikely, GcPriceTrigger } from './GcPriceCard'
 import { Chip, PlusUnknown, type Tone } from './gcUi'
 import { GC_ICON_PATHS } from './gcIcons'
@@ -19,8 +21,9 @@ import { usePriceCard } from './usePriceCard'
  * board (`GcMode.tsx`). The three stages and Closed and Lost, each a section with its heading, and
  * the strip that jumps between them; each project a row with its days left (or its start), its
  * customer and architect, and its price with the card behind it. Read only: a row opens the
- * project. The ring, Who to call and By customer come with the Board's B2b, once the kernels they
- * read are on main.
+ * project. Since the Board's B2b-ii each row carries Who to call (`GcPeoplePill`): its job's share of the people we wait
+ * on (`projectPeople`). Follow up's badge and Needs you move to the count once a person (`allPeople`, call E1) together,
+ * so the two keep one number. The ring and By customer come with B2b's later cuts.
  */
 
 const SECTIONS: Record<BoardSection, { label: string; tone: Tone; number?: number; blurb: string; empty: string; order: (a: GcProject, b: GcProject) => number }> = {
@@ -71,6 +74,7 @@ export function GcBoard({
   onCompare,
   moneyShown = true,
   folderUrls = {},
+  onChase,
 }: {
   state: GcState
   /** Opens a project: its card on the GC projects page. */
@@ -82,6 +86,8 @@ export function GcBoard({
   moneyShown?: boolean
   /** Each project's Drive folder, by project id. */
   folderUrls?: Record<string, string>
+  /** Opens Follow up, from a row's Who to call card (B2b-ii). Unset: rows draw no Who to call. */
+  onChase?: () => void
 }) {
   const bySection = new Map<BoardSection, GcProject[]>()
   for (const key of BOARD_SECTION_ORDER) bySection.set(key, [])
@@ -119,6 +125,7 @@ export function GcBoard({
                   onCompare={onCompare && ((packageId) => onCompare(p.id, packageId))}
                   moneyShown={moneyShown}
                   folderUrl={folderUrls[p.id] ?? ''}
+                  {...(onChase ? { onChase } : {})}
                 />
               ))
             )}
@@ -255,6 +262,7 @@ function ProjectRow({
   onCompare,
   moneyShown,
   folderUrl,
+  onChase,
 }: {
   project: GcProject
   state: GcState
@@ -263,6 +271,7 @@ function ProjectRow({
   onCompare?: ((packageId: string) => void) | undefined
   moneyShown: boolean
   folderUrl: string
+  onChase?: () => void
 }) {
   // Outside the money team the price is the trades alone (B5-c), so its words say so.
   const soFar = moneyShown ? 'so far' : 'trades so far'
@@ -331,6 +340,12 @@ function ProjectRow({
         {project.lostOn && (
           <span style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
             <Chip tone="grey">{lostWords(project)}</Chip>
+          </span>
+        )}
+        {/* Everyone we are waiting on for this job, in one count (the owner, 2026-10-04). */}
+        {onChase && !project.lostOn && (
+          <span data-gc-board-people={project.id} style={{ display: 'block', marginTop: '0.35rem' }}>
+            <GcPeoplePill summary={projectPeople(state, project)} projectName={project.name} onWorkList={null} onOpenFollowUp={onChase} />
           </span>
         )}
       </span>
