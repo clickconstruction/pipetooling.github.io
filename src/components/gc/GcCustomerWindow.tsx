@@ -1,22 +1,41 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { customerActivity, type CompanyDoc } from '../../lib/gc/companyFile'
-import { contractStep, customerDocuments } from '../../lib/gc/customerContract'
+import { contractStep, customerDocuments, newestContractSend } from '../../lib/gc/customerContract'
+import { customerMoneyActivity, customerMoneyDocuments, type CustomerMoneyView } from '../../lib/gc/customerMoney'
+import { customerSummary, type CustomerSummary } from '../../lib/gc/customers'
 import { telHref } from '../../lib/gc/followUpSheet'
 import type { GcCustomer, GcState } from '../../lib/gc/types'
+import { money } from '../../lib/gc/words'
 import { CompanyActivity, CompanyDocuments, CompanyTabStrip, type ContactHow } from './GcCompanyDocuments'
 import { GcCustomerContractSend, type ContractSendInput, type ContractSendOutcome } from './GcCustomerContractSend'
 import type { CustomerAt, CustomerTab } from './gcCustomerOpener'
-import { Btn, Chip } from './gcUi'
+import { Btn, Chip, Stat } from './gcUi'
 
 /**
  * GC mode, the real build, the Board's B6-d-ii: a customer's window, first cut, from the design spike's
  * `GcCustomerWindow.tsx`. **About** names who they are and the jobs they are the customer on; **Documents** holds our
  * contract on each won job, with its next step beside the list (call D: the send goes from the customer's window).
  * **Activity** (B2b-v-ii) is everything with them, newest first (`customerActivity`), with Log a contact: a line in
- * their call log (`gc_customer_contacts`). B2b-v-iii adds their money and every other paper. Opened by `openCustomer`
- * (`gcCustomerOpener.ts`).
+ * their call log (`gc_customer_contacts`). For the money team (B2b-v-iii, gc 5's read) the page lays their jobs'
+ * billing (`customerMoneyView`): About adds what they owe, hold and pay in interest, and Documents each job's pay
+ * applications, late bills, interest bills and change orders after our contract, read only, each opening its own window.
+ * Opened by `openCustomer` (`gcCustomerOpener.ts`).
  */
+
+/** The money team's part (B2b-v-iii): the view the page laid, and where its rows lead. Unset: the window reads no money. */
+export interface CustomerWindowMoney {
+  /** Their jobs' billing, laid. Null: still reading. */
+  view: CustomerMoneyView | null
+  /** Why it did not read, in words. */
+  problem?: string | null
+  /** Bill the customer on a job, where a late bill is reminded. */
+  onOpenBill: (projectId: string) => void
+  /** A job's change orders. */
+  onOpenChanges: (projectId: string) => void
+  /** Our contract's own file on a job, signed on the press. Unset: the bucket does not let this reader read it. */
+  onOpenContract?: (projectId: string) => Promise<void>
+}
 
 const STAGE_WORDS: Record<string, string> = { pursuing: 'bidding', buyout: 'buying out', building: 'building' }
 
@@ -28,6 +47,7 @@ export function GcCustomerWindow({
   canEmail = false,
   onOpenProject,
   onLogContact,
+  money: moneyPart,
   onClose,
 }: {
   state: GcState
@@ -40,6 +60,8 @@ export function GcCustomerWindow({
   onOpenProject: (projectId: string) => void
   /** Log a contact on Activity: a line in their call log. Unset: no box. */
   onLogContact?: (how: ContactHow, note: string) => Promise<void>
+  /** The money team's part (B2b-v-iii). Unset: no money read. */
+  money?: CustomerWindowMoney
   onClose: () => void
 }) {
   const [tab, setTab] = useState<CustomerTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
@@ -57,26 +79,67 @@ export function GcCustomerWindow({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, sending])
-  const docs = customerDocuments(state, customer, notEmailed)
-  const activity = customerActivity(state, customer)
+  // The money team reads their jobs as laid (gc 5): each job through its own copy, the contract's rows from the board.
+  const view = moneyPart?.view ?? null
+  const docs = view ? customerMoneyDocuments(view, customer, notEmailed) : customerDocuments(state, customer, notEmailed)
+  const activity = view ? customerMoneyActivity(view, customer) : customerActivity(state, customer)
+  const [fileProblem, setFileProblem] = useState<string | null>(null)
   const projectOf = (docKey: string) => state.projects.find((p) => `contract-${p.id}` === docKey)
   const sendingProject = sending ? projectOf(sending) : undefined
   const step = sendingProject ? contractStep(state, customer, sendingProject.id, { canEmail }) : null
 
+  /** A row's presses: our contract's next step and its file; a bill's window; a job's change orders. Read only otherwise. */
   const ask = (d: CompanyDoc): ReactNode => {
-    if (!sendContract || !d.projectId || sending === d.key) return null
-    const next = contractStep(state, customer, d.projectId, { canEmail })
-    return next ? (
-      <Btn
-        kind="primary"
-        onClick={() => {
-          setDone(null)
-          setSending(d.key)
-        }}
-      >
-        {next.verb}
-      </Btn>
-    ) : null
+    const projectId = d.projectId
+    if (!projectId || sending === d.key) return null
+    const out: ReactNode[] = []
+    if (d.key.startsWith('contract-')) {
+      const next = sendContract ? contractStep(state, customer, projectId, { canEmail }) : null
+      if (next) {
+        out.push(
+          <Btn
+            key="send"
+            kind="primary"
+            onClick={() => {
+              setDone(null)
+              setSending(d.key)
+            }}
+          >
+            {next.verb}
+          </Btn>,
+        )
+      }
+      const project = state.projects.find((p) => p.id === projectId)
+      const open = moneyPart?.onOpenContract
+      if (open && project && newestContractSend(state, project)?.file) {
+        out.push(
+          <Btn
+            key="file"
+            kind="quiet"
+            onClick={() => {
+              setFileProblem(null)
+              // Signed on the press, never before: a link that is not made says so in words.
+              open(projectId).catch((e) => setFileProblem(`The contract did not open: ${e instanceof Error ? e.message : 'try again.'}`))
+            }}
+          >
+            Open the contract
+          </Btn>,
+        )
+      }
+    } else if (moneyPart && (d.key.startsWith('payapp-') || d.key.startsWith('owner-payapps-'))) {
+      out.push(
+        <Btn key="bill" kind="quiet" onClick={() => moneyPart.onOpenBill(projectId)}>
+          Open the bill
+        </Btn>,
+      )
+    } else if (moneyPart && (d.key.startsWith('co-') || d.key.startsWith('cos-'))) {
+      out.push(
+        <Btn key="changes" kind="quiet" onClick={() => moneyPart.onOpenChanges(projectId)}>
+          Open the change orders
+        </Btn>,
+      )
+    }
+    return out.length > 0 ? <>{out}</> : null
   }
 
   return createPortal(
@@ -118,7 +181,7 @@ export function GcCustomerWindow({
         </div>
         <CompanyTabStrip tab={tab} onTab={(t) => setTab(t === 'documents' || t === 'activity' ? t : 'about')} activity={activity.length} toGet={docs.toGet} portal={false} />
         <div style={{ padding: '1rem', overflowY: 'auto', minHeight: 0 }}>
-          {tab === 'about' && <About state={state} customer={customer} onOpenProject={onOpenProject} />}
+          {tab === 'about' && <About state={state} customer={customer} onOpenProject={onOpenProject} money={moneyPart} />}
           {tab === 'activity' && <CompanyActivity events={activity} onOpenProject={onOpenProject} {...(onLogContact ? { onLog: onLogContact } : {})} />}
           {tab === 'documents' && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
@@ -127,6 +190,12 @@ export function GcCustomerWindow({
                   {done}
                 </div>
               )}
+              {fileProblem && (
+                <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+                  {fileProblem}
+                </div>
+              )}
+              {moneyPart && <MoneyReading money={moneyPart} />}
               {docs.groups.length === 0 ? (
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No won job of theirs yet. Our contract comes once we win one.</div>
               ) : (
@@ -170,10 +239,71 @@ export function GcCustomerWindow({
 }
 
 /** Who they are to us: the jobs they are the customer on, each opening its card. */
-function About({ state, customer, onOpenProject }: { state: GcState; customer: GcCustomer; onOpenProject: (projectId: string) => void }) {
+/** While the money reads, or why it did not: one line. Nothing once it is read. */
+function MoneyReading({ money: part }: { money: CustomerWindowMoney }) {
+  if (part.problem) {
+    return (
+      <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+        {part.problem}
+      </div>
+    )
+  }
+  return part.view ? null : <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Reading what they owe us…</div>
+}
+
+/**
+ * Their totals at the head of About: their jobs, what we are bidding them, what is under contract and how often they
+ * picked us, for everyone the window opens to (the board's prices, the trades alone outside the money team). The money
+ * team (gc 5's V3) adds what they owe us now, what they hold and the interest on late bills, from their jobs as laid.
+ */
+function Totals({ customer, summary, view }: { customer: GcCustomer; summary: CustomerSummary; view: CustomerMoneyView | null }) {
+  // A live bid we lost counts as decided, like a lost one in their history (the spike's rule).
+  const decided = summary.won + customer.past.filter((p) => p.outcome === 'lost').length + summary.live.filter((p) => p.lostOn).length
+  return (
+    <div data-gc-customer-totals style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+      <Stat label="Live projects" value={summary.live.filter((p) => !p.lostOn && !p.closedOn).length} />
+      <Stat label="Priced, waiting on them" value={money(summary.inFront)} />
+      <Stat label="Under contract" value={money(summary.underContract)} />
+      {view && (
+        <div style={{ display: 'grid', gap: '0.15rem' }}>
+          <Stat label="They owe us now" value={money(view.summary.owed)} {...(view.summary.owed > 0 ? { tone: 'red' as const } : {})} />
+          {(view.owedSplit.certified > 0 || view.owedSplit.architect > 0) && (
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+              {[view.owedSplit.certified > 0 ? `${money(view.owedSplit.certified)} certified, not paid` : null, view.owedSplit.architect > 0 ? `${money(view.owedSplit.architect)} waiting on the architect` : null]
+                .filter(Boolean)
+                .join(' · ')}
+            </span>
+          )}
+        </div>
+      )}
+      {view && <Stat label="They are holding" value={money(view.summary.retainageHeld)} />}
+      {view && (view.interest.billed > 0 || view.interest.toBill > 0) && (
+        <div style={{ display: 'grid', gap: '0.15rem' }}>
+          <Stat label="Interest on late bills" value={money(view.interest.billed)} />
+          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {[
+              view.interest.billed > 0 ? `${money(view.interest.paid)} paid` : null,
+              view.interest.billed - view.interest.paid > 0 ? `${money(view.interest.billed - view.interest.paid)} owed` : null,
+              view.interest.toBill > 0 ? `${money(view.interest.toBill)} built up, not billed yet` : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
+          </span>
+        </div>
+      )}
+      <Stat label="They picked us" value={decided > 0 ? `${summary.won} of ${decided}` : 'first job'} />
+    </div>
+  )
+}
+
+function About({ state, customer, onOpenProject, money: part }: { state: GcState; customer: GcCustomer; onOpenProject: (projectId: string) => void; money?: CustomerWindowMoney | undefined }) {
   const jobs = state.projects.filter((p) => p.customerId === customer.id)
+  const view = part?.view ?? null
+  const summary = view ? view.summary : customerSummary(state, customer)
   return (
     <section style={{ display: 'grid', gap: '0.5rem' }}>
+      {jobs.length > 0 && <Totals customer={customer} summary={summary} view={view} />}
+      {part && <MoneyReading money={part} />}
       <div style={{ fontSize: '0.72rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Their jobs with us</div>
       {jobs.length === 0 ? (
         <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No GC job of theirs on the board.</div>

@@ -1033,3 +1033,25 @@ describe('GcProjects: our own crew from its Pipeline job (Building’s U8)', () 
     expect(loadGcCrewOnSite).not.toHaveBeenCalled()
   })
 })
+
+describe('GcProjects: the customer window’s money (the Board’s B2b-v-iii)', () => {
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+  afterEach(() => {
+    auth.role = 'dev'
+    vi.mocked(loadGcBillingRows).mockClear()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('a dev, on the money team, opens a customer and their billed jobs’ billing is read for that window', async () => {
+    const rows = awardedClinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(loadGcBillingRows).not.toHaveBeenCalledWith(['p1'])
+    const row = document.querySelector('[data-gc-board-row="p1"]') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Oak Street Partners' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Oak Street Partners' })
+    await waitFor(() => expect(loadGcBillingRows).toHaveBeenCalledWith(['p1']))
+    expect(await within(dialog).findByText('They owe us now')).toBeTruthy()
+  })
+})
