@@ -13,7 +13,7 @@ import {
   type GcState,
   type PayReminderStep,
 } from '../../lib/gcMode/gcModel'
-import { SendView } from './GcPaperSend'
+import { SendView } from './GcPaperSend.proto'
 
 /**
  * GC mode design spike: send a customer a paper from its window's Documents (the owner,
