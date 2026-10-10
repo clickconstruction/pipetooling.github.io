@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { groupBidHistory, type BidHistoryAction, type BidHistoryRow } from './bidHistory'
 import { bidRemovalKey, type BidPutBackResult, type BidRestoreResult } from './bidHistoryPutBack'
 import {
+  BID_UNDO_NO_AUTHOR,
   BID_UNDO_REMOVABLE_TABLES,
   BID_UNDO_UNSEEN_NONE,
   BID_UNDO_UNSEEN_TABLES,
@@ -198,6 +199,29 @@ describe('bidUndoPlan · added rows', () => {
     expect(plan(version)).toEqual({ ready: false, reason: 'Undo is off. It added a version, and Undo cannot remove that.' })
     const estimate = [row({ table: 'cost_estimates', recordId: 'e-2', countRowId: null, op: 'insert', oldValues: null, label: null, changedAt: at(0) }), row({ table: 'cost_estimate_labor_rows', recordId: 'l-2', countRowId: null, op: 'insert', oldValues: null, label: 'Tub', changedAt: at(1) })]
     expect(plan(estimate)).toEqual({ ready: false, reason: 'Undo is off. It added an estimate, and Undo cannot remove that.' })
+  })
+})
+
+describe('bidUndoPlan · an action no person made (v2.5132)', () => {
+  // Found on the ZZ Test walk: a server job's removal of set-aside labor rows (no author, no app tag) read
+  // "the app" yet offered Undo.
+  const parked = (over: Partial<BidHistoryRow> = {}) =>
+    [0, 1].map((i) => row({ table: 'cost_estimate_labor_rows_unmatched', recordId: `u-${i}`, countRowId: null, op: 'delete', newValues: null, label: `WC-${i}`, changedAt: at(i), changedBy: null, changedByName: null, byApp: null, ...over }))
+
+  it('is off, with the reason, when no row has an author or an app tag', () => {
+    expect(plan(parked())).toEqual({ ready: false, reason: BID_UNDO_NO_AUTHOR })
+    expect(BID_UNDO_NO_AUTHOR).toBe('Undo is off. No person made this change.')
+  })
+
+  it('a robot’s paste with no author keeps its Undo', () => {
+    const pasted = [0, 1].map((i) => row({ table: 'bids_count_rows', recordId: `c-r${i}`, countRowId: `c-r${i}`, op: 'insert', oldValues: null, label: `Lav-${i}`, changedAt: at(i), changedBy: null, changedByName: null, action: 'robot-paste' }))
+    expect(ready(plan(pasted)).removes).toBe(2)
+  })
+
+  it('the app’s tagged writes still offer nothing at all, and a person’s rows are not held', () => {
+    expect(plan(parked({ byApp: true, action: 'labor-park' }))).toBeNull()
+    expect(plan(parked({ changedBy: 'u-ann', changedByName: 'Ann' }))?.ready).toBe(false)
+    expect((plan(parked({ changedBy: 'u-ann', changedByName: 'Ann' })) as { reason: string }).reason).not.toBe(BID_UNDO_NO_AUTHOR)
   })
 })
 
