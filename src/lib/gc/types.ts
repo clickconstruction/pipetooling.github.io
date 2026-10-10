@@ -930,6 +930,8 @@ export interface OwnerPayAppSent {
    * is a recovery of Stripe's cost: every figure reads the bill at its base (O8c).
    */
   card?: OwnerPayAppCard
+  /** The day the app reminded the architect to certify it (O10's office notices). Unset: not reminded. */
+  architectRemindedOn?: string
 }
 
 /** A pay application's bill on card (O8b, O8c), as `gc_owner_card_bills` and the bill's row hold it. */

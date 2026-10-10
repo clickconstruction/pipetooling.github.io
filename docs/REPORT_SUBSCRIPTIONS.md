@@ -55,6 +55,7 @@ Not every stream carries all five pieces — event-driven streams (paid-in-full,
 | `legal_digest` | fixed weekly per recipient | `legal_firm_recipients.digest_weekday/time` (no request table — the recipient row is the schedule; `last_digest_at` dedupes) | `legal-notify-dispatch` | — | — |
 | `statement_round` | scheduled report | `statement_round_email_requests` (v2.2771; internal `recipient_user_id`; **per-recipient payload** — `get_statement_round_for_user` rebuilds the sender's round; office-only both sides; requester OR recipient may cancel) | `statement-round-email-dispatch` | ✅ recipient-scoped | — (scheduled report) |
 | `gc_money_monday` | scheduled report | `gc_money_monday_email_requests` (v2.5024; internal `recipient_user_id`; the money team both sides; one payload for every recipient, `get_gc_money_monday_payload()`; requester OR recipient may cancel) | `gc-money-monday-email` (:03 lane) | ✅ recipient-scoped | — (scheduled report) |
+| `gc_office_notices` | event, each morning | no request table: `get_gc_office_notices_due()` says what is due (O10a, v2.5137), and `gc_office_notices` keeps each one sent, written before the send; the switch `gc_office_notices_on_v1` holds the day it went on (O10b, v2.5148) | `gc-office-notices` (hourly at :13, its own lane; from 8 AM Central) | — | — (no subscription: the project manager on the money team, else the owner; the architect's reminder keeps a sent copy) |
 
 ## Design rules
 
