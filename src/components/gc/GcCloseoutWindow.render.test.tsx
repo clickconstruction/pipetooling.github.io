@@ -179,6 +179,23 @@ describe('GcCloseoutWindow', () => {
     expect(job.textContent).toBe('job closed Oct 9')
   })
 
+  it('shows each trade’s punch list under its steps when given its presses (U3b), and passes a press through', () => {
+    const base = initialGcState()
+    const project = base.projects.find((p) => p.id === 'fairoaksd')!
+    const punchWrites = { onAdd: vi.fn(), onRemove: vi.fn(), onFixedIn: vi.fn(), onCheck: vi.fn() }
+    const writes = { onAccept: vi.fn(), onFinalCameIn: vi.fn(), onApproveRelease: vi.fn(), onPay: vi.fn(), onWaiverIn: vi.fn(), onCloseJob: vi.fn() }
+    render(<GcCloseoutWindow state={base} project={project} writes={writes} punchWrites={punchWrites} onClose={() => undefined} />)
+    const list = trade('fconc').querySelector('[data-punch-list="fconc"]') as HTMLElement
+    expect(list.querySelector('[data-punch-count]')!.textContent).toBe('2 of 3 still open.')
+    fireEvent.click(within(list.querySelector('[data-punch-item="fairoaksd-punch-2"]') as HTMLElement).getByRole('button', { name: 'Checked, it is fixed' }))
+    expect(punchWrites.onCheck).toHaveBeenCalledWith('fairoaksd-punch-2', true)
+  })
+
+  it('shows no punch list without its presses, as before U3b', () => {
+    setup()
+    expect(document.querySelector('[data-punch-list]')).toBeNull()
+  })
+
   it('says each thing a first-timer reads in plain words', () => {
     setup()
     fireEvent.click(within(step('fsite', 'finalApp')).getByRole('button', { name: 'Their final pay application came by email' }))

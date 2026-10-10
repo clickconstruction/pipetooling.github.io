@@ -33,7 +33,7 @@ Each trade's card lists its steps in order. A done step shows a check. The step 
 
 ## Accept the work
 
-Accept the work waits on the trade's punch list. Every item must be checked fixed first. The card says how many are not.
+Accept the work waits on the trade's punch list. Every item must be checked fixed first. The card says how many are not. The trade's list sits under its steps, and [Keep a trade's punch list](/help/keep-a-trades-punch-list) says how to work it.
 
 Press {{button:blue|Accept the work}} when the list is done. The window opens their final pay application next.
 

@@ -53,7 +53,9 @@ import {
 import { changeEmail, chargeEmail, drawEmailFor, lessEmail, paidEmail, type DrawEmail, type DrawEmailTo } from '../lib/gc/drawEmail'
 import { GcCloseoutWindow } from '../components/gc/GcCloseoutWindow'
 import { acceptWork, approveRetainage, changeSignedIn, closeJob, finalPayAppCameIn } from '../lib/gc/closeoutIo'
-import { loadGcPunch } from '../lib/gc/punchIo'
+import { addPunchItem, checkPunchItem, loadGcPunch, punchFixedIn, removePunchItem } from '../lib/gc/punchIo'
+import { GcPunchWindow } from '../components/gc/GcPunchWindow'
+import type { PunchWrites } from '../components/gc/GcPunchList'
 import { withPunch, type PunchRow } from '../lib/gc/punchRows'
 import type { ScheduleRead } from '../lib/gc/schedule/rows'
 import { missingLogs } from '../lib/gc/buildingLog'
@@ -686,6 +688,50 @@ export default function GcProjects() {
     }
   }
 
+  // The punch list (Building's U3b-ii): a dev's on a job being built, opened at `punch=<projectId>`, behind Building's gate
+  // alone, since at Building's door it goes to the schedule's team while Closeout stays the money team's. It reads the
+  // job's punch list when the window opens. Closeout shows the same lists and reads them with its own.
+  const punchProjectId = params.get('punch')
+  const [punchRowsRead, setPunchRowsRead] = useState<{ id: string; rows: PunchRow[] } | null>(null)
+  const [punchBusy, setPunchBusy] = useState<string | null>(null)
+  const [punchProblem, setPunchProblem] = useState<string | null>(null)
+  const loadPunch = useCallback(async () => {
+    if (!punchProjectId || !canUseGcBuilding(role)) return
+    setPunchRowsRead({ id: punchProjectId, rows: await loadGcPunch([punchProjectId]) })
+  }, [punchProjectId, role])
+  useEffect(() => {
+    void loadPunch().catch((e) => setPunchProblem(formatErrorMessage(e, 'The punch list did not load.')))
+  }, [loadPunch])
+  const punchBoard = useMemo(
+    () => (board && punchProjectId ? withPunch(board, punchRowsRead && punchRowsRead.id === punchProjectId ? punchRowsRead.rows : []) : null),
+    [board, punchProjectId, punchRowsRead],
+  )
+  const punchProject = punchProjectId ? (punchBoard?.projects.find((p) => p.id === punchProjectId) ?? null) : null
+  const setPunchWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('punch', projectId)
+    else next.delete('punch')
+    setParams(next, { replace: true })
+    setPunchProblem(null)
+  }
+  /** The punch list's presses for a window: each runs, then that window's own reads run again, and a refusal shows there. */
+  const punchWritesFor = (setBusy: (id: string | null) => void, setProblem: (problem: string | null) => void, reread: () => Promise<unknown>): PunchWrites => {
+    const run = (busyId: string, work: () => Promise<unknown>, failed: string) => {
+      setBusy(busyId)
+      setProblem(null)
+      void work()
+        .then(reread)
+        .catch((e) => setProblem(formatErrorMessage(e, failed)))
+        .finally(() => setBusy(null))
+    }
+    return {
+      onAdd: (packageId, item) => run(packageId, () => addPunchItem(packageId, item), 'The item was not added.'),
+      onRemove: (itemId) => run(itemId, () => removePunchItem(itemId), 'The item was not taken off.'),
+      onFixedIn: (itemId) => run(itemId, () => punchFixedIn(itemId), 'The item was not recorded fixed.'),
+      onCheck: (itemId, fixed, note) => run(itemId, () => checkPunchItem(itemId, fixed, note), fixed ? 'The item was not checked.' : 'The item was not sent back.'),
+    }
+  }
+
   // The submittal register (Building's U4b): a dev's on a job being built, opened at `submittals=<projectId>`. It reads the
   // job's register and its schedule when the window opens, so a submittal is needed by the first start of the work it
   // holds. A press writes no gc_projects row, so only the register and the schedule are read again.
@@ -1298,6 +1344,12 @@ export default function GcProjects() {
                   })()}
                 </Btn>
               )}
+              {/* The punch list (Building's U3b-ii): a dev's, on a job being built. */}
+              {canUseGcBuilding(role) && board && p.stage === 'building' && (
+                <Btn kind="quiet" onClick={() => setPunchWindow(p.id)}>
+                  Punch list
+                </Btn>
+              )}
               {/* The submittal register (Building's U4b): a dev's, on a job being built. */}
               {canUseGcBuilding(role) && board && p.stage === 'building' && (
                 <Btn kind="quiet" onClick={() => setSubmittalsWindow(p.id)}>
@@ -1636,6 +1688,17 @@ export default function GcProjects() {
         />
       )}
 
+      {canUseGcBuilding(role) && punchProject && punchBoard && (
+        <GcPunchWindow
+          state={punchBoard}
+          project={punchProject}
+          writes={punchWritesFor(setPunchBusy, setPunchProblem, loadPunch)}
+          busy={punchBusy}
+          problem={punchProblem}
+          onClose={() => setPunchWindow(null)}
+        />
+      )}
+
       {canUseGcBuilding(role) && submittalsProjectId && submittalRead && (
         <GcSubmittalsWindow
           state={submittalRead.state}
@@ -1765,6 +1828,7 @@ export default function GcProjects() {
           busy={closeoutBusy}
           problem={closeoutProblem}
           onSeeBill={() => closeoutToBill(closeoutProject.id)}
+          punchWrites={punchWritesFor(setCloseoutBusy, setCloseoutProblem, loadCloseout)}
           onClose={() => setCloseoutWindow(null)}
           writes={{
             onAccept: (packageId) => closeoutWrite(packageId, acceptWork(packageId), 'The work was not accepted.', { board: true }),

@@ -31,6 +31,11 @@ interface Props {
   onClose: () => void
 }
 
+/** A temperature as typed: a cleared box is blank (NaN), never 0, so Save waits and the press refuses a missing one (U3b). */
+function degrees(typed: string): number {
+  return typed.trim() === '' ? Number.NaN : Number(typed)
+}
+
 const SKIES: { key: WeatherSky; word: string }[] = [
   { key: 'clear', word: 'Clear' },
   { key: 'cloudy', word: 'Cloudy' },
@@ -68,7 +73,7 @@ export function GcDailyLogWindow({ state, project, today, busy = false, problem,
   }, [onClose])
 
   // A log names only the trades it may, as the prototype's reducer kept it: our own crew, and a trade
-  // whose statement of work is signed. The press itself takes any trade on the job until U3b.
+  // whose statement of work is signed. The press holds the same rule (logTrades, U3b-i).
   const save = (draft: Draft) => {
     const trades = new Set(logTrades(project).map((k) => k.id))
     const kept = { ...draft, crews: draft.crews.filter((c) => trades.has(c.packageId)), delays: draft.delays.filter((d) => d.packageId === null || trades.has(d.packageId)) }
@@ -233,11 +238,11 @@ function LogForm({
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-muted)' }}>High</span>
-              <input type="number" value={d.high} onChange={(e) => set({ high: Number(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="High, degrees" />
+              <input type="number" value={Number.isFinite(d.high) ? d.high : ''} onChange={(e) => set({ high: degrees(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="High, degrees" />
             </label>
             <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
               <span style={{ color: 'var(--text-muted)' }}>Low</span>
-              <input type="number" value={d.low} onChange={(e) => set({ low: Number(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="Low, degrees" />
+              <input type="number" value={Number.isFinite(d.low) ? d.low : ''} onChange={(e) => set({ low: degrees(e.target.value) })} style={{ ...input, width: '4.5rem' }} aria-label="Low, degrees" />
             </label>
             <label style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
               <input type="checkbox" checked={d.weatherStop} onChange={(e) => set({ weatherStop: e.target.checked })} />
