@@ -39,3 +39,7 @@ Mutants of the plan's SQL in a local bed, each caught: the window from the due d
 ## Status
 
 Cut 2026-10-10 by Helper 5 (the Owner Billing lane), v2.5184. Open for the lead's read-back; the push follows the merge, then gc 7's types regen.
+
+## Status
+
+Merged in #5342 and pushed to prod 2026-10-10 ~14:45 UTC (`supabase db push` took it alone; drift check 860/860). Verified read-only through the management API (`to-dos/gc-mode/scripts/verify/verify-130000.mjs` on `spike/gc-mode`): the switch reads `false`; `due_on` is a nullable date; `gc_office_notices_kind_known` and `gc_office_notices_due_said` are validated and name `pay_soon`; `get_gc_customer_due_notices()` answers today with `since` null and no notices, and the 30-day read answers no notices too (no certified bill on prod); the controller is refused and only `service_role` may execute. Nothing sends until O12b is deployed and the owner turns the switch on. The types regen rides #5345 with 120000's.
