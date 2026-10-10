@@ -453,33 +453,41 @@ export default function GcProjects() {
     await setGcProjectMoney(projectId, values)
     await refreshBoard()
   }
-  // Our own work's Pipeline jobs (Owner Billing's O11b): the job general conditions are spent on, named on Our number
-  // and read the Costs tab's own way for the money team, so Money's margin and Closeout count what they really cost.
-  // Labor dollars only with pay access (loadOwnWorkCosts asks); a failed read leaves them at their budget.
+  // Our own work's Pipeline jobs (Owner Billing's O11b and O11a): the job general conditions are spent on, named on Our
+  // number, and each crew trade's (U8's links), read the Costs tab's own way for the money team, so Money's margin and
+  // Closeout count what they really cost. Labor dollars only with pay access (loadOwnWorkCosts asks); a failed read
+  // leaves them at their price and budget.
   const nameGcJob = async (projectId: string, jobId: string | null) => {
     await setGcGeneralConditionsJob(projectId, jobId)
     await refreshBoard()
   }
-  const ownWorkKey = useMemo(() => (board && canSeeGcMoney(role) ? ownWorkJobIds(board.projects).sort().join(',') : ''), [board, role])
-  const [ownWork, setOwnWork] = useState<OwnWorkCosts | undefined>(undefined)
+  const crewJobs = useMemo(() => Object.fromEntries(crewLinks.map((l) => [l.packageId, l.jobId])), [crewLinks])
+  const ownWorkKey = useMemo(() => (board && canSeeGcMoney(role) ? ownWorkJobIds(board.projects, crewJobs).sort().join(',') : ''), [board, role, crewJobs])
+  const [ownWorkRead, setOwnWorkRead] = useState<OwnWorkCosts | undefined>(undefined)
   useEffect(() => {
     if (!ownWorkKey) {
-      setOwnWork(undefined)
+      setOwnWorkRead(undefined)
       return
     }
     const ids = ownWorkKey.split(',')
     let live = true
     loadOwnWorkCosts(ids)
       .then((read) => {
-        if (live) setOwnWork(read)
+        if (live) setOwnWorkRead(read)
       })
       .catch(() => {
-        if (live) setOwnWork({ payAccess: true, byJob: Object.fromEntries(ids.map((id) => [id, 'error' as const])) })
+        if (live) setOwnWorkRead({ payAccess: true, byJob: Object.fromEntries(ids.map((id) => [id, 'error' as const])) })
       })
     return () => {
       live = false
     }
   }, [ownWorkKey])
+  // What the margin reads: the spend, and which Pipeline job each crew trade runs on. The money team's alone. While the
+  // read is out, the links stand with no spend, so a linked crew says it waits for its job rather than that it has none.
+  const ownWork = useMemo<OwnWorkCosts | undefined>(() => {
+    if (!canSeeGcMoney(role) || !ownWorkKey) return undefined
+    return ownWorkRead ? { ...ownWorkRead, crewJobs } : { payAccess: true, byJob: {}, crewJobs }
+  }, [ownWorkRead, ownWorkKey, crewJobs, role])
   // Each project's general conditions job, for the pickers that hold a job once (U8's and Our number's). Only the money
   // team's board carries them.
   const gcJobsOf = useMemo(() => Object.fromEntries((board?.projects ?? []).filter((p) => p.generalConditionsJobId).map((p) => [p.id, p.generalConditionsJobId ?? null])), [board])

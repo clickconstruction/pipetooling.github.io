@@ -546,6 +546,47 @@ describe('what each job makes us', () => {
     }
   })
 
+  /** Fair Oaks D's plumbing, our own crew, on its Pipeline job (O11a). */
+  const crewSpent = (spentUsd: number, over: { fieldDays?: number; finished?: boolean; payAccess?: boolean } = {}): OwnWorkCosts => ({
+    payAccess: over.payAccess ?? true,
+    crewJobs: { fplumb: 'j-crew' },
+    byJob: { 'j-crew': { jobId: 'j-crew', label: 'J 1071', name: 'Fair Oaks plumbing', spentUsd, teamUsd: spentUsd, subUsd: 0, partsUsd: 0, fieldDays: over.fieldDays ?? 30, finished: over.finished ?? false } },
+  })
+
+  it('counts our own crew at its Pipeline job’s pace, apart from buying out (O11a)', () => {
+    const state = initialGcState()
+    const p = job(state, 'fairoaksd')
+    const plain = jobMargin(state, p)
+    const crew = plain.trades.find((t) => t.packageId === 'fplumb')!
+    expect([crew.ownCrew, r(crew.saved)]).toEqual([true, 0])
+    const pct = p.packages.find((k) => k.id === 'fplumb')!.selfPerform!.pctDone!
+    // Spent so far at its percent: about its price less $5,000 at today's pace.
+    const spent = ((crew.signed - 5_000) * pct) / 100
+    const m = jobMargin(state, p, crewSpent(spent))
+    const read = m.trades.find((t) => t.packageId === 'fplumb')!
+    expect([read.crew?.state, r(read.cost), r(read.saved)]).toEqual(['pace', r(crew.signed - 5_000), 5_000])
+    expect([r(m.buyout), r(m.ownWork), r(m.margin)]).toEqual([r(plain.buyout), 5_000, r(plain.margin + 5_000)])
+    // Earned so far: the plumbing line billed less what it cost so far.
+    const sent = ownerPayAppsSent(p)
+    const billedCrew = sent[sent.length - 1]?.doneToDate.fplumb ?? 0
+    expect(r(m.earned)).toBe(r(plain.earned + billedCrew - spent))
+  })
+
+  it('counts a crew at what it cost once done, and at its price while too early or without pay access (O11a)', () => {
+    const state = initialGcState()
+    const p = job(state, 'fairoaksd')
+    const plain = jobMargin(state, p)
+    const signedCrew = plain.trades.find((t) => t.packageId === 'fplumb')!.signed
+    const done = jobMargin(state, p, crewSpent(signedCrew + 2_000, { finished: true }))
+    expect([done.trades.find((t) => t.packageId === 'fplumb')!.crew?.state, r(done.ownWork)]).toEqual(['done', -2_000])
+    for (const own of [crewSpent(1_000, { fieldDays: 2 }), crewSpent(1_000, { payAccess: false })]) {
+      const m = jobMargin(state, p, own)
+      expect([r(m.ownWork), r(m.margin)]).toEqual([0, r(plain.margin)])
+    }
+    // Without pay access nothing of it is earned either: as billed, as before.
+    expect(r(jobMargin(state, p, crewSpent(1_000, { payAccess: false })).earned)).toBe(r(plain.earned))
+  })
+
   it('adds our own work up across the jobs (O11b)', () => {
     const state = initialGcState()
     const named = { ...state, projects: state.projects.map((p) => (p.id === 'fairoaksd' ? { ...p, generalConditionsJobId: 'j-gc' } : p)) }

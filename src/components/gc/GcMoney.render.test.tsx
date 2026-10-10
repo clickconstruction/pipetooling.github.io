@@ -12,6 +12,22 @@ import { installDomShims } from '../../test/renderSmokeMocks'
 installDomShims()
 
 describe('GcMoney', () => {
+  it('counts our own crew at its Pipeline job’s pace in Our own work, and says where it comes from (O11a)', () => {
+    const state = initialGcState()
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
+    const crew = jobMargin(state, fairOaks).trades.find((t) => t.packageId === 'fplumb')!
+    const pct = fairOaks.packages.find((k) => k.id === 'fplumb')!.selfPerform!.pctDone!
+    const spent = ((crew.signed + 3_000) * pct) / 100
+    const own = { payAccess: true, crewJobs: { fplumb: 'j-crew' }, byJob: { 'j-crew': { jobId: 'j-crew', label: 'J 1071', name: 'Fair Oaks plumbing', spentUsd: spent, teamUsd: spent, subUsd: 0, partsUsd: 0, fieldDays: 30, finished: false } } }
+    render(<GcMoney state={state} own={own} />)
+    const rows = [...document.querySelectorAll('tr')].filter((tr) => tr.querySelector('strong')?.textContent === 'Fair Oaks Shops, Building D' && tr.textContent?.includes('See each trade'))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.textContent).toContain('−$3,000')
+    fireEvent.click(rows[0]!.querySelector('button') as HTMLElement)
+    expect(rows[0]!.querySelector('[data-gc-margin-crew="fplumb"]')?.textContent).toContain('at today\'s pace on Pipeline job J 1071')
+    expect(document.body.textContent).toContain('Our own crew counts at its Pipeline job’s cost at today’s pace, and at what it cost once done.')
+  })
+
   it('counts general conditions at their Pipeline job’s spend as Our own work, and says where it comes from (O11b)', () => {
     const state = initialGcState()
     const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!

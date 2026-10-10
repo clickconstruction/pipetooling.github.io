@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { Btn, Card, Chip, num, td, th } from './gcUi'
 import { allJobsMargin, type JobMargin } from '../../lib/gc/ownerBillingMargin'
-import { generalConditionsWords, type OwnWorkCosts } from '../../lib/gc/ownWorkCost'
+import { crewCostWords, generalConditionsWords, type OwnWorkCosts } from '../../lib/gc/ownWorkCost'
 import type { GcState } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
 
@@ -12,7 +12,8 @@ import { money } from '../../lib/gc/words'
  * The fee, what buying out saved, the change orders' margin; how much is earned so far, as billed;
  * contingency not spent, apart. Each job opens to its trades: what the customer signed for each
  * beside what it costs us. For the owner and the controller only. Since O11b, general conditions count at their
- * Pipeline job's real spend when our number names one (`own`, read by the page), as **Our own work**.
+ * Pipeline job's real spend when our number names one, and since O11a our own crew at its Pipeline job's cost (`own`,
+ * read by the page), as **Our own work**.
  */
 export function GcMoneyMargin({ state, own }: { state: GcState; own?: OwnWorkCosts }) {
   const all = allJobsMargin(state, own)
@@ -90,9 +91,9 @@ export function GcMoneyMargin({ state, own }: { state: GcState; own?: OwnWorkCos
         </div>
       )}
       <div style={{ padding: '0.5rem 1rem 0.8rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-        Our own crews count at their price: their real cost is on their Pipeline jobs. General conditions count at their Pipeline
-        job’s spend once it passes their budget, and at what they cost once the job closes. With no Pipeline job they count at their
-        budget. A trade not bought out yet counts at what we carry for it.
+        Our own crew counts at its Pipeline job’s cost at today’s pace, and at what it cost once done. General conditions count at
+        their Pipeline job’s spend once it passes their budget, and at what they cost once the job closes. One with no Pipeline job
+        counts at its price or budget, as before. A trade not bought out yet counts at what we carry for it.
       </div>
     </Card>
   )
@@ -109,8 +110,8 @@ function Breakdown({ j, signed, open, onToggle }: { j: JobMargin; signed: (n: nu
           {j.trades.map((t) => (
             <div key={t.packageId} style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'baseline' }}>
               <span style={{ minWidth: '8rem' }}>{t.trade}</span>
-              <span style={{ color: 'var(--text-muted)' }}>
-                {t.ownCrew ? 'our own crew' : (t.company ?? 'not awarded')} · signed for {money(t.signed)}, costs us {money(t.cost)}
+              <span style={{ color: 'var(--text-muted)' }} {...(t.crew ? { 'data-gc-margin-crew': t.packageId } : {})}>
+                {t.crew ? crewCostWords(t.crew) : `${t.company ?? 'not awarded'} · signed for ${money(t.signed)}, costs us ${money(t.cost)}`}
               </span>
               {!t.boughtOut && !t.ownCrew && <Chip tone="amber">not bought out yet</Chip>}
               <span style={{ flex: 1 }} />
