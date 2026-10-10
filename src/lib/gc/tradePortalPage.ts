@@ -8,9 +8,10 @@
 import type { SliceRow, TradePortalSlice } from '../../../supabase/functions/_shared/gcTradePortalSlice'
 import type { TradeSubmitErrorKey } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { GC_COMPANY } from './company'
-import { portalQuoteDue, type PortalAsk } from './portal'
+import { WAIVER_SIGN_LIVE } from './drawEmail'
+import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
-import type { GcProject } from './types'
+import type { GcProject, GcState } from './types'
 import { daysUntil, money } from './words'
 
 /** The page's path for a link: the address a company opens. */
@@ -86,6 +87,21 @@ export function sentMessages(slice: TradePortalSlice): SentMessage[] {
 }
 
 /** The home's three lists: jobs that are theirs, asks still open, and what came before. */
+/**
+ * A to-do whose press waits on the owner's call (P5c-3c-i): every lien waiver a trade signs, the pay application's
+ * conditional one with it, is held by `WAIVER_SIGN_LIVE`. So the home leaves out a draw to ask for, a pay application
+ * to fix and send again, the final one, and both unconditional waivers, until it is on.
+ */
+export function todoWaitsOnWaivers(key: string): boolean {
+  return /:(draw|back|final|finalwaiver)$/.test(key) || key.includes(':waiver:')
+}
+
+/** The home's Needs you: `portalTodos` (P5c-3a's lift), less what waits on the owner's call while it does. */
+export function portalHomeTodos(state: GcState, partnerId: string, asks: PortalAsk[], lang: PortalLang): PortalTodo[] {
+  const todos = portalTodos(state, partnerId, asks, lang)
+  return WAIVER_SIGN_LIVE ? todos : todos.filter((t) => !todoWaitsOnWaivers(t.key))
+}
+
 export function portalHomeGroups(asks: PortalAsk[]): { jobs: PortalAsk[]; bidding: PortalAsk[]; past: PortalAsk[] } {
   return {
     jobs: asks.filter((a) => a.kind === 'job'),
@@ -184,6 +200,15 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   notYourMove: 'errNotYourMove',
   fileNeeded: 'errFileNeeded',
   jobNotBuilding: 'errJobNotBuilding',
+  // P5c-3b: the report and the unconditional waiver.
+  sowNotSigned: 'errSowNotSigned',
+  splitLine: 'errSplitLine',
+  notPaidYet: 'errNotPaidYet',
+  // P5c-3c-ii: a pay application and the final one.
+  drawWaiting: 'errDrawWaiting',
+  nothingToBill: 'errNothingToBill',
+  finalSent: 'errFinalSent',
+  finalNotYet: 'errFinalNotYet',
 }
 
 /** A refusal in the company's words. A key the page does not know reads as did not save. */

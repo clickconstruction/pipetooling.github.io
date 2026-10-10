@@ -51,7 +51,7 @@ const open = (path = `/t/${TOKEN}`) =>
 
 const block = (name: RegExp | string) => within(screen.getByRole('region', { name }))
 const openProject = async () => {
-  fireEvent.click(await screen.findByRole('button', { name: /Sample Retail Shell/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Sample Retail Shell/ }))
   return screen.findByRole('region', { name: 'Electrical · invitation to quote' })
 }
 
@@ -150,7 +150,7 @@ describe('the presses', () => {
 
 describe('the job’s presses (P4b-ii)', () => {
   const openJob = async () => {
-    fireEvent.click(await screen.findByRole('button', { name: /Sample Dental Office/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
     return screen.findByRole('region', { name: 'Electrical · charges from Click' })
   }
 
@@ -224,7 +224,7 @@ describe('the job’s presses (P4b-ii)', () => {
   it('reads a trade we gave another company as its result, with no questions to ask', async () => {
     slice = { ...slice, packages: slice.packages.map((p) => (p.id === ID.trade ? { ...p, awarded_invite_id: 'elsewhere' } : p)) }
     open()
-    fireEvent.click(await screen.findByRole('button', { name: /Sample Retail Shell/ }))
+    fireEvent.click(await screen.findByRole('button', { name: /^Sample Retail Shell/ }))
     const result = await screen.findByRole('region', { name: 'Electrical · result' })
     expect(within(result).getByText('This one went to another company. Thank you for your quote.')).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Electrical · questions about the plans' })).toBeNull()

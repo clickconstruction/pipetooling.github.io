@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { Btn, Card, Chip, num, td, th } from './gcUi'
 import { allJobsMargin, type JobMargin } from '../../lib/gc/ownerBillingMargin'
+import { generalConditionsWords, type OwnWorkCosts } from '../../lib/gc/ownWorkCost'
 import type { GcState } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
 
@@ -10,10 +11,11 @@ import { money } from '../../lib/gc/words'
  * `GcOwnerBillingMargin.tsx` (branch spike/gc-mode), read only.
  * The fee, what buying out saved, the change orders' margin; how much is earned so far, as billed;
  * contingency not spent, apart. Each job opens to its trades: what the customer signed for each
- * beside what it costs us. For the owner and the controller only.
+ * beside what it costs us. For the owner and the controller only. Since O11b, general conditions count at their
+ * Pipeline job's real spend when our number names one (`own`, read by the page), as **Our own work**.
  */
-export function GcMoneyMargin({ state }: { state: GcState }) {
-  const all = allJobsMargin(state)
+export function GcMoneyMargin({ state, own }: { state: GcState; own?: OwnWorkCosts }) {
+  const all = allJobsMargin(state, own)
   const narrow = useMatchMedia('(max-width: 640px)')
   const [openId, setOpenId] = useState<string | null>(null)
   const pct = all.price > 0 ? (all.margin / all.price) * 100 : 0
@@ -56,6 +58,7 @@ export function GcMoneyMargin({ state }: { state: GcState }) {
                 <th style={{ ...th, textAlign: 'right' }}>Our fee</th>
                 <th style={{ ...th, textAlign: 'right' }}>Buying out</th>
                 <th style={{ ...th, textAlign: 'right' }}>Change orders</th>
+                <th style={{ ...th, textAlign: 'right' }}>Our own work</th>
                 <th style={{ ...th, textAlign: 'right' }}>Makes us</th>
                 <th style={{ ...th, textAlign: 'right' }}>Earned so far</th>
               </tr>
@@ -71,6 +74,7 @@ export function GcMoneyMargin({ state }: { state: GcState }) {
                   <td style={num}>{money(j.fee)}</td>
                   <td style={{ ...num, color: j.buyout < -0.5 ? 'var(--text-red-700)' : undefined }}>{signed(j.buyout)}</td>
                   <td style={num}>{j.changeOrders.count === 0 ? '—' : signed(j.changeOrders.margin)}</td>
+                  <td style={{ ...num, color: j.ownWork < -0.5 ? 'var(--text-red-700)' : undefined }}>{signed(j.ownWork)}</td>
                   <td style={{ ...num, fontWeight: 700 }}>
                     {money(j.margin)}
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 400 }}>{j.marginPct.toFixed(1)}%</div>
@@ -86,8 +90,9 @@ export function GcMoneyMargin({ state }: { state: GcState }) {
         </div>
       )}
       <div style={{ padding: '0.5rem 1rem 0.8rem', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-        Our own crews count at their price: their real cost is on their Pipeline jobs. General conditions count at their budget. A
-        trade not bought out yet counts at what we carry for it.
+        Our own crews count at their price: their real cost is on their Pipeline jobs. General conditions count at their Pipeline
+        job’s spend once it passes their budget, and at what they cost once the job closes. With no Pipeline job they count at their
+        budget. A trade not bought out yet counts at what we carry for it.
       </div>
     </Card>
   )
@@ -118,8 +123,13 @@ function Breakdown({ j, signed, open, onToggle }: { j: JobMargin; signed: (n: nu
               us {money(j.changeOrders.cost)}.
             </div>
           )}
+          <div data-gc-margin-general-conditions style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'baseline', color: 'var(--text-muted)' }}>
+            <span>{generalConditionsWords(j.generalConditionsCost)}</span>
+            <span style={{ flex: 1 }} />
+            <span style={{ fontVariantNumeric: 'tabular-nums', color: j.ownWork < -0.5 ? 'var(--text-red-700)' : undefined }}>{signed(j.ownWork)}</span>
+          </div>
           <div style={{ color: 'var(--text-muted)' }}>
-            Fee {money(j.fee)} · general conditions {money(j.generalConditions)} · contingency not spent {money(j.contingency)}
+            Fee {money(j.fee)} · contingency not spent {money(j.contingency)}
           </div>
         </div>
       )}

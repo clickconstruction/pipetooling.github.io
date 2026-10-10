@@ -29,6 +29,7 @@ const BUILDING_OPENS = 'Building’s door, when a job is being built (BUILDING_R
 const BUILDING_MONEY_OPENS = 'Building’s door, to the money roles: dev, the leaders and the controller (BUILDING_REAL_BUILD.md decision 4)'
 const PORTAL_OPENS = 'the trade wave, when the Portal lane says the portal is ready (PORTAL_REAL_BUILD.md)'
 const AWARD_OPENS = 'award’s door: estimators, the leaders and dev, the owner’s call W (mockups/board-b6.md)'
+const OWNER_CONTRACT_OPENS = 'the money team (gc_money_team()) at award’s door, never award’s audience: the price by line is our markup (mockups/board-b6d.md)'
 
 const office = (lane: GcTableDoor['lane']): GcTableDoor => ({ lane, door: 'office' })
 const dev = (lane: GcTableDoor['lane'], opens: string): GcTableDoor => ({ lane, door: 'dev', opens })
@@ -69,6 +70,9 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   // A trade partner company's papers (B6-b-i): every send, with its promise. The papers themselves are rows of
   // person_contract_documents, under that table's own policies.
   gc_paper_sends: dev('Board', AWARD_OPENS),
+  // Our contract to the customer (B6-d-i): every send, with the price by line and the file it went with, signed by the
+  // customer in their portal through the service role.
+  gc_owner_contract_sends: dev('Board', OWNER_CONTRACT_OPENS),
 
   // The trade's portal, and its two records on a trade's signed work (P4a).
   gc_trade_portal_links: dev('Portal', PORTAL_OPENS),

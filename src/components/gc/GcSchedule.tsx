@@ -25,6 +25,8 @@ import { crewCountsNow } from '../../lib/gc/schedule/crewCounts'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gc/schedule/customerSchedule'
 import { lostDaysByLine } from '../../lib/gc/schedule/daysLost'
 import { lateFinish } from '../../lib/gc/lateFinish'
+import { draftTimeExtension } from '../../lib/gc/gcIo'
+import type { TimeExtensionAsk } from '../../lib/gc/timeExtension'
 import { finishOutlook } from '../../lib/gc/schedule/finishOutlook'
 import { ganttBars } from '../../lib/gc/schedule/gantt'
 import type { GanttPrintJob } from '../../lib/gc/schedule/ganttPrint'
@@ -71,6 +73,7 @@ import {
   splitScheduleBar,
   undoScheduleMove,
   type SchedulePress,
+  type ScheduleReads,
 } from '../../lib/gc/scheduleIo'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -89,17 +92,35 @@ import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMove
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
 import { Btn, Card, input } from './gcUi'
 
+/** No reads past the board's (the default): the schedule's own rows, its submittals and RFIs. */
+const NO_READS: ScheduleReads = {}
+
 /**
  * The board's state (`boardStateFromRows`), the job to read, who prints and moves (the paper's foot, the move's name),
  * and whether this person may move a bar (a dev's until the schedule's PR 10). `canPull`: whether they may also pull work
  * in and get days back (G-37, G-82), which read Building's submittals and RFIs, so a dev's until Building's door.
  */
-export function GcSchedule({ state, projectId, by, canMove = false, canPull = false }: { state: GcState; projectId: string; by: string; canMove?: boolean; canPull?: boolean }) {
+export function GcSchedule({
+  state,
+  projectId,
+  by,
+  canMove = false,
+  canPull = false,
+  reads = NO_READS,
+}: {
+  state: GcState
+  projectId: string
+  by: string
+  canMove?: boolean
+  canPull?: boolean
+  /** What this reader may read over the schedule (PR 16): the page memoizes it, since a new one reads again. */
+  reads?: ScheduleReads
+}) {
   const [read, setRead] = useState<ScheduleRead | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'gone' | 'failed'>('loading')
   const [problem, setProblem] = useState<string | null>(null)
   // Try again, and a draw someone else beat, read the schedule again.
-  const [reads, setReads] = useState(0)
+  const [reloads, setReloads] = useState(0)
   const [drawing, setDrawing] = useState(false)
   const [drawProblem, setDrawProblem] = useState<string | null>(null)
 
@@ -107,7 +128,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
     let live = true
     setStatus('loading')
     setProblem(null)
-    loadScheduleWithHolds(state, projectId)
+    loadScheduleWithHolds(state, projectId, reads)
       .then((r) => {
         if (!live) return
         setRead(r)
@@ -121,7 +142,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
     return () => {
       live = false
     }
-  }, [state, projectId, reads])
+  }, [state, projectId, reads, reloads])
 
   /** The first draft (call 2): the kernel's draft on the board's job, sent with no version and the log's words. */
   const draw = useCallback(
@@ -136,7 +157,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
       } catch (e) {
         setDrawProblem(formatErrorMessage(e, 'The first draft did not save.'))
         // Someone drew it first: read it again, so the window shows theirs under the refusal.
-        if (scheduleChangedRefusal(e)) setReads((n) => n + 1)
+        if (scheduleChangedRefusal(e)) setReloads((n) => n + 1)
       } finally {
         setDrawing(false)
       }
@@ -195,6 +216,27 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
     [read],
   )
   // Undo and Redo (G-40): replayed on the server from the move's own record, against the version read.
+  // Ask for the days (G-141, the schedule's PR 16b-ii): the money team's press drafts the time extension on Bill the
+  // customer, then reads again, so the asked moves leave the ask.
+  const [asking, setAsking] = useState(false)
+  const [askSaid, setAskSaid] = useState<string | null>(null)
+  const askForDays = useCallback(
+    async (ask: TimeExtensionAsk) => {
+      if (asking) return
+      setAsking(true)
+      setAskSaid(null)
+      try {
+        await draftTimeExtension(projectId, ask)
+        setAskSaid(`A change order for ${ask.days} ${ask.days === 1 ? 'day' : 'days'} is drafted on Bill the customer. Nothing went to the customer.`)
+        setReloads((n) => n + 1)
+      } catch (e) {
+        setAskSaid(formatErrorMessage(e, 'The change order was not drafted.'))
+      } finally {
+        setAsking(false)
+      }
+    },
+    [asking, projectId],
+  )
   const [replaying, setReplaying] = useState(false)
   const [replayRefused, setReplayRefused] = useState<ScheduleChange[] | null>(null)
   const [replayProblem, setReplayProblem] = useState<string | null>(null)
@@ -213,7 +255,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
         if (refusal) {
           // Someone saved first: say what, and read the schedule again.
           setReplayRefused(refusal.changes)
-          setReads((n) => n + 1)
+          setReloads((n) => n + 1)
         } else setReplayProblem(formatErrorMessage(e, kind === 'undo' ? 'The undo did not save.' : 'The redo did not save.'))
       } finally {
         setReplaying(false)
@@ -236,7 +278,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
             ? {
                 save: saveMove,
                 actual: keepActual,
-                reload: () => setReads((n) => n + 1),
+                reload: () => setReloads((n) => n + 1),
                 undo: (move) => void replay('undo', move),
                 redo: (move) => void replay('redo', move),
                 busy: replaying,
@@ -261,6 +303,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
             : null
         }
         canPull={canMove && canPull}
+        ask={reads.money && canMove ? { onAsk: (ask) => void askForDays(ask), said: askSaid } : null}
       />
     )
   if (status === 'gone') return <div style={{ fontSize: '0.875rem' }}>That job is not on the board. Reload the board and try again.</div>
@@ -268,7 +311,7 @@ export function GcSchedule({ state, projectId, by, canMove = false, canPull = fa
     return (
       <div role="alert" style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
         <span style={{ color: 'var(--text-red-700)' }}>{problem}</span>
-        <Btn onClick={() => setReads((n) => n + 1)}>Try again</Btn>
+        <Btn onClick={() => setReloads((n) => n + 1)}>Try again</Btn>
       </div>
     )
   return <div style={{ fontSize: '0.875rem' }}>Loading the schedule…</div>
@@ -331,6 +374,7 @@ function ScheduleView({
   onDraw,
   moves,
   canPull,
+  ask,
 }: {
   read: ScheduleRead
   by: string
@@ -340,6 +384,8 @@ function ScheduleView({
   moves: MovePresses | null
   /** Pull earlier and Days back too (PR 9d's call 1): only with `moves`. */
   canPull: boolean
+  /** Ask for the days (PR 16b-ii): the money team's press and what it last said. Null: the line says who asks. */
+  ask: { onAsk: (ask: TimeExtensionAsk) => void; said: string | null } | null
 }) {
   const { state, project } = read
   const building = project.stage === 'building'
@@ -357,8 +403,11 @@ function ScheduleView({
   // A trade at work with its insurance run out (G-138), and too many trades in one place (G-83).
   const uninsured = useMemo(() => uninsuredNotes(state, project), [state, project])
   const crowded = useMemo(() => crowdedWeeks(state, project), [state, project])
-  // The finish with weather and crews (G-57). The late finish's money, the best offer and Ask for the days stay off (call 4).
+  // The finish with weather and crews (G-57). The late finish's whose-days line (G-98) reads the change orders through the
+  // office's view (PR 16b-ii); its money and the best offer wait for the money team's own state (16c).
   const outlook = useMemo(() => (building ? finishOutlook(state, project) : null), [state, project, building])
+  const late = useMemo(() => (building ? lateFinish(state, project) : null), [state, project, building])
+  const asked = late?.ask ?? null
   const peopleOf = useCallback((from: string, to: string) => peopleOnSite(state, project, from, to, crewCountsNow(project)), [state, project])
   // The chart's bars, for the card of the bar pressed: the chart draws the same ones.
   const bars = useMemo(() => ganttBars(m.items, m.float, holds, state.today, building, tails), [m, holds, state.today, building, tails])
@@ -434,7 +483,19 @@ function ScheduleView({
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       <ScheduleWhy />
       {building ? (
-        <Measures m={m} {...(outlook ? { outlook } : {})} />
+        <>
+          <Measures
+            m={m}
+            {...(outlook ? { outlook } : {})}
+            {...(late ? { late } : {})}
+            {...(ask && asked ? { onAsk: () => ask.onAsk(asked) } : { askNote: 'The money team asks the customer for these days on Bill the customer.' })}
+          />
+          {ask?.said && (
+            <div data-ask-said role="status" style={{ fontSize: '0.85rem' }}>
+              {ask.said}
+            </div>
+          )}
+        </>
       ) : (
         <Card>
           <strong>Drawing the schedule.</strong> <span style={{ color: 'var(--text-muted)' }}>Start locks this plan as the baseline. The measures read against it from then on.</span>

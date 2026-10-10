@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { Btn, input } from './gcUi'
 import { drawApprovedLess, sentBackOpen } from '../../lib/gc/building'
-import { DRAW_PORTAL_LIVE } from '../../lib/gc/drawEmail'
+import { PAY_APP_PORTAL_LIVE } from '../../lib/gc/drawEmail'
 import { drawCameInMoney, type DrawCameIn } from '../../lib/gc/drawRows'
 import type { Draw, Sow } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
@@ -130,7 +130,7 @@ export function GcDrawSendBackForm({
             ? emailOn
               ? 'It goes in the email we send them about this pay application.'
               : 'Tell them why too. With the email tick off, no email goes.'
-            : DRAW_PORTAL_LIVE
+            : PAY_APP_PORTAL_LIVE
               ? 'They read it in their portal.'
               : 'Call or email them with it too. Their portal does not show pay applications yet.'}
         </span>

@@ -47,6 +47,8 @@ The statement of work shows under the trade on the project's card. The owner, th
 
 Press {{button:blue|Send to their portal to sign}}. The chip then reads {{chip:yellow|Statement of work waiting on their signature}}.
 
+The button waits until the company's papers are in. Its master agreement must be signed. Its insurance must be current, and its W-9 on file. Until then the card reads **Cannot send yet.** with what is missing. Press {{button:outline|Send the master agreement}} beside it to send one.
+
 Tick **Email it now** first to tell the company by email too. The box starts unticked, so the send alone emails no one.
 
 The company signs it in their portal with **Sign the statement of work**. It can sign only after it signs our master agreement. The chip then reads {{chip:green|Statement of work signed}} with the day.

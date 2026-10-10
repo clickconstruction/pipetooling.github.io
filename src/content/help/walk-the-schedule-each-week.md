@@ -20,6 +20,7 @@ The bars sit down the side. The bar in hand shows what was reported, what holds 
 - Press {{button:blue|Yes, keep it}} when its dates still hold.
 - Press **It started today** or **It finished today** to record its real days.
 - Press **A new finish day** to move it. Pick the day, press why it moved and write what happened. Then press {{button:blue|Move it}}.
+- Press **Add the 2 lost days** when the daily log says the weather held that work up. The new finish, the weather as the reason and the log's words are filled in. Then press {{button:blue|Move it}}.
 - Press **Skip for now** to come back to it.
 
 Press **Finish the walk** at the end. You can finish with some bars not looked at. The record says how many.

@@ -5,6 +5,7 @@
  * a line to the scope book. Nothing here decides anything: the kernels in `src/lib/gc/` do.
  */
 import { supabase } from '../supabase'
+import { jobNumberLabel } from '../jobs/jobSummaryCycle'
 import type { Database, Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import { extractContactInfo } from '../bids/bidContactInfo'
@@ -391,7 +392,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const none = Promise.resolve({ data: [], error: null })
   const [dates, customers, companies, invites, promises, sows, papers, paperSends] = await Promise.all([
     ids.length
-      ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, lost_why, won_by, closed_on').in('project_id', ids)
+      ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, started_anyway_by, started_anyway_reason, started_anyway_missing, lost_why, won_by, closed_on').in('project_id', ids)
       : none,
     named.length ? supabase.from('customers').select('id, name, contact_info').in('id', named) : none,
     supabase
@@ -421,12 +422,16 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const promiseIds = promiseRows.map((p) => p.id)
   const deciders = [
     ...new Set(
-      [...companyRows.map((c) => c.vetting_decided_by), ...projects.flatMap((p) => p.trades.map((t) => t.awardedBy))].filter((id): id is string => Boolean(id)),
+      [...companyRows.map((c) => c.vetting_decided_by), ...projects.flatMap((p) => p.trades.map((t) => t.awardedBy)), ...dateRows.map((d) => d.started_anyway_by)].filter(
+        (id): id is string => Boolean(id),
+      ),
     ),
   ]
   const waiting = companyRows.filter((c) => c.vetting_status === 'new').map((c) => c.id)
   const sowIds = sowRows.map((s) => s.id)
-  const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews, sowLines] = await Promise.all([
+  // Our own trades' Trades mode bids (B6-c-ii, call C): each one's number, under bids' own policies.
+  const ownBidIds = [...new Set(projects.flatMap((p) => p.trades.filter((t) => t.ours && t.ownBidId).map((t) => t.ownBidId as string)))]
+  const [quotes, contacts, moves, users, forms, people, moneyRows, tabs, tabViews, sowLines, ownBids] = await Promise.all([
     inviteIds.length ? supabase.from('gc_quotes').select('*').in('invite_id', inviteIds) : none,
     supabase.from('gc_company_contacts').select('*'),
     promiseIds.length ? supabase.from('gc_trade_promise_moves').select('*').in('promise_id', promiseIds) : none,
@@ -436,12 +441,13 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     // Who else each company named, for the company window's Who gets our emails (B3-c).
     companyRows.length ? supabase.from('gc_company_people').select('id, company_id, name, email, role, gets').is('removed_at', null).order('created_at') : none,
     // Our number's inputs, for the money team only (B5-c).
-    money && ids.length ? supabase.from('gc_project_money').select('project_id, general_conditions, contingency_pct, fee_pct').in('project_id', ids) : none,
+    money && ids.length ? supabase.from('gc_project_money').select('project_id, general_conditions, contingency_pct, fee_pct, general_conditions_job_id').in('project_id', ids) : none,
     // The bid tabs shared, and who opened each (B5-d).
     packageIds.length ? supabase.from('gc_bid_tabs').select('package_id, shared_on, show_names').in('package_id', packageIds) : none,
     packageIds.length ? supabase.from('gc_bid_tab_views').select('package_id, company_id, seen_on').in('package_id', packageIds) : none,
     // Each statement of work's lines (B6-a).
     sowIds.length ? supabase.from('gc_sow_lines').select('id, sow_id, position, label, amount, scope_item_id, change_order_id').in('sow_id', sowIds) : none,
+    ownBidIds.length ? supabase.from('bids').select('id, bid_value, bid_number').in('id', ownBidIds) : none,
   ])
   return {
     today,
@@ -463,6 +469,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     bidTabViews: taken(tabViews, 'load who opened the bid tabs'),
     sows: sowRows as BoardRows['sows'],
     sowLines: taken(sowLines, 'load the statements of work’s lines') as BoardRows['sowLines'],
+    ownBids: taken(ownBids, 'load our own trades’ bids'),
     papers: taken(papers, 'load the trade partners’ papers'),
     paperSends: taken(paperSends, 'load the papers we sent'),
   }
@@ -972,6 +979,18 @@ export async function loadGcChangeOrderEmails(changeOrderIds: string[]): Promise
   return rows.flatMap((r) => (r.source_id ? [{ source_id: r.source_id, recipient_name: r.recipient_name, sent_at: r.sent_at }] : []))
 }
 
+/**
+ * Ask for the days (G-141, the schedule's PR 16b-ii): a time extension drafted as a change order for the days the moves
+ * put on the finish, with the moves it covers. The money team's (the change orders' policy). Nothing goes to the
+ * customer. Returns the change order's id.
+ */
+export async function draftTimeExtension(projectId: string, ask: { days: number; moves: { id: string }[]; reason: string; description: string }): Promise<string> {
+  return taken(
+    await supabase.rpc('gc_draft_time_extension', { p_project_id: projectId, p_days: ask.days, p_move_ids: ask.moves.map((m) => m.id), p_reason: ask.reason, p_description: ask.description }),
+    'draft the time extension',
+  )
+}
+
 /** A new change order, as a draft, with the next number on the project. */
 export async function draftChangeOrder(projectId: string, draft: ChangeOrderDraft): Promise<string> {
   return taken(await supabase.rpc('gc_draft_change_order', { p_project_id: projectId, p_draft: draft as unknown as Json }), 'draft the change order')
@@ -1071,6 +1090,34 @@ export async function setGcProjectMoney(projectId: string, values: { generalCond
   )
 }
 
+/**
+ * The Pipeline job our general conditions are spent on (Owner Billing's O11b), or none. The money team's, through our
+ * number's own policy; a project with no row yet gets one, its three inputs at zero, as no row reads.
+ */
+export async function setGcGeneralConditionsJob(projectId: string, jobId: string | null): Promise<void> {
+  taken(
+    await supabase
+      .from('gc_project_money')
+      .upsert({ project_id: projectId, general_conditions_job_id: jobId, updated_at: new Date().toISOString() }, { onConflict: 'project_id' })
+      .select('project_id')
+      .single(),
+    'name the Pipeline job',
+  )
+}
+
+/** A Pipeline job to name, by its number, name or address: the Pipeline's own search, billing-only jobs left out. */
+export interface PipelineJobHit {
+  id: string
+  label: string
+  name: string
+  address: string
+}
+
+export async function searchPipelineJobs(text: string): Promise<PipelineJobHit[]> {
+  const rows = taken(await supabase.rpc('search_jobs_ledger', { search_text: text.trim(), include_billing_only: false }), 'look up the Pipeline jobs') ?? []
+  return rows.map((r) => ({ id: r.id, label: jobNumberLabel(r), name: r.job_name ?? '', address: r.job_address ?? '' }))
+}
+
 /** The project's outcome (the Board's B5-c): each stamps the company's day in the database. */
 export async function markGcBidSent(projectId: string): Promise<void> {
   taken(await supabase.rpc('gc_mark_bid_sent', { p_project_id: projectId }), 'mark our bid sent')
@@ -1086,6 +1133,40 @@ export async function markGcLost(projectId: string, why: GcLostWhy, wonBy: strin
 
 export async function bringGcBack(projectId: string): Promise<void> {
   taken(await supabase.rpc('gc_bring_back', { p_project_id: projectId }), 'bring it back')
+}
+
+// ---------------------------------------------------------------------------------------------
+// The Board's B6-c-ii: Get started. Start and Start anyway go through gc_start_project (B6-c-i, a dev's until award's
+// door); our contract through Owner Billing's gc_sign_owner_contract; the permit and the start date are plain writes
+// under gc_projects' office door. Each write to gc_projects reads the projects again on the page (the plan's rule).
+// ---------------------------------------------------------------------------------------------
+
+/** Start the job (B6-c-i). Start anyway sends why and what was still missing, as the window listed it. The company's day. */
+export async function startGcProject(projectId: string, anyway?: { reason: string; missing: string[] }): Promise<string> {
+  return taken(
+    await supabase.rpc('gc_start_project', { p_project_id: projectId, ...(anyway ? { p_anyway: { reason: anyway.reason, missing: anyway.missing } } : {}) }),
+    'start the job',
+  )
+}
+
+/** Our contract with the customer signed on paper (Mark it signed) or not (Undo), with its price by line when it is first signed. */
+export async function signGcOwnerContract(projectId: string, signedOn: string | null, worth: Record<string, number> | null): Promise<void> {
+  taken(
+    // A null day is Undo; the generated type reads every argument as required, so the null is cast through.
+    await supabase.rpc('gc_sign_owner_contract', { p_project_id: projectId, p_signed_on: signedOn as string, ...(worth ? { p_worth: worth as Json } : {}) }),
+    signedOn ? 'mark the contract signed' : 'undo the contract signed',
+  )
+}
+
+/** The permit in hand (Mark it done) or not (Undo), and the day work starts: plain writes on the office's gc_projects. */
+export async function setGcProjectStartItem(projectId: string, patch: { permit_on?: string | null; start_date?: string | null }): Promise<void> {
+  taken(await supabase.from('gc_projects').update(patch).eq('project_id', projectId).select('project_id'), 'save the project')
+}
+
+/** The companies already told the job started (gc_trade_messages under `<project id>:start`), so a second press names only who it missed. */
+export async function loadGcStartTold(projectId: string): Promise<string[]> {
+  const rows = taken(await supabase.from('gc_trade_messages').select('company_id').eq('msg_key', `${projectId}:start`), 'load who was told the job started')
+  return [...new Set(rows.map((r) => r.company_id))]
 }
 
 /**

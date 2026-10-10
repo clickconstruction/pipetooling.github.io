@@ -94,6 +94,18 @@ describe('GcOwnCrewCard', () => {
     expect(writes.onLink).not.toHaveBeenCalled()
   })
 
+  it('holds the job our general conditions are spent on too, so a crew cannot pick it (O11b)', async () => {
+    const writes = writesFn()
+    writes.onSuggest.mockResolvedValueOnce([hit('job-gc', 'J 1080'), hit('job-1', 'J 1088')])
+    render(<GcOwnCrewCard pkg={plumbing(null)} linked={false} read={null} held={{ 'job-gc': 'general conditions' }} writes={writes} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Pick its Pipeline job' }))
+    const picker = document.querySelector('[data-crew-job-picker]') as HTMLElement
+    await waitFor(() => expect(picker.querySelectorAll('[data-crew-job-hit]').length).toBe(2))
+    const held = picker.querySelector('[data-crew-job-hit="job-gc"]') as HTMLElement
+    expect(held.textContent).toContain('On general conditions already')
+    expect((within(held).getByRole('button', { name: 'Use this job' }) as HTMLButtonElement).disabled).toBe(true)
+  })
+
   it('says each thing a first-timer reads in plain words', () => {
     const said = [
       ownCrewWords(plumbing(null), false, null),

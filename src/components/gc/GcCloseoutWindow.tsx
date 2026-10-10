@@ -8,6 +8,8 @@ import { jobCloseout, ownCrewWork, ownerRetainagePaidOn, projectCloseout, TRADE_
 import { punchCounts } from '../../lib/gc/buildingPunch'
 import { finalCameInDraft, finalCameInMissing, type FinalCameIn } from '../../lib/gc/closeoutRows'
 import type { DrawExtra } from '../../lib/gc/drawRows'
+import { jobMargin } from '../../lib/gc/ownerBillingMargin'
+import { generalConditionsWords, type OwnWorkCosts } from '../../lib/gc/ownWorkCost'
 import type { Draw, GcProject, GcState } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
 
@@ -55,10 +57,12 @@ interface Props {
   onSeeBill?: () => void
   /** The punch list's presses (U3b-ii), shown under each trade's steps. Absent: no list. */
   punchWrites?: PunchWrites
+  /** Our own work's Pipeline jobs as the page read them (O11b): general conditions' line. Absent: at their budget. */
+  own?: OwnWorkCosts
   onClose: () => void
 }
 
-export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick = null, billsRead = true, writes, busy = null, problem = null, onSeeBill, punchWrites, onClose }: Props) {
+export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick = null, billsRead = true, writes, busy = null, problem = null, onSeeBill, punchWrites, own, onClose }: Props) {
   // The final pay application open to read.
   const [looking, setLooking] = useState<{ row: CloseoutRow; draw: Draw } | null>(null)
   const c = projectCloseout(state, project)
@@ -176,6 +180,10 @@ export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick 
                   ))}
                 </div>
               )}
+              {/* General conditions at what they cost (O11b), from the Pipeline job our number names for them. */}
+              <div data-closeout-general-conditions style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                {generalConditionsWords(jobMargin(state, project, own).generalConditionsCost)}
+              </div>
             </>
           )}
         </div>

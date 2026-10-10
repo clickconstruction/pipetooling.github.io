@@ -105,6 +105,11 @@ describe('a press on the sample (P2b-ii)', () => {
     expect(parseTradeSubmit({ token: 'sample', kind: 'punch_fixed', itemId: SAMPLE_TRADE_IDS.punch1 }).ok).toBe(true)
     expect(parseTradeSubmit({ token: 'sample', kind: 'submittal_send', submittalId: SAMPLE_TRADE_IDS.submittal1, fileName: 'panels.pdf' }).ok).toBe(true)
     expect(parseTradeSubmit({ token: 'sample', kind: 'rfi_ask', packageId: SAMPLE_TRADE_IDS.jobTrade, question: 'Q?', sheets: [] }).ok).toBe(true)
+    // The report and the two signatures (P5c-3b).
+    expect(parseTradeSubmit({ token: 'sample', kind: 'sow_report', packageId: SAMPLE_TRADE_IDS.jobTrade, line: SAMPLE_TRADE_IDS.jobLine1, pct: 70 }).ok).toBe(true)
+    const esignConsent = { clauseText: 'I agree to sign electronically.' }
+    expect(parseTradeSubmit({ token: 'sample', kind: 'unconditional_waiver', drawId: SAMPLE_TRADE_IDS.draw1, printedName: 'Dana', esignConsent }).ok).toBe(true)
+    expect(parseTradeSubmit({ token: 'sample', kind: 'sign_change', changeOrderId: SAMPLE_TRADE_IDS.changeOrder, printedName: 'Dana', esignConsent }).ok).toBe(true)
   })
 })
 

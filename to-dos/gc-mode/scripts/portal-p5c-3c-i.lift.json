@@ -1,12 +1,15 @@
 {
-  "about": "The Portal lane's P5c-3c-i (to-dos/gc-mode/mockups/portal-p5.md, P5c-3c split in two, the lead 2026-10-10): the trade's half of the pay application, lifted to src/components/gc word for word (decision 9): the door, the closeout, the failed inspection, the window and the G702 and G703 (GcBuildingPayApp.tsx, as GcTradePortalPayApp.tsx on main), and the notary block. Placed whole by the lane, since lift-extract.cjs reads only .ts; the office's half is Building's own GcDrawPayApp.tsx. Its sends, pay_app and final_pay_app with the sign step on the app's conditional waiver paper, are P5c-3c-ii, held by WAIVER_SIGN_LIVE. GcSovSideBySide stays on the spike: only the office's view drew it, and its kernels wait on the Board's B6. Run: node to-dos/gc-mode/scripts/lift-same.cjs to-dos/gc-mode/scripts/portal-p5c-3c-i.lift.json",
+  "about": "The Portal lane's P5c-3c-i (to-dos/gc-mode/mockups/portal-p5.md, P5c-3c split in two, the lead 2026-10-10): the trade's half of the pay application, lifted to src/components/gc word for word (decision 9): the door, the closeout, the failed inspection, the window and the G702 and G703 (GcBuildingPayApp.tsx, as GcTradePortalPayApp.tsx on main), and the notary block. Placed whole by the lane, since lift-extract.cjs reads only .ts; the office's half is Building's own GcDrawPayApp.tsx. Its sends, pay_app and final_pay_app with the sign step on the app's conditional waiver paper, came with P5c-3c-ii (#5319), held by WAIVER_SIGN_LIVE; the pin reads main after both. GcSovSideBySide stays on the spike: only the office's view drew it, and its kernels wait on the Board's B6. Run: node to-dos/gc-mode/scripts/lift-same.cjs to-dos/gc-mode/scripts/portal-p5c-3c-i.lift.json",
   "spikeDir": "src/components/gc",
   "mainBase": "src/components/gc",
   "pin": {
+    "main": "d39cfe71337638ceefc60d78a8df324449fd95d0",
+    "spike": "90a097f109bc89bfd10389c0c495280a9afbb8fa",
+    "about": "#5315 and #5319 merged; the spike with main merged in, before its follow-up",
     "known": {
-      "GcBuildingPayAppDoor": "no punch list, submittals or changes to sign (GcTradePortalJob draws them, P5c-2 and P5c-3b) and no dispatch; while WAIVER_SIGN_LIVE holds the waivers, the ready and sent-back states say to email the pay application in place of their button, and the ready state's words leave out the form (payAppCanAsk, payAppReportFirst)",
+      "GcBuildingPayAppDoor": "no punch list, submittals or changes to sign (GcTradePortalJob draws them, P5c-2 and P5c-3b) and no dispatch: its onSend is the submit adapter (usePress, pay_app and final_pay_app with the waiver's e-sign consent, P5c-3c-ii); while WAIVER_SIGN_LIVE holds the waivers, the ready and sent-back states say to email the pay application in place of their button, and the ready state's words leave out the form (payAppCanAsk, payAppReportFirst)",
       "CloseoutForTrade": "onFinal is null while WAIVER_SIGN_LIVE holds the waivers: no Fill out the final pay application, the email line in its place, and the last step reads signFinalLast, since its press waits too",
-      "GcBuildingPayAppWindow": "sends through onSend, the submit adapter, in place of the prototype's dispatch; the office's GcSovSideBySide block is left out (main's office reads GcDrawPayApp.tsx)"
+      "GcBuildingPayAppWindow": "sends through onSend, the submit adapter, in place of the prototype's dispatch, and stays open with a refusal (sending, sendProblem); its sign step lays out the conditional waiver as the app's own paper (tradePayAppWaiverPaper, GcTradeWaiverPaper.tsx) with I agree and the e-sign consent, never the spike's iSign tick (P5c-3c-ii); the office's GcSovSideBySide block is left out (main's office reads GcDrawPayApp.tsx)"
     }
   },
   "files": [

@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { portalAsks, portalFirstVisit } from '../../lib/gc/portal'
 import { pt, pWeekday, type PortalLang } from '../../lib/gc/portalI18n'
-import { askChips, askWhen, pastWords, portalHomeGroups, type SentMessage } from '../../lib/gc/tradePortalPage'
-import type { PortalAsk } from '../../lib/gc/portal'
+import { askChips, askWhen, pastWords, portalHomeGroups, portalHomeTodos, type SentMessage } from '../../lib/gc/tradePortalPage'
+import type { PortalAsk, PortalTodo } from '../../lib/gc/portal'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
 import { Btn, Chip } from './gcUi'
@@ -42,14 +42,22 @@ export function GcTradePortalView({
   const partner = state.partners.find((p) => p.id === partnerId)
   const [viewId, setViewId] = useState<string | null>(null)
   const [screen, setScreen] = useState<'portal' | 'messages'>('portal')
+  // A to-do lands on its block of the project page (P5c-3c-i): the block's data-portal-anchor, once the page is drawn.
+  const [anchor, setAnchor] = useState<string | null>(null)
   const top = useRef<HTMLDivElement | null>(null)
   const shown = viewId === null ? null : (state.projects.find((p) => p.id === viewId) ?? null)
-  const go = (id: string | null) => {
+  const go = (id: string | null, at?: string) => {
     setViewId(id)
     setScreen('portal')
+    setAnchor(at ?? null)
     const box = top.current?.getBoundingClientRect()
     if (box && box.top < 0) top.current?.scrollIntoView({ block: 'start' })
   }
+  useEffect(() => {
+    if (!anchor || !shown) return
+    top.current?.querySelector(`[data-portal-anchor="${anchor}"]`)?.scrollIntoView?.({ block: 'start' })
+    setAnchor(null)
+  }, [anchor, shown])
   if (!partner) return null
   const tab = (key: 'portal' | 'messages', label: string) => (
     <button
@@ -110,9 +118,11 @@ export function GcTradePortalView({
 }
 
 /** The company's home: hello, its asks still open, who gets our emails, and what came before. */
-function Home({ state, partner, onOpenProject }: { state: GcState; partner: Partner; onOpenProject: (id: string) => void }) {
+function Home({ state, partner, onOpenProject }: { state: GcState; partner: Partner; onOpenProject: (id: string, anchor?: string) => void }) {
   const { lang, t } = usePortalLang()
-  const { jobs, bidding, past } = portalHomeGroups(portalAsks(state, partner.id))
+  const asks = portalAsks(state, partner.id)
+  const { jobs, bidding, past } = portalHomeGroups(asks)
+  const todos = portalHomeTodos(state, partner.id, asks, lang)
   const press = usePortalPress()
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
@@ -124,6 +134,7 @@ function Home({ state, partner, onOpenProject }: { state: GcState; partner: Part
           <div style={{ fontSize: '0.85rem', color: MUTED }}>{t('homeIntro', { company: partner.company, gc: GC_COMPANY.name })}</div>
         </div>
       )}
+      <NeedsYou todos={todos} onOpen={(todo) => todo.projectId && onOpenProject(todo.projectId, todo.anchor)} />
       {jobs.length > 0 && (
         <PortalBlock title={`${t('yourJobs')} · ${jobs.length}`}>
           <div style={{ display: 'grid' }}>
@@ -177,6 +188,47 @@ function Home({ state, partner, onOpenProject }: { state: GcState; partner: Part
         </PortalBlock>
       )}
     </div>
+  )
+}
+
+const DOT: Record<PortalTodo['tone'], string> = {
+  red: 'var(--text-red-700)',
+  amber: 'var(--text-amber-700)',
+  plain: 'var(--text-muted)',
+}
+
+/**
+ * Needs you (P5c-3c-i, the spike's `GcPortalHome.tsx`): what is the company's to do, red first, each opening its project
+ * at its block. Company paperwork has no project and reads as a line.
+ */
+function NeedsYou({ todos, onOpen }: { todos: PortalTodo[]; onOpen: (todo: PortalTodo) => void }) {
+  const { t } = usePortalLang()
+  return (
+    <PortalBlock title={todos.length > 0 ? `${t('needsYou')} · ${todos.length}` : t('needsYou')}>
+      {todos.length === 0 ? (
+        <div style={{ fontSize: '0.9rem' }}>{t('nothingNeeds')}</div>
+      ) : (
+        <div style={{ display: 'grid' }}>
+          {todos.map((todo, i) => {
+            const words = (
+              <>
+                <span aria-hidden style={{ width: 8, height: 8, borderRadius: 999, background: DOT[todo.tone], flexShrink: 0, marginTop: '0.4rem' }} />
+                <span style={{ flex: 1, fontWeight: todo.tone === 'red' ? 600 : 400 }}>{todo.text}</span>
+              </>
+            )
+            return todo.projectId ? (
+              <PortalRow key={todo.key} first={i === 0} onClick={() => onOpen(todo)}>
+                {words}
+              </PortalRow>
+            ) : (
+              <div key={todo.key} style={{ display: 'flex', gap: '0.55rem', alignItems: 'flex-start', padding: '0.55rem 0.1rem', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, fontSize: '0.9rem' }}>
+                {words}
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </PortalBlock>
   )
 }
 

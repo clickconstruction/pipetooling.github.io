@@ -21,7 +21,10 @@ import {
   signaturePngOf,
   spanishHeld,
   tradeErrorOf,
+  WAIVER_SIGN_LIVE as FUNCTION_WAIVER_SIGN_LIVE,
+  waiverHeld,
 } from '../../../supabase/functions/_shared/gcTradeSubmit'
+import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { PORTAL_SPANISH_ON } from './portalI18n'
 
 const TOKEN = '0123456789abcdef0123456789abcdef'
@@ -56,7 +59,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(18)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(23)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -164,7 +167,13 @@ describe('each kind, read into its verb', () => {
 
     it('reads a typed signature: the name, the consent, no image, and the function fills the rest', () => {
       const parsed = parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: SOW, printedName: ' Dana Whitfield ', esignConsent: CONSENT })
-      expect(parsed).toEqual({ ok: true, token: TOKEN, kind: 'sign_sow', call: signCall, sign: { png: null, consent: CONSENT } })
+      expect(parsed).toEqual({
+        ok: true,
+        token: TOKEN,
+        kind: 'sign_sow',
+        call: signCall,
+        sign: { png: null, consent: CONSENT, record: { type: 'gc_sow', id: SOW }, printedName: 'Dana Whitfield' },
+      })
     })
 
     it('reads a drawn one as the PNG’s bytes', () => {
@@ -196,6 +205,110 @@ describe('each kind, read into its verb', () => {
       expect(tradeErrorOf({ code: 'P0001', message: 'alreadySigned' })).toEqual({ key: 'alreadySigned', status: 409 })
       expect(tradeErrorOf({ code: 'P0001', message: 'msaFirst' })).toEqual({ key: 'msaFirst', status: 409 })
       expect(tradeErrorOf({ code: 'P0001', message: 'sowNotSent' })).toEqual({ key: 'sowNotSent', status: 409 })
+    })
+  })
+
+  describe('a line reported, the unconditional waiver and a change signed (P5c-3b)', () => {
+    const SOW_LINE = '99999999-9999-4999-8999-999999999999'
+    const DRAW = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+    const CO = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+    const CONSENT = { version: 2, lang: 'en', audience: 'sub', documentNoun: 'this unconditional lien waiver', clauseText: 'I agree to sign electronically.' }
+
+    it('reads a line’s percent, from 0 to 100, as the picker sends it', () => {
+      expect(call('sow_report', { packageId: TRADE, line: SOW_LINE, pct: 70 })).toEqual({ rpc: 'gc_trade_sow_report', params: { p_package_id: TRADE, p_line: SOW_LINE, p_pct: 70 } })
+      expect(call('sow_report', { packageId: TRADE, line: SOW_LINE, pct: 0 })?.params.p_pct).toBe(0)
+      for (const pct of [-10, 110, '70', null, Number.NaN]) expect(call('sow_report', { packageId: TRADE, line: SOW_LINE, pct }), String(pct)).toBeNull()
+      expect(call('sow_report', { packageId: TRADE, line: 'line-1', pct: 70 })).toBeNull()
+      expect(FREE_TEXT_KINDS.has('sow_report')).toBe(false)
+    })
+
+    it('reads the waiver and a change as a typed signature, each keyed for its ledger row', () => {
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'unconditional_waiver', drawId: DRAW, printedName: ' Dana Ortiz ', esignConsent: CONSENT })).toEqual({
+        ok: true,
+        token: TOKEN,
+        kind: 'unconditional_waiver',
+        call: { rpc: 'gc_trade_unconditional_waiver', params: { p_draw_id: DRAW } },
+        sign: { png: null, consent: CONSENT, record: { type: 'gc_draw', id: DRAW }, printedName: 'Dana Ortiz' },
+      })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_change', changeOrderId: CO, printedName: 'Dana Ortiz', esignConsent: CONSENT })).toEqual({
+        ok: true,
+        token: TOKEN,
+        kind: 'sign_change',
+        call: { rpc: 'gc_trade_sign_change', params: { p_change_order_id: CO } },
+        sign: { png: null, consent: CONSENT, record: { type: 'gc_trade_change', id: CO }, printedName: 'Dana Ortiz' },
+      })
+    })
+
+    it('refuses either without the consent before any write, and a drawn image or a blank name as shapes the portal never sends', () => {
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'unconditional_waiver', drawId: DRAW, printedName: 'Dana' })).toEqual({ ok: false, key: 'consentNeeded' })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_change', changeOrderId: CO, printedName: 'Dana', esignConsent: { ...CONSENT, clauseText: '' } })).toEqual({ ok: false, key: 'consentNeeded' })
+      const PNG = `data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13))}`
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'unconditional_waiver', drawId: DRAW, printedName: 'Dana', signaturePngBase64: PNG, esignConsent: CONSENT })).toEqual({ ok: false })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_change', changeOrderId: CO, printedName: ' ', esignConsent: CONSENT })).toEqual({ ok: false })
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'unconditional_waiver', drawId: 'draw-1', printedName: 'Dana', esignConsent: CONSENT })).toEqual({ ok: false })
+    })
+
+    it('says the three keys with their statuses', () => {
+      expect(tradeErrorOf({ code: 'P0001', message: 'sowNotSigned' })).toEqual({ key: 'sowNotSigned', status: 409 })
+      expect(tradeErrorOf({ code: 'P0001', message: 'splitLine' })).toEqual({ key: 'splitLine', status: 409 })
+      expect(tradeErrorOf({ code: 'P0001', message: 'notPaidYet' })).toEqual({ key: 'notPaidYet', status: 409 })
+    })
+  })
+
+  describe('a pay application and the final one (P5c-3c-ii)', () => {
+    const SOV1 = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+    const SOV2 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+    const CONSENT = { version: 2, lang: 'en', audience: 'sub', documentNoun: 'this conditional lien waiver', clauseText: 'I agree to sign electronically.' }
+    const typedIn = { periodTo: '2026-10-05', address: ' 400 Sample St ', license: 'TECL 00000', signedBy: ' Dana Ortiz ', signedTitle: 'Owner' }
+
+    it('reads a pay application: its lines by the kernels’ ids, its period and who signs, keyed for the draw it makes', () => {
+      const app = { ...typedIn, lines: [{ line: SOV1, toPct: 70, stored: 1200 }, { line: SOV2, toPct: 0 }] }
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app, esignConsent: CONSENT })).toEqual({
+        ok: true,
+        token: TOKEN,
+        kind: 'pay_app',
+        call: {
+          rpc: 'gc_trade_pay_app',
+          params: {
+            p_package_id: TRADE,
+            p_app: { periodTo: '2026-10-05', address: '400 Sample St', license: 'TECL 00000', signedBy: 'Dana Ortiz', signedTitle: 'Owner', lines: [{ line: SOV1, toPct: 70, stored: 1200 }, { line: SOV2, toPct: 0 }] },
+          },
+        },
+        sign: { png: null, consent: CONSENT, record: { type: 'gc_draw', id: null }, printedName: 'Dana Ortiz' },
+      })
+    })
+
+    it('reads the final one with no lines', () => {
+      const parsed = parseTradeSubmit({ token: TOKEN, kind: 'final_pay_app', packageId: TRADE, app: { ...typedIn, lines: [{ line: SOV1, toPct: 100 }] }, esignConsent: CONSENT })
+      expect(parsed.ok && parsed.call).toEqual({
+        rpc: 'gc_trade_final_pay_app',
+        params: { p_package_id: TRADE, p_app: { periodTo: '2026-10-05', address: '400 Sample St', license: 'TECL 00000', signedBy: 'Dana Ortiz', signedTitle: 'Owner' } },
+      })
+    })
+
+    it('leaves a blank period and a blank name to the SQL, and needs the consent before any write', () => {
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app: { lines: [] }, esignConsent: CONSENT }).ok).toBe(true)
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app: { ...typedIn, lines: [] } })).toEqual({ ok: false, key: 'consentNeeded' })
+    })
+
+    it('refuses a shape the window never sends', () => {
+      for (const app of [
+        null,
+        { ...typedIn, periodTo: '10/05/2026', lines: [] },
+        { ...typedIn, lines: [{ line: 'line-1', toPct: 50 }] },
+        { ...typedIn, lines: [{ line: SOV1, toPct: 120 }] },
+        { ...typedIn, lines: [{ line: SOV1, toPct: 50, stored: -1 }] },
+        { ...typedIn, lines: [{ line: SOV1, toPct: '50' }] },
+      ]) {
+        expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app, esignConsent: CONSENT }), JSON.stringify(app).slice(0, 60)).toEqual({ ok: false })
+      }
+      const PNG = `data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13))}`
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app: { ...typedIn, lines: [] }, signaturePngBase64: PNG, esignConsent: CONSENT })).toEqual({ ok: false })
+      expect(FREE_TEXT_KINDS.has('pay_app')).toBe(false)
+    })
+
+    it('says the four keys with their statuses', () => {
+      for (const key of ['drawWaiting', 'nothingToBill', 'finalSent', 'finalNotYet']) expect(tradeErrorOf({ code: 'P0001', message: key })).toEqual({ key, status: 409 })
     })
   })
 
@@ -242,6 +355,12 @@ describe('before the verb', () => {
     expect([spanishHeld(call('set_lang', { lang: 'es' })!), spanishHeld(call('set_lang', { lang: 'en' })!)]).toEqual([!PORTAL_SPANISH_ON, false])
   })
 
+  it('holds every lien waiver with the same flag the page reads, until the owner’s call (P5c-3b, P5c-3c-ii)', () => {
+    expect(FUNCTION_WAIVER_SIGN_LIVE).toBe(WAIVER_SIGN_LIVE)
+    expect(WAIVER_SIGN_LIVE).toBe(false)
+    expect(TRADE_SUBMIT_KINDS.filter(waiverHeld)).toEqual(['unconditional_waiver', 'pay_app', 'final_pay_app'])
+  })
+
   it('caps free-text writes at ten an hour, and only the free-text kinds', () => {
     expect(TRADE_HOURLY_CAP).toBe(10)
     expect(overHourlyCap([3, 2, 1, 3])).toBe(false)
@@ -276,19 +395,8 @@ describe('the verb’s refusals', () => {
    * status in TRADE_SQL_ERRORS and its words in TRADE_ERROR_WORDS. A lane whose migration adds a trade
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
-  const WAITING: Record<string, string> = {
-    // Building's U6a, the trades' draws: a statement of work not signed, a draw waiting, nothing to bill, a split
-    // line and a waiver before payment. Its second signature, alreadySigned, is mapped since P2c-ii.
-    sowNotSigned: 'P5c-3',
-    drawWaiting: 'P5c-3',
-    nothingToBill: 'P5c-3',
-    splitLine: 'P5c-3',
-    notPaidYet: 'P5c-3',
-    // Building's U6c, the final pay application (gc_trade_final_pay_app, through gc_final_pay_app_ask): the final
-    // sent already, and asked before every line is billed and the work accepted.
-    finalSent: 'P5c-3',
-    finalNotYet: 'P5c-3',
-  }
+  // Empty since P5c-3c-ii: every key the trade verbs raise has its status and its words.
+  const WAITING: Record<string, string> = {}
 
   /**
    * Every key a trade verb raises, its own and those of the `*_ask` helpers it returns through (P5c-2: U3b-i's

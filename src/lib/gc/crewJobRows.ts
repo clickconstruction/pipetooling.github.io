@@ -138,11 +138,27 @@ export interface CrewJobHeld {
   words: string
 }
 
-/** Every Pipeline job a crew trade holds on the GC jobs the page read, named from the job the picker is on. */
-export function crewJobsHeld(projects: readonly { id: string; name: string; trades: readonly { id: string; trade: string; ours: boolean; jobLedgerId?: string | null }[] }[], onProjectId: string | null): CrewJobHeld[] {
-  return projects.flatMap((p) =>
-    p.trades.flatMap((t) => (t.ours && t.jobLedgerId ? [{ jobId: t.jobLedgerId, packageId: t.id, words: p.id === onProjectId ? t.trade : `${t.trade} at ${p.name}` }] : [])),
-  )
+/** The packageId a project's general conditions hold their Pipeline job under (O11b): never a trade's id. */
+export function generalConditionsHolder(projectId: string): string {
+  return `general-conditions:${projectId}`
+}
+
+/**
+ * Every Pipeline job a crew trade holds on the GC jobs the page read, named from the job the picker is on. With
+ * `gcJobs` (Owner Billing's O11b: each project's general conditions job, which only the money team's board carries),
+ * those jobs are held too, as "general conditions" on this GC job and "general conditions at Stone Oak" on another.
+ */
+export function crewJobsHeld(
+  projects: readonly { id: string; name: string; trades: readonly { id: string; trade: string; ours: boolean; jobLedgerId?: string | null }[] }[],
+  onProjectId: string | null,
+  gcJobs: Readonly<Record<string, string | null | undefined>> = {},
+): CrewJobHeld[] {
+  return projects.flatMap((p) => {
+    const here = p.id === onProjectId
+    const crews = p.trades.flatMap((t) => (t.ours && t.jobLedgerId ? [{ jobId: t.jobLedgerId, packageId: t.id, words: here ? t.trade : `${t.trade} at ${p.name}` }] : []))
+    const gcJob = gcJobs[p.id]
+    return gcJob ? [...crews, { jobId: gcJob, packageId: generalConditionsHolder(p.id), words: here ? 'general conditions' : `general conditions at ${p.name}` }] : crews
+  })
 }
 
 /** The jobs another crew trade holds, by job id: the picker shows them and does not let one be picked. */

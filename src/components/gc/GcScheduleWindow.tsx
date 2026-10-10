@@ -8,6 +8,7 @@
  * Building is built, since they read its submittals and RFIs).
  */
 import { useEffect } from 'react'
+import type { ScheduleReads } from '../../lib/gc/scheduleIo'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { GcSchedule } from './GcSchedule'
 
@@ -17,6 +18,7 @@ export function GcScheduleWindow({
   by,
   canMove = false,
   canPull = false,
+  reads,
   onClose,
 }: {
   state: GcState
@@ -24,6 +26,8 @@ export function GcScheduleWindow({
   by: string
   canMove?: boolean
   canPull?: boolean
+  /** What this reader may read over the schedule (PR 16), memoized by the page. */
+  reads?: ScheduleReads
   onClose: () => void
 }) {
   useEffect(() => {
@@ -56,7 +60,7 @@ export function GcScheduleWindow({
           </button>
         </div>
         <div style={{ padding: '0.8rem 1rem', overflowY: 'auto' }}>
-          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} canPull={canPull} />
+          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} canPull={canPull} {...(reads ? { reads } : {})} />
         </div>
       </div>
     </div>
