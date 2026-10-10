@@ -2,7 +2,7 @@
 name: "Building U8: our own crew from its Pipeline job"
 rows: BUILDING_REAL_BUILD.md, The PRs in order, 8; decision 11; "U8: one column"; README.md, Where it plugs in (our own crew's percent done); SCHEDULE_REAL_BUILD.md, PR 16 (our crew, G-51) and the daily log's readers; GANTT_FEATURES.md G-51
 branch: the plan on claude/gc-building-u8-plan (from origin/spike/gc-mode at afd58dbba), merged to the spike by the lead; U8a from origin/main after U7c and U3b-ii are cut; U8b after U8a's push and gc 7's types regen
-status: plan 2026-10-10 by gc 4 (the Building lane) at the lead's ask. The count's shape agreed with gc 10 (holding Schedule) before it was written, with gc 10's four changes written in (calls 1 to 5). U8a's SQL ran on the real bed on main at 06ab01043: 23 assertions pass, and 19 of 19 planted bugs fail them. Amendment 1 (2026-10-10): the lead approved calls 6 to 9 and 11 to 13 and changed 10 to a guard on the column, now in U8a (28 assertions, 25 of 25 planted bugs); gc 10 signed off with call 12 made exact (the `board` variable itself) and a page test. Nothing built yet.
+status: plan 2026-10-10 by gc 4 (the Building lane) at the lead's ask. The count's shape agreed with gc 10 (holding Schedule) before it was written, with gc 10's four changes written in (calls 1 to 5). U8a's SQL ran on the real bed on main at 06ab01043: 23 assertions pass, and 19 of 19 planted bugs fail them. Amendment 1 (2026-10-10): the lead approved calls 6 to 9 and 11 to 13 and changed 10 to a guard on the column, now in U8a (28 assertions, 25 of 25 planted bugs); gc 10 signed off with call 12 made exact (the `board` variable itself) and a page test. Amendment 2 (2026-10-10), gc 5's asks, co-signed by gc 5: the percent read takes O9's gate (`canUseGcBuilding || canSeeGcMoney`), the link and its guard staying a dev's; Bill the customer's line for our crew says where its percent came from; a missing number never reads as a measured zero. Nothing built yet.
 ---
 
 # Building U8: our own crew from its Pipeline job
@@ -89,8 +89,11 @@ Nothing in U8 writes a bar's real days (call 4) or touches payroll. The count ne
 11. **Two GC jobs may name one Pipeline job.** Each then counts the same people. It is not refused: one Pipeline job
     can run the plumbing for two buildings.
 12. **The percents are laid over the board itself on the page,** before any window reads it, so Draws, Closeout, Bill
-    the owner, the money margin and the Schedule all read one percent. Read for a dev only while Building is built.
-    gc 10's condition: it is the `board` variable itself that is laid, the one the Schedule mount reads
+    the owner, the money margin and the Schedule all read one percent. It is read with O9's gate,
+    `canUseGcBuilding(role) || canSeeGcMoney(role)` (gc 5, amendment 2), so a master's or the controller's draft bill
+    reads the same percent as a dev's. Every source admits the money team: `can_report_stage_progress` names
+    master_technician and controller, `list_latest_report_completion_pct` reads under RLS, and `jobs_ledger` is the
+    office's to read. The link press and its guard stay a dev's. gc 10's condition: it is the `board` variable itself that is laid, the one the Schedule mount reads
     (`GcScheduleWindow state={board}`), never a second memo beside it, so the chart and 9d's pull offers read our
     crew's `pctByLine` from the same read as Draws and the bill. A page test opens Schedule after a crew read.
 13. **The count's days run from the job's first day to today.** `gc_projects.started_on` is the first day a log may
@@ -550,10 +553,11 @@ export interface CrewJobRead {
 }
 
 export interface CrewPercent {
-  from: 'stages' | 'job' | 'none'
+  /** 'report': the crew report's percent, the newest word on the job. 'job': `pct_complete`. 'none': nothing to read. */
+  from: 'stages' | 'report' | 'job' | 'none'
   /** Each scope line's percent, when `from` is 'stages'. */
   pctByLine?: Record<string, number>
-  /** The whole trade's percent: from the stages, or the job's. */
+  /** The whole trade's percent: from the stages, the report or the job's. */
   pctDone?: number
   /** The day each line's stage was last reported, in the company's time zone. */
   reportedByLine: Record<string, string | null>
@@ -564,13 +568,24 @@ export interface CrewPercent {
 /** Calls 5, 7 and 8: our crew's percent from its Pipeline job. */
 export function crewPercentOf(pkg: TradePackage, read: CrewJobRead): CrewPercent
 
-/** The board with each linked crew's percent laid into `selfPerform` (`pctByLine`, `pctDone`). 'none' leaves it. */
+/** The board with each linked crew's percent laid into `selfPerform` (`pctByLine`, `pctDone`, `source`). 'none' leaves it. */
 export function withCrewPercents(state: GcState, reads: CrewJobRead[]): GcState
+```
+
+`TradePackage.selfPerform` on main gains one optional field, which only `withCrewPercents` sets:
+
+```ts
+    /** Where the percent came from (Building U8): the Pipeline job's stages, its crew report or its own percent. Absent: not linked, or nothing read. */
+    source?: { from: 'stages' | 'report' | 'job'; job: string; on: string | null }
 ```
 
 - A line's percent is the weighted mean of its rank's stages' `progress_pct` (null reads 0), by `weight_pct`, or the
   plain mean when every weight is 0. `pctDone` with stages is `crewPctFromStages`, so it is the same number
   `ownCrewWork` shows.
+- The stages count only when at least one matched stage was reported (`progress_at`). When none was, the whole job's
+  percent stands in: 'report' while the crew report is the newest word, else 'job' from `pct_complete`. A job with no
+  stage reported, no current report and no `pct_complete` is 'none', and the trade keeps today's empty percent and
+  words, so a missing number never reads as a measured zero (gc 5).
 - `progress_at` becomes a day with `isoToPlainDateInAppTz`.
 - `crewJobIo.ts`:
   - `loadCrewJobs(links)` reads `jobs_ledger` (id, numbers, name, `pct_complete`) for the linked jobs in one select,
@@ -629,11 +644,27 @@ Plumbing · our own crew   [Pipeline job J 1071]  Change          Our number $26
 - A new day's form starts from `logWithClockIns(newDailyLog(project, day), project, rows)`. The save sends
   `crewsToSave` (call 6).
 
+### Our crew's line on Bill the customer (`ownerBilling.ts`, co-signed by gc 5)
+
+`tradeLine`'s `source` for a trade our own crew does reads `selfPerform.source`, and `GcBillCustomer`'s draft lines
+show it as they show every line's source. No component changes.
+
+- From the stages: "Our own crew is 40% done, from Pipeline job J 1071's stages."
+- From the crew report: "Our own crew is 40% done, from the crew report of Oct 8."
+- From the job's own percent: "Our own crew is 40% done, from Pipeline job J 1071's percent."
+- No `source` (not linked, or 'none'): today's words, "Our own crew reported 40% done." or "Our own crew has not
+  reported any work yet."
+
+gc 5's O10b touches `GcBillCustomer.tsx` (the architect's reminder beside a sent bill), apart from these words.
+Whichever lands second rebases.
+
 ### The guide and the docs
 
 - **New guide** `link-our-own-crew-to-its-pipeline-job.md` (title `link our own crew to its Pipeline job`, roles dev,
   Bids & Estimating): what the link gives, picking the job on Draws, what the log and the stages then show, and
-  unlinking. The guide `write-the-daily-log-for-a-job-we-are-building` gains a short section on our crew's count.
+  unlinking. The guide `write-the-daily-log-for-a-job-we-are-building` gains a short section on our crew's count, and
+  `bill-the-customer-on-a-gc-job` one sentence: "A trade our own crew does reads its percent from its Pipeline job. The
+  line says where it came from."
 - `PROJECT_DOCUMENTATION.md` (Draws' Our own crew card, the log's clocked-in row), `docs/ACCESS_CONTROL.md` (the
   counts-only definer and its door), `GLOSSARY.md` (**Our own crew**, amended in place if it is there).
 
@@ -643,8 +674,11 @@ Plumbing · our own crew   [Pipeline job J 1071]  Change          Our number $26
   log make no log, a hired trade's row is ignored, the crews keep the job's order, another project's rows change
   nothing, `crewsToSave` leaves only the counted crew off, and the pages split at 92 days.
 - `crewJobRows.test.ts`: the four stages matched by rank (`Rough In`, `Top Out`, `Trim Set`, `Underground`), two stages
-  of one rank averaged by weight, one line unmatched (the whole job), no stages (the report's percent), a report older
-  than the office's hand-set (`pct_complete`), nothing (`none`), and `withCrewPercents` leaving an unlinked trade.
+  of one rank averaged by weight, one line unmatched (the whole job), no stages (the report's percent), stages matched
+  but none reported (the whole job), a report older than the office's hand-set (`pct_complete`, 'job'), nothing
+  (`none`, the trade's percent and `source` left empty, gc 5), and `withCrewPercents` leaving an unlinked trade.
+- `ownerBilling.test.ts`: our crew's line says each of the three sources, and an unlinked trade's line keeps today's
+  words.
 - `GcOwnCrew.render.test.tsx`: the stages read only with their days, the words in plain words, the suggested job
   first, a search and **Use this job** calling the link, **Unlink it**, a refusal shown.
 - `GcDailyLog.render.test.tsx`: the counted row has no box, the save leaves it off, the linked and the unlinked notes.
@@ -685,13 +719,15 @@ After U7c and U3b-ii (the lead's order). U8a: number from `origin/main`, claim o
 
 - **gc 10, Schedule**: `withCrewClockIns`, `loadGcCrewOnSite`, `withCrewPercents` and `loadCrewJobs` are the shared
   pieces PR 16 composes. U8 writes no bar's days.
-- **gc 5, Owner Billing**: Bill the owner's line for our own crew reads `selfPerform` (`billingForecast.ts`). On a
-  linked trade it now reads the Pipeline's percent instead of nothing. An unlinked trade bills as today.
+- **gc 5, Owner Billing** (co-signed amendment 2): Bill the owner's line for our own crew reads `selfPerform`
+  (`billingForecast.ts`, `tradeLine`). On a linked trade it now reads the Pipeline's percent, for the money team as for
+  a dev, and says where it came from. An unlinked trade bills as today. O10's notices carry no percents, so O10 needs
+  nothing from U8.
 - **The Board and money lane**: "our own crew at its Pipeline cost in jobMargin" (LEDGER, after Building's U8) can read
   `job_ledger_id`.
 - **Building's door**: both functions' gates (call 2, call 9). The column's guard comes with U8a, and the door
-  inherits it (call 10). The percents read for a dev only, so after the schedule's PR 10 an office user's chart shows
-  our crew's bars at 0% and its pull offers never see our crew finish (gc 10, the class of 9d's call 1). The read half
+  inherits it (call 10). The percents read for a dev and the money team (amendment 2), so after the schedule's PR 10
+  an office user outside them sees our crew's bars at 0% on the chart, and its pull offers never see our crew finish (gc 10, the class of 9d's call 1). The read half
   of Building's door closes it, with the submittals and the RFIs.
 
 ## Is this the best we can do?
@@ -710,4 +746,6 @@ Plan 2026-10-10, gc 4. The count's shape agreed with gc 10, whose four changes a
 on main at 06ab01043. The screen's and the refusals' words above pass `plainWordsFailures`. Amendment 1
 (2026-10-10): the lead approved calls 6 to 9 and 11 to 13 and changed 10 to the column's guard, now in U8a and
 bed-tested (28 assertions, 25 of 25 planted bugs). gc 10 signed off, with call 12 made exact and a page test added.
+Amendment 2 (2026-10-10): gc 5's two asks, co-signed: the percent read takes O9's gate, and Bill the customer's line
+for our crew names its source, a missing number never reading as a measured zero. Its words pass `plainWordsFailures`.
 Cut after U7c and U3b-ii, as ordered. Nothing built.
