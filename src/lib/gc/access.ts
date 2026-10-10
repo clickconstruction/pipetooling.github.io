@@ -60,3 +60,15 @@ export const GC_BOARD_WRITE_TEAM: readonly UserRole[] = ['dev']
 export function canUseGcBoardWrites(role: UserRole | null | undefined): boolean {
   return role != null && GC_BOARD_WRITE_TEAM.includes(role)
 }
+
+/**
+ * GC mode, the Board's B2b-v-iii (gc 5): who may open our contract's own file, from the private bucket
+ * `gc-owner-contracts`. The client's copy of that bucket's select policy (`gc_owner_contracts_select`, `is_dev()` since
+ * 20261010090000): a dev today, the money team once award's door opens the bucket. `access.test.ts` fails when the
+ * policy and this list disagree, so the door changes both.
+ */
+export const GC_OWNER_CONTRACT_FILE_TEAM: readonly UserRole[] = ['dev']
+
+export function canOpenOwnerContractFile(role: UserRole | null | undefined): boolean {
+  return role != null && GC_OWNER_CONTRACT_FILE_TEAM.includes(role)
+}
