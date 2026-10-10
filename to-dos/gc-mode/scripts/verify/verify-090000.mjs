@@ -1,0 +1,10 @@
+import { q, asRole } from './verify-lib.mjs';
+await q('1 table rls + policy', `SELECT c.relrowsecurity, (SELECT string_agg(polname, ',') FROM pg_policy WHERE polrelid = c.oid) AS policies FROM pg_class c WHERE c.oid = 'public.gc_owner_contract_sends'::regclass;`);
+await q('2 table grants', `SELECT grantee, string_agg(privilege_type, ',' ORDER BY privilege_type) AS privs FROM information_schema.role_table_grants WHERE table_schema='public' AND table_name='gc_owner_contract_sends' GROUP BY grantee ORDER BY grantee;`);
+await q('2b column INSERT grants', `SELECT grantee, string_agg(column_name, ',' ORDER BY column_name) AS cols FROM information_schema.role_column_grants WHERE table_schema='public' AND table_name='gc_owner_contract_sends' AND privilege_type='INSERT' GROUP BY grantee;`);
+await q('3 bucket + storage policies', `SELECT (SELECT public FROM storage.buckets WHERE id='gc-owner-contracts') AS bucket_public, (SELECT string_agg(polname||':'||polcmd::text, ',') FROM pg_policy WHERE polrelid='storage.objects'::regclass AND polname LIKE 'gc_owner_contracts%') AS pols;`);
+await q('4 functions security + grants', `SELECT p.proname, p.prosecdef, (SELECT string_agg(r.rolname, ',' ORDER BY r.rolname) FROM pg_roles r WHERE has_function_privilege(r.rolname, p.oid, 'EXECUTE') AND r.rolname IN ('anon','authenticated','service_role')) AS can_exec FROM pg_proc p WHERE p.pronamespace='public'::regnamespace AND p.proname LIKE 'gc_%owner_contract%' ORDER BY 1;`);
+await q('5 esign check', `SELECT pg_get_constraintdef(oid) LIKE '%gc_owner_contract%' AS has_type FROM pg_constraint WHERE conname='esign_consents_record_type_check';`);
+await q('6 estimator reads none; rows zero', `BEGIN; ${asRole('estimator')} SELECT count(*) AS est_sees FROM gc_owner_contract_sends; ROLLBACK;`);
+await q('6b dev count', `BEGIN; ${asRole('dev')} SELECT count(*) AS dev_sees FROM gc_owner_contract_sends; ROLLBACK;`);
+await q('7 fences on the table', `SELECT string_agg(polname, ',' ORDER BY polname) FROM pg_policy WHERE polrelid='public.gc_owner_contract_sends'::regclass AND (polname LIKE '%read_only%' OR polname LIKE '%twin%');`);
