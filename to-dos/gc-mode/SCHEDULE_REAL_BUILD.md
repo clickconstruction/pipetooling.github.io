@@ -795,7 +795,7 @@ for whoever picks the lane up:
    after `withDailyLogs` (`mockups/building-u8.md`, agreed with gc 4).
 3. **The read half of Building's door for the schedule's team** (`mockups/schedule-pr9d.md`, call 1):
    a `FOR SELECT` for the team on `gc_submittals`, `gc_rfis` and their holds, and the Board's word on a
-   company's papers in `person_contract_documents` (a controller and an estimator read none today).
+   company's papers in `person_contract_documents` (an estimator reads none until `gc_company_paper_states`, v2.5179, #5335).
    Then Pull earlier and Days back move from `canPull` to `canMove`. U8's crew percents and counts read
    for a dev only too, and the same door covers them. Building's door is planned next
    (`mockups/building-door.md`, gc 10 with gc 4).
