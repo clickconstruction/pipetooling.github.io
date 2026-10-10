@@ -2,7 +2,7 @@
 name: "Building U7: the Friday report"
 rows: BUILDING_REAL_BUILD.md, The PRs in order, 7; decisions 4 and 10; Kernels that move (U2's `weeklyReport` row); owner-billing plans (gc-customer-email, O4b); SCHEDULE_REAL_BUILD.md (PR 15, the customer's letter)
 branch: the plan on claude/gc-building-u7-plan (from origin/spike/gc-mode at 6ac8813b0), merged to the spike by the lead; U7a from origin/main once this plan merges; U7b after U7a; U7c on U7b's deploy
-status: plan 2026-10-10 by gc 4 (the Building lane) at the lead's ask, with the lead's call written in (a `weekly` kind on Owner Billing's gc-customer-email, not a new function). The kind's shape waits on gc 5's co-sign (below). U7a's lift ran dry on the spike at 6ac8813b0 and its moved tests passed on main at 3c836ad80. Nothing is cut or claimed.
+status: plan 2026-10-10 by gc 4 (the Building lane) at the lead's ask, with the lead's call written in (a `weekly` kind on Owner Billing's gc-customer-email, not a new function). U7a's lift ran dry on the spike at 6ac8813b0 and its moved tests passed on main at 3c836ad80. Amendment 1 (2026-10-10): gc 5 co-signed calls 4 to 11 with notes, written into U7b below; U7a cut as #5263 (v2.5134); the follow-up's branch is claude/*; the journey step's guide until U7c.
 ---
 
 # Building U7: the Friday report
@@ -109,7 +109,7 @@ that plays the reducer (`sendWeeklyReport`) stays on the spike.
 `buildingWeekly.report.test.ts` holds the three moved cases, and the release note and fragment. No schedule test state
 changes: Fair Oaks D already carries the week's logs, its schedule, submittals and change orders.
 
-**The spike's follow-up** (`spike/building-u7-follow`, the lane's, after U7a merges): merge main; `lift-extract` with
+**The spike's follow-up** (`claude/gc-building-u7-follow` from the spike, the lane's, after U7a merges; never a `spike/*` branch): merge main; `lift-extract` with
 `LIFT_PLACEMENTS`, then `lift-reexport --write`, so `gcBuildingWeekly.ts` keeps only its header and the re-exports from
 main; drop the three moved tests by title from `gcBuildingWeekly.test.ts`, and the duplicate; pin the config to U7a's
 merge on main and the spike just before; `lift-same --all` exit 0, `schedule-test-state.ts` byte-equal, `tsc -b` at a 12
@@ -143,7 +143,35 @@ week), its line in `personJourney.ts` (`na('GC mode: read on the GC project')`),
 kinds. No new function, so `config.toml`, the email catalog's 49 rows and the sent-copies coverage stay as they are.
 
 **Its tests**: `_shared/gcCustomerEmails.test.ts` (the records, the address rule, no frame for `weekly`, the `[TEST]`
-subject), and `customerEmail.test.ts`'s kinds table. **Its deploy**: `gc-customer-email`, by the lead. No live send without
+subject), and `customerEmail.test.ts`'s kinds table.
+
+**gc 5's co-sign (amendment 1, 2026-10-10)**: yes to calls 4 to 11, with these, which U7b builds:
+
+- **4, the order of the gate**: a real account (`REAL_ACCOUNT`), a training account and a twin refused, then the row read
+  with the caller's JWT. Reading the row is enough to send it while the row is dev only. **Building's door decides** whether
+  that still holds once the schedule's team can SELECT, or the gate moves to the insert (the row's `sent_by` is the caller)
+  or to an RPC that locks the row. It goes on the door PR's checklist.
+- **5, the gap the reminder has too**: a send Resend took whose write-back fails would send twice on a retry. Accepted, as
+  for the reminder. The log id is written straight after the send, **before** the copy is filed, so the gap is as short as
+  it can be.
+- **6, one home for the address**: the contact-first rule is one helper in `_shared`, beside `customerBillingEmail`, with
+  its test.
+- **7, no architect address**: no `cc`, `copied: false`, and the customer's email still goes.
+- **8, the unframed body is escaped**: the row's text is HTML-escaped and split into paragraphs on blank lines. A test holds
+  a line with a `<` in it escaped.
+- **11, the `[TEST]` copy, for every kind, kept in U7b**:
+  - the caller's gate runs exactly as for a real send (the money team, or the row by RLS for `weekly`), so a test is never
+    a way around who may send;
+  - the test copy is built as the real one would be: the same attachments (`pay_app` and `certify_ask` carry the form), the
+    same portal line and the same card-fee line, so Grace sees what the customer would get;
+  - it goes to the caller's own address, read from `users` with `REAL_ACCOUNT`, and is logged with its own email type,
+    `gc_customer_email_test`, so no reader of `email_send_log` counts it as a send;
+  - nothing is written back on any kind: no reminder's `email_send_log_id`, no weekly row, no sent copy;
+  - `gcCustomerEmails.test.ts` holds the `[TEST]` subject prefix and the test leaving out `cc`.
+
+**The journey step's guide** (amendment 1): `customerJourneys.test.ts` needs a step's guide to exist, and the guide *send
+the customer the Friday report* ships with U7c's window. U7b's step names *write the daily log for a job we are building*
+until then, and U7c moves it to the new guide. **Its deploy**: `gc-customer-email`, by the lead. No live send without
 Grace's yes typed in gc 4's chat; the `[TEST]` copy to her own email is the first check.
 
 ## U7c: the report window, the mapper and the io
