@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 /**
- * The trade portal's job (P5c-1 and P5c-2, to-dos/gc-mode/mockups/portal-p5.md): once its statement of work is signed, the
- * company reads each line's percent and what was paid through, its punch list, its submittals, its draws and its
- * questions while we build. Since P5c-2 it marks a punch item fixed, sends a submittal round and asks a question; each
- * posts its kind, the page reads the slice again, a refusal shows in the company's words, and the preview posts nothing.
- * The report, the pay application and the waivers take no press until P5c-3. The bidding questions, closed long ago, give
- * way to the questions while we build.
+ * The trade portal's job (P5c-1 to P5c-3b, to-dos/gc-mode/mockups/portal-p5.md): once its statement of work is signed,
+ * the company reads each line's percent and what was paid through, its punch list, its submittals, its draws and its
+ * questions while we build. Since P5c-2 it marks a punch item fixed, sends a submittal round and asks a question; since
+ * P5c-3b it reports a line's percent and signs a change we sent. Each posts its kind, the page reads the slice again, a
+ * refusal shows in the company's words, and the preview posts nothing. The unconditional waiver waits on the owner's call
+ * (`GcTradePortal.waiver.render.test.tsx` turns it on); the pay application takes no press until P5c-3c. The bidding questions, closed long ago, give way to the questions while
+ * we build.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -58,6 +59,14 @@ const openJob = async (path?: string) => {
   return within(await screen.findByRole('region', { name: 'Electrical · report your work and get paid' }))
 }
 
+/** A typed signature as `/contract/accept`'s form takes it: the name, then I agree and I agree to sign electronically. */
+function fillTheForm(block: ReturnType<typeof within>, name = 'Dana Ortiz') {
+  fireEvent.change(block.getByPlaceholderText('Your full legal name'), { target: { value: name } })
+  const boxes = block.getAllByRole('checkbox')
+  fireEvent.click(boxes[0]!)
+  fireEvent.click(boxes[1]!)
+}
+
 const questionsBlock = () => {
   const blocks = screen.getAllByRole('region', { name: 'Electrical · questions about the plans' })
   expect(blocks).toHaveLength(1)
@@ -65,13 +74,19 @@ const questionsBlock = () => {
 }
 
 describe('the company’s job (P5c-1)', () => {
-  it('reads each line’s percent done and paid through, its draw and the totals, with no picker yet', async () => {
+  it('reads each line’s percent done and paid through, its draw and the totals', async () => {
     const report = await openJob()
-    expect(report.getByText('60% done')).toBeTruthy()
+    expect((report.getByRole('combobox', { name: 'Percent done, Rough-in' }) as HTMLSelectElement).value).toBe('60')
     expect(report.getByText(/paid through 50%/)).toBeTruthy()
     expect(report.getByText('Draw 1')).toBeTruthy()
     expect(report.getByText('paid')).toBeTruthy()
     expect(report.getByText(/^Paid so far \$13,122/)).toBeTruthy()
+  })
+
+  it('reads each line’s percent as text, with no picker, on a job we no longer build', async () => {
+    slice = { ...slice, projects: slice.projects.map((p) => (p.project.id === ID.job ? { ...p, gc: { ...p.gc, closed_on: '2026-10-07' } } : p)) }
+    const report = await openJob()
+    expect(report.getByText('60% done')).toBeTruthy()
     expect(report.queryByRole('combobox')).toBeNull()
   })
 
@@ -148,5 +163,64 @@ describe('its presses (P5c-2)', () => {
     fireEvent.click(await screen.findByRole('button', { name: /Sample Dental Office/ }))
     await screen.findByRole('region', { name: 'Electrical · statement of work' })
     expect(screen.queryByRole('button', { name: 'Ask Click a question' })).toBeNull()
+  })
+})
+
+describe('report, waiver and change (P5c-3b)', () => {
+  it('reports a line’s percent from a picker that never goes below what was billed', async () => {
+    const report = await openJob()
+    const rough = report.getByRole('combobox', { name: 'Percent done, Rough-in' }) as HTMLSelectElement
+    expect([...rough.options].map((o) => o.value)).toEqual(['50', '60', '70', '80', '90', '100'])
+    const trim = report.getByRole('combobox', { name: 'Percent done, Trim and fixtures' }) as HTMLSelectElement
+    expect(trim.options).toHaveLength(11)
+    fireEvent.change(rough, { target: { value: '80' } })
+    await waitFor(() => expect(posts).toEqual([{ token: TOKEN, kind: 'sow_report', packageId: ID.jobTrade, line: ID.jobLine1, pct: 80 }]))
+    await waitFor(() => expect(reads).toHaveLength(2))
+  })
+
+  it('says a split line in the company’s words, under its picker', async () => {
+    postAnswer = { ok: false, body: { error: 'splitLine' } }
+    const report = await openJob()
+    fireEvent.change(report.getByRole('combobox', { name: 'Percent done, Rough-in' }), { target: { value: '70' } })
+    expect(await report.findByText('That line is split into parts. Tell us how far each part is.')).toBeTruthy()
+    expect((report.getByRole('combobox', { name: 'Percent done, Rough-in' }) as HTMLSelectElement).value).toBe('60')
+    expect(reads).toHaveLength(1)
+  })
+
+  it('draws no waiver press while the owner’s call holds it (WAIVER_SIGN_LIVE)', async () => {
+    const report = await openJob()
+    expect(report.getByText('Draw 1')).toBeTruthy()
+    expect(report.queryByRole('button', { name: 'Sign the unconditional waiver' })).toBeNull()
+  })
+
+  it('reads a waiver signed, with no press', async () => {
+    slice = { ...slice, draws: (slice.draws ?? []).map((d) => ({ ...d, waiver: 'unconditional', waiver_on: '2026-10-07' })) }
+    const report = await openJob()
+    expect(report.getByText('waiver signed')).toBeTruthy()
+    expect(report.queryByRole('button', { name: 'Sign the unconditional waiver' })).toBeNull()
+  })
+
+  it('signs a change we sent: what it adds, then a typed name and the e-sign consent', async () => {
+    slice = {
+      ...slice,
+      changeOrders: (slice.changeOrders ?? []).map((o) => ({ ...o, status: 'signed', description: 'Two more circuits for the dental chairs.' })),
+      changeSends: [{ change_order_id: ID.changeOrder, sow_id: ID.sow, sent_on: '2026-10-06', signed_on: null, sow_line_id: null }],
+    }
+    const report = await openJob()
+    expect(report.getByText('Change order 2 to your statement of work.')).toBeTruthy()
+    expect(report.getByText(/Two more circuits for the dental chairs\. It adds \$3,400\./)).toBeTruthy()
+    fireEvent.click(report.getByRole('button', { name: 'Sign the change' }))
+    expect(report.getByText(/By signing, this change becomes a line of your statement of work\./)).toBeTruthy()
+    fillTheForm(report)
+    fireEvent.click(report.getByRole('button', { name: 'Sign the change' }))
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toMatchObject({ kind: 'sign_change', changeOrderId: ID.changeOrder, printedName: 'Dana Ortiz', esignConsent: { documentNoun: 'this change order' } })
+  })
+
+  it('posts nothing from the office’s preview, and says so under the picker', async () => {
+    const report = await openJob(`/t/${TOKEN}?preview=1`)
+    fireEvent.change(report.getByRole('combobox', { name: 'Percent done, Rough-in' }), { target: { value: '70' } })
+    expect(await report.findByText('Preview. Nothing is saved from here.')).toBeTruthy()
+    expect(posts).toEqual([])
   })
 })

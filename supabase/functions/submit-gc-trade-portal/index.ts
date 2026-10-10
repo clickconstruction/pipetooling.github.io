@@ -4,7 +4,7 @@ import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
-import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHeld, TRADE_FUNCTION_ERRORS, tradeErrorOf } from '../_shared/gcTradeSubmit.ts'
+import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHeld, TRADE_FUNCTION_ERRORS, tradeErrorOf, waiverHeld } from '../_shared/gcTradeSubmit.ts'
 
 /**
  * GC mode, the trade partner portal's writes (P2b-i, to-dos/gc-mode/mockups/portal-p2b.md): everything a company
@@ -21,7 +21,10 @@ import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHe
  * A signature (`sign_sow`, P2c-ii, plan to-dos/gc-mode/mockups/portal-p2c.md) does what `accept-contract` does around the
  * write: no consent is consentNeeded before any write; a drawn image goes to the signatures bucket first and is deleted
  * if the verb refuses; the verb gets the IP and the browser; and after it the e-sign ledger row takes the consent time the
- * verb wrote, so the two match.
+ * verb wrote, so the two match. The unconditional waiver and a change signed (P5c-3b, plan
+ * to-dos/gc-mode/mockups/portal-p5.md) are typed and keep no image; their verbs return no time, so their ledger rows
+ * (`gc_draw` keyed by the draw, `gc_trade_change` keyed by the change order) take the function's. The waiver is refused as
+ * badRequest while `WAIVER_SIGN_LIVE` holds it for the owner's call.
  */
 
 /** Where a trade's drawn signature on its statement of work is kept: `gc-sows/<sow id>/<uuid>.png`. */
@@ -78,6 +81,8 @@ serve(async (req) => {
     if (isHoneypot(body)) return jsonResponse({ ok: true })
     const parsed = parseTradeSubmit(body)
     if (!parsed.ok) return refuse(parsed.key ?? 'badRequest')
+    // The unconditional waiver waits on the owner's call (WAIVER_SIGN_LIVE): until then the page sends no such press.
+    if (waiverHeld(parsed.kind)) return refuse('badRequest')
     // The sample (What customers see) writes nothing and never errors (decision 12).
     if (sampleStateFromToken(parsed.token)) return jsonResponse({ ok: true, sample: true })
     if (parsed.token.length < 16 || parsed.token.length > 128) return refuse('badRequest')
@@ -118,12 +123,12 @@ serve(async (req) => {
     if (sign && consent) {
       // Best-effort, as every signing function keeps it: the row's own stamp is the act, this row is the words.
       await recordEsignConsent(admin, {
-        recordType: 'gc_sow',
-        recordId: String(parsed.call.params.p_sow_id),
+        recordType: sign.record.type,
+        recordId: sign.record.id,
         consent,
-        printedName: String(parsed.call.params.p_printed_name),
+        printedName: sign.printedName,
         method: sign.png ? 'draw' : 'type',
-        consentedAt: String(data),
+        consentedAt: sign.record.type === 'gc_sow' ? String(data) : new Date().toISOString(),
         ip,
         userAgent,
       })

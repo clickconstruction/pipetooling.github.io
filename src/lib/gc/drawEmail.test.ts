@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { changeEmail, DRAW_PORTAL_LIVE, lessEmail, paidEmail, type DrawEmailTo } from './drawEmail'
+import { changeEmail, DRAW_PORTAL_LIVE, lessEmail, paidEmail, WAIVER_SIGN_LIVE, type DrawEmailTo } from './drawEmail'
 import type { ChangeOrder, Draw } from './types'
 
 const to: DrawEmailTo = { companyId: 'c1', projectId: 'p1', project: 'Fair Oaks Clinic', trade: 'Concrete', lang: 'en' }
@@ -18,8 +18,8 @@ const draw = (change: Partial<Draw> = {}): Draw => ({
 })
 
 describe('the Draws window’s emails to a trade', () => {
-  it('says a draw is paid and what we hold, keyed once per draw, with no waiver line before the portal takes it', () => {
-    expect(DRAW_PORTAL_LIVE).toBe(false)
+  it('says a draw is paid and what we hold, keyed once per draw, with no waiver line while the owner’s call holds it', () => {
+    expect(WAIVER_SIGN_LIVE).toBe(false)
     expect(paidEmail(to, draw())).toEqual({
       companyId: 'c1',
       kind: 'paid',
@@ -53,12 +53,26 @@ describe('the Draws window’s emails to a trade', () => {
     expect(lessEmail(to, draw())).toBeNull()
   })
 
-  it('holds a change to sign until the portal takes it', () => {
+  it('sends a change to sign in the portal, keyed once per change order, and nothing before it was sent (P5c-3b)', () => {
+    expect(DRAW_PORTAL_LIVE).toBe(true)
     const co: ChangeOrder = {
       id: 'co1', number: 1, description: 'Leave out the curb.', reason: 'owner', schedule: 'none', packageId: 'k', cost: -2000, price: -2200,
       status: 'signed', sentOn: '2026-10-01', answeredOn: '2026-10-03', pctDone: 0,
       tradeChange: { status: 'sent', sentOn: '2026-10-05', signedOn: null, sovLineId: '' },
     }
-    expect(changeEmail(to, co)).toBeNull()
+    expect(changeEmail(to, co)).toEqual({
+      companyId: 'c1',
+      kind: 'change',
+      key: 'co1:change',
+      projectId: 'p1',
+      lang: 'en',
+      subject: 'Change order 1 on Fair Oaks Clinic',
+      lines: [
+        'We have a change to your Concrete work on Fair Oaks Clinic: Leave out the curb.',
+        'It takes off $2,000 from your statement of work.',
+        'Open your portal to read it and sign it.',
+      ],
+    })
+    expect(changeEmail(to, { ...co, tradeChange: undefined })).toBeNull()
   })
 })

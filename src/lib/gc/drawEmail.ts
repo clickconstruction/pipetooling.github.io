@@ -14,11 +14,25 @@ import type { BackCharge, ChangeOrder, Draw, GcProject } from './types'
 import { money } from './words'
 
 /**
- * The trade signs its waivers and a change in its portal once the Portal's P5c is live. Until then a paid draw's email
- * leaves out the line that asks for the waiver there, and a change's email waits, since it asks the trade to open its
- * portal and sign. P5c sets this to true in the PR that ships those screens, as `SOW_SIGN_SCREEN_LIVE` does for P2c.
+ * The trade reports its work and signs a change in its portal (the Portal's P5c-3b). Before then a change's email waited,
+ * since it asks the trade to open its portal and sign. P5c-3b set this to true in the PR that ships those screens, as
+ * `SOW_SIGN_SCREEN_LIVE` did for P2c.
  */
-export const DRAW_PORTAL_LIVE = false
+export const DRAW_PORTAL_LIVE = true
+
+/**
+ * The trade signs its unconditional waiver in its portal, on the app's own waiver paper (P5c-3b). Held until the owner
+ * says a trade may sign its lien waiver electronically (portal-p5.md, the owner's call 2): until then the portal draws
+ * no waiver press, `submit-gc-trade-portal` refuses the kind (its copy in `_shared/gcTradeSubmit.ts`), and a paid
+ * draw's email leaves out the line that asks for the waiver there. A one-line follow-up turns it on.
+ */
+export const WAIVER_SIGN_LIVE = false
+
+/**
+ * The trade reads a pay application we sent back, and fixes it, in its portal (the Portal's P5c-3c, the pay application
+ * window). Until then the Draws window's send-back form tells the office to call or email them with it too.
+ */
+export const PAY_APP_PORTAL_LIVE = false
 
 export type DrawEmail = Omit<TradeEmailRequest, 'group'>
 
@@ -56,7 +70,7 @@ export function paidEmail(to: DrawEmailTo, d: Draw): DrawEmail | null {
     lines: [
       d.final ? t('mPaidFinalWhat', { amount, trade: to.trade, project: to.project }) : t('mPaidWhat', { amount, n: d.number, trade: to.trade, project: to.project }),
       ...(!d.final && d.retainage > 0 ? [t('mPaidHeld', { amount: money(d.retainage) })] : []),
-      ...(DRAW_PORTAL_LIVE && d.waiver === 'conditional' ? [t(d.final ? 'mPaidFinalWaiver' : 'mPaidWaiver')] : []),
+      ...(WAIVER_SIGN_LIVE && d.waiver === 'conditional' ? [t(d.final ? 'mPaidFinalWaiver' : 'mPaidWaiver')] : []),
     ],
   }
 }
@@ -80,7 +94,7 @@ export function lessEmail(to: DrawEmailTo, d: Draw): DrawEmail | null {
   }
 }
 
-/** A change to the trade's statement of work, sent for it to sign in its portal. Null until it was sent, or before P5c. */
+/** A change to the trade's statement of work, sent for it to sign in its portal. Null until it was sent. */
 export function changeEmail(to: DrawEmailTo, co: ChangeOrder): DrawEmail | null {
   if (!DRAW_PORTAL_LIVE || !co.tradeChange) return null
   const t = (key: Words, vars?: Record<string, string | number>) => pt(to.lang, key, vars)
