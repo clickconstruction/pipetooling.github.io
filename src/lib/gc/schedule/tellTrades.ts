@@ -1,13 +1,16 @@
 /**
  * GC mode, the real build, the schedule's PR 1b: tell the trades their new dates, moved word for word from the GC mode prototype
- * (branch spike/gc-mode, `gcTellTrades.ts`). The message in the trade's own language (`datesMessage`, `datesNotices`) reads the portal's words and waits for them.
+ * (branch spike/gc-mode, `gcTellTrades.ts`). The message in the trade's own language (`datesMessage`, `datesNotices`) reads the
+ * portal's words; it moved with the Portal's P5c-3a once they were on main, since the portal's to-dos read it.
  */
 import { partnerById } from '../lookups'
-import { moveActivityName } from './moves'
+import { moveActivityName, moveReasonLabel, spanWords } from './moves'
 import { partMoveSpans } from './splitBars'
 import type { ScheduleMove } from './types'
 import type { GcProject, GcState, Partner } from '../types'
 import { shortDate, weekdayDate } from '../words'
+import type { PortalLang } from '../portalI18n'
+import { pt } from '../portalI18n'
 
 /** One company's line in a move: the work, and its days before and after. */
 export interface MovedLine {
@@ -146,4 +149,38 @@ export function datesAsksForOffice(state: GcState, project: GcProject): { move: 
         return partner ? [{ move, partner, day: a.day ?? null, note: a.note ?? null }] : []
       }),
   )
+}
+
+/** The message one company gets, in its language: subject and lines. */
+export function datesMessage(project: GcProject, partner: Partner, company: CompanyToTell, lang: PortalLang = partner.lang ?? 'en'): { subject: string; lines: string[] } {
+  const t = (key: Parameters<typeof pt>[1], vars?: Record<string, string | number>) => pt(lang, key, vars)
+  const first = partner.contact.split(' ')[0] ?? partner.contact
+  const whys = [...new Set(company.moves.map((m) => `${moveReasonLabel(m.reason).toLowerCase()}: ${m.note}`))]
+  return {
+    subject: t('mDatesSubject', { project: project.name }),
+    lines: [
+      t('mHello', { first }),
+      t('mDatesIntro', { project: project.name }),
+      ...company.lines.map((l) => t('mDatesLine', { work: l.work, to: spanWords(l.to), from: spanWords(l.from) })),
+      ...whys.map((why) => t('mDatesWhy', { why })),
+      t('mDatesAsk'),
+    ],
+  }
+}
+
+/** The moves a company was told of and has not answered, newest first. */
+export function datesNotices(state: GcState, partnerId: string, lang?: PortalLang): DatesNotice[] {
+  const partner = partnerById(state, partnerId)
+  if (!partner) return []
+  const out: DatesNotice[] = []
+  for (const project of state.projects) {
+    for (const move of project.schedule?.moves ?? []) {
+      if (!move.toldOn || move.undoneOn || !move.toldTo?.includes(partnerId)) continue
+      if (move.answers?.some((a) => a.partnerId === partnerId)) continue
+      const company = companiesToTell(state, project, [move]).find((c) => c.partner.id === partnerId)
+      if (!company) continue
+      out.push({ project, move, lines: company.lines, message: datesMessage(project, partner, company, lang) })
+    }
+  }
+  return out
 }
