@@ -1995,6 +1995,11 @@ export default function GcProjects() {
                 }
               : undefined
           }
+          // Log a contact on Activity (B2b-iv): a line of the company's own in the call log, as Follow up signs its lines.
+          onLogContact={async (how, note) => {
+            await logGcAskContact({ companyId: openCompany.id, inviteId: null, on: today, byName: profileName ?? '', how, note, promisedBy: null })
+            await refreshBoard()
+          }}
           onOpenProject={(projectId) => {
             setCompanyId(null)
             openProjectCard(projectId)
