@@ -441,7 +441,9 @@ export function DashboardPinnedQuickRow({
 
   // Cleared payments behind conditional lien releases (v2.2582) — office set.
   const lienUnconditionalEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled)
+  /** ZZ test jobs off the nudges and the Lien desk's count for every role but a dev who shows them (punch list #61). */
+  const hideZzTestJobs = useZzTestJobsHidden(role)
+  const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled, hideZzTestJobs)
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
   // Lien waivers awaiting MY signature (v2.4276): the leader's seat. Signers only — the lanes hook
   // already scopes to me; the enable keeps the read off the roles that never sign.
@@ -452,7 +454,7 @@ export function DashboardPinnedQuickRow({
   const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
   const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
-  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true })
+  const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
   // Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet — office set.
   const contractNudgeEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled)
@@ -489,8 +491,6 @@ export function DashboardPinnedQuickRow({
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
   // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  /** ZZ test jobs off the nudges for every role but a dev who shows them (punch list #61, v2.5122). */
-  const hideZzTestJobs = useZzTestJobsHidden(role)
   const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId, hideZzTestJobs)
   // Field capacity under 60% three complete weeks running (Job Summary follow-up 3) — the roles that see Job Summary.
   const capacityUnderEnabled = !hideBanners && Boolean(authUserId) && officeEligible

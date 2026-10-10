@@ -10,6 +10,7 @@ import { letterTwoByJobFrom } from '../lib/jobs/lienLetterTwo'
 import { ownerCallByJobFrom } from '../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import { buildLienDeskQueue, parseLienNoticePolicy, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticePolicy } from '../lib/jobs/lienDesk'
+import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
 import { buildGcOnNotice, type GcNoticeJob, type GcNoticeOwnerState, type GcNoticeSummary, type GcUnpaidMonthRow } from '../lib/jobs/gcOnNotice'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 import { envelopeKey } from '../lib/jobs/runEnvelopes'
@@ -77,7 +78,15 @@ function ownerStateFor(address: CustomerAddressRow | null, override: JobProperty
   return 'on_file'
 }
 
-export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data: GcOnNoticeData | null; loading: boolean; refetch: () => void } {
+/**
+ * `hideZzTestJobs` (punch list #61, PR 3): a ZZ test job under this GC leaves the run (its months, desk items,
+ * line items, bills and payments) right after the jobs are read, by the joined rows' own names.
+ */
+export function useGcOnNoticeData(
+  gcId: string | null,
+  todayYmd: string,
+  hideZzTestJobs = false,
+): { data: GcOnNoticeData | null; loading: boolean; refetch: () => void } {
   const [data, setData] = useState<GcOnNoticeData | null>(null)
   const [loading, setLoading] = useState(false)
   const [tick, setTick] = useState(0)
@@ -136,6 +145,22 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
           for (const j of jobPart) {
             workByJob[j.id] = { status: j.status ?? null, pctComplete: j.pct_complete != null && Number.isFinite(Number(j.pct_complete)) ? Number(j.pct_complete) : null, fixtures: [], invoices: [], payments: [] }
           }
+        }
+        // ZZ test jobs (punch list #61, PR 3): every list built above loses them, in place.
+        const zzJobIds = hideZzTestJobs ? zzTestJobIds(jobs) : null
+        if (zzJobIds && zzJobIds.size > 0) {
+          const keepIn = <T,>(list: T[], jobIdOf: (row: T) => string) => {
+            const kept = list.filter((row) => !zzJobIds.has(jobIdOf(row)))
+            list.splice(0, list.length, ...kept)
+          }
+          keepIn(rows, (r) => r.job_id)
+          keepIn(jobIds, (id) => id)
+          keepIn(jobs, (j) => j.id)
+          keepIn(items, (i) => i.job_id)
+          keepIn(fixtureRows, (f) => f.job_id)
+          keepIn(invoiceRows, (i) => i.job_id)
+          keepIn(paymentRows, (p) => p.job_id)
+          for (const id of zzJobIds) delete workByJob[id]
         }
         // A billed job's money is what its sent bills owe (v2.4970), as the desk counts it; a job not billed yet keeps what it will bill.
         const moneyRows = gcNoticeRowsWithBilledOpen(rows, new Map(jobs.map((j) => [j.id, { id: j.id, status: (j as { status?: string | null }).status ?? null, revenue: j.revenue, payments_made: j.payments_made }])), invoiceRows, paymentRows)
@@ -278,7 +303,7 @@ export function useGcOnNoticeData(gcId: string | null, todayYmd: string): { data
     return () => {
       cancelled = true
     }
-  }, [gcId, todayYmd, tick])
+  }, [gcId, todayYmd, tick, hideZzTestJobs])
 
   return useMemo(() => ({ data, loading, refetch }), [data, loading, refetch])
 }

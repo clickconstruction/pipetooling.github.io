@@ -1488,7 +1488,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const [gcNoticeRereadKey, setGcNoticeRereadKey] = useState(0)
-  const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
+  const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null, hideZzTestJobs: zzTestJobsHiddenForNudges })
   // The Calendar's rows are the board's billed jobs (`lienCalendarRows`), which the phone board loads only
   // while Billed is its stage — so the open desk fetches that scope, in the Legal desk's retry-until-merged shape.
   useEffect(() => {

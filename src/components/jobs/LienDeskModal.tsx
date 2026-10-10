@@ -119,6 +119,7 @@ import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib
 import LienTimelineStrip from './LienTimelineStrip'
 import LienDeskTimelineTab from './LienDeskTimelineTab'
 import { useLienTimelineBook } from '../../hooks/useLienTimelineBook'
+import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { lienGridHtml, type LienBookShow, type LienTimelineBookRow } from '../../lib/jobs/lienTimelineBook'
 import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { buildLienDeskGates, lienGateMonthLine, ownerSourceWords, propertyKindLine, propertyKindRuleWords, propertyKindSwitchWarning, sharedWithWords, type LienGate, type LienGateKey, lienFootBlockedSentence, lienGateShortWords } from '../../lib/jobs/lienDeskGates'
@@ -473,7 +474,9 @@ export default function LienDeskModal({
   useEffect(() => {
     if (kind === 'timeline') setBookOpened(true)
   }, [kind])
-  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(open && bookOpened && data != null, todayYmd, data?.items ?? null)
+  /** ZZ test jobs off the book for every role but a dev who shows them (punch list #61, PR 3). */
+  const hideZzTestJobs = useZzTestJobsHidden(authRole)
+  const { book, loading: bookLoading, error: bookError } = useLienTimelineBook(open && bookOpened && data != null, todayYmd, data?.items ?? null, hideZzTestJobs)
   const [affPile, setAffPile] = useState<LienAffidavitPile | null>(null)
   // The retainage kind (v2.3753): the one § 53.057 notice per job with recorded retainage.
   const [retPile, setRetPile] = useState<LienRetainagePile | null>(null)

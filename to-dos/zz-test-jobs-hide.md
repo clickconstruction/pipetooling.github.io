@@ -1,8 +1,8 @@
 ---
 name: "ZZ test jobs off the Pipeline for everyone but a dev"
 number: 61
-group: ready
-status: parked 2026-09-29 — the owner took the three calls (the ZZ prefix is the rule, any switch is dev only, the sweep first) and the sweep shipped the same day (v2.4157, Settings → Data & recovery → ZZ test jobs) · the gate is met 2026-10-09 (five ZZ jobs on jobs_ledger, one 10 days old, past the sweep's week) · the build is planned below as three PRs; Todd's go 2026-10-09 · PR 1 shipped v2.5116 (the Pipeline, its strip and Quickfill's money without ZZ jobs for every role but dev; the paid head-count and collected-by-day too) · PR 2a shipped v2.5120 (the dev's switch, hidden by default, and the Dashboard's Billed pin, AR card and Ready to bill / Billed lists, by a shared ZZ id read) · PR 2b shipped v2.5122 (header search, the Dashboard's job cards and Needs you nudges, Customers) · PR 3, the Lien desk, next when the lien lane is quiet
+group: close
+status: parked 2026-09-29 — the owner took the three calls (the ZZ prefix is the rule, any switch is dev only, the sweep first) and the sweep shipped the same day (v2.4157, Settings → Data & recovery → ZZ test jobs) · the gate is met 2026-10-09 (five ZZ jobs on jobs_ledger, one 10 days old, past the sweep's week) · the build is planned below as three PRs; Todd's go 2026-10-09 · PR 1 shipped v2.5116 (the Pipeline, its strip and Quickfill's money without ZZ jobs for every role but dev; the paid head-count and collected-by-day too) · PR 2a shipped v2.5120 (the dev's switch, hidden by default, and the Dashboard's Billed pin, AR card and Ready to bill / Billed lists, by a shared ZZ id read) · PR 2b shipped v2.5122 (header search, the Dashboard's job cards and Needs you nudges, Customers) · PR 3 shipped v2.5124 (the Lien desk, its timeline book, GC on notice and the lien releases owed nudge) · all three PRs built; left: a live look as an assistant
 summary: >
   Jobs → Pipeline shows every ZZ test job the live passes and robot runs leave behind — rows the
   office scrolls past, and $2,200 test bids inside "Ready to ask for", the stage counts and the
@@ -14,11 +14,12 @@ summary: >
   shown. The mockup beside this card shows the Ready to Bill section before, after for the
   office, and after for a dev.
 next: >
-  PR 3 (The build, below): the Lien desk and the lien releases owed nudge, when no lien PR is open on
-  their files. Then retire this card.
+  A live look on the dev server as an assistant (each fragment's To see it: the Pipeline, the Dashboard,
+  search, Customers and the Lien desk without ZZ jobs; as the dev, Hide groups… brings them back), then
+  retire this card.
 size: M–L (three PRs)
-ver: v2.5116 (PR 1) · v2.5120 (PR 2a) · v2.5122 (PR 2b)
-blocker: None for PR 2. PR 3 waits for a quiet lien lane.
+ver: v2.5116 (PR 1) · v2.5120 (PR 2a) · v2.5122 (PR 2b) · v2.5124 (PR 3)
+blocker: None; the live look.
 opinion: build — the sweep did not keep the board clean, and PR 1 alone gives the office an honest Pipeline.
 ---
 
@@ -133,7 +134,7 @@ up jobs. A dev can still see the office's view through *View as*.
   and both chips; `useBilledTotal` and `dashboardFinancials` kernels with a ZZ job in and out;
   render smokes on the header search and the Customers list as an assistant.
 
-### PR 3 — the Lien desk (S, last; waits for a quiet lien lane)
+### PR 3 — the Lien desk (S, last) — shipped v2.5124
 
 - **The desk** (`src/hooks/useLienDeskData.ts`). Its queue is built from the RPC rows (around line
   237) before the jobs join, and the join's `LIEN_DESK_JOB_COLUMNS` already has both names. So the
