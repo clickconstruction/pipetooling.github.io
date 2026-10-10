@@ -89,3 +89,7 @@ The real migration passed again after them.
 ## After the push
 
 `npm run gen-types` (the crew's types PR), so B6-d-ii can call `gc_send_owner_contract` and read the sends.
+
+## Status
+
+Merged in #5314 and pushed to prod 2026-10-10 ~09:5x UTC (`supabase db push` took it alone; drift check 856/856). Verified read-only through the management API (`to-dos/gc-mode/scripts/verify/verify-090000.mjs` on `spike/gc-mode`): RLS on with the dev policy and the six read-only and digital-twin fences; `authenticated` holds `SELECT` and `INSERT` on the send's nine own columns, no `UPDATE` or `DELETE`; the private bucket `gc-owner-contracts` with its select and insert policies; the keep, worth and send functions execute for `authenticated` and `service_role`, `gc_owner_contract_portal_signed_on` the one definer, `gc_customer_sign_owner_contract` for `service_role` alone; the e-sign CHECK carries `gc_owner_contract`; an estimator reads no send; zero rows. The types regen is the one regen owner's follow-up.
