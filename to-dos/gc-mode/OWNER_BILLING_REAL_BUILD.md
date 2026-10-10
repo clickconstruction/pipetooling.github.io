@@ -561,7 +561,7 @@ schedule's PR 10 the pattern.
     build it", behind a switch he turns on after a test copy). One email nobody presses, once per pay application, on
     the due day the screens already read, in `gc-office-notices` behind its own switch. Two PRs, O12a (one column, the
     function, the switch) and O12b (the sender, its Settings block with Preview and the test): `mockups/owner-billing-o12.md`.
-    *Check:* bed 95's notices on the right days, each once; then Preview and the test copy, on Grace's yes, before the
+    *Check:* bed 96's notices on the right days, each once; then Preview and the test copy, on Grace's yes, before the
     owner turns it on.
 
 ## Docs each PR touches
