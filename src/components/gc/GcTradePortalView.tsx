@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { portalAsks, portalFirstVisit } from '../../lib/gc/portal'
 import { pt, pWeekday, type PortalLang } from '../../lib/gc/portalI18n'
-import { askChips, askWhen, pastWords, portalHomeGroups, portalHomeTodos, type SentMessage } from '../../lib/gc/tradePortalPage'
+import { askChips, askWhen, pastWords, paperworkLineOf, portalHomeGroups, portalHomeTodos, type PaperworkLine, type SentMessage } from '../../lib/gc/tradePortalPage'
 import type { PortalAsk, PortalTodo } from '../../lib/gc/portal'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
@@ -11,13 +11,15 @@ import { GcTradePortalProject } from './GcTradePortalProject'
 import { PortalLangContext, usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcTradePortalPeople } from './GcTradePortalPeople'
+import { GcTradePortalPaperwork, GcTradePortalPapersPage } from './GcTradePortalPapers'
 import { PortalBlock, PortalNote, PortalRow } from './GcTradePortalUi'
 
 /**
  * GC mode, the trade partner portal (P1b-ii-b, to-dos/gc-mode/PORTAL_REAL_BUILD.md): what one company sees at its
  * link, read only, from the design spike's `GcTradePortal.tsx`, `GcPortalHome.tsx` and `GcPortalMessages.tsx`. One
- * link per company: it opens on the company's home (its asks, who gets our emails, what came before), a row opens
- * that project's page, and Messages lists what we sent it as it went. Drawn for a phone first.
+ * link per company: it opens on the company's home (its asks, who gets our emails, its paperwork with us, what came
+ * before), a row opens that project's page, Your papers lists every paper it signed with us (P5b-1), and Messages lists
+ * what we sent it as it went. Drawn for a phone first.
  */
 
 const GC = GC_COMPANY.shortName
@@ -41,7 +43,7 @@ export function GcTradePortalView({
 }) {
   const partner = state.partners.find((p) => p.id === partnerId)
   const [viewId, setViewId] = useState<string | null>(null)
-  const [screen, setScreen] = useState<'portal' | 'messages'>('portal')
+  const [screen, setScreen] = useState<'portal' | 'messages' | 'papers'>('portal')
   // A to-do lands on its block of the project page (P5c-3c-i): the block's data-portal-anchor, once the page is drawn.
   const [anchor, setAnchor] = useState<string | null>(null)
   const top = useRef<HTMLDivElement | null>(null)
@@ -105,11 +107,13 @@ export function GcTradePortalView({
           <div style={{ padding: '0.9rem' }}>
             <Messages partner={partner} messages={messages} onOpenPortal={() => go(null)} />
           </div>
+        ) : screen === 'papers' ? (
+          <GcTradePortalPapersPage state={state} partner={partner} onHome={() => go(null)} onOpenProject={(id) => go(id)} />
         ) : shown ? (
           <GcTradePortalProject project={shown} partner={partner} today={state.today} planUrl={(rev) => planUrl(shown.id, rev)} onHome={() => go(null)} />
         ) : (
           <div style={{ padding: '0.9rem' }}>
-            <Home state={state} partner={partner} onOpenProject={go} />
+            <Home state={state} partner={partner} onOpenProject={go} onPapers={() => setScreen('papers')} />
           </div>
         )}
       </div>
@@ -118,12 +122,23 @@ export function GcTradePortalView({
 }
 
 /** The company's home: hello, its asks still open, who gets our emails, and what came before. */
-function Home({ state, partner, onOpenProject }: { state: GcState; partner: Partner; onOpenProject: (id: string, anchor?: string) => void }) {
+function Home({ state, partner, onOpenProject, onPapers }: { state: GcState; partner: Partner; onOpenProject: (id: string, anchor?: string) => void; onPapers: () => void }) {
   const { lang, t } = usePortalLang()
   const asks = portalAsks(state, partner.id)
   const { jobs, bidding, past } = portalHomeGroups(asks)
   const todos = portalHomeTodos(state, partner.id, asks, lang)
   const press = usePortalPress()
+  // The paperwork line a to-do opened (P5b-1): its block scrolls into view, and the vetting form opens.
+  const [paperLine, setPaperLine] = useState<PaperworkLine | null>(null)
+  const paperwork = useRef<HTMLDivElement | null>(null)
+  const openTodo = (todo: PortalTodo) => {
+    if (todo.projectId) {
+      onOpenProject(todo.projectId, todo.anchor)
+      return
+    }
+    setPaperLine(paperworkLineOf(todo.key))
+    paperwork.current?.scrollIntoView?.({ block: 'start' })
+  }
   return (
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       {press && portalFirstVisit(state, partner.id) ? (
@@ -134,7 +149,7 @@ function Home({ state, partner, onOpenProject }: { state: GcState; partner: Part
           <div style={{ fontSize: '0.85rem', color: MUTED }}>{t('homeIntro', { company: partner.company, gc: GC_COMPANY.name })}</div>
         </div>
       )}
-      <NeedsYou todos={todos} onOpen={(todo) => todo.projectId && onOpenProject(todo.projectId, todo.anchor)} />
+      <NeedsYou todos={todos} onOpen={openTodo} />
       {jobs.length > 0 && (
         <PortalBlock title={`${t('yourJobs')} · ${jobs.length}`}>
           <div style={{ display: 'grid' }}>
@@ -173,6 +188,9 @@ function Home({ state, partner, onOpenProject }: { state: GcState; partner: Part
           </div>
         )}
       </PortalBlock>
+      <div ref={paperwork} data-portal-anchor="paperwork" style={{ scrollMarginTop: '0.5rem' }}>
+        <GcTradePortalPaperwork partner={partner} today={state.today} open={paperLine} onOpen={setPaperLine} onPapers={onPapers} />
+      </div>
       <GcTradePortalPeople partner={partner} />
       {past.length > 0 && (
         <PortalBlock title={t('before')}>
@@ -199,7 +217,7 @@ const DOT: Record<PortalTodo['tone'], string> = {
 
 /**
  * Needs you (P5c-3c-i, the spike's `GcPortalHome.tsx`): what is the company's to do, red first, each opening its project
- * at its block. Company paperwork has no project and reads as a line.
+ * at its block. Company paperwork has no project: it opens the home's paperwork block at its line (P5b-1).
  */
 function NeedsYou({ todos, onOpen }: { todos: PortalTodo[]; onOpen: (todo: PortalTodo) => void }) {
   const { t } = usePortalLang()
@@ -216,14 +234,10 @@ function NeedsYou({ todos, onOpen }: { todos: PortalTodo[]; onOpen: (todo: Porta
                 <span style={{ flex: 1, fontWeight: todo.tone === 'red' ? 600 : 400 }}>{todo.text}</span>
               </>
             )
-            return todo.projectId ? (
+            return (
               <PortalRow key={todo.key} first={i === 0} onClick={() => onOpen(todo)}>
                 {words}
               </PortalRow>
-            ) : (
-              <div key={todo.key} style={{ display: 'flex', gap: '0.55rem', alignItems: 'flex-start', padding: '0.55rem 0.1rem', borderTop: i === 0 ? 'none' : `1px solid ${HAIR}`, fontSize: '0.9rem' }}>
-                {words}
-              </div>
             )
           })}
         </div>

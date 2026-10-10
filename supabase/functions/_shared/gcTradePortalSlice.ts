@@ -49,6 +49,8 @@ export interface TradePortalRows {
    * W-9 and insurance. Optional, so a caller with none passes none.
    */
   papers?: Row[]
+  /** Its vetting form (P5b-1), or none: the company new to us sent it. Optional, so a caller with none passes none. */
+  vettingForm?: Row | null
   /**
    * The job's work on the trades awarded to it (P5c-1): Building's submittals with their holds and rounds, the RFIs
    * on its trades with their holds, its punch items, the draws on its statements of work with their lines, each
@@ -97,6 +99,8 @@ export interface TradePortalSlice {
   changeOrders?: SliceRow[]
   /** Its own papers (B6-b-ii). Absent from a slice the function sent before B6-b-ii was deployed: the page reads none. */
   papers?: SliceRow[]
+  /** Its vetting form's day (P5b-1), or null. Absent from a slice the function sent before P5b-1 was deployed. */
+  vettingForm?: SliceRow | null
   /** The job's work (P5c-1). Absent from a slice the function sent before P5c-1 was deployed: the page reads none. */
   submittals?: SliceRow[]
   submittalHolds?: SliceRow[]
@@ -147,6 +151,8 @@ export const TRADE_PORTAL_FIELDS = {
   changeOrders: ['id', 'number', 'status', 'sent_on', 'answered_on', 'cost', 'package_id', 'reason'],
   // Where each of its papers stands, for its master agreement first (msaFirst): never the paper's link, body or values.
   papers: ['id', 'company_id', 'doc_type', 'status', 'sent_at', 'signed_at', 'expires_at'],
+  // That it sent its vetting form, and when (P5b-1): never its answers, which the office reads.
+  vettingForm: ['company_id', 'sent_on'],
   // The job's work (P5c-1), on the trades awarded to it. Never who of ours recorded, added, checked or took off a row,
   // the email that carried it, an RFI's cost or the change order it became, nor who asked an RFI (`mine` says whether
   // it did), nor a punch item taken off.
@@ -230,6 +236,7 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Requ
     messages: rows.messages.filter((m) => idOf(m, 'company_id') === companyId).map((m) => pick(m, TRADE_PORTAL_FIELDS.messages)),
     setSends: rows.setSends.filter((s) => idOf(s, 'company_id') === companyId && setIds.has(idOf(s, 'set_id'))).map((s) => pick(s, TRADE_PORTAL_FIELDS.setSends)),
     papers: (rows.papers ?? []).filter((d) => idOf(d, 'company_id') === companyId).map((d) => pick(d, TRADE_PORTAL_FIELDS.papers)),
+    vettingForm: rows.vettingForm && idOf(rows.vettingForm, 'company_id') === companyId ? pick(rows.vettingForm, TRADE_PORTAL_FIELDS.vettingForm) : null,
     ...ownWork(rows, companyId, packageIds),
     ...jobWork(rows, companyId, new Set(packages.filter((p) => inviteIds.has(idOf(p, 'awarded_invite_id'))).map((p) => idOf(p)))),
   }

@@ -8,7 +8,7 @@ import { TRADE_SUBMIT_ERROR_KEYS } from '../../../supabase/functions/_shared/gcT
 import { portalAsks, portalTodos } from './portal'
 import { PORTAL_SPANISH_ON, portalShownLang, portalString } from './portalI18n'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
-import { askChips, askWhen, pastWords, portalHomeGroups, portalHomeTodos, readTradePortalAnswer, sentMessages, setDriveUrl, todoWaitsOnWaivers, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
+import { askChips, askWhen, paperworkLineOf, pastWords, portalHomeGroups, portalHomeTodos, readTradePortalAnswer, sentMessages, setDriveUrl, todoWaitsOnWaivers, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
 import { tradePortalState } from './tradePortalState'
 
 const TODAY = '2026-10-08'
@@ -116,5 +116,11 @@ describe('the home’s to-dos whose press is a waiver (P5c-3c-i, the owner’s c
     const all = portalTodos(state, partnerId, asks, 'en')
     expect(all.filter((t) => todoWaitsOnWaivers(t.key)).length).toBeGreaterThan(0)
     expect(portalHomeTodos(state, partnerId, asks, 'en')).toEqual(all)
+  })
+})
+
+describe('a paperwork to-do opens its line (P5b-1)', () => {
+  it('reads the line from the to-do’s key, the certificate’s soon as the certificate', () => {
+    expect(['msa', 'coi', 'coi:soon', 'w9', 'vet', 'sow:pkg-1', 'quote:inv-1'].map(paperworkLineOf)).toEqual(['msa', 'coi', 'coi', 'w9', 'vet', null, null])
   })
 })

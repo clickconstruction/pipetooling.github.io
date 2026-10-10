@@ -60,6 +60,9 @@ export const TRADE_SUBMIT_KINDS = [
   'final_pay_app',
   // P5a-1: a file into the job's Drive folder (gcTradeFile.ts); the function places it, with no verb.
   'file',
+  // P5b-1: a company new to us sends its vetting form, and a company opens its master agreement or W-9 to sign (P5b-m's verbs).
+  'vetting_form',
+  'paper_link',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
@@ -127,6 +130,15 @@ export const TRADE_SQL_ERRORS = {
   noteNeeded: 400,
   descriptionNeeded: 400,
   badRequest: 400,
+  // P5b-m's gc_trade_vetting_form and gc_trade_paper_open (P5b-1), and gc_trade_coi (its kind lands in P5b-2).
+  vetDecided: 409,
+  formIncomplete: 400,
+  msaNotSent: 409,
+  noW9Form: 409,
+  coiDayNeeded: 400,
+  coiPast: 400,
+  coiTooFar: 400,
+  certNeeded: 400,
 } as const
 
 export type TradeSubmitErrorKey = keyof typeof TRADE_FUNCTION_ERRORS | keyof typeof TRADE_SQL_ERRORS
@@ -427,6 +439,25 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
     case 'file':
       // Read by parseTradeFile before callOf; never reached.
       throw new Bad()
+    case 'vetting_form': {
+      // A blank line or no years reaches the SQL, which says formIncomplete; years in part is not the form's.
+      const years = num(b.years)
+      if (years !== null && !Number.isInteger(years)) throw new Bad()
+      return {
+        rpc: 'gc_trade_vetting_form',
+        params: {
+          p_license: text(b.license, 2000),
+          p_insurance: text(b.insurance, 2000),
+          p_years: years,
+          p_references: text(b.references, 2000),
+          p_past_jobs: text(b.pastJobs, 2000),
+        },
+      }
+    }
+    case 'paper_link':
+      // The function adds the token's hash and expiry it mints (gcTradePaper.ts) before the verb.
+      if (b.paper !== 'msa' && b.paper !== 'w9') throw new Bad()
+      return { rpc: 'gc_trade_paper_open', params: { p_paper: b.paper } }
     case 'sign_sow':
       // The function fills the image's path, the IP and the browser from what it stored and the request.
       return { rpc: 'gc_trade_sign_sow', params: { p_sow_id: uuid(b.sowId), p_printed_name: text(b.printedName, 200), p_signature_path: null, p_ip: null, p_user_agent: null } }

@@ -5,7 +5,7 @@ import { PortalPressContext, type PortalPress } from '../components/gc/gcTradePo
 import { GC_COMPANY } from '../lib/gc/company'
 import { portalShownLang, pt, type PortalLang } from '../lib/gc/portalI18n'
 import { readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
-import { submitTradePortal, tradeFilePlaced } from '../lib/gc/tradePortalSubmit'
+import { goToSignPath, submitTradePortal, tradeFilePlaced, tradeSignPath } from '../lib/gc/tradePortalSubmit'
 import { tradePortalState } from '../lib/gc/tradePortalState'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
@@ -75,6 +75,16 @@ export default function GcTradePortal() {
         const result = await submitTradePortal(token, 'file', fields)
         if (!result.ok) return { problem: tradeErrorWords(result.key, lang), file: null }
         return { problem: null, file: tradeFilePlaced(result.value) }
+      },
+      // A paper to sign (P5b-1): the signing page in this tab, as the sub portal's sign_link goes there.
+      openPaper: async (paper) => {
+        if (preview) return pt(lang, 'previewNothing')
+        const result = await submitTradePortal(token, 'paper_link', { paper })
+        if (!result.ok) return tradeErrorWords(result.key, lang)
+        // The sample answers ok with no path (decision 12): it goes nowhere and says nothing, as its other presses do.
+        const path = tradeSignPath(result.value)
+        if (path) goToSignPath(path)
+        return null
       },
     }),
     [preview, lang, token, read],

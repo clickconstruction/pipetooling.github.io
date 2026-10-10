@@ -42,6 +42,8 @@ function partnerOf(slice: TradePortalSlice): Partner {
   const c = slice.company
   const people: PartnerPerson[] = slice.people.map((p) => ({ id: str(p.id), name: str(p.name), email: str(p.email), role: str(p.role), gets: groupsOf(p.gets) }))
   const status = strOrNull(c.vetting_status)
+  // Its vetting form (P5b-1): only the day it sent it passes, so portalVetting reads it as being checked.
+  const formOn = slice.vettingForm ? strOrNull(slice.vettingForm.sent_on) : null
   return {
     id: str(c.id),
     company: str(c.name),
@@ -64,7 +66,14 @@ function partnerOf(slice: TradePortalSlice): Partner {
     license: str(c.license),
     ...(strOrNull(c.portal_opened_on) ? { portalOpenedOn: str(c.portal_opened_on) } : {}),
     ...(status === 'new' || status === 'approved' || status === 'declined'
-      ? { vetting: { status, ...(c.vetting_limit !== null && c.vetting_limit !== undefined ? { limit: num(c.vetting_limit) } : {}), ...(strOrNull(c.vetting_decided_on) ? { decidedOn: str(c.vetting_decided_on) } : {}) } }
+      ? {
+          vetting: {
+            status,
+            ...(c.vetting_limit !== null && c.vetting_limit !== undefined ? { limit: num(c.vetting_limit) } : {}),
+            ...(strOrNull(c.vetting_decided_on) ? { decidedOn: str(c.vetting_decided_on) } : {}),
+            ...(formOn ? { form: { license: '', insurance: '', yearsInBusiness: 0, references: '', pastJobs: '', sentOn: formOn } } : {}),
+          },
+        }
       : {}),
     phone: str(c.phone),
     email: str(c.email),

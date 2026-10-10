@@ -61,7 +61,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(24)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(26)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -387,6 +387,58 @@ describe('each kind, read into its verb', () => {
     expect(parseTradeSubmit(null)).toEqual({ ok: false })
     expect(parseTradeSubmit({ kind: 'got_it' })).toEqual({ ok: false })
   })
+
+  describe('a company’s own papers: the vetting form and a paper to sign (P5b-1)', () => {
+    it('reads the vetting form, trimmed, its years a whole number', () => {
+      expect(call('vetting_form', { license: ' TECL 12345 ', insurance: 'Acme, $1M', years: 5, references: ' Ann 555-0101 ', pastJobs: 'Two clinics' })).toEqual({
+        rpc: 'gc_trade_vetting_form',
+        params: { p_license: 'TECL 12345', p_insurance: 'Acme, $1M', p_years: 5, p_references: 'Ann 555-0101', p_past_jobs: 'Two clinics' },
+      })
+    })
+
+    it('leaves a blank line and no years to the SQL, which says formIncomplete in the company’s words', () => {
+      expect(call('vetting_form', { license: '', years: null })).toEqual({
+        rpc: 'gc_trade_vetting_form',
+        params: { p_license: '', p_insurance: '', p_years: null, p_references: '', p_past_jobs: '' },
+      })
+    })
+
+    it('refuses years in part or as words, and a line past 2,000 characters', () => {
+      for (const bad of [
+        { kind: 'vetting_form', license: 'a', insurance: 'b', years: 2.5, references: 'c', pastJobs: 'd' },
+        { kind: 'vetting_form', license: 'a', insurance: 'b', years: 'five', references: 'c', pastJobs: 'd' },
+        { kind: 'vetting_form', license: 'x'.repeat(2001), insurance: 'b', years: 5, references: 'c', pastJobs: 'd' },
+      ]) {
+        expect(parseTradeSubmit({ token: TOKEN, ...bad }), JSON.stringify(bad).slice(0, 80)).toEqual({ ok: false })
+      }
+    })
+
+    it('reads a paper to sign: only the master agreement or the W-9, the function adding the token', () => {
+      expect(call('paper_link', { paper: 'msa' })).toEqual({ rpc: 'gc_trade_paper_open', params: { p_paper: 'msa' } })
+      expect(call('paper_link', { paper: 'w9' })).toEqual({ rpc: 'gc_trade_paper_open', params: { p_paper: 'w9' } })
+      for (const paper of ['coi', 'MSA', '', undefined]) expect(parseTradeSubmit({ token: TOKEN, kind: 'paper_link', paper })).toEqual({ ok: false })
+    })
+
+    it('keeps neither under the hourly cap: each writes one row a company', () => {
+      expect(FREE_TEXT_KINDS.has('vetting_form')).toBe(false)
+      expect(FREE_TEXT_KINDS.has('paper_link')).toBe(false)
+    })
+
+    it('says the eight keys with their statuses', () => {
+      expect(
+        ['vetDecided', 'formIncomplete', 'msaNotSent', 'noW9Form', 'coiDayNeeded', 'coiPast', 'coiTooFar', 'certNeeded'].map((message) => tradeErrorOf({ code: 'P0001', message })),
+      ).toEqual([
+        { key: 'vetDecided', status: 409 },
+        { key: 'formIncomplete', status: 400 },
+        { key: 'msaNotSent', status: 409 },
+        { key: 'noW9Form', status: 409 },
+        { key: 'coiDayNeeded', status: 400 },
+        { key: 'coiPast', status: 400 },
+        { key: 'coiTooFar', status: 400 },
+        { key: 'certNeeded', status: 400 },
+      ])
+    })
+  })
 })
 
 describe('before the verb', () => {
@@ -442,20 +494,12 @@ describe('the verb’s refusals', () => {
    * status in TRADE_SQL_ERRORS and its words in TRADE_ERROR_WORDS. A lane whose migration adds a trade
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
-  // The schedule's PR 13a: gc_trade_answer_dates raises two keys the portal maps in P5d. The Portal's P5b-m:
-  // gc_trade_coi, gc_trade_vetting_form and gc_trade_paper_open raise eight the portal maps in P5b-1. The schedule's
-  // PR 14a: the trade's four writes (say_late, keep_day, crew_count, mark_lookahead) raise eight more, for P5d-ii.
+  // The schedule's PR 13a: gc_trade_answer_dates raises two keys the portal maps in P5d. The schedule's PR 14a: the
+  // trade's four writes (say_late, keep_day, crew_count, mark_lookahead) raise eight more, for P5d-ii. (The Portal's
+  // P5b-1 mapped P5b-m's eight.)
   const WAITING: Record<string, string> = {
     datesTakenBack: 'P5d',
     dayNeeded: 'P5d',
-    coiDayNeeded: 'P5b',
-    coiPast: 'P5b',
-    coiTooFar: 'P5b',
-    certNeeded: 'P5b',
-    vetDecided: 'P5b',
-    formIncomplete: 'P5b',
-    msaNotSent: 'P5b',
-    noW9Form: 'P5b',
     workDone: 'P5d',
     lateLaterDay: 'P5d',
     pickWhy: 'P5d',

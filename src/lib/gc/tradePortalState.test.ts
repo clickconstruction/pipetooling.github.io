@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest'
 import { AWARDED_ELSEWHERE, tradePortalSlice, type TradePortalRows } from '../../../supabase/functions/_shared/gcTradePortalSlice'
 import { quotesWantedOn } from './planQuestions'
-import { inviteMessage, mailRecipients, portalAsks, portalBackCharges, portalCanAskChange, portalChangeRequests, portalPlanNews, portalPromiseLine, portalPromises, portalQuestions } from './portal'
+import { inviteMessage, mailRecipients, portalAsks, portalBackCharges, portalCanAskChange, portalChangeRequests, portalPlanNews, portalPromiseLine, portalPromises, portalQuestions, portalVetting } from './portal'
 import { portalHomeGroups } from './tradePortalPage'
 import { stageOf, tradePortalState } from './tradePortalState'
 
@@ -65,6 +65,15 @@ describe('the company', () => {
     expect([partner.company, partner.contact, partner.portalOpenedOn, partner.vetting]).toEqual(['Test Electric', 'Dana Whitfield', '2026-10-07', { status: 'approved', limit: 50000, decidedOn: '2026-10-01' }])
     expect(mailRecipients(partner, 'pay').map((r) => r.name)).toEqual(['Marcus Lee'])
     expect(mailRecipients(partner, 'quotes').map((r) => r.name)).toEqual(['Dana Whitfield'])
+  })
+
+  it('reads a company new to us as being checked once it sent its form, from the day alone (P5b-1)', () => {
+    const newRows = { ...rows(), company: { ...rows().company, vetting_status: 'new', vetting_limit: null, vetting_decided_on: null } }
+    const notSent = tradePortalState(tradePortalSlice(newRows, ME), TODAY).state.partners[0]!
+    expect([notSent.vetting, portalVetting(notSent, 'en').state]).toEqual([{ status: 'new' }, 'send'])
+    const sent = tradePortalState(tradePortalSlice({ ...newRows, vettingForm: { company_id: ME, sent_on: '2026-10-07' } }, ME), TODAY).state.partners[0]!
+    expect(sent.vetting?.form?.sentOn).toBe('2026-10-07')
+    expect(portalVetting(sent, 'en')).toEqual({ state: 'checking', words: expect.stringContaining('Oct 7') })
   })
 })
 

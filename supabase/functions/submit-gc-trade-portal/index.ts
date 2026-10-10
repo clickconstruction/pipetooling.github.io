@@ -11,6 +11,7 @@ import { GC_TRADE_EMAIL_FROM_NAME } from '../_shared/gcTradeEmail.ts'
 import { driveFileUrl, TRADE_FILE_HOURLY_CAP, tradeFileDriveName, tradeFileFolders, type TradeFileUpload } from '../_shared/gcTradeFile.ts'
 import { buildTradeWaiverPdf, tradeWaiverPaperFor, tradeWaiverPdfModel, tradeWaiverPdfName, type TradeWaiverPdfLib } from '../_shared/tradeWaiverPdf.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
+import { mintPaperToken, paperSignPath } from '../_shared/gcTradePaper.ts'
 import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHeld, TRADE_FUNCTION_ERRORS, tradeErrorOf, WAIVER_KINDS, waiverHeld } from '../_shared/gcTradeSubmit.ts'
 
 /**
@@ -48,6 +49,12 @@ import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHe
  * Team only → From trades → the company, and a `gc_trade_files` row names its form (`paper`) and its draw. It is best
  * effort, as the ledger row is: a failure is logged and never undoes the signature. `WAIVER_SIGN_LIVE` holds it with the
  * presses that make it.
+ *
+ * A company's own papers (P5b-1, plan to-dos/gc-mode/mockups/portal-p5b.md): `vetting_form` writes the form of a company
+ * new to us, and `paper_link` opens its master agreement the office sent, or its W-9, to sign on `/contract/accept`. For
+ * that one the function mints a fresh token (`_shared/gcTradePaper.ts`, as `submit-sub-portal`'s `sign_link` does), hands
+ * the verb its hash and expiry, and answers `{ signPath }` with the raw token, which the page goes to in the same tab.
+ * The newest link wins, so the emailed one stops working.
  */
 
 /** Where a trade's drawn signature on its statement of work is kept: `gc-sows/<sow id>/<uuid>.png`. */
@@ -294,7 +301,14 @@ serve(async (req) => {
         return refuse('failed')
       }
     }
-    const params = sign ? { ...parsed.call.params, p_signature_path: signaturePath, p_ip: ip, p_user_agent: userAgent } : parsed.call.params
+    // A paper to sign (P5b-1): a fresh token, whose hash and expiry the verb stores; the raw token goes back to the page
+    // in the answer and nowhere else (no log line carries the params).
+    const paperToken = parsed.kind === 'paper_link' ? await mintPaperToken() : null
+    const params = sign
+      ? { ...parsed.call.params, p_signature_path: signaturePath, p_ip: ip, p_user_agent: userAgent }
+      : paperToken
+        ? { ...parsed.call.params, p_token_hash: paperToken.hash, p_expires_at: paperToken.expiresAt }
+        : parsed.call.params
 
     const { data, error } = await admin.rpc(parsed.call.rpc, { p_company_id: link.company_id, ...params })
     if (error) {
@@ -321,6 +335,7 @@ serve(async (req) => {
         await fileSignedWaiver(admin, link.company_id, parsed.kind as 'unconditional_waiver' | 'pay_app' | 'final_pay_app', recordId, sign.printedName, at)
       }
     }
+    if (paperToken) return jsonResponse({ ok: true, value: { signPath: paperSignPath(paperToken.raw) } })
     return jsonResponse({ ok: true, ...(data === null || data === undefined || data === '' ? {} : { value: data }) })
   } catch (e) {
     console.error('submit-gc-trade-portal failed', e)

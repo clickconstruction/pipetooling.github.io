@@ -35,9 +35,13 @@ The line at the top of the tab says who it went to. Follow up chases the day you
 
 The W-9 goes out to sign. Its email has a link to fill it in and sign it. The tax number never shows to us.
 
+The company can also fill in its W-9 from its portal, even before you ask. Its portal opens the same signing page. Each time it does, a new link replaces the one in your email. [Share a trade partner its portal](/help/share-a-trade-partner-its-portal#its-paperwork-with-us) shows what the company sees.
+
 ## The master agreement
 
 Our master services agreement is not written yet. Its row reads **Waiting on the agreement** until the Contract Book has it.
+
+Once you send it, the company can also sign it from its portal.
 
 ## Their insurance
 
