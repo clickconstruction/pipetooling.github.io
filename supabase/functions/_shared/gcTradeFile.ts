@@ -16,22 +16,26 @@ export const TRADE_FILE_MAX_BYTES = 10 * 1024 * 1024
 /** Files a company may put in Drive in an hour, apart from the free-text writes (portal-p5a.md decision 5). */
 export const TRADE_FILE_HOURLY_CAP = 20
 
-export const TRADE_FILE_FOR = ['submittal', 'change', 'quote'] as const
+// P5b-2: `coi`, the company's insurance certificate, which is its own and on no job.
+export const TRADE_FILE_FOR = ['submittal', 'change', 'quote', 'coi'] as const
 export type TradeFileFor = (typeof TRADE_FILE_FOR)[number]
 
 export type TradeFileMime = 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/heic' | 'image/heif'
 
-/** A file as the function uploads it. `recordId` is the submittal, the trade a change is asked on, or the ask a quote answers. */
+/**
+ * A file as the function uploads it. `recordId` is the submittal, the trade a change is asked on, or the ask a quote
+ * answers; a certificate has none (P5b-2): it is the link's company's own.
+ */
 export interface TradeFileUpload {
   for: TradeFileFor
-  recordId: string
+  recordId: string | null
   name: string
   bytes: Uint8Array
   mime: TradeFileMime
 }
 
-/** The field each kind of file names its record by. */
-const RECORD_FIELD: Record<TradeFileFor, string> = { submittal: 'submittalId', change: 'packageId', quote: 'inviteId' }
+/** The field each kind of file names its record by. A certificate names none. */
+const RECORD_FIELD: Record<TradeFileFor, string | null> = { submittal: 'submittalId', change: 'packageId', quote: 'inviteId', coi: null }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -92,8 +96,9 @@ export function parseTradeFile(b: Record<string, unknown>): TradeFileUpload | 'f
   const forWhat = b.for
   if (typeof forWhat !== 'string' || !(TRADE_FILE_FOR as readonly string[]).includes(forWhat)) return null
   const f = forWhat as TradeFileFor
-  const recordId = b[RECORD_FIELD[f]]
-  if (typeof recordId !== 'string' || !UUID.test(recordId)) return null
+  const field = RECORD_FIELD[f]
+  const recordId = field === null ? null : b[field]
+  if (field !== null && (typeof recordId !== 'string' || !UUID.test(recordId))) return null
   if (typeof b.name !== 'string' || b.name.length > 400) return null
   const name = cleanFileName(b.name)
   if (name === '') return null
@@ -104,12 +109,23 @@ export function parseTradeFile(b: Record<string, unknown>): TradeFileUpload | 'f
   if (bytes.length > TRADE_FILE_MAX_BYTES) return 'fileTooBig'
   const mime = fileMimeOf(bytes)
   if (!mime) return 'fileType'
-  return { for: f, recordId, name, bytes, mime }
+  return { for: f, recordId: typeof recordId === 'string' ? recordId : null, name, bytes, mime }
 }
 
-/** Where a file goes under the job's folder: a submittal's to Submittals (Building's decision 6), any other to Team only → From trades → the company (decision 9). */
+/**
+ * Where a file goes: under the job's folder, a submittal's to Submittals (Building's decision 6), any other to Team only →
+ * From trades → the company (decision 9); a certificate, which is on no job, under the jobs Shared Drive's root, to GC
+ * trade partners → the company (P5b's decision A).
+ */
 export function tradeFileFolders(f: TradeFileFor, company: string): string[] {
-  return f === 'submittal' ? ['Submittals'] : ['Team only', 'From trades', cleanFileName(company) || 'A trade partner']
+  const name = cleanFileName(company) || 'A trade partner'
+  if (f === 'coi') return ['GC trade partners', name]
+  return f === 'submittal' ? ['Submittals'] : ['Team only', 'From trades', name]
+}
+
+/** A certificate starts at the jobs Shared Drive's root (`DRIVE_JOBS_FOLDER_ID`); every other file at its job's folder. */
+export function tradeFileFromRoot(f: TradeFileFor): boolean {
+  return f === 'coi'
 }
 
 /** The minute in the app's time zone, as a Drive name starts: `2026-10-10 1342`. */

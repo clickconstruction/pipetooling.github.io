@@ -58,9 +58,9 @@ Its home has **Needs you** at the top. It lists what the company has to do, like
 - A company new to us presses **Tell us about your company** and fills in the form. Once it is sent, the line says we are checking it.
 - **Read and sign** opens our master agreement once we send it.
 - **Fill in your W-9** opens its W-9, even if we never asked for one.
-- Its insurance certificate shows the day it runs out.
+- Its insurance certificate shows the day it runs out. **Send your certificate** sends a photo or PDF of a new one.
 
-The master agreement and the W-9 open on the same signing page our email opens. Each press makes a new signing link, so the link in our email stops working. **See every paper** lists every paper the company signed with us. It can print the list.
+We look at a certificate before it counts. Until we do, its line says we are checking it. The master agreement and the W-9 open on the same signing page our email opens. Each press makes a new signing link, so the link in our email stops working. **See every paper** lists every paper the company signed with us. It can print the list.
 
 It can pick its own quote file and a photo or a ticket for a change. Each goes into the job's folder in Drive. [See what a trade partner sends from its portal](/help/see-what-a-trade-partner-sends-from-its-portal#its-files) shows where each thing lands.
 

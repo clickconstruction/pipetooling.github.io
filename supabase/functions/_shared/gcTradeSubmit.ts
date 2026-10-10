@@ -63,6 +63,8 @@ export const TRADE_SUBMIT_KINDS = [
   // P5b-1: a company new to us sends its vetting form, and a company opens its master agreement or W-9 to sign (P5b-m's verbs).
   'vetting_form',
   'paper_link',
+  // P5b-2: the company's insurance certificate, from its own upload (the file kind's answer), received until the office looks.
+  'coi',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
@@ -453,6 +455,11 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
           p_past_jobs: text(b.pastJobs, 2000),
         },
       }
+    }
+    case 'coi': {
+      // No day or no link reaches the SQL, which says coiDayNeeded or certNeeded in the company's words.
+      const day = text(b.expiresOn, 10)
+      return { rpc: 'gc_trade_coi', params: { p_expires_on: day === '' ? null : ymd(day), p_file_url: httpsOrNull(b.fileUrl) } }
     }
     case 'paper_link':
       // The function adds the token's hash and expiry it mints (gcTradePaper.ts) before the verb.

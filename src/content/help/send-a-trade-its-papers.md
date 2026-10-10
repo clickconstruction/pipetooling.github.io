@@ -2,7 +2,7 @@
 title: send a trade its papers
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, papers, documents, master services agreement, master agreement, msa, w-9, w9, insurance certificate, coi, send to sign, remind them, ask for it, record their insurance, follow up
+keywords: gc mode, trade partner, papers, mark it good, from their portal, documents, master services agreement, master agreement, msa, w-9, w9, insurance certificate, coi, send to sign, remind them, ask for it, record their insurance, follow up
 order: 99
 ---
 A trade partner owes us three papers before they work for us. They are our master agreement, a W-9 and an insurance certificate. You send for each one from the company's window.
@@ -45,7 +45,7 @@ Once you send it, the company can also sign it from its portal.
 
 ## Their insurance
 
-1. Press {{button:blue|Ask for it}} on the insurance row. The email asks them to reply with their certificate.
+1. Press {{button:blue|Ask for it}} on the insurance row. The email asks them to send it from their portal or reply with it.
 2. Save the certificate they send in Drive.
 3. Press {{button:outline|Record their insurance}} on the same row.
 4. Pick the day it runs out under **Runs out**.
@@ -53,6 +53,15 @@ Once you send it, the company can also sign it from its portal.
 6. Press {{button:blue|File the certificate}}.
 
 The row then says the day it is good to. Filing it keeps their promise to send it.
+
+## A certificate from their portal
+
+A company can send its certificate from its portal. It shows under the insurance row as **Certificate from their portal**. The line says the day it came in and the day it says the policy runs out.
+
+1. Press **Open the certificate** and read it.
+2. Press {{button:blue|Mark it good}}.
+
+Until you do, it counts for nothing. The insurance row still says it is owed, and Follow up still lists it. Marking it good keeps their promise to send it.
 
 ## When an email does not go
 

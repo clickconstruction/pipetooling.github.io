@@ -1198,7 +1198,9 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
     })
   }
   const coi = portalInsurance(partner, today, lang)
-  if (!coi.done) {
+  // A certificate it sent that waits for the office (P5b-2m) is not asked for again: the office looks first.
+  const coiWaiting = Boolean(partner.coiReceived)
+  if (!coi.done && !coiWaiting) {
     todos.push({
       key: 'coi',
       projectId: null,
@@ -1207,7 +1209,7 @@ export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[]
       by: null,
     })
   }
-  if (coi.soon && partner.coiExpires) {
+  if (coi.soon && partner.coiExpires && !coiWaiting) {
     // Still good, but not for long: a draw stops the day it runs out.
     const date = pWeekday(lang, partner.coiExpires)
     const n = coi.daysLeft ?? 0

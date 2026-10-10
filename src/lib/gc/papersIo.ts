@@ -141,3 +141,23 @@ export async function sendCompanyPaper(args: {
 export async function recordCompanyInsurance(companyId: string, expiresOn: string, url: string): Promise<string> {
   return taken(await supabase.rpc('gc_record_company_coi', { p_company_id: companyId, p_expires_on: expiresOn, p_url: url.trim() }), 'file their insurance certificate')
 }
+
+/**
+ * The office marks a certificate a trade sent from its portal good (P5b-2m, the owner's "Office looks first"): it counts
+ * from then on, and the keep trigger keeps the insurance promise. A dev's until the papers' door.
+ */
+export async function markCompanyCoiGood(paperId: string): Promise<void> {
+  await taken(await supabase.rpc('gc_mark_company_coi_good', { p_paper_id: paperId }), 'mark their certificate good')
+}
+
+/**
+ * The Drive link of a certificate a trade sent from its portal (P5b-2): its upload, tied to the paper. The board's paper
+ * states carry no link, and the office team reads the uploads (`gc_trade_files`). Null: none found.
+ */
+export async function loadReceivedCoiLink(paperId: string): Promise<string | null> {
+  const rows = taken(
+    await supabase.from('gc_trade_files').select('drive_url').eq('record_id', paperId).eq('purpose', 'coi').order('uploaded_at', { ascending: false }).limit(1),
+    'read their certificate’s link',
+  )
+  return rows[0]?.drive_url ?? null
+}

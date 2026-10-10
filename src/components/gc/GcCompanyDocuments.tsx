@@ -124,7 +124,17 @@ export function CompanyDocuments({
                       <span style={{ flex: 1 }} />
                       {ask?.(d)}
                     </div>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', paddingLeft: '1.1rem' }}>{d.meta}</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', paddingLeft: '1.1rem' }}>
+                      {d.meta}
+                      {d.link && (
+                        <>
+                          {' '}
+                          <a href={d.link.href} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)' }}>
+                            {d.link.label}
+                          </a>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )
               })}

@@ -17,7 +17,7 @@ export interface CompanyPaperRow {
   company_id: string | null
   /** agreement, w9, coi, license or other. */
   doc_type: string
-  /** unsent, sent or signed. */
+  /** unsent, sent or signed; received for a certificate a company sent from its portal (P5b-2m). */
   status: string
   /** When the signing link went (timestamptz). */
   sent_at: string | null
@@ -28,19 +28,32 @@ export interface CompanyPaperRow {
   created_at?: string | null
 }
 
-/** The four papers' fields on a `Partner`. `msaSentOn` only once the master agreement went. */
-export type CompanyPapers = Pick<Partner, 'msa' | 'msaSignedOn' | 'coiExpires' | 'w9'> & { msaSentOn?: string }
+/**
+ * The papers' fields on a `Partner`. `msaSentOn` and `w9SentOn` only once one went; `coiReceived` only while a certificate
+ * from its portal waits for the office (P5b-2).
+ */
+export type CompanyPapers = Pick<Partner, 'msa' | 'msaSignedOn' | 'coiExpires' | 'w9'> & { msaSentOn?: string; w9SentOn?: string; coiReceived?: NonNullable<Partner['coiReceived']> }
 
 /** Newest first: the later day it was signed, then the later row. */
 const newestFirst = (a: CompanyPaperRow, b: CompanyPaperRow): number =>
   (b.signed_at ?? '').localeCompare(a.signed_at ?? '') || (b.created_at ?? '').localeCompare(a.created_at ?? '')
+
+/** The newest received certificate first: the later row, then the later time it came in, then the later id. */
+const newestReceived = (a: CompanyPaperRow, b: CompanyPaperRow): number =>
+  (b.created_at ?? '').localeCompare(a.created_at ?? '') || (b.sent_at ?? '').localeCompare(a.sent_at ?? '') || b.id.localeCompare(a.id)
+
+/** The newest of these times, as the app's day. */
+const newestDay = (times: (string | null)[]): string | null => isoToPlainDateInAppTz(times.filter((s): s is string => Boolean(s)).sort().pop())
 
 /**
  * A company's master agreement, W-9 and insurance from its own papers:
  * - `msa` is `signed` with a signed agreement paper (`msaSignedOn` the newest one's day), else `sent` while one is
  *   out to sign, else `none`; `msaSentOn` is the day the newest agreement went;
  * - `w9` once a W-9 paper is signed;
- * - `coiExpires` is the newest filed certificate's last day.
+ * - `coiExpires` is the newest filed certificate's last day: a signed one only, so a certificate still waiting counts for
+ *   nothing (the start gate, Follow up, the insurance promise);
+ * - `coiReceived` is the newest certificate the company sent from its portal that waits for the office (P5b-2m), and
+ *   `w9SentOn` the day the newest W-9 went to sign (P5b-2).
  * Another company's paper, or a person's, never counts.
  */
 export function companyPapers(rows: readonly CompanyPaperRow[], companyId: string): CompanyPapers {
@@ -55,11 +68,16 @@ export function companyPapers(rows: readonly CompanyPaperRow[], companyId: strin
   const sentOn = isoToPlainDateInAppTz(sentAt)
   const msa: Partner['msa'] = signed ? 'signed' : agreements.some((r) => r.status === 'sent') ? 'sent' : 'none'
   const coi = own.filter((r) => r.doc_type === 'coi' && r.status === 'signed' && r.expires_at).sort(newestFirst)[0]
+  const received = own.filter((r) => r.doc_type === 'coi' && r.status === 'received').sort(newestReceived)[0]
+  const receivedOn = received ? newestDay([received.sent_at ?? received.created_at ?? null]) : null
+  const w9SentOn = newestDay(own.filter((r) => r.doc_type === 'w9').map((r) => r.sent_at))
   return {
     msa,
     msaSignedOn: signed ? (signed.signed_at ?? isoToPlainDateInAppTz(signed.created_at)) : null,
     ...(sentOn ? { msaSentOn: sentOn } : {}),
     w9: own.some((r) => r.doc_type === 'w9' && r.status === 'signed'),
     coiExpires: coi?.expires_at ?? null,
+    ...(w9SentOn ? { w9SentOn } : {}),
+    ...(received && receivedOn ? { coiReceived: { id: received.id, sentOn: receivedOn, expires: received.expires_at } } : {}),
   }
 }

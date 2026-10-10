@@ -8,7 +8,7 @@ import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { GC_TRADE_EMAIL_FROM_NAME } from '../_shared/gcTradeEmail.ts'
-import { driveFileUrl, TRADE_FILE_HOURLY_CAP, tradeFileDriveName, tradeFileFolders, type TradeFileUpload } from '../_shared/gcTradeFile.ts'
+import { driveFileUrl, TRADE_FILE_HOURLY_CAP, tradeFileDriveName, tradeFileFolders, tradeFileFromRoot, type TradeFileUpload } from '../_shared/gcTradeFile.ts'
 import { buildTradeWaiverPdf, tradeWaiverPaperFor, tradeWaiverPdfModel, tradeWaiverPdfName, type TradeWaiverPdfLib } from '../_shared/tradeWaiverPdf.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 import { mintPaperToken, paperSignPath } from '../_shared/gcTradePaper.ts'
@@ -112,9 +112,11 @@ const no = (error: string, status: number): Refusal => ({ error, status })
  * would refuse: a submittal on the company's awarded trade while it is its move, a trade it signed for on a job that is
  * ours, its own ask not passed on a project not lost.
  */
-async function fileHome(admin: SupabaseClient, companyId: string, f: TradeFileUpload): Promise<{ projectId: string; packageId: string; submittal?: { number: string; round: number } } | Refusal> {
+async function fileHome(admin: SupabaseClient, companyId: string, f: TradeFileUpload): Promise<{ projectId: string | null; packageId: string | null; submittal?: { number: string; round: number } } | Refusal> {
+  // A certificate (P5b-2) is the link's company's own, on no job.
+  if (f.for === 'coi') return { projectId: null, packageId: null }
   if (f.for === 'submittal') {
-    const { data: s } = await admin.from('gc_submittals').select('id, project_id, package_id, number').eq('id', f.recordId).maybeSingle()
+    const { data: s } = await admin.from('gc_submittals').select('id, project_id, package_id, number').eq('id', f.recordId ?? '').maybeSingle()
     if (!s) return no('notFound', 404)
     const { data: k } = await admin.from('gc_trade_packages').select('awarded_invite_id').eq('id', s.package_id).maybeSingle()
     const { data: i } = k?.awarded_invite_id ? await admin.from('gc_invites').select('company_id').eq('id', k.awarded_invite_id).maybeSingle() : { data: null }
@@ -125,7 +127,7 @@ async function fileHome(admin: SupabaseClient, companyId: string, f: TradeFileUp
     return { projectId: s.project_id, packageId: s.package_id, submittal: { number: s.number, round: ((last?.[0]?.round as number | undefined) ?? 0) + 1 } }
   }
   if (f.for === 'change') {
-    const { data: k } = await admin.from('gc_trade_packages').select('id, project_id, ours, awarded_invite_id').eq('id', f.recordId).maybeSingle()
+    const { data: k } = await admin.from('gc_trade_packages').select('id, project_id, ours, awarded_invite_id').eq('id', f.recordId ?? '').maybeSingle()
     if (!k) return no('notFound', 404)
     const [{ data: g }, { data: sow }] = await Promise.all([
       admin.from('gc_projects').select('stage').eq('project_id', k.project_id).maybeSingle(),
@@ -136,7 +138,7 @@ async function fileHome(admin: SupabaseClient, companyId: string, f: TradeFileUp
     }
     return { projectId: k.project_id, packageId: k.id }
   }
-  const { data: ask } = await admin.from('gc_invites').select('id, company_id, package_id, status').eq('id', f.recordId).maybeSingle()
+  const { data: ask } = await admin.from('gc_invites').select('id, company_id, package_id, status').eq('id', f.recordId ?? '').maybeSingle()
   if (!ask) return no('notFound', 404)
   if (ask.company_id !== companyId) return no('notYours', 409)
   if (ask.status === 'declined') return no('youPassed', 409)
@@ -147,7 +149,11 @@ async function fileHome(admin: SupabaseClient, companyId: string, f: TradeFileUp
   return { projectId: k.project_id, packageId: ask.package_id }
 }
 
-/** A file into the job's Drive folder (P5a-1): the cap, the claim, the folder, the upload, the row, the link. */
+/**
+ * A file into the job's Drive folder (P5a-1): the cap, the claim, the folder, the upload, the row, the link. A certificate
+ * (P5b-2) is on no job: it goes under the jobs Shared Drive's root (`DRIVE_JOBS_FOLDER_ID`), to GC trade partners → the
+ * company, and is never noJobFolder; a missing root is failed, logged, as a missing service account is.
+ */
 async function placeFile(admin: SupabaseClient, companyId: string, f: TradeFileUpload): Promise<Response> {
   const hourAgo = new Date(Date.now() - 3600_000).toISOString()
   // The company's own uploads count; a signed paper the portal made for it does not.
@@ -156,11 +162,20 @@ async function placeFile(admin: SupabaseClient, companyId: string, f: TradeFileU
   const home = await fileHome(admin, companyId, f)
   if ('error' in home) return jsonResponse({ error: home.error }, home.status)
   const [{ data: job }, { data: company }] = await Promise.all([
-    admin.from('gc_projects').select('drive_folder_url').eq('project_id', home.projectId).maybeSingle(),
+    home.projectId ? admin.from('gc_projects').select('drive_folder_url').eq('project_id', home.projectId).maybeSingle() : Promise.resolve({ data: null }),
     admin.from('gc_companies').select('name').eq('id', companyId).maybeSingle(),
   ])
-  const jobFolder = driveFolderIdFromUrl(job?.drive_folder_url as string | null | undefined)
-  if (!jobFolder) return refuse('noJobFolder')
+  let jobFolder: string | null
+  if (tradeFileFromRoot(f.for)) {
+    jobFolder = Deno.env.get('DRIVE_JOBS_FOLDER_ID')?.trim() || null
+    if (!jobFolder) {
+      console.error('submit-gc-trade-portal: DRIVE_JOBS_FOLDER_ID is not set')
+      return refuse('failed')
+    }
+  } else {
+    jobFolder = driveFolderIdFromUrl(job?.drive_folder_url as string | null | undefined)
+    if (!jobFolder) return refuse('noJobFolder')
+  }
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   if (!saJson) {
     console.error('submit-gc-trade-portal: GOOGLE_SERVICE_ACCOUNT_JSON is not set')

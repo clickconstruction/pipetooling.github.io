@@ -89,8 +89,17 @@ export function paperStep(state: GcState, partner: Partner, docKey: string): Pap
     const what = paper === 'w9' ? 'a signed W-9' : partner.coiExpires ? 'the renewed insurance certificate' : 'an insurance certificate'
     const base = { paper, docKey, dayWord: 'Send by', promiseKind: paper as PromiseKind, what }
     const thing = paper === 'w9' ? 'their W-9' : partner.coiExpires ? 'the renewed insurance certificate' : 'their insurance certificate'
-    if (!firstOn) return { ...base, mode: 'first', verb: 'Ask for it', title: `Ask for ${thing}`, sendLabel: 'Send the ask', history: 'Not asked yet.' }
-    return { ...base, mode: 'reminder', verb: 'Remind them', title: `Remind them to send ${thing}`, sendLabel: 'Send the reminder', history: historyWords(firstOn, sends.slice(sends[0] ? 1 : 0), today, true) }
+    // P5b-2: a certificate they sent from their portal waits for the office's look, and is still owed until it is marked
+    // good; a W-9 they started in their portal, with no send of ours, says so.
+    const portal =
+      paper === 'insurance' && partner.coiReceived
+        ? `Came in from their portal ${shortDate(partner.coiReceived.sentOn)}. It counts once you mark it good.`
+        : paper === 'w9' && sends.length === 0 && partner.w9SentOn
+          ? `Started in their portal ${shortDate(partner.w9SentOn)}.`
+          : null
+    if (!firstOn) return { ...base, mode: 'first', verb: 'Ask for it', title: `Ask for ${thing}`, sendLabel: 'Send the ask', history: portal ?? 'Not asked yet.' }
+    const asked = historyWords(firstOn, sends.slice(sends[0] ? 1 : 0), today, true)
+    return { ...base, mode: 'reminder', verb: 'Remind them', title: `Remind them to send ${thing}`, sendLabel: 'Send the reminder', history: portal && paper === 'insurance' ? `${asked} ${portal}` : asked }
   }
   if (docKey.startsWith('sow-')) {
     const found = findPackage(state, docKey.slice(4))

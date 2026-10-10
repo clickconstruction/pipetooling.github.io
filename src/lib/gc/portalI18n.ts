@@ -1038,6 +1038,8 @@ const S = {
   errFileType: { en: 'Send a PDF or a photo.', es: 'Envíe un PDF o una foto.' },
   errFileTooBig: { en: 'That file is over 10 MB. Email it to {gc}, or paste its Drive link.', es: 'Ese archivo pesa más de 10 MB. Envíelo por correo a {gc} o pegue su enlace de Drive.' },
   errNoJobFolder: { en: 'For now, email it to {gc}.', es: 'Por ahora, envíelo por correo a {gc}.' },
+  // P5b-2: a certificate it sent, while the office looks first (the owner's call 3).
+  coiChecking: { en: '{gc} is checking it · sent {date}', es: '{gc} lo está revisando · enviado el {date}' },
   // P5b-1: the company's own papers (P5b-m's verbs), the certificate's four for P5b-2's kind.
   errVetDecided: { en: '{gc} has decided already. Reload the page.', es: '{gc} ya decidió. Vuelva a cargar la página.' },
   errFormIncomplete: { en: 'Fill in every line.', es: 'Llene cada línea.' },

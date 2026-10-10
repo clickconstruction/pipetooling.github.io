@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { boardStateFromRows } from './boardRows'
 import { clinicBoardRows } from './boardTestRows'
-import { PAPER_EMAIL_WORDS, paperEmail, paperSendKey } from './paperEmail'
+import { COI_PORTAL_LIVE, coiAskLine, PAPER_EMAIL_WORDS, paperEmail, paperSendKey } from './paperEmail'
 import { paperStep } from './paperSend'
 import { pt, pWeekday } from './portalI18n'
 
@@ -43,16 +43,28 @@ describe('the email a send from Documents writes', () => {
     })
   })
 
-  it('asks for insurance by email and says to reply with it, since the portal cannot take it yet', () => {
+  it('asks for insurance by email and says to send it from the portal or reply, since the portal takes it (P5b-2)', () => {
     const hillside = state.partners.find((p) => p.id === 'hillside')!
     const none = paperEmail(state, hillside, paperStep(state, hillside, 'insurance')!, BY, '', 'en')!
     expect(none).toMatchObject({ how: 'email', kind: 'coi', projectId: null, subject: 'Your insurance certificate for Click Construction' })
     // Lonestar's open promise from the office counts as asked: this one is a reminder.
     expect(paperEmail(state, lonestar, paperStep(state, lonestar, 'insurance')!, BY, '', 'en')!.subject).toBe('Reminder: Your insurance certificate for Click Construction')
-    expect(none.lines).toEqual([`Please send us your insurance certificate by ${pWeekday('en', BY)}. Nothing you do for us is covered until it comes.`, 'Reply to this email with the certificate.'])
+    expect(none.lines).toEqual([
+      `Please send us your insurance certificate by ${pWeekday('en', BY)}. Nothing you do for us is covered until it comes.`,
+      'Send it from your portal with the link below. Or reply to this email with it.',
+    ])
     const running = { ...lonestar, coiExpires: '2026-10-20' }
     expect(paperEmail(state, running, paperStep(state, running, 'insurance')!, BY, '', 'es')!.lines).toEqual([
       `Por favor envíenos su certificado de seguro renovado a más tardar el ${pWeekday('es', BY)}.`,
+      'Envíelo desde su portal con el enlace de abajo. O responda a este correo con él.',
+    ])
+  })
+
+  it('names the portal only when the email carries the portal link, and says to reply otherwise (gc 2)', () => {
+    expect(COI_PORTAL_LIVE).toBe(true)
+    expect([coiAskLine('en', true), coiAskLine('en', false), coiAskLine('es', false)]).toEqual([
+      'Send it from your portal with the link below. Or reply to this email with it.',
+      'Reply to this email with the certificate.',
       'Responda a este correo con el certificado.',
     ])
   })

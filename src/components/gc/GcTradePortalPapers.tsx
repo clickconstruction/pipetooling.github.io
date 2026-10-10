@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
-import { portalInsurance, portalPapers, portalVetting, type PortalPaper } from '../../lib/gc/portal'
+import { aYearFrom, portalInsurance, portalPapers, portalVetting, type PortalPaper } from '../../lib/gc/portal'
 import { pDate } from '../../lib/gc/portalI18n'
+import { portalCoiUpload, type PickedFile } from '../../lib/gc/tradePortalFile'
 import type { PaperworkLine } from '../../lib/gc/tradePortalPage'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { HAIR, MUTED } from '../../lib/portal/portalTheme'
@@ -9,14 +10,16 @@ import { Btn, Chip, input } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
 import { escapeHtml, printPortalHtml } from './gcTradePortalPrint'
+import { PortalFilePick } from './GcTradePortalFile'
 import { PortalBlock, PortalNote } from './GcTradePortalUi'
 
 /**
  * GC mode, the trade partner portal's P5b-1 (to-dos/gc-mode/mockups/portal-p5b.md): the company's own papers with us,
  * from the design spike's `GcPortalPaperwork.tsx` and `GcPortalPapers.tsx`. The vetting form of a company new to us, its
  * master agreement and its W-9 opened to sign on `/contract/accept` (the page the office's email opens, so one paper
- * system: the W-9's tax number lives only in its signed PDF), and its insurance certificate's state. Sending a
- * certificate comes with P5b-2, and the spike's "Tell Click the day it will come" with a kind of its own later.
+ * system: the W-9's tax number lives only in its signed PDF), and its insurance certificate, which it sends from here
+ * (P5b-2: the file kind, then the kind `coi`) and which waits as received until the office marks it good (the owner's
+ * "Office looks first"). The spike's "Tell Click the day it will come" comes with a kind of its own later.
  */
 
 const GC = GC_COMPANY.shortName
@@ -88,7 +91,19 @@ export function GcTradePortalPaperwork({
 
         <Line label={t('insuranceCert')}>
           <Chip tone={coi.soon ? 'amber' : coi.done ? 'green' : 'red'}>{coi.words}</Chip>
+          {/* One it sent waits for the office's look (P5b-2m): it says so, and asks for nothing more. */}
+          {partner.coiReceived ? (
+            <Chip tone="grey">{t('coiChecking', { gc: GC, date: pDate(lang, partner.coiReceived.sentOn) })}</Chip>
+          ) : (
+            press &&
+            open !== 'coi' && (
+              <Btn kind={coi.done && !coi.soon ? 'quiet' : 'primary'} onClick={() => onOpen('coi')}>
+                {t(coi.done ? 'sendNewer' : 'sendCert')}
+              </Btn>
+            )
+          )}
         </Line>
+        {press && open === 'coi' && !partner.coiReceived && <CoiForm today={today} onDone={() => onOpen(null)} />}
 
         <Line label={t('w9')}>
           <Chip tone={partner.w9 ? 'green' : 'red'}>{t(partner.w9 ? 'onFile' : 'noneOnFile')}</Chip>
@@ -117,6 +132,44 @@ function Line({ label, children }: { label: string; children: ReactNode }) {
       <span style={{ minWidth: '9.5rem' }}>{label}</span>
       {children}
     </div>
+  )
+}
+
+/**
+ * Its insurance certificate (P5b-2): a photo or PDF, then the day the policy runs out (a year from today to start). The
+ * file goes up first (the kind `file`, for `coi`), then the kind `coi` files it as received with the file's link.
+ */
+function CoiForm({ today, onDone }: { today: string; onDone: () => void }) {
+  const { t } = usePortalLang()
+  const { busy, problem, runWithFile } = usePress()
+  const [picked, setPicked] = useState<PickedFile | null>(null)
+  const [expires, setExpires] = useState(aYearFrom(today))
+  const ready = picked !== null && expires > today
+  return (
+    <PortalNote tone="paper">
+      <PortalFilePick label={t('certFile')} picked={picked} onPick={setPicked} disabled={busy} />
+      <label style={{ display: 'grid', gap: '0.2rem' }}>
+        {t('certExpires')}
+        <input type="date" min={today} value={expires} onChange={(e) => setExpires(e.target.value)} style={{ ...input, width: '11rem' }} />
+      </label>
+      {problem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{problem}</div>}
+      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <Btn
+          kind="primary"
+          disabled={!ready || busy}
+          onClick={() =>
+            void runWithFile(portalCoiUpload(picked), 'coi', (placed) => ({ expiresOn: expires, fileUrl: placed?.url ?? '' })).then((ok) => {
+              if (ok) onDone()
+            })
+          }
+        >
+          {t('sendTo', { gc: GC })}
+        </Btn>
+        <Btn kind="quiet" onClick={onDone}>
+          {t('notNow')}
+        </Btn>
+      </div>
+    </PortalNote>
   )
 }
 

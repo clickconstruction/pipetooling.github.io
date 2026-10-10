@@ -39,3 +39,19 @@ describe('send a paper from the company window (the owner, 2026-10-04)', () => {
     expect(step(state, 'ironhorse', 'insurance')).toBeNull()
   })
 })
+
+describe('a paper its portal started or sent (P5b-2)', () => {
+  it('reads a certificate that came in from the portal as still owed, with the day it came, until it is marked good', () => {
+    const state = initialGcState()
+    const p = { ...partner(state, 'pecanvalley'), coiReceived: { id: 'paper-1', sentOn: '2026-10-01', expires: '2027-10-01' } }
+    const s = paperStep(state, p, 'insurance')
+    expect(s).toMatchObject({ mode: 'first', verb: 'Ask for it', history: 'Came in from their portal Oct 1. It counts once you mark it good.' })
+  })
+
+  it('reads a W-9 started in the portal, with no send of ours, as started there', () => {
+    const state = initialGcState()
+    const p = { ...partner(state, 'hillside'), w9SentOn: '2026-10-01' }
+    expect(paperStep(state, p, 'w9')).toMatchObject({ mode: 'first', verb: 'Ask for it', history: 'Started in their portal Oct 1.' })
+    expect(paperStep(state, partner(state, 'hillside'), 'w9')).toMatchObject({ history: 'Not asked yet.' })
+  })
+})

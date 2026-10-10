@@ -9,6 +9,7 @@ import { clinicBoardRows } from '../../lib/gc/boardTestRows'
 import { partnerActivity } from '../../lib/gc/companyFile'
 import { paperDayChoices } from '../../lib/gc/paperSend'
 import type { PaperSendOutcome } from '../../lib/gc/papersIo'
+import type { Partner } from '../../lib/gc/types'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
 installDomShims()
@@ -112,18 +113,52 @@ describe('PartnerName', () => {
 
 describe('GcCompanyWindow · Documents (B6-b-ii)', () => {
   /** Hillside: no paper on file and nothing asked yet. The Book has its W-9 form and no master services agreement. */
-  function openDocs(over: { papers?: Partial<CompanyPapersDoor> | null; outcome?: PaperSendOutcome } = {}) {
+  function openDocs(over: { papers?: Partial<CompanyPapersDoor> | null; outcome?: PaperSendOutcome; partner?: Partial<Partner>; coiLink?: string | null } = {}) {
     const state = boardStateFromRows(rows())
-    const partner = state.partners.find((p) => p.id === 'hillside')!
+    const partner = { ...state.partners.find((p) => p.id === 'hillside')!, ...over.partner }
     const onSend = vi.fn((): Promise<PaperSendOutcome> => Promise.resolve(over.outcome ?? { ok: true, to: ['Dee Park'], emailed: true }))
     const onRecordInsurance = vi.fn(() => Promise.resolve())
+    const onMarkCoiGood = vi.fn(() => Promise.resolve())
     const onClose = vi.fn()
-    const papers = over.papers === null ? undefined : { entries: { msa: null, w9: 'entry-w9' }, onSend, onRecordInsurance, ...over.papers }
-    render(<GcCompanyWindow state={state} partner={partner} lang="en" onLanguage={vi.fn()} onClose={onClose} onOpenProject={() => undefined} {...(papers ? { papers } : {})} at={{ tab: 'documents' }} />)
+    const papers = over.papers === null ? undefined : { entries: { msa: null, w9: 'entry-w9' }, onSend, onRecordInsurance, onMarkCoiGood, ...over.papers }
+    render(
+      <GcCompanyWindow
+        state={state}
+        partner={partner}
+        lang="en"
+        onLanguage={vi.fn()}
+        onClose={onClose}
+        onOpenProject={() => undefined}
+        {...(papers ? { papers } : {})}
+        {...(over.coiLink !== undefined ? { coiReceivedLink: over.coiLink } : {})}
+        at={{ tab: 'documents' }}
+      />,
+    )
     const dialog = screen.getByRole('dialog', { name: partner.company })
     const row = (key: string) => within(dialog.querySelector(`[data-gc-doc="${key}"]`) as HTMLElement)
-    return { state, onSend, onRecordInsurance, onClose, dialog, row }
+    return { state, onSend, onRecordInsurance, onMarkCoiGood, onClose, dialog, row }
   }
+
+  it('shows a certificate from their portal waiting for a look, with its link, and marks it good (P5b-2)', async () => {
+    const waiting = { coiReceived: { id: 'paper-waiting', sentOn: '2026-10-09', expires: '2027-10-09' } }
+    const { dialog, row, onMarkCoiGood } = openDocs({ partner: waiting, coiLink: 'https://drive.google.com/file/d/up/view' })
+    const r = row('insurance-received')
+    expect(r.getByText('Certificate from their portal')).toBeTruthy()
+    expect(r.getByText('waiting for your look')).toBeTruthy()
+    expect(r.getByText(/Came in Oct 9 · good to Oct 9\. It counts once you mark it good\./)).toBeTruthy()
+    expect(r.getByRole('link', { name: 'Open the certificate' }).getAttribute('href')).toBe('https://drive.google.com/file/d/up/view')
+    // The insurance row still reads as owed until it is marked good.
+    expect(row('insurance').getByText('none on file')).toBeTruthy()
+    fireEvent.click(r.getByRole('button', { name: 'Mark it good' }))
+    await waitFor(() => expect(onMarkCoiGood).toHaveBeenCalledWith('paper-waiting'))
+    expect(await within(dialog).findByText('Marked good. Their insurance counts now, good to Oct 9.')).toBeTruthy()
+  })
+
+  it('shows the waiting certificate with no Mark it good to a reader without the presses', () => {
+    const { row } = openDocs({ papers: null, partner: { coiReceived: { id: 'paper-waiting', sentOn: '2026-10-09', expires: '2027-10-09' } } })
+    expect(row('insurance-received').getByText('Certificate from their portal')).toBeTruthy()
+    expect(row('insurance-received').queryByRole('button', { name: 'Mark it good' })).toBeNull()
+  })
 
   it('counts what is missing on its tab, and shows each company paper with where it stands', () => {
     const { dialog, row } = openDocs()
@@ -206,7 +241,12 @@ describe('GcCompanyWindow · opened at a paper (the opener’s CompanyAt)', () =
   function openAt(at: { tab?: 'about' | 'documents' | 'portal'; doc?: string; send?: boolean }, entries: CompanyPapersDoor['entries'] | 'none' = { msa: null, w9: 'entry-w9' }) {
     const state = boardStateFromRows(rows())
     const partner = state.partners.find((p) => p.id === 'hillside')!
-    const papers = (e: CompanyPapersDoor['entries']): CompanyPapersDoor => ({ entries: e, onSend: vi.fn((): Promise<PaperSendOutcome> => Promise.resolve({ ok: true, to: [], emailed: true })), onRecordInsurance: vi.fn(() => Promise.resolve()) })
+    const papers = (e: CompanyPapersDoor['entries']): CompanyPapersDoor => ({
+      entries: e,
+      onSend: vi.fn((): Promise<PaperSendOutcome> => Promise.resolve({ ok: true, to: [], emailed: true })),
+      onRecordInsurance: vi.fn(() => Promise.resolve()),
+      onMarkCoiGood: vi.fn(() => Promise.resolve()),
+    })
     const view = (e: CompanyPapersDoor['entries'] | 'none') => (
       <GcCompanyWindow state={state} partner={partner} lang="en" onLanguage={vi.fn()} onClose={vi.fn()} onOpenProject={() => undefined} {...(e === 'none' ? {} : { papers: papers(e) })} at={at} />
     )

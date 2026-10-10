@@ -61,7 +61,10 @@ deleting the key). Never wire a human Google password into anything.
   <company>**. Each folder is found or made by name, and each file is a new upload
   (`uploadBytes`) named so no two meet. The app keeps the link in `gc_trade_files`, never a copy.
   Since P5a-2 (v2.5175) a lien waiver the trade signs in its portal lands in the same **From trades
-  → <company>** folder as the signed PDF the function builds, once `WAIVER_SIGN_LIVE` is on.
+  → <company>** folder as the signed PDF the function builds, once `WAIVER_SIGN_LIVE` is on. Since
+  P5b-2 (v2.NNNN) a trade's insurance certificate, which is its own and on no job, goes under the jobs
+  root itself (`DRIVE_JOBS_FOLDER_ID`, the same secret) to **GC trade partners → <company>**; a missing
+  root fails the upload, logged.
 
 ## The upload leg: RESOLVED — Shared Drive (live since 2026-08-29)
 

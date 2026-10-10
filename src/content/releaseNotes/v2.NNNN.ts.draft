@@ -1,0 +1,17 @@
+import type { ReleaseNote } from '../../lib/releaseNotes'
+
+const note: ReleaseNote = {
+  version: 'v2.NNNN',
+  date: '2026-10-10',
+  title: 'GC mode: a trade partner sends its insurance certificate from its portal, and the office looks first',
+  kind: 'feature',
+  roles: ['dev'],
+  highlights: [
+    'A trade partner sends a photo or PDF of its insurance certificate from its portal, with the day the policy runs out.',
+    'The certificate waits for the office. Until someone marks it good it counts for nothing, and the portal says Click is checking it.',
+    'The company window’s Documents tab shows it with a link to open it and a Mark it good button.',
+    'The insurance ask now says the company can send its certificate from its portal.',
+  ],
+}
+
+export default note

@@ -41,6 +41,29 @@ describe('companyPapers', () => {
     expect(companyPapers([paper({ doc_type: 'other', status: 'signed', signed_at: '2026-10-02' }), paper({ doc_type: 'license', status: 'signed', signed_at: '2026-10-02' })], CO).msa).toBe('none')
   })
 
+  it('reads a certificate sent from the portal as waiting, and nothing else changes (P5b-2m)', () => {
+    const filed = paper({ id: 'filed', doc_type: 'coi', status: 'signed', signed_at: '2026-09-01', expires_at: '2026-10-20' })
+    const waiting = paper({ id: 'waiting', doc_type: 'coi', status: 'received', sent_at: '2026-10-09T15:00:00Z', expires_at: '2027-10-09', created_at: '2026-10-09T15:00:00Z' })
+    const without = companyPapers([filed], CO)
+    const withIt = companyPapers([filed, waiting], CO)
+    expect(withIt.coiReceived).toEqual({ id: 'waiting', sentOn: '2026-10-09', expires: '2027-10-09' })
+    const { coiReceived: _received, ...rest } = withIt
+    expect(rest).toEqual(without)
+    expect(withIt.coiExpires).toBe('2026-10-20')
+  })
+
+  it('reads the newest of two waiting certificates, by its row then its id', () => {
+    const older = paper({ id: 'a-older', doc_type: 'coi', status: 'received', sent_at: '2026-10-08T15:00:00Z', expires_at: '2027-10-08', created_at: '2026-10-08T15:00:00Z' })
+    const newer = paper({ id: 'b-newer', doc_type: 'coi', status: 'received', sent_at: '2026-10-09T15:00:00Z', expires_at: '2027-10-09', created_at: '2026-10-09T15:00:00Z' })
+    expect(companyPapers([older, newer], CO).coiReceived?.id).toBe('b-newer')
+    expect(companyPapers([newer, older], CO).coiReceived?.id).toBe('b-newer')
+  })
+
+  it('reads the day its newest W-9 went to sign, from the office or the portal (P5b-2)', () => {
+    expect(companyPapers([paper({ doc_type: 'w9', status: 'sent', sent_at: '2026-10-07T15:00:00Z' }), paper({ doc_type: 'w9', status: 'sent', sent_at: '2026-10-09T15:00:00Z' })], CO).w9SentOn).toBe('2026-10-09')
+    expect(companyPapers([paper({ doc_type: 'w9', status: 'unsent' })], CO)).not.toHaveProperty('w9SentOn')
+  })
+
   it('reads a signed W-9 only', () => {
     expect(companyPapers([paper({ doc_type: 'w9', status: 'sent' })], CO).w9).toBe(false)
     expect(companyPapers([paper({ doc_type: 'w9', status: 'signed', signed_at: '2026-10-02' })], CO).w9).toBe(true)

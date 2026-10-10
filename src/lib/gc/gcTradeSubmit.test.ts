@@ -61,7 +61,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(26)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(27)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -417,6 +417,18 @@ describe('each kind, read into its verb', () => {
       expect(call('paper_link', { paper: 'msa' })).toEqual({ rpc: 'gc_trade_paper_open', params: { p_paper: 'msa' } })
       expect(call('paper_link', { paper: 'w9' })).toEqual({ rpc: 'gc_trade_paper_open', params: { p_paper: 'w9' } })
       for (const paper of ['coi', 'MSA', '', undefined]) expect(parseTradeSubmit({ token: TOKEN, kind: 'paper_link', paper })).toEqual({ ok: false })
+    })
+
+    it('reads the certificate with the day it runs out and its upload’s link, leaving a blank day or no link to the SQL (P5b-2)', () => {
+      expect(call('coi', { expiresOn: '2027-10-10', fileUrl: ' https://drive.google.com/file/d/x/view ' })).toEqual({
+        rpc: 'gc_trade_coi',
+        params: { p_expires_on: '2027-10-10', p_file_url: 'https://drive.google.com/file/d/x/view' },
+      })
+      expect(call('coi', { expiresOn: '', fileUrl: '' })).toEqual({ rpc: 'gc_trade_coi', params: { p_expires_on: null, p_file_url: null } })
+      for (const bad of [{ expiresOn: '10/10/2027', fileUrl: 'https://x' }, { expiresOn: '2027-10-10', fileUrl: 'http://x' }]) {
+        expect(parseTradeSubmit({ token: TOKEN, kind: 'coi', ...bad })).toEqual({ ok: false })
+      }
+      expect(FREE_TEXT_KINDS.has('coi')).toBe(false)
     })
 
     it('keeps neither under the hourly cap: each writes one row a company', () => {

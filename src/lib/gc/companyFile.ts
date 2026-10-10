@@ -23,6 +23,8 @@ export interface CompanyDoc {
   meta: string
   projectId?: string
   packageId?: string
+  /** A link the row opens in a new tab: a certificate a trade sent from its portal (P5b-2). */
+  link?: { href: string; label: string }
 }
 
 export interface CompanyDocGroup {
@@ -31,7 +33,7 @@ export interface CompanyDocGroup {
 }
 
 /** The keys a paperwork chip opens at. */
-export const DOC_KEYS = { msa: 'msa', insurance: 'insurance', w9: 'w9', vetting: 'vetting' } as const
+export const DOC_KEYS = { msa: 'msa', insurance: 'insurance', insuranceReceived: 'insurance-received', w9: 'w9', vetting: 'vetting' } as const
 
 function awardedPackages(state: GcState, partnerId: string): { project: GcProject; pkg: TradePackage }[] {
   const out: { project: GcProject; pkg: TradePackage }[] = []
@@ -52,8 +54,11 @@ function sentWordsFor(state: GcState, partnerId: string, key: string): string | 
   return null
 }
 
-/** A trade's file: its company papers, then each job's papers, then its quotes. */
-export function partnerDocuments(state: GcState, partner: Partner): { groups: CompanyDocGroup[]; toGet: number } {
+/**
+ * A trade's file: its company papers, then each job's papers, then its quotes. `links.coiReceived` is the Drive link of a
+ * certificate it sent from its portal, read from its upload (P5b-2); the board's paper states never carry a link.
+ */
+export function partnerDocuments(state: GcState, partner: Partner, links: { coiReceived?: string | null } = {}): { groups: CompanyDocGroup[]; toGet: number } {
   const company: CompanyDoc[] = []
   company.push(
     partner.msa === 'signed'
@@ -73,6 +78,21 @@ export function partnerDocuments(state: GcState, partner: Partner): { groups: Co
           ? { key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'soon', statusWords: `runs out ${shortDate(partner.coiExpires)}`, meta: `In ${days} ${days === 1 ? 'day' : 'days'}. Ask for the renewed certificate.` }
           : { key: DOC_KEYS.insurance, title: 'Insurance certificate', status: 'ok', statusWords: `good to ${shortDate(partner.coiExpires)}`, meta: `Runs out in ${days} days.` },
     )
+  }
+  // One it sent from its portal waits for the office's look (P5b-2m): it counts for nothing until it is marked good, so
+  // the insurance row above still reads as owed and this one is not counted as to get.
+  if (partner.coiReceived) {
+    const r = partner.coiReceived
+    const link = links.coiReceived ? { link: { href: links.coiReceived, label: 'Open the certificate' } } : {}
+    company.push({
+      key: DOC_KEYS.insuranceReceived,
+      // The paper is stored as "COI (from their portal)"; the row reads without the parentheses the guides cannot quote.
+      title: 'Certificate from their portal',
+      status: 'info',
+      statusWords: 'waiting for your look',
+      meta: `Came in ${shortDate(r.sentOn)}${r.expires ? ` · good to ${shortDate(r.expires)}` : ''}. It counts once you mark it good.`,
+      ...link,
+    })
   }
   company.push(
     partner.w9

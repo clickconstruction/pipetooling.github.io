@@ -587,6 +587,13 @@ export interface Partner {
   portalOpenedOn?: string
   /** The day we sent the master agreement. Unset: not sent, or before the day was kept. */
   msaSentOn?: string
+  /** The day its newest W-9 went to sign (P5b-2): from the office's send, or from its portal when it started one there. */
+  w9SentOn?: string
+  /**
+   * A certificate it sent from its portal that waits for the office to look (P5b-2m, the owner's "Office looks first"):
+   * the paper, the day it came in and the day it says the policy runs out. It counts for nothing until it is marked good.
+   */
+  coiReceived?: { id: string; sentOn: string; expires: string | null }
   /** Whether we have checked them (question 3). Unset: a company we know, approved. */
   vetting?: PartnerVetting
   /** Calls and notes with the company itself, not about one ask (the company window, 2026-10-04). Newest first. */

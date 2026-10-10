@@ -118,7 +118,7 @@ import { loadOwnWorkCosts } from '../lib/gc/ownWorkCostIo'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
-import { loadCompanyPaperEntries, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
+import { loadCompanyPaperEntries, loadReceivedCoiLink, markCompanyCoiGood, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
 import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
@@ -594,6 +594,24 @@ export default function GcProjects() {
       : undefined
   // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
   const [paperEntries, setPaperEntries] = useState<CompanyPaperEntries | null>(null)
+  // The Drive link of a certificate the open company sent from its portal (P5b-2), read from its upload when the window
+  // opens on one: the board's paper states carry no link. A reader who cannot read the uploads sees the row with no link.
+  const receivedCoiId = openCompany?.coiReceived?.id ?? null
+  const [coiLink, setCoiLink] = useState<{ id: string; url: string | null } | null>(null)
+  useEffect(() => {
+    if (!receivedCoiId) return
+    let live = true
+    loadReceivedCoiLink(receivedCoiId)
+      .then((url) => {
+        if (live) setCoiLink({ id: receivedCoiId, url })
+      })
+      .catch(() => {
+        if (live) setCoiLink({ id: receivedCoiId, url: null })
+      })
+    return () => {
+      live = false
+    }
+  }, [receivedCoiId])
   useEffect(() => {
     if (!openCompany || !canUseGcBoardWrites(role) || paperEntries) return
     let live = true
@@ -1992,9 +2010,15 @@ export default function GcProjects() {
                     await recordCompanyInsurance(openCompany.id, expiresOn, url)
                     await refreshBoard()
                   },
+                  // A certificate from their portal, looked at (P5b-2m): marked good, then the board reads again.
+                  onMarkCoiGood: async (paperId) => {
+                    await markCompanyCoiGood(paperId)
+                    await refreshBoard()
+                  },
                 }
               : undefined
           }
+          coiReceivedLink={coiLink && coiLink.id === receivedCoiId ? coiLink.url : null}
           // Log a contact on Activity (B2b-iv): a line of the company's own in the call log, as Follow up signs its lines.
           onLogContact={async (how, note) => {
             await logGcAskContact({ companyId: openCompany.id, inviteId: null, on: today, byName: profileName ?? '', how, note, promisedBy: null })
