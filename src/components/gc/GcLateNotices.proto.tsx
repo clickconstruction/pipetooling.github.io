@@ -4,6 +4,9 @@
  * with what it says, when it came against the day it changes, and what taking it does. Take opens
  * Why it moved with the company's day, reason and words; Push back sends the office's words to the
  * company's portal. Nothing on the chart moves until one of the two.
+ *
+ * The prototype's copy, forked to `.proto` when the schedule's PR 14c put the office's side on main at
+ * `GcLateNotices.tsx` (#5358); the prototype's Schedule tab reads this one.
  */
 import { useState, type Dispatch } from 'react'
 import { useAuth } from '../../hooks/useAuth'

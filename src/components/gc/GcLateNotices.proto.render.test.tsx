@@ -3,11 +3,12 @@
  * Render smoke for "Trades say they will be late" on the Schedule tab (the Gantt, G-117): the
  * card's words, Take handing Why it moved the company's day, reason and words (and the window
  * saving the notice with the move), Push back sending the office's words, the pushed back line,
- * the move's own line in Changes to the schedule, and the dashed tail on the chart.
+ * the move's own line in Changes to the schedule, and the dashed tail on the chart. The prototype's copy,
+ * `GcLateNotices.proto.tsx`, forked when the schedule's PR 14c put main's at `GcLateNotices.tsx` (#5358).
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { GcLateNotices } from './GcLateNotices'
+import { GcLateNotices } from './GcLateNotices.proto'
 import { GcMoveExplain, GcMoveHistory } from './GcScheduleMoves.proto'
 import { GcGantt } from './GcGantt'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
