@@ -2,7 +2,7 @@
 name: "The schedule's PR 15: the customer's side"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 15, decision 10 and The schedule's sends; GANTT_FEATURES.md G-90 to G-94; mockups/building-u7.md (U7b, the `weekly` kind); mockups/schedule-pr13.md, call 1 (no new sender); mockups/schedule-pr14.md, call 9 (the copy of the kernels)
 branch: the plan on claude/gc-schedule-pr15-plan (from origin/spike/gc-mode at 0b45adbae); the code from origin/main in two cuts, neither with a migration
-status: plan 2026-10-10 by helper 1 at the lead's ask, for gc 4's co-sign (Schedule) and the lead's read-back. Calls 1, 2, 5 and 6 touch Owner Billing's sender, and call 9 touches the Portal's copy of the kernels. Nothing cut or claimed.
+status: plan 2026-10-10 by helper 1 at the lead's ask. Amendment 1 (2026-10-10): gc 4, holding Schedule, co-signed every call, checked on main at 411839c0d and on the spike, with three notes written in (the letter from the read's state and never the money state, the seam with 14c, and a send twice after a failed write-back). Calls 1, 2, 5 and 6 wait on gc 5 (Owner Billing), and call 9 on gc 3 (Portal). Then the lead's read-back. Nothing cut or claimed.
 ---
 
 # The schedule's PR 15: the customer's side
@@ -38,7 +38,7 @@ Nothing writes a send, and nothing draws the letter or the portal's picture. Two
 
 ## The calls
 
-**For gc 4 (Schedule), every call; for the Owner Billing lane, calls 1, 2, 5 and 6; for gc 3 (Portal), call 9. Each with the other way:**
+**Co-signed by gc 4 (Schedule), every call (amendment 1); for gc 5 (Owner Billing), calls 1, 2, 5 and 6; for gc 3 (Portal), call 9. Each with the other way:**
 
 1. **No new sender: the letter goes through `gc-customer-email`, kind `schedule`.** It is the one sender for every email
    to a GC customer (O4b). It already sends a row's own words unframed (the `weekly` kind), to the contact's address,
@@ -102,8 +102,9 @@ Nothing writes a send, and nothing draws the letter or the portal's picture. Two
    plants another company's name, a dollar fee and spare days in the rows, and none reaches the payload, as 14b's
    condition asks. **gc 3's second condition on 14b** says `gc-trade-portal` is the copy's only importer. 15b makes
    `customer-portal` a second one. The ask: the copy keeps one list of its importers, and `check:edge-drift` names
-   each of them to redeploy after a regenerate. *Other way:* a second copy for `customer-portal` alone, which is two
-   generated copies of the same files.
+   each of them to redeploy after a regenerate. gc 4 writes that sentence into 14b's plan now, so 15b need not amend
+   it later (amendment 1). *Other way:* a second copy for `customer-portal` alone, which is two generated copies of
+   the same files.
 
 ## 15a: the letter
 
@@ -123,7 +124,8 @@ Nothing writes a send, and nothing draws the letter or the portal's picture. Two
   `sendGcCustomerEmail`. It never throws for a refusal.
 - **`src/components/gc/GcScheduleLetter.tsx`** (new): the prototype's `ScheduleSendCard` on real presses (call 8). Each
   press is a callback: `onSend(letter, test)`. The window keeps the row, or finds the row to send again, sends, and
-  reads the schedule again.
+  reads the schedule again. The letter is built from the read's `state`, never `moneyState` (gc 4's note 1). 16c keeps
+  the dollars on a state of their own, and the letter must read the same whoever sends it.
 - **`GcSchedule.tsx`**: `MovePresses.sendLetter`, and the card for `moves` on a job being built. **`GcProjects.tsx`**:
   the press wired through the window's io, as `weeklyWrites` is.
 - **What customers see**: the journey step `gc-schedule-email`, *GC mode: their schedule on its own*, with its sample
@@ -131,12 +133,14 @@ Nothing writes a send, and nothing draws the letter or the portal's picture. Two
   steps in `customerSurfaceRegistry.ts`, and marked not-a-step in `personJourney.ts`.
 - **Tests:**
   - `customerScheduleSend.test.ts`: the prototype's two letter tests on main's test state: the letter, the late
-    finish's lines in order and never the fee or a company. Plus the greeting with no contact (call 4), and the retry
-    row (the same letter goes on the unsent row, a changed one or a sent one does not);
+    finish's lines in order and never the fee or a company. Plus the greeting on a customer planted with contact `''`,
+    as `boardRows.ts` reads it (call 4), and the retry row (the same letter goes on the unsent row, a changed one or a
+    sent one does not);
   - `customerEmail.test.ts`: the kinds table with `schedule` under Statements, the row gate, the contact, no frame and
     no portal line;
   - `GcScheduleLetter.render.test.tsx`: the letter read and printed, the test press and the send, the record with *kept,
-    not emailed yet*, a refusal in its words, plain words;
+    not emailed yet*, a refusal in its words, plain words. With the money read on, the card's lines are the same
+    (gc 4's note 1);
   - `GcSchedule.letter.render.test.tsx`: the card for `moves` on a job being built, none in the copy, none read only;
   - the sample email's test, as `gc-weekly`'s.
 - **Docs:** the guide *send the customer their schedule* (`roles: dev` until PR 10), with sections for a test to
@@ -155,11 +159,13 @@ Nothing writes a send, and nothing draws the letter or the portal's picture. Two
 
 ## Seams
 
-- **The Owner Billing lane:** `gc-customer-email` and `gcCustomerEmails.ts` are theirs (O4b). The kind is added as
-  U7b added `weekly`, with their co-sign on calls 1, 2, 5 and 6.
+- **gc 5 (Owner Billing):** `gc-customer-email` and `gcCustomerEmails.ts` are theirs (O4b). The kind is added as U7b
+  added `weekly`, with their co-sign on calls 1, 2, 5 and 6. The lead redeploys the function after 15a.
 - **gc 3 (Portal):** 14b's copy of the kernels, and `customer-portal`'s GC block (call 9). 15b waits on 14b.
 - **Building (U7b, U7c):** the weekly report's portal line turns on with the letter's in 15b.
 - **PR 10 (#5231):** opens `gc_schedule_sends` to the team. The card follows `moves`, so it opens with the door.
+- **14c (v2.5197, gc 4's note 2):** it adds `pushBack`, `verify` and `crewMark` to `MovePresses`, and `GcVerifyCard` last
+  in the `moves && !inCopy` block. 15a's `sendLetter` and the card under Milestones rebase on whichever lands first.
 
 ## Drift from `SCHEDULE_REAL_BUILD.md`
 
@@ -178,7 +184,11 @@ real customer gets a letter without the owner's yes.
 
 - One sender for the customer, one copy of the letter's words in one kernel, one row per letter kept as it went, and
   the send's words read from that row.
-- A failed send never makes a second row for the same letter, and a sent row is never sent twice.
+- A failed send never makes a second row for the same letter, and a row whose log is written is never sent again.
+- One gap, gc 4's note 3, for gc 5: Resend accepts the send, then the write-back of the log fails. The row still
+  reads unsent, so a press again sends twice. The weekly report has the same gap (`gc-customer-email`, the write-back
+  after the send). An email key per row (`schedule:<rowId>`, `weekly:<rowId>`), sent once as `gc-trade-email`'s is,
+  would close it for both kinds. It is gc 5's call whether 15a carries it.
 - What it does not do: their picture in their portal before 14b (15b), a letter in Spanish, or a letter sent on a
   schedule by itself. Their Friday report already carries the schedule's section every week (G-93, U7c).
 - *Call me* is signed by the sender, while a reply goes to the project manager, as on every customer email. On a job
@@ -186,5 +196,7 @@ real customer gets a letter without the owner's yes.
 
 ## Status
 
-Plan 2026-10-10, helper 1, at the lead's ask. For gc 4's co-sign, then the Owner Billing lane's on its four calls and
-gc 3's on call 9, then the lead's read-back. Nothing cut or claimed.
+Plan 2026-10-10, helper 1, at the lead's ask. Amendment 1 the same day: gc 4 co-signed every call, checked on main at
+411839c0d and the spike (the table's grants, the greeting's bug, `scheduleSends`' only readers), and their three notes
+are written in. Waiting on gc 5's co-sign of calls 1, 2, 5 and 6 and gc 3's of call 9, then the lead's read-back.
+Nothing cut or claimed.
