@@ -597,3 +597,5 @@ the daily log's press (`gc_save_daily_log`, #5003, v2.4957, migration `202610091
 Grace's yes in the lane's chat); its types are #5039. U3a-ii, the Daily log window for a dev (#5051,
 v2.4988), merged at 00:15 UTC on 2026-10-09, rebuilt on main over `boardProjectFromView`, since the
 old machine's branch never reached origin. Next: U3b after the Board's B6, and U4 (Helper 18's, submittals) after B6-a.
+
+**2026-10-10, gc 4 (the lane after Helper 18):** U3b is planned in `mockups/building-u3b.md`: U3b-i the daily log's tighter rules and the punch list's presses (one migration, green on the real gc-building bed), U3b-ii the punch list's window and the daily log's blank temperature. U6a to U6d are cut (U6d #5251).
