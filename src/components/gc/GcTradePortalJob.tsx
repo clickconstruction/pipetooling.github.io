@@ -32,8 +32,8 @@ import { PortalBlock } from './GcTradePortalUi'
  * P5c-2 the company marks a punch item fixed (`punch_fixed`), sends a submittal round (`submittal_send`, its file a name and
  * a Drive link until P5a's upload) and asks a question (`rfi_ask`). Since P5c-3b it reports each line's percent
  * (`sow_report`) and signs a change we sent it (`sign_change`), typed with the e-sign consent. The unconditional waiver on
- * a paid draw (`unconditional_waiver`), on the app's own waiver paper, is drawn only once `WAIVER_SIGN_LIVE` is on, the
- * owner's call. Since P5c-3c-i the pay application's door sits under the changes (`GcTradePortalPayApp.tsx`, lifted from
+ * a paid draw (`unconditional_waiver`), on the app's own waiver paper, is drawn while `WAIVER_SIGN_LIVE` is on, as it is
+ * since the owner's call 2. Since P5c-3c-i the pay application's door sits under the changes (`GcTradePortalPayApp.tsx`, lifted from
  * the spike): where its pay application stands, a sent one read in its window, and the closeout.
  */
 

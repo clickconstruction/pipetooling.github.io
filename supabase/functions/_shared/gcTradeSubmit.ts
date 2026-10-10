@@ -18,12 +18,12 @@ export const PORTAL_SPANISH_ON = false
 
 /**
  * Copy of `WAIVER_SIGN_LIVE` in `src/lib/gc/drawEmail.ts` (a test keeps the two equal): every lien waiver a trade signs in
- * the portal waits on the owner's call 2 in portal-p5.md, the unconditional one and the conditional one a pay application
- * signs, and until then those kinds are refused as ones the page never sends.
+ * the portal, the unconditional one and the conditional one a pay application signs. On since the owner's call 2 in
+ * portal-p5.md (2026-10-10, v2.5178). Off, those kinds are refused as ones the page never sends.
  */
-export const WAIVER_SIGN_LIVE = false
+export const WAIVER_SIGN_LIVE = true
 
-/** The kinds that sign a lien waiver (P5c-3b, P5c-3c-ii): held by `WAIVER_SIGN_LIVE`. */
+/** The kinds that sign a lien waiver (P5c-3b, P5c-3c-ii): refused while `WAIVER_SIGN_LIVE` is off. */
 export const WAIVER_KINDS: ReadonlySet<string> = new Set(['unconditional_waiver', 'pay_app', 'final_pay_app'])
 
 /** Free-text writes a company may make in an hour (PORTAL_REAL_BUILD.md → The functions). */
@@ -491,7 +491,7 @@ export function parseTradeSubmit(body: unknown): TradeSubmitParsed {
   }
 }
 
-/** A kind that signs a lien waiver while the owner's call holds them (`WAIVER_SIGN_LIVE`). */
+/** A kind that signs a lien waiver while `WAIVER_SIGN_LIVE` is off. */
 export function waiverHeld(kind: TradeSubmitKind): boolean {
   return !WAIVER_SIGN_LIVE && WAIVER_KINDS.has(kind)
 }
