@@ -80,6 +80,34 @@ export function jobContractSigningUrl(origin: string, rawToken: string): string 
   return `${origin.replace(/\/$/, '')}/contract/sign?t=${encodeURIComponent(rawToken)}`
 }
 
+/**
+ * The days a link must still have before it is handed out as it is (punch list #104, v2.5119).
+ * A link texted on day 88 of 90 would die on day 90, so inside this margin the doors send, which
+ * renews it. The margin also covers the office machine's clock against the server's.
+ */
+export const JOB_CONTRACT_LINK_HANDOUT_MARGIN_DAYS = 7
+
+/**
+ * The signing link a sent agreement already carries (punch list #104, v2.5119). The link doors
+ * (Copy link, Text the link, Sign here, now, and the in-person door) hand it out as it is and
+ * record nothing, as the signed rail does. So a PDF emailed to sign stays a PDF send, and the
+ * paper still converts it. Null for a row that is not out, has no token, or whose link has less
+ * than the margin left: those go through `send-job-contract`, which mints or renews the link and
+ * stamps the send. A link with no expiry counts as live, as `sign-job-contract` reads it.
+ */
+export function jobContractLinkOnRow(
+  row: Pick<JobContractRow, 'status' | 'voided_at' | 'public_token' | 'public_token_expires_at'> | null | undefined,
+  origin: string,
+  nowMs: number = Date.now(),
+): string | null {
+  if (!row || jobContractStatus(row) !== 'sent') return null
+  const token = (row.public_token ?? '').trim()
+  if (!token) return null
+  const expires = row.public_token_expires_at ? Date.parse(row.public_token_expires_at) : Number.NaN
+  if (Number.isFinite(expires) && expires - nowMs <= JOB_CONTRACT_LINK_HANDOUT_MARGIN_DAYS * 86_400_000) return null
+  return jobContractSigningUrl(origin, token)
+}
+
 export function formatContractStamp(iso: string | null | undefined): string | null {
   if (!iso) return null
   const d = new Date(iso)
