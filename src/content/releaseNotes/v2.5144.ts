@@ -9,6 +9,7 @@ const note: ReleaseNote = {
   highlights: [
     'When a bill that carries a returned check fee is sent back or deleted, the fee comes off with it, and so does the job’s total.',
     'The case then says the fee came off with its bill and offers the press again. Before, it still said the fee was on and refused to add it.',
+    'Split bill… refuses a bill that carries a returned check fee, so the fee is never counted twice.',
   ],
 }
 
