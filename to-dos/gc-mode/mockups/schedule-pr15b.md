@@ -2,7 +2,7 @@
 name: "The schedule's PR 15b: the customer's picture in their portal"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 15, and decision 10; mockups/schedule-pr15.md, calls 5 and 9; mockups/schedule-pr14b.md, calls 1, 2, 6 and 10; GANTT_FEATURES.md G-90 to G-93
 branch: the plan on claude/gc-schedule-pr15b-plan (from origin/spike/gc-mode at c51a62527); the code from origin/main in one cut, with no migration, after #5362 (14b) merges
-status: plan 2026-10-10 by helper 1 at the lead's ask, for gc 3's co-sign (Portal, every call) and gc 5's (Owner Billing, calls 4, 7 and 8). Measured on 14b's head fd0f5dd5b; measured again once 14b is on main. Nothing cut or claimed.
+status: plan 2026-10-10 by helper 1 at the lead's ask. Amendment 1 (2026-10-10): gc 3, holding the Portal, co-signed every call, call 4 as amended (each audience's reads behind its own option, over P5d-ii-1's widened read) and call 5 with three more plants. Waiting on gc 5's co-sign (Owner Billing, calls 4, 7 and 8). Measured on 14b's head fd0f5dd5b; measured again once 14b is on main. Nothing cut or claimed.
 ---
 
 # The schedule's PR 15b: the customer's picture in their portal
@@ -29,13 +29,16 @@ Nothing works out the picture on the server, and the portal draws no schedule. O
 
 ## The calls
 
-**For gc 3 (Portal), every call; for gc 5 (Owner Billing), calls 4, 7 and 8. Each with the other way:**
+**Co-signed by gc 3 (Portal), every call, 4 and 5 as amended (amendment 1); for gc 5 (Owner Billing), calls 4, 7 and 8. Each with the other way:**
 
 1. **The picture rides 14b's copy.** `ENTRIES` gains `schedule/customerSchedule.ts` (`customerSchedulePicture`) and
    `lateFinish.ts` (`lateFinish`), since the prototype's portal shows the late finish's customer words under the
    finish. `IMPORTERS` gains `customer-portal`, as 14b's call 2 already provides. Measured on 14b's head: 37 files and
    10,641 lines, against 14b's 30 and 9,282, with no file refused. The 7 it adds are `customerSchedule`, `gantt`,
-   `changeOrderDays`, `lateFinish`, `ownerBillingFinish`, `timeExtension` and `daysLost`. *Other way:* the picture
+   `changeOrderDays`, `lateFinish`, `ownerBillingFinish`, `timeExtension` and `daysLost`. P5d-ii-1's four entries and
+   the Board's vi-b grow the copy too, and whoever lands second regenerates; the counts come from the generator, never
+   a sum, since shared files would count twice. With `customer-portal` an importer, a change to any copied file
+   redeploys both portals, and `check:edge-drift` names both (gc 3). *Other way:* the picture
    without the late finish: 33 files and 10,032 lines, and the portal says less than the letter and the Friday report.
 2. **The answer is a shape of its own: words and dates only** (`customerPortalSchedule`, pure, in
    `_shared/gcCustomerSchedule.ts`, tested from `src`). The picture as the office prints it carries whole bars, and
@@ -55,9 +58,14 @@ Nothing works out the picture on the server, and the portal draws no schedule. O
    have a schedule drawn. A job in buyout, closed or lost shows none, and a job with nothing drawn shows none. The
    link's audience is as O7c's: a `gc` view gets no GC jobs at all. *Other way:* buyout too, which shows a first draft
    nobody has walked.
-4. **One read, shared with 14b** (gc 3's call, since 14b's read is in its function). `readScheduleRows` moves from
-   `gc-trade-portal/index.ts` into `_shared/gcScheduleRead.ts`, and both functions call it. The customer's read
-   widens it with what the picture reads beyond the chart:
+4. **One read, shared, each audience's extra rows behind its own option** (amended by gc 3). `readScheduleRows` moves
+   from `gc-trade-portal/index.ts` into `_shared/gcScheduleRead.ts`, and both functions call it:
+   `readScheduleRows(admin, jobIds, { trade: { companyId } })` and `readScheduleRows(admin, jobIds, { customer: {
+   customerId } })`. The trade's read is P5d-ii-1's (v2.5206, opening right after 14b), carried over as it lands: every
+   move on the job with its pushes, the company's own bars' marks and parts, and, of the company's own only, its move
+   tells, answers, late notices and crew counts. The moves and pushes are read when either option is set. Whichever of
+   P5d-ii-1 and 15b lands second moves or merges the code; if P5d-ii-1 is first, as planned, 15b moves its version.
+   The customer's option reads what the picture reads beyond the chart:
    - the dates to meet (`gc_schedule_milestones`);
    - the moves (`gc_schedule_moves`), for what changed;
    - what the work waits on and its holds (`gc_schedule_waits`, `gc_schedule_wait_holds`), for the decisions they owe;
@@ -65,13 +73,16 @@ Nothing works out the picture on the server, and the portal draws no schedule. O
      read for the kernel and never reaches the answer (call 2);
    - the customer's own row (name and role).
 
-   The trade's read stays as 14b left it. *Other way:* a second reader in `customer-portal`, two copies of sixty lines
-   that drift apart.
+   So the customer's read never fetches a company's tells, answers, notices, counts or marks, and the trade's never
+   fetches the dates to meet, waits, change orders or the customer's row. Each portal's never-sees test guards its own
+   side. *Other way:* a second reader in `customer-portal`, two copies of the same read that drift apart.
 5. **The never-sees test** (`gcCustomerPortalSchedule.test.ts`) plants on the same job:
    - each trade's company name;
    - a distinct dollar figure on every budget, line, statement of work, change order and our price;
    - a bar with spare days;
    - a move's note and a late notice's note;
+   - the trade side's rows from P5d (gc 3): a trade's answer note on told dates, a crew count, and a look-ahead mark
+     with our `verified_reason`;
    - a second customer's job, and a job of theirs in buyout.
 
    It asserts the answer's JSON holds none of them. It also asserts the answer holds the finish, the stages, what
@@ -125,7 +136,8 @@ Nothing works out the picture on the server, and the portal draws no schedule. O
 
 ## Seams
 
-- **gc 3 (Portal):** 14b's copy and its read (calls 1 and 4). 15b cuts after 14b merges.
+- **gc 3 (Portal):** 14b's copy and its read (calls 1 and 4). 15b cuts after 14b merges, and moves P5d-ii-1's widened
+  read if that lands first, as planned.
 - **gc 5 (Owner Billing):** `gcPortal.ts` and `PortalGcJobs.tsx` are O7c's, and the portal line is the frame's
   (calls 7 and 8). gc 5's guard against a send twice comes before or after; it touches neither.
 - **Building:** the weekly report's portal line (call 8).
@@ -155,5 +167,6 @@ portal:* with the link. No real customer is shown or sent anything without the o
 
 ## Status
 
-Plan 2026-10-10, helper 1, at the lead's ask. For gc 3's co-sign on every call and gc 5's on calls 4, 7 and 8, then the
-lead's read-back. Measured on 14b's head fd0f5dd5b. Nothing cut or claimed.
+Plan 2026-10-10, helper 1, at the lead's ask. Amendment 1 the same day: gc 3 co-signed every call, with call 4's read
+split by audience over P5d-ii-1's and three more plants in call 5. Waiting on gc 5's co-sign of calls 4, 7 and 8, then
+the lead's read-back. Measured on 14b's head fd0f5dd5b. Nothing cut or claimed.
