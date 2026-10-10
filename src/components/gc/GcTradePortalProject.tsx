@@ -5,6 +5,7 @@ import { questionsCloseOn } from '../../lib/gc/planQuestions'
 import { bidIsStale } from '../../lib/gc/bids'
 import { bidGoodUntil, bidRanOut, portalClosedWords, portalContacts, portalLeavesOut, portalPlanNews, portalPromiseLine, portalQuestions, portalQuoteDue, portalVetting, unclearLines } from '../../lib/gc/portal'
 import { pDate, pWeekday } from '../../lib/gc/portalI18n'
+import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
 import type { GcProject, Invite, Partner, TradePackage } from '../../lib/gc/types'
 import { daysUntil, money } from '../../lib/gc/words'
 import { HAIR, MUTED } from '../../lib/portal/portalTheme'
@@ -14,6 +15,7 @@ import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcTradePortalBackCharges } from './GcTradePortalBackCharges'
 import { GcTradePortalChanges } from './GcTradePortalChanges'
 import { GcTradePortalJob } from './GcTradePortalJob'
+import { GcTradePortalSchedule } from './GcTradePortalSchedule'
 import { GcTradePortalSow } from './GcTradePortalSow'
 import { AnswerLines, AskQuestion, ConfirmQuote, PassOnAsk, QuoteDay } from './GcTradePortalPresses'
 import { QuoteForm } from './GcTradePortalQuoteForm'
@@ -35,6 +37,7 @@ export function GcTradePortalProject({
   today,
   planUrl,
   onHome,
+  schedule = null,
 }: {
   project: GcProject
   partner: Partner
@@ -42,6 +45,8 @@ export function GcTradePortalProject({
   /** The Drive link of a set by its number; empty when it has none. */
   planUrl: (rev: number) => string
   onHome: () => void
+  /** Its chart on this job, as the portal's read worked it out (the schedule's PR 14b). Null: none. */
+  schedule?: PortalSchedule | null
 }) {
   const { t } = usePortalLang()
   const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
@@ -62,6 +67,8 @@ export function GcTradePortalProject({
           {t('gcLine', { name: GC_COMPANY.name, contact: partner.contact })}
         </div>
       </div>
+      {/* Its chart first, under the job's name (the schedule's PR 14b, gc 3's pick): its dates frame everything below. */}
+      {schedule && project.stage === 'building' && <GcTradePortalSchedule schedule={schedule} today={today} />}
       {mine.length === 0 && <div>{t('noInvite')}</div>}
       {mine.map(({ pkg, invite }) => (
         <TradeBlocks key={invite.id} project={project} pkg={pkg} invite={invite} partner={partner} today={today} planUrl={planUrl} />

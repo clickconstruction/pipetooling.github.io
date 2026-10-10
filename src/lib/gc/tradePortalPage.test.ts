@@ -3,7 +3,7 @@
  * the home's words, through the sample `gc-trade-portal` answers for the sample token.
  */
 import { describe, expect, it } from 'vitest'
-import { gcTradePortalSample, SAMPLE_TRADE_IDS as ID } from '../../../supabase/functions/_shared/gcTradePortalSample'
+import { gcTradePortalSample, gcTradePortalSampleSchedules, SAMPLE_TRADE_IDS as ID } from '../../../supabase/functions/_shared/gcTradePortalSample'
 import { TRADE_SUBMIT_ERROR_KEYS } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { portalAsks, portalTodos } from './portal'
 import { PORTAL_SPANISH_ON, portalShownLang, portalString } from './portalI18n'
@@ -34,6 +34,16 @@ describe('the function’s answer', () => {
     expect(readTradePortalAnswer(true, { today: TODAY })).toEqual({ kind: 'error', key: 'linkFailed' })
     expect(readTradePortalAnswer(true, { today: TODAY, slice: { ...slice, invites: null } })).toEqual({ kind: 'error', key: 'linkFailed' })
     expect(readTradePortalAnswer(true, { today: TODAY, slice: { ...slice, company: [] } })).toEqual({ kind: 'error', key: 'linkFailed' })
+  })
+
+  it('keeps the charts beside the slice, reads none from a function deployed before them, and drops one it cannot draw (the schedule’s PR 14b)', () => {
+    const schedules = gcTradePortalSampleSchedules(TODAY)
+    const a = readTradePortalAnswer(true, { today: TODAY, slice, schedules })
+    expect(a.kind === 'ready' && a.schedules).toEqual(schedules)
+    const b = readTradePortalAnswer(true, { today: TODAY, slice })
+    expect(b.kind === 'ready' && b.schedules).toEqual({})
+    const c = readTradePortalAnswer(true, { today: TODAY, slice, schedules: { ...schedules, broken: { mine: 'all of it' } } })
+    expect(c.kind === 'ready' && Object.keys(c.schedules)).toEqual([ID.job])
   })
 
   it('opens a company’s link at /t/', () => {
