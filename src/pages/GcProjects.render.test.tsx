@@ -11,6 +11,12 @@ import { loadSchedule } from '../lib/gc/scheduleIo'
 import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { loadGcSubmittals } from '../lib/gc/submittalsIo'
 import { loadGcRfis, startRfiChangeOrder } from '../lib/gc/rfisIo'
+import { emailTheTrade, loadGcDraws, payDraw } from '../lib/gc/drawsIo'
+import { acceptWork } from '../lib/gc/closeoutIo'
+import { loadGcPunch } from '../lib/gc/punchIo'
+import { loadGcBillingRows } from '../lib/gc/gcIo'
+import { awardedClinicBoardRows } from '../lib/gc/boardTestRows'
+import type { DrawTables } from '../lib/gc/drawRows'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -115,6 +121,32 @@ vi.mock('../lib/gc/rfisIo', () => ({
   markRfiSent: vi.fn(() => Promise.resolve()),
   answerRfi: vi.fn(() => Promise.resolve()),
   startRfiChangeOrder: vi.fn(() => Promise.resolve('co-1')),
+}))
+
+// Building's draws: none yet, and every press going through. The email to the trade is the page's to send.
+vi.mock('../lib/gc/drawsIo', () => ({
+  loadGcDraws: vi.fn(() => Promise.resolve({ sows: [], sowLines: [], draws: [], drawLines: [], reports: [], backCharges: [], tradeSends: [] })),
+  drawCameIn: vi.fn(() => Promise.resolve('draw-new')),
+  approveDraw: vi.fn(() => Promise.resolve()),
+  approveDrawLess: vi.fn(() => Promise.resolve()),
+  sendDrawBack: vi.fn(() => Promise.resolve()),
+  payDraw: vi.fn(() => Promise.resolve()),
+  drawWaiverIn: vi.fn(() => Promise.resolve()),
+  chargeTrade: vi.fn(() => Promise.resolve('bc-new')),
+  settleBackCharge: vi.fn(() => Promise.resolve()),
+  takeBackCharge: vi.fn(() => Promise.resolve()),
+  sendTradeChange: vi.fn(() => Promise.resolve()),
+  emailTheTrade: vi.fn(() => Promise.resolve({ ok: true, key: 'k', detail: null })),
+}))
+
+// Building's closeout: no punch item, and every press going through.
+vi.mock('../lib/gc/punchIo', () => ({ loadGcPunch: vi.fn(() => Promise.resolve([])) }))
+vi.mock('../lib/gc/closeoutIo', () => ({
+  acceptWork: vi.fn(() => Promise.resolve('2026-10-12')),
+  finalPayAppCameIn: vi.fn(() => Promise.resolve('draw-final')),
+  approveRetainage: vi.fn(() => Promise.resolve('2026-10-12')),
+  changeSignedIn: vi.fn(() => Promise.resolve('line-new')),
+  closeJob: vi.fn(() => Promise.resolve('2026-10-12')),
 }))
 
 const loadedEmpty = { loaded: () => screen.findByText('No GC project yet. Press New project when the first plans come in.') }
@@ -564,5 +596,220 @@ describe('GcProjects: RFIs (Building)', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, loaded)
     expect(screen.queryByRole('button', { name: 'RFIs' })).toBeNull()
+  })
+})
+
+describe('GcProjects: Draws (Building)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadGcDraws).mockReset()
+    vi.mocked(loadGcDraws).mockImplementation(() => Promise.resolve(NONE))
+    vi.mocked(payDraw).mockClear()
+    vi.mocked(emailTheTrade).mockClear()
+  })
+
+  const NONE: DrawTables = { sows: [], sowLines: [], draws: [], drawLines: [], reports: [], backCharges: [], tradeSends: [] }
+  /** The clinic being built, its sitework's statement of work signed by Lonestar. */
+  const building = () => {
+    const base = awardedClinicBoardRows()
+    return {
+      ...base,
+      projects: base.projects.map((p) => ({ ...p, stage: 'building' as const })),
+      sows: (base.sows ?? []).map((w) => ({ ...w, status: 'signed', signed_on: '2026-10-09' })),
+    }
+  }
+  /** Lonestar's first pay application, approved: half the clearing, nothing stored. */
+  const approvedDraw: DrawTables = {
+    ...NONE,
+    sows: [{ id: 'w1', package_id: 'k1' }],
+    sowLines: [
+      { id: 'l1', sow_id: 'w1', position: 0, scope_item_id: 's1' },
+      { id: 'l2', sow_id: 'w1', position: 1, scope_item_id: 's2' },
+    ],
+    draws: [
+      {
+        id: 'd1', sow_id: 'w1', number: 1, requested_on: '2026-10-10', status: 'approved', gross: 16600, retainage: 1660, net: 14940, final: false,
+        waiver: 'conditional', waiver_on: null, approved_on: '2026-10-11', paid_on: null, asked: null, sent_back_on: null, sent_back_note: null,
+        period_to: '2026-10-10', address: '', license: '', signed_by: 'Ana Ruiz', signed_title: 'Owner', signed_on: '2026-10-10',
+        file_name: null, drive_url: null, recorded_by: 'u1', created_at: '2026-10-10T00:00:00Z', seq: 1,
+      },
+    ],
+    drawLines: [{ draw_id: 'd1', sow_line_id: 'l1', to_pct: 50, stored: 0, we_see: null }],
+  }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+
+  it('a dev opens Draws after RFIs on a job being built, with every trade’s draws read', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const names = within(card).getAllByRole('button').map((b) => b.textContent)
+    expect(names.indexOf('Draws')).toBe(names.indexOf('RFIs') + 1)
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls[0]?.[0]).toContain('k1'))
+    fireEvent.click(within(card).getByRole('button', { name: 'Draws' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Draws' })
+    expect(dialog.querySelector('[data-draw-trade="k1"]')).toBeTruthy()
+  })
+
+  it('a press with the email tick off emails nothing; with it on, the trade is emailed from the rows read again', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    vi.mocked(loadGcDraws).mockResolvedValue(approvedDraw)
+    await renderSettled(<GcProjects />, loaded)
+    fireEvent.click(await within(document.querySelector('[data-gc-project="p1"]') as HTMLElement).findByRole('button', { name: 'Draws' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Draws' })
+    const tick = within(dialog.querySelector('[data-draw-email-tick]') as HTMLElement).getByRole('checkbox') as HTMLInputElement
+    expect(tick.checked).toBe(false)
+    const reads = vi.mocked(loadGcDraws).mock.calls.length
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Mark paid' }))
+    await waitFor(() => expect(payDraw).toHaveBeenCalledWith('d1'))
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls.length).toBeGreaterThan(reads))
+    await settle()
+    expect(emailTheTrade).not.toHaveBeenCalled()
+
+    fireEvent.click(tick)
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Mark paid' }))
+    await waitFor(() => expect(emailTheTrade).toHaveBeenCalledWith('lonestar', expect.any(Function)))
+  })
+
+  it('a master reads the draws for the money since O9, but sees no Draws while Building is built', async () => {
+    auth.role = 'master_technician'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Draws' })).toBeNull()
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls[0]?.[0]).toContain('k1'))
+  })
+
+  it('the controller reads the draws too, and the statement of work without its press', async () => {
+    auth.role = 'controller'
+    const base = awardedClinicBoardRows()
+    const rows = { ...base, sows: (base.sows ?? []).map((w) => ({ ...w, status: 'draft', sent_on: null })) }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls[0]?.[0]).toContain('k1'))
+    const sow = document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement
+    expect(within(sow).getByText('Statement of work drafted')).toBeTruthy()
+    expect(within(sow).queryByRole('button', { name: 'Send to their portal to sign' })).toBeNull()
+  })
+
+  it('an estimator reads no draws', async () => {
+    auth.role = 'estimator'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(loadGcDraws).not.toHaveBeenCalled()
+  })
+
+  it('a job still bidding has no Draws, even for a dev', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Draws' })).toBeNull()
+  })
+})
+
+describe('GcProjects: Closeout (Building)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadGcDraws).mockReset()
+    vi.mocked(loadGcDraws).mockImplementation(() => Promise.resolve(NONE))
+    vi.mocked(loadGcPunch).mockClear()
+    vi.mocked(loadGcBillingRows).mockClear()
+    vi.mocked(acceptWork).mockClear()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  const NONE: DrawTables = { sows: [], sowLines: [], draws: [], drawLines: [], reports: [], backCharges: [], tradeSends: [] }
+  /** The clinic at a stage, its sitework's statement of work signed by Lonestar. */
+  const at = (stage: 'building' | 'closed') => {
+    const base = awardedClinicBoardRows()
+    return {
+      ...base,
+      projects: base.projects.map((p) => ({ ...p, stage })),
+      sows: (base.sows ?? []).map((w) => ({ ...w, status: 'signed', signed_on: '2026-10-09' })),
+    }
+  }
+  /** Lonestar billed every line, approved and paid: closeout opens on Accept the work. */
+  const allBilled: DrawTables = {
+    ...NONE,
+    sows: [{ id: 'w1', package_id: 'k1' }],
+    sowLines: [
+      { id: 'l1', sow_id: 'w1', position: 0, scope_item_id: 's1' },
+      { id: 'l2', sow_id: 'w1', position: 1, scope_item_id: 's2' },
+    ],
+    draws: [
+      {
+        id: 'd1', sow_id: 'w1', number: 1, requested_on: '2026-10-10', status: 'paid', gross: 66500, retainage: 6650, net: 59850, final: false,
+        waiver: 'unconditional', waiver_on: '2026-10-11', approved_on: '2026-10-10', paid_on: '2026-10-11', asked: null, sent_back_on: null, sent_back_note: null,
+        period_to: '2026-10-10', address: '', license: '', signed_by: 'Ana Ruiz', signed_title: 'Owner', signed_on: '2026-10-10',
+        file_name: null, drive_url: null, recorded_by: 'u1', created_at: '2026-10-10T00:00:00Z', seq: 1,
+      },
+    ],
+    drawLines: [
+      { draw_id: 'd1', sow_line_id: 'l1', to_pct: 100, stored: 0, we_see: null },
+      { draw_id: 'd1', sow_line_id: 'l2', to_pct: 100, stored: 0, we_see: null },
+    ],
+  }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+
+  it('a dev opens Closeout after Draws, and it reads the customer’s bills and the punch list for that job', async () => {
+    const rows = at('building')
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    const names = within(card).getAllByRole('button').map((b) => b.textContent)
+    expect(names.indexOf('Closeout')).toBe(names.indexOf('Draws') + 1)
+    expect(loadGcPunch).not.toHaveBeenCalled()
+    fireEvent.click(within(card).getByRole('button', { name: 'Closeout' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Closeout' })
+    await waitFor(() => expect(loadGcPunch).toHaveBeenCalledWith(['p1']))
+    expect(loadGcBillingRows).toHaveBeenCalledWith(['p1'])
+    expect(dialog.querySelector('[data-closeout-trade="k1"]')).toBeTruthy()
+  })
+
+  it('Accept the work goes to its function and reads the board again', async () => {
+    const rows = at('building')
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    vi.mocked(loadGcDraws).mockResolvedValue(allBilled)
+    await renderSettled(<GcProjects />, loaded)
+    fireEvent.click(await within(document.querySelector('[data-gc-project="p1"]') as HTMLElement).findByRole('button', { name: 'Closeout' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Closeout' })
+    const boardReads = vi.mocked(loadGcBoardRows).mock.calls.length
+    fireEvent.click(await within(dialog).findByRole('button', { name: 'Accept the work' }))
+    await waitFor(() => expect(acceptWork).toHaveBeenCalledWith('k1'))
+    await waitFor(() => expect(vi.mocked(loadGcBoardRows).mock.calls.length).toBeGreaterThan(boardReads))
+  })
+
+  it('a closed job keeps Closeout and has no Draws', async () => {
+    const rows = at('closed')
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    expect(within(card).getByRole('button', { name: 'Closeout' })).toBeTruthy()
+    expect(within(card).queryByRole('button', { name: 'Draws' })).toBeNull()
+  })
+
+  it('a master sees no Closeout while Building is built, and nothing of it is read', async () => {
+    auth.role = 'master_technician'
+    const rows = at('building')
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    expect(screen.queryByRole('button', { name: 'Closeout' })).toBeNull()
+    expect(loadGcPunch).not.toHaveBeenCalled()
   })
 })

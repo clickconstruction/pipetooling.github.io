@@ -25,6 +25,7 @@
     "src/lib/aiaPayApplications.ts",
     "src/lib/appSettingsKeys.ts",
     "src/lib/bids/bidContactInfo.ts",
+    "src/lib/billing/payLink.ts",
     "src/lib/customerContactDisplay.ts",
     "src/lib/emailSchedule/emailScheduleWeek.ts",
     "src/lib/errorClassTelemetry.ts",
@@ -37,6 +38,7 @@
     "src/lib/navClickTelemetry.ts",
     "src/lib/networkErrorMessage.ts",
     "src/lib/openInExternalBrowser.ts",
+    "src/lib/personContractAppliedDate.ts",
     "src/lib/physicalInvoiceIssuer.ts",
     "src/lib/plainWords.ts",
     "src/lib/publicFunctionStaffHeaders.ts",
@@ -58,6 +60,7 @@
     "src/utils/errorHandling.ts",
     "supabase/functions/_shared/customerSample.ts",
     "supabase/functions/_shared/gcArchitectEmail.ts",
+    "supabase/functions/_shared/gcCardBill.ts",
     "supabase/functions/_shared/gcCustomerEmails.ts",
     "supabase/functions/_shared/gcMoneyMondayEmail.ts",
     "supabase/functions/_shared/gcPortal.ts",
@@ -66,6 +69,8 @@
     "supabase/functions/_shared/gcTradePortalSample.ts",
     "supabase/functions/_shared/gcTradePortalSlice.ts",
     "supabase/functions/_shared/gcTradeSubmit.ts",
+    "supabase/functions/_shared/lienPayOffer.ts",
+    "supabase/functions/_shared/payLink.ts",
     "supabase/functions/statement-round-email-dispatch/renderOfficeWeek.ts"
   ],
   "exclude": []

@@ -438,6 +438,29 @@ export function JobsStagesCommandBar({
             </span>
           </button>
         ) : null}
+        {filters.zzTestJobs ? (
+          // A dev's ZZ test jobs (punch list #61, v2.5120): a quiet chip while hidden (the default), an
+          // amber one while shown, so a dev never mistakes a board with test jobs for the office's.
+          // Tap opens Hide groups…, where the line lives.
+          <button
+            type="button"
+            data-testid="stages-zz-test-jobs-chip"
+            onClick={() => onOpenHideGroups()}
+            title="ZZ test jobs — tap to show or hide them"
+            style={{
+              ...stagesActiveFilterChipStyle,
+              ...(filters.zzTestJobs.shown
+                ? { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' }
+                : { background: 'var(--surface)', color: 'var(--text-muted)' }),
+            }}
+          >
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+              {filters.zzTestJobs.shown
+                ? 'ZZ test jobs shown'
+                : `${filters.zzTestJobs.count} ZZ test job${filters.zzTestJobs.count === 1 ? '' : 's'} hidden`}
+            </span>
+          </button>
+        ) : null}
         <span aria-hidden style={{ flexShrink: 0, width: 1, height: '1.25rem', background: 'var(--border)' }} />
         {toolsMenu}
       </div>

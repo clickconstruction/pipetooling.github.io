@@ -2,7 +2,7 @@
 title: see what a customer sees on their portal
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: portal statement, what the customer sees, pay online, check reference, print all, save as pdf, your payments, where each check went, find a check, show all, visit request, ask us to bid, ask the office, we'll call you at, as gc, your customers' open bills, job by job, balance on this job, billed to date, your account any time
+keywords: portal statement, what the customer sees, pay online, pay by card, card fee, gc bill by card, check reference, print all, save as pdf, your payments, where each check went, find a check, show all, visit request, ask us to bid, ask the office, we'll call you at, as gc, your customers' open bills, job by job, balance on this job, billed to date, your account any time
 ---
 A customer's portal shows one statement of the bills they pay us, job by job. The portal also shows where each check went, and lets them ask for a visit or a bid.
 
@@ -31,6 +31,20 @@ On a phone, each bill is a card with its own {{button:dark|PAY ONLINE}} button. 
 A **Print all** button at the top of the statement prints the whole account for paper review. First comes a cover with the balance. Then comes **every job on its own page**, with bills, payments received and the balance recap. Then comes a closing page with the total and the portal QR code. Each page says whose it is and which job it covers, like *Job 3 of 11*. So a customer can work through them one at a time. Or a GC can hand each owner their page. Choosing "Save as PDF" in the print dialog turns the same packet into a file. Pay-online buttons don't print. Check references and the QR do.
 
 The recap box is the same payment-totals box that prints on the invoice itself. That box shows on the preview, the PDF and the invoice email. So customers see one consistent story everywhere. A customer can confirm their check landed without calling the office. Internal payment notes never appear. Customers see the payment method only. A payment recorded with the catch-all type "other" shows no method word, only the day it was paid.
+
+## A GC bill they can pay by card
+
+A certified bill on a GC job we build is not on Stripe. So it shows its check reference, not PAY ONLINE. Beside it, {{button:outline|PAY BY CARD}} lets the customer pay it by card instead. Under the bill's date it says *Card adds 3%*.
+
+The press opens a panel under the bill. The panel says the bill, the 3% card fee and what the card pays in all. It also says the bill takes cards only after this, and how to pay by check with no fee.
+
+:::example The panel on a $42,750.00 bill
+**Pay this bill by card.** This bill is $42,750.00. Paying by card adds a 3% card fee of $1,282.50. Your card pays $44,032.50 in all. After this, the bill takes cards only. To pay by check with no fee, close this and mail your check. {{button:amber|Go to the card page}} {{button:outline|Close}}
+:::
+
+**Go to the card page** opens the card page in a new tab, the way PAY ONLINE does. When they come back, the statement reads the bill again. The bill then shows {{button:dark|PAY ONLINE}}, and its line says *Includes the $1,282.50 card fee.*
+
+Only the customer turns a bill to card. The office never does it for them. A bill with any payment on it cannot move to card, and neither can an interest bill. The offer stays off until the owner turns it on in Settings, under Jobs & billing.
 
 ## Your payments: where each check went
 

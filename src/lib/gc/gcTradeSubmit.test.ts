@@ -200,6 +200,13 @@ describe('the verb’s refusals', () => {
     splitLine: 'P5',
     notPaidYet: 'P5',
     alreadySigned: 'P2c-ii',
+    // Building's U6c, the final pay application (gc_trade_final_pay_app, through gc_final_pay_app_ask): the final
+    // sent already, and asked before every line is billed and the work accepted.
+    finalSent: 'P5',
+    finalNotYet: 'P5',
+    // The Portal's P2c-i, gc_trade_sign_sow: P2c-ii's sign_sow kind says them (alreadySigned is listed with U6a's above).
+    msaFirst: 'P2c-ii',
+    sowNotSent: 'P2c-ii',
   }
 
   it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {

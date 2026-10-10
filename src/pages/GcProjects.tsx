@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from '../lib/gc/access'
+import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -34,6 +34,27 @@ import { addSubmittal, answerSubmittal, loadGcSubmittals, markSubmittalSent, sen
 import { GcRfisWindow } from '../components/gc/GcRfisWindow'
 import { rfiExtras, withRfis, type RfiTables } from '../lib/gc/rfiRows'
 import { addRfi, answerRfi, loadGcRfis, markRfiSent, sendRfiToArchitect, startRfiChangeOrder } from '../lib/gc/rfisIo'
+import { GcDrawsWindow } from '../components/gc/GcDrawsWindow'
+import { drawExtras, NO_DRAWS, withDraws, withTradeChanges, type DrawTables } from '../lib/gc/drawRows'
+import {
+  approveDraw,
+  approveDrawLess,
+  chargeTrade,
+  drawCameIn,
+  drawWaiverIn,
+  emailTheTrade,
+  loadGcDraws,
+  payDraw,
+  sendDrawBack,
+  sendTradeChange,
+  settleBackCharge,
+  takeBackCharge,
+} from '../lib/gc/drawsIo'
+import { changeEmail, chargeEmail, drawEmailFor, lessEmail, paidEmail, type DrawEmail, type DrawEmailTo } from '../lib/gc/drawEmail'
+import { GcCloseoutWindow } from '../components/gc/GcCloseoutWindow'
+import { acceptWork, approveRetainage, changeSignedIn, closeJob, finalPayAppCameIn } from '../lib/gc/closeoutIo'
+import { loadGcPunch } from '../lib/gc/punchIo'
+import { withPunch, type PunchRow } from '../lib/gc/punchRows'
 import type { ScheduleRead } from '../lib/gc/schedule/rows'
 import { missingLogs } from '../lib/gc/buildingLog'
 import { GcMoney } from '../components/gc/GcMoney'
@@ -155,7 +176,9 @@ import {
   sendOwnerPayApp,
   setOwnerRetainage,
   sendGcSow,
+  takeBillOffCard,
 } from '../lib/gc/gcIo'
+import { fetchGcCardBillOn } from '../lib/gc/cardBillSetting'
 import { sowEmailRequest } from '../lib/gc/sowEmail'
 import { gcTradeEmailRefusal, type ChangeAskEmailStage } from '../lib/gc/tradeEmail'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
@@ -524,9 +547,25 @@ export default function GcProjects() {
   useEffect(() => {
     void loadChangeOrders().catch((e) => setChangeProblem(formatErrorMessage(e, 'The change orders did not load.')))
   }, [loadChangeOrders])
+  // The trades' draws (Building's U6b), read for every job on the board so Money, Bill the customer and Closeout read the
+  // same draws the Draws window shows. A dev writes them while Building is built; the money team reads them since O9, so
+  // a leader's or the controller's bill bills each trade's reported work. Anyone else reads none.
+  const [drawTables, setDrawTables] = useState<DrawTables>(NO_DRAWS)
+  const [drawProblem, setDrawProblem] = useState<string | null>(null)
+  const loadDraws = useCallback(async (): Promise<DrawTables> => {
+    if (!board || !(canUseGcBuilding(role) || canSeeGcMoney(role))) return NO_DRAWS
+    const tables = await loadGcDraws(board.projects.flatMap((p) => p.packages.map((k) => k.id)))
+    setDrawTables(tables)
+    return tables
+  }, [board, role])
+  useEffect(() => {
+    void loadDraws().catch((e) => setDrawProblem(formatErrorMessage(e, 'The draws did not load.')))
+  }, [loadDraws])
+  // The draws lie innermost, so the change orders' trade side (`withTradeChanges`) lands on the change orders
+  // `withChangeOrders` lays over whole, and every reader of the board below reads the trades' money.
   const boardWithChanges = useMemo(
-    () => (board ? withChangeRequests(withChangeOrders(board, changeOrderRows), changeRequestRows) : null),
-    [board, changeOrderRows, changeRequestRows],
+    () => (board ? withChangeRequests(withTradeChanges(withChangeOrders(withDraws(board, drawTables), changeOrderRows), drawTables), changeRequestRows) : null),
+    [board, drawTables, changeOrderRows, changeRequestRows],
   )
   const changesProject = changesProjectId ? (boardWithChanges?.projects.find((p) => p.id === changesProjectId) ?? null) : null
   const changeEmailed = useMemo(() => {
@@ -697,6 +736,111 @@ export default function GcProjects() {
       .finally(() => setRfiBusy(null))
   }
 
+  // Draws (Building's U6b): the trades' money on a job being built, opened at `draws=<projectId>`, and at a back-charge
+  // with `&charge=<id>`, for a dev on the money team. Each press reads the draws again. It emails the trade only with
+  // the window's tick on, which starts off (the sends start off), and from the rows just read.
+  const drawsProjectId = params.get('draws')
+  const drawsChargeId = params.get('charge')
+  const drawsProject = drawsProjectId ? (boardWithChanges?.projects.find((p) => p.id === drawsProjectId) ?? null) : null
+  const [drawBusy, setDrawBusy] = useState<string | null>(null)
+  const [drawEmailOn, setDrawEmailOn] = useState(false)
+  const setDrawsWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('draws', projectId)
+    else {
+      next.delete('draws')
+      next.delete('charge')
+    }
+    setParams(next, { replace: true })
+    setDrawProblem(null)
+  }
+  /**
+   * A draw press: run it, read the draws again, then send the email it makes from the fresh rows when the tick is on.
+   * A refused email is said in the window after the press is saved.
+   */
+  const drawWrite = <T,>(busyId: string, packageId: string, work: Promise<T>, failed: string, email?: (project: GcProject, to: DrawEmailTo, done: T) => DrawEmail | null) => {
+    setDrawBusy(busyId)
+    setDrawProblem(null)
+    void work
+      .then(async (done) => {
+        const tables = await loadDraws()
+        if (!email || !drawEmailOn || !canSendGcTradeEmail(role) || !board || !drawsProjectId) return
+        const state = withTradeChanges(withChangeOrders(withDraws(board, tables), changeOrderRows), tables)
+        const project = state.projects.find((p) => p.id === drawsProjectId)
+        const to = project ? drawEmailFor(project, packageId) : null
+        if (!project || !to) return
+        const answer = await emailTheTrade(to.companyId, (lang) => email(project, { ...to, lang }, done))
+        if (answer && !answer.ok) throw new Error(`It is saved. The email did not go: ${gcTradeEmailRefusal(answer.key)}`)
+      })
+      .catch((e) => setDrawProblem(formatErrorMessage(e, failed)))
+      .finally(() => setDrawBusy(null))
+  }
+  const sowOf = (project: GcProject, packageId: string) => project.packages.find((k) => k.id === packageId)?.sow
+  const drawOf = (project: GcProject, packageId: string, drawId: string) => sowOf(project, packageId)?.draws.find((d) => d.id === drawId)
+  const chargeOf = (project: GcProject, packageId: string, chargeId: string) => sowOf(project, packageId)?.backCharges?.find((c) => c.id === chargeId)
+
+  // Closeout (Building's U6d): each trade's last steps and closing the job, opened at `closeout=<projectId>` for a dev on
+  // the money team. It reads the customer's bills, since their retainage on us opens the trades', and the job's punch
+  // list, which holds Accept the work. Both lie over the board with the draws. Each press reads again what it wrote.
+  const closeoutProjectId = params.get('closeout')
+  const [closeoutBills, setCloseoutBills] = useState<{ id: string; rows: BillingRows } | null>(null)
+  const [closeoutPunch, setCloseoutPunch] = useState<{ id: string; rows: PunchRow[] } | null>(null)
+  const [closeoutBusy, setCloseoutBusy] = useState<string | null>(null)
+  const [closeoutProblem, setCloseoutProblem] = useState<string | null>(null)
+  const loadCloseout = useCallback(async () => {
+    if (!closeoutProjectId || !canUseGcBuilding(role) || !canSeeGcMoney(role)) return
+    const [rows, punch] = await Promise.all([loadGcBillingRows([closeoutProjectId]), loadGcPunch([closeoutProjectId])])
+    setCloseoutBills({ id: closeoutProjectId, rows })
+    setCloseoutPunch({ id: closeoutProjectId, rows: punch })
+  }, [closeoutProjectId, role])
+  useEffect(() => {
+    void loadCloseout().catch((e) => setCloseoutProblem(formatErrorMessage(e, 'The customer’s bills or the punch list did not load.')))
+  }, [loadCloseout])
+  const closeoutBillsRead = closeoutBills !== null && closeoutBills.id === closeoutProjectId
+  const closeoutState = useMemo(() => {
+    if (!boardWithChanges || !closeoutProjectId) return null
+    const billed = closeoutBills && closeoutBills.id === closeoutProjectId ? billingStateFor(boardWithChanges, closeoutProjectId, closeoutBills.rows) : boardWithChanges
+    return withPunch(billed, closeoutPunch && closeoutPunch.id === closeoutProjectId ? closeoutPunch.rows : [])
+  }, [boardWithChanges, closeoutProjectId, closeoutBills, closeoutPunch])
+  const closeoutProject = closeoutProjectId ? (closeoutState?.projects.find((p) => p.id === closeoutProjectId) ?? null) : null
+  const setCloseoutWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('closeout', projectId)
+    else next.delete('closeout')
+    setParams(next, { replace: true })
+    setCloseoutProblem(null)
+  }
+  /** From Closeout to Bill the customer, where the customer's payment of our retainage is recorded. */
+  const closeoutToBill = (projectId: string) => {
+    const next = new URLSearchParams(params)
+    next.delete('closeout')
+    next.set('bill', projectId)
+    setParams(next, { replace: true })
+    setBillProblem(null)
+  }
+  /**
+   * A closeout press: run it, then read again the draws, the customer's bills and the punch list, and the board for an
+   * acceptance or the projects for a closed job. A release marked paid emails the trade when the Draws window's tick is on.
+   */
+  const closeoutWrite = <T,>(busyId: string, work: Promise<T>, failed: string, reread: { board?: boolean; projects?: boolean } = {}, paid?: { packageId: string; drawId: string }) => {
+    setCloseoutBusy(busyId)
+    setCloseoutProblem(null)
+    void work
+      .then(async () => {
+        const [tables] = await Promise.all([loadDraws(), loadCloseout(), reread.board ? refreshBoard() : null, reread.projects ? reloadProjects() : null])
+        if (!paid || !drawEmailOn || !canSendGcTradeEmail(role) || !board || !closeoutProjectId) return
+        const state = withTradeChanges(withChangeOrders(withDraws(board, tables), changeOrderRows), tables)
+        const project = state.projects.find((p) => p.id === closeoutProjectId)
+        const to = project ? drawEmailFor(project, paid.packageId) : null
+        const draw = project ? drawOf(project, paid.packageId, paid.drawId) : undefined
+        if (!to || !draw) return
+        const answer = await emailTheTrade(to.companyId, (lang) => paidEmail({ ...to, lang }, draw))
+        if (answer && !answer.ok) throw new Error(`It is saved. The email did not go: ${gcTradeEmailRefusal(answer.key)}`)
+      })
+      .catch((e) => setCloseoutProblem(formatErrorMessage(e, failed)))
+      .finally(() => setCloseoutBusy(null))
+  }
+
   // Money (Owner Billing's O6a): every job that is ours, with billing read when the lens opens and laid over
   // the board's projects and their change orders. Read only.
   const [moneyRows, setMoneyRows] = useState<BillingRows | null>(null)
@@ -776,6 +920,22 @@ export default function GcProjects() {
     }
   }, [billProjectId, board, role])
   const billScheduleRead = billSchedule !== null && billSchedule.id === billProjectId
+  // Pay by card's switch (O8c), the app_settings row the owner turns on: read when the window opens. Unknown is off.
+  const [billCardOfferOn, setBillCardOfferOn] = useState(false)
+  useEffect(() => {
+    if (!billProjectId || !canSeeGcMoney(role)) return
+    let live = true
+    fetchGcCardBillOn()
+      .then((on) => {
+        if (live) setBillCardOfferOn(on)
+      })
+      .catch(() => {
+        if (live) setBillCardOfferOn(false)
+      })
+    return () => {
+      live = false
+    }
+  }, [billProjectId, role])
   const billState = useMemo(() => {
     const laid = boardWithChanges && billProjectId && billRows ? billingStateFor(boardWithChanges, billProjectId, billRows) : null
     return laid && billSchedule && billSchedule.id === billProjectId ? withSchedules(laid, new Map([[billProjectId, billSchedule.schedule]])) : laid
@@ -1127,6 +1287,18 @@ export default function GcProjects() {
                   RFIs
                 </Btn>
               )}
+              {/* Draws (Building's U6b): a dev's on the money team, on a job being built. */}
+              {canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && p.stage === 'building' && (
+                <Btn kind="quiet" onClick={() => setDrawsWindow(p.id)}>
+                  Draws
+                </Btn>
+              )}
+              {/* Closeout (Building's U6d): a dev's on the money team, on a job being built or closed. */}
+              {canUseGcBuilding(role) && canSeeGcMoney(role) && boardWithChanges && (p.stage === 'building' || p.stage === 'closed') && (
+                <Btn kind="quiet" onClick={() => setCloseoutWindow(p.id)}>
+                  Closeout
+                </Btn>
+              )}
               {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
                 <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
                   Bill the customer
@@ -1238,8 +1410,9 @@ export default function GcProjects() {
                       </li>
                     ))}
                   </ul>
-                  {/* The trade's statement of work once it is awarded (B6-a-ii): only a dev reads one while the Board is built. */}
-                  {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canEmail={canSendGcTradeEmail(role)} />}
+                  {/* The trade's statement of work once it is awarded (B6-a-ii): a dev and, since O9, the money team read one. Only
+                      a dev sends it until the award door. */}
+                  {canOpenGcProjects(role) && board && <GcTradeSow state={board} projectId={p.id} packageId={t.id} writes={sowWrites} canSend={canUseGcBoardWrites(role)} canEmail={canSendGcTradeEmail(role)} />}
                   {/* The trade's asks and their stories (the Board's B4-b), for a dev while it is built. */}
                   {canOpenGcProjects(role) && board && <GcTradeAsks state={board} projectId={p.id} packageId={t.id} writes={askWrites} onAsk={() => openAsk(p.id, t.id)} onCompare={() => setComparing({ projectId: p.id, packageId: t.id })} />}
                 </div>
@@ -1475,6 +1648,90 @@ export default function GcProjects() {
         />
       )}
 
+      {canUseGcBuilding(role) && canSeeGcMoney(role) && drawsProject && boardWithChanges && (
+        <GcDrawsWindow
+          state={boardWithChanges}
+          project={drawsProject}
+          extras={drawExtras(drawTables)}
+          chargeId={drawsChargeId}
+          checkLink={async (url) => (await checkDriveAccess(url)).access}
+          emailTick={canSendGcTradeEmail(role) ? { on: drawEmailOn, onChange: setDrawEmailOn } : null}
+          busy={drawBusy}
+          problem={drawProblem}
+          onClose={() => setDrawsWindow(null)}
+          writes={{
+            onCameIn: (d) => drawWrite(d.packageId, d.packageId, drawCameIn(d), 'The pay application was not recorded.'),
+            onApprove: (packageId, drawId) => drawWrite(drawId, packageId, approveDraw(drawId), 'It was not approved.'),
+            onApproveLess: (packageId, drawId, weApprove, note) =>
+              drawWrite(drawId, packageId, approveDrawLess(drawId, weApprove, note), 'It was not approved.', (project, to) => {
+                const draw = drawOf(project, packageId, drawId)
+                return draw ? lessEmail(to, draw) : null
+              }),
+            onSendBack: (packageId, drawId, weSee, note) => drawWrite(drawId, packageId, sendDrawBack(drawId, weSee, note), 'It was not sent back.'),
+            onPay: (packageId, drawId) =>
+              drawWrite(drawId, packageId, payDraw(drawId), 'It was not marked paid.', (project, to) => {
+                const draw = drawOf(project, packageId, drawId)
+                return draw ? paidEmail(to, draw) : null
+              }),
+            onWaiverIn: (packageId, drawId) => drawWrite(drawId, packageId, drawWaiverIn(drawId), 'The waiver was not recorded.'),
+            onCharge: (packageId, c) =>
+              drawWrite(packageId, packageId, chargeTrade(packageId, c.amount, c.reason, c.photoUrl), 'They were not charged.', (project, to, chargeId) => {
+                const charge = chargeOf(project, packageId, chargeId)
+                return charge ? chargeEmail(to, charge, 'sent') : null
+              }),
+            onSettleCharge: (packageId, chargeId, keep, note) =>
+              drawWrite(chargeId, packageId, settleBackCharge(chargeId, keep, note), keep ? 'The charge was not kept.' : 'The charge was not dropped.', (project, to) => {
+                const charge = chargeOf(project, packageId, chargeId)
+                return charge ? chargeEmail(to, charge, 'settled') : null
+              }),
+            onTakeCharge: (packageId, chargeId, drawId) =>
+              drawWrite(chargeId, packageId, takeBackCharge(chargeId, drawId), 'The charge was not taken off the draw.', (project, to) => {
+                const charge = chargeOf(project, packageId, chargeId)
+                return charge ? chargeEmail(to, charge, 'taken', drawOf(project, packageId, drawId)?.number ?? null) : null
+              }),
+            onSendChange: (packageId, changeOrderId) =>
+              drawWrite(changeOrderId, packageId, sendTradeChange(changeOrderId), 'The change was not sent.', (project, to) => {
+                const co = project.changeOrders?.find((x) => x.id === changeOrderId)
+                return co ? changeEmail(to, co) : null
+              }),
+            // U6d: their signature on paper adds a line to their statement of work, which the board reads.
+            onChangeSignedIn: (packageId, changeOrderId, file) =>
+              drawWrite(
+                changeOrderId,
+                packageId,
+                changeSignedIn(changeOrderId, file).then(async (line) => {
+                  await refreshBoard()
+                  return line
+                }),
+                'Their signature was not recorded.',
+              ),
+          }}
+        />
+      )}
+
+      {canUseGcBuilding(role) && canSeeGcMoney(role) && closeoutProject && closeoutState && (
+        <GcCloseoutWindow
+          state={closeoutState}
+          project={closeoutProject}
+          extras={drawExtras(drawTables)}
+          checkLink={async (url) => (await checkDriveAccess(url)).access}
+          emailTick={canSendGcTradeEmail(role) ? { on: drawEmailOn, onChange: setDrawEmailOn } : null}
+          billsRead={closeoutBillsRead}
+          busy={closeoutBusy}
+          problem={closeoutProblem}
+          onSeeBill={() => closeoutToBill(closeoutProject.id)}
+          onClose={() => setCloseoutWindow(null)}
+          writes={{
+            onAccept: (packageId) => closeoutWrite(packageId, acceptWork(packageId), 'The work was not accepted.', { board: true }),
+            onFinalCameIn: (d) => closeoutWrite(d.packageId, finalPayAppCameIn(d), 'The final pay application was not recorded.'),
+            onApproveRelease: (_packageId, drawId) => closeoutWrite(drawId, approveRetainage(drawId), 'The release was not approved.'),
+            onPay: (packageId, drawId) => closeoutWrite(drawId, payDraw(drawId), 'It was not marked paid.', {}, { packageId, drawId }),
+            onWaiverIn: (_packageId, drawId) => closeoutWrite(drawId, drawWaiverIn(drawId), 'Their final release was not recorded.'),
+            onCloseJob: () => closeoutWrite(closeoutProject.id, closeJob(closeoutProject.id), 'The job was not closed.', { projects: true }),
+          }}
+        />
+      )}
+
       {/* The waiver window sits below ours (z 1100), so Bill the customer steps aside while it is open. */}
       {canSeeGcMoney(role) && billProject && billState && !waiverFor && (
         <GcBillCustomerWindow
@@ -1489,6 +1746,7 @@ export default function GcProjects() {
           emailed={billEmailed}
           interestEmailed={billInterestEmailed}
           scheduleRead={billScheduleRead}
+          cardOfferOn={billCardOfferOn}
           onClose={() => setBillWindow(null)}
           writes={{
             onSend: (email) => {
@@ -1650,6 +1908,11 @@ export default function GcProjects() {
             onPayPart: (number, amount) => {
               const invoiceId = billInvoiceOf(number)
               if (invoiceId) billWrite(`pay-${number}`, () => recordGcPayment(invoiceId, amount, today), 'The payment was not recorded.')
+            },
+            // Back to a check bill (O8c): gc-card-bill's undo door voids the Stripe invoice and takes the fee off.
+            onCardUndo: (number) => {
+              const invoiceId = billInvoiceOf(number)
+              if (invoiceId) billWrite(`card-${number}`, () => takeBillOffCard(invoiceId), 'The bill did not go back to a check bill.')
             },
             onPromise: (number, by, note, channel) => {
               if (billJobId) billWrite(`promise-${number}`, () => recordGcPromise(billJobId, by, note, channel), 'When they said they will pay was not recorded.')

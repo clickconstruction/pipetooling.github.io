@@ -9,6 +9,9 @@
  *   estimators (doors 1 and 2).
  * - `money`: `gc_money_team()`, our number (B5-a) and Owner Billing (its door): dev, the leaders and the controller.
  * - `dev`: `is_dev()` while its lane builds it. `opens` names the door that will open it.
+ *
+ * `door` is who writes a table. `reads` is who reads it when that is wider, through `FOR SELECT` policies of its own
+ * (Owner Billing's O9: the money team reads the trades' money ahead of the doors that let them write it).
  */
 export type GcDoor = 'office' | 'money' | 'dev'
 
@@ -17,6 +20,8 @@ export interface GcTableDoor {
   door: GcDoor
   /** For a dev-only table: what opens it, and whose call that is. */
   opens?: string
+  /** Who reads it beyond its door, through `FOR SELECT` policies of its own. Unset: its door reads it. */
+  reads?: GcDoor
 }
 
 const SCHEDULE_OPENS = 'the schedule’s PR 10, its team door (SCHEDULE_REAL_BUILD.md)'
@@ -27,6 +32,8 @@ const AWARD_OPENS = 'award’s door: estimators, the leaders and dev, the owner�
 
 const office = (lane: GcTableDoor['lane']): GcTableDoor => ({ lane, door: 'office' })
 const dev = (lane: GcTableDoor['lane'], opens: string): GcTableDoor => ({ lane, door: 'dev', opens })
+/** A dev writes it until its door; the money team reads it since O9, for Money and Bill the customer. */
+const moneyReads = (d: GcTableDoor): GcTableDoor => ({ ...d, reads: 'money' })
 
 export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   // New project (door 1).
@@ -55,14 +62,19 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_bid_tabs: office('Board'),
   gc_bid_tab_views: office('Board'),
   gc_project_money: { lane: 'Board', door: 'money' },
-  // Award and the statement of work (B6-a): a contract with the trade, dev only until call W.
-  gc_sows: dev('Board', AWARD_OPENS),
-  gc_sow_lines: dev('Board', AWARD_OPENS),
+  // Award and the statement of work (B6-a): a contract with the trade, written by a dev until call W. The money team
+  // reads it since O9: what each trade's line bills.
+  gc_sows: moneyReads(dev('Board', AWARD_OPENS)),
+  gc_sow_lines: moneyReads(dev('Board', AWARD_OPENS)),
+  // A trade partner company's papers (B6-b-i): every send, with its promise. The papers themselves are rows of
+  // person_contract_documents, under that table's own policies.
+  gc_paper_sends: dev('Board', AWARD_OPENS),
 
   // The trade's portal, and its two records on a trade's signed work (P4a).
   gc_trade_portal_links: dev('Portal', PORTAL_OPENS),
   gc_trade_messages: dev('Portal', PORTAL_OPENS),
-  gc_back_charges: dev('Portal', PORTAL_OPENS),
+  // The money team reads the back-charges since O9: each draw's net takes off those taken.
+  gc_back_charges: moneyReads(dev('Portal', PORTAL_OPENS)),
   gc_trade_change_requests: dev('Portal', PORTAL_OPENS),
 
   // The schedule.
@@ -101,10 +113,11 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_rfis: dev('Building', BUILDING_OPENS),
   gc_rfi_holds: dev('Building', BUILDING_OPENS),
   gc_weekly_reports: dev('Building', BUILDING_OPENS),
-  gc_draws: dev('Building', BUILDING_MONEY_OPENS),
-  gc_draw_lines: dev('Building', BUILDING_MONEY_OPENS),
-  gc_sow_line_reports: dev('Building', BUILDING_MONEY_OPENS),
-  gc_change_order_trade_sends: dev('Building', BUILDING_MONEY_OPENS),
+  // The trades' draws: the money team reads them since O9, a dev writes them until Building's door.
+  gc_draws: moneyReads(dev('Building', BUILDING_MONEY_OPENS)),
+  gc_draw_lines: moneyReads(dev('Building', BUILDING_MONEY_OPENS)),
+  gc_sow_line_reports: moneyReads(dev('Building', BUILDING_MONEY_OPENS)),
+  gc_change_order_trade_sends: moneyReads(dev('Building', BUILDING_MONEY_OPENS)),
 
   // Owner Billing.
   gc_owner_contract_lines: { lane: 'Owner Billing', door: 'money' },
@@ -115,6 +128,7 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_owner_interest_bills: { lane: 'Owner Billing', door: 'money' },
   gc_owner_acceptances: { lane: 'Owner Billing', door: 'money' },
   gc_money_monday_email_requests: { lane: 'Owner Billing', door: 'money' },
+  gc_owner_card_bills: { lane: 'Owner Billing', door: 'money' },
 }
 
 /**

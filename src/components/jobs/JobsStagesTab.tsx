@@ -69,6 +69,7 @@ import {
   gcStatementEmailSubject,
 } from '../../lib/jobsDocuments/gcStatementEmail'
 import { describeReplyToOutcome } from '../../lib/gcStatementReplyTo'
+import { sendGcStatementEmail } from '../../lib/sendGcStatementEmail'
 import { fetchPhysicalInvoiceIssuerFromAppSettings, getPhysicalInvoiceIssuerDraft, getPhysicalInvoiceIssuerForDocument } from '../../lib/physicalInvoiceIssuer'
 import { copyRichHtmlToClipboard } from '../../lib/copyRichHtmlToClipboard'
 import {
@@ -278,6 +279,7 @@ import {
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
+import { setDevShowsZzTestJobs, useDevShowsZzTestJobs, useZzTestJobsHidden, zzTestJobsSwitchLine } from '../../lib/jobs/zzTestJobSwitch'
 import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
@@ -571,7 +573,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // v2.3806 (punch list #40 PR 3): deposits the bank returned that a job still counts as paid — the
   // Dashboard card's read, once per board, folded per job for the Billed rows' badge and the phone chip.
   const bankReturnedEnabled = stagesGates.canSeeBankReturned(authRole)
-  const { returned: bankReturned, cases: bankReturnCases, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled)
+  /** ZZ test jobs off the returned-deposit badges for every role but a dev who shows them (punch list #61, v2.5122). */
+  const zzTestJobsHiddenForNudges = useZzTestJobsHidden(authRole)
+  const { returned: bankReturned, cases: bankReturnCases, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled, zzTestJobsHiddenForNudges, authUser?.id ?? null)
   const bankReturnedByJobId = useMemo(() => bankReturnedByJob(bankReturned?.items ?? []), [bankReturned])
   const openPaymentsReceived = useCallback(
     (job: JobWithDetails) =>
@@ -674,7 +678,15 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     headerStats: cacheHeaderStats,
     leanBilledRows: cacheLeanBilledRows,
     setJobs: cacheSetJobs,
+    zzTestJobCount: cacheZzTestJobCount,
   } = useJobsListCache()
+  /**
+   * A dev's ZZ test jobs switch (punch list #61, v2.5120); every other role never holds the rows. It shows
+   * while the board holds a ZZ job, and always while the switch shows them: with none left on the board
+   * the Dashboard and the strip still follow it, so the dev must be able to turn it back off (review on #5241).
+   */
+  const devShowsZzTestJobs = useDevShowsZzTestJobs()
+  const zzTestJobsLine = zzTestJobsSwitchLine(authRole, cacheZzTestJobCount ?? 0, devShowsZzTestJobs)
   // Fetch-on-expand: any open section whose scope isn't merged kicks its fetch
   // (idempotent; the context guards in-flight and merged states).
   useEffect(() => {
@@ -1476,7 +1488,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   /** Put a GC on notice (v2.3470): every owner on every job with a failing GC, one approved run. */
   const [gcNotice, setGcNotice] = useState<{ gcId: string } | null>(null)
   const [gcNoticeRereadKey, setGcNoticeRereadKey] = useState(0)
-  const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null })
+  const { data: lienDeskData, loading: lienDeskLoading, refetch: refetchLienDesk } = useLienDeskData(lienDeskEligible, forecastTodayYmd, { light: lienDesk == null, hideZzTestJobs: zzTestJobsHiddenForNudges })
   // The Calendar's rows are the board's billed jobs (`lienCalendarRows`), which the phone board loads only
   // while Billed is its stage — so the open desk fetches that scope, in the Legal desk's retry-until-merged shape.
   useEffect(() => {
@@ -2772,6 +2784,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     accountMan: stagesAccountManFilter,
     accountManOptions: stagesAccountManFilterOptions,
     exclusionCount: stagesExclusionCount,
+    zzTestJobs: zzTestJobsLine,
   }
   /** The # jump chip: the loaded board first, then the lean lookup across every job (any status); the chip shows its checking state meanwhile. */
   const jumpToTypedNumber = (digits: string) => {
@@ -4075,37 +4088,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                   }}
                   lastSentByGcId={gcLastSentByGcId}
                   onSendStatement={async (p) => {
-                    try {
-                      const { data, error: fnErr } = await supabase.functions.invoke('send-gc-statement-email', {
-                        body: {
-                          gc_customer_id: p.gcCustomerId,
-                          gc_name: p.gcName,
-                          group_by: p.groupBy,
-                          to_email: p.toEmail,
-                          cc_emails: p.ccEmails ?? [],
-                          subject: p.subject,
-                          email_html: p.emailHtml,
-                          ...(p.emailHtmlQr && p.portalUrl ? { email_html_qr: p.emailHtmlQr, portal_url: p.portalUrl } : {}),
-                          email_text: p.emailText,
-                          total: p.total,
-                          job_count: p.jobCount,
-                          reply_to_user_id: p.replyTo?.id ?? null,
-                        },
-                      })
-                      const resp = data as { success?: boolean; error?: string; reply_to?: string | null } | null
-                      if (resp && typeof resp.error === 'string' && resp.error.length > 0) {
-                        return { ok: false, error: resp.error }
-                      }
-                      if (fnErr) {
-                        return { ok: false, error: fnErr.message || 'Send failed' }
-                      }
-                      // The function echoes where replies go; one from before "Replies go to" echoes nothing, and the toast says so.
-                      showToast(`Statement emailed to ${p.toEmail}.${describeReplyToOutcome(p.replyTo ?? null, authUser?.id ?? '', resp?.reply_to)}`, 'success')
-                      void refreshGcLastSent()
-                      return { ok: true }
-                    } catch (e) {
-                      return { ok: false, error: e instanceof Error ? e.message : 'Send failed' }
-                    }
+                    const sent = await sendGcStatementEmail(p)
+                    if (!sent.ok) return sent
+                    // The function echoes where replies go; one from before "Replies go to" echoes nothing, and the toast says so.
+                    showToast(`Statement emailed to ${p.toEmail}.${describeReplyToOutcome(p.replyTo ?? null, authUser?.id ?? '', sent.replyTo)}`, 'success')
+                    void refreshGcLastSent()
+                    return { ok: true }
                   }}
                 />
                 {billedTotalByNameModalOpen && (
@@ -4400,6 +4388,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         jobs={jobs}
         filters={stagesExcludeFilters}
         onChange={setStagesExcludeFilters}
+        zzTestJobs={zzTestJobsLine ? { ...zzTestJobsLine, onChange: setDevShowsZzTestJobs } : null}
       />
       <JobsCombineSeparateModal
         open={combineSeparateModalOpen}

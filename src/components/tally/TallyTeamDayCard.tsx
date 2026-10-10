@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import { formatDenverTimeOnly } from '../../utils/dateUtils'
 import { tallyHistoryMadeAt, type TallyQueueCard } from '../../lib/tally/tallyTeamQueue'
 import type { StaleStaffRow } from '../../lib/tally/teamPurchaseRows'
+import { tallyUndoLineFromWindowRow, type TallyUndoLine } from '../../lib/tally/tallyUndoLine'
 import type { TallyChoice, TallyLineSuggestion, TallySuggestion } from '../../lib/tally/tallySortSuggestion'
 import {
   choiceKey,
@@ -24,6 +25,8 @@ export type TallyTeamDayCardProps = {
   lineErrors: ReadonlyMap<string, string>
   busy: boolean
   backchargeBusyId: string | null
+  /** Charges whose undo is being written. */
+  undoBusyIds: ReadonlySet<string>
   onPickDay: (chip: TallySuggestion) => void
   onPickLine: (chargeId: string, choice: TallyChoice | null) => void
   onToggleByHours: (chargeId: string) => void
@@ -31,6 +34,8 @@ export type TallyTeamDayCardProps = {
   onAnotherJob: (row: StaleStaffRow) => void
   onInvoices: (row: StaleStaffRow) => void
   onBackcharge: (row: StaleStaffRow) => void
+  /** Put a sorted line that went to jobs back on the card to sort. */
+  onUndo: (line: TallyUndoLine) => void
 }
 
 const money = (n: number) =>
@@ -141,6 +146,7 @@ export function TallyTeamDayCard({
   lineErrors,
   busy,
   backchargeBusyId,
+  undoBusyIds,
   onPickDay,
   onPickLine,
   onToggleByHours,
@@ -148,6 +154,7 @@ export function TallyTeamDayCard({
   onAnotherJob,
   onInvoices,
   onBackcharge,
+  onUndo,
 }: TallyTeamDayCardProps) {
   const selectedCount = card.charges.filter((c) => selections.has(c.charge.id)).length
   const lineById = new Map(card.suggestion.lines.map((l) => [l.chargeId, l]))
@@ -290,17 +297,36 @@ export function TallyTeamDayCard({
           )
         })}
 
-        {card.sorted.map((h) => (
-          <div
-            key={h.id}
-            data-testid="tally-team-sorted-line"
-            style={{ borderTop: '1px solid var(--border)', paddingTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}
-          >
-            {formatDenverTimeOnly(Date.parse(tallyHistoryMadeAt(h)))} {h.counterpartyName ?? 'Unknown store'} {money(h.amount)} went to{' '}
-            {sortedWhere(h, label)}
-            {h.sortedByName ? `, sorted by ${h.sortedByName}` : ''}.
-          </div>
-        ))}
+        {card.sorted.map((h) => {
+          const undo = tallyUndoLineFromWindowRow(h)
+          const undoing = undoBusyIds.has(h.id)
+          return (
+            <div
+              key={h.id}
+              data-testid="tally-team-sorted-line"
+              style={{ borderTop: '1px solid var(--border)', paddingTop: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}
+            >
+              {formatDenverTimeOnly(Date.parse(tallyHistoryMadeAt(h)))} {h.counterpartyName ?? 'Unknown store'} {money(h.amount)} went to{' '}
+              {sortedWhere(h, label)}
+              {h.sortedByName ? `, sorted by ${h.sortedByName}` : ''}.
+              {undo ? (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    data-testid="tally-team-undo"
+                    aria-label={`Undo ${h.counterpartyName ?? 'this charge'} ${money(h.amount)}`}
+                    disabled={undoing}
+                    onClick={() => onUndo(undo)}
+                    style={linkButton}
+                  >
+                    {undoing ? 'Undoing…' : 'Undo'}
+                  </button>
+                </>
+              ) : null}
+            </div>
+          )
+        })}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.6rem' }}>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import {
@@ -6,6 +6,9 @@ import {
   type DashboardTeamAssignedJobRow,
 } from '../lib/dashboardTeamAssignedJobRow'
 import type { UserRole } from './useAuth'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { withoutZzTestJobRows } from '../lib/jobs/zzTestJobVisibility'
+import { useZzTestJobIds } from './useZzTestJobIds'
 
 export type UseDashboardAssignedJobsInput = {
   authUserId: string | undefined
@@ -33,12 +36,36 @@ export type UseDashboardAssignedJobsInput = {
  * these lists). Preserve the render-body assignment pattern; do not convert
  * it to an effect.
  */
+/** The held lists' one empty array (a stable identity). */
+const NO_ROWS: DashboardTeamAssignedJobRow[] = []
+
 export function useDashboardAssignedJobs({ authUserId, role }: UseDashboardAssignedJobsInput) {
-  const [assignedJobs, setAssignedJobs] = useState<DashboardTeamAssignedJobRow[]>([])
+  /**
+   * ZZ test jobs (punch list #61, v2.5122): the three lists keep every row they read and hand out the
+   * rows without ZZ jobs for every role but a dev who shows them, by the job's name and the shared
+   * ids (two of the RPCs return no customer name). Like Ready to bill (review on #5241), they hold
+   * until the ids land and stay held after a failed read. The Jobs map card reuses these rows.
+   */
+  const hideZz = useZzTestJobsHidden(role)
+  const zz = useZzTestJobIds(hideZz && Boolean(authUserId), authUserId)
+  const zzHeld = hideZz && zz.status !== 'ready'
+  const zzJobIds = zz.ids
+  const shown = useCallback(
+    (rows: DashboardTeamAssignedJobRow[]) =>
+      !hideZz ? rows : zzHeld ? NO_ROWS : withoutZzTestJobRows(rows, (j) => j.id, zzJobIds),
+    [hideZz, zzHeld, zzJobIds],
+  )
+  // Anything but ready or failed reads as loading, the first render after enabling ('off') too, so a held
+  // list never flashes "nothing assigned" (review on #5246); a failure is said once on the Dashboard, with retry.
+  const zzLoading = hideZz && zz.status !== 'ready' && zz.status !== 'failed'
+  const [assignedJobsAll, setAssignedJobs] = useState<DashboardTeamAssignedJobRow[]>([])
+  const assignedJobs = useMemo(() => shown(assignedJobsAll), [shown, assignedJobsAll])
   const [assignedJobsLoading, setAssignedJobsLoading] = useState(false)
-  const [assignedReadyToBillJobs, setAssignedReadyToBillJobs] = useState<DashboardTeamAssignedJobRow[]>([])
+  const [assignedReadyToBillJobsAll, setAssignedReadyToBillJobs] = useState<DashboardTeamAssignedJobRow[]>([])
+  const assignedReadyToBillJobs = useMemo(() => shown(assignedReadyToBillJobsAll), [shown, assignedReadyToBillJobsAll])
   const [assignedReadyToBillLoading, setAssignedReadyToBillLoading] = useState(false)
-  const [superintendentJobs, setSuperintendentJobs] = useState<DashboardTeamAssignedJobRow[]>([])
+  const [superintendentJobsAll, setSuperintendentJobs] = useState<DashboardTeamAssignedJobRow[]>([])
+  const superintendentJobs = useMemo(() => shown(superintendentJobsAll), [shown, superintendentJobsAll])
   const [superintendentJobsLoading, setSuperintendentJobsLoading] = useState(false)
   /** Assigned in `useDashboardBillingInvoices`' body during render (quirk #10); reloads dashboard job lists on `update_job_status` RPC failure. */
   const resyncDashboardAfterUpdateJobStatusFailureRef = useRef<() => Promise<void>>(async () => {})
@@ -124,15 +151,18 @@ export function useDashboardAssignedJobs({ authUserId, role }: UseDashboardAssig
   return {
     assignedJobs,
     setAssignedJobs,
-    assignedJobsLoading,
+    assignedJobsLoading: assignedJobsLoading || zzLoading,
     assignedReadyToBillJobs,
     setAssignedReadyToBillJobs,
-    assignedReadyToBillLoading,
+    assignedReadyToBillLoading: assignedReadyToBillLoading || zzLoading,
     superintendentJobs,
     setSuperintendentJobs,
-    superintendentJobsLoading,
+    superintendentJobsLoading: superintendentJobsLoading || zzLoading,
     refreshDashboardAssignedJobLists,
     refreshAssignedReadyToBill,
     resyncDashboardAfterUpdateJobStatusFailureRef,
+    /** The ZZ test-job list could not be read, so the three lists are held (punch list #61). */
+    zzTestJobsReadFailed: hideZz && zz.status === 'failed',
+    retryZzTestJobs: zz.retry,
   }
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import type { Json } from '../../types/database'
-import { withSupabaseRetry } from '../../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { formatWorkDateYmdWeekdayShortFriendly } from '../../utils/dateUtils'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -24,6 +24,8 @@ import {
 import { buildTallyTeamQueue, type TallyQueueCard } from '../../lib/tally/tallyTeamQueue'
 import { mercuryTxRowFromStaffListRow, staffListRowFromSorted, type StaleStaffRow } from '../../lib/tally/teamPurchaseRows'
 import { assignChargeToOfficeAsStaff, backchargeDraftForCharge } from '../../lib/tally/tallyBackcharge'
+import { tallyUndoLineFromSortedRow, tallyUndoRpcArgs, tallyUndoToast, type TallyUndoLine } from '../../lib/tally/tallyUndoLine'
+import { tallyPayMarkToast, tallyPaySendGroups, tallyPayUnmarkToast, type TallyPaySendGroup } from '../../lib/tally/tallyPaySends'
 import type { TallyChoice, TallySuggestion } from '../../lib/tally/tallySortSuggestion'
 import {
   pickDayChip,
@@ -37,12 +39,18 @@ import MercuryTransactionInvoiceLinkModal from '../MercuryTransactionInvoiceLink
 import { TeamPurchasesSortedList } from '../TeamPurchasesSortedList'
 import { PersonOffsetFormModal, type PersonOffsetInitialDraft } from '../pay/PersonOffsetFormModal'
 import { TallyTeamDayCard } from './TallyTeamDayCard'
+import { TallyPayBar } from './TallyPayBar'
 
 /**
  * Job Parts Tally → Transactions → Team (punch list #72, PR 2a): the office's queue of the team's
  * unsorted card charges, one card per person per day. Each card says the holder's day in words and
  * offers the day's chips with the likely one first; nothing is selected until the sorter taps.
  * *Sort the day* writes each selected charge through the staff split RPC, one call per charge.
+ * Undo (PR 3, its first half) puts a charge sorted to jobs back: on the message after Sort the day,
+ * on a card's sorted line, and on a row of Sorted, each through the same RPC with no rows.
+ * The pay bar (PR 3, its second half; the owner's call 2026-10-09) gathers each card's Cash App pay
+ * sends and marks them payroll through `set_tally_payroll_flag`, shown only when `canMarkPayroll`
+ * (dev, controller, a pay-approved master); it marks and does not widen a rule (rules are dev-only).
  * The Dashboard and Quickfill *Team purchases* window keeps working beside it until PR 2b.
  */
 
@@ -65,9 +73,9 @@ function chargesWords(n: number): string {
   return `${n} ${n === 1 ? 'charge' : 'charges'}`
 }
 
-export function TallyTeamQueue() {
+export function TallyTeamQueue({ canMarkPayroll = false }: { canMarkPayroll?: boolean }) {
   const { user: authUser } = useAuth()
-  const { showToast } = useToastContext()
+  const { showToast, showActionToast } = useToastContext()
   const prefixMap = useLedgerPrefixMap()
   const officeJobId = useOverheadOfficeJobId(true)
   const isNarrow = useNarrowViewport640()
@@ -87,6 +95,10 @@ export function TallyTeamQueue() {
   const [selections, setSelections] = useState<Map<string, TallyLineSelection>>(() => new Map())
   const [lineErrors, setLineErrors] = useState<Map<string, string>>(() => new Map())
   const [busyCard, setBusyCard] = useState<string | null>(null)
+  const [undoBusyIds, setUndoBusyIds] = useState<ReadonlySet<string>>(() => new Set())
+  /** The cards whose pay sends are being marked: one entry per bar, so two bars never share a busy flag. */
+  const [payBusyHolders, setPayBusyHolders] = useState<ReadonlySet<string>>(() => new Set())
+  const payBusyRef = useRef(new Set<string>())
   const [allocRow, setAllocRow] = useState<StaleStaffRow | null>(null)
   const [invoiceRow, setInvoiceRow] = useState<StaleStaffRow | null>(null)
   const [backchargeBusyId, setBackchargeBusyId] = useState<string | null>(null)
@@ -163,6 +175,106 @@ export function TallyTeamQueue() {
     setSelections((prev) => toggleLineByHours(prev, chargeId))
   }, [])
 
+  const undoLines = useCallback(
+    async (lines: readonly TallyUndoLine[]) => {
+      if (lines.length === 0) return
+      setUndoBusyIds((prev) => new Set([...prev, ...lines.map((l) => l.chargeId)]))
+      let done = 0
+      let failed = 0
+      for (const line of lines) {
+        try {
+          await withSupabaseRetry(
+            async () => supabase.rpc('replace_mercury_job_splits_for_linked_card_as_staff', tallyUndoRpcArgs(line)),
+            'tally team queue undo a line',
+          )
+          done += 1
+        } catch {
+          failed += 1
+        }
+      }
+      setUndoBusyIds((prev) => {
+        const next = new Set(prev)
+        for (const l of lines) next.delete(l.chargeId)
+        return next
+      })
+      const toast = tallyUndoToast(done, failed)
+      showToast(toast.message, toast.type)
+      if (done > 0) {
+        void load()
+        void refetchStale()
+      }
+    },
+    [showToast, load, refetchStale],
+  )
+
+  /**
+   * Undo a press: delete the manual payroll marks it made, so the sends are undecided again and a
+   * payroll rule may still mark them later (a `false` mark would leave a tombstone rules skip). The
+   * flags table admits payroll-access roles for every write (`20260906130000`), the bar's own gate.
+   */
+  const unmarkPaySends = useCallback(
+    async (chargeIds: readonly string[]) => {
+      let done = 0
+      let error: string | null = null
+      try {
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('mercury_tally_payroll_flags')
+              .delete()
+              .in('mercury_transaction_id', [...chargeIds])
+              .eq('source', 'manual')
+              .eq('is_payroll', true)
+              .select('mercury_transaction_id'),
+          'tally team queue undo pay sends',
+        )
+        done = (rows ?? []).length
+      } catch (e) {
+        error = formatErrorMessage(e, 'Could not undo the marks')
+      }
+      const toast = tallyPayUnmarkToast(done, chargeIds.length - done, error)
+      showToast(toast.message, toast.type)
+      if (done > 0) {
+        void load()
+        void refetchStale()
+      }
+    },
+    [showToast, load, refetchStale],
+  )
+
+  const markPaySends = useCallback(
+    async (group: TallyPaySendGroup) => {
+      if (payBusyRef.current.has(group.holderId)) return
+      payBusyRef.current.add(group.holderId)
+      setPayBusyHolders(new Set(payBusyRef.current))
+      // Every send at once; `set_tally_payroll_flag` refuses one already on a job, and keeps the rest.
+      const results = await Promise.allSettled(
+        group.sends.map((send) =>
+          withSupabaseRetry(
+            async () => supabase.rpc('set_tally_payroll_flag', { p_mercury_transaction_id: send.chargeId, p_is_payroll: true }),
+            'tally team queue mark pay sends',
+          ).then(() => send.chargeId),
+        ),
+      )
+      payBusyRef.current.delete(group.holderId)
+      setPayBusyHolders(new Set(payBusyRef.current))
+      const done = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []))
+      const firstRefusal = results.find((r): r is PromiseRejectedResult => r.status === 'rejected')
+      const toast = tallyPayMarkToast(
+        done.length,
+        results.length - done.length,
+        firstRefusal ? formatErrorMessage(firstRefusal.reason, 'Could not mark it') : null,
+      )
+      if (done.length > 0) showActionToast(toast.message, { label: 'Undo', onClick: () => void unmarkPaySends(done) }, { type: toast.type })
+      else showToast(toast.message, toast.type)
+      if (done.length > 0) {
+        void load()
+        void refetchStale()
+      }
+    },
+    [showActionToast, showToast, unmarkPaySends, load, refetchStale],
+  )
+
   const sortDay = useCallback(
     async (card: TallyQueueCard) => {
       const key = `${card.holderId}|${card.ymd}`
@@ -205,15 +317,17 @@ export function TallyTeamQueue() {
         return next
       })
       setBusyCard(null)
-      if (done.length > 0 && errors.size === 0) showToast(`Sorted ${chargesWords(done.length)}.`, 'success')
-      else if (done.length > 0) showToast(`Sorted ${done.length} of ${done.length + errors.size}. The rest need another look.`, 'error')
+      const undo = { label: 'Undo', onClick: () => void undoLines(done.map((chargeId) => ({ chargeId, holderId: card.holderId }))) }
+      if (done.length > 0 && errors.size === 0) showActionToast(`Sorted ${chargesWords(done.length)}.`, undo)
+      else if (done.length > 0)
+        showActionToast(`Sorted ${done.length} of ${done.length + errors.size}. The rest need another look.`, undo, { type: 'error' })
       else if (errors.size > 0) showToast('Nothing was sorted. The charges need another look.', 'error')
       if (done.length > 0) {
         void load()
         void refetchStale()
       }
     },
-    [selections, showToast, load, refetchStale],
+    [selections, showToast, showActionToast, undoLines, load, refetchStale],
   )
 
   const backcharge = useCallback(
@@ -261,6 +375,11 @@ export function TallyTeamQueue() {
       .filter((d) => d.cards.length > 0)
   }, [queue, person])
 
+  const payGroups = useMemo(
+    () => (canMarkPayroll ? tallyPaySendGroups(days.flatMap((d) => d.cards)) : []),
+    [canMarkPayroll, days],
+  )
+
   return (
     <div data-testid="tally-team-queue" style={{ padding: '0.5rem 0 1rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '0.6rem' }} role="group" aria-label="Show">
@@ -288,6 +407,11 @@ export function TallyTeamQueue() {
           windowDays={TALLY_TEAM_SORTED_WINDOW_DAYS}
           onChangeJobs={(row) => setAllocRow(staffListRowFromSorted(row))}
           onInvoices={(row) => setInvoiceRow(staffListRowFromSorted(row))}
+          onUndo={(row) => {
+            const line = tallyUndoLineFromSortedRow(row)
+            if (line) void undoLines([line])
+          }}
+          undoBusyIds={undoBusyIds}
         />
       ) : loading && !queue ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading the team’s card charges…</p>
@@ -321,6 +445,15 @@ export function TallyTeamQueue() {
             ))}
           </div>
 
+          {payGroups.map((group) => (
+            <TallyPayBar
+              key={group.holderId}
+              group={group}
+              busy={payBusyHolders.has(group.holderId)}
+              onMark={() => void markPaySends(group)}
+            />
+          ))}
+
           {days.map((day) => (
             <div key={day.ymd}>
               <h3 style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-muted)', margin: '0.75rem 0 0.4rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -335,6 +468,7 @@ export function TallyTeamQueue() {
                   lineErrors={lineErrors}
                   busy={busyCard === `${card.holderId}|${card.ymd}`}
                   backchargeBusyId={backchargeBusyId}
+                  undoBusyIds={undoBusyIds}
                   onPickDay={(chip) => pickDay(card, chip)}
                   onPickLine={pickLine}
                   onToggleByHours={toggleByHours}
@@ -342,6 +476,7 @@ export function TallyTeamQueue() {
                   onAnotherJob={setAllocRow}
                   onInvoices={setInvoiceRow}
                   onBackcharge={(row) => void backcharge(row)}
+                  onUndo={(line) => void undoLines([line])}
                 />
               ))}
             </div>

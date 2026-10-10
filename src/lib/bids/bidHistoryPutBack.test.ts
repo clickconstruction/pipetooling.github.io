@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { BidHistoryRow } from './bidHistory'
 import {
   bidPutBackDoneWords,
+  bidPutBackMovesBookPick,
   bidPutBackFailWords,
   bidPutBackLabel,
   bidPutBackTarget,
@@ -160,5 +161,13 @@ describe('bidRestoreDoneWords', () => {
   it('a refusal reads as the function wrote it', () => {
     expect(bidPutBackFailWords('Its count row was removed too. Put that back first.')).toBe('Its count row was removed too. Put that back first.')
     expect(bidPutBackFailWords('function public.restore_bid_removed_row(uuid) does not exist')).toBe('Put back is not ready yet. Try again after the next update.')
+  })
+})
+
+describe('bidPutBackMovesBookPick (v2.5130)', () => {
+  it('is the bid itself and a version (its ★), never a row of the tabs', () => {
+    expect(bidPutBackMovesBookPick('bids')).toBe(true)
+    expect(bidPutBackMovesBookPick('bid_versions')).toBe(true)
+    for (const t of ['bid_count_row_custom_prices', 'bids_count_rows', 'bid_pricing_assignments', 'cost_estimate_labor_rows']) expect(bidPutBackMovesBookPick(t)).toBe(false)
   })
 })

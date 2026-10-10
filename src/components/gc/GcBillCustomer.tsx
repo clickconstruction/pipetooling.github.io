@@ -4,6 +4,7 @@ import { GcBillMoneyIn, type MoneyInWrites } from './GcBillMoneyIn'
 import { GcBillRemind, type RemindWrites } from './GcBillRemind'
 import { GcBillInterest, type InterestWrites } from './GcBillInterest'
 import { GcBillCloseout, type CloseoutWrites } from './GcBillCloseout'
+import { GcBillCard, type CardWrites } from './GcBillCard'
 import {
   appCertified,
   ownerAccount,
@@ -32,7 +33,7 @@ import { lateFinish } from '../../lib/gc/lateFinish'
  * Closeout, once every line is billed (O7a), is `GcBillCloseout`.
  */
 
-export interface BillCustomerWrites extends MoneyInWrites, RemindWrites, InterestWrites, CloseoutWrites {
+export interface BillCustomerWrites extends MoneyInWrites, RemindWrites, InterestWrites, CloseoutWrites, CardWrites {
   /** Send this month's pay application; with `email`, email it to the customer and the architect with its form (O4b). */
   onSend: (email: boolean) => void
   /** Record the architect's certificate; with `email`, email the customer the certified bill (O4b-2). */
@@ -70,13 +71,15 @@ interface Props {
   interestEmailed?: Record<number, { to: string; on: string }[]>
   /** The job's schedule is laid on (O6b-3: read when the window opens), so its finish can count. */
   scheduleRead?: boolean
+  /** Pay by card's switch, the app_settings row the owner turns on (O8c), read when the window opens. Unknown is off. */
+  cardOfferOn?: boolean
   /** What a write is working on: 'send', 'retainage', 'paydays', 'interest', 'bill-interest', 'latefee', 'accept', 'send-final', 'cert-<n>', 'waiver-<n>', 'remind-<n>' or 'file'. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
 }
 
-export function GcBillCustomerWindow({ state, project, today, writes, waived = [], unconditional = {}, unbilled = [], emailed = {}, interestEmailed = {}, scheduleRead = true, busy, problem, onClose }: Props) {
+export function GcBillCustomerWindow({ state, project, today, writes, waived = [], unconditional = {}, unbilled = [], emailed = {}, interestEmailed = {}, scheduleRead = true, cardOfferOn = false, busy, problem, onClose }: Props) {
   const sent = ownerPayAppsSent(project)
   const account = ownerAccount(project)
   const late = ownerLateBills(state, project)
@@ -161,7 +164,7 @@ export function GcBillCustomerWindow({ state, project, today, writes, waived = [
             <div style={{ display: 'grid', gap: '0.45rem' }}>
               <div style={{ fontWeight: 600 }}>Sent</div>
               {[...sent].reverse().map((app) => (
-                <SentRow key={app.number} state={state} project={project} app={app} today={today} writes={writes} waived={waived.includes(app.number)} unconditional={unconditional[app.number] ?? 0} emailed={emailed[app.number] ?? []} busy={busy} />
+                <SentRow key={app.number} state={state} project={project} app={app} today={today} writes={writes} waived={waived.includes(app.number)} unconditional={unconditional[app.number] ?? 0} emailed={emailed[app.number] ?? []} busy={busy} cardOfferOn={cardOfferOn} />
               ))}
             </div>
           )}
@@ -479,6 +482,7 @@ function SentRow({
   unconditional,
   emailed,
   busy,
+  cardOfferOn = false,
 }: {
   state: GcState
   project: GcProject
@@ -489,6 +493,8 @@ function SentRow({
   unconditional: number
   emailed: BillEmailed[]
   busy?: string | null
+  /** Pay by card's switch (O8c): the hint and the "They can choose card" line show only when it is on. */
+  cardOfferOn?: boolean
 }) {
   const certified = appCertified(app)
   const asked = Math.round(app.due * 100) / 100
@@ -536,7 +542,9 @@ function SentRow({
           {w}
         </div>
       ))}
-      <GcBillMoneyIn state={state} project={project} app={app} writes={writes} unconditional={unconditional} busy={busy} />
+      <GcBillCard app={app} offerOn={cardOfferOn} writes={writes} busy={busy} />
+      {/* A bill on card is paid on its card page, and Stripe records the payment (O8b): no part payment typed here. */}
+      {app.card?.state !== 'onCard' && <GcBillMoneyIn state={state} project={project} app={app} writes={writes} unconditional={unconditional} busy={busy} />}
       <GcBillRemind state={state} project={project} app={app} writes={writes} busy={busy} />
       {certified === null && (
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
@@ -562,6 +570,9 @@ function SentRow({
             Record the certificate
           </Btn>
         </div>
+      )}
+      {certified === null && cardOfferOn && (
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Recording it makes their bill. They pay it by check, or by card in their portal with a 3% fee.</div>
       )}
     </div>
   )

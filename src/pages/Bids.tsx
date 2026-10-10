@@ -71,7 +71,7 @@ import { bidsTabOpenFor, canOpenBids, isFollowupLens, isRobotLens, type BidsTabK
 import { followupLensCaption, followupLenses, followupNeedsReasonChipShows, robotLensBarShows, robotLensCaption, robotLenses } from '../lib/bids/bidsLenses'
 import { BidsLensBar } from '../components/bids/BidsLensBar'
 import { BidCellHistoryProvider } from '../hooks/useBidHistoryCells'
-import { BID_HISTORY_PUT_BACK_EVENT, type BidHistoryPutBackDetail } from '../lib/bids/bidHistoryPutBack'
+import { BID_HISTORY_PUT_BACK_EVENT, bidPutBackMovesBookPick, type BidHistoryPutBackDetail } from '../lib/bids/bidHistoryPutBack'
 import { useBidAuditsPendingCount } from '../hooks/useBidAuditsPendingCount'
 import { canWorkRobotAudits } from '../lib/bids/bidAudits'
 import { BidSubmissionFollowupTab } from '../components/bids/BidSubmissionFollowupTab'
@@ -583,7 +583,11 @@ export default function Bids() {
   onBidPutBackRef.current = (d) => {
     if (d.table === 'bids') void loadBids()
     if (selectedBidForCounts?.id === d.bidId) refreshAfterCountsChange()
-    if (selectedBidForPricing?.id === d.bidId) void Promise.all([loadBidPricingAssignments(d.bidId, selectedPricingVersionId), loadPricingDataForBid(d.bidId)])
+    // A put back on the bid's book pick re-resolves the book inside the pricing engine (v2.5130);
+    // reloading the current book's prices here would race it with the old book's rows.
+    if (selectedBidForPricing?.id === d.bidId && !bidPutBackMovesBookPick(d.table)) {
+      void Promise.all([loadBidPricingAssignments(d.bidId, selectedPricingVersionId), loadPricingDataForBid(d.bidId)])
+    }
   }
   useEffect(() => {
     const hear = (e: Event) => {

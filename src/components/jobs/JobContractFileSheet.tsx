@@ -5,7 +5,8 @@
  * sweep mounts it inline in the pane (and prefilled with a file dropped on a
  * row). The write is `fileSignedJobContract` — one path for all three doors.
  * A paper signed by two (v2.4657): a Second signer box, filled with the second signer the draft
- * named, files that name as the agreement's second signature.
+ * named, files that name as the agreement's second signature. A frame already signed through the
+ * link shows as a line in place of its box and stays (v2.4657 the second, v2.5101 the first).
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -14,7 +15,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { isGoogleDocsUrl, isHttpUrl, shortDocumentLabel } from '../../lib/jobs/jobContractDocument'
 import type { JobContractDraftPayload } from '../../lib/jobs/jobContractDraftWrite'
-import { coSignatureOnFile, fileSignedContractDateBlocks, fileSignedContractReady, fileSignedJobContract } from '../../lib/jobs/jobContractFileWrite'
+import { coSignatureOnFile, fileSignedContractDateBlocks, fileSignedContractReady, fileSignedJobContract, firstSignatureOnFile } from '../../lib/jobs/jobContractFileWrite'
 import { formatContractStamp, type JobContractRow } from '../../lib/jobs/jobContractLifecycle'
 
 const labelStyle: CSSProperties = { fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }
@@ -92,8 +93,9 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, default
     if (coTypedRef.current || (!namedCoSigner && !draftLoaded)) return
     setCoSignerName(namedCoSigner)
   }, [namedCoSigner, draftLoaded])
-  /** A PDF emailed to sign by hand keeps its link: the second signer may have signed there already. */
+  /** A PDF emailed to sign by hand keeps its link: either signer may have signed there already. */
   const coOnFile = coSignatureOnFile(existingDraft)
+  const firstOnFile = firstSignatureOnFile(existingDraft)
   const [file, setFile] = useState<File | null>(initialFile)
   const [link, setLink] = useState(initialLink)
   /** The green "linked" line only after a paste / Enter / blur — typing keeps the input mounted (v2.2744). */
@@ -101,13 +103,14 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, default
   const [attachOpen, setAttachOpen] = useState(initialFile != null)
   const [busy, setBusy] = useState(false)
 
-  const effectiveName = signerName.trim() || defaultSignerName.trim()
+  // v2.5101: with the first signature on file, the paper's signer is the Second signer box.
+  const effectiveName = firstOnFile ? coSignerName.trim() : signerName.trim() || defaultSignerName.trim()
   const ready = fileSignedContractReady({ link, file, signerName: effectiveName })
 
   const record = async () => {
     if (busy) return
     if (!effectiveName) {
-      showToast('Enter who signed the contract.', 'error')
+      showToast(firstOnFile ? 'Enter who signed the paper.' : 'Enter who signed the contract.', 'error')
       return
     }
     if (!isHttpUrl(link.trim()) && !file) {
@@ -204,7 +207,13 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, default
       ) : null}
       <div style={rowStyle}>
         <span style={labelStyle}>Signed by</span>
-        <input style={inputStyle} value={signerName} onChange={(e) => setSignerName(e.target.value)} placeholder={defaultSignerName.trim() || 'Customer name'} aria-label="Who signed" />
+        {firstOnFile ? (
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="contract-file-first-on-file">
+            {firstOnFile.name} signed through the link on {formatContractStamp(firstOnFile.signedAt)?.split(',')[0] ?? 'an earlier day'}. That signature stays.
+          </span>
+        ) : (
+          <input style={inputStyle} value={signerName} onChange={(e) => setSignerName(e.target.value)} placeholder={defaultSignerName.trim() || 'Customer name'} aria-label="Who signed" />
+        )}
         <span style={labelStyle}>Second signer</span>
         {coOnFile ? (
           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="contract-file-co-on-file">
@@ -218,7 +227,7 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, default
               coTypedRef.current = true
               setCoSignerName(e.target.value)
             }}
-            placeholder="Only if two people signed"
+            placeholder={firstOnFile ? 'Who signed the paper' : 'Only if two people signed'}
             aria-label="Second signer"
           />
         )}
@@ -271,7 +280,7 @@ export default function JobContractFileSheet({ jobId, defaultSignerName, default
           {cancelLabel}
         </button>
       ) : null}
-      <button type="button" style={{ ...btnPrimary, opacity: ready ? 1 : 0.55 }} disabled={busy || !ready} onClick={() => void record()} title={ready ? undefined : 'Paste the Google Doc link, or attach a scan'} data-testid="contract-file-record">
+      <button type="button" style={{ ...btnPrimary, opacity: ready ? 1 : 0.55 }} disabled={busy || !ready} onClick={() => void record()} title={ready ? undefined : !effectiveName ? (firstOnFile ? 'Enter who signed the paper' : 'Enter who signed the contract') : 'Paste the Google Doc link, or attach a scan'} data-testid="contract-file-record">
         {busy ? 'Recording…' : recordLabel}
       </button>
     </div>

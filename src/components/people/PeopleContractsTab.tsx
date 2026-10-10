@@ -56,6 +56,7 @@ import { PersonContractSignedRecordModal } from '../contracts/PersonContractSign
 import { ContractBookIcon } from '../icons/ContractBookIcon'
 import { useToastContext } from '../../contexts/ToastContext'
 import { NO_ARCHIVED_ROSTER, splitNamesByArchived, type ArchivedRoster } from '../../lib/people/rosterPeople'
+import { isCompanyPaperName } from '../../../supabase/functions/_shared/companyPaper'
 
 /** Small tinted pill for a document signing state; anything unknown renders as unsent. */
 function ContractStatusChip({ status, label }: { status: string; label: string }) {
@@ -665,7 +666,8 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
         setTwoPartyTemplateIds(twoPartyTemplateIdSet((tpls ?? []) as unknown as Array<{ id: string; schema: FormSchema | null }>))
       } else setTwoPartyTemplateIds(new Set())
       setPersonContractAssignments((assignmentsRes.data ?? []) as PersonContractAssignment[])
-      setPersonContractDocuments((documentsRes.data ?? []) as unknown as PersonContractDocument[])
+      // A trade partner company's papers (GC mode, B6-b-i) share the table but are no one's here: never listed, never counted.
+      setPersonContractDocuments(((documentsRes.data ?? []) as unknown as PersonContractDocument[]).filter((d) => !isCompanyPaperName(d.person_name)))
     }
   }
 

@@ -99,6 +99,7 @@ when_to_read:
    - [submit-gc-trade-portal](#submit-gc-trade-portal)
    - [gc-trade-email](#gc-trade-email)
    - [gc-customer-email](#gc-customer-email)
+   - [gc-card-bill](#gc-card-bill)
    - [gc-money-monday-email](#gc-money-monday-email)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
@@ -1037,6 +1038,8 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### gc-trade-portal
 
+> **v2.5128 — the slice carries the company's own papers** (GC mode, the Board's B6-b-ii-a): its rows in `person_contract_documents` with its `company_id`, as `id, company_id, doc_type, status, sent_at, signed_at, expires_at` only, for its master agreement first (`TRADE_PORTAL_FIELDS.papers`; never a paper's link, body or values). **Redeploy required.** The page reads a missing list as none, so the client may ship first.
+
 **Purpose**: GC mode's trade partner portal, the read (v2.4916, P1b-ii of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`). One no-password link per trade partner company (`gc_trade_portal_links`, the sub portal's spine keyed to `gc_companies`) opens that company's slice: its asks and quotes, the quote days it gave, the asked projects with their trades, scope lines, known exclusions, plan sets, questions it may read, who to call, its people and the emails we sent it. Since P4b-i (v2.5044) it also reads its own work: the award of each trade it was asked to quote (its own ask, or `elsewhere` when another company holds it, so the portal reads the ask as lost and never learns who won), its statement of work, the charges to it and the changes it asked for, and of a change order one became only its part (the number, the status, the days sent and answered, and the cost). The read never carries our price to the customer, a change order's price, our budgets, fee, plugs or covers, another company or the office's notes. Every query is held to the link's company, then `_shared/gcTradePortalSlice.ts` copies only the fields named in `TRADE_PORTAL_FIELDS` (its never-sees test plants a marked value in each field outside the list).
 
 **Endpoint**: `GET /functions/v1/gc-trade-portal?t=<token>[&preview=1]` · **Auth**: none, the link is the key. `verify_jwt = false` in `config.toml`. The token is resolved with the service role (raw token, then its SHA-256 hash) by `_shared/gcTradeLink.ts`, the one rule the writes share (v2.4925). A turned-off or unknown link answers `404 {error: 'linkOff'}`, a malformed one `400 {error: 'badRequest'}`, and a failure `500 {error: 'failed'}`. Errors are keys the page says in the company's language. A staff bearer or `preview=1` is only a "who is looking" hint for view counting. **Response**: `{ today, slice }`. The page maps the slice with `src/lib/gc/tradePortalState.ts` and reads it with the portal's kernels (`src/lib/gc/portal.ts`).
@@ -1104,6 +1107,8 @@ P4b-i (v2.5044) adds the two kinds above on P4a's verbs, `ask_change` under the 
 
 ### gc-trade-email
 
+> **v2.5041 — the frame takes an optional action** (`_shared/gcTradeEmail.ts`, for send-contract-for-signature's company branch, agreed with the Portal lane): with no action this function's emails are byte for byte as before (`src/lib/gc/gcTradeEmailFrame.pin.test.ts`), and a kept copy now also blanks a `?t=` token. **Redeploy with send-contract-for-signature** so `check:edge-drift` reads level.
+
 **Purpose**: GC mode's one sender for every email to a trade partner company (v2.4936, P3-a of `to-dos/gc-mode/PORTAL_REAL_BUILD.md`, plan `to-dos/gc-mode/mockups/portal-p3.md`, both on branch `spike/gc-mode`). A lane sends by kind: the Ask window's invitation and reminder, a new set's plans, the questions window's answer, and the rest as they land. Each email goes to whoever at the company gets that kind, carries the company's portal link, and is recorded once per key in `gc_trade_messages`, which the portal's *Messages* reads. The questions window's answer (v2.4938), the Ask window's invitation (v2.4939) and a new set's plans (v2.4940) call it; `nudge` comes next. The words for a back-charge (`backChargeEmail`: `sent`, `settled`, `taken`, kind `backCharge`) and for the office's answers to a change a company asked for (`changeAskEmail`: `down`, `sent`, `no`, kind `changeAsk`) are built in `src/lib/gc/tradeEmail.ts` (P4b-iii, v2.5049), keyed `<id>:<stage>`, for Building's screen, Owner Billing's O3b and U6 to send.
 
 **Endpoint**: `POST /functions/v1/gc-trade-email` with `{ companyId, kind, key, projectId | null, lang, subject, lines, group? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { companyId, messageId, emailSendLogId, to }`, the same with `already: true` for a key sent before, or `{ error: key, detail? }`.
@@ -1159,7 +1164,7 @@ The window writes the words (`src/lib/gc/customerEmail.ts` and the reminder's `p
 3. The shape (`parseCustomerEmail` in `_shared/gcCustomerEmails.ts`) is `400 badRequest` when off.
 4. No project, or no GC project on it, is `404 notFound`. The row: none with that id is `404 notFound`, and another project's is `409 otherProject`. `certified` wants the pay application's certificate, above zero, since nothing certified makes no bill (`409 notCertified`), and `change_order` a change order out for their signature, not a draft and not answered (`409 notSent`). A reminder must be this project's and not emailed yet (`409 alreadySent`), and it goes in the subject and lines `gc_remind_customer_to_pay` filed, not the request's. An interest bill must be this project's.
 5. Who gets it: `certify_ask` goes to the project's architect (`gc_projects.architect_customer_id`) and every other kind to its customer, at the address the Pipeline bills (`customerBillingEmail`: the billing email, else the contact email). Nobody, or no address, is `422 noEmail`.
-6. The email (`buildGcCustomerEmail`): the lines as paragraphs; for `certified`, `reminder` and `interest_bill`, *You can see this bill in your portal:* and the customer's portal link when one is already on (`loadPortalReturnUrl`, `APP_ORIGIN`; never minted, and only an https address); then *Thank you,*, the signer and Click Construction. The project manager signs, else the sender.
+6. The email (`buildGcCustomerEmail`): the lines as paragraphs; for `certified`, `reminder` and `interest_bill`, *You can see this bill in your portal:* and the customer's portal link when one is already on (`loadPortalReturnUrl`, `APP_ORIGIN`; never minted, and only an https address); then *Thank you,*, the signer and Click Construction. **Pay by card** (v2.5125, Owner Billing O8c): for `certified` and `reminder`, with a portal link, when the switch is on (`app_settings.gc_card_bill_on_v1`) and the bill can still turn (billed, not on Stripe, nothing paid, never on card: `gcEmailCardFee`), the portal line reads *Or pay it by card in your portal:* and *Paying by card adds a 3% card fee of $X.* follows. A reminder on a bill already on card carries its own words from the window (*You chose to pay it by card…* and *Pay it here:* with the bill's pay link). The project manager signs, else the sender.
 7. The send: from `Click Construction <the EMAIL_FROM address>` (`mailboxWithName`), Reply-To the project manager else the sender, the form attached when the request carries one. A refusal from Resend is `502 sendFailed` with Resend's words in `detail`.
 8. The sent copy, after the send ([SENT_COPIES.md](./SENT_COPIES.md)), by `GC_CUSTOMER_EMAIL_FILED_AS`: `bill_gc_pay_app` for the pay application and the ask, `bill_gc_certified` for the certified bill (both under Bills on the Documents page; never `pay_application`, the Pipeline's G702 workbook), `bill_gc_reminder` for a reminder and `bill_gc_interest` for an interest bill, also under Bills, and `job_contract_gc_change_order` under Contracts. Each carries the recipient's name and customer, the billing job (`gc_projects.billing_job_id`, when there is one) and its row as the source. Nothing else is written but a reminder's log (step 9): the copies are the record of what went, and the windows read them for their *Emailed to* lines.
 9. A reminder keeps its email's log row, found by the Resend id, as `gc_owner_pay_reminders.email_send_log_id` (O1's one door on a sent reminder). The window reads a reminder with none as *The email did not go.*
@@ -1169,6 +1174,25 @@ Each window does its own write first, then the email: the pay application (`gc_s
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `EMAIL_FROM`, `APP_ORIGIN` (the portal link's address; clicktooling.com when unset). Logged to `email_send_log` by `_shared/resendSendEmail.ts` with `email_type` `gc_customer_email`.
 
 ---
+
+### gc-card-bill
+
+**Purpose**: GC mode's card payment for a certified bill (v2.5123, Owner Billing O8b of `to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md` on branch `spike/gc-mode`; the plan is `mockups/owner-billing-o8.md`). The customer turns a certified GC bill into a card-only Stripe bill from their portal, and the turn adds a 3% credit card fee (the owner's word, 2026-10-09; counsel's okay the same day). Staff never turn one: `create-stripe-invoice` refuses a GC bill. The database's half is O8a (`20261010026000`: `gc_card_bill_begin`, `gc_card_bill_finish`, `gc_card_bill_undo`, `gc_owner_card_bills`). The pure half is `_shared/gcCardBill.ts`, which the app's tests import.
+
+**Endpoint**: `POST /functions/v1/gc-card-bill` · **Auth**: the portal door has none (the portal link is the capability); the undo door reads the staff JWT in its body; `verify_jwt = false`. **Response**: `200 { ok: true, url }` (portal) or `200 { ok: true }` (undo), or `{ error: key, words }` with `GC_CARD_BILL_ERRORS`' status. `words` is what the page shows as it is.
+
+**The portal door**, `{ token, invoiceId }`, in order:
+1. The offer is off unless its switch is on (`403 off`): the `app_settings` row `gc_card_bill_on_v1`, which the owner turns on in Settings → Jobs & billing (v2.5125, migration `20261010042000`; it replaced O8b's env value `GC_CARD_BILL_ON`).
+2. The link, by `token` or its hash, must be live (`404 linkGone`). The bill must be one a pay application's certificate made (`gc_owner_pay_apps.invoice_id`) on a GC project of the link's customer (`gcPortalOwns`, `404 notYours`). The customer must have an email for Stripe's receipt (`customerBillingEmail`, `422 noEmail`).
+3. `gc_card_bill_begin` as the service role checks the bill and writes the pending row at 3%, rounded to the cent. Its refusals reach the customer in its own words (`gcCardBillDbWords`, `409 refused`): an interest bill, a paid bill, a bill on Stripe, a bill with any payment, a bill taken back to a check bill, a second press while the page is made. A bill on card already answers its card page.
+4. Stripe, in `GC_CARD_BILL_STRIPE_MODE` (`test` unless it says `live`, the owner's word): the customer's Stripe customer for that mode (the same per-mode column `create-stripe-invoice` keeps), made when none. Then a `send_invoice` invoice with `payment_settings.payment_method_types: ['card']`, the app's number (`buildPipetoolingStripeInvoiceNumber`), the portal footer, `metadata.pipetooling_invoice_id`, and two lines: *Pay application N for the job, certified Oct 9*, then *Credit card fee (3%)*. It falls due by the contract (the certificate's day plus `owner_pay_days`) when that is ahead, else today. Finalized; nothing is emailed.
+5. `gc_card_bill_finish` writes the Stripe invoice onto the bill: the total, the Stripe columns, the fee as a `fee_lines` rider. If anything after begin fails, the half-made Stripe invoice is voided (or deleted as a draft), `gc_card_bill_undo` as the service role clears the pending row, and the answer is `502 stripeFailed`.
+
+**The undo door**, `{ undo: invoiceId }`: Back to a check bill (O8c's press). No session is `401 signIn`; anyone off the money team (`GC_CARD_BILL_UNDO_ROLES`, the same as `GC_CUSTOMER_EMAIL_ROLES`) is `403 moneyTeamOnly`; a training account or a digital twin is `403 readOnly` / `403 twin`. The bill must be on card (`409 notOnCard`). Stripe first: a paid invoice, or one with anything paid, is `409 paidOnStripe` (*Stripe shows a payment. Refund it in Stripe first.*); an open one is voided, a draft deleted. Then `gc_card_bill_undo` as the caller puts the bill back to its base, takes the fee off and lays the revenue again.
+
+The payment itself comes through `stripe-webhook` as on any Stripe bill (`metadata.pipetooling_invoice_id`), for the total with its fee. The portal's offer is `customer-portal`'s `cardBills`.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `STRIPE_SECRET_KEY_TEST` / `STRIPE_SECRET_KEY_LIVE`, `APP_ORIGIN` (the footer's portal link; clicktooling.com when unset), `GC_CARD_BILL_STRIPE_MODE` (unset is test). The switch is no longer a secret: it is the `app_settings` row above. Logs one line per bill turned (`gc_card_bill_on_card`) and per bill taken back (`gc_card_bill_undone`).
 
 ### gc-money-monday-email
 
@@ -1390,6 +1414,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### customer-portal
 
+> **v2.5110 — the sample portals' money through the builders** (What customers see #103, PR 2): the `sample`, `sample-gc` and `sample-owner` answers build `bills`, `sharedBills`, `waivers`, `checks` and `totalDue` from fixture rows (`samplePortalMoneyRows` in [`_shared/customerSampleFixtures.ts`](../supabase/functions/_shared/customerSampleFixtures.ts)) through `buildPortalBills`, `buildPortalSharedBills`, `buildPortalWaivers` and `buildPortalChecks`, called as the live branch calls them (`samplePortalMoney`). The samples now send `sharedBills` and `checks`. The live branch is unchanged. **Redeploy required.**
+
 > **v2.4650 — records for an owner**: the payload gains `ownerRecords` — the request the office offered on this portal and has not sent (`lien_owner_record_requests` for the link's customer with `file.offer` and no `sent_at`): `{ id, address, ownerName, offeredOn, signed: { on, name } | null }`, or null. The packet itself is never in the payload.
 >
 > **v2.4651 — sent on the portal**: `ownerRecords` is the latest offered request, sent or not; one sent *On their portal* (`file.sent.how = 'portal'`) carries `sent { on, downloadUrl }` — the packet's PDF copy in `sent_documents` (kind `owner_records_packet`, source the request), as a signed URL good for an hour with `download: true`; null while the copy is still being kept. A request sent any other way is left out: the owner has the paper.
@@ -1415,6 +1441,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 **Stages** (v2.2933; rewritten v2.3132, Stage Plan PR 5): for `gc` / `all` links, jobs whose `gc_shares_stage_dates` is on and whose `gc_customer_id` is the viewer contribute `stages[]` — one `{ jobId, jobLabel, jobAddress, view, askWindowId, askWindow, entries: [] }` per job with something to show. `view` is the `GcView` from the shared Stage Plan kernel (`_shared/stagePlan.ts`, the same rules the Bill tab and the Edit drawer run): the line items whose eye (`jobs_ledger_fixtures.shared_with_gc`) is on, Order rows as one numbered sequence (`done` / `now` / `next` / `later`, the live row's percent in words, one `askable` step — the `next` one), Any rows under `also`. `askWindowId` is the `job_stage_windows` row behind the next step (where a "Need other dates?" ask lands) and `askWindow` its span. Loader `_shared/gcStages.ts` → `loadGcStageInputs` (fixtures with `stage_kind` / `shared_with_gc`, windows, orders **without** `display_name`, sheets, invoices, payments) + `gcPortalStages`; tested from `src/lib/subs/gcStages.test.ts`. Never a name, never "offered", never money. `entries` is kept empty one release so a stale client prints nothing.
 
 **GC jobs** (v2.5025, GC mode's Owner Billing O7c): for `customer` and `all` links, `gcJobs[]`. Each GC project of the link's customer that we won (`projects.customer_id`, stage buyout, building or closed) comes with the change orders waiting on them (`status = 'sent'`), `canAccept` once every line is billed (the last progress pay application's work so far covers `gc_owner_contract_now`, as `gc_record_acceptance` checks), and `accepted` with how. `_shared/gcPortal.ts` reads and shapes it (`loadGcPortalJobs`, `gcPortalJobs`); a failed read leaves it empty and the statement still shows. The sample token `sample-owner` shows a sample GC job.
+
+**Card bills** (v2.5123, Owner Billing O8b): `cardBills[]`, `{ invoiceId, state, base, fee, total }` for the statement's bills. `offer` is a certified GC bill (`gc_owner_pay_apps.invoice_id`) with no Stripe page and nothing paid, offered at 3% (`gcPortalCardBills`, `_shared/gcCardBill.ts`) when the switch is on (the `app_settings` row `gc_card_bill_on_v1`, read as the service role since v2.5125) and the customer has an email. `onCard` is one turned to card (`gc_owner_card_bills.status = 'on_card'`), shown whether the switch is on or not, so the bill says its fee. A bill taken back to a check bill is offered no more. The page shows **PAY BY CARD** and its panel (`PortalCardBill.tsx`), which posts to `gc-card-bill`. The sample token `sample-owner` shows the offer on its certified bill.
 
 > **v2.3590 — live pay links**: the invoice select adds `stripe_invoice_id, stripe_mode, stripe_invoice_status`; every open Stripe bill past the stale margin (`linkMayBeStale`, 25 days after `billed_at`, or an unknown billed date) is re-fetched from Stripe through [`_shared/stripeInvoiceLinkRefreshIo.ts`](../supabase/functions/_shared/stripeInvoiceLinkRefreshIo.ts) before `buildPortalBills` runs, the row's `hosted_invoice_url` replaced and the payload's `payUrl` built from the fresh link — so Pay never opens Stripe's "link expired" page. Young bills cost no Stripe call; a failure leaves the stored link standing (the nightly `refresh-stripe-invoice-links` renews it anyway).
 
@@ -1565,7 +1593,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false` in [`supabase/config.toml`](../supabase/config.toml).
 
-**Sample** (v2.2758, What customers see): `token=sample` / `sample-done` skips the row lookup — no sign-in (the data is invented; v2.2763 dropped the office-JWT gate) — and gets the fixture from `_shared/customerSampleFixtures.ts` laid over the live `app_settings` (estimate copy, `estimate_public_terms_body`); `sample-done` answers the 409 `already_accepted` shape so the page shows the thank-you. No view is logged.
+**Sample** (v2.2758, What customers see): `token=sample` / `sample-done` skips the row lookup — no sign-in (the data is invented; v2.2763 dropped the office-JWT gate) — and gets the fixture from `_shared/customerSampleFixtures.ts` laid over the live `app_settings` (estimate copy, `estimate_public_terms_body`); `sample-done` answers the 409 `already_accepted` shape so the page shows the thank-you. No view is logged. Since v2.5112 (punch list #103) the open sample takes a saved estimate's path: two choices (the ★ on the like-for-like tank) and one add-on are saved by `estimateOptionsDraftPersistFields` ([`_shared/estimateOptionsPersist.ts`](../supabase/functions/_shared/estimateOptionsPersist.ts), the office's save, which `src/lib/estimates/estimateOptions.ts` wraps and which writes the ★ option's lines and total), round-tripped as jsonb and read back as a row is, the options through `normalizeSharedEstimateOptions`; `src/lib/estimates/sampleEstimate.test.ts` holds the sample to both kernels, and the sample estimate email prices every option from it as this function's sender does.
 
 **Behavior**: SHA-256 hash of `token`; load row by `public_token_hash` where `status = sent`; enforce `public_token_expires_at` and `valid_until`. Returns estimate fields plus **`customer_experience`**: public UI strings (accept, thank-you, document labels — omits email subject/body). Uses **`customer_experience_sent`** when set, else merges **`app_settings`** + **`customer_experience_overrides`**. If **`status = customer_accepted`**, responds **409** with `code: already_accepted` and **`customer_experience`** for the thank-you page.
 
@@ -1601,7 +1629,7 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 **Gateway**: `verify_jwt = false`; the plaintext room token (portal-links precedent) is the credential.
 
-**Sample** (v2.2758, What customers see): `t=sample` / `sample-done` skips the room lookup — no sign-in (v2.2763 dropped the office-JWT gate) — and gets the fixture room (two options, one pending change order; `sample-done` = signed with the CO accepted) with `terms` / `exclusions` read live from the bid cover-letter defaults. No `room_view` is logged.
+**Sample** (v2.2758, What customers see): `t=sample` / `sample-done` skips the room lookup — no sign-in (v2.2763 dropped the office-JWT gate) — and gets the fixture room with `terms` / `exclusions` read live from the bid cover-letter defaults. No `room_view` is logged. Since v2.5105 (punch list #103) the payload takes a real revision's path: `SAMPLE_BID`'s two priced sections, each with a bid version, and one with-and-without add-on go through `buildBidRoomRevisionPayload` ([`_shared/bidRoomPublish.ts`](../supabase/functions/_shared/bidRoomPublish.ts), the Cover Letter tab's publish kernel, which `src/lib/bids/bidRoomPayload.ts` re-exports) and back through `parseSharedBidRoomPayload`; `src/lib/bids/sampleBidRoom.test.ts` holds the sample to the kernel's output. One pending change order rides along; `sample-done` is signed in `sign-bid-room`'s metadata shape (the base and the add-on, the grand total) with the CO accepted.
 
 **Behavior**: GET loads the room by `public_token`, 410 `closed` when withdrawn, 404 `empty` before the first publish; returns the **latest revision** (`rev_number`, note, published_at) with its payload parsed by [`_shared/bidRoomPayload.ts`](../supabase/functions/_shared/bidRoomPayload.ts), the room's attachment (the Google Docs letter), the latest **proposal** signed/declined event (CO answers, `metadata.kind='change_order'`, never decide the proposal's state), and `documents` — the change orders published into the room (v2.2472, `estimates.bid_room_id`); logs a `room_view` event with IP/UA. POST logs `option_viewed` — since v2.2697 the key is validated against the room's current revision and the write passes the shared throttle (30 s dedupe, 60/10 min per IP); always 200, invalid or throttled input dropped — browsing must never break. Requires migration `20260828215717`.
 
@@ -1854,6 +1882,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ### share-job-contract
 
+> **v2.5101 — a record part link, part paper is shared as the paper**: a signed row with either frame filed from the paper (`filedOnPaper` in [`_shared/jobContractSigners.ts`](../supabase/functions/_shared/jobContractSigners.ts): `signer_mode` or `co_signer_mode` is `paper`) sends `paper_upload_path` or its `signed_document_url`, as a paper record always has. That covers a first signature given through the link with the second filed from the paper (punch list #64). It has no stored PDF, and the rebuild printed its paper frame as typed. The email still names both signers. **Redeploy required.**
+
 > **v2.4596 — the signed copy names both signers**: *Email a copy…* says *signed by Sam Owner and Alex Owner* on a two-frame agreement, through `signerNamesLine` from [`_shared/jobContractSigners.ts`](../supabase/functions/_shared/jobContractSigners.ts). The rebuilt PDF still prints each frame's own name. Since v2.4590 the window's *Download the PDF* and *Download & mark handed over* send the draft's `co_signer_name`. `draft_pdf` has read that since v2.4186, so that part needs no deploy. **Redeploy required** for the email's words.
 
 > **v2.4574 — a shared agreement is kept**: `send_to_sign` files the email with the unsigned PDF (`job_contract`); the share of a signed copy files the email with the signed PDF or its link (`job_contract_shared`; the contract, or the accepted estimate, as its source). `pdf_url` and `draft_pdf` send nothing and file nothing. The same change adds the missing import of `signedRecordId`: since v2.4186 the paths that rebuild a signed PDF (a contract whose stored PDF is missing, an accepted estimate's first share) threw. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
@@ -1870,7 +1900,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **Gateway**: `verify_jwt = false` (JWT validated in-body; rows read as the caller).
 
-**Behavior**: Contracts must be `signed`; the PDF is `signed_pdf_path` from `job-contract-documents` (rebuilt once with `_shared/jobContractPdf.ts` and stored when missing; paper records send `paper_upload_path`). Estimates must be `customer_accepted` with a consent stamp; their PDF is built once from the frozen line items / option / terms / acceptor fields and cached at `estimates/<id>/signed.pdf`. `pdf_url` → 1-hour signed URL. `email` → Resend with the attachment, reply-to = the sender, the durable link for contracts, optional note; then a `shared` `job_contract_events` row (contracts) and a `contract_shared` `job_activity_events` row (both, when a job is known) carrying `to`.
+**Behavior**: Contracts must be `signed`; the PDF is `signed_pdf_path` from `job-contract-documents` (rebuilt once with `_shared/jobContractPdf.ts` and stored when missing; a record with a frame filed from the paper sends `paper_upload_path`, else its document link). Estimates must be `customer_accepted` with a consent stamp; their PDF is built once from the frozen line items / option / terms / acceptor fields and cached at `estimates/<id>/signed.pdf`. `pdf_url` → 1-hour signed URL. `email` → Resend with the attachment, reply-to = the sender, the durable link for contracts, optional note; then a `shared` `job_contract_events` row (contracts) and a `contract_shared` `job_activity_events` row (both, when a job is known) carrying `to`.
 
 ---
 
@@ -1912,6 +1942,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **Endpoint**: `POST /functions/v1/file-submittal-package` — `{ submittal_id }`; staff user JWT in `Authorization` (a pricing sharer on the bid through `can_access_bid_for_pricing`, or an estimating role). Returns `{ ok, reused, file_id, file_url, file_name, folder_link }`; 503 `not_configured` without the Drive secrets, 409 `not_fileable` for a draft or an unbuilt package, 502 with `folder_link` when Google refuses the upload (the storage-quota note points at `DRIVE_IMPERSONATE_USER`, `docs/DRIVE_INTAKE_SETUP.md`). Idempotent: a revision already filed answers `reused: true`; a same-name file in the folder is reused. Stamps `bid_submittals.drive_file_id / drive_file_url / drive_filed_at`, and `bids.drive_link` when the bid had none. Helpers: `_shared/driveUpload.ts` (lifted from `drive-intake` in the same release — it imports them now), names in `_shared/submittalDriveNames.ts`. Secrets: `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_JOBS_FOLDER_ID`, optional `DRIVE_IMPERSONATE_USER`.
 ### legal-portal
+
+> **v2.5124 — no ZZ test job reaches the firm**: `readLienBook`'s `jobs_ledger` select adds `customer_name`, so it is the same list as `LIEN_BOOK_JOB_COLUMNS` (`src/lib/jobs/lienTimelineBookAssemble.ts`). `shapeLienBookForCounsel` (`_shared/legalLienBookShape.ts`) then drops every ZZ test job (punch list #61: its own, its customer's or its GC's name starts with ZZ) from the months, affidavit windows, desk items, filings, owners and jobs, with a ZZ GC and any GC or property only those jobs point at, and cuts `customer_name` before the book is sent. A failed jobs read now sends no book (the portal still opens), since no test job could be told apart. **Redeploy owed** (`supabase functions deploy legal-portal`); until then the old function sends the book with any ZZ job in it.
 
 > **v2.4821 — the firm's answers to Start here**: the answer adds `intake: { answers, sentAt, sentBy }`, read from `legal_firms` in a query of its own after the firm row, so the payload never fails before migration `20261008001000` lands: until then `intake` is left out and the portal hides the step. **Redeploy after the push.**
 
@@ -2141,6 +2173,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### get-contract-for-signer
 
+> **v2.5041 — a company's paper names the company** (GC mode, B6-b-i): for a row with `company_id`, the response's `person_name` and a W-9's prefilled name are the company's (`paperForName`, `_shared/companyPaper.ts`), never its stored `gc-company:<id>` name. **Redeploy required.**
+
 **Purpose**: Public read of a **sent** person contract document for the signing page (no JWT).
 
 **Endpoint**: `GET /functions/v1/get-contract-for-signer?token=<opaque>`
@@ -2183,6 +2217,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-contract-for-signature
 
+> **v2.5041 — a trade partner company's paper (GC mode, the Board's B6-b-i)**: a body with `trade_email: { companyId, key, lang, subject, lines, actionLabel }` takes the company branch, gc-trade-email's steps in order. A dev only (`officeOnly`; a training account or a twin `readOnly`), Spanish held (`spanishHeld`), the company's own sendable paper (`notFound` when the paper is not that company's), the `key` sent once and checked before any token is minted (`already: true`, nothing sent), the company's `contracts` people with the rest cc'd (`noEmail`), the token as for a person, then `buildGcTradeEmail` with the signing link as its action and the company's portal under it when it has a link (read, never minted). It writes a `gc_trade_messages` row (`msa`, or `paper` for a W-9, group `contracts`) and the sent copy (`gc_trade_email`, its `?t=` kept as `…`). Errors are gc-trade-email's keys. The person path is unchanged: its request checks, sendability and sent copy moved word for word to `_shared/contractSigningSend.ts` and are pinned against main with its email by `src/lib/contractSigningSend.pin.test.ts`. **Redeploy required.**
+
 > **v2.4574 — the email is kept as it went**: the signing email is filed (`person_contract`, the document as its source), under the person when the document's name finds exactly one active person. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: Verify JWT, ensure caller can read the **`person_contract_documents`** row, require at least one of **`signing_body_html`**, **`canonical_document_url`**, **`url`**, or **`form_template_id`** (v2.2797: a form row needs no body), mint a 14-day token, set **`status = sent`**, email the Resend link to **`{public_origin}/contract/accept?t=…`**.
@@ -2207,6 +2243,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### open-contract-form-pdf
+
+> **v2.5041** (GC mode, B6-b-i): a company's form PDF downloads as `<document_name> - <company name>.pdf`, never under its stored name. **Redeploy required.**
 
 **Purpose**: Mint a short-lived link to a **signed form PDF** (Contract Forms, v2.2798) — the flattened copy in the private `contract-form-pdfs` bucket, the only place a form's sensitive answers exist — for a staff member allowed to see it, and log the open.
 
@@ -2720,8 +2758,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 **Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Jobs → Reports → **Email reports** → the person's row, or the Dashboard → Recent Reports mail button — one modal since v2.3570, one list by person since v2.3595). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
 
-- **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors`, or (v2.3480) the author is, or is led by, a leader in `report_email_subscription_team_leads` (`team_leader_assignments` read at send time) — skipping any already in the dispatch log. The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
-- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors plus each named team lead and everyone they lead.
+- **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors` — skipping any already in the dispatch log. (The v2.3480 team-lead scope went with the Team leads list in v2.5088.) The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
+- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors.
 
 **Endpoint**: `POST /functions/v1/send-report-email`
 
@@ -2916,9 +2954,9 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 
 ### notify-team-lead-clock
 
-**Purpose**: When a team member **clocks in** (`clock_sessions` INSERT with `clocked_in_at`) or **clocks out** (`clocked_out_at` becomes non-null on UPDATE), send Web Push to each **leader** who opted in via `team_leader_clock_notify_prefs` for that leader–member assignment. **Frozen since v2.3616** (Supervision retired the Team leads list; no UI writes assignments or prefs any more) — it keeps serving the rows that exist until the table is dropped (`to-dos/team-leads-table-retirement.md`). Intended to be invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser.
+**Purpose**: The try-out loop's push when a trial helper **clocks out** (`clocked_out_at` becomes non-null on UPDATE). Invoked by a **Database Webhook** on `public.clock_sessions` (INSERT + UPDATE), not from the browser; every other event is skipped. Until v2.5088 it also pushed *Team clock in / out* to leaders who opted in on the Team leads list (`team_leader_assignments` + `team_leader_clock_notify_prefs`); that flow went with the list (migration `20261010022000`), and the name stayed so the webhook needs no rewiring.
 
-**Try-out branch (v2.3650)** — independent of the list, and not frozen: when the member clocking **out** has `users.trial_prospect_id` (a trial helper — the try-out loop, `recent-features/v2.3627.md` and its follow-ons; the to-do closed 2026-09-26), the function calls `trial_helper_supervisors(helper, work_date)` (service role only) for everyone who could run a job the helper worked that day — a master, or a helper / sub with `needs_supervision` off, listed or clocked on the same job — skips anyone who already has a `team_prospect_trial_verdicts` row for that card and day, and pushes the rest *Bryan clocked out of Oak St — take Bryan again?* (`_shared/trialVerdictPush.ts`, shared with the client card) opening `/dashboard#trial-verdicts`. One `tag` per card and day, so a second clock-out replaces the notification rather than stacking; `notification_history.template_type = 'trial_helper_verdict'`. Best-effort: a failure here never stops the opted-in leader flow, and the response carries `trial: { leads, pushed }`. **When the Team leads tables are dropped, this branch stays** — remove the leader flow, not the function or its webhook.
+**Try-out branch (v2.3650)**: when the member clocking **out** has `users.trial_prospect_id` (a trial helper — the try-out loop, `recent-features/v2.3627.md` and its follow-ons; the to-do closed 2026-09-26), the function calls `trial_helper_supervisors(helper, work_date)` (service role only) for everyone who could run a job the helper worked that day — a master, or a helper / sub with `needs_supervision` off, listed or clocked on the same job — skips anyone who already has a `team_prospect_trial_verdicts` row for that card and day, and pushes the rest *Bryan clocked out of Oak St — take Bryan again?* (`_shared/trialVerdictPush.ts`, shared with the client card) opening `/dashboard#trial-verdicts`. One `tag` per card and day, so a second clock-out replaces the notification rather than stacking; `notification_history.template_type = 'trial_helper_verdict'`. Best-effort: a failure is logged, never thrown at the webhook, and the response carries `trial: { leads, pushed }`.
 
 **Endpoint**: `POST /functions/v1/notify-team-lead-clock`
 
@@ -2927,7 +2965,7 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 **Required Secrets**:
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, returns 200 with `push_sent: 0`)
+- `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (if missing, nothing is pushed: `trial.pushed` is 0)
 - Optional: `TEAM_LEAD_CLOCK_WEBHOOK_SECRET` — if set, webhook can send this instead of the service role key.
 
 **Verify JWT**: `false` (uses shared secret / service role only)
@@ -2949,16 +2987,15 @@ For **clock out**, `type` is `UPDATE`, `old_record.clocked_out_at` is null, and 
 #### Success response
 
 ```json
-{ "success": true, "push_sent": 2, "leaders": 1, "kind": "clock_in" }
+{ "success": true, "kind": "clock_out", "trial": { "leads": 1, "pushed": 2 } }
 ```
 
-Skipped events return 200 with `skipped: true` (e.g. not a clock-in/out transition).
+Skipped events return 200 with `skipped: true` (anything but a clock-out).
 
 #### Deployment / wiring
 
 1. Deploy the function: `supabase functions deploy notify-team-lead-clock`
 2. In Supabase Dashboard → Database → Webhooks: add webhooks on `clock_sessions` for **Insert** and **Update**, HTTP POST to `https://<project-ref>.supabase.co/functions/v1/notify-team-lead-clock`, header `Authorization: Bearer <SERVICE_ROLE_KEY>` or the webhook secret.
-3. Leaders enable **Notify on clock in/out** per member on Dashboard → My Team.
 
 ---
 
@@ -3026,8 +3063,8 @@ No body required. Validates via `X-Cron-Secret` header or `{"cron_secret": "..."
 **Body (JSON)**:
 - `scope_master_user_id` (uuid, required) — org (**`jobs_ledger.master_user_id`**) universe
 - **`activity_scope`** (required): **`calendar_yesterday`** \| **`calendar_today`** \| **`calendar_week`** \| **`calendar_last_week`** — calendar window in **`timezone`** (half-open local midnights → UTC; **`calendar_week`** is Sun–Sat week **containing** **`anchor_date`**; **`calendar_last_week`** is the **prior** Sun–Sat week).
-- **`crew_filter`** (required): **`all_users`** \| **`my_team`** — **`my_team`** = **`recipient_user_id`** plus **`team_leader_assignments.member_user_id`** where **`leader_user_id = recipient_user_id`** (Dashboard **My team** roster); **`all_users`** does not restrict activity rows by user.
-- `recipient_user_id` (optional) — defaults to caller; affects **`my_team`** resolution only.
+- **`crew_filter`** (required): **`all_users`**, which does not restrict activity rows by user. **`my_team`** (the recipient plus the people they led on the Team leads list) went with the list in v2.5088; the column's check allows `all_users` only.
+- `recipient_user_id` (optional) — defaults to caller.
 - `timezone` (optional, default **`America/Chicago`**).
 - **`anchor_date`** (**`YYYY-MM-DD`**, civil date in **`timezone`**, required when not sending a manual **`window`**) — **“today”** in zone for resolving yesterday / today / week bounds.
 - Manual **`window`** (optional) overrides RPC bounds (**advanced testing**): provide **`window_start_utc`** / **`window_end_utc`** (ISO); optional **`period_kind`**: **`daily`** (default) \| **`weekly`** for **`reporting_date`** idempotency semantics when dispatching.
@@ -3528,6 +3565,8 @@ const { data, error } = await supabase.functions.invoke('test-email', {
 > **v2.2846 — never bill a paid job twice** (journey-map J3-1): after the job row loads, `shouldBlockBillOnPaidJob({ jobStatus: jobRow.status, allowRebill })` from the shared [`paidJobBillGuard.ts`](../supabase/functions/_shared/paidJobBillGuard.ts) refuses with **409** `{ error: "This job is already paid in full — nothing to bill.", code: "job_already_paid" }` when `jobs_ledger.status = 'paid'` and the body did not send **`allow_rebill: true`** (the Bill Customer modal's "Bill this job again anyway" checkbox). The existing `Invoice must be Ready to Bill` check, the idempotent-retry branch and the v2.2045 conversion branch run first and are unchanged. Each refusal writes a `job_activity_events` row `event_type = 'rtb_paid_job_blocked'` (service role, best-effort). **Redeploy required.**
 
 > **v2.2045 — convert a billed non-Stripe line** (`convert_billed: true`): relaxes the ready_to_bill gate for a row already `billed` with no `stripe_invoice_id` and **zero payments applied** (checked via the caller's RLS client) — the one-button "Make Stripe bill" on Edit Job → Bill. `billed_at` is never written by this function (and the DB trigger COALESCEs), so the original billed date survives conversion by construction. Full flow: `docs/BILLING_FLOWS.md` → "Converting a non-Stripe bill to Stripe". Redeploy required.
+
+> **v2.5123 — never a GC bill** (Owner Billing O8b): a row that a GC pay application's certificate or an interest bill made (`gc_owner_pay_apps.invoice_id`, `gc_owner_interest_bills.invoice_id`, read as the service role) answers `409` *A GC bill goes on card only from the customer's portal.* before any Stripe call, so Edit Job's **Make Stripe bill** says why. A GC bill goes on card only through `gc-card-bill`, with its 3% fee.
 
 > **v2.1133 — segment invoices bill only their own line items**: the fixtures query now selects `invoice_id` and both this function and `preview-stripe-invoice` pass the rows through `scopeFixturesToInvoice` ([`stripeInvoiceItemsFromFixtures.ts`](../supabase/functions/_shared/stripeInvoiceItemsFromFixtures.ts)): rows linked to the invoice when any exist (an invoice created from selected segments lists exactly those lines at their real amounts), else all rows (dollar break-off invoices keep the historical whole-job proration). Before this, a $454 change-order invoice rendered with every job stage on it, each carrying a prorated sliver. Client mirror: `src/lib/invoiceScopedFixtures.ts` (physical PDFs + previews + line-edit refs). Redeploy both functions.
 >

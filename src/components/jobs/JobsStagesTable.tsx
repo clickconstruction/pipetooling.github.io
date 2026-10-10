@@ -32,12 +32,9 @@ import {
   accountManOnlyStripeStyle,
   renderJobAddressWithMap,
   renderJobCustomerLine as renderJobCustomerLineWithCtx,
-  renderStagesFieldAndBillingLines as renderStagesFieldAndBillingLinesWithCtx,
   renderStagesJobColumnEstimateFooter,
   renderStagesJobHcpSubline,
-  renderStagesJobCellActivityFooter as renderStagesJobCellActivityFooterWithCtx,
   renderStagesThreadExpandButton,
-  renderStagesQuickActionsStack as renderStagesQuickActionsStackWithCtx,
   stagesOpenRowStyle,
   renderStagesProjectBannerRow,
   shouldSuppressStagesRowJobThreadToggle,
@@ -47,6 +44,9 @@ import {
   renderStagesEditModeRail,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
+import { StagesFieldAndBillingLines } from './StagesFieldAndBillingLines'
+import { StagesJobCellActivityFooter } from './StagesJobCellActivityFooter'
+import { StagesQuickActionsStack } from './StagesQuickActionsStack'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -259,14 +259,13 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     onPropertyLinked,
     onOpenJobContract,
   }
-  const renderStagesFieldAndBillingLines = (job: JobWithDetails) =>
-    renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job)
+  const renderStagesFieldAndBillingLines = (job: JobWithDetails) => <StagesFieldAndBillingLines ctx={stagesRowSharedCtx} job={job} />
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
-  const renderStagesJobCellActivityFooter = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null, opts?: { hideSeeAllButton?: boolean }) =>
-    renderStagesJobCellActivityFooterWithCtx(stagesRowSharedCtx, job, { billingLineForStripeHint, ...opts })
+  const renderStagesJobCellActivityFooter = (job: JobWithDetails, billingLineForStripeHint?: JobsLedgerInvoice | null, opts?: { hideSeeAllButton?: boolean }) => (
+    <StagesJobCellActivityFooter ctx={stagesRowSharedCtx} job={job} billingLineForStripeHint={billingLineForStripeHint} hideSeeAllButton={opts?.hideSeeAllButton} />
+  )
 
-  const renderStagesQuickActionsStack = (job: JobWithDetails) =>
-    renderStagesQuickActionsStackWithCtx(stagesRowSharedCtx, job)
+  const renderStagesQuickActionsStack = (job: JobWithDetails) => <StagesQuickActionsStack ctx={stagesRowSharedCtx} job={job} />
 
   const stagesTableColCount = 4
   /** The expanded thread row's inputs, built once (Stages decomposition PR 9, v2.3541). */

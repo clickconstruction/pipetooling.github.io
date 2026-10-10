@@ -10,6 +10,7 @@ import {
   arCaseFeeOffer,
   billFeeLines,
   returnedCheckFeeCents,
+  riderFeeLineCents,
   type ArCaseFeeBill,
   type ArCaseFeeRow,
 } from './arReturnCaseFee'
@@ -75,6 +76,49 @@ describe('the bill’s own fee lines (jobs_ledger_invoices.fee_lines)', () => {
     const doc = buildPhysicalInvoiceDocumentForBilledInvoice(job, inv as never)!
     expect(doc.serviceLines[doc.serviceLines.length - 1]).toEqual({ description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', qty: 1, unitPrice: 30, amount: 30 })
     expect(doc.serviceLines.slice(0, -1).reduce((t, l) => t + l.amount, 0)).toBeCloseTo(13680, 2)
+  })
+})
+
+describe('riderFeeLineCents (v2.5113): a returned check fee and a GC card fee both ride', () => {
+  const CHECK = { description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', amount: 30, case_id: 'tx-sp', added_at: '2026-10-09T15:00:00Z' }
+  const CARD = (cardBill: unknown, amount: unknown) => ({ description: 'Credit card fee (3%)', amount, card_bill: cardBill, added_at: '2026-10-09T20:00:00Z' })
+
+  it('sums the entries that name a case or a card bill', () => {
+    expect(riderFeeLineCents([{ id: 'b1', fee_lines: [CARD('b1', 1_282.5)] }, { id: 'b2', fee_lines: [CHECK, CARD('b2', 370.37)] }])).toBe(168_287)
+  })
+
+  it('a returned check fee alone reads as returnedCheckFeeCents does, and a card fee is not a returned check fee', () => {
+    expect(riderFeeLineCents([{ fee_lines: [CHECK] }])).toBe(returnedCheckFeeCents([{ fee_lines: [CHECK] }]))
+    expect(returnedCheckFeeCents([{ fee_lines: [CARD('b1', 1_282.5)] }])).toBe(0)
+  })
+
+  it('an entry that names neither, or an empty or unreadable card bill, is not a rider', () => {
+    expect(riderFeeLineCents([{ fee_lines: [CARD(null, 50), CARD('', 50), CARD('  ', 50), CARD(7, 50), { description: 'Some other fee', amount: 45 }] }])).toBe(0)
+    expect(riderFeeLineCents([{ fee_lines: [CARD('b1', 'nope'), CARD('b1', 0), CARD('b1', -5)] }])).toBe(0)
+  })
+})
+
+describe('riderFeeLineCents (v2.5129): a turnaway trip charge rides too', () => {
+  const TRIP = (reason: unknown, amount: unknown) => ({ trip_charge: reason, amount })
+
+  it('sums an entry that names its trip charge beside the other riders', () => {
+    expect(riderFeeLineCents([{ fee_lines: [TRIP('client_not_home', 99)] }, { fee_lines: [TRIP('site_not_ready', '250.00')] }])).toBe(34_900)
+    expect(
+      riderFeeLineCents([{ fee_lines: [TRIP('client_not_home', 99), { description: 'Returned check fee', amount: 30, case_id: 'c1' }] }]),
+    ).toBe(12_900)
+  })
+
+  it('a trip charge is not a returned check fee', () => {
+    expect(returnedCheckFeeCents([{ fee_lines: [TRIP('client_not_home', 99)] }])).toBe(0)
+  })
+
+  it('an empty, blank or unreadable trip charge, or an amount that does not read above zero, is not a rider', () => {
+    expect(riderFeeLineCents([{ fee_lines: [TRIP(null, 99), TRIP('', 99), TRIP('  ', 99), TRIP(1, 99)] }])).toBe(0)
+    expect(riderFeeLineCents([{ fee_lines: [TRIP('client_not_home', 'nope'), TRIP('client_not_home', 0), TRIP('client_not_home', -5)] }])).toBe(0)
+  })
+
+  it('has no description, so the reprinted bill draws no row of its own for it', () => {
+    expect(billFeeLines({ fee_lines: [TRIP('client_not_home', 99)] })).toEqual([])
   })
 })
 

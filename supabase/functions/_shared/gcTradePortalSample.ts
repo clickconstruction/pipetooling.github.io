@@ -37,6 +37,9 @@ export const SAMPLE_TRADE_IDS = {
   charge: '00000000-5a00-4000-8000-000000000025',
   request: '00000000-5a00-4000-8000-000000000026',
   changeOrder: '00000000-5a00-4000-8000-000000000027',
+  msa: '00000000-5a00-4000-8000-000000000028',
+  w9: '00000000-5a00-4000-8000-000000000029',
+  coi: '00000000-5a00-4000-8000-000000000030',
 } as const
 
 const ID = SAMPLE_TRADE_IDS
@@ -163,6 +166,13 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
     ],
     // Its price to the customer is here only to show the slice drops it: the company reads its part, $3,400.
     changeOrders: [{ id: ID.changeOrder, number: 2, status: 'sent', sent_on: d(-6), answered_on: null, cost: 3400, price: 3910 }],
+    // Its papers (B6-b-ii): the master agreement signed before its statement of work, its W-9, a certificate good for
+    // a year. The link is here only to show the slice drops it.
+    papers: [
+      { id: ID.msa, company_id: COMPANY, doc_type: 'agreement', status: 'signed', sent_at: `${d(-40)}T15:00:00Z`, signed_at: d(-38), expires_at: null, url: 'https://example.com/never-passes' },
+      { id: ID.w9, company_id: COMPANY, doc_type: 'w9', status: 'signed', sent_at: `${d(-40)}T15:00:00Z`, signed_at: d(-38), expires_at: null },
+      { id: ID.coi, company_id: COMPANY, doc_type: 'coi', status: 'signed', sent_at: null, signed_at: d(-38), expires_at: d(327) },
+    ],
   }
 }
 

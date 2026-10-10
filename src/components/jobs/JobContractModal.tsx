@@ -58,6 +58,7 @@ import {
   jobContractChips,
   jobContractIsEditable,
   jobContractIsLive,
+  jobContractLinkOnRow,
   jobContractSignatureAuditLine,
   jobContractSignatureBlocks,
   jobContractSignersAuditLine,
@@ -66,6 +67,7 @@ import {
   type JobContractRow,
 } from '../../lib/jobs/jobContractLifecycle'
 import { isAwaitingPaperCopy, isHandedAwaitingPaper, jobContractSentChannel } from '../../lib/jobs/jobContractHandoff'
+import { freshJobContractLink } from '../../lib/jobs/jobContractLinkHandOut'
 import { CONTRACT_NOT_NEEDED_REASONS, type JobContractCoverage } from '../../lib/jobs/jobContractCoverage'
 import { clearJobContractNotNeeded, markJobContractNotNeeded } from '../../lib/jobs/jobContractNotNeeded'
 import { handoffBlocker, markJobContractHanded } from '../../lib/jobs/jobContractHandoff'
@@ -73,7 +75,7 @@ import { effectiveWindowWay, emailLooksValid, jobTakesTheirSubcontract, phoneLoo
 import JobContractSigningRail from './JobContractSigningRail'
 import JobContractPaper from './JobContractPaper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { frameAsSignerRow, framesLabel, framesProgress, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
+import { filedOnPaper, frameAsSignerRow, framesLabel, framesProgress, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
 
 type TemplateRow = Pick<
   Database['public']['Tables']['contract_template_documents']['Row'],
@@ -346,11 +348,11 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const signedRows = rows.filter((r) => jobContractStatus(r) === 'signed')
   const signedCoverage: SignedCoverage | null = coverage && coverage.kind === 'signed' && (coverage.source === 'estimate' || coverage.source === 'bid_room') ? coverage : null
   const signedView: SignedView | null = recordRow
-    ? { source: recordRow.signer_mode === 'paper' ? 'paper' : 'contract', row: recordRow }
+    ? { source: filedOnPaper(recordRow) ? 'paper' : 'contract', row: recordRow }
     : liveRow || startNew || !rowsLoaded
       ? null
       : signedRows[0]
-        ? { source: signedRows[0].signer_mode === 'paper' ? 'paper' : 'contract', row: signedRows[0] }
+        ? { source: filedOnPaper(signedRows[0]) ? 'paper' : 'contract', row: signedRows[0] }
         : signedCoverage
           ? { source: signedCoverage.source as 'estimate' | 'bid_room', coverage: signedCoverage }
           : null
@@ -361,7 +363,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const paperRow = shownRow ?? (liveRow && !editable ? liveRow : null)
   const paperEditable = editable && rowsLoaded && !signedView
   /** A record filed from an outside document: the paper prints a note, not a body it never held. */
-  const filedDoc = shownRow?.signer_mode === 'paper' && shownRow.signed_document_url ? { what: isGoogleDocsUrl(shownRow.signed_document_url) ? 'Google Doc' : 'document' } : null
+  const filedDoc = shownRow && filedOnPaper(shownRow) && shownRow.signed_document_url ? { what: isGoogleDocsUrl(shownRow.signed_document_url) ? 'Google Doc' : 'document' } : null
   const selectedTemplate = templates.find((t) => t.id === templateId) ?? null
   const bodyHtml = selectedTemplate ? selectedTemplate.book_body_html ?? '' : DEFAULT_JOB_CONTRACT_TERMS_PLAIN
   const bodyFormat = selectedTemplate ? selectedTemplate.book_body_format : 'plain'
@@ -531,8 +533,20 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     [job, editable, unfinishedDateStops, flushDraft, liveRow, recipientEmail, recipientName, ccList, message, showToast, loadRows, onChanged],
   )
 
+  /**
+   * The link to hand out: the one this session made, else the one the sent row already carries
+   * (read again first, in case another tab moved it), else a send mints or renews it. Handing out a
+   * link the row has records nothing, so a PDF emailed to sign stays a PDF send (punch list #104,
+   * v2.5119).
+   */
+  const linkToHandOut = async (): Promise<string | null> => {
+    if (lastLink) return lastLink
+    const own = jobContractLinkOnRow(liveRow, window.location.origin) ? await freshJobContractLink(liveRow?.id, window.location.origin) : null
+    return own ?? (await invokeSend('link'))
+  }
+
   const copyLink = async () => {
-    const url = lastLink ?? (await invokeSend('link'))
+    const url = await linkToHandOut()
     if (!url) return
     try {
       await navigator.clipboard.writeText(url)
@@ -543,7 +557,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   }
 
   const textLink = async () => {
-    const url = lastLink ?? (await invokeSend('link'))
+    const url = await linkToHandOut()
     if (!url) return
     const phone = recipientPhone.replace(/[^\d+]/g, '')
     const body = `Here is your service agreement for ${job?.job_address || 'your project'} — review and sign here: ${url}`
@@ -551,7 +565,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   }
 
   const signInPerson = async () => {
-    const url = lastLink ?? (await invokeSend('link'))
+    const url = await linkToHandOut()
     if (!url) return
     window.open(`${url}&inperson=1`, '_blank', 'noopener')
   }
@@ -865,7 +879,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       return
     }
     if (phone) {
-      const url = lastLink ?? (await invokeSend('link'))
+      const url = await linkToHandOut()
       if (url) openSms(phone, url)
     }
   }
@@ -1093,9 +1107,12 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
                   : undefined
               }
               // A second frame filed from the paper is named in the paper's one mark, as its print does (v2.4657);
-              // one signed through the link keeps its own mark.
+              // one signed through the link keeps its own mark, and so does one filed from the paper after the
+              // first signed through the link (v2.5101): the print's blocks say which.
               coSignature={
-                paperRow?.co_signer_name && paperRow.co_signed_at && paperRow.co_signer_mode !== 'paper'
+                shownRow?.signed_at
+                  ? jobContractSignatureBlocks(shownRow, { coSignatureUrl: recordUrls.coSignatureUrl }).coSignature
+                  : paperRow?.co_signer_name && paperRow.co_signed_at && paperRow.co_signer_mode !== 'paper'
                   ? { printedName: paperRow.co_signer_printed_name ?? '', auditLine: jobContractSignatureAuditLine(frameAsSignerRow(signerFrames(paperRow)[1]!)) ?? '', imageUrl: recordUrls.coSignatureUrl }
                   : null
               }

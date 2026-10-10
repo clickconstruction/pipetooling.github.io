@@ -18,7 +18,7 @@ import { buildJobContractPdf, contractBodyToPlainText, type JobContractPdfInput,
 import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts'
 import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signedRecordId, signingUrl } from '../_shared/jobContract.ts'
 import { buildJobContractPaperEmail } from '../_shared/jobContractEmail.ts'
-import { signerNamesLine } from '../_shared/jobContractSigners.ts'
+import { filedOnPaper, signerNamesLine } from '../_shared/jobContractSigners.ts'
 
 type Body = {
   contract_id?: string
@@ -311,9 +311,12 @@ serve(async (req) => {
       const jobNo = jobNumberLabel(job)
       filename = `Signed-agreement-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`
       if (c.public_token) signLink = signingUrl(appOrigin(body.public_origin), c.public_token)
-      if (c.signer_mode === 'paper') {
+      if (filedOnPaper(c)) {
         // Filed outside the app: the uploaded copy is the document when there is
         // one; otherwise the filed link (Google Doc) is what gets shared (v2.2744).
+        // v2.5101: so is a record whose first frame signed through the link and whose
+        // second was filed from the paper. It has no stored PDF, and a rebuild would
+        // print its paper frame as a typed signature.
         if (c.paper_upload_path) {
           pdf = await fetchBytes(admin, c.paper_upload_path)
           pdfPath = c.paper_upload_path

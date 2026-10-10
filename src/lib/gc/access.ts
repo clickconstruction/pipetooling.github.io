@@ -48,3 +48,15 @@ export const GC_BUILDING_TEAM: readonly UserRole[] = ['dev']
 export function canUseGcBuilding(role: UserRole | null | undefined): boolean {
   return role != null && GC_BUILDING_TEAM.includes(role)
 }
+
+/**
+ * GC mode, Owner Billing's O9: who writes the Board's award records, the statement of work first (its **Send to their
+ * portal to sign**). A dev until the award door (the owner's call W), since `gc_sows` and `gc_sow_lines` write through
+ * `is_dev()` alone. The money team reads them since O9, so a screen shows them the card read only. `access.test.ts`
+ * fails when this list and those doors disagree, so the award door changes both.
+ */
+export const GC_BOARD_WRITE_TEAM: readonly UserRole[] = ['dev']
+
+export function canUseGcBoardWrites(role: UserRole | null | undefined): boolean {
+  return role != null && GC_BOARD_WRITE_TEAM.includes(role)
+}

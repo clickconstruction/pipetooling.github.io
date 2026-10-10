@@ -266,8 +266,13 @@ export interface GcTradeEmailInput {
   company: string
   subject: string
   lines: TradeEmailLine[]
-  /** The company's portal address. */
-  linkUrl: string
+  /** The company's portal address. Only an email with an action may go without it (the company has no link yet). */
+  linkUrl?: string | null
+  /**
+   * The email's own step, when it is not the portal (the Board's B6-b-i: a paper's signing link). Its ink button leads,
+   * and the portal, when the company has one, becomes the line under it. Unset: the portal's button, as always.
+   */
+  action?: { label: string; url: string }
   /** The project manager, else the sender. */
   signer: string
   /** Our company's name. */
@@ -283,8 +288,10 @@ const MUTED = '#5a6b7e'
 const HAIR = '#ddd6c8'
 const FONT = `-apple-system, 'Segoe UI', Roboto, sans-serif`
 
-/** The email a trade partner reads: the greeting, the lines, the button to its portal, then who it is from. */
+/** The email a trade partner reads: the greeting, the lines, the button to its portal (or its action), then who it is from. */
 export function buildGcTradeEmail(input: GcTradeEmailInput): { subject: string; text: string; html: string } {
+  if (input.action) return buildGcTradeActionEmail(input, input.action)
+  if (!input.linkUrl) throw new Error('A trade email needs its portal link or an action.')
   const w = (key: keyof typeof TRADE_EMAIL_WORDS) => TRADE_EMAIL_WORDS[key][input.lang]
   const greeting = tradeGreeting(input.lang, input.recipients, input.company)
   const subject = input.subject.trim()
@@ -323,6 +330,63 @@ export function buildGcTradeEmail(input: GcTradeEmailInput): { subject: string; 
     button +
     `<p style="margin:0 0 14px;padding-top:10px;border-top:1px solid ${HAIR};font-size:13px;color:${MUTED}">${esc(w('linkYours'))}</p>` +
     `<p style="margin:0">${esc(w('thanks'))}<br>${esc(input.signer)}<br>${esc(input.gc)}</p>` +
+    `</div></div></div></body></html>`
+  return { subject, text, html }
+}
+
+/**
+ * An email whose step is its own (`action`): the greeting and lines as always, the action's ink button, then the portal
+ * as a quiet line under it with the portal's own footnote, only when the company has a link. Its link must be https.
+ */
+function buildGcTradeActionEmail(input: GcTradeEmailInput, action: { label: string; url: string }): { subject: string; text: string; html: string } {
+  if (!/^https:\/\//.test(action.url)) throw new Error('An action link must be https.')
+  const w = (key: keyof typeof TRADE_EMAIL_WORDS) => TRADE_EMAIL_WORDS[key][input.lang]
+  const greeting = tradeGreeting(input.lang, input.recipients, input.company)
+  const subject = input.subject.trim()
+  const portal = (input.linkUrl ?? '').trim()
+
+  const textLines: string[] = [greeting, '']
+  for (const line of input.lines) {
+    if (typeof line === 'string') textLines.push(line, '')
+    else textLines.push(...(line.title ? [line.title] : []), ...line.items.map((i) => `- ${i}`), '')
+  }
+  textLines.push(`${action.label}: ${action.url}`, '')
+  if (portal) textLines.push(`${w('openPortal')}: ${portal}`, '', w('linkYours'), '')
+  textLines.push(w('thanks'), input.signer, input.gc)
+  const text = textLines.join('\n')
+
+  const p = (s: string, style = '') => `<p style="margin:0 0 12px;${style}">${esc(s)}</p>`
+  const body = input.lines
+    .map((line) =>
+      typeof line === 'string'
+        ? p(line)
+        : `${line.title ? `<p style="margin:0 0 4px">${esc(line.title)}</p>` : ''}<ul style="margin:0 0 12px;padding-left:20px">${line.items.map((i) => `<li style="margin:0 0 2px">${esc(i)}</li>`).join('')}</ul>`,
+    )
+    .join('')
+  const url = esc(action.url)
+  const button =
+    `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:4px 0 6px"><tr><td style="background:${INK};border-radius:6px">` +
+    `<a href="${url}" style="display:inline-block;padding:10px 18px;color:${PAPER};font-weight:600;text-decoration:none">${esc(action.label)}</a>` +
+    `</td></tr></table>` +
+    `<p style="margin:0 0 14px;font-size:12px;color:${MUTED};word-break:break-all">${url}</p>`
+  const portalLine = portal
+    ? `<p style="margin:0 0 6px;font-size:13px">${esc(w('openPortal'))}: <a href="${esc(portal)}" style="color:${INK};word-break:break-all">${esc(portal)}</a></p>` +
+      `<p style="margin:0 0 14px;font-size:13px;color:${MUTED}">${esc(w('linkYours'))}</p>`
+    : ''
+  const html =
+    `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>` +
+    `<body style="margin:0;padding:0;background:#ffffff">` +
+    `<div style="max-width:560px;margin:0 auto;padding:16px;font-family:${FONT}">` +
+    `<div style="background:${PAPER};color:${INK};border:1px solid ${INK};border-radius:10px;overflow:hidden">` +
+    `<div style="background:${INK};color:${PAPER};padding:10px 16px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase">${esc(input.gc)}</div>` +
+    `<div style="padding:16px;font-size:15px;line-height:1.5">` +
+    p(greeting) +
+    body +
+    button +
+    `<div style="padding-top:10px;border-top:1px solid ${HAIR}">` +
+    portalLine +
+    `<p style="margin:0">${esc(w('thanks'))}<br>${esc(input.signer)}<br>${esc(input.gc)}</p>` +
+    `</div>` +
     `</div></div></div></body></html>`
   return { subject, text, html }
 }

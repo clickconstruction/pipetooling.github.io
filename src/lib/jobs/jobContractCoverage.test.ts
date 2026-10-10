@@ -212,8 +212,24 @@ describe('a second signer (v2.4590): the chip names both and counts the frames',
     expect(jobContractChipLabel(cov.get('j1'), NOW)).toBe('✍ On file · paper · Jul 30')
   })
 
+  it('one signer through the link and one on paper reads as on file, naming both (v2.5101)', () => {
+    const row = contract({
+      ...twoFrames,
+      status: 'signed',
+      signed_at: '2026-10-09T12:00:00Z',
+      signer_mode: 'draw',
+      signer_printed_name: 'Sam Owner',
+      signer_consented_at: '2026-10-01T15:00:00Z',
+      co_signed_at: '2026-10-09T12:00:00Z',
+      co_signer_printed_name: 'Alex Owner',
+      co_signer_mode: 'paper',
+    })
+    const cov = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [row], [])
+    expect(cov.get('j1')).toMatchObject({ kind: 'signed', source: 'paper', signerName: 'Sam Owner and Alex Owner' })
+  })
+
   it('every batch read selects the columns the frames need', () => {
-    for (const col of ['recipient_name', 'signer_consented_at', 'co_signer_name', 'co_signed_at', 'co_signer_printed_name', 'signer_printed_name']) {
+    for (const col of ['recipient_name', 'signer_consented_at', 'co_signer_name', 'co_signed_at', 'co_signer_printed_name', 'co_signer_mode', 'signer_printed_name']) {
       expect(JOB_CONTRACT_COVERAGE_COLUMNS.split(', ')).toContain(col)
     }
   })

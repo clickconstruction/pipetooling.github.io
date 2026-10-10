@@ -2,7 +2,8 @@
  * GC mode, the real build (the Board's B6-a-ii): a trade's statement of work on the trade's block of its project's card,
  * from the design spike's Contracts tab card (`GcOfficeTabs.tsx`, `GcContractsTab`) and `GcSovSideBySide`. Award in
  * Compare quotes drafts it (`gc_award`). **Send to their portal to sign** marks it sent; once the Portal's sign screen
- * is live (`SOW_SIGN_SCREEN_LIVE`), a dev may email it too, a box that starts off. The papers that must be in before
+ * is live (`SOW_SIGN_SCREEN_LIVE`), a dev may email it too, a box that starts off. The money team reads the card since
+ * O9, read only: the press is for those who write the statement of work (`canUseGcBoardWrites`). The papers that must be in before
  * it goes (the master agreement, insurance, the W-9) come with B6-b, and how far the money claimed reaches on their
  * lines with Building's draws (U6).
  */
@@ -127,12 +128,15 @@ export function GcTradeSow({
   projectId,
   packageId,
   writes,
+  canSend = false,
   canEmail = false,
 }: {
   state: GcState
   projectId: string
   packageId: string
   writes: SowWrites
+  /** The reader may send it (a dev until the award door). Without it the card is read only. */
+  canSend?: boolean
   /** The reader may email a trade (a dev). The box shows only once the Portal's sign screen is live. */
   canEmail?: boolean
 }) {
@@ -173,7 +177,8 @@ export function GcTradeSow({
       </div>
       <SovSideBySide sow={sow} />
       <SowExcluded excluded={sow.excluded ?? []} />
-      {sow.status === 'draft' && (
+      {sow.status === 'draft' && !canSend && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>A dev sends it to their portal to sign.</div>}
+      {sow.status === 'draft' && canSend && (
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <Btn kind="primary" disabled={busy} onClick={send}>
             Send to their portal to sign

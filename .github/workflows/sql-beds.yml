@@ -3,11 +3,12 @@ name: SQL beds
 # The whole-schema SQL beds (scripts/pgtest-*.sh) need Docker, and no session on the office Mac can
 # reach it. GitHub's runners have it. Each bed applies every migration and then plays its scenario,
 # so any migration can break any bed: when a PR touches a migration, a bed's test folder, a bed
-# script or this workflow, every bed in scripts/sql-beds.txt runs. The one job branch protection
-# requires is `sql-beds`, the gate at the bottom: it reports on every pull request and every
-# merge-queue build (a required check that never reports would block the merge), passes when the
-# beds passed or were not needed, and fails when any bed failed or was cancelled (2026-10-09, the
-# owner's call after a red bed could have merged).
+# script or this workflow (in its own commits, diffed from where it left main, so a migration main
+# gained after the branch point does not count), every bed in scripts/sql-beds.txt runs. The one job
+# branch protection requires is `sql-beds`, the gate at the bottom: it reports on every pull request
+# and every merge-queue build (a required check that never reports would block the merge), passes
+# when the beds passed or were not needed, and fails when any bed failed or was cancelled
+# (2026-10-09, the owner's call after a red bed could have merged).
 #
 # To add a bed: its script scripts/pgtest-<name>.sh, its folder supabase/tests/<name>/, and one
 # line in scripts/sql-beds.txt. This file does not change.
@@ -43,9 +44,9 @@ jobs:
             case "$f" in
               supabase/migrations/*|supabase/tests/*|scripts/pgtest-*|scripts/sql-beds.txt|.github/workflows/sql-beds.yml) BEDS=true ;;
             esac
-          done < <(git diff --name-only "$BASE" "$HEAD")
+          done < <(git diff --name-only "$(git merge-base "$BASE" "$HEAD")" "$HEAD")
           echo "beds=$BEDS" >> "$GITHUB_OUTPUT"
-          echo "beds=$BEDS ($BASE..$HEAD) $MATRIX"
+          echo "beds=$BEDS ($BASE...$HEAD) $MATRIX"
 
   bed:
     needs: changes

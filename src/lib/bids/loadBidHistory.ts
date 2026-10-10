@@ -1,8 +1,10 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import type { Database } from '../../types/database'
+import { BID_ACTIONS, withBidAction } from './bidActionHeader'
 import { BID_HISTORY_PAGE, bidHistoryRowFromRpc, type BidHistoryRow, type BidHistoryRpcRow } from './bidHistory'
 import { bidRemovedRowFromRpc, type BidPutBackResult, type BidRemovedRow, type BidRemovedRpcRow, type BidRestoreResult } from './bidHistoryPutBack'
+import { BID_UNDO_UNSEEN_NONE, BID_UNDO_UNSEEN_TABLES, type BidUndoUnseen } from './bidHistoryUndo'
 
 /**
  * One page of a bid's history (punch list #73, PR 2; paged since the row-cap fix):
@@ -19,11 +21,11 @@ export async function loadBidHistory(bidId: string, from = 0, client: SupabaseCl
 
 /**
  * Put back one value (punch list #73, PR 4): `put_back_bid_change` writes the change's old value
- * for that column under the caller's own policies. Throws the function's refusal so the window can
- * say it.
+ * for that column under the caller's own policies; with no column (Undo, PR 6), every column the
+ * change touched. Throws the function's refusal so the window can say it.
  */
-export async function putBackBidChange(changeId: number, column: string): Promise<BidPutBackResult> {
-  const { data, error } = await supabase.rpc('put_back_bid_change', { p_change_id: changeId, p_column: column })
+export async function putBackBidChange(changeId: number, column: string | null): Promise<BidPutBackResult> {
+  const { data, error } = await supabase.rpc('put_back_bid_change', { p_change_id: changeId, p_column: column ?? undefined })
   if (error) throw new Error(error.message)
   return data as unknown as BidPutBackResult
 }
@@ -58,4 +60,61 @@ export async function restoreBidRemovedRow(archiveId: string): Promise<BidRestor
   const { data, error } = await supabase.rpc('restore_bid_removed_row' as never, { p_archive_id: archiveId } as never)
   if (error) throw new Error(error.message)
   return data as unknown as BidRestoreResult
+}
+
+/**
+ * Whether the signed-in person can edit the bid (`can_edit_bid`, PR 5): the window offers Undo
+ * only then. A failed read is a no.
+ */
+export async function loadCanEditBid(bidId: string, client: SupabaseClient<Database> = supabase): Promise<boolean> {
+  const { data, error } = await client.rpc('can_edit_bid', { p_bid_id: bidId })
+  return !error && data === true
+}
+
+/** Ids per request, so a long `in` list stays well inside a URL. */
+const REMOVE_CHUNK = 100
+
+/**
+ * Remove rows an action added (punch list #73, PR 6, History's Undo): a delete by id under the
+ * presser's own policies, tagged `put-back` so the ledger reads it as their Undo. Only for the
+ * tables the delete archive keeps (`BID_UNDO_REMOVABLE_TABLES`), so each row lands there and its
+ * own Put back brings it back. Resolves how many rows went; throws the first refusal.
+ */
+export async function removeBidAddedRows(table: string, ids: ReadonlyArray<string>, client: SupabaseClient<Database> = supabase): Promise<number> {
+  // The table is one of several, named at run time.
+  const untyped = client as unknown as SupabaseClient
+  let removed = 0
+  for (let i = 0; i < ids.length; i += REMOVE_CHUNK) {
+    const { data, error } = await withBidAction(untyped.from(table).delete().in('id', ids.slice(i, i + REMOVE_CHUNK)).select('id'), BID_ACTIONS.putBack)
+    if (error) throw new Error(error.message)
+    removed += (data ?? []).length
+  }
+  return removed
+}
+
+/**
+ * What hangs on each count row outside the ledger (punch list #73, PR 6): the submittal ticks (ticked
+ * ones only) and items, the rows hidden from the pricing page and the old By Stage picks, read for the count rows
+ * an Undo would remove, before it is offered and again on the press. A row with none is left out.
+ * Throws a failed read, so Undo stays off rather than guess.
+ */
+export async function loadBidUndoUnseen(countRowIds: ReadonlyArray<string>, client: SupabaseClient<Database> = supabase): Promise<Map<string, BidUndoUnseen>> {
+  const out = new Map<string, BidUndoUnseen>()
+  // The tables are named at run time.
+  const untyped = client as unknown as SupabaseClient
+  for (const { table, column, key, ticked } of BID_UNDO_UNSEEN_TABLES) {
+    for (let i = 0; i < countRowIds.length; i += REMOVE_CHUNK) {
+      const read = untyped.from(table).select(column).in(column, countRowIds.slice(i, i + REMOVE_CHUNK))
+      const { data, error } = await (ticked ? read.eq('ticked', true) : read)
+      if (error) throw new Error(error.message)
+      for (const r of (data ?? []) as unknown as Array<Record<string, string | null>>) {
+        const id = r[column]
+        if (!id) continue
+        const cur = out.get(id) ?? { ...BID_UNDO_UNSEEN_NONE }
+        cur[key] += 1
+        out.set(id, cur)
+      }
+    }
+  }
+  return out
 }

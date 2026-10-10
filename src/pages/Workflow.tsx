@@ -44,10 +44,11 @@ import { useWorkflowRoster } from '../hooks/useWorkflowRoster'
 import { useWorkflowStepsEngine } from '../hooks/useWorkflowStepsEngine'
 import { useWorkflowStepWrites } from '../hooks/useWorkflowStepWrites'
 import { StepFormModal } from '../components/workflow/StepFormModal'
+import { WorkflowErrorBanner } from '../components/workflow/WorkflowErrorBanner'
 import type { PersonContactInfo } from '../components/workflow/PersonDisplayWithContact'
+import { PersonContactModal } from '../components/workflow/PersonContactModal'
 import { toDatetimeLocal, fromDatetimeLocal } from '../utils/datetimeLocal'
 import type { Database } from '../types/database'
-import { telHrefFor } from '../lib/phoneContact'
 
 type Step = Database['public']['Tables']['project_workflow_steps']['Row']
 type Workflow = Database['public']['Tables']['project_workflows']['Row']
@@ -68,6 +69,7 @@ export default function Workflow() {
     steps,
     setSteps,
     loading,
+    loadError,
     error,
     setError,
     lineItems,
@@ -630,7 +632,8 @@ export default function Workflow() {
   )
 
   if (loading) return <p>Loading...</p>
-  if (error) return <p style={{ color: 'var(--text-red-700)' }}>{error}</p>
+  // A load that left nothing to draw replaces the page; an action's error is the banner below (v2.5108, quirk 21).
+  if (loadError) return <p style={{ color: 'var(--text-red-700)' }}>{loadError}</p>
   // A GC project gets no plumbing workflow (v2.4846): say where it lives instead of making one.
   if (gcProjectId) {
     return (
@@ -654,6 +657,7 @@ export default function Workflow() {
 
   return (
     <div className="workflow">
+      <WorkflowErrorBanner message={error} onDismiss={() => setError(null)} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <Link to="/projects">{"\u2190"} Projects</Link>
         <button
@@ -970,62 +974,7 @@ export default function Workflow() {
         onCloseViewInvoice={() => setViewingInvoice(null)}
       />
 
-      {/* Person Contact Info Modal */}
-      {personContactModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Contact information for ${personContactModal.name}`}
-          onClick={() => setPersonContactModal(null)}
-          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 750, paddingTop: 'var(--app-top-chrome, 0px)' }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ background: 'var(--surface)', padding: '1.5rem', borderRadius: 8, minWidth: 320, maxWidth: '90%' }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: '0.25rem' }}>{personContactModal.name}</h3>
-            {!personContactModal.isUser && (
-              <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>Not a user</div>
-            )}
-            <div style={{ fontSize: '0.9375rem', display: 'grid', gap: '0.5rem', marginBottom: '1rem' }}>
-              <div>
-                <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Email:</span>
-                {personContactModal.email ? (
-                  <a href={`mailto:${personContactModal.email}`} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
-                    {personContactModal.email}
-                  </a>
-                ) : (
-                  <span style={{ color: 'var(--text-faint)' }}>—</span>
-                )}
-              </div>
-              <div>
-                <span style={{ color: 'var(--text-muted)', marginRight: '0.5rem' }}>Phone:</span>
-                {personContactModal.phone ? (
-                  <a href={telHrefFor(personContactModal.phone)} style={{ color: 'var(--text-link)', textDecoration: 'underline' }}>
-                    {personContactModal.phone}
-                  </a>
-                ) : (
-                  <span style={{ color: 'var(--text-faint)' }}>—</span>
-                )}
-              </div>
-              {!personContactModal.email && !personContactModal.phone && (
-                <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-                  No contact information on file.
-                </div>
-              )}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                onClick={() => setPersonContactModal(null)}
-                className="wf-btn-modal-secondary"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PersonContactModal contact={personContactModal} onClose={() => setPersonContactModal(null)} />
     </div>
   )
 }
