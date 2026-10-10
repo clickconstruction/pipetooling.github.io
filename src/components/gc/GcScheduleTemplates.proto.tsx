@@ -5,6 +5,9 @@
  * aside. And the Start from a template control the rough while bidding and the first draft both
  * offer, with the fit said before anything is drawn. `gcScheduleTemplates.ts` works it all out;
  * nothing here reaches the trades or the customer.
+ *
+ * The prototype's copy, forked to `.proto` when the schedule's PR 12a ported the Templates card and Start from a template
+ * to main at `GcScheduleTemplates.tsx` (#5346); the prototype's schedule tab and its rough read this one.
  */
 import { useState, type Dispatch } from 'react'
 import type { GcAction, GcProject, GcState, ScheduleTemplate, TemplateLine, TemplateUse } from '../../lib/gcMode/gcTypes'
