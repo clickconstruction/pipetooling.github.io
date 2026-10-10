@@ -80,6 +80,8 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   // The money team reads the back-charges since O9: each draw's net takes off those taken.
   gc_back_charges: moneyReads(dev('Portal', PORTAL_OPENS)),
   gc_trade_change_requests: dev('Portal', PORTAL_OPENS),
+  // P5a-m: the files a trade sends from its portal. The office team reads; only the service role writes.
+  gc_trade_files: office('Portal'),
 
   // The schedule.
   gc_schedules: dev('Schedule', SCHEDULE_OPENS),

@@ -56,6 +56,7 @@
     "test:pg:gc-papers": "bash scripts/pgtest-gc-papers.sh",
     "test:pg:gc-trade-sign-sow": "bash scripts/pgtest-gc-trade-sign-sow.sh",
     "test:pg:gc-portal-p5": "bash scripts/pgtest-gc-portal-p5.sh",
+    "test:pg:gc-portal-p5a": "bash scripts/pgtest-gc-portal-p5a.sh",
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "test:pg:lien-claim": "bash scripts/pgtest-lien-claim.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",
