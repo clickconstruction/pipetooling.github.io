@@ -668,6 +668,8 @@ export interface GcProject {
   startDate: string | null
   /** The day we pressed Start. The trades were told then. */
   startedOn: string | null
+  /** Started before everything was in (question 7): who, why, and what was missing that day. */
+  startedAnyway?: { by: string; reason: string; missing: string[] }
   customerId: string
   /** The customer's name, kept on the row for display. */
   owner: string
@@ -694,6 +696,8 @@ export interface GcProject {
   planSets: PlanSet[]
   packages: TradePackage[]
   generalConditions: number
+  /** The Pipeline job our general conditions are spent on (O11b), the money team's to name. Unset: none named. */
+  generalConditionsJobId?: string | null
   contingencyPct: number
   feePct: number
   /** The day we closed the job: every trade closed out and our own crew done. */

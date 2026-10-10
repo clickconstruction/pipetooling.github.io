@@ -49,3 +49,7 @@ DROP VIEW IF EXISTS public.gc_change_orders_office;
 ```
 
 Nothing reads it until the schedule's PR 16b-ii.
+
+## Status
+
+Merged in #5307 and pushed to prod 2026-10-10 ~08:5x UTC (`supabase db push` took it alone; drift check 855/855). Verified read-only through the management API (`to-dos/gc-mode/scripts/verify/verify-081000.mjs` on `spike/gc-mode`): the twelve columns in order, `{security_barrier=true}`, `authenticated` holds `SELECT` alone with no `anon` or `PUBLIC` row, and a dev's count of the view equals the count of `gc_change_orders`. The types regen is the one regen owner's follow-up.

@@ -58,7 +58,7 @@ const open = (path = `/t/${TOKEN}`) =>
   )
 
 const openJob = async (title = 'Electrical · statement of work') => {
-  fireEvent.click(await screen.findByRole('button', { name: /Sample Dental Office/ }))
+  fireEvent.click(await screen.findByRole('button', { name: /^Sample Dental Office/ }))
   return within(await screen.findByRole('region', { name: title }))
 }
 

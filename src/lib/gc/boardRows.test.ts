@@ -121,6 +121,24 @@ describe('the board read from its rows', () => {
     ])
   })
 
+  it('Start anyway reads who by name, why and what was owed; a plain Start reads none (B6-c-ii)', () => {
+    const base = rows()
+    const anyway = boardStateFromRows(rows({ userNames: { u1: 'Rosa' }, boardDates: { p1: { ...base.boardDates.p1!, started_on: '2026-10-10', started_anyway_by: 'u1', started_anyway_reason: 'The owner needs the pad poured.', started_anyway_missing: ['Sitework: Send the master agreement.'] } } }))
+    expect(anyway.projects[0]!.startedAnyway).toEqual({ by: 'Rosa', reason: 'The owner needs the pad poured.', missing: ['Sitework: Send the master agreement.'] })
+    const plain = boardStateFromRows(rows({ boardDates: { p1: { ...base.boardDates.p1!, started_on: '2026-10-10' } } }))
+    expect(plain.projects[0]!.startedAnyway).toBeUndefined()
+  })
+
+  it('our own crew is priced from its Trades mode bid once it is above 0 (call C), else our budget, not priced', () => {
+    const own = (r: ReturnType<typeof rows>) => boardStateFromRows(r).projects[0]!.packages.find((k) => k.trade === 'Plumbing')!.selfPerform
+    const base = rows()
+    const bidId = base.projects[0]!.trades.find((t) => t.ours)!.ownBidId
+    expect(own(base)).toMatchObject({ priced: false })
+    expect(bidId).toBeTruthy()
+    expect(own(rows({ ownBids: [{ id: bidId!, bid_value: '48250', bid_number: 'BP464' }] }))).toMatchObject({ ref: 'BP464', value: 48250, priced: true })
+    expect(own(rows({ ownBids: [{ id: bidId!, bid_value: 0, bid_number: 'BP464' }] }))).toMatchObject({ priced: false })
+  })
+
   it('a company new to us carries the form it sent, and who decided an approval reads by name', () => {
     const form = { company_id: 'hillside', license: 'TX 4471', insurance: 'Lone Star Mutual', years_in_business: null, reference_list: 'Ana Ruiz', past_jobs: 'Two clinics', sent_on: '2026-10-04' }
     const [, hillside] = boardStateFromRows(rows({ vettingForms: [form] })).partners

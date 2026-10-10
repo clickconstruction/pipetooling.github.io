@@ -7,7 +7,7 @@ order: 111
 ---
 A trade our own crew does on a GC job runs on a job in the Pipeline. Link the two, and the GC job reads our crew's work from that Pipeline job.
 
-The Pipeline job gives two things. Its stages give our crew's percent done. Its clock-ins give the daily log's count. Only a dev links the job for now.
+The Pipeline job gives two things. The job's stages give our crew's percent done. The job's clock-ins give the daily log's count. Only a dev links the job for now.
 
 ## Pick the Pipeline job
 
@@ -21,7 +21,7 @@ The Pipeline job gives two things. Its stages give our crew's percent done. Its 
 Plumbing · our own crew {{chip:purple|Pipeline job J 1071}} {{button:outline|Change}}
 :::
 
-A billing-only job cannot be picked. Nobody clocks in on it. A job another crew trade already has says so, like **On Electrical already**, and cannot be picked either. One Pipeline job goes with one crew trade.
+A billing-only job cannot be picked. Nobody clocks in on it. A job another crew trade already has says so, like **On Electrical already**, and cannot be picked either. So does the job a GC job's general conditions are spent on, as **On general conditions already**. One Pipeline job goes with one crew trade.
 
 ## What the GC job reads
 
@@ -37,4 +37,4 @@ The count is a number only. The GC job never shows who clocked in or for how lon
 1. Press {{button:outline|Change}} beside the job on **Our own crew**.
 2. Pick another job, or press {{button:outline|Unlink it}}.
 
-Once it is unlinked, the daily log takes a typed count again.
+Once the job is unlinked, the daily log takes a typed count again.

@@ -5,9 +5,10 @@
 import { describe, expect, it } from 'vitest'
 import { gcTradePortalSample, SAMPLE_TRADE_IDS as ID } from '../../../supabase/functions/_shared/gcTradePortalSample'
 import { TRADE_SUBMIT_ERROR_KEYS } from '../../../supabase/functions/_shared/gcTradeSubmit'
-import { portalAsks } from './portal'
+import { portalAsks, portalTodos } from './portal'
 import { PORTAL_SPANISH_ON, portalShownLang, portalString } from './portalI18n'
-import { askChips, askWhen, changeFileByEmailWords, pastWords, portalHomeGroups, readTradePortalAnswer, replyByEmailWords, sentMessages, setDriveUrl, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
+import { WAIVER_SIGN_LIVE } from './drawEmail'
+import { askChips, askWhen, changeFileByEmailWords, pastWords, portalHomeGroups, portalHomeTodos, readTradePortalAnswer, replyByEmailWords, sentMessages, setDriveUrl, todoWaitsOnWaivers, TRADE_ERROR_WORDS, tradeErrorWords, tradePortalPath, tradePortalUrl } from './tradePortalPage'
 import { tradePortalState } from './tradePortalState'
 
 const TODAY = '2026-10-08'
@@ -114,5 +115,21 @@ describe('a change’s photo or ticket, by email until P5a (P4b-ii)', () => {
     const withPm = { ...job, team: [...(job.team ?? []), { role: 'projectManager' as const, name: 'Avery Lin', phone: '', email: 'avery@example.com' }] }
     expect(changeFileByEmailWords(withPm, 'en')).toBe('Have a photo or a ticket? Email it to Avery Lin (avery@example.com).')
     expect(changeFileByEmailWords(withPm, 'es')).toBe('¿Tiene una foto o una boleta? Envíela por correo a Avery Lin (avery@example.com).')
+  })
+})
+
+describe('the home’s to-dos while the owner’s call holds the waivers (P5c-3c-i)', () => {
+  it('names the to-dos whose press is a waiver: a draw to ask for, one to fix and send again, the final, both waivers', () => {
+    for (const key of ['ask1:draw', 'ask1:back', 'ask1:final', 'ask1:finalwaiver', 'ask1:waiver:d1']) expect(todoWaitsOnWaivers(key), key).toBe(true)
+    for (const key of ['ask1:punch', 'ask1:submittals', 'ask1:less:d1', 'co1:sign', 'charge1:answer', 'ask1:sow', 'msa']) expect(todoWaitsOnWaivers(key), key).toBe(false)
+  })
+
+  it('leaves them out of the sample’s Needs you while held, and keeps the rest', () => {
+    expect(WAIVER_SIGN_LIVE).toBe(false)
+    const asks = portalAsks(state, partnerId)
+    expect(portalTodos(state, partnerId, asks, 'en').filter((t) => todoWaitsOnWaivers(t.key)).length).toBeGreaterThan(0)
+    const todos = portalHomeTodos(state, partnerId, asks, 'en')
+    expect(todos.some((t) => t.key.endsWith(':punch'))).toBe(true)
+    expect(todos.filter((t) => todoWaitsOnWaivers(t.key))).toEqual([])
   })
 })

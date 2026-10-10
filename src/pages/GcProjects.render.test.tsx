@@ -7,7 +7,7 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
 import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
-import { loadSchedule } from '../lib/gc/scheduleIo'
+import { loadSchedule, loadScheduleWithHolds } from '../lib/gc/scheduleIo'
 import { loadGcCrewOnSite, loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { linkCrewJob, loadCrewJobs, searchCrewJobs, suggestCrewJobs } from '../lib/gc/crewJobIo'
 import type { CrewJobRead } from '../lib/gc/crewJobRows'
@@ -89,6 +89,8 @@ vi.mock('../lib/gc/gcIo', async () => {
     setGcAskTakenAlternates: vi.fn(),
     carryGcTrade: vi.fn(() => Promise.resolve()),
     setGcProjectMoney: vi.fn(() => Promise.resolve()),
+    setGcGeneralConditionsJob: vi.fn(() => Promise.resolve()),
+    searchPipelineJobs: vi.fn(() => Promise.resolve([])),
     markGcBidSent: vi.fn(() => Promise.resolve()),
     markGcWon: vi.fn(),
     markGcLost: vi.fn(),
@@ -407,6 +409,9 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Schedule' }))
     expect(await screen.findByRole('dialog', { name: `${rows.projects[0]!.name}: the schedule` })).toBeTruthy()
     expect(loadSchedule).toHaveBeenCalledWith(expect.anything(), 'p1')
+    // The schedule's PR 16: a dev may use Building and is on the money team, so the window reads the job's logs and
+    // clock-ins over the board (16a) and offers Ask for the days (16b-ii).
+    expect(loadScheduleWithHolds).toHaveBeenCalledWith(expect.anything(), 'p1', { logs: true, money: true, today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
   })
 
   it('the schedule’s PR 7b: the office team has no Schedule on a card until the schedule’s PR 10', async () => {

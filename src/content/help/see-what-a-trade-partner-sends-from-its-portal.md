@@ -2,7 +2,7 @@
 title: see what a trade partner sends from its portal
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, portal, quote, quote day, pass, question, plans, who gets our emails, follow up, compare quotes, charge, back-charge, dispute, change request
+keywords: gc mode, trade partner, portal, quote, quote day, pass, question, plans, who gets our emails, follow up, compare quotes, charge, back-charge, dispute, change request, percent done, report, change order signed
 order: 97
 ---
 A trade partner can answer us from its portal. This guide shows where each thing it sends lands for the office.
@@ -46,6 +46,10 @@ The company can add people and tick the kinds of email each one gets. Every kind
 ## A charge's answer, or a change it asks for
 
 On a job of ours, the company can press **Agree** on a charge from us. It can also press **Dispute it** and say why. It can press **Ask for a change** to the work it signed for. Each one is saved with the job. No office screen shows them yet.
+
+## Its report, or a change it signed
+
+On a job we are building, the company picks each line's percent done. The Draws window shows it as reported. It signs a change we sent it, and the change becomes a line of its statement of work. [Pay a trade's draw](/help/pay-a-trades-draw) says what comes next.
 
 ## What the company cannot send yet
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { crewJobsHeld, crewPercentOf, heldByOthers, withCrewPercents, type CrewJobRead, type CrewStageRow } from './crewJobRows'
+import { crewJobsHeld, crewPercentOf, generalConditionsHolder, heldByOthers, withCrewPercents, type CrewJobRead, type CrewStageRow } from './crewJobRows'
 import { crewPctFromStages, ownCrewWork } from './building'
 import { initialGcState } from './schedule/testState'
 
@@ -98,5 +98,16 @@ describe('one Pipeline job per crew trade (call 11, amendment 3)', () => {
 
   it('leaves out the trade’s own job, so its picker can keep it', () => {
     expect(heldByOthers(crewJobsHeld(projects, 'p1'), 'k3')).toEqual({ 'job-8': 'Electrical', 'job-9': 'Plumbing at Stone Oak' })
+  })
+
+  it('holds each project’s general conditions job too, on every crew’s picker and the other projects’ (O11b)', () => {
+    const held = crewJobsHeld(projects, 'p1', { p1: 'job-gc1', p2: 'job-gc2' })
+    expect(held.filter((h) => h.packageId.startsWith('general-conditions'))).toEqual([
+      { jobId: 'job-gc1', packageId: generalConditionsHolder('p1'), words: 'general conditions' },
+      { jobId: 'job-gc2', packageId: generalConditionsHolder('p2'), words: 'general conditions at Stone Oak' },
+    ])
+    expect(heldByOthers(held, 'k3')).toEqual({ 'job-8': 'Electrical', 'job-9': 'Plumbing at Stone Oak', 'job-gc1': 'general conditions', 'job-gc2': 'general conditions at Stone Oak' })
+    // Our number's picker on p1 keeps its own general conditions job and holds every crew's and p2's.
+    expect(heldByOthers(held, generalConditionsHolder('p1'))).toEqual({ 'job-7': 'Plumbing', 'job-8': 'Electrical', 'job-9': 'Plumbing at Stone Oak', 'job-gc2': 'general conditions at Stone Oak' })
   })
 })

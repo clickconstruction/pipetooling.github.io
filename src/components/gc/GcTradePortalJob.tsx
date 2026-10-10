@@ -1,19 +1,25 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
+import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
+import { esignConsentText } from '../../lib/esignConsent'
 import { sowMoney } from '../../lib/gc/bids'
-import { sowContractSum } from '../../lib/gc/building'
+import { sowContractSum, tradeChangesFor } from '../../lib/gc/building'
 import { punchCounts, punchItems, punchState } from '../../lib/gc/buildingPunch'
 import { portalCanAskRfi, portalRfis, rfiLabel, rfiState } from '../../lib/gc/buildingRfis'
 import { submittalRowsOn, type SubmittalRow } from '../../lib/gc/buildingSubmittals'
 import { bw, type BuildingWordKey } from '../../lib/gc/buildingWords'
 import { GC_COMPANY } from '../../lib/gc/company'
+import { WAIVER_SIGN_LIVE } from '../../lib/gc/drawEmail'
 import { portalOnSite } from '../../lib/gc/portal'
 import { pDate, type PortalLang } from '../../lib/gc/portalI18n'
-import type { GcProject, SubmittalKind, TradePackage } from '../../lib/gc/types'
+import { tradeWaiverPaper } from '../../lib/gc/tradeWaiverPaper'
+import type { Draw, GcProject, Partner, SovLine, SubmittalKind, TradePackage } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
 import { HAIR, MUTED } from '../../lib/portal/portalTheme'
 import { Btn, Chip, input } from './gcUi'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
+import { GcBuildingPayAppDoor } from './GcTradePortalPayApp'
+import { TradeWaiverPaperView } from './GcTradeWaiverPaper'
 import { PortalBlock } from './GcTradePortalUi'
 
 /**
@@ -22,8 +28,11 @@ import { PortalBlock } from './GcTradePortalUi'
  * punch and submittal boxes (`GcBuildingPunchForTrade`, `GcBuildingSubmittalsForTrade`) and `GcPortalRfis`: each line's
  * percent and what was paid through, its punch list, its submittals, its draws, and its questions while we build. Since
  * P5c-2 the company marks a punch item fixed (`punch_fixed`), sends a submittal round (`submittal_send`, its file a name and
- * a Drive link until P5a's upload) and asks a question (`rfi_ask`). The report, the pay application and the waivers get
- * theirs in P5c-3; until then they show where things stand and ask nothing.
+ * a Drive link until P5a's upload) and asks a question (`rfi_ask`). Since P5c-3b it reports each line's percent
+ * (`sow_report`) and signs a change we sent it (`sign_change`), typed with the e-sign consent. The unconditional waiver on
+ * a paid draw (`unconditional_waiver`), on the app's own waiver paper, is drawn only once `WAIVER_SIGN_LIVE` is on, the
+ * owner's call. Since P5c-3c-i the pay application's door sits under the changes (`GcTradePortalPayApp.tsx`, lifted from
+ * the spike): where its pay application stands, a sent one read in its window, and the closeout.
  */
 
 const GC = GC_COMPANY.shortName
@@ -33,22 +42,28 @@ const FIELD = { ...input, width: '100%', minWidth: 0, boxSizing: 'border-box' } 
 
 const KIND_KEY: Record<SubmittalKind, BuildingWordKey> = { 'product data': 'subKindProduct', 'shop drawings': 'subKindShop', samples: 'subKindSamples' }
 
-export function GcTradePortalJob({ project, pkg, partnerId, today }: { project: GcProject; pkg: TradePackage; partnerId: string; today: string }) {
+export function GcTradePortalJob({ project, pkg, partner, today }: { project: GcProject; pkg: TradePackage; partner: Partner; today: string }) {
   return (
     <>
-      <Report project={project} pkg={pkg} today={today} />
-      <Rfis project={project} pkg={pkg} partnerId={partnerId} />
+      <Report project={project} pkg={pkg} partner={partner} today={today} />
+      <Rfis project={project} pkg={pkg} partnerId={partner.id} />
     </>
   )
 }
 
-/** The report: each line's percent done and paid through, the punch list and submittals, the draws and the totals. */
-function Report({ project, pkg, today }: { project: GcProject; pkg: TradePackage; today: string }) {
+/**
+ * The report: each line's percent done and paid through, the punch list and submittals, the changes to sign, the pay
+ * application's door, the draws and the totals. A line's percent is a picker while we build the job; otherwise it reads
+ * as text.
+ */
+function Report({ project, pkg, partner, today }: { project: GcProject; pkg: TradePackage; partner: Partner; today: string }) {
   const { lang, t } = usePortalLang()
+  const press = usePortalPress()
   const sow = pkg.sow
   if (!sow || sow.status !== 'signed') return null
   const m = sowMoney(sow)
   const onSite = portalOnSite(project, pkg, today, lang)
+  const canReport = Boolean(press) && project.stage === 'building' && !project.closedOn
   return (
     // A to-do about this work (the punch list, a submittal, a draw) lands here.
     <div data-portal-anchor={`report:${pkg.id}`} style={{ scrollMarginTop: '0.5rem' }}>
@@ -56,28 +71,29 @@ function Report({ project, pkg, today }: { project: GcProject; pkg: TradePackage
         <div style={{ display: 'grid', gap: '0.45rem', fontSize: '0.9rem' }}>
           {onSite && <div style={{ fontSize: '0.85rem', color: MUTED }}>{onSite}</div>}
           {sow.sov.map((l) => (
-            <div key={l.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', alignItems: 'baseline' }}>
-              <span>
-                {l.label} <span style={{ color: MUTED }}>· {money(l.amount)} · {t('paidThrough', { pct: l.pctBilled })}</span>
-              </span>
-              <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{t('pctDone', { pct: l.pctReported })}</strong>
-            </div>
+            <ReportLine key={l.id} line={l} packageId={pkg.id} canReport={canReport} />
           ))}
           <Punch project={project} pkg={pkg} lang={lang} />
           <Submittals project={project} pkg={pkg} today={today} lang={lang} />
+          <ChangesToSign project={project} pkg={pkg} lang={lang} />
+          <GcBuildingPayAppDoor project={project} pkg={pkg} partner={partner} today={today} />
           {sow.draws.map((d) => (
-            <div key={d.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <strong>{t('drawN', { n: d.number })}</strong>
-              <span>
-                {money(d.net)}
-                {d.asked && <span style={{ color: MUTED }}> {t('drawOfAsked', { asked: money(d.asked.net) })}</span>}
-                {(d.backCharges ?? []).length > 0 && (
-                  <span style={{ color: MUTED }}> {t('bcOffDraw', { amount: money((d.backCharges ?? []).reduce((sum, c) => sum + c.amount, 0)) })}</span>
-                )}
-              </span>
-              <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
-                {d.status === 'requested' ? t('drawReviewing', { gc: GC }) : d.status === 'approved' ? t('drawApproved') : t('drawPaid')}
-              </Chip>
+            <div key={d.id} style={{ display: 'grid', gap: '0.35rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <strong>{t('drawN', { n: d.number })}</strong>
+                <span>
+                  {money(d.net)}
+                  {d.asked && <span style={{ color: MUTED }}> {t('drawOfAsked', { asked: money(d.asked.net) })}</span>}
+                  {(d.backCharges ?? []).length > 0 && (
+                    <span style={{ color: MUTED }}> {t('bcOffDraw', { amount: money((d.backCharges ?? []).reduce((sum, c) => sum + c.amount, 0)) })}</span>
+                  )}
+                </span>
+                <Chip tone={d.status === 'paid' ? 'green' : d.status === 'approved' ? 'blue' : 'amber'}>
+                  {d.status === 'requested' ? t('drawReviewing', { gc: GC }) : d.status === 'approved' ? t('drawApproved') : t('drawPaid')}
+                </Chip>
+                {d.status === 'paid' && d.waiver === 'unconditional' && <span style={{ fontSize: '0.8rem', color: MUTED }}>{t(d.final ? 'uncondFinalSigned' : 'uncondSigned')}</span>}
+              </div>
+              {WAIVER_SIGN_LIVE && d.status === 'paid' && d.waiver === 'conditional' && press && <SignWaiver draw={d} project={project} company={partner.company} today={today} />}
             </div>
           ))}
           <div style={{ fontSize: '0.8rem', color: MUTED }}>{t('sowTotals', { paid: money(m.paid), held: money(m.retainageHeld), left: money(sowContractSum(sow) - m.billed) })}</div>
@@ -87,7 +103,179 @@ function Report({ project, pkg, today }: { project: GcProject; pkg: TradePackage
   )
 }
 
+const PCTS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+
+/**
+ * A line's percent done (`sow_report`): a picker by tens that never goes below what was billed, as the SQL holds it, with
+ * the percent last reported kept when it is not a ten. A split line is refused in splitLine's words until the schedule's
+ * parts reach the portal (P5d).
+ */
+function ReportLine({ line, packageId, canReport }: { line: SovLine; packageId: string; canReport: boolean }) {
+  const { t } = usePortalLang()
+  const { busy, problem, run } = usePress()
+  const [picked, setPicked] = useState<number | null>(null)
+  const pcts = [...new Set([...PCTS.filter((p) => p >= line.pctBilled), line.pctReported])].sort((a, b) => a - b)
+  return (
+    <div style={{ display: 'grid', gap: '0.2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '0.5rem', alignItems: 'baseline' }}>
+        <span>
+          {line.label} <span style={{ color: MUTED }}>· {money(line.amount)} · {t('paidThrough', { pct: line.pctBilled })}</span>
+        </span>
+        {canReport ? (
+          <select
+            value={picked ?? line.pctReported}
+            disabled={busy}
+            onChange={(e) => {
+              const pct = Number(e.target.value)
+              setPicked(pct)
+              void run('sow_report', { packageId, line: line.id, pct }).then(() => setPicked(null))
+            }}
+            style={input}
+            aria-label={t('percentAria', { line: line.label })}
+          >
+            {pcts.map((p) => (
+              <option key={p} value={p}>
+                {t('pctDone', { pct: p })}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{t('pctDone', { pct: line.pctReported })}</strong>
+        )}
+      </div>
+      {problem && <span style={PROBLEM}>{problem}</span>}
+    </div>
+  )
+}
+
 const box = { padding: '0.55rem 0.65rem', border: `1px solid ${HAIR}`, borderRadius: 6, display: 'grid', gap: '0.45rem' } as const
+
+/** The changes we sent it to sign: what each adds or takes off, and its signature, which makes it a line of the work. */
+function ChangesToSign({ project, pkg, lang }: { project: GcProject; pkg: TradePackage; lang: PortalLang }) {
+  const press = usePortalPress()
+  const w = (key: BuildingWordKey, vars?: Record<string, string | number>) => bw(lang, key, { gc: GC, ...vars })
+  const sent = tradeChangesFor(project, pkg).filter((c) => c.state === 'sent')
+  if (sent.length === 0) return null
+  return (
+    <>
+      {sent.map(({ co }) => {
+        const what = co.description.trim().replace(/[.\s]+$/, '')
+        return (
+          <div key={co.id} style={box}>
+            <div>
+              <strong>{w('changeTo', { n: co.number })}</strong> {what ? `${what}. ` : ''}
+              {co.cost < 0 ? w('changeTakes', { amount: money(-co.cost) }) : w('changeAdds', { amount: money(co.cost) })}
+            </div>
+            {press && <SignChange changeOrderId={co.id} label={w('signChange')} />}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
+/**
+ * A typed name and the e-sign consent on one paper, behind its button; a refusal shows under the form. A paper of its own
+ * (the waiver's) sits above the form with a plain line explaining it, and shows the name as it is typed.
+ */
+function SignPaper({
+  label,
+  explain = null,
+  paper = null,
+  disclosure,
+  agree,
+  noun,
+  onSign,
+  busy,
+  problem,
+}: {
+  label: string
+  explain?: string | null
+  paper?: ((printedName: string) => ReactNode) | null
+  disclosure: string
+  agree: string
+  noun: string
+  onSign: (printedName: string, consent: Record<string, unknown> | undefined) => void
+  busy: boolean
+  problem: string | null
+}) {
+  const { lang } = usePortalLang()
+  const [open, setOpen] = useState(false)
+  const [name, setName] = useState('')
+  const [agreed, setAgreed] = useState(false)
+  if (!open) {
+    return (
+      <div>
+        <Btn kind="primary" onClick={() => setOpen(true)}>
+          {label}
+        </Btn>
+      </div>
+    )
+  }
+  return (
+    <div style={{ display: 'grid', gap: '0.5rem' }}>
+      {explain && <div style={{ fontSize: '0.85rem' }}>{explain}</div>}
+      {paper?.(name)}
+      <ContractAcceptSignatureForm
+        printedName={name}
+        agreed={agreed}
+        onPrintedNameChange={setName}
+        onAgreedChange={setAgreed}
+        formError={problem}
+        submitting={busy}
+        lockMode="type"
+        onSubmit={(p) => onSign(p.printedName, p.consent ? { ...p.consent } : undefined)}
+        heading={label}
+        disclosure={disclosure}
+        consent={esignConsentText({ audience: 'sub', lang, documentNoun: noun })}
+        agreeLabel={agree}
+        submitLabel={label}
+        lang={lang}
+      />
+    </div>
+  )
+}
+
+/** A change we sent, signed (`sign_change`): the SQL makes it a line of the statement of work. */
+function SignChange({ changeOrderId, label }: { changeOrderId: string; label: string }) {
+  const { t } = usePortalLang()
+  const { busy, problem, run } = usePress()
+  return (
+    <SignPaper
+      label={label}
+      disclosure={t('changeSignLead')}
+      agree={t('changeSignAgree')}
+      noun={t('changeConsentNoun')}
+      busy={busy}
+      problem={problem}
+      onSign={(printedName, consent) => void run('sign_change', { changeOrderId, printedName, ...(consent ? { esignConsent: consent } : {}) })}
+    />
+  )
+}
+
+/**
+ * The unconditional waiver on a paid draw (`unconditional_waiver`), or the unconditional final release on the final one.
+ * The paper is the app's own (`tradeWaiverPaper`, the Release of Lien window's forms); the plain lines above it explain
+ * it and are never the document. Drawn only once `WAIVER_SIGN_LIVE` is on. The signed paper as a file comes with P5a.
+ */
+function SignWaiver({ draw, project, company, today }: { draw: Draw; project: GcProject; company: string; today: string }) {
+  const { t } = usePortalLang()
+  const { busy, problem, run } = usePress()
+  const final = Boolean(draw.final)
+  return (
+    <SignPaper
+      label={t(final ? 'signUncondFinal' : 'signUncond')}
+      explain={t(final ? 'uncondFinalLead' : 'uncondLead', { amount: money(draw.net), n: draw.number })}
+      paper={(name) => <WaiverPaper draw={draw} project={project} company={company} signer={name} today={today} />}
+      disclosure={t(final ? 'uncondFinalSignLead' : 'uncondSignLead')}
+      agree={t(final ? 'uncondFinalAgree' : 'uncondAgree')}
+      noun={t(final ? 'uncondFinalConsentNoun' : 'uncondConsentNoun')}
+      busy={busy}
+      problem={problem}
+      onSign={(printedName, consent) => void run('unconditional_waiver', { drawId: draw.id, printedName, ...(consent ? { esignConsent: consent } : {}) })}
+    />
+  )
+}
 
 /** Its punch list: each item not checked yet, and what we sent back. */
 function Punch({ project, pkg, lang }: { project: GcProject; pkg: TradePackage; lang: PortalLang }) {
@@ -324,4 +512,9 @@ function AskRfi({ packageId, none }: { packageId: string; none: boolean }) {
       {problem && <span style={PROBLEM}>{problem}</span>}
     </div>
   )
+}
+
+/** The unconditional waiver as the app's paper (`GcTradeWaiverPaper.tsx`), the name on its foot as it is typed. */
+function WaiverPaper({ draw, project, company, signer, today }: { draw: Draw; project: GcProject; company: string; signer: string; today: string }) {
+  return <TradeWaiverPaperView paper={tradeWaiverPaper(draw, project, company, signer, today)} />
 }

@@ -10,7 +10,6 @@ import { partnerBlockers } from '../../lib/gc/bench'
 import { sowMoney } from '../../lib/gc/bids'
 import { retainageHeldNow, sentBackOpen, sowContractSum, timesSentBack, tradeChangesFor, type TradeChange } from '../../lib/gc/building'
 import { drawPayDays, drawsToPay } from '../../lib/gc/buildingPay'
-import { DRAW_PORTAL_LIVE } from '../../lib/gc/drawEmail'
 import type { SignedFile } from '../../lib/gc/closeoutRows'
 import type { CrewJobRead } from '../../lib/gc/crewJobRows'
 import { drawCameInDraft, type DrawCameIn, type DrawExtra } from '../../lib/gc/drawRows'
@@ -574,11 +573,11 @@ function TradeChanges({
           )}
         </div>
       ))}
-      {!DRAW_PORTAL_LIVE && changes.some((c) => c.state === 'toSend' || c.state === 'sent') && (
+      {changes.some((c) => c.state === 'toSend' || c.state === 'sent') && (
         <span data-draw-change-hint style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
           {onSignedIn
-            ? 'Their portal does not take signatures yet. Call them to sign it. Once they sign on paper or by email, press They signed it.'
-            : 'Their portal does not take signatures yet. Call them to sign it.'}
+            ? 'They sign it in their portal. If they sign on paper or by email instead, press They signed it.'
+            : 'They sign it in their portal.'}
         </span>
       )}
     </div>

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { GcMoney } from './GcMoney'
 import { allJobsMoney } from '../../lib/gc/ownerBilling'
 import { ownerInterest } from '../../lib/gc/ownerBillingInterest'
+import { jobMargin } from '../../lib/gc/ownerBillingMargin'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { money } from '../../lib/gc/words'
 import { installDomShims } from '../../test/renderSmokeMocks'
@@ -11,6 +12,23 @@ import { installDomShims } from '../../test/renderSmokeMocks'
 installDomShims()
 
 describe('GcMoney', () => {
+  it('counts general conditions at their Pipeline job’s spend as Our own work, and says where it comes from (O11b)', () => {
+    const state = initialGcState()
+    const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
+    const budget = jobMargin(state, fairOaks).generalConditions
+    const named = { ...state, projects: state.projects.map((p) => (p.id === 'fairoaksd' ? { ...p, generalConditionsJobId: 'j-gc' } : p)) }
+    const own = { payAccess: true, byJob: { 'j-gc': { jobId: 'j-gc', label: 'J 1080', name: 'Fair Oaks general conditions', spentUsd: budget + 4_300, teamUsd: budget, subUsd: 0, partsUsd: 4_300, fieldDays: 30, finished: false } } }
+    render(<GcMoney state={named} own={own} />)
+    expect(screen.getByRole('columnheader', { name: 'Our own work' })).toBeTruthy()
+    const rows = [...document.querySelectorAll('tr')].filter((tr) => tr.querySelector('strong')?.textContent === 'Fair Oaks Shops, Building D' && tr.textContent?.includes('See each trade'))
+    expect(rows).toHaveLength(1)
+    const row = rows[0]!
+    expect(row.textContent).toContain('−$4,300')
+    fireEvent.click(row.querySelector('button') as HTMLElement)
+    expect(row.querySelector('[data-gc-margin-general-conditions]')?.textContent).toContain(`General conditions ${money(budget)}: ${money(budget + 4_300)} spent so far on Pipeline job J 1080, $4,300 over their budget.`)
+    expect(document.body.textContent).toContain('General conditions count at their Pipeline job’s spend once it passes their budget, and at what they cost once the job closes.')
+  })
+
   it('reads money across every job that is ours: the headline, who owes us, each job, and what comes later', () => {
     const state = initialGcState()
     const m = allJobsMoney(state)
