@@ -23,3 +23,4 @@ Read only:
 ## Status
 
 Cut 2026-10-09 by Helper 5 (the Owner Billing lane). The lead deploys the function, then pushes this.
+- Merged 2026-10-10 at 06:45 UTC (#5286, v2.5148). The GC MODE lead deployed `gc-office-notices` at 06:46 UTC with `supabase functions deploy --use-api`, then pushed this migration alone with `bash scripts/db-push.sh` (drift 850 local / 850 remote, fully applied). Verified with the spike's `to-dos/gc-mode/scripts/verify/verify-070000.mjs`: 1 `cron.job` has `gc-office-notices` at `13 * * * *`, active; 2 no run yet at 06:46, the first tick is 07:13 UTC and its row is read then (the switch `gc_office_notices_on_v1` is off, so the expected answer is *skipped: off*). The switch stays off until the owner's press after the Preview walk on Grace's yes.
