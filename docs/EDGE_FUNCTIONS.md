@@ -1791,6 +1791,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### send-job-contract
 
+> **v2.5145 — link mode stamps nothing on a row already out with a live link** (punch list #104): when `mode` is `link` and the row is `sent`, not voided, with a token that has more than 7 days left (`jobContractLiveToken` in [`_shared/jobContractLinkLive.ts`](../supabase/functions/_shared/jobContractLinkLive.ts), the rule the app's link doors read since v2.5119), the function answers `{ ok, emailed: false, sign_url, reused: true }` and writes nothing. `sent_channel` stays, so a PDF emailed to sign stays one; `send_count`, `last_sent_at` and `next_reminder_at` stay; no `sent` event is logged. A draft, a row with no token or a link near its end goes through the send as before, which mints or renews the link and stamps it. Email mode always sends. **Redeploy required.**
+
 > **v2.4574 — the email is kept as it went**: the signing email is filed in `sent_documents` (`kind` `job_contract`, the job, the contract as its source) through `sendEmailViaResend`'s `file` option. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 **Purpose**: The office sends a job contract for signature (Contract Desk PR 2, v2.2681) — by email, or by minting the link to copy / text / sign in person.
