@@ -113,6 +113,7 @@ A plan's own status line (top of the file) is the one place its progress is reco
 
 | Plan | Purpose | Status |
 |---|---|---|
+| [`PUNCHLIST_HANDOFF_2026-10-10.md`](./PUNCHLIST_HANDOFF_2026-10-10.md) | The punch-list lead's hand-off of 2026-10-10: what the evening pool shipped (52 PRs, four migrations), the one walk still owed, the owner's decisions and the night's gotchas. |
 | [`PUNCHLIST_HANDOFF_2026-10-09.md`](./PUNCHLIST_HANDOFF_2026-10-09.md) | The punch-list lead's hand-off of 2026-10-09: tonight's anon-revoke window, the owed pushes and the required-check PATCH in order, open PRs, where every card stands after the owner's two decision sittings, as a table of what is left to build and who has it tonight and a table of what waits, the owner questions filed, the gotchas. | handed off 2026-10-09 |
 | [`PUNCHLIST_HANDOFF_2026-10-08.md`](./PUNCHLIST_HANDOFF_2026-10-08.md) | The punch-list lead's hand-off of 2026-10-07/08: the owed pushes and deploys in order, open PRs, where every card stands, the owner questions filed, the gotchas. | done except where the 2026-10-09 hand-off says otherwise |
 | [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md) | Umbrella plan for the plans-to-proposal estimator-twin pipeline: five waves across PT/CT/twin-mcp/harness, each ending in a live test gate. | in progress (`twins/HANDOFF.md` runs the program) |

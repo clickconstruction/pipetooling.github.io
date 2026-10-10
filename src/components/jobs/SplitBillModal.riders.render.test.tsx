@@ -128,6 +128,15 @@ describe('SplitBillModal · the bill’s riders', () => {
     expect(voided).not.toHaveBeenCalled()
   })
 
+  it('a bill carrying a returned check fee is not split, in words: its case takes the fee back on the delete (v2.5144)', async () => {
+    feeLines = [{ case_id: 'cd000000-0000-0000-0000-00000000000d', amount: 30, description: 'Returned check fee' }]
+    await split('100')
+    expect(await screen.findByText('This bill carries a returned check fee, so it cannot be split. Splitting it would count the fee twice.')).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Split into 2 bills' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(voided).not.toHaveBeenCalled()
+    expect(inserted).toHaveLength(0)
+  })
+
   it('no part holds more fees than its own amount: a $200 charge split $100 / $150 is refused in words', async () => {
     feeLines = [{ trip_charge: 'site_not_ready', amount: 200 }]
     await split('100')

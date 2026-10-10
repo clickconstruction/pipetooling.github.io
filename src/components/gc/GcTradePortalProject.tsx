@@ -14,6 +14,7 @@ import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcTradePortalBackCharges } from './GcTradePortalBackCharges'
 import { GcTradePortalChanges } from './GcTradePortalChanges'
+import { GcTradePortalJob } from './GcTradePortalJob'
 import { GcTradePortalSow } from './GcTradePortalSow'
 import { AnswerLines, AskQuestion, ConfirmQuote, PassOnAsk, QuoteDay } from './GcTradePortalPresses'
 import { QuoteForm } from './GcTradePortalQuoteForm'
@@ -96,6 +97,7 @@ function TradeBlocks({
   // The award (P4b-i): its own job, or a trade we gave another company, as the prototype's PackageBlock reads it.
   const awardedToMe = pkg.awardedInviteId === invite.id
   const awardedElsewhere = pkg.awardedInviteId !== null && !awardedToMe
+  const buildingMine = awardedToMe && project.stage === 'building'
   const questions = portalQuestions(project, pkg.id, partner.id)
   const closeOn = questionsCloseOn(project)
   // The prototype's closing rule on its own shape (main's questionsOpen reads the row's 'bidding'): never on a bid we lost.
@@ -140,7 +142,8 @@ function TradeBlocks({
         )}
       </PortalBlock>
 
-      {!closed && !awardedElsewhere && invite.status !== 'declined' && (questions.length > 0 || closeOn || (press && canAsk)) && (
+      {/* While we build its own job, its questions are the RFI block's (P5c-1): the bidding questions closed long ago. */}
+      {!closed && !awardedElsewhere && !buildingMine && invite.status !== 'declined' && (questions.length > 0 || closeOn || (press && canAsk)) && (
         <PortalBlock title={t('questionsTitle', { trade: pkg.trade })}>
           <div style={{ display: 'grid', gap: '0.55rem', fontSize: '0.9rem' }}>
             {press && canAsk ? (
@@ -179,7 +182,11 @@ function TradeBlocks({
       ) : awardedElsewhere ? (
         <PortalBlock title={t('resultTitle', { trade: pkg.trade })}>{t('wentElsewhere')}</PortalBlock>
       ) : awardedToMe ? (
-        <GcTradePortalSow project={project} pkg={pkg} />
+        <>
+          <GcTradePortalSow project={project} pkg={pkg} />
+          {/* The job once its statement of work is signed (P5c-1): the report, punch list, submittals, draws and RFIs. */}
+          <GcTradePortalJob project={project} pkg={pkg} partnerId={partner.id} today={today} />
+        </>
       ) : invite.status === 'declined' ? (
         <PortalBlock title={t('inviteTitle', { trade: pkg.trade })}>{t('youPassed')}</PortalBlock>
       ) : (

@@ -52,7 +52,7 @@ function mount() {
 describe('SettingsWhatTheTeamSeesTab', () => {
   it('opens on a controller’s week, grouped by when, with the count line', async () => {
     await mount()
-    expect(screen.getByTestId('wtts-coverage').textContent).toContain('27 emails · 27 render live')
+    expect(screen.getByTestId('wtts-coverage').textContent).toContain('28 emails · 28 render live')
     // A controller is on the money team, so the Monday money email is on their week (v2.5024).
     expect(screen.getByTestId('wtts-row-gc_money_monday').textContent).toContain('Our GC money')
     const headings = screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent ?? '')

@@ -41,12 +41,20 @@ const refuse = (key: keyof typeof TRADE_FUNCTION_ERRORS) => jsonResponse({ error
 
 type Count = { count: number | null }
 
-/** The company's free-text writes in the last hour: its questions, the people it added, its quotes, its quote days and the changes it asked for. */
+/**
+ * The company's free-text writes in the last hour: its questions, the people it added, its quotes, its quote days and the
+ * changes it asked for, and since P5c-2 its questions while we build and the submittal rounds it sent. A round carries no
+ * company of its own, so it is counted on the submittals of the trades its statements of work are for.
+ */
 async function freeTextCounts(admin: SupabaseClient, companyId: string): Promise<(number | null)[]> {
   const hourAgo = new Date(Date.now() - 3600_000).toISOString()
   const invites = ((await admin.from('gc_invites').select('id').eq('company_id', companyId)).data ?? []) as { id: string }[]
   const head = { count: 'exact' as const, head: true }
-  const [questions, people, contacts, quotes, changes] = await Promise.all([
+  const sowPackages = ((await admin.from('gc_sows').select('package_id').eq('company_id', companyId)).data ?? []) as { package_id: string }[]
+  const submittals = sowPackages.length
+    ? (((await admin.from('gc_submittals').select('id').in('package_id', sowPackages.map((s) => s.package_id))).data ?? []) as { id: string }[])
+    : []
+  const [questions, people, contacts, quotes, changes, rfis, rounds] = await Promise.all([
     admin.from('gc_plan_questions').select('id', head).eq('company_id', companyId).gte('created_at', hourAgo),
     admin.from('gc_company_people').select('id', head).eq('company_id', companyId).eq('added_by', 'trade').gte('created_at', hourAgo),
     admin.from('gc_company_contacts').select('id', head).eq('company_id', companyId).eq('how', 'portal').gte('created_at', hourAgo),
@@ -54,8 +62,12 @@ async function freeTextCounts(admin: SupabaseClient, companyId: string): Promise
       ? admin.from('gc_quotes').select('id', head).in('invite_id', invites.map((i) => i.id)).eq('source', 'trade').gte('created_at', hourAgo)
       : Promise.resolve({ count: 0 } as Count),
     admin.from('gc_trade_change_requests').select('id', head).eq('company_id', companyId).gte('created_at', hourAgo),
+    admin.from('gc_rfis').select('id', head).eq('asked_by_company_id', companyId).gte('created_at', hourAgo),
+    submittals.length
+      ? admin.from('gc_submittal_rounds').select('id', head).in('submittal_id', submittals.map((x) => x.id)).eq('sent_by', 'trade').gte('created_at', hourAgo)
+      : Promise.resolve({ count: 0 } as Count),
   ])
-  return [questions, people, contacts, quotes, changes].map((r) => (r as Count).count)
+  return [questions, people, contacts, quotes, changes, rfis, rounds].map((r) => (r as Count).count)
 }
 
 serve(async (req) => {

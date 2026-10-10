@@ -8,7 +8,11 @@ import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
 import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
 import { loadSchedule } from '../lib/gc/scheduleIo'
-import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { loadGcCrewOnSite, loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { linkCrewJob, loadCrewJobs, searchCrewJobs, suggestCrewJobs } from '../lib/gc/crewJobIo'
+import type { CrewJobRead } from '../lib/gc/crewJobRows'
+import type { GcState } from '../lib/gc/types'
+import { loadGcWeeklyReports } from '../lib/gc/weeklyReportsIo'
 import { loadGcSubmittals } from '../lib/gc/submittalsIo'
 import { loadGcRfis, startRfiChangeOrder } from '../lib/gc/rfisIo'
 import { emailTheTrade, loadGcDraws, payDraw } from '../lib/gc/drawsIo'
@@ -102,6 +106,22 @@ vi.mock('../lib/gc/gcIo', async () => {
 vi.mock('../lib/gc/dailyLogIo', () => ({
   loadGcDailyLogs: vi.fn(() => Promise.resolve([])),
   saveGcDailyLog: vi.fn(() => Promise.resolve('log-1')),
+  loadGcCrewOnSite: vi.fn(() => Promise.resolve([])),
+}))
+
+// Our own crew's Pipeline job (Building's U8): nothing linked unless a test says so.
+vi.mock('../lib/gc/crewJobIo', () => ({
+  loadCrewJobs: vi.fn(() => Promise.resolve([])),
+  linkCrewJob: vi.fn(() => Promise.resolve()),
+  searchCrewJobs: vi.fn(() => Promise.resolve([{ id: 'job-9', label: 'J 1309', name: 'Clinic plumbing, phase 2', address: '' }])),
+  suggestCrewJobs: vi.fn(() => Promise.resolve([{ id: 'job-7', label: 'J 1201', name: 'Clinic plumbing', address: '' }])),
+}))
+
+// Building's weekly reports: none sent yet, and every send going through.
+vi.mock('../lib/gc/weeklyReportsIo', () => ({
+  loadGcWeeklyReports: vi.fn(() => Promise.resolve([])),
+  recordWeeklyReport: vi.fn(() => Promise.resolve('wr-new')),
+  sendWeeklyReport: vi.fn(() => Promise.resolve({ ok: true, to: 'Hill Country Health', email: 'owner@clinic.test' })),
 }))
 
 // Building's submittals: an empty register, and every press going through.
@@ -422,6 +442,9 @@ describe('GcProjects: the daily log (Building)', () => {
     auth.role = 'dev'
     vi.mocked(loadGcDailyLogs).mockClear()
     vi.mocked(saveGcDailyLog).mockClear()
+    // The log window's weekly report card reads the job's register and its sent reports (U7c).
+    vi.mocked(loadGcSubmittals).mockClear()
+    vi.mocked(loadGcWeeklyReports).mockClear()
   })
 
   /** The clinic being built: started long ago unless a test says otherwise, so its last five working days have no log. */
@@ -439,6 +462,18 @@ describe('GcProjects: the daily log (Building)', () => {
     const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
     expect(await within(card).findByRole('button', { name: 'Daily log · 5 missed' })).toBeTruthy()
     expect(loadGcDailyLogs).toHaveBeenCalledWith(['p1'])
+  })
+
+  it('a dev opens it on a job being built and finds this week’s report card, the job’s sent reports read (U7c)', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(await within(card).findByRole('button', { name: 'Daily log · 5 missed' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: daily log' })
+    await waitFor(() => expect(loadGcWeeklyReports).toHaveBeenCalledWith(['p1']))
+    expect(dialog.querySelector('[data-weekly-card]')).toBeTruthy()
   })
 
   it('a dev opens it before work starts, and the window says the log starts then', async () => {
@@ -871,5 +906,98 @@ describe('GcProjects: Punch list (Building)', () => {
     await renderSettled(<GcProjects />, loaded)
     expect(screen.queryByRole('button', { name: 'Punch list' })).toBeNull()
     expect(loadGcPunch).not.toHaveBeenCalled()
+  })
+})
+
+describe('GcProjects: our own crew from its Pipeline job (Building’s U8)', () => {
+  beforeEach(() => window.localStorage.setItem(GC_NEW_HERE_SEEN_KEY, '1'))
+  afterEach(() => {
+    window.localStorage.clear()
+    auth.role = 'dev'
+    vi.mocked(loadCrewJobs).mockReset()
+    vi.mocked(loadCrewJobs).mockImplementation(() => Promise.resolve([]))
+    vi.mocked(loadGcCrewOnSite).mockClear()
+    vi.mocked(linkCrewJob).mockClear()
+    vi.mocked(suggestCrewJobs).mockClear()
+    vi.mocked(searchCrewJobs).mockClear()
+    vi.mocked(loadSchedule).mockClear()
+  })
+
+  /** The clinic being built since Jan 5, our own plumbing (k3) linked to Pipeline job job-7. */
+  function linked() {
+    const base = clinicBoardRows()
+    return {
+      ...base,
+      projects: base.projects.map((p) => ({ ...p, stage: 'building' as const, trades: p.trades.map((t) => (t.id === 'k3' ? { ...t, jobLedgerId: 'job-7' } : t)) })),
+      boardDates: { p1: { ...base.boardDates.p1!, started_on: '2026-01-05' } },
+    }
+  }
+  const read: CrewJobRead = { packageId: 'k3', jobId: 'job-7', label: 'J 1201', name: 'Clinic plumbing', stages: [], reportPct: null, reportedOn: null, pctComplete: 40 }
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+  const plumbingIn = (state: GcState) => state.projects.find((p) => p.id === 'p1')?.packages.find((k) => k.id === 'k3')
+
+  it('lays the job’s percent over the board itself, so the Schedule window reads it (gc 10)', async () => {
+    const rows = linked()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    vi.mocked(loadCrewJobs).mockResolvedValue([read])
+    await renderSettled(<GcProjects />, loaded)
+    await waitFor(() => expect(loadCrewJobs).toHaveBeenCalledWith([{ packageId: 'k3', jobId: 'job-7' }]))
+    await settle()
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Schedule' }))
+    await screen.findByRole('dialog', { name: 'Hill Country Clinic: the schedule' })
+    await waitFor(() => {
+      const calls = vi.mocked(loadSchedule).mock.calls
+      const self = plumbingIn(calls[calls.length - 1]![0] as GcState)?.selfPerform
+      expect([self?.pctDone, self?.source]).toEqual([40, { from: 'job', job: 'J 1201', on: null }])
+    })
+  })
+
+  it('reads our crew’s clock-ins with the logs, from the job’s first day', async () => {
+    const rows = linked()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    await waitFor(() => expect(loadGcCrewOnSite).toHaveBeenCalledWith('p1', '2026-01-05', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)))
+  })
+
+  it('a dev picks our crew’s Pipeline job on Draws, and the trades are read again', async () => {
+    const rows = linked()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    vi.mocked(loadCrewJobs).mockResolvedValue([read])
+    await renderSettled(<GcProjects />, loaded)
+    fireEvent.click(await within(document.querySelector('[data-gc-project="p1"]') as HTMLElement).findByRole('button', { name: 'Draws' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: Draws' })
+    const crew = await waitFor(() => {
+      const el = dialog.querySelector('[data-own-crew="k3"]')
+      expect(el?.textContent).toContain('Pipeline job J 1201')
+      return el as HTMLElement
+    })
+    expect(within(crew.parentElement as HTMLElement).getByText('40% done')).toBeTruthy()
+    fireEvent.click(within(crew).getByRole('button', { name: 'Change' }))
+    await waitFor(() => expect(suggestCrewJobs).toHaveBeenCalledWith('p1', 'b7'))
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'Find the Pipeline job' }), { target: { value: '1309' } })
+    const hit = await waitFor(() => {
+      const el = dialog.querySelector('[data-crew-job-hit="job-9"]')
+      expect(el).toBeTruthy()
+      return el as HTMLElement
+    })
+    const reads = vi.mocked(loadGcProjects).mock.calls.length
+    fireEvent.click(within(hit).getByRole('button', { name: 'Use this job' }))
+    await waitFor(() => expect(linkCrewJob).toHaveBeenCalledWith('k3', 'job-9'))
+    await waitFor(() => expect(vi.mocked(loadGcProjects).mock.calls.length).toBe(reads + 1))
+  })
+
+  it('the money team reads the percent too, but gets no picker (gc 5)', async () => {
+    auth.role = 'master_technician'
+    const rows = linked()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    vi.mocked(loadCrewJobs).mockResolvedValue([read])
+    await renderSettled(<GcProjects />, loaded)
+    await waitFor(() => expect(loadCrewJobs).toHaveBeenCalledWith([{ packageId: 'k3', jobId: 'job-7' }]))
+    expect(loadGcCrewOnSite).not.toHaveBeenCalled()
   })
 })

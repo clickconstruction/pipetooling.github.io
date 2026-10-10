@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest'
 import { proposalTotals } from './bids'
 import { allJobsMoney, markupOnTop, missingTradeWaivers, nextOwnerBillDay, owedDrawWords, ownerAccount, ownerAllBilled, ownerCloseout, ownerContractPrice, ownerContractWorthNow, ownerPayApp, ownerPayAppForm, ownerPayAppHasWork, ownerRetainageOn, ownerRetainageWords, projectCash, sentPayAppLines, spreadMarkup, tradeWaiverChecks, tradesOwingUnconditional } from './ownerBilling'
 import { cashAhead } from './ownerBillingAhead'
+import { withCrewPercents, type CrewJobRead, type CrewStageRow } from './crewJobRows'
+import { plainWordsFailures } from '../plainWords'
 import { billDay } from './ownerBillingDay'
 import { ownerFinishRisk } from './ownerBillingFinish'
 import { ownerInterest } from './ownerBillingInterest'
@@ -200,6 +202,30 @@ describe('our costs and fee spread into the trades', () => {
     const spread = spreadMarkup(lines)
     expect(sum(spread, 'doneToDate')).toBe(956_327.91)
     expect(sum(spread, 'doneBefore')).toBe(635_351.79)
+  })
+})
+
+describe('our own crew’s line says where its percent came from (Building’s U8, co-signed by Owner Billing)', () => {
+  const stage = (name: string, pct: number, at: string): CrewStageRow => ({ fixture_id: name, name, stage_kind: 'any', sequence_order: 0, weight_pct: 25, progress_pct: pct, progress_at: at, draw_paid: false })
+  const read = (over: Partial<CrewJobRead>): CrewJobRead => ({ packageId: 'fplumb', jobId: 'job-1088', label: 'J 1088', name: 'Plumbing', stages: [], reportPct: null, reportedOn: null, pctComplete: null, ...over })
+  const sourceOf = (state: GcState) => {
+    const project = state.projects.find((p) => p.id === 'fairoaksd')!
+    return ownerPayApp(state, project).lines.find((l) => l.id === 'fplumb')?.source
+  }
+  const at = '2026-10-06T15:00:00Z'
+
+  it('names the Pipeline job’s stages, its crew report and its day, or its own percent', () => {
+    const stages = [stage('Underground', 100, at), stage('Rough In', 60, at), stage('Top Out', 0, at), stage('Trim', 0, at)]
+    expect(sourceOf(withCrewPercents(initialGcState(), [read({ stages })]))).toBe('Our own crew is 41% done, from Pipeline job J 1088’s stages.')
+    expect(sourceOf(withCrewPercents(initialGcState(), [read({ reportPct: 40, reportedOn: '2026-10-08' })]))).toBe('Our own crew is 40% done, from the crew report of Oct 8.')
+    expect(sourceOf(withCrewPercents(initialGcState(), [read({ pctComplete: 40 })]))).toBe('Our own crew is 40% done, from Pipeline job J 1088’s percent.')
+  })
+
+  it('keeps today’s words on a trade with nothing read from its job, and says each in plain words', () => {
+    expect(sourceOf(withCrewPercents(initialGcState(), [read({})]))).toBe('Our own crew reported 65% done, by stage.')
+    for (const words of ['Our own crew is 41% done, from Pipeline job J 1088’s stages.', 'Our own crew is 40% done, from the crew report of Oct 8.', 'Our own crew is 40% done, from Pipeline job J 1088’s percent.']) {
+      expect(plainWordsFailures(words), words).toEqual([])
+    }
   })
 })
 

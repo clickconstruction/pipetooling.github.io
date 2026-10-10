@@ -983,6 +983,12 @@ const S = {
   errSowNotSent: { en: 'This statement of work is not ready to sign. Reload the page.', es: 'Esta orden de trabajo todavía no está lista para firmar. Vuelva a cargar la página.' },
   errAlreadySigned: { en: 'This is signed already.', es: 'Esto ya está firmado.' },
   errConsentNeeded: { en: 'Tick I agree to sign electronically, then sign.', es: 'Marque Acepto firmar electrónicamente y luego firme.' },
+  // P5c-2: the punch list, submittals and questions while we build.
+  errPunchNotOpen: { en: 'That item is marked fixed already. Reload the page.', es: 'Ese punto ya está marcado como arreglado. Vuelva a cargar la página.' },
+  errNotYourMove: { en: 'That submittal is with us or the architect now. Reload the page.', es: 'Ese documento para aprobación ya está con nosotros o con el arquitecto. Vuelva a cargar la página.' },
+  errFileNeeded: { en: 'Type the name of the file you are sending.', es: 'Escriba el nombre del archivo que envía.' },
+  errJobNotBuilding: { en: 'That opens once we are building the job.', es: 'Eso se abre cuando estemos construyendo la obra.' },
+  subDriveLink: { en: 'Its Drive link, if you have one', es: 'Su enlace de Drive, si lo tiene' },
   previewNothing: { en: 'Preview. Nothing is saved from here.', es: 'Vista previa. Desde aquí no se guarda nada.' },
   quoteTickHelp: { en: 'Tick what your quote covers. Untick what it leaves out.', es: 'Marque lo que incluye su cotización. Desmarque lo que no incluye.' },
 } satisfies Record<string, Record<PortalLang, string>>

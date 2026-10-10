@@ -56,7 +56,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(15)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(18)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -108,6 +108,50 @@ describe('each kind, read into its verb', () => {
     expect(call('ask_change', { packageId: TRADE, description: 'Rot', reason: 'owner' })).toEqual({
       rpc: 'gc_trade_ask_change',
       params: { p_package_id: TRADE, p_description: 'Rot', p_reason: 'owner', p_amount: null, p_days: 0 },
+    })
+  })
+
+  describe('the punch list, a submittal and a question while we build (P5c-2)', () => {
+    const ITEM = '77777777-7777-4777-8777-777777777777'
+    const SUBMITTAL = '88888888-8888-4888-8888-888888888888'
+
+    it('reads a punch item fixed, a submittal round with its file, and a question with its sheets', () => {
+      expect(call('punch_fixed', { itemId: ITEM })).toEqual({ rpc: 'gc_trade_punch_fixed', params: { p_item_id: ITEM } })
+      expect(call('submittal_send', { submittalId: SUBMITTAL, fileName: ' panels.pdf ', driveUrl: ' https://drive.google.com/file/d/x ', note: ' Square D. ' })).toEqual({
+        rpc: 'gc_trade_submittal_send',
+        params: { p_submittal_id: SUBMITTAL, p_file_name: 'panels.pdf', p_drive_url: 'https://drive.google.com/file/d/x', p_note: 'Square D.' },
+      })
+      expect(call('rfi_ask', { packageId: TRADE, question: ' Recessed panel? ', sheets: ['E-201', ' ', 'E-301'] })).toEqual({
+        rpc: 'gc_trade_rfi_ask',
+        params: { p_package_id: TRADE, p_question: 'Recessed panel?', p_sheets: ['E-201', 'E-301'] },
+      })
+    })
+
+    it('leaves a blank file name and no Drive link to the SQL, which says fileNeeded in the company’s words', () => {
+      expect(call('submittal_send', { submittalId: SUBMITTAL, fileName: '', driveUrl: '' })).toEqual({
+        rpc: 'gc_trade_submittal_send',
+        params: { p_submittal_id: SUBMITTAL, p_file_name: '', p_drive_url: null, p_note: '' },
+      })
+    })
+
+    it('refuses a Drive link that is not https, a file name past 200 characters, and a question that is no trade', () => {
+      for (const bad of [
+        { kind: 'submittal_send', submittalId: SUBMITTAL, fileName: 'a.pdf', driveUrl: 'http://drive.google.com/x' },
+        { kind: 'submittal_send', submittalId: SUBMITTAL, fileName: 'a.pdf', driveUrl: 'javascript:alert(1)' },
+        { kind: 'submittal_send', submittalId: SUBMITTAL, fileName: 'x'.repeat(201) },
+        { kind: 'punch_fixed', itemId: 'item-1' },
+        { kind: 'rfi_ask', packageId: 'pkg', question: 'Q?' },
+        { kind: 'rfi_ask', packageId: TRADE, question: 'x'.repeat(2001) },
+      ]) {
+        expect(parseTradeSubmit({ token: TOKEN, ...bad }), JSON.stringify(bad).slice(0, 80)).toEqual({ ok: false })
+      }
+    })
+
+    it('says the four keys with their statuses', () => {
+      expect(tradeErrorOf({ code: 'P0001', message: 'punchNotOpen' })).toEqual({ key: 'punchNotOpen', status: 409 })
+      expect(tradeErrorOf({ code: 'P0001', message: 'notYourMove' })).toEqual({ key: 'notYourMove', status: 409 })
+      expect(tradeErrorOf({ code: 'P0001', message: 'jobNotBuilding' })).toEqual({ key: 'jobNotBuilding', status: 409 })
+      expect(tradeErrorOf({ code: 'P0001', message: 'fileNeeded' })).toEqual({ key: 'fileNeeded', status: 400 })
     })
   })
 
@@ -203,7 +247,7 @@ describe('before the verb', () => {
     expect(overHourlyCap([3, 2, 1, 3])).toBe(false)
     expect(overHourlyCap([4, 2, 1, 3])).toBe(true)
     expect(overHourlyCap([null, undefined, 10, 0])).toBe(true)
-    expect([...FREE_TEXT_KINDS].sort()).toEqual(['add_person', 'ask_change', 'ask_question', 'quote_day', 'submit_quote'])
+    expect([...FREE_TEXT_KINDS].sort()).toEqual(['add_person', 'ask_change', 'ask_question', 'quote_day', 'rfi_ask', 'submit_quote', 'submittal_send'])
   })
 })
 
@@ -233,34 +277,46 @@ describe('the verb’s refusals', () => {
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
   const WAITING: Record<string, string> = {
-    // Building's U4a, gc_trade_submittal_send, listed ahead of it so the order the two land in does not matter.
-    fileNeeded: 'P5',
-    notYourMove: 'P5',
-    // Building's U5a, gc_trade_rfi_ask: a question on a job not being built.
-    jobNotBuilding: 'P5',
     // Building's U6a, the trades' draws: a statement of work not signed, a draw waiting, nothing to bill, a split
     // line and a waiver before payment. Its second signature, alreadySigned, is mapped since P2c-ii.
-    sowNotSigned: 'P5',
-    drawWaiting: 'P5',
-    nothingToBill: 'P5',
-    splitLine: 'P5',
-    notPaidYet: 'P5',
+    sowNotSigned: 'P5c-3',
+    drawWaiting: 'P5c-3',
+    nothingToBill: 'P5c-3',
+    splitLine: 'P5c-3',
+    notPaidYet: 'P5c-3',
     // Building's U6c, the final pay application (gc_trade_final_pay_app, through gc_final_pay_app_ask): the final
     // sent already, and asked before every line is billed and the work accepted.
-    finalSent: 'P5',
-    finalNotYet: 'P5',
-    // Building's U3b-i, the punch list (gc_trade_punch_fixed, through gc_punch_fixed_ask): an item marked fixed already.
-    punchNotOpen: 'P5',
+    finalSent: 'P5c-3',
+    finalNotYet: 'P5c-3',
   }
 
-  it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {
+  /**
+   * Every key a trade verb raises, its own and those of the `*_ask` helpers it returns through (P5c-2: U3b-i's
+   * gc_punch_fixed_ask and U6c's gc_final_pay_app_ask raise keys the verb itself never names).
+   */
+  function raisedByTradeVerbs(): { verb: string; key: string }[] {
     const dir = join(process.cwd(), 'supabase', 'migrations')
     const bodies = new Map<string, string>()
+    const helpers = new Map<string, string>()
     for (const f of readdirSync(dir).filter((x) => x.endsWith('.sql')).sort()) {
       const sql = readFileSync(join(dir, f), 'utf8')
       for (const m of sql.matchAll(/CREATE OR REPLACE FUNCTION public\.(gc_trade_[a-z_]+)\([\s\S]*?\$\$([\s\S]*?)\$\$;/g)) bodies.set(m[1]!, m[2]!)
+      for (const m of sql.matchAll(/CREATE OR REPLACE FUNCTION public\.(gc_[a-z_]+_ask)\([\s\S]*?\$\$([\s\S]*?)\$\$;/g)) helpers.set(m[1]!, m[2]!)
     }
-    const raised = [...bodies].flatMap(([verb, body]) => [...body.matchAll(/RAISE EXCEPTION '(\w+)' USING ERRCODE = 'P0001'/g)].map((m) => ({ verb, key: m[1]! })))
+    return [...bodies].flatMap(([verb, body]) => {
+      const through = [...new Set([...body.matchAll(/(gc_[a-z_]+_ask)\(/g)].map((m) => m[1]!))].filter((h) => helpers.has(h))
+      return [body, ...through.map((h) => helpers.get(h)!)].flatMap((b) => [...b.matchAll(/RAISE EXCEPTION '(\w+)' USING ERRCODE = 'P0001'/g)].map((m) => ({ verb, key: m[1]! })))
+    })
+  }
+
+  it('reads the keys a verb raises through its *_ask helper (P5c-2)', () => {
+    const keysOf = (verb: string) => new Set(raisedByTradeVerbs().filter((r) => r.verb === verb).map((r) => r.key))
+    expect(keysOf('gc_trade_punch_fixed').has('punchNotOpen')).toBe(true)
+    expect([...keysOf('gc_trade_final_pay_app')].filter((k) => k === 'finalSent' || k === 'finalNotYet').sort()).toEqual(['finalNotYet', 'finalSent'])
+  })
+
+  it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {
+    const raised = raisedByTradeVerbs()
     expect(raised.length).toBeGreaterThan(40)
     const unsaid = raised
       .filter(({ key }) => !Object.prototype.hasOwnProperty.call(TRADE_SQL_ERRORS, key) && !WAITING[key])

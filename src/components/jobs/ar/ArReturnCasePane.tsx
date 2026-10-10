@@ -304,6 +304,11 @@ export function ArReturnCasePane(props: ArReturnCasePaneProps) {
           <div data-testid="ar-return-case-fee-line" title={props.fee.title} style={{ alignSelf: 'flex-start', color: 'var(--text-700)', textDecoration: 'underline dotted', textUnderlineOffset: 3, cursor: 'help' }}>
             {props.fee.line}
           </div>
+          {props.fee.kind !== 'added' && props.fee.note ? (
+            <div data-testid="ar-return-case-fee-note" style={{ color: 'var(--text-amber-800)' }}>
+              {props.fee.note}
+            </div>
+          ) : null}
           {props.fee.kind === 'offer' ? (
             canApply && props.onAddFee ? (
               <div>

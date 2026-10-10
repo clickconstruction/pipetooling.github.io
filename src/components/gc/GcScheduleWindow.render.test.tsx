@@ -595,6 +595,6 @@ describe('the walk, Pull earlier and a trade not ready in the window (PR 9d)', (
     const block = form.querySelector('[data-not-ready]') as HTMLElement
     expect(block.textContent).toContain('Pecan Valley Electric is not ready to start this on Mon Oct 19.')
     fireEvent.click(within(block).getByRole('button', { name: 'Ask for it' }))
-    expect(openPartner).toHaveBeenCalledWith('pecanvalley')
+    expect(openPartner).toHaveBeenCalledWith('pecanvalley', { tab: 'documents', doc: 'insurance', send: true })
   })
 })

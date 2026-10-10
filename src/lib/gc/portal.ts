@@ -1,9 +1,11 @@
 /**
  * GC mode, the real build: the trade portal's own rules, moved word for word from the GC mode prototype (branch spike/gc-mode,
- * `gcPortal.ts`): the one the Building lane's U2 reads, and those whose callees are on main by the Portal lane's P0. The readers
- * that wait for other lanes' kernels follow (to-dos/gc-mode/PORTAL_REAL_BUILD.md, Kernels that move).
+ * `gcPortal.ts`): the one the Building lane's U2 reads, and those whose callees are on main by the Portal lane's P0. The job's
+ * readers (`portalJobMoney`, `portalPay`, `portalPapers`, `portalTodos`) followed in P5c-3a, once Building's kernels and the
+ * schedule's `datesNotices` were on main; `portalHome` and `portalMessages` follow theirs (to-dos/gc-mode/PORTAL_REAL_BUILD.md,
+ * Kernels that move; the lift is to-dos/gc-mode/scripts/portal-p5c-3a.lift.json).
  */
-import { addDays } from './building'
+import { addDays, retainageHeldNow, sentBackOpen, sowContractSum, tradeChangesFor, tradeCloseout, workAllBilled } from './building'
 import { onSite } from './buildingLog'
 import { GC_COMPANY } from './company'
 import { currentRev, partnerById } from './lookups'
@@ -16,7 +18,7 @@ import { activityName, inspectionItems, lookAheadWeeks, markState, mondayOf, sch
 import type { LookAheadMark } from './schedule/types'
 import type { BackCharge, BidAlternate, ChangeOrder, ChangeOrderReason, Draw, GcProject, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, QuoteExclusion, ScopeItem, Sow, SubBid, TheirSovLine, TradeChangeRequest, TradePackage, TradePromise } from './types'
 import { daysUntil, money } from './words'
-import { bidIsStale, quoteRanOut } from './bids'
+import { bidIsStale, quoteRanOut, sowMoney } from './bids'
 import type { AskPromise } from './followUp'
 import { OPEN_WITHIN_DAYS, askPromise } from './followUp'
 import { questionState, questionsFor, quotesWantedOn } from './planQuestions'
@@ -24,6 +26,10 @@ import { preBidInvited } from './preBid'
 import type { QuestionState } from './questions'
 import { vettingOf } from './vetting'
 import { SOV_STAGES, theirSovGap } from './theirSov'
+import { punchItems, punchState } from './buildingPunch'
+import { submittalRowsOn } from './buildingSubmittals'
+import { lateDayChanged, lateNoticesToAnswer } from './schedule/lateNotices'
+import { datesNotices } from './schedule/tellTrades'
 
 // ---------------------------------------------------------------------------------------------
 // Your pay: every pay application on the company's jobs, when it was asked, approved and paid
@@ -1082,4 +1088,398 @@ export function portalSovCheck(lines: TheirSovLine[], target: number, lang: Port
   return gap < 0
     ? { state: 'short', words: pt(lang, 'sovShort', { sum, gap: money(-gap) }), lines: kept }
     : { state: 'over', words: pt(lang, 'sovOver', { sum, gap: money(gap) }), lines: kept }
+}
+
+/** A company's papers with us: its own first (agreement, W-9, insurance, its form), then each job's, newest first. */
+export function portalPapers(state: GcState, partnerId: string, lang: PortalLang = 'en'): { company: PortalPaper[]; jobs: { project: GcProject; trade: string; papers: PortalPaper[] }[] } {
+  const partner = partnerById(state, partnerId)
+  if (!partner) return { company: [], jobs: [] }
+  const t = (key: PortalKey, vars?: Record<string, string | number>) => pt(lang, key, vars)
+  const d = (iso: string | null | undefined) => pDate(lang, iso ?? null)
+  const newestFirst = (a: PortalPaper, b: PortalPaper) => (b.on ?? '').localeCompare(a.on ?? '')
+  const company: PortalPaper[] = []
+  if (partner.msa === 'signed') {
+    company.push({ key: 'msa', title: t('masterAgreement'), words: t('signedOn', { date: d(partner.msaSignedOn) }), on: partner.msaSignedOn, open: { kind: 'msa' } })
+  }
+  if (partner.w9) company.push({ key: 'w9', title: t('w9'), words: t('onFile'), on: null, open: null })
+  if (partner.coiExpires) {
+    company.push({ key: 'coi', title: t('insuranceCert'), words: portalInsurance(partner, state.today, lang).words, on: null, open: null })
+  }
+  const form = partner.vetting?.form
+  if (form) company.push({ key: 'vet', title: t('paperVetForm'), words: t('paperSent', { date: d(form.sentOn) }), on: form.sentOn, open: null })
+
+  const jobs: { project: GcProject; trade: string; papers: PortalPaper[] }[] = []
+  for (const ask of portalAsks(state, partnerId)) {
+    if (ask.kind !== 'job' || !ask.pkg.sow) continue
+    const { project, pkg } = ask
+    const sow = ask.pkg.sow
+    const toJob: PortalPaperOpen = { kind: 'project', projectId: project.id }
+    const papers: PortalPaper[] = []
+    if (sow.status === 'signed') {
+      papers.push({ key: `${pkg.id}:sow`, title: t('paperSow', { trade: pkg.trade }), words: t('signedOn', { date: d(sow.signedOn) }), on: sow.signedOn, open: toJob })
+    }
+    for (const { co, state: where } of tradeChangesFor(project, pkg)) {
+      if (where !== 'signed' || !co.tradeChange?.signedOn) continue
+      papers.push({ key: `${co.id}:co`, title: t('paperChange', { n: co.number }), words: t('signedOn', { date: d(co.tradeChange.signedOn) }), on: co.tradeChange.signedOn, open: toJob })
+    }
+    for (const dr of sow.draws) {
+      const open: PortalPaperOpen = { kind: 'payApp', projectId: project.id, packageId: pkg.id, drawId: dr.id }
+      const name = dr.final ? t('paperPayAppFinal') : t('paperPayApp', { n: dr.number })
+      papers.push({
+        key: `${dr.id}:app`,
+        title: name,
+        words: [t('paperSent', { date: d(dr.requestedOn) }), ...(dr.paidOn ? [t('payPaidOn', { date: d(dr.paidOn) })] : [])].join(' · '),
+        on: dr.requestedOn,
+        open,
+      })
+      // The conditional waiver is signed with the application; the unconditional one after we pay.
+      papers.push({
+        key: `${dr.id}:cond`,
+        title: dr.final ? t('paperCondFinal') : t('paperCond', { n: dr.number }),
+        words: t('signedOn', { date: d(dr.requestedOn) }),
+        on: dr.requestedOn,
+        open,
+      })
+      if (dr.waiver === 'unconditional' && dr.paidOn) {
+        papers.push({
+          key: `${dr.id}:uncond`,
+          title: dr.final ? t('paperUncondFinal') : t('paperUncond', { n: dr.number }),
+          words: t('paperAfterPaid', { date: d(dr.paidOn) }),
+          on: dr.paidOn,
+          open,
+        })
+      }
+    }
+    if (papers.length > 0) jobs.push({ project, trade: pkg.trade, papers: papers.sort(newestFirst) })
+  }
+  return { company: company.sort(newestFirst), jobs }
+}
+
+export function portalJobMoney(pkg: TradePackage): PortalJobMoney | null {
+  const sow = pkg.sow
+  if (!sow) return null
+  const m = sowMoney(sow)
+  const total = sow.sov.reduce((s, l) => s + l.amount, 0)
+  const done = sow.sov.reduce((s, l) => s + l.amount * l.pctReported, 0)
+  const net = (status: 'approved' | 'requested') => sow.draws.filter((d) => d.status === status).reduce((s, d) => s + d.net, 0)
+  return {
+    price: sowContractSum(sow),
+    donePct: total > 0 ? Math.round(done / total) : 0,
+    paid: m.paid,
+    held: m.retainageHeld,
+    coming: net('approved'),
+    reviewing: net('requested'),
+  }
+}
+
+const TONE_ORDER: Record<PortalTodo['tone'], number> = { red: 0, amber: 1, plain: 2 }
+
+/** An answer to a question about the plans shows under Needs you for this many days after it reached the company. */
+const ANSWER_NEW_DAYS = 7
+
+/** What needs the company, most pressing first: red, then amber, then the rest; sooner days first in each. */
+export function portalTodos(state: GcState, partnerId: string, asks: PortalAsk[] = portalAsks(state, partnerId), lang: PortalLang = 'en'): PortalTodo[] {
+  const partner = partnerById(state, partnerId)
+  if (!partner) return []
+  const gc = GC_COMPANY.shortName
+  const today = state.today
+  const todos: PortalTodo[] = []
+  const sowWaiting = asks.some((a) => a.kind === 'job' && a.pkg.sow?.status === 'sent')
+
+  if (partner.msa === 'sent') {
+    todos.push({
+      key: 'msa',
+      projectId: null,
+      text: pt(lang, sowWaiting ? 'todoMsaWaits' : 'todoMsa'),
+      tone: sowWaiting ? 'red' : 'amber',
+      by: null,
+    })
+  }
+  const coi = portalInsurance(partner, today, lang)
+  if (!coi.done) {
+    todos.push({
+      key: 'coi',
+      projectId: null,
+      text: coi.ranOut ? pt(lang, 'todoCoiRanOut', { date: pDate(lang, partner.coiExpires) }) : pt(lang, 'todoCoi'),
+      tone: coi.ranOut ? 'red' : 'amber',
+      by: null,
+    })
+  }
+  if (coi.soon && partner.coiExpires) {
+    // Still good, but not for long: a draw stops the day it runs out.
+    const date = pWeekday(lang, partner.coiExpires)
+    const n = coi.daysLeft ?? 0
+    todos.push({
+      key: 'coi:soon',
+      projectId: null,
+      text: n === 0 ? pt(lang, 'todoCoiToday', { date }) : n === 1 ? pt(lang, 'todoCoiTomorrow', { date }) : pt(lang, 'todoCoiSoon', { date, n }),
+      tone: 'amber',
+      by: partner.coiExpires,
+    })
+  }
+  if (!partner.w9) todos.push({ key: 'w9', projectId: null, text: pt(lang, 'todoW9'), tone: 'amber', by: null })
+  // Your dates moved, not answered yet (the Gantt, Phase 3).
+  for (const n of datesNotices(state, partner.id, lang)) {
+    todos.push({ key: `dates:${n.move.id}`, projectId: n.project.id, text: pt(lang, 'todoDates', { project: n.project.name }), tone: 'amber', by: null, anchor: 'dates' })
+  }
+  // The office pushed back on a day the company said it would be late (the Gantt, G-117): say it will make it, or give another.
+  for (const n of lateNoticesToAnswer(state, partner.id)) {
+    const day = lateDayChanged(n.notice)
+    todos.push({ key: `late:${n.project.id}:${n.notice.id}`, projectId: n.project.id, text: pt(lang, 'todoLatePushed', { gc, date: pWeekday(lang, day), work: n.work, project: n.project.name }), tone: day < today ? 'red' : 'amber', by: day, anchor: 'schedule' })
+  }
+  // A date the company gave us that came due or passed with nothing yet (question 8).
+  for (const row of portalPromises(state, partnerId, lang)) {
+    if (row.tone === 'plain') continue
+    const what = lang === 'es' ? row.what.charAt(0).toLowerCase() + row.what.slice(1) : inSentence(row.what)
+    todos.push({
+      key: `promise:${row.p.id}`,
+      projectId: row.p.projectId ?? null,
+      text: pt(lang, row.plural ? 'todoPromisePl' : 'todoPromise', { gc, what, date: pWeekday(lang, row.p.by) }),
+      tone: row.tone,
+      by: row.p.by,
+    })
+  }
+  // A pre-bid meeting the company is asked to, once per project: before it, or a required one it missed.
+  for (const project of state.projects) {
+    const pb = portalPreBid(state, project, partnerId, lang)
+    if (!pb) continue
+    const vars = { project: project.name, date: pWeekday(lang, pb.on), time: pTime(lang, pb.at), gc }
+    if (!pb.held) {
+      todos.push({ key: `prebid:${project.id}`, projectId: project.id, text: pt(lang, pb.mandatory ? 'todoPreBidReq' : 'todoPreBid', vars), tone: pb.mandatory ? 'amber' : 'plain', by: pb.on })
+    } else if (pb.missed) {
+      todos.push({ key: `prebid:${project.id}`, projectId: project.id, text: pt(lang, 'todoPreBidMissed', vars), tone: 'red', by: pb.on })
+    }
+  }
+  // A company we do not know yet: its form first, so the office can approve it (question 3).
+  if (portalVetting(partner, lang).state === 'send') todos.push({ key: 'vet', projectId: null, text: pt(lang, 'todoVet', { gc }), tone: 'amber', by: null })
+
+  for (const a of asks) {
+    // A project we lost asks nothing more of anyone.
+    if (a.kind === 'closed') continue
+    const project = a.project.name
+    const trade = a.pkg.trade
+    const key = a.invite.id
+    const projectId = a.project.id
+    if (a.kind === 'bidding') {
+      const due = a.project.stage === 'pursuing' && a.project.ourBidSentOn === null ? portalQuoteDue(a.project) : null
+      const left = due ? daysUntil(due, today) : null
+      const news = portalPlanNews(a.project, a.pkg, a.invite)
+      if (a.invite.bid && a.stale) {
+        todos.push({ key: `${key}:stale`, projectId, text: pt(lang, 'todoStale', { trade, project }), tone: left !== null && left <= 7 ? 'red' : 'amber', by: due })
+      } else if (a.unclear.length > 0) {
+        const n = a.unclear.length
+        todos.push({ key: `${key}:unclear`, projectId, text: pt(lang, n === 1 ? 'todoUnclear1' : 'todoUnclearN', { n, trade, project }), tone: 'amber', by: due })
+      } else if (a.invite.bid && a.ranOut) {
+        const until = bidGoodUntil(a.invite.bid)
+        todos.push({ key: `${key}:ranout`, projectId, text: pt(lang, 'todoRanOut', { trade, project, date: pWeekday(lang, until) }), tone: 'amber', by: until })
+      } else if (!a.invite.bid && a.promise?.state === 'passed') {
+        todos.push({ key: `${key}:late`, projectId, text: pt(lang, 'todoLate', { trade, project, date: pWeekday(lang, a.promise.by) }), tone: 'red', by: a.promise.by })
+      } else if (!a.invite.bid && due) {
+        const date = pWeekday(lang, due)
+        todos.push({
+          key: `${key}:send`,
+          projectId,
+          text: pt(lang, left !== null && left < 0 ? 'todoWasDue' : news.neverOpened ? 'todoOpenSend' : 'todoSend', { trade, project, date }),
+          tone: left !== null && left < 0 ? 'red' : left !== null && left <= 7 ? 'amber' : 'plain',
+          by: due,
+        })
+      } else if (news.behind && !news.neverOpened && news.forTrade.length === 0 && news.latest) {
+        todos.push({ key: `${key}:open`, projectId, text: pt(lang, 'todoOpenSet', { label: news.latest.label, project, trade }), tone: 'plain', by: null })
+      }
+    }
+    // An answer to a question about the plans reached them this past week.
+    if (a.kind !== 'lost' && a.kind !== 'passed') {
+      for (const pq of portalQuestions(a.project, a.pkg.id, partnerId)) {
+        if (!pq.answerOn || daysUntil(pq.answerOn, today) < -ANSWER_NEW_DAYS) continue
+        todos.push({ key: `${pq.q.id}:answer`, projectId, text: pt(lang, 'todoAnswer', { trade, project }), tone: 'plain', by: pq.answerOn })
+      }
+    }
+    if (a.pkg.bidTab && a.invite.bid && !a.pkg.bidTab.seenBy.includes(partnerId)) {
+      todos.push({ key: `${key}:tab`, projectId, text: pt(lang, 'todoTab', { trade, project }), tone: 'plain', by: null })
+    }
+    if (a.kind === 'job' && a.pkg.sow) {
+      const sow = a.pkg.sow
+      const signed = sow.status === 'signed'
+      // The look-ahead is per project: ask once, on the company's first job there.
+      const firstJobHere = asks.find((x) => x.kind === 'job' && x.project.id === a.project.id) === a
+      if (firstJobHere) {
+        const owed = lookAheadOwed(state, partnerId, a.project)
+        if (owed.late > 0) {
+          todos.push({ key: `${a.project.id}:lookahead:late`, projectId, text: pt(lang, 'todoLookLate', { n: owed.late, project }), tone: 'amber', by: addDays(mondayOf(today), -7) })
+        }
+        if (owed.thisWeek > 0) {
+          todos.push({ key: `${a.project.id}:lookahead`, projectId, text: pt(lang, 'todoLookWeek', { n: owed.thisWeek, project }), tone: 'amber', by: addDays(mondayOf(today), 4) })
+        }
+      }
+      if (sow.status === 'sent') {
+        todos.push({ key: `${key}:sow`, projectId, text: pt(lang, 'todoSow', { trade, project }), tone: 'amber', by: null })
+      }
+      // The punch list (Building lane): what is still to fix holds up our accepting the work. Red once we checked one and it was not fixed.
+      const toFix = punchItems(a.project, a.pkg.id).filter((i) => punchState(i) === 'open')
+      if (toFix.length > 0) {
+        const back = toFix.filter((i) => i.sentBack).length
+        const n = toFix.length
+        const what = pt(lang, n === 1 ? 'todoPunch1' : 'todoPunchN', { n, trade, project })
+        const backWords = back === 0 ? '' : ` ${pt(lang, back === 1 ? 'todoPunchBack1' : 'todoPunchBackN', { gc, n: back })}`
+        todos.push({
+          key: `${key}:punch`,
+          projectId,
+          text: what + backWords,
+          tone: back > 0 ? 'red' : 'amber',
+          by: toFix.map((i) => i.sentBack?.on ?? i.addedOn).sort()[0] ?? null,
+          anchor: `report:${a.pkg.id}`,
+        })
+      }
+      // Submittals that are the company's move (Building lane): not sent yet, or sent back to revise.
+      // Red once one is late or came back; it lands on the block that holds them.
+      const subs = submittalRowsOn(a.project, today).filter((r) => r.pkg?.id === a.pkg.id && r.state === 'trade')
+      if (subs.length > 0) {
+        const n = subs.length
+        const back = subs.filter((r) => r.submittal.rounds.length > 0).length
+        const late = subs.filter((r) => r.daysLate > 0).length
+        const words = [
+          pt(lang, n === 1 ? 'todoSub1' : 'todoSubN', { n, trade, project }),
+          ...(back > 0 ? [pt(lang, back === 1 ? 'todoSubBack1' : 'todoSubBackN', { gc, n: back })] : []),
+          ...(late > 0 ? [pt(lang, late === 1 ? 'todoSubLate1' : 'todoSubLateN', { n: late })] : []),
+        ]
+        todos.push({
+          key: `${key}:submittals`,
+          projectId,
+          text: words.join(' '),
+          tone: back > 0 || late > 0 ? 'red' : 'amber',
+          by: subs.map((r) => r.neededBy).filter((d): d is string => d !== null).sort()[0] ?? null,
+          anchor: `report:${a.pkg.id}`,
+        })
+      }
+      for (const d of sow.draws) {
+        // Approved for less and not paid yet: say so until the money comes.
+        if (d.asked && d.status === 'approved') {
+          todos.push({
+            key: `${key}:less:${d.id}`,
+            projectId,
+            text: pt(lang, 'todoLess', { gc, approved: money(d.net), asked: money(d.asked.net), project }),
+            tone: 'plain',
+            by: d.asked.on,
+          })
+        }
+        if (!d.final && d.status === 'paid' && d.waiver === 'conditional') {
+          todos.push({ key: `${key}:waiver:${d.id}`, projectId, text: pt(lang, 'todoWaiver', { n: d.number, project }), tone: 'amber', by: null })
+        }
+      }
+      // A change order sent for their signature (Building lane): signed in the job page's pay application block.
+      for (const { co, state: where } of tradeChangesFor(a.project, a.pkg)) {
+        if (where !== 'sent' || !co.tradeChange) continue
+        todos.push({
+          key: `${co.id}:sign`,
+          projectId,
+          text: pt(lang, co.cost >= 0 ? 'todoChangeAdds' : 'todoChangeTakes', { n: co.number, project, amount: money(Math.abs(co.cost)) }),
+          tone: 'amber',
+          by: co.tradeChange.sentOn,
+        })
+      }
+      // A charge for cleanup or damage to agree to or dispute (owner, 2026-10-05): red once its answer day went by.
+      for (const row of portalBackCharges(a.project, a.pkg, partnerId, state.today, lang)) {
+        if (!row.canAnswer) continue
+        const words = { gc, amount: money(row.charge.amount), project, date: pWeekday(lang, row.charge.answerBy) }
+        todos.push({
+          key: `${row.charge.id}:answer`,
+          projectId,
+          text: pt(lang, row.state === 'noAnswer' ? 'todoBackChargeLate' : 'todoBackCharge', words),
+          tone: row.state === 'noAnswer' ? 'red' : 'amber',
+          by: row.charge.answerBy,
+          anchor: `charges:${a.pkg.id}`,
+        })
+      }
+      // A pay application we sent back waits on them: the work they reported is not new money to ask for.
+      const back = signed ? sentBackOpen(sow) : null
+      if (back) {
+        todos.push({ key: `${key}:back`, projectId, text: pt(lang, 'todoBack', { gc, n: back.draw.number, project }), tone: 'amber', by: back.on })
+      }
+      // Every line billed: the job is in closeout, and the trade's own steps come here.
+      const closing = signed && workAllBilled(sow)
+      if (closing) {
+        const c = tradeCloseout(sow)
+        if (c.canAskFinal) {
+          todos.push({ key: `${key}:final`, projectId, text: pt(lang, 'todoFinal', { project, amount: money(c.held), gc }), tone: 'amber', by: null })
+        }
+        if (c.finalDraw?.status === 'paid' && c.finalDraw.waiver === 'conditional') {
+          todos.push({ key: `${key}:finalwaiver`, projectId, text: pt(lang, 'todoFinalWaiver', { project }), tone: 'amber', by: null })
+        }
+      }
+      const m = sowMoney(sow)
+      // Insurance that ran out stops a draw: its own red line above says so.
+      if (signed && !back && !closing && coi.done && a.project.stage === 'building' && m.ready > 0 && !sow.draws.some((d) => d.status === 'requested')) {
+        todos.push({ key: `${key}:draw`, projectId, text: pt(lang, 'todoDraw', { gc, amount: money(m.ready), project }), tone: 'plain', by: null })
+      }
+    }
+  }
+
+  return todos
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => TONE_ORDER[a.t.tone] - TONE_ORDER[b.t.tone] || (a.t.by ?? '9999').localeCompare(b.t.by ?? '9999') || a.i - b.i)
+    .map(({ t }) => t)
+}
+
+/** The day an approved pay application should be paid by: PAY_WITHIN_DAYS after approval, or retainage's own day. */
+function payByOf(project: GcProject, pkg: TradePackage, draw: Draw, today: string): string | null {
+  if (draw.status !== 'approved') return null
+  const within = draw.approvedOn ? addDays(draw.approvedOn, PAY_WITHIN_DAYS) : null
+  if (!draw.final || !pkg.sow) return within
+  return tradeCloseout(pkg.sow, project, today).opensOn ?? within
+}
+
+export function portalPay(state: GcState, partnerId: string): {
+  rows: PortalPayRow[]
+  jobs: PortalPayJob[]
+  totals: { paid: number; coming: number; checking: number; held: number; late: number }
+} {
+  const rows: PortalPayRow[] = []
+  const jobs: PortalPayJob[] = []
+  for (const a of portalAsks(state, partnerId)) {
+    const sow = a.pkg.sow
+    if (a.kind !== 'job' || !sow || sow.status !== 'signed') continue
+    for (const draw of sow.draws) {
+      const payBy = payByOf(a.project, a.pkg, draw, state.today)
+      const late = payBy !== null && payBy < state.today
+      rows.push({
+        project: a.project,
+        pkg: a.pkg,
+        draw,
+        state: draw.status === 'requested' ? 'checking' : draw.status === 'paid' ? 'paid' : late ? 'late' : 'approved',
+        payBy,
+      })
+    }
+    const m = sowMoney(sow)
+    const contract = sowContractSum(sow)
+    const held = Math.max(0, retainageHeldNow(sow))
+    const c = tradeCloseout(sow, a.project, state.today)
+    const returned = c.finalDraw?.status === 'paid'
+    jobs.push({
+      project: a.project,
+      pkg: a.pkg,
+      contract,
+      paid: m.paid,
+      held,
+      leftToBill: contract - m.billed,
+      heldBack: returned
+        ? { state: 'returned', on: c.finalDraw?.paidOn ?? null }
+        : c.opensOn
+          ? { state: 'on', on: c.opensOn }
+          : { state: 'after', on: null },
+    })
+  }
+  const when = (r: PortalPayRow) => r.draw.paidOn ?? r.draw.approvedOn ?? r.draw.requestedOn
+  rows.sort((x, y) => when(y).localeCompare(when(x)) || y.draw.number - x.draw.number)
+  const sum = (st: PortalPayState[]) => rows.filter((r) => st.includes(r.state)).reduce((t, r) => t + r.draw.net, 0)
+  return {
+    rows,
+    jobs,
+    totals: {
+      paid: sum(['paid']),
+      coming: sum(['approved', 'late']),
+      checking: sum(['checking']),
+      held: jobs.reduce((t, j) => t + j.held, 0),
+      late: rows.filter((r) => r.state === 'late').length,
+    },
+  }
 }

@@ -519,6 +519,11 @@ export interface TradePackage {
      * the trade is not a real number yet (the owner, 2026-10-02). Absent: priced.
      */
     priced?: boolean
+    /**
+     * Where the percent came from (Building's U8, `withCrewPercents`): the Pipeline job's stages, its crew report
+     * or its own percent, with the job's number and the day it was reported. Absent: not linked, or nothing read.
+     */
+    source?: { from: 'stages' | 'report' | 'job'; job: string; on: string | null }
   } | null
   invites: Invite[]
   /** An invite id, 'plug' (our budget) or 'self'. */
@@ -551,6 +556,8 @@ export interface Partner {
   maxMiles: number | null
   msa: 'none' | 'sent' | 'signed'
   msaSignedOn: string | null
+  /** The language the company chose in its portal; its messages go out in it too. Unset: English. */
+  lang?: 'en' | 'es'
   coiExpires: string | null
   w9: boolean
   invited: number
@@ -930,6 +937,8 @@ export interface OwnerPayAppSent {
    * is a recovery of Stripe's cost: every figure reads the bill at its base (O8c).
    */
   card?: OwnerPayAppCard
+  /** The day the app reminded the architect to certify it (O10's office notices). Unset: not reminded. */
+  architectRemindedOn?: string
 }
 
 /** A pay application's bill on card (O8b, O8c), as `gc_owner_card_bills` and the bill's row hold it. */

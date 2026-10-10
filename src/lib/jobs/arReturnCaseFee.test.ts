@@ -55,6 +55,19 @@ describe('arCaseFeeOffer', () => {
     expect(added).toEqual({ kind: 'added', words: 'The $30 fee is on bill 1, added Oct 9 by Taunya.', line: AR_RETURNED_CHECK_FEE_LINE, title: AR_RETURNED_CHECK_FEE_STATUTE })
   })
 
+  it('a fee that came off with its bill (v2.5144) is offered again, with a note that says so', () => {
+    const again = arCaseFeeOffer(BANK, feeRow({ fee_came_off_at: '2026-10-10T15:00:00Z' }))
+    expect(again).toEqual({
+      kind: 'offer', invoiceId: 'b1', button: 'Add the $30 fee to bill 1', line: AR_RETURNED_CHECK_FEE_LINE, title: AR_RETURNED_CHECK_FEE_STATUTE,
+      note: 'The $30 fee came off with its bill on Oct 10. Add it again.',
+    })
+    const stripeOnly = arCaseFeeOffer(BANK, feeRow({ fee_came_off_at: '2026-10-10T15:00:00Z', bills: [bill({ stripe: true })] }))
+    expect(stripeOnly).toMatchObject({ kind: 'blocked', note: 'The $30 fee came off with its bill on Oct 10.' })
+    // Once it is on again, the case reads as any fee that is on: the stamp is history.
+    expect(arCaseFeeOffer(BANK, feeRow({ fee_came_off_at: '2026-10-10T15:00:00Z', fee_amount: 30, fee_invoice_id: 'b1', fee_added_at: '2026-10-10T16:00:00Z', fee_added_by: 'Taunya' }))).toMatchObject({ kind: 'added' })
+    expect(arCaseFeeOffer(BANK, feeRow({}))).not.toHaveProperty('note')
+  })
+
   it('is not the question for a check that never reached the bank, a Stripe case, or before the read comes back', () => {
     for (const source of ['rejected', 'unbanked', 'stripe_dispute', 'stripe_debit'] as const) expect(arCaseFeeOffer({ source }, feeRow({}))).toBeNull()
     expect(arCaseFeeOffer(BANK, null)).toBeNull()
