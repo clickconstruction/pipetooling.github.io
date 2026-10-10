@@ -101,7 +101,7 @@ export function GcFollowUpSheet({
     <div
       role="presentation"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 0 : '1rem' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         role="dialog"
@@ -113,7 +113,7 @@ export function GcFollowUpSheet({
           color: 'var(--text-base)',
           borderRadius: phone ? '12px 12px 0 0' : 12,
           width: phone ? '100%' : 'min(1000px, 100%)',
-          maxHeight: phone ? '92vh' : 'min(92vh, 760px)',
+          maxHeight: phone ? 'min(92vh, 100%)' : 'min(92vh, 760px, 100%)',
           display: 'grid',
           gridTemplateColumns: phone ? '1fr' : '15rem minmax(0, 1fr)',
           gridTemplateRows: phone ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)',
