@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
-import { GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBuilding } from './access'
+import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
 describe('canOpenGcProjects', () => {
@@ -104,5 +104,25 @@ describe('canUseGcBuilding', () => {
     const building = Object.values(GC_TABLE_DOORS).filter((d) => d.lane === 'Building')
     expect(building.length).toBeGreaterThan(0)
     expect(building.every((d) => d.door === 'dev')).toBe(GC_BUILDING_TEAM.length === 1 && GC_BUILDING_TEAM[0] === 'dev')
+  })
+})
+
+describe('canUseGcBoardWrites', () => {
+  it('lets a dev send a statement of work while award is a dev’s', () => {
+    expect(canUseGcBoardWrites('dev')).toBe(true)
+  })
+
+  it('keeps the money team, who read it since O9, everyone else and a session with no role yet from writing', () => {
+    for (const role of ['master_technician', 'assistant', 'controller', 'estimator', 'superintendent', 'primary', 'subcontractor', 'helpers'] as UserRole[]) {
+      expect(canUseGcBoardWrites(role)).toBe(false)
+    }
+    expect(canUseGcBoardWrites(null)).toBe(false)
+    expect(canUseGcBoardWrites(undefined)).toBe(false)
+  })
+
+  it('is a dev’s exactly while doors.ts keeps the statement of work dev only, so the award door changes both', () => {
+    const award = ['gc_sows', 'gc_sow_lines'].map((t) => GC_TABLE_DOORS[t])
+    expect(award.every((d) => d?.lane === 'Board')).toBe(true)
+    expect(award.every((d) => d?.door === 'dev')).toBe(GC_BOARD_WRITE_TEAM.length === 1 && GC_BOARD_WRITE_TEAM[0] === 'dev')
   })
 })

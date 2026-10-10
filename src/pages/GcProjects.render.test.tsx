@@ -676,13 +676,35 @@ describe('GcProjects: Draws (Building)', () => {
     await waitFor(() => expect(emailTheTrade).toHaveBeenCalledWith('lonestar', expect.any(Function)))
   })
 
-  it('a master sees the money but not Draws while Building is built, and no draw is read', async () => {
+  it('a master reads the draws for the money since O9, but sees no Draws while Building is built', async () => {
     auth.role = 'master_technician'
     const rows = building()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, loaded)
     expect(screen.queryByRole('button', { name: 'Draws' })).toBeNull()
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls[0]?.[0]).toContain('k1'))
+  })
+
+  it('the controller reads the draws too, and the statement of work without its press', async () => {
+    auth.role = 'controller'
+    const base = awardedClinicBoardRows()
+    const rows = { ...base, sows: (base.sows ?? []).map((w) => ({ ...w, status: 'draft', sent_on: null })) }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    await waitFor(() => expect(vi.mocked(loadGcDraws).mock.calls[0]?.[0]).toContain('k1'))
+    const sow = document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement
+    expect(within(sow).getByText('Statement of work drafted')).toBeTruthy()
+    expect(within(sow).queryByRole('button', { name: 'Send to their portal to sign' })).toBeNull()
+  })
+
+  it('an estimator reads no draws', async () => {
+    auth.role = 'estimator'
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
     expect(loadGcDraws).not.toHaveBeenCalled()
   })
 
