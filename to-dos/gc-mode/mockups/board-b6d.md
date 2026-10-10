@@ -2,7 +2,7 @@
 name: "B6-d: our contract to the customer, sent from the customer's window and signed in their portal"
 rows: board-b6c.md (calls, D; Out); BOARD_REAL_BUILD.md (:46-48 Owner Billing owns the signed price and gc_sign_owner_contract, :180 the send is the Board's); OWNER_BILLING_REAL_BUILD.md (:60-64 the customer reads the app's own portal, :110-114 decision 5, :589 "Sending the contract is B6's"); owner-billing-o7.md (O7c, the customer portal's GC presses)
 branch: this plan on spike/board-b6d-plan (from origin/spike/gc-mode); the PRs from origin/main
-status: plan 2026-10-10 by Helper 2 (gc 2, the Board lane) at the lead's ask, for a read-back before any code. Nothing cut or claimed. The SQL below is its shape; the full block lands here once calls D1 to D8 are answered, and B6-d-i is byte-compared against it.
+status: plan 2026-10-10 by Helper 2 (gc 2, the Board lane) at the lead's ask. The lead answered D1 to D8 the same day, and Owner Billing (gc 5) answered D5, D8 and B6-d-i's shape with changes (Amendments, below). B6-d-i is cut as v2.5160, migration 20261010090000; its SQL as built is the migration file on its PR.
 ---
 
 # B6-d: our contract to the customer
@@ -72,7 +72,7 @@ Call D (board-b6c.md): our contract to the customer goes out from the customer's
   - `gc_send_owner_contract` refuses anyone but a dev in words until the door, as `gc_start_project` does.
 - **D4. Who builds the portal half (B6-d-iii).** Call 5 keeps the customer portal to the lane that owns GC's footprint there, Owner Billing's O7c. *My pick:* the Board lane builds it to O7c's pattern line for line, and Owner Billing's helper and you read it back before it is cut. *Or:* Owner Billing builds B6-d-iii from this plan. Your call.
 - **D5. Owner Billing's function, restated with no change in behavior.** The portal cannot call `gc_sign_owner_contract`, which needs a signed-in caller.
-  - *My pick:* lift its checks and line-writing into `gc_owner_contract_keep(project, day, worth)`. It is internal, granted to no one, and called by both `gc_sign_owner_contract` and the portal's signing, so the two can never drift.
+  - *My pick:* lift its checks and line-writing into `gc_owner_contract_keep(project, day, worth)`, called by both `gc_sign_owner_contract` and the portal's signing, so the two can never drift. (Amended: it is granted to `authenticated` and `service_role`, not to no one; see Amendments.)
   - It adds one refusal to Undo: a contract the customer signed in their portal stays signed ("They signed it in their portal, so it stays signed.").
   - Needs Owner Billing's OK, since the function is theirs.
 - **D6. Their portal link: the first send makes one when they have none.** That is the prototype's "the first send turns their portal on".
@@ -194,6 +194,37 @@ Call D (board-b6c.md): our contract to the customer goes out from the customer's
   - A customer can sign a file that says a different price than our summary, if the office uploads the wrong file. The send shows the file's name and the price side by side before the press. A check that the PDF's text holds the price is possible later.
   - The signer is whoever holds the link, as on every portal surface today.
 
+## Amendments, 2026-10-10 (the lead's answers, and Owner Billing's changes)
+
+- **D1:** as picked. The owner's new Master Services Agreement is the trade partners' paper (B6-b's master agreement), not our contract with the customer. The office's own contract file for the customer is uploaded at the send. The generated contract stays Out until the owner's words.
+- **D2, D3, D6, D7:** as picked.
+- **D4:** the Board builds B6-d-iii line for line on O7c's pattern. Owner Billing (gc 5) and the lead read it back before it is cut.
+- **D5 (Owner Billing's yes, with three changes):**
+  1. **`gc_owner_contract_keep` is granted.** It is `SECURITY INVOKER`, with `PUBLIC` and `anon` revoked and `authenticated` and `service_role` granted. An invoker caller (`gc_sign_owner_contract` runs as `authenticated`) needs EXECUTE. RLS on `gc_owner_contract_lines` and `gc_projects_owner_terms_guard` still decide who writes. Keep refuses a project already signed, so a direct call does no more than Mark it signed's first sign.
+  2. **Keep holds only the first sign:** the lines from the price by line, then the day. `gc_sign_owner_contract` keeps its own Undo branch and its "signed already, only the day moves" branch. Owner Billing's bed (`scripts/pgtest-gc-owner-billing.sh`) must stay green unchanged.
+  3. **The portal signature holds the day as well as the price.** Moving the day of a contract signed in the portal is refused too ("They signed it in their portal on Oct 12, so its day stays."), beside Undo's refusal. Both are keyed on a signed `gc_owner_contract_sends` row. A definer, `gc_owner_contract_portal_signed_on`, reads that row for the money team, since the table is a dev's.
+
+  The portal's signing pre-checks the price with `gc_owner_contract_worth_ok` and raises `priceChanged` before keep, so a customer never reads the office's words. The office's words come from one shared `gc_owner_contract_worth_problem`.
+- **The sends table and the bucket are a dev's now and the money team's at award's door,** never award's wider audience (Owner Billing): the price by line is our markup. `doors.ts` says so. The bed asserts that an estimator, an assistant and a leader read no send.
+- **D8 (Owner Billing's yes, with five details, for B6-d-ii's email):**
+  1. **The function attaches the file itself.** The client sends no PDF for this kind. `gc-customer-email` reads the send's `file_path` from `gc-owner-contracts` as the service role and checks its SHA-256 against `file_sha256`. A mismatch is refused `fileChanged`.
+  2. **The portal line is required.** With no live link of audience customer the send is refused `noPortal`: "They have no portal link yet. Send it from their window first."
+  3. **The address is contact first, then billing** (`GC_CUSTOMER_EMAIL_ADDRESS.contract = 'contact'`, as weekly). The signer is their owner, not their payables.
+  4. **The sent copy is filed** as `gc_owner_contract`, with source `{ table: 'gc_owner_contract_sends', id }` and the customer. `jobIds` is empty until the billing job exists.
+  5. **The usual registries:**
+     - `GC_CUSTOMER_EMAIL_KINDS` and its records;
+     - the gc journey's step with a sample;
+     - personJourney's na line;
+     - customerEmail.test's kinds table;
+     - the [TEST] door attaching the same file.
+
+     The kind checks the send is the project's newest and unsigned. The deploy is the lead's.
+- **B6-d-i as built** (v2.5160, `20261010090000_gc_owner_contract_sends`):
+  - Column grants close the sends table to people: the office inserts only a send's own columns, and nobody signed in updates or deletes one.
+  - `total` is generated from `worth`, and `created_at` is `clock_timestamp()`, so the newest send is well defined within one transaction.
+  - The bed has five mutants, each failed.
+  - Owner Billing's bed passed unchanged, 294 checks.
+
 ## Status
 
 Plan written 2026-10-10 by Helper 2 (gc 2), from:
@@ -201,4 +232,4 @@ Plan written 2026-10-10 by Helper 2 (gc 2), from:
 - the spike's prototype (`gcReducer.ts:551-580`, `GcCustomerSend.tsx`, `GcCustomerContractSign.tsx`, `gcCustomerSend.ts:53-130`, `gcCompanyFile.ts:169-297`);
 - the plans named in `rows`.
 
-Nothing is cut or claimed. Calls D1 (the owner's), D4 and D5 (the lead's, D5 with Owner Billing) come first.
+Calls answered 2026-10-10 (Amendments, above). B6-d-i is cut as v2.5160. B6-d-ii and B6-d-iii follow.
