@@ -78,3 +78,14 @@ export async function sendGcOwnerContract(input: {
     'send our contract',
   )
 }
+
+/**
+ * Open our contract's own file (the Board's B2b-v-iii): a short-lived signed link from the private bucket, made on the
+ * press and opened in a new tab. The bucket's select policy decides who may (`canOpenOwnerContractFile`); a refusal or
+ * a missing file is thrown in words, never a dead link.
+ */
+export async function openOwnerContractFile(path: string): Promise<void> {
+  const { data, error } = await supabase.storage.from(OWNER_CONTRACT_BUCKET).createSignedUrl(path, 120)
+  if (error || !data?.signedUrl) throw new Error(error?.message ? `the file would not open: ${error.message}` : 'the file would not open.')
+  window.open(data.signedUrl, '_blank', 'noopener')
+}

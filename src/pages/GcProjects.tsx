@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { GC_MONEY_TEAM, canOpenGcProjects, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
+import { GC_MONEY_TEAM, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -123,7 +123,9 @@ import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../c
 import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import type { ContractSendInput, ContractSendOutcome } from '../components/gc/GcCustomerContractSend'
-import { sendGcOwnerContract } from '../lib/gc/ownerContractIo'
+import { openOwnerContractFile, sendGcOwnerContract } from '../lib/gc/ownerContractIo'
+import { customerBilledJobIds, customerMoneyView } from '../lib/gc/customerMoney'
+import { newestContractSend } from '../lib/gc/customerContract'
 import { mintCustomerPortalLink } from '../lib/portal/mintCustomerPortalLink'
 import { benchAnchor } from '../lib/gc/tradeViews'
 import { allPeople } from '../lib/gc/projectPeople'
@@ -756,6 +758,32 @@ export default function GcProjects() {
     [board, drawTables, changeOrderRows, changeRequestRows],
   )
   const changesProject = changesProjectId ? (boardWithChanges?.projects.find((p) => p.id === changesProjectId) ?? null) : null
+  // The customer window's money (the Board's B2b-v-iii, gc 5's read): for the money team only, their billed jobs' billing
+  // read when the window opens, laid over the board with its change orders, each job keeping its own copy of the customer.
+  // Anyone else reads none, so their window makes no money call.
+  const [customerMoneyRows, setCustomerMoneyRows] = useState<{ customerId: string; rows: BillingRows } | null>(null)
+  const [customerMoneyProblem, setCustomerMoneyProblem] = useState<string | null>(null)
+  const customerMoneyId = customerWin && canSeeGcMoney(role) ? customerWin.id : null
+  useEffect(() => {
+    if (!customerMoneyId || !board) return
+    let live = true
+    setCustomerMoneyRows(null)
+    setCustomerMoneyProblem(null)
+    loadGcBillingRows(customerBilledJobIds(board, customerMoneyId))
+      .then((rows) => {
+        if (live) setCustomerMoneyRows({ customerId: customerMoneyId, rows })
+      })
+      .catch((e) => {
+        if (live) setCustomerMoneyProblem(formatErrorMessage(e, 'What they owe us did not read.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [customerMoneyId, board])
+  const customerMoney = useMemo(() => {
+    const customer = customerMoneyId ? boardWithChanges?.customers.find((c) => c.id === customerMoneyId) : undefined
+    return customer && boardWithChanges && customerMoneyRows?.customerId === customer.id ? customerMoneyView(boardWithChanges, customerMoneyRows.rows, customer) : null
+  }, [customerMoneyId, boardWithChanges, customerMoneyRows])
   const changeEmailed = useMemo(() => {
     const out: Record<string, { to: string; on: string }[]> = {}
     for (const e of changeEmails) (out[e.source_id] ??= []).push({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) })
@@ -1963,6 +1991,34 @@ export default function GcProjects() {
             await logGcCustomerContact({ customerId: openCustomer.id, on: today, byName: profileName ?? '', how, note })
             await refreshBoard()
           }}
+          // Their money (B2b-v-iii): the money team's alone. A row opens Bill the customer or the change orders, read
+          // only here; our contract's file opens for whoever the bucket lets read it (a dev today).
+          {...(canSeeGcMoney(role)
+            ? {
+                money: {
+                  view: customerMoney,
+                  problem: customerMoneyProblem,
+                  onOpenBill: (projectId: string) => {
+                    setCustomerWin(null)
+                    setBillWindow(projectId)
+                  },
+                  onOpenChanges: (projectId: string) => {
+                    setCustomerWin(null)
+                    setChangesWindow(projectId)
+                  },
+                  ...(canOpenOwnerContractFile(role)
+                    ? {
+                        onOpenContract: async (projectId: string) => {
+                          const project = board.projects.find((p) => p.id === projectId)
+                          const path = project ? newestContractSend(board, project)?.file?.path : undefined
+                          if (!path) throw new Error('no file went with it.')
+                          await openOwnerContractFile(path)
+                        },
+                      }
+                    : {}),
+                },
+              }
+            : {})}
           onClose={() => setCustomerWin(null)}
         />
       )}
