@@ -218,5 +218,62 @@ SELECT gpt.same('a project''s delete takes its sends, and the company''s own sta
   SELECT count(*) FILTER (WHERE package_id IS NOT NULL) || ' ' || count(*) FILTER (WHERE package_id IS NULL) FROM public.gc_paper_sends), '0 5');
 SELECT gpt.refused_code('a company with papers is not deleted', $q$DELETE FROM public.gc_companies WHERE id = '00000000-0000-0000-0000-000000000711'$q$, '23503');
 
+-- 7 · The papers' states for the office (v2.5179, 20261010120000_gc_company_paper_states): the office reads a company's
+-- agreement, W-9 and certificate rows through gc_company_paper_states, eight columns and nothing else, never a person's
+-- paper and never another kind; anyone else gets an empty set; anon cannot call it.
+INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-0000000007d3', 'controller@papers.test'), ('00000000-0000-0000-0000-0000000007d4', 'sub@papers.test');
+INSERT INTO public.users (id, email, name, role) VALUES
+  ('00000000-0000-0000-0000-0000000007d3', 'controller@papers.test', 'Papers Controller', 'controller'),
+  ('00000000-0000-0000-0000-0000000007d4', 'sub@papers.test', 'Papers Sub', 'subcontractor')
+  ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
+CREATE TEMP TABLE gpt_states_want ON COMMIT DROP AS
+  SELECT md5(coalesce(string_agg(d.id || '|' || d.company_id || '|' || d.doc_type || '|' || d.status || '|' || coalesce(d.sent_at::text, '') || '|' || coalesce(d.signed_at::text, '') || '|' || coalesce(d.expires_at::text, '') || '|' || coalesce(d.created_at::text, ''), ',' ORDER BY d.company_id, d.created_at, d.id), '')) AS rows,
+         count(*) AS n
+  FROM public.person_contract_documents d
+  WHERE d.company_id IS NOT NULL AND d.doc_type IN ('agreement', 'w9', 'coi');
+GRANT SELECT ON gpt_states_want TO authenticated;
+CREATE FUNCTION gpt.states(p_company_ids uuid[] DEFAULT NULL) RETURNS text LANGUAGE sql AS $$
+  SELECT md5(coalesce(string_agg(s.id || '|' || s.company_id || '|' || s.doc_type || '|' || s.status || '|' || coalesce(s.sent_at::text, '') || '|' || coalesce(s.signed_at::text, '') || '|' || coalesce(s.expires_at::text, '') || '|' || coalesce(s.created_at::text, ''), ',' ORDER BY s.company_id, s.created_at, s.id), ''))
+  FROM public.gc_company_paper_states(p_company_ids) s;
+$$;
+GRANT EXECUTE ON FUNCTION gpt.states(uuid[]) TO authenticated;
+SELECT gpt.same('the fixture holds company papers of the three kinds, and others beside them', (
+  SELECT (n > 0) || ' ' || ((SELECT count(*) FROM public.person_contract_documents WHERE company_id IS NULL) > 0) || ' ' || ((SELECT count(*) FROM public.person_contract_documents WHERE company_id IS NOT NULL AND doc_type NOT IN ('agreement', 'w9', 'coi')) > 0)
+  FROM gpt_states_want), 'true true true');
+SELECT gpt.same('eight columns and nothing else of the row', pg_get_function_result('public.gc_company_paper_states(uuid[])'::regprocedure),
+  'TABLE(id uuid, company_id uuid, doc_type text, status text, sent_at timestamp with time zone, signed_at date, expires_at date, created_at timestamp with time zone)');
+SELECT gpt.same('a definer with its search path pinned', (
+  SELECT prosecdef::text || ' ' || provolatile::text || ' ' || array_to_string(proconfig, ',') FROM pg_proc WHERE oid = 'public.gc_company_paper_states(uuid[])'::regprocedure), 'true s search_path=public');
+-- A dev, the controller and an estimator read the same rows: every company paper of the three kinds, no person's.
+SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d1');
+SET LOCAL ROLE authenticated;
+SELECT gpt.same('a dev reads every company paper of the three kinds', gpt.states(), (SELECT rows FROM gpt_states_want));
+RESET ROLE;
+SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d3');
+SET LOCAL ROLE authenticated;
+SELECT gpt.same('the controller reads the same rows', gpt.states(), (SELECT rows FROM gpt_states_want));
+RESET ROLE;
+SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d2');
+SET LOCAL ROLE authenticated;
+SELECT gpt.same('an estimator reads no paper of the table itself', (SELECT count(*)::text FROM public.person_contract_documents), '0');
+SELECT gpt.same('an estimator reads the same rows through the function', gpt.states(), (SELECT rows FROM gpt_states_want));
+SELECT gpt.same('never a person''s paper', (SELECT count(*)::text FROM public.gc_company_paper_states() s WHERE s.company_id IS NULL), '0');
+SELECT gpt.same('never another kind', (SELECT count(*)::text FROM public.gc_company_paper_states() s WHERE s.doc_type NOT IN ('agreement', 'w9', 'coi')), '0');
+SELECT gpt.same('one company''s papers when asked for one', (
+  SELECT count(*) FILTER (WHERE s.company_id <> '00000000-0000-0000-0000-000000000712')::text || ' ' || (count(*) > 0)
+  FROM public.gc_company_paper_states(ARRAY['00000000-0000-0000-0000-000000000712']::uuid[]) s), '0 true');
+RESET ROLE;
+-- Outside the office: an empty set, not an error.
+SELECT gpt.as_user('00000000-0000-0000-0000-0000000007d4');
+SET LOCAL ROLE authenticated;
+SELECT gpt.same('a subcontractor gets an empty set', (SELECT count(*)::text FROM public.gc_company_paper_states()), '0');
+RESET ROLE;
+SELECT gpt.same('anon and PUBLIC cannot call it; a signed-in person can', (
+  SELECT has_function_privilege('anon', 'public.gc_company_paper_states(uuid[])', 'EXECUTE') || ' ' || has_function_privilege('authenticated', 'public.gc_company_paper_states(uuid[])', 'EXECUTE')), 'false true');
+-- The person's paper the fixture holds (Bed Sub Dana) is in the table, and still never in the read.
+SELECT gpt.same('the person''s paper is in the table and not in the read', (
+  SELECT count(*) FILTER (WHERE person_name = 'Bed Sub Dana')::text || ' ' || (SELECT count(*) FROM public.gc_company_paper_states() s JOIN public.person_contract_documents d ON d.id = s.id WHERE d.person_name = 'Bed Sub Dana')
+  FROM public.person_contract_documents), '1 0');
+
 DO $$ BEGIN RAISE NOTICE 'gc_papers PASSED'; END $$;
 ROLLBACK;
