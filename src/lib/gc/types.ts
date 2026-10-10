@@ -668,6 +668,8 @@ export interface GcProject {
   startDate: string | null
   /** The day we pressed Start. The trades were told then. */
   startedOn: string | null
+  /** Started before everything was in (question 7): who, why, and what was missing that day. */
+  startedAnyway?: { by: string; reason: string; missing: string[] }
   customerId: string
   /** The customer's name, kept on the row for display. */
   owner: string

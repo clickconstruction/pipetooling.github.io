@@ -5,6 +5,7 @@
  * mapper test and its render test read it.
  */
 import type { BoardRows } from './boardRows'
+import type { CompanyPaperRow } from './companyPapers'
 import { gcProjectFromRows, type GcProjectRows } from './projectRows'
 
 /** A small clinic as gc_create_project writes it: sitework and concrete hired out, plumbing ours. */
@@ -105,4 +106,28 @@ export function awardedClinicBoardRows(over: Partial<BoardRows> = {}): BoardRows
     ],
     ...over,
   })
+}
+
+/** Lonestar's papers all in (B6-c-ii): the master agreement signed, insurance good to June, a W-9 on file. */
+export function lonestarPapersInRows(): CompanyPaperRow[] {
+  return [
+    { id: 'd1', company_id: 'lonestar', doc_type: 'agreement', status: 'signed', sent_at: '2026-09-20T15:00:00Z', signed_at: '2026-09-22', expires_at: null },
+    { id: 'd2', company_id: 'lonestar', doc_type: 'coi', status: 'signed', sent_at: null, signed_at: '2026-09-22', expires_at: '2027-06-30' },
+    { id: 'd3', company_id: 'lonestar', doc_type: 'w9', status: 'signed', sent_at: null, signed_at: '2026-09-22', expires_at: null },
+  ]
+}
+
+/**
+ * The clinic ready to start (B6-c-ii): concrete dropped, Lonestar's papers in and its statement of work signed, our
+ * plumbing bid priced, our contract signed, the permit in hand and a start date. The schedule is laid over by the test.
+ */
+export function readyClinicBoardRows(dates: Partial<BoardRows['boardDates'][string]> = {}): BoardRows {
+  const base = awardedClinicBoardRows({ papers: lonestarPapersInRows() })
+  return {
+    ...base,
+    projects: base.projects.map((p) => ({ ...p, trades: p.trades.filter((t) => t.id !== 'k2') })),
+    sows: (base.sows ?? []).map((s) => ({ ...s, status: 'signed' as const, signed_on: '2026-10-09' })),
+    ownBids: [{ id: 'b7', bid_value: 30000, bid_number: 'BP7' }],
+    boardDates: { p1: { ...base.boardDates.p1!, owner_contract_signed_on: '2026-10-06', permit_on: '2026-10-07', start_date: '2026-10-19', ...dates } },
+  }
 }

@@ -146,6 +146,17 @@ export interface BoardDatesRow {
   won_by: string | null
   /** The day the job was closed (Building's U6c, `gc_close_job`). Null: still open. */
   closed_on?: string | null
+  /** Start anyway (B6-c-i, `gc_start_project`): who pressed it, why, and what was still missing. Null: a plain Start. */
+  started_anyway_by?: string | null
+  started_anyway_reason?: string | null
+  started_anyway_missing?: string[] | null
+}
+
+/** `bids` behind our own trades (`gc_trade_packages.own_bid_id`): our own crew's number, as the Trades mode bid has it. */
+export interface OwnBidRow {
+  id: string
+  bid_value: number | string | null
+  bid_number: string | null
 }
 
 /** A company's vetting form (B1's `gc_company_vetting_forms`), as they wrote it. */
@@ -273,6 +284,11 @@ export interface BoardRows {
   papers?: CompanyPaperRow[]
   /** Every send of a paper (B6-b-i's gc_paper_sends), dev only while the Board is built. Missing: none read. */
   paperSends?: PaperSendRow[]
+  /**
+   * Our own trades' Trades mode bids (B6-c-ii, call C). A trade we do ourselves is priced once its bid's value is above 0.
+   * Missing, or a bid this reader cannot see: our budget stands in, not priced.
+   */
+  ownBids?: OwnBidRow[]
 }
 
 const num = (v: number | string | null | undefined): number => {
@@ -461,6 +477,14 @@ export function promiseFromRows(p: PromiseRow, moves: PromiseMoveRow[]): TradePr
   }
 }
 
+/** Our own crew's number (call C): the Trades mode bid's value once it is above 0, else our budget, not priced. */
+function selfPerformOf(ownBidId: string | null, budget: number, bids: OwnBidRow[] | undefined): NonNullable<TradePackage['selfPerform']> {
+  const bid = ownBidId ? bids?.find((b) => b.id === ownBidId) : undefined
+  const value = num(bid?.bid_value)
+  const ref = bid?.bid_number || ownBidId || ''
+  return value > 0 ? { ref, value, note: 'Our own crew.', priced: true } : { ref, value: budget, note: 'Our own crew.', priced: false }
+}
+
 /** One project as the board's kernels read it. */
 export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invitesByPackage: Map<string, Invite[]>): GcProject {
   const dates = rows.boardDates[view.id]
@@ -475,8 +499,8 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     bidTab: bidTabOf(rows, t.id),
     scope: t.scope.map((s) => ({ id: s.id, label: s.label })),
     budget: t.budget,
-    // Our own trade's number is its Trades mode bid; until the board reads that bid, our budget stands in, not priced.
-    selfPerform: t.ours ? { ref: t.ownBidId ?? '', value: t.budget, note: 'Our own crew.', priced: false } : null,
+    // Our own trade's number is its Trades mode bid once it is priced (call C); until then our budget stands in, not priced.
+    selfPerform: t.ours ? selfPerformOf(t.ownBidId, t.budget, rows.ownBids) : null,
     invites: invitesByPackage.get(t.id) ?? [],
     // What we carry (B5): our own trade, the quote on an ask, our budget, or nothing yet. An award carries
     // the ask it went to (B6-a), as the prototype's award does.
@@ -510,6 +534,10 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     permitOn: dates?.permit_on ?? null,
     startDate: dates?.start_date ?? null,
     startedOn: dates?.started_on ?? null,
+    // Start anyway (B6-c-i): who by name, why, and what was owed that day.
+    ...(dates?.started_on && dates.started_anyway_missing?.length
+      ? { startedAnyway: { by: (dates.started_anyway_by && rows.userNames?.[dates.started_anyway_by]) || 'Someone on our team', reason: dates.started_anyway_reason ?? '', missing: dates.started_anyway_missing } }
+      : {}),
     customerId: view.customerId,
     owner: name(view.customerId),
     customerRole: view.customerRole,
