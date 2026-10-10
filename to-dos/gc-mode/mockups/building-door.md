@@ -2,7 +2,7 @@
 name: "Building's door: Building opens to the job's team, its money to the money team, and /gc to the field"
 rows: BUILDING_REAL_BUILD.md, decision 4 (who may read and write), The PRs in order, 9 (the door), the owner's calls 1 and 5; mockups/schedule-pr10.md (the shape, and "What Building's door adds"); mockups/schedule-pr9d.md, call 1 (the schedule team's read half); mockups/building-u8.md (the crew's counts and percents); mockups/door-owner-billing.md and O9 (20261010050000, the money team's reads)
 branch: the plan on claude/gc-building-door-plan (from origin/spike/gc-mode at ecf57865b); the PRs from origin/main, after the schedule's PR 10 and the live walk
-status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. The lead approved its shape the same day (D1 then D2; calls 3, 4, 7 and 8 at their picks). Amendment 1 the same day: the Board's (gc 2) co-sign on call 3 with its gates, and call 6 reshaped to a function; the Portal's (gc 3) co-sign on call 5 with its notes. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Amendment 2 the same day: gc 4's co-sign with its scan (four presses read gc_sows; three keep promises; the presses and the schedule's writes read the office's job tables), the job's reads as definer functions (call 9), one promise keeper for Building's three kinds, gc_link_crew_job's one-crew-a-job refusal (call 11, gc 4's amendment 3), and call 4's client half. Owed: the lead's read of calls 9 and 11, and the owner's word on call 2.
+status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. The lead approved its shape the same day (D1 then D2; calls 3, 4, 7 and 8 at their picks). Amendment 1 the same day: the Board's (gc 2) co-sign on call 3 with its gates, and call 6 reshaped to a function; the Portal's (gc 3) co-sign on call 5 with its notes. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Amendment 2 the same day: gc 4's co-sign with its scan (four presses read gc_sows; three keep promises; the presses and the schedule's writes read the office's job tables), the job's reads as definer functions (call 9), one promise keeper for Building's three kinds, gc_link_crew_job's one-crew-a-job refusal (call 11, gc 4's amendment 3), and call 4's client half. The lead approved calls 9 and 11 the same day. Amendment 3 the same day: call 9's columns, from gc 4's scan of Building's presses and gc 10's of the schedule's writes; PR 10's Status and #5231's body record the project manager gap. Owed: New project's and the Board's co-sign on call 9's columns, and the owner's word on call 2.
 ---
 
 # Building's door
@@ -119,11 +119,24 @@ decide the rest. Swapping the policies is their gate too, with these exceptions:
      tables would show the team a trade's budget, an ask's plugs and our terms, so D1 adds money-free reads for the job's
      team instead, `STABLE SECURITY DEFINER`, each answering only `gc_on_schedule_team` of its job, `REVOKE ALL FROM
      PUBLIC, anon`, granted to `authenticated`:
-     - `gc_team_project(p_project_id)`: the job's `gc_projects` row with every money column null (O1's terms, our
-       number's inputs);
-     - `gc_team_trades(p_project_id)`: its `gc_trade_packages` rows with `budget` and every money column null, and each
-       trade's awarded company id (from `gc_invites`, which the presses read only for that);
-     - `gc_team_scope_items(p_project_id)`: its `gc_scope_items` rows, money columns null.
+     - `gc_team_project(p_project_id)`: `project_id`, `stage`, `started_on`, `lost_on`;
+     - `gc_team_trades(p_project_id)`: `id`, `project_id`, `position`, `ours`, `awarded_invite_id`, and the awarded
+       `company_id` (from `gc_invites`, which the presses read only for that);
+     - `gc_team_scope_items(p_project_id)`: `id`, `package_id`.
+
+     **The columns** are the union of what the presses read (gc 4's scan of each press's latest body on main at
+     2d6dcc23e: the log reads the job's stage and start, the trades' `ours`; the punch list the stage; the punch fixed
+     ask and a submittal that came in the awarded invite; an RFI the stage, `lost_on`, the awarded company and a scope
+     line's trade; a submittal a scope line's trade) and what the schedule's writes read (gc 10's scan of
+     `20261008040000`: the first start's keep reads `stage` and `started_on`, though it takes the whole row; the first
+     draft `stage` and `lost_on`, a line's trade and a trade's job; an inspection, their dates and a wait the stage,
+     `lost_on`, a trade's job and its `position`). Every function returns only these, never a whole row: `budget`,
+     `carried_invite_id`, `carry_budget`, `own_bid_id`, the quotes, O1's terms and our number's inputs stay out. The
+     presses that are the money team's alone (`gc_accept_work`, `gc_close_job`, U6c's and the draws') keep reading the
+     tables under the office's policies. The schedule's `gc_schedule_keep_start` stops taking the whole row.
+     **D2 adds** (call 2, gc 4): `trade` and `job_ledger_id` on the trades (the page's names, and U8b's crew percent and
+     clocked-in note for a superintendent), `label` and `position` on the scope lines (the stage lines and the chart),
+     and what the page's card shows of the job, settled with the owner's word on call 2.
      Building's presses and the schedule's writes read these where they read the tables, the `gc_sows` check through
      `gc_package_sow_signed`. D2's `gc_field_rows()` is the same three for the superintendent's jobs, so the page and the
      presses read one shape.
