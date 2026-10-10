@@ -2,7 +2,7 @@
 name: "The schedule's PR 15b: the customer's picture in their portal"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 15, and decision 10; mockups/schedule-pr15.md, calls 5 and 9; mockups/schedule-pr14b.md, calls 1, 2, 6 and 10; GANTT_FEATURES.md G-90 to G-93
 branch: the plan on claude/gc-schedule-pr15b-plan (from origin/spike/gc-mode at c51a62527); the code from origin/main in one cut, with no migration, after #5362 (14b) merges
-status: plan 2026-10-10 by helper 1 at the lead's ask. Amendment 1 (2026-10-10): gc 3, holding the Portal, co-signed every call, call 4 as amended (each audience's reads behind its own option, over P5d-ii-1's widened read) and call 5 with three more plants. Waiting on gc 5's co-sign (Owner Billing, calls 4, 7 and 8). Measured on 14b's head fd0f5dd5b; measured again once 14b is on main. Nothing cut or claimed.
+status: plan 2026-10-10 by helper 1 at the lead's ask. Amendment 1 (2026-10-10): gc 3, holding the Portal, co-signed every call, call 4 as amended (each audience's reads behind its own option, over P5d-ii-1's widened read) and call 5 with three more plants. Amendment 2 (2026-10-10): gc 5, holding Owner Billing, co-signed calls 4, 7 and 8, with two conditions written in (the never-sees test on the schedule's answer with the late finish's dollars planted, and the portal line on a link where their GC jobs show, `gcJobsPortalUrl`). For the lead's read-back. Measured on 14b's head fd0f5dd5b; measured again once 14b is on main. Nothing cut or claimed.
 ---
 
 # The schedule's PR 15b: the customer's picture in their portal
@@ -29,7 +29,7 @@ Nothing works out the picture on the server, and the portal draws no schedule. O
 
 ## The calls
 
-**Co-signed by gc 3 (Portal), every call, 4 and 5 as amended (amendment 1); for gc 5 (Owner Billing), calls 4, 7 and 8. Each with the other way:**
+**Co-signed by gc 3 (Portal), every call, 4 and 5 as amended (amendment 1), and gc 5 (Owner Billing), calls 4, 7 and 8, 5 and 8 as amended (amendment 2). Each with the other way:**
 
 1. **The picture rides 14b's copy.** `ENTRIES` gains `schedule/customerSchedule.ts` (`customerSchedulePicture`) and
    `lateFinish.ts` (`lateFinish`), since the prototype's portal shows the late finish's customer words under the
@@ -76,9 +76,13 @@ Nothing works out the picture on the server, and the portal draws no schedule. O
    So the customer's read never fetches a company's tells, answers, notices, counts or marks, and the trade's never
    fetches the dates to meet, waits, change orders or the customer's row. Each portal's never-sees test guards its own
    side. *Other way:* a second reader in `customer-portal`, two copies of the same read that drift apart.
-5. **The never-sees test** (`gcCustomerPortalSchedule.test.ts`) plants on the same job:
+5. **The never-sees test** (`gcCustomerPortalSchedule.test.ts`) runs on `customerPortalSchedule`'s answer, the
+   schedule's part, not the whole portal response: O7c's change orders to sign rightly carry the price they sign
+   (gc 5). It plants on the same job:
    - each trade's company name;
    - a distinct dollar figure on every budget, line, statement of work, change order and our price;
+   - the late finish's dollars (gc 5): `owner_late_finish_per_day`, and our number's fee and contingency. The late
+     finish's customer words are never the fee, as 15a's letter has it;
    - a bar with spare days;
    - a move's note and a late notice's note;
    - the trade side's rows from P5d (gc 3): a trade's answer note on told dates, a crew count, and a look-ahead mark
@@ -99,11 +103,14 @@ Nothing works out the picture on the server, and the portal draws no schedule. O
    `GcCustomerSchedule` drawn from the answer, not from a state. It is light, on the portal's paper, and has one
    press, **See every bar**, for a GC or an owner's rep. A job with no `schedule` draws as today, so the page and the
    function can deploy in either order. *Other way:* *Your schedule* last, under the bills.
-8. **The portal line comes on** (15's call 5): `GC_CUSTOMER_EMAIL_PORTAL_LINE` turns on for `schedule` and `weekly`,
-   with their own words through the frame's `portalWords`: *You can see your schedule in your portal:*. It is only
-   there when their link is already on (`loadPortalReturnUrl`), and the frame offers a card only under a bill's
-   words. The weekly report is Building's, so its line comes on with Building's nod. *Other way:* the schedule's line
-   only, and the Friday report waits.
+8. **The portal line comes on, on a link that shows their GC jobs** (15's call 5, amended by gc 5):
+   `GC_CUSTOMER_EMAIL_PORTAL_LINE` turns on for `schedule` and `weekly`, with their own words through the frame's
+   `portalWords`: *You can see your schedule in your portal:*. The link is not `loadPortalReturnUrl`'s, which falls
+   back to a `gc` view where `customer-portal` shows no GC job of ours. It is `gcContractPortalUrl`'s rule, renamed
+   once to `gcJobsPortalUrl`: the merged `all` link at its short address, else a `customer` view, never `gc`. Our
+   contract and the two kinds call it. With no such link there is no line and the send still goes; only `contract`
+   refuses `noPortal`. The frame offers a card only under a bill's words. The weekly report is Building's, so its
+   line comes on with Building's nod. *Other way:* the schedule's line only, and the Friday report waits.
 9. **What customers see:** the owner's sample portal shows a made-up schedule on its sample job, built by
    `customerPortalSchedule` from the sample's rows. The journey step *GC mode: their schedule in their portal* points
    at it, with its guide.
@@ -139,7 +146,9 @@ Nothing works out the picture on the server, and the portal draws no schedule. O
 - **gc 3 (Portal):** 14b's copy and its read (calls 1 and 4). 15b cuts after 14b merges, and moves P5d-ii-1's widened
   read if that lands first, as planned.
 - **gc 5 (Owner Billing):** `gcPortal.ts` and `PortalGcJobs.tsx` are O7c's, and the portal line is the frame's
-  (calls 7 and 8). gc 5's guard against a send twice comes before or after; it touches neither.
+  (calls 7 and 8). gc 5's guard against a send twice comes before or after; it touches neither. The same `gc`
+  fallback sits under the bill kinds' line (*You can see this bill in your portal:*); gc 5 fixes it in a follow-up
+  of their own on `gcJobsPortalUrl`, adding the rename there if it lands before 15b.
 - **Building:** the weekly report's portal line (call 8).
 - **PR 10 (#5231):** nothing. The portal reads with the service role and checks the link, never the team's RLS.
 
@@ -168,5 +177,6 @@ portal:* with the link. No real customer is shown or sent anything without the o
 ## Status
 
 Plan 2026-10-10, helper 1, at the lead's ask. Amendment 1 the same day: gc 3 co-signed every call, with call 4's read
-split by audience over P5d-ii-1's and three more plants in call 5. Waiting on gc 5's co-sign of calls 4, 7 and 8, then
-the lead's read-back. Measured on 14b's head fd0f5dd5b. Nothing cut or claimed.
+split by audience over P5d-ii-1's and three more plants in call 5. Amendment 2: gc 5 co-signed calls 4, 7 and 8, with
+the never-sees test held to the schedule's answer, the late finish's dollars planted, and the portal line on
+`gcJobsPortalUrl`. For the lead's read-back. Measured on 14b's head fd0f5dd5b. Nothing cut or claimed.
