@@ -6,27 +6,14 @@
  * schedule reader reads (to-dos/gc-mode/mockups/schedule-pr16.md on branch spike/gc-mode, call 4). The money team's
  * own lines read the full table into a state of their own (16c), so a hidden 0 never reaches a money line.
  */
+import type { Database } from '../../types/database'
 import type { ChangeOrder, ChangeOrderReason, GcState } from './types'
 
 /**
- * One row of the view, typed here until gc 7's regen after 20261010081000's push puts the view in `database.ts`; then
- * it becomes `Database['public']['Views']['gc_change_orders_office']['Row']`. Every column is nullable, as the
- * generated type of a view's is. Its keys are the view's twelve, never cost, price or pct_done (the test holds it).
+ * One row of the view, as the regen after 20261010081000's push generated it. Every column is nullable, as a view's
+ * are. Its keys are the view's twelve, never cost, price or pct_done (the test holds it).
  */
-export interface ChangeOrderOfficeRow {
-  id: string | null
-  project_id: string | null
-  number: number | null
-  description: string | null
-  reason: string | null
-  schedule_words: string | null
-  package_id: string | null
-  status: string | null
-  sent_on: string | null
-  answered_on: string | null
-  days: number | null
-  days_on_chart: string[] | null
-}
+export type ChangeOrderOfficeRow = Database['public']['Views']['gc_change_orders_office']['Row']
 
 /** The columns the io reads: the view's twelve, never a money one. */
 export const CHANGE_ORDER_OFFICE_COLUMNS = 'id, project_id, number, description, reason, schedule_words, package_id, status, sent_on, answered_on, days, days_on_chart'
