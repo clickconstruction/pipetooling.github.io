@@ -1,0 +1,36 @@
+{
+  "about": "The schedule's PR 14a (to-dos/gc-mode/mockups/schedule-pr14.md, calls 4 and 6; #5356, v2.5196): the portal's own checks before a trade's write, lifted word for word so the server's verbs and the portal's forms read the same rules. lateNoticeProblem appends to schedule/lateNotices.ts (the order of the refusals gc_trade_say_late raises), and crewCountProblem and portalCrewAsks to schedule/crewCounts.ts (portalCrewAsks reads portalLookAhead from main's portal.ts, no cycle). The spike re-exports all three from main since this follow-up, so each has one copy. Their tests are main's own (lateNotices.direct.test.ts, crewCounts.direct.test.ts); the prototype's that play its reducer stay on the spike, where they run against main's. Not in LIFTS: no shape moved.",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "files": [
+    {
+      "from": "gcLateNotices",
+      "to": "schedule/lateNotices.ts",
+      "append": true,
+      "moves": [
+        "lateNoticeProblem"
+      ]
+    },
+    {
+      "from": "gcCrewCounts",
+      "to": "schedule/crewCounts.ts",
+      "append": true,
+      "moves": [
+        "crewCountProblem",
+        "portalCrewAsks"
+      ]
+    }
+  ],
+  "pin": {
+    "main": "ff27800e75d33fa843caf8763ac4825c7aa5de2c",
+    "spike": "ba1b8f24a6feb9d64bf2126da54d1637c6d7b326",
+    "about": "#5356 merged; the spike before its follow-up (claude/gc-schedule-pr14-follow), which merged 14a, 14c and 14b in together"
+  }
+}
