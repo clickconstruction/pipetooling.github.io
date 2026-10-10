@@ -52,6 +52,7 @@ import {
 } from '../lib/gc/drawsIo'
 import { changeEmail, chargeEmail, drawEmailFor, lessEmail, paidEmail, type DrawEmail, type DrawEmailTo } from '../lib/gc/drawEmail'
 import { GcCloseoutWindow } from '../components/gc/GcCloseoutWindow'
+import { GcStartWindow, type StartPresses, type StartTold } from '../components/gc/GcStartWindow'
 import { acceptWork, approveRetainage, changeSignedIn, closeJob, finalPayAppCameIn } from '../lib/gc/closeoutIo'
 import { addPunchItem, checkPunchItem, loadGcPunch, punchFixedIn, removePunchItem } from '../lib/gc/punchIo'
 import { GcPunchWindow } from '../components/gc/GcPunchWindow'
@@ -67,7 +68,7 @@ import { loadSchedule } from '../lib/gc/scheduleIo'
 import type { WeeklyReportWrites } from '../components/gc/GcWeeklyReport'
 import { weeklyReportRetryRow, withWeeklyReports, type WeeklyReportRow, type WeeklyReportSend } from '../lib/gc/weeklyReportRows'
 import { loadGcWeeklyReports, recordWeeklyReport, sendWeeklyReport } from '../lib/gc/weeklyReportsIo'
-import { ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
+import { ownerContractWorthNow, ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
 import { downloadPayAppExcel, downloadPayAppPdf, payAppPdf } from '../lib/gc/payAppFileWriters'
 import { payAppFileName } from '../lib/gc/payAppFile'
 import {
@@ -183,9 +184,14 @@ import {
   setOwnerRetainage,
   sendGcSow,
   takeBillOffCard,
+  loadGcStartTold,
+  setGcProjectStartItem,
+  signGcOwnerContract,
+  startGcProject,
 } from '../lib/gc/gcIo'
 import { fetchGcCardBillOn } from '../lib/gc/cardBillSetting'
 import { sowEmailRequest } from '../lib/gc/sowEmail'
+import { startEmailRequest, startRecipients } from '../lib/gc/startEmail'
 import { gcTradeEmailRefusal, type ChangeAskEmailStage } from '../lib/gc/tradeEmail'
 import { DRIVE_RESTRICTED_WORDS } from '../components/gc/GcNewProjectDriveLink'
 import { scopeBook, scopeSetsFor, type ScopeBookInput } from '../lib/gc/scopeBook'
@@ -1115,6 +1121,88 @@ export default function GcProjects() {
     setParams(next, { replace: true })
     setBillProblem(null)
   }
+  // Get started (the Board's B6-c-ii): `start=<projectId>`, a dev's until award's door, as gc_start_project is. Its
+  // job's schedule is read when it opens, as Bill the customer's is, so the schedule step counts; who was told the job
+  // started comes from the trade messages under its key.
+  const startProjectId = params.get('start')
+  const setStartWindow = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('start', projectId)
+    else next.delete('start')
+    setParams(next, { replace: true })
+  }
+  const [startRead, setStartRead] = useState<{ id: string; schedule: GcProject['schedule'] | null; told: string[] } | null>(null)
+  useEffect(() => {
+    if (!startProjectId || !board || role !== 'dev') return
+    let live = true
+    Promise.all([loadSchedule(board, startProjectId).catch(() => null), loadGcStartTold(startProjectId).catch(() => [])])
+      .then(([read, told]) => {
+        if (live) setStartRead({ id: startProjectId, schedule: read?.project.schedule ?? null, told })
+      })
+    return () => {
+      live = false
+    }
+  }, [startProjectId, board, role])
+  const startState = useMemo(
+    () => (board && startRead && startRead.id === startProjectId ? withSchedules(board, new Map([[startRead.id, startRead.schedule]])) : null),
+    [board, startRead, startProjectId],
+  )
+  const startProject = startState?.projects.find((x) => x.id === startProjectId && (x.stage === 'buyout' || x.stage === 'building')) ?? null
+  const startToldNames = useMemo(
+    () => (startRead && board ? startRead.told.map((id) => board.partners.find((x) => x.id === id)?.company ?? 'A company') : []),
+    [startRead, board],
+  )
+  /** Tell each company awarded on the job that it started, once each (the key), naming any the email did not reach. */
+  const tellStarted = async (projectId: string): Promise<StartTold> => {
+    if (!board) return { told: [], missed: [] }
+    const already = new Set(await loadGcStartTold(projectId))
+    const told: string[] = []
+    const missed: StartTold['missed'] = []
+    for (const r of startRecipients(board, projectId)) {
+      if (already.has(r.companyId)) {
+        told.push(r.company)
+        continue
+      }
+      const req = canSendGcTradeEmail(role) ? startEmailRequest(board, projectId, r.companyId, tradeMailLang(langs[r.companyId])) : null
+      const answer = req ? await sendGcTradeEmail(req) : null
+      if (answer?.ok) told.push(r.company)
+      else missed.push({ company: r.company, why: gcTradeEmailRefusal(answer?.key ?? 'officeOnly') })
+    }
+    return { told, missed }
+  }
+  const startPresses = (projectId: string): StartPresses => ({
+    start: async (anyway) => {
+      await startGcProject(projectId, anyway)
+      // Started is saved whatever the emails do; the window names any company they missed.
+      await reloadProjects()
+      return tellStarted(projectId)
+    },
+    tellAgain: () => tellStarted(projectId),
+    setPermit: async (done) => {
+      await setGcProjectStartItem(projectId, { permit_on: done ? today : null })
+      await reloadProjects()
+    },
+    setStartDate: async (date) => {
+      await setGcProjectStartItem(projectId, { start_date: date })
+      await reloadProjects()
+    },
+    // Our contract's price by line is Our number's, so Mark it signed is the money team's, with Our number read.
+    ...(canSeeGcMoney(role) && moneyShown
+      ? {
+          signContract: async (signed: boolean) => {
+            const project = board?.projects.find((x) => x.id === projectId)
+            await signGcOwnerContract(projectId, signed ? today : null, signed && project ? ownerContractWorthNow(project) : null)
+            await reloadProjects()
+          },
+        }
+      : {}),
+    award: (packageId) => setComparing({ projectId, packageId }),
+    // The statement of work is sent on the trade's card: the window steps aside and the card scrolls into view.
+    openSow: (packageId) => {
+      setStartWindow(null)
+      window.setTimeout(() => document.querySelector(`[data-gc-trade-sow="${packageId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0)
+    },
+  })
   /** A Bill the customer press: run it, read the bills again when it wrote, and say the problem in the window. */
   const billWrite = (id: string, work: () => Promise<unknown>, failed: string, reload = true) => {
     setBillBusy(id)
@@ -1434,6 +1522,12 @@ export default function GcProjects() {
                   Closeout
                 </Btn>
               )}
+              {/* Get started (the Board's B6-c-ii): a dev's on a won job until award's door, as gc_start_project is. */}
+              {role === 'dev' && board && (p.stage === 'buyout' || p.stage === 'building') && !p.lostOn && (
+                <Btn kind="quiet" onClick={() => setStartWindow(p.id)}>
+                  Get started
+                </Btn>
+              )}
               {canSeeGcMoney(role) && boardWithChanges && p.stage !== 'bidding' && !p.lostOn && (
                 <Btn kind="quiet" onClick={() => setBillWindow(p.id)}>
                   Bill the customer
@@ -1575,6 +1669,28 @@ export default function GcProjects() {
       )}
 
       {plansProject && <GcPlansWindow project={plansProject} onClose={() => setPlansWindow(null)} />}
+      {startProject && startState && (
+        <GcStartWindow
+          key={startProject.id}
+          state={startState}
+          project={startProject}
+          presses={startPresses(startProject.id)}
+          told={startToldNames}
+          ownBidHref={(packageId) => {
+            // Our own crew's Trades mode bid, on its Pricing tab.
+            const bidId = loaded?.projects.find((x) => x.id === startProject.id)?.trades.find((t) => t.id === packageId)?.ownBidId
+            return bidId ? `/bids?tab=pricing&bidId=${encodeURIComponent(bidId)}` : null
+          }}
+          covered={comparing !== null || openCompany !== null}
+          onOpenSchedule={() => {
+            const next = new URLSearchParams(params)
+            next.delete('start')
+            next.set('schedule', startProject.id)
+            setParams(next, { replace: true })
+          }}
+          onClose={() => setStartWindow(null)}
+        />
+      )}
       {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={role === 'dev'} canPull={canUseGcBuilding(role)} onClose={() => setScheduleWindow(null)} />}
       {openCompany && board && (
         <GcCompanyWindow

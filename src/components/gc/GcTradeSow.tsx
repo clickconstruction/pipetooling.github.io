@@ -5,16 +5,21 @@
  * is live (`SOW_SIGN_SCREEN_LIVE`), a dev may email it too, a box that starts off. The money team reads the card since
  * O9, read only: the press is for those who write the statement of work (`canUseGcBoardWrites`). The papers that must be in before
  * it goes (the master agreement, insurance, the W-9) come with B6-b, and how far the money claimed reaches on their
- * lines with Building's draws (U6).
+ * lines with Building's draws (U6). Since B6-c-ii the send waits on those papers (`partnerBlockers`), saying "Cannot send
+ * yet." and what is missing, with **Send the master agreement** beside it while none has gone (the company window's send),
+ * and the company's paperwork chips beside its name, as the spike's Contracts tab has them.
  */
 import { useState } from 'react'
+import { partnerBlockers } from '../../lib/gc/bench'
 import { unitPriceWords } from '../../lib/gc/exclusions'
 import { partnerById, planLabel } from '../../lib/gc/lookups'
 import { SOW_SIGN_SCREEN_LIVE } from '../../lib/gc/sowEmail'
 import { theirSovGap } from '../../lib/gc/theirSov'
 import type { GcState, Sow } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
+import { useCompanyOpener } from './gcCompanyOpener'
 import { PartnerName } from './GcPartnerName'
+import { PaperworkChips } from './GcPaperworkChips'
 import { Btn, Chip, Stat, td, th as thBase, type Tone } from './gcUi'
 
 /** What the card writes. */
@@ -143,6 +148,7 @@ export function GcTradeSow({
   const [email, setEmail] = useState(false)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  const opener = useCompanyOpener()
   const project = state.projects.find((p) => p.id === projectId)
   const pkg = project?.packages.find((k) => k.id === packageId)
   const sow = pkg?.sow
@@ -150,6 +156,8 @@ export function GcTradeSow({
   const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
   const partner = invite ? partnerById(state, invite.partnerId) : undefined
   const offerEmail = SOW_SIGN_SCREEN_LIVE && canEmail
+  // The papers that must be in before it goes (the spike's Contracts tab): the master agreement signed, insurance current, a W-9.
+  const blockers = partner ? partnerBlockers(partner, state.today) : []
   const send = () => {
     setBusy(true)
     setProblem(null)
@@ -163,6 +171,7 @@ export function GcTradeSow({
       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
         {partner && <PartnerName partnerId={partner.id} company={partner.company} />}
         <Chip tone={STATUS_TONES[sow.status]}>Statement of work {statusWords(sow)}</Chip>
+        {partner && <PaperworkChips partner={partner} today={state.today} />}
         {pkg.awardedOn && (
           <span style={{ color: 'var(--text-muted)' }}>
             awarded {shortDate(pkg.awardedOn)}
@@ -180,7 +189,8 @@ export function GcTradeSow({
       {sow.status === 'draft' && !canSend && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>A dev sends it to their portal to sign.</div>}
       {sow.status === 'draft' && canSend && (
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Btn kind="primary" disabled={busy} onClick={send}>
+          {partner?.msa === 'none' && opener && <Btn onClick={() => opener.openPartner(partner.id, { tab: 'documents', doc: 'msa', send: true })}>Send the master agreement</Btn>}
+          <Btn kind="primary" disabled={busy || blockers.length > 0} title={blockers.join(' ') || undefined} onClick={send}>
             Send to their portal to sign
           </Btn>
           {offerEmail && (
@@ -189,6 +199,7 @@ export function GcTradeSow({
               Email it now
             </label>
           )}
+          {blockers.length > 0 && <span style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>Cannot send yet. {blockers.join(' ')}</span>}
         </div>
       )}
       {problem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{problem}</div>}
