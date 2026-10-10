@@ -827,18 +827,18 @@ export interface OfficeNoticePreview {
   text: string
 }
 
-/** Today's notices as they would go, as if on since the switch's day (else today). */
-export async function previewOfficeNotices(): Promise<{ since: string; notices: OfficeNoticePreview[] }> {
-  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'preview' } })) as FnResult
+/** Today's notices as they would go, as if on since `since` (O10c), else the switch's day, else today. */
+export async function previewOfficeNotices(since?: string): Promise<{ since: string; notices: OfficeNoticePreview[] }> {
+  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'preview', ...(since ? { since } : {}) } })) as FnResult
   const problem = await fnProblem(r, 'The notices did not load.')
   if (problem) throw new Error(problem)
   const data = r.data as { since?: string; notices?: OfficeNoticePreview[] } | null
   return { since: data?.since ?? '', notices: data?.notices ?? [] }
 }
 
-/** Each of today's notices marked [TEST], to the signed-in member only. How many went. */
-export async function sendOfficeNoticesTest(): Promise<number> {
-  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'test_send' } })) as FnResult
+/** Each of today's notices marked [TEST], to the signed-in member only, as if on since `since` as Preview. How many went. */
+export async function sendOfficeNoticesTest(since?: string): Promise<number> {
+  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'test_send', ...(since ? { since } : {}) } })) as FnResult
   const problem = await fnProblem(r, 'The test did not go.')
   if (problem) throw new Error(problem)
   return Number((r.data as { sent?: number } | null)?.sent ?? 0)

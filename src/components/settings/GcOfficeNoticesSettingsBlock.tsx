@@ -3,13 +3,16 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { fetchGcOfficeNoticesSince, setGcOfficeNoticesOn } from '../../lib/gc/officeNoticesSetting'
 import { previewOfficeNotices, sendOfficeNoticesTest, type OfficeNoticePreview } from '../../lib/gc/gcIo'
 import { shortDate } from '../../lib/gc/words'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * Settings → Jobs & billing → "Email the office's GC notices" (GC mode, Owner Billing's O10): bill day in two days to
  * the project manager, a pay application still with the architect after 3 days and after 5. Off on day one; the owner
  * turns it on once the live walk is done. Turning it on keeps the day it went on, and only pay applications sent from
  * that day get notices, so nothing old goes out. Dev and the owner. **Preview** shows today's as they would go and
- * **Email me a test** sends each one to you alone, marked [TEST]; neither sends a notice for real.
+ * **Email me a test** sends each one to you alone, marked [TEST]; neither sends a notice for real. Both read as if the
+ * notices went on the day in *Count pay applications sent since* (O10c): the switch's day while on, else today, never a
+ * later day, so a walk can see a reminder for a pay application sent days ago while the switch is still off.
  */
 export default function GcOfficeNoticesSettingsBlock() {
   const { showToast } = useToastContext()
@@ -18,10 +21,17 @@ export default function GcOfficeNoticesSettingsBlock() {
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState<OfficeNoticePreview[] | null>(null)
   const [busy, setBusy] = useState<'preview' | 'test' | null>(null)
+  const today = todayYmdInAppTz()
+  // The day Preview and the test read from: the switch's while on, else today; the person may pick an earlier one.
+  const [sentSince, setSentSince] = useState(today)
+  const [previewSince, setPreviewSince] = useState<string | null>(null)
+  const sinceOk = /^\d{4}-\d{2}-\d{2}$/.test(sentSince) && sentSince <= today
 
   useEffect(() => {
     void (async () => {
-      setSince(await fetchGcOfficeNoticesSince())
+      const day = await fetchGcOfficeNoticesSince()
+      setSince(day)
+      setSentSince(day ?? todayYmdInAppTz())
       setLoaded(true)
     })()
   }, [])
@@ -32,6 +42,7 @@ export default function GcOfficeNoticesSettingsBlock() {
     try {
       const day = await setGcOfficeNoticesOn(next)
       setSince(day)
+      setSentSince(day ?? todayYmdInAppTz())
       showToast(next ? 'On. Pay applications sent from today get the office’s notices.' : 'Off. The app sends no GC notices.', 'success')
     } catch (e) {
       setSince(prev)
@@ -44,7 +55,9 @@ export default function GcOfficeNoticesSettingsBlock() {
   const look = async () => {
     setBusy('preview')
     try {
-      setPreview((await previewOfficeNotices()).notices)
+      const read = await previewOfficeNotices(sentSince)
+      setPreview(read.notices)
+      setPreviewSince(read.since || sentSince)
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'The notices did not load.', 'error')
     } finally {
@@ -55,7 +68,7 @@ export default function GcOfficeNoticesSettingsBlock() {
   const test = async () => {
     setBusy('test')
     try {
-      const sent = await sendOfficeNoticesTest()
+      const sent = await sendOfficeNoticesTest(sentSince)
       showToast(sent === 0 ? 'Nothing is due today, so no test went.' : `${sent} ${sent === 1 ? 'test' : 'tests'} went to your email.`, 'success')
     } catch (e) {
       showToast(e instanceof Error ? e.message : 'The test did not go.', 'error')
@@ -82,14 +95,19 @@ export default function GcOfficeNoticesSettingsBlock() {
           </span>
         </span>
       </label>
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
-        <button type="button" disabled={busy !== null} onClick={() => void look()}>
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.875rem' }}>
+          Count pay applications sent since
+          <input type="date" value={sentSince} max={today} disabled={!loaded} onChange={(e) => setSentSince(e.target.value)} aria-label="Count pay applications sent since" />
+        </label>
+        <button type="button" disabled={busy !== null || !sinceOk} onClick={() => void look()}>
           Preview today’s notices
         </button>
-        <button type="button" disabled={busy !== null} onClick={() => void test()}>
+        <button type="button" disabled={busy !== null || !sinceOk} onClick={() => void test()}>
           Email me a test
         </button>
       </div>
+      {!sinceOk && <div style={{ marginTop: '0.4rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Pick today or an earlier day.</div>}
       {preview && (
         <div style={{ marginTop: '0.75rem', fontSize: '0.875rem' }} data-testid="gc-office-notices-preview">
           {preview.length === 0 ? (
@@ -104,6 +122,7 @@ export default function GcOfficeNoticesSettingsBlock() {
               ))}
             </ul>
           )}
+          {previewSince && <div style={{ color: 'var(--text-muted)', marginTop: '0.3rem' }}>{`As if the notices went on ${shortDate(previewSince)}.`}</div>}
         </div>
       )}
     </div>
