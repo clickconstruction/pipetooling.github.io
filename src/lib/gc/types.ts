@@ -551,6 +551,8 @@ export interface Partner {
   maxMiles: number | null
   msa: 'none' | 'sent' | 'signed'
   msaSignedOn: string | null
+  /** The language the company chose in its portal; its messages go out in it too. Unset: English. */
+  lang?: 'en' | 'es'
   coiExpires: string | null
   w9: boolean
   invited: number
