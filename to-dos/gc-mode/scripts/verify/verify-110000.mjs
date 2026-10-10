@@ -1,0 +1,3 @@
+import { q } from './verify-lib.mjs';
+await q('1 functions + grants', `SELECT p.proname, p.prosecdef, has_function_privilege('authenticated', p.oid, 'EXECUTE') AS authenticated, has_function_privilege('anon', p.oid, 'EXECUTE') AS anon, has_function_privilege('service_role', p.oid, 'EXECUTE') AS service_role FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN ('gc_schedule_record_tells','gc_trade_answer_dates') ORDER BY p.proname;`);
+await q('1b source carries the version', `SELECT p.proname, p.prosrc LIKE '%v2.5173%' OR obj_description(p.oid) LIKE '%v2.5173%' AS versioned FROM pg_proc p WHERE p.proname IN ('gc_schedule_record_tells','gc_trade_answer_dates') ORDER BY 1;`);
