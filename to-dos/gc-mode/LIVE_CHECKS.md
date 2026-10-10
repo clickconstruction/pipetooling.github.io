@@ -71,6 +71,11 @@ start day was set directly on 10-08, for O3-ui's walk, so the press never shows.
 job with an unsigned contract must be able to mark it signed, however it started. gc 2 cuts the fix, and S3 runs
 once it is on main and the client has deployed. The steps that bill (5 to 13, and 17) wait on S3. Steps 1 to 4 (the
 change orders) and 14 to 16 do not.
+**Done 2026-10-10, 23:46 UTC,** after #5379 and the app's own Reload. Get started reads "signed Oct 10". The sheet
+assumed each trade carries its budget, but on the test project none is awarded or carries a price. So all eight lines
+are $0 by the kernel's own rule (`ownerContractWorthNow`, `carriedAmount`). The whole contract is the two change
+orders, $10,100. The bills below come out the same. O7c's Accept the work becomes walkable once both change orders
+bill at 100% (step 13). The lead's call: go on as it is. A guard for marking a $0 contract signed goes to gc 2.
 
 **S4. Days to pay and interest.** `/gc` → **Bill the customer** → **Change the days to pay** → 0 → **Save the
 days to pay**; **Change the interest** → 1.5 → **Save the interest**. *Writes*: `gc_projects.owner_pay_days` = 0
@@ -247,8 +252,8 @@ trade's signing in its portal (the Board's and the Portal's walks).
 
 ## Not walkable yet
 
-- **O7c's Accept the work.** It shows in the portal only once the bills reach the whole contract. On the test
-  project every trade bills $0 until it is awarded and drawn to 100%. Its bed holds it until a job gets there.
+- **O7c's Accept the work: walkable after step 13 now.** It shows in the portal only once the bills reach the whole
+  contract. Since S3 the whole contract is the two change orders, $10,100, and pay application 4 bills both at 100%.
 - **O10's architect reminder and the project manager's notice, today.** They need a pay application 3 and 5 days old.
   Steps 18 and 19 read them on days 4 and 6, with O10c's day field (#5337).
 - **O10's bill-day notice.** It is due on the 23rd and 24th, to the project manager or, with none, the company's
