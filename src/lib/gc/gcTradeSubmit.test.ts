@@ -204,6 +204,9 @@ describe('the verb’s refusals', () => {
     // sent already, and asked before every line is billed and the work accepted.
     finalSent: 'P5',
     finalNotYet: 'P5',
+    // The Portal's P2c-i, gc_trade_sign_sow: P2c-ii's sign_sow kind says them (alreadySigned is listed with U6a's above).
+    msaFirst: 'P2c-ii',
+    sowNotSent: 'P2c-ii',
   }
 
   it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {
