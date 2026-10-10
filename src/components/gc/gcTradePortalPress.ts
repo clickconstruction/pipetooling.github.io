@@ -1,5 +1,6 @@
 import { createContext, useContext, useState } from 'react'
 import type { TradeSubmitKind } from '../../../supabase/functions/_shared/gcTradeSubmit'
+import type { WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { TradeFilePlaced } from '../../lib/gc/tradePortalSubmit'
 
 /**
@@ -20,6 +21,11 @@ export interface PortalPress {
    * words, or null once it is on its way.
    */
   openPaper: (paper: 'msa' | 'w9') => Promise<string | null>
+  /**
+   * The late door's second look (P5d-ii-2): what a day does to the work waiting on one of the company's own bars, as
+   * `gc-trade-portal` works it out. None in the office's preview, on the sample, or when the read fails.
+   */
+  lateWaiting: (lineId: string, day: string) => Promise<WorkWaiting[]>
   /** The office's preview: presses are drawn, and each says nothing is saved. */
   preview: boolean
 }

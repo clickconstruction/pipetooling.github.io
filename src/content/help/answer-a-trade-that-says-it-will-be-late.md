@@ -33,7 +33,7 @@ Someone may answer the notice before you save. Then Why it moved says so, and th
 2. Say what you need from them, in a sentence.
 3. Press **Send it to** and the company's name.
 
-Your words go to the trade's portal. The bar keeps its day. The card shows the notice as pushed back until they answer.
+Your words go to the trade's portal. The bar keeps its day. The card shows the notice as pushed back until they answer. In their portal they press **We will make** the day, or send a new one.
 
 **Call** under a notice dials the company.
 

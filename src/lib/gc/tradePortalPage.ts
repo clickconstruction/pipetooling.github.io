@@ -12,7 +12,7 @@ import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
 import type { PortalSchedule } from './schedule/portalSchedule'
-import type { ScheduleWork } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
+import type { ScheduleWork, WorkWaiting } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcState } from './types'
 import { daysUntil, money } from './words'
 
@@ -75,6 +75,28 @@ function scheduleWorkOf(v: unknown): Record<string, ScheduleWork> {
   return Object.fromEntries(
     Object.entries(v).filter(([, w]) => isObject(w) && Array.isArray(w.dates) && Array.isArray(w.late) && Array.isArray(w.lookAhead) && Array.isArray(w.crew)),
   ) as Record<string, ScheduleWork>
+}
+
+/** The late door's second look as `gc-trade-portal` answers it (`{ waiting }`): each line that reads as one, else none. */
+export function lateWaitingOf(body: unknown): WorkWaiting[] {
+  if (!isObject(body) || !Array.isArray(body.waiting)) return []
+  return body.waiting.filter(
+    (w) => isObject(w) && typeof w.work === 'string' && (w.company === null || typeof w.company === 'string') && typeof w.start === 'string' && typeof w.days === 'number',
+  ) as WorkWaiting[]
+}
+
+const TODO_TONES: Record<PortalTodo['tone'], number> = { red: 0, amber: 1, plain: 2 }
+
+/**
+ * The home's Needs you with the schedule's to-dos added (P5d-ii-2): the function works those out where the schedule is,
+ * and they take their place by `portalTodos`' own order, the tone, then the day due, then the order they came.
+ */
+export function withScheduleTodos(todos: PortalTodo[], scheduleTodos: PortalTodo[]): PortalTodo[] {
+  const seen = new Set(todos.map((t) => t.key))
+  return [...todos, ...scheduleTodos.filter((t) => !seen.has(t.key))]
+    .map((t, i) => ({ t, i }))
+    .sort((a, b) => TODO_TONES[a.t.tone] - TODO_TONES[b.t.tone] || (a.t.by ?? '9999').localeCompare(b.t.by ?? '9999') || a.i - b.i)
+    .map(({ t }) => t)
 }
 
 /** The home's schedule to-dos: each that reads as a to-do. */
