@@ -158,7 +158,7 @@ export function GcWeeklyReportWindow({ state, project, me, writes, onClose }: { 
         : `Goes from Click Construction to ${report.to.first}. Replies go to the project manager. It is kept on the job.`
 
   return (
-    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 0 : '1rem' }}>
+    <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 1250, background: 'rgba(15, 23, 42, 0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}>
       <div
         role="dialog"
         aria-modal="true"
@@ -169,7 +169,7 @@ export function GcWeeklyReportWindow({ state, project, me, writes, onClose }: { 
           color: 'var(--text-base)',
           borderRadius: phone ? '12px 12px 0 0' : 12,
           width: phone ? '100%' : 'min(1100px, 100%)',
-          maxHeight: phone ? '94vh' : 'min(94vh, 820px)',
+          maxHeight: phone ? 'min(94vh, 100%)' : 'min(94vh, 820px, 100%)',
           display: 'grid',
           gridTemplateRows: 'auto minmax(0, 1fr) auto',
           overflow: 'hidden',

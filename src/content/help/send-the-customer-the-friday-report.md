@@ -7,7 +7,7 @@ order: 105
 ---
 Each Friday a job we are building has a weekly report drafted for its customer. You read it, choose what goes in, and send it from you or from Click Construction.
 
-The draft comes from the week's records. It has the finish, the schedule, the daily logs, inspections, what held work up, next week and change orders. It never names our costs or a trade's price. Only devs see it for now.
+The draft comes from the week's records. The draft has the finish, the schedule, the daily logs, inspections, what held work up, next week and change orders. The report never names our costs or a trade's price. Only devs see it for now.
 
 ## Open the report
 
@@ -26,7 +26,7 @@ A day with no daily log is left out of the report. The window says which day. [W
 - Untick a section under **What goes in** to leave it out.
 - Tick **Name the companies** to name each trade's company. Off, it says the trade, like Electrical.
 - Press {{button:outline|Short}} for a few lines, or {{button:outline|Full}} for every section.
-- Type a line of your own. It goes right after the opening.
+- Type a line of your own. Your line goes right after the opening.
 - Tick **Copy** with the architect's name to send them a copy too.
 
 The report on the right reads the way the customer will see it. Press {{button:outline|Edit the text}} to change any words.
@@ -41,7 +41,7 @@ Keep **From** on your name. Press {{button:blue|Send to Elena}} with the custome
 2. Press {{button:outline|Email me a test}} first. A copy marked TEST comes to your own email, and nobody else gets it.
 3. Press {{button:blue|Send to Elena}}. The email goes to the customer's contact, and replies go to the project manager.
 
-The window says when it went. If it did not go, the window says why, and you can press it again.
+The window says when it went. If the report did not go, the window says why, and you can press Send again.
 
 ## After it goes
 
