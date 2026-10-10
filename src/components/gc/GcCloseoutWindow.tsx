@@ -349,6 +349,11 @@ function TradeCloseoutCard({
                                 {acceptBlocked}
                               </span>
                             )}
+                            {emailOn && (
+                              <span data-closeout-accept-email style={{ color: 'var(--text-muted)' }}>
+                                {company} gets an email that we accepted its work.
+                              </span>
+                            )}
                           </>
                         )}
                         {step.key === 'finalApp' && (
@@ -415,6 +420,7 @@ function TradeCloseoutCard({
                         start={finalCameInDraft(pkg.id, pkg.sow, partner)}
                         busy={busy === pkg.id}
                         checkLink={checkLink}
+                        emailOn={emailOn}
                         onRecord={(d) => {
                           writes.onFinalCameIn(d)
                           setCameIn(false)
@@ -444,6 +450,7 @@ function FinalCameInForm({
   start,
   busy,
   checkLink,
+  emailOn = false,
   onRecord,
   onCancel,
 }: {
@@ -452,6 +459,8 @@ function FinalCameInForm({
   start: FinalCameIn
   busy: boolean
   checkLink?: (url: string) => Promise<LinkAccess>
+  /** The email tick is on: the company gets an email that its final came in (the Portal's P5c-4). */
+  emailOn?: boolean
   onRecord: (d: FinalCameIn) => void
   onCancel: () => void
 }) {
@@ -521,6 +530,11 @@ function FinalCameInForm({
           Cancel
         </Btn>
       </div>
+      {emailOn && (
+        <div data-closeout-final-email style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+          {company} gets an email that its final pay application came in.
+        </div>
+      )}
     </div>
   )
 }
