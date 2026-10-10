@@ -71,7 +71,7 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 | [#72 Job Parts Tally → Transactions](../to-dos/tally-transactions-refresh.md) | PR 3, the pay bar | Not sized | An owner call | Nobody |
 | [#77 By Stage is retired](../to-dos/retire-by-stage-materials.md) | Item 2, one material slot in place of three. Item 3, the robots stop naming the picks table, with a twin-mcp deploy. | S each | A quiet week | Nobody |
 | [#49 GC Review for one operator](../to-dos/gc-review-one-operator/README.md) | Drop the `as never` casts and retire the two old statement-round functions | Not sized | Run a Wednesday on it first | Helper 13 reads it |
-| [#61 ZZ test jobs off the Pipeline](../to-dos/zz-test-jobs-hide.md) | The hide, as the mock-up shows | M | Read the Pipeline as an assistant first. Build it only if ZZ rows still reach the board. | Helper 13 reads it |
+| #61 ZZ test jobs off the Pipeline — retired 2026-10-10 | Done: four PRs (v2.5116, v2.5120, v2.5122, v2.5124), legal-portal deployed, and the live look on 2026-10-10 passed as an assistant and as the dev with the switch off and on; the card is deleted and the fragments carry the record (the live look is in v2.5124's). | M | None | Helper 12 |
 | [#7 Per-GC bids](../to-dos/per-gc-bid-retirement.md) | One mechanical PR that retires `submitted_to` and `itb_links` | M | Real per-GC usage | Nobody |
 | [#102 Burn against the bid](../to-dos/burn-against-the-bid.md) | The fourth footing. A job whose bid has no usable estimate budgets at price × (1 − priced margin). | S | Priced-margin stamps on real bids | Nobody |
 | [#102 Burn against the bid](../to-dos/burn-against-the-bid.md) | "No price, no priced margin" | Not sized | The next bids migration | Nobody |
@@ -112,7 +112,7 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 | [#86 Records for an owner](../to-dos/owner-records-portal/README.md) | Nothing to build — delete after the first real owner signs |
 | [#87 Lien screens' stale words](../to-dos/lien-screens-stale-words.md) | Nothing to build — delete after the live look at M on a ZZ TEST job |
 | [#92 AIA G702-G703](../to-dos/aia-pay-application-follow-ups.md) | Taunya's look on a phone for item 4 |
-| #98 A check on a Stripe bill — retired 2026-10-10 | Done: the owner ran the last three steps himself on 2026-10-10 ~02:10 UTC (the sweep closed J904's test bill; J904 and J907 deleted; Move to job… on Taunya's check with Stripe on Live) and the card is deleted; the fragments v2.4801, v2.4803 and v2.4822 carry the record. |
+| #98 A check on a Stripe bill — retired 2026-10-10 | Done: the owner reported the last three steps done himself at ~02:10 UTC on 2026-10-10 (the sweep closed J904's test bill; Move to job… on Taunya's check with Stripe on Live). J904 and J907 still read Paid in header search at 04:20 UTC, so the deletes are still his and the card is deleted; the fragments v2.4801, v2.4803 and v2.4822 carry the record. |
 | [#99 Lien desk Rules window](../to-dos/lien-rules-window/README.md) | Nothing to build — delete after a week of use raises nothing |
 | [#100 Map residuals](../to-dos/map-residuals.md) | Item 1, a mock-up and a reason to build it. Item 2, a pick among the card's options. |
 | [#101 Lien desk printed run](../to-dos/lien-printed-run/README.md) | Nothing to build — delete after a week of use, to 2026-10-16 |
