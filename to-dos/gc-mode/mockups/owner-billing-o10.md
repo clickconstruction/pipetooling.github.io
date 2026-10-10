@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing O10: the office's notices (bill day, and a pay application waiting on the architect)"
 parent: to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md (PR 13, O10, after O9)
-status: planned 2026-10-09 by Helper 5 at the lead's ask · read back to the lead before any code · nothing built · O10a's SQL below is its migration byte for byte but for the version and the stamp; O10b's cron block likewise
+status: planned 2026-10-09 by Helper 5 at the lead's ask · approved by the lead with the five defaults, and the on-date rule added (no notice on a pay application sent before the switch went on) · O10a building · O10a's SQL below is its migration byte for byte but for the version and the stamp; O10b's cron block likewise
 ---
 
 # O10: the office's notices
@@ -22,7 +22,8 @@ Pipeline's payment chase and O5b's reminder already cover a bill near its day. I
 
 - **O10a, the record and what is due** (migration, no screen): `gc_office_notices`, one row per notice sent, written
   before its send so each goes once; `get_gc_office_notices_due()`, the service role's list of what is due today;
-  the switch `gc_office_notices_on_v1` = `'false'`, the owner's and dev's to flip (O8c's pattern).
+  the switch `gc_office_notices_on_v1` = `'false'`, the owner's and dev's to flip (O8c's pattern), holding the day it
+  went on.
 - **O10b, the sender** (one new function, one small migration for its cron, one screen line): `gc-office-notices`,
   hourly from pg_cron, which waits for 8 AM Central and does nothing while the switch is off; its words in
   `_shared/gcOfficeNotices.ts`; **Preview** and **Email me a test** for the money team; the switch in Settings → Jobs &
@@ -46,8 +47,11 @@ architect with no address gets nothing, and the project manager's notice at 5 sa
   contract (`owner_contract_signed_on`), no pay application whose period runs to this bill day or later, and no
   final one.
 - **The architect's reminder** is due from the third day after `sent_on`, and **the project manager's** from the fifth,
-  while `certified_on` is null; each once per pay application. When the switch first goes on, every pay application
-  already waiting gets its one reminder that morning.
+  while `certified_on` is null; each once per pay application.
+- **Only pay applications sent since the switch went on** (the lead's rule), so turning it on never fires a backlog.
+  The switch's value is the day it went on (`'2026-10-15'`), written by the Settings toggle; `'false'` or anything that
+  is not a date is off. A pay application sent before that day hears nothing, ever; turned off and on again, the day
+  is the new one. Bill day needs no such rule: it is only ever this month's.
 - **8 AM Central.** pg_cron calls the function hourly at :13 (`bid-followup-reminders`' precedent, its own lane); the
   ticks before 8 AM office time do nothing (`officeHour`), so the schedule needs no daylight-saving arithmetic.
 
@@ -64,9 +68,12 @@ The architect's reminder keeps its sent copy on the billing job's Documents tab 
 
 ## The switch, and the live walk
 
-`gc_office_notices_on_v1` starts `'false'`. Off, the cron's ticks return at once and nothing is written. The money
+`gc_office_notices_on_v1` starts `'false'`. On, it holds the day it went on (an ISO date, the app's own day,
+`todayYmdInAppTz`): no new column on `app_settings`, which every page reads, and one row the policy already lets the
+owner write. Off, the cron's ticks return at once and nothing is written. The money
 team's **Preview** (`mode: 'preview'`) returns today's notices as they would go, with their recipients and words, and
-writes nothing; **Email me a test** (`mode: 'test_send'`) sends each one to the caller alone, `[TEST]` before its
+writes nothing. It reads as if on since the switch's day, or since today while off; a `since` day in the request reads
+further back for the walk; **Email me a test** (`mode: 'test_send'`) sends each one to the caller alone, `[TEST]` before its
 subject, nothing filed and no row written (the Monday money email's two modes). The owner turns the switch on in
 Settings → Jobs & billing after the live walk, on Grace's yes typed in Helper 5's chat. The test projects on prod are
 named for deletion; they would hear notices too once it is on, so the walk reads Preview first.
@@ -81,8 +88,9 @@ SET lock_timeout = '3s';
 -- went with no certificate yet, and the project manager at five. gc-office-notices (O10b) reads what is due today from
 -- get_gc_office_notices_due() and writes the notice's row here before it sends, so each goes once. They go to the
 -- project manager only when a real account on the money team, since they carry the bill's money; otherwise to the
--- company's owner. The switch, app_settings gc_office_notices_on_v1, starts off; the owner and dev flip it in Settings
--- (O8c's pattern, 20261010042000). Additive and idempotent.
+-- company's owner. The switch, app_settings gc_office_notices_on_v1, starts 'false'; on, it holds the day it went on,
+-- and only a pay application sent since that day hears, so turning it on fires no backlog (the lead's rule). The owner
+-- and dev flip it in Settings (O8c's pattern, 20261010042000). Additive and idempotent.
 
 CREATE TABLE IF NOT EXISTS public.gc_office_notices (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -121,10 +129,11 @@ REVOKE ALL ON TABLE public.gc_office_notices FROM anon;
 REVOKE INSERT, UPDATE, DELETE, TRUNCATE ON TABLE public.gc_office_notices FROM authenticated;
 
 -- What is due on a day (today unless the bed names one), for the service role: each notice not sent yet, with what
--- its words need. The money team's
+-- its words need. A pay application's notices go only for one sent since the switch's day (p_since, else the switch's
+-- own value when it is a date; none while off). The money team's
 -- roles are named here as gc_money_team() names them (access.test.ts holds the two lists together); the bill day is
 -- OWNER_BILL_DAY's 25th (ownerBillingNotices.test.ts holds them together).
-CREATE OR REPLACE FUNCTION public.get_gc_office_notices_due(p_today date DEFAULT NULL)
+CREATE OR REPLACE FUNCTION public.get_gc_office_notices_due(p_today date DEFAULT NULL, p_since date DEFAULT NULL)
 RETURNS jsonb
 LANGUAGE sql
 STABLE
@@ -136,7 +145,11 @@ WITH bill AS (
          CASE WHEN EXTRACT(DAY FROM t.d) <= 25
               THEN make_date(EXTRACT(YEAR FROM t.d)::int, EXTRACT(MONTH FROM t.d)::int, 25)
               ELSE (make_date(EXTRACT(YEAR FROM t.d)::int, EXTRACT(MONTH FROM t.d)::int, 25) + interval '1 month')::date
-         END AS on_d
+         END AS on_d,
+         coalesce(p_since, (
+           SELECT CASE WHEN s.value_text ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' AND pg_input_is_valid(s.value_text, 'date')
+                       THEN s.value_text::date END
+           FROM public.app_settings s WHERE s.key = 'gc_office_notices_on_v1')) AS since
   FROM (SELECT coalesce(p_today, public.app_today()) AS d) t
 ),
 ours AS (
@@ -191,6 +204,7 @@ waiting AS (
   JOIN public.gc_owner_pay_apps a ON a.project_id = o.project_id
   CROSS JOIN bill b
   WHERE a.sent_on IS NOT NULL AND a.certified_on IS NULL
+    AND b.since IS NOT NULL AND a.sent_on >= b.since
 ),
 reminders AS (
   SELECT jsonb_build_object(
@@ -229,13 +243,13 @@ SELECT jsonb_build_object(
 );
 $$;
 
-COMMENT ON FUNCTION public.get_gc_office_notices_due(date) IS
-  'GC mode (v2.NNNN, Owner Billing O10a): the office notices due today and not sent yet, for gc-office-notices. bill_day: the 23rd and 24th, a job being built with a signed contract and this bill day''s pay application not sent, to the project manager on the money team, else the company owner, with the trades owing an unconditional waiver on a paid draw. certify_reminder: from the third day after a pay application went uncertified, to the architect, Reply-To the project manager. certify_late: from the fifth, to the same office reader as bill_day. p_today: the day to read for (the bed); the function passes none. Service role only.';
+COMMENT ON FUNCTION public.get_gc_office_notices_due(date, date) IS
+  'GC mode (v2.NNNN, Owner Billing O10a): the office notices due today and not sent yet, for gc-office-notices. bill_day: the 23rd and 24th, a job being built with a signed contract and this bill day''s pay application not sent, to the project manager on the money team, else the company owner, with the trades owing an unconditional waiver on a paid draw. certify_reminder: from the third day after a pay application went uncertified, to the architect, Reply-To the project manager. certify_late: from the fifth, to the same office reader as bill_day. The two on a pay application only for one sent since p_since, else since the switch''s day (gc_office_notices_on_v1 holding a date; none while off). p_today: the day to read for (the bed); the cron passes neither. Service role only.';
 
-REVOKE ALL ON FUNCTION public.get_gc_office_notices_due(date) FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.get_gc_office_notices_due(date) TO service_role;
+REVOKE ALL ON FUNCTION public.get_gc_office_notices_due(date, date) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.get_gc_office_notices_due(date, date) TO service_role;
 
--- The switch: off until the owner turns it on, after the live walk.
+-- The switch: 'false' until the owner turns it on, after the live walk; on, the day it went on.
 INSERT INTO public.app_settings (key, value_text)
 VALUES ('gc_office_notices_on_v1', 'false')
 ON CONFLICT (key) DO NOTHING;
@@ -271,11 +285,15 @@ ago, one certified, one final; a paid draw whose unconditional waiver is still o
 - **The architect at 3 and the project manager at 5**: due on the day and after, never before; not once certified;
   each once (a second insert skipped by its index); `remindedOn` read from the reminder's row; no reminder without an
   architect, while the project manager's still comes.
+- **The on-date** (the lead's rule): with the switch holding a day, a pay application sent the day before hears
+  nothing on any later day, and one sent that day hears both; with `'false'`, `'true'` or a word that is not a date,
+  no pay application hears; `p_since` reads as given. Bill day still comes with the switch off, for Preview.
 - **Who reads the rows**: the money team; an estimator reads none and nobody signed in writes one.
 - **The switch**: the owner and a dev flip it; the controller, an estimator and a trainee do not (91_card_switch's
   checks).
 
-Five mutants: the bill-day window `BETWEEN 0 AND 2` (the 25th would remind), `sent_on + 2` for the architect, the
+Six mutants: the on-date dropped (`a.sent_on >= b.since` taken out: the backlog would fire), the bill-day window
+`BETWEEN 0 AND 2` (the 25th would remind), `sent_on + 2` for the architect, the
 money team's role check dropped from the project manager's join (an estimator project manager would hear), the unique
 index on `(project_id, kind)` (a second pay application's reminder would never go), and the read policy on
 `gc_office_team()`.
@@ -303,7 +321,9 @@ index on `(project_id, kind)` (a second pay application's reminder would never g
     *We reminded them on Oct 5.* or *They have no email on file, so they were not reminded.*
 - **The cron**, its own migration (block below), hourly at :13.
 - **Settings → Jobs & billing**: *Email the office's GC notices* (`GcOfficeNoticesSettingsBlock`, the card switch's
-  block's shape), for dev and the owner, with **Preview** beside it.
+  block's shape), for dev and the owner, with **Preview** beside it. Turning it on writes today's date; it then reads
+  *On since Oct 15. Only pay applications sent from that day get reminders.* Off writes `'false'`. The parse lives
+  once, `gcOfficeNoticesSince` in `_shared/gcOfficeNotices.ts`, for the block and the function.
 - **Bill the customer**: a sent pay application waiting on the architect says *We reminded the architect on Oct 5.*
   from the money team's read of `gc_office_notices`.
 - Registries: `config.toml`, the email catalog, `docs/EDGE_FUNCTIONS.md` (section and TOC), `docs/REPORT_SUBSCRIPTIONS.md`'s
