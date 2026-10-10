@@ -4,8 +4,9 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { tradePortalSlice, type TradePortalRows } from '../_shared/gcTradePortalSlice.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
-import { gcTradePortalSample } from '../_shared/gcTradePortalSample.ts'
+import { gcTradePortalSample, gcTradePortalSampleSchedules } from '../_shared/gcTradePortalSample.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
+import { portalScheduleJobs, portalSchedulesFromRows, type TradeScheduleRows } from '../_shared/gcTradePortalSchedule.ts'
 
 /**
  * GC mode, the trade partner portal's read (P1b-ii, to-dos/gc-mode/PORTAL_REAL_BUILD.md): resolves a
@@ -19,6 +20,13 @@ import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
  * Errors are keys the page translates (linkOff, badRequest, failed), so a Spanish portal reads
  * them in Spanish. The sample token (`sample`) returns the made-up company for What customers see
  * (`_shared/gcTradePortalSample.ts`) and counts no visit.
+ *
+ * Since the schedule's PR 14b, `schedules` beside the slice: the company's chart on each job being built with a trade
+ * awarded to it (G-110), worked out here from every bar on the job with the generated copy of the kernels
+ * (`_shared/gcTradePortalSchedule.ts`, `_shared/gcKernels/`), so only the answer leaves: its own bars and those right
+ * before and after them by name, never a dollar, a note or a contact. A chart that fails to read leaves the slice whole.
+ *
+ *   GET ?t=<token>  → { today, slice, schedules: { [projectId]: PortalSchedule } }
  */
 
 const corsHeaders = {
@@ -142,6 +150,102 @@ async function readJobWork(admin: SupabaseClient, awarded: string[]): Promise<Pi
   return { submittals, submittalHolds, submittalRounds, rfis, rfiHolds, punch }
 }
 
+// Reads past PostgREST's 1,000 rows (the schedule's PR 14b): ids in chunks, each chunk a page at a time, in a stable order.
+const IN_CHUNK = 150
+const PAGE = 1000
+type Page = PromiseLike<{ data: unknown; error: unknown }>
+async function readAll(ids: string[], read: (chunk: string[], from: number, to: number) => Page): Promise<R[]> {
+  const out: R[] = []
+  for (let i = 0; i < ids.length; i += IN_CHUNK) {
+    const chunk = ids.slice(i, i + IN_CHUNK)
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await read(chunk, from, from + PAGE - 1)
+      if (error) throw error
+      const rows = (data ?? []) as R[]
+      out.push(...rows)
+      if (rows.length < PAGE) break
+    }
+  }
+  return out
+}
+
+/**
+ * The rows the company's chart reads (the schedule's PR 14b, call 4), held to its jobs being built: each job and its
+ * trades, only the awarded invites and those companies' names, the awarded trades' statements of work with their
+ * draws and reports for each line's percent, and the bars with what they wait on and the baselines. No other schedule
+ * table, no bid, no contact and no note is read.
+ */
+async function readScheduleRows(admin: SupabaseClient, jobIds: string[]): Promise<TradeScheduleRows> {
+  const [projects, gcRows, packages, schedules, activities, links, baselines] = await Promise.all([
+    admin.from('projects').select('id, name, address, customer_id, plans_link').in('id', jobIds).then(rowsOf),
+    admin.from('gc_projects').select('project_id, stage, bid_due, sq_ft, size_note, customer_role, property_owner_customer_id, architect_customer_id, project_manager_user_id, drive_folder_url, lost_on').in('project_id', jobIds).then(rowsOf),
+    readAll(jobIds, (c, from, to) => admin.from('gc_trade_packages').select('id, project_id, trade, position, budget, ours, own_bid_id, job_ledger_id, carried_invite_id, carry_budget, awarded_invite_id, awarded_by, awarded_on').in('project_id', c).order('id').range(from, to)),
+    admin.from('gc_schedules').select('project_id, version, template_id, template_name, template_used_on').in('project_id', jobIds).then(rowsOf),
+    readAll(jobIds, (c, from, to) => admin.from('gc_schedule_activities').select('id, project_id, kind, position, package_id, start, finish, not_before, must_finish_by, actual_start, actual_finish, place, label, passed_on, who, done_on').in('project_id', c).order('id').range(from, to)),
+    readAll(jobIds, (c, from, to) => admin.from('gc_schedule_links').select('project_id, from_activity_id, to_activity_id, gap, created_at').in('project_id', c).order('from_activity_id').order('to_activity_id').range(from, to)),
+    admin.from('gc_schedule_baselines').select('id, project_id, name, locked_on, locked_by, why, created_at').in('project_id', jobIds).then(rowsOf),
+  ])
+  const packageIds = ids(packages)
+  const awardedIds = ids(packages, 'awarded_invite_id')
+  const [scopeItems, invites, sows, baselineDates] = await Promise.all([
+    readAll(packageIds, (c, from, to) => admin.from('gc_scope_items').select('id, package_id, position, label, sheets, specs, added_in_set_id').in('package_id', c).order('id').range(from, to)),
+    readAll(awardedIds, (c, from, to) => admin.from('gc_invites').select('id, package_id, company_id, status, invited_on').in('id', c).order('id').range(from, to)),
+    readAll(packageIds, (c, from, to) => admin.from('gc_sows').select('id, package_id, status, price, retainage_pct, based_on_rev, their_sov, excluded, sent_on, signed_on, accepted_on').in('package_id', c).order('id').range(from, to)),
+    readAll(ids(baselines), (c, from, to) => admin.from('gc_schedule_baseline_dates').select('baseline_id, activity_id, start, finish').in('baseline_id', c).order('baseline_id').order('activity_id').range(from, to)),
+  ])
+  const sowIds = ids(sows)
+  const [companies, sowLines, draws] = await Promise.all([
+    readAll(ids(invites, 'company_id'), (c, from, to) => admin.from('gc_companies').select('id, name').in('id', c).order('id').range(from, to)),
+    readAll(sowIds, (c, from, to) => admin.from('gc_sow_lines').select('id, sow_id, position, label, amount, scope_item_id, change_order_id').in('sow_id', c).order('id').range(from, to)),
+    readAll(sowIds, (c, from, to) => admin.from('gc_draws').select('*').in('sow_id', c).order('id').range(from, to)),
+  ])
+  const [drawLines, reports] = await Promise.all([
+    readAll(ids(draws), (c, from, to) => admin.from('gc_draw_lines').select('*').in('draw_id', c).order('draw_id').order('sow_line_id').range(from, to)),
+    readAll(ids(sowLines), (c, from, to) => admin.from('gc_sow_line_reports').select('*').in('sow_line_id', c).order('id').range(from, to)),
+  ])
+  const of = (rows: R[], projectId: string, f = 'project_id') => rows.filter((r) => r[f] === projectId)
+  const jobs = projects.flatMap((project) => {
+    const gc = gcRows.find((g) => g.project_id === project.id)
+    if (!gc) return []
+    const mine = of(packages, String(project.id))
+    const mineIds = new Set(mine.map((k) => k.id))
+    const bars = of(activities, String(project.id))
+    const lines = of(baselines, String(project.id))
+    const lineIds = new Set(lines.map((b) => b.id))
+    return [
+      {
+        project: { project, gc, packages: mine, scopeItems: scopeItems.filter((i) => mineIds.has(i.package_id)), exclusions: [], sets: [], setItems: [], questions: [] },
+        schedule: {
+          schedule: gcScheduleOf(schedules, String(project.id)),
+          activities: bars,
+          links: of(links, String(project.id)),
+          baselines: lines,
+          baselineDates: baselineDates.filter((d) => lineIds.has(d.baseline_id)),
+        },
+      },
+    ]
+  })
+  return { jobs, invites, companies, sows, sowLines, draws: { draws, drawLines, reports } } as unknown as TradeScheduleRows
+}
+
+/** A job's own schedule row, or null while nothing is drawn. */
+function gcScheduleOf(schedules: R[], projectId: string): R | null {
+  return schedules.find((s) => s.project_id === projectId) ?? null
+}
+
+/** The company's chart on each of its jobs being built. A failed read leaves the slice whole, with no chart. */
+async function chartsFor(admin: SupabaseClient, companyId: string, rows: TradePortalRows, today: string): Promise<Record<string, unknown>> {
+  try {
+    const stages = rows.projects.map((p) => p.gc as { project_id: string; stage?: string | null })
+    const jobIds = portalScheduleJobs(rows.packages as { id: string; project_id: string; awarded_invite_id?: string | null }[], ids(rows.invites), stages)
+    if (jobIds.length === 0) return {}
+    return portalSchedulesFromRows(await readScheduleRows(admin, jobIds), companyId, today)
+  } catch (e) {
+    console.error('gc-trade-portal: the chart did not read', e)
+    return {}
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'GET') return jsonResponse({ error: 'badRequest' }, 405)
@@ -149,7 +253,7 @@ serve(async (req) => {
     const url = new URL(req.url)
     const token = url.searchParams.get('t')?.trim() ?? ''
     const today = todayYmdInAppTz()
-    if (sampleStateFromToken(token)) return jsonResponse({ today, slice: gcTradePortalSample(today), sample: true })
+    if (sampleStateFromToken(token)) return jsonResponse({ today, slice: gcTradePortalSample(today), schedules: gcTradePortalSampleSchedules(today), sample: true })
     if (token.length < 16 || token.length > 128) return jsonResponse({ error: 'badRequest' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
@@ -169,7 +273,7 @@ serve(async (req) => {
 
     const rows = await readRows(admin, link.company_id)
     if (!rows) return jsonResponse({ error: 'linkOff' }, 404)
-    return jsonResponse({ today, slice: tradePortalSlice(rows, link.company_id) })
+    return jsonResponse({ today, slice: tradePortalSlice(rows, link.company_id), schedules: await chartsFor(admin, link.company_id, rows, today) })
   } catch (e) {
     console.error('gc-trade-portal failed', e)
     return jsonResponse({ error: 'failed' }, 500)
