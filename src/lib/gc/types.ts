@@ -696,6 +696,8 @@ export interface GcProject {
   planSets: PlanSet[]
   packages: TradePackage[]
   generalConditions: number
+  /** The Pipeline job our general conditions are spent on (O11b), the money team's to name. Unset: none named. */
+  generalConditionsJobId?: string | null
   contingencyPct: number
   feePct: number
   /** The day we closed the job: every trade closed out and our own crew done. */

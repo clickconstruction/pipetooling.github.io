@@ -6,6 +6,7 @@ import { GcMoneyLateFinish } from './GcMoneyLateFinish'
 import { Btn, Card, Chip, Stat, Why, num, td, th } from './gcUi'
 import { allJobsMoney, ownerAccount, ownerPayApp, type JobMoney, type OwedBill } from '../../lib/gc/ownerBilling'
 import { billDay } from '../../lib/gc/ownerBillingDay'
+import type { OwnWorkCosts } from '../../lib/gc/ownWorkCost'
 import type { GcState } from '../../lib/gc/types'
 import { money, shortDate, weekdayDate } from '../../lib/gc/words'
 
@@ -17,7 +18,7 @@ import { money, shortDate, weekdayDate } from '../../lib/gc/words'
  * schedule. Interest on late bills is O6b-1's card (`GcMoneyInterest`), the late finish O6b-3's (`GcMoneyLateFinish`),
  * over the jobs' schedules read beside the money when the lens opens.
  */
-export function GcMoney({ state, onOpenBill, schedulesRead = true }: { state: GcState; onOpenBill?: (projectId: string) => void; schedulesRead?: boolean }) {
+export function GcMoney({ state, onOpenBill, schedulesRead = true, own }: { state: GcState; onOpenBill?: (projectId: string) => void; schedulesRead?: boolean; own?: OwnWorkCosts }) {
   const m = allJobsMoney(state)
   const narrow = useMatchMedia('(max-width: 640px)')
   const t = m.totals
@@ -133,7 +134,7 @@ export function GcMoney({ state, onOpenBill, schedulesRead = true }: { state: Gc
         </div>
       </Card>
 
-      <GcMoneyMargin state={state} />
+      <GcMoneyMargin state={state} own={own} />
 
       <GcMoneyInterest state={state} />
 
