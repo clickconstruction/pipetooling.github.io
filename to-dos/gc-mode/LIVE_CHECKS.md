@@ -69,7 +69,8 @@ order. *Writes*: `gc_projects.owner_contract_signed_on` = today, and one `gc_own
 this job. The window offers the contract's presses only before a start or after **Start anyway**. The test project's
 start day was set directly on 10-08, for O3-ui's walk, so the press never shows. The lead called it a gap: a started
 job with an unsigned contract must be able to mark it signed, however it started. gc 2 cuts the fix, and S3 runs
-once it is on main and the client has deployed. Steps 1 to 17 wait on S3, since nothing bills before it.
+once it is on main and the client has deployed. The steps that bill (5 to 13, and 17) wait on S3. Steps 1 to 4 (the
+change orders) and 14 to 16 do not.
 
 **S4. Days to pay and interest.** `/gc` → **Bill the customer** → **Change the days to pay** → 0 → **Save the
 days to pay**; **Change the interest** → 1.5 → **Save the interest**. *Writes*: `gc_projects.owner_pay_days` = 0
