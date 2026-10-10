@@ -2,7 +2,7 @@
 name: "Building U8: our own crew from its Pipeline job"
 rows: BUILDING_REAL_BUILD.md, The PRs in order, 8; decision 11; "U8: one column"; README.md, Where it plugs in (our own crew's percent done); SCHEDULE_REAL_BUILD.md, PR 16 (our crew, G-51) and the daily log's readers; GANTT_FEATURES.md G-51
 branch: the plan on claude/gc-building-u8-plan (from origin/spike/gc-mode at afd58dbba), merged to the spike by the lead; U8a from origin/main after U7c and U3b-ii are cut; U8b after U8a's push and gc 7's types regen
-status: plan 2026-10-10 by gc 4 (the Building lane) at the lead's ask. The count's shape agreed with gc 10 (holding Schedule) before it was written, with gc 10's four changes written in (calls 1 to 5). U8a's SQL ran on the real bed on main at 06ab01043: 23 assertions pass, and 19 of 19 planted bugs fail them. Amendment 1 (2026-10-10): the lead approved calls 6 to 9 and 11 to 13 and changed 10 to a guard on the column, now in U8a (28 assertions, 25 of 25 planted bugs); gc 10 signed off with call 12 made exact (the `board` variable itself) and a page test. Amendment 2 (2026-10-10), gc 5's asks, co-signed by gc 5: the percent read takes O9's gate (`canUseGcBuilding || canSeeGcMoney`), the link and its guard staying a dev's; Bill the customer's line for our crew says where its percent came from; a missing number never reads as a measured zero. Nothing built yet.
+status: plan 2026-10-10 by gc 4 (the Building lane) at the lead's ask. The count's shape agreed with gc 10 (holding Schedule) before it was written, with gc 10's four changes written in (calls 1 to 5). U8a's SQL ran on the real bed on main at 06ab01043: 23 assertions pass, and 19 of 19 planted bugs fail them. Amendment 1 (2026-10-10): the lead approved calls 6 to 9 and 11 to 13 and changed 10 to a guard on the column, now in U8a (28 assertions, 25 of 25 planted bugs); gc 10 signed off with call 12 made exact (the `board` variable itself) and a page test. Amendment 2 (2026-10-10), gc 5's asks, co-signed by gc 5: the percent read takes O9's gate (`canUseGcBuilding || canSeeGcMoney`), the link and its guard staying a dev's; Bill the customer's line for our crew says where its percent came from; a missing number never reads as a measured zero. Amendment 3 (2026-10-10), gc 5's O11a and the lead's call: one Pipeline job per crew trade; U8b's picker says so, and Building's door refuses it in SQL. U8a (#5285) stays as it is. U8b built, waiting on U8a's push and the regen.
 ---
 
 # Building U8: our own crew from its Pipeline job
@@ -86,8 +86,12 @@ Nothing in U8 writes a bar's real days (call 4) or touches payroll. The count ne
     UPDATE. The job's `ON DELETE SET NULL` passes (a cascade, `pg_trigger_depth() > 1`), and so does server code with
     no person (`auth.uid() IS NULL`). No role is named, so a dev's plain write is refused too, and the door inherits
     it, changing only the link's gate. Every other column writes as today.
-11. **Two GC jobs may name one Pipeline job.** Each then counts the same people. It is not refused: one Pipeline job
-    can run the plumbing for two buildings.
+11. **One Pipeline job per crew trade** (amendment 3: gc 5's O11a counts each linked job's spend as our crew's cost
+    in Money's margin, so a job linked twice would count twice; the lead's call). The picker says so now: a job another
+    crew trade holds, on this GC job or another the page read, shows below the free ones with **On Electrical
+    already** (or **On Plumbing at Stone Oak already**), and its **Use this job** is off. Building's door migration,
+    which re-makes `gc_link_crew_job` for the team, refuses it in SQL: *That Pipeline job is already Electrical's.* U8a's
+    SQL in #5285 stays as it is, and gc 5's kernel counts a job once until the door.
 12. **The percents are laid over the board itself on the page,** before any window reads it, so Draws, Closeout, Bill
     the owner, the money margin and the Schedule all read one percent. It is read with O9's gate,
     `canUseGcBuilding(role) || canSeeGcMoney(role)` (gc 5, amendment 2), so a master's or the controller's draft bill
@@ -626,7 +630,10 @@ Plumbing · our own crew   [Pipeline job J 1071]  Change          Our number $26
   the job our crew works on. Its stages give our percent. Its clock-ins give the daily log's count."
 - The picker opens under the card: **Suggested** (this project's or our own bid's job) first, then a search box
   ("Job number, name or address") with up to 8 results, each **Use this job**. **Unlink it** lets go. A refusal shows
-  the function's words above the card.
+  the function's words above the card. A job another crew trade holds comes last, with **On Electrical already** and
+  **Use this job** off (call 11; `crewJobsHeld` and `heldByOthers` in `crewJobRows.ts`, from the trades the page read).
+  A job O11b's general conditions holds (`generalConditionsJobId`) reads **On general conditions already** once
+  O11b-2 is on main: in U8b if it lands first, else a follow-up.
 - The stages do not match: "Pipeline job J 1071's stages do not match ours. The whole trade reads the job's percent,
   reported Oct 6." Nothing reported: "Nothing is reported on Pipeline job J 1071 yet."
 - `GcDrawsWindow` gains an optional `ownCrew` prop (the reads and the link's three calls). Without it, Draws is as
@@ -676,11 +683,13 @@ Whichever lands second rebases.
 - `crewJobRows.test.ts`: the four stages matched by rank (`Rough In`, `Top Out`, `Trim Set`, `Underground`), two stages
   of one rank averaged by weight, one line unmatched (the whole job), no stages (the report's percent), stages matched
   but none reported (the whole job), a report older than the office's hand-set (`pct_complete`, 'job'), nothing
-  (`none`, the trade's percent and `source` left empty, gc 5), and `withCrewPercents` leaving an unlinked trade.
+  (`none`, the trade's percent and `source` left empty, gc 5), `withCrewPercents` leaving an unlinked trade, and the
+  held jobs named on this GC job and on another, a trade's own job left out (call 11).
 - `ownerBilling.test.ts`: our crew's line says each of the three sources, and an unlinked trade's line keeps today's
   words.
 - `GcOwnCrew.render.test.tsx`: the stages read only with their days, the words in plain words, the suggested job
-  first, a search and **Use this job** calling the link, **Unlink it**, a refusal shown.
+  first, a search and **Use this job** calling the link, **Unlink it**, a refusal shown, and a held job last with its
+  **Use this job** off (call 11).
 - `GcDailyLog.render.test.tsx`: the counted row has no box, the save leaves it off, the linked and the unlinked notes.
 - `GcProjects.render.test.tsx`: the page reads the counts in pages for a building job with a linked crew, the
   board's percent reaches Draws, and Schedule opened after a crew read shows the stage's percent on its bar (gc 10).
@@ -722,11 +731,13 @@ After U7c and U3b-ii (the lead's order). U8a: number from `origin/main`, claim o
 - **gc 5, Owner Billing** (co-signed amendment 2): Bill the owner's line for our own crew reads `selfPerform`
   (`billingForecast.ts`, `tradeLine`). On a linked trade it now reads the Pipeline's percent, for the money team as for
   a dev, and says where it came from. An unlinked trade bills as today. O10's notices carry no percents, so O10 needs
-  nothing from U8.
+  nothing from U8. O11a reads `selfPerform.pctDone` and `source` as our crew's percent, and counts each linked job's
+  spend once (call 11). O11b's general conditions picker marks a job a crew trade holds (*On Plumbing already*).
 - **The Board and money lane**: "our own crew at its Pipeline cost in jobMargin" (LEDGER, after Building's U8) can read
   `job_ledger_id`.
 - **Building's door**: both functions' gates (call 2, call 9). The column's guard comes with U8a, and the door
-  inherits it (call 10). The percents read for a dev and the money team (amendment 2), so after the schedule's PR 10
+  inherits it (call 10). The door's `gc_link_crew_job` refuses a job another crew trade holds, on any GC job (call 11),
+  and `90_crew.sql`'s *linked again, and B's too* case turns into that refusal. The percents read for a dev and the money team (amendment 2), so after the schedule's PR 10
   an office user outside them sees our crew's bars at 0% on the chart, and its pull offers never see our crew finish (gc 10, the class of 9d's call 1). The read half
   of Building's door closes it, with the submittals and the RFIs.
 
@@ -738,7 +749,7 @@ After U7c and U3b-ii (the lead's order). U8a: number from `origin/main`, claim o
 - Nothing is copied: the count and the percent are read each time from the records that own them, and a change in the
   Pipeline shows on the GC job at the next read.
 - What it does not do: place a stage's real start or finish (call 4), count a crew that does not punch (the typed box
-  stays), or tell which building a shared Pipeline job's crew stood in (call 11).
+  stays), or split one Pipeline job's crew between two crew trades (call 11: one job, one trade).
 
 ## Status
 
@@ -748,4 +759,5 @@ on main at 06ab01043. The screen's and the refusals' words above pass `plainWord
 bed-tested (28 assertions, 25 of 25 planted bugs). gc 10 signed off, with call 12 made exact and a page test added.
 Amendment 2 (2026-10-10): gc 5's two asks, co-signed: the percent read takes O9's gate, and Bill the customer's line
 for our crew names its source, a missing number never reading as a measured zero. Its words pass `plainWordsFailures`.
-Cut after U7c and U3b-ii, as ordered. Nothing built.
+Amendment 3 (2026-10-10): call 11 is one Pipeline job per crew trade, the picker saying so in U8b and Building's door
+refusing it in SQL. U8b is built on claude/gc-building-u8b-crew-screens, waiting on U8a's push, the regen and U7c.
