@@ -1,6 +1,8 @@
 /**
  * GC mode, the real build: how to reach a company, moved word for word from the GC mode prototype (branch spike/gc-mode,
- * `gcFollowUpSheet.ts`) by the schedule's PR 1b, which reads it. The Building lane's lift (U2) adds the rest of `gcFollowUpSheet.ts` here.
+ * `gcFollowUpSheet.ts`) by the schedule's PR 1b, which reads it. The Building lane's lift (U2) adds the rest of `gcFollowUpSheet.ts` here,
+ * and U2b (v2.5183) the draft, `followUpDraft`. `followUpSentActions` and `followUpCallActions` stay on the spike: they return the
+ * prototype's reducer actions, and the Board's B2b-viii writes the sheet's presses.
  */
 import type { GcState, Partner, TradePromise } from './types'
 import type { PortalLang } from './portalI18n'
@@ -9,6 +11,8 @@ import { askPromise, followUps } from './followUp'
 import { pDate, pWeekday } from './portalI18n'
 import { insuranceRenewalWords, insuranceRenewals, paperAsks, tradePromiseState, tradePromiseWords, tradePromisesOf } from './promises'
 import { daysUntil, shortDate, weekdayDate } from './words'
+import { GC_COMPANY } from './company'
+import { portalLink } from './portal'
 
 export interface PartnerReach {
   /** "Greg Paulk". */
@@ -304,4 +308,66 @@ export function followUpPeople(state: GcState, also?: string): FollowPerson[] {
     }
     return [{ partner, reach: partnerReach(partner), items }]
   })
+}
+
+function listWords(words: string[], lang: PortalLang): string {
+  if (words.length <= 1) return words[0] ?? ''
+  return `${words.slice(0, -1).join(', ')} ${lang === 'es' ? 'y' : 'and'} ${words[words.length - 1]}`
+}
+
+/**
+ * The message, in the company's language: the subject (for an email) and the body. `me` is the
+ * signed-in person's name; without one, the message speaks for the company. `greet`: who an email
+ * greets when it goes to someone else at the company ("Dana", "Marcus and Dana"; the Board's
+ * `mailToGreeting`). Unset: the main contact.
+ */
+export function followUpDraft(person: FollowPerson, items: FollowItem[], choice: DraftChoice, me: string | null, greet?: string): { subject: string; body: string } {
+  const lang: PortalLang = person.partner.lang ?? 'en'
+  const es = lang === 'es'
+  const gc = GC_COMPANY.shortName
+  const first = greet ?? person.reach.first
+  const mine = choice.from === 'me' && me !== null
+  const meFirst = me?.split(/\s+/)[0] ?? ''
+  const w = items.map((i) => i.words[lang])
+  const one = w.length === 1 ? w[0] : undefined
+  const subject = one ? cap(one.about) : es ? `Algunas cosas de ${gc}` : `A few things from ${gc}`
+  if (w.length === 0) return { subject, body: '' }
+  const dues = items.flatMap((i) => (i.bidDue ? [i.bidDue] : [])).sort()
+  const due = dues[0] ? (es ? `Nuestra propuesta al cliente vence el ${pWeekday('es', dues[0])}.` : `Our bid to the customer is due ${weekdayDate(dues[0])}.`) : ''
+  const portal = es ? `En su portal está todo: ${portalLink(person.partner.id)}` : `Everything is in your portal: ${portalLink(person.partner.id)}`
+  const signMine = es ? `Gracias,\n${me}\n${GC_COMPANY.name}` : `Thanks,\n${me}\n${GC_COMPANY.name}`
+  const signCompany = es ? `Gracias,\n${GC_COMPANY.name}` : `Thank you,\n${GC_COMPANY.name}`
+
+  if (choice.length === 'nudge') {
+    if (mine) {
+      const hi = es ? `Hola ${first}, le escribe ${meFirst} de ${gc}.` : `Hi ${first}, it's ${meFirst} at ${gc}.`
+      const what = one
+        ? es
+          ? `Solo quería consultarle sobre ${one.about}. ${one.detail}. ${one.ask}`
+          : `Just checking on ${one.about}. ${one.detail}. ${one.ask}`
+        : es
+          ? `Quería consultarle sobre ${listWords(w.map((x) => x.about), lang)}. ¿Las puede enviar esta semana?`
+          : `Just checking on ${listWords(w.map((x) => x.about), lang)}. Could you send them this week?`
+      return { subject, body: `${hi} ${what} ${es ? '¡Gracias!' : 'Thanks!'}` }
+    }
+    const hi = es ? `Hola ${first},` : `Hello ${first},`
+    const what = one
+      ? es
+        ? `${GC_COMPANY.name} le da seguimiento a ${one.about}. ${one.detail}. ${one.ask}`
+        : `${GC_COMPANY.name} is following up on ${one.about}. ${one.detail}. ${one.ask}`
+      : es
+        ? `${GC_COMPANY.name} le da seguimiento a ${listWords(w.map((x) => x.about), lang)}. ¿Las puede enviar esta semana?`
+        : `${GC_COMPANY.name} is following up on ${listWords(w.map((x) => x.about), lang)}. Could you send them this week?`
+    return { subject, body: `${hi}\n\n${what}\n\n${portal}\n\n${signCompany}` }
+  }
+
+  const hi = es ? `Hola ${first},` : mine ? `Hi ${first},` : `Hello ${first},`
+  const warm = mine ? (es ? 'Espero que tenga una buena semana. ' : 'Hope your week is going well. ') : ''
+  const opener = es
+    ? `${warm}${mine ? 'Le escribo para dar seguimiento a' : `${GC_COMPANY.name} le da seguimiento a`} ${one ? one.about : 'algunas cosas'}.`
+    : `${warm}${mine ? "I'm following up on" : `${GC_COMPANY.name} is following up on`} ${one ? one.about : 'a few things'}.`
+  // One thing: its day and the ask as a paragraph. Several: a line each.
+  const lines = one ? `${one.detail}. ${one.ask}` : w.map((x) => `- ${cap(x.about)}. ${x.detail}. ${x.ask}`).join('\n')
+  const body = [hi, opener, lines, due, portal, mine ? signMine : signCompany].filter(Boolean).join('\n\n')
+  return { subject, body }
 }
