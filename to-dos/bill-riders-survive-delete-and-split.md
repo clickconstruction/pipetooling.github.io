@@ -10,7 +10,7 @@ summary: >
   still says the fee is on, and the office cannot add it again. Splitting a bill makes parts that
   carry no fee entry, so a trip charge or a card fee on that bill drops out of the total at the next
   change.
-next: Build both as one small PR each; the delete first, since it blocks the office.
+next: Build both as one small PR each, the delete first, since it blocks the office; then the write-down cap from After #5255.
 size: S–M (the delete, a migration) · S (the split, client only)
 blocker: None.
 ver: v2.5033 · 5091 · 5113
@@ -69,6 +69,20 @@ A returned check fee never sits on a Stripe bill (`add_ar_return_case_fee` refus
 **The fix to weigh.** The split carries the original's `fee_lines` entries onto one part: the first part, which takes the original's place in the bill order. When a rider is larger than that part, the part that can hold it takes it. Split only rewrites the client's insert, and `create-stripe-invoice` never reads `fee_lines`, so the parts' Stripe invoices do not change. Size S: the insert and a render test.
 
 A GC card bill's split also loses the card bill's link. That half is GC MODE's to weigh.
+
+## After #5255
+
+Helper 12's review of the trip charge rider (#5255) left four follow-ups and a nit, none blocking:
+
+1. **A write-down leaves a trip charge's rider at its first amount.** `apply_agreed_write_down_to_billed_invoice` (`20260927230000`) lowers the bill's amount, but its `{trip_charge, amount}` entry keeps the original. The next rewrite then puts the whole charge back in the job's total. The waterfall also attributes more to the bill than it holds. A returned check fee has the same shape, but there the bill is mostly work. Here the bill is the charge. Two ways to fix it:
+   - trim the entry with the write-down: restate the write-down to lower a trip charge entry by what it takes off, down to zero;
+   - cap each bill's riders at the bill's amount, in `job_rider_fees` and in `riderFeeLineCents`.
+
+   The cap covers every rider and every way a bill's amount goes down. **S**: one migration with a bed case, and the client twin.
+2. **The backfill skips a trip charge bill that already carries another entry**, for example a returned check fee on it. The bed pins that, and it matched nothing on production. Appending the trip charge entry when the bill has none would cover it. **XS**, and only if such a bill ever exists.
+3. **The waterfall now attributes a GC card fee to its bill too**: `riderFeeLineCents` replaced `returnedCheckFeeCents` in `dollarCoverageForSegments`. That is right, but `jobSegmentsCoverage.test.ts` has no `card_bill` case. **XS**: one test.
+4. **The backfill cannot mark a trip charge made without a dispatch request** (`p_dispatch_request_id` null). The app's modal always passes one, and production has none. **XS**: a one-off if one appears.
+5. **Nit:** `create_turnaway_trip_charge`'s office check repeats `OR public.is_office_or_estimator()`. It was carried byte for byte; drop it at the next restatement. **XS**.
 
 ## How to verify
 
