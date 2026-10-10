@@ -13766,7 +13766,7 @@ export type Database = {
           name: string
           package_id: string | null
           paper: string | null
-          project_id: string
+          project_id: string | null
           purpose: string
           record_id: string | null
           uploaded_at: string
@@ -13782,7 +13782,7 @@ export type Database = {
           name: string
           package_id?: string | null
           paper?: string | null
-          project_id: string
+          project_id?: string | null
           purpose: string
           record_id?: string | null
           uploaded_at?: string
@@ -13798,7 +13798,7 @@ export type Database = {
           name?: string
           package_id?: string | null
           paper?: string | null
-          project_id?: string
+          project_id?: string | null
           purpose?: string
           record_id?: string | null
           uploaded_at?: string
@@ -30694,6 +30694,10 @@ export type Database = {
         }
         Returns: string
       }
+      gc_trade_coi: {
+        Args: { p_company_id: string; p_expires_on: string; p_file_url: string }
+        Returns: string
+      }
       gc_trade_confirm_quote: {
         Args: { p_company_id: string; p_invite_id: string }
         Returns: string
@@ -30749,6 +30753,15 @@ export type Database = {
       gc_trade_open_plans: {
         Args: { p_company_id: string; p_invite_id: string }
         Returns: number
+      }
+      gc_trade_paper_open: {
+        Args: {
+          p_company_id: string
+          p_expires_at: string
+          p_paper: string
+          p_token_hash: string
+        }
+        Returns: string
       }
       gc_trade_pay_app: {
         Args: { p_app: Json; p_company_id: string; p_package_id: string }
@@ -30823,6 +30836,17 @@ export type Database = {
       }
       gc_trade_unconditional_waiver: {
         Args: { p_company_id: string; p_draw_id: string }
+        Returns: string
+      }
+      gc_trade_vetting_form: {
+        Args: {
+          p_company_id: string
+          p_insurance: string
+          p_license: string
+          p_past_jobs: string
+          p_references: string
+          p_years: number
+        }
         Returns: string
       }
       gc_turn_down_change_request: {
