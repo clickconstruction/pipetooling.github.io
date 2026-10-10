@@ -660,8 +660,9 @@ export function boardStateFromRows(rows: BoardRows): GcState {
   }
   // The asks that won a trade (B6-a's award), for each company's won count.
   const awarded = new Set(rows.projects.flatMap((p) => p.trades.map((t) => t.awardedInviteId).filter((id): id is string => Boolean(id))))
-  // Phone and email from the customer record (the schedule's 7c-ii), for the call list's Call. No call log is kept for a customer yet.
-  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', ...extractContactFromCustomer({ contact_info: c.contact_info ?? null }), payDays: null, portalOn: false, retainagePct: null, address: '', contacts: [] }))
+  // Phone and email from the customer record (the schedule's 7c-ii), for the call list's Call. No call log is kept for a customer yet,
+  // and no past jobs with us before GC mode (`past`, which customerSummary reads, B2b-i).
+  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', ...extractContactFromCustomer({ contact_info: c.contact_info ?? null }), payDays: null, portalOn: false, retainagePct: null, address: '', contacts: [], past: [] }))
   return {
     today: rows.today,
     customers,

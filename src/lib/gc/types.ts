@@ -628,6 +628,7 @@ export interface GcCustomer {
   portalOn: boolean
   /** One call log, whatever they are to us. */
   contacts: { on: string; by: string; note: string }[]
+  past: { name: string; year: number; outcome: 'built' | 'lost'; value: number; note: string }[]
 }
 
 export interface GcProject {
