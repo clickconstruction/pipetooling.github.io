@@ -250,8 +250,9 @@ export function BidHistoryWindow({
       const outcome = await runBidUndo(plan, { putBack, restore: restoreRemoved, remove: removeAdded })
       setTopNote(bidUndoDoneWords(a, outcome))
       if (outcome.done > 0) {
-        // One word to the open bid's tabs: the bid itself when Undo touched it, else what it touched first.
-        const table = outcome.tables.includes('bids') ? 'bids' : outcome.tables[0]!
+        // One word to the open bid's tabs: the bid itself when Undo touched it, else a version (its ★
+        // moves the book the tab shows), else what it touched first.
+        const table = outcome.tables.includes('bids') ? 'bids' : outcome.tables.includes('bid_versions') ? 'bid_versions' : outcome.tables[0]!
         window.dispatchEvent(new CustomEvent<BidHistoryPutBackDetail>(BID_HISTORY_PUT_BACK_EVENT, { detail: { bidId: bid.id, table } }))
         setReadNo((n) => n + 1)
       }
