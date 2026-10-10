@@ -19,6 +19,8 @@ import { withScheduleRows, type ScheduleRead, type ScheduleRows } from './schedu
 import { withRfis } from './rfiRows'
 import { withCrewClockIns, withDailyLogs } from './dailyLogRows'
 import { loadGcCrewOnSite, loadGcDailyLogs } from './dailyLogIo'
+import { withOfficeChangeOrders } from './changeOrderOfficeRows'
+import { loadGcChangeOrdersOffice } from './changeOrderOfficeIo'
 import { loadGcRfis } from './rfisIo'
 import { withSubmittals } from './submittalRows'
 import { loadGcSubmittals } from './submittalsIo'
@@ -89,23 +91,27 @@ export interface ScheduleReads {
   logs?: boolean
   /** The company's day, the clock-ins' last day. */
   today?: string
+  /** The money team's: Ask for the days drafts a change order (PR 16b-ii), and the money lines read the bills (16c). */
+  money?: boolean
 }
 
 /**
  * The board with what the schedule reads over it, before its own rows: the job's daily logs with our crew's clock-ins
- * laid in (U8's `withDailyLogs`, then `withCrewClockIns`, as the log window lays them), then its submittals and RFIs. A
- * reader without `logs` reads none, and its logs read empty as before.
+ * laid in (U8's `withDailyLogs`, then `withCrewClockIns`, as the log window lays them), its change orders' non-money
+ * half through `gc_change_orders_office` (PR 16b-ii; the view returns none to anyone outside the office), then its
+ * submittals and RFIs. A reader without `logs` reads no logs, and its logs read empty as before.
  */
 export async function scheduleHoldsState(state: GcState, projectId: string, reads: ScheduleReads = {}): Promise<GcState> {
   const startedOn = state.projects.find((p) => p.id === projectId)?.startedOn ?? null
-  const [submittals, rfis, logs, clockIns] = await Promise.all([
+  const [submittals, rfis, changeOrders, logs, clockIns] = await Promise.all([
     loadGcSubmittals([projectId]),
     loadGcRfis([projectId]),
+    loadGcChangeOrdersOffice([projectId]),
     reads.logs ? loadGcDailyLogs([projectId]) : Promise.resolve(null),
     reads.logs && startedOn && reads.today ? loadGcCrewOnSite(projectId, startedOn, reads.today) : Promise.resolve([]),
   ])
   const logged = logs ? withCrewClockIns(withDailyLogs(state, logs), clockIns) : state
-  return withRfis(withSubmittals(logged, submittals), rfis)
+  return withRfis(withSubmittals(withOfficeChangeOrders(logged, changeOrders), submittals), rfis)
 }
 
 /**

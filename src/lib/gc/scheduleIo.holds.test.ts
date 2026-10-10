@@ -3,6 +3,7 @@ import { scheduleHoldsState } from './scheduleIo'
 import { loadGcCrewOnSite, loadGcDailyLogs } from './dailyLogIo'
 import { loadGcSubmittals } from './submittalsIo'
 import { loadGcRfis } from './rfisIo'
+import { loadGcChangeOrdersOffice } from './changeOrderOfficeIo'
 import type { DailyLogRow } from './dailyLogRows'
 import { initialGcState } from './schedule/testState'
 import type { GcState } from './types'
@@ -10,6 +11,7 @@ import type { GcState } from './types'
 vi.mock('./dailyLogIo', () => ({ loadGcDailyLogs: vi.fn(), loadGcCrewOnSite: vi.fn() }))
 vi.mock('./submittalsIo', () => ({ loadGcSubmittals: vi.fn(() => Promise.resolve({ submittals: [], holds: [], rounds: [] })) }))
 vi.mock('./rfisIo', () => ({ loadGcRfis: vi.fn(() => Promise.resolve({ rfis: [], holds: [] })) }))
+vi.mock('./changeOrderOfficeIo', () => ({ loadGcChangeOrdersOffice: vi.fn(() => Promise.resolve([])) }))
 
 /** The board as the page reads it: Fair Oaks D with no logs laid yet. */
 function board(): GcState {
@@ -31,6 +33,7 @@ describe('scheduleHoldsState (the schedule’s PR 16a)', () => {
     vi.mocked(loadGcCrewOnSite).mockReset().mockResolvedValue([{ package_id: 'fplumb', work_date: '2026-09-29', people: 5 }])
     vi.mocked(loadGcSubmittals).mockClear()
     vi.mocked(loadGcRfis).mockClear()
+    vi.mocked(loadGcChangeOrdersOffice).mockReset().mockResolvedValue([])
   })
 
   it('lays the job’s logs over the board, with our crew’s clock-ins in place of its typed count', async () => {
@@ -57,5 +60,14 @@ describe('scheduleHoldsState (the schedule’s PR 16a)', () => {
     const s = await scheduleHoldsState(s0, 'fairoaksd', { logs: true, today: '2026-10-02' })
     expect(loadGcCrewOnSite).not.toHaveBeenCalled()
     expect(fairOaks(s).dailyLogs?.find((l) => l.date === '2026-09-29')?.crews).toEqual([{ packageId: 'fsteel', workers: 4 }, { packageId: 'fplumb', workers: 3 }])
+  })
+
+  it('lays the job’s change orders through the office’s view for every reader, their money hidden (16b-ii)', async () => {
+    vi.mocked(loadGcChangeOrdersOffice).mockResolvedValue([
+      { id: 'co-1', project_id: 'fairoaksd', number: 1, description: 'Thicker slab', reason: 'plans', schedule_words: '', package_id: 'fconc', status: 'signed', sent_on: '2026-09-24', answered_on: '2026-09-26', days: 2, days_on_chart: null },
+    ])
+    const s = await scheduleHoldsState(board(), 'fairoaksd')
+    expect(loadGcChangeOrdersOffice).toHaveBeenCalledWith(['fairoaksd'])
+    expect(fairOaks(s).changeOrders?.map((c) => [c.number, c.days, c.price, c.cost, c.pctDone])).toEqual([[1, 2, 0, 0, 0]])
   })
 })

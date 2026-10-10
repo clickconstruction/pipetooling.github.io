@@ -409,8 +409,9 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Schedule' }))
     expect(await screen.findByRole('dialog', { name: `${rows.projects[0]!.name}: the schedule` })).toBeTruthy()
     expect(loadSchedule).toHaveBeenCalledWith(expect.anything(), 'p1')
-    // The schedule's PR 16a: a dev may use Building, so the window reads the job's logs and clock-ins over the board.
-    expect(loadScheduleWithHolds).toHaveBeenCalledWith(expect.anything(), 'p1', { logs: true, today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
+    // The schedule's PR 16: a dev may use Building and is on the money team, so the window reads the job's logs and
+    // clock-ins over the board (16a) and offers Ask for the days (16b-ii).
+    expect(loadScheduleWithHolds).toHaveBeenCalledWith(expect.anything(), 'p1', { logs: true, money: true, today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
   })
 
   it('the schedule’s PR 7b: the office team has no Schedule on a card until the schedule’s PR 10', async () => {

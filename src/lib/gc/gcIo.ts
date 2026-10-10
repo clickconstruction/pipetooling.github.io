@@ -979,6 +979,18 @@ export async function loadGcChangeOrderEmails(changeOrderIds: string[]): Promise
   return rows.flatMap((r) => (r.source_id ? [{ source_id: r.source_id, recipient_name: r.recipient_name, sent_at: r.sent_at }] : []))
 }
 
+/**
+ * Ask for the days (G-141, the schedule's PR 16b-ii): a time extension drafted as a change order for the days the moves
+ * put on the finish, with the moves it covers. The money team's (the change orders' policy). Nothing goes to the
+ * customer. Returns the change order's id.
+ */
+export async function draftTimeExtension(projectId: string, ask: { days: number; moves: { id: string }[]; reason: string; description: string }): Promise<string> {
+  return taken(
+    await supabase.rpc('gc_draft_time_extension', { p_project_id: projectId, p_days: ask.days, p_move_ids: ask.moves.map((m) => m.id), p_reason: ask.reason, p_description: ask.description }),
+    'draft the time extension',
+  )
+}
+
 /** A new change order, as a draft, with the next number on the project. */
 export async function draftChangeOrder(projectId: string, draft: ChangeOrderDraft): Promise<string> {
   return taken(await supabase.rpc('gc_draft_change_order', { p_project_id: projectId, p_draft: draft as unknown as Json }), 'draft the change order')
