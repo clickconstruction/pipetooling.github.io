@@ -2,7 +2,7 @@
 title: send the customer their schedule
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, schedule, customer, letter, email, send, print, pdf, where we stand, finish, test
+keywords: gc mode, schedule, customer, letter, email, send, print, pdf, where we stand, finish, test, portal, your schedule
 order: 115
 ---
 When a customer asks where their job stands, send them their schedule as a dated letter. The letter says the finish, each stage, the dates to meet and what changed. The letter never names a trade or a dollar.
@@ -35,3 +35,9 @@ If the card says there is no email address on file, add the contact's email on t
 ## Print it or save a PDF
 
 Press {{button:outline|Print the letter}}. The letter opens as a page to print or save as a PDF. A copy of what you printed is kept in Documents, under the customer.
+
+## What the customer sees in their portal
+
+The customer's portal shows the same schedule every day of the build, under **Your schedule**. The schedule sits first under each job we are building, once the job's schedule is drawn. The portal shows the finish, each stage and the dates to meet. The portal also says what changed this week and what we need from them. A customer who is a GC or an owner's rep can press **See every bar**.
+
+The letter and the Friday report each end with a line to their portal. The line only goes out when their portal link shows our jobs. The Friday report leaves the line off when the architect is copied.

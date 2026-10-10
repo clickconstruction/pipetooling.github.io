@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { carriedAmount, proposalTotals, packageCoverage } from './bids'
-import { boardStateFromRows, customerContactsOf, stageOf } from './boardRows'
-import { awardedClinicBoardRows, clinicBoardRows as rows } from './boardTestRows'
+import { bidIsStale, carriedAmount, proposalTotals, packageCoverage } from './bids'
+import { boardStateFromRows, customerContactsOf, stageOf, type BoardRows } from './boardRows'
+import { awardedClinicBoardRows, clinicBoardRows as rows, clinicProjectRows } from './boardTestRows'
 import { followUps, wordRecord } from './followUp'
 import { travelFor } from './map'
 import { priceStanding } from './priceStanding'
+import { gcProjectFromRows } from './projectRows'
 import { answerRecord } from './reliability'
+import { staleChange, staleWords } from './stale'
 import { awardGate } from './vetting'
 
 describe('the board read from its rows', () => {
@@ -254,5 +256,53 @@ describe('a customer’s call log (the Board’s B2b-v-ii)', () => {
       { on: '2026-10-06', by: 'Rosa', note: 'Older.' },
     ])
     expect(customerContactsOf([], 'c1')).toEqual([])
+  })
+})
+
+describe('which trades a set touches, on the board (the Board’s B2b-vi-b)', () => {
+  /** The clinic with an addendum that revised the site plan, which paving names and grading reads as the trade as a whole. */
+  const withAddendum = (over: Partial<BoardRows> = {}): BoardRows => {
+    const project = clinicProjectRows()
+    project.sets.push({ id: 'set1', rev: 1, label: 'Addendum 1', kind: 'Addendum', issued_on: '2026-10-06', note: '', checked_by_user_id: 'u1', drive_url: '', drive_access: null, drive_checked_on: null })
+    project.setItems.push({ id: 'si1', set_id: 'set1', position: 0, kind: 'sheet', number: 'C-101', title: 'Site plan', change: 'revised', was_title: null, discipline: null, page: null })
+    project.scopeItems[0] = { ...project.scopeItems[0]!, sheets: [] }
+    project.scopeItems[1] = { ...project.scopeItems[1]!, sheets: ['C-101'] }
+    return rows({ projects: [gcProjectFromRows(project)], ...over })
+  }
+  const clinicOf = (rows: BoardRows) => boardStateFromRows(rows).projects[0]!
+
+  it('guesses for a set not sent yet, so a quote on the older plans needs confirming', () => {
+    const p = clinicOf(withAddendum({ planSetSends: [] }))
+    expect(p.planSets.map((s) => [s.label, s.touches, s.changedSheets])).toEqual([
+      ['Bid set', [], []],
+      ['Addendum 1', ['k1'], ['C-101']],
+    ])
+    expect(bidIsStale(p, p.packages[0]!, p.packages[0]!.invites[0]!)).toBe(true)
+    expect(staleWords(p.packages[0]!, staleChange(p, p.packages[0]!, p.packages[0]!.invites[0]!)!)).toBe('Addendum 1 changed paving, and the trade as a whole.')
+  })
+
+  it('takes the office’s word where the set went out, as the trade portal does', () => {
+    const p = clinicOf(withAddendum({ planSetSends: [{ set_id: 'set1', company_id: 'lonestar', touched: false }, { set_id: 'set1', company_id: 'hillside', touched: false }] }))
+    expect(p.planSets[1]!.touches).toEqual([])
+    expect(bidIsStale(p, p.packages[0]!, p.packages[0]!.invites[0]!)).toBe(false)
+    const told = clinicOf(withAddendum({ planSetSends: [{ set_id: 'set1', company_id: 'hillside', touched: true }] }))
+    expect(told.planSets[1]!.touches).toEqual(['k1'])
+  })
+
+  it('touches nothing when the sends were not read, as before', () => {
+    expect(clinicOf(withAddendum()).planSets.map((s) => s.touches)).toEqual([[], []])
+  })
+
+  it('carries each line’s sheets as the office said them, the sets’ changes and the index as it stands', () => {
+    const p = clinicOf(withAddendum({ planSetSends: [] }))
+    expect(p.packages[0]!.scope).toEqual([
+      { id: 's1', label: 'Clearing and grading', sheets: [] },
+      { id: 's2', label: 'Paving', sheets: ['C-101'] },
+    ])
+    expect(p.packages[1]!.scope).toEqual([{ id: 's3', label: 'Foundations' }])
+    expect(p.planSets[1]).not.toHaveProperty('changedSpecs')
+    expect(p.planSets[1]).not.toHaveProperty('addedLines')
+    expect(p.index?.sheets.map((s) => s.id)).toEqual(['C-101'])
+    expect(p.index?.specs).toEqual([])
   })
 })

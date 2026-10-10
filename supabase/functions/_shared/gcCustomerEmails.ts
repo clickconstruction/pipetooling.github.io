@@ -145,23 +145,46 @@ export const GC_CUSTOMER_EMAIL_PORTAL_LINE: Record<GcCustomerEmailKind, boolean>
   change_order: false,
   reminder: true,
   interest_bill: true,
-  // Until the customer's portal shows the reports (the schedule's PR 15).
-  weekly: false,
+  // The schedule's PR 15b: their portal shows the schedule the report sums up, with Building's two conditions
+  // (`gcCustomerEmailPortalOn`). The portal shows no reports, so the line promises their schedule.
+  weekly: true,
   // Required, never left off: they sign it there. With no link where GC jobs show, the kind refuses noPortal.
   contract: true,
-  // Until the customer's portal shows the schedule (the schedule's PR 15b), with its own words.
-  schedule: false,
+  // Since the schedule's PR 15b, when their portal shows the schedule, in its own words (`gcCustomerEmailPortalOn`).
+  schedule: true,
 }
 export const GC_CUSTOMER_EMAIL_PORTAL_WORDS = 'You can see this bill in your portal:'
 /** Our contract's portal line: they sign it there. */
 export const GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS = 'Read it and sign it in your portal:'
+/** The schedule's and the Friday report's portal line (the schedule's PR 15b): their portal shows the schedule. */
+export const GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS = 'You can see your schedule in your portal:'
+
+/** The words a kind's portal line says, when they are not a bill's: our contract's, or the schedule's. */
+export function gcCustomerEmailPortalWords(kind: GcCustomerEmailKind): string | undefined {
+  if (kind === 'contract') return GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS
+  if (kind === 'schedule' || kind === 'weekly') return GC_CUSTOMER_EMAIL_SCHEDULE_PORTAL_WORDS
+  return undefined
+}
 
 /**
- * The link our contract goes with: one where their GC jobs show. The merged link (`all`) first, at its short address
- * when it has one, then a customer view (`customer`). Never a general contractor's view (`gc`), which shows no GC job of
- * ours. Null: none on, and the kind refuses noPortal.
+ * Whether a kind's email looks for their portal link (our contract always does, and refuses without one). The schedule's
+ * and the Friday report's, with Building's two conditions (the schedule's PR 15b, amendment 3): never when the row copies
+ * the architect, who would get the customer's own link to their bills and contract, and only on a job with a schedule
+ * drawn, since their portal shows none before.
  */
-export function gcContractPortalUrl(
+export function gcCustomerEmailPortalOn(input: { kind: GcCustomerEmailKind; copyArchitect: boolean; scheduleDrawn: boolean }): boolean {
+  if (!GC_CUSTOMER_EMAIL_PORTAL_LINE[input.kind]) return false
+  if (input.kind === 'schedule' || input.kind === 'weekly') return !input.copyArchitect && input.scheduleDrawn
+  return true
+}
+
+/**
+ * The portal link a GC job's email goes with: one where their GC jobs, and so the job's bills, show. The merged link
+ * (`all`) first, at its short address when it has one, then a customer view (`customer`). Never a general
+ * contractor's view (`gc`), which shows no GC job of ours, so a line to it would land on a page without the bill.
+ * Null: none on. Our contract then refuses noPortal; every other kind goes with no portal line.
+ */
+export function gcJobsPortalUrl(
   links: ReadonlyArray<{ audience: string; token: string | null; revoked_at?: string | null }>,
   slug: string | null | undefined,
   appOrigin: string,

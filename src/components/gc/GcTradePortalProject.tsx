@@ -6,6 +6,7 @@ import { bidIsStale } from '../../lib/gc/bids'
 import { bidGoodUntil, bidRanOut, portalClosedWords, portalContacts, portalLeavesOut, portalPlanNews, portalPromiseLine, portalQuestions, portalQuoteDue, portalVetting, unclearLines } from '../../lib/gc/portal'
 import { pDate, pWeekday } from '../../lib/gc/portalI18n'
 import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
+import type { ScheduleWork } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcProject, Invite, Partner, TradePackage } from '../../lib/gc/types'
 import { daysUntil, money } from '../../lib/gc/words'
 import { HAIR, MUTED } from '../../lib/portal/portalTheme'
@@ -14,7 +15,10 @@ import { usePortalLang } from './gcTradePortalLang'
 import { usePortalPress, usePress } from './gcTradePortalPress'
 import { GcTradePortalBackCharges } from './GcTradePortalBackCharges'
 import { GcTradePortalChanges } from './GcTradePortalChanges'
+import { GcTradePortalDatesMoved } from './GcTradePortalDatesMoved'
 import { GcTradePortalJob } from './GcTradePortalJob'
+import { GcTradePortalLate } from './GcTradePortalLate'
+import { GcTradePortalLookAhead } from './GcTradePortalLookAhead'
 import { GcTradePortalSchedule } from './GcTradePortalSchedule'
 import { GcTradePortalSow } from './GcTradePortalSow'
 import { AnswerLines, AskQuestion, ConfirmQuote, PassOnAsk, QuoteDay } from './GcTradePortalPresses'
@@ -38,6 +42,7 @@ export function GcTradePortalProject({
   planUrl,
   onHome,
   schedule = null,
+  work = null,
 }: {
   project: GcProject
   partner: Partner
@@ -47,8 +52,12 @@ export function GcTradePortalProject({
   onHome: () => void
   /** Its chart on this job, as the portal's read worked it out (the schedule's PR 14b). Null: none. */
   schedule?: PortalSchedule | null
+  /** Its side of the schedule on this job (the Portal's P5d-ii): dates to answer, late doors, look-ahead, crew. Null: none. */
+  work?: ScheduleWork | null
 }) {
   const { t } = usePortalLang()
+  // No press provider: the portal reads only, and none of the schedule's presses is drawn (P5d-ii-2).
+  const pressing = usePortalPress() !== null
   const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
   return (
     <div style={{ padding: '0.9rem', display: 'grid', gap: '0.9rem' }}>
@@ -67,8 +76,24 @@ export function GcTradePortalProject({
           {t('gcLine', { name: GC_COMPANY.name, contact: partner.contact })}
         </div>
       </div>
-      {/* Its chart first, under the job's name (the schedule's PR 14b, gc 3's pick): its dates frame everything below. */}
-      {schedule && project.stage === 'building' && <GcTradePortalSchedule schedule={schedule} today={today} />}
+      {/* Its chart first, under the job's name (the schedule's PR 14b, gc 3's pick): its dates frame everything below. Under
+          each of its own bars, the late door (P5d-ii-2). Then the two blocks that ask something of it (amendment 2). */}
+      {schedule && project.stage === 'building' && (
+        <GcTradePortalSchedule
+          schedule={schedule}
+          today={today}
+          ownRow={(bar) => {
+            const late = pressing ? work?.late.find((l) => l.lineId === bar.lineId) : undefined
+            return late ? <GcTradePortalLate late={late} today={today} /> : null
+          }}
+        />
+      )}
+      {work && pressing && project.stage === 'building' && (
+        <>
+          <GcTradePortalDatesMoved dates={work.dates} />
+          <GcTradePortalLookAhead weeks={work.lookAhead} crew={work.crew} />
+        </>
+      )}
       {mine.length === 0 && <div>{t('noInvite')}</div>}
       {mine.map(({ pkg, invite }) => (
         <TradeBlocks key={invite.id} project={project} pkg={pkg} invite={invite} partner={partner} today={today} planUrl={planUrl} />

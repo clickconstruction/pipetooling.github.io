@@ -1,0 +1,48 @@
+/**
+ * GC mode, the real build, the Board's B2b-vi-b: which trades a set of plans touches, on the board (call T of
+ * to-dos/gc-mode/mockups/board-b2b-vi.md on branch spike/gc-mode). A quote priced on older plans is stale only for the
+ * trades a newer set touches (`bidIsStale`), so Compare quotes and the ring read this.
+ *
+ * A set the office sent reads the office's word at the send, `gc_plan_set_sends.touched`, as the trade portal does
+ * (`tradePortalState.ts`'s `setsOf`), so the board and a trade's portal agree on every set that went out. A set not sent
+ * yet reads the New plans window's own guess from the set's rows (`GcNewPlans.tsx`): the trades its sheets and sections
+ * point at, and the trades it added lines to. That guess stands until New project saves the office's touched trades on
+ * `gc_plan_sets`.
+ */
+import { packagesForSheets, packagesForSpecs, type ReachProject } from './lineReach'
+import type { PlanSheet } from './types'
+
+/** A `gc_plan_set_sends` row as the board reads it: which company a set went to, and whether it changed their trade. */
+export interface PlanSetSendRow {
+  set_id: string
+  company_id: string
+  touched: boolean
+}
+
+/** What a set itself did, as the view reads its rows (`projectRows.ts`'s `GcPlanSetView`). */
+export interface SetChanges {
+  id: string
+  /** Every sheet the set added, took out, renamed or revised. */
+  changedSheets: string[]
+  addedSheets: PlanSheet[]
+  /** Every section the set added, took out, renamed or revised. */
+  changedSpecs: string[]
+  addedLines: { packageId: string; scopeId: string }[]
+}
+
+/**
+ * The trades a set touches, in the project's trade order. Where it went out, a trade is touched when a company asked
+ * on it got the set with `touched`; a company asked on two trades marks both, as its portal reads it. Where it has not
+ * gone out, the window's guess.
+ */
+export function setTouches(project: ReachProject, set: SetChanges, sends: PlanSetSendRow[], invites: { package_id: string; company_id: string }[]): string[] {
+  const sent = sends.filter((s) => s.set_id === set.id)
+  if (sent.length > 0) {
+    const touched = new Set(sent.filter((s) => s.touched).map((s) => s.company_id))
+    return project.trades.filter((t) => invites.some((i) => i.package_id === t.id && touched.has(i.company_id))).map((t) => t.id)
+  }
+  const bySheets = packagesForSheets(project, set.changedSheets, set.addedSheets)
+  const bySpecs = packagesForSpecs(project, set.changedSpecs)
+  const byLines = new Set(set.addedLines.map((l) => l.packageId))
+  return project.trades.filter((t) => bySheets.includes(t.id) || bySpecs.includes(t.id) || byLines.has(t.id)).map((t) => t.id)
+}
