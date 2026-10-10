@@ -91,9 +91,15 @@ Tristen's Tuesday reads −53: 7.5 h on J1044 at $31 an hour, against a $38 wage
 
 ## Cash — next 8 weeks
 
-The dashed line starts at cash today. The line **drops on the day each bill is due**. Supply invoices count on their due date. Sub labor counts on its payable-after date. Payroll counts every Friday, at the 8-week average. The line **rises on the day each receipt is expected**. The expected day is a promised pay date if the customer named one. Without a promise, the app uses that customer's usual pay speed. Next comes the company's usual pay speed, and last of all 45 days. An invoice already past its expected day is assumed to arrive within 14 days. An invoice more than 60 days late isn't counted at all and is listed as doubtful. Collections never count. Office parts drain a little every day at the 90-day rate. Office parts are materials bought for the office, not for a job.
+The dashed line starts at cash today. The line **drops on the day each bill is due**. Supply invoices count on their due date. Sub labor counts on its payable-after date. Payroll counts every Friday, at the 8-week average. The line **rises on the day each receipt is expected**. The expected day is a promised pay date if the customer named one. Without a promise, the app uses that customer's usual pay speed. Next comes the company's usual pay speed, and last of all 45 days. A late invoice is assumed to arrive within that customer's own pay pace, between 7 and 45 days. With no pay pace on record, the app uses 14 days. An invoice more than 60 days late isn't counted at all and is listed as doubtful. Collections never count. Office parts drain a little every day at the 90-day rate. Office parts are materials bought for the office, not for a job.
 
 The readout is a date and a number. The readout shows **the lowest cash point in the window and whether it clears your floor.** The dot on the line marks that point.
+
+Under the chart, a band shows **how sure the receipts are**. Green is money a customer promised on a date. Blue is money expected by that customer's pay pace or the company's. Hatched yellow is late invoices assumed to land. When one day carries most of the window's receipts, an amber line names it. The line also says what else falls due that day. That is the day to watch.
+
+:::example The day that carries the window
+87% of the window's receipts land on Oct 24, most of it late invoices assumed to land. That day also owes $54.1k of sub labor. If the invoices slip, that is the day cash is tested.
+:::
 
 :::example What the lists under the chart are
 **Bills coming due** and **Receipts expected** are the same events the chart uses, day by day, with the reason for each receipt date. **What would change it** sizes the levers — billing finished work, approving pending hours, trimming overhead, an extra field day, a bid due soon.
