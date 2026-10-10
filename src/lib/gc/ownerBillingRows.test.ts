@@ -221,6 +221,16 @@ describe('money in on the billing job (O5c)', () => {
     expect([appPaid(read), appOpen(read)]).toEqual([900, 0])
   })
 
+  it('says the day the app reminded the architect, in the office’s day (O10), and only its own pay application’s', () => {
+    const notices = [
+      { pay_app_id: 'a1', kind: 'certify_reminder', created_at: '2026-10-06T02:30:00Z' },
+      { pay_app_id: 'a2', kind: 'certify_reminder', created_at: '2026-10-09T15:00:00Z' },
+    ]
+    expect(payAppFromRows(app(), [], [], money(), notices).architectRemindedOn).toBe('2026-10-05')
+    expect(payAppFromRows(app(), [], [], money(), []).architectRemindedOn).toBeUndefined()
+    expect(payAppFromRows(app({ id: 'a3' }), [], [], money(), notices).architectRemindedOn).toBeUndefined()
+  })
+
   it('leaves the rest of a part payment open, and closes a written-down bill on its last payment\'s day', () => {
     const part = payAppFromRows(app(), [], [], money({ payments: [{ invoice_id: 'inv-1', amount: 300, paid_on: '2026-10-05' }] }))
     expect([part.paidOn, appPaid(part), appOpen(part)]).toEqual([null, 300, 600])

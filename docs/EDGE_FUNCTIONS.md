@@ -101,6 +101,7 @@ when_to_read:
    - [gc-customer-email](#gc-customer-email)
    - [gc-card-bill](#gc-card-bill)
    - [gc-money-monday-email](#gc-money-monday-email)
+   - [gc-office-notices](#gc-office-notices)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -1214,6 +1215,20 @@ The payment itself comes through `stripe-webhook` as on any Stripe bill (`metada
 The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on sample data): *Customers owe us $X on N bills*, then **Late**, **Waiting on the architect** and **Coming in**, each bill in OwedRow's words, then **Last week** and **Open Money**. It goes from `EMAIL_FROM` through `sendEmailViaResend`, Reply-To the member who asked, logged as `gc_money_monday`. It is internal, so there is no sent copy.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (the Open Money link; clicktooling.com when unset). **Deploy**: `supabase functions deploy gc-money-monday-email --no-verify-jwt` after migration `20261009233000_gc_money_monday_email.sql`, which makes the requests table, the payload and the cron.
+
+### gc-office-notices
+
+**Purpose**: The office's GC notices (v2.5148, Owner Billing O10b; the plan is `to-dos/gc-mode/mockups/owner-billing-o10.md` on branch `spike/gc-mode`): three emails nobody presses. **Bill day is near** to the project manager on the 23rd or 24th (bill day is the 25th), with the pay application to draft and the trades still owing an unconditional waiver. **The architect's reminder** from the third day after a pay application went uncertified, from Click Construction, Reply-To the project manager. **The project manager's note** from the fifth, with the day the architect was reminded. Each goes once. One that carries money goes to the project manager only when they are on the money team, else to the company's owner. Only a pay application sent since the switch went on hears.
+
+**Endpoint**: `POST /functions/v1/gc-office-notices` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret`, or the staff JWT checked in-body for the two modes.
+
+- No mode: the cron (hourly at :13, its own lane). Before 8 AM Central (`officeHour`), nothing. With the switch off (`app_settings.gc_office_notices_on_v1` not a real ISO day, `gcOfficeNoticesSince`), nothing. Else `get_gc_office_notices_due()` (O10a), and for each notice: the address (the architect's billing email, else contact, `customerBillingEmail`; ours from the payload, a real account), its `gc_office_notices` row first (a second tick's insert hits the unique index, 23505, and skips), the send, the row's `email_send_log_id` by the Resend id. A notice with no address is skipped and writes nothing. A failed send keeps its row, so that notice is not tried again. Answers `{ sent, skipped, errors }`.
+- `{ mode: 'preview', since? }`: the caller must be on the money team (`GC_CUSTOMER_EMAIL_ROLES`), a real account, not archived and not in training mode. Today's notices as they would go, read as if on since `since`, else the switch's day, else today: each one's kind, job, who hears it, the address and its words. Writes nothing. Settings' **Preview today's notices** calls it.
+- `{ mode: 'test_send', since? }`: the same gate and list; each notice to the caller's own address with `[TEST]` before its subject, logged as `gc_office_notice_test`. No row, no sent copy, the switch not read. **Email me a test** calls it.
+
+The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildGcCustomerEmail`'s frame with no portal line and keeps its sent copy on the billing job's Documents tab (`gc_certify_reminder`, [SENT_COPIES.md](./SENT_COPIES.md)); ours are staff mail with a link to Bill the customer (`/gc?bill=<projectId>`), logged as `gc_office_notice` and not filed.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, `APP_ORIGIN` (Bill the customer's link; clicktooling.com when unset). **Deploy**: `supabase functions deploy gc-office-notices --no-verify-jwt` after O10a's migration (`20261010060000_gc_office_notices.sql`, the record, the payload and the switch), then push O10b's cron migration, so no tick finds the function missing. Turning the switch on is the owner's press in Settings → Jobs & billing, after the live walk on Grace's yes.
 
 ---
 
