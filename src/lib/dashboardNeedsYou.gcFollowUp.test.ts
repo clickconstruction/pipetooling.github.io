@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { NEEDS_YOU_RANK, buildNeedsYouItems, type NeedsYouInputs } from './dashboardNeedsYou'
-import type { GcFollowUpNeeds } from './gc/followUpNeeds'
+import type { GcNeedsYou } from './gc/needsYou'
 
 /**
- * GC mode's Follow up (v2.4941): the trade partners' asks to call about a quote, as one Needs you
+ * GC mode's Follow up (v2.4941): everyone the office waits on since the Board's B2b-ii-b (`gcNeedsYou`), as one Needs you
  * line. Its own file, as the owner records line has: two cards' tests at the shared file's end conflict.
  */
 function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
@@ -54,11 +54,11 @@ function inputs(overrides: Partial<NeedsYouInputs> = {}): NeedsYouInputs {
   }
 }
 
-const three: GcFollowUpNeeds = {
+const three: GcNeedsYou = {
   count: 3,
   late: true,
-  title: '3 calls to make about quotes',
-  detail: 'Alamo Concrete is 2 days past the day it gave for its quote. Pecan Valley Electric promised its quote today. And 1 more. Next: call them from Follow up.',
+  title: '3 to follow up on in GC mode',
+  detail: 'Alamo Concrete is late on their word · Pecan Valley Electric’s insurance ran out · Cibolo Creek Partners is late paying.',
 }
 const card = (over: Partial<NeedsYouInputs>) => buildNeedsYouItems(inputs({ gcFollowUpEnabled: true, ...over })).find((i) => i.key === 'gc-follow-up')
 
@@ -67,7 +67,7 @@ describe('gc-follow-up (GC mode, v2.4941)', () => {
     expect(card({ gcFollowUp: three })).toMatchObject({
       severity: 'red',
       kicker: 'GC projects',
-      title: '3 calls to make about quotes',
+      title: '3 to follow up on in GC mode',
       detail: three.detail,
       figure: '3',
       actionLabel: 'Follow up',

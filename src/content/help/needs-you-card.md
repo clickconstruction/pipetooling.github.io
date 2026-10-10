@@ -65,7 +65,7 @@ Estimators and devs see these.
 
 The office and estimators see this one.
 
-- **N calls to make about quotes**. These are trade partners we asked to quote a trade on a GC project. A company may have missed the day it gave, or its quote is due today. A company may never have opened our ask, or gave no day. A missed day or an unopened ask turns the card red. {{button:outline|Follow up}} opens Follow up on GC projects. The Follow up button there counts the same calls. See [follow up on a quote from a trade partner](/help/follow-up-on-a-quote-from-a-trade-partner).
+- **N to follow up on in GC mode**. This counts everyone we wait on in GC mode, each person once. A trade partner may owe us a quote, a paper or a day it gave. A customer may owe us a signature. Anyone late turns the card red. {{button:outline|Follow up}} opens Follow up on GC projects. The Follow up button there counts the same people, and so does **By people**. See [follow up on a quote from a trade partner](/help/follow-up-on-a-quote-from-a-trade-partner).
 
 **Dev only**
 

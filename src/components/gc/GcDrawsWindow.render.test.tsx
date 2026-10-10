@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { GcDrawsWindow, type DrawWrites } from './GcDrawsWindow'
 import { initialGcState } from '../../lib/gc/schedule/testState'
+import { waiverFilesByDraw, type WaiverFile } from '../../lib/gc/tradeFiles'
 import { plainWordsFailures } from '../../lib/plainWords'
 import type { ChangeOrder, GcProject, GcState } from '../../lib/gc/types'
 import { installDomShims } from '../../test/renderSmokeMocks'
@@ -13,10 +14,12 @@ function setup({
   project: change,
   chargeId = null,
   emailTick = null,
+  waiverFiles,
 }: {
   project?: (p: GcProject) => GcProject
   chargeId?: string | null
   emailTick?: { on: boolean; onChange: (on: boolean) => void } | null
+  waiverFiles?: ReadonlyMap<string, WaiverFile[]>
 } = {}) {
   const base = initialGcState()
   const fairOaks = base.projects.find((p) => p.id === 'fairoaksd')!
@@ -34,7 +37,7 @@ function setup({
     onTakeCharge: vi.fn(),
     onSendChange: vi.fn(),
   }
-  render(<GcDrawsWindow state={state} project={project} chargeId={chargeId} emailTick={emailTick} writes={writes} onClose={() => undefined} />)
+  render(<GcDrawsWindow state={state} project={project} chargeId={chargeId} emailTick={emailTick} waiverFiles={waiverFiles} writes={writes} onClose={() => undefined} />)
   return { writes }
 }
 
@@ -226,6 +229,25 @@ describe('GcDrawsWindow', () => {
     setup()
     fireEvent.click(within(draw('fsteel-draw-2')).getByRole('button', { name: 'Send back' }))
     expect(document.querySelector('[data-draw-note-hint]')!.textContent).toBe('They read it in their portal.')
+  })
+
+  it('links each waiver the trade signed in its portal by its form, beside the waiver’s chip (P5a-2)', () => {
+    const at = (paper: string, file: string, uploaded: string) => ({ record_id: 'fsteel-draw-2', paper, drive_url: `https://drive.google.com/file/d/${file}/view`, uploaded_at: uploaded })
+    setup({
+      project: drawAt('fsteel', 'fsteel-draw-2', 'paid'),
+      waiverFiles: waiverFilesByDraw([at('unconditional_progress', 'u1', '2026-10-03T15:00:00Z'), at('conditional_progress', 'c1', '2026-09-28T15:00:00Z')]),
+    })
+    const links = [...draw('fsteel-draw-2').querySelectorAll('a[data-draw-waiver-file]')] as HTMLAnchorElement[]
+    expect(links.map((a) => [a.textContent, a.href, a.target])).toEqual([
+      ['Conditional waiver PDF', 'https://drive.google.com/file/d/c1/view', '_blank'],
+      ['Unconditional waiver PDF', 'https://drive.google.com/file/d/u1/view', '_blank'],
+    ])
+    expect(document.querySelectorAll('[data-draw-waiver-file]')).toHaveLength(2)
+  })
+
+  it('links no waiver where the trade signed none in its portal', () => {
+    setup({ project: drawAt('fsteel', 'fsteel-draw-2', 'paid') })
+    expect(document.querySelector('[data-draw-waiver-file]')).toBeNull()
   })
 
   it('says each thing a first-timer reads in plain words', () => {

@@ -12,7 +12,7 @@ import { roughStages, roughWeeks, roughWeeksWords } from '../../lib/gcMode/gcRou
 import { roughTemplateWords, stagesCovered } from '../../lib/gcMode/gcScheduleTemplates'
 import type { ScheduleTemplate } from '../../lib/gcMode/gcTypes'
 import { Btn, Card, Chip, input } from './gcUi'
-import { GcTemplatePick } from './GcScheduleTemplates'
+import { GcTemplatePick } from './GcScheduleTemplates.proto'
 
 /** Saturated on purpose: the chart's status colors, the same in both themes. */
 const C = { blue: '#3b82f6', violet: '#7c3aed' }

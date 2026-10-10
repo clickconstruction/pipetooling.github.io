@@ -10,6 +10,7 @@ import { finalCameInDraft, finalCameInMissing, type FinalCameIn } from '../../li
 import type { DrawExtra } from '../../lib/gc/drawRows'
 import { jobMadeWords, jobMargin } from '../../lib/gc/ownerBillingMargin'
 import { crewCloseoutWords, generalConditionsWords, type OwnWorkCosts } from '../../lib/gc/ownWorkCost'
+import type { WaiverFile } from '../../lib/gc/tradeFiles'
 import type { Draw, GcProject, GcState } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
 
@@ -19,7 +20,8 @@ import { money, shortDate } from '../../lib/gc/words'
  * billed, we accept the work, their final pay application with a conditional final release of lien, the customer pays
  * us ours and 10 days pass, we approve and pay their retainage, then their unconditional final release. Our steps carry
  * the button. Theirs say who we wait on, and one that came by email or on paper is recorded here. Once every trade is
- * closed out, we close the job. The database's own functions check every press (the Building lane's U6c).
+ * closed out, we close the job. The database's own functions check every press (the Building lane's U6c). A final
+ * release the trade signs in its portal is filed as a PDF, linked on its step (the Portal lane's P5a-2).
  */
 
 export interface CloseoutWrites {
@@ -43,6 +45,8 @@ interface Props {
   project: GcProject
   /** Each draw's file and who of ours recorded it (`drawExtras`). */
   extras?: Map<string, DrawExtra>
+  /** The waivers each draw's trade signed in its portal, as PDFs (`waiverFilesByDraw`, P5a-2). Absent: no links. */
+  waiverFiles?: ReadonlyMap<string, WaiverFile[]>
   /** Reads who can open a Drive link, for the warning under it. Absent: no check. */
   checkLink?: (url: string) => Promise<LinkAccess>
   /** The tick that emails the trade when we mark its release paid, the Draws window's own. Null: no tick shows. */
@@ -62,7 +66,7 @@ interface Props {
   onClose: () => void
 }
 
-export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick = null, billsRead = true, writes, busy = null, problem = null, onSeeBill, punchWrites, own, onClose }: Props) {
+export function GcCloseoutWindow({ state, project, extras, waiverFiles, checkLink, emailTick = null, billsRead = true, writes, busy = null, problem = null, onSeeBill, punchWrites, own, onClose }: Props) {
   // The final pay application open to read.
   const [looking, setLooking] = useState<{ row: CloseoutRow; draw: Draw } | null>(null)
   const c = projectCloseout(state, project)
@@ -162,6 +166,7 @@ export function GcCloseoutWindow({ state, project, extras, checkLink, emailTick 
                   project={project}
                   today={state.today}
                   checkLink={checkLink}
+                  waiverFiles={waiverFiles}
                   emailOn={emailTick?.on ?? false}
                   writes={writes}
                   busy={busy}
@@ -279,6 +284,7 @@ function TradeCloseoutCard({
   project,
   today,
   checkLink,
+  waiverFiles,
   emailOn,
   writes,
   busy,
@@ -290,6 +296,7 @@ function TradeCloseoutCard({
   project: GcProject
   today: string
   checkLink?: (url: string) => Promise<LinkAccess>
+  waiverFiles?: ReadonlyMap<string, WaiverFile[]>
   emailOn: boolean
   writes: CloseoutWrites
   busy: string | null
@@ -302,6 +309,8 @@ function TradeCloseoutCard({
   const company = partner?.company ?? 'The company'
   const billed = closeout.steps[0]?.done ?? false
   const f = closeout.finalDraw
+  // The unconditional final release they signed in their portal, as its PDF.
+  const finalRelease = f ? waiverFiles?.get(f.id)?.find((x) => x.paper === 'unconditional_final') : undefined
   const blockers = partner ? partnerBlockers(partner, today) : []
   const doneCount = closeout.steps.filter((s) => s.done).length
   // The work is accepted once every punch item on it is checked fixed (owner, 2026-10-03), as gc_accept_work holds.
@@ -424,6 +433,13 @@ function TradeCloseoutCard({
                         <Btn kind="quiet" onClick={() => onLook(f)}>
                           Final pay application
                         </Btn>
+                      </div>
+                    )}
+                    {step.key === 'finalWaiver' && finalRelease && (
+                      <div>
+                        <a data-closeout-final-release href={finalRelease.url} target="_blank" rel="noreferrer" style={{ fontSize: '0.85rem' }}>
+                          {finalRelease.label}
+                        </a>
                       </div>
                     )}
                     {step.key === 'finalApp' && cameIn && partner && pkg.sow && !f && (

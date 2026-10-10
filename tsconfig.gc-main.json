@@ -128,12 +128,14 @@
     "supabase/functions/_shared/gcTradeSubmit.ts",
     "supabase/functions/_shared/jobMaterialsCostLines.ts",
     "supabase/functions/_shared/lienPayOffer.ts",
+    "supabase/functions/_shared/lienWaiverWords.ts",
     "supabase/functions/_shared/mercuryRawDebitCard.ts",
     "supabase/functions/_shared/payLink.ts",
     "supabase/functions/_shared/paymentAttribution.ts",
     "supabase/functions/_shared/peopleLaborJobItemLineCost.ts",
     "supabase/functions/_shared/portalPropertyNotices.ts",
     "supabase/functions/_shared/subLaborCost.ts",
+    "supabase/functions/_shared/tradeWaiverPdf.ts",
     "supabase/functions/statement-round-email-dispatch/renderOfficeWeek.ts"
   ],
   "exclude": []

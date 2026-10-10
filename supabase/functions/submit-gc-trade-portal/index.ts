@@ -1,12 +1,17 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
+import fontkit from 'https://esm.sh/@pdf-lib/fontkit@1.1.1'
+import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
+import { GC_TRADE_EMAIL_FROM_NAME } from '../_shared/gcTradeEmail.ts'
 import { driveFileUrl, TRADE_FILE_HOURLY_CAP, tradeFileDriveName, tradeFileFolders, type TradeFileUpload } from '../_shared/gcTradeFile.ts'
+import { buildTradeWaiverPdf, tradeWaiverPaperFor, tradeWaiverPdfModel, tradeWaiverPdfName, type TradeWaiverPdfLib } from '../_shared/tradeWaiverPdf.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
-import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHeld, TRADE_FUNCTION_ERRORS, tradeErrorOf, waiverHeld } from '../_shared/gcTradeSubmit.ts'
+import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHeld, TRADE_FUNCTION_ERRORS, tradeErrorOf, WAIVER_KINDS, waiverHeld } from '../_shared/gcTradeSubmit.ts'
 
 /**
  * GC mode, the trade partner portal's writes (P2b-i, to-dos/gc-mode/mockups/portal-p2b.md): everything a company
@@ -36,6 +41,12 @@ import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHe
  * intake already uses (`GOOGLE_SERVICE_ACCOUNT_JSON`, as `DRIVE_IMPERSONATE_USER` when set), under a name that never
  * meets another file's, and `gc_trade_files` keeps the link. The answer is `{ id, name, url }`, which the page sends
  * with the kind that stores it.
+ *
+ * A waiver signed (`unconditional_waiver`, `pay_app`, `final_pay_app`) is kept as a signed PDF too (P5a-2): after the verb
+ * and the ledger row, the app's own form (`_shared/tradeWaiverPdf.ts`) filled from the draw, with the typed name, goes to
+ * Team only → From trades → the company, and a `gc_trade_files` row names its form (`paper`) and its draw. It is best
+ * effort, as the ledger row is: a failure is logged and never undoes the signature. `WAIVER_SIGN_LIVE` holds it with the
+ * presses that make it.
  */
 
 /** Where a trade's drawn signature on its statement of work is kept: `gc-sows/<sow id>/<uuid>.png`. */
@@ -131,7 +142,8 @@ async function fileHome(admin: SupabaseClient, companyId: string, f: TradeFileUp
 /** A file into the job's Drive folder (P5a-1): the cap, the claim, the folder, the upload, the row, the link. */
 async function placeFile(admin: SupabaseClient, companyId: string, f: TradeFileUpload): Promise<Response> {
   const hourAgo = new Date(Date.now() - 3600_000).toISOString()
-  const { count } = await admin.from('gc_trade_files').select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('uploaded_at', hourAgo)
+  // The company's own uploads count; a signed paper the portal made for it does not.
+  const { count } = await admin.from('gc_trade_files').select('id', { count: 'exact', head: true }).eq('company_id', companyId).eq('made_by', 'trade').gte('uploaded_at', hourAgo)
   if ((count ?? 0) >= TRADE_FILE_HOURLY_CAP) return refuse('tooMany')
   const home = await fileHome(admin, companyId, f)
   if ('error' in home) return jsonResponse({ error: home.error }, home.status)
@@ -161,6 +173,85 @@ async function placeFile(admin: SupabaseClient, companyId: string, f: TradeFileU
   // The file is in Drive either way: a row not kept is logged, and the link still goes to the next kind.
   if (error) console.error('submit-gc-trade-portal: the file is in Drive, its row was not kept', driveId, error)
   return jsonResponse({ ok: true, value: { id: row?.id ?? null, name: f.name, url } })
+}
+
+let cursiveFontCache: Uint8Array | null | undefined
+/** The cursive face a typed name signs in, as `contract-form-paper-entry` loads it. Null: the PDF signs in italics. */
+async function loadCursiveFont(): Promise<Uint8Array | null> {
+  if (cursiveFontCache !== undefined) return cursiveFontCache
+  try {
+    const origin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+    const res = await fetch(`${origin}/fonts/GreatVibes-Regular.ttf`)
+    cursiveFontCache = res.ok ? new Uint8Array(await res.arrayBuffer()) : null
+  } catch {
+    cursiveFontCache = null
+  }
+  return cursiveFontCache
+}
+
+/**
+ * The signed waiver as a PDF in the job's Drive folder (P5a-2), after the verb and the ledger row: the form the kind
+ * signs, filled from its draw, with the typed name. Best effort: a job with no folder, or Drive refusing, is logged.
+ */
+async function fileSignedWaiver(admin: SupabaseClient, companyId: string, kind: 'unconditional_waiver' | 'pay_app' | 'final_pay_app', drawId: string, printedName: string, at: Date): Promise<void> {
+  try {
+    const { data: d } = await admin.from('gc_draws').select('id, sow_id, number, net, final, period_to, requested_on').eq('id', drawId).maybeSingle()
+    const { data: sow } = d ? await admin.from('gc_sows').select('package_id').eq('id', d.sow_id).maybeSingle() : { data: null }
+    const { data: k } = sow ? await admin.from('gc_trade_packages').select('id, project_id, trade').eq('id', sow.package_id).maybeSingle() : { data: null }
+    if (!d || !k) return
+    const [{ data: job }, { data: gc }, { data: company }] = await Promise.all([
+      admin.from('projects').select('name, address').eq('id', k.project_id).maybeSingle(),
+      admin.from('gc_projects').select('drive_folder_url').eq('project_id', k.project_id).maybeSingle(),
+      admin.from('gc_companies').select('name').eq('id', companyId).maybeSingle(),
+    ])
+    const jobFolder = driveFolderIdFromUrl(gc?.drive_folder_url as string | null | undefined)
+    const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+    if (!jobFolder || !saJson) {
+      console.error('submit-gc-trade-portal: the signed waiver PDF has no job folder or service account', drawId)
+      return
+    }
+    const paper = tradeWaiverPaperFor(kind, Boolean(d.final))
+    const signedYmd = todayYmdInAppTz(at)
+    const companyName = String(company?.name ?? '')
+    const model = tradeWaiverPdfModel({
+      paper,
+      amount: Number(d.net),
+      through: String(d.period_to ?? d.requested_on ?? ''),
+      company: companyName,
+      project: { name: String(job?.name ?? ''), address: String(job?.address ?? '') },
+      signer: printedName,
+      signedYmd,
+      checkFrom: GC_TRADE_EMAIL_FROM_NAME,
+      signedAt: at,
+    })
+    const font = await loadCursiveFont()
+    const bytes = await buildTradeWaiverPdf(pdfLib as unknown as TradeWaiverPdfLib, model, font ? { bytes: font, fontkit } : null)
+    const token = await googleAccessToken(saJson)
+    let folder = jobFolder
+    // A waiver is no submittal: Team only → From trades → the company.
+    for (const name of tradeFileFolders('change', companyName)) folder = (await findOrCreateFolder(token, folder, name)).id
+    const impersonate = Deno.env.get('DRIVE_IMPERSONATE_USER')?.trim()
+    const upToken = impersonate ? await googleAccessToken(saJson, impersonate) : token
+    const name = tradeWaiverPdfName(paper, String(k.trade), Number(d.number), signedYmd)
+    const { id } = await uploadBytes(upToken, folder, bytes, name, 'application/pdf')
+    const { error } = await admin.from('gc_trade_files').insert({
+      company_id: companyId,
+      project_id: k.project_id,
+      package_id: k.id,
+      purpose: 'waiver',
+      paper,
+      record_id: d.id,
+      name,
+      mime: 'application/pdf',
+      bytes: bytes.length,
+      drive_file_id: id,
+      drive_url: driveFileUrl(id),
+      made_by: 'portal',
+    })
+    if (error) console.error('submit-gc-trade-portal: the signed waiver PDF is in Drive, its row was not kept', id, error)
+  } catch (e) {
+    console.error('submit-gc-trade-portal: the signed waiver PDF was not filed', drawId, e)
+  }
 }
 
 serve(async (req) => {
@@ -213,16 +304,21 @@ serve(async (req) => {
     }
     if (sign && consent) {
       // Best-effort, as every signing function keeps it: the row's own stamp is the act, this row is the words.
+      const at = new Date()
+      const recordId = sign.record.id ?? String(data)
       await recordEsignConsent(admin, {
         recordType: sign.record.type,
-        recordId: sign.record.id ?? String(data),
+        recordId,
         consent,
         printedName: sign.printedName,
         method: sign.png ? 'draw' : 'type',
-        consentedAt: sign.record.type === 'gc_sow' ? String(data) : new Date().toISOString(),
+        consentedAt: sign.record.type === 'gc_sow' ? String(data) : at.toISOString(),
         ip,
         userAgent,
       })
+      if (WAIVER_KINDS.has(parsed.kind)) {
+        await fileSignedWaiver(admin, link.company_id, parsed.kind as 'unconditional_waiver' | 'pay_app' | 'final_pay_app', recordId, sign.printedName, at)
+      }
     }
     return jsonResponse({ ok: true, ...(data === null || data === undefined || data === '' ? {} : { value: data }) })
   } catch (e) {

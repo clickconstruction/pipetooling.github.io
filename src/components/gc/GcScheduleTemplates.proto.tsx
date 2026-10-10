@@ -1,14 +1,17 @@
 /**
- * GC mode, the real build, the schedule's PR 12a: schedule templates (G-44), ported from the GC mode prototype (branch
- * spike/gc-mode, `GcScheduleTemplates.tsx`) with its words; the plan is to-dos/gc-mode/mockups/schedule-pr12.md on that
- * branch. The Templates card on a job being built: save its schedule as a template, and every template with where it
- * came from, the jobs drawn from it, Rename and Set it aside. And Start from a template, which the first draft offers
- * (and the rough while we bid, 12b), with the fit said before anything is drawn. Each press is a callback where the
- * prototype dispatched to its reducer; `templates.ts` works it all out, and nothing here reaches the trades or the
- * customer.
+ * GC mode design spike: schedule templates, the Gantt's G-44 (mock-up and plan
+ * `to-dos/gc-mode/mockups/G-44.md`). The Templates card on a job being built: save its schedule as a
+ * template, and every template with where it came from, the jobs drawn from it, Rename and Set it
+ * aside. And the Start from a template control the rough while bidding and the first draft both
+ * offer, with the fit said before anything is drawn. `gcScheduleTemplates.ts` works it all out;
+ * nothing here reaches the trades or the customer.
+ *
+ * The prototype's copy, forked to `.proto` when the schedule's PR 12a ported the Templates card and Start from a template
+ * to main at `GcScheduleTemplates.tsx` (#5346); the prototype's schedule tab and its rough read this one.
  */
-import { useState } from 'react'
-import { SCHEDULE_STAGES } from '../../lib/gc/schedule/draft'
+import { useState, type Dispatch } from 'react'
+import type { GcAction, GcProject, GcState, ScheduleTemplate, TemplateLine, TemplateUse } from '../../lib/gcMode/gcTypes'
+import { SCHEDULE_STAGES } from '../../lib/gcMode/gcNewProject'
 import {
   drawnFromWords,
   templateAsideWords,
@@ -17,34 +20,16 @@ import {
   templateSavedWords,
   templateSizeWords,
   templateUsedLines,
-} from '../../lib/gc/schedule/templates'
-import type { ScheduleTemplate, TemplateLine, TemplateUse } from '../../lib/gc/schedule/types'
-import type { GcProject, GcState } from '../../lib/gc/types'
-import { PressNote } from './GcScheduleCards'
+} from '../../lib/gcMode/gcScheduleTemplates'
 import { Btn, Card, input } from './gcUi'
-import { useSchedulePress } from './useSchedulePress'
 
 const box = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 const STAGE_LABEL = new Map(SCHEDULE_STAGES.map((st) => [st.key, st.label]))
 
-/** On a job being built: save its schedule as a template, and every template there is. Each press is a record. */
-export function GcTemplatesCard({
-  state,
-  project,
-  onSave,
-  onRename,
-  onSetAside,
-}: {
-  state: GcState
-  project: GcProject
-  /** Save as a template: its name refused first in the kernel's words (`templateSaveProblem`), then the table's. */
-  onSave: (name: string) => Promise<void>
-  onRename: (templateId: string, name: string) => Promise<void>
-  onSetAside: (templateId: string, aside: boolean) => Promise<void>
-}) {
+/** On a job being built: save its schedule as a template, and every template there is. */
+export function GcTemplatesCard({ state, project, by, dispatch }: { state: GcState; project: GcProject; by: string; dispatch: Dispatch<GcAction> }) {
   const [name, setName] = useState(project.name)
   const problem = templateNameProblem(state, name)
-  const press = useSchedulePress()
   const templates = [...(state.scheduleTemplates ?? [])].reverse()
   const drawnFrom = project.schedule?.template
   return (
@@ -64,19 +49,18 @@ export function GcTemplatesCard({
           </label>
           <Btn
             kind="primary"
-            disabled={problem !== null || press.busy}
+            disabled={problem !== null}
             onClick={() => {
               if (problem) return
-              void press.run(() => onSave(name), 'The template did not save.')
+              dispatch({ type: 'saveScheduleTemplate', projectId: project.id, name, by })
             }}
           >
-            {press.busy ? 'Saving…' : 'Save as a template'}
+            Save as a template
           </Btn>
         </div>
         {problem && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{problem}</div>}
-        <PressNote refused={press.refused} failed={press.failed} />
         {templates.map((t) => (
-          <TemplateRow key={t.id} state={state} template={t} onRename={onRename} onSetAside={onSetAside} />
+          <TemplateRow key={t.id} state={state} template={t} by={by} dispatch={dispatch} />
         ))}
       </div>
     </Card>
@@ -84,19 +68,8 @@ export function GcTemplatesCard({
 }
 
 /** One template: where it came from, its size and stages, the jobs drawn from it, Rename, and Set it aside or Bring it back. */
-function TemplateRow({
-  state,
-  template: t,
-  onRename,
-  onSetAside,
-}: {
-  state: GcState
-  template: ScheduleTemplate
-  onRename: (templateId: string, name: string) => Promise<void>
-  onSetAside: (templateId: string, aside: boolean) => Promise<void>
-}) {
+function TemplateRow({ state, template: t, by, dispatch }: { state: GcState; template: ScheduleTemplate; by: string; dispatch: Dispatch<GcAction> }) {
   const [renaming, setRenaming] = useState<string | null>(null)
-  const press = useSchedulePress()
   const problem = renaming === null ? null : templateNameProblem(state, renaming, t.id)
   const used = templateUsedLines(state, t)
   const aside = templateAsideWords(t)
@@ -109,13 +82,11 @@ function TemplateRow({
           <input aria-label={`A new name for ${t.name}`} value={renaming} onChange={(e) => setRenaming(e.target.value)} style={{ ...box, flex: '1 1 14rem', minWidth: 0 }} />
           <Btn
             kind="primary"
-            disabled={problem !== null || press.busy}
+            disabled={problem !== null}
             onClick={() => {
               if (problem) return
-              const name = renaming
-              void press.run(() => onRename(t.id, name), 'The name did not save.').then((saved) => {
-                if (saved) setRenaming(null)
-              })
+              dispatch({ type: 'renameScheduleTemplate', templateId: t.id, name: renaming })
+              setRenaming(null)
             }}
           >
             Save the name
@@ -154,11 +125,10 @@ function TemplateRow({
             Rename
           </Btn>
         )}
-        <Btn kind="quiet" disabled={press.busy} onClick={() => void press.run(() => onSetAside(t.id, !t.asideOn), 'The template did not change.')}>
+        <Btn kind="quiet" onClick={() => dispatch({ type: 'setAsideScheduleTemplate', templateId: t.id, aside: !t.asideOn, by })}>
           {t.asideOn ? 'Bring it back' : 'Set it aside'}
         </Btn>
       </div>
-      <PressNote refused={press.refused} failed={press.failed} />
     </div>
   )
 }

@@ -9879,6 +9879,7 @@ export type Database = {
         Row: {
           bill_day: string | null
           created_at: string
+          due_on: string | null
           email_send_log_id: string | null
           id: string
           kind: string
@@ -9891,6 +9892,7 @@ export type Database = {
         Insert: {
           bill_day?: string | null
           created_at?: string
+          due_on?: string | null
           email_send_log_id?: string | null
           id?: string
           kind: string
@@ -9903,6 +9905,7 @@ export type Database = {
         Update: {
           bill_day?: string | null
           created_at?: string
+          due_on?: string | null
           email_send_log_id?: string | null
           id?: string
           kind?: string
@@ -30170,6 +30173,19 @@ export type Database = {
         Args: { p_book_entry_id: string; p_company_id: string }
         Returns: string
       }
+      gc_company_paper_states: {
+        Args: { p_company_ids?: string[] }
+        Returns: {
+          company_id: string
+          created_at: string
+          doc_type: string
+          expires_at: string
+          id: string
+          sent_at: string
+          signed_at: string
+          status: string
+        }[]
+      }
       gc_create_project: { Args: { draft: Json }; Returns: string }
       gc_crew_on_site: {
         Args: { p_from: string; p_project_id: string; p_to: string }
@@ -30912,6 +30928,10 @@ export type Database = {
       }
       get_day_book_payload_for_user: {
         Args: { p_day: string; p_user_id: string }
+        Returns: Json
+      }
+      get_gc_customer_due_notices: {
+        Args: { p_since?: string; p_today?: string }
         Returns: Json
       }
       get_gc_money_monday_payload: { Args: never; Returns: Json }
