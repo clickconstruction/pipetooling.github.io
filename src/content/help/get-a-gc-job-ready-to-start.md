@@ -57,6 +57,8 @@ Each company awarded a trade gets an email that the job started. The window then
 **Started Oct 10. Work begins Mon Oct 19.** Told Lonestar Earthworks, Hill Country Concrete.
 :::
 
+Our contract can still go out after the job starts. Until it is signed, its row keeps {{button:blue|Send to sign}} and {{button:outline|Mark it signed}}.
+
 ## Start anyway
 
 Sometimes the job has to start before everything is in.

@@ -1,14 +1,17 @@
--- A trade partner company's own papers from its portal (P5b-m, the Portal lane): the files ledger takes a certificate
--- on no job, and the three verbs the service role calls with the link's company first: gc_trade_coi files a
--- certificate from the company's own upload, gc_trade_vetting_form writes the form of a company new to us, and
+-- A trade partner company's own papers from its portal (P5b-m and P5b-2m, the Portal lane): the files ledger takes a
+-- certificate on no job, and the three verbs the service role calls with the link's company first: gc_trade_coi files a
+-- certificate from the company's own upload as received (P5b-2m: the owner's "Office looks first"), which the office's
+-- gc_mark_company_coi_good marks good, gc_trade_vetting_form writes the form of a company new to us, and
 -- gc_trade_paper_open opens a master agreement the office sent or a W-9 (copied once from the Contract Book's W-9
 -- form) to sign. The fixture is made as postgres; the verbs run as the service role; everything rolls back. Raises on
 -- the first failed assertion; ends with "gc_portal_p5b PASSED". See scripts/pgtest-gc-portal-p5b.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
-INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-00000000fbd1', 'dev@p5b.test');
-INSERT INTO public.users (id, email, name, role) VALUES ('00000000-0000-0000-0000-00000000fbd1', 'dev@p5b.test', 'P5b Dev', 'dev')
+INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-00000000fbd1', 'dev@p5b.test'), ('00000000-0000-0000-0000-00000000fbd2', 'estimator@p5b.test');
+INSERT INTO public.users (id, email, name, role) VALUES
+  ('00000000-0000-0000-0000-00000000fbd1', 'dev@p5b.test', 'P5b Dev', 'dev'),
+  ('00000000-0000-0000-0000-00000000fbd2', 'estimator@p5b.test', 'P5b Estimator', 'estimator')
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name;
 
 -- The Contract Book: the Subs packet's master agreement and W-9, and a staff W-9 that comes first in its own packet,
@@ -51,7 +54,8 @@ INSERT INTO public.gc_trade_promises (company_id, kind, what, due_on, source) VA
 INSERT INTO public.gc_trade_files (id, company_id, project_id, package_id, purpose, record_id, name, mime, bytes, drive_file_id, drive_url) VALUES
   ('00000000-0000-0000-0000-00000000fb51', '00000000-0000-0000-0000-00000000fb11', NULL, NULL, 'coi', NULL, 'certificate.pdf', 'application/pdf', 204800, 'drv-coi', 'https://drive.google.com/file/d/drv-coi/view'),
   ('00000000-0000-0000-0000-00000000fb52', '00000000-0000-0000-0000-00000000fb11', NULL, NULL, 'coi', '00000000-0000-0000-0000-00000000fbee', 'old.pdf', 'application/pdf', 1000, 'drv-old', 'https://drive.google.com/file/d/drv-old/view'),
-  ('00000000-0000-0000-0000-00000000fb53', '00000000-0000-0000-0000-00000000fb12', NULL, NULL, 'coi', NULL, 'theirs.pdf', 'application/pdf', 1000, 'drv-theirs', 'https://drive.google.com/file/d/drv-theirs/view');
+  ('00000000-0000-0000-0000-00000000fb53', '00000000-0000-0000-0000-00000000fb12', NULL, NULL, 'coi', NULL, 'theirs.pdf', 'application/pdf', 1000, 'drv-theirs', 'https://drive.google.com/file/d/drv-theirs/view'),
+  ('00000000-0000-0000-0000-00000000fb54', '00000000-0000-0000-0000-00000000fb11', NULL, NULL, 'coi', NULL, 'newer.pdf', 'application/pdf', 2000, 'drv-newer', 'https://drive.google.com/file/d/drv-newer/view');
 
 CREATE SCHEMA p5b;
 CREATE FUNCTION p5b.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -89,8 +93,25 @@ BEGIN
   END;
   RAISE EXCEPTION '% was allowed', label;
 END $$;
-GRANT USAGE ON SCHEMA p5b TO service_role;
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA p5b TO service_role;
+CREATE FUNCTION p5b.as_user(p_user uuid) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
+  PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
+END $$;
+-- The office's refusals are words, as every office write's are: the message is the words, with no key.
+CREATE FUNCTION p5b.refused_words(label text, stmt text, want text) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  BEGIN
+    EXECUTE stmt;
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLSTATE IS DISTINCT FROM 'P0001' OR SQLERRM IS DISTINCT FROM want THEN RAISE EXCEPTION E'% was refused another way.\n--- got ---\n% %\n--- want ---\nP0001 %', label, SQLSTATE, SQLERRM, want; END IF;
+    RAISE NOTICE 'ok: %', label;
+    RETURN;
+  END;
+  RAISE EXCEPTION '% was allowed', label;
+END $$;
+GRANT USAGE ON SCHEMA p5b TO service_role, authenticated;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA p5b TO service_role, authenticated;
 
 -- 1. The three verbs are the service role's alone.
 SELECT p5b.same('the three verbs are the service role''s alone',
@@ -98,9 +119,21 @@ SELECT p5b.same('the three verbs are the service role''s alone',
     'public.gc_trade_coi(uuid, date, text)', 'public.gc_trade_vetting_form(uuid, text, text, integer, text, text)',
     'public.gc_trade_paper_open(uuid, text, text, timestamptz)']) f),
   'public.gc_trade_coi(uuid, date, text):false/false/true,public.gc_trade_vetting_form(uuid, text, text, integer, text, text):false/false/true,public.gc_trade_paper_open(uuid, text, text, timestamptz):false/false/true');
+SELECT p5b.same('the office''s Mark it good is a signed-in person''s, never anon''s (P5b-2m)',
+  has_function_privilege('anon', 'public.gc_mark_company_coi_good(uuid)', 'EXECUTE')::text || '/' || has_function_privilege('authenticated', 'public.gc_mark_company_coi_good(uuid)', 'EXECUTE')::text,
+  'false/true');
+SELECT p5b.same('a received certificate is held to a company''s certificate, and both CHECKs are validated (P5b-2m)',
+  (SELECT string_agg(conname || ':' || convalidated, ',' ORDER BY conname) FROM pg_constraint WHERE conrelid = 'public.person_contract_documents'::regclass AND conname IN ('person_contract_documents_status_check', 'person_contract_documents_received_is_a_company_coi')),
+  'person_contract_documents_received_is_a_company_coi:true,person_contract_documents_status_check:true');
+SELECT p5b.refused_code('a person''s paper received',
+  $$INSERT INTO public.person_contract_documents (person_name, document_name, status, contract_lineage_id, lineage_version) VALUES ('Some Person', 'Agreement', 'received', gen_random_uuid(), 1)$$, '23514');
+SELECT p5b.refused_code('a company''s W-9 received',
+  $$INSERT INTO public.person_contract_documents (person_name, company_id, document_name, doc_type, status, contract_lineage_id, lineage_version) VALUES ('gc-company:00000000-0000-0000-0000-00000000fb11', '00000000-0000-0000-0000-00000000fb11', 'W-9', 'w9', 'received', gen_random_uuid(), 1)$$, '23514');
+SELECT p5b.refused_code('a status no one uses',
+  $$INSERT INTO public.person_contract_documents (person_name, company_id, document_name, doc_type, status, contract_lineage_id, lineage_version) VALUES ('gc-company:00000000-0000-0000-0000-00000000fb11', '00000000-0000-0000-0000-00000000fb11', 'COI', 'coi', 'filed', gen_random_uuid(), 1)$$, '23514');
 
 -- 2. The files ledger: a certificate is on no job, and every other file is on one.
-SELECT p5b.same('a certificate with no project is kept', (SELECT count(*)::text FROM public.gc_trade_files WHERE purpose = 'coi' AND project_id IS NULL), '3');
+SELECT p5b.same('a certificate with no project is kept', (SELECT count(*)::text FROM public.gc_trade_files WHERE purpose = 'coi' AND project_id IS NULL), '4');
 SELECT p5b.refused_code('a certificate on a job',
   $$INSERT INTO public.gc_trade_files (company_id, project_id, purpose, name, mime, bytes, drive_file_id, drive_url) VALUES ('00000000-0000-0000-0000-00000000fb11', '00000000-0000-0000-0000-00000000fba9', 'coi', 'c.pdf', 'application/pdf', 10, 'x', 'https://x')$$, '23514');
 SELECT p5b.refused_code('a quote''s file on no job',
@@ -145,20 +178,58 @@ SELECT p5b.same('no refusal wrote a paper', (SELECT count(*)::text FROM public.p
 
 -- Each verb runs in its own statement, its id kept with \gset: a statement cannot see the rows its own call wrote.
 SELECT public.gc_trade_coi('00000000-0000-0000-0000-00000000fb11', public.app_today() + 365, ' https://drive.google.com/file/d/drv-coi/view ') AS coi_id \gset
-SELECT p5b.same('the certificate is a signed coi paper of the company''s, with its day and link',
-  (SELECT concat_ws(' | ', person_name, document_name, doc_type, status, (signed_at = public.app_today())::text, (expires_at = public.app_today() + 365)::text, url, coalesce(person_id::text, 'no person'))
+SELECT p5b.same('the certificate is a received coi paper of the company''s, unsigned, with its day, link and the time it came in',
+  (SELECT concat_ws(' | ', person_name, document_name, doc_type, status, (signed_at IS NULL)::text, (sent_at IS NOT NULL)::text, (expires_at = public.app_today() + 365)::text, url, coalesce(person_id::text, 'no person'))
    FROM public.person_contract_documents WHERE id = :'coi_id'),
-  'gc-company:00000000-0000-0000-0000-00000000fb11 | COI (from their portal) | coi | signed | true | true | https://drive.google.com/file/d/drv-coi/view | no person');
+  'gc-company:00000000-0000-0000-0000-00000000fb11 | COI (from their portal) | coi | received | true | true | true | https://drive.google.com/file/d/drv-coi/view | no person');
 SELECT p5b.same('the upload is tied to the paper, and no other file is',
   ((SELECT record_id FROM public.gc_trade_files WHERE id = '00000000-0000-0000-0000-00000000fb51') = :'coi_id')::text || ' | ' ||
   ((SELECT record_id FROM public.gc_trade_files WHERE id = '00000000-0000-0000-0000-00000000fb53') IS NULL)::text,
   'true | true');
-SELECT p5b.same('the insurance promise is kept, the W-9''s is not',
+SELECT p5b.same('a received certificate keeps no promise until the office looks',
   (SELECT string_agg(kind || ' ' || (kept_on IS NOT NULL), ',' ORDER BY kind) FROM public.gc_trade_promises WHERE company_id = '00000000-0000-0000-0000-00000000fb11'),
-  'insurance true,w9 false');
+  'insurance false,w9 false');
 SELECT p5b.refused('the same upload twice',
   $$SELECT public.gc_trade_coi('00000000-0000-0000-0000-00000000fb11', public.app_today() + 365, 'https://drive.google.com/file/d/drv-coi/view')$$,
   'certNeeded', 'A certificate is a file the company uploaded from its portal.');
+-- A second certificate while the first waits replaces it: one waiting at a time.
+SELECT public.gc_trade_coi('00000000-0000-0000-0000-00000000fb11', public.app_today() + 400, 'https://drive.google.com/file/d/drv-newer/view') AS newer_id \gset
+SELECT p5b.same('a second send replaces the waiting one, with its new link and day',
+  (:'newer_id' = :'coi_id')::text || ' | ' ||
+  (SELECT concat_ws(' | ', status, url, (expires_at = public.app_today() + 400)::text) FROM public.person_contract_documents WHERE id = :'coi_id') || ' | ' ||
+  (SELECT count(*)::text FROM public.person_contract_documents WHERE company_id = '00000000-0000-0000-0000-00000000fb11' AND doc_type = 'coi') || ' | ' ||
+  ((SELECT record_id FROM public.gc_trade_files WHERE id = '00000000-0000-0000-0000-00000000fb54') = :'coi_id')::text,
+  'true | received | https://drive.google.com/file/d/drv-newer/view | true | 1 | true');
+RESET ROLE;
+
+-- 3b. The office marks it good (P5b-2m): a dev only, a certificate that waits, one not run out; then signed with today's
+-- day, and the insurance promise kept.
+SET LOCAL ROLE authenticated;
+SELECT p5b.as_user('00000000-0000-0000-0000-00000000fbd2');
+SELECT p5b.refused_words('an estimator marks nothing good',
+  format('SELECT public.gc_mark_company_coi_good(%L)', :'coi_id'), 'Only a dev sends a trade its papers while GC mode is built.');
+SELECT p5b.as_user('00000000-0000-0000-0000-00000000fbd1');
+SELECT p5b.refused_words('a paper that is no waiting certificate',
+  $$SELECT public.gc_mark_company_coi_good('00000000-0000-0000-0000-00000000fb62')$$, 'That certificate is not waiting for a look.');
+RESET ROLE;
+INSERT INTO public.person_contract_documents (id, person_name, company_id, document_name, doc_type, status, sent_at, expires_at, url, contract_lineage_id, lineage_version) VALUES
+  ('00000000-0000-0000-0000-00000000fb64', 'gc-company:00000000-0000-0000-0000-00000000fb12', '00000000-0000-0000-0000-00000000fb12', 'COI (from their portal)', 'coi', 'received', now() - interval '20 days', public.app_today(), 'https://drive.google.com/file/d/drv-theirs/view', gen_random_uuid(), 1);
+SET LOCAL ROLE authenticated;
+SELECT p5b.as_user('00000000-0000-0000-0000-00000000fbd1');
+SELECT p5b.refused_words('a waiting certificate that has run out',
+  $$SELECT public.gc_mark_company_coi_good('00000000-0000-0000-0000-00000000fb64')$$, 'That certificate has run out. Ask them for the current one.');
+SELECT public.gc_mark_company_coi_good(:'coi_id');
+RESET ROLE;
+SELECT p5b.same('marked good: signed with today''s day, and the insurance promise kept',
+  (SELECT concat_ws(' | ', status, (signed_at = public.app_today())::text) FROM public.person_contract_documents WHERE id = :'coi_id') || ' | ' ||
+  (SELECT string_agg(kind || ' ' || (kept_on IS NOT NULL), ',' ORDER BY kind) FROM public.gc_trade_promises WHERE company_id = '00000000-0000-0000-0000-00000000fb11'),
+  'signed | true | insurance true,w9 false');
+SET LOCAL ROLE authenticated;
+SELECT p5b.as_user('00000000-0000-0000-0000-00000000fbd1');
+SELECT p5b.refused_words('marked good twice',
+  format('SELECT public.gc_mark_company_coi_good(%L)', :'coi_id'), 'That certificate is not waiting for a look.');
+RESET ROLE;
+SET LOCAL ROLE service_role;
 
 -- 4. gc_trade_vetting_form: only a company still new, every line, then a second send replacing the first.
 SELECT p5b.refused('a company that is not there',

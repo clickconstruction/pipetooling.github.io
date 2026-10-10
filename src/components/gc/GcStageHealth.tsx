@@ -1,11 +1,6 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type Dispatch } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import {
-  shortDate,
   stageHealth,
-  weekdayDate,
-  type GcAction,
-  type GcProject,
-  type GcState,
   type CalendarDay,
   type CalendarWeek,
   type StageCalendar,
@@ -16,15 +11,22 @@ import {
   type TileState,
   weekIsQuiet,
   weekWorkingDays,
-} from '../../lib/gcMode/gcModel'
+} from '../../lib/gc/stageHealth'
+import type { GcProject, GcState } from '../../lib/gc/types'
+import { shortDate, weekdayDate } from '../../lib/gc/words'
 import { Btn, input } from './gcUi'
 
 /**
- * GC mode design spike: the strip under a project's title that says how its stage is going (the
- * owner, 2026-10-04: "at the top of this page we should have some sort of visual that describes the
- * health of the stage"; the revised design in `to-dos/gc-mode/stage-health-mockup.html`). The same
- * shape in every stage: the verdict with its reason and the one thing to do next, the stage's
- * clock, one tile a trade, a few numbers. The kernel is `stageHealth`.
+ * GC mode, the real build, the Board's B2b-vii: the strip under a project's title that says how its stage is going,
+ * from the design spike's `GcStageHealth.tsx` (the owner, 2026-10-04: "at the top of this page we should have some sort
+ * of visual that describes the health of the stage"). The same shape in every stage: the verdict with its reason and
+ * the one thing to do next, the stage's clock, one tile a trade, a few numbers. The kernel is main's `stageHealth`
+ * (B2b-vi-a), read on the ring's own state (`ringState`, B2b-vi-c) so the strip and the ring give one answer.
+ *
+ * The real build's three changes: the next step presses only where the page can open its surface for this reader
+ * (`onTab` answers which), words alone otherwise; **Set the start date** goes through the page's press
+ * (`setGcProjectStartItem`, Get started's gate), unset for anyone else; the money's bars and numbers show only to
+ * a reader who sees Our number (`moneyShown`), never to anyone else.
  */
 
 const VERDICT: Record<StageHealth['verdict'], { words: string; bg: string; fg: string }> = {
@@ -52,13 +54,20 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 export function GcStageHealth({
   state,
   project,
-  dispatch,
+  canOpen,
   onTab,
+  onSetStartDate,
+  moneyShown,
 }: {
   state: GcState
   project: GcProject
-  dispatch: Dispatch<GcAction>
+  /** Whether the page can open this step's surface for this reader. False: the step is said with no press. */
+  canOpen: (tab: HealthTab) => boolean
   onTab: (tab: HealthTab) => void
+  /** Set the start date (`setGcProjectStartItem`), for whoever Get started lets set it. Unset: the date is asked in words only. */
+  onSetStartDate?: (date: string) => Promise<void>
+  /** The reader sees Our number: the money's bars and numbers show. */
+  moneyShown: boolean
 }) {
   const health = useMemo(() => stageHealth(state, project), [state, project])
   const box = useRef<HTMLDivElement>(null)
@@ -72,6 +81,9 @@ export function GcStageHealth({
   }, [])
   if (!health) return null
   const v = VERDICT[health.verdict]
+  // The money's bars and numbers are Our number's readers' alone (the owner's: finances stay the money team's).
+  const bars = health.bars.filter((b) => moneyShown || !b.money)
+  const numbers = health.numbers.filter((n) => moneyShown || !n.money)
   const stageAt = PATH.findIndex((p) => p.key === project.stage)
   return (
     <div ref={box} data-tour="gc-stage-health" style={{ borderTop: '1px solid var(--border)', marginTop: '0.75rem', paddingTop: '0.75rem', display: 'grid', gap: '0.75rem', minWidth: 0 }}>
@@ -102,22 +114,26 @@ export function GcStageHealth({
           <span style={{ padding: '0.15rem 0.65rem', borderRadius: 999, background: v.bg, color: v.fg, fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{v.words}</span>
           <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>{health.why}</span>
         </div>
-        {health.next && (
-          <Btn kind="primary" onClick={() => onTab(health.next?.tab ?? 'packages')} wrap>
-            Next: {health.next.words} →
-          </Btn>
-        )}
+        {health.next &&
+          (canOpen(health.next.tab) ? (
+            <Btn kind="primary" onClick={() => onTab(health.next?.tab ?? 'packages')} wrap>
+              Next: {health.next.words} →
+            </Btn>
+          ) : (
+            <span data-gc-health-next style={{ fontSize: '0.88rem', fontWeight: 600 }}>
+              Next: {health.next.words}
+            </span>
+          ))}
       </div>
 
       <Calendar calendar={health.calendar} width={width} stage={project.stage} />
-      {health.askStartDate && <SetStart onSet={(date) => dispatch({ type: 'setStartDate', projectId: project.id, date })} today={state.today} />}
+      {health.askStartDate && onSetStartDate && <SetStart onSet={onSetStartDate} today={state.today} projectId={project.id} />}
 
-      {health.bars.length > 0 && (
+      {bars.length > 0 && (
         <div style={{ display: 'grid', gap: '0.45rem' }}>
-          {health.bars.map((b) => (
+          {bars.map((b) => (
             <div
               key={b.kind}
-              title={b.money ? 'In the real build, the owner and the controller see money rows, as on the Money tab.' : undefined}
               style={{ display: 'grid', gridTemplateColumns: width < 560 ? '6.5rem minmax(0, 1fr) 6.5rem' : '9.5rem minmax(0, 1fr) 8.5rem', gap: '0.6rem', alignItems: 'center', fontSize: '0.82rem' }}
             >
               <span style={{ color: 'var(--text-muted)' }}>{b.label}</span>
@@ -164,8 +180,8 @@ export function GcStageHealth({
 
       {/* A few numbers */}
       <div style={{ display: 'flex', gap: '0.6rem 1.75rem', flexWrap: 'wrap' }}>
-        {health.numbers.map((n) => (
-          <div key={n.label} style={{ display: 'grid', gap: '0.05rem', minWidth: 0 }} title={n.money ? 'In the real build, the owner and the controller see this, as on the Money tab.' : undefined}>
+        {numbers.map((n) => (
+          <div key={n.label} style={{ display: 'grid', gap: '0.05rem', minWidth: 0 }}>
             <span style={{ fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>{n.label}</span>
             <span
               style={{
@@ -238,19 +254,44 @@ function Tile({ tile }: { tile: HealthTile }) {
   )
 }
 
-/** Set a start date right here, when buying out has none: it starts the stage's clock. */
-function SetStart({ onSet, today }: { onSet: (date: string) => void; today: string }) {
+/**
+ * Set a start date right here, when buying out has none: it starts the stage's clock. The real build saves it through
+ * Get started's own press (`setGcProjectStartItem`), and a refusal is said in words with the day kept.
+ */
+function SetStart({ onSet, today, projectId }: { onSet: (date: string) => Promise<void>; today: string; projectId: string }) {
   const [date, setDate] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
+  const id = `gc-health-start-${projectId}`
+  const save = async () => {
+    if (!date) return
+    setBusy(true)
+    setProblem(null)
+    try {
+      await onSet(date)
+    } catch (e) {
+      setProblem(`The start date did not save: ${e instanceof Error ? e.message : 'try again.'}`)
+    } finally {
+      setBusy(false)
+    }
+  }
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
-      <label htmlFor="gc-health-start" style={{ fontWeight: 600 }}>
-        Set a start date
-      </label>
-      <input id="gc-health-start" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} style={{ ...input, height: 32, boxSizing: 'border-box' }} />
-      <Btn onClick={() => date && onSet(date)} disabled={date === ''}>
-        Save
-      </Btn>
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>It also checks off "A start date is set" on Get started.</span>
+    <div style={{ display: 'grid', gap: '0.3rem' }}>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+        <label htmlFor={id} style={{ fontWeight: 600 }}>
+          Set a start date
+        </label>
+        <input id={id} type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} style={{ ...input, height: 32, boxSizing: 'border-box' }} />
+        <Btn onClick={() => void save()} disabled={busy || date === ''}>
+          {busy ? 'Saving…' : 'Save'}
+        </Btn>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem' }}>It also checks off "A start date is set" on Get started.</span>
+      </div>
+      {problem && (
+        <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+          {problem}
+        </div>
+      )}
     </div>
   )
 }

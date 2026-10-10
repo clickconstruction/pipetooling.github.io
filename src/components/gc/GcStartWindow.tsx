@@ -207,7 +207,7 @@ export function GcStartWindow({
                     <Btn kind={c.done ? 'quiet' : 'plain'} disabled={busy !== null} onClick={() => run('permit', () => presses.setPermit(!c.done))}>
                       {c.done ? 'Undo' : 'Mark it done'}
                     </Btn>
-                  ) : c.key === 'ownerContract' && (!started || owed) && (presses?.signContract || (customers && !c.done)) ? (
+                  ) : c.key === 'ownerContract' && (!started || owed || !c.done) && (presses?.signContract || (customers && !c.done)) ? (
                     <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap' }}>
                       {customers && !c.done && (
                         <Btn kind="primary" onClick={() => customers.openCustomer(project.customerId, { tab: 'documents', doc: contractDocKey(project.id), send: true })}>
