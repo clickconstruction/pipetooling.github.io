@@ -418,7 +418,7 @@ SET lock_timeout = '3s';
 --     a second send replaces the first; it keeps no promise (gc_company_paper_kept fires only on 'signed');
 --   - gc_mark_company_coi_good, the office's one press: a received certificate signed with today's day, which the keep
 --     trigger turns into the insurance promise kept.
--- Doc: docs/migrations/<stamp>_gc_portal_p5b_coi_received.md.
+-- Doc: docs/migrations/20261010170000_gc_portal_p5b_coi_received.md.
 
 -- 1) A received certificate: a status only a company's certificate takes.
 ALTER TABLE public.person_contract_documents DROP CONSTRAINT IF EXISTS person_contract_documents_status_check;
@@ -683,3 +683,7 @@ P5b-2m adds `received` to `person_contract_documents.status`, held to a company'
 adds the office's `gc_mark_company_coi_good`. P5b-2 ships the kind, the trade's *Click is checking it* line, Needs
 you's dropped to-do while it waits, and the Documents tab's **Mark it good**. #5351's `gc_trade_coi` is called by
 nothing until then, so it stays as merged. P5b-1 is unchanged.
+
+**Amendment 4, 2026-10-10, at P5b-2m's cut**: P5b-1 is cut as v2.5201 (#5363). P5b-2m is cut as v2.5202 (#5364) with
+migration `20261010170000_gc_portal_p5b_coi_received`, both claimed on `claude/gc-portal-p5b-2m`. The stamp is filled
+in the second SQL block above, which the migration equals byte for byte.
