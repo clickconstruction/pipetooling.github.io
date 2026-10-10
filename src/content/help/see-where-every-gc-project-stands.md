@@ -2,7 +2,7 @@
 title: see where every GC project stands
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card, who to call, to call, by customer, by stage
+keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card, who to call, to call, by customer, by stage, ring, progress, how far along
 order: 94
 ---
 The Project Board shows every GC project by its stage. Each row says how many days are left before our bid is due. The row also says what the price is so far.
@@ -35,11 +35,26 @@ The strip at the top has a pill for each customer instead. Press a pill to jump 
 
 A customer's closed and lost jobs sit on one line under their jobs. That line starts with *Also*. Press a job's name there to open it.
 
+## See how far a job has come
+
+Each row starts with a ring. The ring fills as the job gets through its stage.
+
+- **Bidding** counts the steps before our bid can go in. The middle says how many are done, like 14/25.
+- **Buying out** counts the steps on Get started.
+- **Building** shows the percent of the work the trades have reported.
+
+1. Point at the ring, or press it to keep its card open.
+2. The card lists what the ring counts, by type. What is left is spelled out. What is done is one line.
+3. The lines under *Also* are worth knowing. The ring does not count them.
+4. Press Escape to close the card.
+
+A full ring draws a check over its count. Some rings show only to the people who can read everything they count. An empty gray ring is still reading.
+
 ## Read a row
 
 Each row is one project.
 
-- **The block on the left** says the days left before our bid is due. The block turns red inside a week and amber inside two.
+- **The block next to the ring** says the days left before our bid is due. The block turns red inside a week and amber inside two.
 - A job we won shows the days to its planned start instead.
 - **The name** is the project. The customer and the architect are under the name.
 - **The price** on the right is the price so far. A trade with no number yet counts as nothing.
@@ -74,4 +89,4 @@ A person on two jobs shows on both rows. A row with nobody to call says *Nobody 
 
 ## What comes next
 
-Carrying a quote comes to the board in a later step. So does the ring on each row. To ask a company for a quote, press Ask for quotes on the project's card below the board.
+Carrying a quote comes to the board in a later step. So does how the stage is going, under each project's title. To ask a company for a quote, press Ask for quotes on the project's card below the board.
