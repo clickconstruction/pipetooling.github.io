@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
+import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk.proto'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
 
 afterEach(cleanup)

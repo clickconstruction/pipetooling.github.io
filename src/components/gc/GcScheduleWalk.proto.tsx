@@ -16,7 +16,7 @@ import { lostDaysMoveNote } from '../../lib/gcMode/gcDaysLost'
 import { actualWords } from '../../lib/gcMode/gcActualDates'
 import { planPull, pullCountWords, type PullOffer } from '../../lib/gcMode/gcPullEarlier'
 import { Btn, Chip, input } from './gcUi'
-import { GcPullBox, GcPullWindow } from './GcPullEarlier'
+import { GcPullBox, GcPullWindow } from './GcPullEarlier.proto'
 import { partFacts } from '../../lib/gcMode/gcSplitBars'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */

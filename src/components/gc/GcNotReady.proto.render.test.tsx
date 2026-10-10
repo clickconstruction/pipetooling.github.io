@@ -7,7 +7,7 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { GcNotReady } from './GcNotReady'
+import { GcNotReady } from './GcNotReady.proto'
 import { GcCompanyOpenerContext, type CompanyOpener } from './gcCompanyOpener.proto'
 import { GC_COMPANY, initialGcState } from '../../lib/gcMode/gcFixture'
 import { GcGantt } from './GcGantt'

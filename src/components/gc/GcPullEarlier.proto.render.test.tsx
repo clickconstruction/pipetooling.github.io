@@ -7,8 +7,8 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { GcPullLine, GcPullWindow } from './GcPullEarlier'
-import { GcScheduleWalk } from './GcScheduleWalk'
+import { GcPullLine, GcPullWindow } from './GcPullEarlier.proto'
+import { GcScheduleWalk } from './GcScheduleWalk.proto'
 import { GcMoveHistory } from './GcScheduleMoves.proto'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
 import { gcReducer } from '../../lib/gcMode/gcReducer'
