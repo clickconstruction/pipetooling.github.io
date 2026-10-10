@@ -6,7 +6,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
-import { GcPeoplePill } from './GcPeoplePill'
+import { GcPeoplePill } from './GcPeoplePill.proto'
 import { GcBuildingScheduleBlock } from './GcBuildingSchedule'
 import { GcPartnersBoard } from './GcTradeBench'
 import { initialGcState } from '../../lib/gcMode/gcFixture'

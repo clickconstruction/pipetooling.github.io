@@ -1,0 +1,58 @@
+{
+ "about": "The Building lane's U2b (to-dos/gc-mode/BUILDING_REAL_BUILD.md, Kernels that move): the Follow up sheet's draft and the mail kernels it reads (gc 2's nod for companyPeople.ts, the Board's file), lifted to src/lib/gc word for word. followUpSentActions and followUpCallActions stay on the spike: they return the prototype's reducer actions, and the Board's B2b-viii writes the sheet's presses. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/building-u2b.lift.json <outDir>",
+ "spikeDir": "src/lib/gcMode",
+ "mainBase": "src/lib/gc",
+ "existing": {
+  "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#Partner": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#PortalMailGroup": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#PromiseKind": "types.ts",
+  "src/lib/gcMode/gcFixture.ts#GC_COMPANY": "company.ts"
+ },
+ "standIns": {
+  "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+ },
+ "files": [
+  {
+   "from": "gcFollowUpSheet",
+   "to": "followUpSheet.ts",
+   "moves": [
+    "followUpDraft"
+   ],
+   "append": true,
+   "stays": [
+    "followUpSentActions",
+    "followUpCallActions"
+   ]
+  },
+  {
+   "from": "gcCompanyPeople",
+   "to": "companyPeople.ts",
+   "moves": [
+    "followItemMailGroup",
+    "followUpMailTo",
+    "mailToGreeting",
+    "mailToWhy",
+    "MailTo"
+   ],
+   "append": true
+  }
+ ],
+ "tests": [
+  {
+   "from": "gcFollowUpSheet.test.ts",
+   "to": "followUpSheet.draft.test.ts",
+   "header": "// GC mode, the real build, the Building lane's U2b: followUpDraft's tests, moved from the prototype (branch spike/gc-mode, gcFollowUpSheet.test.ts)."
+  },
+  {
+   "from": "gcCompanyPeople.test.ts",
+   "to": "companyPeople.mail.test.ts",
+   "header": "// GC mode, the real build, the Building lane's U2b: the Follow up sheet's mail kernels' tests, moved from the prototype (branch spike/gc-mode, gcCompanyPeople.test.ts)."
+  }
+ ],
+ "pin": {
+  "main": "89435bfbd1b0ca0ecbc2eea83fd807bf61410455",
+  "spike": "799be6166c8ac952bf08057772696af1fef74e65",
+  "about": "#5341 merged; the spike before its follow-up"
+ }
+}

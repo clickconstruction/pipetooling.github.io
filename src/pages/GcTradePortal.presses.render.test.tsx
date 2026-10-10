@@ -174,7 +174,7 @@ describe('the job’s presses (P4b-ii)', () => {
     await waitFor(() => expect(posts).toEqual([{ token: TOKEN, kind: 'answer_back_charge', chargeId: ID.charge, agree: false, note: 'We swept before we left.' }]))
   })
 
-  it('asks for a change: what changed, why, what it asks and whole working days, with no file yet', async () => {
+  it('asks for a change: what changed, why, what it asks and whole working days', async () => {
     open()
     await openJob()
     const changes = block('Electrical · changes to your work')
@@ -182,8 +182,8 @@ describe('the job’s presses (P4b-ii)', () => {
     expect(changes.getByText(/as change order 2 on .*\. Your part: \$3,400\./)).toBeTruthy()
     expect(changes.queryByText(/3,910/)).toBeNull()
     fireEvent.click(changes.getByRole('button', { name: 'Ask for a change' }))
-    expect(changes.queryByText('A photo or ticket, if you have one')).toBeNull()
-    expect(changes.getByText('Have a photo or a ticket? Email it to Click Construction.')).toBeTruthy()
+    // Since P5a-1 a photo or a ticket is picked in the form (GcTradePortal.files.render.test.tsx sends one).
+    expect(changes.getByLabelText('A photo or ticket, if you have one')).toBeTruthy()
     fireEvent.change(changes.getByLabelText('What changed'), { target: { value: ' Two more outlets in the break room. ' } })
     fireEvent.click(changes.getByLabelText('The customer asked for more'))
     fireEvent.change(changes.getByLabelText('What you ask for it'), { target: { value: '$1,250' } })

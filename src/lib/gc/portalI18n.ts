@@ -749,8 +749,6 @@ const S = {
   crAmount: { en: 'What you ask for it', es: 'Cuánto pide' },
   crDays: { en: 'Working days it adds', es: 'Días hábiles que agrega' },
   crFile: { en: 'A photo or ticket, if you have one', es: 'Una foto o boleta, si la tiene' },
-  crFileByEmail: { en: 'Have a photo or a ticket? Email it to {name}.', es: '¿Tiene una foto o una boleta? Envíela por correo a {name}.' },
-  crFileByEmailGc: { en: 'Have a photo or a ticket? Email it to {gc}.', es: '¿Tiene una foto o una boleta? Envíela por correo a {gc}.' },
   crSend: { en: 'Send to {gc}', es: 'Enviar a {gc}' },
   crAsked: { en: 'You asked {amount} · sent {date}', es: 'Pidió {amount} · enviado el {date}' },
   crDays1: { en: '+1 working day', es: '+1 día hábil' },
@@ -950,8 +948,6 @@ const S = {
   navPortal: { en: 'Your portal', es: 'Su portal' },
   navMessages: { en: 'Messages from {gc}', es: 'Mensajes de {gc}' },
   plansNotShared: { en: 'The link to these plans is not ready yet. Ask {gc} for it.', es: 'El enlace a estos planos todavía no está listo. Pídaselo a {gc}.' },
-  replyByEmail: { en: 'Have your own quote file? Email it to {name}.', es: '¿Tiene el archivo de su cotización? Envíelo por correo a {name}.' },
-  replyByEmailGc: { en: 'Have your own quote file? Email it to {gc}.', es: '¿Tiene el archivo de su cotización? Envíelo por correo a {gc}.' },
   sentTo: { en: 'To {names}', es: 'Para {names}' },
 
   // What a press says when it is refused (P2b-i, submit-gc-trade-portal's keys)
@@ -1038,6 +1034,11 @@ const S = {
   mFinalInWhat: { en: 'Your final pay application for {amount} on {trade} for {project} came in.', es: 'Llegó su solicitud de pago final por {amount} de {trade} para {project}.' },
   mFinalInReleasePortal: { en: 'Once we pay it, sign your unconditional final release of lien in your portal.', es: 'Cuando la paguemos, firme su liberación final de gravamen incondicional en su portal.' },
   mFinalInReleaseEmail: { en: 'Once we pay it, send us your unconditional final release of lien.', es: 'Cuando la paguemos, envíenos su liberación final de gravamen incondicional.' },
+  // P5a-1: a file from the portal into the job's Drive folder.
+  errFileType: { en: 'Send a PDF or a photo.', es: 'Envíe un PDF o una foto.' },
+  errFileTooBig: { en: 'That file is over 10 MB. Email it to {gc}, or paste its Drive link.', es: 'Ese archivo pesa más de 10 MB. Envíelo por correo a {gc} o pegue su enlace de Drive.' },
+  errNoJobFolder: { en: 'For now, email it to {gc}.', es: 'Por ahora, envíelo por correo a {gc}.' },
+  subPickFile: { en: 'Pick the file', es: 'Elija el archivo' },
   previewNothing: { en: 'Preview. Nothing is saved from here.', es: 'Vista previa. Desde aquí no se guarda nada.' },
   quoteTickHelp: { en: 'Tick what your quote covers. Untick what it leaves out.', es: 'Marque lo que incluye su cotización. Desmarque lo que no incluye.' },
 } satisfies Record<string, Record<PortalLang, string>>

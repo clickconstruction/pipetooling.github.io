@@ -121,6 +121,7 @@
     "supabase/functions/_shared/gcOfficeNotices.ts",
     "supabase/functions/_shared/gcPortal.ts",
     "supabase/functions/_shared/gcTradeEmail.ts",
+    "supabase/functions/_shared/gcTradeFile.ts",
     "supabase/functions/_shared/gcTradeLink.ts",
     "supabase/functions/_shared/gcTradePortalSample.ts",
     "supabase/functions/_shared/gcTradePortalSlice.ts",

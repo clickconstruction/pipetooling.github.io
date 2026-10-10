@@ -1,10 +1,11 @@
 /**
  * GC mode, the real build, Owner Billing's O2b: what each job makes us, moved word for word from the GC mode
  * prototype (branch spike/gc-mode, `gcOwnerBillingMargin.ts`). Since O11b, general conditions count at their Pipeline
- * job's real spend when our number names one (`ownWorkCost.ts`).
+ * job's real spend when our number names one (`ownWorkCost.ts`), and since O11a our own crew at its Pipeline job's cost.
  */
 import { carriedAmount } from './bids'
-import { generalConditionsCost, type GeneralConditionsCost, type OwnWorkCosts } from './ownWorkCost'
+import { crewCost, generalConditionsCost, holderWords, ownWorkHolders, type CrewCost, type GeneralConditionsCost, type OwnWorkCosts } from './ownWorkCost'
+import { generalConditionsHolder } from './crewJobRows'
 import { partnerById } from './lookups'
 import { ownerContractWorthOf, ownerPayAppsSent, signedChangeOrders } from './ownerBilling'
 import type { GcProject, GcState } from './types'
@@ -21,7 +22,9 @@ export interface TradeBuyout {
   boughtOut: boolean
   /** Our own crew: at its price, its cost is on the Pipeline. */
   ownCrew: boolean
-  /** Signed less cost: what buying it out saved (below zero: what it cost us over). */
+  /** Our own crew's cost from its Pipeline job (O11a): what `cost` is and why. Our own crew only. */
+  crew?: CrewCost
+  /** Signed less cost: what buying it out saved (below zero: what it cost us over). Our own crew: under or over. */
   saved: number
 }
 
@@ -30,14 +33,14 @@ export interface JobMargin {
   /** The price the customer signed for, with signed change orders. */
   price: number
   trades: TradeBuyout[]
-  /** What buying out saved, added up. Below zero: over. */
+  /** What buying out the trades we hire saved, added up. Below zero: over. Our own crew is in `ownWork`. */
   buyout: number
   changeOrders: { count: number; price: number; cost: number; margin: number }
   fee: number
   generalConditions: number
   /** General conditions' cost: their budget, or their Pipeline job's spend (O11b). */
   generalConditionsCost: GeneralConditionsCost
-  /** Our own work's over (below zero) or under against its price and budget: today general conditions'. */
+  /** Our own work's over (below zero) or under against its price and budget: general conditions' and our crews'. */
   ownWork: number
   /** Contingency in the price, not spent as far as the prototype knows. */
   contingency: number
@@ -57,14 +60,21 @@ export interface JobMargin {
 /** What one job makes us. `own`: what the page read of our own work's Pipeline jobs; absent, at price and budget. */
 export function jobMargin(state: GcState, project: GcProject, own?: OwnWorkCosts): JobMargin {
   const signed = ownerContractWorthOf(project)
+  // A Pipeline job counts once, in the first place that holds it: any other place counts at its price or budget.
+  const holders = ownWorkHolders(state.projects, own)
+  const sharedFor = (jobId: string | null | undefined, key: string): string | null => {
+    const holder = jobId ? holders.get(jobId) : undefined
+    return holder && holder.key !== key ? holderWords(holder, project.id, state.projects) : null
+  }
   const trades: TradeBuyout[] = project.packages.map((pkg) => {
     const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
     const company = invite ? (partnerById(state, invite.partnerId)?.company ?? null) : null
     const signedFor = signed[pkg.id] ?? 0
     const boughtOut = pkg.sow?.status === 'signed'
     const ownCrew = Boolean(pkg.selfPerform)
-    const cost = boughtOut && pkg.sow ? pkg.sow.price : ownCrew ? signedFor : (carriedAmount(pkg) ?? signedFor)
-    return { packageId: pkg.id, trade: pkg.trade, company, signed: signedFor, cost, boughtOut, ownCrew, saved: signedFor - cost }
+    const crew = ownCrew ? crewCost(pkg, signedFor, own, sharedFor(own?.crewJobs?.[pkg.id], pkg.id)) : undefined
+    const cost = boughtOut && pkg.sow ? pkg.sow.price : crew ? crew.counted : (carriedAmount(pkg) ?? signedFor)
+    return { packageId: pkg.id, trade: pkg.trade, company, signed: signedFor, cost, boughtOut, ownCrew, ...(crew ? { crew } : {}), saved: signedFor - cost }
   })
   const cos = signedChangeOrders(project)
   const changeOrders = {
@@ -74,16 +84,19 @@ export function jobMargin(state: GcState, project: GcProject, own?: OwnWorkCosts
     margin: cos.reduce((t, c) => t + (c.price - c.cost), 0),
   }
   const fee = signed.fee ?? 0
-  const buyout = trades.reduce((t, x) => t + x.saved, 0)
+  // Buying out is the trades we hire; our own crew is our own work, with general conditions.
+  const buyout = trades.filter((x) => !x.ownCrew).reduce((t, x) => t + x.saved, 0)
   const price = Object.values(signed).reduce((t, n) => t + n, 0) + changeOrders.price
-  const gc = generalConditionsCost({ ...project, generalConditions: signed.gc ?? 0 }, own)
-  const ownWork = gc.budget - gc.counted
+  const gc = generalConditionsCost({ ...project, generalConditions: signed.gc ?? 0 }, own, sharedFor(project.generalConditionsJobId, generalConditionsHolder(project.id)))
+  const crews = trades.filter((x) => x.ownCrew)
+  const ownWork = gc.budget - gc.counted + crews.reduce((t, x) => t + x.saved, 0)
   const margin = fee + buyout + changeOrders.margin + ownWork
   const sent = ownerPayAppsSent(project)
   const last = sent[sent.length - 1]
   const billedShare = last && price > 0 ? Math.min(1, last.workToDate / price) : 0
   // Our own work, where its spend is read: what we billed for it so far less what it cost so far.
   const gcEarned = gc.spent !== null ? (last?.doneToDate.gc ?? 0) - gc.spent : 0
+  const crewEarned = crews.reduce((t, x) => t + (x.crew && x.crew.spent !== null ? (last?.doneToDate[x.packageId] ?? 0) - x.crew.spent : 0), 0)
   return {
     project,
     price,
@@ -98,7 +111,7 @@ export function jobMargin(state: GcState, project: GcProject, own?: OwnWorkCosts
     margin,
     marginPct: price > 0 ? (margin / price) * 100 : 0,
     billedShare,
-    earned: (fee + buyout + changeOrders.margin) * billedShare + gcEarned,
+    earned: (fee + buyout + changeOrders.margin) * billedShare + gcEarned + crewEarned,
   }
 }
 
@@ -107,4 +120,16 @@ export function allJobsMargin(state: GcState, own?: OwnWorkCosts): { jobs: JobMa
   const jobs = state.projects.filter((p) => p.stage === 'buyout' || p.stage === 'building').map((p) => jobMargin(state, p, own))
   const sum = (f: (j: JobMargin) => number) => jobs.reduce((t, j) => t + f(j), 0)
   return { jobs, price: sum((j) => j.price), margin: sum((j) => j.margin), earned: sum((j) => j.earned), contingency: sum((j) => j.contingency), ownWork: sum((j) => j.ownWork) }
+}
+
+/**
+ * What a closed job made us, for Closeout (O11a): the margin and its share of the price, and whether our own work
+ * counts at what it cost or still at its price or budget somewhere.
+ */
+export function jobMadeWords(m: JobMargin): string {
+  const base = `The job made us $${Math.round(m.margin).toLocaleString('en-US')}, ${m.marginPct.toFixed(1)}% of the price.`
+  const crews = m.trades.filter((t) => t.ownCrew)
+  const real = crews.every((t) => t.crew?.state === 'done') && m.generalConditionsCost.state === 'closed'
+  if (!real) return `${base} Some of our own work counts at its price or budget.`
+  return `${base} ${crews.length > 0 ? 'Our own crew and general conditions count' : 'General conditions count'} at what they cost.`
 }

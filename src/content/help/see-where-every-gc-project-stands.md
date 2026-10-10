@@ -2,7 +2,7 @@
 title: see where every GC project stands
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card
+keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card, who to call, to call
 order: 94
 ---
 The Project Board shows every GC project by its stage. Each row says how many days are left before our bid is due. The row also says what the price is so far.
@@ -43,6 +43,21 @@ A row with trades that have no number says *so far, with 3 holes* under the pric
 
 The guess for a trade with no number is its lowest quote. When there is none, it is our budget for that trade.
 
+## See who to call on a job
+
+Each row shows how many people we wait on for that job. A row with late calls also says how many are late.
+
+1. Point at the count under the name, or press it to keep the card open.
+2. The card lists each person, with the late ones first. Every reason we need them sits under their name.
+3. Press {{button:outline|Call}} to call that person.
+4. Press {{button:outline|Open Follow up}} to see everyone we wait on across all jobs.
+
+A person on two jobs shows on both rows. A row with nobody to call says *Nobody to chase*.
+
+:::example A row's count
+{{chip:red|6 to call}}
+:::
+
 ## What comes next
 
-Carrying a quote comes to the board in a later step. So do the ring on each row and *Who to call*. To ask a company for a quote, press Ask for quotes on the project's card below the board.
+Carrying a quote comes to the board in a later step. So does the ring on each row. To ask a company for a quote, press Ask for quotes on the project's card below the board.

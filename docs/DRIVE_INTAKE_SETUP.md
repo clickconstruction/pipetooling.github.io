@@ -54,6 +54,12 @@ deleting the key). Never wire a human Google password into anything.
   anyway" confirmation, which silently kills the share if dismissed (bit us live
   2026-08-30). Non-Drive URLs fetch unauthenticated as before; a failed upload never
   fails the call (`upload_note` says what to do).
+- **GC mode's trade partner portal (P5a-1, v2.5172)**: `submit-gc-trade-portal`'s kind
+  `file` uploads a trade's file into the GC job's own folder (`gc_projects.drive_folder_url`,
+  made by `gc-drive-access`) with the same SA and the same secrets, no new one. A submittal's
+  file goes to the job's **Submittals** folder; any other to **Team only → From trades →
+  <company>**. Each folder is found or made by name, and each file is a new upload
+  (`uploadBytes`) named so no two meet. The app keeps the link in `gc_trade_files`, never a copy.
 
 ## The upload leg: RESOLVED — Shared Drive (live since 2026-08-29)
 

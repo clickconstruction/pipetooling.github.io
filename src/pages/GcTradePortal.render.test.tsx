@@ -71,7 +71,8 @@ describe('GcTradePortal', () => {
     expect(ask.getByText('Panels and feeders')).toBeTruthy()
     // The known exclusion, said with who does it (the form's own exclusion ticks name it again).
     expect(ask.getByText('Permits and fees (the owner does it)')).toBeTruthy()
-    expect(ask.getByText('Have your own quote file? Email it to Avery Lin (avery@example.com).')).toBeTruthy()
+    // Its own quote file is picked in the quote form since P5a-1, so no line says to email it.
+    expect(ask.queryByText(/Email it to/)).toBeNull()
     // The presses (P2b-ii) are in GcTradePortal.presses.render.test.tsx.
     expect(ask.getByRole('button', { name: 'Pass on this one' })).toBeTruthy()
     expect(block('Who to call').getByText('Avery Lin')).toBeTruthy()

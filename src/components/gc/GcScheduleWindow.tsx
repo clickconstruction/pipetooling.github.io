@@ -5,7 +5,8 @@
  * theirs. It frames the schedule's body (`GcSchedule`), which reads the job's schedule over the board
  * the page already holds. A dev's only until the schedule's PR 10 opens it to the team (G-133); a dev moves a bar
  * in it since PR 8a, each move with why it moved. Since PR 9d, `canPull` adds Pull earlier and Days back (a dev's while
- * Building is built, since they read its submittals and RFIs).
+ * Building is built, since they read its submittals and RFIs). Since PR 13b, `canTell` adds Tell the trades (whoever may
+ * send a trade email, a dev today).
  */
 import { useEffect } from 'react'
 import type { ScheduleReads } from '../../lib/gc/scheduleIo'
@@ -18,6 +19,7 @@ export function GcScheduleWindow({
   by,
   canMove = false,
   canPull = false,
+  canTell = false,
   reads,
   onClose,
 }: {
@@ -26,6 +28,8 @@ export function GcScheduleWindow({
   by: string
   canMove?: boolean
   canPull?: boolean
+  /** Tell the trades (PR 13b): with `canMove`, for whoever may send a trade email (`canSendGcTradeEmail`). */
+  canTell?: boolean
   /** What this reader may read over the schedule (PR 16), memoized by the page. */
   reads?: ScheduleReads
   onClose: () => void
@@ -60,7 +64,7 @@ export function GcScheduleWindow({
           </button>
         </div>
         <div style={{ padding: '0.8rem 1rem', overflowY: 'auto' }}>
-          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} canPull={canPull} {...(reads ? { reads } : {})} />
+          <GcSchedule state={state} projectId={project.id} by={by} canMove={canMove} canPull={canPull} canTell={canTell} {...(reads ? { reads } : {})} />
         </div>
       </div>
     </div>

@@ -278,7 +278,7 @@ export function GcScheduleWalk({
         </div>
         {changes.length > 0 && (
           <div data-walk-told style={{ color: 'var(--text-muted)', fontSize: '0.83rem' }}>
-            The trades and the customer&apos;s Friday report are told from this list. Telling them comes later. For now it is kept under the chart, in Changes to the schedule.
+            Tell the trades from Changes to the schedule, under the chart. The customer&apos;s Friday report reads this list.
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>

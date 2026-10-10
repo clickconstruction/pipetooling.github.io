@@ -27,7 +27,7 @@ import { Btn, Card, Chip, input, type Tone } from './gcUi'
 import { GcFollowUpPromises } from './GcFollowUpPromises'
 import { GcDeclineForm } from './GcDeclineForm.proto'
 import { GcFollowUpSheet } from './GcFollowUpSheet'
-import { PeopleRows } from './GcPeoplePill'
+import { PeopleRows } from './GcPeoplePill.proto'
 import { PartnerLink } from './GcCompanyFile'
 
 /**
