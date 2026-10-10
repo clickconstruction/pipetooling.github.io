@@ -45,6 +45,20 @@ function teamInSql(fn: 'gc_money_team' | 'gc_office_team'): string[] {
 }
 const moneyTeamInSql = () => teamInSql('gc_money_team')
 
+/** The roles `get_gc_office_notices_due()` lets hear a notice as the project manager, in the newest migration that defines it. */
+function officeNoticesTeamInSql(): string[] {
+  const dir = join(process.cwd(), 'supabase', 'migrations')
+  const sql = readdirSync(dir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort()
+    .reverse()
+    .map((f) => readFileSync(join(dir, f), 'utf8'))
+    .find((s) => s.includes('FUNCTION public.get_gc_office_notices_due('))
+  const roles = sql && /mp\.role IN \(([^)]*)\)/.exec(sql)?.[1]
+  if (!roles) throw new Error('no migration names the office notices\' roles')
+  return roles.split(',').map((r) => r.trim().replace(/^'|'$/g, ''))
+}
+
 describe('canSeeGcMoney', () => {
   it('shows our number to dev, the leaders and the controller, as gc_money_team() does', () => {
     for (const role of ['dev', 'master_technician', 'controller'] as UserRole[]) {
@@ -84,6 +98,10 @@ describe('canSendGcTradeEmail', () => {
 
   it('names the money team as gc-customer-email does, so the two copies cannot drift', () => {
     expect([...GC_MONEY_TEAM].sort()).toEqual([...GC_CUSTOMER_EMAIL_ROLES].sort())
+  })
+
+  it('names the money team as the office notices do, who hear the money only on it (O10a)', () => {
+    expect([...GC_MONEY_TEAM].sort()).toEqual(officeNoticesTeamInSql().sort())
   })
 })
 
