@@ -386,8 +386,8 @@ export async function checkDriveAccess(url: string, at?: { projectId: string; re
 /**
  * `money` (B5-c): the reader is on the money team (`canSeeGcMoney`), so our number's inputs are read.
  * Anyone else skips the read: the policy would return no row, and the screens show the trades alone.
- * The four reads on no job's ids (the companies, the promises, the papers sent and the call log) page past PostgREST's
- * 1,000-row cap (B2b-ii-b, as the Takeoff parts catalog taught in v2.2755), each in a stable order.
+ * The five reads on no job's ids (the companies, the promises, the companies' papers, the papers sent and the call log)
+ * page past PostgREST's 1,000-row cap (B2b-ii-b, as the Takeoff parts catalog taught in v2.2755), each in a stable order.
  */
 export async function loadGcBoardRows(projects: GcProjectView[], today: string, { money = false }: { money?: boolean } = {}): Promise<BoardRows> {
   const ids = projects.map((p) => p.id)
@@ -418,8 +418,10 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
           .select('id, package_id, status, price, retainage_pct, based_on_rev, their_sov, excluded, sent_on, signed_on, accepted_on')
           .in('package_id', packageIds)
       : none,
-    // The companies' own papers (B6-b-ii): what person_contract_documents' own policies let the reader see (call R).
-    supabase.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at, created_at').not('company_id', 'is', null),
+    // The companies' own papers (B6-b-ii), as their states only (`gc_company_paper_states`, v2.5179): a company's agreement,
+    // W-9 and certificate rows, the eight columns `companyPapers` reads, for the whole office team. The table's own policies
+    // read for the pay roles only, so an estimator's board showed every paper missing (call R). Paged in the function's order.
+    fetchAllRows((from, to) => supabase.rpc('gc_company_paper_states', {}).range(from, to), 'load the trade partners’ papers'),
     // Every send of a paper (B6-b-i): dev only while the Board is built, so anyone else reads none.
     fetchAllRows(
       (from, to) =>
@@ -506,7 +508,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     sows: sowRows as BoardRows['sows'],
     sowLines: taken(sowLines, 'load the statements of work’s lines') as BoardRows['sowLines'],
     ownBids: taken(ownBids, 'load our own trades’ bids'),
-    papers: taken(papers, 'load the trade partners’ papers'),
+    papers,
     paperSends,
     ownerContractSends: contractSendRows,
     ownerContractEmails: contractEmails,
