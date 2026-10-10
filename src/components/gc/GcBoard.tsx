@@ -7,6 +7,7 @@ import { lostWords } from '../../lib/gc/lost'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { daysUntil, money, shortDate, weekdayDate } from '../../lib/gc/words'
 import { GcBoardStrip, GcStageHeading, type StageStripItem } from './GcBoardStages'
+import { useCustomerOpener } from './gcCustomerOpener'
 import { GcPriceCard, GcPriceLikely, GcPriceTrigger } from './GcPriceCard'
 import { Chip, PlusUnknown, type Tone } from './gcUi'
 import { GC_ICON_PATHS } from './gcIcons'
@@ -267,6 +268,8 @@ function ProjectRow({
   const soFar = moneyShown ? 'so far' : 'trades so far'
   const totals = proposalTotals(project)
   const card = usePriceCard()
+  // The customer's name opens their window (the Board's B6-d-ii) where the page gives one; plain words otherwise.
+  const customers = useCustomerOpener()
   const newest = planLabel(project, currentRev(project))
   // A phone or a narrow pane: the days and the name on top, the rest on the lines under.
   const narrow = useMatchMedia('(max-width: 760px)')
@@ -304,7 +307,21 @@ function ProjectRow({
         <br />
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
           {/* The dot rides with the customer's name, so it never starts a line on a phone. */}
-          {project.owner}
+          {customers && project.customerId ? (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                customers.openCustomer(project.customerId)
+              }}
+              title={`Open ${project.owner}`}
+              style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer', textAlign: 'left' }}
+            >
+              {project.owner}
+            </button>
+          ) : (
+            project.owner
+          )}
           {project.architect && (
             <>
               {'\u00a0·'} <span style={{ display: 'inline-block' }}>drawn by {project.architect}</span>

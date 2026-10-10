@@ -2,6 +2,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { GcBoard } from './GcBoard'
+import { GcCustomerOpenerContext } from './gcCustomerOpener'
 import { boardStateFromRows } from '../../lib/gc/boardRows'
 import { clinicBoardRows } from '../../lib/gc/boardTestRows'
 import { installDomShims } from '../../test/renderSmokeMocks'
@@ -21,6 +22,24 @@ describe('GcBoard', () => {
     expect(within(row).getByText('days left')).toBeTruthy()
     expect(within(row).getByText(/so far, with 3 holes/)).toBeTruthy()
     expect(within(row).getByText(/Oak Street Partners/)).toBeTruthy()
+  })
+
+  it('the customer’s name opens their window where the page gives one, and stays plain where it does not (B6-d-ii)', () => {
+    const state = boardStateFromRows(clinicBoardRows())
+    const openCustomer = vi.fn()
+    const onOpen = vi.fn()
+    const { unmount } = render(
+      <GcCustomerOpenerContext.Provider value={{ openCustomer }}>
+        <GcBoard state={state} onOpen={onOpen} onPlans={() => undefined} />
+      </GcCustomerOpenerContext.Provider>,
+    )
+    const row = document.querySelector('[data-gc-board-row="p1"]') as HTMLElement
+    fireEvent.click(within(row).getByRole('button', { name: 'Oak Street Partners' }))
+    expect(openCustomer).toHaveBeenCalledWith('c1')
+    expect(onOpen).not.toHaveBeenCalled()
+    unmount()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} />)
+    expect(within(document.querySelector('[data-gc-board-row="p1"]') as HTMLElement).queryByRole('button', { name: 'Oak Street Partners' })).toBeNull()
   })
 
   it('marks a price with a missing cost as + ?, on the row and on the carried trade in the price card', () => {
