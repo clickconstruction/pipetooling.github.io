@@ -7,7 +7,8 @@
 # supabase/migrations applied in order (about a minute). The papers migration is then applied a second time,
 # which must change nothing. The scenario reads the three verbs' grants and the files ledger's CHECKs, files a
 # certificate from the company's own upload and keeps its insurance promise, writes and replaces a vetting form,
-# opens a master agreement the office sent and a W-9 copied once from the Contract Book's W-9 form, and refuses
+# lets the office mark a received certificate good (P5b-2m), opens a master agreement the office sent and a W-9 copied
+# once from the Contract Book's W-9 form, and refuses
 # each in its key and words, all inside one transaction that rolls back. It raises on its first failed assertion
 # and ends with "gc_portal_p5b PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; .github/workflows/sql-beds.yml runs every bed in
@@ -20,6 +21,9 @@ PORT="${PGTEST_PORT:-55462}"
 NAME="pgtest-gc-portal-p5b"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_gc_portal_p5b_papers.sql)"
+# P5b-2m redefines gc_trade_coi (received, the owner's "Office looks first"): it is applied again after P5b-m's second
+# run, so the bed's schema is main's (HELPERS.md: a bed that re-applies an older migration re-applies the newest after it).
+RECEIVED="$(ls supabase/migrations/*_gc_portal_p5b_coi_received.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -41,6 +45,7 @@ for f in supabase/migrations/*.sql; do
 done
 # A second run must change nothing: the CHECKs are swapped as they were, the functions replaced, the grants the same.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+psql_as postgres -f - < "$RECEIVED" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $RECEIVED"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/gc_portal_p5b/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_portal_p5b PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
