@@ -10,7 +10,9 @@
 # kernels' words, the plan at Start, the records that touch several rows, and the guard. It raises on
 # its first failed assertion and ends with "gc_schedule PASSED". Since the schedule's PR 13a the tells'
 # two writes are applied a second time too, and 30_tells.sql plays Tell the trades and a trade's answer
-# on a job of its own, ending "gc_schedule tells PASSED". PGTEST_KEEP=1 leaves the container
+# on a job of its own, ending "gc_schedule tells PASSED". Since PR 14a the trade's four writes are applied a second
+# time too, and 40_trade_writes.sql plays them on a job of its own, ending "gc_schedule trade writes PASSED".
+# PGTEST_KEEP=1 leaves the container
 # up. Needs docker; .github/workflows/sql-beds.yml runs it on a PR that touches the schedule's SQL.
 # Never touches prod.
 set -euo pipefail
@@ -21,6 +23,7 @@ NAME="pgtest-gc-schedule"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_gc_schedule_writes.sql)"
 TELLS="$(ls supabase/migrations/*_gc_schedule_tells.sql)"
+TRADE_WRITES="$(ls supabase/migrations/*_gc_schedule_trade_writes.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -44,11 +47,16 @@ done
 # makes no second trigger.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 psql_as postgres -f - < "$TELLS" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $TELLS"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+psql_as postgres -f - < "$TRADE_WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $TRADE_WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/gc_schedule/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_schedule PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 # Tell the trades and their answers (the schedule's PR 13a): a job of its own, in a transaction of its own.
 out="$(psql_as postgres -f - < supabase/tests/gc_schedule/30_tells.sql 2>&1 || true)"
 if ! grep -q "gc_schedule tells PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+# A trade's four writes from its portal (the schedule's PR 14a): a job of its own, in a transaction of its own.
+out="$(psql_as postgres -f - < supabase/tests/gc_schedule/40_trade_writes.sql 2>&1 || true)"
+if ! grep -q "gc_schedule trade writes PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "gc-schedule bed ok"

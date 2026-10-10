@@ -45,20 +45,24 @@ import {
  * customer, with their portal link when they have one). Building's U7b: `weekly` (the Friday report, to the customer's
  * contact, the architect copied when its row says so, in the row's own words with no frame; its email's log is written
  * back on the row). The Board's B6-d-iii-b: `contract` (our contract to sign, to the customer's contact, the send's own
- * file attached here once its SHA-256 still matches, and their portal link required: one where their GC jobs show).
+ * file attached here once its SHA-256 still matches, and their portal link required: one where their GC jobs show). The
+ * schedule's PR 15a: `schedule` (the customer's schedule on its own, G-94, to their contact, in the `gc_schedule_sends`
+ * row's own words with no frame; its email's log is written back on the row).
  *
  *   POST { projectId, kind, sourceId, subject, lines, pdf?, test? }   staff JWT
  *     → { to, email, resendEmailId, copied, test }
  *     → { error: key } with CUSTOMER_EMAIL_ERRORS' status
  *
  * In order: the caller (a real account, never a training account, a sample or a digital twin), the shape, the kind's
- * gate (the money team for a bill or a change; the weekly report's row read with the caller's own JWT, so RLS decides),
+ * gate (the money team for a bill or a change; the weekly report's and the schedule's rows read with the caller's own
+ * JWT, so RLS decides),
  * the project, the row the kind is about (this project's pay application, certified for `certified`; this project's
- * change order, sent and not yet answered; this project's reminder, not emailed yet; this project's interest bill; or
- * this project's weekly report from the company, not emailed yet), who gets the kind (`GC_CUSTOMER_EMAIL_ADDRESS`: the
- * billing email first for a bill, the contact first for the weekly report), the email, the send, the log written back
- * on a reminder or a weekly report, then its sent copy (docs/SENT_COPIES.md, `GC_CUSTOMER_EMAIL_FILED_AS`, on the
- * billing job). The service role reads here but for the weekly report's row, so the read-only blocks and the twin fence
+ * change order, sent and not yet answered; this project's reminder, not emailed yet; this project's interest bill;
+ * this project's weekly report from the company, not emailed yet; or this project's schedule as kept, not emailed yet),
+ * who gets the kind (`GC_CUSTOMER_EMAIL_ADDRESS`: the billing email first for a bill, the contact first for the weekly
+ * report and the schedule), the email, the send, the log written back on a reminder, a weekly report or a schedule, then
+ * its sent copy (docs/SENT_COPIES.md, `GC_CUSTOMER_EMAIL_FILED_AS`, on the
+ * billing job). The service role reads here but for the weekly report's and the schedule's rows, so the read-only blocks and the twin fence
  * never see it. Nothing else is written: the sent copies are the record of what went.
  *
  * `test: true` (every kind): the same gate and the same email, to the caller's own address only, `[TEST]` before the
@@ -146,6 +150,17 @@ serve(async (req) => {
       if (rep.email_send_log_id && !m.test) return refuse('alreadySent')
       words = { subject: String(rep.subject), lines: gcWeeklyReportLines(String(rep.body)) }
       copyArchitect = rep.copied_architect === true
+    } else if (source === 'gc_schedule_sends') {
+      // The customer's schedule (the schedule's PR 15a), read as the caller, so RLS decides who may send it, as the weekly
+      // report's. The letter as the window kept it goes, never the request's lines; a row emailed already answers
+      // alreadySent, except as a test.
+      const { data: letter } = await anon.from('gc_schedule_sends').select('id, project_id, subject, lines, email_send_log_id').eq('id', m.sourceId).maybeSingle()
+      if (!letter) return refuse('notFound')
+      if (letter.project_id !== m.projectId) return refuse('otherProject')
+      if (letter.email_send_log_id && !m.test) return refuse('alreadySent')
+      const lines = ((letter.lines ?? []) as unknown[]).map(String).filter((l) => l.trim() !== '')
+      if (lines.length === 0) return refuse('badRequest')
+      words = { subject: String(letter.subject), lines }
     } else if (source === 'gc_owner_contract_sends') {
       // Our contract (the Board's B6-d-iii-b): the project's newest send, not signed, on paper or in their portal.
       const { data: send } = await admin.from('gc_owner_contract_sends').select('id, project_id, signed_on, created_at, file_path, file_name, file_sha256').eq('id', m.sourceId).maybeSingle()
@@ -241,10 +256,11 @@ serve(async (req) => {
     // A test copy: nothing filed, nothing written back.
     if (m.test) return json({ to: String(who.name ?? ''), email: testAddress, resendEmailId: sent.resendEmailId ?? null, copied: false, test: true })
 
-    // A reminder and a weekly report keep the email they went in (O1's column grant; U7b's by the service role, since a
-    // signed-in caller has no UPDATE on gc_weekly_reports): the send's log row, found by its Resend id. Written before the
-    // copy is filed, so a retry after a failed write-back is as unlikely as it can be.
-    if ((source === 'gc_owner_pay_reminders' || source === 'gc_weekly_reports') && sent.resendEmailId) {
+    // A reminder, a weekly report and the customer's schedule keep the email they went in (O1's column grant; U7b's and
+    // 15a's by the service role, since a signed-in caller has no UPDATE on gc_weekly_reports or gc_schedule_sends): the
+    // send's log row, found by its Resend id. Written before the copy is filed, so a retry after a failed write-back is as
+    // unlikely as it can be.
+    if ((source === 'gc_owner_pay_reminders' || source === 'gc_weekly_reports' || source === 'gc_schedule_sends') && sent.resendEmailId) {
       const { data: log } = await admin.from('email_send_log').select('id').eq('resend_email_id', sent.resendEmailId).maybeSingle()
       if (log?.id) await admin.from(source).update({ email_send_log_id: log.id }).eq('id', m.sourceId)
     }

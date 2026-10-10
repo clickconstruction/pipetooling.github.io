@@ -599,7 +599,7 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     stage: stageOf(view.stage),
     bidDue: view.bidDue,
     sizeNote: view.sizeNote,
-    planSets: view.planSets.map((s) => ({ rev: s.rev, label: s.label, issuedOn: s.issuedOn, touches: [] })),
+    planSets: view.planSets.map((s) => ({ rev: s.rev, label: s.label, issuedOn: s.issuedOn, touches: [], changedSheets: s.changedSheets })),
     packages,
     generalConditions: num(money?.general_conditions),
     generalConditionsJobId: money?.general_conditions_job_id ?? null,

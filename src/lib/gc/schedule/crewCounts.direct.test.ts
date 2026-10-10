@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import { partnerById } from '../lookups'
 import type { GcState } from '../types'
-import { crewCountAllowed, crewCountLogWords, crewCountOn, crewLogWords } from './crewCounts'
+import { crewCountAllowed, crewCountLogWords, crewCountOn, crewCountProblem, crewLogWords, portalCrewAsks } from './crewCounts'
 import { morningList } from './morningList'
 import { crewNumbers } from './peopleOnSite'
 import { initialGcState } from './testState'
@@ -120,5 +120,21 @@ describe('the number crowding and people on site count by', () => {
   it('reads the log only up to today', () => {
     const before = { ...initialGcState(), today: '2026-09-01' }
     expect(crewNumbers(before, job(before))('froof', THIS_WEEK)).toEqual({ count: 3, from: 'assumed' })
+  })
+})
+
+describe('the portal’s crew block (the schedule’s PR 14a)', () => {
+  it('asks a whole number from 0 to 50, as gc_trade_set_crew_count does', () => {
+    expect([0, 4, 50].map(crewCountProblem)).toEqual([null, null, null])
+    expect([-1, 51, 2.5, Number.NaN].map(crewCountProblem)).toEqual(['crewWhole', 'crewWhole', 'crewWhole', 'crewWhole'])
+  })
+
+  it('lists Summit’s three weeks, each with its trade and its count so far', () => {
+    const state = withCounts(initialGcState(), count('summit', 'froof', '2026-10-05', 5))
+    expect(portalCrewAsks(state, 'summit', job(state)).map((w) => [w.weekOf, w.trades.map((t) => [t.trade, t.now?.count ?? null])])).toEqual([
+      ['2026-09-28', [['Roofing', null]]],
+      ['2026-10-05', [['Roofing', 5]]],
+      ['2026-10-12', [['Roofing', null]]],
+    ])
   })
 })

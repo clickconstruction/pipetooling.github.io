@@ -1,0 +1,361 @@
+/**
+ * GC mode, the real build, the Board's B2b-vi: the progress ring on a Project Board row and its card, moved word for word from the
+ * GC mode prototype (branch spike/gc-mode, `gcProgress.ts`). No screen draws it yet; the plan is
+ * to-dos/gc-mode/mockups/board-b2b-vi.md on that branch.
+ */
+import { partnerBlockers } from './bench'
+import { BIDS_WANTED, bidIsStale, bidsIn, carriedAmount, carriedUncosted, isGuess, quoteRanOut, uncostedWords } from './bids'
+import { ownCrewWork, sentBackOpen, timesSentBack, tradeCloseout } from './building'
+import { missingLogs, missingLogsWords } from './buildingLog'
+import { drawPayDays } from './buildingPay'
+import { punchCounts } from './buildingPunch'
+import { submittalRows } from './buildingSubmittals'
+import { changeRequestLinesFor } from './changeRequestsWaiting'
+import { followUps } from './followUp'
+import { currentRev, partnerById, planLabel, plansReach } from './lookups'
+import { ourMoveLines } from './schedule/counts'
+import { openInspectionFailures, scheduleSummary, scheduleSummaryWords } from './schedule/schedule'
+import { walkStanding } from './schedule/walk'
+import { staleChange, staleWords } from './stale'
+import { startChecklist } from './start'
+import type { Draw, GcProject, GcStage, GcState } from './types'
+import { shortDate, thousands, weekdayDate } from './words'
+
+/** The stage colors, saturated on purpose: the ring is a status mark, not a neutral surface. */
+export const RING_COLORS: Record<GcStage, string> = {
+  pursuing: '#f59e0b',
+  buyout: '#3b82f6',
+  building: '#22c55e',
+}
+
+/** One thing the ring is waiting on, or one it already has. */
+export interface ProgressItem {
+  label: string
+  detail: string
+  done: boolean
+}
+
+/** One type of thing on the stage's checklist: enough quotes, a number to carry, a W-9. */
+export interface ProgressGroup {
+  key: string
+  label: string
+  /** Why this type matters, in one sentence. Empty: the title says it all. */
+  why: string
+  items: ProgressItem[]
+  /** Said instead of naming every done item, when the names would not read as a list. */
+  doneWords?: (done: number) => string
+}
+
+export interface StageProgress {
+  /** 0 to 1: how much of this stage is done. */
+  share: number
+  /** What sits inside the ring: a count ("9/16") or a percent ("58%"). */
+  center: string
+  /** The one line that says what the ring is counting. */
+  headline: string
+  /** What the ring counts, by type. The ring and the hover card read the same list. */
+  groups: ProgressGroup[]
+  /** Things worth knowing that the ring does not count, said as sentences. */
+  also: string[]
+}
+
+function countedShare(groups: ProgressGroup[]): { done: number; total: number } {
+  const items = groups.flatMap((g) => g.items)
+  return { done: items.filter((i) => i.done).length, total: items.length }
+}
+
+/**
+ * The ring on a Project Board row and the card under it: how far the project is through the
+ * stage it is in, by type. Bidding counts enough quotes, a number to carry, quotes on the newest
+ * plans and our own bid. Buyout is the Get started checklist grouped by kind of step. Building
+ * weighs the work each trade has reported by what its statement of work is worth.
+ */
+export function stageProgress(state: GcState, project: GcProject): StageProgress {
+  const progress = project.stage === 'pursuing' ? biddingProgress(state, project) : project.stage === 'buyout' ? buyoutProgress(state, project) : buildingProgress(state, project)
+  // A change a trade asked for waits on us (the owner, 2026-10-05): named, never counted. After the
+  // lines each stage orders first (Building's schedule, inspections and late pay).
+  const asked = changeRequestLinesFor(state, project)
+  return asked.length > 0 ? { ...progress, also: [...progress.also, ...asked] } : progress
+}
+
+function biddingProgress(state: GcState, project: GcProject): StageProgress {
+  const hired = project.packages.filter((p) => !p.selfPerform)
+  const quotes: ProgressGroup = {
+    key: 'quotes',
+    // Each title says what to do (the owner, 2026-10-04: "more direct or more self-explanatory").
+    label: `Get ${BIDS_WANTED} quotes for each trade`,
+    why: '',
+    items: hired.map((pkg) => {
+      // A number past its good-until day does not count (question 14, the Board lane's call, 2026-10-04).
+      const all = bidsIn(pkg)
+      const n = all.filter((i) => !(i.bid && quoteRanOut(i.bid, state.today))).length
+      const ranOut = all.length - n
+      const waiting = pkg.invites.filter((i) => i.status === 'invited' || i.status === 'opened').length
+      const done = n >= BIDS_WANTED
+      const ran = ranOut > 0 ? ` ${ranOut} ran out. Ask them to send it again.` : ''
+      return {
+        label: pkg.trade,
+        done,
+        detail: done
+          ? `${n} quotes in`
+          : `${n} of ${BIDS_WANTED} in.${ran} ${waiting > 0 ? `${waiting} still asked.` : 'Ask more companies.'}`,
+      }
+    }),
+  }
+  const number: ProgressGroup = {
+    key: 'number',
+    label: "Pick the quote we'll use for each trade",
+    why: 'Our price needs a real quote for every trade. Our own guess fills the price but does not count.',
+    items: project.packages.map((pkg) => {
+      const amount = carriedAmount(pkg)
+      const n = bidsIn(pkg).length
+      const carriedFrom = pkg.invites.find((i) => i.id === (pkg.awardedInviteId ?? pkg.carried))
+      const who = carriedFrom ? partnerById(state, carriedFrom.partnerId)?.company : null
+      const quotes = `${n} ${n === 1 ? 'quote' : 'quotes'} in`
+      // The owner's rule (2026-10-03): a carried quote with work that has no cost yet is not a
+      // real number until every line has one.
+      const uncosted = carriedUncosted(pkg)
+      // A carried number past its good-until day is not a real number until it is sent again (question 14).
+      const ranOut = !pkg.sow && !!carriedFrom?.bid && quoteRanOut(carriedFrom.bid, state.today)
+      return {
+        label: pkg.trade,
+        // The owner's rule (2026-10-02): a guess never closes a trade. Only a real quote does,
+        // or our own crew's number from a Trades mode bid.
+        done: amount !== null && !isGuess(pkg) && uncosted.length === 0 && !ranOut,
+        detail:
+          amount === null
+            ? pkg.selfPerform
+              ? 'Our own bid is not priced yet.'
+              : n > 0
+                ? `${quotes}. Pick one to carry.`
+                : 'No quote yet.'
+            : pkg.selfPerform
+              ? `Our own crew, ${thousands(amount)}K`
+              : isGuess(pkg)
+                ? `Our guess of ${thousands(amount)}K is in the price. ${n > 0 ? `${quotes}. Carry one to close it.` : 'Get a quote to close it.'}`
+                : ranOut
+                  ? `${who ?? 'Carried'}, ${thousands(amount)}K. Their number ran out. Ask them to send it again.`
+                  : uncosted.length > 0
+                    ? `${who ?? 'Carried'}, ${thousands(amount)}K + ?. ${uncostedWords(uncosted)} Set it in Compare quotes.`
+                    : `${who ?? 'Carried'}, ${thousands(amount)}K`,
+      }
+    }),
+  }
+  const newest = currentRev(project)
+  const priced = hired.flatMap((pkg) => bidsIn(pkg).map((invite) => ({ pkg, invite })))
+  const current: ProgressGroup = {
+    key: 'current',
+    label: 'Confirm quotes after plan changes',
+    why: 'A quote priced on older plans has to be confirmed after a change.',
+    doneWords: (n) => `${n} ${n === 1 ? 'quote is' : 'quotes are'} on ${planLabel(project, newest)}.`,
+    items: priced.map(({ pkg, invite }) => {
+      const stale = bidIsStale(project, pkg, invite)
+      const company = partnerById(state, invite.partnerId)?.company ?? 'A company'
+      // Name what changed under the quote (the owner's pick, 2026-10-03), not only the trade.
+      const change = stale ? staleChange(project, pkg, invite) : null
+      return {
+        label: `${company} on ${pkg.trade}`,
+        done: !stale,
+        detail: stale
+          ? `Priced on ${planLabel(project, invite.bid?.basedOnRev ?? null)}. ${change ? `${staleWords(pkg, change)} ` : ''}Ask them to confirm.`
+          : `On ${planLabel(project, newest)}`,
+      }
+    }),
+  }
+  const sent: ProgressGroup = {
+    key: 'sent',
+    label: 'Send our bid',
+    why: 'The last step here. Send our price to the customer.',
+    items: [
+      {
+        label: project.ourBidSentOn ? 'Sent' : 'Not sent yet',
+        done: project.ourBidSentOn !== null,
+        detail: project.ourBidSentOn
+          ? `Sent ${shortDate(project.ourBidSentOn)}`
+          : project.bidDue
+            ? `Due ${weekdayDate(project.bidDue)}`
+            : 'No due date',
+      },
+    ],
+  }
+  const groups = [quotes, number, current, sent].filter((g) => g.items.length > 0)
+  const { done, total } = countedShare(groups)
+  const also: string[] = []
+  const toCall = followUps(state).filter((f) => f.project.id === project.id && f.why !== 'waiting').length
+  if (toCall > 0) also.push(`${toCall} ${toCall === 1 ? 'company needs' : 'companies need'} a call. See Follow up.`)
+  const reach = plansReach(project)
+  if (reach.have < reach.of) also.push(`${reach.of - reach.have} of ${reach.of} companies have not opened ${planLabel(project, newest)}.`)
+  return {
+    share: total === 0 ? 0 : done / total,
+    center: `${done}/${total}`,
+    headline: `${done} of ${total} steps done before our bid can go in.`,
+    groups,
+    also,
+  }
+}
+
+const START_STEP_GROUPS: { key: string; label: string; why: string }[] = [
+  { key: 'awarded', label: 'Award each trade', why: 'Pick one company for each trade.' },
+  { key: 'msa', label: 'Get the master agreement signed', why: 'Each company signs it once. It covers every job they do with us.' },
+  { key: 'coi', label: 'Get current insurance', why: 'A current insurance certificate on file.' },
+  { key: 'w9', label: 'Get each W-9', why: 'Their tax form. We need it before we pay them.' },
+  { key: 'sow', label: 'Get the statement of work signed', why: 'The scope and price for this job, signed on the newest plans.' },
+]
+
+function buyoutProgress(state: GcState, project: GcProject): StageProgress {
+  const list = startChecklist(state, project)
+  const owner: ProgressGroup = {
+    key: 'owner',
+    label: 'Our contract, permit and start date',
+    why: 'Our contract with the customer, the permit and a start date.',
+    items: list.owner.map((c) => ({ label: c.label, detail: c.detail, done: c.done })),
+  }
+  const byStep: ProgressGroup[] = START_STEP_GROUPS.map((g) => ({
+    ...g,
+    items: list.trades.flatMap((t) => {
+      const check = t.checks.find((c) => c.key === g.key)
+      if (check) return [{ label: t.pkg.trade, detail: check.detail, done: check.done }]
+      // Our own crew: one step, counted under Awarded, nothing to sign; done once our bid is priced.
+      const self = t.checks.find((c) => c.key === 'self')
+      return g.key === 'awarded' && self
+        ? [{ label: t.pkg.trade, detail: self.done ? 'Our own crew' : 'Our own bid is not priced yet.', done: self.done }]
+        : []
+    }),
+  }))
+  const schedule: ProgressGroup = {
+    key: 'schedule',
+    label: 'Draw the schedule',
+    why: 'The dates and what waits on what. Start locks it as the plan we measure against.',
+    items: [{ label: list.schedule.label, detail: list.schedule.detail, done: list.schedule.done }],
+  }
+  const groups = [owner, schedule, ...byStep].filter((g) => g.items.length > 0)
+  return {
+    share: list.total === 0 ? 0 : list.done / list.total,
+    center: `${list.done}/${list.total}`,
+    headline: `${list.done} of ${list.total} steps done before work can start.`,
+    groups,
+    also: list.ready ? ['Everything is in. Open Get started and tap Start.'] : [],
+  }
+}
+
+function buildingProgress(state: GcState, project: GcProject): StageProgress {
+  const withSow = project.packages.filter((p) => p.sow)
+  // Each trade on the job, in its order: one hired out weighs what its statement of work is worth,
+  // one our own crew does weighs our own number (`ownCrewWork`, the percent Bill the owner bills from).
+  const counted = project.packages.flatMap((pkg) => {
+    const crew = ownCrewWork(pkg)
+    if (crew) return [{ pkg, worth: crew.worth, done: crew.done, detail: `Our own crew, ${crew.pct}% done` }]
+    const sov = pkg.sow?.sov
+    if (!sov) return []
+    const total = sov.reduce((s, l) => s + l.amount, 0)
+    const done = sov.reduce((s, l) => s + (l.amount * l.pctReported) / 100, 0)
+    return [{ pkg, worth: total, done, detail: `${total === 0 ? 0 : Math.round((done / total) * 100)}% reported` }]
+  })
+  const worth = counted.reduce((s, c) => s + c.worth, 0)
+  const doneWorth = counted.reduce((s, c) => s + c.done, 0)
+  const share = worth === 0 ? 0 : doneWorth / worth
+  const work: ProgressGroup = {
+    key: 'work',
+    label: 'Trades report their work',
+    why: 'What each trade has reported, out of its statement of work. Our own crew counts too.',
+    items: counted.map((c) => ({ label: c.pkg.trade, detail: c.detail, done: c.worth > 0 && c.done >= c.worth })),
+  }
+  const also: string[] = []
+  // An approved draw past its pay-by day leads the card, after the schedule (owner, 2026-10-03).
+  const latePay: string[] = []
+  for (const pkg of withSow) {
+    const awarded = (() => {
+      const invite = pkg.invites.find((i) => i.id === pkg.awardedInviteId)
+      return invite ? partnerById(state, invite.partnerId) : undefined
+    })()
+    const company = awarded?.company ?? pkg.trade
+    // A draw cannot be approved while their paperwork is not current: say why it waits.
+    const blocked = awarded ? partnerBlockers(awarded, state.today) : []
+    const approveIt = blocked.length > 0 ? `${blocked.join(' ')} Approve it once that is fixed.` : 'Approve it.'
+    // Approved, not paid: by when, or how late (drawPayDays, the owner's pay terms).
+    const payIt = (what: string, d: Draw) => {
+      const days = drawPayDays(project, pkg, d, state.today)
+      if (days.daysLate > 0) {
+        latePay.push(`${what} is ${days.daysLate} ${days.daysLate === 1 ? 'day' : 'days'} late to pay. It was due ${shortDate(days.payBy)}.`)
+      } else {
+        also.push(`${what} is approved. Pay it${days.payBy ? (days.payBy === state.today ? ' today' : ` by ${shortDate(days.payBy)}`) : ''}.`)
+      }
+    }
+    for (const d of pkg.sow?.draws ?? []) {
+      if (d.final) {
+        // Closeout: the retainage release and its waivers are the final-payment ones.
+        if (d.status === 'requested') also.push(`${company} asked for its retainage back. Approve it on Closeout.`)
+        else if (d.status === 'approved') payIt(`The retainage release for ${company}`, d)
+        else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional final release of lien.`)
+      } else if (d.status === 'requested') also.push(`${company} asked for draw ${d.number}. ${approveIt}`)
+      else if (d.status === 'approved') payIt(`Draw ${d.number} for ${company}`, d)
+      else if (d.waiver === 'conditional') also.push(`${company} owes the unconditional waiver on draw ${d.number}.`)
+    }
+    const sow = pkg.sow
+    const back = sow ? sentBackOpen(sow) : null
+    if (back) {
+      // Sent back twice or more (owner, 2026-10-02): flag it so someone calls them.
+      const times = sow ? timesSentBack(sow, back.draw.number) : 1
+      also.push(
+        times >= 2
+          ? `Pay application ${back.draw.number} went back to ${company} ${times} times. Call them.`
+          : `Pay application ${back.draw.number} is back with ${company}. Waiting on a fixed one.`,
+      )
+    }
+    // The punch list (Building lane, 2026-10-03): what the trade still has to fix, what waits on our check.
+    const punch = punchCounts(project, pkg.id)
+    if (sow && sow.status === 'signed' && tradeCloseout(sow, project, state.today).next?.key === 'accepted') {
+      if (punch.total === 0) also.push(`${pkg.trade} is all billed. Walk it, then accept the work on Closeout.`)
+      else if (punch.open + punch.fixed === 0) also.push(`The punch list on ${pkg.trade} is done. Accept the work on Closeout.`)
+    }
+    if (punch.open > 0) also.push(`${company} has ${punch.open} punch ${punch.open === 1 ? 'item' : 'items'} to fix on ${pkg.trade}.`)
+    if (punch.fixed > 0) {
+      also.push(`${punch.fixed} punch ${punch.fixed === 1 ? 'item' : 'items'} on ${pkg.trade} ${punch.fixed === 1 ? 'is' : 'are'} fixed. Check ${punch.fixed === 1 ? 'it' : 'them'} on Closeout.`)
+    }
+  }
+  const pct = Math.round(share * 100)
+  // The schedule, once drawn (owner, 2026-10-03: its measures on a won job's row and in this card).
+  // An inspection that failed and has not passed since (owner, 2026-10-03): whose work, and when again.
+  const failed = openInspectionFailures(project).map((f) => {
+    const trades = project.packages.filter((k) => f.failure.packageIds.includes(k.id)).map((k) => k.trade)
+    const whose = trades.length === 0 ? '' : ` on the ${trades.length === 1 ? trades[0] : `${trades.slice(0, -1).join(', ')} and ${trades[trades.length - 1]}`} work`
+    return `The ${f.label.toLowerCase()} failed ${shortDate(f.failure.on)}${whose}. Re-inspection ${shortDate(f.failure.reinspectOn)}.`
+  })
+  also.unshift(...failed, ...latePay)
+  const sum = scheduleSummary(project, state.today)
+  if (sum) also.unshift(scheduleSummaryWords(sum))
+  // Not walked lately (the Gantt, G-59; the owner's OK 2026-10-06): right after the schedule's line.
+  const walk = walkStanding(project, state.today)
+  if (sum && walk.stale) also.splice(1 + failed.length + latePay.length, 0, `${walk.words} Open the Schedule tab and tap Update the week.`)
+  // Our own moves on the schedule (the counts): the finish past the contract, papers that wait on us, the log, a crowded place.
+  // After the schedule's own lines: the schedule, a failed inspection, a late draw (the owner's order, 2026-10-03) and the walk.
+  const ours = ourMoveLines(state, project)
+  if (sum && ours.length > 0) also.splice(1 + failed.length + latePay.length + (walk.stale ? 1 : 0), 0, ...ours)
+  // The daily log (owner, 2026-10-04): a working day this week with no log, last in the card.
+  // Only while work is still being reported: a job whose work is all in is closing out.
+  const noLog = share < 1 ? missingLogsWords(missingLogs(project, state.today)) : null
+  if (noLog) also.push(noLog)
+  // Submittals (owner, 2026-10-04): one late and not approved, or one waiting on us to send on.
+  for (const r of submittalRows(state, project)) {
+    if (r.state === 'approved') continue
+    const name = `Submittal ${r.submittal.number}, ${r.submittal.title}, from ${r.company}`
+    if (r.daysLate > 0) {
+      const whose = r.state === 'trade' ? 'They have not sent it yet.' : r.state === 'us' ? 'It waits on us.' : 'It is with the architect.'
+      also.push(`${name} is ${r.daysLate} ${r.daysLate === 1 ? 'day' : 'days'} late. ${whose}`)
+    } else if (r.state === 'us') {
+      also.push(`${name} waits on us.${r.neededBy === state.today ? ' It is needed today.' : r.neededBy ? ` It is needed by ${shortDate(r.neededBy)}.` : ''}`)
+    }
+  }
+  if (share >= 1) {
+    const signed = withSow.filter((p) => p.sow?.status === 'signed')
+    const closed = signed.filter((p) => p.sow && tradeCloseout(p.sow, project, state.today).closed).length
+    also.push(`All the work is reported. ${closed} of ${signed.length} ${signed.length === 1 ? 'trade is' : 'trades are'} closed out. See Closeout.`)
+  }
+  return {
+    share,
+    center: `${pct}%`,
+    headline: `${pct}% of the work is done, by what the trades${counted.some((c) => c.pkg.selfPerform) ? ' and our own crew' : ''} have reported.`,
+    groups: work.items.length > 0 ? [work] : [],
+    also,
+  }
+}

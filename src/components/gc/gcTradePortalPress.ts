@@ -14,6 +14,12 @@ export interface PortalPress {
    * the kind that stores the link does. `file` is null when the answer carried none (the sample).
    */
   upload: (fields: Record<string, unknown>) => Promise<{ problem: string | null; file: TradeFilePlaced | null }>
+  /**
+   * The company's master agreement or W-9 opened to sign (P5b-1, `paper_link`): the page goes to `/contract/accept` in
+   * the same tab, since Safari on a phone blocks a tab opened after an answer comes back. The refusal in the company's
+   * words, or null once it is on its way.
+   */
+  openPaper: (paper: 'msa' | 'w9') => Promise<string | null>
   /** The office's preview: presses are drawn, and each says nothing is saved. */
   preview: boolean
 }

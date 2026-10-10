@@ -58,6 +58,7 @@
     "test:pg:gc-portal-p5": "bash scripts/pgtest-gc-portal-p5.sh",
     "test:pg:gc-portal-p5a": "bash scripts/pgtest-gc-portal-p5a.sh",
     "test:pg:gc-portal-p5b": "bash scripts/pgtest-gc-portal-p5b.sh",
+    "test:pg:gc-customer-contacts": "bash scripts/pgtest-gc-customer-contacts.sh",
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "test:pg:lien-claim": "bash scripts/pgtest-lien-claim.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",

@@ -2,7 +2,7 @@
 title: share a trade partner its portal
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, trade portal, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request, statement of work, sign, signature, punch list, submittal, percent done, report, sign the change, pay application, closeout, needs you, file, upload
+keywords: gc mode, trade partner, trade portal, paperwork, vetting form, w-9, master agreement, your papers, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request, statement of work, sign, signature, punch list, submittal, percent done, report, sign the change, pay application, closeout, needs you, file, upload
 order: 96
 ---
 Every trade partner company can have one private portal link. The company opens it without signing in and sees everything it has with us.
@@ -49,7 +49,18 @@ The job page also shows where its pay application stands. It can open one it sen
 
 The company sends its pay application from the job page too. It presses **Fill out pay application** and checks each line. Then it signs the conditional waiver that goes with it and presses **Send to Click**. Once we pay, it presses **Sign the unconditional waiver** on the draw. The final pay application and the final release work the same way. To sign a waiver, it types its name and ticks that it agrees to sign electronically.
 
-Its home has **Needs you** at the top. It lists what the company has to do, like a punch item to fix. Each one opens the job where it is.
+Its home has **Needs you** at the top. It lists what the company has to do, like a punch item to fix. Each one opens the job where it is. A paper the company owes opens **Your paperwork with Click** on its home.
+
+## Its paperwork with us
+
+**Your paperwork with Click** is on the company's home. It shows where each of its own papers stands.
+
+- A company new to us presses **Tell us about your company** and fills in the form. Once it is sent, the line says we are checking it.
+- **Read and sign** opens our master agreement once we send it.
+- **Fill in your W-9** opens its W-9, even if we never asked for one.
+- Its insurance certificate shows the day it runs out.
+
+The master agreement and the W-9 open on the same signing page our email opens. Each press makes a new signing link, so the link in our email stops working. **See every paper** lists every paper the company signed with us. It can print the list.
 
 It can pick its own quote file and a photo or a ticket for a change. Each goes into the job's folder in Drive. [See what a trade partner sends from its portal](/help/see-what-a-trade-partner-sends-from-its-portal#its-files) shows where each thing lands.
 

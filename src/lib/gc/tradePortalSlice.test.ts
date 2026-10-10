@@ -56,6 +56,8 @@ const NEVER = {
   paperValues: 'PAPER-FORM-VALUES-SECRET',
   paperBody: 'PAPER-BODY-SECRET',
   otherPaper: 'paper-THEM-SECRET',
+  // Its vetting form (P5b-1): that it sent it and when, never its answers, which the office reads.
+  vettingAnswer: 'VETTING-ANSWER-SECRET',
   // Its statement of work's lines (P2c-ii): never another company's, never a cancelled one's, never the signer's image.
   otherSowLine: 'OTHER-SOW-LINE-SECRET',
   otherSowLineAmount: 31313,
@@ -237,6 +239,7 @@ function workRows(): TradePortalRows {
       { id: 'paper-msa', company_id: ME, person_name: `gc-company:${ME}`, document_name: 'Master Subcontract Agreement', doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null, url: NEVER.paperLink, form_values: { name: NEVER.paperValues }, signing_body_html: NEVER.paperBody },
       { id: NEVER.otherPaper, company_id: THEM, doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null },
     ],
+    vettingForm: { company_id: ME, license: NEVER.vettingAnswer, insurance: NEVER.vettingAnswer, years_in_business: 5, reference_list: NEVER.vettingAnswer, past_jobs: NEVER.vettingAnswer, sent_on: '2026-10-09' },
   }
 }
 
@@ -249,7 +252,7 @@ describe('a trade never sees our price to the customer', () => {
 
   it('names only reviewed fields, never our money', () => {
     const named = Object.values(TRADE_PORTAL_FIELDS).flat()
-    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip', 'url', 'form_values', 'signing_body_html', 'person_name', 'public_token_hash', 'signer_signature_storage_path', 'signer_user_agent', 'their_sov', 'recorded_by', 'email_send_log_id', 'asked_by_company_id', 'removed_at', 'removed_by', 'checked_by']) {
+    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip', 'url', 'form_values', 'signing_body_html', 'person_name', 'public_token_hash', 'signer_signature_storage_path', 'signer_user_agent', 'their_sov', 'recorded_by', 'email_send_log_id', 'asked_by_company_id', 'removed_at', 'removed_by', 'checked_by', 'reference_list', 'past_jobs', 'years_in_business']) {
       expect(named).not.toContain(f)
     }
   })
@@ -339,6 +342,12 @@ describe('its own work, and only its part of a change order (P4b-i)', () => {
 
   it('reads where its own papers stand, never their link, body or values, nor another company’s papers', () => {
     expect(slice.papers).toEqual([{ id: 'paper-msa', company_id: ME, doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null }])
+  })
+
+  it('reads the day it sent its vetting form, never its answers, nor another company’s form (P5b-1)', () => {
+    expect(slice.vettingForm).toEqual({ company_id: ME, sent_on: '2026-10-09' })
+    expect(tradePortalSlice({ ...rows(), vettingForm: { company_id: THEM, sent_on: '2026-10-09' } }, ME).vettingForm).toBeNull()
+    expect(tradePortalSlice({ ...rows(), vettingForm: null }, ME).vettingForm).toBeNull()
   })
 
   it('reads nothing of this company’s work when another company’s link opens', () => {

@@ -201,7 +201,7 @@ function rowsOf(project: GcProject, version: number): ScheduleRows {
     waits: waits.map((w) => ({ id: w.id, kind: w.kind, title: w.title, package_id: w.packageId, who: w.who, asked_on: w.askedOn, expected_on: w.expectedOn, shipped_on: w.shippedOn ?? null, done_on: w.doneOn, note: w.note ?? null, created_at: at(n++) })),
     waitHolds: waits.flatMap((w) => w.lineIds.map((id) => ({ wait_id: w.id, activity_id: id }))),
     crewCounts: [...(project.crewCounts ?? [])].reverse().map((c) => ({ package_id: c.packageId, company_id: c.partnerId, week_of: c.weekOf, count: c.count, said_on: c.on, created_at: at(n++) })),
-    sends: (project.scheduleSends ?? []).map((x) => ({ id: x.id, sent_on: x.on, sent_by: idOf(x.by), sent_to: x.to, subject: x.subject, lines: x.lines, created_at: at(n++) })),
+    sends: (project.scheduleSends ?? []).map((x) => ({ id: x.id, sent_on: x.on, sent_by: idOf(x.by), sent_to: x.to, subject: x.subject, lines: x.lines, email_send_log_id: x.emailed ? `log-${x.id}` : null, created_at: at(n++) })),
     whatIf: project.whatIf ? { user_id: idOf(project.whatIf.by) ?? ROBERT, made_on: project.whatIf.on, base: project.whatIf.base, copy: project.whatIf.schedule } : null,
     rough: project.rough
       ? {
