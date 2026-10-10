@@ -7,6 +7,8 @@ import { appCertified, appOpen, ownerPayAppsSent, ownerPayDue } from './ownerBil
 import { ownerInterestOnBill } from './ownerBillingInterest'
 import type { GcCustomer, GcProject, GcState, OwnerPayAppSent } from './types'
 import { daysUntil, money, shortDate, weekdayDate } from './words'
+import { payLinkUrl } from '../billing/payLink'
+import { cardMoney } from './ownerBillingCard'
 
 /** The pay-by day the office starts from: this many days from today. */
 export const PAY_REMINDER_DAYS = 5
@@ -88,6 +90,8 @@ export interface PayReminderMailFacts {
   interest: { pctPerMonth: number; from: string; amount: number } | null
   by: string
   note: string
+  /** The bill is on card (O8b): what the card page asks with its 3% fee, and the bill's pay link. */
+  card?: { total: number; payUrl: string } | null
 }
 
 /** The reminder's words from its facts. */
@@ -99,13 +103,15 @@ export function payReminderMail(f: PayReminderMailFacts): { subject: string; lin
       `Hello ${f.greeting},`,
       `${Bill} for ${f.job} has ${money(f.open)} still open. It was due ${weekdayDate(f.dueOn)}, ${f.promised ? 'the day you gave' : 'the day we expected it'}.`,
       ...(f.lastPaid ? [`Thank you for the ${money(f.lastPaid.amount)} you paid ${shortDate(f.lastPaid.on)}.`] : []),
+      ...(f.card ? [`You chose to pay it by card. With the 3% card fee, the card page asks ${cardMoney(f.card.total)}.`] : []),
       ...(f.interest ? [`Interest of ${f.interest.pctPerMonth}% a month runs on it from ${shortDate(f.interest.from)}. ${money(f.interest.amount)} has built up so far.`] : []),
       `Please pay it by ${weekdayDate(f.by)}.`,
       ...(f.note.trim() ? [f.note.trim()] : []),
-      // No Pay yet (O5b, the lead's call A): the bill is not on Stripe, so they reply with their day, and
-      // gc-customer-email adds their portal link when they have one. The waiver is a press after the payment
-      // (call B): the email never promises what a press has to do.
-      'Reply with the day you will pay.',
+      // A bill on card (O8b) is paid on its card page, so the email says where (O8c). One that is not is not on
+      // Stripe (O5b, the lead's call A): they reply with their day, and gc-customer-email adds their portal link
+      // when they have one, with the card's offer when it is on. The waiver is a press after the payment (call B):
+      // the email never promises what a press has to do.
+      ...(f.card ? [`Pay it here: ${f.card.payUrl}`] : ['Reply with the day you will pay.']),
       'Our unconditional lien waiver for it follows once it is paid.',
     ],
   }
@@ -138,6 +144,7 @@ export function payReminderEmail(
     interest: interest && pct ? { pctPerMonth: pct, from: interest.from, amount: interest.amount } : null,
     by,
     note,
+    card: app.card?.state === 'onCard' ? { total: app.card.total, payUrl: payLinkUrl(app.card.invoiceId) } : null,
   })
 }
 

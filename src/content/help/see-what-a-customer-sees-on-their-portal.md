@@ -44,7 +44,7 @@ The press opens a panel under the bill. The panel says the bill, the 3% card fee
 
 **Go to the card page** opens the card page in a new tab, the way PAY ONLINE does. When they come back, the statement reads the bill again. The bill then shows {{button:dark|PAY ONLINE}}, and its line says *Includes the $1,282.50 card fee.*
 
-Only the customer turns a bill to card. The office never does it for them. A bill with any payment on it cannot move to card, and neither can an interest bill. The offer stays off until the owner turns it on.
+Only the customer turns a bill to card. The office never does it for them. A bill with any payment on it cannot move to card, and neither can an interest bill. The offer stays off until the owner turns it on in Settings, under Jobs & billing.
 
 ## Your payments: where each check went
 
