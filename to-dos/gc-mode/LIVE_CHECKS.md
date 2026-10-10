@@ -54,19 +54,28 @@ Read 13:15 UTC 2026-10-10, read only:
 ### Set-up (writes, no email)
 
 **S1. The test customer's email.** Customers → GC Test Owner LLC → its edit form: billing email
-bids@clickplumbing.com. *Writes*: `customers.billing_email` on 592fd5f0.
+bids@clickplumbing.com. *Writes*: `customers.billing_email` on 592fd5f0. **Done 2026-10-10, 22:09 UTC** (ids in the
+ledger). The form's Save also set `contact_info` from `{}` to null, the app's own behavior.
 
 **S2. Its portal link.** Customers → GC Test Owner LLC → the globe button → **Create their link**, then
 **Copy link**. Open the link in a private window and keep it open. *Reads*: the portal, with no GC job yet.
 *Writes*: one `customer_portal_links` row. Make it before step 6, so the certified email carries the portal line.
+**Done 2026-10-10, 22:09 UTC**: one `all` link, and no slug saved.
 
 **S3. Our contract, signed on paper.** `/gc` → the building project's row → **Get started** → the contract's line →
 **Mark it signed**. *Reads*: Bill the customer lists the five trade lines at Our number's prices, and the change
 order. *Writes*: `gc_projects.owner_contract_signed_on` = today, and one `gc_owner_contract_lines` row per trade.
+**Stopped 2026-10-10, 22:2x UTC, nothing written.** Get started shows no **Mark it signed** (nor **Send to sign**) on
+this job. The window offers the contract's presses only before a start or after **Start anyway**. The test project's
+start day was set directly on 10-08, for O3-ui's walk, so the press never shows. The lead called it a gap: a started
+job with an unsigned contract must be able to mark it signed, however it started. gc 2 cuts the fix, and S3 runs
+once it is on main and the client has deployed. The steps that bill (5 to 13, and 17) wait on S3. Steps 1 to 4 (the
+change orders) and 14 to 16 do not.
 
 **S4. Days to pay and interest.** `/gc` → **Bill the customer** → **Change the days to pay** → 0 → **Save the
 days to pay**; **Change the interest** → 1.5 → **Save the interest**. *Writes*: `gc_projects.owner_pay_days` = 0
-and `owner_late_interest_pct_per_month` = 1.5. Interest then runs from the day after a certificate.
+and `owner_late_interest_pct_per_month` = 1.5. Interest then runs from the day after a certificate. **Done 2026-10-10,
+22:2x UTC** (ids in the ledger), with retainage left at 10%.
 
 ### The customer's change orders
 
