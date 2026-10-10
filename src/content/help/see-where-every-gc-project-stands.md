@@ -2,7 +2,7 @@
 title: see where every GC project stands
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card, who to call, to call
+keywords: gc mode, project board, bidding to the customer, buying out, building, days left, price so far, holes, price card, who to call, to call, by customer, by stage
 order: 94
 ---
 The Project Board shows every GC project by its stage. Each row says how many days are left before our bid is due. The row also says what the price is so far.
@@ -20,6 +20,20 @@ The pill of the stage on screen stays lit as you scroll. The three stages are nu
 :::example A stage's heading
 {{chip:yellow|1 Bidding to the customer}} {{chip:gray|$824,733 priced so far}}
 :::
+
+## See the board by customer
+
+The board opens **By stage** each time. **By customer** shows the same rows under each customer we build for.
+
+1. Press {{button:outline|By customer}} at the top of the board.
+2. Each customer has a heading with their name and their contact. The heading also says what we are bidding them and what is under contract.
+3. Their jobs sit under a small heading for each stage.
+4. Press a customer's name to open their window.
+5. Press {{button:outline|By stage}} to go back.
+
+The strip at the top has a pill for each customer instead. Press a pill to jump to that customer.
+
+A customer's closed and lost jobs sit on one line under their jobs. That line starts with *Also*. Press a job's name there to open it.
 
 ## Read a row
 

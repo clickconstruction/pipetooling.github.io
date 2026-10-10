@@ -1,45 +1,90 @@
 /**
- * GC mode design spike: the rough schedule for our bid, the Gantt's G-45 (mock-up and plan
- * `to-dos/gc-mode/mockups/G-45.md`). What a job still bidding shows on its Schedule tab: the start
- * we assume, Draw a rough schedule, then one row per stage the job has, each with its days to change,
- * its dates and its bar on one axis, and the dates to meet. The weeks it makes go to Our number.
- * Once our bid goes in, the rough is locked and reads the weeks as they went. `gcRoughSchedule.ts`
- * works everything out; nothing here reaches the trades or the customer.
+ * GC mode, the real build, the schedule's PR 12b: the rough schedule for our bid (G-45), ported from the GC mode prototype
+ * (branch spike/gc-mode, `GcRoughSchedule.tsx`) with its words; the plan is to-dos/gc-mode/mockups/schedule-pr12.md on that
+ * branch. What a job still bidding shows in its Schedule window: the start we assume, Draw a rough schedule, then one row
+ * per stage the job has, each with its days to change, its dates and its bar on one axis, and the dates to meet. The weeks
+ * it makes go to Our number. Once our bid goes in, the rough is locked and reads the weeks as they went; a keep that did
+ * not happen at the Board's press is made here with **Keep the weeks as sent** (gc 4's note). `rough.ts` works everything
+ * out and `roughPress` draws as the prototype's reducer did; each press is a callback, and nothing here reaches the trades
+ * or the customer.
  */
-import { useState, type Dispatch } from 'react'
-import { addDays, daysBetween, mondayOf, shortDate, weekdayDate, type GcAction, type GcProject } from '../../lib/gcMode/gcModel'
-import { roughStages, roughWeeks, roughWeeksWords } from '../../lib/gcMode/gcRoughSchedule'
-import { roughTemplateWords, stagesCovered } from '../../lib/gcMode/gcScheduleTemplates'
-import type { ScheduleTemplate } from '../../lib/gcMode/gcTypes'
+import { useState } from 'react'
+import { addDays } from '../../lib/gc/building'
+import { daysBetween } from '../../lib/gc/schedule/network'
+import { roughStages, roughWeeks, roughWeeksWords } from '../../lib/gc/schedule/rough'
+import { mondayOf } from '../../lib/gc/schedule/schedule'
+import { roughKeepPress, roughPress, roughRefusal } from '../../lib/gc/schedule/scheduleWindow'
+import { roughTemplateWords, stagesCovered, templatesOffered } from '../../lib/gc/schedule/templates'
+import type { RoughSchedule } from '../../lib/gc/schedule/types'
+import type { GcProject, GcState } from '../../lib/gc/types'
+import { shortDate, weekdayDate } from '../../lib/gc/words'
+import { PressNote } from './GcScheduleCards'
+import { GcTemplatePick } from './GcScheduleTemplates'
 import { Btn, Card, Chip, input } from './gcUi'
-import { GcTemplatePick } from './GcScheduleTemplates.proto'
+import { useSchedulePress } from './useSchedulePress'
 
 /** Saturated on purpose: the chart's status colors, the same in both themes. */
 const C = { blue: '#3b82f6', violet: '#7c3aed' }
 
 const box = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' } as const
 
-export function GcRoughSchedule({ project, today, by, dispatch, offered = [] }: { project: GcProject; today: string; by: string; dispatch: Dispatch<GcAction>; /** The templates to start from (G-44). */ offered?: ScheduleTemplate[] }) {
+export function GcRoughSchedule({
+  state,
+  project,
+  by,
+  onDraw,
+  onKeep,
+}: {
+  state: GcState
+  project: GcProject
+  by: string
+  /** Draw or Redraw: the rough as `roughPress` makes it, a whole row. Unset: read only. */
+  onDraw?: (rough: RoughSchedule) => Promise<void>
+  /** Keep the weeks as sent (`roughKeepPress`): the kept weeks, with the day our bid went. Unset: not offered. */
+  onKeep?: (kept: NonNullable<RoughSchedule['kept']>) => Promise<void>
+}) {
+  const today = state.today
+  const offered = templatesOffered(state)
   const rough = project.rough
-  const locked = Boolean(rough?.kept) || project.stage !== 'pursuing' || Boolean(project.ourBidSentOn) || Boolean(project.lostOn)
+  const locked = Boolean(rough?.kept) || roughRefusal(project) !== null || !onDraw
   const stages = roughStages(project)
   const weeks = roughWeeks(project)
   const [start, setStart] = useState(rough?.start ?? project.startDate ?? addDays(mondayOf(today), 7))
   const [days, setDays] = useState<Record<string, number>>({})
+  const [problem, setProblem] = useState<string | null>(null)
+  const press = useSchedulePress()
   const daysOf = (key: string, drawn: number) => days[key] ?? drawn
   // Start from a template (G-44): the one the rough was drawn from, until another is picked.
   const [templateId, setTemplateId] = useState(rough?.template?.id ?? '')
   const own = rough?.template && rough.like ? { use: rough.template, lines: rough.like } : undefined
   const covered = rough?.like ? stagesCovered(rough.like, project) : new Set<string>()
   const draw = () => {
+    if (!onDraw) return
     // Only the lengths that differ from the usual ones are kept: the rest follow the usual.
     const usual = new Map((stages?.rows ?? []).map((r) => [r.key, r.usual]))
     const job = { ...(rough?.days ?? {}), ...days }
     // A template picked or changed goes with the draw; a redraw with the same one keeps it.
     const pick = !rough ? (templateId ? { templateId } : {}) : templateId === (rough.template?.id ?? '') ? {} : { templateId: templateId || null }
-    dispatch({ type: 'setRough', projectId: project.id, start, days: Object.fromEntries(Object.entries(job).filter(([k, d]) => d !== usual.get(k))), by, ...pick })
-    setDays({})
+    const pressed = roughPress(state, project, { start, days: Object.fromEntries(Object.entries(job).filter(([k, d]) => d !== usual.get(k))), ...pick }, by)
+    setProblem(null)
+    if ('problem' in pressed) {
+      setProblem(pressed.problem)
+      return
+    }
+    void press.run(() => onDraw(pressed.rough), 'The rough schedule did not save.').then((saved) => {
+      if (saved) setDays({})
+    })
   }
+  const note = (
+    <>
+      {problem && (
+        <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+          {problem}
+        </div>
+      )}
+      <PressNote refused={press.refused} failed={press.failed} />
+    </>
+  )
   const startBox = (
     <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
       <span style={{ color: 'var(--text-muted)' }}>If work starts</span>
@@ -62,11 +107,12 @@ export function GcRoughSchedule({ project, today, by, dispatch, offered = [] }: 
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
               {startBox}
               <GcTemplatePick project={project} start={start} offered={offered} value={templateId} onChange={setTemplateId} />
-              <Btn kind="primary" disabled={!start} onClick={draw}>
-                Draw a rough schedule
+              <Btn kind="primary" disabled={!start || press.busy} onClick={draw}>
+                {press.busy ? 'Drawing…' : 'Draw a rough schedule'}
               </Btn>
             </div>
           )}
+          {note}
         </div>
       </Card>
     )
@@ -151,15 +197,36 @@ export function GcRoughSchedule({ project, today, by, dispatch, offered = [] }: 
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             {startBox}
             <GcTemplatePick project={project} start={start} stageDays={rough.days} offered={offered} {...(own ? { own } : {})} value={templateId} onChange={setTemplateId} fit={templateId !== (rough.template?.id ?? '')} />
-            <Btn kind="primary" disabled={!start} onClick={draw}>
-              Redraw
+            <Btn kind="primary" disabled={!start || press.busy} onClick={draw}>
+              {press.busy ? 'Drawing…' : 'Redraw'}
             </Btn>
             <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-              Drawn {weekdayDate(rough.on)} by {rough.by}.
+              Drawn {weekdayDate(rough.on)}{rough.by ? ` by ${rough.by}` : ''}.
             </span>
           </div>
         )}
+        {!locked && note}
+        {onKeep && <GcRoughKeep project={project} onKeep={onKeep} />}
       </div>
     </Card>
+  )
+}
+
+/**
+ * Keep the weeks as sent (G-45, gc 4's note on PR 12b): once our bid went in and the keep at the Board's press did not
+ * happen, the rough's weeks are kept here with the day our bid went (`roughKeepPress`). Nothing to keep: nothing shown.
+ */
+export function GcRoughKeep({ project, onKeep }: { project: GcProject; onKeep: (kept: NonNullable<RoughSchedule['kept']>) => Promise<void> }) {
+  const press = useSchedulePress()
+  const pressed = roughKeepPress(project)
+  if (!('kept' in pressed)) return null
+  return (
+    <div data-rough-keep style={{ display: 'grid', gap: '0.35rem', justifyItems: 'start', fontSize: '0.9rem' }}>
+      <span style={{ color: 'var(--text-amber-800)' }}>The rough’s weeks were not kept when our bid went in.</span>
+      <Btn kind="plain" disabled={press.busy} onClick={() => void press.run(() => onKeep(pressed.kept), 'The weeks were not kept.')}>
+        Keep the weeks as sent
+      </Btn>
+      <PressNote refused={press.refused} failed={press.failed} />
+    </div>
   )
 }

@@ -22,6 +22,7 @@ import {
   signaturePngOf,
   spanishHeld,
   tradeErrorOf,
+  WAIVER_KINDS,
   WAIVER_SIGN_LIVE as FUNCTION_WAIVER_SIGN_LIVE,
   waiverHeld,
 } from '../../../supabase/functions/_shared/gcTradeSubmit'
@@ -400,10 +401,11 @@ describe('before the verb', () => {
     expect([spanishHeld(call('set_lang', { lang: 'es' })!), spanishHeld(call('set_lang', { lang: 'en' })!)]).toEqual([!PORTAL_SPANISH_ON, false])
   })
 
-  it('holds every lien waiver with the same flag the page reads, until the owner’s call (P5c-3b, P5c-3c-ii)', () => {
+  it('lets every lien waiver through since the owner’s call 2, with the same flag the page reads (P5c-3b, P5c-3c-ii)', () => {
     expect(FUNCTION_WAIVER_SIGN_LIVE).toBe(WAIVER_SIGN_LIVE)
-    expect(WAIVER_SIGN_LIVE).toBe(false)
-    expect(TRADE_SUBMIT_KINDS.filter(waiverHeld)).toEqual(['unconditional_waiver', 'pay_app', 'final_pay_app'])
+    expect(WAIVER_SIGN_LIVE).toBe(true)
+    expect(TRADE_SUBMIT_KINDS.filter(waiverHeld)).toEqual([])
+    expect([...WAIVER_KINDS]).toEqual(['unconditional_waiver', 'pay_app', 'final_pay_app'])
   })
 
   it('caps free-text writes at ten an hour, and only the free-text kinds', () => {

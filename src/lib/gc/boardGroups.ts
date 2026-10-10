@@ -35,6 +35,30 @@ export function customerMoneyWords(summary: CustomerSummary): string {
   return parts.join(' · ')
 }
 
+/**
+ * A customer's open jobs on the board's By customer (the Board's B2b-iii; gc 5, Owner Billing's read): what we are
+ * bidding them and what they have us under contract for, each job at `priceToOwner` as the board's sections price it.
+ * A closed or lost job counts in neither, so the customers' numbers add up to the sections' "priced so far" and "under
+ * contract". `customerSummary` stays the customer window's, which counts a closed job as under contract.
+ */
+export function customerWorth(open: readonly GcProject[]): { bidding: number; underContract: number } {
+  const sum = (stages: readonly GcStage[]) => open.filter((p) => isOpen(p) && stages.includes(p.stage)).reduce((t, p) => t + priceToOwner(p).price, 0)
+  return { bidding: sum(['pursuing']), underContract: sum(['buyout', 'building']) }
+}
+
+/**
+ * The customer's band on By customer: "bidding $977,823 · under contract $1,488,762", `customerMoneyWords`' first two
+ * parts on the open jobs alone. What they owe comes with Owner Billing's rows on the board, for the money team (B2b-v),
+ * so the band never says "nothing billed yet". Empty when nothing is in front of them or under contract.
+ */
+export function customerWorthWords(open: readonly GcProject[]): string {
+  const worth = customerWorth(open)
+  const parts: string[] = []
+  if (worth.bidding > 0) parts.push(`bidding ${money(worth.bidding)}`)
+  if (worth.underContract > 0) parts.push(`under contract ${money(worth.underContract)}`)
+  return parts.join(' · ')
+}
+
 /** The board's five sections: the three stages, then Closed and Lost. */
 export type BoardSection = GcStage | 'closed' | 'lost'
 

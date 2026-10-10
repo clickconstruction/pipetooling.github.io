@@ -18,8 +18,8 @@ const draw = (change: Partial<Draw> = {}): Draw => ({
 })
 
 describe('the Draws window’s emails to a trade', () => {
-  it('says a draw is paid and what we hold, keyed once per draw, with no waiver line while the owner’s call holds it', () => {
-    expect(WAIVER_SIGN_LIVE).toBe(false)
+  it('says a draw is paid, what we hold, and to sign its waiver in the portal, keyed once per draw (the owner’s call 2)', () => {
+    expect(WAIVER_SIGN_LIVE).toBe(true)
     expect(paidEmail(to, draw())).toEqual({
       companyId: 'c1',
       kind: 'paid',
@@ -27,16 +27,25 @@ describe('the Draws window’s emails to a trade', () => {
       projectId: 'p1',
       lang: 'en',
       subject: 'Pay application 2 on Fair Oaks Clinic is paid',
-      lines: ['We paid $11,880 for pay application 2 on Concrete for Fair Oaks Clinic.', 'We hold $1,320 of it until the job is done.'],
+      lines: [
+        'We paid $11,880 for pay application 2 on Concrete for Fair Oaks Clinic.',
+        'We hold $1,320 of it until the job is done.',
+        'Sign the unconditional waiver for it in your portal.',
+      ],
     })
     expect(paidEmail(to, draw({ status: 'approved' }))).toBeNull()
+    // A waiver already in asks for nothing.
+    expect(paidEmail(to, draw({ waiver: 'unconditional' }))?.lines).toEqual(['We paid $11,880 for pay application 2 on Concrete for Fair Oaks Clinic.', 'We hold $1,320 of it until the job is done.'])
   })
 
-  it('says the retainage is paid back, in Spanish too', () => {
+  it('says the retainage is paid back and to sign the final release in the portal, in Spanish too', () => {
     const release = draw({ id: 'd4', number: 4, final: true, gross: 0, retainage: -3000, net: 3000 })
     expect(paidEmail(to, release)?.subject).toBe('Your retainage on Fair Oaks Clinic is paid')
-    expect(paidEmail(to, release)?.lines).toEqual(['We paid back the $3,000 we held on Concrete for Fair Oaks Clinic.'])
-    expect(paidEmail({ ...to, lang: 'es' }, release)?.lines).toEqual(['Le devolvimos los $3,000 que retuvimos de Concrete en Fair Oaks Clinic.'])
+    expect(paidEmail(to, release)?.lines).toEqual(['We paid back the $3,000 we held on Concrete for Fair Oaks Clinic.', 'Sign your unconditional final release of lien in your portal.'])
+    expect(paidEmail({ ...to, lang: 'es' }, release)?.lines).toEqual([
+      'Le devolvimos los $3,000 que retuvimos de Concrete en Fair Oaks Clinic.',
+      'Firme su liberación final de gravamen incondicional en su portal.',
+    ])
   })
 
   it('says a draw approved for less, what they asked and why', () => {

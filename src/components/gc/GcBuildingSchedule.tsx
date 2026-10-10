@@ -61,7 +61,7 @@ import { baselineDue, baselineHistory, baselineWords, nextBaselineName } from '.
 import { customerScheduleHtml, customerScheduleLetter, scheduleSends } from '../../lib/gcMode/gcCustomerScheduleSend'
 import { chartHolds } from '../../lib/gcMode/gcChartHolds'
 import { GcNotReady } from './GcNotReady.proto'
-import { GcRoughSchedule } from './GcRoughSchedule'
+import { GcRoughSchedule } from './GcRoughSchedule.proto'
 import { GcScheduleImport } from './GcScheduleImport'
 import { importRefusal } from '../../lib/gcMode/gcScheduleImport'
 import { GcTemplatePick, GcTemplatesCard } from './GcScheduleTemplates.proto'

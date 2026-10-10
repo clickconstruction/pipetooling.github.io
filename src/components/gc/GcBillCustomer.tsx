@@ -522,6 +522,7 @@ function SentRow({
           <Chip tone="amber">waiting on the architect</Chip>
         )}
         {certified === null && app.architectRemindedOn && <span style={{ color: 'var(--text-muted)' }}>{`We reminded the architect on ${shortDate(app.architectRemindedOn)}.`}</span>}
+        {certified !== null && app.customerToldDue && <span style={{ color: 'var(--text-muted)' }}>{`We told them on ${shortDate(app.customerToldDue.on)} it is due ${shortDate(app.customerToldDue.due)}.`}</span>}
         {certified !== null && certified < asked && app.certifiedNote && <span style={{ color: 'var(--text-muted)' }}>{app.certifiedNote}</span>}
         {waived ? (
           <Chip tone="green">our waiver went with it</Chip>

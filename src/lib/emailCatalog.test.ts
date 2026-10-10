@@ -49,7 +49,8 @@ describe('EMAIL_CATALOG', () => {
     // +1 (v2.5026): a submittal reviewer's own link to the review room (send-submittal-room-link).
     // +1 (v2.5024): the money team's Monday email about our GC jobs (gc-money-monday-email).
     // +2 (O10b): the architect's reminder to certify and the office's notices (gc-office-notices).
-    expect(EMAIL_CATALOG).toHaveLength(51)
+    // +1 (O12b): the customer's notice 3 days before a bill is due (gc-office-notices).
+    expect(EMAIL_CATALOG).toHaveLength(52)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)

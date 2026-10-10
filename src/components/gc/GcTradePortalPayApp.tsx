@@ -50,8 +50,8 @@ import { TradeWaiverPaperView } from './GcTradeWaiverPaper'
  *   - the window sends through `onSend`, the submit adapter (`pay_app`, `final_pay_app`), in place of the prototype's
  *     dispatch, and stays open with the refusal in the company's words; its sign step lays out the conditional waiver
  *     it signs as the app's own paper with the e-sign consent, never the spike's tick (P5c-3c-ii);
- *   - while `WAIVER_SIGN_LIVE` holds every waiver a trade signs for the owner's call, a pay application is a waiver
- *     too, so the door and the closeout say to email it in place of their buttons;
+ *   - with `WAIVER_SIGN_LIVE` off, a pay application is a waiver too, so the door and the closeout say to email it in
+ *     place of their buttons (it is on since the owner's call 2, v2.5178);
  *   - the office's view beside their own schedule of values (`GcSovSideBySide`) is left out: only the office drew it.
  *
  * Inside a Spanish portal the door, the window and the G702 and G703 read in Spanish (`buildingWords.ts`).
@@ -153,7 +153,7 @@ export function GcBuildingPayAppDoor({
   // The last draw approved for less than asked: say so, and that the rest is still theirs to ask for.
   const last = sow.draws[sow.draws.length - 1]
   const lessNote = last?.asked ? w('lessNote', { x: money(last.net), y: money(last.asked.net), n: last.number, note: last.asked.note }) : null
-  // Until the owner's call, a pay application, a waiver itself, goes by email (WAIVER_SIGN_LIVE).
+  // With WAIVER_SIGN_LIVE off, a pay application, a waiver itself, goes by email.
   const byEmail = <div>{pt(lang, 'payAppByEmail', { gc: GC_SHORT })}</div>
 
   return (

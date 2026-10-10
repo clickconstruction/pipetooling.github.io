@@ -5,6 +5,7 @@ import { GcBoard } from './GcBoard'
 import { GcCustomerOpenerContext } from './gcCustomerOpener'
 import { boardStateFromRows } from '../../lib/gc/boardRows'
 import { awardedClinicBoardRows, clinicBoardRows } from '../../lib/gc/boardTestRows'
+import { initialGcState } from '../../lib/gc/schedule/testState'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
 installDomShims()
@@ -98,5 +99,58 @@ describe('GcBoard', () => {
     expect(within(card).queryByRole('button', { name: 'Compare quotes' })).toBeNull()
     fireEvent.click(within(card).getByRole('button', { name: 'Open the project' }))
     expect(onOpen).toHaveBeenCalledWith('p1')
+  })
+})
+
+describe('GcBoard, By customer (the Board’s B2b-iii)', () => {
+  /** The made-up data with Hollis Family Pharmacy's Stone Oak closed and Cibolo Creek's PADB lost. */
+  const closedAndLost = () => {
+    const s = initialGcState()
+    return { ...s, projects: s.projects.map((p) => (p.id === 'stoneoak' ? { ...p, closedOn: '2026-09-30' } : p.id === 'padb' ? { ...p, lostOn: '2026-09-29' } : p)) }
+  }
+  const nameOf = (s: ReturnType<typeof initialGcState>, id: string) => s.projects.find((p) => p.id === id)!.name
+
+  it('opens on By stage, and By customer puts each customer’s jobs under a heading per stage with their worth', () => {
+    const state = initialGcState()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} />)
+    expect(screen.getByRole('button', { name: 'By stage' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByRole('navigation', { name: 'Jump to a stage' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'By customer' }))
+    expect(screen.getByRole('navigation', { name: 'Jump to a customer' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Jump to Cibolo Creek Partners, 3 jobs' })).toBeTruthy()
+    const cibolo = [...document.querySelectorAll<HTMLElement>('[data-gc-board-customer]')].find((el) => el.textContent?.includes('Cibolo Creek Partners'))!
+    expect(within(cibolo).getByText('bidding $977,823 · under contract $1,488,762')).toBeTruthy()
+    expect(within(cibolo).getByText('Bidding to the customer')).toBeTruthy()
+    expect(within(cibolo).getByText('Building')).toBeTruthy()
+    // The band names the customer, so its rows leave the name out.
+    const row = cibolo.querySelector('[data-gc-board-row="fairoaksd"]') as HTMLElement
+    expect(within(row).queryByText('Cibolo Creek Partners')).toBeNull()
+    expect(screen.queryByText(/nothing billed yet|owes us/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'By stage' }))
+    expect(screen.getByRole('navigation', { name: 'Jump to a stage' })).toBeTruthy()
+    expect(document.querySelector('[data-gc-board-customer]')).toBeNull()
+  })
+
+  it('a customer’s name opens their window, and closed and lost jobs fold into one Also line that opens the job', () => {
+    const state = closedAndLost()
+    const openCustomer = vi.fn()
+    const onOpen = vi.fn()
+    render(
+      <GcCustomerOpenerContext.Provider value={{ openCustomer }}>
+        <GcBoard state={state} onOpen={onOpen} onPlans={() => undefined} />
+      </GcCustomerOpenerContext.Provider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'By customer' }))
+    const hollis = state.customers.find((c) => c.name === 'Hollis Family Pharmacy')!
+    const band = document.querySelector(`[data-gc-board-customer="${hollis.id}"]`) as HTMLElement
+    expect(within(band).getByText('Nothing open with them right now.')).toBeTruthy()
+    fireEvent.click(within(band).getByRole('button', { name: 'Hollis Family Pharmacy' }))
+    expect(openCustomer).toHaveBeenCalledWith(hollis.id)
+    const also = document.querySelector(`[data-gc-board-also="${hollis.id}"]`) as HTMLElement
+    expect(also.textContent).toBe(`Also: ${nameOf(state, 'stoneoak')}, closed Sep 30`)
+    fireEvent.click(within(also).getByRole('button', { name: nameOf(state, 'stoneoak') }))
+    expect(onOpen).toHaveBeenCalledWith('stoneoak')
+    const cibolo = state.customers.find((c) => c.name === 'Cibolo Creek Partners')!
+    expect((document.querySelector(`[data-gc-board-also="${cibolo.id}"]`) as HTMLElement).textContent).toBe(`Also: ${nameOf(state, 'padb')}, lost`)
   })
 })

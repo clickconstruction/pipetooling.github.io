@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 /**
- * The trade portal's pay application sends (P5c-3c-ii, to-dos/gc-mode/mockups/portal-p5.md), with `WAIVER_SIGN_LIVE`
- * turned on as the owner's call will: the door opens the window on a new pay application, its sign step lays out the
+ * The trade portal's pay application sends (P5c-3c-ii, to-dos/gc-mode/mockups/portal-p5.md), on since the owner's call 2
+ * (`WAIVER_SIGN_LIVE`, v2.5178): the door opens the window on a new pay application, its sign step lays out the
  * conditional waiver it signs as the app's own paper with the e-sign consent, and Send posts `pay_app` (or the final
- * one, `final_pay_app`). A refusal keeps the window open in the company's words. While the call holds it,
+ * one, `final_pay_app`). A refusal keeps the window open in the company's words. With the flag off,
  * `GcTradePortal.payApp.render.test.tsx` finds no Fill out button.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,7 +13,6 @@ import { gcTradePortalSample, SAMPLE_TRADE_IDS as ID } from '../../supabase/func
 import type { TradePortalSlice } from '../../supabase/functions/_shared/gcTradePortalSlice'
 
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: async () => ({ apikey: 'anon', Authorization: 'Bearer anon' }) }))
-vi.mock('../lib/gc/drawEmail', async (original) => ({ ...(await original<typeof import('../lib/gc/drawEmail')>()), WAIVER_SIGN_LIVE: true }))
 
 import GcTradePortal from './GcTradePortal'
 

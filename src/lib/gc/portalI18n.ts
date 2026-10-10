@@ -1009,11 +1009,11 @@ const S = {
   changeSignLead: { en: 'By signing, this change becomes a line of your statement of work.', es: 'Al firmar, este cambio se vuelve una línea de su orden de trabajo.' },
   changeSignAgree: { en: 'I read this change and I agree to it.', es: 'Leí este cambio y estoy de acuerdo.' },
   changeConsentNoun: { en: 'this change order', es: 'esta orden de cambio' },
-  // P5c-3c-i: a pay application signs the conditional waiver, so it goes by email until the owner's call (WAIVER_SIGN_LIVE).
+  // P5c-3c-i: a pay application signs the conditional waiver, so it goes by email while WAIVER_SIGN_LIVE is off.
   payAppByEmail: { en: 'For now, email your pay application to {gc}.', es: 'Por ahora, envíe su solicitud de pago a {gc} por correo.' },
   payAppCanAsk: { en: 'You can ask for {amount} now.', es: 'Puede pedir {amount} ahora.' },
   payAppReportFirst: { en: 'Report your work above to ask for a draw.', es: 'Reporte su avance arriba para pedir un pago.' },
-  // P5c-3c-ii: a pay application sent from the portal, and the conditional waiver it signs (held by WAIVER_SIGN_LIVE).
+  // P5c-3c-ii: a pay application sent from the portal, and the conditional waiver it signs (WAIVER_SIGN_LIVE).
   errDrawWaiting: { en: 'Your last pay application is still with us.', es: 'Su última solicitud de pago todavía está con nosotros.' },
   errNothingToBill: { en: 'Nothing new to bill since your last pay application.', es: 'No hay nada nuevo que facturar desde su última solicitud de pago.' },
   errFinalSent: { en: 'Your final pay application went already.', es: 'Su solicitud de pago final ya se envió.' },
@@ -1023,7 +1023,7 @@ const S = {
   },
   condConsentNoun: { en: 'this conditional lien waiver', es: 'esta renuncia condicional de gravamen' },
   condFinalConsentNoun: { en: 'this conditional final release of lien', es: 'esta liberación final de gravamen condicional' },
-  // P5c-4: the two closeout emails (closeoutEmail.ts). The ask and the release say email while WAIVER_SIGN_LIVE holds the waivers.
+  // P5c-4: the two closeout emails (closeoutEmail.ts). The ask and the release say email while WAIVER_SIGN_LIVE is off.
   mAcceptedSubject: { en: 'We accepted your {trade} work on {project}', es: 'Aceptamos su trabajo de {trade} en {project}' },
   mAcceptedWhat: { en: 'We accepted your {trade} work on {project}. Thank you.', es: 'Aceptamos su trabajo de {trade} en {project}. Gracias.' },
   mAcceptedHeld: { en: 'We hold {amount} of your retainage. Your final pay application asks for it.', es: 'Retenemos {amount} de su retención. Su solicitud de pago final la pide.' },

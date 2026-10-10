@@ -45,7 +45,9 @@ On the job the company can:
 
 To sign a change, the company reads it and types its name. It also ticks that it agrees to sign electronically.
 
-The job page also shows where its pay application stands. It can open one it sent and read the two pages of the form. When we send one back, it reads our note and the lines we doubt. Once every line is billed, it shows the closeout steps. For now, the company emails its pay application to us. Its waivers come in a later step.
+The job page also shows where its pay application stands. It can open one it sent and read the two pages of the form. When we send one back, it reads our note and the lines we doubt. Once every line is billed, it shows the closeout steps.
+
+The company sends its pay application from the job page too. It presses **Fill out pay application** and checks each line. Then it signs the conditional waiver that goes with it and presses **Send to Click**. Once we pay, it presses **Sign the unconditional waiver** on the draw. The final pay application and the final release work the same way. To sign a waiver, it types its name and ticks that it agrees to sign electronically.
 
 Its home has **Needs you** at the top. It lists what the company has to do, like a punch item to fix. Each one opens the job where it is.
 

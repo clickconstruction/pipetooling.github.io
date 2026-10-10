@@ -4,7 +4,8 @@
  * (`gc_office_notices`); this holds what the function, the Settings block and Bill the customer agree on: the switch
  * and its day, the hour, each kind's email type and words, and the frames. Dependency-free but for the customer frame,
  * so the app's tests import it straight from here. The plan: to-dos/gc-mode/mockups/owner-billing-o10.md on branch
- * spike/gc-mode.
+ * spike/gc-mode. O12b adds the customer's notice 3 days before a bill is due (`get_gc_customer_due_notices()`, O12a,
+ * migration 20261010130000; mockups/owner-billing-o12.md), behind its own switch.
  */
 import { buildGcCustomerEmail, GC_CUSTOMER_EMAIL_FROM_NAME } from './gcCustomerEmails.ts'
 
@@ -26,6 +27,14 @@ export const GC_OFFICE_NOTICE_EMAIL_TYPE: Record<GcOfficeNoticeKind, string> = {
 
 /** The architect's reminder keeps a sent copy on the billing job (docs/SENT_COPIES.md); ours are staff mail, never filed. */
 export const GC_CERTIFY_REMINDER_FILED_AS = 'gc_certify_reminder'
+
+/** The customer's notice's switch (O12): `'false'`, or the ISO day it went on. Read by `gcOfficeNoticesSince` too. */
+export const GC_CUSTOMER_DUE_NOTICES_SETTING_KEY = 'gc_customer_due_notices_on_v1'
+
+/** The customer's notice's email type, its test's, and its sent copy (docs/SENT_COPIES.md, under Bills). */
+export const GC_CUSTOMER_DUE_NOTICE_EMAIL_TYPE = 'gc_customer_due_notice'
+export const GC_CUSTOMER_DUE_NOTICE_TEST_EMAIL_TYPE = 'gc_customer_due_notice_test'
+export const GC_CUSTOMER_DUE_NOTICE_FILED_AS = 'bill_gc_due_soon'
 
 /**
  * The switch's day: the ISO date it went on, or null for off. Only a real calendar day is on, so 'false', 'true', a
@@ -77,6 +86,39 @@ export interface GcOfficeNoticesPayload {
   notices: GcOfficeNotice[]
 }
 
+/** Which notices Preview and the test read (O12b): the customer's when the body asks for them, else the office's. */
+export function gcNoticesAsked(body: Record<string, unknown> | null | undefined): 'office' | 'customer' {
+  return body?.notices === 'customer' ? 'customer' : 'office'
+}
+
+/** One customer's notice as `get_gc_customer_due_notices()` gives it (O12a). */
+export interface GcCustomerDueNotice {
+  kind: 'pay_soon'
+  projectId: string
+  project: string
+  billingJobId: string | null
+  payAppId: string
+  number: number
+  final: boolean
+  /** What the architect certified, and the day. */
+  certified: number
+  certifiedOn: string
+  /** What is still open of it. */
+  open: number
+  /** The due day it names, and whether that day is their own promise. */
+  dueOn: string
+  promised: boolean
+  to: { customerId: string; name: string | null }
+  /** The project manager when a real account, else the company's owner: who replies, and who signs. */
+  replyTo: { name: string | null; email: string | null } | null
+}
+
+export interface GcCustomerDueNoticesPayload {
+  today: string
+  since: string | null
+  notices: GcCustomerDueNotice[]
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 /** "Oct 25". */
@@ -112,8 +154,12 @@ function payAppName(n: Pick<GcOfficeNotice, 'number' | 'final'>): string {
   return n.final ? 'Our final pay application' : `Pay application ${n.number}`
 }
 
-/** A notice's subject and lines, one paragraph a line. `url` opens Bill the customer for ours. */
-export function officeNoticeWords(n: GcOfficeNotice, url: string): { subject: string; lines: string[] } {
+/**
+ * A notice's subject and lines, one paragraph a line. `url` opens Bill the customer for ours. `wouldRemind`: Preview
+ * only reads, so no reminder was ever recorded; the late notice then says the architect would be reminded, never that
+ * they have no email (O12b, the lead's fix).
+ */
+export function officeNoticeWords(n: GcOfficeNotice, url: string, opts: { wouldRemind?: boolean } = {}): { subject: string; lines: string[] } {
   if (n.kind === 'bill_day') {
     const day = noticeDay(n.billDay)
     return {
@@ -144,7 +190,9 @@ export function officeNoticeWords(n: GcOfficeNotice, url: string): { subject: st
       `${payAppName(n)} for ${n.project} went to ${who} on ${noticeDay(n.sentOn)} and still waits on their certificate.`,
       n.remindedOn
         ? `We reminded them on ${noticeDay(n.remindedOn)}.`
-        : n.architect
+        : opts.wouldRemind
+          ? 'They would be reminded first.'
+          : n.architect
           ? 'They have no email on file, so they were not reminded.'
           : 'The job has no architect on file, so no one was reminded.',
       `Open Bill the customer: ${url}`,
@@ -163,8 +211,13 @@ export function testSubject(subject: string): string {
  * The email itself. The architect's reminder wears the customer frame (Click Construction, signed by the project
  * manager); ours are plain staff mail, the press to Bill the customer a link.
  */
-export function buildOfficeNoticeEmail(n: GcOfficeNotice, url: string, signer: string | null): { subject: string; text: string; html: string } {
-  const words = officeNoticeWords(n, url)
+export function buildOfficeNoticeEmail(
+  n: GcOfficeNotice,
+  url: string,
+  signer: string | null,
+  opts: { wouldRemind?: boolean } = {},
+): { subject: string; text: string; html: string } {
+  const words = officeNoticeWords(n, url, opts)
   if (n.kind === 'certify_reminder') {
     return buildGcCustomerEmail({ subject: words.subject, lines: words.lines, signer: (signer ?? '').trim() || GC_CUSTOMER_EMAIL_FROM_NAME, gc: GC_CUSTOMER_EMAIL_FROM_NAME, portalUrl: null })
   }
@@ -179,4 +232,44 @@ export function buildOfficeNoticeEmail(n: GcOfficeNotice, url: string, signer: s
     `<div style="max-width:560px;margin:0 auto">${words.lines.map(p).join('')}<p style="margin:0;color:#6b7280;font-size:13px">GC projects</p></div>` +
     `</body></html>`
   return { subject: words.subject, text, html }
+}
+
+/**
+ * The customer's notice in words (O12): when the bill is due, who certified it and for what, and what is still open.
+ * `architect`: the job's architect by name, else "The architect".
+ */
+export function customerDueWords(n: GcCustomerDueNotice, architect: string | null): { subject: string; lines: string[] } {
+  const name = payAppName(n)
+  const day = noticeDay(n.dueOn)
+  const who = (architect ?? '').trim() || 'The architect'
+  return {
+    subject: `${name} for ${n.project} is due ${day}`,
+    lines: [
+      'Hello,',
+      `${name} for ${n.project} is due on ${day}${n.promised ? ', the day you gave us' : ''}.`,
+      `${who} certified it for ${noticeDollars(n.certified)} on ${noticeDay(n.certifiedOn)}.`,
+      `${noticeDollars(n.open)} is still open.`,
+      'If it is already on its way, thank you.',
+      'Reply here if anything on it needs a change.',
+    ],
+  }
+}
+
+/**
+ * The customer's notice as it goes: the customer frame (Click Construction, signed by the project manager), the bill's
+ * portal line when a link is on, and the card line by the certified email's offer rule (`gcEmailCardFee`).
+ */
+export function buildCustomerDueEmail(
+  n: GcCustomerDueNotice,
+  opts: { architect: string | null; portalUrl: string | null; cardFee: number | null },
+): { subject: string; text: string; html: string } {
+  const words = customerDueWords(n, opts.architect)
+  return buildGcCustomerEmail({
+    subject: words.subject,
+    lines: words.lines,
+    signer: (n.replyTo?.name ?? '').trim() || GC_CUSTOMER_EMAIL_FROM_NAME,
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    portalUrl: opts.portalUrl,
+    cardFee: opts.cardFee,
+  })
 }

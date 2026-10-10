@@ -17,7 +17,9 @@
  * never the real move save, and keep them as real moves or throw the copy away. Since PR 13b, with `canTell`, they tell
  * the trades their new dates (`GcTellTrades`, through `gc-trade-email`), and the record of moves says who was told and
  * what they answered. Since PR 12a, the first draft can start from a template (`GcTemplatePick`, G-44), and a job being
- * built saves its schedule as one, with every template renamed or set aside there (`GcTemplatesCard`).
+ * built saves its schedule as one, with every template renamed or set aside there (`GcTemplatesCard`). Since PR 12b, a job
+ * still bidding shows its rough schedule (`GcRoughSchedule`, G-45) in place of the first draft, drawn and redrawn there,
+ * and a rough whose weeks were not kept when our bid went in is kept with **Keep the weeks as sent**.
  * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
  * bring one.
  */
@@ -53,7 +55,7 @@ import { partMoveOf } from '../../lib/gc/schedule/splitBars'
 import { scheduleMeasures } from '../../lib/gc/schedule/schedule'
 import { draftRefusal, draftStart, ownWorkOffWords, redoWords, templateDraftPress, undoWords } from '../../lib/gc/schedule/scheduleWindow'
 import type { PlaceChange } from '../../lib/gc/schedule/places'
-import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleTemplate, ScheduleWait, ScheduleWalk } from '../../lib/gc/schedule/types'
+import type { ActivityPart, InspectionFailure, ProjectSchedule, RoughSchedule, ScheduleActivity, ScheduleMilestone, ScheduleMove, ScheduleTemplate, ScheduleWait, ScheduleWalk } from '../../lib/gc/schedule/types'
 import type { WaitStep } from '../../lib/gc/schedule/writes'
 import { drawnFromWords, templatesOffered } from '../../lib/gc/schedule/templates'
 import { whatIfCopy, whatIfGhosts, whatIfProject } from '../../lib/gc/schedule/whatIf'
@@ -78,10 +80,12 @@ import {
   removeScheduleActivity,
   removeScheduleMilestone,
   removeScheduleWait,
+  keepRoughLater,
   renameScheduleTemplate,
   saveScheduleMove,
   saveScheduleTemplate,
   setAsideScheduleTemplate,
+  setRoughSchedule,
   setActualDates,
   setOwnWorkDone,
   setScheduleBaseline,
@@ -106,6 +110,7 @@ import { GcPlaceLine, GcPlacesCard } from './GcPlaces'
 import { GcAddOwnWork, GcBaseline, GcInspectionCheck, GcMilestones, GcOwnWorkButtons, GcWaits } from './GcScheduleCards'
 import { GcPartsCard } from './GcSplitBars'
 import { GcTemplatePick, GcTemplatesCard } from './GcScheduleTemplates'
+import { GcRoughKeep, GcRoughSchedule } from './GcRoughSchedule'
 import { GcNotReady } from './GcNotReady'
 import { GcPullBox, GcPullLine, GcPullWindow, type ScheduleSave } from './GcPullEarlier'
 import { GcDaysBack, GcRecoveryWindow } from './GcRecovery'
@@ -417,6 +422,8 @@ export function GcSchedule({
                 saveTemplate: (name) => record((st) => saveScheduleTemplate(st, projectId, name)),
                 renameTemplate: (templateId, name) => record((st) => renameScheduleTemplate(st, projectId, templateId, name)),
                 setAsideTemplate: (templateId, aside) => record((st) => setAsideScheduleTemplate(st, projectId, templateId, aside)),
+                drawRough: (rough) => record((st) => setRoughSchedule(st, projectId, rough)),
+                keepRough: (kept) => record((st) => keepRoughLater(st, projectId, kept)),
               }
             : null
         }
@@ -486,6 +493,10 @@ interface MovePresses {
   saveTemplate: (name: string) => Promise<void>
   renameTemplate: (templateId: string, name: string) => Promise<void>
   setAsideTemplate: (templateId: string, aside: boolean) => Promise<void>
+  /** The rough while we bid drawn or redrawn, whole (G-45, PR 12b): a record. */
+  drawRough: (rough: RoughSchedule) => Promise<void>
+  /** A rough's weeks kept later, with the day our bid went (PR 12b, gc 4's note): a record. */
+  keepRough: (kept: NonNullable<RoughSchedule['kept']>) => Promise<void>
 }
 
 /** The what-if copy's own presses (G-81, PR 11, call 3), apart from `MovePresses`: a move tried is not a move until Keep. */
@@ -665,14 +676,21 @@ function ScheduleView({
     return (
       <div style={{ display: 'grid', gap: '0.9rem' }}>
         <ScheduleWhy />
-        {refusal ? (
+        {project.stage === 'pursuing' && !project.lostOn ? (
+          // While we bid (G-45, PR 12b): the rough, drawn and redrawn by those who may move a bar.
+          <GcRoughSchedule state={state} project={project} by={by} {...(moves ? { onDraw: moves.drawRough, onKeep: moves.keepRough } : {})} />
+        ) : refusal ? (
           <Card>
             <div data-gc-draft-closed style={{ fontSize: '0.9rem' }}>
               <strong>No schedule is drawn.</strong> {refusal}
             </div>
           </Card>
         ) : (
-          <DraftCard project={project} today={state.today} offered={templatesOffered(state)} busy={drawing} problem={drawProblem} onDraw={onDraw} />
+          <>
+            <DraftCard project={project} today={state.today} offered={templatesOffered(state)} busy={drawing} problem={drawProblem} onDraw={onDraw} />
+            {/* We won it and the rough's weeks were not kept (PR 12b, gc 4's note): kept here with the day our bid went. */}
+            {moves && <GcRoughKeep project={project} onKeep={moves.keepRough} />}
+          </>
         )}
       </div>
     )
