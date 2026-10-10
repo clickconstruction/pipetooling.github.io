@@ -1065,4 +1065,6 @@ export interface CustomerSend {
   /** The day the customer signed it in their portal, and the name they signed with. */
   signedOn?: string
   signer?: string
+  /** Its email went (B6-d-iii-b): the day and who got it, from its sent copy. Unset: not emailed yet. */
+  emailed?: { on: string; to: string }
 }

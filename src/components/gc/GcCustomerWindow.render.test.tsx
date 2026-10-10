@@ -2,15 +2,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { GcCustomerWindow } from './GcCustomerWindow'
-import type { ContractSendInput } from './GcCustomerContractSend'
+import type { ContractSendInput, ContractSendOutcome } from './GcCustomerContractSend'
 import { boardStateFromRows, type BoardRows } from '../../lib/gc/boardRows'
 import { CLINIC_WORTH_NOW, awardedClinicBoardRows, contractSendRow } from '../../lib/gc/boardTestRows'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 /** Oak Street Partners' window: the clinic won, our contract on it in the state the rows give. */
-function open(rows: BoardRows = awardedClinicBoardRows(), opts: { send?: boolean; at?: { tab?: 'about' | 'documents'; doc?: string; send?: boolean } } = { send: true }) {
+function open(rows: BoardRows = awardedClinicBoardRows(), opts: { send?: boolean; email?: boolean; at?: { tab?: 'about' | 'documents'; doc?: string; send?: boolean } } = { send: true }) {
   const state = boardStateFromRows(rows)
-  const sendContract = vi.fn((_projectId: string, _input: ContractSendInput) => Promise.resolve())
+  const sendContract = vi.fn((_projectId: string, _input: ContractSendInput): Promise<ContractSendOutcome> => Promise.resolve({ words: 'On record with its price and file.' }))
   const onOpenProject = vi.fn()
   renderWithProviders(
     <GcCustomerWindow
@@ -18,15 +18,23 @@ function open(rows: BoardRows = awardedClinicBoardRows(), opts: { send?: boolean
       customer={state.customers.find((c) => c.id === 'c1')!}
       {...(opts.at ? { at: opts.at } : {})}
       {...(opts.send ? { sendContract } : {})}
+      canEmail={opts.email === true}
       onOpenProject={onOpenProject}
       onClose={() => undefined}
     />,
   )
   return { sendContract, onOpenProject, dialog: screen.getByRole('dialog', { name: 'Oak Street Partners' }) }
 }
-const sent = (sends: Parameters<typeof contractSendRow>[0][]): BoardRows => {
+/** The clinic with these sends, each emailed unless `emailed: false` (its sent copy, B6-d-iii-b). */
+const sent = (sends: (Parameters<typeof contractSendRow>[0] & { emailed?: boolean })[]): BoardRows => {
   const base = awardedClinicBoardRows()
-  return { ...base, boardDates: { p1: { ...base.boardDates.p1!, owner_contract_sent_on: '2026-10-05' } }, ownerContractSends: sends.map((s) => contractSendRow(s)) }
+  const rows = sends.map(({ emailed: _e, ...s }) => contractSendRow(s))
+  return {
+    ...base,
+    boardDates: { p1: { ...base.boardDates.p1!, owner_contract_sent_on: '2026-10-05' } },
+    ownerContractSends: rows,
+    ownerContractEmails: rows.filter((_r, i) => sends[i]!.emailed !== false).map((r) => ({ source_id: r.id, sent_on: r.sent_on, recipient_name: 'Pat Oak' })),
+  }
 }
 const pdf = () => new File(['%PDF-1.7 the contract'], 'Clinic contract v2.pdf', { type: 'application/pdf' })
 
@@ -66,9 +74,49 @@ describe('GcCustomerWindow', () => {
     await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
     const [projectId, input] = sendContract.mock.calls[0]!
     expect(projectId).toBe('p1')
-    expect(input).toMatchObject({ signBy: '2026-10-15', note: '', worth: CLINIC_WORTH_NOW })
+    expect(input).toMatchObject({ signBy: '2026-10-15', note: '', worth: CLINIC_WORTH_NOW, mode: 'first', total: 87323.4, email: false })
     expect(input.file).toBe(file)
-    expect(await within(dialog).findByText('On record with its price and file. No email goes yet: they find it when they open their portal.')).toBeTruthy()
+    expect(await within(dialog).findByText('On record with its price and file.')).toBeTruthy()
+  })
+
+  it('emails it only when ticked, a box that starts off, showing the email they get with the file attached (B6-d-iii-b)', async () => {
+    const { sendContract, dialog } = open(awardedClinicBoardRows(), { send: true, email: true, at: { doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    const tick = within(box).getByLabelText('Email it to them now, with their portal link') as HTMLInputElement
+    expect(tick.checked).toBe(false)
+    expect(box.querySelector('[data-gc-contract-email]')).toBeNull()
+    fireEvent.click(tick)
+    const mail = box.querySelector('[data-gc-contract-email]') as HTMLElement
+    expect(within(mail).getByText('Your contract for Hill Country Clinic')).toBeTruthy()
+    expect(within(mail).getByText('Thank you for choosing us for Hill Country Clinic. Here is our contract for it: $87,323.')).toBeTruthy()
+    expect(within(mail).getByText('Read it and sign it in your portal: their link')).toBeTruthy()
+    fireEvent.change(within(box).getByLabelText('The contract PDF'), { target: { files: [pdf()] } })
+    expect(within(mail).getByText('Clinic contract v2.pdf')).toBeTruthy()
+    fireEvent.click(within(box).getByRole('button', { name: 'Send to sign' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1].email).toBe(true)
+  })
+
+  it('a send whose email did not go: the row says so, and Email it now emails that same send, nothing picked anew (B6-d-iii-b)', async () => {
+    const { sendContract, dialog } = open(sent([{ emailed: false, note: 'Call me' }]), { send: true, email: true, at: { doc: 'contract-p1' } })
+    const row = dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement
+    expect(within(row).getByText(/Not emailed yet\.$/)).toBeTruthy()
+    fireEvent.click(within(row).getByRole('button', { name: 'Email it now' }))
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    expect(within(box).queryByLabelText('The contract PDF')).toBeNull()
+    expect(within(box).queryByRole('group', { name: 'Sign by' })).toBeNull()
+    expect(within(box).getByText('Thank you for choosing us for Hill Country Clinic. Here is our contract for it: $87,323.')).toBeTruthy()
+    sendContract.mockResolvedValueOnce({ words: 'On record. The email did not go: They have no portal link yet.', notEmailed: 'They have no portal link yet.' })
+    fireEvent.click(within(box).getByRole('button', { name: 'Send the email' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1]).toMatchObject({ sendId: 'cs1', email: true, mode: 'first', signBy: '2026-10-12', note: 'Call me', file: { path: 'p1/one.pdf' } })
+    expect(await within(dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement).findByText(/Not emailed: They have no portal link yet\.$/)).toBeTruthy()
+  })
+
+  it('shows no email box to someone who may not email the customer', () => {
+    const { dialog } = open(awardedClinicBoardRows(), { send: true, at: { doc: 'contract-p1', send: true } })
+    expect(within(dialog).queryByLabelText('Email it to them now, with their portal link')).toBeNull()
+    expect(within(dialog).getByText('No email goes. They read it and sign it when they open their portal.')).toBeTruthy()
   })
 
   it('a reminder keeps the price and the file it went with, unless another file is picked', async () => {

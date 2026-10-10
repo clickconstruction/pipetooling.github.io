@@ -307,6 +307,8 @@ export interface BoardRows {
   paperSends?: PaperSendRow[]
   /** Every send of our contract to a customer (B6-d-i), for whoever its policy lets read them. Missing: none read. */
   ownerContractSends?: OwnerContractSendRow[]
+  /** The sent copies of our contract's emails (B6-d-iii-b), by send: a real email went. A test copy is never filed. */
+  ownerContractEmails?: { source_id: string | null; sent_on: string; recipient_name: string }[]
   /**
    * Our own trades' Trades mode bids (B6-c-ii, call C). A trade we do ourselves is priced once its bid's value is above 0.
    * Missing, or a bid this reader cannot see: our budget stands in, not priced.
@@ -471,7 +473,8 @@ function worthOf(j: Json): Record<string, number> {
 }
 
 /** A send of our contract as the kernels read it (CustomerSend, paper contract), to the customer it went to. */
-export function ownerContractSendFromRow(s: OwnerContractSendRow, projectCustomer: string | undefined): CustomerSend {
+export function ownerContractSendFromRow(s: OwnerContractSendRow, projectCustomer: string | undefined, emails: BoardRows['ownerContractEmails'] = []): CustomerSend {
+  const emailed = (emails ?? []).filter((e) => e.source_id === s.id).sort((a, b) => a.sent_on.localeCompare(b.sent_on))[0]
   return {
     id: s.id,
     customerId: s.customer_id ?? projectCustomer ?? '',
@@ -485,6 +488,7 @@ export function ownerContractSendFromRow(s: OwnerContractSendRow, projectCustome
     file: { path: s.file_path, name: s.file_name, sha256: s.file_sha256 },
     ...(s.signed_on ? { signedOn: s.signed_on } : {}),
     ...(s.signer_printed_name ? { signer: s.signer_printed_name } : {}),
+    ...(emailed ? { emailed: { on: emailed.sent_on, to: emailed.recipient_name } } : {}),
   }
 }
 
@@ -677,7 +681,7 @@ export function boardStateFromRows(rows: BoardRows): GcState {
       ? {
           customerSends: [...rows.ownerContractSends]
             .sort((a, b) => a.created_at.localeCompare(b.created_at))
-            .map((s) => ownerContractSendFromRow(s, rows.projects.find((p) => p.id === s.project_id)?.customerId)),
+            .map((s) => ownerContractSendFromRow(s, rows.projects.find((p) => p.id === s.project_id)?.customerId, rows.ownerContractEmails)),
         }
       : {}),
   }

@@ -35,8 +35,8 @@ import { SAMPLE_JOB } from './journeys/paperSamples'
 import { buildGcPlanQuestionEmail } from '../../supabase/functions/_shared/gcPlanQuestionEmail'
 import { buildGcRfiEmail, buildGcSubmittalEmail } from '../../supabase/functions/_shared/gcArchitectEmail'
 import { buildGcTradeEmail, GC_TRADE_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcTradeEmail'
-import { buildGcCustomerEmail, gcWeeklyReportLines, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
-import { certifiedMail, certifyAskMail, changeOrderMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
+import { buildGcCustomerEmail, gcWeeklyReportLines, GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS, GC_CUSTOMER_EMAIL_FROM_NAME } from '../../supabase/functions/_shared/gcCustomerEmails'
+import { certifiedMail, certifyAskMail, changeOrderMail, contractMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
 import { payReminderMail } from './gc/ownerBillingRemind'
 import { weeklyReportText, type WeeklyReport } from './gc/buildingWeekly'
 import { mondayOf } from './gc/schedule/schedule'
@@ -335,7 +335,7 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
-  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certify-reminder' || id === 'gc-certified' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill' || id === 'gc-weekly')
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certify-reminder' || id === 'gc-certified' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill' || id === 'gc-weekly' || id === 'gc-contract')
     return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
@@ -455,6 +455,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
   if (id === 'gc-interest-bill') return buildSampleGcInterestBillEmail(ctx)
   if (id === 'gc-weekly') return buildSampleGcWeeklyEmail(ctx)
+  if (id === 'gc-contract') return buildSampleGcContractEmail(ctx)
   if (id === 'submittal-room-link') return buildSampleSubmittalRoomLinkEmail(ctx)
   return buildSampleBidRoomEmail(ctx, id === 'bid-room-revised')
 }
@@ -545,6 +546,19 @@ export function buildSampleGcInterestBillEmail(ctx: SampleEmailContext): BuiltEm
     signer: String(ctx.sender?.name ?? 'The project manager'),
     gc: GC_CUSTOMER_EMAIL_FROM_NAME,
     portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+  })
+}
+
+/** GC mode (the Board's B6-d-iii-b): our contract to sign, as `gc-customer-email` sends it, its portal line always on. */
+export function buildSampleGcContractEmail(ctx: SampleEmailContext): BuiltEmail {
+  const mail = contractMail({ job: 'Sample Retail Shell', greeting: 'Elena', price: 187_000, mode: 'first', signBy: ymdPlusDays(ctx.todayYmd, 7), note: '' })
+  return buildGcCustomerEmail({
+    subject: mail.subject,
+    lines: mail.lines,
+    signer: String(ctx.sender?.name ?? 'The project manager'),
+    gc: GC_CUSTOMER_EMAIL_FROM_NAME,
+    portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`,
+    portalWords: GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
   })
 }
 

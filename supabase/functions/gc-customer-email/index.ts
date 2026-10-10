@@ -6,11 +6,17 @@ import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { customerBillingEmail, customerContactEmail } from '../_shared/billToParty.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
-import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
+import { loadPortalReturnUrl, PORTAL_RETURN_SHORT_ORIGIN } from '../_shared/customerPortalReturnUrl.ts'
+import { bytesSha256Hex } from '../_shared/gcPortal.ts'
 import { GC_CARD_BILL_SETTING_KEY, gcCardBillOn, gcEmailCardFee } from '../_shared/gcCardBill.ts'
 import {
   buildGcCustomerEmail,
+  bytesBase64,
   CUSTOMER_EMAIL_ERRORS,
+  GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
+  GC_CUSTOMER_EMAIL_MAX_CONTRACT_BYTES,
+  gcContractAttachmentName,
+  gcContractPortalUrl,
   GC_CUSTOMER_EMAIL_ADDRESS,
   GC_CUSTOMER_EMAIL_FILED_AS,
   GC_CUSTOMER_EMAIL_FRAMED,
@@ -38,7 +44,8 @@ import {
  * link when they have one; its email's log is written back on the reminder). O6b-2's: `interest_bill` (to the
  * customer, with their portal link when they have one). Building's U7b: `weekly` (the Friday report, to the customer's
  * contact, the architect copied when its row says so, in the row's own words with no frame; its email's log is written
- * back on the row).
+ * back on the row). The Board's B6-d-iii-b: `contract` (our contract to sign, to the customer's contact, the send's own
+ * file attached here once its SHA-256 still matches, and their portal link required: one where their GC jobs show).
  *
  *   POST { projectId, kind, sourceId, subject, lines, pdf?, test? }   staff JWT
  *     → { to, email, resendEmailId, copied, test }
@@ -99,7 +106,7 @@ serve(async (req) => {
     if (GC_CUSTOMER_EMAIL_GATE[m.kind] === 'moneyTeam' && !GC_CUSTOMER_EMAIL_ROLES.includes(String(who.role))) return refuse('moneyTeamOnly')
 
     const { data: project } = await admin.from('projects').select('id, name, customer_id').eq('id', m.projectId).maybeSingle()
-    const { data: gc } = await admin.from('gc_projects').select('architect_customer_id, project_manager_user_id, billing_job_id').eq('project_id', m.projectId).maybeSingle()
+    const { data: gc } = await admin.from('gc_projects').select('architect_customer_id, project_manager_user_id, billing_job_id, owner_contract_signed_on').eq('project_id', m.projectId).maybeSingle()
     if (!project || !gc) return refuse('notFound')
 
     // The row the kind is about. A pay application is sent once it exists (gc_send_owner_pay_app files it as it goes);
@@ -111,6 +118,8 @@ serve(async (req) => {
     let copyArchitect = false
     // The bill a certified email or a reminder is about, for Pay by card's offer in the portal line (O8c).
     let billId: string | null = null
+    // Our contract's file (B6-d-iii-b), as the send kept it: attached here, never sent by the window.
+    let contractFile: { path: string; name: string; sha256: string } | null = null
     const source = GC_CUSTOMER_EMAIL_SOURCE[m.kind]
     if (source === 'gc_owner_pay_apps') {
       const { data: app } = await admin.from('gc_owner_pay_apps').select('id, project_id, certified, invoice_id').eq('id', m.sourceId).maybeSingle()
@@ -137,6 +146,15 @@ serve(async (req) => {
       if (rep.email_send_log_id && !m.test) return refuse('alreadySent')
       words = { subject: String(rep.subject), lines: gcWeeklyReportLines(String(rep.body)) }
       copyArchitect = rep.copied_architect === true
+    } else if (source === 'gc_owner_contract_sends') {
+      // Our contract (the Board's B6-d-iii-b): the project's newest send, not signed, on paper or in their portal.
+      const { data: send } = await admin.from('gc_owner_contract_sends').select('id, project_id, signed_on, created_at, file_path, file_name, file_sha256').eq('id', m.sourceId).maybeSingle()
+      if (!send) return refuse('notFound')
+      if (send.project_id !== m.projectId) return refuse('otherProject')
+      if (send.signed_on || gc.owner_contract_signed_on) return refuse('alreadySigned')
+      const { data: newer } = await admin.from('gc_owner_contract_sends').select('id').eq('project_id', m.projectId).gt('created_at', send.created_at).limit(1)
+      if ((newer ?? []).length > 0) return refuse('notNewest')
+      contractFile = { path: String(send.file_path), name: String(send.file_name), sha256: String(send.file_sha256) }
     } else {
       const { data: rem } = await admin.from('gc_owner_pay_reminders').select('id, pay_app_id, subject, lines, email_send_log_id').eq('id', m.sourceId).maybeSingle()
       if (!rem) return refuse('notFound')
@@ -168,10 +186,31 @@ serve(async (req) => {
     const pm = gc.project_manager_user_id ? (await admin.from('users').select('name, email').eq('id', gc.project_manager_user_id).maybeSingle()).data : null
     const replyTo = (pm?.email || who.email || '').trim() || undefined
     const signer = (pm?.name || who.name || GC_CUSTOMER_EMAIL_FROM_NAME).trim()
-    // The customer's portal, for the kinds that link it, only when a link is already on: never minted here.
-    const portalUrl = GC_CUSTOMER_EMAIL_PORTAL_LINE[m.kind]
-      ? await loadPortalReturnUrl(admin, recipient.id, Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com', { paid: false })
-      : null
+    // The customer's portal, for the kinds that link it, only when a link is already on: never minted here. Our contract
+    // needs one where their GC jobs show (the window makes it at the first send, D6); with none it does not go.
+    const appOrigin = Deno.env.get('APP_ORIGIN')?.trim() || 'https://clicktooling.com'
+    let portalUrl: string | null = null
+    if (m.kind === 'contract') {
+      const [{ data: links }, { data: slugRow }] = await Promise.all([
+        admin.from('customer_portal_links').select('audience, token, revoked_at').eq('customer_id', recipient.id).is('revoked_at', null),
+        admin.from('customer_portal_slugs').select('slug').eq('customer_id', recipient.id).maybeSingle(),
+      ])
+      portalUrl = gcContractPortalUrl((links ?? []) as { audience: string; token: string | null }[], (slugRow as { slug?: string } | null)?.slug ?? null, appOrigin, PORTAL_RETURN_SHORT_ORIGIN)
+      if (!portalUrl) return refuse('noPortal')
+    } else if (GC_CUSTOMER_EMAIL_PORTAL_LINE[m.kind]) {
+      portalUrl = await loadPortalReturnUrl(admin, recipient.id, appOrigin, { paid: false })
+    }
+    // Our contract's file, read as the service role: its bytes must still be the ones the send hashed, so the email
+    // carries exactly what the signature binds to (a test copy too).
+    let contractAttachment: { filename: string; content: string } | null = null
+    if (contractFile) {
+      const { data: blob, error: fileErr } = await admin.storage.from('gc-owner-contracts').download(contractFile.path)
+      if (fileErr || !blob) return refuse('failed', `The contract file was not read: ${fileErr?.message ?? 'no file'}`)
+      if (blob.size > GC_CUSTOMER_EMAIL_MAX_CONTRACT_BYTES) return refuse('tooLarge')
+      const bytes = new Uint8Array(await blob.arrayBuffer())
+      if ((await bytesSha256Hex(bytes.buffer)) !== contractFile.sha256) return refuse('fileChanged')
+      contractAttachment = { filename: gcContractAttachmentName(contractFile.name), content: bytesBase64(bytes) }
+    }
     // Pay by card (O8c): with the switch on (app_settings, `GC_CARD_BILL_SETTING_KEY`) and a bill that can still turn,
     // the portal line offers the card with its 3% fee. A bill on card already says where to pay in the window's words.
     let cardFee: number | null = null
@@ -184,11 +223,13 @@ serve(async (req) => {
       ])
       cardFee = gcEmailCardFee({ on: gcCardBillOn(setting?.value_text), bill: bill ?? null, paid: (paidCount ?? 0) > 0, cardStatus: card?.status ?? null })
     }
-    const email = buildGcCustomerEmail({ subject: words.subject, lines: words.lines, signer, gc: GC_CUSTOMER_EMAIL_FROM_NAME, framed: GC_CUSTOMER_EMAIL_FRAMED[m.kind], portalUrl, cardFee })
+    // Our contract's portal line says they sign it there; every other kind's says they can see the bill.
+    const portalWords = m.kind === 'contract' ? { portalWords: GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS } : {}
+    const email = buildGcCustomerEmail({ ...portalWords, subject: words.subject, lines: words.lines, signer, gc: GC_CUSTOMER_EMAIL_FROM_NAME, framed: GC_CUSTOMER_EMAIL_FRAMED[m.kind], portalUrl, cardFee })
     const subject = m.test ? gcCustomerEmailTestSubject(email.subject) : email.subject
 
     const from = mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, EMAIL_FROM)
-    const attachments = m.pdf ? [{ filename: m.pdf.filename, content: m.pdf.base64 }] : undefined
+    const attachments = contractAttachment ? [contractAttachment] : m.pdf ? [{ filename: m.pdf.filename, content: m.pdf.base64 }] : undefined
     const sent = await sendEmailViaResend(m.test ? testAddress : address, subject, email.text, email.html, resendApiKey, {
       from,
       ...(replyTo ? { replyTo } : {}),

@@ -1169,15 +1169,22 @@ The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, a
 - Bill the customer's **Remind them to pay** → **Send the reminder** files the reminder through `gc_remind_customer_to_pay` (O5b, v2.5000), then emails it in the words it was filed with, with their portal link when they have one. The reminder is the email, so it has no tick.
 - Bill the customer's **Bill the interest**, with **Email the customer the bill now**, files the interest bill through `gc_send_owner_interest_bill` (O6b-2, v2.5003), then emails it to the customer, with their portal link when they have one.
 - The weekly report's **Send to {first}**, from Click Construction (Building's U7b, v2.5139; its window is U7c), keeps the report as a `gc_weekly_reports` row, then emails that row's own words to the customer's contact, the architect copied when the row says so. The report carries its own greeting and sign-off, so the function adds none.
+- Our contract's **Send to sign**, **Remind them** or **Send the new price** in the customer's window, with **Email it to them now, with their portal link** (the Board's B6-d-iii-b), keeps the send (`gc_send_owner_contract`), makes the customer's portal link when they have none (`mint_customer_portal_link`, audience `all`), then emails it with the send's own file attached by the function.
 - **Email me a test** (U7b, every kind): the same email to the sender's own address only, `[TEST]` before the subject.
 
 The window writes the words (`src/lib/gc/customerEmail.ts` and the reminder's `payReminderMail` in `ownerBillingRemind.ts`, shared with What customers see's samples); the function frames them, sends and files the sent copy. The customer's acceptance is recorded by the office (O7a) or pressed in their portal (O7c, `submit-portal-request`).
 
 **Endpoint**: `POST /functions/v1/gc-customer-email` with `{ projectId, kind, sourceId, subject, lines, pdf?, test? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { to, email, resendEmailId, copied, test }` or `{ error: key, detail? }`.
 
-- `kind` is `pay_app`, `certified`, `change_order`, `reminder`, `interest_bill` or `weekly` (to the customer) or `certify_ask` (to the architect). `sourceId` is the row it is about (`GC_CUSTOMER_EMAIL_SOURCE`): a `gc_owner_pay_apps` id, a `gc_change_orders` id for `change_order`, a `gc_owner_pay_reminders` id for `reminder`, a `gc_owner_interest_bills` id for `interest_bill`, or a `gc_weekly_reports` id for `weekly`.
+- `kind` is `pay_app`, `certified`, `change_order`, `reminder`, `interest_bill`, `weekly` or `contract` (to the customer) or `certify_ask` (to the architect). `sourceId` is the row it is about (`GC_CUSTOMER_EMAIL_SOURCE`): a `gc_owner_pay_apps` id, a `gc_change_orders` id for `change_order`, a `gc_owner_pay_reminders` id for `reminder`, a `gc_owner_interest_bills` id for `interest_bill`, or a `gc_weekly_reports` id for `weekly`.
 - `test: true` makes a test copy of any kind (step 7).
 - `lines` are the paragraphs, the greeting first: 1 to 30, each at most 2,000 characters and none blank. `subject` is at most 200.
+- **`contract`** (B6-d-iii-b): `sourceId` is a `gc_owner_contract_sends` id and `pdf` must be absent (`400 badRequest`), since the function attaches the send's own file. It is the money team's, goes to the customer's contact first (their owner, not their payables), framed, and filed as `gc_owner_contract` with the send as its source.
+  - **What it refuses:** another project's send is `409 otherProject`. A send signed already (in their portal or on paper) is `409 alreadySigned`, and a send a newer one replaced is `409 notNewest`.
+  - **The file:** read from `gc-owner-contracts` as the service role, and its SHA-256 must match the send's (`409 fileChanged`), so the email carries exactly the bytes the signature binds to. Over 30 MB is `413 tooLarge`, since Resend takes about 40 MB a message; their portal has it. A test copy attaches the same file.
+  - **No card line:** the card offer reads only a certified bill or a reminder, and the frame offers a card under a bill's portal words only.
+  - **A send not emailed** (no tick, or refused) has no sent copy. Its row reads "Not emailed", and **Email it now** emails that same send, with nothing sent anew.
+  - **The portal line:** required. It is *Read it and sign it in your portal:* with a link where their GC jobs show (`gcContractPortalUrl`): the merged `all` link, at its short address when it has one, else a `customer` view, never a `gc` view. With none, `422 noPortal`.
 - `pdf`, with a pay application, is `{ filename, base64 }`: a `.pdf` name of at most 120 characters, and at most 6,000,000 base64 characters (the cap `send-lien-release-email` keeps).
 
 **In order**:
