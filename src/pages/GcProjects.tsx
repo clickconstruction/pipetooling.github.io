@@ -106,6 +106,7 @@ import { emailTheAnswer, sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
+import { useRingLayers } from '../components/gc/useRingLayers'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
@@ -784,6 +785,10 @@ export default function GcProjects() {
     const customer = customerMoneyId ? boardWithChanges?.customers.find((c) => c.id === customerMoneyId) : undefined
     return customer && boardWithChanges && customerMoneyRows?.customerId === customer.id ? customerMoneyView(boardWithChanges, customerMoneyRows.rows, customer) : null
   }, [customerMoneyId, boardWithChanges, customerMoneyRows])
+  // The rings' read (the Board's B2b-vi-c): the board with what each stage's ring counts laid over it, read after the board
+  // paints and only for the stages this reader may see (`ringStages`). One state, so the ring on each row and How the stage
+  // is going under a project's title (B2b-vii) never give two answers.
+  const ringState = useRingLayers(board, role, crewLinks, today)
   const changeEmailed = useMemo(() => {
     const out: Record<string, { to: string; on: string }[]> = {}
     for (const e of changeEmails) (out[e.source_id] ??= []).push({ to: e.recipient_name ?? '', on: calendarYmdInAppTzFromIso(e.sent_at) })
@@ -1660,6 +1665,7 @@ export default function GcProjects() {
                 moneyShown={moneyShown}
                 folderUrls={Object.fromEntries(loaded.projects.filter((p) => p.driveFolderUrl).map((p) => [p.id, p.driveFolderUrl]))}
                 onChase={() => setDevView('followUp')}
+                ring={ringState}
               />
             ) : devView === 'partners' ? (
               <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />

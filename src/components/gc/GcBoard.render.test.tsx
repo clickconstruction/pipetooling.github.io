@@ -154,3 +154,64 @@ describe('GcBoard, By customer (the Board’s B2b-iii)', () => {
     expect((document.querySelector(`[data-gc-board-also="${cibolo.id}"]`) as HTMLElement).textContent).toBe(`Also: ${nameOf(state, 'padb')}, lost`)
   })
 })
+
+describe('GcBoard, the ring on each row (the Board’s B2b-vi-c)', () => {
+  const ALL = new Set(['pursuing', 'buyout', 'building'] as const)
+  const ringOf = (state: ReturnType<typeof initialGcState>, over: { shown?: ReadonlySet<'pursuing' | 'buyout' | 'building'>; ready?: ReadonlySet<'pursuing' | 'buyout' | 'building'>; failed?: boolean } = {}) => ({
+    state,
+    shown: over.shown ?? ALL,
+    ready: over.ready ?? over.shown ?? ALL,
+    failed: over.failed ?? false,
+  })
+
+  it('draws each row’s ring with its count, and its card opens on a press without opening the job', () => {
+    const state = initialGcState()
+    const onOpen = vi.fn()
+    render(<GcBoard state={state} onOpen={onOpen} onPlans={() => undefined} ring={ringOf(state)} />)
+    const boerne = document.querySelector('[data-gc-board-ring="boerne"]') as HTMLElement
+    expect(within(boerne).getByText('14/25')).toBeTruthy()
+    const ring = within(boerne).getByRole('button', { name: '14 of 25 steps done before our bid can go in. Show what is done and what is left.' })
+    fireEvent.click(ring)
+    const card = within(boerne).getByRole('dialog', { name: 'What is done and what is left' })
+    expect(within(card).getByText('Bidding to the customer')).toBeTruthy()
+    expect(within(card).getByText('Confirm quotes after plan changes')).toBeTruthy()
+    expect(onOpen).not.toHaveBeenCalled()
+    expect(within(document.querySelector('[data-gc-board-ring="fairoaksd"]') as HTMLElement).getByText('74%')).toBeTruthy()
+  })
+
+  it('keeps an empty cell where the reader may not see the stage, so the rows line up, and Who to call stays', () => {
+    const state = initialGcState()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} onChase={() => undefined} ring={ringOf(state, { shown: new Set(['pursuing']) })} />)
+    expect(document.querySelector('[data-gc-board-ring="boerne"]')).not.toBeNull()
+    expect(document.querySelector('[data-gc-board-ring="fairoaksd"]')).toBeNull()
+    const row = document.querySelector('[data-gc-board-row="fairoaksd"]') as HTMLElement
+    expect(row.style.gridTemplateColumns.startsWith('3.5rem')).toBe(true)
+    expect(row.querySelector('[data-gc-board-people]')).not.toBeNull()
+  })
+
+  it('draws an empty track while a stage is still reading what it counts, and says so when a read failed', () => {
+    const state = initialGcState()
+    const { unmount } = render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} ring={ringOf(state, { ready: new Set(['pursuing']) })} />)
+    const fair = document.querySelector('[data-gc-board-ring="fairoaksd"]') as HTMLElement
+    expect(within(fair).getByRole('img', { name: 'Reading what the ring counts.' })).toBeTruthy()
+    expect(within(fair).queryByText('74%')).toBeNull()
+    unmount()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} ring={ringOf(state, { ready: new Set(['pursuing']), failed: true })} />)
+    expect(screen.getAllByRole('img', { name: 'The ring could not read what it counts. Reload the page to try again.' }).length).toBeGreaterThan(0)
+  })
+
+  it('draws the ring on By customer’s rows too', () => {
+    const state = initialGcState()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} ring={ringOf(state)} />)
+    fireEvent.click(screen.getByRole('button', { name: 'By customer' }))
+    const band = document.querySelector('[data-gc-board-customer]') as HTMLElement
+    expect(band.querySelector('[data-gc-board-ring]')).not.toBeNull()
+  })
+
+  it('draws no ring column when the page gives no ring', () => {
+    const state = initialGcState()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} />)
+    expect(document.querySelector('[data-gc-board-ring]')).toBeNull()
+    expect((document.querySelector('[data-gc-board-row="boerne"]') as HTMLElement).style.gridTemplateColumns.startsWith('3.5rem')).toBe(false)
+  })
+})
