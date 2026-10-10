@@ -12,6 +12,7 @@ export {
   JOB_BILL_TO_PARTIES,
   billPartyLabel,
   customerBillingEmail,
+  customerContactEmail,
   customerContactPhone,
   effectiveInvoiceParty,
   parseInvoiceBillToParty,
