@@ -166,11 +166,15 @@ decide the rest. Swapping the policies is their gate too, with these exceptions:
   give the team every column of a company's paper, a W-9's `form_hints` (its tax number's last four), the answers' PDF
   path and the signer's IP and agent among them. Instead `gc_company_paper_states(p_company_ids uuid[] DEFAULT NULL)
   RETURNS TABLE (id uuid, company_id uuid, doc_type text, status text, sent_at timestamptz, signed_at date, expires_at
-  date)`, `STABLE SECURITY DEFINER`: company rows only (`company_id IS NOT NULL`), `doc_type IN ('agreement', 'w9',
-  'coi')` (the three `companyPapers` reads), for `gc_on_any_schedule_team()` or `gc_office_team()`, empty for anyone
-  else; `REVOKE ALL FROM PUBLIC, anon`, granted to `authenticated`. The row is `CompanyPaperRow` already. The Board's
-  loader (`loadGcBoardRows`) switches its `person_contract_documents` read to it in a small Board PR after D1's types,
-  so a controller's, an estimator's or a superintendent's chart reads a trade's papers as a dev's does.
+  date, created_at timestamptz)`, `STABLE SECURITY DEFINER`: company rows only (`company_id IS NOT NULL`), `doc_type
+  IN ('agreement', 'w9', 'coi')` (the three `companyPapers` reads), empty for anyone outside its gate; `REVOKE ALL FROM
+  PUBLIC, anon`, granted to `authenticated`. The row is `CompanyPaperRow` already, and `created_at` is what
+  `companyPapers` orders by and falls back to for a master agreement's signed day. The lead carved the office's half out
+  of D1: v2.5179 (#5335, `20261010120000`) builds it for `gc_office_team()`, and the Board's loader (`loadGcBoardRows`)
+  switches its `person_contract_documents` read to it in a small Board PR after that migration's types, so an
+  estimator's chart reads a trade's papers as a dev's does (the controller already reads them through
+  `has_payroll_access()`). D1 widens the gate to `gc_on_any_schedule_team()` or the office with one `CREATE OR
+  REPLACE`, so a superintendent's does too.
 - **Our crew** (U8): its percent reads `list_job_stage_progress`, which already admits superintendents and estimators.
   The page reads it for `canUseGcBuilding(role) || canSeeGcMoney(role)`, and `canUseGcBuilding` becomes the team.
   Its counts follow `gc_crew_on_site`'s new gate.
@@ -264,7 +268,7 @@ card is the RFIs window, under its button's name, *RFIs*.
       promise; a trade not on that day's log keeps nothing; a punch fixed ask keeps *punch* and a submittal that came in
       keeps *submittals* for its own trade only; a training account and a twin are refused by
       `gc_keep_building_promise` in words; a subcontractor's `gc_package_sow_signed` answers false; anon can call neither.
-  11. **A company's papers**: a superintendent on P calls `gc_company_paper_states` and gets the seven columns of the
+  11. **A company's papers**: a superintendent on P calls `gc_company_paper_states` and gets the eight columns of the
       company's agreement, W-9 and certificate rows, nothing like `form_hints`, and never a person's paper; a
       subcontractor gets none.
 - **The schedule's bed** (`gc_schedule/30_team_door.sql`, PR 10's): its case 5, the superintendent reading 0, flips to
@@ -335,8 +339,9 @@ client is on Pages.
    controller's charge would fail. **My pick:** D1 moves those three to `gc_money_team()` with the training and twin
    checks the Building presses have, and `gc_back_charges` writes to the money team. The Portal co-signs.
 6. **A company's papers for the schedule's team** (9d's call 1): **the Board's shape (gc 2, amendment 1)**, a function
-   with the seven columns `companyPapers` reads, not a row policy that would show a W-9's tax hints and the signer's
-   details. A person's paper stays the pay roles'. The Board's loader switches to it after D1's types.
+   with the eight columns `companyPapers` reads, not a row policy that would show a W-9's tax hints and the signer's
+   details. A person's paper stays the pay roles'. The office's half shipped early as v2.5179 (#5335), and the Board's
+   loader switches to it after that migration's types. D1 widens its gate to the schedule's team.
 7. **An RFI answer's cost**: the whole team, superintendents included (Building's call 1, its default). Unchanged.
 8. **The architect's email from a superintendent**: `gc-architect-email` reads the submittal or RFI as the caller, so after
    D1 the team sends to the architect. **Default: yes**, since an RFI is the superintendent's.
