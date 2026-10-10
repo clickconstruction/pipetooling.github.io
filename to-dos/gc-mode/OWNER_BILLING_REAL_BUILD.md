@@ -551,8 +551,13 @@ schedule's PR 10 the pattern.
     preview. Two PRs, O10a (the record and what is due) and O10b (the sender): `mockups/owner-billing-o10.md`.
     *Check:* the bed's notices due on the right days to the right reader, each once; then Preview, on Grace's yes.
 
-**Later, once the rest is in**: the customer's notice 3 days before a bill is due (O10's call 5); our own crew at its
-Pipeline cost in `jobMargin` (U8); general conditions at actual cost.
+14. **O11, what our own work really costs** (after O10; the lead's ask, 2026-10-10): our own crew at its Pipeline
+    job's cost at today's pace in `jobMargin`, through U8's link, and general conditions at actual cost, through the
+    Pipeline job Our number names for them. Two PRs, O11a (our crew, no migration, after U8b) and O11b (general
+    conditions, one column): `mockups/owner-billing-o11.md`. *Check:* the margin's **Our own work** against the
+    linked jobs' Costs tabs, for a reader who sees pay and one who does not.
+
+**Later, once the rest is in**: the customer's notice 3 days before a bill is due (O10's call 5).
 
 ## Docs each PR touches
 
