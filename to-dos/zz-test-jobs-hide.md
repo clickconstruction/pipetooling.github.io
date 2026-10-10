@@ -140,8 +140,8 @@ up jobs. A dev can still see the office's view through *View as*.
   237) before the jobs join, and the join's `LIEN_DESK_JOB_COLUMNS` already has both names. So the
   rule drops ZZ job ids from `rows`, `items`, `affidavitRows` and `retainageRows` after the join.
   This covers the desk's light mode on the Dashboard's pinned row and in Quickfill's Needs you.
-- **The rest**: the timeline book, whose `LIEN_BOOK_JOB_COLUMNS` gains `customer_name` (legal-portal's
-  copy too), GC on notice (`useGcOnNoticeData`; a ZZ-named GC's run drops every job), and the lien Needs
+- **The rest**: the timeline book, whose `LIEN_BOOK_JOB_COLUMNS` gains `customer_name` (the firm's copy
+  in legal-portal drops ZZ jobs outright), GC on notice (`useGcOnNoticeData`; a ZZ-named GC's run drops every job), and the lien Needs
   you nudges on the same cards: **lien releases owed** (moved here from 2b to stay off the lien lane), the
   lien watch, demand deadlines and owner records signed.
 - **Waits** until no lien PR is open on `useLienDeskData.ts` or `src/lib/jobs/lienDesk.ts`. On
