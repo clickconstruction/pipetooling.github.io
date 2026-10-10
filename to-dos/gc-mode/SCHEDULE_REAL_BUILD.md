@@ -678,6 +678,11 @@ company record and its portal (Board and Portal). PR 16 joins each other lane as
 12. **Before the job**: the rough while we bid (G-45), templates (G-44), import (G-137) and their
     dates to meet (G-145). *Check:* save Fair Oaks D's shape as a template and draw a new job from
     it.
+    *Live:* in three cuts by gc 1 (`mockups/schedule-pr12.md`, co-signed by gc 4), none with a migration or a deploy:
+    templates in 12a, v2.5188 (#5346); the rough while we bid in 12b, v2.5189 (#5353), its weeks kept with our bid
+    and shown on Our number; and a schedule from their file and their dates to meet in 12c, v2.5193 (#5357), the file
+    read in the browser and never kept (call 7). Each write is PR 5's. The check waits on the owner's yes, since each
+    press writes a prod row.
 13. **Tell the trades and their answers**: the edge function `gc-tell-trades`, and the portal's
     `answer_dates`. *Check:* a test company's inbox gets its new dates, in Spanish for a company
     that reads Spanish, and its *These dates work* reaches the move's row.
@@ -819,3 +824,11 @@ PR 13, Tell the trades and their answers, is live in two cuts: 13a's writes as v
 `mockups/schedule-pr13.md`, co-signed by gc 10 and gc 3. Neither deployed a function. Their items above say what
 each turned on. PR 13's company answer is the Portal's P5d-i, and 13c (the dates back after an undo) follows P5d.
 Their live checks wait on the owner's yes. PR 14 is being planned by gc 4, and PR 12 by gc 1.
+
+PR 12, before the job, is live in three cuts by gc 1 (`mockups/schedule-pr12.md`, co-signed by gc 4): 12a's templates
+as v2.5188 (#5346), 12b's rough as v2.5189 (#5353) and 12c's file and their dates as v2.5193 (#5357). None has a
+migration or deployed a function. Each spike follow-up forked the prototype's same-named screens to `.proto` and
+merged main, checked by gc 7: 12a's at 4917f30b2, 12b's at a910bba99, and 12c's on `claude/gc-schedule-pr12c-follow`
+(4dae1f2b2, for the lead to merge). PR 12's item above says what each cut turned on. Its live checks wait on the
+owner's yes. PR 15, the customer's side, is planned (`mockups/schedule-pr15.md`, co-signed by gc 4 and gc 5), and gc 1
+is cutting its 15a.
