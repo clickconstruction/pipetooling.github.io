@@ -9879,6 +9879,7 @@ export type Database = {
         Row: {
           bill_day: string | null
           created_at: string
+          due_on: string | null
           email_send_log_id: string | null
           id: string
           kind: string
@@ -9891,6 +9892,7 @@ export type Database = {
         Insert: {
           bill_day?: string | null
           created_at?: string
+          due_on?: string | null
           email_send_log_id?: string | null
           id?: string
           kind: string
@@ -9903,6 +9905,7 @@ export type Database = {
         Update: {
           bill_day?: string | null
           created_at?: string
+          due_on?: string | null
           email_send_log_id?: string | null
           id?: string
           kind?: string
@@ -30925,6 +30928,10 @@ export type Database = {
       }
       get_day_book_payload_for_user: {
         Args: { p_day: string; p_user_id: string }
+        Returns: Json
+      }
+      get_gc_customer_due_notices: {
+        Args: { p_since?: string; p_today?: string }
         Returns: Json
       }
       get_gc_money_monday_payload: { Args: never; Returns: Json }
