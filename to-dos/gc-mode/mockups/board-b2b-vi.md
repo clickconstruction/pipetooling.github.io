@@ -151,16 +151,19 @@ The card under the ring opens on hover, keyboard focus or a press, and a press k
  5 of 13 companies have not opened Addendum 1.
 ```
 
-Helotes, buying out, reads "14 of 25 steps done before work can start." over seven groups, from *Our contract, permit and start date* to *Get the statement of work signed*. Fair Oaks, building, reads "74%" and "74% of the work is done, by what the trades and our own crew have reported." Its *Also* lines lead with the schedule, the failed inspection and the walk, then the punch list, the draws, the log, the submittal and the trade's ask. A reader outside a stage's doors (call L) sees no ring on that stage's rows. A ring still reading its layers is an empty track whose label says "Reading the schedule."
+Helotes, buying out, reads "14 of 25 steps done before work can start." over seven groups, from *Our contract, permit and start date* to *Get the statement of work signed*. Fair Oaks, building, reads "74%" and "74% of the work is done, by what the trades and our own crew have reported." Its *Also* lines lead with the schedule, the failed inspection and the walk, then the punch list, the draws, the log, the submittal and the trade's ask. A reader outside a stage's doors (call L) sees no ring on that stage's rows. A ring still reading its layers is an empty track whose label says "Reading what the ring counts.", or, when a read failed, "The ring could not read what it counts. Reload the page to try again." On a phone (≤ 760 px) the ring stands over the days block in the row's first column instead of a column of its own, so the name keeps its width (amended at the cut: a third column left the name 109 px wide at 375 px).
 
 - **Files:**
   - `GcProgressRing.tsx` (new): the spike's component word for word but its import, the types from `../../lib/gc/progress`. It sets `aria-label` as the spike does and draws its card the way main's `GcPeoplePill` does, which CI passes.
-  - `GcBoard.tsx`: `ProjectRow` gains the column and a `ring` prop, and `GcBoard` takes `ringState` and `ringStages`.
-  - `GcProjects.tsx`: the layer reads and the `boardLayers` memo, after v-iii's money state (*gc 2*'s order: v-ii, v-iii, vi-c, vii).
-  - `src/lib/gc/boardLayers.ts` and `src/lib/gc/ringStages.ts` (new, pure).
+  - `GcBoard.tsx`: `ProjectRow` gains the column and `RingCell`, and `GcBoard` takes one `ring` prop, the `RingRead`: the laid state, the stages shown and the stages ready, and whether a read failed.
+  - `useRingLayers.ts` (new): the ring's reads, driven by `ringStages(role)` (*gc 2*'s condition 3). After the board paints it reads the layers the reader's stages count, each set only once its read succeeds.
+  - `GcProjects.tsx`: one line, `const ringState = useRingLayers(board, role, crewLinks, today)`, after v-iii's money state (*gc 2*'s order: v-ii, v-iii, vi-c, vii), passed as `ring={ringState}`. B2b-vii reads the same `ringState`.
+  - `src/lib/gc/ringStages.ts` (new, pure): each stage's sources, a GC table read through `GC_TABLE_DOORS` by its door or its `reads` (*gc 2*'s condition 1), anything else through `GC_OTHER_SOURCES` with its readers (condition 2). The schedule's sources are every Schedule-lane table, since `loadSchedule` reads them all.
+  - `src/lib/gc/boardLayers.ts` (new, pure): `boardLayers` lays the layers in the Schedule window's order (`scheduleHoldsState`), and `ringReady` keeps a stage only once every layer it counts was read.
 - **Tests:**
-  - `boardLayers.test.ts`: the order, and that each layer reads as before when it is not given;
-  - `ringStages.test.ts`: today's answer for each of the five office roles, and that each stage's tables are named in `GC_TABLE_DOORS`, so a table renamed or dropped fails here;
+  - `boardLayers.test.ts`: no layer leaves the board as it was, a schedule lays on its job, Get started's step reads it, and `ringReady` waits for every layer;
+  - `ringStages.test.ts`: today's answer for each of the five office roles, a leader passing `gc_sows` by `reads`, and every source named in one map, so a table renamed or dropped fails here;
+  - `progress.money.test.ts`: the ring's count, headline and building items carry no "$" or "K" (the lead's money call, below);
   - `GcProgressRing.render.test.tsx`: the count, the headline as its label, the card on a press, Escape, and the check at 100%;
   - `GcBoard.render.test.tsx`: a ring on each row a reader may see, none on the others, and the Who to call pill still in place.
 - **Window checks:** the five window checks (`check:status-bar`, `check:dialog-role`, `check:backdrop-click`, `check:nested-windows`, `check:window-z`) and the theme check. `RING_COLORS` and the card's two marks are saturated status colors, which stay literal.
@@ -198,7 +201,11 @@ From the spike at its head: merge main, `lift-reexport --write` for `words`, `lo
 
 - vi-a: `progress.direct.test.ts` pins the five test projects' rings as above: Boerne 14/25, Padb 1/6, Helotes 14/25, Fair Oaks 74%, Stone Oak 100% with its check. `lift-same` reads the same with two known.
 - vi-b: on prod, read only. As a dev, Compare quotes on the bidding test project (c4117b0d) says what its sets' sends say. Nothing is pressed.
-- vi-c: at a desk and at 375 px on the dev server, as a dev and through View as an estimator. The estimator sees bidding rings only, and the rows line up.
+- vi-c: at a desk and at 375 px on the dev server, as a dev, read only. The estimator's view (bidding rings only, rows lined up) is held by `ringStages.test.ts` and `GcBoard.render.test.tsx`, not walked with View as: View as signs in as a sample account and makes a missing one through `create-user`, which writes to prod.
+
+## The money in the card (the lead's call, at the cut)
+
+The ring's count and headline never carry money, and the building ring weighs by statement-of-work worth but says a percent. The bidding card keeps the kernel's words, whose trade lines name the quoted numbers the same reader already sees on the row's price card ("Summit Roofing, 112K + ?…"). The owner's rule keeps our number, markup, contribution, earned and labor from teammates, and a trade's quote is none of those. `progress.money.test.ts` holds it. When Building's door widens the building ring, that PR decides the line about a trade's ask, which names its dollars.
 
 ## Left out
 
