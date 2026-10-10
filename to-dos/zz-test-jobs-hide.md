@@ -2,7 +2,7 @@
 name: "ZZ test jobs off the Pipeline for everyone but a dev"
 number: 61
 group: ready
-status: parked 2026-09-29 — the owner took the three calls (the ZZ prefix is the rule, any switch is dev only, the sweep first) and the sweep shipped the same day (v2.4157, Settings → Data & recovery → ZZ test jobs) · the gate is met 2026-10-09 (five ZZ jobs on jobs_ledger, one 10 days old, past the sweep's week) · the build is planned below as three PRs; Todd's go 2026-10-09 · PR 1 shipped v2.5116 (the Pipeline, its strip and Quickfill's money without ZZ jobs for every role but dev; the paid head-count and collected-by-day too) · PR 2a shipped v2.5120 (the dev's switch, hidden by default, and the Dashboard's Billed pin, AR card and Ready to bill / Billed lists, by a shared ZZ id read) · PR 2b next
+status: parked 2026-09-29 — the owner took the three calls (the ZZ prefix is the rule, any switch is dev only, the sweep first) and the sweep shipped the same day (v2.4157, Settings → Data & recovery → ZZ test jobs) · the gate is met 2026-10-09 (five ZZ jobs on jobs_ledger, one 10 days old, past the sweep's week) · the build is planned below as three PRs; Todd's go 2026-10-09 · PR 1 shipped v2.5116 (the Pipeline, its strip and Quickfill's money without ZZ jobs for every role but dev; the paid head-count and collected-by-day too) · PR 2a shipped v2.5120 (the dev's switch, hidden by default, and the Dashboard's Billed pin, AR card and Ready to bill / Billed lists, by a shared ZZ id read) · PR 2b shipped v2.5122 (header search, the Dashboard's job cards and Needs you nudges, Customers) · PR 3, the Lien desk, next when the lien lane is quiet
 summary: >
   Jobs → Pipeline shows every ZZ test job the live passes and robot runs leave behind — rows the
   office scrolls past, and $2,200 test bids inside "Ready to ask for", the stage counts and the
@@ -14,11 +14,10 @@ summary: >
   shown. The mockup beside this card shows the Ready to Bill section before, after for the
   office, and after for a dev.
 next: >
-  PR 2b (The build, below): the other office doors, each dropping ZZ jobs by the shared ids
-  (`zzTestJobRows.ts`): header search, the Dashboard's job cards and the Needs you nudges, and
-  Customers. PR 3, the Lien desk, waits for a quiet lien lane.
+  PR 3 (The build, below): the Lien desk and the lien releases owed nudge, when no lien PR is open on
+  their files. Then retire this card.
 size: M–L (three PRs)
-ver: v2.5116 (PR 1) · v2.5120 (PR 2a)
+ver: v2.5116 (PR 1) · v2.5120 (PR 2a) · v2.5122 (PR 2b)
 blocker: None for PR 2. PR 3 waits for a quiet lien lane.
 opinion: build — the sweep did not keep the board clean, and PR 1 alone gives the office an honest Pipeline.
 ---
@@ -90,7 +89,7 @@ up jobs. A dev can still see the office's view through *View as*.
   - `JobsStagesTab.render.test.tsx`: as an assistant, no ZZ row and the section count without it,
     including from a snapshot that holds a ZZ row; as the dev, the row is there.
 
-### PR 2 — the dev's switch, the Dashboard's money and the other doors (M–L) — 2a shipped v2.5120
+### PR 2 — the dev's switch, the Dashboard's money and the other doors (M–L) — 2a shipped v2.5120, 2b v2.5122
 
 - **The switch** (the mock-up's after-for-a-dev). One line, *ZZ test jobs*, in Hide groups… is
   checked by default. It lives in `JobsStagesHideGroupsModal.tsx` and `jobsStagesExcludeFilters.ts`,
@@ -119,7 +118,10 @@ up jobs. A dev can still see the office's view through *View as*.
   - The Needs you nudges that name jobs or sum their money: stale open jobs, lien releases owed,
     bank-returned payments and test reports ready.
   - Customers: a ZZ customer's row on the list, and a ZZ job on a real customer's page.
-  - Split as planned. 2a (v2.5120) shipped the switch and the Dashboard's money. 2b is the doors.
+  - Split as planned. 2a (v2.5120) shipped the switch and the Dashboard's money. 2b (v2.5122) shipped the doors:
+    header search, the job cards (held for the ids like Ready to bill), the idle-jobs, returned-deposits and
+    test-reports nudges, and Customers (the list by the ids; a customer's page by its own names). The lien
+    releases owed nudge moved to PR 3. Residue: the phone view's job search drops by name only.
   - **The shared ZZ id read (2a).** PR 1's fifth read became `src/lib/jobs/zzTestJobRows.ts`, shared by every
     reader. It answers once a minute, and the sweep clears it. A screen whose rows carry only ids, or no
     customer name, drops ZZ jobs by these ids. That closed the `get_jobs_ledger_by_status` gap with no
@@ -137,8 +139,9 @@ up jobs. A dev can still see the office's view through *View as*.
   237) before the jobs join, and the join's `LIEN_DESK_JOB_COLUMNS` already has both names. So the
   rule drops ZZ job ids from `rows`, `items`, `affidavitRows` and `retainageRows` after the join.
   This covers the desk's light mode on the Dashboard's pinned row and in Quickfill's Needs you.
-- **The rest**: the timeline book, whose `LIEN_BOOK_JOB_COLUMNS` gains `customer_name`, and GC on
-  notice (`useGcOnNoticeData`).
+- **The rest**: the timeline book, whose `LIEN_BOOK_JOB_COLUMNS` gains `customer_name`, GC on notice
+  (`useGcOnNoticeData`), and the Needs you **lien releases owed** nudge (`useLienReleasesOwedNudge`, moved
+  here from 2b to stay off the lien lane).
 - **Waits** until no lien PR is open on `useLienDeskData.ts` or `src/lib/jobs/lienDesk.ts`. On
   2026-10-09 the lien desk signing lane and v2.5093 (#5192) were open. Cut it from `main` after they
   land.

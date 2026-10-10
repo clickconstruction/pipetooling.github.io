@@ -80,6 +80,7 @@ import { DashboardArDepositsModal } from './DashboardArDepositsModal'
 import NewReportModal from '../NewReportModal'
 import type { PinnedItem } from '../../lib/pinnedTabs'
 import type { UserRole } from '../../hooks/useAuth'
+import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import {
   filterPinsToShow,
   getPinnedChipDisplay,
@@ -488,7 +489,9 @@ export function DashboardPinnedQuickRow({
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
   // Open jobs idle 21+ days (v2.2825) — the office roles that bill and close jobs.
   const staleOpenEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId)
+  /** ZZ test jobs off the nudges for every role but a dev who shows them (punch list #61, v2.5122). */
+  const hideZzTestJobs = useZzTestJobsHidden(role)
+  const { nudge: staleOpen } = useStaleOpenJobsNudge(staleOpenEnabled, authUserId, hideZzTestJobs)
   // Field capacity under 60% three complete weeks running (Job Summary follow-up 3) — the roles that see Job Summary.
   const capacityUnderEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const { streak: capacityUnder } = useCapacityUnderNudge(capacityUnderEnabled, authUserId)
@@ -520,10 +523,10 @@ export function DashboardPinnedQuickRow({
   const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled)
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled)
+  const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled, hideZzTestJobs, authUserId)
   // Deposits the bank returned that jobs still count as paid (v2.3795) — the roles that can read the bank table; Edit Job is the door.
   const bankReturnedEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const bankReturnedNudge = useBankReturnedPaymentsNudge(bankReturnedEnabled)
+  const bankReturnedNudge = useBankReturnedPaymentsNudge(bankReturnedEnabled, hideZzTestJobs, authUserId)
   // Submittals (stage 4b, v2.3488): the office and the estimators see the four cards.
   const submittalsEnabled = !hideBanners && Boolean(authUserId) && (officeEligible || role === 'estimator')
   const submittalsNudge = useSubmittalsNudge(submittalsEnabled)

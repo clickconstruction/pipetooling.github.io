@@ -34,6 +34,8 @@ import { buildCustomerInvoiceRows, type CustomerInvoiceRow } from '../lib/custom
 import { fetchCustomerInvoices, type CustomerInvoicesData } from '../lib/customers/fetchCustomerInvoices'
 import { telHrefFor } from '../lib/phoneContact'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { customerInvoicesWithoutZz, customerPageDataWithoutZz, customerPageZzJobs } from '../lib/customers/customerPageZzTestJobs'
 
 /**
  * Customer Hub — the dedicated page per customer at /customers/:id.
@@ -167,19 +169,28 @@ function TypeChip({ label, bg, fg }: { label: string; bg: string; fg: string }) 
 export default function CustomerDetail() {
   const { id: customerId } = useParams<{ id: string }>()
   const { role: myRole } = useAuth()
+  /**
+   * ZZ test jobs (punch list #61, v2.5122): for every role but a dev who shows them, a ZZ job leaves the page,
+   * its money and its Invoices tab. The page knows its customer, so a job is a test job when its own name is
+   * a ZZ name or the customer's is; no shared read is needed.
+   */
+  const hideZz = useZzTestJobsHidden(myRole)
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const editCustomer = useEditCustomerModal()
   const customerProfile = useCustomerProfileModal()
   const jobDetail = useJobDetailModal()
 
-  const [data, setData] = useState<CustomerProfileData | null>(null)
+  const [dataAll, setData] = useState<CustomerProfileData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [feed, setFeed] = useState<ActivityEvent[] | null>(null)
   const [feedError, setFeedError] = useState<string | null>(null)
   const [feedFilter, setFeedFilter] = useState<ActivityFamily | 'all'>('all')
   const [feedLimit, setFeedLimit] = useState(FEED_PAGE)
-  const [invoicesData, setInvoicesData] = useState<CustomerInvoicesData | null>(null)
+  const [invoicesDataAll, setInvoicesData] = useState<CustomerInvoicesData | null>(null)
+  const zzJobs = useMemo(() => (hideZz ? customerPageZzJobs(dataAll) : null), [hideZz, dataAll])
+  const data = useMemo(() => customerPageDataWithoutZz(dataAll, zzJobs), [dataAll, zzJobs])
+  const invoicesData = useMemo(() => customerInvoicesWithoutZz(invoicesDataAll, zzJobs), [invoicesDataAll, zzJobs])
   const [invoicesError, setInvoicesError] = useState<string | null>(null)
 
   const activeTab = parseTab(searchParams.get('tab'))
