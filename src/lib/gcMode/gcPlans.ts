@@ -4,10 +4,12 @@
  */
 import type { GcProject, GcState, Invite, Partner, PlanQuestion, PlanSheet, SpecSection, TradePackage } from './gcTypes'
 import { weekdayDate } from './gcWords'
-import { currentRev, partnerById } from './gcLookups'
+import { partnerById } from './gcLookups'
 // What moved to main (the real build) is re-exported from there, so there is one copy.
 import { preBidInvited } from '../gc/preBid'
 import { questionsCloseOn } from '../gc/planQuestions'
+export { plansReach } from '../gc/lookups'
+
 export { questionState, questionsCloseOn, questionsFor } from '../gc/planQuestions'
 
 export { preBidInvited } from '../gc/preBid'
@@ -250,13 +252,6 @@ export function questionInNote(project: GcProject, q: PlanQuestion): string {
   const trade = project.packages.find((p) => p.id === q.packageId)?.trade ?? 'A trade'
   const about = q.sheets && q.sheets.length > 0 ? `${q.sheets.join(', ')}, ${trade}` : trade
   return `${about}: ${q.text.trim()} Answer: ${(q.answer ?? '').trim()}`
-}
-
-/** How many invited trade partners have opened the newest set. */
-export function plansReach(project: GcProject): { have: number; of: number } {
-  const rev = currentRev(project)
-  const invites = project.packages.flatMap((p) => p.invites).filter((i) => i.status !== 'declined')
-  return { have: invites.filter((i) => i.seenRev === rev).length, of: invites.length }
 }
 
 // ---------------------------------------------------------------------------------------------

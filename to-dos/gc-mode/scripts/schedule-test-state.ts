@@ -13,13 +13,17 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs'
 import { initialGcState } from '../../../src/lib/gcMode/gcFixture'
+import { currentRev } from '../../../src/lib/gcMode/gcLookups'
+import { specsAtRev } from '../../../src/lib/gcMode/gcNewProject'
+import { sheetsAtRev } from '../../../src/lib/gcMode/gcPlans'
+import type { GcState } from '../../../src/lib/gcMode/gcTypes'
 
 type Lift = {
   types: { to: string; fields?: Record<string, string[] | 'all'> }[]
   slice?: { root?: string; nested: Record<string, Record<string, string>> }
 }
 /** The lifts whose fields main's test data carries, oldest first. A later lift's list for a shape replaces an earlier one's. */
-const LIFTS = ['schedule-pr1a.lift.json', 'schedule-pr1b-i.lift.json', 'schedule-pr1b-ii.lift.json', 'board-b2-i.lift.json', 'building-u2.lift.json', 'owner-billing-o2a.lift.json', 'board-b2-ii.lift.json', 'portal-p0.lift.json', 'portal-p1b-i.lift.json', 'owner-billing-o3.lift.json', 'owner-billing-o2b.lift.json', 'board-b5-b.lift.json', 'portal-p2b-ii.lift.json', 'schedule-pr7c-i.lift.json', 'board-b2b-i.lift.json']
+const LIFTS = ['schedule-pr1a.lift.json', 'schedule-pr1b-i.lift.json', 'schedule-pr1b-ii.lift.json', 'board-b2-i.lift.json', 'building-u2.lift.json', 'owner-billing-o2a.lift.json', 'board-b2-ii.lift.json', 'portal-p0.lift.json', 'portal-p1b-i.lift.json', 'owner-billing-o3.lift.json', 'owner-billing-o2b.lift.json', 'board-b5-b.lift.json', 'portal-p2b-ii.lift.json', 'schedule-pr7c-i.lift.json', 'board-b2b-i.lift.json', 'board-b2b-vi.lift.json']
 const withAt = process.argv.indexOf('--with')
 const withLift = withAt > 0 ? process.argv[withAt + 1] : undefined
 const lifts = [...LIFTS, ...(withLift ? [withLift] : [])].map((f) => JSON.parse(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8')) as Lift)
@@ -44,9 +48,30 @@ function cut(value: unknown, shape: string): unknown {
   return out
 }
 
+/**
+ * Main's own `GcProject.index` (the Board's B2b-vi, call E3'): each project's index and manual as they stand after its newest
+ * set, by the prototype's own walk (`sheetsAtRev`, `specsAtRev`), so main's `staleChange` reads the same lines on this data as
+ * the prototype's does. Only once `board-b2b-vi.lift.json` is among the lifts; it lands right after `planSets`.
+ */
+const withIndex = lifts.some((l) => (l as { files?: { from: string }[] }).files?.some((f) => f.from === 'gcStale'))
+function indexOf(project: GcState['projects'][number]) {
+  const rev = currentRev(project)
+  return {
+    sheets: sheetsAtRev(project, rev).map((s) => ({ id: s.id, title: s.title, ...(s.discipline ? { discipline: s.discipline } : {}), ...(s.page ? { page: s.page } : {}) })),
+    specs: specsAtRev(project, rev).map((s) => ({ id: s.id, title: s.title })),
+  }
+}
+
 /** The made-up data as main's kernels read it. */
 export function sliceOf(state = initialGcState()): unknown {
-  return cut(state, rootShape)
+  const sliced = cut(state, rootShape) as { projects?: Record<string, unknown>[] }
+  if (!withIndex || !sliced.projects) return sliced
+  return {
+    ...sliced,
+    projects: sliced.projects.map((p, i) =>
+      Object.fromEntries(Object.entries(p).flatMap(([k, v]) => (k === 'planSets' ? [[k, v], ['index', indexOf(state.projects[i]!)]] : [[k, v]]))),
+    ),
+  }
 }
 
 const key = (k: string) => (/^[A-Za-z_$][\w$]*$/.test(k) ? k : `'${k}'`)
