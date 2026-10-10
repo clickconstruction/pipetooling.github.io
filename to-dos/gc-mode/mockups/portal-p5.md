@@ -139,7 +139,7 @@ Each kind follows #4815's checklist: `TRADE_EMAIL_KINDS` and `KIND_GROUP` in `_s
 
 One migration, cut first and pushed in a batch. It changes no table and adds no function, so it needs no `apply_*` call:
 
-- `gc_trade_messages_kind_known` gains `accepted` and `finalIn` (and `punch` if the owner takes decision 7);
+- `gc_trade_messages_kind_known` gains `accepted` and `finalIn`, and `punch` now (the lead, 2026-10-10), so a yes on decision 7 needs no second migration;
 - `esign_consents`' record-type CHECK gains `gc_draw` (a pay application or a waiver, keyed by the draw) and `gc_trade_change` (keyed by the change order).
 
 Each is a drop and re-add of one CHECK, `NOT VALID` then `VALIDATE`, under the lock timeout. P5c-3 and P5c-4 need it on prod before they merge. They do not need a types regen, since a CHECK is not in the types.
@@ -181,7 +181,7 @@ Every press writes prod, and P5c-3 and P5c-4 send email. Each waits for the owne
 4. **A submittal's file stays a typed name and an optional Drive link until P5a.** When P5a lands, a submittal's upload goes to the job's **Submittals** folder (Building's decision 6), and every other upload to *Team only → From trades → <company>* (this plan's decision 9). The two plans' folders are reconciled that way.
 5. **The four signatures get the e-sign consent and a ledger row**, as `sign_sow` does. That covers the pay application, the final pay application, the unconditional waiver and a change order. The SQL keeps its acts (`waiver_on`, `signed_on`, the draw's `signed_by`). The consent and its words are the ledger's (`esign_consents`, record types `gc_draw` and `gc_trade_change`), so no table changes. *The other way:* plain presses, as the SQL and the prototype have them. Not taken, because a lien waiver releases a legal claim (owner's call 2 below).
 6. **A split line takes no report until P5d.** It reads its percent with `splitLine`'s words. `GcPortalPartRows` stays on the spike's `GcSplitBars.proto.tsx` until the schedule's PR 16.
-7. **The punch list's emails** (an item added, an item sent back), which U3b's seams gave the Portal, are *not* in P5c-4 by default. The page shows both, and Building's window does not send yet. Say yes and they join P5c-4 as kind `punch`, keyed `<item id>:added` and `<item id>:back:<n>`.
+7. **The punch list's emails** (an item added, an item sent back), which U3b's seams gave the Portal, are *not* in P5c-4 by default. The page shows both, and Building's window does not send yet. Say yes and they join P5c-4 as kind `punch`, keyed `<item id>:added` and `<item id>:back:<n>`. P5c-m adds the kind now (the lead, 2026-10-10): with no sender it costs nothing.
 8. **The home's to-dos** (`portalTodos`) and the pay page's kernels (`portalPay`, `portalPapers`, `portalJobMoney`) lift in P5c-3, word for word with `lift-same`. That is the hour their last callee is on main, as `PORTAL_REAL_BUILD.md`'s *Kernels that move* planned. `portalHome` and `portalMessages` follow when theirs are.
 9. **The trade's screens are lifted, not redrawn.** `GcBuildingPayApp.tsx` (the door, the window, the closeout checklist), `GcBuildingPunch.tsx`'s and `GcBuildingSubmittals.tsx`'s trade halves, and `GcPortalRfis.tsx` move to main with `dispatch` swapped for the submit adapter, as P1b did. The spike's follow-up re-exports them. Their office halves are already Building's on main.
 10. **`DRAW_PORTAL_LIVE` flips in P5c-3**, the PR that ships the screens, as `SOW_SIGN_SCREEN_LIVE` did for P2c-ii.
@@ -202,4 +202,39 @@ Three ways it could be better:
 
 ## Status
 
-Planned 2026-10-10 by gc 3 (the Portal lane) on `claude/gc-portal-p5-plan`, from `origin/spike/gc-mode` at fe1fe1ce2, over main at 982e95bb4. P2c-ii (v2.5138) is merged and its eight functions are deployed. Nothing built. It waits for the lead's read-back.
+Planned 2026-10-10 by gc 3 (the Portal lane) on `claude/gc-portal-p5-plan`, from `origin/spike/gc-mode` at fe1fe1ce2, over main at 982e95bb4. P2c-ii (v2.5138) is merged and its eight functions are deployed. The lead approved the plan the same day with its six decisions as the defaults, and put decision 5 and the punch emails to the owner as questions, not blockers.
+
+**P5c-m cut 2026-10-10** as v2.5150, migration `20261010071000_gc_portal_p5_checks` (past the open claims 063000 and 070000). On the lead's read-back answer it also adds the kind `punch`. Its bed `gc-portal-p5` passed locally on Docker over the whole schema, applied twice: 23 kinds kept and an unknown one refused.
+
+## P5c-m's SQL as built
+
+`supabase/migrations/20261010071000_gc_portal_p5_checks.sql`, word for word. A difference between the migration and this block that is not a comment or the stamp is a question for the Portal lane.
+
+```sql
+SET lock_timeout = '3s';
+
+-- GC mode, the trade partner portal's P5c-m (to-dos/gc-mode/mockups/portal-p5.md on branch spike/gc-mode): two CHECKs
+-- widened for the trade's half of the job, and nothing else. No table, column, function or grant changes.
+--   - gc_trade_messages keeps every email we send a company. It gains three kinds: `accepted` (we accepted its work and
+--     ask for its final pay application) and `finalIn` (its final pay application came in), P5c-4's, and `punch` (an
+--     item added to its punch list or sent back), which waits on the owner's yes and costs nothing until then.
+--   - esign_consents keeps the words a signer agreed to. P5c-3's four signatures in the portal write a ledger row as
+--     sign_sow does: `gc_draw` for a pay application, a final pay application or an unconditional waiver (keyed by the
+--     draw), and `gc_trade_change` for a change order the trade signs (keyed by the change order).
+-- Each CHECK is dropped and added again NOT VALID, then validated, so the scan runs without the table's write lock.
+-- Doc: docs/migrations/.
+
+ALTER TABLE public.gc_trade_messages DROP CONSTRAINT IF EXISTS gc_trade_messages_kind_known;
+ALTER TABLE public.gc_trade_messages
+  ADD CONSTRAINT gc_trade_messages_kind_known CHECK (kind IN (
+    'invite', 'nudge', 'plans', 'bidTab', 'msa', 'sow', 'start', 'less', 'change', 'paid', 'answer',
+    'coi', 'closed', 'vetted', 'preBid', 'changeAsk', 'backCharge', 'dates', 'startSoon', 'paper',
+    'accepted', 'finalIn', 'punch')) NOT VALID;
+ALTER TABLE public.gc_trade_messages VALIDATE CONSTRAINT gc_trade_messages_kind_known;
+
+ALTER TABLE public.esign_consents DROP CONSTRAINT IF EXISTS esign_consents_record_type_check;
+ALTER TABLE public.esign_consents
+  ADD CONSTRAINT esign_consents_record_type_check
+  CHECK (record_type IN ('estimate', 'job_contract', 'person_contract_document', 'step_commitment', 'bid_proposal_room', 'lien_owner_record_request', 'gc_sow', 'gc_draw', 'gc_trade_change')) NOT VALID;
+ALTER TABLE public.esign_consents VALIDATE CONSTRAINT esign_consents_record_type_check;
+```
