@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   dollarsInputToCents,
   formatCentsAsDollars,
+  splitBillFeeLinesByPart,
   splitBillIssuedAtMs,
   splitBillPartMemo,
   splitBillRemainderCents,
@@ -76,5 +77,28 @@ describe('formatCentsAsDollars', () => {
   it('renders with grouping and two decimals', () => {
     expect(formatCentsAsDollars(250050)).toBe('2,500.50')
     expect(formatCentsAsDollars(50)).toBe('0.50')
+  })
+})
+
+describe('splitBillFeeLinesByPart (punch list #105)', () => {
+  const trip = { trip_charge: 'client_not_home', amount: 150 }
+  const card = { card_bill: 'cb-1', amount: 30, description: 'Credit card fee (3%)' }
+
+  it('puts every fee line on the first part when it has room', () => {
+    expect(splitBillFeeLinesByPart([trip, card], [20000, 30000])).toEqual([[trip, card], null])
+  })
+
+  it('hands a fee larger than the first part to the next part with room', () => {
+    expect(splitBillFeeLinesByPart([trip], [10000, 5000, 20000])).toEqual([null, null, [trip]])
+    expect(splitBillFeeLinesByPart([trip, card], [15000, 5000])).toEqual([[trip], [card]])
+  })
+
+  it('puts a fee no part can hold on the part with the most room, so it is never lost', () => {
+    expect(splitBillFeeLinesByPart([{ trip_charge: 'site_not_ready', amount: 500 }], [20000, 30000])).toEqual([null, [{ trip_charge: 'site_not_ready', amount: 500 }]])
+  })
+
+  it('carries nothing when the bill has no fee lines', () => {
+    expect(splitBillFeeLinesByPart(null, [100, 200])).toEqual([null, null])
+    expect(splitBillFeeLinesByPart([], [100, 200])).toEqual([null, null])
   })
 })

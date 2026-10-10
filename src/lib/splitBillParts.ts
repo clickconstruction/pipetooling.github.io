@@ -74,6 +74,31 @@ export function splitBillPartMemo(originalMemo: string | null | undefined, n: nu
 }
 
 /**
+ * Where a split bill's fee lines go (punch list #105, v2.5140). A fee that rides on a bill (a turnaway trip charge, a
+ * GC card fee, `riderFeeLineCents`) is a `fee_lines` entry on that bill, and every rewrite of the job's revenue adds it
+ * back from there. The parts are new rows, so the split hands each entry to one of them: the first part with room
+ * left for its amount, so the first part takes them all unless one is larger than it. An entry no part can hold goes
+ * on the part with the most room, so the fee is never lost. One list per part, null for a part that carries none.
+ */
+export function splitBillFeeLinesByPart(feeLines: unknown, partsCents: readonly number[]): Array<unknown[] | null> {
+  const out: Array<unknown[] | null> = partsCents.map(() => null)
+  if (!Array.isArray(feeLines) || partsCents.length === 0) return out
+  const placed = partsCents.map(() => 0)
+  for (const line of feeLines) {
+    const amount = Number((line as { amount?: unknown } | null)?.amount)
+    const cents = Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0
+    let at = partsCents.findIndex((p, i) => placed[i]! + cents <= p)
+    if (at < 0) {
+      at = 0
+      for (let i = 1; i < partsCents.length; i++) if (partsCents[i]! - placed[i]! > partsCents[at]! - placed[at]!) at = i
+    }
+    placed[at] = placed[at]! + cents
+    out[at] = [...(out[at] ?? []), line]
+  }
+  return out
+}
+
+/**
  * Stripe invoice numbers are `<job digits>-<YYMMDD due date><HHmm now>` — two parts
  * created in the same minute with one due date would collide. Stagger each part's
  * `issued_at_ms` by a minute so every part gets a distinct number.

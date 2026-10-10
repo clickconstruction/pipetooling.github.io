@@ -18,12 +18,14 @@ import {
   MAX_SPLIT_BILL_PARTS,
   dollarsInputToCents,
   formatCentsAsDollars,
+  splitBillFeeLinesByPart,
   splitBillIssuedAtMs,
   splitBillPartMemo,
   splitBillRemainderCents,
   validateSplitBillParts,
 } from '../../lib/splitBillParts'
 import type { StripeInvoiceDetailsSuccess } from '../../lib/stripeInvoiceDetailsResponse'
+import type { Json } from '../../types/database'
 import type { InvoiceWithJobForBillView } from './HostedStripeBillPanel'
 
 const inputStyle = {
@@ -42,7 +44,8 @@ const inputStyle = {
  * multiple cards (v2.1520, mockup Option A). Voids the current Stripe invoice via
  * the existing send-back path, inserts one Ready-to-Bill partial row per part, then
  * creates a hosted Stripe bill per row (issued_at_ms staggered so the generated
- * invoice numbers never collide) and promotes the job back to billed.
+ * invoice numbers never collide) and promotes the job back to billed. The bill's fee lines (a trip charge, a card
+ * fee) move onto the parts, the first part first (punch list #105, v2.5140), so the job's total keeps them.
  */
 export function SplitBillModal({
   open,
@@ -148,6 +151,15 @@ export function SplitBillModal({
       const originalMemo = (inv.stripe_invoice_memo ?? '').trim() || (stripeDetail.memo ?? '').trim() || null
       const footer = (inv.stripe_invoice_footer ?? '').trim() || (stripeDetail.footer ?? '').trim() || undefined
 
+      // 0) The bill's fee lines, read before its row goes (punch list #105): a fee that rides on the bill moves onto
+      // the parts, or the next rewrite of the job's total drops it. Nothing is voided when they cannot be read.
+      const { data: feeRow, error: feeErr } = await supabase.from('jobs_ledger_invoices').select('fee_lines').eq('id', inv.id).maybeSingle()
+      if (feeErr) {
+        setError(`Could not read the bill's fees, so nothing was split: ${formatErrorMessage(feeErr, 'read failed')}`)
+        return
+      }
+      const feeLinesByPart = splitBillFeeLinesByPart((feeRow as { fee_lines?: unknown } | null)?.fee_lines, partsCents)
+
       // 1) Void the current Stripe bill and remove its ledger line (existing send-back path).
       const voided = await invokeVoidStripeInvoiceForRevert({
         invoiceId: inv.id,
@@ -183,6 +195,7 @@ export function SplitBillModal({
             estimated_bill_date: null,
             is_primary_rtb_bundle: false,
             stripe_invoice_memo: splitBillPartMemo(originalMemo, i + 1, m),
+            ...(feeLinesByPart[i] ? { fee_lines: feeLinesByPart[i] as Json } : {}),
           })),
         )
         .select('id')
