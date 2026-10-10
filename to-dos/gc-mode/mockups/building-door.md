@@ -2,7 +2,7 @@
 name: "Building's door: Building opens to the job's team, its money to the money team, and /gc to the field"
 rows: BUILDING_REAL_BUILD.md, decision 4 (who may read and write), The PRs in order, 9 (the door), the owner's calls 1 and 5; mockups/schedule-pr10.md (the shape, and "What Building's door adds"); mockups/schedule-pr9d.md, call 1 (the schedule team's read half); mockups/building-u8.md (the crew's counts and percents); mockups/door-owner-billing.md and O9 (20261010050000, the money team's reads)
 branch: the plan on claude/gc-building-door-plan (from origin/spike/gc-mode at ecf57865b); the PRs from origin/main, after the schedule's PR 10 and the live walk
-status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. The lead approved its shape the same day (D1 then D2; calls 3, 4, 7 and 8 at their picks). Amendment 1 the same day: the Board's (gc 2) co-sign on call 3 with its gates, and call 6 reshaped to a function; the Portal's (gc 3) co-sign on call 5 with its notes. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Amendment 2 the same day: gc 4's co-sign with its scan (four presses read gc_sows; three keep promises; the presses and the schedule's writes read the office's job tables), the job's reads as definer functions (call 9), one promise keeper for Building's three kinds, gc_link_crew_job's one-crew-a-job refusal (call 11, gc 4's amendment 3), and call 4's client half. The lead approved calls 9 and 11 the same day. Amendment 3 the same day: call 9's columns, from gc 4's scan of Building's presses and gc 10's of the schedule's writes; PR 10's Status and #5231's body record the project manager gap. The Board co-signed call 9's trades (gc 2) with three conditions, in amendment 3, and New project's three column lists for it while gc 6 is down (gc 2, the lead's ask). Amendment 4 the same day: call 12, the trades' percents and the change orders for the job's team, from the schedule's PR 16 seams (gc 4's `mockups/schedule-pr16.md`, co-signed by gc 10). Owed: the lead's read of call 12, and the owner's word on call 2.
+status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. The lead approved its shape the same day (D1 then D2; calls 3, 4, 7 and 8 at their picks). Amendment 1 the same day: the Board's (gc 2) co-sign on call 3 with its gates, and call 6 reshaped to a function; the Portal's (gc 3) co-sign on call 5 with its notes. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Amendment 2 the same day: gc 4's co-sign with its scan (four presses read gc_sows; three keep promises; the presses and the schedule's writes read the office's job tables), the job's reads as definer functions (call 9), one promise keeper for Building's three kinds, gc_link_crew_job's one-crew-a-job refusal (call 11, gc 4's amendment 3), and call 4's client half. The lead approved calls 9 and 11 the same day. Amendment 3 the same day: call 9's columns, from gc 4's scan of Building's presses and gc 10's of the schedule's writes; PR 10's Status and #5231's body record the project manager gap. The Board co-signed call 9's trades (gc 2) with three conditions, in amendment 3, and New project's three column lists for it while gc 6 is down (gc 2, the lead's ask). Amendment 4 the same day: call 12, the trades' percents and the change orders for the job's team, from the schedule's PR 16 seams (gc 4's `mockups/schedule-pr16.md`, co-signed by gc 10). The lead approved call 12 the same day. Amendment 5 the same day: Owner Billing's (gc 5) co-sign on the view's widening, with its condition, no drafts outside the office. Owed: the owner's word on call 2.
 ---
 
 # Building's door
@@ -182,10 +182,18 @@ decide the rest. Swapping the policies is their gate too, with these exceptions:
   send-back's `we_see`, and nothing else, no amount and no draw. The schedule's holds' io (PR 16's 16c) lays it for the
   team, and `withDraws` stays the money team's.
 - **The change orders** (call 12): the schedule's PR 16 adds `gc_change_orders_office`, a change order's non-money half,
-  gated on `gc_office_team()`, since `gc_on_schedule_team` is not on main when it lands. D1 replaces the view's `WHERE`
-  with `gc_on_schedule_team(c.project_id)`, so a superintendent's chart reads the signed change orders' days (G-76) and
-  the late-finish line (G-98) as the office's does. The view's columns, its security barrier and its read-only grants
-  stay as 16b-i wrote them.
+  gated on `gc_office_team()`, since `gc_on_schedule_team` is not on main when it lands. D1 widens the view's `WHERE`, on
+  Owner Billing's condition (gc 5): a job's superintendent and project manager read only the change orders the
+  customer has seen, never a draft, the money team's working copy, whose words can still name a figure:
+
+  ```sql
+  WHERE (SELECT public.gc_office_team())
+     OR (public.gc_on_schedule_team(c.project_id) AND c.status <> 'draft')
+  ```
+
+  So a superintendent's chart reads the sent orders' tails (G-76) and the signed ones' late-finish line (G-98) as the
+  office's does, and the office keeps every status, drafts included. The view's twelve columns, its security barrier
+  and its read-only grants stay as 16b-i wrote them, and `gc_change_orders` stays the money team's.
 
 ## D1: the client
 
@@ -270,8 +278,10 @@ Our number.
   same trade never shows; the result has exactly the six columns; a subcontractor gets an empty set (an estimator is on
   the team, so it is not the outsider); anon cannot call it.
 - **Call 12**: a superintendent on P reads P's line percents (a line reported at 60% reads 60, a line sent back reads
-  our `we_see`) with no amount, and none of Q's; a subcontractor gets an empty set. The superintendent reads P's signed
-  change orders through `gc_change_orders_office`, never `cost`, `price` or `pct_done`, and none of Q's.
+  our `we_see`) with no amount, and none of Q's; a subcontractor gets an empty set. Through `gc_change_orders_office`
+  (gc 5's cases): the superintendent on P reads P's sent, signed and declined orders and none of its drafts, never
+  `cost`, `price` or `pct_done`; a superintendent on Q reads none of P's; the office still reads P's drafts. Two
+  mutants must fail the bed: the `status <> 'draft'` clause dropped, and `c.project_id` swapped for a constant.
 - **The back-charges' bed** (`gc_back_charges/20_scenario.sql`): its four `devOnly` cases flip to a controller and a
   master who charge, keep and drop, an estimator or assistant refused in the money team's words, and training and a twin
   refused.
@@ -291,8 +301,9 @@ client is on Pages.
 - D1: `docs/migrations/<stamp>_gc_building_door.md` (what it opens, what stays, the bed's matrix, the verify steps, the
   rollback that re-creates the `_dev` policies); `docs/ACCESS_CONTROL.md`'s **Building:** bullet (the GC
   first-door paragraph is one bullet a lane since #5302; D1 adds to its own bullet only), amended where it says
-  Building's tables stay dev only, and the **Schedule:** bullet's one line that the superintendent joins the team, and
-  the back-charges bullet becoming *written and read by the money team since
+  Building's tables stay dev only, and the **Schedule:** bullet's one line that the superintendent joins the team, the
+  **Owner Billing:** bullet's sentence about the view amended where it stands (gc 5: the job's team reads the orders the
+  customer has seen, the office every status), and the back-charges bullet becoming *written and read by the money team since
   Building's door (`gc_back_charges_money`); the trade answers only through `gc_trade_answer_back_charge`*; `PROJECT_DOCUMENTATION.md`'s Building windows; `GLOSSARY.md` (*the job's team*);
   the guides; the release note and fragment.
 - D2: `docs/ACCESS_CONTROL.md`'s **Building:** bullet (the superintendent's `/gc`), `docs/twins/APP_DIRECTORY.md` if the field view counts as a
@@ -341,9 +352,9 @@ client is on Pages.
     race, and the migration first refuses in words if two trades already share a job. In the door, not U8a (#5285 stays
     as it is). **Taken, as gc 4 wrote it.**
 12. **The trades' percents and the change orders for the job's team** (the schedule's PR 16 seams, gc 4):
-    `gc_team_line_percents` and the view's `WHERE` widened to `gc_on_schedule_team`. **My pick: both in D1**, so the
-    chart reads the same for every member on the day the door opens. gc 5 co-signs the view's change, since the view is
-    Owner Billing's to keep.
+    `gc_team_line_percents` and the view's `WHERE` widened to `gc_on_schedule_team`. **The lead's pick: both in D1**, so
+    the chart reads the same for every member on the day the door opens. **Owner Billing co-signs** the view's change
+    (gc 5, amendment 5), on its condition: the job's team outside the office reads no draft.
 
 ## Is this the best we can do?
 
