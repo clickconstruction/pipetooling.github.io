@@ -2,7 +2,7 @@
 name: "The schedule's PR 13: Tell the trades and their answers"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 13, decision 9's trade writes and Writing it's two senders; PORTAL_REAL_BUILD.md, P5d and the trade emails (dates); mockups/schedule-pr11.md, call 8 (the kept line); GANTT_FEATURES.md G-81, G-113, G-132
 branch: the plan on claude/gc-schedule-pr13-plan (from origin/spike/gc-mode at d0047495e); the code from origin/main in two cuts, one with a migration
-status: plan 2026-10-10 by gc 4 at the lead's ask, for gc 10 (Schedule) and gc 3 (Portal, the answer's half) to co-sign. 13a's SQL ran on the real bed on main at e5e11fef4. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 4 at the lead's ask. Amendment 1 (2026-10-10): gc 10, holding Schedule, co-signed all ten calls at their picks; their two checks are named in calls 2 and 3, the walk's sentence is a seam, and call 11 (a told move undone) is added. For gc 3's co-sign on the answer's half, then the lead's read-back. 13a's SQL ran on the real bed on main at e5e11fef4. Nothing cut or claimed.
 ---
 
 # The schedule's PR 13: Tell the trades and their answers
@@ -38,7 +38,7 @@ Two cuts:
 
 ## The calls
 
-**For gc 10 (Schedule) and gc 3 (Portal, calls 1, 2 and 5), each with the other way:**
+**Co-signed by gc 10 (Schedule) at their picks (amendment 1); for gc 3 (Portal, calls 1, 2 and 5); each with the other way:**
 
 1. **No new sender: Tell the trades sends through `gc-trade-email`, kind `dates`.** It is the one sender for every
    trade email (P3-a; PORTAL_REAL_BUILD l.62). It reads the company's people by the kind's group, adds the portal link
@@ -50,12 +50,15 @@ Two cuts:
 2. **The tell is recorded after the send, by the office, from the send's answer.** For each company, the screen sends,
    then records the tells through `gc_schedule_record_tells` with the send's `emailSendLogId`. The email's key is sent
    once, so a press again after a send that went but was not recorded sends nothing and records it: the RPC keeps a
-   row already there. That is P3-b's shape (`emailTheAnswer`, then `addAnswerSentTo`). *Other way:* `gc-trade-email`
+   row already there. It relies on `gc-trade-email` answering a key sent before with `already: true` and the first
+   send's `emailSendLogId` (`gc-trade-email/index.ts`, the key's check), so the late record carries the right log row.
+   That is P3-b's shape (`emailTheAnswer`, then `addAnswerSentTo`). *Other way:* `gc-trade-email`
    writes the tells for kind `dates`, which teaches the Portal's one sender the schedule's tables.
 3. **Told per company, not per move.** A company refused at the send (no email on file, not on the job) stays untold
    for that move, and the next press reaches it alone. The lifted `untoldMoves` reads `!toldOn`, so one company told
-   would hide the rest. The window reads a new kernel, `companiesNotTold`. *Other way:* `untoldMoves` as it is, and a
-   refused company is never told.
+   would hide the rest. The window reads a new kernel, `companiesNotTold`. A pull tells only the companies whose dates
+   came in: the lifted `movedLines` leaves out a pull's finished lines (`tellTrades.ts`, `!move.pull?.finished`), and
+   the kernel's test names it. *Other way:* `untoldMoves` as it is, and a refused company is never told.
 4. **The email's key is `dates:` and a SHA-256 of the company's moves' ids, sorted.** The same moves give the same key,
    so a second press sends nothing; a move added since gives a new one. The key holds 200 characters, and five ids
    would not fit. *Other way:* the newest move's id, which a move undone between two presses can make send twice.
@@ -87,6 +90,16 @@ Two cuts:
     - the call list's *not sent yet* reason and the open asks, already built, which read the rows.
 
     An answer taken on the phone (the prototype's call actions) waits for the Board's Follow up sheet.
+11. **A told move undone** (gc 10's seam). Undo puts a bar back after its company was told the moved dates, so the
+    company holds dates that no longer stand. Its answer is refused as `datesTakenBack`, and its portal stops showing the
+    move (`datesNotices` skips an undone move). PR 13 says so to the office: under the undone move, the record of moves
+    reads *Told, then undone: {company} still has the moved dates.*, from a new kernel `toldThenUndone`, pinned in
+    `tellWindow.test.ts` and the record's render test. Telling the company its dates are back is **13c**, planned
+    with gc 3 after P5d: a tell is one row per move and company and append only, so the dates back need a record of
+    their own, their own words in both languages (the portal's words, and the Spanish read) and their own key.
+    *Other way* (gc 10's pick): `companiesNotTold` counts an undone told move as one more to tell, so one press covers
+    it. That is the better end, and it is 13c; folding it in here grows 13a's SQL and the Portal's words in a PR shared
+    with P5d.
 
 ## 13a: the writes
 
@@ -255,14 +268,17 @@ functions; nothing calls them until 13b and P5d.
 - **`GcTellTrades.tsx`** (new, the prototype's `GcTellTrades` on real presses): the moves not told, one chip per
   company with its lines and language, the picked company's email as it will go, and **Tell {company}** or **Tell N
   companies**. After it: who was told, and who was not with why. The schedule reads again.
-- **`GcScheduleMoves.tsx`**: `GcMoveHistory` takes `tell` (the count and the press) and, per move, the untold line and
-  the answers' words.
+- **`GcScheduleMoves.tsx`**: `GcMoveHistory` takes `tell` (the count and the press) and, per move, the untold line,
+  the answers' words, and the told-then-undone line (call 11).
+- **`GcScheduleWalk.tsx`**: the walk's last screen (`data-walk-told`) says *The trades and the customer's Friday
+  report are told from this list. Telling them comes later. …*. It is amended where it stands: *Tell the trades from
+  Changes to the schedule, under the chart.* Its render test's plain-words list moves with it.
 - **`GcWhatIf.tsx`**: `GcWhatIfKept`, over the chart when the copy is not shown.
 - **`GcSchedule.tsx`**, **`GcScheduleWindow.tsx`**, **`GcProjects.tsx`**: `canTell` from `canSendGcTradeEmail(role)`, used
   with `moves`, never in the copy.
 - **Tests:**
-  - `tellWindow.test.ts`: a company refused stays untold, the key is stable and order-blind, the shown lines, the kept
-    words;
+  - `tellWindow.test.ts`: a company refused stays untold, a pull tells only the companies whose dates came in, the key
+    is stable and order-blind, the shown lines, the kept words, and the told-then-undone line;
   - `tellTradesIo.test.ts`: one send per company with kind `dates` and its key; the record with the log id after a send
     and after `already`; nothing recorded after a refusal;
   - `GcTellTrades.render.test.tsx`: the chips, the email shown, the press, the result, plain words;
@@ -280,6 +296,8 @@ functions; nothing calls them until 13b and P5d.
 - **PR 10 (#5231):** opens the tells' and answers' policies to the team. It meets 13b in the window's props.
 - **The Board's Follow up sheet:** an answer taken on the phone.
 - **PR 14:** the trade's chart. Nothing here reads the portal.
+- **13c (with gc 3, after P5d):** telling a company its dates are back after an undo (call 11).
+- **The walk (9d):** its last screen's sentence about telling, amended in 13b.
 
 ## Drift from `SCHEDULE_REAL_BUILD.md`
 
@@ -299,10 +317,11 @@ dates work*; the move reads *Test Plumbing: the dates work.* No real trade is to
 - One sender, one copy of the words, one record per move and company, and the answer on the verb its table's lane
   owns. Everything else was already lifted and tested.
 - A send that went is never sent twice, and a tell is never lost: the key and the RPC are both idempotent.
-- What it does not do: tell a trade about an undo, record a phone answer (the Follow up sheet), or send in Spanish
-  before the switch.
+- What it does not do: tell a trade its dates are back after an undo (13c; the office is told, call 11), record a
+  phone answer (the Follow up sheet), or send in Spanish before the switch.
 
 ## Status
 
-Plan 2026-10-10, gc 4, for gc 10's and gc 3's co-signs and the lead's read-back. 13a's SQL bed-tested on main at
+Plan 2026-10-10, gc 4. Amendment 1 the same day: gc 10 co-signed the ten calls at their picks; their checks, the walk's
+sentence and call 11 are written in. For gc 3's co-sign and the lead's read-back. 13a's SQL bed-tested on main at
 e5e11fef4. Nothing cut or claimed.
