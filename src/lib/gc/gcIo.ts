@@ -5,6 +5,7 @@
  * a line to the scope book. Nothing here decides anything: the kernels in `src/lib/gc/` do.
  */
 import { supabase } from '../supabase'
+import { jobNumberLabel } from '../jobs/jobSummaryCycle'
 import type { Database, Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import { extractContactInfo } from '../bids/bidContactInfo'
@@ -440,7 +441,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     // Who else each company named, for the company window's Who gets our emails (B3-c).
     companyRows.length ? supabase.from('gc_company_people').select('id, company_id, name, email, role, gets').is('removed_at', null).order('created_at') : none,
     // Our number's inputs, for the money team only (B5-c).
-    money && ids.length ? supabase.from('gc_project_money').select('project_id, general_conditions, contingency_pct, fee_pct').in('project_id', ids) : none,
+    money && ids.length ? supabase.from('gc_project_money').select('project_id, general_conditions, contingency_pct, fee_pct, general_conditions_job_id').in('project_id', ids) : none,
     // The bid tabs shared, and who opened each (B5-d).
     packageIds.length ? supabase.from('gc_bid_tabs').select('package_id, shared_on, show_names').in('package_id', packageIds) : none,
     packageIds.length ? supabase.from('gc_bid_tab_views').select('package_id, company_id, seen_on').in('package_id', packageIds) : none,
@@ -1075,6 +1076,34 @@ export async function setGcProjectMoney(projectId: string, values: { generalCond
       .single(),
     'save our number',
   )
+}
+
+/**
+ * The Pipeline job our general conditions are spent on (Owner Billing's O11b), or none. The money team's, through our
+ * number's own policy; a project with no row yet gets one, its three inputs at zero, as no row reads.
+ */
+export async function setGcGeneralConditionsJob(projectId: string, jobId: string | null): Promise<void> {
+  taken(
+    await supabase
+      .from('gc_project_money')
+      .upsert({ project_id: projectId, general_conditions_job_id: jobId, updated_at: new Date().toISOString() }, { onConflict: 'project_id' })
+      .select('project_id')
+      .single(),
+    'name the Pipeline job',
+  )
+}
+
+/** A Pipeline job to name, by its number, name or address: the Pipeline's own search, billing-only jobs left out. */
+export interface PipelineJobHit {
+  id: string
+  label: string
+  name: string
+  address: string
+}
+
+export async function searchPipelineJobs(text: string): Promise<PipelineJobHit[]> {
+  const rows = taken(await supabase.rpc('search_jobs_ledger', { search_text: text.trim(), include_billing_only: false }), 'look up the Pipeline jobs') ?? []
+  return rows.map((r) => ({ id: r.id, label: jobNumberLabel(r), name: r.job_name ?? '', address: r.job_address ?? '' }))
 }
 
 /** The project's outcome (the Board's B5-c): each stamps the company's day in the database. */

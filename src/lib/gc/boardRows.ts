@@ -186,6 +186,8 @@ export interface ProjectMoneyRow {
   general_conditions: number | string
   contingency_pct: number | string
   fee_pct: number | string
+  /** O11b: the Pipeline job our general conditions are spent on. */
+  general_conditions_job_id?: string | null
 }
 
 /** `gc_bid_tabs` (B5): a trade's bid tab, shared with the companies that quoted. */
@@ -551,6 +553,7 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     planSets: view.planSets.map((s) => ({ rev: s.rev, label: s.label, issuedOn: s.issuedOn, touches: [] })),
     packages,
     generalConditions: num(money?.general_conditions),
+    generalConditionsJobId: money?.general_conditions_job_id ?? null,
     contingencyPct: num(money?.contingency_pct),
     feePct: num(money?.fee_pct),
     lostOn: view.lostOn,

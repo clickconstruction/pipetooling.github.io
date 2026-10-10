@@ -89,6 +89,8 @@ vi.mock('../lib/gc/gcIo', async () => {
     setGcAskTakenAlternates: vi.fn(),
     carryGcTrade: vi.fn(() => Promise.resolve()),
     setGcProjectMoney: vi.fn(() => Promise.resolve()),
+    setGcGeneralConditionsJob: vi.fn(() => Promise.resolve()),
+    searchPipelineJobs: vi.fn(() => Promise.resolve([])),
     markGcBidSent: vi.fn(() => Promise.resolve()),
     markGcWon: vi.fn(),
     markGcLost: vi.fn(),

@@ -3,6 +3,8 @@ import { carriedAmount, carriedUncosted, proposalTotals, proposalUncosted, propo
 import { ownBidPriced, partnerById } from '../../lib/gc/lookups'
 import type { GcProject, GcState, TradePackage } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
+import type { PipelineJobHit } from '../../lib/gc/gcIo'
+import { GcGeneralConditionsJob } from './GcGeneralConditionsJob'
 import { Card, Chip, PlusUnknown, Stat, Why, input, num, td, th } from './gcUi'
 
 /**
@@ -75,7 +77,15 @@ function CarriedWords({ state, pkg }: { state: GcState; pkg: TradePackage }) {
   )
 }
 
-export function GcOurNumber({ state, project, onSave }: { state: GcState; project: GcProject; onSave: (values: OurNumberValues) => Promise<void> }) {
+/** General conditions' Pipeline job on Our number (O11b): its number once read, the jobs a crew holds, the press and the search. */
+export interface GcGeneralConditionsJobProps {
+  jobLabel: string | null
+  heldBy: Record<string, string>
+  onName: (jobId: string | null) => Promise<void>
+  search: (text: string) => Promise<PipelineJobHit[]>
+}
+
+export function GcOurNumber({ state, project, onSave, gcJob }: { state: GcState; project: GcProject; onSave: (values: OurNumberValues) => Promise<void>; gcJob?: GcGeneralConditionsJobProps }) {
   const totals = proposalTotals(project)
   const uncosted = proposalUncostedWords(project)
   const values: OurNumberValues = { generalConditions: project.generalConditions, contingencyPct: project.contingencyPct, feePct: project.feePct }
@@ -130,6 +140,11 @@ export function GcOurNumber({ state, project, onSave }: { state: GcState; projec
           <MoneyBox label="Contingency" unit="%" max={100} value={project.contingencyPct} onSave={save('contingencyPct')} />
           <MoneyBox label="Fee" unit="%" max={100} value={project.feePct} onSave={save('feePct')} />
         </div>
+        {gcJob && (
+          <div style={{ marginTop: '0.75rem' }}>
+            <GcGeneralConditionsJob jobId={project.generalConditionsJobId ?? null} {...gcJob} />
+          </div>
+        )}
       </Card>
       <Card style={{ padding: 0, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>

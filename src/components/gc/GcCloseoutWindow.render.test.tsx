@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { GcCloseoutWindow, type CloseoutWrites } from './GcCloseoutWindow'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { plainWordsFailures } from '../../lib/plainWords'
+import type { OwnWorkCosts } from '../../lib/gc/ownWorkCost'
 import type { Draw, GcProject, GcState } from '../../lib/gc/types'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
@@ -14,11 +15,13 @@ function setup({
   project: change,
   billsRead = true,
   onSeeBill,
+  own,
 }: {
   id?: string
   project?: (p: GcProject) => GcProject
   billsRead?: boolean
   onSeeBill?: () => void
+  own?: OwnWorkCosts
 } = {}) {
   const base = initialGcState()
   const found = base.projects.find((p) => p.id === id)!
@@ -32,7 +35,7 @@ function setup({
     onWaiverIn: vi.fn(),
     onCloseJob: vi.fn(),
   }
-  render(<GcCloseoutWindow state={state} project={project} billsRead={billsRead} writes={writes} onSeeBill={onSeeBill} onClose={() => undefined} />)
+  render(<GcCloseoutWindow state={state} project={project} billsRead={billsRead} writes={writes} onSeeBill={onSeeBill} own={own} onClose={() => undefined} />)
   return { writes }
 }
 
@@ -81,6 +84,15 @@ describe('GcCloseoutWindow', () => {
     expect((within(job).getByRole('button', { name: 'Close the job' }) as HTMLButtonElement).disabled).toBe(true)
     expect([...job.querySelectorAll('[data-closeout-left] li')].map((li) => li.textContent)).toContain('Plumbing: our own crew is 65% done.')
     expect(document.querySelector('[data-closeout-others]')!.textContent).toContain('Plumbing: our own crew, 65% done. Nothing is held.')
+  })
+
+  it('says what general conditions cost from their Pipeline job, or that they count at their budget (O11b)', () => {
+    setup()
+    expect(document.querySelector('[data-closeout-general-conditions]')!.textContent).toMatch(/^General conditions \$[\d,]+, at their budget: no Pipeline job is named for them yet\.$/)
+    cleanup()
+    const own: OwnWorkCosts = { payAccess: true, byJob: { 'j-gc': { jobId: 'j-gc', label: 'J 1080', name: 'Fair Oaks general conditions', spentUsd: 61_200, teamUsd: 61_200, subUsd: 0, partsUsd: 0, fieldDays: 30, finished: false } } }
+    setup({ project: (p) => ({ ...p, generalConditionsJobId: 'j-gc' }), own })
+    expect(document.querySelector('[data-closeout-general-conditions]')!.textContent).toMatch(/^General conditions \$[\d,]+: \$61,200 spent so far on Pipeline job J 1080\.$/)
   })
 
   it('holds Accept the work on the punch list in its words, and presses it once every item is checked', () => {

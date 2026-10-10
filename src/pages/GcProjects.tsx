@@ -107,6 +107,8 @@ import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQ
 import { GcTradeSow, type SowWrites } from '../components/gc/GcTradeSow'
 import { GcBidTabs } from '../components/gc/GcBidTabs'
 import { GcOurNumber } from '../components/gc/GcOurNumber'
+import { ownWorkJobIds, type OwnWorkCosts } from '../lib/gc/ownWorkCost'
+import { loadOwnWorkCosts } from '../lib/gc/ownWorkCostIo'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
@@ -164,6 +166,8 @@ import {
   setGcAskPlugs,
   setGcAskTakenAlternates,
   setGcProjectMoney,
+  setGcGeneralConditionsJob,
+  searchPipelineJobs,
   shareGcBidTab,
   setGcCompanyCoverage,
   setGcCompanyLanguage,
@@ -434,6 +438,37 @@ export default function GcProjects() {
   const saveMoney = async (projectId: string, values: { generalConditions: number; contingencyPct: number; feePct: number }) => {
     await setGcProjectMoney(projectId, values)
     await refreshBoard()
+  }
+  // Our own work's Pipeline jobs (Owner Billing's O11b): the job general conditions are spent on, named on Our number
+  // and read the Costs tab's own way for the money team, so Money's margin and Closeout count what they really cost.
+  // Labor dollars only with pay access (loadOwnWorkCosts asks); a failed read leaves them at their budget.
+  const nameGcJob = async (projectId: string, jobId: string | null) => {
+    await setGcGeneralConditionsJob(projectId, jobId)
+    await refreshBoard()
+  }
+  const ownWorkKey = useMemo(() => (board && canSeeGcMoney(role) ? ownWorkJobIds(board.projects).sort().join(',') : ''), [board, role])
+  const [ownWork, setOwnWork] = useState<OwnWorkCosts | undefined>(undefined)
+  useEffect(() => {
+    if (!ownWorkKey) {
+      setOwnWork(undefined)
+      return
+    }
+    const ids = ownWorkKey.split(',')
+    let live = true
+    loadOwnWorkCosts(ids)
+      .then((read) => {
+        if (live) setOwnWork(read)
+      })
+      .catch(() => {
+        if (live) setOwnWork({ payAccess: true, byJob: Object.fromEntries(ids.map((id) => [id, 'error' as const])) })
+      })
+    return () => {
+      live = false
+    }
+  }, [ownWorkKey])
+  const ownWorkLabel = (jobId: string | null | undefined): string | null => {
+    const read = jobId ? ownWork?.byJob[jobId] : undefined
+    return read && read !== 'error' ? read.label : null
   }
   // Bid tabs (the Board's B5-d), opened on a project's card for a dev; sharing reloads the board.
   const [tabsOpen, setTabsOpen] = useState<string | null>(null)
@@ -1480,7 +1515,7 @@ export default function GcProjects() {
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
-                  <GcMoney state={moneyState} schedulesRead={moneySchedules !== null} />
+                  <GcMoney state={moneyState} schedulesRead={moneySchedules !== null} own={ownWork} />
                   {user && loaded && (
                     <GcMoneyMondayEmail
                       me={{ id: user.id, name: profileName ?? '' }}
@@ -1615,7 +1650,14 @@ export default function GcProjects() {
               )}
             </div>
             {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
-            {showNumber && board && numberOpen === p.id && <GcOurNumber state={board} project={boardProject} onSave={(values) => saveMoney(p.id, values)} />}
+            {showNumber && board && numberOpen === p.id && (
+              <GcOurNumber
+                state={board}
+                project={boardProject}
+                onSave={(values) => saveMoney(p.id, values)}
+                gcJob={{ jobLabel: ownWorkLabel(boardProject.generalConditionsJobId), heldBy: {}, onName: (jobId) => nameGcJob(p.id, jobId), search: searchPipelineJobs }}
+              />
+            )}
             {boardProject && board && tabs > 0 && tabsOpen === p.id && <GcBidTabs state={board} project={boardProject} share={shareTab} />}
             <div style={{ fontSize: '0.85rem' }}>
               {p.planSets.length} {p.planSets.length === 1 ? 'set' : 'sets'} of plans
@@ -2083,6 +2125,7 @@ export default function GcProjects() {
         <GcCloseoutWindow
           state={closeoutState}
           project={closeoutProject}
+          own={ownWork}
           extras={drawExtras(drawTables)}
           checkLink={async (url) => (await checkDriveAccess(url)).access}
           emailTick={canSendGcTradeEmail(role) ? { on: drawEmailOn, onChange: setDrawEmailOn } : null}
