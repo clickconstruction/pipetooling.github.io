@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing O8: the customer pays a certified bill by card, with a 3% card fee"
 parent: to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md (PR 11, O8, after O7c)
-status: planned 2026-10-09 by Helper 5 at the lead's ask, from the owner's answer to the Stripe Pay question · amended the same evening: the fee is a rider on its bill, out of every GC figure (the lead's call) · counsel's okay on the 3% surcharge 2026-10-09, the owner kept (a), card only · O8a's SQL below, byte for byte, passed in the Owner Billing bed (90_card_bills.sql, 42 checks; five mutants each caught) · O8b and O8c not built
+status: planned 2026-10-09 by Helper 5 at the lead's ask, from the owner's answer to the Stripe Pay question · amended the same evening: the fee is a rider on its bill, out of every GC figure (the lead's call) · counsel's okay on the 3% surcharge 2026-10-09, the owner kept (a), card only · O8a's SQL below, byte for byte, passed in the Owner Billing bed (90_card_bills.sql, 42 checks; five mutants each caught) · O8b and O8c not built · O8c amended 2026-10-09: the switch is an app_settings row the owner turns on in Settings (the lead's call), its SQL below; the office's side and the emails as built, held for #5245
 ---
 
 # O8: the customer pays a certified bill by card
@@ -37,7 +37,7 @@ do not convert for them.
 |---|---|---|
 | **O8a** | The migration: `gc_owner_card_bills` (one row per bill turned to card), the three presses in SQL, the fee as a rider on its bill (`fee_lines`) that `job_rider_fees` counts, and `gc_owner_billing_revenue` adding the billing job's riders | Nothing: counsel's okay is in, and (a) stands |
 | **O8b** | **Pay by card** in the customer's portal. The function `gc-card-bill` (the portal's door and the office's undo door), the portal payload's offer, the press and its panel. Also the staff convert guard in `create-stripe-invoice`. Two deploys | O8a pushed, its types |
-| **O8c** | The office's side. Bill the customer reads the fee and offers **Back to a check bill**. The mapper reads a card bill at its certified amount. The three emails gain their card lines | O8b |
+| **O8c** | The office's side. Bill the customer reads the fee and offers **Back to a check bill**. The mapper reads a card bill at its certified amount. The three emails gain their card lines. The switch moves to an `app_settings` row the owner turns on (migration `20261010042000`). Three deploys: `gc-card-bill`, `customer-portal`, `gc-customer-email` | O8b on main and deployed |
 
 ## Who may convert, and which bills
 
@@ -172,8 +172,9 @@ as `submit-portal-request` checks it. Then, as the service role:
 training account or a twin. See *Back to a check bill* below.
 
 **Stripe mode.** The function runs in Stripe's test mode until the owner says live (`GC_CARD_BILL_STRIPE_MODE`,
-default `test`). The switch that shows the offer (`GC_CARD_BILL_ON`, default off) follows the sends-on rule:
-everything starts off.
+default `test`). The switch that shows the offer follows the sends-on rule: everything starts off. Since O8c it is
+the owner's own press, the `app_settings` row `gc_card_bill_on_v1` (*The switch (O8c)*, after the SQL). O8b shipped it as the env
+value `GC_CARD_BILL_ON`, which the row replaces.
 
 ## Who the Stripe invoice email goes to
 
@@ -203,11 +204,20 @@ Recording it makes their bill. They pay it by check, or by card in their portal 
   $8,666.37 card fee." Then the link **Their card page**, and the press **Back to a check bill**.
 - Paid by card: "Paid by card on Oct 12, with the $8,666.37 card fee."
 - O5c's part payment does not show on a card bill. Stripe records the payment through the webhook.
+- Taken back: "Back to a check bill on Oct 3."
+- As built (`GcBillCard.tsx`, words in `ownerBillingCard.ts`): the card's amounts are to the cent (`cardMoney`), since
+  GC's `money()` rounds to the dollar and what Stripe asks is exact.
+
+**The mapper** (`ownerBillingRows.ts`): `loadGcBillingJobMoney` reads each bill's `hosted_invoice_url` and the card
+rows. `billMoney` reads a card bill at its base and lays a card payment on the pay application only up to the
+certified amount; the rest is the fee. `billCard` gives each sent pay application its `card` (`invoiceId`, on card or
+undone, base, fee, total, the day chosen, its card page, the day taken back). So Money, Bill the customer, Closeout,
+interest and the reminder's open amount all read what was certified.
 
 **Back to a check bill** is for when the customer calls to pay by check after all, and only while Stripe shows no
 payment. The press:
 1. confirms in words: "This takes the card page down and the $8,666.37 fee off. The bill goes back to
-   $288,879.00.";
+   $288,879.00.", with **Keep it on card** beside it;
 2. sends `gc-card-bill { undo }`, which voids the Stripe invoice. It refuses a paid one: "Stripe shows a payment.
    Refund it in Stripe first.";
 3. then `gc_card_bill_undo(invoice)` writes the row back:
@@ -226,10 +236,15 @@ bill is kept (the O4a trigger).
 switch on and a portal link, its last lines become:
 
 ```
-Reply with the day you will pay by check.
-Or pay it by card in your portal: pipetooling.com/p/…
+Reply with the day you will pay.
+Or pay it by card in your portal: clicktooling.com/p/…
 Paying by card adds a 3% card fee of $8,666.37.
 ```
+
+As built, the first line is the window's own, unchanged and true for a check. `gc-customer-email` writes the other two:
+with a portal link, the switch on and a bill that can still turn (billed, not on Stripe, nothing paid, never on card:
+`gcEmailCardFee`), its portal line reads `GC_CUSTOMER_EMAIL_CARD_PORTAL_WORDS` and the fee line follows
+(`buildGcCustomerEmail`'s `cardFee`).
 
 With no portal link it is as today, since the portal is the only way to card.
 
@@ -239,7 +254,7 @@ With no portal link it is as today, since the portal is the only way to card.
 Pay application 3 for Oak Ridge Clinic has $288,879.00 still open. It was due Friday, Oct 16, the day we expected it.
 You chose to pay it by card. With the 3% card fee, the card page asks $297,545.37.
 Please pay it by Wednesday, Oct 21.
-Pay it here: pipetooling.com/pay/<id>
+Pay it here: clicktooling.com/pay/<id>
 Our unconditional lien waiver for it follows once it is paid.
 ```
 
@@ -249,8 +264,9 @@ card lines when the switch is on and there is a portal link.
 **The interest bill (O6b-2)** is as today. Interest bills do not convert (call 2), so it keeps "Reply with the day
 you will pay." and the portal's *see* line.
 
-`GC_CUSTOMER_EMAIL_PORTAL_WORDS` keeps its *see* words. The card lines are their own, chosen per bill by
-`gc-customer-email`, which reads the switch and the card row.
+`GC_CUSTOMER_EMAIL_PORTAL_WORDS` keeps its *see* words. A reminder on a bill on card is the window's words
+(`payReminderMail` with its `card`, the bill's `payLinkUrl`), since the window knows the card row; a bill not on card
+gets its card lines from `gc-customer-email`, which reads the switch and the bill.
 
 ## The tables and the SQL (O8a)
 
@@ -654,6 +670,67 @@ SELECT public.apply_read_only_stmt_blocks();
 SELECT public.apply_digital_twin_write_blocks();
 ```
 
+## The switch (O8c)
+
+**The lead's call (2026-10-09), option (ii).** O8b's switch was an env value only its two functions could see, and the
+office's hint and `gc-customer-email`'s card lines need it too. So it is one `app_settings` row the whole app reads:
+`gc_card_bill_on_v1`, `'false'` from the migration, `'true'` once the owner turns it on. Only `'true'` is on, and a
+missing row is off (`gcCardBillOn`, `GC_CARD_BILL_SETTING_KEY` in `_shared/gcCardBill.ts`).
+
+- **Who flips it**: the owner (`master_technician`) and dev, through the key-scoped UPDATE policy
+  `master_or_dev_update_gc_card_bill_on` (the `owner_auto_confirm_from_roll_v1` pattern, v2.3450). The read-only and
+  twin fences already on `app_settings` stop a training account and a twin.
+- **Who reads it**: everyone signed in, through the table's own read policy, so Bill the customer's hint reads it
+  (`fetchGcCardBillOn`). `gc-card-bill`, `customer-portal` and `gc-customer-email` read it as the service role.
+- **Where**: Settings → Jobs & billing, beside the other org toggles, for dev and the owner (`GcCardBillSettingsBlock`):
+
+```
+GC jobs · pay by card
+[ ] Let GC customers pay a certified bill by card
+    A certified bill on a GC job shows Pay by card in the customer’s portal. The card adds a 3% fee, and the bill
+    then takes cards only. Our emails offer it too. Only the customer turns a bill to card.
+```
+
+- **Stripe's test or live stays an env value** (`GC_CARD_BILL_STRIPE_MODE`): infrastructure, not an office press.
+- **The bed**, `supabase/tests/gc_owner_billing/91_card_switch.sql`, 11 checks: off to start; the owner flips it on
+  and off, writes no other key with it and cannot delete it; a dev flips it; the controller, an estimator (who reads
+  it) and the owner in training mode do not; signed out reads nothing. Since `20261010027000` an anon read is
+  refused outright rather than empty, and `app_settings`' read policy asks `auth.role()`, so the bed sets
+  `request.jwt.claim.role`. Five mutants were each caught: the policy on any key, dev only, the row inserted on,
+  every verb instead of UPDATE, and anyone signed in.
+
+### O8c's SQL, byte for byte
+
+The migration `20261010042000_gc_card_bill_switch.sql`, with only `v2.NNNN` for the version to be claimed at the cut.
+It is the page's second SQL block. O8a's, above, is the first.
+
+```sql
+SET lock_timeout = '3s';
+
+-- GC mode, Owner Billing's O8c (v2.NNNN): Pay by card's switch becomes the owner's own press (the lead's call,
+-- 2026-10-09). O8b (v2.5123) read an env value, GC_CARD_BILL_ON, which only its two functions could see; the office's
+-- Bill the customer and gc-customer-email's card lines need it too. So it is one app_settings row the whole app reads:
+-- `gc_card_bill_on_v1` = 'false', turned on in Settings → Jobs & billing. Dev already manages every app_settings row;
+-- the owner (master_technician) may flip this one through a key-scoped UPDATE policy, the
+-- owner_auto_confirm_from_roll_v1 pattern (20260914270000). Everyone signed in reads app_settings, so the window sees
+-- it; gc-card-bill, customer-portal and gc-customer-email read it as the service role. It replaces the env value, which
+-- goes away. Stripe's test or live stays an env value (GC_CARD_BILL_STRIPE_MODE): infrastructure, not an office press.
+--
+-- Additive and idempotent. No table is created, so the read-only and twin fences already on app_settings stand.
+
+INSERT INTO public.app_settings (key, value_text)
+VALUES ('gc_card_bill_on_v1', 'false')
+ON CONFLICT (key) DO NOTHING;
+
+DROP POLICY IF EXISTS "master_or_dev_update_gc_card_bill_on" ON public.app_settings;
+CREATE POLICY "master_or_dev_update_gc_card_bill_on"
+  ON public.app_settings
+  FOR UPDATE
+  TO authenticated
+  USING (key = 'gc_card_bill_on_v1' AND public.is_master_or_dev())
+  WITH CHECK (key = 'gc_card_bill_on_v1' AND public.is_master_or_dev());
+```
+
 ## Docs each PR touches
 
 - O8a: `docs/migrations/<stamp>_gc_owner_card_bills.md` with its verify steps, and `docs/ACCESS_CONTROL.md` (the
@@ -664,8 +741,11 @@ SELECT public.apply_digital_twin_write_blocks();
     `job_rider_fees` sentence under the *Source tables* paragraph gains the card fee.
 - O8b: `docs/EDGE_FUNCTIONS.md` (the `gc-card-bill` section and its TOC line, and `create-stripe-invoice`'s
   convert guard), the customer surfaces and the journey.
-- O8c: the guide `record-what-a-gc-customer-paid` (a bill on card, Back to a check bill), `PROJECT_DOCUMENTATION.md`
-  (Bill the customer), and `docs/GLOSSARY.md` (*card bill (GC mode)*).
+- O8c: `docs/migrations/20261010042000_gc_card_bill_switch.md` (the row replaces the env value), the guide
+  `record-what-a-gc-customer-paid` (a bill on card, Back to a check bill), the portal guide (where the owner turns it
+  on), `EDGE_FUNCTIONS.md` (the three functions read the row; `gc-customer-email`'s card lines), `BILLING_FLOWS.md`,
+  `ACCESS_CONTROL.md` (the switch's policy), `PROJECT_DOCUMENTATION.md` (Bill the customer, the Settings toggle), and
+  `docs/GLOSSARY.md` (*Card bill · card fee*).
 
 ## Checks (on Grace's yes, typed in Helper 5's chat)
 
