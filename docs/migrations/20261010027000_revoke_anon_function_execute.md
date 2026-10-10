@@ -194,6 +194,18 @@ curl -s -w ' | HTTP %{http_code}\n' -X POST "$U/is_office_staff" -H "apikey: $AN
 | `is_dev` | `false`, HTTP 200 (anon could run it) | HTTP 401, `"code":"42501"` |
 | `is_office_staff` | `false`, HTTP 200 | HTTP 401, `"code":"42501"`. `court-precinct-nightly` reads this as "not staff" and still answers 401. |
 
+## Status
+
+Applied on prod 2026-10-10 00:24 UTC by PUNCHLIST, alone, from the main checkout at `458eedc41` (#5110 merged 00:20:49 UTC as `1d036bba6`; the dry run listed this file only; `bash scripts/db-push.sh`; drift 839 local / 839 remote, fully applied). The file was renumbered from `20261010007000` at 22:55 UTC, one past the newest stamp across main, the claims and every open PR, after Helper 4's 22:45 renumber did not arrive. Verified read-only right after:
+
+- `has_function_privilege('anon', …, 'EXECUTE')` over `public` lists exactly `get_hazmat_notice_by_token(uuid)` and `list_my_contract_dashboard_prompts()`; before the push anon could execute 525 of 914 functions (the grant snapshot was taken first).
+- `cost_agent` on `is_primary()` and `primary_can_access_job(uuid)`, and `hr_agent` on `is_dev()`, `is_digital_twin()` and `is_read_only()`: all true.
+- `pg_default_acl` for postgres's functions: `{postgres=X/postgres}` globally, `{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}` in `public`. (`storage`'s default keeps an `anon` entry; not this migration's.)
+- `authenticated` can execute 814 functions in `public`.
+- The publishable-key probes: `get_hazmat_notice_by_token` → `null`, HTTP 200; `is_dev` → HTTP 401 `"code":"42501"`; `is_office_staff` → HTTP 401 `"code":"42501"`.
+
+No client deploy, no function deploy; the types regen the push script ran changed only GC's `gc_owner_card_bills` (026000), which #5235 carries, so it was discarded here.
+
 ## Roll back
 
 - **One function a signed-out flow turns out to need:** `GRANT EXECUTE ON FUNCTION public.<name>(<args>) TO anon;`, then a line in `docs/ACCESS_CONTROL.md`.
