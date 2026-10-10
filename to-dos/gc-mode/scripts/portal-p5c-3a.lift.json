@@ -1,5 +1,5 @@
 {
-  "about": "The Portal lane's P5c-3a (to-dos/gc-mode/mockups/portal-p5.md, P5c-3 split in three, the lead 2026-10-10): the job's readers of the trade portal, lifted to src/lib/gc word for word with no caller yet: portalJobMoney, portalPay, portalPapers and portalTodos (with their private helpers) into portal.ts, and the schedule's datesMessage and datesNotices into schedule/tellTrades.ts, which portalTodos reads and which waited only on the portal's words. The home's to-dos read them with P5c-3c. Unpinned until the lift merges. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/portal-p5c-3a.lift.json <outDir>",
+  "about": "The Portal lane's P5c-3a (to-dos/gc-mode/mockups/portal-p5.md, P5c-3 split in three, the lead 2026-10-10): the job's readers of the trade portal, lifted to src/lib/gc word for word with no caller yet: portalJobMoney, portalPay, portalPapers and portalTodos (with their private helpers) into portal.ts, and the schedule's datesMessage and datesNotices into schedule/tellTrades.ts, which portalTodos reads and which waited only on the portal's words. The home's to-dos read them with P5c-3c. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/portal-p5c-3a.lift.json <outDir>",
   "spikeDir": "src/lib/gcMode",
   "mainBase": "src/lib/gc",
   "existing": {
@@ -31,5 +31,10 @@
         "portalJobMoney"
       ]
     }
-  ]
+  ],
+  "pin": {
+    "main": "682cbb39be16706f1028eea2322cb9267a135f6a",
+    "spike": "67c3d0f4d12633f7e9c6fd673a5485eb7ccc23b5",
+    "about": "#5306 merged; the spike with main merged in, before its follow-up"
+  }
 }
