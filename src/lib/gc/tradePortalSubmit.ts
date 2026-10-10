@@ -26,6 +26,21 @@ export function tradeFilePlaced(value: unknown): TradeFilePlaced | null {
   return { id: typeof v.id === 'string' ? v.id : null, name: v.name, url: v.url }
 }
 
+/**
+ * The signing page a paper opens on (P5b-1, `paper_link`): only `/contract/accept?t=` with a 64-character hex token, as
+ * the function mints it, so the page never goes anywhere an answer names. Null otherwise (the sample answers none).
+ */
+export function tradeSignPath(value: unknown): string | null {
+  if (typeof value !== 'object' || value === null) return null
+  const path = (value as Record<string, unknown>).signPath
+  return typeof path === 'string' && /^\/contract\/accept\?t=[0-9a-f]{64}$/.test(path) ? path : null
+}
+
+/** Goes to the signing page in this tab, as the sub portal's sign_link does: a tab opened after an answer is blocked on a phone. */
+export function goToSignPath(path: string): void {
+  window.location.assign(path)
+}
+
 export async function submitTradePortal(token: string, kind: TradeSubmitKind, fields: Record<string, unknown> = {}): Promise<TradeSubmitResult> {
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/submit-gc-trade-portal`, {

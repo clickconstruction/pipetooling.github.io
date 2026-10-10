@@ -201,6 +201,24 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   fileType: 'errFileType',
   fileTooBig: 'errFileTooBig',
   noJobFolder: 'errNoJobFolder',
+  // P5b-1: the company's own papers; the certificate's four for P5b-2.
+  vetDecided: 'errVetDecided',
+  formIncomplete: 'errFormIncomplete',
+  msaNotSent: 'errMsaNotSent',
+  noW9Form: 'errNoW9Form',
+  coiDayNeeded: 'errCoiDayNeeded',
+  coiPast: 'errCoiPast',
+  coiTooFar: 'errCoiTooFar',
+  certNeeded: 'errCertNeeded',
+}
+
+/** A line of the home's paperwork block a to-do in Needs you opens (`portalTodos`' keys, P5b-1). */
+export type PaperworkLine = 'msa' | 'coi' | 'w9' | 'vet'
+
+/** The block's line a to-do opens: its key without the certificate's `:soon`. Null: not a paperwork to-do. */
+export function paperworkLineOf(todoKey: string): PaperworkLine | null {
+  const line = todoKey.split(':')[0]
+  return line === 'msa' || line === 'coi' || line === 'w9' || line === 'vet' ? line : null
 }
 
 /** A refusal in the company's words. A key the page does not know reads as did not save. */
