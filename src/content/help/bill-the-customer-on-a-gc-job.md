@@ -12,7 +12,7 @@ Each pay application goes on the AIA form. It has a line for each trade, our own
 ## Send this month's bill
 
 1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:outline|Bill the customer}} on the job's card.
-2. Read the lines. Each one shows its worth, the work this month and the work so far.
+2. Read the lines. Each one shows its worth, the work this month and the work so far. A trade our own crew does reads its percent from its Pipeline job. The line says where it came from.
 3. Check what the bill asks. It is the work so far, less what they hold back and less earlier certificates.
 4. Press {{button:outline|See the form in Excel}} or {{button:outline|See the form as a PDF}} to look at the form.
 5. Tick **Email it to the customer and the architect now** to email them the form. The tick starts off.
@@ -102,6 +102,18 @@ Some contracts charge us a fee for each day we finish past substantial completio
 3. Press {{button:blue|Save the late fee}}.
 
 The window reads the job's schedule when it opens. The finish that counts is the day we reached substantial completion. Until that day is on the schedule, the schedule's projected finish counts. With a fee typed, the window says what the late days cost and whose they are.
+
+## The reminders the app sends
+
+Once the owner turns them on, the app sends three emails by itself. Each one goes once.
+
+- Two days before bill day, the project manager hears that this month's pay application is ready to draft. The email names each trade that still owes its unconditional waiver.
+- When a pay application waits 3 days for its certificate, the architect gets a reminder. It comes from Click Construction, and their reply goes to the project manager.
+- At 5 days, the project manager hears that it still waits.
+
+The project manager hears only when they can see the money. Otherwise the owner hears instead.
+
+A sent bill then says {{chip:gray|We reminded the architect on Oct 5.}} The owner turns the reminders on in [Settings](/settings). Only pay applications sent from that day get them, so nothing old goes out.
 
 ## Before the first bill
 

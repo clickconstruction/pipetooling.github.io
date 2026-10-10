@@ -85,6 +85,8 @@ export interface OwnerBillingRows {
   emails?: { source_id: string; kind: string; recipient_name: string | null; sent_at: string }[]
   /** The sent copies of our interest bills' emails (O6b-2), by the interest bill's id: who and when. */
   interestEmails?: { source_id: string; recipient_name: string | null; sent_at: string }[]
+  /** The architect's reminders the app sent (O10, `gc_office_notices`), by pay application. */
+  notices?: { pay_app_id: string | null; kind: string; created_at: string }[]
 }
 
 /**
@@ -160,7 +162,13 @@ function stepOf(row: Pick<OwnerPayAppRow, 'retainage_step_at_pct' | 'retainage_s
  * One pay application as it went, its lines keyed the kernels' way and its reminders oldest first. With the
  * billing job's money (O5c), its bill's payments, the day it was paid and the promises that cover it.
  */
-export function payAppFromRows(app: OwnerPayAppRow, lines: OwnerPayAppLineRow[], reminders: OwnerPayReminderRow[], money?: OwnerBillingMoney): OwnerPayAppSent {
+export function payAppFromRows(
+  app: OwnerPayAppRow,
+  lines: OwnerPayAppLineRow[],
+  reminders: OwnerPayReminderRow[],
+  money?: OwnerBillingMoney,
+  notices?: OwnerBillingRows['notices'],
+): OwnerPayAppSent {
   const mine = lines.filter((l) => l.pay_app_id === app.id).sort((a, b) => a.position - b.position)
   const doneToDate = Object.fromEntries(mine.map((l) => [payAppLineKey(l), Number(l.done_to_date)]))
   const worthByLine = Object.fromEntries(mine.map((l) => [payAppLineKey(l), Number(l.worth)]))
@@ -173,6 +181,8 @@ export function payAppFromRows(app: OwnerPayAppRow, lines: OwnerPayAppLineRow[],
   const { payments, paidOn } = billMoney(money, app.invoice_id)
   const promises = app.invoice_id ? promisesOnBill(money, app.certified_on, paidOn) : []
   const card = billCard(money, app.invoice_id)
+  // The day the app reminded the architect to certify it (O10), in the office's day.
+  const reminded = (notices ?? []).find((n) => n.pay_app_id === app.id && n.kind === 'certify_reminder')
   return {
     number: app.number,
     periodTo: app.period_to,
@@ -195,6 +205,7 @@ export function payAppFromRows(app: OwnerPayAppRow, lines: OwnerPayAppLineRow[],
     ...(payments.length > 0 ? { payments } : {}),
     ...(promises.length > 0 ? { promises } : {}),
     ...(card ? { card } : {}),
+    ...(reminded ? { architectRemindedOn: calendarYmdInAppTzFromIso(reminded.created_at) } : {}),
   }
 }
 
@@ -205,7 +216,7 @@ export function payAppFromRows(app: OwnerPayAppRow, lines: OwnerPayAppLineRow[],
  */
 export function ownerBillingFromRows(rows: OwnerBillingRows): OwnerBilling | null {
   if (rows.payApps.length === 0 && rows.interestBills.length === 0 && rows.acceptance === null) return null
-  const payApps = [...rows.payApps].sort((a, b) => a.number - b.number).map((app) => payAppFromRows(app, rows.lines, rows.reminders, rows.money))
+  const payApps = [...rows.payApps].sort((a, b) => a.number - b.number).map((app) => payAppFromRows(app, rows.lines, rows.reminders, rows.money, rows.notices))
   const lastProgress = [...payApps].reverse().find((app) => !app.final)
   const interestBills: OwnerInterestBill[] = [...rows.interestBills]
     .sort((a, b) => a.number - b.number)

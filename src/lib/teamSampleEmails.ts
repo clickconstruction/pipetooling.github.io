@@ -29,6 +29,7 @@ import { renderCtRosterAuditEmail } from '../../supabase/functions/_shared/ctRos
 import type { CtRosterDiff } from '../../supabase/functions/_shared/ctRosterDiff'
 import { readyToBillSubject, readyToBillText, renderReadyToBillDetailed, type ReadyToBillPayload } from '../../supabase/functions/_shared/readyToBillEmail'
 import { gcMoneyMondaySubject, renderGcMoneyMondayHtml, renderGcMoneyMondayText, type GcMoneyMondayPayload } from '../../supabase/functions/_shared/gcMoneyMondayEmail'
+import { billTheCustomerUrl, buildOfficeNoticeEmail } from '../../supabase/functions/_shared/gcOfficeNotices'
 import { lienStatusEmailHtml, lienStatusEmailText, lienStatusSubject, type LienStatusPayload } from '../../supabase/functions/_shared/lienDeskStatus'
 import { ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
@@ -579,6 +580,24 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
       const p = sampleWeeklyMoneyPayload(monday)
       const week = weekLabelFromMonday(monday)
       return { subject: weeklyMoneySubject(week), html: renderWeeklyMoneyHtml(p, week, ctx.sender?.name || undefined), text: renderWeeklyMoneyText(p, week) }
+    }
+    case 'gc_office_notice': {
+      // Bill day on the sample job, with one trade still owing its unconditional waiver.
+      const billDay = `${ctx.todayYmd.slice(0, 7)}-25`
+      return buildOfficeNoticeEmail(
+        {
+          kind: 'bill_day',
+          projectId: 'sample',
+          project: 'Sample Retail Shell',
+          billingJobId: null,
+          billDay,
+          number: 4,
+          waiversOwed: [{ company: 'Sample Concrete', draws: [2], final: false }],
+          to: { userId: 'sample', name: ctx.sender?.name ?? 'The project manager' },
+        },
+        billTheCustomerUrl(origin, 'sample'),
+        null,
+      )
     }
     case 'gc_money_monday': {
       const p = sampleGcMoneyMondayPayload(ctx.todayYmd)

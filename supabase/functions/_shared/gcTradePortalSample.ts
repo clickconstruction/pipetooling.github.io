@@ -45,6 +45,11 @@ export const SAMPLE_TRADE_IDS = {
   jobLine2: '00000000-5a00-4000-8000-000000000032',
   sowLine1: '00000000-5a00-4000-8000-000000000033',
   sowLine2: '00000000-5a00-4000-8000-000000000034',
+  // The job's work (P5c-1): a paid draw, a punch item, a submittal and a question while we build.
+  draw1: '00000000-5a00-4000-8000-000000000035',
+  punch1: '00000000-5a00-4000-8000-000000000036',
+  submittal1: '00000000-5a00-4000-8000-000000000037',
+  rfi1: '00000000-5a00-4000-8000-000000000038',
 } as const
 
 const ID = SAMPLE_TRADE_IDS
@@ -57,7 +62,8 @@ function addDays(ymd: string, n: number): string {
 
 /**
  * The sample's rows: one company asked to quote one trade on one project, with what it has given and what we sent it,
- * one ask it passed on, and one job of ours it was awarded and signed for, with a charge to answer and a change it asked
+ * one ask it passed on, and one job of ours it was awarded and signed for, with its report, a paid draw, a punch item, a
+ * submittal and a question while we build (P5c-1), a charge to answer and a change it asked
  * for that is with the customer.
  */
 export function gcTradePortalSampleRows(today: string): TradePortalRows {
@@ -184,6 +190,55 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
       { id: ID.w9, company_id: COMPANY, doc_type: 'w9', status: 'signed', sent_at: `${d(-40)}T15:00:00Z`, signed_at: d(-38), expires_at: null },
       { id: ID.coi, company_id: COMPANY, doc_type: 'coi', status: 'signed', sent_at: null, signed_at: d(-38), expires_at: d(327) },
     ],
+    // The job's work (P5c-1): the rough-in reported at 60% and billed to half, paid with its conditional waiver; a punch
+    // item to fix; a submittal waiting on the company; and a question it asked, answered by the architect.
+    lineReports: [
+      { sow_line_id: ID.sowLine1, pct: 60, reported_on: d(-2), seq: 2 },
+      { sow_line_id: ID.sowLine2, pct: 0, reported_on: d(-20), seq: 1 },
+    ],
+    draws: [
+      {
+        id: ID.draw1,
+        sow_id: ID.sow,
+        number: 1,
+        seq: 1,
+        requested_on: d(-14),
+        status: 'paid',
+        gross: 14580,
+        retainage: 1458,
+        net: 13122,
+        final: false,
+        waiver: 'conditional',
+        waiver_on: null,
+        approved_on: d(-12),
+        paid_on: d(-3),
+        asked: null,
+        sent_back_on: null,
+        sent_back_note: null,
+        period_to: d(-14),
+        address: '400 Sample St, Boerne',
+        license: 'TECL 00000',
+        signed_by: 'Dana Ortiz',
+        signed_title: 'Owner',
+        signed_on: d(-14),
+        file_name: null,
+        drive_url: null,
+      },
+    ],
+    drawLines: [{ draw_id: ID.draw1, sow_line_id: ID.sowLine1, to_pct: 50, stored: 0, we_see: null }],
+    changeSends: [],
+    punch: [
+      { id: ID.punch1, project_id: ID.job, package_id: ID.jobTrade, position: 0, text: 'Cover plate missing in operatory 2.', where_on: 'Operatory 2', added_on: d(-1), fixed_on: null, checked_on: null, sent_back_times: 0, sent_back_note: null, sent_back_on: null, removed_at: null },
+    ],
+    submittals: [
+      { id: ID.submittal1, project_id: ID.job, package_id: ID.jobTrade, number: '26 24 16-01', title: 'Panelboards', kind: 'product data', spec_section: '26 24 16', lead_days: 14, needed_by: d(10), asked_on: d(-5), created_at: `${d(-5)}T15:00:00Z` },
+    ],
+    submittalHolds: [{ submittal_id: ID.submittal1, scope_item_id: ID.jobLine1 }],
+    submittalRounds: [],
+    rfis: [
+      { id: ID.rfi1, project_id: ID.job, package_id: ID.jobTrade, number: 1, question: 'Is the panel in operatory 2 recessed or surface mounted?', sheets: ['E-201'], asked_by_company_id: COMPANY, asked_on: d(-4), needed_days: 3, sent_to_architect_on: d(-4), answered_on: d(-2), answer_text: 'Recessed, as the elevation on E-201 shows.', answered_by: 'architect', impact: 'none', days: null },
+    ],
+    rfiHolds: [{ rfi_id: ID.rfi1, scope_item_id: ID.jobLine1 }],
   }
 }
 

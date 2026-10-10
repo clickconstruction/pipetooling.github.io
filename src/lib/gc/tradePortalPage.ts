@@ -179,6 +179,11 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   sowNotSent: 'errSowNotSent',
   alreadySigned: 'errAlreadySigned',
   msaFirst: 'signMsaFirst',
+  // P5c-2: the punch list, submittals and questions while we build.
+  punchNotOpen: 'errPunchNotOpen',
+  notYourMove: 'errNotYourMove',
+  fileNeeded: 'errFileNeeded',
+  jobNotBuilding: 'errJobNotBuilding',
 }
 
 /** A refusal in the company's words. A key the page does not know reads as did not save. */

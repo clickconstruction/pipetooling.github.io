@@ -44,8 +44,8 @@ export function validateSplitBillParts(
   enteredCents: Array<number | null>,
   feeLines?: unknown,
 ): SplitBillValidation {
-  const cardRefusal = splitBillCardFeeRefusal(feeLines)
-  if (cardRefusal) return { ok: false, error: cardRefusal, fees: true }
+  const feeRefusal = splitBillCardFeeRefusal(feeLines) ?? splitBillReturnedCheckFeeRefusal(feeLines)
+  if (feeRefusal) return { ok: false, error: feeRefusal, fees: true }
   const partCount = enteredCents.length + 1
   if (partCount < MIN_SPLIT_BILL_PARTS || partCount > MAX_SPLIT_BILL_PARTS) {
     return { ok: false, error: `Split into ${MIN_SPLIT_BILL_PARTS}–${MAX_SPLIT_BILL_PARTS} parts.` }
@@ -107,6 +107,20 @@ export function splitBillCardFeeRefusal(feeLines: unknown): string | null {
     return typeof v === 'string' && v.trim() !== ''
   })
   return card ? 'This bill carries the GC’s card fee, so it cannot be split. A card bill stays one bill.' : null
+}
+
+/**
+ * A bill that carries a returned check fee is not split either (punch list #105, v2.5144): deleting the bill gives the
+ * fee back to its case (`jobs_ledger_invoices_give_case_fee_back`), so a part carrying its entry would count the fee
+ * twice once the case adds it again. Words when it refuses, else null.
+ */
+export function splitBillReturnedCheckFeeRefusal(feeLines: unknown): string | null {
+  if (!Array.isArray(feeLines)) return null
+  const fee = feeLines.some((l) => {
+    const v = (l as Record<string, unknown> | null)?.case_id
+    return typeof v === 'string' && v.trim() !== ''
+  })
+  return fee ? 'This bill carries a returned check fee, so it cannot be split. Splitting it would count the fee twice.' : null
 }
 
 export type SplitBillFeePlacement = { ok: true; byPart: Array<unknown[] | null> } | { ok: false; error: string }

@@ -44,3 +44,10 @@ Saving a day again replaces its log. A day never has two logs. Press {{button:ou
 ## Which trades show
 
 Our own crew shows on every log. A trade we hire shows once its statement of work, the work we agreed it will do, is signed.
+
+## Our own crew's count
+
+Our own crew's count can come from the Pipeline. Once [Draws names our crew's Pipeline job](/help/link-our-own-crew-to-its-pipeline-job), the log reads who clocked in on that job each day.
+
+- A day with clock-ins shows the count with **clocked in**. Nobody types over it. It changes only in the Pipeline.
+- A day with no clock-ins keeps the box. Type the count if the crew was there.

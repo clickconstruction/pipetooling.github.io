@@ -17,8 +17,8 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55444}"
 NAME="pgtest-gc-building"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-# Building's presses, each applied a second time below. A new press adds its file here, its scenario
-# under supabase/tests/gc_building and its pattern to sql-beds.yml's paths.
+# Building's presses, each applied a second time below. A new press adds its file here and its scenario
+# under supabase/tests/gc_building (sql-beds.yml runs every bed when a migration changes).
 PRESSES=(
   supabase/migrations/*_gc_save_daily_log.sql
   supabase/migrations/*_gc_submittal_writes.sql
@@ -26,6 +26,7 @@ PRESSES=(
   supabase/migrations/*_gc_trade_draws.sql
   supabase/migrations/*_gc_trade_closeout.sql
   supabase/migrations/*_gc_punch_writes.sql
+  supabase/migrations/*_gc_crew_job.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }

@@ -5,6 +5,7 @@ import {
   formatCentsAsDollars,
   placeSplitBillFeeLines,
   splitBillCardFeeRefusal,
+  splitBillReturnedCheckFeeRefusal,
   splitBillIssuedAtMs,
   splitBillPartMemo,
   splitBillRemainderCents,
@@ -109,6 +110,14 @@ describe('the bill’s fee lines on a split (punch list #105)', () => {
     expect(splitBillCardFeeRefusal([trip, card])).toMatch(/GC’s card fee, so it cannot be split/)
     expect(splitBillCardFeeRefusal([trip, small])).toBeNull()
     expect(splitBillCardFeeRefusal(null)).toBeNull()
+  })
+
+  it('refuses a bill that carries a returned check fee, which its case would take back on the delete (v2.5144)', () => {
+    const fee = { case_id: 'cd000000-0000-0000-0000-00000000000d', amount: 30, description: 'Returned check fee' }
+    expect(splitBillReturnedCheckFeeRefusal([trip, fee])).toBe('This bill carries a returned check fee, so it cannot be split. Splitting it would count the fee twice.')
+    expect(splitBillReturnedCheckFeeRefusal([trip, small, card])).toBeNull()
+    expect(splitBillReturnedCheckFeeRefusal([{ case_id: ' ', amount: 30 }])).toBeNull()
+    expect(validateSplitBillParts(25000, [10000], [fee])).toMatchObject({ ok: false, fees: true, error: expect.stringMatching(/returned check fee/) })
   })
 
   it('validateSplitBillParts says both refusals as fee refusals, and hands back where each fee goes', () => {

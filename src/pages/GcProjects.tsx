@@ -26,8 +26,11 @@ import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
 import { GcScheduleWindow } from '../components/gc/GcScheduleWindow'
 import { withChangeOrders, withChangeRequests, type ChangeOrderRow, type ChangeRequestRow } from '../lib/gc/changeOrderRows'
 import { GcDailyLogWindow } from '../components/gc/GcDailyLog'
-import { dailyLogPayload, withDailyLogs, type DailyLogRow } from '../lib/gc/dailyLogRows'
-import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { dailyLogPayload, withCrewClockIns, withDailyLogs, type CrewOnSiteRow, type DailyLogRow } from '../lib/gc/dailyLogRows'
+import { loadGcCrewOnSite, loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { crewJobsHeld, withCrewPercents, type CrewJobRead } from '../lib/gc/crewJobRows'
+import { linkCrewJob, loadCrewJobs, searchCrewJobs, suggestCrewJobs, type CrewJobLink } from '../lib/gc/crewJobIo'
+import type { OwnCrewWrites } from '../components/gc/GcOwnCrew'
 import { GcSubmittalsWindow } from '../components/gc/GcSubmittalsWindow'
 import { submittalRoundExtras, tradeSpecSections, withSubmittals, type SubmittalTables } from '../lib/gc/submittalRows'
 import { addSubmittal, answerSubmittal, loadGcSubmittals, markSubmittalSent, sendSubmittalToArchitect, submittalCameIn } from '../lib/gc/submittalsIo'
@@ -64,6 +67,9 @@ import { GcMoneyMondayEmail, type MoneyMondayIo } from '../components/gc/GcMoney
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, finalPayAppForm, finalPayAppSendPayload, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
 import { loadSchedule } from '../lib/gc/scheduleIo'
+import type { WeeklyReportWrites } from '../components/gc/GcWeeklyReport'
+import { weeklyReportRetryRow, withWeeklyReports, type WeeklyReportRow, type WeeklyReportSend } from '../lib/gc/weeklyReportRows'
+import { loadGcWeeklyReports, recordWeeklyReport, sendWeeklyReport } from '../lib/gc/weeklyReportsIo'
 import { ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
 import { downloadPayAppExcel, downloadPayAppPdf, payAppPdf } from '../lib/gc/payAppFileWriters'
 import { payAppFileName } from '../lib/gc/payAppFile'
@@ -297,14 +303,14 @@ export default function GcProjects() {
 
   // The Project Board (the Board's B3): a dev sees it above the projects while it is built; door 1's
   // list stays for everyone until the board's own door opens it to the office.
-  const [board, setBoard] = useState<GcState | null>(null)
+  const [boardRead, setBoardRead] = useState<GcState | null>(null)
   const [boardProblem, setBoardProblem] = useState<string | null>(null)
   // Each company's language, for the invitation the Ask window draws (the kernels' company carries none yet).
   const [langs, setLangs] = useState<Record<string, PortalLang>>({})
   // Our number (B5-c): the money team reads it; anyone else sees each price as the trades alone.
   const [moneyShown, setMoneyShown] = useState(false)
   const takeRows = (rows: BoardRows) => {
-    setBoard(boardStateFromRows(rows))
+    setBoardRead(boardStateFromRows(rows))
     setMoneyShown(rows.moneyShown ?? false)
     setLangs(Object.fromEntries(rows.companies.map((c) => [c.id, c.lang === 'es' ? 'es' : 'en'])))
   }
@@ -324,6 +330,33 @@ export default function GcProjects() {
       live = false
     }
   }, [role, loaded, today])
+  // Our own crew's percent from its Pipeline job (Building's U8): read for a dev and the money team (O9's gate, gc 5's
+  // ask) and laid over the board itself, so every window reads one percent, the Schedule's among them (call 12).
+  const crewLinks = useMemo<CrewJobLink[]>(
+    () => (loaded ? loaded.projects.flatMap((p) => p.trades.flatMap((t) => (t.ours && t.jobLedgerId ? [{ packageId: t.id, jobId: t.jobLedgerId }] : []))) : []),
+    [loaded],
+  )
+  const [crewReads, setCrewReads] = useState<CrewJobRead[]>([])
+  useEffect(() => {
+    if (!canUseGcBuilding(role) && !canSeeGcMoney(role)) return
+    let live = true
+    loadCrewJobs(crewLinks)
+      .then((reads) => {
+        if (live) setCrewReads(reads)
+      })
+      .catch((e) => {
+        if (live) setBoardProblem(formatErrorMessage(e, 'Our own crew’s Pipeline jobs did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [crewLinks, role])
+  const board = useMemo(() => (boardRead ? withCrewPercents(boardRead, crewReads) : null), [boardRead, crewReads])
+  /** Each linked trade our own crew does, by its id, to its Pipeline job's number (null until read). */
+  const crewJobLabels = useMemo(
+    () => Object.fromEntries(crewLinks.map((l) => [l.packageId, crewReads.find((r) => r.packageId === l.packageId)?.label ?? null])),
+    [crewLinks, crewReads],
+  )
   const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
   // `?view=followUp` (the Dashboard's Needs you line, v2.4941) opens on Follow up.
@@ -655,15 +688,22 @@ export default function GcProjects() {
   const [dailyLogRows, setDailyLogRows] = useState<DailyLogRow[]>([])
   const [logBusy, setLogBusy] = useState(false)
   const [logProblem, setLogProblem] = useState<string | null>(null)
+  // Our own crew's clock-ins (Building's U8): for a job with a linked crew, from its first day to today, read with the
+  // logs and laid in right after them, so the log window and the chart read one count.
+  const [crewRows, setCrewRows] = useState<CrewOnSiteRow[]>([])
   const loadDailyLogs = useCallback(async () => {
     // Building is a dev's while it is built (canUseGcBuilding): nobody else reads its tables.
-    if (!board || !canUseGcBuilding(role)) return
-    setDailyLogRows(await loadGcDailyLogs(board.projects.filter((p) => p.stage === 'building').map((p) => p.id)))
-  }, [board, role])
+    if (!boardRead || !canUseGcBuilding(role)) return
+    const building = boardRead.projects.filter((p) => p.stage === 'building')
+    setDailyLogRows(await loadGcDailyLogs(building.map((p) => p.id)))
+    const linked = new Set(crewLinks.map((l) => l.packageId))
+    const counted = building.flatMap((p) => (p.startedOn && p.packages.some((k) => linked.has(k.id)) ? [{ id: p.id, from: p.startedOn }] : []))
+    setCrewRows((await Promise.all(counted.map((p) => loadGcCrewOnSite(p.id, p.from, today)))).flat())
+  }, [boardRead, role, crewLinks, today])
   useEffect(() => {
     void loadDailyLogs().catch((e) => setLogProblem(formatErrorMessage(e, 'The daily logs did not load.')))
   }, [loadDailyLogs])
-  const boardWithLogs = useMemo(() => (board ? withDailyLogs(board, dailyLogRows) : null), [board, dailyLogRows])
+  const boardWithLogs = useMemo(() => (board ? withCrewClockIns(withDailyLogs(board, dailyLogRows), crewRows) : null), [board, dailyLogRows, crewRows])
   const logProject = logProjectId ? (boardWithLogs?.projects.find((p) => p.id === logProjectId) ?? null) : null
   const setLogWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
@@ -686,6 +726,63 @@ export default function GcProjects() {
     } finally {
       setLogBusy(false)
     }
+  }
+
+  // The weekly report (Building's U7c): a card on the Daily log window. When the window opens it reads what the report
+  // reads: the job's sent reports, submittals and schedule, and for the money team its customer's bills (the late
+  // finish's words); the logs and the change orders are on the page already. Each send reads the reports again.
+  const [weeklyRows, setWeeklyRows] = useState<{ id: string; rows: WeeklyReportRow[] } | null>(null)
+  const [weeklyRead, setWeeklyRead] = useState<{ id: string; submittals: SubmittalTables; schedule: GcProject['schedule'] | null; bills: BillingRows | null } | null>(null)
+  const loadWeekly = useCallback(async () => {
+    if (!logProjectId || !canUseGcBuilding(role)) return
+    setWeeklyRows({ id: logProjectId, rows: await loadGcWeeklyReports([logProjectId]) })
+  }, [logProjectId, role])
+  useEffect(() => {
+    void loadWeekly().catch((e) => setLogProblem(formatErrorMessage(e, 'The weekly reports did not load.')))
+  }, [loadWeekly])
+  useEffect(() => {
+    if (!logProjectId || !board || !canUseGcBuilding(role)) return
+    let live = true
+    Promise.all([loadGcSubmittals([logProjectId]), loadSchedule(board, logProjectId).catch(() => null), canSeeGcMoney(role) ? loadGcBillingRows([logProjectId]) : Promise.resolve(null)])
+      .then(([submittals, read, bills]) => {
+        if (live) setWeeklyRead({ id: logProjectId, submittals, schedule: read?.project.schedule ?? null, bills })
+      })
+      .catch((e) => {
+        if (live) setLogProblem(formatErrorMessage(e, 'What the weekly report reads did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [logProjectId, board, role])
+  const weeklyState = useMemo(() => {
+    if (!boardWithLogs || !logProjectId) return null
+    let s = withChangeOrders(boardWithLogs, changeOrderRows)
+    if (weeklyRead && weeklyRead.id === logProjectId) {
+      s = withSubmittals(s, weeklyRead.submittals)
+      if (weeklyRead.bills) s = billingStateFor(s, logProjectId, weeklyRead.bills)
+      s = withSchedules(s, new Map([[logProjectId, weeklyRead.schedule]]))
+    }
+    return weeklyRows && weeklyRows.id === logProjectId ? withWeeklyReports(s, weeklyRows.rows) : s
+  }, [boardWithLogs, logProjectId, changeOrderRows, weeklyRead, weeklyRows])
+  const weeklyProject = logProjectId ? (weeklyState?.projects.find((p) => p.id === logProjectId) ?? null) : null
+  /** A company row not sent yet that this send goes again on, else a new one. */
+  const weeklyRowFor = async (s: WeeklyReportSend): Promise<string> => weeklyReportRetryRow(weeklyRows?.id === s.projectId ? weeklyRows.rows : [], s)?.id ?? recordWeeklyReport(s, today)
+  const weeklyWrites: WeeklyReportWrites = {
+    onSentFromMe: (s) => {
+      void recordWeeklyReport(s, today)
+        .then(loadWeekly)
+        .catch((e) => setLogProblem(formatErrorMessage(e, 'The weekly report was not kept.')))
+    },
+    onSendFromCompany: async (s) => {
+      const answer = await sendWeeklyReport(s, await weeklyRowFor(s))
+      await loadWeekly()
+      return answer
+    },
+    onTest: async (s) => {
+      const answer = await sendWeeklyReport(s, await weeklyRowFor(s), true)
+      await loadWeekly()
+      return answer
+    },
   }
 
   // The punch list (Building's U3b-ii): a dev's on a job being built, opened at `punch=<projectId>`, behind Building's gate
@@ -813,6 +910,33 @@ export default function GcProjects() {
   const drawsProject = drawsProjectId ? (boardWithChanges?.projects.find((p) => p.id === drawsProjectId) ?? null) : null
   const [drawBusy, setDrawBusy] = useState<string | null>(null)
   const [drawEmailOn, setDrawEmailOn] = useState(false)
+  /** Our own crew's Pipeline job, picked on Draws (Building's U8): a dev's while Building is built. A link reads the trades again. */
+  const ownCrewWrites = useMemo<OwnCrewWrites>(
+    () => ({
+      onLink: async (packageId, jobId) => {
+        setDrawBusy(packageId)
+        setDrawProblem(null)
+        try {
+          await linkCrewJob(packageId, jobId)
+          const projects = await loadGcProjects()
+          setLoaded((was) => (was ? { ...was, projects } : was))
+          return true
+        } catch (e) {
+          setDrawProblem(formatErrorMessage(e, 'Our crew’s Pipeline job was not saved.'))
+          return false
+        } finally {
+          setDrawBusy(null)
+        }
+      },
+      onSearch: searchCrewJobs,
+      onSuggest: (packageId) => {
+        const project = loaded?.projects.find((p) => p.trades.some((t) => t.id === packageId))
+        const trade = project?.trades.find((t) => t.id === packageId)
+        return project && trade ? suggestCrewJobs(project.id, trade.ownBidId) : Promise.resolve([])
+      },
+    }),
+    [loaded],
+  )
   const setDrawsWindow = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('draws', projectId)
@@ -1684,6 +1808,8 @@ export default function GcProjects() {
           busy={logBusy}
           problem={logProblem}
           onSave={(log) => saveLog(logProject.id, log)}
+          weekly={weeklyState && weeklyProject ? { state: weeklyState, project: weeklyProject, me: profileName ?? null, writes: weeklyWrites } : null}
+          ourCrew={{ rows: crewRows, jobs: crewJobLabels }}
           onClose={() => setLogWindow(null)}
         />
       )}
@@ -1766,6 +1892,12 @@ export default function GcProjects() {
           emailTick={canSendGcTradeEmail(role) ? { on: drawEmailOn, onChange: setDrawEmailOn } : null}
           busy={drawBusy}
           problem={drawProblem}
+          ownCrew={{
+            reads: crewReads,
+            linked: crewLinks.map((l) => l.packageId),
+            held: loaded ? crewJobsHeld(loaded.projects, drawsProject.id) : [],
+            ...(canUseGcBuilding(role) ? { writes: ownCrewWrites } : {}),
+          }}
           onClose={() => setDrawsWindow(null)}
           writes={{
             onCameIn: (d) => drawWrite(d.packageId, d.packageId, drawCameIn(d), 'The pay application was not recorded.'),

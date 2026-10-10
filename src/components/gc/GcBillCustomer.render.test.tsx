@@ -53,6 +53,14 @@ describe('GcBillCustomerWindow', () => {
     expect(screen.getByText(`Pay application ${last.number}, final`)).toBeTruthy()
   })
 
+  it('a sent bill still with the architect says when the app reminded them (O10)', () => {
+    setup({}, [], { architectRemindedOn: '2026-10-05' })
+    expect(screen.getByText('We reminded the architect on Oct 5.')).toBeTruthy()
+    cleanup()
+    setup({}, [], { architectRemindedOn: '2026-10-05', certified: 1000, certifiedOn: '2026-10-08' })
+    expect(screen.queryByText('We reminded the architect on Oct 5.')).toBeNull()
+  })
+
   it('records the architect\'s certificate, and asks why when it is less', () => {
     const { writes, last } = setup()
     expect(screen.getByText('waiting on the architect')).toBeTruthy()

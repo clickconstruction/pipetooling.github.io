@@ -4,12 +4,15 @@
  * Authorization header; the row is read through the caller's RLS so only the
  * office set that can see the contract can send it. The link is durable: the
  * first send mints the plaintext token (the bid-room / portal-links
- * precedent), every later send reuses it and refreshes the expiry.
+ * precedent), every later send reuses it and refreshes the expiry. Since
+ * v2.5145 the link mode on a row already out with a live link answers that
+ * link and stamps nothing (punch list #104).
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { buildJobContractSendEmail } from '../_shared/jobContractEmail.ts'
+import { jobContractLiveToken } from '../_shared/jobContractLinkLive.ts'
 import {
   amountCentsFromFields,
   appOrigin,
@@ -90,6 +93,13 @@ serve(async (req) => {
     if (c.voided_at || c.status === 'voided') return json({ error: 'This contract was voided. Start a new one.' }, 409)
     if (c.status === 'signed') return json({ error: 'This contract is already signed.' }, 409)
     if (!(c.body_html ?? '').trim()) return json({ error: 'Add the terms before sending.' }, 400)
+
+    // v2.5145 (punch list #104): handing out the link a sent agreement already carries is not a send. A row out with
+    // a live link answers its own URL and writes nothing: its sent_channel stays (a PDF emailed to sign stays one), its
+    // send_count and its reminder clock stay, and no 'sent' event is logged. A draft, a row with no token or a link
+    // near its end goes on below, which mints or renews the link and stamps the send. Email mode always sends.
+    const liveToken = mode === 'link' ? jobContractLiveToken(c, Date.now()) : null
+    if (liveToken) return json({ ok: true, emailed: false, sign_url: signingUrl(appOrigin(body.public_origin), liveToken), reused: true })
 
     const recipientEmail = (body.recipient_email ?? c.recipient_email ?? '').trim()
     const recipientName = (body.recipient_name ?? c.recipient_name ?? '').trim()

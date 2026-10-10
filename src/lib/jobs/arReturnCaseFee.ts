@@ -41,14 +41,23 @@ export type ArCaseFeeRow = {
   fee_added_at: string | null
   fee_added_by: string | null
   bills: ArCaseFeeBill[]
+  /** v2.5144: when the fee last left with its bill (`jobs_ledger_invoices_give_case_fee_back`); absent before that migration. */
+  fee_came_off_at?: string | null
 }
 
+/** `note` (v2.5144): the fee came off with its bill, said above the press or the reason there is none. */
 export type ArCaseFeeOffer =
-  | { kind: 'offer'; invoiceId: string; button: string; line: string; title: string }
+  | { kind: 'offer'; invoiceId: string; button: string; line: string; title: string; note?: string }
   | { kind: 'added'; words: string; line: string; title: string }
-  | { kind: 'blocked'; words: string; line: string; title: string }
+  | { kind: 'blocked'; words: string; line: string; title: string; note?: string }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+/** "Oct 9" in the app's time zone, or '' when the instant does not read. */
+function dayWords(iso: string): string {
+  const ymd = calendarYmdInAppTzFromIso(iso)
+  return /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}` : ''
+}
 
 function billWords(b: ArCaseFeeBill, manyJobs: boolean): string {
   const n = typeof b.sequence_order === 'number' ? `bill ${b.sequence_order + 1}` : 'its bill'
@@ -58,7 +67,8 @@ function billWords(b: ArCaseFeeBill, manyJobs: boolean): string {
 /**
  * What the case says about the fee, or null when the fee is not its question: a check that never reached the bank
  * (rejected, unbanked) or a Stripe case, or a case whose fee read has not come back. The bill is the oldest the
- * check paid that is not a Stripe invoice.
+ * check paid that is not a Stripe invoice. A fee that came off with its bill (v2.5144, punch list #105: the bill was
+ * sent back or deleted) is offered again, with a note that says so.
  */
 export function arCaseFeeOffer(view: Pick<ArReturnCaseView, 'source'>, row: ArCaseFeeRow | null | undefined): ArCaseFeeOffer | null {
   if (view.source !== 'bank' && view.source !== 'hand') return null
@@ -69,19 +79,25 @@ export function arCaseFeeOffer(view: Pick<ArReturnCaseView, 'source'>, row: ArCa
   const manyJobs = new Set(bills.map((b) => b.job_id)).size > 1
   if (row.fee_added_at) {
     const on = bills.find((b) => b.invoice_id === row.fee_invoice_id)
-    const ymd = calendarYmdInAppTzFromIso(row.fee_added_at)
-    const day = /^\d{4}-\d{2}-\d{2}$/.test(ymd) ? `${MONTHS[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}` : ''
+    const day = dayWords(row.fee_added_at)
     const who = (row.fee_added_by ?? '').trim()
     return { kind: 'added', words: `The $${AR_RETURNED_CHECK_FEE} fee is on ${on ? billWords(on, manyJobs) : 'its bill'}${day ? `, added ${day}` : ''}${who ? ` by ${who}` : ''}.`, line, title }
   }
+  const offAt = (row.fee_came_off_at ?? '').trim()
+  const offDay = offAt ? dayWords(offAt) : ''
+  const cameOff = offAt ? `The $${AR_RETURNED_CHECK_FEE} fee came off with its bill${offDay ? ` on ${offDay}` : ''}.` : ''
   const target = bills.find((b) => !b.stripe)
-  if (target) return { kind: 'offer', invoiceId: target.invoice_id, button: `Add the $${AR_RETURNED_CHECK_FEE} fee to ${billWords(target, manyJobs)}`, line, title }
+  if (target) {
+    const offer: ArCaseFeeOffer = { kind: 'offer', invoiceId: target.invoice_id, button: `Add the $${AR_RETURNED_CHECK_FEE} fee to ${billWords(target, manyJobs)}`, line, title }
+    return cameOff ? { ...offer, note: `${cameOff} Add it again.` } : offer
+  }
   const stripe = bills[0]
+  const blocked = (words: string): ArCaseFeeOffer => (cameOff ? { kind: 'blocked', words, line, title, note: cameOff } : { kind: 'blocked', words, line, title })
   if (stripe) {
     const n = billWords(stripe, manyJobs)
-    return { kind: 'blocked', words: `${n[0]!.toUpperCase()}${n.slice(1)} is a Stripe invoice, and a sent Stripe invoice cannot take a line.`, line, title }
+    return blocked(`${n[0]!.toUpperCase()}${n.slice(1)} is a Stripe invoice, and a sent Stripe invoice cannot take a line.`)
   }
-  return { kind: 'blocked', words: 'The check paid no bill by name, so the fee has no bill to go on.', line, title }
+  return blocked('The check paid no bill by name, so the fee has no bill to go on.')
 }
 
 /** The `fee_lines` entries on a job's bills that name one of `keys`, summed in cents. An amount that does not read counts as nothing. */

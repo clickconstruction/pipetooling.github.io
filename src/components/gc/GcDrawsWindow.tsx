@@ -4,12 +4,15 @@ import { BUILDING_CSS } from './gcBuildingCss'
 import { GcDrawBackCharges } from './GcDrawBackCharges'
 import { GcDrawCameInForm, GcDrawSendBackForm, GcDrawSentBackList, type LinkAccess } from './GcDrawForms'
 import { GcDrawPayApp } from './GcDrawPayApp'
+import { GcOwnCrewCard, type OwnCrewWrites } from './GcOwnCrew'
+import { heldByOthers, type CrewJobHeld } from '../../lib/gc/crewJobRows'
 import { partnerBlockers } from '../../lib/gc/bench'
 import { sowMoney } from '../../lib/gc/bids'
 import { retainageHeldNow, sentBackOpen, sowContractSum, timesSentBack, tradeChangesFor, type TradeChange } from '../../lib/gc/building'
 import { drawPayDays, drawsToPay } from '../../lib/gc/buildingPay'
 import { DRAW_PORTAL_LIVE } from '../../lib/gc/drawEmail'
 import type { SignedFile } from '../../lib/gc/closeoutRows'
+import type { CrewJobRead } from '../../lib/gc/crewJobRows'
 import { drawCameInDraft, type DrawCameIn, type DrawExtra } from '../../lib/gc/drawRows'
 import { partnerById } from '../../lib/gc/lookups'
 import { backChargesToAct, PAY_WITHIN_DAYS } from '../../lib/gc/portal'
@@ -61,13 +64,18 @@ interface Props {
    */
   emailTick?: { on: boolean; onChange: (on: boolean) => void } | null
   writes: DrawWrites
+  /**
+   * Our own crew's trades (Building's U8): what each linked trade's Pipeline job read, which trades name one, and the
+   * picker's calls for a dev. Absent: no Our own crew card.
+   */
+  ownCrew?: { reads: CrewJobRead[]; linked: string[]; held?: CrewJobHeld[]; writes?: OwnCrewWrites }
   /** What a press works on: a draw's, a charge's or a change order's id, or a trade's while a pay application or a charge is added. */
   busy?: string | null
   problem?: string | null
   onClose: () => void
 }
 
-export function GcDrawsWindow({ state, project, extras, chargeId = null, checkLink, emailTick = null, writes, busy = null, problem = null, onClose }: Props) {
+export function GcDrawsWindow({ state, project, extras, chargeId = null, checkLink, emailTick = null, writes, ownCrew, busy = null, problem = null, onClose }: Props) {
   // The pay application open to read: a draw that stands, or one we sent back.
   const [looking, setLooking] = useState<{ packageId: string; draw: Draw } | null>(null)
   const trades = project.packages.flatMap((pkg) => {
@@ -148,6 +156,20 @@ export function GcDrawsWindow({ state, project, extras, chargeId = null, checkLi
                   onLook={(draw) => setLooking({ packageId: pkg.id, draw })}
                 />
               ))}
+              {ownCrew &&
+                project.packages
+                  .filter((pkg) => pkg.selfPerform)
+                  .map((pkg) => (
+                    <GcOwnCrewCard
+                      key={pkg.id}
+                      pkg={pkg}
+                      linked={ownCrew.linked.includes(pkg.id)}
+                      read={ownCrew.reads.find((r) => r.packageId === pkg.id) ?? null}
+                      held={heldByOthers(ownCrew.held ?? [], pkg.id)}
+                      {...(ownCrew.writes ? { writes: ownCrew.writes } : {})}
+                      busy={busy === pkg.id}
+                    />
+                  ))}
             </>
           )}
         </div>

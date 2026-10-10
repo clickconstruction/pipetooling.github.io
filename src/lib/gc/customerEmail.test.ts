@@ -304,6 +304,8 @@ describe('what gc-customer-email reads and sends', () => {
   it('reads the answer, or the refusal from the error body, and says each refusal in words', () => {
     expect(readCustomerEmailAnswer({ to: 'Cibolo Creek Partners', email: 'ap@cibolo.test' }, null)).toEqual({ ok: true, to: 'Cibolo Creek Partners', email: 'ap@cibolo.test' })
     expect(readCustomerEmailAnswer(null, { error: 'noEmail' })).toEqual({ ok: false, key: 'noEmail' })
+    // U7b: the architect copied, and a test copy to the sender.
+    expect(readCustomerEmailAnswer({ to: 'Cibolo', email: 'elena@cibolo.test', copied: true, test: true }, null)).toEqual({ ok: true, to: 'Cibolo', email: 'elena@cibolo.test', copied: true, test: true })
     expect(readCustomerEmailAnswer(null, { error: 'mystery', detail: 'x' })).toEqual({ ok: false, key: 'failed', detail: 'x' })
     expect(gcCustomerEmailRefusal('noEmail')).toBe('There is no email address on file for them. Add one on the customer, then send it again.')
     expect(readCustomerEmailAnswer(null, { error: 'notCertified' })).toEqual({ ok: false, key: 'notCertified' })

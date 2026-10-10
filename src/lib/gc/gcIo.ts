@@ -485,7 +485,7 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
   const appIds = appRows.map((a) => a.id)
   const interestRows = taken(interestBills, 'load the interest bills')
   const interestIds = interestRows.map((b) => b.id)
-  const [lines, reminders, emails, interestEmails] = await Promise.all([
+  const [lines, reminders, emails, interestEmails, notices] = await Promise.all([
     appIds.length ? supabase.from('gc_owner_pay_app_lines').select('*').in('pay_app_id', appIds).order('position') : Promise.resolve({ data: [], error: null }),
     appIds.length ? supabase.from('gc_owner_pay_reminders').select('*').in('pay_app_id', appIds).order('created_at') : Promise.resolve({ data: [], error: null }),
     // Our emails about each pay application, from their sent copies (O4b: the copies are the record of what went): the
@@ -511,10 +511,15 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
           .in('source_id', interestIds)
           .order('sent_at')
       : Promise.resolve({ data: [], error: null }),
+    // The architect's reminders the app sent (O10's office notices), so a sent bill says when.
+    appIds.length
+      ? supabase.from('gc_office_notices').select('pay_app_id, kind, created_at').eq('kind', 'certify_reminder').in('pay_app_id', appIds)
+      : Promise.resolve({ data: [], error: null }),
   ])
   const lineRows = taken(lines, 'load the pay application lines')
   const reminderRows = taken(reminders, 'load the reminders to pay')
   const emailRows = (taken(emails, 'load the emails about the pay applications') ?? []) as { source_id: string | null; kind: string; recipient_name: string | null; sent_at: string }[]
+  const noticeRows = (taken(notices, 'load the architect’s reminders') ?? []) as { pay_app_id: string | null; kind: string; created_at: string }[]
   for (const app of appRows) {
     const rows = out.get(app.project_id)
     if (!rows) continue
@@ -523,6 +528,8 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
     rows.reminders.push(...reminderRows.filter((r) => r.pay_app_id === app.id))
     const sentAbout = emailRows.filter((e) => e.source_id === app.id).map((e) => ({ source_id: app.id, kind: e.kind, recipient_name: e.recipient_name, sent_at: e.sent_at }))
     if (sentAbout.length > 0) rows.emails = [...(rows.emails ?? []), ...sentAbout]
+    const reminded = noticeRows.filter((n) => n.pay_app_id === app.id)
+    if (reminded.length > 0) rows.notices = [...(rows.notices ?? []), ...reminded]
   }
   const interestEmailRows = (taken(interestEmails, 'load the emails about the interest bills') ?? []) as { source_id: string | null; recipient_name: string | null; sent_at: string }[]
   for (const bill of interestRows) {
@@ -776,6 +783,39 @@ export async function sendMoneyMondayTest(): Promise<void> {
   const r = (await supabase.functions.invoke('gc-money-monday-email', { body: { mode: 'test_send' } })) as FnResult
   const problem = await fnProblem(r, 'The test did not go.')
   if (problem) throw new Error(problem)
+}
+
+// ---------------------------------------------------------------------------------------------
+// Owner Billing's O10: the office's notices (migration gc_office_notices). gc-office-notices sends them on its own each
+// morning while the switch is on; the money team sees today's as they would go, and a copy of each marked [TEST].
+// ---------------------------------------------------------------------------------------------
+
+/** One notice as Preview shows it: its kind, its job, who hears it and where, and its words. */
+export interface OfficeNoticePreview {
+  kind: string
+  project: string
+  number: number
+  to: string | null
+  email: string
+  subject: string
+  text: string
+}
+
+/** Today's notices as they would go, as if on since the switch's day (else today). */
+export async function previewOfficeNotices(): Promise<{ since: string; notices: OfficeNoticePreview[] }> {
+  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'preview' } })) as FnResult
+  const problem = await fnProblem(r, 'The notices did not load.')
+  if (problem) throw new Error(problem)
+  const data = r.data as { since?: string; notices?: OfficeNoticePreview[] } | null
+  return { since: data?.since ?? '', notices: data?.notices ?? [] }
+}
+
+/** Each of today's notices marked [TEST], to the signed-in member only. How many went. */
+export async function sendOfficeNoticesTest(): Promise<number> {
+  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'test_send' } })) as FnResult
+  const problem = await fnProblem(r, 'The test did not go.')
+  if (problem) throw new Error(problem)
+  return Number((r.data as { sent?: number } | null)?.sent ?? 0)
 }
 
 /** What Add a company sends (the Board's B3-b): `gc_add_company`'s draft. Not `known`: the company quotes, then waits for approval. */

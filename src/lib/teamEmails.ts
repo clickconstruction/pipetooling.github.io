@@ -51,6 +51,7 @@ export type TeamSampleEmailId =
   | 'estimate_accepted_staff'
   | 'gc_word_ask'
   | 'gc_money_monday'
+  | 'gc_office_notice'
   | 'lien_desk_summary'
   | 'bid_room_activity_staff'
   | 'portal_request_staff'
@@ -298,6 +299,17 @@ export const TEAM_EMAILS: readonly TeamEmail[] = [
     render: { kind: 'sample', sample: 'schedule_share' },
     manage: emails('Dispatch → Share'),
     reflects: ['the dispatch board'],
+  },
+  {
+    id: 'gc_office_notice',
+    label: 'The office’s GC notices',
+    when: { kind: 'event', label: 'Two days before a GC bill day, and when a pay application waits 5 days on the architect', order: 21 },
+    recipients: { roles: ['dev', 'master_technician', 'controller'], decidedBy: 'event', rule: 'The GC job’s project manager when they are on the money team, else the company’s owner.' },
+    sampleSubject: () => 'Bill day for Sample Retail Shell is Oct 25',
+    render: { kind: 'sample', sample: 'gc_office_notice' },
+    manage: { tabId: 'settings-jobs', label: 'Jobs & billing → Email the office’s GC notices' },
+    reflects: ['the GC job’s pay applications', 'its trades’ waivers'],
+    guide: 'bill-the-customer-on-a-gc-job',
   },
 
   // ---- Every week ----

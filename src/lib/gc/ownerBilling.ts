@@ -422,6 +422,19 @@ export function ownerLateBills(state: GcState, project: GcProject): { app: Owner
     .sort((a, b) => b.due.daysLate - a.due.daysLate)
 }
 
+/**
+ * Where our own crew's percent came from, in one sentence (Building's U8, co-signed by the Owner Billing lane): the
+ * Pipeline job's stages, its crew report or its own percent, on a trade linked to its job. Otherwise as before.
+ */
+export function ownCrewSource(pkg: TradePackage, pct: number, done: number): string {
+  const source = pkg.selfPerform?.source
+  if (source?.from === 'stages') return `Our own crew is ${pct}% done, from Pipeline job ${source.job}’s stages.`
+  if (source?.from === 'report') return `Our own crew is ${pct}% done, from the crew report${source.on ? ` of ${shortDate(source.on)}` : ''}.`
+  if (source?.from === 'job') return `Our own crew is ${pct}% done, from Pipeline job ${source.job}’s percent.`
+  const byStage = pkg.selfPerform?.pctByLine ? ', by stage' : ''
+  return done > 0 ? `Our own crew reported ${pct}% done${byStage}.` : 'Our own crew has not reported any work yet.'
+}
+
 function tradeLine(state: GcState, pkg: TradePackage, worth: number): OwnerLine {
   const base = { id: pkg.id, label: pkg.trade, worth, doneBefore: 0, detail: [] as OwnerLine['detail'] }
   if (pkg.selfPerform) {
@@ -435,7 +448,7 @@ function tradeLine(state: GcState, pkg: TradePackage, worth: number): OwnerLine 
       doneToDate: done,
       thisMonth: done,
       crewPct: pct,
-      source: done > 0 ? `Our own crew reported ${pct}% done${crew?.byStage ? ', by stage' : ''}.` : 'Our own crew has not reported any work yet.',
+      source: ownCrewSource(pkg, pct, done),
       detail: crew?.byStage ? crew.stages.map((st) => ({ label: st.label, pct: st.pct })) : [],
     }
   }

@@ -23,7 +23,7 @@ describe('the trade portal’s sample', () => {
       else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { keys.add(k); if (k !== 'lines' && k !== 'includes') walk(x) }
     }
     walk(slice)
-    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'sowLines', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'note', 'mine'].includes(k))).toEqual([])
+    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'sowLines', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'submittals', 'submittalHolds', 'submittalRounds', 'rfis', 'rfiHolds', 'punch', 'draws', 'drawLines', 'lineReports', 'changeSends', 'note', 'mine'].includes(k))).toEqual([])
   })
 
   it('stays current: its days count from today', () => {
@@ -57,6 +57,19 @@ describe('the sample’s job (P4b-i)', () => {
     expect(portalCanAskChange(job, pkg, partnerId)).toBe(true)
   })
 
+  it('carries the job’s work: a report, a paid draw, a punch item, a submittal and an answered question (P5c-1)', () => {
+    expect(pkg.sow?.sov.map((l) => [l.pctReported, l.pctBilled])).toEqual([
+      [60, 50],
+      [0, 0],
+    ])
+    expect(pkg.sow?.draws.map((d) => [d.id, d.status, d.waiver])).toEqual([[SAMPLE_TRADE_IDS.draw1, 'paid', 'conditional']])
+    expect([job.punch?.map((p) => p.id), job.submittals?.map((x) => x.id), job.rfis?.map((r) => [r.id, r.partnerId])]).toEqual([
+      [SAMPLE_TRADE_IDS.punch1],
+      [SAMPLE_TRADE_IDS.submittal1],
+      [[SAMPLE_TRADE_IDS.rfi1, SAMPLE_TRADE_IDS.company]],
+    ])
+  })
+
   it('carries its statement of work’s lines, which add up to its price (P2c-ii)', () => {
     expect(pkg.sow?.sov.map((l) => [l.id, l.label, l.amount])).toEqual([
       [SAMPLE_TRADE_IDS.jobLine1, 'Rough-in', 29160],
@@ -88,6 +101,10 @@ describe('a press on the sample (P2b-ii)', () => {
     expect(parseTradeSubmit({ token: 'sample', kind: 'submit_quote', inviteId: SAMPLE_TRADE_IDS.ask, quote }).ok).toBe(true)
     expect(parseTradeSubmit({ token: 'sample', kind: 'ask_question', packageId: SAMPLE_TRADE_IDS.trade, text: 'Q?' }).ok).toBe(true)
     expect(parseTradeSubmit({ token: 'sample', kind: 'remove_person', personId: SAMPLE_TRADE_IDS.person }).ok).toBe(true)
+    // The job's presses (P5c-2).
+    expect(parseTradeSubmit({ token: 'sample', kind: 'punch_fixed', itemId: SAMPLE_TRADE_IDS.punch1 }).ok).toBe(true)
+    expect(parseTradeSubmit({ token: 'sample', kind: 'submittal_send', submittalId: SAMPLE_TRADE_IDS.submittal1, fileName: 'panels.pdf' }).ok).toBe(true)
+    expect(parseTradeSubmit({ token: 'sample', kind: 'rfi_ask', packageId: SAMPLE_TRADE_IDS.jobTrade, question: 'Q?', sheets: [] }).ok).toBe(true)
   })
 })
 
