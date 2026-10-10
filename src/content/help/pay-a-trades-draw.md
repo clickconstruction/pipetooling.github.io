@@ -44,6 +44,8 @@ Approve waits on the company's papers. A red line says which one is missing, lik
 1. Press {{button:blue|Mark paid}} when the payment goes out. We pay an approved draw within 10 days.
 2. Their unconditional waiver comes after we pay. Press {{button:outline|Their unconditional waiver came in}} when it does.
 
+A waiver the trade signs in its portal is kept as a PDF in the job's Drive folder. Its link sits beside the waiver's chip. The link is named for the form, like **Unconditional waiver PDF**.
+
 ## Charge a trade back
 
 Charge a trade for work we did or fixed for them.

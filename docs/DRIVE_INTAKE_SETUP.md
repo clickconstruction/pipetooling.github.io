@@ -60,6 +60,8 @@ deleting the key). Never wire a human Google password into anything.
   file goes to the job's **Submittals** folder; any other to **Team only → From trades →
   <company>**. Each folder is found or made by name, and each file is a new upload
   (`uploadBytes`) named so no two meet. The app keeps the link in `gc_trade_files`, never a copy.
+  Since P5a-2 (v2.5175) a lien waiver the trade signs in its portal lands in the same **From trades
+  → <company>** folder as the signed PDF the function builds, once `WAIVER_SIGN_LIVE` is on.
 
 ## The upload leg: RESOLVED — Shared Drive (live since 2026-08-29)
 

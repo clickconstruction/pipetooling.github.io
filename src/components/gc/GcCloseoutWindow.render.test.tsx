@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { GcCloseoutWindow, type CloseoutWrites } from './GcCloseoutWindow'
 import { initialGcState } from '../../lib/gc/schedule/testState'
+import { waiverFilesByDraw, type WaiverFile } from '../../lib/gc/tradeFiles'
 import { plainWordsFailures } from '../../lib/plainWords'
 import type { OwnWorkCosts } from '../../lib/gc/ownWorkCost'
 import type { Draw, GcProject, GcState } from '../../lib/gc/types'
@@ -17,6 +18,7 @@ function setup({
   onSeeBill,
   own,
   emailOn = false,
+  waiverFiles,
 }: {
   id?: string
   project?: (p: GcProject) => GcProject
@@ -25,6 +27,7 @@ function setup({
   own?: OwnWorkCosts
   /** The window's email tick, on or off. Unset: no tick. */
   emailOn?: boolean
+  waiverFiles?: ReadonlyMap<string, WaiverFile[]>
 } = {}) {
   const base = initialGcState()
   const found = base.projects.find((p) => p.id === id)!
@@ -39,7 +42,7 @@ function setup({
     onCloseJob: vi.fn(),
   }
   const emailTick = emailOn ? { on: true, onChange: () => undefined } : null
-  render(<GcCloseoutWindow state={state} project={project} billsRead={billsRead} writes={writes} onSeeBill={onSeeBill} own={own} emailTick={emailTick} onClose={() => undefined} />)
+  render(<GcCloseoutWindow state={state} project={project} billsRead={billsRead} writes={writes} onSeeBill={onSeeBill} own={own} emailTick={emailTick} waiverFiles={waiverFiles} onClose={() => undefined} />)
   return { writes }
 }
 
@@ -182,6 +185,21 @@ describe('GcCloseoutWindow', () => {
     expect(waiver.dataset.stepState).toBe('now')
     fireEvent.click(within(waiver).getByRole('button', { name: 'Their final release came in' }))
     expect(writes.onWaiverIn).toHaveBeenCalledWith('sdry', 'sdry-draw-3')
+  })
+
+  it('links the final release the trade signed in its portal on its step, done or not (P5a-2)', () => {
+    const file = (paper: string, id: string) => ({ record_id: 'sdry-draw-3', paper, drive_url: `https://drive.google.com/file/d/${id}/view`, uploaded_at: '2026-10-03T15:00:00Z' })
+    setup({ id: 'stoneoak', project: (p) => releaseAt('sdry', 'paid')(customerPaid(p)), waiverFiles: waiverFilesByDraw([file('conditional_final', 'cf'), file('unconditional_final', 'uf')]) })
+    const link = step('sdry', 'finalWaiver').querySelector('a[data-closeout-final-release]') as HTMLAnchorElement
+    expect([link.textContent, link.href, link.target]).toEqual(['Final release PDF', 'https://drive.google.com/file/d/uf/view', '_blank'])
+    // The conditional final release links in the Draws window, never on this step.
+    expect(document.querySelectorAll('[data-closeout-final-release]')).toHaveLength(1)
+  })
+
+  it('links no final release the trade has not signed in its portal', () => {
+    const conditional = { record_id: 'sdry-draw-3', paper: 'conditional_final', drive_url: 'https://drive.google.com/file/d/cf/view', uploaded_at: '2026-10-03T15:00:00Z' }
+    setup({ id: 'stoneoak', project: (p) => releaseAt('sdry', 'paid')(customerPaid(p)), waiverFiles: waiverFilesByDraw([conditional]) })
+    expect(document.querySelector('[data-closeout-final-release]')).toBeNull()
   })
 
   it('opens the final pay application to read, and steps back to closeout', () => {
