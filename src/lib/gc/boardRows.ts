@@ -115,6 +115,15 @@ export interface ContactRow {
   created_at: string
 }
 
+/** `gc_customer_contacts` (B2b-v): a customer's call log, read for the customers the projects name. */
+export interface CustomerContactRow {
+  customer_id: string
+  contacted_on: string
+  by_name: string
+  note: string
+  created_at: string
+}
+
 /** `gc_trade_promises` and `gc_trade_promise_moves`. */
 export interface PromiseRow {
   id: string
@@ -307,6 +316,8 @@ export interface BoardRows {
   paperSends?: PaperSendRow[]
   /** Every send of our contract to a customer (B6-d-i), for whoever its policy lets read them. Missing: none read. */
   ownerContractSends?: OwnerContractSendRow[]
+  /** The customers' call log (B2b-v-ii, `gc_customer_contacts`), the office team's. Missing: none read. */
+  customerContacts?: CustomerContactRow[]
   /** The sent copies of our contract's emails (B6-d-iii-b), by send: a real email went. A test copy is never filed. */
   ownerContractEmails?: { source_id: string | null; sent_on: string; recipient_name: string }[]
   /**
@@ -314,6 +325,14 @@ export interface BoardRows {
    * Missing, or a bid this reader cannot see: our budget stands in, not priced.
    */
   ownBids?: OwnBidRow[]
+}
+
+/** One customer's call log as `GcCustomer.contacts` holds it: newest first, the line's day, who logged it and what was said. */
+export function customerContactsOf(rows: readonly CustomerContactRow[], customerId: string): GcCustomer['contacts'] {
+  return rows
+    .filter((r) => r.customer_id === customerId)
+    .sort((a, b) => b.contacted_on.localeCompare(a.contacted_on) || b.created_at.localeCompare(a.created_at))
+    .map((r) => ({ on: r.contacted_on, by: r.by_name, note: r.note }))
 }
 
 const num = (v: number | string | null | undefined): number => {
@@ -664,9 +683,21 @@ export function boardStateFromRows(rows: BoardRows): GcState {
   }
   // The asks that won a trade (B6-a's award), for each company's won count.
   const awarded = new Set(rows.projects.flatMap((p) => p.trades.map((t) => t.awardedInviteId).filter((id): id is string => Boolean(id))))
-  // Phone and email from the customer record (the schedule's 7c-ii), for the call list's Call. No call log is kept for a customer yet,
-  // and no past jobs with us before GC mode (`past`, which customerSummary reads, B2b-i).
-  const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', ...extractContactFromCustomer({ contact_info: c.contact_info ?? null }), payDays: null, portalOn: false, retainagePct: null, address: '', contacts: [], past: [] }))
+  // Phone and email from the customer record (the schedule's 7c-ii), for the call list's Call. The customer's call log
+  // (B2b-v-ii), newest first, as a company's own lines read: the customer window's Activity and the call list read it.
+  // No past jobs with us before GC mode (`past`, which customerSummary reads, B2b-i).
+  const customers: GcCustomer[] = rows.customers.map((c) => ({
+    id: c.id,
+    name: c.name,
+    contact: c.contact ?? '',
+    ...extractContactFromCustomer({ contact_info: c.contact_info ?? null }),
+    payDays: null,
+    portalOn: false,
+    retainagePct: null,
+    address: '',
+    contacts: customerContactsOf(rows.customerContacts ?? [], c.id),
+    past: [],
+  }))
   return {
     today: rows.today,
     customers,

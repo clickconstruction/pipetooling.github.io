@@ -1,0 +1,30 @@
+{
+  "about": "The schedule's PR 15a (to-dos/gc-mode/mockups/schedule-pr15.md, call 4; #5368, v2.5198): customerScheduleLetter, which the schedule's 1b left on the spike until Owner Billing's O2 put lateFinish on main (schedule-pr1b.lift.json's stays), placed by hand at the end of schedule/customerScheduleSend.ts with one fix: a customer row with no contact's name is greeted 'Hello,' and the letter goes to the company alone. The spike re-exports it from main since this follow-up, so the fix has one copy. Its tests are main's own (customerScheduleSend.direct.test.ts), since the prototype's play its reducer and stay on the spike, where they run against main's letter. Not in LIFTS: no shape moved (ScheduleSend.emailed is main's own, read from the row's log).",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "files": [
+    {
+      "from": "gcCustomerScheduleSend",
+      "to": "schedule/customerScheduleSend.ts",
+      "append": true,
+      "moves": [
+        "customerScheduleLetter"
+      ]
+    }
+  ],
+  "pin": {
+    "main": "6f92d4fc7ad71f4e4aa2877215113778994d566d",
+    "spike": "db8ec089bd9d6650c4d66ef50d812f2dad81cf8c",
+    "about": "#5368 merged; the spike before its follow-up (claude/gc-schedule-pr15a-follow)",
+    "known": {
+      "customerScheduleLetter": "call 4's fix, made on main and read by the spike since this follow-up: with no contact's name the greeting is 'Hello,' and the letter goes to the company alone, where the spike before its follow-up greeted the company's first word ('Hello Cibolo,') and named the company twice"
+    }
+  }
+}
