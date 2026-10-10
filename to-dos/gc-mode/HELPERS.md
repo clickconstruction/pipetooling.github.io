@@ -40,6 +40,9 @@ the next row. Nobody but the lead pushes to `spike/gc-mode`.
 - **A lift's follow-up pins its config**: `"pin": { "main": <the lift's merge commit>, "spike": <the
   spike just before the follow-up> }`, with any inequality the pair already had in `pin.known` and its
   reason, so `node to-dos/gc-mode/scripts/lift-same.cjs --all` stays green and shows only new drift.
+- **Claim first, then re-read origin/main before you squash.** `npm run claim` fetches origin, so a squash or `reset --soft origin/main`
+  made after it against a stale base carries a revert of whatever just merged (B6-b-ii-a, 2026-10-09: #5246's 24 files,
+  caught before the push). Check that `git diff --name-only origin/main...HEAD` lists only your files before you push.
 - **A stand-in proves only what it copies.** A bed run on PGlite or a hand-made table outside GC mode lets pass a
   value the real table's CHECK refuses: U6c's scenario inserted a bill as `'open'`, which `jobs_ledger_invoices`
   refuses (amendment 4). Copy the real table's CHECKs into the stand-in, or run the real bed before the read-back.
