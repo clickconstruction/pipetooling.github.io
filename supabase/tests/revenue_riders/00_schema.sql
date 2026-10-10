@@ -1,5 +1,6 @@
 -- Stand-ins for the revenue riders bed (v2.5129): the tables and helpers that job_rider_fees,
--- create_turnaway_trip_charge and apply_job_discount read, with only the columns they touch.
+-- create_turnaway_trip_charge and apply_job_discount read, with only the columns they touch. Since v2.5144 also the
+-- returned-check cases that a deleted bill gives its fee back to (jobs_ledger_invoices_give_case_fee_back).
 -- scripts/pgtest-revenue-riders.sh loads this, then the functions as main defines them
 -- (10_main_functions.sql, lifted from their migrations), the seed, the migration twice, and the scenario.
 
@@ -95,4 +96,18 @@ CREATE TABLE public.job_activity_events (
   summary text,
   detail jsonb,
   financial boolean
+);
+
+-- The returned-check cases (v2.5144), with the fee columns 20261010003000 added; the migration adds fee_came_off_at.
+CREATE TABLE public.mercury_transaction_ar_returned (
+  mercury_transaction_id uuid PRIMARY KEY,
+  returned boolean NOT NULL DEFAULT true,
+  source text,
+  closed_at timestamptz,
+  fee_amount numeric,
+  fee_invoice_id uuid REFERENCES public.jobs_ledger_invoices (id) ON DELETE SET NULL,
+  fee_added_at timestamptz,
+  fee_added_by uuid,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid
 );
