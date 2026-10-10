@@ -5,6 +5,7 @@ import type { LookAheadReason } from '../../lib/gc/schedule/types'
 import type { DailyLog, GcProject, GcState, WeatherSky } from '../../lib/gc/types'
 import { shortDate, weekdayDate } from '../../lib/gc/words'
 import { Btn, Card, Chip, input } from './gcUi'
+import { GcWeeklyReportCard, type WeeklyReportWrites } from './GcWeeklyReport'
 
 /**
  * GC mode, the real build, the Building lane's U3a-ii: the superintendent's daily log on real data,
@@ -28,6 +29,11 @@ interface Props {
   problem?: string | null
   /** Saves a day's log. Resolves true once it is saved; false keeps the form open, the problem above it. */
   onSave: (log: Draft) => Promise<boolean>
+  /**
+   * This week's report to the customer (Building's U7c): the board with what the report reads laid over it (the logs,
+   * submittals, schedule, change orders and sent reports), who sends it, and its presses. Absent: no card.
+   */
+  weekly?: { state: GcState; project: GcProject; me: string | null; writes: WeeklyReportWrites } | null
   onClose: () => void
 }
 
@@ -56,7 +62,7 @@ function companyOf(state: GcState, project: GcProject, packageId: string | null)
   return company ? `${pkg.trade} · ${company}` : pkg.trade
 }
 
-export function GcDailyLogWindow({ state, project, today, busy = false, problem, onSave, onClose }: Props) {
+export function GcDailyLogWindow({ state, project, today, busy = false, problem, onSave, weekly = null, onClose }: Props) {
   const missing = missingLogs(project, today)
   const [day, setDay] = useState(today)
   const [editing, setEditing] = useState(false)
@@ -116,6 +122,7 @@ export function GcDailyLogWindow({ state, project, today, busy = false, problem,
             <Card>The daily log starts once work starts.</Card>
           ) : (
             <>
+              {weekly && <GcWeeklyReportCard state={weekly.state} project={weekly.project} me={weekly.me} writes={weekly.writes} />}
               {missing.length > 0 && (
                 <Card style={{ border: '1px solid var(--border-strong)' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>

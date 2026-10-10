@@ -222,8 +222,13 @@ export function emailedWords(emailed: BillEmailed[]): string[] {
   )
 }
 
-/** What `gc-customer-email` answered: who it went to, or the refusal's key. */
-export type CustomerEmailAnswer = { ok: true; to: string; email: string } | { ok: false; key: CustomerEmailErrorKey | 'failed'; detail?: string }
+/**
+ * What `gc-customer-email` answered: who it went to (`copied`: the architect copied too; `test`: a test copy to the sender,
+ * U7b), or the refusal's key.
+ */
+export type CustomerEmailAnswer =
+  | { ok: true; to: string; email: string; copied?: boolean; test?: boolean }
+  | { ok: false; key: CustomerEmailErrorKey | 'failed'; detail?: string }
 
 const KEYS: readonly string[] = Object.keys(CUSTOMER_EMAIL_ERRORS)
 
@@ -234,9 +239,9 @@ export function readCustomerEmailAnswer(data: unknown, errorBody: unknown): Cust
     const key = typeof e.error === 'string' && KEYS.includes(e.error) ? (e.error as CustomerEmailErrorKey) : 'failed'
     return { ok: false, key, ...(typeof e.detail === 'string' ? { detail: e.detail } : {}) }
   }
-  const d = data as { to?: unknown; email?: unknown } | null
+  const d = data as { to?: unknown; email?: unknown; copied?: unknown; test?: unknown } | null
   if (!d || typeof d.email !== 'string') return { ok: false, key: 'failed' }
-  return { ok: true, to: typeof d.to === 'string' ? d.to : '', email: d.email }
+  return { ok: true, to: typeof d.to === 'string' ? d.to : '', email: d.email, ...(d.copied === true ? { copied: true } : {}), ...(d.test === true ? { test: true } : {}) }
 }
 
 const REFUSALS: Record<CustomerEmailErrorKey, string> = {

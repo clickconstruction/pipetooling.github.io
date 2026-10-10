@@ -64,6 +64,9 @@ import { GcMoneyMondayEmail, type MoneyMondayIo } from '../components/gc/GcMoney
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, finalPayAppForm, finalPayAppSendPayload, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
 import { loadSchedule } from '../lib/gc/scheduleIo'
+import type { WeeklyReportWrites } from '../components/gc/GcWeeklyReport'
+import { weeklyReportRetryRow, withWeeklyReports, type WeeklyReportRow, type WeeklyReportSend } from '../lib/gc/weeklyReportRows'
+import { loadGcWeeklyReports, recordWeeklyReport, sendWeeklyReport } from '../lib/gc/weeklyReportsIo'
 import { ownerFinalPayAppToSend, ownerPayApp, ownerPayAppForm, ownerPayAppParties, ownerPayAppsSent, ownerPayAppToSend, projectChangeOrders } from '../lib/gc/ownerBilling'
 import { downloadPayAppExcel, downloadPayAppPdf, payAppPdf } from '../lib/gc/payAppFileWriters'
 import { payAppFileName } from '../lib/gc/payAppFile'
@@ -686,6 +689,63 @@ export default function GcProjects() {
     } finally {
       setLogBusy(false)
     }
+  }
+
+  // The weekly report (Building's U7c): a card on the Daily log window. When the window opens it reads what the report
+  // reads: the job's sent reports, submittals and schedule, and for the money team its customer's bills (the late
+  // finish's words); the logs and the change orders are on the page already. Each send reads the reports again.
+  const [weeklyRows, setWeeklyRows] = useState<{ id: string; rows: WeeklyReportRow[] } | null>(null)
+  const [weeklyRead, setWeeklyRead] = useState<{ id: string; submittals: SubmittalTables; schedule: GcProject['schedule'] | null; bills: BillingRows | null } | null>(null)
+  const loadWeekly = useCallback(async () => {
+    if (!logProjectId || !canUseGcBuilding(role)) return
+    setWeeklyRows({ id: logProjectId, rows: await loadGcWeeklyReports([logProjectId]) })
+  }, [logProjectId, role])
+  useEffect(() => {
+    void loadWeekly().catch((e) => setLogProblem(formatErrorMessage(e, 'The weekly reports did not load.')))
+  }, [loadWeekly])
+  useEffect(() => {
+    if (!logProjectId || !board || !canUseGcBuilding(role)) return
+    let live = true
+    Promise.all([loadGcSubmittals([logProjectId]), loadSchedule(board, logProjectId).catch(() => null), canSeeGcMoney(role) ? loadGcBillingRows([logProjectId]) : Promise.resolve(null)])
+      .then(([submittals, read, bills]) => {
+        if (live) setWeeklyRead({ id: logProjectId, submittals, schedule: read?.project.schedule ?? null, bills })
+      })
+      .catch((e) => {
+        if (live) setLogProblem(formatErrorMessage(e, 'What the weekly report reads did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [logProjectId, board, role])
+  const weeklyState = useMemo(() => {
+    if (!boardWithLogs || !logProjectId) return null
+    let s = withChangeOrders(boardWithLogs, changeOrderRows)
+    if (weeklyRead && weeklyRead.id === logProjectId) {
+      s = withSubmittals(s, weeklyRead.submittals)
+      if (weeklyRead.bills) s = billingStateFor(s, logProjectId, weeklyRead.bills)
+      s = withSchedules(s, new Map([[logProjectId, weeklyRead.schedule]]))
+    }
+    return weeklyRows && weeklyRows.id === logProjectId ? withWeeklyReports(s, weeklyRows.rows) : s
+  }, [boardWithLogs, logProjectId, changeOrderRows, weeklyRead, weeklyRows])
+  const weeklyProject = logProjectId ? (weeklyState?.projects.find((p) => p.id === logProjectId) ?? null) : null
+  /** A company row not sent yet that this send goes again on, else a new one. */
+  const weeklyRowFor = async (s: WeeklyReportSend): Promise<string> => weeklyReportRetryRow(weeklyRows?.id === s.projectId ? weeklyRows.rows : [], s)?.id ?? recordWeeklyReport(s, today)
+  const weeklyWrites: WeeklyReportWrites = {
+    onSentFromMe: (s) => {
+      void recordWeeklyReport(s, today)
+        .then(loadWeekly)
+        .catch((e) => setLogProblem(formatErrorMessage(e, 'The weekly report was not kept.')))
+    },
+    onSendFromCompany: async (s) => {
+      const answer = await sendWeeklyReport(s, await weeklyRowFor(s))
+      await loadWeekly()
+      return answer
+    },
+    onTest: async (s) => {
+      const answer = await sendWeeklyReport(s, await weeklyRowFor(s), true)
+      await loadWeekly()
+      return answer
+    },
   }
 
   // The punch list (Building's U3b-ii): a dev's on a job being built, opened at `punch=<projectId>`, behind Building's gate
@@ -1684,6 +1744,7 @@ export default function GcProjects() {
           busy={logBusy}
           problem={logProblem}
           onSave={(log) => saveLog(logProject.id, log)}
+          weekly={weeklyState && weeklyProject ? { state: weeklyState, project: weeklyProject, me: profileName ?? null, writes: weeklyWrites } : null}
           onClose={() => setLogWindow(null)}
         />
       )}

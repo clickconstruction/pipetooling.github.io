@@ -472,7 +472,7 @@ export function customerJourneys(): Journey[] {
           sublabel: 'GC projects → Daily log → Weekly report, sent from Click Construction',
           when: 'On a Friday of a job we are building, once the office reads it and sends it',
           customerCan: 'Read where the job stands this week: the finish, the schedule, what got done, inspections, what we are watching and next week. Reply to the project manager with any question.',
-          guide: 'write-the-daily-log-for-a-job-we-are-building',
+          guide: 'send-the-customer-the-friday-report',
           reflects: ['The week’s daily logs, schedule, inspections and submittals', 'The sections and the line of their own the office chose', 'The architect copied, when the office ticks it'],
           render: { kind: 'email', email: 'gc-weekly' },
         },
