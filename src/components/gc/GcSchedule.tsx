@@ -14,7 +14,9 @@
  * week (`GcScheduleWalk`), see a trade not ready in the bar's form (`GcNotReady`), and, a dev while Building is built
  * (`canPull`), pull work in when it finished early (`GcPullEarlier`) and get days back on a late job (`GcRecovery`).
  * Since PR 11, the same people try moves on their own what-if copy (`GcWhatIf`, G-81) through the copy's own presses,
- * never the real move save, and keep them as real moves or throw the copy away.
+ * never the real move save, and keep them as real moves or throw the copy away. Since PR 13b, with `canTell`, they tell
+ * the trades their new dates (`GcTellTrades`, through `gc-trade-email`), and the record of moves says who was told and
+ * what they answered.
  * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
  * bring one.
  */
@@ -54,6 +56,10 @@ import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity
 import type { WaitStep } from '../../lib/gc/schedule/writes'
 import { drawnFromWords } from '../../lib/gc/schedule/templates'
 import { whatIfCopy, whatIfGhosts, whatIfProject } from '../../lib/gc/schedule/whatIf'
+import { moveAnswerWords } from '../../lib/gc/schedule/tellTrades'
+import { companiesNotTold, toldThenUndone } from '../../lib/gc/schedule/tellWindow'
+import { tellTheTrades, type TellTheTrades } from '../../lib/gc/tellTradesIo'
+import type { CompanyToTell } from '../../lib/gc/schedule/tellTrades'
 import { copyRedone, copyUndone, tryInCopy, whatIfKeepWords } from '../../lib/gc/schedule/whatIfWindow'
 import { scheduleChangedRefusal, type ScheduleChange } from '../../lib/gc/schedule/versionRefusal'
 import { waitRows } from '../../lib/gc/schedule/waits'
@@ -102,7 +108,8 @@ import { GcScheduleWalk, GcWalkLine } from './GcScheduleWalk'
 import { GcScheduleBar } from './GcScheduleBar'
 import { GcMoveExplain, GcMoveHistory, type PendingMove } from './GcScheduleMoves'
 import { LookAhead, Measures, ScheduleWhy, finishSentence } from './GcScheduleMeasures'
-import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfLine } from './GcWhatIf'
+import { GcWhatIfButton, GcWhatIfKeep, GcWhatIfKept, GcWhatIfLine } from './GcWhatIf'
+import { GcTellTrades } from './GcTellTrades'
 import { Btn, Card, input } from './gcUi'
 
 /** No reads past the board's (the default): the schedule's own rows, its submittals and RFIs. */
@@ -119,6 +126,7 @@ export function GcSchedule({
   by,
   canMove = false,
   canPull = false,
+  canTell = false,
   reads = NO_READS,
 }: {
   state: GcState
@@ -126,6 +134,8 @@ export function GcSchedule({
   by: string
   canMove?: boolean
   canPull?: boolean
+  /** Tell the trades (PR 13b): with `canMove`, for whoever may send a trade email. */
+  canTell?: boolean
   /** What this reader may read over the schedule (PR 16): the page memoizes it, since a new one reads again. */
   reads?: ScheduleReads
 }) {
@@ -400,6 +410,7 @@ export function GcSchedule({
         copy={canMove ? copy : null}
         shown={shown}
         onShow={setShown}
+        tell={canMove && canTell ? { onTell: (companies) => tellTheTrades(read.state, read.project, companies).finally(() => setReloads((n) => n + 1)) } : null}
       />
     )
   if (status === 'gone') return <div style={{ fontSize: '0.875rem' }}>That job is not on the board. Reload the board and try again.</div>
@@ -491,6 +502,7 @@ function ScheduleView({
   copy,
   shown,
   onShow,
+  tell,
 }: {
   read: ScheduleRead
   by: string
@@ -509,6 +521,8 @@ function ScheduleView({
   /** The copy is shown: the window reads it, and its presses go to the copy. */
   shown: boolean
   onShow: (copy: boolean) => void
+  /** Tell the trades (PR 13b): the press, through the one sender and then the record. Null: no press. */
+  tell: { onTell: (companies: CompanyToTell[]) => Promise<TellTheTrades> } | null
 }) {
   const { state, project: realProject } = read
   // The what-if copy (G-81, PR 11, call 6): while it is shown, the window reads the copy, and every move goes to the copy.
@@ -575,6 +589,12 @@ function ScheduleView({
     [inCopy, moneyState, moneyProject, copyProject],
   )
   const ghosts = useMemo(() => (inCopy ? whatIfGhosts(realProject) : null), [inCopy, realProject])
+  // Tell the trades (PR 13b): on the real schedule only, a copy is never told.
+  const [telling, setTelling] = useState(false)
+  const tellOn = tell !== null
+  const toTell = useMemo(() => (tellOn ? companiesNotTold(state, realProject) : []), [tellOn, state, realProject])
+  const untoldIds = useMemo(() => new Set(toTell.flatMap((c) => c.moves.map((m) => m.id))), [toTell])
+  const undoneTold = useMemo(() => new Map(toldThenUndone(state, realProject).map((u) => [u.move.id, u])), [state, realProject])
   const [keeping, setKeeping] = useState(false)
   const [walking, setWalking] = useState(false)
   const [pulling, setPulling] = useState(false)
@@ -588,6 +608,7 @@ function ScheduleView({
     setRecovering(null)
     setWalking(false)
     setKeeping(false)
+    setTelling(false)
     onShow(on)
   }
   // What a dragged bar would push and do to the finish, drawn while it is dragged.
@@ -680,6 +701,8 @@ function ScheduleView({
             {copy.problem}
           </div>
         )}
+        {/* After a Keep (PR 11's call 8): the companies the kept moves have not told, with Tell the trades. */}
+        {tell && !inCopy && <GcWhatIfKept state={state} project={realProject} onTell={() => setTelling(true)} />}
         {walkShown && <GcWalkLine state={state} project={project} holds={holds} canPull={pullable} onWalk={() => setWalking(true)} />}
         {offer && <GcPullLine offer={offer} onPull={() => setPulling(true)} />}
         <GcGantt
@@ -804,7 +827,23 @@ function ScheduleView({
       {inCopy && copy ? (
         <GcMoveHistory project={project} onUndo={copy.undo} onRedo={copy.redo} busy={copy.busy} trying />
       ) : moves ? (
-        <GcMoveHistory project={project} onUndo={moves.undo} onRedo={moves.redo} busy={moves.busy} refused={moves.refused} problem={moves.problem} />
+        <GcMoveHistory
+          project={project}
+          onUndo={moves.undo}
+          onRedo={moves.redo}
+          busy={moves.busy}
+          refused={moves.refused}
+          problem={moves.problem}
+          {...(tell
+            ? {
+                tell: {
+                  count: toTell.length,
+                  onTell: () => setTelling(true),
+                  of: (move: ScheduleMove) => ({ untold: untoldIds.has(move.id), answers: moveAnswerWords(state, move), undone: undoneTold.get(move.id) ?? null }),
+                },
+              }
+            : {})}
+        />
       ) : (
         <GcMoveHistory project={project} />
       )}
@@ -845,6 +884,8 @@ function ScheduleView({
           {...(billingOf ? { billingOf } : {})}
         />
       )}
+      {/* Tell the trades (PR 13b): every company not told yet, one email each, then the record. */}
+      {tell && telling && !inCopy && <GcTellTrades state={state} project={realProject} onTell={tell.onTell} onClose={() => setTelling(false)} />}
       {/* Keep (G-81, PR 11): the kernel first, then the moves on the real schedule against the version read. */}
       {inCopy && copy && keeping && (
         <GcWhatIfKeep

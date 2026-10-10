@@ -157,7 +157,7 @@ describe('GcScheduleWalk: the walk', () => {
   it('says each thing a first-timer reads in plain words', () => {
     const said = [
       'You can finish with some not looked at. The record says how many.',
-      "The trades and the customer's Friday report are told from this list. Telling them comes later. For now it is kept under the chart, in Changes to the schedule.",
+      "Tell the trades from Changes to the schedule, under the chart. The customer's Friday report reads this list.",
       'The walk is not recorded. The schedule still reads as not walked.',
       'No dates moved. The schedule stands as drawn.',
       'Nothing on the schedule needs a look this week.',

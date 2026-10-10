@@ -30,6 +30,7 @@ import { withSubmittals } from './submittalRows'
 import { loadGcSubmittals } from './submittalsIo'
 import { TEMPLATE_NAME_TAKEN, cleanTemplateName, templateNameProblem, templateSaveProblem, templateShape } from './schedule/templates'
 import type { TheirDate } from './schedule/theirDates'
+import type { MovedLine } from './schedule/tellTrades'
 import type {
   ActivityPart,
   InspectionFailure,
@@ -416,6 +417,24 @@ export async function setSchedulePlaces(state: GcState, projectId: string, chang
 export async function passScheduleInspection(state: GcState, projectId: string, activityId: string): Promise<ScheduleRead | null> {
   taken(await supabase.rpc('gc_schedule_pass_inspection', { p_project_id: projectId, p_activity_id: activityId }), 'record the inspection')
   return loadSchedule(state, projectId)
+}
+
+/**
+ * The companies told of moves (Tell the trades, the schedule's PR 13b): once `gc-trade-email` has sent one company its
+ * dates, its tells, each move's lines it was shown, and the send's log row. A row already there stays, so a press again
+ * after a send that went records it once. A record: no version. Answers how many rows it added.
+ */
+export async function recordScheduleTells(projectId: string, companyId: string, emailSendLogId: string | null, tells: { moveId: string; shown: MovedLine[] }[]): Promise<number> {
+  return taken(
+    await supabase.rpc('gc_schedule_record_tells', {
+      p_project_id: projectId,
+      p_company_id: companyId,
+      // Null when the send kept no log row: the column takes it.
+      p_email_send_log_id: emailSendLogId as unknown as string,
+      p_tells: tells as unknown as Json,
+    }),
+    'record who was told',
+  )
 }
 
 /** Their dates to meet from a file (G-145): the ticked dates, and the dates to meet as `withTheirDates` left them. */
