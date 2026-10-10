@@ -1,0 +1,35 @@
+{
+  "about": "The Portal lane's P5c-3a (to-dos/gc-mode/mockups/portal-p5.md, P5c-3 split in three, the lead 2026-10-10): the job's readers of the trade portal, lifted to src/lib/gc word for word with no caller yet: portalJobMoney, portalPay, portalPapers and portalTodos (with their private helpers) into portal.ts, and the schedule's datesMessage and datesNotices into schedule/tellTrades.ts, which portalTodos reads and which waited only on the portal's words. The home's to-dos read them with P5c-3c. Unpinned until the lift merges. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/portal-p5c-3a.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcFixture.ts#GC_COMPANY": "company.ts",
+    "src/lib/gcMode/gcTypes.ts#Draw": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Partner": "types.ts"
+  },
+  "files": [
+    {
+      "from": "gcTellTrades",
+      "to": "schedule/tellTrades.ts",
+      "append": true,
+      "moves": [
+        "datesMessage",
+        "datesNotices"
+      ]
+    },
+    {
+      "from": "gcPortal",
+      "to": "portal.ts",
+      "append": true,
+      "moves": [
+        "portalTodos",
+        "portalPay",
+        "portalPapers",
+        "portalJobMoney"
+      ]
+    }
+  ]
+}
