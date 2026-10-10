@@ -5,7 +5,8 @@
  * `tradePortalSlice` like every real one, so the sample can never show what a trade may not see. Its own file, never
  * `customerSampleFixtures.ts`, which most functions import.
  */
-import type { PortalSchedule } from './gcKernels/index.ts'
+import type { PortalSchedule, PortalTodo } from './gcKernels/index.ts'
+import type { ScheduleWork } from './gcTradePortalSchedule.ts'
 import { tradePortalSlice, type TradePortalRows, type TradePortalSlice } from './gcTradePortalSlice.ts'
 
 /** The sample's ids: real uuids, so a press on the sample passes the submit function's shape check (P2b-ii). */
@@ -51,6 +52,9 @@ export const SAMPLE_TRADE_IDS = {
   punch1: '00000000-5a00-4000-8000-000000000036',
   submittal1: '00000000-5a00-4000-8000-000000000037',
   rfi1: '00000000-5a00-4000-8000-000000000038',
+  // The schedule's side (P5d-ii): a move it was told of, and its late notice.
+  move1: '00000000-5a00-4000-8000-000000000039',
+  notice1: '00000000-5a00-4000-8000-000000000040',
 } as const
 
 const ID = SAMPLE_TRADE_IDS
@@ -59,6 +63,19 @@ const COMPANY = ID.company
 function addDays(ymd: string, n: number): string {
   const [y, m, d] = ymd.split('-').map(Number)
   return new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, (d ?? 1) + n)).toISOString().slice(0, 10)
+}
+
+/** "Mon Oct 12 to Fri Oct 16", as the dates email words a span. */
+function span(from: string, to: string): string {
+  const day = (ymd: string) => new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(`${ymd}T00:00:00Z`)).replace(',', '')
+  return `${day(from)} to ${day(to)}`
+}
+
+/** The Monday of a day's week. */
+function mondayOf(ymd: string): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const day = new Date(Date.UTC(y ?? 1970, (m ?? 1) - 1, d ?? 1)).getUTCDay()
+  return addDays(ymd, day === 0 ? -6 : 1 - day)
 }
 
 /**
@@ -264,5 +281,67 @@ export function gcTradePortalSampleSchedules(today: string): Record<string, Port
       first: d(-20),
       last: d(26),
     },
+  }
+}
+
+/**
+ * The sample company's side of the schedule on its job being built (the Portal's P5d-ii), as `gc-trade-portal` returns
+ * it: new dates to answer, a late notice we pushed back on its rough-in, its next three weeks to mark, and a crew count
+ * to give. The answer's own shape, with no row behind it, so a press on the sample writes nothing.
+ */
+export function gcTradePortalSampleScheduleWork(today: string): { scheduleWork: Record<string, ScheduleWork>; scheduleTodos: PortalTodo[] } {
+  const d = (n: number) => addDays(today, n)
+  const week = (n: number) => addDays(mondayOf(today), 7 * n)
+  const roughIn = { lineId: ID.jobLine1, packageId: ID.jobTrade, trade: 'Electrical', work: 'Rough-in', start: d(-5), finish: d(4) }
+  const trim = { lineId: ID.jobLine2, packageId: ID.jobTrade, trade: 'Electrical', work: 'Trim and fixtures', start: d(12), finish: d(18) }
+  return {
+    scheduleWork: {
+      [ID.job]: {
+        dates: [
+          {
+            moveId: ID.move1,
+            toldOn: d(-1),
+            subject: 'Your dates moved on Sample Dental Office',
+            lines: [
+              'The schedule on Sample Dental Office moved. Your work is now planned for these days.',
+              `Trim and fixtures: ${span(d(12), d(18))}, not ${span(d(9), d(15))}.`,
+              'Why: weather: Two days of rain held the drywall.',
+              'In your portal, tell us the dates work, or give us another day.',
+            ],
+          },
+        ],
+        late: [
+          {
+            lineId: ID.jobLine1,
+            start: d(-5),
+            finish: d(4),
+            started: true,
+            day: d(4),
+            notice: {
+              id: ID.notice1,
+              state: 'pushedBack',
+              on: d(-2),
+              toStart: d(-5),
+              toFinish: d(7),
+              reason: 'materials',
+              note: 'The panel ships three days late.',
+              pushedBack: { on: d(-1), note: 'The drywall starts right after. We need the rough-in done on its day.' },
+              keptOn: null,
+            },
+          },
+          { lineId: ID.jobLine2, start: d(12), finish: d(18), started: false, day: d(12), notice: null },
+        ],
+        lookAhead: [
+          { weekOf: week(0), when: 'this', items: [{ ...roughIn, mark: null, state: 'unmarked', canMark: true }] },
+          { weekOf: week(1), when: 'next', items: [{ ...roughIn, mark: null, state: 'unmarked', canMark: false }] },
+          { weekOf: week(2), when: 'later', items: [{ ...trim, mark: null, state: 'unmarked', canMark: false }] },
+        ],
+        crew: [
+          { weekOf: week(1), trades: [{ packageId: ID.jobTrade, trade: 'Electrical', count: 3 }] },
+          { weekOf: week(2), trades: [{ packageId: ID.jobTrade, trade: 'Electrical', count: null }] },
+        ],
+      },
+    },
+    scheduleTodos: [],
   }
 }

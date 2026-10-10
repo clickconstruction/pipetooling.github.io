@@ -1023,6 +1023,15 @@ const S = {
     en: 'The final pay application opens once every line is billed and the work is accepted.',
     es: 'La solicitud de pago final se abre cuando cada línea esté facturada y el trabajo esté aceptado.',
   },
+  // P5d-ii: the schedule's refusals, said after the form's own checks (pickWhy and crewWhole read latePickWhy and crewWhole).
+  errDatesTakenBack: { en: '{gc} took those dates back. Reload the page.', es: '{gc} retiró esas fechas. Vuelva a cargar la página.' },
+  errDayNeeded: { en: 'Pick the day that works.', es: 'Elija el día que le funciona.' },
+  errWorkDone: { en: 'That work is done.', es: 'Ese trabajo ya está terminado.' },
+  errLateLaterDay: { en: 'Pick a later day.', es: 'Elija un día posterior.' },
+  errNotPushedBack: { en: '{gc} has not answered yet.', es: '{gc} todavía no contesta.' },
+  errNoticeClosed: { en: 'That is closed. The schedule moved since. Reload the page.', es: 'Eso ya está cerrado. El cronograma cambió desde entonces. Vuelva a cargar la página.' },
+  errWeekClosed: { en: 'That week is closed. Reload the page.', es: 'Esa semana ya está cerrada. Vuelva a cargar la página.' },
+  errAlreadyChecked: { en: '{gc} checked it already. Reload the page.', es: '{gc} ya lo revisó. Vuelva a cargar la página.' },
   condConsentNoun: { en: 'this conditional lien waiver', es: 'esta renuncia condicional de gravamen' },
   condFinalConsentNoun: { en: 'this conditional final release of lien', es: 'esta liberación final de gravamen condicional' },
   // P5c-4: the two closeout emails (closeoutEmail.ts). The ask and the release say email while WAIVER_SIGN_LIVE is off.

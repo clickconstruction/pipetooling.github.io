@@ -36,6 +36,11 @@ export const ENTRIES = {
   'lib/gc/boardRows.ts': { values: ['boardStateFromRows'], types: ['BoardRows', 'CompanyRow', 'InviteRow', 'SowRow', 'SowLineRow'] },
   'lib/gc/drawRows.ts': { values: ['withDraws'], types: ['DrawTables', 'DrawTableRow', 'DrawLineRow', 'LineReportRow'] },
   'lib/gc/schedule/rows.ts': { values: ['withScheduleRows'], types: ['ScheduleRows'] },
+  // The Portal's P5d-ii: the trade's side of the schedule, worked out where every bar is.
+  'lib/gc/schedule/tellTrades.ts': { values: ['datesNotices'], types: ['DatesNotice'] },
+  'lib/gc/schedule/lateNotices.ts': { values: ['lateDoor', 'lateTarget', 'lateWaiting', 'portalLateNotice'], types: ['LateDoor', 'LateWaiting'] },
+  'lib/gc/schedule/crewCounts.ts': { values: ['portalCrewAsks'], types: ['PortalCrewWeek'] },
+  'lib/gc/portal.ts': { values: ['portalLookAhead', 'portalTodos'], types: ['PortalLookAheadWeek', 'PortalTodo'] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
