@@ -2,8 +2,8 @@ import type { PortalPropertyNotice } from '../../../supabase/functions/_shared/p
 import type { ChecksEventIn, ChecksJobIn } from '../jobs/gcChecksApplied'
 export type { PortalPropertyNotice } from '../../../supabase/functions/_shared/portalPropertyNotices'
 import { bankTransferDetailsForPortal, parseBankTransferDetails, type BankTransferDetails } from '../bankTransferDetails'
-import type { PortalGcChangeOrder, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
-export type { PortalGcChangeOrder, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
+import type { PortalGcChangeOrder, PortalGcContract, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
+export type { PortalGcChangeOrder, PortalGcContract, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
 /**
  * Customer portal payload parsing (portal train PR 1). The /portal page
  * receives this from the customer-portal edge function; the parser is
@@ -144,6 +144,36 @@ export function parsePortalCardBill(raw: unknown): PortalCardBill | null {
 
 const isYmd = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
 
+/** Our contract on a GC job (B6-d-iii), or null when a field is off: a contract they could sign wrongly never shows. */
+export function parsePortalGcContract(raw: unknown): PortalGcContract | null {
+  if (!raw || typeof raw !== 'object') return null
+  const c = raw as Record<string, unknown>
+  const fileName = typeof c.fileName === 'string' ? c.fileName : ''
+  const fileUrl = typeof c.fileUrl === 'string' && /^https:\/\//.test(c.fileUrl) ? c.fileUrl : null
+  if (c.state === 'signed') return isYmd(c.signedOn) ? { state: 'signed', signedOn: c.signedOn, signer: typeof c.signer === 'string' && c.signer ? c.signer : null, fileName, fileUrl } : null
+  if (c.state !== 'toSign' || typeof c.sendId !== 'string' || !c.sendId || !isYmd(c.signBy) || !fileName) return null
+  const total = Number(c.total)
+  if (!Number.isFinite(total) || total < 0) return null
+  const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
+  const step = c.retainageStep && typeof c.retainageStep === 'object' ? (c.retainageStep as Record<string, unknown>) : null
+  const at = num(step?.atPct)
+  const to = num(step?.toPct)
+  return {
+    state: 'toSign',
+    sendId: c.sendId,
+    signBy: c.signBy,
+    total,
+    fileName,
+    fileUrl,
+    ...(c.priceChanged === true ? { priceChanged: true } : {}),
+    retainagePct: num(c.retainagePct),
+    retainageStep: at !== null && to !== null ? { atPct: at, toPct: to, way: step?.way === 'all' ? 'all' : 'rest' } : null,
+    payDays: num(c.payDays),
+    lateInterestPctPerMonth: num(c.lateInterestPctPerMonth),
+    lateFinishPerDay: num(c.lateFinishPerDay),
+  }
+}
+
 /** One GC job's section, or null when a field is off: a broken row never reaches the page. */
 export function parsePortalGcJob(raw: unknown): PortalGcJob | null {
   if (!raw || typeof raw !== 'object') return null
@@ -158,9 +188,11 @@ export function parsePortalGcJob(raw: unknown): PortalGcJob | null {
       })
     : []
   const a = j.accepted && typeof j.accepted === 'object' ? (j.accepted as Record<string, unknown>) : null
+  const contract = parsePortalGcContract(j.contract)
   return {
     projectId: j.projectId,
     name: j.name,
+    ...(contract ? { contract } : {}),
     changeOrders,
     canAccept: j.canAccept === true,
     accepted: a && isYmd(a.on) ? { on: a.on, how: a.how === 'portal' ? 'portal' : 'office' } : null,

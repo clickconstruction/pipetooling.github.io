@@ -4,9 +4,17 @@
  * work once every line is billed. Each press posts to submit-portal-request (`gc_change_order_answer`,
  * `gc_accept_work`), which runs the database's own function as their portal. A sample token only says thank you.
  * Customer-facing ⇒ single-theme light with the statement's own palette.
+ *
+ * The Board's B6-d-iii: our contract leads a job while it waits on them, after the design spike's
+ * `GcCustomerContractSign`: the job and its price as one number, how billing works, the day we asked them to sign by,
+ * the file to read, and `/contract/accept`'s form (a name typed or drawn, and the e-sign consent). It posts
+ * `gc_owner_contract_sign`; once signed it reads who signed and when.
  */
 import { useState } from 'react'
-import { formatPortalDate, type PortalGcChangeOrder, type PortalGcJob } from '../../lib/portal/portalPayload'
+import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
+import { esignConsentText } from '../../lib/esignConsent'
+import { formatPortalDate, type PortalGcChangeOrder, type PortalGcContract, type PortalGcJob } from '../../lib/portal/portalPayload'
+import { gcContractTermsLines } from '../../../supabase/functions/_shared/gcPortal'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
 
@@ -97,6 +105,84 @@ function ChangeOrderRow({ token, co, formatUsd }: { token: string; co: PortalGcC
   )
 }
 
+/** A link to the file: to read before they sign, or what they signed. */
+function FileLink({ url, name, words }: { url: string | null; name: string; words: string }) {
+  return url ? (
+    <a href={url} target="_blank" rel="noreferrer" style={{ color: COPPER, fontWeight: 700 }}>
+      {`${words} (${name})`}
+    </a>
+  ) : (
+    <span style={{ color: MUTED }}>The contract file could not open just now. Please call our office.</span>
+  )
+}
+
+function OurContract({ token, job, contract, formatUsd }: { token: string; job: PortalGcJob; contract: PortalGcContract; formatUsd: (n: number) => string }) {
+  const [name, setName] = useState('')
+  const [agreed, setAgreed] = useState(false)
+  const [ui, setUi] = useState<Ui>({ kind: 'idle' })
+  if (contract.state === 'signed' || ui.kind === 'done') {
+    const words =
+      contract.state === 'signed'
+        ? `You signed our contract on ${formatPortalDate(contract.signedOn) ?? contract.signedOn}${contract.signer ? `, as ${contract.signer}` : ''}.`
+        : ui.kind === 'done'
+          ? ui.words
+          : ''
+    return (
+      <div data-testid="portal-gc-contract" style={{ display: 'grid', gap: 4 }}>
+        <span style={contract.state === 'signed' ? { color: MUTED } : { color: PAPER_GREEN, fontWeight: 700 }}>{words}</span>
+        <span>
+          <FileLink url={contract.fileUrl} name={contract.fileName} words="Read what you signed" />
+        </span>
+      </div>
+    )
+  }
+  const signBy = formatPortalDate(contract.signBy) ?? contract.signBy
+  return (
+    <div data-testid="portal-gc-contract" style={{ display: 'grid', gap: 6 }}>
+      <div style={{ fontWeight: 700, color: INK }}>Your contract · to sign</div>
+      <div style={{ color: INK }}>{`Our contract for ${job.name}: ${formatUsd(contract.total)}.`}</div>
+      <div style={{ color: MUTED, fontSize: 12 }}>{gcContractTermsLines(contract, formatUsd).join(' ')}</div>
+      <div>
+        <FileLink url={contract.fileUrl} name={contract.fileName} words="Read the contract" />
+      </div>
+      {contract.priceChanged ? (
+        <div style={{ color: COPPER, fontWeight: 700 }}>Our price changed after we sent this. We will send you the new one.</div>
+      ) : (
+        <>
+          <div style={{ color: COPPER, fontWeight: 700 }}>{`Please sign it by ${signBy}.`}</div>
+          <ContractAcceptSignatureForm
+            printedName={name}
+            agreed={agreed}
+            onPrintedNameChange={setName}
+            onAgreedChange={setAgreed}
+            formError={ui.kind === 'error' ? ui.text : null}
+            submitting={ui.kind === 'sending'}
+            onSubmit={(p) =>
+              void (async () => {
+                setUi({ kind: 'sending' })
+                const r = await post(token, {
+                  kind: 'gc_owner_contract_sign',
+                  sendId: contract.sendId,
+                  printedName: p.printedName,
+                  ...(p.mode === 'draw' ? { signaturePngBase64: p.signaturePngBase64 } : {}),
+                  ...(p.consent ? { esignConsent: p.consent } : {}),
+                })
+                setUi(r.ok ? { kind: 'done', words: 'You signed our contract. Thank you.' } : { kind: 'error', text: r.text })
+              })()
+            }
+            heading="Sign the contract"
+            disclosure="Read the contract above first. Signing it here is the same as signing it on paper."
+            consent={esignConsentText({ audience: 'customer', lang: 'en', documentNoun: 'contract' })}
+            agreeLabel="I have read the contract and agree to it."
+            submitLabel="Sign the contract"
+            lang="en"
+          />
+        </>
+      )}
+    </div>
+  )
+}
+
 function AcceptWork({ token, job }: { token: string; job: PortalGcJob }) {
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
@@ -131,6 +217,7 @@ export function PortalGcJobs({ token, jobs, formatUsd }: { token: string; jobs: 
       {jobs.map((job) => (
         <div key={job.projectId} style={{ border: `1px solid ${HAIR}`, borderRadius: 8, background: PAPER, padding: '10px 12px', display: 'grid', gap: 8, fontSize: 13 }}>
           <div style={{ fontWeight: 700, fontSize: 14, color: INK }}>{job.name}</div>
+          {job.contract && <OurContract token={token} job={job} contract={job.contract} formatUsd={formatUsd} />}
           {job.changeOrders.map((co) => (
             <ChangeOrderRow key={co.id} token={token} co={co} formatUsd={formatUsd} />
           ))}

@@ -68,7 +68,7 @@ describe('GcCustomerWindow', () => {
     expect(projectId).toBe('p1')
     expect(input).toMatchObject({ signBy: '2026-10-15', note: '', worth: CLINIC_WORTH_NOW })
     expect(input.file).toBe(file)
-    expect(await within(dialog).findByText('On record with its price and file. No email goes until their portal can take a signature.')).toBeTruthy()
+    expect(await within(dialog).findByText('On record with its price and file. No email goes yet: they find it when they open their portal.')).toBeTruthy()
   })
 
   it('a reminder keeps the price and the file it went with, unless another file is picked', async () => {

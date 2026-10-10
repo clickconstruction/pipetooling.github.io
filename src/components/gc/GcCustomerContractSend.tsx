@@ -11,8 +11,8 @@ import { Btn, input } from './gcUi'
  * GC mode, the real build, the Board's B6-d-ii: send our contract from the customer's window, after the design spike's
  * `GcCustomerSend` on the company window's send (`GcPaperSend.tsx`). The office's own contract file (call D1) goes with
  * the price by line it shows (call D2), side by side so the office checks the file says that price before the press. A
- * first send and a new price need a file; a reminder keeps the last one unless another is picked. The email and their
- * signing come with their portal's sign block (B6-d-iii): until then the send is kept, and nothing is emailed.
+ * first send and a new price need a file; a reminder keeps the last one unless another is picked. They sign the newest
+ * in their portal (B6-d-iii-a); the email that tells them comes with B6-d-iii-b, so until then nothing is emailed.
  */
 
 export interface ContractSendInput {
@@ -68,7 +68,7 @@ export function GcCustomerContractSend({
     setProblem(null)
     try {
       await onSend({ signBy: by, note, worth, file: chosen })
-      onDone('On record with its price and file. No email goes until their portal can take a signature.')
+      onDone('On record with its price and file. No email goes yet: they find it when they open their portal.')
     } catch (e) {
       setProblem(e instanceof Error ? e.message : 'That did not send.')
     } finally {
@@ -158,7 +158,7 @@ export function GcCustomerContractSend({
           style={{ ...input, width: '100%', boxSizing: 'border-box', resize: 'vertical', font: 'inherit', fontSize: '0.88rem' }}
         />
       </label>
-      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No email goes yet. Their portal cannot take a signature yet. The send is kept with its price and its file.</div>
+      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No email goes yet. They read it and sign it when they open their portal.</div>
       {problem && (
         <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
           {problem}
