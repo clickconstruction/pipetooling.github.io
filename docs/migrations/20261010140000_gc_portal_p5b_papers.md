@@ -65,3 +65,7 @@ Not expected. To undo: drop the three functions, drop `gc_trade_files_job_or_com
 ## Status
 
 Prepared 2026-10-10 by gc 6 for the Portal lane (gc 3) on `mockups/portal-p5b.md`. The lead pushes it after the merge.
+
+## Status
+
+Merged in #5351 and pushed to prod 2026-10-10 ~17:02 UTC (`supabase db push` took it alone; drift check 861/861). Verified read-only through the management API (`to-dos/gc-mode/scripts/verify/verify-140000.mjs` on `spike/gc-mode`): `gc_trade_files_purpose_known` and `gc_trade_files_job_or_company` validated with the expected definitions, `project_id` nullable, the three verbs execute for `service_role` alone, and the rolled-back open of the test company's W-9 answered the Book's W-9, `sent`, with no person. The types regen is the one regen owner's follow-up; P5b-1 cuts on it.
