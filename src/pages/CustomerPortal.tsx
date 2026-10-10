@@ -6,6 +6,8 @@ import { PortalBankTransferCard } from '../components/portal/PortalBankTransferC
 import { PortalSharedBillsCard } from '../components/portal/PortalSharedBillsCard'
 import { PortalPropertyNoticeCard } from '../components/portal/PortalPropertyNoticeCard'
 import { PortalOwnerRecordsCard } from '../components/portal/PortalOwnerRecordsCard'
+import { PortalCardBillPanel, PortalCardBillPress } from '../components/portal/PortalCardBill'
+import { CARD_BILL_WORDS } from '../lib/portal/portalCardBill'
 import { buildBankTransferMemo } from '../lib/bankTransferDetails'
 import { promiseAskVisible } from '../../supabase/functions/_shared/portalPromise'
 import { PortalStagesCard } from '../components/portal/PortalStagesCard'
@@ -25,6 +27,7 @@ import {
   PORTAL_TRADE_COLORS,
   splitPortalAddress,
   type PortalBill,
+  type PortalCardBill,
   type PortalPayload,
 } from '../lib/portal/portalPayload'
 import { groupPortalBillsByJob, portalBillBilledAmount, portalBillPaidByWords, PORTAL_GENERIC_PAYMENT_METHOD, type PortalJobGroup } from '../lib/portal/portalJobGroups'
@@ -194,7 +197,8 @@ export default function CustomerPortal() {
   useEffect(() => {
     const onPayClick = (e: MouseEvent) => {
       const el = e.target as Element | null
-      if (el?.closest?.('a[data-bill-pay]')) payClickedRef.current = true
+      // A card page from Pay by card (O8b) opens the same way, so coming back reads the bill on card.
+      if (el?.closest?.('a[data-bill-pay],[data-bill-card-go]')) payClickedRef.current = true
     }
     const onReturn = () => {
       if (document.visibilityState === 'hidden' || !payClickedRef.current) return
@@ -487,6 +491,9 @@ function PortalStatement({ payload, today, requestToken }: { payload: PortalPayl
                 reports={payload.testReports.filter((r) => portalReportBelongsToGroup(r, g))}
                 reportUrl={(r) => portalTestReportUrl(requestToken, r)}
                 waivers={payload.waivers}
+                cardBills={payload.cardBills}
+                token={requestToken}
+                phone={payload.company.phone || null}
               />
             ))}
             <div data-print-page>
@@ -693,6 +700,9 @@ function PortalJobGroupSection({
   reports = [],
   reportUrl,
   waivers = [],
+  cardBills = [],
+  token = '',
+  phone = null,
 }: {
   group: PortalJobGroup
   todayYmd: string
@@ -703,6 +713,12 @@ function PortalJobGroupSection({
   reportUrl?: (r: PortalTestReport) => string | null
   /** Lien waivers (v2.4304): a signed waiver is a note on its bill. */
   waivers?: PortalWaiverRow[]
+  /** GC mode (O8b): the bills they may pay by card, and the ones on card. */
+  cardBills?: PortalCardBill[]
+  /** The portal's token, for Pay by card's press. */
+  token?: string
+  /** Our office's phone, for a refusal's line. */
+  phone?: string | null
 }) {
   const addr = splitPortalAddress(group.jobAddress)
   const headline = addr?.street ?? group.jobName ?? group.jobLabel
@@ -771,7 +787,16 @@ function PortalJobGroupSection({
         </div>
       ))}
       {group.bills.map((b, i) => (
-        <PortalBillRow key={i} bill={b} todayYmd={todayYmd} isLast={i === group.bills.length - 1} waiverNote={portalWaiverNote(waivers.filter((w) => w.audience === 'payer'), b.invoiceId)} />
+        <PortalBillRow
+          key={i}
+          bill={b}
+          todayYmd={todayYmd}
+          isLast={i === group.bills.length - 1}
+          waiverNote={portalWaiverNote(waivers.filter((w) => w.audience === 'payer'), b.invoiceId)}
+          card={b.invoiceId ? (cardBills.find((c) => c.invoiceId === b.invoiceId) ?? null) : null}
+          token={token}
+          phone={phone}
+        />
       ))}
       {group.showRecap && (
         <div style={{ margin: '10px 0 2px auto', width: 'min(320px, 100%)', boxSizing: 'border-box', background: CARD, border: `1px solid ${HAIR}`, padding: '10px 14px 11px', fontSize: 12 }}>
@@ -813,11 +838,33 @@ function PortalJobGroupSection({
   )
 }
 
-/** One bill line inside a job group: date + age, what was billed, what's still due, how to pay. */
-function PortalBillRow({ bill, todayYmd, isLast, waiverNote = null }: { bill: PortalBill; todayYmd: string; isLast: boolean; waiverNote?: PortalWaiverNote | null }) {
+/**
+ * One bill line inside a job group: date + age, what was billed, what's still due, how to pay. A certified GC bill
+ * not on Stripe offers PAY BY CARD beside its check chip, with its panel under the line (O8b); one on card says its fee.
+ */
+function PortalBillRow({
+  bill,
+  todayYmd,
+  isLast,
+  waiverNote = null,
+  card = null,
+  token = '',
+  phone = null,
+}: {
+  bill: PortalBill
+  todayYmd: string
+  isLast: boolean
+  waiverNote?: PortalWaiverNote | null
+  card?: PortalCardBill | null
+  token?: string
+  phone?: string | null
+}) {
   const age = portalDaysSinceBilled(bill.billedOn, todayYmd)
+  const offer = card?.state === 'offer' && !bill.payUrl && token ? card : null
+  const [cardOpen, setCardOpen] = useState(false)
   return (
-    <div data-portal-bill data-last={isLast ? '' : undefined} style={{ fontSize: 13.5 }}>
+    <>
+    <div data-portal-bill data-last={isLast && !cardOpen ? '' : undefined} style={{ fontSize: 13.5 }}>
       <span style={{ color: MUTED, fontVariantNumeric: 'tabular-nums' }}>
         {formatPortalDate(bill.billedOn) ?? '—'}
         {age && (
@@ -825,6 +872,14 @@ function PortalBillRow({ bill, todayYmd, isLast, waiverNote = null }: { bill: Po
             <br />
             <span data-bill-age style={{ fontSize: 10.5, color: age.aging ? COPPER : FAINT, fontWeight: age.aging ? 600 : 400 }}>
               {age.label}
+            </span>
+          </>
+        )}
+        {offer && (
+          <>
+            <br />
+            <span data-screen-only data-bill-card-hint style={{ fontSize: 10.5, color: FAINT }}>
+              {CARD_BILL_WORDS.hint}
             </span>
           </>
         )}
@@ -845,6 +900,13 @@ function PortalBillRow({ bill, todayYmd, isLast, waiverNote = null }: { bill: Po
         {/* What paid this bill and when (v2.4044) — the answer to "did you get
             our check?" before it is asked; an open bill says so plainly. */}
         <span data-bill-paid-by>{portalBillPaidByWords(bill, { usd: formatPortalUsd, date: formatPortalDate })}</span>
+        {/* A bill on card (O8b): the total Stripe asks includes the fee they chose. */}
+        {card?.state === 'onCard' && (
+          <>
+            <br />
+            <span data-bill-card-fee>{CARD_BILL_WORDS.onCard(formatPortalUsd(card.fee))}</span>
+          </>
+        )}
         {/* Lien waiver (v2.4304): one more fact about the bill, beside the money it covers. */}
         {waiverNote ? (
           <>
@@ -867,12 +929,21 @@ function PortalBillRow({ bill, todayYmd, isLast, waiverNote = null }: { bill: Po
         >
           PAY ONLINE
         </a>
+      ) : offer ? (
+        <span data-bill-card-or-check style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <PortalCardBillPress open={cardOpen} onOpen={() => setCardOpen((o) => !o)} />
+          <span data-bill-check style={{ border: '1px solid #b9c2cc', color: MUTED, padding: '6px 12px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+            check · ref {bill.checkRef || '—'}
+          </span>
+        </span>
       ) : (
         <span data-bill-check style={{ border: '1px solid #b9c2cc', color: MUTED, padding: '6px 12px', fontSize: 11.5, whiteSpace: 'nowrap' }}>
           check · ref {bill.checkRef || '—'}
         </span>
       )}
     </div>
+    {offer && cardOpen && <PortalCardBillPanel token={token} card={offer} formatUsd={formatPortalUsd} phone={phone} onClose={() => setCardOpen(false)} />}
+    </>
   )
 }
 

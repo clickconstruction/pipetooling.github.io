@@ -122,6 +122,24 @@ export type PortalPayload = {
   ownerRecords: PortalOwnerRecords | null
   /** GC mode (O7c): the GC jobs we build for this customer, with the change orders waiting on them and the work to accept — `_shared/gcPortal.ts`; [] from an older function. */
   gcJobs: PortalGcJob[]
+  /** GC mode (O8b): the certified GC bills they may pay by card with its 3% fee, and the ones on card already — `_shared/gcCardBill.ts`; [] from an older function. */
+  cardBills: PortalCardBill[]
+}
+
+/** One bill's card offer (`state: 'offer'`) or its card bill (`'onCard'`): the bill as certified, the fee and what the card pays. */
+export type PortalCardBill = { invoiceId: string; state: 'offer' | 'onCard'; base: number; fee: number; total: number }
+
+/** Tolerant of a malformed row: a bad one is dropped, never the page. */
+export function parsePortalCardBill(raw: unknown): PortalCardBill | null {
+  if (raw == null || typeof raw !== 'object') return null
+  const r = raw as Record<string, unknown>
+  if (typeof r.invoiceId !== 'string' || !r.invoiceId.trim()) return null
+  if (r.state !== 'offer' && r.state !== 'onCard') return null
+  const base = Number(r.base)
+  const fee = Number(r.fee)
+  const total = Number(r.total)
+  if (![base, fee, total].every((n) => Number.isFinite(n) && n > 0)) return null
+  return { invoiceId: r.invoiceId, state: r.state, base, fee, total }
 }
 
 const isYmd = (v: unknown): v is string => typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v)
@@ -421,6 +439,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
     promise: parsePortalPromise(r.promise),
     checks: parsePortalChecks(r.checks),
     gcJobs: Array.isArray(r.gcJobs) ? r.gcJobs.map(parsePortalGcJob).filter((x): x is PortalGcJob => x != null) : [],
+    cardBills: Array.isArray(r.cardBills) ? r.cardBills.map(parsePortalCardBill).filter((x): x is PortalCardBill => x != null) : [],
   }
 }
 

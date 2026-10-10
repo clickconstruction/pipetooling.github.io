@@ -490,6 +490,7 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     // GC mode (O7c): their change order answer and their acceptance, pressed in their portal.
     steps['gc-portal-change-order'] = na('GC mode: read on the GC project')
     steps['gc-portal-accept-work'] = na('GC mode: read on the GC project')
+    steps['gc-portal-pay-by-card'] = na('GC mode: read on the GC project')
   }
 
   const liveJobs = rows.jobs.filter((j) => jobIdsOfCustomer.has(j.id) && j.status && j.status !== 'paid' && j.status !== 'archived').length
