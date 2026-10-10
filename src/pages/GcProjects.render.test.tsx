@@ -7,7 +7,7 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
 import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
-import { loadSchedule } from '../lib/gc/scheduleIo'
+import { loadSchedule, loadScheduleWithHolds } from '../lib/gc/scheduleIo'
 import { loadGcCrewOnSite, loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { linkCrewJob, loadCrewJobs, searchCrewJobs, suggestCrewJobs } from '../lib/gc/crewJobIo'
 import type { CrewJobRead } from '../lib/gc/crewJobRows'
@@ -407,6 +407,8 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'Schedule' }))
     expect(await screen.findByRole('dialog', { name: `${rows.projects[0]!.name}: the schedule` })).toBeTruthy()
     expect(loadSchedule).toHaveBeenCalledWith(expect.anything(), 'p1')
+    // The schedule's PR 16a: a dev may use Building, so the window reads the job's logs and clock-ins over the board.
+    expect(loadScheduleWithHolds).toHaveBeenCalledWith(expect.anything(), 'p1', { logs: true, today: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
   })
 
   it('the schedule’s PR 7b: the office team has no Schedule on a card until the schedule’s PR 10', async () => {

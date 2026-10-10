@@ -7,7 +7,9 @@
  * it. Each press has one function here. It sends the kernel's answer (`schedule/writes.ts`) and returns
  * the job read back. Nothing here decides anything: the kernels in `src/lib/gc/schedule/` do. Since the schedule's
  * PR 9d, the window reads the job's submittals and RFIs over the board first (`loadScheduleWithHolds`), so their holds
- * stop a pull as they hold a start.
+ * stop a pull as they hold a start. Since the schedule's PR 16a, it reads the job's daily logs and our crew's clock-ins
+ * too, for whoever may (`ScheduleReads`), so the log against the chart, the days lost, the crew projection, people on
+ * site and the walk's lost days read them (to-dos/gc-mode/mockups/schedule-pr16.md).
  */
 import { supabase } from '../supabase'
 import type { Json } from '../../types/database'
@@ -15,6 +17,8 @@ import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorH
 import type { PlaceChange } from './schedule/places'
 import { withScheduleRows, type ScheduleRead, type ScheduleRows } from './schedule/rows'
 import { withRfis } from './rfiRows'
+import { withCrewClockIns, withDailyLogs } from './dailyLogRows'
+import { loadGcCrewOnSite, loadGcDailyLogs } from './dailyLogIo'
 import { loadGcRfis } from './rfisIo'
 import { withSubmittals } from './submittalRows'
 import { loadGcSubmittals } from './submittalsIo'
@@ -79,14 +83,38 @@ async function rowsIn<T>(ids: string[], read: (chunk: string[]) => PromiseLike<{
   return out
 }
 
+/** What one reader may read over the schedule (the schedule's PR 16): the page says, from the role, and memoizes it. */
+export interface ScheduleReads {
+  /** The job's daily logs and our crew's clock-ins: Building's, so `canUseGcBuilding`. */
+  logs?: boolean
+  /** The company's day, the clock-ins' last day. */
+  today?: string
+}
+
 /**
- * One job's schedule with what holds its bars (catch 2 of the schedule's PR 9, `mockups/schedule-pr9.md`): the job's
- * submittals and RFIs laid over the board as their own windows read them, then the schedule. Building's tables are a
- * dev's until its door, so anyone else reads none and their holds read empty.
+ * The board with what the schedule reads over it, before its own rows: the job's daily logs with our crew's clock-ins
+ * laid in (U8's `withDailyLogs`, then `withCrewClockIns`, as the log window lays them), then its submittals and RFIs. A
+ * reader without `logs` reads none, and its logs read empty as before.
  */
-export async function loadScheduleWithHolds(state: GcState, projectId: string): Promise<ScheduleRead | null> {
-  const [submittals, rfis] = await Promise.all([loadGcSubmittals([projectId]), loadGcRfis([projectId])])
-  return loadSchedule(withRfis(withSubmittals(state, submittals), rfis), projectId)
+export async function scheduleHoldsState(state: GcState, projectId: string, reads: ScheduleReads = {}): Promise<GcState> {
+  const startedOn = state.projects.find((p) => p.id === projectId)?.startedOn ?? null
+  const [submittals, rfis, logs, clockIns] = await Promise.all([
+    loadGcSubmittals([projectId]),
+    loadGcRfis([projectId]),
+    reads.logs ? loadGcDailyLogs([projectId]) : Promise.resolve(null),
+    reads.logs && startedOn && reads.today ? loadGcCrewOnSite(projectId, startedOn, reads.today) : Promise.resolve([]),
+  ])
+  const logged = logs ? withCrewClockIns(withDailyLogs(state, logs), clockIns) : state
+  return withRfis(withSubmittals(logged, submittals), rfis)
+}
+
+/**
+ * One job's schedule with what it reads over the board (catch 2 of the schedule's PR 9, `mockups/schedule-pr9.md`, and
+ * its PR 16): the job's daily logs, submittals and RFIs laid over the board as their own windows read them, then the
+ * schedule. Building's tables are a dev's until its door, so anyone else reads none and their holds read empty.
+ */
+export async function loadScheduleWithHolds(state: GcState, projectId: string, reads: ScheduleReads = {}): Promise<ScheduleRead | null> {
+  return loadSchedule(await scheduleHoldsState(state, projectId, reads), projectId)
 }
 
 /**

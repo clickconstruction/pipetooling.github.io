@@ -67,7 +67,7 @@ import { GcMoney } from '../components/gc/GcMoney'
 import { GcMoneyMondayEmail, type MoneyMondayIo } from '../components/gc/GcMoneyMondayEmail'
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, finalPayAppForm, finalPayAppSendPayload, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
-import { loadSchedule } from '../lib/gc/scheduleIo'
+import { loadSchedule, type ScheduleReads } from '../lib/gc/scheduleIo'
 import type { WeeklyReportWrites } from '../components/gc/GcWeeklyReport'
 import { weeklyReportRetryRow, withWeeklyReports, type WeeklyReportRow, type WeeklyReportSend } from '../lib/gc/weeklyReportRows'
 import { loadGcWeeklyReports, recordWeeklyReport, sendWeeklyReport } from '../lib/gc/weeklyReportsIo'
@@ -358,6 +358,9 @@ export default function GcProjects() {
     }
   }, [crewLinks, role])
   const board = useMemo(() => (boardRead ? withCrewPercents(boardRead, crewReads) : null), [boardRead, crewReads])
+  // What the Schedule reads over the board (its PR 16): the job's daily logs and our crew's clock-ins, Building's, for
+  // whoever may use Building. Memoized, since a new one reads the schedule again.
+  const scheduleReads = useMemo<ScheduleReads>(() => ({ logs: canUseGcBuilding(role), today }), [role, today])
   /** Each linked trade our own crew does, by its id, to its Pipeline job's number (null until read). */
   const crewJobLabels = useMemo(
     () => Object.fromEntries(crewLinks.map((l) => [l.packageId, crewReads.find((r) => r.packageId === l.packageId)?.label ?? null])),
@@ -1755,7 +1758,18 @@ export default function GcProjects() {
           onClose={() => setStartWindow(null)}
         />
       )}
-      {scheduleProject && board && <GcScheduleWindow key={scheduleProject.id} state={board} project={scheduleProject} by={profileName ?? 'The office'} canMove={role === 'dev'} canPull={canUseGcBuilding(role)} onClose={() => setScheduleWindow(null)} />}
+      {scheduleProject && board && (
+        <GcScheduleWindow
+          key={scheduleProject.id}
+          state={board}
+          project={scheduleProject}
+          by={profileName ?? 'The office'}
+          canMove={role === 'dev'}
+          canPull={canUseGcBuilding(role)}
+          reads={scheduleReads}
+          onClose={() => setScheduleWindow(null)}
+        />
+      )}
       {openCompany && board && (
         <GcCompanyWindow
           key={`${openCompany.id}:${companyAt?.tab ?? ''}:${companyAt?.doc ?? ''}:${companyAt?.send ? 'send' : ''}`}
