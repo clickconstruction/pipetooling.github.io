@@ -30290,6 +30290,17 @@ export type Database = {
         Args: { p_change_order_id: string; p_company_id: string }
         Returns: string
       }
+      gc_trade_sign_sow: {
+        Args: {
+          p_company_id: string
+          p_ip: string
+          p_printed_name: string
+          p_signature_path: string
+          p_sow_id: string
+          p_user_agent: string
+        }
+        Returns: string
+      }
       gc_trade_sow_report: {
         Args: {
           p_company_id: string
