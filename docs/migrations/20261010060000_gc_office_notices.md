@@ -45,4 +45,4 @@ It ran on a local Docker copy of the whole schema with every migration applied; 
 
 ## Status
 
-Cut 2026-10-09 by Helper 5 (the Owner Billing lane). The lead pushes it once the PR merges; types regenerate after.
+Cut 2026-10-09 by Helper 5 (the Owner Billing lane). Merged 2026-10-10 at about 05:12 UTC (#5269). Pushed to prod at 05:16 UTC by the GC MODE lead with `bash scripts/db-push.sh`, plain, the only pending file (drift 848 local / 848 remote, fully applied). Verified the same minute with the spike's `to-dos/gc-mode/scripts/verify/verify-060000.mjs`, writes rolled back: 1 `gc_office_notices_on_v1` reads `false`; 2 `gc_office_notices` has zero rows, one permissive policy `gc_office_notices_money_read` (SELECT) beside the six fence policies, and its two `_once` indexes; 3 as the service role `get_gc_office_notices_due()` answers today 2026-10-09, bill day 2026-10-25 and an empty notices list while the switch is off; 4 the controller is refused with *permission denied for function get_gc_office_notices_due*. A types regen (the table and the function) follows as its own PR; O10b cuts on it, then the function deploys and the cron migration pushes.
