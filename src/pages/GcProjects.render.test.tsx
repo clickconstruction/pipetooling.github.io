@@ -7,7 +7,7 @@ import { recordNavClick } from '../lib/navClickTelemetry'
 import { GC_NEW_HERE_SEEN_KEY } from '../lib/gc/tour'
 import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBidSent, setGcProjectMoney } from '../lib/gc/gcIo'
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
-import { loadSchedule, loadScheduleWithHolds } from '../lib/gc/scheduleIo'
+import { keepRoughAt, loadSchedule, loadScheduleWithHolds } from '../lib/gc/scheduleIo'
 import { loadGcCrewOnSite, loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
 import { linkCrewJob, loadCrewJobs, searchCrewJobs, suggestCrewJobs } from '../lib/gc/crewJobIo'
 import type { CrewJobRead } from '../lib/gc/crewJobRows'
@@ -58,6 +58,9 @@ vi.mock('../lib/gc/scheduleIo', () => {
     loadScheduleWithHolds: vi.fn((state: { projects: { id: string }[] }, id: string) => loadSchedule(state, id)),
     loadScheduleMoney: vi.fn(() => new Promise(() => undefined)),
     drawSchedule: vi.fn(),
+    // The rough (the schedule's PR 12b): none drawn, and a keep after the Board's presses that writes nothing.
+    loadRough: vi.fn(() => Promise.resolve(null)),
+    keepRoughAt: vi.fn(() => Promise.resolve(null)),
   }
 })
 
@@ -442,6 +445,24 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(card).getByRole('button', { name: 'We sent our bid' }))
     await waitFor(() => expect(markGcBidSent).toHaveBeenCalledWith('p1'))
     expect(await within(card).findByText('our bid went in Oct 8')).toBeTruthy()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('keeps the rough after We sent our bid, and says so beside the strip when the keep did not happen (PR 12b)', async () => {
+    vi.mocked(markGcBidSent).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockImplementation((projects) =>
+      Promise.resolve({ ...rows, projects, boardDates: { p1: { ...rows.boardDates.p1!, our_bid_sent_on: vi.mocked(markGcBidSent).mock.calls.length ? '2026-10-08' : null } } }),
+    )
+    vi.mocked(keepRoughAt).mockResolvedValueOnce('The rough schedule’s weeks were not kept with the bid. Press Keep the weeks as sent on its Schedule.')
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'We sent our bid' }))
+    await waitFor(() => expect(keepRoughAt).toHaveBeenCalledWith(expect.objectContaining({ projects: expect.any(Array) }), 'p1', 'bid'))
+    // The outcome's own words first, the keep's line beside them.
+    expect(await within(card).findByText('our bid went in Oct 8')).toBeTruthy()
+    expect((await within(card).findByRole('status')).textContent).toBe('The rough schedule’s weeks were not kept with the bid. Press Keep the weeks as sent on its Schedule.')
     vi.mocked(loadGcBoardRows).mockReset()
   })
 })

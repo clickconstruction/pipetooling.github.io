@@ -7,7 +7,8 @@
  * Since 9a, an inspection passed or failed, the job's own work and the dates to meet, for a dev. Since
  * 9b, a bar's place, a split, a wait and a new baseline. Since 9d, the holds' read, the walk's line, Pull earlier only
  * with `canPull`, and a trade not ready in the bar's form. Since 12a, a first draft from a template, and the Templates
- * card's save and set aside, for a dev.
+ * card's save and set aside, for a dev. Since 12b, the rough while we bid drawn, the first draft after we win, and a
+ * rough's weeks kept later.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -18,6 +19,7 @@ import {
   addScheduleWait,
   drawSchedule,
   failScheduleInspection,
+  keepRoughLater,
   loadSchedule,
   loadScheduleWithHolds,
   passScheduleInspection,
@@ -26,6 +28,7 @@ import {
   saveScheduleTemplate,
   setAsideScheduleTemplate,
   setOwnWorkDone,
+  setRoughSchedule,
   setScheduleBaseline,
   setScheduleMilestone,
   setSchedulePlaces,
@@ -75,6 +78,8 @@ vi.mock('../../lib/gc/scheduleIo', () => {
     saveScheduleTemplate: vi.fn(),
     renameScheduleTemplate: vi.fn(),
     setAsideScheduleTemplate: vi.fn(),
+    setRoughSchedule: vi.fn(),
+    keepRoughLater: vi.fn(),
   }
 })
 
@@ -92,7 +97,7 @@ afterEach(() => {
   vi.mocked(undoScheduleMove).mockReset()
   for (const press of [addScheduleActivity, removeScheduleActivity, setOwnWorkDone, passScheduleInspection, failScheduleInspection, setScheduleMilestone]) vi.mocked(press).mockReset()
   for (const press of [addScheduleWait, setSchedulePlaces, splitScheduleBar, setScheduleBaseline]) vi.mocked(press).mockReset()
-  for (const press of [saveScheduleTemplate, setAsideScheduleTemplate]) vi.mocked(press).mockReset()
+  for (const press of [saveScheduleTemplate, setAsideScheduleTemplate, setRoughSchedule, keepRoughLater]) vi.mocked(press).mockReset()
 })
 
 const s = initialGcState()
@@ -165,11 +170,13 @@ describe('the Schedule window', () => {
     expect(document.querySelectorAll('[data-gantt-bar]').length).toBeGreaterThan(0)
   })
 
-  it('shows Boerne, still bidding, the rough’s sentence and no draw', async () => {
+  it('shows Boerne, still bidding, the rough schedule for our bid and no first draft (PR 12b)', async () => {
     vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'boerne', null))
     openWindow(job(s, 'boerne'))
-    expect(await screen.findByText('While we bid, the rough schedule is the one to draw.')).toBeTruthy()
+    expect(await screen.findByText('A rough schedule for our bid')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Draw a first draft' })).toBeNull()
+    // Read only for someone who may not move a bar: nothing to draw.
+    expect(screen.queryByRole('button', { name: 'Draw a rough schedule' })).toBeNull()
   })
 
   it('shows a lost job as lost, with no draw', async () => {
@@ -219,7 +226,7 @@ describe('the Schedule window', () => {
   it('closes on Close, on Escape and on the dark around it', async () => {
     vi.mocked(loadSchedule).mockResolvedValue(readOf(s, 'boerne', null))
     const { onClose, dialog } = openWindow(job(s, 'boerne'))
-    await screen.findByText('While we bid, the rough schedule is the one to draw.')
+    await screen.findByText('A rough schedule for our bid')
     fireEvent.click(within(dialog()).getByRole('button', { name: 'Close' }))
     fireEvent.keyDown(document, { key: 'Escape' })
     fireEvent.click(dialog().parentElement as HTMLElement)
@@ -670,5 +677,40 @@ describe('templates in the window (PR 12a, G-44)', () => {
     openWindow(job(s, 'fairoaksd'))
     await screen.findByText('Work done against the plan')
     expect(document.querySelector('[data-tour="gc-templates"]')).toBeNull()
+  })
+})
+
+describe('the rough while we bid in the window (PR 12b, G-45)', () => {
+  const rough = { start: '2026-11-02', days: {}, by: 'Robert Douglas', on: '2026-09-25' }
+
+  it('draws Boerne’s rough for a dev, a record, whole', async () => {
+    const read = readOf(s, 'boerne', null)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(setRoughSchedule).mockResolvedValue(readOf(withJob('boerne', (p) => ({ ...p, rough: { ...rough, on: s.today } })), 'boerne', null))
+    openWindow(job(s, 'boerne'), vi.fn(), true)
+    await screen.findByText('A rough schedule for our bid')
+    fireEvent.change(screen.getByLabelText('If work starts'), { target: { value: '2026-11-02' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Draw a rough schedule' }))
+    await waitFor(() => expect(setRoughSchedule).toHaveBeenCalledWith(read.state, 'boerne', { start: '2026-11-02', days: {}, by: 'Robert Douglas', on: s.today }))
+    expect(await screen.findByText('14 weeks to build')).toBeTruthy()
+  })
+
+  it('after we win, the first draft starts from the rough’s day and says the weeks we bid', async () => {
+    const won = withJob('helotes', (p) => ({ ...p, rough: { ...rough, kept: { on: '2026-09-28', weeks: 14, finish: '2027-02-02', at: 'bid' as const } } }))
+    vi.mocked(loadSchedule).mockResolvedValue(readOf(won, 'helotes', null))
+    openWindow(job(won, 'helotes'), vi.fn(), true)
+    expect(await screen.findByText(/^We bid 14 weeks, from the rough schedule\./)).toBeTruthy()
+    expect((screen.getByLabelText('Work starts') as HTMLInputElement).value).toBe('2026-11-02')
+    expect(screen.queryByRole('button', { name: 'Keep the weeks as sent' })).toBeNull()
+  })
+
+  it('keeps a won job’s rough weeks later from the first draft’s card, with the day our bid went', async () => {
+    const won = withJob('helotes', (p) => ({ ...p, rough, ourBidSentOn: '2026-09-28' }))
+    const read = readOf(won, 'helotes', null)
+    vi.mocked(loadSchedule).mockResolvedValue(read)
+    vi.mocked(keepRoughLater).mockResolvedValue(read)
+    openWindow(job(won, 'helotes'), vi.fn(), true)
+    fireEvent.click(await screen.findByRole('button', { name: 'Keep the weeks as sent' }))
+    await waitFor(() => expect(keepRoughLater).toHaveBeenCalledWith(read.state, 'helotes', expect.objectContaining({ on: '2026-09-28', at: 'bid' })))
   })
 })

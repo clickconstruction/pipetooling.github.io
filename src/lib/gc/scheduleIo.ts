@@ -15,7 +15,8 @@ import { supabase } from '../supabase'
 import type { Json } from '../../types/database'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import type { PlaceChange } from './schedule/places'
-import { withScheduleRows, type ScheduleRead, type ScheduleRows } from './schedule/rows'
+import { roughFromRow, withScheduleRows, type ScheduleRead, type ScheduleRows } from './schedule/rows'
+import { roughToKeep } from './schedule/scheduleWindow'
 import { withRfis } from './rfiRows'
 import { withCrewClockIns, withDailyLogs } from './dailyLogRows'
 import { loadGcCrewOnSite, loadGcDailyLogs } from './dailyLogIo'
@@ -568,6 +569,54 @@ export async function setAsideScheduleTemplate(state: GcState, projectId: string
 export async function setRoughSchedule(state: GcState, projectId: string, rough: RoughSchedule): Promise<ScheduleRead | null> {
   const by = await signedIn()
   taken(await supabase.from('gc_rough_schedules').upsert({ ...roughRowOf(projectId, rough, by), updated_at: new Date().toISOString() }, { onConflict: 'project_id' }), 'keep the rough schedule')
+  return loadSchedule(state, projectId)
+}
+
+/** The keep's one line when it did not happen (PR 12b, call 5): beside the outcome strip, never in place of its words. */
+export const ROUGH_NOT_KEPT = 'The rough schedule’s weeks were not kept with the bid. Press Keep the weeks as sent on its Schedule.'
+
+/** The job's rough alone (G-45, PR 12b): for Our number's weeks and the keep at the Board's presses. Null: none drawn, or none the reader may see. */
+export async function loadRough(projectId: string): Promise<RoughSchedule | null> {
+  const { data, error } = await supabase.from('gc_rough_schedules').select('*').eq('project_id', projectId).maybeSingle()
+  checkSupabaseError({ data, error }, 'read the rough schedule')
+  return roughFromRow(data as ScheduleRows['rough'], new Map())
+}
+
+/**
+ * The rough's weeks kept as they went (G-45, PR 12b): only the four kept columns, and only while none are kept, so a keep
+ * never rewrites who drew the rough and two keeps never stack. Answers whether it wrote.
+ */
+export async function keepRoughWeeks(projectId: string, kept: NonNullable<RoughSchedule['kept']>): Promise<boolean> {
+  const result = await supabase
+    .from('gc_rough_schedules')
+    .update({ kept_on: kept.on, kept_weeks: kept.weeks, kept_finish: kept.finish, kept_at: kept.at, updated_at: new Date().toISOString() })
+    .eq('project_id', projectId)
+    .is('kept_on', null)
+    .select('project_id')
+  checkSupabaseError(result, 'keep the rough schedule’s weeks')
+  return result.data.length > 0
+}
+
+/**
+ * After the Board's We sent our bid or We won this (PR 12b, call 5, gc 2's conditions): the job's rough read alone, laid on
+ * the board's job, kept as it went (`roughToKeep`), and written only when that changes it. It never throws: it answers
+ * null when kept or when there was nothing to keep, else the one line the page shows beside the outcome strip.
+ */
+export async function keepRoughAt(state: GcState, projectId: string, at: 'bid' | 'award'): Promise<string | null> {
+  try {
+    const rough = await loadRough(projectId)
+    if (!rough) return null
+    const kept = roughToKeep({ ...jobOf(state, projectId), rough }, state.today, at)
+    if (kept) await keepRoughWeeks(projectId, kept)
+    return null
+  } catch {
+    return ROUGH_NOT_KEPT
+  }
+}
+
+/** A missed keep kept later from the rough's own card (PR 12b, `roughKeepPress`): the kept weeks, then the schedule read again. */
+export async function keepRoughLater(state: GcState, projectId: string, kept: NonNullable<RoughSchedule['kept']>): Promise<ScheduleRead | null> {
+  if (!(await keepRoughWeeks(projectId, kept))) throw new Error('The rough’s weeks are kept already. Reload the schedule to see them.')
   return loadSchedule(state, projectId)
 }
 

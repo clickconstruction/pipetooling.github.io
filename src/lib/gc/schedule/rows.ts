@@ -458,7 +458,14 @@ function whatIfOf(rows: ScheduleRows, names: PeopleNames): ScheduleWhatIf | null
 
 /** The rough schedule while we bid (G-45). */
 function roughOf(rows: ScheduleRows, names: PeopleNames): RoughSchedule | null {
-  const r = rows.rough
+  return roughFromRow(rows.rough, names)
+}
+
+/**
+ * One `gc_rough_schedules` row as the kernels keep the rough (G-45). Exported for the reads that want the rough alone
+ * (the schedule's PR 12b): the keep after the Board's bid presses, and Our number's weeks. Null: none drawn.
+ */
+export function roughFromRow(r: ScheduleRows['rough'], names: PeopleNames): RoughSchedule | null {
   if (!r) return null
   const days = (r.stage_days && typeof r.stage_days === 'object' ? r.stage_days : {}) as Record<string, number>
   return {

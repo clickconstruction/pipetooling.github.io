@@ -71,7 +71,7 @@ import { GcMoney } from '../components/gc/GcMoney'
 import { GcMoneyMondayEmail, type MoneyMondayIo } from '../components/gc/GcMoneyMondayEmail'
 import { GcBillCustomerWindow } from '../components/gc/GcBillCustomer'
 import { billingStateFor, billingStateForAll, finalPayAppForm, finalPayAppSendPayload, payAppSendPayload, withSchedules, type BillingRows } from '../lib/gc/billCustomer'
-import { loadSchedule, type ScheduleReads } from '../lib/gc/scheduleIo'
+import { keepRoughAt, loadRough, loadSchedule, type ScheduleReads } from '../lib/gc/scheduleIo'
 import type { WeeklyReportWrites } from '../components/gc/GcWeeklyReport'
 import { weeklyReportRetryRow, withWeeklyReports, type WeeklyReportRow, type WeeklyReportSend } from '../lib/gc/weeklyReportRows'
 import { loadGcWeeklyReports, recordWeeklyReport, sendWeeklyReport } from '../lib/gc/weeklyReportsIo'
@@ -455,6 +455,21 @@ export default function GcProjects() {
   }
   // Our number (the Board's B5-c), opened on a project's card for the money team; its inputs reload the board.
   const [numberOpen, setNumberOpen] = useState<string | null>(null)
+  // Weeks to build on Our number (G-45, the schedule's PR 12b, gc 2's nod): the open job's rough, read for the money team
+  // alone when Our number opens, laid on the board's job the way the money lens lays the schedules. A failed read: no weeks.
+  const [numberRough, setNumberRough] = useState<{ id: string; rough: GcProject['rough'] | null } | null>(null)
+  useEffect(() => {
+    if (!numberOpen || !canSeeGcMoney(role)) return
+    let live = true
+    loadRough(numberOpen)
+      .then((rough) => live && setNumberRough({ id: numberOpen, rough }))
+      .catch(() => live && setNumberRough({ id: numberOpen, rough: null }))
+    return () => {
+      live = false
+    }
+  }, [numberOpen, role])
+  // The rough kept at the Board's two presses (PR 12b, call 5): its one line beside the outcome strip when it did not happen.
+  const [roughKeepLines, setRoughKeepLines] = useState<Record<string, string>>({})
   const saveMoney = async (projectId: string, values: { generalConditions: number; contingencyPct: number; feePct: number }) => {
     await setGcProjectMoney(projectId, values)
     await refreshBoard()
@@ -512,10 +527,13 @@ export default function GcProjects() {
     bidSent: async () => {
       await markGcBidSent(projectId)
       await reloadProjects()
+      // The rough's weeks kept as they went with the bid (G-45, PR 12b): after the press, never throwing into it.
+      if (board) void keepRoughAt(board, projectId, 'bid').then((line) => setRoughKeepLines((was) => ({ ...was, [projectId]: line ?? '' })))
     },
     won: async () => {
       await markGcWon(projectId)
       await reloadProjects()
+      if (board) void keepRoughAt(board, projectId, 'award').then((line) => setRoughKeepLines((was) => ({ ...was, [projectId]: line ?? '' })))
     },
     lost: async (why, wonBy, note) => {
       await markGcLost(projectId, why, wonBy, note)
@@ -1754,10 +1772,15 @@ export default function GcProjects() {
               )}
             </div>
             {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
+            {roughKeepLines[p.id] && (
+              <div role="status" data-rough-not-kept style={{ color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
+                {roughKeepLines[p.id]}
+              </div>
+            )}
             {showNumber && board && numberOpen === p.id && (
               <GcOurNumber
                 state={board}
-                project={boardProject}
+                project={numberRough?.id === p.id && numberRough.rough ? { ...boardProject, rough: numberRough.rough } : boardProject}
                 onSave={(values) => saveMoney(p.id, values)}
                 gcJob={{
                   jobLabel: ownWorkLabel(boardProject.generalConditionsJobId),
