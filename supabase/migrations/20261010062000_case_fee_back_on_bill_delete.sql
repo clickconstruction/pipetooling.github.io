@@ -8,32 +8,35 @@ SET lock_timeout = '3s';
 -- fee_added_at. So the case still said the fee was on, the press refused a second fee, and the next rewrite of the
 -- revenue dropped the $30 (job_rider_fees no longer finds the entry). The office could not put it back.
 --
--- The rule this file keeps: a case's fee is on exactly when a live bill carries its entry, and fee_came_off_at is
--- set exactly when the fee left with its bill and took its amount off the job's revenue.
+-- The rules this file keeps: a case's fee is on exactly one live bill, the one that carries its entry; and
+-- fee_came_off_at is set exactly when the fee left with its bill and took its amount off the job's revenue.
 --
 -- 1. mercury_transaction_ar_returned.fee_came_off_at: when the case's fee last left with its bill, so the case
 --    pane can say so beside the press.
 -- 2. jobs_ledger_invoices_give_case_fee_back(), BEFORE DELETE on jobs_ledger_invoices, for a row whose fee_lines
---    holds an entry that names a case: each such case with its fee on gets fee_amount, fee_invoice_id and
---    fee_added_at cleared, so add_ar_return_case_fee runs again (fee_added_by stays, so a bill that comes back can
---    say who added it); the job's revenue loses the entries' amounts, as the next rewrite would, so a second press
---    does not count the fee twice; fee_came_off_at is stamped; and the job's history gets a line. A case is matched
---    by the entry's case id or by its fee_invoice_id naming this bill, compared as text, so an entry whose id is
---    not a uuid cannot stop a delete. When the job itself is being deleted, its row is already gone: the case still
---    gets its fee back, but no revenue is lowered, so no stamp and no history line are written.
+--    holds an entry that names a case whose fee is on this bill (its fee_invoice_id is this bill, or names no live
+--    bill): the case gets fee_amount, fee_invoice_id and fee_added_at cleared, so add_ar_return_case_fee runs again
+--    (fee_added_by stays, so a bill that comes back can say who added it); the job's revenue loses that case's
+--    entry, as the next rewrite would, so a second press does not count the fee twice; fee_came_off_at is stamped;
+--    and the job's history gets a line. A case whose fee is on another live bill keeps it, and an entry that names
+--    no case is left to the next rewrite, as a deleted trip charge is. Case ids are compared as text, so an entry
+--    whose id is not a uuid cannot stop a delete. When the job itself is being deleted, its row is already gone:
+--    the case still gets its fee back, but no revenue is lowered, so no stamp and no history line are written.
 -- 3. jobs_ledger_invoices_take_case_fee_on(), AFTER INSERT on jobs_ledger_invoices, for a row whose fee_lines holds
---    an entry that names a case whose fee is on no live bill (a Split part, or a bill restored from Recently
---    deleted): the case is attached to the new bill again (fee_invoice_id, fee_amount and fee_added_at from the
+--    an entry that names a case (a Split part, or a bill restored from Recently deleted). If the case's fee is on
+--    another live bill, the insert is refused in words, so the $30 is never on two bills (a restore rolls back
+--    whole). Otherwise the case is attached to the new bill (fee_invoice_id, fee_amount and fee_added_at from the
 --    entry), so the press refuses a second fee. If the case was stamped, the revenue gets the amount back, the
 --    stamp is cleared and the history gets a line; a case released when its whole job was deleted was never
 --    stamped, and its restored job row already holds the fee.
 -- 4. list_ar_return_case_fees returns fee_came_off_at. Its return type changes, so it is dropped and created
 --    again, with the same grants.
--- 5. add_ar_return_case_fee, restated byte for byte from 20261010003000 but for one more refusal: a case whose
---    entry is already on a live bill takes no second fee.
+-- 5. add_ar_return_case_fee, restated byte for byte from 20261010003000 but for one more refusal (a case whose entry
+--    is already on a live bill takes no second fee) and one more column it writes (the stamp is cleared).
 -- 6. A case whose fee left with a bill before this file (fee_added_at set, fee_invoice_id null, no bill's
---    fee_lines naming it) gets its fee back the same way. Its job's revenue is left alone: whether a rewrite
---    already dropped the $30 cannot be told from here, and the next rewrite settles it either way.
+--    fee_lines naming it) gets its fee back, unstamped. Its job's revenue is left alone: whether a rewrite already
+--    dropped the $30 cannot be told from here, and the next rewrite settles it either way. Unstamped, a restore of
+--    its old bill raises nothing on a total that may still hold it.
 --
 -- No table is created, so the read-only and twin blocks already on both tables stand. A training account or a twin
 -- cannot delete or add a bill, so neither trigger runs for one.
@@ -56,19 +59,14 @@ SET search_path TO 'public'
 AS $function$
 DECLARE
   v_case_ids text[];
-  v_off numeric;
+  v_off numeric := 0;
+  v_amount numeric;
   v_bill text := 'bill ' || (coalesce(OLD.sequence_order, 0) + 1)::text;
   v_job_here boolean;
   v_case record;
 BEGIN
-  -- The entries that name a case, and their amounts as job_rider_fees reads them.
-  SELECT coalesce(array_agg(DISTINCT btrim(l->>'case_id')), ARRAY[]::text[]),
-         coalesce(sum(CASE
-                        WHEN jsonb_typeof(l->'amount') = 'number'
-                             OR (jsonb_typeof(l->'amount') = 'string' AND btrim(l->>'amount') ~ '^[0-9]+(\.[0-9]+)?$')
-                        THEN greatest(round(btrim(l->>'amount')::numeric, 2), 0)
-                      END), 0)
-  INTO v_case_ids, v_off
+  SELECT coalesce(array_agg(DISTINCT btrim(l->>'case_id')), ARRAY[]::text[])
+  INTO v_case_ids
   FROM jsonb_array_elements(CASE WHEN jsonb_typeof(OLD.fee_lines) = 'array' THEN OLD.fee_lines ELSE '[]'::jsonb END) AS l
   WHERE jsonb_typeof(l->'case_id') = 'string' AND btrim(l->>'case_id') <> '';
 
@@ -79,13 +77,32 @@ BEGIN
   -- A whole job being deleted takes its bills by cascade after its own row: nothing is left to lower or to note.
   v_job_here := EXISTS (SELECT 1 FROM public.jobs_ledger j WHERE j.id = OLD.job_id);
 
+  -- The cases whose fee is on this bill: its fee_invoice_id is this bill or names no other live bill, and no other
+  -- live bill carries its entry.
   FOR v_case IN
     SELECT r.mercury_transaction_id AS id, r.fee_amount
     FROM public.mercury_transaction_ar_returned r
     WHERE r.fee_added_at IS NOT NULL
       AND (r.mercury_transaction_id::text = ANY (v_case_ids) OR r.fee_invoice_id = OLD.id)
+      AND (r.fee_invoice_id IS NULL OR r.fee_invoice_id = OLD.id
+           OR NOT EXISTS (SELECT 1 FROM public.jobs_ledger_invoices i WHERE i.id = r.fee_invoice_id AND i.id <> OLD.id))
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.jobs_ledger_invoices i
+        CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(i.fee_lines) = 'array' THEN i.fee_lines ELSE '[]'::jsonb END) AS l
+        WHERE i.id <> OLD.id AND jsonb_typeof(l->'case_id') = 'string' AND btrim(l->>'case_id') = r.mercury_transaction_id::text)
     FOR UPDATE
   LOOP
+    -- This case's entries, as job_rider_fees reads them.
+    SELECT coalesce(sum(CASE
+                          WHEN jsonb_typeof(l->'amount') = 'number'
+                               OR (jsonb_typeof(l->'amount') = 'string' AND btrim(l->>'amount') ~ '^[0-9]+(\.[0-9]+)?$')
+                          THEN greatest(round(btrim(l->>'amount')::numeric, 2), 0)
+                        END), 0)
+    INTO v_amount
+    FROM jsonb_array_elements(CASE WHEN jsonb_typeof(OLD.fee_lines) = 'array' THEN OLD.fee_lines ELSE '[]'::jsonb END) AS l
+    WHERE jsonb_typeof(l->'case_id') = 'string' AND btrim(l->>'case_id') = v_case.id::text;
+
     UPDATE public.mercury_transaction_ar_returned
     SET fee_amount = NULL,
         fee_invoice_id = NULL,
@@ -96,19 +113,20 @@ BEGIN
     WHERE mercury_transaction_id = v_case.id;
 
     IF v_job_here THEN
+      v_off := v_off + v_amount;
       INSERT INTO public.job_activity_events (job_id, event_type, occurred_at, actor_user_id, summary, detail, financial)
       VALUES (
         OLD.job_id, 'returned_check_fee_off', now(), auth.uid(),
-        'Returned check fee: $' || to_char(coalesce(v_case.fee_amount, 0), 'FM999999990.00')
+        'Returned check fee: $' || to_char(v_amount, 'FM999999990.00')
           || ' came off with ' || v_bill || '. The case can add it again.',
-        jsonb_build_object('source_id', v_case.id::text, 'case_id', v_case.id::text, 'invoice_id', OLD.id::text, 'amount', v_case.fee_amount),
+        jsonb_build_object('source_id', v_case.id::text, 'case_id', v_case.id::text, 'invoice_id', OLD.id::text, 'amount', v_amount),
         true
       );
     END IF;
   END LOOP;
 
-  -- The job's total loses what the entries carried, as the next rewrite would (job_rider_fees no longer finds them).
-  IF v_job_here AND v_off > 0 THEN
+  -- The job's total loses what the released cases' entries carried, as the next rewrite would.
+  IF v_off > 0 THEN
     UPDATE public.jobs_ledger
     SET revenue = coalesce(revenue, 0) - v_off,
         updated_at = now()
@@ -122,7 +140,7 @@ $function$;
 REVOKE ALL ON FUNCTION public.jobs_ledger_invoices_give_case_fee_back() FROM PUBLIC, anon, authenticated;
 
 COMMENT ON FUNCTION public.jobs_ledger_invoices_give_case_fee_back() IS
-  'v2.5144 (punch list #105, gap 1): BEFORE DELETE on jobs_ledger_invoices. A bill that carries a returned check fee entry gives the fee back to its case (fee_amount, fee_invoice_id and fee_added_at cleared, so add_ar_return_case_fee runs again); while the job stays, its revenue loses the entries'' amounts, the case is stamped fee_came_off_at and the job''s history gets a line.';
+  'v2.5144 (punch list #105, gap 1): BEFORE DELETE on jobs_ledger_invoices. A bill that carries a returned check fee whose case''s fee is on it gives the fee back to that case (fee_amount, fee_invoice_id and fee_added_at cleared, so add_ar_return_case_fee runs again); while the job stays, its revenue loses that entry, the case is stamped fee_came_off_at and the job''s history gets a line.';
 
 DROP TRIGGER IF EXISTS jobs_ledger_invoices_give_case_fee_back ON public.jobs_ledger_invoices;
 CREATE TRIGGER jobs_ledger_invoices_give_case_fee_back
@@ -145,6 +163,8 @@ DECLARE
   v_amount numeric;
   v_added_at timestamptz;
   v_case public.mercury_transaction_ar_returned%ROWTYPE;
+  v_other record;
+  v_other_bill text;
 BEGIN
   FOR v_line IN
     SELECT l
@@ -156,9 +176,27 @@ BEGIN
     WHERE r.mercury_transaction_id::text = btrim(v_line->>'case_id')
     FOR UPDATE;
     CONTINUE WHEN NOT FOUND;
-    -- A case whose fee is already on another live bill keeps it there.
-    CONTINUE WHEN v_case.fee_invoice_id IS NOT NULL AND v_case.fee_invoice_id <> NEW.id
-      AND EXISTS (SELECT 1 FROM public.jobs_ledger_invoices i WHERE i.id = v_case.fee_invoice_id);
+    -- A case whose fee is on another live bill keeps it there, and this bill does not come in: the $30 would be on two.
+    SELECT i.id, i.sequence_order, i.job_id INTO v_other
+    FROM public.jobs_ledger_invoices i
+    WHERE i.id <> NEW.id
+      AND (i.id = v_case.fee_invoice_id
+           OR EXISTS (
+             SELECT 1
+             FROM jsonb_array_elements(CASE WHEN jsonb_typeof(i.fee_lines) = 'array' THEN i.fee_lines ELSE '[]'::jsonb END) AS l2
+             WHERE jsonb_typeof(l2->'case_id') = 'string' AND btrim(l2->>'case_id') = v_case.mercury_transaction_id::text))
+    ORDER BY (i.id = v_case.fee_invoice_id) DESC NULLS LAST, i.sequence_order, i.id
+    LIMIT 1;
+    IF FOUND THEN
+      v_other_bill := 'bill ' || (coalesce(v_other.sequence_order, 0) + 1)::text;
+      IF v_other.job_id IS DISTINCT FROM NEW.job_id THEN
+        v_other_bill := v_other_bill || coalesce(' on ' || (
+          SELECT coalesce(nullif(btrim(j.hcp_number), ''), nullif(btrim(j.click_number), ''))
+          FROM public.jobs_ledger j WHERE j.id = v_other.job_id), ' on another job');
+      END IF;
+      RAISE EXCEPTION '% carries the returned check fee that is on % now. Take it off % first.', initcap(v_bill), v_other_bill, v_other_bill
+        USING ERRCODE = 'P0001';
+    END IF;
 
     v_amount := CASE
                   WHEN jsonb_typeof(v_line->'amount') = 'number'
@@ -206,7 +244,7 @@ $function$;
 REVOKE ALL ON FUNCTION public.jobs_ledger_invoices_take_case_fee_on() FROM PUBLIC, anon, authenticated;
 
 COMMENT ON FUNCTION public.jobs_ledger_invoices_take_case_fee_on() IS
-  'v2.5144 (punch list #105, gap 1, review on #5283): AFTER INSERT on jobs_ledger_invoices. A new bill carrying a returned check fee entry (a Split part, a bill restored from Recently deleted) attaches a case whose fee is on no live bill to it, so add_ar_return_case_fee refuses a second fee; a case stamped fee_came_off_at gets its amount back on the job''s revenue, its stamp cleared and a line in the job''s history.';
+  'v2.5144 (punch list #105, gap 1, review on #5283): AFTER INSERT on jobs_ledger_invoices. A new bill carrying a returned check fee entry (a Split part, a bill restored from Recently deleted) is refused in words when the case''s fee is on another live bill; otherwise the case is attached to it, so add_ar_return_case_fee refuses a second fee, and a case stamped fee_came_off_at gets its amount back on the job''s revenue, its stamp cleared and a line in the job''s history.';
 
 DROP TRIGGER IF EXISTS jobs_ledger_invoices_take_case_fee_on ON public.jobs_ledger_invoices;
 CREATE TRIGGER jobs_ledger_invoices_take_case_fee_on
@@ -294,8 +332,8 @@ GRANT EXECUTE ON FUNCTION public.list_ar_return_case_fees(uuid[]) TO authenticat
 
 -- 5 ---------------------------------------------------------------------------------------------------------
 
--- Restated byte for byte from 20261010003000 but for refusal (b2). Same signature, so the grants stand; they are
--- restated as the source has them.
+-- Restated byte for byte from 20261010003000 but for refusal (b2) and fee_came_off_at = NULL on the case. Same
+-- signature, so the grants stand; they are restated as the source has them.
 CREATE OR REPLACE FUNCTION public.add_ar_return_case_fee(p_case_id uuid, p_invoice_id uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -387,6 +425,7 @@ BEGIN
       fee_invoice_id = p_invoice_id,
       fee_added_at = now(),
       fee_added_by = v_uid,
+      fee_came_off_at = NULL,
       updated_at = now(),
       updated_by = v_uid
   WHERE mercury_transaction_id = p_case_id;
@@ -414,7 +453,6 @@ SET fee_amount = NULL,
     fee_invoice_id = NULL,
     fee_added_at = NULL,
     fee_added_by = NULL,
-    fee_came_off_at = now(),
     updated_at = now()
 WHERE r.fee_added_at IS NOT NULL
   AND r.fee_invoice_id IS NULL

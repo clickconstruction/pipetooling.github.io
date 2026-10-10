@@ -69,8 +69,8 @@ SELECT pg_temp.check('after the $250 bill is deleted: 1,500 - 16 + 329',
   (SELECT revenue FROM public.jobs_ledger WHERE id = 'aaaaaaaa-0000-0000-0000-000000000001'), 1813::numeric);
 
 -- 6. A deleted bill gives its returned check fee back to its case (v2.5144, punch list #105 gap 1).
-SELECT pg_temp.check('the backfill gave case E its fee back, stamped, so the press can run again',
-  (SELECT fee_amount IS NULL AND fee_added_at IS NULL AND fee_added_by IS NULL AND fee_came_off_at IS NOT NULL
+SELECT pg_temp.check('the backfill gave case E its fee back, unstamped (its revenue was not lowered), so the press can run again',
+  (SELECT fee_amount IS NULL AND fee_added_at IS NULL AND fee_added_by IS NULL AND fee_came_off_at IS NULL
    FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = 'ce000000-0000-0000-0000-00000000000e'), true);
 SELECT pg_temp.check('the backfill left case F, whose entry still rides on a live bill',
   (SELECT fee_added_at IS NOT NULL AND fee_came_off_at IS NULL
@@ -78,7 +78,7 @@ SELECT pg_temp.check('the backfill left case F, whose entry still rides on a liv
 SELECT pg_temp.check('and case D, whose fee is on its bill',
   (SELECT fee_invoice_id FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = 'cd000000-0000-0000-0000-00000000000d'),
   'dddddddd-1111-0000-0000-000000000001'::uuid);
-SELECT pg_temp.check('the second run stamped no other case', (SELECT count(*) FROM public.mercury_transaction_ar_returned WHERE fee_came_off_at IS NOT NULL), 1::bigint);
+SELECT pg_temp.check('neither run stamped a case', (SELECT count(*) FROM public.mercury_transaction_ar_returned WHERE fee_came_off_at IS NOT NULL), 0::bigint);
 SELECT pg_temp.check('list_ar_return_case_fees returns fee_came_off_at',
   position('fee_came_off_at timestamp with time zone' in pg_get_function_result('public.list_ar_return_case_fees(uuid[])'::regprocedure)) > 0, true);
 
@@ -98,10 +98,11 @@ SELECT pg_temp.check('the job''s history says so, once',
 SELECT pg_temp.check('case F keeps its fee: its entry is on bill 2, which stays',
   (SELECT fee_added_at IS NOT NULL FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = 'cf000000-0000-0000-0000-00000000000f'), true);
 
--- An entry whose case id is not a uuid cannot stop a delete; the job's total still loses it.
+-- An entry whose case id is not a uuid cannot stop a delete. With no case to give it back to, it is left to the next
+-- rewrite, as a deleted trip charge is, so a restore of the bill would need nothing back either.
 DELETE FROM public.jobs_ledger_invoices WHERE id = 'aaaaaaaa-1111-0000-0000-000000000001';
-SELECT pg_temp.check('A''s bill with the "case-1" entry goes, and A''s total loses its $30: 1,813 - 30',
-  (SELECT revenue FROM public.jobs_ledger WHERE id = 'aaaaaaaa-0000-0000-0000-000000000001'), 1783::numeric);
+SELECT pg_temp.check('A''s bill with the "case-1" entry goes, and A''s total is left to the next rewrite: 1,813',
+  (SELECT revenue FROM public.jobs_ledger WHERE id = 'aaaaaaaa-0000-0000-0000-000000000001'), 1813::numeric);
 SELECT pg_temp.check('with no case to name, no history line', (SELECT count(*) FROM public.job_activity_events
   WHERE job_id = 'aaaaaaaa-0000-0000-0000-000000000001' AND event_type = 'returned_check_fee_off'), 0::bigint);
 
@@ -146,14 +147,56 @@ SET fee_lines = '[{"case_id": "cf000000-0000-0000-0000-00000000000f", "amount": 
 WHERE id = 'dddddddd-1111-0000-0000-000000000002';
 
 -- The press after a came-off: bill 3 goes, D is released again, and the press puts the fee on bill 2.
+CREATE TEMP TABLE kept_bill_3 AS SELECT * FROM public.jobs_ledger_invoices WHERE id = 'dddddddd-1111-0000-0000-000000000003';
 DELETE FROM public.jobs_ledger_invoices WHERE id = 'dddddddd-1111-0000-0000-000000000003';
 SELECT pg_temp.check('bill 3 going takes the $30 off again: 1,030', (SELECT revenue FROM public.jobs_ledger WHERE id = 'dddddddd-0000-0000-0000-000000000001'), 1030::numeric);
 SELECT pg_temp.check('the press runs again after the fee came off',
   pg_temp.press('cd000000-0000-0000-0000-00000000000d', 'dddddddd-1111-0000-0000-000000000002'), 'true');
-SELECT pg_temp.check('D''s fee is on bill 2, and the total is 1,060 = 1,000 + 60 again',
-  (SELECT fee_invoice_id FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = 'cd000000-0000-0000-0000-00000000000d') = 'dddddddd-1111-0000-0000-000000000002'
+SELECT pg_temp.check('D''s fee is on bill 2, its stamp cleared, and the total is 1,060 = 1,000 + 60 again',
+  (SELECT fee_invoice_id = 'dddddddd-1111-0000-0000-000000000002' AND fee_came_off_at IS NULL
+   FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = 'cd000000-0000-0000-0000-00000000000d')
   AND (SELECT revenue FROM public.jobs_ledger WHERE id = 'dddddddd-0000-0000-0000-000000000001') = 1060
   AND 1000 + public.job_rider_fees('dddddddd-0000-0000-0000-000000000001') = 1060, true);
+
+-- Review on #5283: bill 3 restored now, with D's fee on bill 2, is refused in words; the restore rolls back whole.
+CREATE OR REPLACE FUNCTION pg_temp.try(p_sql text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  EXECUTE p_sql;
+  RETURN 'ok';
+EXCEPTION WHEN others THEN
+  RETURN SQLERRM;
+END $$;
+SELECT pg_temp.check('restoring bill 3 after D''s fee went on bill 2 is refused, in words',
+  pg_temp.try('INSERT INTO public.jobs_ledger_invoices SELECT * FROM kept_bill_3'),
+  'Bill 3 carries the returned check fee that is on bill 2 now. Take it off bill 2 first.');
+SELECT pg_temp.check('so bill 3 is not back, D''s fee stays on bill 2, and the total is still what a rewrite writes',
+  NOT EXISTS (SELECT 1 FROM public.jobs_ledger_invoices WHERE id = 'dddddddd-1111-0000-0000-000000000003')
+  AND (SELECT fee_invoice_id FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = 'cd000000-0000-0000-0000-00000000000d') = 'dddddddd-1111-0000-0000-000000000002'
+  AND (SELECT revenue FROM public.jobs_ledger WHERE id = 'dddddddd-0000-0000-0000-000000000001') = 1060
+  AND 1000 + public.job_rider_fees('dddddddd-0000-0000-0000-000000000001') = 1060, true);
+
+-- A bill written without the press goes, carrying two entries whose fees are elsewhere; each case keeps its fee.
+-- Case H's fee is on bill 2 by its fee_invoice_id (and no other bill names it); case F's fee_invoice_id is null, but
+-- its entry rides on bill 2. Each is held by its own clause of the delete trigger.
+INSERT INTO public.mercury_transaction_ar_returned (mercury_transaction_id, source, fee_amount, fee_invoice_id, fee_added_at, fee_added_by) VALUES
+  ('c8000000-0000-0000-0000-000000000008', 'bank', 30, 'dddddddd-1111-0000-0000-000000000002', now(), '11111111-1111-1111-1111-111111111111');
+INSERT INTO public.jobs_ledger_invoices (id, job_id, amount, status, sequence_order, is_primary_rtb_bundle) VALUES
+  ('dddddddd-1111-0000-0000-000000000004', 'dddddddd-0000-0000-0000-000000000001', 0.5, 'ready_to_bill', 3, false);
+UPDATE public.jobs_ledger_invoices
+SET fee_lines = '[{"case_id": "c8000000-0000-0000-0000-000000000008", "amount": 30}, {"case_id": "cf000000-0000-0000-0000-00000000000f", "amount": 30}]'
+WHERE id = 'dddddddd-1111-0000-0000-000000000004';
+DELETE FROM public.jobs_ledger_invoices WHERE id = 'dddddddd-1111-0000-0000-000000000004';
+SELECT pg_temp.check('a case whose fee_invoice_id is another live bill keeps its fee (H, on bill 2)',
+  (SELECT fee_invoice_id = 'dddddddd-1111-0000-0000-000000000002' AND fee_added_at IS NOT NULL AND fee_came_off_at IS NULL
+   FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = 'c8000000-0000-0000-0000-000000000008'), true);
+SELECT pg_temp.check('a case whose entry rides on another live bill keeps its fee (F, on bill 2)',
+  (SELECT fee_added_at IS NOT NULL AND fee_came_off_at IS NULL
+   FROM public.mercury_transaction_ar_returned WHERE mercury_transaction_id = 'cf000000-0000-0000-0000-00000000000f'), true);
+SELECT pg_temp.check('and the total and the history are left alone',
+  (SELECT revenue FROM public.jobs_ledger WHERE id = 'dddddddd-0000-0000-0000-000000000001') = 1060
+  AND (SELECT count(*) FROM public.job_activity_events
+       WHERE job_id = 'dddddddd-0000-0000-0000-000000000001' AND event_type = 'returned_check_fee_off'
+         AND detail->>'invoice_id' = 'dddddddd-1111-0000-0000-000000000004') = 0, true);
 
 -- Deleting the whole job, then restoring it: its bills go by cascade after its row, so the cases get their fee
 -- back without a stamp, a revenue change or a history line; the restore attaches them again and raises nothing,

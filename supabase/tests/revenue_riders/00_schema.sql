@@ -37,6 +37,8 @@ $$;
 
 CREATE TABLE public.jobs_ledger (
   id uuid PRIMARY KEY,
+  hcp_number text,
+  click_number text,
   status text NOT NULL DEFAULT 'working',
   master_user_id uuid,
   revenue numeric,
