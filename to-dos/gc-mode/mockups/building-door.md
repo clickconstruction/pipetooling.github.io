@@ -273,11 +273,13 @@ client is on Pages.
 ## Docs each PR touches
 
 - D1: `docs/migrations/<stamp>_gc_building_door.md` (what it opens, what stays, the bed's matrix, the verify steps, the
-  rollback that re-creates the `_dev` policies); `docs/ACCESS_CONTROL.md`'s GC door line, amended where it says
-  Building's tables stay dev only, and its back-charges bullet becoming *written and read by the money team since
+  rollback that re-creates the `_dev` policies); `docs/ACCESS_CONTROL.md`'s **Building:** bullet (the GC
+  first-door paragraph is one bullet a lane since #5302; D1 adds to its own bullet only), amended where it says
+  Building's tables stay dev only, and the **Schedule:** bullet's one line that the superintendent joins the team, and
+  the back-charges bullet becoming *written and read by the money team since
   Building's door (`gc_back_charges_money`); the trade answers only through `gc_trade_answer_back_charge`*; `PROJECT_DOCUMENTATION.md`'s Building windows; `GLOSSARY.md` (*the job's team*);
   the guides; the release note and fragment.
-- D2: `docs/ACCESS_CONTROL.md` (the superintendent's `/gc`), `docs/twins/APP_DIRECTORY.md` if the field view counts as a
+- D2: `docs/ACCESS_CONTROL.md`'s **Building:** bullet (the superintendent's `/gc`), `docs/twins/APP_DIRECTORY.md` if the field view counts as a
   page of its own (it does not: it is `/gc`), the guide *see your GC jobs as a superintendent*, the release note and
   fragment.
 

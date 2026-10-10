@@ -255,8 +255,10 @@ its print files a copy (real build, schedule PR 10, migration <stamp>)`
 - The seven guides' `roles` and their one sentence.
 - `supabase/tests/gc_schedule/20_scenario.sql` (step 14), `30_team_door.sql` (new),
   `scripts/pgtest-gc-schedule.sh` (runs both, re-applies the door).
-- `docs/ACCESS_CONTROL.md` line 147: *The schedule's 23 tables … stay dev only until the schedule's PR 10*
-  becomes the team, the helper, the project manager, and the superintendent at Building's door.
+- `docs/ACCESS_CONTROL.md`'s **Schedule:** bullet (the GC first-door paragraph is one bullet a lane since #5302; PR 10
+  adds to its own bullet only): *The schedule's 23 tables … stay dev only until the schedule's PR 10* becomes the team,
+  the helper, the project manager, and the superintendent at Building's door. #5231 rebases onto #5302 when it is next
+  touched.
 - `PROJECT_DOCUMENTATION.md`'s schedule paragraph: *a dev's* becomes the office team's.
 - `src/content/releaseNotes/v2.NNNN.ts` (roles: the office team) and
   `docs/recent-features/v2.NNNN.md`.
