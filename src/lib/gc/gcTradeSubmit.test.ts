@@ -442,8 +442,20 @@ describe('the verb’s refusals', () => {
    * status in TRADE_SQL_ERRORS and its words in TRADE_ERROR_WORDS. A lane whose migration adds a trade
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
-  // The schedule's PR 13a: gc_trade_answer_dates raises two keys the portal maps in P5d.
-  const WAITING: Record<string, string> = { datesTakenBack: 'P5d', dayNeeded: 'P5d' }
+  // The schedule's PR 13a: gc_trade_answer_dates raises two keys the portal maps in P5d. The Portal's P5b-m:
+  // gc_trade_coi, gc_trade_vetting_form and gc_trade_paper_open raise eight the portal maps in P5b-1.
+  const WAITING: Record<string, string> = {
+    datesTakenBack: 'P5d',
+    dayNeeded: 'P5d',
+    coiDayNeeded: 'P5b',
+    coiPast: 'P5b',
+    coiTooFar: 'P5b',
+    certNeeded: 'P5b',
+    vetDecided: 'P5b',
+    formIncomplete: 'P5b',
+    msaNotSent: 'P5b',
+    noW9Form: 'P5b',
+  }
 
   /**
    * Every key a trade verb raises, its own and those of the `*_ask` helpers it returns through (P5c-2: U3b-i's
