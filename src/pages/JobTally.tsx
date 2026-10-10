@@ -965,7 +965,7 @@ export default function JobTally() {
         </div>
       ) : null}
 
-      {activeTab === 'transactions' && showTallyTeam && <TallyTeamQueue />}
+      {activeTab === 'transactions' && showTallyTeam && <TallyTeamQueue canMarkPayroll={canMarkPayroll} />}
 
       {activeTab === 'transactions' && !showTallyTeam && (
         <div style={{ padding: '0.5rem 0 1rem' }}>
