@@ -245,8 +245,9 @@ move changes nothing else: its tells and answers are rows of their own.
 - `links_changed` (boolean).
 - `finish_from` and `finish_to`: the job's last finish before and after.
 - `undone_on` and `undone_by` (FK `users.id`) (G-40).
-- `change_order_id`: the signed change order whose days it put on the chart (G-76). It gains its FK
-  when Owner Billing's change orders are a table.
+- `change_order_id`: the signed change order whose days it put on the chart (G-76). Its FK came with
+  Owner Billing's O1, when the change orders became a table (`gc_schedule_moves_change_order_fkey`,
+  `ON DELETE SET NULL`, `20261008010000_gc_owner_billing_tables.sql`).
 - `late_notice_id` (FK `gc_schedule_late_notices.id`): the trade's notice it took (G-117).
 - `pull_finished` (uuid[]): the lines that finished early (G-37).
 - `recovery_how` (`side` or `crew`), `recovery_after_activity_id`, `recovery_gap_was`,
@@ -694,7 +695,8 @@ company record and its portal (Board and Portal). PR 16 joins each other lane as
     - **Our crew (G-51)**: its percent from its Pipeline job, and its head count from its
       clock-ins.
     - **Owner Billing's change orders**: a change order's days (G-76), the late-finish line (G-98)
-      and *Ask for the days* (G-141). `gc_schedule_moves.change_order_id` gets its foreign key.
+      and *Ask for the days* (G-141), read through `gc_change_orders_office` (`mockups/schedule-pr16.md`,
+      16b). `gc_schedule_moves.change_order_id` has had its foreign key since O1.
     - **New project's sets**: a set that pushes the schedule or brings new work (`issuePlanSet`'s
       `schedulePushes`) writes them inside the planned `gc_issue_plan_set`'s transaction (New
       project's PR 6), as `gc_schedule_move` does. New project's plan leaves this item until these
