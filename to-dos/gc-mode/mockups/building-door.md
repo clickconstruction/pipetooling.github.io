@@ -2,7 +2,7 @@
 name: "Building's door: Building opens to the job's team, its money to the money team, and /gc to the field"
 rows: BUILDING_REAL_BUILD.md, decision 4 (who may read and write), The PRs in order, 9 (the door), the owner's calls 1 and 5; mockups/schedule-pr10.md (the shape, and "What Building's door adds"); mockups/schedule-pr9d.md, call 1 (the schedule team's read half); mockups/building-u8.md (the crew's counts and percents); mockups/door-owner-billing.md and O9 (20261010050000, the money team's reads)
 branch: the plan on claude/gc-building-door-plan (from origin/spike/gc-mode at ecf57865b); the PRs from origin/main, after the schedule's PR 10 and the live walk
-status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. The lead approved its shape the same day (D1 then D2; calls 3, 4, 7 and 8 at their picks). Amendment 1 the same day: the Board's (gc 2) co-sign on call 3 with its gates, and call 6 reshaped to a function; the Portal's (gc 3) co-sign on call 5 with its notes. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Amendment 2 the same day: gc 4's co-sign with its scan (four presses read gc_sows; three keep promises; the presses and the schedule's writes read the office's job tables), the job's reads as definer functions (call 9), one promise keeper for Building's three kinds, gc_link_crew_job's one-crew-a-job refusal (call 11, gc 4's amendment 3), and call 4's client half. The lead approved calls 9 and 11 the same day. Amendment 3 the same day: call 9's columns, from gc 4's scan of Building's presses and gc 10's of the schedule's writes; PR 10's Status and #5231's body record the project manager gap. The Board co-signed call 9's trades (gc 2) with three conditions, in amendment 3, and New project's three column lists for it while gc 6 is down (gc 2, the lead's ask). Owed: the owner's word on call 2.
+status: plan 2026-10-10 by gc 10 at the lead's ask, written with gc 4 (Building's holder), who co-signs. The lead approved its shape the same day (D1 then D2; calls 3, 4, 7 and 8 at their picks). Amendment 1 the same day: the Board's (gc 2) co-sign on call 3 with its gates, and call 6 reshaped to a function; the Portal's (gc 3) co-sign on call 5 with its notes. Nothing cut or claimed. It merges after the schedule's first live walk on prod, like PR 10. Amendment 2 the same day: gc 4's co-sign with its scan (four presses read gc_sows; three keep promises; the presses and the schedule's writes read the office's job tables), the job's reads as definer functions (call 9), one promise keeper for Building's three kinds, gc_link_crew_job's one-crew-a-job refusal (call 11, gc 4's amendment 3), and call 4's client half. The lead approved calls 9 and 11 the same day. Amendment 3 the same day: call 9's columns, from gc 4's scan of Building's presses and gc 10's of the schedule's writes; PR 10's Status and #5231's body record the project manager gap. The Board co-signed call 9's trades (gc 2) with three conditions, in amendment 3, and New project's three column lists for it while gc 6 is down (gc 2, the lead's ask). Amendment 4 the same day: call 12, the trades' percents and the change orders for the job's team, from the schedule's PR 16 seams (gc 4's `mockups/schedule-pr16.md`, co-signed by gc 10). Owed: the lead's read of call 12, and the owner's word on call 2.
 ---
 
 # Building's door
@@ -174,6 +174,18 @@ decide the rest. Swapping the policies is their gate too, with these exceptions:
 - **Our crew** (U8): its percent reads `list_job_stage_progress`, which already admits superintendents and estimators.
   The page reads it for `canUseGcBuilding(role) || canSeeGcMoney(role)`, and `canUseGcBuilding` becomes the team.
   Its counts follow `gc_crew_on_site`'s new gate.
+- **The trades' percents** (call 12): after the door the draw tables are the money team's, so the office and the field
+  read 0 on a hired trade's bar (`lineOf` reads `pctReported` and an open send-back's `weSee`). D1 adds
+  `gc_team_line_percents(p_project_id)`, in call 9's family (`STABLE SECURITY DEFINER`, `SET search_path = public`,
+  empty for a caller off the job's team, `REVOKE ALL FROM PUBLIC, anon`, granted to `authenticated`): for each line of
+  the job's signed statements of work, its kernel id (`gc_sow_line_of`), its newest reported percent and our open
+  send-back's `we_see`, and nothing else, no amount and no draw. The schedule's holds' io (PR 16's 16c) lays it for the
+  team, and `withDraws` stays the money team's.
+- **The change orders** (call 12): the schedule's PR 16 adds `gc_change_orders_office`, a change order's non-money half,
+  gated on `gc_office_team()`, since `gc_on_schedule_team` is not on main when it lands. D1 replaces the view's `WHERE`
+  with `gc_on_schedule_team(c.project_id)`, so a superintendent's chart reads the signed change orders' days (G-76) and
+  the late-finish line (G-98) as the office's does. The view's columns, its security barrier and its read-only grants
+  stay as 16b-i wrote them.
 
 ## D1: the client
 
@@ -183,7 +195,8 @@ decide the rest. Swapping the policies is their gate too, with these exceptions:
   `schedule`.
 - **`src/pages/GcProjects.tsx`**: the six Building gates stay `canUseGcBuilding`. Draws and Closeout stay
   `canUseGcBuilding && canSeeGcMoney`, so the money team. The schedule's `canPull` becomes `canMove` (9d's call 1:
-  every member reads the holds now).
+  every member reads the holds now). The schedule's `reads.draws` (PR 16) becomes `canSeeGcMoney`, since the team
+  reads its percents through `gc_team_line_percents` and only the money team reads draws.
 - **`src/lib/gc/doors.ts`**: the ten records read door `schedule`, opens unset. The four money tables and `gc_back_charges`
   read door `money`, with no `reads` (`gc_back_charges` with lane Portal, opened by Building's door). `BUILDING_OPENS` and `BUILDING_MONEY_OPENS` go. `doors.test.ts`'s O9 test keeps the Board's and the
   Portal's three, and gains one in door 2's shape: the ten read `schedule`, the four read `money`.
@@ -256,6 +269,9 @@ Our number.
   none of Q's; an awarded trade returns its company and a trade not awarded returns null; a second company's ask on the
   same trade never shows; the result has exactly the six columns; a subcontractor gets an empty set (an estimator is on
   the team, so it is not the outsider); anon cannot call it.
+- **Call 12**: a superintendent on P reads P's line percents (a line reported at 60% reads 60, a line sent back reads
+  our `we_see`) with no amount, and none of Q's; a subcontractor gets an empty set. The superintendent reads P's signed
+  change orders through `gc_change_orders_office`, never `cost`, `price` or `pct_done`, and none of Q's.
 - **The back-charges' bed** (`gc_back_charges/20_scenario.sql`): its four `devOnly` cases flip to a controller and a
   master who charge, keep and drop, an estimator or assistant refused in the money team's words, and training and a twin
   refused.
@@ -324,6 +340,10 @@ client is on Pages.
     `gc_trade_packages_one_crew_per_job ON (job_ledger_id) WHERE ours AND job_ledger_id IS NOT NULL` holds it against a
     race, and the migration first refuses in words if two trades already share a job. In the door, not U8a (#5285 stays
     as it is). **Taken, as gc 4 wrote it.**
+12. **The trades' percents and the change orders for the job's team** (the schedule's PR 16 seams, gc 4):
+    `gc_team_line_percents` and the view's `WHERE` widened to `gc_on_schedule_team`. **My pick: both in D1**, so the
+    chart reads the same for every member on the day the door opens. gc 5 co-signs the view's change, since the view is
+    Owner Billing's to keep.
 
 ## Is this the best we can do?
 
