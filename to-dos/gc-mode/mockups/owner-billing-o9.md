@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing O9: the money team reads the trades' money"
 parent: to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md (PR 12, O9, after O8c)
-status: planned 2026-10-09 by Helper 5 at the lead's ask (option (a), the read half of Building's door, now) · co-signs owed before the cut: gc 10 for Building's four tables, and the Board's and the Portal's lanes for gc_sows / gc_sow_lines and gc_back_charges · nothing built · the SQL block below is the migration byte for byte but for the version and the stamp, both claimed at the cut
+status: planned 2026-10-09 by Helper 5 at the lead's ask (option (a), the read half of Building's door, now) · co-signed 2026-10-09 by gc 10 (Building's four tables), gc 2 (the Board: gc_sows, gc_sow_lines and the card's gate) and gc 3 (the Portal: gc_back_charges); gc 4 confirmed U6d's Closeout keys off the role, never off the draws having loaded · building · the SQL block below is the migration byte for byte but for the version and the stamp, both claimed at the cut
 ---
 
 # O9: the money team reads the trades' money
@@ -99,7 +99,11 @@ END $$;
 
 `CREATE POLICY` takes a brief lock on each of the seven tables. They are barely used, and `lock_timeout` fails the
 push fast if one is busy. The read-only and twin fences already on these tables limit writes only, so a training
-account on the money team reads and writes nothing.
+account on the money team reads them and writes nothing.
+
+**The signer's fields come with the row, on purpose.** `gc_sows` carries the ESIGN record of who signed
+(`signer_ip`, `signer_user_agent`, `signer_signature_storage_path`). The leaders and the controller now read those with
+the statement of work, as the office already reads them on `person_contract_documents` (the Board's lane, gc 2).
 
 ## The bed: `supabase/tests/gc_owner_billing/92_money_reads.sql`
 
@@ -110,7 +114,9 @@ reports, and a back-charge taken off one draw. Then, through RLS:
 - **The shape**: each table has its `<table>_money_read` policy, `SELECT` for `authenticated`, beside its dev policy,
   which is unchanged.
 - **The controller and a leader read what a dev reads**: on each of the seven tables, the count and an `md5` of the
-  rows (`row_to_json` in id order) are equal for the controller, a master and a dev.
+  rows (`row_to_json` in key order) are equal for the controller, a master and a dev. The key is `id`, but
+  `(draw_id, sow_line_id)` on `gc_draw_lines` and `change_order_id` on `gc_change_order_trade_sends`, which have no
+  `id`, so the compare cannot flake (gc 10).
 - **The controller writes none**: on each table an `INSERT` is refused, and an `UPDATE` and a `DELETE` reach 0 rows.
   `gc_approve_draw` and `gc_send_trade_change` refuse the controller with nothing written.
 - **A dev still writes**: `gc_approve_draw` on the fixture's draw goes through.
@@ -134,8 +140,11 @@ reports, and a back-charge taken off one draw. Then, through RLS:
 - `src/lib/gc/doors.ts` and `doors.test.ts`: the `reads` field and its check.
 - Tests:
   - `GcProjects.render.test.tsx`: a controller's page loads the draws (`loadGcDraws` is called), and its Bill the
-    customer bills the trade's reported work;
-  - `GcTradeSow` render: a controller sees the card without the press;
+    customer bills the trade's reported work. The test "a master sees the money but not Draws while Building is
+    built, and no draw is read" flips: it is retitled, keeps its no-**Draws**-button check, and asserts `loadGcDraws`
+    is called (gc 10);
+  - `GcTradeSow` render: a controller sees the card without the press. The Portal's P2c-ii adds a test there that
+    expects the press; whichever of O9 and P2c-ii lands second passes the new write prop (gc 3);
   - `doors.test.ts`: the seven read `money` and keep door `dev`.
 
 ## Docs
@@ -143,7 +152,13 @@ reports, and a back-charge taken off one draw. Then, through RLS:
 - `docs/migrations/<stamp>_gc_money_reads_trades.md`, with its verify steps (read only, as the controller in
   `BEGIN … ROLLBACK`).
 - `ACCESS_CONTROL.md`: the Owner Billing door paragraph, and Building's, the Board's and the Portal's lines for the
-  seven tables (read by the money team since O9).
+  seven tables (read by the money team since O9). U6b's sentence on the GC door line ("until then the page reads draws
+  for a dev alone…") says the money team reads them since O9 and writing waits on the door (gc 10). The Portal's
+  back-charges bullet reads: written by a dev until the trade wave, read by the money team since O9 (gc 3).
+- The sentences O9 makes false, amended where they stand (gc 10, gc 2): `loadDraws`' comment in `GcProjects.tsx`,
+  the `gc_sows` read's comment in `gcIo.ts` ("dev only while the Board is built, so anyone else reads none"), and
+  `PROJECT_DOCUMENTATION.md`'s Draws paragraph ("when a dev opens it" becomes "a dev or the money team"). The
+  `v2.5121` fragment stays as written, since it is history.
 - `BILLING_FLOWS.md`: one sentence, that the money team's bill reads the trades' work.
 - `BUILDING_REAL_BUILD.md`'s door and `PORTAL_REAL_BUILD.md`'s: the read half is open, and writing waits on each door.
 - The release note and the fragment.
