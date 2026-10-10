@@ -72,3 +72,7 @@ Your reason and your words stay in the window. The chart now shows their dates. 
 The newest move sits at the top of **Changes to the schedule**. Press **Undo** to put every date it changed back. The move stays on the record, marked undone. Press **Redo** to make the move again.
 
 Undo works only while nothing the move touched has moved since.
+
+## Try moves first
+
+To try moves without changing the schedule, make a copy. See [try moves on a copy of the schedule](/help/try-moves-on-a-copy-of-the-schedule).
