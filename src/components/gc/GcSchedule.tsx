@@ -25,6 +25,8 @@ import { crewCountsNow } from '../../lib/gc/schedule/crewCounts'
 import { customerDoneWords, customerSchedulePicture, customerStanding } from '../../lib/gc/schedule/customerSchedule'
 import { lostDaysByLine } from '../../lib/gc/schedule/daysLost'
 import { lateFinish } from '../../lib/gc/lateFinish'
+import { draftTimeExtension } from '../../lib/gc/gcIo'
+import type { TimeExtensionAsk } from '../../lib/gc/timeExtension'
 import { finishOutlook } from '../../lib/gc/schedule/finishOutlook'
 import { ganttBars } from '../../lib/gc/schedule/gantt'
 import type { GanttPrintJob } from '../../lib/gc/schedule/ganttPrint'
@@ -214,6 +216,27 @@ export function GcSchedule({
     [read],
   )
   // Undo and Redo (G-40): replayed on the server from the move's own record, against the version read.
+  // Ask for the days (G-141, the schedule's PR 16b-ii): the money team's press drafts the time extension on Bill the
+  // customer, then reads again, so the asked moves leave the ask.
+  const [asking, setAsking] = useState(false)
+  const [askSaid, setAskSaid] = useState<string | null>(null)
+  const askForDays = useCallback(
+    async (ask: TimeExtensionAsk) => {
+      if (asking) return
+      setAsking(true)
+      setAskSaid(null)
+      try {
+        await draftTimeExtension(projectId, ask)
+        setAskSaid(`A change order for ${ask.days} ${ask.days === 1 ? 'day' : 'days'} is drafted on Bill the customer. Nothing went to the customer.`)
+        setReloads((n) => n + 1)
+      } catch (e) {
+        setAskSaid(formatErrorMessage(e, 'The change order was not drafted.'))
+      } finally {
+        setAsking(false)
+      }
+    },
+    [asking, projectId],
+  )
   const [replaying, setReplaying] = useState(false)
   const [replayRefused, setReplayRefused] = useState<ScheduleChange[] | null>(null)
   const [replayProblem, setReplayProblem] = useState<string | null>(null)
@@ -280,6 +303,7 @@ export function GcSchedule({
             : null
         }
         canPull={canMove && canPull}
+        ask={reads.money && canMove ? { onAsk: (ask) => void askForDays(ask), said: askSaid } : null}
       />
     )
   if (status === 'gone') return <div style={{ fontSize: '0.875rem' }}>That job is not on the board. Reload the board and try again.</div>
@@ -350,6 +374,7 @@ function ScheduleView({
   onDraw,
   moves,
   canPull,
+  ask,
 }: {
   read: ScheduleRead
   by: string
@@ -359,6 +384,8 @@ function ScheduleView({
   moves: MovePresses | null
   /** Pull earlier and Days back too (PR 9d's call 1): only with `moves`. */
   canPull: boolean
+  /** Ask for the days (PR 16b-ii): the money team's press and what it last said. Null: the line says who asks. */
+  ask: { onAsk: (ask: TimeExtensionAsk) => void; said: string | null } | null
 }) {
   const { state, project } = read
   const building = project.stage === 'building'
@@ -376,8 +403,11 @@ function ScheduleView({
   // A trade at work with its insurance run out (G-138), and too many trades in one place (G-83).
   const uninsured = useMemo(() => uninsuredNotes(state, project), [state, project])
   const crowded = useMemo(() => crowdedWeeks(state, project), [state, project])
-  // The finish with weather and crews (G-57). The late finish's money, the best offer and Ask for the days stay off (call 4).
+  // The finish with weather and crews (G-57). The late finish's whose-days line (G-98) reads the change orders through the
+  // office's view (PR 16b-ii); its money and the best offer wait for the money team's own state (16c).
   const outlook = useMemo(() => (building ? finishOutlook(state, project) : null), [state, project, building])
+  const late = useMemo(() => (building ? lateFinish(state, project) : null), [state, project, building])
+  const asked = late?.ask ?? null
   const peopleOf = useCallback((from: string, to: string) => peopleOnSite(state, project, from, to, crewCountsNow(project)), [state, project])
   // The chart's bars, for the card of the bar pressed: the chart draws the same ones.
   const bars = useMemo(() => ganttBars(m.items, m.float, holds, state.today, building, tails), [m, holds, state.today, building, tails])
@@ -453,7 +483,19 @@ function ScheduleView({
     <div style={{ display: 'grid', gap: '0.9rem' }}>
       <ScheduleWhy />
       {building ? (
-        <Measures m={m} {...(outlook ? { outlook } : {})} />
+        <>
+          <Measures
+            m={m}
+            {...(outlook ? { outlook } : {})}
+            {...(late ? { late } : {})}
+            {...(ask && asked ? { onAsk: () => ask.onAsk(asked) } : { askNote: 'The money team asks the customer for these days on Bill the customer.' })}
+          />
+          {ask?.said && (
+            <div data-ask-said role="status" style={{ fontSize: '0.85rem' }}>
+              {ask.said}
+            </div>
+          )}
+        </>
       ) : (
         <Card>
           <strong>Drawing the schedule.</strong> <span style={{ color: 'var(--text-muted)' }}>Start locks this plan as the baseline. The measures read against it from then on.</span>
