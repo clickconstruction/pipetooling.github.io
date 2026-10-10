@@ -49,4 +49,4 @@ It ran on a local Docker copy of the whole schema with every migration applied; 
 
 ## Status
 
-Cut 2026-10-09 by Helper 5 (the Owner Billing lane). The lead pushes it once the PR merges.
+Cut 2026-10-09 by Helper 5 (the Owner Billing lane). Merged 2026-10-10 at 04:10 UTC (#5262, rebased once past #5252). Pushed to prod at 04:14 UTC by the GC MODE lead with `bash scripts/db-push.sh`, plain, the only pending file (drift 846 local / 846 remote, fully applied). Verified the same minute with the spike's `to-dos/gc-mode/scripts/verify/verify-050000.mjs`, writes rolled back: 1 the seven `<table>_money_read` policies are SELECT for `authenticated` with `gc_money_team()` in `qual`, and the seven `_dev` ALL policies stand beside them; 2 the controller's counts equal a dev's on every table (all zero today, prod has no GC trade rows yet); 3 the controller's UPDATE on `gc_draws` reaches 0 rows and `gc_approve_draw` on a made-up id says *No pay application with that id.* A dry types gen is expected byte-equal (policies only); gc 7 confirms.
