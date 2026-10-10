@@ -5,6 +5,7 @@
  * `tradePortalSlice` like every real one, so the sample can never show what a trade may not see. Its own file, never
  * `customerSampleFixtures.ts`, which most functions import.
  */
+import type { PortalSchedule } from './gcKernels/index.ts'
 import { tradePortalSlice, type TradePortalRows, type TradePortalSlice } from './gcTradePortalSlice.ts'
 
 /** The sample's ids: real uuids, so a press on the sample passes the submit function's shape check (P2b-ii). */
@@ -245,4 +246,23 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
 /** The sample company's slice, as `gc-trade-portal` returns it for the sample token. */
 export function gcTradePortalSample(today: string): TradePortalSlice {
   return tradePortalSlice(gcTradePortalSampleRows(today), COMPANY)
+}
+
+/**
+ * The sample company's chart on its job being built (the schedule's PR 14b), as `gc-trade-portal` returns it beside the
+ * slice: its two lines, the framing before them and the paint after, by made-up companies. The answer's own shape,
+ * with no row behind it, so it holds nothing a trade may not see.
+ */
+export function gcTradePortalSampleSchedules(today: string): Record<string, PortalSchedule> {
+  const d = (n: number) => addDays(today, n)
+  const bar = (lineId: string, label: string, company: string, start: number, finish: number, pct: number, mine: boolean) => ({ lineId, label, company, start: d(start), finish: d(finish), pct, slipDays: 0, mine })
+  return {
+    [ID.job]: {
+      before: [bar('sample-framing', 'Framing and drywall', 'Hill Country Framing', -20, -6, 100, false)],
+      mine: [bar(ID.jobLine1, 'Rough-in', 'Sample Electric Co.', -5, 4, 60, true), bar(ID.jobLine2, 'Trim and fixtures', 'Sample Electric Co.', 12, 18, 0, true)],
+      after: [bar('sample-paint', 'Paint and finishes', 'Brushline Painting', 19, 26, 0, false)],
+      first: d(-20),
+      last: d(26),
+    },
+  }
 }
