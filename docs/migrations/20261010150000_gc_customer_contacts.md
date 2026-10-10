@@ -77,3 +77,7 @@ Nothing reads or writes it until B2b-v-ii. Roll that back first if it has merged
 ## Status
 
 Written 2026-10-10 with the migration. Not pushed.
+
+## Status
+
+Merged in #5355 and pushed to prod 2026-10-10 ~19:15 UTC (`supabase db push` took it alone; drift check 862/862). Verified read-only through the management API (`to-dos/gc-mode/scripts/verify/verify-150000.mjs` on `spike/gc-mode`): the team policy beside the three read-only and three digital-twin fences; `authenticated` holds `SELECT` and `INSERT` on the six line columns only; `anon` holds nothing; a sample estimator reads the empty log with no error. The types regen is the one regen owner's follow-up; B2b-v-ii cuts on it.
