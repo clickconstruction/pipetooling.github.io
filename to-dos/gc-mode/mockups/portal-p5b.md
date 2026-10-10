@@ -539,8 +539,23 @@ P5b-2m after P5b-m, so its schema is main's. `gc-papers` runs with it.
   the trade typed), and the mapper sets `Partner.coiReceivedOn`; `coiExpires` still reads only a signed certificate,
   so the start gate and every other reader are unchanged. `portalTodos` skips the certificate's to-do while one waits.
 - The portal's certificate line reads `coiChecking` while one waits.
-- The Documents tab's waiting row and **Mark it good** (`markCompanyCoiGood` in `papersIo.ts`, after which the board
-  reloads), in the Board's files with gc 2's nod.
+- The Documents tab's waiting row and **Mark it good** (`markCompanyCoiGood` in `papersIo.ts`), built by the Portal
+  lane in the Board's files with gc 2's review, on gc 2's conditions (amendment 5):
+  - **Mark it good** is a paper press: gated by `canUseGcBoardWrites(role)`, as **Record their insurance** is, and passed
+    through `CompanyPapersDoor` the same way. A reader without the presses sees the waiting row and no button. After the
+    press the board reads again (`refreshBoard`), as `onRecordInsurance` does.
+  - `companyPapers.coiReceived` comes only from `received` `coi` rows, the newest by `created_at` then `id`; `coiExpires`
+    stays signed only, and `msa` and `w9` are untouched. Pinned: a received row changes nothing but `coiReceived`, and two
+    received rows give the newest.
+  - `paperStep`'s insurance branch: with a certificate received and not yet marked, the row's history says it came in
+    from their portal on <day>, never *Not asked yet*. **Ask for it** or **Remind them** stays: it is still owed.
+  - The owed W-9 line comes with it, so one PR edits the kernel: `companyPapers` gains `w9SentOn` (the newest W-9
+    `sent_at`, as `msaSentOn` is), and a W-9 or agreement row `sent` with no `gc_paper_sends` row reads *Started in their
+    portal <day>*.
+  - It is cut on main after the Board's B2b-iv (#5354, the company window's Activity tab), which touches
+    `GcCompanyDocuments.tsx` and `GcCompanyWindow.tsx`; the rows sit in Documents, not Activity.
+  - Tests: `companyPapers` with the received row; the window's Documents row with its words, its Drive link and **Mark it
+    good**, and no button without the presses; Follow up still listing the insurance while a certificate is received.
 - **The office's insurance ask** (`paperEmail.ts`) says *Send it from your portal with the link below. Or reply
   to this email with it.* (es *Envíelo desde su portal con el enlace de abajo. O responda a este correo con él.*)
   in place of `coiReply`, **only when the email carries the company's portal link**; with none it keeps
@@ -687,3 +702,7 @@ nothing until then, so it stays as merged. P5b-1 is unchanged.
 **Amendment 4, 2026-10-10, at P5b-2m's cut**: P5b-1 is cut as v2.5201 (#5363). P5b-2m is cut as v2.5202 (#5364) with
 migration `20261010170000_gc_portal_p5b_coi_received`, both claimed on `claude/gc-portal-p5b-2m`. The stamp is filled
 in the second SQL block above, which the migration equals byte for byte.
+
+**Amendment 5, 2026-10-10**: P5b-1 merged (#5363, v2.5201) and is deployed. P5b-2's office side is written down with
+the Board lane's conditions (gc 2, agreed in the session's messages): the press's gate and reload, `companyPapers`'
+`coiReceived` and `w9SentOn`, `paperStep`'s two new history lines, the base after #5354, and the tests.
