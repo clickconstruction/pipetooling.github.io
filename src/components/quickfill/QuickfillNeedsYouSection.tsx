@@ -96,10 +96,10 @@ export function QuickfillNeedsYouSection({
   const lienUnconditionalEnabled = Boolean(authUser?.id) && tallyStaffEligible
   const { owed: lienUnconditionalOwed, queue: lienReleaseQueue, refetch: refetchLienReleasesOwed } = useLienReleasesOwedNudge(lienUnconditionalEnabled, hideZzTestJobs)
   const [lienReleaseQueueOpen, setLienReleaseQueueOpen] = useState(false)
-  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
-  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled, hideZzTestJobs, authUser?.id ?? null)
+  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled, hideZzTestJobs)
   // Owners who signed for our records on their portal (punch list #86) — the same office set.
-  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(lienUnconditionalEnabled)
+  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(lienUnconditionalEnabled, hideZzTestJobs, authUser?.id ?? null)
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
   const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
   // Bank-label approvals ARE close-ritual work (journey-map Tier-2 #27): the

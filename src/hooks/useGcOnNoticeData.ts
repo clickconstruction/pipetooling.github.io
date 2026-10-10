@@ -11,6 +11,7 @@ import { ownerCallByJobFrom } from '../lib/jobs/lienOwnerCall'
 import { formatYmdMonthDay } from '../lib/jobs/billedExpectedPay'
 import { buildLienDeskQueue, parseLienNoticePolicy, summarizeLienDeskForNeedsYou, type LienDeskItemRow, type LienNoticePolicy } from '../lib/jobs/lienDesk'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
+import { isZzTestName } from '../lib/jobs/zzTestJobSweep'
 import { buildGcOnNotice, type GcNoticeJob, type GcNoticeOwnerState, type GcNoticeSummary, type GcUnpaidMonthRow } from '../lib/jobs/gcOnNotice'
 import { lienPropertyOwnerDisplayName, resolveLienProperty, type CustomerAddressRow, type JobPropertyOwnerLike } from '../lib/jobs/lienProperty'
 import { envelopeKey } from '../lib/jobs/runEnvelopes'
@@ -80,7 +81,8 @@ function ownerStateFor(address: CustomerAddressRow | null, override: JobProperty
 
 /**
  * `hideZzTestJobs` (punch list #61, PR 3): a ZZ test job under this GC leaves the run (its months, desk items,
- * line items, bills and payments) right after the jobs are read, by the joined rows' own names.
+ * line items, bills and payments) right after the jobs are read, by the joined rows' own names; a ZZ test GC's
+ * run drops every job (review on #5250).
  */
 export function useGcOnNoticeData(
   gcId: string | null,
@@ -102,21 +104,29 @@ export function useGcOnNoticeData(
     setLoading(true)
     void (async () => {
       try {
-        const rowsRaw = await withSupabaseRetry(() => supabase.rpc('list_gc_unpaid_months' as never, { p_gc_customer_id: gcId } as never), 'GC on notice: unpaid months')
+        // ZZ test jobs (punch list #61, PR 3): a run for a ZZ test GC is a test run, so its GC's name is read with the
+        // months; then every list below is filtered into new arrays at the read (review on #5250), before the band is built.
+        const [rowsRaw, gcNameRows] = await Promise.all([
+          withSupabaseRetry(() => supabase.rpc('list_gc_unpaid_months' as never, { p_gc_customer_id: gcId } as never), 'GC on notice: unpaid months'),
+          hideZzTestJobs
+            ? withSupabaseRetry(() => supabase.from('customers').select('name').eq('id', gcId), 'GC on notice: the GC name').catch(() => [])
+            : Promise.resolve([] as { name: string | null }[]),
+        ])
         if (cancelled) return
-        const rows = ((rowsRaw ?? []) as unknown as GcUnpaidMonthRow[]).map((r) => ({
+        const zzGc = hideZzTestJobs && isZzTestName(((gcNameRows ?? []) as { name: string | null }[])[0]?.name)
+        const rowsRead = ((rowsRaw ?? []) as unknown as GcUnpaidMonthRow[]).map((r) => ({
           ...r,
           approved_hours: Number(r.approved_hours) || 0,
           open_balance: Number(r.open_balance) || 0,
         }))
-        const jobIds = [...new Set(rows.map((r) => r.job_id))]
-        const jobs: LienDeskJob[] = []
-        const items: LienDeskItemRow[] = []
-        const workByJob: Record<string, GcNoticeBandWork> = {}
-        const fixtureRows: FixtureRow[] = []
-        const invoiceRows: InvoiceRow[] = []
-        const paymentRows: PaymentRow[] = []
-        for (const chunk of chunkIds(jobIds)) {
+        const jobIdsRead = [...new Set(rowsRead.map((r) => r.job_id))]
+        const jobsRead: (LienDeskJob & { status?: string | null; pct_complete?: number | null })[] = []
+        const itemsRead: LienDeskItemRow[] = []
+        const fixtureRowsRead: FixtureRow[] = []
+        const invoiceRowsRead: InvoiceRow[] = []
+        const paymentRowsRead: PaymentRow[] = []
+        // A ZZ test GC's jobs all leave the run, so their lists are not read.
+        for (const chunk of chunkIds(zzGc ? [] : jobIdsRead)) {
           if (chunk.length === 0) continue
           const [part, itemPart, fixturePart, invoicePart, paymentPart] = await Promise.all([
             withSupabaseRetry(
@@ -136,31 +146,25 @@ export function useGcOnNoticeData(
             withSupabaseRetry(() => supabase.from('jobs_ledger_invoices').select('*').in('job_id', chunk).order('sequence_order'), 'GC on notice: bills').catch(() => []),
             withSupabaseRetry(() => supabase.from('jobs_ledger_payments').select('*').in('job_id', chunk).order('sequence_order'), 'GC on notice: payments').catch(() => []),
           ])
-          const jobPart = (part ?? []) as (LienDeskJob & { status?: string | null; pct_complete?: number | null })[]
-          jobs.push(...jobPart)
-          items.push(...((itemPart ?? []) as LienDeskItemRow[]))
-          fixtureRows.push(...((fixturePart ?? []) as FixtureRow[]))
-          invoiceRows.push(...((invoicePart ?? []) as InvoiceRow[]))
-          paymentRows.push(...((paymentPart ?? []) as PaymentRow[]))
-          for (const j of jobPart) {
-            workByJob[j.id] = { status: j.status ?? null, pctComplete: j.pct_complete != null && Number.isFinite(Number(j.pct_complete)) ? Number(j.pct_complete) : null, fixtures: [], invoices: [], payments: [] }
-          }
+          jobsRead.push(...((part ?? []) as (LienDeskJob & { status?: string | null; pct_complete?: number | null })[]))
+          itemsRead.push(...((itemPart ?? []) as LienDeskItemRow[]))
+          fixtureRowsRead.push(...((fixturePart ?? []) as FixtureRow[]))
+          invoiceRowsRead.push(...((invoicePart ?? []) as InvoiceRow[]))
+          paymentRowsRead.push(...((paymentPart ?? []) as PaymentRow[]))
         }
-        // ZZ test jobs (punch list #61, PR 3): every list built above loses them, in place.
-        const zzJobIds = hideZzTestJobs ? zzTestJobIds(jobs) : null
-        if (zzJobIds && zzJobIds.size > 0) {
-          const keepIn = <T,>(list: T[], jobIdOf: (row: T) => string) => {
-            const kept = list.filter((row) => !zzJobIds.has(jobIdOf(row)))
-            list.splice(0, list.length, ...kept)
-          }
-          keepIn(rows, (r) => r.job_id)
-          keepIn(jobIds, (id) => id)
-          keepIn(jobs, (j) => j.id)
-          keepIn(items, (i) => i.job_id)
-          keepIn(fixtureRows, (f) => f.job_id)
-          keepIn(invoiceRows, (i) => i.job_id)
-          keepIn(paymentRows, (p) => p.job_id)
-          for (const id of zzJobIds) delete workByJob[id]
+        // A ZZ test GC's run drops every job (as a ZZ customer's page does); otherwise a job by its own or its customer's name.
+        const zzJobIds = zzGc ? new Set(jobIdsRead) : hideZzTestJobs ? zzTestJobIds(jobsRead) : null
+        const kept = (jobId: string) => !zzJobIds?.has(jobId)
+        const rows = zzJobIds ? rowsRead.filter((r) => kept(r.job_id)) : rowsRead
+        const jobIds = zzJobIds ? jobIdsRead.filter(kept) : jobIdsRead
+        const jobs = zzJobIds ? jobsRead.filter((j) => kept(j.id)) : jobsRead
+        const items = zzJobIds ? itemsRead.filter((i) => kept(i.job_id)) : itemsRead
+        const fixtureRows = zzJobIds ? fixtureRowsRead.filter((f) => kept(f.job_id)) : fixtureRowsRead
+        const invoiceRows = zzJobIds ? invoiceRowsRead.filter((i) => kept(i.job_id)) : invoiceRowsRead
+        const paymentRows = zzJobIds ? paymentRowsRead.filter((p) => kept(p.job_id)) : paymentRowsRead
+        const workByJob: Record<string, GcNoticeBandWork> = {}
+        for (const j of jobs) {
+          workByJob[j.id] = { status: j.status ?? null, pctComplete: j.pct_complete != null && Number.isFinite(Number(j.pct_complete)) ? Number(j.pct_complete) : null, fixtures: [], invoices: [], payments: [] }
         }
         // A billed job's money is what its sent bills owe (v2.4970), as the desk counts it; a job not billed yet keeps what it will bill.
         const moneyRows = gcNoticeRowsWithBilledOpen(rows, new Map(jobs.map((j) => [j.id, { id: j.id, status: (j as { status?: string | null }).status ?? null, revenue: j.revenue, payments_made: j.payments_made }])), invoiceRows, paymentRows)

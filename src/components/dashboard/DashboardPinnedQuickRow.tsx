@@ -451,8 +451,8 @@ export function DashboardPinnedQuickRow({
   const { lanes: lienSignatureLanes, refetch: refetchLienSignatureLanes } = useLienSignatureLanes(lienWaiversToSignEnabled)
   const lienWaiversToSign = lienWaiversToSignEnabled ? { count: lienSignatureLanes.toSign.length, total: lienSignatureLanes.toSign.reduce((sum, r) => sum + Number(r.amount ?? 0), 0) } : null
   const [lienWaiversToSignOpen, setLienWaiversToSignOpen] = useState(false)
-  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled)
-  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled)
+  const { overdue: demandDeadlineOverdue } = useDemandDeadlinesNudge(lienUnconditionalEnabled, hideZzTestJobs, authUserId)
+  const { watch: lienWatch } = useLienWatchNudge(lienUnconditionalEnabled, hideZzTestJobs)
   // The Lien desk (v2.3405): notices due per unpaid work month — the office's drafting pile, the leader's approvals.
   const { data: lienDeskData } = useLienDeskData(lienUnconditionalEnabled, todayYmdInAppTz(), { light: true, hideZzTestJobs })
   // Contract Desk (PR 4): jobs with no agreement on file + sent contracts gone quiet — office set.
@@ -520,7 +520,7 @@ export function DashboardPinnedQuickRow({
   const { activity: legalFirmActivity } = useLegalFirmActivityNudge(legalFirmActivityEnabled)
   // Owners who signed for our records on their portal (punch list #86) — the office set that works the Lien desk.
   const ownerRecordsSignedEnabled = !hideBanners && Boolean(authUserId) && officeEligible
-  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled)
+  const { signed: ownerRecordsSigned } = useOwnerRecordsSignedNudge(ownerRecordsSignedEnabled, hideZzTestJobs, authUserId)
   // Test reports drafted and not yet sent (v2.3301, dial A) — the office set; the card opens the first one in the modal.
   const testReportsEnabled = !hideBanners && Boolean(authUserId) && officeEligible
   const testReportsNudge = useTestReportsReadyNudge(testReportsEnabled, hideZzTestJobs, authUserId)

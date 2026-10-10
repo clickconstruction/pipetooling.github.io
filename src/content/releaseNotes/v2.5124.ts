@@ -8,7 +8,7 @@ const note: ReleaseNote = {
   roles: ['dev', 'master_technician', 'assistant', 'controller'],
   highlights: [
     'The Lien desk, its timeline book and the GC run no longer list ZZ test jobs. Nothing real changed.',
-    'The Needs you card for lien releases owed leaves them out too.',
+    'The lien lines on Needs you leave them out too: releases owed, deadlines, demand letters and owner records.',
     'A dev still sees them while Hide groups shows test jobs.',
   ],
 }

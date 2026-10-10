@@ -2,9 +2,10 @@
 /**
  * GC on notice and ZZ test jobs (punch list #61, PR 3): a ZZ job under the GC leaves the run (its months, desk
  * items, line items, bills and payments) right after the jobs are read, by the joined rows' own names. Without
- * the option the run reads as before. Made-up jobs.
+ * the option the run reads as before. A ZZ test GC's run drops every job, real-looking names too, without reading
+ * their lists (review on #5250). Made-up jobs.
  */
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 
 const month = (jobId: string) => ({
@@ -21,12 +22,16 @@ const TABLES: Record<string, unknown[]> = {
   ],
   customers: [{ id: 'gc-1', name: 'Knight Builders', address: '', contact_info: null, lien_notice_policy: null, lien_notice_policy_note: null, payment_terms: null, payment_terms_note: null }],
 }
+let gcName = 'Knight Builders'
+const tablesRead: string[] = []
 vi.mock('../lib/supabase', () => ({
   supabase: {
     from: (table: string) => {
+      tablesRead.push(table)
       const chain: Record<string, unknown> = {}
       for (const m of ['select', 'is', 'order', 'in', 'eq']) chain[m] = () => chain
-      chain.then = (resolve: (v: unknown) => void) => resolve({ data: TABLES[table] ?? [], error: null })
+      const data = table === 'customers' ? (TABLES.customers as object[]).map((c) => ({ ...c, name: gcName })) : TABLES[table] ?? []
+      chain.then = (resolve: (v: unknown) => void) => resolve({ data, error: null })
       return chain
     },
     rpc: (name: string) => Promise.resolve({ data: name === 'list_gc_unpaid_months' ? [month('A'), month('Z')] : [], error: null }),
@@ -41,6 +46,11 @@ vi.mock('../utils/errorHandling', () => ({
 }))
 
 const { useGcOnNoticeData } = await import('./useGcOnNoticeData')
+
+beforeEach(() => {
+  gcName = 'Knight Builders'
+  tablesRead.length = 0
+})
 
 const read = async (hideZzTestJobs: boolean) => {
   const { result } = renderHook(() => useGcOnNoticeData('gc-1', '2026-10-09', hideZzTestJobs))
@@ -57,6 +67,21 @@ describe('useGcOnNoticeData · ZZ test jobs', () => {
   })
 
   it('without the option, the run reads every job', async () => {
+    const data = await read(false)
+    expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
+  })
+
+  it('a ZZ test GC’s run drops every job, real-looking names too, and reads none of their lists', async () => {
+    gcName = 'ZZ Test GC'
+    const data = await read(true)
+    expect(data.rows).toEqual([])
+    expect(data.workByJob).toEqual({})
+    expect(tablesRead).not.toContain('jobs_ledger')
+    expect(tablesRead).not.toContain('jobs_ledger_invoices')
+  })
+
+  it('a ZZ test GC’s run reads every job for a dev who shows them', async () => {
+    gcName = 'ZZ Test GC'
     const data = await read(false)
     expect(data.rows.map((r) => r.job_id).sort()).toEqual(['A', 'Z'])
   })
