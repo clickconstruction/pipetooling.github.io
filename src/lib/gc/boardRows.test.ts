@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { carriedAmount, proposalTotals, packageCoverage } from './bids'
-import { boardStateFromRows, stageOf } from './boardRows'
+import { boardStateFromRows, customerContactsOf, stageOf } from './boardRows'
 import { awardedClinicBoardRows, clinicBoardRows as rows } from './boardTestRows'
 import { followUps, wordRecord } from './followUp'
 import { travelFor } from './map'
@@ -234,5 +234,25 @@ describe('the board read from its rows', () => {
     expect(boardStateFromRows(rows()).tradePromises).toEqual([
       { id: 'tp1', partnerId: 'lonestar', kind: 'insurance', what: 'the renewed insurance certificate', by: '2026-10-12', madeOn: '2026-10-06', from: 'office', moved: [{ by: '2026-10-09', on: '2026-10-07' }] },
     ])
+  })
+})
+
+describe('a customer’s call log (the Board’s B2b-v-ii)', () => {
+  it('reads each customer’s own lines, newest first, as GcCustomer.contacts', () => {
+    const withLog = {
+      ...rows(),
+      customerContacts: [
+        { customer_id: 'c1', contacted_on: '2026-10-06', by_name: 'Rosa', note: 'Older.', created_at: '2026-10-06T15:00:00Z' },
+        { customer_id: 'c1', contacted_on: '2026-10-08', by_name: 'Abe', note: 'Newest.', created_at: '2026-10-08T09:00:00Z' },
+        { customer_id: 'c1', contacted_on: '2026-10-08', by_name: 'Rosa', note: 'Same day, earlier.', created_at: '2026-10-08T08:00:00Z' },
+        { customer_id: 'zz', contacted_on: '2026-10-09', by_name: 'Rosa', note: 'Another customer.', created_at: '2026-10-09T08:00:00Z' },
+      ],
+    }
+    expect(boardStateFromRows(withLog).customers.find((c) => c.id === 'c1')?.contacts).toEqual([
+      { on: '2026-10-08', by: 'Abe', note: 'Newest.' },
+      { on: '2026-10-08', by: 'Rosa', note: 'Same day, earlier.' },
+      { on: '2026-10-06', by: 'Rosa', note: 'Older.' },
+    ])
+    expect(customerContactsOf([], 'c1')).toEqual([])
   })
 })

@@ -167,6 +167,7 @@ import {
   loadGcProjects,
   loadScopeBookStore,
   logGcAskContact,
+  logGcCustomerContact,
   makeDriveFolders,
   markGcBidSent,
   markGcLost,
@@ -1956,6 +1957,11 @@ export default function GcProjects() {
           onOpenProject={(projectId) => {
             setCustomerWin(null)
             openProjectCard(projectId)
+          }}
+          // Log a contact on Activity (B2b-v-ii): a line in their call log, signed as Follow up signs its lines.
+          onLogContact={async (how, note) => {
+            await logGcCustomerContact({ customerId: openCustomer.id, on: today, byName: profileName ?? '', how, note })
+            await refreshBoard()
           }}
           onClose={() => setCustomerWin(null)}
         />
