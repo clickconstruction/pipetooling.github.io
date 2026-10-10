@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { GcBoard } from './GcBoard'
 import { GcCustomerOpenerContext } from './gcCustomerOpener'
 import { boardStateFromRows } from '../../lib/gc/boardRows'
-import { clinicBoardRows } from '../../lib/gc/boardTestRows'
+import { awardedClinicBoardRows, clinicBoardRows } from '../../lib/gc/boardTestRows'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
 installDomShims()
@@ -40,6 +40,19 @@ describe('GcBoard', () => {
     unmount()
     render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} />)
     expect(within(document.querySelector('[data-gc-board-row="p1"]') as HTMLElement).queryByRole('button', { name: 'Oak Street Partners' })).toBeNull()
+  })
+
+  it('each row carries Who to call when the page gives Follow up, its job’s share; none without (B2b-ii)', () => {
+    const state = boardStateFromRows(awardedClinicBoardRows())
+    const onChase = vi.fn()
+    const { unmount } = render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} onChase={onChase} />)
+    const people = document.querySelector('[data-gc-board-people="p1"]') as HTMLElement
+    fireEvent.click(within(people).getByRole('button', { name: /^1 to call/ }))
+    fireEvent.click(within(people).getByRole('button', { name: 'Open Follow up' }))
+    expect(onChase).toHaveBeenCalledTimes(1)
+    unmount()
+    render(<GcBoard state={state} onOpen={() => undefined} onPlans={() => undefined} />)
+    expect(document.querySelector('[data-gc-board-people]')).toBeNull()
   })
 
   it('marks a price with a missing cost as + ?, on the row and on the carried trade in the price card', () => {

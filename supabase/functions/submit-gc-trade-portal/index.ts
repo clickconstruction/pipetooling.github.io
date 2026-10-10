@@ -2,7 +2,9 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
+import { driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
+import { driveFileUrl, TRADE_FILE_HOURLY_CAP, tradeFileDriveName, tradeFileFolders, type TradeFileUpload } from '../_shared/gcTradeFile.ts'
 import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHeld, TRADE_FUNCTION_ERRORS, tradeErrorOf, waiverHeld } from '../_shared/gcTradeSubmit.ts'
 
@@ -26,6 +28,14 @@ import { FREE_TEXT_KINDS, isHoneypot, overHourlyCap, parseTradeSubmit, spanishHe
  * (`gc_draw` keyed by the draw, `gc_trade_change` keyed by the change order) take the function's. The waiver is refused as
  * badRequest while `WAIVER_SIGN_LIVE` holds it for the owner's call. A pay application and the final one (P5c-3c-ii) sign
  * their conditional waiver the same way, held the same: their ledger row is keyed by the draw the verb returns.
+ *
+ * A file (P5a-1, plan to-dos/gc-mode/mockups/portal-p5a.md) has no verb. After the link, its own hourly cap (20 files),
+ * the company's claim to the record it is for (its submittal while it is its move, a trade it signed for, its open
+ * ask), then the job's Drive folder (`gc_projects.drive_folder_url`, else noJobFolder): a submittal's file into
+ * Submittals, any other into Team only → From trades → the company. The bytes go up with the service account the
+ * intake already uses (`GOOGLE_SERVICE_ACCOUNT_JSON`, as `DRIVE_IMPERSONATE_USER` when set), under a name that never
+ * meets another file's, and `gc_trade_files` keeps the link. The answer is `{ id, name, url }`, which the page sends
+ * with the kind that stores it.
  */
 
 /** Where a trade's drawn signature on its statement of work is kept: `gc-sows/<sow id>/<uuid>.png`. */
@@ -74,6 +84,85 @@ async function freeTextCounts(admin: SupabaseClient, companyId: string): Promise
   return [questions, people, contacts, quotes, changes, rfis, rounds].map((r) => (r as Count).count)
 }
 
+type Refusal = { error: string; status: number }
+const no = (error: string, status: number): Refusal => ({ error, status })
+
+/**
+ * What a file is on, once the company's claim to its record holds: the job, the trade, and for a submittal its number
+ * and the round the file will be. The claims are the verbs' own, so a file is never placed for a record its next kind
+ * would refuse: a submittal on the company's awarded trade while it is its move, a trade it signed for on a job that is
+ * ours, its own ask not passed on a project not lost.
+ */
+async function fileHome(admin: SupabaseClient, companyId: string, f: TradeFileUpload): Promise<{ projectId: string; packageId: string; submittal?: { number: string; round: number } } | Refusal> {
+  if (f.for === 'submittal') {
+    const { data: s } = await admin.from('gc_submittals').select('id, project_id, package_id, number').eq('id', f.recordId).maybeSingle()
+    if (!s) return no('notFound', 404)
+    const { data: k } = await admin.from('gc_trade_packages').select('awarded_invite_id').eq('id', s.package_id).maybeSingle()
+    const { data: i } = k?.awarded_invite_id ? await admin.from('gc_invites').select('company_id').eq('id', k.awarded_invite_id).maybeSingle() : { data: null }
+    if (i?.company_id !== companyId) return no('notYours', 409)
+    const { data: move } = await admin.rpc('gc_submittal_move', { p_submittal_id: s.id })
+    if (move !== 'trade') return no('notYourMove', 409)
+    const { data: last } = await admin.from('gc_submittal_rounds').select('round').eq('submittal_id', s.id).order('round', { ascending: false }).limit(1)
+    return { projectId: s.project_id, packageId: s.package_id, submittal: { number: s.number, round: ((last?.[0]?.round as number | undefined) ?? 0) + 1 } }
+  }
+  if (f.for === 'change') {
+    const { data: k } = await admin.from('gc_trade_packages').select('id, project_id, ours, awarded_invite_id').eq('id', f.recordId).maybeSingle()
+    if (!k) return no('notFound', 404)
+    const [{ data: g }, { data: sow }] = await Promise.all([
+      admin.from('gc_projects').select('stage').eq('project_id', k.project_id).maybeSingle(),
+      admin.from('gc_sows').select('company_id, status, invite_id').eq('package_id', k.id).maybeSingle(),
+    ])
+    if (!g || g.stage === 'bidding' || k.ours || !sow || sow.status !== 'signed' || sow.company_id !== companyId || sow.invite_id !== k.awarded_invite_id) {
+      return no('notAwarded', 409)
+    }
+    return { projectId: k.project_id, packageId: k.id }
+  }
+  const { data: ask } = await admin.from('gc_invites').select('id, company_id, package_id, status').eq('id', f.recordId).maybeSingle()
+  if (!ask) return no('notFound', 404)
+  if (ask.company_id !== companyId) return no('notYours', 409)
+  if (ask.status === 'declined') return no('youPassed', 409)
+  const { data: k } = await admin.from('gc_trade_packages').select('project_id').eq('id', ask.package_id).maybeSingle()
+  if (!k) return no('notFound', 404)
+  const { data: g } = await admin.from('gc_projects').select('lost_on').eq('project_id', k.project_id).maybeSingle()
+  if (g?.lost_on) return no('projectLost', 409)
+  return { projectId: k.project_id, packageId: ask.package_id }
+}
+
+/** A file into the job's Drive folder (P5a-1): the cap, the claim, the folder, the upload, the row, the link. */
+async function placeFile(admin: SupabaseClient, companyId: string, f: TradeFileUpload): Promise<Response> {
+  const hourAgo = new Date(Date.now() - 3600_000).toISOString()
+  const { count } = await admin.from('gc_trade_files').select('id', { count: 'exact', head: true }).eq('company_id', companyId).gte('uploaded_at', hourAgo)
+  if ((count ?? 0) >= TRADE_FILE_HOURLY_CAP) return refuse('tooMany')
+  const home = await fileHome(admin, companyId, f)
+  if ('error' in home) return jsonResponse({ error: home.error }, home.status)
+  const [{ data: job }, { data: company }] = await Promise.all([
+    admin.from('gc_projects').select('drive_folder_url').eq('project_id', home.projectId).maybeSingle(),
+    admin.from('gc_companies').select('name').eq('id', companyId).maybeSingle(),
+  ])
+  const jobFolder = driveFolderIdFromUrl(job?.drive_folder_url as string | null | undefined)
+  if (!jobFolder) return refuse('noJobFolder')
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  if (!saJson) {
+    console.error('submit-gc-trade-portal: GOOGLE_SERVICE_ACCOUNT_JSON is not set')
+    return refuse('failed')
+  }
+  const token = await googleAccessToken(saJson)
+  let folder = jobFolder
+  for (const name of tradeFileFolders(f.for, String(company?.name ?? ''))) folder = (await findOrCreateFolder(token, folder, name)).id
+  const impersonate = Deno.env.get('DRIVE_IMPERSONATE_USER')?.trim()
+  const upToken = impersonate ? await googleAccessToken(saJson, impersonate) : token
+  const { id: driveId } = await uploadBytes(upToken, folder, f.bytes, tradeFileDriveName(f.for, f.name, new Date(), home.submittal), f.mime)
+  const url = driveFileUrl(driveId)
+  const { data: row, error } = await admin
+    .from('gc_trade_files')
+    .insert({ company_id: companyId, project_id: home.projectId, package_id: home.packageId, purpose: f.for, name: f.name, mime: f.mime, bytes: f.bytes.length, drive_file_id: driveId, drive_url: url, made_by: 'trade' })
+    .select('id')
+    .single()
+  // The file is in Drive either way: a row not kept is logged, and the link still goes to the next kind.
+  if (error) console.error('submit-gc-trade-portal: the file is in Drive, its row was not kept', driveId, error)
+  return jsonResponse({ ok: true, value: { id: row?.id ?? null, name: f.name, url } })
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return jsonResponse({ error: 'badRequest' }, 405)
@@ -94,6 +183,7 @@ serve(async (req) => {
       return data as TradeLinkRow | null
     })
     if (!link) return refuse('linkOff')
+    if (parsed.file) return await placeFile(admin, link.company_id, parsed.file)
     if (spanishHeld(parsed.call)) return refuse('spanishHeld')
     if (FREE_TEXT_KINDS.has(parsed.kind) && overHourlyCap(await freeTextCounts(admin, link.company_id))) return refuse('tooMany')
 

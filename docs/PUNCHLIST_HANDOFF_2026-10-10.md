@@ -4,7 +4,7 @@ Status: handed off 2026-10-10 ~07:20 UTC by the PUNCHLIST lead session on Todd's
 
 ## 1. Owed now (small)
 
-1. **The 062000 live walk** on a ZZ TEST job (`docs/migrations/20261010062000_case_fee_back_on_bill_delete.md`, "Live, on a ZZ TEST job"): Helper 11 was running it at hand-off; its result lands as a comment on #5283 or in this doc's next amendment. Nothing else is owed on prod: migration drift 852/852, edge drift clean for everything the import walk proved (see §4).
+1. **The 062000 live walk — done** 2026-10-10 ~12:3x UTC as a rolled-back transaction on prod, all four steps matching (the migration doc's Status has the reads). Nothing else is owed on prod: migration drift 852/852, edge drift clean for everything the import walk proved (see §4).
 2. **Two docs PRs in the queue:** #5294 (types after 062000 and GC's 063000 — gc 7 may take it over as it did #5243) and #5295 (062000's Status). Nothing to do unless they are kicked.
 3. **#5288** (card #104's notes) merged; **#5282** (bid-history card roll-up) merged.
 

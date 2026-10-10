@@ -61,3 +61,5 @@ Tick **Email the trade about what I press here** to email the trade. The tick st
 {{button:blue|Close the job}} waits until every trade is closed out. Our own crew must be done too, and the customer must have paid our retainage. Until then the window lists what is left.
 
 Press {{button:blue|Close the job}} when nothing is left. The job moves to the closed jobs on the board.
+
+Once it is closed, the window says what the job made us. Our own crew and general conditions count at what they cost when their Pipeline jobs are read. The line says when some of our own work still counts at its price or budget.

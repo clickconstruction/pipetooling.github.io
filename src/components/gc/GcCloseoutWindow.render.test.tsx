@@ -206,7 +206,25 @@ describe('GcCloseoutWindow', () => {
     setup({ id: 'stoneoak', project: (p) => ({ ...p, closedOn: '2026-10-09' }) })
     const job = document.querySelector('[data-closeout-job]') as HTMLElement
     expect(job.dataset.closeoutJob).toBe('closed')
-    expect(job.textContent).toBe('job closed Oct 9')
+    expect(job.querySelector('span')!.textContent).toBe('job closed Oct 9')
+    // What it made us (O11a): with nothing read, our own work still counts at its price and budget, and says so.
+    expect(job.querySelector('[data-closeout-made]')!.textContent).toMatch(/^The job made us \$[\d,]+, [\d.]+% of the price\. Some of our own work counts at its price or budget\.$/)
+  })
+
+  it('says what our own crew cost once its Pipeline job is read, and what a closed job made us at real cost (O11a)', () => {
+    const own: OwnWorkCosts = {
+      payAccess: true,
+      crewJobs: { fplumb: 'j-crew' },
+      byJob: {
+        'j-crew': { jobId: 'j-crew', label: 'J 1071', name: 'Fair Oaks plumbing', spentUsd: 24_300, teamUsd: 20_000, subUsd: 0, partsUsd: 4_300, fieldDays: 40, finished: true },
+        'j-gc': { jobId: 'j-gc', label: 'J 1080', name: 'Fair Oaks general conditions', spentUsd: 131_500, teamUsd: 131_500, subUsd: 0, partsUsd: 0, fieldDays: 60, finished: false },
+      },
+    }
+    setup({ project: (p) => ({ ...p, generalConditionsJobId: 'j-gc' }), own })
+    expect(document.querySelector('[data-closeout-others]')!.textContent).toMatch(/Plumbing: our own crew, 65% done\. It cost \$24,300 on Pipeline job J 1071, against \$[\d,]+ signed\. Nothing is held\./)
+    cleanup()
+    setup({ project: (p) => ({ ...p, generalConditionsJobId: 'j-gc', closedOn: '2026-11-20' }), own })
+    expect(document.querySelector('[data-closeout-made]')!.textContent).toMatch(/Our own crew and general conditions count at what they cost\.$/)
   })
 
   it('shows each trade’s punch list under its steps when given its presses (U3b), and passes a press through', () => {

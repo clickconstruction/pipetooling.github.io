@@ -6,7 +6,8 @@
  * through the schedule's io (`saveScheduleMove`, `undoScheduleMove`, `redoScheduleMove`). A save someone else beat
  * stays open and says what they changed (G-134). A part's own move (PR 8b) goes through the same window. Since PR 11,
  * both take `trying` in the what-if copy (G-81): the reason is optional, a move with none keeps the stand-in marked
- * `noWhy`, and the record is the copy's. Telling the trades comes with PR 13. What a move does to the bills (G-97) is
+ * `noWhy`, and the record is the copy's. Since PR 13b the record says who was told of each move and what they answered,
+ * a told move undone with Call, and **Tell the trades · N** in its head (`tell`). What a move does to the bills (G-97) is
  * Owner Billing's.
  */
 import { useEffect, useMemo, useState } from 'react'
@@ -14,6 +15,8 @@ import { createPortal } from 'react-dom'
 import { MOVE_REASONS, moveActivityName, moveRecord, moveRows, moveWhyProblem, planMove, redoableMove, spanWords, undoableMove, type MoveLimits } from '../../lib/gc/schedule/moves'
 import { daysBetween } from '../../lib/gc/schedule/network'
 import { crowdingAfterMove } from '../../lib/gc/schedule/places'
+import type { ToldThenUndone } from '../../lib/gc/schedule/tellWindow'
+import { telHref } from '../../lib/gc/followUpSheet'
 import { WHAT_IF_NO_WHY } from '../../lib/gc/schedule/whatIf'
 import { changeTimeWords, moveWords, partMovePress } from '../../lib/gc/schedule/scheduleWindow'
 import { lineLabel } from '../../lib/gc/schedule/splitBars'
@@ -267,6 +270,7 @@ export function GcMoveHistory({
   refused = null,
   problem = null,
   trying = false,
+  tell,
 }: {
   project: GcProject
   onUndo?: (move: ScheduleMove) => void
@@ -276,6 +280,13 @@ export function GcMoveHistory({
   problem?: string | null
   /** The what-if copy's own record (G-81, PR 11): the moves tried on it. */
   trying?: boolean
+  /** Tell the trades (PR 13b): the companies not told yet with the press, and under each move who was told and what they said. */
+  tell?: {
+    /** Companies not told yet: Tell the trades · N in the head. 0: no press. */
+    count: number
+    onTell: () => void
+    of: (move: ScheduleMove) => { untold: boolean; answers: string[]; undone: ToldThenUndone | null }
+  }
 }) {
   const rows = moveRows(project)
   const [all, setAll] = useState(false)
@@ -299,7 +310,12 @@ export function GcMoveHistory({
         <strong>
           {trying ? 'Tried in the what-if' : 'Changes to the schedule'} ({rows.length})
         </strong>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{trying ? 'Every move tried on the copy, newest first. Keep puts them on the real schedule.' : 'Every move, who made it and why. Newest first.'}</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', flex: '1 1 14rem' }}>{trying ? 'Every move tried on the copy, newest first. Keep puts them on the real schedule.' : 'Every move, who made it and why. Newest first.'}</span>
+        {tell && tell.count > 0 && (
+          <Btn kind="primary" onClick={tell.onTell} title="Each company whose days moved gets one email with its old and new days and why.">
+            Tell the trades · {tell.count}
+          </Btn>
+        )}
       </div>
       {refused && <GcScheduleRefusal changes={refused} what="Nothing was undone or put back. The chart shows the new dates now." />}
       {problem && (
@@ -329,6 +345,7 @@ export function GcMoveHistory({
             <div style={r.undone ? { textDecoration: 'line-through' } : undefined}>{r.what}</div>
             {r.move.noWhy ? <div style={{ color: 'var(--text-muted)' }}>{r.move.note}</div> : <div style={{ color: 'var(--text-base)' }}>“{r.move.note}”</div>}
             {(r.effect || r.undone) && <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>{[r.effect, r.undone].filter(Boolean).join(' ')}</div>}
+            {tell && <MoveTold told={tell.of(r.move)} />}
           </div>
         ))}
       </div>
@@ -340,6 +357,38 @@ export function GcMoveHistory({
         </div>
       )}
     </Card>
+  )
+}
+
+/** Under a move (PR 13b): the trades not told yet, each told company's answer, and a told move undone with Call. */
+function MoveTold({ told }: { told: { untold: boolean; answers: string[]; undone: ToldThenUndone | null } }) {
+  if (told.undone) {
+    return (
+      <div data-move-told-undone style={{ display: 'flex', gap: '0.5rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.82rem', color: 'var(--text-amber-800)' }}>
+        <span>{told.undone.words}</span>
+        {told.undone.calls
+          .filter((c) => c.phone)
+          .map((c) => (
+            <a key={c.phone} href={telHref(c.phone)} title={`Call ${c.name}, ${c.phone}`} style={{ color: 'var(--text-blue-800)', fontWeight: 600 }}>
+              Call {c.first}
+            </a>
+          ))}
+      </div>
+    )
+  }
+  return (
+    <>
+      {told.untold && (
+        <div data-move-untold style={{ fontSize: '0.82rem', color: 'var(--text-amber-800)' }}>
+          The trades have not been told.
+        </div>
+      )}
+      {told.answers.map((a) => (
+        <div key={a} data-move-answer style={{ fontSize: '0.82rem', color: 'var(--text-600)' }}>
+          {a}
+        </div>
+      ))}
+    </>
   )
 }
 

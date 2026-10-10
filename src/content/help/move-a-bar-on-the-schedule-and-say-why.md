@@ -76,3 +76,7 @@ Undo works only while nothing the move touched has moved since.
 ## Try moves first
 
 To try moves without changing the schedule, make a copy. See [try moves on a copy of the schedule](/help/try-moves-on-a-copy-of-the-schedule).
+
+## Tell the trades
+
+A move changes a trade's days. To send each company its new dates, see [tell the trades their new dates](/help/tell-the-trades-their-new-dates).

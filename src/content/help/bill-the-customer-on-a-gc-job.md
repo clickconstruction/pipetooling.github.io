@@ -115,6 +115,8 @@ The project manager hears only when they can see the money. Otherwise the owner 
 
 A sent bill then says {{chip:gray|We reminded the architect on Oct 5.}} The owner turns the reminders on in [Settings](/settings). Only pay applications sent from that day get them, so nothing old goes out.
 
+In Settings, {{button:outline|Preview today’s notices}} lists what would go today. Nothing is sent. Pick a day in **Count pay applications sent since** to see a pay application sent earlier. {{button:outline|Email me a test}} sends you a copy of each, marked TEST.
+
 ## Before the first bill
 
 The contract with the customer must be marked signed. The window says so until it is.

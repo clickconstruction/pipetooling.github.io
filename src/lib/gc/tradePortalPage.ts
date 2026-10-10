@@ -11,7 +11,7 @@ import { GC_COMPANY } from './company'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
-import type { GcProject, GcState } from './types'
+import type { GcState } from './types'
 import { daysUntil, money } from './words'
 
 /** The page's path for a link: the address a company opens. */
@@ -146,18 +146,6 @@ export function pastWords(ask: PortalAsk, lang: PortalLang): string {
   return pt(lang, key, { gc: GC })
 }
 
-/** Their own quote file waits for P5a (decision 9): who to email it to. The project manager when we have one. */
-export function replyByEmailWords(project: GcProject, lang: PortalLang): string {
-  const pm = (project.team ?? []).find((c) => c.role === 'projectManager' && c.email)
-  return pm ? pt(lang, 'replyByEmail', { name: `${pm.name} (${pm.email})` }) : pt(lang, 'replyByEmailGc', { gc: GC_COMPANY.name })
-}
-
-/** Until P5a's files, a change's photo or ticket goes by email: to our project manager on the job, or to us (P4b-ii). */
-export function changeFileByEmailWords(project: GcProject, lang: PortalLang): string {
-  const pm = (project.team ?? []).find((c) => c.role === 'projectManager' && c.email)
-  return pm ? pt(lang, 'crFileByEmail', { name: `${pm.name} (${pm.email})` }) : pt(lang, 'crFileByEmailGc', { gc: GC_COMPANY.name })
-}
-
 /** The portal's words for each refusal `submit-gc-trade-portal` can answer (P2b-i). Where the page already says the
  * same thing (open the plans first, answer each line), the refusal reads the page's own words. */
 export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
@@ -209,6 +197,10 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   nothingToBill: 'errNothingToBill',
   finalSent: 'errFinalSent',
   finalNotYet: 'errFinalNotYet',
+  // P5a-1: a file.
+  fileType: 'errFileType',
+  fileTooBig: 'errFileTooBig',
+  noJobFolder: 'errNoJobFolder',
 }
 
 /** A refusal in the company's words. A key the page does not know reads as did not save. */

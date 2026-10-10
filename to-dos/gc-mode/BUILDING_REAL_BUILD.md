@@ -58,8 +58,9 @@ These stay with the lanes that own them, and this plan only points at them:
   block and *TO CUSTOMER*. U6 reads it for the trades' pay applications.
 - **The price card** was built by Building on the Board's row, but its kernel reads only the
   Board's, so the Board's B2 lifts `gcPriceStanding` (Helper 2, 2026-10-07).
-- **The Follow up sheet** was built by Building on the Board's tab. Its last four kernels lift once
-  the Board's and the Portal's kernels they read are on main (U2b).
+- **The Follow up sheet** was built by Building on the Board's tab. Its draft and the mail kernels it
+  reads lifted once the Board's and the Portal's kernels they read were on main (U2b, #5341, v2.5183).
+  The two that build the reducer's actions stay on the spike, and the Board's B2b-viii writes the sheet's presses.
 
 A step below that needs one of them says so.
 
@@ -347,7 +348,7 @@ The price card's 7 are the Board's lift.
 | `gcBuilding` | `building.ts` (adds to it) | 43 of 45: the pay application's math, sent back, our crew's work, closeout, the trade's side of change orders (`changeOrderTradePct`, which O2 reads) | `tradePayAppParties` (O2's `PayAppParties`, and our company's address, call 12) and `drawOnTheirSov` (`stageReached`, with B6's statement of work): U6 |
 | `gcBuildingPromises` | `buildingPromises.ts` | 9 of 10 (`START_ASK_DAYS`, `firstOnSite`, `startsToPromise`, `papersOwed`, `papersOwedWords`) | `buildingPromisesKeptBy` reads the reducer's actions: it stays, and its rules become SQL (decision 9) |
 | `gcBuildingWeekly` | `buildingWeekly.ts` | 10 of 11 | `weeklyReport` reads O2's `lateFinish`: U7 |
-| `gcFollowUpSheet` | `followUpSheet.ts` (adds to it) | 9 of 13 (`smsHref`, `mailHref`, `telHref`, `followUpCount`, the types) | `followUpDraft` (P1's `portalLink`) and the two that build the reducer's actions: U2b. `followUpPeople`, with its private `lastAsk` and `cap`, goes with the schedule's 7c-i |
+| `gcFollowUpSheet` | `followUpSheet.ts` (adds to it) | 9 of 13 (`smsHref`, `mailHref`, `telHref`, `followUpCount`, the types) | `followUpDraft` (P1's `portalLink`): U2b (#5341). The two that build the reducer's actions stay on the spike. `followUpPeople`, with its private `lastAsk` and `cap`, goes with the schedule's 7c-i |
 | `gcPriceStanding` | `priceStanding.ts` | | the Board's B2 lifts all 7: they read only `gcBids` |
 
 Small helpers go under their lanes' files, as the schedule's 1b did: `money` joins `words.ts`, and
@@ -372,8 +373,11 @@ missed, its six submittals, its four RFIs, its punch list and the trades' statem
 their draws. The spike's tests keep passing against main's copy after the follow-up, and the golden
 test keeps passing without `-u`.
 
-**U2b** lifts the last three from `gcFollowUpSheet`, `followUpDraft` and the two that build the
-reducer's actions, the day P1's kernels are on main, in the same way. The schedule's 7c-i lifts
+**U2b** (#5341, v2.5183, `building-u2b.lift.json`) lifted `followUpDraft` from `gcFollowUpSheet` and the
+mail kernels it reads from `gcCompanyPeople` (`followItemMailGroup`, `followUpMailTo`, `mailToGreeting`,
+`mailToWhy`, into the Board's `companyPeople.ts` with gc 2's nod), once P1's kernels and B2b-i were on
+main. The two that build the reducer's actions stay on the spike, as `callListCallActions` did in 7c-i,
+and the Board's B2b-viii writes the sheet's presses. The schedule's 7c-i lifts
 `followUpPeople` with its private `lastAsk` and `cap` (Helper 11, 2026-10-08). If `followUpDraft`
 needs them, U2b exports them from `followUpSheet.ts` and never copies them. The Board's B2b waits on U2 the other way: its `partnerWork` reads `retainageHeldNow`, its
 `partnerActivity` reads `buildingActivity`, and its own promise rules read closeout and the punch
@@ -499,7 +503,7 @@ function. One Building migration a day. *Check* is how the reviewer sees it work
    `docs/ACCESS_CONTROL.md`. With Helper 6, after the schedule's PR 10. *Check:* a superintendent on
    the job writes a log and adds a punch item; one not on it sees nothing; a read-only user's write
    is refused; a superintendent sees no draw.
-10. **U2b** whenever B2 and P1 are on main: the Follow up sheet's last four kernels.
+10. **U2b**, merged (#5341, v2.5183): the Follow up sheet's draft and its mail kernels.
 
 ## Docs each PR touches
 
