@@ -21,6 +21,9 @@ import { GcBoardStrip, GcCustomerHeading, GcStageHeading, GcStageSubheading, typ
 import { projectPeople } from '../../lib/gc/projectPeople'
 import { useCustomerOpener } from './gcCustomerOpener'
 import { GcPeoplePill } from './GcPeoplePill'
+import { GcProgressRing } from './GcProgressRing'
+import { RING_COLORS, stageProgress } from '../../lib/gc/progress'
+import type { RingRead } from './useRingLayers'
 import { GcPriceCard, GcPriceLikely, GcPriceTrigger } from './GcPriceCard'
 import { Chip, PlusUnknown, type Tone } from './gcUi'
 import { GC_ICON_PATHS } from './gcIcons'
@@ -135,6 +138,7 @@ export function GcBoard({
   moneyShown = true,
   folderUrls = {},
   onChase,
+  ring,
 }: {
   state: GcState
   /** Opens a project: its card on the GC projects page. */
@@ -148,6 +152,8 @@ export function GcBoard({
   folderUrls?: Record<string, string>
   /** Opens Follow up, from a row's Who to call card (B2b-ii). Unset: rows draw no Who to call. */
   onChase?: () => void
+  /** The rings' read (B2b-vi-c, `useRingLayers`): each row's ring, from the board with what it counts laid over it. Unset: no ring column. */
+  ring?: RingRead | null
 }) {
   const bySection = new Map<BoardSection, GcProject[]>()
   for (const key of BOARD_SECTION_ORDER) bySection.set(key, [])
@@ -192,6 +198,7 @@ export function GcBoard({
       folderUrl={folderUrls[p.id] ?? ''}
       byCustomer={byCustomer}
       {...(onChase ? { onChase } : {})}
+      {...(ring ? { ring } : {})}
     />
   )
   return (
@@ -385,6 +392,29 @@ const linkIcon: CSSProperties = {
   borderRadius: 6,
 }
 
+/**
+ * A row's ring (B2b-vi-c): how far the job is through its stage, from the rings' read. A stage the reader may not see keeps
+ * an empty cell, so the rows line up; one still reading what it counts is an empty track that says so.
+ */
+function RingCell({ project, ring }: { project: GcProject; ring: RingRead }) {
+  const laid = ring.state.projects.find((p) => p.id === project.id)
+  const label = SECTIONS[boardSectionOf(project)].label
+  if (!ring.shown.has(project.stage) || !laid) return <span aria-hidden />
+  if (!ring.ready.has(project.stage)) {
+    const words = ring.failed ? 'The ring could not read what it counts. Reload the page to try again.' : 'Reading what the ring counts.'
+    return (
+      <span data-gc-board-ring={project.id} style={{ display: 'flex', justifyContent: 'center' }}>
+        <span role="img" aria-label={words} title={words} style={{ width: 56, height: 56, boxSizing: 'border-box', borderRadius: '50%', border: '7px solid var(--border)' }} />
+      </span>
+    )
+  }
+  return (
+    <span data-gc-board-ring={project.id} style={{ display: 'flex', justifyContent: 'center' }}>
+      <GcProgressRing progress={stageProgress(ring.state, laid)} color={RING_COLORS[project.stage]} stageLabel={label} />
+    </span>
+  )
+}
+
 function ProjectRow({
   project,
   state,
@@ -395,6 +425,7 @@ function ProjectRow({
   folderUrl,
   byCustomer = false,
   onChase,
+  ring,
 }: {
   project: GcProject
   state: GcState
@@ -406,6 +437,7 @@ function ProjectRow({
   /** On By customer the heading names the customer, so the row leaves their name out (B2b-iii). */
   byCustomer?: boolean
   onChase?: () => void
+  ring?: RingRead
 }) {
   // Outside the money team the price is the trades alone (B5-c), so its words say so.
   const soFar = moneyShown ? 'so far' : 'trades so far'
@@ -428,12 +460,16 @@ function ProjectRow({
         cursor: 'pointer',
         color: 'var(--text-base)',
         display: 'grid',
-        gridTemplateColumns: narrow ? '6.5rem minmax(0, 1fr)' : '7rem minmax(0, 1fr) auto auto',
+        // The ring's column comes first when the page reads the rings (B2b-vi-c), on every row so they line up. On a phone
+        // the ring stands over the days block in its column, so the name keeps the width it has.
+        gridTemplateColumns: narrow ? '6.5rem minmax(0, 1fr)' : ring ? '3.5rem 7rem minmax(0, 1fr) auto auto' : '7rem minmax(0, 1fr) auto auto',
         gap: narrow ? '0.6rem 0.75rem' : '1rem',
         alignItems: 'center',
       }}
     >
-      <div style={{ display: 'flex' }}>
+      {ring && !narrow && <RingCell project={project} ring={ring} />}
+      <div style={ring && narrow ? { display: 'grid', justifyItems: 'center', gap: '0.4rem' } : { display: 'flex' }}>
+        {ring && narrow && <RingCell project={project} ring={ring} />}
         <DueBlock project={project} today={state.today} />
       </div>
       <span style={{ minWidth: 0 }}>
