@@ -1,0 +1,3 @@
+import { q } from './verify-lib.mjs'
+await q('1 the two CHECKs validated and their definitions (expect accepted, finalIn, punch among the kinds; gc_draw, gc_trade_change among the record types)', `SELECT conname, convalidated, pg_get_constraintdef(oid) AS def FROM pg_constraint WHERE conname IN ('gc_trade_messages_kind_known','esign_consents_record_type_check') ORDER BY 1;`)
+await q('2 an unknown record type refused (expect 23514; rolled back)', `BEGIN; SET LOCAL ROLE service_role; UPDATE public.esign_consents SET record_type = 'warranty' WHERE id = (SELECT id FROM public.esign_consents LIMIT 1); ROLLBACK;`)
