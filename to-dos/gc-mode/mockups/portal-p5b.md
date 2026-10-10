@@ -706,3 +706,8 @@ in the second SQL block above, which the migration equals byte for byte.
 **Amendment 5, 2026-10-10**: P5b-1 merged (#5363, v2.5201) and is deployed. P5b-2's office side is written down with
 the Board lane's conditions (gc 2, agreed in the session's messages): the press's gate and reload, `companyPapers`'
 `coiReceived` and `w9SentOn`, `paperStep`'s two new history lines, the base after #5354, and the tests.
+
+**Amendment 6, 2026-10-10, the lead's yes**: the Documents tab's waiting row reads **Certificate from their portal**, and
+the paper stays stored as *COI (from their portal)* (`gc_trade_coi`'s `document_name`). The guides quote a row by its
+exact name, and the plain-words test refuses parentheses inside a sentence, so the screen and the guide drop them while
+the store keeps them.
