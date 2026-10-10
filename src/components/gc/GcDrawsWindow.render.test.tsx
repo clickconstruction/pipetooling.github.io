@@ -160,13 +160,13 @@ describe('GcDrawsWindow', () => {
     expect(writes.onCharge).toHaveBeenCalledWith('fhvac', { amount: 1250, reason: 'Patch the roof they cut', photoUrl: '' })
   })
 
-  it('sends a change the customer signed to its trade, and says the portal takes no signature yet', () => {
+  it('sends a change the customer signed to its trade, and says they sign it in their portal', () => {
     const { writes } = setup({ project: (p) => ({ ...p, changeOrders: [signedChange] }) })
     const change = document.querySelector('[data-draw-change="co-steel-1"]') as HTMLElement
     expect(change.textContent).toContain('signed by the customer')
     fireEvent.click(within(change).getByRole('button', { name: 'Send the change to Iron Horse Fabrication' }))
     expect(writes.onSendChange).toHaveBeenCalledWith('fsteel', 'co-steel-1')
-    expect(document.querySelector('[data-draw-change-hint]')!.textContent).toBe('Their portal does not take signatures yet. Call them to sign it.')
+    expect(document.querySelector('[data-draw-change-hint]')!.textContent).toBe('They sign it in their portal.')
   })
 
   it('records a change they signed on paper with They signed it, the file it came as beside it (U6d)', () => {
@@ -180,7 +180,7 @@ describe('GcDrawsWindow', () => {
     const change = document.querySelector('[data-draw-change="co-steel-1"]') as HTMLElement
     expect(change.textContent).toContain('waiting on their signature')
     const hint = document.querySelector('[data-draw-change-hint]')!.textContent!
-    expect(hint).toBe('Their portal does not take signatures yet. Call them to sign it. Once they sign on paper or by email, press They signed it.')
+    expect(hint).toBe('They sign it in their portal. If they sign on paper or by email instead, press They signed it.')
     expect(plainWordsFailures(hint)).toEqual([])
     fireEvent.click(within(change).getByRole('button', { name: 'They signed it' }))
     const form = change.querySelector('[data-draw-change-signed-form]') as HTMLElement
@@ -232,7 +232,7 @@ describe('GcDrawsWindow', () => {
       trade('fhvac').querySelector('[data-draw-charge-hint]')!.textContent!,
       'Email the trade about what I press here',
       'Pay application 2 is waiting on us. Approve it or send it back before the next one.',
-      'Their portal does not take signatures yet. Call them to sign it.',
+      'They sign it in their portal.',
       'Tell them why too. With the email tick off, no email goes.',
       'No approved draw can take it yet. It can come off their next one once we approve it.',
       'Only people given access can open this link. Our office may not be one of them.',

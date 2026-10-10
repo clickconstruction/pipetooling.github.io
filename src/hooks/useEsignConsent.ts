@@ -8,7 +8,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-export type EsignConsentRecordType = 'estimate' | 'job_contract' | 'person_contract_document' | 'step_commitment' | 'bid_proposal_room' | 'gc_sow'
+export type EsignConsentRecordType = 'estimate' | 'job_contract' | 'person_contract_document' | 'step_commitment' | 'bid_proposal_room' | 'gc_sow' | 'gc_draw' | 'gc_trade_change'
 
 export type EsignConsentRow = {
   consent_version: number

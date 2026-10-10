@@ -184,6 +184,10 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   notYourMove: 'errNotYourMove',
   fileNeeded: 'errFileNeeded',
   jobNotBuilding: 'errJobNotBuilding',
+  // P5c-3b: the report and the unconditional waiver.
+  sowNotSigned: 'errSowNotSigned',
+  splitLine: 'errSplitLine',
+  notPaidYet: 'errNotPaidYet',
 }
 
 /** A refusal in the company's words. A key the page does not know reads as did not save. */

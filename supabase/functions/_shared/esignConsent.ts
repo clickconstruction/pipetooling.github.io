@@ -20,7 +20,7 @@ export type EsignConsentInput = {
   clauseText: string
 }
 
-export type EsignConsentRecordType = 'estimate' | 'job_contract' | 'person_contract_document' | 'step_commitment' | 'bid_proposal_room' | 'lien_owner_record_request' | 'gc_sow'
+export type EsignConsentRecordType = 'estimate' | 'job_contract' | 'person_contract_document' | 'step_commitment' | 'bid_proposal_room' | 'lien_owner_record_request' | 'gc_sow' | 'gc_draw' | 'gc_trade_change'
 
 const MAX_CLAUSE = 4000
 
