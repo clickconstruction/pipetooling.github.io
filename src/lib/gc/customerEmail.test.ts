@@ -9,7 +9,7 @@ import {
   buildGcCustomerEmail,
   bytesBase64,
   gcContractAttachmentName,
-  gcContractPortalUrl,
+  gcJobsPortalUrl,
   GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS,
   gcCustomerEmailCc,
   gcCustomerEmailCopyKinds,
@@ -281,14 +281,31 @@ describe('what gc-customer-email reads and sends', () => {
     expect(email.text).toContain('Read it and sign it in your portal: https://my.clickplumbing.com/fair-oaks')
   })
 
-  it('links our contract only where their GC jobs show: the merged link first, then a customer view, never a GC view', () => {
+  it('links a GC job’s email only where their GC jobs show: the merged link first, then a customer view, never a GC view', () => {
     const app = 'https://clicktooling.com'
     const short = 'https://my.clickplumbing.com/'
-    expect(gcContractPortalUrl([{ audience: 'all', token: 'tok-all' }], 'fair-oaks', app, short)).toBe('https://my.clickplumbing.com/fair-oaks')
-    expect(gcContractPortalUrl([{ audience: 'all', token: 'tok-all' }], null, app, short)).toBe('https://clicktooling.com/portal?t=tok-all')
-    expect(gcContractPortalUrl([{ audience: 'customer', token: 'tok-c' }, { audience: 'gc', token: 'tok-g' }], 'x', app, short)).toBe('https://clicktooling.com/portal?t=tok-c')
-    expect(gcContractPortalUrl([{ audience: 'gc', token: 'tok-g' }], 'x', app, short)).toBeNull()
-    expect(gcContractPortalUrl([{ audience: 'all', token: 'tok-all', revoked_at: '2026-10-01T00:00:00Z' }], 'x', app, short)).toBeNull()
+    expect(gcJobsPortalUrl([{ audience: 'all', token: 'tok-all' }], 'fair-oaks', app, short)).toBe('https://my.clickplumbing.com/fair-oaks')
+    expect(gcJobsPortalUrl([{ audience: 'all', token: 'tok-all' }], null, app, short)).toBe('https://clicktooling.com/portal?t=tok-all')
+    expect(gcJobsPortalUrl([{ audience: 'customer', token: 'tok-c' }, { audience: 'gc', token: 'tok-g' }], 'x', app, short)).toBe('https://clicktooling.com/portal?t=tok-c')
+    expect(gcJobsPortalUrl([{ audience: 'gc', token: 'tok-g' }], 'x', app, short)).toBeNull()
+    expect(gcJobsPortalUrl([{ audience: 'all', token: 'tok-all', revoked_at: '2026-10-01T00:00:00Z' }], 'x', app, short)).toBeNull()
+  })
+
+  it('a bill to a customer whose only link is a GC view goes with no portal line, never a link to a page without it', () => {
+    const only = gcJobsPortalUrl([{ audience: 'gc', token: 'tok-g' }], 'oak-ridge', 'https://clicktooling.com', 'https://my.clickplumbing.com/')
+    expect(only).toBeNull()
+    const email = buildGcCustomerEmail({ subject: 'Hart Architects certified pay application 3, $288,879', lines: ['Hello Elena,'], signer: 'Rosa', gc: 'Click Construction', portalUrl: only, cardFee: 8666.37 })
+    expect(email.text).not.toContain('portal')
+    expect(email.text).not.toContain('card fee')
+    // Both senders of a GC job's email read the link by that rule alone; only our contract refuses without one.
+    for (const path of ['../../../supabase/functions/gc-customer-email/index.ts', '../../../supabase/functions/gc-office-notices/index.ts']) {
+      const src = readFileSync(resolve(__dirname, path), 'utf8')
+      expect(src).not.toContain('loadPortalReturnUrl(')
+      expect(src).toContain('gcJobsPortalUrl(')
+    }
+    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/gc-customer-email/index.ts'), 'utf8')
+    expect(fn).toContain("if (m.kind === 'contract' || GC_CUSTOMER_EMAIL_PORTAL_LINE[m.kind]) {")
+    expect(fn).toContain("if (m.kind === 'contract' && !portalUrl) return refuse('noPortal')")
   })
 
   it('attaches the contract under the office’s file name, always a PDF, and as base64 of its bytes', () => {

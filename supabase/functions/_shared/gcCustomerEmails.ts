@@ -157,11 +157,12 @@ export const GC_CUSTOMER_EMAIL_PORTAL_WORDS = 'You can see this bill in your por
 export const GC_CUSTOMER_EMAIL_CONTRACT_PORTAL_WORDS = 'Read it and sign it in your portal:'
 
 /**
- * The link our contract goes with: one where their GC jobs show. The merged link (`all`) first, at its short address
- * when it has one, then a customer view (`customer`). Never a general contractor's view (`gc`), which shows no GC job of
- * ours. Null: none on, and the kind refuses noPortal.
+ * The portal link a GC job's email goes with: one where their GC jobs, and so the job's bills, show. The merged link
+ * (`all`) first, at its short address when it has one, then a customer view (`customer`). Never a general
+ * contractor's view (`gc`), which shows no GC job of ours, so a line to it would land on a page without the bill.
+ * Null: none on. Our contract then refuses noPortal; every other kind goes with no portal line.
  */
-export function gcContractPortalUrl(
+export function gcJobsPortalUrl(
   links: ReadonlyArray<{ audience: string; token: string | null; revoked_at?: string | null }>,
   slug: string | null | undefined,
   appOrigin: string,
