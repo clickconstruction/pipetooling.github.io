@@ -539,14 +539,14 @@ them touches the plan or its version.
 - the company portal's read adds the trade's chart (G-110, `portalSchedule`)
 - `customer-portal` adds the customer's picture (G-90 to G-93, `customerSchedulePicture`)
 
-**Two edge functions send.** In each, the screen words the message with the kernel, so there is
-one copy of the words, and the function checks who it goes to:
+**The schedule's sends.** In each, the screen words the message with the kernel, so there is one copy of the words:
 
-- **`gc-tell-trades`** (Tell the trades): each company's new dates (`datesMessage`, in the
-  company's language). The function checks each company is on a move it names and that the move is
-  not told yet. It sends through Resend, and records the tells, with the dates shown, as the caller.
+- **Tell the trades** sends through `gc-trade-email`, the one sender for every trade email (P3-a), kind `dates`:
+  each company's new dates (`datesMessage`, in the company's language), keyed once per company and set of moves. The
+  screen then records the tells, with the dates shown and the send's log row, through `gc_schedule_record_tells`
+  (`mockups/schedule-pr13.md`, call 1; a `gc-tell-trades` of its own was dropped there).
 - **`gc-schedule-send`** (G-94): the customer's letter (`customerScheduleLetter`), sent to their
-  contact and kept as it went.
+  contact and kept as it went. PR 15 settles it the same way, against `gc-customer-email`.
 
 ## Who may read and write (G-133)
 
@@ -672,12 +672,20 @@ company record and its portal (Board and Portal). PR 16 joins each other lane as
     actions a copy takes is decided here; the prototype's `WHAT_IF_ACTIONS` list is its reducer's and
     stays on the spike.
     *Check:* try two moves on a copy, keep them, and see both as real moves with their reasons.
+    *Live:* v2.5169 (clickconstruction/pipetooling.github.io#5325, `mockups/schedule-pr11.md`, gc 4). A copy takes
+    only moves (a drag, the bar's form, a part, Pull earlier and Days back), through its own presses, never the real
+    save. The check waits with the live checks on the owner's yes, since making a copy writes a row.
 12. **Before the job**: the rough while we bid (G-45), templates (G-44), import (G-137) and their
     dates to meet (G-145). *Check:* save Fair Oaks D's shape as a template and draw a new job from
     it.
 13. **Tell the trades and their answers**: the edge function `gc-tell-trades`, and the portal's
     `answer_dates`. *Check:* a test company's inbox gets its new dates, in Spanish for a company
     that reads Spanish, and its *These dates work* reaches the move's row.
+    *Live:* the writes in 13a, v2.5173 (#5328, migration `20261010110000`, pushed and verified), and Tell the trades
+    in 13b, v2.5182 (#5339), through `gc-trade-email` rather than a `gc-tell-trades` of its own
+    (`mockups/schedule-pr13.md`, calls 1 and 2). The answer's kind is the Portal's P5d-i, and telling a company its
+    dates are back after an undo is 13c, with gc 3 after P5d. The check waits on the owner's yes, since a tell emails
+    a trade, and *in Spanish* waits on `PORTAL_SPANISH_ON`.
 14. **The trade's side in its portal**: its chart (G-110), late notices (G-117), crew counts
     (G-142), look-ahead marks and the start reminders (G-114). Then the counts (G-146) read them.
     First, prove that the portal's function can import the kernels (decision 10). *Check:* a late
@@ -721,9 +729,8 @@ two other kinds of link G-35 names, if the owner wants them.
 ## Docs each PR touches
 
 - **`docs/migrations/<version>_<slug>.md`**: PRs 2, 3, 4, 5 and 10.
-- **`docs/EDGE_FUNCTIONS.md`** (a section and a TOC line): PR 13 (`gc-tell-trades` and the
-  portal's new kind), PR 14 (the company portal's read and its kinds) and PR 15 (`customer-portal`
-  and `gc-schedule-send`).
+- **`docs/EDGE_FUNCTIONS.md`** (a section and a TOC line): PR 14 (the company portal's read and its kinds) and PR 15
+  (`customer-portal` and `gc-schedule-send`). PR 13 added a sentence to `gc-trade-email`'s section instead.
 - **`docs/ACCESS_CONTROL.md`**: PR 7 (the dev gate) and PR 10 (the team).
 - **`PROJECT_DOCUMENTATION.md`**: PR 7 (the Schedule tab), PR 11 (the what-if copy) and PR 14 (the
   trade's side). **`docs/twins/APP_DIRECTORY.md`** changes only if the schedule gets a page of its
@@ -804,5 +811,11 @@ PR 16, the readers, is live but for New project's sets (2026-10-10, gc 4, `mocku
 amendment 1, co-signed by gc 10 and gc 5). 16a merged as v2.5161 (#5313), 16b-i as v2.5156 (#5307, migration
 `20261010081000`, pushed and verified the same morning), 16b-ii as v2.5164 (#5318), and 16c as v2.5165 (#5322), with
 the shim swap in #5323. None deployed a function. PR 16's item above says what each cut turned on. New project's sets
-stay with New project's PR 6. PR 11, the what-if copy on real data, is planned in `mockups/schedule-pr11.md`
-(co-signed by gc 10) and being built by gc 4.
+stay with New project's PR 6.
+
+PR 11, the what-if copy on real data, is live as v2.5169 (#5325, `mockups/schedule-pr11.md`, co-signed by gc 10).
+PR 13, Tell the trades and their answers, is live in two cuts: 13a's writes as v2.5173 (#5328, migration
+`20261010110000`, pushed and verified) and Tell the trades as v2.5182 (#5339), both by gc 4 per
+`mockups/schedule-pr13.md`, co-signed by gc 10 and gc 3. Neither deployed a function. Their items above say what
+each turned on. PR 13's company answer is the Portal's P5d-i, and 13c (the dates back after an undo) follows P5d.
+Their live checks wait on the owner's yes. PR 14 is being planned by gc 4, and PR 12 by gc 1.
