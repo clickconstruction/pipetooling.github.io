@@ -5,6 +5,9 @@
  * its dates and its bar on one axis, and the dates to meet. The weeks it makes go to Our number.
  * Once our bid goes in, the rough is locked and reads the weeks as they went. `gcRoughSchedule.ts`
  * works everything out; nothing here reaches the trades or the customer.
+ *
+ * The prototype's copy, forked to `.proto` when the schedule's PR 12b ported the rough to main at `GcRoughSchedule.tsx`
+ * (#5353); the prototype's schedule tab reads this one.
  */
 import { useState, type Dispatch } from 'react'
 import { addDays, daysBetween, mondayOf, shortDate, weekdayDate, type GcAction, type GcProject } from '../../lib/gcMode/gcModel'
