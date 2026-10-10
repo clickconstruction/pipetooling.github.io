@@ -1,23 +1,37 @@
 ---
 name: "Copy link on a PDF emailed to sign turns it into a link send"
 number: 104
-group: ready
-status: found 2026-10-09 in v2.5101's live walk on J1064 · nothing built
+group: close
+status: found 2026-10-09 in v2.5101's live walk on J1064 · fix (a) built as v2.5119 (the four window doors and Hand the phone hand out the row's live link, with a 7-day margin) · left: a live check, then the follow-up below
 summary: >
   A job's agreement emailed as a PDF to sign by hand keeps its signing link. When the office
   presses Copy link, Text the link or Sign here, now in the Contract window, the app stamps the
   row as a link send. After that, File the signed copy no longer converts the row. Filing the paper adds a new
   signed agreement beside it, and the old one stays out with its reminders running. That breaks
   the case v2.5101 built, where one spouse signs through the link and the other on paper.
-next: Pick fix (a) or (b) below, then one small client PR with a render test.
+next: The live check in v2.5119's fragment on a ZZ TEST job. Then build the follow-up below, or retire the card.
 size: S
 blocker: None.
-ver: v2.3631 · 3723 · 5101
-opinion: build (a) — copying a link the row already has should record nothing
+ver: v2.3631 · 3723 · 5101 · 5119
+opinion: later — the doors are covered; the follow-up guards doors added later
 mockup: not required — no new screen; Copy link stays where it is
 ---
 
 # Copy link on a PDF emailed to sign turns it into a link send
+
+## Where it stands
+
+Fix (a) is built as [v2.5119](../docs/recent-features/v2.5119.md). Five doors hand out the link a sent row already carries and call nothing:
+
+- the Contract window's four: Copy link, Text the link, Open the signing page on this device, and Send a link's text-only branch (a draft's, so it still sends);
+- the Dashboard's Hand the phone (`openInPersonSigning`).
+
+The link counts only with more than `JOB_CONTRACT_LINK_HANDOUT_MARGIN_DAYS` (7) left. The window reads the row again before handing it out. Left is a live check, then the follow-up.
+
+**Follow-up, not built:**
+
+1. **A guard in `send-job-contract`.** Its link mode still re-stamps a sent row: `sent_channel: 'link'`, `send_count + 1` and the reminders. For a sent row with a live link, it would return the URL without a stamp. That covers any door added later. It needs a deploy.
+2. **A trace for a hand-out**, if one is wanted. A copied or texted link records nothing today, by design, because its send was recorded when it went out. A trace needs a new `job_contract_events` type, and so a migration. The existing `shared` type cannot carry it: the customer journey (`personJourney.ts`) counts every `shared` event as the signed copy emailed again.
 
 ## What happens
 
