@@ -13751,6 +13751,79 @@ export type Database = {
           },
         ]
       }
+      gc_trade_files: {
+        Row: {
+          bytes: number
+          company_id: string
+          drive_file_id: string
+          drive_url: string
+          id: string
+          made_by: string
+          mime: string
+          name: string
+          package_id: string | null
+          paper: string | null
+          project_id: string
+          purpose: string
+          record_id: string | null
+          uploaded_at: string
+        }
+        Insert: {
+          bytes: number
+          company_id: string
+          drive_file_id: string
+          drive_url: string
+          id?: string
+          made_by?: string
+          mime: string
+          name: string
+          package_id?: string | null
+          paper?: string | null
+          project_id: string
+          purpose: string
+          record_id?: string | null
+          uploaded_at?: string
+        }
+        Update: {
+          bytes?: number
+          company_id?: string
+          drive_file_id?: string
+          drive_url?: string
+          id?: string
+          made_by?: string
+          mime?: string
+          name?: string
+          package_id?: string | null
+          paper?: string | null
+          project_id?: string
+          purpose?: string
+          record_id?: string | null
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_trade_files_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "gc_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_trade_files_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "gc_trade_packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_trade_files_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+        ]
+      }
       gc_trade_messages: {
         Row: {
           company_id: string
@@ -30390,6 +30463,15 @@ export type Database = {
         Args: { p_back: boolean; p_move_id: string }
         Returns: undefined
       }
+      gc_schedule_record_tells: {
+        Args: {
+          p_company_id: string
+          p_email_send_log_id: string
+          p_project_id: string
+          p_tells: Json
+        }
+        Returns: number
+      }
       gc_schedule_redo: {
         Args: {
           p_move_id: string
@@ -30527,6 +30609,16 @@ export type Database = {
         }
         Returns: undefined
       }
+      gc_trade_answer_dates: {
+        Args: {
+          p_company_id: string
+          p_day: string
+          p_move_id: string
+          p_note: string
+          p_ok: boolean
+        }
+        Returns: undefined
+      }
       gc_trade_answer_lines: {
         Args: { p_answers: Json; p_company_id: string; p_invite_id: string }
         Returns: string
@@ -30563,6 +30655,7 @@ export type Database = {
           p_company_id: string
           p_days: number
           p_description: string
+          p_file_url?: string
           p_package_id: string
           p_reason: string
         }
@@ -30592,6 +30685,16 @@ export type Database = {
       gc_trade_current_rev: { Args: { p_package_id: string }; Returns: number }
       gc_trade_decline: {
         Args: { p_company_id: string; p_invite_id: string }
+        Returns: undefined
+      }
+      gc_trade_file_link: { Args: { p_url: string }; Returns: string }
+      gc_trade_file_tie: {
+        Args: {
+          p_company_id: string
+          p_purpose: string
+          p_record_id: string
+          p_url: string
+        }
         Returns: undefined
       }
       gc_trade_final_pay_app: {
