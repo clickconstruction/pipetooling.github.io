@@ -118,3 +118,7 @@ Read-only, over the pooler, with `SET default_transaction_read_only = on`:
 2. Take the payment off, then send the bill back.
 3. The case reads *The $30 fee came off with its bill on <day>. Add it again.*, and the job's total is $30 lower.
 4. Press it again on another bill the check paid. The fee and the job's total come back once.
+
+## Status
+
+Applied on prod 2026-10-10 ~07:05 UTC by PUNCHLIST from the main checkout at `89a79cf5a` (#5283 merged ~06:55 UTC in the same queue batch as GC's #5289, so the push went with `--include-all`, the dry run listing exactly this file and `20261010071000_gc_portal_p5_checks.sql`, which rode along by agreement with GC MODE; drift 852 local / 852 remote, fully applied). Verified read-only right after: both triggers present and enabled (`O`); `add_ar_return_case_fee` carries the refusal (the pattern must escape the apostrophe as the function body does, `case''s`); `list_ar_return_case_fees` ends with `fee_came_off_at timestamp with time zone`; stamped cases read 0, the backfill's set. Types regenerated in #5294 (with GC's 063000 types) and dev-mcp redeployed. The live walk on a ZZ TEST job is still owed.
