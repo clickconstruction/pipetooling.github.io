@@ -9,6 +9,7 @@ import { askGcCompanies, carryGcTrade, loadGcBoardRows, loadGcProjects, markGcBi
 import { clinicBoardRows } from '../lib/gc/boardTestRows'
 import { loadSchedule } from '../lib/gc/scheduleIo'
 import { loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
+import { loadGcWeeklyReports } from '../lib/gc/weeklyReportsIo'
 import { loadGcSubmittals } from '../lib/gc/submittalsIo'
 import { loadGcRfis, startRfiChangeOrder } from '../lib/gc/rfisIo'
 import { emailTheTrade, loadGcDraws, payDraw } from '../lib/gc/drawsIo'
@@ -101,6 +102,13 @@ vi.mock('../lib/gc/gcIo', async () => {
 vi.mock('../lib/gc/dailyLogIo', () => ({
   loadGcDailyLogs: vi.fn(() => Promise.resolve([])),
   saveGcDailyLog: vi.fn(() => Promise.resolve('log-1')),
+}))
+
+// Building's weekly reports: none sent yet, and every send going through.
+vi.mock('../lib/gc/weeklyReportsIo', () => ({
+  loadGcWeeklyReports: vi.fn(() => Promise.resolve([])),
+  recordWeeklyReport: vi.fn(() => Promise.resolve('wr-new')),
+  sendWeeklyReport: vi.fn(() => Promise.resolve({ ok: true, to: 'Hill Country Health', email: 'owner@clinic.test' })),
 }))
 
 // Building's submittals: an empty register, and every press going through.
@@ -421,6 +429,9 @@ describe('GcProjects: the daily log (Building)', () => {
     auth.role = 'dev'
     vi.mocked(loadGcDailyLogs).mockClear()
     vi.mocked(saveGcDailyLog).mockClear()
+    // The log window's weekly report card reads the job's register and its sent reports (U7c).
+    vi.mocked(loadGcSubmittals).mockClear()
+    vi.mocked(loadGcWeeklyReports).mockClear()
   })
 
   /** The clinic being built: started long ago unless a test says otherwise, so its last five working days have no log. */
@@ -438,6 +449,18 @@ describe('GcProjects: the daily log (Building)', () => {
     const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
     expect(await within(card).findByRole('button', { name: 'Daily log · 5 missed' })).toBeTruthy()
     expect(loadGcDailyLogs).toHaveBeenCalledWith(['p1'])
+  })
+
+  it('a dev opens it on a job being built and finds this week’s report card, the job’s sent reports read (U7c)', async () => {
+    const rows = building()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const card = document.querySelector('[data-gc-project="p1"]') as HTMLElement
+    fireEvent.click(await within(card).findByRole('button', { name: 'Daily log · 5 missed' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Hill Country Clinic: daily log' })
+    await waitFor(() => expect(loadGcWeeklyReports).toHaveBeenCalledWith(['p1']))
+    expect(dialog.querySelector('[data-weekly-card]')).toBeTruthy()
   })
 
   it('a dev opens it before work starts, and the window says the log starts then', async () => {
