@@ -231,6 +231,16 @@ describe('money in on the billing job (O5c)', () => {
     expect(payAppFromRows(app({ id: 'a3' }), [], [], money(), notices).architectRemindedOn).toBeUndefined()
   })
 
+  it('says the day the app told the customer it was due soon, and the day it named (O12)', () => {
+    const notices = [
+      { pay_app_id: 'a1', kind: 'certify_reminder', created_at: '2026-10-06T02:30:00Z', due_on: null },
+      { pay_app_id: 'a1', kind: 'pay_soon', created_at: '2026-10-25T14:00:00Z', due_on: '2026-10-28' },
+    ]
+    expect(payAppFromRows(app(), [], [], money(), notices).customerToldDue).toEqual({ on: '2026-10-25', due: '2026-10-28' })
+    expect(payAppFromRows(app(), [], [], money(), notices.slice(0, 1)).customerToldDue).toBeUndefined()
+    expect(payAppFromRows(app({ id: 'a3' }), [], [], money(), notices).customerToldDue).toBeUndefined()
+  })
+
   it('leaves the rest of a part payment open, and closes a written-down bill on its last payment\'s day', () => {
     const part = payAppFromRows(app(), [], [], money({ payments: [{ invoice_id: 'inv-1', amount: 300, paid_on: '2026-10-05' }] }))
     expect([part.paidOn, appPaid(part), appOpen(part)]).toEqual([null, 300, 600])

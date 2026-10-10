@@ -944,6 +944,8 @@ export interface OwnerPayAppSent {
   card?: OwnerPayAppCard
   /** The day the app reminded the architect to certify it (O10's office notices). Unset: not reminded. */
   architectRemindedOn?: string
+  /** The day the app told the customer the bill was due soon, and the due day it named (O12). Unset: not told. */
+  customerToldDue?: { on: string; due: string }
 }
 
 /** A pay application's bill on card (O8b, O8c), as `gc_owner_card_bills` and the bill's row hold it. */

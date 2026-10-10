@@ -16,6 +16,15 @@
  *                           `since`). Writes nothing.
  * - { mode: 'test_send', since? } — the same gate and list; each one to the caller alone, "[TEST] " before its
  *                           subject. Nothing filed, no row written, the switch not read.
+ * - `notices: 'customer'` on either mode (O12b) reads the customer's notice 3 days before a bill is due instead
+ *                           (`get_gc_customer_due_notices()`, O12a, migration 20261010130000), as if on since its own
+ *                           switch's day (`gc_customer_due_notices_on_v1`); its test is logged as
+ *                           gc_customer_due_notice_test. Default `'office'`.
+ *
+ * The cron sends the customer's notices after the office's, each kind only while its own switch is on: to the
+ * project's customer (billing email, else contact), Reply-To the project manager (else the owner), the bill's portal
+ * line when a link is on, the card line by the certified email's rule, the row first, and the sent copy
+ * bill_gc_due_soon on the billing job.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, RESEND_API_KEY, CRON_SECRET, EMAIL_FROM,
  * APP_ORIGIN (Bill the customer's link). config.toml keeps verify_jwt = false: the cron sends no JWT.
@@ -30,15 +39,25 @@ import { customerBillingEmail } from '../_shared/billToParty.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { officeHour, officeYmd } from '../_shared/bidFollowupReminder.ts'
 import { GC_CUSTOMER_EMAIL_FROM_NAME, GC_CUSTOMER_EMAIL_ROLES } from '../_shared/gcCustomerEmails.ts'
+import { GC_CARD_BILL_SETTING_KEY, gcCardBillOn, gcEmailCardFee } from '../_shared/gcCardBill.ts'
+import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
 import {
   billTheCustomerUrl,
+  buildCustomerDueEmail,
   buildOfficeNoticeEmail,
   GC_CERTIFY_REMINDER_FILED_AS,
+  GC_CUSTOMER_DUE_NOTICE_EMAIL_TYPE,
+  GC_CUSTOMER_DUE_NOTICE_FILED_AS,
+  GC_CUSTOMER_DUE_NOTICE_TEST_EMAIL_TYPE,
+  GC_CUSTOMER_DUE_NOTICES_SETTING_KEY,
   GC_OFFICE_NOTICE_EMAIL_TYPE,
   GC_OFFICE_NOTICES_HOUR,
   GC_OFFICE_NOTICES_SETTING_KEY,
+  gcNoticesAsked,
   gcOfficeNoticesSince,
   testSubject,
+  type GcCustomerDueNotice,
+  type GcCustomerDueNoticesPayload,
   type GcOfficeNotice,
   type GcOfficeNoticesPayload,
 } from '../_shared/gcOfficeNotices.ts'
@@ -93,8 +112,60 @@ async function addressOf(admin: Admin, n: GcOfficeNotice): Promise<string> {
   return (n.to.email ?? '').trim()
 }
 
-function emailOf(n: GcOfficeNotice) {
-  return buildOfficeNoticeEmail(n, billTheCustomerUrl(APP_ORIGIN, n.projectId), n.replyTo?.name ?? null)
+function emailOf(n: GcOfficeNotice, opts: { wouldRemind?: boolean } = {}) {
+  return buildOfficeNoticeEmail(n, billTheCustomerUrl(APP_ORIGIN, n.projectId), n.replyTo?.name ?? null, opts)
+}
+
+/**
+ * Preview only reads, so a pay application's reminder to the architect is never recorded: the late notice beside a
+ * reminder that has an address would go first says so, not "no email on file" (the lead's fix, O12b).
+ */
+async function wouldRemindOf(admin: Admin, notices: GcOfficeNotice[]): Promise<Set<string>> {
+  const out = new Set<string>()
+  for (const r of notices) {
+    if (r.kind === 'certify_reminder' && r.payAppId && (await addressOf(admin, r))) out.add(r.payAppId)
+  }
+  return out
+}
+
+async function loadCustomerPayload(admin: Admin, since: string | null): Promise<GcCustomerDueNoticesPayload> {
+  const { data, error } = await admin.rpc('get_gc_customer_due_notices', since ? { p_since: since } : {})
+  if (error) throw new Error(`customer payload rpc: ${error.message}`)
+  const payload = data as GcCustomerDueNoticesPayload | null
+  if (!payload || !Array.isArray(payload.notices)) throw new Error('empty customer payload')
+  return payload
+}
+
+/**
+ * The customer's notice as it would go (O12b): their billing email (else contact), the architect who certified it,
+ * their portal when a link is on (never minted here), and the card line by the certified email's offer rule.
+ */
+async function customerMailOf(admin: Admin, n: GcCustomerDueNotice) {
+  const [{ data: customer }, { data: gc }, { data: app }] = await Promise.all([
+    admin.from('customers').select('id, name, billing_email, contact_info').eq('id', n.to.customerId).maybeSingle(),
+    admin.from('gc_projects').select('architect_customer_id').eq('project_id', n.projectId).maybeSingle(),
+    admin.from('gc_owner_pay_apps').select('invoice_id').eq('id', n.payAppId).maybeSingle(),
+  ])
+  const address = customerBillingEmail(customer ?? null).trim()
+  const architect = gc?.architect_customer_id
+    ? (await admin.from('customers').select('name').eq('id', gc.architect_customer_id).maybeSingle()).data?.name ?? null
+    : null
+  const portalUrl = await loadPortalReturnUrl(admin, n.to.customerId, APP_ORIGIN, { paid: false })
+  let cardFee: number | null = null
+  const billId = app?.invoice_id ?? null
+  if (portalUrl && billId) {
+    const [{ data: setting }, { data: bill }, { count: paidCount }, { data: card }] = await Promise.all([
+      admin.from('app_settings').select('value_text').eq('key', GC_CARD_BILL_SETTING_KEY).maybeSingle(),
+      admin.from('jobs_ledger_invoices').select('amount, status, stripe_invoice_id').eq('id', billId).maybeSingle(),
+      admin.from('jobs_ledger_payments').select('id', { count: 'exact', head: true }).eq('invoice_id', billId),
+      admin.from('gc_owner_card_bills').select('status').eq('invoice_id', billId).maybeSingle(),
+    ])
+    cardFee = gcEmailCardFee({ on: gcCardBillOn(setting?.value_text), bill: bill ?? null, paid: (paidCount ?? 0) > 0, cardStatus: card?.status ?? null })
+  }
+  const mail = buildCustomerDueEmail(n, { architect, portalUrl, cardFee })
+  const replyTo = (n.replyTo?.email ?? '').trim()
+  const options = { from: mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, EMAIL_FROM), ...(replyTo ? { replyTo } : {}) }
+  return { address, mail, options }
 }
 
 /** The architect's reminder: from Click Construction, replies to the project manager. Ours: from the app. */
@@ -104,17 +175,23 @@ function sendOptions(n: GcOfficeNotice): { from?: string; replyTo?: string } {
   return { from: mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, EMAIL_FROM), ...(replyTo ? { replyTo } : {}) }
 }
 
-/** The cron's run: every notice due, each once. */
+/** The cron's run: every notice due, each once, each kind while its own switch is on. */
 async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response> {
   if (officeHour(new Date()) < GC_OFFICE_NOTICES_HOUR) return jsonResponse({ ok: true, skipped: 'before the morning', sent: 0 })
-  const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', GC_OFFICE_NOTICES_SETTING_KEY).maybeSingle()
-  if (!gcOfficeNoticesSince(setting?.value_text)) return jsonResponse({ ok: true, skipped: 'off', sent: 0 })
+  const { data: settings } = await admin
+    .from('app_settings')
+    .select('key, value_text')
+    .in('key', [GC_OFFICE_NOTICES_SETTING_KEY, GC_CUSTOMER_DUE_NOTICES_SETTING_KEY])
+  const valueOf = (key: string) => (settings ?? []).find((r: { key: string }) => r.key === key)?.value_text ?? null
+  const officeOn = gcOfficeNoticesSince(valueOf(GC_OFFICE_NOTICES_SETTING_KEY)) !== null
+  const customerOn = gcOfficeNoticesSince(valueOf(GC_CUSTOMER_DUE_NOTICES_SETTING_KEY)) !== null
+  if (!officeOn && !customerOn) return jsonResponse({ ok: true, skipped: 'off', sent: 0 })
 
-  const payload = await loadPayload(admin, null)
   let sent = 0
   const skipped: string[] = []
   const errors: string[] = []
-  for (const n of payload.notices) {
+  const payload = officeOn ? await loadPayload(admin, null) : null
+  for (const n of payload?.notices ?? []) {
     const what = `${n.kind} ${n.project} ${n.number}`
     try {
       const address = await addressOf(admin, n)
@@ -173,7 +250,63 @@ async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response
       errors.push(`${what}: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
-  return jsonResponse({ ok: true, today: payload.today, sent, skipped, errors })
+
+  // The customer's notice 3 days before a bill is due (O12b), behind its own switch.
+  const due = customerOn ? await loadCustomerPayload(admin, null) : null
+  for (const n of due?.notices ?? []) {
+    const what = `${n.kind} ${n.project} ${n.number}`
+    try {
+      const { address, mail, options } = await customerMailOf(admin, n)
+      if (!address) {
+        skipped.push(`${what}: no email on file`)
+        continue
+      }
+      // The row first, with the day it names: the index on a pay application and kind makes it go once.
+      const { data: row, error: insErr } = await admin
+        .from('gc_office_notices')
+        .insert({
+          project_id: n.projectId,
+          kind: n.kind,
+          pay_app_id: n.payAppId,
+          due_on: n.dueOn,
+          recipient_customer_id: n.to.customerId,
+          recipient_email: address,
+        })
+        .select('id')
+        .single()
+      if (insErr) {
+        if (insErr.code === '23505') skipped.push(`${what}: sent already`)
+        else errors.push(`${what}: ${insErr.message}`)
+        continue
+      }
+      const res = await sendEmailViaResend(address, mail.subject, mail.text, mail.html, resendApiKey, { ...options, emailType: GC_CUSTOMER_DUE_NOTICE_EMAIL_TYPE })
+      if (!res.success) {
+        // The row stays: the notice is not tried again.
+        errors.push(`${what}: ${res.error ?? 'Resend said no'}`)
+        continue
+      }
+      if (res.resendEmailId) {
+        const { data: log } = await admin.from('email_send_log').select('id').eq('resend_email_id', res.resendEmailId).maybeSingle()
+        if (log?.id) await admin.from('gc_office_notices').update({ email_send_log_id: log.id }).eq('id', row.id)
+      }
+      // Its sent copy, under Bills on the billing job's Documents tab (docs/SENT_COPIES.md).
+      await fileSentEmailBestEffort(
+        {
+          kind: GC_CUSTOMER_DUE_NOTICE_FILED_AS,
+          title: mail.subject,
+          recipientName: n.to.name ?? null,
+          customerId: n.to.customerId,
+          jobIds: n.billingJobId ? [n.billingJobId] : [],
+          source: { table: 'gc_office_notices', id: row.id },
+        },
+        { to: [address], from: options.from, subject: mail.subject, html: mail.html, resendEmailId: res.resendEmailId ?? null },
+      )
+      sent += 1
+    } catch (e) {
+      errors.push(`${what}: ${e instanceof Error ? e.message : String(e)}`)
+    }
+  }
+  return jsonResponse({ ok: true, today: payload?.today ?? due?.today ?? null, sent, skipped, errors })
 }
 
 serve(async (req) => {
@@ -198,23 +331,51 @@ serve(async (req) => {
     if (mode === 'preview' || mode === 'test_send') {
       const me = await requireMoneyTeam(req, admin)
       if (me instanceof Response) return me
+      const customer = gcNoticesAsked(body) === 'customer'
       const asked = typeof body.since === 'string' ? gcOfficeNoticesSince(body.since) : null
-      const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', GC_OFFICE_NOTICES_SETTING_KEY).maybeSingle()
+      const { data: setting } = await admin
+        .from('app_settings')
+        .select('value_text')
+        .eq('key', customer ? GC_CUSTOMER_DUE_NOTICES_SETTING_KEY : GC_OFFICE_NOTICES_SETTING_KEY)
+        .maybeSingle()
       const since = asked ?? gcOfficeNoticesSince(setting?.value_text) ?? officeYmd(new Date().toISOString())
+      const email = (me.email ?? '').trim()
+      if (mode === 'test_send' && !email) return jsonResponse({ error: 'Your account has no email address' }, 400)
+
+      if (customer) {
+        const due = await loadCustomerPayload(admin, since)
+        if (mode === 'preview') {
+          const notices = []
+          for (const n of due.notices) {
+            const { address, mail } = await customerMailOf(admin, n)
+            notices.push({ kind: n.kind, project: n.project, number: n.number, to: n.to.name ?? null, email: address, subject: mail.subject, text: mail.text })
+          }
+          return jsonResponse({ today: due.today, since, notices })
+        }
+        let sent = 0
+        for (const n of due.notices) {
+          const { mail, options } = await customerMailOf(admin, n)
+          const res = await sendEmailViaResend(email, testSubject(mail.subject), mail.text, mail.html, resendApiKey, { ...options, emailType: GC_CUSTOMER_DUE_NOTICE_TEST_EMAIL_TYPE })
+          if (!res.success) return jsonResponse({ error: res.error || 'Send failed', sent }, 500)
+          sent += 1
+        }
+        return jsonResponse({ ok: true, since, sent })
+      }
+
       const payload = await loadPayload(admin, since)
+      const wouldRemind = await wouldRemindOf(admin, payload.notices)
+      const wordsOf = (n: GcOfficeNotice) => emailOf(n, { wouldRemind: n.kind === 'certify_late' && !!n.payAppId && wouldRemind.has(n.payAppId) })
       if (mode === 'preview') {
         const notices = []
         for (const n of payload.notices) {
-          const mail = emailOf(n)
+          const mail = wordsOf(n)
           notices.push({ kind: n.kind, project: n.project, number: n.number, to: n.to.name ?? null, email: await addressOf(admin, n), subject: mail.subject, text: mail.text })
         }
         return jsonResponse({ today: payload.today, billDay: payload.billDay, since, notices })
       }
-      const email = (me.email ?? '').trim()
-      if (!email) return jsonResponse({ error: 'Your account has no email address' }, 400)
       let sent = 0
       for (const n of payload.notices) {
-        const mail = emailOf(n)
+        const mail = wordsOf(n)
         const res = await sendEmailViaResend(email, testSubject(mail.subject), mail.text, mail.html, resendApiKey, { ...sendOptions(n), emailType: TEST_EMAIL_TYPE })
         if (!res.success) return jsonResponse({ error: res.error || 'Send failed', sent }, 500)
         sent += 1

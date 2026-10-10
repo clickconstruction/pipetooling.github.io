@@ -558,15 +558,15 @@ export async function loadGcOwnerBillingRows(projectIds: string[]): Promise<Map<
           .in('source_id', interestIds)
           .order('sent_at')
       : Promise.resolve({ data: [], error: null }),
-    // The architect's reminders the app sent (O10's office notices), so a sent bill says when.
+    // The architect's reminders and the customer's notice the app sent (O10, O12), so a sent bill says when.
     appIds.length
-      ? supabase.from('gc_office_notices').select('pay_app_id, kind, created_at').eq('kind', 'certify_reminder').in('pay_app_id', appIds)
+      ? supabase.from('gc_office_notices').select('pay_app_id, kind, created_at, due_on').in('kind', ['certify_reminder', 'pay_soon']).in('pay_app_id', appIds)
       : Promise.resolve({ data: [], error: null }),
   ])
   const lineRows = taken(lines, 'load the pay application lines')
   const reminderRows = taken(reminders, 'load the reminders to pay')
   const emailRows = (taken(emails, 'load the emails about the pay applications') ?? []) as { source_id: string | null; kind: string; recipient_name: string | null; sent_at: string }[]
-  const noticeRows = (taken(notices, 'load the architect’s reminders') ?? []) as { pay_app_id: string | null; kind: string; created_at: string }[]
+  const noticeRows = (taken(notices, 'load the architect’s reminders') ?? []) as { pay_app_id: string | null; kind: string; created_at: string; due_on: string | null }[]
   for (const app of appRows) {
     const rows = out.get(app.project_id)
     if (!rows) continue
@@ -848,9 +848,13 @@ export interface OfficeNoticePreview {
   text: string
 }
 
-/** Today's notices as they would go, as if on since `since` (O10c), else the switch's day, else today. */
-export async function previewOfficeNotices(since?: string): Promise<{ since: string; notices: OfficeNoticePreview[] }> {
-  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'preview', ...(since ? { since } : {}) } })) as FnResult
+/**
+ * Today's notices as they would go, as if on since `since` (O10c), else the switch's day, else today. `notices`:
+ * the office's (default) or the customer's notice before a bill is due (O12).
+ */
+export async function previewOfficeNotices(since?: string, notices: 'office' | 'customer' = 'office'): Promise<{ since: string; notices: OfficeNoticePreview[] }> {
+  const body = { mode: 'preview', ...(since ? { since } : {}), ...(notices === 'customer' ? { notices } : {}) }
+  const r = (await supabase.functions.invoke('gc-office-notices', { body })) as FnResult
   const problem = await fnProblem(r, 'The notices did not load.')
   if (problem) throw new Error(problem)
   const data = r.data as { since?: string; notices?: OfficeNoticePreview[] } | null
@@ -858,8 +862,9 @@ export async function previewOfficeNotices(since?: string): Promise<{ since: str
 }
 
 /** Each of today's notices marked [TEST], to the signed-in member only, as if on since `since` as Preview. How many went. */
-export async function sendOfficeNoticesTest(since?: string): Promise<number> {
-  const r = (await supabase.functions.invoke('gc-office-notices', { body: { mode: 'test_send', ...(since ? { since } : {}) } })) as FnResult
+export async function sendOfficeNoticesTest(since?: string, notices: 'office' | 'customer' = 'office'): Promise<number> {
+  const body = { mode: 'test_send', ...(since ? { since } : {}), ...(notices === 'customer' ? { notices } : {}) }
+  const r = (await supabase.functions.invoke('gc-office-notices', { body })) as FnResult
   const problem = await fnProblem(r, 'The test did not go.')
   if (problem) throw new Error(problem)
   return Number((r.data as { sent?: number } | null)?.sent ?? 0)

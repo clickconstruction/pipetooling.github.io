@@ -216,6 +216,16 @@ export const EMAIL_CATALOG: EmailCatalogEntry[] = [
     subjectExample: 'Pay application 3 for Sample Retail Shell waits on your certificate',
   },
   {
+    id: 'gc_customer_due_notice',
+    name: 'GC mode — the customer’s notice 3 days before a certified bill is due (sent by the app, once per bill)',
+    group: 'billing',
+    audience: 'customer',
+    builtWhere: 'server',
+    sender: 'gc-office-notices',
+    editable: { kind: 'hardcoded' },
+    subjectExample: 'Pay application 3 for Sample Retail Shell is due Oct 28',
+  },
+  {
     id: 'gc_office_notice',
     name: 'GC mode — the office’s notices: bill day in two days, a pay application still with the architect at 5 days',
     group: 'billing',
