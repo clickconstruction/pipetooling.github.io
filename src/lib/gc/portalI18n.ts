@@ -1027,6 +1027,17 @@ const S = {
   },
   condConsentNoun: { en: 'this conditional lien waiver', es: 'esta renuncia condicional de gravamen' },
   condFinalConsentNoun: { en: 'this conditional final release of lien', es: 'esta liberación final de gravamen condicional' },
+  // P5c-4: the two closeout emails (closeoutEmail.ts). The ask and the release say email while WAIVER_SIGN_LIVE holds the waivers.
+  mAcceptedSubject: { en: 'We accepted your {trade} work on {project}', es: 'Aceptamos su trabajo de {trade} en {project}' },
+  mAcceptedWhat: { en: 'We accepted your {trade} work on {project}. Thank you.', es: 'Aceptamos su trabajo de {trade} en {project}. Gracias.' },
+  mAcceptedHeld: { en: 'We hold {amount} of your retainage. Your final pay application asks for it.', es: 'Retenemos {amount} de su retención. Su solicitud de pago final la pide.' },
+  mAcceptedAskPortal: { en: 'Send your final pay application from your portal.', es: 'Envíe su solicitud de pago final desde su portal.' },
+  mAcceptedAskEmail: { en: 'For now, email your final pay application to {gc}.', es: 'Por ahora, envíe su solicitud de pago final a {gc} por correo.' },
+  mRetainageWhen: { en: 'We pay your retainage {days} days after the customer pays us.', es: 'Pagamos su retención {days} días después de que el cliente nos pague.' },
+  mFinalInSubject: { en: 'Your final pay application on {project} came in', es: 'Llegó su solicitud de pago final de {project}' },
+  mFinalInWhat: { en: 'Your final pay application for {amount} on {trade} for {project} came in.', es: 'Llegó su solicitud de pago final por {amount} de {trade} para {project}.' },
+  mFinalInReleasePortal: { en: 'Once we pay it, sign your unconditional final release of lien in your portal.', es: 'Cuando la paguemos, firme su liberación final de gravamen incondicional en su portal.' },
+  mFinalInReleaseEmail: { en: 'Once we pay it, send us your unconditional final release of lien.', es: 'Cuando la paguemos, envíenos su liberación final de gravamen incondicional.' },
   previewNothing: { en: 'Preview. Nothing is saved from here.', es: 'Vista previa. Desde aquí no se guarda nada.' },
   quoteTickHelp: { en: 'Tick what your quote covers. Untick what it leaves out.', es: 'Marque lo que incluye su cotización. Desmarque lo que no incluye.' },
 } satisfies Record<string, Record<PortalLang, string>>

@@ -567,7 +567,7 @@ export function customerJourneys(): Journey[] {
           id: 'gc-trade-email',
           label: 'GC mode: an email to a trade partner',
           sublabel: 'GC projects → Ask for quotes, a new set, an answer (devs only for now)',
-          when: 'Each time we ask, remind, send plans or answer',
+          when: 'Each time we ask, remind, send plans or answer, and at its closeout',
           customerCan: 'Read what we want and open its portal from the button. Every email carries the same link.',
           guide: 'email-a-trade-partner-from-gc-mode',
           reflects: ['The kind of email and who at the company gets it', 'The project manager on the GC project (the Reply-To and the signer)'],

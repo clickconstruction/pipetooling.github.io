@@ -281,7 +281,7 @@ export function portalLink(partnerId: string): string {
 export interface PortalMessage {
   key: string
   on: string
-  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid' | 'changeAsk' | 'backCharge' | 'dates' | 'startSoon'
+  kind: 'invite' | 'nudge' | 'plans' | 'bidTab' | 'msa' | 'sow' | 'start' | 'less' | 'change' | 'paid' | 'answer' | 'coi' | 'closed' | 'vetted' | 'preBid' | 'changeAsk' | 'backCharge' | 'dates' | 'startSoon' | 'accepted' | 'finalIn'
   /** Null: about the company, not one project (the master agreement). */
   projectId: string | null
   subject: string
@@ -337,6 +337,8 @@ const KIND_GROUP: Record<PortalMessage['kind'], PortalMailGroup> = {
   less: 'pay',
   coi: 'pay',
   backCharge: 'pay',
+  accepted: 'pay',
+  finalIn: 'pay',
 }
 
 /**

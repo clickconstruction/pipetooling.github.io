@@ -16,12 +16,15 @@ function setup({
   billsRead = true,
   onSeeBill,
   own,
+  emailOn = false,
 }: {
   id?: string
   project?: (p: GcProject) => GcProject
   billsRead?: boolean
   onSeeBill?: () => void
   own?: OwnWorkCosts
+  /** The window's email tick, on or off. Unset: no tick. */
+  emailOn?: boolean
 } = {}) {
   const base = initialGcState()
   const found = base.projects.find((p) => p.id === id)!
@@ -35,7 +38,8 @@ function setup({
     onWaiverIn: vi.fn(),
     onCloseJob: vi.fn(),
   }
-  render(<GcCloseoutWindow state={state} project={project} billsRead={billsRead} writes={writes} onSeeBill={onSeeBill} own={own} onClose={() => undefined} />)
+  const emailTick = emailOn ? { on: true, onChange: () => undefined } : null
+  render(<GcCloseoutWindow state={state} project={project} billsRead={billsRead} writes={writes} onSeeBill={onSeeBill} own={own} emailTick={emailTick} onClose={() => undefined} />)
   return { writes }
 }
 
@@ -108,6 +112,20 @@ describe('GcCloseoutWindow', () => {
     const { writes } = setup({ project: punchDone })
     fireEvent.click(within(step('fconc', 'accepted')).getByRole('button', { name: 'Accept the work' }))
     expect(writes.onAccept).toHaveBeenCalledWith('fconc')
+  })
+
+  it('says the company gets an email when the tick is on: the work accepted, a final that came in (the Portal’s P5c-4)', () => {
+    setup({ project: punchDone, emailOn: true })
+    expect(step('fconc', 'accepted').querySelector('[data-closeout-accept-email]')!.textContent).toBe('Guadalupe Flatwork gets an email that we accepted its work.')
+    fireEvent.click(within(step('fsite', 'finalApp')).getByRole('button', { name: 'Their final pay application came by email' }))
+    expect(step('fsite', 'finalApp').querySelector('[data-closeout-final-email]')!.textContent).toBe('Tri-County Site gets an email that its final pay application came in.')
+  })
+
+  it('says nothing of an email with the tick off', () => {
+    setup({ project: punchDone })
+    expect(document.querySelector('[data-closeout-accept-email]')).toBeNull()
+    fireEvent.click(within(step('fsite', 'finalApp')).getByRole('button', { name: 'Their final pay application came by email' }))
+    expect(document.querySelector('[data-closeout-final-email]')).toBeNull()
   })
 
   it('records a final pay application that came by email, held until it has its day', () => {
@@ -224,6 +242,8 @@ describe('GcCloseoutWindow', () => {
       'Waiting on Tri-County Site.',
       'Waiting on the customer.',
       'Only people given access can open this link. Our office may not be one of them.',
+      'Guadalupe Flatwork gets an email that we accepted its work.',
+      'Tri-County Site gets an email that its final pay application came in.',
     ]
     for (const words of said) expect(plainWordsFailures(words), words).toEqual([])
   })
