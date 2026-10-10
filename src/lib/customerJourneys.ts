@@ -477,6 +477,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
         },
         {
+          id: 'gc-portal-pay-by-card',
+          label: 'GC mode: pay a certified bill by card in their portal',
+          sublabel: 'Their portal, beside a certified bill that is not on Stripe, once the owner turns the offer on',
+          when: 'Once the architect certifies a bill',
+          customerCan: 'Pay the bill by card instead of by check. The card adds a 3% fee, said before they go to the card page, and the bill then takes cards only.',
+          guide: 'see-what-a-customer-sees-on-their-portal',
+          reflects: ['The bill as certified, with nothing paid on it', 'The 3% card fee and what the card pays', 'The customer’s portal link'],
+          render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
+        },
+        {
           id: 'gc-portal-accept-work',
           label: 'GC mode: accept the work in their portal',
           sublabel: 'Their portal, under the GC job, once every line is billed',

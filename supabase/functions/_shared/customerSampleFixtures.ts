@@ -6,6 +6,7 @@
 import { normalizeSharedEstimateOptions } from './estimateOptions.ts'
 import { estimateOptionsDraftPersistFields } from './estimateOptionsPersist.ts'
 import { rollUpPartDecisions, roomCounts, roomRowsFrom, type RoomItemSource, type RoomPartSource, type RoomRow, type SubmittalRoomPayload } from './submittalRoomPayload.ts'
+import { gcPortalCardBills } from './gcCardBill.ts'
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_OWNER, SAMPLE_SUB, SAMPLE_TOKEN, SAMPLE_TOKEN_OWNER, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
 import { buildPortalBills, buildPortalSharedBills, type PortalBillOut, type PortalInvoiceRow, type PortalJobRow, type PortalSharedBillOut } from './portalMergedBills.ts'
@@ -303,7 +304,7 @@ export function samplePortalMoneyRows(state: SampleState, todayYmd: string, appO
       viewerCustomerId: id,
       audience: 'customer',
       jobs: [samplePortalJob({ id: 'sample-job-owner', hcp_number: '1010', job_name: `${SAMPLE_OWNER.job} (GC)`, job_address: SAMPLE_OWNER.address, status: 'billed', revenue: 45_000, payments_made: 0, customer_id: id })],
-      sentInvoices: [samplePortalInvoice({ id: 'sample-inv-owner', job_id: 'sample-job-owner', amount: 45_000, status: 'billed', billed_at: at(-6), sequence_order: 1, hosted_invoice_url: `${origin}/portal?t=${SAMPLE_TOKEN_OWNER}#pay` })],
+      sentInvoices: [samplePortalInvoice({ id: 'sample-inv-owner', job_id: 'sample-job-owner', amount: 45_000, status: 'billed', billed_at: at(-6), sequence_order: 1 })],
       payments: [],
       releases: [],
       events: [],
@@ -396,7 +397,8 @@ export function samplePortalMoney(r: SamplePortalMoneyRows): { bills: PortalBill
 
 /**
  * GC mode's customer (O7c): the owner of a job we build, with our certified pay application to pay, a change order
- * waiting on them and the work to accept, so What customers see shows both presses. Sample presses only say thank you.
+ * waiting on them and the work to accept, so What customers see shows both presses. The certified bill is not on
+ * Stripe, so it offers Pay by card with its 3% fee (O8b). Sample presses only say thank you.
  */
 function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: string, appOrigin: string): Record<string, unknown> {
   const money = samplePortalMoney(samplePortalMoneyRows('owner', todayYmd, appOrigin))
@@ -429,6 +431,8 @@ function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: strin
         accepted: null,
       },
     ],
+    // The certified bill is not on Stripe, so Pay by card offers it at its 3% (O8b), through the portal's own kernel.
+    cardBills: gcPortalCardBills({ on: true, hasEmail: true, bills: money.bills, certifiedInvoiceIds: new Set(['sample-inv-owner']), cardRows: [] }),
   }
 }
 
