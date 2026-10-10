@@ -685,18 +685,29 @@ company record and its portal (Board and Portal). PR 16 joins each other lane as
 15. **The customer's side**: their picture in `customer-portal` (G-90 to G-93), and the letter sent
     on its own through `gc-schedule-send` (G-94). *Check:* the customer's portal shows the finish
     and what changed, and never a company, a dollar or a spare day.
-16. **The readers from other lanes**, each a small PR beside that lane's own table:
+16. **The readers from other lanes**, each a small PR beside that lane's own table. Live but for New
+    project's sets, in the cuts of `mockups/schedule-pr16.md` (2026-10-10, gc 4):
     - **Building's draws**: a trade's percent on its bar, and its report sets the real days in the
       same write (`withReportedActuals`). A part's report writes the part and its line's percent
-      together (`tradeReportPart`).
+      together (`tradeReportPart`). *Live:* 16c (clickconstruction/pipetooling.github.io#5322, v2.5165)
+      lays the trades' percents behind the draws gate. A report sets the real days in its own write,
+      `gc_trade_sow_report` (U6a), and nothing is derived at read (PR 16's call 5).
     - **Building's daily log**: the log against the chart (G-60), days lost (G-58), the crew
-      projection (G-57), people on site (G-84) and the morning list (G-118).
-    - **Building's Friday report**: its schedule section (G-93).
+      projection (G-57), people on site (G-84) and the morning list (G-118). *Live:* 16a (#5313,
+      v2.5161), with the walk's *Add the N lost days*. The morning list is Building's screen, not the
+      schedule's.
+    - **Building's Friday report**: its schedule section (G-93). *Live* with U7c, which lays the
+      schedule over the report's own state.
     - **Our crew (G-51)**: its percent from its Pipeline job, and its head count from its
-      clock-ins.
+      clock-ins. *Live:* the percent with U8b (#5304, v2.5153), the clock-ins with 16a.
     - **Owner Billing's change orders**: a change order's days (G-76), the late-finish line (G-98)
       and *Ask for the days* (G-141), read through `gc_change_orders_office` (`mockups/schedule-pr16.md`,
-      16b). `gc_schedule_moves.change_order_id` has had its foreign key since O1.
+      16b). `gc_schedule_moves.change_order_id` has had its foreign key since O1. *Live:* the view in
+      16b-i (#5307, v2.5156, migration `20261010081000`, pushed and verified by the lead), the
+      screen in 16b-ii (#5318, v2.5164), and the generated row type in #5323.
+    - **Owner Billing's bills**: for the money team only, the late fee in dollars, what each way to
+      get days back saves, and the *Billing* line under Pull earlier and Days back, all from a money
+      state apart from the chart's. *Live:* 16c (#5322, v2.5165).
     - **New project's sets**: a set that pushes the schedule or brings new work (`issuePlanSet`'s
       `schedulePushes`) writes them inside the planned `gc_issue_plan_set`'s transaction (New
       project's PR 6), as `gc_schedule_move` does. New project's plan leaves this item until these
@@ -779,9 +790,9 @@ for whoever picks the lane up:
    rebase keep 9d's `canPull` prop and line, and keep `canPull={canUseGcBuilding(role)}` at the page's
    mount beside the new team gate.
 2. **9d's Not done** (`docs/recent-features/v2.5142.md`): Follow up on Days back waits for the Board's
-   Follow up sheet, and the pull's and days back's billing line for the schedule to read bills (PR 16).
-   The walk's *Add the N lost days* waits for the daily log laid over the schedule (PR 16), which
-   composes U8's `withCrewClockIns` after `withDailyLogs` (`mockups/building-u8.md`, agreed with gc 4).
+   Follow up sheet. The pull's and days back's billing line came with PR 16c (#5322), for the money
+   team. The walk's *Add the N lost days* came with PR 16a (#5313), which lays U8's `withCrewClockIns`
+   after `withDailyLogs` (`mockups/building-u8.md`, agreed with gc 4).
 3. **The read half of Building's door for the schedule's team** (`mockups/schedule-pr9d.md`, call 1):
    a `FOR SELECT` for the team on `gc_submittals`, `gc_rfis` and their holds, and the Board's word on a
    company's papers in `person_contract_documents` (a controller and an estimator read none today).
@@ -789,3 +800,9 @@ for whoever picks the lane up:
    for a dev only too, and the same door covers them. Building's door is planned next
    (`mockups/building-door.md`, gc 10 with gc 4).
 
+PR 16, the readers, is live but for New project's sets (2026-10-10, gc 4, `mockups/schedule-pr16.md` with
+amendment 1, co-signed by gc 10 and gc 5). 16a merged as v2.5161 (#5313), 16b-i as v2.5156 (#5307, migration
+`20261010081000`, pushed and verified the same morning), 16b-ii as v2.5164 (#5318), and 16c as v2.5165 (#5322), with
+the shim swap in #5323. None deployed a function. PR 16's item above says what each cut turned on. New project's sets
+stay with New project's PR 6. PR 11, the what-if copy on real data, is planned in `mockups/schedule-pr11.md`
+(co-signed by gc 10) and being built by gc 4.
