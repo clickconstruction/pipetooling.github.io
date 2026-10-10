@@ -2,7 +2,7 @@
 title: look up a trade partner
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, trade partner, company, window, about, language, Spanish, Español, who gets our emails, bookkeeper, vetting, insurance, passed
+keywords: gc mode, trade partner, company, window, about, language, Spanish, Español, who gets our emails, bookkeeper, vetting, insurance, passed, activity, log a contact, call
 order: 97
 ---
 Each trade partner has its own window. The window shows how the company answers, who there gets our emails, and the work it does with us. The company's portal link is there too.
@@ -50,6 +50,23 @@ The company names other people in its own portal, like a bookkeeper for pay. You
 The **Their work with us** list shows each job we awarded the company. **Times they passed** lists each job they said no to, with the reason we wrote down.
 
 Press a job's name to go to its card.
+
+## See everything with a company
+
+The **Activity** tab sits between About and Documents. Its number counts every line on it.
+
+1. Press **Activity** in the company's window.
+2. Each line has its day, with the newest on top. A line about a job says the job and the trade.
+3. Press a filter to see one kind, such as **Calls and notes** or **Paperwork**. Press **Everything** to see it all again.
+4. Press a job under a line to go to its card.
+
+## Log a call with a company
+
+1. In the **Activity** tab, pick **Call**, **Text** or **Email** under **How you reached them**.
+2. Type what was said in one sentence.
+3. Press {{button:blue|Log a contact}}.
+
+The line goes on the company's Activity with your name and today's date. If it does not save, the window says why and keeps your words.
 
 ## Share their portal
 

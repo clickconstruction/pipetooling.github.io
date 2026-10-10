@@ -6,6 +6,7 @@ import { PartnerName } from './GcPartnerName'
 import { GcCompanyOpenerContext } from './gcCompanyOpener'
 import { boardStateFromRows, type BoardRows } from '../../lib/gc/boardRows'
 import { clinicBoardRows } from '../../lib/gc/boardTestRows'
+import { partnerActivity } from '../../lib/gc/companyFile'
 import { paperDayChoices } from '../../lib/gc/paperSend'
 import type { PaperSendOutcome } from '../../lib/gc/papersIo'
 import { installDomShims } from '../../test/renderSmokeMocks'
@@ -244,5 +245,69 @@ describe('GcCompanyWindow · opened at a paper (the opener’s CompanyAt)', () =
   it('opens on About when only the company is named, as every caller did before', () => {
     const { dialog } = openAt({})
     expect(within(dialog).getByRole('tab', { name: 'About' }).getAttribute('aria-selected')).toBe('true')
+  })
+})
+
+describe('GcCompanyWindow · Activity (the Board’s B2b-iv)', () => {
+  function openActivity(onLogContact?: (how: 'call' | 'text' | 'email', note: string) => Promise<void>, onOpenProject = vi.fn()) {
+    const state = boardStateFromRows(clinicBoardRows())
+    const partner = state.partners.find((p) => p.id === 'hillside')!
+    render(
+      <GcCompanyWindow
+        state={state}
+        partner={partner}
+        lang="en"
+        onLanguage={() => Promise.resolve()}
+        onClose={() => undefined}
+        onOpenProject={onOpenProject}
+        {...(onLogContact ? { onLogContact } : {})}
+      />,
+    )
+    const dialog = screen.getByRole('dialog', { name: partner.company })
+    const events = partnerActivity(state, partner)
+    fireEvent.click(within(dialog).getByRole('tab', { name: `Activity (${events.length})` }))
+    return { dialog, events, onOpenProject }
+  }
+
+  it('sits between About and Documents with its count, newest first, the filters cutting it', () => {
+    const { dialog, events } = openActivity()
+    expect(within(dialog).getAllByRole('tab').map((t) => t.getAttribute('data-gc-company-tab'))).toEqual(['about', 'activity', 'documents'])
+    expect(within(dialog).getByText('Rosa: New to us; met at the pre-bid.')).toBeTruthy()
+    const notes = events.filter((e) => e.kind === 'note').length
+    fireEvent.click(within(dialog).getByRole('button', { name: `Calls and notes ${notes}` }))
+    expect(within(dialog).getAllByRole('listitem')).toHaveLength(notes)
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Money 0' }))
+    expect(within(dialog).getByText('Nothing here yet.')).toBeTruthy()
+  })
+
+  it('a line about a job opens the job', () => {
+    const { dialog, onOpenProject } = openActivity()
+    fireEvent.click(within(dialog).getAllByRole('button', { name: 'Hill Country Clinic · Sitework' })[0]!)
+    expect(onOpenProject).toHaveBeenCalledWith('p1')
+  })
+
+  it('logs a contact with how they were reached, and has no box without the write', async () => {
+    const log = vi.fn(() => Promise.resolve())
+    const { dialog } = openActivity(log)
+    const press = within(dialog).getByRole('button', { name: 'Log a contact' }) as HTMLButtonElement
+    expect(press.disabled).toBe(true)
+    fireEvent.change(within(dialog).getByRole('combobox', { name: 'How you reached them' }), { target: { value: 'text' } })
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'What was said' }), { target: { value: '  Crew free from the 20th. ' } })
+    fireEvent.click(press)
+    await waitFor(() => expect(log).toHaveBeenCalledWith('text', 'Crew free from the 20th.'))
+    await waitFor(() => expect((within(dialog).getByRole('textbox', { name: 'What was said' }) as HTMLInputElement).value).toBe(''))
+  })
+
+  it('says in words when the contact did not log, and keeps the note', async () => {
+    const { dialog } = openActivity(() => Promise.reject(new Error('the network dropped')))
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'What was said' }), { target: { value: 'Left a message.' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Log a contact' }))
+    expect(await within(dialog).findByRole('alert')).toHaveProperty('textContent', 'The contact was not logged: the network dropped')
+    expect((within(dialog).getByRole('textbox', { name: 'What was said' }) as HTMLInputElement).value).toBe('Left a message.')
+  })
+
+  it('shows no box when the page gives no write', () => {
+    const { dialog } = openActivity()
+    expect(within(dialog).queryByRole('button', { name: 'Log a contact' })).toBeNull()
   })
 })
