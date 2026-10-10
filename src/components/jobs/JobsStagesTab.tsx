@@ -279,7 +279,7 @@ import {
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
-import { setDevShowsZzTestJobs, useDevShowsZzTestJobs, zzTestJobsSwitchLine } from '../../lib/jobs/zzTestJobSwitch'
+import { setDevShowsZzTestJobs, useDevShowsZzTestJobs, useZzTestJobsHidden, zzTestJobsSwitchLine } from '../../lib/jobs/zzTestJobSwitch'
 import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
@@ -573,7 +573,9 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   // v2.3806 (punch list #40 PR 3): deposits the bank returned that a job still counts as paid — the
   // Dashboard card's read, once per board, folded per job for the Billed rows' badge and the phone chip.
   const bankReturnedEnabled = stagesGates.canSeeBankReturned(authRole)
-  const { returned: bankReturned, cases: bankReturnCases, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled)
+  /** ZZ test jobs off the returned-deposit badges for every role but a dev who shows them (punch list #61, v2.5122). */
+  const zzTestJobsHiddenForNudges = useZzTestJobsHidden(authRole)
+  const { returned: bankReturned, cases: bankReturnCases, reload: reloadBankReturned } = useBankReturnedPaymentsNudge(bankReturnedEnabled, zzTestJobsHiddenForNudges, authUser?.id ?? null)
   const bankReturnedByJobId = useMemo(() => bankReturnedByJob(bankReturned?.items ?? []), [bankReturned])
   const openPaymentsReceived = useCallback(
     (job: JobWithDetails) =>

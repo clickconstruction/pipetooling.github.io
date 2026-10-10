@@ -90,4 +90,12 @@ describe('useDashboardBillingInvoices · ZZ test jobs', () => {
       expect.objectContaining({ type: 'error' }),
     )
   })
+
+  it('the first render after enabling (status off) reads as loading too (review on #5246)', async () => {
+    zz = { ids: null, status: 'off', retry: () => {} }
+    const { result } = render()
+    expect(result.current.readyToBillLoading).toBe(true)
+    expect(result.current.readyToBillLoaded).toBe(false)
+  })
 })
+

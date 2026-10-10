@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, useMemo } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import CustomerPortalGlobeButton from '../components/customers/CustomerPortalGlobeButton'
 import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
@@ -17,12 +17,15 @@ import BackfillHcpPaymentsModal from '../components/customers/BackfillHcpPayment
 import ClassifyCustomersModal from '../components/customers/ClassifyCustomersModal'
 import LinkJobsToCustomersModal from '../components/customers/LinkJobsToCustomersModal'
 import { type CustomerListRollup, type LcvInvoiceRow, type LcvJobRow, type LcvPaymentRow } from '../lib/customers/customersListLcv'
-import { deriveCustomersList, isMissingRpcError, parseCustomersListBundle, type CustomersListBundle } from '../lib/customers/customersListBundle'
+import { deriveCustomersList, isMissingRpcError, parseCustomersListBundle, withoutZzTestJobsInBundle, type CustomersListBundle } from '../lib/customers/customersListBundle'
 import { telHrefFor } from '../lib/phoneContact'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { CustomersPhoneView } from '../components/customers/CustomersPhoneView'
 import type { PhoneCustomer } from '../lib/customers/customerPhoneSearch'
 import { todayYmdInAppTz } from '../utils/dateUtils'
+import { useZzTestJobsHidden } from '../lib/jobs/zzTestJobSwitch'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { isZzTestName } from '../lib/jobs/zzTestJobSweep'
 
 type Customer = Database['public']['Tables']['customers']['Row']
 type CustomerWithMaster = Customer & {
@@ -196,7 +199,12 @@ function customerTypeTagLabel(c: Customer): string {
 }
 
 export default function Customers() {
-  const { role: authRole } = useAuth()
+  const { role: authRole, user: authUser } = useAuth()
+  /**
+   * ZZ test jobs (punch list #61, v2.5122): a ZZ customer's row leaves the list, and every ZZ job leaves the
+   * counts and money, for every role but a dev who shows them. A failed id read fails the details load.
+   */
+  const hideZz = useZzTestJobsHidden(authRole)
   const moneyHidden = moneyHiddenByRls(authRole)
   // On a phone the page is the search (v2.3886, punch list #30 PR 5a); the list below is the desktop's.
   const phoneView = useNarrowViewport640()
@@ -205,7 +213,11 @@ export default function Customers() {
   const [searchParams, setSearchParams] = useSearchParams()
   const newCustomerModal = useNewCustomerModal()
   const editCustomerModal = useEditCustomerModal()
-  const [customers, setCustomers] = useState<CustomerWithMaster[]>([])
+  const [customersAll, setCustomers] = useState<CustomerWithMaster[]>([])
+  const customers = useMemo(
+    () => (hideZz ? customersAll.filter((c) => !isZzTestName(c.name)) : customersAll),
+    [hideZz, customersAll],
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [viewingBidsForCustomer, setViewingBidsForCustomer] = useState<string | null>(null)
@@ -345,11 +357,16 @@ export default function Customers() {
     }
   }
 
+  /** The newest load (review on #5246): the role landing or a dev's flip starts another, and only the newest writes. */
+  const fetchGenRef = useRef(0)
   async function fetchCustomers() {
+    const gen = ++fetchGenRef.current
+    const stale = () => gen !== fetchGenRef.current
     const { data, error: err } = await supabase
       .from('customers')
       .select('*, users!customers_master_user_id_fkey(id, name, email)')
       .order('name')
+    if (stale()) return
     if (err) {
       setError(err.message)
       setLoading(false)
@@ -364,14 +381,17 @@ export default function Customers() {
     // The list is readable now (v2.3365): show it, and let the counts and money
     // chips arrive behind it instead of holding the whole page on them.
     setLoading(false)
-    const customerIds = customersWithMasters.map((c) => c.id)
+    // A hidden ZZ customer's details are never read (punch list #61).
+    const customerIds = (hideZz ? customersWithMasters.filter((c) => !isZzTestName(c.name)) : customersWithMasters).map((c) => c.id)
     if (customerIds.length === 0) {
       setDetailsLoading(false)
       return
     }
     setDetailsLoading(true)
     try {
-      const bundle = await loadCustomersListBundle(customerIds)
+      const read = await loadCustomersListBundle(customerIds)
+      const bundle = hideZz ? withoutZzTestJobsInBundle(read, await loadZzTestJobIds(authUser?.id ?? null)) : read
+      if (stale()) return
       const derived = deriveCustomersList(bundle, customerIds)
       setCountsByCustomerId(derived.countsByCustomerId)
       setRollupByCustomerId(derived.rollupByCustomerId)
@@ -379,9 +399,9 @@ export default function Customers() {
       setUnrecordedPaidCount(derived.unrecordedPaidCount)
       setUnlinkedJobsCount(derived.unlinkedJobsCount)
     } catch (e) {
-      setError(formatErrorMessage(e))
+      if (!stale()) setError(formatErrorMessage(e))
     } finally {
-      setDetailsLoading(false)
+      if (!stale()) setDetailsLoading(false)
     }
   }
 
@@ -409,7 +429,9 @@ export default function Customers() {
 
   useEffect(() => {
     fetchCustomers()
-  }, [])
+    // A dev's flip of the ZZ switch reads the money again (the list's rows follow on their own).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hideZz])
 
   useEffect(() => {
     if (location.state?.openNewCustomer && newCustomerModal) {
