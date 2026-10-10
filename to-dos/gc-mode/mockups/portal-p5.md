@@ -202,4 +202,38 @@ Three ways it could be better:
 
 ## Status
 
-Planned 2026-10-10 by gc 3 (the Portal lane) on `claude/gc-portal-p5-plan`, from `origin/spike/gc-mode` at fe1fe1ce2, over main at 982e95bb4. P2c-ii (v2.5138) is merged and its eight functions are deployed. Nothing built. It waits for the lead's read-back.
+Planned 2026-10-10 by gc 3 (the Portal lane) on `claude/gc-portal-p5-plan`, from `origin/spike/gc-mode` at fe1fe1ce2, over main at 982e95bb4. P2c-ii (v2.5138) is merged and its eight functions are deployed. The lead approved the plan the same day with its six decisions as the defaults, and put decision 5 and the punch emails to the owner as questions, not blockers.
+
+**P5c-m cut 2026-10-10** as v2.5150, migration `20261010071000_gc_portal_p5_checks` (past the open claims 063000 and 070000). Its bed `gc-portal-p5` passed locally on Docker over the whole schema, applied twice.
+
+## P5c-m's SQL as built
+
+`supabase/migrations/20261010071000_gc_portal_p5_checks.sql`, word for word. A difference between the migration and this block that is not a comment or the stamp is a question for the Portal lane.
+
+```sql
+SET lock_timeout = '3s';
+
+-- GC mode, the trade partner portal's P5c-m (to-dos/gc-mode/mockups/portal-p5.md on branch spike/gc-mode): two CHECKs
+-- widened for the trade's half of the job, and nothing else. No table, column, function or grant changes.
+--   - gc_trade_messages keeps every email we send a company. P5c-4 adds two kinds: `accepted` (we accepted its work and
+--     ask for its final pay application) and `finalIn` (its final pay application came in).
+--   - esign_consents keeps the words a signer agreed to. P5c-3's four signatures in the portal write a ledger row as
+--     sign_sow does: `gc_draw` for a pay application, a final pay application or an unconditional waiver (keyed by the
+--     draw), and `gc_trade_change` for a change order the trade signs (keyed by the change order).
+-- Each CHECK is dropped and added again NOT VALID, then validated, so the scan runs without the table's write lock.
+-- Doc: docs/migrations/.
+
+ALTER TABLE public.gc_trade_messages DROP CONSTRAINT IF EXISTS gc_trade_messages_kind_known;
+ALTER TABLE public.gc_trade_messages
+  ADD CONSTRAINT gc_trade_messages_kind_known CHECK (kind IN (
+    'invite', 'nudge', 'plans', 'bidTab', 'msa', 'sow', 'start', 'less', 'change', 'paid', 'answer',
+    'coi', 'closed', 'vetted', 'preBid', 'changeAsk', 'backCharge', 'dates', 'startSoon', 'paper',
+    'accepted', 'finalIn')) NOT VALID;
+ALTER TABLE public.gc_trade_messages VALIDATE CONSTRAINT gc_trade_messages_kind_known;
+
+ALTER TABLE public.esign_consents DROP CONSTRAINT IF EXISTS esign_consents_record_type_check;
+ALTER TABLE public.esign_consents
+  ADD CONSTRAINT esign_consents_record_type_check
+  CHECK (record_type IN ('estimate', 'job_contract', 'person_contract_document', 'step_commitment', 'bid_proposal_room', 'lien_owner_record_request', 'gc_sow', 'gc_draw', 'gc_trade_change')) NOT VALID;
+ALTER TABLE public.esign_consents VALIDATE CONSTRAINT esign_consents_record_type_check;
+```
