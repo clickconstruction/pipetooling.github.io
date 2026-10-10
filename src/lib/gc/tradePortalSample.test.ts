@@ -23,7 +23,7 @@ describe('the trade portal’s sample', () => {
       else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { keys.add(k); if (k !== 'lines' && k !== 'includes') walk(x) }
     }
     walk(slice)
-    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'sowLines', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'note', 'mine'].includes(k))).toEqual([])
+    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'sowLines', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'submittals', 'submittalHolds', 'submittalRounds', 'rfis', 'rfiHolds', 'punch', 'draws', 'drawLines', 'lineReports', 'changeSends', 'note', 'mine'].includes(k))).toEqual([])
   })
 
   it('stays current: its days count from today', () => {
@@ -55,6 +55,19 @@ describe('the sample’s job (P4b-i)', () => {
   it('is awarded to the sample company and signed, so it can be charged and can ask for a change', () => {
     expect([pkg.awardedInviteId, pkg.sow?.status, pkg.sow?.price]).toEqual([SAMPLE_TRADE_IDS.jobAsk, 'signed', 48600])
     expect(portalCanAskChange(job, pkg, partnerId)).toBe(true)
+  })
+
+  it('carries the job’s work: a report, a paid draw, a punch item, a submittal and an answered question (P5c-1)', () => {
+    expect(pkg.sow?.sov.map((l) => [l.pctReported, l.pctBilled])).toEqual([
+      [60, 50],
+      [0, 0],
+    ])
+    expect(pkg.sow?.draws.map((d) => [d.id, d.status, d.waiver])).toEqual([[SAMPLE_TRADE_IDS.draw1, 'paid', 'conditional']])
+    expect([job.punch?.map((p) => p.id), job.submittals?.map((x) => x.id), job.rfis?.map((r) => [r.id, r.partnerId])]).toEqual([
+      [SAMPLE_TRADE_IDS.punch1],
+      [SAMPLE_TRADE_IDS.submittal1],
+      [[SAMPLE_TRADE_IDS.rfi1, SAMPLE_TRADE_IDS.company]],
+    ])
   })
 
   it('carries its statement of work’s lines, which add up to its price (P2c-ii)', () => {

@@ -62,6 +62,21 @@ const NEVER = {
   cancelledSowLine: 'CANCELLED-SOW-LINE-SECRET',
   signerSignaturePath: 'gc-sows/SIGNATURE-PATH-SECRET.png',
   lineChangeOrder: 'co-LINE-SECRET',
+  // The job's work (P5c-1): never who of ours typed it, an RFI's cost or change order, an RFI on our own work, a punch
+  // item taken off, or another company's work on a trade it does not hold.
+  recordedBy: 'u-RECORDER-SECRET',
+  emailLog: 'log-EMAIL-SECRET',
+  rfiCost: 42424,
+  rfiChangeOrder: 'co-RFI-SECRET',
+  ourOwnRfi: 'OUR-OWN-WORK-RFI-SECRET',
+  removedPunch: 'REMOVED-PUNCH-SECRET',
+  punchAddedBy: 'u-PUNCH-ADDER-SECRET',
+  otherSubmittal: 'OTHER-SUBMITTAL-SECRET',
+  otherRfi: 'OTHER-RFI-SECRET',
+  otherPunch: 'OTHER-PUNCH-SECRET',
+  otherDrawNet: 51515,
+  sentChangePrice: 76543,
+  olderReport: 37.5,
 } as const
 
 function rows(): TradePortalRows {
@@ -174,8 +189,50 @@ function workRows(): TradePortalRows {
     ],
     changeOrders: [
       { id: 'co-me', project_id: 'proj-3', number: 2, description: NEVER.changeOrderWords, reason: 'owner', package_id: 'pkg-job', cost: 3400, price: NEVER.customerChangeOrderPrice, status: 'sent', sent_on: '2026-10-03', answered_on: null, pct_done: NEVER.changeOrderPct },
+      // A change order sent to the trade (U6a): its description is what the trade signs; its price never passes.
+      { id: 'co-sent', project_id: 'proj-3', number: 4, description: 'Two outlets in exam room 4.', reason: 'owner', package_id: 'pkg-job', cost: 900, price: NEVER.sentChangePrice, status: 'signed', sent_on: '2026-10-05', answered_on: '2026-10-06', pct_done: NEVER.changeOrderPct },
       { id: 'co-them', project_id: 'proj-1', number: 3, description: NEVER.otherRequest, reason: 'field', package_id: 'pkg-elec', cost: NEVER.otherChangeOrderCost, price: NEVER.customerChangeOrderPrice, status: 'draft' },
     ],
+    // The job's work (P5c-1), on its awarded Electrical (pkg-job) and on Fair Oaks' Electrical, awarded to another.
+    submittals: [
+      { id: 'sub-me', project_id: 'proj-3', package_id: 'pkg-job', number: '26 24 16-01', title: 'Panelboards', kind: 'product data', spec_section: '26 24 16', lead_days: 14, needed_by: '2026-10-20', asked_on: '2026-10-01', created_by: NEVER.recordedBy, created_at: '2026-10-01T15:00:00Z' },
+      { id: 'sub-them', project_id: 'proj-1', package_id: 'pkg-elec', number: '26 05 19-01', title: NEVER.otherSubmittal, kind: 'samples', lead_days: 7, asked_on: '2026-10-01', created_at: '2026-10-01T15:00:00Z' },
+    ],
+    submittalHolds: [
+      { submittal_id: 'sub-me', scope_item_id: 'si-8' },
+      { submittal_id: 'sub-them', scope_item_id: 'si-1' },
+    ],
+    submittalRounds: [
+      { id: 'sr-me-1', submittal_id: 'sub-me', round: 1, sent_on: '2026-10-03', sent_by: 'trade', recorded_by: NEVER.recordedBy, file_name: 'panels.pdf', drive_url: null, note: 'Square D.', to_architect_on: '2026-10-04', email_send_log_id: NEVER.emailLog, answered_on: '2026-10-07', answer: 'revise', answer_note: 'Use the 42-circuit panel.', created_at: '2026-10-03T15:00:00Z' },
+      { id: 'sr-them-1', submittal_id: 'sub-them', round: 1, sent_on: '2026-10-03', sent_by: 'trade', file_name: NEVER.otherSubmittal, note: '' },
+    ],
+    rfis: [
+      { id: 'rfi-me', project_id: 'proj-3', number: 3, question: 'Is the exam room 2 panel recessed?', sheets: ['E-201'], package_id: 'pkg-job', asked_by_company_id: ME, recorded_by: null, asked_on: '2026-10-05', needed_days: 3, sent_to_architect_on: '2026-10-05', email_send_log_id: NEVER.emailLog, answered_on: '2026-10-06', answer_text: 'Recessed.', answered_by: 'architect', impact: 'cost', cost: NEVER.rfiCost, days: 1, change_order_id: NEVER.rfiChangeOrder, created_at: '2026-10-05T15:00:00Z' },
+      { id: 'rfi-ours', project_id: 'proj-3', number: 4, question: NEVER.ourOwnRfi, sheets: [], package_id: null, asked_by_company_id: null, recorded_by: NEVER.recordedBy, asked_on: '2026-10-05', needed_days: 3 },
+      { id: 'rfi-them', project_id: 'proj-1', number: 1, question: NEVER.otherRfi, sheets: [], package_id: 'pkg-elec', asked_by_company_id: THEM, asked_on: '2026-10-05', needed_days: 3 },
+    ],
+    rfiHolds: [
+      { rfi_id: 'rfi-me', scope_item_id: 'si-8' },
+      { rfi_id: 'rfi-ours', scope_item_id: 'si-x' },
+    ],
+    punch: [
+      { id: 'pu-me', project_id: 'proj-3', package_id: 'pkg-job', position: 0, text: 'Cover plate missing in exam room 2.', where_on: 'Exam 2', photo_url: null, added_on: '2026-10-08', added_by: NEVER.punchAddedBy, fixed_on: null, checked_on: null, checked_by: null, sent_back_times: 0, sent_back_note: null, sent_back_on: null, removed_at: null },
+      { id: 'pu-removed', project_id: 'proj-3', package_id: 'pkg-job', position: 1, text: NEVER.removedPunch, added_on: '2026-10-08', sent_back_times: 0, removed_at: '2026-10-09T15:00:00Z', removed_by: NEVER.recordedBy },
+      { id: 'pu-them', project_id: 'proj-1', package_id: 'pkg-elec', position: 0, text: NEVER.otherPunch, added_on: '2026-10-08', sent_back_times: 0, removed_at: null },
+    ],
+    draws: [
+      { id: 'dr-me-1', sow_id: 'sow-me', number: 1, seq: 1, requested_on: '2026-09-25', status: 'paid', gross: 20000, retainage: 2000, net: 18000, final: false, waiver: 'conditional', waiver_on: null, approved_on: '2026-09-27', paid_on: '2026-10-02', asked: null, sent_back_on: null, sent_back_note: null, period_to: '2026-09-25', address: '1 Main St', license: 'TECL 1', signed_by: 'Dana Whitfield', signed_title: 'Owner', signed_on: '2026-09-25', file_name: null, drive_url: null, recorded_by: NEVER.recordedBy, created_at: '2026-09-25T15:00:00Z' },
+      { id: 'dr-them-1', sow_id: 'sow-them', number: 1, seq: 2, requested_on: '2026-09-25', status: 'approved', gross: 60000, retainage: 3000, net: NEVER.otherDrawNet, final: false, waiver: 'conditional' },
+    ],
+    drawLines: [
+      { draw_id: 'dr-me-1', sow_line_id: 'sl-1', to_pct: 60, stored: 0, we_see: null },
+      { draw_id: 'dr-them-1', sow_line_id: 'sl-them-1', to_pct: 80, stored: 0, we_see: null },
+    ],
+    lineReports: [
+      { id: 'lr-1', sow_line_id: 'sl-1', pct: NEVER.olderReport, reported_on: '2026-09-20', company_id: ME, recorded_by: null, seq: 1 },
+      { id: 'lr-2', sow_line_id: 'sl-1', pct: 70, reported_on: '2026-10-08', company_id: ME, recorded_by: NEVER.recordedBy, seq: 5 },
+    ],
+    changeSends: [{ change_order_id: 'co-sent', sow_id: 'sow-me', sent_on: '2026-10-05', sent_by: NEVER.recordedBy, signed_on: '2026-10-06', sow_line_id: 'sl-co', recorded_by: null }],
     papers: [
       { id: 'paper-msa', company_id: ME, person_name: `gc-company:${ME}`, document_name: 'Master Subcontract Agreement', doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null, url: NEVER.paperLink, form_values: { name: NEVER.paperValues }, signing_body_html: NEVER.paperBody },
       { id: NEVER.otherPaper, company_id: THEM, doc_type: 'agreement', status: 'signed', sent_at: '2026-08-01T15:00:00Z', signed_at: '2026-08-02', expires_at: null },
@@ -192,7 +249,7 @@ describe('a trade never sees our price to the customer', () => {
 
   it('names only reviewed fields, never our money', () => {
     const named = Object.values(TRADE_PORTAL_FIELDS).flat()
-    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip', 'url', 'form_values', 'signing_body_html', 'person_name', 'public_token_hash', 'signer_signature_storage_path', 'signer_user_agent', 'their_sov']) {
+    for (const f of ['budget', 'general_conditions', 'contingency_pct', 'fee_pct', 'plugs', 'exclusion_covers', 'taken_alternates', 'own_bid_id', 'won_by', 'lost_note', 'customer_id', 'vetting_note', 'answer_sent_to', 'asked_by_name', 'decline_note', 'pct_done', 'days_on_chart', 'created_by', 'settled_by', 'awarded_by', 'signer_ip', 'url', 'form_values', 'signing_body_html', 'person_name', 'public_token_hash', 'signer_signature_storage_path', 'signer_user_agent', 'their_sov', 'recorded_by', 'email_send_log_id', 'asked_by_company_id', 'removed_at', 'removed_by', 'checked_by']) {
       expect(named).not.toContain(f)
     }
   })
@@ -276,7 +333,8 @@ describe('its own work, and only its part of a change order (P4b-i)', () => {
 
   it('reads its own change requests, and of the change order one became only its part', () => {
     expect(slice.changeRequests.map((r) => [r.id, r.change_order_id])).toEqual([['cr-me', 'co-me']])
-    expect(slice.changeOrders).toEqual([{ id: 'co-me', number: 2, status: 'sent', sent_on: '2026-10-03', answered_on: null, cost: 3400 }])
+    // The one its request became, as its part only: no description, no price (P4b-i).
+    expect(slice.changeOrders.find((o) => o.id === 'co-me')).toEqual({ id: 'co-me', number: 2, status: 'sent', sent_on: '2026-10-03', answered_on: null, cost: 3400, package_id: 'pkg-job', reason: 'owner' })
   })
 
   it('reads where its own papers stand, never their link, body or values, nor another company’s papers', () => {
@@ -294,5 +352,57 @@ describe('its own work, and only its part of a change order (P4b-i)', () => {
     ])
     const json = JSON.stringify(theirs)
     for (const mine of ['Cleanup after rough-in.', 'Two more circuits for the added chairs.', '48600', 'Hill Country Clinic', 'Rough-in', '18600']) expect(json).not.toContain(mine)
+  })
+})
+
+describe('the job’s work on its awarded trades, as the trade may read it (P5c-1)', () => {
+  const slice = tradePortalSlice(workRows(), ME)
+
+  it('reads its submittals with their rounds and holds, never who of ours recorded a round or the email that carried it', () => {
+    expect(slice.submittals.map((x) => [x.id, x.number, x.title])).toEqual([['sub-me', '26 24 16-01', 'Panelboards']])
+    expect(slice.submittalHolds).toEqual([{ submittal_id: 'sub-me', scope_item_id: 'si-8' }])
+    expect(slice.submittalRounds.map((r) => [r.id, r.answer, r.answer_note])).toEqual([['sr-me-1', 'revise', 'Use the 42-circuit panel.']])
+    expect(Object.keys(slice.submittalRounds[0] ?? {})).not.toEqual(expect.arrayContaining(['recorded_by']))
+  })
+
+  it('reads the RFIs on its trade with whether it asked, never their cost, change order or who asked, nor one on our own work', () => {
+    expect(slice.rfis.map((r) => [r.id, r.mine, r.answer_text])).toEqual([['rfi-me', true, 'Recessed.']])
+    expect(slice.rfiHolds).toEqual([{ rfi_id: 'rfi-me', scope_item_id: 'si-8' }])
+    for (const f of ['cost', 'change_order_id', 'asked_by_company_id', 'recorded_by', 'email_send_log_id']) expect(Object.keys(slice.rfis[0] ?? {})).not.toContain(f)
+  })
+
+  it('reads its punch items, never one taken off or who added it', () => {
+    expect(slice.punch.map((x) => [x.id, x.text, x.where_on])).toEqual([['pu-me', 'Cover plate missing in exam room 2.', 'Exam 2']])
+    expect(Object.keys(slice.punch[0] ?? {})).not.toContain('added_by')
+  })
+
+  it('reads its draws with their lines, and each line’s newest report only', () => {
+    expect(slice.draws.map((d) => [d.id, d.status, d.net, d.waiver])).toEqual([['dr-me-1', 'paid', 18000, 'conditional']])
+    expect(Object.keys(slice.draws[0] ?? {})).not.toContain('recorded_by')
+    expect(slice.drawLines).toEqual([{ draw_id: 'dr-me-1', sow_line_id: 'sl-1', to_pct: 60, stored: 0, we_see: null }])
+    expect(slice.lineReports).toEqual([{ sow_line_id: 'sl-1', pct: 70, reported_on: '2026-10-08', seq: 5 }])
+  })
+
+  it('reads a change order sent to it with the words it signs and its part, never its price', () => {
+    expect(slice.changeSends).toEqual([{ change_order_id: 'co-sent', sow_id: 'sow-me', sent_on: '2026-10-05', signed_on: '2026-10-06', sow_line_id: 'sl-co' }])
+    expect(slice.changeOrders.find((o) => o.id === 'co-sent')).toEqual({
+      id: 'co-sent',
+      number: 4,
+      status: 'signed',
+      sent_on: '2026-10-05',
+      answered_on: '2026-10-06',
+      cost: 900,
+      package_id: 'pkg-job',
+      reason: 'owner',
+      description: 'Two outlets in exam room 4.',
+    })
+  })
+
+  it('reads none of the job’s work on a trade it was only asked to quote, or that went to another company', () => {
+    const asked = tradePortalSlice({ ...workRows(), packages: workRows().packages.map((p) => (p.id === 'pkg-job' ? { ...p, awarded_invite_id: null } : p)) }, ME)
+    expect([asked.submittals, asked.rfis, asked.punch]).toEqual([[], [], []])
+    const theirs = tradePortalSlice(workRows(), THEM)
+    expect([theirs.submittals, theirs.rfis, theirs.punch, theirs.draws.map((d) => d.id)]).toEqual([[], [], [], ['dr-them-1']])
+    expect(JSON.stringify(theirs)).not.toContain('Cover plate missing')
   })
 })
