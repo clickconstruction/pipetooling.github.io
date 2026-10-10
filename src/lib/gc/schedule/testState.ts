@@ -23,6 +23,23 @@ const DATA: GcState = {
         { on: '2026-09-29', by: 'Robert', note: 'Elena sent Addendum 1. She wants the price to hold for 60 days.' },
         { on: '2026-09-18', by: 'Robert', note: 'Walked the site. Pad B will follow about two weeks behind the shell.' },
       ],
+      past: [
+        {
+          name: 'Fair Oaks Shops, Building C',
+          year: 2025,
+          outcome: 'built',
+          value: 1420000,
+          note: 'Finished nine days early.',
+        },
+        {
+          name: 'Herff Road Medical Shell',
+          year: 2025,
+          outcome: 'lost',
+          value: 2180000,
+          note: 'Lost by 2.1% to another general contractor.',
+        },
+        { name: 'Fair Oaks Shops, Building A', year: 2024, outcome: 'built', value: 1265000, note: '' },
+      ],
     },
     {
       id: 'raman',
@@ -41,6 +58,7 @@ const DATA: GcState = {
           note: 'She asked to move the opening to December 1. Told her millwork is the long lead.',
         },
       ],
+      past: [],
     },
     {
       id: 'marshvale',
@@ -64,6 +82,7 @@ const DATA: GcState = {
           note: 'Called about the water heater schedule on a plumbing bid. Jonah answered the same day.',
         },
       ],
+      past: [],
     },
     {
       id: 'ocotillo',
@@ -76,6 +95,7 @@ const DATA: GcState = {
       phone: '(210) 555-0163',
       email: 'camila@studioocotillo.example',
       contacts: [],
+      past: [],
     },
     {
       id: 'hollis',
@@ -94,6 +114,7 @@ const DATA: GcState = {
           note: 'Dana wants to open October 20. She asked what is left before the last bill.',
         },
       ],
+      past: [],
     },
     {
       id: 'mesquite',
@@ -106,6 +127,7 @@ const DATA: GcState = {
       phone: '(210) 555-0188',
       email: 'theo@mesquitedesign.example',
       contacts: [],
+      past: [],
     },
   ],
   projects: [
