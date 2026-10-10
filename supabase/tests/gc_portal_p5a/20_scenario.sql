@@ -120,6 +120,14 @@ SELECT p5a.refused_code('a purpose that is not one of the four',
   $$INSERT INTO public.gc_trade_files (company_id, project_id, purpose, name, mime, bytes, drive_file_id, drive_url) VALUES ('00000000-0000-0000-0000-00000000fa11', '00000000-0000-0000-0000-00000000faa1', 'coi', 'c.pdf', 'application/pdf', 10, 'x', 'https://x')$$, '23514');
 SELECT p5a.refused_code('a link that is not https',
   $$INSERT INTO public.gc_trade_files (company_id, project_id, purpose, name, mime, bytes, drive_file_id, drive_url) VALUES ('00000000-0000-0000-0000-00000000fa11', '00000000-0000-0000-0000-00000000faa1', 'change', 'c.pdf', 'application/pdf', 10, 'x', 'http://x')$$, '23514');
+SELECT p5a.refused_code('a waiver without its form',
+  $$INSERT INTO public.gc_trade_files (company_id, project_id, purpose, name, mime, bytes, drive_file_id, drive_url, made_by) VALUES ('00000000-0000-0000-0000-00000000fa11', '00000000-0000-0000-0000-00000000faa1', 'waiver', 'w.pdf', 'application/pdf', 10, 'x', 'https://x', 'portal')$$, '23514');
+SELECT p5a.refused_code('a form on a file that is no waiver',
+  $$INSERT INTO public.gc_trade_files (company_id, project_id, purpose, name, mime, bytes, drive_file_id, drive_url, paper) VALUES ('00000000-0000-0000-0000-00000000fa11', '00000000-0000-0000-0000-00000000faa1', 'change', 'c.pdf', 'application/pdf', 10, 'x', 'https://x', 'unconditional_progress')$$, '23514');
+SELECT p5a.refused_code('a form that is not one of the four',
+  $$INSERT INTO public.gc_trade_files (company_id, project_id, purpose, name, mime, bytes, drive_file_id, drive_url, made_by, paper) VALUES ('00000000-0000-0000-0000-00000000fa11', '00000000-0000-0000-0000-00000000faa1', 'waiver', 'w.pdf', 'application/pdf', 10, 'x', 'https://x', 'portal', 'partial_release')$$, '23514');
+INSERT INTO public.gc_trade_files (company_id, project_id, purpose, name, mime, bytes, drive_file_id, drive_url, made_by, paper) VALUES ('00000000-0000-0000-0000-00000000fa11', '00000000-0000-0000-0000-00000000faa1', 'waiver', 'w.pdf', 'application/pdf', 10, 'x', 'https://x', 'portal', 'unconditional_progress');
+SELECT p5a.same('a waiver with its form is kept', (SELECT paper FROM public.gc_trade_files WHERE purpose = 'waiver'), 'unconditional_progress');
 
 -- 4. The verbs, as the service role.
 SET LOCAL ROLE service_role;

@@ -36,11 +36,16 @@ CREATE TABLE IF NOT EXISTS public.gc_trade_files (
   -- trade: the company uploaded it. portal: the function made it, a signed waiver's paper.
   made_by text NOT NULL DEFAULT 'trade'
     CONSTRAINT gc_trade_files_made_by_known CHECK (made_by IN ('trade', 'portal')),
-  uploaded_at timestamptz NOT NULL DEFAULT now()
+  -- A waiver's form, the Release of Lien window's four (lienWaiverRelease.ts), so the office labels its link by the
+  -- row and never by a file name someone could rename in Drive. Set on a waiver only.
+  paper text
+    CONSTRAINT gc_trade_files_paper_known CHECK (paper IN ('conditional_progress', 'unconditional_progress', 'conditional_final', 'unconditional_final')),
+  uploaded_at timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT gc_trade_files_waiver_has_paper CHECK ((purpose = 'waiver') = (paper IS NOT NULL))
 );
 
 COMMENT ON TABLE public.gc_trade_files IS
-  'GC mode (P5a): each file a trade put in the job''s Drive folder from its portal, and each signed paper the portal made for it. The app keeps the link, never a copy. record_id is the round, change request, quote or draw it went with, once stored. The office team reads it; only the service role writes it (submit-gc-trade-portal).';
+  'GC mode (P5a): each file a trade put in the job''s Drive folder from its portal, and each signed paper the portal made for it. The app keeps the link, never a copy. record_id is the round, change request, quote or draw it went with, once stored; paper is a waiver''s form. The office team reads it; only the service role writes it (submit-gc-trade-portal).';
 
 -- The hourly cap counts a company's files in the last hour; a verb finds a link among the company's rows.
 CREATE INDEX IF NOT EXISTS gc_trade_files_company_idx ON public.gc_trade_files (company_id, uploaded_at);
