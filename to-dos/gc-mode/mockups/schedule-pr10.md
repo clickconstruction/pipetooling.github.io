@@ -327,6 +327,14 @@ Three ways it could be better:
   cut, not claimed.
 - The PR is built and held. It arms only after the schedule's first live walk on prod (Grace's own yes,
   typed in the lane's chat), as the lead set.
+- 2026-10-10, gc 10 holding the lane, the lead's note: **the project manager arm has a gap on every write.** The
+  schedule's writes (`20261008040000_gc_schedule_writes`) read `gc_projects`, `gc_trade_packages` and `gc_scope_items`
+  under door 1's office policies, nine times (the first draft takes the whole `gc_projects` row). A project manager
+  outside `gc_office_team()` reads the schedule through this PR's helper, but each write refuses *not being built* or
+  *no trade*. *The functions need no change* above holds for the office only. Nothing sets `project_manager_user_id`
+  yet, so it has not shown. Building's door D1 closes it (`mockups/building-door.md`, call 9): money-free, team-gated
+  reads, `gc_team_project`, `gc_team_trades` and `gc_team_scope_items`, which the schedule's writes switch to. No
+  project manager picker, and no `project_manager_user_id` set on a job, before D1 is on main. #5231's body says so.
 
 ## The SQL as it will be
 
