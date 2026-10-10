@@ -534,6 +534,11 @@ migration a day on this lane. "Check" is how the reviewer sees it work.
     question, 2026-10-09). From their portal, the customer turns a certified bill into a card-only
     Stripe invoice with a "Credit card fee (3%)" line, and staff never convert one. Three PRs, O8a
     to O8c: `mockups/owner-billing-o8.md`. *Check:* there, on Grace's yes, in Stripe test mode.
+12. **O9, the money team reads the trades' money** (after O8c; the lead's call (a), 2026-10-09). Money and Bill the
+    customer are the money team's, but the trades' statements of work and draws were a dev's alone, so a leader's or
+    the controller's bill drafted every trade at $0. One migration opens reading, never writing, on the seven tables
+    to `gc_money_team()`. Co-signed by Building, the Board and the Portal: `mockups/owner-billing-o9.md`. *Check:* the
+    bed's controller reads what a dev reads and writes none.
 
 **The door** (its own PR when the lead says the trade side is real): the policies swap
 `is_dev()` for the owner and controller predicate, with `ACCESS_CONTROL.md` in the same PR, the
