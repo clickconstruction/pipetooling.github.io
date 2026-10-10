@@ -657,7 +657,7 @@ export default function Dashboard() {
     }, FINANCIAL_PINS_REALTIME_DEBOUNCE_MS)
   }, [isDocVisible])
   const { total: costMatrixTotal } = useWeeklyTeamLaborTotal(hasCostMatrixPin)
-  const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey, hideZzTestJobs)
+  const { count: billedCount, total: billedTotal } = useBilledTotal(hasBilledPin, financialRefreshKey, hideZzTestJobs, authUser?.id ?? null)
   const { total: supplyHousesAPTotal } = useSupplyHousesAPTotal(hasSupplyHousesAPPin, financialRefreshKey)
   const { total: subLaborDueTotal } = useSubLaborDueTotal(hasSubLaborDuePin, financialRefreshKey)
 

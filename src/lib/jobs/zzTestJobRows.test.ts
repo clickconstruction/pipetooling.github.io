@@ -44,15 +44,15 @@ beforeEach(() => {
 })
 
 describe('fetchZzTestJobRows', () => {
-  it('asks the server for any name containing zz, paged, and keeps only the ZZ ones', async () => {
+  it('asks the server for ZZ at the start or after one character, paged, and keeps only the ZZ ones', async () => {
     const out = await fetchZzTestJobRows()
     expect(reads[0]).toEqual([
       { method: 'select', args: ['id, status, job_name, customer_name, customer_id'] },
-      { method: 'or', args: ['job_name.ilike.*zz*,customer_name.ilike.*zz*'] },
+      { method: 'or', args: ['job_name.ilike.zz*,job_name.ilike._zz*,customer_name.ilike.zz*,customer_name.ilike._zz*'] },
       { method: 'order', args: ['id'] },
       { method: 'range', args: [0, 999] },
     ])
-    // A leading-space name is caught (the kernel trims); Pizza and Jazz come back and are dropped.
+    // A leading-space name is caught (the kernel trims); a stray server hit (here Pizza) is dropped.
     expect(out.map((r) => r.id)).toEqual(['Z', 'S', 'Y'])
   })
 })
@@ -60,27 +60,35 @@ describe('fetchZzTestJobRows', () => {
 describe('loadZzTestJobRows · the shared answer', () => {
   it('reads once per minute however many ask, and again after it lapses', async () => {
     const t = 1_000_000
-    await loadZzTestJobRows(t)
-    await loadZzTestJobRows(t + 1_000)
-    expect(await loadZzTestJobIds(t + 2_000)).toEqual(new Set(['Z', 'S', 'Y']))
+    await loadZzTestJobRows('u-dev', t)
+    await loadZzTestJobRows('u-dev', t + 1_000)
+    expect(await loadZzTestJobIds('u-dev', t + 2_000)).toEqual(new Set(['Z', 'S', 'Y']))
     expect(reads).toHaveLength(1)
-    await loadZzTestJobRows(t + ZZ_TEST_JOB_ROWS_TTL_MS)
+    await loadZzTestJobRows('u-dev', t + ZZ_TEST_JOB_ROWS_TTL_MS)
     expect(reads).toHaveLength(2)
   })
 
+  it('keeps one answer per user: View as, Exit and sign-out each read again (review on #5241)', async () => {
+    await loadZzTestJobRows('u-dev', 100)
+    await loadZzTestJobRows('u-sample-assistant', 101)
+    await loadZzTestJobRows('u-dev', 102)
+    await loadZzTestJobRows(null, 103)
+    expect(reads).toHaveLength(4)
+  })
+
   it('reads again after the sweep forgets the answer', async () => {
-    await loadZzTestJobRows(5)
+    await loadZzTestJobRows('u-dev', 5)
     rows = [row('Z', 'ZZ TEST working', 'Ann Lee')]
     invalidateZzTestJobRows()
-    expect(await loadZzTestJobIds(6)).toEqual(new Set(['Z']))
+    expect(await loadZzTestJobIds('u-dev', 6)).toEqual(new Set(['Z']))
     expect(reads).toHaveLength(2)
   })
 
   it('a failed read is not kept: the next one asks again', async () => {
     fail = true
-    await expect(loadZzTestJobRows(10)).rejects.toThrow('down')
+    await expect(loadZzTestJobRows('u-dev', 10)).rejects.toThrow('down')
     fail = false
-    expect((await loadZzTestJobRows(11)).map((r) => r.id)).toEqual(['Z', 'S', 'Y'])
+    expect((await loadZzTestJobRows('u-dev', 11)).map((r) => r.id)).toEqual(['Z', 'S', 'Y'])
     expect(reads).toHaveLength(2)
   })
 })

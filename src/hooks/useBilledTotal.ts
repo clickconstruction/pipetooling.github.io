@@ -12,12 +12,15 @@ import { withoutZzTestJobMoney } from '../lib/jobs/zzTestJobVisibility'
 // Pipeline strip, the AR card (ar + Collections) and Quickfill read. Bills on paid or deleted jobs
 // are excluded by the kernel (they used to pad this pin). A job the office gave up on (Uncollectible)
 // leaves Owed in the kernel, which needs `uncollectible_at` to see it.
-// `excludeZzTestJobs` (punch list #61, v2.5120): the caller passes `useZzTestJobsHidden(role)`, and ZZ test
-// jobs leave with their bills and payments, by the shared ids (this read carries no names).
+// `excludeZzTestJobs` (punch list #61, v2.5120): the caller passes `useZzTestJobsHidden(role)` and the signed-in
+// user (the shared ids are kept per user). ZZ test jobs and their bills leave before the payments and the
+// unlinked money are read, by the shared ids (this read carries no names); a failed id read leaves the pin
+// empty rather than counting them.
 export function useBilledTotal(
   enabled: boolean,
   refreshKey?: number,
   excludeZzTestJobs = false,
+  userId?: string | null,
 ): { count: number | null; total: number | null; loading: boolean } {
   const [count, setCount] = useState<number | null>(null)
   const [total, setTotal] = useState<number | null>(null)
@@ -55,8 +58,14 @@ export function useBilledTotal(
           ),
         ])
         if (cancelled) return
-        const jobs = (jobsRes ?? []) as unknown as BillTruthJob[]
-        const invoices = (invoicesRes ?? []) as unknown as BillTruthInvoice[]
+        const zzJobIds = excludeZzTestJobs ? await loadZzTestJobIds(userId) : null
+        if (cancelled) return
+        const read = {
+          jobs: (jobsRes ?? []) as unknown as BillTruthJob[],
+          invoices: (invoicesRes ?? []) as unknown as BillTruthInvoice[],
+          payments: [] as Array<{ job_id: string }>,
+        }
+        const { jobs, invoices } = zzJobIds ? withoutZzTestJobMoney(read, zzJobIds) : read
         const invoiceIds = invoices.map((i) => i.id)
         let paymentsRows: BillTruthPayment[] = []
         if (invoiceIds.length > 0) {
@@ -73,14 +82,11 @@ export function useBilledTotal(
           { paymentColumns: 'job_id, invoice_id, amount, paid_on, sequence_order', invoiceColumns: 'id, job_id, amount, status, sequence_order, billed_at', label: 'useBilledTotal', withPaidBillPayments: true },
         )
         if (cancelled) return
-        const money = {
+        const truth = computeBillTruth({
           jobs,
           invoices: [...invoices, ...extra.paidBills],
           payments: [...paymentsRows, ...extra.unlinkedPayments, ...extra.paidBillPayments],
-        }
-        const zzJobIds = excludeZzTestJobs ? await loadZzTestJobIds() : null
-        if (cancelled) return
-        const truth = computeBillTruth(zzJobIds ? withoutZzTestJobMoney(money, zzJobIds) : money)
+        })
         if (!cancelled) {
           setCount(truth.owed.count)
           setTotal(truth.owed.total)
@@ -98,7 +104,7 @@ export function useBilledTotal(
     return () => {
       cancelled = true
     }
-  }, [enabled, refreshKey, excludeZzTestJobs])
+  }, [enabled, refreshKey, excludeZzTestJobs, userId])
 
   return { count, total, loading }
 }

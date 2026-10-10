@@ -47,6 +47,19 @@ export function useDevShowsZzTestJobs(): boolean {
   return useSyncExternalStore(subscribe, readDevShowsZzTestJobs, () => false)
 }
 
+/**
+ * The Pipeline's switch line and chip for a dev: shown while the board holds a ZZ job, and always while the
+ * switch shows them, so a dev can turn it back off once none are left (the Dashboard still follows it;
+ * review on #5241). Null for every other role.
+ */
+export function zzTestJobsSwitchLine(
+  role: string | null | undefined,
+  count: number,
+  shown: boolean,
+): { count: number; shown: boolean } | null {
+  return role === 'dev' && (count > 0 || shown) ? { count, shown } : null
+}
+
 /** Whether ZZ test jobs are hidden for this role on this device: `hidesZzTestJobs` with the live switch. */
 export function useZzTestJobsHidden(role: string | null | undefined): boolean {
   return hidesZzTestJobs(role, useDevShowsZzTestJobs())

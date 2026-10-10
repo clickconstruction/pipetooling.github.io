@@ -124,8 +124,9 @@ up jobs. A dev can still see the office's view through *View as*.
     reader. It answers once a minute, and the sweep clears it. A screen whose rows carry only ids, or no
     customer name, drops ZZ jobs by these ids. That closed the `get_jobs_ledger_by_status` gap with no
     migration.
-  - **The trim nit is settled (2a).** The read asks the server for any name containing *zz*, and the kernel
-    re-checks, so a leading-space name is caught on both sides. The sweep keeps its strict filter.
+  - **The trim nit is settled (2a).** The read asks the server for a name starting with ZZ, or one character
+    and then ZZ, and the kernel re-checks, so a leading-space name is caught on both sides. The sweep keeps
+    its strict filter.
 - **Tests**: the switch's kernel and its localStorage default; a render smoke on the modal's line
   and both chips; `useBilledTotal` and `dashboardFinancials` kernels with a ZZ job in and out;
   render smokes on the header search and the Customers list as an assistant.

@@ -6,6 +6,7 @@ import {
   setDevShowsZzTestJobs,
   useDevShowsZzTestJobs,
   useZzTestJobsHidden,
+  zzTestJobsSwitchLine,
   ZZ_TEST_JOBS_SHOWN_STORAGE_KEY,
 } from './zzTestJobSwitch'
 
@@ -41,5 +42,12 @@ describe('the ZZ test jobs switch', () => {
     setDevShowsZzTestJobs(true)
     const h = renderHook(() => useZzTestJobsHidden('assistant'))
     expect(h.result.current).toBe(true)
+  })
+
+  it('the Pipeline’s line stays while the switch shows them, even with none left on the board (review on #5241)', () => {
+    expect(zzTestJobsSwitchLine('dev', 3, false)).toEqual({ count: 3, shown: false })
+    expect(zzTestJobsSwitchLine('dev', 0, true)).toEqual({ count: 0, shown: true })
+    expect(zzTestJobsSwitchLine('dev', 0, false)).toBeNull()
+    expect(zzTestJobsSwitchLine('assistant', 3, true)).toBeNull()
   })
 })

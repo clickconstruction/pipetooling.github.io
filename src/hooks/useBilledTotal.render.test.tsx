@@ -27,15 +27,17 @@ vi.mock('../lib/supabase', () => ({
 vi.mock('../utils/errorHandling', () => ({
   withSupabaseRetry: async (op: () => Promise<{ data: unknown }>) => (await op()).data,
 }))
-vi.mock('../lib/billing/loadUnlinkedMoney', () => ({
-  loadUnlinkedMoney: async () => ({ unlinkedPayments: [], paidBills: [], paidBillPayments: [] }),
-}))
-const loadIds = vi.fn(async () => new Set(['Z']))
-vi.mock('../lib/jobs/zzTestJobRows', () => ({ loadZzTestJobIds: () => loadIds() }))
+const unlinked = vi.fn(async (_jobIds: string[]) => ({ unlinkedPayments: [], paidBills: [], paidBillPayments: [] }))
+vi.mock('../lib/billing/loadUnlinkedMoney', () => ({ loadUnlinkedMoney: (jobIds: string[]) => unlinked(jobIds) }))
+const loadIds = vi.fn(async (_userId: string | null | undefined) => new Set(['Z']))
+vi.mock('../lib/jobs/zzTestJobRows', () => ({ loadZzTestJobIds: (userId: string | null | undefined) => loadIds(userId) }))
 
 const { useBilledTotal } = await import('./useBilledTotal')
 
-beforeEach(() => loadIds.mockClear())
+beforeEach(() => {
+  loadIds.mockClear()
+  unlinked.mockClear()
+})
 
 describe('useBilledTotal · ZZ test jobs', () => {
   it('without the option, the pin counts the ZZ job’s bill and never asks for the ids', async () => {
@@ -45,10 +47,23 @@ describe('useBilledTotal · ZZ test jobs', () => {
     expect(loadIds).not.toHaveBeenCalled()
   })
 
-  it('with it, the pin falls by exactly the ZZ job’s open bill', async () => {
-    const { result } = renderHook(() => useBilledTotal(true, 0, true))
+  it('with it, the pin falls by exactly the ZZ job’s open bill, read for this user', async () => {
+    const { result } = renderHook(() => useBilledTotal(true, 0, true, 'u-ann'))
     await waitFor(() => expect(result.current.total).not.toBeNull())
     expect(result.current).toMatchObject({ count: 1, total: 500 })
-    expect(loadIds).toHaveBeenCalledTimes(1)
+    expect(loadIds).toHaveBeenCalledWith('u-ann')
+  })
+
+  it('drops the ZZ job before the unlinked money is read, so its money is never fetched (review on #5241)', async () => {
+    const { result } = renderHook(() => useBilledTotal(true, 0, true, 'u-ann'))
+    await waitFor(() => expect(result.current.total).not.toBeNull())
+    expect(unlinked).toHaveBeenCalledWith(['A'])
+  })
+
+  it('a failed id read leaves the pin empty rather than counting the ZZ job', async () => {
+    loadIds.mockRejectedValueOnce(new Error('down'))
+    const { result } = renderHook(() => useBilledTotal(true, 0, true, 'u-ann'))
+    await waitFor(() => expect(result.current.loading).toBe(false))
+    expect(result.current).toMatchObject({ count: null, total: null })
   })
 })

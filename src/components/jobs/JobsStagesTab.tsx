@@ -279,7 +279,7 @@ import {
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
-import { setDevShowsZzTestJobs, useDevShowsZzTestJobs } from '../../lib/jobs/zzTestJobSwitch'
+import { setDevShowsZzTestJobs, useDevShowsZzTestJobs, zzTestJobsSwitchLine } from '../../lib/jobs/zzTestJobSwitch'
 import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
@@ -678,10 +678,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     setJobs: cacheSetJobs,
     zzTestJobCount: cacheZzTestJobCount,
   } = useJobsListCache()
-  /** A dev's ZZ test jobs switch (punch list #61, v2.5120); every other role never holds the rows. */
+  /**
+   * A dev's ZZ test jobs switch (punch list #61, v2.5120); every other role never holds the rows. It shows
+   * while the board holds a ZZ job, and always while the switch shows them: with none left on the board
+   * the Dashboard and the strip still follow it, so the dev must be able to turn it back off (review on #5241).
+   */
   const devShowsZzTestJobs = useDevShowsZzTestJobs()
-  const zzTestJobsLine =
-    authRole === 'dev' && (cacheZzTestJobCount ?? 0) > 0 ? { count: cacheZzTestJobCount ?? 0, shown: devShowsZzTestJobs } : null
+  const zzTestJobsLine = zzTestJobsSwitchLine(authRole, cacheZzTestJobCount ?? 0, devShowsZzTestJobs)
   // Fetch-on-expand: any open section whose scope isn't merged kicks its fetch
   // (idempotent; the context guards in-flight and merged states).
   useEffect(() => {

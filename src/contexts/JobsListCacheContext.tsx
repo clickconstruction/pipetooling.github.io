@@ -148,6 +148,9 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const headerStatsInFlightRef = useRef(false)
   /** The customer filter of the last stats read, so a flip of the dev's ZZ switch can read them again. */
   const lastStatsFilterRef = useRef<string | null | undefined>(undefined)
+  /** The ZZ choice now, read when a stats read lands: one begun under the other choice is dropped and read again. */
+  const hideZzRef = useRef(hideZz)
+  hideZzRef.current = hideZz
   const headerStatsLastFetchRef = useRef<{ key: string; at: number } | null>(null)
 
   const loadInFlightRef = useRef(false)
@@ -392,15 +395,20 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
         return
       }
       headerStatsInFlightRef.current = true
+      // A flip of the dev's ZZ switch while this read is out (review on #5241): its answer is the old
+      // choice's, so it is dropped and read again under the new one.
+      let flippedMeanwhile = false
       try {
         const res = await fetchStagesHeaderStats(customerFilter, undefined, { excludeZzTestJobs: hideZz })
-        if (res.ok) {
+        flippedMeanwhile = hideZzRef.current !== hideZz
+        if (res.ok && !flippedMeanwhile) {
           headerStatsLastFetchRef.current = { key, at: Date.now() }
           setHeaderStats(res.stats)
           setLeanBilledRows(res.leanBilledRows)
         }
       } finally {
         headerStatsInFlightRef.current = false
+        if (flippedMeanwhile) void refreshHeaderStatsRef.current?.(customerFilter)
       }
     },
     [user?.id, hideZz],

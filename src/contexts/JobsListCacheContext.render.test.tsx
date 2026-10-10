@@ -22,7 +22,8 @@ vi.mock('../lib/fetchJobsLedgerWithDetailsForStages', () => ({
   fetchStagesEnrichment: vi.fn(async () => ({})),
   primaryRowToJobWithDetails: (r: unknown) => r,
 }))
-const fetchStats = vi.fn(async () => ({ ok: true, stats: {}, leanBilledRows: [], billTruth: {} }))
+const statsAnswer = (tag: string) => ({ ok: true, stats: { tag }, leanBilledRows: [], billTruth: {} })
+const fetchStats = vi.fn<(...a: unknown[]) => Promise<ReturnType<typeof statsAnswer>>>(async () => statsAnswer('plain'))
 vi.mock('../lib/jobs/fetchStagesHeaderStats', () => ({ fetchStagesHeaderStats: (...a: unknown[]) => fetchStats(...(a as [])) }))
 const readSnapshot = vi.fn()
 vi.mock('../lib/jobs/boardSnapshotStore', () => ({
@@ -43,13 +44,14 @@ const ZZ_BY_NAME = job('Z', 'ZZ TEST working', 'Ann Lee')
 const ZZ_BY_CUSTOMER = job('Y', 'Hill Street remodel', 'ZZ Test Customer')
 
 function Probe() {
-  const { jobs, runFetchJobs, zzTestJobCount } = useJobsListCache()
+  const { jobs, runFetchJobs, zzTestJobCount, headerStats } = useJobsListCache()
   const [returned, setReturned] = useState<string | null>(null)
   return (
     <div>
       <p data-testid="jobs">{jobs.map((j) => j.id).join(',')}</p>
       <p data-testid="returned">{returned ?? ''}</p>
       <p data-testid="zz-count">{zzTestJobCount}</p>
+      <p data-testid="stats-tag">{(headerStats as { tag?: string } | null)?.tag ?? ''}</p>
       <button
         type="button"
         onClick={async () => {
@@ -74,7 +76,8 @@ beforeEach(() => {
   role = 'assistant'
   localStorage.removeItem(ZZ_TEST_JOBS_SHOWN_STORAGE_KEY)
   fetchFull.mockReset()
-  fetchStats.mockClear()
+  fetchStats.mockReset()
+  fetchStats.mockImplementation(async () => statsAnswer('plain'))
   readSnapshot.mockReset()
   readSnapshot.mockResolvedValue(null)
   fetchFull.mockResolvedValue({ ok: true, jobs: [ZZ_BY_NAME, REAL, ZZ_BY_CUSTOMER] })
@@ -136,6 +139,20 @@ describe('JobsListCacheProvider · ZZ test jobs (punch list #61)', () => {
     expect(fetchFull).toHaveBeenCalledTimes(1)
     act(() => setDevShowsZzTestJobs(false))
     await waitFor(() => expect(screen.getByTestId('jobs').textContent).toBe('A'))
+  })
+
+  it('a flip while the stats read is out drops that answer and reads again under the new choice (review on #5241)', async () => {
+    role = 'dev'
+    let release: (v: ReturnType<typeof statsAnswer>) => void = () => {}
+    fetchStats.mockImplementationOnce(() => new Promise((r) => (release = r)))
+    fetchStats.mockImplementation(async (...a: unknown[]) => statsAnswer((a[2] as { excludeZzTestJobs: boolean }).excludeZzTestJobs ? 'hidden' : 'shown'))
+    renderProbe()
+    fireEvent.click(screen.getByRole('button', { name: 'Load' }))
+    await waitFor(() => expect(fetchStats).toHaveBeenCalledTimes(1))
+    act(() => setDevShowsZzTestJobs(true))
+    await act(async () => release(statsAnswer('hidden, from before the flip')))
+    await waitFor(() => expect(screen.getByTestId('stats-tag').textContent).toBe('shown'))
+    expect(fetchStats).toHaveBeenLastCalledWith(null, undefined, { excludeZzTestJobs: false })
   })
 
   it('an assistant’s switch does nothing: a stray key on the device never shows them', async () => {

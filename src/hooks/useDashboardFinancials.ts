@@ -91,7 +91,7 @@ export function useDashboardFinancials(
    * they get org-level aggregates from get_dashboard_payroll_totals instead of per-person rows.
    */
   viewerRole?: string | null,
-  /** For the one-release bill-truth shadow beacon row; omit to log only. */
+  /** The signed-in user: the shared ZZ test job ids are kept per user (punch list #61, review on #5241). */
   viewerUserId?: string | null,
 ): {
   data: DashboardFinancials | null
@@ -193,7 +193,7 @@ export function useDashboardFinancials(
         // v2.4784: `uncollectible_at` is in the select ahead of the generated types — hence the unknown.
         // ZZ test jobs leave here, before anything reads them: their bills are then never billed ids, so
         // their payments and unlinked money are never read either (by their names and the shared ids).
-        const zzJobIds = hideZz ? await loadZzTestJobIds() : null
+        const zzJobIds = hideZz ? await loadZzTestJobIds(viewerUserId) : null
         if (cancelled) return
         const read = {
           jobs: (jobsRes ?? []) as unknown as FinancialJobRow[],
