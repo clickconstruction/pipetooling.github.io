@@ -33,7 +33,7 @@ The app measures the award by the quote's **All in** number.
 
 ## Read the statement of work
 
-The statement of work shows under the trade on the project's card.
+The statement of work shows under the trade on the project's card. The owner, the leaders and the controller read it there too. Only a dev sends it for now.
 
 - The chip says where it stands. It reads {{chip:gray|Statement of work drafted}} first.
 - **Price** is the quote's All in number.

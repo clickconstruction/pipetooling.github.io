@@ -109,4 +109,11 @@ describe("Edit Job keeps a returned check's $30 fee in the job's total", () => {
     expect(within(card).getByText('Final')).toBeTruthy()
     expect(within(card).queryByText('Riders (hazmat fees)')).toBeNull()
   })
+
+  it('the Final line reads not billed: the $30 is bill 1’s own line, not money covering Final (v2.5102)', async () => {
+    await openSouthernPost(vi.fn())
+    const card = await screen.findByTestId('money-card')
+    expect(within(card).queryByText(/covered/)).toBeNull()
+    expect(within(card).getByText(/not billed/)).toBeTruthy()
+  })
 })

@@ -84,26 +84,44 @@ export function arCaseFeeOffer(view: Pick<ArReturnCaseView, 'source'>, row: ArCa
   return { kind: 'blocked', words: 'The check paid no bill by name, so the fee has no bill to go on.', line, title }
 }
 
-/**
- * The returned check fees on a job's bills, in cents: each `fee_lines` entry that names its case. That is the line
- * `add_ar_return_case_fee` writes, and it raised the job's revenue by the same amount, so a rewrite of the revenue
- * from the line items adds this back (`jobFormRiderFeesDollars`; `job_rider_fees` in SQL). A line that
- * names no case is not a returned check fee. An amount that does not read counts as nothing.
- */
-export function returnedCheckFeeCents(bills: ReadonlyArray<object> | null | undefined): number {
+/** The `fee_lines` entries on a job's bills that name one of `keys`, summed in cents. An amount that does not read counts as nothing. */
+function feeLineCents(bills: ReadonlyArray<object> | null | undefined, keys: readonly string[]): number {
   let cents = 0
   for (const inv of bills ?? []) {
     const lines = (inv as { fee_lines?: unknown }).fee_lines
     if (!Array.isArray(lines)) continue
     for (const l of lines) {
       if (l == null || typeof l !== 'object') continue
-      const { case_id: caseId, amount: raw } = l as { case_id?: unknown; amount?: unknown }
-      if (typeof caseId !== 'string' || caseId.trim() === '') continue
-      const amount = Number(raw)
+      const named = keys.some((k) => {
+        const v = (l as Record<string, unknown>)[k]
+        return typeof v === 'string' && v.trim() !== ''
+      })
+      if (!named) continue
+      const amount = Number((l as { amount?: unknown }).amount)
       if (Number.isFinite(amount) && amount > 0) cents += Math.round(amount * 100)
     }
   }
   return cents
+}
+
+/**
+ * The returned check fees on a job's bills, in cents: each `fee_lines` entry that names its case. That is the line
+ * `add_ar_return_case_fee` writes, and it raised the job's revenue by the same amount. A line that names no case is
+ * not a returned check fee.
+ */
+export function returnedCheckFeeCents(bills: ReadonlyArray<object> | null | undefined): number {
+  return feeLineCents(bills, ['case_id'])
+}
+
+/**
+ * Every fee that rides on a job's bills, in cents: a returned check fee (an entry that names its case), a GC card fee
+ * (an entry that names its card bill, `gc_card_bill_finish`, v2.5113) and a turnaway trip charge (an entry that names
+ * its trip charge, on the trip charge's own bill, `create_turnaway_trip_charge`, v2.5129). Each raised the job's
+ * revenue as it went on, so a rewrite of the revenue from the line items adds this back (`jobFormRiderFeesDollars`;
+ * `job_rider_fees` in SQL). A line that names none of them is not a rider.
+ */
+export function riderFeeLineCents(bills: ReadonlyArray<object> | null | undefined): number {
+  return feeLineCents(bills, ['case_id', 'card_bill', 'trip_charge'])
 }
 
 /** The fee lines a billed bill carries (`jobs_ledger_invoices.fee_lines`), for the printed bill's own rows. */

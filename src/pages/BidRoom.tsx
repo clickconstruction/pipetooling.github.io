@@ -220,7 +220,7 @@ export default function BidRoom() {
     if (ok) {
       setLocalOutcome({
         event_type: 'signed',
-        metadata: { option_name: selected.name, total_cents: roomGrandTotalCents(selected, taken), printed_name: signature.printedName, add_on_names: taken.map((a) => a.name) },
+        metadata: { option_name: selected.name, total_cents: roomGrandTotalCents(selected, taken), printed_name: signature.printedName, add_ons_taken: taken.map((a) => a.name) },
         occurred_at: new Date().toISOString(),
       })
     }
@@ -250,7 +250,8 @@ export default function BidRoom() {
   const grandTotal = roomGrandTotalCents(selected, takenAddOns)
   const scopeRows = [...selected.fixture_rows, ...takenAddOns.flatMap((a) => a.fixture_rows.map((r) => ({ ...r, fixture: `${r.fixture} — ${a.name}` })))]
   const brand = parseAcceptHeaderBrand(payload.header_brand)
-  const outcomeMeta = (outcome?.metadata ?? {}) as { option_name?: string; total_cents?: number; printed_name?: string; add_on_names?: string[] }
+  // v2.5111: the keys sign-bid-room saves on the signed event (`add_ons_taken`), so a reopened room reads what was signed.
+  const outcomeMeta = (outcome?.metadata ?? {}) as { option_name?: string; total_cents?: number; printed_name?: string; add_ons_taken?: string[] }
 
   const textBlock = (heading: string, body: string) =>
     body.trim() ? (
@@ -305,7 +306,7 @@ export default function BidRoom() {
               <>
                 ✍ Signed{outcomeMeta.printed_name ? ` by ${outcomeMeta.printed_name}` : ''}
                 {outcomeMeta.option_name ? ` — “${outcomeMeta.option_name}”` : ''}
-                {Array.isArray(outcomeMeta.add_on_names) && outcomeMeta.add_on_names.length > 0 ? ` with ${outcomeMeta.add_on_names.join(', ')}` : ''}
+                {Array.isArray(outcomeMeta.add_ons_taken) && outcomeMeta.add_ons_taken.length > 0 ? ` with ${outcomeMeta.add_ons_taken.join(', ')}` : ''}
                 {typeof outcomeMeta.total_cents === 'number' ? ` · ${formatMoney(outcomeMeta.total_cents)}` : ''}
                 {'. '}Thank you — we&rsquo;ll be in touch shortly.
               </>

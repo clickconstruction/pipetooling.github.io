@@ -23,7 +23,7 @@ describe('the trade portal’s sample', () => {
       else if (v && typeof v === 'object') for (const [k, x] of Object.entries(v)) { keys.add(k); if (k !== 'lines' && k !== 'includes') walk(x) }
     }
     walk(slice)
-    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'backCharges', 'changeRequests', 'changeOrders', 'note', 'mine'].includes(k))).toEqual([])
+    expect([...keys].filter((k) => !named.has(k as never) && !['company', 'people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'project', 'gc', 'team', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends', 'sows', 'backCharges', 'changeRequests', 'changeOrders', 'papers', 'note', 'mine'].includes(k))).toEqual([])
   })
 
   it('stays current: its days count from today', () => {
@@ -63,6 +63,14 @@ describe('the sample’s job (P4b-i)', () => {
     expect(row?.state).toBe('withCustomer')
     expect(row?.words).toContain('$3,400')
     expect(JSON.stringify(slice)).not.toContain('3910')
+  })
+})
+
+describe('the sample’s papers (B6-b-ii)', () => {
+  it('reads its master agreement signed, its W-9 and its certificate, by the board’s rule, and the one trade it won', () => {
+    const partner = state.partners.find((p) => p.id === partnerId)!
+    expect([partner.msa, partner.msaSignedOn, partner.w9, partner.coiExpires, partner.won]).toEqual(['signed', '2026-08-31', true, '2027-08-31', 1])
+    expect(JSON.stringify(slice)).not.toContain('never-passes')
   })
 })
 

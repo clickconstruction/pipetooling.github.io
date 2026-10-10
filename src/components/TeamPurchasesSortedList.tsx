@@ -10,11 +10,13 @@ import {
   sortedWhenWords,
   type SortedTeamPurchaseRow,
 } from '../lib/teamPurchasesSorted'
+import { tallyUndoLineFromSortedRow } from '../lib/tally/tallyUndoLine'
 
 /**
  * Team purchases follow-up → Sorted (v2.4566): the card charges already sorted, newest sort
  * first, each saying where it went and offering the way back in — the invoices window for a
- * charge matched to invoices, the Assign window for one split to jobs.
+ * charge matched to invoices, the Assign window for one split to jobs. With `onUndo` (the Job Parts
+ * Tally Team queue, punch list #72 PR 3), a charge that went to jobs and nothing else also offers Undo.
  */
 export type TeamPurchasesSortedListProps = {
   rows: SortedTeamPurchaseRow[]
@@ -22,6 +24,10 @@ export type TeamPurchasesSortedListProps = {
   windowDays: number
   onChangeJobs: (row: SortedTeamPurchaseRow) => void
   onInvoices: (row: SortedTeamPurchaseRow) => void
+  /** Put a charge that went to jobs back to sort. Without it, no row offers Undo. */
+  onUndo?: (row: SortedTeamPurchaseRow) => void
+  /** Charges whose undo is being written. */
+  undoBusyIds?: ReadonlySet<string>
 }
 
 function formatCurrency(n: number): string {
@@ -50,7 +56,15 @@ const rowButton: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-export function TeamPurchasesSortedList({ rows, isNarrow, windowDays, onChangeJobs, onInvoices }: TeamPurchasesSortedListProps) {
+export function TeamPurchasesSortedList({
+  rows,
+  isNarrow,
+  windowDays,
+  onChangeJobs,
+  onInvoices,
+  onUndo,
+  undoBusyIds,
+}: TeamPurchasesSortedListProps) {
   const prefixMap = useLedgerPrefixMap()
   const [shortOnly, setShortOnly] = useState(false)
   const shortCount = useMemo(() => rows.filter(sortedRowIsShort).length, [rows])
@@ -103,6 +117,8 @@ export function TeamPurchasesSortedList({ rows, isNarrow, windowDays, onChangeJo
           const jobs = parseSortedJobSplits(r.job_splits)
           const total = invoiceTotalForCharge(Number(r.amount), invoices.map((x) => x.amount))
           const wentTo = sortedWentToLines(r, prefixMap)
+          const canUndo = onUndo != null && tallyUndoLineFromSortedRow(r) != null
+          const undoing = undoBusyIds?.has(r.mercury_transaction_id) ?? false
           const buttons = (
             <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap', justifyContent: isNarrow ? 'stretch' : 'flex-end' }}>
               {invoices.length > 0 ? (
@@ -113,6 +129,17 @@ export function TeamPurchasesSortedList({ rows, isNarrow, windowDays, onChangeJo
               {jobs.length > 0 || invoices.length === 0 ? (
                 <button type="button" onClick={() => onChangeJobs(r)} style={{ ...rowButton, flex: isNarrow ? 1 : undefined, padding: isNarrow ? '0.55rem 0' : rowButton.padding }}>
                   Change
+                </button>
+              ) : null}
+              {canUndo ? (
+                <button
+                  type="button"
+                  data-testid="team-purchases-sorted-undo"
+                  disabled={undoing}
+                  onClick={() => onUndo?.(r)}
+                  style={{ ...rowButton, flex: isNarrow ? 1 : undefined, padding: isNarrow ? '0.55rem 0' : rowButton.padding }}
+                >
+                  {undoing ? 'Undoing…' : 'Undo'}
                 </button>
               ) : null}
             </div>

@@ -15,9 +15,8 @@ vi.mock('./emailReports/useEmailReportsData', () => ({
     schedules: [{ id: 's-yest', name: 'Yesterday recap', enabled: true, days_of_week: [2, 3, 4, 5, 6], time_local: '03:00:00', timezone: 'UTC' }],
     digestRecipients: [],
     subscriptions: [],
-    teamLeads: [],
     people: [
-      { key: 'user:u-rob', userId: 'u-rob', email: 'robert@x.com', name: 'Robert', outside: false, digests: [{ rowId: 'r1', scheduleId: 's-yest', scheduleName: 'Yesterday recap', text: 'jobs yesterday · all users', activityScope: 'calendar_yesterday', crewFilter: 'all_users', includeCosts: false }], everyReport: { subscriptionId: 'sub-1', text: 'reports from everyone Abraham leads', enabled: true } },
+      { key: 'user:u-rob', userId: 'u-rob', email: 'robert@x.com', name: 'Robert', outside: false, digests: [{ rowId: 'r1', scheduleId: 's-yest', scheduleName: 'Yesterday recap', text: 'jobs yesterday · all users', activityScope: 'calendar_yesterday', crewFilter: 'all_users', includeCosts: false }], everyReport: { subscriptionId: 'sub-1', text: 'reports from Abraham', enabled: true } },
       { key: 'email:owner@example.com', userId: null, email: 'owner@example.com', name: 'Owner', outside: true, digests: [], everyReport: { subscriptionId: 'sub-2', text: 'reports from Darren', enabled: true } },
     ],
     reload: vi.fn(async () => {}),
@@ -47,7 +46,7 @@ describe('EmailReportsModal (one list by person)', () => {
     expect(rows).toHaveLength(2)
     expect(rows[0]?.textContent).toContain('Robert')
     expect(rows[0]?.textContent).toContain('Yesterday recap · jobs yesterday · all users')
-    expect(rows[0]?.textContent).toContain('reports from everyone Abraham leads')
+    expect(rows[0]?.textContent).toContain('reports from Abraham')
     expect(rows[1]?.textContent).toContain('outside address · owner@example.com')
     expect(rows[1]?.textContent).toContain('—')
     expect(screen.getByTestId('email-reports-schedules').textContent).toContain('Yesterday recap Tue–Sat 3:00 AM')

@@ -3,11 +3,13 @@
  * as `gc-trade-portal` returns it (`supabase/functions/_shared/gcTradePortalSlice.ts`), turned into the prototype's shapes
  * the portal's kernels read (`portal.ts`, `planQuestions.ts`). The slice never carries our money, so every money field
  * here is 0 and the kernels that would show it never see a real figure. What a later lane owns and the slice does not carry
- * yet (the papers, the draws, the schedule) comes in empty, so its block stays hidden. Since P4b-i the slice carries the
+ * yet (the draws, the schedule) comes in empty, so its block stays hidden; the company's own papers come since B6-b-ii,
+ * where each stands and never its link or values. Since P4b-i the slice carries the
  * company's own award, statement of work, charges and change requests, and of each change order its request became only
  * its part, so a change order here has a cost and never a price.
  */
 import type { TradePortalSlice } from '../../../supabase/functions/_shared/gcTradePortalSlice'
+import { companyPapers } from './companyPapers'
 import type { PortalLang } from './portalI18n'
 import type { AskContact, BackCharge, ChangeOrder, ChangeOrderReason, GcProject, GcStage, GcState, Invite, Partner, PartnerPerson, PlanQuestion, PlanSet, PortalMailGroup, ProjectContact, PromiseKind, Sow, SubBid, TradeChangeRequest, TradePackage, TradePromise } from './types'
 
@@ -40,15 +42,15 @@ function partnerOf(slice: TradePortalSlice): Partner {
     trades: list<string>(c.trades),
     base: strOrNull(c.address),
     maxMiles: c.max_miles === null || c.max_miles === undefined ? null : num(c.max_miles),
-    // The papers come from person_contract_documents once the Board's B6 adds company_id there.
-    msa: 'none',
-    msaSignedOn: null,
-    coiExpires: null,
-    w9: false,
+    // Its own papers (B6-b-ii), read by the board's rule, so Sign waits for the master agreement as msaFirst does.
+    ...companyPapers(
+      (slice.papers ?? []).map((d) => ({ id: str(d.id), company_id: strOrNull(d.company_id), doc_type: str(d.doc_type), status: str(d.status), sent_at: strOrNull(d.sent_at), signed_at: strOrNull(d.signed_at), expires_at: strOrNull(d.expires_at) })),
+      str(c.id),
+    ),
     invited: slice.invites.length,
     bids: new Set(slice.quotes.map((q) => str(q.invite_id))).size,
-    // The Board's B6-a-ii counts the awards; the portal shows none of them.
-    won: 0,
+    // The trades it won: its own asks the slice names as awarded (another company's award reads AWARDED_ELSEWHERE).
+    won: slice.packages.filter((p) => slice.invites.some((i) => str(i.id) === str(p.awarded_invite_id))).length,
     promisesMade: 0,
     promisesKept: 0,
     address: str(c.address),
@@ -134,8 +136,8 @@ function questionsOf(slice: TradePortalSlice, companyId: string, projectId: stri
 
 const CHARGE_STATUSES: BackCharge['status'][] = ['open', 'agreed', 'disputed', 'kept', 'dropped']
 
-/** A charge to the company, in the prototype's shape: its answer, the office's keep or drop, and the draw it came off. */
-function backChargeOf(c: Row): BackCharge {
+/** A charge to the company, in the prototype's shape: its answer, the office's keep or drop, and the draw it came off. Building's draws read it too (`drawRows.ts`). */
+export function backChargeOf(c: Row): BackCharge {
   const status = str(c.status) as BackCharge['status']
   return {
     id: str(c.id),

@@ -389,9 +389,9 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const packageIds = projects.flatMap((p) => p.trades.map((t) => t.id))
   const named = [...new Set(projects.flatMap((p) => [p.customerId, p.architectId]).filter((id): id is string => Boolean(id)))]
   const none = Promise.resolve({ data: [], error: null })
-  const [dates, customers, companies, invites, promises, sows] = await Promise.all([
+  const [dates, customers, companies, invites, promises, sows, papers, paperSends] = await Promise.all([
     ids.length
-      ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, lost_why, won_by').in('project_id', ids)
+      ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, lost_why, won_by, closed_on').in('project_id', ids)
       : none,
     named.length ? supabase.from('customers').select('id, name, contact_info').in('id', named) : none,
     supabase
@@ -400,13 +400,17 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
       .order('name'),
     packageIds.length ? supabase.from('gc_invites').select('*').in('package_id', packageIds) : none,
     supabase.from('gc_trade_promises').select('*'),
-    // The statements of work (B6-a): dev only while the Board is built, so anyone else reads none.
+    // The statements of work (B6-a): a dev's and, since O9, the money team's to read, so anyone else reads none.
     packageIds.length
       ? supabase
           .from('gc_sows')
           .select('id, package_id, status, price, retainage_pct, based_on_rev, their_sov, excluded, sent_on, signed_on, accepted_on')
           .in('package_id', packageIds)
       : none,
+    // The companies' own papers (B6-b-ii): what person_contract_documents' own policies let the reader see (call R).
+    supabase.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at, created_at').not('company_id', 'is', null),
+    // Every send of a paper (B6-b-i): dev only while the Board is built, so anyone else reads none.
+    supabase.from('gc_paper_sends').select('id, company_id, paper, project_id, package_id, sent_on, due_on, note, first, draws, created_at').order('sent_on'),
   ])
   const dateRows = taken(dates, 'load the board’s dates')
   const inviteRows = taken(invites, 'load the asks')
@@ -459,6 +463,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     bidTabViews: taken(tabViews, 'load who opened the bid tabs'),
     sows: sowRows as BoardRows['sows'],
     sowLines: taken(sowLines, 'load the statements of work’s lines') as BoardRows['sowLines'],
+    papers: taken(papers, 'load the trade partners’ papers'),
+    paperSends: taken(paperSends, 'load the papers we sent'),
   }
 }
 
@@ -546,7 +552,7 @@ async function loadGcBillingJobMoney(out: Map<string, OwnerBillingRows>): Promis
   const jobIds = [...new Set(jobByProject.values())]
   if (jobIds.length === 0) return
   const [bills, payments, promises, waivers] = await Promise.all([
-    supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status').in('job_id', jobIds),
+    supabase.from('jobs_ledger_invoices').select('id, job_id, amount, status, hosted_invoice_url').in('job_id', jobIds),
     supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount, paid_on').in('job_id', jobIds),
     supabase.rpc('list_job_payment_promises'),
     supabase.from('job_lien_releases').select('job_id, form_type, invoice_ids').in('job_id', jobIds),
@@ -555,18 +561,39 @@ async function loadGcBillingJobMoney(out: Map<string, OwnerBillingRows>): Promis
   const paymentRows = taken(payments, 'load the payments on the billing job')
   const promiseRows = (taken(promises, 'load the promises to pay') ?? []) as { jobId?: string; promisedYmd?: string; createdAt?: string; source?: string; note?: string | null }[]
   const waiverRows = taken(waivers, 'load our waivers on the billing job')
+  // The bills the customer turned to card (O8b), so every figure reads them at their base (O8c).
+  const billIds = billRows.map((b) => b.id)
+  const cardRows = billIds.length
+    ? taken(await supabase.from('gc_owner_card_bills').select('invoice_id, status, base, fee, chosen_on, undone_on').in('invoice_id', billIds), 'load the bills on card')
+    : []
   for (const [projectId, jobId] of jobByProject) {
     const rows = out.get(projectId)
     if (!rows) continue
     rows.money = {
-      bills: billRows.filter((b) => b.job_id === jobId).map((b) => ({ id: b.id, amount: Number(b.amount), status: b.status ?? '' })),
+      bills: billRows.filter((b) => b.job_id === jobId).map((b) => ({ id: b.id, amount: Number(b.amount), status: b.status ?? '', payUrl: b.hosted_invoice_url ?? null })),
       payments: paymentRows.filter((p) => p.job_id === jobId).map((p) => ({ invoice_id: p.invoice_id, amount: Number(p.amount), paid_on: p.paid_on })),
       promises: promiseRows
         .filter((p) => p.jobId === jobId && p.promisedYmd && p.createdAt)
         .map((p) => ({ promisedYmd: p.promisedYmd ?? '', createdAt: p.createdAt ?? '', source: p.source ?? 'office', note: p.note ?? null })),
       waivers: waiverRows.filter((w) => w.job_id === jobId).map((w) => ({ form_type: w.form_type, invoice_ids: w.invoice_ids ?? [] })),
+      cards: cardRows
+        .filter((c) => billRows.some((b) => b.id === c.invoice_id && b.job_id === jobId))
+        .map((c) => ({ invoice_id: c.invoice_id, status: c.status, base: Number(c.base), fee: Number(c.fee), chosen_on: c.chosen_on, undone_on: c.undone_on })),
     }
   }
+}
+
+/**
+ * Back to a check bill (O8c): `gc-card-bill`'s undo door voids the bill's Stripe invoice (refused once Stripe shows a
+ * payment), then runs `gc_card_bill_undo` as the caller, which puts the bill back to its base and takes the fee off.
+ * The function's own words come back as they are.
+ */
+export async function takeBillOffCard(invoiceId: string): Promise<void> {
+  const r = (await supabase.functions.invoke('gc-card-bill', { body: { undo: invoiceId } })) as FnResult
+  const data = r.data as { ok?: boolean; words?: string } | null
+  if (data?.ok) return
+  const body = data ?? ((await r.error?.context?.json?.().catch(() => null)) as { words?: string } | null)
+  throw new Error((body?.words ?? '').trim() || r.error?.message || 'The bill did not go back to a check bill.')
 }
 
 /** A payment on a GC bill (O5c): the Pipeline's own `mark_invoice_paid`, on the app's day. No amount: the rest of it. */

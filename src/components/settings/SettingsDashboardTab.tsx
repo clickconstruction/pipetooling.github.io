@@ -1,7 +1,5 @@
 /** Settings → Dashboard & alerts tab: quick buttons, daily goals, financial pins,
  * report notifications, my reports, notification history, muted/ignored tasks.
- * (The team-hours-sharing manager moved to People → Users → Team leads; a
- * one-line pointer renders in its place.)
  * Presentational; all state/handlers live in the parent (Settings.tsx) and arrive as props.
  * Inner role gates are preserved verbatim (myRole etc. arrive as props). */
 import { useEffect, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
@@ -1086,12 +1084,6 @@ export default function SettingsDashboardTab({
       )}
 
       {/* v2.2088: Job Book moved to Settings → Jobs & billing. */}
-
-      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
-        <p style={{ marginBottom: '2rem', fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          Team leads are managed on People &rarr; Users &rarr; Team leads.
-        </p>
-      )}
 
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && (
         <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>

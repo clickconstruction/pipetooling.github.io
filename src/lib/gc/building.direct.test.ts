@@ -24,8 +24,11 @@ import {
   storedBefore,
   tradeChangesFor,
   tradeCloseout,
+  tradePayAppParties,
   tradeRetainageOpensOn,
 } from './building'
+import { GC_COMPANY } from './company'
+import { partnerById } from './lookups'
 import type { ChangeOrder, GcProject, GcState, Sow } from './types'
 import { initialGcState } from './schedule/testState'
 
@@ -235,5 +238,73 @@ describe('a change order’s trade side', () => {
     expect(tradeChangesFor(job(s), pkg(s, 'fplumb'))).toEqual([])
     expect(changeOrderTradePct(job(s), CANOPY)).toBe(25)
     expect(changeOrderTradePct(job(s), { ...CANOPY, tradeChange: { ...CANOPY.tradeChange!, status: 'sent', signedOn: null } })).toBeNull()
+  })
+})
+
+describe('who a trade’s pay application is from and to (U6b)', () => {
+  /** Two signed changes on the steel: one before draw 1's period ended, one in draw 2's. */
+  const signed = (id: string, cost: number, signedOn: string): ChangeOrder => ({
+    id,
+    number: id === 'co-early' ? 1 : 2,
+    description: 'A change to the steel',
+    reason: 'owner',
+    schedule: 'none',
+    packageId: 'fsteel',
+    cost,
+    price: cost,
+    status: 'signed',
+    sentOn: '2026-08-01',
+    answeredOn: '2026-08-02',
+    tradeChange: { status: 'signed', sentOn: '2026-08-03', signedOn, sovLineId: `line-${id}` },
+    pctDone: 0,
+  })
+  const s = withJob((p) => ({
+    ...p,
+    changeOrders: [signed('co-early', 4000, '2026-08-10'), signed('co-late', -1500, '2026-09-12')],
+    packages: p.packages.map((k) =>
+      k.id === 'fsteel' && k.sow
+        ? {
+            ...k,
+            sow: {
+              ...k.sow,
+              sov: [
+                ...k.sow.sov,
+                { id: 'line-co-early', label: 'Change order 1', amount: 4000, pctReported: 0, pctBilled: 0, changeOrderId: 'co-early' },
+                { id: 'line-co-late', label: 'Change order 2', amount: -1500, pctReported: 0, pctBilled: 0, changeOrderId: 'co-late' },
+              ],
+            },
+          }
+        : k,
+    ),
+  }))
+  const steel = pkg(s, 'fsteel')
+  const partner = partnerById(s, steel.invites.find((i) => i.id === steel.awardedInviteId)!.partnerId)!
+
+  it('is from the trade to us, numbered, on its contract day, with the changes it signed this period', () => {
+    const app = payApplicationForDraw(steel.sow!, steel.sow!.draws[1]!)
+    const parties = tradePayAppParties(job(s), steel.sow!, partner, app, { periodTo: '2026-09-30', address: '1 Forge Rd', license: 'TX-77', signedOn: '2026-09-30' })
+    expect(parties).toMatchObject({
+      project: 'Fair Oaks Shops, Building D',
+      applicationNo: '2',
+      periodTo: '2026-09-30',
+      sentOn: '2026-09-30',
+      contractDate: steel.sow!.signedOn,
+      to: { name: GC_COMPANY.name, address: GC_COMPANY.address },
+      from: { name: partner.company, address: '1 Forge Rd', license: 'TX-77' },
+    })
+    // Draw 1 ran to Aug 21: the change signed Aug 10 was before it, the credit signed Sep 12 is this period's.
+    expect(parties.changeOrders).toEqual([
+      { amount: 4000, thisPeriod: false },
+      { amount: -1500, thisPeriod: true },
+    ])
+  })
+
+  it('leaves out a license it was not given, and a draft is not sent yet', () => {
+    const app = payApplicationForDraw(steel.sow!, steel.sow!.draws[1]!)
+    const parties = tradePayAppParties(job(s), steel.sow!, partner, app, { periodTo: '', address: '', license: '', signedOn: null })
+    expect(parties.from).toEqual({ name: partner.company, address: '' })
+    expect(parties.sentOn).toBeNull()
+    // With no period yet, every change signed since the last application counts.
+    expect(parties.changeOrders.map((c) => c.thisPeriod)).toEqual([false, true])
   })
 })

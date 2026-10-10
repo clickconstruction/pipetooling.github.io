@@ -7,11 +7,12 @@
  *
  * Read from the rows, never stored (BOARD_REAL_BUILD.md, decision 4): how many times a company was
  * asked and how many quotes it sent (every ask is here, so there is no history to add), the day an ask
- * was last chased (the newest office line on it), and a company's papers until B6 keys them to the
- * company (none on file yet).
+ * was last chased (the newest office line on it), how many trades it won (the awards on its asks), and its
+ * papers, from its own rows in person_contract_documents (B6-b-ii, `companyPapers`).
  */
 import type { Json } from '../../types/database'
 import { extractContactFromCustomer } from '../customerContactDisplay'
+import { companyPapers, type CompanyPaperRow } from './companyPapers'
 import { townFromAddress } from './map'
 import type { GcProjectView } from './projectRows'
 import type {
@@ -26,6 +27,8 @@ import type {
   Includes,
   Invite,
   InviteStatus,
+  PaperKind,
+  PaperSend,
   Partner,
   PartnerVetting,
   PlanQuestion,
@@ -141,6 +144,8 @@ export interface BoardDatesRow {
   started_on: string | null
   lost_why: string | null
   won_by: string | null
+  /** The day the job was closed (Building's U6c, `gc_close_job`). Null: still open. */
+  closed_on?: string | null
 }
 
 /** A company's vetting form (B1's `gc_company_vetting_forms`), as they wrote it. */
@@ -212,6 +217,21 @@ export interface SowLineRow {
   change_order_id: string | null
 }
 
+/** `gc_paper_sends` (B6-b-i): one send of a paper to a company, written by `gc_send_paper` with its promise. */
+export interface PaperSendRow {
+  id: string
+  company_id: string
+  paper: string
+  project_id: string | null
+  package_id: string | null
+  sent_on: string
+  due_on: string
+  note: string
+  first: boolean
+  draws: number[] | null
+  created_at: string
+}
+
 export interface BoardRows {
   today: string
   projects: GcProjectView[]
@@ -246,6 +266,13 @@ export interface BoardRows {
   /** The statements of work (B6-a) and their lines. Missing: none read, so no trade has one. */
   sows?: SowRow[]
   sowLines?: SowLineRow[]
+  /**
+   * The companies' own papers (B6-b-ii): their rows in person_contract_documents with a company_id. Missing: none
+   * read, so every company reads as having none, as before B6-b.
+   */
+  papers?: CompanyPaperRow[]
+  /** Every send of a paper (B6-b-i's gc_paper_sends), dev only while the Board is built. Missing: none read. */
+  paperSends?: PaperSendRow[]
 }
 
 const num = (v: number | string | null | undefined): number => {
@@ -262,6 +289,8 @@ const INVITE_STATUSES: InviteStatus[] = ['invited', 'opened', 'bid', 'declined']
 const DECLINE_REASONS: DeclineReason[] = ['busy', 'far', 'size', 'scope', 'terms', 'other']
 const LOST_WHYS: GcLostWhy[] = ['price', 'other_builder', 'project_died', 'no_bid', 'no_answer']
 const PROMISE_KINDS: PromiseKind[] = ['insurance', 'w9', 'sow', 'start', 'submittals', 'delivery', 'payApp', 'punch', 'closeout', 'msa']
+// gc_paper_sends_paper_known's five.
+const PAPER_KINDS: PaperKind[] = ['msa', 'sow', 'insurance', 'w9', 'waiver']
 const HOWS: AskContact['how'][] = ['call', 'text', 'email', 'nudge', 'portal']
 const MAIL_GROUPS: PortalMailGroup[] = ['quotes', 'job', 'contracts', 'pay']
 
@@ -349,8 +378,16 @@ function vettingOf(c: CompanyRow, names: Record<string, string>, form: VettingFo
   }
 }
 
-/** A company as the kernels read it. Its counts come from its asks; its papers wait for B6. */
-export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: QuoteRow[], rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms' | 'people'> & { contacts?: ContactRow[] }): Partner {
+/**
+ * A company as the kernels read it. Its counts come from its asks and the awards on them (`awarded`, the asks that
+ * won a trade); its papers from its own rows (`companyPapers`).
+ */
+export function partnerFromRows(
+  c: CompanyRow,
+  invites: InviteRow[],
+  quotes: QuoteRow[],
+  rows: Pick<BoardRows, 'points' | 'userNames' | 'vettingForms' | 'people' | 'papers'> & { contacts?: ContactRow[]; awarded?: ReadonlySet<string> },
+): Partner {
   const asks = invites.filter((i) => i.company_id === c.id)
   const quoted = new Set(quotes.map((q) => q.invite_id))
   const basePoint = pointOf(rows as BoardRows, c.address)
@@ -370,14 +407,10 @@ export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: Quo
     base: c.address ? (townFromAddress(c.address) ?? c.address) : null,
     ...(basePoint ? { basePoint } : {}),
     maxMiles: c.max_miles,
-    msa: 'none',
-    msaSignedOn: null,
-    coiExpires: null,
-    w9: false,
+    ...companyPapers(rows.papers ?? [], c.id),
     invited: asks.length,
     bids: asks.filter((i) => quoted.has(i.id)).length,
-    // B6-a-ii counts the awards.
-    won: 0,
+    won: asks.filter((i) => rows.awarded?.has(i.id)).length,
     promisesMade: 0,
     promisesKept: 0,
     ...(c.address ? { address: c.address } : {}),
@@ -388,6 +421,22 @@ export function partnerFromRows(c: CompanyRow, invites: InviteRow[], quotes: Quo
     ...(people.length ? { people } : {}),
     ...(own.length ? { contacts: own } : {}),
     ...(c.contact_gets ? { contactGets: mailGroups(c.contact_gets) } : {}),
+  }
+}
+
+/** One send of a paper as the kernels read it (`PaperSend`). */
+export function paperSendFromRow(s: PaperSendRow): PaperSend {
+  return {
+    id: s.id,
+    partnerId: s.company_id,
+    paper: PAPER_KINDS.includes(s.paper as PaperKind) ? (s.paper as PaperKind) : 'msa',
+    ...(s.project_id ? { projectId: s.project_id } : {}),
+    ...(s.package_id ? { packageId: s.package_id } : {}),
+    on: s.sent_on,
+    by: s.due_on,
+    note: s.note,
+    first: s.first,
+    ...(s.draws?.length ? { draws: s.draws } : {}),
   }
 }
 
@@ -479,6 +528,7 @@ export function boardProjectFromView(view: GcProjectView, rows: BoardRows, invit
     lostOn: view.lostOn,
     lostWhy,
     wonBy: dates?.won_by ?? null,
+    ...(dates?.closed_on ? { closedOn: dates.closed_on } : {}),
   }
 }
 
@@ -532,13 +582,19 @@ export function boardStateFromRows(rows: BoardRows): GcState {
     list.push(inviteFromRows(i, rows.quotes, rows.contacts))
     invitesByPackage.set(i.package_id, list)
   }
+  // The asks that won a trade (B6-a's award), for each company's won count.
+  const awarded = new Set(rows.projects.flatMap((p) => p.trades.map((t) => t.awardedInviteId).filter((id): id is string => Boolean(id))))
   // Phone and email from the customer record (the schedule's 7c-ii), for the call list's Call. No call log is kept for a customer yet.
   const customers: GcCustomer[] = rows.customers.map((c) => ({ id: c.id, name: c.name, contact: c.contact ?? '', ...extractContactFromCustomer({ contact_info: c.contact_info ?? null }), payDays: null, portalOn: false, retainagePct: null, address: '', contacts: [] }))
   return {
     today: rows.today,
     customers,
     projects: rows.projects.map((p) => boardProjectFromView(p, rows, invitesByPackage)),
-    partners: rows.companies.map((c) => partnerFromRows(c, rows.invites, rows.quotes, rows)),
+    partners: rows.companies.map((c) => partnerFromRows(c, rows.invites, rows.quotes, { ...rows, awarded })),
     tradePromises: rows.promises.map((p) => promiseFromRows(p, rows.promiseMoves)),
+    // Oldest first, as the kernels read them (paperSendsFor, paperStep's history).
+    ...(rows.paperSends
+      ? { paperSends: [...rows.paperSends].sort((a, b) => a.sent_on.localeCompare(b.sent_on) || a.created_at.localeCompare(b.created_at)).map(paperSendFromRow) }
+      : {}),
   }
 }

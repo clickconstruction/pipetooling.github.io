@@ -7,6 +7,28 @@ import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { buildContractSigningEmail, clampContractEmailIntro, clampContractEmailSubject } from '../_shared/contractSigningEmail.ts'
+import { personSigningSentCopy, signingDocRefusal, signingRequestRefusal, type SigningRequestBody } from '../_shared/contractSigningSend.ts'
+import { sendEmailViaResend as sendTradeEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { officeYmd } from '../_shared/bidFollowupReminder.ts'
+import {
+  buildGcTradeEmail,
+  GC_TRADE_EMAIL_FROM_NAME,
+  GC_TRADE_EMAIL_ROLES,
+  spanishHeld,
+  TRADE_EMAIL_ERRORS,
+  tradeEmailReach,
+  tradeEmailRecipients,
+  tradePortalLinkUrl,
+  type TradeEmailErrorKey,
+  type TradeMailPerson,
+} from '../_shared/gcTradeEmail.ts'
+import {
+  companyPaperMessageKind,
+  companySigningEmailInput,
+  companySigningSentCopy,
+  companyTradeMessageRow,
+  parseCompanySigningRequest,
+} from '../_shared/companySigningSend.ts'
 
 /** Short portal address root — mirrors `PORTAL_SHORT_ORIGIN` in src/lib/portal/portalShortOrigin.ts. */
 const PORTAL_SHORT_ORIGIN = 'https://my.clickplumbing.com/'
@@ -25,19 +47,6 @@ function randomUrlToken(): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
-}
-
-function hasSigningContent(row: {
-  signing_body_html?: string | null
-  canonical_document_url?: string | null
-  url?: string | null
-  form_template_id?: string | null
-}): boolean {
-  if (row.form_template_id) return true
-  if (row.signing_body_html?.trim()) return true
-  if (row.canonical_document_url?.trim()) return true
-  if (row.url?.trim()) return true
-  return false
 }
 
 const corsHeaders = {
@@ -77,6 +86,124 @@ async function sendEmailViaResend(
   const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
   await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [to], from: fromMailbox, subject, emailType: 'contract_for_signature' })
   return { success: true, resendEmailId: sent.id ?? null }
+}
+
+/**
+ * A trade partner company's paper (GC mode, the Board's B6-b-i, call S, A): its master agreement or W-9 goes to the
+ * company's 'contracts' people in GC's frame, with the signing link as the email's own step. In order, as gc-trade-email:
+ * the caller (a dev until the papers' door, never a training account or a twin), the request, Spanish held, the paper (the
+ * company's own, sendable), the key sent once (checked before a token is minted, so a repeat never voids the link already
+ * sent), who gets it, the token as the person path mints it, the email, the send, then the `gc_trade_messages` row and the
+ * sent copy. A failed send writes no row. The company's portal link is read, never minted here.
+ */
+async function sendCompanyPaper(rawBody: unknown, ctx: { userId: string; supabaseUrl: string; serviceKey: string }): Promise<Response> {
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+  const refuse = (key: TradeEmailErrorKey, detail?: string) => json({ error: key, ...(detail ? { detail } : {}) }, TRADE_EMAIL_ERRORS[key])
+  const resendApiKey = Deno.env.get('RESEND_API_KEY')
+  if (!resendApiKey) return refuse('failed', 'Email is not configured yet: set RESEND_API_KEY')
+  const admin = createClient(ctx.supabaseUrl, ctx.serviceKey)
+
+  const { data: who } = await admin.from('users').select('role, name, email, read_only, is_digital_twin').eq('id', ctx.userId).maybeSingle()
+  if (!who || !GC_TRADE_EMAIL_ROLES.includes(String(who.role))) return refuse('officeOnly')
+  if (who.read_only || who.is_digital_twin) return refuse('readOnly')
+
+  const parsed = parseCompanySigningRequest(rawBody)
+  if (!parsed.ok) return refuse('badRequest')
+  const m = parsed.req
+  if (spanishHeld(m)) return refuse('spanishHeld')
+
+  const { data: doc } = await admin
+    .from('person_contract_documents')
+    .select('id, company_id, doc_type, status, signing_body_html, canonical_document_url, url, form_template_id')
+    .eq('id', m.documentId)
+    .maybeSingle()
+  if (!doc || doc.company_id !== m.companyId) return refuse('notFound')
+  const docRefusal = signingDocRefusal(doc)
+  if (docRefusal) return refuse('badRequest', docRefusal.error)
+  const { data: company } = await admin.from('gc_companies').select('id, name, contact_name, email, contact_gets').eq('id', m.companyId).maybeSingle()
+  if (!company) return refuse('notFound')
+
+  const sentBefore = async () => (await admin.from('gc_trade_messages').select('id, email_send_log_id, to_names').eq('company_id', m.companyId).eq('msg_key', m.key).maybeSingle()).data
+  const before = await sentBefore()
+  if (before) return json({ ok: true, companyId: m.companyId, messageId: before.id, emailSendLogId: before.email_send_log_id, to: before.to_names ?? [], already: true })
+
+  const { data: people } = await admin.from('gc_company_people').select('name, email, gets').eq('company_id', m.companyId).is('removed_at', null)
+  const reach = tradeEmailReach(tradeEmailRecipients(company, (people ?? []) as TradeMailPerson[], 'contracts'))
+  if (reach.length === 0) return refuse('noEmail')
+
+  // The signing link, minted as the person path mints it.
+  const origin = m.publicOrigin ?? Deno.env.get('ESTIMATE_PUBLIC_ORIGIN') ?? 'https://pipetooling.github.io'
+  const rawToken = randomUrlToken()
+  const tokenHash = await sha256HexFromString(rawToken)
+  const expiresAt = new Date(Date.now() + 14 * 86400000).toISOString()
+  const acceptUrl = `${origin.replace(/\/$/, '')}/contract/accept?t=${encodeURIComponent(rawToken)}`
+  const { data: updatedRows, error: upErr } = await admin
+    .from('person_contract_documents')
+    .update({ status: 'sent', sent_at: new Date().toISOString(), public_token_hash: tokenHash, public_token_expires_at: expiresAt })
+    .eq('id', doc.id)
+    .in('status', ['unsent', 'sent'])
+    .select('id')
+  if (upErr || !updatedRows?.length) return refuse('failed', 'Could not activate signing link')
+
+  const portalToken = (await admin.from('gc_trade_portal_links').select('token').eq('company_id', m.companyId).is('revoked_at', null).maybeSingle()).data?.token as string | null | undefined
+  const appOrigin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+  const names = reach.map((r) => r.name)
+  const email = buildGcTradeEmail(
+    companySigningEmailInput({
+      req: m,
+      names,
+      company: String(company.name ?? ''),
+      portalUrl: portalToken ? tradePortalLinkUrl(appOrigin, portalToken) : null,
+      acceptUrl,
+      signer: (who.name || GC_TRADE_EMAIL_FROM_NAME).trim(),
+      gc: GC_TRADE_EMAIL_FROM_NAME,
+    }),
+  )
+  const from = mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, EMAIL_FROM)
+  const [first, ...rest] = reach
+  const cc = rest.map((r) => r.email)
+  const replyTo = (who.email || '').trim() || undefined
+  const sent = await sendTradeEmailViaResend(first!.email, email.subject, email.text, email.html, resendApiKey, {
+    from,
+    ...(replyTo ? { replyTo } : {}),
+    ...(cc.length ? { cc } : {}),
+    emailType: 'gc_trade_email',
+  })
+  if (!sent.success) return json({ ok: true, emailed: false, accept_url: acceptUrl, email_error: sent.error ?? 'Resend said no' })
+
+  const logId = sent.resendEmailId
+    ? ((await admin.from('email_send_log').select('id').eq('resend_email_id', sent.resendEmailId).maybeSingle()).data?.id ?? null)
+    : null
+  const messageId = crypto.randomUUID()
+  const { error } = await admin.from('gc_trade_messages').insert(
+    companyTradeMessageRow({
+      id: messageId,
+      req: m,
+      kind: companyPaperMessageKind(doc.doc_type),
+      subject: email.subject,
+      names,
+      sentOn: officeYmd(new Date().toISOString()),
+      sentBy: ctx.userId,
+      emailSendLogId: logId,
+    }),
+  )
+  // Two presses at once: the other one's row stands, and this answers with its ids.
+  const raced = error?.code === '23505' ? await sentBefore() : null
+  const [filing, copy] = companySigningSentCopy({
+    company: String(company.name ?? ''),
+    messageId: error ? null : messageId,
+    sentBy: ctx.userId,
+    to: first!.email,
+    cc,
+    from,
+    subject: email.subject,
+    html: email.html,
+    resendEmailId: sent.resendEmailId ?? null,
+  })
+  await fileSentEmailBestEffort(filing, copy)
+  if (raced) return json({ ok: true, companyId: m.companyId, messageId: raced.id, emailSendLogId: raced.email_send_log_id, to: raced.to_names ?? [], already: true })
+  if (error) return refuse('failed', `Sent, but not recorded: ${error.message}`)
+  return json({ ok: true, emailed: true, accept_url: acceptUrl, companyId: m.companyId, messageId, emailSendLogId: logId, to: names })
 }
 
 serve(async (req) => {
@@ -127,30 +254,20 @@ serve(async (req) => {
       })
     }
 
-    const body = (await req.json()) as {
-      person_contract_document_id?: string
-      signer_email?: string
-      public_origin?: string
-      email_subject?: string
-      email_intro_plain?: string
-    }
+    const body = (await req.json()) as SigningRequestBody & { trade_email?: unknown }
+    // A trade partner company's paper takes its own path (sendCompanyPaper, above); the person path below is pinned
+    // against main and never sees one.
+    if (body.trade_email !== undefined) return await sendCompanyPaper(body, { userId: user.id, supabaseUrl, serviceKey })
     const { person_contract_document_id, signer_email, public_origin } = body
-    if (!person_contract_document_id || !signer_email?.trim()) {
-      return new Response(
-        JSON.stringify({ error: 'person_contract_document_id and signer_email required' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(signer_email.trim())) {
-      return new Response(JSON.stringify({ error: 'Invalid email' }), {
-        status: 400,
+    // The request's own refusals (_shared/contractSigningSend.ts, pinned against main).
+    const requestRefusal = signingRequestRefusal(body)
+    if (requestRefusal) {
+      return new Response(JSON.stringify({ error: requestRefusal.error }), {
+        status: requestRefusal.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+    const signerEmail = signer_email as string
 
     const { data: row, error: selErr } = await userClient
       .from('person_contract_documents')
@@ -176,29 +293,11 @@ serve(async (req) => {
       form_template_id: string | null
     }
 
-    if (doc.status === 'signed') {
-      return new Response(JSON.stringify({ error: 'This document is already signed' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    if (!hasSigningContent(doc)) {
-      return new Response(
-        JSON.stringify({
-          error:
-            'Add contract text, a canonical document URL, or a reference link before sending for signature.',
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
-    }
-
-    if (doc.status !== 'unsent' && doc.status !== 'sent') {
-      return new Response(JSON.stringify({ error: 'Invalid status for sending' }), {
-        status: 400,
+    // Signed already, nothing to sign, or a status that is neither unsent nor sent (pinned against main).
+    const docRefusal = signingDocRefusal(doc)
+    if (docRefusal) {
+      return new Response(JSON.stringify({ error: docRefusal.error }), {
+        status: docRefusal.status,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -300,13 +399,20 @@ serve(async (req) => {
       )
     }
 
-    const sent = await sendEmailViaResend(signer_email.trim(), subject, textPlain, htmlBody, resendApiKey, fromMailbox, mail.replyTo)
+    const sent = await sendEmailViaResend(signerEmail.trim(), subject, textPlain, htmlBody, resendApiKey, fromMailbox, mail.replyTo)
     // Sent copies (docs/SENT_COPIES.md): the email asking them to sign is kept, under the person.
     if (sent.success) {
-      await fileSentEmailBestEffort(
-        { kind: 'person_contract', recipientName: doc.person_name, personId: sentCopyPersonId, source: { table: 'person_contract_documents', id: doc.id }, sentBy: user.id },
-        { to: [signer_email.trim()], from: fromMailbox, subject, html: htmlBody, resendEmailId: sent.resendEmailId ?? null },
-      )
+      const [filing, copy] = personSigningSentCopy({
+        doc,
+        personId: sentCopyPersonId,
+        sentBy: user.id,
+        signerEmail,
+        from: fromMailbox,
+        subject,
+        html: htmlBody,
+        resendEmailId: sent.resendEmailId ?? null,
+      })
+      await fileSentEmailBestEffort(filing, copy)
     }
     if (!sent.success) {
       return new Response(

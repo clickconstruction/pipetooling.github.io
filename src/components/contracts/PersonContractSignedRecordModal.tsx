@@ -10,6 +10,7 @@ import { FORM_SOURCE_LABEL, formFacts } from '../../lib/forms/formRecord'
 import { missingRequired } from '../../lib/forms/formPaperEntry'
 import { hasOfficeBoxes } from '../../lib/forms/formSchema'
 import { ContractFormOfficeModal } from './formFill/ContractFormOfficeModal'
+import { paperForName } from '../../../supabase/functions/_shared/companyPaper'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -307,7 +308,7 @@ export function PersonContractSignedRecordModal({
                   marginBottom: '1rem',
                 }}
               >
-                <strong>For:</strong> {row.person_name}
+                <strong>For:</strong> {paperForName(row.person_name)}
               </p>
 
               {canonical ? (

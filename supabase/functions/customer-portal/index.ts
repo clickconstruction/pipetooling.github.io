@@ -27,6 +27,8 @@ import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { testReportShortLabel, testReportTitle, type TestReportSystem, type TestReportType } from '../_shared/testReport.ts'
 import { framesWaitingLine, signerNamesLine } from '../_shared/jobContractSigners.ts'
 import { loadGcPortalJobs, type PortalGcJob } from '../_shared/gcPortal.ts'
+import { GC_CARD_BILL_SETTING_KEY, gcCardBillOn, gcPortalCardBills, type PortalCardBill, type PortalCardRow } from '../_shared/gcCardBill.ts'
+import { customerBillingEmail } from '../_shared/billToParty.ts'
 
 /**
  * Customer portal payload (portal train PR 1; merged view + slugs in the
@@ -144,7 +146,7 @@ serve(async (req) => {
 
     const { data: customer } = await admin
       .from('customers')
-      .select('id, name')
+      .select('id, name, billing_email, contact_info')
       .eq('id', link.customer_id)
       .maybeSingle()
     if (!customer) return jsonResponse({ error: 'Not found' }, 404)
@@ -695,6 +697,26 @@ serve(async (req) => {
     // them and the work to accept. The customer's link only: a GC's link is Trades mode's.
     const gcJobs: PortalGcJob[] = link.audience === 'gc' ? [] : await loadGcPortalJobs(admin, link.customer_id)
 
+    // GC mode (Owner Billing O8b, v2.5123): the certified GC bills they may pay by card, with its 3% fee, and the
+    // ones on card already (their fee shown under the bill). The offer needs the switch, the app_settings row
+    // `gc_card_bill_on_v1` the owner turns on in Settings (O8c), off to start.
+    let cardBills: PortalCardBill[] = []
+    const billIds = bills.map((b) => b.invoiceId).filter((id): id is string => typeof id === 'string')
+    if (billIds.length > 0 && link.audience !== 'gc') {
+      const [{ data: certified }, { data: cardRows }, { data: setting }] = await Promise.all([
+        admin.from('gc_owner_pay_apps').select('invoice_id').in('invoice_id', billIds),
+        admin.from('gc_owner_card_bills').select('invoice_id, status, base, fee').in('invoice_id', billIds),
+        admin.from('app_settings').select('value_text').eq('key', GC_CARD_BILL_SETTING_KEY).maybeSingle(),
+      ])
+      cardBills = gcPortalCardBills({
+        on: gcCardBillOn((setting as { value_text?: string | null } | null)?.value_text),
+        hasEmail: customerBillingEmail(customer as Parameters<typeof customerBillingEmail>[0]) !== '',
+        bills,
+        certifiedInvoiceIds: new Set(((certified ?? []) as Array<{ invoice_id: string | null }>).flatMap((r) => (r.invoice_id ? [r.invoice_id] : []))),
+        cardRows: (cardRows ?? []) as PortalCardRow[],
+      })
+    }
+
     return jsonResponse({
       company: PORTAL_COMPANY,
       customerName: (customer as { name: string | null }).name ?? 'Customer',
@@ -721,6 +743,7 @@ serve(async (req) => {
       bankTransfer,
       ownerRecords,
       gcJobs,
+      cardBills,
     })
   } catch (e) {
     console.error('customer-portal error', e)

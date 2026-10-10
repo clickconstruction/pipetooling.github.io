@@ -47,6 +47,17 @@ function doorOf(words: string[]): GcDoor | 'none' | 'other' {
   return 'other'
 }
 
+const forSelect = (w: string) => /\bFOR\s+SELECT\b/i.test(w)
+
+/**
+ * Who writes a table: its policies but the `FOR SELECT` ones, or all of them when it has no other (a table the
+ * service role alone writes). Who reads it: every policy, since `FOR ALL` reads too (O9).
+ */
+function writersOf(words: string[]): GcDoor | 'none' | 'other' {
+  const writes = words.filter((w) => !forSelect(w))
+  return doorOf(writes.length > 0 ? writes : words)
+}
+
 describe('GC mode: every table has a door', () => {
   const { created, policies } = gcPolicies()
   const gcMode = [...created].filter((t) => !(NOT_GC_MODE_TABLES as readonly string[]).includes(t))
@@ -62,10 +73,28 @@ describe('GC mode: every table has a door', () => {
 
   it('each table’s policy lets in who the list says', () => {
     const wrong = Object.entries(GC_TABLE_DOORS)
-      .map(([t, d]) => ({ t, listed: d.door, policy: doorOf([...(policies.get(t)?.values() ?? [])]) }))
+      .map(([t, d]) => ({ t, listed: d.door, policy: writersOf([...(policies.get(t)?.values() ?? [])]) }))
       .filter((x) => x.listed !== x.policy)
       .map((x) => `${x.t}: listed ${x.listed}, its policy says ${x.policy}`)
     expect(wrong).toEqual([])
+  })
+
+  it('each table is read by who the list says: its door, or the wider team its FOR SELECT policies name', () => {
+    const wrong = Object.entries(GC_TABLE_DOORS)
+      .map(([t, d]) => ({ t, listed: d.reads ?? d.door, policy: doorOf([...(policies.get(t)?.values() ?? [])]) }))
+      .filter((x) => x.listed !== x.policy)
+      .map((x) => `${x.t}: listed as read by ${x.listed}, its policies say ${x.policy}`)
+    expect(wrong).toEqual([])
+  })
+
+  it('O9 opened the trades’ money to the money team for reading only, and writing stays a dev’s', () => {
+    const seven = ['gc_sows', 'gc_sow_lines', 'gc_draws', 'gc_draw_lines', 'gc_sow_line_reports', 'gc_change_order_trade_sends', 'gc_back_charges']
+    for (const t of seven) {
+      const words = [...(policies.get(t)?.values() ?? [])]
+      expect(GC_TABLE_DOORS[t]?.reads, t).toBe('money')
+      expect(writersOf(words), t).toBe('dev')
+      expect(policies.get(t)?.get(`${t}_money_read`), t).toMatch(/FOR SELECT TO authenticated USING \(\(SELECT public\.gc_money_team\(\)\)\)/)
+    }
   })
 
   it('a dev-only table says what opens it', () => {

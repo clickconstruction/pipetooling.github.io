@@ -6,6 +6,7 @@ import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSection
 import { formatCurrency } from '../../lib/format'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { fetchStagesHeaderStats } from '../../lib/jobs/fetchStagesHeaderStats'
+import { useZzTestJobsHidden } from '../../lib/jobs/zzTestJobSwitch'
 import { fetchAllRowsChunkedIn } from '../../lib/supabasePaging'
 import type { StageRow } from '../../lib/jobsStagesBoard'
 import { buildBilledByCustomerBreakdown, billedBreakdownTotal, type BilledBreakdownCustomerGroup } from '../../lib/jobs/billedByCustomerBreakdown'
@@ -41,6 +42,7 @@ function ageChip(days: number | null, handSet: boolean) {
 
 export function BilledAwaitingPaymentSection() {
   const { user: authUser, role } = useAuth()
+  const hideZz = useZzTestJobsHidden(role)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [groups, setGroups] = useState<BilledBreakdownCustomerGroup[]>([])
@@ -55,7 +57,7 @@ export function BilledAwaitingPaymentSection() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetchStagesHeaderStats(null)
+        const res = await fetchStagesHeaderStats(null, undefined, { excludeZzTestJobs: hideZz })
         if (cancelled) return
         if (!res.ok) {
           setError(res.error)
@@ -97,7 +99,7 @@ export function BilledAwaitingPaymentSection() {
     return () => {
       cancelled = true
     }
-  }, [authUser?.id, role])
+  }, [authUser?.id, role, hideZz])
 
   const canAccess = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const total = useMemo(() => billedBreakdownTotal(groups), [groups])

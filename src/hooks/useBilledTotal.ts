@@ -4,15 +4,23 @@ import { withSupabaseRetry } from '../utils/errorHandling'
 import { computeBillTruth, type BillTruthInvoice, type BillTruthJob, type BillTruthPayment } from '../lib/billing/billTruth'
 import { LEAN_STATS_ACTIVE_JOB_STATUSES } from '../lib/jobs/fetchStagesHeaderStats'
 import { loadUnlinkedMoney } from '../lib/billing/loadUnlinkedMoney'
+import { loadZzTestJobIds } from '../lib/jobs/zzTestJobRows'
+import { withoutZzTestJobMoney } from '../lib/jobs/zzTestJobVisibility'
 
 // Intentionally ALL billed jobs, including those flagged into Collections — this total means
 // "billed and unpaid" = the bill-truth kernel's Owed (billed + collections), the same figure the
 // Pipeline strip, the AR card (ar + Collections) and Quickfill read. Bills on paid or deleted jobs
 // are excluded by the kernel (they used to pad this pin). A job the office gave up on (Uncollectible)
 // leaves Owed in the kernel, which needs `uncollectible_at` to see it.
+// `excludeZzTestJobs` (punch list #61, v2.5120): the caller passes `useZzTestJobsHidden(role)` and the signed-in
+// user (the shared ids are kept per user). ZZ test jobs and their bills leave before the payments and the
+// unlinked money are read, by the shared ids (this read carries no names); a failed id read leaves the pin
+// empty rather than counting them.
 export function useBilledTotal(
   enabled: boolean,
-  refreshKey?: number
+  refreshKey?: number,
+  excludeZzTestJobs = false,
+  userId?: string | null,
 ): { count: number | null; total: number | null; loading: boolean } {
   const [count, setCount] = useState<number | null>(null)
   const [total, setTotal] = useState<number | null>(null)
@@ -50,8 +58,14 @@ export function useBilledTotal(
           ),
         ])
         if (cancelled) return
-        const jobs = (jobsRes ?? []) as unknown as BillTruthJob[]
-        const invoices = (invoicesRes ?? []) as unknown as BillTruthInvoice[]
+        const zzJobIds = excludeZzTestJobs ? await loadZzTestJobIds(userId) : null
+        if (cancelled) return
+        const read = {
+          jobs: (jobsRes ?? []) as unknown as BillTruthJob[],
+          invoices: (invoicesRes ?? []) as unknown as BillTruthInvoice[],
+          payments: [] as Array<{ job_id: string }>,
+        }
+        const { jobs, invoices } = zzJobIds ? withoutZzTestJobMoney(read, zzJobIds) : read
         const invoiceIds = invoices.map((i) => i.id)
         let paymentsRows: BillTruthPayment[] = []
         if (invoiceIds.length > 0) {
@@ -90,7 +104,7 @@ export function useBilledTotal(
     return () => {
       cancelled = true
     }
-  }, [enabled, refreshKey])
+  }, [enabled, refreshKey, excludeZzTestJobs, userId])
 
   return { count, total, loading }
 }

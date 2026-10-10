@@ -45,7 +45,7 @@ function isActivityScope(s: unknown): s is ActivityScopeMode {
 }
 
 function isCrewFilter(s: unknown): s is CrewFilterMode {
-  return s === 'all_users' || s === 'my_team'
+  return s === 'all_users'
 }
 
 serve(async (req) => {

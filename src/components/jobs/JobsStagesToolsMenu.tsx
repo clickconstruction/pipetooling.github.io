@@ -41,6 +41,11 @@ export type StagesToolsFilters = {
   accountManOptions: readonly FilterOption[]
   /** Groups hidden through "Hide groups…" (v2.1476). */
   exclusionCount: number
+  /**
+   * A dev's ZZ test jobs (punch list #61, v2.5120): how many the board holds and whether the dev's
+   * switch shows them. Null for every other role, and when the board holds none.
+   */
+  zzTestJobs?: { count: number; shown: boolean } | null
 }
 
 /** The per-device board modes the bottom of the menu toggles. */

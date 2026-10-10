@@ -17,7 +17,6 @@ const baseDraft = (over: Partial<SubscriptionDraft> = {}): SubscriptionDraft => 
   label: '',
   allAuthors: true,
   authorUserIds: [],
-  teamLeadUserIds: [],
   autoSend: true,
   enabled: true,
   ...over,
@@ -66,9 +65,8 @@ describe('validateSubscriptionDraft', () => {
   })
 
   it('requires at least one author when not all_authors', () => {
-    expect(
-      validateSubscriptionDraft(baseDraft({ allAuthors: false, authorUserIds: [] })).ok,
-    ).toBe(false)
+    const r = validateSubscriptionDraft(baseDraft({ allAuthors: false, authorUserIds: [] }))
+    expect(r).toEqual({ ok: false, error: 'Pick at least one person, or choose “All reports”.' })
     expect(
       validateSubscriptionDraft(baseDraft({ allAuthors: false, authorUserIds: ['a1'] })).ok,
     ).toBe(true)
@@ -77,42 +75,21 @@ describe('validateSubscriptionDraft', () => {
   it('all_authors makes the author list irrelevant', () => {
     expect(validateSubscriptionDraft(baseDraft({ allAuthors: true, authorUserIds: [] })).ok).toBe(true)
   })
-  it('a team lead alone satisfies the scope (v2.3480)', () => {
-    expect(
-      validateSubscriptionDraft(baseDraft({ allAuthors: false, authorUserIds: [], teamLeadUserIds: ['lead1'] })).ok,
-    ).toBe(true)
-    const r = validateSubscriptionDraft(baseDraft({ allAuthors: false, authorUserIds: [], teamLeadUserIds: [] }))
-    expect(r.ok).toBe(false)
-    if (!r.ok) expect(r.error).toContain('team lead')
-  })
 })
 
-describe('subscriptionMatchesReport (v2.3480)', () => {
+describe('subscriptionMatchesReport', () => {
   const sub = { enabled: true, all_authors: false }
-  it('matches a report by someone the team lead leads', () => {
-    expect(
-      subscriptionMatchesReport(sub, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'sam', leaderUserIds: ['todd'] }),
-    ).toBe(true)
+  it('matches a report by a named author', () => {
+    expect(subscriptionMatchesReport(sub, { authorUserIds: ['sam', 'todd'] }, { authorUserId: 'sam' })).toBe(true)
   })
-  it("matches the team lead's own report", () => {
-    expect(
-      subscriptionMatchesReport(sub, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'todd', leaderUserIds: [] }),
-    ).toBe(true)
+  it('does not match an author who is not named', () => {
+    expect(subscriptionMatchesReport(sub, { authorUserIds: ['todd'] }, { authorUserId: 'sam' })).toBe(false)
+    expect(subscriptionMatchesReport(sub, { authorUserIds: [] }, { authorUserId: 'sam' })).toBe(false)
   })
-  it('does not match someone outside the team', () => {
+  it('all_authors matches anyone; disabled never matches', () => {
+    expect(subscriptionMatchesReport({ enabled: true, all_authors: true }, { authorUserIds: [] }, { authorUserId: 'sam' })).toBe(true)
     expect(
-      subscriptionMatchesReport(sub, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'sam', leaderUserIds: ['ana'] }),
-    ).toBe(false)
-    expect(
-      subscriptionMatchesReport(sub, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'sam', leaderUserIds: [] }),
-    ).toBe(false)
-  })
-  it('named authors and team leads combine; disabled never matches', () => {
-    expect(
-      subscriptionMatchesReport(sub, { authorUserIds: ['sam'], teamLeadUserIds: ['todd'] }, { authorUserId: 'sam', leaderUserIds: [] }),
-    ).toBe(true)
-    expect(
-      subscriptionMatchesReport({ enabled: false, all_authors: false }, { authorUserIds: [], teamLeadUserIds: ['todd'] }, { authorUserId: 'todd', leaderUserIds: [] }),
+      subscriptionMatchesReport({ enabled: false, all_authors: false }, { authorUserIds: ['todd'] }, { authorUserId: 'todd' }),
     ).toBe(false)
   })
 })
@@ -172,10 +149,5 @@ describe('scopeSummary', () => {
   })
   it('handles empty author list', () => {
     expect(scopeSummary({ all_authors: false }, [], names)).toBe('No authors selected')
-  })
-  it('names team leads as teams (v2.3480)', () => {
-    expect(scopeSummary({ all_authors: false }, [], names, ['a'])).toBe("Reports from Ann's team")
-    expect(scopeSummary({ all_authors: false }, ['b'], names, ['a'])).toBe("Reports from Ben & Ann's team")
-    expect(scopeSummary({ all_authors: false }, ['b', 'c'], names, ['a'])).toBe('Reports from Ben, Cara +1 more')
   })
 })

@@ -2,7 +2,7 @@
 title: sort the team's card purchases from the office
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly
+keywords: team purchases, follow-up, card purchases, mercury, assign, backcharge, invoices, link invoices, more than one invoice, sorted, recent transactions, change, tally, job parts tally, team, day card, likely, sort the day, split evenly, undo
 order: 60
 ---
 When someone buys on a company card and does not sort the purchase themselves, it waits for the office. On the Dashboard, the **Needs you** card says *Team purchases waiting to be sorted*. {{button:amber|Sort for the team}} opens the **Team purchases follow-up** window.
@@ -56,3 +56,12 @@ Nothing is picked until you tap. A purchase can go somewhere else than the rest 
 On a day with two jobs, {{chip:blue|Split evenly}} splits each purchase between them. Under the amounts, **Split by hours instead** splits by the hours on each job.
 
 If a purchase cannot be saved, it stays picked and says why. The rest of the day is saved. {{chip:gray|Sorted}} at the top is the same 30-day list as in the window. {{chip:gray|My card}} shows only the purchases on your own card.
+
+## Undo a sort in Job Parts Tally
+
+Picked the wrong job? Press **Undo** on the message that says the day is sorted. The purchases go back to sort.
+
+- A purchase already sorted shows under its card. {{button:outline|Undo}} beside it puts it back on the card.
+- In {{chip:gray|Sorted}} under {{chip:blue|Team}}, {{button:outline|Undo}} shows on each purchase that went to a job.
+
+Undo is only on purchases that went to a job. A purchase matched to invoices keeps {{button:outline|Invoices}}.

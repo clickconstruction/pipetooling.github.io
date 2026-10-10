@@ -1,6 +1,6 @@
 # 20261008080000_job_contracts_activity_both_signers.sql (2026-10-08, v2.4870)
 
-Punch list #64 ([`to-dos/contract-second-signer-names.md`](../../to-dos/contract-second-signer-names.md)), the first item *Left after this row*. A job's activity line for a signed agreement names both signers. The trigger function `job_contracts_to_activity()` came from `20260903141146_job_contracts.sql`. It wrote *Contract signed by <first printed name>* on an agreement two people signed online.
+Punch list #64 (`to-dos/contract-second-signer-names.md`, retired after v2.5101), the first item *Left after this row*. A job's activity line for a signed agreement names both signers. The trigger function `job_contracts_to_activity()` came from `20260903141146_job_contracts.sql`. It wrote *Contract signed by <first printed name>* on an agreement two people signed online.
 
 - **`job_contracts_to_activity()`**, `CREATE OR REPLACE`. It is the same function, with one new variable. `v_signers` joins the filled frames' printed names with *and*, the way `signerNamesLine` does in `supabase/functions/_shared/jobContractSigners.ts`:
   - the first frame's `signer_printed_name`, when it is not blank;

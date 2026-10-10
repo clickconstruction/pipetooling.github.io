@@ -156,6 +156,19 @@ export interface GcCustomerEmailInput {
   gc: string
   /** The customer's portal, for the kinds that link it (`GC_CUSTOMER_EMAIL_PORTAL_LINE`). Null: no line. */
   portalUrl?: string | null
+  /**
+   * The bill's card fee when their portal offers Pay by card (O8c: the switch on, the bill certified, not on Stripe
+   * and nothing paid). With a portal link, the portal line says they may pay by card there, and the fee follows.
+   */
+  cardFee?: number | null
+}
+
+/** The portal line when the portal offers Pay by card (O8c). */
+export const GC_CUSTOMER_EMAIL_CARD_PORTAL_WORDS = 'Or pay it by card in your portal:'
+
+/** "Paying by card adds a 3% card fee of $8,666.37." */
+export function gcCustomerEmailCardFeeLine(fee: number): string {
+  return `Paying by card adds a 3% card fee of $${fee.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}.`
 }
 
 /**
@@ -166,10 +179,20 @@ export function buildGcCustomerEmail(input: GcCustomerEmailInput): { subject: st
   const subject = input.subject.trim()
   const portal = /^https:\/\/\S+$/.test((input.portalUrl ?? '').trim()) ? input.portalUrl!.trim() : null
   const shown = portal ? portal.replace(/^https:\/\//, '').replace(/\/$/, '') : ''
-  const text = [...input.lines.flatMap((l) => [l, '']), ...(portal ? [`${GC_CUSTOMER_EMAIL_PORTAL_WORDS} ${portal}`, ''] : []), 'Thank you,', input.signer, input.gc].join('\n')
+  const fee = portal && typeof input.cardFee === 'number' && input.cardFee > 0 ? input.cardFee : null
+  const words = fee !== null ? GC_CUSTOMER_EMAIL_CARD_PORTAL_WORDS : GC_CUSTOMER_EMAIL_PORTAL_WORDS
+  const feeLine = fee !== null ? gcCustomerEmailCardFeeLine(fee) : null
+  const text = [
+    ...input.lines.flatMap((l) => [l, '']),
+    ...(portal ? [`${words} ${portal}`, ''] : []),
+    ...(feeLine ? [feeLine, ''] : []),
+    'Thank you,',
+    input.signer,
+    input.gc,
+  ].join('\n')
   const p = (s: string) => `<p style="margin:0 0 12px">${esc(s)}</p>`
   const portalP = portal
-    ? `<p style="margin:0 0 12px">${esc(GC_CUSTOMER_EMAIL_PORTAL_WORDS)} <a href="${esc(portal)}" style="color:${INK}">${esc(shown)}</a></p>`
+    ? `<p style="margin:0 0 12px">${esc(words)} <a href="${esc(portal)}" style="color:${INK}">${esc(shown)}</a></p>` + (feeLine ? p(feeLine) : '')
     : ''
   const html =
     `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(subject)}</title></head>` +

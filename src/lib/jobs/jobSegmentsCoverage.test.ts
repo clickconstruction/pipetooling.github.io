@@ -484,6 +484,133 @@ describe('v2.3775 — dollarCoverageForSegments nets a partly paid billed line',
   })
 })
 
+describe('v2.5102 — a returned check fee is its bill’s own line, never covered work', () => {
+  const FEE = { description: 'Returned check fee (Tex. Bus. & Com. Code § 3.506)', amount: 30, case_id: 'mtx-sp' }
+  // Southern Post: bill 1 bills the $13,680 rough-in and carries the $30 fee; the $2,000 Final is not billed.
+  const southernPost = (bill1Status: 'billed' | 'paid') =>
+    buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'rough', name: 'Rough-in', line_unit_price: 13_680, invoice_id: 'inv-878' }),
+        line({ id: 'final', name: 'Final', line_unit_price: 2_000 }),
+      ],
+      riderFeesDollars: 0,
+      invoiceStatusById: { 'inv-878': bill1Status },
+    })
+
+  it('the fee on an open bill covers nothing on the Final line, and $2,000 is left to bill', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: southernPost('billed'),
+      grossDollars: 15_710,
+      paidDollars: 0,
+      invoices: [{ id: 'inv-878', status: 'billed', amount: 13_710, fee_lines: [FEE] }],
+    })
+    expect(coverage).toEqual({ unattributedDollars: 0, remainingDollars: 2_000, bySegmentKey: {} })
+  })
+
+  it('once the new check pays bill 1, fee included, the Final line is still uncovered', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: southernPost('paid'),
+      grossDollars: 15_710,
+      paidDollars: 13_710,
+      invoices: [{ id: 'inv-878', status: 'paid', amount: 13_710, fee_lines: [FEE] }],
+      payments: [{ invoice_id: 'inv-878', amount: 13_710 }],
+    })
+    expect(coverage).toEqual({ unattributedDollars: 0, remainingDollars: 2_000, bySegmentKey: {} })
+  })
+
+  it('a bill made by amount covers its work dollars, not its fee', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: buildJobSegmentsBar({
+        fixtures: [
+          line({ id: 'a', name: 'Rough In', line_unit_price: 400 }),
+          line({ id: 'b', name: 'Top Out', line_unit_price: 350 }),
+          line({ id: 'c', name: 'Trim', line_unit_price: 250 }),
+        ],
+        riderFeesDollars: 0,
+        invoiceStatusById: {},
+      }),
+      grossDollars: 1_030,
+      paidDollars: 0,
+      invoices: [{ status: 'billed', amount: 530, fee_lines: [FEE] }],
+    })
+    expect(coverage.unattributedDollars).toBe(500)
+    expect(coverage.remainingDollars).toBe(500)
+    expect(coverage.bySegmentKey).toEqual({
+      a: { coveredDollars: 400, fullyCovered: true },
+      b: { coveredDollars: 100, fullyCovered: false },
+    })
+  })
+
+  it('a fee line that names no case is not a returned check fee and stays spoken-for money', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: southernPost('billed'),
+      grossDollars: 15_710,
+      paidDollars: 0,
+      invoices: [{ id: 'inv-878', status: 'billed', amount: 13_710, fee_lines: [{ description: 'Other', amount: 30 }] }],
+    })
+    expect(coverage.bySegmentKey).toEqual({ final: { coveredDollars: 30, fullyCovered: false } })
+  })
+
+  it('a fee on the elastic primary bundle is not attributed: that bundle is not counted as spoken for', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: buildJobSegmentsBar({
+        fixtures: [line({ id: 'a', name: 'Rough In', line_unit_price: 600 }), line({ id: 'b', name: 'Top Out', line_unit_price: 400 })],
+        riderFeesDollars: 0,
+        invoiceStatusById: {},
+      }),
+      grossDollars: 1_030,
+      paidDollars: 0,
+      invoices: [
+        { status: 'ready_to_bill', amount: 250, is_primary_rtb_bundle: false },
+        { status: 'ready_to_bill', amount: 780, is_primary_rtb_bundle: true, fee_lines: [FEE] },
+      ],
+    })
+    expect(coverage.unattributedDollars).toBe(250)
+    expect(coverage.bySegmentKey).toEqual({ a: { coveredDollars: 250, fullyCovered: false } })
+  })
+})
+
+describe('v2.5129 — a turnaway trip charge is its own bill, never covered work', () => {
+  // Hawthorne: bill 1 bills the $1,200 rough-in; the $800 Final is not billed; a $99 trip charge has its own bill.
+  const TRIP = { trip_charge: 'client_not_home', amount: 99 }
+  const segments = () =>
+    buildJobSegmentsBar({
+      fixtures: [
+        line({ id: 'rough', name: 'Rough-in', line_unit_price: 1_200, invoice_id: 'inv-912' }),
+        line({ id: 'final', name: 'Final', line_unit_price: 800 }),
+      ],
+      riderFeesDollars: 99,
+      invoiceStatusById: { 'inv-912': 'billed' },
+    })
+
+  it('the trip charge bill covers nothing on the Final line, and $800 is left to bill', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: segments(),
+      grossDollars: 2_099,
+      paidDollars: 0,
+      invoices: [
+        { id: 'inv-912', status: 'billed', amount: 1_200 },
+        { id: 'inv-trip', status: 'ready_to_bill', amount: 99, is_primary_rtb_bundle: false, fee_lines: [TRIP] },
+      ],
+    })
+    expect(coverage).toEqual({ unattributedDollars: 0, remainingDollars: 800, bySegmentKey: {} })
+  })
+
+  it('once it is paid, the Final line is still uncovered', () => {
+    const coverage = dollarCoverageForSegments({
+      segments: segments(),
+      grossDollars: 2_099,
+      paidDollars: 99,
+      invoices: [
+        { id: 'inv-912', status: 'billed', amount: 1_200 },
+        { id: 'inv-trip', status: 'paid', amount: 99, is_primary_rtb_bundle: false, fee_lines: [TRIP] },
+      ],
+      payments: [{ invoice_id: 'inv-trip', amount: 99 }],
+    })
+    expect(coverage).toEqual({ unattributedDollars: 0, remainingDollars: 800, bySegmentKey: {} })
+  })
+})
+
 describe('fixtureSequencePositions (v2.5021, the final draw’s discount sweep)', () => {
   it('the saved positions of the rows asked for, whatever their dollars; unnamed rows take no position', () => {
     const rows = [line({ id: 'a' }), line({ id: 'blank', name: '  ' }), line({ id: 'b' }), line({ id: 'disc', name: 'Discount', line_unit_price: -150 })]

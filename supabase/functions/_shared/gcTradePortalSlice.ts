@@ -40,6 +40,11 @@ export interface TradePortalRows {
   backCharges?: Row[]
   changeRequests?: Row[]
   changeOrders?: Row[]
+  /**
+   * Its own papers (B6-b-ii): its rows in person_contract_documents with its company_id, for its master agreement,
+   * W-9 and insurance. Optional, so a caller with none passes none.
+   */
+  papers?: Row[]
 }
 
 export type SliceRow = Record<string, unknown>
@@ -68,6 +73,8 @@ export interface TradePortalSlice {
   backCharges?: SliceRow[]
   changeRequests?: SliceRow[]
   changeOrders?: SliceRow[]
+  /** Its own papers (B6-b-ii). Absent from a slice the function sent before B6-b-ii was deployed: the page reads none. */
+  papers?: SliceRow[]
 }
 
 /** The fields that pass, table by table. Anything not named here never leaves the server. */
@@ -98,6 +105,8 @@ export const TRADE_PORTAL_FIELDS = {
   // "Your part" only: the change order's cost on the trade's work. Never its price to the customer, its percent
   // done or the office's words to the customer.
   changeOrders: ['id', 'number', 'status', 'sent_on', 'answered_on', 'cost'],
+  // Where each of its papers stands, for its master agreement first (msaFirst): never the paper's link, body or values.
+  papers: ['id', 'company_id', 'doc_type', 'status', 'sent_at', 'signed_at', 'expires_at'],
 } as const satisfies Record<string, readonly string[]>
 
 /**
@@ -166,6 +175,7 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Requ
       .map((q) => ({ ...pick(q, TRADE_PORTAL_FIELDS.questions), mine: ownQuestion(q) })),
     messages: rows.messages.filter((m) => idOf(m, 'company_id') === companyId).map((m) => pick(m, TRADE_PORTAL_FIELDS.messages)),
     setSends: rows.setSends.filter((s) => idOf(s, 'company_id') === companyId && setIds.has(idOf(s, 'set_id'))).map((s) => pick(s, TRADE_PORTAL_FIELDS.setSends)),
+    papers: (rows.papers ?? []).filter((d) => idOf(d, 'company_id') === companyId).map((d) => pick(d, TRADE_PORTAL_FIELDS.papers)),
     ...ownWork(rows, companyId, packageIds),
   }
 }

@@ -212,6 +212,20 @@ describe('CustomerPortal render smoke', () => {
     expect(screen.getByRole('button', { name: 'Accept the work' })).toBeTruthy()
   })
 
+  it('the GC sample (#103 PR 2): the bills, the shared card, the waivers and Your payments come from the builders and render', async () => {
+    const gc = sampleCustomerPortalResponse(payload.company, 'gc', '2026-10-09', 'https://app.example')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(gc), { status: 200 })))
+    mountAt('/portal?t=sample-gc')
+    await waitFor(() => expect(screen.getByText('Sample Contracting')).toBeTruthy())
+    const text = document.body.textContent ?? ''
+    expect(text).toContain('Cedar Bend Apartments')
+    expect(text).toContain('Hunter Road Studios')
+    expect(text).toContain('Your customers’ open bills')
+    expect(text).toContain('Cedar Bend Owner LLC')
+    expect(text).toContain('Your payments')
+    expect(text).toContain('Bill 2 of 3')
+  })
+
   it('revoked-link error body is shown to the customer', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: 'This link is no longer active. Please contact our office for a new one.' }), { status: 404 })))
     mountAt('/portal?t=abcdef1234567890abcdef')

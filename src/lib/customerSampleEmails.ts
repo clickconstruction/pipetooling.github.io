@@ -4,7 +4,8 @@
  */
 import { buildEstimateLetterheadEmail, type EstimateLetterheadEmail } from './estimateEmailLetterhead'
 import { buildBidRoomLinkEmail, type BidRoomLinkEmail } from '../../supabase/functions/_shared/bidRoomLinkEmail'
-import { ESTIMATE_PUBLIC_TERMS_KEY, sampleBidRoomResponse, type AppSettingRow } from '../../supabase/functions/_shared/customerSampleFixtures'
+import { ESTIMATE_PUBLIC_TERMS_KEY, sampleBidRoomResponse, sampleEstimateResponse, type AppSettingRow } from '../../supabase/functions/_shared/customerSampleFixtures'
+import { normalizeSharedEstimateOptions, sharedEstimateOptionTotalCents } from '../../supabase/functions/_shared/estimateOptions'
 import { BID_COVER_LETTER_EXCLUSIONS_KEY, BID_COVER_LETTER_TERMS_KEY } from '../../supabase/functions/_shared/customerSampleFixtures'
 import { parseSharedBidRoomPayload } from '../../supabase/functions/_shared/bidRoomPayload'
 import { ESTIMATE_EXPERIENCE_APP_KEY_LIST, resolveEstimateCustomerExperience } from './estimateCustomerExperience'
@@ -68,19 +69,21 @@ export type SampleEmailContext = {
 
 export function buildSampleEstimateEmail(ctx: SampleEmailContext): EstimateLetterheadEmail {
   const acceptUrl = `${ctx.origin}${ESTIMATE_SAMPLE_PATH}`
+  // v2.5112: the total and the options come from the sample estimate the page serves, read as send-estimate-to-customer reads a row.
+  const est = sampleEstimateResponse(ctx.rows, 'live', ctx.todayYmd).body as { total_cents?: unknown; options?: unknown }
   const resolved = resolveEstimateCustomerExperience(ctx.rows, null, { acceptUrl, title: SAMPLE_ESTIMATE.title, estimateNumber: SAMPLE_ESTIMATE.number }, { docKind: 'estimate' })
   return buildEstimateLetterheadEmail({
     docKind: 'estimate',
     estimateNumber: SAMPLE_ESTIMATE.number,
     title: SAMPLE_ESTIMATE.title,
-    totalCents: SAMPLE_ESTIMATE.totalCents,
+    totalCents: Number(est.total_cents ?? 0),
     validUntilYmd: ymdPlusDays(ctx.todayYmd, SAMPLE_ESTIMATE.validDays),
     forAddress: SAMPLE_HOMEOWNER.address,
     acceptUrl,
     brand: 'plum',
     brandImageUrl: `${ctx.origin}/brand/click-plum.png`,
     bodyText: resolved.emailBody,
-    options: [],
+    options: normalizeSharedEstimateOptions(est.options).map((o) => ({ name: o.name, recommended: o.recommended, kind: o.kind, totalCents: sharedEstimateOptionTotalCents(o) })),
     footerLines: resolved.acceptPageFooter.split('\n'),
     sender: ctx.sender ? { name: ctx.sender.name, email: ctx.sender.email } : null,
     dateLabel: ctx.dateLabel,

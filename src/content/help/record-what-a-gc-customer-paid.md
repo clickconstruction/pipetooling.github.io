@@ -2,7 +2,7 @@
 title: record what a GC customer paid
 category: Bids & Estimating
 roles: dev, master_technician, controller
-keywords: gc mode, payment, paid, part payment, promise, late, unconditional waiver, customer, bill, billing job
+keywords: gc mode, payment, paid, part payment, promise, late, unconditional waiver, customer, bill, billing job, pay by card, card fee, back to a check bill
 order: 100
 ---
 Record what the customer paid on a GC job's bill, and when they said they will pay.
@@ -34,6 +34,24 @@ The bill then shows what they paid of what it asks.
 4. Press {{button:blue|Record it}}.
 
 Their newest day is the day the bill is due. A day they missed stays on the record.
+
+## A bill they pay by card
+
+A customer can turn a certified bill into a card bill in their portal. The card adds a 3% card fee. Only the customer does this, never us, and only on a bill with nothing paid on it. The owner turns the offer on in Settings, under Jobs & billing.
+
+:::example A bill on card
+{{chip:blue|on card}} They chose card in their portal on Oct 10. Stripe asks $297,545.37 with the $8,666.37 card fee. Their card page {{button:outline|Back to a check bill}}
+:::
+
+The bill still reads at what the architect certified. The fee covers what Stripe charges us, so it never counts in Money. Stripe records the card payment by itself, so there is no {{button:outline|They paid part…}} on a bill on card. Once it is paid, the line says the day and the fee.
+
+## When they want to pay by check after all
+
+1. Press {{button:outline|Back to a check bill}} on the bill.
+2. Read what it does. It takes the card page down and the fee off.
+3. Press {{button:blue|Back to a check bill}} again to do it.
+
+The bill goes back to what the architect certified. Their portal does not offer the card on that bill again. Once Stripe shows a payment, the bill stays on card.
 
 ## Send our unconditional waiver
 

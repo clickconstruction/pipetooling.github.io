@@ -917,6 +917,11 @@ verify_jwt = false
 [functions.gc-customer-email]
 verify_jwt = false
 
+# The customer pays a certified GC bill by card from their portal (GC mode, Owner Billing O8b): the portal link is the
+# capability on its portal door, and its undo door reads the staff JWT itself.
+[functions.gc-card-bill]
+verify_jwt = false
+
 # The submittal room link to one named reviewer (v2.5026, Submittals decision 11): reads the staff JWT itself, like gc-trade-email.
 [functions.send-submittal-room-link]
 verify_jwt = false

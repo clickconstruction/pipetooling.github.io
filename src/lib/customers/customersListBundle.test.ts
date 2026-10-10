@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { deriveCustomersList, isMissingRpcError, parseCustomersListBundle } from './customersListBundle'
+import { deriveCustomersList, isMissingRpcError, parseCustomersListBundle, withoutZzTestJobsInBundle, type CustomersListBundle } from './customersListBundle'
 
 const raw = {
   projects: [{ customer_id: 'c1', n: 2 }],
@@ -66,5 +66,38 @@ describe('isMissingRpcError', () => {
     expect(isMissingRpcError('PGRST202')).toBe(true)
     expect(isMissingRpcError('permission denied')).toBe(false)
     expect(isMissingRpcError(null)).toBe(false)
+  })
+})
+
+describe('withoutZzTestJobsInBundle (punch list #61, v2.5122)', () => {
+  const bundle: CustomersListBundle = {
+    jobs: [
+      { id: 'A', customer_id: 'c1', status: 'billed', revenue: 500 },
+      { id: 'Z', customer_id: 'c1', status: 'billed', revenue: 2200 },
+    ],
+    invoices: [
+      { id: 'iA', job_id: 'A', status: 'billed', amount: 500 },
+      { id: 'iZ', job_id: 'Z', status: 'billed', amount: 2200 },
+    ],
+    payments: [{ job_id: 'Z', invoice_id: 'iZ', amount: 100, paid_on: '2026-09-04' }],
+    projectCounts: {},
+    bidCounts: {},
+    noteCounts: {},
+    latestSignal: {},
+    unlinkedJobs: 0,
+  }
+
+  it('drops a ZZ job with its bills and payments, so the customer’s money reads without it', () => {
+    const out = withoutZzTestJobsInBundle(bundle, new Set(['Z']))
+    expect(out.jobs.map((j) => j.id)).toEqual(['A'])
+    expect(out.invoices.map((i) => i.job_id)).toEqual(['A'])
+    expect(out.payments).toEqual([])
+    const before = deriveCustomersList(bundle, ['c1']).rollupByCustomerId.c1!
+    const after = deriveCustomersList(out, ['c1']).rollupByCustomerId.c1!
+    expect(before.openBalance - after.openBalance).toBe(2100)
+  })
+
+  it('hands back the same bundle when there is no ZZ job', () => {
+    expect(withoutZzTestJobsInBundle(bundle, new Set())).toBe(bundle)
   })
 })

@@ -25,12 +25,12 @@ import { useWideViewport1100 } from '../../hooks/useWideViewport1100'
 import { useSessionNotesOpener } from './sessionNotesOpenerContext'
 import {
   renderJobCustomerLine as renderJobCustomerLineWithCtx,
-  renderStagesFieldAndBillingLines as renderStagesFieldAndBillingLinesWithCtx,
-  renderStagesJobCellActivityFooter as renderStagesJobCellActivityFooterWithCtx,
-  renderStagesQuickActionsStack as renderStagesQuickActionsStackWithCtx,
   STAGES_TABLE_MIN_WIDTH,
   type StagesRowRenderContext,
 } from './jobsStagesRowShared'
+import { StagesFieldAndBillingLines } from './StagesFieldAndBillingLines'
+import { StagesJobCellActivityFooter } from './StagesJobCellActivityFooter'
+import { StagesQuickActionsStack } from './StagesQuickActionsStack'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 
@@ -296,17 +296,17 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     onPropertyLinked,
     onOpenJobContract,
   }
-  const renderStagesFieldAndBillingLines = (job: JobWithDetails, opts?: { datesBilledYmd?: string | null }) =>
-    renderStagesFieldAndBillingLinesWithCtx(stagesRowSharedCtx, job, opts)
+  const renderStagesFieldAndBillingLines = (job: JobWithDetails, opts?: { datesBilledYmd?: string | null }) => (
+    <StagesFieldAndBillingLines ctx={stagesRowSharedCtx} job={job} datesBilledYmd={opts?.datesBilledYmd} />
+  )
   const renderJobCustomerLine = (job: JobWithDetails) => renderJobCustomerLineWithCtx(stagesRowSharedCtx, job)
   const renderStagesJobCellActivityFooter = (
     job: JobWithDetails,
     billingLineForStripeHint?: JobsLedgerInvoice | null,
     opts?: { hideSeeAllButton?: boolean },
-  ) => renderStagesJobCellActivityFooterWithCtx(stagesRowSharedCtx, job, { billingLineForStripeHint, ...opts })
+  ) => <StagesJobCellActivityFooter ctx={stagesRowSharedCtx} job={job} billingLineForStripeHint={billingLineForStripeHint} hideSeeAllButton={opts?.hideSeeAllButton} />
 
-  const renderStagesQuickActionsStack = (job: JobWithDetails) =>
-    renderStagesQuickActionsStackWithCtx(stagesRowSharedCtx, job)
+  const renderStagesQuickActionsStack = (job: JobWithDetails) => <StagesQuickActionsStack ctx={stagesRowSharedCtx} job={job} />
 
   const renderJobNoteLine = (j: JobWithDetails) => {
     const note = jobNoteLine?.(j)

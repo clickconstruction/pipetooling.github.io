@@ -57,8 +57,8 @@ const openProject = async () => {
 
 describe('the presses', () => {
   it('welcomes a first visit and posts Got it, then reads the slice again', async () => {
-    // A first visit: never pressed Got it, no set opened, no quote and no word from it in the portal yet.
-    slice = { ...slice, company: { ...slice.company, portal_opened_on: null }, invites: slice.invites.map((i) => ({ ...i, seen_rev: null })), quotes: [], contacts: [] }
+    // A first visit: never pressed Got it, no set opened, no quote, no word from it in the portal and no paper signed yet.
+    slice = { ...slice, company: { ...slice.company, portal_opened_on: null }, invites: slice.invites.map((i) => ({ ...i, seen_rev: null })), quotes: [], contacts: [], papers: [] }
     open()
     fireEvent.click(await screen.findByRole('button', { name: 'Got it' }))
     await waitFor(() => expect(posts).toEqual([{ token: TOKEN, kind: 'got_it' }]))

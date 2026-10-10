@@ -8,6 +8,7 @@ import { useCallback, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { invalidateZzTestJobRows } from '../../lib/jobs/zzTestJobRows'
 import {
   ZZ_SWEEP_DEFAULT_MIN_AGE_DAYS,
   ZZ_SWEEP_SINK_SUGGESTED_NAME,
@@ -61,6 +62,8 @@ export default function ZzTestJobSweepSection() {
       return false
     }
     setRows((prev) => (prev ? prev.filter((r) => r.id !== row.id) : prev))
+    // The swept job is gone: the shared ZZ ids the Dashboard drops by must be read again (v2.5120).
+    invalidateZzTestJobRows()
     return true
   }
 
