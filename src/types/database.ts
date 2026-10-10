@@ -10110,6 +10110,97 @@ export type Database = {
           },
         ]
       }
+      gc_owner_contract_sends: {
+        Row: {
+          created_at: string
+          customer_id: string | null
+          file_name: string
+          file_path: string
+          file_sha256: string
+          first: boolean
+          id: string
+          note: string
+          project_id: string
+          sent_by: string | null
+          sent_on: string
+          sign_by: string
+          signed_on: string | null
+          signer_consented_at: string | null
+          signer_ip: string | null
+          signer_printed_name: string | null
+          signer_signature_storage_path: string | null
+          signer_user_agent: string | null
+          total: number | null
+          worth: Json
+        }
+        Insert: {
+          created_at?: string
+          customer_id?: string | null
+          file_name: string
+          file_path: string
+          file_sha256: string
+          first?: boolean
+          id?: string
+          note?: string
+          project_id: string
+          sent_by?: string | null
+          sent_on?: string
+          sign_by: string
+          signed_on?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_printed_name?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
+          total?: number | null
+          worth: Json
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string | null
+          file_name?: string
+          file_path?: string
+          file_sha256?: string
+          first?: boolean
+          id?: string
+          note?: string
+          project_id?: string
+          sent_by?: string | null
+          sent_on?: string
+          sign_by?: string
+          signed_on?: string | null
+          signer_consented_at?: string | null
+          signer_ip?: string | null
+          signer_printed_name?: string | null
+          signer_signature_storage_path?: string | null
+          signer_user_agent?: string | null
+          total?: number | null
+          worth?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_owner_contract_sends_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_owner_contract_sends_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_owner_contract_sends_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_owner_interest_bills: {
         Row: {
           amount: number
@@ -30015,6 +30106,17 @@ export type Database = {
           work_date: string
         }[]
       }
+      gc_customer_sign_owner_contract: {
+        Args: {
+          p_customer_id: string
+          p_ip: string
+          p_printed_name: string
+          p_send_id: string
+          p_signature_path: string
+          p_user_agent: string
+        }
+        Returns: string
+      }
       gc_draft_change_order: {
         Args: { p_draft: Json; p_project_id: string }
         Returns: string
@@ -30114,7 +30216,27 @@ export type Database = {
         Args: { p_project_id: string }
         Returns: number
       }
+      gc_owner_contract_keep: {
+        Args: { p_project_id: string; p_signed_on: string; p_worth: Json }
+        Returns: undefined
+      }
       gc_owner_contract_now: { Args: { p_project_id: string }; Returns: number }
+      gc_owner_contract_portal_signed_on: {
+        Args: { p_project_id: string }
+        Returns: string
+      }
+      gc_owner_contract_worth_ok: {
+        Args: { p_project_id: string; p_worth: Json }
+        Returns: boolean
+      }
+      gc_owner_contract_worth_problem: {
+        Args: { p_project_id: string; p_worth: Json }
+        Returns: string
+      }
+      gc_owner_contract_worth_total: {
+        Args: { p_worth: Json }
+        Returns: number
+      }
       gc_owner_retainage_paid_on: {
         Args: { p_project_id: string }
         Returns: string
@@ -30332,6 +30454,18 @@ export type Database = {
       }
       gc_send_draw_back: {
         Args: { p_draw_id: string; p_note: string; p_we_see: Json }
+        Returns: string
+      }
+      gc_send_owner_contract: {
+        Args: {
+          p_file_name: string
+          p_file_path: string
+          p_file_sha256: string
+          p_note: string
+          p_project_id: string
+          p_sign_by: string
+          p_worth: Json
+        }
         Returns: string
       }
       gc_send_owner_interest_bill: {
