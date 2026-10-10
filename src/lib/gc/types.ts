@@ -275,8 +275,7 @@ export interface PlanSet {
   rev: number
   label: string
   issuedOn: string
-  /** Optional on main (the prototype's is required): a set mapped without it changes no sheet. */
-  changedSheets?: string[]
+  changedSheets: string[]
   /** Package ids whose scope this set changed. A bid priced on an older set is stale for them. */
   touches: string[]
   /** Scope lines this set adds to trades already on the job. Quotes in before it never answered them. */

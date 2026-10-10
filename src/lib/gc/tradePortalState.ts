@@ -126,7 +126,7 @@ function setsOf(slice: TradePortalSlice, projectId: string, packageIds: string[]
   return slice.sets
     .filter((s) => str(s.project_id) === projectId)
     .sort((a, b) => num(a.rev) - num(b.rev))
-    .map((s) => ({ rev: num(s.rev), label: str(s.label), issuedOn: str(s.issued_on), touches: touchedSets.has(str(s.id)) ? packageIds : [] }))
+    .map((s) => ({ rev: num(s.rev), label: str(s.label), issuedOn: str(s.issued_on), touches: touchedSets.has(str(s.id)) ? packageIds : [], changedSheets: [] }))
 }
 
 function questionsOf(slice: TradePortalSlice, companyId: string, projectId: string): PlanQuestion[] {
