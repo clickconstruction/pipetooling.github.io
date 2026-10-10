@@ -2,7 +2,7 @@
 title: share a trade partner its portal
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, trade portal, paperwork, vetting form, w-9, master agreement, your papers, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request, statement of work, sign, signature, punch list, submittal, percent done, report, sign the change, pay application, closeout, needs you, file, upload
+keywords: gc mode, trade partner, trade portal, paperwork, vetting form, w-9, master agreement, your papers, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request, statement of work, sign, signature, punch list, submittal, percent done, report, sign the change, pay application, closeout, needs you, file, upload, schedule, their schedule, chart
 order: 96
 ---
 Every trade partner company can have one private portal link. The company opens it without signing in and sees everything it has with us.
@@ -32,6 +32,8 @@ From its portal the company can:
 - On a job, read the statement of work we sent and press **Sign the statement of work**.
 
 To sign, the company types its name and signs by typing or drawing. It also ticks that it agrees to sign electronically. It can sign only after it signs our master agreement. Once it signs, the statement of work shows the day it was signed.
+
+On a job we are building, the job page opens on **Your schedule on this job**. It shows the company's own bars and the work right before and after them. Other companies show by name, never by price. Their notes and contacts never show.
 
 Once its statement of work is signed, the job page shows the job too. It shows each line's percent done and what we paid through. It shows the punch list, the submittals it owes, its draws and its questions while we build.
 

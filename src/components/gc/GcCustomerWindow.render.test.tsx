@@ -1,11 +1,15 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { GcCustomerWindow } from './GcCustomerWindow'
+import { GcCustomerWindow, type CustomerWindowMoney } from './GcCustomerWindow'
 import type { ContractSendInput, ContractSendOutcome } from './GcCustomerContractSend'
 import { boardStateFromRows, type BoardRows } from '../../lib/gc/boardRows'
 import { CLINIC_WORTH_NOW, awardedClinicBoardRows, contractSendRow } from '../../lib/gc/boardTestRows'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
+import type { BillingRows } from '../../lib/gc/billCustomer'
+import { customerMoneyView } from '../../lib/gc/customerMoney'
+import type { OwnerPayAppRow } from '../../lib/gc/ownerBillingRows'
+import type { GcState } from '../../lib/gc/types'
 
 /** Oak Street Partners' window: the clinic won, our contract on it in the state the rows give. */
 function open(rows: BoardRows = awardedClinicBoardRows(), opts: { send?: boolean; email?: boolean; at?: { tab?: 'about' | 'documents'; doc?: string; send?: boolean } } = { send: true }) {
@@ -199,5 +203,96 @@ describe('GcCustomerWindow · Activity (the Board’s B2b-v-ii)', () => {
   it('shows no box when the page gives no write', () => {
     const { dialog } = openActivity()
     expect(within(dialog).queryByRole('button', { name: 'Log a contact' })).toBeNull()
+  })
+})
+
+describe('GcCustomerWindow · their money, for the money team (the Board’s B2b-v-iii)', () => {
+  /** The clinic sent to sign with its file, a change order waiting on Oak Street, and pay application 1 certified Sep 1 and unpaid. */
+  function money(over: Partial<CustomerWindowMoney> = {}) {
+    const rows: BoardRows = { ...awardedClinicBoardRows(), ownerContractSends: [contractSendRow()] }
+    const base = boardStateFromRows(rows)
+    const state: GcState = {
+      ...base,
+      projects: base.projects.map((p) =>
+        p.id === 'p1'
+          ? { ...p, changeOrders: [{ id: 'co1', number: 1, description: 'Add a hand sink', reason: 'owner', schedule: 'none', packageId: null, cost: 1000, price: 1100, status: 'sent', sentOn: '2026-10-06', answeredOn: null, pctDone: 0 }] }
+          : p,
+      ),
+    }
+    const app: OwnerPayAppRow = {
+      id: 'a1', project_id: 'p1', number: 1, final: false, period_to: '2026-08-31', sent_on: '2026-08-31', sent_by: null, retainage_pct: 10,
+      retainage_step_at_pct: null, retainage_step_to_pct: null, retainage_step_way: null, retainage: 1000, work_to_date: 10000, due: 9000,
+      certified: 9000, certified_on: '2026-09-01', certified_note: '', certified_by: null, invoice_id: null, conditional_waiver_id: null, created_at: '2026-08-31T15:00:00Z',
+    }
+    const billing: BillingRows = {
+      terms: [{ project_id: 'p1', owner_retainage_pct: 10, owner_retainage_step_at_pct: null, owner_retainage_step_to_pct: null, owner_retainage_step_way: null, owner_pay_days: 30, owner_late_interest_pct_per_month: null, owner_late_finish_per_day: null, billing_job_id: null, property_owner_customer_id: null }],
+      contract: [],
+      billing: new Map([['p1', { payApps: [app], lines: [], reminders: [], interestBills: [], acceptance: null }]]),
+      names: {},
+      payDays: {},
+    }
+    const customer = state.customers.find((c) => c.id === 'c1')!
+    const part: CustomerWindowMoney = { view: customerMoneyView(state, billing, customer), onOpenBill: vi.fn(), onOpenChanges: vi.fn(), onOpenContract: vi.fn(() => Promise.resolve()), ...over }
+    renderWithProviders(<GcCustomerWindow state={state} customer={customer} money={part} onOpenProject={() => undefined} onClose={() => undefined} />)
+    return { part, dialog: screen.getByRole('dialog', { name: 'Oak Street Partners' }) }
+  }
+
+  it('About says what they owe us now and what they hold, beside what we bid them and have under contract', () => {
+    const { dialog } = money()
+    const totals = dialog.querySelector('[data-gc-customer-totals]') as HTMLElement
+    expect(within(totals).getByText('They owe us now')).toBeTruthy()
+    expect(within(totals).getByText('$9,000')).toBeTruthy()
+    expect(within(totals).getByText('They are holding')).toBeTruthy()
+    expect(within(totals).getByText('$1,000')).toBeTruthy()
+    expect(within(totals).getByText('$9,000 certified, not paid')).toBeTruthy()
+    expect(within(totals).getByText('Under contract')).toBeTruthy()
+  })
+
+  it('Documents lists the late bill and the change order after our contract, each opening its own window, read only', () => {
+    const { dialog, part } = money()
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    expect(within(dialog).getByText('Pay application 1')).toBeTruthy()
+    expect(within(dialog).getByText(/days late/)).toBeTruthy()
+    fireEvent.click(within(dialog).getAllByRole('button', { name: 'Open the bill' })[0]!)
+    expect(part.onOpenBill).toHaveBeenCalledWith('p1')
+    fireEvent.click(within(dialog).getAllByRole('button', { name: 'Open the change orders' })[0]!)
+    expect(part.onOpenChanges).toHaveBeenCalledWith('p1')
+    expect(within(dialog).queryByRole('button', { name: /Remind/ })).toBeNull()
+  })
+
+  it('opens our contract’s file on the press, and says so in words when it does not open', async () => {
+    const { dialog, part } = money({ onOpenContract: vi.fn(() => Promise.reject(new Error('the file would not open.'))) })
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Open the contract' }))
+    expect(part.onOpenContract).toHaveBeenCalledWith('p1')
+    expect((await within(dialog).findByRole('alert')).textContent).toBe('The contract did not open: the file would not open.')
+  })
+
+  it('shows no file to open when the bucket does not let the reader read it', () => {
+    const rows: BoardRows = { ...awardedClinicBoardRows(), ownerContractSends: [contractSendRow()] }
+    const state = boardStateFromRows(rows)
+    const customer = state.customers.find((c) => c.id === 'c1')!
+    const part: CustomerWindowMoney = { view: customerMoneyView(state, { terms: [], contract: [], billing: new Map(), names: {}, payDays: {} }, customer), onOpenBill: vi.fn(), onOpenChanges: vi.fn() }
+    renderWithProviders(<GcCustomerWindow state={state} customer={customer} money={part} onOpenProject={() => undefined} onClose={() => undefined} />)
+    const dialog = screen.getByRole('dialog', { name: 'Oak Street Partners' })
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    expect(within(dialog).queryByRole('button', { name: 'Open the contract' })).toBeNull()
+  })
+
+  it('says it is reading while the money reads, and the problem in words when it does not', () => {
+    const { dialog } = money({ view: null })
+    expect(within(dialog).getAllByText('Reading what they owe us…').length).toBeGreaterThan(0)
+  })
+
+  it('outside the money team, About and Documents speak of no money owed, held or charged', () => {
+    const rows: BoardRows = { ...awardedClinicBoardRows(), ownerContractSends: [contractSendRow()] }
+    const state = boardStateFromRows(rows)
+    renderWithProviders(<GcCustomerWindow state={state} customer={state.customers.find((c) => c.id === 'c1')!} onOpenProject={() => undefined} onClose={() => undefined} />)
+    const dialog = screen.getByRole('dialog', { name: 'Oak Street Partners' })
+    expect(within(dialog).queryByText(/owe|holding|interest/i)).toBeNull()
+    expect(within(dialog).getByText('Under contract')).toBeTruthy()
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    expect(within(dialog).queryByRole('button', { name: 'Open the bill' })).toBeNull()
+    expect(within(dialog).queryByText(/Pay application/)).toBeNull()
   })
 })

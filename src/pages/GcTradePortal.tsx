@@ -112,6 +112,7 @@ export default function GcTradePortal() {
           messages={messages}
           planUrl={planUrl}
           banner={page.sample ? pt(lang, 'samplePortal') : preview ? pt(lang, 'officePreview') : undefined}
+          schedules={page.schedules}
         />
         </PortalPressContext.Provider>
       ) : null}

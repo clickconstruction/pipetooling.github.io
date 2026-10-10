@@ -4,6 +4,7 @@ import { portalAsks, portalFirstVisit } from '../../lib/gc/portal'
 import { pt, pWeekday, type PortalLang } from '../../lib/gc/portalI18n'
 import { askChips, askWhen, pastWords, paperworkLineOf, portalHomeGroups, portalHomeTodos, type PaperworkLine, type SentMessage } from '../../lib/gc/tradePortalPage'
 import type { PortalAsk, PortalTodo } from '../../lib/gc/portal'
+import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
 import { Btn, Chip } from './gcUi'
@@ -31,6 +32,7 @@ export function GcTradePortalView({
   messages,
   planUrl,
   banner,
+  schedules = {},
 }: {
   state: GcState
   partnerId: string
@@ -40,6 +42,8 @@ export function GcTradePortalView({
   planUrl: (projectId: string, rev: number) => string
   /** A line above the page: the sample, or the office's preview. */
   banner?: string
+  /** The company's chart on each job being built, by the job's id (the schedule's PR 14b). */
+  schedules?: Record<string, PortalSchedule>
 }) {
   const partner = state.partners.find((p) => p.id === partnerId)
   const [viewId, setViewId] = useState<string | null>(null)
@@ -110,7 +114,7 @@ export function GcTradePortalView({
         ) : screen === 'papers' ? (
           <GcTradePortalPapersPage state={state} partner={partner} onHome={() => go(null)} onOpenProject={(id) => go(id)} />
         ) : shown ? (
-          <GcTradePortalProject project={shown} partner={partner} today={state.today} planUrl={(rev) => planUrl(shown.id, rev)} onHome={() => go(null)} />
+          <GcTradePortalProject project={shown} partner={partner} today={state.today} planUrl={(rev) => planUrl(shown.id, rev)} onHome={() => go(null)} schedule={schedules[shown.id] ?? null} />
         ) : (
           <div style={{ padding: '0.9rem' }}>
             <Home state={state} partner={partner} onOpenProject={go} onPapers={() => setScreen('papers')} />

@@ -11,6 +11,7 @@ import { GC_COMPANY } from './company'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
+import type { PortalSchedule } from './schedule/portalSchedule'
 import type { GcState } from './types'
 import { daysUntil, money } from './words'
 
@@ -27,7 +28,16 @@ export function tradePortalUrl(origin: string, token: string): string {
 /** A refusal, as a key the page says in the company's language (decision 11). */
 export type TradePortalErrorKey = 'linkOff' | 'linkBad' | 'linkFailed'
 
-export type TradePortalAnswer = { kind: 'ready'; today: string; slice: TradePortalSlice; sample: boolean } | { kind: 'error'; key: TradePortalErrorKey }
+export type TradePortalAnswer =
+  | {
+      kind: 'ready'
+      today: string
+      slice: TradePortalSlice
+      sample: boolean
+      /** The company's chart on each job being built, by the job's id (the schedule's PR 14b). None: no chart. */
+      schedules: Record<string, PortalSchedule>
+    }
+  | { kind: 'error'; key: TradePortalErrorKey }
 
 const SLICE_LISTS = ['people', 'invites', 'quotes', 'contacts', 'promises', 'projects', 'packages', 'scopeItems', 'exclusions', 'sets', 'setItems', 'questions', 'messages', 'setSends'] as const
 
@@ -40,7 +50,19 @@ export function readTradePortalAnswer(ok: boolean, body: unknown): TradePortalAn
   if (!isObject(body) || typeof body.today !== 'string' || !isObject(body.slice)) return { kind: 'error', key: 'linkFailed' }
   const slice = body.slice
   if (!isObject(slice.company) || !SLICE_LISTS.every((k) => Array.isArray(slice[k]))) return { kind: 'error', key: 'linkFailed' }
-  return { kind: 'ready', today: body.today, slice: slice as unknown as TradePortalSlice, sample: body.sample === true }
+  return { kind: 'ready', today: body.today, slice: slice as unknown as TradePortalSlice, sample: body.sample === true, schedules: schedulesOf(body.schedules) }
+}
+
+/**
+ * The charts beside the slice (the schedule's PR 14b): each job's that reads as one. A function deployed before the
+ * chart sends none, and the page then draws none, so the function and the page deploy in either order.
+ */
+function schedulesOf(v: unknown): Record<string, PortalSchedule> {
+  if (!isObject(v)) return {}
+  const bars = (b: unknown) => Array.isArray(b) && b.every((x) => isObject(x) && typeof x.lineId === 'string' && typeof x.start === 'string' && typeof x.finish === 'string')
+  return Object.fromEntries(
+    Object.entries(v).filter(([, s]) => isObject(s) && bars(s.before) && bars(s.mine) && bars(s.after) && typeof s.first === 'string' && typeof s.last === 'string'),
+  ) as Record<string, PortalSchedule>
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')

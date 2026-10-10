@@ -16,6 +16,8 @@ Sending our contract shows to a dev while it is built.
 
 **About** lists their jobs with us. **Activity** has everything with them, with the newest on top. **Documents** has our contract on each job we won.
 
+To see what they owe us, see [see what a GC customer owes us](/help/see-what-a-gc-customer-owes-us).
+
 ## Log a call with a customer
 
 1. Press **Activity** in the customer's window.
