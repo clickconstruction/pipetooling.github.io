@@ -2,7 +2,7 @@
 name: "The schedule's PR 12: before the job, the rough while we bid, templates, a schedule they hand us and their dates to meet"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 12, and What if and before the job (the rough and the templates); mockups/G-44.md (templates), G-45.md (the rough), G-137.md (a schedule they hand us), G-145.md (their dates to meet only); GANTT_FEATURES.md G-44, G-45, G-137, G-145
 branch: the plan on claude/gc-schedule-pr12-plan (from origin/spike/gc-mode at 3a1fad434); the code from origin/main in three cuts, no migration
-status: plan 2026-10-10 by gc 1 at the lead's ask, checked against main at a699ca854. Amendment 1 (2026-10-10): gc 2 nodded calls 5 and 6 at their picks, with four conditions written in. For gc 4's co-sign (the Schedule lane's holder), then the lead's read-back. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 1 at the lead's ask, checked against main at a699ca854. Amendment 1 (2026-10-10): gc 2 nodded calls 5 and 6 at their picks, with four conditions written in. Amendment 2: gc 4, holding Schedule, co-signed all ten calls at their picks, and its two notes on call 5 are written in. For the lead's read-back. Nothing cut or claimed.
 ---
 
 # The schedule's PR 12: before the job
@@ -111,6 +111,21 @@ press kernels beside 9a's and 9b's in `scheduleWindow.ts`; and two seams with th
    - The edit stays inside the two outcome handlers, so a small hunk rebases clean under B2b-iii and later, which also
      touch `GcProjects.tsx`.
 
+   **gc 4's two notes (amendment 2), both taken:**
+   - **One read, not `loadSchedule`'s.** `keepRough` needs only the rough and the job's trades and their lines, which
+     the board's project already carries. It needs no drawn schedule: `roughWeeks` draws the rough itself.
+     `keepRoughAt` reads one row of `gc_rough_schedules` by project, maps it with `rows.ts`'s `roughOf` (exported as
+     `roughFromRow`), lays it on the board's project, runs `keepRough` and writes only what changed.
+   - **A missed keep can be kept later.** The locked rough card, while its weeks are not kept, shows **Keep the weeks as
+     sent**, through `lateKeepPress(project)` in `scheduleWindow.ts`.
+     - It keeps with the day our bid went, `ourBidSentOn`, never the press's day, so the kept day reads true. `gc_mark_won`
+       sets `our_bid_sent_on` to the day we won when no bid was marked sent, so that day is right after an award too.
+     - It is refused while the job still bids with no bid sent, when the rough is kept already, and when none was
+       drawn.
+     - It has a kernel test and a render case, and rides the window's `moves` presses.
+     - The keep's failure line names it: *The rough schedule's weeks were not kept with the bid. Press Keep the weeks as
+       sent on its Schedule.*
+
 6. **Weeks to build on Our number: in 12b, with gc 2's nod.**
    - `GcOurNumber.tsx`'s header says *Weeks to build waits for the schedule's kernels on main*. They are there:
      `roughWeeks`, `proposalWeeksWords` and `bidSentWeeksWords`.
@@ -174,7 +189,7 @@ press kernels beside 9a's and 9b's in `scheduleWindow.ts`; and two seams with th
 | Cut | Ported from the spike (each forked to `.proto` in its follow-up) | Main's files |
 |---|---|---|
 | 12a | `GcScheduleTemplates.tsx` (186 lines: `GcTemplatesCard`, `GcTemplatePick`) and its render test (5) | new `GcScheduleTemplates.tsx`; `GcSchedule.tsx` (the card on a job being built, the pick on `DraftCard`, two presses); `scheduleWindow.ts` (+2 kernels) |
-| 12b | `GcRoughSchedule.tsx` (165) and its render test (5) | new `GcRoughSchedule.tsx`; `GcSchedule.tsx` (a bidding job shows it in place of *No schedule is drawn*); `scheduleWindow.ts` (+1); `scheduleIo.ts` (`keepRoughAt`, `loadRoughs`); `GcProjects.tsx` (the keep after the two outcome presses, the roughs for Our number); `GcOurNumber.tsx` (the stat and the line) |
+| 12b | `GcRoughSchedule.tsx` (165) and its render test (5) | new `GcRoughSchedule.tsx` (with **Keep the weeks as sent**); `GcSchedule.tsx` (a bidding job shows it in place of *No schedule is drawn*); `scheduleWindow.ts` (+2: `roughPress`, `lateKeepPress`); `rows.ts` (`roughFromRow` exported); `scheduleIo.ts` (`keepRoughAt`, `loadRoughs`); `GcProjects.tsx` (the keep after the two outcome presses, the roughs for Our number); `GcOurNumber.tsx` (the stat and the line) |
 | 12c | `GcScheduleImport.tsx` (268) and `GcTheirDates.tsx` (173) with their render tests (5 and 6) | two new files; `GcSchedule.tsx` (*Bring in their schedule* on `DraftCard` and on a drawn schedule before Start, **Their dates** on `GcMilestones`); `GcScheduleCards.tsx` (`GcMilestones` gains a `door` slot); `scheduleWindow.ts` (+2) |
 
 Each port keeps the prototype's words. Each `dispatch({ type })` becomes a callback the window passes, as 9a and 9b did.
@@ -187,7 +202,8 @@ Each window passes the five window checks before its PR opens: the status-bar ru
   - 12a: a draw from a template, from the rough's own copy, and with an unknown template refused; a save, its name refused
     when taken, and its shape.
   - 12b: a rough drawn, redrawn with the same template, with another, and with none; refused after our bid or once lost;
-    only the days that differ kept.
+    only the days that differ kept. A late keep with the bid's day; refused while still bidding, when kept, and with no
+    rough. `keepRoughAt` writes nothing when nothing changed.
   - 12c: an import drawn and refused (moves, after Start, nothing kept), and their dates taken and refused.
 - **Render** (each port's own tests from the spike, re-pointed at main's test state, plus):
   - `GcScheduleWindow.render.test.tsx`: each press with the version read where it is a plan write; none of it for
@@ -246,3 +262,6 @@ Three ways it could be better:
   For gc 4's co-sign and gc 2's nod on calls 5 and 6, then the lead's read-back.
 - 2026-10-10, amendment 1: gc 2 nodded calls 5 and 6 at their picks, with three conditions on the keep and one on where
   Our number's new rows go. Each is written into its call.
+- 2026-10-10, amendment 2: gc 4 co-signed all ten calls at their picks, at 8ce0a9457. Its two notes on call 5 are
+  written in: the keep reads one row, and **Keep the weeks as sent** keeps a missed keep later with the bid's day.
+  gc 4 sees no seam with 13b's files or the copy's presses. PR 10 (#5231) stays the only gate rebase.
