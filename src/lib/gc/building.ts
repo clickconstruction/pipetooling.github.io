@@ -3,6 +3,7 @@
  * word for word from the GC mode prototype (branch spike/gc-mode, `gcBuilding.ts`) by the schedule's
  * PR 1a, which reads them. The Building lane's lift (U2) adds the rest of `gcBuilding.ts` here.
  */
+import type { PayAppParties } from './payAppFile'
 import type { ChangeOrder, Draw, DrawSentBack, GcProject, GcState, Partner, SovLine, Sow, TradePackage } from './types'
 import { punchCounts, punchWords } from './buildingPunch'
 import { GC_COMPANY } from './company'
@@ -221,6 +222,43 @@ export function payApplicationForDraw(sow: Sow, draw: Draw): PayApplication {
   // The form is what the trade sent: a draw approved for less keeps what they asked in `asked`.
   const lines = draw.asked?.lines ?? draw.lines
   return payApplication(sow, draw.number, Object.fromEntries(lines.map((l) => [l.sovId, l.toPct])), draw.final === true, storedOf(lines))
+}
+
+/**
+ * Who and what a trade's pay application is for, beside its numbers: the trade to us, its dates, and the change orders
+ * on it, each with whether the trade signed it since its last application. For Owner Billing's Excel and PDF writers
+ * (`payAppFileWriters.ts`), moved from the prototype (`gcBuilding.ts`) by the Building lane's U6b. `typed.signedOn`
+ * null: a draft not sent yet.
+ */
+export function tradePayAppParties(
+  project: GcProject,
+  sow: Sow,
+  partner: Partner,
+  app: PayApplication,
+  typed: { periodTo: string; address: string; license: string; signedOn: string | null },
+): PayAppParties {
+  const before = sow.draws
+    .filter((d) => d.number < app.number)
+    .reduce((last, d) => {
+      const day = d.payApp?.periodTo || d.requestedOn
+      return day > last ? day : last
+    }, '')
+  const signedOn = new Map((project.changeOrders ?? []).map((co) => [co.id, co.tradeChange?.signedOn ?? null]))
+  const changeOrders = changeOrderLines(sow).map((l) => {
+    const on = l.changeOrderId ? (signedOn.get(l.changeOrderId) ?? null) : null
+    return { amount: l.amount, thisPeriod: on !== null && on > before && (!typed.periodTo || on <= typed.periodTo) }
+  })
+  return {
+    project: project.name,
+    applicationNo: app.final ? `${app.number}, final` : String(app.number),
+    periodTo: typed.periodTo,
+    sentOn: typed.signedOn,
+    contractDate: sow.signedOn,
+    to: { name: GC_COMPANY.name, address: GC_COMPANY.address },
+    from: { name: partner.company, address: typed.address, ...(typed.license ? { license: typed.license } : {}) },
+    architect: project.architect || null,
+    changeOrders,
+  }
 }
 
 /** A draw's stored materials by line. */

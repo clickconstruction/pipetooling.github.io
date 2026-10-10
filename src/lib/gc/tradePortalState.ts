@@ -134,8 +134,8 @@ function questionsOf(slice: TradePortalSlice, companyId: string, projectId: stri
 
 const CHARGE_STATUSES: BackCharge['status'][] = ['open', 'agreed', 'disputed', 'kept', 'dropped']
 
-/** A charge to the company, in the prototype's shape: its answer, the office's keep or drop, and the draw it came off. */
-function backChargeOf(c: Row): BackCharge {
+/** A charge to the company, in the prototype's shape: its answer, the office's keep or drop, and the draw it came off. Building's draws read it too (`drawRows.ts`). */
+export function backChargeOf(c: Row): BackCharge {
   const status = str(c.status) as BackCharge['status']
   return {
     id: str(c.id),
