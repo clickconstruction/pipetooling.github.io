@@ -517,6 +517,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'email', email: 'gc-schedule' },
         },
         {
+          id: 'gc-portal-schedule',
+          label: 'GC mode: their schedule in their portal',
+          sublabel: 'Their portal, first under each GC job we are building',
+          when: 'Every day of the build, once the job’s schedule is drawn',
+          customerCan: 'See when we finish against their contract, each stage, the dates to meet, what changed this week and what we need from them. A GC or an owner’s rep can see every bar.',
+          guide: 'send-the-customer-their-schedule',
+          reflects: ['The job’s schedule as it stands today', 'Their signed change orders’ days and why a late finish is late, never a fee or a company', 'What we need from them, from their change orders and decisions'],
+          render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
+        },
+        {
           id: 'gc-portal-change-order',
           label: 'GC mode: sign a change order in their portal',
           sublabel: 'Their portal, under the GC job, while a change order waits on them',

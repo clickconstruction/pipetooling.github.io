@@ -98,17 +98,17 @@ export function withoutOthersSendBacks(state: GcState, companyId: string): GcSta
 }
 
 /** A company as the board takes it, from its name alone: the chart names a neighbour and nothing else of it. */
-function companyRowOf(c: Pick<CompanyRow, 'id' | 'name'>): CompanyRow {
+export function companyRowOf(c: Pick<CompanyRow, 'id' | 'name'>): CompanyRow {
   return { id: c.id, name: c.name, trades: [], contact_name: '', phone: '', email: '', address: '', max_miles: null, license: '', lang: 'en', vetting_status: null, vetting_limit: null, vetting_decided_on: null, vetting_decided_by: null, vetting_note: '' }
 }
 
 /** An awarded invite as the board takes it: who does the trade, and nothing of what it quoted. */
-function inviteRowOf(i: TradeScheduleRows['invites'][number]): InviteRow {
+export function inviteRowOf(i: TradeScheduleRows['invites'][number]): InviteRow {
   return { ...i, declined_why: null, decline_reason: null, decline_note: '', declined_on: null, plugs: null, exclusion_covers: null, taken_alternates: null }
 }
 
 /** A job's schedule rows with every table the chart does not read empty. */
-function scheduleRowsOf(s: TradeScheduleJob['schedule']): ScheduleRows {
+export function scheduleRowsOf(s: TradeScheduleJob['schedule']): ScheduleRows {
   return {
     parts: [],
     milestones: [],

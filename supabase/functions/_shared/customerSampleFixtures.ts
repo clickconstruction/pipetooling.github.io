@@ -9,6 +9,7 @@ import { rollUpPartDecisions, roomCounts, roomRowsFrom, type RoomItemSource, typ
 import { gcPortalCardBills } from './gcCardBill.ts'
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_OWNER, SAMPLE_SUB, SAMPLE_TOKEN, SAMPLE_TOKEN_OWNER, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
+import type { PortalGcSchedule } from './gcCustomerSchedule.ts'
 import { buildPortalBills, buildPortalSharedBills, type PortalBillOut, type PortalInvoiceRow, type PortalJobRow, type PortalSharedBillOut } from './portalMergedBills.ts'
 import { buildPortalWaivers, type PortalWaiverReleaseRow, type PortalWaiverRow } from './portalWaivers.ts'
 import { buildPortalChecks, type PortalChecksEventRow, type PortalChecksOut, type PortalChecksPaymentRow } from './portalChecks.ts'
@@ -443,10 +444,49 @@ function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: strin
         ],
         canAccept: true,
         accepted: null,
+        schedule: sampleGcSchedule(todayYmd),
       },
     ],
     // The certified bill is not on Stripe, so Pay by card offers it at its 3% (O8b), through the portal's own kernel.
     cardBills: gcPortalCardBills({ on: true, hasEmail: true, bills: money.bills, certifiedInvoiceIds: new Set(['sample-inv-owner']), cardRows: [] }),
+  }
+}
+
+/**
+ * The sample job's schedule (the schedule's PR 15b), written in the answer's own shape: building it with the kernels
+ * would make every importer of this file load the copy of them. Its words are the kernels' shapes on a made-up job, and
+ * `customerPortalSchedule.test.ts` holds it to what the page reads.
+ */
+export function sampleGcSchedule(todayYmd: string): PortalGcSchedule {
+  const day = (n: number) => ymdPlusDays(todayYmd, n)
+  return {
+    today: todayYmd,
+    finish: day(68),
+    contract: day(70),
+    late: 0,
+    finishWords: 'We finish two days before the day in your contract.',
+    donePct: 38,
+    plannedPct: 36,
+    doneWords: '38% of the work is done. We planned 36% by today.',
+    next: { label: 'Dried in', due: day(19), state: 'due', daysLate: 0 },
+    contractDays: [],
+    lateWords: [],
+    stages: [
+      { label: 'Foundations', start: day(-34), finish: day(-21), pct: 100, state: 'done' },
+      { label: 'Slab', start: day(-20), finish: day(-14), pct: 100, state: 'done' },
+      { label: 'Structure', start: day(-13), finish: day(7), pct: 40, state: 'underway' },
+      { label: 'Dry-in', start: day(8), finish: day(19), pct: 0, state: 'notStarted' },
+      { label: 'Rough-in', start: day(20), finish: day(40), pct: 0, state: 'notStarted' },
+      { label: 'Finishes', start: day(41), finish: day(68), pct: 0, state: 'notStarted' },
+    ],
+    dates: [
+      { label: 'Dried in', due: day(19), state: 'due', daysLate: 0 },
+      { label: 'Substantial completion', due: day(70), state: 'due', daysLate: 0 },
+    ],
+    everyBar: false,
+    groups: [],
+    changes: ['Structure is 2 days later than planned, because of the weather. The finish holds.'],
+    asks: ['Your signature on change order 2, Add a coffee bar cabinet, per the customer (3 days of schedule).'],
   }
 }
 
