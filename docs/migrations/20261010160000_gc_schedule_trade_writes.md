@@ -62,3 +62,7 @@ DROP FUNCTION IF EXISTS public.gc_trade_keep_day(uuid, uuid);
 DROP FUNCTION IF EXISTS public.gc_trade_set_crew_count(uuid, uuid, date, integer);
 DROP FUNCTION IF EXISTS public.gc_trade_mark_lookahead(uuid, uuid, date, boolean, text);
 ```
+
+## Status
+
+Merged in #5356 and pushed to prod 2026-10-10 ~19:30 UTC (`supabase db push` took it alone; drift check 863/863). Verified read-only through the management API (`to-dos/gc-mode/scripts/verify/verify-160000.mjs` on `spike/gc-mode`): the four functions are INVOKER, execute for `service_role` alone with `authenticated` and `anon` refused, and each carries the v2.5196 comment. Nothing calls them until the Portal's P5d-ii. The types regen is the one regen owner's follow-up.
