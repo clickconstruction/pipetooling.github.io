@@ -1,0 +1,135 @@
+{
+  "about": "The Board's B2b-i (to-dos/gc-mode/mockups/board-b2b.md): the people count, the counts the board and Needs you read, the customer's money and grouping, and both windows' Activity, lifted to src/lib/gc word for word with no screen yet. Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/board-b2b-i.lift.json <outDir>",
+  "spikeDir": "src/lib/gcMode",
+  "mainBase": "src/lib/gc",
+  "existing": {
+    "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Partner": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#TradePackage": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#Invite": "types.ts",
+    "src/lib/gcMode/gcTypes.ts#GcStage": "types.ts"
+  },
+  "standIns": {
+    "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+  },
+  "files": [
+    {
+      "from": "gcCustomers",
+      "to": "customers.ts",
+      "append": true,
+      "moves": [
+        "ownerMoney",
+        "priceToOwner",
+        "customerSummary"
+      ]
+    },
+    {
+      "from": "gcBoardGroups",
+      "to": "boardGroups.ts",
+      "append": true,
+      "moves": [
+        "customerGroups",
+        "boardSectionCounts"
+      ]
+    },
+    {
+      "from": "gcCounts",
+      "to": "schedule/counts.ts",
+      "append": true,
+      "moves": [
+        "ourScheduleMoves",
+        "ourMoveLines",
+        "pastContract",
+        "gcScheduleMovesNeedsYou",
+        "GcScheduleMovesNeedsYou",
+        "boardFollowPeople",
+        "OurMove",
+        "ScheduleCode"
+      ]
+    },
+    {
+      "from": "gcProjectPeople",
+      "to": "projectPeople.ts",
+      "append": true,
+      "moves": [
+        "allPeople",
+        "allFollowPeople"
+      ]
+    },
+    {
+      "from": "gcCompanyFile",
+      "to": "companyFile.ts",
+      "append": true,
+      "moves": [
+        "partnerActivity",
+        "customerActivity",
+        "CompanyEvent",
+        "ActivityKind"
+      ]
+    },
+    {
+      "from": "gcNeedsYou",
+      "to": "needsYou.ts",
+      "moves": "all",
+      "header": "/**\n * GC mode, the real build, the Board's B2b-i: the Dashboard's Needs you line for GC follow up, everyone the office waits on in\n * one count with a phrase for each, moved word for word from the GC mode prototype (branch spike/gc-mode, `gcNeedsYou.ts`);\n * the plan is to-dos/gc-mode/mockups/board-b2b.md on that branch.\n */"
+    }
+  ],
+  "types": [
+    {
+      "to": "types.ts",
+      "append": true,
+      "about": "GcCustomer as main's lifts trimmed it, written again with B2b-i's `past` added (each field word for word). It replaces main's in types.ts.",
+      "fields": {
+        "GcCustomer": [
+          "id",
+          "name",
+          "contact",
+          "portalOn",
+          "payDays",
+          "retainagePct",
+          "address",
+          "phone",
+          "email",
+          "contacts",
+          "past"
+        ]
+      },
+      "names": [
+        "GcCustomer"
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "from": "gcNeedsYou.test.ts",
+      "to": "needsYou.test.ts",
+      "header": "/**\n * The tests of `gcNeedsYou.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data, moved word\n * for word (the Board's B2b-i). The data is `schedule/testState.ts`. The tests that play the prototype's reducer stay on\n * the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcProjectPeople.test.ts",
+      "to": "projectPeople.test.ts",
+      "header": "/**\n * The tests of `gcProjectPeople.test.ts` on branch spike/gc-mode that read only these kernels and the made-up data, moved\n * word for word (the Board's B2b-i). The data is `schedule/testState.ts`. The tests that play the prototype's reducer stay\n * on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcCounts.test.ts",
+      "to": "schedule/counts.board.test.ts",
+      "header": "/**\n * The tests of `gcCounts.test.ts` on branch spike/gc-mode that read only B2b-i's kernels and the made-up data, moved word for word\n * (the Board's B2b-i), beside the ones earlier lifts moved. The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer stay on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcBoardGroups.test.ts",
+      "to": "boardGroups.customers.test.ts",
+      "header": "/**\n * The tests of `gcBoardGroups.test.ts` on branch spike/gc-mode that read only B2b-i's kernels and the made-up data, moved word for word\n * (the Board's B2b-i), beside the ones earlier lifts moved. The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer stay on the spike, where they run against these kernels.\n */"
+    },
+    {
+      "from": "gcCompanyFile.test.ts",
+      "to": "companyFile.activity.test.ts",
+      "header": "/**\n * The tests of `gcCompanyFile.test.ts` on branch spike/gc-mode that read only B2b-i's kernels and the made-up data, moved word for word\n * (the Board's B2b-i), beside the ones earlier lifts moved. The data is `schedule/testState.ts`. The tests that play the\n * prototype's reducer stay on the spike, where they run against these kernels.\n */"
+    }
+  ],
+  "pin": {
+    "main": "fd25d0f947b26ba7a9609fec6da6b9dadb186ceb",
+    "spike": "02124aa90da49032084b9ec657425d3c851554fc",
+    "about": "#5331 merged; the spike before its follow-up (claude/board-b2b-i-follow)"
+  }
+}

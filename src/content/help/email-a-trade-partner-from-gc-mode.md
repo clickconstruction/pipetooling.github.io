@@ -2,12 +2,12 @@
 title: email a trade partner from GC mode
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, email, invitation, reminder, plans, answer, portal link, who gets our emails, sent copy, reply to, project manager
+keywords: gc mode, trade partner, email, invitation, reminder, plans, answer, portal link, who gets our emails, sent copy, reply to, project manager, work accepted, final pay application
 order: 97
 ---
 GC mode sends our emails to a trade partner company for us. Each email carries the company's portal link and reaches the right people there.
 
-Only a dev's press sends one while GC mode is built. The questions window sends an answer to the companies on its trade. [Ask the architect about the plans](/help/ask-the-architect-about-the-plans#email-the-answer-to-the-companies) shows how. The Ask window and a new set of plans come next.
+Only a dev's press sends one while GC mode is built. The questions window sends an answer to the companies on its trade. [Ask the architect about the plans](/help/ask-the-architect-about-the-plans#email-the-answer-to-the-companies) shows how. The Ask window and a new set of plans send theirs too. So do the Draws and Closeout windows, with their email tick. [Close out a trade](/help/close-out-a-trade-and-close-a-gc-job#pay-their-retainage) shows the tick.
 
 ## What each email says
 

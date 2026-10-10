@@ -19,10 +19,10 @@
 import { SAMPLE_TOKEN, SAMPLE_TOKEN_DONE, SAMPLE_TOKEN_GC, SAMPLE_TOKEN_OWNER } from './customerSample'
 import type { PaperId } from './journeys/paperSamples'
 
-export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'submittal-room-link'
+export type SampleEmailId = 'estimate' | 'bid-room' | 'bid-room-revised' | 'contract' | 'job-contract' | 'job-contract-paper' | 'job-contract-reminder' | 'job-contract-signed-copy' | 'test-report' | 'pricing-package' | 'gc-statement' | 'rfq-request' | 'job-account' | 'legal-welcome' | 'legal-confirm' | 'legal-now' | 'legal-digest' | 'bill-email' | 'gc-plan-question' | 'gc-submittal' | 'gc-rfi' | 'gc-trade-email' | 'gc-pay-app' | 'gc-certify-ask' | 'gc-certify-reminder' | 'gc-certified' | 'gc-change-order' | 'gc-reminder' | 'gc-interest-bill' | 'gc-weekly' | 'gc-contract' | 'submittal-room-link'
 
 /** Every email the tab builds in the browser — the order it builds them in. */
-export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'submittal-room-link']
+export const SAMPLE_EMAIL_IDS: readonly SampleEmailId[] = ['estimate', 'bid-room', 'bid-room-revised', 'contract', 'job-contract', 'job-contract-paper', 'job-contract-reminder', 'job-contract-signed-copy', 'test-report', 'pricing-package', 'gc-statement', 'rfq-request', 'job-account', 'legal-welcome', 'legal-confirm', 'legal-now', 'legal-digest', 'bill-email', 'gc-plan-question', 'gc-submittal', 'gc-rfi', 'gc-trade-email', 'gc-pay-app', 'gc-certify-ask', 'gc-certify-reminder', 'gc-certified', 'gc-change-order', 'gc-reminder', 'gc-interest-bill', 'gc-weekly', 'gc-contract', 'submittal-room-link']
 
 export type JourneyStepRender =
   | { kind: 'page'; path: string; /** v2.3512: `path` is a full URL on another origin (a page an edge function serves). */ absolute?: boolean }
@@ -477,6 +477,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'email', email: 'gc-interest-bill' },
         },
         {
+          id: 'gc-contract-email',
+          label: 'GC mode: our contract to sign',
+          sublabel: 'GC projects → the customer’s window → Documents → Send to sign, with the email tick on',
+          when: 'Once we win the job, and with each reminder or new price',
+          customerCan: 'Read our price and the day to sign by, with the contract attached, then open their portal to read it and sign it.',
+          guide: 'send-our-contract-to-a-gc-customer',
+          reflects: ['Our contract as it went: its price and its file', 'The sign-by day and the office’s own line', 'The customer’s portal link, which the first send makes'],
+          render: { kind: 'email', email: 'gc-contract' },
+        },
+        {
           id: 'gc-weekly-report-email',
           label: 'GC mode: the Friday report',
           sublabel: 'GC projects → Daily log → Weekly report, sent from Click Construction',
@@ -494,6 +504,16 @@ export function customerJourneys(): Journey[] {
           customerCan: 'Sign or decline a change order we sent. A decline can say why in one line, or not at all.',
           guide: 'change-our-contract-with-the-customer',
           reflects: ['The change order as it went', 'The customer’s portal link'],
+          render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
+        },
+        {
+          id: 'gc-portal-sign-contract',
+          label: 'GC mode: sign our contract in their portal',
+          sublabel: 'Their portal, under the GC job, once we send our contract from their window',
+          when: 'Once we win the job',
+          customerCan: 'Read our price, every term we bill by and the contract file, then sign it with their name typed or drawn. What they signed stays a press away.',
+          guide: 'send-our-contract-to-a-gc-customer',
+          reflects: ['Our contract as it went: its price and its file', 'Every term we bill by on the job', 'The customer’s portal link'],
           render: { kind: 'page', path: OWNER_PORTAL_SAMPLE_PATH },
         },
         {
@@ -567,7 +587,7 @@ export function customerJourneys(): Journey[] {
           id: 'gc-trade-email',
           label: 'GC mode: an email to a trade partner',
           sublabel: 'GC projects → Ask for quotes, a new set, an answer (devs only for now)',
-          when: 'Each time we ask, remind, send plans or answer',
+          when: 'Each time we ask, remind, send plans or answer, and at its closeout',
           customerCan: 'Read what we want and open its portal from the button. Every email carries the same link.',
           guide: 'email-a-trade-partner-from-gc-mode',
           reflects: ['The kind of email and who at the company gets it', 'The project manager on the GC project (the Reply-To and the signer)'],

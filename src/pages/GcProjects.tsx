@@ -54,6 +54,8 @@ import {
   takeBackCharge,
 } from '../lib/gc/drawsIo'
 import { changeEmail, chargeEmail, drawEmailFor, lessEmail, paidEmail, type DrawEmail, type DrawEmailTo } from '../lib/gc/drawEmail'
+import { retainageHeldNow } from '../lib/gc/building'
+import { acceptedEmail, finalInEmail } from '../lib/gc/closeoutEmail'
 import { GcCloseoutWindow } from '../components/gc/GcCloseoutWindow'
 import { GcStartWindow, type StartPresses, type StartTold } from '../components/gc/GcStartWindow'
 import { acceptWork, approveRetainage, changeSignedIn, closeJob, finalPayAppCameIn } from '../lib/gc/closeoutIo'
@@ -80,6 +82,8 @@ import {
   certifyAskMail,
   changeOrderMail,
   changeOrderMailFacts,
+  contractMail,
+  contractMailFacts,
   gcCustomerEmailRefusal,
   interestBillMail,
   interestBillMailFacts,
@@ -114,6 +118,11 @@ import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
 import { loadCompanyPaperEntries, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
 import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
+import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
+import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
+import type { ContractSendInput, ContractSendOutcome } from '../components/gc/GcCustomerContractSend'
+import { sendGcOwnerContract } from '../lib/gc/ownerContractIo'
+import { mintCustomerPortalLink } from '../lib/portal/mintCustomerPortalLink'
 import { benchAnchor, followUpsToCall } from '../lib/gc/tradeViews'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
 import type { PortalLang } from '../lib/gc/portalI18n'
@@ -363,8 +372,12 @@ export default function GcProjects() {
   }, [crewLinks, role])
   const board = useMemo(() => (boardRead ? withCrewPercents(boardRead, crewReads) : null), [boardRead, crewReads])
   // What the Schedule reads over the board (its PR 16): the job's daily logs and our crew's clock-ins, Building's, for
-  // whoever may use Building; Ask for the days for the money team. Memoized, since a new one reads the schedule again.
-  const scheduleReads = useMemo<ScheduleReads>(() => ({ logs: canUseGcBuilding(role), money: canSeeGcMoney(role), today }), [role, today])
+  // whoever may use Building; Ask for the days and the money lines for the money team; the trades' percents behind the
+  // draws gate (O9). Memoized, since a new one reads the schedule again.
+  const scheduleReads = useMemo<ScheduleReads>(
+    () => ({ logs: canUseGcBuilding(role), money: canSeeGcMoney(role), draws: canUseGcBuilding(role) || canSeeGcMoney(role), today }),
+    [role, today],
+  )
   /** Each linked trade our own crew does, by its id, to its Pipeline job's number (null until read). */
   const crewJobLabels = useMemo(
     () => Object.fromEntries(crewLinks.map((l) => [l.packageId, crewReads.find((r) => r.packageId === l.packageId)?.label ?? null])),
@@ -374,8 +387,12 @@ export default function GcProjects() {
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
   // `?view=followUp` (the Dashboard's Needs you line, v2.4941) opens on Follow up.
   const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'money'>(() => gcViewFromSearch(params))
-  const refreshBoard = async () => {
-    if (loaded) takeRows(await loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) }))
+  /** Read the board again; answers what it read, for a press that emails from the rows as they are now (P5c-4). */
+  const refreshBoard = async (): Promise<GcState | null> => {
+    if (!loaded) return null
+    const rows = await loadGcBoardRows(loaded.projects, today, { money: canSeeGcMoney(role) })
+    takeRows(rows)
+    return boardStateFromRows(rows)
   }
   // What a trade carries sits on the trade (`gc_trade_packages`), which only the projects' load reads.
   // A new `loaded` reloads the board too (the effect above).
@@ -512,6 +529,40 @@ export default function GcProjects() {
         }
       : null
   const openCompany = companyId && board ? (board.partners.find((p) => p.id === companyId) ?? null) : null
+  // The customer's window (the Board's B6-d-ii): a dev's while the Board is built, opened from Get started's contract
+  // row and the board's customer names. Our contract's send goes with Our number's price by line, so it needs that read.
+  const [customerWin, setCustomerWin] = useState<{ id: string; at: CustomerAt | null } | null>(null)
+  const customerOpener: CustomerOpener | null = canUseGcBoardWrites(role) && board ? { openCustomer: (id, at) => setCustomerWin({ id, at: at ?? null }) } : null
+  const openCustomer = customerWin && board ? (board.customers.find((c) => c.id === customerWin.id) ?? null) : null
+  // With its tick (B6-d-iii-b), the send emails them: their portal link made first if they have none (call D6, the
+  // merged link, as every door makes one), then gc-customer-email's contract kind, which attaches the send's own file.
+  // A refusal is said after the board reads the send, which stays on record either way.
+  const sendContract =
+    canUseGcBoardWrites(role) && canSeeGcMoney(role) && moneyShown
+      ? async (projectId: string, input: ContractSendInput): Promise<ContractSendOutcome> => {
+          // Email it now (Owner Billing's call): the newest send as it is, emailed with nothing sent anew.
+          const sendId = input.sendId ?? (await sendGcOwnerContract({ projectId, ...input }))
+          let outcome: ContractSendOutcome = { words: 'On record with its price and file. No email went: they find it when they open their portal.' }
+          const project = board?.projects.find((x) => x.id === projectId)
+          if (input.email && board && project) {
+            try {
+              await mintCustomerPortalLink(project.customerId, 'all')
+              const mail = contractMail(contractMailFacts(board, project, { mode: input.mode, price: input.total, signBy: input.signBy, note: input.note }))
+              const answer = await sendGcCustomerEmail({ projectId, kind: 'contract', sourceId: sendId, subject: mail.subject, lines: mail.lines, pdf: null })
+              if (answer.ok) outcome = { words: `On record, and sent to ${answer.to || answer.email}.` }
+              else {
+                const why = gcCustomerEmailRefusal(answer.key)
+                outcome = { words: `On record. The email did not go: ${why}`, notEmailed: why }
+              }
+            } catch (e) {
+              const why = `Their portal link was not made: ${formatErrorMessage(e, 'try again')}`
+              outcome = { words: `On record. No email went. ${why}`, notEmailed: why }
+            }
+          }
+          await refreshBoard()
+          return outcome
+        }
+      : undefined
   // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
   const [paperEntries, setPaperEntries] = useState<CompanyPaperEntries | null>(null)
   useEffect(() => {
@@ -1060,21 +1111,40 @@ export default function GcProjects() {
   }
   /**
    * A closeout press: run it, then read again the draws, the customer's bills and the punch list, and the board for an
-   * acceptance or the projects for a closed job. A release marked paid emails the trade when the Draws window's tick is on.
+   * acceptance or the projects for a closed job. When the Draws window's tick is on it emails the trade: a release marked
+   * paid, and since the Portal's P5c-4 the work accepted and a final pay application that came in. Each email is built
+   * from the rows read again (the board as just read for an acceptance) and keyed once per record.
    */
-  const closeoutWrite = <T,>(busyId: string, work: Promise<T>, failed: string, reread: { board?: boolean; projects?: boolean } = {}, paid?: { packageId: string; drawId: string }) => {
+  const closeoutWrite = <T,>(
+    busyId: string,
+    work: Promise<T>,
+    failed: string,
+    reread: { board?: boolean; projects?: boolean } = {},
+    mail?: { packageId: string; kind: 'paid'; drawId: string } | { packageId: string; kind: 'accepted' | 'finalIn' },
+  ) => {
     setCloseoutBusy(busyId)
     setCloseoutProblem(null)
     void work
-      .then(async () => {
-        const [tables] = await Promise.all([loadDraws(), loadCloseout(), reread.board ? refreshBoard() : null, reread.projects ? reloadProjects() : null])
-        if (!paid || !drawEmailOn || !canSendGcTradeEmail(role) || !board || !closeoutProjectId) return
-        const state = withTradeChanges(withChangeOrders(withDraws(board, tables), changeOrderRows), tables)
+      .then(async (result) => {
+        const [tables, , fresh] = await Promise.all([loadDraws(), loadCloseout(), reread.board ? refreshBoard() : null, reread.projects ? reloadProjects() : null])
+        if (!mail || !drawEmailOn || !canSendGcTradeEmail(role) || !board || !closeoutProjectId) return
+        const state = withTradeChanges(withChangeOrders(withDraws(fresh ?? board, tables), changeOrderRows), tables)
         const project = state.projects.find((p) => p.id === closeoutProjectId)
-        const to = project ? drawEmailFor(project, paid.packageId) : null
-        const draw = project ? drawOf(project, paid.packageId, paid.drawId) : undefined
-        if (!to || !draw) return
-        const answer = await emailTheTrade(to.companyId, (lang) => paidEmail({ ...to, lang }, draw))
+        const to = project ? drawEmailFor(project, mail.packageId) : null
+        const sow = project ? sowOf(project, mail.packageId) : undefined
+        if (!to || !sow) return
+        // The paid release by its id; the final that came in by the id its verb answered.
+        const drawId = mail.kind === 'paid' ? mail.drawId : String(result)
+        const draw = sow.draws.find((d) => d.id === drawId)
+        const build = (lang: PortalLang): DrawEmail | null =>
+          mail.kind === 'accepted'
+            ? acceptedEmail({ ...to, lang }, sow, retainageHeldNow(sow))
+            : !draw
+              ? null
+              : mail.kind === 'paid'
+                ? paidEmail({ ...to, lang }, draw)
+                : finalInEmail({ ...to, lang }, draw)
+        const answer = await emailTheTrade(to.companyId, build)
         if (answer && !answer.ok) throw new Error(`It is saved. The email did not go: ${gcTradeEmailRefusal(answer.key)}`)
       })
       .catch((e) => setCloseoutProblem(formatErrorMessage(e, failed)))
@@ -1798,7 +1868,7 @@ export default function GcProjects() {
             const bidId = loaded?.projects.find((x) => x.id === startProject.id)?.trades.find((t) => t.id === packageId)?.ownBidId
             return bidId ? `/bids?tab=pricing&bidId=${encodeURIComponent(bidId)}` : null
           }}
-          covered={comparing !== null || openCompany !== null}
+          covered={comparing !== null || openCompany !== null || openCustomer !== null}
           onOpenSchedule={() => {
             const next = new URLSearchParams(params)
             next.delete('start')
@@ -1818,6 +1888,21 @@ export default function GcProjects() {
           canPull={canUseGcBuilding(role)}
           reads={scheduleReads}
           onClose={() => setScheduleWindow(null)}
+        />
+      )}
+      {openCustomer && board && (
+        <GcCustomerWindow
+          key={`${openCustomer.id}:${customerWin?.at?.doc ?? ''}:${customerWin?.at?.send ? 'send' : ''}`}
+          state={board}
+          customer={openCustomer}
+          {...(customerWin?.at ? { at: customerWin.at } : {})}
+          {...(sendContract ? { sendContract } : {})}
+          canEmail={canSeeGcMoney(role)}
+          onOpenProject={(projectId) => {
+            setCustomerWin(null)
+            openProjectCard(projectId)
+          }}
+          onClose={() => setCustomerWin(null)}
         />
       )}
       {openCompany && board && (
@@ -2144,10 +2229,10 @@ export default function GcProjects() {
           punchWrites={punchWritesFor(setCloseoutBusy, setCloseoutProblem, loadCloseout)}
           onClose={() => setCloseoutWindow(null)}
           writes={{
-            onAccept: (packageId) => closeoutWrite(packageId, acceptWork(packageId), 'The work was not accepted.', { board: true }),
-            onFinalCameIn: (d) => closeoutWrite(d.packageId, finalPayAppCameIn(d), 'The final pay application was not recorded.'),
+            onAccept: (packageId) => closeoutWrite(packageId, acceptWork(packageId), 'The work was not accepted.', { board: true }, { packageId, kind: 'accepted' }),
+            onFinalCameIn: (d) => closeoutWrite(d.packageId, finalPayAppCameIn(d), 'The final pay application was not recorded.', {}, { packageId: d.packageId, kind: 'finalIn' }),
             onApproveRelease: (_packageId, drawId) => closeoutWrite(drawId, approveRetainage(drawId), 'The release was not approved.'),
-            onPay: (packageId, drawId) => closeoutWrite(drawId, payDraw(drawId), 'It was not marked paid.', {}, { packageId, drawId }),
+            onPay: (packageId, drawId) => closeoutWrite(drawId, payDraw(drawId), 'It was not marked paid.', {}, { packageId, kind: 'paid', drawId }),
             onWaiverIn: (_packageId, drawId) => closeoutWrite(drawId, drawWaiverIn(drawId), 'Their final release was not recorded.'),
             onCloseJob: () => closeoutWrite(closeoutProject.id, closeJob(closeoutProject.id), 'The job was not closed.', { projects: true }),
           }}
@@ -2512,5 +2597,9 @@ export default function GcProjects() {
     </div>
   )
   // A company's name opens its window wherever it shows (the Board's B3-c), for a dev.
-  return <GcCompanyOpenerContext.Provider value={companyOpener}>{page}</GcCompanyOpenerContext.Provider>
+  return (
+    <GcCompanyOpenerContext.Provider value={companyOpener}>
+      <GcCustomerOpenerContext.Provider value={customerOpener}>{page}</GcCustomerOpenerContext.Provider>
+    </GcCompanyOpenerContext.Provider>
+  )
 }

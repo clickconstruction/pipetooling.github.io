@@ -6,11 +6,12 @@
  * with a tick each, what keeps its dates, then why), and a small box for one bar in the walk and in its form. A pull is
  * re-planned at the press from the schedule as read (`planPull`) and saved as one move (`pullMove`) through the
  * window's one save, against the version read; someone else's save first is refused and the schedule read again. The
- * billing line waits for the schedule to read bills (PR 16).
+ * billing line, the money team's only, came with the schedule's PR 16c (`billingOf`). Since PR 11 the window also tries
+ * a pull on the what-if copy (`trying`), saved to the copy through its own save.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MOVE_REASONS, moveWhyProblem, spanWords } from '../../lib/gc/schedule/moves'
+import { MOVE_REASONS, moveWhyProblem, spanWords, type MovePlan } from '../../lib/gc/schedule/moves'
 import { planPull, pullCountWords, pullMove, pullSentences, pullWordsFor, type PullOffer } from '../../lib/gc/schedule/pullEarlier'
 import { pullLogWords } from '../../lib/gc/schedule/scheduleWindow'
 import type { ScheduleActivity, ScheduleMove, ScheduleMoveReason } from '../../lib/gc/schedule/types'
@@ -71,6 +72,8 @@ export function GcPullWindow({
   onReload,
   onClose,
   onSaved,
+  billingOf,
+  trying = false,
 }: {
   state: GcState
   project: GcProject
@@ -80,6 +83,10 @@ export function GcPullWindow({
   onClose: () => void
   /** The pull saved, with its move's id when the read after it shows it (the walk keeps it). */
   onSaved?: (moveId: string | null) => void
+  /** What a plan moves between the customer's bills (9d's billing line, the schedule's PR 16c): the money team's only. */
+  billingOf?: (plan: Pick<MovePlan, 'activities'>) => string | null
+  /** In the what-if copy (G-81, PR 11): the pull is tried on the copy. Its reason is filled in, so Keep never asks for one. */
+  trying?: boolean
 }) {
   const [leaveOut, setLeaveOut] = useState<string[]>([])
   const [reason, setReason] = useState<ScheduleMoveReason | null>('early')
@@ -97,6 +104,7 @@ export function GcPullWindow({
   // Every bar that could come in, for the ticks; and the pull as the ticks have it.
   const full = useMemo(() => planPull(state, project), [state, project])
   const plan = useMemo(() => planPull(state, project, leaveOut), [state, project, leaveOut])
+  const billing = useMemo(() => (billingOf && plan && plan.pulls.length > 0 ? billingOf(plan) : null), [billingOf, plan])
   if (!full || !plan || full.show !== 'pull' || !project.schedule) return null
   const schedule = project.schedule
   const problem = plan.pulls.length === 0 ? 'Tick at least one to pull.' : moveWhyProblem(reason, note)
@@ -199,6 +207,7 @@ export function GcPullWindow({
             </>
           )}
           <div style={{ color: plan.finishDays < 0 ? 'var(--text-green-800)' : 'var(--text-600)', fontWeight: plan.finishDays < 0 ? 600 : 400, marginTop: '0.2rem' }}>{plan.words.finish}</div>
+          {billing && <div data-pull-billing style={{ color: 'var(--text-600)' }}>Billing: {billing}</div>}
           {plan.words.lost && <div style={{ color: 'var(--text-amber-800)' }}>{plan.words.lost}</div>}
         </div>
         {refused && <GcScheduleRefusal changes={refused} what="Your pull was not saved. The chart shows the new dates now. Look at it again on them." />}
@@ -223,12 +232,12 @@ export function GcPullWindow({
           </div>
         )}
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.7rem' }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>{problem ?? `Saved as one move by ${by}, today. Undo puts every date back.`}</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem', flex: '1 1 10rem' }}>{problem ?? (trying ? 'Tried in the what-if. Keep puts it on the real schedule.' : `Saved as one move by ${by}, today. Undo puts every date back.`)}</span>
           <Btn kind="quiet" onClick={onClose}>
             Cancel
           </Btn>
           <Btn kind="primary" disabled={problem !== null || saving} onClick={() => void save()}>
-            Pull {pullCountWords(plan)} earlier
+            {trying ? `Try pulling ${pullCountWords(plan)} earlier` : `Pull ${pullCountWords(plan)} earlier`}
           </Btn>
         </div>
       </div>

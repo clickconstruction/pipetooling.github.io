@@ -12,6 +12,7 @@ import { planPull } from '../../lib/gc/schedule/pullEarlier'
 import { withLineReported } from '../../lib/gc/schedule/testReports'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import { SCHEDULE_CHANGED } from '../../lib/gc/schedule/versionRefusal'
+import type { ScheduleActivity, ScheduleMove } from '../../lib/gc/schedule/types'
 import type { GcState } from '../../lib/gc/types'
 import { plainWordsFailures } from '../../lib/plainWords'
 import { installDomShims } from '../../test/renderSmokeMocks'
@@ -94,6 +95,31 @@ describe('GcPullWindow: the window a pull is saved from', () => {
     expect((await within(dialog).findByRole('alert')).textContent).toContain('Electrical · Lighting now runs Mon Sep 14 to Fri Oct 30.')
     expect(onReload).toHaveBeenCalled()
     expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('shows the billing line only with the money team’s reading of it, for the pull as the ticks have it (16c)', () => {
+    const s = earlyFinish()
+    const billingOf = vi.fn(() => '$4,000 of the Nov 1 bill moves to Oct 1.')
+    const { unmount } = render(<GcPullWindow state={s} project={job(s)} by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={() => undefined} billingOf={billingOf} />)
+    expect(document.querySelector('[data-pull-billing]')!.textContent).toBe('Billing: $4,000 of the Nov 1 bill moves to Oct 1.')
+    expect(billingOf).toHaveBeenCalledWith(expect.objectContaining({ activities: expect.any(Array) }))
+    unmount()
+    render(<GcPullWindow state={s} project={job(s)} by="Rosa" onSave={vi.fn()} onReload={vi.fn()} onClose={() => undefined} />)
+    expect(document.querySelector('[data-pull-billing]')).toBeNull()
+  })
+
+  it('tries the pull on the what-if copy: its own words, its reason filled in (PR 11)', async () => {
+    const s = earlyFinish()
+    const onSave = vi.fn((_move: ScheduleMove, _activities: ScheduleActivity[], _words: string) => Promise.resolve(null))
+    const onClose = vi.fn()
+    render(<GcPullWindow state={s} project={job(s)} by="Rosa" onSave={onSave} onReload={vi.fn()} onClose={onClose} trying />)
+    const dialog = screen.getByRole('dialog', { name: 'Pull the work earlier' })
+    expect(dialog.textContent).toContain('Tried in the what-if. Keep puts it on the real schedule.')
+    expect(plainWordsFailures('Tried in the what-if. Keep puts it on the real schedule.')).toEqual([])
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Try pulling 1 activity earlier' }))
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    // The window's own reason: a listed one and a sentence, so Keep never asks for one.
+    expect(onSave.mock.calls[0]![0]).toMatchObject({ reason: 'early', note: NOTE })
   })
 
   it('says each thing a first-timer reads in plain words', () => {

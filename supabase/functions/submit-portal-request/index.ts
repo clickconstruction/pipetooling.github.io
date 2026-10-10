@@ -9,7 +9,10 @@ import { resolvePortalCustomerPhone } from '../_shared/portalCustomerPhone.ts'
 import { owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { statementRoleFor } from '../_shared/billVisibility.ts'
 import { PROMISE_MAX_PER_HOUR, promiseDateProblem } from '../_shared/portalPromise.ts'
-import { gcPortalOwns, gcPortalRefusalWords } from '../_shared/gcPortal.ts'
+import { bytesSha256Hex, CONTRACT_FILE_CHANGED_WORDS, gcContractSignWords, gcPortalOwns, gcPortalRefusalWords, parseContractSign } from '../_shared/gcPortal.ts'
+import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
+import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
+import { signaturePngOf } from '../_shared/gcTradeSubmit.ts'
 
 /**
  * Portal request intake (portal train PR 2): a customer/GC submits a
@@ -84,6 +87,7 @@ serve(async (req) => {
       : body.kind === 'share_bill_ask' ? 'share_bill_ask'
       : body.kind === 'gc_change_order_answer' ? 'gc_change_order_answer'
       : body.kind === 'gc_accept_work' ? 'gc_accept_work'
+      : body.kind === 'gc_owner_contract_sign' ? 'gc_owner_contract_sign'
       : null
     const description = typeof body.description === 'string' ? body.description.trim() : ''
     const availability = typeof body.availability === 'string' ? body.availability.trim().slice(0, 300) : ''
@@ -94,7 +98,7 @@ serve(async (req) => {
     if (!token || token.length < 16 || token.length > 128 || !kind) {
       return jsonResponse({ error: 'Bad request' }, 400)
     }
-    const gcPress = kind === 'gc_change_order_answer' || kind === 'gc_accept_work'
+    const gcPress = kind === 'gc_change_order_answer' || kind === 'gc_accept_work' || kind === 'gc_owner_contract_sign'
     if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && !gcPress && (description.length < 5 || description.length > 2000)) {
       return jsonResponse({ error: 'Please tell us a little more about what you need (a sentence or two).' }, 400)
     }
@@ -189,6 +193,72 @@ serve(async (req) => {
       const jobsPromised = (result as { jobs?: number } | null)?.jobs ?? promiseJobIds.length
       console.log(JSON.stringify({ event: 'portal_payment_promise', customer_id: link.customer_id, jobs: jobsPromised, date }))
       return jsonResponse({ ok: true, promisedYmd: date, jobs: jobsPromised })
+    }
+
+    // ── GC mode, the Board's B6-d-iii: the customer signs our contract on a GC job we won, as O7c's presses go. The send
+    // is the link's customer's own; the e-sign consent comes first; the file's bytes must still be the ones the send
+    // hashed (the database cannot read them, so this is what binds the signature to the file they read); a drawn
+    // signature is stored before the database's
+    // function (gc_customer_sign_owner_contract, the service role only) and taken back if it refuses; then the e-sign
+    // ledger row at the time it returns, as the trade's statement of work keeps it. A link for a general contractor
+    // never shows a GC job of ours, so it signs none. No inbox row: the office reads it in the customer's window.
+    if (kind === 'gc_owner_contract_sign') {
+      if (link.audience === 'gc') return jsonResponse({ error: 'That contract is not on your account.' }, 404)
+      const parsed = parseContractSign(body)
+      if (!parsed.ok) return jsonResponse({ error: parsed.error }, 400)
+      const consent = parseEsignConsent(parsed.consent)
+      if (!consent) return jsonResponse({ error: 'Tick the box to agree to sign electronically.' }, 400)
+      const { data: send } = await admin.from('gc_owner_contract_sends').select('id, project_id, file_path, file_sha256').eq('id', parsed.sendId).maybeSingle()
+      const { data: project } = send ? await admin.from('projects').select('customer_id').eq('id', (send as { project_id: string }).project_id).maybeSingle() : { data: null }
+      if (!send || !gcPortalOwns(project as { customer_id: string | null } | null, link.customer_id)) {
+        return jsonResponse({ error: 'That contract is not on your account.' }, 404)
+      }
+      const { data: file, error: fileErr } = await admin.storage.from('gc-owner-contracts').download((send as { file_path: string }).file_path)
+      if (fileErr || !file) {
+        console.error('gc_owner_contract_sign: the contract file was not read', fileErr)
+        return jsonResponse({ error: 'The contract file could not open just now. Please call our office.' }, 500)
+      }
+      if ((await bytesSha256Hex(await file.arrayBuffer())) !== (send as { file_sha256: string }).file_sha256) {
+        return jsonResponse({ error: CONTRACT_FILE_CHANGED_WORDS }, 409)
+      }
+      const png = parsed.png ? signaturePngOf(parsed.png) : null
+      if (parsed.png && !png) return jsonResponse({ error: 'Draw your signature again, or type your name instead.' }, 400)
+      const ip = clientIpFromEdgeRequest(req)
+      const userAgent = req.headers.get('user-agent')
+      let signaturePath: string | null = null
+      if (png) {
+        signaturePath = `gc-owner-contracts/${parsed.sendId}/${crypto.randomUUID()}.png`
+        const { error: upErr } = await admin.storage.from('contract-signer-signatures').upload(signaturePath, png, { contentType: 'image/png', upsert: false })
+        if (upErr) {
+          console.error('gc_owner_contract_sign: the signature was not stored', upErr)
+          return jsonResponse({ error: 'Something went wrong. Please try again, or call our office.' }, 500)
+        }
+      }
+      const { data: consentedAt, error: rpcErr } = await admin.rpc('gc_customer_sign_owner_contract', {
+        p_customer_id: link.customer_id,
+        p_send_id: parsed.sendId,
+        p_printed_name: parsed.printedName,
+        p_signature_path: signaturePath,
+        p_ip: ip,
+        p_user_agent: userAgent,
+      })
+      if (rpcErr) {
+        if (signaturePath) await admin.storage.from('contract-signer-signatures').remove([signaturePath])
+        return jsonResponse({ error: gcContractSignWords(rpcErr.message ?? '') }, 409)
+      }
+      // Best-effort, as every signing function keeps it: the send's own stamp is the act, this row is the words.
+      await recordEsignConsent(admin, {
+        recordType: 'gc_owner_contract',
+        recordId: parsed.sendId,
+        consent,
+        printedName: parsed.printedName,
+        method: png ? 'draw' : 'type',
+        consentedAt: String(consentedAt),
+        ip,
+        userAgent,
+      })
+      console.log(JSON.stringify({ event: 'portal_gc_owner_contract_sign', customer_id: link.customer_id, send_id: parsed.sendId }))
+      return jsonResponse({ ok: true, signedOn: todayYmdInAppTz() })
     }
 
     // ── GC mode, Owner Billing O7c (v2.5025): the customer of a GC job we build answers a change order, or accepts the

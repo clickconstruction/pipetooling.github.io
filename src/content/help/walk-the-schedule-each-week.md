@@ -41,9 +41,13 @@ When work finishes early, the work right behind it can often start sooner. A gre
 
 The pull is saved as one move. Undo on the record of moves puts every date back.
 
+The money team also sees a **Billing** line above the button. The line says how much of a bill moves to another month.
+
 ## Get days back on a late job
 
 When the schedule runs past its date to meet for substantial completion, a **Days back** card shows under the measures. Each way to bring the finish in is listed with the days it gives back.
+
+The money team also sees what each way saves on the late fee. The move in full shows its **Billing** line too.
 
 1. Press **Call** to ask the trade first. The trade has to agree before you save.
 2. Press **Look at it** to see the move in full.

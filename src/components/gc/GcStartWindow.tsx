@@ -5,7 +5,9 @@ import { startChecklist, type StartTradeRow } from '../../lib/gc/start'
 import { startRecipients } from '../../lib/gc/startEmail'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { shortDate, weekdayDate } from '../../lib/gc/words'
+import { contractDocKey } from '../../lib/gc/customerContract'
 import { useCompanyOpener } from './gcCompanyOpener'
+import { useCustomerOpener } from './gcCustomerOpener'
 import { Btn, Card, Chip, input, td, th } from './gcUi'
 
 /**
@@ -60,6 +62,9 @@ export function GcStartWindow({
   onClose: () => void
 }) {
   const list = startChecklist(state, project)
+  // Our contract goes to sign from the customer's window (B6-d-ii): its row here opens it there, at this job.
+  const customerOpener = useCustomerOpener()
+  const customers = presses ? customerOpener : null
   const started = project.startedOn !== null
   const owed = started && Boolean(project.startedAnyway)
   const onJob = startRecipients(state, project.id).length
@@ -202,10 +207,19 @@ export function GcStartWindow({
                     <Btn kind={c.done ? 'quiet' : 'plain'} disabled={busy !== null} onClick={() => run('permit', () => presses.setPermit(!c.done))}>
                       {c.done ? 'Undo' : 'Mark it done'}
                     </Btn>
-                  ) : c.key === 'ownerContract' && presses?.signContract && (!started || owed) ? (
-                    <Btn kind={c.done ? 'quiet' : 'plain'} disabled={busy !== null} title={c.done ? undefined : 'Signed on paper, outside their portal'} onClick={() => run('contract', () => presses.signContract!(!c.done))}>
-                      {c.done ? 'Undo' : 'Mark it signed'}
-                    </Btn>
+                  ) : c.key === 'ownerContract' && (!started || owed) && (presses?.signContract || (customers && !c.done)) ? (
+                    <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      {customers && !c.done && (
+                        <Btn kind="primary" onClick={() => customers.openCustomer(project.customerId, { tab: 'documents', doc: contractDocKey(project.id), send: true })}>
+                          {project.ownerContractSentOn ? 'Remind them' : 'Send to sign'}
+                        </Btn>
+                      )}
+                      {presses?.signContract && (
+                        <Btn kind={c.done ? 'quiet' : 'plain'} disabled={busy !== null} title={c.done ? undefined : 'Signed on paper, outside their portal'} onClick={() => run('contract', () => presses.signContract!(!c.done))}>
+                          {c.done ? 'Undo' : 'Mark it signed'}
+                        </Btn>
+                      )}
+                    </span>
                   ) : null}
                 </div>
               ))}

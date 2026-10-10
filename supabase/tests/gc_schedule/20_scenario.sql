@@ -420,6 +420,52 @@ SELECT gst.refused('a template under a week, straight to the table', $q$INSERT I
 SELECT gst.same('P has a line of words for each of its 15 versions',
   (SELECT count(*) || ' ' || min(version) || '..' || max(version) FROM public.gc_schedule_changes WHERE project_id = '00000000-0000-0000-0000-0000000005a1'), '15 1..15');
 
+-- 17 · Keep keeps a days back's and a pull's own fields (the schedule's PR 11, amendment 1): it writes each move through
+-- gc_schedule_save_move, as a real move is written, so a kept side-by-side days back's Undo puts its gap back. Last in
+-- the file, so no count above moves. Trim (5e2) waits on the rough-in inspection (5f1); its dates and waits are read as
+-- they stand at version 15.
+CREATE TEMP TABLE trim_was AS
+  SELECT a.start, a.finish, (SELECT gap FROM public.gc_schedule_links WHERE from_activity_id = '00000000-0000-0000-0000-0000000005f1' AND to_activity_id = a.id) AS gap,
+         (SELECT jsonb_agg(jsonb_build_object('id', l.from_activity_id, 'gap', CASE WHEN l.from_activity_id = '00000000-0000-0000-0000-0000000005f1' THEN l.gap - 1 ELSE l.gap END))
+            FROM public.gc_schedule_links l WHERE l.to_activity_id = a.id) AS after
+  FROM public.gc_schedule_activities a WHERE a.id = '00000000-0000-0000-0000-0000000005e2';
+INSERT INTO public.gc_schedule_what_ifs (project_id, user_id, made_on, base_version, base, copy)
+VALUES ('00000000-0000-0000-0000-0000000005a1', '00000000-0000-0000-0000-0000000005d1', DATE '2026-10-09', 15, '{}', '{}');
+SELECT gst.same('a side-by-side days back kept from a what-if, as version 16', public.gc_schedule_keep_what_if('00000000-0000-0000-0000-0000000005a1', 15,
+  'Schedule Dev kept a what-if on Schedule test P: 1 move on the schedule, each with its reason.',
+  (SELECT jsonb_build_array(jsonb_build_object(
+     'activityId', '00000000-0000-0000-0000-0000000005e2', 'activityName', 'Electrical · Trim', 'reason', 'recovery', 'note', 'Trim starts a day before the inspection finishes.',
+     'from', jsonb_build_object('start', t.start, 'finish', t.finish), 'to', jsonb_build_object('start', t.start - 1, 'finish', t.finish - 1),
+     'finishFrom', t.finish, 'finishTo', t.finish - 1, 'pushed', '[]'::jsonb,
+     'recovery', jsonb_build_object('how', 'side', 'afterActivityId', '00000000-0000-0000-0000-0000000005f1', 'gapWas', t.gap, 'gap', t.gap - 1))) FROM trim_was t),
+  (SELECT jsonb_build_array(jsonb_build_object('id', '00000000-0000-0000-0000-0000000005e2', 'start', t.start - 1, 'finish', t.finish - 1, 'after', t.after)) FROM trim_was t))::text, '16');
+SELECT gst.same('the kept days back keeps how, its wait, both gaps and its copy''s day; the wait''s gap is the new one',
+  (SELECT m.recovery_how || ' ' || m.recovery_after_activity_id || ' ' || (m.recovery_gap_was = t.gap) || ' ' || (m.recovery_gap = t.gap - 1) || ' ' || m.from_what_if_on
+   FROM public.gc_schedule_moves m, trim_was t WHERE m.project_id = '00000000-0000-0000-0000-0000000005a1' AND m.schedule_version = 16)
+  || ' / ' || (SELECT (l.gap = t.gap - 1)::text FROM public.gc_schedule_links l, trim_was t
+               WHERE l.from_activity_id = '00000000-0000-0000-0000-0000000005f1' AND l.to_activity_id = '00000000-0000-0000-0000-0000000005e2'),
+  'side 00000000-0000-0000-0000-0000000005f1 true true 2026-10-09 / true');
+SELECT gst.same('Undo of the kept days back on the real schedule, as version 17', public.gc_schedule_undo('00000000-0000-0000-0000-0000000005a1', 16,
+    (SELECT id FROM public.gc_schedule_moves WHERE project_id = '00000000-0000-0000-0000-0000000005a1' AND schedule_version = 16), 'Undid the days back.')::text, '17');
+SELECT gst.same('the undo put back the wait''s gap from gap_was, and Trim''s dates',
+  (SELECT (l.gap = t.gap)::text FROM public.gc_schedule_links l, trim_was t
+   WHERE l.from_activity_id = '00000000-0000-0000-0000-0000000005f1' AND l.to_activity_id = '00000000-0000-0000-0000-0000000005e2')
+  || ' ' || (SELECT (a.start = t.start AND a.finish = t.finish)::text FROM public.gc_schedule_activities a, trim_was t WHERE a.id = '00000000-0000-0000-0000-0000000005e2'),
+  'true true');
+INSERT INTO public.gc_schedule_what_ifs (project_id, user_id, made_on, base_version, base, copy)
+VALUES ('00000000-0000-0000-0000-0000000005a1', '00000000-0000-0000-0000-0000000005d1', DATE '2026-10-09', 17, '{}', '{}');
+SELECT gst.same('a pull kept from a what-if, as version 18', public.gc_schedule_keep_what_if('00000000-0000-0000-0000-0000000005a1', 17,
+  'Schedule Dev kept a what-if on Schedule test P: 1 move on the schedule, each with its reason.',
+  (SELECT jsonb_build_array(jsonb_build_object(
+     'activityId', '00000000-0000-0000-0000-0000000005e2', 'activityName', 'Electrical · Trim', 'reason', 'early', 'note', 'Rough-in inspection finished a day early.',
+     'from', jsonb_build_object('start', t.start, 'finish', t.finish), 'to', jsonb_build_object('start', t.start - 1, 'finish', t.finish - 1),
+     'finishFrom', t.finish, 'finishTo', t.finish - 1, 'pushed', '[]'::jsonb,
+     'pullFinished', jsonb_build_array('00000000-0000-0000-0000-0000000005f1'))) FROM trim_was t),
+  (SELECT jsonb_build_array(jsonb_build_object('id', '00000000-0000-0000-0000-0000000005e2', 'start', t.start - 1, 'finish', t.finish - 1)) FROM trim_was t))::text, '18');
+SELECT gst.same('the kept pull keeps the line that finished, and its copy''s day',
+  (SELECT m.pull_finished::text || ' ' || m.from_what_if_on FROM public.gc_schedule_moves m WHERE m.project_id = '00000000-0000-0000-0000-0000000005a1' AND m.schedule_version = 18),
+  '{00000000-0000-0000-0000-0000000005f1} 2026-10-09');
+
 RESET ROLE;
 DO $$ BEGIN RAISE NOTICE 'gc_schedule PASSED'; END $$;
 ROLLBACK;

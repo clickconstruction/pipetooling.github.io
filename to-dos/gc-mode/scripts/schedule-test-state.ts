@@ -19,7 +19,7 @@ type Lift = {
   slice?: { root?: string; nested: Record<string, Record<string, string>> }
 }
 /** The lifts whose fields main's test data carries, oldest first. A later lift's list for a shape replaces an earlier one's. */
-const LIFTS = ['schedule-pr1a.lift.json', 'schedule-pr1b-i.lift.json', 'schedule-pr1b-ii.lift.json', 'board-b2-i.lift.json', 'building-u2.lift.json', 'owner-billing-o2a.lift.json', 'board-b2-ii.lift.json', 'portal-p0.lift.json', 'portal-p1b-i.lift.json', 'owner-billing-o3.lift.json', 'owner-billing-o2b.lift.json', 'board-b5-b.lift.json', 'portal-p2b-ii.lift.json', 'schedule-pr7c-i.lift.json']
+const LIFTS = ['schedule-pr1a.lift.json', 'schedule-pr1b-i.lift.json', 'schedule-pr1b-ii.lift.json', 'board-b2-i.lift.json', 'building-u2.lift.json', 'owner-billing-o2a.lift.json', 'board-b2-ii.lift.json', 'portal-p0.lift.json', 'portal-p1b-i.lift.json', 'owner-billing-o3.lift.json', 'owner-billing-o2b.lift.json', 'board-b5-b.lift.json', 'portal-p2b-ii.lift.json', 'schedule-pr7c-i.lift.json', 'board-b2b-i.lift.json']
 const withAt = process.argv.indexOf('--with')
 const withLift = withAt > 0 ? process.argv[withAt + 1] : undefined
 const lifts = [...LIFTS, ...(withLift ? [withLift] : [])].map((f) => JSON.parse(readFileSync(new URL(`./${f}`, import.meta.url), 'utf8')) as Lift)
