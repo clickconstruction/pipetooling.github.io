@@ -7,7 +7,8 @@
  * what the chart's hover card says, with what holds the bar, its parts and its place. A move's,
  * an undo's and a redo's lines in the log (the schedule's PR 8a) are the prototype's too, and so are
  * the job's own work's and a failed inspection's (PR 9a), and a split's, a join's and a new
- * baseline's (PR 9b), with a new wait as the reducer makes it.
+ * baseline's (PR 9b), with a new wait as the reducer makes it. A pull's and days got back's lines (PR 9d) are the
+ * reducer's too.
  */
 import { APP_CALENDAR_TZ } from '../../../utils/dateUtils'
 import { addDays } from '../building'
@@ -20,6 +21,8 @@ import { addedActivityProblem, nextOwnId } from './addedActivity'
 import { withNewBaseline } from './baseline'
 import { daysBetween, pushAfter, pushedAfterWords } from './network'
 import { placeGuess, takesPlace } from './places'
+import { pullCountWords, type PullOffer } from './pullEarlier'
+import type { RecoveryOffer } from './recovery'
 import { mondayOf } from './schedule'
 import { movedParts, partFacts, splitParts } from './splitBars'
 import type { ActivityPart, InspectionFailure, ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason, ScheduleWait, WaitKind } from './types'
@@ -61,6 +64,16 @@ export function draftWords(project: Pick<GcProject, 'name'>, schedule: ProjectSc
 export function moveWords(project: GcProject, lineId: string, plan: Pick<MovePlan, 'to' | 'pushed'>, why: { by: string; note: string }): string {
   const moved = plan.pushed.map((p) => ({ lineId: p.lineId, label: p.label, start: p.to.start, finish: p.to.finish, days: p.days }))
   return `${moveActivityName(project, lineId)} now runs ${weekdayDate(plan.to.start)} to ${weekdayDate(plan.to.finish)}.${moved.length > 0 ? ` ${pushedAfterWords(moved)}` : ''} ${why.by}: ${why.note.trim()}`
+}
+
+/** A pull's line in the log (G-37, PR 9d), as the prototype's reducer wrote it: "Rosa pulled 2 earlier on Fair Oaks Shops, Building D. Footings finished …" */
+export function pullLogWords(project: Pick<GcProject, 'name'>, offer: PullOffer, by: string): string {
+  return `${by} pulled ${pullCountWords(offer)} earlier on ${project.name}. ${offer.note}`
+}
+
+/** Days got back's line in the log (G-82, PR 9d), as the prototype's reducer wrote it: "Rosa got 2 days back on … A second crew on …" */
+export function recoveryLogWords(project: Pick<GcProject, 'name'>, offer: Pick<RecoveryOffer, 'daysBack' | 'words'>, by: string): string {
+  return `${by} got ${offer.daysBack} ${offer.daysBack === 1 ? 'day' : 'days'} back on ${project.name}. ${offer.words.title}`
 }
 
 /** Undo's line in the log (G-40), as the prototype's reducer wrote it. */
