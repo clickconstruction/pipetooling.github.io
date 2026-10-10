@@ -130,7 +130,9 @@ Every migration follows `CLAUDE.md`. It starts with `SET lock_timeout = '3s';`, 
 `origin/main` and claimed at the cut, is idempotent, and ends a CREATE TABLE with the three block
 calls (`apply_read_only_write_blocks`, `apply_read_only_stmt_blocks`,
 `apply_digital_twin_write_blocks`). RLS is on everywhere. The office reads under dev-only policies
-until the door, and the trade never touches a table except through the service role.
+until the door, but for `gc_back_charges`, which the money team reads since Owner Billing's O9
+(v2.5133, a `FOR SELECT` policy beside the dev one), since each draw's net takes off the charges taken.
+Writing it waits on the door. The trade never touches a table except through the service role.
 
 **`gc_trade_portal_links`** (P1a), the sub portal's `sub_portal_links` keyed to a company: `id`,
 `company_id` (FK `gc_companies`, cascade), `token`, `token_hash`, `created_by`, `created_at`,

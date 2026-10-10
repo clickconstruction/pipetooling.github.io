@@ -100,8 +100,9 @@ Each has a default the plan is written to. The owner changes any of them by sayi
      estimators, the job's superintendents, its project manager). They carry no money but an RFI
      answer's cost (call 1 below).
    - The draws, their lines, the pay applications and the reports on lines take the money roles,
-     dev, master and controller, as New project's tables do (its decision 2). The project manager
-     approving a draw is call 5 below.
+     dev, master and controller, as New project's tables do (its decision 2). The money roles read
+     them since Owner Billing's O9 (v2.5133, `20261010050000`: a `FOR SELECT` policy each beside the
+     dev one), so the door swaps only the writes. The project manager approving a draw is call 5 below.
    - **The trades and the customer** have no policy. They reach their slice only through their
      portals' functions.
 5. **The trades' writes are Building's SQL functions** (agreed with the Portal, Helper 3). Each is
@@ -494,7 +495,7 @@ function. One Building migration a day. *Check* is how the reviewer sees it work
    plumbing to a Pipeline job with a report and a clock-in today; the log shows our crew's count, and
    the stages read the report.
 9. **The door, Building to the team**: the migration that swaps the dev-only policies for the
-   schedule's team (decision 4) and the money roles on U6's tables, the window gates to match,
+   schedule's team (decision 4) and, on U6's tables, the money roles' writes (they read since O9), the window gates to match,
    `docs/ACCESS_CONTROL.md`. With Helper 6, after the schedule's PR 10. *Check:* a superintendent on
    the job writes a log and adds a punch item; one not on it sees nothing; a read-only user's write
    is refused; a superintendent sees no draw.

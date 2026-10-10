@@ -1,7 +1,7 @@
 ---
 name: "GC mode, Owner Billing O9: the money team reads the trades' money"
 parent: to-dos/gc-mode/OWNER_BILLING_REAL_BUILD.md (PR 12, O9, after O8c)
-status: planned 2026-10-09 by Helper 5 at the lead's ask (option (a), the read half of Building's door, now) · co-signed 2026-10-09 by gc 10 (Building's four tables), gc 2 (the Board: gc_sows, gc_sow_lines and the card's gate) and gc 3 (the Portal: gc_back_charges); gc 4 confirmed U6d's Closeout keys off the role, never off the draws having loaded · building · the SQL block below is the migration byte for byte but for the version and the stamp, both claimed at the cut
+status: planned 2026-10-09 by Helper 5 at the lead's ask (option (a), the read half of Building's door, now) · co-signed 2026-10-09 by gc 10 (Building's four tables), gc 2 (the Board: gc_sows, gc_sow_lines and the card's gate) and gc 3 (the Portal: gc_back_charges); gc 4 confirmed U6d's Closeout keys off the role, never off the draws having loaded · cut 2026-10-09: PR #5262, v2.5133, migration 20261010050000 · the SQL block below is the migration byte for byte but for the version
 ---
 
 # O9: the money team reads the trades' money

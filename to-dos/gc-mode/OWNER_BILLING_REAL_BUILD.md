@@ -538,7 +538,8 @@ migration a day on this lane. "Check" is how the reviewer sees it work.
     customer are the money team's, but the trades' statements of work and draws were a dev's alone, so a leader's or
     the controller's bill drafted every trade at $0. One migration opens reading, never writing, on the seven tables
     to `gc_money_team()`. Co-signed by Building, the Board and the Portal: `mockups/owner-billing-o9.md`. *Check:* the
-    bed's controller reads what a dev reads and writes none.
+    bed's controller reads what a dev reads and writes none. Cut 2026-10-09: PR #5262, v2.5133, migration
+    `20261010050000`.
 
 **The door** (its own PR when the lead says the trade side is real): the policies swap
 `is_dev()` for the owner and controller predicate, with `ACCESS_CONTROL.md` in the same PR, the
