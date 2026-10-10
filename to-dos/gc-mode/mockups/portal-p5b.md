@@ -138,7 +138,7 @@ stays (gc 3).
 ## P5b-m, the migration
 
 No new table, so no block calls. The three verbs are SECURITY INVOKER, take the link's company first, and are
-granted to the service role only, as `gc_trade_sign_sow` is. `<stamp>` is claimed at the cut.
+granted to the service role only, as `gc_trade_sign_sow` is. Claimed at the cut as `20261010140000` (amendment 2).
 
 ```sql
 SET lock_timeout = '3s';
@@ -154,7 +154,7 @@ SET lock_timeout = '3s';
 --     hash of the signing token the function minted, as the sub portal's sign_link does. A W-9 with no paper yet is
 --     copied from the Contract Book's W-9 form first, as gc_company_paper copies one for the office.
 -- A refusal raises a key the page says in the company's language, as every trade verb does.
--- Doc: docs/migrations/<stamp>_gc_portal_p5b_papers.md.
+-- Doc: docs/migrations/20261010140000_gc_portal_p5b_papers.md.
 
 -- 1) A certificate is the company's, on no job.
 ALTER TABLE public.gc_trade_files DROP CONSTRAINT IF EXISTS gc_trade_files_purpose_known;
@@ -346,7 +346,8 @@ GRANT EXECUTE ON FUNCTION public.gc_trade_paper_open(uuid, text, text, timestamp
   negative years `formIncomplete`; a line over 2,000 `tooLong`; a new company's form written with `app_today()`,
   and a second send replacing it;
 - `gc_trade_paper_open`: a bad paper, hash or expiry `badRequest`; a master agreement never sent `msaNotSent`,
-  one sent opened with the hash and expiry, one signed `alreadySigned`, another company's never found; a W-9
+  one sent opened with the hash and expiry, one the office made and never sent `msaNotSent` (decision C), one
+  signed `alreadySigned`, another company's never found; a W-9
   with none copied once from the Book's W-9 and stamped `w9` by the form trigger, a second press re-opening the
   same row with the new hash, and a Book with no W-9 form `noW9Form`;
 - `gc_trade_files`: a `coi` row with no project kept, a `coi` row with a project and a `quote` row with none
@@ -372,9 +373,9 @@ By HELPERS.md's rule, the PR also runs every bed that touches what it changes: `
   (`PORTAL_REAL_BUILD.md`).
 - **The signing page's dead link** (gc 3, decision B): `/contract/accept` says the bare *Not found* when a token
   was replaced (`get-contract-for-signer` answers 404, `ContractAccept.tsx` shows its `error`). P5b-1 makes the
-  page say, on a 404, *This link no longer works. A newer link may have replaced it. Open the paper from your
-  portal, or ask the office for a new link.* It is the whole app's signing page, so the words name no company,
-  and every signer whose link was resent reads them.
+  page say, on a 404, *This link no longer works. A newer link may have replaced it. Ask the office for a new
+  link.* It is the whole app's signing page, read by employees, subs and customers with no portal, and a dead
+  token cannot say whose paper it was, so the words name no portal and no company (gc 3, amendment 2).
 
 ## The certificate (P5b-2)
 
@@ -444,7 +445,7 @@ and docs, and armed with `gh pr merge <n> --auto`.
   folder); `GLOSSARY.md` (vetting form, if it has no line).
 - The guides: `share-a-trade-partner-its-portal` (what the trade does with its papers) and `send-a-trade-its-papers`
   (the trade can sign or send each from its portal; **Record their insurance** for one that comes by email).
-- `docs/migrations/<stamp>_gc_portal_p5b_papers.md`. A release note and fragment for each PR.
+- `docs/migrations/20261010140000_gc_portal_p5b_papers.md`. A release note and fragment for each PR.
 
 ## The live check
 
@@ -513,3 +514,8 @@ words; decision B put to the lead again with gc 2's ask; the owner's call 3. gc 
 `signed_at` to the upload day, as `gc_record_company_coi` does, so `companyPapers` sorts it newest; and the
 office's W-9 send reuses the one the trade opened, since `gc_company_paper` finds the company's newest copy by
 the Book entry's name. gc 2 will make `paperStep` say *Started in their portal <day>* for a sent W-9 with no send.
+
+**Amendment 2, 2026-10-10, at the cut**: P5b-m is cut as v2.5191 with migration `20261010140000_gc_portal_p5b_papers`
+(both claimed on `claude/gc-portal-p5b-m`), and the stamp is filled in the SQL block above, which the migration equals
+byte for byte. The bed adds the master agreement the office made and never sent (decision C) and was proved by six
+mutants. The signing page's dead-link words name no portal (gc 3).
