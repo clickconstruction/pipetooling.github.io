@@ -51,6 +51,12 @@ the next row. Nobody but the lead pushes to `spike/gc-mode`.
   copy: `sed -e 's|cd "$(dirname "$0")/.."|cd "<your checkout>"|' -e 's|NAME="pgtest-gc-building"|NAME="pgtest-gc-building-<you>"|'
   -e 's|/tmp/$NAME.err|<your scratchpad>/$NAME.err|g' scripts/pgtest-gc-building.sh > <your scratchpad>/pgtest.sh`, then
   `PGTEST_PORT=<a free port> bash <your scratchpad>/pgtest.sh` (gc 4, U3b, 2026-10-10).
+- **A prototype window ported straight to main fails CI's `checks` job** on the iPhone status-bar rule: the
+  prototype's layer starts at the top of the screen, and its panel's `maxHeight` is measured in `vh`. Before you push,
+  run the five window checks, `npm run check:status-bar`, `check:dialog-role`, `check:backdrop-click`,
+  `check:nested-windows` and `check:window-z` (the full list is the `npm run check:*` steps in `.github/workflows/ci.yml`).
+  `node scripts/codemods/window-below-status-bar.mjs` fixes the status bar itself: the layer pads its top by
+  `var(--app-top-chrome, 0px)`, and the panel takes `min(…, 100%)` (gc 4, U7c #5284, 2026-10-10; gc 10's 9d before it).
 - Tests: `VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vitest run src/lib/gcMode src/components/gc`.
   Lint: `npx eslint <your files>`. Typecheck: `npm run typecheck` in the background; it takes 10 to
   25 minutes on a loaded machine; read its exit line. Run it on a quiet tree before you push. It checks
