@@ -87,6 +87,40 @@ describe('the board read from its rows', () => {
     expect(travelFor(pointed, pointed.partners[0]!, pointed.projects[0]!).miles).toBe(35)
   })
 
+  it('a company’s papers come from its own rows (B6-b-ii): the master agreement as the msaFirst gate reads it, the W-9, the certificate', () => {
+    expect(boardStateFromRows(rows()).partners.map((p) => [p.company, p.msa, p.w9, p.coiExpires])).toEqual([
+      ['Lonestar Earthworks', 'none', false, null],
+      ['Hillside Excavation', 'none', false, null],
+    ])
+    const papers = [
+      { id: 'd1', company_id: 'lonestar', doc_type: 'agreement', status: 'signed', sent_at: '2026-10-01T15:00:00Z', signed_at: '2026-10-02', expires_at: null, created_at: '2026-10-01T15:00:00Z' },
+      { id: 'd2', company_id: 'lonestar', doc_type: 'w9', status: 'signed', sent_at: '2026-10-01T15:00:00Z', signed_at: '2026-10-03', expires_at: null, created_at: '2026-10-01T15:00:00Z' },
+      { id: 'd3', company_id: 'lonestar', doc_type: 'coi', status: 'signed', sent_at: null, signed_at: '2026-10-04', expires_at: '2027-04-30', created_at: '2026-10-04T15:00:00Z' },
+      { id: 'd4', company_id: 'hillside', doc_type: 'agreement', status: 'sent', sent_at: '2026-10-07T16:00:00Z', signed_at: null, expires_at: null, created_at: '2026-10-07T16:00:00Z' },
+    ]
+    const s = boardStateFromRows(rows({ papers }))
+    const [lonestar, hillside] = s.partners
+    expect([lonestar!.msa, lonestar!.msaSignedOn, lonestar!.w9, lonestar!.coiExpires]).toEqual(['signed', '2026-10-02', true, '2027-04-30'])
+    expect([hillside!.msa, hillside!.msaSentOn, hillside!.w9, hillside!.coiExpires]).toEqual(['sent', '2026-10-07', false, null])
+  })
+
+  it('every send of a paper reads oldest first as the kernels’ PaperSend, and a company counts the trades it won', () => {
+    expect(boardStateFromRows(rows()).paperSends).toBeUndefined()
+    const sends = [
+      { id: 'ps2', company_id: 'hillside', paper: 'msa', project_id: null, package_id: null, sent_on: '2026-10-07', due_on: '2026-10-14', note: '', first: false, draws: null, created_at: '2026-10-07T16:00:00Z' },
+      { id: 'ps1', company_id: 'hillside', paper: 'msa', project_id: null, package_id: null, sent_on: '2026-10-03', due_on: '2026-10-10', note: 'Call me with questions.', first: true, draws: null, created_at: '2026-10-03T16:00:00Z' },
+    ]
+    expect(boardStateFromRows(rows({ paperSends: sends })).paperSends).toEqual([
+      { id: 'ps1', partnerId: 'hillside', paper: 'msa', on: '2026-10-03', by: '2026-10-10', note: 'Call me with questions.', first: true },
+      { id: 'ps2', partnerId: 'hillside', paper: 'msa', on: '2026-10-07', by: '2026-10-14', note: '', first: false },
+    ])
+    expect(boardStateFromRows(rows()).partners.map((p) => p.won)).toEqual([0, 0])
+    expect(boardStateFromRows(awardedClinicBoardRows()).partners.map((p) => [p.company, p.won])).toEqual([
+      ['Lonestar Earthworks', 1],
+      ['Hillside Excavation', 0],
+    ])
+  })
+
   it('a company new to us carries the form it sent, and who decided an approval reads by name', () => {
     const form = { company_id: 'hillside', license: 'TX 4471', insurance: 'Lone Star Mutual', years_in_business: null, reference_list: 'Ana Ruiz', past_jobs: 'Two clinics', sent_on: '2026-10-04' }
     const [, hillside] = boardStateFromRows(rows({ vettingForms: [form] })).partners

@@ -389,7 +389,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const packageIds = projects.flatMap((p) => p.trades.map((t) => t.id))
   const named = [...new Set(projects.flatMap((p) => [p.customerId, p.architectId]).filter((id): id is string => Boolean(id)))]
   const none = Promise.resolve({ data: [], error: null })
-  const [dates, customers, companies, invites, promises, sows] = await Promise.all([
+  const [dates, customers, companies, invites, promises, sows, papers, paperSends] = await Promise.all([
     ids.length
       ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, lost_why, won_by, closed_on').in('project_id', ids)
       : none,
@@ -407,6 +407,10 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
           .select('id, package_id, status, price, retainage_pct, based_on_rev, their_sov, excluded, sent_on, signed_on, accepted_on')
           .in('package_id', packageIds)
       : none,
+    // The companies' own papers (B6-b-ii): what person_contract_documents' own policies let the reader see (call R).
+    supabase.from('person_contract_documents').select('id, company_id, doc_type, status, sent_at, signed_at, expires_at, created_at').not('company_id', 'is', null),
+    // Every send of a paper (B6-b-i): dev only while the Board is built, so anyone else reads none.
+    supabase.from('gc_paper_sends').select('id, company_id, paper, project_id, package_id, sent_on, due_on, note, first, draws, created_at').order('sent_on'),
   ])
   const dateRows = taken(dates, 'load the board’s dates')
   const inviteRows = taken(invites, 'load the asks')
@@ -459,6 +463,8 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     bidTabViews: taken(tabViews, 'load who opened the bid tabs'),
     sows: sowRows as BoardRows['sows'],
     sowLines: taken(sowLines, 'load the statements of work’s lines') as BoardRows['sowLines'],
+    papers: taken(papers, 'load the trade partners’ papers'),
+    paperSends: taken(paperSends, 'load the papers we sent'),
   }
 }
 
