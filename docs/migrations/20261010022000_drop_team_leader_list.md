@@ -74,7 +74,7 @@ Each step is a read.
 
 ## Status
 
-Not pushed. PUNCHLIST picks the release window and runs the deploys and the push from the main checkout.
+Applied on prod 2026-10-10 ~01:10 UTC by PUNCHLIST, in the window the owner opened by clocking every crew out (his word at 23:05 UTC). In the release order: #5183 merged ~01:05 UTC; the seven functions deployed first from the main checkout at `653c1c4a6` (notify-team-lead-clock, send-report-email, recurring-job-report-dispatch, recurring-job-report-preview, recurring-job-report-test-send, schedule-day-email-dispatch, send-bid-pricing-package), then submit-sub-portal and test-email for the shared file; then `supabase db push --linked --include-all` (the stamp sits below the applied 041000; the dry run listed this file alone); drift 842 local / 842 remote, fully applied; the types regen is #5243 and dev-mcp redeployed with its catalog. Verified read-only right after: the three tables read null; none of the five helpers exists; no policy and no function body names them; the crew filter reads `CHECK ((crew_filter = 'all_users'::text))`. Step 5 (Settings → Email streams and My email schedule as a dev) is the owner's look.
 
 ## Rollback
 
