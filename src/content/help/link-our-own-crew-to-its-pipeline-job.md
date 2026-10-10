@@ -21,7 +21,7 @@ The Pipeline job gives two things. The job's stages give our crew's percent done
 Plumbing · our own crew {{chip:purple|Pipeline job J 1071}} {{button:outline|Change}}
 :::
 
-A billing-only job cannot be picked. Nobody clocks in on it. A job another crew trade already has says so, like **On Electrical already**, and cannot be picked either. One Pipeline job goes with one crew trade.
+A billing-only job cannot be picked. Nobody clocks in on it. A job another crew trade already has says so, like **On Electrical already**, and cannot be picked either. So does the job a GC job's general conditions are spent on, as **On general conditions already**. One Pipeline job goes with one crew trade.
 
 ## What the GC job reads
 
