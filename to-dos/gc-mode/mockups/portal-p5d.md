@@ -66,12 +66,19 @@ The screens are the spike's four components, lifted, not redrawn. Their `dispatc
    page would hold every bar, link and move on the job, other companies' and the office's notes included.
 
 2. **It needs 14b first.** It reads with 14b's `readScheduleRows` and runs on its kernel copy, so P5d-ii is cut from main
-   once #5362 is in. The read gains what 14b leaves empty, held to the company's jobs being built:
-   - the moves: id, line, dates, `undone_on`, and the late notice a move carries;
+   once #5362 is in. The read gains what 14b leaves empty, held to the company's jobs being built. The extra tables pass
+   straight through `scheduleRowsOf`, since `TradeScheduleJob['schedule']` takes `Partial<ScheduleRows>`:
+   - the moves: id, line, dates, `parts`, `reason`, `note`, `undone_on`, and the late notice a move carries;
+   - `gc_schedule_move_pushes` for those moves. `datesNotices` builds a company's lines from the bar moved and the bars
+     it pushed (`movedLines`), so a company whose bar was only pushed was told too and must get its `dates` entry;
+   - `gc_schedule_activity_parts` for its own bars, which fix a part move's days;
    - this company's own `gc_schedule_move_tells` and `gc_schedule_move_answers`;
-   - every `gc_schedule_late_notices` row on its jobs, because a notice's state reads the bar's other notices; only its
-     own leave;
+   - the `gc_schedule_late_notices` on its own bars only. A notice's state reads the newer notices from the same company
+     on the same bar, the bar's own dates and the moves, never another company's notice;
    - its own trades' `gc_schedule_crew_counts`, and its own bars' `gc_schedule_lookahead_marks`.
+
+   A move's `reason` and `note` reach the answer only inside a told move's message, which already went to the company by
+   email. 14b's `tradePortalSchedule.test.ts` stays as it is, and the chart's answer must not change.
 
    The copy gains four entries: `schedule/tellTrades.ts`, `schedule/lateNotices.ts`, `schedule/crewCounts.ts` and
    `portal.ts`. The closure is measured at the cut, against 14b's 30 files. If `portal.ts` pulls in too much, the cut
@@ -80,8 +87,9 @@ The screens are the spike's four components, lifted, not redrawn. Their `dispatc
 
 3. **What leaves, exactly.** Each kernel's answer is mapped to plain fields. No `ScheduleRow`, `GcProject` or `Partner`
    leaves:
-   - `dates`: each told move not answered, with its id, the day told, and the message as it went (`datesMessage`, in the
-     company's language);
+   - `dates`: each told move not answered, with its id, the day told, and the message (`datesMessage`), rebuilt in the
+     company's language today. If the company changed its language since the email, the words differ from what went, so
+     no guide promises the same words;
    - `late`: each of its own bars with a door (`lineId`, the work's name, `start`, `finish`, `started`, `day`), with its
      own newest notice where `portalLateNotice` shows one: state, the dates asked, reason and sentence, our push back's
      day and sentence, and its own word that it will make the day;
@@ -100,6 +108,8 @@ The screens are the spike's four components, lifted, not redrawn. Their `dispatc
    read-only preview: `GET ?t=<link>&late=<lineId>&day=<YYYY-MM-DD>` returns `lateWaiting`'s answer, each item as work,
    company name, new start and days. That is the same names the chart's *after* group already shows, and never a price.
    It answers only for a bar of the company's own with a door, and a day after the door's day; anything else is `{ }`.
+   It reads that bar's job alone, held by `portalScheduleJobs`, so one preview is one job's read. `planMove` reads only
+   bars, links (with their lag), `not_before` and `must_finish_by`, all in 14b's read, so it gives the office's answer.
    The page asks 400 ms after the day settles, and a failed preview shows no lines. *Other way:* compute it for a range
    of days on every read, which runs the scheduler dozens of times per page load. Or leave the second look out.
 
@@ -109,7 +119,9 @@ The screens are the spike's four components, lifted, not redrawn. Their `dispatc
    `lift-same`.
 
 6. **The late door sits in 14b's `ownRow` slot**, under the company's own bar, as the prototype draws it
-   (`GcPortalLate`). Since P5d-ii is cut after 14b (call 2), there is no first home on a block of its own.
+   (`GcPortalLate`). Since P5d-ii is cut after 14b (call 2), there is no first home on a block of its own. The slot is
+   `(bar: PortalScheduleBar) => ReactNode`, with `bar.lineId` the activity's id (the scope item's). P5d-ii-2 adds the
+   prop to `GcTradePortalProject`, which does not take it yet.
 
 7. **The kinds** on `submit-gc-trade-portal`:
 
@@ -177,7 +189,7 @@ Each is cut from `origin/main`, claimed at the cut, with its release note, fragm
   - the guard test with `WAITING` empty of `'P5d'`;
   - `freeTextCounts` with the notices;
   - `tradePortalScheduleWork.test.ts`: each answer on main's test state laid out as rows, equal to the kernels on the
-    same state, plus the never-sees test (call 3);
+    same state, plus the never-sees test (call 3); a company whose bar a move only pushed gets its `dates` entry;
   - the preview: a bar not its own, no door, or a day not after the door's is `{ }`; a good one equals `lateWaiting`;
   - the answer reader: a missing `scheduleWork` is none.
 - **P5d-ii-2:** a render test per block, using the spike's tests where they exist (`GcPortalDatesMoved.render.test.tsx`).
@@ -238,5 +250,13 @@ D. `crew_count` is not capped (call 7).
 
 ## Status
 
-Planned 2026-10-10 by gc 3, read from origin/main f034feaaf over 14b's plan (`schedule-pr14b.md`, amendment 1). For
-gc 4's co-sign and the lead's read-back. Nothing cut or claimed.
+Planned 2026-10-10 by gc 3, read from origin/main f034feaaf over 14b's plan (`schedule-pr14b.md`, amendment 1). The lead
+approved it the same day with decisions A to D. Nothing cut or claimed.
+
+**Amendment 1 (gc 4's co-sign, 2026-10-10, checked on main at f034feaaf):**
+- the read adds the moves' pushes, parts, reason and note, and its own bars' parts, so a company whose bar was only
+  pushed gets its dates (call 2);
+- the notices are only those on its own bars (call 2);
+- the preview reads one job (call 4);
+- the slot's shape, and `GcTradePortalProject`'s new prop (call 6);
+- the dates message is rebuilt in today's language (call 3).
