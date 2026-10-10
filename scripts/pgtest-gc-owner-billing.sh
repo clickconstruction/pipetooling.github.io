@@ -27,7 +27,9 @@
 # switch as the owner and a dev, and no one else. 92_money_reads reads the seven tables of the trades' money as the
 # controller, a leader, a trainee and a twin, row for row what a dev reads, and writes none of them. 93_office_notices
 # reads what is due day by day in a fixed October, to whom, each once, and only since the switch's day. 94_gc_job
-# names general conditions' Pipeline job as the money team, and no one else, and lets go when the job is deleted. Each
+# names general conditions' Pipeline job as the money team, and no one else, and lets go when the job is deleted.
+# 95_office_view reads a change order's non-money half through gc_change_orders_office as the office team, never its
+# cost, price or percent done, and no one writes through it (the schedule's PR 16b). Each
 # raises on its first failed assertion and ends with its own "PASSED". PGTEST_KEEP=1 leaves the container up. Needs
 # docker; .github/workflows/sql-beds.yml runs it on a PR that touches Owner Billing's SQL. Never touches prod.
 set -euo pipefail
@@ -49,6 +51,7 @@ SWITCH="$(ls supabase/migrations/*_gc_card_bill_switch.sql)"
 READS="$(ls supabase/migrations/*_gc_money_reads_trades.sql)"
 NOTICES="$(ls supabase/migrations/*_gc_office_notices.sql)"
 GCJOB="$(ls supabase/migrations/*_gc_general_conditions_job.sql)"
+VIEW="$(ls supabase/migrations/*_gc_change_orders_office.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -65,10 +68,10 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
-# A second run of each of the thirteen must change nothing: the service type's insert skips the row it made, the
+# A second run of each of the fourteen must change nothing: the service type's insert skips the row it made, the
 # columns and the index are there, and every function and the trigger are replaced as they were. It runs right
 # after the first, so a later migration's restatement is never undone, nor its dropped tables named again.
-TWICE=" $SEND $REMIND $INTEREST $ACCEPT $MONDAY $PORTAL $CONTROLLER $CHANGEREQ $CARD $SWITCH $READS $NOTICES $GCJOB "
+TWICE=" $SEND $REMIND $INTEREST $ACCEPT $MONDAY $PORTAL $CONTROLLER $CHANGEREQ $CARD $SWITCH $READS $NOTICES $GCJOB $VIEW "
 for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
   case "$TWICE" in *" $f "*)
@@ -110,5 +113,8 @@ if ! grep -q "gc_owner_billing_office_notices PASSED" <<<"$out"; then echo "$out
 grep -o "ok: .*" <<<"$out"
 out="$(psql_as postgres -f - < supabase/tests/gc_owner_billing/94_gc_job.sql 2>&1 || true)"
 if ! grep -q "gc_owner_billing_gc_job PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
+grep -o "ok: .*" <<<"$out"
+out="$(psql_as postgres -f - < supabase/tests/gc_owner_billing/95_office_view.sql 2>&1 || true)"
+if ! grep -q "gc_owner_billing_office_view PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "gc-owner-billing bed ok"
