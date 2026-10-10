@@ -207,6 +207,8 @@ describe('the verb’s refusals', () => {
     // The Portal's P2c-i, gc_trade_sign_sow: P2c-ii's sign_sow kind says them (alreadySigned is listed with U6a's above).
     msaFirst: 'P2c-ii',
     sowNotSent: 'P2c-ii',
+    // Building's U3b-i, the punch list (gc_trade_punch_fixed, through gc_punch_fixed_ask): an item marked fixed already.
+    punchNotOpen: 'P5',
   }
 
   it('maps every key a gc_trade_<verb> raises, as its newest migration defines it, or names the PR that will', () => {
