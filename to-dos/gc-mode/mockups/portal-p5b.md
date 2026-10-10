@@ -379,21 +379,174 @@ By HELPERS.md's rule, the PR also runs every bed that touches what it changes: `
 
 ## The certificate (P5b-2)
 
+**The owner's call 3, 2026-10-10: "Office looks first."** A certificate the trade sends from its portal lands as
+**received**. It counts for nothing until the office marks it good from the company's Documents tab: not the start
+gate, not Follow up, not the insurance promise. *COI (from their portal)* on the Documents tab stays the office's
+cue, with one press beside it, **Mark it good** (amendment 3).
+
+**What the trade does and reads:**
+
+- **Send your certificate** opens the form (unchanged): *A photo or PDF of the certificate* (the P5a-1 picker),
+  *The day the policy runs out* (a year out to start), **Send it to Click**, **Not now**. The file goes up through the
+  kind `file` (`for: 'coi'`), then the kind `coi` files it.
+- **While it waits**, the certificate's line reads *Click is checking it · sent Oct 10* (`coiChecking`, en
+  *{gc} is checking it · sent {date}*, es *{gc} lo está revisando · enviado el {date}*, the vetting line's words for
+  a certificate), with no button. A certificate that ran out still reads so beside it until the office looks.
+- **Needs you** drops the certificate's to-do while one waits (`portalTodos` reads `coiReceivedOn`), so the trade is
+  not asked twice. Once the office marks it good, the line reads *good to <day>* as any certificate does.
+- **Sending another while one waits** replaces the waiting one: the same paper takes the new link and day.
+
+**What the office does:** the company window's **Documents** tab shows the waiting certificate as
+*COI (from their portal)* · *came in Oct 10* · *good to <the day they typed>*, with its Drive link and
+{{button:blue|Mark it good}}. The press signs it with today's day, and the keep trigger keeps the insurance promise in
+the same transaction. Until then the insurance row still reads as owed, Follow up still lists it, and **Get started**
+still waits on it, as the owner said. **Record their insurance** stays for a certificate that comes by email.
+
+**P5b-2m, one migration**, cut first and pushed in the evening (it swaps a CHECK on `person_contract_documents`, a
+live table, as B6-b-i did). `gc_trade_coi` (P5b-m, #5351) is called by nothing until P5b-2, so no certificate is ever
+filed as signed by the trade; this migration redefines it before its kind ships. #5351 stays as it is.
+
+```sql
+SET lock_timeout = '3s';
+
+-- GC mode, the trade partner portal's P5b-2m (to-dos/gc-mode/mockups/portal-p5b.md, amendment 3, on branch spike/gc-mode):
+-- the owner's call 3, "Office looks first." A certificate the trade sends from its portal lands as received and counts
+-- for nothing (the start gate, Follow up, the insurance promise) until the office marks it good from the company's
+-- Documents tab:
+--   - person_contract_documents.status gains 'received', held to a company's certificate;
+--   - gc_trade_coi files the trade's certificate as received, with the time it came in (sent_at), one waiting at a time:
+--     a second send replaces the first; it keeps no promise (gc_company_paper_kept fires only on 'signed');
+--   - gc_mark_company_coi_good, the office's one press: a received certificate signed with today's day, which the keep
+--     trigger turns into the insurance promise kept.
+-- Doc: docs/migrations/<stamp>_gc_portal_p5b_coi_received.md.
+
+-- 1) A received certificate: a status only a company's certificate takes.
+ALTER TABLE public.person_contract_documents DROP CONSTRAINT IF EXISTS person_contract_documents_status_check;
+ALTER TABLE public.person_contract_documents ADD CONSTRAINT person_contract_documents_status_check
+  CHECK (status IN ('unsent', 'sent', 'signed', 'received')) NOT VALID;
+ALTER TABLE public.person_contract_documents VALIDATE CONSTRAINT person_contract_documents_status_check;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'person_contract_documents_received_is_a_company_coi' AND conrelid = 'public.person_contract_documents'::regclass) THEN
+    ALTER TABLE public.person_contract_documents ADD CONSTRAINT person_contract_documents_received_is_a_company_coi
+      CHECK (status <> 'received' OR (company_id IS NOT NULL AND doc_type = 'coi')) NOT VALID;
+  END IF;
+END $$;
+ALTER TABLE public.person_contract_documents VALIDATE CONSTRAINT person_contract_documents_received_is_a_company_coi;
+
+-- 2) The trade's certificate lands as received. Its refusals are P5b-m's, word for word.
+CREATE OR REPLACE FUNCTION public.gc_trade_coi(p_company_id uuid, p_expires_on date, p_file_url text)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_url text := public.gc_trade_file_link(p_file_url);
+  v_id uuid;
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM public.gc_companies WHERE id = p_company_id) THEN
+    RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001', DETAIL = 'No company with that id.';
+  END IF;
+  IF p_expires_on IS NULL THEN
+    RAISE EXCEPTION 'coiDayNeeded' USING ERRCODE = 'P0001', DETAIL = 'Say the day the policy runs out.';
+  END IF;
+  IF p_expires_on <= public.app_today() THEN
+    RAISE EXCEPTION 'coiPast' USING ERRCODE = 'P0001', DETAIL = 'The day the policy runs out has passed.';
+  END IF;
+  IF p_expires_on > public.app_today() + 1096 THEN
+    RAISE EXCEPTION 'coiTooFar' USING ERRCODE = 'P0001', DETAIL = 'The day the policy runs out is more than three years away.';
+  END IF;
+  -- The link is the company's own upload of a certificate, not yet filed: never a typed link, never another company's.
+  IF v_url IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.gc_trade_files f
+    WHERE f.company_id = p_company_id AND f.purpose = 'coi' AND f.drive_url = v_url AND f.record_id IS NULL
+  ) THEN
+    RAISE EXCEPTION 'certNeeded' USING ERRCODE = 'P0001', DETAIL = 'A certificate is a file the company uploaded from its portal.';
+  END IF;
+  -- One waiting at a time: a second send replaces the first, which the office has not looked at.
+  SELECT d.id INTO v_id FROM public.person_contract_documents d
+  WHERE d.company_id = p_company_id AND d.doc_type = 'coi' AND d.status = 'received'
+  ORDER BY d.created_at DESC, d.id
+  LIMIT 1
+  FOR UPDATE;
+  IF v_id IS NULL THEN
+    INSERT INTO public.person_contract_documents (
+      person_name, company_id, document_name, doc_type, expires_at, url, status, sent_at, contract_lineage_id, lineage_version
+    ) VALUES (
+      'gc-company:' || p_company_id::text, p_company_id, 'COI (from their portal)', 'coi', p_expires_on, v_url, 'received', now(), gen_random_uuid(), 1
+    )
+    RETURNING id INTO v_id;
+  ELSE
+    UPDATE public.person_contract_documents SET expires_at = p_expires_on, url = v_url, sent_at = now() WHERE id = v_id;
+  END IF;
+  PERFORM public.gc_trade_file_tie(p_company_id, 'coi', v_url, v_id);
+  RETURN v_id;
+END;
+$$;
+
+COMMENT ON FUNCTION public.gc_trade_coi(uuid, date, text) IS
+  'GC mode (P5b-m, received since P5b-2m): a trade partner company sends its insurance certificate from its portal, a coi paper received with its expiry, the link of its own upload (gc_trade_files, purpose coi) and the time it came in, one waiting at a time. It counts for nothing until the office marks it good (gc_mark_company_coi_good). Service role only (submit-gc-trade-portal, kind coi). SECURITY INVOKER.';
+
+-- 3) The office marks it good: signed with today's day, which keeps the insurance promise (gc_company_paper_kept).
+CREATE OR REPLACE FUNCTION public.gc_mark_company_coi_good(p_paper_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_doc record;
+BEGIN
+  IF NOT public.is_dev() THEN
+    RAISE EXCEPTION 'Only a dev sends a trade its papers while GC mode is built.' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT d.id, d.status, d.doc_type, d.company_id, d.expires_at INTO v_doc
+  FROM public.person_contract_documents d WHERE d.id = p_paper_id FOR UPDATE;
+  IF NOT FOUND OR v_doc.company_id IS NULL OR v_doc.doc_type <> 'coi' OR v_doc.status <> 'received' THEN
+    RAISE EXCEPTION 'That certificate is not waiting for a look.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_doc.expires_at IS NULL OR v_doc.expires_at <= public.app_today() THEN
+    RAISE EXCEPTION 'That certificate has run out. Ask them for the current one.' USING ERRCODE = 'P0001';
+  END IF;
+  UPDATE public.person_contract_documents SET status = 'signed', signed_at = public.app_today() WHERE id = p_paper_id;
+END;
+$$;
+
+COMMENT ON FUNCTION public.gc_mark_company_coi_good(uuid) IS
+  'GC mode (P5b-2m): the office marks a certificate a trade partner sent from its portal good, from the company''s Documents tab: received to signed with today''s day; gc_company_paper_kept keeps the insurance promise. Dev only until the papers'' door. SECURITY INVOKER.';
+
+REVOKE ALL ON FUNCTION public.gc_mark_company_coi_good(uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.gc_mark_company_coi_good(uuid) TO authenticated;
+```
+
+`gc_trade_coi` keeps its signature, so its grant (the service role alone) stands. The bed `gc-portal-p5b` changes in
+the same PR, as HELPERS.md's rule for a redefined verb asks: its certificate cases expect *received* with the
+promise still open, a second send replacing the first, and **Mark it good** (refused to a non-dev, to a paper that is
+not a waiting certificate, and to one run out; then signed with today's day and the insurance promise kept);
+`person_contract_documents` refuses `received` on a person's paper and on a company's W-9. Its script re-applies
+P5b-2m after P5b-m, so its schema is main's. `gc-papers` runs with it.
+
+**P5b-2, the code**, after P5b-2m is on prod and its types:
+
 - `parseTradeFile`'s `for` gains `coi`, with no record id; `fileHome` claims it for the link's company with no
   job, its answer's `projectId` and `packageId` now `string | null`; `tradeFileFolders('coi', company)` is
   `['GC trade partners', <company>]` under `DRIVE_JOBS_FOLDER_ID` in place of the job's folder. A missing root is
   `failed`, logged, as a missing service account is; a certificate is never `noJobFolder`. The upload is
   `made_by` `trade`, so it counts under P5a-1's file cap (a signed waiver, `portal`, does not).
-- The kind `coi` and its form, as above.
+- The kind `coi` (`expiresOn`, `fileUrl`) and its form.
+- `companyPapers` gains `coiReceived` (the waiting certificate: its id, the day it came in from `sent_at`, and the day
+  the trade typed), and the mapper sets `Partner.coiReceivedOn`; `coiExpires` still reads only a signed certificate,
+  so the start gate and every other reader are unchanged. `portalTodos` skips the certificate's to-do while one waits.
+- The portal's certificate line reads `coiChecking` while one waits.
+- The Documents tab's waiting row and **Mark it good** (`markCompanyCoiGood` in `papersIo.ts`, after which the board
+  reloads), in the Board's files with gc 2's nod.
 - **The office's insurance ask** (`paperEmail.ts`) says *Send it from your portal with the link below. Or reply
   to this email with it.* (es *Envíelo desde su portal con el enlace de abajo. O responda a este correo con él.*)
   in place of `coiReply`, **only when the email carries the company's portal link**; with none it keeps
   *Reply to this email with the certificate.* (gc 2). Both are pinned in `paperEmail`'s tests, and the sample
   email in `customerSampleEmails` follows if it shows this ask. The flip is `COI_PORTAL_LIVE` in `paperEmail.ts`,
   true in this PR, as `DRAW_PORTAL_LIVE` flipped with its screens.
-- The office sees the certificate in the company window's Documents tab as *COI (from their portal)*, with its
-  Drive link and its day, and the insurance promise kept. **Record their insurance** stays for one that comes by
-  email.
 
 ## Who owns what (the seams, for gc 3 to co-sign)
 
@@ -419,9 +572,14 @@ and docs, and armed with `gh pr merge <n> --auto`.
    papers*, Needs you's to-dos. *Check:* on the test company's link, the block reads its papers as the
    Documents tab holds them; **Fill in your W-9** opens `/contract/accept` with the company's name filled.
    Every press waits for the owner's yes (below).
-2. **P5b-2, the certificate.** The file's `coi`, the kind `coi`, the form, `COI_PORTAL_LIVE` and the ask's
-   words. *Check:* a test PDF lands in **GC trade partners → GC test trade company, delete me**, the Documents
-   tab shows it with its day, and the insurance promise is kept.
+2. **P5b-2m, a certificate received until the office looks** (migration, an evening push; amendment 3).
+   *Check:* the doc's verify steps, each in `BEGIN … ROLLBACK`: the two CHECKs read back validated, a person's paper
+   refused `received`, and `gc_mark_company_coi_good` refused to a non-dev.
+3. **P5b-2, the certificate** (after P5b-2m on prod and its types). The file's `coi`, the kind `coi`, the form, the
+   waiting line, the Documents tab's **Mark it good**, `COI_PORTAL_LIVE` and the ask's words. *Check:* a test PDF
+   lands in **GC trade partners → GC test trade company, delete me**; the portal reads *Click is checking it*; the
+   Documents tab shows it waiting, the insurance promise still open; **Mark it good** keeps the promise and the
+   line reads *good to <day>*.
 
 ## Tests
 
@@ -483,10 +641,9 @@ G. **The vetting form's answers never pass back to the portal.** Only its day do
 
 1. **The live checks**: the owner's yes, typed in the pressing helper's chat, before any press on the test link.
 2. **The Drive folder** (decision A): *GC trade partners* at the root of the jobs Shared Drive.
-3. **A certificate from the portal counts as in at once** (gc 2's question): for the start gate, Follow up and the
-   insurance promise, as the prototype's `tradeUploadCoi` does. *The other way:* a `received` status before
-   `signed`, so the office looks first. Default: in at once, and *COI (from their portal)* on the Documents tab
-   is the office's cue.
+3. ~~**A certificate from the portal counts as in at once**~~ **Answered 2026-10-10: "Office looks first."** A
+   certificate from the portal lands as *received* and counts for nothing (the start gate, Follow up, the insurance
+   promise) until the office presses **Mark it good** on the Documents tab (amendment 3).
 
 ## Is this the best we can do?
 
@@ -519,3 +676,10 @@ the Book entry's name. gc 2 will make `paperStep` say *Started in their portal <
 (both claimed on `claude/gc-portal-p5b-m`), and the stamp is filled in the SQL block above, which the migration equals
 byte for byte. The bed adds the master agreement the office made and never sent (decision C) and was proved by six
 mutants. The signing page's dead-link words name no portal (gc 3).
+
+**Amendment 3, 2026-10-10, on the owner's call 3 ("Office looks first", through the lead)**: P5b-2 becomes two PRs.
+P5b-2m adds `received` to `person_contract_documents.status`, held to a company's certificate, redefines
+`gc_trade_coi` to file the trade's certificate as received (one waiting at a time, a second send replacing it), and
+adds the office's `gc_mark_company_coi_good`. P5b-2 ships the kind, the trade's *Click is checking it* line, Needs
+you's dropped to-do while it waits, and the Documents tab's **Mark it good**. #5351's `gc_trade_coi` is called by
+nothing until then, so it stays as merged. P5b-1 is unchanged.
