@@ -7,14 +7,14 @@ import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { CHANGE_ORDER_OFFICE_COLUMNS, type ChangeOrderOfficeRow } from './changeOrderOfficeRows'
 
-/** The jobs' change orders, their money left out by the view itself. Untyped until the regen after 20261010081000's push. */
+/** The jobs' change orders, their money left out by the view itself. */
 export async function loadGcChangeOrdersOffice(projectIds: string[]): Promise<ChangeOrderOfficeRow[]> {
   if (projectIds.length === 0) return []
   const result = await supabase
-    .from('gc_change_orders_office' as never)
+    .from('gc_change_orders_office')
     .select(CHANGE_ORDER_OFFICE_COLUMNS)
-    .in('project_id' as never, projectIds as never)
-    .order('number' as never)
+    .in('project_id', projectIds)
+    .order('number')
   checkSupabaseError(result, 'load the change orders')
-  return (result.data ?? []) as unknown as ChangeOrderOfficeRow[]
+  return result.data ?? []
 }
