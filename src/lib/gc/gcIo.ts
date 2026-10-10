@@ -393,8 +393,9 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
   const ids = projects.map((p) => p.id)
   const packageIds = projects.flatMap((p) => p.trades.map((t) => t.id))
   const named = [...new Set(projects.flatMap((p) => [p.customerId, p.architectId]).filter((id): id is string => Boolean(id)))]
+  const setIds = projects.flatMap((p) => p.planSets.map((s) => s.id))
   const none = Promise.resolve({ data: [], error: null })
-  const [dates, customers, companies, invites, promises, sows, papers, paperSends, customerContacts] = await Promise.all([
+  const [dates, customers, companies, invites, promises, sows, papers, paperSends, customerContacts, planSetSends] = await Promise.all([
     ids.length
       ? supabase.from('gc_projects').select('project_id, our_bid_sent_on, permit_on, start_date, owner_contract_sent_on, owner_contract_signed_on, started_on, started_anyway_by, started_anyway_reason, started_anyway_missing, lost_why, won_by, closed_on').in('project_id', ids)
       : none,
@@ -446,6 +447,21 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
               .order('id')
               .range(from, to),
           'load the customers’ call log',
+        )
+      : Promise.resolve([]),
+    // Which companies each set went to and whether it changed their trade (B2b-vi-b), the office team's, paged: the sets'
+    // touches read it (`setTouches`), as the trade portal reads it.
+    setIds.length
+      ? fetchAllRows(
+          (from, to) =>
+            supabase
+              .from('gc_plan_set_sends')
+              .select('set_id, company_id, touched')
+              .in('set_id', setIds)
+              .order('set_id')
+              .order('company_id')
+              .range(from, to),
+          'load who got each set of plans',
         )
       : Promise.resolve([]),
   ])
@@ -525,6 +541,7 @@ export async function loadGcBoardRows(projects: GcProjectView[], today: string, 
     papers,
     paperSends,
     customerContacts,
+    planSetSends,
     ownerContractSends: contractSendRows,
     ownerContractEmails: contractEmails,
   }
