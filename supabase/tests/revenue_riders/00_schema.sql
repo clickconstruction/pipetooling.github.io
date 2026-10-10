@@ -20,7 +20,9 @@ CREATE TYPE public.user_role AS ENUM ('dev', 'master_technician', 'assistant', '
 
 CREATE TABLE public.users (
   id uuid PRIMARY KEY,
-  role public.user_role NOT NULL
+  role public.user_role NOT NULL,
+  name text,
+  email text
 );
 
 CREATE OR REPLACE FUNCTION public.is_dev() RETURNS boolean LANGUAGE sql STABLE AS $$
@@ -51,6 +53,7 @@ CREATE TABLE public.jobs_ledger_invoices (
   is_primary_rtb_bundle boolean,
   stripe_invoice_memo text,
   fee_lines jsonb,
+  stripe_invoice_id text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -110,4 +113,20 @@ CREATE TABLE public.mercury_transaction_ar_returned (
   fee_added_by uuid,
   updated_at timestamptz NOT NULL DEFAULT now(),
   updated_by uuid
+);
+
+-- What add_ar_return_case_fee reads besides (v2.5144 restates it): the training and twin checks, the check's
+-- payments and the ones taken off.
+CREATE OR REPLACE FUNCTION public.is_read_only() RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
+CREATE OR REPLACE FUNCTION public.is_digital_twin() RETURNS boolean LANGUAGE sql STABLE AS $$ SELECT false $$;
+CREATE TABLE public.jobs_ledger_payments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  mercury_transaction_id uuid,
+  invoice_id uuid
+);
+CREATE TABLE public.deleted_records_archive (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  table_name text,
+  row_data jsonb,
+  restored_at timestamptz
 );
