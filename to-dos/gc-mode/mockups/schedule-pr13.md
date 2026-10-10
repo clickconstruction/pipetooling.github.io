@@ -2,7 +2,7 @@
 name: "The schedule's PR 13: Tell the trades and their answers"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 13, decision 9's trade writes and Writing it's two senders; PORTAL_REAL_BUILD.md, P5d and the trade emails (dates); mockups/schedule-pr11.md, call 8 (the kept line); GANTT_FEATURES.md G-81, G-113, G-132
 branch: the plan on claude/gc-schedule-pr13-plan (from origin/spike/gc-mode at d0047495e); the code from origin/main in two cuts, one with a migration
-status: plan 2026-10-10 by gc 4 at the lead's ask. Amendment 1 (2026-10-10): gc 10, holding Schedule, co-signed all ten calls at their picks; their two checks are named in calls 2 and 3, the walk's sentence is a seam, and call 11 (a told move undone) is added. For gc 3's co-sign on the answer's half, then the lead's read-back. 13a's SQL ran on the real bed on main at e5e11fef4. Nothing cut or claimed.
+status: plan 2026-10-10 by gc 4 at the lead's ask. Amendment 1 (2026-10-10): gc 10, holding Schedule, co-signed all ten calls at their picks and call 11 with its Call; their two checks are named in calls 2 and 3, the walk's sentence is a seam, and call 11 (a told move undone) is added. For gc 3's co-sign on the answer's half, then the lead's read-back. 13a's SQL ran on the real bed on main at e5e11fef4. Nothing cut or claimed.
 ---
 
 # The schedule's PR 13: Tell the trades and their answers
@@ -93,8 +93,10 @@ Two cuts:
 11. **A told move undone** (gc 10's seam). Undo puts a bar back after its company was told the moved dates, so the
     company holds dates that no longer stand. Its answer is refused as `datesTakenBack`, and its portal stops showing the
     move (`datesNotices` skips an undone move). PR 13 says so to the office: under the undone move, the record of moves
-    reads *Told, then undone: {company} still has the moved dates.*, from a new kernel `toldThenUndone`, pinned in
-    `tellWindow.test.ts` and the record's render test. Telling the company its dates are back is **13c**, planned
+    reads *Told, then undone: {company} still has the moved dates. Call them.*, with **Call {first}** beside it, the
+    same phone link as Days back and the call list (`partnerReach`). It comes from a new kernel `toldThenUndone`,
+    pinned in `tellWindow.test.ts` and the record's render test. When 13c lands, *Call them.* becomes its press to tell
+    them again (gc 10's addition). Telling the company its dates are back is **13c**, planned
     with gc 3 after P5d: a tell is one row per move and company and append only, so the dates back need a record of
     their own, their own words in both languages (the portal's words, and the Spanish read) and their own key.
     *Other way* (gc 10's pick): `companiesNotTold` counts an undone told move as one more to tell, so one press covers
