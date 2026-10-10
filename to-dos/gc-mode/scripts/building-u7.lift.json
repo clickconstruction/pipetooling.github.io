@@ -1,0 +1,34 @@
+{
+ "about": "The Building lane's U7a (to-dos/gc-mode/mockups/building-u7.md): weeklyReport, which waited in U2 for Owner Billing's lateFinish (on main since O2b, #4956). Run: node to-dos/gc-mode/scripts/lift-extract.cjs to-dos/gc-mode/scripts/building-u7.lift.json <outDir>",
+ "spikeDir": "src/lib/gcMode",
+ "mainBase": "src/lib/gc",
+ "existing": {
+  "src/lib/gcMode/gcTypes.ts#GcState": "types.ts",
+  "src/lib/gcMode/gcTypes.ts#GcProject": "types.ts"
+ },
+ "standIns": {
+  "src/lib/gcMode/gcFixture.ts#initialGcState": "schedule/testState.ts"
+ },
+ "files": [
+  {
+   "from": "gcBuildingWeekly",
+   "to": "buildingWeekly.ts",
+   "moves": [
+    "weeklyReport"
+   ],
+   "append": true
+  }
+ ],
+ "tests": [
+  {
+   "from": "gcBuildingWeekly.test.ts",
+   "to": "buildingWeekly.report.test.ts",
+   "header": "// GC mode, the real build, the Building lane's U7a: weeklyReport's tests, moved from the prototype (branch spike/gc-mode, gcBuildingWeekly.test.ts)."
+  }
+ ],
+ "pin": {
+  "main": "9b81b82f2588aa884b915f26d464f829c6d37ae1",
+  "spike": "75e3b8bdcba6f6ab8548125a2580f87eb7d5a180",
+  "about": "#5263 merged; the spike with main merged in, before its follow-up"
+ }
+}
