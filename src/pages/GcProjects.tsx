@@ -28,7 +28,7 @@ import { withChangeOrders, withChangeRequests, type ChangeOrderRow, type ChangeR
 import { GcDailyLogWindow } from '../components/gc/GcDailyLog'
 import { dailyLogPayload, withCrewClockIns, withDailyLogs, type CrewOnSiteRow, type DailyLogRow } from '../lib/gc/dailyLogRows'
 import { loadGcCrewOnSite, loadGcDailyLogs, saveGcDailyLog } from '../lib/gc/dailyLogIo'
-import { crewJobsHeld, withCrewPercents, type CrewJobRead } from '../lib/gc/crewJobRows'
+import { crewJobsHeld, generalConditionsHolder, heldByOthers, withCrewPercents, type CrewJobRead } from '../lib/gc/crewJobRows'
 import { linkCrewJob, loadCrewJobs, searchCrewJobs, suggestCrewJobs, type CrewJobLink } from '../lib/gc/crewJobIo'
 import type { OwnCrewWrites } from '../components/gc/GcOwnCrew'
 import { GcSubmittalsWindow } from '../components/gc/GcSubmittalsWindow'
@@ -466,6 +466,9 @@ export default function GcProjects() {
       live = false
     }
   }, [ownWorkKey])
+  // Each project's general conditions job, for the pickers that hold a job once (U8's and Our number's). Only the money
+  // team's board carries them.
+  const gcJobsOf = useMemo(() => Object.fromEntries((board?.projects ?? []).filter((p) => p.generalConditionsJobId).map((p) => [p.id, p.generalConditionsJobId ?? null])), [board])
   const ownWorkLabel = (jobId: string | null | undefined): string | null => {
     const read = jobId ? ownWork?.byJob[jobId] : undefined
     return read && read !== 'error' ? read.label : null
@@ -1655,7 +1658,12 @@ export default function GcProjects() {
                 state={board}
                 project={boardProject}
                 onSave={(values) => saveMoney(p.id, values)}
-                gcJob={{ jobLabel: ownWorkLabel(boardProject.generalConditionsJobId), heldBy: {}, onName: (jobId) => nameGcJob(p.id, jobId), search: searchPipelineJobs }}
+                gcJob={{
+                  jobLabel: ownWorkLabel(boardProject.generalConditionsJobId),
+                  heldBy: loaded ? heldByOthers(crewJobsHeld(loaded.projects, p.id, gcJobsOf), generalConditionsHolder(p.id)) : {},
+                  onName: (jobId) => nameGcJob(p.id, jobId),
+                  search: searchPipelineJobs,
+                }}
               />
             )}
             {boardProject && board && tabs > 0 && tabsOpen === p.id && <GcBidTabs state={board} project={boardProject} share={shareTab} />}
@@ -2067,7 +2075,7 @@ export default function GcProjects() {
           ownCrew={{
             reads: crewReads,
             linked: crewLinks.map((l) => l.packageId),
-            held: loaded ? crewJobsHeld(loaded.projects, drawsProject.id) : [],
+            held: loaded ? crewJobsHeld(loaded.projects, drawsProject.id, gcJobsOf) : [],
             ...(canUseGcBuilding(role) ? { writes: ownCrewWrites } : {}),
           }}
           onClose={() => setDrawsWindow(null)}
