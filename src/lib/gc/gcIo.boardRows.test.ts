@@ -9,14 +9,14 @@ import type { CompanyPaperRow } from './companyPapers'
 
 type Range = [number, number]
 const seen = vi.hoisted(() => ({
-  tables: [] as { table: string; range: [number, number] | null }[],
+  tables: [] as { table: string; range: [number, number] | null; in?: [string, unknown[]] }[],
   rpcs: [] as { fn: string; args: unknown; range: [number, number] | null }[],
   papers: [] as unknown[],
 }))
 
 vi.mock('../supabase', () => {
   // A query that records its range and answers `rows()` cut to it.
-  const query = (call: { range: Range | null }, rows: () => unknown[]) => {
+  const query = (call: { range: Range | null; in?: [string, unknown[]] }, rows: () => unknown[]) => {
     const q: Record<string | symbol, unknown> = new Proxy(
       {},
       {
@@ -24,6 +24,11 @@ vi.mock('../supabase', () => {
           if (key === 'range')
             return (from: number, to: number) => {
               call.range = [from, to]
+              return q
+            }
+          if (key === 'in')
+            return (column: string, values: unknown[]) => {
+              call.in = [column, values]
               return q
             }
           if (key === 'then')
@@ -38,7 +43,7 @@ vi.mock('../supabase', () => {
   return {
     supabase: {
       from: (table: string) => {
-        const call = { table, range: null as Range | null }
+        const call = { table, range: null as Range | null, in: undefined as [string, unknown[]] | undefined }
         seen.tables.push(call)
         return query(call, () => [])
       },
@@ -51,7 +56,9 @@ vi.mock('../supabase', () => {
   }
 })
 
+import { clinicProjectRows } from './boardTestRows'
 import { loadGcBoardRows } from './gcIo'
+import { gcProjectFromRows } from './projectRows'
 
 const paper = (n: number): CompanyPaperRow => ({
   id: `d${n}`,
@@ -94,5 +101,21 @@ describe('the board’s reads on no job’s ids', () => {
     for (const table of ['gc_companies', 'gc_trade_promises', 'gc_paper_sends', 'gc_company_contacts']) {
       expect(seen.tables.find((t) => t.table === table)?.range, table).toEqual([0, 999])
     }
+  })
+})
+
+describe('who got each set of plans (the Board’s B2b-vi-b)', () => {
+  it('reads gc_plan_set_sends by the board’s set ids, paged, for the sets’ touches', async () => {
+    const rows = await loadGcBoardRows([gcProjectFromRows(clinicProjectRows())], '2026-10-10')
+    expect(rows.planSetSends).toEqual([])
+    const read = seen.tables.find((t) => t.table === 'gc_plan_set_sends')
+    expect(read?.in).toEqual(['set_id', ['set0']])
+    expect(read?.range).toEqual([0, 999])
+  })
+
+  it('reads nothing when the board has no sets', async () => {
+    const rows = await loadGcBoardRows([], '2026-10-10')
+    expect(rows.planSetSends).toEqual([])
+    expect(seen.tables.map((t) => t.table)).not.toContain('gc_plan_set_sends')
   })
 })
