@@ -33,4 +33,4 @@ It ran on a local Docker copy of the whole schema with every migration applied; 
 
 ## Status
 
-Cut 2026-10-10 by Helper 5 (the Owner Billing lane). The lead pushes it once the PR merges; types regenerate after, and O11b-2 cuts on them.
+Cut 2026-10-10 by Helper 5 (the Owner Billing lane). Merged at about 07:20 UTC (#5290, v2.5151). Pushed to prod at 07:24 UTC by the GC MODE lead with `bash scripts/db-push.sh`, plain, the only pending file (drift 853 local / 853 remote, fully applied). Verified the same minute with the spike's `to-dos/gc-mode/scripts/verify/verify-080000.mjs`: 1 `general_conditions_job_id` is `uuid`, nullable; 2 its key references `jobs_ledger` with set-null; 3 no project names a job yet. A types regen for the column follows as its own PR; O11b-2 cuts on it.
