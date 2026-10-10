@@ -2,7 +2,7 @@
 name: "The schedule's PR 15b: the customer's picture in their portal"
 rows: SCHEDULE_REAL_BUILD.md, The PRs in order, 15, and decision 10; mockups/schedule-pr15.md, calls 5 and 9; mockups/schedule-pr14b.md, calls 1, 2, 6 and 10; GANTT_FEATURES.md G-90 to G-93
 branch: the plan on claude/gc-schedule-pr15b-plan (from origin/spike/gc-mode at c51a62527); the code from origin/main in one cut, with no migration, after #5362 (14b) merges
-status: plan 2026-10-10 by helper 1 at the lead's ask. Amendment 1 (2026-10-10): gc 3, holding the Portal, co-signed every call, call 4 as amended (each audience's reads behind its own option, over P5d-ii-1's widened read) and call 5 with three more plants. Amendment 2 (2026-10-10): gc 5, holding Owner Billing, co-signed calls 4, 7 and 8, with two conditions written in (the never-sees test on the schedule's answer with the late finish's dollars planted, and the portal line on a link where their GC jobs show, `gcJobsPortalUrl`). For the lead's read-back. Measured on 14b's head fd0f5dd5b; measured again once 14b is on main. Nothing cut or claimed.
+status: plan 2026-10-10 by helper 1 at the lead's ask. Amendment 1 (2026-10-10): gc 3, holding the Portal, co-signed every call, call 4 as amended (each audience's reads behind its own option, over P5d-ii-1's widened read) and call 5 with three more plants. Amendment 2 (2026-10-10): gc 5, holding Owner Billing, co-signed calls 4, 7 and 8, with two conditions written in (the never-sees test on the schedule's answer with the late finish's dollars planted, and the portal line on a link where their GC jobs show, `gcJobsPortalUrl`). Read back and approved by the lead (spike 5d5a0cf68). Amendment 3 (2026-10-10): gc 4 gave the Building lane's nod for the weekly report's portal line, never with the architect copied and only on a job with a schedule drawn. Measured on 14b's head fd0f5dd5b; measured again once 14b is on main. Nothing cut or claimed.
 ---
 
 # The schedule's PR 15b: the customer's picture in their portal
@@ -109,8 +109,17 @@ Nothing works out the picture on the server, and the portal draws no schedule. O
    back to a `gc` view where `customer-portal` shows no GC job of ours. It is `gcContractPortalUrl`'s rule, renamed
    once to `gcJobsPortalUrl`: the merged `all` link at its short address, else a `customer` view, never `gc`. Our
    contract and the two kinds call it. With no such link there is no line and the send still goes; only `contract`
-   refuses `noPortal`. The frame offers a card only under a bill's words. The weekly report is Building's, so its
-   line comes on with Building's nod. *Other way:* the schedule's line only, and the Friday report waits.
+   refuses `noPortal`. The frame offers a card only under a bill's words. The weekly report is Building's, and gc 4
+   gave Building's nod (amendment 3) on two conditions:
+   - **never when the architect is copied:** on `weekly` the architect is a `cc` on the same email
+     (`gcCustomerEmailCc`), so the line would hand them the customer's own link, whose `all` view shows the
+     customer's bills and our contract. With the row's `copied_architect` on, no line, and the report still goes. The
+     kind's test pins it with `copyArchitect` on;
+   - **only on a job with a schedule drawn** (its `gc_schedules` row): a report goes on any job being built with a
+     log that week (`weeklyReportDue`), and a job with nothing drawn would link to a portal that shows none.
+
+   On the unframed email the line lands after the sign-off, as a footer, for both kinds. The row's words are
+   untouched. *Other way:* the schedule's line only, and the Friday report waits.
 9. **What customers see:** the owner's sample portal shows a made-up schedule on its sample job, built by
    `customerPortalSchedule` from the sample's rows. The journey step *GC mode: their schedule in their portal* points
    at it, with its guide.
@@ -179,4 +188,6 @@ portal:* with the link. No real customer is shown or sent anything without the o
 Plan 2026-10-10, helper 1, at the lead's ask. Amendment 1 the same day: gc 3 co-signed every call, with call 4's read
 split by audience over P5d-ii-1's and three more plants in call 5. Amendment 2: gc 5 co-signed calls 4, 7 and 8, with
 the never-sees test held to the schedule's answer, the late finish's dollars planted, and the portal line on
-`gcJobsPortalUrl`. For the lead's read-back. Measured on 14b's head fd0f5dd5b. Nothing cut or claimed.
+`gcJobsPortalUrl`. Read back and approved by the lead, to cut after #5362 (14b), P5d-ii-1 and gc 5's `gcJobsPortalUrl`.
+Amendment 3: gc 4's nod for the weekly report's line, on its two conditions (call 8). Measured on 14b's head
+fd0f5dd5b. Nothing cut or claimed.
