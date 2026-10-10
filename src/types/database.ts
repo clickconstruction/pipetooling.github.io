@@ -9868,6 +9868,81 @@ export type Database = {
           },
         ]
       }
+      gc_office_notices: {
+        Row: {
+          bill_day: string | null
+          created_at: string
+          email_send_log_id: string | null
+          id: string
+          kind: string
+          pay_app_id: string | null
+          project_id: string
+          recipient_customer_id: string | null
+          recipient_email: string
+          recipient_user_id: string | null
+        }
+        Insert: {
+          bill_day?: string | null
+          created_at?: string
+          email_send_log_id?: string | null
+          id?: string
+          kind: string
+          pay_app_id?: string | null
+          project_id: string
+          recipient_customer_id?: string | null
+          recipient_email: string
+          recipient_user_id?: string | null
+        }
+        Update: {
+          bill_day?: string | null
+          created_at?: string
+          email_send_log_id?: string | null
+          id?: string
+          kind?: string
+          pay_app_id?: string | null
+          project_id?: string
+          recipient_customer_id?: string | null
+          recipient_email?: string
+          recipient_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gc_office_notices_email_send_log_id_fkey"
+            columns: ["email_send_log_id"]
+            isOneToOne: false
+            referencedRelation: "email_send_log"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_office_notices_pay_app_id_fkey"
+            columns: ["pay_app_id"]
+            isOneToOne: false
+            referencedRelation: "gc_owner_pay_apps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_office_notices_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "gc_office_notices_recipient_customer_id_fkey"
+            columns: ["recipient_customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gc_office_notices_recipient_user_id_fkey"
+            columns: ["recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gc_owner_acceptances: {
         Row: {
           accepted_by_name: string
@@ -30462,6 +30537,10 @@ export type Database = {
         Returns: Json
       }
       get_gc_money_monday_payload: { Args: never; Returns: Json }
+      get_gc_office_notices_due: {
+        Args: { p_since?: string; p_today?: string }
+        Returns: Json
+      }
       get_gc_statement_email_payload: {
         Args: {
           p_entity_id?: string
