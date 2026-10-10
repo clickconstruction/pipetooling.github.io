@@ -1,0 +1,3 @@
+import { q, CO } from './verify-lib.mjs'
+await q('1 who may call it and what it returns (expect false, true, false, timestamptz)', `SELECT has_function_privilege('authenticated', f, 'EXECUTE') AS signed_in, has_function_privilege('service_role', f, 'EXECUTE') AS service, has_function_privilege('anon', f, 'EXECUTE') AS anon, pg_get_function_result(f::regprocedure) AS returns FROM (VALUES ('public.gc_trade_sign_sow(uuid, uuid, text, text, text, text)')) v(f);`)
+await q('2 a refusal in its words as the service role (expect notFound; rolled back)', `BEGIN; SET LOCAL ROLE service_role; SELECT public.gc_trade_sign_sow('${CO}', gen_random_uuid(), 'Verify, delete me', NULL, NULL, NULL); ROLLBACK;`)
