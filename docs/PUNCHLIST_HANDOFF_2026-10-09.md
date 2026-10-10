@@ -112,7 +112,7 @@ What is left to build, as of the evening of 2026-10-09. Each row is read from th
 | [#86 Records for an owner](../to-dos/owner-records-portal/README.md) | Nothing to build — delete after the first real owner signs |
 | [#87 Lien screens' stale words](../to-dos/lien-screens-stale-words.md) | Nothing to build — delete after the live look at M on a ZZ TEST job |
 | [#92 AIA G702-G703](../to-dos/aia-pay-application-follow-ups.md) | Taunya's look on a phone for item 4 |
-| [#98 A check on a Stripe bill](../to-dos/held-stripe-marks/README.md) | Nothing to build. Check that the sweep closed J904's test bill, then delete J904 and J907. Job 186 is the owner's press. |
+| #98 A check on a Stripe bill — retired 2026-10-10 | Done: the owner ran the last three steps himself on 2026-10-10 ~02:10 UTC (the sweep closed J904's test bill; J904 and J907 deleted; Move to job… on Taunya's check with Stripe on Live) and the card is deleted; the fragments v2.4801, v2.4803 and v2.4822 carry the record. |
 | [#99 Lien desk Rules window](../to-dos/lien-rules-window/README.md) | Nothing to build — delete after a week of use raises nothing |
 | [#100 Map residuals](../to-dos/map-residuals.md) | Item 1, a mock-up and a reason to build it. Item 2, a pick among the card's options. |
 | [#101 Lien desk printed run](../to-dos/lien-printed-run/README.md) | Nothing to build — delete after a week of use, to 2026-10-16 |
