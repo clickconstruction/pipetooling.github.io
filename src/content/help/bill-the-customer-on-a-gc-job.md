@@ -12,7 +12,7 @@ Each pay application goes on the AIA form. It has a line for each trade, our own
 ## Send this month's bill
 
 1. Press {{button:outline|GC}} on the Bids page to open [GC projects](/gc). Press {{button:outline|Bill the customer}} on the job's card.
-2. Read the lines. Each one shows its worth, the work this month and the work so far.
+2. Read the lines. Each one shows its worth, the work this month and the work so far. A trade our own crew does reads its percent from its Pipeline job. The line says where it came from.
 3. Check what the bill asks. It is the work so far, less what they hold back and less earlier certificates.
 4. Press {{button:outline|See the form in Excel}} or {{button:outline|See the form as a PDF}} to look at the form.
 5. Tick **Email it to the customer and the architect now** to email them the form. The tick starts off.
