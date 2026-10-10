@@ -5,6 +5,8 @@ import { GcOurNumber } from './GcOurNumber'
 import { boardStateFromRows } from '../../lib/gc/boardRows'
 import { clinicBoardRows } from '../../lib/gc/boardTestRows'
 import { installDomShims } from '../../test/renderSmokeMocks'
+import { proposalWeeksWords, roughWeeks } from '../../lib/gc/schedule/rough'
+import type { GcProject } from '../../lib/gc/types'
 
 installDomShims()
 
@@ -60,5 +62,42 @@ describe('GcOurNumber', () => {
     fireEvent.change(contingency, { target: { value: '5' } })
     fireEvent.blur(contingency)
     expect(await screen.findByText('Could not save our number.')).toBeTruthy()
+  })
+})
+
+describe('GcOurNumber: weeks to build from the rough (the schedule’s PR 12b, G-45)', () => {
+  const weeksBlock = () => document.querySelector('[data-tour="gc-bid-weeks"]') as HTMLElement | null
+  function openWith(change: (p: GcProject) => GcProject) {
+    const state = carriedState()
+    const project = change(state.projects[0]!)
+    render(<GcOurNumber state={state} project={project} onSave={vi.fn(() => Promise.resolve())} />)
+    return project
+  }
+
+  it('says the weeks are not drawn yet while we bid with no rough, after the price card’s own rows', () => {
+    openWith((p) => ({ ...p, stage: 'pursuing' }))
+    expect(within(weeksBlock()!).getByText('not drawn')).toBeTruthy()
+    expect(within(weeksBlock()!).getByText('Weeks to build: not drawn yet. Draw a rough schedule from the project’s Schedule.'.replace('’', "'"))).toBeTruthy()
+    // After the price card's own rows, not between them.
+    const panel = document.querySelector('[data-gc-our-number="p1"]') as HTMLElement
+    const texts = [...panel.querySelectorAll('*')].map((el) => el.getAttribute('data-tour') ?? el.textContent)
+    expect(texts.indexOf('gc-bid-weeks')).toBeGreaterThan(texts.findIndex((t) => t?.startsWith('Price to')))
+  })
+
+  it('says the weeks from the rough and the proposal’s line, with Copy', async () => {
+    const writeText = vi.fn(() => Promise.resolve())
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true })
+    const project = openWith((p) => ({ ...p, stage: 'pursuing', rough: { start: '2026-11-02', days: {}, by: 'Robert', on: '2026-10-01' } }))
+    const weeks = roughWeeks(project)!
+    expect(within(weeksBlock()!).getByText(String(weeks.weeks))).toBeTruthy()
+    expect(within(weeksBlock()!).getByText(proposalWeeksWords(project)!)).toBeTruthy()
+    fireEvent.click(within(weeksBlock()!).getByRole('button', { name: 'Copy' }))
+    expect(writeText).toHaveBeenCalledWith(proposalWeeksWords(project))
+    expect(await within(weeksBlock()!).findByRole('button', { name: 'Copied' })).toBeTruthy()
+  })
+
+  it('shows no weeks past bidding with no rough', () => {
+    openWith((p) => ({ ...p, stage: 'buyout' }))
+    expect(weeksBlock()).toBeNull()
   })
 })

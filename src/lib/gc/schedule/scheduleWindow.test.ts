@@ -3,7 +3,7 @@
  * refusal, start day and log line, and the opened bar's card on Fair Oaks D, in plain words. Since
  * 9a, the job's own work put on the chart and a failed inspection, each with what it pushes. Since
  * 9b, a new wait, a split, a join and a new baseline, each with the reducer's line. Since 12a, a first draft from a
- * template, as the reducer drew it.
+ * template, as the reducer drew it. Since 12b, the rough while we bid, drawn, refused and kept.
  */
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
@@ -13,7 +13,7 @@ import { ganttBars, type GanttBar } from './gantt'
 import { draftSchedule, scheduleMeasures } from './schedule'
 import { addDays } from '../building'
 import { planMove } from './moves'
-import { TEMPLATE_GONE, barCardRows, baselinePress, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, joinWords, moveWords, newWait, ownWorkOffWords, ownWorkPress, partMovePress, pullLogWords, recoveryLogWords, redoWords, splitPress, undoWords, templateDraftPress } from './scheduleWindow'
+import { TEMPLATE_GONE, barCardRows, baselinePress, changeTimeWords, draftRefusal, draftStart, draftWords, failInspectionPress, joinWords, moveWords, newWait, ownWorkOffWords, ownWorkPress, partMovePress, pullLogWords, recoveryLogWords, redoWords, splitPress, undoWords, roughKeepPress, roughPress, roughRefusal, roughToKeep, templateDraftPress } from './scheduleWindow'
 import { planPull } from './pullEarlier'
 import { withLineReported } from './testReports'
 import { waitKind } from './waits'
@@ -21,6 +21,7 @@ import { splitParts } from './splitBars'
 import { initialGcState } from './testState'
 import { SCHEDULE_STAGES } from './draft'
 import { templateShape } from './templates'
+import { roughWeeks } from './rough'
 import type { ScheduleTemplate } from './types'
 
 const s = initialGcState()
@@ -370,5 +371,66 @@ describe('a first draft from a template (PR 12a, G-44)', () => {
     expect(templateDraftPress(aside, helotes, start, 'tpl-fair')).toEqual({ problem: TEMPLATE_GONE })
     expect(templateDraftPress(st, helotes, start, 'tpl-nobody')).toEqual({ problem: TEMPLATE_GONE })
     expect(plainWordsFailures(TEMPLATE_GONE)).toEqual([])
+  })
+})
+
+describe('the rough while we bid (PR 12b, G-45)', () => {
+  const fair = job(s, 'fairoaksd')
+  const template: ScheduleTemplate = { id: 'tpl-fair', name: 'Fair Oaks shape', on: '2026-10-01', by: 'Robert Douglas', ...templateShape(s, fair)! }
+  const st: GcState = { ...s, scheduleTemplates: [template] }
+  const boerne = job(st, 'boerne')
+  const start = '2026-11-02'
+  const drawn = (r: ReturnType<typeof roughPress>) => {
+    if (!('rough' in r)) throw new Error(r.problem)
+    return r.rough
+  }
+
+  it('draws Boerne from a start day, its 14 weeks, keeping only the days that are whole lengths', () => {
+    const rough = drawn(roughPress(st, boerne, { start, days: {} }, 'Robert Douglas'))
+    expect(rough).toEqual({ start, days: {}, by: 'Robert Douglas', on: st.today })
+    expect(roughWeeks({ ...boerne, rough })?.weeks).toBe(14)
+    const longer = drawn(roughPress(st, boerne, { start, days: { structure: 25, sitePrep: 0, roof: Number.NaN, finishes: 4.6 } }, 'Robert Douglas'))
+    expect(longer.days).toEqual({ structure: 25, finishes: 5 })
+    expect(roughWeeks({ ...boerne, rough: longer })?.weeks).toBeGreaterThan(14)
+  })
+
+  it('copies a template’s lines when one is picked, keeps the copy on a redraw, and drops it with none', () => {
+    const fromTemplate = drawn(roughPress(st, boerne, { start, days: {}, templateId: 'tpl-fair' }, 'Robert Douglas'))
+    expect(fromTemplate.template).toEqual({ id: 'tpl-fair', name: 'Fair Oaks shape', on: st.today })
+    expect(fromTemplate.like).toEqual(template.lines)
+    expect(roughWeeks({ ...boerne, rough: fromTemplate })?.weeks).toBe(27)
+    // The template set aside since: a redraw with no pick keeps the rough's own copy.
+    const aside: GcState = { ...st, scheduleTemplates: [{ ...template, asideOn: '2026-10-05' }] }
+    const redrawn = drawn(roughPress(aside, { ...boerne, rough: fromTemplate }, { start: '2026-11-09', days: {} }, 'Robert Douglas'))
+    expect([redrawn.start, redrawn.template, redrawn.like]).toEqual(['2026-11-09', fromTemplate.template, template.lines])
+    const plain = drawn(roughPress(st, { ...boerne, rough: fromTemplate }, { start, days: {}, templateId: null }, 'Robert Douglas'))
+    expect(plain.template).toBeUndefined()
+    expect(roughPress(aside, boerne, { start, days: {}, templateId: 'tpl-fair' }, 'Robert Douglas')).toEqual({ problem: TEMPLATE_GONE })
+  })
+
+  it('is refused on a lost job, once our bid went in, past bidding and with no start, in words', () => {
+    expect(roughPress(st, { ...boerne, lostOn: '2026-10-01' }, { start, days: {} }, 'x')).toEqual({ problem: 'This job was lost.' })
+    expect(roughPress(st, { ...boerne, ourBidSentOn: '2026-10-01' }, { start, days: {} }, 'x')).toEqual({ problem: 'Our bid went in, so the rough stays as it went.' })
+    expect(roughPress(st, job(st, 'helotes'), { start, days: {} }, 'x')).toEqual({ problem: 'Our bid went in, so the rough stays as it went.' })
+    expect(roughPress(st, { ...job(st, 'helotes'), ourBidSentOn: null }, { start, days: {} }, 'x')).toEqual({ problem: 'The rough is drawn while we bid.' })
+    expect(roughPress(st, boerne, { start: '', days: {} }, 'x')).toEqual({ problem: 'Pick the day work would start.' })
+    expect(roughRefusal(boerne)).toBeNull()
+    for (const words of ['This job was lost.', 'Our bid went in, so the rough stays as it went.', 'The rough is drawn while we bid.', 'Pick the day work would start.']) expect(plainWordsFailures(words), words).toEqual([])
+  })
+
+  it('keeps the weeks later with the day our bid went, never today, and only once (gc 4’s note)', () => {
+    const rough = drawn(roughPress(st, boerne, { start, days: {} }, 'Robert Douglas'))
+    const sent = { ...boerne, rough, ourBidSentOn: '2026-09-28' }
+    expect(roughKeepPress(sent)).toEqual({ kept: { on: '2026-09-28', weeks: 14, finish: roughWeeks(sent)!.finish, at: 'bid' } })
+    expect(roughKeepPress({ ...boerne, rough })).toEqual({ problem: 'Our bid has not gone in yet.' })
+    expect(roughKeepPress({ ...sent, rough: { ...rough, kept: { on: '2026-09-28', weeks: 14, finish: '2027-02-05', at: 'bid' } } })).toEqual({ problem: 'The rough’s weeks are kept already.' })
+    expect(roughKeepPress({ ...boerne, ourBidSentOn: '2026-09-28' })).toEqual({ problem: 'No rough schedule is drawn.' })
+  })
+
+  it('keeps at the Board’s press only what is not kept yet', () => {
+    const rough = drawn(roughPress(st, boerne, { start, days: {} }, 'Robert Douglas'))
+    expect(roughToKeep({ ...boerne, rough }, '2026-10-09', 'award')).toEqual({ on: '2026-10-09', weeks: 14, finish: roughWeeks({ ...boerne, rough })!.finish, at: 'award' })
+    expect(roughToKeep(boerne, '2026-10-09', 'bid')).toBeNull()
+    expect(roughToKeep({ ...boerne, rough: { ...rough, kept: { on: '2026-10-01', weeks: 14, finish: '2027-02-05', at: 'bid' } } }, '2026-10-09', 'award')).toBeNull()
   })
 })
