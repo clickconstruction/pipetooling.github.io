@@ -9,7 +9,7 @@
  * of it (`ScopeBookProject`). Nothing here reads the database: the screen passes the rows in.
  */
 import type { CustomerRole, PlanSheet, ScopeExclusion, SpecSection } from '../../../../../../src/lib/gc/types'
-import type { PlanQuestionView } from '../../../../../../src/lib/gc/questions'
+import type { PlanQuestionView } from './questions.ts'
 import { indexDiff, sheetIndexInText, type IndexDiff } from './plans.ts'
 import type { ScopeBookProject } from '../../../../../../src/lib/gc/scopeBook'
 

@@ -3,7 +3,7 @@
  * the home's words, through the sample `gc-trade-portal` answers for the sample token.
  */
 import { describe, expect, it } from 'vitest'
-import { gcTradePortalSample, gcTradePortalSampleSchedules, SAMPLE_TRADE_IDS as ID } from '../../../supabase/functions/_shared/gcTradePortalSample'
+import { gcTradePortalSample, gcTradePortalSampleSchedules, gcTradePortalSampleScheduleWork, SAMPLE_TRADE_IDS as ID } from '../../../supabase/functions/_shared/gcTradePortalSample'
 import { TRADE_SUBMIT_ERROR_KEYS } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { portalAsks, portalTodos } from './portal'
 import { PORTAL_SPANISH_ON, portalShownLang, portalString } from './portalI18n'
@@ -44,6 +44,18 @@ describe('the function’s answer', () => {
     expect(b.kind === 'ready' && b.schedules).toEqual({})
     const c = readTradePortalAnswer(true, { today: TODAY, slice, schedules: { ...schedules, broken: { mine: 'all of it' } } })
     expect(c.kind === 'ready' && Object.keys(c.schedules)).toEqual([ID.job])
+  })
+
+  it('keeps the schedule work and its to-dos, reads none from a function deployed before them, and drops what it cannot read (P5d-ii)', () => {
+    const { scheduleWork, scheduleTodos } = gcTradePortalSampleScheduleWork(TODAY)
+    const todo = { key: `dates:${ID.move1}`, projectId: ID.job, text: 'New dates on Sample Dental Office to answer.', tone: 'amber', by: null, anchor: 'dates' }
+    const a = readTradePortalAnswer(true, { today: TODAY, slice, scheduleWork, scheduleTodos: [...scheduleTodos, todo] })
+    expect(a.kind === 'ready' && a.scheduleWork).toEqual(scheduleWork)
+    expect(a.kind === 'ready' && a.scheduleTodos).toEqual([todo])
+    const b = readTradePortalAnswer(true, { today: TODAY, slice })
+    expect(b.kind === 'ready' && [b.scheduleWork, b.scheduleTodos]).toEqual([{}, []])
+    const c = readTradePortalAnswer(true, { today: TODAY, slice, scheduleWork: { ...scheduleWork, broken: { dates: 'all' } }, scheduleTodos: [todo, { key: 1 }] })
+    expect(c.kind === 'ready' && [Object.keys(c.scheduleWork), c.scheduleTodos.length]).toEqual([[ID.job], 1])
   })
 
   it('opens a company’s link at /t/', () => {

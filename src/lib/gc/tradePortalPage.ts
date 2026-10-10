@@ -12,6 +12,7 @@ import { WAIVER_SIGN_LIVE } from './drawEmail'
 import { portalQuoteDue, portalTodos, type PortalAsk, type PortalTodo } from './portal'
 import { pDate, pt, pWeekday, type PortalKey, type PortalLang } from './portalI18n'
 import type { PortalSchedule } from './schedule/portalSchedule'
+import type { ScheduleWork } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcState } from './types'
 import { daysUntil, money } from './words'
 
@@ -36,6 +37,10 @@ export type TradePortalAnswer =
       sample: boolean
       /** The company's chart on each job being built, by the job's id (the schedule's PR 14b). None: no chart. */
       schedules: Record<string, PortalSchedule>
+      /** Its side of the schedule on each job being built (the Portal's P5d-ii). None: nothing to show. */
+      scheduleWork: Record<string, ScheduleWork>
+      /** The home's schedule to-dos, worked out where the schedule is (P5d-ii, call 5). */
+      scheduleTodos: PortalTodo[]
     }
   | { kind: 'error'; key: TradePortalErrorKey }
 
@@ -50,7 +55,34 @@ export function readTradePortalAnswer(ok: boolean, body: unknown): TradePortalAn
   if (!isObject(body) || typeof body.today !== 'string' || !isObject(body.slice)) return { kind: 'error', key: 'linkFailed' }
   const slice = body.slice
   if (!isObject(slice.company) || !SLICE_LISTS.every((k) => Array.isArray(slice[k]))) return { kind: 'error', key: 'linkFailed' }
-  return { kind: 'ready', today: body.today, slice: slice as unknown as TradePortalSlice, sample: body.sample === true, schedules: schedulesOf(body.schedules) }
+  return {
+    kind: 'ready',
+    today: body.today,
+    slice: slice as unknown as TradePortalSlice,
+    sample: body.sample === true,
+    schedules: schedulesOf(body.schedules),
+    scheduleWork: scheduleWorkOf(body.scheduleWork),
+    scheduleTodos: scheduleTodosOf(body.scheduleTodos),
+  }
+}
+
+/**
+ * The company's side of the schedule beside the slice (P5d-ii): each job's that reads as one. A function deployed
+ * before it sends none, and the page then draws no block, so the function and the page deploy in either order.
+ */
+function scheduleWorkOf(v: unknown): Record<string, ScheduleWork> {
+  if (!isObject(v)) return {}
+  return Object.fromEntries(
+    Object.entries(v).filter(([, w]) => isObject(w) && Array.isArray(w.dates) && Array.isArray(w.late) && Array.isArray(w.lookAhead) && Array.isArray(w.crew)),
+  ) as Record<string, ScheduleWork>
+}
+
+/** The home's schedule to-dos: each that reads as a to-do. */
+function scheduleTodosOf(v: unknown): PortalTodo[] {
+  if (!Array.isArray(v)) return []
+  return v.filter(
+    (t) => isObject(t) && typeof t.key === 'string' && typeof t.text === 'string' && (t.projectId === null || typeof t.projectId === 'string') && (t.tone === 'red' || t.tone === 'amber' || t.tone === 'plain'),
+  ) as PortalTodo[]
 }
 
 /**
@@ -219,6 +251,17 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   nothingToBill: 'errNothingToBill',
   finalSent: 'errFinalSent',
   finalNotYet: 'errFinalNotYet',
+  // P5d-ii: the schedule's keys. A missing reason and a count past 0 to 50 say the form's own words.
+  datesTakenBack: 'errDatesTakenBack',
+  dayNeeded: 'errDayNeeded',
+  workDone: 'errWorkDone',
+  lateLaterDay: 'errLateLaterDay',
+  pickWhy: 'latePickWhy',
+  notPushedBack: 'errNotPushedBack',
+  noticeClosed: 'errNoticeClosed',
+  weekClosed: 'errWeekClosed',
+  crewWhole: 'crewWhole',
+  alreadyChecked: 'errAlreadyChecked',
   // P5a-1: a file.
   fileType: 'errFileType',
   fileTooBig: 'errFileTooBig',
