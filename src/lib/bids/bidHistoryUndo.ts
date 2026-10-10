@@ -106,10 +106,22 @@ const nameList = (names: ReadonlyArray<string>) => {
   return `${unique.slice(0, 3).join(', ')} and ${unique.length - 3} more`
 }
 
+/** Undo is off for an action no person made (v2.5132). */
+export const BID_UNDO_NO_AUTHOR = 'Undo is off. No person made this change.'
+
+/**
+ * An action no person made: no author and no app tag on any row, such as a server job's removal. The
+ * window names it *the app* (`bidHistoryWho`), so it takes no Undo, as the app's tagged writes take
+ * none. A robot's paste keeps its Undo: it is the robot's, named so.
+ */
+function madeByNoOne(rows: ReadonlyArray<BidHistoryRow>): boolean {
+  return rows.every((r) => r.changedBy == null && !r.byApp && r.action !== 'robot-paste')
+}
+
 /**
  * What Undo on an action does, or why it is off, or null when the line offers neither: another
  * bid's action, the app's own writes (it would only make them again), an action cut at the page's
- * edge, or one with nothing left to take back.
+ * edge, or one with nothing left to take back. An action no person made is off, with the reason.
  *
  * `history` is every row the window has read. Rows newer than the action are always among them,
  * since the read runs newest first.
@@ -119,6 +131,7 @@ export function bidUndoPlan(
   ctx: { openBidId: string; restorable: ReadonlyMap<string, string>; history: ReadonlyArray<BidHistoryRow> },
 ): BidUndoPlan | null {
   if (action.bidId !== ctx.openBidId || action.continues || action.rows.some((r) => r.byApp)) return null
+  if (madeByNoOne(action.rows)) return { ready: false, reason: BID_UNDO_NO_AUTHOR }
 
   const mine = new Set(action.rows.map(lineKey))
   const start = Math.min(...action.rows.map((r) => Date.parse(r.changedAt)))
