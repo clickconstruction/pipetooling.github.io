@@ -15,10 +15,14 @@
 export const PORTAL_SPANISH_ON = false
 
 /**
- * Copy of `WAIVER_SIGN_LIVE` in `src/lib/gc/drawEmail.ts` (a test keeps the two equal): the unconditional waiver signed
- * in the portal waits on the owner's call 2 in portal-p5.md, and until then the kind is refused as one the page never sends.
+ * Copy of `WAIVER_SIGN_LIVE` in `src/lib/gc/drawEmail.ts` (a test keeps the two equal): every lien waiver a trade signs in
+ * the portal waits on the owner's call 2 in portal-p5.md, the unconditional one and the conditional one a pay application
+ * signs, and until then those kinds are refused as ones the page never sends.
  */
 export const WAIVER_SIGN_LIVE = false
+
+/** The kinds that sign a lien waiver (P5c-3b, P5c-3c-ii): held by `WAIVER_SIGN_LIVE`. */
+export const WAIVER_KINDS: ReadonlySet<string> = new Set(['unconditional_waiver', 'pay_app', 'final_pay_app'])
 
 /** Free-text writes a company may make in an hour (PORTAL_REAL_BUILD.md → The functions). */
 export const TRADE_HOURLY_CAP = 10
@@ -49,6 +53,9 @@ export const TRADE_SUBMIT_KINDS = [
   'sow_report',
   'unconditional_waiver',
   'sign_change',
+  // P5c-3c-ii: a pay application and the final one (U6a's and U6c's verbs), each signing its conditional waiver.
+  'pay_app',
+  'final_pay_app',
 ] as const
 
 export type TradeSubmitKind = (typeof TRADE_SUBMIT_KINDS)[number]
@@ -88,6 +95,11 @@ export const TRADE_SQL_ERRORS = {
   sowNotSigned: 409,
   splitLine: 409,
   notPaidYet: 409,
+  // P5c-3c-ii: a pay application with us already, nothing new to bill, and the final one sent or not open yet (U6c).
+  drawWaiting: 409,
+  nothingToBill: 409,
+  finalSent: 409,
+  finalNotYet: 409,
   fileNeeded: 400,
   amountNeeded: 400,
   answerEach: 400,
@@ -137,12 +149,14 @@ export interface TradeCall {
  * A signature's part the function handles around the verb (P2c-ii): the drawn image it stores before the verb and
  * deletes if the verb refuses, or none for a typed one, and the e-sign consent words for the ledger row after, with the
  * paper it is keyed by and the printed name. The statement of work's row is `gc_sow`; since P5c-3b the unconditional
- * waiver's is `gc_draw`, keyed by the draw, and a change's is `gc_trade_change`, keyed by the change order.
+ * waiver's is `gc_draw`, keyed by the draw, and a change's is `gc_trade_change`, keyed by the change order; since P5c-3c-ii
+ * a pay application's is `gc_draw` too, keyed by the draw its verb makes, and its printed name is who signs the G702.
  */
 export interface TradeSignature {
   png: Uint8Array | null
   consent: Record<string, unknown>
-  record: { type: 'gc_sow' | 'gc_draw' | 'gc_trade_change'; id: string }
+  /** The paper the row is keyed by. A null id is the draw the verb makes and returns: a pay application (P5c-3c-ii). */
+  record: { type: 'gc_sow' | 'gc_draw' | 'gc_trade_change'; id: string | null }
   printedName: string
 }
 
@@ -211,6 +225,34 @@ function list(v: unknown, max: number): unknown[] {
   if (v === undefined || v === null) return []
   if (!Array.isArray(v) || v.length > max) throw new Bad()
   return v
+}
+
+/**
+ * A pay application as the window sends it (P5c-3c-ii): who signs it and where from, the last day it covers, and on a
+ * new one each line's percent and its stored materials by the kernels' line ids. The SQL reads what the numbers mean;
+ * a blank period or name reaches it, which says badRequest or nameNeeded.
+ */
+function payAppOf(v: unknown, withLines: boolean): Record<string, unknown> {
+  if (!isObject(v)) throw new Bad()
+  const periodTo = text(v.periodTo, 10)
+  if (periodTo !== '') ymd(periodTo)
+  const out: Record<string, unknown> = {
+    periodTo,
+    address: text(v.address, 300),
+    license: text(v.license, 120),
+    signedBy: text(v.signedBy, 200),
+    signedTitle: text(v.signedTitle, 120),
+  }
+  if (withLines) {
+    out.lines = list(v.lines, 200).map((l) => {
+      if (!isObject(l)) throw new Bad()
+      const toPct = num(l.toPct)
+      const stored = num(l.stored)
+      if (toPct === null || toPct < 0 || toPct > 100 || (stored !== null && stored < 0)) throw new Bad()
+      return { line: uuid(l.line), toPct, ...(stored === null ? {} : { stored }) }
+    })
+  }
+  return out
 }
 
 /** A Drive link the company types until P5a's upload: an https link, or none. */
@@ -347,6 +389,10 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
       return { rpc: 'gc_trade_unconditional_waiver', params: { p_draw_id: uuid(b.drawId) } }
     case 'sign_change':
       return { rpc: 'gc_trade_sign_change', params: { p_change_order_id: uuid(b.changeOrderId) } }
+    case 'pay_app':
+      return { rpc: 'gc_trade_pay_app', params: { p_package_id: uuid(b.packageId), p_app: payAppOf(b.app, true) } }
+    case 'final_pay_app':
+      return { rpc: 'gc_trade_final_pay_app', params: { p_package_id: uuid(b.packageId), p_app: payAppOf(b.app, false) } }
     case 'sign_sow':
       // The function fills the image's path, the IP and the browser from what it stored and the request.
       return { rpc: 'gc_trade_sign_sow', params: { p_sow_id: uuid(b.sowId), p_printed_name: text(b.printedName, 200), p_signature_path: null, p_ip: null, p_user_agent: null } }
@@ -358,6 +404,8 @@ const SIGNED: Partial<Record<TradeSubmitKind, (call: TradeCall) => TradeSignatur
   sign_sow: (call) => ({ type: 'gc_sow', id: String(call.params.p_sow_id) }),
   unconditional_waiver: (call) => ({ type: 'gc_draw', id: String(call.params.p_draw_id) }),
   sign_change: (call) => ({ type: 'gc_trade_change', id: String(call.params.p_change_order_id) }),
+  pay_app: () => ({ type: 'gc_draw', id: null }),
+  final_pay_app: () => ({ type: 'gc_draw', id: null }),
 }
 
 /**
@@ -365,7 +413,8 @@ const SIGNED: Partial<Record<TradeSubmitKind, (call: TradeCall) => TradeSignatur
  * press is refused with consentNeeded. The function reads its words again with `parseEsignConsent` for the ledger row.
  * An image that is not a PNG we keep is a shape the portal never sends. The waiver and a change (P5c-3b) are typed only,
  * since their verbs keep no image, and their name is required here because the verb never reads it; the statement of
- * work's blank name reaches its verb, which says nameNeeded.
+ * work's blank name reaches its verb, which says nameNeeded. A pay application (P5c-3c-ii) is typed too, and its printed
+ * name is the G702's signer, whose blank its verb refuses the same way.
  */
 function signatureOf(kind: TradeSubmitKind, b: Record<string, unknown>, record: TradeSignature['record']): TradeSignature | 'consentNeeded' {
   const raw = b.signaturePngBase64
@@ -375,8 +424,9 @@ function signatureOf(kind: TradeSubmitKind, b: Record<string, unknown>, record: 
     png = signaturePngOf(raw)
     if (!png) throw new Bad()
   }
-  const printedName = text(b.printedName, 200)
-  if (kind !== 'sign_sow' && printedName === '') throw new Bad()
+  const payApp = kind === 'pay_app' || kind === 'final_pay_app'
+  const printedName = text(payApp ? (isObject(b.app) ? b.app.signedBy : '') : b.printedName, 200)
+  if ((kind === 'unconditional_waiver' || kind === 'sign_change') && printedName === '') throw new Bad()
   const consent = b.esignConsent
   if (!isObject(consent) || typeof consent.clauseText !== 'string' || consent.clauseText.trim() === '') return 'consentNeeded'
   return { png, consent, record, printedName }
@@ -401,9 +451,9 @@ export function parseTradeSubmit(body: unknown): TradeSubmitParsed {
   }
 }
 
-/** The unconditional waiver while the owner's call holds it (`WAIVER_SIGN_LIVE`). */
+/** A kind that signs a lien waiver while the owner's call holds them (`WAIVER_SIGN_LIVE`). */
 export function waiverHeld(kind: TradeSubmitKind): boolean {
-  return !WAIVER_SIGN_LIVE && kind === 'unconditional_waiver'
+  return !WAIVER_SIGN_LIVE && WAIVER_KINDS.has(kind)
 }
 
 /** A Spanish choice while Spanish is held (decision 8). */

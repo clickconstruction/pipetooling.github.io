@@ -1017,6 +1017,16 @@ const S = {
   payAppByEmail: { en: 'For now, email your pay application to {gc}.', es: 'Por ahora, envíe su solicitud de pago a {gc} por correo.' },
   payAppCanAsk: { en: 'You can ask for {amount} now.', es: 'Puede pedir {amount} ahora.' },
   payAppReportFirst: { en: 'Report your work above to ask for a draw.', es: 'Reporte su avance arriba para pedir un pago.' },
+  // P5c-3c-ii: a pay application sent from the portal, and the conditional waiver it signs (held by WAIVER_SIGN_LIVE).
+  errDrawWaiting: { en: 'Your last pay application is still with us.', es: 'Su última solicitud de pago todavía está con nosotros.' },
+  errNothingToBill: { en: 'Nothing new to bill since your last pay application.', es: 'No hay nada nuevo que facturar desde su última solicitud de pago.' },
+  errFinalSent: { en: 'Your final pay application went already.', es: 'Su solicitud de pago final ya se envió.' },
+  errFinalNotYet: {
+    en: 'The final pay application opens once every line is billed and the work is accepted.',
+    es: 'La solicitud de pago final se abre cuando cada línea esté facturada y el trabajo esté aceptado.',
+  },
+  condConsentNoun: { en: 'this conditional lien waiver', es: 'esta renuncia condicional de gravamen' },
+  condFinalConsentNoun: { en: 'this conditional final release of lien', es: 'esta liberación final de gravamen condicional' },
   previewNothing: { en: 'Preview. Nothing is saved from here.', es: 'Vista previa. Desde aquí no se guarda nada.' },
   quoteTickHelp: { en: 'Tick what your quote covers. Untick what it leaves out.', es: 'Marque lo que incluye su cotización. Desmarque lo que no incluye.' },
 } satisfies Record<string, Record<PortalLang, string>>

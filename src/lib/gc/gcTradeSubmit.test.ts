@@ -59,7 +59,7 @@ describe('each kind, read into its verb', () => {
       rpc: 'gc_trade_ask_question',
       params: { p_package_id: TRADE, p_text: 'Which panel?', p_sheets: ['E-101'] },
     })
-    expect(TRADE_SUBMIT_KINDS).toHaveLength(21)
+    expect(TRADE_SUBMIT_KINDS).toHaveLength(23)
   })
 
   it('reads a quote as the form builds it, and leaves what the numbers mean to the SQL', () => {
@@ -255,6 +255,63 @@ describe('each kind, read into its verb', () => {
     })
   })
 
+  describe('a pay application and the final one (P5c-3c-ii)', () => {
+    const SOV1 = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc'
+    const SOV2 = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd'
+    const CONSENT = { version: 2, lang: 'en', audience: 'sub', documentNoun: 'this conditional lien waiver', clauseText: 'I agree to sign electronically.' }
+    const typedIn = { periodTo: '2026-10-05', address: ' 400 Sample St ', license: 'TECL 00000', signedBy: ' Dana Ortiz ', signedTitle: 'Owner' }
+
+    it('reads a pay application: its lines by the kernels’ ids, its period and who signs, keyed for the draw it makes', () => {
+      const app = { ...typedIn, lines: [{ line: SOV1, toPct: 70, stored: 1200 }, { line: SOV2, toPct: 0 }] }
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app, esignConsent: CONSENT })).toEqual({
+        ok: true,
+        token: TOKEN,
+        kind: 'pay_app',
+        call: {
+          rpc: 'gc_trade_pay_app',
+          params: {
+            p_package_id: TRADE,
+            p_app: { periodTo: '2026-10-05', address: '400 Sample St', license: 'TECL 00000', signedBy: 'Dana Ortiz', signedTitle: 'Owner', lines: [{ line: SOV1, toPct: 70, stored: 1200 }, { line: SOV2, toPct: 0 }] },
+          },
+        },
+        sign: { png: null, consent: CONSENT, record: { type: 'gc_draw', id: null }, printedName: 'Dana Ortiz' },
+      })
+    })
+
+    it('reads the final one with no lines', () => {
+      const parsed = parseTradeSubmit({ token: TOKEN, kind: 'final_pay_app', packageId: TRADE, app: { ...typedIn, lines: [{ line: SOV1, toPct: 100 }] }, esignConsent: CONSENT })
+      expect(parsed.ok && parsed.call).toEqual({
+        rpc: 'gc_trade_final_pay_app',
+        params: { p_package_id: TRADE, p_app: { periodTo: '2026-10-05', address: '400 Sample St', license: 'TECL 00000', signedBy: 'Dana Ortiz', signedTitle: 'Owner' } },
+      })
+    })
+
+    it('leaves a blank period and a blank name to the SQL, and needs the consent before any write', () => {
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app: { lines: [] }, esignConsent: CONSENT }).ok).toBe(true)
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app: { ...typedIn, lines: [] } })).toEqual({ ok: false, key: 'consentNeeded' })
+    })
+
+    it('refuses a shape the window never sends', () => {
+      for (const app of [
+        null,
+        { ...typedIn, periodTo: '10/05/2026', lines: [] },
+        { ...typedIn, lines: [{ line: 'line-1', toPct: 50 }] },
+        { ...typedIn, lines: [{ line: SOV1, toPct: 120 }] },
+        { ...typedIn, lines: [{ line: SOV1, toPct: 50, stored: -1 }] },
+        { ...typedIn, lines: [{ line: SOV1, toPct: '50' }] },
+      ]) {
+        expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app, esignConsent: CONSENT }), JSON.stringify(app).slice(0, 60)).toEqual({ ok: false })
+      }
+      const PNG = `data:image/png;base64,${btoa(String.fromCharCode(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13))}`
+      expect(parseTradeSubmit({ token: TOKEN, kind: 'pay_app', packageId: TRADE, app: { ...typedIn, lines: [] }, signaturePngBase64: PNG, esignConsent: CONSENT })).toEqual({ ok: false })
+      expect(FREE_TEXT_KINDS.has('pay_app')).toBe(false)
+    })
+
+    it('says the four keys with their statuses', () => {
+      for (const key of ['drawWaiting', 'nothingToBill', 'finalSent', 'finalNotYet']) expect(tradeErrorOf({ code: 'P0001', message: key })).toEqual({ key, status: 409 })
+    })
+  })
+
   it('refuses a shape the portal never sends', () => {
     const bad = [
       { kind: 'drop_table' },
@@ -298,10 +355,10 @@ describe('before the verb', () => {
     expect([spanishHeld(call('set_lang', { lang: 'es' })!), spanishHeld(call('set_lang', { lang: 'en' })!)]).toEqual([!PORTAL_SPANISH_ON, false])
   })
 
-  it('holds the unconditional waiver with the same flag the page reads, until the owner’s call (P5c-3b)', () => {
+  it('holds every lien waiver with the same flag the page reads, until the owner’s call (P5c-3b, P5c-3c-ii)', () => {
     expect(FUNCTION_WAIVER_SIGN_LIVE).toBe(WAIVER_SIGN_LIVE)
     expect(WAIVER_SIGN_LIVE).toBe(false)
-    expect(TRADE_SUBMIT_KINDS.filter(waiverHeld)).toEqual(['unconditional_waiver'])
+    expect(TRADE_SUBMIT_KINDS.filter(waiverHeld)).toEqual(['unconditional_waiver', 'pay_app', 'final_pay_app'])
   })
 
   it('caps free-text writes at ten an hour, and only the free-text kinds', () => {
@@ -338,16 +395,8 @@ describe('the verb’s refusals', () => {
    * status in TRADE_SQL_ERRORS and its words in TRADE_ERROR_WORDS. A lane whose migration adds a trade
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
-  const WAITING: Record<string, string> = {
-    // Building's U6a, the trades' draws: a draw waiting and nothing to bill. Its second signature, alreadySigned, is mapped
-    // since P2c-ii; a statement of work not signed, a split line and a waiver before payment since P5c-3b.
-    drawWaiting: 'P5c-3c',
-    nothingToBill: 'P5c-3c',
-    // Building's U6c, the final pay application (gc_trade_final_pay_app, through gc_final_pay_app_ask): the final
-    // sent already, and asked before every line is billed and the work accepted.
-    finalSent: 'P5c-3c',
-    finalNotYet: 'P5c-3c',
-  }
+  // Empty since P5c-3c-ii: every key the trade verbs raise has its status and its words.
+  const WAITING: Record<string, string> = {}
 
   /**
    * Every key a trade verb raises, its own and those of the `*_ask` helpers it returns through (P5c-2: U3b-i's
