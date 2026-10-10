@@ -46,6 +46,11 @@ the next row. Nobody but the lead pushes to `spike/gc-mode`.
 - **A stand-in proves only what it copies.** A bed run on PGlite or a hand-made table outside GC mode lets pass a
   value the real table's CHECK refuses: U6c's scenario inserted a bill as `'open'`, which `jobs_ledger_invoices`
   refuses (amendment 4). Copy the real table's CHECKs into the stand-in, or run the real bed before the read-back.
+- **A real bed on the office Mac can fail before its first migration** (*FAILED applying …baseline.sql*): each
+  `scripts/pgtest-*.sh` writes psql's errors to `/tmp/$NAME.err`, and another Mac user may own that file. Run a scratch
+  copy: `sed -e 's|cd "$(dirname "$0")/.."|cd "<your checkout>"|' -e 's|NAME="pgtest-gc-building"|NAME="pgtest-gc-building-<you>"|'
+  -e 's|/tmp/$NAME.err|<your scratchpad>/$NAME.err|g' scripts/pgtest-gc-building.sh > <your scratchpad>/pgtest.sh`, then
+  `PGTEST_PORT=<a free port> bash <your scratchpad>/pgtest.sh` (gc 4, U3b, 2026-10-10).
 - Tests: `VITE_SUPABASE_URL=http://x VITE_SUPABASE_ANON_KEY=x npx vitest run src/lib/gcMode src/components/gc`.
   Lint: `npx eslint <your files>`. Typecheck: `npm run typecheck` in the background; it takes 10 to
   25 minutes on a loaded machine; read its exit line. Run it on a quiet tree before you push. It checks
