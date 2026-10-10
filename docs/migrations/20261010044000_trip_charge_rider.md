@@ -69,3 +69,7 @@ Read-only, over the pooler, with `SET default_transaction_read_only = on`:
    ```
    A trip charge made between this check and the push is marked by the backfill if it passes the guards, and shows here.
 3. **Jobs that already lost a trip charge.** None can exist, since no trip charge was ever made. For the record: a job whose bill carries a trip charge entry has its revenue at least its named lines plus `job_rider_fees(id)`, unless the total was set by hand.
+
+## Status
+
+Applied on prod 2026-10-10 03:38 UTC by PUNCHLIST, alone, from the main checkout at `2f3e4d3bd` (#5255 merged 03:32:52 UTC as `804360375`; the dry run listed this file only; `bash scripts/db-push.sh`; drift 845 local / 845 remote, fully applied). Verified read-only right after: `job_rider_fees` and `create_turnaway_trip_charge` both name `trip_charge`; the backfill's set reads 0 bills, as the 02:42 UTC read predicted (no trip charge has ever been made, so no job lost one). No edge function changed; no type changed (the regen's only diff was GC's `gc_trade_sign_sow`, which #5259 carries, so it was discarded here).
