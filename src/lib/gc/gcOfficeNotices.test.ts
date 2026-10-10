@@ -1,12 +1,21 @@
 /**
  * GC mode, Owner Billing's O10b: the office's notices in words (`supabase/functions/_shared/gcOfficeNotices.ts`).
  * The switch holds the day it went on, and anything that is not a real day is off. Each kind says what the README's
- * table promised, and the architect's reminder wears the customer frame while ours stay staff mail.
+ * table promised, and the architect's reminder wears the customer frame while ours stay staff mail. O12b: the customer's
+ * notice before a bill is due, in the customer frame with the bill's portal and card lines; Preview's late notice says
+ * the architect would be reminded, never that they have no email.
  */
 import { describe, expect, it } from 'vitest'
 import {
   billTheCustomerUrl,
+  buildCustomerDueEmail,
   buildOfficeNoticeEmail,
+  customerDueWords,
+  GC_CUSTOMER_DUE_NOTICE_EMAIL_TYPE,
+  GC_CUSTOMER_DUE_NOTICE_FILED_AS,
+  GC_CUSTOMER_DUE_NOTICE_TEST_EMAIL_TYPE,
+  GC_CUSTOMER_DUE_NOTICES_SETTING_KEY,
+  gcNoticesAsked,
   GC_CERTIFY_REMINDER_FILED_AS,
   GC_OFFICE_NOTICE_EMAIL_TYPE,
   GC_OFFICE_NOTICE_KINDS,
@@ -16,6 +25,7 @@ import {
   officeNoticeWords,
   testSubject,
   waiverDrawWords,
+  type GcCustomerDueNotice,
   type GcOfficeNotice,
 } from '../../../supabase/functions/_shared/gcOfficeNotices'
 
@@ -106,6 +116,9 @@ describe('each kind in words', () => {
       lines: ['Pay application 3 for Oak Ridge Clinic went to Hart Architects on Oct 2 and still waits on their certificate.', 'We reminded them on Oct 5.', `Open Bill the customer: ${URL}`],
     })
     expect(officeNoticeWords({ ...late, remindedOn: null }, URL).lines[1]).toBe('They have no email on file, so they were not reminded.')
+    // Preview never records the reminder: beside one that would go, the late notice says so (O12b).
+    expect(officeNoticeWords({ ...late, remindedOn: null }, URL, { wouldRemind: true }).lines[1]).toBe('They would be reminded first.')
+    expect(officeNoticeWords(late, URL, { wouldRemind: true }).lines[1]).toBe('We reminded them on Oct 5.')
     expect(officeNoticeWords({ ...late, remindedOn: null, architect: null }, URL).lines).toEqual([
       'Pay application 3 for Oak Ridge Clinic went to the architect on Oct 2 and still waits on their certificate.',
       'The job has no architect on file, so no one was reminded.',
@@ -155,5 +168,71 @@ describe('the small words', () => {
   it('every kind has its email type, and only the architect’s reminder is filed', () => {
     expect(Object.keys(GC_OFFICE_NOTICE_EMAIL_TYPE).sort()).toEqual([...GC_OFFICE_NOTICE_KINDS].sort())
     expect(GC_OFFICE_NOTICE_EMAIL_TYPE.certify_reminder).toBe(GC_CERTIFY_REMINDER_FILED_AS)
+  })
+})
+
+const dueSoon: GcCustomerDueNotice = {
+  kind: 'pay_soon',
+  projectId: 'p1',
+  project: 'Oak Ridge Clinic',
+  billingJobId: 'j1',
+  payAppId: 'a3',
+  number: 3,
+  final: false,
+  certified: 288879,
+  certifiedOn: '2026-10-06',
+  open: 288879,
+  dueOn: '2026-10-28',
+  promised: false,
+  to: { customerId: 'c1', name: 'Oak Ridge Owner LLC' },
+  replyTo: { name: 'Pat Controller', email: 'pm@x.test' },
+}
+
+describe('the customer’s notice before a bill is due (O12)', () => {
+  it('says when it is due, who certified it and for what, and what is still open', () => {
+    expect(customerDueWords(dueSoon, 'Hart Architects')).toEqual({
+      subject: 'Pay application 3 for Oak Ridge Clinic is due Oct 28',
+      lines: [
+        'Hello,',
+        'Pay application 3 for Oak Ridge Clinic is due on Oct 28.',
+        'Hart Architects certified it for $288,879 on Oct 6.',
+        '$288,879 is still open.',
+        'If it is already on its way, thank you.',
+        'Reply here if anything on it needs a change.',
+      ],
+    })
+  })
+
+  it('names their own day, the final one, part paid, and no architect on file', () => {
+    const w = customerDueWords({ ...dueSoon, promised: true, final: true, open: 238879.5 }, null)
+    expect(w.subject).toBe('Our final pay application for Oak Ridge Clinic is due Oct 28')
+    expect(w.lines.slice(1, 4)).toEqual([
+      'Our final pay application for Oak Ridge Clinic is due on Oct 28, the day you gave us.',
+      'The architect certified it for $288,879 on Oct 6.',
+      '$238,879.50 is still open.',
+    ])
+  })
+
+  it('wears the customer frame, signed by the project manager, with the bill’s portal line and the card line', () => {
+    const plain = buildCustomerDueEmail(dueSoon, { architect: 'Hart Architects', portalUrl: null, cardFee: null })
+    expect(plain.text).toContain('Thank you,\nPat Controller\nClick Construction')
+    expect(plain.text).not.toContain('portal')
+    const portal = buildCustomerDueEmail(dueSoon, { architect: 'Hart Architects', portalUrl: 'https://clicktooling.com/p/oak-ridge', cardFee: null })
+    expect(portal.text).toContain('You can see this bill in your portal: https://clicktooling.com/p/oak-ridge')
+    const card = buildCustomerDueEmail(dueSoon, { architect: 'Hart Architects', portalUrl: 'https://clicktooling.com/p/oak-ridge', cardFee: 8666.37 })
+    expect(card.text).toContain('Or pay it by card in your portal: https://clicktooling.com/p/oak-ridge')
+    expect(card.text).toContain('Paying by card adds a 3% card fee of $8,666.37.')
+  })
+
+  it('Preview and the test read the customer’s only when asked, the office’s otherwise', () => {
+    expect(gcNoticesAsked({ mode: 'preview', notices: 'customer' })).toBe('customer')
+    expect([gcNoticesAsked({ mode: 'preview' }), gcNoticesAsked({ notices: 'office' }), gcNoticesAsked({ notices: 'Customer' }), gcNoticesAsked(null)]).toEqual(['office', 'office', 'office', 'office'])
+  })
+
+  it('has its own switch, email types and sent copy under Bills', () => {
+    expect(GC_CUSTOMER_DUE_NOTICES_SETTING_KEY).toBe('gc_customer_due_notices_on_v1')
+    expect([GC_CUSTOMER_DUE_NOTICE_EMAIL_TYPE, GC_CUSTOMER_DUE_NOTICE_TEST_EMAIL_TYPE]).toEqual(['gc_customer_due_notice', 'gc_customer_due_notice_test'])
+    expect(GC_CUSTOMER_DUE_NOTICE_FILED_AS.startsWith('bill')).toBe(true)
+    expect(gcOfficeNoticesSince('2026-10-15')).toBe('2026-10-15')
   })
 })

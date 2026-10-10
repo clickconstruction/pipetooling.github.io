@@ -105,17 +105,20 @@ The window reads the job's schedule when it opens. The finish that counts is the
 
 ## The reminders the app sends
 
-Once the owner turns them on, the app sends three emails by itself. Each one goes once.
+Once the owner turns them on, the app sends four emails by itself. Each one goes once.
 
 - Two days before bill day, the project manager hears that this month's pay application is ready to draft. The email names each trade that still owes its unconditional waiver.
 - When a pay application waits 3 days for its certificate, the architect gets a reminder. It comes from Click Construction, and their reply goes to the project manager.
 - At 5 days, the project manager hears that it still waits.
+- Three days before a certified bill is due, the customer hears when it is due and what is still open. A bill on card does not get it.
 
 The project manager hears only when they can see the money. Otherwise the owner hears instead.
 
 A sent bill then says {{chip:gray|We reminded the architect on Oct 5.}} The owner turns the reminders on in [Settings](/settings). Only pay applications sent from that day get them, so nothing old goes out.
 
 In Settings, {{button:outline|Preview today’s notices}} lists what would go today. Nothing is sent. Pick a day in **Count pay applications sent since** to see a pay application sent earlier. {{button:outline|Email me a test}} sends you a copy of each, marked TEST.
+
+The customer's notice has its own switch, **Email GC customers 3 days before a bill is due**. The owner turns it on after reading a test copy. Only bills certified from that day get it. A certified bill then says {{chip:gray|We told them on Oct 25 it is due Oct 28.}}
 
 ## Before the first bill
 

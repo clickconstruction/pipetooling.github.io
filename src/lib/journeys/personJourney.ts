@@ -485,6 +485,7 @@ export function customerJourney(subject: Extract<PersonSubject, { kind: 'custome
     steps['gc-certify-ask-email'] = na('GC mode: read on the GC project')
     steps['gc-certify-reminder-email'] = na('GC mode: read on the GC project')
     steps['gc-certified-email'] = na('GC mode: read on the GC project')
+    steps['gc-due-soon-email'] = na('GC mode: read on the GC project')
     steps['gc-change-order-email'] = na('GC mode: read on the GC project')
     steps['gc-reminder-email'] = na('GC mode: read on the GC project')
     steps['gc-interest-bill-email'] = na('GC mode: read on the GC project')

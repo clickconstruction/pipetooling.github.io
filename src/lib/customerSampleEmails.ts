@@ -8,7 +8,7 @@ import { ESTIMATE_PUBLIC_TERMS_KEY, sampleBidRoomResponse, sampleEstimateRespons
 import { normalizeSharedEstimateOptions, sharedEstimateOptionTotalCents } from '../../supabase/functions/_shared/estimateOptions'
 import { BID_COVER_LETTER_EXCLUSIONS_KEY, BID_COVER_LETTER_TERMS_KEY } from '../../supabase/functions/_shared/customerSampleFixtures'
 import { parseSharedBidRoomPayload } from '../../supabase/functions/_shared/bidRoomPayload'
-import { buildOfficeNoticeEmail } from '../../supabase/functions/_shared/gcOfficeNotices'
+import { buildCustomerDueEmail, buildOfficeNoticeEmail } from '../../supabase/functions/_shared/gcOfficeNotices'
 import { ESTIMATE_EXPERIENCE_APP_KEY_LIST, resolveEstimateCustomerExperience } from './estimateCustomerExperience'
 import { buildContractSigningEmail, type ContractSigningEmail } from './contractSigningEmail'
 import { PORTAL_SHORT_ORIGIN } from './portal/portalShortOrigin'
@@ -335,7 +335,7 @@ export function buildSampleBillEmail(ctx: SampleEmailContext): BuiltEmail {
 /** The From line the inbox shows for a sample — the estimate's per-trade name (the sample is the plumbing brand), the company for the rest (v2.4138). */
 export function sampleEmailFrom(id: SampleEmailId): string {
   if (id === 'gc-trade-email') return mailboxWithName(GC_TRADE_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
-  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certify-reminder' || id === 'gc-certified' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill' || id === 'gc-weekly' || id === 'gc-contract')
+  if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certify-reminder' || id === 'gc-certified' || id === 'gc-due-soon' || id === 'gc-change-order' || id === 'gc-reminder' || id === 'gc-interest-bill' || id === 'gc-weekly' || id === 'gc-contract')
     return mailboxWithName(GC_CUSTOMER_EMAIL_FROM_NAME, CUSTOMER_EMAIL_FROM_ADDRESS)
   return id === 'estimate' ? estimateEmailFrom('plum') : COMPANY_EMAIL_FROM_LABEL
 }
@@ -452,6 +452,7 @@ function buildSampleEmailBody(id: SampleEmailId, ctx: SampleEmailContext): { sub
   if (id === 'gc-trade-email') return buildSampleGcTradeEmail(ctx)
   if (id === 'gc-pay-app' || id === 'gc-certify-ask' || id === 'gc-certified' || id === 'gc-change-order') return buildSampleGcCustomerEmail(id, ctx)
   if (id === 'gc-certify-reminder') return buildSampleGcCertifyReminderEmail(ctx)
+  if (id === 'gc-due-soon') return buildSampleGcDueSoonEmail(ctx)
   if (id === 'gc-reminder') return buildSampleGcReminderEmail(ctx)
   if (id === 'gc-interest-bill') return buildSampleGcInterestBillEmail(ctx)
   if (id === 'gc-weekly') return buildSampleGcWeeklyEmail(ctx)
@@ -534,6 +535,32 @@ export function buildSampleGcCertifyReminderEmail(ctx: SampleEmailContext): Buil
     },
     '',
     String(ctx.sender?.name ?? 'The project manager'),
+  )
+}
+
+/**
+ * GC mode (O12b): the customer's notice 3 days before a certified bill is due, as `gc-office-notices` sends it: the
+ * notice's own words and frame on a made-up bill, with the portal line.
+ */
+export function buildSampleGcDueSoonEmail(ctx: SampleEmailContext): BuiltEmail {
+  return buildCustomerDueEmail(
+    {
+      kind: 'pay_soon',
+      projectId: 'sample',
+      project: 'Sample Retail Shell',
+      billingJobId: null,
+      payAppId: 'sample',
+      number: 3,
+      final: false,
+      certified: 48600,
+      certifiedOn: ymdPlusDays(ctx.todayYmd, -27),
+      open: 48600,
+      dueOn: ymdPlusDays(ctx.todayYmd, 3),
+      promised: false,
+      to: { customerId: 'sample', name: 'Sample Owner LLC' },
+      replyTo: { name: String(ctx.sender?.name ?? 'The project manager'), email: null },
+    },
+    { architect: 'Sample Architects', portalUrl: `${PORTAL_SHORT_ORIGIN}sample-owner`, cardFee: null },
   )
 }
 
