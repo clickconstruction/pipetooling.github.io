@@ -134,6 +134,17 @@ So it can be cut now, in eight PRs (below).
 7. **B2b-vii, *How the stage is going*.**
    - `stageHealth` and `GcStageHealth` under a project's title.
    - The strip's **set the start date** goes through `setGcProjectStartItem` (B6-c-ii). Its other writes are presses main already has.
+   - *Amended, as built (gc 2, the lead's go, 2026-10-11):*
+     - **One answer with the ring:** the strip reads the ring's own state (`ringState` from vi-c's `useRingLayers`) and draws only when `ringState.ready` has the project's stage. A stage the reader may not see, or whose layers are not read yet, draws neither.
+     - **Next steps:** the spike's twelve project tabs (`HealthTab`) map to main's card through a pure `healthTabTarget`, pinned to every tab by a test:
+       - packages and contracts → the card's trades;
+       - plans, number (Our number), tabs (the bid tabs), start (Get started), schedule, log, submittals, draws, closeout → their own windows or parts;
+       - owner → Bill the customer.
+
+       Each opens behind the card button's own door. A step the reader may not open is said in words, with no press.
+     - **The one write:** **Set a start date** is Get started's own press, a dev's as Get started is, with a refusal said in words.
+     - **Money:** the strip's money bars and numbers (billed, paid, not billed yet) show only to a reader who sees Our number (`canSeeGcMoney` and the board's money shown). The spike's "In the real build…" titles are gone.
+     - **Guide:** `see-how-a-gc-jobs-stage-is-going`, new.
 8. **B2b-viii, Work the list** (`GcFollowUpSheet`, E5), with the call list's `onWorkList` wired in `GcSchedule.tsx`. It comes last, since it draws on every count above.
 
 Each PR gets its release note and fragment, its guide where a screen changes, and its docs. Every screen PR has a render test. The kernel PR has the spike's tests and `lift-same`'s table.
