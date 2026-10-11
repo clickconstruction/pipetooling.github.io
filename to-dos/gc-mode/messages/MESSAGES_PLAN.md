@@ -466,6 +466,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.74, 2026-10-11**: the two tag pickers stack beside the line, in the add row and the edit row, and the window's
+  sentence under its title is gone (the owner's asks).
 - **v1.73, 2026-10-11**: the quick replies window's table in groups, who it is for then the step in the flow's order,
   the most used first in each, the group's tags on its head row; the last two columns one line each, so a row is one
   line; the search lights the words in the table too (the owner: sorted better).
