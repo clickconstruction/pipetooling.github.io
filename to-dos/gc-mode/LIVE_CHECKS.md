@@ -167,6 +167,14 @@ showed three things:
   Robert's screen*. No record may put his name on another hand. So either Malachi draws it himself, or it goes **Send it
   to his desk**, later.
 - **The form's own warning** (§ 53.284(c), *Not settled yet*) is the form doing its job.
+**Held again 2026-10-11, 04:4x UTC, nothing written** (still 0 `job_lien_releases` rows). On the rebuilt app (run
+38110278564) the window reads *Click Construction, LLC* as the party, so v2.5228 is live. Grace's word: the desk send
+goes to Robert, not Malachi. But **Who signs** offers only the leaders (Malachi Whites, Sample leader): the pick read
+`users.role = master_technician`. Grace: "Devs should be able to sign as well. Robert is a dev." The cut is v2.5231
+(#5399): the pick offers the leaders then the devs, a dev by his name. Step 10 walks on Monday once it is on main and
+the app has rebuilt: the waiver made, left unsigned, **Send it to his desk** to Robert, whose Dashboard inbox lists it.
+Signing it is Robert's own press. The owner hears that his record's name reads *Robert* and the window's field is
+editable. Day 1 closed here.
 
 ### The card (O8, Stripe test mode)
 
