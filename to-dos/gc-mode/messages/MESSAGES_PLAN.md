@@ -143,7 +143,7 @@ In place of a bare "waiting 6 d", the header's third line says whose move it is 
 words (the owner, 2026-10-11): an orange **Our court · 6 d** when the last word was theirs (it counts from
 their last message), a green **Their court · 2 d** when the last word was ours (it counts from our last
 message, or reads *Their court · until Wed Oct 7* while a promise runs), and beside it two stamps,
-**Them** text · Sat Sep 26, 2:14 PM and **Us** email · Sat Sep 19, 4:05 PM; a stamp from today reads *today · 11:30 AM*, since no day divider stands beside it (the owner, 2026-10-11; the same on the Follow up row's snippet and the job card's list, while a line in the thread keeps the bare time under its day divider). On the folded header the two stamps share one line and a small mark between them says how far apart they are, **Us against Them**: *−7* when our last word is seven days older than theirs (orange, we are behind), *+2* when ours is the newer one (green), hours under a day; its hover card says it in words (the owner, 2026-10-11). A reply, an email or a call
+**Them** text · Sat Sep 26, 2:14 PM and **Us** email · Sat Sep 19, 4:05 PM; a stamp from today reads *today · 11:30 AM*, since no day divider stands beside it, and an older one ends with how long ago, *· yesterday* or *· 2 days ago* (the owner, 2026-10-11; the folded one-line form leaves it off, since the mark between the stamps carries the difference) (the owner, 2026-10-11; the same on the Follow up row's snippet and the job card's list, while a line in the thread keeps the bare time under its day divider). On the folded header the two stamps share one line and a small mark between them says how far apart they are, **Us against Them**: *−7* when our last word is seven days older than theirs (orange, we are behind), *+2* when ours is the newer one (green), hours under a day; its hover card says it in words (the owner, 2026-10-11). A reply, an email or a call
 from us moves the ball to their court; their next message moves it back. A note for the team moves
 nothing, since they never saw it. The Follow up rows and the Messages list carry the same court word in
 small, so the queue reads "Our court · 6 d" without opening the thread. Snoozed and the promise stay as
@@ -397,3 +397,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   self-review).
 - **v1.40, 2026-10-11**: a time with no day divider beside it says *today*: the Them and Us stamps (full and short),
   the Follow up row's snippet, the job card's conversations and the A job page (the owner's ask).
+- **v1.41, 2026-10-11**: the header's stamps end with how long ago (*· yesterday*, *· 2 days ago*; today says only
+  today); the folded one-line form leaves it off (the owner's ask).
