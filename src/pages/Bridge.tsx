@@ -17,6 +17,9 @@ import { buildVectors } from '../lib/bridge/vectors'
 import { BridgeVectorDaysPanel } from '../components/bridge/BridgeVectorDaysPanel'
 import { BridgeHeadline } from '../components/bridge/BridgeHeadline'
 import { buildHeadline, cashLight, netPositionLight } from '../lib/bridge/headline'
+import { loadMercuryCash, mercuryAccountsLine, type MercuryCash } from '../lib/bridge/mercuryCash'
+import { carryingDay, carryingSentence, lateWithinDays, receiptsConfidence, type ReceiptBasis } from '../lib/bridge/cashConfidence'
+import { BridgeCashConfidence } from '../components/bridge/BridgeCashConfidence'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
@@ -67,6 +70,10 @@ export default function Bridge() {
   // The top line (v2.5216): the last 13 pay weeks' sessions, the Weeks zoom's own range, through the same cache.
   const [weeksInputs, setWeeksInputs] = useState<VectorDaysInputs | null>(null)
   const [weeksError, setWeeksError] = useState<string | null>(null)
+  // Cash on hand from the bank (v2.5218): Mercury's balances, read when the page loads; the typed figure is the fallback.
+  const [bank, setBank] = useState<MercuryCash | null>(null)
+  const [bankError, setBankError] = useState<string | null>(null)
+  const [bankLoading, setBankLoading] = useState(false)
   const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
 
   useEffect(() => {
@@ -92,6 +99,29 @@ export default function Bridge() {
     }
   }, [role, user?.id, refreshKey])
 
+  useEffect(() => {
+    if (role !== 'dev' || !user?.id) return
+    let cancelled = false
+    setBankLoading(true)
+    setBankError(null)
+    void (async () => {
+      try {
+        const b = await loadMercuryCash()
+        if (!cancelled) setBank(b)
+      } catch (e) {
+        if (!cancelled) {
+          setBank(null)
+          setBankError(formatErrorMessage(e))
+        }
+      } finally {
+        if (!cancelled) setBankLoading(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, user?.id, refreshKey])
+
   const profit = useMemo(
     () =>
       data
@@ -109,10 +139,11 @@ export default function Bridge() {
     [data],
   )
 
-  const cashToday = useMemo(() => {
+  const typedRolled = useMemo(() => {
     if (!data?.cashSetting) return null
     return cashTodayFromAsOf({ cashAsOfUsd: data.cashSetting.usd, asOfYmd: data.cashSetting.asOfYmd, todayYmd: data.todayYmd, bankFlowByDay: data.bankFlowByDay })
   }, [data])
+  const cashToday = useMemo(() => (bank ? bank.usd : typedRolled), [bank, typedRolled])
 
   const history = useMemo(() => {
     if (!data || cashToday == null || !fin.data) return null
@@ -131,10 +162,11 @@ export default function Bridge() {
   }, [data, cashToday, fin.data])
 
   // Receipts: each open AR item on its expected day — promise → customer median → company median → 45 days.
-  // Recently late waits the grace window; late past the doubtful line is not counted (listed with collections).
-  const { receipts, doubtful } = useMemo<{ receipts: Array<CashEvent & { source: string }>; doubtful: Array<{ label: string; usd: number; daysLate: number }> }>(() => {
+  // Recently late lands within its own pace from today (v2.5219: 7–45 days, 14 with no pace), so late invoices spread instead of piling on one day;
+  // late past the doubtful line is not counted (listed with collections).
+  const { receipts, doubtful } = useMemo<{ receipts: Array<CashEvent & { source: string; basis: ReceiptBasis }>; doubtful: Array<{ label: string; usd: number; daysLate: number }> }>(() => {
     if (!data || !fin.data) return { receipts: [], doubtful: [] }
-    const out: Array<CashEvent & { source: string }> = []
+    const out: Array<CashEvent & { source: string; basis: ReceiptBasis }> = []
     const doubtful: Array<{ label: string; usd: number; daysLate: number }> = []
     for (const item of fin.data.ar.items) {
       if (item.amount <= 0) continue
@@ -143,15 +175,20 @@ export default function Bridge() {
       const model = billedExpectedPayModel({ billedAtIso: null, estBillYmd: item.dateYmd, customerId: item.customerId ?? null }, data.paySpeeds, data.todayYmd, promise ?? null)
       let expectedYmd: string
       let source: string
+      let basis: ReceiptBasis
       if (model) {
         expectedYmd = model.expectedYmd
         source = model.source === 'promised' ? 'promised' : model.source === 'customer' ? `pays in ~${model.medianDays}d` : `company pace ~${model.medianDays}d`
+        basis = model.source
       } else {
         const base = item.dateYmd ?? data.todayYmd
         expectedYmd = new Date(Date.parse(`${base}T00:00:00Z`) + DEFAULT_PAY_DAYS * 86_400_000).toISOString().slice(0, 10)
         source = `no history · ${DEFAULT_PAY_DAYS}d default`
+        basis = 'default'
       }
-      const sched = scheduleReceipt(expectedYmd, data.todayYmd)
+      const pace = model && model.source !== 'promised' ? model.medianDays : null
+      const graceDays = lateWithinDays(pace)
+      const sched = scheduleReceipt(expectedYmd, data.todayYmd, { graceDays })
       if (sched.status === 'doubtful') {
         doubtful.push({ label: item.label, usd: item.amount, daysLate: sched.daysLate })
         continue
@@ -161,7 +198,8 @@ export default function Bridge() {
         usd: item.amount,
         label: item.label,
         kind: 'receipt',
-        source: sched.status === 'late' ? `${sched.daysLate}d late — assumed within ${LATE_RECEIPT_GRACE_DAYS}d` : source,
+        source: sched.status === 'late' ? `${sched.daysLate}d late — assumed within ${graceDays}d${pace != null ? ' by their pace' : ''}` : source,
+        basis: sched.status === 'late' ? 'late' : basis,
       })
     }
     return { receipts: out.sort((a, b) => (a.ymd < b.ymd ? -1 : a.ymd > b.ymd ? 1 : 0)), doubtful }
@@ -183,6 +221,9 @@ export default function Bridge() {
     const events: CashEvent[] = [...bills.map((b) => ({ ymd: b.ymd, usd: b.usd, label: b.label, kind: 'bill' as const })), ...receipts]
     return buildCashForecast({ todayYmd: data.todayYmd, daysAhead: BRIDGE_DAYS_AHEAD, cashTodayUsd: cashToday, floorUsd: data.floorUsd, events, dailyDrainUsd: data.dailyDrainUsd })
   }, [data, cashToday, receipts, bills])
+
+  const confidence = useMemo(() => receiptsConfidence(receipts), [receipts])
+  const carry = useMemo(() => (forecast ? carryingSentence(carryingDay(forecast, receipts), md) : null), [forecast, receipts])
 
   const saveCash = useCallback(async () => {
     const v = Number(cashDraft.replace(/[^0-9.-]/g, ''))
@@ -362,7 +403,8 @@ export default function Bridge() {
     : ''
   const typedDaysAgo = data?.cashSetting ? Math.round((Date.parse(`${data.todayYmd}T00:00:00Z`) - Date.parse(`${data.cashSetting.asOfYmd}T00:00:00Z`)) / 86_400_000) : null
   const netLight = netPositionLight(netToday != null && netStart != null ? { deltaUsd: netToday - netStart, todayUsd: netToday, startLabel: windowStartLabel, paperProfitUsd: truth?.paper.profitUsd ?? null, billingLagUsd: truth?.billingLagUsd ?? null } : null)
-  const cashLightRead = cashLight(forecast && data ? { lowestUsd: forecast.lowest.cashUsd, lowestLabel: md(forecast.lowest.ymd), floorUsd: forecast.floorUsd, clearsFloor: forecast.clearsFloor, daysUnderFloor: forecast.daysUnderFloor, typedLabel: data.cashSetting ? md(data.cashSetting.asOfYmd) : null, typedDaysAgo } : null)
+  const cashLightRead = cashLight(forecast && data ? { lowestUsd: forecast.lowest.cashUsd, lowestLabel: md(forecast.lowest.ymd), floorUsd: forecast.floorUsd, clearsFloor: forecast.clearsFloor, daysUnderFloor: forecast.daysUnderFloor, typedLabel: bank ? null : data.cashSetting ? md(data.cashSetting.asOfYmd) : null, typedDaysAgo: bank ? null : typedDaysAgo, synced: !!bank } : null)
+  const bankReadAt = bank ? new Date(bank.readAtIso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
   const billsByDay = groupByDay(bills)
   const receiptsByDay = groupByDay(receipts)
 
@@ -435,7 +477,7 @@ export default function Bridge() {
             {history ? (
               <BridgeNetPositionChart history={history} />
             ) : (
-              <div style={{ ...det, padding: '1.2rem 0' }}>{fin.data ? 'Type cash on hand below to anchor this line.' : 'Loading money owed…'}</div>
+              <div style={{ ...det, padding: '1.2rem 0' }}>{!fin.data ? 'Loading money owed…' : bankLoading ? 'Reading the bank balance…' : 'Type cash on hand below to anchor this line.'}</div>
             )}
             <div style={det}>Payroll and sub-labor owed are carried flat in the history (they turn over weekly); supply invoices move it on their invoice and payment dates.</div>
           </div>
@@ -492,18 +534,39 @@ export default function Bridge() {
                 <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: forecast.clearsFloor ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{cashRead}</span>
               )}
             </div>
-            {forecast && cashToday != null ? <BridgeCashChart forecast={forecast} cashTodayUsd={cashToday} /> : <div style={{ ...det, padding: '1.2rem 0' }}>Type cash on hand below to start the forecast.</div>}
+            {forecast && cashToday != null ? <BridgeCashChart forecast={forecast} cashTodayUsd={cashToday} /> : <div style={{ ...det, padding: '1.2rem 0' }}>{bankLoading ? 'Reading the bank balance…' : 'Type cash on hand below to start the forecast.'}</div>}
+            {forecast && <BridgeCashConfidence confidence={confidence} carry={carry} />}
             <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.3rem', ...det }}>
               <span><i aria-hidden style={{ display: 'inline-block', width: 14, borderTop: '2px dashed #8b5cf6', marginRight: 5, verticalAlign: 3 }} />Cash forecast</span>
               <span><i aria-hidden style={{ display: 'inline-block', width: 14, borderTop: '2px dotted var(--text-red-600)', marginRight: 5, verticalAlign: 3 }} />Cash floor</span>
               <span style={{ color: 'var(--text-red-600)' }}>▼ bill due</span>
               <span style={{ color: 'var(--text-green-700)' }}>▲ receipt expected</span>
-              <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <label htmlFor="bridge-cash" style={det}>Cash on hand today</label>
-                <input id="bridge-cash" value={cashDraft} onChange={(e) => setCashDraft(e.target.value)} placeholder="e.g. 164000" inputMode="numeric" style={inputStyle} />
-                <button type="button" onClick={() => void saveCash()} style={btnStyle}>Set</button>
-                {data.cashSetting && data.cashSetting.asOfYmd !== data.todayYmd && cashToday != null && (
-                  <span style={det}>typed {md(data.cashSetting.asOfYmd)} · rolled to {shortK(cashToday)} through bank flows since</span>
+              <span style={{ marginLeft: 'auto', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="bridge-cash-source">
+                {bank ? (
+                  <>
+                    <span style={det}>
+                      Cash on hand <b style={{ color: 'var(--text)' }}>{shortK(bank.usd)}</b> · the bank's balance at {bankReadAt}
+                      {bank.accounts.length > 1 ? ` · ${mercuryAccountsLine(bank.accounts)}` : ''}
+                    </span>
+                    {data.cashSetting && typedRolled != null && Math.abs(typedRolled - bank.usd) >= 1000 && (
+                      <span style={{ ...det, color: 'var(--text-amber-800)' }} data-testid="bridge-cash-typed-drift">
+                        the figure typed {md(data.cashSetting.asOfYmd)} rolled through the ledger would read {shortK(typedRolled)}: {shortK(Math.abs(typedRolled - bank.usd))} of flows since are not in the app
+                      </span>
+                    )}
+                    <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={bankLoading} style={btnStyle}>
+                      {bankLoading ? 'Reading…' : 'Read again'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <label htmlFor="bridge-cash" style={det}>Cash on hand today</label>
+                    <input id="bridge-cash" value={cashDraft} onChange={(e) => setCashDraft(e.target.value)} placeholder="e.g. 164000" inputMode="numeric" style={inputStyle} />
+                    <button type="button" onClick={() => void saveCash()} style={btnStyle}>Set</button>
+                    {bankError && <span style={{ ...det, color: 'var(--text-amber-800)' }}>the bank could not be read ({bankError}) — the typed figure stands for now</span>}
+                    {data.cashSetting && data.cashSetting.asOfYmd !== data.todayYmd && cashToday != null && (
+                      <span style={det}>typed {md(data.cashSetting.asOfYmd)} · rolled to {shortK(cashToday)} through bank flows since</span>
+                    )}
+                  </>
                 )}
                 <label htmlFor="bridge-floor" style={{ ...det, marginLeft: '0.6rem' }}>Floor</label>
                 <input id="bridge-floor" value={floorDraft} onChange={(e) => setFloorDraft(e.target.value)} inputMode="numeric" style={{ ...inputStyle, width: 80 }} />
@@ -530,7 +593,7 @@ export default function Bridge() {
             </div>
             <div style={panel}>
               <div style={label}>Receipts expected · next 8 weeks</div>
-              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → company pace → {DEFAULT_PAY_DAYS} days · late invoices assumed within {LATE_RECEIPT_GRACE_DAYS}d · past {DOUBTFUL_AFTER_DAYS}d late not counted</div>
+              <div style={{ ...det, marginTop: '0.2rem' }}>promise date → this customer's pay speed → company pace → {DEFAULT_PAY_DAYS} days · a late invoice assumed within its own pace from today (7–45d, {LATE_RECEIPT_GRACE_DAYS}d with none) · past {DOUBTFUL_AFTER_DAYS}d late not counted</div>
               <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
                 {receiptsByDay.slice(0, 10).map((r) => (
                   <li key={r.ymd} style={listRow}>
@@ -606,7 +669,7 @@ export default function Bridge() {
             </div>
           </div>
 
-          {(data.crew.pendingClosedHours > 0 || (data.hygiene.unattributedNoncard ?? 0) > 0 || (data.hygiene.unlinkedCard ?? 0) > 0 || data.earned.assumedHalfJobs.length > 0 || data.earned.noRevenueJobs.length > 0 || data.cashSetting) && (
+          {(data.crew.pendingClosedHours > 0 || (data.hygiene.unattributedNoncard ?? 0) > 0 || (data.hygiene.unlinkedCard ?? 0) > 0 || data.earned.assumedHalfJobs.length > 0 || data.earned.noRevenueJobs.length > 0 || (data.cashSetting && !bank)) && (
             <div style={{ marginTop: '0.6rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.5rem 0.9rem', fontSize: '0.8rem', color: 'var(--text-amber-900)', display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
               <strong style={{ letterSpacing: '0.12em', fontSize: '0.68rem' }}>DATA GAPS</strong>
               {data.crew.pendingClosedHours > 0 && <span>{hrs(data.crew.pendingClosedHours)} unapproved</span>}
@@ -614,7 +677,7 @@ export default function Bridge() {
               {(data.hygiene.unlinkedCard ?? 0) > 0 && <span>{data.hygiene.unlinkedCard} card purchases unsorted</span>}
               {data.earned.assumedHalfJobs.length > 0 && <span>{data.earned.assumedHalfJobs.length} open job{data.earned.assumedHalfJobs.length === 1 ? '' : 's'} with no % complete — assumed half done</span>}
               {data.earned.noRevenueJobs.length > 0 && <span>{data.earned.noRevenueJobs.length} worked job{data.earned.noRevenueJobs.length === 1 ? '' : 's'} with no contract $ — earning $0</span>}
-              {data.cashSetting && <span>cash on hand is typed ({md(data.cashSetting.asOfYmd)}), not synced</span>}
+              {data.cashSetting && !bank && <span>cash on hand is typed ({md(data.cashSetting.asOfYmd)}), not read from the bank</span>}
             </div>
           )}
 

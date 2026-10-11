@@ -113,7 +113,7 @@ A plan's own status line (top of the file) is the one place its progress is reco
 
 | Plan | Purpose | Status |
 |---|---|---|
-| [`PUNCHLIST_HANDOFF_2026-10-10.md`](./PUNCHLIST_HANDOFF_2026-10-10.md) | The punch-list lead's hand-off of 2026-10-10: what the evening pool shipped (52 PRs, four migrations), the one walk still owed, the owner's decisions and the night's gotchas. |
+| [`PUNCHLIST_HANDOFF_2026-10-10.md`](./PUNCHLIST_HANDOFF_2026-10-10.md) | The punch-list lead's hand-off of 2026-10-10: what the evening pool shipped (52 PRs, four migrations), the one walk still owed, the owner's decisions and the night's gotchas. | handed off 2026-10-10 |
 | [`PUNCHLIST_HANDOFF_2026-10-09.md`](./PUNCHLIST_HANDOFF_2026-10-09.md) | The punch-list lead's hand-off of 2026-10-09: tonight's anon-revoke window, the owed pushes and the required-check PATCH in order, open PRs, where every card stands after the owner's two decision sittings, as a table of what is left to build and who has it tonight and a table of what waits, the owner questions filed, the gotchas. | handed off 2026-10-09 |
 | [`PUNCHLIST_HANDOFF_2026-10-08.md`](./PUNCHLIST_HANDOFF_2026-10-08.md) | The punch-list lead's hand-off of 2026-10-07/08: the owed pushes and deploys in order, open PRs, where every card stands, the owner questions filed, the gotchas. | done except where the 2026-10-09 hand-off says otherwise |
 | [`ESTIMATOR_TWIN_PIPELINE_PLAN.md`](./ESTIMATOR_TWIN_PIPELINE_PLAN.md) | Umbrella plan for the plans-to-proposal estimator-twin pipeline: five waves across PT/CT/twin-mcp/harness, each ending in a live test gate. | in progress (`twins/HANDOFF.md` runs the program) |
@@ -145,4 +145,4 @@ A plan's own status line (top of the file) is the one place its progress is reco
 - **Docs ship with features**: `recent-features/v2.NNNN.md` fragment + release note per PR, `migrations/<version>_<slug>.md` per migration, `EDGE_FUNCTIONS.md` section per function, help guide per user-facing flow (`../CLAUDE.md`).
 - Migration files cited in docs may live in `supabase/archive/migrations-pre-baseline/` — history was squash-baselined at `20250101000000_baseline.sql` (2026-06-04); "2027"-dated filenames there are typos from spring 2026.
 
-last_updated: 2026-10-09
+last_updated: 2026-10-10

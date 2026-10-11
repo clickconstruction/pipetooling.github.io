@@ -85,6 +85,7 @@ describe('the lights', () => {
     expect(cashLight({ ...base, typedLabel: null, typedDaysAgo: null })).toMatchObject({ tone: 'green', lead: 'lowest point $15.4k on Oct 12', sentence: 'Above the $5.0k floor every day of the window.' })
     expect(cashLight({ ...base, typedLabel: 'Sep 3', typedDaysAgo: 37 })).toMatchObject({ tone: 'amber', sentence: 'Above the $5.0k floor every day of the window. Cash on hand was typed Sep 3, 37 days ago.' })
     expect(cashLight({ ...base, lowestUsd: -2000, clearsFloor: false, daysUnderFloor: 3, typedLabel: 'Oct 10', typedDaysAgo: 0 })).toMatchObject({ tone: 'red', sentence: '$7.0k under the $5.0k floor, 3 days below it. Cash on hand was typed Oct 10.' })
+    expect(cashLight({ ...base, typedLabel: 'Sep 3', typedDaysAgo: 37, synced: true })).toMatchObject({ tone: 'green', sentence: "Above the $5.0k floor every day of the window. Cash on hand is today's bank balance." })
     expect(cashLight(null).tone).toBe('none')
   })
   it('shortK', () => {

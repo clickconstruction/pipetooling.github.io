@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildGcTradeEmail,
   GC_TRADE_EMAIL_FROM_NAME,
+  GC_TRADE_EMAIL_TEST_TYPE,
   newTradeToken,
   parseTradeEmail,
   spanishHeld,
@@ -17,8 +18,11 @@ import {
   tradeEmailGroup,
   tradeEmailReach,
   tradeEmailRecipients,
+  tradeEmailRecipientsOf,
+  tradeEmailTestSubject,
   tradeGreeting,
   tradePortalLinkUrl,
+  tradeTestLinkUrl,
   type TradeMailCompany,
   type TradeMailPerson,
 } from '../../../supabase/functions/_shared/gcTradeEmail'
@@ -40,6 +44,7 @@ import {
   gcTradeEmailRefusal,
   inviteEmailLines,
   readTradeEmailAnswer,
+  readTradeEmailTestAnswer,
   tradeMailLang,
 } from './tradeEmail'
 import { stageOf, tradePortalState } from './tradePortalState'
@@ -112,6 +117,47 @@ describe('parseTradeEmail', () => {
       good({ kind: 'paper', group: 'job' }),
     ]
     for (const body of bad) expect(parseTradeEmail(body).ok, JSON.stringify(body)?.slice(0, 80)).toBe(false)
+  })
+})
+
+describe('parseTradeEmail: a nudge to several kinds, and a test copy (the Board’s B2b-viii-b)', () => {
+  it('reads a nudge’s groups in the groups’ own order, and leaves them off when unset', () => {
+    const parsed = parseTradeEmail(good({ kind: 'nudge', groups: ['pay', 'quotes'] }))
+    expect(parsed.ok && parsed.req.groups).toEqual(['quotes', 'pay'])
+    const plain = parseTradeEmail(good({ kind: 'nudge' }))
+    expect(plain.ok && 'groups' in plain.req).toBe(false)
+    expect(parseTradeEmail(good({ kind: 'nudge', groups: null })).ok).toBe(true)
+  })
+
+  it('reads a test copy of any kind, and leaves test off when unset', () => {
+    for (const kind of ['invite', 'nudge', 'msa'] as const) {
+      const parsed = parseTradeEmail(good({ kind, test: true }))
+      expect(parsed.ok && parsed.req.test, kind).toBe(true)
+    }
+    const real = parseTradeEmail(good())
+    expect(real.ok && 'test' in real.req).toBe(false)
+    expect(parseTradeEmail(good({ test: false })).ok).toBe(true)
+  })
+
+  it('refuses groups on another kind, an empty or doubled list, a group it does not know, and a test that is not yes or no', () => {
+    const bad = [
+      good({ groups: ['quotes'] }),
+      good({ kind: 'paper', group: 'pay', groups: ['pay'] }),
+      good({ kind: 'nudge', groups: [] }),
+      good({ kind: 'nudge', groups: ['quotes', 'quotes'] }),
+      good({ kind: 'nudge', groups: ['quotes', 'legal'] }),
+      good({ kind: 'nudge', groups: 'quotes' }),
+      good({ kind: 'nudge', groups: ['quotes', 'job', 'contracts', 'pay', 'quotes'] }),
+      good({ test: 'yes' }),
+      good({ test: 1 }),
+    ]
+    for (const body of bad) expect(parseTradeEmail(body).ok, JSON.stringify(body).slice(0, 120)).toBe(false)
+  })
+
+  it('marks a test copy’s subject and its log, and shows no link in it', () => {
+    expect(tradeEmailTestSubject('  Following up on the W-9 ')).toBe('[TEST] Following up on the W-9')
+    expect(GC_TRADE_EMAIL_TEST_TYPE).not.toBe('gc_trade_email')
+    expect(tradeTestLinkUrl('https://clicktooling.com/')).toBe('https://clicktooling.com/t/…')
   })
 })
 
@@ -201,6 +247,24 @@ describe('the recipients', () => {
       { name: 'Luis Ruiz', email: 'luis@example.com' },
     ])
     expect(tradeEmailReach([{ name: 'A', email: 'a@x.com', main: true }, { name: 'B', email: 'A@X.com', main: false }, { name: 'C', email: 'not an email', main: false }])).toEqual([{ name: 'A', email: 'a@x.com' }])
+  })
+
+  it('sends a nudge about several kinds to everyone who gets any of them, the main contact first, once each (B2b-viii-b)', () => {
+    for (const { about, company, people } of companies) {
+      for (const groups of [['quotes'], ['quotes', 'pay'], ['job', 'pay'], [...TRADE_MAIL_GROUPS]] as const) {
+        // The client's rule (followUpMailTo): each group's people in turn, each person once, the main contact first.
+        const each = groups.flatMap((g) => mailRecipients(partnerOf(company, people), g).map(same))
+        const once = each.filter((r, i) => each.findIndex((x) => x.main === r.main && x.name === r.name && x.email === r.email) === i)
+        const want = [...once.filter((r) => r.main), ...once.filter((r) => !r.main)]
+        expect(tradeEmailRecipientsOf(company, people, groups).map(same), `${about}, ${groups.join('+')}`).toEqual(want)
+      }
+    }
+    const [, bookkeeper] = companies
+    expect(tradeEmailReach(tradeEmailRecipientsOf(bookkeeper!.company, bookkeeper!.people, ['quotes', 'pay']))).toEqual([
+      { name: 'Dana Ortiz', email: 'dana@example.com' },
+      { name: 'Marcus Lee', email: 'marcus@example.com' },
+    ])
+    expect(tradeEmailReach(tradeEmailRecipientsOf(bookkeeper!.company, bookkeeper!.people, ['pay']))).toEqual([{ name: 'Marcus Lee', email: 'marcus@example.com' }])
   })
 
   it('leaves no one when nobody in the group has an email', () => {
@@ -301,6 +365,16 @@ describe('the office’s side', () => {
     expect(readTradeEmailAnswer({ error: 'notOnProject' }, null)).toEqual({ ok: false, key: 'notOnProject', detail: null })
     expect(readTradeEmailAnswer(null, { error: 'Something else' })).toEqual({ ok: false, key: 'failed', detail: null })
     expect(readTradeEmailAnswer('junk', null)).toEqual({ ok: false, key: 'failed', detail: null })
+  })
+
+  it('reads a test copy: where it went and who the real one reaches, never a send (B2b-viii-b)', () => {
+    const wouldGo = [{ name: 'Dana Ortiz', email: 'dana@example.com' }]
+    expect(readTradeEmailTestAnswer({ companyId: COMPANY, test: true, email: 'bids@clickplumbing.com', to: ['Dana Ortiz'], wouldGo }, null)).toEqual({ ok: true, test: true, email: 'bids@clickplumbing.com', wouldGo })
+    expect(readTradeEmailTestAnswer(null, { error: 'spanishHeld' })).toEqual({ ok: false, key: 'spanishHeld', detail: null })
+    // A real send's answer to a test is not taken as a test.
+    expect(readTradeEmailTestAnswer({ companyId: COMPANY, messageId: 'm1', emailSendLogId: 'l1', to: ['Dana Ortiz'] }, null)).toMatchObject({ ok: false, key: 'failed' })
+    // And a test's answer is never read as a send.
+    expect(readTradeEmailAnswer({ companyId: COMPANY, test: true, email: 'bids@clickplumbing.com', to: [], wouldGo }, null)).toMatchObject({ ok: false, key: 'failed' })
   })
 
   it('sends an invitation’s words without the greeting, its lines as a list and what it leaves out', () => {

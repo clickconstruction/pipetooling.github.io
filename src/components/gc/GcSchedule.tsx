@@ -122,7 +122,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcGantt } from './GcGantt'
 import { GcActivityEditor } from './GcActivityEditor'
 import { GcBarCaller, GcCallList } from './GcCallList'
-import { GcFollowUpSheet } from './GcFollowUpSheet'
+import { GcFollowUpSheet, type FollowUpFromCompany } from './GcFollowUpSheet'
 import { GcPlaceLine, GcPlacesCard } from './GcPlaces'
 import { GcAddOwnWork, GcBaseline, GcInspectionCheck, GcMilestones, GcOwnWorkButtons, GcWaits } from './GcScheduleCards'
 import { GcPartsCard } from './GcSplitBars'
@@ -156,6 +156,8 @@ const NO_READS: ScheduleReads = {}
 /** The Follow up sheet's log on the schedule (the Board's B2b-viii-a): the page's presses, and who signs the draft. */
 export interface ScheduleFollowUp {
   writes: FollowUpWriters
+  /** The email from Click (B2b-viii-b), for whoever may send a trade email. Unset: From me only. */
+  fromCompany?: FollowUpFromCompany
   me: string | null
   /** After a send or a call is logged: the page reads the board again. */
   onLogged?: () => void | Promise<void>
@@ -1083,6 +1085,7 @@ function ScheduleView({
         <GcFollowUpSheet
           state={state}
           writes={followUp.writes}
+          {...(followUp.fromCompany ? { fromCompany: followUp.fromCompany } : {})}
           me={followUp.me}
           {...(sheet.partnerId ? { startPartnerId: sheet.partnerId } : {})}
           startCalling={sheet.calling}
