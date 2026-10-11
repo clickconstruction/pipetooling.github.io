@@ -1,0 +1,111 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Stamps and the flow rail: mock-ups</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#eef7ea}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:20px 24px 60px}
+h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 6px}p{margin:4px 0 10px;color:var(--text-muted);max-width:760px}
+.opt{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.card .lab{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;letter-spacing:.3px}
+.pick{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft)}
+.hdr{width:560px}.hdr .row1{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.av{width:38px;height:38px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700;font-size:13px;display:inline-flex;align-items:center;justify-content:center}
+.hdr h2{margin:0;font-size:20px}.corner{margin-left:auto;display:inline-flex;gap:8px;align-items:center}
+.pill{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);border:1px solid #c7d8f5}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}.seg span{padding:4px 10px;font-size:13px}.seg .on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.facts{font-size:13.5px;margin:6px 0 0}.facts b{font-weight:700}.facts .m{color:var(--text-muted)}
+.row3{display:flex;align-items:flex-start;gap:10px;margin-top:6px}
+.court{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:2px 9px 2px 7px;border-radius:999px;border:1px solid #f0d3b0;background:var(--warn-soft);color:var(--warn)}.court i{width:9px;height:9px;border-radius:50%;background:var(--warn);display:inline-block}
+.btn{font-size:12px;border:1px solid var(--border);border-radius:8px;padding:2px 8px;background:#fff}
+.stamps{margin-left:auto;display:grid;grid-template-columns:auto auto;column-gap:8px;row-gap:1px;font-size:12px;color:var(--text-muted);text-align:right}
+.stamps b{font-weight:600;color:var(--text);text-align:right}
+.stamps.left b{text-align:left}
+.stamps.tbl{border-left:2px solid var(--border);padding-left:10px}
+.stamps.last{grid-template-columns:auto;row-gap:0}
+.stamps.last span{white-space:nowrap}
+.stamps.last .them{color:var(--warn);font-weight:600}
+.flowline{margin-left:auto;font-size:12px;color:var(--text-muted);text-align:right;line-height:1.35}
+.flowline b{color:var(--text)}
+/* rails */
+.scene{display:grid;grid-template-columns:minmax(0,1fr) 64px;gap:12px;width:420px;background:var(--bg);padding:8px;border-radius:12px}
+.scene .thread{background:#fff;border:1px solid var(--border);border-radius:12px;height:300px;padding:12px;color:var(--text-muted);font-size:12px}
+.scene .thread .ln{height:9px;background:#eef0f3;border-radius:5px;margin:8px 0}
+.rail{background:#fff;border:1px solid var(--border);border-radius:12px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:0;position:relative}
+.rail .open{font-size:14px;color:var(--accent);border:1px solid var(--border);border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;background:#fff;margin-bottom:6px}
+.rail .lane{font-size:9px;letter-spacing:.6px;color:var(--text-muted);text-transform:uppercase;margin:6px 0 2px}
+.rail .st{width:16px;height:16px;border-radius:50%;border:2px solid #cfd5dd;background:#fff;box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:10px;position:relative}
+.rail .st.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.rail .st.now{border-color:var(--warn);background:var(--warn-soft);width:20px;height:20px}
+.rail .st.now::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.rail .st.now.them{border-color:var(--ok);background:var(--ok-soft)}.rail .st.now.them::after{background:var(--ok)}
+.rail .ln{width:2px;height:10px;background:#dde1e6}.rail .ln.done{background:var(--ok)}
+.rail .tag{font-size:9px;font-weight:700;padding:0 5px;border-radius:999px;margin-top:3px}
+.rail .tag.us{background:var(--warn-soft);color:var(--warn)}.rail .tag.them{background:var(--ok-soft);color:var(--ok)}
+.rail .ring{width:44px;height:44px;border-radius:50%;background:conic-gradient(var(--ok) 0 57%,#e3e6ea 57% 100%);display:flex;align-items:center;justify-content:center;margin:4px 0}
+.rail .ring span{width:34px;height:34px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.rail .abbr{font-size:9.5px;color:var(--text-muted);margin-top:1px;max-width:56px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-align:center}
+.rail .abbr.now{color:var(--warn);font-weight:700}
+.rail .cnt{font-size:11px;font-weight:700;color:var(--text);margin-top:6px}
+.rail .stack{display:flex;flex-direction:column;align-items:center;gap:0}
+.rail .cap{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--text-muted);margin-top:8px}
+.note{font-size:12px;color:var(--text-muted);margin-top:8px;max-width:360px}
+</style></head><body>
+<h1>Two mock-ups: the Them / Us stamps, and the flow as a rail</h1>
+<p>Each option is drawn on the real header. The blue frame is my pick. Below each, in one line, why.</p>
+
+<h2>1 · The stamps, stacked and aligned from the right</h2>
+<div class="opt">
+<div class="card hdr pick"><div class="lab">A · a two-column block at the right edge of the court line</div>
+ <div class="row1"><span class="av">PR</span><h2>Dr. Priya Raman</h2><span class="corner"><span class="pill">R Rosa has this · since Sat Sep 26</span><span class="seg"><span class="on">Open</span><span>Snoozed</span><span>Done</span></span></span></div>
+ <div class="facts"><b>Customer:</b> Helotes Dental Office <span class="m">· (210) 555-0144 · priya@helotesdental.example</span></div>
+ <div class="row3"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span><span class="btn">Settled</span>
+  <div class="stamps"><b>Them</b><span>text · Sat, Sep 26 · 2:14 PM</span><b>Us</b><span>email · Sat, Sep 19 · 4:05 PM</span></div></div>
+ <div class="note">The labels sit in their own column so the dates line up under each other, and the block hugs the right edge. The court pill keeps the left. Two lines tall, nothing else moves.</div></div>
+
+<div class="card hdr"><div class="lab">B · the same block with a hairline, like a ledger margin</div>
+ <div class="row1"><span class="av">PR</span><h2>Dr. Priya Raman</h2><span class="corner"><span class="pill">R Rosa has this · since Sat Sep 26</span><span class="seg"><span class="on">Open</span><span>Snoozed</span><span>Done</span></span></span></div>
+ <div class="facts"><b>Customer:</b> Helotes Dental Office <span class="m">· (210) 555-0144 · priya@helotesdental.example</span></div>
+ <div class="row3"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span><span class="btn">Settled</span>
+  <div class="stamps tbl left"><b>Them</b><span>text · Sat, Sep 26 · 2:14 PM</span><b>Us</b><span>email · Sat, Sep 19 · 4:05 PM</span></div></div>
+ <div class="note">Same block, labels left-aligned inside it, a 2px rule at its left. Reads as a small table. A touch heavier than A.</div></div>
+
+<div class="card hdr"><div class="lab">C · one line each, newest first, the waiting side in color</div>
+ <div class="row1"><span class="av">PR</span><h2>Dr. Priya Raman</h2><span class="corner"><span class="pill">R Rosa has this · since Sat Sep 26</span><span class="seg"><span class="on">Open</span><span>Snoozed</span><span>Done</span></span></span></div>
+ <div class="facts"><b>Customer:</b> Helotes Dental Office <span class="m">· (210) 555-0144 · priya@helotesdental.example</span></div>
+ <div class="row3"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span><span class="btn">Settled</span>
+  <div class="stamps last"><span class="them">Them · text · Sat, Sep 26 · 2:14 PM</span><span>Us · email · Sat, Sep 19 · 4:05 PM</span></div></div>
+ <div class="note">No label column; the side whose word was last is tinted the court's color. Quicker to read, but the dates no longer line up, and the color repeats what the pill already says.</div></div>
+</div>
+
+<h2>2 · Their flow as a rail, like the list's</h2>
+<p>The button goes. The right edge always carries a 64px rail with the flow drawn small; its ‹ opens the full panel (300px), the panel's › folds it back, and the choice is remembered like the left rail's. Every mark has a hover card with the step's name, who it is on and what finishes it; a click opens the panel scrolled to that step. Below 760px the rail turns into one row of marks above the thread.</p>
+<div class="opt">
+<div class="card pick"><div class="lab">R1 · a vertical stepper: done, now, next, with whose move it is</div>
+ <div class="scene"><div class="thread">the thread<div class="ln"></div><div class="ln" style="width:70%"></div><div class="ln"></div><div class="ln" style="width:40%"></div></div>
+  <div class="rail"><span class="open">‹</span>
+   <span class="lane">once</span>
+   <span class="st done">✓</span><span class="ln done"></span><span class="st done">✓</span><span class="ln done"></span><span class="st done">✓</span><span class="ln done"></span><span class="st done">✓</span>
+   <span class="lane">per job</span>
+   <span class="st now"></span><span class="tag us">us</span><span class="ln"></span><span class="st"></span><span class="ln"></span><span class="st"></span><span class="ln"></span><span class="st"></span>
+   <span class="cnt">4 / 8</span></div></div>
+ <div class="note">The same shape as the panel's chart, shrunk to marks: green ticks for done, the orange ring for the step on now with <b>us</b> or <b>them</b> under it, hollow for what comes. Two lanes keep their captions. At a glance: how far along, whose move. It mirrors the left rail's avatars-with-dots.</div></div>
+
+<div class="card"><div class="lab">R2 · the stepper with a word under each mark</div>
+ <div class="scene"><div class="thread">the thread<div class="ln"></div><div class="ln" style="width:70%"></div><div class="ln"></div><div class="ln" style="width:40%"></div></div>
+  <div class="rail"><span class="open">‹</span>
+   <span class="lane">once</span>
+   <span class="st done">✓</span><span class="abbr">Asked</span><span class="st done">✓</span><span class="abbr">Bid</span><span class="st done">✓</span><span class="abbr">Yes</span><span class="st done">✓</span><span class="abbr">Signed</span>
+   <span class="lane">per job</span>
+   <span class="st now"></span><span class="abbr now">Start</span><span class="st"></span><span class="abbr">On site</span><span class="st"></span><span class="abbr">Draws</span><span class="st"></span><span class="abbr">Done</span></div></div>
+ <div class="note">Readable without hovering, but every step needs a one-word name that fits 56px, which Settings → Flows would have to ask for, and the rail gets tall on a long flow.</div></div>
+
+<div class="card"><div class="lab">R3 · a progress ring and the step on now</div>
+ <div class="scene"><div class="thread">the thread<div class="ln"></div><div class="ln" style="width:70%"></div><div class="ln"></div><div class="ln" style="width:40%"></div></div>
+  <div class="rail"><span class="open">‹</span>
+   <span class="ring"><span>4/8</span></span>
+   <span class="st now"></span><span class="tag us">us</span><span class="abbr now">Start date</span>
+   <span class="cap">their flow</span></div></div>
+ <div class="note">The smallest: how far, what is on now, whose move. Hides the shape of the journey, which is the point of a flow, so it is the least like the panel it opens.</div></div>
+</div>
+
+<h2>Is this the best we can do?</h2>
+<p>A for the stamps: the labels column is what makes two lines read as a pair, and right-hugging keeps the court pill in the eye's first position. R1 for the rail: it is the panel's own chart at a smaller size, so folding and unfolding changes nothing but size, and the orange ring with us / them answers the question the owner asks most, whose move is it, before the panel is even opened. One thing R1 cannot do that the panel can: show a loop (each draw, each ask). In the rail a loop is a mark with a small ↻ in its tip and a second ring once a round is on. I would not draw more than that at 64px.</p>
+</body></html>
