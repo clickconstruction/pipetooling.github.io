@@ -143,6 +143,15 @@ nothing, since they never saw it. The Follow up rows and the Messages list carry
 small, so the queue reads "Our court · 6 d" without opening the thread. Snoozed and the promise stay as
 their own pills.
 
+**We owe them.** Our last word does not always end our turn: "I will send the start date Monday" is a
+message from us and a thing we still have to do (the owner, 2026-10-11). So the send window asks one
+thing before Send, *After this goes, is anything still on us?*, with what it is and a day; the toolbar's
+*We owe them…* sets the same later. While it is open the ball stays in our court whatever was said last,
+the header reads *Our court · we owe the start date · by Mon Oct 5*, Follow up lists it under **We owe
+them** with who marked it and when, and the thread gets a gray event line. *Settled* clears it, and the
+court goes back to whose word was last. The app's table needs an owed item per contact: what, by when,
+who marked it, when, and when it was settled.
+
 ## Every control explains itself on hover
 
 Hovering any control (and tabbing to it) opens a small white card, the look of a little window: the
@@ -304,3 +313,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.19, 2026-10-11**: whose court it is: the header's third line reads Our court or Their court
   with the count, and the two stamps Them and Us with the channel and time of each last word; the
   Follow up rows and the list carry the court word. An older email from Rosa to Priya seeds the Us stamp.
+- **v1.20, 2026-10-11**: *We owe them*: the send window asks whether anything is still on us; the
+  toolbar's *We owe them…* and *Settled*; the header reads *Our court · we owe …*; Follow up lists them
+  under *We owe them*; events in the thread. Priya seeds one: the start date by Mon Oct 5.
