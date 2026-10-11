@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: the jobs rail, selected against starred, three options</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:900px}
+.opt{max-width:900px;margin:0 0 22px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.frame .st{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45}
+.rail{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rail .lbl{font-size:13px;color:var(--text-muted)}
+.rail .lbl b{color:var(--text);font-weight:600}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:var(--surface);font-size:13px;white-space:nowrap}
+.chip .n{color:var(--text-muted)}
+.chip .star{color:#c9a200}
+.chip .x,.chip .o{color:var(--text-muted)}
+.chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.chip.on .n{color:var(--accent);opacity:.8}
+.chip.dim{opacity:.45}
+.chip.ghost{border-style:dashed;color:var(--text-muted)}
+.chip.def{border-color:#e3cf6e;background:#fff9dd}
+.chip .fun{font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;font-size:13px}
+.seg span{padding:4px 10px;background:var(--surface)}
+.seg span+span{border-left:1px solid var(--border)}
+.seg span.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.menu{display:inline-block;vertical-align:top;margin-left:14px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);width:300px;overflow:hidden;font-size:13px}
+.menu .ph{padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border);font-size:12px}
+.menu .r{padding:9px 12px;border-bottom:1px solid var(--border)}
+.menu .r:last-child{border-bottom:0}
+.menu .r b{display:block;font-weight:600}
+.menu .r small{color:var(--text-muted)}
+.menu .r.on{background:var(--accent-soft)}
+.tip{display:inline-block;vertical-align:top;margin-left:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px 12px;font-size:13px;width:300px}
+.tip b{display:block;font-size:13.5px;margin-bottom:3px}
+.tip .c{color:var(--text-muted);font-size:12.5px;margin-top:6px}
+.pick{max-width:900px;font-size:13.5px;line-height:1.5}
+.pick ol{margin:0 0 8px 18px;padding:0}
+</style>
+</head>
+<body>
+<h1>The jobs rail: selected against starred</h1>
+<p class="lead">Greg Paulk's thread. Today a chip is <b>blue</b> when the thread is filtered to that job's lines and carries a <b>gold star</b> when it is the default, the job new messages land on; every other chip shows a hollow star, and each chip has five targets (the name and the note filter, the star sets the default, ⧉ opens the job, × removes it). Nothing names either state. Each option below is drawn twice: nothing picked, then filtered to Boerne Retail Shell with Stone Oak Pharmacy the default.</p>
+
+<div class="opt">
+<h2>A · Name the filter, star only the default <small>· the chip keeps one click, the row says what it is showing</small></h2>
+<div class="frame"><div class="st">Nothing picked</div>
+<div class="rail"><span class="lbl">Their jobs</span><span class="chip"><span>Boerne Retail Shell · Sitework</span><span class="n">· bid Thu Oct 8</span><span class="o">⧉</span></span><span class="chip"><span>Boerne Retail Pad B · Sitework</span><span class="n">· bid Oct 22</span><span class="o">⧉</span></span><span class="chip def"><span class="star">★</span><span>Stone Oak Pharmacy</span><span class="n">· building</span><span class="o">⧉</span></span><span class="chip ghost">+ add a job</span></div></div>
+<div class="frame"><div class="st">Filtered to Boerne Retail Shell</div>
+<div class="rail"><span class="lbl"><b>Showing only</b></span><span class="chip on"><span class="fun">⌕</span><span>Boerne Retail Shell · Sitework</span><span class="n">· bid Thu Oct 8</span><span class="o">⧉</span><span class="x">✕</span></span><span class="chip dim"><span>Boerne Retail Pad B · Sitework</span><span class="n">· bid Oct 22</span><span class="o">⧉</span></span><span class="chip def dim"><span class="star">★</span><span>Stone Oak Pharmacy</span><span class="n">· building</span><span class="o">⧉</span></span><span class="chip ghost dim">+ add a job</span></div>
+<div class="tip" style="margin:10px 0 0"><b>★ New messages land here</b>Stone Oak Pharmacy is Greg's default: a text or a call from him goes on this job until someone changes it.<div class="c">To change it, open a job (⧉) and press Make this the default. Dragging a chip onto a line ties that one message only.</div></div></div>
+<p class="why">One click on a chip still filters, but the row's label turns into <b>Showing only</b>, the picked chip gets a ⌕ and its own ✕ to clear, and the other chips dim, so the state reads at a glance. Only the default carries a star, on a pale gold chip, with a hover card that says what the star means. The hollow stars and the × go: making a job the default and removing it from the person move into the job's card behind ⧉, where they are rare moves named in words. Three targets per chip instead of five; drag is unchanged.</p>
+</div>
+
+<div class="opt">
+<h2>B · The filter leaves the chips <small>· a Show strip like the list's All · Customers · Trades</small></h2>
+<div class="frame"><div class="st">Nothing picked</div>
+<div class="rail"><span class="lbl">Their jobs</span><span class="chip"><span>Boerne Retail Shell · Sitework</span><span class="n">· bid Thu Oct 8</span><span class="o">⧉</span></span><span class="chip"><span>Boerne Retail Pad B · Sitework</span><span class="n">· bid Oct 22</span><span class="o">⧉</span></span><span class="chip def"><span class="star">★</span><span>Stone Oak Pharmacy</span><span class="n">· building</span><span class="o">⧉</span></span><span class="chip ghost">+ add a job</span></div>
+<div class="rail" style="margin-top:8px"><span class="lbl">Show</span><span class="seg"><span class="on">All</span><span>Boerne Shell</span><span>Pad B</span><span>Stone Oak</span><span>No job</span></span></div></div>
+<div class="frame"><div class="st">Filtered to Boerne Retail Shell</div>
+<div class="rail"><span class="lbl">Their jobs</span><span class="chip"><span>Boerne Retail Shell · Sitework</span><span class="n">· bid Thu Oct 8</span><span class="o">⧉</span></span><span class="chip"><span>Boerne Retail Pad B · Sitework</span><span class="n">· bid Oct 22</span><span class="o">⧉</span></span><span class="chip def"><span class="star">★</span><span>Stone Oak Pharmacy</span><span class="n">· building</span><span class="o">⧉</span></span><span class="chip ghost">+ add a job</span></div>
+<div class="rail" style="margin-top:8px"><span class="lbl">Show</span><span class="seg"><span>All</span><span class="on">Boerne Shell</span><span>Pad B</span><span>Stone Oak</span><span>No job</span></span></div></div>
+<p class="why">The chips are only the person's jobs: drag them, open them, and the star marks the default. Filtering is its own control, the same shape as the list's filters, with <i>All</i> on by default and a <i>No job</i> stop for the lines that sit on the person alone (which A cannot reach). Clearest split; costs a row, and the job names appear twice.</p>
+</div>
+
+<div class="opt">
+<h2>C · One press opens the chip's menu <small>· every move named, nothing on hover</small></h2>
+<div class="frame"><div class="st">Nothing picked · the Boerne Retail Shell chip pressed</div>
+<div class="rail"><span class="lbl">Their jobs</span><span class="chip" style="border-color:var(--accent)"><span>Boerne Retail Shell · Sitework</span><span class="n">· bid Thu Oct 8</span><span class="n">▾</span></span><span class="chip"><span>Boerne Retail Pad B · Sitework</span><span class="n">· bid Oct 22</span><span class="n">▾</span></span><span class="chip def"><span class="star">★</span><span>Stone Oak Pharmacy</span><span class="n">· building</span><span class="n">▾</span></span><span class="chip ghost">+ add a job</span></div>
+<div class="menu" style="margin:10px 0 0"><div class="ph">Boerne Retail Shell · Sitework · a bid, Thu Oct 8 · 5 messages tied</div><div class="r"><b>Show only its messages</b><small>The thread keeps the 5 lines tied here; show all brings the rest back.</small></div><div class="r"><b>Make it the default ☆</b><small>New messages from Greg land here instead of Stone Oak Pharmacy.</small></div><div class="r"><b>Open the job</b><small>Its card: what it is, its day, the people on it, the last conversations.</small></div><div class="r"><b>Remove from Greg</b><small>The 5 lines tied here keep their tie.</small></div></div></div>
+<div class="frame"><div class="st">Filtered to Boerne Retail Shell</div>
+<div class="rail"><span class="lbl"><b>Showing only</b></span><span class="chip on"><span class="fun">⌕</span><span>Boerne Retail Shell · Sitework</span><span class="n">· bid Thu Oct 8</span><span class="x">✕</span></span><span class="chip dim"><span>Boerne Retail Pad B · Sitework</span><span class="n">· bid Oct 22</span><span class="n">▾</span></span><span class="chip def dim"><span class="star">★</span><span>Stone Oak Pharmacy</span><span class="n">· building</span><span class="n">▾</span></span><span class="chip ghost dim">+ add a job</span></div></div>
+<p class="why">A chip is one target: a press opens its four moves in words, each saying what it changes. The filtered row reads as in A. Nothing depends on hover, so it works the same on a phone. The cost is a second press for the filter, the most common move.</p>
+</div>
+
+<div class="pick">
+<h2 style="font-size:15px;margin:0 0 6px">The pick, and is this the best we can do?</h2>
+<p style="margin:0 0 8px"><b>A</b>, with B's <i>No job</i> reachable: the lines that sit on the person alone are a filter stop too, as a last ghost chip <i>on Greg alone · 2</i> that filters like the others. One click filters, as the plan has it; the row names the state; the star means one thing and is explained on hover; the rare moves (make default, remove) live in the job's card in words, which also makes them work on a phone.</p>
+<p style="margin:0 0 6px">Three ways it could be better, weighed:</p>
+<ol>
+<li><b>The filter and the default could be one thing.</b> If "the job I am looking at" were also "the job new messages land on", there would be one state. It is not: the default is a fact about Greg that outlives the view, and reading Boerne's lines must not move his next text there. Two states, so two marks.</li>
+<li><b>C's menu is the phone-safe shape.</b> A keeps the one-click filter and leans on hover for the star's meaning; on a phone the hover card never shows. The phone layout is on the plan's open list; when it comes, C's menu is the likely fold for narrow columns, as the tie sheet already is.</li>
+<li><b>The × could stay on the chip.</b> It is one more target on a small chip, and removing a job from a person is rare and worth a named press in the card, so it goes; the card's button says what the tied lines keep.</li>
+</ol>
+</div>
+</body>
+</html>
