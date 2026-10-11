@@ -40,6 +40,8 @@ import { BridgeRule } from '../components/bridge/BridgeRule'
 import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
+import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
+import { loadBuildPaceInputs } from '../lib/bridge/loadBuildPace'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -273,6 +275,28 @@ export default function Bridge() {
   const confidence = useMemo(() => receiptsConfidence(receipts), [receipts])
   const carry = useMemo(() => (forecast ? carryingSentence(carryingDay(forecast, receipts), md) : null), [forecast, receipts])
 
+  // Build by percent (link PR 3): the open jobs, the percent points and the jobs created, loaded once the Bridge data is in.
+  const [buildInputs, setBuildInputs] = useState<BuildPaceInput | null>(null)
+  const [buildError, setBuildError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    setBuildInputs(null)
+    setBuildError(null)
+    void (async () => {
+      try {
+        const v = await loadBuildPaceInputs({ windowStart: data.windowStart, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        if (!cancelled) setBuildInputs(v)
+      } catch (e) {
+        if (!cancelled) setBuildError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data])
+  const buildPace = useMemo(() => (buildInputs ? buildBuildPace(buildInputs) : null), [buildInputs])
+
   // The calls (link PR 2): the pay week today falls in, and the call that stands for it.
   const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
   const thisWeekCall = useMemo(() => (calls && thisWeekStart ? callForWeek(calls, thisWeekStart) : null), [calls, thisWeekStart])
@@ -293,10 +317,10 @@ export default function Bridge() {
     return buildStageFlow({
       bill: fin.data ? { pileUsd: fin.data.unbilled.total, pileCount: fin.data.unbilled.count, inPerWeekUsd: data.totals.earnedUsd / weeks, outPerWeekUsd: billedPerWeek } : null,
       collect: fin.data ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount } : null,
-      build: null,
+      build: buildPace?.stageInput ?? null,
       heldLinkId: held,
     })
-  }, [data, fin.data, receipts, doubtful, thisWeekCall])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace])
   const litStage = pickedStage ?? stageFlow?.linkId ?? null
 
   // The calls (link PR 2): today's numbers behind the moves, the snapshot a call keeps, the scorecard and the header chip.
@@ -711,6 +735,7 @@ export default function Bridge() {
           )}
           {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
           {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
+          {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
 
           {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
