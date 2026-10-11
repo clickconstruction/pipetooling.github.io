@@ -397,18 +397,28 @@ land before the prototype builds pieces 1 to 3 above, since they change what a s
    flow dimmed under a line that says since when and why, read from the bid's outcome, with *Put back on*;
    no new color and no new editor column. A person re-enters at the step the facts say. Decision for the owner: a person on two flows (a GC who also
    quotes as a sub), or two contacts.
-2. **Everyone by step** (piece 7, a new surface, options A, B, C). A column per step with faces, counts and
-   late marks; a press on a face opens the thread with the panel open; the Messages list gains a filter by
-   step. Options for where it lives: a tab of Follow up, a tab of Trade partners and Customers, or a *Flows*
-   tab of its own; the mock-up draws all three and picks.
-3. **Their own view of it** (piece 8). The trade's portal mirrors the flow: *where you are with us: Papers
-   in, we need your insurance*, each their-move step with its upload or signature, in English and Spanish
-   (`PORTAL_SPANISH.md`). The customer's portal the same, once the open item on which record a contact is
-   settles whether a customer has one.
-4. **Time in step, and the owner's report** (piece 9). The card's *on now since* gains what is usual
-   (*usually 3 days, now 9*, the median of the done ones); a report for the owner of where people get stuck
-   and how asks turn into quotes and quotes into carries, by step and by month.
-5. **The small things, folded into the pieces they belong to**: the seat that owns an our-move step (an
+2. **Everyone by step** (piece 7, v1.95). A column per step in the flow's order, the lanes a gap apart: the
+   count with late, lapsed and waiting in words, then faces with the company and how long in the step, longest
+   first, a company once per job in the per-job lane, off the flow a folded last column; a press opens the
+   thread with the panel open on that step. It lives at the top of Trade partners and of Customers (the pick,
+   B: a flow is per kind and so are those pages), never as a tab of Follow up (one queue, one count) nor a
+   Flows tab of its own (a fourth place). The Messages list gains a *by step ▾* chip beside All · Customers ·
+   Trades.
+3. **Their own view of it** (piece 8, v1.95). The trade's portal gets a first page, *Where you are with Click
+   Construction*: the same list read from their side, their-move steps the only buttons (upload, sign, enter
+   the quote) with why in a sentence, our-move steps as *with us* and what unlocks them, nothing of ours
+   (no Compared, no nudges, no other companies), done steps keeping their day. An upload there finishes the
+   step by itself, so the office asks less. Spanish by the portal's switch, the step names in both languages
+   in the editor (`PORTAL_SPANISH.md`). The customer's portal the same, once the open item on which record a
+   contact is settles whether a customer has one. It builds third, after the card: it changes the most for
+   the least.
+4. **Time in step, and how it is going** (piece 9, v1.95). The card's first line gains what is usual, the
+   median of the done ones over a year, with a bar that runs red past it (*no usual yet* under five done);
+   the by-step column sorts by it. Settings → Flows gains a *How it is going* tab beside the editor: the
+   per-job lane as a funnel (asked, quoted, carried, signed, with the fall-off and the ones that fell out),
+   and one row per step (on it now, usual, longest now with its name, done this quarter, where it sticks,
+   which is the fact last to turn true most often). The office's to read; nothing in it is money.
+5. **The small things, folded into the pieces they belong to** (v1.95, each drawn in its piece): the seat that owns an our-move step (an
    editor column, so a nudge row lands on Rosa or Robert by the rule in *Who gets a new message*); a per-step
    choice between *ask me* and *the app sends the text* (the editor's nudge column; the automatic one is the
    owner's to turn on, since it sends mail); a gray event line in the thread when a fact turns true (*Tom's
@@ -416,9 +426,18 @@ land before the prototype builds pieces 1 to 3 above, since they change what a s
    per-job lane switching job, not only the default; *does not apply* on a step for one person, with a
    reason, beside the open *skip for a kind* question; and the phone layout for the panel and the card.
 
-Then the prototype: pieces 1 to 3 with cut 1's states (v1.94 on), Everyone by step after the owner's pick
-on piece 7, the rest as they are pressed on. Three decisions are the owner's before the build: two flows
-per person or two contacts; where Everyone by step lives; whether the app may send a nudge itself.
+**The whole, weighed (v1.95).** Ten pieces read one list, and they stay one idea only while nothing but the
+editor writes (the list), the facts are code, and the notes and *does not apply* are the person's; every
+other piece is a view. The first build ships four states (done, on now, next, late) and draws lapsed,
+waiting and off the flow as their facts land, with no color or column changing. A nudge row is a Follow up
+row and never a second queue; the by-step board is not a queue and lives with the people. The editor's
+*Ask for a fact that is missing* is the honest answer to the facts list being a gate. **The build order in
+the prototype**, each a logged version: the marks and the press (1); the card with four states and the
+notes (2, 6); the portal page (8); the editor with the picker, the seat, the how and the preview (3); the
+by-step board at the top of Trade partners with the list's step filter (7); the Attach rows and the
+Documents column (4); the Follow up row and the event lines (5); the usual and the report (9); the phone
+sheet (10). Still the owner's: two flows per person or two contacts (leaning A); whether the app may send a
+nudge itself, per step (off until then); whether the customer's portal gets the page.
 
 ## How it would be built, once the shape is settled
 
@@ -643,6 +662,16 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.95, 2026-10-11**: `flow-suite-mockups.html` pieces 7 to 10 and cut 5 folded in. Everyone by step (7): one column per
+  step with counts, faces and how long, late tinted, off the flow folded, three homes drawn and B picked, the top
+  of Trade partners and of Customers, with a by-step filter chip on the Messages list. Their own view (8): the
+  trade's portal page, their-move steps as buttons, ours as "with us", Spanish by the portal's switch. Time in
+  step and the report (9): the usual on the card's first line, a How it is going tab beside the editor with the
+  funnel and one row per step. The phone (10): the rail's mark opens the card as a sheet. Cut 5 into its pieces:
+  the per-job lane switches job (1); a team note on a step and Does not apply (2); the seat on our-move steps,
+  ask me or the app sends it, Ask for a fact that is missing (3); the event line when a fact turns true (5). The
+  whole weighed at the end: one read, four states first, the nudge is a Follow up row and never a second queue,
+  the portal page third in the build order. No prototype change.
 - **v1.94, 2026-10-11**: `flow-suite-mockups.html` piece 6, the states of a step: the legend (done, on now, next, late,
   lapsed, waiting on someone else, off the flow, no new color), the lapsed card (Greg's insurance ran out while he
   quotes), the waiting card (Elena's pay app waiting on Jonah's certificate), the off-the-flow panel and card (a

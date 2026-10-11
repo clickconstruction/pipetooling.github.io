@@ -65,6 +65,65 @@ button,.btn{font:inherit;font-size:12.5px;border:1px solid var(--border);backgro
 .two{display:flex;gap:4px;margin:0 0 6px}
 .two span{font-size:11px;border:1px solid var(--border);border-radius:999px;padding:1px 8px}
 .two span.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+/* everyone by step */
+.board{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.board .col{flex:none;width:132px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:6px}
+.board .col.lanegap{width:8px;border:0;background:transparent;padding:0}
+.board .col .ch{font-size:11px;font-weight:600;line-height:1.25;min-height:30px}
+.board .col .cn{font-size:11px;color:var(--text-muted);margin:2px 0 6px}
+.board .col .cn b{color:var(--danger)}
+.board .col .cn i{color:var(--warn);font-style:normal}
+.face{display:flex;align-items:center;gap:5px;font-size:11.5px;padding:3px 4px;border-radius:7px;border:1px solid transparent;margin-bottom:2px;white-space:nowrap;overflow:hidden}
+.face .av{width:20px;height:20px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.face .nm{overflow:hidden;text-overflow:ellipsis}
+.face .d{margin-left:auto;font-size:10px;color:var(--text-muted);flex:none}
+.face .d.late{color:var(--danger);font-weight:600}
+.face .d.lapsed{color:var(--warn)}
+.face .d.wait{color:var(--text-muted)}
+.face.hot{border-color:#f1b3ae;background:#fdecea}
+.board .col.off{opacity:.6}
+.nav{display:flex;gap:14px;font-size:13px;flex-wrap:wrap;overflow:hidden;padding:8px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);margin-bottom:6px;align-items:center}
+.nav b{font-weight:700;margin-right:6px}
+.nav span.on{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 10px;font-weight:600}
+.nav .sub{margin-left:auto;display:flex;gap:4px}
+.nav .sub span{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:1px 9px}
+.nav .sub span.on{border-color:var(--accent)}
+.homes{display:flex;flex-direction:column;gap:10px}
+.homes .h{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--bg)}
+.homes .h .t{font-size:12px;font-weight:600;margin-bottom:4px}
+.homes .h p{font-size:12px;color:var(--text-muted);margin:4px 0 0}
+.homes .h.pick{border-color:var(--accent);background:var(--accent-soft)}
+/* their portal */
+.phone{width:340px;flex:none;border:8px solid #1b1f24;border-radius:26px;background:var(--surface);padding:12px 12px 16px;font-size:13px}
+.phone .pt{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:8px 0 4px}
+.phone .ps{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border)}
+.phone .ps:last-child{border-bottom:0}
+.phone .ps .m{flex:none;width:20px;height:20px;border-radius:999px;border:1.5px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted)}
+.phone .ps .m.ok{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
+.phone .ps .m.you{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.phone .ps .t{flex:1}
+.phone .ps .t small{display:block;color:var(--text-muted);font-size:12px}
+.phone .ps .t .btn{margin-top:4px;display:inline-block}
+.phone .lang{float:right;font-size:12px;color:var(--accent)}
+/* report */
+.bar{display:inline-block;height:8px;border-radius:4px;background:var(--accent-soft);vertical-align:middle;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--accent)}
+.bar i.over{background:var(--danger)}
+.funnel{display:flex;gap:6px;align-items:flex-end;margin:6px 0}
+.funnel .f{flex:none;text-align:center;font-size:11.5px;color:var(--text-muted)}
+.funnel .f b{display:block;font-size:15px;color:var(--text)}
+.funnel .f .bk{width:92px;background:var(--accent-soft);border:1px solid #bcd0f0;border-radius:8px;margin:0 auto 3px}
+.funnel .ar{font-size:11px;color:var(--text-muted);padding-bottom:28px}
+/* folded small things */
+.teamnote{font-size:12px;background:var(--team);border:1px solid var(--team-border);border-radius:7px;padding:4px 8px;margin:4px 0}
+.sheet{width:375px;flex:none;border:8px solid #1b1f24;border-radius:26px;background:var(--bg);height:560px;position:relative;overflow:hidden}
+.sheet .top{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--border);font-size:14px;font-weight:700}
+.sheet .rail{position:absolute;right:0;top:44px;bottom:0;width:40px;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;align-items:center;gap:6px;padding-top:10px;font-size:10px;color:var(--text-muted)}
+.sheet .rail .mk{width:14px;height:14px;border-radius:999px;border:2px solid #bfe3c9;background:var(--ok-soft)}
+.sheet .rail .mk.now{border-color:var(--warn);background:var(--warn-soft);box-shadow:0 0 0 2px #fff,0 0 0 3px var(--warn)}
+.sheet .rail .mk.next{border-color:var(--border);background:var(--surface)}
+.sheet .card{position:absolute;left:0;right:0;bottom:0;width:auto;border-radius:16px 16px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--border);margin:8px auto 0}
 .fnext{font-size:12px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
 .fnext b{color:var(--text)}
 /* the step card */
@@ -150,7 +209,7 @@ tr.open td{background:var(--accent-soft)}
 <span class="box now pressed"><span>Papers in</span><span class="pm wait">W-9 ✓ · insurance ○</span><span class="who them">them</span></span><div class="arr">↓</div>
 <span class="box"><span>MSA signed</span><span class="pm">MSA ○</span></span>
 </div></div>
-<div class="lane"><div class="t">Per job · Boerne Retail Shell</div><div class="boxes">
+<div class="lane"><div class="t">Per job · Boerne Retail Shell <span style="text-transform:none;letter-spacing:0;color:var(--accent)">▾</span></div><div class="boxes">
 <div class="loop"><span class="lt">each ask</span><span class="box"><span>Asked to quote</span><span class="pm">quote ○</span></span><span class="rounds"><span>Boerne Shell</span></span></div><div class="arr">↓</div>
 <span class="box dec"><span>Compared <span class="note">· a fork</span></span></span><div class="arr">↓</div>
 <span class="box"><span>Statement of work</span><span class="pm">SOW ○</span></span><div class="arr">↓</div>
@@ -161,6 +220,7 @@ tr.open td{background:var(--accent-soft)}
 <div class="fnext"><b>On now:</b> Papers in · their move · 5 days quiet.<br><b>Finished when:</b> their W-9 is signed and their insurance is current.<br><b>Nudge:</b> after 5 days, a call. <span class="btn quiet">Nudge now</span></div>
 </div>
 <div style="flex:1;min-width:260px"><p class="why" style="margin:0 0 8px"><b>The mark</b> sits at the right of a step that turns on a paper: ○ not yet, ✓ on file, and a blue ↗ when it went and is waiting on them (<i>MSA ↗ sent Tue</i>). A step with no paper (Portal opened, Compared) shows none. Hover on the mark reads the paper's state in full: <i>Insurance: nothing on file. They can upload it from their portal, or we can ask for it.</i> Nothing else on the box changes, so the panel stays as quiet as it is.</p>
+<p class="why" style="margin:0 0 8px"><b>The per-job lane switches job.</b> Its caption is a press, <i>Per job · Boerne Retail Shell ▾</i>, listing the person's jobs with the step each is on (<i>Pad B · not asked yet</i>, <i>Stone Oak · Draws</i>), so a trade on three bids reads each one; the default job opens first, as today (cut 5).</p>
 <p class="why" style="margin:0"><b>The press.</b> A step box was a picture; it becomes a press that opens the step's card (piece 2), the way the Them · Us block opens its calendar. The same card opens from the rail's marks when the panel is folded. The On now line keeps its three facts and gains <i>Nudge now</i>, which makes the Follow up row of piece 5 today instead of on day 5.</p></div>
 </div></div>
 </div>
@@ -182,13 +242,16 @@ tr.open td{background:var(--accent-soft)}
 <div class="sec"><div class="h">How they got here</div>
 <div class="hist"><b>Invited</b> · Rosa sent the invitation, Fri Sep 25.</div>
 <div class="hist"><b>Portal opened</b> · Tom pressed Got it on his welcome, Mon Sep 28.</div>
-<div class="hist"><b>Papers in</b> · on now since Mon Sep 28. W-9 signed Tue Sep 29.</div></div>
+<div class="hist"><b>Papers in</b> · on now since Mon Sep 28. W-9 signed Tue Sep 29.</div>
+<div class="teamnote"><b>Rosa, note</b> · their broker renews the policy Nov 1; the certificate comes after. Thu Oct 1.</div>
+<div class="note"><span class="btn quiet">+ a note on this step</span> · <span class="btn quiet">Does not apply to Tom</span></div></div>
 </div>
 <div style="flex:1;min-width:260px">
 <p class="why" style="margin:0 0 8px"><b>Finished when</b> is the step's facts, each read live with a mark, its date and where the copy lives, and one button that moves it: <i>Open</i> for a paper on file, <i>Ask for it</i> for one they owe (it fills the reply box with the step's quick reply, the way the strip does, with their portal link on it), <i>Send it</i> for one we owe (the paper send the company window already has, so the sent copy is filed and the thread shows it).</p>
 <p class="why" style="margin:0 0 8px"><b>By hand, without a typed word.</b> A paper handed to us in the office is filed as a paper, <i>File a certificate we were handed</i>: a file or a photo, a date, and who filed it. That is a fact the app keeps, so the step finishes the same way. There is no "mark it done" that writes nothing; the plan's rule holds.</p>
 <p class="why" style="margin:0 0 8px"><b>After this</b> lets the office get ahead by one step: send the MSA while the insurance is still coming. The step card never sends two steps ahead.</p>
-<p class="why" style="margin:0"><b>How they got here</b> is the step's history in words, each line a stamp with its person and day. A done step's card reads the same way, with its paper on top and <i>Open</i> beside it.</p></div>
+<p class="why" style="margin:0 0 8px"><b>How they got here</b> is the step's history in words, each line a stamp with its person and day. A done step's card reads the same way, with its paper on top and <i>Open</i> beside it.</p>
+<p class="why" style="margin:0"><b>Folded in from cut 5.</b> A team note can be tied to a step, the way a message is tied to a job: it is the thread's yellow note with the step on it, so <i>why is Tom stuck</i> has a place and reads here and in the thread. <i>Does not apply to Tom</i> takes a reason and skips the step for him alone (a supplier with no MSA); the box reads <i>skipped · no MSA for a supplier</i> in gray and the flow moves on. Both are the person's, not the flow's.</p></div>
 </div></div>
 <div class="frame"><div class="st">Press on a loop · Greg Paulk · Asked to quote · 3 so far</div>
 <div class="row">
@@ -209,16 +272,16 @@ tr.open td{background:var(--accent-soft)}
 <div class="frame"><div class="st">Trade partner · the Papers in row open · the fact picker on its second fact</div>
 <div class="tabs"><span>Customer</span><span class="on">Trade partner</span><span>Architect</span><span style="margin-left:auto;border-style:dashed">History · 14 changes</span></div>
 <table>
-<tr><th style="width:28px"></th><th>Step</th><th>Finished when</th><th>Whose move</th><th>Nudge after</th><th>Repeats</th><th>Papers</th><th style="width:60px"></th></tr>
+<tr><th style="width:28px"></th><th>Step</th><th>Finished when</th><th>Whose move · our seat</th><th>Nudge after · how</th><th>Repeats</th><th>Papers</th><th style="width:60px"></th></tr>
 <tr class="lanehead"><td colspan="8">Once</td></tr>
-<tr><td>⋮⋮</td><td>Invited</td><td><span class="pick fact">the invitation email went</span></td><td>us</td><td>—</td><td>no</td><td><span class="pick paper">invitation</span></td><td></td></tr>
-<tr><td>⋮⋮</td><td>Portal opened</td><td><span class="pick fact">they opened their portal</span></td><td>them</td><td>3 days · a text</td><td>no</td><td class="note">none</td><td></td></tr>
-<tr class="open"><td>⋮⋮</td><td><input value="Papers in" style="font:inherit;width:110px;border:1px solid var(--border);border-radius:6px;padding:2px 6px"></td><td><span class="pick fact">their W-9 is signed</span> <span class="c">and</span><br><span class="pick fact" style="outline:2px solid var(--accent)">their insurance is current ▾</span><br><span class="btn quiet" style="font-size:12px">+ and another fact</span></td><td><span class="pick">them ▾</span></td><td><span class="pick">5 days ▾</span> <span class="pick">a call ▾</span></td><td><span class="pick">no ▾</span></td><td><span class="pick paper">W-9</span> <span class="pick paper">insurance</span></td><td><span class="btn quiet" style="color:var(--danger)">Remove</span></td></tr>
+<tr><td>⋮⋮</td><td>Invited</td><td><span class="pick fact">the invitation email went</span></td><td>us · Robert</td><td>—</td><td>no</td><td><span class="pick paper">invitation</span></td><td></td></tr>
+<tr><td>⋮⋮</td><td>Portal opened</td><td><span class="pick fact">they opened their portal</span></td><td>them</td><td>3 days · a text · <i>the app sends it</i></td><td>no</td><td class="note">none</td><td></td></tr>
+<tr class="open"><td>⋮⋮</td><td><input value="Papers in" style="font:inherit;width:110px;border:1px solid var(--border);border-radius:6px;padding:2px 6px"></td><td><span class="pick fact">their W-9 is signed</span> <span class="c">and</span><br><span class="pick fact" style="outline:2px solid var(--accent)">their insurance is current ▾</span><br><span class="btn quiet" style="font-size:12px">+ and another fact</span></td><td><span class="pick">them ▾</span></td><td><span class="pick">5 days ▾</span> <span class="pick">a call ▾</span> <span class="pick">ask me ▾</span></td><td><span class="pick">no ▾</span></td><td><span class="pick paper">W-9</span> <span class="pick paper">insurance</span></td><td><span class="btn quiet" style="color:var(--danger)">Remove</span></td></tr>
 <tr><td>⋮⋮</td><td>MSA signed</td><td><span class="pick fact">the master agreement is signed</span></td><td>them</td><td>3 days · a text</td><td>no</td><td><span class="pick paper">MSA</span></td><td></td></tr>
 <tr><td colspan="8"><span class="btn quiet" style="font-size:12px">+ a step here</span></td></tr>
 <tr class="lanehead"><td colspan="8">Per job</td></tr>
 <tr><td>⋮⋮</td><td>Asked to quote</td><td><span class="pick fact">their quote is in the portal</span></td><td>them</td><td>at their promised day, else 7 days</td><td>each ask</td><td><span class="pick paper">quote</span></td><td></td></tr>
-<tr><td>⋮⋮</td><td>Compared <span class="note">· a fork</span></td><td><span class="pick fact">we carried their quote</span> <span class="c">or</span> <span class="pick fact">we did not carry it</span></td><td>us</td><td>—</td><td>no</td><td class="note">none</td><td></td></tr>
+<tr><td>⋮⋮</td><td>Compared <span class="note">· a fork</span></td><td><span class="pick fact">we carried their quote</span> <span class="c">or</span> <span class="pick fact">we did not carry it</span></td><td>us · Robert</td><td>—</td><td>no</td><td class="note">none</td><td></td></tr>
 <tr><td>⋮⋮</td><td>Statement of work</td><td><span class="pick fact">the statement of work is signed</span></td><td>them</td><td>3 days · a text</td><td>no</td><td><span class="pick paper">SOW</span></td><td></td></tr>
 <tr><td>⋮⋮</td><td>Draws</td><td><span class="pick fact">the draw is paid</span></td><td>both</td><td>—</td><td>each draw</td><td><span class="pick paper">waiver</span></td><td></td></tr>
 <tr><td>⋮⋮</td><td>Closeout</td><td><span class="pick fact">the unconditional final waiver is in</span></td><td>them</td><td>7 days · an email</td><td>no</td><td><span class="pick paper">final waiver</span></td><td></td></tr>
@@ -237,7 +300,7 @@ tr.open td{background:var(--accent-soft)}
 <div class="g">Money</div>
 <div class="r"><span class="t"><b>the draw is approved</b><small>a draw of theirs approved by us</small></span></div>
 <div class="r"><span class="t"><b>the draw is paid</b><small>a draw of theirs paid</small></span><span class="where">Draws</span></div>
-<div class="ph" style="border-top:1px solid var(--border);border-bottom:0">A fact that is not here cannot be picked. A new one is a line in the app's list, with the column it reads, and the panel is a read, so a changed fact moves every person at once.</div></div>
+<div class="ph" style="border-top:1px solid var(--border);border-bottom:0">A fact that is not here cannot be picked. A new one is a line in the app's list, with the column it reads, and the panel is a read, so a changed fact moves every person at once. <span class="btn quiet" style="font-size:12px">Ask for a fact that is missing</span> writes the wish down for the build.</div></div>
 <div class="prev"><div class="h">Before you save · who moves</div>
 <div class="note" style="margin-bottom:6px">The flow is a read over the stamps, so an edit is tried on everyone first.</div>
 <div class="p"><span>Greg Paulk</span><span class="s">Asked to quote · same</span></div>
@@ -246,7 +309,7 @@ tr.open td{background:var(--accent-soft)}
 <div class="note" style="margin-top:6px">Tom moves because the fact you took out, insurance, was the one he was waiting on. <span class="btn quiet">Save</span> · <span class="btn quiet">Put it back</span></div></div>
 </div>
 </div>
-<p class="why"><b>What the office can change:</b> a step's name, its place in the lane (the ⋮⋮ handle), whose move it is, the nudge (a count of days and a channel, or <i>at their promised day</i>), whether it repeats and per what, which papers it turns on, and which facts finish it, joined with <i>and</i> or, on a fork, <i>or</i>. A step can be added between two or removed; removing one that people are on shows them in the preview and they land on the next step, since the facts decide. <b>What it cannot change:</b> the facts themselves, which are a list in the app with the column each reads (the sweep's table in the plan); and the lanes, Once, Per job, Any time, which are the shape of the data. <b>Who:</b> the office edits (the owner and the assistants, as Settings is); everyone reads. <b>History</b> is the quick replies window's: every change with its person and day, a Removed tab, and <i>Put it back</i>.</p>
+<p class="why"><b>What the office can change:</b> a step's name, its place in the lane (the ⋮⋮ handle), whose move it is, the nudge (a count of days and a channel, or <i>at their promised day</i>), whether it repeats and per what, which papers it turns on, and which facts finish it, joined with <i>and</i> or, on a fork, <i>or</i>. A step can be added between two or removed; removing one that people are on shows them in the preview and they land on the next step, since the facts decide. <b>What it cannot change:</b> the facts themselves, which are a list in the app with the column each reads (the sweep's table in the plan); and the lanes, Once, Per job, Any time, which are the shape of the data. <b>Who:</b> the office edits (the owner and the assistants, as Settings is); everyone reads. <b>Folded in from cut 5:</b> an our-move step names its seat, <i>us · Robert</i> or <i>us · Rosa</i>, from the two seats in <i>Who gets a new message</i>, so its nudge row lands on the right person; and a nudge says how it goes out, <i>ask me</i> (a Follow up row for a person to send) or <i>the app sends it</i> (the step's quick reply goes by itself, with the thread showing it as the app's), which is the owner's to turn on per step, since it sends mail; it is off everywhere until then. <b>History</b> is the quick replies window's: every change with its person and day, a Removed tab, and <i>Put it back</i>.</p>
 </div>
 
 <div class="opt">
@@ -268,7 +331,8 @@ tr.open td{background:var(--accent-soft)}
 <div class="frame"><div class="st">Follow up · Needs a reply, then the nudges</div>
 <div class="qrow"><span class="av">TR</span><span class="t">Tom Riddle · Bexar Steel<small>Papers in · quiet 5 days · the flow says a call. We are waiting on the certificate of insurance.</small></span><span class="pill step">Papers in</span><span class="pill ours">Our move · a call</span><span class="btn small">Call in Quo</span><span class="btn small">Text instead</span><span class="btn small">Hold</span></div>
 <div class="event" style="max-width:720px">in the thread, after the call: <i>Robert called Tom on the Papers in nudge · 3:10 PM · 2:40</i></div>
-<p class="why" style="margin:8px 0 0">A step's nudge fires when the step is on now, the move is theirs, and the thread has been quiet that many days; a promised day beats the count, as the loop's <i>at their promised day</i> says. The row says the step, what we are waiting on and the channel the flow asked for, with a one-press switch to another. Answering, or the fact turning true, clears it. <i>Hold</i> is the owed strip's day chips. The Board's ring keeps its own three stages until its lists and the flows agree; that is a later cut, named in the plan.</p></div>
+<div class="event" style="max-width:720px">and two days later, with nobody pressing anything: <i>Tom's insurance came in from his portal · Papers in done · Tue 9:12 AM</i></div>
+<p class="why" style="margin:8px 0 0">A step's nudge fires when the step is on now, the move is theirs, and the thread has been quiet that many days; a promised day beats the count, as the loop's <i>at their promised day</i> says. The row says the step, what we are waiting on and the channel the flow asked for, with a one-press switch to another. Answering, or the fact turning true, clears it. <i>Hold</i> is the owed strip's day chips. When a fact turns true the thread gets a gray event line and the row clears, so the thread tells the step's story without anyone writing it (cut 5). The Board's ring keeps its own three stages until its lists and the flows agree; that is a later cut, named in the plan.</p></div>
 </div>
 
 <div class="opt">
@@ -368,8 +432,104 @@ tr.open td{background:var(--accent-soft)}
 <p class="why" style="margin:0 0 4px"><b>Weighed, for this cut:</b> a fifth color for lapsed was drawn and dropped, since the owner's rule is that a color means one thing and orange already means <i>on now</i>, which a lapsed step is. A separate <i>late</i> state was dropped too: late is a day on an on-now step, not a state of its own, so the editor needs no new column, only a day where the app has one. Off the flow could have been a seventh lane; a line above the flow is quieter and says why.</p>
 </div>
 
+<div class="opt">
+<h2>7 · Everyone by step <small>· where is everyone, in one look · three homes drawn, one picked</small></h2>
+<div class="frame"><div class="st">Trade partners · by step · 14 companies · the per-job lane on all jobs</div>
+<div class="board">
+<div class="col"><div class="ch">Invited</div><div class="cn">2 · <b>1 late</b></div><div class="face hot"><span class="av">AS</span><span class="nm">Alamo Steel</span><span class="d late">9 d</span></div><div class="face"><span class="av">RP</span><span class="nm">Rio Paving</span><span class="d">1 d</span></div></div>
+<div class="col"><div class="ch">Portal opened</div><div class="cn">1</div><div class="face"><span class="av">TR</span><span class="nm">Bexar Steel</span><span class="d">4 d</span></div></div>
+<div class="col"><div class="ch">Papers in</div><div class="cn">3 · <i>1 lapsed</i></div><div class="face"><span class="av">GP</span><span class="nm">Hillside Exc.</span><span class="d lapsed">lapsed</span></div><div class="face"><span class="av">LM</span><span class="nm">Lone Star Mech.</span><span class="d">2 d</span></div><div class="face"><span class="av">CF</span><span class="nm">Cibolo Fence</span><span class="d">6 d</span></div></div>
+<div class="col"><div class="ch">MSA signed</div><div class="cn">1</div><div class="face"><span class="av">KE</span><span class="nm">Kerr Electric</span><span class="d">3 d</span></div></div>
+<div class="col lanegap"></div>
+<div class="col"><div class="ch">Asked to quote</div><div class="cn">5 asks · <b>2 late</b></div><div class="face hot"><span class="av">GP</span><span class="nm">Hillside · Boerne</span><span class="d late">2 d</span></div><div class="face hot"><span class="av">BS</span><span class="nm">Tejas · Pad B</span><span class="d late">1 d</span></div><div class="face"><span class="av">KE</span><span class="nm">Kerr · Boerne</span><span class="d">Thu</span></div><div class="face"><span class="av">LM</span><span class="nm">Lone Star · Boerne</span><span class="d">Thu</span></div><div class="face"><span class="av">CF</span><span class="nm">Cibolo · Pad B</span><span class="d">Oct 22</span></div></div>
+<div class="col"><div class="ch">Compared</div><div class="cn">1 · ours</div><div class="face"><span class="av">BS</span><span class="nm">Tejas · Boerne</span><span class="d">1 d</span></div></div>
+<div class="col"><div class="ch">Statement of work</div><div class="cn">2</div><div class="face"><span class="av">RP</span><span class="nm">Rio · Stone Oak</span><span class="d">5 d</span></div><div class="face"><span class="av">AS</span><span class="nm">Alamo · Stone Oak</span><span class="d">1 d</span></div></div>
+<div class="col"><div class="ch">Draws</div><div class="cn">2 · <span style="color:var(--text-muted)">1 waiting</span></div><div class="face"><span class="av">GP</span><span class="nm">Hillside · Stone Oak</span><span class="d wait">owner</span></div><div class="face"><span class="av">KE</span><span class="nm">Kerr · Stone Oak</span><span class="d">3 d</span></div></div>
+<div class="col"><div class="ch">Closeout</div><div class="cn">0</div></div>
+<div class="col lanegap"></div>
+<div class="col off"><div class="ch">Off the flow</div><div class="cn">3 · folded</div><div class="face"><span class="av">+3</span><span class="nm">show</span></div></div>
+</div>
+<p class="why" style="margin:8px 0 0">One column per step, in the flow's order, the lanes a gap apart. The head is the count, with the late, lapsed and waiting counts in their own words; a late one is tinted. A line is a face, the company and how long in the step (a day where the step has one, <i>Thu</i>, <i>Oct 22</i>), longest first. In the per-job lane a company appears once per job, <i>Hillside · Boerne</i>, since each ask is its own round. A press opens the thread with the panel open on that step; hover reads the step card's first lines. Off the flow is a folded last column. The filter row above it is the page's: all jobs or one, this seat or everyone.</p></div>
+<div class="frame"><div class="st">Three homes for it</div>
+<div class="homes">
+<div class="h"><div class="t">A · a second tab of Follow up</div><div class="nav"><b>GC</b><span>Project Board</span><span class="on">Follow up 4</span><span>Messages</span><span class="sub"><span class="on">Needs a reply</span><span>By step</span></span></div><p>One place for "what now". But Follow up is one queue with one count, the plan says, and a board of everyone is not a queue: most faces on it need nothing today.</p></div>
+<div class="h pick"><div class="t">B · the top of Trade partners, and of Customers</div><div class="nav"><b>GC</b><span>Project Board</span><span>Follow up 4</span><span>Messages</span><span class="on">Trade partners</span><span class="sub"><span class="on">By step</span><span>List</span><span>Asks</span></span></div><p>A flow is per kind of person, and these pages are per kind, so each page shows its own flow's columns and nothing mixes. The Messages list's filter by step links here.</p></div>
+<div class="h"><div class="t">C · a Flows tab of its own</div><div class="nav"><b>GC</b><span>Project Board</span><span>Follow up 4</span><span>Messages</span><span>Trade partners</span><span class="on">Flows</span><span class="sub"><span class="on">Trades</span><span>Customers</span><span>Architects</span></span></div><p>Everything about flows in one tab, with the editor. But it is a fourth place to look, and the three flows have nothing in common on one screen except the word.</p></div>
+</div>
+<p class="why" style="margin:8px 0 0"><b>The pick is B.</b> The page that lists the trades is where "where is every trade" belongs, as a view of the same list; the Customers tab the same. The editor stays in Settings. <b>The Messages list</b> gains one filter chip beside All · Customers · Trades: <i>by step ▾</i>, which narrows the list to one step (<i>Papers in · 3</i>), so a person can work a step as a list of threads too.</p></div>
+</div>
+
+<div class="opt">
+<h2>8 · Their own view of it <small>· the trade's portal mirrors the flow, their-move steps as buttons, ours as "with us"</small></h2>
+<div class="frame"><div class="st">Tom Riddle's portal · click.co/t/7Hq2 · the new first page</div>
+<div class="row">
+<div class="phone"><span class="lang">Español</span><b style="font-size:15px">Where you are with Click Construction</b>
+<div class="pt">Getting set up</div>
+<div class="ps"><span class="m ok">✓</span><span class="t">Invited<small>Fri Sep 25</small></span></div>
+<div class="ps"><span class="m ok">✓</span><span class="t">Your W-9<small>Signed here Tue Sep 29. Thank you.</small></span></div>
+<div class="ps"><span class="m you">!</span><span class="t"><b>Your certificate of insurance</b><small>We need it before we can send you an agreement. A photo of it is fine.</small><span class="btn small primary">Upload your certificate</span></span></div>
+<div class="ps"><span class="m">·</span><span class="t">Master agreement<small>With us: we send it once your certificate is in. You sign it here.</small></span></div>
+<div class="pt">Boerne Retail Shell</div>
+<div class="ps"><span class="m you">!</span><span class="t"><b>Your quote · due Thu Oct 8</b><small>Sitework, per the plans and Addendum 2.</small><span class="btn small primary">Enter your quote</span> <span class="btn small">Open the plans</span></span></div>
+<div class="ps"><span class="m">·</span><span class="t">Statement of work<small>With us, after the bid.</small></span></div>
+<div class="note" style="margin-top:10px">Questions: text or call (210) 555-0100.</div>
+</div>
+<div style="flex:1;min-width:260px">
+<p class="why" style="margin:0 0 8px"><b>The same list, read from their side.</b> Their-move steps are the only buttons, each with the one thing to do (upload, sign, enter the quote) and why it matters in a sentence. Our-move steps read <i>with us</i> and what unlocks them. Nothing of ours shows: no <i>Compared</i>, no nudges, no how long, no other companies; the per-job part is only the jobs they are asked on. A done step keeps its day, so the page is also their record.</p>
+<p class="why" style="margin:0 0 8px"><b>What it does to the asks.</b> The certificate upload lands on their Documents and finishes Papers in by itself; the thread gets the gray event line; the Follow up row clears. The office asks less, and the ask it still sends links to this page, which the Attach picker already stars (piece 4).</p>
+<p class="why" style="margin:0 0 8px"><b>Spanish</b> is the portal's own switch, with the step names as the flow's editor holds them in both languages (one more column, <i>Nombre en español</i>, filled by the office or left to the portal's word list in <code>PORTAL_SPANISH.md</code>).</p>
+<p class="why" style="margin:0"><b>The customer's portal</b> gets the same page once the open item on which record a contact is settles that a customer has one: <i>Where your job is: Start date Mon Oct 19 · On site · Pay app 4 with your architect for his certificate · Pay by Oct 30</i>. Drawn later with that item.</p></div>
+</div></div>
+</div>
+
+<div class="opt">
+<h2>9 · Time in step, and how it is going <small>· what is usual on the card; a page for the owner by step and by month</small></h2>
+<div class="frame"><div class="st">On the step card · the first line gains what is usual</div>
+<div class="card" style="box-shadow:none"><div class="hd"><b>Papers in</b><div class="note">Once · their move · on now since Mon Sep 28, 4 days · usually 3 <span class="bar" style="width:120px"><i style="width:100%"></i><i class="over" style="left:75%;width:25%"></i></span></div></div></div>
+<p class="why" style="margin:8px 0 0">The usual is the middle of the done ones over the last year (the median, in words). The bar fills to usual and runs red past it. On the by-step board the same number sorts the column, longest over usual first. No target is typed; the usual is read from the stamps like everything else, and it says <i>no usual yet</i> under five done.</p></div>
+<div class="frame"><div class="st">Settings → Flows · How it is going · Trade partners · this quarter</div>
+<div class="tabs"><span>Customer</span><span class="on">Trade partner</span><span>Architect</span><span style="margin-left:auto">The flow</span><span class="on" style="margin-left:4px">How it is going</span></div>
+<div class="funnel">
+<div class="f"><div class="bk" style="height:64px"></div><b>24</b>asked</div><div class="ar">→ 71%</div>
+<div class="f"><div class="bk" style="height:46px"></div><b>17</b>quoted</div><div class="ar">→ 35%</div>
+<div class="f"><div class="bk" style="height:18px"></div><b>6</b>carried</div><div class="ar">→ 83%</div>
+<div class="f"><div class="bk" style="height:15px"></div><b>5</b>SOW signed</div>
+<div class="f" style="margin-left:18px"><div class="bk" style="height:12px;background:var(--chip);border-color:var(--border)"></div><b>7</b>not quoted</div>
+</div>
+<table style="margin-top:8px">
+<tr><th>Step</th><th>On it now</th><th>Usual</th><th>Longest now</th><th>Done this quarter</th><th>Where it sticks</th></tr>
+<tr><td>Invited</td><td>2</td><td>2 d</td><td><span style="color:var(--danger)">Alamo Steel · 9 d</span></td><td>11</td><td class="note">—</td></tr>
+<tr><td>Portal opened</td><td>1</td><td>1 d</td><td>Bexar Steel · 4 d</td><td>10</td><td class="note">—</td></tr>
+<tr><td>Papers in</td><td>3</td><td>3 d</td><td>Cibolo Fence · 6 d</td><td>8</td><td class="note">the certificate, 6 of 8 times</td></tr>
+<tr><td>MSA signed</td><td>1</td><td>4 d</td><td>Kerr Electric · 3 d</td><td>7</td><td class="note">—</td></tr>
+<tr><td>Asked to quote</td><td>5</td><td>6 d</td><td><span style="color:var(--danger)">Hillside · Boerne · late 2 d</span></td><td>17 of 24</td><td class="note">7 never quoted, 4 of them never opened the plans</td></tr>
+<tr><td>Compared</td><td>1</td><td>2 d</td><td>Tejas · Boerne · 1 d</td><td>17</td><td class="note">—</td></tr>
+<tr><td>Statement of work</td><td>2</td><td>5 d</td><td>Rio Paving · 5 d</td><td>5 of 6</td><td class="note">—</td></tr>
+</table>
+<p class="why" style="margin:8px 0 0">The funnel is the per-job lane as counts: asked, quoted, carried, signed, with the fall-off between each and the ones that fell out named. The table is one row per step: how many on it, the usual, the longest now with its name, done this quarter, and where it sticks, which is the fact that was last to turn true most often (the certificate, the plans never opened). A press on a name opens the thread; on a count, the by-step column. It is the office's to read; nothing here is money.</p></div>
+</div>
+
+<div class="opt">
+<h2>10 · On a phone <small>· the panel is the rail, the card is a sheet</small></h2>
+<div class="frame"><div class="st">375 px · Tom Riddle's thread · the Papers in mark pressed on the rail</div>
+<div class="row">
+<div class="sheet"><div class="top"><span style="color:var(--accent)">‹</span><span class="av" style="width:26px;height:26px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:10px;display:inline-flex;align-items:center;justify-content:center">TR</span>Tom Riddle</div>
+<div class="rail"><span>once</span><span class="mk"></span><span class="mk"></span><span class="mk now"></span><span class="mk next"></span><span style="margin-top:6px">job</span><span class="mk next"></span><span class="mk next"></span></div>
+<div style="padding:12px 52px 12px 12px;font-size:12px;color:var(--text-muted)">Text · Tom · 8:44 AM<br><span style="color:var(--text)">Got it, thanks. Will get the insurance over this week.</span></div>
+<div class="card"><div class="grab"></div>
+<div class="hd"><b>Papers in</b><div class="note">their move · 4 days · usually 3</div></div>
+<div class="sec"><div class="fact"><span class="m ok">✓</span><span class="t">Their W-9 is signed.</span></div>
+<div class="fact"><span class="m no">○</span><span class="t">Their insurance is current.<small>Nothing on file.</small></span><span class="act"><span class="btn small primary">Ask for it</span></span></div></div>
+<div class="sec"><div class="note">After this: MSA signed · <span class="btn quiet">Send the MSA now</span></div></div>
+<div class="sec"><div class="note">Nudge: 5 days, a call · <span class="btn quiet">Nudge now</span> · <span class="btn quiet">More ▾</span></div></div>
+</div></div>
+<div style="flex:1;min-width:260px"><p class="why" style="margin:0 0 8px">The thread keeps its 40 px rail of marks at the right, as the plan has it; there is no room for the panel, so the panel is never drawn on a phone. A press on a mark opens the step card as a sheet from the bottom, with the same sections in the same order and the history and notes behind <i>More</i>. The by-step board scrolls sideways one column at a time; the portal page is already a phone page.</p>
+<p class="why" style="margin:0">This is the phone layout item on the plan's open list, drawn for the flow only; Follow up and the thread at 375 px stay open.</p></div>
+</div></div>
+</div>
+
 <div class="pickbox">
-<h2 style="font-size:15px;margin:0 0 6px">Is this the best we can do?</h2>
+<h2 style="font-size:15px;margin:0 0 6px">Is this the best we can do? First, piece by piece</h2>
 <p style="margin:0 0 8px">Five places it could be otherwise, weighed:</p>
 <ol>
 <li><b>Could the step box stay a picture, with everything in the editor?</b> No. The question the panel raises is "what do I do about it", and that answer is per person, not per flow: Tom's insurance, Greg's late quote. The card is where the per-person answer lives; the editor is where the shape lives. Two places, each one thing.</li>
@@ -379,7 +539,18 @@ tr.open td{background:var(--accent-soft)}
 <li><b>Does one flow per kind hold?</b> (And piece 6's four states were found by asking what the three could not say; they add no color and no column.) For now. A trade whose flow differs (a supplier with no MSA) is the open question the plan carries; the editor's answer, when it comes, is a step marked <i>skip for</i> a kind of company, not a second flow.</li>
 </ol>
 <p style="margin:0 0 6px"><b>The four facts the app does not keep yet</b>, each a small column, named so the real build counts them: a trade's first portal visit (today "Portal opened" is their press on Got it, and a per-ask opened mark); a lost mark on a quote we did not carry (today only inferred); the day a customer said yes (today only the stage moves); and the warranty year's end (computed from acceptance plus a year, no column). "Start date sent" exists already as the schedule letter's send.</p>
-<p style="margin:0"><b>The pick:</b> build pieces 1, 2 and 3 in the prototype next (the marks, the card, the editor with the picker and the preview), then 4 and 5 once the owner has pressed on them. The plan's section names the order and the stamps.</p>
+<h2 style="font-size:15px;margin:16px 0 6px">Then the whole of it: is this the best we can do?</h2>
+<p style="margin:0 0 8px">Ten pieces read one list. Counted as places a person can meet the flow: the step box and its mark, the card, the editor, the Attach picker, the Documents column, the Follow up row, the thread's event lines, the by-step board, the portal page, the report, the phone sheet. That is a lot of surface for one idea, so the question is whether it is one idea or several wearing one name.</p>
+<ol>
+<li><b>It is one idea if the state is one read.</b> Every piece reads the same thing: a person's place in a list of steps, each step finished by facts the app keeps. The card, the board, the report and the portal page differ only in who is looking and how many at once. The test is that no piece stores anything the others do not read: the editor stores the list, the facts are code, the notes and the does-not-apply are the person's; nothing else writes. That holds, so the pieces are views, and a view is cheap to add and cheap to drop.</li>
+<li><b>Seven states are too many for the first build.</b> Done, on now, next and late are read from stamps the app has today. Lapsed needs the expiry read, waiting needs the cross-person link, off the flow needs the lost mark and the new trade fact. The first build ships four states and draws the other three as the facts land, with the legend unchanged, since no color or column changes.</li>
+<li><b>The nudge and Follow up could blur.</b> Follow up is one queue with one count. A nudge row is a Follow up row, never a second list; the by-step board is not a queue (most faces need nothing today) and lives with the people, not with Follow up. Keeping that line is what makes piece 7's pick B right and A wrong.</li>
+<li><b>The facts list is a gate on the office.</b> A fact the app does not keep cannot be a step, and only a build adds one. That is the rule's cost, and the editor's <i>Ask for a fact that is missing</i> is the honest answer: the wish is written down where the build reads it, and the four known gaps are the first entries.</li>
+<li><b>The portal page is the piece that changes the most for the least.</b> It is the same list rendered to the other side, and it removes asks instead of sending them faster. It should come right after the card, before the board, and the prototype should draw it third.</li>
+<li><b>What was dropped on the way.</b> A fifth color, a separate late state, a seventh lane, a Flows tab, a mark-it-done that writes nothing, automatic nudges on by default, a second contact for a person with two roles. Each was drawn and read worse than what stayed.</li>
+</ol>
+<p style="margin:0 0 6px"><b>The pick, whole:</b> build in the prototype, in this order, each as a logged version: the marks and the press (1); the card with four states and the notes (2, 6); the portal page (8); the editor with the picker, the seat, the how, and the preview (3); the by-step board at the top of Trade partners with the list's step filter (7); the Attach rows and the Documents column (4); the Follow up row and the event lines (5); the usual on the card and the report (9); the phone sheet (10). Lapsed, waiting and off the flow follow their facts.</p>
+<p style="margin:0"><b>Still the owner's:</b> two flows per person or two contacts (drawn in 6, leaning A); whether the app may send a nudge itself, per step (off until then); and whether the customer's portal gets the page, which waits on which record a contact is.</p>
 </div>
 </body>
 </html>
