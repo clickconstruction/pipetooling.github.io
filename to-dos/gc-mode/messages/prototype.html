@@ -140,6 +140,11 @@ button.court{cursor:pointer;line-height:inherit}button.court:hover{filter:bright
 .stamps b{font-weight:600;color:var(--text)}.stamps span{white-space:nowrap}
 .hdr .row3{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin:6px 0 0}.hdr .row3 .court,.hdr .row3>button{margin-top:1px}
 .thread{container-type:inline-size}
+/* The conversation sits in a tinted well between the header and the reply box (v1.68, thread-regions-mockups A): a shade
+   of its own, so the card still reads as a card and the well as the band inside it that moves. */
+.thread #lines{background:#eef1f5;margin:10px -12px 0;padding:6px 12px 10px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.thread .reply{border-top:0;margin-top:0;padding-top:12px}
+.thread .msg.in{background:var(--surface)}
 .hdr .row1 .sub2,.hdr .corner .statepill,.stamps .diff,.stamps .short,.hdr .jobs-rail .sep{display:none}
 .hdr .row2 a.fact{color:inherit;text-decoration:none}
 .statepill{display:none;align-items:center;gap:4px;border:1px solid var(--accent);border-radius:999px;padding:3px 10px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:600;white-space:nowrap}

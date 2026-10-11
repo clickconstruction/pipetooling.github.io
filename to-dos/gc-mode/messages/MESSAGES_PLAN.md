@@ -465,6 +465,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.68, 2026-10-11**: the conversation sits in a tinted well between the header and the reply box, the message cards
+  white on it (`thread-regions-mockups.html` A, the first step of the owner's pick D).
 - **v1.67, 2026-10-11**: quick replies sorted (`quick-replies-mockups.html` C): each line for a kind of person and
   a flow step, the strip in three groups with the step they are on first and your most used first in each, whole
   lines, a filter box past ten lines; the window (`quick-replies-editor-mockups.html`): the whole list with use
