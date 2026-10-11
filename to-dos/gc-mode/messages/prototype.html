@@ -37,7 +37,9 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .row .who{font-weight:600}
 .row .sub{color:var(--text-muted);font-size:13px}
 .row .last{font-size:14px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.row .right{margin-left:auto;text-align:right;font-size:12px;color:var(--text-muted);flex:none}
+.row .right{margin-left:auto;text-align:right;font-size:12px;color:var(--text-muted);flex:none;max-width:132px}
+.court.tiny{font-size:11px;padding:1px 7px 1px 5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex}
+.list .row > div:nth-child(2){flex:1;min-width:0}
 .pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--chip);color:var(--text-muted);margin-right:4px}
 .pill.waiting{background:var(--warn-soft);color:var(--warn)}
 .pill.has{background:var(--accent-soft);color:var(--accent)}
@@ -369,6 +371,8 @@ const agoWords = ts => { const mins=Math.max(1,Math.round((NOW-ts)/60000)); if(m
 const lastInOnly = c => [...messages].filter(m=>m.c===c.id&&m.dir==='in').sort((a,b)=>b.at-a.at)[0];
 const courtOf = c => { const i=lastInOnly(c), o=lastOut(c); if(c.optout) return {side:'none', word:'opted out'}; if(c.owe) return {side:'ours', word:`Our court · we owe ${c.owe.what}${c.owe.by?' · by '+c.owe.by:''}`, owe:true}; if(!i&&!o) return {side:'none', word:'no messages yet'}; if(!o || (i && i.at>o.at)) return {side:'ours', word:`Our court · ${agoWords(i.at)}`, since:i.at}; return {side:'theirs', word:c.promise?`Their court · ${c.promise.replace('promised ','until ')}`:`Their court · ${agoWords(o.at)}`, since:o.at}; };
 const courtStrip = c => { const k=courtOf(c), i=lastInOnly(c), o=lastOut(c); return `<span class="court ${k.side}" data-tip="${k.owe?'Our court, we owe them|Someone marked that we still owe them something, so the ball stays with us even after we write.|It clears when someone presses Settled, or sends a message marked as settling it. It shows under We owe them in Follow up.':k.side==='ours'?'Our court|The last word was theirs, so the next move is ours.|It counts from their last message. A reply, an email or a call from us puts it in their court, unless we mark that we still owe them something.':k.side==='theirs'?'Their court|The last word was ours, so we are waiting on them.|It counts from our last message, or runs until the day they promised. Their next message puts it back in our court.':'No court|Nothing is owed either way.|'}"><i></i>${esc(k.word)}</span>${k.owe?`<button class="small" data-tip="Settled|We did what we owed.|The ball goes to their court if our word was last, and the row leaves We owe them." onclick="settle('${c.id}')">Settled</button>`:`<button class="quiet small" data-tip="We owe them…|Mark something we still have to do for them, with a day.|The ball stays in our court after we write, and Follow up lists it under We owe them." onclick="oweDialog('${c.id}')">We owe them…</button>`}<span class="stamps"><span><b>Them</b> ${i?`${chWord(i).toLowerCase()} · ${fmt(i.at)}`:'nothing yet'}</span><span><b>Us</b> ${o?`${chWord(o).toLowerCase()} · ${fmt(o.at)}`:'nothing yet'}</span></span>`; };
+const courtShort = c => { const k=courtOf(c); if(k.owe) return {side:k.side, word:'Our · we owe', title:k.word}; return {side:k.side, word:k.word.replace(/^Our court/,'Our').replace(/^Their court/,'Their'), title:k.word}; };
+const snippetOf = m => m.ch==='email' ? (m.subject||m.text.split('\n')[0]) : m.ch==='missed' ? 'no voicemail' : m.text;
 const waitingSince = c => { const last=[...messages].filter(m=>m.c===c.id&&m.dir==='in').sort((a,b)=>b.at-a.at)[0]; if(!last) return ''; const mins=Math.max(1,Math.round((NOW-last.at)/60000)); if(mins<60) return `waiting ${mins} min`; if(mins<60*24) return `waiting ${Math.round(mins/60)} h`; return `waiting ${Math.round(mins/1440)} d`; };
 const kindWord = c => ({customer:'customer',trade:'trade partner',arch:'architect',unknown:'who is this?'})[c.kind];
 const kindClass = c => ({customer:'cust',trade:'trade',arch:'arch',unknown:'unknown'})[c.kind];
@@ -404,9 +408,9 @@ function renderFollowup(m){
     const last=lastIn(c); const offered = messages.filter(x=>x.c===c.id && ((x.promise&&x.promise.state==='offered')||(x.question&&x.question.state==='offered')));
     const row=document.createElement('div'); row.className='row clickable'; row.title='Open the conversation at this message';
     row.addEventListener('click',ev=>{ if(ev.target.closest('button, select, input, a')) return; openThread(c.id, last?last.id:null); });
-    row.innerHTML=`<div class="top"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="flex:1"><div class="who">${esc(c.name)} <span class="court ${courtOf(c).side}"><i></i>${esc(courtOf(c).word)}</span></div><div class="sub">${esc(c.company||kindWord(c))}${c.def&&jobLabel(c,c.def)!==c.company?` · ${esc(jobLabel(c,c.def))}`:''}</div></div>
+    row.innerHTML=`<div class="top"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="flex:1"><div class="who">${esc(c.name)} <span class="court ${courtOf(c).side}" title="${esc(courtOf(c).word)}"><i></i>${esc(courtOf(c).word)}</span></div><div class="sub">${esc(c.company||kindWord(c))}${c.def&&jobLabel(c,c.def)!==c.company?` · ${esc(jobLabel(c,c.def))}`:''}</div></div>
       <div class="right"><span class="whowrap">${hasPill(c)}</span></div></div>
-      <div class="snippet">${last?`<b>${chWord(last)}, ${fmt(last.at)}:</b> ${esc(last.text.length>220?last.text.slice(0,220).replace(/\s+\S*$/,'')+'…':last.text)}`:''}</div>
+      <div class="snippet">${last?`<b>${chWord(last)}, ${fmt(last.at)}:</b> ${esc((s=>s.length>220?s.slice(0,220).replace(/\s+\S*$/,'')+'…':s)(snippetOf(last)))}`:''}</div>
       <div class="acts">${offered.map(x=> x.promise?`<button class="small" onclick="openThread('${c.id}')">A day was heard: ${esc(x.promise.day)} · say what it is</button>`:`<button class="small" onclick="askArchitect(${x.id})">Ask the architect</button>`).join('')}
         ${c.kind==='unknown'?`<button class="small primary" onclick="whoIsThis('${c.id}')">Who is this?</button>`:`<button class="small primary" onclick="openThread('${c.id}')">Reply</button>`}
         ${last&&(last.ch==='missed'||last.ch==='voicemail')?`<button class="small" onclick="toast('Opens the call in Quo\\'s app; it comes back as a line.')">Call back in Quo</button>`:''}
@@ -427,7 +431,7 @@ function renderMessages(m){
     <div class="filters" style="padding:0 10px">${[['all','All'],['customers','Customers'],['trades','Trades'],['unknown','Who is this?']].map(([k,l])=>`<button class="${listFilter===k?'on':''}" onclick="listFilter='${k}';render()">${l}</button>`).join('')}</div>`;
   if(!rows.length) list.innerHTML+='<div class="empty">Nothing matches.</div>';
   for(const c of rows){ const last=lastMsg(c); const r=document.createElement('div'); r.className='row'+(c.id===openContact?' on':''); r.onclick=()=>openThread(c.id);
-    r.innerHTML=`<div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="min-width:0;flex:1"><div class="who">${esc(c.name)}</div><div class="sub">${esc(c.company||kindWord(c))}${c.trade?` · ${esc(c.trade)}`:''}</div><div class="last">${last?`${chWord(last)}: ${esc(last.text)}`:''}</div></div><div class="right">${last?fmt(last.at).split(' · ')[0]:''}<br><span class="court ${courtOf(c).side}" style="font-size:11px;padding:1px 7px 1px 5px"><i></i>${esc(courtOf(c).word.replace(/ court/,''))}</span>${c.has?`<br><span class="pill has">${esc(c.has)}</span>`:''}</div>`;
+    r.innerHTML=`<div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="min-width:0;flex:1"><div class="who">${esc(c.name)}</div><div class="sub">${esc(c.company||kindWord(c))}${c.trade?` · ${esc(c.trade)}`:''}</div><div class="last">${last?`${chWord(last)}: ${esc(snippetOf(last))}`:''}</div></div><div class="right">${last?fmt(last.at).split(' · ')[0]:''}<br><span class="court ${courtShort(c).side} tiny" title="${esc(courtShort(c).title)}"><i></i>${esc(courtShort(c).word)}</span>${c.has?`<br><span class="pill has">${esc(c.has)}</span>`:''}</div>`;
     list.appendChild(r); }
   wrap.appendChild(list);
   // thread

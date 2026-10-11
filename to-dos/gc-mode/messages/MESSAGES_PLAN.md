@@ -321,3 +321,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   only once it is ticked, with the cursor in the first.
 - **v1.22, 2026-10-11**: the tick row sits at the right, directly above Send as email or Send as text,
   with the box on its right edge in line with the button.
+- **v1.23, 2026-10-11**: list fixes from the owner's screenshot: the right column is capped so a long
+  court word never squashes the name; the list's court pill is the short form ("Our · we owe", the
+  full words on hover); an email's snippet is its subject; a missed call's reads "no voicemail".
