@@ -27,10 +27,11 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .lead{margin:0 0 12px;font-size:17px}
 .two{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px}
 .two.collapsed{grid-template-columns:64px minmax(0,1fr)}
-.two.flow{grid-template-columns:340px minmax(0,1fr) 300px}
-.two.flow.collapsed{grid-template-columns:64px minmax(0,1fr) 300px}
-@media(max-width:1000px){.two.flow,.two.flow.collapsed{grid-template-columns:minmax(0,1fr)}.two.flow .list,.two.flow .rail{display:none}}
-.fpanel{background:#fbfbfc}
+.two.with-flow{grid-template-columns:340px minmax(0,1fr) 300px}
+.two.with-flow.collapsed{grid-template-columns:64px minmax(0,1fr) 300px}
+@media(max-width:1000px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:minmax(0,1fr)}.two.with-flow .list,.two.with-flow .rail{display:none}}
+.fpanel{background:#fbfbfc;align-self:start;position:sticky;top:58px;max-height:calc(100vh - 74px);overflow:auto}
+.rail{align-self:start;position:sticky;top:58px}
 .fpanel .ph2{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .fpanel .ph2 b{font-size:13px}
 .flow{display:flex;flex-direction:column;gap:6px;font-size:12px}
@@ -519,7 +520,7 @@ function renderFollowup(m){
 }
 
 function renderMessages(m){
-  const wrap=document.createElement('div'); wrap.className='two'+(listCollapsed&&!narrow()?' collapsed':'')+(flowOpen&&openContact?' flow':'');
+  const wrap=document.createElement('div'); wrap.className='two'+(listCollapsed&&!narrow()?' collapsed':'')+(flowOpen&&openContact?' with-flow':'');
   // list
   const list=document.createElement('div'); list.className='card list'+(narrow()&&openContact?' hidden-narrow':'');
   if(listCollapsed&&!narrow()){ const filt0 = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');

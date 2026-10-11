@@ -339,3 +339,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   and the us/them tag on the current box (mock-up B with C's tags, the owner's pick), the on-now lines
   under it, and Settings → Flows with the editor table (names editable). Every person has a place in
   their flow in the demo.
+- **v1.25, later**: the wrapper's modifier class collided with the chart's own class and stacked the
+  columns; renamed. The panel and the rail now stick to the top of the window while the thread scrolls.
+  Checked with headless screenshots at 1400 px, open and folded.
