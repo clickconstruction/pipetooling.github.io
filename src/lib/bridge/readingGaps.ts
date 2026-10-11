@@ -97,7 +97,8 @@ export function buildReadingGaps(input: ReadingGapsInput): ReadingGap[] {
   if (input.assumedHalfJobs > 0) {
     gaps.push({
       key: 'assumed_half',
-      chip: `${input.assumedHalfJobs} ${plural(input.assumedHalfJobs, 'job', 'jobs')} with no % complete`,
+      // "worked this window": the earned jobs are the ones with field hours in the window, a narrower count than the percents strip's open jobs (v2.5245).
+      chip: `${input.assumedHalfJobs} ${plural(input.assumedHalfJobs, 'job', 'jobs')} worked this window with no % complete`,
       moves: `${shortK(input.assumedHalfEarnedUsd)} of earned rests on "assumed half done"; set the % and the rate firms up either way`,
       movesUsd: input.assumedHalfEarnedUsd,
       count: input.assumedHalfJobs,

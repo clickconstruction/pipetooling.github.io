@@ -37,6 +37,8 @@ import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
 import { ymdAddDays } from '../utils/dateUtils'
 import { buildStageFlow, withFieldPaces, type StageId } from '../lib/bridge/stageFlow'
 import { BridgeStages } from '../components/bridge/BridgeStages'
+import { BridgePctPrompt } from '../components/bridge/BridgePctPrompt'
+import { buildPctPrompt, withPctSet } from '../lib/bridge/pctPrompt'
 import { BridgeRule } from '../components/bridge/BridgeRule'
 import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
@@ -331,6 +333,13 @@ export default function Bridge() {
     }
   }, [data])
   const buildPace = useMemo(() => (buildInputs ? buildBuildPace(buildInputs) : null), [buildInputs])
+  // The percents prompt (v2.5245): the open jobs with no %, and the ones set this visit; a save patches the Build reads in place.
+  const [pctSetThisVisit, setPctSetThisVisit] = useState<ReadonlyMap<string, number>>(() => new Map())
+  const pctPrompt = useMemo(() => (buildInputs ? buildPctPrompt(buildInputs.openJobs, pctSetThisVisit) : null), [buildInputs, pctSetThisVisit])
+  const savePct = useCallback((jobId: string, pct: number) => {
+    setPctSetThisVisit((m) => new Map(m).set(jobId, pct))
+    setBuildInputs((prev) => (prev ? withPctSet(prev, jobId, pct) : prev))
+  }, [])
 
   // Market and Sales (link PR 4): the bids and estimates over the window and the awaiting span.
   const [demandInputs, setDemandInputs] = useState<DemandInput | null>(null)
@@ -1002,6 +1011,8 @@ export default function Bridge() {
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
           {shownFlow && <BridgeStages flow={shownFlow} pickedId={litLink && isStageLink(litLink) ? litLink : null} onPick={setPickedStage} onOrder={setOrderFor} />}
+          {/* The percents prompt (v2.5245): the Build card's grey jobs, set from the page */}
+          {pctPrompt && <BridgePctPrompt prompt={pctPrompt} onSaved={savePct} />}
           {dialReading && litStage && (
             <BridgeDial
               reading={dialReading}

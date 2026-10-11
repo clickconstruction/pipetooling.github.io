@@ -25,7 +25,9 @@ Under the top line sit five cards in the order work flows. Market, Sales, Build,
 
 The Market card counts the asks that came in: bids invited and estimates requested, by value. The Sales card shows what went out and what came back, bids and estimates on their own lines. Won counts the bids marked won and the bids that became jobs. Both cards read by pace against the field, not by weeks of pile.
 
-The Build card reads the jobs' percent complete. Built per week is each job's change in percent times its contract. Sold per week is the contract on the jobs created. The pile is the contract left to build on open jobs. A job with no percent is read as half done and drawn grey. Set its percent on the job to make the reading true.
+The Build card reads the jobs' percent complete. Built per week is each job's change in percent times its contract. Sold per week is the contract on the jobs created. The pile is the contract left to build on open jobs. A job with no percent is read as half done and drawn grey. Set its percent to make the reading true.
+
+Under the cards, the **Jobs with no %** strip counts the open jobs with a contract and no percent. Press {{button:outline-amber|Set the %s}} to open the list, biggest contract first. Press {{button:outline|Set}} on a row to open the percent window the crews use on their schedule. Saving files a status report on the job, the way a crew's does. The Build card's grey shrinks right away, and the row moves to the bottom marked set. A set row stays on the list until the page reloads. When every open job with a contract has a percent, the strip says so.
 
 The field's pace is read a second way, by hours. That is what the field earned on recorded time, the way the top line reads the week. The card uses the larger of the two and names the other. The Bill card's first line reads the same hours. When over a third of Build's pile is grey, Build takes the link only by a clear margin. Until then its badge says it reads on a thin percent.
 
@@ -195,7 +197,7 @@ Under the top line, **Fix the reading** lists what makes the page read low or th
 
 - unapproved hours, which move the top line and payroll
 - a typed cash figure that drifted from the bank, or one typed when the bank could not be read
-- open jobs with no % complete, which are assumed half done
+- jobs worked this window with no % complete, which are assumed half done
 - worked jobs with no contract price, which earn $0
 - unsorted bank transfers or card purchases
 - bids sent with no value
