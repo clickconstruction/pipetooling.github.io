@@ -19,6 +19,8 @@ The page opens on one line. Find the slowest step. Everything waits on it. Press
 
 Under the top line sit five cards in the order work flows. Market, Sales, Build, Bill, Collect. Each card reads one stage. The bar is the pile waiting in front of it. The two lines under the bar say what comes in and what goes out each week. The last line says how many weeks it would take to clear the pile at today's pace.
 
+The Build card reads the jobs' percent complete. Built per week is each job's change in percent times its contract. Sold per week is the contract on the jobs created. The pile is the contract left to build on open jobs. A job with no percent is read as half done and drawn grey. Set its percent on the job to make the reading true.
+
 The stage with the most weeks reads red. That is the weakest link. A stage within a tenth of it reads as its pair. The stages after the link say they move with it. A card that says **not readable yet** waits on a later step of the app.
 
 Press a card to read it. The pressed card has the red border.
