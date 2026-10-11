@@ -14,6 +14,11 @@ button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.quiet{border-color:transparent;background:transparent;color:var(--accent);padding:4px 6px}
 button.small{padding:3px 8px;font-size:13px}
 button:disabled{opacity:.45;cursor:not-allowed}
+button.danger{color:var(--danger);border-color:#f0c2be;background:var(--surface)}
+.modal .facts2{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px;font-size:14px;line-height:1.4}
+.modal .facts2 div{display:flex;gap:10px;align-items:flex-start}
+.modal .facts2 .k{flex:none;width:22px;text-align:center;font-size:15px}
+.modal .facts2 b{font-weight:600}
 input,select,textarea{font:inherit;border:1px solid var(--border);border-radius:8px;padding:7px 9px;background:var(--surface);color:var(--text)}
 header.top{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5}
 header.top .brand{font-weight:700;margin-right:8px}
@@ -744,9 +749,22 @@ function toggleOptout(id){ const c=cById(id); c.optout=!c.optout; toast(c.optout
 function jobTile(c,j){ const d=jobDay(j); const on=jobFilter===j.id; const flt=`jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()`;
   return `<span class="jobtile ${on?'on':''}" draggable="true" data-job="${j.id}" data-tip="${esc(jobNum(j))} · ${esc(jobLabel(c,j.id))}|${esc(jobDayText(j))}.|Click the name to show only its lines${on?' (showing them now)':''}; drag the tile onto a line to tie that message here.">
     <span class="ln"><span class="star ${c.def===j.id?'':'off'}" title="${c.def===j.id?'New messages land here':'Make this the job new messages land on'}" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span class="num ${j.kind}">${esc(jobNum(j))}</span><span class="nm" onclick="${flt}">${esc(j.name)}</span><span class="x" title="Open this job" onclick="event.stopPropagation();jobModal('${j.id}')">⧉</span></span>
-    <span class="ln"><span class="d ${d.t}" onclick="${flt}">${d.h}</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span></span>`; }
+    <span class="ln"><span class="d ${d.t}" onclick="${flt}">${d.h}</span><span class="x" data-tip="Take this job off ${esc(c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0])}|Asks first, and says what changes: the lines tied to it keep their tie, and new messages stop landing here.|The job itself stays in the app. + add a job puts it back." onclick="event.stopPropagation();confirmRemoveJob('${c.id}','${j.id}')">×</span></span></span>`; }
 function setDefault(cid,jid){ const c=cById(cid); c.def=jid; toast(`New messages from ${c.name} go to ${jobLabel(c,jid)}.`); render(); }
-function removeJob(cid,jid){ const c=cById(cid); c.jobs=c.jobs.filter(j=>j!==jid); if(c.def===jid) c.def=c.jobs[0]||null; if(jobFilter===jid) jobFilter=null; toast('Job removed from the person. Their messages tied to it keep the tie.'); render(); }
+// Taking a job off a person asks first (the owner, 2026-10-11: harder to remove, with a useful ask). The modal says what
+// changes and what does not; the safe answer is the blue, focused one, as the app's own confirms do.
+function confirmRemoveJob(cid,jid){ const c=cById(cid), j=jobById(jid); const first=c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0]; const n=messages.filter(m=>m.c===cid&&m.job===jid).length; const isDef=c.def===jid; const next=isDef?(c.jobs.find(x=>x!==jid)||null):null;
+  const kindWords=j.kind==='bid'?'The bid':j.kind==='project'?'The project':'The job';
+  const bg=document.createElement('div'); bg.className='modal-bg'; bg.innerHTML=`<div class="modal"><h2>Take ${jobTag(jid)} off ${esc(c.name)}?</h2>
+    <div class="facts2">
+      <div><span class="k">↔</span><span>This changes only what ${esc(first)} is tied to here. ${kindWords} itself stays in the app, with everything on it.</span></div>
+      <div><span class="k">💬</span><span>${n?`<b>${n} message${n===1?'':'s'}</b> ${n===1?'is':'are'} tied to it. ${n===1?'It keeps its tie':'They keep their tie'} and still show on the job's page.`:'No messages are tied to it.'}</span></div>
+      ${isDef?`<div><span class="k">★</span><span>It is where new messages from ${esc(first)} land. After this they land on ${next?jobTag(next):`<b>${esc(first)} alone</b>, until someone adds a job`}.</span></div>`:''}
+      <div><span class="k">↩</span><span>To put it back, press <b>+ add a job</b>. The thread records who took it off.</span></div>
+    </div>
+    <div class="btns"><button class="danger" id="mrm">Take it off ${esc(first)}</button><button class="primary" id="mkeep">Keep the job</button></div></div>`;
+  document.body.appendChild(bg); bg.querySelector('#mkeep').onclick=()=>bg.remove(); bg.querySelector('#mrm').onclick=()=>{ bg.remove(); removeJob(cid,jid); }; bg.onclick=e=>{ if(e.target===bg) bg.remove(); }; bg.querySelector('#mkeep').focus(); }
+function removeJob(cid,jid){ const c=cById(cid); const j=jobById(jid); const wasDef=c.def===jid; c.jobs=c.jobs.filter(x=>x!==jid); if(wasDef) c.def=c.jobs[0]||null; if(jobFilter===jid) jobFilter=null; messages.push({id:++seq,c:cid,job:null,ch:'event',dir:'team',who:ME,at:NOW+messages.length,text:`${ME} took ${jobText(jid)} off ${c.name}.${wasDef?(c.def?` New messages land on ${jobText(c.def)} now.`:' New messages land on them alone now.'):''}`}); toast(`${jobText(jid)} is off ${c.name}. The lines tied to it keep their tie.`); render(); }
 function addJob(cid){ const c=cById(cid); const left=jobs.filter(j=>!c.jobs.includes(j.id)); if(!left.length){toast('They are on every job already.');return;} modal(`Add a job to ${esc(c.name)}`, `<div class="f">Which job<select id="mj">${left.map(j=>`<option value="${j.id}">${esc(jobText(j.id))} · ${esc(jobDayText(j))}</option>`).join('')}</select></div><p class="note">The app adds most of these itself: the ask, the customer record, the architect on the project.</p>`, ()=>{ const v=document.getElementById('mj').value; c.jobs.push(v); if(!c.def) c.def=v; toast('Added.'); render(); }); }
 function tie(mid,jid){ const x=messages.find(m=>m.id===mid); const c=cById(x.c); if(!c.jobs.includes(jid)) c.jobs.push(jid); x.job=jid; toast(`Tied to ${jobLabel(c,jid)}.`); render(); }
 function untie(mid){ const x=messages.find(m=>m.id===mid); x.job=null; toast('Untied. The line sits on the person alone.'); render(); }

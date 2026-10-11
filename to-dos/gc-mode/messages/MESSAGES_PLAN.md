@@ -94,7 +94,11 @@ Each one is a button in the prototype; each becomes one press in the app.
 - **Ask the architect** / **Answer it myself**: a text that reads like a plans question.
 - **Who is this?**: name an unknown number.
 - **Tie to a job** (drag, or press and hold) / **Untie** / **set the default job** (★) / **add a job to
-  the contact** / **remove it**.
+  the contact** / **remove it**. Removing asks first (the owner, 2026-10-11: harder to remove, with a useful ask): the
+  modal names the job, says it changes only the tie to this person and the job itself stays, how many messages are tied
+  and that they keep their tie, where new messages land after if it was the default, and that + add a job puts it back;
+  **Keep the job** is the blue, focused answer and **Take it off Elena** the plain one, as the app's own confirms are
+  built. The thread gets a gray event line naming who took it off.
 - **Before it goes**: *Send text…* and *Send email…* never send at once. They open one window with
   two tabs that show the message the way the contact's own inbox or phone shows it: the email with its
   inbox row, From, To, the subject made from the job and the first line, the letterhead, the greeting from
@@ -382,3 +386,7 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   on each line's tag, the Tie to button and its picker (rows read the tile's day words), the job's card, the A job
   page, the Follow up row and the Add a job and Who is this? pickers; the kind pill is gone, the badge's color says
   the kind. jobLabel with the trade stays for toasts and hover text.
+- **v1.37, 2026-10-11**: × on a tile asks first: a modal with the job's badge, what changes and what does not (the
+  job stays in the app; the N tied messages keep their tie; where new messages land next if it was the default; + add
+  a job puts it back), Keep the job as the blue focused answer, Take it off as the plain one; a gray event line
+  records the removal (the owner: harder to remove, with a useful ask).
