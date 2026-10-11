@@ -373,6 +373,10 @@ the failure, not a 500. The lead then makes the import static. *Writes*: the por
 - **Words:** They said when…'s *What they said* box has the placeholder *Who said it* (step 7). Owner Billing.
 - **The GC customer's portal wears the plumbing letterhead** (*CLICK. Plumbing, electrical, and HVAC*, step 2). The
   owner's call.
+- **A payment on the test billing job emails staff.** Step 9's $100 sent the Pipeline's *Payment progress — 1077 · GC
+  test project, delete me (GC) — $100.00 of $10,100.00 paid* to Taunya and Malachi, about 11 minutes later. Step 11's
+  card payment will send one more. A billing-only GC test job should skip that staff notice, or the notice should name
+  the GC side. That is the Pipeline's lane. The owner or Grace tells the two that it is test noise.
 
 ## After the walk
 
