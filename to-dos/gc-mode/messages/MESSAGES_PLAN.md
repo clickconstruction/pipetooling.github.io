@@ -473,6 +473,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.85, 2026-10-11**: the email tab's note on where each part comes from sits under the buttons, at the bottom of
+  the window (the owner's ask).
 - **v1.84, 2026-10-11**: the Subject line in the send window has a *change* that replaces the made subject for this
   one email; the inbox row follows and the sent email keeps it (the owner's ask).
 - **v1.83, 2026-10-11**: the send window's tick is a two-press choice, *After this goes, whose move is it? Their move ·
