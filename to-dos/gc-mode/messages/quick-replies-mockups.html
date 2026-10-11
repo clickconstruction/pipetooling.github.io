@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: sorting the quick replies, three ways</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:900px;line-height:1.45}
+.opt{max-width:900px;margin:0 0 22px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.frame{width:700px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px}
+.frame .st{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45;max-width:900px}
+button{font:inherit;cursor:default;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:999px;padding:4px 10px;font-size:13px;white-space:nowrap}
+.quickwrap{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:8px 10px 6px}
+.ql{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:flex;gap:8px;align-items:center}
+.ql span{font-weight:400;text-transform:none;letter-spacing:0}
+.ql .edit{margin-left:auto;color:var(--accent);text-transform:none;letter-spacing:0;font-size:13px}
+.grp{margin:6px 0 2px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;display:flex;gap:6px;align-items:center}
+.grp i{font-style:normal;font-size:10px;font-weight:700;padding:0 5px;border-radius:999px;background:var(--warn-soft);color:var(--warn);text-transform:none;letter-spacing:0}
+.rows{display:flex;gap:6px;flex-wrap:wrap}
+.rows button.mine{border-style:dashed}
+.rows button .n{font-size:10.5px;color:var(--text-muted);margin-left:4px}
+.strip{display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,auto);grid-auto-columns:max-content;gap:6px;overflow:hidden;mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.strip button{max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.filter{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:3px 8px;background:var(--surface);font-size:13px;color:var(--text-muted);text-transform:none;letter-spacing:0;min-width:200px}
+.ew{display:inline-block;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13px;width:460px;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.ew .r{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border);flex-wrap:wrap}
+.ew .r:first-of-type{border-top:0}
+.ew .r .t{flex:1;min-width:200px}
+.ew select{font:inherit;font-size:12.5px;border:1px solid var(--border);border-radius:6px;padding:2px 6px;background:var(--surface)}
+.pick{max-width:900px;font-size:13.5px;line-height:1.5}
+.pick ol{margin:0 0 8px 18px;padding:0}
+</style>
+</head>
+<body>
+<h1>Sorting the quick replies, three ways</h1>
+<p class="lead">Today the strip is two rows of every line, the team's first and then yours, cut with an ellipsis and scrolled sideways. Each frame is the reply box on Greg Paulk's thread (a trade partner on the step <i>Asked to quote</i>), with the twelve lines of the demo. Frame 4 shows Priya's thread under the same rule.</p>
+
+<div class="opt"><h2>Today</h2>
+<div class="frame"><div class="quickwrap"><div class="ql">Quick replies <span>· scroll for more · a press fills the box, nothing sends</span><span class="edit">Edit</span></div>
+<div class="strip"><button>Your quote is in your portal now, thank you.</button><button>Did the invite come through?</button><button>Checking on the number. Still good for today?</button><button>Understood. You will have it by 9 AM Thursday.</button><button>Thanks, we will call you back within the hour.</button><button>The plans are in your portal; questions close Monday.</button><button>We received it, thank you. We will be in touch after we compare.</button><button>The site is open from 7. Check in with the super when you arrive.</button></div></div></div></div>
+
+<div class="opt"><h2>A · By who they are, and the step they are on <small>· lines carry a for-tag and an on-step; the thread shows what fits</small></h2>
+<div class="frame"><div class="st">Greg Paulk · trade partner · on Asked to quote</div><div class="quickwrap"><div class="ql">Quick replies <span>· for a trade partner · a press fills the box, nothing sends</span><span class="edit">Edit</span></div>
+<div class="grp">On Asked to quote <i>his step</i></div><div class="rows"><button>Checking on the number. Still good for today?</button><button>Your quote is in your portal now, thank you.</button><button>We received it, thank you. We will be in touch after we compare.</button><button class="mine">Can you get it to us a day earlier?</button></div>
+<div class="grp">Other trade partner lines</div><div class="rows"><button>Did the invite come through?</button><button>The plans are in your portal; questions close Monday.</button><button>The site is open from 7. Check in with the super when you arrive.</button><button>Your pay application is sent; the architect has it.</button><button class="mine">Is the detention pond in your scope or concrete's?</button></div>
+<div class="grp">Anyone</div><div class="rows"><button>Thanks, we will call you back within the hour.</button><button class="mine">Running about 20 minutes late, sorry.</button></div></div></div>
+<p class="why">Each line is tagged <i>for</i> customers, trade partners, architects or anyone, and may be tagged <i>on</i> a flow step. The strip shows only the lines for this kind of person, the lines for the step they are on first, then the rest of their kind, then anyone's. Yours are dashed, among the team's. Lines read whole, each on a wrapping row, since the first group is the one worth reading. The customer lines (<i>Understood. You will have it by 9 AM Thursday</i>) are not here at all; they are on Priya's thread.</p></div>
+
+<div class="opt"><h2>B · By use <small>· what you reach for first, then what the team reaches for; no tags</small></h2>
+<div class="frame"><div class="st">Greg Paulk · the same twelve lines, ordered by presses</div><div class="quickwrap"><div class="ql">Quick replies <span>· most used first · a press fills the box, nothing sends</span><span class="edit">Edit</span></div>
+<div class="rows"><button>Checking on the number. Still good for today? <span class="n">41</span></button><button class="mine">Can you get it to us a day earlier? <span class="n">19</span></button><button>Did the invite come through? <span class="n">17</span></button><button>Your quote is in your portal now, thank you. <span class="n">14</span></button><button>Thanks, we will call you back within the hour. <span class="n">12</span></button><button>Understood. You will have it by 9 AM Thursday. <span class="n">9</span></button><button>The plans are in your portal; questions close Monday. <span class="n">8</span></button><button>We received it, thank you. We will be in touch after we compare. <span class="n">6</span></button><button class="mine">Running about 20 minutes late, sorry. <span class="n">5</span></button><button>The site is open from 7. Check in with the super when you arrive. <span class="n">3</span></button><button>Your pay application is sent; the architect has it. <span class="n">2</span></button><button class="mine">Is the detention pond in your scope or concrete's? <span class="n">1</span></button></div></div></div>
+<p class="why">The app counts each press, yours and the team's, and orders by that: your own count first, the team's as the tie-break, a new line last. Nothing to tag, and the lines you use most are always at the top. But a customer line (<i>Understood. You will have it by 9 AM Thursday</i>) still sits among Greg's, and the order drifts as people press. The counts are drawn here to show the rule; the strip would not print them.</p></div>
+
+<div class="opt"><h2>C · A's groups, B's order inside them, a filter box when the list is long <small>· the pick</small></h2>
+<div class="frame"><div class="st">Greg Paulk · trade partner · on Asked to quote · 23 lines on the team's list, so the box shows</div><div class="quickwrap"><div class="ql">Quick replies <span>· for a trade partner</span><span class="filter">⌕ type to narrow the lines</span><span class="edit">Edit</span></div>
+<div class="grp">On Asked to quote <i>his step</i></div><div class="rows"><button>Checking on the number. Still good for today?</button><button class="mine">Can you get it to us a day earlier?</button><button>Your quote is in your portal now, thank you.</button><button>We received it, thank you. We will be in touch after we compare.</button></div>
+<div class="grp">Other trade partner lines</div><div class="rows"><button>Did the invite come through?</button><button>The plans are in your portal; questions close Monday.</button><button class="mine">Is the detention pond in your scope or concrete's?</button><button>The site is open from 7. Check in with the super when you arrive.</button><button>Your pay application is sent; the architect has it.</button><button>Send the W-9 when you can; the insurance certificate too.</button><button>Addendum 2 is in the portal; the pond is in sitework.</button></div>
+<div class="grp">Anyone</div><div class="rows"><button>Thanks, we will call you back within the hour.</button><button class="mine">Running about 20 minutes late, sorry.</button><button>Got it, thank you.</button></div></div></div>
+<div class="frame"><div class="st">Dr. Priya Raman · customer · on Start date · the same rule</div><div class="quickwrap"><div class="ql">Quick replies <span>· for a customer</span><span class="edit">Edit</span></div>
+<div class="grp">On Start date <i>her step</i></div><div class="rows"><button>The start date is Monday the 12th; the crew is on site at 7.</button><button>We will have the start date to you by Friday.</button></div>
+<div class="grp">Other customer lines</div><div class="rows"><button>Understood. You will have it by 9 AM Thursday.</button><button>Your pay application is sent; the architect has it.</button><button>The change order is in your portal to sign.</button></div>
+<div class="grp">Anyone</div><div class="rows"><button>Thanks, we will call you back within the hour.</button><button class="mine">Running about 20 minutes late, sorry.</button><button>Got it, thank you.</button></div></div></div>
+<p class="why">A's three groups, with B's order inside each: your most used first, then the team's. Past about ten lines on the team's list, a filter box appears in the strip's head; typing narrows every group at once, the way the people list's search does. The Edit window gives each line two pickers, shown below.</p>
+<div class="ew"><b style="font-size:13.5px">Edit quick replies</b><div style="font-size:12px;color:var(--text-muted);margin:2px 0 6px">Each line says who it is for and, if it belongs to a step, which. Anyone can add or change one; each keeps who added or edited it and when.</div>
+<div class="r"><span class="t">Checking on the number. Still good for today?</span><select><option>for trade partners</option></select><select><option>on Asked to quote</option></select></div>
+<div class="r"><span class="t">Understood. You will have it by 9 AM Thursday.</span><select><option>for customers</option></select><select><option>on no step</option></select></div>
+<div class="r"><span class="t">Thanks, we will call you back within the hour.</span><select><option>for anyone</option></select><select><option>on no step</option></select></div>
+<div class="r"><span class="t" style="color:var(--text-muted)">added by Rosa · Sep 12 · edited by Wendi · Sep 29</span></div></div></div>
+
+<div class="pick">
+<h2 style="font-size:15px;margin:0 0 6px">The pick, and is this the best we can do?</h2>
+<p style="margin:0 0 8px"><b>C.</b> Half the lines never fit the thread they are on, so A's groups are the big win; B's order inside them keeps the first row the lines you reach for; the filter box costs nothing until the list is long enough to need it.</p>
+<p style="margin:0 0 6px">Three things weighed:</p>
+<ol>
+<li><b>Tagging is work.</b> A line with no tags reads as <i>anyone</i>, so an untagged list behaves as today and gets better as lines are tagged. The real build can guess a first tag from the words (<i>quote</i>, <i>portal</i>, <i>pay application</i>) and let the editor correct it.</li>
+<li><b>The strip grows taller.</b> Whole lines on wrapping rows take more height than two scrolled rows. The groups keep the top short, and the quick replies already fold away on a note for the team; a <i>show fewer</i> that keeps only the step's group is one press if the height bites.</li>
+<li><b>The step comes from the flow.</b> <i>On Asked to quote</i> reads the same flow the right panel draws, so a line tagged to a step follows the person as they move. That is the third surface the flow list would drive, with the panel and the nudges, which the plan already names as the point of keeping it in Settings.</li>
+</ol>
+</div>
+</body>
+</html>
