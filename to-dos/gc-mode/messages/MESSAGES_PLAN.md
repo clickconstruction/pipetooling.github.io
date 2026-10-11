@@ -77,6 +77,9 @@ Each one is a button in the prototype; each becomes one press in the app.
   answer on our bid (the bid's follow-up), a day we can be on site (the schedule as a wait); an
   architect's answer (the plan question) or certificate (the pay application). The written line repeats
   exactly what and where. The first choice is the likely one for who they are; the others are one press.
+  The offer is one line: the day, "is a promise of", and short choices with a one-word tag for where it
+  goes (Board, Schedule, Papers, Pipeline, Bid); the job is already on the message's own line, so the
+  choice does not repeat it (the owner, 2026-10-11: too long and wordy).
 - **Ask the architect** / **Answer it myself**: a text that reads like a plans question.
 - **Who is this?**: name an unknown number.
 - **Tie to a job** (drag, or press and hold) / **Untie** / **set the default job** (★) / **add a job to
@@ -202,3 +205,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   voicemail about the check for pay application 3 shows a customer's payment promise beside Greg's quote.
 - **v1.8, 2026-10-11**: the quick replies strip sits in a gray panel of its own, set apart from the
   entry box under it.
+- **v1.9, 2026-10-11**: the promise offer is one line with short choices and a one-word tag for where
+  each goes; the full sentence lives on the written line and on the hover.

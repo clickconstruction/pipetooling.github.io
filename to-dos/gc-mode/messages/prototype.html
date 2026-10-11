@@ -71,6 +71,8 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .msg .body{margin:6px 0 0;white-space:pre-wrap}
 .msg .offer{margin-top:8px;padding:8px;border-radius:8px;background:var(--warn-soft);font-size:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .msg .offer.q{background:#f3eaff}
+.msg .offer .tag{font-size:11px;opacity:.7;margin-left:4px;font-weight:400}
+.msg .offer button.primary .tag{opacity:.85}
 .msg .player{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--chip);margin-top:6px}
 .msg .written{margin-top:6px;font-size:13px;color:var(--ok)}
 .reply{margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
@@ -396,17 +398,17 @@ function untie(mid){ const x=messages.find(m=>m.id===mid); x.job=null; toast('Un
 function tieMenu(mid){ const x=messages.find(m=>m.id===mid); const c=cById(x.c); const opts=c.jobs.map(jid=>`<button onclick="tie(${mid},'${jid}');closeSheet()">${esc(jobLabel(c,jid))}</button>`).join('')+ jobs.filter(j=>!c.jobs.includes(j.id)).map(j=>`<button onclick="tie(${mid},'${j.id}');closeSheet()" class="note">${esc(j.name)} (not one of theirs yet)</button>`).join(''); sheet('Tie this message to', opts); }
 function promiseKinds(c,x){ const j=x.job?jobById(x.job):null; const jn=j?j.name:'a job'; const tr=c.trade||'their trade';
   if(c.kind==='customer') return [
-    {k:'payment', what:`a payment on ${jn}`, where:'the Pipeline\'s payment promises, which the chase loop reads', label:`A payment on ${jn}`},
-    {k:'decision', what:`their answer on our bid for ${jn}`, where:'the bid\'s follow-up, so it is chased', label:`Their answer on our bid for ${jn}`},
-    {k:'access', what:`a day we can be on site at ${jn}`, where:'the schedule as a wait', label:`A day we can be on site at ${jn}`} ];
+    {k:'payment', what:`a payment on ${jn}`, where:'the Pipeline\'s payment promises', label:'A payment', tag:'Pipeline'},
+    {k:'decision', what:`their answer on our bid for ${jn}`, where:'the bid\'s follow-up', label:'Their answer on our bid', tag:'Bid'},
+    {k:'access', what:`a day we can be on site at ${jn}`, where:'the schedule, as a wait', label:'A day we can be on site', tag:'Schedule'} ];
   if(c.kind==='arch') return [
-    {k:'answer', what:`the architect\'s answer on ${jn}`, where:'the plan question, so it is chased', label:`Their answer to a plan question on ${jn}`},
-    {k:'cert', what:`the certificate for ${jn}`, where:'the pay application, which Follow up reads', label:`The certificate on a pay application for ${jn}`} ];
+    {k:'answer', what:`the architect\'s answer on ${jn}`, where:'the plan question', label:'Their answer', tag:'Plan question'},
+    {k:'cert', what:`the certificate for ${jn}`, where:'the pay application', label:'The certificate', tag:'Pay app'} ];
   return [
-    {k:'quote', what:`${c.company}\'s ${tr} quote for ${jn}`, where:'their ask on the Board, which Follow up and the ring read', label:`Their ${tr} quote for ${jn}`},
-    {k:'start', what:`${c.company}\'s start or delivery on ${jn}`, where:'the schedule, which pushes what waits on it', label:`A start or delivery day on ${jn}`},
-    {k:'papers', what:`${c.company}\'s insurance or W-9`, where:'the company\'s papers, which the award door reads', label:'Their insurance or W-9'} ]; }
-function promiseOffer(c,x){ const kinds=promiseKinds(c,x); return `<div class="offer" style="flex-direction:column;align-items:stretch;gap:6px"><div>Quo heard a day: <b>${esc(x.promise.day)}</b>. What is it a promise of? Each choice says where it goes.</div>${kinds.map((k,i)=>`<button class="small ${i===0?'primary':''}" style="text-align:left" onclick="writeDown(${x.id},${i})">${esc(k.label)} <span style="opacity:.75">· goes on ${esc(k.where)}</span></button>`).join('')}<button class="small" style="text-align:left" onclick="notPromise(${x.id})">Not a promise, just talk</button></div>`; }
+    {k:'quote', what:`${c.company}\'s ${tr} quote for ${jn}`, where:'their ask on the Board', label:'Their quote', tag:'Board'},
+    {k:'start', what:`${c.company}\'s start or delivery on ${jn}`, where:'the schedule', label:'A start or delivery', tag:'Schedule'},
+    {k:'papers', what:`${c.company}\'s insurance or W-9`, where:'the company\'s papers', label:'Insurance or W-9', tag:'Papers'} ]; }
+function promiseOffer(c,x){ const kinds=promiseKinds(c,x); return `<div class="offer"><span><b>${esc(x.promise.day)}</b> is a promise of</span>${kinds.map((k,i)=>`<button class="small ${i===0?'primary':''}" title="Goes on ${esc(k.where)}" onclick="writeDown(${x.id},${i})">${esc(k.label)} <span class="tag">${esc(k.tag)}</span></button>`).join('')}<button class="small quiet" onclick="notPromise(${x.id})">just talk</button></div>`; }
 function writeDown(mid, ki){ const x=messages.find(m=>m.id===mid); const c=cById(x.c); const k=promiseKinds(c,x)[ki||0]; x.promise.state='written'; x.promise.by=ME; x.promise.what=k.what; x.promise.where=k.where; c.promise=`promised ${x.promise.day} · ${k.k}`; toast(`Written down on ${k.where.split(',')[0]}: ${k.what} by ${x.promise.day}.`); render(); }
 function notPromise(mid){ const x=messages.find(m=>m.id===mid); x.promise.state='no'; x.promise.by=ME; render(); }
 function askArchitect(mid){ const x=messages.find(m=>m.id===mid); x.question.state='asked'; x.question.by=ME; const c=cById(x.c); messages.push({id:++seq,c:c.id,job:x.job,ch:'note',dir:'team',who:`${ME} · note for the team`,at:T(2,10,31),text:`Sent to the architect as a plan question: "${x.text}"`}); toast('Sent to the architect as a plan question.'); render(); }
