@@ -65,12 +65,22 @@ export function payReminderStep(state: GcState, project: GcProject, number: numb
   }
 }
 
-/** How the email greets them: the contact's first name, or a title with the last name ("Dr. Raman"). */
-export function customerGreeting(customer: GcCustomer | undefined, fallback: string): string {
+/**
+ * How the email greets them: the contact's first name, or a title with the last name ("Dr. Raman"). With no contact
+ * it names no one, as the schedule's letter (15a): a company's first word is no one's name (the walk's step 8 read
+ * "Hello GC,").
+ */
+export function customerGreeting(customer: GcCustomer | undefined): string {
   // "Dr. Priya Raman" is greeted "Dr. Raman": a title keeps the last name (the Board's rule).
-  const words = (customer?.contact || customer?.name || fallback).split(/\s+/)
-  const titled = /^(Dr|Mr|Mrs|Ms)\.?$/i.test(words[0] ?? '')
-  return titled ? `${words[0]} ${words[words.length - 1]}` : (words[0] ?? fallback)
+  const words = (customer?.contact ?? '').trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return ''
+  const titled = words.length > 1 && /^(Dr|Mr|Mrs|Ms)\.?$/i.test(words[0]!)
+  return titled ? `${words[0]} ${words[words.length - 1]}` : words[0]!
+}
+
+/** An email's first line: "Hello Elena," or, with no one to greet by name, "Hello,". */
+export function helloLine(greeting: string): string {
+  return greeting ? `Hello ${greeting},` : 'Hello,'
 }
 
 /**
@@ -100,7 +110,7 @@ export function payReminderMail(f: PayReminderMailFacts): { subject: string; lin
   return {
     subject: `Reminder: ${f.bill} for ${f.job}, ${money(f.open)}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       `${Bill} for ${f.job} has ${money(f.open)} still open. It was due ${weekdayDate(f.dueOn)}, ${f.promised ? 'the day you gave' : 'the day we expected it'}.`,
       ...(f.lastPaid ? [`Thank you for the ${money(f.lastPaid.amount)} you paid ${shortDate(f.lastPaid.on)}.`] : []),
       ...(f.card ? [`You chose to pay it by card. With the 3% card fee, the card page asks ${cardMoney(f.card.total)}.`] : []),
@@ -134,7 +144,7 @@ export function payReminderEmail(
   const pct = project.ownerLateInterest?.pctPerMonth
   const interest = pct ? ownerInterestOnBill(state, project, app, pct) : null
   return payReminderMail({
-    greeting: customerGreeting(customer, project.owner),
+    greeting: customerGreeting(customer),
     job: project.name,
     bill: billName(app),
     open: appOpen(app),
