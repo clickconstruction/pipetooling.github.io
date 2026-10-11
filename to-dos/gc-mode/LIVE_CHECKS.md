@@ -1,7 +1,7 @@
 ---
 name: "GC mode, the live checks: one walk"
 parent: to-dos/gc-mode/LEDGER_2026-10-09.md
-status: run sheet, written by Helper 5 (gc 5) 13:30 UTC 2026-10-10 from main's code and a read-only look at prod · the schedule's steps 23 to 27 added by helper 1 (gc 1) from main at 2b2477a63 · day 1 walked 2026-10-10 to 11 UTC on Grace's yeses, but for steps 10 to 12 (ids in the ledger)
+status: run sheet, written by Helper 5 (gc 5) 13:30 UTC 2026-10-10 from main's code and a read-only look at prod · the schedule's steps 23 to 27 added by helper 1 (gc 1) from main at 2b2477a63 · day 1 walked 2026-10-10 to 11 UTC on Grace's yeses, but for steps 10 to 12 (ids in the ledger) · the Follow up sheet's steps 28 and 29 added by helper 2 (gc 2) from main at 96b02e5a9
 ---
 
 # GC mode, the live checks: one walk
@@ -240,6 +240,30 @@ from the day after their certificates. That is about $2.20 a day. If it reads un
 "Interest bill 1", its amount, the chip "open" and "Emailed to". *Writes*: a `jobs_ledger_invoices` row and a
 `gc_owner_interest_bills` row. The email "Interest on late bills for GC test project, delete me, $X" and its sent
 copy also go. No undo.
+
+**28. B2b-viii-b, the Follow up sheet's test copy.** Not before Mon Oct 12, app time. The bidding project's Concrete
+ask to the test company is from Oct 8, and Follow up counts an ask never opened only once it is more than 3 days old
+(`OPEN_WITHIN_DAYS`). Until then it waits on no one, and the sheet has nobody to work. As a dev (Robert): /gc →
+**Follow up** → **By people** → **Work the list · N people** → *GC test trade company, delete me* (Test contact).
+Untick anything in the pay group (insurance, a W-9, a waiver): its bookkeeper gets pay, at gc-test-pay@example.com,
+which does not deliver. Then **From** → **Click Construction**. Text turns off, and the box holds the email's words
+without its greeting or sign-off. Press **Send a test to me**. *Reads*: "A test copy went to robert@douglasmining.com.
+The real one goes to Test contact <bids@clickplumbing.com>." If it names gc-test-pay@example.com, untick the pay item
+and send the test again. *Writes*: one `email_send_log` row typed `gc_trade_email_test`, to the presser alone, its
+subject "[TEST] …". No `gc_trade_messages` row, no `gc_company_contacts` line, no sent copy, and no portal link made.
+*Ids*: the log row.
+
+**29. B2b-viii-b, the email from Click.** The same sheet and the same ticks → **Send email**. *Reads*: "Emailed Test.
+It is logged.", and the person marked "· emailed" down the side. The email goes from Click Construction to
+bids@clickplumbing.com, with the company's portal link, under the frame's own greeting and sign-off. *Writes*:
+- one `gc_trade_messages` row, kind `nudge`, key `followUp:<the day>:…`, group `quotes`, its `email_send_log_id` set;
+- one `email_send_log` row typed `gc_trade_email`, and one sent copy (`sent_documents`, kind `gc_trade_email`);
+- one `gc_company_contacts` line on the ask, how `nudge`, "From Click Construction: …", and one line of the
+  company's own for anything else ticked.
+
+The same press again that day sends nothing: "That email already went today. Nothing new was sent or logged." *Ids*:
+the message, its log row and the contact lines. Helper 2 reads both steps back against its baselines of 2026-10-10:
+no test log rows, the company's 2 messages and 4 contact lines, and 2 trade sent copies.
 
 ## Days 4 and 6 (O10's reminders, with O10c)
 
