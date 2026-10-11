@@ -469,8 +469,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
-- **v1.80, 2026-10-11**: the signature's cell line is the number alone, and the reply line reads *Email back, text,
-  or call* (the owner's words).
+- **v1.80, 2026-10-11**: the reply line reads *Email back, text, or call* (the owner's words); the signature keeps
+  *cell* before the sender's number.
 - **v1.79, 2026-10-11**: the send window's To line, on the email and the text, is a press that adds or changes the
   contact's email or number on their record, with a Save and an event line; the no-email and no-number warnings point
   at it (the owner's go). Our side stays fixed.
