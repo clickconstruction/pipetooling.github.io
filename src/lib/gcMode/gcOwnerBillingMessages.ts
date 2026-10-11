@@ -22,7 +22,7 @@ import {
   projectChangeOrders,
 } from './gcOwnerBilling'
 import { contractEmail, customerReminderEmail, customerSendsFor } from './gcCustomerSend'
-import { customerGreeting, payReminderEmail } from './gcOwnerBillingRemind'
+import { customerGreeting, helloLine, payReminderEmail } from './gcOwnerBillingRemind'
 
 export type CustomerMessageKind =
   | 'contract'
@@ -71,7 +71,8 @@ function billWords(app: OwnerPayAppSent): { name: string; Name: string } {
 /** Every email the customer gets on this job, newest first. */
 export function customerMessages(state: GcState, project: GcProject): CustomerMessage[] {
   const customer: GcCustomer | undefined = state.customers.find((c) => c.id === project.customerId)
-  const hello = `Hello ${customerGreeting(customer, project.owner)},`
+  // Main's rule since #5398 (v2.5230): the contact by name, else "Hello," and never the company's first word.
+  const hello = helloLine(customerGreeting(customer))
   const portal = customer?.portalOn === true
   const job = project.name
   const out: CustomerMessage[] = []

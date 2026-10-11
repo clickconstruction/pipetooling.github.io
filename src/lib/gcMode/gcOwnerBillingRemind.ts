@@ -9,5 +9,5 @@
  */
 // What moved to main (the real build) is re-exported from there, so there is one copy.
 export type { LatePayApp, PayReminderStep } from '../gc/ownerBillingRemind'
-export { PAY_REMINDER_DAYS, customerGreeting, latePayApps, payReminderEmail, payReminderSentWords, payReminderStep } from '../gc/ownerBillingRemind'
+export { PAY_REMINDER_DAYS, customerGreeting, helloLine, latePayApps, payReminderEmail, payReminderSentWords, payReminderStep } from '../gc/ownerBillingRemind'
 
