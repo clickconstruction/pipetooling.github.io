@@ -63,7 +63,10 @@ Each one is a button in the prototype; each becomes one press in the app.
 - **Call in Quo**: opens the call in Quo's app; the call comes back as a line with its recording,
   transcript and summary.
 - **I have this** / **hand it to …**: claims the thread so two people do not answer the same text.
-- **No reply needed** / **Done**: clears the row from Follow up; the thread stays. **Reopen** puts it back.
+- **No reply needed** / **Done**: clears the row from Follow up; the thread stays. A reply closes it the
+  same way, and so does **a note for the team**: whoever writes the note has looked at it, so the row
+  closes on a note every time (the owner, 2026-10-11). Nothing reopens by hand; a new message from
+  them reopens the row by itself.
 - **Remind me**: snooze a row to a day; it returns to Follow up then.
 - **Write it down** / **Not a promise**: a promised day read from a call, voicemail or text is offered as
   a button, never written on its own. Written down, it becomes the contact's promise on that job.
@@ -181,3 +184,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.4, 2026-10-11**: *Tie to* is a picker, not a native menu: each job with its kind, day, tied count
   and an *Open* button that shows the job's card in a window (facts, people, last conversations, Open
   the bid or the project). The rail's jobs open the same card from ⧉.
+- **v1.5, 2026-10-11**: a note for the team closes the row like a reply does; the Reopen button is gone,
+  and a new message from them reopens the row by itself (a *They text back* demo button shows it).
