@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { gcPortalStages, loadGcStageInputs, type GcPortalStages } from '../_shared/gcStages.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
+import { portalLetterhead } from '../_shared/portalLetterhead.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleCustomerPortalResponse } from '../_shared/customerSampleFixtures.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -190,7 +191,7 @@ serve(async (req) => {
     }
 
     const jobSelect =
-      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, show_bills_to_other_party, lien_retainage_held, service_types:service_type_id(name)'
+      'id, hcp_number, click_number, job_name, job_address, status, revenue, payments_made, customer_id, gc_customer_id, gc_shares_stage_dates, bill_to_party, show_bills_to_other_party, lien_retainage_held, billing_only, service_types:service_type_id(name)'
     let jobs: PortalJobRow[]
     if (link.audience === 'all') {
       const { data: jobsRaw } = await admin
@@ -735,7 +736,8 @@ serve(async (req) => {
     }
 
     return jsonResponse({
-      company: PORTAL_COMPANY,
+      // Whose letterhead (v2.5229): Click Construction for a customer whose every job is a GC job we build.
+      company: portalLetterhead({ audience: link.audience, gcJobCount: gcJobs.length, jobs }),
       customerName: (customer as { name: string | null }).name ?? 'Customer',
       customerPhone,
       audience: link.audience,

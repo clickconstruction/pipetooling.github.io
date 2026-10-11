@@ -58,9 +58,13 @@ Profit on paper +$194k · net position moved −$3.4k · the $197k between them:
 
 A loan or an owner deposit is money in that isn't a customer payment. The Bridge shows that money as a negative cost. Payroll and sub labor count when the bank pays them, not when the hours are worked.
 
+## People — who moved the number
+
+Under the Truth check, a **People** strip holds the two person tables. The strip is closed when you first open the page. While closed, one line reads the pay week. It names the top two people on approved hours and who has hours waiting. It also says what was billed and collected. Press {{button:outline|Show the rows and the days}} to open it. This browser remembers your choice.
+
 ## Vectors — who moved the number
 
-Under the Truth check, **Vectors** lists one row per person for one pay week. A pay week runs Sunday–Saturday. You step back through the eight weeks on the page with ‹ ›. The current week reads *so far*. The headline is the week's **field contribution**. Field contribution is what approved field hours earned minus what those hours cost in wages.
+Inside the People strip, **Vectors** lists one row per person for one pay week. A pay week runs Sunday–Saturday. You step back through the eight weeks on the page with ‹ ›. The current week reads *so far*. The headline is the week's **field contribution**. Field contribution is what approved field hours earned minus what those hours cost in wages.
 
 - **Field people** carry Field h, Earned, Labor, **Contribution** and $/h. Field h also shows hours still {{chip:yellow|waiting}} on approval. Earned uses the Bridge's own rate: the job's contract ÷ its expected hours. With this rate, a person's earned dollars add up to the company's.
 - **Office people** carry Billed and Collected. Billed is the invoices they sent. Collected is the payments they recorded. Everyone carries **% reports**: job % updates plus field reports filed.
@@ -78,7 +82,7 @@ Materials and sub sheets are job costs, not anyone's vector, so contribution her
 
 ## Vectors by the day — was each person's day worth it
 
-Under the Vectors table, the same rule runs one day at a time. The view is a grid with one row per field person and one cell per day of the month. Each cell is **green when the day's hours earned more than they cost, red when they cost more**. The shade is set by dollars per hour. A **wk** column after every Saturday sums the week. The month's total sits at the end, with the hours and $/h under it.
+Under the Vectors table, inside the same strip, the same rule runs one day at a time. The view is a grid with one row per field person and one cell per day of the month. Each cell is **green when the day's hours earned more than they cost, red when they cost more**. The shade is set by dollars per hour. A **wk** column after every Saturday sums the week. The month's total sits at the end, with the hours and $/h under it.
 
 - You click a cell and a card opens under the grid. The card lists the jobs worked, each at its earned rate beside the wage. The card also shows the labor line and the contribution. A sentence says why the day reads the way it does. The card has doors to open the job, set its % complete, or see that day on People → Review. The {{chip:yellow|≈}} hatch means part of it rests on a job with no % complete.
 - Under each name, a **Why** line counts the red days by job. *7 red · all on 990* is a pricing problem, not a slow person.
