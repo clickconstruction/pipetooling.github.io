@@ -14,7 +14,7 @@ const chip: CSSProperties = { display: 'inline-block', fontSize: '0.74rem', font
 
 export function BridgeReadingGaps({ gaps }: { gaps: ReadingGap[] }) {
   return (
-    <div style={{ ...panel, marginTop: '0.6rem' }} data-testid="bridge-reading-gaps">
+    <div style={{ ...panel, minWidth: 0 }} data-testid="bridge-reading-gaps">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
         <span style={label}>Fix the reading</span>
         <span style={det}>{gaps.length === 0 ? 'nothing makes the page read low or thin today' : 'what makes the page read low or thin, biggest mover first'}</span>

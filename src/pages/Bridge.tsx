@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useToastContext } from '../contexts/ToastContext'
@@ -22,6 +22,8 @@ import { carryingDay, carryingSentence, lateWithinDays, receiptsConfidence, type
 import { BridgeCashConfidence } from '../components/bridge/BridgeCashConfidence'
 import { buildReadingGaps } from '../lib/bridge/readingGaps'
 import { BridgeReadingGaps } from '../components/bridge/BridgeReadingGaps'
+import { buildThisWeek } from '../lib/bridge/thisWeek'
+import { BridgeThisWeek } from '../components/bridge/BridgeThisWeek'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
@@ -414,6 +416,28 @@ export default function Bridge() {
     })
   }, [data, headline, bank, typedRolled, typedDaysAgo, profit, vectorInputs])
 
+  const thisWeek = useMemo(() => {
+    if (!data) return []
+    const labelById = new Map(data.jobs.map((j) => [j.id, j.label]))
+    const late = receipts.filter((r) => r.basis === 'late')
+    return buildThisWeek({
+      unbilledUsd: fin.data?.unbilled.total ?? 0,
+      unbilledCount: fin.data?.unbilled.count ?? 0,
+      lateReceipts: { count: late.length, usd: late.reduce((sum, r) => sum + r.usd, 0) },
+      pendingClosedHours: data.crew.pendingClosedHours,
+      pendingClosedSessions: data.crew.pendingClosedSessions,
+      payrollWeeklyEstUsd: data.payrollWeeklyEstUsd,
+      noContractJobs: data.earned.noRevenueJobs.map((id) => ({ id, label: labelById.get(id) ?? id })),
+      assumedHalfJobs: data.earned.assumedHalfJobs.length,
+      assumedHalfEarnedUsd: data.earned.assumedHalfJobs.reduce((sum, id) => sum + (data.earned.earnedByJob.get(id) ?? 0), 0),
+      fieldEarnedPerHour: data.totals.earnedUsd > 0 && data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      contributionMargin: profit?.contributionMargin ?? null,
+      overheadPerDayUsd: profit?.speed.overheadPerDay ?? 0,
+      bidsDue: data.levers.bidsDue,
+      dayLabel: md,
+    })
+  }, [data, fin.data, receipts, profit])
+
   if (authLoading) return null
   if (role !== 'dev') return <Navigate to="/dashboard" replace />
 
@@ -450,8 +474,11 @@ export default function Bridge() {
           {/* The top line (v2.5216): contribution per week, the two constraints as lights */}
           <BridgeHeadline headline={headline} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
 
-          {/* Fix the reading (v2.5220): every gap with what it moves and its door */}
-          <BridgeReadingGaps gaps={readingGaps} />
+          {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+            <BridgeThisWeek moves={thisWeek} />
+            <BridgeReadingGaps gaps={readingGaps} />
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
             <div style={panel}>
@@ -648,51 +675,6 @@ export default function Bridge() {
                     <span style={{ marginLeft: 'auto', fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums' }}>{shortK(fin.data.arCollections.total)}</span>
                   </li>
                 )}
-              </ul>
-            </div>
-            <div style={panel}>
-              <div style={label}>What would change it</div>
-              <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
-                {fin.data && fin.data.unbilled.total > 0 && (
-                  <li style={listRow}>
-                    <span>
-                      Bill the finished work<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{shortK(fin.data.unbilled.total)} not yet billed — the biggest lever on both lines · <Link to="/jobs?tab=stages">Open Stages</Link></span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>+ receipts</span>
-                  </li>
-                )}
-                {data.crew.pendingClosedHours > 0 && (
-                  <li style={listRow}>
-                    <span>
-                      Approve the {hrs(data.crew.pendingClosedHours)} pending<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>the profit rate reads low until then · <Link to="/people?tab=hours">Open approvals</Link></span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>accuracy</span>
-                  </li>
-                )}
-                <li style={listRow}>
-                  <span>
-                    Cut overhead 10%<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>of {money(speed.overheadPerDay)}/day</span>
-                  </span>
-                  <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>+{money(speed.overheadPerDay * 0.1)}/day</span>
-                </li>
-                {data.totals.earnedUsd > 0 && data.crew.fieldHoursWindow > 0 && profit.contributionMargin != null && (
-                  <li style={listRow}>
-                    <span>
-                      One more field day a week<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>field earned {money(data.totals.earnedUsd / data.crew.fieldHoursWindow)} per approved hour; {Math.round(profit.contributionMargin * 100)}% of it is margin</span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>+{money(((data.totals.earnedUsd / data.crew.fieldHoursWindow) * profit.contributionMargin * 8) / 7)}/day</span>
-                  </li>
-                )}
-                {data.levers.bidsDue.slice(0, 3).map((b) => (
-                  <li key={b.id} style={listRow}>
-                    <span>
-                      Win {b.label}<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{money(b.bidValueUsd)} · due {md(b.dueYmd)}</span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>
-                      {profit.contributionMargin == null ? '—' : `+${money((b.bidValueUsd * profit.contributionMargin) / 60)}/day over 60d`}
-                    </span>
-                  </li>
-                ))}
               </ul>
             </div>
           </div>

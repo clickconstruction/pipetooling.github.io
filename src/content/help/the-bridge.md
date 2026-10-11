@@ -102,8 +102,20 @@ Under the chart, a band shows **how sure the receipts are**. Green is money a cu
 :::
 
 :::example What the lists under the chart are
-**Bills coming due** and **Receipts expected** are the same events the chart uses, day by day, with the reason for each receipt date. **What would change it** sizes the levers — billing finished work, approving pending hours, trimming overhead, an extra field day, a bid due soon.
+**Bills coming due** and **Receipts expected** are the same events the chart uses, day by day, with the reason for each receipt date.
 :::
+
+## This week
+
+Beside Fix the reading, **This week** lists the moves that change the two lines. The biggest lever is first. Each move is sized on the right where it can be. Each move ends in the door that does it. The moves are these:
+
+- bill the finished work, which opens Stages
+- chase the late invoices the forecast leans on, which opens Billing
+- approve the pending hours, which opens the approvals queue
+- price the worked jobs with no contract price
+- set % complete on the jobs assumed half done
+- one more field day a week, and cut overhead 10%
+- win a bid that is due soon
 
 ## Fix the reading
 
