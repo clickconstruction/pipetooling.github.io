@@ -131,6 +131,15 @@ Each one is a button in the prototype; each becomes one press in the app.
 - **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so.
 - **Search**: words in texts, emails, transcripts and summaries, across every contact.
 
+## Every control explains itself on hover
+
+Hovering any control (and tabbing to it) opens a small white card, the look of a little window: the
+control's name, one sentence on what it does, and in quieter type what it changes elsewhere (the owner,
+2026-10-11: "like a modal"). The rule for the words: where the row goes, what counts change, what the
+thread keeps, what undoes it. Written so far: Open, Snoozed, Done, Mark STOP and Clear opt-out, Call in
+Quo, the who-has-it pill in its three states, Show all text, Tie to, and Edit on the quick replies. In
+the app these are the words a first-timer reads, so they follow `plainWords.ts`.
+
 ## Decided by the owner (2026-10-05)
 
 1. One company number for everyone, not one per estimator. Each person has a Quo login; *Robert
@@ -249,3 +258,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   hints, the owner's ask).
 - **v1.14, 2026-10-11**: the *who has it* pill sits in the thread's top right corner, on the name row;
   the other actions move to their own row under it.
+- **v1.15, 2026-10-11**: hover cards on the controls, white and window-like: name, what it does, what
+  it changes. Open, Snoozed, Done, Mark STOP, Call in Quo, the who-has-it pill, Show all text, Tie to,
+  Edit quick replies. They show on keyboard focus too.
