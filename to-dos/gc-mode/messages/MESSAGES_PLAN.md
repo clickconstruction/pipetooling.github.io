@@ -430,3 +430,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   settles it' so the first option is true.
 - **v1.53, 2026-10-11**: the card is one list of every option, Settled among them, with the hovered one highlighted
   and marked *this one* (the owner's ask).
+- **v1.54, 2026-10-11**: the owed card's words rewritten to `plainWords.ts`: one idea a sentence, none over 20
+  words, no semicolons or colons, each row what it is then what you press then what happens (the owner: is that the
+  best we can do? It was not; three rows were glued and two sentences ran long).
