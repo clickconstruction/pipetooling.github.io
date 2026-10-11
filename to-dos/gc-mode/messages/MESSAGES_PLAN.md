@@ -463,3 +463,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.66, 2026-10-11**: the word is **Done**, not settled, everywhere a person reads it: the strip's *Mark it done,
+  with a team note*, the *Marking it done* banner and *Done, with this note* / *Not done yet*, the *✓ done: the start
+  date* chip, the send window's *This message gets the start date done*, the event lines and the hover cards
+  (the owner: settle is not our department's word). The plan's own prose keeps *settled* where it names the record's
+  field, `settled_at`, and the earlier log lines stand as written.
