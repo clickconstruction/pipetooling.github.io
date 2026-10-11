@@ -374,3 +374,7 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   with its tone (soon, today, late; sent once ours went), from the job's facts; the jobs in the demo carry their numbers
   (B482, B491, #42, #47, J1077); the legend's samples are tiles too. The trade left the tile (it is on the header and
   each line); the message tags and the tie picker are unchanged.
+- **v1.35, 2026-10-11**: every popover (the who-has-it picker, the state pill's menu, More ▾, Tie to) keeps inside the
+  window: pinned to its button's right edge as before, it flips to the left edge when it would run past the window,
+  and narrows if it still must (the owner's screenshot: More ▾ hung off the left of a narrow pane). The real build's
+  rule for the same: a menu is placed from its button's rect and clamped to the viewport, never by `right:0` alone.
