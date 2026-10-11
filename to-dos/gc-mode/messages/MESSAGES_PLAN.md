@@ -101,8 +101,10 @@ Each one is a button in the prototype; each becomes one press in the app.
   built. The thread gets a gray event line naming who took it off.
 - **Before it goes**: *Send text…* and *Send email…* never send at once. They open one window with
   two tabs that show the message the way the contact's own inbox or phone shows it: the email with its
-  inbox row, From, To, the subject made from the job and the first line, the letterhead, the greeting from
-  the contact's name, the signature and the footer; the text as a green bubble under the texts already
+  inbox row, From, To, the subject made from the job and the first line, the letterhead with the company number once, the greeting from
+  the contact's name, the signature as the sender's name, title and own cell from their account (v1.78: the company
+  number was in the letterhead, the signature and the reply line, three times; now once), a reply line that says what
+  to do, and the footer; the text as a green bubble under the texts already
   in their thread, from the company number, with the character count, how many texts it is, and on
   their first text from us the company name and the opt-out line the carriers require. The window warns
   when there is no email or number on file, when they sent STOP, or when a text runs past two pieces.
@@ -466,6 +468,10 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.78, 2026-10-11**: the email's signature is the sender's name, title and own cell from their account; the
+  company number stays in the letterhead only, and the reply line says what to do instead of repeating it (the owner:
+  it looked duplicate). Our From and the company number are not set per email: one number and one mailbox for
+  everyone (the owner, 2026-10-05); the contact's email and number are theirs to fix on their record.
 - **v1.77, 2026-10-11**: the quick replies fold to one row once the box has words, a press showing them again, the
   cleared box showing them by itself (the owner's ask).
 - **v1.76, 2026-10-11**: the words box in the add row and the edit row wraps and grows with its words (the owner's

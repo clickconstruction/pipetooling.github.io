@@ -505,7 +505,7 @@ kbd{font:12px ui-monospace,Menlo,monospace;background:var(--chip);padding:1px 5p
 // ---------- made-up data (the GC mode prototype's people) ----------
 const ME = 'Robert';
 const TEAM = ['Robert','Rosa','Wendi'];
-const TEAM_INFO = {Robert:{role:'estimator, trade partners', status:'at the desk', here:true}, Rosa:{role:'assistant, customers and jobs', status:'on the phone until 11', here:true}, Wendi:{role:'office', status:'out until Monday', here:false}};
+const TEAM_INFO = {Robert:{role:'estimator, trade partners', status:'at the desk', here:true, title:'Estimator', cell:'(210) 555-0199'}, Rosa:{role:'assistant, customers and jobs', status:'on the phone until 11', here:true, title:'Office', cell:null}, Wendi:{role:'office', status:'out until Monday', here:false, title:'Office', cell:null}};
 const initialsOf = n => n.split(' ').map(w=>w[0]).join('').slice(0,2);
 const holdCount = n => contacts.filter(c=>c.state==='waiting'&&c.has===n).length;
 // A job's tile (v1.34): its number (a bid's bid number, a GC project's project number, a Pipeline job's HCP or Click number)
@@ -1137,10 +1137,10 @@ function previewDraft(cid, kind){ const c=cById(cid); const box=document.getElem
       <div class="head"><b>From:</b> ${COMPANY.name} &lt;${COMPANY.email}&gt;<br><b>To:</b> ${esc(c.name)} &lt;${esc(to)}&gt;<br><b>Subject:</b> ${esc(subj)}</div>
       <div class="lh">CLICK CONSTRUCTION<small>${COMPANY.phone} · ${COMPANY.site}</small></div>
       <div class="body">${esc(c.kind==='customer'||c.kind==='arch'?('Hello '+c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0]+','):'Hello '+c.name.split(' ')[0]+',')}\n\n${esc(body)}</div>
-      <div class="sig">${ME}\n${COMPANY.name} · ${COMPANY.phone}\nReply to this email or text ${COMPANY.phone}.</div>
+      <div class="sig">${ME}${TEAM_INFO[ME].title?' · '+TEAM_INFO[ME].title:''}${TEAM_INFO[ME].cell?'\ncell '+TEAM_INFO[ME].cell:''}\n\nReply to this email, or text the office number above.</div>
       <div class="foot">${COMPANY.name}, ${COMPANY.addr}. ${job?'About '+esc(jobById(job).name)+'. ':''}A copy of this email is kept in Documents.</div></div>
       ${!c.emails.length?'<div class="pv-warn">They have no email on file. The email cannot go until one is added.</div>':''}
-      <div class="pv-note">The subject comes from the job and your first line; the greeting from their contact name; the letterhead from who the job is for (Click Construction on a GC job). Nothing here is typed twice.</div>`;
+      <div class="pv-note">The subject comes from the job and your first line; the greeting from their contact name; the letterhead from who the job is for (Click Construction on a GC job); the signature from your account, your title and your cell if you have one there. Nothing here is typed twice.</div>`;
     } else { const prior=[...messages].filter(m=>m.c===c.id&&m.ch==='text').sort((a,b)=>a.at-b.at).slice(-2); const segs=Math.max(1,Math.ceil(body.length/160)); const first=firstTextEver(c); const footer=first?`\n\n${COMPANY.name}. Reply STOP to opt out.`:''; const full=body+footer; const fsegs=Math.max(1,Math.ceil(full.length/160));
       html=`${tabs}<p class="note">What ${esc(c.name)} sees on their phone, under the texts already there.</p>
       <div class="phone"><div class="bar"><b>${COMPANY.name}</b>${COMPANY.phone}</div><div class="screen">
