@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useToastContext } from '../contexts/ToastContext'
@@ -24,6 +24,8 @@ import { buildReadingGaps } from '../lib/bridge/readingGaps'
 import { BridgeReadingGaps } from '../components/bridge/BridgeReadingGaps'
 import { buildThisWeek } from '../lib/bridge/thisWeek'
 import { BridgeThisWeek } from '../components/bridge/BridgeThisWeek'
+import { peopleSummary, readPeopleOpen, writePeopleOpen } from '../lib/bridge/peopleStrip'
+import { BridgePeople } from '../components/bridge/BridgePeople'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
@@ -78,6 +80,8 @@ export default function Bridge() {
   const [bank, setBank] = useState<MercuryCash | null>(null)
   const [bankError, setBankError] = useState<string | null>(null)
   const [bankLoading, setBankLoading] = useState(false)
+  // The People strip (v2.5222): Vectors and the day grid fold under it, closed by default and remembered per browser.
+  const [peopleOpen, setPeopleOpen] = useState<boolean>(() => readPeopleOpen())
   const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
 
   useEffect(() => {
@@ -291,7 +295,7 @@ export default function Bridge() {
   // Vectors by the day (v2.4217): the period's sessions + rates per zoom and anchor, loaded once the Bridge data is in.
   const daysRange = useMemo(() => (data ? vectorRangeFor(daysZoom, daysAnchor ?? data.todayYmd) : null), [data, daysZoom, daysAnchor])
   useEffect(() => {
-    if (!data || !daysRange) return
+    if (!data || !daysRange || !peopleOpen) return
     const key = `${daysRange.start}:${daysRange.end}`
     const cached = daysCacheRef.current.get(key)
     if (cached) {
@@ -314,7 +318,7 @@ export default function Bridge() {
     return () => {
       cancelled = true
     }
-  }, [data, daysRange])
+  }, [data, daysRange, peopleOpen])
   const daysGrid = useMemo(() => {
     if (!data || !daysRange || !daysInputs || !vectorInputs) return null
     return buildVectorGrid({
@@ -540,7 +544,17 @@ export default function Bridge() {
           {/* Truth check (v2.3335) */}
           {truth && <TruthCheckPanel truth={truth} windowStartLabel={windowStartLabel} />}
 
-          {/* Vectors (v2.3344) */}
+          {/* People (v2.5222): Vectors (v2.3344) and Vectors by the day (v2.4217) under one strip */}
+          <BridgePeople
+            summary={peopleSummary(vectorInputs ? vectors : null, vectorWeek ? formatPayWeekLabel(vectorWeek) : '', vectorWeek ? vectorWeek.end >= data.todayYmd : false)}
+            open={peopleOpen}
+            onToggle={() => {
+              setPeopleOpen((o) => {
+                writePeopleOpen(!o)
+                return !o
+              })
+            }}
+          >
           {vectors && vectorWeek && (
             <BridgeVectorsPanel
               vectors={vectors}
@@ -579,6 +593,7 @@ export default function Bridge() {
               error={daysError ?? vectorError}
             />
           )}
+          </BridgePeople>
 
           {/* Cash forecast */}
           <div style={{ ...panel, marginTop: '0.6rem' }}>
@@ -680,7 +695,7 @@ export default function Bridge() {
           </div>
 
           <p style={{ ...det, marginTop: '0.8rem', maxWidth: '92ch' }}>
-            <b>How it's counted:</b> profit rate = earned (each approved field hour × its job's contract ÷ expected hours) − job costs (field labor, purchases and supply invoices allocated to jobs, sub sheets) − overhead (the People → Overhead pool). Net position = cash + owed to you − owed by you, with history rebuilt from bank flows, invoices sent, payments received, and supply invoices dated and paid. Cash forecast = cash today, bills on due dates, receipts on expected dates, office parts as a daily drain. Window {data.windowStart} → {data.todayYmd}: earned {shortK(data.totals.earnedUsd)} · field labor {shortK(data.totals.fieldLaborUsd)} · materials {shortK(data.totals.materialsUsd)} · subs {shortK(data.totals.subLaborUsd)} · overhead {shortK(data.totals.overheadUsd)}.
+            <b>How it's counted</b> is in the guide <Link to="/help/the-bridge">read the Bridge</Link>. Window {data.windowStart} → {data.todayYmd}: earned {shortK(data.totals.earnedUsd)} · field labor {shortK(data.totals.fieldLaborUsd)} · materials {shortK(data.totals.materialsUsd)} · subs {shortK(data.totals.subLaborUsd)} · overhead {shortK(data.totals.overheadUsd)}.
           </p>
         </>
       )}

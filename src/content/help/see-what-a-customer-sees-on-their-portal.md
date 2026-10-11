@@ -12,6 +12,8 @@ A customer's portal shows one statement of the bills they pay us, job by job. Th
 A clean account statement: our letterhead, each job under a band with its trade, job number and address — a job on someone else's property carries a copper AS GC tag, with *owner:* and the owner's name beside it — only the bills **this customer pays** are on the ledger and count toward the balance. A bill on their job that went to the other party is **not on the page at all** unless the office shared it (Bill Customer → *Show it on … statement*, or the owner switch below); a shared bill sits below the ledger in its own card — a GC reads *Your customers' open bills* (who owes it, where, billed when and how long ago, received so far, open), an owner reads *On your job, billed to your builder* — with no Pay button and never in the balance. Then a PAY ONLINE button for card-payable bills (check reference otherwise), and the two request forms. The visit form's "For" picker lists their **properties by address** (never job numbers or our internal job names). At the bottom, a **"Your account, any time"** card shows their short address with a **QR code**, so even a printed or screenshotted statement carries a way back in. No login, no other customers' data — only theirs.
 :::
 
+The letterhead names us. A customer whose every job with us is a GC job we build reads *Click Construction* under the mark. Every other customer reads *Plumbing, Electrical, and HVAC*.
+
 The owner switch is in [show an owner the bills their GC pays](/help/show-an-owner-the-bills-their-gc-pays).
 
 ## The statement reads job by job

@@ -45,6 +45,7 @@ import PortalPaymentsSection from '../components/portal/PortalPaymentsSection'
 import { PortalPapersGroupHeading, PortalWaiverNoteLink, PortalWaiverPaperGroup } from '../components/portal/PortalWaiverPapers'
 import { portalWaiverNote, type PortalWaiverNote } from '../lib/portal/portalWaiverPapers'
 import { phoneContact } from '../lib/phoneContact'
+import { PORTAL_TAGLINE } from '../../supabase/functions/_shared/portalLetterhead'
 
 /**
  * Customer / GC portal (portal train PR 1): the no-login "account statement"
@@ -256,8 +257,9 @@ export default function CustomerPortal() {
             <div style={{ fontSize: 27, fontWeight: 900, letterSpacing: '-0.03em', lineHeight: 1 }}>
               CLICK<span style={{ color: COPPER }}>.</span>
             </div>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: MUTED, marginTop: 4 }}>
-              Plumbing, Electrical, and HVAC
+            {/* Whose company (v2.5229): the payload's line, Click Construction's for an all-GC customer; blank while it loads. */}
+            <div data-testid="portal-tagline" style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.22em', textTransform: 'uppercase', color: MUTED, marginTop: 4 }}>
+              {state.kind === 'ready' ? state.payload.company.tagline : state.kind === 'loading' ? '\u00a0' : PORTAL_TAGLINE}
             </div>
           </div>
           {state.kind === 'ready' && (

@@ -138,6 +138,8 @@
     "supabase/functions/_shared/payLink.ts",
     "supabase/functions/_shared/paymentAttribution.ts",
     "supabase/functions/_shared/peopleLaborJobItemLineCost.ts",
+    "supabase/functions/_shared/portalCompany.ts",
+    "supabase/functions/_shared/portalLetterhead.ts",
     "supabase/functions/_shared/portalPropertyNotices.ts",
     "supabase/functions/_shared/subLaborCost.ts",
     "supabase/functions/_shared/tradeWaiverPdf.ts",
