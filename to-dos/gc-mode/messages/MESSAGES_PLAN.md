@@ -277,6 +277,22 @@ Each gets an answer here and a picture in the prototype before it is built.
      it; otherwise the copy is not the copy.
   3. **Two landing places, by rule.** A file picked from this computer goes to the job's Team only folder and a photo
      to the job's photos, the way incoming ones already do, so nothing sent lives only on the message.
+  4. **The big files stay in Drive, and a handler hands out links to them** (the owner, 2026-10-11). Every job's
+     Drive already has its Plans half, readable by anyone with the link, and its Team only half, and a plan set has
+     always gone out as a Drive link; Documents keeps that and adds the handler, which does four things in order.
+     (a) It decides by size and kind, never by hand: anything over the email limit, and any plan set however small,
+     lives in the job's folder and goes out as a link; a small paper the app makes, a pay application or a statement
+     of work, still goes as the file, since a PDF in the inbox is what a customer expects. (b) It hands out a link the
+     app owns, not Drive's: the trade partner's portal page (`click.co/t/…#plans`) or a signed file link, which the app
+     forwards to the Drive file, so the link opens the right half, Plans and never Team only; the app sees who opened
+     it and when, as the portal already shows; and a link can be cut off without changing the folder's share for
+     everyone. (c) It puts a file there on the way out: a file picked from this computer goes into the job's folder
+     first, Team only by default, and the message links to it, so nothing goes out that Documents does not hold.
+     (d) It keeps Drive the one copy: the *one list of a job's files* reads the Drive folder as a source, beside the
+     papers the app makes and the portal uploads, and copies nothing into the database. Open: whether a customer's
+     link opens their portal, as a trade partner's does, or the file itself (the open item on which record a contact
+     is), and how long a signed file link lives (a week fits the way a plan set is read; a portal link lives as long as
+     the portal does).
 
 ## How it would be built, once the shape is settled
 
@@ -298,7 +314,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 6. **Customers** as a filter; the job's conversations list on the project page.
 7. **Email** through a shared Google mailbox, into the same threads.
    With it, **files going out**: Documents' one list of a job's files for the Attach picker, sent copies that keep
-   their files, and the two landing places (the open item *Documents, for files going out*).
+   their files, the two landing places, and the Drive handler that hands out the app's own links to the big files
+   (the open item *Documents, for files going out*).
 8. Later: Job activity on the Pipeline, photos, the file agent.
 
 ## Prototype log
