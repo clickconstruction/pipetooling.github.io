@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: one size for the job chips, three options</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--ok:#1a7f3c;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:900px;line-height:1.45}
+.opt{max-width:900px;margin:0 0 22px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.frame .st{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45}
+.rail{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rail .lbl{font-size:13px;color:var(--text-muted)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 8px 4px 5px;background:var(--surface);font-size:13px;white-space:nowrap}
+.chip .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.chip .n{color:var(--text-muted);flex:none}
+.chip .star{color:#c9a200;flex:none}.chip .star.off{color:#c9c9c9}
+.chip .o,.chip .x{color:var(--text-muted);flex:none}
+.chip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.chip.ghost{border-style:dashed;color:var(--text-muted);padding:4px 10px}
+.num{display:inline-flex;align-items:center;font-size:11px;font-weight:700;letter-spacing:.02em;padding:1px 6px;border-radius:999px;border:1px solid;flex:none;line-height:16px}
+.num.bid{color:#6d3fb8;border-color:#d9c8f5;background:#f6f0ff}.num.project{color:#1a7f3c;border-color:#bfe3c9;background:#eef7ea}.num.pipeline{color:#1f5fbf;border-color:#c5d8f5;background:#eaf1fc}
+.w240{width:240px}.w200{width:200px}
+.tile{display:inline-flex;flex-direction:column;gap:2px;border:1px solid var(--border);border-radius:10px;padding:6px 8px;background:var(--surface);font-size:13px;width:200px}
+.tile .top{display:flex;align-items:center;gap:6px}
+.tile .top .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.tile .bot{display:flex;align-items:center;gap:6px;color:var(--text-muted);font-size:12px}
+.tile .bot .n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.on{border-color:var(--accent);background:var(--accent-soft)}
+.tile.ghost{border-style:dashed;color:var(--text-muted);justify-content:center}
+.pick{max-width:900px;font-size:13.5px;line-height:1.5}
+.pick ol{margin:0 0 8px 18px;padding:0}
+table{border-collapse:collapse;font-size:13px;margin:8px 0 14px}
+th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:4px 10px 4px 0;border-bottom:1px solid var(--border)}
+td{padding:5px 10px 5px 0;border-bottom:1px solid var(--border);vertical-align:top}
+code{font:12px ui-monospace,Menlo,monospace;background:var(--chip);padding:1px 4px;border-radius:4px}
+</style>
+</head>
+<body>
+<h1>One size for the job chips</h1>
+<p class="lead">Greg Paulk's rail today: each chip is as wide as its words (the job, the trade, the day or stage), so three jobs make three sizes. Across the app a compact job label is <b>the number first, then the name</b>, and only the name shrinks: the header search ("J927 · name"), the schedule ("J1064 · name"), dispatch, the clock, the sub labor sheet and the checklist's job chips all do it, with the number in a small badge that never shrinks and the name cut with an ellipsis (<code>ledgerDisplayPrefixes.ts</code>, <code>ChecklistTitleWithLinks.tsx</code>, <code>LienJobNumber.tsx</code>). What each kind of job has for a number:</p>
+<table><tr><th>Kind</th><th>Number in the app</th><th>Drawn as</th></tr>
+<tr><td>Pipeline job</td><td><code>jobs_ledger.hcp_number</code>, else the Click number <code>click_number</code></td><td><b>J1077</b> (per-trade prefix JP/JE elsewhere; plain J beside a trade pill)</td></tr>
+<tr><td>Bid</td><td><code>bids.bid_number</code></td><td><b>B482</b></td></tr>
+<tr><td>GC project</td><td>none on <code>gc_projects</code>; its <code>projects</code> row has <code>project_number</code>, which GC mode does not read today</td><td>Projects page: <b>Project #42</b> / <b>#42</b>; GC mode: the name only</td></tr>
+<tr><td>Customer</td><td>none ("C · Name" in search)</td><td>—</td></tr></table>
+
+<div class="opt">
+<h2>A · Number badge, one width, the name shrinks <small>· the app's rule, 240 px a chip</small></h2>
+<div class="frame"><div class="st">Greg Paulk · Hillside Excavation · Sitework</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="chip w240"><span class="star off">☆</span><span class="num bid">B482</span><span class="nm">Boerne Retail Shell</span><span class="o">⧉</span><span class="x">×</span></span>
+<span class="chip w240"><span class="star off">☆</span><span class="num bid">B491</span><span class="nm">Boerne Retail Pad B</span><span class="o">⧉</span><span class="x">×</span></span>
+<span class="chip w240"><span class="star">★</span><span class="num project">#42</span><span class="nm">Stone Oak Pharmacy</span><span class="o">⧉</span><span class="x">×</span></span>
+<span class="chip ghost">+ add a job</span></div></div>
+<div class="frame"><div class="st">Elena Marchetti · Cibolo Creek Partners · a long name, and one filtered</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="chip w240 on"><span class="star">★</span><span class="num bid">B482</span><span class="nm">Boerne Retail Shell</span><span class="o">⧉</span><span class="x">×</span></span>
+<span class="chip w240"><span class="star off">☆</span><span class="num bid">B491</span><span class="nm">Boerne Retail Pad B</span><span class="o">⧉</span><span class="x">×</span></span>
+<span class="chip w240"><span class="star off">☆</span><span class="num pipeline">J1077</span><span class="nm">Fair Oaks Shops, Building D</span><span class="o">⧉</span><span class="x">×</span></span>
+<span class="chip ghost">+ add a job</span></div></div>
+<p class="why">Every chip is 240 px. The number badge comes first in the kind's color (purple a bid, green a GC project, blue a Pipeline job: the tie picker's colors already), it never shrinks, and the name takes what is left with an ellipsis; the full label stays on the hover card and the title. The trade and the day or stage leave the chip: the trade is the same on every chip of a trade partner and already on the thread's header and each line's tag; the day or stage sits on the hover card and the job's card. The star, ⧉ and × keep their places. A GC project reads its project number as <b>#42</b>, the Projects page's own form.</p>
+</div>
+
+<div class="opt">
+<h2>B · A tile with two lines <small>· the number and the name, then the day or stage</small></h2>
+<div class="frame"><div class="st">Greg Paulk</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="tile"><span class="top"><span class="num bid">B482</span><span class="nm">Boerne Retail Shell</span><span class="o">⧉</span></span><span class="bot"><span class="star off">☆</span><span class="n">bid Thu Oct 8 · Sitework</span><span class="x">×</span></span></span>
+<span class="tile"><span class="top"><span class="num bid">B491</span><span class="nm">Boerne Retail Pad B</span><span class="o">⧉</span></span><span class="bot"><span class="star off">☆</span><span class="n">bid Oct 22 · Sitework</span><span class="x">×</span></span></span>
+<span class="tile"><span class="top"><span class="num project">#42</span><span class="nm">Stone Oak Pharmacy</span><span class="o">⧉</span></span><span class="bot"><span class="star">★</span><span class="n">building · Sitework</span><span class="x">×</span></span></span>
+<span class="tile ghost">+ add a job</span></div></div>
+<p class="why">The same badge and name on the first line, the day or stage and the trade on the second, so nothing the chip says today is lost. Tiles are 200 px and all one height. Twice as tall as a chip, which the folded header (under 640 px) feels most; drag and the star work as before.</p>
+</div>
+
+<div class="opt">
+<h2>C · The number alone <small>· the smallest, the name on hover</small></h2>
+<div class="frame"><div class="st">Greg Paulk</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="chip"><span class="star off">☆</span><span class="num bid">B482</span><span class="o">⧉</span></span>
+<span class="chip"><span class="star off">☆</span><span class="num bid">B491</span><span class="o">⧉</span></span>
+<span class="chip"><span class="star">★</span><span class="num project">#42</span><span class="o">⧉</span></span>
+<span class="chip ghost">+ add a job</span></div></div>
+<p class="why">Uniform by construction and a whole row fits on a phone. The office knows job numbers, but a GC project's number is new to everyone and two bids to the same customer read as B482 and B491 with nothing to tell them apart; the name is one hover away, which a phone cannot do.</p>
+</div>
+
+<div class="pick">
+<h2 style="font-size:15px;margin:0 0 6px">The pick, and is this the best we can do?</h2>
+<p style="margin:0 0 8px"><b>A.</b> It is the rule the rest of the app follows, so a chip here reads like a search result or a schedule bar, and the job number becomes something the office can say on the phone. 240 px at a wide window; in the folded header the strip scrolls and the chips keep their width.</p>
+<p style="margin:0 0 6px">Three things weighed:</p>
+<ol>
+<li><b>GC projects have no number today.</b> <code>gc_projects</code> keys on a <code>projects</code> row, and that row has <code>project_number</code>, hand-typed on the Projects page and checked unique. The real build would read it into <code>GcProject</code> (one more column in <code>gcIo.ts</code>'s select) and have New project claim the next free one, so every GC project carries a number from its first day. Until the owner decides, the chip of a project with no number reads <b>GC</b> in the green badge.</li>
+<li><b>The trade leaves the chip.</b> It is the same on every chip of a trade partner and already on the header and each line. The one case it told something apart, a company quoting two trades on one job, gets two chips reading the same; then the chip keeps "· Sitework" after the name, the exception rather than the rule.</li>
+<li><b>Plain J and B, not JP and BP.</b> The app uses the per-trade prefix where no trade pill is near and the plain letter beside one. The chip's badge is colored by kind, not by trade, so the plain letter is right here, as in the header search.</li>
+</ol>
+</div>
+</body>
+</html>
