@@ -51,6 +51,7 @@ a new cell starts over). The person is the spine; jobs are labels on the person 
 | **Customers** | The same threads kept to customers, ordered by who is waiting; team notes yellow. A filter of Follow up and Messages, never a second queue. | yes |
 | **A job's conversations** | On the job's page: its own recent calls and texts, by contact, with answered or waiting. Reads the messages tied to that job. | yes |
 | **Who is this?** | A number the app does not know: name it, say what they are to us, pick their company, tie it to a job. The answer becomes the rule for that number. | yes |
+| **A message's window** | Click any message: the whole text with its facts (who, the exact time received or sent, what it came through, the job it is tied to, whether a copy is kept), its attachments, its highlights, and the tools: Highlight the selected words, Copy, Print or save as PDF, Share (the Mac's share sheet), Tie to, Reply. | yes |
 | **Settings → Phone and texts** | The Quo connection, the company number, registration, recordings on, who has a seat, who sees what. | yes, read only |
 | The Pipeline's Job activity | Later: calls, texts and emails mixed into the feed; company-only rows yellow, anything the customer saw white. | not yet |
 | Photos and the file agent | Later: photos saved on arrival, big files to the job's Drive folder. The mock-up's drafts 8 and 9 hold the design. | not yet |
@@ -100,6 +101,17 @@ Each one is a button in the prototype; each becomes one press in the app.
   is, its day, the customer, the trades asked, the people on it, the last conversations tied to it, and
   a button to open the bid or the project itself. *No job* and *Add a job* sit at the bottom. The same
   card opens from the ⧉ on a job in the rail.
+- **Four lines, or the highlights**: a long message shows its first four lines in the thread with *the
+  whole email* under it; *Show all text* at the top of the thread, off by default, shows every message
+  in full for that thread (the owner, 2026-10-11). Select words in a message's window and press
+  *Highlight*: the excerpt is kept with who and when, marked in the window, and the thread shows the
+  highlights in place of the four lines from then on. The clamp and the highlights apply to any long
+  message, a transcript or a note too, not only email.
+- **Attachments**: a chip per file under the message (name, size, kind; a picture shows a thumbnail).
+  In the window each has Open, Save to Drive (the file agent copies it to the job's Plans or Team only
+  folder, a quote or a photo to Team only) and, for a quote, *Enter it as their quote*. The app keeps its
+  own copy on arrival, as photos (draft 8); a link is a link. Open: what an attachment on an outgoing
+  message looks like, and whether a highlight should also become a team note on the job.
 - **Quick replies**: a two-row strip that scrolls sideways above the box, in its own gray panel so it
   reads apart from the box below it, never a loose pile (the owner, 2026-10-11); a press fills the box
   and nothing sends. The team's lines come first, then the person's own. **Edit** on the strip opens the
@@ -213,3 +225,10 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   each goes; the full sentence lives on the written line and on the hover.
 - **v1.10, 2026-10-11**: *Edit* on the quick replies strip opens the window: the team's and mine, who
   added and edited each and when, add for the team or just me, edit any line in place.
+- **v1.11, 2026-10-11**: a long message shows four lines; *Show all text* per thread, off; click a
+  message for its window (facts, tools: Highlight, Copy, Print or PDF, Share, Tie to, Reply);
+  highlights kept with who and when and shown in place of the four lines; attachment chips with Open,
+  Save to Drive and Enter it as their quote. Two long emails (Jonah's addendum, Greg's quote) show it.
+  Is this the best we can do? The clamp covers transcripts and notes too; highlights carry a name;
+  Reply from the window puts the cursor in the box. Open: a highlight as a team note; what Share
+  carries for a call (the recording or the summary).
