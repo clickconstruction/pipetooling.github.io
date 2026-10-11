@@ -71,7 +71,7 @@ Each one is a button in the prototype; each becomes one press in the app.
 - **Who is this?**: name an unknown number.
 - **Tie to a job** (drag, or press and hold) / **Untie** / **set the default job** (★) / **add a job to
   the contact** / **remove it**.
-- **Preview before it goes**: under the draft, *Preview email* and *Preview text* open one window with
+- **Before it goes**: *Send text…* and *Send email…* never send at once. They open one window with
   two tabs that show the message the way the contact's own inbox or phone shows it: the email with its
   inbox row, From, To, the subject made from the job and the first line, the letterhead, the greeting from
   the contact's name, the signature and the footer; the text as a green bubble under the texts already
@@ -79,6 +79,8 @@ Each one is a button in the prototype; each becomes one press in the app.
   their first text from us the company name and the opt-out line the carriers require. The window warns
   when there is no email or number on file, when they sent STOP, or when a text runs past two pieces.
   *Send a test to me* and *Send as email* or *Send as text* sit in the window; *Change it* goes back.
+  The window is the confirmation: the only Send that sends is the one inside it (the owner, 2026-10-11).
+  A note for the team is added at once; nobody outside sees it.
 - **Quick replies**: the lines typed every day ("Your quote is in your portal", "Did the invite come
   through?", "Checking on the number, still good for today?").
 - **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so.
@@ -167,3 +169,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   *Send a test to me*. Is this the best we can do? Two things it still lacks: the email's subject is not
   editable in the window (the app's emails set their own subjects, so this follows), and a photo or
   file attached to the draft is not drawn yet (photos are a later draft).
+- **v1.3, 2026-10-11**: the preview window is the confirmation screen. *Send text…* and *Send email…*
+  open it on the matching tab; only the Send inside it sends. The two preview links are gone, since
+  Send is the preview; the character count stays under the box.
