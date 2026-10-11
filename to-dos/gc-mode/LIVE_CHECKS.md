@@ -1,7 +1,7 @@
 ---
 name: "GC mode, the live checks: one walk"
 parent: to-dos/gc-mode/LEDGER_2026-10-09.md
-status: run sheet, written by Helper 5 (gc 5) 13:30 UTC 2026-10-10 from main's code and a read-only look at prod · the schedule's steps 23 to 27 added by helper 1 (gc 1) from main at 2b2477a63 · nothing on it has been pressed
+status: run sheet, written by Helper 5 (gc 5) 13:30 UTC 2026-10-10 from main's code and a read-only look at prod · the schedule's steps 23 to 27 added by helper 1 (gc 1) from main at 2b2477a63 · day 1 walked 2026-10-10 to 11 UTC on Grace's yeses, but for steps 10 to 12 (ids in the ledger)
 ---
 
 # GC mode, the live checks: one walk
@@ -89,18 +89,21 @@ me", price $10,000, 0 days → **Save the draft** → tick **Email it to the cus
 *Reads*: "waiting on them since" today, and "Emailed to GC Test Owner LLC on" today. *Writes*: change order 2
 (`gc_change_orders`, draft then sent), one `email_send_log` row, the email to bids@clickplumbing.com with the
 subject "Change order 2 for GC test project, delete me, +$10,000". No billing job exists yet, so its sent copy is
-not on one.
+not on one. **Done 2026-10-10, 22:46 UTC** (ids in the ledger).
 
 **2. O7c, Sign in the portal.** In the private window, change order 2 → **Sign it** → **Yes, sign it**. *Reads*:
 "You signed change order 2. Thank you." The office's Change orders shows "signed" today "in their portal".
-*Writes*: change order 2's status, `answered_on` and `answered_how` = portal. No email, and no undo.
+*Writes*: change order 2's status, `answered_on` and `answered_how` = portal. No email, and no undo. **Done
+2026-10-10, 23:45 UTC.**
 
 **3. O7c, Decline in the portal.** Change orders → **New change order**: "Test change 3, delete me", price $100 →
 **Save the draft** → **Send for signature**, the email tick off. *Reads*: "It went without an email." In the
 portal: **Decline** → Why? "Test decline, delete me" → **Decline it**. *Reads*: "You declined change order 3. We
-will be in touch." *Writes*: change order 3, sent then declined with the note. No email.
+will be in touch." *Writes*: change order 3, sent then declined with the note. No email. **Done 2026-10-10, 23:53
+UTC.**
 
-**4. Change order 2 at 50%.** Change orders → change order 2's percent done → 50. *Writes*: its `pct_done`.
+**4. Change order 2 at 50%.** Change orders → change order 2's percent done → 50. *Writes*: its `pct_done`. **Done
+2026-10-10, 23:55 UTC.**
 
 ### The first bill
 
@@ -118,6 +121,8 @@ today.
 - Two sent copies on the billing job.
 - No undo.
 
+**Done 2026-10-10, 23:58 UTC.**
+
 **6. O4b-2, the certified email.** On pay application 1: **What the architect certified** $4,536, **The day they
 signed it** today, tick **Email the customer the bill now** → **Record the certificate**. *Reads*: "certified
 $4,536" today, "The certified bill was emailed to GC Test Owner LLC on" today, and the money-in row. *Writes*:
@@ -127,20 +132,24 @@ $4,536" today, "The certified bill was emailed to GC Test Owner LLC on" today, a
   (the switch is off).
 - Its sent copy.
 
+**Done 2026-10-11, 00:00 UTC.**
+
 **7. O5c, a promise.** **They said when…** → **They will pay by** yesterday, **How they told us** a call, **What
 they said** "Test promise, delete me" → **Record it**. *Reads*: the chip "promised" yesterday. The bill is now past
 due, so **Remind them to pay** shows. *Writes*: `job_payment_promises` and `job_promised_pay_dates` on the billing
-job. Undo: void the promise.
+job. Undo: void the promise. **Done 2026-10-11, 00:11 UTC.**
 
 **8. O5b, the reminder.** **Remind them to pay** → **Pay by** (5 days out) → **Your line in it** "Test reminder,
 delete me" → **Send the reminder**. *Reads*: "Reminded today · pay by" five days out. *Writes*: a
 `gc_owner_pay_reminders` row. It also writes a `job_payment_chase_touches` row, and the office sees it on the
 Payment Chase list until the sweep. The email "Reminder: pay application 1 for GC test project, delete me, $4,536"
-and its sent copy also go. There is no email tick, and no undo.
+and its sent copy also go. There is no email tick, and no undo. **Done 2026-10-11, 00:16 UTC,** after a fresh open
+of the window (two punch-list items came from it).
 
 **9. O5c, a part payment.** Pipeline → Billed → "GC test project, delete me (GC)" → **Mark Paid** → **Payment
 amount ($)** 100 → **Confirm** (answer "No" if it asks about a promised date). *Reads*: Bill the customer's chip
-"paid $100 of $4,536". *Writes*: a `jobs_ledger_payments` row. Undo: the Pipeline's remove payment.
+"paid $100 of $4,536". *Writes*: a `jobs_ledger_payments` row. Undo: the Pipeline's remove payment. **Done
+2026-10-11, 00:57 UTC.** It also emailed two staff (punch list).
 
 **10. O5c, our unconditional waiver.** Bill the customer → **Make our unconditional waiver** → sign it on screen.
 **Do not press "Send to GC Test Owner LLC"**: it is a separate email. *Reads*: the portal's **Your papers** shows
@@ -157,16 +166,19 @@ showed three things:
 
 ### The card (O8, Stripe test mode)
 
+Walked after step 13, the lead's call at 01:50 UTC, so step 13's pay application is 2 and the card's are 3 and 4.
+**Held**: the switch is off. Steps 11 and 12 wait on the owner's own press, or his yes typed in Helper 5's chat.
+
 **11. A bill paid by card.**
 - The owner turns on **Let GC customers pay a certified bill by card** (Settings → GC jobs · pay by card). It is
-  global, but this is the only certified GC bill on prod.
-- Change order 2 → 75%. **Send pay application 2**, the email tick off: $2,250 asked.
-- **Record the certificate** at $2,250. Ticking the email here checks the certified email's card line.
-- In the portal: **PAY BY CARD** ("Card adds 3%") → **Pay this bill by card**. It reads $2,250, a $67.50 fee and
-  $2,317.50.
+  global, but the test project holds the only certified GC bills on prod.
+- Change order 2 → 100%. **Send pay application 3**, the email tick off: $1,800 asked.
+- **Record the certificate** at $1,800. Ticking the email here checks the certified email's card line.
+- In the portal: **PAY BY CARD** ("Card adds 3%") → **Pay this bill by card**. It reads $1,800, a $54 fee and
+  $1,854.
 - → **Go to the card page**. *Reads*: two lines, cards only. Pay with 4242 4242 4242 4242, any future date, any CVC.
-- *Reads*: Bill the customer says paid by card, with the fee. The billing job's Pipeline total includes the $67.50
-  as a rider, and Money's figures do not.
+- *Reads*: Bill the customer says paid by card, with the fee. The billing job's Pipeline total includes the $54 as a
+  rider, and Money's figures do not.
 - *Writes*:
   - a `gc_owner_card_bills` row, pending then `on_card`;
   - in Stripe test mode, a test customer and a card-only invoice (no email at conversion);
@@ -175,25 +187,26 @@ showed three things:
 - A paid card bill cannot be undone.
 
 **12. Back to a check bill.**
-- Change order 1 → 100%. **Send pay application 3**, ticks off: $54 asked. Then **Record the certificate** at $54.
+- Change order 1 → 100%. **Send pay application 4**, ticks off: $54 asked. Then **Record the certificate** at $54.
 - Portal: **PAY BY CARD** → **Go to the card page**. Do not pay.
 - Office: **Back to a check bill** → confirm. *Reads*: the bill back at $54, the Stripe invoice void, and no offer in
   the portal again for that bill.
 - *Writes*: the card row `undone_on`, and the bill back at its base.
 - **Then the owner turns the card switch off.**
 
-**13. A bill left waiting on the architect** (for O10's reminder on day 4). Change order 2 → 100%. **Send pay
-application 4**, ticks off: $2,250 asked. Do not record its certificate.
+**13. A bill left waiting on the architect** (for O10's reminder on day 4). Change order 2 → 80% (the box steps by
+10). **Send pay application 2**, ticks off: $2,700 asked (work $8,040, held $804, less pay application 1's $4,536). Do
+not record its certificate. **Done 2026-10-11, 01:57 UTC,** before steps 11 and 12.
 
 ### The rest of day 1
 
 **14. O7b, the Monday email's test.** `/gc?view=money` → **The Monday money email** → **Email me a test**.
 *Reads*: "A test went to your email." *Writes*: one `email_send_log` row. The "[TEST]" email goes to the presser's
-own address. No request row and no sent copy.
+own address. No request row and no sent copy. **Done 2026-10-11, 01:49 UTC.**
 
 **15. O10, Preview and its test.** Settings → **GC jobs · the office's notices** → **Preview today's notices**,
 then **Email me a test**. *Reads*: "Nothing is due today." and "Nothing is due today, so no test went." Writes
-nothing. Steps 18 and 19 read the reminders on days 4 and 6.
+nothing. Steps 18 and 19 read the reminders on days 4 and 6. **Done 2026-10-11, 01:50 UTC.**
 
 **16. O11, Our own work, as a pay reader and as one without pay.** Do it after the bills: while Plumbing is linked,
 Bill the customer shows its crew's percent as new work. Send nothing then.
@@ -212,27 +225,30 @@ Bill the customer shows its crew's percent as new work. Send nothing then.
 - *Writes*: `gc_trade_packages.job_ledger_id` and `gc_project_money.general_conditions_job_id`, set then cleared. No
   new rows, and nothing on either Pipeline job.
 
+**Done 2026-10-11, 02:05 UTC,** with 1007 (20% done) for the crew and 931 for general conditions. Each read as above,
+and the spent figures matched both Costs tabs. Both links read null after.
+
 ## Day 2
 
 **17. O6b-2, Bill the interest.** Bill the customer → tick **Email the customer the bill now** → **Bill the
-interest $X**. Interest runs on pay application 1's $4,436 left open and pay application 3's $54, from the day after
-their certificates. That is about $2.20 a day. If it reads under $1, press on day 3. *Reads*: "Interest bill 1",
-its amount, the chip "open" and "Emailed to". *Writes*: a `jobs_ledger_invoices` row and a
+interest $X**. Interest runs on pay application 1's $4,436 left open and, once step 12 runs, pay application 4's $54,
+from the day after their certificates. That is about $2.20 a day. If it reads under $1, press on day 3. *Reads*:
+"Interest bill 1", its amount, the chip "open" and "Emailed to". *Writes*: a `jobs_ledger_invoices` row and a
 `gc_owner_interest_bills` row. The email "Interest on late bills for GC test project, delete me, $X" and its sent
 copy also go. No undo.
 
 ## Days 4 and 6 (O10's reminders, with O10c)
 
-These need O10c (#5337) live, its day field in Settings. Leave pay application 4's certificate unrecorded until day 6
+These need O10c (#5337) live, its day field in Settings. Leave pay application 2's certificate unrecorded until day 6
 is read.
 
 **18. Day 4, the architect's reminder.** Settings → **GC jobs · the office's notices** → **Count pay applications sent
-since** → day 1 → **Preview today's notices**. *Reads*: "Pay application 4 for GC test project, delete me waits on
+since** → day 1 → **Preview today's notices**. *Reads*: "Pay application 2 for GC test project, delete me waits on
 your certificate · to GC Test Architects at bids@clickplumbing.com", then "As if the notices went on" day 1. Then
 **Email me a test**: "1 test went to your email." *Writes*: one `email_send_log` row. The [TEST] copy goes to the
 presser alone. No notice row and no sent copy.
 
-**19. Day 6, our late notice.** The same presses. *Reads*: the architect's reminder again, and "Pay application 4 for
+**19. Day 6, our late notice.** The same presses. *Reads*: the architect's reminder again, and "Pay application 2 for
 GC test project, delete me still waits on the architect · to Malachi" at his address. Malachi hears because the test
 project has no project manager. Its second line reads "They have no email on file, so they were not reminded." That
 is only because Preview never sends the reminder. With the switch on, it reads "We reminded them on" day 4. **Email
@@ -261,9 +277,9 @@ trade's signing in its portal (the Board's and the Portal's walks).
 
 ## Not walkable yet
 
-- **O7c's Accept the work: walkable after step 13 now.** It shows in the portal only once the bills reach the whole
+- **O7c's Accept the work: walkable after step 12 now.** It shows in the portal only once the bills reach the whole
   contract. Since S3 the whole contract is the two change orders, $10,100, and pay application 4 bills both at 100%.
-- **O10's architect reminder and the project manager's notice, today.** They need a pay application 3 and 5 days old.
+- **O10's architect reminder and the project manager's notice, today.** They need a pay application 3 days old, then 5.
   Steps 18 and 19 read them on days 4 and 6, with O10c's day field (#5337).
 - **O10's bill-day notice.** It is due on the 23rd and 24th, to the project manager or, with none, the company's
   owner (Malachi). With the switch off it goes nowhere, and Preview on those days shows it only while no pay application’s period
@@ -274,10 +290,10 @@ trade's signing in its portal (the Board's and the Portal's walks).
 **22. O12, the customer's notice 3 days before a bill is due.** After O12a's push and O12b's deploy
 (`mockups/owner-billing-o12.md`).
 - On day 6, after step 19: Bill the customer → **Change the days to pay** → 5 → **Save the days to pay**.
-- Record pay application 4's certificate at $2,250, today, with its email tick off. It is due on day 11.
+- Record pay application 2's certificate at $2,700, today, with its email tick off. It is due on day 11.
 - On day 8, 9 or 10: Settings → **GC jobs · the customer's notice before a bill is due** → **Count bills certified
   since** → day 6 → **Preview today's notices**.
-- *Reads*: "Pay application 4 for GC test project, delete me is due" day 11, "· to GC Test Owner LLC at
+- *Reads*: "Pay application 2 for GC test project, delete me is due" day 11, "· to GC Test Owner LLC at
   bids@clickplumbing.com".
 - **Email me a test** brings the [TEST] copy to the presser alone. The owner reads his copy, then he turns it on.
 - *Writes*:
@@ -381,5 +397,5 @@ the failure, not a 500. The lead then makes the import static. *Writes*: the por
 ## After the walk
 
 - Until the sweep, the office sees the test billing job under Pipeline → Billed and one touch on the Payment Chase
-  list. AR counts a little over $4,490 open: pay application 1’s $4,436, pay application 3’s $54 and the interest bill.
+  list. AR counts a little over $4,490 open: pay application 1’s $4,436, pay application 4’s $54 and the interest bill.
 - Helper 5 reads the day's new rows read-only and sends their ids to the lead for *Call 4 sweep notes*.
