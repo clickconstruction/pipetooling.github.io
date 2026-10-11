@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useToastContext } from '../contexts/ToastContext'
@@ -26,6 +27,8 @@ import { buildThisWeek } from '../lib/bridge/thisWeek'
 import { BridgeThisWeek } from '../components/bridge/BridgeThisWeek'
 import { peopleSummary, readPeopleOpen, writePeopleOpen } from '../lib/bridge/peopleStrip'
 import { BridgePeople } from '../components/bridge/BridgePeople'
+import { buildMondaySheet, mondaySheetHtml, mondaySheetSubject, mondaySheetText, peopleLines } from '../lib/bridge/mondaySheet'
+import { BridgeMondaySheet } from '../components/bridge/BridgeMondaySheet'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
@@ -82,6 +85,11 @@ export default function Bridge() {
   const [bankLoading, setBankLoading] = useState(false)
   // The People strip (v2.5222): Vectors and the day grid fold under it, closed by default and remembered per browser.
   const [peopleOpen, setPeopleOpen] = useState<boolean>(() => readPeopleOpen())
+  // The Monday sheet (v2.5224): `?view=monday` draws the one-screen sheet; Email me this sheet mails it to the caller.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sheetView = searchParams.get('view') === 'monday'
+  const [emailing, setEmailing] = useState(false)
+  const [mailNote, setMailNote] = useState<string | null>(null)
   const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
 
   useEffect(() => {
@@ -397,6 +405,19 @@ export default function Bridge() {
 
 
   const typedDaysAgo = data?.cashSetting ? Math.round((Date.parse(`${data.todayYmd}T00:00:00Z`) - Date.parse(`${data.cashSetting.asOfYmd}T00:00:00Z`)) / 86_400_000) : null
+  const speed = profit?.speed
+  const climbColor = speed && speed.climbPerDay >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)'
+  const windowStartLabel = data ? md(data.windowStart) : ''
+  const netToday = history ? (history[history.length - 1]?.netUsd ?? 0) : null
+  const netStart = history ? (history[0]?.netUsd ?? 0) : null
+  const cashRead = forecast
+    ? forecast.clearsFloor
+      ? `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — stays above your ${shortK(forecast.floorUsd)} floor`
+      : `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — ${shortK(forecast.floorUsd - forecast.lowest.cashUsd)} under your ${shortK(forecast.floorUsd)} floor · ${forecast.daysUnderFloor} day${forecast.daysUnderFloor === 1 ? '' : 's'} below it`
+    : ''
+  const netLight = netPositionLight(netToday != null && netStart != null ? { deltaUsd: netToday - netStart, todayUsd: netToday, startLabel: windowStartLabel, paperProfitUsd: truth?.paper.profitUsd ?? null, billingLagUsd: truth?.billingLagUsd ?? null } : null)
+  const cashLightRead = cashLight(forecast && data ? { lowestUsd: forecast.lowest.cashUsd, lowestLabel: md(forecast.lowest.ymd), floorUsd: forecast.floorUsd, clearsFloor: forecast.clearsFloor, daysUnderFloor: forecast.daysUnderFloor, typedLabel: bank ? null : data.cashSetting ? md(data.cashSetting.asOfYmd) : null, typedDaysAgo: bank ? null : typedDaysAgo, synced: !!bank } : null)
+  const bankReadAt = bank ? new Date(bank.readAtIso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
   const readingGaps = useMemo(() => {
     if (!data) return []
     const assumedHalfEarnedUsd = data.earned.assumedHalfJobs.reduce((s, id) => s + (data.earned.earnedByJob.get(id) ?? 0), 0)
@@ -442,22 +463,55 @@ export default function Bridge() {
     })
   }, [data, fin.data, receipts, profit])
 
+  const sheet = useMemo(() => {
+    if (!data) return null
+    const c = forecast ? carryingDay(forecast, receipts) : null
+    const cashRows = [
+      ...(c ? [{ label: `${md(c.ymd)} · receipts assumed`, value: `+${shortK(c.receiptsUsd)}` }, ...(c.billsUsd > 0 ? [{ label: `${md(c.ymd)} · bills due`, value: `−${shortK(c.billsUsd)}` }] : [])] : []),
+      { label: 'Receipts by a promise or pace', value: shortK(confidence.promisedUsd + confidence.paceUsd) },
+    ]
+    const netRows = truth
+      ? [
+          { label: 'Earned, not invoiced', value: `${truth.billingLagUsd >= 0 ? '+' : '−'}${shortK(Math.abs(truth.billingLagUsd))}` },
+          { label: 'Costs the paper misses', value: `${truth.costGapUsd >= 0 ? '−' : '+'}${shortK(Math.abs(truth.costGapUsd))}${truth.costGapShare != null ? ` · ${Math.round(truth.costGapShare * 100)}%` : ''}` },
+          ...(fin.data ? [{ label: 'Finished, unbilled', value: shortK(fin.data.unbilled.total) }] : []),
+        ]
+      : []
+    return buildMondaySheet({
+      todayLabel: md(data.todayYmd),
+      weekLabel: vectorWeek ? formatPayWeekLabel(vectorWeek) : '',
+      headline,
+      net: netLight,
+      cash: cashLightRead,
+      netRows,
+      cashRows,
+      moves: thisWeek,
+      people: peopleLines(vectorInputs ? vectors : null),
+    })
+  }, [data, forecast, receipts, confidence, truth, fin.data, vectorWeek, headline, netLight, cashLightRead, thisWeek, vectorInputs, vectors])
+
+  const emailSheet = useCallback(async () => {
+    if (!sheet || emailing) return
+    setEmailing(true)
+    setMailNote(null)
+    try {
+      const url = `${window.location.origin}/bridge`
+      const { data: res, error: err } = await supabase.functions.invoke('bridge-sheet-email', { body: { subject: mondaySheetSubject(sheet), html: mondaySheetHtml(sheet, url), text: mondaySheetText(sheet, url) } })
+      if (err) throw new Error(err.message)
+      const r = res as { error?: string; to?: string } | null
+      if (r && typeof r.error === 'string') throw new Error(r.error)
+      setMailNote(`sent to ${r?.to ?? 'you'}`)
+      showToast('The Monday sheet is in your inbox', 'success', 2500)
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error', 4000)
+    } finally {
+      setEmailing(false)
+    }
+  }, [sheet, emailing, showToast])
+
   if (authLoading) return null
   if (role !== 'dev') return <Navigate to="/dashboard" replace />
 
-  const speed = profit?.speed
-  const climbColor = speed && speed.climbPerDay >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)'
-  const windowStartLabel = data ? md(data.windowStart) : ''
-  const netToday = history ? (history[history.length - 1]?.netUsd ?? 0) : null
-  const netStart = history ? (history[0]?.netUsd ?? 0) : null
-  const cashRead = forecast
-    ? forecast.clearsFloor
-      ? `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — stays above your ${shortK(forecast.floorUsd)} floor`
-      : `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — ${shortK(forecast.floorUsd - forecast.lowest.cashUsd)} under your ${shortK(forecast.floorUsd)} floor · ${forecast.daysUnderFloor} day${forecast.daysUnderFloor === 1 ? '' : 's'} below it`
-    : ''
-  const netLight = netPositionLight(netToday != null && netStart != null ? { deltaUsd: netToday - netStart, todayUsd: netToday, startLabel: windowStartLabel, paperProfitUsd: truth?.paper.profitUsd ?? null, billingLagUsd: truth?.billingLagUsd ?? null } : null)
-  const cashLightRead = cashLight(forecast && data ? { lowestUsd: forecast.lowest.cashUsd, lowestLabel: md(forecast.lowest.ymd), floorUsd: forecast.floorUsd, clearsFloor: forecast.clearsFloor, daysUnderFloor: forecast.daysUnderFloor, typedLabel: bank ? null : data.cashSetting ? md(data.cashSetting.asOfYmd) : null, typedDaysAgo: bank ? null : typedDaysAgo, synced: !!bank } : null)
-  const bankReadAt = bank ? new Date(bank.readAtIso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
   const billsByDay = groupByDay(bills)
   const receiptsByDay = groupByDay(receipts)
 
@@ -466,13 +520,20 @@ export default function Bridge() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.25rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>The Bridge</h1>
         <span style={det}>Where we stand, where cash is going, what would change it. Dev only.</span>
-        <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
+        {!sheetView && (
+          <button type="button" onClick={() => setSearchParams({ view: 'monday' })} disabled={!sheet} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
+            Monday sheet
+          </button>
+        )}
+        <button type="button" onClick={() => setRefreshKey((k) => k + 1)} disabled={loading} style={{ ...btnStyle, marginLeft: sheetView ? 'auto' : undefined, borderRadius: 6, padding: '0.25rem 0.7rem' }}>
           {loading ? 'Reading…' : 'Refresh'}
         </button>
       </div>
       {error ? <p style={{ color: 'var(--text-red-700)' }}>{error}</p> : null}
       {!data || !profit || !speed ? (
         <p style={det}>{loading ? 'Reading the last 8 weeks — sessions, bank flows, invoices, payments, the overhead pool…' : '—'}</p>
+      ) : sheetView && sheet ? (
+        <BridgeMondaySheet sheet={sheet} emailing={emailing} onEmail={() => void emailSheet()} onFull={() => setSearchParams({})} mailNote={mailNote} />
       ) : (
         <>
           {/* The top line (v2.5216): contribution per week, the two constraints as lights */}
