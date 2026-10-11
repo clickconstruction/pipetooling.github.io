@@ -124,6 +124,30 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .mail .sig{padding:0 14px 14px;font-size:13px;color:var(--text-muted);white-space:pre-wrap}
 .mail .foot{padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);background:#fafafa}
 .modal.wide{max-width:640px}
+.tiebtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface);cursor:pointer;font-size:13px}
+.tiebtn .kindpill{font-size:11px}
+.picker{position:absolute;z-index:15;right:0;bottom:calc(100% + 6px);width:min(420px,92vw);background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);overflow:hidden}
+.picker .ph{padding:8px 12px;font-size:12px;color:var(--text-muted);border-bottom:1px solid var(--border)}
+.picker .prow{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer}
+.picker .prow:last-child{border-bottom:0}
+.picker .prow:hover{background:var(--accent-soft)}
+.picker .prow.on{background:var(--accent-soft)}
+.picker .prow .chk{width:16px;color:var(--accent);font-weight:700}
+.picker .prow .pname{flex:1;min-width:0}
+.picker .prow .pname b{display:block;font-weight:600}
+.picker .prow .pname small{color:var(--text-muted);font-size:12px}
+.picker .prow .open{flex:none}
+.kindpill{display:inline-block;font-size:11px;padding:0 6px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);margin-left:6px;vertical-align:middle}
+.kindpill.bid{color:#6d3fb8;border-color:#d9c8f5;background:#f6f0ff}.kindpill.project{color:#1a7f3c;border-color:#bfe3c9;background:#eef7ea}.kindpill.pipeline{color:#1f5fbf;border-color:#c5d8f5;background:#eaf1fc}
+.jobcard h2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.jobcard .facts{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:14px;margin:8px 0 12px}
+.jobcard .facts dt{color:var(--text-muted)}.jobcard .facts dd{margin:0}
+.jobcard .people{display:flex;flex-wrap:wrap;gap:6px}
+.jobcard .people span{border:1px solid var(--border);border-radius:999px;padding:2px 9px;font-size:13px}
+.jobcard .conv{border:1px solid var(--border);border-radius:8px;margin-top:8px}
+.jobcard .conv div{padding:7px 10px;border-top:1px solid var(--border);font-size:13px}
+.jobcard .conv div:first-child{border-top:0}
+.reply .send .tie{position:relative}
 .settings dl{display:grid;grid-template-columns:200px 1fr;gap:8px 16px;margin:0}
 .settings dt{color:var(--text-muted)}
 .settings dd{margin:0}
@@ -281,7 +305,7 @@ function renderMessages(m){
       ${c.state==='waiting'?`<button onclick="setState('${c.id}','done')">Done</button>`:`<button onclick="setState('${c.id}','waiting')">Reopen</button>`}
       <button class="quiet" onclick="toggleOptout('${c.id}')">${c.optout?'Clear opt-out':'Mark STOP'}</button></div></div>
   <h3>Their jobs</h3>
-  <div class="jobs-rail" id="rail">${cJobs.map(j=>`<span class="jobchip ${jobFilter===j.id?'on':''}" draggable="true" data-job="${j.id}" title="Drag onto a message to tie it there. Click to filter."><span class="star" title="New messages go here" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()">${esc(jobLabel(c,j.id))}</span><span class="note" onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()"> · ${esc(j.note)}</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span>`).join('')}
+  <div class="jobs-rail" id="rail">${cJobs.map(j=>`<span class="jobchip ${jobFilter===j.id?'on':''}" draggable="true" data-job="${j.id}" title="Drag onto a message to tie it there. Click to filter."><span class="star" title="New messages go here" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()">${esc(jobLabel(c,j.id))}</span><span class="note" onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()"> · ${esc(j.note)}</span><span class="x" title="Open this job" onclick="event.stopPropagation();jobModal('${j.id}')">⧉</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span>`).join('')}
     <span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</div>
   <p class="hint">${c.def?`New messages go to <b>${esc(jobLabel(c,c.def))}</b> (★). `:'No default job: new messages sit on the person alone. '}Drag a job onto a line to tie that message there${narrow()?'; on a phone, press and hold the line':''}. A line with no job sits on the person alone.</p>
   <div id="lines"></div>
@@ -291,7 +315,7 @@ function renderMessages(m){
     <textarea id="box" oninput="countBox(this)" class="${replyKind==='note'?'team':''}" placeholder="${replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
     ${replyKind!=='note'?`<div class="previews"><span>Send shows it to you the way they will see it, before it goes.</span><span class="note" id="pvcount"></span></div>`:''}
     <div class="send"><button class="primary" onclick="${replyKind==='note'?`sendReply('${c.id}')`:`previewDraft('${c.id}','${replyKind}')`}" ${c.optout&&replyKind==='text'?'disabled':''}>${replyKind==='note'?'Add the note':replyKind==='email'?'Send email…':'Send text…'}</button>${c.optout&&replyKind==='text'?'<span class="note">They sent STOP. The app will not text this number.</span>':''}
-      <span class="tie">Tie to: <select onchange="replyTie=this.value||null"><option value="">${c.def?esc(jobLabel(c,c.def))+' (default)':'the person alone'}</option>${cJobs.filter(j=>j.id!==c.def).map(j=>`<option value="${j.id}" ${replyTie===j.id?'selected':''}>${esc(jobLabel(c,j.id))}</option>`).join('')}<option value="none" ${replyTie==='none'?'selected':''}>no job</option></select></span></div>
+      <span class="tie">Tie to: <button type="button" class="tiebtn" onclick="tiePicker('${c.id}',this)">${tieLabel(c)} <span>▾</span></button></span></div>
   </div>`;
   const L=th.querySelector('#lines');
   if(!lines.length) L.innerHTML='<div class="empty">Nothing yet.</div>';
@@ -364,6 +388,28 @@ function askArchitect(mid){ const x=messages.find(m=>m.id===mid); x.question.sta
 function answerMyself(mid){ const x=messages.find(m=>m.id===mid); x.question.state='mine'; replyKind='text'; openThread(x.c); document.getElementById('box')?.focus(); }
 function sendReply(cid){ const c=cById(cid); const box=document.getElementById('box'); const t=box.value.trim(); if(!t){toast('Write something first.');return;} const job = replyTie==='none'?null:(replyTie||c.def); const who = replyKind==='note'?`${ME} · note for the team`:replyKind==='email'?`${ME} · bids@`:`${ME} · from the company number`; messages.push({id:++seq,c:cid,job,ch:replyKind,dir:replyKind==='note'?'team':'out',who,at:T(2,10,32)+messages.length,text:t}); if(replyKind!=='note'){ c.state='done'; c.has=null; } box.value=''; toast(replyKind==='note'?'Note added. Only the team sees it.':replyKind==='email'?'Email sent as Click Construction; its copy is kept in Documents.':'Text sent from the company number.'); render(); }
 function whoIsThis(cid){ const c=cById(cid); modal(`Who is this? ${esc(c.phones[0])}`, `<div class="f">Their name<input id="wn" placeholder="Dee …"></div><div class="f">What they are to us<select id="wk"><option value="trade">trade partner</option><option value="customer">customer</option><option value="arch">architect</option></select></div><div class="f">Their company<input id="wc" placeholder="Alamo Concrete"></div><div class="f">Tie this message to<select id="wj"><option value="">no job yet</option>${jobs.map(j=>`<option value="${j.id}">${esc(j.name)} · ${esc(j.note)}</option>`).join('')}</select></div><p class="note">The answer becomes the rule for this number: the next text from it lands on this person.</p>`, ()=>{ const n=document.getElementById('wn').value.trim(); if(!n){toast('A name, please.');return false;} c.name=n; c.kind=document.getElementById('wk').value; c.company=document.getElementById('wc').value.trim(); const j=document.getElementById('wj').value; if(j){ c.jobs=[j]; c.def=j; messages.filter(x=>x.c===c.id).forEach(x=>x.job=j); } toast(`${n} is known now.`); render(); }); }
+
+// ---------- tie picker and the job card ----------
+const kindPill = j => `<span class="kindpill ${j.kind}">${j.kind==='bid'?'bid':j.kind==='project'?'GC project':'Pipeline job'}</span>`;
+function tieLabel(c){ if(replyTie==='none') return 'no job'; const jid=replyTie||c.def; if(!jid) return 'the person alone'; const j=jobById(jid); return `${esc(jobLabel(c,jid))}${kindPill(j)}${jid===c.def&&!replyTie?' <span class="note">· default</span>':''}`; }
+function tiePicker(cid, btn){ document.removeEventListener('click', outsidePicker); if(document.getElementById('picker')){ closePicker(); return; } const c=cById(cid); const cur=replyTie==='none'?null:(replyTie||c.def);
+  const rows = c.jobs.map(jid=>{ const j=jobById(jid); const n=messages.filter(m=>m.c===c.id&&m.job===jid).length; return `<div class="prow ${cur===jid&&replyTie!=='none'?'on':''}" onclick="replyTie='${jid}';closePicker();render()"><span class="chk">${cur===jid&&replyTie!=='none'?'✓':''}</span><span class="pname"><b>${esc(j.name)}${kindPill(j)}${jid===c.def?' <span class="note">· default</span>':''}</b><small>${esc(j.note)}${c.trade&&j.kind==='bid'?' · '+esc(c.trade):''} · ${n} message${n===1?'':'s'} tied</small></span><button class="small open" onclick="event.stopPropagation();jobModal('${jid}')">Open</button></div>`; }).join('');
+  const none=`<div class="prow ${replyTie==='none'?'on':''}" onclick="replyTie='none';closePicker();render()"><span class="chk">${replyTie==='none'?'✓':''}</span><span class="pname"><b>No job</b><small>The message sits on ${esc(c.name)} alone.</small></span></div>`;
+  const add=`<div class="prow" onclick="closePicker();addJob('${cid}')"><span class="chk"></span><span class="pname"><b>+ Add a job to ${esc(c.name)}</b><small>A bid, a GC project or a Pipeline job they are part of.</small></span></div>`;
+  const pk=document.createElement('div'); pk.className='picker'; pk.id='picker'; pk.innerHTML=`<div class="ph">Where this message lands. New messages from them go to the ★ default.</div>${rows}${none}${add}`;
+  btn.parentElement.appendChild(pk); setTimeout(()=>document.addEventListener('click', outsidePicker, {once:true}),0); }
+function outsidePicker(e){ const pk=document.getElementById('picker'); if(!pk) return; if(e.target.closest('.tiebtn')) return; if(!pk.contains(e.target)) closePicker(); else setTimeout(()=>document.addEventListener('click', outsidePicker, {once:true}),0); }
+function closePicker(){ document.getElementById('picker')?.remove(); }
+function jobModal(jid){ const j=jobById(jid); const people=contacts.filter(c=>c.jobs.includes(jid)); const tied=messages.filter(m=>m.job===jid).sort((a,b)=>b.at-a.at).slice(0,5);
+  const facts = j.kind==='bid' ? [['What','A bid we are putting together as the GC'],['Bid day',j.note.replace('bid ','')],['Customer', people.filter(p=>p.kind==='customer').map(p=>p.name).join(', ')||'—'],['Trades asked', people.filter(p=>p.kind==='trade').map(p=>`${p.company} (${p.trade})`).join(', ')||'—'],['Architect', people.filter(p=>p.kind==='arch').map(p=>p.company).join(', ')||'—']]
+    : j.kind==='project' ? [['What','A GC project we won'],['Stage',j.note],['Customer', people.filter(p=>p.kind==='customer').map(p=>p.name).join(', ')||'—'],['Trade partners', people.filter(p=>p.kind==='trade').map(p=>`${p.company} (${p.trade})`).join(', ')||'—']]
+    : [['What','A Pipeline job, our own crew'],['Job',j.note],['Customer', people.filter(p=>p.kind==='customer').map(p=>p.name).join(', ')||'—']];
+  const bg=document.createElement('div'); bg.className='modal-bg'; bg.innerHTML=`<div class="modal wide jobcard"><h2>${esc(j.name)} ${kindPill(j)}</h2>
+    <dl class="facts">${facts.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
+    <h3>People on it</h3><div class="people">${people.length?people.map(p=>`<span>${esc(p.name)} · ${esc(p.company||kindWord(p))}</span>`).join(''):'<span class="note">nobody yet</span>'}</div>
+    <h3>Last conversations tied to it</h3><div class="conv">${tied.length?tied.map(m=>{const c=cById(m.c);return `<div><b>${esc(c.name)}</b> · ${chWord(m)} · ${fmt(m.at)}<br>${esc(m.text).slice(0,140)}${m.text.length>140?'…':''}</div>`;}).join(''):'<div class="note">none yet</div>'}</div>
+    <div class="btns"><button onclick="this.closest('.modal-bg').remove()">Close</button><button onclick="this.closest('.modal-bg').remove();openJob='${jid}';view='job';render()">Its conversations</button><button class="primary" onclick="toast('Opens ${esc(j.kind==='bid'?'the bid':j.kind==='project'?'the project on the Board':'the Pipeline job')} in the app.')">Open ${j.kind==='bid'?'the bid':j.kind==='project'?'the project':'the job'}</button></div></div>`;
+  document.body.appendChild(bg); bg.onclick=e=>{ if(e.target===bg) bg.remove(); }; }
 
 // ---------- preview before it goes ----------
 const COMPANY = {name:'Click Construction', phone:'(210) 555-0100', email:'bids@clickconstruction.example', site:'clickconstruction.example', addr:'San Antonio, Texas'};

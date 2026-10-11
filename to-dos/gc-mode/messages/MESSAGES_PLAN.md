@@ -81,6 +81,12 @@ Each one is a button in the prototype; each becomes one press in the app.
   *Send a test to me* and *Send as email* or *Send as text* sit in the window; *Change it* goes back.
   The window is the confirmation: the only Send that sends is the one inside it (the owner, 2026-10-11).
   A note for the team is added at once; nobody outside sees it.
+- **Tie to, as a picker**: the draft's *Tie to* opens a list of the contact's jobs, each with its name,
+  what it is (a bid, a GC project, a Pipeline job), its day or stage, how many messages are tied to it,
+  the ★ default marked, and an *Open* button on the right that shows the job's card in a window: what it
+  is, its day, the customer, the trades asked, the people on it, the last conversations tied to it, and
+  a button to open the bid or the project itself. *No job* and *Add a job* sit at the bottom. The same
+  card opens from the ⧉ on a job in the rail.
 - **Quick replies**: the lines typed every day ("Your quote is in your portal", "Did the invite come
   through?", "Checking on the number, still good for today?").
 - **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so.
@@ -172,3 +178,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.3, 2026-10-11**: the preview window is the confirmation screen. *Send text…* and *Send email…*
   open it on the matching tab; only the Send inside it sends. The two preview links are gone, since
   Send is the preview; the character count stays under the box.
+- **v1.4, 2026-10-11**: *Tie to* is a picker, not a native menu: each job with its kind, day, tied count
+  and an *Open* button that shows the job's card in a window (facts, people, last conversations, Open
+  the bid or the project). The rail's jobs open the same card from ⧉.
