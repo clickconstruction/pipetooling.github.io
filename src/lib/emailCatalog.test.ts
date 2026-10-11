@@ -32,7 +32,7 @@ describe('EMAIL_CATALOG', () => {
     if (wf.editable.kind === 'templates') expect(wf.editable.templateTypes).toHaveLength(11)
   })
 
-  it('covers the full inventory: 49 rows, every sender named, no blank subjects', () => {
+  it('covers the full inventory: 53 rows, every sender named, no blank subjects', () => {
     // 33 composition paths from the 2026-09-02 inventory, folded: the 11
     // workflow templates ride one aggregate row, pure variants (resends,
     // reminders, [TEST] twins) ride their parent row. +1 (v2.2664): the
@@ -50,7 +50,8 @@ describe('EMAIL_CATALOG', () => {
     // +1 (v2.5024): the money team's Monday email about our GC jobs (gc-money-monday-email).
     // +2 (O10b): the architect's reminder to certify and the office's notices (gc-office-notices).
     // +1 (O12b): the customer's notice 3 days before a bill is due (gc-office-notices).
-    expect(EMAIL_CATALOG).toHaveLength(52)
+    // +1 (v2.5224): the Bridge's Monday sheet, to the dev who pressed Email me this sheet (bridge-sheet-email).
+    expect(EMAIL_CATALOG).toHaveLength(53)
     for (const e of EMAIL_CATALOG) {
       expect(e.sender.trim().length).toBeGreaterThan(0)
       expect(e.subjectExample.trim().length).toBeGreaterThan(0)

@@ -33,6 +33,8 @@ import { billTheCustomerUrl, buildOfficeNoticeEmail } from '../../supabase/funct
 import { lienStatusEmailHtml, lienStatusEmailText, lienStatusSubject, type LienStatusPayload } from '../../supabase/functions/_shared/lienDeskStatus'
 import { ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
 import { calendarYmdInAppTzFromIso } from '../utils/dateUtils'
+import { buildMondaySheet, mondaySheetHtml, mondaySheetSubject, mondaySheetText } from './bridge/mondaySheet'
+import { cashLight, netPositionLight } from './bridge/headline'
 
 export type BuiltTeamEmail = { subject: string; html: string; text: string }
 
@@ -598,6 +600,39 @@ export function buildTeamSampleEmail(id: TeamSampleEmailId, ctx: TeamSampleConte
         billTheCustomerUrl(origin, 'sample'),
         null,
       )
+    }
+    case 'bridge_monday_sheet': {
+      // The Bridge's Monday sheet (v2.5224) on made-up numbers; the real one is built on /bridge?view=monday from the live reading.
+      const md = (ymd: string): string => new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+      const weekStartLabel = md(ymdAddDays(ctx.todayYmd, -6))
+      const weekEndLabel = md(ctx.todayYmd)
+      const sheet = buildMondaySheet({
+        todayLabel: ctx.dateLabel,
+        weekLabel: `${weekStartLabel}–${weekEndLabel}`,
+        headline: null,
+        net: netPositionLight({ deltaUsd: -37_400, todayUsd: 114_000, startLabel: weekStartLabel, paperProfitUsd: 54_600, billingLagUsd: 98_100 }),
+        cash: cashLight({ lowestUsd: 15_400, lowestLabel: weekEndLabel, floorUsd: 5000, clearsFloor: true, daysUnderFloor: 0, typedLabel: null, typedDaysAgo: null, synced: true }),
+        netRows: [
+          { label: 'Earned, not invoiced', value: '+$98.1k' },
+          { label: 'Costs the paper misses', value: '−$6.1k · 3%' },
+          { label: 'Finished, unbilled', value: '$228k' },
+        ],
+        cashRows: [
+          { label: `${weekEndLabel} · receipts assumed`, value: '+$227k' },
+          { label: `${weekEndLabel} · bills due`, value: '−$61.5k' },
+          { label: 'Receipts by a promise or pace', value: '$61.0k' },
+        ],
+        moves: [
+          { key: 'bill', title: 'Bill the finished work', why: '$228k finished and not yet billed on 14 jobs; the biggest lever on both lines', lever: '+$228k owed to you', leverTone: 'green', door: null },
+          { key: 'chase', title: 'Chase the 41 late invoices', why: 'past their expected day and assumed to land within their pace', lever: '$227k', leverTone: 'green', door: null },
+          { key: 'approve', title: 'Approve the 585h pending', why: '104 sessions; the top line and payroll read low until then', lever: 'accuracy', leverTone: 'muted', door: null },
+          { key: 'price', title: 'Price jobs 912 and 1067', why: 'worked with no contract price, so their hours earn $0', lever: '2 jobs', leverTone: 'muted', door: null },
+          { key: 'pct', title: 'Set % complete on 6 jobs', why: '$20.3k of earned rests on "assumed half done"', lever: '≈ $20.3k', leverTone: 'muted', door: null },
+        ],
+        people: ['Malachi · 40h · +$5.6k · $141/h', 'Abraham · 40h · +$4.1k · $101/h', 'Isiah, Micah, Paige, Tristen: hours waiting (52h · 26h · 65h · 57h)', 'Taunya · billed $22.6k · collected $41.0k'],
+      })
+      const url = `${origin}/bridge`
+      return { subject: mondaySheetSubject(sheet), html: mondaySheetHtml(sheet, url), text: mondaySheetText(sheet, url) }
     }
     case 'gc_money_monday': {
       const p = sampleGcMoneyMondayPayload(ctx.todayYmd)
