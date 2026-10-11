@@ -348,3 +348,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.27, 2026-10-11**: the chart runs down each lane, one box per line with a small arrow between,
   the us/them tag inside the box at its right, a fork marked by a colored left edge, and a loop as a
   dashed group with its caption on its own line and the rounds as pills (the owner: cramped at 280 px).
+- **v1.28, 2026-10-11**: in the header only the name line sits beside the avatar; the facts line,
+  the court line and the stamps start at the left edge (the owner: no need to push them over).
