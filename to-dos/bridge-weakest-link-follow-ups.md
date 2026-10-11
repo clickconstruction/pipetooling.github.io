@@ -2,15 +2,15 @@
 name: "The Bridge, weakest link: follow-ups after the train"
 number: 107
 group: ready
-status: written 2026-10-11 after the twelve PRs (v2.5232–v2.5243); nothing fixed yet
+status: PR A merged 2026-10-11 as v2.5244 (#5414); B–F open
 summary: >
   A holistic pass over the weakest-link build: four readings that can mislead (Build's pace by
   percent, Bill's in-rate on approved time only, Collect's pile counting current invoices,
   Market's "not short"), four bugs, a handful of words that lead astray, and the next small train.
-next: PR A, the honest paces (Bill's in-rate on recorded time; Build's pace shown beside the hours-based pace; Collect's weeks on the late pile).
-size: M (six small PRs; A and B are the ones that change what the red says)
+next: PR B, Collect's weeks on the late pile with the current share grey; then the rest of B.
+size: M (five small PRs left; B changes what the red says, Collect holds the link today at 13.8 weeks on a pile that counts current invoices)
 blocker: none; the percents on the open jobs are the owner's and would fix half of PR B by themselves
-opinion: do A and B before the first Monday call; the page nominates Build today on a sparse reading
+opinion: do B before the first Monday call; A moved Build from 15–17 weeks to 9–10 and the link to Collect
 ---
 
 # The Bridge, weakest link: follow-ups after the train
@@ -55,13 +55,13 @@ Written after the twelve PRs landed (plan and prototype history in `docs/recent-
 
 | PR | What | Size |
 |---|---|---|
-| A | The honest paces: Bill's in-rate on recorded time; Build shows both paces and feeds the larger to the field; Collect's weeks on the late pile with the current share grey | S |
-| B | Build's nomination gate and the "· set the %s" hint on the link badge; "bids opened"; the week card caption | S |
-| C | Talent's billers fallback; the dial's dead parameter; the `as never` casts | S |
+| A | **Merged v2.5244.** Bill's in-rate on recorded time; Build shows both paces and feeds the larger; the thin-% gate and the "set the %s" badge; Talent's billers fallback. Collect's late pile moved to B. | S |
+| B | Collect's weeks on the late pile with the current share grey; "bids opened"; the week card caption | S |
+| C | The dial's dead parameter; the `as never` casts | S |
 | D | Badges out of the buttons (markup), "reading…" while loaders fly | S |
 | E | The scorecard's verdict on pile dollars too; the sheet's stage-named readings; the softened break-even note | S |
 | F | The held call for a resource; Market compared on sold or win share | S |
 
 ## Where it stands
 
-Written 2026-10-11 as the train merged. Nothing fixed. Next: PR A from main.
+Written 2026-10-11 as the train merged. PR A merged the same day as v2.5244 (#5414): calculations 1, 2 and 7 and bug 1 are done, and Build reads 9–10 weeks on both paces. Collect is the link at 13.8 weeks on a pile that still counts current invoices. Next: PR B from main.
