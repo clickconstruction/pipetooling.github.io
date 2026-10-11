@@ -149,13 +149,15 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
   .hdr .row2 .kindco,.hdr .row2 .sepdot{display:none}.hdr .row2{gap:4px 10px}.hdr .row2 a.fact{color:var(--accent)}
   .stamps{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;margin-left:0;width:100%;text-align:left}.stamps .full{display:none}.stamps .short,.stamps .diff{display:inline-block}
   .hdr .tools{display:flex;gap:6px;overflow-x:auto;align-items:center;margin:10px 0 2px;padding:8px 2px 6px;border-top:1px solid var(--border);scrollbar-width:thin;mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent)}
-  .hdr .tools>.toolbar,.hdr .tools>.jobs-rail{display:contents}.hdr .tools>*>*{flex:none;white-space:nowrap}.hdr .jobs-rail .lbl{display:none}.hdr .jobs-rail .sep{display:inline-block;width:1px;height:22px;background:var(--border);margin:0 4px}.jobtile{width:220px}
+  .hdr .tools>.toolbar,.hdr .tools>.jobs-rail{display:contents}.hdr .tools>*>*{flex:none;white-space:nowrap}.hdr .tools .jobs-rail .lbl{display:none}.hdr .jobs-rail .sep{display:inline-block;width:1px;height:22px;background:var(--border);margin:0 4px}.jobtile{width:220px}.hdr .tools .jobs-rail .tiles{display:contents}
 }
 
 .hdr .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0;padding-top:8px;border-top:1px solid var(--border)}
 .hdr .toolbar .grow{flex:1}
 .hdr .jobs-rail{margin:10px 0 2px}
-.hdr .jobs-rail .lbl{width:42px;white-space:normal;line-height:1.15;flex:none}
+.hdr .jobs-rail{flex-wrap:nowrap;align-items:flex-start}
+.hdr .jobs-rail .lbl{width:54px;white-space:normal;line-height:1.15;flex:none;text-align:right;padding-right:8px;border-right:1px solid var(--border);align-self:stretch;display:flex;align-items:center;justify-content:flex-end}
+.hdr .jobs-rail .tiles{display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:1;min-width:0}
 .hdr .hint-r{margin-left:auto;font-size:12px}
 
 .thread-head .avatar{width:44px;height:44px;font-size:15px}
@@ -641,7 +643,7 @@ function renderMessages(m){
       <span class="whowrap"><button class="quiet" data-tip="More|The rarer things for this thread.|Mark STOP, Show all text, and Edit the flow." onclick="morePicker('${c.id}',this)">More ▾</button></span>
       ${c.state!=='waiting'?`<button class="quiet" title="Demo: a new message from them reopens the row by itself" onclick="theyReply('${c.id}')">They text back (demo)</button>`:''}
 </div>
-    <div class="jobs-rail" id="rail"><span class="sep"></span><span class="note lbl" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of. A chip can be marked two ways, and they mean different things:|" data-tip-legend="jobs">Their jobs</span>${cJobs.map(j=>jobTile(c,j)).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</div></div>
+    <div class="jobs-rail" id="rail"><span class="sep"></span><span class="note lbl" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of. A chip can be marked two ways, and they mean different things:|" data-tip-legend="jobs">Their jobs</span><span class="tiles">${cJobs.map(j=>jobTile(c,j)).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</span></div></div>
   </div>
   <div id="lines"></div>
   <div class="reply">

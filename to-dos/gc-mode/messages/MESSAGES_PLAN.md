@@ -392,3 +392,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   records the removal (the owner: harder to remove, with a useful ask).
 - **v1.38, 2026-10-11**: the *Their jobs* label stacks on two lines beside the two-line tiles, the tiles' height, so
   it reads as the row's heading (the owner's ask).
+- **v1.39, 2026-10-11**: the label is right-aligned against a thin rule, and the tiles are a block beside it, so a
+  second row of tiles starts at the rule, not under the label (the owner's ask for the rule; the block from the
+  self-review).
