@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildBuildPace, parseReportPct, type BuildJob } from './buildPace'
 
-const job = (id: string, revenueUsd: number | null, pctComplete: number | null, createdYmd: string | null = '2026-07-01', status = 'working'): BuildJob => ({ id, revenueUsd, pctComplete, status, createdYmd })
+const job = (id: string, revenueUsd: number | null, pctComplete: number | null, createdYmd: string | null = '2026-07-01', status = 'working'): BuildJob => ({ id, label: id, hcpNumber: '', jobName: id, revenueUsd, pctComplete, status, createdYmd })
 
 describe('buildBuildPace', () => {
   it('reads the report percent from the answer’s leading number', () => {

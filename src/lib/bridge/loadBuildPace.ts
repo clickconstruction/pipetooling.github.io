@@ -1,6 +1,6 @@
 /**
  * The reads behind Build by percent (link PR 3): the open jobs with their
- * contract and percent, the hand-set percents and the field reports' percent
+ * contract, percent and name (the name since v2.5245, for the percents prompt), the hand-set percents and the field reports' percent
  * answers since 90 days before the window (the baseline), and the jobs created
  * in the window. `buildPace.ts` does the arithmetic.
  */
@@ -8,22 +8,29 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fetchAllRows, fetchAllRowsChunkedIn } from '../supabasePaging'
 import { ymdAddDays } from '../../utils/dateUtils'
+import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
 import { parseReportPct, type BuildJob, type BuildPaceInput, type PctPoint } from './buildPace'
 
-type JobRow = { id: string; revenue: number | null; pct_complete: number | null; status: string; created_at: string | null; billing_only: boolean | null }
+type JobRow = { id: string; job_name: string | null; hcp_number: string | null; click_number: string | null; revenue: number | null; pct_complete: number | null; status: string; created_at: string | null; billing_only: boolean | null }
+/** The job columns every read here takes: the name and numbers label a job on the percents prompt. */
+const JOB_COLS = 'id, job_name, hcp_number, click_number, revenue, pct_complete, status, created_at, billing_only'
 type PctRow = { job_id: string; pct: number | null; changed_at: string; source: string }
 type ReportRow = { job_ledger_id: string | null; created_at: string; field_values: Record<string, unknown> | null }
 
 const BASELINE_DAYS = 90
 const ymdOf = (iso: string): string => iso.slice(0, 10)
 
-const toJob = (r: JobRow): BuildJob => ({ id: r.id, revenueUsd: r.revenue, pctComplete: r.pct_complete, status: r.status, createdYmd: r.created_at ? ymdOf(r.created_at) : null })
+const toJob = (r: JobRow): BuildJob => {
+  const hcpNumber = effectiveJobLedgerNumber(r.hcp_number, r.click_number)
+  const jobName = (r.job_name ?? '').trim()
+  return { id: r.id, label: [hcpNumber, jobName].filter(Boolean).join(' · ') || 'Job with no name', hcpNumber, jobName, revenueUsd: r.revenue, pctComplete: r.pct_complete, status: r.status, createdYmd: r.created_at ? ymdOf(r.created_at) : null }
+}
 
 export async function loadBuildPaceInputs(opts: { windowStart: string; todayYmd: string; officeJobLedgerId: string | null }): Promise<BuildPaceInput> {
   const sinceYmd = ymdAddDays(opts.windowStart, -BASELINE_DAYS)
   const sinceIso = `${sinceYmd}T00:00:00Z`
   const [openRows, pctRows, reportRows, createdRows] = await Promise.all([
-    withSupabaseRetry(async () => supabase.from('jobs_ledger').select('id, revenue, pct_complete, status, created_at, billing_only').in('status', ['waiting', 'working']), 'bridge build open jobs') as Promise<JobRow[] | null>,
+    withSupabaseRetry(async () => supabase.from('jobs_ledger').select(JOB_COLS).in('status', ['waiting', 'working']), 'bridge build open jobs') as Promise<JobRow[] | null>,
     fetchAllRows(
       async (from, to) => ({
         data: (await withSupabaseRetry(async () => supabase.from('job_pct_events').select('job_id, pct, changed_at, source').neq('source', 'seed').gte('changed_at', sinceIso).order('id').range(from, to), 'bridge build pct events')) as PctRow[] | null,
@@ -38,7 +45,7 @@ export async function loadBuildPaceInputs(opts: { windowStart: string; todayYmd:
       }),
       'bridge build reports',
     ),
-    withSupabaseRetry(async () => supabase.from('jobs_ledger').select('id, revenue, pct_complete, status, created_at, billing_only').gte('created_at', `${opts.windowStart}T00:00:00Z`), 'bridge build jobs created') as Promise<JobRow[] | null>,
+    withSupabaseRetry(async () => supabase.from('jobs_ledger').select(JOB_COLS).gte('created_at', `${opts.windowStart}T00:00:00Z`), 'bridge build jobs created') as Promise<JobRow[] | null>,
   ])
 
   const skip = (r: JobRow): boolean => !!r.billing_only || r.id === opts.officeJobLedgerId
@@ -61,7 +68,7 @@ export async function loadBuildPaceInputs(opts: { windowStart: string; todayYmd:
     const rows = await fetchAllRowsChunkedIn<JobRow, string>(
       missing,
       async (chunk, from, to) => ({
-        data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger').select('id, revenue, pct_complete, status, created_at, billing_only').in('id', chunk).order('id').range(from, to), 'bridge build touched jobs')) as JobRow[] | null,
+        data: (await withSupabaseRetry(async () => supabase.from('jobs_ledger').select(JOB_COLS).in('id', chunk).order('id').range(from, to), 'bridge build touched jobs')) as JobRow[] | null,
         error: null,
       }),
       'bridge build touched jobs',

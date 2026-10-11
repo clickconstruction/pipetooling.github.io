@@ -13,6 +13,11 @@ export type PctPoint = { jobId: string; atYmd: string; pct: number; source: 'han
 
 export type BuildJob = {
   id: string
+  /** "J949 · Dominguez- Run camera": the number and the name, the way the dashboard's percent modal shows a job. */
+  label: string
+  /** The job's display number, HCP first then Click; '' when it has neither. */
+  hcpNumber: string
+  jobName: string
   revenueUsd: number | null
   pctComplete: number | null
   status: string
