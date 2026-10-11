@@ -1146,7 +1146,7 @@ function previewDraft(cid, kind){ const c=cById(cid); const box=document.getElem
       <div class="head"><b>From:</b> ${COMPANY.name} &lt;${COMPANY.email}&gt;<br><b>To:</b> ${toLine(c,'email')}<br><b>Subject:</b> ${esc(subj)}</div>
       <div class="lh">CLICK CONSTRUCTION<small>${COMPANY.phone} · ${COMPANY.site}</small></div>
       <div class="body">${esc(c.kind==='customer'||c.kind==='arch'?('Hello '+c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0]+','):'Hello '+c.name.split(' ')[0]+',')}\n\n${esc(body)}</div>
-      <div class="sig">${ME}${TEAM_INFO[ME].title?' · '+TEAM_INFO[ME].title:''}${TEAM_INFO[ME].cell?'\ncell '+TEAM_INFO[ME].cell:''}\n\nEmail back, text, or call.</div>
+      <div class="sig">${ME}${TEAM_INFO[ME].title?' · '+TEAM_INFO[ME].title:''}${TEAM_INFO[ME].cell?'\ncell '+TEAM_INFO[ME].cell:''}\nEmail back, text, or call.</div>
       <div class="foot">${COMPANY.name}, ${COMPANY.addr}. ${job?'About '+esc(jobById(job).name)+'. ':''}A copy of this email is kept in Documents.</div></div>
       ${!c.emails.length?'<div class="pv-warn">They have no email on file. Add one on the To line and the email can go.</div>':''}
       <div class="pv-note">The subject comes from the job and your first line; the greeting from their contact name; the letterhead from who the job is for (Click Construction on a GC job); the signature from your account, your title and your cell if you have one there. Nothing here is typed twice.</div>`;
