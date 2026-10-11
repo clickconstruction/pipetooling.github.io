@@ -15,6 +15,7 @@ import {
 import { AwardBlocked, AwardButton, type GcPaneProps } from './GcOfficeTabs'
 import { Btn, Card, Chip, Why, input, td, th } from './gcUi'
 import { useCompanyOpener } from './gcCompanyOpener.proto'
+import { contractSignsAtZero } from '../../lib/gc/startContract'
 
 /**
  * GC mode design spike: going into the job. One page that answers "can we start?": the things
@@ -32,6 +33,8 @@ export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedu
   const [anywayBy, setAnywayBy] = useState(team[0] ?? '')
   const opener = useCompanyOpener()
   const [anywayWhy, setAnywayWhy] = useState('')
+  // Mark it signed on a contract worth $0 today asks first (main's #5395, v2.5227; the owner, 2026-10-10).
+  const [zeroAsk, setZeroAsk] = useState(false)
   const onJob = planRecipients(state, { ...project, stage: 'building' }, []).length
 
   if (project.stage === 'pursuing') {
@@ -155,13 +158,34 @@ export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedu
                     )}
                     <Btn
                       kind={c.done ? 'quiet' : 'plain'}
-                      onClick={() => dispatch({ type: 'setStartItem', projectId: project.id, item: c.key === 'permit' ? 'permit' : 'ownerContract', done: !c.done })}
+                      disabled={c.key === 'ownerContract' && zeroAsk}
+                      onClick={() =>
+                        c.key === 'ownerContract' && !c.done && contractSignsAtZero(project)
+                          ? setZeroAsk(true)
+                          : dispatch({ type: 'setStartItem', projectId: project.id, item: c.key === 'permit' ? 'permit' : 'ownerContract', done: !c.done })
+                      }
                       {...(c.key === 'ownerContract' && !c.done ? { title: 'Signed on paper, outside their portal' } : {})}
                     >
                       {c.done ? 'Undo' : c.key === 'ownerContract' ? 'Mark it signed' : 'Mark it done'}
                     </Btn>
                   </span>
                 )
+              )}
+              {c.key === 'ownerContract' && zeroAsk && !c.done && (
+                <span role="alert" style={{ flexBasis: '100%', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
+                  <span style={{ flex: '1 1 18rem' }}>The contract would be signed at $0. No trade carries a price and Our number adds nothing.</span>
+                  <Btn
+                    onClick={() => {
+                      setZeroAsk(false)
+                      dispatch({ type: 'setStartItem', projectId: project.id, item: 'ownerContract', done: true })
+                    }}
+                  >
+                    Sign at $0 anyway
+                  </Btn>
+                  <Btn kind="quiet" onClick={() => setZeroAsk(false)}>
+                    Not now
+                  </Btn>
+                </span>
               )}
             </div>
           ))}
