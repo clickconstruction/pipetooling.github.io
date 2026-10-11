@@ -5,7 +5,7 @@ file: ACCESS_CONTROL.md
 type: Reference Matrix
 purpose: Complete role-based permissions matrix and access control patterns
 audience: Developers, Security Auditors, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-11
 estimated_read_time: 15-20 minutes
 difficulty: Intermediate
 
@@ -865,7 +865,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Prospects** (`/prospects`) | ✅ | ✅ | ✅ | ❌ | ✅ if `estimator_prospects_access` granted | ❌ | ❌ |
 | **Quickfill** (`/quickfill`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Moneyfill** (`/moneyfill`, v2.1378 — **dev + controller only**; the one surface where controller does **not** read the assistant column: assistants and masters are excluded, `Moneyfill.tsx` redirects them to `/dashboard`) | ✅ | ❌ | ❌ (controller ✅) | ❌ | ❌ | ❌ | ❌ |
-| **The Bridge** (`/bridge`, v2.2677 — **dev only**; `Bridge.tsx` redirects every other role to `/dashboard`) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **The Bridge** (`/bridge`, v2.2677 — **dev only**; `Bridge.tsx` redirects every other role to `/dashboard`; its one table, `bridge_calls` — the week's call on the weakest link, v2.5233, `20261011000000_bridge_calls.sql` — is dev-only RLS through `is_dev()` with the three write fences, and the Monday sheet's `bridge-sheet-email` mails only the calling dev's own address) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Partnerships** (`/partnerships`, v2.1880 — **dev only**; partner deal config per [`PARTNERSHIPS_PLAN.md`](./PARTNERSHIPS_PLAN.md); `Partnerships.tsx` redirects every other role to `/dashboard`; tables are dev-only RLS — partner-facing surfaces read config via SECURITY DEFINER RPCs, never directly) | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **Checklist** (`/checklist`) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Roadmap** (`/roadmap`, v2.2916 — the planner as its own page; `PRIMARY_PATHS` admits it, `canOpenRoadmap` is the door) | ✅ | ✅ | ✅ | ❌ | ❌ | ✅ | ❌ |

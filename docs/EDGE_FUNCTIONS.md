@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 85 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-11
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -1208,7 +1208,7 @@ The office says each refusal in its own words with `gcTradeEmailRefusal(key)`, a
 - The Schedule window's **Send to {first}** on a job being built (the schedule's PR 15a, v2.5198) keeps the customer's schedule as a `gc_schedule_sends` row (G-94), then emails that row's own words to the customer's contact. The letter carries its own greeting and sign-off, so the function adds none, and since PR 15b (v2.5211) it ends with their portal's link, where their portal shows the schedule (step 6).
 - **Email me a test** (U7b, every kind): the same email to the sender's own address only, `[TEST]` before the subject. The Schedule window's is **Send a test to me**.
 
-The window writes the words (`src/lib/gc/customerEmail.ts` and the reminder's `payReminderMail` in `ownerBillingRemind.ts`, shared with What customers see's samples); the function frames them, sends and files the sent copy. The customer's acceptance is recorded by the office (O7a) or pressed in their portal (O7c, `submit-portal-request`).
+The window writes the words (`src/lib/gc/customerEmail.ts` and the reminder's `payReminderMail` in `ownerBillingRemind.ts`, shared with What customers see's samples; since v2.5230 each one's first line is `helloLine` — *Hello Elena,* for the contact with the title rule, else *Hello,*, never the customer's name); the function frames them, sends and files the sent copy. The customer's acceptance is recorded by the office (O7a) or pressed in their portal (O7c, `submit-portal-request`).
 
 **Endpoint**: `POST /functions/v1/gc-customer-email` with `{ projectId, kind, sourceId, subject, lines, pdf?, test? }` · **Auth**: staff JWT validated in-body, `verify_jwt = false`. **Response**: `200 { to, email, resendEmailId, copied, test }` or `{ error: key, detail? }`.
 

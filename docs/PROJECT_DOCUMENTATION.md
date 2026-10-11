@@ -11,7 +11,7 @@ file: PROJECT_DOCUMENTATION.md
 type: Technical Reference
 purpose: Deep technical reference — schema, RLS, auth, DB functions, client patterns, gotchas; feature surfaces route to specialist docs
 audience: Developers, AI Agents, Technical Staff
-last_updated: 2026-10-10
+last_updated: 2026-10-11
 key_sections:
   - name: "Database Schema"
   - name: "Authentication & Authorization"
@@ -1862,6 +1862,11 @@ The card's **Punch list** (Building's U3b-ii, v2.5143, `GcPunchWindow.tsx`) open
 
 ---
 
+### 21. The Bridge (`/bridge`)
+`Bridge.tsx` — the owner's one page for where the company stands (v2.2726; dev only, every other role redirected to `/dashboard`; kernels in `src/lib/bridge/`, each with its own test). Its map is the Glossary's **The Bridge** entry (with *Vectors by the day*): the rule and the five stage cards with the weakest link lit (`stageFlow.ts`, v2.5232; Build read by percent and by hours, Market and Sales from the bids and estimates, v2.5234–v2.5235, v2.5244), the link's desk and the week's call kept in `bridge_calls` (v2.5233, `20261011000000_bridge_calls.sql`, dev-only RLS) with Friday's answer and the scorecard, the dial, the three resources, the order and the usual fixes as presses (v2.5236–v2.5238), the top line of contribution per week with a card behind every bar (v2.5216, v2.5239), **Fix the reading** beside **This week** (v2.5220–v2.5221), the three cards and the two charts that open into their panels (v2.5240–v2.5242), the **People** strip over the two Vectors tables (v2.5222, v2.5243), the cash forecast from the bank with its confidence band (v2.5218–v2.5219), and the **Monday sheet** at `/bridge?view=monday`, mailed to the dev's own address by `bridge-sheet-email` (v2.5224; the weekly send is not built). Guide *read the Bridge* (`/help/the-bridge`); what the train left is `to-dos/bridge-weakest-link-follow-ups.md`.
+
+---
+
 ## File Structure
 
 ```
@@ -2736,7 +2741,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
    - **Solution**: Centralized error handling/toast system
 3. **Styling**: Inline styles make maintenance difficult
    - **Solution**: Consider CSS modules or Tailwind
-4. **Testing**: ~2,840 `*.test.ts(x)` files run via vitest (`npm test`); repo convention is to extract logic into pure `.ts` kernels with unit tests as the primary pattern, plus component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`)
+4. **Testing**: ~2,890 `*.test.ts(x)` files run via vitest (`npm test`); repo convention is to extract logic into pure `.ts` kernels with unit tests as the primary pattern, plus component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`)
 5. **Edge Function Error Messages**: Inconsistent error format
    - **Solution**: Standardize error response format
 
@@ -2807,7 +2812,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `RESEND_API_KEY` - Resend API key (set as Supabase secret for Edge Functions)
 
 ### Edge Functions
-There are **~150** Edge Functions in `supabase/functions/` (148 function folders on 2026-10-10; `npm run check:edge-drift` counts them) — see [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the full annotated reference (an inline list here goes stale). Frequently referenced examples:
+There are **~150** Edge Functions in `supabase/functions/` (149 function folders on 2026-10-11; `npm run check:edge-drift` counts them) — see [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the full annotated reference (an inline list here goes stale). Frequently referenced examples:
 - `create-user` - Manually create user; **role** must be one of the 9 valid roles: `dev`, `master_technician`, `assistant`, `subcontractor`, `helpers`, `estimator`, `primary`, `superintendent`, `controller`
 - `invite-user`, `archive-user`, `restore-user`, `set-user-password`, `login-as-user` - Account lifecycle
 - `claim-dev` - Break-glass dev promotion (audited; see Security Considerations)
