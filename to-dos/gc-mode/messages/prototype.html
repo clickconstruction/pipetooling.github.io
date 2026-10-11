@@ -25,7 +25,8 @@ header.top .me{margin-left:auto;color:var(--text-muted);font-size:13px}
 main{max-width:1180px;margin:0 auto;padding:16px}
 .note{color:var(--text-muted);font-size:13px}
 .lead{margin:0 0 12px;font-size:17px}
-.two{display:grid;grid-template-columns:340px 1fr;gap:16px}
+.two{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px}
+.two>*{min-width:0}
 @media(max-width:860px){.two{grid-template-columns:1fr}.list.hidden-narrow{display:none}}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
 .list .row{display:flex;gap:10px;padding:10px;border-top:1px solid var(--border);cursor:pointer;align-items:flex-start}
@@ -81,8 +82,11 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .reply textarea.team{background:var(--team);border-color:var(--team-border)}
 .reply .send{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
 .reply .send .tie{margin-left:auto;font-size:13px;color:var(--text-muted)}
-.quick{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
-.quick button{font-size:13px;border-radius:999px}
+.quickwrap{margin:6px 0;position:relative;min-width:0;max-width:100%}
+.quickwrap .ql{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;display:flex;gap:8px;align-items:center}
+.quickwrap .ql span{font-weight:400;text-transform:none;letter-spacing:0}
+.quick{display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,auto);grid-auto-columns:max-content;gap:6px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
+.quick button{font-size:13px;border-radius:999px;white-space:nowrap;scroll-snap-align:start;max-width:260px;overflow:hidden;text-overflow:ellipsis}
 .queue .row{cursor:default;flex-direction:column;gap:6px}
 .queue .row .top{display:flex;gap:10px;align-items:flex-start;width:100%}
 .queue .row .acts{display:flex;gap:6px;flex-wrap:wrap;padding-left:46px}
@@ -215,7 +219,14 @@ const quick = [
   'Did the invite come through?',
   'Checking on the number. Still good for today?',
   'Understood. You will have it by 9 AM Thursday.',
-  'Thanks, we will call you back within the hour.'
+  'Thanks, we will call you back within the hour.',
+  'The plans are in your portal; questions close Monday.',
+  'Can you get it to us a day earlier?',
+  'We received it, thank you. We will be in touch after we compare.',
+  'The site is open from 7. Check in with the super when you arrive.',
+  'Your pay application is sent; the architect has it.',
+  'Running about 20 minutes late, sorry.',
+  'Is the detention pond in your scope or concrete\'s?'
 ];
 // ---------- state ----------
 let view = 'followup'; // followup | messages | customers | job | settings
@@ -311,7 +322,7 @@ function renderMessages(m){
   <div id="lines"></div>
   <div class="reply">
     <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team ':''}${replyKind===k?'on':''}" onclick="replyKind='${k}';render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees a note; adding one closes the row'}</span></div>
-    ${replyKind!=='note'?`<div class="quick">${quick.map(q=>`<button onclick="document.getElementById('box').value=${JSON.stringify(q).replace(/"/g,'&quot;')}">${esc(q)}</button>`).join('')}</div>`:''}
+    ${replyKind!=='note'?`<div class="quickwrap"><div class="ql">Quick replies <span>· scroll for more · a press fills the box, nothing sends</span></div><div class="quick">${quick.map(q=>`<button onclick="document.getElementById('box').value=${JSON.stringify(q).replace(/"/g,'&quot;')};countBox(document.getElementById('box'))">${esc(q)}</button>`).join('')}</div></div>`:''}
     <textarea id="box" oninput="countBox(this)" class="${replyKind==='note'?'team':''}" placeholder="${replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
     ${replyKind!=='note'?`<div class="previews"><span>Send shows it to you the way they will see it, before it goes.</span><span class="note" id="pvcount"></span></div>`:''}
     <div class="send"><button class="primary" onclick="${replyKind==='note'?`sendReply('${c.id}')`:`previewDraft('${c.id}','${replyKind}')`}" ${c.optout&&replyKind==='text'?'disabled':''}>${replyKind==='note'?'Add the note':replyKind==='email'?'Send email…':'Send text…'}</button>${c.optout&&replyKind==='text'?'<span class="note">They sent STOP. The app will not text this number.</span>':''}

@@ -90,7 +90,8 @@ Each one is a button in the prototype; each becomes one press in the app.
   is, its day, the customer, the trades asked, the people on it, the last conversations tied to it, and
   a button to open the bid or the project itself. *No job* and *Add a job* sit at the bottom. The same
   card opens from the ⧉ on a job in the rail.
-- **Quick replies**: the lines typed every day ("Your quote is in your portal", "Did the invite come
+- **Quick replies**: a two-row strip that scrolls sideways above the box, never a loose pile (the
+  owner, 2026-10-11); a press fills the box and nothing sends. The lines typed every day ("Your quote is in your portal", "Did the invite come
   through?", "Checking on the number, still good for today?").
 - **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so.
 - **Search**: words in texts, emails, transcripts and summaries, across every contact.
@@ -186,3 +187,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   the bid or the project). The rail's jobs open the same card from ⧉.
 - **v1.5, 2026-10-11**: a note for the team closes the row like a reply does; the Reopen button is gone,
   and a new message from them reopens the row by itself (a *They text back* demo button shows it).
+- **v1.6, 2026-10-11**: quick replies sit in a two-row strip that scrolls sideways, with a label and a
+  faded right edge that says there is more; twelve lines in the demo.
