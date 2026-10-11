@@ -118,6 +118,10 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .quick{display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,auto);grid-auto-columns:max-content;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
 .quick button{font-size:13px;border-radius:999px;white-space:nowrap;background:var(--surface);scroll-snap-align:start;max-width:260px;overflow:hidden;text-overflow:ellipsis}
 .queue .row{cursor:default;flex-direction:column;gap:6px}
+.queue .row.clickable{cursor:pointer}
+.queue .row.clickable:hover{background:#f7f9fc}
+.msg.flash{animation:flash 1.6s ease-out}
+@keyframes flash{0%{background:#fff3a3}100%{background:inherit}}
 .queue .row .top{display:flex;gap:10px;align-items:flex-start;width:100%}
 .queue .row .acts{display:flex;gap:6px;flex-wrap:wrap;padding-left:46px}
 .queue .row .snippet{padding-left:46px;font-size:14px}
@@ -319,10 +323,11 @@ function renderFollowup(m){
   if(!waiting.length){ q.innerHTML='<div class="empty">Nobody is waiting on us.</div>'; return; }
   for(const c of waiting){
     const last=lastIn(c); const offered = messages.filter(x=>x.c===c.id && ((x.promise&&x.promise.state==='offered')||(x.question&&x.question.state==='offered')));
-    const row=document.createElement('div'); row.className='row';
-    row.innerHTML=`<div class="top"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="flex:1"><div class="who">${esc(c.name)} <span class="pill waiting">${waitingSince(c)}</span>${c.has?`<span class="pill has">${esc(c.has)} has this</span>`:''}</div><div class="sub">${esc(c.company||kindWord(c))}${c.def?` · ${esc(jobLabel(c,c.def))}`:''}</div></div>
+    const row=document.createElement('div'); row.className='row clickable'; row.title='Open the conversation at this message';
+    row.addEventListener('click',ev=>{ if(ev.target.closest('button, select, input, a')) return; openThread(c.id, last?last.id:null); });
+    row.innerHTML=`<div class="top"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="flex:1"><div class="who">${esc(c.name)} <span class="pill waiting">${waitingSince(c)}</span>${c.has?`<span class="pill has">${esc(c.has)} has this</span>`:''}</div><div class="sub">${esc(c.company||kindWord(c))}${c.def&&jobLabel(c,c.def)!==c.company?` · ${esc(jobLabel(c,c.def))}`:''}</div></div>
       <div class="right"><select class="small" onchange="claim('${c.id}',this.value)"><option value="">${c.has?'hand it to…':'I have this ▾'}</option>${TEAM.map(t=>`<option ${c.has===t?'selected':''}>${t}</option>`).join('')}</select></div></div>
-      <div class="snippet">${last?`<b>${chWord(last)}, ${fmt(last.at)}:</b> ${esc(last.text)}`:''}</div>
+      <div class="snippet">${last?`<b>${chWord(last)}, ${fmt(last.at)}:</b> ${esc(last.text.length>220?last.text.slice(0,220).replace(/\s+\S*$/,'')+'…':last.text)}`:''}</div>
       <div class="acts">${offered.map(x=> x.promise?`<button class="small" onclick="openThread('${c.id}')">A day was heard: ${esc(x.promise.day)} · say what it is</button>`:`<button class="small" onclick="askArchitect(${x.id})">Ask the architect</button>`).join('')}
         ${c.kind==='unknown'?`<button class="small primary" onclick="whoIsThis('${c.id}')">Who is this?</button>`:`<button class="small primary" onclick="openThread('${c.id}')">Reply</button>`}
         ${last&&(last.ch==='missed'||last.ch==='voicemail')?`<button class="small" onclick="toast('Opens the call in Quo\\'s app; it comes back as a line.')">Call back in Quo</button>`:''}
@@ -399,7 +404,7 @@ function renderMessages(m){
     L.appendChild(e); }
   th.querySelectorAll('.jobchip[draggable]').forEach(ch=>{ ch.addEventListener('dragstart',ev=>{ dragJob=ch.dataset.job; ev.dataTransfer.setData('text/plain',dragJob); }); ch.addEventListener('dragend',()=>{dragJob=null;}); });
   wrap.appendChild(th); m.appendChild(wrap);
-  requestAnimationFrame(()=>{ const l=document.getElementById('lines'); if(l) l.scrollIntoView({block:'nearest'}); });
+  requestAnimationFrame(()=>{ if(window.__landing) return; const l=document.getElementById('lines'); if(l) l.scrollIntoView({block:'nearest'}); });
 }
 
 function renderJob(m){
@@ -430,7 +435,7 @@ function renderSettings(m){
 }
 
 // ---------- actions ----------
-function openThread(id){ openContact=id; jobFilter=null; replyTie=null; if(view!=='customers') view='messages'; render(); }
+function openThread(id, mid){ openContact=id; jobFilter=null; replyTie=null; if(view!=='customers') view='messages'; render(); if(mid){ requestAnimationFrame(()=>{ const el=[...document.querySelectorAll('#lines .msg')].find(e=>e.dataset.id===String(mid)); if(el){ el.scrollIntoView({block:'center'}); el.classList.add('flash'); } }); } }
 function claim(id,who){ const c=cById(id); c.has=who||null; toast(who?`${who} has ${c.name}.`:'Nobody has it.'); render(); }
 function setState(id,s){ const c=cById(id); c.state=s; if(s==='done') c.has=null; toast(s==='done'?`${c.name} cleared from Follow up.`:`${c.name} is back in Follow up.`); render(); }
 function remind(id){ const c=cById(id); c.state='snoozed'; toast(`${c.name} comes back to Follow up on Monday.`); render(); }

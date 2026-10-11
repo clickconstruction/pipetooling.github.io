@@ -45,7 +45,7 @@ a new cell starts over). The person is the spine; jobs are labels on the person 
 
 | Surface | What it shows | In the prototype |
 |---|---|---|
-| **Follow up** (the queue) | Everyone waiting on us, one count: *Needs a reply* (texts, voicemails, missed calls nobody answered, longest waiting first, with who has it), then the quote asks it lists today. Answering clears the row. | yes |
+| **Follow up** (the queue) | Everyone waiting on us, one count: *Needs a reply* (texts, voicemails, missed calls nobody answered, longest waiting first, with who has it), then the quote asks it lists today. Answering clears the row. A click anywhere on a row, off its buttons, opens the conversation landed on that message (the owner, 2026-10-11). | yes |
 | **Messages** (the history) | Every contact, every channel, search across words and transcripts. No badge of its own. | yes |
 | **A contact's thread** | The contact's header (what they are to us, their company, their numbers), the jobs rail with the default starred, the lines in time order with the job on each, chips to filter by job, the reply box (text, email, note for the team), the quick replies. | yes |
 | **Customers** | The same threads kept to customers, ordered by who is waiting; team notes yellow. A filter of Follow up and Messages, never a second queue. | yes |
@@ -232,3 +232,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   Is this the best we can do? The clamp covers transcripts and notes too; highlights carry a name;
   Reply from the window puts the cursor in the box. Open: a highlight as a team note; what Share
   carries for a call (the recording or the summary).
+- **v1.12, 2026-10-11**: a click anywhere on a Follow up row opens the conversation landed on that
+  message, with a short flash on it; the row's snippet is cut to a sentence or two; a job that is
+  named like the company is not repeated on the row.
