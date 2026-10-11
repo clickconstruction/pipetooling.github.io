@@ -5,6 +5,7 @@ import { bankTransferDetailsForPortal, parseBankTransferDetails, type BankTransf
 import type { PortalGcChangeOrder, PortalGcContract, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
 export type { PortalGcChangeOrder, PortalGcContract, PortalGcJob } from '../../../supabase/functions/_shared/gcPortal'
 import type { PortalGcSchedule, PortalGcScheduleBar, PortalGcScheduleDate, PortalGcScheduleGroup, PortalGcScheduleStage } from '../../../supabase/functions/_shared/gcCustomerSchedule'
+import { PORTAL_TAGLINE } from '../../../supabase/functions/_shared/portalLetterhead'
 export type { PortalGcSchedule } from '../../../supabase/functions/_shared/gcCustomerSchedule'
 /**
  * Customer portal payload parsing (portal train PR 1). The /portal page
@@ -15,6 +16,8 @@ export type { PortalGcSchedule } from '../../../supabase/functions/_shared/gcCus
 
 export type PortalCompany = {
   name: string
+  /** The line under the CLICK. mark (v2.5229): Click Construction's for a customer whose every job is a GC job we build. */
+  tagline: string
   cityLine: string
   licenseLine: string
   phone: string
@@ -510,6 +513,8 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
   return {
     company: {
       name: str(companyRaw.name, 'Click Plumbing and Electrical'),
+      // A function deployed before v2.5229 sends no tagline: the plumbing company's, as the page always drew it.
+      tagline: str(companyRaw.tagline, PORTAL_TAGLINE),
       cityLine: str(companyRaw.cityLine),
       licenseLine: str(companyRaw.licenseLine),
       phone: str(companyRaw.phone),
