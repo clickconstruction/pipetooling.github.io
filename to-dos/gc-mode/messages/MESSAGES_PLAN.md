@@ -391,7 +391,11 @@ land before the prototype builds pieces 1 to 3 above, since they change what a s
    app waits on Jonah's Certify; the card names the person and the step and links to their thread, and the
    nudge goes to the right person) and **off the flow** (a lost bid, a declined customer, a trade we stopped
    using: *off since, and why*, with a way back in; the facts are `lost_on`, `gc_mark_lost`,
-   `bids.outcome`, and a new one for a trade). Decision for the owner: a person on two flows (a GC who also
+   `bids.outcome`, and a new one for a trade). Drawn as piece 6 (v1.94): late is a day on an on-now step, not a
+   state of its own; lapsed is orange with its reason beside the per-job step that is also on; waiting is a
+   gray tag naming the person where *us* or *them* was, and the nudge goes to them; off the flow is the
+   flow dimmed under a line that says since when and why, read from the bid's outcome, with *Put back on*;
+   no new color and no new editor column. A person re-enters at the step the facts say. Decision for the owner: a person on two flows (a GC who also
    quotes as a sub), or two contacts.
 2. **Everyone by step** (piece 7, a new surface, options A, B, C). A column per step with faces, counts and
    late marks; a press on a face opens the thread with the panel open; the Messages list gains a filter by
@@ -639,6 +643,10 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.94, 2026-10-11**: `flow-suite-mockups.html` piece 6, the states of a step: the legend (done, on now, next, late,
+  lapsed, waiting on someone else, off the flow, no new color), the lapsed card (Greg's insurance ran out while he
+  quotes), the waiting card (Elena's pay app waiting on Jonah's certificate), the off-the-flow panel and card (a
+  declined bid), and the two-flows decision drawn both ways, leaning A. No prototype change.
 - **v1.93b, 2026-10-11**: the plan's *The flow suite, next cuts*: five cuts from the owner's "are there features we're
   missing?" (the states of a step, Everyone by step, their own view, time in step and the report, the small
   things), the order, and the three decisions that are the owner's. No prototype change.

@@ -49,6 +49,22 @@ button,.btn{font:inherit;font-size:12.5px;border:1px solid var(--border);backgro
 .flow .pm{font-size:10.5px;color:var(--text-muted);flex:none;font-weight:400;letter-spacing:.02em}
 .flow .pm.on{color:var(--ok)}
 .flow .pm.wait{color:var(--accent)}
+.flow .box .rsn{font-size:10.5px;font-weight:400;color:var(--warn);flex:none}
+.flow .box .day{font-size:10.5px;font-weight:400;color:var(--text-muted);flex:none}
+.flow .box .day.late{color:var(--danger);font-weight:600}
+.flow .who.wait{color:var(--text-muted);border-color:var(--border);background:var(--chip);font-weight:600}
+.flow.off .box,.flow.off .loop,.flow.off .lane .t{opacity:.45}
+.offline{font-size:12px;border:1px solid var(--border);border-left:4px solid #9aa4b1;border-radius:8px;padding:6px 9px;margin:0 0 8px;background:var(--bg)}
+.offline b{display:block}
+.legend{display:flex;gap:8px;flex-wrap:wrap}
+.legend .l{width:214px;border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--surface)}
+.legend .l .n{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.legend .l p{font-size:12px;color:var(--text-muted);margin:6px 0 0;line-height:1.4}
+.fact .m.bad{background:#fdecea;border-color:#f1b3ae;color:var(--danger)}
+.fact .m.off{background:var(--chip);border-color:var(--border);color:var(--text-muted)}
+.two{display:flex;gap:4px;margin:0 0 6px}
+.two span{font-size:11px;border:1px solid var(--border);border-radius:999px;padding:1px 8px}
+.two span.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
 .fnext{font-size:12px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
 .fnext b{color:var(--text)}
 /* the step card */
@@ -255,6 +271,103 @@ tr.open td{background:var(--accent-soft)}
 <p class="why" style="margin:8px 0 0">A step's nudge fires when the step is on now, the move is theirs, and the thread has been quiet that many days; a promised day beats the count, as the loop's <i>at their promised day</i> says. The row says the step, what we are waiting on and the channel the flow asked for, with a one-press switch to another. Answering, or the fact turning true, clears it. <i>Hold</i> is the owed strip's day chips. The Board's ring keeps its own three stages until its lists and the flows agree; that is a later cut, named in the plan.</p></div>
 </div>
 
+<div class="opt">
+<h2>6 · The states of a step <small>· done, on now and next were not enough; four more, with no new color</small></h2>
+<div class="frame"><div class="st">The legend · one box per state, drawn as the panel draws it</div>
+<div class="legend">
+<div class="l"><div class="n">Done</div><div class="flow"><span class="box done"><span>Papers in</span><span class="pm on">W-9 ✓ · ins ✓</span></span></div><p>Its facts are true. Green, as today.</p></div>
+<div class="l"><div class="n">On now</div><div class="flow"><span class="box now"><span>Asked to quote</span><span class="who them">them</span></span></div><p>The step after the last done one. Orange, with whose move.</p></div>
+<div class="l"><div class="n">Next</div><div class="flow"><span class="box"><span>Statement of work</span><span class="pm">SOW ○</span></span></div><p>Not reached. Plain.</p></div>
+<div class="l"><div class="n">Late · on now with a day</div><div class="flow"><span class="box now"><span>Asked to quote</span><span class="day late">late 2 days</span><span class="who them">them</span></span></div><p>A step whose day the app has: a bid due, a promised day, pay by. <i>due Thu</i> in gray until the day, then red. The nudge fires off the day, not only off silence.</p></div>
+<div class="l"><div class="n">Lapsed · done, then not</div><div class="flow"><span class="box now"><span>Papers in</span><span class="rsn">lapsed · insurance</span></span></div><p>A done fact that stopped being true. Orange again, with the reason, beside whatever per-job step is on. The nudge restarts.</p></div>
+<div class="l"><div class="n">Waiting on someone else</div><div class="flow"><span class="box now"><span>Pay app 4 certified</span><span class="who wait">Jonah</span></span></div><p>Their-move or our-move is the wrong question: a third person's step finishes it. The tag names them; the nudge goes to them.</p></div>
+<div class="l"><div class="n">Off the flow</div><div class="flow off"><span class="box done"><span>Our bid</span></span></div><p>A lost bid, a declined customer, a trade we stopped using. The flow dims, a line above it says since when and why, and the nudges stop.</p></div>
+</div>
+<p class="why" style="margin:8px 0 0">No new color: late is a red day on an orange box, lapsed is orange with a reason, waiting is a gray tag where us or them was, off is the whole flow dimmed. Green stays done and orange stays on now, so the panel reads as it did.</p></div>
+
+<div class="frame"><div class="st">Lapsed · Greg Paulk · Hillside Excavation · his insurance ran out Wed Sep 30 while he is quoting Boerne</div>
+<div class="row">
+<div class="panel"><div class="ph2"><b>Their flow · trade partner</b><span class="btn quiet">fold ›</span></div>
+<div class="flow">
+<div class="lane"><div class="t">Once</div><div class="boxes">
+<span class="box done"><span>Invited</span><span class="pm on">email ✓</span></span><div class="arr">↓</div>
+<span class="box done"><span>Portal opened</span></span><div class="arr">↓</div>
+<span class="box now pressed"><span>Papers in</span><span class="rsn">lapsed · insurance expired</span></span><div class="arr">↓</div>
+<span class="box done"><span>MSA signed</span><span class="pm on">MSA ✓</span></span>
+</div></div>
+<div class="lane"><div class="t">Per job · Boerne Retail Shell</div><div class="boxes">
+<div class="loop"><span class="lt">each ask · 3 so far</span><span class="box now"><span>Asked to quote</span><span class="day late">late 2 days</span><span class="who them">them</span></span><span class="rounds"><span class="done">Stone Oak</span><span class="now">Boerne Shell</span><span>Pad B</span></span></div><div class="arr">↓</div>
+<span class="box dec"><span>Compared <span class="note">· a fork</span></span></span>
+</div></div>
+</div>
+<div class="fnext"><b>On now:</b> Asked to quote · their move · late 2 days. <b>And lapsed:</b> Papers in, insurance expired Wed Sep 30.<br><b>Nudge:</b> both are theirs: one text asks for the number and the certificate together. <span class="btn quiet">Nudge now</span></div>
+</div>
+<div class="card">
+<div class="hd"><b>Papers in · lapsed</b><div class="note">Once · was done Sep 12 · lapsed Wed Sep 30 · their move.</div></div>
+<div class="sec"><div class="h">Finished when</div>
+<div class="fact"><span class="m ok">✓</span><span class="t">Their W-9 is signed.<small>Signed Sep 12. On Hillside Excavation's Documents.</small></span><span class="act"><span class="btn small">Open</span></span></div>
+<div class="fact"><span class="m bad">!</span><span class="t">Their insurance is current.<small>The certificate on file ran out Wed Sep 30. A new one, uploaded from their portal or filed by us, makes the step done again.</small></span><span class="act"><span class="btn small primary">Ask for it</span></span></div></div>
+<div class="sec"><div class="h">What it holds up</div>
+<div class="note">Nothing on the Boerne quote: he can quote and we can compare. A statement of work cannot go to him until the papers are in again, as the editor's Once lane comes before Per job.</div></div>
+<div class="sec"><div class="h">Nudge</div><div class="note">The lapse restarted it: after 5 days quiet, a call. Since his quote is late too, one Follow up row carries both: <i>Greg · Asked to quote late 2 days, insurance expired</i>.</div></div>
+<div class="sec"><div class="h">How it got here</div>
+<div class="hist"><b>Papers in</b> · done Sat Sep 12, insurance current to Sep 30.</div>
+<div class="hist"><b>Lapsed</b> · Wed Sep 30, the certificate's expiry passed. Nobody did this; the fact changed.</div></div>
+</div>
+</div>
+<p class="why">A lapse is read, never marked: the expiry date on the certificate passed. The Once lane shows it orange beside the per-job step that is also on, since the two lanes are two questions. The card says what a lapse holds up, which is the thing the office needs to know (he can still quote; he cannot get a statement of work), and the Follow up row folds the two asks into one message to him.</p></div>
+
+<div class="frame"><div class="st">Waiting on someone else · Elena Marchetti · Cibolo Creek Partners · Pay app 4 sent to the architect for his certificate</div>
+<div class="row">
+<div class="card">
+<div class="hd"><b>Pay app 4 · certified</b><div class="note">Per job · each month · sent Mon Sep 28 · waiting on Jonah Vale, 4 days.</div></div>
+<div class="sec"><div class="h">Finished when</div>
+<div class="fact"><span class="m wait">↗</span><span class="t">The architect's certificate is recorded.<small>Pay app 4 went to Jonah Vale for his certificate Mon Sep 28. This is his step, <i>Certify pay apps</i>, on his flow.</small></span><span class="act"><span class="btn small">Open Jonah's thread</span></span></div></div>
+<div class="sec"><div class="h">Whose move</div>
+<div class="note">Not Elena's and not ours: Jonah's. Elena's thread says <i>waiting on the architect</i>, and nothing nudges her. The nudge for this step is on Jonah's flow: after 5 days, an email. <span class="btn quiet">Nudge Jonah now</span></div></div>
+<div class="sec"><div class="h">After this</div>
+<div class="fact"><span class="m">→</span><span class="t">Pay app 4 · paid · her move.<small>The certified application goes to her with pay by Oct 30.</small></span></div></div>
+</div>
+<div style="flex:1;min-width:260px"><p class="why" style="margin:0 0 8px">Two people, one fact: the certificate. Each flow reads it, and the card on Elena's side points at the person who can move it. The <i>Jonah</i> tag in the panel replaces <i>us</i> or <i>them</i>, and the Everyone by step view (cut 2) counts her under <i>waiting on an architect</i>, not under late.</p>
+<p class="why" style="margin:0">The same shape serves a trade's draw waiting on the owner's pay app, and a submittal waiting on the architect's review.</p></div>
+</div></div>
+
+<div class="frame"><div class="st">Off the flow · Marcus Bell · Bell Family Dental · declined our bid Tue Sep 29</div>
+<div class="row">
+<div class="panel"><div class="ph2"><b>His flow · customer</b><span class="btn quiet">fold ›</span></div>
+<div class="offline"><b>Off the flow since Tue Sep 29</b>Declined our bid, went with another plumber. Marked by Rosa from the bid's outcome. The thread stays; no nudges. <span class="btn quiet">Put him back on</span></div>
+<div class="flow off">
+<div class="lane"><div class="t">Once</div><div class="boxes">
+<span class="box done"><span>Asked us</span></span><div class="arr">↓</div>
+<span class="box done"><span>Our bid</span><span class="pm on">bid ✓</span></span><div class="arr">↓</div>
+<span class="box done dec"><span>Said yes <span class="note">· a fork</span></span><span class="rsn">declined</span></span><div class="arr">↓</div>
+<span class="box"><span>Contract signed</span></span>
+</div></div>
+</div>
+<div class="fnext"><b>Off the flow.</b> His last step was Said yes: declined. If he asks again, the next bid starts him at Our bid.</div>
+</div>
+<div class="card">
+<div class="hd"><b>Off the flow</b><div class="note">Since Tue Sep 29 · the bid's outcome: declined.</div></div>
+<div class="sec"><div class="h">Why</div>
+<div class="fact"><span class="m off">–</span><span class="t">He went with another plumber.<small>From the bid's outcome, which Rosa marked lost with that reason. The reason lives on the bid; this card reads it.</small></span><span class="act"><span class="btn small">Open the bid</span></span></div></div>
+<div class="sec"><div class="h">What stops, what stays</div>
+<div class="note">Nudges stop. The thread, the papers and the jobs stay. He stays in Messages and Customers, under a filter, <i>off the flow</i>, that is folded by default.</div></div>
+<div class="sec"><div class="h">Back on</div>
+<div class="note">A new ask, a new bid, or <i>Put him back on</i> with a reason. He re-enters at the step his facts say, not at the start: the papers he signed are still signed.</div></div>
+</div>
+</div>
+<p class="why">Off the flow is read from a fact too: a bid marked lost, a customer who declined, a trade marked no longer used (the one new fact in this cut). Nothing is deleted, nothing archived; the filter hides him until he is wanted. A trade off the flow for cause (<i>do not use</i>) is the same state with a reason that the ask-companies list reads, so nobody invites him by mistake.</p></div>
+
+<div class="frame"><div class="st">The decision that is the owner's · a GC who also quotes as a sub · drawn both ways</div>
+<div class="row">
+<div class="panel" style="width:280px"><div class="ph2"><b>Their flows</b><span class="btn quiet">fold ›</span></div><div class="two"><span class="on">Customer · Stone Oak</span><span>Trade partner · 2 asks</span></div><div class="note">A · one contact, two flows as two tabs on the panel. The thread is one; the move line reads the on-now step of the tab that is open. The Everyone by step view counts him once per flow.</div></div>
+<div class="panel" style="width:280px"><div class="ph2"><b>Her flow · customer</b><span class="btn quiet">fold ›</span></div><div class="note" style="margin-bottom:6px">B · two contacts, <i>Hillside Excavation as a customer</i> and <i>Hillside Excavation as a trade partner</i>, each with its own thread. Simpler panel; the same voicemail lands in one of the two and the other does not see it, which the plan's model rules out.</div></div>
+</div>
+<p class="why"><b>Lean A.</b> The plan's spine is the person, and one person with two roles is still one person with one phone. A costs a tab on the panel for the few who have two roles, and nothing for everyone else. B splits the thread, which the model was built to avoid.</p></div>
+
+<p class="why" style="margin:0 0 4px"><b>Weighed, for this cut:</b> a fifth color for lapsed was drawn and dropped, since the owner's rule is that a color means one thing and orange already means <i>on now</i>, which a lapsed step is. A separate <i>late</i> state was dropped too: late is a day on an on-now step, not a state of its own, so the editor needs no new column, only a day where the app has one. Off the flow could have been a seventh lane; a line above the flow is quieter and says why.</p>
+</div>
+
 <div class="pickbox">
 <h2 style="font-size:15px;margin:0 0 6px">Is this the best we can do?</h2>
 <p style="margin:0 0 8px">Five places it could be otherwise, weighed:</p>
@@ -263,7 +376,7 @@ tr.open td{background:var(--accent-soft)}
 <li><b>Could "Finished when" be typed, so the office can say anything?</b> It is the plan's one rule and this mock-up leans on it harder: the preview column, the paper marks, the Follow up rows and the Documents' Finishes column all work only because a fact is a read. A typed fact is a to-do list, and the app has those. The cost is that a fact the app does not keep cannot be a step until it does; the four gaps are listed next.</li>
 <li><b>Could the papers be a step of their own instead of a column?</b> The W-9 and the insurance are two facts of one step, Papers in, as the owner drew it; MSA and SOW are one paper each. A papers column names what a step turns on without adding boxes, and the Documents side reads it back. Keep the column.</li>
 <li><b>Is a new table needed?</b> One small one, for what the office edits: the step's name, order, whose move, nudge, repeats, papers and the ids of its facts, plus the history. The facts are a list in code with the column each reads, and the state is a read over the stamps, as the person-journey kernel the app already has does for its five journeys. The flow is that kernel's list, made editable, not a sixth list.</li>
-<li><b>Does one flow per kind hold?</b> For now. A trade whose flow differs (a supplier with no MSA) is the open question the plan carries; the editor's answer, when it comes, is a step marked <i>skip for</i> a kind of company, not a second flow.</li>
+<li><b>Does one flow per kind hold?</b> (And piece 6's four states were found by asking what the three could not say; they add no color and no column.) For now. A trade whose flow differs (a supplier with no MSA) is the open question the plan carries; the editor's answer, when it comes, is a step marked <i>skip for</i> a kind of company, not a second flow.</li>
 </ol>
 <p style="margin:0 0 6px"><b>The four facts the app does not keep yet</b>, each a small column, named so the real build counts them: a trade's first portal visit (today "Portal opened" is their press on Got it, and a per-ask opened mark); a lost mark on a quote we did not carry (today only inferred); the day a customer said yes (today only the stage moves); and the warranty year's end (computed from acceptance plus a year, no column). "Start date sent" exists already as the schedule letter's send.</p>
 <p style="margin:0"><b>The pick:</b> build pieces 1, 2 and 3 in the prototype next (the marks, the card, the editor with the picker and the preview), then 4 and 5 once the owner has pressed on them. The plan's section names the order and the stamps.</p>
