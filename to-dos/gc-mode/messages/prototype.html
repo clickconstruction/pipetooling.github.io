@@ -199,12 +199,13 @@ const cById = id => contacts.find(c=>c.id===id);
 let seq = 100;
 const T = (d,h,m)=> new Date(2026,9,d,h,m).getTime(); // Oct 2026
 const messages = [
-  {id:1, c:'greg', job:'boerne', ch:'call', dir:'in', who:'Robert answered', at:T(26-30,0,0)+0, text:'Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday, Sep 30. He asked whether striping is in his scope; Robert said it is listed under Sitework.', dur:'4:12', transcript:true, promise:{day:'Wed Sep 30', state:'written', by:'Robert'}},
+  {id:1, c:'greg', job:'boerne', ch:'call', dir:'in', who:'Robert answered', at:T(26-30,0,0)+0, text:'Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday, Sep 30. He asked whether striping is in his scope; Robert said it is listed under Sitework.', dur:'4:12', transcript:true, promise:{day:'Wed Sep 30', state:'written', by:'Robert', what:"Hillside Excavation's Sitework quote for Boerne Retail Shell", where:'their ask on the Board'}},
   {id:2, c:'greg', job:'boerne', ch:'text', dir:'out', who:'Robert · from the company number', at:T(30-30,9,40), text:'Greg, checking on the Boerne sitework number. Still good for today?'},
   {id:3, c:'greg', job:'boerne', ch:'voicemail', dir:'in', who:'rang everyone on the company number', at:T(2,8,41), text:'"Hey Robert, it\'s Greg with Hillside. Sorry, ran behind. I\'ll have Boerne sitework over by Wednesday the 7th. Call me if you need it sooner."', dur:'0:38', transcript:true, promise:{day:'Wed Oct 7', state:'offered'}},
   {id:4, c:'greg', job:'boerne', ch:'text', dir:'in', who:'Greg', at:T(2,8,44), text:'Also is the detention pond in sitework or concrete? Addendum 1 is not clear.', question:{state:'offered'}},
   {id:5, c:'elena', job:'boerne', ch:'call', dir:'in', who:'Rosa answered', at:T(1,15,10), text:'She wants the Boerne number by Thursday morning, not afternoon. The board meets at 1.', dur:'6:02', transcript:true},
   {id:6, c:'elena', job:'boerne', ch:'missed', dir:'in', who:'rang everyone · no voicemail', at:T(2,10,5), text:'Missed call.'},
+  {id:15, c:'elena', job:'fairoaks', ch:'voicemail', dir:'in', who:'rang everyone on the company number', at:T(2,9,50), text:'"Rosa, it\'s Elena. The check for pay application 3 goes out Friday the 9th, our accounting runs then. Call me about the glass."', dur:'0:24', transcript:true, promise:{day:'Fri Oct 9', state:'offered'}},
   {id:7, c:'elena', job:'fairoaks', ch:'email', dir:'out', who:'Rosa · bids@', at:T(1,16,0), text:'Pay application 3 for Fair Oaks Shops, Building D, $4,536. Opened at 3:12 PM.'},
   {id:8, c:'priya', job:'helotes', ch:'text', dir:'in', who:'Priya', at:T(26-30,14,14), text:'Thanks! Can you send me the start date when you have it?'},
   {id:9, c:'priya', job:'helotes', ch:'note', dir:'team', who:'Rosa · note for the team', at:T(26-30,14,30), text:'Start date waits on the Board\'s award of Plumbing. Tell her Monday.'},
@@ -279,7 +280,7 @@ function renderFollowup(m){
     row.innerHTML=`<div class="top"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="flex:1"><div class="who">${esc(c.name)} <span class="pill waiting">${waitingSince(c)}</span>${c.has?`<span class="pill has">${esc(c.has)} has this</span>`:''}</div><div class="sub">${esc(c.company||kindWord(c))}${c.def?` · ${esc(jobLabel(c,c.def))}`:''}</div></div>
       <div class="right"><select class="small" onchange="claim('${c.id}',this.value)"><option value="">${c.has?'hand it to…':'I have this ▾'}</option>${TEAM.map(t=>`<option ${c.has===t?'selected':''}>${t}</option>`).join('')}</select></div></div>
       <div class="snippet">${last?`<b>${chWord(last)}, ${fmt(last.at)}:</b> ${esc(last.text)}`:''}</div>
-      <div class="acts">${offered.map(x=> x.promise?`<button class="small" onclick="writeDown(${x.id})">Write down ${esc(x.promise.day)}</button>`:`<button class="small" onclick="askArchitect(${x.id})">Ask the architect</button>`).join('')}
+      <div class="acts">${offered.map(x=> x.promise?`<button class="small" onclick="openThread('${c.id}')">A day was heard: ${esc(x.promise.day)} · say what it is</button>`:`<button class="small" onclick="askArchitect(${x.id})">Ask the architect</button>`).join('')}
         ${c.kind==='unknown'?`<button class="small primary" onclick="whoIsThis('${c.id}')">Who is this?</button>`:`<button class="small primary" onclick="openThread('${c.id}')">Reply</button>`}
         ${last&&(last.ch==='missed'||last.ch==='voicemail')?`<button class="small" onclick="toast('Opens the call in Quo\\'s app; it comes back as a line.')">Call back in Quo</button>`:''}
         <button class="small" onclick="setState('${c.id}','done')">No reply needed</button>
@@ -337,8 +338,8 @@ function renderMessages(m){
         <span class="job ${x.job?'':'none'}" title="${x.job?'Untie from this job':'Tie to a job'}" onclick="${x.job?`untie(${x.id})`:`tieMenu(${x.id})`}">${x.job?esc(jobLabel(c,x.job))+' ×':'no job'}</span></div>
       <div class="body">${esc(x.text)}</div>
       ${x.transcript?`<span class="player">▶ ${x.dur||''} · Transcript</span>`:''}
-      ${x.promise&&x.promise.state==='offered'?`<div class="offer">Quo heard a new day: <b>${esc(x.promise.day)}</b>. <button class="small primary" onclick="writeDown(${x.id})">Write it down</button><button class="small" onclick="notPromise(${x.id})">Not a promise</button></div>`:''}
-      ${x.promise&&x.promise.state==='written'?`<div class="written">✓ Written down by ${esc(x.promise.by)}: quote by ${esc(x.promise.day)}.</div>`:''}
+      ${x.promise&&x.promise.state==='offered'?promiseOffer(c,x):''}
+      ${x.promise&&x.promise.state==='written'?`<div class="written">✓ Written down by ${esc(x.promise.by)}: ${esc(x.promise.what)} by ${esc(x.promise.day)} · ${esc(x.promise.where)}.</div>`:''}
       ${x.promise&&x.promise.state==='no'?`<div class="written" style="color:var(--text-muted)">Not a promise, said ${esc(x.promise.by)}.</div>`:''}
       ${x.question&&x.question.state==='offered'?`<div class="offer q">This reads like a question about the plans. <button class="small primary" onclick="askArchitect(${x.id})">Ask the architect</button><button class="small" onclick="answerMyself(${x.id})">Answer it myself</button></div>`:''}
       ${x.question&&x.question.state==='asked'?`<div class="written">✓ Sent to the architect as a plan question by ${esc(x.question.by)}.</div>`:''}`;
@@ -393,7 +394,20 @@ function addJob(cid){ const c=cById(cid); const left=jobs.filter(j=>!c.jobs.incl
 function tie(mid,jid){ const x=messages.find(m=>m.id===mid); const c=cById(x.c); if(!c.jobs.includes(jid)) c.jobs.push(jid); x.job=jid; toast(`Tied to ${jobLabel(c,jid)}.`); render(); }
 function untie(mid){ const x=messages.find(m=>m.id===mid); x.job=null; toast('Untied. The line sits on the person alone.'); render(); }
 function tieMenu(mid){ const x=messages.find(m=>m.id===mid); const c=cById(x.c); const opts=c.jobs.map(jid=>`<button onclick="tie(${mid},'${jid}');closeSheet()">${esc(jobLabel(c,jid))}</button>`).join('')+ jobs.filter(j=>!c.jobs.includes(j.id)).map(j=>`<button onclick="tie(${mid},'${j.id}');closeSheet()" class="note">${esc(j.name)} (not one of theirs yet)</button>`).join(''); sheet('Tie this message to', opts); }
-function writeDown(mid){ const x=messages.find(m=>m.id===mid); x.promise.state='written'; x.promise.by=ME; const c=cById(x.c); c.promise=`promised ${x.promise.day}`; toast(`Written down: quote by ${x.promise.day}.`); render(); }
+function promiseKinds(c,x){ const j=x.job?jobById(x.job):null; const jn=j?j.name:'a job'; const tr=c.trade||'their trade';
+  if(c.kind==='customer') return [
+    {k:'payment', what:`a payment on ${jn}`, where:'the Pipeline\'s payment promises, which the chase loop reads', label:`A payment on ${jn}`},
+    {k:'decision', what:`their answer on our bid for ${jn}`, where:'the bid\'s follow-up, so it is chased', label:`Their answer on our bid for ${jn}`},
+    {k:'access', what:`a day we can be on site at ${jn}`, where:'the schedule as a wait', label:`A day we can be on site at ${jn}`} ];
+  if(c.kind==='arch') return [
+    {k:'answer', what:`the architect\'s answer on ${jn}`, where:'the plan question, so it is chased', label:`Their answer to a plan question on ${jn}`},
+    {k:'cert', what:`the certificate for ${jn}`, where:'the pay application, which Follow up reads', label:`The certificate on a pay application for ${jn}`} ];
+  return [
+    {k:'quote', what:`${c.company}\'s ${tr} quote for ${jn}`, where:'their ask on the Board, which Follow up and the ring read', label:`Their ${tr} quote for ${jn}`},
+    {k:'start', what:`${c.company}\'s start or delivery on ${jn}`, where:'the schedule, which pushes what waits on it', label:`A start or delivery day on ${jn}`},
+    {k:'papers', what:`${c.company}\'s insurance or W-9`, where:'the company\'s papers, which the award door reads', label:'Their insurance or W-9'} ]; }
+function promiseOffer(c,x){ const kinds=promiseKinds(c,x); return `<div class="offer" style="flex-direction:column;align-items:stretch;gap:6px"><div>Quo heard a day: <b>${esc(x.promise.day)}</b>. What is it a promise of? Each choice says where it goes.</div>${kinds.map((k,i)=>`<button class="small ${i===0?'primary':''}" style="text-align:left" onclick="writeDown(${x.id},${i})">${esc(k.label)} <span style="opacity:.75">· goes on ${esc(k.where)}</span></button>`).join('')}<button class="small" style="text-align:left" onclick="notPromise(${x.id})">Not a promise, just talk</button></div>`; }
+function writeDown(mid, ki){ const x=messages.find(m=>m.id===mid); const c=cById(x.c); const k=promiseKinds(c,x)[ki||0]; x.promise.state='written'; x.promise.by=ME; x.promise.what=k.what; x.promise.where=k.where; c.promise=`promised ${x.promise.day} · ${k.k}`; toast(`Written down on ${k.where.split(',')[0]}: ${k.what} by ${x.promise.day}.`); render(); }
 function notPromise(mid){ const x=messages.find(m=>m.id===mid); x.promise.state='no'; x.promise.by=ME; render(); }
 function askArchitect(mid){ const x=messages.find(m=>m.id===mid); x.question.state='asked'; x.question.by=ME; const c=cById(x.c); messages.push({id:++seq,c:c.id,job:x.job,ch:'note',dir:'team',who:`${ME} · note for the team`,at:T(2,10,31),text:`Sent to the architect as a plan question: "${x.text}"`}); toast('Sent to the architect as a plan question.'); render(); }
 function answerMyself(mid){ const x=messages.find(m=>m.id===mid); x.question.state='mine'; replyKind='text'; openThread(x.c); document.getElementById('box')?.focus(); }

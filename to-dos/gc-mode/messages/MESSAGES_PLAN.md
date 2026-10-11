@@ -68,8 +68,15 @@ Each one is a button in the prototype; each becomes one press in the app.
   closes on a note every time (the owner, 2026-10-11). Nothing reopens by hand; a new message from
   them reopens the row by itself.
 - **Remind me**: snooze a row to a day; it returns to Follow up then.
-- **Write it down** / **Not a promise**: a promised day read from a call, voicemail or text is offered as
-  a button, never written on its own. Written down, it becomes the contact's promise on that job.
+- **A day was heard** / **Not a promise**: a day read from a call, voicemail or text is offered, never
+  written on its own, and never as one general button (the owner, 2026-10-11: a general *Write it down*
+  is confusing when the day could be a payment, a quote or a start). The offer names what the day is a
+  promise of and where it goes, by who they are: a trade partner's quote (their ask on the Board, which
+  Follow up and the ring read), a start or delivery (the schedule), their insurance or W-9 (the company's
+  papers); a customer's payment (the Pipeline's payment promises, which the chase loop reads), their
+  answer on our bid (the bid's follow-up), a day we can be on site (the schedule as a wait); an
+  architect's answer (the plan question) or certificate (the pay application). The written line repeats
+  exactly what and where. The first choice is the likely one for who they are; the others are one press.
 - **Ask the architect** / **Answer it myself**: a text that reads like a plans question.
 - **Who is this?**: name an unknown number.
 - **Tie to a job** (drag, or press and hold) / **Untie** / **set the default job** (★) / **add a job to
@@ -189,3 +196,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   and a new message from them reopens the row by itself (a *They text back* demo button shows it).
 - **v1.6, 2026-10-11**: quick replies sit in a two-row strip that scrolls sideways, with a label and a
   faded right edge that says there is more; twelve lines in the demo.
+- **v1.7, 2026-10-11**: no general *Write it down*. A heard day offers the kinds of promise it could be
+  for who they are, each naming where it goes; the written line repeats what and where. Elena's
+  voicemail about the check for pay application 3 shows a customer's payment promise beside Greg's quote.
