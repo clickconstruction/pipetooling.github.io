@@ -57,6 +57,10 @@ A recorded call holds the red on its stage for the week. Another stage takes it 
 
 **Last week's call, against what moved** sits under the desk. It names the link, who called it and how many weeks running. Each move shows its number then and now, and whether it got done. The last line says what that means for this week. From Friday the card asks whether the link moved. Press {{button:green|It moved}} or {{button:red|It did not}}. The chip beside the date carries the answer.
 
+## The Daily profit rate, opened
+
+Press the **Daily profit rate** card. A panel opens under the row. The chart shows earned against costs by pay week. The bar is the net. A hatched week is missing hours that wait for approval. Under it, a waterfall shows where a day's money goes, from earned to the number on the card. A table says where each input is read from and what can make it wrong. Each row ends in its door. The last line is break-even. Press the card again or the {{button:outline|×}} to close it.
+
 ## The Monday sheet
 
 Press {{button:outline|Monday sheet}} at the top of the page. The page becomes one screen. Three tiles carry a light each: contribution per week, net position, and cash. Under them sit the five moves for the week and the people lines. Press {{button:outline|Email me this sheet}} and the same screen lands in your own inbox. Press {{button:outline|Open the full Bridge}} to come back.
