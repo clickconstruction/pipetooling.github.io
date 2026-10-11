@@ -47,7 +47,7 @@ a new cell starts over). The person is the spine; jobs are labels on the person 
 |---|---|---|
 | **Follow up** (the queue) | Everyone waiting on us, one count: *Needs a reply* (texts, voicemails, missed calls nobody answered, longest waiting first, with who has it), then the quote asks it lists today. Answering clears the row. A click anywhere on a row, off its buttons, opens the conversation landed on that message (the owner, 2026-10-11). | yes |
 | **Messages** (the history) | Every contact, every channel, search across words and transcripts. No badge of its own. | yes |
-| **A contact's thread** | The contact's header (what they are to us, their company, their numbers), the jobs rail with the default starred, the lines in time order with the job on each, chips to filter by job, the reply box (text, email, note for the team), the quick replies. | yes |
+| **A contact's thread** | The header is layout A of `header-mockups.html` (the owner's pick, 2026-10-11): a name line with the who-has-it pill at the right; a facts line (company, what they are, phone, email, the waiting or promise pill); one toolbar (Call in Quo, Text, Email, Open · Snoozed · Done, Mark STOP, Show all text at the far right); the jobs rail as one row of chips with the default starred and a short hint at its right. Then the lines in time order with the job on each, chips to filter by job, the reply box (text, email, note for the team), the quick replies. | yes |
 | **Customers** | The same threads kept to customers, ordered by who is waiting; team notes yellow. A filter of Follow up and Messages, never a second queue. | yes |
 | **A job's conversations** | On the job's page: its own recent calls and texts, by contact, with answered or waiting. Reads the messages tied to that job. | yes |
 | **Who is this?** | A number the app does not know: name it, say what they are to us, pick their company, tie it to a job. The answer becomes the rule for that number. | yes |
@@ -160,6 +160,25 @@ the app these are the words a first-timer reads, so they follow `plainWords.ts`.
 
 Left for the owner: yearly or monthly billing; Claude from the first day or later.
 
+## Who gets a new message (proposed 2026-10-11, the owner's call)
+
+The owner asked: when a new email comes in, how does the app know who to assign it to? Proposed, in
+this order, the first that fits:
+
+1. **Whoever answered this person last**, if they are here today (the presence dot). Continuity beats
+   the rule: Elena keeps talking to the person she talked to yesterday.
+2. **By who they are**, from the two seats decided on 2026-10-05: a customer → the assistant (Rosa);
+   a trade partner or an architect → the estimator (Robert). The rule lives in Settings → Phone and
+   texts and the owner can change it there.
+3. **A number or address nobody knows → nobody**: the row reads *Nobody has it · Take it* and whoever
+   answers first takes it, after *Who is this?* names them.
+
+Whatever assigned it, the pill says so ("Rosa has this · by the rule"), the thread gets the gray event
+line, and anyone can take it or hand it on. An email that names a job in its subject or title block is
+tied to that job as well as to the person (the file agent's reading, draft 9). Not proposed: round robin
+or load balancing; the team is three people and the rule is enough. Open: what happens when the rule's
+person is out (fall to the other seat, or to nobody).
+
 ## Decided 2026-10-11
 
 - The contact owns the messages; jobs are associated with the contact; a message may be tied to
@@ -261,3 +280,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.15, 2026-10-11**: hover cards on the controls, white and window-like: name, what it does, what
   it changes. Open, Snoozed, Done, Mark STOP, Call in Quo, the who-has-it pill, Show all text, Tie to,
   Edit quick replies. They show on keyboard focus too.
+- **v1.16, 2026-10-11**: the thread header is layout A from `header-mockups.html` (the owner picked A
+  over B and C): name line with the pill, facts line, one toolbar with Text and Email buttons that start
+  a reply, the jobs rail as one row with its hint at the right.
+- **v1.16, later**: Settings shows the proposed *Who gets a new message* rule (last answerer if here,
+  else by who they are, else nobody).
