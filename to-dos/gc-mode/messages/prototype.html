@@ -140,6 +140,7 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .hdr .row2 a.fact{color:inherit;text-decoration:none}
 .statepill{display:none;align-items:center;gap:4px;border:1px solid var(--accent);border-radius:999px;padding:3px 10px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:600;white-space:nowrap}
 .statepill.snoozed{border-color:var(--border);background:var(--chip);color:var(--text-muted)}.statepill.done{border-color:#bfe3c9;background:var(--ok-soft);color:var(--ok)}
+.stamps .ago{font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:999px;padding:0 5px;color:var(--text-muted);background:var(--surface);cursor:help;line-height:15px;display:inline-block;vertical-align:1px}
 .stamps .diff{font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:999px;padding:0 6px;color:var(--text-muted);background:var(--surface);cursor:help;line-height:16px}
 .stamps .diff.behind{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}.stamps .diff.ahead{color:var(--ok);border-color:#bfe3c9;background:var(--ok-soft)}
 @container (max-width: 640px){
@@ -552,8 +553,8 @@ const narrow = () => window.matchMedia('(max-width: 860px)').matches;
 const fmt = ts => { const d=new Date(ts); const today=new Date(2026,9,2); const same=d.toDateString()===today.toDateString(); const h=d.getHours(), m=String(d.getMinutes()).padStart(2,'0'); const hh=((h+11)%12)+1, ap=h<12?'AM':'PM'; return same? `${hh}:${m} ${ap}` : d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+` · ${hh}:${m} ${ap}`; };
 const isToday = ts => new Date(ts).toDateString()===new Date(2026,9,2).toDateString();
 const fmtDay = ts => isToday(ts) ? `today · ${fmt(ts)}` : fmt(ts);
-// A stamp on the header's block also says how long ago (the owner, 2026-10-11): yesterday, or N days ago; today needs no more.
-const agoDays = ts => { const n=dayDiff(NOW,ts); return n<=0 ? '' : n===1 ? ' · yesterday' : ` · ${n} days ago`; };
+// A stamp on the header's block also says how many days ago, as a small mark, (+6) (the owner, 2026-10-11); today needs no more.
+const agoDays = ts => { const n=dayDiff(NOW,ts); return n<=0 ? '' : ` <span class="ago" data-tip="${n===1?'Yesterday':n+' days ago'}|How many days since this one.|The court counts from the newer of the two.">+${n}</span>`; };
 const dayOf = ts => { const d=new Date(ts); const today=new Date(2026,9,2); return d.toDateString()===today.toDateString()?'Today, Fri Oct 2':d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); };
 const lastOut = c => [...messages].filter(m=>m.c===c.id&&m.dir==='out').sort((a,b)=>b.at-a.at)[0];
 const agoWords = ts => { const mins=Math.max(1,Math.round((NOW-ts)/60000)); if(mins<60) return `${mins} min`; if(mins<60*24) return `${Math.round(mins/60)} h`; return `${Math.round(mins/1440)} d`; };
