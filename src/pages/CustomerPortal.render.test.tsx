@@ -210,6 +210,8 @@ describe('CustomerPortal render smoke', () => {
     expect(gc.textContent).toContain('Change order 2')
     expect(gc.textContent).toContain('Add a coffee bar cabinet, per the customer')
     expect(screen.getByRole('button', { name: 'Accept the work' })).toBeTruthy()
+    // Its only Pipeline job is its GC billing job, so Click Construction heads the page (v2.5229).
+    expect(screen.getByTestId('portal-tagline').textContent).toBe('Construction')
   })
 
   it('the GC sample (#103 PR 2): the bills, the shared card, the waivers and Your payments come from the builders and render', async () => {
@@ -224,6 +226,15 @@ describe('CustomerPortal render smoke', () => {
     expect(text).toContain('Cedar Bend Owner LLC')
     expect(text).toContain('Your payments')
     expect(text).toContain('Bill 2 of 3')
+    // A GC we work for reads the plumbing company (v2.5229).
+    expect(screen.getByTestId('portal-tagline').textContent).toBe('Plumbing, Electrical, and HVAC')
+  })
+
+  it('a portal function from before v2.5229 sends no tagline: the page draws the plumbing company’s line', async () => {
+    const { tagline: _drop, ...company } = { tagline: '', ...payload.company }
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ ...payload, company }), { status: 200 })))
+    mountAt('/portal?t=abcdef1234567890abcdef')
+    await waitFor(() => expect(screen.getByTestId('portal-tagline').textContent).toBe('Plumbing, Electrical, and HVAC'))
   })
 
   it('revoked-link error body is shown to the customer', async () => {
