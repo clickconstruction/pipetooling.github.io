@@ -1246,7 +1246,8 @@ Never start another lane's port.
 
 > **2026-10-11:** the design moved into its own folder, `messages/` (`MESSAGES_PLAN.md` and the clickable
 > `prototype.html`), to iterate on before it is built in the GC board. The owner's model: a contact owns every
-> message; jobs are associated with the contact; sometimes a message is tied to one job.
+> message; jobs are associated with the contact; sometimes a message is tied to one job. The prototype reached
+> v1.31 that day; `messages/HANDOFF_2026-10-11.md` is where the next agent or person starts.
 
 The owner asked whether one company number and one mailbox could feed a message platform in the
 app. Mock-up: `quo-messages-mockup.html` (artifact `D2c6cJ7fc9ixVHg4v5TbXH`, New Project lane).
