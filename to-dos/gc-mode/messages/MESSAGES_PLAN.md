@@ -163,7 +163,7 @@ their own pills.
 
 **We owe them.** Our last word does not always end our turn: "I will send the start date Monday" is a
 message from us and a thing we still have to do (the owner, 2026-10-11). So the send window asks one
-thing before Send, **After this goes:** with two presses on the same line, *Their move* and *Our move*, the chosen
+thing before Send, **After this sends:** with two presses on the same line, *Their move* and *Our move*, the chosen
 one lit and a line under it saying what that means: with something owed, *This message gets the start date done*
 or *We still owe the start date by Mon Oct 5*, our move the default; with nothing owed, *Nothing is on us* or *We
 still owe [what?] by [when?]* with the two blanks, their move the default (v1.83, the owner: use our move and their
@@ -478,6 +478,7 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.89, 2026-10-11**: *After this sends:* (the owner's words).
 - **v1.88, 2026-10-11**: the question, the presses and the meaning run as one line of text, the meaning in the lit
   side's colour and wrapping on from the presses rather than standing alone (the owner's ask).
 - **v1.87, 2026-10-11**: the whose-move question and its two presses share one line, the question cut to *After this
