@@ -27,6 +27,12 @@ The stage with the most weeks reads red. That is the weakest link. A stage withi
 
 Press a card to read it. The pressed card has the red border.
 
+## The dial
+
+Under the cards sits a slider for the pressed stage. It reads that stage's pace in dollars a week. Drag it and the cards above move with it. Marks on the track show today and where the pile stops growing. Other marks show where the link moves to another stage and where exploiting ends. The blue part of the track is what we can do with what we have. The amber part means spending.
+
+The number beside the slider has a plain unit under it, such as jobs a week. The small chart shows the pile over the next twelve weeks at the chosen pace. The dotted line is today's pace. Three boxes read the pile, the link and the money. Press {{button:outline|back to today}} to put the slider back.
+
 ## The week's call
 
 Under the cards sits the desk of the pressed stage. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Below that are the moves the week would make. Tick the ones you mean and type an owner beside each. Press {{button:green|This is the link this week}} to record the call. The call keeps today's numbers, so Friday can read them again.

@@ -44,6 +44,9 @@ import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
 import { loadBuildPaceInputs } from '../lib/bridge/loadBuildPace'
 import { buildDemand, type DemandInput } from '../lib/bridge/demandPace'
 import { loadDemandInputs } from '../lib/bridge/loadDemandPace'
+import { buildDialReading, dialSpec } from '../lib/bridge/dial'
+import type { StageFlowInput } from '../lib/bridge/stageFlow'
+import { BridgeDial } from '../components/bridge/BridgeDial'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -326,7 +329,7 @@ export default function Bridge() {
   const thisWeekCall = useMemo(() => (calls && thisWeekStart ? callForWeek(calls, thisWeekStart) : null), [calls, thisWeekStart])
 
   // The weakest link (link PR 1): Bill and Collect from what the page already reads — the piles from the finance hook, the paces from the window's flows by day.
-  const stageFlow = useMemo(() => {
+  const stageInput = useMemo<StageFlowInput | null>(() => {
     if (!data) return null
     const weeks = BRIDGE_DAYS_BACK / 7
     const sumWindow = (m: Map<string, number>): number => {
@@ -338,7 +341,7 @@ export default function Bridge() {
     const paidPerWeek = sumWindow(data.paymentsReceivedByDay) / weeks
     const lateCount = receipts.filter((r) => r.basis === 'late').length + doubtful.length
     const held = thisWeekCall && isStageLink(thisWeekCall.link) ? thisWeekCall.link : null
-    return buildStageFlow({
+    return {
       market: demand?.market ?? null,
       sales: demand ? { ...demand.sales, soldPerWeekUsd: buildPace?.soldPerWeekUsd ?? null } : null,
       fieldPerWeekUsd: buildPace?.builtPerWeekUsd ?? null,
@@ -346,9 +349,31 @@ export default function Bridge() {
       collect: fin.data ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount } : null,
       build: buildPace?.stageInput ?? null,
       heldLinkId: held,
-    })
+    }
   }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand])
+  const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
   const litStage = pickedStage ?? stageFlow?.linkId ?? null
+
+  // The dial (link PR 5): the pressed stage's pace, in dollars a week; the cards read the dial's flow while it is moved.
+  const [dialUsd, setDialUsd] = useState<Partial<Record<StageId, number>>>({})
+  const perUnitUsd = useMemo((): number | null => {
+    if (!litStage || !data) return null
+    const weeks = BRIDGE_DAYS_BACK / 7
+    if (litStage === 'bill') return fin.data && fin.data.unbilled.count > 0 ? fin.data.unbilled.total / fin.data.unbilled.count : null
+    if (litStage === 'collect') return fin.data && fin.data.ar.count > 0 ? fin.data.ar.total / fin.data.ar.count : null
+    if (litStage === 'build') return buildPace && data.crew.fieldHoursWindow > 0 ? buildPace.builtPerWeekUsd / (data.crew.fieldHoursWindow / weeks) : null
+    if (litStage === 'sales') return buildPace && buildPace.soldJobs > 0 ? buildPace.soldUsd / buildPace.soldJobs : null
+    const m = demand?.market
+    return m && m.bidsInvited + m.estimatesRequested > 0 ? (m.bidsInvitedUsd + m.estimatesRequestedUsd) / (m.bidsInvited + m.estimatesRequested) : null
+  }, [litStage, data, fin.data, buildPace, demand])
+  const dialSpecNow = useMemo(() => (stageInput && litStage ? dialSpec(stageInput, litStage, { perUnitUsd }) : null), [stageInput, litStage, perUnitUsd])
+  const dialReading = useMemo(() => {
+    if (!dialSpecNow || !stageInput || !litStage || !data) return null
+    const usd = dialUsd[litStage] ?? dialSpecNow.todayUsd
+    return buildDialReading(stageInput, litStage, usd, { spec: dialSpecNow, todayYmd: data.todayYmd, dayLabel: md, fieldHoursPerWeek: data.crew.fieldHoursWindow / (BRIDGE_DAYS_BACK / 7) })
+  }, [dialSpecNow, stageInput, litStage, data, dialUsd])
+  const dialMoved = !!(litStage && dialSpecNow && dialUsd[litStage] != null && dialUsd[litStage] !== dialSpecNow.todayUsd)
+  const shownFlow = dialMoved && dialReading ? dialReading.flow : stageFlow
 
   // The calls (link PR 2): today's numbers behind the moves, the snapshot a call keeps, the scorecard and the header chip.
   const moveNumbers = useMemo(
@@ -745,7 +770,21 @@ export default function Bridge() {
           <BridgeHeadline headline={headline} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
-          {stageFlow && <BridgeStages flow={stageFlow} pickedId={litStage} onPick={setPickedStage} />}
+          {shownFlow && <BridgeStages flow={shownFlow} pickedId={litStage} onPick={setPickedStage} />}
+          {dialReading && litStage && (
+            <BridgeDial
+              reading={dialReading}
+              moved={dialMoved}
+              onChange={(usd) => setDialUsd((d) => ({ ...d, [litStage]: usd }))}
+              onReset={() =>
+                setDialUsd((d) => {
+                  const next = { ...d }
+                  delete next[litStage]
+                  return next
+                })
+              }
+            />
+          )}
 
           {/* The link's desk and the call (link PR 2): what the pressed stage is, the moves with owners, the record; then last week's call against what moved */}
           {stageFlow && litStage && (
