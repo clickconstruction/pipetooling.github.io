@@ -55,6 +55,8 @@ import { buildReflexes, otherLevers, reflexLine, type ReflexId } from '../lib/br
 import { BridgeWaits } from '../components/bridge/BridgeWaits'
 import { buildWeekCards } from '../lib/bridge/weekCard'
 import { formatWeekRangeLabel } from '../lib/people/approvalsQueue'
+import { buildProfitPanel } from '../lib/bridge/profitPanel'
+import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -117,6 +119,8 @@ export default function Bridge() {
   const [orderFor, setOrderFor] = useState<CallLink | null>(null)
   // Everything else waits (link PR 7): the usual fix pressed, if any; it sets the dial, and dragging the dial clears it.
   const [reflexId, setReflexId] = useState<ReflexId | null>(null)
+  // The card panels (link PR 9): which of the three cards is open under the row, if any.
+  const [openCard, setOpenCard] = useState<'profit' | 'owed' | 'hours' | null>(null)
   // The calls (link PR 2): the week's call holds the link; Friday asks whether it moved.
   const [calls, setCalls] = useState<BridgeCall[] | null>(null)
   const [callsError, setCallsError] = useState<string | null>(null)
@@ -665,6 +669,27 @@ export default function Bridge() {
   }, [data, weeksRange, weeksInputs, vectorInputs])
   const headline = headlineAndCards?.headline ?? null
 
+  // The Daily profit rate panel (link PR 9): the trend by week, the waterfall, the sources, break-even.
+  const profitPanel = useMemo(() => {
+    if (!data || !profit) return null
+    return buildProfitPanel({
+      windowStart: data.windowStart,
+      todayYmd: data.todayYmd,
+      earnedByDay: data.earnedByDay,
+      directByDay: data.directByDay,
+      overheadByDay: data.overheadByDay,
+      speed: profit.speed,
+      contributionMargin: profit.contributionMargin,
+      totals: data.totals,
+      waitingWeeks: new Set((headline?.weeks ?? []).filter((w) => w.waiting).map((w) => w.start)),
+      pendingClosedHours: data.crew.pendingClosedHours,
+      unlinkedCard: data.hygiene.unlinkedCard,
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      fieldEarnedPerHour: data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      weekLabel: md,
+    })
+  }, [data, profit, headline])
+
   // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
   const truth = useMemo<TruthCheck | null>(() => {
     if (!data) return null
@@ -909,8 +934,11 @@ export default function Bridge() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
-            <div style={panel}>
-              <div style={label}>Daily profit rate</div>
+            <button type="button" onClick={() => setOpenCard((c) => (c === 'profit' ? null : 'profit'))} aria-expanded={openCard === 'profit'} data-testid="bridge-card-profit" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'profit' ? '2px solid #2563eb' : panel.border, padding: openCard === 'profit' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={label}>Daily profit rate</div>
+                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'profit' ? '▴ close' : '▾ chart'}</span>
+              </div>
               <div style={{ ...big, color: climbColor }}>
                 {speed.climbPerDay >= 0 ? '+' : '−'}
                 {money(Math.abs(speed.climbPerDay))} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>/day · {speed.days}-day avg</span>
@@ -919,7 +947,7 @@ export default function Bridge() {
                 earned <b style={{ color: 'var(--text)' }}>{money(speed.earnedPerDay)}</b>/day · costs <b style={{ color: 'var(--text)' }}>{money(speed.burnPerDay)}</b>/day (jobs {money(speed.directPerDay)} + overhead {money(speed.overheadPerDay)} at the 90-day rate)
                 {profit.contributionMargin != null && <> · {Math.round(profit.contributionMargin * 100)}% of earned is margin</>}
               </div>
-            </div>
+            </button>
             <div style={panel}>
               <div style={label}>Money owed</div>
               {fin.data ? (
@@ -945,6 +973,7 @@ export default function Bridge() {
               </div>
             </div>
           </div>
+          {openCard === 'profit' && profitPanel && <BridgeProfitPanel panel={profitPanel} onClose={() => setOpenCard(null)} />}
 
           {/* Net position */}
           <div style={{ ...panel, marginTop: '0.6rem' }}>
