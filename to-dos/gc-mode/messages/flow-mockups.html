@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flow panel mock-ups</title>
+<meta name="description" content="Three ways to draw a person's flow with us (customer, trade partner, architect) in a right panel beside their thread, plus where the flows are edited, for the owner to pick from.">
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#eef7ea;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:1140px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}
+.lead{color:var(--text-muted);margin:0 0 20px;max-width:900px}
+section{margin:0 0 36px}
+section h2{font-size:17px;margin:0 0 4px}
+section .pitch{color:var(--text-muted);margin:0 0 10px;font-size:14px;max-width:900px}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:0;display:grid;grid-template-columns:1fr 300px;max-width:980px;overflow:hidden}
+.frame .thread{padding:14px;border-right:1px solid var(--border);min-height:300px}
+.frame .panel{padding:12px 14px;background:#fbfbfc}
+.frame .thread .bar{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.frame .thread .bar b{font-size:17px}
+.frame .thread .bar .ph{margin-left:auto;font-size:12px;color:var(--text-muted);border:1px solid var(--border);border-radius:999px;padding:2px 8px}
+.msg{border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin:8px 0;font-size:13px}
+.msg .m{font-size:11px;color:var(--text-muted)}
+.ph2{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.ph2 b{font-size:13px}
+.ph2 .x{font-size:12px;color:var(--text-muted)}
+.tradeoff{font-size:13px;color:var(--text-muted);margin:8px 0 0;max-width:980px}
+.tradeoff b{color:var(--text)}
+.pick{background:#fff9d6;border:1px solid #e9d77a;border-radius:10px;padding:10px 12px;font-size:14px;max-width:980px}
+button{font:inherit;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:4px 8px;font-size:12px;cursor:default}
+.note{color:var(--text-muted);font-size:12px}
+/* A stepper */
+.steps{list-style:none;margin:0;padding:0;position:relative}
+.steps li{position:relative;padding:0 0 12px 26px;font-size:13px}
+.steps li::before{content:'';position:absolute;left:7px;top:18px;bottom:-2px;width:2px;background:var(--border)}
+.steps li:last-child::before{display:none}
+.steps li .dot{position:absolute;left:0;top:3px;width:16px;height:16px;border-radius:50%;border:2px solid var(--border);background:var(--surface);font-size:10px;display:flex;align-items:center;justify-content:center}
+.steps li.done .dot{background:var(--ok);border-color:var(--ok);color:#fff}
+.steps li.now .dot{border-color:var(--warn);background:var(--warn-soft)}
+.steps li.now .dot::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--warn)}
+.steps li.now>b{color:var(--warn)}
+.steps li small{display:block;color:var(--text-muted);font-size:12px}
+.steps li .cyc{margin:6px 0 0;border:1px dashed #c9d0d8;border-radius:8px;padding:6px 8px;background:var(--surface)}
+.steps li .cyc .t{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between}
+.steps li .cyc .r{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.steps li .cyc .r span{font-size:11px;border:1px solid var(--border);border-radius:999px;padding:1px 7px;background:var(--surface)}
+.steps li .cyc .r span.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
+.steps li .cyc .r span.now{background:var(--warn-soft);border-color:#f0d3b0;color:var(--warn)}
+.steps li .cyc .r span.ours{outline:2px solid var(--warn);outline-offset:1px}
+/* B flowchart */
+.flow{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.flow .lane{border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--surface)}
+.flow .lane .t{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.flow .boxes{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.flow .box{border:1px solid var(--border);border-radius:6px;padding:4px 7px;background:var(--surface);white-space:nowrap}
+.flow .box.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
+.flow .box.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn);font-weight:600}
+.flow .box.dec{border-radius:0;transform:skewX(-8deg)}
+.flow .arr{color:#9aa4b1}
+.flow .loop{border:1px dashed #c9d0d8;border-radius:10px;padding:6px;position:relative}
+.flow .loop .lt{position:absolute;top:-8px;left:8px;background:var(--surface);padding:0 4px;font-size:10px;color:var(--text-muted)}
+/* C phases */
+.phases details{border:1px solid var(--border);border-radius:8px;margin:0 0 6px;background:var(--surface)}
+.phases summary{padding:7px 10px;font-size:13px;cursor:default;display:flex;align-items:center;gap:8px}
+.phases summary .cnt{margin-left:auto;font-size:11px;color:var(--text-muted)}
+.phases summary .st{width:10px;height:10px;border-radius:50%;background:var(--border)}
+.phases summary .st.done{background:var(--ok)}.phases summary .st.now{background:var(--warn)}
+.phases .it{display:flex;gap:8px;align-items:center;padding:5px 10px 5px 28px;font-size:12.5px;border-top:1px solid var(--border)}
+.phases .it .who{margin-left:auto;font-size:11px;border-radius:999px;padding:1px 7px;border:1px solid var(--border)}
+.phases .it .who.ours{background:var(--warn-soft);color:var(--warn);border-color:#f0d3b0}
+.phases .it .who.theirs{background:var(--ok-soft);color:var(--ok);border-color:#bfe3c9}
+.phases .it .ck{width:14px;height:14px;border-radius:4px;border:1.5px solid #9aa4b1;display:inline-flex;align-items:center;justify-content:center;font-size:10px}
+.phases .it.done .ck{background:var(--ok);border-color:var(--ok);color:#fff}
+/* editor */
+.editor{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;max-width:980px}
+.editor table{width:100%;border-collapse:collapse;font-size:13px}
+.editor th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--border)}
+.editor td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.editor td.g{color:var(--text-muted)}
+.editor .tabs{display:flex;gap:6px;margin-bottom:10px}
+.editor .tabs span{border:1px solid var(--border);border-radius:999px;padding:3px 10px;font-size:13px}
+.editor .tabs span.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<h1>The flow panel, three ways, and where a flow is edited</h1>
+<p class="lead">A second side bar at the right of a thread, folded by default, that shows the person's journey with us and where they are in it: what is done, what is on now, whose move it is, and what comes next. A trade partner's journey is onboarding once, then cycles (asked to quote, awarded, draws); a customer's is the bid, the contract, the build, and pay application cycles; an architect's is questions, submittals and certificates. Same data in every draft: Greg Paulk of Hillside Excavation on the Boerne bid, and Dr. Priya Raman on the Helotes project.</p>
+
+<section>
+<h2>A · The stepper: one line down, cycles as rows</h2>
+<p class="pitch">A vertical list of steps with a dot each: green done, orange now, gray next. A cycle shows as a dashed row inside its step, one pill per round, so "asked to quote" reads as three rounds with the current one lit. Each step says whose move it is and opens its surface.</p>
+<div class="frame">
+  <div class="thread"><div class="bar"><b>Greg Paulk</b><span class="note">Trade partner: Hillside Excavation</span><span class="ph">Their flow ›</span></div>
+    <div class="msg"><div class="m">Voicemail · 8:41 AM</div>"…I'll have Boerne sitework over by Wednesday the 7th."</div>
+    <div class="msg"><div class="m">Text · Greg · 8:44 AM</div>Also is the detention pond in sitework or concrete?</div></div>
+  <div class="panel"><div class="ph2"><b>Their flow · trade partner</b><span class="x">‹ fold</span></div>
+    <ul class="steps">
+      <li class="done"><span class="dot">✓</span><b>Invited</b><small>Sep 19 · portal opened Sep 20</small></li>
+      <li class="done"><span class="dot">✓</span><b>Papers in</b><small>W-9 Sep 21 · insurance to Mar 2027</small></li>
+      <li class="now"><span class="dot"></span><b>Quoting</b><small>their court · promised Wed Oct 7</small>
+        <div class="cyc"><div class="t"><span>asked to quote</span><span>3 rounds</span></div><div class="r"><span class="done">Stone Oak · quoted</span><span class="now">Boerne Shell · due Oct 7</span><span>Pad B · asked Sep 30</span></div></div></li>
+      <li><span class="dot"></span><b>Awarded or passed</b><small>we compare and carry one</small></li>
+      <li><span class="dot"></span><b>Signed on</b><small>MSA · statement of work</small></li>
+      <li><span class="dot"></span><b>Building</b><small>scheduled · draws · closeout</small>
+        <div class="cyc"><div class="t"><span>draws</span><span>none yet</span></div></div></li>
+    </ul>
+    <div class="note" style="margin-top:6px">Next from us: nothing until Oct 7. Next from them: the Boerne number.</div></div>
+</div>
+<p class="tradeoff"><b>Reads:</b> top to bottom like a checklist, the cycle rounds as pills so three bids do not become three charts. <b>Costs:</b> a long trade history makes a long list; the chart shape you asked for is only implied by the line.</p>
+</section>
+
+<section>
+<h2>B · The chart: boxes and arrows in two lanes</h2>
+<p class="pitch">A real flow chart, small: an <i>Onboarding</i> lane that runs once, then a <i>Per job</i> lane with the loops drawn as dashed boxes, a decision drawn as a slanted box. The current box is orange; done boxes are green; the loop shows which round is running.</p>
+<div class="frame">
+  <div class="thread"><div class="bar"><b>Dr. Priya Raman</b><span class="note">Customer: Helotes Dental Office</span><span class="ph">Her flow ›</span></div>
+    <div class="msg"><div class="m">Text · Priya · Sep 26</div>Thanks! Can you send me the start date when you have it?</div>
+    <div class="msg" style="background:#fff6c2;border-color:#e9d77a"><div class="m">Note · Rosa · Sep 26</div>Start date waits on the Board's award of Plumbing. Tell her Monday.</div></div>
+  <div class="panel"><div class="ph2"><b>Her flow · customer</b><span class="x">‹ fold</span></div>
+    <div class="flow">
+      <div class="lane"><div class="t">Once</div><div class="boxes"><span class="box done">Asked us</span><span class="arr">→</span><span class="box done">Our bid</span><span class="arr">→</span><span class="box done dec">Said yes</span><span class="arr">→</span><span class="box done">Contract signed</span></div></div>
+      <div class="lane"><div class="t">Building Helotes Dental Office</div><div class="boxes"><span class="box now">Start date</span><span class="arr">→</span><span class="box">On site</span><span class="arr">→</span>
+        <span class="loop"><span class="lt">each month</span><span class="boxes"><span class="box">Pay app sent</span><span class="arr">→</span><span class="box">Certified</span><span class="arr">→</span><span class="box">Paid</span></span></span><span class="arr">→</span><span class="box">Closeout</span><span class="arr">→</span><span class="box">Warranty</span></div></div>
+      <div class="lane"><div class="t">Any time</div><div class="boxes"><span class="loop"><span class="lt">change orders</span><span class="boxes"><span class="box done">Sent</span><span class="arr">→</span><span class="box done dec">Signed / declined</span></span></span><span class="note" style="margin-left:6px">2 signed · 1 declined</span></div></div>
+    </div>
+    <div class="note" style="margin-top:8px">On now: the start date, our court, we owe it by Mon Oct 5.</div></div>
+</div>
+<p class="tradeoff"><b>Reads:</b> the shape of the journey at a glance, loops where the work repeats, a decision where it forks. <b>Costs:</b> boxes must stay tiny to fit 300 px, so names shorten; a trade with four bids shows one loop with a counter, not four paths.</p>
+</section>
+
+<section>
+<h2>C · Phases that open: what is owed, by whom</h2>
+<p class="pitch">The journey as phases that fold open, each with its items and who is on the hook for each, us or them, in the court's colors. Less a picture, more a to-do list that both sides can read. The counts on each phase say how far along it is.</p>
+<div class="frame">
+  <div class="thread"><div class="bar"><b>Greg Paulk</b><span class="note">Trade partner: Hillside Excavation</span><span class="ph">Their flow ›</span></div>
+    <div class="msg"><div class="m">Email · Greg · 11:30 AM</div>Hillside sitework, Boerne, rev 1 · numbers attached.</div></div>
+  <div class="panel"><div class="ph2"><b>Their flow · trade partner</b><span class="x">‹ fold</span></div>
+    <div class="phases">
+      <details><summary><span class="st done"></span>Onboarding<span class="cnt">4 of 4</span></summary></details>
+      <details open><summary><span class="st now"></span>Quoting<span class="cnt">2 of 5</span></summary>
+        <div class="it done"><span class="ck">✓</span>Stone Oak Pharmacy · quote in<span class="who theirs">them</span></div>
+        <div class="it done"><span class="ck">✓</span>Boerne Shell · invited, plans opened<span class="who theirs">them</span></div>
+        <div class="it"><span class="ck"></span>Boerne Shell · their number, by Oct 7<span class="who theirs">them</span></div>
+        <div class="it"><span class="ck"></span>Boerne Shell · answer the pond question<span class="who ours">us</span></div>
+        <div class="it"><span class="ck"></span>Pad B · their number<span class="who theirs">them</span></div></details>
+      <details><summary><span class="st"></span>Award and sign<span class="cnt">0 of 3</span></summary></details>
+      <details><summary><span class="st"></span>Building<span class="cnt">not yet</span></summary></details>
+    </div>
+    <div class="note" style="margin-top:8px">3 on them · 1 on us.</div></div>
+</div>
+<p class="tradeoff"><b>Reads:</b> exactly what each side still owes, with the court's colors, and it folds to one line per phase. <b>Costs:</b> no chart; the order and the loops live in the phase names rather than in a drawing.</p>
+</section>
+
+<section>
+<h2>Where a flow is edited: Settings → Flows</h2>
+<p class="pitch">One page per kind of person. A flow is a list of steps; each step names what finishes it (a fact the app already keeps, picked from a list), whose move it is, and when to nudge. Cycles are steps marked <i>repeats</i> with what starts a round. The panel draws whatever is here, so changing the journey is editing this list, not code. Shown: the trade partner's flow.</p>
+<div class="editor"><div class="tabs"><span>Customer</span><span class="on">Trade partner</span><span>Architect</span></div>
+<table><tr><th>Step</th><th>Finished when</th><th>Whose move</th><th>Nudge after</th><th>Repeats</th></tr>
+<tr><td>Invited</td><td class="g">the invitation email went</td><td class="g">us</td><td class="g">—</td><td class="g">no</td></tr>
+<tr><td>Portal opened</td><td class="g">first visit to their link</td><td class="g">them</td><td class="g">3 days · a text</td><td class="g">no</td></tr>
+<tr><td>Papers in</td><td class="g">W-9 received · insurance received and current</td><td class="g">them</td><td class="g">5 days · a call</td><td class="g">no</td></tr>
+<tr><td>Asked to quote</td><td class="g">their quote is in the portal</td><td class="g">them</td><td class="g">at their promised day, else 7 days</td><td class="g">yes · each ask</td></tr>
+<tr><td>Compared</td><td class="g">we carried one or marked theirs lost</td><td class="g">us</td><td class="g">—</td><td class="g">yes · each ask</td></tr>
+<tr><td>Signed on</td><td class="g">MSA signed · statement of work signed</td><td class="g">them</td><td class="g">3 days · a text</td><td class="g">once, then per job</td></tr>
+<tr><td>Draws</td><td class="g">a draw approved and paid</td><td class="g">both</td><td class="g">—</td><td class="g">yes · each draw</td></tr>
+<tr><td>Closeout</td><td class="g">final waiver received</td><td class="g">them</td><td class="g">7 days · an email</td><td class="g">per job</td></tr>
+</table>
+<p class="note" style="margin:10px 0 0">"Finished when" is picked from facts the app keeps today (the ask, the papers, the award, the statement of work, the draws, the waivers), never typed. A step the owner adds that the app cannot see becomes a tick the team sets by hand.</p></div>
+<p class="tradeoff"><b>What it changes elsewhere:</b> the same list can drive the nudges Follow up sends and the ring on the Board, so one edit moves all three. That is the reason to build the flow as data, not as a drawing.</p>
+</section>
+
+<div class="pick"><b>My pick: B for the panel, with C's "us / them" tags on the current box, and the editor as drawn.</b> B is the picture you asked for and keeps cycles as loops; the tags carry the court into it. A is the cheaper first cut if the chart is too much to draw at 300 px. Whatever the panel looks like, the editor is the part that pays: the journey becomes a list the office owns.</div>
+</main>
+</body>
+</html>
