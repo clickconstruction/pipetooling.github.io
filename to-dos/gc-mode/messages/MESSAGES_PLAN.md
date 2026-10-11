@@ -105,8 +105,11 @@ Each one is a button in the prototype; each becomes one press in the app.
   what the contact goes by, a *change* on it setting the goes-by name on their record for every greeting after, with an
   event line (v1.81), the signature as the sender's name, title and own cell from their account (v1.78: the company
   number was in the letterhead, the signature and the reply line, three times; now once), a reply line, *Email back, text, or call* (the owner's words, v1.80), and the footer; the text as a green bubble under the texts already
-  in their thread, from the company number, with the character count, how many texts it is, and on
-  their first text from us the company name and the opt-out line the carriers require. The To line is a press that adds or changes
+  in their thread, from the company number, with the character count, how many texts it is, and, drawn as its own
+  grey bubble labelled *added by the app*, the company name and the opt-out line the carriers require, on the first
+  text we ever send a number and on the first after 30 days of silence from our side (v1.86); when the reason is only
+  the silence, *Leave it off this time* holds it back on that one text and the message keeps a note that it was held,
+  never on a first text. The To line is a press that adds or changes
   the contact's email or number on their record, for every message after as well, with a gray event line in the thread
   (v1.79); our From is never set per email, one mailbox and one number for everyone (the owner, 2026-10-05). The window warns
   when there is no email or number on file, and the To line is where to add one, when they sent STOP, or when a text runs past two pieces.
@@ -141,7 +144,9 @@ Each one is a button in the prototype; each becomes one press in the app.
   app's tables: the line (words, for, step, scope, removed), its versions (by, at, kind, from, to) and its presses
   (by, at, contact). The lines typed every day ("Your quote is in your portal", "Did the invite come
   through?", "Checking on the number, still good for today?").
-- **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so.
+- **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so. The opt-out line
+  itself follows the rule in *Before it goes*: a first text, or the first after 30 quiet days, carries it as the
+  app's own bubble; a person may hold it back once on the silence reason, and the hold is recorded on the message.
 - **Search**: words in texts, emails, transcripts and summaries, across every contact.
 
 ## Whose move it is
@@ -473,6 +478,9 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.86, 2026-10-11**: the opt-out line is the app's own bubble under the text, labelled with its reason, on a first
+  text or the first after 30 quiet days; *Leave it off this time* holds it back on the silence reason only, with
+  *Put it back*, and the sent text records the line or the hold (the owner's pick of three ways).
 - **v1.85, 2026-10-11**: the email tab's note on where each part comes from sits under the buttons, at the bottom of
   the window (the owner's ask).
 - **v1.84, 2026-10-11**: the Subject line in the send window has a *change* that replaces the made subject for this
