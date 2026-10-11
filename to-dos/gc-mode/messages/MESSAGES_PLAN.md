@@ -106,8 +106,10 @@ Each one is a button in the prototype; each becomes one press in the app.
   number was in the letterhead, the signature and the reply line, three times; now once), a reply line that says what
   to do, and the footer; the text as a green bubble under the texts already
   in their thread, from the company number, with the character count, how many texts it is, and on
-  their first text from us the company name and the opt-out line the carriers require. The window warns
-  when there is no email or number on file, when they sent STOP, or when a text runs past two pieces.
+  their first text from us the company name and the opt-out line the carriers require. The To line is a press that adds or changes
+  the contact's email or number on their record, for every message after as well, with a gray event line in the thread
+  (v1.79); our From is never set per email, one mailbox and one number for everyone (the owner, 2026-10-05). The window warns
+  when there is no email or number on file, and the To line is where to add one, when they sent STOP, or when a text runs past two pieces.
   *Send a test to me* and *Send as email* or *Send as text* sit in the window; *Change it* goes back.
   The window is the confirmation: the only Send that sends is the one inside it (the owner, 2026-10-11).
   A note for the team is added at once; nobody outside sees it.
@@ -468,6 +470,9 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.79, 2026-10-11**: the send window's To line, on the email and the text, is a press that adds or changes the
+  contact's email or number on their record, with a Save and an event line; the no-email and no-number warnings point
+  at it (the owner's go). Our side stays fixed.
 - **v1.78, 2026-10-11**: the email's signature is the sender's name, title and own cell from their account; the
   company number stays in the letterhead only, and the reply line says what to do instead of repeating it (the owner:
   it looked duplicate). Our From and the company number are not set per email: one number and one mailbox for
