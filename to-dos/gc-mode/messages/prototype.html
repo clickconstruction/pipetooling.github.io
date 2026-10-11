@@ -75,6 +75,8 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .reply{margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
 .reply .kinds{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center}
 .reply .kinds button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.reply .kinds button.team{background:var(--team);border-color:var(--team-border);color:var(--text)}
+.reply .kinds button.team.on{background:var(--team);border-color:#b89a1c;color:var(--text);font-weight:600}
 .reply textarea{width:100%;min-height:64px;resize:vertical}
 .reply textarea.team{background:var(--team);border-color:var(--team-border)}
 .reply .send{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
@@ -254,7 +256,7 @@ function renderMessages(m){
   <p class="hint">${c.def?`New messages go to <b>${esc(jobLabel(c,c.def))}</b> (★). `:'No default job: new messages sit on the person alone. '}Drag a job onto a line to tie that message there${narrow()?'; on a phone, press and hold the line':''}. A line with no job sits on the person alone.</p>
   <div id="lines"></div>
   <div class="reply">
-    <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${replyKind===k?'on':''}" onclick="replyKind='${k}';render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees a note'}</span></div>
+    <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team ':''}${replyKind===k?'on':''}" onclick="replyKind='${k}';render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees a note'}</span></div>
     ${replyKind!=='note'?`<div class="quick">${quick.map(q=>`<button onclick="document.getElementById('box').value=${JSON.stringify(q).replace(/"/g,'&quot;')}">${esc(q)}</button>`).join('')}</div>`:''}
     <textarea id="box" class="${replyKind==='note'?'team':''}" placeholder="${replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
     <div class="send"><button class="primary" onclick="sendReply('${c.id}')" ${c.optout&&replyKind==='text'?'disabled':''}>${replyKind==='note'?'Add the note':replyKind==='email'?'Send email':'Send text'}</button>${c.optout&&replyKind==='text'?'<span class="note">They sent STOP. The app will not text this number.</span>':''}

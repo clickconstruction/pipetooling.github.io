@@ -152,3 +152,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   line, press and hold on a narrow screen, untie, add a job), quick replies, a note for the team in
   yellow, Who is this?, a job's conversations, Settings read-only, an opt-out flag. Made-up people
   from the GC mode prototype. Nothing is saved; reload starts over.
+- **v1.1, 2026-10-11**: the *Note for the team* button in the reply box is yellow, the same yellow a note
+  has on the page (the owner: the button should look like what it makes).
