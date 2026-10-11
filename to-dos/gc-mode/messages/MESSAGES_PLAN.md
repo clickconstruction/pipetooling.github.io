@@ -126,13 +126,15 @@ Each one is a button in the prototype; each becomes one press in the app.
   folder, a quote or a photo to Team only) and, for a quote, *Enter it as their quote*. The app keeps its
   own copy on arrival, as photos (draft 8); a link is a link. Open: what an attachment on an outgoing
   message looks like, and whether a highlight should also become a team note on the job.
-- **Quick replies**: a two-row strip that scrolls sideways above the box, in its own gray panel so it
-  reads apart from the box below it, never a loose pile (the owner, 2026-10-11); a press fills the box
-  and nothing sends. The team's lines come first, then the person's own. **Edit** on the strip opens the
-  quick replies window: the team's and mine in two lists, each line with who added it and when and, once
-  changed, who last edited it and when; anyone can add a line, for the team or just for themselves, and
-  anyone can edit any line (the owner, 2026-10-11). The window keeps the history on the line itself, so
-  the app's table needs added_by, added_at, edited_by, edited_at and a scope (team or one person). The lines typed every day ("Your quote is in your portal", "Did the invite come
+- **Quick replies**: a gray panel above the box; a press fills the box and nothing sends. Since v1.67 (`quick-replies-mockups.html` C, the owner's pick 2026-10-11) each line says who it is for, customers, trade partners, architects or anyone, and may belong to a flow step, and the strip shows only the lines for this kind of person in three groups, the step they are on first, then the rest of their kind, then anyone's, your most used first in each and then the team's; lines read whole on wrapping rows; past ten lines on the team's list a box in the strip's head narrows every group as you type. The app counts each press. **Edit** on the strip opens the
+  quick replies window (`quick-replies-editor-mockups.html`, v1.67): every line in one table, the words, who it is
+  for, its step, how often it is used with your own share, and the last change, with tabs by who it is for and a
+  search; a row opens in place, the words and the two tags as fields, Save keeping the old words in a history of
+  every version with its change struck and highlighted, who and when, and the use by person with the last use;
+  Remove asks and keeps the line as removed, with a Removed tab to bring it back; Add a line guesses the tags from
+  the words and says so until confirmed, and *just for me* keeps it off the team's list (the owner, 2026-10-11). The
+  app's tables: the line (words, for, step, scope, removed), its versions (by, at, kind, from, to) and its presses
+  (by, at, contact). The lines typed every day ("Your quote is in your portal", "Did the invite come
   through?", "Checking on the number, still good for today?").
 - **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so.
 - **Search**: words in texts, emails, transcripts and summaries, across every contact.
@@ -463,6 +465,11 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.67, 2026-10-11**: quick replies sorted (`quick-replies-mockups.html` C): each line for a kind of person and
+  a flow step, the strip in three groups with the step they are on first and your most used first in each, whole
+  lines, a filter box past ten lines; the window (`quick-replies-editor-mockups.html`): the whole list with use
+  counts, a row opened in place with its history of versions and who used it, Remove with a Removed tab, Add with
+  the tags guessed from the words (the owner's go).
 - **v1.66, 2026-10-11**: the word is **Done**, not settled, everywhere a person reads it: the strip's *Mark it done,
   with a team note*, the *Marking it done* banner and *Done, with this note* / *Not done yet*, the *✓ done: the start
   date* chip, the send window's *This message gets the start date done*, the event lines and the hover cards

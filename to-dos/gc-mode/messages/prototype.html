@@ -294,6 +294,28 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .quickwrap .ql span{font-weight:400;text-transform:none;letter-spacing:0}
 .quick{display:grid;grid-auto-flow:column;grid-template-rows:repeat(2,auto);grid-auto-columns:max-content;gap:6px;overflow-x:auto;padding:2px 2px 8px;scrollbar-width:thin;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}
 .quick button{font-size:13px;border-radius:999px;white-space:nowrap;background:var(--surface);scroll-snap-align:start;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.quickwrap .grp{margin:6px 0 3px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;display:flex;gap:6px;align-items:center}
+.quickwrap .grp i{font-style:normal;font-size:10px;font-weight:700;padding:0 5px;border-radius:999px;background:var(--warn-soft);color:var(--warn);text-transform:none;letter-spacing:0}
+.quickwrap .rows{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:4px}
+.quickwrap .rows button{font-size:13px;border-radius:999px;background:var(--surface);text-align:left;white-space:normal}
+.quickwrap .rows button.mine{border-style:dashed}
+.quickwrap .qfilter{font-size:12.5px;padding:3px 8px;min-width:200px;text-transform:none;letter-spacing:0;margin-left:8px}
+.modal.xwide{max-width:860px}
+.qrw .head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px}.qrw .head .search{flex:1;min-width:220px}.qrw .head .sub{font-size:13px;color:var(--text-muted);width:100%}
+.qrw .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 10px}.qrw .tabs button{border-radius:999px;padding:3px 10px;font-size:13px}.qrw .tabs button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.qrw table.qrt{width:100%;border-collapse:collapse;font-size:13.5px}.qrw .qrt th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600}
+.qrw .qrt th.r,.qrw .qrt td.r{text-align:right}.qrw .qrt td{padding:8px;border-bottom:1px solid var(--border);vertical-align:top}.qrw .qrt tr.qr{cursor:pointer}.qrw .qrt tr.qr:hover td{background:#f7f9fc}.qrw .qrt tr.qr.open td{background:#fbfbfc}.qrw .qrt tr.qr.removed td{color:var(--text-muted);text-decoration:line-through}
+.qrw .qrt td.line{width:44%}.qrw .qrt td .who{display:block;font-size:12px;color:var(--text-muted);margin-top:2px}
+.qrw .qrt tr.qr.mine td.line::before{content:'mine';font-size:10px;color:var(--text-muted);border:1px dashed var(--border);border-radius:999px;padding:0 5px;margin-right:6px;vertical-align:middle;text-decoration:none;display:inline-block}
+.qrw .tag{display:inline-block;font-size:11px;padding:0 7px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);white-space:nowrap}.qrw .tag.trade{color:var(--ok);border-color:#bfe3c9;background:#eef7ea}.qrw .tag.customer{color:var(--accent);border-color:#c5d8f5;background:#eaf1fc}.qrw .tag.arch{color:#6d3fb8;border-color:#d9c8f5;background:#f6f0ff}
+.qrw .step{display:inline-block;font-size:11px;padding:0 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);white-space:nowrap}
+.qrw .used{font-weight:600}.qrw .used small{display:block;font-weight:400;color:var(--text-muted);font-size:11.5px;white-space:nowrap}.qrw .qrt td.r{white-space:nowrap}
+.qrw .editrow td{background:#fbfbfc;cursor:default}.qrw .editrow .f{display:flex;flex-direction:row;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 8px;font-size:13px;color:var(--text)}.qrw .editrow .f input{flex:1;min-width:260px}.qrw .editrow .f select{font-size:13px;padding:4px 7px}.qrw .danger-t{color:var(--danger)}
+.qrw .hist{border:1px solid var(--border);border-radius:8px;background:var(--surface);margin-top:8px}.qrw .hist .h{padding:6px 10px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:var(--bg)}
+.qrw .hist .e{display:grid;grid-template-columns:160px 1fr;gap:4px 12px;padding:7px 10px;border-top:1px solid var(--border);font-size:13px}.qrw .hist .e:first-of-type{border-top:0}.qrw .hist .e .w{color:var(--text-muted);font-size:12.5px}
+.qrw .hist del{color:var(--danger);opacity:.75}.qrw .hist ins{color:var(--ok);text-decoration:none;background:var(--ok-soft);padding:0 3px;border-radius:3px}.qrw .hist .usedby{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px}
+.qrw .add{border:1px dashed var(--border);border-radius:8px;padding:8px 10px;margin:0 0 10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.qrw .add input[type=text],.qrw .add input:not([type]){flex:1;min-width:240px}.qrw .add select{font-size:13px;padding:4px 7px}
+.qrw .btns .l{margin-right:auto;font-size:12.5px;color:var(--text-muted)}
 .queue .row{cursor:default;flex-direction:column;gap:6px}
 .queue .row.clickable{cursor:pointer}
 .queue .row.clickable:hover{background:#f7f9fc}
@@ -562,21 +584,47 @@ const messages = [
   {id:14, c:'unk1', job:null, ch:'text', dir:'in', who:'(830) 555-0172', at:T(2,9,12), text:'Hi this is Dee at Alamo Concrete, new cell. Saw the Pad B pricing set, can we quote the concrete?'},
 ];
 let qseq=20;
+// A quick reply (v1.67, quick-replies-mockups.html C and quick-replies-editor-mockups.html): who it is for (a kind, or anyone),
+// the flow step it belongs to, its presses by person, when and on whom it was last used, and every version with who and when.
+const QR_KINDS = {trade:'trade partners', customer:'customers', arch:'architects', any:'anyone'};
+const V = (by,at,kind,to,from) => ({by,at,kind,to,from});
 const quickReplies = [
-  {id:1, scope:'team', text:'Your quote is in your portal now, thank you.', addedBy:'Rosa', addedAt:'Sep 12'},
-  {id:2, scope:'team', text:'Did the invite come through?', addedBy:'Robert', addedAt:'Sep 12'},
-  {id:3, scope:'team', text:'Checking on the number. Still good for today?', addedBy:'Robert', addedAt:'Sep 14', editedBy:'Wendi', editedAt:'Sep 29'},
-  {id:4, scope:'team', text:'Understood. You will have it by 9 AM Thursday.', addedBy:'Rosa', addedAt:'Sep 20'},
-  {id:5, scope:'team', text:'Thanks, we will call you back within the hour.', addedBy:'Rosa', addedAt:'Sep 20'},
-  {id:6, scope:'team', text:'The plans are in your portal; questions close Monday.', addedBy:'Robert', addedAt:'Sep 22'},
-  {id:7, scope:'team', text:'We received it, thank you. We will be in touch after we compare.', addedBy:'Rosa', addedAt:'Sep 22'},
-  {id:8, scope:'team', text:'The site is open from 7. Check in with the super when you arrive.', addedBy:'Wendi', addedAt:'Sep 26'},
-  {id:9, scope:'team', text:'Your pay application is sent; the architect has it.', addedBy:'Rosa', addedAt:'Sep 30'},
-  {id:10, scope:'mine', text:'Can you get it to us a day earlier?', addedBy:'Robert', addedAt:'Sep 18'},
-  {id:11, scope:'mine', text:'Running about 20 minutes late, sorry.', addedBy:'Robert', addedAt:'Oct 1'},
-  {id:12, scope:'mine', text:'Is the detention pond in your scope or concrete\'s?', addedBy:'Robert', addedAt:'Oct 2'},
+  {id:1, scope:'team', text:'Your quote is in your portal now, thank you.', for:'trade', step:'ask', uses:{Rosa:10,Robert:2,Wendi:2}, lastUsed:{at:T(2,8,2),who:'Rosa',contact:'bill'}, versions:[V('Rosa','Sep 12, 9:10 AM','added','Your quote is in your portal now, thank you.')]},
+  {id:2, scope:'team', text:'Did the invite come through?', for:'trade', step:'invited', uses:{Robert:3,Rosa:14}, lastUsed:{at:T(30-30,11,0),who:'Robert',contact:'tom'}, versions:[V('Robert','Sep 12, 9:14 AM','added','Did the invite come through?')]},
+  {id:3, scope:'team', text:'Checking on the number. Still good for today?', for:'trade', step:'ask', uses:{Robert:12,Rosa:23,Wendi:6}, lastUsed:{at:T(30-30,9,40),who:'Robert',contact:'greg'}, versions:[V('Robert','Sep 14, 8:40 AM','added','Checking on the quote. Still good for today?'), V('Robert','Sep 22, 9:05 AM','tags','for trade partners · on Asked to quote','for trade partners · on no step'), V('Wendi','Sep 29, 4:12 PM','words','Checking on the number. Still good for today?','Checking on the quote. Still good for today?')]},
+  {id:4, scope:'team', text:'Understood. You will have it by 9 AM Thursday.', for:'customer', step:'bid', uses:{Rosa:9}, lastUsed:{at:T(1,15,20),who:'Rosa',contact:'elena'}, versions:[V('Rosa','Sep 20, 2:00 PM','added','Understood. You will have it by 9 AM Thursday.'), V('Rosa','Oct 1, 3:30 PM','tags','for customers · on Our bid','for customers · on no step')]},
+  {id:5, scope:'team', text:'Thanks, we will call you back within the hour.', for:'any', step:null, uses:{Rosa:8,Robert:1,Wendi:3}, lastUsed:{at:T(2,10,10),who:'Rosa',contact:'elena'}, versions:[V('Rosa','Sep 20, 2:02 PM','added','Thanks, we will call you back within the hour.')]},
+  {id:6, scope:'team', text:'The plans are in your portal; questions close Monday.', for:'trade', step:'invited', uses:{Robert:5,Rosa:3}, lastUsed:{at:T(28-30,14,0),who:'Robert',contact:'tom'}, versions:[V('Robert','Sep 22, 9:20 AM','added','The plans are in your portal; questions close Monday.')]},
+  {id:7, scope:'team', text:'We received it, thank you. We will be in touch after we compare.', for:'trade', step:'ask', uses:{Rosa:6}, lastUsed:{at:T(2,8,3),who:'Rosa',contact:'bill'}, versions:[V('Rosa','Sep 22, 9:25 AM','added','We received it, thank you. We will be in touch after we compare.')]},
+  {id:8, scope:'team', text:'The site is open from 7. Check in with the super when you arrive.', for:'trade', step:null, uses:{Wendi:3}, lastUsed:{at:T(29-30,7,0),who:'Wendi',contact:'bill'}, versions:[V('Wendi','Sep 26, 8:00 AM','added','The site is open from 7. Check in with the super when you arrive.')]},
+  {id:9, scope:'team', text:'Your pay application is sent; the architect has it.', for:'customer', step:'payapp', uses:{Rosa:2}, lastUsed:{at:T(1,16,5),who:'Rosa',contact:'elena'}, versions:[V('Rosa','Sep 30, 4:00 PM','added','Your pay application is sent; the architect has it.')]},
+  {id:13, scope:'team', text:'Send the W-9 when you can; the insurance certificate too.', for:'trade', step:'papers', uses:{Rosa:4}, lastUsed:{at:T(25-30,10,0),who:'Rosa',contact:'tom'}, versions:[V('Rosa','Sep 24, 10:00 AM','added','Send the W-9 when you can; the insurance certificate too.')]},
+  {id:14, scope:'team', text:'Got it, thank you.', for:'any', step:null, uses:{Rosa:30,Robert:7,Wendi:9}, lastUsed:{at:T(2,8,2),who:'Rosa',contact:'bill'}, versions:[V('Rosa','Sep 12, 9:00 AM','added','Got it, thank you.')]},
+  {id:15, scope:'team', text:'The change order is in your portal to sign.', for:'customer', step:'co', uses:{Rosa:3}, lastUsed:{at:T(29-30,15,0),who:'Rosa',contact:'elena'}, versions:[V('Rosa','Sep 28, 3:00 PM','added','The change order is in your portal to sign.')]},
+  {id:16, scope:'team', text:'We will have the start date to you by Friday.', for:'customer', step:'start', uses:{Rosa:2}, lastUsed:{at:T(26-30,14,30),who:'Rosa',contact:'priya'}, versions:[V('Rosa','Sep 26, 2:28 PM','added','We will have the start date to you by Friday.')]},
+  {id:17, scope:'team', text:'Addendum 2 is in the portal; the pond is in sitework.', for:'trade', step:'invited', uses:{Robert:2}, lastUsed:{at:T(2,11,0),who:'Robert',contact:'greg'}, versions:[V('Robert','Oct 2, 10:55 AM','added','Addendum 2 is in the portal; the pond is in sitework.')]},
+  {id:18, scope:'team', text:'The submittal is back to you with comments.', for:'arch', step:'submittals', uses:{Rosa:1}, lastUsed:{at:T(24-30,9,0),who:'Rosa',contact:'jonah'}, versions:[V('Rosa','Sep 23, 9:00 AM','added','The submittal is back to you with comments.')]},
+  {id:19, scope:'team', text:'Pay application 3 is in for your certificate.', for:'arch', step:'certify', uses:{Rosa:2}, lastUsed:{at:T(1,16,10),who:'Rosa',contact:'jonah'}, versions:[V('Rosa','Sep 30, 4:05 PM','added','Pay application 3 is in for your certificate.')]},
+  {id:10, scope:'mine', text:'Can you get it to us a day earlier?', for:'trade', step:'ask', uses:{Robert:19}, lastUsed:{at:T(1,9,0),who:'Robert',contact:'greg'}, versions:[V('Robert','Sep 18, 11:00 AM','added','Can you get it to us a day earlier?')]},
+  {id:11, scope:'mine', text:'Running about 20 minutes late, sorry.', for:'any', step:null, uses:{Robert:5}, lastUsed:{at:T(1,7,40),who:'Robert',contact:'elena'}, versions:[V('Robert','Oct 1, 7:30 AM','added','Running about 20 minutes late, sorry.')]},
+  {id:12, scope:'mine', text:'Is the detention pond in your scope or concrete\'s?', for:'trade', step:'ask', uses:{Robert:1}, lastUsed:{at:T(2,9,0),who:'Robert',contact:'greg'}, versions:[V('Robert','Oct 2, 8:50 AM','added','Is the detention pond in your scope or concrete\'s?')]},
 ];
-const quickList = () => [...quickReplies.filter(q=>q.scope==='team'), ...quickReplies.filter(q=>q.scope==='mine'&&q.addedBy===ME)];
+const qrTotal = q => Object.values(q.uses||{}).reduce((a,b)=>a+b,0);
+const qrMine = q => (q.uses||{})[ME]||0;
+const qrVisible = () => quickReplies.filter(q=>!q.removed && (q.scope==='team' || q.addedBy===ME || q.versions[0].by===ME));
+const qrOrder = (a,b) => (qrMine(b)-qrMine(a)) || (qrTotal(b)-qrTotal(a)) || (a.id-b.id);
+const qrStepName = (kind,id) => { const st=(FLOWS[kind]||[]).flatMap(l=>l.steps).find(x=>x.id===id); return st?st.name:null; };
+const qrStepsFor = kind => (FLOWS[kind]||[]).flatMap(l=>l.steps);
+let qrFilter = '';
+// The strip's groups for a thread (C): the lines for this kind of person, the step they are on first, then the rest of
+// their kind, then anyone's; your most used first in each, then the team's.
+function qrGroups(c){ const kind=c.kind==='unknown'?'any':c.kind; const now=(FLOW_STATE[c.id]||{}).now; const f=qrFilter.trim().toLowerCase();
+  const fits=q=>(q.for===kind||q.for==='any') && (!f || q.text.toLowerCase().includes(f));
+  const rows=qrVisible().filter(fits).sort(qrOrder);
+  const onStep=rows.filter(q=>q.for===kind && q.step && q.step===now), others=rows.filter(q=>q.for===kind && !(q.step && q.step===now)), any=rows.filter(q=>q.for==='any');
+  const groups=[]; if(onStep.length) groups.push({title:`On ${qrStepName(kind,now)}`, tag:'the step they are on', rows:onStep}); if(others.length) groups.push({title:kind==='any'?'Lines':`Other ${QR_KINDS[kind]} lines`, rows:others}); if(any.length) groups.push({title:'Anyone', rows:any}); return groups; }
+function qrStripHtml(c){ const groups=qrGroups(c); const teamCount=qrVisible().filter(q=>q.scope==='team').length; const kind=c.kind==='unknown'?'any':c.kind;
+  return `<div class="quickwrap"><div class="ql">Quick replies <span>· for ${QR_KINDS[kind]} · a press fills the box, nothing sends</span>${teamCount>10?`<input class="qfilter" placeholder="⌕ type to narrow the lines" value="${esc(qrFilter)}" oninput="qrFilter=this.value;render();const f=document.querySelector('.qfilter');if(f){f.focus();f.setSelectionRange(f.value.length,f.value.length)}">`:''}<button class="quiet small" style="margin-left:auto" data-tip="Edit quick replies|Opens every line with who it is for, its step, how often it is used and its history.|Anyone can add or change a line; every change is kept with who and when." onclick="editQuick()">Edit</button></div>${groups.length?groups.map(g=>`<div class="grp">${esc(g.title)}${g.tag?` <i>${esc(g.tag)}</i>`:''}</div><div class="rows">${g.rows.map(q=>`<button class="${q.scope==='mine'?'mine':''}" data-tip="${q.scope==='mine'?'Mine':"The team's"} · used ${qrTotal(q)} time${qrTotal(q)===1?'':'s'}${q.step?' · on '+esc(qrStepName(q.for,q.step)):''}|Fills the box with this line. Nothing sends.|The strip counts the press, so the lines you use most come first." onclick="useQuick(${q.id})">${esc(q.text)}</button>`).join('')}</div>`).join(''):`<div class="empty" style="padding:6px">${qrFilter?'No line has those words.':'No lines for this kind of person yet. Edit adds one.'}</div>`}</div>`; }
 // ---------- state ----------
 let view = 'followup'; // followup | messages | customers | job | settings
 let openContact = 'greg';
@@ -725,7 +773,7 @@ function renderMessages(m){
   <div id="lines"></div>
   <div class="reply">
     <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team ':''}${replyKind===k?'on':''}" onclick="replyKind='${k}';if('${k}'!=='note')settling=null;render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees a note; adding one closes the row'}</span></div>
-    ${replyKind!=='note'?`<div class="quickwrap"><div class="ql">Quick replies <span>· scroll for more · a press fills the box, nothing sends</span><button class="quiet small" style="margin-left:auto" data-tip="Edit quick replies|Opens the team's lines and yours.|Anyone can add or change a line; each keeps who added or edited it and when." onclick="editQuick()">Edit</button></div><div class="quick">${quickList().map(q=>`<button title="${q.scope==='team'?'The team\'s':'Mine'}" onclick="useQuick(${q.id})">${esc(q.text)}</button>`).join('')}</div></div>`:''}
+    ${replyKind!=='note'?qrStripHtml(c):''}
     ${owedOpen===c.id&&settling!==c.id?owedStripHtml(c):''}
     ${settling===c.id&&c.owe?`<div class="settling"><b>Marking it done:</b> we owed ${esc(c.owe.what)}${c.owe.by?' · by '+esc(c.owe.by):''} · marked by ${esc(c.owe.who)} ${esc(c.owe.since)}<span class="note">Say how it got done, for the team. The note marks it done.</span></div>`:''}
     <textarea id="box" oninput="countBox(this)" class="${replyKind==='note'?'team':''}" placeholder="${settling===c.id&&c.owe?'How it got done: what we did, or why nothing is owed…':replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
@@ -966,21 +1014,48 @@ function flowsEditorHtml(){ const kinds=[['customer','Customer'],['trade','Trade
 function renameStep(kind,id,v){ const s=FLOWS[kind].flatMap(l=>l.steps).find(x=>x.id===id); if(s&&v.trim()){ s.name=v.trim(); toast('Renamed in every panel.'); } }
 
 // ---------- quick replies: use, edit, add ----------
-function useQuick(id){ const q=quickReplies.find(x=>x.id===id); const box=document.getElementById('box'); box.value=q.text; countBox(box); box.focus(); }
-function quickMeta(q){ return `added by ${esc(q.addedBy)} · ${esc(q.addedAt)}${q.editedBy?` · edited by ${esc(q.editedBy)} · ${esc(q.editedAt)}`:''}`; }
-function editQuick(){ const bg=document.createElement('div'); bg.className='modal-bg'; const m=document.createElement('div'); m.className='modal wide'; bg.appendChild(m);
-  let editing=null;
-  const row=q=>`<div class="qrow" id="qr${q.id}">${editing===q.id?`<input id="qe${q.id}" value="${esc(q.text)}" style="width:100%"><div class="qmeta"><button class="small primary" onclick="window.__qSave(${q.id})">Save</button><button class="small" onclick="window.__qEdit(null)">Cancel</button></div>`:`<div class="qtext">${esc(q.text)}</div><div class="qmeta"><span>${quickMeta(q)}</span><button class="small" onclick="window.__qEdit(${q.id})">Edit</button></div>`}</div>`;
-  const paint=()=>{ const team=quickReplies.filter(q=>q.scope==='team'); const mine=quickReplies.filter(q=>q.scope==='mine'&&q.addedBy===ME);
-    m.innerHTML=`<h2>Quick replies</h2><p class="note">Anyone can add one and anyone can edit one. Each keeps who added it and when, and who last edited it and when.</p>
-    <h3>The team's (${team.length})</h3><div class="qlist">${team.map(row).join('')||'<div class="empty">none yet</div>'}</div>
-    <h3>Mine (${mine.length})</h3><div class="qlist">${mine.map(row).join('')||'<div class="empty">none yet</div>'}</div>
-    <h3>Add one</h3><div class="qadd"><input id="qnew" placeholder="The line you type every day…" style="width:100%"><div class="qmeta"><label><input type="radio" name="qscope" value="team" checked> for the team</label><label><input type="radio" name="qscope" value="mine"> just me</label><button class="small primary" style="margin-left:auto" onclick="window.__qAdd()">Add</button></div></div>
-    <div class="btns"><button onclick="this.closest('.modal-bg').remove();render()">Done</button></div>`;
-    const f=m.querySelector(editing?`#qe${editing}`:'#qnew'); if(f&&editing) f.focus(); };
-  window.__qEdit=id=>{ editing=id; paint(); };
-  window.__qSave=id=>{ const q=quickReplies.find(x=>x.id===id); const v=m.querySelector(`#qe${id}`).value.trim(); if(!v){toast('Write something, or Cancel.');return;} if(v!==q.text){ q.text=v; q.editedBy=ME; q.editedAt='Oct 2'; toast('Saved, with your name and today on it.'); } editing=null; paint(); };
-  window.__qAdd=()=>{ const v=m.querySelector('#qnew').value.trim(); if(!v){toast('Write the line first.');return;} const scope=m.querySelector('input[name=qscope]:checked').value; quickReplies.push({id:++qseq, scope, text:v, addedBy:ME, addedAt:'Oct 2'}); toast(scope==='team'?'Added for the team, with your name and today on it.':'Added to yours, with your name and today on it.'); paint(); };
+function useQuick(id){ const q=quickReplies.find(x=>x.id===id); q.uses=q.uses||{}; q.uses[ME]=(q.uses[ME]||0)+1; q.lastUsed={at:NOW,who:ME,contact:openContact}; const box=document.getElementById('box'); box.value=q.text; countBox(box); box.focus(); }
+const qrNowWords = () => NOW_WORDS;
+// A first guess at who a new line is for and its step, from its words; shown as a guess until the person confirms.
+function qrGuess(text){ const t=text.toLowerCase(); const has=(...w)=>w.some(x=>t.includes(x));
+  if(has('w-9','insurance')) return {for:'trade', step:'papers'};
+  if(has('submittal')) return {for:'arch', step:'submittals'}; if(has('certify','certificate for','your certificate')) return {for:'arch', step:'certify'};
+  if(has('pay application','pay app')) return {for:'customer', step:'payapp'}; if(has('start date')) return {for:'customer', step:'start'}; if(has('change order')) return {for:'customer', step:'co'}; if(has('contract')) return {for:'customer', step:'contract'};
+  if(has('statement of work')) return {for:'trade', step:'sow'}; if(has('draw')) return {for:'trade', step:'draws'};
+  if(has('invite','plans','addendum')) return {for:'trade', step:'invited'}; if(has('quote','number','portal','scope')) return {for:'trade', step:'ask'};
+  return {for:'any', step:null}; }
+const qrTagWords = q => `for ${QR_KINDS[q.for]} · on ${q.step?qrStepName(q.for,q.step):'no step'}`;
+function editQuick(){ const bg=document.createElement('div'); bg.className='modal-bg'; const m=document.createElement('div'); m.className='modal xwide qrw'; bg.appendChild(m);
+  let tab='all', search='', open=null, adding=false, addGuess=null;
+  const kindOf=q=>q.scope==='mine'?'mine':q.for;
+  const counts=()=>{ const all=quickReplies.filter(q=>!q.removed); return {all:all.length, trade:all.filter(q=>q.for==='trade').length, customer:all.filter(q=>q.for==='customer').length, arch:all.filter(q=>q.for==='arch').length, any:all.filter(q=>q.for==='any').length, mine:all.filter(q=>q.scope==='mine').length, removed:quickReplies.filter(q=>q.removed).length}; };
+  const rowsFor=()=>{ const f=search.trim().toLowerCase(); return quickReplies.filter(q=> (tab==='removed'?q.removed:!q.removed) && (tab==='all'||tab==='removed'||(tab==='mine'?q.scope==='mine':q.for===tab)) && (!f||q.text.toLowerCase().includes(f))).sort((a,b)=>qrTotal(b)-qrTotal(a)||a.id-b.id); };
+  const lastChange=q=>{ const v=q.versions[q.versions.length-1]; return v.kind==='added'?'—':`${esc(v.by)} · ${esc(v.at.split(',')[0])}`; };
+  const stepOptions=(kind,cur)=>`<option value="">on no step</option>`+qrStepsFor(kind).map(st=>`<option value="${st.id}" ${st.id===cur?'selected':''}>on ${esc(st.name)}</option>`).join('');
+  const forOptions=cur=>Object.entries(QR_KINDS).map(([k,w])=>`<option value="${k}" ${k===cur?'selected':''}>for ${w}</option>`).join('');
+  const hist=q=>`<div class="hist"><div class="h">History · ${q.versions.length} version${q.versions.length===1?'':'s'} · used ${qrTotal(q)} time${qrTotal(q)===1?'':'s'}</div>${[...q.versions].reverse().map(v=>`<div class="e"><span class="w">${esc(v.by)} · ${esc(v.at)}</span><span>${v.kind==='added'?`added it, ${esc(q.versions[0].forWords||'')}<ins>${esc(v.to)}</ins>`:v.kind==='words'?`changed the words: <del>${esc(v.from)}</del> → <ins>${esc(v.to)}</ins>`:v.kind==='tags'?`tagged it <ins>${esc(v.to)}</ins> (was ${esc(v.from)})`:v.kind==='removed'?'removed it (it stays here and can be brought back)':'brought it back'}</span></div>`).join('')}<div class="e"><span class="w">Used by</span><span class="usedby">${Object.entries(q.uses||{}).sort((a,b)=>b[1]-a[1]).map(([w,n])=>`<span><b>${esc(w)}</b> ${n}</span>`).join('')||'<span style="color:var(--text-muted)">nobody yet</span>'}${q.lastUsed?`<span style="color:var(--text-muted)">· last used ${esc(fmtDay(q.lastUsed.at))}${q.lastUsed.contact&&cById(q.lastUsed.contact)?', on '+esc(cById(q.lastUsed.contact).name):''}</span>`:''}</span></div></div>`;
+  const editRow=q=>`<tr class="editrow"><td colspan="5"><div class="f"><input id="qe-text" value="${esc(q.text)}"><select id="qe-for" onchange="window.__qForChanged()">${forOptions(q.for)}</select><select id="qe-step">${stepOptions(q.for,q.step)}</select></div><div class="f"><button class="small primary" onclick="window.__qSave(${q.id})">Save</button><button class="small" onclick="window.__qOpen(null)">Cancel</button><span class="note">Saving keeps the old words in the history below, with your name and today.</span>${q.removed?`<button class="quiet small" style="margin-left:auto" onclick="window.__qRestore(${q.id})">Bring it back</button>`:`<button class="quiet small danger-t" style="margin-left:auto" onclick="window.__qRemove(${q.id})">Remove this line…</button>`}</div>${hist(q)}</td></tr>`;
+  const paint=()=>{ const n=counts(); const rows=rowsFor();
+    m.innerHTML=`<div class="head"><h2 style="margin:0">Quick replies</h2><input class="search" placeholder="⌕ find a line, or words in it" value="${esc(search)}" oninput="window.__qSearch(this.value)"><button class="primary small" onclick="window.__qAddOpen()">+ Add a line</button><span class="sub">The team's lines and yours, in one list. Anyone can add or change a line; every change is kept with who and when. Press a line to change it or see its history.</span></div>
+    <div class="tabs">${[['all','All',n.all],['trade','Trade partners',n.trade],['customer','Customers',n.customer],['arch','Architects',n.arch],['any','Anyone',n.any],['mine','Mine',n.mine]].concat(n.removed?[['removed','Removed',n.removed]]:[]).map(([k,l,c])=>`<button class="${tab===k?'on':''}" onclick="window.__qTab('${k}')">${l} · ${c}</button>`).join('')}</div>
+    ${adding?`<div class="add"><input id="qnew" placeholder="The line you type every day…" oninput="window.__qGuess(this.value)" value="${esc(addGuess?.text||'')}"><select id="qnew-for" onchange="window.__qAddFor()">${forOptions(addGuess?.for||'any')}</select><select id="qnew-step">${stepOptions(addGuess?.for||'any',addGuess?.step||'')}</select><span class="note" id="qguess">${addGuess&&addGuess.text?'guessed from the words':'the tags are guessed from the words'}</span><label class="note"><input type="checkbox" id="qnew-mine" style="width:auto"> just for me</label><button class="small primary" onclick="window.__qAdd()">Add</button><button class="small" onclick="window.__qAddOpen(false)">Cancel</button></div>`:''}
+    <table class="qrt"><tr><th>Line</th><th>For</th><th>On the step</th><th class="r">Used</th><th>Last change</th></tr>${rows.map(q=>`<tr class="qr ${q.scope==='mine'?'mine':''} ${open===q.id?'open':''} ${q.removed?'removed':''}" onclick="window.__qOpen(${q.id})"><td class="line">${esc(q.text)}</td><td><span class="tag ${q.for}">${QR_KINDS[q.for]}</span></td><td>${q.step?`<span class="step">${esc(qrStepName(q.for,q.step)||q.step)}</span>`:'<span class="note">—</span>'}</td><td class="r"><span class="used">${qrTotal(q)}<small>${qrMine(q)} by you</small></span></td><td>${lastChange(q)}<span class="who">added by ${esc(q.versions[0].by)} · ${esc(q.versions[0].at.split(',')[0])}</span></td></tr>${open===q.id?editRow(q):''}`).join('')||`<tr><td colspan="5" class="empty">${search?'No line has those words.':'Nothing here yet.'}</td></tr>`}</table>
+    <div class="btns"><span class="l">${rows.length} line${rows.length===1?'':'s'}${search?` match "${esc(search)}"`:' · sorted by use'}.</span><button onclick="this.closest('.modal-bg').remove();render()">Done</button></div>`;
+    if(adding){ const f=m.querySelector('#qnew'); if(f){ f.focus(); f.setSelectionRange(f.value.length,f.value.length); } } };
+  window.__qSearch=v=>{ search=v; paint(); const f=m.querySelector('.search'); f.focus(); f.setSelectionRange(f.value.length,f.value.length); };
+  window.__qTab=k=>{ tab=k; open=null; paint(); };
+  window.__qOpen=id=>{ open=(open===id)?null:id; paint(); };
+  window.__qForChanged=()=>{ const kind=m.querySelector('#qe-for').value; m.querySelector('#qe-step').innerHTML=stepOptions(kind,''); };
+  window.__qSave=id=>{ const q=quickReplies.find(x=>x.id===id); const v=m.querySelector('#qe-text').value.trim(); const kind=m.querySelector('#qe-for').value; const step=m.querySelector('#qe-step').value||null; if(!v){toast('Write something, or Cancel.');return;} let changed=false;
+    if(v!==q.text){ q.versions.push(V(ME,qrNowWords(),'words',v,q.text)); q.text=v; changed=true; }
+    if(kind!==q.for||step!==q.step){ const from=qrTagWords(q); q.for=kind; q.step=step; q.versions.push(V(ME,qrNowWords(),'tags',qrTagWords(q),from)); changed=true; }
+    toast(changed?'Saved, with your name and today in its history.':'Nothing changed.'); open=null; paint(); };
+  window.__qRemove=id=>{ const q=quickReplies.find(x=>x.id===id); const bg2=document.createElement('div'); bg2.className='modal-bg'; bg2.style.zIndex='30'; bg2.innerHTML=`<div class="modal"><h2>Remove this line?</h2><p>“${esc(q.text)}”</p><p class="note">It leaves the strip and the list. It stays in the history as removed, with your name and today, and can be brought back from the Removed tab.</p><div class="btns"><button class="danger" id="rm">Remove it</button><button class="primary" id="keep">Keep it</button></div></div>`; document.body.appendChild(bg2); bg2.querySelector('#keep').onclick=()=>bg2.remove(); bg2.querySelector('#rm').onclick=()=>{ q.removed=true; q.versions.push(V(ME,qrNowWords(),'removed','')); bg2.remove(); open=null; toast('Removed. It can be brought back from the Removed tab.'); paint(); }; bg2.onclick=e=>{ if(e.target===bg2) bg2.remove(); }; bg2.querySelector('#keep').focus(); };
+  window.__qRestore=id=>{ const q=quickReplies.find(x=>x.id===id); q.removed=false; q.versions.push(V(ME,qrNowWords(),'restored','')); open=null; tab='all'; toast('Back on the list.'); paint(); };
+  window.__qAddOpen=(v=true)=>{ adding=v; addGuess=v?{text:'',for:'any',step:null}:null; paint(); };
+  window.__qGuess=v=>{ const g=qrGuess(v); addGuess={text:v, for:g.for, step:g.step}; const sf=m.querySelector('#qnew-for'), ss=m.querySelector('#qnew-step'), lbl=m.querySelector('#qguess'); if(sf){ sf.value=g.for; ss.innerHTML=stepOptions(g.for,g.step||''); } if(lbl) lbl.textContent=v.trim()?'guessed from the words':'the tags are guessed from the words'; };
+  window.__qAddFor=()=>{ const kind=m.querySelector('#qnew-for').value; m.querySelector('#qnew-step').innerHTML=stepOptions(kind,''); addGuess.for=kind; addGuess.step=null; m.querySelector('#qguess').textContent='set by you'; };
+  window.__qAdd=()=>{ const v=m.querySelector('#qnew').value.trim(); if(!v){toast('Write the line first.');return;} const kind=m.querySelector('#qnew-for').value, step=m.querySelector('#qnew-step').value||null, mine=m.querySelector('#qnew-mine').checked; quickReplies.push({id:++qseq, scope:mine?'mine':'team', text:v, for:kind, step, uses:{}, lastUsed:null, versions:[V(ME,qrNowWords(),'added',v)]}); adding=false; addGuess=null; toast(mine?'Added to yours, with your name and today on it.':'Added for the team, with your name and today on it.'); paint(); };
   paint(); document.body.appendChild(bg); bg.onclick=e=>{ if(e.target===bg){ bg.remove(); render(); } }; }
 
 // ---------- tie picker and the job card ----------
