@@ -433,3 +433,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.54, 2026-10-11**: the owed card's words rewritten to `plainWords.ts`: one idea a sentence, none over 20
   words, no semicolons or colons, each row what it is then what you press then what happens (the owner: is that the
   best we can do? It was not; three rows were glued and two sentences ran long).
+- **v1.55, 2026-10-11**: the owed card smoothed: each row is the control in one column, one plain line of what it does
+  and a quiet line of what changes, the lit row soft with a small *this one* (the owner: simple language, a smoother
+  presentation).

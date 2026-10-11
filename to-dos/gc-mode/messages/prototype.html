@@ -393,10 +393,17 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .tip .leg .ctl{flex:none;margin-top:1px;cursor:default;font-size:12px;padding:2px 8px}
 .tip .leg .ctl.quiet{padding:2px 4px}
 .tip .leg .or{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:-2px}
-.tip .leg div.opt{margin:0 -6px;padding:5px 6px;border-radius:8px}
-.tip .leg div.opt.hl{background:var(--accent-soft);outline:1px solid #c5d8f5}
-.tip .leg div.opt.hl .w b{color:var(--accent)}
-.tip .leg .here{font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.04em;margin-left:6px}
+.tip .leg.owed{gap:4px}
+.tip .leg.owed .intro{display:block;font-size:13px;color:var(--text-muted);margin-bottom:4px}.tip .leg.owed .intro b{display:inline;color:var(--text)}
+.tip .leg.owed .opt{margin:0 -6px;padding:5px 6px;border-radius:8px;align-items:center;gap:10px}
+.tip .leg.owed .ctl{width:104px;justify-content:center;text-align:center;display:inline-flex;align-items:center}
+.tip .leg.owed .ctl.none{border:0;color:var(--text-muted)}
+.tip .leg.owed .w{display:flex;flex-direction:column;gap:1px}
+.tip .leg.owed .what{font-size:13px;color:var(--text)}
+.tip .leg.owed .after{font-size:12px;color:var(--text-muted)}
+.tip .leg.owed .opt.hl{background:var(--accent-soft)}
+.tip .leg.owed .opt.hl .what{color:var(--accent);font-weight:600}
+.tip .leg.owed .here{font-size:11px;color:var(--accent);flex:none;align-self:center}
 .tip .leg .jobchip{font-size:12px;padding:2px 8px;cursor:default;flex:none;margin-top:1px;display:inline-block;max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tip .leg span.w{flex:1;min-width:0}
 .tip .leg b{display:inline;font-size:12.5px}
@@ -1000,14 +1007,14 @@ const TIP_LEGENDS = {
   // The card for what we owe lists every option, with the one under the pointer lit (the owner, 2026-10-11): the legend key
   // carries which, "owed:settled" or "owed:owe".
   owed(which){ const c=cById(openContact); if(!c||!c.owe) return ''; const what=esc(c.owe.what); const first=esc(c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0]);
-    // Each row keeps the plain-words shape: what this is, what you do, what happens after. One idea a sentence, none over 20 words, no glue.
+    // Each row: the control, one plain line of what it does, a quiet line of what changes (the owner, 2026-10-11: simple words, a smoother card).
     const rows=[
-      ['settled', `<button class="ctl">Settled</button>`, `<b>Settle it with a note.</b> Press Settled. A note for the team opens at the bottom. Say how or why it was settled. The note clears what we owe. The row leaves We owe them.`],
-      ['send', `<button class="ctl primary">Send text…</button>`, `<b>Send it to ${first}.</b> Write ${what} in the box. Press Send text… and the window shows your text before it goes. It asks if anything is still on us. Say no, and the message settles it.`],
-      ['owe', `<button class="ctl quiet">We owe them…</button>`, `<b>Change what we owe, or the day.</b> Press We owe them… and the same ask opens, filled in with ${what}${c.owe.by?' and '+esc(c.owe.by):''}. Change either and save. The ball stays in our court.`],
-      ['snooze', `<button class="ctl">Snoozed</button>`, `<b>Put it off until Monday.</b> Press Snoozed. The row leaves Follow up and comes back on its own. What we owe stays marked.`],
-      ['leave', `<span class="ctl" style="border:0;color:var(--text-muted)">do nothing</span>`, `<b>Leave it.</b> Follow up keeps it under We owe them, with who marked it and when. The court stays ours no matter how often we write.`]];
-    return `<div class="leg"><div style="display:block;font-size:12.5px;color:var(--text-muted)">We owe ${first} <b style="display:inline;color:var(--text)">${what}</b>${c.owe.by?' by '+esc(c.owe.by):''}. Five ways to deal with it.</div>${rows.map(([k,ctl,w])=>`<div class="opt ${k===which?'hl':''}">${ctl}<span class="w">${w}${k===which?'<span class="here">this one</span>':''}</span></div>`).join('')}</div>`; },
+      ['settled', `<button class="ctl">Settled</button>`, `Settle it, with a team note.`, `The row leaves Follow up.`],
+      ['send', `<button class="ctl primary">Send text…</button>`, `Send ${first} ${what}.`, `The text can settle it, or keep it on us.`],
+      ['owe', `<button class="ctl quiet">We owe them…</button>`, `Change what we owe, or the day.`, `It stays on us.`],
+      ['snooze', `<button class="ctl">Snoozed</button>`, `Put it off.`, `It comes back Monday.`],
+      ['leave', `<span class="ctl none">do nothing</span>`, `Leave it.`, `It stays on Follow up.`]];
+    return `<div class="leg owed"><div class="intro">We owe ${first} <b>${what}</b>${c.owe.by?' by '+esc(c.owe.by):''}.</div>${rows.map(([k,ctl,w,after])=>`<div class="opt ${k===which?'hl':''}">${ctl}<span class="w"><span class="what">${w}</span><span class="after">${after}</span></span>${k===which?'<span class="here">this one</span>':''}</div>`).join('')}</div>`; },
   stamps(){ const c=cById(openContact); if(!c) return ''; const i=lastInOnly(c), o=lastOut(c);
     return `<div class="leg"><div><b style="width:36px;text-align:right;flex:none">Them</b><span class="w">${i?esc(stampFull(i)):'nothing yet'}</span></div><div><b style="width:36px;text-align:right;flex:none">Us</b><span class="w">${o?esc(stampFull(o)):'nothing yet'}</span></div></div>${stampCalendar(c)}`; },
   jobs(){ const c=cById(openContact); if(!c) return ''; const nm=id=>jobById(id)?jobById(id).name:''; const def=c.def?nm(c.def):null; const blueId=jobFilter||c.jobs.find(j=>j!==c.def)||c.def; const blue=blueId?nm(blueId):'a job'; const blueJ=blueId?jobById(blueId):null; const defJ=c.def?jobById(c.def):null; const first=c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0];
