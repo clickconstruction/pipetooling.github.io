@@ -43,6 +43,12 @@ describe('buildResources', () => {
     expect(capital!.oneLine).toContain('clears the floor')
     expect(talent!.badge).toBe('not short')
   })
+  it('reads one biller from the bills when the sends carry no sender', () => {
+    const [, , talent] = buildResources({ ...base, billers: 0, billsWithoutSender: 12 })
+    expect(talent!.gauge).toBe('7 in the field · 1 billing, by the bills')
+    expect(talent!.badge).toBe('throttles the link')
+    expect(buildResources({ ...base, billers: 0, billsWithoutSender: 0 })[2]!.gauge).toBe('7 in the field · 0 billing')
+  })
   it('keeps the lines in plain words', () => {
     for (const r of buildResources(base)) for (const t of [r.kind, r.action]) expect(plainWordsFailures(t), t).toEqual([])
   })

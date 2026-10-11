@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { STAGE_RULE_LINE, STAGE_RULE_LONG, STAGE_RULE_POINTS, buildStageFlow, stageUsd, weeksToClear } from './stageFlow'
+import { STAGE_RULE_LINE, STAGE_RULE_LONG, STAGE_RULE_POINTS, buildStageFlow, stageUsd, weeksToClear, withFieldPaces } from './stageFlow'
 
 const today = () =>
   buildStageFlow({
@@ -102,6 +102,64 @@ describe('buildStageFlow', () => {
     for (const line of [...lines, STAGE_RULE_LINE, STAGE_RULE_LONG, ...STAGE_RULE_POINTS.map((p) => p.text)]) {
       expect(plainWordsFailures(line), line).toEqual([])
     }
+  })
+
+  it('feeds Build the larger of its two paces and names the other on the card', () => {
+    const byPercent = { pileUsd: 362_000, pileCount: 28, inPerWeekUsd: 49_000, outPerWeekUsd: 24_000, knownJobs: 28, guessUsd: 0, guessJobs: 0 }
+    const honest = withFieldPaces(byPercent, 34_000)
+    expect(honest.outPerWeekUsd).toBe(34_000)
+    expect(honest.paces).toEqual({ byPercentUsd: 24_000, byHoursUsd: 34_000 })
+    expect(withFieldPaces(byPercent, null)).toBe(byPercent)
+    expect(withFieldPaces(byPercent, 20_000).outPerWeekUsd).toBe(24_000)
+    const flow = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: 34_000, bill: null, collect: null, build: honest, heldLinkId: null })
+    const build = flow.stages.find((s) => s.id === 'build')!
+    expect(build.flow).toEqual([
+      { who: 'sales sells', usd: '$49k' },
+      { who: 'the field builds', usd: '$34k', tail: 'a week by hours' },
+      { who: 'by the percents', usd: '$24k', tail: 'a week' },
+    ])
+    expect(build.weeksText).toBe('10.6 weeks to build what is already sold')
+    // The percents lead: the card says so and names the hours.
+    const pctLeads = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: 40_000, bill: null, collect: null, build: withFieldPaces({ ...byPercent, outPerWeekUsd: 40_000 }, 34_000), heldLinkId: null }).stages.find((s) => s.id === 'build')!
+    expect(pctLeads.flow[1]).toEqual({ who: 'the field builds', usd: '$40k', tail: 'a week by the percents' })
+    expect(pctLeads.flow[2]).toEqual({ who: 'by hours', usd: '$34k', tail: 'a week' })
+    // Within a twentieth of each other, one line.
+    const agree = buildStageFlow({ market: null, sales: null, fieldPerWeekUsd: 34_000, bill: null, collect: null, build: withFieldPaces({ ...byPercent, outPerWeekUsd: 33_000 }, 34_000), heldLinkId: null }).stages.find((s) => s.id === 'build')!
+    expect(agree.flow).toHaveLength(2)
+    expect(agree.flow[1]).toEqual({ who: 'the field builds', usd: '$34k', tail: 'a week' })
+    for (const line of [...build.flow, ...pctLeads.flow].map((f) => `${f.who} ${f.usd} ${f.tail ?? 'a week'}.`)) expect(plainWordsFailures(line), line).toEqual([])
+  })
+
+  it('does not hand the link to Build on a thin percent unless it leads by a clear margin', () => {
+    // Build reads 15 weeks with over half its pile a guess; Bill reads 13.5. Build leads, but not by the hold margin.
+    const thin = buildStageFlow({
+      market: null, sales: null, fieldPerWeekUsd: 24_000, bill: { pileUsd: 297_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
+      collect: { pileUsd: 200_000, pileCount: null, inPerWeekUsd: 22_000, outPerWeekUsd: 46_000, lateCount: 10 },
+      build: { pileUsd: 360_000, pileCount: 13, inPerWeekUsd: 49_000, outPerWeekUsd: 24_000, knownJobs: 13, guessUsd: 400_000, guessJobs: 14 },
+      heldLinkId: null,
+    })
+    expect(thin.nominatedId).toBe('bill')
+    expect(thin.linkId).toBe('bill')
+    expect(thin.stages.find((s) => s.id === 'build')!.badge).toBe('reads 15.0 weeks on a thin % · set the %s')
+    expect(thin.stages.find((s) => s.id === 'bill')!.badge).toBe('the weakest link, with Build')
+    // By the hold margin, Build takes it, and the badge asks for the percents.
+    const clear = buildStageFlow({
+      market: null, sales: null, fieldPerWeekUsd: 20_000, bill: { pileUsd: 297_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
+      collect: null,
+      build: { pileUsd: 360_000, pileCount: 13, inPerWeekUsd: 49_000, outPerWeekUsd: 20_000, knownJobs: 13, guessUsd: 400_000, guessJobs: 14 },
+      heldLinkId: null,
+    })
+    expect(clear.linkId).toBe('build')
+    expect(clear.stages.find((s) => s.id === 'build')!.badge).toBe('the weakest link · set the %s')
+    // A known pile is never gated.
+    const known = buildStageFlow({
+      market: null, sales: null, fieldPerWeekUsd: 24_000, bill: { pileUsd: 297_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
+      collect: null,
+      build: { pileUsd: 360_000, pileCount: 13, inPerWeekUsd: 49_000, outPerWeekUsd: 24_000, knownJobs: 13, guessUsd: 0, guessJobs: 0 },
+      heldLinkId: null,
+    })
+    expect(known.linkId).toBe('build')
+    expect(known.stages.find((s) => s.id === 'build')!.badge).toBe('the weakest link, with Bill')
   })
 
   it('reads Market and Sales by pace against the field, with the SENT / WON / LOST table', () => {

@@ -33,6 +33,8 @@ export type ResourcesInput = {
   fieldPeople: number
   fieldHours7d: number
   billers: number
+  /** Bills sent in the window with no sender recorded; when nobody is named, one person is read from the bills. */
+  billsWithoutSender?: number
 }
 
 export type ResourceReading = {
@@ -83,18 +85,21 @@ export function buildResources(input: ResourcesInput): ResourceReading[] {
     throttles: false,
   }
 
-  const talentThrottles = input.linkId === 'bill' || input.linkId === 'collect' ? input.billers <= 1 : input.linkId === 'build' ? input.fieldPeople < 5 : false
+  // Bills went out with no sender on them: somebody billed, so read one person rather than none.
+  const byTheBills = input.billers === 0 && (input.billsWithoutSender ?? 0) > 0
+  const billers = byTheBills ? 1 : input.billers
+  const talentThrottles = input.linkId === 'bill' || input.linkId === 'collect' ? billers <= 1 : input.linkId === 'build' ? input.fieldPeople < 5 : false
   const talent: ResourceReading = {
     id: 'talent',
     ...RESOURCE_META.talent,
-    gauge: `${input.fieldPeople} in the field · ${input.billers} billing`,
+    gauge: `${input.fieldPeople} in the field · ${billers} billing${byTheBills ? ', by the bills' : ''}`,
     tone: talentThrottles ? 'amber' : 'muted',
     oneLine:
       input.linkId === 'bill' || input.linkId === 'collect'
-        ? `the field is staffed, ${Math.round(input.fieldHours7d)}h this week; billing is ${input.billers === 1 ? 'one person with other work on her desk' : `${input.billers} people`}`
+        ? `the field is staffed, ${Math.round(input.fieldHours7d)}h this week; billing is ${billers === 1 ? 'one person with other work on her desk' : `${billers} people`}`
         : input.linkId === 'build'
           ? `${input.fieldPeople} in the field, ${Math.round(input.fieldHours7d)}h this week; the field sets the pace`
-          : `${input.fieldPeople} in the field, ${Math.round(input.fieldHours7d)}h this week; ${input.billers} billing`,
+          : `${input.fieldPeople} in the field, ${Math.round(input.fieldHours7d)}h this week; ${billers} billing`,
     badge: talentThrottles ? 'throttles the link' : 'not short',
     throttles: talentThrottles,
   }
