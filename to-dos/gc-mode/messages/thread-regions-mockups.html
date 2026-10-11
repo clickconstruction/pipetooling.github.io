@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: setting the conversation apart from the controls above and below</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--chip:#eef1f5;--team:#fff6c2;--team-border:#e9d77a;--well:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:960px;line-height:1.45}
+.opts{display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start}
+.opt{width:470px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;height:560px;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.hdr{padding:12px 12px 8px;font-size:13px}
+.hdr .nm{font-weight:700;font-size:17px}
+.hdr .l{color:var(--text-muted);margin-top:3px}
+.hdr .tb{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap}
+.b{display:inline-block;border:1px solid var(--border);border-radius:8px;padding:4px 9px;font-size:12.5px;background:var(--surface)}
+.b.q{border-color:transparent;color:var(--accent)}
+.tile{display:inline-flex;flex-direction:column;border:1px solid var(--border);border-radius:9px;padding:4px 8px;font-size:12px;background:var(--surface);width:200px}
+.tile b{font-size:12.5px}.tile span{color:var(--text-muted);font-size:11.5px}
+.lines{flex:1;overflow:hidden;padding:10px 12px;font-size:12.5px;position:relative}
+.day{text-align:center;color:var(--text-muted);font-size:11px;margin:6px 0}
+.msg{border:1px solid var(--border);border-radius:9px;padding:7px 10px;margin:6px 0;background:var(--surface)}
+.msg.out{margin-left:34px;background:#f4f8ff}.msg.in{margin-right:34px}.msg.team{background:var(--team);border-color:var(--team-border)}
+.msg .m{font-size:11px;color:var(--text-muted);margin-bottom:3px}
+.reply{padding:10px 12px 12px;font-size:12.5px}
+.reply .k{display:flex;gap:5px;margin-bottom:6px}
+.reply .k .b.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.reply .k .b.t{background:var(--team);border-color:var(--team-border)}
+.reply .qw{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:6px 8px;margin-bottom:6px;font-size:11.5px;color:var(--text-muted)}
+.reply textarea{width:100%;height:44px;border:1px solid var(--border);border-radius:8px;font:inherit;padding:6px 8px;resize:none}
+.reply .send{display:flex;gap:6px;margin-top:6px;align-items:center}
+.reply .send .p{background:var(--accent);color:#fff;border-color:var(--accent)}
+/* A: the well */
+.A .lines{background:var(--well);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.A .msg.in{background:var(--surface)}
+/* B: pinned header and composer with shadows, the lines a scroll area */
+.B .hdr{box-shadow:0 6px 14px -10px rgba(0,0,0,.35);z-index:1;background:var(--surface)}
+.B .reply{box-shadow:0 -6px 14px -10px rgba(0,0,0,.35);z-index:1;background:var(--surface)}
+.B .lines{overflow:auto}
+.B .lines::after{content:'';display:block;height:30px}
+/* C: rules and room */
+.C .hdr{border-bottom:2px solid var(--border);padding-bottom:12px}
+.C .reply{border-top:2px solid var(--border);padding-top:14px}
+.C .lines{padding:18px 24px}
+.C .lbl{font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin:0 0 6px}
+/* D: well + pinned, the pick */
+.D .lines{background:var(--well);overflow:auto;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.D .msg.in{background:var(--surface)}
+.D .hdr{box-shadow:0 6px 14px -10px rgba(0,0,0,.3);z-index:1;background:var(--surface)}
+.D .reply{box-shadow:0 -6px 14px -10px rgba(0,0,0,.3);z-index:1;background:var(--surface)}
+.D .reply .qw{background:var(--surface)}
+.pick{max-width:960px;font-size:13.5px;line-height:1.5}
+.pick ol{margin:0 0 8px 18px;padding:0}
+</style>
+</head>
+<body>
+<h1>Setting the conversation apart from the controls above and below</h1>
+<p class="lead">Today the header, the conversation and the reply box are three stacks of white on one white card, parted by one thin rule each. The lines read as more header, and the reply box as more lines. Each frame is the thread card at 470 px, the same content: the header with its jobs tiles, three lines of Greg's thread, the reply box with its kinds and quick replies.</p>
+<div class="opts">
+
+<div class="opt"><h2>Today</h2>
+<div class="card"><div class="hdr"><div class="nm">Greg Paulk</div><div class="l">Trade partner: Hillside Excavation · (210) 555-0113</div><div class="tb"><span class="b">Call in Quo</span><span class="b q">More ▾</span></div><div class="tb"><span class="tile"><b>★ B482 Boerne Retail Shell</b><span>bid due Thu Oct 8 · 6 days</span></span><span class="b" style="border-style:dashed">+ add a job</span></div></div>
+<div class="lines" style="border-top:1px solid var(--border)"><div class="day">Saturday, Sep 26</div><div class="msg in"><div class="m">Call · 4:12 · Robert answered</div>Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday.</div><div class="day">Wednesday, Sep 30</div><div class="msg out"><div class="m">Text · Robert</div>Greg, checking on the Boerne sitework number. Still good for today?</div><div class="day">Today, Fri Oct 2</div><div class="msg in"><div class="m">Voicemail · 0:38</div>"Hey Robert, it's Greg. I'll have Boerne sitework over by Wednesday the 7th."</div></div>
+<div class="reply" style="border-top:1px solid var(--border)"><div class="k"><span class="b on">Text</span><span class="b">Email</span><span class="b t">Note for the team</span></div><div class="qw">QUICK REPLIES · for trade partners</div><textarea placeholder="Write to Greg Paulk…"></textarea><div class="send"><span class="b p">Send text…</span></div></div></div></div>
+
+<div class="opt"><h2>A · The well <small>· the conversation sits in a tinted panel between two white bands</small></h2>
+<div class="card A"><div class="hdr"><div class="nm">Greg Paulk</div><div class="l">Trade partner: Hillside Excavation · (210) 555-0113</div><div class="tb"><span class="b">Call in Quo</span><span class="b q">More ▾</span></div><div class="tb"><span class="tile"><b>★ B482 Boerne Retail Shell</b><span>bid due Thu Oct 8 · 6 days</span></span><span class="b" style="border-style:dashed">+ add a job</span></div></div>
+<div class="lines"><div class="day">Saturday, Sep 26</div><div class="msg in"><div class="m">Call · 4:12 · Robert answered</div>Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday.</div><div class="day">Wednesday, Sep 30</div><div class="msg out"><div class="m">Text · Robert</div>Greg, checking on the Boerne sitework number. Still good for today?</div><div class="day">Today, Fri Oct 2</div><div class="msg in"><div class="m">Voicemail · 0:38</div>"Hey Robert, it's Greg. I'll have Boerne sitework over by Wednesday the 7th."</div></div>
+<div class="reply"><div class="k"><span class="b on">Text</span><span class="b">Email</span><span class="b t">Note for the team</span></div><div class="qw">QUICK REPLIES · for trade partners</div><textarea placeholder="Write to Greg Paulk…"></textarea><div class="send"><span class="b p">Send text…</span></div></div></div>
+<p class="why">The lines sit on the page's grey, the way a phone's conversation sits on its own backdrop, and the message cards stand out white on it. The header and the reply box stay white, so the eye reads three bands at once. No new behaviour; the whole card still scrolls as one.</p></div>
+
+<div class="opt"><h2>B · Pinned header and composer <small>· the conversation scrolls between two fixed bands with a soft shadow</small></h2>
+<div class="card B"><div class="hdr"><div class="nm">Greg Paulk</div><div class="l">Trade partner: Hillside Excavation · (210) 555-0113</div><div class="tb"><span class="b">Call in Quo</span><span class="b q">More ▾</span></div><div class="tb"><span class="tile"><b>★ B482 Boerne Retail Shell</b><span>bid due Thu Oct 8 · 6 days</span></span><span class="b" style="border-style:dashed">+ add a job</span></div></div>
+<div class="lines"><div class="day">Saturday, Sep 26</div><div class="msg in"><div class="m">Call · 4:12 · Robert answered</div>Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday.</div><div class="day">Wednesday, Sep 30</div><div class="msg out"><div class="m">Text · Robert</div>Greg, checking on the Boerne sitework number. Still good for today?</div><div class="day">Today, Fri Oct 2</div><div class="msg in"><div class="m">Voicemail · 0:38</div>"Hey Robert, it's Greg. I'll have Boerne sitework over by Wednesday the 7th."</div><div class="msg in"><div class="m">Text · Greg</div>Also is the detention pond in sitework or concrete?</div></div>
+<div class="reply"><div class="k"><span class="b on">Text</span><span class="b">Email</span><span class="b t">Note for the team</span></div><div class="qw">QUICK REPLIES · for trade partners</div><textarea placeholder="Write to Greg Paulk…"></textarea><div class="send"><span class="b p">Send text…</span></div></div></div>
+<p class="why">The thread becomes a window: the header stays at the top and the reply box at the bottom, and only the conversation scrolls between them, with a thin shadow where lines pass under each band. The reply box is always in reach and the person's name never leaves the screen. The cost: a long header (the folded rail, the owed strip) eats the window's height.</p></div>
+
+<div class="opt"><h2>C · Rules and room <small>· thicker rules, more space, a label on the conversation</small></h2>
+<div class="card C"><div class="hdr"><div class="nm">Greg Paulk</div><div class="l">Trade partner: Hillside Excavation · (210) 555-0113</div><div class="tb"><span class="b">Call in Quo</span><span class="b q">More ▾</span></div><div class="tb"><span class="tile"><b>★ B482 Boerne Retail Shell</b><span>bid due Thu Oct 8 · 6 days</span></span><span class="b" style="border-style:dashed">+ add a job</span></div></div>
+<div class="lines"><div class="lbl">The conversation · 5 messages</div><div class="day">Saturday, Sep 26</div><div class="msg in"><div class="m">Call · 4:12 · Robert answered</div>Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday.</div><div class="day">Wednesday, Sep 30</div><div class="msg out"><div class="m">Text · Robert</div>Greg, checking on the Boerne sitework number. Still good for today?</div></div>
+<div class="reply"><div class="k"><span class="b on">Text</span><span class="b">Email</span><span class="b t">Note for the team</span></div><div class="qw">QUICK REPLIES · for trade partners</div><textarea placeholder="Write to Greg Paulk…"></textarea><div class="send"><span class="b p">Send text…</span></div></div></div>
+<p class="why">The lightest touch: two-pixel rules above and below the conversation, wider margins for the lines so they sit inset from the controls, and a small label naming the band. Nothing moves and nothing scrolls differently. It helps, but white on white stays white on white.</p></div>
+
+<div class="opt"><h2>D · The well, pinned <small>· A and B together · the pick</small></h2>
+<div class="card D"><div class="hdr"><div class="nm">Greg Paulk</div><div class="l">Trade partner: Hillside Excavation · (210) 555-0113</div><div class="tb"><span class="b">Call in Quo</span><span class="b q">More ▾</span></div><div class="tb"><span class="tile"><b>★ B482 Boerne Retail Shell</b><span>bid due Thu Oct 8 · 6 days</span></span><span class="b" style="border-style:dashed">+ add a job</span></div></div>
+<div class="lines"><div class="day">Saturday, Sep 26</div><div class="msg in"><div class="m">Call · 4:12 · Robert answered</div>Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday.</div><div class="day">Wednesday, Sep 30</div><div class="msg out"><div class="m">Text · Robert</div>Greg, checking on the Boerne sitework number. Still good for today?</div><div class="day">Today, Fri Oct 2</div><div class="msg in"><div class="m">Voicemail · 0:38</div>"Hey Robert, it's Greg. I'll have Boerne sitework over by Wednesday the 7th."</div><div class="msg in"><div class="m">Text · Greg</div>Also is the detention pond in sitework or concrete?</div></div>
+<div class="reply"><div class="k"><span class="b on">Text</span><span class="b">Email</span><span class="b t">Note for the team</span></div><div class="qw">QUICK REPLIES · for trade partners</div><textarea placeholder="Write to Greg Paulk…"></textarea><div class="send"><span class="b p">Send text…</span></div></div></div>
+<p class="why">A's tinted well for the conversation, B's pinned bands with their shadows. The three regions read apart by colour and by behaviour: the grey band is the thing that moves, the white bands are the things that stay. The message cards stand white on grey, the quick replies panel turns white so it belongs to the composer band, not to the well.</p></div>
+</div>
+
+<div class="pick">
+<h2 style="font-size:15px;margin:14px 0 6px">Is this the best we can do? The proposal</h2>
+<p style="margin:0 0 8px"><b>D</b>, built in two steps so each can be judged alone: the well first (A), which changes only colour and costs nothing; then the pinned bands (B) on top, which change how the thread scrolls.</p>
+<p style="margin:0 0 6px">Three things weighed against the first draft:</p>
+<ol>
+<li><b>The pinned header is tall.</b> With the jobs rail, the court line and the stamps, it takes a third of a laptop screen before the first message. So in B and D the header pins in two parts: the name row with its corner stays fixed, and the rest, the facts, the court line, the toolbar, the jobs, scrolls away with the conversation and comes back when you scroll up. The composer always pins whole. The mock-ups above pin the whole header; the build would pin the name row only.</li>
+<li><b>The thread's own scroll must not fight the page's.</b> The list and the flow panel already stick to the top of the window; a thread that scrolls inside its card means two scrollbars at a wide window. The build gives the card the window's height (the thread column fills the viewport under the app header, as the people list does), so the page itself no longer scrolls on Messages and only the conversation does.</li>
+<li><b>The well's grey is the page's grey.</b> At a wide window the well would sit grey on a grey page with a white card edge between, which is faint. The build uses a shade of its own, a touch lighter than the page's, so the card still reads as a card and the well as a band inside it; the mock-ups use the page's grey, which is the worst case.</li>
+</ol>
+<p style="margin:0">If the pinned bands feel like too much for the first cut, A alone is one line of CSS and the right first step either way.</p>
+</div>
+</body>
+</html>
