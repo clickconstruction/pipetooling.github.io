@@ -39,8 +39,10 @@ vi.mock('../../lib/supabase', async () => {
       builder.then = (ok: (v: unknown) => unknown) =>
         Promise.resolve({
           data: [
-            { id: 'master-1', name: 'Malachi Reyes', notes: 'Malachi Reyes, Master Plumber', archived_at: null },
-            { id: 'master-2', name: 'Robert Douglas', notes: null, archived_at: null },
+            { id: 'master-1', name: 'Malachi Reyes', notes: 'Malachi Reyes, Master Plumber', role: 'master_technician', archived_at: null },
+            { id: 'master-2', name: 'Robert Douglas', notes: null, role: 'master_technician', archived_at: null },
+            // v2.5231: a dev signs too; his notes hold license numbers, so the pick shows his name.
+            { id: 'dev-1', name: 'Robert', notes: 'PLUM APP: 184614 02/28/27', role: 'dev', archived_at: null },
           ],
           error: null,
         }).then(ok)
@@ -242,5 +244,20 @@ describe('LienReleaseModal — the releasing party (v2.5228)', () => {
     await screen.findByTestId('lien-waiver-form')
     await settle()
     expect(document.body.textContent).not.toContain('Click Construction, LLC')
+  })
+})
+
+describe('LienReleaseModal — a dev signs too (v2.5231)', () => {
+  it('Who signs lists the leaders then the devs, a dev by his name; picked, Send it to his desk asks him', async () => {
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" />)
+    await screen.findByTestId('lien-waiver-signer')
+    await settle()
+    const pick = within(screen.getByTestId('lien-waiver-signer')).getByLabelText('Who signs') as HTMLSelectElement
+    expect([...pick.options].map((o) => o.textContent)).toEqual(['Malachi Reyes', 'Robert Douglas', 'Robert'])
+    expect(pick.textContent).not.toContain('PLUM APP')
+    fireEvent.change(pick, { target: { value: 'dev-1' } })
+    fireEvent.click(screen.getByRole('button', { name: /Send it to his desk/ }))
+    await waitFor(() => expect(db.writes.some((w) => w.payload.status === 'awaiting_signature')).toBe(true))
+    expect(db.writes.find((w) => w.payload.status === 'awaiting_signature')!.payload.signer_user_id).toBe('dev-1')
   })
 })
