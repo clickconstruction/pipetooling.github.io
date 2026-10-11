@@ -94,6 +94,36 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .modal .f{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13px;color:var(--text-muted)}
 .modal .f input,.modal .f select{font-size:15px;color:var(--text)}
 .modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.previews{display:flex;gap:10px;align-items:center;margin-top:6px;font-size:13px;color:var(--text-muted)}
+.previews button.quiet{font-size:13px;padding:2px 4px}
+.pv-tabs{display:flex;gap:6px;margin-bottom:10px}
+.pv-tabs button{border-radius:999px}
+.pv-tabs button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.pv-note{font-size:12px;color:var(--text-muted);margin-top:8px}
+.pv-warn{font-size:13px;color:var(--warn);background:var(--warn-soft);border-radius:8px;padding:6px 8px;margin-top:8px}
+.phone{width:300px;margin:0 auto;border:10px solid #111;border-radius:34px;background:#fff;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.phone .bar{background:#f2f2f7;border-bottom:1px solid #ddd;padding:12px 10px 8px;text-align:center;font-size:12px}
+.phone .bar b{display:block;font-size:14px}
+.phone .screen{padding:10px 10px 14px;min-height:260px;background:#fff;display:flex;flex-direction:column;gap:6px}
+.phone .bub{max-width:82%;padding:8px 11px;border-radius:18px;font-size:14px;line-height:1.3;white-space:pre-wrap}
+.phone .bub.them{align-self:flex-start;background:#e9e9eb;color:#000;border-bottom-left-radius:4px}
+.phone .bub.us{align-self:flex-end;background:#34c759;color:#fff;border-bottom-right-radius:4px}
+.phone .bub.us.new{outline:2px solid var(--accent);outline-offset:2px}
+.phone .stamp{font-size:11px;color:#8e8e93;text-align:center;margin:4px 0}
+.phone .dl{font-size:11px;color:#8e8e93;align-self:flex-end;margin-top:-2px}
+.mail{border:1px solid var(--border);border-radius:10px;overflow:hidden;background:#fff}
+.mail .inboxrow{display:flex;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);background:#fafafa;font-size:13px}
+.mail .inboxrow .from{font-weight:700;min-width:120px}
+.mail .inboxrow .subj{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mail .inboxrow .when{color:var(--text-muted)}
+.mail .head{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;color:var(--text-muted)}
+.mail .head b{color:var(--text)}
+.mail .lh{padding:14px 14px 0;font-weight:800;letter-spacing:.06em;font-size:12px;color:#1f2d3d}
+.mail .lh small{display:block;font-weight:400;letter-spacing:0;color:var(--text-muted)}
+.mail .body{padding:12px 14px;white-space:pre-wrap;font-size:14px}
+.mail .sig{padding:0 14px 14px;font-size:13px;color:var(--text-muted);white-space:pre-wrap}
+.mail .foot{padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);background:#fafafa}
+.modal.wide{max-width:640px}
 .settings dl{display:grid;grid-template-columns:200px 1fr;gap:8px 16px;margin:0}
 .settings dt{color:var(--text-muted)}
 .settings dd{margin:0}
@@ -258,7 +288,8 @@ function renderMessages(m){
   <div class="reply">
     <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team ':''}${replyKind===k?'on':''}" onclick="replyKind='${k}';render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees a note'}</span></div>
     ${replyKind!=='note'?`<div class="quick">${quick.map(q=>`<button onclick="document.getElementById('box').value=${JSON.stringify(q).replace(/"/g,'&quot;')}">${esc(q)}</button>`).join('')}</div>`:''}
-    <textarea id="box" class="${replyKind==='note'?'team':''}" placeholder="${replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
+    <textarea id="box" oninput="countBox(this)" class="${replyKind==='note'?'team':''}" placeholder="${replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
+    ${replyKind!=='note'?`<div class="previews"><span>Before it goes:</span><button class="quiet" onclick="previewDraft('${c.id}','email')">Preview email</button><span>·</span><button class="quiet" onclick="previewDraft('${c.id}','text')">Preview text</button><span class="note" id="pvcount"></span></div>`:''}
     <div class="send"><button class="primary" onclick="sendReply('${c.id}')" ${c.optout&&replyKind==='text'?'disabled':''}>${replyKind==='note'?'Add the note':replyKind==='email'?'Send email':'Send text'}</button>${c.optout&&replyKind==='text'?'<span class="note">They sent STOP. The app will not text this number.</span>':''}
       <span class="tie">Tie to: <select onchange="replyTie=this.value||null"><option value="">${c.def?esc(jobLabel(c,c.def))+' (default)':'the person alone'}</option>${cJobs.filter(j=>j.id!==c.def).map(j=>`<option value="${j.id}" ${replyTie===j.id?'selected':''}>${esc(jobLabel(c,j.id))}</option>`).join('')}<option value="none" ${replyTie==='none'?'selected':''}>no job</option></select></span></div>
   </div>`;
@@ -333,6 +364,39 @@ function askArchitect(mid){ const x=messages.find(m=>m.id===mid); x.question.sta
 function answerMyself(mid){ const x=messages.find(m=>m.id===mid); x.question.state='mine'; replyKind='text'; openThread(x.c); document.getElementById('box')?.focus(); }
 function sendReply(cid){ const c=cById(cid); const box=document.getElementById('box'); const t=box.value.trim(); if(!t){toast('Write something first.');return;} const job = replyTie==='none'?null:(replyTie||c.def); const who = replyKind==='note'?`${ME} · note for the team`:replyKind==='email'?`${ME} · bids@`:`${ME} · from the company number`; messages.push({id:++seq,c:cid,job,ch:replyKind,dir:replyKind==='note'?'team':'out',who,at:T(2,10,32)+messages.length,text:t}); if(replyKind!=='note'){ c.state='done'; c.has=null; } box.value=''; toast(replyKind==='note'?'Note added. Only the team sees it.':replyKind==='email'?'Email sent as Click Construction; its copy is kept in Documents.':'Text sent from the company number.'); render(); }
 function whoIsThis(cid){ const c=cById(cid); modal(`Who is this? ${esc(c.phones[0])}`, `<div class="f">Their name<input id="wn" placeholder="Dee …"></div><div class="f">What they are to us<select id="wk"><option value="trade">trade partner</option><option value="customer">customer</option><option value="arch">architect</option></select></div><div class="f">Their company<input id="wc" placeholder="Alamo Concrete"></div><div class="f">Tie this message to<select id="wj"><option value="">no job yet</option>${jobs.map(j=>`<option value="${j.id}">${esc(j.name)} · ${esc(j.note)}</option>`).join('')}</select></div><p class="note">The answer becomes the rule for this number: the next text from it lands on this person.</p>`, ()=>{ const n=document.getElementById('wn').value.trim(); if(!n){toast('A name, please.');return false;} c.name=n; c.kind=document.getElementById('wk').value; c.company=document.getElementById('wc').value.trim(); const j=document.getElementById('wj').value; if(j){ c.jobs=[j]; c.def=j; messages.filter(x=>x.c===c.id).forEach(x=>x.job=j); } toast(`${n} is known now.`); render(); }); }
+
+// ---------- preview before it goes ----------
+const COMPANY = {name:'Click Construction', phone:'(210) 555-0100', email:'bids@clickconstruction.example', site:'clickconstruction.example', addr:'San Antonio, Texas'};
+const firstTextEver = c => !messages.some(m=>m.c===c.id&&m.ch==='text'&&m.dir==='out');
+function subjectFor(c, job, body){ const j=job?jobById(job):null; const first=body.split('\n')[0].replace(/[.!?]+$/,'').slice(0,60); return (j?`${j.name}: `:'')+(first||'A note from Click Construction'); }
+function countBox(el){ const n=document.getElementById('pvcount'); if(!n) return; const L=el.value.length; n.textContent = L? `${L} characters · ${Math.max(1,Math.ceil(L/160))} text${L>160?'s':''}` : ''; }
+function previewDraft(cid, kind){ const c=cById(cid); const box=document.getElementById('box'); const body=(box.value||'').trim(); if(!body){ toast('Write the message first, then preview it.'); return; } const job=replyTie==='none'?null:(replyTie||c.def); let cur=kind;
+  const draw=()=>{ const tabs=`<div class="pv-tabs"><button class="${cur==='email'?'on':''}" onclick="window.__pvSet('email')">Email</button><button class="${cur==='text'?'on':''}" onclick="window.__pvSet('text')">Text</button></div>`;
+    let html;
+    if(cur==='email'){ const subj=subjectFor(c,job,body); const to=c.emails[0]||'(no email on file)';
+      html=`${tabs}<p class="note">What ${esc(c.name)} sees in their inbox, then opened.</p>
+      <div class="mail"><div class="inboxrow"><span class="from">${COMPANY.name}</span><span class="subj">${esc(subj)}</span><span class="when">10:32 AM</span></div>
+      <div class="head"><b>From:</b> ${COMPANY.name} &lt;${COMPANY.email}&gt;<br><b>To:</b> ${esc(c.name)} &lt;${esc(to)}&gt;<br><b>Subject:</b> ${esc(subj)}</div>
+      <div class="lh">CLICK CONSTRUCTION<small>${COMPANY.phone} · ${COMPANY.site}</small></div>
+      <div class="body">${esc(c.kind==='customer'||c.kind==='arch'?('Hello '+c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0]+','):'Hello '+c.name.split(' ')[0]+',')}\n\n${esc(body)}</div>
+      <div class="sig">${ME}\n${COMPANY.name} · ${COMPANY.phone}\nReply to this email or text ${COMPANY.phone}.</div>
+      <div class="foot">${COMPANY.name}, ${COMPANY.addr}. ${job?'About '+esc(jobById(job).name)+'. ':''}A copy of this email is kept in Documents.</div></div>
+      ${!c.emails.length?'<div class="pv-warn">They have no email on file. The email cannot go until one is added.</div>':''}
+      <div class="pv-note">The subject comes from the job and your first line; the greeting from their contact name; the letterhead from who the job is for (Click Construction on a GC job). Nothing here is typed twice.</div>`;
+    } else { const prior=[...messages].filter(m=>m.c===c.id&&m.ch==='text').sort((a,b)=>a.at-b.at).slice(-2); const segs=Math.max(1,Math.ceil(body.length/160)); const first=firstTextEver(c); const footer=first?`\n\n${COMPANY.name}. Reply STOP to opt out.`:''; const full=body+footer; const fsegs=Math.max(1,Math.ceil(full.length/160));
+      html=`${tabs}<p class="note">What ${esc(c.name)} sees on their phone, under the texts already there.</p>
+      <div class="phone"><div class="bar"><b>${COMPANY.name}</b>${COMPANY.phone}</div><div class="screen">
+        ${prior.map(m=>`<div class="bub ${m.dir==='in'?'them':'us'}">${esc(m.text)}</div>`).join('')}
+        <div class="stamp">Today 10:32 AM</div>
+        <div class="bub us new">${esc(full)}</div><div class="dl">Delivered</div></div></div>
+      ${c.optout?'<div class="pv-warn">They sent STOP. The app will not send this text.</div>':''}
+      ${!c.phones.length?'<div class="pv-warn">They have no mobile number on file.</div>':''}
+      ${fsegs>2?`<div class="pv-warn">${full.length} characters is ${fsegs} texts. Long texts arrive in pieces on some phones; an email may read better.</div>`:''}
+      <div class="pv-note">${full.length} characters · ${fsegs} text${fsegs>1?'s':''}${first?' · their first text from us carries the company name and the opt-out line the carriers require':''}. Sent from the company number, so their reply lands back in this thread whoever answers.</div>`; }
+    return html; };
+  const bg=document.createElement('div'); bg.className='modal-bg'; const m=document.createElement('div'); m.className='modal wide'; bg.appendChild(m);
+  const paint=()=>{ m.innerHTML=`<h2>Before it goes</h2>${draw()}<div class="btns"><button onclick="this.closest('.modal-bg').remove()">Change it</button><button onclick="toast('A test copy went to your own address.')">Send a test to me</button><button class="primary" ${cur==='text'&&(c.optout||!c.phones.length)?'disabled':''} ${cur==='email'&&!c.emails.length?'disabled':''} onclick="replyKind='${cur}';this.closest('.modal-bg').remove();render();document.getElementById('box').value=window.__pvBody;sendReply('${c.id}')">Send as ${cur}</button></div>`; };
+  window.__pvBody=body; window.__pvSet=k=>{cur=k;paint();}; paint(); document.body.appendChild(bg); bg.onclick=e=>{ if(e.target===bg) bg.remove(); }; }
 
 // ---------- modal / sheet ----------
 function modal(title, body, onOk){ const bg=document.createElement('div'); bg.className='modal-bg'; bg.innerHTML=`<div class="modal"><h2>${title}</h2>${body}<div class="btns"><button id="mcancel">Not now</button><button class="primary" id="mok">Save</button></div></div>`; document.body.appendChild(bg); bg.querySelector('#mcancel').onclick=()=>bg.remove(); bg.querySelector('#mok').onclick=()=>{ if(onOk()!==false) bg.remove(); }; bg.onclick=e=>{ if(e.target===bg) bg.remove(); }; const f=bg.querySelector('input'); if(f) f.focus(); }
