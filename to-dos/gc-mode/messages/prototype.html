@@ -142,13 +142,13 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .hdr .row2 a.fact{color:inherit;text-decoration:none}
 .statepill{display:none;align-items:center;gap:4px;border:1px solid var(--accent);border-radius:999px;padding:3px 10px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:600;white-space:nowrap}
 .statepill.snoozed{border-color:var(--border);background:var(--chip);color:var(--text-muted)}.statepill.done{border-color:#bfe3c9;background:var(--ok-soft);color:var(--ok)}
-.stamps .ago{font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:999px;padding:0 5px;color:var(--text-muted);background:var(--surface);cursor:help;line-height:15px;display:inline-block;vertical-align:1px}
+.ago{font-size:11.5px;font-weight:700;color:var(--text-muted);cursor:help;display:inline-block}
+.stampsn .spill.last .ago{color:inherit}
 .stampsn{display:none;gap:6px;flex-wrap:wrap;align-items:center;width:100%;margin-top:2px}
 .stampsn .spill{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:2px 9px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);background:var(--surface);cursor:help}
 .stampsn .spill b{font-weight:700;color:var(--text)}
 .stampsn .spill.them.last{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}.stampsn .spill.them.last b{color:var(--ok)}
 .stampsn .spill.us.last{background:var(--accent-soft);border-color:#c5d8f5;color:var(--accent)}.stampsn .spill.us.last b{color:var(--accent)}
-.stampsn .spill .ago{margin-left:1px}
 .stamps .diff{font-size:11px;font-weight:700;border:1px solid var(--border);border-radius:999px;padding:0 6px;color:var(--text-muted);background:var(--surface);cursor:help;line-height:16px}
 .stamps .diff.behind{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}.stamps .diff.ahead{color:var(--ok);border-color:#bfe3c9;background:var(--ok-soft)}
 @container (max-width: 640px){
@@ -579,7 +579,7 @@ const fmt = ts => { const d=new Date(ts); const today=new Date(2026,9,2); const 
 const isToday = ts => new Date(ts).toDateString()===new Date(2026,9,2).toDateString();
 const fmtDay = ts => isToday(ts) ? `today · ${fmt(ts)}` : fmt(ts);
 // A stamp on the header's block also says how many days ago, as a small mark, (+6) (the owner, 2026-10-11); today needs no more.
-const agoDays = ts => { const n=dayDiff(NOW,ts); return n<=0 ? '' : ` <span class="ago">+${n}</span>`; };
+const agoDays = ts => { const n=dayDiff(NOW,ts); return n<=0 ? '' : ` <span class="ago">(+${n})</span>`; };
 const agoWordsOf = ts => { const n=dayDiff(NOW,ts); return n<=0 ? '' : n===1 ? ' · yesterday' : ` · ${n} days ago`; };
 // The stamp's compact form (the owner's pick 4, 2026-10-11): today keeps its time, an older one is its date with the +N mark.
 const stampShort = ts => isToday(ts) ? `today · ${fmt(ts)}` : new Date(ts).toLocaleDateString('en-US',{month:'short',day:'numeric'});
