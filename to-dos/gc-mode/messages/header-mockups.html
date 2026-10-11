@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thread header mock-ups</title>
+<meta name="description" content="Three ways to lay out a contact's thread header in Messages, drawn with the same person, for the owner to pick from.">
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:22px;margin:0 0 4px}
+.lead{color:var(--text-muted);margin:0 0 22px}
+section{margin:0 0 34px}
+section h2{font-size:17px;margin:0 0 4px}
+section .pitch{color:var(--text-muted);margin:0 0 10px;font-size:14px}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;max-width:900px}
+.tradeoff{font-size:13px;color:var(--text-muted);margin:8px 0 0;max-width:900px}
+.tradeoff b{color:var(--text)}
+button{font:inherit;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px;cursor:default}
+button.quiet{border-color:transparent;background:transparent;color:var(--accent);padding:4px 6px}
+button.small{padding:3px 8px;font-size:13px}
+button.ic{width:34px;height:34px;padding:0;border-radius:50%;font-size:15px}
+.avatar{width:44px;height:44px;border-radius:50%;background:#e6f1ff;color:#1f5fbf;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none}
+.avatar.sm{width:30px;height:30px;font-size:12px}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--chip);color:var(--text-muted);margin-right:4px}
+.pill.waiting{background:var(--warn-soft);color:var(--warn)}
+.pill.promise{background:#eef7ea;color:#1a7f3c}
+.haspill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:3px 10px 3px 4px;background:var(--surface);font-size:13px;white-space:nowrap}
+.haspill .av{width:22px;height:22px;border-radius:50%;background:var(--chip);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted)}
+.haspill .since{color:var(--text-muted);font-size:12px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;font-size:13px}
+.seg button{border:0;border-radius:0;padding:5px 11px}
+.seg button+button{border-left:1px solid var(--border)}
+.seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.switch{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--text-muted)}
+.switch i{width:30px;height:18px;border-radius:999px;background:#cfd5dd;position:relative;display:inline-block}
+.switch i::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff}
+.jobchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 10px;font-size:13px;background:var(--surface)}
+.jobchip .star{color:#c9a200}
+.jobchip .x{color:var(--text-muted)}
+.jobchip.ghost{border-style:dashed;color:var(--text-muted)}
+.note{color:var(--text-muted);font-size:13px}
+h3{font-size:12px;margin:12px 0 6px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+.divider{height:1px;background:var(--border);margin:12px 0}
+.msgsample{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px;max-width:560px}
+.msgsample .meta{font-size:12px;color:var(--text-muted)}
+/* A */
+.a .row1{display:flex;align-items:center;gap:12px}
+.a .row1 .name{font-size:20px;font-weight:700;flex:1;min-width:0}
+.a .row2{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:4px 0 0 56px;color:var(--text-muted);font-size:14px}
+.a .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--border)}
+.a .toolbar .grow{flex:1}
+.a .jobs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:10px}
+/* B */
+.b .top{display:flex;gap:14px;align-items:flex-start}
+.b .who{flex:1;min-width:0}
+.b .who .name{font-size:20px;font-weight:700}
+.b .who .co{color:var(--text-muted);font-size:14px;margin-top:2px}
+.b .ways{display:flex;gap:6px;margin-top:8px;align-items:center}
+.b .ways .lbl{font-size:12px;color:var(--text-muted);margin-left:4px}
+.b .state{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
+.b .jobs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-top:6px}
+/* C */
+.c{display:grid;grid-template-columns:1fr 280px;gap:14px}
+.c .thread .bar{display:flex;align-items:center;gap:10px}
+.c .thread .bar .name{font-size:18px;font-weight:700;flex:1;min-width:0}
+.c .thread .bar .name small{display:block;font-size:13px;color:var(--text-muted);font-weight:400}
+.c .side{border-left:1px solid var(--border);padding-left:14px}
+.c .side dl{margin:0;font-size:13px}
+.c .side dt{color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-top:10px}
+.c .side dd{margin:3px 0 0}
+.c .side .jobrow{display:flex;align-items:center;gap:6px;padding:5px 0;border-top:1px solid var(--border);font-size:13px}
+.c .side .jobrow:first-of-type{border-top:0}
+.c .side .jobrow .star{color:#c9a200}
+.c .side .jobrow .nm{flex:1;min-width:0}
+.c .side .jobrow small{color:var(--text-muted);display:block}
+@media(max-width:760px){.c{grid-template-columns:1fr}.c .side{border-left:0;padding-left:0;border-top:1px solid var(--border);padding-top:10px}.a .row2{margin-left:0}.b .top{flex-direction:column}.b .state{align-items:flex-start}}
+.pick{background:#fff9d6;border:1px solid #e9d77a;border-radius:10px;padding:10px 12px;font-size:14px;max-width:900px}
+</style>
+</head>
+<body>
+<main>
+<h1>The thread header, three ways</h1>
+<p class="lead">Same person, same facts, same controls. What moves is where each thing sits and what a first glance reads. Pick a letter, or mix.</p>
+
+<section>
+<h2>A · Two lines and a toolbar</h2>
+<p class="pitch">The header is a name line and a facts line; every action sits on one toolbar under them; the jobs rail is a row of chips with no sentence under it.</p>
+<div class="frame a">
+  <div class="row1"><div class="avatar">PR</div><div class="name">Dr. Priya Raman</div><span class="haspill"><span class="av">R</span>Rosa has this <span class="since">· since Sat Sep 26</span></span></div>
+  <div class="row2"><span>Helotes Dental Office · customer</span><span>·</span><span>(210) 555-0144</span><span>·</span><span>priya@helotesdental.example</span><span class="pill waiting" style="margin-left:4px">waiting 6 d</span></div>
+  <div class="toolbar"><button>Call in Quo</button><button>Text</button><button>Email</button><span class="seg" style="margin-left:6px"><button class="on">Open</button><button>Snoozed</button><button>Done</button></span><button class="quiet">Mark STOP</button><span class="grow"></span><span class="switch"><i></i>Show all text</span></div>
+  <div class="jobs"><span class="note" style="margin-right:4px">Their jobs</span><span class="jobchip"><span class="star">★</span>Helotes Dental Office <span class="note">· buying out</span> <span class="x">⧉ ×</span></span><span class="jobchip ghost">+ add a job</span><span class="note" style="margin-left:auto">new messages go to ★ · drag a job onto a line to tie it</span></div>
+</div>
+<p class="tradeoff"><b>Reads:</b> who, then what to do, then where it lands. <b>Costs:</b> three rows tall before the first message; the hint about dragging is a quiet line at the right, easy to miss.</p>
+</section>
+
+<section>
+<h2>B · Facts at the left, state at the right</h2>
+<p class="pitch">The left is the person: name, company, and the three ways to reach them as round buttons. The right is the conversation's state, stacked: who has it, Open · Snoozed · Done, waiting since. The jobs rail sits under both, with the drag hint on hover only.</p>
+<div class="frame b">
+  <div class="top"><div class="avatar">PR</div>
+    <div class="who"><div class="name">Dr. Priya Raman</div><div class="co">Helotes Dental Office · customer</div>
+      <div class="ways"><button class="ic" title="Call in Quo · (210) 555-0144">☎</button><button class="ic" title="Text from the company number">✉</button><button class="ic" title="Email as Click Construction · priya@helotesdental.example">@</button><span class="lbl">call · text · email</span><button class="quiet small" style="margin-left:6px">Mark STOP</button></div></div>
+    <div class="state"><span class="haspill"><span class="av">R</span>Rosa has this <span class="since">· since Sat Sep 26</span></span><span class="seg"><button class="on">Open</button><button>Snoozed</button><button>Done</button></span><span class="pill waiting">waiting 6 d</span></div></div>
+  <div class="divider"></div>
+  <div class="jobs"><span class="note">Their jobs</span><span class="jobchip"><span class="star">★</span>Helotes Dental Office <span class="note">· buying out</span> <span class="x">⧉ ×</span></span><span class="jobchip ghost">+ add a job</span><span class="switch" style="margin-left:auto"><i></i>Show all text</span></div>
+</div>
+<p class="tradeoff"><b>Reads:</b> person left, state right, the way an inbox card reads; the number and the email become buttons instead of text. <b>Costs:</b> the phone number and address are one hover away rather than in plain sight; two columns stack on a phone.</p>
+</section>
+
+<section>
+<h2>C · A thin bar and a side panel</h2>
+<p class="pitch">The thread keeps only a thin bar: name, what they are, who has it, Open · Snoozed · Done. Everything else moves to a panel at the right, the way Intercom shows a person's details beside the conversation: how to reach them, their jobs as a list with the default starred and Open on each, since when they wait, their promise, and the Show all text switch. On a phone the panel folds under the bar.</p>
+<div class="frame c">
+  <div class="thread">
+    <div class="bar"><div class="avatar sm">PR</div><div class="name">Dr. Priya Raman<small>Helotes Dental Office · customer · waiting 6 d</small></div><span class="haspill"><span class="av">R</span>Rosa has this</span><span class="seg"><button class="on">Open</button><button>Snoozed</button><button>Done</button></span></div>
+    <div class="msgsample"><div class="meta">Text · Priya · Sat, Sep 26 · 2:14 PM · Helotes Dental Office</div>Thanks! Can you send me the start date when you have it?</div>
+    <div class="msgsample" style="background:#fff6c2;border-color:#e9d77a"><div class="meta">Note for the team · Rosa · Sat, Sep 26 · 2:30 PM</div>Start date waits on the Board's award of Plumbing. Tell her Monday.</div>
+  </div>
+  <div class="side">
+    <dl>
+      <dt>Reach her</dt><dd><button class="small">☎ Call in Quo</button> <button class="small">Text</button> <button class="small">Email</button><div class="note" style="margin-top:4px">(210) 555-0144 · priya@helotesdental.example</div><div style="margin-top:4px"><button class="quiet small" style="padding-left:0">Mark STOP</button></div></dd>
+      <dt>Who has it</dt><dd>Rosa, since Sat Sep 26, 2:30 PM <button class="quiet small">change</button></dd>
+      <dt>Her jobs</dt><dd>
+        <div class="jobrow"><span class="star">★</span><span class="nm">Helotes Dental Office<small>GC project · buying out · 2 messages</small></span><button class="small">Open</button></div>
+        <div class="jobrow"><span class="nm note">+ add a job</span></div>
+        <div class="note" style="margin-top:4px">New messages go to ★. Drag a job onto a line to tie it.</div></dd>
+      <dt>Promised</dt><dd class="note">nothing on the books</dd>
+      <dt>This thread</dt><dd><span class="switch"><i></i>Show all text</span></dd>
+    </dl>
+  </div>
+</div>
+<p class="tradeoff"><b>Reads:</b> the conversation starts almost at the top; everything about the person is beside it and never scrolls away. <b>Costs:</b> a narrower thread column at a desk; the side panel is another thing to build; on a phone it folds under the bar and the jobs rail is a tap away.</p>
+</section>
+
+<div class="pick"><b>My pick: C.</b> It is what Intercom and the CRMs do, it puts the first message at the top, and the panel is where the person's facts, jobs and promise belong. If C is too much for the first cut, B with the jobs rail under it is the nearest. A is the current header, tidied.</div>
+</main>
+</body>
+</html>
