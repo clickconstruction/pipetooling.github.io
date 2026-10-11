@@ -63,7 +63,8 @@ Each one is a button in the prototype; each becomes one press in the app.
 - **Answer**: text, email, or a note for the team (yellow). From the thread, Follow up or Customers.
 - **Call in Quo**: opens the call in Quo's app; the call comes back as a line with its recording,
   transcript and summary.
-- **Who has it**: a person pill on the row and the thread, not a menu (the owner, 2026-10-11): it reads
+- **Who has it**: a person pill in the top right corner of the thread and on the Follow up row, not a
+  menu (the owner, 2026-10-11): it reads
   *You have this*, *Rosa has this* or *Nobody has it · Take it*, with initials and since when. Pressing it
   lists the team with initials, what each does, how they are right now and how many conversations each
   holds; *I'll take it* first when it is not yours, then each teammate, then *Nobody*. A take or a
@@ -246,3 +247,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   right now, how many each holds, I'll take it, hand to, nobody; a hand-off writes a gray event line
   in the timeline; presence dots; the thread's Open · Snoozed · Done control beside the pill (Intercom's
   hints, the owner's ask).
+- **v1.14, 2026-10-11**: the *who has it* pill sits in the thread's top right corner, on the name row;
+  the other actions move to their own row under it.

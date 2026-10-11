@@ -48,7 +48,8 @@ h2{font-size:18px;margin:0 0 8px}
 h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
 .thread-head{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
 .thread-head .avatar{width:44px;height:44px;font-size:15px}
-.thread-head .actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.thread-head .actions{display:flex;gap:6px;flex-wrap:wrap;width:100%;margin-top:4px}
+.thread-head .corner{margin-left:auto;align-self:flex-start}
 .jobs-rail{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0}
 .jobchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:var(--surface);cursor:grab;user-select:none;font-size:13px}
 .jobchip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
@@ -388,10 +389,10 @@ function renderMessages(m){
   const cJobs = c.jobs.map(jobById);
   const lines = messages.filter(x=>x.c===c.id && (!jobFilter || x.job===jobFilter)).sort((a,b)=>a.at-b.at);
   th.innerHTML=`${narrow()?`<button class="quiet" onclick="openContact=null;render()">‹ Everyone</button>`:''}
-  <div class="thread-head"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div><h2>${esc(c.name)} ${c.optout?'<span class="pill stop">opted out</span>':''}</h2><div class="note">${esc(c.company||'')}${c.company?' · ':''}${esc(kindWord(c))}${c.phones.length?' · '+esc(c.phones.join(', ')):''}${c.emails.length?' · '+esc(c.emails.join(', ')):''}</div>
+  <div class="thread-head"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="flex:1;min-width:0"><h2>${esc(c.name)} ${c.optout?'<span class="pill stop">opted out</span>':''}</h2><div class="note">${esc(c.company||'')}${c.company?' · ':''}${esc(kindWord(c))}${c.phones.length?' · '+esc(c.phones.join(', ')):''}${c.emails.length?' · '+esc(c.emails.join(', ')):''}</div>
     <div style="margin-top:6px">${c.state==='waiting'?`<span class="pill waiting">${waitingSince(c)}</span>`:`<span class="pill done">answered</span>`}${c.promise?`<span class="pill promise">${esc(c.promise)}</span>`:''}</div></div>
+    <span class="whowrap corner">${hasPill(c)}</span>
     <div class="actions">${c.kind==='unknown'?`<button class="primary" onclick="whoIsThis('${c.id}')">Who is this?</button>`:''}<button onclick="toast('Opens the call in Quo\\'s app; it comes back as a line.')">Call in Quo</button>
-      <span class="whowrap">${hasPill(c)}</span>
       <span class="seg" title="Open: in Follow up. Snoozed: back Monday. Done: cleared; a new message from them reopens it."><button class="${c.state==='waiting'?'on':''}" onclick="setState('${c.id}','waiting')">Open</button><button class="${c.state==='snoozed'?'on':''}" onclick="remind('${c.id}')">Snoozed</button><button class="${c.state==='done'?'on':''}" onclick="setState('${c.id}','done')">Done</button></span>
       ${c.state!=='waiting'?`<button class="quiet" title="Demo: a new message from them reopens the row by itself" onclick="theyReply('${c.id}')">They text back (demo)</button>`:''}
       <button class="quiet" onclick="toggleOptout('${c.id}')">${c.optout?'Clear opt-out':'Mark STOP'}</button></div></div>
