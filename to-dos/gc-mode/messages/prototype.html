@@ -801,10 +801,9 @@ function owedPicker(cid, btn){ document.removeEventListener('click', outsideWho)
     [`Settle it, with a team note.`, `The row leaves Follow up.`, `settle('${cid}')`],
     [`Send ${first} ${esc(c.owe.what)}.`, `The text can settle it, or keep it on us.`, `replyKind='text';openThread('${cid}');document.getElementById('box')?.focus()`],
     [`Change what we owe, or the day.`, `It stays on us.`, `oweDialog('${cid}')`],
-    [`Put it off.`, `It comes back Monday.`, `remind('${cid}')`],
-    [`Leave it.`, `It stays on Follow up.`, ``]];
+    [`Put it off.`, `It comes back Monday.`, `remind('${cid}')`]];
   const pk=document.createElement('div'); pk.className='whopick'; pk.id='whopick'; pk.style.width='300px';
-  pk.innerHTML=`<div class="ph">We owe ${first} <b>${esc(c.owe.what)}</b>${c.owe.by?' by '+esc(c.owe.by):''}.</div>`+rows.map(([w,after,fn])=>`<div class="wrow" onclick="closeWho();${fn}"><span class="chk"></span><span class="wn"><b>${w}</b><small>${after}</small></span></div>`).join('');
+  pk.innerHTML=`<div class="ph">We owe ${first} <b>${esc(c.owe.what)}</b>${c.owe.by?' by '+esc(c.owe.by):''}. Marked by ${esc(c.owe.who)} · ${esc(c.owe.since)}.<br>It stays on Follow up until it is settled.</div>`+rows.map(([w,after,fn])=>`<div class="wrow" onclick="closeWho();${fn}"><span class="chk"></span><span class="wn"><b>${w}</b><small>${after}</small></span></div>`).join('');
   btn.parentElement.appendChild(pk); keepInside(pk); setTimeout(()=>document.addEventListener('click', outsideWho, {once:true}),0); }
 function outsideWho(e){ const pk=document.getElementById('whopick'); if(!pk) return; if(e.target.closest('.haspill')||e.target.closest('.whowrap>button')||e.target.closest('.statepill')||e.target.closest('.court.owed')) return; if(!pk.contains(e.target)) closeWho(); else setTimeout(()=>document.addEventListener('click', outsideWho, {once:true}),0); }
 function closeWho(){ document.getElementById('whopick')?.remove(); }
