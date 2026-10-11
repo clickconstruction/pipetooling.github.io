@@ -38,6 +38,10 @@ Tick **Flagged only** to see nothing but the flagged sessions. The big green but
 
 {{button:outline|Expand all}} opens every person and every week at once. You can read the sessions straight down. It turns into {{button:outline|Collapse all}} to fold them back. From People → Users, tapping a person's clock cell opens this window already pinned to them.
 
+## The sessions on the dispatch schedule
+
+Some sessions need no reading. Dispatch had that person on that job that day. The day's clocked hours land within an hour of the scheduled hours. Those rows carry the chip {{chip:blue|on the schedule}}. A row that was scheduled but clocked more than an hour off reads {{chip:yellow|off the schedule}}. Press {{button:green|Approve the N on the schedule}} at the top to approve the matching rows in one press. The rest stay for you to read. A long day, a near-zero session or a row with no job never matches.
+
 ## Approving
 
 Every Approve button says what it's about to do. It shows the count and the hours:
