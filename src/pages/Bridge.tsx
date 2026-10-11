@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useDashboardFinancials } from '../hooks/useDashboardFinancials'
 import { useToastContext } from '../contexts/ToastContext'
@@ -20,6 +20,10 @@ import { buildHeadline, cashLight, netPositionLight } from '../lib/bridge/headli
 import { loadMercuryCash, mercuryAccountsLine, type MercuryCash } from '../lib/bridge/mercuryCash'
 import { carryingDay, carryingSentence, lateWithinDays, receiptsConfidence, type ReceiptBasis } from '../lib/bridge/cashConfidence'
 import { BridgeCashConfidence } from '../components/bridge/BridgeCashConfidence'
+import { buildReadingGaps } from '../lib/bridge/readingGaps'
+import { BridgeReadingGaps } from '../components/bridge/BridgeReadingGaps'
+import { buildThisWeek } from '../lib/bridge/thisWeek'
+import { BridgeThisWeek } from '../components/bridge/BridgeThisWeek'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
@@ -388,6 +392,52 @@ export default function Bridge() {
   }, [data])
 
 
+  const typedDaysAgo = data?.cashSetting ? Math.round((Date.parse(`${data.todayYmd}T00:00:00Z`) - Date.parse(`${data.cashSetting.asOfYmd}T00:00:00Z`)) / 86_400_000) : null
+  const readingGaps = useMemo(() => {
+    if (!data) return []
+    const assumedHalfEarnedUsd = data.earned.assumedHalfJobs.reduce((s, id) => s + (data.earned.earnedByJob.get(id) ?? 0), 0)
+    const labelById = new Map(data.jobs.map((j) => [j.id, j.label]))
+    return buildReadingGaps({
+      pendingClosedHours: data.crew.pendingClosedHours,
+      pendingClosedSessions: data.crew.pendingClosedSessions,
+      headlineRecordedUsd: headline?.thisWeek.recordedUsd ?? null,
+      headlineApprovedUsd: headline?.thisWeek.approvedUsd ?? null,
+      bankUsd: bank?.usd ?? null,
+      typedRolledUsd: typedRolled,
+      typedLabel: data.cashSetting ? md(data.cashSetting.asOfYmd) : null,
+      typedDaysAgo,
+      assumedHalfJobs: data.earned.assumedHalfJobs.length,
+      assumedHalfEarnedUsd,
+      noContractJobs: data.earned.noRevenueJobs.map((id) => ({ id, label: labelById.get(id) ?? id })),
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      unlinkedCard: data.hygiene.unlinkedCard,
+      overheadPerDayUsd: profit?.speed.overheadPerDay ?? data.overheadPerDayBaseline,
+      bidsNoValue: vectorInputs ? vectorInputs.bidsSent.filter((b) => b.ymd >= data.windowStart && b.usd <= 0).length : 0,
+    })
+  }, [data, headline, bank, typedRolled, typedDaysAgo, profit, vectorInputs])
+
+  const thisWeek = useMemo(() => {
+    if (!data) return []
+    const labelById = new Map(data.jobs.map((j) => [j.id, j.label]))
+    const late = receipts.filter((r) => r.basis === 'late')
+    return buildThisWeek({
+      unbilledUsd: fin.data?.unbilled.total ?? 0,
+      unbilledCount: fin.data?.unbilled.count ?? 0,
+      lateReceipts: { count: late.length, usd: late.reduce((sum, r) => sum + r.usd, 0) },
+      pendingClosedHours: data.crew.pendingClosedHours,
+      pendingClosedSessions: data.crew.pendingClosedSessions,
+      payrollWeeklyEstUsd: data.payrollWeeklyEstUsd,
+      noContractJobs: data.earned.noRevenueJobs.map((id) => ({ id, label: labelById.get(id) ?? id })),
+      assumedHalfJobs: data.earned.assumedHalfJobs.length,
+      assumedHalfEarnedUsd: data.earned.assumedHalfJobs.reduce((sum, id) => sum + (data.earned.earnedByJob.get(id) ?? 0), 0),
+      fieldEarnedPerHour: data.totals.earnedUsd > 0 && data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      contributionMargin: profit?.contributionMargin ?? null,
+      overheadPerDayUsd: profit?.speed.overheadPerDay ?? 0,
+      bidsDue: data.levers.bidsDue,
+      dayLabel: md,
+    })
+  }, [data, fin.data, receipts, profit])
+
   if (authLoading) return null
   if (role !== 'dev') return <Navigate to="/dashboard" replace />
 
@@ -401,7 +451,6 @@ export default function Bridge() {
       ? `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — stays above your ${shortK(forecast.floorUsd)} floor`
       : `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — ${shortK(forecast.floorUsd - forecast.lowest.cashUsd)} under your ${shortK(forecast.floorUsd)} floor · ${forecast.daysUnderFloor} day${forecast.daysUnderFloor === 1 ? '' : 's'} below it`
     : ''
-  const typedDaysAgo = data?.cashSetting ? Math.round((Date.parse(`${data.todayYmd}T00:00:00Z`) - Date.parse(`${data.cashSetting.asOfYmd}T00:00:00Z`)) / 86_400_000) : null
   const netLight = netPositionLight(netToday != null && netStart != null ? { deltaUsd: netToday - netStart, todayUsd: netToday, startLabel: windowStartLabel, paperProfitUsd: truth?.paper.profitUsd ?? null, billingLagUsd: truth?.billingLagUsd ?? null } : null)
   const cashLightRead = cashLight(forecast && data ? { lowestUsd: forecast.lowest.cashUsd, lowestLabel: md(forecast.lowest.ymd), floorUsd: forecast.floorUsd, clearsFloor: forecast.clearsFloor, daysUnderFloor: forecast.daysUnderFloor, typedLabel: bank ? null : data.cashSetting ? md(data.cashSetting.asOfYmd) : null, typedDaysAgo: bank ? null : typedDaysAgo, synced: !!bank } : null)
   const bankReadAt = bank ? new Date(bank.readAtIso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
@@ -424,6 +473,12 @@ export default function Bridge() {
         <>
           {/* The top line (v2.5216): contribution per week, the two constraints as lights */}
           <BridgeHeadline headline={headline} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
+
+          {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
+            <BridgeThisWeek moves={thisWeek} />
+            <BridgeReadingGaps gaps={readingGaps} />
+          </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
             <div style={panel}>
@@ -622,64 +677,7 @@ export default function Bridge() {
                 )}
               </ul>
             </div>
-            <div style={panel}>
-              <div style={label}>What would change it</div>
-              <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
-                {fin.data && fin.data.unbilled.total > 0 && (
-                  <li style={listRow}>
-                    <span>
-                      Bill the finished work<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{shortK(fin.data.unbilled.total)} not yet billed — the biggest lever on both lines · <Link to="/jobs?tab=stages">Open Stages</Link></span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>+ receipts</span>
-                  </li>
-                )}
-                {data.crew.pendingClosedHours > 0 && (
-                  <li style={listRow}>
-                    <span>
-                      Approve the {hrs(data.crew.pendingClosedHours)} pending<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>the profit rate reads low until then · <Link to="/people?tab=hours">Open approvals</Link></span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>accuracy</span>
-                  </li>
-                )}
-                <li style={listRow}>
-                  <span>
-                    Cut overhead 10%<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>of {money(speed.overheadPerDay)}/day</span>
-                  </span>
-                  <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>+{money(speed.overheadPerDay * 0.1)}/day</span>
-                </li>
-                {data.totals.earnedUsd > 0 && data.crew.fieldHoursWindow > 0 && profit.contributionMargin != null && (
-                  <li style={listRow}>
-                    <span>
-                      One more field day a week<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>field earned {money(data.totals.earnedUsd / data.crew.fieldHoursWindow)} per approved hour; {Math.round(profit.contributionMargin * 100)}% of it is margin</span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>+{money(((data.totals.earnedUsd / data.crew.fieldHoursWindow) * profit.contributionMargin * 8) / 7)}/day</span>
-                  </li>
-                )}
-                {data.levers.bidsDue.slice(0, 3).map((b) => (
-                  <li key={b.id} style={listRow}>
-                    <span>
-                      Win {b.label}<span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{money(b.bidValueUsd)} · due {md(b.dueYmd)}</span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>
-                      {profit.contributionMargin == null ? '—' : `+${money((b.bidValueUsd * profit.contributionMargin) / 60)}/day over 60d`}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
           </div>
-
-          {(data.crew.pendingClosedHours > 0 || (data.hygiene.unattributedNoncard ?? 0) > 0 || (data.hygiene.unlinkedCard ?? 0) > 0 || data.earned.assumedHalfJobs.length > 0 || data.earned.noRevenueJobs.length > 0 || (data.cashSetting && !bank)) && (
-            <div style={{ marginTop: '0.6rem', border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', borderRadius: 8, padding: '0.5rem 0.9rem', fontSize: '0.8rem', color: 'var(--text-amber-900)', display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <strong style={{ letterSpacing: '0.12em', fontSize: '0.68rem' }}>DATA GAPS</strong>
-              {data.crew.pendingClosedHours > 0 && <span>{hrs(data.crew.pendingClosedHours)} unapproved</span>}
-              {(data.hygiene.unattributedNoncard ?? 0) > 0 && <span>{data.hygiene.unattributedNoncard} bank transfers unsorted</span>}
-              {(data.hygiene.unlinkedCard ?? 0) > 0 && <span>{data.hygiene.unlinkedCard} card purchases unsorted</span>}
-              {data.earned.assumedHalfJobs.length > 0 && <span>{data.earned.assumedHalfJobs.length} open job{data.earned.assumedHalfJobs.length === 1 ? '' : 's'} with no % complete — assumed half done</span>}
-              {data.earned.noRevenueJobs.length > 0 && <span>{data.earned.noRevenueJobs.length} worked job{data.earned.noRevenueJobs.length === 1 ? '' : 's'} with no contract $ — earning $0</span>}
-              {data.cashSetting && !bank && <span>cash on hand is typed ({md(data.cashSetting.asOfYmd)}), not read from the bank</span>}
-            </div>
-          )}
 
           <p style={{ ...det, marginTop: '0.8rem', maxWidth: '92ch' }}>
             <b>How it's counted:</b> profit rate = earned (each approved field hour × its job's contract ÷ expected hours) − job costs (field labor, purchases and supply invoices allocated to jobs, sub sheets) − overhead (the People → Overhead pool). Net position = cash + owed to you − owed by you, with history rebuilt from bank flows, invoices sent, payments received, and supply invoices dated and paid. Cash forecast = cash today, bills on due dates, receipts on expected dates, office parts as a daily drain. Window {data.windowStart} → {data.todayYmd}: earned {shortK(data.totals.earnedUsd)} · field labor {shortK(data.totals.fieldLaborUsd)} · materials {shortK(data.totals.materialsUsd)} · subs {shortK(data.totals.subLaborUsd)} · overhead {shortK(data.totals.overheadUsd)}.
@@ -746,19 +744,6 @@ function TruthCheckPanel({ truth, windowStartLabel }: { truth: TruthCheck; windo
           </div>
         </div>
       </div>
-      {truth.signals.length > 0 && (
-        <ul style={{ listStyle: 'none', margin: '0.5rem 0 0', padding: 0 }}>
-          {truth.signals.map((s) => (
-            <li key={s.key} style={listRow}>
-              <span>
-                {s.label}
-                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{s.detail}</span>
-              </span>
-              <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.78rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{s.usd != null ? `≈ ${shortK(s.usd)}` : `${s.count.toLocaleString('en-US')} rows`}</span>
-            </li>
-          ))}
-        </ul>
-      )}
       <div style={{ ...det, marginTop: '0.4rem' }}>
         Net side = invoices sent − (payments received − bank net flow + supply invoices dated − supply invoices paid), the flows the line above walks. Money in that isn't a customer payment (a loan, an owner deposit) reads here as a negative cost; payroll and sub labor count when the bank pays them, not when the hours are worked.
       </div>
