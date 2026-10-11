@@ -342,3 +342,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.25, later**: the wrapper's modifier class collided with the chart's own class and stacked the
   columns; renamed. The panel and the rail now stick to the top of the window while the thread scrolls.
   Checked with headless screenshots at 1400 px, open and folded.
+- **v1.26, 2026-10-11**: at a window between 760 and 1040 px the people list folds itself into the
+  rail while the flow is open, so the panel keeps its column at the right (the owner's screenshot showed
+  it under the thread at about 1000 px); only under 760 px does the panel go below the thread.

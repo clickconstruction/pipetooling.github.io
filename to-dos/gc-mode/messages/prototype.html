@@ -29,7 +29,8 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .two.collapsed{grid-template-columns:64px minmax(0,1fr)}
 .two.with-flow{grid-template-columns:340px minmax(0,1fr) 300px}
 .two.with-flow.collapsed{grid-template-columns:64px minmax(0,1fr) 300px}
-@media(max-width:1000px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:minmax(0,1fr)}.two.with-flow .list,.two.with-flow .rail{display:none}}
+@media(max-width:1040px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:64px minmax(0,1fr) 280px}}
+@media(max-width:760px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:minmax(0,1fr)}.two.with-flow .list,.two.with-flow .rail{display:none}.fpanel{position:static;max-height:none}}
 .fpanel{background:#fbfbfc;align-self:start;position:sticky;top:58px;max-height:calc(100vh - 74px);overflow:auto}
 .rail{align-self:start;position:sticky;top:58px}
 .fpanel .ph2{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
@@ -520,12 +521,13 @@ function renderFollowup(m){
 }
 
 function renderMessages(m){
-  const wrap=document.createElement('div'); wrap.className='two'+(listCollapsed&&!narrow()?' collapsed':'')+(flowOpen&&openContact?' with-flow':'');
+  const autoRail = flowOpen && openContact && window.innerWidth<=1040 && window.innerWidth>760;
+  const wrap=document.createElement('div'); wrap.className='two'+((listCollapsed||autoRail)&&!narrow()?' collapsed':'')+(flowOpen&&openContact?' with-flow':'');
   // list
   const list=document.createElement('div'); list.className='card list'+(narrow()&&openContact?' hidden-narrow':'');
-  if(listCollapsed&&!narrow()){ const filt0 = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
+  if((listCollapsed||autoRail)&&!narrow()){ const filt0 = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
     const rows0 = contacts.filter(filt0).sort((a,b)=>{ const w=(b.state==='waiting')-(a.state==='waiting'); return w|| (lastMsg(b)?.at||0)-(lastMsg(a)?.at||0); });
-    list.className='card rail'; list.innerHTML=`<button class="collapse" data-tip="Show the list|Opens the people list again.|Your choice is kept on this computer." onclick="setCollapsed(false)">›</button>${rows0.map(c=>`<div class="avatar ${kindClass(c)} ${c.id===openContact?'on':''}" data-tip="${esc(c.name)}|${esc(c.company||kindWord(c))}|${esc(courtOf(c).word)}" onclick="openThread('${c.id}')">${initials(c)}<span class="cd ${courtOf(c).side}"></span></div>`).join('')}`;
+    list.className='card rail'; list.innerHTML=`<button class="collapse" data-tip="${autoRail&&!listCollapsed?'The list is folded while the flow is open|At this window width the flow panel needs the room.|Fold the flow to get the list back, or widen the window.':'Show the list|Opens the people list again.|Your choice is kept on this computer.'}" onclick="${autoRail&&!listCollapsed?'flowOpen=false;render()':'setCollapsed(false)'}">›</button>${rows0.map(c=>`<div class="avatar ${kindClass(c)} ${c.id===openContact?'on':''}" data-tip="${esc(c.name)}|${esc(c.company||kindWord(c))}|${esc(courtOf(c).word)}" onclick="openThread('${c.id}')">${initials(c)}<span class="cd ${courtOf(c).side}"></span></div>`).join('')}`;
     wrap.appendChild(list); }
   else {
   const filt = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
