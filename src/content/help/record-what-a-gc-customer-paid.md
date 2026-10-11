@@ -30,7 +30,7 @@ The bill then shows what they paid of what it asks.
 
 1. Press {{button:outline|They said when…}}.
 2. Pick the day they will pay by.
-3. Pick how they told us. Type who said it.
+3. Pick how they told us. In **What they said**, type who said it and what they said.
 4. Press {{button:blue|Record it}}.
 
 Their newest day is the day the bill is due. A day they missed stays on the record.

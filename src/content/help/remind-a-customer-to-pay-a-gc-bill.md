@@ -21,7 +21,7 @@ Before a bill is due, the app can tell the customer by itself. See [the reminder
 6. Read the email as the customer will get it.
 7. Press {{button:blue|Send the reminder}}.
 
-The email comes from Click Construction. The email says what is still open and the day to pay by. The email asks them to reply with the day they will pay. A customer with a portal link gets the link too. The project manager gets their replies.
+The email comes from Click Construction. It greets their contact by first name. With no contact on their record, it starts with *Hello,*. The email says what is still open and the day to pay by. The email asks them to reply with the day they will pay. A customer with a portal link gets the link too. The project manager gets their replies.
 
 ## After it goes
 

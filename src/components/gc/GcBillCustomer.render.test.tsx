@@ -265,6 +265,26 @@ describe('GcBillCustomerWindow', () => {
     expect(writes.onRemind).toHaveBeenCalledWith(last.number, '2026-10-09', 'Our lien deadline is close.')
   })
 
+  it('a bill that turns late while the window is open still starts its pay-by day five days out (the walk\'s step 8)', () => {
+    const last = lastSent()
+    const lay = (lastApp: Partial<OwnerPayAppSent>) => {
+      const state = initialGcState()
+      const fairOaks = state.projects.find((p) => p.id === 'fairoaksd')!
+      const apps = fairOaks.ownerBilling!.payApps!
+      const project: GcProject = { ...fairOaks, ownerBilling: { ...fairOaks.ownerBilling!, payApps: [...apps.slice(0, -1), { ...apps[apps.length - 1]!, ...lastApp }] } }
+      const laid = { ...state, projects: state.projects.map((p) => (p.id === project.id ? project : p)) }
+      const writes = { onSend: vi.fn(), onCertify: vi.fn(), onSetRetainage: vi.fn(), onDownload: vi.fn(), onWaiver: vi.fn(), onPaid: vi.fn(), onPayPart: vi.fn(), onPromise: vi.fn(), onUnconditional: vi.fn(), onRemind: vi.fn(), onSetPayDays: vi.fn(), onSetInterest: vi.fn(), onBillInterest: vi.fn(), onSetLateFee: vi.fn(), onAccept: vi.fn(), onSendFinal: vi.fn(), onCardUndo: vi.fn() }
+      return <GcBillCustomerWindow state={laid} project={project} today="2026-10-26" writes={writes} onClose={() => undefined} />
+    }
+    // Certified and part paid, with their word still ahead: not late, so no reminder yet.
+    const { rerender } = render(lay({ ...partPaid(last), promises: [{ by: '2026-10-20', madeOn: '2026-09-28', note: '', who: 'office' }] }))
+    expect(screen.queryByRole('button', { name: 'Remind them to pay' })).toBeNull()
+    // Their word moves to a day gone by: it is late now, with the window still open.
+    rerender(lay(partPaid(last)))
+    fireEvent.click(screen.getByRole('button', { name: 'Remind them to pay' }))
+    expect((screen.getByLabelText(`The day to pay pay application ${last.number} by`) as HTMLInputElement).value).toBe('2026-10-07')
+  })
+
   it('says when a reminder went, and when its email did not', () => {
     const last = lastSent()
     setup({}, [], { ...partPaid(last), reminders: [{ on: '2026-10-01', by: '2026-10-06', note: '', emailed: false }] })

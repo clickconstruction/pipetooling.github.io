@@ -35,7 +35,7 @@ import {
   type OwnerPayApp,
 } from './ownerBilling'
 import { OWNER_INTEREST_DEFAULT_PCT, ownerInterestFrom, ownerInterestOnBill, ownerInterestWords } from './ownerBillingInterest'
-import { customerGreeting, latePayApps, PAY_REMINDER_DAYS, payReminderEmail, payReminderSentWords, payReminderStep } from './ownerBillingRemind'
+import { customerGreeting, helloLine, latePayApps, PAY_REMINDER_DAYS, payReminderEmail, payReminderSentWords, payReminderStep } from './ownerBillingRemind'
 import { initialGcState } from './schedule/testState'
 import type { ChangeOrder, GcState } from './types'
 import { money } from './words'
@@ -259,7 +259,14 @@ describe('Billing the customer on the made-up jobs, Fri Oct 2', () => {
 
   it('greets a contact by first name, a titled one by title and last name', () => {
     const s = initialGcState()
-    expect([customerGreeting(s.customers.find((c) => c.id === 'raman'), 'x'), customerGreeting(s.customers.find((c) => c.id === 'cibolo'), 'x'), customerGreeting(undefined, 'Cibolo Creek Partners')]).toEqual(['Dr. Raman', 'Elena', 'Cibolo'])
+    expect([customerGreeting(s.customers.find((c) => c.id === 'raman')), customerGreeting(s.customers.find((c) => c.id === 'cibolo'))]).toEqual(['Dr. Raman', 'Elena'])
+  })
+
+  it('with no contact it greets no one by name, never the company\'s first word (the walk\'s step 8)', () => {
+    const s = initialGcState()
+    const cibolo = s.customers.find((c) => c.id === 'cibolo')!
+    expect([customerGreeting({ ...cibolo, contact: '' }), customerGreeting({ ...cibolo, contact: '  ' }), customerGreeting(undefined), customerGreeting({ ...cibolo, contact: 'Dr.' })]).toEqual(['', '', '', 'Dr.'])
+    expect([helloLine('Elena'), helloLine('Dr. Raman'), helloLine('')]).toEqual(['Hello Elena,', 'Hello Dr. Raman,', 'Hello,'])
   })
 
   it('writes the reminder the customer reads', () => {
