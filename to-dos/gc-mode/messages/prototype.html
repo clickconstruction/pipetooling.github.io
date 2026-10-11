@@ -29,10 +29,26 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .two.collapsed{grid-template-columns:64px minmax(0,1fr)}
 .two.with-flow{grid-template-columns:340px minmax(0,1fr) 300px}
 .two.with-flow.collapsed{grid-template-columns:64px minmax(0,1fr) 300px}
+.two.with-frail{grid-template-columns:340px minmax(0,1fr) 64px}
+.two.with-frail.collapsed{grid-template-columns:64px minmax(0,1fr) 64px}
 @media(max-width:1040px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:64px minmax(0,1fr) 280px}}
 @media(max-width:760px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:minmax(0,1fr)}.two.with-flow .list,.two.with-flow .rail{display:none}.fpanel{position:static;max-height:none}}
 .fpanel{background:#fbfbfc;align-self:start;position:sticky;top:58px;max-height:calc(100vh - 74px);overflow:auto}
 .rail{align-self:start;position:sticky;top:58px}
+.frail{align-self:start;position:sticky;top:58px;display:flex;flex-direction:column;align-items:center;padding:8px 4px 10px;gap:0}
+.frail .open{font-size:14px;color:var(--accent);border:1px solid var(--border);border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface);margin-bottom:6px;padding:0;cursor:pointer}
+.frail .lane{font-size:9px;letter-spacing:.6px;color:var(--text-muted);text-transform:uppercase;margin:6px 0 2px}
+.frail .stepw{display:flex;flex-direction:column;align-items:center}
+.frail .st{width:16px;height:16px;border-radius:50%;border:2px solid #cfd5dd;background:var(--surface);box-sizing:border-box;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;color:var(--text-muted)}
+.frail .st.done{background:var(--ok);border-color:var(--ok);color:#fff}
+.frail .st.now{border-color:var(--warn);background:var(--warn-soft);width:20px;height:20px}
+.frail .st.now::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--warn)}
+.frail .st.now.them{border-color:var(--ok);background:var(--ok-soft)}.frail .st.now.them::after{background:var(--ok)}
+.frail .st.dec{border-radius:4px}
+.frail .ln{width:2px;height:10px;background:var(--border)}.frail .ln.done{background:var(--ok)}
+.frail .tag{font-size:9px;font-weight:700;padding:0 5px;border-radius:999px;margin-top:3px}
+.frail .tag.us{background:var(--warn-soft);color:var(--warn)}.frail .tag.them{background:var(--ok-soft);color:var(--ok)}.frail .tag.both{background:var(--bg);color:var(--text-muted)}
+.frail .cnt{font-size:11px;font-weight:700;color:var(--text);margin-top:8px}
 .fpanel .ph2{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .fpanel .ph2 b{font-size:13px}
 .flow{display:flex;flex-direction:column;gap:6px;font-size:12px}
@@ -77,7 +93,8 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .list .lhead input{flex:1;min-width:0}
 .collapse{width:30px;height:30px;padding:0;border-radius:50%;font-size:15px;flex:none}
 .two>*{min-width:0}
-@media(max-width:860px){.two{grid-template-columns:1fr}.list.hidden-narrow{display:none}}
+@media(max-width:860px){.two{grid-template-columns:1fr}.list.hidden-narrow{display:none}.two.with-frail{grid-template-columns:minmax(0,1fr) 64px}}
+@media(max-width:760px){.two.with-frail,.two.with-frail.collapsed{grid-template-columns:minmax(0,1fr)}.frail{order:-1;position:static;flex-direction:row;flex-wrap:wrap;justify-content:center;padding:8px 10px;gap:0}.frail .lane{writing-mode:horizontal-tb;margin:0 8px 0 4px}.frail .ln{width:10px;height:2px}.frail .cnt{margin:0 0 0 8px}.frail .open{margin:0 8px 0 0}.frail .stepw{flex-direction:row}}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
 .list .row{display:flex;gap:10px;padding:10px;border-top:1px solid var(--border);cursor:pointer;align-items:flex-start}
 .list .row:first-child{border-top:0}
@@ -110,9 +127,9 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .court.ours{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}.court.ours i{background:var(--warn)}
 .court.theirs{color:#1a7f3c;border-color:#bfe3c9;background:#eef7ea}.court.theirs i{background:#1a7f3c}
 .court.none{color:var(--text-muted)}
-.stamps{display:inline-flex;gap:10px;font-size:12px;color:var(--text-muted);flex-wrap:wrap}
-.stamps b{font-weight:600;color:var(--text)}
-.hdr .row3{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:6px 0 0}
+.stamps{margin-left:auto;display:grid;grid-template-columns:auto auto;column-gap:8px;row-gap:1px;font-size:12px;color:var(--text-muted);text-align:right;flex-shrink:0;align-self:flex-start}
+.stamps b{font-weight:600;color:var(--text)}.stamps span{white-space:nowrap}
+.hdr .row3{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin:6px 0 0}.hdr .row3 .court,.hdr .row3>button{margin-top:1px}
 
 .hdr .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0;padding-top:8px;border-top:1px solid var(--border)}
 .hdr .toolbar .grow{flex:1}
@@ -464,7 +481,8 @@ let dragJob = null;
 const showAll = {};         // contact id -> true when 'Show all text' is on for that thread
 const highlights = {};      // message id -> [{text, by, at}]
 let selectedInWindow = '';
-let flowOpen = false; // the right panel, folded by default (the owner, 2026-10-11)
+let flowOpen = false; try{ flowOpen = localStorage.getItem('msgFlowOpen')==='1'; }catch(e){} // the right panel; folded to its rail by default (the owner, 2026-10-11), the choice kept like the list's
+function setFlow(v, stepId){ flowOpen=v; try{ localStorage.setItem('msgFlowOpen', v?'1':'0'); }catch(e){} render(); if(v&&stepId) setTimeout(()=>{ const el=document.getElementById('fstep-'+stepId); if(el){ el.scrollIntoView({block:'center'}); el.classList.add('flash'); } },0); }
 let flowTab = 'trade';
 let listCollapsed = false; try{ listCollapsed = localStorage.getItem('msgListCollapsed')==='1'; }catch(e){}
 function setCollapsed(v){ listCollapsed=v; try{ localStorage.setItem('msgListCollapsed', v?'1':'0'); }catch(e){} render(); }
@@ -477,7 +495,7 @@ const lastOut = c => [...messages].filter(m=>m.c===c.id&&m.dir==='out').sort((a,
 const agoWords = ts => { const mins=Math.max(1,Math.round((NOW-ts)/60000)); if(mins<60) return `${mins} min`; if(mins<60*24) return `${Math.round(mins/60)} h`; return `${Math.round(mins/1440)} d`; };
 const lastInOnly = c => [...messages].filter(m=>m.c===c.id&&m.dir==='in').sort((a,b)=>b.at-a.at)[0];
 const courtOf = c => { const i=lastInOnly(c), o=lastOut(c); if(c.optout) return {side:'none', word:'opted out'}; if(c.owe) return {side:'ours', word:`Our court · we owe ${c.owe.what}${c.owe.by?' · by '+c.owe.by:''}`, owe:true}; if(!i&&!o) return {side:'none', word:'no messages yet'}; if(!o || (i && i.at>o.at)) return {side:'ours', word:`Our court · ${agoWords(i.at)}`, since:i.at}; return {side:'theirs', word:c.promise?`Their court · ${c.promise.replace('promised ','until ')}`:`Their court · ${agoWords(o.at)}`, since:o.at}; };
-const courtStrip = c => { const k=courtOf(c), i=lastInOnly(c), o=lastOut(c); return `<span class="court ${k.side}" data-tip="${k.owe?'Our court, we owe them|Someone marked that we still owe them something, so the ball stays with us even after we write.|It clears when someone presses Settled, or sends a message marked as settling it. It shows under We owe them in Follow up.':k.side==='ours'?'Our court|The last word was theirs, so the next move is ours.|It counts from their last message. A reply, an email or a call from us puts it in their court, unless we mark that we still owe them something.':k.side==='theirs'?'Their court|The last word was ours, so we are waiting on them.|It counts from our last message, or runs until the day they promised. Their next message puts it back in our court.':'No court|Nothing is owed either way.|'}"><i></i>${esc(k.word)}</span>${k.owe?`<button class="small" data-tip="Settled|Opens a note for the team at the bottom: how or why it was settled.|Adding the note clears what we owed; the ball goes by whose word was last, and the row leaves We owe them." onclick="settle('${c.id}')">Settled</button>`:`<button class="quiet small" data-tip="We owe them…|Mark something we still have to do for them, with a day.|The ball stays in our court after we write, and Follow up lists it under We owe them." onclick="oweDialog('${c.id}')">We owe them…</button>`}<span class="stamps"><span><b>Them</b> ${i?`${chWord(i).toLowerCase()} · ${fmt(i.at)}`:'nothing yet'}</span><span><b>Us</b> ${o?`${chWord(o).toLowerCase()} · ${fmt(o.at)}`:'nothing yet'}</span></span>`; };
+const courtStrip = c => { const k=courtOf(c), i=lastInOnly(c), o=lastOut(c); return `<span class="court ${k.side}" data-tip="${k.owe?'Our court, we owe them|Someone marked that we still owe them something, so the ball stays with us even after we write.|It clears when someone presses Settled, or sends a message marked as settling it. It shows under We owe them in Follow up.':k.side==='ours'?'Our court|The last word was theirs, so the next move is ours.|It counts from their last message. A reply, an email or a call from us puts it in their court, unless we mark that we still owe them something.':k.side==='theirs'?'Their court|The last word was ours, so we are waiting on them.|It counts from our last message, or runs until the day they promised. Their next message puts it back in our court.':'No court|Nothing is owed either way.|'}"><i></i>${esc(k.word)}</span>${k.owe?`<button class="small" data-tip="Settled|Opens a note for the team at the bottom: how or why it was settled.|Adding the note clears what we owed; the ball goes by whose word was last, and the row leaves We owe them." onclick="settle('${c.id}')">Settled</button>`:`<button class="quiet small" data-tip="We owe them…|Mark something we still have to do for them, with a day.|The ball stays in our court after we write, and Follow up lists it under We owe them." onclick="oweDialog('${c.id}')">We owe them…</button>`}<span class="stamps" data-tip="Them and Us|Their last word to us, and our last word to them.|The court counts from whichever is newer, unless we owe them something."><b>Them</b><span>${i?`${chWord(i).toLowerCase()} · ${fmt(i.at)}`:'nothing yet'}</span><b>Us</b><span>${o?`${chWord(o).toLowerCase()} · ${fmt(o.at)}`:'nothing yet'}</span></span>`; };
 const courtShort = c => { const k=courtOf(c); if(k.owe) return {side:k.side, word:'Our · we owe', title:k.word}; return {side:k.side, word:k.word.replace(/^Our court/,'Our').replace(/^Their court/,'Their'), title:k.word}; };
 const snippetOf = m => m.ch==='email' ? (m.subject||m.text.split('\n')[0]) : m.ch==='missed' ? 'no voicemail' : m.text;
 const waitingSince = c => { const last=[...messages].filter(m=>m.c===c.id&&m.dir==='in').sort((a,b)=>b.at-a.at)[0]; if(!last) return ''; const mins=Math.max(1,Math.round((NOW-last.at)/60000)); if(mins<60) return `waiting ${mins} min`; if(mins<60*24) return `waiting ${Math.round(mins/60)} h`; return `waiting ${Math.round(mins/1440)} d`; };
@@ -529,12 +547,12 @@ function renderFollowup(m){
 
 function renderMessages(m){
   const autoRail = flowOpen && openContact && window.innerWidth<=1040 && window.innerWidth>760;
-  const wrap=document.createElement('div'); wrap.className='two'+((listCollapsed||autoRail)&&!narrow()?' collapsed':'')+(flowOpen&&openContact?' with-flow':'');
+  const wrap=document.createElement('div'); wrap.className='two'+((listCollapsed||autoRail)&&!narrow()?' collapsed':'')+(flowOpen&&openContact?' with-flow':openContact?' with-frail':'');
   // list
   const list=document.createElement('div'); list.className='card list'+(narrow()&&openContact?' hidden-narrow':'');
   if((listCollapsed||autoRail)&&!narrow()){ const filt0 = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
     const rows0 = contacts.filter(filt0).sort((a,b)=>{ const w=(b.state==='waiting')-(a.state==='waiting'); return w|| (lastMsg(b)?.at||0)-(lastMsg(a)?.at||0); });
-    list.className='card rail'; list.innerHTML=`<button class="collapse" data-tip="${autoRail&&!listCollapsed?'The list is folded while the flow is open|At this window width the flow panel needs the room.|Fold the flow to get the list back, or widen the window.':'Show the list|Opens the people list again.|Your choice is kept on this computer.'}" onclick="${autoRail&&!listCollapsed?'flowOpen=false;render()':'setCollapsed(false)'}">›</button>${rows0.map(c=>`<div class="avatar ${kindClass(c)} ${c.id===openContact?'on':''}" data-tip="${esc(c.name)}|${esc(c.company||kindWord(c))}|${esc(courtOf(c).word)}" onclick="openThread('${c.id}')">${initials(c)}<span class="cd ${courtOf(c).side}"></span></div>`).join('')}`;
+    list.className='card rail'; list.innerHTML=`<button class="collapse" data-tip="${autoRail&&!listCollapsed?'The list is folded while the flow is open|At this window width the flow panel needs the room.|Fold the flow to get the list back, or widen the window.':'Show the list|Opens the people list again.|Your choice is kept on this computer.'}" onclick="${autoRail&&!listCollapsed?'setFlow(false)':'setCollapsed(false)'}">›</button>${rows0.map(c=>`<div class="avatar ${kindClass(c)} ${c.id===openContact?'on':''}" data-tip="${esc(c.name)}|${esc(c.company||kindWord(c))}|${esc(courtOf(c).word)}" onclick="openThread('${c.id}')">${initials(c)}<span class="cd ${courtOf(c).side}"></span></div>`).join('')}`;
     wrap.appendChild(list); }
   else {
   const filt = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
@@ -561,7 +579,7 @@ function renderMessages(m){
     <div class="toolbar">${c.kind==='unknown'?`<button class="primary" onclick="whoIsThis('${c.id}')">Who is this?</button>`:''}<button data-tip="Call in Quo|Opens a call to them in Quo's app, from the company number.|When it ends, the call comes back here as a line with its recording, transcript and summary." onclick="toast('Opens the call in Quo\\'s app; it comes back as a line.')">Call in Quo</button>
       <span class="whowrap"><button class="quiet" data-tip="More|The rarer things for this thread.|Mark STOP, Show all text, and Edit the flow." onclick="morePicker('${c.id}',this)">More ▾</button></span>
       ${c.state!=='waiting'?`<button class="quiet" title="Demo: a new message from them reopens the row by itself" onclick="theyReply('${c.id}')">They text back (demo)</button>`:''}
-      <span class="grow"></span><button class="${flowOpen?'':'quiet'}" data-tip="Their flow|Opens a panel at the right with their journey with us: what is done, what is on now, whose move it is, what comes next.|Folded by default. The journey is drawn from Settings → Flows; editing the flow there changes every panel." onclick="flowOpen=!flowOpen;render()">${flowOpen?'‹ Their flow':'Their flow ›'}</button></div>
+</div>
     <div class="jobs-rail" id="rail"><span class="note" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of.|New messages from them land on the ★ one. Drag a job onto a line to tie that message there; press and hold on a phone. A line with no job sits on the person alone.">Their jobs</span>${cJobs.map(j=>`<span class="jobchip ${jobFilter===j.id?'on':''}" draggable="true" data-job="${j.id}" title="Drag onto a message to tie it there. Click to filter."><span class="star" title="New messages go here" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()">${esc(jobLabel(c,j.id))}</span><span class="note" onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()"> · ${esc(j.note)}</span><span class="x" title="Open this job" onclick="event.stopPropagation();jobModal('${j.id}')">⧉</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span>`).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</div>
   </div>
   <div id="lines"></div>
@@ -602,6 +620,7 @@ function renderMessages(m){
   th.querySelectorAll('.jobchip[draggable]').forEach(ch=>{ ch.addEventListener('dragstart',ev=>{ dragJob=ch.dataset.job; ev.dataTransfer.setData('text/plain',dragJob); }); ch.addEventListener('dragend',()=>{dragJob=null;}); });
   wrap.appendChild(th);
   if(flowOpen){ const fp=document.createElement('div'); fp.className='card fpanel'; fp.innerHTML=flowPanelHtml(c); wrap.appendChild(fp); }
+  else { const fr=document.createElement('div'); fr.className='card frail'; fr.innerHTML=flowRailHtml(c); wrap.appendChild(fr); }
   m.appendChild(wrap);
   requestAnimationFrame(()=>{ if(window.__landing) return; const l=document.getElementById('lines'); if(l) l.scrollIntoView({block:'nearest'}); });
 }
@@ -721,14 +740,19 @@ function openAttachment(mid,i){ openMessage(mid); setTimeout(()=>document.queryS
 // ---------- their flow: the right panel, drawn from FLOWS and FLOW_STATE ----------
 function stepState(c, id){ const st=FLOW_STATE[c.id]||{done:[],now:null,rounds:{}}; if(st.done.includes(id)) return 'done'; if(st.now===id) return 'now'; return ''; }
 function whoNow(c, step){ if(c.owe) return 'us'; const k=courtOf(c); if(k.side==='ours') return 'us'; if(k.side==='theirs') return 'them'; return step.who; }
+function flowRailHtml(c){ const flow=FLOWS[c.kind]||[]; const st=FLOW_STATE[c.id]||{done:[],now:null,rounds:{}}; const all=flow.flatMap(l=>l.steps); const nDone=all.filter(s=>stepState(c,s.id)==='done').length;
+  const mark=(step,i,steps)=>{ const s=stepState(c,step.id); const w=s==='now'?whoNow(c,step):''; const rounds=(st.rounds[step.id]||[]);
+    const tip=`${esc(step.name)}${step.loop?' · '+esc(step.loop):''}${step.dec?' · a fork':''}|${s==='done'?'Done: '+esc(step.done):s==='now'?(w==='us'?'On now, our move.':w==='them'?'On now, their move.':'On now, both sides.')+(rounds.length?' '+rounds.length+' so far.':''):'Not yet. Finishes when '+esc(step.done)+'.'}|${s==='now'?'The nudge if it stalls: '+esc(step.nudge)+'. ':''}Click to open the flow at this step.`;
+    return `<span class="stepw"><span class="st ${s} ${w} ${step.dec?'dec':''}" data-tip="${tip}" onclick="setFlow(true,'${step.id}')">${s==='done'?'✓':step.loop?'↻':''}</span>${s==='now'?`<span class="tag ${w}">${w}</span>`:''}</span>${i<steps.length-1?`<span class="ln ${s==='done'?'done':''}"></span>`:''}`; };
+  return `<button class="open" data-tip="Their flow|Opens the panel with their journey with us: what is done, what is on now, whose move it is, what comes next.|Your choice is kept on this computer. The journey is drawn from Settings → Flows." onclick="setFlow(true)">‹</button>${flow.map(l=>`<span class="lane">${esc(l.lane)}</span>${l.steps.map((s,i)=>mark(s,i,l.steps)).join('')}`).join('')}<span class="cnt" data-tip="How far along|${nDone} of ${all.length} steps done.|Loops count once, however many rounds they have had.">${nDone} / ${all.length}</span>`; }
 function flowPanelHtml(c){ const flow=FLOWS[c.kind]||[]; const st=FLOW_STATE[c.id]||{done:[],now:null,rounds:{}};
   const box=(step)=>{ const s=stepState(c,step.id); const tag = s==='now' ? `<span class="who ${whoNow(c,step)}">${whoNow(c,step)}</span>` : '';
-    if(step.loop){ const rounds=(st.rounds[step.id]||[]); return `<div class="loop"><span class="lt">${esc(step.loop)}${rounds.length?` · ${rounds.length} so far`:''}</span><span class="box ${s}"><span>${esc(step.name)}</span>${tag}</span>${rounds.length?`<span class="rounds">${rounds.map(r=>`<span class="${r.s==='done'?'done':r.s==='now'?'now':''}">${esc(r.n)}</span>`).join('')}</span>`:`<span class="rounds"><span>none yet</span></span>`}</div>`; }
-    return `<span class="box ${s} ${step.dec?'dec':''}"><span>${esc(step.name)}${step.dec?' <span class="note">· a fork</span>':''}</span>${tag}</span>`; };
+    if(step.loop){ const rounds=(st.rounds[step.id]||[]); return `<div class="loop"><span class="lt">${esc(step.loop)}${rounds.length?` · ${rounds.length} so far`:''}</span><span class="box ${s}" id="fstep-${step.id}"><span>${esc(step.name)}</span>${tag}</span>${rounds.length?`<span class="rounds">${rounds.map(r=>`<span class="${r.s==='done'?'done':r.s==='now'?'now':''}">${esc(r.n)}</span>`).join('')}</span>`:`<span class="rounds"><span>none yet</span></span>`}</div>`; }
+    return `<span class="box ${s} ${step.dec?'dec':''}" id="fstep-${step.id}"><span>${esc(step.name)}${step.dec?' <span class="note">· a fork</span>':''}</span>${tag}</span>`; };
   const lanes=flow.map(l=>`<div class="lane"><div class="t">${esc(l.lane)}${l.lane==='Per job'&&c.def?' · '+esc(jobById(c.def).name):''}</div><div class="boxes">${l.steps.map((s,i)=>(i?'<div class="arr">↓</div>':'')+box(s)).join('')}</div></div>`).join('');
   const nowStep=flow.flatMap(l=>l.steps).find(s=>s.id===st.now); const k=courtOf(c);
   const next = nowStep ? `<b>On now:</b> ${esc(nowStep.name)} · ${k.side==='ours'?'our court':k.side==='theirs'?'their court':'no court'}${c.owe?' · we owe '+esc(c.owe.what)+(c.owe.by?' by '+esc(c.owe.by):''):c.promise?' · '+esc(c.promise):''}.<br><b>Finished when:</b> ${esc(nowStep.done)}.<br><b>Nudge:</b> ${esc(nowStep.nudge)}.` : 'Nothing on now.';
-  return `<div class="ph2"><b>${c.kind==='customer'?'Her flow · customer':c.kind==='trade'?'Their flow · trade partner':c.kind==='arch'?'Their flow · architect':'Their flow'}</b><button class="quiet small" onclick="flowOpen=false;render()">fold ›</button></div><div class="flow">${lanes}</div><div class="fnext">${next}</div><div class="note" style="margin-top:8px">Drawn from Settings → Flows. <button class="quiet small" style="padding:0" onclick="view='settings';flowTab='${c.kind==='unknown'?'trade':c.kind}';render();setTimeout(()=>document.getElementById('flows')?.scrollIntoView({block:'start'}),0)">Edit the flow</button></div>`; }
+  return `<div class="ph2"><b>${c.kind==='customer'?'Her flow · customer':c.kind==='trade'?'Their flow · trade partner':c.kind==='arch'?'Their flow · architect':'Their flow'}</b><button class="quiet small" data-tip="Fold|Shrinks the flow to its rail of marks at the right.|Your choice is kept on this computer." onclick="setFlow(false)">fold ›</button></div><div class="flow">${lanes}</div><div class="fnext">${next}</div><div class="note" style="margin-top:8px">Drawn from Settings → Flows. <button class="quiet small" style="padding:0" onclick="view='settings';flowTab='${c.kind==='unknown'?'trade':c.kind}';render();setTimeout(()=>document.getElementById('flows')?.scrollIntoView({block:'start'}),0)">Edit the flow</button></div>`; }
 function flowsEditorHtml(){ const kinds=[['customer','Customer'],['trade','Trade partner'],['arch','Architect']]; const flow=FLOWS[flowTab];
   const rows=flow.map(l=>`<tr class="lanehead"><td colspan="5">${esc(l.lane)}</td></tr>`+l.steps.map(s=>`<tr><td><input value="${esc(s.name)}" onchange="renameStep('${flowTab}','${s.id}',this.value)"></td><td class="g">${esc(s.done)}</td><td class="g">${esc(s.who)}</td><td class="g">${esc(s.nudge)}</td><td class="g">${s.loop?'yes · '+esc(s.loop):'no'}</td></tr>`).join('')).join('');
   return `<h2 id="flows" style="margin-top:18px">Flows</h2><p class="note">One flow per kind of person. A step is finished by a fact the app already keeps, never by a typed word; whose move it is and when to nudge follow from it; a step that repeats is a loop in the panel. Renaming a step here renames it in every panel (the other columns are read-only in this prototype).</p>
