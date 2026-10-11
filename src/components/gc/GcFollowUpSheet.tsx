@@ -1,105 +1,90 @@
-import { useEffect, useMemo, useState, type CSSProperties, type Dispatch, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import {
-  followUpCallActions,
-  followUpDraft,
-  followUpMailTo,
-  mailToGreeting,
-  mailToWhy,
-  allFollowPeople,
-  followUpSentActions,
-  mailHref,
-  smsHref,
-  telHref,
-  type DraftChoice,
-  type FollowPerson,
-  type GcAction,
-  type GcState,
-  GC_COMPANY,
-} from '../../lib/gcMode/gcModel'
-import { useAuth } from '../../hooks/useAuth'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { callListCallActions, type DatesAnswer } from '../../lib/gcMode/gcCallList'
+import { followUpMailTo, mailToGreeting, mailToWhy } from '../../lib/gc/companyPeople'
+import { followUpDraft, mailHref, smsHref, telHref, type DraftChoice, type FollowPerson } from '../../lib/gc/followUpSheet'
+import { followCustomerId, followUpCallWrites, followUpSentWrites, runFollowUpWrites, type FollowUpWrite, type FollowUpWriters } from '../../lib/gc/followUpWrites'
+import { allFollowPeople } from '../../lib/gc/projectPeople'
+import type { GcState } from '../../lib/gc/types'
 import { Btn, input } from './gcUi'
 
 /**
- * GC mode design spike: the Follow up sheet (the owner, 2026-10-04). One person at a time, the
- * whole list down the side: what they owe, ticked; a polite draft that names it, from me (the
- * default) or from the company, as a quick nudge or a full note, by text or email; Call beside
- * their number, then what they said. Sending or saving logs it on each ask and moves on.
- * From me opens my own Messages or mail with the draft filled in; from the company goes from
- * Click, email only for now (question 29). In the prototype nothing leaves the app from Click.
- * Kernel: gcFollowUpSheet.ts.
+ * GC mode, the real build, the Board's B2b-viii-a: the Follow up sheet, from the design spike's `GcFollowUpSheet.tsx` (the owner,
+ * 2026-10-04). One person at a time, the whole list down the side: what they owe, ticked; a polite draft that names it, as a
+ * quick nudge or a full note, by text or email; Call beside their number, then what they said. Logging it moves on.
+ *
+ * Known differences from the spike:
+ *   * From me only. It opens the reader's own Messages or mail with the draft filled in, and **I sent it** logs it. Nothing
+ *     leaves Click. From the company comes with viii-b, behind its own read-back and the owner's yes.
+ *   * A number or an address the record does not have is never offered: no made-up stand-in is dialled, texted or mailed.
+ *   * A call's answer on new dates is logged, not taken. The schedule keeps its own presses for that.
+ *   * The writes are main's presses (`followUpWrites.ts`), made by the page, which reads the board again after.
  */
-
-/** The signed-in person's name. Outside the app's sign-in (a test), none. */
-function useMeName(): string | null {
-  try {
-    return useAuth().profileName
-  } catch {
-    return null
-  }
-}
-
-/** Where an email from the company comes from. Made up; the real build sends through Resend. */
-const COMPANY_FROM_EMAIL = 'bids@clickconstruction.example'
 
 const box: CSSProperties = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' }
 
 export function GcFollowUpSheet({
   state,
-  dispatch,
+  writes,
+  me,
   startPartnerId,
   startCalling = false,
   onClose,
+  onLogged,
   list,
   title,
 }: {
   state: GcState
-  dispatch: Dispatch<GcAction>
+  /** Main's presses for the log, the page's. */
+  writes: FollowUpWriters
+  /** The signed-in person's name, for the draft's sign-off. Null: none. */
+  me: string | null
   /** The person to open on. Unset: the first on the list. */
   startPartnerId?: string
-  /** Open on "What did they say?": the card's Call was pressed. */
+  /** Open on "What did they say?": the person's Call was pressed. */
   startCalling?: boolean
   onClose: () => void
+  /** After a send or a call is logged: the page reads the board again. */
+  onLogged?: () => void | Promise<void>
   /**
-   * The people to walk, in place of the badge's (Board, 2026-10-04): one job's people from the
-   * board row's Who to call card, with that job's reasons. Read again on every change.
+   * The people to walk, in place of the badge's: one job's people from a board row's Who to call, or the schedule's call
+   * list. Read again on every change.
    */
   list?: (state: GcState) => FollowPerson[]
   /** The sheet's heading in place of "Follow up": the job's name. */
   title?: string
 }) {
-  // Without a list: everyone Follow up's badge counts (the Board's allFollowPeople, so every opener
-  // stays in step with the badge and the dashboard).
+  // Without a list: everyone Follow up's badge counts (allFollowPeople, so every opener stays in step with the badge).
   const source = (s: GcState) => (list ? list(s) : allFollowPeople(s, startPartnerId))
-  // The list as it stood when the sheet opened: someone who gives a day drops off the badge, but
-  // stays here marked done, so the list does not jump under the pointer.
+  // The list as it stood when the sheet opened: someone who gives a day drops off the badge, but stays here marked done,
+  // so the list does not jump under the pointer.
   const [ids] = useState(() => source(state).map((p) => p.partner.id))
-  // A job's list keeps someone it no longer holds (a call gave a day): the last we saw of them.
+  // Someone the list no longer holds (a call gave a day): the last we saw of them.
   const [seen] = useState(() => new Map<string, FollowPerson>())
   const people = useMemo(() => {
     const now = new Map(source(state).map((p) => [p.partner.id, p]))
     for (const [id, p] of now) seen.set(id, p)
     return ids.flatMap((id) => {
-      const p = now.get(id) ?? (list ? seen.get(id) : allFollowPeople(state, id).find((x) => x.partner.id === id) ?? seen.get(id))
+      const p = now.get(id) ?? seen.get(id)
       return p ? [p] : []
     })
     // `source` is rebuilt each render from `list` and `startPartnerId`, which are in the list.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, startPartnerId, ids, list])
-  const me = useMeName()
   const phone = useMatchMedia('(max-width: 760px)')
   const [pid, setPid] = useState<string | undefined>(startPartnerId ?? people[0]?.partner.id)
   const [done, setDone] = useState<Record<string, string>>({})
   const person = people.find((p) => p.partner.id === pid) ?? people[0]
 
   useEffect(() => {
+    // Caught first and marked, so a window under the sheet (the schedule's) stays open.
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+      if (e.key !== 'Escape') return
+      e.preventDefault()
+      onClose()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
   }, [onClose])
 
   const next = (from: string) => {
@@ -116,19 +101,19 @@ export function GcFollowUpSheet({
     <div
       role="presentation"
       onClick={onClose}
-      style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 0 : '1rem' }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1300, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: phone ? 'flex-end' : 'center', justifyContent: 'center', padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }}
     >
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Follow up"
+        aria-label={title ? `Follow up: ${title}` : 'Follow up'}
         onClick={(e) => e.stopPropagation()}
         style={{
           background: 'var(--surface)',
           color: 'var(--text-base)',
           borderRadius: phone ? '12px 12px 0 0' : 12,
           width: phone ? '100%' : 'min(1000px, 100%)',
-          maxHeight: phone ? '92vh' : 'min(92vh, 760px)',
+          maxHeight: phone ? 'min(92vh, 100%)' : 'min(92vh, 760px, 100%)',
           display: 'grid',
           gridTemplateColumns: phone ? '1fr' : '15rem minmax(0, 1fr)',
           gridTemplateRows: phone ? 'auto minmax(0, 1fr)' : 'minmax(0, 1fr)',
@@ -189,7 +174,20 @@ export function GcFollowUpSheet({
           })}
         </nav>
         {person ? (
-          <PersonPane key={person.partner.id} state={state} person={person} me={me} calling0={startCalling && person.partner.id === startPartnerId} dispatch={dispatch} onClose={onClose} onDone={(w) => finished(person.partner.id, w)} sent={done[person.partner.id] ?? null} />
+          <PersonPane
+            key={person.partner.id}
+            state={state}
+            person={person}
+            me={me}
+            calling0={startCalling && person.partner.id === startPartnerId}
+            writes={writes}
+            onClose={onClose}
+            onDone={async (w) => {
+              await onLogged?.()
+              finished(person.partner.id, w)
+            }}
+            sent={done[person.partner.id] ?? null}
+          />
         ) : (
           <div style={{ padding: '1.25rem' }}>
             No one to follow up right now.{' '}
@@ -242,73 +240,84 @@ function PersonPane({
   person,
   me,
   calling0,
-  dispatch,
+  writes,
   onClose,
   onDone,
   sent,
 }: {
-  /** For who an email goes to: a plans item's job (the Board's `followItemMailGroup`). */
+  /** For who an email goes to: a plans item's job (`followItemMailGroup`). */
   state: GcState
   person: FollowPerson
   me: string | null
   /** Open on "What did they say?". */
   calling0: boolean
-  dispatch: Dispatch<GcAction>
+  writes: FollowUpWriters
   onClose: () => void
-  onDone: (words: string) => void
+  onDone: (words: string) => Promise<void>
   sent: string | null
 }) {
   const { partner, reach, items } = person
+  const customer = followCustomerId(person) !== null
+  // Only what the record has: a made-up stand-in is never dialled, texted or mailed.
+  const realPhone = partner.phone ?? null
   const [ticked, setTicked] = useState<string[]>(() => {
     const due = items.filter((i) => i.due).map((i) => i.key)
     return due.length > 0 ? due : items.map((i) => i.key)
   })
-  const [choice, setChoice] = useState<DraftChoice>({ from: me ? 'me' : 'company', via: me ? 'text' : 'email', length: 'nudge' })
+  const picked = items.filter((i) => ticked.includes(i.key))
+  // An email goes to whoever at the company gets the kinds ticked (the owner, 2026-10-05): a waiver to the bookkeeper the
+  // company named in its portal. A text and a call stay with the main contact.
+  const mailTo = followUpMailTo(state, partner, picked).filter((t) => (t.main ? Boolean(partner.email) : Boolean(t.email)))
+  const [choice, setChoice] = useState<DraftChoice>(() => ({ from: 'me', via: realPhone || mailTo.length === 0 ? 'text' : 'email', length: 'nudge' }))
   const [edited, setEdited] = useState<{ subject: string; body: string } | null>(null)
   const [calling, setCalling] = useState(calling0)
+  const [drafted, setDrafted] = useState(false)
   const [said, setSaid] = useState('')
   const [by, setBy] = useState('')
-  // New dates on the schedule (the Gantt's call list, G-115): the answer heard on the call, recorded as the portal would.
-  const [dates, setDates] = useState<DatesAnswer>('none')
-  const picked = items.filter((i) => ticked.includes(i.key))
-  const asksDates = picked.some((i) => i.schedule?.kind === 'dates')
+  const [busy, setBusy] = useState(false)
+  const [problem, setProblem] = useState<string | null>(null)
   const onSchedule = picked.some((i) => i.kind === 'schedule')
-  // An email goes to whoever at the company gets the kinds ticked (the owner, 2026-10-05): a waiver
-  // to the bookkeeper the company named in its portal. A text and a call stay with the main contact.
-  const mailTo = followUpMailTo(state, partner, picked)
   const toOthers = choice.via === 'email' && mailTo.some((t) => !t.main)
   const draft = followUpDraft(person, picked, choice, me, toOthers ? mailToGreeting(mailTo, partner.lang ?? 'en') : undefined)
   const subject = edited?.subject ?? draft.subject
   const body = edited?.body ?? draft.body
   const pick = (patch: Partial<DraftChoice>) => {
-    const nextChoice = { ...choice, ...patch }
-    // From the company goes by email only for now (question 29).
-    if (nextChoice.from === 'company') nextChoice.via = 'email'
-    setChoice(nextChoice)
+    setChoice({ ...choice, ...patch })
     setEdited(null)
+    setDrafted(false)
   }
-  const send = () => {
-    for (const a of followUpSentActions(person, picked, choice, body)) dispatch(a)
-    onDone(choice.via === 'text' ? 'texted' : 'emailed')
+  const run = async (make: () => FollowUpWrite[], words: string) => {
+    setBusy(true)
+    setProblem(null)
+    try {
+      await runFollowUpWrites(make(), writes)
+      setCalling(false)
+      setDrafted(false)
+      await onDone(words)
+    } catch (e) {
+      setProblem(`It did not log: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setBusy(false)
+    }
   }
-  const saveCall = () => {
-    const answer = asksDates ? dates : 'none'
-    const words = said.trim() || (answer === 'work' ? 'Said the new dates work.' : answer === 'another' ? 'Asked for another day.' : '')
-    for (const a of followUpCallActions(person, picked, words, by || null)) dispatch(a)
-    // What the answer does past the log (G-115): the dates answered, a delivery's new day, a promise.
-    for (const a of callListCallActions(person, picked, { dates: answer, day: by || null, said: words, by: me ?? 'the office' })) dispatch(a)
-    setCalling(false)
-    onDone('called')
-  }
-  const fromMe = choice.from === 'me'
-  const sendHref = fromMe ? (choice.via === 'text' ? smsHref(reach.phone, body) : mailHref(mailTo.map((t) => t.email).join(','), subject, body)) : null
+  const sentIt = () => run(() => followUpSentWrites(person, picked, choice, body), choice.via === 'text' ? 'texted' : 'emailed')
+  const saveCall = () => run(() => followUpCallWrites(person, picked, said, by || null), 'called')
+  const canText = Boolean(realPhone)
+  const canEmail = mailTo.length > 0
+  const reachable = choice.via === 'text' ? canText : canEmail
+  const sendHref = reachable ? (choice.via === 'text' ? smsHref(realPhone ?? '', body) : mailHref(mailTo.map((t) => t.email).join(','), subject, body)) : null
+  const nothing = picked.length === 0 || body.trim() === ''
   // From me it opens my own Messages or mail with the draft, so the button says Draft (the owner, 2026-10-05).
-  const sendWords = fromMe ? (choice.via === 'text' ? 'Draft text' : 'Draft email') : choice.via === 'text' ? 'Send text' : 'Send email'
-  const how = fromMe
+  const sendWords = choice.via === 'text' ? 'Draft text' : 'Draft email'
+  const how = !reachable
     ? choice.via === 'text'
-      ? 'Opens Messages with this filled in, from your phone. It is logged on the ask.'
-      : 'Opens your email with this filled in, under your name. It is logged on the ask.'
-    : `Goes from ${'Click Construction'} with their portal link. In the prototype nothing leaves the app. It is logged on the ask.`
+      ? `We have no phone number for ${reach.first}.`
+      : `We have no email address for ${reach.first}.`
+    : drafted
+      ? 'Did it go? Press I sent it and it is logged.'
+      : choice.via === 'text'
+        ? 'Opens Messages on your phone with this filled in. Nothing goes until you send it there.'
+        : 'Opens your own email with this filled in, under your name. Nothing goes until you send it there.'
   const label = { fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 } as const
   let footer: ReactNode
   if (calling) {
@@ -316,29 +325,23 @@ function PersonPane({
       <div style={{ display: 'grid', gap: '0.45rem', padding: '0.65rem', border: '1px solid var(--border-strong)', borderRadius: 8 }}>
         <strong style={{ fontSize: '0.9rem' }}>What did {reach.first} say?</strong>
         <input autoFocus value={said} onChange={(e) => setSaid(e.target.value)} placeholder={`What ${reach.first} said`} aria-label={`What ${reach.first} said`} style={box} />
-        {asksDates && (
-          <Seg
-            label="On the new dates"
-            value={dates}
-            options={[
-              { v: 'none', words: 'No answer yet' },
-              { v: 'work', words: 'They work' },
-              { v: 'another', words: 'They need another day', title: 'The day they gave below is the day they asked for.' },
-            ]}
-            onChange={setDates}
-          />
-        )}
         <label style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
           They gave a day
           <input type="date" value={by} onChange={(e) => setBy(e.target.value)} style={box} aria-label="The day they gave" />
           <span>Leave it empty if they gave none.</span>
         </label>
-        {onSchedule && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>A day on a delivery, a submittal or a start is kept with it.</span>}
+        {!customer && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>A day for a quote, a paper or a promise is kept with it.</span>}
+        {onSchedule && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>A day for the schedule goes in the log. Move the bar on the schedule.</span>}
+        {problem && (
+          <span role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+            {problem}
+          </span>
+        )}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-          <Btn kind="primary" disabled={(said.trim() === '' && by === '' && !(asksDates && dates !== 'none')) || picked.length === 0} onClick={saveCall}>
-            Save the call
+          <Btn kind="primary" disabled={busy || (said.trim() === '' && by === '') || picked.length === 0} onClick={() => void saveCall()}>
+            {busy ? 'Saving…' : 'Save the call'}
           </Btn>
-          <Btn kind="quiet" onClick={() => setCalling(false)}>
+          <Btn kind="quiet" disabled={busy} onClick={() => setCalling(false)}>
             Back to the message
           </Btn>
         </div>
@@ -346,33 +349,54 @@ function PersonPane({
     )
   } else {
     footer = (
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.65rem' }}>
-        <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', maxWidth: '44ch' }}>{how}</span>
-        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <Btn kind="quiet" onClick={onClose}>
-            Close
-          </Btn>
-          {sendHref ? (
-            <a
-              href={sendHref}
-              onClick={(e) => {
-                if (picked.length === 0 || body.trim() === '') {
-                  e.preventDefault()
-                  return
-                }
-                send()
-              }}
-              aria-disabled={picked.length === 0 || body.trim() === ''}
-              style={{ display: 'inline-flex', alignItems: 'center', height: 30, padding: '0 0.85rem', borderRadius: 6, background: '#2563eb', color: '#ffffff', fontWeight: 600, fontSize: '0.85rem', textDecoration: 'none', opacity: picked.length === 0 ? 0.5 : 1 }}
-            >
-              {sendWords}
-            </a>
-          ) : (
-            <Btn kind="primary" disabled={picked.length === 0 || body.trim() === ''} onClick={send}>
-              {sendWords}
+      <div style={{ display: 'grid', gap: '0.45rem', borderTop: '1px solid var(--border)', paddingTop: '0.65rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', maxWidth: '44ch' }}>{how}</span>
+          <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Btn kind="quiet" onClick={onClose}>
+              Close
             </Btn>
-          )}
+            {sendHref && (
+              <a
+                href={sendHref}
+                onClick={(e) => {
+                  if (nothing) {
+                    e.preventDefault()
+                    return
+                  }
+                  setDrafted(true)
+                }}
+                aria-disabled={nothing}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  height: 30,
+                  padding: '0 0.85rem',
+                  borderRadius: 6,
+                  border: drafted ? '1px solid var(--border-strong)' : '1px solid #2563eb',
+                  background: drafted ? 'var(--surface)' : '#2563eb',
+                  color: drafted ? 'var(--text-base)' : '#ffffff',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  textDecoration: 'none',
+                  opacity: nothing ? 0.5 : 1,
+                }}
+              >
+                {sendWords}
+              </a>
+            )}
+            {drafted && (
+              <Btn kind="primary" disabled={busy || nothing} onClick={() => void sentIt()}>
+                {busy ? 'Logging…' : 'I sent it'}
+              </Btn>
+            )}
+          </div>
         </div>
+        {problem && (
+          <span role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
+            {problem}
+          </span>
+        )}
       </div>
     )
   }
@@ -387,19 +411,21 @@ function PersonPane({
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
-          <span style={{ fontVariantNumeric: 'tabular-nums' }} title={reach.madeUp ? 'Made up for the prototype.' : undefined}>
-            {reach.phone}
-          </span>
-          <a
-            href={telHref(reach.phone)}
-            onClick={() => setCalling(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', height: 30, padding: '0 0.75rem', borderRadius: 6, border: '1px solid var(--border-strong)', color: 'var(--text-base)', fontWeight: 600, textDecoration: 'none' }}
-          >
-            Call
-          </a>
-          <span style={{ color: 'var(--text-muted)' }} title={reach.madeUp ? 'Made up for the prototype.' : undefined}>
-            {reach.email}
-          </span>
+          <span style={{ fontVariantNumeric: 'tabular-nums', color: realPhone ? 'var(--text-base)' : 'var(--text-muted)' }}>{realPhone ?? 'No phone number'}</span>
+          {realPhone ? (
+            <a
+              href={telHref(realPhone)}
+              onClick={() => setCalling(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', height: 30, padding: '0 0.75rem', borderRadius: 6, border: '1px solid var(--border-strong)', color: 'var(--text-base)', fontWeight: 600, textDecoration: 'none' }}
+            >
+              Call
+            </a>
+          ) : (
+            <Btn onClick={() => setCalling(true)} title="You called them another way: log what they said.">
+              Log a call
+            </Btn>
+          )}
+          <span style={{ color: 'var(--text-muted)' }}>{partner.email ?? 'No email address'}</span>
         </div>
       </div>
 
@@ -420,6 +446,7 @@ function PersonPane({
               onChange={(e) => {
                 setTicked((t) => (e.target.checked ? [...t, i.key] : t.filter((k) => k !== i.key)))
                 setEdited(null)
+                setDrafted(false)
               }}
               style={{ marginTop: 3 }}
             />
@@ -437,21 +464,12 @@ function PersonPane({
         <>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'end' }}>
             <Seg
-              label="From"
-              value={choice.from}
-              onChange={(v) => pick({ from: v })}
-              options={[
-                { v: 'me', words: me ? `Me · ${me}` : 'Me', off: !me, title: me ? undefined : 'Sign in to send in your name.' },
-                { v: 'company', words: 'Click Construction' },
-              ]}
-            />
-            <Seg
               label="Send as"
               value={choice.via}
               onChange={(v) => pick({ via: v })}
               options={[
-                { v: 'text', words: 'Text', off: choice.from === 'company', title: choice.from === 'company' ? 'From the company it goes by email for now.' : undefined },
-                { v: 'email', words: 'Email' },
+                { v: 'text', words: 'Text', off: !canText, title: canText ? undefined : 'We have no phone number for them.' },
+                { v: 'email', words: 'Email', off: !canEmail, title: canEmail ? undefined : 'We have no email address for them.' },
               ]}
             />
             <Seg
@@ -465,12 +483,12 @@ function PersonPane({
             />
           </div>
           <div style={{ display: 'grid', gap: '0.35rem' }}>
-            {choice.via === 'email' && (
+            {choice.via === 'email' && canEmail && (
               <div data-tour="gc-follow-mail-to" style={{ fontSize: '0.85rem', display: 'grid', gap: '0.1rem' }}>
-                {/* From above To (the owner, 2026-10-05). The company's address is made up, like every address here. */}
+                {/* From above To (the owner, 2026-10-05). */}
                 <span>
                   <span style={{ color: 'var(--text-muted)' }}>From </span>
-                  {fromMe ? `${me ?? 'Me'}, your own email` : `${GC_COMPANY.name} <${COMPANY_FROM_EMAIL}>`}
+                  {me ?? 'You'}, your own email
                 </span>
                 <span>
                   <span style={{ color: 'var(--text-muted)' }}>To </span>
@@ -479,9 +497,7 @@ function PersonPane({
                 {toOthers && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{mailToWhy(state, partner, picked, mailTo)}</span>}
               </div>
             )}
-            {choice.via === 'email' && (
-              <input value={subject} onChange={(e) => setEdited({ subject: e.target.value, body })} aria-label="Subject" style={box} />
-            )}
+            {choice.via === 'email' && <input value={subject} onChange={(e) => setEdited({ subject: e.target.value, body })} aria-label="Subject" style={box} />}
             <textarea
               value={body}
               onChange={(e) => setEdited({ subject, body: e.target.value })}

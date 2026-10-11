@@ -13,7 +13,7 @@ import { daysBetween, telHref, weekdayDate, type GcAction, type GcProject, type 
 import { MOVE_REASONS, moveWhyProblem, spanWords } from '../../lib/gcMode/gcScheduleMoves'
 import { recoveryFollowPeople, recoveryNoneWords, recoveryOffers, sideBySideWords, type RecoveryOffer } from '../../lib/gcMode/gcRecovery'
 import { planBillingShift, shiftWords } from '../../lib/gcMode/gcBillingForecast'
-import { GcFollowUpSheet } from './GcFollowUpSheet'
+import { GcFollowUpSheet } from './GcFollowUpSheet.proto'
 import { Btn, Card, Chip, input } from './gcUi'
 
 /** The signed-in person's name. Outside the app's sign-in (a test), none. */

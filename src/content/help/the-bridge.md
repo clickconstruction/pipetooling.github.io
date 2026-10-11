@@ -19,7 +19,19 @@ The app doesn't sync a bank balance, so the cash line starts from a number you t
 
 You set the **Floor** the same way. The floor is the cash level you never want to go under. The floor starts at $5,000.
 
-## The three numbers on top
+## The top line: contribution per week
+
+The page opens on **field contribution this week**. That is the number the company maximizes. Field contribution is what field hours earned minus what those hours cost in wages. The big number reads recorded time, so hours still waiting on approval count. An amber **≈** beside it means some of those hours still wait. Under it, **approved only** is the same week on what payroll paid.
+
+The bars are the last eight pay weeks. A hatched bar is a week still waiting on approvals. The **Verdict** line reads the bars for you. It names the range the settled weeks ran. It also says when a low week is the approval pile and not the field.
+
+Two lights sit under the bars. **Net position rises over 8 weeks** is green when the line is up since the window started. **Cash stays above the floor** is green when the forecast never dips under your floor. The cash light turns amber when the cash figure you typed is a week or more old.
+
+:::example Reading the top line
++$38.3k ≈ this week so far on 317h recorded, approved only +$9.7k on 80h. The verdict says contribution ran $13.8k to $46.8k a week over the six settled weeks, and the last two read low only because 564h still wait on approval.
+:::
+
+## The three numbers under it
 
 - **Daily profit rate**: earned per day minus costs per day, over the last 14 days. Costs are job costs plus overhead, the office's running cost, at the 90-day rate from People → Overhead. Job costs are field labor, purchases and supply invoices on jobs, and sub sheets. A sub sheet is a subcontractor's labor sheet.
 - **Money owed**: owed to you, owed by you, finished work not yet billed, and the collections balance. Owed to you leaves collections out. The collections balance is written off for planning.

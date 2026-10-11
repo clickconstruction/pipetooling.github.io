@@ -25,13 +25,16 @@
  * PR 14c, on a job being built, the same people answer a trade that says it will be late (`GcLateNotices`, G-117) and
  * check the trades' look-ahead marks, our crew's own and the inspections due (`GcVerifyCard`), on the real schedule only.
  * Since PR 15a, on a job being built, the same people send the customer their schedule as a dated letter
- * (`GcScheduleLetter`, G-94), through `gc-customer-email`, with a test copy to themselves first.
+ * (`GcScheduleLetter`, G-94), through `gc-customer-email`, with a test copy to themselves first. Since the Board's B2b-viii-a,
+ * with `followUp`, the call list's Follow up and Work the list open the Follow up sheet (`GcFollowUpSheet`).
  * The window frames it (`GcScheduleWindow`); a project page mounts it unchanged the day the doors
  * bring one.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
-import { barCaller, callList } from '../../lib/gc/schedule/callList'
+import { barCaller, callList, callListFollowPeople, callSheetId } from '../../lib/gc/schedule/callList'
+import type { FollowUpWriters } from '../../lib/gc/followUpWrites'
+import type { ProjectPerson } from '../../lib/gc/projectPeople'
 import { changeOrderTails } from '../../lib/gc/schedule/changeOrderDays'
 import { chartHolds } from '../../lib/gc/schedule/chartHolds'
 import { crewCountsNow } from '../../lib/gc/schedule/crewCounts'
@@ -119,6 +122,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { GcGantt } from './GcGantt'
 import { GcActivityEditor } from './GcActivityEditor'
 import { GcBarCaller, GcCallList } from './GcCallList'
+import { GcFollowUpSheet } from './GcFollowUpSheet'
 import { GcPlaceLine, GcPlacesCard } from './GcPlaces'
 import { GcAddOwnWork, GcBaseline, GcInspectionCheck, GcMilestones, GcOwnWorkButtons, GcWaits } from './GcScheduleCards'
 import { GcPartsCard } from './GcSplitBars'
@@ -149,6 +153,14 @@ const NO_READS: ScheduleReads = {}
  * and whether this person may move a bar (a dev's until the schedule's PR 10). `canPull`: whether they may also pull work
  * in and get days back (G-37, G-82), which read Building's submittals and RFIs, so a dev's until Building's door.
  */
+/** The Follow up sheet's log on the schedule (the Board's B2b-viii-a): the page's presses, and who signs the draft. */
+export interface ScheduleFollowUp {
+  writes: FollowUpWriters
+  me: string | null
+  /** After a send or a call is logged: the page reads the board again. */
+  onLogged?: () => void | Promise<void>
+}
+
 export function GcSchedule({
   state,
   projectId,
@@ -157,6 +169,7 @@ export function GcSchedule({
   canPull = false,
   canTell = false,
   reads = NO_READS,
+  followUp,
 }: {
   state: GcState
   projectId: string
@@ -167,6 +180,8 @@ export function GcSchedule({
   canTell?: boolean
   /** What this reader may read over the schedule (PR 16): the page memoizes it, since a new one reads again. */
   reads?: ScheduleReads
+  /** The Follow up sheet's log (the Board's B2b-viii-a), the page's: the call list's Follow up and Work the list. Unset: Call only dials. */
+  followUp?: ScheduleFollowUp
 }) {
   const [read, setRead] = useState<ScheduleRead | null>(null)
   const [status, setStatus] = useState<'loading' | 'ready' | 'gone' | 'failed'>('loading')
@@ -478,6 +493,7 @@ export function GcSchedule({
         shown={shown}
         onShow={setShown}
         tell={canMove && canTell ? { onTell: (companies) => tellTheTrades(read.state, read.project, companies).finally(() => setReloads((n) => n + 1)) } : null}
+        followUp={followUp ?? null}
       />
     )
   if (status === 'gone') return <div style={{ fontSize: '0.875rem' }}>That job is not on the board. Reload the board and try again.</div>
@@ -591,6 +607,7 @@ function ScheduleView({
   shown,
   onShow,
   tell,
+  followUp,
 }: {
   read: ScheduleRead
   by: string
@@ -613,6 +630,8 @@ function ScheduleView({
   onShow: (copy: boolean) => void
   /** Tell the trades (PR 13b): the press, through the one sender and then the record. Null: no press. */
   tell: { onTell: (companies: CompanyToTell[]) => Promise<TellTheTrades> } | null
+  /** The Follow up sheet's log (B2b-viii-a). Null: Call only dials. */
+  followUp: ScheduleFollowUp | null
 }) {
   const { state, project: realProject } = read
   // The what-if copy (G-81, PR 11, call 6): while it is shown, the window reads the copy, and every move goes to the copy.
@@ -654,8 +673,11 @@ function ScheduleView({
   const [company, setCompany] = useState<string | undefined>(undefined)
   const chartCompanies = useMemo(() => new Set(m.items.map((i) => i.company)), [m.items])
   // By company as a call list (G-115, 7c-ii): whoever's answer moves the chart, from the chart's own holds, on a job being
-  // built. The Follow up sheet is the Board lane's and not here yet, so Call only dials.
+  // built. Since the Board's B2b-viii-a, with `followUp` and on the real schedule, Follow up and Work the list open the
+  // Follow up sheet on the call list's people, with this job's reasons and the schedule's.
   const calls = useMemo(() => (building ? callList(state, project, holds) : null), [state, project, holds, building])
+  const [sheet, setSheet] = useState<{ partnerId?: string; calling: boolean; lineId?: string } | null>(null)
+  const sheetOn = followUp !== null && !inCopy
   // The weekly walk (G-52), work that finished early (G-37) and days back on a late job (G-82), PR 9d: for those who may
   // move a bar on a job being built; the pull and the days back only with `canPull`.
   const walkable = building && moves !== null
@@ -855,7 +877,12 @@ function ScheduleView({
           callList={
             calls ? (
               // A line about a bar opens it; Their work shows only that company on the chart (G-13).
-              <GcCallList list={calls} onReason={setPicked} theirWork={(person) => (chartCompanies.has(person.company) ? () => setCompany(person.company) : null)} />
+              <GcCallList
+                list={calls}
+                onReason={setPicked}
+                theirWork={(person) => (chartCompanies.has(person.company) ? () => setCompany(person.company) : null)}
+                {...(sheetOn ? { onFollowUp: (person: ProjectPerson, calling: boolean) => setSheet({ partnerId: callSheetId(person), calling }), onWorkList: () => setSheet({ calling: false }) } : {})}
+              />
             ) : undefined
           }
           {...(moves && project.schedule
@@ -947,7 +974,7 @@ function ScheduleView({
         />
       )}
       {pickedBar && (
-        <GcScheduleBar bar={pickedBar} all={bars} today={state.today} building={building} caller={caller ? <GcBarCaller caller={caller} /> : undefined} onClose={() => setPicked(null)} />
+        <GcScheduleBar bar={pickedBar} all={bars} today={state.today} building={building} caller={caller ? <GcBarCaller caller={caller} {...(sheetOn ? { onFollowUp: (calling: boolean) => setSheet({ partnerId: caller.partner.id, calling, lineId: pickedBar.id }) } : {})} /> : undefined} onClose={() => setPicked(null)} />
       )}
       {/* Trades say they will be late (G-117, PR 14c): take the day as a move, or push back. The real schedule's only. */}
       {moves && building && !inCopy && <GcLateNotices state={state} project={project} onTake={setPending} onPushBack={moves.pushBack} onReload={moves.reload} />}
@@ -1051,6 +1078,23 @@ function ScheduleView({
         />
       )}
       {building && <LookAhead weeks={m.lookAhead} />}
+      {sheet && followUp && (
+        // The call list's people (G-115) on the Follow up sheet, with this job's reasons and the schedule's.
+        <GcFollowUpSheet
+          state={state}
+          writes={followUp.writes}
+          me={followUp.me}
+          {...(sheet.partnerId ? { startPartnerId: sheet.partnerId } : {})}
+          startCalling={sheet.calling}
+          onClose={() => setSheet(null)}
+          {...(followUp.onLogged ? { onLogged: followUp.onLogged } : {})}
+          list={(s) => {
+            const job = s.projects.find((x) => x.id === project.id)
+            return job ? callListFollowPeople(s, job, holds, sheet.lineId ?? null) : []
+          }}
+          title={project.name}
+        />
+      )}
     </div>
   )
 }

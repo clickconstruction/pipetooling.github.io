@@ -26,7 +26,7 @@ import { LinkNeverOpenedChip } from './GcPortalLinkChip'
 import { Btn, Card, Chip, input, type Tone } from './gcUi'
 import { GcFollowUpPromises } from './GcFollowUpPromises'
 import { GcDeclineForm } from './GcDeclineForm.proto'
-import { GcFollowUpSheet } from './GcFollowUpSheet'
+import { GcFollowUpSheet } from './GcFollowUpSheet.proto'
 import { PeopleRows } from './GcPeoplePill.proto'
 import { PartnerLink } from './GcCompanyFile'
 

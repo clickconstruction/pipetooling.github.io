@@ -3,7 +3,8 @@ import { bidsIn } from '../../lib/gc/bids'
 import { declinedTitle, declinedWords } from '../../lib/gc/decline'
 import { askPromise, followUps, promiseWords, wordRecord, type FollowUp, type FollowUpWhy, type PromiseState } from '../../lib/gc/followUp'
 import { telHref } from '../../lib/gc/followUpSheet'
-import { allPeople } from '../../lib/gc/projectPeople'
+import { allPeople, type ProjectPerson } from '../../lib/gc/projectPeople'
+import { callSheetId } from '../../lib/gc/schedule/callList'
 import type { AskContact, DeclineReason, GcProject, GcState, Invite, Partner, TradePackage } from '../../lib/gc/types'
 import { daysUntil, shortDate, weekdayDate } from '../../lib/gc/words'
 import { GcDeclineForm } from './GcDeclineForm'
@@ -17,8 +18,9 @@ import { Btn, Card, Chip, input, type Tone } from './gcUi'
  * first. A line can carry their word ("quote by Monday"). When that day passes with no quote, the
  * ask lands at the top of Follow up. Will not do it and Cannot do it take a company off the ask with
  * the reason kept. Since the Board's B2b-ii-b **By people · N** lists everyone we wait on, once a person across their jobs
- * (`allPeople`), the number Follow up's badge and the Dashboard's line say; each person has Call. Work the list, Follow up
- * on a person and the Follow up sheet come with B2b-viii, so Log a contact sits on each card until then.
+ * (`allPeople`), the number Follow up's badge and the Dashboard's line say; each person has Call. Since B2b-viii-a, with
+ * `onFollowUp`, **Work the list · N people** and each person's Follow up open the Follow up sheet, and By urgency ends with
+ * **More to follow up on**: everyone we wait on for something other than a quote. Log a contact stays on each card.
  */
 
 /** What the asks write, through the company record (B1). */
@@ -270,46 +272,69 @@ const WHY_ORDER: FollowUpWhy[] = ['passed', 'today', 'silent', 'nodate', 'waitin
  * Follow up: every company we are waiting on for a quote, across every project, the ones to call first (By urgency); or
  * everyone we wait on, each once with everything they owe (By people, the owner, 2026-10-05).
  */
-export function GcFollowUp({ state, writes, onWhoElse }: { state: GcState; writes: AskWrites; onWhoElse: (trade: string) => void }) {
+export function GcFollowUp({
+  state,
+  writes,
+  onWhoElse,
+  onFollowUp,
+}: {
+  state: GcState
+  writes: AskWrites
+  onWhoElse: (trade: string) => void
+  /** The Follow up sheet over everyone Follow up counts, at this person (a company's id, or `customer:<id>`). Unset: Call only dials. */
+  onFollowUp?: (partnerId?: string, calling?: boolean) => void
+}) {
   const all = followUps(state)
   // Everyone we are waiting on, each once across every job: Follow up's badge and the Dashboard's count ("make them match").
   const everyone = allPeople(state)
   const listCount = everyone.count
   const [view, setView] = useState<'urgency' | 'people'>('urgency')
+  // Who the cards above do not show (the spike's place, call V8-2): everyone we wait on for something other than a quote.
+  const more = everyone.people
+    .map((p) => ({ ...p, reasons: p.reasons.filter((r) => r.code !== 'ask') }))
+    .filter((p) => p.reasons.some((r) => !r.aside))
+  const rowFollowUp = onFollowUp ? { onFollowUp: (person: ProjectPerson, calling: boolean) => onFollowUp(callSheetId(person), calling) } : {}
   // A phone puts each person's buttons under their words. Read once: a test page may have no matchMedia.
   const phone = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 480px)').matches
   return (
     <section aria-label="Follow up" style={{ display: 'grid', gap: '0.9rem' }}>
-      <span role="group" aria-label="Order Follow up" style={{ display: 'inline-flex', justifySelf: 'start', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
-        {(
-          [
-            { key: 'urgency', label: 'By urgency' },
-            { key: 'people', label: `By people · ${listCount}` },
-          ] as const
-        ).map((o) => (
-          <button
-            key={o.key}
-            type="button"
-            aria-pressed={view === o.key}
-            onClick={() => setView(o.key)}
-            style={{
-              border: 'none',
-              padding: '0.25rem 0.8rem',
-              fontSize: '0.8rem',
-              fontWeight: view === o.key ? 600 : 400,
-              cursor: 'pointer',
-              background: view === o.key ? 'var(--bg-blue-tint)' : 'transparent',
-              color: view === o.key ? 'var(--text-blue-800)' : 'var(--text-muted)',
-            }}
-          >
-            {o.label}
-          </button>
-        ))}
-      </span>
+      <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <span role="group" aria-label="Order Follow up" style={{ display: 'inline-flex', justifySelf: 'start', border: '1px solid var(--border)', borderRadius: 999, overflow: 'hidden' }}>
+          {(
+            [
+              { key: 'urgency', label: 'By urgency' },
+              { key: 'people', label: `By people · ${listCount}` },
+            ] as const
+          ).map((o) => (
+            <button
+              key={o.key}
+              type="button"
+              aria-pressed={view === o.key}
+              onClick={() => setView(o.key)}
+              style={{
+                border: 'none',
+                padding: '0.25rem 0.8rem',
+                fontSize: '0.8rem',
+                fontWeight: view === o.key ? 600 : 400,
+                cursor: 'pointer',
+                background: view === o.key ? 'var(--bg-blue-tint)' : 'transparent',
+                color: view === o.key ? 'var(--text-blue-800)' : 'var(--text-muted)',
+              }}
+            >
+              {o.label}
+            </button>
+          ))}
+        </span>
+        {view === 'people' && listCount > 0 && onFollowUp && (
+          <Btn kind="primary" onClick={() => onFollowUp()}>
+            Work the list · {listCount} {listCount === 1 ? 'person' : 'people'}
+          </Btn>
+        )}
+      </div>
       {view === 'people' &&
         (listCount > 0 ? (
           <Card style={{ padding: '0.2rem 0.9rem' }}>
-            <PeopleRows people={everyone.people} narrow={phone} />
+            <PeopleRows people={everyone.people} narrow={phone} {...rowFollowUp} />
           </Card>
         ) : (
           <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone.</Card>
@@ -335,6 +360,17 @@ export function GcFollowUp({ state, writes, onWhoElse }: { state: GcState; write
         )
       })}
       {view === 'urgency' && all.length === 0 && <Card style={{ color: 'var(--text-muted)' }}>We are not waiting on anyone for a quote.</Card>}
+      {view === 'urgency' && more.length > 0 && (
+        <section aria-label="More to follow up on">
+          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem' }}>More to follow up on ({more.length})</h3>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Papers, plans not opened, the schedule, the architect and customers, by job.</span>
+          </div>
+          <Card style={{ padding: '0.2rem 0.9rem' }}>
+            <PeopleRows people={more} narrow={phone} {...rowFollowUp} />
+          </Card>
+        </section>
+      )}
     </section>
   )
 }

@@ -144,7 +144,8 @@ export function GcStartTab({ state, project, dispatch, onSeePortal, onOpenSchedu
                   aria-label="The day work starts"
                 />
               ) : (
-                (!started || owed) && (
+                // Our contract stays to sign while it is not, on a job started any way (main's #5379, v2.5213).
+                (!started || owed || (c.key === 'ownerContract' && !c.done)) && (
                   <span style={{ display: 'inline-flex', gap: '0.3rem', flexWrap: 'wrap' }}>
                     {/* They sign it in their portal (the owner, 2026-10-04): the send opens on the customer's window. */}
                     {c.key === 'ownerContract' && !c.done && opener && (
