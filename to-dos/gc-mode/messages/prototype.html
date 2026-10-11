@@ -144,7 +144,7 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
   .hdr .row2 .kindco,.hdr .row2 .sepdot{display:none}.hdr .row2{gap:4px 10px}.hdr .row2 a.fact{color:var(--accent)}
   .stamps{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;margin-left:0;width:100%;text-align:left}.stamps .full{display:none}.stamps .short,.stamps .diff{display:inline-block}
   .hdr .tools{display:flex;gap:6px;overflow-x:auto;align-items:center;margin:10px 0 2px;padding:8px 2px 6px;border-top:1px solid var(--border);scrollbar-width:thin;mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent)}
-  .hdr .tools>.toolbar,.hdr .tools>.jobs-rail{display:contents}.hdr .tools>*>*{flex:none;white-space:nowrap}.hdr .jobs-rail .lbl{display:none}.hdr .jobs-rail .sep{display:inline-block;width:1px;height:22px;background:var(--border);margin:0 4px}
+  .hdr .tools>.toolbar,.hdr .tools>.jobs-rail{display:contents}.hdr .tools>*>*{flex:none;white-space:nowrap}.hdr .jobs-rail .lbl{display:none}.hdr .jobs-rail .sep{display:inline-block;width:1px;height:22px;background:var(--border);margin:0 4px}.jobtile{width:220px}
 }
 
 .hdr .toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0 0;padding-top:8px;border-top:1px solid var(--border)}
@@ -161,6 +161,19 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .jobchip .star{cursor:pointer;color:#c9a200}
 .jobchip .x{color:var(--text-muted);cursor:pointer}
 .jobchip.ghost{border-style:dashed;color:var(--text-muted);cursor:pointer}
+.jobtile{display:inline-flex;flex-direction:column;gap:2px;border:1px solid var(--border);border-radius:10px;padding:6px 9px;background:var(--surface);font-size:13px;width:240px;vertical-align:top;cursor:grab;user-select:none}
+.jobtile .ln{display:flex;align-items:center;gap:6px;min-width:0}
+.jobtile .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;cursor:pointer}
+.jobtile .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:12.5px;cursor:pointer}
+.jobtile .d b{color:var(--text);font-weight:600}
+.jobtile .d.soon b{color:var(--warn)}.jobtile .d.past b{color:var(--danger)}.jobtile .d.today b{color:#fff;background:var(--warn);padding:0 6px;border-radius:999px}
+.jobtile .star{cursor:pointer;color:#c9a200;flex:none}.jobtile .star.off{color:#c9c9c9}
+.jobtile .x{color:var(--text-muted);cursor:pointer;flex:none}
+.jobtile.on{border-color:var(--accent);background:var(--accent-soft)}
+.jobtile.on .nm,.jobtile.on .d,.jobtile.on .d b{color:var(--accent)}
+.jobtile.mini{width:auto;max-width:150px;padding:3px 7px;cursor:default}
+.num{display:inline-flex;align-items:center;font-size:11px;font-weight:700;letter-spacing:.02em;padding:1px 6px;border-radius:999px;border:1px solid;flex:none;line-height:16px}
+.num.bid{color:#6d3fb8;border-color:#d9c8f5;background:#f6f0ff}.num.project{color:#1a7f3c;border-color:#bfe3c9;background:#eef7ea}.num.pipeline{color:#1f5fbf;border-color:#c5d8f5;background:#eaf1fc}
 .filters{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
 .filters button{border-radius:999px;padding:3px 10px;font-size:13px}
 .filters button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
@@ -383,13 +396,23 @@ const TEAM = ['Robert','Rosa','Wendi'];
 const TEAM_INFO = {Robert:{role:'estimator, trade partners', status:'at the desk', here:true}, Rosa:{role:'assistant, customers and jobs', status:'on the phone until 11', here:true}, Wendi:{role:'office', status:'out until Monday', here:false}};
 const initialsOf = n => n.split(' ').map(w=>w[0]).join('').slice(0,2);
 const holdCount = n => contacts.filter(c=>c.state==='waiting'&&c.has===n).length;
+// A job's tile (v1.34): its number (a bid's bid number, a GC project's project number, a Pipeline job's HCP or Click number)
+// and the facts its second line reads: a bid's day and whether ours went, a GC project's stage and its day, a Pipeline job's Stages word.
 const jobs = [
-  {id:'boerne', name:'Boerne Retail Shell', kind:'bid', note:'bid Thu Oct 8'},
-  {id:'padb', name:'Boerne Retail Pad B', kind:'bid', note:'bid Oct 22'},
-  {id:'stoneoak', name:'Stone Oak Pharmacy', kind:'project', note:'building'},
-  {id:'helotes', name:'Helotes Dental Office', kind:'project', note:'buying out'},
-  {id:'fairoaks', name:'Fair Oaks Shops, Building D', kind:'pipeline', note:'Pipeline 1077'},
+  {id:'boerne', name:'Boerne Retail Shell', kind:'bid', num:'B482', due:new Date(2026,9,8,14,0).getTime(), note:'bid Thu Oct 8'},
+  {id:'padb', name:'Boerne Retail Pad B', kind:'bid', num:'B491', due:new Date(2026,9,22,14,0).getTime(), note:'bid Oct 22'},
+  {id:'stoneoak', name:'Stone Oak Pharmacy', kind:'project', num:'#42', stage:'building', since:'Sep 14', note:'building'},
+  {id:'helotes', name:'Helotes Dental Office', kind:'project', num:'#47', stage:'buying out', since:'Sep 19', note:'buying out'},
+  {id:'fairoaks', name:'Fair Oaks Shops, Building D', kind:'pipeline', num:'J1077', stage:'billed', on:'Oct 1', extra:'pay app 3', note:'Pipeline 1077'},
 ];
+const dayDiff = (a,b) => Math.round((new Date(a).setHours(0,0,0,0)-new Date(b).setHours(0,0,0,0))/86400000);
+const wdayOf = ts => new Date(ts).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}).replace(',','');
+// The tile's second line: the day in words with its tone (soon within a week, today, past), from the job's facts, never typed.
+function jobDay(j){ if(j.kind==='bid'){ if(j.sentOn) return {t:'',h:`bid sent <b>${esc(j.sentOn)}</b>`}; const n=dayDiff(j.due,NOW), w=wdayOf(j.due); if(n<0) return {t:'past',h:`bid was due <b>${w} · ${-n} day${-n===1?'':'s'} late</b>`}; if(n===0) return {t:'today',h:`bid due <b>today</b>`}; if(n<=7) return {t:'soon',h:`bid due <b>${w} · ${n} day${n===1?'':'s'}</b>`}; return {t:'',h:`bid due <b>${w}</b>`}; }
+  if(j.kind==='project') return {t:'',h:`<b>${esc(j.stage)}</b>${j.since?' · since '+esc(j.since):''}`};
+  return {t:'',h:`<b>${esc(j.stage)}</b>${j.on?' '+esc(j.on):''}${j.extra?' · '+esc(j.extra):''}`}; }
+const jobNum = j => j.num || (j.kind==='project'?'GC':j.kind==='bid'?'B?':'J?');
+const jobDayText = j => jobDay(j).h.replace(/<[^>]+>/g,'');
 const jobById = id => jobs.find(j=>j.id===id);
 const contacts = [
   {id:'greg', name:'Greg Paulk', company:'Hillside Excavation', kind:'trade', trade:'Sitework', phones:['(210) 555-0113'], emails:['greg@hillside.example'], jobs:['boerne','padb','stoneoak'], def:'boerne', state:'waiting', has:null, promise:null, optout:false},
@@ -604,7 +627,7 @@ function renderMessages(m){
       <span class="whowrap"><button class="quiet" data-tip="More|The rarer things for this thread.|Mark STOP, Show all text, and Edit the flow." onclick="morePicker('${c.id}',this)">More ▾</button></span>
       ${c.state!=='waiting'?`<button class="quiet" title="Demo: a new message from them reopens the row by itself" onclick="theyReply('${c.id}')">They text back (demo)</button>`:''}
 </div>
-    <div class="jobs-rail" id="rail"><span class="sep"></span><span class="note lbl" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of. A chip can be marked two ways, and they mean different things:|" data-tip-legend="jobs">Their jobs</span>${cJobs.map(j=>`<span class="jobchip ${jobFilter===j.id?'on':''}" draggable="true" data-job="${j.id}" title="Drag onto a message to tie it there. Click to filter."><span class="star" title="New messages go here" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()">${esc(jobLabel(c,j.id))}</span><span class="note" onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()"> · ${esc(j.note)}</span><span class="x" title="Open this job" onclick="event.stopPropagation();jobModal('${j.id}')">⧉</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span>`).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</div></div>
+    <div class="jobs-rail" id="rail"><span class="sep"></span><span class="note lbl" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of. A chip can be marked two ways, and they mean different things:|" data-tip-legend="jobs">Their jobs</span>${cJobs.map(j=>jobTile(c,j)).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</div></div>
   </div>
   <div id="lines"></div>
   <div class="reply">
@@ -641,7 +664,7 @@ function renderMessages(m){
     // press and hold on narrow
     let pt; e.addEventListener('pointerdown',()=>{ if(!narrow()) return; pt=setTimeout(()=>tieMenu(x.id),550); }); e.addEventListener('pointerup',()=>clearTimeout(pt)); e.addEventListener('pointermove',()=>clearTimeout(pt));
     L.appendChild(e); }
-  th.querySelectorAll('.jobchip[draggable]').forEach(ch=>{ ch.addEventListener('dragstart',ev=>{ dragJob=ch.dataset.job; ev.dataTransfer.setData('text/plain',dragJob); }); ch.addEventListener('dragend',()=>{dragJob=null;}); });
+  th.querySelectorAll('.jobtile[draggable]').forEach(ch=>{ ch.addEventListener('dragstart',ev=>{ dragJob=ch.dataset.job; ev.dataTransfer.setData('text/plain',dragJob); }); ch.addEventListener('dragend',()=>{dragJob=null;}); });
   wrap.appendChild(th);
   if(flowOpen){ const fp=document.createElement('div'); fp.className='card fpanel'; fp.innerHTML=flowPanelHtml(c); wrap.appendChild(fp); }
   else { const fr=document.createElement('div'); fr.className='card frail'; fr.innerHTML=flowRailHtml(c); wrap.appendChild(fr); }
@@ -706,6 +729,10 @@ function claim(id,who){ const c=cById(id); const before=c.has; c.has=who||null; 
 function setState(id,s){ const c=cById(id); c.state=s; if(s==='done') c.has=null; toast(s==='done'?`${c.name} cleared from Follow up.`:`${c.name} is back in Follow up.`); render(); }
 function remind(id){ const c=cById(id); c.state='snoozed'; toast(`${c.name} comes back to Follow up on Monday.`); render(); }
 function toggleOptout(id){ const c=cById(id); c.optout=!c.optout; toast(c.optout?'Marked STOP: the app will not text this number.':'Opt-out cleared.'); render(); }
+function jobTile(c,j){ const d=jobDay(j); const on=jobFilter===j.id; const flt=`jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()`;
+  return `<span class="jobtile ${on?'on':''}" draggable="true" data-job="${j.id}" data-tip="${esc(jobNum(j))} · ${esc(jobLabel(c,j.id))}|${esc(jobDayText(j))}.|Click the name to show only its lines${on?' (showing them now)':''}; drag the tile onto a line to tie that message here.">
+    <span class="ln"><span class="star ${c.def===j.id?'':'off'}" title="${c.def===j.id?'New messages land here':'Make this the job new messages land on'}" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span class="num ${j.kind}">${esc(jobNum(j))}</span><span class="nm" onclick="${flt}">${esc(j.name)}</span><span class="x" title="Open this job" onclick="event.stopPropagation();jobModal('${j.id}')">⧉</span></span>
+    <span class="ln"><span class="d ${d.t}" onclick="${flt}">${d.h}</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span></span>`; }
 function setDefault(cid,jid){ const c=cById(cid); c.def=jid; toast(`New messages from ${c.name} go to ${jobLabel(c,jid)}.`); render(); }
 function removeJob(cid,jid){ const c=cById(cid); c.jobs=c.jobs.filter(j=>j!==jid); if(c.def===jid) c.def=c.jobs[0]||null; if(jobFilter===jid) jobFilter=null; toast('Job removed from the person. Their messages tied to it keep the tie.'); render(); }
 function addJob(cid){ const c=cById(cid); const left=jobs.filter(j=>!c.jobs.includes(j.id)); if(!left.length){toast('They are on every job already.');return;} modal(`Add a job to ${esc(c.name)}`, `<div class="f">Which job<select id="mj">${left.map(j=>`<option value="${j.id}">${esc(j.name)} · ${esc(j.note)}</option>`).join('')}</select></div><p class="note">The app adds most of these itself: the ask, the customer record, the architect on the project.</p>`, ()=>{ const v=document.getElementById('mj').value; c.jobs.push(v); if(!c.def) c.def=v; toast('Added.'); render(); }); }
@@ -873,12 +900,12 @@ function closeSheet(){ document.getElementById('sheet')?.remove(); }
 // ---------- hover cards: what a control does, and what it changes ----------
 // A card may carry a legend (data-tip-legend), drawn when it opens from the page's own state, so the sample chips are the real ones.
 const TIP_LEGENDS = {
-  jobs(){ const c=cById(openContact); if(!c) return ''; const nm=id=>jobById(id)?jobById(id).name:''; const def=c.def?nm(c.def):null; const blue=jobFilter?nm(jobFilter):(c.jobs.find(j=>j!==c.def)?nm(c.jobs.find(j=>j!==c.def)):(def||'a job')); const first=c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0];
+  jobs(){ const c=cById(openContact); if(!c) return ''; const nm=id=>jobById(id)?jobById(id).name:''; const def=c.def?nm(c.def):null; const blueId=jobFilter||c.jobs.find(j=>j!==c.def)||c.def; const blue=blueId?nm(blueId):'a job'; const blueJ=blueId?jobById(blueId):null; const defJ=c.def?jobById(c.def):null; const first=c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0];
     return `<div class="leg">
-      <div><span class="jobchip on">${esc(blue)}</span><span class="w"><b>Blue</b> is what you are looking at: the thread shows only the lines tied to that job. Click it again, or <i>show all</i>, to see everything.</span></div>
-      <div><span class="jobchip"><span class="star">★</span> ${esc(def||'none yet')}</span><span class="w"><b>The gold star</b> is where new messages from ${esc(first)} land until someone changes it. Click ☆ on another job to move it. It never changes what you are looking at.</span></div>
-      <div><span class="jobchip" style="color:var(--text-muted)">⧉ ×</span><span class="w">⧉ opens the job's card; × takes the job off ${esc(first)} (the lines tied to it keep their tie).</span></div>
-      <div><span class="jobchip ghost">drag</span><span class="w">Drag a chip onto a line to tie that one message there; press and hold on a phone. A line with no job sits on the person alone.</span></div>
+      <div><span class="jobtile mini on"><span class="ln"><span class="num ${blueJ?blueJ.kind:'bid'}">${esc(blueJ?jobNum(blueJ):'B?')}</span><span class="nm">${esc(blue)}</span></span></span><span class="w"><b>Blue</b> is what you are looking at: the thread shows only the lines tied to that job. Click it again, or <i>show all</i>, to see everything.</span></div>
+      <div><span class="jobtile mini"><span class="ln"><span class="star">★</span>${defJ?`<span class="num ${defJ.kind}">${esc(jobNum(defJ))}</span>`:''}<span class="nm">${esc(def||'none yet')}</span></span></span><span class="w"><b>The gold star</b> is where new messages from ${esc(first)} land until someone changes it. Click ☆ on another job to move it. It never changes what you are looking at.</span></div>
+      <div><span class="jobchip" style="color:var(--text-muted)">⧉ ×</span><span class="w">⧉ opens the job's card; × takes the job off ${esc(first)} (the lines tied to it keep their tie). The second line is the job's day in words: a bid's day, a project's stage, a Pipeline job's step.</span></div>
+      <div><span class="jobchip ghost">drag</span><span class="w">Drag a tile onto a line to tie that one message there; press and hold on a phone. A line with no job sits on the person alone.</span></div>
     </div>`; }
 };
 (function(){ const tip=document.createElement('div'); tip.className='tip'; document.body.appendChild(tip); let timer=null, cur=null;
