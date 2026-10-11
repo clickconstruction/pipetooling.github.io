@@ -61,6 +61,10 @@ A recorded call holds the red on its stage for the week. Another stage takes it 
 
 Press the **Daily profit rate** card. A panel opens under the row. The chart shows earned against costs by pay week. The bar is the net. A hatched week is missing hours that wait for approval. Under it, a waterfall shows where a day's money goes, from earned to the number on the card. A table says where each input is read from and what can make it wrong. Each row ends in its door. The last line is break-even. Press the card again or the {{button:outline|×}} to close it.
 
+## Money owed and Crew hours, opened
+
+Press **Money owed**. Owed to you reads by how late it is. Owed by you reads by when it falls due. A waterfall walks from cash through what is owed each way to net position. It then adds the finished work not yet billed. Press **Crew hours**. The chart stacks each week by what the app has read. Approved field hours are blue. Hours waiting for approval are hatched. Office hours are grey. A waterfall walks this week's hours from clocked to what the page reads. Both panels end in the table of sources. One line ties each to the link.
+
 ## The Monday sheet
 
 Press {{button:outline|Monday sheet}} at the top of the page. The page becomes one screen. Three tiles carry a light each: contribution per week, net position, and cash. Under them sit the five moves for the week and the people lines. Press {{button:outline|Email me this sheet}} and the same screen lands in your own inbox. Press {{button:outline|Open the full Bridge}} to come back.
