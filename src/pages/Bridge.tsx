@@ -61,6 +61,9 @@ import { buildOwedPanel } from '../lib/bridge/owedPanel'
 import { BridgeOwedPanel } from '../components/bridge/BridgeOwedPanel'
 import { buildHoursPanel } from '../lib/bridge/hoursPanel'
 import { BridgeHoursPanel } from '../components/bridge/BridgeHoursPanel'
+import { buildCashPanel, buildNetPanel } from '../lib/bridge/netCashPanels'
+import { BridgeBreakdownPanel } from '../components/bridge/BridgeBreakdownPanel'
+import { STAGE_RULE_LINE } from '../lib/bridge/stageFlow'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -125,6 +128,9 @@ export default function Bridge() {
   const [reflexId, setReflexId] = useState<ReflexId | null>(null)
   // The card panels (link PR 9): which of the three cards is open under the row, if any.
   const [openCard, setOpenCard] = useState<'profit' | 'owed' | 'hours' | null>(null)
+  // The breakdowns behind the two charts (link PR 11).
+  const [netOpen, setNetOpen] = useState(false)
+  const [cashOpen, setCashOpen] = useState(false)
   // The calls (link PR 2): the week's call holds the link; Friday asks whether it moved.
   const [calls, setCalls] = useState<BridgeCall[] | null>(null)
   const [callsError, setCallsError] = useState<string | null>(null)
@@ -824,6 +830,52 @@ export default function Bridge() {
     })
   }, [data, fin.data, receipts, profit])
 
+  const netPanel = useMemo(() => {
+    if (!history || !data) return null
+    return buildNetPanel({ history, startLabel: windowStartLabel, bankUsd: bank?.usd ?? null, typedRolledUsd: typedRolled, typedLabel: data.cashSetting ? md(data.cashSetting.asOfYmd) : null, pendingClosedHours: data.crew.pendingClosedHours, paperProfitUsd: truth?.paper.profitUsd ?? null, billingLagUsd: truth?.billingLagUsd ?? null, costGapUsd: truth?.costGapUsd ?? null })
+  }, [history, data, windowStartLabel, bank, typedRolled, truth])
+  const cashPanel = useMemo(() => {
+    if (!forecast || !data || cashToday == null) return null
+    const c = carryingDay(forecast, receipts)
+    return buildCashPanel({
+      cashTodayUsd: cashToday,
+      bankSynced: !!bank,
+      typedLabel: data.cashSetting ? md(data.cashSetting.asOfYmd) : null,
+      confidence,
+      bills,
+      dailyDrainUsd: data.dailyDrainUsd,
+      daysAhead: BRIDGE_DAYS_AHEAD,
+      endUsd: forecast.endUsd,
+      lowestUsd: forecast.lowest.cashUsd,
+      lowestLabel: md(forecast.lowest.ymd),
+      floorUsd: forecast.floorUsd,
+      clearsFloor: forecast.clearsFloor,
+      daysUnderFloor: forecast.daysUnderFloor,
+      payrollWeeklyEstUsd: data.payrollWeeklyEstUsd,
+      pendingClosedHours: data.crew.pendingClosedHours,
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      doubtfulUsd: doubtful.reduce((s, d) => s + d.usd, 0),
+      doubtfulCount: doubtful.length,
+      collectionsUsd: fin.data?.arCollections.total ?? 0,
+      collectionsCount: fin.data?.arCollections.count ?? 0,
+      carryLabel: c ? md(c.ymd) : null,
+      carryUsd: c ? c.receiptsUsd : null,
+    })
+  }, [forecast, data, cashToday, bank, confidence, bills, receipts, doubtful, fin.data])
+
+  // The sheet's link lines (link PR 11): the rule, the lit link, the call, the three readings at today's pace.
+  const sheetLink = useMemo((): string[] => {
+    if (!stageFlow || !stageFlow.linkId) return []
+    const s = stageFlow.stages.find((x) => x.id === stageFlow.linkId)
+    const out = [STAGE_RULE_LINE]
+    if (s) out.push(`${s.name}: ${s.badge}. ${s.pile.headline}. ${s.weeksText}.`)
+    if (thisWeekCall) out.push(`This week's call: ${thisWeekCall.link}, recorded ${md(thisWeekCall.calledOn)}${thisWeekCall.calledByName ? ` by ${thisWeekCall.calledByName}` : ''}.`)
+    else out.push('No call recorded for this week yet.')
+    if (scorecard) out.push(`Last week's call: ${scorecard.linkName}, ${scorecard.verdictText}. ${scorecard.consequence}`)
+    if (dialReading && !dialMoved) for (const l of dialReading.lines) out.push(`${l.head.charAt(0).toUpperCase()}${l.head.slice(1)}: ${l.text}`)
+    return out
+  }, [stageFlow, thisWeekCall, scorecard, dialReading, dialMoved])
+
   const sheet = useMemo(() => {
     if (!data) return null
     const c = forecast ? carryingDay(forecast, receipts) : null
@@ -848,8 +900,9 @@ export default function Bridge() {
       cashRows,
       moves: thisWeek,
       people: peopleLines(vectorInputs ? vectors : null),
+      link: sheetLink,
     })
-  }, [data, forecast, receipts, confidence, truth, fin.data, vectorWeek, headline, netLight, cashLightRead, thisWeek, vectorInputs, vectors])
+  }, [data, forecast, receipts, confidence, truth, fin.data, vectorWeek, headline, netLight, cashLightRead, thisWeek, vectorInputs, vectors, sheetLink])
 
   const emailSheet = useCallback(async () => {
     if (!sheet || emailing) return
@@ -1035,6 +1088,11 @@ export default function Bridge() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
               <span style={label}>Net position — last 8 weeks</span>
               <span style={det}>cash + owed to you (collections excluded) − owed by you</span>
+              {netPanel && (
+                <button type="button" onClick={() => setNetOpen((o) => !o)} aria-expanded={netOpen} data-testid="bridge-net-breakdown" style={{ ...btnStyle, fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>
+                  {netOpen ? '▴ close' : '▾ break it down'}
+                </button>
+              )}
               {netToday != null && netStart != null && (
                 <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: netToday - netStart >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
                   Today: {shortK(netToday)} · {netToday - netStart >= 0 ? 'up' : 'down'} {shortK(Math.abs(netToday - netStart))} since {windowStartLabel}
@@ -1047,6 +1105,7 @@ export default function Bridge() {
               <div style={{ ...det, padding: '1.2rem 0' }}>{!fin.data ? 'Loading money owed…' : bankLoading ? 'Reading the bank balance…' : 'Type cash on hand below to anchor this line.'}</div>
             )}
             <div style={det}>Payroll and sub-labor owed are carried flat in the history (they turn over weekly); supply invoices move it on their invoice and payment dates.</div>
+            {netOpen && netPanel && <BridgeBreakdownPanel title={`What moved it, ${netPanel.startLabel} to today`} sub="the three parts of net position, each by how much it changed over the window" bars={netPanel.waterfall} sources={netPanel.sources} closing={netPanel.paper} testId="bridge-net-panel" />}
           </div>
 
           {/* Truth check (v2.3335) */}
@@ -1108,6 +1167,11 @@ export default function Bridge() {
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
               <span style={label}>Cash — next 8 weeks</span>
               <span style={det}>bank balance today, then every bill on the day it's due and every receipt on the day it's expected</span>
+              {cashPanel && (
+                <button type="button" onClick={() => setCashOpen((o) => !o)} aria-expanded={cashOpen} data-testid="bridge-cash-breakdown" style={{ ...btnStyle, fontSize: '0.75rem', padding: '0.1rem 0.5rem' }}>
+                  {cashOpen ? '▴ close' : '▾ break it down'}
+                </button>
+              )}
               {forecast && (
                 <span style={{ marginLeft: 'auto', fontWeight: 700, fontSize: '0.85rem', fontVariantNumeric: 'tabular-nums', color: forecast.clearsFloor ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>{cashRead}</span>
               )}
@@ -1151,6 +1215,7 @@ export default function Bridge() {
                 <button type="button" onClick={() => void saveFloor()} style={btnStyle}>Set</button>
               </span>
             </div>
+            {cashOpen && cashPanel && <BridgeBreakdownPanel title="Where the window's cash comes from, and where it goes" sub="today's bank, plus every receipt the forecast expects, less every bill it schedules, is where the line ends" bars={cashPanel.waterfall} sources={cashPanel.sources} closing={cashPanel.lowest} testId="bridge-cash-panel" />}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>

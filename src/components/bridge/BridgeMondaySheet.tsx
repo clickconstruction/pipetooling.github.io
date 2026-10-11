@@ -101,6 +101,18 @@ export function BridgeMondaySheet(props: { sheet: MondaySheet; emailing: boolean
             </ol>
           )}
         </div>
+        {sheet.link.length > 0 && (
+          <div style={panel} data-testid="bridge-sheet-link">
+            <div style={label}>The weakest link</div>
+            <ul style={{ listStyle: 'none', margin: '0.3rem 0 0', padding: 0 }}>
+              {sheet.link.map((p) => (
+                <li key={p} style={{ padding: '0.3rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }}>
+                  {p}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         <div style={panel}>
           <div style={label}>People, this pay week</div>
           {sheet.people.length === 0 ? (

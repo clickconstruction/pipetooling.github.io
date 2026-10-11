@@ -2,7 +2,7 @@
 name: "The Bridge as the weakest link: build the prototype"
 number: 106
 group: ready
-status: building on claude/bridge-link-* branches from 2026-10-11 · PR 1 the kernel, the rule and the five cards (v2.5232, #5400) · PR 2 the calls (v2.5233, #5401) · PR 3 Build by percent (v2.5234, #5402) · PR 4 Market and Sales (v2.5235, #5403) · PR 5 the dial (v2.5236, #5404) · PR 6 resources and the order (v2.5237, #5405) · PR 7 everything else waits (v2.5238, #5406) · PR 8 week cards (v2.5239, #5407) · PR 9 the profit panel (v2.5240, #5408) · PR 10 the owed and hours panels (v2.5241)
+status: building on claude/bridge-link-* branches from 2026-10-11 · PR 1 the kernel, the rule and the five cards (v2.5232, #5400) · PR 2 the calls (v2.5233, #5401) · PR 3 Build by percent (v2.5234, #5402) · PR 4 Market and Sales (v2.5235, #5403) · PR 5 the dial (v2.5236, #5404) · PR 6 resources and the order (v2.5237, #5405) · PR 7 everything else waits (v2.5238, #5406) · PR 8 week cards (v2.5239, #5407) · PR 9 the profit panel (v2.5240, #5408) · PR 10 the owed and hours panels (v2.5241, #5409) · PR 11 net and cash breakdowns, the sheet (v2.5242)
 summary: >
   The Bridge opens on one rule, reads the company as five stages and three resources, lights
   the weakest link, and gives the owner a dial, a record of the week's call, and a breakdown
