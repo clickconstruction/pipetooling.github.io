@@ -102,7 +102,11 @@ Each one is a button in the prototype; each becomes one press in the app.
   card opens from the ⧉ on a job in the rail.
 - **Quick replies**: a two-row strip that scrolls sideways above the box, in its own gray panel so it
   reads apart from the box below it, never a loose pile (the owner, 2026-10-11); a press fills the box
-  and nothing sends. The lines typed every day ("Your quote is in your portal", "Did the invite come
+  and nothing sends. The team's lines come first, then the person's own. **Edit** on the strip opens the
+  quick replies window: the team's and mine in two lists, each line with who added it and when and, once
+  changed, who last edited it and when; anyone can add a line, for the team or just for themselves, and
+  anyone can edit any line (the owner, 2026-10-11). The window keeps the history on the line itself, so
+  the app's table needs added_by, added_at, edited_by, edited_at and a scope (team or one person). The lines typed every day ("Your quote is in your portal", "Did the invite come
   through?", "Checking on the number, still good for today?").
 - **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so.
 - **Search**: words in texts, emails, transcripts and summaries, across every contact.
@@ -207,3 +211,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   entry box under it.
 - **v1.9, 2026-10-11**: the promise offer is one line with short choices and a one-word tag for where
   each goes; the full sentence lives on the written line and on the hover.
+- **v1.10, 2026-10-11**: *Edit* on the quick replies strip opens the window: the team's and mine, who
+  added and edited each and when, add for the team or just me, edit any line in place.

@@ -95,7 +95,7 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .queue .row .snippet{padding-left:46px;font-size:14px}
 .empty{color:var(--text-muted);padding:14px;text-align:center}
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
-.modal{background:var(--surface);border-radius:12px;padding:16px;max-width:460px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.modal{background:var(--surface);border-radius:12px;padding:16px;max-width:460px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2);max-height:90vh;overflow:auto}
 .modal h2{margin-bottom:10px}
 .modal .f{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13px;color:var(--text-muted)}
 .modal .f input,.modal .f select{font-size:15px;color:var(--text)}
@@ -145,6 +145,13 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .picker .prow .open{flex:none}
 .kindpill{display:inline-block;font-size:11px;padding:0 6px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);margin-left:6px;vertical-align:middle}
 .kindpill.bid{color:#6d3fb8;border-color:#d9c8f5;background:#f6f0ff}.kindpill.project{color:#1a7f3c;border-color:#bfe3c9;background:#eef7ea}.kindpill.pipeline{color:#1f5fbf;border-color:#c5d8f5;background:#eaf1fc}
+.qlist{border:1px solid var(--border);border-radius:8px}
+.qrow{padding:8px 10px;border-top:1px solid var(--border)}
+.qrow:first-child{border-top:0}
+.qrow .qtext{font-size:14px}
+.qrow .qmeta,.qadd .qmeta{display:flex;gap:10px;align-items:center;font-size:12px;color:var(--text-muted);margin-top:4px;flex-wrap:wrap}
+.qrow .qmeta button{margin-left:auto}
+.qadd{border:1px dashed var(--border);border-radius:8px;padding:8px 10px}
 .jobcard h2{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .jobcard .facts{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;font-size:14px;margin:8px 0 12px}
 .jobcard .facts dt{color:var(--text-muted)}.jobcard .facts dd{margin:0}
@@ -217,20 +224,22 @@ const messages = [
   {id:13, c:'jonah', job:'boerne', ch:'email', dir:'in', who:'Jonah to bids@', at:T(2,10,48), text:'Boerne Retail Shell, Addendum 2. Addendum 2 is at the link below, 184 MB. It settles the panel size and the roof curbs. The bid date holds.\nfiles.marshvale.example/s/7Hq2'},
   {id:14, c:'unk1', job:null, ch:'text', dir:'in', who:'(830) 555-0172', at:T(2,9,12), text:'Hi this is Dee at Alamo Concrete, new cell. Saw the Pad B pricing set, can we quote the concrete?'},
 ];
-const quick = [
-  'Your quote is in your portal now, thank you.',
-  'Did the invite come through?',
-  'Checking on the number. Still good for today?',
-  'Understood. You will have it by 9 AM Thursday.',
-  'Thanks, we will call you back within the hour.',
-  'The plans are in your portal; questions close Monday.',
-  'Can you get it to us a day earlier?',
-  'We received it, thank you. We will be in touch after we compare.',
-  'The site is open from 7. Check in with the super when you arrive.',
-  'Your pay application is sent; the architect has it.',
-  'Running about 20 minutes late, sorry.',
-  'Is the detention pond in your scope or concrete\'s?'
+let qseq=20;
+const quickReplies = [
+  {id:1, scope:'team', text:'Your quote is in your portal now, thank you.', addedBy:'Rosa', addedAt:'Sep 12'},
+  {id:2, scope:'team', text:'Did the invite come through?', addedBy:'Robert', addedAt:'Sep 12'},
+  {id:3, scope:'team', text:'Checking on the number. Still good for today?', addedBy:'Robert', addedAt:'Sep 14', editedBy:'Wendi', editedAt:'Sep 29'},
+  {id:4, scope:'team', text:'Understood. You will have it by 9 AM Thursday.', addedBy:'Rosa', addedAt:'Sep 20'},
+  {id:5, scope:'team', text:'Thanks, we will call you back within the hour.', addedBy:'Rosa', addedAt:'Sep 20'},
+  {id:6, scope:'team', text:'The plans are in your portal; questions close Monday.', addedBy:'Robert', addedAt:'Sep 22'},
+  {id:7, scope:'team', text:'We received it, thank you. We will be in touch after we compare.', addedBy:'Rosa', addedAt:'Sep 22'},
+  {id:8, scope:'team', text:'The site is open from 7. Check in with the super when you arrive.', addedBy:'Wendi', addedAt:'Sep 26'},
+  {id:9, scope:'team', text:'Your pay application is sent; the architect has it.', addedBy:'Rosa', addedAt:'Sep 30'},
+  {id:10, scope:'mine', text:'Can you get it to us a day earlier?', addedBy:'Robert', addedAt:'Sep 18'},
+  {id:11, scope:'mine', text:'Running about 20 minutes late, sorry.', addedBy:'Robert', addedAt:'Oct 1'},
+  {id:12, scope:'mine', text:'Is the detention pond in your scope or concrete\'s?', addedBy:'Robert', addedAt:'Oct 2'},
 ];
+const quickList = () => [...quickReplies.filter(q=>q.scope==='team'), ...quickReplies.filter(q=>q.scope==='mine'&&q.addedBy===ME)];
 // ---------- state ----------
 let view = 'followup'; // followup | messages | customers | job | settings
 let openContact = 'greg';
@@ -325,7 +334,7 @@ function renderMessages(m){
   <div id="lines"></div>
   <div class="reply">
     <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team ':''}${replyKind===k?'on':''}" onclick="replyKind='${k}';render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees a note; adding one closes the row'}</span></div>
-    ${replyKind!=='note'?`<div class="quickwrap"><div class="ql">Quick replies <span>· scroll for more · a press fills the box, nothing sends</span></div><div class="quick">${quick.map(q=>`<button onclick="document.getElementById('box').value=${JSON.stringify(q).replace(/"/g,'&quot;')};countBox(document.getElementById('box'))">${esc(q)}</button>`).join('')}</div></div>`:''}
+    ${replyKind!=='note'?`<div class="quickwrap"><div class="ql">Quick replies <span>· scroll for more · a press fills the box, nothing sends</span><button class="quiet small" style="margin-left:auto" onclick="editQuick()">Edit</button></div><div class="quick">${quickList().map(q=>`<button title="${q.scope==='team'?'The team\'s':'Mine'}" onclick="useQuick(${q.id})">${esc(q.text)}</button>`).join('')}</div></div>`:''}
     <textarea id="box" oninput="countBox(this)" class="${replyKind==='note'?'team':''}" placeholder="${replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
     ${replyKind!=='note'?`<div class="previews"><span>Send shows it to you the way they will see it, before it goes.</span><span class="note" id="pvcount"></span></div>`:''}
     <div class="send"><button class="primary" onclick="${replyKind==='note'?`sendReply('${c.id}')`:`previewDraft('${c.id}','${replyKind}')`}" ${c.optout&&replyKind==='text'?'disabled':''}>${replyKind==='note'?'Add the note':replyKind==='email'?'Send email…':'Send text…'}</button>${c.optout&&replyKind==='text'?'<span class="note">They sent STOP. The app will not text this number.</span>':''}
@@ -416,6 +425,24 @@ function answerMyself(mid){ const x=messages.find(m=>m.id===mid); x.question.sta
 function sendReply(cid){ const c=cById(cid); const box=document.getElementById('box'); const t=box.value.trim(); if(!t){toast('Write something first.');return;} const job = replyTie==='none'?null:(replyTie||c.def); const who = replyKind==='note'?`${ME} · note for the team`:replyKind==='email'?`${ME} · bids@`:`${ME} · from the company number`; messages.push({id:++seq,c:cid,job,ch:replyKind,dir:replyKind==='note'?'team':'out',who,at:T(2,10,32)+messages.length,text:t}); c.state='done'; c.has=null; box.value=''; toast(replyKind==='note'?'Note added and the row closed. Only the team sees the note.':replyKind==='email'?'Email sent as Click Construction; its copy is kept in Documents.':'Text sent from the company number.'); render(); }
 function theyReply(cid){ const c=cById(cid); messages.push({id:++seq,c:cid,job:c.def,ch:'text',dir:'in',who:c.name.split(' ')[0],at:T(2,10,40)+messages.length,text:'Got it, thanks. One more thing when you have a minute.'}); c.state='waiting'; toast(`${c.name} wrote back; the row is open again by itself.`); render(); }
 function whoIsThis(cid){ const c=cById(cid); modal(`Who is this? ${esc(c.phones[0])}`, `<div class="f">Their name<input id="wn" placeholder="Dee …"></div><div class="f">What they are to us<select id="wk"><option value="trade">trade partner</option><option value="customer">customer</option><option value="arch">architect</option></select></div><div class="f">Their company<input id="wc" placeholder="Alamo Concrete"></div><div class="f">Tie this message to<select id="wj"><option value="">no job yet</option>${jobs.map(j=>`<option value="${j.id}">${esc(j.name)} · ${esc(j.note)}</option>`).join('')}</select></div><p class="note">The answer becomes the rule for this number: the next text from it lands on this person.</p>`, ()=>{ const n=document.getElementById('wn').value.trim(); if(!n){toast('A name, please.');return false;} c.name=n; c.kind=document.getElementById('wk').value; c.company=document.getElementById('wc').value.trim(); const j=document.getElementById('wj').value; if(j){ c.jobs=[j]; c.def=j; messages.filter(x=>x.c===c.id).forEach(x=>x.job=j); } toast(`${n} is known now.`); render(); }); }
+
+// ---------- quick replies: use, edit, add ----------
+function useQuick(id){ const q=quickReplies.find(x=>x.id===id); const box=document.getElementById('box'); box.value=q.text; countBox(box); box.focus(); }
+function quickMeta(q){ return `added by ${esc(q.addedBy)} · ${esc(q.addedAt)}${q.editedBy?` · edited by ${esc(q.editedBy)} · ${esc(q.editedAt)}`:''}`; }
+function editQuick(){ const bg=document.createElement('div'); bg.className='modal-bg'; const m=document.createElement('div'); m.className='modal wide'; bg.appendChild(m);
+  let editing=null;
+  const row=q=>`<div class="qrow" id="qr${q.id}">${editing===q.id?`<input id="qe${q.id}" value="${esc(q.text)}" style="width:100%"><div class="qmeta"><button class="small primary" onclick="window.__qSave(${q.id})">Save</button><button class="small" onclick="window.__qEdit(null)">Cancel</button></div>`:`<div class="qtext">${esc(q.text)}</div><div class="qmeta"><span>${quickMeta(q)}</span><button class="small" onclick="window.__qEdit(${q.id})">Edit</button></div>`}</div>`;
+  const paint=()=>{ const team=quickReplies.filter(q=>q.scope==='team'); const mine=quickReplies.filter(q=>q.scope==='mine'&&q.addedBy===ME);
+    m.innerHTML=`<h2>Quick replies</h2><p class="note">Anyone can add one and anyone can edit one. Each keeps who added it and when, and who last edited it and when.</p>
+    <h3>The team's (${team.length})</h3><div class="qlist">${team.map(row).join('')||'<div class="empty">none yet</div>'}</div>
+    <h3>Mine (${mine.length})</h3><div class="qlist">${mine.map(row).join('')||'<div class="empty">none yet</div>'}</div>
+    <h3>Add one</h3><div class="qadd"><input id="qnew" placeholder="The line you type every day…" style="width:100%"><div class="qmeta"><label><input type="radio" name="qscope" value="team" checked> for the team</label><label><input type="radio" name="qscope" value="mine"> just me</label><button class="small primary" style="margin-left:auto" onclick="window.__qAdd()">Add</button></div></div>
+    <div class="btns"><button onclick="this.closest('.modal-bg').remove();render()">Done</button></div>`;
+    const f=m.querySelector(editing?`#qe${editing}`:'#qnew'); if(f&&editing) f.focus(); };
+  window.__qEdit=id=>{ editing=id; paint(); };
+  window.__qSave=id=>{ const q=quickReplies.find(x=>x.id===id); const v=m.querySelector(`#qe${id}`).value.trim(); if(!v){toast('Write something, or Cancel.');return;} if(v!==q.text){ q.text=v; q.editedBy=ME; q.editedAt='Oct 2'; toast('Saved, with your name and today on it.'); } editing=null; paint(); };
+  window.__qAdd=()=>{ const v=m.querySelector('#qnew').value.trim(); if(!v){toast('Write the line first.');return;} const scope=m.querySelector('input[name=qscope]:checked').value; quickReplies.push({id:++qseq, scope, text:v, addedBy:ME, addedAt:'Oct 2'}); toast(scope==='team'?'Added for the team, with your name and today on it.':'Added to yours, with your name and today on it.'); paint(); };
+  paint(); document.body.appendChild(bg); bg.onclick=e=>{ if(e.target===bg){ bg.remove(); render(); } }; }
 
 // ---------- tie picker and the job card ----------
 const kindPill = j => `<span class="kindpill ${j.kind}">${j.kind==='bid'?'bid':j.kind==='project'?'GC project':'Pipeline job'}</span>`;
