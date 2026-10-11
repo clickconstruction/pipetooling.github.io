@@ -53,6 +53,8 @@ import { buildOrder } from '../lib/bridge/order'
 import { BridgeOrderModal } from '../components/bridge/BridgeOrderModal'
 import { buildReflexes, otherLevers, reflexLine, type ReflexId } from '../lib/bridge/waits'
 import { BridgeWaits } from '../components/bridge/BridgeWaits'
+import { buildWeekCards } from '../lib/bridge/weekCard'
+import { formatWeekRangeLabel } from '../lib/people/approvalsQueue'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -645,11 +647,23 @@ export default function Bridge() {
       cancelled = true
     }
   }, [data, weeksRange])
-  const headline = useMemo(() => {
+  const headlineAndCards = useMemo(() => {
     if (!data || !weeksRange || !weeksInputs || !vectorInputs) return null
     const common = { zoom: 'weeks' as const, anchorYmd: weeksRange.end, todayYmd: data.todayYmd, people: vectorInputs.people, wages: vectorInputs.wages, sessions: weeksInputs.sessions, ratePerHourByJob: weeksInputs.ratePerHourByJob, assumedHalfJobs: weeksInputs.assumedHalfJobs, jobLabels: weeksInputs.jobLabels }
-    return buildHeadline({ recorded: buildVectorGrid({ ...common, mode: 'recorded' }), approved: buildVectorGrid({ ...common, mode: 'approved' }) })
+    const recorded = buildVectorGrid({ ...common, mode: 'recorded' })
+    const approved = buildVectorGrid({ ...common, mode: 'approved' })
+    const headline = buildHeadline({ recorded, approved })
+    // The week cards (link PR 8): sessions counted by the pay week they fall in.
+    const sessionsByWeek = new Map<string, number>()
+    for (const sess of weeksInputs.sessions) {
+      if (sess.officeJob || !(sess.hours > 0)) continue
+      const wk = payWeekContaining(sess.workDate).start
+      sessionsByWeek.set(wk, (sessionsByWeek.get(wk) ?? 0) + 1)
+    }
+    const cards = buildWeekCards({ headline, recorded, approved, sessionsByWeek, dateRange: formatWeekRangeLabel })
+    return { headline, cards }
   }, [data, weeksRange, weeksInputs, vectorInputs])
+  const headline = headlineAndCards?.headline ?? null
 
   // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
   const truth = useMemo<TruthCheck | null>(() => {
@@ -840,7 +854,7 @@ export default function Bridge() {
           <BridgeRule />
 
           {/* The top line (v2.5216): contribution per week, the two constraints as lights */}
-          <BridgeHeadline headline={headline} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
+          <BridgeHeadline headline={headline} cards={headlineAndCards?.cards} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
           {shownFlow && <BridgeStages flow={shownFlow} pickedId={litLink && isStageLink(litLink) ? litLink : null} onPick={setPickedStage} onOrder={setOrderFor} />}
