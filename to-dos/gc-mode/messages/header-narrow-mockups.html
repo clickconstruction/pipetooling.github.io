@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: the thread header under 640 px, three options</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:900px}
+.opts{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.opt{width:470px;flex:none}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.opt .why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;overflow:hidden}
+button{font:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px}
+button.quiet{border-color:transparent;background:transparent;color:var(--accent);padding:4px 6px}
+button.small{padding:3px 8px;font-size:13px}
+.avatar{width:44px;height:44px;border-radius:50%;background:#e6f1ff;color:#1f5fbf;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex:none}
+.name h2{margin:0;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{color:var(--text-muted);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub b{font-weight:600;color:var(--text)}
+.court{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:2px 9px 2px 7px;border-radius:999px;border:1px solid #f0d3b0;background:var(--warn-soft);color:var(--warn)}
+.court i{width:9px;height:9px;border-radius:50%;background:var(--warn);display:inline-block;flex:none}
+.haspill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:3px 10px 3px 4px;background:var(--surface);font-size:13px;white-space:nowrap}
+.haspill .av{width:22px;height:22px;border-radius:50%;background:var(--chip);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--text-muted)}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:999px;overflow:hidden;font-size:13px}
+.seg button{border:0;border-radius:0;padding:5px 11px}
+.seg button+button{border-left:1px solid var(--border)}
+.seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.statepill{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--accent);border-radius:999px;padding:3px 10px;background:var(--accent-soft);color:var(--accent);font-size:13px;font-weight:600;white-space:nowrap}
+.jobchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:var(--surface);font-size:13px;white-space:nowrap}
+.jobchip .star{color:#c9a200}
+.jobchip.ghost{border-style:dashed;color:var(--text-muted)}
+.strip{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin;mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent)}
+.strip>*{flex:none}
+.strip .sep{width:1px;background:var(--border);margin:2px 4px}
+.stamps{font-size:12px;color:var(--text-muted);white-space:nowrap}
+.stamps b{font-weight:600;color:var(--text)}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.rule{border-top:1px solid var(--border);margin:10px 0 0;padding-top:8px}
+.msg{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:10px 0 0;background:#f4f8ff;font-size:14px}
+.msg .meta{font-size:12px;color:var(--text-muted);display:flex;gap:8px;flex-wrap:wrap}
+.msg .meta b{color:var(--text)}
+.day{color:var(--text-muted);font-size:12px;margin:12px 0 0;text-align:center}
+.facts{font-size:13px;color:var(--text-muted);display:flex;gap:4px 10px;flex-wrap:wrap}
+.facts a{color:var(--accent);text-decoration:none}
+.tapcard{position:absolute;left:12px;top:206px;z-index:3;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px 12px;font-size:13px;width:300px}
+.tapcard b{display:block;font-size:13.5px;margin-bottom:3px}
+.tapcard .changes{color:var(--text-muted);font-size:12.5px;margin-top:6px}
+.rel{position:relative}
+.cnt{font-size:11px;color:var(--text-muted);margin:0 0 6px;text-align:right}
+</style>
+</head>
+<body>
+<h1>The thread header under 640 px</h1>
+<p class="lead">The pane in the owner's screenshot is about 470 px wide. Today the header there is nine rows tall before the first message. Each frame below is 470 px and shows Dr. Priya Raman's thread, the same state as the prototype. Everything stays reachable; the question is what earns a row of its own at this width.</p>
+
+<div class="opts">
+
+<!-- A -->
+<div class="opt">
+<h2>A · Tight rows <small>· every element stays, each row re-flowed</small></h2>
+<div class="frame">
+  <div class="cnt">7 rows</div>
+  <div class="row" style="flex-wrap:nowrap"><div class="avatar">PR</div><div class="name" style="flex:1;min-width:0"><h2>Dr. Priya Raman</h2></div><span class="statepill">Open ▾</span></div>
+  <div class="sub" style="margin-top:6px"><b>Customer:</b> Helotes Dental Office</div>
+  <div class="facts" style="margin-top:2px"><a href="#">(210) 555-0144</a><a href="#">priya@helotesdental.example</a></div>
+  <div class="row" style="margin-top:6px"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span><button class="small">Settled</button></div>
+  <div class="row" style="margin-top:4px;gap:14px"><span class="stamps"><b>Them</b> text · Sat Sep 26, 2:14 PM</span><span class="stamps"><b>Us</b> email · Sat Sep 19, 4:05 PM</span></div>
+  <div class="rule"></div>
+  <div class="strip"><span class="haspill"><span class="av">R</span>Rosa has this</span><button class="small">Call in Quo</button><button class="quiet small">More ▾</button><span class="sep"></span><span class="jobchip"><span class="star">★</span>Helotes Dental Office <span class="sub">· buying out</span> ⧉</span><span class="jobchip ghost">+ add a job</span></div>
+  <div class="day">Saturday, Sep 19</div>
+  <div class="msg"><div class="meta"><b>Email</b><span>Rosa · bids@</span><span>Sat, Sep 19 · 4:05 PM</span></div>Dr. Raman, the contract is signed on our side…</div>
+</div>
+<p class="why">Open · Snoozed · Done folds to one pill naming the state; a press opens the three. The who-has-it pill moves down into one scrolling strip with the toolbar and the jobs, so the name row never wraps. The phone and the email are each a link on one line, no dangling dot. The stamps are one small line under the court, left-aligned, since right-hugging has nothing to hug here.</p>
+</div>
+
+<!-- B -->
+<div class="opt">
+<h2>B · Two lines, the rest behind a tap <small>· the name is the door to the facts</small></h2>
+<div class="frame rel">
+  <div class="cnt">4 rows</div>
+  <div class="row" style="flex-wrap:nowrap"><div class="avatar">PR</div><div class="name" style="flex:1;min-width:0"><h2>Dr. Priya Raman <span style="font-size:13px;color:var(--text-muted);font-weight:400">ⓘ</span></h2><div class="sub"><b>Customer:</b> Helotes Dental Office</div></div><span class="statepill">Open ▾</span></div>
+  <div class="row" style="margin-top:8px"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span><button class="small">Settled</button></div>
+  <div class="rule"></div>
+  <div class="strip"><span class="haspill"><span class="av">R</span>Rosa has this</span><button class="small">Call in Quo</button><button class="quiet small">More ▾</button><span class="sep"></span><span class="jobchip"><span class="star">★</span>Helotes Dental Office <span class="sub">· buying out</span> ⧉</span><span class="jobchip ghost">+</span></div>
+  <div class="day">Saturday, Sep 19</div>
+  <div class="msg"><div class="meta"><b>Email</b><span>Rosa · bids@</span><span>Sat, Sep 19 · 4:05 PM</span></div>Dr. Raman, the contract is signed on our side…</div>
+  <div class="tapcard"><b>Dr. Priya Raman · Customer: Helotes Dental Office</b>(210) 555-0144 · priya@helotesdental.example<div class="changes"><b style="display:inline">Them</b> text · Sat Sep 26, 2:14 PM &nbsp; <b style="display:inline">Us</b> email · Sat Sep 19, 4:05 PM<br>Rosa has this since Sat Sep 26, 2:30 PM</div></div>
+</div>
+<p class="why">The company sits under the name, the way a phone's message list reads. The phone, the email, the stamps and since-when live on a card that a tap on the name opens (drawn open here); the court line keeps its pill and Settled. Fewest rows; the stamps are one tap away rather than on the page.</p>
+</div>
+
+<!-- C -->
+<div class="opt">
+<h2>C · Name with its subtitle, stamps on the court line <small>· the pick, see below</small></h2>
+<div class="frame">
+  <div class="cnt">5 rows</div>
+  <div class="row" style="flex-wrap:nowrap"><div class="avatar">PR</div><div class="name" style="flex:1;min-width:0"><h2>Dr. Priya Raman</h2><div class="sub"><b>Customer:</b> Helotes Dental Office</div></div><span class="statepill">Open ▾</span></div>
+  <div class="facts" style="margin-top:6px"><a href="#">(210) 555-0144</a><a href="#">priya@helotesdental.example</a></div>
+  <div class="row" style="margin-top:6px"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span><button class="small">Settled</button></div>
+  <div class="row" style="margin-top:4px;gap:14px"><span class="stamps"><b>Them</b> text · Sep 26, 2:14 PM</span><span class="stamps"><b>Us</b> email · Sep 19, 4:05 PM</span></div>
+  <div class="rule"></div>
+  <div class="strip"><span class="haspill"><span class="av">R</span>Rosa has this</span><button class="small">Call in Quo</button><button class="quiet small">More ▾</button><span class="sep"></span><span class="jobchip"><span class="star">★</span>Helotes Dental Office <span class="sub">· buying out</span> ⧉</span><span class="jobchip ghost">+ add a job</span></div>
+  <div class="day">Saturday, Sep 19</div>
+  <div class="msg"><div class="meta"><b>Email</b><span>Rosa · bids@</span><span>Sat, Sep 19 · 4:05 PM</span></div>Dr. Raman, the contract is signed on our side…</div>
+</div>
+<p class="why">A's rows with B's name block: the label and company as the subtitle beside the avatar, so the facts line is only the phone and the email. The stamps stay on the page as one short line (the weekday dropped, the date is enough). Five rows, nothing hidden, every control one press.</p>
+</div>
+
+</div>
+
+<div style="max-width:900px;margin-top:18px;font-size:13.5px;line-height:1.5">
+<h2 style="font-size:15px;margin:0 0 6px">The pick, and is this the best we can do?</h2>
+<p style="margin:0 0 8px"><b>C</b>, with one change from the self-review: the who-has-it pill stays in the top right corner at every width (the owner's call of 2026-10-11), shrunk to its avatar and first name, <i>R Rosa</i>, beside <i>Open ▾</i>; the since-when moves to its hover card. The strip then holds Call in Quo, More ▾ and the jobs.</p>
+<p style="margin:0 0 8px">Three ways it could be better, weighed:</p>
+<ol style="margin:0 0 8px 18px;padding:0">
+<li><b>Two shapes for the state.</b> Wide keeps Open · Snoozed · Done as a segment; narrow folds it to a pill that opens the three. One shape everywhere would be simpler, but the segment is what the owner picked beside the pill, and the pill names the state in one word where there is no room for three.</li>
+<li><b>The breakpoint is the thread's width, not the window's.</b> With the list and the flow panel open at 1040 px the thread column is about 650 px, so a window rule would miss it. A container query on the thread card (<code>@container (max-width: 640px)</code>) folds the header whenever the column is narrow, whatever the window is.</li>
+<li><b>The stamps lose their weekday at narrow</b> ("Sep 26, 2:14 PM"); wide keeps "Sat, Sep 26". The date is what the court counts from, and the weekday is on the day divider in the thread, so the loss is small; the hover card keeps the full stamp.</li>
+</ol>
+<p style="margin:0">Not done: a phone-app header with a ‹ back arrow in the same row as the name (the prototype already shows ‹ Everyone above the card below 860 px; folding it into the name row is a later pass with the phone layout, which is on the plan's open list).</p>
+</div>
+</body>
+</html>
