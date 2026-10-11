@@ -37,7 +37,7 @@ import { ymdAddDays } from '../utils/dateUtils'
 import { buildStageFlow, type StageId } from '../lib/bridge/stageFlow'
 import { BridgeStages } from '../components/bridge/BridgeStages'
 import { BridgeRule } from '../components/bridge/BridgeRule'
-import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallMove, type CallOutcome } from '../lib/bridge/calls'
+import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
 import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
@@ -47,6 +47,10 @@ import { loadDemandInputs } from '../lib/bridge/loadDemandPace'
 import { buildDialReading, dialSpec } from '../lib/bridge/dial'
 import type { StageFlowInput } from '../lib/bridge/stageFlow'
 import { BridgeDial } from '../components/bridge/BridgeDial'
+import { buildResources, type ResourceId } from '../lib/bridge/resources'
+import { BridgeResources } from '../components/bridge/BridgeResources'
+import { buildOrder } from '../lib/bridge/order'
+import { BridgeOrderModal } from '../components/bridge/BridgeOrderModal'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -104,7 +108,9 @@ export default function Bridge() {
   const [emailing, setEmailing] = useState(false)
   const [mailNote, setMailNote] = useState<string | null>(null)
   // The weakest link (link PR 1): the stage pressed; the lit link until someone presses another.
-  const [pickedStage, setPickedStage] = useState<StageId | null>(null)
+  const [pickedStage, setPickedStage] = useState<CallLink | null>(null)
+  // The order (link PR 6): the badge pressed, if any; null closes the modal.
+  const [orderFor, setOrderFor] = useState<CallLink | null>(null)
   // The calls (link PR 2): the week's call holds the link; Friday asks whether it moved.
   const [calls, setCalls] = useState<BridgeCall[] | null>(null)
   const [callsError, setCallsError] = useState<string | null>(null)
@@ -352,7 +358,9 @@ export default function Bridge() {
     }
   }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
-  const litStage = pickedStage ?? stageFlow?.linkId ?? null
+  // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
+  const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
+  const litStage: StageId | null = litLink && isStageLink(litLink) ? litLink : (stageFlow?.linkId ?? null)
 
   // The dial (link PR 5): the pressed stage's pace, in dollars a week; the cards read the dial's flow while it is moved.
   const [dialUsd, setDialUsd] = useState<Partial<Record<StageId, number>>>({})
@@ -375,6 +383,34 @@ export default function Bridge() {
   const dialMoved = !!(litStage && dialSpecNow && dialUsd[litStage] != null && dialUsd[litStage] !== dialSpecNow.todayUsd)
   const shownFlow = dialMoved && dialReading ? dialReading.flow : stageFlow
 
+  // The three resources (link PR 6): what waits on the owner, the bank against the floor, who is in the field and who bills.
+  const resources = useMemo(() => {
+    if (!data || !shownFlow) return null
+    const since = ymdAddDays(data.todayYmd, -6)
+    const fieldPeople = new Set((vectorInputs?.sessions ?? []).filter((x) => !x.officeJob && x.hours > 0 && x.workDate >= since).map((x) => x.userId)).size
+    const billers = new Set((vectorInputs?.invoiceSends ?? []).filter((x) => x.userId && x.ymd >= data.windowStart).map((x) => x.userId as string)).size
+    return buildResources({
+      linkId: shownFlow.linkId,
+      pendingHours: data.crew.pendingClosedHours,
+      pendingSessions: data.crew.pendingClosedSessions,
+      unpricedJobs: data.earned.noRevenueJobs.length,
+      noPctJobs: buildPace?.pile.guessJobs ?? data.earned.assumedHalfJobs.length,
+      unsortedBankRows: (data.hygiene.unattributedNoncard ?? 0) + (data.hygiene.unlinkedCard ?? 0),
+      bidsNoValue: demand?.bidsNoValue ?? 0,
+      bankUsd: cashToday,
+      bankSynced: !!bank,
+      lowestUsd: forecast ? forecast.lowest.cashUsd : null,
+      lowestLabel: forecast ? md(forecast.lowest.ymd) : null,
+      floorUsd: data.floorUsd,
+      clearsFloor: forecast ? forecast.clearsFloor : null,
+      fieldPeople,
+      fieldHours7d: data.crew.fieldHours7d,
+      billers,
+    })
+  }, [data, shownFlow, vectorInputs, buildPace, demand, cashToday, bank, forecast])
+  const order = useMemo(() => (orderFor && shownFlow && resources ? buildOrder({ flow: shownFlow, resources, pressedId: orderFor }) : null), [orderFor, shownFlow, resources])
+  const closeOrder = useCallback(() => setOrderFor(null), [])
+
   // The calls (link PR 2): today's numbers behind the moves, the snapshot a call keeps, the scorecard and the header chip.
   const moveNumbers = useMemo(
     () => ({
@@ -394,35 +430,39 @@ export default function Bridge() {
   }, [data, calls, thisWeekStart, nowReading])
   const chip = callChip(scorecard)
   const deskReading = useMemo(() => {
-    const s = stageFlow?.stages.find((x) => x.id === litStage)
+    if (litLink && !isStageLink(litLink)) {
+      const r = resources?.find((x) => x.id === litLink)
+      return r ? `${r.gauge}. ${r.oneLine.charAt(0).toUpperCase()}${r.oneLine.slice(1)}.` : ''
+    }
+    const s = stageFlow?.stages.find((x) => x.id === litLink)
     if (!s) return ''
     if (!s.readable) return 'The app does not read this stage yet.'
     return `${s.pile.headline}${s.pile.sub.length ? `, ${s.pile.sub.join(', ')}` : ''}. ${s.flow.map((f) => `${f.who} ${f.usd} a week`).join('; ')}. ${s.weeksText}.`
-  }, [stageFlow, litStage])
+  }, [stageFlow, litLink, resources])
 
   const recordCall = useCallback(
     async (moves: CallMove[], note: string | null) => {
-      if (!data || !thisWeekStart || !litStage || !stageFlow) return
+      if (!data || !thisWeekStart || !litLink || !stageFlow) return
       setRecording(true)
       try {
         await recordBridgeCall({
           weekStart: thisWeekStart,
           calledOn: data.todayYmd,
           calledByName: profileName ?? '',
-          link: litStage,
+          link: litLink,
           moves,
-          measures: { linkWeeks: stageFlow.stages.find((s) => s.id === litStage)?.weeks ?? null, stageWeeks: nowReading.stageWeeks, keys: moveNumbers },
+          measures: { linkWeeks: stageFlow.stages.find((s) => s.id === litLink)?.weeks ?? null, stageWeeks: nowReading.stageWeeks, keys: moveNumbers },
           note,
         })
         setCalls(await loadBridgeCalls())
-        showToast(`Recorded: ${litStage} is the link this week`, 'success', 2500)
+        showToast(`Recorded: ${litLink} is the link this week`, 'success', 2500)
       } catch (e) {
         showToast(formatErrorMessage(e), 'error', 4000)
       } finally {
         setRecording(false)
       }
     },
-    [data, thisWeekStart, litStage, stageFlow, nowReading, moveNumbers, profileName, showToast],
+    [data, thisWeekStart, litLink, stageFlow, nowReading, moveNumbers, profileName, showToast],
   )
   const answerCall = useCallback(
     async (outcome: CallOutcome, note: string | null) => {
@@ -770,7 +810,7 @@ export default function Bridge() {
           <BridgeHeadline headline={headline} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
-          {shownFlow && <BridgeStages flow={shownFlow} pickedId={litStage} onPick={setPickedStage} />}
+          {shownFlow && <BridgeStages flow={shownFlow} pickedId={litLink && isStageLink(litLink) ? litLink : null} onPick={setPickedStage} onOrder={setOrderFor} />}
           {dialReading && litStage && (
             <BridgeDial
               reading={dialReading}
@@ -786,11 +826,14 @@ export default function Bridge() {
             />
           )}
 
-          {/* The link's desk and the call (link PR 2): what the pressed stage is, the moves with owners, the record; then last week's call against what moved */}
-          {stageFlow && litStage && (
+          {/* What throttles the link (link PR 6): the three resources */}
+          {resources && <BridgeResources resources={resources} pickedId={litLink && !isStageLink(litLink) ? (litLink as ResourceId) : null} onPick={setPickedStage} onOrder={setOrderFor} />}
+
+          {/* The link's desk and the call (link PR 2): what the pressed link is, the moves with owners, the record; then last week's call against what moved */}
+          {stageFlow && litLink && (
             <BridgeLinkDesk
-              link={litStage}
-              status={deskStatus({ link: litStage, nominatedId: stageFlow.nominatedId, linkId: stageFlow.linkId, heldStands: stageFlow.heldStands, recorded: thisWeekCall?.link === litStage })}
+              link={litLink}
+              status={deskStatus({ link: litLink, nominatedId: stageFlow.nominatedId, linkId: stageFlow.linkId, heldStands: stageFlow.heldStands, recorded: thisWeekCall?.link === litLink })}
               todayReading={deskReading}
               moveNumbers={moveNumbers}
               thisWeekCall={thisWeekCall}
@@ -800,6 +843,7 @@ export default function Bridge() {
             />
           )}
           {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
+          {order && <BridgeOrderModal order={order} note={dialMoved && dialReading ? `at the dial’s pace, ${dialReading.valueText}` : 'at today’s pace'} onClose={closeOrder} />}
           {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
           {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
           {demandError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Market and Sales could not be read ({demandError}).</p>}

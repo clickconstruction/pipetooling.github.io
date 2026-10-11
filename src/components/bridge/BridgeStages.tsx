@@ -19,7 +19,7 @@ function toneColor(tone: StageReading['tone']): string {
   return 'var(--text)'
 }
 
-function StageCard({ stage, picked, maxPileUsd, onPick }: { stage: StageReading; picked: boolean; maxPileUsd: number; onPick: (id: StageId) => void }) {
+function StageCard({ stage, picked, maxPileUsd, onPick, onOrder }: { stage: StageReading; picked: boolean; maxPileUsd: number; onPick: (id: StageId) => void; onOrder?: (id: StageId) => void }) {
   const h = stage.pile.usd == null ? 64 : Math.max(8, Math.round((stage.pile.usd / Math.max(1, maxPileUsd)) * 64))
   const pileBg = !stage.readable ? 'repeating-linear-gradient(135deg, var(--surface-2, var(--border)) 0 6px, var(--surface) 6px 12px)' : stage.isLink ? 'var(--text-red-700)' : stage.pile.guessShare > 0 ? `linear-gradient(180deg, var(--border) 0 ${Math.round(stage.pile.guessShare * 100)}%, #93c5fd ${Math.round(stage.pile.guessShare * 100)}% 100%)` : '#93c5fd'
   return (
@@ -95,14 +95,31 @@ function StageCard({ stage, picked, maxPileUsd, onPick }: { stage: StageReading;
           {stage.weeksText2 && <span style={{ display: 'block' }}>{stage.weeksText2}</span>}
         </span>
       )}
-      <span style={{ marginTop: 'auto', fontSize: '0.78rem', fontWeight: 700, color: toneColor(stage.tone) }} data-testid={`bridge-stage-badge-${stage.id}`}>
+      <span
+        role="button"
+        tabIndex={0}
+        title="what to deal with first, in order"
+        onClick={(e) => {
+          e.stopPropagation()
+          onOrder?.(stage.id)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            e.stopPropagation()
+            onOrder?.(stage.id)
+          }
+        }}
+        style={{ marginTop: 'auto', fontSize: '0.78rem', fontWeight: 700, color: toneColor(stage.tone), textDecoration: onOrder ? 'underline dotted' : undefined, textUnderlineOffset: 3, cursor: onOrder ? 'pointer' : undefined }}
+        data-testid={`bridge-stage-badge-${stage.id}`}
+      >
         {stage.badge}
       </span>
     </button>
   )
 }
 
-export function BridgeStages({ flow, pickedId, onPick }: { flow: StageFlow; pickedId: StageId | null; onPick: (id: StageId) => void }) {
+export function BridgeStages({ flow, pickedId, onPick, onOrder }: { flow: StageFlow; pickedId: StageId | null; onPick: (id: StageId) => void; onOrder?: (id: StageId) => void }) {
   const maxPile = Math.max(1, ...flow.stages.map((s) => s.pile.usd ?? 0))
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.7rem 0.9rem', marginTop: '0.6rem' }} data-testid="bridge-stages">
@@ -112,7 +129,7 @@ export function BridgeStages({ flow, pickedId, onPick }: { flow: StageFlow; pick
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 10, alignItems: 'stretch' }}>
         {flow.stages.map((s) => (
-          <StageCard key={s.id} stage={s} picked={pickedId === s.id} maxPileUsd={maxPile} onPick={onPick} />
+          <StageCard key={s.id} stage={s} picked={pickedId === s.id} maxPileUsd={maxPile} onPick={onPick} onOrder={onOrder} />
         ))}
       </div>
       <div style={{ ...det, marginTop: '0.5rem' }}>Market and Sales feed the field, so they read by pace against it. Build, Bill and Collect read by how many weeks it would take to clear what is already waiting, at today's pace. The grey part of a pile is work the app can only guess at.</div>
