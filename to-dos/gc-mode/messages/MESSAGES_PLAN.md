@@ -101,7 +101,7 @@ Each one is a button in the prototype; each becomes one press in the app.
   built. The thread gets a gray event line naming who took it off.
 - **Before it goes**: *Send text…* and *Send email…* never send at once. They open one window with
   two tabs that show the message the way the contact's own inbox or phone shows it: the email with its
-  inbox row, From, To, the subject made from the job and the first line, the letterhead with the company number once, the greeting from
+  inbox row, From, To, the subject made from the job and the first line, with a *change* that replaces it for this one email (v1.84; a subject is the email's own, unlike the To line and the greeting, which go on the record), the letterhead with the company number once, the greeting from
   what the contact goes by, a *change* on it setting the goes-by name on their record for every greeting after, with an
   event line (v1.81), the signature as the sender's name, title and own cell from their account (v1.78: the company
   number was in the letterhead, the signature and the reply line, three times; now once), a reply line, *Email back, text, or call* (the owner's words, v1.80), and the footer; the text as a green bubble under the texts already
@@ -473,6 +473,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.84, 2026-10-11**: the Subject line in the send window has a *change* that replaces the made subject for this
+  one email; the inbox row follows and the sent email keeps it (the owner's ask).
 - **v1.83, 2026-10-11**: the send window's tick is a two-press choice, *After this goes, whose move is it? Their move ·
   Our move*, with a line under it saying what that means; the tick rows are gone (the owner: our move and their move,
   a proper refresh).
