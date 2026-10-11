@@ -287,5 +287,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   else by who they are, else nobody).
 - **v1.17, 2026-10-11**: the facts line leads with the kind as a label before the company:
   "Customer: Helotes Dental Office".
-- **v1.18, 2026-10-11**: the email sits on its own small line right under the name; the facts line
-  keeps the kind label, the company, the phone and the pill.
+- **v1.18, 2026-10-11**: the email moved under the name and back again the same hour; it stays on the
+  facts line after the phone (the owner's call).
