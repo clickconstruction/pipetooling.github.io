@@ -1244,6 +1244,10 @@ Never start another lane's port.
 
 ## Calls, texts and big files (a proposal, 2026-10-04)
 
+> **2026-10-11:** the design moved into its own folder, `messages/` (`MESSAGES_PLAN.md` and the clickable
+> `prototype.html`), to iterate on before it is built in the GC board. The owner's model: a contact owns every
+> message; jobs are associated with the contact; sometimes a message is tied to one job.
+
 The owner asked whether one company number and one mailbox could feed a message platform in the
 app. Mock-up: `quo-messages-mockup.html` (artifact `D2c6cJ7fc9ixVHg4v5TbXH`, New Project lane).
 **How it would work:** buy the phone part (Quo) and build the link to it. Calls, texts, voicemails,

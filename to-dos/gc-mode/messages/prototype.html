@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages prototype</title>
+<meta name="description" content="Prototype: every call, text and email with a contact in one place; jobs hang off the contact; a message can be tied to one job. GC mode, Click Construction. Made-up people. Nothing is saved.">
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--team:#fff6c2;--team-border:#e9d77a;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--danger:#b3261e;--chip:#eef1f5;--radius:10px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+button{font:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.quiet{border-color:transparent;background:transparent;color:var(--accent);padding:4px 6px}
+button.small{padding:3px 8px;font-size:13px}
+button:disabled{opacity:.45;cursor:not-allowed}
+input,select,textarea{font:inherit;border:1px solid var(--border);border-radius:8px;padding:7px 9px;background:var(--surface);color:var(--text)}
+header.top{background:var(--surface);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:5}
+header.top .brand{font-weight:700;margin-right:8px}
+header.top nav{display:flex;gap:4px;flex-wrap:wrap}
+header.top nav button{border-color:transparent;background:transparent;padding:6px 10px;border-radius:999px}
+header.top nav button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.badge{display:inline-block;min-width:20px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:12px;line-height:20px;text-align:center;margin-left:4px}
+header.top .me{margin-left:auto;color:var(--text-muted);font-size:13px}
+main{max-width:1180px;margin:0 auto;padding:16px}
+.note{color:var(--text-muted);font-size:13px}
+.lead{margin:0 0 12px;font-size:17px}
+.two{display:grid;grid-template-columns:340px 1fr;gap:16px}
+@media(max-width:860px){.two{grid-template-columns:1fr}.list.hidden-narrow{display:none}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
+.list .row{display:flex;gap:10px;padding:10px;border-top:1px solid var(--border);cursor:pointer;align-items:flex-start}
+.list .row:first-child{border-top:0}
+.list .row.on{background:var(--accent-soft)}
+.avatar{width:36px;height:36px;border-radius:50%;background:var(--chip);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex:none;color:var(--text-muted)}
+.avatar.cust{background:#e6f1ff;color:#1f5fbf}.avatar.trade{background:#eef7ea;color:#1a7f3c}.avatar.arch{background:#f3eaff;color:#6d3fb8}.avatar.unknown{background:#fff1e0;color:#b35c00}
+.row .who{font-weight:600}
+.row .sub{color:var(--text-muted);font-size:13px}
+.row .last{font-size:14px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .right{margin-left:auto;text-align:right;font-size:12px;color:var(--text-muted);flex:none}
+.pill{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--chip);color:var(--text-muted);margin-right:4px}
+.pill.waiting{background:var(--warn-soft);color:var(--warn)}
+.pill.has{background:var(--accent-soft);color:var(--accent)}
+.pill.done{background:var(--ok-soft);color:var(--ok)}
+.pill.promise{background:#eef7ea;color:var(--ok)}
+.pill.stop{background:#fde7e5;color:var(--danger)}
+h2{font-size:18px;margin:0 0 8px}
+h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+.thread-head{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.thread-head .avatar{width:44px;height:44px;font-size:15px}
+.thread-head .actions{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.jobs-rail{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.jobchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:var(--surface);cursor:grab;user-select:none;font-size:13px}
+.jobchip.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.jobchip .star{cursor:pointer;color:#c9a200}
+.jobchip .x{color:var(--text-muted);cursor:pointer}
+.jobchip.ghost{border-style:dashed;color:var(--text-muted);cursor:pointer}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 10px}
+.filters button{border-radius:999px;padding:3px 10px;font-size:13px}
+.filters button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.day{color:var(--text-muted);font-size:12px;margin:14px 0 6px;text-align:center}
+.msg{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin:8px 0;background:var(--surface);position:relative}
+.msg.out{margin-left:40px;background:#f4f8ff}
+.msg.in{margin-right:40px}
+.msg.team{background:var(--team);border-color:var(--team-border)}
+.msg.drop{outline:2px dashed var(--accent);outline-offset:2px}
+.msg .meta{font-size:12px;color:var(--text-muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg .meta .ch{font-weight:600;color:var(--text)}
+.msg .meta .job{margin-left:auto;background:var(--chip);padding:1px 8px;border-radius:999px;cursor:pointer}
+.msg .meta .job.none{color:var(--text-muted);font-style:italic}
+.msg .body{margin:6px 0 0;white-space:pre-wrap}
+.msg .offer{margin-top:8px;padding:8px;border-radius:8px;background:var(--warn-soft);font-size:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg .offer.q{background:#f3eaff}
+.msg .player{display:inline-block;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--chip);margin-top:6px}
+.msg .written{margin-top:6px;font-size:13px;color:var(--ok)}
+.reply{margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
+.reply .kinds{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center}
+.reply .kinds button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.reply textarea{width:100%;min-height:64px;resize:vertical}
+.reply textarea.team{background:var(--team);border-color:var(--team-border)}
+.reply .send{display:flex;gap:8px;align-items:center;margin-top:6px;flex-wrap:wrap}
+.reply .send .tie{margin-left:auto;font-size:13px;color:var(--text-muted)}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.quick button{font-size:13px;border-radius:999px}
+.queue .row{cursor:default;flex-direction:column;gap:6px}
+.queue .row .top{display:flex;gap:10px;align-items:flex-start;width:100%}
+.queue .row .acts{display:flex;gap:6px;flex-wrap:wrap;padding-left:46px}
+.queue .row .snippet{padding-left:46px;font-size:14px}
+.empty{color:var(--text-muted);padding:14px;text-align:center}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+.modal{background:var(--surface);border-radius:12px;padding:16px;max-width:460px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.modal h2{margin-bottom:10px}
+.modal .f{display:flex;flex-direction:column;gap:4px;margin:8px 0;font-size:13px;color:var(--text-muted)}
+.modal .f input,.modal .f select{font-size:15px;color:var(--text)}
+.modal .btns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.settings dl{display:grid;grid-template-columns:200px 1fr;gap:8px 16px;margin:0}
+.settings dt{color:var(--text-muted)}
+.settings dd{margin:0}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;z-index:30;opacity:0;transition:opacity .2s}
+.toast.show{opacity:1}
+.sheet{position:fixed;inset:auto 0 0 0;background:var(--surface);border-top:1px solid var(--border);border-radius:14px 14px 0 0;padding:14px 16px 24px;z-index:25;box-shadow:0 -10px 30px rgba(0,0,0,.15)}
+.sheet h2{font-size:15px}
+.sheet .opts{display:flex;flex-direction:column;gap:6px}
+.sheet .opts button{text-align:left}
+.jobconv .row{cursor:default}
+.hint{font-size:12px;color:var(--text-muted);margin:4px 0 0}
+kbd{font:12px ui-monospace,Menlo,monospace;background:var(--chip);padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+<header class="top">
+  <span class="brand">GC</span>
+  <nav id="nav"></nav>
+  <span class="me">Signed in as Robert · prototype, nothing is saved</span>
+</header>
+<main id="main"></main>
+<div id="toast" class="toast"></div>
+<script>
+// ---------- made-up data (the GC mode prototype's people) ----------
+const ME = 'Robert';
+const TEAM = ['Robert','Rosa','Wendi'];
+const jobs = [
+  {id:'boerne', name:'Boerne Retail Shell', kind:'bid', note:'bid Thu Oct 8'},
+  {id:'padb', name:'Boerne Retail Pad B', kind:'bid', note:'bid Oct 22'},
+  {id:'stoneoak', name:'Stone Oak Pharmacy', kind:'project', note:'building'},
+  {id:'helotes', name:'Helotes Dental Office', kind:'project', note:'buying out'},
+  {id:'fairoaks', name:'Fair Oaks Shops, Building D', kind:'pipeline', note:'Pipeline 1077'},
+];
+const jobById = id => jobs.find(j=>j.id===id);
+const contacts = [
+  {id:'greg', name:'Greg Paulk', company:'Hillside Excavation', kind:'trade', trade:'Sitework', phones:['(210) 555-0113'], emails:['greg@hillside.example'], jobs:['boerne','padb','stoneoak'], def:'boerne', state:'waiting', has:null, promise:null, optout:false},
+  {id:'elena', name:'Elena Marchetti', company:'Cibolo Creek Partners', kind:'customer', phones:['(210) 555-0188'], emails:['elena@cibolocreek.example'], jobs:['boerne','padb','fairoaks'], def:'boerne', state:'waiting', has:null, promise:null, optout:false},
+  {id:'priya', name:'Dr. Priya Raman', company:'Helotes Dental Office', kind:'customer', phones:['(210) 555-0144'], emails:['priya@helotesdental.example'], jobs:['helotes'], def:'helotes', state:'waiting', has:'Rosa', promise:null, optout:false},
+  {id:'bill', name:'Bill Sorrell', company:'Tejas Power', kind:'trade', trade:'Electrical', phones:['(210) 555-0121'], emails:['bill@tejaspower.example'], jobs:['boerne'], def:'boerne', state:'done', has:null, promise:null, optout:false},
+  {id:'tom', name:'Tom Riddle', company:'Bexar Steel Erectors', kind:'trade', trade:'Structural steel', phones:['(210) 555-0130'], emails:[], jobs:['boerne'], def:'boerne', state:'done', has:null, promise:null, optout:false},
+  {id:'jonah', name:'Jonah Vale', company:'Marsh & Vale Architects', kind:'arch', phones:['(210) 555-0160'], emails:['jonah@marshvale.example'], jobs:['boerne','padb'], def:'boerne', state:'done', has:null, promise:null, optout:false},
+  {id:'unk1', name:'(830) 555-0172', company:'', kind:'unknown', phones:['(830) 555-0172'], emails:[], jobs:[], def:null, state:'waiting', has:null, promise:null, optout:false},
+];
+const cById = id => contacts.find(c=>c.id===id);
+let seq = 100;
+const T = (d,h,m)=> new Date(2026,9,d,h,m).getTime(); // Oct 2026
+const messages = [
+  {id:1, c:'greg', job:'boerne', ch:'call', dir:'in', who:'Robert answered', at:T(26-30,0,0)+0, text:'Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday, Sep 30. He asked whether striping is in his scope; Robert said it is listed under Sitework.', dur:'4:12', transcript:true, promise:{day:'Wed Sep 30', state:'written', by:'Robert'}},
+  {id:2, c:'greg', job:'boerne', ch:'text', dir:'out', who:'Robert · from the company number', at:T(30-30,9,40), text:'Greg, checking on the Boerne sitework number. Still good for today?'},
+  {id:3, c:'greg', job:'boerne', ch:'voicemail', dir:'in', who:'rang everyone on the company number', at:T(2,8,41), text:'"Hey Robert, it\'s Greg with Hillside. Sorry, ran behind. I\'ll have Boerne sitework over by Wednesday the 7th. Call me if you need it sooner."', dur:'0:38', transcript:true, promise:{day:'Wed Oct 7', state:'offered'}},
+  {id:4, c:'greg', job:'boerne', ch:'text', dir:'in', who:'Greg', at:T(2,8,44), text:'Also is the detention pond in sitework or concrete? Addendum 1 is not clear.', question:{state:'offered'}},
+  {id:5, c:'elena', job:'boerne', ch:'call', dir:'in', who:'Rosa answered', at:T(1,15,10), text:'She wants the Boerne number by Thursday morning, not afternoon. The board meets at 1.', dur:'6:02', transcript:true},
+  {id:6, c:'elena', job:'boerne', ch:'missed', dir:'in', who:'rang everyone · no voicemail', at:T(2,10,5), text:'Missed call.'},
+  {id:7, c:'elena', job:'fairoaks', ch:'email', dir:'out', who:'Rosa · bids@', at:T(1,16,0), text:'Pay application 3 for Fair Oaks Shops, Building D, $4,536. Opened at 3:12 PM.'},
+  {id:8, c:'priya', job:'helotes', ch:'text', dir:'in', who:'Priya', at:T(26-30,14,14), text:'Thanks! Can you send me the start date when you have it?'},
+  {id:9, c:'priya', job:'helotes', ch:'note', dir:'team', who:'Rosa · note for the team', at:T(26-30,14,30), text:'Start date waits on the Board\'s award of Plumbing. Tell her Monday.'},
+  {id:10, c:'bill', job:'boerne', ch:'text', dir:'in', who:'Bill', at:T(2,7,58), text:'Quote is in your portal now, end of day like I said.'},
+  {id:11, c:'bill', job:'boerne', ch:'text', dir:'out', who:'Rosa · from the company number', at:T(2,8,2), text:'Got it, thank you Bill.'},
+  {id:12, c:'tom', job:'boerne', ch:'text', dir:'out', who:'Robert · from the company number', at:T(30-30,11,0), text:'Tom, did the Boerne steel invite come through?'},
+  {id:13, c:'jonah', job:'boerne', ch:'email', dir:'in', who:'Jonah to bids@', at:T(2,10,48), text:'Boerne Retail Shell, Addendum 2. Addendum 2 is at the link below, 184 MB. It settles the panel size and the roof curbs. The bid date holds.\nfiles.marshvale.example/s/7Hq2'},
+  {id:14, c:'unk1', job:null, ch:'text', dir:'in', who:'(830) 555-0172', at:T(2,9,12), text:'Hi this is Dee at Alamo Concrete, new cell. Saw the Pad B pricing set, can we quote the concrete?'},
+];
+const quick = [
+  'Your quote is in your portal now, thank you.',
+  'Did the invite come through?',
+  'Checking on the number. Still good for today?',
+  'Understood. You will have it by 9 AM Thursday.',
+  'Thanks, we will call you back within the hour.'
+];
+// ---------- state ----------
+let view = 'followup'; // followup | messages | customers | job | settings
+let openContact = 'greg';
+let listFilter = 'all'; // all | customers | trades | unknown
+let jobFilter = null;
+let search = '';
+let replyKind = 'text';
+let replyTie = null;
+let openJob = 'boerne';
+let dragJob = null;
+const narrow = () => window.matchMedia('(max-width: 860px)').matches;
+
+// ---------- helpers ----------
+const fmt = ts => { const d=new Date(ts); const today=new Date(2026,9,2); const same=d.toDateString()===today.toDateString(); const h=d.getHours(), m=String(d.getMinutes()).padStart(2,'0'); const hh=((h+11)%12)+1, ap=h<12?'AM':'PM'; return same? `${hh}:${m} ${ap}` : d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})+` · ${hh}:${m} ${ap}`; };
+const dayOf = ts => { const d=new Date(ts); const today=new Date(2026,9,2); return d.toDateString()===today.toDateString()?'Today, Fri Oct 2':d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); };
+const waitingSince = c => { const last=[...messages].filter(m=>m.c===c.id&&m.dir==='in').sort((a,b)=>b.at-a.at)[0]; if(!last) return ''; const mins=Math.max(1,Math.round((T(2,10,30)-last.at)/60000)); if(mins<60) return `waiting ${mins} min`; if(mins<60*24) return `waiting ${Math.round(mins/60)} h`; return `waiting ${Math.round(mins/1440)} d`; };
+const kindWord = c => ({customer:'customer',trade:'trade partner',arch:'architect',unknown:'who is this?'})[c.kind];
+const kindClass = c => ({customer:'cust',trade:'trade',arch:'arch',unknown:'unknown'})[c.kind];
+const initials = c => c.kind==='unknown'?'?':c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w)).map(w=>w[0]).slice(0,2).join('');
+const lastMsg = c => [...messages].filter(m=>m.c===c.id).sort((a,b)=>b.at-a.at)[0];
+const lastIn = c => [...messages].filter(m=>m.c===c.id&&m.dir==='in').sort((a,b)=>b.at-a.at)[0] || lastMsg(c);
+const chWord = m => ({call:'Call',voicemail:'Voicemail',text:'Text',email:'Email',note:'Note for the team',missed:'Missed call'})[m.ch];
+const jobLabel = (c,jid) => { const j=jobById(jid); if(!j) return ''; return j.name + (c&&c.trade&&j.kind==='bid'?` · ${c.trade}`:''); };
+const esc = s => String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+let toastT; function toast(s){ const t=document.getElementById('toast'); t.textContent=s; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
+const waitingCount = () => contacts.filter(c=>c.state==='waiting').length;
+
+// ---------- render ----------
+function render(){ renderNav(); const m=document.getElementById('main'); m.innerHTML=''; ({followup:renderFollowup, messages:renderMessages, customers:renderMessages, job:renderJob, settings:renderSettings})[view](m); }
+function renderNav(){
+  const n=document.getElementById('nav'); n.innerHTML='';
+  const items=[['board','Project Board'],['followup','Follow up'],['messages','Messages'],['customers','Customers'],['trades','Trade partners'],['job','A job'],['settings','Settings']];
+  for(const [k,label] of items){ const b=document.createElement('button'); b.innerHTML=esc(label)+(k==='followup'&&waitingCount()?`<span class="badge">${waitingCount()}</span>`:''); if(k===view) b.classList.add('on'); b.onclick=()=>{ if(k==='board'||k==='trades'){toast('Not in this prototype.');return;} view=k; if(k==='customers'){listFilter='customers'; const first=contacts.find(c=>c.kind==='customer'); if(first&&cById(openContact).kind!=='customer') openContact=first.id;} if(k==='messages'&&listFilter==='customers') listFilter='all'; render(); }; n.appendChild(b); }
+}
+
+function renderFollowup(m){
+  const waiting = contacts.filter(c=>c.state==='waiting').sort((a,b)=> (lastMsg(a)?.at||0)-(lastMsg(b)?.at||0));
+  const el=document.createElement('div');
+  el.innerHTML = `<p class="lead">Follow up</p><p class="note">Everyone waiting on us, one count. Texts, voicemails and missed calls nobody has answered come first, the longest waiting at the top; the quote asks Follow up lists today continue below, unchanged.</p>
+  <h3>Needs a reply (${waiting.length})</h3><div class="card list queue" id="queue"></div>
+  <h3>Late on their word (1)</h3><div class="card list"><div class="row"><div class="avatar trade">GP</div><div><div class="who">Greg Paulk <span class="pill promise">promised Wed Sep 30, 2 days past</span></div><div class="sub">Hillside Excavation · Boerne Retail Shell · Sitework</div><div class="last">They gave a day and no quote came. Call them.</div></div><div class="right"><button class="small" onclick="toast('Opens the call in Quo\\'s app; it comes back as a line.')">Call in Quo</button></div></div></div>
+  <h3>Quote asks (unchanged)</h3><div class="card"><div class="empty">The asks Follow up lists today, by person, continue here as they are.</div></div>`;
+  m.appendChild(el);
+  const q=el.querySelector('#queue');
+  if(!waiting.length){ q.innerHTML='<div class="empty">Nobody is waiting on us.</div>'; return; }
+  for(const c of waiting){
+    const last=lastIn(c); const offered = messages.filter(x=>x.c===c.id && ((x.promise&&x.promise.state==='offered')||(x.question&&x.question.state==='offered')));
+    const row=document.createElement('div'); row.className='row';
+    row.innerHTML=`<div class="top"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="flex:1"><div class="who">${esc(c.name)} <span class="pill waiting">${waitingSince(c)}</span>${c.has?`<span class="pill has">${esc(c.has)} has this</span>`:''}</div><div class="sub">${esc(c.company||kindWord(c))}${c.def?` · ${esc(jobLabel(c,c.def))}`:''}</div></div>
+      <div class="right"><select class="small" onchange="claim('${c.id}',this.value)"><option value="">${c.has?'hand it to…':'I have this ▾'}</option>${TEAM.map(t=>`<option ${c.has===t?'selected':''}>${t}</option>`).join('')}</select></div></div>
+      <div class="snippet">${last?`<b>${chWord(last)}, ${fmt(last.at)}:</b> ${esc(last.text)}`:''}</div>
+      <div class="acts">${offered.map(x=> x.promise?`<button class="small" onclick="writeDown(${x.id})">Write down ${esc(x.promise.day)}</button>`:`<button class="small" onclick="askArchitect(${x.id})">Ask the architect</button>`).join('')}
+        ${c.kind==='unknown'?`<button class="small primary" onclick="whoIsThis('${c.id}')">Who is this?</button>`:`<button class="small primary" onclick="openThread('${c.id}')">Reply</button>`}
+        ${last&&(last.ch==='missed'||last.ch==='voicemail')?`<button class="small" onclick="toast('Opens the call in Quo\\'s app; it comes back as a line.')">Call back in Quo</button>`:''}
+        <button class="small" onclick="setState('${c.id}','done')">No reply needed</button>
+        <button class="small" onclick="remind('${c.id}')">Remind me Monday</button></div>`;
+    q.appendChild(row);
+  }
+}
+
+function renderMessages(m){
+  const wrap=document.createElement('div'); wrap.className='two';
+  // list
+  const list=document.createElement('div'); list.className='card list'+(narrow()&&openContact?' hidden-narrow':'');
+  const filt = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
+  const hit = c => !search || [c.name,c.company,...messages.filter(x=>x.c===c.id).map(x=>x.text)].join(' ').toLowerCase().includes(search.toLowerCase());
+  const rows = contacts.filter(c=>filt(c)&&hit(c)).sort((a,b)=>{ const w=(b.state==='waiting')-(a.state==='waiting'); return w|| (lastMsg(b)?.at||0)-(lastMsg(a)?.at||0); });
+  list.innerHTML=`<div style="padding:10px"><input placeholder="Search people, companies, words in texts and transcripts" style="width:100%" value="${esc(search)}" oninput="search=this.value;render();document.querySelector('.list input').focus()"></div>
+    <div class="filters" style="padding:0 10px">${[['all','All'],['customers','Customers'],['trades','Trades'],['unknown','Who is this?']].map(([k,l])=>`<button class="${listFilter===k?'on':''}" onclick="listFilter='${k}';render()">${l}</button>`).join('')}</div>`;
+  if(!rows.length) list.innerHTML+='<div class="empty">Nothing matches.</div>';
+  for(const c of rows){ const last=lastMsg(c); const r=document.createElement('div'); r.className='row'+(c.id===openContact?' on':''); r.onclick=()=>openThread(c.id);
+    r.innerHTML=`<div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="min-width:0;flex:1"><div class="who">${esc(c.name)}</div><div class="sub">${esc(c.company||kindWord(c))}${c.trade?` · ${esc(c.trade)}`:''}</div><div class="last">${last?`${chWord(last)}: ${esc(last.text)}`:''}</div></div><div class="right">${last?fmt(last.at).split(' · ')[0]:''}<br>${c.state==='waiting'?'<span class="pill waiting">waiting</span>':c.has?`<span class="pill has">${esc(c.has)}</span>`:''}${c.promise?`<br><span class="pill promise">${esc(c.promise)}</span>`:''}</div>`;
+    list.appendChild(r); }
+  wrap.appendChild(list);
+  // thread
+  const th=document.createElement('div'); th.className='card';
+  const c=cById(openContact);
+  if(!c){ th.innerHTML='<div class="empty">Pick a person.</div>'; wrap.appendChild(th); m.appendChild(wrap); return; }
+  const cJobs = c.jobs.map(jobById);
+  const lines = messages.filter(x=>x.c===c.id && (!jobFilter || x.job===jobFilter)).sort((a,b)=>a.at-b.at);
+  th.innerHTML=`${narrow()?`<button class="quiet" onclick="openContact=null;render()">‹ Everyone</button>`:''}
+  <div class="thread-head"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div><h2>${esc(c.name)} ${c.optout?'<span class="pill stop">opted out</span>':''}</h2><div class="note">${esc(c.company||'')}${c.company?' · ':''}${esc(kindWord(c))}${c.phones.length?' · '+esc(c.phones.join(', ')):''}${c.emails.length?' · '+esc(c.emails.join(', ')):''}</div>
+    <div style="margin-top:6px">${c.state==='waiting'?`<span class="pill waiting">${waitingSince(c)}</span>`:`<span class="pill done">answered</span>`}${c.has?`<span class="pill has">${esc(c.has)} has this</span>`:''}${c.promise?`<span class="pill promise">${esc(c.promise)}</span>`:''}</div></div>
+    <div class="actions">${c.kind==='unknown'?`<button class="primary" onclick="whoIsThis('${c.id}')">Who is this?</button>`:''}<button onclick="toast('Opens the call in Quo\\'s app; it comes back as a line.')">Call in Quo</button>
+      <select onchange="claim('${c.id}',this.value)"><option value="">${c.has?'hand it to…':'I have this ▾'}</option>${TEAM.map(t=>`<option ${c.has===t?'selected':''}>${t}</option>`).join('')}</select>
+      ${c.state==='waiting'?`<button onclick="setState('${c.id}','done')">Done</button>`:`<button onclick="setState('${c.id}','waiting')">Reopen</button>`}
+      <button class="quiet" onclick="toggleOptout('${c.id}')">${c.optout?'Clear opt-out':'Mark STOP'}</button></div></div>
+  <h3>Their jobs</h3>
+  <div class="jobs-rail" id="rail">${cJobs.map(j=>`<span class="jobchip ${jobFilter===j.id?'on':''}" draggable="true" data-job="${j.id}" title="Drag onto a message to tie it there. Click to filter."><span class="star" title="New messages go here" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()">${esc(jobLabel(c,j.id))}</span><span class="note" onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()"> · ${esc(j.note)}</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span>`).join('')}
+    <span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</div>
+  <p class="hint">${c.def?`New messages go to <b>${esc(jobLabel(c,c.def))}</b> (★). `:'No default job: new messages sit on the person alone. '}Drag a job onto a line to tie that message there${narrow()?'; on a phone, press and hold the line':''}. A line with no job sits on the person alone.</p>
+  <div id="lines"></div>
+  <div class="reply">
+    <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${replyKind===k?'on':''}" onclick="replyKind='${k}';render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees a note'}</span></div>
+    ${replyKind!=='note'?`<div class="quick">${quick.map(q=>`<button onclick="document.getElementById('box').value=${JSON.stringify(q).replace(/"/g,'&quot;')}">${esc(q)}</button>`).join('')}</div>`:''}
+    <textarea id="box" class="${replyKind==='note'?'team':''}" placeholder="${replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
+    <div class="send"><button class="primary" onclick="sendReply('${c.id}')" ${c.optout&&replyKind==='text'?'disabled':''}>${replyKind==='note'?'Add the note':replyKind==='email'?'Send email':'Send text'}</button>${c.optout&&replyKind==='text'?'<span class="note">They sent STOP. The app will not text this number.</span>':''}
+      <span class="tie">Tie to: <select onchange="replyTie=this.value||null"><option value="">${c.def?esc(jobLabel(c,c.def))+' (default)':'the person alone'}</option>${cJobs.filter(j=>j.id!==c.def).map(j=>`<option value="${j.id}" ${replyTie===j.id?'selected':''}>${esc(jobLabel(c,j.id))}</option>`).join('')}<option value="none" ${replyTie==='none'?'selected':''}>no job</option></select></span></div>
+  </div>`;
+  const L=th.querySelector('#lines');
+  if(!lines.length) L.innerHTML='<div class="empty">Nothing yet.</div>';
+  let lastDay='';
+  for(const x of lines){ const d=dayOf(x.at); if(d!==lastDay){ const dd=document.createElement('div'); dd.className='day'; dd.textContent=d; L.appendChild(dd); lastDay=d; }
+    const e=document.createElement('div'); e.className=`msg ${x.dir==='team'?'team':x.dir}`; e.dataset.id=x.id;
+    e.innerHTML=`<div class="meta"><span class="ch">${chWord(x)}${x.dur?` · ${x.dur}`:''}</span><span>${esc(x.who)}</span><span>${fmt(x.at)}</span>
+        <span class="job ${x.job?'':'none'}" title="${x.job?'Untie from this job':'Tie to a job'}" onclick="${x.job?`untie(${x.id})`:`tieMenu(${x.id})`}">${x.job?esc(jobLabel(c,x.job))+' ×':'no job'}</span></div>
+      <div class="body">${esc(x.text)}</div>
+      ${x.transcript?`<span class="player">▶ ${x.dur||''} · Transcript</span>`:''}
+      ${x.promise&&x.promise.state==='offered'?`<div class="offer">Quo heard a new day: <b>${esc(x.promise.day)}</b>. <button class="small primary" onclick="writeDown(${x.id})">Write it down</button><button class="small" onclick="notPromise(${x.id})">Not a promise</button></div>`:''}
+      ${x.promise&&x.promise.state==='written'?`<div class="written">✓ Written down by ${esc(x.promise.by)}: quote by ${esc(x.promise.day)}.</div>`:''}
+      ${x.promise&&x.promise.state==='no'?`<div class="written" style="color:var(--text-muted)">Not a promise, said ${esc(x.promise.by)}.</div>`:''}
+      ${x.question&&x.question.state==='offered'?`<div class="offer q">This reads like a question about the plans. <button class="small primary" onclick="askArchitect(${x.id})">Ask the architect</button><button class="small" onclick="answerMyself(${x.id})">Answer it myself</button></div>`:''}
+      ${x.question&&x.question.state==='asked'?`<div class="written">✓ Sent to the architect as a plan question by ${esc(x.question.by)}.</div>`:''}`;
+    // drag targets
+    e.addEventListener('dragover',ev=>{ if(dragJob){ev.preventDefault(); e.classList.add('drop');} });
+    e.addEventListener('dragleave',()=>e.classList.remove('drop'));
+    e.addEventListener('drop',ev=>{ ev.preventDefault(); e.classList.remove('drop'); if(dragJob){ tie(x.id,dragJob); dragJob=null; } });
+    // press and hold on narrow
+    let pt; e.addEventListener('pointerdown',()=>{ if(!narrow()) return; pt=setTimeout(()=>tieMenu(x.id),550); }); e.addEventListener('pointerup',()=>clearTimeout(pt)); e.addEventListener('pointermove',()=>clearTimeout(pt));
+    L.appendChild(e); }
+  th.querySelectorAll('.jobchip[draggable]').forEach(ch=>{ ch.addEventListener('dragstart',ev=>{ dragJob=ch.dataset.job; ev.dataTransfer.setData('text/plain',dragJob); }); ch.addEventListener('dragend',()=>{dragJob=null;}); });
+  wrap.appendChild(th); m.appendChild(wrap);
+  requestAnimationFrame(()=>{ const l=document.getElementById('lines'); if(l) l.scrollIntoView({block:'nearest'}); });
+}
+
+function renderJob(m){
+  const j=jobById(openJob);
+  const rows = messages.filter(x=>x.job===j.id).sort((a,b)=>b.at-a.at);
+  const el=document.createElement('div');
+  el.innerHTML=`<p class="lead">${esc(j.name)} <span class="note">· ${esc(j.note)} · ${j.kind==='bid'?'a bid':j.kind==='project'?'a GC project':'a Pipeline job'}</span></p>
+  <div class="filters">${jobs.map(x=>`<button class="${x.id===openJob?'on':''}" onclick="openJob='${x.id}';render()">${esc(x.name)}</button>`).join('')}</div>
+  <p class="note">Conversations on this job: the messages tied to it, by person, newest first. The job reads only what is tied to it; the person's thread reads everything.</p>
+  <div class="card list jobconv">${rows.length?rows.map(x=>{ const c=cById(x.c); return `<div class="row" onclick="openThread('${c.id}')" style="cursor:pointer"><div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="flex:1"><div class="who">${esc(c.name)} <span class="note">· ${esc(c.company||kindWord(c))}</span></div><div class="last">${chWord(x)}: ${esc(x.text)}</div></div><div class="right">${fmt(x.at)}<br>${c.state==='waiting'?'<span class="pill waiting">waiting</span>':'<span class="pill done">answered</span>'}</div></div>`;}).join(''):'<div class="empty">No calls or texts tied to this job yet.</div>'}</div>`;
+  m.appendChild(el);
+}
+
+function renderSettings(m){
+  const el=document.createElement('div');
+  el.innerHTML=`<p class="lead">Settings → Phone and texts</p><div class="card settings"><dl>
+  <dt>Quo connection</dt><dd>Connected · last event 2 min ago · API key qo_live_••••••••7f3a</dd>
+  <dt>The company number</dt><dd>(210) 555-0100, one for everyone. Rings everyone; anyone answers or texts from it.</dd>
+  <dt>Text registration</dt><dd>Approved. Needed before texting customers. STOP and HELP are answered by the app.</dd>
+  <dt>Recordings</dt><dd>On, every call, no notice (Texas needs one side's consent).</dd>
+  <dt>Transcripts and summaries</dt><dd>On, every call (Quo Business).</dd>
+  <dt>Quo seats</dt><dd>Two: Rosa, the assistant (customers), and Robert, the estimator (trade partners). Everyone else works in the app.</dd>
+  <dt>Who sees threads</dt><dd>Everyone on the team. The Money tab stays the owner's.</dd>
+  <dt>Email</dt><dd>bids@ read through a Google grant; replies go out as Click Construction. <span class="note">(open question)</span></dd>
+  <dt>Claude</dt><dd>Reads texts and call summaries for a promised day or a plans question; every guess is a button. <span class="note">(day one or later: the owner's call)</span></dd>
+  </dl></div>`;
+  m.appendChild(el);
+}
+
+// ---------- actions ----------
+function openThread(id){ openContact=id; jobFilter=null; replyTie=null; if(view!=='customers') view='messages'; render(); }
+function claim(id,who){ const c=cById(id); c.has=who||null; toast(who?`${who} has ${c.name}.`:'Nobody has it.'); render(); }
+function setState(id,s){ const c=cById(id); c.state=s; if(s==='done') c.has=null; toast(s==='done'?`${c.name} cleared from Follow up.`:`${c.name} is back in Follow up.`); render(); }
+function remind(id){ const c=cById(id); c.state='snoozed'; toast(`${c.name} comes back to Follow up on Monday.`); render(); }
+function toggleOptout(id){ const c=cById(id); c.optout=!c.optout; toast(c.optout?'Marked STOP: the app will not text this number.':'Opt-out cleared.'); render(); }
+function setDefault(cid,jid){ const c=cById(cid); c.def=jid; toast(`New messages from ${c.name} go to ${jobLabel(c,jid)}.`); render(); }
+function removeJob(cid,jid){ const c=cById(cid); c.jobs=c.jobs.filter(j=>j!==jid); if(c.def===jid) c.def=c.jobs[0]||null; if(jobFilter===jid) jobFilter=null; toast('Job removed from the person. Their messages tied to it keep the tie.'); render(); }
+function addJob(cid){ const c=cById(cid); const left=jobs.filter(j=>!c.jobs.includes(j.id)); if(!left.length){toast('They are on every job already.');return;} modal(`Add a job to ${esc(c.name)}`, `<div class="f">Which job<select id="mj">${left.map(j=>`<option value="${j.id}">${esc(j.name)} · ${esc(j.note)}</option>`).join('')}</select></div><p class="note">The app adds most of these itself: the ask, the customer record, the architect on the project.</p>`, ()=>{ const v=document.getElementById('mj').value; c.jobs.push(v); if(!c.def) c.def=v; toast('Added.'); render(); }); }
+function tie(mid,jid){ const x=messages.find(m=>m.id===mid); const c=cById(x.c); if(!c.jobs.includes(jid)) c.jobs.push(jid); x.job=jid; toast(`Tied to ${jobLabel(c,jid)}.`); render(); }
+function untie(mid){ const x=messages.find(m=>m.id===mid); x.job=null; toast('Untied. The line sits on the person alone.'); render(); }
+function tieMenu(mid){ const x=messages.find(m=>m.id===mid); const c=cById(x.c); const opts=c.jobs.map(jid=>`<button onclick="tie(${mid},'${jid}');closeSheet()">${esc(jobLabel(c,jid))}</button>`).join('')+ jobs.filter(j=>!c.jobs.includes(j.id)).map(j=>`<button onclick="tie(${mid},'${j.id}');closeSheet()" class="note">${esc(j.name)} (not one of theirs yet)</button>`).join(''); sheet('Tie this message to', opts); }
+function writeDown(mid){ const x=messages.find(m=>m.id===mid); x.promise.state='written'; x.promise.by=ME; const c=cById(x.c); c.promise=`promised ${x.promise.day}`; toast(`Written down: quote by ${x.promise.day}.`); render(); }
+function notPromise(mid){ const x=messages.find(m=>m.id===mid); x.promise.state='no'; x.promise.by=ME; render(); }
+function askArchitect(mid){ const x=messages.find(m=>m.id===mid); x.question.state='asked'; x.question.by=ME; const c=cById(x.c); messages.push({id:++seq,c:c.id,job:x.job,ch:'note',dir:'team',who:`${ME} · note for the team`,at:T(2,10,31),text:`Sent to the architect as a plan question: "${x.text}"`}); toast('Sent to the architect as a plan question.'); render(); }
+function answerMyself(mid){ const x=messages.find(m=>m.id===mid); x.question.state='mine'; replyKind='text'; openThread(x.c); document.getElementById('box')?.focus(); }
+function sendReply(cid){ const c=cById(cid); const box=document.getElementById('box'); const t=box.value.trim(); if(!t){toast('Write something first.');return;} const job = replyTie==='none'?null:(replyTie||c.def); const who = replyKind==='note'?`${ME} · note for the team`:replyKind==='email'?`${ME} · bids@`:`${ME} · from the company number`; messages.push({id:++seq,c:cid,job,ch:replyKind,dir:replyKind==='note'?'team':'out',who,at:T(2,10,32)+messages.length,text:t}); if(replyKind!=='note'){ c.state='done'; c.has=null; } box.value=''; toast(replyKind==='note'?'Note added. Only the team sees it.':replyKind==='email'?'Email sent as Click Construction; its copy is kept in Documents.':'Text sent from the company number.'); render(); }
+function whoIsThis(cid){ const c=cById(cid); modal(`Who is this? ${esc(c.phones[0])}`, `<div class="f">Their name<input id="wn" placeholder="Dee …"></div><div class="f">What they are to us<select id="wk"><option value="trade">trade partner</option><option value="customer">customer</option><option value="arch">architect</option></select></div><div class="f">Their company<input id="wc" placeholder="Alamo Concrete"></div><div class="f">Tie this message to<select id="wj"><option value="">no job yet</option>${jobs.map(j=>`<option value="${j.id}">${esc(j.name)} · ${esc(j.note)}</option>`).join('')}</select></div><p class="note">The answer becomes the rule for this number: the next text from it lands on this person.</p>`, ()=>{ const n=document.getElementById('wn').value.trim(); if(!n){toast('A name, please.');return false;} c.name=n; c.kind=document.getElementById('wk').value; c.company=document.getElementById('wc').value.trim(); const j=document.getElementById('wj').value; if(j){ c.jobs=[j]; c.def=j; messages.filter(x=>x.c===c.id).forEach(x=>x.job=j); } toast(`${n} is known now.`); render(); }); }
+
+// ---------- modal / sheet ----------
+function modal(title, body, onOk){ const bg=document.createElement('div'); bg.className='modal-bg'; bg.innerHTML=`<div class="modal"><h2>${title}</h2>${body}<div class="btns"><button id="mcancel">Not now</button><button class="primary" id="mok">Save</button></div></div>`; document.body.appendChild(bg); bg.querySelector('#mcancel').onclick=()=>bg.remove(); bg.querySelector('#mok').onclick=()=>{ if(onOk()!==false) bg.remove(); }; bg.onclick=e=>{ if(e.target===bg) bg.remove(); }; const f=bg.querySelector('input'); if(f) f.focus(); }
+function sheet(title, optsHtml){ closeSheet(); const s=document.createElement('div'); s.className='sheet'; s.id='sheet'; s.innerHTML=`<h2>${title}</h2><div class="opts">${optsHtml}<button class="quiet" onclick="closeSheet()">Cancel</button></div>`; document.body.appendChild(s); }
+function closeSheet(){ document.getElementById('sheet')?.remove(); }
+
+window.addEventListener('resize',()=>render());
+render();
+</script>
+</body>
+</html>
