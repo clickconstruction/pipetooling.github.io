@@ -478,6 +478,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.88, 2026-10-11**: the question, the presses and the meaning run as one line of text, the meaning in the lit
+  side's colour and wrapping on from the presses rather than standing alone (the owner's ask).
 - **v1.87, 2026-10-11**: the whose-move question and its two presses share one line, the question cut to *After this
   goes:* (the owner's ask).
 - **v1.86, 2026-10-11**: the opt-out line is the app's own bubble under the text, labelled with its reason, on a first
