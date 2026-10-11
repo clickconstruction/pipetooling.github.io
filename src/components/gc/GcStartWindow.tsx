@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { startChecklist, type StartTradeRow } from '../../lib/gc/start'
+import { contractSignsAtZero } from '../../lib/gc/startContract'
 import { startRecipients } from '../../lib/gc/startEmail'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { shortDate, weekdayDate } from '../../lib/gc/words'
@@ -15,7 +16,8 @@ import { Btn, Card, Chip, input, td, th } from './gcUi'
  * answers "can we start?": what we owe the customer, the schedule, then every trade with its five steps in the order
  * they happen. Start stays shut until nothing is missing; Start anyway keeps why and what was owed. Each trade's Next
  * opens the place on main where that work is done (Compare quotes, the company's Documents, the trade card's Send), so
- * no press is built twice. The spike's Sign it as them stays on the spike.
+ * no press is built twice. The spike's Sign it as them stays on the spike. **Mark it signed** asks first when our contract
+ * would be signed at $0 (`contractSignsAtZero`, the owner, 2026-10-10); the write is the same either way.
  */
 
 /** Who heard the job started, and who did not with why. */
@@ -71,6 +73,8 @@ export function GcStartWindow({
   const [why, setWhy] = useState('')
   const [busy, setBusy] = useState<string | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
+  // Mark it signed on a contract worth $0 today: the row asks before it signs (the owner, 2026-10-10).
+  const [zeroAsk, setZeroAsk] = useState(false)
   // What the last press heard back; until one, who the trade messages say was told.
   const [pressed, setPressed] = useState<StartTold | null>(null)
   const heard = pressed ?? { told: toldBefore, missed: [] }
@@ -215,12 +219,34 @@ export function GcStartWindow({
                         </Btn>
                       )}
                       {presses?.signContract && (
-                        <Btn kind={c.done ? 'quiet' : 'plain'} disabled={busy !== null} title={c.done ? undefined : 'Signed on paper, outside their portal'} onClick={() => run('contract', () => presses.signContract!(!c.done))}>
+                        <Btn
+                          kind={c.done ? 'quiet' : 'plain'}
+                          disabled={busy !== null || zeroAsk}
+                          title={c.done ? undefined : 'Signed on paper, outside their portal'}
+                          onClick={() => (!c.done && contractSignsAtZero(project) ? setZeroAsk(true) : run('contract', () => presses.signContract!(!c.done)))}
+                        >
                           {c.done ? 'Undo' : 'Mark it signed'}
                         </Btn>
                       )}
                     </span>
                   ) : null}
+                  {c.key === 'ownerContract' && zeroAsk && presses?.signContract && !c.done && (
+                    <span role="alert" data-gc-start-zero-contract style={{ flexBasis: '100%', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
+                      <span style={{ flex: '1 1 18rem' }}>The contract would be signed at $0. No trade carries a price and Our number adds nothing.</span>
+                      <Btn
+                        disabled={busy !== null}
+                        onClick={() => {
+                          setZeroAsk(false)
+                          run('contract', () => presses.signContract!(true))
+                        }}
+                      >
+                        Sign at $0 anyway
+                      </Btn>
+                      <Btn kind="quiet" onClick={() => setZeroAsk(false)}>
+                        Not now
+                      </Btn>
+                    </span>
+                  )}
                 </div>
               ))}
             </div>
