@@ -42,6 +42,8 @@ import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
 import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
 import { loadBuildPaceInputs } from '../lib/bridge/loadBuildPace'
+import { buildDemand, type DemandInput } from '../lib/bridge/demandPace'
+import { loadDemandInputs } from '../lib/bridge/loadDemandPace'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -297,6 +299,28 @@ export default function Bridge() {
   }, [data])
   const buildPace = useMemo(() => (buildInputs ? buildBuildPace(buildInputs) : null), [buildInputs])
 
+  // Market and Sales (link PR 4): the bids and estimates over the window and the awaiting span.
+  const [demandInputs, setDemandInputs] = useState<DemandInput | null>(null)
+  const [demandError, setDemandError] = useState<string | null>(null)
+  useEffect(() => {
+    if (!data) return
+    let cancelled = false
+    setDemandInputs(null)
+    setDemandError(null)
+    void (async () => {
+      try {
+        const v = await loadDemandInputs({ windowStart: data.windowStart, todayYmd: data.todayYmd })
+        if (!cancelled) setDemandInputs(v)
+      } catch (e) {
+        if (!cancelled) setDemandError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data])
+  const demand = useMemo(() => (demandInputs ? buildDemand(demandInputs) : null), [demandInputs])
+
   // The calls (link PR 2): the pay week today falls in, and the call that stands for it.
   const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
   const thisWeekCall = useMemo(() => (calls && thisWeekStart ? callForWeek(calls, thisWeekStart) : null), [calls, thisWeekStart])
@@ -315,12 +339,15 @@ export default function Bridge() {
     const lateCount = receipts.filter((r) => r.basis === 'late').length + doubtful.length
     const held = thisWeekCall && isStageLink(thisWeekCall.link) ? thisWeekCall.link : null
     return buildStageFlow({
+      market: demand?.market ?? null,
+      sales: demand ? { ...demand.sales, soldPerWeekUsd: buildPace?.soldPerWeekUsd ?? null } : null,
+      fieldPerWeekUsd: buildPace?.builtPerWeekUsd ?? null,
       bill: fin.data ? { pileUsd: fin.data.unbilled.total, pileCount: fin.data.unbilled.count, inPerWeekUsd: data.totals.earnedUsd / weeks, outPerWeekUsd: billedPerWeek } : null,
       collect: fin.data ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount } : null,
       build: buildPace?.stageInput ?? null,
       heldLinkId: held,
     })
-  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand])
   const litStage = pickedStage ?? stageFlow?.linkId ?? null
 
   // The calls (link PR 2): today's numbers behind the moves, the snapshot a call keeps, the scorecard and the header chip.
@@ -736,6 +763,7 @@ export default function Bridge() {
           {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
           {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
           {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
+          {demandError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Market and Sales could not be read ({demandError}).</p>}
 
           {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>

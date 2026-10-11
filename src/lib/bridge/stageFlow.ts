@@ -51,15 +51,37 @@ export type BuildStageInput = PileStageInput & {
 
 export type CollectStageInput = PileStageInput & { lateCount: number }
 
+/** Market (link PR 4): the asks that came in over the window, by value. */
+export type MarketStageInput = {
+  bidsInvited: number
+  bidsInvitedUsd: number
+  estimatesRequested: number
+  estimatesRequestedUsd: number
+  weeks: number
+}
+
+/** Sales (link PR 4): what went out and what came back, bids and estimates apart. */
+export type SalesStageInput = {
+  bids: { sentUsd: number; wonUsd: number; startedUsd: number; lostUsd: number }
+  estimates: { sentUsd: number; wonUsd: number; lostUsd: number }
+  awaiting: { bids: number; bidsUsd: number; estimates: number; estimatesUsd: number }
+  /** Dollars a week sold to the field, by the contract on jobs created; null until Build reads. */
+  soldPerWeekUsd: number | null
+}
+
 export type StageFlowInput = {
+  market: MarketStageInput | null
+  sales: SalesStageInput | null
   bill: PileStageInput | null
   collect: CollectStageInput | null
   build: BuildStageInput | null
+  /** Dollars a week the field builds, the pace the feeders read against; null until Build reads. */
+  fieldPerWeekUsd: number | null
   /** The link a recorded call holds this week, if any. */
   heldLinkId: StageId | null
 }
 
-export type StageTone = 'link' | 'pair' | 'plain' | 'muted'
+export type StageTone = 'link' | 'pair' | 'plain' | 'muted' | 'green'
 
 export type StageReading = {
   id: StageId
@@ -75,11 +97,15 @@ export type StageReading = {
     /** Share of the pile the app can only guess at, 0–1; drawn grey. */
     guessShare: number
   }
-  /** Two lines, each with a subject: "the field finishes" · "$34k". */
-  flow: Array<{ who: string; usd: string }>
+  /** Two lines, each with a subject: "the field finishes" · "$34k" · "a week" (the tail defaults to "a week"). */
+  flow: Array<{ who: string; usd: string; tail?: string }>
+  /** Sales only: SENT / WON / LOST for bids and estimates. */
+  table?: { head: [string, string, string]; rows: Array<{ label: string; cells: [string, string, string]; note?: string }> }
   weeks: number | null
-  /** "10.6 weeks to bill what is already finished" */
+  /** "10.6 weeks to bill what is already finished"; for a feeder, its pace line. */
   weeksText: string
+  /** A feeder's second pace line: "the field builds $35k a week". */
+  weeksText2?: string
   badge: string
   tone: StageTone
   isLink: boolean
@@ -163,10 +189,67 @@ function pileStage(id: 'build' | 'bill' | 'collect', input: PileStageInput, who:
   }
 }
 
+function feederBadge(perWeekUsd: number | null, fieldPerWeekUsd: number | null, ahead: string, behind: string): { badge: string; tone: StageTone } {
+  if (perWeekUsd == null || fieldPerWeekUsd == null) return { badge: 'wait', tone: 'plain' }
+  return perWeekUsd >= fieldPerWeekUsd ? { badge: ahead, tone: 'green' } : { badge: behind, tone: 'pair' }
+}
+
 export function buildStageFlow(input: StageFlowInput): StageFlow {
   const byId = new Map<StageId, StageReading>()
-  byId.set('market', notReadable('market'))
-  byId.set('sales', notReadable('sales'))
+
+  if (input.market) {
+    const m = input.market
+    const asks = m.bidsInvited + m.estimatesRequested
+    const perWeek = (m.bidsInvitedUsd + m.estimatesRequestedUsd) / Math.max(1, m.weeks)
+    const meta = STAGE_META.market
+    const { badge, tone } = feederBadge(perWeek, input.fieldPerWeekUsd, 'not short', 'short of the field')
+    byId.set('market', {
+      id: 'market',
+      name: meta.name,
+      object: meta.object,
+      action: meta.action,
+      readable: true,
+      pile: { headline: `${asks} ${asks === 1 ? 'ask' : 'asks'} in ${Math.round(m.weeks)} weeks`, sub: [`${m.bidsInvited} ${m.bidsInvited === 1 ? 'bid' : 'bids'} invited`, `${m.estimatesRequested} ${m.estimatesRequested === 1 ? 'estimate' : 'estimates'} requested`], usd: null, guessShare: 0 },
+      flow: [
+        { who: 'bids', usd: stageUsd(m.bidsInvitedUsd), tail: 'from GCs' },
+        { who: 'estimates', usd: stageUsd(m.estimatesRequestedUsd), tail: 'from customers' },
+      ],
+      weeks: null,
+      weeksText: `about ${stageUsd(perWeek)} a week`,
+      badge,
+      tone,
+      isLink: false,
+    })
+  } else byId.set('market', notReadable('market'))
+
+  if (input.sales) {
+    const sl = input.sales
+    const meta = STAGE_META.sales
+    const awaitingUsd = sl.awaiting.bidsUsd + sl.awaiting.estimatesUsd
+    const { badge, tone } = feederBadge(sl.soldPerWeekUsd, input.fieldPerWeekUsd, 'ahead of the field · wait', 'behind the field')
+    byId.set('sales', {
+      id: 'sales',
+      name: meta.name,
+      object: meta.object,
+      action: meta.action,
+      readable: true,
+      pile: { headline: `${stageUsd(awaitingUsd)} awaiting an answer`, sub: [`${sl.awaiting.bids} ${sl.awaiting.bids === 1 ? 'bid' : 'bids'}, ${stageUsd(sl.awaiting.bidsUsd)}`, `${sl.awaiting.estimates} ${sl.awaiting.estimates === 1 ? 'estimate' : 'estimates'}, ${stageUsd(sl.awaiting.estimatesUsd)}`], usd: null, guessShare: 0 },
+      flow: [],
+      table: {
+        head: ['sent', 'won', 'lost'],
+        rows: [
+          { label: 'bids', cells: [stageUsd(sl.bids.sentUsd), stageUsd(sl.bids.wonUsd + sl.bids.startedUsd), stageUsd(sl.bids.lostUsd)], note: sl.bids.startedUsd > 0 ? `won counts ${stageUsd(sl.bids.startedUsd)} of bids that became jobs` : undefined },
+          { label: 'estimates', cells: [stageUsd(sl.estimates.sentUsd), stageUsd(sl.estimates.wonUsd), stageUsd(sl.estimates.lostUsd)] },
+        ],
+      },
+      weeks: null,
+      weeksText: sl.soldPerWeekUsd != null ? `sold ${stageUsd(sl.soldPerWeekUsd)} of work a week` : 'sold: not readable until Build reads',
+      weeksText2: input.fieldPerWeekUsd != null ? `the field builds ${stageUsd(input.fieldPerWeekUsd)} a week` : undefined,
+      badge,
+      tone,
+      isLink: false,
+    })
+  } else byId.set('sales', notReadable('sales'))
 
   if (input.build) {
     const b = input.build
@@ -222,7 +305,7 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
 
   const stages = STAGE_ORDER.map((id) => {
     const s = byId.get(id) as StageReading
-    if (!s.readable) return s
+    if (!s.readable || s.weeks == null) return s
     if (link && s.id === link.id) {
       return { ...s, isLink: true, tone: 'link' as const, badge: pair ? `the weakest link, with ${pair.name}` : 'the weakest link' }
     }

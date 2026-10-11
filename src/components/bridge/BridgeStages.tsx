@@ -15,6 +15,7 @@ function toneColor(tone: StageReading['tone']): string {
   if (tone === 'link') return 'var(--text-red-700)'
   if (tone === 'pair') return 'var(--text-amber-800)'
   if (tone === 'muted') return 'var(--text-muted)'
+  if (tone === 'green') return 'var(--text-green-700)'
   return 'var(--text)'
 }
 
@@ -65,12 +66,35 @@ function StageCard({ stage, picked, maxPileUsd, onPick }: { stage: StageReading;
         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column' }}>
           {stage.flow.map((f) => (
             <span key={f.who}>
-              {f.who} <b style={{ color: 'var(--text)' }}>{f.usd}</b> a week
+              {f.who} <b style={{ color: 'var(--text)' }}>{f.usd}</b> {f.tail ?? 'a week'}
             </span>
           ))}
         </span>
       )}
-      {stage.weeksText && <span style={{ fontSize: '0.78rem', fontWeight: 700, color: toneColor(stage.tone) }}>{stage.weeksText}</span>}
+      {stage.table && (
+        <span style={{ display: 'grid', gridTemplateColumns: 'auto 1fr 1fr 1fr', gap: '2px 8px', fontSize: '0.78rem', color: 'var(--text-muted)', alignItems: 'baseline' }} data-testid={`bridge-stage-table-${stage.id}`}>
+          <span />
+          {stage.table.head.map((h) => (
+            <span key={h} style={{ fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              {h}
+            </span>
+          ))}
+          {stage.table.rows.map((r) => (
+            <span key={r.label} style={{ display: 'contents' }}>
+              <span>{r.label}</span>
+              <b style={{ color: 'var(--text)' }}>{r.cells[0]}</b>
+              <b style={{ color: 'var(--text-green-700)' }} title={r.note}>{r.cells[1]}</b>
+              <b style={{ color: 'var(--text-red-700)' }}>{r.cells[2]}</b>
+            </span>
+          ))}
+        </span>
+      )}
+      {stage.weeksText && (
+        <span style={{ fontSize: '0.78rem', fontWeight: 700, color: toneColor(stage.tone) }}>
+          {stage.weeksText}
+          {stage.weeksText2 && <span style={{ display: 'block' }}>{stage.weeksText2}</span>}
+        </span>
+      )}
       <span style={{ marginTop: 'auto', fontSize: '0.78rem', fontWeight: 700, color: toneColor(stage.tone) }} data-testid={`bridge-stage-badge-${stage.id}`}>
         {stage.badge}
       </span>

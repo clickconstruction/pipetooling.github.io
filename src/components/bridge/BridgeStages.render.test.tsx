@@ -9,7 +9,7 @@ import { buildStageFlow } from '../../lib/bridge/stageFlow'
 describe('BridgeStages', () => {
   it('draws the five cards with the link in red and the unread ones saying so', () => {
     const flow = buildStageFlow({
-      bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
+      market: null, sales: null, fieldPerWeekUsd: null, bill: { pileUsd: 233_000, pileCount: 15, inPerWeekUsd: 34_000, outPerWeekUsd: 22_000 },
       collect: { pileUsd: 332_000, pileCount: null, inPerWeekUsd: 22_000, outPerWeekUsd: 46_000, lateCount: 49 },
       build: null,
       heldLinkId: null,
