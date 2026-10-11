@@ -67,7 +67,7 @@ Each one is a button in the prototype; each becomes one press in the app.
   transcript and summary.
 - **Who has it**: a person pill in the top right corner of the thread and on the Follow up row, not a
   menu (the owner, 2026-10-11): it reads
-  *You have this*, *Rosa has this* or *Nobody has it · Take it*, with initials and since when. Pressing it
+  *You have this*, *Rosa has this* or *Nobody has it · Take it*, with initials; since when is on its hover card, in words, *Since last Saturday, Sat Sep 26, 2:30 PM* (v1.90). Pressing it
   lists the team with initials, what each does, how they are right now and how many conversations each
   holds; *I'll take it* first when it is not yours, then each teammate, then *Nobody*. A take or a
   hand-off writes a quiet gray event line in the thread ("Robert handed Greg to Wendi · 10:36 AM"), the
@@ -478,6 +478,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.90, 2026-10-11**: the who-has-it pill reads *Rosa has this* alone; since-when moves to its hover card, in
+  words then the stamp (the owner's ask).
 - **v1.89, 2026-10-11**: *After this sends:* (the owner's words).
 - **v1.88, 2026-10-11**: the question, the presses and the meaning run as one line of text, the meaning in the lit
   side's colour and wrapping on from the presses rather than standing alone (the owner's ask).
