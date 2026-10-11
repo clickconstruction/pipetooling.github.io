@@ -26,6 +26,15 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .note{color:var(--text-muted);font-size:13px}
 .lead{margin:0 0 12px;font-size:17px}
 .two{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px}
+.two.collapsed{grid-template-columns:64px minmax(0,1fr)}
+.rail{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 6px}
+.rail .avatar{cursor:pointer;position:relative;width:38px;height:38px}
+.rail .avatar.on{outline:2px solid var(--accent);outline-offset:2px}
+.rail .avatar .cd{position:absolute;right:-2px;bottom:-2px;width:11px;height:11px;border-radius:50%;border:2px solid var(--surface);background:#cfd5dd}
+.rail .avatar .cd.ours{background:var(--warn)}.rail .avatar .cd.theirs{background:#1a7f3c}
+.list .lhead{display:flex;align-items:center;gap:6px;padding:8px 10px 0}
+.list .lhead input{flex:1;min-width:0}
+.collapse{width:30px;height:30px;padding:0;border-radius:50%;font-size:15px;flex:none}
 .two>*{min-width:0}
 @media(max-width:860px){.two{grid-template-columns:1fr}.list.hidden-narrow{display:none}}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px}
@@ -361,6 +370,8 @@ let dragJob = null;
 const showAll = {};         // contact id -> true when 'Show all text' is on for that thread
 const highlights = {};      // message id -> [{text, by, at}]
 let selectedInWindow = '';
+let listCollapsed = false; try{ listCollapsed = localStorage.getItem('msgListCollapsed')==='1'; }catch(e){}
+function setCollapsed(v){ listCollapsed=v; try{ localStorage.setItem('msgListCollapsed', v?'1':'0'); }catch(e){} render(); }
 const narrow = () => window.matchMedia('(max-width: 860px)').matches;
 
 // ---------- helpers ----------
@@ -421,19 +432,24 @@ function renderFollowup(m){
 }
 
 function renderMessages(m){
-  const wrap=document.createElement('div'); wrap.className='two';
+  const wrap=document.createElement('div'); wrap.className='two'+(listCollapsed&&!narrow()?' collapsed':'');
   // list
   const list=document.createElement('div'); list.className='card list'+(narrow()&&openContact?' hidden-narrow':'');
+  if(listCollapsed&&!narrow()){ const filt0 = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
+    const rows0 = contacts.filter(filt0).sort((a,b)=>{ const w=(b.state==='waiting')-(a.state==='waiting'); return w|| (lastMsg(b)?.at||0)-(lastMsg(a)?.at||0); });
+    list.className='card rail'; list.innerHTML=`<button class="collapse" data-tip="Show the list|Opens the people list again.|Your choice is kept on this computer." onclick="setCollapsed(false)">›</button>${rows0.map(c=>`<div class="avatar ${kindClass(c)} ${c.id===openContact?'on':''}" data-tip="${esc(c.name)}|${esc(c.company||kindWord(c))}|${esc(courtOf(c).word)}" onclick="openThread('${c.id}')">${initials(c)}<span class="cd ${courtOf(c).side}"></span></div>`).join('')}`;
+    wrap.appendChild(list); }
+  else {
   const filt = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
   const hit = c => !search || [c.name,c.company,...messages.filter(x=>x.c===c.id).map(x=>x.text)].join(' ').toLowerCase().includes(search.toLowerCase());
   const rows = contacts.filter(c=>filt(c)&&hit(c)).sort((a,b)=>{ const w=(b.state==='waiting')-(a.state==='waiting'); return w|| (lastMsg(b)?.at||0)-(lastMsg(a)?.at||0); });
-  list.innerHTML=`<div style="padding:10px"><input placeholder="Search people, companies, words in texts and transcripts" style="width:100%" value="${esc(search)}" oninput="search=this.value;render();document.querySelector('.list input').focus()"></div>
+  list.innerHTML=`<div class="lhead"><input placeholder="Search people, companies, words in texts and transcripts" value="${esc(search)}" oninput="search=this.value;render();document.querySelector('.list input').focus()">${narrow()?'':`<button class="collapse" data-tip="Hide the list|Folds the people list to a rail of faces so the thread gets the room.|Each face keeps its court dot; your choice is kept on this computer." onclick="setCollapsed(true)">‹</button>`}</div>
     <div class="filters" style="padding:0 10px">${[['all','All'],['customers','Customers'],['trades','Trades'],['unknown','Who is this?']].map(([k,l])=>`<button class="${listFilter===k?'on':''}" onclick="listFilter='${k}';render()">${l}</button>`).join('')}</div>`;
   if(!rows.length) list.innerHTML+='<div class="empty">Nothing matches.</div>';
   for(const c of rows){ const last=lastMsg(c); const r=document.createElement('div'); r.className='row'+(c.id===openContact?' on':''); r.onclick=()=>openThread(c.id);
     r.innerHTML=`<div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="min-width:0;flex:1"><div class="who">${esc(c.name)}</div><div class="sub">${esc(c.company||kindWord(c))}${c.trade?` · ${esc(c.trade)}`:''}</div><div class="last">${last?`${chWord(last)}: ${esc(snippetOf(last))}`:''}</div></div><div class="right">${last?fmt(last.at).split(' · ')[0]:''}<br><span class="court ${courtShort(c).side} tiny" title="${esc(courtShort(c).title)}"><i></i>${esc(courtShort(c).word)}</span>${c.has?`<br><span class="pill has">${esc(c.has)}</span>`:''}</div>`;
     list.appendChild(r); }
-  wrap.appendChild(list);
+  wrap.appendChild(list); }
   // thread
   const th=document.createElement('div'); th.className='card';
   const c=cById(openContact);

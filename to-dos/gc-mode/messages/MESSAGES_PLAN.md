@@ -46,7 +46,7 @@ a new cell starts over). The person is the spine; jobs are labels on the person 
 | Surface | What it shows | In the prototype |
 |---|---|---|
 | **Follow up** (the queue) | Everyone waiting on us, one count: *Needs a reply* (texts, voicemails, missed calls nobody answered, longest waiting first, with who has it), then the quote asks it lists today. Answering clears the row. A click anywhere on a row, off its buttons, opens the conversation landed on that message (the owner, 2026-10-11). | yes |
-| **Messages** (the history) | Every contact, every channel, search across words and transcripts. No badge of its own. | yes |
+| **Messages** (the history) | Every contact, every channel, search across words and transcripts. No badge of its own. The people list folds to a rail of faces with a court dot on each (‹ beside the search, › to open it again), kept per computer (the owner, 2026-10-11). | yes |
 | **A contact's thread** | The header is layout A of `header-mockups.html` (the owner's pick, 2026-10-11): a name line with the who-has-it pill at the right; a facts line that starts with what they are to us as a label before the company, "Customer: Helotes Dental Office", "Trade partner: Hillside Excavation" (the owner, 2026-10-11), then phone, email, the waiting or promise pill; one toolbar (Call in Quo, Text, Email, Open · Snoozed · Done, Mark STOP, Show all text at the far right); the jobs rail as one row of chips with the default starred and a short hint at its right. Then the lines in time order with the job on each, chips to filter by job, the reply box (text, email, note for the team), the quick replies. | yes |
 | **Customers** | The same threads kept to customers, ordered by who is waiting; team notes yellow. A filter of Follow up and Messages, never a second queue. | yes |
 | **A job's conversations** | On the job's page: its own recent calls and texts, by contact, with answered or waiting. Reads the messages tied to that job. | yes |
@@ -324,3 +324,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.23, 2026-10-11**: list fixes from the owner's screenshot: the right column is capped so a long
   court word never squashes the name; the list's court pill is the short form ("Our · we owe", the
   full words on hover); an email's snippet is its subject; a missed call's reads "no voicemail".
+- **v1.24, 2026-10-11**: the people list collapses to a rail of faces (‹ beside the search), each
+  with its court dot and a hover card; › opens it again; the choice is kept in the browser.
