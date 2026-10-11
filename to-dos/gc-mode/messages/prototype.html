@@ -27,6 +27,43 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .lead{margin:0 0 12px;font-size:17px}
 .two{display:grid;grid-template-columns:340px minmax(0,1fr);gap:16px}
 .two.collapsed{grid-template-columns:64px minmax(0,1fr)}
+.two.flow{grid-template-columns:340px minmax(0,1fr) 300px}
+.two.flow.collapsed{grid-template-columns:64px minmax(0,1fr) 300px}
+@media(max-width:1000px){.two.flow,.two.flow.collapsed{grid-template-columns:minmax(0,1fr)}.two.flow .list,.two.flow .rail{display:none}}
+.fpanel{background:#fbfbfc}
+.fpanel .ph2{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.fpanel .ph2 b{font-size:13px}
+.flow{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.flow .lane{border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--surface)}
+.flow .lane .t{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.flow .boxes{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.flow .box{border:1px solid var(--border);border-radius:6px;padding:4px 7px;background:var(--surface);white-space:nowrap;position:relative}
+.flow .box.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
+.flow .box.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn);font-weight:600}
+.flow .box.dec{border-radius:0;transform:skewX(-8deg)}
+.flow .box.dec>*{display:inline-block;transform:skewX(8deg)}
+.flow .arr{color:#9aa4b1}
+.flow .loop{border:1px dashed #c9d0d8;border-radius:10px;padding:8px 6px 6px;position:relative}
+.flow .loop .lt{position:absolute;top:-8px;left:8px;background:var(--surface);padding:0 4px;font-size:10px;color:var(--text-muted)}
+.flow .loop .rounds{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.flow .loop .rounds span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:0 6px;background:var(--surface)}
+.flow .loop .rounds span.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
+.flow .loop .rounds span.now{background:var(--warn-soft);border-color:#f0d3b0;color:var(--warn)}
+.flow .who{position:absolute;top:-9px;right:-6px;font-size:9.5px;border-radius:999px;padding:0 6px;border:1px solid;background:var(--surface);font-weight:600;transform:none}
+.flow .who.us{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}
+.flow .who.them{color:var(--ok);border-color:#bfe3c9;background:var(--ok-soft)}
+.flow .who.both{color:var(--text-muted);border-color:var(--border)}
+.fnext{font-size:12px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
+.fnext b{color:var(--text)}
+.feditor .tabs{display:flex;gap:6px;margin:6px 0 10px}
+.feditor .tabs button{border-radius:999px}
+.feditor .tabs button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.feditor table{width:100%;border-collapse:collapse;font-size:13px}
+.feditor th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--border)}
+.feditor td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+.feditor td.g{color:var(--text-muted)}
+.feditor td input{width:100%;padding:3px 6px}
+.feditor .lanehead td{background:var(--bg);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
 .rail{display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 6px}
 .rail .avatar{cursor:pointer;position:relative;width:38px;height:38px}
 .rail .avatar.on{outline:2px solid var(--accent);outline-offset:2px}
@@ -318,6 +355,54 @@ const contacts = [
   {id:'unk1', name:'(830) 555-0172', company:'', kind:'unknown', phones:['(830) 555-0172'], emails:[], jobs:[], def:null, state:'waiting', has:null, promise:null, optout:false},
 ];
 const cById = id => contacts.find(c=>c.id===id);
+// The flows, as the Settings → Flows editor would hold them. A lane runs once or per job; a step is a box,
+// a decision (dec) or a loop (its rounds come from the contact). 'who' says whose move a step is by default.
+const FLOWS = {
+  trade: [
+    {lane:'Once', steps:[
+      {id:'invited', name:'Invited', who:'us', done:'the invitation email went', nudge:'—'},
+      {id:'portal', name:'Portal opened', who:'them', done:'first visit to their link', nudge:'3 days · a text'},
+      {id:'papers', name:'Papers in', who:'them', done:'W-9 received · insurance current', nudge:'5 days · a call'},
+      {id:'msa', name:'MSA signed', who:'them', done:'the master agreement signed', nudge:'3 days · a text'} ]},
+    {lane:'Per job', steps:[
+      {id:'ask', name:'Asked to quote', who:'them', loop:'each ask', done:'their quote is in the portal', nudge:'at their promised day, else 7 days'},
+      {id:'compare', name:'Compared', who:'us', dec:true, done:'we carried one or marked theirs lost', nudge:'—'},
+      {id:'sow', name:'Statement of work', who:'them', done:'the statement of work signed', nudge:'3 days · a text'},
+      {id:'draws', name:'Draws', who:'both', loop:'each draw', done:'a draw approved and paid', nudge:'—'},
+      {id:'closeout', name:'Closeout', who:'them', done:'final waiver received', nudge:'7 days · an email'} ]} ],
+  customer: [
+    {lane:'Once', steps:[
+      {id:'asked', name:'Asked us', who:'them', done:'the first conversation or the plans came in', nudge:'—'},
+      {id:'bid', name:'Our bid', who:'us', done:'the bid went', nudge:'—'},
+      {id:'yes', name:'Said yes', who:'them', dec:true, done:'they accepted or declined', nudge:'5 days · a call'},
+      {id:'contract', name:'Contract signed', who:'them', done:'our contract signed', nudge:'3 days · a text'} ]},
+    {lane:'Per job', steps:[
+      {id:'start', name:'Start date', who:'us', done:'the start date sent', nudge:'—'},
+      {id:'onsite', name:'On site', who:'us', done:'the job started', nudge:'—'},
+      {id:'payapp', name:'Pay app sent · certified · paid', who:'both', loop:'each month', done:'the pay application paid', nudge:'at pay by, else 5 days'},
+      {id:'close', name:'Closeout', who:'us', done:'the final pay application paid', nudge:'—'},
+      {id:'warranty', name:'Warranty', who:'us', done:'the warranty year ended', nudge:'—'} ]},
+    {lane:'Any time', steps:[
+      {id:'co', name:'Change orders', who:'them', loop:'each change', done:'signed or declined', nudge:'3 days · a text'} ]} ],
+  arch: [
+    {lane:'Per job', steps:[
+      {id:'plans', name:'Plans in', who:'them', done:'the plan set filed', nudge:'—'},
+      {id:'questions', name:'Questions', who:'them', loop:'each question', done:'their answer came', nudge:'at questions close'},
+      {id:'addenda', name:'Addenda', who:'them', loop:'each addendum', done:'the addendum filed and sent', nudge:'—'},
+      {id:'submittals', name:'Submittals', who:'them', loop:'each submittal', done:'reviewed', nudge:'10 days · an email'},
+      {id:'certify', name:'Certify pay apps', who:'them', loop:'each pay app', done:'the certificate recorded', nudge:'5 days · an email'} ]} ],
+  unknown: [ {lane:'First', steps:[ {id:'who', name:'Who is this?', who:'us', done:'named', nudge:'—'} ]} ]
+};
+// Where each person is: done steps, the step on now, and the rounds of each loop.
+const FLOW_STATE = {
+  greg: {done:['invited','portal','papers','msa'], now:'ask', rounds:{ask:[{n:'Stone Oak',s:'done'},{n:'Boerne Shell',s:'now'},{n:'Pad B',s:'next'}]}},
+  bill: {done:['invited','portal','papers','msa','ask'], now:'compare', rounds:{ask:[{n:'Boerne Shell',s:'done'}]}},
+  tom:  {done:['invited'], now:'portal', rounds:{ask:[{n:'Boerne Shell',s:'next'}]}},
+  priya:{done:['asked','bid','yes','contract'], now:'start', rounds:{payapp:[], co:[]}},
+  elena:{done:['asked','bid','yes','contract','start','onsite'], now:'payapp', rounds:{payapp:[{n:'Pay app 3',s:'done'},{n:'Pay app 4',s:'now'}], co:[{n:'CO 1',s:'done'},{n:'CO 2',s:'done'}]}},
+  jonah:{done:['plans'], now:'addenda', rounds:{questions:[{n:'Panel size',s:'done'},{n:'Roof curbs',s:'done'},{n:'Pond',s:'now'}], addenda:[{n:'Addendum 1',s:'done'},{n:'Addendum 2',s:'now'}], submittals:[], certify:[]}},
+  unk1: {done:[], now:'who', rounds:{}}
+};
 let seq = 100;
 const T = (d,h,m)=> new Date(2026,9,d,h,m).getTime(); // Oct 2026
 const NOW = T(2,11,45); // the prototype's clock: Fri Oct 2, 11:45 AM
@@ -370,6 +455,8 @@ let dragJob = null;
 const showAll = {};         // contact id -> true when 'Show all text' is on for that thread
 const highlights = {};      // message id -> [{text, by, at}]
 let selectedInWindow = '';
+let flowOpen = false; // the right panel, folded by default (the owner, 2026-10-11)
+let flowTab = 'trade';
 let listCollapsed = false; try{ listCollapsed = localStorage.getItem('msgListCollapsed')==='1'; }catch(e){}
 function setCollapsed(v){ listCollapsed=v; try{ localStorage.setItem('msgListCollapsed', v?'1':'0'); }catch(e){} render(); }
 const narrow = () => window.matchMedia('(max-width: 860px)').matches;
@@ -432,7 +519,7 @@ function renderFollowup(m){
 }
 
 function renderMessages(m){
-  const wrap=document.createElement('div'); wrap.className='two'+(listCollapsed&&!narrow()?' collapsed':'');
+  const wrap=document.createElement('div'); wrap.className='two'+(listCollapsed&&!narrow()?' collapsed':'')+(flowOpen&&openContact?' flow':'');
   // list
   const list=document.createElement('div'); list.className='card list'+(narrow()&&openContact?' hidden-narrow':'');
   if(listCollapsed&&!narrow()){ const filt0 = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
@@ -465,7 +552,7 @@ function renderMessages(m){
       <span class="seg"><button class="${c.state==='waiting'?'on':''}" data-tip="Open|They are waiting on us.|The row sits in Follow up and counts in its badge until someone answers, adds a note, or marks it Done." onclick="setState('${c.id}','waiting')">Open</button><button class="${c.state==='snoozed'?'on':''}" data-tip="Snoozed|Out of Follow up until Monday morning, then back on its own.|The thread stays as it is. A new message from them brings it back sooner." onclick="remind('${c.id}')">Snoozed</button><button class="${c.state==='done'?'on':''}" data-tip="Done|Nothing is owed to them right now.|The row leaves Follow up and the badge drops by one; the thread keeps everything. Their next message reopens it by itself." onclick="setState('${c.id}','done')">Done</button></span>
       <button class="quiet" data-tip="${c.optout?'Clear opt-out|Lets the app text this number again.|Use it only when they asked, in writing, to hear from us again.':'Mark STOP|Records that they asked for no more texts.|The app refuses to text this number from then on and says so under the box. Calls and email still work. The carriers require it.'}" onclick="toggleOptout('${c.id}')">${c.optout?'Clear opt-out':'Mark STOP'}</button>
       ${c.state!=='waiting'?`<button class="quiet" title="Demo: a new message from them reopens the row by itself" onclick="theyReply('${c.id}')">They text back (demo)</button>`:''}
-      <span class="grow"></span><span class="switch ${showAll[c.id]?'on':''}" data-tip="Show all text|Shows every message in this thread in full.|Instead of its first four lines or its highlights. Off by default, and for this thread only." onclick="showAll['${c.id}']=!showAll['${c.id}'];render()"><i></i>Show all text</span></div>
+      <span class="grow"></span><button class="${flowOpen?'':'quiet'}" data-tip="${c.kind==='customer'?'Her flow':c.kind==='unknown'?'Their flow':'Their flow'}|Opens a panel at the right with their journey with us: what is done, what is on now, whose move it is, what comes next.|Folded by default. The journey is drawn from Settings → Flows; editing the flow there changes every panel." onclick="flowOpen=!flowOpen;render()">${flowOpen?'‹ Their flow':'Their flow ›'}</button><span class="switch ${showAll[c.id]?'on':''}" data-tip="Show all text|Shows every message in this thread in full.|Instead of its first four lines or its highlights. Off by default, and for this thread only." onclick="showAll['${c.id}']=!showAll['${c.id}'];render()"><i></i>Show all text</span></div>
     <div class="jobs-rail" id="rail"><span class="note">Their jobs</span>${cJobs.map(j=>`<span class="jobchip ${jobFilter===j.id?'on':''}" draggable="true" data-job="${j.id}" title="Drag onto a message to tie it there. Click to filter."><span class="star" title="New messages go here" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()">${esc(jobLabel(c,j.id))}</span><span class="note" onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()"> · ${esc(j.note)}</span><span class="x" title="Open this job" onclick="event.stopPropagation();jobModal('${j.id}')">⧉</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span>`).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}<span class="note hint-r" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of.|New messages from them land on the ★ one. Drag a job onto a line to tie that message there; press and hold on a phone. A line with no job sits on the person alone.">${c.def?`new messages go to ★`:'no default job'} · drag a job onto a line to tie it</span></div>
   </div>
   <div id="lines"></div>
@@ -503,7 +590,9 @@ function renderMessages(m){
     let pt; e.addEventListener('pointerdown',()=>{ if(!narrow()) return; pt=setTimeout(()=>tieMenu(x.id),550); }); e.addEventListener('pointerup',()=>clearTimeout(pt)); e.addEventListener('pointermove',()=>clearTimeout(pt));
     L.appendChild(e); }
   th.querySelectorAll('.jobchip[draggable]').forEach(ch=>{ ch.addEventListener('dragstart',ev=>{ dragJob=ch.dataset.job; ev.dataTransfer.setData('text/plain',dragJob); }); ch.addEventListener('dragend',()=>{dragJob=null;}); });
-  wrap.appendChild(th); m.appendChild(wrap);
+  wrap.appendChild(th);
+  if(flowOpen){ const fp=document.createElement('div'); fp.className='card fpanel'; fp.innerHTML=flowPanelHtml(c); wrap.appendChild(fp); }
+  m.appendChild(wrap);
   requestAnimationFrame(()=>{ if(window.__landing) return; const l=document.getElementById('lines'); if(l) l.scrollIntoView({block:'nearest'}); });
 }
 
@@ -531,7 +620,7 @@ function renderSettings(m){
   <dt>Who gets a new message</dt><dd>In this order: whoever answered this person last, if they are here today; else by who they are: a customer → Rosa (the assistant's seat), a trade partner or an architect → Robert (the estimator's seat); a number nobody knows → nobody, so whoever answers first takes it. The pill says it was by the rule, and anyone can take it. <span class="note">(proposed 2026-10-11, the owner's call)</span></dd>
   <dt>Email</dt><dd>bids@ read through a Google grant; replies go out as Click Construction. <span class="note">(open question)</span></dd>
   <dt>Claude</dt><dd>Reads texts and call summaries for a promised day or a plans question; every guess is a button. <span class="note">(day one or later: the owner's call)</span></dd>
-  </dl></div>`;
+  </dl></div>${flowsEditorHtml()}`;
   m.appendChild(el);
 }
 
@@ -610,6 +699,25 @@ function openMessage(mid){ const x=messages.find(m=>m.id===mid); const c=cById(x
   window.__share=id=>{ const x=messages.find(m=>m.id===id); const data={title:(x.subject||chWord(x))+' · '+c.name, text:x.text}; if(navigator.share){ navigator.share(data).catch(()=>{}); } else toast("Opens the Mac's share sheet (Mail, Messages, AirDrop, Notes).") };
   paint(); document.body.appendChild(bg); bg.onclick=e=>{ if(e.target===bg){ bg.remove(); render(); } }; }
 function openAttachment(mid,i){ openMessage(mid); setTimeout(()=>document.querySelector('.mw .attl')?.scrollIntoView({block:'nearest'}),0); }
+
+// ---------- their flow: the right panel, drawn from FLOWS and FLOW_STATE ----------
+function stepState(c, id){ const st=FLOW_STATE[c.id]||{done:[],now:null,rounds:{}}; if(st.done.includes(id)) return 'done'; if(st.now===id) return 'now'; return ''; }
+function whoNow(c, step){ if(c.owe) return 'us'; const k=courtOf(c); if(k.side==='ours') return 'us'; if(k.side==='theirs') return 'them'; return step.who; }
+function flowPanelHtml(c){ const flow=FLOWS[c.kind]||[]; const st=FLOW_STATE[c.id]||{done:[],now:null,rounds:{}};
+  const box=(step)=>{ const s=stepState(c,step.id); const tag = s==='now' ? `<span class="who ${whoNow(c,step)}">${whoNow(c,step)}</span>` : '';
+    if(step.loop){ const rounds=(st.rounds[step.id]||[]); return `<span class="loop"><span class="lt">${esc(step.loop)}</span><span class="box ${s}">${esc(step.name)}${tag}</span>${rounds.length?`<span class="rounds">${rounds.map(r=>`<span class="${r.s==='done'?'done':r.s==='now'?'now':''}">${esc(r.n)}</span>`).join('')}</span>`:`<span class="rounds"><span>none yet</span></span>`}</span>`; }
+    return `<span class="box ${s} ${step.dec?'dec':''}"><span>${esc(step.name)}</span>${tag}</span>`; };
+  const lanes=flow.map(l=>`<div class="lane"><div class="t">${esc(l.lane)}${l.lane==='Per job'&&c.def?' · '+esc(jobById(c.def).name):''}</div><div class="boxes">${l.steps.map((s,i)=>(i?'<span class="arr">→</span>':'')+box(s)).join('')}</div></div>`).join('');
+  const nowStep=flow.flatMap(l=>l.steps).find(s=>s.id===st.now); const k=courtOf(c);
+  const next = nowStep ? `<b>On now:</b> ${esc(nowStep.name)} · ${k.side==='ours'?'our court':k.side==='theirs'?'their court':'no court'}${c.owe?' · we owe '+esc(c.owe.what)+(c.owe.by?' by '+esc(c.owe.by):''):c.promise?' · '+esc(c.promise):''}.<br><b>Finished when:</b> ${esc(nowStep.done)}.<br><b>Nudge:</b> ${esc(nowStep.nudge)}.` : 'Nothing on now.';
+  return `<div class="ph2"><b>${c.kind==='customer'?'Her flow · customer':c.kind==='trade'?'Their flow · trade partner':c.kind==='arch'?'Their flow · architect':'Their flow'}</b><button class="quiet small" onclick="flowOpen=false;render()">fold ›</button></div><div class="flow">${lanes}</div><div class="fnext">${next}</div><div class="note" style="margin-top:8px">Drawn from Settings → Flows. <button class="quiet small" style="padding:0" onclick="view='settings';flowTab='${c.kind==='unknown'?'trade':c.kind}';render();setTimeout(()=>document.getElementById('flows')?.scrollIntoView({block:'start'}),0)">Edit the flow</button></div>`; }
+function flowsEditorHtml(){ const kinds=[['customer','Customer'],['trade','Trade partner'],['arch','Architect']]; const flow=FLOWS[flowTab];
+  const rows=flow.map(l=>`<tr class="lanehead"><td colspan="5">${esc(l.lane)}</td></tr>`+l.steps.map(s=>`<tr><td><input value="${esc(s.name)}" onchange="renameStep('${flowTab}','${s.id}',this.value)"></td><td class="g">${esc(s.done)}</td><td class="g">${esc(s.who)}</td><td class="g">${esc(s.nudge)}</td><td class="g">${s.loop?'yes · '+esc(s.loop):'no'}</td></tr>`).join('')).join('');
+  return `<h2 id="flows" style="margin-top:18px">Flows</h2><p class="note">One flow per kind of person. A step is finished by a fact the app already keeps, never by a typed word; whose move it is and when to nudge follow from it; a step that repeats is a loop in the panel. Renaming a step here renames it in every panel (the other columns are read-only in this prototype).</p>
+  <div class="card feditor"><div class="tabs">${kinds.map(([k,l])=>`<button class="${flowTab===k?'on':''}" onclick="flowTab='${k}';render();setTimeout(()=>document.getElementById('flows')?.scrollIntoView({block:'start'}),0)">${l}</button>`).join('')}</div>
+  <table><tr><th>Step</th><th>Finished when</th><th>Whose move</th><th>Nudge after</th><th>Repeats</th></tr>${rows}</table>
+  <p class="note" style="margin:10px 0 0">The same list could drive Follow up's nudges and the ring on the Board, so one edit moves all three.</p></div>`; }
+function renameStep(kind,id,v){ const s=FLOWS[kind].flatMap(l=>l.steps).find(x=>x.id===id); if(s&&v.trim()){ s.name=v.trim(); toast('Renamed in every panel.'); } }
 
 // ---------- quick replies: use, edit, add ----------
 function useQuick(id){ const q=quickReplies.find(x=>x.id===id); const box=document.getElementById('box'); box.value=q.text; countBox(box); box.focus(); }

@@ -51,6 +51,8 @@ a new cell starts over). The person is the spine; jobs are labels on the person 
 | **Customers** | The same threads kept to customers, ordered by who is waiting; team notes yellow. A filter of Follow up and Messages, never a second queue. | yes |
 | **A job's conversations** | On the job's page: its own recent calls and texts, by contact, with answered or waiting. Reads the messages tied to that job. | yes |
 | **Who is this?** | A number the app does not know: name it, say what they are to us, pick their company, tie it to a job. The answer becomes the rule for that number. | yes |
+| **Their flow** (the right panel) | Folded by default; *Their flow ›* on the toolbar opens it. The person's journey with us as a small chart in lanes (Once; Per job; Any time): boxes green when done, orange on now with an *us* or *them* tag from the court, a decision as a slanted box, a loop as a dashed box with one pill per round (each ask, each pay application, each change order). Under it: what is on now, whose court, what finishes it, when the app nudges. Drawn from Settings → Flows (the owner picked B with C's tags, 2026-10-11). | yes |
+| **Settings → Flows** | One flow per kind of person as a table: step, finished when (a fact the app keeps, never typed), whose move, nudge after, repeats. Renaming a step changes every panel. The same list is meant to drive Follow up's nudges and the Board's ring later. | yes, names editable |
 | **A message's window** | Click any message: the whole text with its facts (who, the exact time received or sent, what it came through, the job it is tied to, whether a copy is kept), its attachments, its highlights, and the tools: Highlight the selected words, Copy, Print or save as PDF, Share (the Mac's share sheet), Tie to, Reply. | yes |
 | **Settings → Phone and texts** | The Quo connection, the company number, registration, recordings on, who has a seat, who sees what. | yes, read only |
 | The Pipeline's Job activity | Later: calls, texts and emails mixed into the feed; company-only rows yellow, anything the customer saw white. | not yet |
@@ -206,6 +208,13 @@ person is out (fall to the other seat, or to nobody).
   one job. (The owner's words above.)
 - It is built in the GC board first: the Follow up tab and the Messages tab on `/gc`.
 
+## Open, from the flow panel (2026-10-11)
+
+- Does a customer's flow start at the bid or at the first conversation? (Drawn as the first conversation.)
+- Is a trade partner's onboarding one shared flow, or does it differ by trade? (Drawn as one.)
+- Which facts finish each step: the table names them in words; each must map to a column or a row the app has.
+- Whether the flow list also drives Follow up's nudges and the Board's ring, or only the panel at first.
+
 ## Open, from the 2026-10-11 review of the mock-up
 
 Each gets an answer here and a picture in the prototype before it is built.
@@ -326,3 +335,7 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   full words on hover); an email's snippet is its subject; a missed call's reads "no voicemail".
 - **v1.24, 2026-10-11**: the people list collapses to a rail of faces (‹ beside the search), each
   with its court dot and a hover card; › opens it again; the choice is kept in the browser.
+- **v1.25, 2026-10-11**: the right panel, *Their flow*, folded by default: the chart in lanes with loops
+  and the us/them tag on the current box (mock-up B with C's tags, the owner's pick), the on-now lines
+  under it, and Settings → Flows with the editor table (names editable). Every person has a place in
+  their flow in the demo.
