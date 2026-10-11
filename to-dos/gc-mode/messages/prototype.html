@@ -347,11 +347,16 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .settings dl{display:grid;grid-template-columns:200px 1fr;gap:8px 16px;margin:0}
 .settings dt{color:var(--text-muted)}
 .settings dd{margin:0}
-.tip{position:fixed;z-index:40;max-width:320px;background:var(--surface);color:var(--text);border:1px solid var(--border);font-size:13px;line-height:1.4;padding:10px 12px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);pointer-events:none;opacity:0;transition:opacity .12s}
+.tip{position:fixed;z-index:40;max-width:360px;background:var(--surface);color:var(--text);border:1px solid var(--border);font-size:13px;line-height:1.4;padding:10px 12px;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);pointer-events:none;opacity:0;transition:opacity .12s}
 .tip.show{opacity:1}
 .tip b{display:block;font-weight:700;margin-bottom:3px;font-size:13.5px}
 .tip .what{margin:0}
 .tip .changes{margin:6px 0 0;color:var(--text-muted);font-size:12.5px}
+.tip .leg{display:flex;flex-direction:column;gap:7px;margin:9px 0 2px;padding-top:8px;border-top:1px solid var(--border)}
+.tip .leg div{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;line-height:1.35}
+.tip .leg .jobchip{font-size:12px;padding:2px 8px;cursor:default;flex:none;margin-top:1px;display:inline-block;max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tip .leg span.w{flex:1;min-width:0}
+.tip .leg b{display:inline;font-size:12.5px}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;z-index:30;opacity:0;transition:opacity .2s}
 .toast.show{opacity:1}
 .sheet{position:fixed;inset:auto 0 0 0;background:var(--surface);border-top:1px solid var(--border);border-radius:14px 14px 0 0;padding:14px 16px 24px;z-index:25;box-shadow:0 -10px 30px rgba(0,0,0,.15)}
@@ -599,7 +604,7 @@ function renderMessages(m){
       <span class="whowrap"><button class="quiet" data-tip="More|The rarer things for this thread.|Mark STOP, Show all text, and Edit the flow." onclick="morePicker('${c.id}',this)">More ▾</button></span>
       ${c.state!=='waiting'?`<button class="quiet" title="Demo: a new message from them reopens the row by itself" onclick="theyReply('${c.id}')">They text back (demo)</button>`:''}
 </div>
-    <div class="jobs-rail" id="rail"><span class="sep"></span><span class="note lbl" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of.|New messages from them land on the ★ one. Drag a job onto a line to tie that message there; press and hold on a phone. A line with no job sits on the person alone.">Their jobs</span>${cJobs.map(j=>`<span class="jobchip ${jobFilter===j.id?'on':''}" draggable="true" data-job="${j.id}" title="Drag onto a message to tie it there. Click to filter."><span class="star" title="New messages go here" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()">${esc(jobLabel(c,j.id))}</span><span class="note" onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()"> · ${esc(j.note)}</span><span class="x" title="Open this job" onclick="event.stopPropagation();jobModal('${j.id}')">⧉</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span>`).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</div></div>
+    <div class="jobs-rail" id="rail"><span class="sep"></span><span class="note lbl" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of. A chip can be marked two ways, and they mean different things:|" data-tip-legend="jobs">Their jobs</span>${cJobs.map(j=>`<span class="jobchip ${jobFilter===j.id?'on':''}" draggable="true" data-job="${j.id}" title="Drag onto a message to tie it there. Click to filter."><span class="star" title="New messages go here" onclick="event.stopPropagation();setDefault('${c.id}','${j.id}')">${c.def===j.id?'★':'☆'}</span><span onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()">${esc(jobLabel(c,j.id))}</span><span class="note" onclick="jobFilter=jobFilter==='${j.id}'?null:'${j.id}';render()"> · ${esc(j.note)}</span><span class="x" title="Open this job" onclick="event.stopPropagation();jobModal('${j.id}')">⧉</span><span class="x" title="Remove this job from them" onclick="event.stopPropagation();removeJob('${c.id}','${j.id}')">×</span></span>`).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</div></div>
   </div>
   <div id="lines"></div>
   <div class="reply">
@@ -866,8 +871,18 @@ function sheet(title, optsHtml){ closeSheet(); const s=document.createElement('d
 function closeSheet(){ document.getElementById('sheet')?.remove(); }
 
 // ---------- hover cards: what a control does, and what it changes ----------
+// A card may carry a legend (data-tip-legend), drawn when it opens from the page's own state, so the sample chips are the real ones.
+const TIP_LEGENDS = {
+  jobs(){ const c=cById(openContact); if(!c) return ''; const nm=id=>jobById(id)?jobById(id).name:''; const def=c.def?nm(c.def):null; const blue=jobFilter?nm(jobFilter):(c.jobs.find(j=>j!==c.def)?nm(c.jobs.find(j=>j!==c.def)):(def||'a job')); const first=c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0];
+    return `<div class="leg">
+      <div><span class="jobchip on">${esc(blue)}</span><span class="w"><b>Blue</b> is what you are looking at: the thread shows only the lines tied to that job. Click it again, or <i>show all</i>, to see everything.</span></div>
+      <div><span class="jobchip"><span class="star">★</span> ${esc(def||'none yet')}</span><span class="w"><b>The gold star</b> is where new messages from ${esc(first)} land until someone changes it. Click ☆ on another job to move it. It never changes what you are looking at.</span></div>
+      <div><span class="jobchip" style="color:var(--text-muted)">⧉ ×</span><span class="w">⧉ opens the job's card; × takes the job off ${esc(first)} (the lines tied to it keep their tie).</span></div>
+      <div><span class="jobchip ghost">drag</span><span class="w">Drag a chip onto a line to tie that one message there; press and hold on a phone. A line with no job sits on the person alone.</span></div>
+    </div>`; }
+};
 (function(){ const tip=document.createElement('div'); tip.className='tip'; document.body.appendChild(tip); let timer=null, cur=null;
-  const show=el=>{ const [head,what,changes]=el.dataset.tip.split('|'); tip.innerHTML=`<b>${esc(head)}</b><p class="what">${esc(what||'')}</p>${changes?`<p class="changes">${esc(changes)}</p>`:''}`; const r=el.getBoundingClientRect(); tip.style.left='0px'; tip.style.top='0px'; tip.classList.add('show'); const w=tip.offsetWidth, h=tip.offsetHeight; let x=r.left+r.width/2-w/2, y=r.bottom+8; if(x<8) x=8; if(x+w>window.innerWidth-8) x=window.innerWidth-8-w; if(y+h>window.innerHeight-8) y=r.top-8-h; tip.style.left=x+'px'; tip.style.top=y+'px'; };
+  const show=el=>{ const [head,what,changes]=el.dataset.tip.split('|'); const leg=el.dataset.tipLegend&&TIP_LEGENDS[el.dataset.tipLegend]?TIP_LEGENDS[el.dataset.tipLegend]():''; tip.innerHTML=`<b>${esc(head)}</b><p class="what">${esc(what||'')}</p>${changes?`<p class="changes">${esc(changes)}</p>`:''}${leg}`; const r=el.getBoundingClientRect(); tip.style.left='0px'; tip.style.top='0px'; tip.classList.add('show'); const w=tip.offsetWidth, h=tip.offsetHeight; let x=r.left+r.width/2-w/2, y=r.bottom+8; if(x<8) x=8; if(x+w>window.innerWidth-8) x=window.innerWidth-8-w; if(y+h>window.innerHeight-8) y=r.top-8-h; tip.style.left=x+'px'; tip.style.top=y+'px'; };
   const hide=()=>{ clearTimeout(timer); tip.classList.remove('show'); cur=null; };
   document.addEventListener('mouseover',e=>{ const el=e.target.closest('[data-tip]'); if(!el||el===cur) return; hide(); cur=el; timer=setTimeout(()=>show(el),300); });
   document.addEventListener('mouseout',e=>{ const el=e.target.closest('[data-tip]'); if(el&&el===cur&&!el.contains(e.relatedTarget)) hide(); });
