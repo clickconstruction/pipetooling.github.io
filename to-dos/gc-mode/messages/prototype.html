@@ -38,20 +38,22 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .flow{display:flex;flex-direction:column;gap:6px;font-size:12px}
 .flow .lane{border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--surface)}
 .flow .lane .t{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
-.flow .boxes{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.flow .box{border:1px solid var(--border);border-radius:6px;padding:4px 7px;background:var(--surface);white-space:nowrap;position:relative}
+.flow .boxes{display:flex;flex-direction:column;align-items:stretch;gap:2px}
+.flow .box{border:1px solid var(--border);border-radius:7px;padding:6px 9px;background:var(--surface);position:relative;display:flex;align-items:center;gap:8px;font-size:12.5px}
+.flow .box>span:first-child{flex:1;min-width:0}
 .flow .box.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
 .flow .box.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn);font-weight:600}
-.flow .box.dec{border-radius:0;transform:skewX(-8deg)}
-.flow .box.dec>*{display:inline-block;transform:skewX(8deg)}
-.flow .arr{color:#9aa4b1}
-.flow .loop{border:1px dashed #c9d0d8;border-radius:10px;padding:8px 6px 6px;position:relative}
-.flow .loop .lt{position:absolute;top:-8px;left:8px;background:var(--surface);padding:0 4px;font-size:10px;color:var(--text-muted)}
-.flow .loop .rounds{display:flex;gap:4px;flex-wrap:wrap;margin-top:4px}
+.flow .box.dec{border-left:4px solid #c9b7ea}
+.flow .box.dec.done{border-left-color:#8fcf9f}
+.flow .box.dec.now{border-left-color:var(--warn)}
+.flow .arr{color:#9aa4b1;text-align:center;font-size:11px;line-height:1;margin:1px 0}
+.flow .loop{border:1px dashed #c9d0d8;border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:4px}
+.flow .loop .lt{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:0 3px}
+.flow .loop .rounds{display:flex;gap:4px;flex-wrap:wrap;padding:0 3px}
 .flow .loop .rounds span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:0 6px;background:var(--surface)}
 .flow .loop .rounds span.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
 .flow .loop .rounds span.now{background:var(--warn-soft);border-color:#f0d3b0;color:var(--warn)}
-.flow .who{position:absolute;top:-9px;right:-6px;font-size:9.5px;border-radius:999px;padding:0 6px;border:1px solid;background:var(--surface);font-weight:600;transform:none}
+.flow .who{font-size:10px;border-radius:999px;padding:0 7px;border:1px solid;background:var(--surface);font-weight:700;flex:none;line-height:16px}
 .flow .who.us{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}
 .flow .who.them{color:var(--ok);border-color:#bfe3c9;background:var(--ok-soft)}
 .flow .who.both{color:var(--text-muted);border-color:var(--border)}
@@ -708,9 +710,9 @@ function stepState(c, id){ const st=FLOW_STATE[c.id]||{done:[],now:null,rounds:{
 function whoNow(c, step){ if(c.owe) return 'us'; const k=courtOf(c); if(k.side==='ours') return 'us'; if(k.side==='theirs') return 'them'; return step.who; }
 function flowPanelHtml(c){ const flow=FLOWS[c.kind]||[]; const st=FLOW_STATE[c.id]||{done:[],now:null,rounds:{}};
   const box=(step)=>{ const s=stepState(c,step.id); const tag = s==='now' ? `<span class="who ${whoNow(c,step)}">${whoNow(c,step)}</span>` : '';
-    if(step.loop){ const rounds=(st.rounds[step.id]||[]); return `<span class="loop"><span class="lt">${esc(step.loop)}</span><span class="box ${s}">${esc(step.name)}${tag}</span>${rounds.length?`<span class="rounds">${rounds.map(r=>`<span class="${r.s==='done'?'done':r.s==='now'?'now':''}">${esc(r.n)}</span>`).join('')}</span>`:`<span class="rounds"><span>none yet</span></span>`}</span>`; }
-    return `<span class="box ${s} ${step.dec?'dec':''}"><span>${esc(step.name)}</span>${tag}</span>`; };
-  const lanes=flow.map(l=>`<div class="lane"><div class="t">${esc(l.lane)}${l.lane==='Per job'&&c.def?' · '+esc(jobById(c.def).name):''}</div><div class="boxes">${l.steps.map((s,i)=>(i?'<span class="arr">→</span>':'')+box(s)).join('')}</div></div>`).join('');
+    if(step.loop){ const rounds=(st.rounds[step.id]||[]); return `<div class="loop"><span class="lt">${esc(step.loop)}${rounds.length?` · ${rounds.length} so far`:''}</span><span class="box ${s}"><span>${esc(step.name)}</span>${tag}</span>${rounds.length?`<span class="rounds">${rounds.map(r=>`<span class="${r.s==='done'?'done':r.s==='now'?'now':''}">${esc(r.n)}</span>`).join('')}</span>`:`<span class="rounds"><span>none yet</span></span>`}</div>`; }
+    return `<span class="box ${s} ${step.dec?'dec':''}"><span>${esc(step.name)}${step.dec?' <span class="note">· a fork</span>':''}</span>${tag}</span>`; };
+  const lanes=flow.map(l=>`<div class="lane"><div class="t">${esc(l.lane)}${l.lane==='Per job'&&c.def?' · '+esc(jobById(c.def).name):''}</div><div class="boxes">${l.steps.map((s,i)=>(i?'<div class="arr">↓</div>':'')+box(s)).join('')}</div></div>`).join('');
   const nowStep=flow.flatMap(l=>l.steps).find(s=>s.id===st.now); const k=courtOf(c);
   const next = nowStep ? `<b>On now:</b> ${esc(nowStep.name)} · ${k.side==='ours'?'our court':k.side==='theirs'?'their court':'no court'}${c.owe?' · we owe '+esc(c.owe.what)+(c.owe.by?' by '+esc(c.owe.by):''):c.promise?' · '+esc(c.promise):''}.<br><b>Finished when:</b> ${esc(nowStep.done)}.<br><b>Nudge:</b> ${esc(nowStep.nudge)}.` : 'Nothing on now.';
   return `<div class="ph2"><b>${c.kind==='customer'?'Her flow · customer':c.kind==='trade'?'Their flow · trade partner':c.kind==='arch'?'Their flow · architect':'Their flow'}</b><button class="quiet small" onclick="flowOpen=false;render()">fold ›</button></div><div class="flow">${lanes}</div><div class="fnext">${next}</div><div class="note" style="margin-top:8px">Drawn from Settings → Flows. <button class="quiet small" style="padding:0" onclick="view='settings';flowTab='${c.kind==='unknown'?'trade':c.kind}';render();setTimeout(()=>document.getElementById('flows')?.scrollIntoView({block:'start'}),0)">Edit the flow</button></div>`; }

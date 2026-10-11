@@ -345,3 +345,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.26, 2026-10-11**: at a window between 760 and 1040 px the people list folds itself into the
   rail while the flow is open, so the panel keeps its column at the right (the owner's screenshot showed
   it under the thread at about 1000 px); only under 760 px does the panel go below the thread.
+- **v1.27, 2026-10-11**: the chart runs down each lane, one box per line with a small arrow between,
+  the us/them tag inside the box at its right, a fork marked by a colored left edge, and a loop as a
+  dashed group with its caption on its own line and the rounds as pills (the owner: cramped at 280 px).
