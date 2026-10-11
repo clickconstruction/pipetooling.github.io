@@ -20,8 +20,8 @@ export function BridgeOrderModal({ order, note, onClose }: { order: Order; note:
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
   return (
-    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} data-testid="bridge-order-modal">
-      <div role="dialog" aria-modal="true" aria-label="What to deal with first" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 12, boxShadow: '0 24px 64px rgba(0,0,0,0.3)', width: 'min(880px, 100%)', maxHeight: '90vh', overflow: 'auto', padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
+    <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.45)', zIndex: 750, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(24px + var(--app-top-chrome, 0px)) 24px 24px' }} data-testid="bridge-order-modal">
+      <div role="dialog" aria-modal="true" aria-label="What to deal with first" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 12, boxShadow: '0 24px 64px rgba(0,0,0,0.3)', width: 'min(880px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.2rem', display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.8rem' }}>
           <span style={label}>What to deal with first</span>
           <span style={det}>{note}</span>
