@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: the quick replies window, every line with its use and its history</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--chip:#eef1f5;--team:#fff6c2;--team-border:#e9d77a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:900px;line-height:1.45}
+.opt{max-width:960px;margin:0 0 22px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45;max-width:960px}
+button{font:inherit;cursor:default;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.small{padding:3px 8px;font-size:13px}
+button.quiet{border-color:transparent;background:transparent;color:var(--accent);padding:4px 6px}
+input,select{font:inherit;border:1px solid var(--border);border-radius:8px;padding:6px 9px;background:var(--surface);color:var(--text)}
+.modal{width:760px;background:var(--surface);border-radius:12px;padding:16px;box-shadow:0 10px 40px rgba(0,0,0,.2);margin-bottom:8px}
+.modal h3{margin:0;font-size:18px}
+.head{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.head .sub{font-size:13px;color:var(--text-muted);width:100%}
+.head input{flex:1;min-width:220px}
+.tabs{display:flex;gap:6px;margin:6px 0 10px}
+.tabs button{border-radius:999px;padding:4px 11px;font-size:13px}
+.tabs button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--border);font-weight:600}
+th.r,td.r{text-align:right}
+td{padding:8px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+td.line{width:46%}
+td .who{display:block;font-size:12px;color:var(--text-muted);margin-top:2px}
+.tag{display:inline-block;font-size:11px;padding:0 7px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);white-space:nowrap}
+.tag.trade{color:var(--ok);border-color:#bfe3c9;background:#eef7ea}.tag.cust{color:var(--accent);border-color:#c5d8f5;background:#eaf1fc}.tag.arch{color:#6d3fb8;border-color:#d9c8f5;background:#f6f0ff}
+.step{display:inline-block;font-size:11px;padding:0 7px;border-radius:999px;background:var(--warn-soft);color:var(--warn);white-space:nowrap}
+.used{font-weight:600}
+.used small{display:block;font-weight:400;color:var(--text-muted);font-size:11.5px}
+.mine td.line::before{content:'mine';font-size:10px;color:var(--text-muted);border:1px dashed var(--border);border-radius:999px;padding:0 5px;margin-right:6px;vertical-align:middle}
+tr.open td{background:#fbfbfc}
+.editbox{background:#fbfbfc;border-top:0}
+.editbox .f{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.editbox .f input{flex:1;min-width:280px}
+.hist{border:1px solid var(--border);border-radius:8px;background:var(--surface);margin-top:8px}
+.hist .h{padding:6px 10px;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border);background:var(--bg)}
+.hist .e{display:grid;grid-template-columns:150px 1fr;gap:4px 12px;padding:7px 10px;border-top:1px solid var(--border);font-size:13px}
+.hist .e:first-of-type{border-top:0}
+.hist .e .w{color:var(--text-muted);font-size:12.5px}
+.hist .e del{color:#b3261e;text-decoration:line-through;opacity:.75}
+.hist .e ins{color:var(--ok);text-decoration:none;background:var(--ok-soft);padding:0 3px;border-radius:3px}
+.hist .e .usedby{display:flex;gap:10px;flex-wrap:wrap;font-size:12.5px}
+.hist .e .usedby span b{font-weight:600}
+.btns{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;align-items:center}
+.btns .l{margin-right:auto;font-size:12.5px;color:var(--text-muted)}
+.add{border:1px dashed var(--border);border-radius:8px;padding:8px 10px;margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.add input{flex:1;min-width:240px}
+.pick{max-width:960px;font-size:13.5px;line-height:1.5}
+.pick ol{margin:0 0 8px 18px;padding:0}
+</style>
+</head>
+<body>
+<h1>The quick replies window: every line, how much it is used, and who changed it</h1>
+<p class="lead">C's groups need each line to say who it is for and, if it belongs to a step, which. This window is where anyone sets that, sees the whole list at once with how often each line is used, and reads a line's history. Opened from <i>Edit</i> on the strip. Two states: the list, and one line opened.</p>
+
+<div class="opt"><h2>1 · The list <small>· one row a line: the words, who it is for, the step, how often used, who last touched it</small></h2>
+<div class="modal"><div class="head"><h3>Quick replies</h3><input placeholder="⌕ find a line, or words in it"><button class="primary small">+ Add a line</button><span class="sub">The team's lines and yours, in one list. Anyone can add or change a line; every change is kept with who and when. Press a line to change it or see its history.</span></div>
+<div class="tabs"><button class="on">All · 23</button><button>Trade partners · 12</button><button>Customers · 6</button><button>Architects · 2</button><button>Anyone · 3</button><button>Mine · 4</button></div>
+<table><tr><th>Line</th><th>For</th><th>On the step</th><th class="r">Used</th><th>Last change</th></tr>
+<tr><td class="line">Checking on the number. Still good for today?</td><td><span class="tag trade">trade partners</span></td><td><span class="step">Asked to quote</span></td><td class="r"><span class="used">41<small>12 by you</small></span></td><td>Wendi · Sep 29<span class="who">added by Robert · Sep 14</span></td></tr>
+<tr class="mine"><td class="line">Can you get it to us a day earlier?</td><td><span class="tag trade">trade partners</span></td><td><span class="step">Asked to quote</span></td><td class="r"><span class="used">19<small>19 by you</small></span></td><td>—<span class="who">added by Robert · Sep 18</span></td></tr>
+<tr><td class="line">Did the invite come through?</td><td><span class="tag trade">trade partners</span></td><td><span class="step">Invited</span></td><td class="r"><span class="used">17<small>3 by you</small></span></td><td>—<span class="who">added by Robert · Sep 12</span></td></tr>
+<tr><td class="line">Your quote is in your portal now, thank you.</td><td><span class="tag trade">trade partners</span></td><td><span class="step">Asked to quote</span></td><td class="r"><span class="used">14<small>2 by you</small></span></td><td>—<span class="who">added by Rosa · Sep 12</span></td></tr>
+<tr><td class="line">Thanks, we will call you back within the hour.</td><td><span class="tag">anyone</span></td><td><span style="color:var(--text-muted)">—</span></td><td class="r"><span class="used">12<small>1 by you</small></span></td><td>—<span class="who">added by Rosa · Sep 20</span></td></tr>
+<tr><td class="line">Understood. You will have it by 9 AM Thursday.</td><td><span class="tag cust">customers</span></td><td><span class="step">Our bid</span></td><td class="r"><span class="used">9<small>0 by you</small></span></td><td>Rosa · Oct 1<span class="who">added by Rosa · Sep 20</span></td></tr>
+<tr><td class="line">The plans are in your portal; questions close Monday.</td><td><span class="tag trade">trade partners</span></td><td><span class="step">Invited</span></td><td class="r"><span class="used">8<small>5 by you</small></span></td><td>—<span class="who">added by Robert · Sep 22</span></td></tr>
+<tr><td class="line" style="color:var(--text-muted)">… 16 more, by use</td><td></td><td></td><td></td><td></td></tr></table>
+<div class="btns"><span class="l">Sorted by use. Press a column head to sort by it.</span><button>Done</button></div></div>
+<p class="why">Every line in one table, the team's and yours (yours marked), sorted by use with the count split into the team's total and your own. The tabs cut the list by who it is for, and the search finds words. The last change names who and when; the row under it says who added the line. Nothing here is typed twice: the counts come from presses, the names from the sign-in.</p></div>
+
+<div class="opt"><h2>2 · A line opened <small>· change the words or the tags in place; the history under them, every version with its diff and who used it</small></h2>
+<div class="modal"><div class="head"><h3>Quick replies</h3><input placeholder="⌕ find a line, or words in it" value="number"><button class="primary small">+ Add a line</button></div>
+<div class="tabs"><button class="on">All · 1 of 23</button><button>Trade partners</button><button>Customers</button><button>Architects</button><button>Anyone</button><button>Mine</button></div>
+<table><tr><th>Line</th><th>For</th><th>On the step</th><th class="r">Used</th><th>Last change</th></tr>
+<tr class="open"><td class="line">Checking on the number. Still good for today?</td><td><span class="tag trade">trade partners</span></td><td><span class="step">Asked to quote</span></td><td class="r"><span class="used">41<small>12 by you</small></span></td><td>Wendi · Sep 29<span class="who">added by Robert · Sep 14</span></td></tr>
+<tr><td colspan="5" class="editbox">
+<div class="f"><input value="Checking on the number. Still good for today?"><select><option>for trade partners</option><option>for customers</option><option>for architects</option><option>for anyone</option></select><select><option>on Asked to quote</option><option>on Invited</option><option>on Compared</option><option>on no step</option></select></div>
+<div class="f"><button class="primary small">Save</button><button class="small">Cancel</button><span style="font-size:12.5px;color:var(--text-muted)">Saving keeps the old words in the history below, with your name and today.</span><button class="quiet small" style="margin-left:auto;color:#b3261e">Remove this line…</button></div>
+<div class="hist"><div class="h">History · 3 versions · used 41 times</div>
+<div class="e"><span class="w">Wendi · Sep 29, 4:12 PM</span><span>changed the words: <del>Checking on the quote. Still good for today?</del> → <ins>Checking on the number. Still good for today?</ins></span></div>
+<div class="e"><span class="w">Robert · Sep 22, 9:05 AM</span><span>tagged it <ins>on Asked to quote</ins> (was on no step)</span></div>
+<div class="e"><span class="w">Robert · Sep 14, 8:40 AM</span><span>added it, for trade partners: <ins>Checking on the quote. Still good for today?</ins></span></div>
+<div class="e"><span class="w">Used by</span><span class="usedby"><span><b>Robert</b> 12</span><span><b>Rosa</b> 23</span><span><b>Wendi</b> 6</span><span style="color:var(--text-muted)">· last used today, 8:02 AM, on Bill Sorrell</span></span></div></div>
+</td></tr></table>
+<div class="btns"><span class="l">1 line matches "number".</span><button>Done</button></div></div>
+<p class="why">Pressing a row opens it in place: the words and the two tags are fields, <b>Save</b> keeps the change, and the old words go to the history rather than away. The history is every version with what changed, as a strike-through and a highlight, who did it and when, plus the use count by person and the last use. <b>Remove this line…</b> asks first and keeps the line in the history as removed, so a removed line can be brought back; whether removal is allowed at all is on the plan's open list.</p></div>
+
+<div class="opt"><h2>3 · Adding one <small>· the same row, empty, with the tags guessed from the words</small></h2>
+<div class="modal" style="padding-top:12px"><div class="add"><input value="Send the W-9 when you can; the insurance certificate too."><select><option>for trade partners · guessed</option></select><select><option>on Papers in · guessed</option></select><label style="font-size:13px;color:var(--text-muted)"><input type="checkbox" style="width:auto"> just for me</label><button class="primary small">Add</button></div>
+<p class="why" style="margin-top:8px">The words go in first; the app guesses who it is for and the step from them (<i>W-9</i>, <i>insurance</i> read as a trade partner's papers) and shows the guess with the word <i>guessed</i> until the person confirms or changes it. <i>Just for me</i> keeps it off the team's list.</p></div></div>
+
+<div class="pick">
+<h2 style="font-size:15px;margin:0 0 6px">Is this the best we can do?</h2>
+<p style="margin:0 0 6px">Three things weighed:</p>
+<ol>
+<li><b>Counts the strip does not print.</b> The table shows use; the strip only orders by it. Numbers on the strip would turn a reply into a score.</li>
+<li><b>History is a table, not a diff viewer.</b> One row a version, the changed words struck and highlighted, is enough for lines of one sentence. The real build stores each version as a row (`quick_reply_versions`: line, words, for, step, by, at), and the use count as presses (`quick_reply_uses`: line, by, at, contact), which also gives <i>last used on Bill Sorrell</i>.</li>
+<li><b>One window, two jobs.</b> Seeing the list and editing a line are the same window, so nobody learns two. The cost is a long window on a phone; the tabs and the search keep it short, and a line opens in place rather than in a second window.</li>
+</ol>
+</div>
+</body>
+</html>
