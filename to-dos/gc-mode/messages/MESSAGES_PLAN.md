@@ -319,3 +319,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.21, 2026-10-11**: the send window's question is one big tick row right above the Send button,
   the whole row a target (the owner: make it easy to click smoothly); the what-and-when boxes appear
   only once it is ticked, with the cursor in the first.
+- **v1.22, 2026-10-11**: the tick row sits at the right, directly above Send as email or Send as text,
+  with the box on its right edge in line with the button.

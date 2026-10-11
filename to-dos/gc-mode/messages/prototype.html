@@ -191,17 +191,18 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .mail .foot{padding:10px 14px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted);background:#fafafa}
 .modal.wide{max-width:640px}
 .owe-ask{margin-top:12px}
-.owe-toggle{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer;user-select:none;font-size:14px}
+.owe-ask{display:flex;flex-direction:column;align-items:flex-end}
+.owe-toggle{display:flex;flex-direction:row-reverse;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);cursor:pointer;user-select:none;font-size:14px;max-width:420px;text-align:right}
 .owe-toggle:hover{border-color:#b9c4d4;background:#f0f3f7}
 .owe-toggle input{position:absolute;opacity:0;width:0;height:0}
 .owe-toggle .box{width:24px;height:24px;border-radius:7px;border:2px solid #9aa4b1;background:var(--surface);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:15px;flex:none}
 .owe-toggle:has(input:checked),.owe-toggle.on{border-color:var(--warn);background:var(--warn-soft)}
 .owe-toggle:has(input:checked) .box,.owe-toggle.on .box{background:var(--warn);border-color:var(--warn)}
 .owe-toggle:has(input:checked) .box::after{content:'✓'}
-.owe-toggle .words{display:flex;flex-direction:column;gap:2px}
+.owe-toggle .words{display:flex;flex-direction:column;gap:2px;align-items:flex-end}
 .owe-toggle .words b{font-weight:600}
 .owe-toggle .words small{color:var(--text-muted);font-size:12px}
-.owe-fields{display:none;gap:8px;margin-top:8px}
+.owe-fields{display:none;gap:8px;margin-top:8px;justify-content:flex-end;width:100%;max-width:420px}
 .owe-fields input{flex:1;min-width:160px}
 .owe-ask:has(#oweck:checked) .owe-fields{display:flex}
 .tiebtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:5px 9px;background:var(--surface);cursor:pointer;font-size:13px}
