@@ -517,6 +517,9 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.92, 2026-10-11**: the link wording follows the Drive handler: a big file stays in the job's Drive folder and
+  goes as our link to it, the portal page when the thing has one, and the email note says the link is ours, not
+  Drive's; a file from this computer says it goes into Team only on the way out.
 - **v1.91, 2026-10-11**: attachments going out: Attach beside the box, the job's files first, then this computer,
   then a photo; on an email the file, or a link when over the limit; on a text a photo as the picture and anything else
   as a link to their portal or the file; the preview shows it and the sent message keeps each with how it went (the
