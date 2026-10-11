@@ -102,20 +102,37 @@ Under the chart, a band shows **how sure the receipts are**. Green is money a cu
 :::
 
 :::example What the lists under the chart are
-**Bills coming due** and **Receipts expected** are the same events the chart uses, day by day, with the reason for each receipt date. **What would change it** sizes the levers — billing finished work, approving pending hours, trimming overhead, an extra field day, a bid due soon.
+**Bills coming due** and **Receipts expected** are the same events the chart uses, day by day, with the reason for each receipt date.
 :::
 
-## Data gaps
+## This week
 
-When the amber strip shows, the numbers read low or thin. The gaps are these:
+Beside Fix the reading, **This week** lists the moves that change the two lines. The biggest lever is first. Each move is sized on the right where it can be. Each move ends in the door that does it. The moves are these:
 
-- unapproved hours
-- unsorted bank transfers or card purchases
+- bill the finished work, which opens Stages
+- chase the late invoices the forecast leans on, which opens Billing
+- approve the pending hours, which opens the approvals queue
+- price the worked jobs with no contract price
+- set % complete on the jobs assumed half done
+- one more field day a week, and cut overhead 10%
+- win a bid that is due soon
+
+## Fix the reading
+
+Under the top line, **Fix the reading** lists what makes the page read low or thin. Each row has three parts. The amber chip names the gap. The middle says what the gap moves. The link at the end opens the place that fixes it. The biggest mover is first. The gaps are these:
+
+- unapproved hours, which move the top line and payroll
+- a typed cash figure that drifted from the bank, or one typed when the bank could not be read
 - open jobs with no % complete, which are assumed half done
-- worked jobs with no contract price
-- a typed cash figure that's a few days old, when the bank could not be read
+- worked jobs with no contract price, which earn $0
+- unsorted bank transfers or card purchases
+- bids sent with no value
 
 Insurance, rent, and card bills aren't scheduled as bills yet. These bills arrive as bank transfers and only show once sorted.
+
+:::example Reading a row
+{{chip:yellow|585h unapproved}} moves the headline from +$9.7k to ≈ +$38.3k this week. Press **Approve** and the queue opens.
+:::
 
 ## Reference
 
