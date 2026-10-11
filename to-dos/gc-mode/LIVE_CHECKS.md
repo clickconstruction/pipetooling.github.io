@@ -145,6 +145,15 @@ amount ($)** 100 → **Confirm** (answer "No" if it asks about a promised date).
 **10. O5c, our unconditional waiver.** Bill the customer → **Make our unconditional waiver** → sign it on screen.
 **Do not press "Send to GC Test Owner LLC"**: it is a separate email. *Reads*: the portal's **Your papers** shows
 it. *Writes*: one lien release row (`unconditional_progress`) on the billing job.
+**Held 2026-10-11, 00:5x UTC, nothing written** (no `job_lien_releases` row on the billing job). The waiver window
+showed three things:
+- **The wrong company:** "Contractor / releasing party" reads *Click Plumbing and Electrical*. A GC job's waiver must
+  name Click Construction, LLC. Fix it first: the Owner Billing lane, through O5c's path. Its read-back goes to the
+  lead after today's walk.
+- **The signer:** it is the leader, Malachi Whites, and "He is here, he signs now" records *drawn by Malachi Whites on
+  Robert's screen*. No record may put his name on another hand. So either Malachi draws it himself, or it goes **Send it
+  to his desk**, later.
+- **The form's own warning** (§ 53.284(c), *Not settled yet*) is the form doing its job.
 
 ### The card (O8, Stripe test mode)
 
@@ -351,6 +360,19 @@ dollar, no spare day. The lead then reads `customer-portal`'s logs: neither "the
 dropped the `import()`) nor "the schedule did not read". A portal that loads with no **Your schedule** on this job is
 the failure, not a 500. The lead then makes the import static. *Writes*: the portal's view row, if it counts one.
 *Ids*: that row, and the log lines' times.
+
+## The walk's punch list (cut after the walk, never during it)
+
+- **Release of Lien on a GC job names the plumbing company.** LienReleaseModal should take the releasing party from
+  the GC entity when the job is a GC billing job (step 10). Owner Billing, read-back first.
+- **Mark it signed on a $0 contract** should say so and ask (S3). gc 2, the owner's to veto.
+- **Remind them to pay keeps a stale Pay by.** GcBillRemind sets `useState(step?.by ?? state.today)` once, at mount. A
+  bill that turns late while the window is open starts at today, not today plus 5 (step 8). Owner Billing.
+- **The reminder greets a company with no contact by its first word** (*Hello GC,*). With no contact it should read
+  *Hello,*, as 15a's letter does (step 8). Owner Billing.
+- **Words:** They said when…'s *What they said* box has the placeholder *Who said it* (step 7). Owner Billing.
+- **The GC customer's portal wears the plumbing letterhead** (*CLICK. Plumbing, electrical, and HVAC*, step 2). The
+  owner's call.
 
 ## After the walk
 
