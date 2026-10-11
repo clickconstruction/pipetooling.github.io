@@ -470,6 +470,9 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.82, 2026-10-11**: the owed item's words read as a filled blank, the strip's own look without the caret,
+  wherever they are dropped into a sentence: the send window's tick and the strip's Send button (the owner: make it
+  clear it is a filled-in word).
 - **v1.81, 2026-10-11**: the email's greeting has a *change* that sets what the contact goes by, on their record,
   read by every greeting and by the owed strip's and the stamps' words (the owner's ask). The contact's record gains
   a goes-by name.
