@@ -27,6 +27,7 @@ import {
   type LienWaiverSignature,
 } from '../../lib/jobsDocuments/lienWaiverRelease'
 import { sendLienReleaseEmailToCustomer } from '../../lib/sendLienReleaseEmail'
+import { LIEN_WAIVER_SIGNER_ROLES, lienWaiverSignerChoices, type LienWaiverSignerRow } from '../../lib/jobs/lienWaiverSigners'
 import { draftHeldByDateMessage } from '../../lib/autosaveDateHold'
 import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
 import { printAndFile, printWhenReadyAndFile } from '../../lib/sent/sentCopiesIo'
@@ -289,12 +290,10 @@ export default function LienReleaseModal({
     let cancelled = false
     void (async () => {
       try {
-        const { data } = await supabase.from('users').select('id, name, notes, archived_at').eq('role', 'master_technician')
+        // v2.5231: the leaders and the devs, since the database lets either sign; the job's leader first.
+        const { data } = await supabase.from('users').select('id, name, notes, role, archived_at').in('role', [...LIEN_WAIVER_SIGNER_ROLES])
         if (cancelled) return
-        const rows = ((data ?? []) as Array<{ id: string; name: string | null; notes: string | null; archived_at: string | null }>)
-          .filter((u) => !u.archived_at)
-          .map((u) => ({ id: u.id, name: (u.notes?.trim() || u.name?.trim() || 'the leader').replace(/,.*$/, '') }))
-          .sort((a, b) => (a.id === job.master_user_id ? -1 : b.id === job.master_user_id ? 1 : a.name.localeCompare(b.name)))
+        const rows = lienWaiverSignerChoices((data ?? []) as LienWaiverSignerRow[], job.master_user_id)
         setMasters(rows)
         // v2.4285: the company's signer (Settings → Jobs & billing) is the default; the job's master, then anyone, after.
         const companySigner = (getPhysicalInvoiceIssuerDraft().signerName ?? '').trim().toLowerCase()
