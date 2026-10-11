@@ -390,3 +390,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   job stays in the app; the N tied messages keep their tie; where new messages land next if it was the default; + add
   a job puts it back), Keep the job as the blue focused answer, Take it off as the plain one; a gray event line
   records the removal (the owner: harder to remove, with a useful ask).
+- **v1.38, 2026-10-11**: the *Their jobs* label stacks on two lines beside the two-line tiles, the tiles' height, so
+  it reads as the row's heading (the owner's ask).
