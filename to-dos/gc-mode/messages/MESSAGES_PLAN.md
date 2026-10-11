@@ -103,8 +103,7 @@ Each one is a button in the prototype; each becomes one press in the app.
   two tabs that show the message the way the contact's own inbox or phone shows it: the email with its
   inbox row, From, To, the subject made from the job and the first line, the letterhead with the company number once, the greeting from
   the contact's name, the signature as the sender's name, title and own cell from their account (v1.78: the company
-  number was in the letterhead, the signature and the reply line, three times; now once), a reply line that says what
-  to do, and the footer; the text as a green bubble under the texts already
+  number was in the letterhead, the signature and the reply line, three times; now once), a reply line, *Email back, text, or call* (the owner's words, v1.80), and the footer; the text as a green bubble under the texts already
   in their thread, from the company number, with the character count, how many texts it is, and on
   their first text from us the company name and the opt-out line the carriers require. The To line is a press that adds or changes
   the contact's email or number on their record, for every message after as well, with a gray event line in the thread
@@ -470,6 +469,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.80, 2026-10-11**: the signature's cell line is the number alone, and the reply line reads *Email back, text,
+  or call* (the owner's words).
 - **v1.79, 2026-10-11**: the send window's To line, on the email and the text, is a press that adds or changes the
   contact's email or number on their record, with a Save and an event line; the no-email and no-number warnings point
   at it (the owner's go). Our side stays fixed.
