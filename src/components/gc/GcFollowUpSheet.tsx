@@ -3,7 +3,10 @@ import { createPortal } from 'react-dom'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { followUpMailTo, mailToGreeting, mailToWhy } from '../../lib/gc/companyPeople'
 import { followUpDraft, mailHref, smsHref, telHref, type DraftChoice, type FollowPerson } from '../../lib/gc/followUpSheet'
-import { followCustomerId, followUpCallWrites, followUpSentWrites, runFollowUpWrites, type FollowUpWrite, type FollowUpWriters } from '../../lib/gc/followUpWrites'
+import { GC_COMPANY } from '../../lib/gc/company'
+import { followCustomerId, followUpCallWrites, followUpNudgeRequest, followUpSentWrites, nudgeBody, runFollowUpWrites, type FollowUpWrite, type FollowUpWriters } from '../../lib/gc/followUpWrites'
+import { PORTAL_SPANISH_ON } from '../../lib/gc/portalI18n'
+import { GC_TRADE_EMAIL_REFUSALS, gcTradeEmailRefusal, type TradeEmailAnswer, type TradeEmailRequest, type TradeEmailTestAnswer } from '../../lib/gc/tradeEmail'
 import { allFollowPeople } from '../../lib/gc/projectPeople'
 import type { GcState } from '../../lib/gc/types'
 import { Btn, input } from './gcUi'
@@ -14,8 +17,10 @@ import { Btn, input } from './gcUi'
  * quick nudge or a full note, by text or email; Call beside their number, then what they said. Logging it moves on.
  *
  * Known differences from the spike:
- *   * From me only. It opens the reader's own Messages or mail with the draft filled in, and **I sent it** logs it. Nothing
- *     leaves Click. From the company comes with viii-b, behind its own read-back and the owner's yes.
+ *   * From me opens the reader's own Messages or mail with the draft filled in, and **I sent it** logs it. From the company
+ *     (B2b-viii-b, `fromCompany`, a dev's while trade email is) emails a trade partner from Click through `gc-trade-email`,
+ *     to everyone there who gets the kinds ticked, and logs it once it went. **Send a test to me** sends a [TEST] copy to
+ *     the reader alone and says who the real one reaches. A customer gets From me and Call only (V8-3).
  *   * A number or an address the record does not have is never offered: no made-up stand-in is dialled, texted or mailed.
  *   * A call's answer on new dates is logged, not taken. The schedule keeps its own presses for that.
  *   * The writes are main's presses (`followUpWrites.ts`), made by the page, which reads the board again after.
@@ -23,9 +28,16 @@ import { Btn, input } from './gcUi'
 
 const box: CSSProperties = { ...input, height: 30, boxSizing: 'border-box', padding: '0 0.45rem' }
 
+/** The email from Click (B2b-viii-b): `gc-trade-email`'s send and its test copy, the page's. */
+export interface FollowUpFromCompany {
+  send: (req: TradeEmailRequest) => Promise<TradeEmailAnswer>
+  test: (req: TradeEmailRequest) => Promise<TradeEmailTestAnswer | Extract<TradeEmailAnswer, { ok: false }>>
+}
+
 export function GcFollowUpSheet({
   state,
   writes,
+  fromCompany,
   me,
   startPartnerId,
   startCalling = false,
@@ -37,6 +49,8 @@ export function GcFollowUpSheet({
   state: GcState
   /** Main's presses for the log, the page's. */
   writes: FollowUpWriters
+  /** The email from Click, for whoever may send a trade email (`canSendGcTradeEmail`). Unset: From me only. */
+  fromCompany?: FollowUpFromCompany
   /** The signed-in person's name, for the draft's sign-off. Null: none. */
   me: string | null
   /** The person to open on. Unset: the first on the list. */
@@ -181,6 +195,7 @@ export function GcFollowUpSheet({
             me={me}
             calling0={startCalling && person.partner.id === startPartnerId}
             writes={writes}
+            {...(fromCompany ? { fromCompany } : {})}
             onClose={onClose}
             onDone={async (w) => {
               await onLogged?.()
@@ -241,6 +256,7 @@ function PersonPane({
   me,
   calling0,
   writes,
+  fromCompany,
   onClose,
   onDone,
   sent,
@@ -252,6 +268,7 @@ function PersonPane({
   /** Open on "What did they say?". */
   calling0: boolean
   writes: FollowUpWriters
+  fromCompany?: FollowUpFromCompany
   onClose: () => void
   onDone: (words: string) => Promise<void>
   sent: string | null
@@ -276,15 +293,28 @@ function PersonPane({
   const [by, setBy] = useState('')
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  // What the test copy said, and an email that already went today.
+  const [sentNote, setSentNote] = useState<string | null>(null)
+  // The email from Click: a trade partner's, for whoever may send it (V8-3: never a customer).
+  const canCompany = Boolean(fromCompany) && !customer
+  const fromClick = canCompany && choice.from === 'company'
+  // Spanish waits for its reader (decision 8): the email from Click is refused in words while it does (V8b-3).
+  const spanishWaits = fromClick && (partner.lang ?? 'en') === 'es' && !PORTAL_SPANISH_ON
   const onSchedule = picked.some((i) => i.kind === 'schedule')
   const toOthers = choice.via === 'email' && mailTo.some((t) => !t.main)
   const draft = followUpDraft(person, picked, choice, me, toOthers ? mailToGreeting(mailTo, partner.lang ?? 'en') : undefined)
   const subject = edited?.subject ?? draft.subject
-  const body = edited?.body ?? draft.body
+  // From Click the box holds what the email says between its own greeting and sign-off.
+  const body = edited?.body ?? (fromClick ? nudgeBody(draft.body) : draft.body)
   const pick = (patch: Partial<DraftChoice>) => {
-    setChoice({ ...choice, ...patch })
+    const next = { ...choice, ...patch }
+    // From the company goes by email only for now (question 29).
+    if (next.from === 'company') next.via = 'email'
+    setChoice(next)
     setEdited(null)
     setDrafted(false)
+    setSentNote(null)
+    setProblem(null)
   }
   const run = async (make: () => FollowUpWrite[], words: string) => {
     setBusy(true)
@@ -302,14 +332,53 @@ function PersonPane({
   }
   const sentIt = () => run(() => followUpSentWrites(person, picked, choice, body), choice.via === 'text' ? 'texted' : 'emailed')
   const saveCall = () => run(() => followUpCallWrites(person, picked, said, by || null), 'called')
+  /** The email from Click: a [TEST] copy to me, or the real one, logged once it went. */
+  const sendFromClick = async (test: boolean) => {
+    if (!fromCompany) return
+    const req = followUpNudgeRequest(state, person, picked, subject, body, test)
+    if (!req) {
+      setProblem('Nothing ticked goes to them by email from here.')
+      return
+    }
+    setBusy(true)
+    setProblem(null)
+    setSentNote(null)
+    try {
+      if (test) {
+        const a = await fromCompany.test(req)
+        if (!a.ok) setProblem(gcTradeEmailRefusal(a.key))
+        else setSentNote(`A test copy went to ${a.email}. The real one goes to ${a.wouldGo.map((r) => `${r.name || partner.company} <${r.email}>`).join(', ')}.`)
+        return
+      }
+      const a = await fromCompany.send(req)
+      if (!a.ok) {
+        setProblem(gcTradeEmailRefusal(a.key))
+        return
+      }
+      if (a.already) {
+        setSentNote('That email already went today. Nothing new was sent or logged.')
+        return
+      }
+      await runFollowUpWrites(followUpSentWrites(person, picked, choice, body), writes)
+      await onDone('emailed')
+    } catch (e) {
+      setProblem(`It went, and did not log: ${e instanceof Error ? e.message : String(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
   const canText = Boolean(realPhone)
   const canEmail = mailTo.length > 0
   const reachable = choice.via === 'text' ? canText : canEmail
-  const sendHref = reachable ? (choice.via === 'text' ? smsHref(realPhone ?? '', body) : mailHref(mailTo.map((t) => t.email).join(','), subject, body)) : null
+  const sendHref = reachable && !fromClick ? (choice.via === 'text' ? smsHref(realPhone ?? '', body) : mailHref(mailTo.map((t) => t.email).join(','), subject, body)) : null
   const nothing = picked.length === 0 || body.trim() === ''
   // From me it opens my own Messages or mail with the draft, so the button says Draft (the owner, 2026-10-05).
   const sendWords = choice.via === 'text' ? 'Draft text' : 'Draft email'
-  const how = !reachable
+  const how = spanishWaits
+    ? GC_TRADE_EMAIL_REFUSALS.spanishHeld
+    : fromClick && reachable
+      ? `Goes from ${GC_COMPANY.name} with their portal link, and is logged once it goes. Send a test to yourself first.`
+      : !reachable
     ? choice.via === 'text'
       ? `We have no phone number for ${reach.first}.`
       : `We have no email address for ${reach.first}.`
@@ -390,8 +459,23 @@ function PersonPane({
                 {busy ? 'Logging…' : 'I sent it'}
               </Btn>
             )}
+            {fromClick && (
+              <>
+                <Btn disabled={busy || nothing || !reachable || spanishWaits} onClick={() => void sendFromClick(true)} title="A copy marked [TEST] to your own email only. Nothing is logged.">
+                  Send a test to me
+                </Btn>
+                <Btn kind="primary" disabled={busy || nothing || !reachable || spanishWaits} onClick={() => void sendFromClick(false)}>
+                  {busy ? 'Sending…' : 'Send email'}
+                </Btn>
+              </>
+            )}
           </div>
         </div>
+        {sentNote && (
+          <span role="status" style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            {sentNote}
+          </span>
+        )}
         {problem && (
           <span role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
             {problem}
@@ -463,12 +547,23 @@ function PersonPane({
       {!calling && (
         <>
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'end' }}>
+            {canCompany && (
+              <Seg
+                label="From"
+                value={choice.from}
+                onChange={(v) => pick({ from: v })}
+                options={[
+                  { v: 'me', words: me ? `Me · ${me}` : 'Me' },
+                  { v: 'company', words: GC_COMPANY.name },
+                ]}
+              />
+            )}
             <Seg
               label="Send as"
               value={choice.via}
               onChange={(v) => pick({ via: v })}
               options={[
-                { v: 'text', words: 'Text', off: !canText, title: canText ? undefined : 'We have no phone number for them.' },
+                { v: 'text', words: 'Text', off: !canText || fromClick, title: fromClick ? 'From the company it goes by email for now.' : canText ? undefined : 'We have no phone number for them.' },
                 { v: 'email', words: 'Email', off: !canEmail, title: canEmail ? undefined : 'We have no email address for them.' },
               ]}
             />
@@ -488,7 +583,7 @@ function PersonPane({
                 {/* From above To (the owner, 2026-10-05). */}
                 <span>
                   <span style={{ color: 'var(--text-muted)' }}>From </span>
-                  {me ?? 'You'}, your own email
+                  {fromClick ? `${GC_COMPANY.name}. The email adds the greeting, their portal link and the sign-off.` : `${me ?? 'You'}, your own email`}
                 </span>
                 <span>
                   <span style={{ color: 'var(--text-muted)' }}>To </span>

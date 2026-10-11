@@ -36,6 +36,8 @@ export interface CompanyPapersDoor {
   entries: CompanyPaperEntries | null
   onSend: (step: PaperStep, by: string, note: string) => Promise<PaperSendOutcome>
   onRecordInsurance: (expiresOn: string, url: string) => Promise<void>
+  /** Mark a certificate it sent from its portal good (P5b-2m, the owner's "Office looks first"). */
+  onMarkCoiGood: (paperId: string) => Promise<void>
 }
 
 /** What shows beside the Documents list: a paper's send, or the certificate form. */
@@ -67,6 +69,7 @@ export function GcCompanyWindow({
   papers,
   onLogContact,
   at,
+  coiReceivedLink,
 }: {
   state: GcState
   partner: Partner
@@ -83,11 +86,14 @@ export function GcCompanyWindow({
   onLogContact?: (how: ContactHow, note: string) => Promise<void>
   /** Where it opens (`CompanyAt`): a tab, and a paper with its send. Unset: About. */
   at?: CompanyAt
+  /** The Drive link of a certificate it sent from its portal that waits for a look (P5b-2), read from its upload. */
+  coiReceivedLink?: string | null
 }) {
   const [problem, setProblem] = useState<string | null>(null)
   const [tab, setTab] = useState<CompanyTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
   const [aside, setAside] = useState<Aside | null>(null)
   const [done, setDone] = useState<string | null>(null)
+  const [marking, setMarking] = useState(false)
   // A paper it was opened at: shown as picked, and its send opened once the Book's entries are read and the step can
   // be sent by this reader. A master agreement with no entry yet, or a reader with no presses, opens at the row.
   const [pendingSend, setPendingSend] = useState<string | null>(at?.send && at.doc ? at.doc : null)
@@ -113,7 +119,7 @@ export function GcCompanyWindow({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, aside])
   const record = RECORD[answerRecord(partner)]
-  const docs = partnerDocuments(state, partner)
+  const docs = partnerDocuments(state, partner, { coiReceived: coiReceivedLink ?? null })
   const activity = partnerActivity(state, partner)
   const sending = aside?.kind === 'send' ? paperStep(state, partner, aside.key) : null
 
@@ -134,6 +140,28 @@ export function GcCompanyWindow({
       } else if (papers.entries && step.paper === 'w9') {
         out.push(<span key="wait" style={muted}>No W-9 form in the Contract Book</span>)
       }
+    }
+    // A certificate it sent from its portal (P5b-2): the office looks, then marks it good, and the board reads again.
+    if (d.key === DOC_KEYS.insuranceReceived && partner.coiReceived) {
+      const received = partner.coiReceived
+      out.push(
+        <Btn
+          key="good"
+          kind="primary"
+          disabled={marking}
+          onClick={() => {
+            setMarking(true)
+            setDone(null)
+            papers
+              .onMarkCoiGood(received.id)
+              .then(() => setDone(`Marked good. Their insurance counts now${received.expires ? `, good to ${shortDate(received.expires)}` : ''}.`))
+              .catch((e: unknown) => setDone(`Not marked: ${e instanceof Error ? e.message : String(e)}`))
+              .finally(() => setMarking(false))
+          }}
+        >
+          Mark it good
+        </Btn>,
+      )
     }
     if (d.key === DOC_KEYS.insurance && aside?.kind !== 'insurance') {
       out.push(

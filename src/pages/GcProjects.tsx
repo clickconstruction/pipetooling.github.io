@@ -102,7 +102,7 @@ import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { openQuestions, questionsCloseOn, type PlanQuestionView } from '../lib/gc/questions'
 import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
-import { emailTheAnswer, sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
+import { emailTheAnswer, sendGcTradeEmail, sendGcTradeEmailTest } from '../lib/gc/tradeEmailIo'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
@@ -111,7 +111,7 @@ import { GcStageHealth } from '../components/gc/GcStageHealth'
 import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
-import { GcFollowUpSheet } from '../components/gc/GcFollowUpSheet'
+import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
 import { GcTradeSow, type SowWrites } from '../components/gc/GcTradeSow'
@@ -122,7 +122,7 @@ import { loadOwnWorkCosts } from '../lib/gc/ownWorkCostIo'
 import { GcProjectOutcome, type OutcomeWrites } from '../components/gc/GcProjectOutcome'
 import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
-import { loadCompanyPaperEntries, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
+import { loadCompanyPaperEntries, loadReceivedCoiLink, markCompanyCoiGood, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
 import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
@@ -604,6 +604,24 @@ export default function GcProjects() {
       : undefined
   // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
   const [paperEntries, setPaperEntries] = useState<CompanyPaperEntries | null>(null)
+  // The Drive link of a certificate the open company sent from its portal (P5b-2), read from its upload when the window
+  // opens on one: the board's paper states carry no link. A reader who cannot read the uploads sees the row with no link.
+  const receivedCoiId = openCompany?.coiReceived?.id ?? null
+  const [coiLink, setCoiLink] = useState<{ id: string; url: string | null } | null>(null)
+  useEffect(() => {
+    if (!receivedCoiId) return
+    let live = true
+    loadReceivedCoiLink(receivedCoiId)
+      .then((url) => {
+        if (live) setCoiLink({ id: receivedCoiId, url })
+      })
+      .catch(() => {
+        if (live) setCoiLink({ id: receivedCoiId, url: null })
+      })
+    return () => {
+      live = false
+    }
+  }, [receivedCoiId])
   useEffect(() => {
     if (!openCompany || !canUseGcBoardWrites(role) || paperEntries) return
     let live = true
@@ -648,6 +666,8 @@ export default function GcProjects() {
       await recordGcTradePromise(promise)
     },
   }
+  // The email from Click (B2b-viii-b): whoever may send a trade email, a dev until the portal's door.
+  const followUpFromCompany: FollowUpFromCompany | null = canSendGcTradeEmail(role) ? { send: (req) => sendGcTradeEmail(req), test: (req) => sendGcTradeEmailTest(req) } : null
   const [followSheet, setFollowSheet] = useState<{ projectId?: string; partnerId?: string; calling: boolean } | null>(null)
   const followSheetJob = followSheet?.projectId ? (board?.projects.find((p) => p.id === followSheet.projectId) ?? null) : null
   // Who else? on a Follow up card: Trade partners, at that trade's card.
@@ -2034,7 +2054,7 @@ export default function GcProjects() {
           canPull={canUseGcBuilding(role)}
           canTell={canSendGcTradeEmail(role)}
           reads={scheduleReads}
-          {...(canOpenGcProjects(role) ? { followUp: { writes: followUpWriters, me: profileName ?? null, onLogged: async () => void (await refreshBoard()) } } : {})}
+          {...(canOpenGcProjects(role) ? { followUp: { writes: followUpWriters, me: profileName ?? null, onLogged: async () => void (await refreshBoard()), ...(followUpFromCompany ? { fromCompany: followUpFromCompany } : {}) } } : {})}
           onClose={() => setScheduleWindow(null)}
         />
       )}
@@ -2043,6 +2063,7 @@ export default function GcProjects() {
           key={`${followSheet.projectId ?? 'all'}:${followSheet.partnerId ?? ''}`}
           state={board}
           writes={followUpWriters}
+          {...(followUpFromCompany ? { fromCompany: followUpFromCompany } : {})}
           me={profileName ?? null}
           {...(followSheet.partnerId ? { startPartnerId: followSheet.partnerId } : {})}
           startCalling={followSheet.calling}
@@ -2140,9 +2161,15 @@ export default function GcProjects() {
                     await recordCompanyInsurance(openCompany.id, expiresOn, url)
                     await refreshBoard()
                   },
+                  // A certificate from their portal, looked at (P5b-2m): marked good, then the board reads again.
+                  onMarkCoiGood: async (paperId) => {
+                    await markCompanyCoiGood(paperId)
+                    await refreshBoard()
+                  },
                 }
               : undefined
           }
+          coiReceivedLink={coiLink && coiLink.id === receivedCoiId ? coiLink.url : null}
           // Log a contact on Activity (B2b-iv): a line of the company's own in the call log, as Follow up signs its lines.
           onLogContact={async (how, note) => {
             await logGcAskContact({ companyId: openCompany.id, inviteId: null, on: today, byName: profileName ?? '', how, note, promisedBy: null })

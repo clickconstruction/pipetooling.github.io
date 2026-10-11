@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of the 14-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-10-10
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -1351,7 +1351,7 @@ Every GC packet can have one durable, signable link (`bid_proposal_rooms` · `bi
 - **Answered** (signed / declined) — no publish or send; the link stays copyable.
 - `onFirstLinkSent` fires on the first *app* send only — never on Get the link — so the sent-stamp keeps meaning "the app emailed it". The room chip's "not sent" (`bidRoomState.ts`) means not sent *from the app*.
 - Telemetry: minting a room records `ui_nav_clicks` control `bid_room_published`, target `#sent_by_app:1|0` (`bid_proposal_room_events.event_type` is CHECK-constrained to the five GC-side kinds, so the mint lives in the nav-click ledger).
-- Public side: [`BidRoom.tsx`](../src/pages/BidRoom.tsx) + edge functions `get-bid-proposal-room` / `send-bid-room-link` / `sign-bid-room` (`docs/EDGE_FUNCTIONS.md`). Help: *send a bid for signature*.
+- Public side: [`BidRoom.tsx`](../src/pages/BidRoom.tsx) + edge functions `get-bid-proposal-room` / `send-bid-room-link` / `sign-bid-room` (`docs/EDGE_FUNCTIONS.md`). Help: *send a bid for signature*. The room's *Signed by …* line names the alternates the GC took from the signed event's `add_ons_taken`, the key `sign-bid-room` saves, so it reads the same on every reopen as at the signing (v2.5111).
 
 ### Bid basis — marked-up plans from CountTooling (v2.3219)
 
