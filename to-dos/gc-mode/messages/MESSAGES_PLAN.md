@@ -158,8 +158,11 @@ their own pills.
 
 **We owe them.** Our last word does not always end our turn: "I will send the start date Monday" is a
 message from us and a thing we still have to do (the owner, 2026-10-11). So the send window asks one
-thing before Send, *After this goes, is anything still on us?*, with what it is and a day; the toolbar's
-*We owe them…* sets the same later. While it is open it stays our move whatever was said last,
+thing before Send, **After this goes, whose move is it?**, with two presses, *Their move* and *Our move*, the chosen
+one lit and a line under it saying what that means: with something owed, *This message gets the start date done*
+or *We still owe the start date by Mon Oct 5*, our move the default; with nothing owed, *Nothing is on us* or *We
+still owe [what?] by [when?]* with the two blanks, their move the default (v1.83, the owner: use our move and their
+move here). The strip's *We owe them…* sets the same later. While it is open it stays our move whatever was said last,
 the header reads *Our move · we owe the start date · by Mon Oct 5*, Follow up lists it under **We owe
 them** with who marked it and when, and the thread gets a gray event line. *Settled* opens a note for the
 team at the bottom of the thread, *Settling: we owed the start date · by Mon Oct 5*, and the note is what
@@ -470,6 +473,9 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.83, 2026-10-11**: the send window's tick is a two-press choice, *After this goes, whose move is it? Their move ·
+  Our move*, with a line under it saying what that means; the tick rows are gone (the owner: our move and their move,
+  a proper refresh).
 - **v1.82, 2026-10-11**: the owed item's words read as a filled blank, the strip's own look without the caret,
   wherever they are dropped into a sentence: the send window's tick and the strip's Send button (the owner: make it
   clear it is a filled-in word).
