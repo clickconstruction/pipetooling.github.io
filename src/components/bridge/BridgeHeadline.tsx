@@ -1,4 +1,5 @@
-import type { CSSProperties } from 'react'
+import { useState, type CSSProperties } from 'react'
+import type { WeekCard } from '../../lib/bridge/weekCard'
 import type { Headline, HeadlineWeek, Light } from '../../lib/bridge/headline'
 import { shortK } from '../../lib/bridge/headline'
 
@@ -17,12 +18,45 @@ const hrs = (h: number): string => `${Math.round(h).toLocaleString('en-US')}h`
 const TONE: Record<Light['tone'], string> = { green: 'var(--text-green-700)', red: 'var(--text-red-700)', amber: 'var(--text-amber-800)', none: 'var(--text-muted)' }
 const DOT: Record<Light['tone'], string> = { green: '#1e7f4f', red: '#b42318', amber: '#b7791f', none: 'var(--border)' }
 
-function Bars({ weeks }: { weeks: HeadlineWeek[] }) {
-  const max = Math.max(1, ...weeks.map((w) => Math.abs(w.recordedUsd ?? 0)))
+function WeekCardPopover({ card, index, count }: { card: WeekCard; index: number; count: number }) {
+  const left = ((index + 0.5) / Math.max(1, count)) * 100
+  const shift = index <= 1 ? '0' : index >= count - 2 ? '-100%' : '-50%'
   return (
-    <div data-testid="bridge-headline-bars">
+    <div role="tooltip" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: `${Math.max(0, Math.min(100, left))}%`, transform: `translateX(${shift})`, zIndex: 30, width: 360, maxWidth: '100%', background: 'var(--text)', color: 'var(--surface)', padding: '0.6rem 0.75rem', borderRadius: 8, fontSize: '0.78rem', lineHeight: 1.4, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} data-testid="bridge-week-card">
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+        <b style={{ fontSize: '0.9rem' }}>{card.title}</b>
+        <span style={{ marginLeft: 'auto', fontWeight: 700 }}>{card.contribution}</span>
+      </div>
+      <div style={{ opacity: 0.85 }}>
+        earned <b>{card.earned}</b> − field wages <b>{card.wages}</b>
+      </div>
+      <div style={{ opacity: 0.85 }}>{card.effort}</div>
+      {card.jobs.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 90px auto', gap: '3px 10px', alignItems: 'center', paddingTop: 6, marginTop: 2, borderTop: '1px solid rgba(255,255,255,0.18)' }}>
+          {card.jobs.map((j) => (
+            <span key={j.label} style={{ display: 'contents' }}>
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{j.label}</span>
+              <span aria-hidden style={{ height: 8, borderRadius: 4, background: '#60a5fa', width: `${Math.round(j.share * 100)}%` }} />
+              <b style={{ whiteSpace: 'nowrap' }}>{j.usd}</b>
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{ marginTop: 4, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.18)', color: card.footTone === 'amber' ? '#fde68a' : undefined, fontWeight: card.footTone === 'amber' ? 600 : undefined, opacity: card.footTone === 'amber' ? 1 : 0.85 }}>{card.foot}</div>
+    </div>
+  )
+}
+
+function Bars({ weeks, cards }: { weeks: HeadlineWeek[]; cards?: WeekCard[] }) {
+  const max = Math.max(1, ...weeks.map((w) => Math.abs(w.recordedUsd ?? 0)))
+  const [hover, setHover] = useState<number | null>(null)
+  const [pin, setPin] = useState<number | null>(null)
+  const open = pin ?? hover
+  const card = open != null && cards ? cards[open] ?? null : null
+  return (
+    <div data-testid="bridge-headline-bars" style={{ position: 'relative' }} onMouseLeave={() => setHover(null)}>
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.max(1, weeks.length)}, minmax(0, 1fr))`, gap: 6, alignItems: 'end', height: 96 }}>
-        {weeks.map((w) => {
+        {weeks.map((w, i) => {
           const usd = w.recordedUsd
           const h = usd == null ? 0 : Math.max(2, Math.round((Math.abs(usd) / max) * 72))
           const neg = (usd ?? 0) < 0
@@ -30,14 +64,21 @@ function Bars({ weeks }: { weeks: HeadlineWeek[] }) {
           const style: CSSProperties = w.waiting
             ? { height: h, background: `repeating-linear-gradient(135deg, ${neg ? '#fca5a5' : '#93c5fd'} 0 4px, var(--surface) 4px 8px)`, border: `1px dashed ${fill}`, borderBottom: 0, boxSizing: 'border-box' }
             : { height: h, background: fill }
+          const isOpen = open === i
+          const Tag = cards ? 'button' : 'div'
           return (
-            <div key={w.start} title={`${w.label}: ${usd == null ? 'no field hours' : shortK(usd)} on ${hrs(w.recordedHours)}${w.pendingHours > 0 ? `, ${hrs(w.pendingHours)} waiting` : ''}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 3, height: '100%' }}>
+            <Tag
+              key={w.start}
+              {...(cards ? { type: 'button' as const, onMouseEnter: () => setHover(i), onFocus: () => setHover(i), onBlur: () => setHover(null), onClick: () => setPin((p) => (p === i ? null : i)), 'aria-label': cards[i]?.aria ?? w.label, 'aria-expanded': isOpen } : { title: `${w.label}: ${usd == null ? 'no field hours' : shortK(usd)} on ${hrs(w.recordedHours)}${w.pendingHours > 0 ? `, ${hrs(w.pendingHours)} waiting` : ''}` })}
+              data-testid={`bridge-headline-bar-${w.start}`}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end', gap: 3, height: '100%', font: 'inherit', color: 'inherit', background: 'none', border: 0, padding: 0, borderRadius: 6, cursor: cards ? 'pointer' : undefined, outline: isOpen ? '2px solid #2563eb' : undefined, outlineOffset: 2 }}
+            >
               <div style={{ fontSize: '0.66rem', fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 {usd == null ? '—' : shortK(usd)}
                 {w.waiting ? ' ≈' : ''}
               </div>
               <div style={{ width: '100%', borderRadius: '3px 3px 0 0', ...style }} />
-            </div>
+            </Tag>
           )
         })}
       </div>
@@ -49,6 +90,7 @@ function Bars({ weeks }: { weeks: HeadlineWeek[] }) {
           </div>
         ))}
       </div>
+      {card && open != null && <WeekCardPopover card={card} index={open} count={weeks.length} />}
     </div>
   )
 }
@@ -65,7 +107,7 @@ function LightRow({ light }: { light: Light }) {
   )
 }
 
-export function BridgeHeadline(props: { headline: Headline | null; loading: boolean; error: string | null; net: Light; cash: Light }) {
+export function BridgeHeadline(props: { headline: Headline | null; loading: boolean; error: string | null; net: Light; cash: Light; cards?: WeekCard[] }) {
   const { headline: h } = props
   const tw = h?.thisWeek ?? null
   const bigUsd = tw?.recordedUsd ?? null
@@ -102,7 +144,7 @@ export function BridgeHeadline(props: { headline: Headline | null; loading: bool
           </div>
           <div style={{ flex: '1 1 380px', minWidth: 0 }}>
             <div style={{ ...det, marginBottom: 4 }}>Last {h.weeks.length} pay weeks, recorded time (hatched = hours still waiting)</div>
-            <Bars weeks={h.weeks} />
+            <Bars weeks={h.weeks} cards={props.cards} />
           </div>
         </div>
       )}
