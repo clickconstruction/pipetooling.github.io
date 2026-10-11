@@ -63,7 +63,14 @@ Each one is a button in the prototype; each becomes one press in the app.
 - **Answer**: text, email, or a note for the team (yellow). From the thread, Follow up or Customers.
 - **Call in Quo**: opens the call in Quo's app; the call comes back as a line with its recording,
   transcript and summary.
-- **I have this** / **hand it to …**: claims the thread so two people do not answer the same text.
+- **Who has it**: a person pill on the row and the thread, not a menu (the owner, 2026-10-11): it reads
+  *You have this*, *Rosa has this* or *Nobody has it · Take it*, with initials and since when. Pressing it
+  lists the team with initials, what each does, how they are right now and how many conversations each
+  holds; *I'll take it* first when it is not yours, then each teammate, then *Nobody*. A take or a
+  hand-off writes a quiet gray event line in the thread ("Robert handed Greg to Wendi · 10:36 AM"), the
+  way Intercom records an assignment, so the thread keeps it without reading as a note. Beside the pill,
+  the thread's state is one control with three states, Open · Snoozed · Done, as Intercom's inbox has it
+  (the owner, 2026-10-11: take hints from Intercom and the CRMs). Each teammate shows a presence dot.
 - **No reply needed** / **Done**: clears the row from Follow up; the thread stays. A reply closes it the
   same way, and so does **a note for the team**: whoever writes the note has looked at it, so the row
   closes on a note every time (the owner, 2026-10-11). Nothing reopens by hand; a new message from
@@ -235,3 +242,7 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.12, 2026-10-11**: a click anywhere on a Follow up row opens the conversation landed on that
   message, with a short flash on it; the row's snippet is cut to a sentence or two; a job that is
   named like the company is not repeated on the row.
+- **v1.13, 2026-10-11**: *Who has it* is a person pill with a team picker: initials, role, how they are
+  right now, how many each holds, I'll take it, hand to, nobody; a hand-off writes a gray event line
+  in the timeline; presence dots; the thread's Open · Snoozed · Done control beside the pill (Intercom's
+  hints, the owner's ask).
