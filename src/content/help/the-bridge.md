@@ -33,6 +33,14 @@ Under the cards sits a slider for the pressed stage. It reads that stage's pace 
 
 The number beside the slider has a plain unit under it, such as jobs a week. The small chart shows the pile over the next twelve weeks at the chosen pace. The dotted line is today's pace. Three boxes read the pile, the link and the money. Press {{button:outline|back to today}} to put the slider back.
 
+## The three resources
+
+Under the dial sit Decision, Capital and Talent. A stage is slow because one of these is short. Decision counts the piles that wait on you. Capital reads the bank against the floor. Talent counts who is in the field and who bills. Each card says whether it throttles the link or shows its symptom. Press a card to open its desk.
+
+## What to deal with first
+
+Every card ends in a badge. Press any badge and a list opens. The list puts the link first. What throttles it comes with it. The stage that would be the link after it comes next. What moves when the link moves follows. What is ahead of the field waits. Each row shows the reading that put it there and its first move. The badge you pressed is marked. Press {{button:outline|×}} or the Escape key to close it.
+
 ## The week's call
 
 Under the cards sits the desk of the pressed stage. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Below that are the moves the week would make. Tick the ones you mean and type an owner beside each. Press {{button:green|This is the link this week}} to record the call. The call keeps today's numbers, so Friday can read them again.
