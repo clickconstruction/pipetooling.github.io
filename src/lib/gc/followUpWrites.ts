@@ -8,17 +8,23 @@
  *   * a day they gave for a paper: `recordGcTradePromise`, on `gc_record_promise`;
  *   * a customer or the architect (`customer:<id>`): one line in their call log, `logGcCustomerContact` (B2b-v-ii).
  *
- * Nothing here sends anything. From me opens the reader's own Messages or mail, and the writes are the log of it.
+ * Nothing here sends anything. From me opens the reader's own Messages or mail, and the writes are the log of it. From
+ * the company (B2b-viii-b) goes through `gc-trade-email` first (`followUpNudgeRequest`); its writes log what went, how
+ * 'nudge', and only once it went.
  */
+import { GC_COMPANY } from './company'
+import { followItemMailGroup } from './companyPeople'
 import type { DraftChoice, FollowItem, FollowPerson } from './followUpSheet'
-import type { PromiseKind } from './types'
+import { PORTAL_MAIL_GROUPS } from './portal'
+import type { TradeEmailLine, TradeEmailRequest } from './tradeEmail'
+import type { GcState, PromiseKind } from './types'
 
-export type FollowUpHow = 'call' | 'text' | 'email'
+export type FollowUpHow = 'call' | 'text' | 'email' | 'nudge'
 
 export type FollowUpWrite =
   | { kind: 'ask'; companyId: string; inviteId: string; how: FollowUpHow; note: string; promisedBy: string | null }
   | { kind: 'company'; companyId: string; how: FollowUpHow; note: string }
-  | { kind: 'customer'; customerId: string; projectId: string | null; how: FollowUpHow; note: string }
+  | { kind: 'customer'; customerId: string; projectId: string | null; how: Exclude<FollowUpHow, 'nudge'>; note: string }
   | { kind: 'promise'; companyId: string; promise: PromiseKind; projectId: string | null; packageId: string | null; dueOn: string; what: string }
 
 type PromiseWrite = Extract<FollowUpWrite, { kind: 'promise' }>
@@ -50,22 +56,95 @@ function oneJob(items: FollowItem[]): string | null {
 
 /**
  * What a text or an email from me does once it is sent: a line on each quote's ask (how, and the message), and one line
- * of the company's own for the rest (it shows in its Activity). A customer gets one line in their call log.
+ * of the company's own for the rest (it shows in its Activity). A customer gets one line in their call log. From the
+ * company (B2b-viii-b), each line is a nudge, said as from Click; a customer is never sent to from the company (V8-3).
  */
 export function followUpSentWrites(person: FollowPerson, items: FollowItem[], choice: DraftChoice, body: string): FollowUpWrite[] {
-  const note = logLine(body)
-  const how = choice.via
+  const fromClick = choice.from === 'company'
+  const note = fromClick ? `From ${GC_COMPANY.name}: ${logLine(nudgeText(body))}` : logLine(body)
+  const how: FollowUpHow = fromClick ? 'nudge' : choice.via
+  const sent = fromClick ? `From ${GC_COMPANY.name}: emailed` : how === 'text' ? 'Texted' : 'Emailed'
   const customerId = followCustomerId(person)
   if (customerId) {
-    return items.length > 0 ? [{ kind: 'customer', customerId, projectId: oneJob(items), how, note: `${how === 'text' ? 'Texted' : 'Emailed'} about ${listWords(items.map((i) => i.label.toLowerCase()))}: ${note}` }] : []
+    if (fromClick) return []
+    return items.length > 0 ? [{ kind: 'customer', customerId, projectId: oneJob(items), how: choice.via, note: `${sent} about ${listWords(items.map((i) => i.label.toLowerCase()))}: ${note}` }] : []
   }
   const companyId = person.partner.id
   const out: FollowUpWrite[] = items.flatMap((i): FollowUpWrite[] => (i.ask ? [{ kind: 'ask', companyId, inviteId: i.ask.inviteId, how, note, promisedBy: null }] : []))
   const papers = items.filter((i) => !i.ask)
   if (papers.length > 0) {
-    out.push({ kind: 'company', companyId, how, note: `${how === 'text' ? 'Texted' : 'Emailed'} about ${listWords(papers.map((i) => i.label.toLowerCase()))}: ${note}` })
+    out.push({ kind: 'company', companyId, how, note: `${sent} about ${listWords(papers.map((i) => i.label.toLowerCase()))}: ${fromClick ? logLine(nudgeText(body)) : note}` })
   }
   return out
+}
+
+/** The draft's own frame, which the email from Click draws itself: the greeting, the portal line and the sign-off. */
+const GREETING = /^(Hello|Hi|Hola)\b[^\n]*,$/
+const PORTAL_LINE = /^(Everything is in your portal|En su portal está todo):/
+const SIGN_OFF = /^(Thank you|Thanks|Gracias),(\n|$)/
+
+/** The draft's paragraphs between its greeting and its sign-off, without the portal line. */
+function nudgeParagraphs(body: string): string[] {
+  const paras = body
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter((p) => p !== '')
+  if (paras[0] && GREETING.test(paras[0])) paras.shift()
+  const last = paras[paras.length - 1]
+  if (last && SIGN_OFF.test(last)) paras.pop()
+  return paras.filter((p) => !PORTAL_LINE.test(p))
+}
+
+/** The draft as the email from Click carries it: its paragraphs, without the frame the email draws itself. */
+export function nudgeBody(body: string): string {
+  return nudgeParagraphs(body).join('\n\n')
+}
+
+/** What the email from Click says, flat, for the log. */
+function nudgeText(body: string): string {
+  return nudgeParagraphs(body).join(' ')
+}
+
+/** The email's lines: a paragraph each, and a run of "- " lines as one list. */
+export function nudgeLines(body: string): TradeEmailLine[] {
+  return nudgeParagraphs(body).map((p): TradeEmailLine => {
+    const rows = p.split('\n').map((r) => r.trim())
+    return rows.length > 0 && rows.every((r) => r.startsWith('- ')) ? { items: rows.map((r) => r.slice(2).trim()) } : rows.join(' ')
+  })
+}
+
+/** Once a day for the same things: the day and the items ticked, so a second follow-up about other things still goes. */
+export function nudgeKey(today: string, items: FollowItem[]): string {
+  let h = 2166136261
+  for (const c of [...items.map((i) => i.key)].sort().join('|')) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0
+  return `followUp:${today}:${h.toString(36)}`
+}
+
+/**
+ * The Follow up sheet's email from Click (B2b-viii-b): a `nudge` with the sheet's own words, to everyone at the company
+ * who gets the kinds ticked (`groups`, the owner's 2026-10-05 rule), about the one job the items share or the company.
+ * `test`: a copy to the reader's own address only. Null: nothing a trade gets ticked, or a customer.
+ */
+export function followUpNudgeRequest(state: GcState, person: FollowPerson, items: FollowItem[], subject: string, body: string, test: boolean): TradeEmailRequest | null {
+  if (followCustomerId(person) || items.length === 0) return null
+  const lines = nudgeLines(body)
+  if (lines.length === 0 || subject.trim() === '') return null
+  const ticked = new Set(items.map((i) => followItemMailGroup(state, i)))
+  const groups = PORTAL_MAIL_GROUPS.filter((g) => ticked.has(g))
+  if (groups.length === 0) return null
+  return {
+    companyId: person.partner.id,
+    kind: 'nudge',
+    key: nudgeKey(state.today, items),
+    projectId: oneJob(items),
+    lang: person.partner.lang ?? 'en',
+    subject: subject.trim(),
+    lines,
+    group: null,
+    groups,
+    ...(test ? { test: true } : {}),
+  }
 }
 
 /** The promise a day on a call writes for an item a company owes apart from a quote. Null: a day is only logged. */
@@ -116,7 +195,7 @@ export function followUpCallWrites(person: FollowPerson, items: FollowItem[], sa
 /** Each write the sheet makes, in main's presses. The page supplies them, then reads the board again. */
 export interface FollowUpWriters {
   logAsk: (line: { companyId: string; inviteId: string | null; how: FollowUpHow; note: string; promisedBy: string | null }) => Promise<void>
-  logCustomer: (line: { customerId: string; projectId: string | null; how: FollowUpHow; note: string }) => Promise<void>
+  logCustomer: (line: { customerId: string; projectId: string | null; how: Exclude<FollowUpHow, 'nudge'>; note: string }) => Promise<void>
   recordPromise: (promise: { companyId: string; kind: PromiseKind; projectId: string | null; packageId: string | null; dueOn: string; what: string }) => Promise<void>
 }
 

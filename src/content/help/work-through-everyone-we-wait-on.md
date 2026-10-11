@@ -2,12 +2,12 @@
 title: work through everyone we wait on in one sitting
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, follow up, work the list, follow up sheet, call list, text, email, draft, i sent it, what did they say, they gave a day, promise, chase, trade partner, customer, architect
+keywords: gc mode, follow up, work the list, follow up sheet, call list, text, email, draft, i sent it, what did they say, they gave a day, promise, chase, trade partner, customer, architect, from click, send a test to me, nudge
 order: 98
 ---
 The Follow up sheet walks you through everyone we wait on, one person at a time. The sheet drafts a polite message and keeps a log of each call.
 
-The office and estimators can use it. Nothing is sent from Click. A text or an email goes from your own phone or your own mail.
+The office and estimators can use it. A text or an email goes from your own phone or your own mail. A dev can also send an email from Click.
 
 ## Open the sheet
 
@@ -39,6 +39,17 @@ The message goes in the log with your name and the date. A quote's ask gets the 
 An email goes to whoever at the company gets that kind of email. A waiver may go to their bookkeeper, for example. The sheet says who and why above the subject.
 
 Text is off when we have no phone number for them. Email is off when we have no email address.
+
+## Send it from Click
+
+A dev can send the email from Click Construction instead of from their own mail. It goes to a trade partner only.
+
+1. Under **From**, press {{button:outline|Click Construction}}. Email is picked for you.
+2. Read the words in the box. The email adds the greeting, their portal link and the sign-off.
+3. Press {{button:outline|Send a test to me}}. A copy marked [TEST] comes to your own email. The sheet says who the real one goes to.
+4. Press {{button:blue|Send email}}.
+
+The email goes to everyone at the company who gets those kinds of email. Each ask and the company log it as a nudge from Click. The same email sends only once a day. A company that writes in Spanish waits until Spanish emails are on.
 
 ## Log a call
 

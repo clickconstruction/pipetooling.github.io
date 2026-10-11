@@ -3,7 +3,7 @@
  * fixture. Each press is one of main's writes: a line on an ask, a line of the company's own, a promise, a customer's line.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { followCustomerId, followUpCallWrites, followUpSentWrites, logLine, runFollowUpWrites, type FollowUpWriters } from './followUpWrites'
+import { followCustomerId, followUpCallWrites, followUpNudgeRequest, followUpSentWrites, logLine, nudgeBody, nudgeKey, nudgeLines, runFollowUpWrites, type FollowUpWriters } from './followUpWrites'
 import type { FollowPerson } from './followUpSheet'
 import { allFollowPeople } from './projectPeople'
 import { initialGcState } from './schedule/testState'
@@ -132,5 +132,68 @@ describe('making the writes', () => {
     const marcus = person('pecanvalley')
     await expect(runFollowUpWrites(followUpCallWrites(marcus, marcus.items.slice(0, 2), '', '2026-10-08'), w)).rejects.toThrow('Say what they promised.')
     expect(w.logAsk).not.toHaveBeenCalled()
+  })
+})
+
+describe('the email from Click (B2b-viii-b)', () => {
+  const company = { from: 'company', via: 'email', length: 'nudge' } as const
+  const fromClick = 'Hello Marcus,\n\nClick Construction is following up on your insurance.\n\nEverything is in your portal: clicktooling.com/t/ABC\n\nThank you,\nClick Construction'
+
+  it('carries only what the email says between its own greeting and sign-off', () => {
+    expect(nudgeBody(fromClick)).toBe('Click Construction is following up on your insurance.')
+    expect(nudgeLines('Hi Greg,\n\nOne thing.\n\n- The W-9. Could you send it?\n- Insurance. It ran out.\n\nThanks,\nRobert Douglas\nClick Construction')).toEqual([
+      'One thing.',
+      { items: ['The W-9. Could you send it?', 'Insurance. It ran out.'] },
+    ])
+    // What the reader typed in place of the draft is kept as typed.
+    expect(nudgeLines('Could you call me today?')).toEqual(['Could you call me today?'])
+  })
+
+  it('asks gc-trade-email for a nudge to everyone who gets the kinds ticked, about the one job they share', () => {
+    const s = initialGcState()
+    const marcus = person('pecanvalley')
+    const papers = marcus.items.filter((i) => i.kind === 'insurance' || i.kind === 'waiver')
+    const req = followUpNudgeRequest(s, marcus, papers, 'Your papers', fromClick, false)
+    expect(req).toMatchObject({ companyId: 'pecanvalley', kind: 'nudge', projectId: 'fairoaksd', lang: 'en', subject: 'Your papers', group: null, groups: ['pay'], lines: ['Click Construction is following up on your insurance.'] })
+    expect(req && 'test' in req).toBe(false)
+    const withSchedule = followUpNudgeRequest(s, marcus, marcus.items, 'Your papers', fromClick, true)
+    expect(withSchedule?.groups).toEqual(['job', 'pay'])
+    expect(withSchedule?.test).toBe(true)
+    // A quote and the plans not opened, on a job we bid: the quotes people.
+    const greg = person('hillside')
+    expect(followUpNudgeRequest(s, greg, greg.items, 'Your quote', 'Any word?', false)).toMatchObject({ groups: ['quotes'] })
+  })
+
+  it('sends nothing for a customer, nothing ticked, or nothing to say', () => {
+    const s = initialGcState()
+    const elena = person('customer:cibolo')
+    expect(followUpNudgeRequest(s, elena, elena.items, 'Payment', 'Any word?', false)).toBeNull()
+    const marcus = person('pecanvalley')
+    expect(followUpNudgeRequest(s, marcus, [], 'Papers', 'Any word?', false)).toBeNull()
+    expect(followUpNudgeRequest(s, marcus, marcus.items, 'Papers', 'Hello Marcus,\n\nThank you,\nClick Construction', false)).toBeNull()
+    expect(followUpNudgeRequest(s, marcus, marcus.items, '  ', 'Any word?', false)).toBeNull()
+  })
+
+  it('keys the email once a day for the same things, and again for other things', () => {
+    const marcus = person('pecanvalley')
+    const [a, b] = marcus.items
+    expect(nudgeKey('2026-10-10', [a!, b!])).toBe(nudgeKey('2026-10-10', [b!, a!]))
+    expect(nudgeKey('2026-10-10', [a!])).not.toBe(nudgeKey('2026-10-10', [a!, b!]))
+    expect(nudgeKey('2026-10-11', [a!])).not.toBe(nudgeKey('2026-10-10', [a!]))
+    expect(nudgeKey('2026-10-10', marcus.items).length).toBeLessThanOrEqual(200)
+  })
+
+  it('logs each line as a nudge from Click, once it went; a customer is never sent to from Click', () => {
+    const greg = person('hillside')
+    expect(followUpSentWrites(greg, greg.items.slice(0, 1), company, 'Hello Greg,\n\nAny word on the quote?\n\nThank you,\nClick Construction')).toEqual([
+      { kind: 'ask', companyId: 'hillside', inviteId: greg.items[0]!.ask!.inviteId, how: 'nudge', note: 'From Click Construction: Any word on the quote?', promisedBy: null },
+    ])
+    const marcus = person('pecanvalley')
+    const insurance = marcus.items.find((i) => i.kind === 'insurance')!
+    expect(followUpSentWrites(marcus, [insurance], company, fromClick)).toEqual([
+      { kind: 'company', companyId: 'pecanvalley', how: 'nudge', note: `From Click Construction: emailed about ${insurance.label.toLowerCase()}: Click Construction is following up on your insurance.` },
+    ])
+    const elena = person('customer:cibolo')
+    expect(followUpSentWrites(elena, elena.items, company, 'Any word?')).toEqual([])
   })
 })

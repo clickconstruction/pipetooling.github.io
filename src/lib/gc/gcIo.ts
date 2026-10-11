@@ -931,9 +931,10 @@ export async function setGcCompanyCoverage(companyId: string, address: string, m
 
 /**
  * One line on an ask's story (the Board's B4-b): a call, a text or an email, with the day they promised the quote by. With
- * no ask (`inviteId` null, B2b-iv), a line of the company's own, logged on its window's Activity.
+ * no ask (`inviteId` null, B2b-iv), a line of the company's own, logged on its window's Activity. A nudge (B2b-viii-b) is
+ * an email that went from Click, logged once it went.
  */
-export async function logGcAskContact(line: { companyId: string; inviteId: string | null; on: string; byName: string; how: 'call' | 'text' | 'email'; note: string; promisedBy: string | null }): Promise<void> {
+export async function logGcAskContact(line: { companyId: string; inviteId: string | null; on: string; byName: string; how: 'call' | 'text' | 'email' | 'nudge'; note: string; promisedBy: string | null }): Promise<void> {
   taken(
     await supabase
       .from('gc_company_contacts')
