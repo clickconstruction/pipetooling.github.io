@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: the job tile, three ways</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--danger:#b3261e;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:900px;line-height:1.45}
+.opt{max-width:900px;margin:0 0 22px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.frame .st{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45}
+.rail{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.rail .lbl{font-size:13px;color:var(--text-muted)}
+.num{display:inline-flex;align-items:center;font-size:11px;font-weight:700;letter-spacing:.02em;padding:1px 6px;border-radius:999px;border:1px solid;flex:none;line-height:16px}
+.num.bid{color:#6d3fb8;border-color:#d9c8f5;background:#f6f0ff}.num.project{color:#1a7f3c;border-color:#bfe3c9;background:#eef7ea}.num.pipeline{color:#1f5fbf;border-color:#c5d8f5;background:#eaf1fc}
+.star{color:#c9a200;flex:none}.star.off{color:#c9c9c9}
+.o,.x{color:var(--text-muted);flex:none;font-size:13px}
+.tile{display:inline-flex;flex-direction:column;gap:2px;border:1px solid var(--border);border-radius:10px;padding:6px 9px;background:var(--surface);font-size:13px;width:240px;vertical-align:top}
+.tile .ln{display:flex;align-items:center;gap:6px;min-width:0}
+.tile .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile .nm.b{font-weight:600}
+.tile .d{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:12.5px}
+.tile .d b{color:var(--text);font-weight:600}
+.tile .d.soon b{color:var(--warn)}.tile .d.past b{color:var(--danger)}.tile .d.today b{color:#fff;background:var(--warn);padding:0 6px;border-radius:999px}
+.tile .d.head{font-size:13px;color:var(--text)}
+.tile .w{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:var(--text-muted)}
+.tile .w i{font-style:normal;display:inline-block;width:7px;height:7px;border-radius:50%;background:#cfd5dd;margin-right:5px;vertical-align:middle}
+.tile .w.ours i{background:var(--warn)}.tile .w.theirs i{background:var(--ok)}
+.tile.on{border-color:var(--accent);background:var(--accent-soft)}
+.tile.on .d,.tile.on .nm,.tile.on .w{color:var(--accent)}
+.tile.ghost{border-style:dashed;color:var(--text-muted);justify-content:center;align-items:center;width:auto;padding:6px 12px}
+.pick{max-width:900px;font-size:13.5px;line-height:1.5}
+.pick ol{margin:0 0 8px 18px;padding:0}
+.narrow{width:470px;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:10px 12px}
+.narrow .strip{display:flex;gap:6px;overflow-x:auto;padding:2px 2px 8px;align-items:center;mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 24px),transparent)}
+.narrow .strip>*{flex:none}
+.btn{display:inline-flex;align-items:center;border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:14px;background:var(--surface);white-space:nowrap}
+.btn.q{border-color:transparent;color:var(--accent);padding:4px 6px}
+.sep{width:1px;height:22px;background:var(--border);margin:0 4px}
+code{font:12px ui-monospace,Menlo,monospace;background:var(--chip);padding:1px 4px;border-radius:4px}
+</style>
+</head>
+<body>
+<h1>The job tile, three ways</h1>
+<p class="lead">The owner's pick from <code>jobs-chip-size-mockups.html</code> is the two-line tile (2026-10-11: "B has the most potential"). Three directions for it, each 240 px wide and one height, drawn for Greg Paulk (a trade partner, three jobs) and Elena Marchetti (a customer with a late bid and a Pipeline job). The star marks the default; a blue tile is the one the thread is filtered to; ⧉ opens the job's card. The demo's today is Fri Oct 2.</p>
+
+<div class="opt">
+<h2>B1 · Name first <small>· the number and the name, then the day in words</small></h2>
+<div class="frame"><div class="st">Greg Paulk</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="num bid">B482</span><span class="nm b">Boerne Retail Shell</span><span class="o">⧉</span></span><span class="ln"><span class="d soon">bid due <b>Thu Oct 8 · 6 days</b></span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="num bid">B491</span><span class="nm b">Boerne Retail Pad B</span><span class="o">⧉</span></span><span class="ln"><span class="d">bid due <b>Thu Oct 22</b></span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star">★</span><span class="num project">#42</span><span class="nm b">Stone Oak Pharmacy</span><span class="o">⧉</span></span><span class="ln"><span class="d"><b>building</b> · since Sep 14</span><span class="x">×</span></span></span>
+<span class="tile ghost">+ add a job</span></div></div>
+<div class="frame"><div class="st">Elena Marchetti · one filtered, one late</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="tile on"><span class="ln"><span class="star">★</span><span class="num bid">B482</span><span class="nm b">Boerne Retail Shell</span><span class="o">⧉</span></span><span class="ln"><span class="d soon">bid due <b>Thu Oct 8 · 6 days</b></span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="num bid">B477</span><span class="nm b">Cibolo Creek Clubhouse</span><span class="o">⧉</span></span><span class="ln"><span class="d past">bid was due <b>Wed Sep 30 · 2 days late</b></span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="num pipeline">J1077</span><span class="nm b">Fair Oaks Shops, Building D</span><span class="o">⧉</span></span><span class="ln"><span class="d"><b>billed</b> Oct 1 · pay app 3</span><span class="x">×</span></span></span>
+<span class="tile ghost">+ add a job</span></div></div>
+<p class="why">The app's order: who the job is, then its news. The day reads as a sentence with the weekday and the count, toned when it is close or past. The second line's words per kind: a bid's <i>bid due …</i>, then <i>bid sent Sep 30</i> once ours went; a GC project's stage with its day (<i>buying out · bids due Oct 15</i>, <i>starts Mon Oct 19</i>, <i>building · since Sep 14</i>); a Pipeline job's Stages word with its day and the open pay application.</p>
+</div>
+
+<div class="opt">
+<h2>B2 · Day first <small>· the day is the headline, the job is the caption</small></h2>
+<div class="frame"><div class="st">Greg Paulk</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="d head soon">Bid due <b>Thu Oct 8 · 6 days</b></span><span class="o">⧉</span></span><span class="ln"><span class="num bid">B482</span><span class="nm">Boerne Retail Shell</span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="d head">Bid due <b>Thu Oct 22</b></span><span class="o">⧉</span></span><span class="ln"><span class="num bid">B491</span><span class="nm">Boerne Retail Pad B</span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star">★</span><span class="d head"><b>Building</b> · since Sep 14</span><span class="o">⧉</span></span><span class="ln"><span class="num project">#42</span><span class="nm">Stone Oak Pharmacy</span><span class="x">×</span></span></span>
+<span class="tile ghost">+ add a job</span></div></div>
+<div class="frame"><div class="st">Elena Marchetti · one filtered, one late, one on the day</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="tile on"><span class="ln"><span class="star">★</span><span class="d head soon">Bid due <b>Thu Oct 8 · 6 days</b></span><span class="o">⧉</span></span><span class="ln"><span class="num bid">B482</span><span class="nm">Boerne Retail Shell</span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="d head past">Bid was due <b>Wed Sep 30 · 2 days late</b></span><span class="o">⧉</span></span><span class="ln"><span class="num bid">B477</span><span class="nm">Cibolo Creek Clubhouse</span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="d head today">Starts <b>today</b> · crew on site at 7</span><span class="o">⧉</span></span><span class="ln"><span class="num pipeline">J1077</span><span class="nm">Fair Oaks Shops, Building D</span><span class="x">×</span></span></span>
+<span class="tile ghost">+ add a job</span></div></div>
+<p class="why">The owner's rule read literally: the day matters most, so it is the first line, in the text's weight, and the number and name sit under it in the caption's weight. Scanning the top line of the rail gives the days at once. The cost: the rail no longer leads with the app's number-first label, and a tile with no day (a GC project between stages) has a thin headline.</p>
+</div>
+
+<div class="opt">
+<h2>B3 · Name, day, and what it waits on <small>· a third line from the Board, the schedule and the Pipeline</small></h2>
+<div class="frame"><div class="st">Greg Paulk · a trade partner: each job's ask</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="num bid">B482</span><span class="nm b">Boerne Retail Shell</span><span class="o">⧉</span></span><span class="ln"><span class="d soon">bid due <b>Thu Oct 8 · 6 days</b></span></span><span class="ln"><span class="w theirs"><i></i>their quote · promised Wed Oct 7</span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="num bid">B491</span><span class="nm b">Boerne Retail Pad B</span><span class="o">⧉</span></span><span class="ln"><span class="d">bid due <b>Thu Oct 22</b></span></span><span class="ln"><span class="w theirs"><i></i>their quote · not opened yet</span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star">★</span><span class="num project">#42</span><span class="nm b">Stone Oak Pharmacy</span><span class="o">⧉</span></span><span class="ln"><span class="d"><b>building</b> · since Sep 14</span></span><span class="ln"><span class="w ours"><i></i>our draw 2 · pay by Oct 9</span><span class="x">×</span></span></span>
+<span class="tile ghost">+ add a job</span></div></div>
+<div class="frame"><div class="st">Elena Marchetti · a customer: each job's next thing</div>
+<div class="rail"><span class="lbl">Their jobs</span>
+<span class="tile on"><span class="ln"><span class="star">★</span><span class="num bid">B482</span><span class="nm b">Boerne Retail Shell</span><span class="o">⧉</span></span><span class="ln"><span class="d soon">bid due <b>Thu Oct 8 · 6 days</b></span></span><span class="ln"><span class="w ours"><i></i>our bid · she wants it Thursday 9 AM</span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="num bid">B477</span><span class="nm b">Cibolo Creek Clubhouse</span><span class="o">⧉</span></span><span class="ln"><span class="d past">bid was due <b>Wed Sep 30 · 2 days late</b></span></span><span class="ln"><span class="w theirs"><i></i>her answer on our bid · sent Sep 29</span><span class="x">×</span></span></span>
+<span class="tile"><span class="ln"><span class="star off">☆</span><span class="num pipeline">J1077</span><span class="nm b">Fair Oaks Shops, Building D</span><span class="o">⧉</span></span><span class="ln"><span class="d"><b>billed</b> Oct 1 · pay app 3</span></span><span class="ln"><span class="w theirs"><i></i>her check · promised Fri Oct 9</span><span class="x">×</span></span></span>
+<span class="tile ghost">+ add a job</span></div></div>
+<p class="why">B1 plus one line: what this person and this job wait on, with the court dot (orange ours, green theirs), read from records the app already keeps: a trade's ask and its promise (the Board), our draw or pay application (Owner Billing), a customer's answer on our bid and her payment promise (the Pipeline). It is the flow panel's "on now" per job, on the chip. Three lines, 64 px tall; the most a tile says, and the most it costs in the folded header.</p>
+</div>
+
+<div class="opt">
+<h2>The folded header <small>· under 640 px the tiles are the strip, scrolling sideways</small></h2>
+<div class="narrow"><div class="strip"><span class="btn">Call in Quo</span><span class="btn q">More ▾</span><span class="sep"></span>
+<span class="tile" style="width:220px"><span class="ln"><span class="star off">☆</span><span class="num bid">B482</span><span class="nm b">Boerne Retail Shell</span><span class="o">⧉</span></span><span class="ln"><span class="d soon">bid due <b>Thu Oct 8 · 6 days</b></span><span class="x">×</span></span></span>
+<span class="tile" style="width:220px"><span class="ln"><span class="star off">☆</span><span class="num bid">B491</span><span class="nm b">Boerne Retail Pad B</span><span class="o">⧉</span></span><span class="ln"><span class="d">bid due <b>Thu Oct 22</b></span><span class="x">×</span></span></span>
+<span class="tile" style="width:220px"><span class="ln"><span class="star">★</span><span class="num project">#42</span><span class="nm b">Stone Oak Pharmacy</span><span class="o">⧉</span></span><span class="ln"><span class="d"><b>building</b> · since Sep 14</span><span class="x">×</span></span></span>
+</div></div>
+<p class="why">B1 at 220 px in the strip the header folds to (v1.32). Call in Quo and More ▾ grow to the tiles' height; the strip is 10 px taller than with chips. B3 would add one more line there.</p>
+</div>
+
+<div class="pick">
+<h2 style="font-size:15px;margin:0 0 6px">The pick, and is this the best we can do?</h2>
+<p style="margin:0 0 8px"><b>B1</b>, built so a third line can be switched on later. The number-first line is how the rest of the app names a job, so the eye finds the job the same way everywhere; the day gets the whole second line, in words, with its tone, which is more than a chip's slot could give it. B2 reads the days fastest but turns every tile's identity into a caption, and a job between days has nothing to headline. B3's third line is the right fact (what we wait on, whose court) but it belongs to the flow panel today; the tile should earn its third line once the Board's and the Pipeline's records feed it, not carry made-up words until then.</p>
+<p style="margin:0 0 6px">Three things weighed:</p>
+<ol>
+<li><b>The second line's words come from facts, never typed.</b> A bid's day and whether ours went; a GC project's stage and its start date; a Pipeline job's Stages word and its last bill. Each exists; the real build reads them with the contact's jobs. The exact words per stage are the owner's to confirm, and the hover card says the full sentence.</li>
+<li><b>Width.</b> 240 px shows most names whole with the badge; "Fair Oaks Shops, Building D" is cut to the comma. 260 px would show it and still fit two tiles beside the label at a 700 px thread. The folded strip uses 220 px and scrolls.</li>
+<li><b>Four targets on a tile</b> (star, name, ⧉, ×) against five on today's chip. The × could still move to the job's card; it stays on the tile for now so nothing the chip does today is lost, and the legend on the <i>Their jobs</i> card (v1.33) explains all four.</li>
+</ol>
+</div>
+</body>
+</html>
