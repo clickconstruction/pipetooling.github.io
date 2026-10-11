@@ -150,9 +150,12 @@ message from us and a thing we still have to do (the owner, 2026-10-11). So the 
 thing before Send, *After this goes, is anything still on us?*, with what it is and a day; the toolbar's
 *We owe them…* sets the same later. While it is open the ball stays in our court whatever was said last,
 the header reads *Our court · we owe the start date · by Mon Oct 5*, Follow up lists it under **We owe
-them** with who marked it and when, and the thread gets a gray event line. *Settled* clears it, and the
-court goes back to whose word was last. The app's table needs an owed item per contact: what, by when,
-who marked it, when, and when it was settled.
+them** with who marked it and when, and the thread gets a gray event line. *Settled* opens a note for the
+team at the bottom of the thread, *Settling: we owed the start date · by Mon Oct 5*, and the note is what
+settles it: the person says how or why, the note goes in the thread with a *✓ settled the start date* chip,
+the row closes as any note does, and the court goes back to whose word was last (the owner, 2026-10-11: a
+settle always says why, for the team). *Not settled yet* backs out. The app's table needs an owed item per
+contact: what, by when, who marked it, when, when it was settled and the note that settled it.
 
 ## Every control explains itself on hover
 
@@ -353,3 +356,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.29, 2026-10-11**: the toolbar tidied: Text and Email gone from it (the reply box has them),
   Open · Snoozed · Done up beside the who-has-it pill, Mark STOP and Show all text and Edit the flow
   behind More ▾, Their flow › at the far right, the jobs rail without its hint sentence.
+- **v1.30, 2026-10-11**: Settled opens the team note at the bottom with a Settling banner; the note
+  settles it and carries a ✓ settled chip; Not settled yet backs out; the Follow up list's Settled does the same.
