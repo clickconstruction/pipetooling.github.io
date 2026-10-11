@@ -316,3 +316,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.20, 2026-10-11**: *We owe them*: the send window asks whether anything is still on us; the
   toolbar's *We owe them…* and *Settled*; the header reads *Our court · we owe …*; Follow up lists them
   under *We owe them*; events in the thread. Priya seeds one: the start date by Mon Oct 5.
+- **v1.21, 2026-10-11**: the send window's question is one big tick row right above the Send button,
+  the whole row a target (the owner: make it easy to click smoothly); the what-and-when boxes appear
+  only once it is ticked, with the cursor in the first.
