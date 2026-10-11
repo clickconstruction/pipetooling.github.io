@@ -97,8 +97,9 @@ Each one is a button in the prototype; each becomes one press in the app.
   is, its day, the customer, the trades asked, the people on it, the last conversations tied to it, and
   a button to open the bid or the project itself. *No job* and *Add a job* sit at the bottom. The same
   card opens from the ⧉ on a job in the rail.
-- **Quick replies**: a two-row strip that scrolls sideways above the box, never a loose pile (the
-  owner, 2026-10-11); a press fills the box and nothing sends. The lines typed every day ("Your quote is in your portal", "Did the invite come
+- **Quick replies**: a two-row strip that scrolls sideways above the box, in its own gray panel so it
+  reads apart from the box below it, never a loose pile (the owner, 2026-10-11); a press fills the box
+  and nothing sends. The lines typed every day ("Your quote is in your portal", "Did the invite come
   through?", "Checking on the number, still good for today?").
 - **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so.
 - **Search**: words in texts, emails, transcripts and summaries, across every contact.
@@ -199,3 +200,5 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.7, 2026-10-11**: no general *Write it down*. A heard day offers the kinds of promise it could be
   for who they are, each naming where it goes; the written line repeats what and where. Elena's
   voicemail about the check for pay application 3 shows a customer's payment promise beside Greg's quote.
+- **v1.8, 2026-10-11**: the quick replies strip sits in a gray panel of its own, set apart from the
+  entry box under it.
