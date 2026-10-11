@@ -51,8 +51,8 @@ a new cell starts over). The person is the spine; jobs are labels on the person 
 | **Customers** | The same threads kept to customers, ordered by who is waiting; team notes yellow. A filter of Follow up and Messages, never a second queue. | yes |
 | **A job's conversations** | On the job's page: its own recent calls and texts, by contact, with answered or waiting. Reads the messages tied to that job. | yes |
 | **Who is this?** | A number the app does not know: name it, say what they are to us, pick their company, tie it to a job. The answer becomes the rule for that number. | yes |
-| **Their flow** (the right panel) | Folded by default; *Their flow ›* on the toolbar opens it. The person's journey with us as a small chart in lanes (Once; Per job; Any time): boxes green when done, orange on now with an *us* or *them* tag from whose move it is, a decision as a slanted box, a loop as a dashed box with one pill per round (each ask, each pay application, each change order). Under it: what is on now, whose move, what finishes it, when the app nudges. Drawn from Settings → Flows (the owner picked B with C's tags, 2026-10-11). | yes |
-| **Settings → Flows** | One flow per kind of person as a table: step, finished when (a fact the app keeps, never typed), whose move, nudge after, repeats. Renaming a step changes every panel. The same list is meant to drive Follow up's nudges and the Board's ring later. | yes, names editable |
+| **Their flow** (the right panel) | Folded by default; *Their flow ›* on the toolbar opens it. The person's journey with us as a small chart in lanes (Once; Per job; Any time): boxes green when done, orange on now with an *us* or *them* tag from whose move it is, a decision as a slanted box, a loop as a dashed box with one pill per round (each ask, each pay application, each change order). Under it: what is on now, whose move, what finishes it, when the app nudges. Drawn from Settings → Flows (the owner picked B with C's tags, 2026-10-11). A step that turns on a paper carries a paper mark, and a press on a step opens its card: see *The flow suite* below. | yes |
+| **Settings → Flows** | One flow per kind of person as a table: step, finished when (a fact the app keeps, never typed), whose move, nudge after, repeats. Renaming a step changes every panel. The rest of the editor, order, whose move, nudge, papers and the facts picked from a list, is drawn in *The flow suite* below. The same list is meant to drive Follow up's nudges and the Board's ring later. | yes, names editable |
 | **A message's window** | Click any message: the whole text with its facts (who, the exact time received or sent, what it came through, the job it is tied to, whether a copy is kept), its attachments, its highlights, and the tools: Highlight the selected words, Copy, Print or save as PDF, Share (the Mac's share sheet), Tie to, Reply. | yes |
 | **Settings → Phone and texts** | The Quo connection, the company number, registration, recordings on, who has a seat, who sees what. | yes, read only |
 | The Pipeline's Job activity | Later: calls, texts and emails mixed into the feed; company-only rows yellow, anything the customer saw white. | not yet |
@@ -294,6 +294,90 @@ Each gets an answer here and a picture in the prototype before it is built.
      is), and how long a signed file link lives (a week fits the way a plan set is read; a portal link lives as long as
      the portal does).
 
+## The flow suite (proposed 2026-10-11, `flow-suite-mockups.html`)
+
+The owner asked for the rest of the flow: how it is edited and how it reaches the papers. One rule under
+all of it, from the surface table: **a step is finished by a fact the app already keeps, never by a typed
+word.** A sweep of GC mode found a stamp for nearly every step the prototype draws, and a person-journey
+kernel (`src/lib/journeys/personJourney.ts`) that already reads a state per step from stamps for five
+journeys; the flow is that kernel's list made editable, not a sixth list. Five pieces, in the order a
+person meets them:
+
+1. **A paper mark on the step box.** A step that turns on a paper shows ○ not yet, ✓ on file, or a blue ↗
+   when it went and is waiting on them; hover reads the paper's state in full. A step with no paper shows
+   nothing. The box becomes a press (hover explains, press chooses) that opens the step's card; the rail's
+   marks open the same card when the panel is folded. The On now line gains *Nudge now*.
+2. **The step card.** *Finished when*: the step's facts, each read live with a mark, its date, where the
+   copy lives, and one button that moves it (*Open* a paper on file; *Ask for it* fills the reply box with
+   the step's quick reply and their portal link; *Send it* is the paper send the company window already has,
+   so the sent copy is filed and the thread shows it). *After this*: the next step, with its send, so the
+   office can get one step ahead and never two. *Nudge*: the count and the channel, *Nudge now*, *Hold
+   until*. *How they got here*: the history in words, one stamp per line with its person and day. A loop's
+   card is one line per round, each with its own mark and move; a fork's card reads its two ways out.
+   **By hand, without a typed word**: a paper handed to us is filed as a paper (a file or a photo, a date,
+   who filed it), which is a fact, so the step finishes the same way; there is no mark-it-done that writes
+   nothing.
+3. **Settings → Flows, the editor.** The office (the owner and the assistants) changes a step's name, its
+   place in the lane, whose move, the nudge (days and a channel, or *at their promised day*), whether it
+   repeats and per what, the papers it turns on, and the facts that finish it, joined with *and*, or *or*
+   on a fork; adds a step between two; removes one. It cannot change the facts, which are a list in code
+   with the column each reads, or the lanes, which are the shape of the data. A fact picker lists the
+   facts in groups (Papers, Their portal, Money, …) with the step each is in use on. Because the flow is a
+   read over the stamps, every edit is tried on everyone before it is saved: a preview column says who
+   moves and why (*Tom Riddle · Papers in → MSA signed*). History is the quick replies window's: every
+   change with its person and day, a Removed tab, *Put it back*.
+4. **The papers read the flow back.** While the reply box holds a step's quick reply, the Attach picker's
+   first rows are that step's papers, starred, then the job's files. The company's Documents rows (and the
+   job's tab for per-job papers) gain a *Finishes* column, the step each paper turns on and where the
+   person is, with the step card's own buttons.
+5. **The nudge becomes a Follow up row.** When a step is on now, the move is theirs and the thread has been
+   quiet the step's count of days (a promised day beats the count), Follow up gets a row under *Needs a
+   reply*: the step, what we are waiting on, the channel the flow asked for with a one-press switch.
+   Answering or the fact turning true clears it. The Board's ring keeps its own stages until its lists and
+   the flows agree (a later cut).
+
+**What finishes each step today** (the sweep, 2026-10-11; migrations under `supabase/migrations/`):
+
+| Step | The fact |
+|---|---|
+| Trade · Invited | `gc_invites.invited_on`; the email is a `gc_trade_messages` row of kind `invite` |
+| Trade · Portal opened | half: `gc_companies.portal_opened_on` is their press on Got it, `gc_invites.status='opened'` per ask; no first-visit time on `gc_trade_portal_links` |
+| Trade · Papers in | `person_contract_documents` keyed to the company: `w9` signed; `coi` with `expires_at` ahead (`gc_company_paper_states`, `src/lib/gc/companyPapers.ts`) |
+| Trade · MSA signed | the same table, the `agreement` paper signed |
+| Trade · Asked to quote | `gc_quotes.submitted_on`; `gc_invites.status='bid'` |
+| Trade · Compared | `gc_trade_packages.carried_invite_id`, later `awarded_invite_id`; no lost mark on a quote (inferred) |
+| Trade · Statement of work | `gc_sows.signed_on` |
+| Trade · Draws | `gc_draws.approved_on`, `paid_on` |
+| Trade · Closeout | the final draw's `waiver='unconditional'`, `waiver_on`; the upload `gc_trade_files.paper='unconditional_final'` |
+| Customer · Asked us | `gc_customer_contacts.contacted_on` or the first `gc_plan_sets.issued_on` |
+| Customer · Our bid | `gc_projects.our_bid_sent_on` |
+| Customer · Said yes | half: a loss is `lost_on`; a win only moves `stage` and keeps no day |
+| Customer · Contract signed | `gc_projects.owner_contract_signed_on`, `gc_owner_contract_sends.signed_on` |
+| Customer · Start date | `gc_schedule_sends` (the letter), `gc_projects.start_date` |
+| Customer · On site | `gc_projects.started_on` |
+| Customer · Pay app | `gc_owner_pay_apps.sent_on`, `certified_on`, paid through its invoice |
+| Customer · Closeout | `gc_projects.closed_on`; `gc_owner_acceptances.accepted_on` |
+| Customer · Warranty | nothing; acceptance plus a year |
+| Customer · Change orders | `gc_change_orders.status`, `answered_on` |
+| Architect · Plans in | `gc_plan_sets.issued_on` |
+| Architect · Questions | `gc_plan_questions.answered_on` (bidding), `gc_rfis.answered_on` (building) |
+| Architect · Addenda | a `gc_plan_sets` row labelled Addendum N; sent by `gc_plan_set_sends.sent_at` |
+| Architect · Submittals | `gc_submittal_rounds.answered_on` |
+| Architect · Certify pay apps | `gc_owner_pay_apps.certified_on` |
+
+Four facts to add in the real build, each a small column: a trade's first portal visit, a lost mark on a
+quote we did not carry, the day a customer said yes, and the warranty year's end. Where the papers live
+today: company papers in `person_contract_documents` and their sends in `gc_paper_sends` (msa, sow,
+insurance, w9, waiver); portal uploads in `gc_trade_files`; every copy that went in `sent_documents`; the
+job's Drive folder in Plans and Team only. The Get started checklist (`src/lib/gc/start.ts`), stage health
+and the Board's ring (`ringStages.ts`) carry overlapping lists and are read, not replaced, until the flows
+drive them.
+
+**Storage**: one small table for what the office edits (a step's name, lane, order, whose move, nudge,
+repeats, papers, the ids of its facts, and its history) and nothing for state, which is a read. Open for
+the owner: whether a step can be skipped for a kind of company (a supplier with no MSA), in place of a
+second flow.
+
 ## How it would be built, once the shape is settled
 
 In the order a GC lane builds: a plan page per cut, SQL first, then the read, then the screens.
@@ -517,6 +601,10 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.93, 2026-10-11**: `flow-suite-mockups.html`, the flow suite as five pieces (paper marks on the steps, the
+  step card, the editor with its fact picker and preview, the papers reading the flow back, the nudge as a
+  Follow up row) with the sweep of which stamp finishes each step; the plan gains *The flow suite*. No
+  prototype change.
 - **v1.92, 2026-10-11**: the link wording follows the Drive handler: a big file stays in the job's Drive folder and
   goes as our link to it, the portal page when the thing has one, and the email note says the link is ours, not
   Drive's; a file from this computer says it goes into Team only on the way out.

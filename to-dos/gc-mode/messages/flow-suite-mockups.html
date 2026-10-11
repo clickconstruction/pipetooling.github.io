@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: the flow suite, how it is edited and how it reaches the papers</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--team:#fff6c2;--team-border:#e9d77a;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--danger:#b3261e;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:960px}
+.opt{max-width:960px;margin:0 0 26px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.frame .st{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45;max-width:960px}
+.row{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.note{font-size:12px;color:var(--text-muted)}
+button,.btn{font:inherit;font-size:12.5px;border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:5px 10px;color:var(--text);cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.quiet{border-color:transparent;color:var(--accent);padding:0}
+.btn.small{font-size:12px;padding:3px 8px}
+/* the panel, as the prototype draws it */
+.panel{width:300px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px;flex:none}
+.ph2{display:flex;justify-content:space-between;align-items:center;font-size:14px;margin:0 0 8px}
+.flow{display:flex;flex-direction:column;gap:6px;font-size:12px}
+.flow .lane{border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--surface)}
+.flow .lane .t{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.flow .boxes{display:flex;flex-direction:column;align-items:stretch;gap:2px}
+.flow .box{border:1px solid var(--border);border-radius:7px;padding:6px 9px;background:var(--surface);position:relative;display:flex;align-items:center;gap:8px;font-size:12.5px}
+.flow .box>span:first-child{flex:1;min-width:0}
+.flow .box.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
+.flow .box.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn);font-weight:600}
+.flow .box.dec{border-left:4px solid #c9b7ea}
+.flow .box.dec.done{border-left-color:#8fcf9f}
+.flow .box.pressed{outline:2px solid var(--accent);outline-offset:1px}
+.flow .arr{color:#9aa4b1;text-align:center;font-size:11px;line-height:1;margin:1px 0}
+.flow .loop{border:1px dashed #c9d0d8;border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:4px}
+.flow .loop .lt{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:0 3px}
+.flow .loop .rounds{display:flex;gap:4px;flex-wrap:wrap;padding:0 3px}
+.flow .loop .rounds span{font-size:10.5px;border:1px solid var(--border);border-radius:999px;padding:0 6px;background:var(--surface)}
+.flow .loop .rounds span.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
+.flow .loop .rounds span.now{background:var(--warn-soft);border-color:#f0d3b0;color:var(--warn)}
+.flow .who{font-size:10px;border-radius:999px;padding:0 7px;border:1px solid;background:var(--surface);font-weight:700;flex:none;line-height:16px}
+.flow .who.us{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}
+.flow .who.them{color:var(--ok);border-color:#bfe3c9;background:var(--ok-soft)}
+.flow .pm{font-size:10.5px;color:var(--text-muted);flex:none;font-weight:400;letter-spacing:.02em}
+.flow .pm.on{color:var(--ok)}
+.flow .pm.wait{color:var(--accent)}
+.fnext{font-size:12px;color:var(--text-muted);margin-top:8px;border-top:1px solid var(--border);padding-top:8px}
+.fnext b{color:var(--text)}
+/* the step card */
+.card{width:400px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-size:13px;flex:none}
+.card .hd{padding:10px 14px;border-bottom:1px solid var(--border)}
+.card .hd b{font-size:14.5px;display:block}
+.card .hd .note{margin-top:2px}
+.card .sec{padding:10px 14px;border-bottom:1px solid var(--border)}
+.card .sec:last-child{border-bottom:0}
+.card .sec .h{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.fact{display:flex;gap:8px;align-items:flex-start;margin:3px 0}
+.fact .m{flex:none;width:18px;height:18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:1.5px solid var(--border);color:var(--text-muted)}
+.fact .m.ok{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
+.fact .m.wait{background:var(--accent-soft);border-color:#bcd0f0;color:var(--accent)}
+.fact .m.no{border-style:dashed}
+.fact .t{flex:1;min-width:0}
+.fact .t small{display:block;color:var(--text-muted);font-size:12px}
+.fact .act{flex:none}
+.hist{font-size:12px;color:var(--text-muted);margin:2px 0}
+.hist b{color:var(--text);font-weight:600}
+/* the editor */
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)}
+td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+tr.lanehead td{background:var(--bg);font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+tr.open td{background:var(--accent-soft)}
+.pick{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:3px 8px;background:var(--surface);font-size:12.5px;white-space:nowrap}
+.pick .c{color:var(--text-muted)}
+.pick.fact{border-color:#bcd0f0;background:var(--accent-soft);color:var(--accent)}
+.pick.paper{border-color:#e3cf6e;background:#fff9dd}
+.tabs{display:flex;gap:4px;margin-bottom:8px}
+.tabs span{border:1px solid var(--border);border-radius:999px;padding:3px 10px;font-size:12.5px}
+.tabs span.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.menu{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);width:360px;overflow:hidden;font-size:12.5px;flex:none}
+.menu .ph{padding:8px 12px;color:var(--text-muted);border-bottom:1px solid var(--border);font-size:12px}
+.menu .ph b{color:var(--text)}
+.menu .r{padding:7px 12px;border-bottom:1px solid var(--border);display:flex;gap:8px;align-items:center}
+.menu .r:last-child{border-bottom:0}
+.menu .r b{font-weight:600}
+.menu .r small{color:var(--text-muted);display:block;font-size:11.5px}
+.menu .r .t{flex:1}
+.menu .r.on{background:var(--accent-soft)}
+.menu .r .where{font-size:10.5px;color:var(--text-muted);border:1px solid var(--border);border-radius:999px;padding:0 6px;white-space:nowrap}
+.menu .g{padding:4px 12px;font-size:10.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;background:var(--bg)}
+.prev{width:280px;flex:none;border:1px solid var(--border);border-radius:12px;padding:10px 12px;font-size:12.5px;background:var(--surface)}
+.prev .h{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.prev .p{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)}
+.prev .p:last-child{border-bottom:0}
+.prev .p .s{color:var(--warn);font-weight:600}
+.prev .p .s.moved{color:var(--danger)}
+/* follow up row, documents row */
+.qrow{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:var(--surface);font-size:13px;max-width:720px}
+.qrow .av{width:28px;height:28px;border-radius:999px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none}
+.qrow .t{flex:1;min-width:0}
+.qrow .t small{display:block;color:var(--text-muted);font-size:12px}
+.pill{font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid;white-space:nowrap}
+.pill.ours{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}
+.pill.step{color:var(--text-muted);border-color:var(--border);background:var(--chip)}
+.event{font-size:12px;color:var(--text-muted);text-align:center;margin:6px 0}
+.pickbox{max-width:960px;font-size:13.5px;line-height:1.5}
+.pickbox ol{margin:0 0 8px 18px;padding:0}
+.pickbox li{margin-bottom:4px}
+.doc{display:grid;grid-template-columns:1fr 150px 190px 100px;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);font-size:12.5px;align-items:center;max-width:720px}
+.doc.h{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid var(--border)}
+.att{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.att .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:3px 8px;font-size:12px;background:var(--surface)}
+.att .chip.first{border-color:#e3cf6e;background:#fff9dd}
+</style>
+</head>
+<body>
+<h1>The flow suite: what a step is, how the office edits it, and how it reaches the papers</h1>
+<p class="lead">Today the panel draws a person's journey and Settings → Flows renames its steps. This mock-up draws the rest in five pieces, in the order a person meets them: the step box gets a paper mark; a press on a step opens its card; the card sends or asks for the step's paper through the paper send the company window already has; the editor chooses what finishes a step from the facts the app keeps; and a step's nudge becomes a Follow up row. One rule under all five, from the plan: <b>a step is finished by a fact the app already keeps, never by a typed word.</b> A sweep of GC mode found a stamp for nearly every step drawn (the list is in the plan); the four it has not got are named at the end.</p>
+
+<div class="opt">
+<h2>1 · The panel: a paper mark on the steps that turn on a paper <small>· hover explains, press chooses</small></h2>
+<div class="frame"><div class="st">Tom Riddle · Bexar Steel · drawn on Papers in, a step later than the prototype has him</div>
+<div class="row">
+<div class="panel"><div class="ph2"><b>Their flow · trade partner</b><span class="btn quiet">fold ›</span></div>
+<div class="flow">
+<div class="lane"><div class="t">Once</div><div class="boxes">
+<span class="box done"><span>Invited</span><span class="pm on">email ✓</span></span><div class="arr">↓</div>
+<span class="box done"><span>Portal opened</span></span><div class="arr">↓</div>
+<span class="box now pressed"><span>Papers in</span><span class="pm wait">W-9 ✓ · insurance ○</span><span class="who them">them</span></span><div class="arr">↓</div>
+<span class="box"><span>MSA signed</span><span class="pm">MSA ○</span></span>
+</div></div>
+<div class="lane"><div class="t">Per job · Boerne Retail Shell</div><div class="boxes">
+<div class="loop"><span class="lt">each ask</span><span class="box"><span>Asked to quote</span><span class="pm">quote ○</span></span><span class="rounds"><span>Boerne Shell</span></span></div><div class="arr">↓</div>
+<span class="box dec"><span>Compared <span class="note">· a fork</span></span></span><div class="arr">↓</div>
+<span class="box"><span>Statement of work</span><span class="pm">SOW ○</span></span><div class="arr">↓</div>
+<div class="loop"><span class="lt">each draw</span><span class="box"><span>Draws</span><span class="pm">waiver ○</span></span><span class="rounds"><span>none yet</span></span></div><div class="arr">↓</div>
+<span class="box"><span>Closeout</span><span class="pm">final waiver ○</span></span>
+</div></div>
+</div>
+<div class="fnext"><b>On now:</b> Papers in · their move · 5 days quiet.<br><b>Finished when:</b> their W-9 is signed and their insurance is current.<br><b>Nudge:</b> after 5 days, a call. <span class="btn quiet">Nudge now</span></div>
+</div>
+<div style="flex:1;min-width:260px"><p class="why" style="margin:0 0 8px"><b>The mark</b> sits at the right of a step that turns on a paper: ○ not yet, ✓ on file, and a blue ↗ when it went and is waiting on them (<i>MSA ↗ sent Tue</i>). A step with no paper (Portal opened, Compared) shows none. Hover on the mark reads the paper's state in full: <i>Insurance: nothing on file. They can upload it from their portal, or we can ask for it.</i> Nothing else on the box changes, so the panel stays as quiet as it is.</p>
+<p class="why" style="margin:0"><b>The press.</b> A step box was a picture; it becomes a press that opens the step's card (piece 2), the way the Them · Us block opens its calendar. The same card opens from the rail's marks when the panel is folded. The On now line keeps its three facts and gains <i>Nudge now</i>, which makes the Follow up row of piece 5 today instead of on day 5.</p></div>
+</div></div>
+</div>
+
+<div class="opt">
+<h2>2 · The step card: what finishes it, the papers, and what to do about it <small>· one card, read top to bottom</small></h2>
+<div class="frame"><div class="st">Press on Papers in · Tom Riddle</div>
+<div class="row">
+<div class="card">
+<div class="hd"><b>Papers in</b><div class="note">Once · their move · on now since Mon Sep 28, 4 days.</div></div>
+<div class="sec"><div class="h">Finished when</div>
+<div class="fact"><span class="m ok">✓</span><span class="t">Their W-9 is signed.<small>Signed in their portal, Tue Sep 29. The copy is on Bexar Steel's Documents.</small></span><span class="act"><span class="btn small">Open</span></span></div>
+<div class="fact"><span class="m no">○</span><span class="t">Their insurance is current.<small>Nothing on file. A certificate uploaded from their portal, or one we file, finishes it; it stays current to its expiry date.</small></span><span class="act"><span class="btn small primary">Ask for it</span></span></div>
+<p class="note" style="margin:6px 0 0">Both facts are the app's own: the step turns green on its own the moment the second one is true. <span class="btn quiet">File a certificate we were handed</span></p></div>
+<div class="sec"><div class="h">After this</div>
+<div class="fact"><span class="m">→</span><span class="t">MSA signed · their move.<small>We send the master agreement from here once the papers are in; they sign it in their portal.</small></span><span class="act"><span class="btn small">Send the MSA now</span></span></div></div>
+<div class="sec"><div class="h">Nudge</div>
+<div class="note">After 5 days quiet, a call, as the trade partner flow says. Tom has been quiet 4 days: the Follow up row comes tomorrow. <span class="btn quiet">Nudge now</span> · <span class="btn quiet">Hold until Mon</span></div></div>
+<div class="sec"><div class="h">How they got here</div>
+<div class="hist"><b>Invited</b> · Rosa sent the invitation, Fri Sep 25.</div>
+<div class="hist"><b>Portal opened</b> · Tom pressed Got it on his welcome, Mon Sep 28.</div>
+<div class="hist"><b>Papers in</b> · on now since Mon Sep 28. W-9 signed Tue Sep 29.</div></div>
+</div>
+<div style="flex:1;min-width:260px">
+<p class="why" style="margin:0 0 8px"><b>Finished when</b> is the step's facts, each read live with a mark, its date and where the copy lives, and one button that moves it: <i>Open</i> for a paper on file, <i>Ask for it</i> for one they owe (it fills the reply box with the step's quick reply, the way the strip does, with their portal link on it), <i>Send it</i> for one we owe (the paper send the company window already has, so the sent copy is filed and the thread shows it).</p>
+<p class="why" style="margin:0 0 8px"><b>By hand, without a typed word.</b> A paper handed to us in the office is filed as a paper, <i>File a certificate we were handed</i>: a file or a photo, a date, and who filed it. That is a fact the app keeps, so the step finishes the same way. There is no "mark it done" that writes nothing; the plan's rule holds.</p>
+<p class="why" style="margin:0 0 8px"><b>After this</b> lets the office get ahead by one step: send the MSA while the insurance is still coming. The step card never sends two steps ahead.</p>
+<p class="why" style="margin:0"><b>How they got here</b> is the step's history in words, each line a stamp with its person and day. A done step's card reads the same way, with its paper on top and <i>Open</i> beside it.</p></div>
+</div></div>
+<div class="frame"><div class="st">Press on a loop · Greg Paulk · Asked to quote · 3 so far</div>
+<div class="row">
+<div class="card">
+<div class="hd"><b>Asked to quote</b><div class="note">Per job · each ask · 3 so far.</div></div>
+<div class="sec"><div class="h">Each ask</div>
+<div class="fact"><span class="m ok">✓</span><span class="t">Stone Oak Pharmacy · their quote came Sep 11.<small>Carried in our number, Sep 14.</small></span><span class="act"><span class="btn small">Open</span></span></div>
+<div class="fact"><span class="m wait">↗</span><span class="t">Boerne Retail Shell · asked Sep 22 · promised Wed Sep 30, late.<small>Their move. Finished when their quote is in the portal.</small></span><span class="act"><span class="btn small primary">Ask again</span></span></div>
+<div class="fact"><span class="m no">○</span><span class="t">Boerne Retail Pad B · bid Oct 22.<small>Not asked yet.</small></span><span class="act"><span class="btn small">Ask</span></span></div></div>
+<div class="sec"><div class="h">Nudge</div><div class="note">At their promised day, else after 7 days. Boerne Shell passed its day Wed: the Follow up row is there now.</div></div>
+</div>
+<div style="flex:1;min-width:260px"><p class="why" style="margin:0"><b>A loop's card is one line per round</b>, each with its own mark and move, since each ask is finished on its own. <i>Ask</i> on a round not started is the ask-companies send the Board has, not a new one. The card of a decision step, Compared, reads its two ways out: <i>carried</i> or <i>not carried</i>, with the quote and our number beside it.</p></div>
+</div></div>
+</div>
+
+<div class="opt">
+<h2>3 · Settings → Flows: the editor chooses facts, it never types them <small>· names, order, whose move, nudge, papers; the facts from a list</small></h2>
+<div class="frame"><div class="st">Trade partner · the Papers in row open · the fact picker on its second fact</div>
+<div class="tabs"><span>Customer</span><span class="on">Trade partner</span><span>Architect</span><span style="margin-left:auto;border-style:dashed">History · 14 changes</span></div>
+<table>
+<tr><th style="width:28px"></th><th>Step</th><th>Finished when</th><th>Whose move</th><th>Nudge after</th><th>Repeats</th><th>Papers</th><th style="width:60px"></th></tr>
+<tr class="lanehead"><td colspan="8">Once</td></tr>
+<tr><td>⋮⋮</td><td>Invited</td><td><span class="pick fact">the invitation email went</span></td><td>us</td><td>—</td><td>no</td><td><span class="pick paper">invitation</span></td><td></td></tr>
+<tr><td>⋮⋮</td><td>Portal opened</td><td><span class="pick fact">they opened their portal</span></td><td>them</td><td>3 days · a text</td><td>no</td><td class="note">none</td><td></td></tr>
+<tr class="open"><td>⋮⋮</td><td><input value="Papers in" style="font:inherit;width:110px;border:1px solid var(--border);border-radius:6px;padding:2px 6px"></td><td><span class="pick fact">their W-9 is signed</span> <span class="c">and</span><br><span class="pick fact" style="outline:2px solid var(--accent)">their insurance is current ▾</span><br><span class="btn quiet" style="font-size:12px">+ and another fact</span></td><td><span class="pick">them ▾</span></td><td><span class="pick">5 days ▾</span> <span class="pick">a call ▾</span></td><td><span class="pick">no ▾</span></td><td><span class="pick paper">W-9</span> <span class="pick paper">insurance</span></td><td><span class="btn quiet" style="color:var(--danger)">Remove</span></td></tr>
+<tr><td>⋮⋮</td><td>MSA signed</td><td><span class="pick fact">the master agreement is signed</span></td><td>them</td><td>3 days · a text</td><td>no</td><td><span class="pick paper">MSA</span></td><td></td></tr>
+<tr><td colspan="8"><span class="btn quiet" style="font-size:12px">+ a step here</span></td></tr>
+<tr class="lanehead"><td colspan="8">Per job</td></tr>
+<tr><td>⋮⋮</td><td>Asked to quote</td><td><span class="pick fact">their quote is in the portal</span></td><td>them</td><td>at their promised day, else 7 days</td><td>each ask</td><td><span class="pick paper">quote</span></td><td></td></tr>
+<tr><td>⋮⋮</td><td>Compared <span class="note">· a fork</span></td><td><span class="pick fact">we carried their quote</span> <span class="c">or</span> <span class="pick fact">we did not carry it</span></td><td>us</td><td>—</td><td>no</td><td class="note">none</td><td></td></tr>
+<tr><td>⋮⋮</td><td>Statement of work</td><td><span class="pick fact">the statement of work is signed</span></td><td>them</td><td>3 days · a text</td><td>no</td><td><span class="pick paper">SOW</span></td><td></td></tr>
+<tr><td>⋮⋮</td><td>Draws</td><td><span class="pick fact">the draw is paid</span></td><td>both</td><td>—</td><td>each draw</td><td><span class="pick paper">waiver</span></td><td></td></tr>
+<tr><td>⋮⋮</td><td>Closeout</td><td><span class="pick fact">the unconditional final waiver is in</span></td><td>them</td><td>7 days · an email</td><td>no</td><td><span class="pick paper">final waiver</span></td><td></td></tr>
+</table>
+<div class="row" style="margin-top:12px">
+<div class="menu"><div class="ph"><b>Finished when</b> · a fact the app keeps. Pick one; the step turns green when it is true.</div>
+<div class="g">Papers</div>
+<div class="r"><span class="t"><b>their W-9 is signed</b><small>a W-9 on the company's Documents, signed</small></span><span class="where">in use</span></div>
+<div class="r on"><span class="t"><b>their insurance is current</b><small>a certificate on file whose expiry is ahead of today</small></span><span class="where">picked</span></div>
+<div class="r"><span class="t"><b>the master agreement is signed</b><small>the MSA on the company's Documents, signed</small></span><span class="where">MSA signed</span></div>
+<div class="r"><span class="t"><b>the statement of work is signed</b><small>the job's SOW with this company, signed</small></span><span class="where">Statement of work</span></div>
+<div class="g">Their portal</div>
+<div class="r"><span class="t"><b>they opened their portal</b><small>their first visit to their link</small></span><span class="where">Portal opened</span></div>
+<div class="r"><span class="t"><b>their quote is in the portal</b><small>a quote submitted on the ask</small></span><span class="where">Asked to quote</span></div>
+<div class="r"><span class="t"><b>they saw the bid results</b><small>the shared tab opened</small></span></div>
+<div class="g">Money</div>
+<div class="r"><span class="t"><b>the draw is approved</b><small>a draw of theirs approved by us</small></span></div>
+<div class="r"><span class="t"><b>the draw is paid</b><small>a draw of theirs paid</small></span><span class="where">Draws</span></div>
+<div class="ph" style="border-top:1px solid var(--border);border-bottom:0">A fact that is not here cannot be picked. A new one is a line in the app's list, with the column it reads, and the panel is a read, so a changed fact moves every person at once.</div></div>
+<div class="prev"><div class="h">Before you save · who moves</div>
+<div class="note" style="margin-bottom:6px">The flow is a read over the stamps, so an edit is tried on everyone first.</div>
+<div class="p"><span>Greg Paulk</span><span class="s">Asked to quote · same</span></div>
+<div class="p"><span>Bill Sorrell</span><span class="s">Compared · same</span></div>
+<div class="p"><span>Tom Riddle</span><span class="s moved">Papers in → MSA signed</span></div>
+<div class="note" style="margin-top:6px">Tom moves because the fact you took out, insurance, was the one he was waiting on. <span class="btn quiet">Save</span> · <span class="btn quiet">Put it back</span></div></div>
+</div>
+</div>
+<p class="why"><b>What the office can change:</b> a step's name, its place in the lane (the ⋮⋮ handle), whose move it is, the nudge (a count of days and a channel, or <i>at their promised day</i>), whether it repeats and per what, which papers it turns on, and which facts finish it, joined with <i>and</i> or, on a fork, <i>or</i>. A step can be added between two or removed; removing one that people are on shows them in the preview and they land on the next step, since the facts decide. <b>What it cannot change:</b> the facts themselves, which are a list in the app with the column each reads (the sweep's table in the plan); and the lanes, Once, Per job, Any time, which are the shape of the data. <b>Who:</b> the office edits (the owner and the assistants, as Settings is); everyone reads. <b>History</b> is the quick replies window's: every change with its person and day, a Removed tab, and <i>Put it back</i>.</p>
+</div>
+
+<div class="opt">
+<h2>4 · The papers read the flow back <small>· the Attach picker and the Documents tab know the step</small></h2>
+<div class="frame"><div class="st">The Attach picker, while the reply box holds the Papers in quick reply · Tom Riddle</div>
+<div class="att"><span class="chip first">☆ For Papers in · the certificate of insurance form · 2 pages</span><span class="chip first">☆ Their portal link · uploads land on their Documents</span><span class="chip">Boerne Retail Shell plans, rev 2 · big, goes as our link</span><span class="chip">Addendum 2.pdf · 412 KB</span></div>
+<p class="why" style="margin:8px 0 0">When the reply box holds a quick reply that belongs to a step, the picker's first rows are that step's papers, starred, before the job's files. Nothing new to pick from: the papers are the company's Documents rows, read with the step they turn on.</p></div>
+<div class="frame"><div class="st">Bexar Steel · Documents, as the company window shows them</div>
+<div class="doc h"><span>Paper</span><span>State</span><span>Finishes</span><span></span></div>
+<div class="doc"><span>W-9</span><span style="color:var(--ok)">signed Tue Sep 29</span><span>Papers in · done</span><span><span class="btn small">Open</span></span></div>
+<div class="doc"><span>Certificate of insurance</span><span>nothing on file</span><span>Papers in · <b>Tom is on it</b></span><span><span class="btn small">Ask for it</span></span></div>
+<div class="doc"><span>Master agreement</span><span>not sent</span><span>MSA signed · next</span><span><span class="btn small">Send</span></span></div>
+<div class="doc"><span>Statement of work · Boerne Retail Shell</span><span>—</span><span>Statement of work · after Compared</span><span></span></div>
+<p class="why" style="margin:8px 0 0">The company's Documents rows gain a <i>Finishes</i> column, the step each paper turns on and where the person is, so the office sees from the papers' side why Tom is where he is. The buttons are the ones the step card has; the same send, the same ask. The job's Documents tab does the same for the per-job papers.</p></div>
+</div>
+
+<div class="opt">
+<h2>5 · The nudge becomes a Follow up row <small>· the flow list drives the queue, the Board's ring stays its own for now</small></h2>
+<div class="frame"><div class="st">Follow up · Needs a reply, then the nudges</div>
+<div class="qrow"><span class="av">TR</span><span class="t">Tom Riddle · Bexar Steel<small>Papers in · quiet 5 days · the flow says a call. We are waiting on the certificate of insurance.</small></span><span class="pill step">Papers in</span><span class="pill ours">Our move · a call</span><span class="btn small">Call in Quo</span><span class="btn small">Text instead</span><span class="btn small">Hold</span></div>
+<div class="event" style="max-width:720px">in the thread, after the call: <i>Robert called Tom on the Papers in nudge · 3:10 PM · 2:40</i></div>
+<p class="why" style="margin:8px 0 0">A step's nudge fires when the step is on now, the move is theirs, and the thread has been quiet that many days; a promised day beats the count, as the loop's <i>at their promised day</i> says. The row says the step, what we are waiting on and the channel the flow asked for, with a one-press switch to another. Answering, or the fact turning true, clears it. <i>Hold</i> is the owed strip's day chips. The Board's ring keeps its own three stages until its lists and the flows agree; that is a later cut, named in the plan.</p></div>
+</div>
+
+<div class="pickbox">
+<h2 style="font-size:15px;margin:0 0 6px">Is this the best we can do?</h2>
+<p style="margin:0 0 8px">Five places it could be otherwise, weighed:</p>
+<ol>
+<li><b>Could the step box stay a picture, with everything in the editor?</b> No. The question the panel raises is "what do I do about it", and that answer is per person, not per flow: Tom's insurance, Greg's late quote. The card is where the per-person answer lives; the editor is where the shape lives. Two places, each one thing.</li>
+<li><b>Could "Finished when" be typed, so the office can say anything?</b> It is the plan's one rule and this mock-up leans on it harder: the preview column, the paper marks, the Follow up rows and the Documents' Finishes column all work only because a fact is a read. A typed fact is a to-do list, and the app has those. The cost is that a fact the app does not keep cannot be a step until it does; the four gaps are listed next.</li>
+<li><b>Could the papers be a step of their own instead of a column?</b> The W-9 and the insurance are two facts of one step, Papers in, as the owner drew it; MSA and SOW are one paper each. A papers column names what a step turns on without adding boxes, and the Documents side reads it back. Keep the column.</li>
+<li><b>Is a new table needed?</b> One small one, for what the office edits: the step's name, order, whose move, nudge, repeats, papers and the ids of its facts, plus the history. The facts are a list in code with the column each reads, and the state is a read over the stamps, as the person-journey kernel the app already has does for its five journeys. The flow is that kernel's list, made editable, not a sixth list.</li>
+<li><b>Does one flow per kind hold?</b> For now. A trade whose flow differs (a supplier with no MSA) is the open question the plan carries; the editor's answer, when it comes, is a step marked <i>skip for</i> a kind of company, not a second flow.</li>
+</ol>
+<p style="margin:0 0 6px"><b>The four facts the app does not keep yet</b>, each a small column, named so the real build counts them: a trade's first portal visit (today "Portal opened" is their press on Got it, and a per-ask opened mark); a lost mark on a quote we did not carry (today only inferred); the day a customer said yes (today only the stage moves); and the warranty year's end (computed from acceptance plus a year, no column). "Start date sent" exists already as the schedule letter's send.</p>
+<p style="margin:0"><b>The pick:</b> build pieces 1, 2 and 3 in the prototype next (the marks, the card, the editor with the picker and the preview), then 4 and 5 once the owner has pressed on them. The plan's section names the order and the stamps.</p>
+</div>
+</body>
+</html>
