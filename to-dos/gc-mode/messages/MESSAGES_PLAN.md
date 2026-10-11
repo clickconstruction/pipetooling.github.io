@@ -158,7 +158,7 @@ them** with who marked it and when, and the thread gets a gray event line. *Sett
 team at the bottom of the thread, *Settling: we owed the start date · by Mon Oct 5*, and the note is what
 settles it: the person says how or why, the note goes in the thread with a *✓ settled the start date* chip,
 the row closes as any note does, and the court goes back to whose word was last (the owner, 2026-10-11: a
-settle always says why, for the team). *Not settled yet* backs out. The app's table needs an owed item per
+settle always says why, for the team). *Not settled yet* backs out. Settled's hover card also lists the other things one could do about what we owe, each with its own control (the owner, 2026-10-11): send it to them, with the before-it-goes window's question settling it when nothing is still on us; *We owe them…* to change what or the day; Snoozed to put the row off; or leave it, and Follow up keeps it. The app's table needs an owed item per
 contact: what, by when, who marked it, when, when it was settled and the note that settled it.
 
 ## Every control explains itself on hover
@@ -424,3 +424,7 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.51, 2026-10-11**: the folded header's stamps are one sentence in words with no color, the newer side first
   and the channel as the verb (`stamps-words-mockups.html` B, the owner's pick over the mock-up's own A: the pills'
   green read as the court's). The wide block keeps its dates and (+6).
+- **v1.52, 2026-10-11**: Settled's hover card lists the other options, each with its control drawn: send it to them
+  (the send window's question settles it), We owe them… to change it, Snoozed, or leave it (the owner's ask). Open:
+  the send window today keeps what we owe ticked and fixed while something is owed; it should offer 'this message
+  settles it' so the first option is true.
