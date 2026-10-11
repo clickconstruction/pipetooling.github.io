@@ -48,7 +48,7 @@ describe('BridgeLinkDesk', () => {
     fireEvent.change(screen.getByLabelText('Owner of: Bill the finished work.'), { target: { value: 'Taunya' } })
     fireEvent.click(screen.getByTestId('bridge-link-desk-record'))
     expect(onRecord).toHaveBeenCalledTimes(1)
-    const [moves, note] = onRecord.mock.calls[0]
+    const [moves, note] = onRecord.mock.calls[0]!
     expect(note).toBeNull()
     expect(moves[0]).toEqual({ key: 'bill', title: 'Bill the finished work.', who: 'Taunya', then: 233_000 })
     expect(moves.length).toBe(4)

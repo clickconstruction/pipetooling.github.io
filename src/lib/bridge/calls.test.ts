@@ -37,10 +37,10 @@ describe('bridge calls', () => {
 
   it('counts the streak by distinct weeks on the same link', () => {
     const two = [call({ weekStart: '2026-09-27', link: 'decision' }), call({ weekStart: '2026-10-04', link: 'decision' })]
-    expect(streakFor(two, two[1])).toBe(2)
+    expect(streakFor(two, two[1]!)).toBe(2)
     const broken = [call({ weekStart: '2026-09-20', link: 'bill' }), call({ weekStart: '2026-09-27', link: 'decision' }), call({ weekStart: '2026-10-04', link: 'decision' })]
-    expect(streakFor(broken, broken[2])).toBe(2)
-    expect(streakFor(calls, calls[0])).toBe(1)
+    expect(streakFor(broken, broken[2]!)).toBe(2)
+    expect(streakFor(calls, calls[0]!)).toBe(1)
   })
 
   it('reads done, part and no from the number then and now', () => {
@@ -101,7 +101,7 @@ describe('bridge calls', () => {
     const open = buildScorecard({ call: bill, calls: [bill], now: { stageWeeks: { bill: 10.4 }, keys: { bill: 180_000 } }, todayYmd: '2026-10-13', dayLabel })
     expect(open.verdict).toBe('did_not_move')
     expect(open.measure).toEqual({ then: '10.6 weeks', now: '10.4 weeks' })
-    expect(open.moves[0].done).toBe('part')
+    expect(open.moves[0]!.done).toBe('part')
     expect(open.fridayAsks).toBe(false)
     const friday = buildScorecard({ call: bill, calls: [bill], now: { stageWeeks: { bill: 9.0 }, keys: { bill: 90_000 } }, todayYmd: '2026-10-16', dayLabel })
     expect(friday.verdict).toBe('moved')
