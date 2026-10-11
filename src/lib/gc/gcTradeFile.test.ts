@@ -13,6 +13,7 @@ import {
   TRADE_FILE_MAX_BYTES,
   tradeFileDriveName,
   tradeFileFolders,
+  tradeFileFromRoot,
 } from '../../../supabase/functions/_shared/gcTradeFile'
 
 const SUB = '88888888-8888-4888-8888-888888888888'
@@ -46,9 +47,16 @@ describe('a trade’s file (P5a-1)', () => {
     expect(parseTradeFile({ for: 'quote', inviteId: SUB, name: 'q.pdf', base64: btoa(bin) })).toBe('fileTooBig')
   })
 
+  it('reads the company’s insurance certificate with no record: its own, on no job (P5b-2)', () => {
+    const f = parseTradeFile({ for: 'coi', name: 'certificate.pdf', base64: b64(...PDF) })
+    expect(f && typeof f === 'object' ? [f.for, f.recordId, f.name, f.mime] : f).toEqual(['coi', null, 'certificate.pdf', 'application/pdf'])
+    expect(tradeFileFolders('coi', 'Bright Line Electric')).toEqual(['GC trade partners', 'Bright Line Electric'])
+    expect([tradeFileFromRoot('coi'), tradeFileFromRoot('change'), tradeFileFromRoot('submittal'), tradeFileFromRoot('quote')]).toEqual([true, false, false, false])
+  })
+
   it('refuses a shape the page never sends', () => {
     for (const b of [
-      { for: 'coi', submittalId: SUB, name: 'a.pdf', base64: b64(...PDF) },
+      { for: 'w9', submittalId: SUB, name: 'a.pdf', base64: b64(...PDF) },
       { for: 'submittal', packageId: SUB, name: 'a.pdf', base64: b64(...PDF) },
       { for: 'submittal', submittalId: 'sub-1', name: 'a.pdf', base64: b64(...PDF) },
       { for: 'submittal', submittalId: SUB, name: '   ', base64: b64(...PDF) },

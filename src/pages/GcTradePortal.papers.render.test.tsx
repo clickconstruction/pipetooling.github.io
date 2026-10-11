@@ -70,16 +70,67 @@ const open = (path = `/t/${TOKEN}`) =>
 const paperwork = async () => within(await screen.findByRole('region', { name: 'Your paperwork with Click' }))
 
 describe('the paperwork block (P5b-1)', () => {
-  it('reads each paper where it stands, and offers no certificate send until P5b-2', async () => {
+  it('reads each paper where it stands, with a newer certificate to send (P5b-2)', async () => {
     open()
     const block = await paperwork()
     expect(block.getByText('not sent yet')).toBeTruthy()
     expect(block.getByRole('button', { name: 'Tell us about your company' })).toBeTruthy()
     expect(block.getByRole('button', { name: 'Read and sign' })).toBeTruthy()
     expect(block.getByText(/good to/)).toBeTruthy()
-    expect(block.queryByRole('button', { name: /Send your certificate|Send a newer one/ })).toBeNull()
+    expect(block.getByRole('button', { name: 'Send a newer one' })).toBeTruthy()
     expect(block.getByText('none on file')).toBeTruthy()
     expect(block.getByRole('button', { name: 'Fill in your W-9' })).toBeTruthy()
+  })
+
+  it('sends its certificate: the file first, then the kind coi with its link and the day the policy runs out (P5b-2)', async () => {
+    slice = { ...slice, papers: (slice.papers ?? []).filter((p) => p.doc_type !== 'coi') }
+    const posted: { ok: boolean; body: unknown }[] = [
+      { ok: true, body: { ok: true, value: { id: 'f1', name: 'certificate.pdf', url: 'https://drive.google.com/file/d/up/view' } } },
+      { ok: true, body: { ok: true } },
+    ]
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          posts.push(JSON.parse(String(init.body)) as Record<string, unknown>)
+          const a = posted.shift() ?? { ok: true, body: { ok: true } }
+          return { ok: a.ok, json: async () => a.body }
+        }
+        reads.push(url)
+        return { ok: true, json: async () => ({ today: TODAY, slice }) }
+      }),
+    )
+    open()
+    const block = await paperwork()
+    fireEvent.click(block.getByRole('button', { name: 'Send your certificate' }))
+    const send = block.getByRole('button', { name: 'Send it to Click' }) as HTMLButtonElement
+    expect(send.disabled).toBe(true)
+    fireEvent.change(block.getByLabelText('A photo or PDF of the certificate'), {
+      target: { files: [new File([new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31])], 'certificate.pdf', { type: 'application/pdf' })] },
+    })
+    await block.findByText('certificate.pdf')
+    expect((block.getByLabelText('The day the policy runs out') as HTMLInputElement).value).toBe('2027-10-08')
+    fireEvent.click(send)
+    await waitFor(() => expect(posts).toHaveLength(2))
+    expect(posts[0]).toMatchObject({ token: TOKEN, kind: 'file', for: 'coi', name: 'certificate.pdf' })
+    expect(posts[0]).not.toHaveProperty('submittalId')
+    expect(posts[1]).toEqual({ token: TOKEN, kind: 'coi', expiresOn: '2027-10-08', fileUrl: 'https://drive.google.com/file/d/up/view' })
+  })
+
+  it('reads a certificate it sent as being checked, asks for nothing more, and drops it from Needs you (P5b-2m)', async () => {
+    slice = {
+      ...slice,
+      papers: [
+        ...(slice.papers ?? []).filter((p) => p.doc_type !== 'coi'),
+        { id: 'coi-waiting', company_id: ID.company, doc_type: 'coi', status: 'received', sent_at: '2026-10-07T15:00:00Z', signed_at: null, expires_at: '2027-10-07' },
+      ],
+    }
+    open()
+    const block = await paperwork()
+    expect(block.getByText('Click is checking it · sent Oct 7')).toBeTruthy()
+    expect(block.queryByRole('button', { name: /Send your certificate|Send a newer one/ })).toBeNull()
+    const needs = within(screen.getByRole('region', { name: /Needs you/ }))
+    expect(needs.queryByText(/insurance certificate/i)).toBeNull()
   })
 
   it('opens the master agreement and the W-9 on the signing page, in the same tab', async () => {
