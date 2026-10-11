@@ -1,0 +1,257 @@
+/**
+ * The weakest link (the Bridge, link PR 1): the company as five stages in flow
+ * order — Market → Sales → Build → Bill → Collect — each read as what comes in,
+ * what goes out, and the pile waiting in front of it. One rule lights a stage:
+ * the most weeks to clear what is already waiting, at today's pace. Market and
+ * Sales feed the field, so they read by pace against it, not by weeks of pile
+ * (their readings arrive in a later PR; until then they say so). Pure: no
+ * React, no Supabase.
+ *
+ * A recorded call holds the link for its week (`heldLinkId`): another stage
+ * takes it only by a clear margin, so a $1k wobble in billing does not move
+ * the red on a Tuesday. Two stages within a tenth of each other read as a
+ * pair ("the weakest link, with Build").
+ */
+
+export type StageId = 'market' | 'sales' | 'build' | 'bill' | 'collect'
+
+export const STAGE_ORDER: ReadonlyArray<StageId> = ['market', 'sales', 'build', 'bill', 'collect']
+
+/** A stage takes the link from a held call only when it reads this much longer. */
+export const STAGE_HOLD_MARGIN = 1.15
+/** Two stages within this share of each other read as a pair. */
+export const STAGE_PAIR_MARGIN = 0.9
+
+export const STAGE_META: Record<StageId, { name: string; object: string; action: string; kind: string }> = {
+  market: { name: 'Market', object: 'demand', action: 'bring in more asks', kind: 'not enough demand' },
+  sales: { name: 'Sales', object: 'leads', action: 'win more of the asks', kind: 'leads that do not convert' },
+  build: { name: 'Build', object: 'the work sold', action: 'finish more each week', kind: 'cannot do the work sold' },
+  bill: { name: 'Bill', object: 'the work done', action: 'bill the day it finishes', kind: 'cannot bill the work done' },
+  collect: { name: 'Collect', object: 'the work billed', action: 'collect by the due day', kind: 'cannot collect the work billed' },
+}
+
+export type PileStageInput = {
+  /** What waits in front of the stage today, in dollars. */
+  pileUsd: number
+  /** Rows in the pile when there is a count worth showing (jobs, invoices); null otherwise. */
+  pileCount: number | null
+  /** Dollars a week flowing into the stage over the window. */
+  inPerWeekUsd: number
+  /** Dollars a week the stage turns over the window. */
+  outPerWeekUsd: number
+}
+
+export type BuildStageInput = PileStageInput & {
+  /** Open jobs whose percent the app can read. */
+  knownJobs: number
+  /** Contract on open jobs with no percent, read as half done; drawn grey. */
+  guessUsd: number
+  guessJobs: number
+}
+
+export type CollectStageInput = PileStageInput & { lateCount: number }
+
+export type StageFlowInput = {
+  bill: PileStageInput | null
+  collect: CollectStageInput | null
+  build: BuildStageInput | null
+  /** The link a recorded call holds this week, if any. */
+  heldLinkId: StageId | null
+}
+
+export type StageTone = 'link' | 'pair' | 'plain' | 'muted'
+
+export type StageReading = {
+  id: StageId
+  name: string
+  object: string
+  action: string
+  readable: boolean
+  pile: {
+    /** "$233k finished, not yet billed" */
+    headline: string
+    sub: string[]
+    usd: number | null
+    /** Share of the pile the app can only guess at, 0–1; drawn grey. */
+    guessShare: number
+  }
+  /** Two lines, each with a subject: "the field finishes" · "$34k". */
+  flow: Array<{ who: string; usd: string }>
+  weeks: number | null
+  /** "10.6 weeks to bill what is already finished" */
+  weeksText: string
+  badge: string
+  tone: StageTone
+  isLink: boolean
+}
+
+export type StageFlow = {
+  stages: StageReading[]
+  /** The stage lit as the link, after the held call is honoured. Null when nothing reads. */
+  linkId: StageId | null
+  /** The stage the numbers alone would light. */
+  nominatedId: StageId | null
+  /** The held call stands although another stage reads longer. */
+  heldStands: boolean
+  /** The stage within a tenth of the link, read as its pair. */
+  pairId: StageId | null
+}
+
+export function stageUsd(n: number): string {
+  const a = Math.abs(n)
+  const sign = n < 0 ? '−' : ''
+  if (a >= 1_000_000) return `${sign}$${(a / 1_000_000).toFixed(1)}M`
+  if (a >= 100_000) return `${sign}$${Math.round(a / 1000)}k`
+  if (a >= 1000) return `${sign}$${(a / 1000).toFixed(1).replace(/\.0$/, '')}k`
+  return `${sign}$${Math.round(a)}`
+}
+
+const perWeek = (usd: number): string => stageUsd(usd)
+
+/** Weeks to clear the pile at the stage's own pace; null when the stage turns nothing. */
+export function weeksToClear(pileUsd: number, outPerWeekUsd: number): number | null {
+  if (!(outPerWeekUsd > 0)) return null
+  if (!(pileUsd > 0)) return 0
+  return pileUsd / outPerWeekUsd
+}
+
+const oneDecimal = (w: number): string => (w >= 100 ? `${Math.round(w)}` : w.toFixed(1))
+
+const CLEAR_WORDS: Record<'build' | 'bill' | 'collect', string> = {
+  build: 'to build what is already sold',
+  bill: 'to bill what is already finished',
+  collect: 'to collect what is already billed',
+}
+
+function notReadable(id: StageId): StageReading {
+  const m = STAGE_META[id]
+  return {
+    id,
+    name: m.name,
+    object: m.object,
+    action: m.action,
+    readable: false,
+    pile: { headline: 'not readable yet', sub: ['the app does not count this pile yet'], usd: null, guessShare: 0 },
+    flow: [],
+    weeks: null,
+    weeksText: '',
+    badge: 'not readable yet',
+    tone: 'muted',
+    isLink: false,
+  }
+}
+
+function pileStage(id: 'build' | 'bill' | 'collect', input: PileStageInput, who: [string, string], pile: { headline: string; sub: string[]; guessShare: number }, weeksText: (w: number | null) => string): StageReading {
+  const m = STAGE_META[id]
+  const weeks = weeksToClear(input.pileUsd, input.outPerWeekUsd)
+  return {
+    id,
+    name: m.name,
+    object: m.object,
+    action: m.action,
+    readable: true,
+    pile: { headline: pile.headline, sub: pile.sub, usd: input.pileUsd, guessShare: pile.guessShare },
+    flow: [
+      { who: who[0], usd: perWeek(input.inPerWeekUsd) },
+      { who: who[1], usd: perWeek(input.outPerWeekUsd) },
+    ],
+    weeks,
+    weeksText: weeksText(weeks),
+    badge: '',
+    tone: 'plain',
+    isLink: false,
+  }
+}
+
+export function buildStageFlow(input: StageFlowInput): StageFlow {
+  const byId = new Map<StageId, StageReading>()
+  byId.set('market', notReadable('market'))
+  byId.set('sales', notReadable('sales'))
+
+  if (input.build) {
+    const b = input.build
+    const total = b.pileUsd + b.guessUsd
+    const guessShare = total > 0 ? b.guessUsd / total : 0
+    const sub: string[] = []
+    if (b.knownJobs > 0) sub.push(`on ${b.knownJobs} ${b.knownJobs === 1 ? 'job that has' : 'jobs that have'} a %`)
+    if (b.guessJobs > 0) sub.push(`grey: ${b.guessJobs} ${b.guessJobs === 1 ? 'job has' : 'jobs have'} no %`)
+    byId.set(
+      'build',
+      pileStage('build', b, ['sales sells', 'the field builds'], { headline: `${stageUsd(b.pileUsd)} left to build`, sub, guessShare }, (w) => {
+        if (w == null) return 'no pace to read'
+        if (b.guessUsd > 0 && b.outPerWeekUsd > 0) {
+          const hi = (b.pileUsd + b.guessUsd / 2) / b.outPerWeekUsd
+          return `${Math.round(w)} to ${Math.round(hi)} weeks ${CLEAR_WORDS.build}`
+        }
+        return `${oneDecimal(w)} weeks ${CLEAR_WORDS.build}`
+      }),
+    )
+  } else byId.set('build', notReadable('build'))
+
+  if (input.bill) {
+    const b = input.bill
+    byId.set(
+      'bill',
+      pileStage('bill', b, ['the field finishes', 'the office bills'], { headline: `${stageUsd(b.pileUsd)} finished, not yet billed`, sub: b.pileCount != null && b.pileCount > 0 ? [`on ${b.pileCount} ${b.pileCount === 1 ? 'job' : 'jobs'}`] : [], guessShare: 0 }, (w) => (w == null ? 'no pace to read' : `${oneDecimal(w)} weeks ${CLEAR_WORDS.bill}`)),
+    )
+  } else byId.set('bill', notReadable('bill'))
+
+  if (input.collect) {
+    const c = input.collect
+    byId.set(
+      'collect',
+      pileStage('collect', c, ['the office bills', 'customers pay'], { headline: `${stageUsd(c.pileUsd)} billed, not yet paid`, sub: c.lateCount > 0 ? [`${c.lateCount} ${c.lateCount === 1 ? 'invoice' : 'invoices'} late`] : [], guessShare: 0 }, (w) => (w == null ? 'no pace to read' : `${oneDecimal(w)} weeks ${CLEAR_WORDS.collect}`)),
+    )
+  } else byId.set('collect', notReadable('collect'))
+
+  // The rule: the pile stage with the most weeks to clear. A held call stands unless overtaken by a clear margin.
+  const candidates = STAGE_ORDER.map((id) => byId.get(id) as StageReading).filter((s) => s.readable && s.weeks != null)
+  const sorted = [...candidates].sort((a, b) => (b.weeks as number) - (a.weeks as number))
+  const nominated = sorted[0] ?? null
+  const held = input.heldLinkId ? candidates.find((s) => s.id === input.heldLinkId) ?? null : null
+  let link: StageReading | null = nominated
+  let heldStands = false
+  if (held && nominated && held.id !== nominated.id) {
+    if ((nominated.weeks as number) < (held.weeks as number) * STAGE_HOLD_MARGIN) {
+      link = held
+      heldStands = true
+    }
+  }
+  const second = link ? sorted.find((s) => s.id !== link!.id) ?? null : null
+  const pair = link && second && (second.weeks as number) >= (link.weeks as number) * STAGE_PAIR_MARGIN ? second : null
+
+  const stages = STAGE_ORDER.map((id) => {
+    const s = byId.get(id) as StageReading
+    if (!s.readable) return s
+    if (link && s.id === link.id) {
+      return { ...s, isLink: true, tone: 'link' as const, badge: pair ? `the weakest link, with ${pair.name}` : 'the weakest link' }
+    }
+    if (link && heldStands && nominated && s.id === nominated.id) {
+      return { ...s, tone: 'plain' as const, badge: `reads ${oneDecimal(s.weeks as number)} weeks · the call holds ${link.name}` }
+    }
+    if (pair && s.id === pair.id) {
+      const extra = s.id === 'build' && s.pile.guessShare > 0 ? ' · set the %s' : ''
+      return { ...s, tone: 'pair' as const, badge: `a close second${extra}` }
+    }
+    if (link && STAGE_ORDER.indexOf(s.id) > STAGE_ORDER.indexOf(link.id)) {
+      return { ...s, tone: 'plain' as const, badge: `moves with ${link.name}` }
+    }
+    return { ...s, tone: 'plain' as const, badge: 'wait' }
+  })
+
+  return { stages, linkId: link?.id ?? null, nominatedId: nominated?.id ?? null, heldStands, pairId: pair?.id ?? null }
+}
+
+/** The one-line rule the page opens on, and the longer reading behind its "?". */
+export const STAGE_RULE_LINE = 'Find the slowest step. Everything waits on it. We measure the week by what the field earned, billed and paid.'
+
+export const STAGE_RULE_LONG =
+  'A business is only as good as its weakest link. Work piles up in front of that link and starves everything after it. Throughput is what the field earns, billed and collectable. Grow it through the link. Cutting cost everywhere else makes the piles bigger and the week no better.'
+
+export const STAGE_RULE_POINTS: ReadonlyArray<{ head: string; text: string }> = [
+  { head: '1 · The goal', text: 'The goal is to make money. Everything else is a means to it.' },
+  { head: '2 · The bottleneck’s hour', text: 'An hour lost at the slowest step is lost for the whole company. An hour saved anywhere else is a mirage.' },
+  { head: '3 · Busy is not productive', text: 'Keeping everyone busy is not the same as making money. A plant where every resource runs flat out drowns in inventory.' },
+  { head: '4 · Balance flow, not capacity', text: 'Put the slowest boy at the front of the hike and lighten his pack. The troop arrives together.' },
+  { head: '5 · Beware of inertia', text: 'Once the slowest step moves, yesterday’s rules become today’s constraint. Find the next one.' },
+]

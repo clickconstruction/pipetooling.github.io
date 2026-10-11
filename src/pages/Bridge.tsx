@@ -34,6 +34,9 @@ import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vector
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
 import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
 import { ymdAddDays } from '../utils/dateUtils'
+import { buildStageFlow, type StageId } from '../lib/bridge/stageFlow'
+import { BridgeStages } from '../components/bridge/BridgeStages'
+import { BridgeRule } from '../components/bridge/BridgeRule'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -90,6 +93,8 @@ export default function Bridge() {
   const sheetView = searchParams.get('view') === 'monday'
   const [emailing, setEmailing] = useState(false)
   const [mailNote, setMailNote] = useState<string | null>(null)
+  // The weakest link (link PR 1): the stage pressed; the lit link until someone presses another.
+  const [pickedStage, setPickedStage] = useState<StageId | null>(null)
   const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
 
   useEffect(() => {
@@ -240,6 +245,27 @@ export default function Bridge() {
 
   const confidence = useMemo(() => receiptsConfidence(receipts), [receipts])
   const carry = useMemo(() => (forecast ? carryingSentence(carryingDay(forecast, receipts), md) : null), [forecast, receipts])
+
+  // The weakest link (link PR 1): Bill and Collect from what the page already reads — the piles from the finance hook, the paces from the window's flows by day.
+  const stageFlow = useMemo(() => {
+    if (!data) return null
+    const weeks = BRIDGE_DAYS_BACK / 7
+    const sumWindow = (m: Map<string, number>): number => {
+      let s = 0
+      for (const [ymd, usd] of m) if (ymd >= data.windowStart && ymd <= data.todayYmd) s += usd
+      return s
+    }
+    const billedPerWeek = sumWindow(data.invoicesSentByDay) / weeks
+    const paidPerWeek = sumWindow(data.paymentsReceivedByDay) / weeks
+    const lateCount = receipts.filter((r) => r.basis === 'late').length + doubtful.length
+    return buildStageFlow({
+      bill: fin.data ? { pileUsd: fin.data.unbilled.total, pileCount: fin.data.unbilled.count, inPerWeekUsd: data.totals.earnedUsd / weeks, outPerWeekUsd: billedPerWeek } : null,
+      collect: fin.data ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount } : null,
+      build: null,
+      heldLinkId: null,
+    })
+  }, [data, fin.data, receipts, doubtful])
+  const litStage = pickedStage ?? stageFlow?.linkId ?? null
 
   const saveCash = useCallback(async () => {
     const v = Number(cashDraft.replace(/[^0-9.-]/g, ''))
@@ -519,7 +545,14 @@ export default function Bridge() {
     <div style={{ padding: '0.25rem 0 3rem' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.6rem' }}>
         <h1 style={{ margin: 0, fontSize: '1.25rem', letterSpacing: '0.06em', textTransform: 'uppercase' }}>The Bridge</h1>
-        <span style={det}>Where we stand, where cash is going, what would change it. Dev only.</span>
+        {data ? (
+          <span style={det} data-testid="bridge-date">
+            {new Date(`${data.todayYmd}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+            {vectorWeek ? ` · pay week ${formatPayWeekLabel(vectorWeek)}` : ''}
+          </span>
+        ) : (
+          <span style={det}>Where we stand, where cash is going, what would change it. Dev only.</span>
+        )}
         {!sheetView && (
           <button type="button" onClick={() => setSearchParams({ view: 'monday' })} disabled={!sheet} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
             Monday sheet
@@ -536,8 +569,14 @@ export default function Bridge() {
         <BridgeMondaySheet sheet={sheet} emailing={emailing} onEmail={() => void emailSheet()} onFull={() => setSearchParams({})} mailNote={mailNote} />
       ) : (
         <>
+          {/* The rule (link PR 1): one line the page opens on, the longer reading behind its ? */}
+          <BridgeRule />
+
           {/* The top line (v2.5216): contribution per week, the two constraints as lights */}
           <BridgeHeadline headline={headline} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
+
+          {/* Where the work piles up (link PR 1): the five stages, the link lit */}
+          {stageFlow && <BridgeStages flow={stageFlow} pickedId={litStage} onPick={setPickedStage} />}
 
           {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>

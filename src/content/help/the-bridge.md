@@ -13,6 +13,16 @@ order: 62
 
 The Bridge is for devs only for now. You open it from the compass icon in the header, or **Bridge** in the ☰ menu. The page's address is `/bridge`.
 
+## The rule, and where the work piles up
+
+The page opens on one line. Find the slowest step. Everything waits on it. Press the {{button:outline|?}} beside it to read why, in five points.
+
+Under the top line sit five cards in the order work flows. Market, Sales, Build, Bill, Collect. Each card reads one stage. The bar is the pile waiting in front of it. The two lines under the bar say what comes in and what goes out each week. The last line says how many weeks it would take to clear the pile at today's pace.
+
+The stage with the most weeks reads red. That is the weakest link. A stage within a tenth of it reads as its pair. The stages after the link say they move with it. A card that says **not readable yet** waits on a later step of the app.
+
+Press a card to read it. The pressed card has the red border.
+
 ## The Monday sheet
 
 Press {{button:outline|Monday sheet}} at the top of the page. The page becomes one screen. Three tiles carry a light each: contribution per week, net position, and cash. Under them sit the five moves for the week and the people lines. Press {{button:outline|Email me this sheet}} and the same screen lands in your own inbox. Press {{button:outline|Open the full Bridge}} to come back.
