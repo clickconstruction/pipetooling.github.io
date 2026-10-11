@@ -14,6 +14,10 @@ step is pressed by Grace at her keyboard; Helper 5 reads prod read-only between 
 rows' ids for the sweep (ledger → *Call 4 sweep notes*). Every email goes to bids@clickplumbing.com or to the
 presser's own address. Nothing goes to a real customer or trade. Stop at the first reading that differs, and tell
 Helper 5 before pressing on.
+**Since 2026-10-11, 04:0x UTC:** Grace typed a standing yes in Helper 5's chat for every test press, so the walk's
+steps go on without a yes each. Helper 5 still names each press before it. Three stay reserved: the card switch is the
+owner's own press, no one signs for Malachi (the waiver goes to his desk), and nothing goes to a real customer or
+trade.
 
 ## The test rows it uses
 
@@ -379,16 +383,23 @@ the failure, not a 500. The lead then makes the import static. *Writes*: the por
 
 ## The walk's punch list (cut after the walk, never during it)
 
-- **Release of Lien on a GC job names the plumbing company.** LienReleaseModal should take the releasing party from
-  the GC entity when the job is a GC billing job (step 10). Owner Billing, read-back first.
-- **Mark it signed on a $0 contract** should say so and ask (S3). gc 2, the owner's to veto.
-- **Remind them to pay keeps a stale Pay by.** GcBillRemind sets `useState(step?.by ?? state.today)` once, at mount. A
-  bill that turns late while the window is open starts at today, not today plus 5 (step 8). Owner Billing.
-- **The reminder greets a company with no contact by its first word** (*Hello GC,*). With no contact it should read
-  *Hello,*, as 15a's letter does (step 8). Owner Billing.
-- **Words:** They said when…'s *What they said* box has the placeholder *Who said it* (step 7). Owner Billing.
-- **The GC customer's portal wears the plumbing letterhead** (*CLICK. Plumbing, electrical, and HVAC*, step 2). The
-  owner's call.
+- **Release of Lien on a GC job names the plumbing company** (step 10). **Closed: v2.5228 (#5396), merged and
+  deployed 2026-10-11.** The form and `send-lien-release-email` key on `jobs_ledger.billing_only`, never
+  `gc_customer_id` (that is the GC a plumbing sub job bills). The releasing party is *Click Construction, LLC*, the
+  owner's word.
+- **Mark it signed on a $0 contract** should say so and ask (S3). **Closed: v2.5227 (#5395), gc 2's, merged.**
+- **Remind them to pay keeps a stale Pay by** (step 8). **Cut: v2.5230 (#5398), armed 2026-10-11.** The day is read as
+  the box opens.
+- **The reminder greets a company with no contact by its first word** (*Hello GC,*, step 8). **Cut: v2.5230 (#5398).**
+  `customerGreeting` names the contact only; `helloLine` gives *Hello,* at all six sites.
+- **Words:** *What they said*'s placeholder *Who said it* (step 7). **Cut: v2.5230 (#5398)**, *Who said it, and what*.
+- **The GC customer's portal wears the plumbing letterhead** (step 2). **Closed: v2.5229 (#5397), merged and
+  deployed 2026-10-11**, the owner's option a). `portalLetterhead` reads Click Construction for a customer whose every
+  job is a GC job we build, with no city or license line until the GC entity is named.
+- **The portal's bank-transfer card shows the plumbing account to a GC customer.** Found while cutting the letterhead.
+  **Closed by the owner's word, 2026-10-11:** GC customers keep paying into the plumbing account until Click
+  Construction, LLC has its own. When it does, he gives Owner Billing the details and the card follows the letterhead's
+  rule. Nothing to build now.
 - **A payment on the test billing job emails staff.** Step 9's $100 sent the Pipeline's *Payment progress — 1077 · GC
   test project, delete me (GC) — $100.00 of $10,100.00 paid* to Taunya and Malachi, about 11 minutes later. Step 11's
   card payment will send one more. A billing-only GC test job should skip that staff notice, or the notice should name
