@@ -8,7 +8,7 @@
  */
 import { CUSTOMER_EMAIL_ERRORS, type CustomerEmailErrorKey } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import { changeOrderDays, daysWords, ownerExpectPaidOn } from './ownerBilling'
-import { customerGreeting } from './ownerBillingRemind'
+import { customerGreeting, helloLine } from './ownerBillingRemind'
 import { isTimeExtension } from './timeExtension'
 import type { ChangeOrder, GcProject, GcState, OwnerPayAppSent } from './types'
 import { money, shortDate, weekdayDate } from './words'
@@ -30,7 +30,7 @@ export interface PayAppMailFacts {
 
 /** The customer as every email greets them: "Dr. Raman", "Elena". */
 function greetingOf(state: GcState, project: GcProject): string {
-  return customerGreeting(state.customers.find((c) => c.id === project.customerId), project.owner || 'there')
+  return customerGreeting(state.customers.find((c) => c.id === project.customerId))
 }
 
 export function payAppMailFacts(state: GcState, project: GcProject, app: OwnerPayAppSent): PayAppMailFacts {
@@ -58,7 +58,7 @@ export function payAppMail(f: PayAppMailFacts): { subject: string; lines: string
   return {
     subject: `${Name} for ${f.job}, ${money(f.due)}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       f.final
         ? `${Name} for ${f.job} asks for the ${money(f.due)} you held. Every line is done.`
         : `${Name} for ${f.job} asks for ${money(f.due)}. It bills the work done through ${shortDate(f.periodTo)}, less the ${f.retainagePct}% you hold and the bills before it.`,
@@ -122,7 +122,7 @@ export function certifiedMail(f: CertifiedMailFacts): { subject: string; lines: 
   return {
     subject: `${architect} certified ${name}, ${money(f.certified)}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       `${architect} certified ${name} for ${f.job} at ${money(f.certified)}.`,
       ...(less > 0.5
         ? [f.final ? `That is ${money(less)} less than we asked.` : `That is ${money(less)} less than we asked. It comes back on the next bill once the work is done.`]
@@ -166,7 +166,7 @@ export function changeOrderMail(f: ChangeOrderMailFacts): { subject: string; lin
   return {
     subject: `Change order ${f.number} for ${f.job}, ${f.timeOnly ? `${daysWords(f.days)} more` : `${credit ? '−' : '+'}${money(Math.abs(f.price))}`}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       `Change order ${f.number} for ${f.job} is ready for your signature: ${what}.`,
       f.timeOnly ? 'It does not change your price.' : `It ${credit ? 'takes' : 'adds'} ${money(Math.abs(f.price))} ${credit ? 'off' : 'to'} your price.`,
       ...(f.days > 0 ? [`It adds ${daysWords(f.days)} to the job.`] : []),
@@ -195,7 +195,7 @@ export function interestBillMail(f: InterestBillMailFacts): { subject: string; l
   return {
     subject: `Interest on late bills for ${f.job}, ${money(f.amount)}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       `Some of your bills on ${f.job} went past the day they were due by the contract.`,
       `The interest on them comes to ${money(f.amount)}${f.pctPerMonth ? `, at ${f.pctPerMonth}% a month` : ''}.`,
       'Reply with the day you will pay.',
@@ -229,7 +229,7 @@ export function contractMail(f: ContractMailFacts): { subject: string; lines: st
   return {
     subject: f.mode === 'reminder' ? `Reminder: your contract for ${f.job}` : f.mode === 'newPrice' ? `Your contract for ${f.job}, with our new price` : `Your contract for ${f.job}`,
     lines: [
-      `Hello ${f.greeting},`,
+      helloLine(f.greeting),
       f.mode === 'first'
         ? `Thank you for choosing us for ${f.job}. Here is our contract for it: ${price}.`
         : f.mode === 'newPrice'

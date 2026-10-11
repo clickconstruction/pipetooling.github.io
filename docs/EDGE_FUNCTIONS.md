@@ -101,6 +101,7 @@ when_to_read:
    - [gc-customer-email](#gc-customer-email)
    - [gc-card-bill](#gc-card-bill)
    - [gc-money-monday-email](#gc-money-monday-email)
+   - [bridge-sheet-email](#bridge-sheet-email)
    - [gc-office-notices](#gc-office-notices)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
@@ -1271,6 +1272,16 @@ The payment itself comes through `stripe-webhook` as on any Stripe bill (`metada
 The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on sample data): *Customers owe us $X on N bills*, then **Late**, **Waiting on the architect** and **Coming in**, each bill in OwedRow's words, then **Last week** and **Open Money**. It goes from `EMAIL_FROM` through `sendEmailViaResend`, Reply-To the member who asked, logged as `gc_money_monday`. It is internal, so there is no sent copy.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `APP_ORIGIN` (the Open Money link; clicktooling.com when unset). **Deploy**: `supabase functions deploy gc-money-monday-email --no-verify-jwt` after migration `20261009233000_gc_money_monday_email.sql`, which makes the requests table, the payload and the cron.
+
+### bridge-sheet-email
+
+**Purpose**: Mails the Bridge's Monday sheet (v2.5224) to the dev who pressed **Email me this sheet** on `/bridge?view=monday`, and to nobody else. The page builds the sheet from its own kernels (`src/lib/bridge/mondaySheet.ts`: `mondaySheetSubject`, `mondaySheetHtml`, `mondaySheetText`) and posts the finished parts; the function only checks the caller and sends.
+
+**Endpoint**: `POST /functions/v1/bridge-sheet-email` · **Auth**: `verify_jwt = false`; the caller's JWT is read in-body (`auth.getUser`), then the `users` row must be `role = 'dev'`, not archived, not a sample and not a digital twin, with an email address (the auth email as the fallback).
+
+- Body `{ subject, html, text }`; `subject` and `html` required, the subject cut to 200 characters, the HTML refused over 400 KB (413). The recipient is the caller's own address: the body names none and none is read.
+- Sends through `sendEmailViaResend` with `emailType: 'bridge_monday_sheet'` (`EMAIL_CATALOG`), no sent-copy filing (mail to our own staff). Answers `{ ok: true, to }`.
+- No cron and no table: the weekly send is PR 8b, when wanted (the sheet's eight loaders would move server-side first).
 
 ### gc-office-notices
 

@@ -125,7 +125,7 @@ export function GcBillMoneyIn({
           </label>
           <label style={{ ...label, flex: '1 1 12rem' }}>
             What they said
-            <input aria-label={`What they said about pay application ${app.number}`} style={{ ...input, width: '100%', minWidth: 0 }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Who said it" />
+            <input aria-label={`What they said about pay application ${app.number}`} style={{ ...input, width: '100%', minWidth: 0 }} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Who said it, and what" />
           </label>
           <Btn
             kind="primary"
