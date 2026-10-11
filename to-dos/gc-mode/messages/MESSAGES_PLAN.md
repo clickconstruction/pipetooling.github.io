@@ -410,3 +410,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   and each week is named at its right by its dates, *Sep 27 – Oct 3 · this week* (the owner's ask).
 - **v1.46, 2026-10-11**: a hover card always opens below its control; when it would run past the bottom it slides
   up only as far as it must, never above the control (the owner: it will never fit up).
+- **v1.47, 2026-10-11**: between 761 and 860 px with the flow open, the thread had fallen into the hidden list's 64px
+  column and the panel had taken the thread's (the owner's screenshot); that band now lays the thread and the
+  280px panel side by side with no list column.

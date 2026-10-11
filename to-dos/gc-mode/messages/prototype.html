@@ -37,6 +37,8 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .two.with-frail{grid-template-columns:340px minmax(0,1fr) 64px}
 .two.with-frail.collapsed{grid-template-columns:64px minmax(0,1fr) 64px}
 @media(max-width:1040px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:64px minmax(0,1fr) 280px}}
+/* 761–860 px: the people list is hidden (narrow), so the grid must not keep its column; the thread and the flow share the row (v1.47) */
+@media(min-width:761px) and (max-width:860px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:minmax(0,1fr) 280px}}
 @media(max-width:760px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:minmax(0,1fr)}.two.with-flow .list,.two.with-flow .rail{display:none}.fpanel{position:static;max-height:none}}
 .fpanel{background:#fbfbfc;align-self:start;position:sticky;top:58px;max-height:calc(100vh - 74px);overflow:auto}
 .rail{align-self:start;position:sticky;top:58px}
