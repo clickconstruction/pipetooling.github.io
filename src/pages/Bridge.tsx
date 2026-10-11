@@ -35,13 +35,14 @@ import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vector
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
 import { formatPayWeekLabel, payWeekContaining } from '../lib/payWeekAnchor'
 import { ymdAddDays } from '../utils/dateUtils'
-import { buildStageFlow, type StageId } from '../lib/bridge/stageFlow'
+import { buildStageFlow, withFieldPaces, type StageId } from '../lib/bridge/stageFlow'
 import { BridgeStages } from '../components/bridge/BridgeStages'
 import { BridgeRule } from '../components/bridge/BridgeRule'
 import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallLink, type CallMove, type CallOutcome } from '../lib/bridge/calls'
 import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
 import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
 import { buildBuildPace, type BuildPaceInput } from '../lib/bridge/buildPace'
+import { fieldPaceByHours } from '../lib/bridge/fieldPace'
 import { loadBuildPaceInputs } from '../lib/bridge/loadBuildPace'
 import { buildDemand, type DemandInput } from '../lib/bridge/demandPace'
 import { loadDemandInputs } from '../lib/bridge/loadDemandPace'
@@ -357,6 +358,60 @@ export default function Bridge() {
   const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
   const thisWeekCall = useMemo(() => (calls && thisWeekStart ? callForWeek(calls, thisWeekStart) : null), [calls, thisWeekStart])
 
+  // The top line's weeks (the eight-week grid on recorded and approved time), read here because the stage cards take the field's pace from it.
+  const weeksRange = useMemo(() => (data ? vectorRangeFor('weeks', data.todayYmd) : null), [data])
+  useEffect(() => {
+    if (!data || !weeksRange) return
+    const key = `${weeksRange.start}:${weeksRange.end}`
+    const cached = daysCacheRef.current.get(key)
+    if (cached) {
+      setWeeksInputs(cached)
+      setWeeksError(null)
+      return
+    }
+    let cancelled = false
+    setWeeksInputs(null)
+    setWeeksError(null)
+    void (async () => {
+      try {
+        const v = await loadVectorDaysInputs({ start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        daysCacheRef.current.set(key, v)
+        if (!cancelled) setWeeksInputs(v)
+      } catch (e) {
+        if (!cancelled) setWeeksError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data, weeksRange])
+  const headlineAndCards = useMemo(() => {
+    if (!data || !weeksRange || !weeksInputs || !vectorInputs) return null
+    const common = { zoom: 'weeks' as const, anchorYmd: weeksRange.end, todayYmd: data.todayYmd, people: vectorInputs.people, wages: vectorInputs.wages, sessions: weeksInputs.sessions, ratePerHourByJob: weeksInputs.ratePerHourByJob, assumedHalfJobs: weeksInputs.assumedHalfJobs, jobLabels: weeksInputs.jobLabels }
+    const recorded = buildVectorGrid({ ...common, mode: 'recorded' })
+    const approved = buildVectorGrid({ ...common, mode: 'approved' })
+    const headline = buildHeadline({ recorded, approved })
+    // The week cards (link PR 8): sessions counted by the pay week they fall in.
+    const sessionsByWeek = new Map<string, number>()
+    for (const sess of weeksInputs.sessions) {
+      if (sess.officeJob || !(sess.hours > 0)) continue
+      const wk = payWeekContaining(sess.workDate).start
+      sessionsByWeek.set(wk, (sessionsByWeek.get(wk) ?? 0) + 1)
+    }
+    const cards = buildWeekCards({ headline, recorded, approved, sessionsByWeek, dateRange: formatWeekRangeLabel })
+    // The Crew hours panel (link PR 10): office and bid hours by pay week; the grid keeps only field people.
+    const officeByWeek = new Map<string, number>()
+    for (const sess of weeksInputs.sessions) {
+      if (!sess.officeJob || !(sess.hours > 0)) continue
+      const wk = payWeekContaining(sess.workDate).start
+      officeByWeek.set(wk, (officeByWeek.get(wk) ?? 0) + sess.hours)
+    }
+    return { headline, cards, recorded, approved, officeByWeek }
+  }, [data, weeksRange, weeksInputs, vectorInputs])
+  const headline = headlineAndCards?.headline ?? null
+  // The field's pace by hours (follow-up A): earned per week on recorded time, the way the top line reads it; approved-only reads low while hours wait.
+  const fieldPace = useMemo(() => (data && weeksInputs ? fieldPaceByHours({ sessions: weeksInputs.sessions, ratePerHourByJob: weeksInputs.ratePerHourByJob, windowStart: data.windowStart, todayYmd: data.todayYmd, weeks: BRIDGE_DAYS_BACK / 7 }) : null), [data, weeksInputs])
+
   // The weakest link (link PR 1): Bill and Collect from what the page already reads — the piles from the finance hook, the paces from the window's flows by day.
   const stageInput = useMemo<StageFlowInput | null>(() => {
     if (!data) return null
@@ -370,16 +425,19 @@ export default function Bridge() {
     const paidPerWeek = sumWindow(data.paymentsReceivedByDay) / weeks
     const lateCount = receipts.filter((r) => r.basis === 'late').length + doubtful.length
     const held = thisWeekCall && isStageLink(thisWeekCall.link) ? thisWeekCall.link : null
+    // Build's pace is the larger of built-by-percent and earned-by-hours; Bill's in-rate is what the field earned on recorded time.
+    const build = buildPace ? withFieldPaces(buildPace.stageInput, fieldPace?.earnedPerWeekUsd ?? null) : null
+    const finishedPerWeek = fieldPace?.earnedPerWeekUsd ?? data.totals.earnedUsd / weeks
     return {
       market: demand?.market ?? null,
       sales: demand ? { ...demand.sales, soldPerWeekUsd: buildPace?.soldPerWeekUsd ?? null } : null,
-      fieldPerWeekUsd: buildPace?.builtPerWeekUsd ?? null,
-      bill: fin.data ? { pileUsd: fin.data.unbilled.total, pileCount: fin.data.unbilled.count, inPerWeekUsd: data.totals.earnedUsd / weeks, outPerWeekUsd: billedPerWeek } : null,
+      fieldPerWeekUsd: build?.outPerWeekUsd ?? null,
+      bill: fin.data ? { pileUsd: fin.data.unbilled.total, pileCount: fin.data.unbilled.count, inPerWeekUsd: finishedPerWeek, outPerWeekUsd: billedPerWeek } : null,
       collect: fin.data ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount } : null,
-      build: buildPace?.stageInput ?? null,
+      build,
       heldLinkId: held,
     }
-  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall, buildPace, demand, fieldPace])
   const stageFlow = useMemo(() => (stageInput ? buildStageFlow(stageInput) : null), [stageInput])
   // The pressed link (a stage or a resource); the lit stage is it when it is a stage, else the link.
   const litLink: CallLink | null = pickedStage ?? stageFlow?.linkId ?? null
@@ -392,11 +450,16 @@ export default function Bridge() {
     const weeks = BRIDGE_DAYS_BACK / 7
     if (litStage === 'bill') return fin.data && fin.data.unbilled.count > 0 ? fin.data.unbilled.total / fin.data.unbilled.count : null
     if (litStage === 'collect') return fin.data && fin.data.ar.count > 0 ? fin.data.ar.total / fin.data.ar.count : null
-    if (litStage === 'build') return buildPace && data.crew.fieldHoursWindow > 0 ? buildPace.builtPerWeekUsd / (data.crew.fieldHoursWindow / weeks) : null
+    if (litStage === 'build') {
+      const b = stageInput?.build
+      if (!b) return null
+      if (fieldPace && fieldPace.hoursPerWeek > 0) return b.outPerWeekUsd / fieldPace.hoursPerWeek
+      return data.crew.fieldHoursWindow > 0 ? b.outPerWeekUsd / (data.crew.fieldHoursWindow / weeks) : null
+    }
     if (litStage === 'sales') return buildPace && buildPace.soldJobs > 0 ? buildPace.soldUsd / buildPace.soldJobs : null
     const m = demand?.market
     return m && m.bidsInvited + m.estimatesRequested > 0 ? (m.bidsInvitedUsd + m.estimatesRequestedUsd) / (m.bidsInvited + m.estimatesRequested) : null
-  }, [litStage, data, fin.data, buildPace, demand])
+  }, [litStage, data, fin.data, stageInput, fieldPace, buildPace, demand])
   const dialSpecNow = useMemo(() => (stageInput && litStage ? dialSpec(stageInput, litStage, { perUnitUsd }) : null), [stageInput, litStage, perUnitUsd])
   const dialReading = useMemo(() => {
     if (!dialSpecNow || !stageInput || !litStage || !data) return null
@@ -414,7 +477,9 @@ export default function Bridge() {
   }, [data, vectorInputs])
   const resources = useMemo(() => {
     if (!data || !shownFlow) return null
-    const billers = new Set((vectorInputs?.invoiceSends ?? []).filter((x) => x.userId && x.ymd >= data.windowStart).map((x) => x.userId as string)).size
+    const sends = (vectorInputs?.invoiceSends ?? []).filter((x) => x.ymd >= data.windowStart)
+    const billers = new Set(sends.filter((x) => x.userId).map((x) => x.userId as string)).size
+    const billsWithoutSender = sends.filter((x) => !x.userId).length
     return buildResources({
       linkId: shownFlow.linkId,
       pendingHours: data.crew.pendingClosedHours,
@@ -432,13 +497,14 @@ export default function Bridge() {
       fieldPeople,
       fieldHours7d: data.crew.fieldHours7d,
       billers,
+      billsWithoutSender,
     })
   }, [data, shownFlow, vectorInputs, fieldPeople, buildPace, demand, cashToday, bank, forecast])
   const order = useMemo(() => (orderFor && shownFlow && resources ? buildOrder({ flow: shownFlow, resources, pressedId: orderFor }) : null), [orderFor, shownFlow, resources])
   const closeOrder = useCallback(() => setOrderFor(null), [])
 
   // Everything else waits (link PR 7): the four presses sized from the page's numbers, and the pressed one's line.
-  const reflexes = useMemo(() => (stageInput && data ? buildReflexes({ stageInput, fieldHoursPerWeek: data.crew.fieldHoursWindow > 0 ? data.crew.fieldHoursWindow / (BRIDGE_DAYS_BACK / 7) : null, fieldPeople }) : null), [stageInput, data, fieldPeople])
+  const reflexes = useMemo(() => (stageInput && data ? buildReflexes({ stageInput, fieldHoursPerWeek: fieldPace && fieldPace.hoursPerWeek > 0 ? fieldPace.hoursPerWeek : data.crew.fieldHoursWindow > 0 ? data.crew.fieldHoursWindow / (BRIDGE_DAYS_BACK / 7) : null, fieldPeople }) : null), [stageInput, data, fieldPeople, fieldPace])
   const reflexLineNow = useMemo(() => {
     if (!reflexId || !reflexes || !stageFlow || !stageInput || !profit) return null
     const r = reflexes.find((x) => x.id === reflexId)
@@ -638,56 +704,6 @@ export default function Bridge() {
     })
   }, [data, daysZoom, daysMode, daysRange, daysInputs, vectorInputs])
 
-  const weeksRange = useMemo(() => (data ? vectorRangeFor('weeks', data.todayYmd) : null), [data])
-  useEffect(() => {
-    if (!data || !weeksRange) return
-    const key = `${weeksRange.start}:${weeksRange.end}`
-    const cached = daysCacheRef.current.get(key)
-    if (cached) {
-      setWeeksInputs(cached)
-      setWeeksError(null)
-      return
-    }
-    let cancelled = false
-    setWeeksInputs(null)
-    setWeeksError(null)
-    void (async () => {
-      try {
-        const v = await loadVectorDaysInputs({ start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
-        daysCacheRef.current.set(key, v)
-        if (!cancelled) setWeeksInputs(v)
-      } catch (e) {
-        if (!cancelled) setWeeksError(formatErrorMessage(e))
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [data, weeksRange])
-  const headlineAndCards = useMemo(() => {
-    if (!data || !weeksRange || !weeksInputs || !vectorInputs) return null
-    const common = { zoom: 'weeks' as const, anchorYmd: weeksRange.end, todayYmd: data.todayYmd, people: vectorInputs.people, wages: vectorInputs.wages, sessions: weeksInputs.sessions, ratePerHourByJob: weeksInputs.ratePerHourByJob, assumedHalfJobs: weeksInputs.assumedHalfJobs, jobLabels: weeksInputs.jobLabels }
-    const recorded = buildVectorGrid({ ...common, mode: 'recorded' })
-    const approved = buildVectorGrid({ ...common, mode: 'approved' })
-    const headline = buildHeadline({ recorded, approved })
-    // The week cards (link PR 8): sessions counted by the pay week they fall in.
-    const sessionsByWeek = new Map<string, number>()
-    for (const sess of weeksInputs.sessions) {
-      if (sess.officeJob || !(sess.hours > 0)) continue
-      const wk = payWeekContaining(sess.workDate).start
-      sessionsByWeek.set(wk, (sessionsByWeek.get(wk) ?? 0) + 1)
-    }
-    const cards = buildWeekCards({ headline, recorded, approved, sessionsByWeek, dateRange: formatWeekRangeLabel })
-    // The Crew hours panel (link PR 10): office and bid hours by pay week; the grid keeps only field people.
-    const officeByWeek = new Map<string, number>()
-    for (const sess of weeksInputs.sessions) {
-      if (!sess.officeJob || !(sess.hours > 0)) continue
-      const wk = payWeekContaining(sess.workDate).start
-      officeByWeek.set(wk, (officeByWeek.get(wk) ?? 0) + sess.hours)
-    }
-    return { headline, cards, recorded, approved, officeByWeek }
-  }, [data, weeksRange, weeksInputs, vectorInputs])
-  const headline = headlineAndCards?.headline ?? null
 
   // The Daily profit rate panel (link PR 9): the trend by week, the waterfall, the sources, break-even.
   const profitPanel = useMemo(() => {

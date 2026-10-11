@@ -21,6 +21,10 @@ export const STAGE_ORDER: ReadonlyArray<StageId> = ['market', 'sales', 'build', 
 export const STAGE_HOLD_MARGIN = 1.15
 /** Two stages within this share of each other read as a pair. */
 export const STAGE_PAIR_MARGIN = 0.9
+/** When more than this share of Build's pile is a guess, Build takes the link only by the hold margin. */
+export const BUILD_GUESS_GATE = 1 / 3
+/** The two readings of the field's pace agree when they are within this share of each other; then only one shows. */
+export const PACE_AGREE_MARGIN = 0.05
 
 export const STAGE_META: Record<StageId, { name: string; object: string; action: string; kind: string }> = {
   market: { name: 'Market', object: 'demand', action: 'bring in more asks', kind: 'not enough demand' },
@@ -47,6 +51,22 @@ export type BuildStageInput = PileStageInput & {
   /** Contract on open jobs with no percent, read as half done; drawn grey. */
   guessUsd: number
   guessJobs: number
+  /**
+   * The field's pace read two ways: by the percents (`buildPace.ts`) and by the hours, the dollars the
+   * field earned on recorded time. `outPerWeekUsd` is the larger (`withFieldPaces`); the card names the other.
+   */
+  paces?: { byPercentUsd: number; byHoursUsd: number }
+}
+
+/**
+ * Feed Build the honest pace: the larger of built-by-percent and earned-by-hours. The percents are thin
+ * on most open jobs, so by-percent reads low and would nominate Build on sparsity; the hours do not lie
+ * about how much the field finished.
+ */
+export function withFieldPaces(build: BuildStageInput, byHoursUsd: number | null): BuildStageInput {
+  if (byHoursUsd == null || !(byHoursUsd > 0)) return build
+  const byPercentUsd = build.outPerWeekUsd
+  return { ...build, outPerWeekUsd: Math.max(byPercentUsd, byHoursUsd), paces: { byPercentUsd, byHoursUsd } }
 }
 
 export type CollectStageInput = PileStageInput & { lateCount: number }
@@ -258,17 +278,24 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
     const sub: string[] = []
     if (b.knownJobs > 0) sub.push(`on ${b.knownJobs} ${b.knownJobs === 1 ? 'job that has' : 'jobs that have'} a %`)
     if (b.guessJobs > 0) sub.push(`grey: ${b.guessJobs} ${b.guessJobs === 1 ? 'job has' : 'jobs have'} no %`)
-    byId.set(
-      'build',
-      pileStage('build', b, ['sales sells', 'the field builds'], { headline: `${stageUsd(b.pileUsd)} left to build`, sub, guessShare }, (w) => {
-        if (w == null) return 'no pace to read'
-        if (b.guessUsd > 0 && b.outPerWeekUsd > 0) {
-          const hi = (b.pileUsd + b.guessUsd / 2) / b.outPerWeekUsd
-          return `${Math.round(w)} to ${Math.round(hi)} weeks ${CLEAR_WORDS.build}`
-        }
-        return `${oneDecimal(w)} weeks ${CLEAR_WORDS.build}`
-      }),
-    )
+    const reading = pileStage('build', b, ['sales sells', 'the field builds'], { headline: `${stageUsd(b.pileUsd)} left to build`, sub, guessShare }, (w) => {
+      if (w == null) return 'no pace to read'
+      if (b.guessUsd > 0 && b.outPerWeekUsd > 0) {
+        const hi = (b.pileUsd + b.guessUsd / 2) / b.outPerWeekUsd
+        return `${Math.round(w)} to ${Math.round(hi)} weeks ${CLEAR_WORDS.build}`
+      }
+      return `${oneDecimal(w)} weeks ${CLEAR_WORDS.build}`
+    })
+    // Both readings of the field's pace when they disagree: the larger is the pace, the other is named.
+    if (b.paces) {
+      const { byPercentUsd, byHoursUsd } = b.paces
+      const hoursLead = byHoursUsd >= byPercentUsd
+      const other = hoursLead ? byPercentUsd : byHoursUsd
+      const agree = Math.abs(byHoursUsd - byPercentUsd) <= Math.max(byHoursUsd, byPercentUsd) * PACE_AGREE_MARGIN
+      reading.flow[1] = { who: 'the field builds', usd: perWeek(b.outPerWeekUsd), tail: agree ? 'a week' : hoursLead ? 'a week by hours' : 'a week by the percents' }
+      if (!agree) reading.flow.push({ who: hoursLead ? 'by the percents' : 'by hours', usd: perWeek(other), tail: 'a week' })
+    }
+    byId.set('build', reading)
   } else byId.set('build', notReadable('build'))
 
   if (input.bill) {
@@ -290,7 +317,13 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
   // The rule: the pile stage with the most weeks to clear. A held call stands unless overtaken by a clear margin.
   const candidates = STAGE_ORDER.map((id) => byId.get(id) as StageReading).filter((s) => s.readable && s.weeks != null)
   const sorted = [...candidates].sort((a, b) => (b.weeks as number) - (a.weeks as number))
-  const nominated = sorted[0] ?? null
+  let nominated = sorted[0] ?? null
+  // A thin reading does not take the link: with more than a third of Build's pile a guess, Build leads only by the hold margin.
+  let thinBuild: StageReading | null = null
+  if (nominated && nominated.id === 'build' && nominated.pile.guessShare > BUILD_GUESS_GATE && sorted[1] && (nominated.weeks as number) < (sorted[1].weeks as number) * STAGE_HOLD_MARGIN) {
+    thinBuild = nominated
+    nominated = sorted[1]
+  }
   const held = input.heldLinkId ? candidates.find((s) => s.id === input.heldLinkId) ?? null : null
   let link: StageReading | null = nominated
   let heldStands = false
@@ -307,7 +340,11 @@ export function buildStageFlow(input: StageFlowInput): StageFlow {
     const s = byId.get(id) as StageReading
     if (!s.readable || s.weeks == null) return s
     if (link && s.id === link.id) {
-      return { ...s, isLink: true, tone: 'link' as const, badge: pair ? `the weakest link, with ${pair.name}` : 'the weakest link' }
+      const extra = s.id === 'build' && s.pile.guessShare > 0 ? ' · set the %s' : ''
+      return { ...s, isLink: true, tone: 'link' as const, badge: `${pair ? `the weakest link, with ${pair.name}` : 'the weakest link'}${extra}` }
+    }
+    if (thinBuild && s.id === thinBuild.id && link && s.id !== link.id) {
+      return { ...s, tone: 'pair' as const, badge: `reads ${oneDecimal(s.weeks as number)} weeks on a thin % · set the %s` }
     }
     if (link && heldStands && nominated && s.id === nominated.id) {
       return { ...s, tone: 'plain' as const, badge: `reads ${oneDecimal(s.weeks as number)} weeks · the call holds ${link.name}` }
