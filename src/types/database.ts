@@ -4534,6 +4534,62 @@ export type Database = {
           },
         ]
       }
+      bridge_calls: {
+        Row: {
+          called_by: string | null
+          called_by_name: string
+          called_on: string
+          created_at: string
+          id: string
+          link: string
+          measures: Json
+          moves: Json
+          note: string | null
+          outcome: string | null
+          outcome_at: string | null
+          outcome_note: string | null
+          week_start: string
+        }
+        Insert: {
+          called_by?: string | null
+          called_by_name?: string
+          called_on: string
+          created_at?: string
+          id?: string
+          link: string
+          measures?: Json
+          moves?: Json
+          note?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_note?: string | null
+          week_start: string
+        }
+        Update: {
+          called_by?: string | null
+          called_by_name?: string
+          called_on?: string
+          created_at?: string
+          id?: string
+          link?: string
+          measures?: Json
+          moves?: Json
+          note?: string | null
+          outcome?: string | null
+          outcome_at?: string | null
+          outcome_note?: string | null
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bridge_calls_called_by_fkey"
+            columns: ["called_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cashapp_aliases: {
         Row: {
           counterparty: string
