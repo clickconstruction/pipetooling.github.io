@@ -57,6 +57,10 @@ import { buildWeekCards } from '../lib/bridge/weekCard'
 import { formatWeekRangeLabel } from '../lib/people/approvalsQueue'
 import { buildProfitPanel } from '../lib/bridge/profitPanel'
 import { BridgeProfitPanel } from '../components/bridge/BridgeProfitPanel'
+import { buildOwedPanel } from '../lib/bridge/owedPanel'
+import { BridgeOwedPanel } from '../components/bridge/BridgeOwedPanel'
+import { buildHoursPanel } from '../lib/bridge/hoursPanel'
+import { BridgeHoursPanel } from '../components/bridge/BridgeHoursPanel'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -665,7 +669,14 @@ export default function Bridge() {
       sessionsByWeek.set(wk, (sessionsByWeek.get(wk) ?? 0) + 1)
     }
     const cards = buildWeekCards({ headline, recorded, approved, sessionsByWeek, dateRange: formatWeekRangeLabel })
-    return { headline, cards }
+    // The Crew hours panel (link PR 10): office and bid hours by pay week; the grid keeps only field people.
+    const officeByWeek = new Map<string, number>()
+    for (const sess of weeksInputs.sessions) {
+      if (!sess.officeJob || !(sess.hours > 0)) continue
+      const wk = payWeekContaining(sess.workDate).start
+      officeByWeek.set(wk, (officeByWeek.get(wk) ?? 0) + sess.hours)
+    }
+    return { headline, cards, recorded, approved, officeByWeek }
   }, [data, weeksRange, weeksInputs, vectorInputs])
   const headline = headlineAndCards?.headline ?? null
 
@@ -689,6 +700,42 @@ export default function Bridge() {
       weekLabel: md,
     })
   }, [data, profit, headline])
+
+  // The Money owed and Crew hours panels (link PR 10).
+  const owedPanel = useMemo(() => {
+    if (!data || !fin.data) return null
+    return buildOwedPanel({
+      todayYmd: data.todayYmd,
+      cashUsd: cashToday,
+      ar: { total: fin.data.ar.total, count: fin.data.ar.count, items: fin.data.ar.items },
+      arCollections: { total: fin.data.arCollections.total, count: fin.data.arCollections.count },
+      ap: { total: fin.data.ap.total, supplyTotal: fin.data.ap.supplyTotal, payrollTotal: fin.data.ap.payrollTotal, subLaborTotal: fin.data.ap.subLaborTotal, upcomingTotal: fin.data.ap.upcomingTotal },
+      unbilled: { total: fin.data.unbilled.total, count: fin.data.unbilled.count },
+      bills,
+      noContractJobs: data.earned.noRevenueJobs.length,
+      noPctJobs: buildPace?.pile.guessJobs ?? data.earned.assumedHalfJobs.length,
+      pendingClosedHours: data.crew.pendingClosedHours,
+      unattributedNoncard: data.hygiene.unattributedNoncard,
+      dayLabel: md,
+    })
+  }, [data, fin.data, cashToday, bills, buildPace])
+  const hoursPanel = useMemo(() => {
+    if (!data || !headlineAndCards) return null
+    return buildHoursPanel({
+      recorded: headlineAndCards.recorded,
+      approved: headlineAndCards.approved,
+      officeByWeek: headlineAndCards.officeByWeek,
+      todayYmd: data.todayYmd,
+      pendingClosedHours: data.crew.pendingClosedHours,
+      pendingClosedSessions: data.crew.pendingClosedSessions,
+      officeBidHours7d: data.crew.officeBidHours7d,
+      jobsWorked: data.jobsWorked,
+      noContractJobs: data.earned.noRevenueJobs.length,
+      fieldEarnedPerHour: data.crew.fieldHoursWindow > 0 ? data.totals.earnedUsd / data.crew.fieldHoursWindow : null,
+      thisWeekRecordedUsd: headlineAndCards.headline.thisWeek.recordedUsd,
+      weekLabel: md,
+    })
+  }, [data, headlineAndCards])
 
   // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
   const truth = useMemo<TruthCheck | null>(() => {
@@ -948,8 +995,11 @@ export default function Bridge() {
                 {profit.contributionMargin != null && <> · {Math.round(profit.contributionMargin * 100)}% of earned is margin</>}
               </div>
             </button>
-            <div style={panel}>
-              <div style={label}>Money owed</div>
+            <button type="button" onClick={() => setOpenCard((c) => (c === 'owed' ? null : 'owed'))} aria-expanded={openCard === 'owed'} data-testid="bridge-card-owed" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'owed' ? '2px solid #2563eb' : panel.border, padding: openCard === 'owed' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={label}>Money owed</div>
+                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'owed' ? '▴ close' : '▾ chart'}</span>
+              </div>
               {fin.data ? (
                 <>
                   <div style={big}>
@@ -962,18 +1012,23 @@ export default function Bridge() {
               ) : (
                 <div style={det}>{fin.loading ? 'Loading…' : fin.error ?? '—'}</div>
               )}
-            </div>
-            <div style={panel}>
-              <div style={label}>Crew hours · last 7 days</div>
+            </button>
+            <button type="button" onClick={() => setOpenCard((c) => (c === 'hours' ? null : 'hours'))} aria-expanded={openCard === 'hours'} data-testid="bridge-card-hours" style={{ ...panel, textAlign: 'left', font: 'inherit', color: 'inherit', cursor: 'pointer', border: openCard === 'hours' ? '2px solid #2563eb' : panel.border, padding: openCard === 'hours' ? 'calc(0.7rem - 1px) calc(0.9rem - 1px)' : panel.padding }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <div style={label}>Crew hours · last 7 days</div>
+                <span style={{ marginLeft: 'auto', ...det }}>{openCard === 'hours' ? '▴ close' : '▾ chart'}</span>
+              </div>
               <div style={big}>
                 {hrs(data.crew.fieldHours7d)} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 400 }}>approved field</span>
               </div>
               <div style={det}>
                 office + bid <b style={{ color: 'var(--text)' }}>{hrs(data.crew.officeBidHours7d)}</b> · awaiting approval <b style={{ color: data.crew.pendingClosedHours > 0 ? 'var(--text-amber-800)' : 'var(--text)' }}>{hrs(data.crew.pendingClosedHours)}</b> ({data.crew.pendingClosedSessions}) · {data.jobsWorked} jobs worked in 8 weeks
               </div>
-            </div>
+            </button>
           </div>
           {openCard === 'profit' && profitPanel && <BridgeProfitPanel panel={profitPanel} onClose={() => setOpenCard(null)} />}
+          {openCard === 'owed' && owedPanel && <BridgeOwedPanel panel={owedPanel} onClose={() => setOpenCard(null)} />}
+          {openCard === 'hours' && hoursPanel && <BridgeHoursPanel panel={hoursPanel} onClose={() => setOpenCard(null)} />}
 
           {/* Net position */}
           <div style={{ ...panel, marginTop: '0.6rem' }}>
