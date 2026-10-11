@@ -143,7 +143,7 @@ In place of a bare "waiting 6 d", the header's third line says whose move it is 
 words (the owner, 2026-10-11): an orange **Our court · 6 d** when the last word was theirs (it counts from
 their last message), a green **Their court · 2 d** when the last word was ours (it counts from our last
 message, or reads *Their court · until Wed Oct 7* while a promise runs), and beside it two stamps,
-**Them** text · Sep 26 *+6* and **Us** email · Sep 19 *+13*: an older stamp is its date and a small mark for how many days ago, a stamp from today keeps its time, *today · 11:30 AM*, and the block's hover card spells each out in full, *text · Sat, Sep 26 · 2:14 PM · 6 days ago*, then draws **a small calendar** of the last six weeks (or back to the first message), S M T W T F S, each day colored by who wrote, blue us, green them, split for both, a yellow dot for a team note, today outlined, a count on a day with more than one, so who wrote and when reads at a glance (the owner, 2026-10-11; the owner's pick 4 of five compact forms for the stamp; the folded one-line form uses the same compact date and leaves the mark off, since the mark between the stamps carries the difference) (the owner, 2026-10-11; the same on the Follow up row's snippet and the job card's list, while a line in the thread keeps the bare time under its day divider). On the folded header the two stamps share one line and a small mark between them says how far apart they are, **Us against Them**: *−7* when our last word is seven days older than theirs (orange, we are behind), *+2* when ours is the newer one (green), hours under a day; its hover card says it in words (the owner, 2026-10-11). A reply, an email or a call
+**Them** text · Sep 26 *+6* and **Us** email · Sep 19 *+13*: an older stamp is its date and a small mark for how many days ago, a stamp from today keeps its time, *today · 11:30 AM*, and the block's hover card spells each out in full, *text · Sat, Sep 26 · 2:14 PM · 6 days ago*, then draws **a small calendar** of the last six weeks (or back to the first message), S M T W T F S with each week's dates at its right (*Sep 27 – Oct 3 · this week*), each day colored by who wrote, blue us, green them, split for both, a yellow dot for a team note, today outlined, a count on a day with more than one, so who wrote and when reads at a glance (the owner, 2026-10-11; the owner's pick 4 of five compact forms for the stamp; the folded one-line form uses the same compact date and leaves the mark off, since the mark between the stamps carries the difference) (the owner, 2026-10-11; the same on the Follow up row's snippet and the job card's list, while a line in the thread keeps the bare time under its day divider). On the folded header the two stamps share one line and a small mark between them says how far apart they are, **Us against Them**: *−7* when our last word is seven days older than theirs (orange, we are behind), *+2* when ours is the newer one (green), hours under a day; its hover card says it in words (the owner, 2026-10-11). A reply, an email or a call
 from us moves the ball to their court; their next message moves it back. A note for the team moves
 nothing, since they never saw it. The Follow up rows and the Messages list carry the same court word in
 small, so the queue reads "Our court · 6 d" without opening the thread. Snoozed and the promise stay as
@@ -163,7 +163,7 @@ contact: what, by when, who marked it, when, when it was settled and the note th
 
 ## Every control explains itself on hover
 
-Hovering any control (and tabbing to it) opens a small white card, the look of a little window: the
+Hovering any control (and tabbing to it) opens a small white card below it (never above: a card that would run past the bottom slides up only as far as it must, the owner, 2026-10-11), the look of a little window: the
 control's name, one sentence on what it does, and in quieter type what it changes elsewhere (the owner,
 2026-10-11: "like a modal"). The rule for the words: where the row goes, what counts change, what the
 thread keeps, what undoes it. Written so far: Open, Snoozed, Done, Mark STOP and Clear opt-out, Call in
@@ -406,3 +406,7 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.44, 2026-10-11**: the Them and Us card draws a minimalist calendar of the last six weeks, S M T W T F S,
   each day colored by who wrote (blue us, green them, split both), a yellow dot for a team note, today outlined,
   days to come dashed, a count on a busy day (the owner's ask: who communicated and when, at a glance).
+- **v1.45, 2026-10-11**: the card loses its two sentences (the title, the two stamps and the calendar are the card),
+  and each week is named at its right by its dates, *Sep 27 – Oct 3 · this week* (the owner's ask).
+- **v1.46, 2026-10-11**: a hover card always opens below its control; when it would run past the bottom it slides
+  up only as far as it must, never above the control (the owner: it will never fit up).
