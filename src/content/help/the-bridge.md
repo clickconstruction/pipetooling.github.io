@@ -5,17 +5,19 @@ roles: dev
 keywords: bridge, vectors, who moved the number, by the day, profitable day, red day, green day, truth check, paper vs bank, net position, cash forecast, cash on hand, cash floor, bills due, receipts expected, profit rate, overhead, earned revenue
 order: 62
 ---
-1. Type today's bank balance in **Cash on hand today** and press **Set**. The cash line starts from it.
-2. Read the cash readout: the lowest cash point in the next 8 weeks, and whether it clears your floor.
+1. Read the top line. The big number is this week's field contribution. The two lights under it say whether net position is up and whether cash clears your floor.
+2. Read the cash readout: the lowest cash point in the next 8 weeks, and whether it clears your floor. Cash on hand comes from the bank.
 3. Read the Truth check verdict: *steer by the profit rate*, *bill it to see it*, or *not a number to steer by yet*.
 
 **The Bridge** answers three questions on one page: where we stand, where cash is going, and what would change it. The Bridge runs on one clock: days.
 
 The Bridge is for devs only for now. You open it from the compass icon in the header, or **Bridge** in the ☰ menu. The page's address is `/bridge`.
 
-## First, type cash on hand
+## Cash on hand comes from the bank
 
-The app doesn't sync a bank balance, so the cash line starts from a number you type. Under the cash chart, you enter today's bank balance in **Cash on hand today** and press {{button:outline|Set}}. The number is remembered with the date. On later days the page rolls it forward through the bank transactions since. The Data Gaps strip says which day you typed it. You retype it whenever you look at the bank.
+The page reads the bank's balance when it opens. Under the cash chart, the cash row says the balance and the time it was read. The accounts with money are named beside it. Accounts at zero are only counted. Press {{button:outline|Read again}} to read the bank once more. The cash line and the net position line start from that figure.
+
+When the bank cannot be read, the row shows the reason. You then type today's balance in **Cash on hand today** and press {{button:outline|Set}}. The number is remembered with the date. On later days the page rolls it forward through the bank transactions since. Once the bank answers again, the typed figure steps aside. An amber line then says how far the typed figure drifted from the bank, if it did.
 
 You set the **Floor** the same way. The floor is the cash level you never want to go under. The floor starts at $5,000.
 
@@ -105,7 +107,7 @@ When the amber strip shows, the numbers read low or thin. The gaps are these:
 - unsorted bank transfers or card purchases
 - open jobs with no % complete, which are assumed half done
 - worked jobs with no contract price
-- a typed cash figure that's a few days old
+- a typed cash figure that's a few days old, when the bank could not be read
 
 Insurance, rent, and card bills aren't scheduled as bills yet. These bills arrive as bank transfers and only show once sorted.
 

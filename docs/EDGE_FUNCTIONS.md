@@ -4779,6 +4779,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 **Purpose**: Live Mercury account balances for the Balance Sheet cash line: `GET /accounts` from the Mercury API, filters out archived accounts, and returns per-account `currentBalance` / `availableBalance` plus totals. Read-only — nothing is written to the database.
 
+**Callers**: Banking's Mercury review tab (the Balance Sheet cash line) and, since v2.5218, the Bridge (`src/lib/bridge/mercuryCash.ts`: cash on hand for the net-position line and the cash forecast, read on load and on **Refresh**; the typed figure stands when the call fails).
+
 **Endpoint**: `POST /functions/v1/get-mercury-account-balances` (empty JSON body)
 
 **Authentication**: `verify_jwt = false`; in-handler JWT + Banking role gate (`dev` / `master_technician` / `controller` — `ALLOWED_ROLES` mirrors `public.is_banking_staff()`; assistant dropped in v2.3305 when Banking became controller and above; v2.2920 had added controller, which was missing before, so the Balance Sheet cash line 403'd for the one non-dev role the Category Review tab admits).
