@@ -15,6 +15,8 @@ import { BridgeVectorsPanel } from '../components/bridge/BridgeVectorsPanel'
 import { loadBridgeVectorInputs, type BridgeVectorInputs } from '../lib/bridge/loadBridgeVectors'
 import { buildVectors } from '../lib/bridge/vectors'
 import { BridgeVectorDaysPanel } from '../components/bridge/BridgeVectorDaysPanel'
+import { BridgeHeadline } from '../components/bridge/BridgeHeadline'
+import { buildHeadline, cashLight, netPositionLight } from '../lib/bridge/headline'
 import { loadVectorDaysInputs, type VectorDaysInputs } from '../lib/bridge/loadVectorDays'
 import { buildVectorGrid, monthStartOf, vectorAnchorStep, vectorRangeFor, vectorRangeLabel, type VectorTimeMode, type VectorZoom } from '../lib/bridge/vectorDays'
 import { readVectorDaysMode, writeVectorDaysMode } from '../lib/bridge/vectorDaysModeStorage'
@@ -62,6 +64,9 @@ export default function Bridge() {
   const [daysInputs, setDaysInputs] = useState<VectorDaysInputs | null>(null)
   const [daysError, setDaysError] = useState<string | null>(null)
   const daysCacheRef = useRef(new Map<string, VectorDaysInputs>())
+  // The top line (v2.5216): the last 13 pay weeks' sessions, the Weeks zoom's own range, through the same cache.
+  const [weeksInputs, setWeeksInputs] = useState<VectorDaysInputs | null>(null)
+  const [weeksError, setWeeksError] = useState<string | null>(null)
   const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
 
   useEffect(() => {
@@ -282,6 +287,38 @@ export default function Bridge() {
     })
   }, [data, daysZoom, daysMode, daysRange, daysInputs, vectorInputs])
 
+  const weeksRange = useMemo(() => (data ? vectorRangeFor('weeks', data.todayYmd) : null), [data])
+  useEffect(() => {
+    if (!data || !weeksRange) return
+    const key = `${weeksRange.start}:${weeksRange.end}`
+    const cached = daysCacheRef.current.get(key)
+    if (cached) {
+      setWeeksInputs(cached)
+      setWeeksError(null)
+      return
+    }
+    let cancelled = false
+    setWeeksInputs(null)
+    setWeeksError(null)
+    void (async () => {
+      try {
+        const v = await loadVectorDaysInputs({ start: weeksRange.start, end: weeksRange.end, todayYmd: data.todayYmd, officeJobLedgerId: data.officeJobLedgerId })
+        daysCacheRef.current.set(key, v)
+        if (!cancelled) setWeeksInputs(v)
+      } catch (e) {
+        if (!cancelled) setWeeksError(formatErrorMessage(e))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [data, weeksRange])
+  const headline = useMemo(() => {
+    if (!data || !weeksRange || !weeksInputs || !vectorInputs) return null
+    const common = { zoom: 'weeks' as const, anchorYmd: weeksRange.end, todayYmd: data.todayYmd, people: vectorInputs.people, wages: vectorInputs.wages, sessions: weeksInputs.sessions, ratePerHourByJob: weeksInputs.ratePerHourByJob, assumedHalfJobs: weeksInputs.assumedHalfJobs, jobLabels: weeksInputs.jobLabels }
+    return buildHeadline({ recorded: buildVectorGrid({ ...common, mode: 'recorded' }), approved: buildVectorGrid({ ...common, mode: 'approved' }) })
+  }, [data, weeksRange, weeksInputs, vectorInputs])
+
   // Truth check: paper profit vs the net position change over the chart's days — flows only, so it reads before cash is typed.
   const truth = useMemo<TruthCheck | null>(() => {
     if (!data) return null
@@ -323,6 +360,9 @@ export default function Bridge() {
       ? `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — stays above your ${shortK(forecast.floorUsd)} floor`
       : `Lowest point: ${shortK(forecast.lowest.cashUsd)} on ${md(forecast.lowest.ymd)} — ${shortK(forecast.floorUsd - forecast.lowest.cashUsd)} under your ${shortK(forecast.floorUsd)} floor · ${forecast.daysUnderFloor} day${forecast.daysUnderFloor === 1 ? '' : 's'} below it`
     : ''
+  const typedDaysAgo = data?.cashSetting ? Math.round((Date.parse(`${data.todayYmd}T00:00:00Z`) - Date.parse(`${data.cashSetting.asOfYmd}T00:00:00Z`)) / 86_400_000) : null
+  const netLight = netPositionLight(netToday != null && netStart != null ? { deltaUsd: netToday - netStart, todayUsd: netToday, startLabel: windowStartLabel, paperProfitUsd: truth?.paper.profitUsd ?? null, billingLagUsd: truth?.billingLagUsd ?? null } : null)
+  const cashLightRead = cashLight(forecast && data ? { lowestUsd: forecast.lowest.cashUsd, lowestLabel: md(forecast.lowest.ymd), floorUsd: forecast.floorUsd, clearsFloor: forecast.clearsFloor, daysUnderFloor: forecast.daysUnderFloor, typedLabel: data.cashSetting ? md(data.cashSetting.asOfYmd) : null, typedDaysAgo } : null)
   const billsByDay = groupByDay(bills)
   const receiptsByDay = groupByDay(receipts)
 
@@ -340,7 +380,10 @@ export default function Bridge() {
         <p style={det}>{loading ? 'Reading the last 8 weeks — sessions, bank flows, invoices, payments, the overhead pool…' : '—'}</p>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem' }}>
+          {/* The top line (v2.5216): contribution per week, the two constraints as lights */}
+          <BridgeHeadline headline={headline} loading={headline == null && weeksError == null && vectorError == null} error={weeksError ?? vectorError} net={netLight} cash={cashLightRead} />
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
             <div style={panel}>
               <div style={label}>Daily profit rate</div>
               <div style={{ ...big, color: climbColor }}>

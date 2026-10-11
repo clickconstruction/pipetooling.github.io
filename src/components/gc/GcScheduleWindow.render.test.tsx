@@ -13,6 +13,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcScheduleWindow } from './GcScheduleWindow'
+import type { ScheduleFollowUp } from './GcSchedule'
 import { GcCompanyOpenerContext } from './gcCompanyOpener'
 import {
   addScheduleActivity,
@@ -36,7 +37,7 @@ import {
   undoScheduleMove,
 } from '../../lib/gc/scheduleIo'
 import { addDays } from '../../lib/gc/building'
-import { callList } from '../../lib/gc/schedule/callList'
+import { callList, callListFollowPeople } from '../../lib/gc/schedule/callList'
 import { chartHolds } from '../../lib/gc/schedule/chartHolds'
 import { moveRecord, planMove } from '../../lib/gc/schedule/moves'
 import { draftSchedule, scheduleMeasures } from '../../lib/gc/schedule/schedule'
@@ -107,8 +108,8 @@ const withJob = (id: string, change: (p: GcProject) => GcProject): GcState => ({
 /** `loadSchedule`'s answer for one job of a state. */
 const readOf = (st: GcState, id: string, version: number | null = 3) => ({ state: st, project: job(st, id), version })
 
-function openWindow(project: GcProject, onClose = vi.fn(), canMove = false) {
-  const view = render(<GcScheduleWindow state={s} project={project} by="Robert Douglas" canMove={canMove} onClose={onClose} />)
+function openWindow(project: GcProject, onClose = vi.fn(), canMove = false, followUp?: ScheduleFollowUp) {
+  const view = render(<GcScheduleWindow state={s} project={project} by="Robert Douglas" canMove={canMove} onClose={onClose} {...(followUp ? { followUp } : {})} />)
   return { ...view, onClose, dialog: () => screen.getByRole('dialog', { name: `${project.name}: the schedule` }) }
 }
 const toolbar = () => document.querySelector('[data-tour="gc-gantt-toolbar"]') as HTMLElement
@@ -358,14 +359,14 @@ describe('the call list in the window (7c-ii)', () => {
   const fairOaks = job(s, 'fairoaksd')
   const lineOf = (label: string) => scheduleMeasures(s, fairOaks).items.find((i) => i.label === label)!.activity.lineId
   /** Fair Oaks D grouped by company, where the chart draws who to call. */
-  async function byCompany(st: GcState = s) {
+  async function byCompany(st: GcState = s, followUp?: ScheduleFollowUp) {
     vi.mocked(loadSchedule).mockResolvedValue(readOf(st, 'fairoaksd'))
-    const view = openWindow(job(st, 'fairoaksd'))
+    const view = openWindow(job(st, 'fairoaksd'), vi.fn(), false, followUp)
     fireEvent.click(within(await screen.findByRole('group', { name: 'Group the chart' })).getByRole('button', { name: 'By company' }))
     return { ...view, list: () => screen.getByRole('region', { name: 'Who to call about the schedule' }) }
   }
 
-  it('lists who to call with Call only: no Follow up and no Work the list until the Board lane’s sheet', async () => {
+  it('lists who to call with Call only: no Follow up and no Work the list when the page gives no log', async () => {
     const { list } = await byCompany()
     const calls = list().querySelectorAll('a[href^="tel:"]')
     expect(calls.length).toBe(callList(s, fairOaks, chartHolds(s, fairOaks)).count)
@@ -389,6 +390,31 @@ describe('the call list in the window (7c-ii)', () => {
     const first = callList(s, fairOaks, chartHolds(s, fairOaks)).people.find((p) => onChart.has(p.company))!
     fireEvent.click(within(list()).getAllByText('Their work')[0]!)
     expect((screen.getByRole('combobox', { name: 'One company' }) as HTMLSelectElement).value).toBe(first.company)
+  })
+
+  it('with the page’s log, Work the list walks the call list on the Follow up sheet, over the window (B2b-viii-a)', async () => {
+    const followUp: ScheduleFollowUp = { writes: { logAsk: vi.fn(), logCustomer: vi.fn(), recordPromise: vi.fn() }, me: 'Robert Douglas' }
+    const { list, onClose } = await byCompany(s, followUp)
+    fireEvent.click(within(list()).getByRole('button', { name: 'Work the list' }))
+    const sheet = screen.getByRole('dialog', { name: `Follow up: ${fairOaks.name}` })
+    const nav = within(sheet).getByRole('navigation', { name: 'People to follow up' })
+    expect(within(nav).getAllByRole('button').length).toBe(callListFollowPeople(s, fairOaks, chartHolds(s, fairOaks)).length)
+    // Escape closes the sheet, not the schedule under it.
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(screen.queryByRole('dialog', { name: `Follow up: ${fairOaks.name}` })).toBeNull()
+    expect(onClose).not.toHaveBeenCalled()
+    // A person's Follow up opens the sheet at them.
+    fireEvent.click(within(list()).getAllByRole('button', { name: 'Follow up' })[0]!)
+    expect(within(screen.getByRole('dialog', { name: `Follow up: ${fairOaks.name}` })).getByRole('heading', { name: /^Follow up with / })).toBeTruthy()
+  })
+
+  it('the opened bar’s company has Follow up with the page’s log', async () => {
+    const followUp: ScheduleFollowUp = { writes: { logAsk: vi.fn(), logCustomer: vi.fn(), recordPromise: vi.fn() }, me: null }
+    const { container, list } = await byCompany(s, followUp)
+    fireEvent.click(within(list()).getByText('Lighting is behind: 40% done against 48% in the plan. It is due Fri Oct 23.'))
+    const card = container.querySelector(`[data-gc-opened-activity="${lineOf('Lighting')}"]`) as HTMLElement
+    fireEvent.click(within(card).getByRole('button', { name: 'Follow up' }))
+    expect(within(screen.getByRole('dialog', { name: `Follow up: ${fairOaks.name}` })).getByRole('heading', { name: 'Follow up with Marcus Bell' })).toBeTruthy()
   })
 
   it('has no call list on a job not being built', async () => {

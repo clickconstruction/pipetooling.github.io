@@ -3,7 +3,7 @@ import type { PriceCardHandle } from './usePriceCard'
 import { createPortal } from 'react-dom'
 import { aboutMoney, isHole, money, priceStanding, type GcAction, type GcProject, type GcState, type TradeStanding, type TradeStandingRow } from '../../lib/gcMode/gcModel'
 import { Btn } from './gcUi'
-import { GcFollowUpSheet } from './GcFollowUpSheet'
+import { GcFollowUpSheet } from './GcFollowUpSheet.proto'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 
 /**

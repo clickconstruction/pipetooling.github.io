@@ -7,7 +7,7 @@
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { GcFollowUpSheet } from './GcFollowUpSheet'
+import { GcFollowUpSheet } from './GcFollowUpSheet.proto'
 import { initialGcState } from '../../lib/gcMode/gcFixture'
 import { gcReducer } from '../../lib/gcMode/gcReducer'
 import { addDays } from '../../lib/gcMode/gcBuilding'

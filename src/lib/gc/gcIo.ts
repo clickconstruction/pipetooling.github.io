@@ -18,7 +18,7 @@ import type { BoardRows } from './boardRows'
 import type { TradeEmailAnswer } from './tradeEmail'
 import type { ChangeOrderDraft, ChangeOrderRow, ChangeRequestDraft, ChangeRequestRow } from './changeOrderRows'
 import { gcProjectFromRows, questionRowOf, type GcProjectRows, type GcProjectView } from './projectRows'
-import type { DeclineReason, GcLostWhy, OwnerRetainageStep, ScopeBookEdit, ScopeBookStore, ScopeExclusion, TradeChangeRequest } from './types'
+import type { DeclineReason, GcLostWhy, OwnerRetainageStep, PromiseKind, ScopeBookEdit, ScopeBookStore, ScopeExclusion, TradeChangeRequest } from './types'
 import { scopeWordKey } from './scopeBook'
 import type { OwnerBillingRows } from './ownerBillingRows'
 import { gcCustomerEmailCopyKinds } from '../../../supabase/functions/_shared/gcCustomerEmails'
@@ -948,15 +948,33 @@ export async function logGcAskContact(line: { companyId: string; inviteId: strin
  * One line in a customer's call log (the Board's B2b-v-ii, `gc_customer_contacts`): a call, a text, an email or a note,
  * logged on the customer window's Activity. Who logged it and when are the table's: the sign-in and the clock.
  */
-export async function logGcCustomerContact(line: { customerId: string; on: string; byName: string; how: 'call' | 'text' | 'email'; note: string }): Promise<void> {
+export async function logGcCustomerContact(line: { customerId: string; projectId?: string | null; on: string; byName: string; how: 'call' | 'text' | 'email'; note: string }): Promise<void> {
   taken(
     await supabase
       .from('gc_customer_contacts')
-      .insert({ customer_id: line.customerId, contacted_on: line.on, by_name: line.byName, how: line.how, note: line.note })
+      .insert({ customer_id: line.customerId, ...(line.projectId ? { project_id: line.projectId } : {}), contacted_on: line.on, by_name: line.byName, how: line.how, note: line.note })
       .select('id')
       .single(),
     'log the contact',
   )
+}
+
+/**
+ * A day a company gave us for something other than a quote (the Board's B2b-viii-a, the Follow up sheet's Call): `gc_record_promise`
+ * moves the open promise for the same company, kind, job and trade, keeping its old day, or writes a new one with `what`.
+ * Written down by the office.
+ */
+export async function recordGcTradePromise(promise: { companyId: string; kind: PromiseKind; projectId: string | null; packageId: string | null; dueOn: string; what: string }): Promise<string> {
+  const p = {
+    companyId: promise.companyId,
+    kind: promise.kind,
+    dueOn: promise.dueOn,
+    source: 'office',
+    what: promise.what,
+    ...(promise.projectId ? { projectId: promise.projectId } : {}),
+    ...(promise.packageId ? { packageId: promise.packageId } : {}),
+  }
+  return taken(await supabase.rpc('gc_record_promise', { p: p as unknown as Json }), 'write down the day')
 }
 
 /** The office takes a company's no by phone: it will not or cannot do it, with the reason kept on the ask. */

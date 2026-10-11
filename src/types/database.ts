@@ -30338,6 +30338,10 @@ export type Database = {
         Returns: undefined
       }
       gc_mark_bid_sent: { Args: { p_project_id: string }; Returns: undefined }
+      gc_mark_company_coi_good: {
+        Args: { p_paper_id: string }
+        Returns: undefined
+      }
       gc_mark_lost: {
         Args: {
           p_note?: string
