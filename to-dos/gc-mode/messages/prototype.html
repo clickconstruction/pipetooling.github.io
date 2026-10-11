@@ -134,6 +134,8 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .court.ours{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}.court.ours i{background:var(--warn)}
 .court.theirs{color:#1a7f3c;border-color:#bfe3c9;background:#eef7ea}.court.theirs i{background:#1a7f3c}
 .court.none{color:var(--text-muted)}
+button.court{cursor:pointer;line-height:inherit}button.court:hover{filter:brightness(.97)}
+.whopick .ph b{color:var(--text)}
 .stamps{margin-left:auto;display:grid;grid-template-columns:auto auto;column-gap:8px;row-gap:1px;font-size:12px;color:var(--text-muted);text-align:right;flex-shrink:0;align-self:flex-start}
 .stamps b{font-weight:600;color:var(--text)}.stamps span{white-space:nowrap}
 .hdr .row3{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin:6px 0 0}.hdr .row3 .court,.hdr .row3>button{margin-top:1px}
@@ -393,17 +395,6 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .tip .leg .ctl{flex:none;margin-top:1px;cursor:default;font-size:12px;padding:2px 8px}
 .tip .leg .ctl.quiet{padding:2px 4px}
 .tip .leg .or{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:-2px}
-.tip .leg.owed{gap:4px}
-.tip .leg.owed .intro{display:block;font-size:13px;color:var(--text-muted);margin-bottom:4px}.tip .leg.owed .intro b{display:inline;color:var(--text)}
-.tip .leg.owed .opt{margin:0 -6px;padding:5px 6px;border-radius:8px;align-items:center;gap:10px}
-.tip .leg.owed .ctl{width:104px;justify-content:center;text-align:center;display:inline-flex;align-items:center}
-.tip .leg.owed .ctl.none{border:0;color:var(--text-muted)}
-.tip .leg.owed .w{display:flex;flex-direction:column;gap:1px}
-.tip .leg.owed .what{font-size:13px;color:var(--text)}
-.tip .leg.owed .after{font-size:12px;color:var(--text-muted)}
-.tip .leg.owed .opt.hl{background:var(--accent-soft)}
-.tip .leg.owed .opt.hl .what{color:var(--accent);font-weight:600}
-.tip .leg.owed .here{font-size:11px;color:var(--accent);flex:none;align-self:center}
 .tip .leg .jobchip{font-size:12px;padding:2px 8px;cursor:default;flex:none;margin-top:1px;display:inline-block;max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tip .leg span.w{flex:1;min-width:0}
 .tip .leg b{display:inline;font-size:12.5px}
@@ -599,7 +590,8 @@ const lastOut = c => [...messages].filter(m=>m.c===c.id&&m.dir==='out').sort((a,
 const agoWords = ts => { const mins=Math.max(1,Math.round((NOW-ts)/60000)); if(mins<60) return `${mins} min`; if(mins<60*24) return `${Math.round(mins/60)} h`; return `${Math.round(mins/1440)} d`; };
 const lastInOnly = c => [...messages].filter(m=>m.c===c.id&&m.dir==='in').sort((a,b)=>b.at-a.at)[0];
 const courtOf = c => { const i=lastInOnly(c), o=lastOut(c); if(c.optout) return {side:'none', word:'opted out'}; if(c.owe) return {side:'ours', word:`Our court · we owe ${c.owe.what}${c.owe.by?' · by '+c.owe.by:''}`, owe:true}; if(!i&&!o) return {side:'none', word:'no messages yet'}; if(!o || (i && i.at>o.at)) return {side:'ours', word:`Our court · ${agoWords(i.at)}`, since:i.at}; return {side:'theirs', word:c.promise?`Their court · ${c.promise.replace('promised ','until ')}`:`Their court · ${agoWords(o.at)}`, since:o.at}; };
-const courtStrip = c => { const k=courtOf(c), i=lastInOnly(c), o=lastOut(c); return `<span class="court ${k.side}" data-tip="${k.owe?'Our court, we owe them|Someone marked that we still owe them something, so the ball stays with us even after we write.|It clears when someone presses Settled, or sends a message marked as settling it. It shows under We owe them in Follow up.':k.side==='ours'?'Our court|The last word was theirs, so the next move is ours.|It counts from their last message. A reply, an email or a call from us puts it in their court, unless we mark that we still owe them something.':k.side==='theirs'?'Their court|The last word was ours, so we are waiting on them.|It counts from our last message, or runs until the day they promised. Their next message puts it back in our court.':'No court|Nothing is owed either way.|'}"><i></i>${esc(k.word)}</span>${k.owe?`<button class="small" data-tip="What we owe||" data-tip-legend="owed:settled" onclick="settle('${c.id}')">Settled</button>`:`<button class="quiet small" data-tip="We owe them…|Mark something we still have to do for them, with a day.|The ball stays in our court after we write, and Follow up lists it under We owe them." onclick="oweDialog('${c.id}')">We owe them…</button>`}<span class="stamps" data-tip="Them and Us||" data-tip-legend="stamps"><b>Them</b><span>${i?`${chWord(i).toLowerCase()} · ${stampShort(i.at)}${agoDays(i.at)}`:'nothing yet'}</span><b>Us</b><span>${o?`${chWord(o).toLowerCase()} · ${stampShort(o.at)}${agoDays(o.at)}`:'nothing yet'}</span></span>${stampSentence(c,i,o)}`; };
+const courtStrip = c => { const k=courtOf(c), i=lastInOnly(c), o=lastOut(c); if(k.owe) return `<span class="whowrap"><button type="button" class="court ours owed" data-tip="What we owe|We owe ${esc(c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0])} ${esc(c.owe.what)}${c.owe.by?' by '+esc(c.owe.by):''}. The ball stays with us until it is settled.|Press for the ways to deal with it." onclick="owedPicker('${c.id}',this)"><i></i>${esc(k.word)} ▾</button></span><button class="small" data-tip="Settled|Opens a note for the team at the bottom: how or why it was settled.|The note clears what we owe, and the row leaves We owe them." onclick="settle('${c.id}')">Settled</button><span class="stamps" data-tip="Them and Us||" data-tip-legend="stamps"><b>Them</b><span>${i?`${chWord(i).toLowerCase()} · ${stampShort(i.at)}${agoDays(i.at)}`:'nothing yet'}</span><b>Us</b><span>${o?`${chWord(o).toLowerCase()} · ${stampShort(o.at)}${agoDays(o.at)}`:'nothing yet'}</span></span>${stampSentence(c,i,o)}`;
+  return `<span class="court ${k.side}" data-tip="${k.side==='ours'?'Our court|The last word was theirs, so the next move is ours.|It counts from their last message. A reply, an email or a call from us puts it in their court, unless we mark that we still owe them something.':k.side==='theirs'?'Their court|The last word was ours, so we are waiting on them.|It counts from our last message, or runs until the day they promised. Their next message puts it back in our court.':'No court|Nothing is owed either way.|'}"><i></i>${esc(k.word)}</span><button class="quiet small" data-tip="We owe them…|Mark something we still have to do for them, with a day.|The ball stays in our court after we write, and Follow up lists it under We owe them." onclick="oweDialog('${c.id}')">We owe them…</button><span class="stamps" data-tip="Them and Us||" data-tip-legend="stamps"><b>Them</b><span>${i?`${chWord(i).toLowerCase()} · ${stampShort(i.at)}${agoDays(i.at)}`:'nothing yet'}</span><b>Us</b><span>${o?`${chWord(o).toLowerCase()} · ${stampShort(o.at)}${agoDays(o.at)}`:'nothing yet'}</span></span>${stampSentence(c,i,o)}`; };
 // The folded header's form (stamps-narrow-mockups.html C, the owner's pick 2026-10-11): two pills, the newer one filled in its
 // side's color (green them, blue us, the calendar's pair), the older one plain with its +N. Who wrote last reads before the words.
 // The folded header's stamps as one sentence (stamps-words-mockups.html B, the owner's pick 2026-10-11): the newer side
@@ -801,7 +793,19 @@ function morePicker(cid, btn){ document.removeEventListener('click', outsideWho)
 // button's left edge, and a bottom-anchored one that would run past the top opens downward (the owner, 2026-10-11: the
 // More menu hung off the left edge of a narrow pane).
 function keepInside(pk){ const r=pk.getBoundingClientRect(); if(r.left<8){ pk.style.right='auto'; pk.style.left='0'; const r2=pk.getBoundingClientRect(); if(r2.right>window.innerWidth-8) pk.style.width=Math.max(200, window.innerWidth-16-r2.left)+'px'; } if(r.top<8 && pk.style.bottom){ pk.style.bottom='auto'; pk.style.top='calc(100% + 6px)'; } }
-function outsideWho(e){ const pk=document.getElementById('whopick'); if(!pk) return; if(e.target.closest('.haspill')||e.target.closest('.whowrap>button')||e.target.closest('.statepill')) return; if(!pk.contains(e.target)) closeWho(); else setTimeout(()=>document.addEventListener('click', outsideWho, {once:true}),0); }
+// The owed pill's picker (the owner's pick B, 2026-10-11): the five ways to deal with what we owe, as real presses, in the
+// who-has-it picker's shape. Hover explains one control; a press offers the choices.
+function owedPicker(cid, btn){ document.removeEventListener('click', outsideWho); if(document.getElementById('whopick')){ closeWho(); return; } const c=cById(cid); if(!c.owe) return; const first=esc(c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0]);
+  const rows=[
+    [`Settle it, with a team note.`, `The row leaves Follow up.`, `settle('${cid}')`],
+    [`Send ${first} ${esc(c.owe.what)}.`, `The text can settle it, or keep it on us.`, `replyKind='text';render();document.getElementById('box')?.focus()`],
+    [`Change what we owe, or the day.`, `It stays on us.`, `oweDialog('${cid}')`],
+    [`Put it off.`, `It comes back Monday.`, `remind('${cid}')`],
+    [`Leave it.`, `It stays on Follow up.`, ``]];
+  const pk=document.createElement('div'); pk.className='whopick'; pk.id='whopick'; pk.style.width='300px';
+  pk.innerHTML=`<div class="ph">We owe ${first} <b>${esc(c.owe.what)}</b>${c.owe.by?' by '+esc(c.owe.by):''}.</div>`+rows.map(([w,after,fn])=>`<div class="wrow" onclick="closeWho();${fn}"><span class="chk"></span><span class="wn"><b>${w}</b><small>${after}</small></span></div>`).join('');
+  btn.parentElement.appendChild(pk); keepInside(pk); setTimeout(()=>document.addEventListener('click', outsideWho, {once:true}),0); }
+function outsideWho(e){ const pk=document.getElementById('whopick'); if(!pk) return; if(e.target.closest('.haspill')||e.target.closest('.whowrap>button')||e.target.closest('.statepill')||e.target.closest('.court.owed')) return; if(!pk.contains(e.target)) closeWho(); else setTimeout(()=>document.addEventListener('click', outsideWho, {once:true}),0); }
 function closeWho(){ document.getElementById('whopick')?.remove(); }
 function claim(id,who){ const c=cById(id); const before=c.has; c.has=who||null; c.hasSince=who?NOW_WORDS:null; if(before!==c.has){ const line = !who ? `${ME} put ${c.name} back for whoever answers first.` : who===ME ? (before ? `${ME} took ${c.name} from ${before}.` : `${ME} took ${c.name}.`) : (before ? `${ME} handed ${c.name} to ${who}.` : `${ME} gave ${c.name} to ${who}.`); messages.push({id:++seq,c:id,job:null,ch:'event',dir:'team',who:ME,at:NOW+messages.length,text:line}); } toast(who?(who===ME?`You have ${c.name}.`:`${who} has ${c.name}.`):'Nobody has it.'); render(); }
 function setState(id,s){ const c=cById(id); c.state=s; if(s==='done') c.has=null; toast(s==='done'?`${c.name} cleared from Follow up.`:`${c.name} is back in Follow up.`); render(); }
@@ -1004,17 +1008,6 @@ function stampCalendar(c){ const DAY=86400000; const mine=messages.filter(m=>m.c
   return html; }
 // A card may carry a legend (data-tip-legend), drawn when it opens from the page's own state, so the sample chips are the real ones.
 const TIP_LEGENDS = {
-  // The card for what we owe lists every option, with the one under the pointer lit (the owner, 2026-10-11): the legend key
-  // carries which, "owed:settled" or "owed:owe".
-  owed(which){ const c=cById(openContact); if(!c||!c.owe) return ''; const what=esc(c.owe.what); const first=esc(c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0]);
-    // Each row: the control, one plain line of what it does, a quiet line of what changes (the owner, 2026-10-11: simple words, a smoother card).
-    const rows=[
-      ['settled', `<button class="ctl">Settled</button>`, `Settle it, with a team note.`, `The row leaves Follow up.`],
-      ['send', `<button class="ctl primary">Send text…</button>`, `Send ${first} ${what}.`, `The text can settle it, or keep it on us.`],
-      ['owe', `<button class="ctl quiet">We owe them…</button>`, `Change what we owe, or the day.`, `It stays on us.`],
-      ['snooze', `<button class="ctl">Snoozed</button>`, `Put it off.`, `It comes back Monday.`],
-      ['leave', `<span class="ctl none">do nothing</span>`, `Leave it.`, `It stays on Follow up.`]];
-    return `<div class="leg owed"><div class="intro">We owe ${first} <b>${what}</b>${c.owe.by?' by '+esc(c.owe.by):''}.</div>${rows.map(([k,ctl,w,after])=>`<div class="opt ${k===which?'hl':''}">${ctl}<span class="w"><span class="what">${w}</span><span class="after">${after}</span></span>${k===which?'<span class="here">this one</span>':''}</div>`).join('')}</div>`; },
   stamps(){ const c=cById(openContact); if(!c) return ''; const i=lastInOnly(c), o=lastOut(c);
     return `<div class="leg"><div><b style="width:36px;text-align:right;flex:none">Them</b><span class="w">${i?esc(stampFull(i)):'nothing yet'}</span></div><div><b style="width:36px;text-align:right;flex:none">Us</b><span class="w">${o?esc(stampFull(o)):'nothing yet'}</span></div></div>${stampCalendar(c)}`; },
   jobs(){ const c=cById(openContact); if(!c) return ''; const nm=id=>jobById(id)?jobById(id).name:''; const def=c.def?nm(c.def):null; const blueId=jobFilter||c.jobs.find(j=>j!==c.def)||c.def; const blue=blueId?nm(blueId):'a job'; const blueJ=blueId?jobById(blueId):null; const defJ=c.def?jobById(c.def):null; const first=c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0];

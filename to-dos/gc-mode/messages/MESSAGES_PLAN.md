@@ -158,7 +158,7 @@ them** with who marked it and when, and the thread gets a gray event line. *Sett
 team at the bottom of the thread, *Settling: we owed the start date · by Mon Oct 5*, and the note is what
 settles it: the person says how or why, the note goes in the thread with a *✓ settled the start date* chip,
 the row closes as any note does, and the court goes back to whose word was last (the owner, 2026-10-11: a
-settle always says why, for the team). *Not settled yet* backs out. Settled's hover card is the list of every way to deal with what we owe, each with its own control and the one under the pointer lit (the owner, 2026-10-11): settle it with a note; send it to them, with the before-it-goes window's question settling it when nothing is still on us; *We owe them…* to change what or the day; Snoozed to put the row off; or leave it, and Follow up keeps it. The app's table needs an owed item per
+settle always says why, for the team). *Not settled yet* backs out. The owed pill on the court line is a press (the owner's pick B, 2026-10-11, after the list had lived on Settled's hover card and read as a second place to decide): it opens the five ways to deal with what we owe as real presses, in the who-has-it picker's shape, each one plain line and a quiet line of what changes: settle it with a team note, send them what we owe, change what we owe or the day, put it off, leave it. Hover explains one control and a press offers the choices, so Settled's card is three lines again and stays beside the pill as the fast path. The app's table needs an owed item per
 contact: what, by when, who marked it, when, when it was settled and the note that settled it.
 
 ## Every control explains itself on hover
@@ -436,3 +436,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 - **v1.55, 2026-10-11**: the owed card smoothed: each row is the control in one column, one plain line of what it does
   and a quiet line of what changes, the lit row soft with a small *this one* (the owner: simple language, a smoother
   presentation).
+- **v1.56, 2026-10-11**: the owed pill is a press that opens the five ways as real presses, in the who-has-it picker's
+  shape; Settled's hover card is three lines again (the owner's pick B: hover explains one control, a press offers the
+  choices; the list on a hover card had read as a second place to decide).
