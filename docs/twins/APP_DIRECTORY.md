@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-10-09
+last_updated: 2026-10-11
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -53,6 +53,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Calendar view → `/calendar`; map of work → `/map`
 - Price/labor/assembly books (catalog data behind pricing) → `/materials`
 - Your profile, theme, release notes → `/settings`
+- Where the company stands this week, the weakest link, the Monday sheet → `/bridge` (dev only)
 - How-do-I articles → `/help` (search) or `/help?g=<slug>`
 - The public trade rule behind a count or check (hanger spacing, fill limit, drop, mount height) → `https://counttooling.com/rules/` — `https://counttooling.com/rules/rules.json` for software; derive from it and stamp `ruleId` (see the CountTooling bid guide)
 
@@ -252,6 +253,9 @@ Project containers linking jobs/bids; workflow boards. Roles: staff; super assig
 ### /quickfill · /moneyfill — Data-repair queues
 Quickfill: guided fix-missing-data recipes (staff). Moneyfill: dev + controller only.
 
+### /bridge — The Bridge
+The owner's one page for where the company stands: contribution per week, the five stages with the weakest link lit, the week's call, the cash forecast from the bank, the people tables; `?view=monday` is the Monday sheet. Roles: dev only (every other role is redirected to `/dashboard`).
+
 ### /map — Map
 Geocoded work map. Roles: dev, master, assistant, controller, estimator.
 
@@ -272,7 +276,7 @@ One no-password link per trade partner company (v2.4920, `GcTradePortal.tsx`, re
 company's asks, quotes, plans and questions on each project. From it the company names its people, promises a quote
 day, quotes, answers lines, passes, asks about the plans and picks who gets our emails (v2.4935, through
 `submit-gc-trade-portal`). On a job of its own it also reads its statement of work, the charges to it and the
-changes it asked for (v2.5044), and agrees with or disputes a charge and asks for a change (v2.5048). `/t/sample`
+changes it asked for (v2.5044), and agrees with or disputes a charge and asks for a change (v2.5048). From its papers it sends its vetting form, signs its master agreement and W-9 (v2.5201) and sends its insurance certificate for the office to check first (v2.5225). `/t/sample`
 is the sample. A link is made by a dev in the company window's **Their portal**
 until the trade wave, and the first email to the company makes one (v2.4936).
 Roles: public.
