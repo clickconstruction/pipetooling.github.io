@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: the stamps in words, no color, four ways</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:900px;line-height:1.45}
+.opt{max-width:900px;margin:0 0 20px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.frames{display:flex;gap:12px;flex-wrap:wrap}
+.frame{width:470px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:10px 12px}
+.frame .st{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45;max-width:900px}
+.court{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;padding:2px 9px 2px 7px;border-radius:999px;border:1px solid #f0d3b0;background:var(--warn-soft);color:var(--warn)}
+.court i{width:9px;height:9px;border-radius:50%;background:var(--warn);display:inline-block}
+.court.theirs{border-color:#bfe3c9;background:#eef7ea;color:var(--ok)}.court.theirs i{background:var(--ok)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.owe{color:var(--accent);font-size:14px}
+.pills{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;align-items:center}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;padding:2px 9px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted);background:var(--surface)}
+.pill b{font-weight:700;color:var(--text)}
+.pill.last{color:var(--text);border-color:#b9c4d4}
+.pill.last b{color:var(--text)}
+.sent{font-size:13px;color:var(--text-muted);margin-top:6px}
+.sent b{color:var(--text);font-weight:600}
+.two{display:grid;grid-template-columns:36px auto;column-gap:8px;row-gap:1px;font-size:12px;color:var(--text-muted);margin-top:6px;margin-left:auto;text-align:right;justify-content:end}
+.two b{color:var(--text);font-weight:600}
+.tip{display:inline-block;vertical-align:top;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.18);padding:10px 12px;font-size:13px;width:320px;margin-top:8px}
+.tip b{display:block;font-size:13.5px;margin-bottom:4px}
+.tip .l{display:flex;gap:8px;font-size:12.5px;margin-top:3px}.tip .l b{display:inline;width:36px;text-align:right;flex:none;margin:0}
+.pick{max-width:900px;font-size:13.5px;line-height:1.5}
+.pick ol{margin:0 0 8px 18px;padding:0}
+table{border-collapse:collapse;font-size:13px;margin:6px 0 14px}
+th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:4px 12px 4px 0;border-bottom:1px solid var(--border)}
+td{padding:4px 12px 4px 0;border-bottom:1px solid var(--border)}
+</style>
+</head>
+<body>
+<h1>The stamps in words, no color</h1>
+<p class="lead">The folded header's pills light the newer stamp green or blue, and green already means <i>their court</i> on the pill above, so a green stamp reads as "their turn" when it means "they wrote last" (the owner, 2026-10-11). These four say when in words instead, with no color at all, and keep the exact date and time for the hover card. The words, from today Fri Oct 2:</p>
+<table><tr><th>How long ago</th><th>Reads</th></tr>
+<tr><td>today</td><td><b>today, 11:30 AM</b> (the hour matters within a day)</td></tr>
+<tr><td>1 day</td><td><b>yesterday</b></td></tr>
+<tr><td>2 to 6 days</td><td><b>last Saturday</b>, <b>on Wednesday</b> (the weekday, "last" when it was the week before this one)</td></tr>
+<tr><td>7 to 13 days</td><td><b>last week</b></td></tr>
+<tr><td>14 to 27 days</td><td><b>two weeks ago</b>, <b>three weeks ago</b></td></tr>
+<tr><td>28 days and more</td><td><b>Sep 2</b>, <b>Aug 14</b> (the date; a count of weeks stops helping)</td></tr></table>
+
+<div class="opt"><h2>A · Two plain pills, the newer in the text's weight <small>· the labels kept, the color gone</small></h2>
+<div class="frames">
+<div class="frame"><div class="st">Dr. Priya Raman · they wrote last</div><div class="row"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span></div>
+<div class="pills"><span class="pill last"><b>Them</b> text · last Saturday</span><span class="pill"><b>Us</b> email · two weeks ago</span></div></div>
+<div class="frame"><div class="st">Bill Sorrell · we wrote last, both today</div><div class="row"><span class="court theirs"><i></i>Their court · 4 h</span></div>
+<div class="pills"><span class="pill"><b>Them</b> text · today, 7:58 AM</span><span class="pill last"><b>Us</b> text · today, 8:02 AM</span></div></div>
+</div>
+<p class="why">The pills stay, as shapes only: the newer one in the text's color with a slightly darker edge, the older one muted. The channel stays before the words. Hover either pill for the card with the exact stamps and the calendar.</p></div>
+
+<div class="opt"><h2>B · One sentence <small>· the plainest</small></h2>
+<div class="frames">
+<div class="frame"><div class="st">Dr. Priya Raman</div><div class="row"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span></div>
+<div class="sent">She texted <b>last Saturday</b>; we emailed <b>two weeks ago</b>.</div></div>
+<div class="frame"><div class="st">Bill Sorrell</div><div class="row"><span class="court theirs"><i></i>Their court · 4 h</span></div>
+<div class="sent">We texted <b>today at 8:02 AM</b>; he texted <b>today at 7:58 AM</b>.</div></div>
+</div>
+<p class="why">The newer side comes first, so the sentence says who wrote last by its order. The channel becomes the verb (texted, emailed, called, left a voicemail). One hover target, the whole sentence. The Them / Us labels, which the wide block keeps, are gone here.</p></div>
+
+<div class="opt"><h2>C · The wide block in words <small>· one form everywhere</small></h2>
+<div class="frames">
+<div class="frame"><div class="st">Dr. Priya Raman · folded, two rows</div><div class="row"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span></div>
+<div class="two" style="margin-left:0;text-align:left;justify-content:start"><b>Them</b><span>text · last Saturday</span><b>Us</b><span>email · two weeks ago</span></div></div>
+<div class="frame" style="width:600px"><div class="st">The same on the wide header, right-hugging as today</div><div class="row"><span class="court"><i></i>Our court · we owe the start date · by Mon Oct 5</span><span class="two" style="margin-top:0"><b>Them</b><span>text · last Saturday</span><b>Us</b><span>email · two weeks ago</span></span></div></div>
+</div>
+<p class="why">The block you already have, with words in place of the date and the (+6). Wide and folded read the same; the folded one costs a row. Nothing says which is newer except the words themselves.</p></div>
+
+<div class="opt"><h2>D · Words, with the detail drawn open <small>· what the hover card shows for any of A to C</small></h2>
+<div class="frames">
+<div class="frame"><div class="st">Dr. Priya Raman · the card</div>
+<div class="pills"><span class="pill last"><b>Them</b> text · last Saturday</span><span class="pill"><b>Us</b> email · two weeks ago</span></div>
+<div class="tip"><b>Them and Us</b><div class="l"><b>Them</b><span>text · Sat, Sep 26 · 2:14 PM · 6 days ago</span></div><div class="l"><b>Us</b><span>email · Sat, Sep 19 · 4:05 PM · 13 days ago</span></div><div style="font-size:12px;color:var(--text-muted);margin-top:8px">… and the calendar of the last weeks, as built in v1.45.</div></div></div>
+</div>
+<p class="why">The card does not change: the full stamp with the weekday, the time and the count in words, then the calendar.</p></div>
+
+<div class="pick">
+<h2 style="font-size:15px;margin:0 0 6px">The pick, and is this the best we can do?</h2>
+<p style="margin:0 0 8px"><b>A.</b> Words carry the when, weight carries the who-last, color carries nothing, so the court pill above keeps green and orange to itself. The pills keep the Them / Us labels the wide block uses, and two hover targets. B reads best as prose and is the one to take if the labels can go; C is the choice if wide and folded must be one form, at the cost of a row.</p>
+<p style="margin:0 0 6px">Three things weighed:</p>
+<ol>
+<li><b>The wide block.</b> It keeps its dates and (+6): there is room, and a date is exact. Only the folded form speaks in words. If that split bothers, C makes them one.</li>
+<li><b>"Last Saturday" against "Saturday".</b> Within this week the weekday alone ("on Wednesday"); the week before, "last Saturday"; from seven days, "last week", then weeks counted to three, then the date. Each is one unambiguous reading from today, never a guess.</li>
+<li><b>Both today.</b> Bill's thread has both stamps from today, so each keeps its time; the newer one still reads darker. The court pill says the rest.</li>
+</ol>
+</div>
+</body>
+</html>
