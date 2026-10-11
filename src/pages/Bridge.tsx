@@ -51,6 +51,8 @@ import { buildResources, type ResourceId } from '../lib/bridge/resources'
 import { BridgeResources } from '../components/bridge/BridgeResources'
 import { buildOrder } from '../lib/bridge/order'
 import { BridgeOrderModal } from '../components/bridge/BridgeOrderModal'
+import { buildReflexes, otherLevers, reflexLine, type ReflexId } from '../lib/bridge/waits'
+import { BridgeWaits } from '../components/bridge/BridgeWaits'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -111,6 +113,8 @@ export default function Bridge() {
   const [pickedStage, setPickedStage] = useState<CallLink | null>(null)
   // The order (link PR 6): the badge pressed, if any; null closes the modal.
   const [orderFor, setOrderFor] = useState<CallLink | null>(null)
+  // Everything else waits (link PR 7): the usual fix pressed, if any; it sets the dial, and dragging the dial clears it.
+  const [reflexId, setReflexId] = useState<ReflexId | null>(null)
   // The calls (link PR 2): the week's call holds the link; Friday asks whether it moved.
   const [calls, setCalls] = useState<BridgeCall[] | null>(null)
   const [callsError, setCallsError] = useState<string | null>(null)
@@ -384,10 +388,13 @@ export default function Bridge() {
   const shownFlow = dialMoved && dialReading ? dialReading.flow : stageFlow
 
   // The three resources (link PR 6): what waits on the owner, the bank against the floor, who is in the field and who bills.
+  const fieldPeople = useMemo(() => {
+    if (!data) return 0
+    const since = ymdAddDays(data.todayYmd, -6)
+    return new Set((vectorInputs?.sessions ?? []).filter((x) => !x.officeJob && x.hours > 0 && x.workDate >= since).map((x) => x.userId)).size
+  }, [data, vectorInputs])
   const resources = useMemo(() => {
     if (!data || !shownFlow) return null
-    const since = ymdAddDays(data.todayYmd, -6)
-    const fieldPeople = new Set((vectorInputs?.sessions ?? []).filter((x) => !x.officeJob && x.hours > 0 && x.workDate >= since).map((x) => x.userId)).size
     const billers = new Set((vectorInputs?.invoiceSends ?? []).filter((x) => x.userId && x.ymd >= data.windowStart).map((x) => x.userId as string)).size
     return buildResources({
       linkId: shownFlow.linkId,
@@ -407,9 +414,35 @@ export default function Bridge() {
       fieldHours7d: data.crew.fieldHours7d,
       billers,
     })
-  }, [data, shownFlow, vectorInputs, buildPace, demand, cashToday, bank, forecast])
+  }, [data, shownFlow, vectorInputs, fieldPeople, buildPace, demand, cashToday, bank, forecast])
   const order = useMemo(() => (orderFor && shownFlow && resources ? buildOrder({ flow: shownFlow, resources, pressedId: orderFor }) : null), [orderFor, shownFlow, resources])
   const closeOrder = useCallback(() => setOrderFor(null), [])
+
+  // Everything else waits (link PR 7): the four presses sized from the page's numbers, and the pressed one's line.
+  const reflexes = useMemo(() => (stageInput && data ? buildReflexes({ stageInput, fieldHoursPerWeek: data.crew.fieldHoursWindow > 0 ? data.crew.fieldHoursWindow / (BRIDGE_DAYS_BACK / 7) : null, fieldPeople }) : null), [stageInput, data, fieldPeople])
+  const reflexLineNow = useMemo(() => {
+    if (!reflexId || !reflexes || !stageFlow || !stageInput || !profit) return null
+    const r = reflexes.find((x) => x.id === reflexId)
+    if (!r) return null
+    const billPerJob = fin.data && fin.data.unbilled.count > 0 ? fin.data.unbilled.total / fin.data.unbilled.count : null
+    return reflexLine({ reflex: r, before: stageFlow, reading: r.stage && litStage === r.stage ? dialReading : null, stageInput, overheadPerDayUsd: profit.speed.overheadPerDay, billPerJobUsd: billPerJob })
+  }, [reflexId, reflexes, stageFlow, stageInput, profit, fin.data, litStage, dialReading])
+  const pressReflex = useCallback(
+    (id: ReflexId) => {
+      const r = reflexes?.find((x) => x.id === id)
+      if (!r) return
+      setReflexId(id)
+      if (r.stage && r.usd != null) {
+        setPickedStage(r.stage)
+        setDialUsd({ [r.stage]: r.usd })
+      } else setDialUsd({})
+    },
+    [reflexes],
+  )
+  const resetReflex = useCallback(() => {
+    setReflexId(null)
+    setDialUsd({})
+  }, [])
 
   // The calls (link PR 2): today's numbers behind the moves, the snapshot a call keeps, the scorecard and the header chip.
   const moveNumbers = useMemo(
@@ -815,14 +848,18 @@ export default function Bridge() {
             <BridgeDial
               reading={dialReading}
               moved={dialMoved}
-              onChange={(usd) => setDialUsd((d) => ({ ...d, [litStage]: usd }))}
-              onReset={() =>
+              onChange={(usd) => {
+                setReflexId(null)
+                setDialUsd((d) => ({ ...d, [litStage]: usd }))
+              }}
+              onReset={() => {
+                setReflexId(null)
                 setDialUsd((d) => {
                   const next = { ...d }
                   delete next[litStage]
                   return next
                 })
-              }
+              }}
             />
           )}
 
@@ -842,7 +879,10 @@ export default function Bridge() {
               dayLabel={md}
             />
           )}
-          {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem' }}>
+            {reflexes && <BridgeWaits reflexes={reflexes} activeId={reflexId} line={reflexLineNow} levers={otherLevers(litLink)} onPress={pressReflex} onReset={resetReflex} />}
+            {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
+          </div>
           {order && <BridgeOrderModal order={order} note={dialMoved && dialReading ? `at the dial’s pace, ${dialReading.valueText}` : 'at today’s pace'} onClose={closeOrder} />}
           {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
           {buildError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>Build could not be read ({buildError}).</p>}
