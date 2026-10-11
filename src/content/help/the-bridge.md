@@ -13,6 +13,10 @@ order: 62
 
 The Bridge is for devs only for now. You open it from the compass icon in the header, or **Bridge** in the ☰ menu. The page's address is `/bridge`.
 
+## The Monday sheet
+
+Press {{button:outline|Monday sheet}} at the top of the page. The page becomes one screen. Three tiles carry a light each: contribution per week, net position, and cash. Under them sit the five moves for the week and the people lines. Press {{button:outline|Email me this sheet}} and the same screen lands in your own inbox. Press {{button:outline|Open the full Bridge}} to come back.
+
 ## Cash on hand comes from the bank
 
 The page reads the bank's balance when it opens. Under the cash chart, the cash row says the balance and the time it was read. The accounts with money are named beside it. Accounts at zero are only counted. Press {{button:outline|Read again}} to read the bank once more. The cash line and the net position line start from that figure.

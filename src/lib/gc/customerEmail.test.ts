@@ -38,6 +38,7 @@ import {
   changeOrderMail,
   changeOrderMailFacts,
   contractMail,
+  contractMailFacts,
   emailedWords,
   gcCustomerEmailRefusal,
   interestBillMail,
@@ -106,6 +107,28 @@ describe('the words of a pay application\'s emails', () => {
     const f = payAppMailFacts(state, project, app)
     expect([f.job, f.owner, f.architect, f.number, f.due]).toEqual([project.name, project.owner, project.architect, app.number, app.due])
     expect(f.greeting.length).toBeGreaterThan(0)
+  })
+})
+
+describe('the greeting on every email to the customer (the walk\'s step 8)', () => {
+  const firstLines = (contact: string) => {
+    const state = initialGcState()
+    const project = state.projects.find((p) => p.id === 'fairoaksd')!
+    const laid = { ...state, customers: state.customers.map((c) => (c.id === project.customerId ? { ...c, contact } : c)) }
+    const app = project.ownerBilling!.payApps![0]!
+    const co: ChangeOrder = { id: 'co-2', number: 2, description: 'Move the grease trap', reason: 'owner', schedule: '+2 days', packageId: null, cost: 900, price: 990, pctDone: 0, status: 'sent', sentOn: '2026-10-01', answeredOn: null, days: 2 }
+    return [
+      payAppMail(payAppMailFacts(laid, project, app)).lines[0],
+      certifiedMail(certifiedMailFacts(laid, project, app, app.due, '2026-10-01')).lines[0],
+      changeOrderMail(changeOrderMailFacts(laid, project, co)).lines[0],
+      interestBillMail(interestBillMailFacts(laid, project, 100)).lines[0],
+      contractMail(contractMailFacts(laid, project, { mode: 'first', price: 1000, signBy: '2026-10-09', note: '' })).lines[0],
+    ]
+  }
+
+  it('greets their contact by first name, and with no contact names no one: never the company\'s first word', () => {
+    expect(new Set(firstLines('Elena Ruiz'))).toEqual(new Set(['Hello Elena,']))
+    expect(new Set(firstLines(''))).toEqual(new Set(['Hello,']))
   })
 })
 
