@@ -23,6 +23,14 @@ The stage with the most weeks reads red. That is the weakest link. A stage withi
 
 Press a card to read it. The pressed card has the red border.
 
+## The week's call
+
+Under the cards sits the desk of the pressed stage. It says what the stage is, why it matters, how the Bridge reads it, and what it reads today. Below that are the moves the week would make. Tick the ones you mean and type an owner beside each. Press {{button:green|This is the link this week}} to record the call. The call keeps today's numbers, so Friday can read them again.
+
+A recorded call holds the red on its stage for the week. Another stage takes it only when it reads clearly longer.
+
+**Last week's call, against what moved** sits under the desk. It names the link, who called it and how many weeks running. Each move shows its number then and now, and whether it got done. The last line says what that means for this week. From Friday the card asks whether the link moved. Press {{button:green|It moved}} or {{button:red|It did not}}. The chip beside the date carries the answer.
+
 ## The Monday sheet
 
 Press {{button:outline|Monday sheet}} at the top of the page. The page becomes one screen. Three tiles carry a light each: contribution per week, net position, and cash. Under them sit the five moves for the week and the people lines. Press {{button:outline|Email me this sheet}} and the same screen lands in your own inbox. Press {{button:outline|Open the full Bridge}} to come back.

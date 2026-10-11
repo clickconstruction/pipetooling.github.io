@@ -37,6 +37,9 @@ import { ymdAddDays } from '../utils/dateUtils'
 import { buildStageFlow, type StageId } from '../lib/bridge/stageFlow'
 import { BridgeStages } from '../components/bridge/BridgeStages'
 import { BridgeRule } from '../components/bridge/BridgeRule'
+import { answerBridgeCall, buildScorecard, callChip, callForWeek, deskStatus, isStageLink, loadBridgeCalls, recordBridgeCall, scoreCall, type BridgeCall, type CallMove, type CallOutcome } from '../lib/bridge/calls'
+import { BridgeLinkDesk } from '../components/bridge/BridgeLinkDesk'
+import { BridgeLastCall } from '../components/bridge/BridgeLastCall'
 
 /**
  * The Bridge (v2.2726 — the plain version). Dev only. Where we stand (net
@@ -61,7 +64,7 @@ const btnStyle: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: 
 const listRow: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'baseline', padding: '0.35rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem' }
 
 export default function Bridge() {
-  const { user, role, loading: authLoading } = useAuth()
+  const { user, role, profileName, loading: authLoading } = useAuth()
   const { showToast } = useToastContext()
   const [data, setData] = useState<BridgeData | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -95,7 +98,31 @@ export default function Bridge() {
   const [mailNote, setMailNote] = useState<string | null>(null)
   // The weakest link (link PR 1): the stage pressed; the lit link until someone presses another.
   const [pickedStage, setPickedStage] = useState<StageId | null>(null)
+  // The calls (link PR 2): the week's call holds the link; Friday asks whether it moved.
+  const [calls, setCalls] = useState<BridgeCall[] | null>(null)
+  const [callsError, setCallsError] = useState<string | null>(null)
+  const [recording, setRecording] = useState(false)
+  const [answering, setAnswering] = useState(false)
   const fin = useDashboardFinancials(role === 'dev', refreshKey, role, user?.id ?? null)
+
+  useEffect(() => {
+    if (role !== 'dev' || !user?.id) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const rows = await loadBridgeCalls()
+        if (!cancelled) setCalls(rows)
+      } catch (e) {
+        if (!cancelled) {
+          setCalls([])
+          setCallsError(formatErrorMessage(e))
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [role, user?.id, refreshKey])
 
   useEffect(() => {
     if (role !== 'dev' || !user?.id) return
@@ -246,6 +273,10 @@ export default function Bridge() {
   const confidence = useMemo(() => receiptsConfidence(receipts), [receipts])
   const carry = useMemo(() => (forecast ? carryingSentence(carryingDay(forecast, receipts), md) : null), [forecast, receipts])
 
+  // The calls (link PR 2): the pay week today falls in, and the call that stands for it.
+  const thisWeekStart = data ? payWeekContaining(data.todayYmd).start : null
+  const thisWeekCall = useMemo(() => (calls && thisWeekStart ? callForWeek(calls, thisWeekStart) : null), [calls, thisWeekStart])
+
   // The weakest link (link PR 1): Bill and Collect from what the page already reads — the piles from the finance hook, the paces from the window's flows by day.
   const stageFlow = useMemo(() => {
     if (!data) return null
@@ -258,14 +289,83 @@ export default function Bridge() {
     const billedPerWeek = sumWindow(data.invoicesSentByDay) / weeks
     const paidPerWeek = sumWindow(data.paymentsReceivedByDay) / weeks
     const lateCount = receipts.filter((r) => r.basis === 'late').length + doubtful.length
+    const held = thisWeekCall && isStageLink(thisWeekCall.link) ? thisWeekCall.link : null
     return buildStageFlow({
       bill: fin.data ? { pileUsd: fin.data.unbilled.total, pileCount: fin.data.unbilled.count, inPerWeekUsd: data.totals.earnedUsd / weeks, outPerWeekUsd: billedPerWeek } : null,
       collect: fin.data ? { pileUsd: fin.data.ar.total, pileCount: fin.data.ar.count, inPerWeekUsd: billedPerWeek, outPerWeekUsd: paidPerWeek, lateCount } : null,
       build: null,
-      heldLinkId: null,
+      heldLinkId: held,
     })
-  }, [data, fin.data, receipts, doubtful])
+  }, [data, fin.data, receipts, doubtful, thisWeekCall])
   const litStage = pickedStage ?? stageFlow?.linkId ?? null
+
+  // The calls (link PR 2): today's numbers behind the moves, the snapshot a call keeps, the scorecard and the header chip.
+  const moveNumbers = useMemo(
+    () => ({
+      bill: fin.data ? fin.data.unbilled.total : null,
+      chase: receipts.filter((r) => r.basis === 'late').reduce((s, r) => s + r.usd, 0) + doubtful.reduce((s, d) => s + d.usd, 0),
+      approve: data ? data.crew.pendingClosedHours : null,
+      price: data ? data.earned.noRevenueJobs.length : null,
+      pct: data ? data.earned.assumedHalfJobs.length : null,
+    }),
+    [fin.data, receipts, doubtful, data],
+  )
+  const nowReading = useMemo(() => ({ stageWeeks: Object.fromEntries((stageFlow?.stages ?? []).map((s) => [s.id, s.weeks])) as Partial<Record<StageId, number | null>>, keys: moveNumbers }), [stageFlow, moveNumbers])
+  const scorecard = useMemo(() => {
+    if (!data || !calls || !thisWeekStart) return null
+    const c = scoreCall(calls, thisWeekStart)
+    return c ? buildScorecard({ call: c, calls, now: nowReading, todayYmd: data.todayYmd, dayLabel: md }) : null
+  }, [data, calls, thisWeekStart, nowReading])
+  const chip = callChip(scorecard)
+  const deskReading = useMemo(() => {
+    const s = stageFlow?.stages.find((x) => x.id === litStage)
+    if (!s) return ''
+    if (!s.readable) return 'The app does not read this stage yet.'
+    return `${s.pile.headline}${s.pile.sub.length ? `, ${s.pile.sub.join(', ')}` : ''}. ${s.flow.map((f) => `${f.who} ${f.usd} a week`).join('; ')}. ${s.weeksText}.`
+  }, [stageFlow, litStage])
+
+  const recordCall = useCallback(
+    async (moves: CallMove[], note: string | null) => {
+      if (!data || !thisWeekStart || !litStage || !stageFlow) return
+      setRecording(true)
+      try {
+        await recordBridgeCall({
+          weekStart: thisWeekStart,
+          calledOn: data.todayYmd,
+          calledByName: profileName ?? '',
+          link: litStage,
+          moves,
+          measures: { linkWeeks: stageFlow.stages.find((s) => s.id === litStage)?.weeks ?? null, stageWeeks: nowReading.stageWeeks, keys: moveNumbers },
+          note,
+        })
+        setCalls(await loadBridgeCalls())
+        showToast(`Recorded: ${litStage} is the link this week`, 'success', 2500)
+      } catch (e) {
+        showToast(formatErrorMessage(e), 'error', 4000)
+      } finally {
+        setRecording(false)
+      }
+    },
+    [data, thisWeekStart, litStage, stageFlow, nowReading, moveNumbers, profileName, showToast],
+  )
+  const answerCall = useCallback(
+    async (outcome: CallOutcome, note: string | null) => {
+      if (!calls || !thisWeekStart) return
+      const c = scoreCall(calls, thisWeekStart)
+      if (!c) return
+      setAnswering(true)
+      try {
+        await answerBridgeCall(c.id, outcome, note)
+        setCalls(await loadBridgeCalls())
+        showToast(outcome === 'moved' ? 'Recorded: the link moved' : 'Recorded: the link did not move', 'success', 2500)
+      } catch (e) {
+        showToast(formatErrorMessage(e), 'error', 4000)
+      } finally {
+        setAnswering(false)
+      }
+    },
+    [calls, thisWeekStart, showToast],
+  )
 
   const saveCash = useCallback(async () => {
     const v = Number(cashDraft.replace(/[^0-9.-]/g, ''))
@@ -553,6 +653,24 @@ export default function Bridge() {
         ) : (
           <span style={det}>Where we stand, where cash is going, what would change it. Dev only.</span>
         )}
+        {chip && (
+          <a
+            href="#bridge-last-call"
+            data-testid="bridge-call-chip"
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 600,
+              padding: '3px 10px',
+              borderRadius: 999,
+              textDecoration: 'none',
+              whiteSpace: 'nowrap',
+              border: `1px solid ${chip.tone === 'red' ? 'var(--text-red-700)' : chip.tone === 'green' ? 'var(--text-green-700)' : chip.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--border)'}`,
+              color: chip.tone === 'red' ? 'var(--text-red-700)' : chip.tone === 'green' ? 'var(--text-green-700)' : chip.tone === 'amber' ? 'var(--text-amber-800)' : 'var(--text-muted)',
+            }}
+          >
+            {chip.text}
+          </a>
+        )}
         {!sheetView && (
           <button type="button" onClick={() => setSearchParams({ view: 'monday' })} disabled={!sheet} style={{ ...btnStyle, marginLeft: 'auto', borderRadius: 6, padding: '0.25rem 0.7rem' }}>
             Monday sheet
@@ -577,6 +695,22 @@ export default function Bridge() {
 
           {/* Where the work piles up (link PR 1): the five stages, the link lit */}
           {stageFlow && <BridgeStages flow={stageFlow} pickedId={litStage} onPick={setPickedStage} />}
+
+          {/* The link's desk and the call (link PR 2): what the pressed stage is, the moves with owners, the record; then last week's call against what moved */}
+          {stageFlow && litStage && (
+            <BridgeLinkDesk
+              link={litStage}
+              status={deskStatus({ link: litStage, nominatedId: stageFlow.nominatedId, linkId: stageFlow.linkId, heldStands: stageFlow.heldStands, recorded: thisWeekCall?.link === litStage })}
+              todayReading={deskReading}
+              moveNumbers={moveNumbers}
+              thisWeekCall={thisWeekCall}
+              recording={recording}
+              onRecord={(moves, note) => void recordCall(moves, note)}
+              dayLabel={md}
+            />
+          )}
+          {calls && <BridgeLastCall card={scorecard} answering={answering} onAnswer={(o, n) => void answerCall(o, n)} />}
+          {callsError && <p style={{ ...det, color: 'var(--text-amber-800)' }}>The calls could not be read ({callsError}). Is the bridge_calls migration pushed?</p>}
 
           {/* This week (v2.5221) beside Fix the reading (v2.5220): the moves and the gaps, each with its door */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '0.6rem', marginTop: '0.6rem' }}>
