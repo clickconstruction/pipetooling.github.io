@@ -383,6 +383,17 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .tip .leg .jobchip{font-size:12px;padding:2px 8px;cursor:default;flex:none;margin-top:1px;display:inline-block;max-width:118px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tip .leg span.w{flex:1;min-width:0}
 .tip .leg b{display:inline;font-size:12.5px}
+.tip .cal{display:grid;grid-template-columns:30px repeat(7,20px);gap:3px;margin:10px 0 0;font-size:10px;color:var(--text-muted);align-items:center;justify-content:start}
+.tip .cal .h{text-align:center;font-weight:700;letter-spacing:.02em}
+.tip .cal .m{font-size:10px;text-align:right;padding-right:4px}
+.tip .cal .c{height:20px;border-radius:5px;background:var(--bg);position:relative;display:flex;align-items:center;justify-content:center;font-size:9.5px;font-weight:700;color:var(--text)}
+.tip .cal .c.us{background:#c5d8f5}.tip .cal .c.them{background:#bfe3c9}.tip .cal .c.both{background:linear-gradient(135deg,#c5d8f5 50%,#bfe3c9 50%)}
+.tip .cal .c.today{outline:2px solid var(--warn);outline-offset:-2px}
+.tip .cal .c.future{background:transparent;border:1px dashed var(--border)}
+.tip .cal .c.note::after{content:'';position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:#e9c400}
+.tip .callg{display:flex;gap:10px;align-items:center;margin-top:7px;font-size:11px;color:var(--text-muted);flex-wrap:wrap}
+.tip .callg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
+.tip .callg i.us{background:#c5d8f5}.tip .callg i.them{background:#bfe3c9}.tip .callg i.both{background:linear-gradient(135deg,#c5d8f5 50%,#bfe3c9 50%)}.tip .callg i.note{background:#e9c400;border-radius:50%;width:7px;height:7px;margin:0 6px 0 2px}.tip .callg i.today{background:transparent;outline:2px solid var(--warn);outline-offset:-2px}
 .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:8px 14px;border-radius:999px;font-size:13px;z-index:30;opacity:0;transition:opacity .2s}
 .toast.show{opacity:1}
 .sheet{position:fixed;inset:auto 0 0 0;background:var(--surface);border-top:1px solid var(--border);border-radius:14px 14px 0 0;padding:14px 16px 24px;z-index:25;box-shadow:0 -10px 30px rgba(0,0,0,.15)}
@@ -939,9 +950,24 @@ function sheet(title, optsHtml){ closeSheet(); const s=document.createElement('d
 function closeSheet(){ document.getElementById('sheet')?.remove(); }
 
 // ---------- hover cards: what a control does, and what it changes ----------
+// The card's calendar (the owner, 2026-10-11): the last weeks as rows, S M T W T F S, each day colored by who wrote that
+// day (blue us, green them, both split), a yellow dot for a team note, today outlined, days to come dashed. Six weeks, or back
+// to the first message when that is sooner.
+function stampCalendar(c){ const DAY=86400000; const mine=messages.filter(m=>m.c===c.id&&m.ch!=='event'); if(!mine.length) return '';
+  const key=ts=>new Date(ts).toDateString(); const byDay={}; for(const m of mine){ const k=key(m.at); const d=byDay[k]=byDay[k]||{inN:0,outN:0,note:0}; if(m.dir==='in') d.inN++; else if(m.dir==='out') d.outN++; else d.note++; }
+  const today=new Date(NOW); today.setHours(0,0,0,0); const first=new Date(Math.min(...mine.map(m=>m.at))); first.setHours(0,0,0,0);
+  const sixWeeksBack=new Date(today.getTime()-DAY*41); const start=new Date(Math.max(first.getTime(), sixWeeksBack.getTime())); start.setDate(start.getDate()-start.getDay());
+  const end=new Date(today); end.setDate(end.getDate()+(6-end.getDay()));
+  let html='<div class="cal"><span></span>'+['S','M','T','W','T','F','S'].map(h=>`<span class="h">${h}</span>`).join('');
+  for(let w=new Date(start); w<=end; w.setDate(w.getDate()+7)){ const m1=new Date(w), m2=new Date(w); m2.setDate(m2.getDate()+6); const lbl=(w.getTime()===start.getTime()||m1.getMonth()!==new Date(w.getTime()-DAY).getMonth()||m2.getMonth()!==m1.getMonth()&&m2.getDate()<=7)?(m2.getMonth()!==m1.getMonth()?m2:m1).toLocaleDateString('en-US',{month:'short'}):'';
+    html+=`<span class="m">${lbl}</span>`;
+    for(let d=0; d<7; d++){ const day=new Date(w); day.setDate(day.getDate()+d); const k=key(day); const v=byDay[k]; const fut=day>today; const cls=['c', fut?'future':'', v?(v.inN&&v.outN?'both':v.inN?'them':v.outN?'us':''):'', v&&v.note?'note':'', day.getTime()===today.getTime()?'today':''].filter(Boolean).join(' '); const n=v?v.inN+v.outN:0; html+=`<span class="${cls}">${n>1?n:''}</span>`; } }
+  html+='</div><div class="callg"><span><i class="us"></i>us</span><span><i class="them"></i>them</span><span><i class="both"></i>both</span><span><i class="note"></i>a team note</span><span><i class="today"></i>today</span><span>· a number is how many that day</span></div>';
+  return html; }
 // A card may carry a legend (data-tip-legend), drawn when it opens from the page's own state, so the sample chips are the real ones.
 const TIP_LEGENDS = {
-  stamps(){ const c=cById(openContact); if(!c) return ''; const i=lastInOnly(c), o=lastOut(c); return `<div class="leg"><div><b style="width:36px;text-align:right;flex:none">Them</b><span class="w">${i?esc(stampFull(i)):'nothing yet'}</span></div><div><b style="width:36px;text-align:right;flex:none">Us</b><span class="w">${o?esc(stampFull(o)):'nothing yet'}</span></div></div>`; },
+  stamps(){ const c=cById(openContact); if(!c) return ''; const i=lastInOnly(c), o=lastOut(c);
+    return `<div class="leg"><div><b style="width:36px;text-align:right;flex:none">Them</b><span class="w">${i?esc(stampFull(i)):'nothing yet'}</span></div><div><b style="width:36px;text-align:right;flex:none">Us</b><span class="w">${o?esc(stampFull(o)):'nothing yet'}</span></div></div>${stampCalendar(c)}`; },
   jobs(){ const c=cById(openContact); if(!c) return ''; const nm=id=>jobById(id)?jobById(id).name:''; const def=c.def?nm(c.def):null; const blueId=jobFilter||c.jobs.find(j=>j!==c.def)||c.def; const blue=blueId?nm(blueId):'a job'; const blueJ=blueId?jobById(blueId):null; const defJ=c.def?jobById(c.def):null; const first=c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w))[0];
     return `<div class="leg">
       <div><span class="jobtile mini on"><span class="ln"><span class="num ${blueJ?blueJ.kind:'bid'}">${esc(blueJ?jobNum(blueJ):'B?')}</span><span class="nm">${esc(blue)}</span></span></span><span class="w"><b>Blue</b> is what you are looking at: the thread shows only the lines tied to that job. Click it again, or <i>show all</i>, to see everything.</span></div>
