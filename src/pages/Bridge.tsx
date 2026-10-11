@@ -16,6 +16,7 @@ import { BridgeVectorsPanel } from '../components/bridge/BridgeVectorsPanel'
 import { loadBridgeVectorInputs, type BridgeVectorInputs } from '../lib/bridge/loadBridgeVectors'
 import { buildVectors } from '../lib/bridge/vectors'
 import { BridgeVectorDaysPanel } from '../components/bridge/BridgeVectorDaysPanel'
+import type { VectorReading } from '../lib/bridge/vectorReading'
 import { BridgeHeadline } from '../components/bridge/BridgeHeadline'
 import { buildHeadline, cashLight, netPositionLight } from '../lib/bridge/headline'
 import { loadMercuryCash, mercuryAccountsLine, type MercuryCash } from '../lib/bridge/mercuryCash'
@@ -102,6 +103,8 @@ export default function Bridge() {
   // Vectors by the day (v2.4217): the period drawn (a month of days, 13 pay weeks or 12 months — v2.4219), its sessions and job rates (cached per period on this page).
   const [daysZoom, setDaysZoom] = useState<VectorZoom>('days')
   const [daysMode, setDaysMode] = useState<VectorTimeMode>(() => readVectorDaysMode())
+  // The day grid's reading (link PR 12): profit as built, revenue at the job's rate, or cost in wages.
+  const [daysReading, setDaysReading] = useState<VectorReading>('profit')
   const [daysAnchor, setDaysAnchor] = useState<string | null>(null)
   const [daysInputs, setDaysInputs] = useState<VectorDaysInputs | null>(null)
   const [daysError, setDaysError] = useState<string | null>(null)
@@ -1150,6 +1153,8 @@ export default function Bridge() {
                 setDaysMode(m)
                 writeVectorDaysMode(m)
               }}
+              reading={daysReading}
+              onReading={setDaysReading}
               periodLabel={vectorRangeLabel(daysZoom, daysRange)}
               isCurrent={daysRange.end >= data.todayYmd}
               canPrev={daysRange.start > monthStartOf(ymdAddDays(data.todayYmd, -730))}
