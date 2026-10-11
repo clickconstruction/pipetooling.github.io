@@ -2,13 +2,14 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { fileSentEmailBestEffort } from '../_shared/fileSentCopy.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { mailboxWithName } from '../_shared/mailboxWithName.ts'
 import { loadPortalReturnUrl } from '../_shared/customerPortalReturnUrl.ts'
 import { ensurePortalShortAddress } from '../_shared/portalShortAddress.ts'
 import { PORTAL_QR_CONTENT_ID, PORTAL_QR_FILENAME } from '../_shared/portalAccountCard.ts'
 import { qrMatrix } from '../_shared/qrMatrix.ts'
 import { bytesToBase64, qrPngBytes } from '../_shared/qrPng.ts'
-import { waiverEmailRecipientCustomerId, withWaiverAccountCard } from '../_shared/lienWaiverEmailCard.ts'
+import { waiverEmailFromName, waiverEmailRecipientCustomerId, withWaiverAccountCard } from '../_shared/lienWaiverEmailCard.ts'
 
 // Email a SIGNED lien release to the job's customer, PDF attached (v2.2621 —
 // the signing loop's "ready to send" lane). Mirrors send-physical-invoice-email:
@@ -92,10 +93,12 @@ serve(async (req) => {
 
     const { data: jl, error: jlErr } = await userClient
       .from('jobs_ledger')
-      .select('id, customer_id, customer_email, gc_customer_id')
+      .select('id, customer_id, customer_email, gc_customer_id, billing_only')
       .eq('id', jobId)
       .single()
     if (jlErr || !jl) return jsonResponse({ error: 'Job not found' }, 403)
+    // GC mode's billing job sends as our GC entity; read here, never taken from the body.
+    const from = mailboxWithName(waiverEmailFromName(jl.billing_only === true), EMAIL_FROM)
     // The recipient is the job's customer — or, on a sub job, the GC it bills (v2.4274: the
     // waiver goes to whoever pays the bill; the GC's billing email is read here, never trusted from the body).
     const allowed = new Set<string>()
@@ -166,7 +169,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: COMPANY_EMAIL_FROM,
+        from,
         to: [customerEmailIn],
         subject,
         html: htmlBody,
@@ -179,7 +182,7 @@ serve(async (req) => {
       return jsonResponse({ error: errorData.message || `Resend ${resendResponse.status}` }, 502)
     }
     const sent = (await resendResponse.json().catch(() => ({}))) as { id?: string }
-    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [customerEmailIn], from: COMPANY_EMAIL_FROM, subject })
+    await logEmailSendBestEffort({ resendEmailId: sent.id ?? null, to: [customerEmailIn], from, subject })
 
     const { error: upErr } = await userClient
       .from('job_lien_releases')
@@ -190,7 +193,7 @@ serve(async (req) => {
     // the job. After the sent stamp, so keeping the copy never delays it; the email went either way.
     await fileSentEmailBestEffort(
       { kind: 'lien_release', jobIds: [jobId], customerId: gcEmail && customerEmailIn.toLowerCase() === gcEmail ? gcId : typeof jl.customer_id === 'string' ? jl.customer_id : null, source: { table: 'job_lien_releases', id: releaseId }, sentBy: user.id },
-      { to: [customerEmailIn], from: COMPANY_EMAIL_FROM, subject, html: htmlBody, attachments, resendEmailId: sent.id ?? null },
+      { to: [customerEmailIn], from, subject, html: htmlBody, attachments, resendEmailId: sent.id ?? null },
     )
     if (upErr) {
       console.error('send-lien-release-email: sent stamp after send', upErr)

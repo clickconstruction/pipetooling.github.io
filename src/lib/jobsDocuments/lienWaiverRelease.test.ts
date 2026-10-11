@@ -232,6 +232,17 @@ describe('buildLienWaiverPrefill', () => {
     expect(f.throughDate).toBe('2026-08-29')
     expect(f.signerName).toBe('Robert Douglas')
   })
+  it('names our GC entity on GC mode\'s billing job, and the issuer on every other job, a sub job that bills a GC included', () => {
+    const issuer = { companyName: 'Click Plumbing and Electrical', addressText: '', phone: '', email: '', tagline: '', licenseLine: '' }
+    const party = (over: Partial<JobWithDetails>) => {
+      const job = jobWith(over)
+      return buildLienWaiverPrefill('unconditional_progress', { job, invoices: job.invoices, issuer, ownerName: null, signerName: '' }).companyName
+    }
+    expect(party({ billing_only: true })).toBe('Click Construction, LLC')
+    expect(party({ billing_only: true, gc_customer_id: null })).toBe('Click Construction, LLC')
+    expect(party({ billing_only: false, gc_customer_id: 'gc-1' })).toBe('Click Plumbing and Electrical')
+    expect(party({ billing_only: false })).toBe('Click Plumbing and Electrical')
+  })
   it('the through date is the last bill\'s day in the company zone, evenings included', () => {
     // 7:30 pm CDT on Oct 2 (+00:00 shape); 6:30 pm CST on Dec 1 from created_at when there is no billed_at.
     const ctx = (invoices: JobWithDetails['invoices']) => ({ job: jobWith({ invoices }), invoices, issuer: null, ownerName: null, signerName: '' })
