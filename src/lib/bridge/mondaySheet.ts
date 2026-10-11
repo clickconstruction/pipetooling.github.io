@@ -20,6 +20,8 @@ export type MondaySheet = {
   cash: { tone: Light['tone']; lead: string; sub: string; rows: SheetRow[]; verdict: string }
   moves: Move[]
   people: string[]
+  /** The weakest link (link PR 11): the rule, the lit link with its weeks, the call, the three readings. Empty until the stages read. */
+  link: string[]
   footer: string
 }
 
@@ -33,6 +35,7 @@ export type MondaySheetInput = {
   cashRows: SheetRow[]
   moves: Move[]
   people: string[]
+  link?: string[]
 }
 
 export const MONDAY_SHEET_MOVES = 5
@@ -55,6 +58,7 @@ export function buildMondaySheet(input: MondaySheetInput): MondaySheet {
     cash: { tone: input.cash.tone, lead: input.cash.lead, sub: input.cash.title, rows: input.cashRows, verdict: verdictOf(input.cash.tone, input.cash.sentence || input.cash.lead) },
     moves: input.moves.slice(0, MONDAY_SHEET_MOVES),
     people: input.people,
+    link: input.link ?? [],
     footer: 'Same rules as the full page: earned = field hours × contract ÷ expected hours; net position = cash + owed to you − owed by you; cash = the bank today, bills on due dates, receipts on expected dates.',
   }
 }
@@ -96,6 +100,8 @@ function rowsHtml(rows: SheetRow[]): string {
 export function mondaySheetHtml(sheet: MondaySheet, fullPageUrl: string): string {
   const moves = sheet.moves.map((m, i) => `<tr><td style="padding:6px 0;border-top:1px solid #e5e8ec;vertical-align:top;width:20px;color:#5b6470;font-weight:700">${i + 1}</td><td style="padding:6px 0;border-top:1px solid #e5e8ec"><b>${esc(m.title)}</b> <span style="color:#5b6470">· ${esc(m.why)}</span></td><td align="right" style="padding:6px 0;border-top:1px solid #e5e8ec;white-space:nowrap;font-weight:700;color:${m.leverTone === 'green' ? '#1e7f4f' : '#5b6470'}">${esc(m.lever)}</td></tr>`).join('')
   const people = sheet.people.map((p) => `<tr><td style="padding:6px 0;border-top:1px solid #e5e8ec">${esc(p)}</td></tr>`).join('')
+  const linkRows = sheet.link.map((p) => `<tr><td style="padding:6px 0;border-top:1px solid #e5e8ec">${esc(p)}</td></tr>`).join('')
+  const linkTile = sheet.link.length ? `<div style="border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff;margin:0 6px 12px 6px"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470;margin-bottom:6px">The weakest link</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${linkRows}</table></div>` : ''
   return `<!doctype html><html><body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1f2328">
 <div style="max-width:960px;margin:0 auto;padding:20px 12px">
 <div style="font-size:20px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">The Bridge</div>
@@ -105,6 +111,7 @@ ${tileHtml('Contribution per week', sheet.contribution, barsHtml(sheet.contribut
 ${tileHtml('Net position · 8 weeks', sheet.net, rowsHtml(sheet.net.rows))}
 ${tileHtml('Cash · lowest point', sheet.cash, rowsHtml(sheet.cash.rows))}
 </tr></table>
+${linkTile}
 <table role="presentation" cellspacing="0" cellpadding="0" style="width:100%"><tr>
 <td valign="top" style="width:50%;padding:0 6px 12px 6px"><div style="border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470;margin-bottom:6px">Five moves this week</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${moves || '<tr><td style="color:#5b6470">nothing to move today</td></tr>'}</table></div></td>
 <td valign="top" style="width:50%;padding:0 6px 12px 6px"><div style="border:1px solid #d9dde3;border-radius:10px;padding:14px 16px;background:#fff"><div style="font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#5b6470;margin-bottom:6px">People, this pay week</div><table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;font-size:13px">${people || '<tr><td style="color:#5b6470">no rows yet</td></tr>'}</table></div></td>
@@ -130,6 +137,7 @@ export function mondaySheetText(sheet: MondaySheet, fullPageUrl: string): string
     '',
     'People, this pay week:',
     ...(sheet.people.length ? sheet.people.map((p) => `  ${p}`) : ['  no rows yet']),
+    ...(sheet.link.length ? ['', 'The weakest link:', ...sheet.link.map((p) => `  ${p}`)] : []),
     '',
     sheet.footer,
     `Open the full Bridge: ${fullPageUrl}`,
