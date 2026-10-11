@@ -23,6 +23,8 @@ The bar at the top counts the steps done. It reads **Ready to start. Nothing is 
 - **The permit is in hand.** Press {{button:outline|Mark it done}} once you have it.
 - **A start date is set.** Pick the day work starts beside it.
 
+A contract with no price asks first. If no trade carries a price and Our number adds nothing, the contract would be signed at $0. The row says so and offers {{button:outline|Sign at $0 anyway}} or {{button:gray|Not now}}. Most times the fix is to carry the trades' prices first.
+
 A step you marked shows {{button:outline|Undo}} in case it was a mistake.
 
 [Send our contract to a GC customer to sign](/help/send-our-contract-to-a-gc-customer) shows the send.

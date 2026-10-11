@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { GcStartWindow, type StartPresses } from './GcStartWindow'
 import { GcCompanyOpenerContext } from './gcCompanyOpener'
 import { GcCustomerOpenerContext } from './gcCustomerOpener'
@@ -194,5 +194,58 @@ describe('GcStartWindow', () => {
     const { dialog } = open(stateOf(notReadyRows(), false), null)
     expect(within(dialog).queryByRole('button', { name: /Start/ })).toBeNull()
     expect(within(dialog).queryByRole('button', { name: 'Send the master agreement' })).toBeNull()
+  })
+})
+
+describe('GcStartWindow, our contract at $0 (the owner, 2026-10-10)', () => {
+  /** The test project on the walk: no trade carries anything and Our number is 0%, so our contract adds up to $0. */
+  function atZero(state: GcState): GcState {
+    return {
+      ...state,
+      projects: state.projects.map((p) =>
+        p.id !== 'p1'
+          ? p
+          : {
+              ...p,
+              packages: p.packages.map((k) => ({ ...k, carried: null, awardedInviteId: null, budget: 0, sow: null, selfPerform: null })),
+              generalConditions: 0,
+              contingencyPct: 0,
+              feePct: 0,
+            },
+      ),
+    }
+  }
+  const contractRow = (dialog: HTMLElement) => dialog.querySelector('[data-gc-start-owner="ownerContract"]') as HTMLElement
+
+  it('asks before it signs, and signs only on Sign at $0 anyway', async () => {
+    const { p, dialog } = open(atZero(stateOf(readyRows({ owner_contract_signed_on: null }))))
+    fireEvent.click(within(contractRow(dialog)).getByRole('button', { name: 'Mark it signed' }))
+    const ask = within(contractRow(dialog)).getByRole('alert')
+    expect(ask.textContent).toContain('The contract would be signed at $0. No trade carries a price and Our number adds nothing.')
+    expect(p?.signContract).not.toHaveBeenCalled()
+    fireEvent.click(within(ask).getByRole('button', { name: 'Sign at $0 anyway' }))
+    await waitFor(() => expect(p?.signContract).toHaveBeenCalledWith(true))
+    expect(p?.signContract).toHaveBeenCalledTimes(1)
+  })
+
+  it('Not now signs nothing and puts the button back', () => {
+    const { p, dialog } = open(atZero(stateOf(readyRows({ owner_contract_signed_on: null }))))
+    fireEvent.click(within(contractRow(dialog)).getByRole('button', { name: 'Mark it signed' }))
+    fireEvent.click(within(contractRow(dialog)).getByRole('button', { name: 'Not now' }))
+    expect(within(contractRow(dialog)).queryByRole('alert')).toBeNull()
+    expect((within(contractRow(dialog)).getByRole('button', { name: 'Mark it signed' }) as HTMLButtonElement).disabled).toBe(false)
+    expect(p?.signContract).not.toHaveBeenCalled()
+  })
+
+  it('a priced contract signs on the first press, and Undo never asks', async () => {
+    const priced = open(stateOf(readyRows({ owner_contract_signed_on: null })))
+    fireEvent.click(within(contractRow(priced.dialog)).getByRole('button', { name: 'Mark it signed' }))
+    expect(within(contractRow(priced.dialog)).queryByRole('alert')).toBeNull()
+    await waitFor(() => expect(priced.p?.signContract).toHaveBeenCalledWith(true))
+    cleanup()
+    const signed = open(atZero(stateOf(readyRows())))
+    fireEvent.click(within(contractRow(signed.dialog)).getByRole('button', { name: 'Undo' }))
+    expect(within(contractRow(signed.dialog)).queryByRole('alert')).toBeNull()
+    await waitFor(() => expect(signed.p?.signContract).toHaveBeenCalledWith(false))
   })
 })
