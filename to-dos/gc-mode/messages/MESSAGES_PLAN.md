@@ -466,6 +466,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.76, 2026-10-11**: the words box in the add row and the edit row wraps and grows with its words (the owner's
+  ask).
 - **v1.75, 2026-10-11**: an opened line and its editor read as one block in the accent tint with a rule down the left,
   so the open area is a different colour from the rows around it (the owner's ask).
 - **v1.74, 2026-10-11**: the two tag pickers stack beside the line, in the add row and the edit row, and the window's
