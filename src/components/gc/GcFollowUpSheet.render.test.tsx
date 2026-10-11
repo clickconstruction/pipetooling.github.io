@@ -5,7 +5,8 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, createEvent, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { GcFollowUpSheet } from './GcFollowUpSheet'
+import { GcFollowUpSheet, type FollowUpFromCompany } from './GcFollowUpSheet'
+import { GC_TRADE_EMAIL_REFUSALS } from '../../lib/gc/tradeEmail'
 import type { FollowUpWriters } from '../../lib/gc/followUpWrites'
 import { initialGcState } from '../../lib/gc/schedule/testState'
 import type { GcState } from '../../lib/gc/types'
@@ -42,7 +43,7 @@ describe('GcFollowUpSheet', () => {
     expect(screen.getByRole('heading', { name: /^Follow up with Marcus/ })).toBeTruthy()
     const draft = screen.getByRole('link', { name: 'Draft text' }) as HTMLAnchorElement
     expect(draft.href).toMatch(/^sms:2105550177\?&body=Hi%20Marcus/)
-    // Nothing from the company in this cut: no From choice at all.
+    // Without the email from Click, no From choice at all.
     expect(screen.queryByRole('group', { name: 'From' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'I sent it' })).toBeNull()
   })
@@ -127,5 +128,80 @@ describe('GcFollowUpSheet', () => {
     // A window under the sheet sees the key already taken.
     expect(under).toHaveReturnedWith(true)
     document.removeEventListener('keydown', under)
+  })
+})
+
+describe('GcFollowUpSheet, the email from Click (B2b-viii-b)', () => {
+  function company(over: Partial<FollowUpFromCompany> = {}): FollowUpFromCompany {
+    return {
+      send: vi.fn(() => Promise.resolve({ ok: true as const, companyId: 'pecanvalley', messageId: 'm1', emailSendLogId: 'l1', to: ['Marcus Bell'], already: false })),
+      test: vi.fn(() => Promise.resolve({ ok: true as const, test: true as const, email: 'bids@clickplumbing.com', wouldGo: [{ name: 'Marcus Bell', email: 'marcus@pecanvalley.example' }] })),
+      ...over,
+    }
+  }
+  const openFromClick = (fromCompany: FollowUpFromCompany, w = writers(), partnerId = 'pecanvalley', state = withReach()) => {
+    render(<GcFollowUpSheet state={state} writes={w} fromCompany={fromCompany} me="Robert Douglas" startPartnerId={partnerId} onClose={() => undefined} />)
+    fireEvent.click(within(screen.getByRole('group', { name: 'From' })).getByRole('button', { name: 'Click Construction' }))
+    return w
+  }
+
+  it('offers From the company only with the press, by email only, its box holding the email’s own words', () => {
+    render(<GcFollowUpSheet state={withReach()} writes={writers()} me="Robert Douglas" startPartnerId="pecanvalley" onClose={() => undefined} />)
+    expect(screen.queryByRole('group', { name: 'From' })).toBeNull()
+    cleanup()
+    openFromClick(company())
+    expect((screen.getByRole('button', { name: 'Text' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: 'Email' }).getAttribute('aria-pressed')).toBe('true')
+    const box = screen.getByLabelText('The message') as HTMLTextAreaElement
+    expect(box.value).not.toMatch(/^Hello /)
+    expect(box.value).not.toMatch(/Thank you,/)
+    expect(screen.queryByRole('link', { name: /^Draft / })).toBeNull()
+  })
+
+  it('a test copy goes to me alone and says who the real one reaches; nothing is logged', async () => {
+    const c = company()
+    const w = openFromClick(c)
+    fireEvent.click(screen.getByRole('button', { name: 'Send a test to me' }))
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('A test copy went to bids@clickplumbing.com. The real one goes to Marcus Bell <marcus@pecanvalley.example>.'))
+    expect(c.test).toHaveBeenCalledWith(expect.objectContaining({ companyId: 'pecanvalley', kind: 'nudge', test: true, groups: ['job', 'pay'], projectId: 'fairoaksd' }))
+    expect(c.send).not.toHaveBeenCalled()
+    expect(w.logAsk).not.toHaveBeenCalled()
+  })
+
+  it('Send email sends, then logs it as a nudge from Click, and moves on', async () => {
+    const c = company()
+    const w = openFromClick(c)
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(w.logAsk).toHaveBeenCalledTimes(1))
+    expect(c.send).toHaveBeenCalledWith(expect.not.objectContaining({ test: true }))
+    expect(w.logAsk).toHaveBeenCalledWith(expect.objectContaining({ companyId: 'pecanvalley', inviteId: null, how: 'nudge', note: expect.stringMatching(/^From Click Construction: emailed about /) }))
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('Emailed Marcus. It is logged.'))
+  })
+
+  it('a refusal or an email already sent today logs nothing, and says so', async () => {
+    const refused = company({ send: vi.fn(() => Promise.resolve({ ok: false as const, key: 'noEmail' as const, detail: null })) })
+    const w = openFromClick(refused)
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toBe(GC_TRADE_EMAIL_REFUSALS.noEmail))
+    expect(w.logAsk).not.toHaveBeenCalled()
+    cleanup()
+    const again = company({ send: vi.fn(() => Promise.resolve({ ok: true as const, companyId: 'pecanvalley', messageId: 'm1', emailSendLogId: 'l1', to: [], already: true })) })
+    const w2 = openFromClick(again)
+    fireEvent.click(screen.getByRole('button', { name: 'Send email' }))
+    await waitFor(() => expect(screen.getByRole('status').textContent).toBe('That email already went today. Nothing new was sent or logged.'))
+    expect(w2.logAsk).not.toHaveBeenCalled()
+  })
+
+  it('holds a company that writes in Spanish, in words, and never offers Click to a customer', () => {
+    const s = withReach()
+    const es = { ...s, partners: s.partners.map((p) => (p.id === 'pecanvalley' ? { ...p, lang: 'es' as const } : p)) }
+    const c = company()
+    openFromClick(c, writers(), 'pecanvalley', es)
+    expect(screen.getByText(GC_TRADE_EMAIL_REFUSALS.spanishHeld)).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Send email' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Send a test to me' }) as HTMLButtonElement).disabled).toBe(true)
+    cleanup()
+    render(<GcFollowUpSheet state={withReach()} writes={writers()} fromCompany={company()} me="Robert Douglas" startPartnerId="customer:cibolo" onClose={() => undefined} />)
+    expect(screen.queryByRole('group', { name: 'From' })).toBeNull()
   })
 })

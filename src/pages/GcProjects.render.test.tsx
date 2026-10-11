@@ -331,6 +331,8 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Work the list · 1 person' }))
     const sheet = screen.getByRole('dialog', { name: 'Follow up' })
     expect(within(sheet).getByRole('heading', { name: 'Follow up with Dee Park' })).toBeTruthy()
+    // The email from Click is a dev's while trade email is (B2b-viii-b).
+    expect(within(sheet).queryByRole('group', { name: 'From' })).toBeNull()
     const reads = vi.mocked(loadGcBoardRows).mock.calls.length
     fireEvent.click(within(sheet).getByRole('button', { name: 'Log a call' }))
     fireEvent.change(within(sheet).getByLabelText('What Dee said'), { target: { value: 'Pricing it now.' } })
@@ -339,6 +341,18 @@ describe('GcProjects: the Project Board', () => {
     expect(logGcAskContact).toHaveBeenCalledWith({ companyId: 'hillside', inviteId: 'i2', on: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), byName: 'Smoke Dev', how: 'call', note: 'Pricing it now.', promisedBy: null })
     await waitFor(() => expect(vi.mocked(loadGcBoardRows).mock.calls.length).toBeGreaterThan(reads))
     vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  it('a dev’s Follow up sheet offers the email from Click (B2b-viii-b)', async () => {
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Follow up (1)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'By people · 1' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Work the list · 1 person' }))
+    const sheet = screen.getByRole('dialog', { name: 'Follow up' })
+    expect(within(within(sheet).getByRole('group', { name: 'From' })).getByRole('button', { name: 'Click Construction' })).toBeTruthy()
   })
 
   it('a dev asks for quotes from a project’s trade, and the window records the asks', async () => {

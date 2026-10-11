@@ -108,6 +108,16 @@ export interface TradeEmailRequest {
   lines: TradeEmailLine[]
   /** Only for `paper`: a contract, or pay and papers. Every other kind takes its group from the kind. */
   group: TradeMailGroup | null
+  /**
+   * Only for `nudge` (the Board's B2b-viii-b, the Follow up sheet from the company): the mail groups of what it asks
+   * about. It goes to everyone at the company who gets any of them (the owner, 2026-10-05). Unset: the kind's group.
+   */
+  groups?: TradeMailGroup[]
+  /**
+   * A test copy (B2b-viii-b, as `gc-customer-email` has it): built as the real email would be, to the caller's own address
+   * only, `[TEST]` before the subject, with no key used, no message row, no sent copy and no link made or shown.
+   */
+  test?: boolean
 }
 
 export const TRADE_EMAIL_LIMITS = { key: 200, subject: 200, lines: 40, line: 2000, items: 100 } as const
@@ -160,7 +170,23 @@ export function parseTradeEmail(body: unknown): { ok: true; req: TradeEmailReque
       if (raw !== 'contracts' && raw !== 'pay') throw new Bad()
       group = raw
     } else if (raw !== null) throw new Bad()
-    return { ok: true, req: { companyId, kind: kind as TradeEmailKind, key, projectId, lang: body.lang, subject, lines, group } }
+    // A nudge's groups: one to four of them, each once, kept in the groups' own order.
+    const rawGroups = body.groups === undefined || body.groups === null ? null : body.groups
+    let groups: TradeMailGroup[] | null = null
+    if (rawGroups !== null) {
+      if (kind !== 'nudge' || !Array.isArray(rawGroups) || rawGroups.length === 0 || rawGroups.length > TRADE_MAIL_GROUPS.length) throw new Bad()
+      const seen = new Set<string>()
+      for (const g of rawGroups) {
+        if (typeof g !== 'string' || !(TRADE_MAIL_GROUPS as readonly string[]).includes(g) || seen.has(g)) throw new Bad()
+        seen.add(g)
+      }
+      groups = TRADE_MAIL_GROUPS.filter((g) => seen.has(g))
+    }
+    if (body.test !== undefined && typeof body.test !== 'boolean') throw new Bad()
+    return {
+      ok: true,
+      req: { companyId, kind: kind as TradeEmailKind, key, projectId, lang: body.lang, subject, lines, group, ...(groups ? { groups } : {}), ...(body.test === true ? { test: true } : {}) },
+    }
   } catch (e) {
     if (e instanceof Bad) return { ok: false }
     throw e
@@ -219,6 +245,32 @@ export function tradeEmailRecipients(company: TradeMailCompany, people: TradeMai
   const others = people.filter((p) => (p.gets ?? []).includes(group)).map((p) => ({ name: (p.name ?? '').trim(), email: cleanEmail(p.email), main: false }))
   const to = [...(mainGets.includes(group) ? [main] : []), ...others]
   return to.length > 0 ? to : [main]
+}
+
+/**
+ * Who gets an email about several kinds (a nudge's `groups`, B2b-viii-b): everyone who gets any of them, the main contact
+ * first, each person once. The client's copy is `followUpMailTo` in `src/lib/gc/companyPeople.ts`. Never empty.
+ */
+export function tradeEmailRecipientsOf(company: TradeMailCompany, people: TradeMailPerson[], groups: readonly TradeMailGroup[]): TradeRecipient[] {
+  const all = groups.flatMap((g) => tradeEmailRecipients(company, people, g))
+  const out: TradeRecipient[] = []
+  for (const r of [...all.filter((x) => x.main), ...all.filter((x) => !x.main)]) {
+    if (!out.some((o) => o.main === r.main && o.name === r.name && o.email === r.email)) out.push(r)
+  }
+  return out
+}
+
+/** A test copy's subject, as `gc-customer-email`'s. */
+export function tradeEmailTestSubject(subject: string): string {
+  return `[TEST] ${subject.trim()}`
+}
+
+/** A test copy's email type on `email_send_log`, so no reader counts it as a send. */
+export const GC_TRADE_EMAIL_TEST_TYPE = 'gc_trade_email_test'
+
+/** The portal link a test copy shows in place of the company's: no link is made for a test, and none leaves in one. */
+export function tradeTestLinkUrl(origin: string): string {
+  return `${origin.replace(/\/+$/, '')}/t/…`
 }
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/

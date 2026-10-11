@@ -102,7 +102,7 @@ import { fetchJobWithDetailsById } from '../lib/fetchJobWithDetailsById'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { openQuestions, questionsCloseOn, type PlanQuestionView } from '../lib/gc/questions'
 import { answerEmail, answerRecipients, answerSentWords, tradeMailLang } from '../lib/gc/tradeEmail'
-import { emailTheAnswer, sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
+import { emailTheAnswer, sendGcTradeEmail, sendGcTradeEmailTest } from '../lib/gc/tradeEmailIo'
 import { Btn, Chip } from '../components/gc/gcUi'
 import { BidsModeToggle } from '../components/gc/BidsModeToggle'
 import { GcBoard } from '../components/gc/GcBoard'
@@ -111,7 +111,7 @@ import { GcStageHealth } from '../components/gc/GcStageHealth'
 import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
-import { GcFollowUpSheet } from '../components/gc/GcFollowUpSheet'
+import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
 import { GcTradeSow, type SowWrites } from '../components/gc/GcTradeSow'
@@ -648,6 +648,8 @@ export default function GcProjects() {
       await recordGcTradePromise(promise)
     },
   }
+  // The email from Click (B2b-viii-b): whoever may send a trade email, a dev until the portal's door.
+  const followUpFromCompany: FollowUpFromCompany | null = canSendGcTradeEmail(role) ? { send: (req) => sendGcTradeEmail(req), test: (req) => sendGcTradeEmailTest(req) } : null
   const [followSheet, setFollowSheet] = useState<{ projectId?: string; partnerId?: string; calling: boolean } | null>(null)
   const followSheetJob = followSheet?.projectId ? (board?.projects.find((p) => p.id === followSheet.projectId) ?? null) : null
   // Who else? on a Follow up card: Trade partners, at that trade's card.
@@ -2034,7 +2036,7 @@ export default function GcProjects() {
           canPull={canUseGcBuilding(role)}
           canTell={canSendGcTradeEmail(role)}
           reads={scheduleReads}
-          {...(canOpenGcProjects(role) ? { followUp: { writes: followUpWriters, me: profileName ?? null, onLogged: async () => void (await refreshBoard()) } } : {})}
+          {...(canOpenGcProjects(role) ? { followUp: { writes: followUpWriters, me: profileName ?? null, onLogged: async () => void (await refreshBoard()), ...(followUpFromCompany ? { fromCompany: followUpFromCompany } : {}) } } : {})}
           onClose={() => setScheduleWindow(null)}
         />
       )}
@@ -2043,6 +2045,7 @@ export default function GcProjects() {
           key={`${followSheet.projectId ?? 'all'}:${followSheet.partnerId ?? ''}`}
           state={board}
           writes={followUpWriters}
+          {...(followUpFromCompany ? { fromCompany: followUpFromCompany } : {})}
           me={profileName ?? null}
           {...(followSheet.partnerId ? { startPartnerId: followSheet.partnerId } : {})}
           startCalling={followSheet.calling}
