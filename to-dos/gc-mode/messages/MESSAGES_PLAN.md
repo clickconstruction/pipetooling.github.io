@@ -264,6 +264,19 @@ Each gets an answer here and a picture in the prototype before it is built.
 - **Search inside transcripts.**
 - **Retention and legal hold**: how long recordings are kept, who deletes, how a matter freezes a thread.
 - **One inbox**: the Customers tab is a filter, never a second queue with its own count.
+- **Documents, for files going out** (the owner, 2026-10-11, after v1.91). Three things, in the order they bite:
+  1. **One list of a job's files.** The Attach picker's first section is *the job's own files*, and today that answer
+     is spread over places that do not know each other: the papers the app makes (the statement of work, a pay
+     application, our contract, the schedule), the job's Drive folder in its Plans and Team only halves, the files a
+     trade partner uploaded from its portal (`gc_trade_files`), the sent copies already in Documents, and the files
+     that arrived on messages. Documents gives one read per job, *the job's files*, that walks all of them and tags
+     each with where it lives and whether it has a portal page; the picker and the job's own page read it. No new tab
+     and no second list: the thread, the picker and Documents read the same files.
+  2. **A sent copy keeps its files.** The copy of an email as it went carries the files that went with it, and a text
+     that went as a link keeps the link, each marked how it went (the file, a link, the picture), as the thread shows
+     it; otherwise the copy is not the copy.
+  3. **Two landing places, by rule.** A file picked from this computer goes to the job's Team only folder and a photo
+     to the job's photos, the way incoming ones already do, so nothing sent lives only on the message.
 
 ## How it would be built, once the shape is settled
 
@@ -284,6 +297,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
 5. **Who is this?** and the matching rule.
 6. **Customers** as a filter; the job's conversations list on the project page.
 7. **Email** through a shared Google mailbox, into the same threads.
+   With it, **files going out**: Documents' one list of a job's files for the Attach picker, sent copies that keep
+   their files, and the two landing places (the open item *Documents, for files going out*).
 8. Later: Job activity on the Pipeline, photos, the file agent.
 
 ## Prototype log
