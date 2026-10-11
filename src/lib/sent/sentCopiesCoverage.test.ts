@@ -59,6 +59,10 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'pages/PartnerStatement.tsx': 'the partner prints from their own statement page',
   'pages/SubPortal.tsx': 'the sub prints from their own portal page',
   'components/gc/gcTradePortalPrint.ts': 'the trade partner prints its own list of papers from its own portal page',
+  // The spike only: the design prototype's own prints, on made-up data. Nothing leaves the prototype, and main's real
+  // screens (GcScheduleLetter, gcTradePortalPrint) file or answer their own.
+  'components/gc/GcBuildingSchedule.tsx': 'the design prototype’s schedule letter, printed from made-up data; nothing leaves the prototype',
+  'components/gc/gcPortalPrint.ts': 'the design prototype’s portal paper, printed from made-up data; nothing leaves the prototype',
 }
 
 function sourceFiles(dir: string, out: string[] = []): string[] {
