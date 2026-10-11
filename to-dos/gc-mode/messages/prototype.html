@@ -114,7 +114,7 @@ h3{font-size:14px;margin:14px 0 6px;color:var(--text-muted);text-transform:upper
 .mw .attl div{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border);font-size:13px}
 .mw .attl div:first-child{border-top:0}
 .mw .attl .nm{flex:1}
-@media print{ body>*:not(.modal-bg){display:none!important} .modal-bg{position:static;background:none;padding:0} .modal{box-shadow:none;max-width:none;max-height:none;overflow:visible} .mw .tools,.mw .btns{display:none!important} .mw .full{max-height:none;border:0;padding:0} }
+@media print{ body.printing>*:not(.modal-bg){display:none!important} body.printing .modal-bg{position:static;background:none;padding:0} body.printing .modal{box-shadow:none;max-width:none;max-height:none;overflow:visible} body.printing .mw .tools,body.printing .mw .btns{display:none!important} body.printing .mw .full{max-height:none;border:0;padding:0} }
 .msg .offer{margin-top:8px;padding:8px;border-radius:8px;background:var(--warn-soft);font-size:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .msg .offer.q{background:#f3eaff}
 .msg .offer .tag{font-size:11px;opacity:.7;margin-left:4px;font-weight:400}
@@ -255,7 +255,7 @@ kbd{font:12px ui-monospace,Menlo,monospace;background:var(--chip);padding:1px 5p
   <nav id="nav"></nav>
   <span class="me">Signed in as Robert · prototype, nothing is saved</span>
 </header>
-<main id="main"></main>
+<main id="main"><p class="note" style="padding:24px">Messages prototype. If this line stays, the page's script did not run: open the file in a browser (Safari or Chrome) rather than a preview that draws it still.</p></main>
 <div id="toast" class="toast"></div>
 <script>
 // ---------- made-up data (the GC mode prototype's people) ----------
@@ -542,7 +542,7 @@ function openMessage(mid){ const x=messages.find(m=>m.id===mid); const c=cById(x
       <dt>Tied to</dt><dd>${x.job?esc(jobLabel(c,x.job)):'<i>no job, sits on the person</i>'} <button class="small quiet" onclick="this.closest('.modal-bg').remove();tieMenu(${mid})">change</button></dd>
       ${x.dir==='out'&&x.ch!=='note'?'<dt>Kept</dt><dd>A copy as it went is in Documents.</dd>':''}
       ${x.transcript?'<dt>Recording</dt><dd>▶ '+esc(x.dur||'')+' · the transcript is below; Quo wrote the summary.</dd>':''}</dl>
-    <div class="tools"><button class="small primary" id="hlbtn" onclick="window.__hl(${mid})" disabled>Highlight the selected words</button><button class="small" onclick="navigator.clipboard&&navigator.clipboard.writeText(${JSON.stringify(x.text).replace(/"/g,'&quot;')});toast('Copied.')">Copy</button><button class="small" onclick="window.print()">Print or save as PDF</button><button class="small" onclick="window.__share(${mid})">Share…</button>${x.dir==='in'?`<button class="small" onclick="this.closest('.modal-bg').remove();document.getElementById('box')?.focus()">Reply</button>`:''}</div>
+    <div class="tools"><button class="small primary" id="hlbtn" onclick="window.__hl(${mid})" disabled>Highlight the selected words</button><button class="small" onclick="navigator.clipboard&&navigator.clipboard.writeText(${JSON.stringify(x.text).replace(/"/g,'&quot;')});toast('Copied.')">Copy</button><button class="small" onclick="document.body.classList.add('printing');window.print();setTimeout(()=>document.body.classList.remove('printing'),500)">Print or save as PDF</button><button class="small" onclick="window.__share(${mid})">Share…</button>${x.dir==='in'?`<button class="small" onclick="this.closest('.modal-bg').remove();document.getElementById('box')?.focus()">Reply</button>`:''}</div>
     <div class="full" id="fulltext">${markHtml(x)}</div>
     ${hls.length?`<h3>Highlights (${hls.length})</h3><div class="hls">${hls.map((h,i)=>`<div><span>${esc(h.text)}</span><small>${esc(h.by)} · ${esc(h.at)}</small><button class="small quiet" onclick="window.__unhl(${mid},${i})">×</button></div>`).join('')}</div>`:''}
     ${x.attachments?`<h3>Attachments (${x.attachments.length})</h3><div class="attl">${x.attachments.map((a,i)=>`<div><span class="ic ${a.kind}" style="width:22px;height:22px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;background:${a.kind==='pdf'?'#c0392b':a.kind==='image'?'#2a8f5a':'#1f5fbf'}">${a.kind==='pdf'?'PDF':a.kind==='link'?'↗':'IMG'}</span><span class="nm">${esc(a.name)} <span class="note">· ${esc(a.size)}${a.kind==='link'?' · a link, not a file':' · our copy kept on arrival'}</span></span><button class="small" onclick="toast('Opens the file.')">Open</button><button class="small" onclick="toast('The file agent copies it to ${esc(x.job?jobById(x.job).name:'the job')} › ${a.quote||a.kind==='image'?'Team only':'Plans'} in Drive.')">Save to Drive</button>${a.quote?`<button class="small primary" onclick="toast('Opens Enter their quote with this PDF beside it.')">Enter it as their quote</button>`:''}</div>`).join('')}</div>`:''}
