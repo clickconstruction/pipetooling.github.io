@@ -378,6 +378,44 @@ repeats, papers, the ids of its facts, and its history) and nothing for state, w
 the owner: whether a step can be skipped for a kind of company (a supplier with no MSA), in place of a
 second flow.
 
+### The flow suite, next cuts (2026-10-11, after the owner's "are there features we're missing?")
+
+Five cuts, each a mock-up piece and a plan amendment, in the order they change the shape; the first three
+land before the prototype builds pieces 1 to 3 above, since they change what a step box can be.
+
+1. **The states of a step** (piece 6, a legend and two cards). A step is done, on now, next, and also
+   **lapsed** (a done fact that stopped being true: insurance past `expires_at`, an MSA past its term, a
+   quote withdrawn; the box goes amber, the person is back on it, the nudge restarts), **late** (a step with
+   a day the app has, bid due, questions close, pay by, a promised day, read as *due Thu* or *late 2 days*,
+   and the nudge fires off the day, not only off silence), **waiting on someone else's step** (Elena's pay
+   app waits on Jonah's Certify; the card names the person and the step and links to their thread, and the
+   nudge goes to the right person) and **off the flow** (a lost bid, a declined customer, a trade we stopped
+   using: *off since, and why*, with a way back in; the facts are `lost_on`, `gc_mark_lost`,
+   `bids.outcome`, and a new one for a trade). Decision for the owner: a person on two flows (a GC who also
+   quotes as a sub), or two contacts.
+2. **Everyone by step** (piece 7, a new surface, options A, B, C). A column per step with faces, counts and
+   late marks; a press on a face opens the thread with the panel open; the Messages list gains a filter by
+   step. Options for where it lives: a tab of Follow up, a tab of Trade partners and Customers, or a *Flows*
+   tab of its own; the mock-up draws all three and picks.
+3. **Their own view of it** (piece 8). The trade's portal mirrors the flow: *where you are with us: Papers
+   in, we need your insurance*, each their-move step with its upload or signature, in English and Spanish
+   (`PORTAL_SPANISH.md`). The customer's portal the same, once the open item on which record a contact is
+   settles whether a customer has one.
+4. **Time in step, and the owner's report** (piece 9). The card's *on now since* gains what is usual
+   (*usually 3 days, now 9*, the median of the done ones); a report for the owner of where people get stuck
+   and how asks turn into quotes and quotes into carries, by step and by month.
+5. **The small things, folded into the pieces they belong to**: the seat that owns an our-move step (an
+   editor column, so a nudge row lands on Rosa or Robert by the rule in *Who gets a new message*); a per-step
+   choice between *ask me* and *the app sends the text* (the editor's nudge column; the automatic one is the
+   owner's to turn on, since it sends mail); a gray event line in the thread when a fact turns true (*Tom's
+   insurance came in · Papers in done*); a team note tied to a step, the way a message ties to a job; the
+   per-job lane switching job, not only the default; *does not apply* on a step for one person, with a
+   reason, beside the open *skip for a kind* question; and the phone layout for the panel and the card.
+
+Then the prototype: pieces 1 to 3 with cut 1's states (v1.94 on), Everyone by step after the owner's pick
+on piece 7, the rest as they are pressed on. Three decisions are the owner's before the build: two flows
+per person or two contacts; where Everyone by step lives; whether the app may send a nudge itself.
+
 ## How it would be built, once the shape is settled
 
 In the order a GC lane builds: a plan page per cut, SQL first, then the read, then the screens.
@@ -601,6 +639,9 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.93b, 2026-10-11**: the plan's *The flow suite, next cuts*: five cuts from the owner's "are there features we're
+  missing?" (the states of a step, Everyone by step, their own view, time in step and the report, the small
+  things), the order, and the three decisions that are the owner's. No prototype change.
 - **v1.93, 2026-10-11**: `flow-suite-mockups.html`, the flow suite as five pieces (paper marks on the steps, the
   step card, the editor with its fact picker and preview, the papers reading the flow back, the nudge as a
   Follow up row) with the sweep of which stamp finishes each step; the plan gains *The flow suite*. No
