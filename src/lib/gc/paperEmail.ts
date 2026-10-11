@@ -27,6 +27,8 @@ export const PAPER_EMAIL_WORDS = {
   coiRenew: { en: 'Please send us your renewed insurance certificate by {date}.', es: 'Por favor envíenos su certificado de seguro renovado a más tardar el {date}.' },
   coiNone: { en: 'Please send us your insurance certificate by {date}. Nothing you do for us is covered until it comes.', es: 'Por favor envíenos su certificado de seguro a más tardar el {date}. Nada de lo que haga para nosotros está cubierto hasta que llegue.' },
   coiReply: { en: 'Reply to this email with the certificate.', es: 'Responda a este correo con el certificado.' },
+  // P5b-2: the portal takes a certificate now, once the email carries the company's portal link.
+  coiPortal: { en: 'Send it from your portal with the link below. Or reply to this email with it.', es: 'Envíelo desde su portal con el enlace de abajo. O responda a este correo con él.' },
   w9Subject: { en: 'Your W-9 for {gc}', es: 'Su W-9 para {gc}' },
   w9Ask: { en: 'Please fill in and sign your W-9 by {date}. We need it before we can pay you.', es: 'Por favor llene y firme su W-9 a más tardar el {date}. Lo necesitamos antes de poder pagarle.' },
 } as const satisfies Record<string, Record<PortalLang, string>>
@@ -35,6 +37,20 @@ function w(lang: PortalLang, key: keyof typeof PAPER_EMAIL_WORDS, vars: Record<s
   let out: string = PAPER_EMAIL_WORDS[key][lang]
   for (const [k, v] of Object.entries(vars)) out = out.split(`{${k}}`).join(v)
   return out
+}
+
+/**
+ * A trade may send its insurance certificate from its portal (P5b-2), received until the office marks it good. True:
+ * the insurance ask says so when its email carries the portal link, as `DRAW_PORTAL_LIVE` turned with its screens.
+ */
+export const COI_PORTAL_LIVE = true
+
+/**
+ * The insurance ask's last line: send it from the portal, or reply. The portal's words only when the email carries the
+ * company's portal link (gc 2); `gc-trade-email` always does, minting one when the company has none, or it sends nothing.
+ */
+export function coiAskLine(lang: PortalLang, carriesPortalLink: boolean): string {
+  return w(lang, COI_PORTAL_LIVE && carriesPortalLink ? 'coiPortal' : 'coiReply')
 }
 
 /** One send's email: through the signing link (a master agreement, a W-9) or through `gc-trade-email`. */
@@ -72,7 +88,8 @@ export function paperEmail(state: GcState, partner: Partner, step: PaperStep, by
       kind: 'coi',
       projectId: null,
       subject: (again ? REMINDER[lang] : '') + w(lang, 'coiSubject', { gc }),
-      lines: [w(lang, partner.coiExpires ? 'coiRenew' : 'coiNone', { date }), ...own, w(lang, 'coiReply')],
+      // gc-trade-email carries the company's portal link on every email (it mints one when there is none).
+      lines: [w(lang, partner.coiExpires ? 'coiRenew' : 'coiNone', { date }), ...own, coiAskLine(lang, true)],
     }
   }
   if (step.paper === 'sow' && step.projectId && step.packageId && SOW_SIGN_SCREEN_LIVE) {
