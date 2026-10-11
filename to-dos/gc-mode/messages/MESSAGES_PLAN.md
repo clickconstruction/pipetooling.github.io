@@ -131,6 +131,18 @@ Each one is a button in the prototype; each becomes one press in the app.
 - **Opt out**: a STOP from the contact flags the number; the app refuses to text it and says so.
 - **Search**: words in texts, emails, transcripts and summaries, across every contact.
 
+## Whose court it is in
+
+In place of a bare "waiting 6 d", the header's third line says whose move it is and shows both last
+words (the owner, 2026-10-11): an orange **Our court · 6 d** when the last word was theirs (it counts from
+their last message), a green **Their court · 2 d** when the last word was ours (it counts from our last
+message, or reads *Their court · until Wed Oct 7* while a promise runs), and beside it two stamps,
+**Them** text · Sat Sep 26, 2:14 PM and **Us** email · Sat Sep 19, 4:05 PM. A reply, an email or a call
+from us moves the ball to their court; their next message moves it back. A note for the team moves
+nothing, since they never saw it. The Follow up rows and the Messages list carry the same court word in
+small, so the queue reads "Our court · 6 d" without opening the thread. Snoozed and the promise stay as
+their own pills.
+
 ## Every control explains itself on hover
 
 Hovering any control (and tabbing to it) opens a small white card, the look of a little window: the
@@ -289,3 +301,6 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   "Customer: Helotes Dental Office".
 - **v1.18, 2026-10-11**: the email moved under the name and back again the same hour; it stays on the
   facts line after the phone (the owner's call).
+- **v1.19, 2026-10-11**: whose court it is: the header's third line reads Our court or Their court
+  with the count, and the two stamps Them and Us with the channel and time of each last word; the
+  Follow up rows and the list carry the court word. An older email from Rosa to Priya seeds the Us stamp.
