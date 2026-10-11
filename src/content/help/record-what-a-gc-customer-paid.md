@@ -59,6 +59,6 @@ Our unconditional waiver goes with each payment. It gives up our lien rights for
 
 1. Press {{button:outline|Make our unconditional waiver}} on the bill.
 2. The waiver window opens on the bill. The amount comes from what they paid.
-3. Check the form, sign it and send it the way you send any waiver.
+3. Check the form, sign it and send it the way you send any waiver. The form names Click Construction, LLC as the one who releases. The email goes from Click Construction.
 
 The bill then shows {{chip:green|our unconditional waiver went}}.

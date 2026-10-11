@@ -229,3 +229,18 @@ describe('LienReleaseModal — our waiver to the GC (v2.4274)', () => {
     expect(screen.queryByRole('alertdialog')).toBeNull()
   })
 })
+
+describe('LienReleaseModal — the releasing party (v2.5228)', () => {
+  it('GC mode’s billing job releases for Click Construction, LLC; a sub job that bills a GC keeps the company’s own name', async () => {
+    const billing = makeJob({ ...job, id: 'j-gc-bill', gc_customer_id: null, gcCustomer: null, billing_only: true })
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={billing} invoice={inv2} signerNameFallback="Malachi Reyes" />)
+    await screen.findByTestId('lien-waiver-form')
+    await settle()
+    expect(document.body.textContent).toContain('Click Construction, LLC')
+    cleanup()
+    renderWithProviders(<LienReleaseModal open onClose={() => undefined} job={job} invoice={inv2} signerNameFallback="Malachi Reyes" />)
+    await screen.findByTestId('lien-waiver-form')
+    await settle()
+    expect(document.body.textContent).not.toContain('Click Construction, LLC')
+  })
+})
