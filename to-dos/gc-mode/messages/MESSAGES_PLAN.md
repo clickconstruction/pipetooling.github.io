@@ -126,7 +126,7 @@ Each one is a button in the prototype; each becomes one press in the app.
   folder, a quote or a photo to Team only) and, for a quote, *Enter it as their quote*. The app keeps its
   own copy on arrival, as photos (draft 8); a link is a link. Open: what an attachment on an outgoing
   message looks like, and whether a highlight should also become a team note on the job.
-- **Quick replies**: a gray panel above the box; a press fills the box and nothing sends. Since v1.67 (`quick-replies-mockups.html` C, the owner's pick 2026-10-11) each line says who it is for, customers, trade partners, architects or anyone, and may belong to a flow step, and the strip shows only the lines for this kind of person in three groups, the step they are on first, then the rest of their kind, then anyone's, your most used first in each and then the team's; lines read whole on wrapping rows; the strip's head names the groups as pills with their counts, a press scrolls the box to that group and the pill for the group in view stays lit (the owner, 2026-10-11, v1.71); past ten lines on the team's list a box in the head narrows every group as you type, the typed words lit in each line (v1.72). The app counts each press. **Edit** on the strip opens the
+- **Quick replies**: a gray panel above the box; a press fills the box and nothing sends. Since v1.67 (`quick-replies-mockups.html` C, the owner's pick 2026-10-11) each line says who it is for, customers, trade partners, architects or anyone, and may belong to a flow step, and the strip shows only the lines for this kind of person in three groups, the step they are on first, then the rest of their kind, then anyone's, your most used first in each and then the team's; lines read whole on wrapping rows; the strip's head names the groups as pills with their counts, a press scrolls the box to that group and the pill for the group in view stays lit (the owner, 2026-10-11, v1.71); past ten lines on the team's list a box in the head narrows every group as you type, the typed words lit in each line (v1.72). Once the box has words, from typing or from a quick reply's press, the strip folds to one row, *Quick replies · 13 for trade partners ▸*, a press showing the lines again until the box is cleared, which shows them by itself (v1.77). The app counts each press. **Edit** on the strip opens the
   quick replies window (`quick-replies-editor-mockups.html`, v1.67): every line in one table, in groups by who it is
   for and then by the flow's steps in their order, the lines on no step last and the most used first in each (v1.73),
   each row the words, how often it is used with your own share, who added it and the last change, with tabs by who
@@ -466,6 +466,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.77, 2026-10-11**: the quick replies fold to one row once the box has words, a press showing them again, the
+  cleared box showing them by itself (the owner's ask).
 - **v1.76, 2026-10-11**: the words box in the add row and the edit row wraps and grows with its words (the owner's
   ask).
 - **v1.75, 2026-10-11**: an opened line and its editor read as one block in the accent tint with a rule down the left,
