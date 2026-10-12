@@ -4,6 +4,9 @@ import {
   lienChipSigned,
   lienFieldsHash,
   lienNoticeSignatureAfterSigning,
+  lienPenWitnessWords,
+  lienSignatureModeOf,
+  lienPenWitnessHowOf,
   lienNoticeSignatureFromRow,
   lienSignatureAuditLine,
   lienSignatureStale,
@@ -24,6 +27,9 @@ const signed = (over: Partial<LienDeskSignatureColumns> = {}): LienDeskSignature
   signer_signature_mode: 'type',
   signer_signature_storage_path: null,
   signed_fields_hash: lienFieldsHash(FIELDS),
+  signed_recorded_by: null,
+  signed_witness_how: null,
+  signed_leader_confirmed_at: null,
   ...over,
 })
 
@@ -39,7 +45,7 @@ describe('the hash of the draft (v2.5077)', () => {
 })
 
 describe('the row’s signature', () => {
-  it('reads the seven columns off any row and treats a missing one as null', () => {
+  it('reads the ten columns off any row and treats a missing one as null', () => {
     expect(signatureColumnsOf({ id: 'it1', signed_at: SIGNED_AT, signer_printed_name: 'Robert Douglas' })).toEqual({
       signed_at: SIGNED_AT,
       signed_by: null,
@@ -48,6 +54,9 @@ describe('the row’s signature', () => {
       signer_signature_mode: null,
       signer_signature_storage_path: null,
       signed_fields_hash: null,
+      signed_recorded_by: null,
+      signed_witness_how: null,
+      signed_leader_confirmed_at: null,
     })
     expect(signatureColumnsOf(undefined).signed_at).toBeNull()
   })
@@ -112,7 +121,7 @@ describe('the chip’s word and the clearing patch (v2.5082)', () => {
     expect(lienChipSigned(signed(), lienFieldsHash({ ...FIELDS, gcEmail: 'x' }))).toBe('unsigned')
     expect(lienChipSigned(signed({ signed_at: null }), hash)).toBe('unsigned')
     expect(Object.values(LIEN_DESK_SIGNATURE_CLEAR).every((v) => v === null)).toBe(true)
-    expect(Object.keys(LIEN_DESK_SIGNATURE_CLEAR).sort()).toEqual(['signed_at', 'signed_by', 'signed_fields_hash', 'signed_on_device_of', 'signer_printed_name', 'signer_signature_mode', 'signer_signature_storage_path'])
+    expect(Object.keys(LIEN_DESK_SIGNATURE_CLEAR).sort()).toEqual(['signed_at', 'signed_by', 'signed_fields_hash', 'signed_leader_confirmed_at', 'signed_on_device_of', 'signed_recorded_by', 'signed_witness_how', 'signer_printed_name', 'signer_signature_mode', 'signer_signature_storage_path'])
   })
 })
 
@@ -124,5 +133,61 @@ describe('the signature the run dresses a notice with right after signing (v2.50
     expect(sig.signedWords).toBe('Signed October 9, 2026 at 2:14 PM CT')
     expect(sig.auditLine).toBe('Drawn by Robert Douglas in ClickTooling on October 9, 2026 at 2:14 PM CT, on Taunya’s screen.')
     expect(sig.onDeviceOf).toBe('Taunya')
+  })
+})
+
+describe('signed with a pen (the pen train, migration 20261013100000)', () => {
+  const pen = (over: Partial<LienDeskSignatureColumns> = {}) => signed({ signer_signature_mode: 'pen', signed_recorded_by: 'u-taunya', signed_witness_how: 'watched', ...over })
+  const opts = { jobNumber: '878', itemId: '4c2e91aa-0000-4000-8000-000000000000', fieldsHash: lienFieldsHash(FIELDS), recordedByName: 'Taunya' }
+
+  it('reads the mode and the witness word off the row, and treats anything else as a press or nothing', () => {
+    expect(lienSignatureModeOf('pen')).toBe('pen')
+    expect(lienSignatureModeOf('draw')).toBe('draw')
+    expect(lienSignatureModeOf('type')).toBe('type')
+    expect(lienSignatureModeOf(null)).toBe('type')
+    expect(lienPenWitnessHowOf('page')).toBe('page')
+    expect(lienPenWitnessHowOf('guess')).toBeNull()
+  })
+
+  it('a pen signature: no mark, the day without a clock, the record ID, and the sentence that names who wrote it down and how they know', () => {
+    const sig = lienNoticeSignatureFromRow(pen(), opts)
+    expect(sig).not.toBeNull()
+    expect(sig!.mode).toBe('pen')
+    expect(sig!.pngDataUrl).toBeNull()
+    expect(sig!.onDeviceOf).toBeNull()
+    expect(sig!.recordId).toBe('L878-4C2E91')
+    expect(sig!.signedWords).toBe('Signed by pen October 9, 2026')
+    expect(sig!.auditLine).toBe('Signed by pen by Robert Douglas on October 9, 2026, on the paper as printed. Recorded by Taunya, who watched him sign.')
+    expect(sig!.pen).toEqual({ recordedByName: 'Taunya', how: 'watched', confirmedAtIso: null })
+    expect(toFilingSignature(sig!).mode).toBe('pen')
+  })
+
+  it('the three ways the office knows, and the office by name or not', () => {
+    expect(lienPenWitnessWords('watched', 'Taunya')).toBe('Taunya, who watched him sign')
+    expect(lienPenWitnessWords('told', 'Taunya')).toBe('Taunya, who was told by him that he had signed')
+    expect(lienPenWitnessWords('page', 'Taunya')).toBe('Taunya, who has the signed page')
+    expect(lienPenWitnessWords('told', null)).toBe('the office, who was told by him that he had signed')
+    expect(lienNoticeSignatureFromRow(pen({ signed_witness_how: 'page' }), { ...opts, recordedByName: null })!.auditLine).toContain('Recorded by the office, who has the signed page.')
+  })
+
+  it('the leader’s confirmation from his phone joins the sentence; its absence blocks nothing', () => {
+    const sig = lienNoticeSignatureFromRow(pen({ signed_leader_confirmed_at: '2026-10-12T23:00:00.000Z' }), opts)
+    expect(sig!.pen!.confirmedAtIso).toBe('2026-10-12T23:00:00.000Z')
+    expect(sig!.auditLine).toBe('Signed by pen by Robert Douglas on October 9, 2026, on the paper as printed. Recorded by Taunya, who watched him sign. Confirmed by Robert Douglas from his own sign-in on October 12, 2026.')
+    expect(lienChipSigned(pen(), lienFieldsHash(FIELDS))).toEqual({ at: SIGNED_AT })
+  })
+
+  it('a pen signature is bound to the paper as printed: an edit after it reads as unsigned, like the electronic ones', () => {
+    expect(lienNoticeSignatureFromRow(pen(), { ...opts, fieldsHash: lienFieldsHash({ ...FIELDS, gcEmail: 'x@example.com' }) })).toBeNull()
+  })
+
+  it('the run dresses a notice the moment the pen record is written, and the clearing patch nulls all ten columns', () => {
+    const sig = lienNoticeSignatureAfterSigning({ mode: 'pen', printedName: 'Robert Douglas', pngDataUrl: null, signedAtIso: SIGNED_AT, jobNumber: '878', itemId: '4c2e91aa-0000-4000-8000-000000000000', onDeviceName: 'Taunya', pen: { recordedByName: 'Taunya', how: 'told' } })
+    expect(sig.mode).toBe('pen')
+    expect(sig.onDeviceOf).toBeNull()
+    expect(sig.signedWords).toBe('Signed by pen October 9, 2026')
+    expect(sig.auditLine).toContain('Recorded by Taunya, who was told by him that he had signed.')
+    expect(Object.keys(LIEN_DESK_SIGNATURE_CLEAR)).toHaveLength(10)
+    expect(LIEN_DESK_SIGNATURE_CLEAR.signed_witness_how).toBeNull()
   })
 })
