@@ -23,6 +23,8 @@ import { loadGcBillingRows } from '../lib/gc/gcIo'
 import { awardedClinicBoardRows } from '../lib/gc/boardTestRows'
 import type { DrawTables } from '../lib/gc/drawRows'
 import { loadMessagesView } from '../lib/messages/messagesIo'
+import type { ThreadSlots } from '../components/gc/messages/threadSlots'
+import { useMessagesReread } from '../components/gc/messages/useMessagesReread'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -70,6 +72,20 @@ vi.mock('../lib/gc/scheduleIo', () => {
     keepRoughAt: vi.fn(() => Promise.resolve(null)),
   }
 })
+
+// A later cut's slots in the thread window, as a test lays them; none by default.
+const slotsRead = vi.hoisted(() => ({ value: {} as ThreadSlots }))
+vi.mock('../components/gc/messages/threadSlots', () => ({ useThreadSlots: () => slotsRead.value }))
+
+/** A slot that writes on its own (cut 3's reply box), then asks the page to read again. */
+function SendBox() {
+  const reread = useMessagesReread()
+  return (
+    <button type="button" onClick={reread}>
+      Send it
+    </button>
+  )
+}
 
 // Messages (cut 1's screens): the spine's rows, read only while the view or a thread is open; no press writes here.
 vi.mock('../lib/messages/messagesIo', async () => {
@@ -252,6 +268,7 @@ describe('GcProjects: the Project Board', () => {
   afterEach(() => {
     window.localStorage.clear()
     auth.role = 'dev'
+    slotsRead.value = {}
   })
 
   it('door 2: an estimator sees the board, Trade partners and Follow up, and never Trade portals', async () => {
@@ -325,6 +342,23 @@ describe('GcProjects: the Project Board', () => {
     fireEvent.click(within(win).getAllByRole('button', { name: 'Close' })[0]!)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Greg Paulk: messages' })).toBeNull())
     expect(screen.getByRole('group', { name: 'Who to show' })).toBeTruthy()
+  })
+
+  it('Messages: a slot that writes on its own asks the page to read again', async () => {
+    slotsRead.value = { box: () => <SendBox /> }
+    vi.mocked(loadMessagesView).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
+    await screen.findByRole('group', { name: 'Who to show' })
+    fireEvent.click(document.querySelector('[data-messages-row="c-greg"]') as HTMLElement)
+    const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(within(win).getByRole('button', { name: 'Send it' }))
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalledTimes(2))
   })
 
   it('Messages: a superintendent is sent on from the page and reads no messages', async () => {

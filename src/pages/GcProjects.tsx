@@ -234,6 +234,7 @@ import { GcMessages } from '../components/gc/GcMessages'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useThreadSlots } from '../components/gc/messages/threadSlots'
 import { useThreadWindow } from '../components/gc/messages/useThreadWindow'
+import { MessagesRereadContext } from '../components/gc/messages/useMessagesReread'
 import type { MessagesWrites } from '../components/gc/messages/messagesWrites'
 import { useCustomerProfileModal } from '../contexts/CustomerProfileModalContext'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
@@ -626,10 +627,12 @@ export default function GcProjects() {
       live = false
     }
   }, [messagesOpen, messagesTick])
+  // A later cut's slot that writes on its own (the reply box, a note) asks for the read through `useMessagesReread`.
+  const rereadMessages = useCallback(() => setMessagesTick((t) => t + 1), [])
   const messagesWrites = useMemo<MessagesWrites>(() => {
     const after = async <T,>(press: Promise<T>): Promise<T> => {
       const answer = await press
-      setMessagesTick((t) => t + 1)
+      rereadMessages()
       return answer
     }
     return {
@@ -641,7 +644,7 @@ export default function GcProjects() {
       searchRecords: searchContactRecords,
       searchJobs: (words) => searchJobs(words, new Date().toISOString()),
     }
-  }, [])
+  }, [rereadMessages])
   // ⧉ on a job: a GC project's card on this page, a Pipeline job in its job window, a bid in its preview, each over
   // the page (Bids or Jobs when the window is not there). The thread closes first.
   const openMessagesJob = (key: string) => {
@@ -2260,19 +2263,21 @@ export default function GcProjects() {
         />
       )}
       {canOpenGcProjects(role) && thread.contactId && (
-        <ThreadWindow
-          contactId={thread.contactId}
-          at={thread.at}
-          onClose={thread.closeThread}
-          slots={threadSlots}
-          view={messagesView}
-          problem={messagesProblem}
-          nowIso={messagesNow}
-          writes={messagesWrites}
-          onOpenJob={openMessagesJob}
-          onOpenRecord={openMessagesRecord}
-          onShowContact={(id) => thread.openThread(id)}
-        />
+        <MessagesRereadContext.Provider value={rereadMessages}>
+          <ThreadWindow
+            contactId={thread.contactId}
+            at={thread.at}
+            onClose={thread.closeThread}
+            slots={threadSlots}
+            view={messagesView}
+            problem={messagesProblem}
+            nowIso={messagesNow}
+            writes={messagesWrites}
+            onOpenJob={openMessagesJob}
+            onOpenRecord={openMessagesRecord}
+            onShowContact={(id) => thread.openThread(id)}
+          />
+        </MessagesRereadContext.Provider>
       )}
       {openCompany && board && (
         <GcCompanyWindow
