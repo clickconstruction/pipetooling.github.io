@@ -662,6 +662,10 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.107, 2026-10-11**: `by-step-mockups.html`, three shapes for Everyone by step that say a name once and cut
+  nothing (the owner: no duplicate names, no hidden information): A one row per step with the people as chips that
+  wrap, B one row per company with the Once lane as a track, C the columns one lane at a time; the pick is A with B
+  as the List tab. No prototype change.
 - **v1.106, 2026-10-11**: beside every nudge in the editor, and on the step card's nudge line, *⌕ see it* opens what the
   nudge looks like when it goes, for a person on the step now (or a sample one): a text as the bubble on their phone
   with the carriers' line, an email as the letter from the seat, a call as the Follow up row with what to say; the

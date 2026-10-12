@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages: Everyone by step, three shapes that do not truncate</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--danger:#b3261e;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:960px}
+.opt{max-width:1000px;margin:0 0 26px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.frame{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px}
+.frame .st{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45;max-width:1000px}
+.pill{font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--border);white-space:nowrap;background:var(--chip)}
+.pill.late{color:var(--danger);border-color:#f1b3ae;background:#fdecea;font-weight:600}
+.pill.lapsed{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}
+.pill.wait{color:var(--text-muted)}
+/* A · by step as rows of chips */
+.srow{display:grid;grid-template-columns:200px 1fr;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);align-items:start}
+.srow:last-child{border-bottom:0}
+.srow .sh{font-size:12.5px;font-weight:600}
+.srow .sh small{display:block;font-weight:400;color:var(--text-muted);font-size:11.5px;margin-top:2px}
+.srow .sh small b{color:var(--danger);font-weight:600}
+.srow .sh small i{color:var(--warn);font-style:normal}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:9px;padding:4px 9px;font-size:12.5px;background:var(--surface);cursor:pointer}
+.chip .j{color:var(--text-muted)}
+.chip .d{color:var(--text-muted);font-size:11.5px}
+.chip .d.late{color:var(--danger);font-weight:600}
+.chip .d.lapsed{color:var(--warn)}
+.chip.hot{border-color:#f1b3ae;background:#fdecea}
+.lanehd{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 0 2px}
+.empty{color:var(--text-muted);font-size:12px;padding:4px 0}
+/* B · by company, a track */
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)}
+td{padding:7px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.track{display:inline-flex;align-items:center;gap:0}
+.track i{width:12px;height:12px;border-radius:50%;border:2px solid #cfd5dd;background:var(--surface);display:inline-block;box-sizing:border-box}
+.track i.done{background:var(--ok);border-color:var(--ok)}
+.track i.now{border-color:var(--warn);background:var(--warn-soft);width:14px;height:14px}
+.track i.lapsed{border-color:var(--warn);background:var(--warn)}
+.track s{width:8px;height:2px;background:var(--border);display:inline-block}
+.track s.done{background:#bfe3c9}
+.track .gap{width:14px;display:inline-block}
+.nowwords{font-weight:600}
+.nowwords small{font-weight:400;color:var(--text-muted);display:block;font-size:11.5px}
+/* C · columns, but few and wide */
+.cols{display:flex;gap:8px;overflow-x:auto}
+.col{flex:none;width:232px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:8px}
+.col .ch{font-size:12.5px;font-weight:600}
+.col .cn{font-size:11.5px;color:var(--text-muted);margin:2px 0 8px}
+.col .cn b{color:var(--danger)}
+.line{border:1px solid var(--border);border-radius:8px;padding:6px 8px;margin-bottom:6px;font-size:12.5px;cursor:pointer}
+.line .n{font-weight:600}
+.line .s{display:flex;justify-content:space-between;gap:8px;color:var(--text-muted);font-size:11.5px;margin-top:2px}
+.line .s .late{color:var(--danger);font-weight:600}
+.line.hot{border-color:#f1b3ae;background:#fdecea}
+.pickbox{max-width:1000px;font-size:13.5px;line-height:1.5}
+.pickbox ol{margin:0 0 8px 18px;padding:0}
+.pickbox li{margin-bottom:4px}
+.tabs{display:flex;gap:4px;margin-bottom:10px;align-items:center}
+.tabs span{border:1px solid var(--border);border-radius:999px;padding:3px 10px;font-size:12.5px}
+.tabs span.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.tabs .note{margin-left:auto;font-size:12px;color:var(--text-muted)}
+</style>
+</head>
+<body>
+<h1>Everyone by step: three shapes that say a name once and hide nothing</h1>
+<p class="lead">The column board (v1.99) squeezes nine columns into the page, so every line is an initial, a cut name and a cut job: <i>GP Hillside · S… 2 d</i>, the same company three times across the board and never once in full. The owner, 2026-10-11: say the name once, show the information. Three shapes, each with the trades on the same Tuesday; the Off the flow column stays folded at the end of each.</p>
+
+<div class="opt">
+<h2>A · One row per step, the people as chips that wrap <small>· step first, like the board, but the page's width is the column</small></h2>
+<div class="frame"><div class="tabs"><span class="on">By step</span><span>List</span><span>Asks</span><span class="note">all jobs · everyone's seat</span></div>
+<div class="lanehd">Once</div>
+<div class="srow"><div class="sh">Invited<small>nobody</small></div><div class="empty">—</div></div>
+<div class="srow"><div class="sh">Portal opened<small>nobody</small></div><div class="empty">—</div></div>
+<div class="srow"><div class="sh">Papers in<small>3 · <i>1 lapsed</i></small></div><div class="chips"><span class="chip">Cibolo Fence <span class="d">6 d</span></span><span class="chip">Bexar Steel Erectors <span class="d">4 d</span></span><span class="chip">Hillside Excavation <span class="d lapsed">lapsed · insurance expired</span></span></div></div>
+<div class="srow"><div class="sh">MSA signed<small>2</small></div><div class="chips"><span class="chip">Kerr Electric <span class="d">3 d</span></span><span class="chip">Lone Star Mechanical <span class="d">2 d</span></span></div></div>
+<div class="lanehd">Per job</div>
+<div class="srow"><div class="sh">Asked to quote<small>5 asks · <b>1 late</b></small></div><div class="chips"><span class="chip hot">Hillside Excavation <span class="j">· Boerne Retail Shell</span> <span class="d late">late 2 days</span></span><span class="chip">Lone Star Mechanical <span class="j">· Boerne Retail Shell</span> <span class="d">due Thu</span></span><span class="chip">Kerr Electric <span class="j">· Boerne Retail Shell</span> <span class="d">due Thu</span></span><span class="chip">Hillside Excavation <span class="j">· Boerne Retail Pad B</span> <span class="d">due Oct 22</span></span><span class="chip">Cibolo Fence <span class="j">· Boerne Retail Pad B</span> <span class="d">due Oct 22</span></span></div></div>
+<div class="srow"><div class="sh">Compared<small>1 · ours</small></div><div class="chips"><span class="chip">Tejas Power <span class="j">· Boerne Retail Shell</span> <span class="d">3 d</span></span></div></div>
+<div class="srow"><div class="sh">Statement of work<small>2</small></div><div class="chips"><span class="chip">Alamo Steel <span class="j">· Stone Oak Pharmacy</span> <span class="d">5 d</span></span><span class="chip">Rio Paving <span class="j">· Stone Oak Pharmacy</span> <span class="d">1 d</span></span></div></div>
+<div class="srow"><div class="sh">Draws<small>2 draws</small></div><div class="chips"><span class="chip">Kerr Electric <span class="j">· Stone Oak Pharmacy</span> <span class="d">3 d</span></span><span class="chip">Hillside Excavation <span class="j">· Stone Oak Pharmacy</span> <span class="d">0 d</span></span></div></div>
+<div class="srow"><div class="sh">Closeout<small>nobody</small></div><div class="empty">—</div></div>
+<div class="srow"><div class="sh" style="color:var(--text-muted)">Off the flow<small>2 · folded</small></div><div class="empty"><span class="chip" style="color:var(--accent)">show</span></div></div>
+</div>
+<p class="why">The step is the row and its people are chips that wrap across the width, so a chip can carry the whole company, the whole job and the day: <i>Hillside Excavation · Boerne Retail Shell · late 2 days</i>. No initials, since the name is there. The count and the late count sit under the step's name. A press opens the thread at that step; hover reads the card's first lines. Empty steps are one thin row, so the page does not pad.</p>
+</div>
+
+<div class="opt">
+<h2>B · One row per company, the flow as a track <small>· company first: where is Hillside, in one line</small></h2>
+<div class="frame"><div class="tabs"><span>By step</span><span class="on">By company</span><span>Asks</span><span class="note">all jobs · everyone's seat</span></div>
+<table><tr><th>Company</th><th>Once</th><th>On now</th><th>Per job</th><th></th></tr>
+<tr><td><b>Hillside Excavation</b><br><small style="color:var(--text-muted)">Sitework · Greg Paulk</small></td><td><span class="track"><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="lapsed"></i><s class="done"></s><i class="done"></i></span></td><td class="nowwords"><span class="pill lapsed">Papers in · insurance expired</span></td><td>Boerne Retail Shell · Asked to quote · <span class="pill late">late 2 days</span><br>Boerne Retail Pad B · Asked to quote · due Oct 22<br>Stone Oak Pharmacy · Draws · draw 2</td><td><span class="pill">open</span></td></tr>
+<tr><td><b>Tejas Power</b><br><small style="color:var(--text-muted)">Electrical · Bill Sorrell</small></td><td><span class="track"><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="done"></i></span></td><td class="nowwords">Compared<small>ours · 3 d</small></td><td>Boerne Retail Shell · Compared · 3 d</td><td><span class="pill">open</span></td></tr>
+<tr><td><b>Bexar Steel Erectors</b><br><small style="color:var(--text-muted)">Structural steel · Tom Riddle</small></td><td><span class="track"><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="now"></i><s></s><i></i></span></td><td class="nowwords">Papers in<small>their move · 4 d · usually 3</small></td><td>Boerne Retail Shell · not asked yet · bid Thu Oct 8</td><td><span class="pill">open</span></td></tr>
+<tr><td><b>Kerr Electric</b></td><td><span class="track"><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="now"></i></span></td><td class="nowwords">MSA signed<small>their move · 3 d</small></td><td>Boerne Retail Shell · Asked to quote · due Thu<br>Stone Oak Pharmacy · Draws · 3 d</td><td><span class="pill">open</span></td></tr>
+<tr><td><b>Lone Star Mechanical</b></td><td><span class="track"><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="now"></i><s></s><i></i></span></td><td class="nowwords">Papers in<small>their move · 2 d</small></td><td>Boerne Retail Shell · Asked to quote · due Thu</td><td><span class="pill">open</span></td></tr>
+<tr><td><b>Cibolo Fence</b></td><td><span class="track"><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="now"></i><s></s><i></i></span></td><td class="nowwords">Papers in<small>their move · 6 d · <span style="color:var(--danger)">over usual</span></small></td><td>Boerne Retail Pad B · Asked to quote · due Oct 22</td><td><span class="pill">open</span></td></tr>
+<tr><td><b>Alamo Steel</b></td><td><span class="track"><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="done"></i></span></td><td class="nowwords">—<small>set up</small></td><td>Stone Oak Pharmacy · Statement of work · 5 d</td><td><span class="pill">open</span></td></tr>
+<tr><td><b>Rio Paving</b></td><td><span class="track"><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="done"></i><s class="done"></s><i class="done"></i></span></td><td class="nowwords">—<small>set up</small></td><td>Stone Oak Pharmacy · Statement of work · 1 d</td><td><span class="pill">open</span></td></tr>
+</table></div>
+<p class="why">The company is the row, so the name reads once and everything about it sits beside it: the Once lane as a track of marks (green done, orange on now, a filled orange for lapsed), the step on now in words with whose move and how long, and one line per job in the per-job lane. This is the List tab grown up; it answers <i>where is Hillside</i> in one line and <i>who is on Papers in</i> by scanning the column. Sorts by the On now column.</p>
+</div>
+
+<div class="opt">
+<h2>C · Columns kept, but one lane at a time and wide <small>· the board, with room</small></h2>
+<div class="frame"><div class="tabs"><span class="on">Once</span><span>Per job</span><span class="note">4 steps · scrolls sideways past the fourth</span></div>
+<div class="cols">
+<div class="col"><div class="ch">Invited</div><div class="cn">nobody</div></div>
+<div class="col"><div class="ch">Portal opened</div><div class="cn">nobody</div></div>
+<div class="col"><div class="ch">Papers in</div><div class="cn">3 · 1 lapsed</div><div class="line"><div class="n">Cibolo Fence</div><div class="s"><span>their move</span><span>6 d</span></div></div><div class="line"><div class="n">Bexar Steel Erectors</div><div class="s"><span>their move</span><span>4 d</span></div></div><div class="line"><div class="n">Hillside Excavation</div><div class="s"><span style="color:var(--warn)">lapsed · insurance expired</span></div></div></div>
+<div class="col"><div class="ch">MSA signed</div><div class="cn">2</div><div class="line"><div class="n">Kerr Electric</div><div class="s"><span>their move</span><span>3 d</span></div></div><div class="line"><div class="n">Lone Star Mechanical</div><div class="s"><span>their move</span><span>2 d</span></div></div></div>
+</div></div>
+<p class="why">Keep the board, but draw one lane at a time, Once or Per job, so four or five columns get 230 px each and a line is a small card: the whole name, whose move, the day. The per-job lane's cards carry the job on a second line. The cost is a tab press to see the other lane, and the page still scrolls sideways for a flow with six per-job steps.</p>
+</div>
+
+<div class="pickbox">
+<h2 style="font-size:15px;margin:0 0 6px">The pick, and is this the best we can do?</h2>
+<p style="margin:0 0 8px"><b>A, with B as the List tab.</b> A keeps the question the page was built for, <i>who is on each step</i>, and answers it without cutting a word, because the width of the page is the column and chips wrap. B is the better answer to the other question, <i>where is this company</i>, and that is what the List tab was for, so the List tab becomes B. C keeps the shape that failed and fixes it with a tab press; dropped.</p>
+<ol>
+<li><b>No initials.</b> The avatar beside a name said the name twice; in A and B the name is the only mark. Faces return only where there is no room for a name, the phone's rail.</li>
+<li><b>Nothing cut.</b> A chip and a row grow to their words. A long flow is a long page, which scrolls down, the way every list in the app does; nothing scrolls sideways.</li>
+<li><b>The lanes stay visible.</b> A's Once and Per job headings keep the shape of the flow, and the per-job chips say the job, since the same company can be on three.</li>
+<li><b>Late reads first.</b> A tinted chip at the front of its row, a red count under the step's name, and in B a red pill in the per-job column.</li>
+<li><b>The Customers board is the same A</b> under its By step button, and its List tab the same B.</li>
+</ol>
+</div>
+</body>
+</html>
