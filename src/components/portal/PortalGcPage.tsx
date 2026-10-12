@@ -8,12 +8,17 @@
  *
  * Interim, until 8b-ii: Your move reads the job's own facts, and Where you are waits for the customer's flow. Messages
  * comes with the thread (8e). Customer-facing ⇒ single-theme light on the statement's paper.
+ *
+ * The office's preview (`office`, Messages cut 8d, `GcCustomerPortalWindow`): nothing sends (`PortalPreviewContext`) and
+ * no paper open is told, Español is offered so the office can read the Spanish before it is on, and with `sources` on
+ * each card carries a tag naming the page that feeds it, which takes the office there.
  */
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { GC_CARD_FEE_PCT } from '../../../supabase/functions/_shared/gcCardBill'
 import { portalShownLang } from '../../lib/gc/portalI18n'
 import { customerPageModel, type CustomerHomeMove, type PortalGcPage as Page } from '../../lib/portal/customerPage'
 import type { MoneyCard } from '../../lib/portal/moneyStory'
+import type { ReadyFix } from '../../lib/portal/readiness'
 import { CODE_WORDS, wordsWith, type PageWords, type PortalLang } from '../../lib/portal/pageWords'
 import type { PortalGcJob, PortalPayload } from '../../lib/portal/portalPayload'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER, PAPER_GREEN } from '../../lib/portal/portalTheme'
@@ -21,6 +26,7 @@ import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { staffAwarePublicHeaders } from '../../lib/publicFunctionStaffHeaders'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { AcceptWork, ChangeOrderRow, OurContract } from './PortalGcForms'
+import { PortalPreviewContext } from './portalPreviewContext'
 import { PortalGcSchedule } from './PortalGcSchedule'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
@@ -53,11 +59,32 @@ const plain: CSSProperties = { background: CARD, color: INK, border: `1px solid 
 const fold: CSSProperties = { background: 'none', border: 'none', padding: 0, color: INK, fontWeight: 700, cursor: 'pointer', textAlign: 'left', fontSize: 13 }
 const line: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }
 
-function YourMove({ lang, move, words, onPapers }: { lang: PortalLang; move: CustomerHomeMove; words: PageWords; onPapers: () => void }) {
+/** The office's preview of the page: with `sources` on, each card names the page that feeds it. */
+export interface PortalGcPageOffice {
+  sources: boolean
+  onSource: (fix: ReadyFix) => void
+}
+
+/** A card's source in the office's preview: where it comes from, and a press that goes there. */
+function SourceTag({ from, onClick }: { from: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      data-source-tag={from}
+      onClick={onClick}
+      style={{ justifySelf: 'start', background: 'var(--bg-amber-100)', color: INK, border: `1px dashed ${COPPER}`, borderRadius: 999, padding: '0.1rem 0.55rem', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+    >
+      {`From ${from} · change ›`}
+    </button>
+  )
+}
+
+function YourMove({ lang, move, words, onPapers, tag }: { lang: PortalLang; move: CustomerHomeMove; words: PageWords; onPapers: () => void; tag: ReactNode }) {
   const title = words.say(lang, 'yourMoveTitle')
   if (move.kind === 'none' || move.kind === 'off') {
     return (
       <div data-testid="portal-gc-move" style={card}>
+        {tag}
         <div style={heading}>{title}</div>
         <div style={{ color: INK }}>{move.line}</div>
       </div>
@@ -67,6 +94,7 @@ function YourMove({ lang, move, words, onPapers }: { lang: PortalLang; move: Cus
   const due = move.kind === 'paper' ? move.due : null
   return (
     <div data-testid="portal-gc-move" style={moveCard}>
+      {tag}
       <div style={heading}>{title}</div>
       <div style={{ fontWeight: 700, color: INK }}>{due ? `${move.title} · ${due}` : move.title}</div>
       {sub && <div style={{ color: MUTED, fontSize: 12 }}>{sub}</div>}
@@ -81,9 +109,10 @@ function YourMove({ lang, move, words, onPapers }: { lang: PortalLang; move: Cus
   )
 }
 
-function PayAppCard({ c, billUrl, onRead }: { c: Extract<MoneyCard, { kind: 'payApp' }>; billUrl: string | null; onRead: () => void }) {
+function PayAppCard({ c, billUrl, onRead, tag }: { c: Extract<MoneyCard, { kind: 'payApp' }>; billUrl: string | null; onRead: () => void; tag: ReactNode }) {
   return (
     <div data-testid={`portal-gc-payapp-${c.n}`} style={c.open ? moveCard : card}>
+      {tag}
       <div style={line}>
         <span style={heading}>{`${c.title} · ${c.month}`}</span>
         {c.pill && <span style={{ color: PAPER_GREEN, fontWeight: 700, fontSize: 12 }}>{c.pill}</span>}
@@ -114,13 +143,28 @@ function PayAppCard({ c, billUrl, onRead }: { c: Extract<MoneyCard, { kind: 'pay
   )
 }
 
-export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: string; job: PortalGcJob; page: Page; payload: PortalPayload; formatUsd: (n: number) => string }) {
+export function PortalGcPage({
+  token,
+  job,
+  page,
+  payload,
+  formatUsd,
+  office = null,
+}: {
+  token: string
+  job: PortalGcJob
+  page: Page
+  payload: PortalPayload
+  formatUsd: (n: number) => string
+  /** The office's preview: nothing sends and each card can name its source. Null on the customer's own page. */
+  office?: PortalGcPageOffice | null
+}) {
   const [tab, setTab] = useState<Tab>('home')
   const [chosen, setChosen] = useState<PortalLang>('en')
   const [showOlder, setShowOlder] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const [statementOpen, setStatementOpen] = useState(false)
-  const spanish = page.switches.spanish && portalShownLang('es') === 'es'
+  const spanish = !!office || (page.switches.spanish && portalShownLang('es') === 'es')
   const lang: PortalLang = spanish ? chosen : 'en'
   const words = useMemo(() => (payload.pageWords.length ? wordsWith(payload.pageWords) : CODE_WORDS), [payload.pageWords])
   const today = todayYmdInAppTz()
@@ -146,9 +190,16 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
     return app?.invoiceId ? (payload.bills.find((b) => b.invoiceId === app.invoiceId)?.payUrl ?? null) : null
   }
   const appIdOf = (n: number): string | null => page.payApps.find((a) => a.number === n)?.id ?? null
+  // A paper opened is told for the office's read-back, never from the office's own preview.
+  const told = (kind: 'contract' | 'change_order' | 'pay_app', id: string) => {
+    if (!office) paperOpened(token, kind, id)
+  }
+  const tag = (fix: ReadyFix, from: string): ReactNode => (office?.sources ? <SourceTag from={from} onClick={() => office.onSource(fix)} /> : null)
 
   return (
+    <PortalPreviewContext.Provider value={!!office}>
     <div data-testid="portal-gc-page" style={{ border: `1px solid ${HAIR}`, borderRadius: 8, background: PAPER, padding: '10px 12px', display: 'grid', gap: 10, fontSize: 13, color: INK }}>
+      {tag('words', 'Settings → Customer page')}
       <div style={line}>
         <div>
           <div style={{ fontWeight: 700, fontSize: 15 }}>{job.name}</div>
@@ -178,9 +229,10 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
 
       {tab === 'home' && (
         <div style={{ display: 'grid', gap: 8 }}>
-          <YourMove lang={lang} move={model.move} words={words} onPapers={() => setTab('papers')} />
+          <YourMove lang={lang} move={model.move} words={words} onPapers={() => setTab('papers')} tag={tag('step', 'the job')} />
           {model.week && (
             <div data-testid="portal-gc-week" style={card}>
+              {tag('log', 'the daily log')}
               <div style={heading}>{model.week.title}</div>
               <div>{model.week.line}</div>
               {model.week.photosUrl && (
@@ -192,6 +244,7 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
             </div>
           )}
           <div data-testid="portal-gc-people" style={card}>
+            {tag('people', "the job's people")}
             <div style={heading}>{words.say(lang, 'peopleTitle')}</div>
             {model.people.map((p) => (
               <div key={`${p.name}-${p.role}`} style={line}>
@@ -212,6 +265,7 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
       {tab === 'money' && (
         <div style={{ display: 'grid', gap: 8 }}>
           <div data-testid="portal-gc-money-header" style={card}>
+            {tag('payApp', 'the pay applications')}
             <div style={{ fontSize: 20, fontWeight: 700 }}>{model.money.header.big}</div>
             <div style={{ color: MUTED, fontSize: 12 }}>{model.money.header.small.join(' · ')}</div>
             <div style={{ height: 6, borderRadius: 3, background: HAIR, overflow: 'hidden' }}>
@@ -228,7 +282,7 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
           {model.money.cards.map((c, i) => {
             if (c.kind === 'payApp') {
               const id = appIdOf(c.n)
-              return <PayAppCard key={`app-${c.n}`} c={c} billUrl={billUrlOf(c.n)} onRead={() => id && paperOpened(token, 'pay_app', id)} />
+              return <PayAppCard key={`app-${c.n}`} c={c} billUrl={billUrlOf(c.n)} onRead={() => id && told('pay_app', id)} tag={tag('payApp', 'the pay application')} />
             }
             if (c.kind === 'after') {
               return (
@@ -247,6 +301,7 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
             if (c.kind === 'changes') {
               return (
                 <div key={`changes-${i}`} data-testid="portal-gc-money-changes" style={moveCard}>
+                  {tag('changeOrders', 'Change orders')}
                   <div style={heading}>{c.title}</div>
                   {c.rows.map((r) => (
                     <div key={r.title} style={line}>
@@ -307,6 +362,7 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
 
       {tab === 'schedule' && (
         <div style={{ display: 'grid', gap: 8 }}>
+          {tag('schedule', 'the schedule')}
           {job.schedule && <PortalGcSchedule schedule={job.schedule} />}
           <div data-testid="portal-gc-moved" style={card}>
             <div style={heading}>{words.say(lang, 'whatMoved')}</div>
@@ -330,6 +386,7 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
       {tab === 'papers' && (
         <div style={{ display: 'grid', gap: 8 }}>
           <div data-testid="portal-gc-signed" style={card}>
+            {tag('changeOrders', 'our contract and Change orders')}
             <div style={heading}>{model.papers.signed.title}</div>
             {model.papers.signed.empty && <div style={{ color: MUTED }}>{model.papers.signed.empty}</div>}
             {model.papers.signed.rows.map((r) => (
@@ -346,10 +403,10 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
             <div data-testid="portal-gc-waiting" style={moveCard}>
               <div style={heading}>{words.say(lang, 'waitingOnYou')}</div>
               {job.contract?.state === 'toSign' && (
-                <OurContract token={token} job={job} contract={job.contract} formatUsd={formatUsd} onOpen={() => job.contract?.state === 'toSign' && paperOpened(token, 'contract', job.contract.sendId)} />
+                <OurContract token={token} job={job} contract={job.contract} formatUsd={formatUsd} onOpen={() => job.contract?.state === 'toSign' && told('contract', job.contract.sendId)} />
               )}
               {job.changeOrders.map((co) => (
-                <ChangeOrderRow key={co.id} token={token} co={co} formatUsd={formatUsd} onOpen={() => paperOpened(token, 'change_order', co.id)} />
+                <ChangeOrderRow key={co.id} token={token} co={co} formatUsd={formatUsd} onOpen={() => told('change_order', co.id)} />
               ))}
               {job.canAccept && <AcceptWork token={token} job={job} />}
             </div>
@@ -369,6 +426,7 @@ export function PortalGcPage({ token, job, page, payload, formatUsd }: { token: 
         </div>
       )}
     </div>
+    </PortalPreviewContext.Provider>
   )
 }
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { customerPageModel, homeMove, parsePortalGcPage, type PortalGcPage } from './customerPage'
+import { customerPageModel, customerReadinessIn, homeMove, parsePortalGcPage, type PortalGcPage } from './customerPage'
 import { wordsWith } from './pageWords'
+import { portalReady } from './readiness'
 import type { PortalBill, PortalGcJob } from './portalPayload'
 
 // Priya's clinic and Elena's building job, made up, as customer-portal would send them.
@@ -129,5 +130,38 @@ describe('the page block as the page receives it', () => {
     expect(parsePortalGcPage(raw)).toEqual(page())
     expect(parsePortalGcPage({ ...raw, switches: undefined })).toBeNull()
     expect(parsePortalGcPage({ ...raw, payApps: [{ id: 'x', number: 1, periodTo: 'nope', sentOn: '2026-10-01' }] })?.payApps).toEqual([])
+  })
+})
+
+describe('Ready for Priya?, from what her page reads (Messages cut 8d)', () => {
+  const ready = (p: PortalGcPage = page(), j: PortalGcJob = job()) =>
+    portalReady(customerReadinessIn({ firstName: 'Priya', job: j, page: p, bills: [], company: 'Click Construction', today: '2026-10-02' })).map((r) => [r.piece, r.ok, r.words, r.fix])
+
+  it('reads each piece the page shows, and asks nothing of the next bill while the page does not size it', () => {
+    expect(ready()).toEqual([
+      ['Your move', true, 'Change order 2 waits on your answer.', 'flows'],
+      ['This week', true, 'A customer line from Fri Oct 2.', 'log'],
+      ['Photos', true, 'Photos are off for this job.', 'words'],
+      ['Change orders', true, '1 waiting on Priya, with the amount and the days.', 'changeOrders'],
+      ['Schedule', false, 'No milestones. The tab would be empty.', 'schedule'],
+      ['Your people', true, 'Click Construction, Robert, Wendi.', 'people'],
+      ['Words', true, 'Every sentence of ours reads in English and Spanish.', 'words'],
+    ])
+  })
+
+  it('asks for the work to be accepted, reads a photos switch with no link, and asks Spanish of the line we type', () => {
+    const p = page({ changes: page().changes.filter((c) => c.state === 'signed'), switches: { photos: true, forecast: false, spanish: false } })
+    const rows = ready({ ...p, week: p.week ? { ...p.week, lineEs: null } : null }, job({ canAccept: true }))
+    expect(rows.find((r) => r[0] === 'Your move')).toEqual(['Your move', true, 'Accept the work.', 'flows'])
+    expect(rows.find((r) => r[0] === 'Photos')).toEqual(['Photos', false, 'No photos link on this week’s log. The card shows words only.', 'log'])
+    expect(rows.find((r) => r[0] === 'Words')).toEqual(['Words', false, "This week's line has no Spanish yet. Priya would read English there.", 'log'])
+    const linked = ready(page({ switches: { photos: true, forecast: false, spanish: false }, week: { on: '2026-10-02', line: 'Permits are in.', lineEs: 'Los permisos están.', photosUrl: 'https://drive.google.com/sample' } }))
+    expect(linked.find((r) => r[0] === 'Photos')).toEqual(['Photos', true, 'This week’s line links to the job’s photos.', 'log'])
+  })
+
+  it("reads the schedule's dates as the tab's milestones", () => {
+    const dates = [{ label: 'Dry in', due: '2026-11-02', state: 'coming' as const, daysLate: 0 }]
+    const schedule = { dates } as unknown as NonNullable<PortalGcJob['schedule']>
+    expect(ready(page(), job({ schedule })).find((r) => r[0] === 'Schedule')).toEqual(['Schedule', true, '1 milestone, 1 move with its why.', 'schedule'])
   })
 })

@@ -358,7 +358,7 @@ export const MARCUS_STEPS = customerSteps(
 
 /** The week, the schedule and the people on each customer's page (PORTAL_INFO's week, schedule, moved and people). */
 export const PRIYA_PAGE = {
-  week: { on: '2026-10-02', photos: 3, line: t('Permits are in. Plumbing is being awarded. The slab pour is set for the week of Oct 12.', 'Los permisos están. Se está adjudicando la plomería. El vaciado de la losa queda para la semana del 12 de oct.') },
+  week: { on: '2026-10-02', photos: 'linked' as const, line: t('Permits are in. Plumbing is being awarded. The slab pour is set for the week of Oct 12.', 'Los permisos están. Se está adjudicando la plomería. El vaciado de la losa queda para la semana del 12 de oct.') },
   schedule: {
     milestones: [{ name: t('Start', 'Inicio') }, { name: t('Dry in', 'Cerrado al clima') }, { name: t('Finish', 'Entrega') }],
     moves: [] as { name: TypedLine; why: TypedLine | null }[],
@@ -371,7 +371,7 @@ export const PRIYA_PAGE = {
 }
 
 export const ELENA_PAGE = {
-  week: { on: '2026-10-02', photos: 0, line: t('The roof deck is on. Rough-in starts Monday. The parking lot pour moved a week for the rain.', 'La cubierta del techo está puesta. La instalación interna empieza el lunes. El vaciado del estacionamiento se movió una semana por la lluvia.') },
+  week: { on: '2026-10-02', photos: 'none' as const, line: t('The roof deck is on. Rough-in starts Monday. The parking lot pour moved a week for the rain.', 'La cubierta del techo está puesta. La instalación interna empieza el lunes. El vaciado del estacionamiento se movió una semana por la lluvia.') },
   schedule: {
     milestones: [{ name: t('Start', 'Inicio') }, { name: t('Dry in', 'Cerrado al clima') }, { name: t('Finish', 'Entrega') }],
     moves: [{ name: t('Parking lot pour', 'Vaciado del estacionamiento'), why: t('rain', 'lluvia') }],

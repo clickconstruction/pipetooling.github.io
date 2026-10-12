@@ -1,15 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { useNavigate } from 'react-router-dom'
 import { customerActivity, type CompanyDoc } from '../../lib/gc/companyFile'
 import { contractStep, customerDocuments, newestContractSend } from '../../lib/gc/customerContract'
 import { customerMoneyActivity, customerMoneyDocuments, type CustomerMoneyView } from '../../lib/gc/customerMoney'
 import { customerSummary, type CustomerSummary } from '../../lib/gc/customers'
 import { telHref } from '../../lib/gc/followUpSheet'
 import type { GcCustomer, GcState } from '../../lib/gc/types'
+import type { ReadyFix } from '../../lib/portal/readiness'
 import { money } from '../../lib/gc/words'
 import { FlowTab } from '../flows/FlowTab'
 import { CompanyActivity, CompanyDocuments, CompanyTabStrip, type ContactHow } from './GcCompanyDocuments'
 import { GcCustomerContractSend, type ContractSendInput, type ContractSendOutcome } from './GcCustomerContractSend'
+import { GcCustomerPortalWindow } from './GcCustomerPortalWindow'
 import type { CustomerAt, CustomerTab } from './gcCustomerOpener'
 import { Btn, Chip, Stat } from './gcUi'
 
@@ -70,16 +73,28 @@ export function GcCustomerWindow({
   const [done, setDone] = useState<string | null>(null)
   // Why an email did not go just now, by job: said on its row until the board reads it emailed.
   const [notEmailed, setNotEmailed] = useState<Record<string, string>>({})
+  // Their portal, as they see it (Messages cut 8d).
+  const [portalOpen, setPortalOpen] = useState(false)
+  const navigate = useNavigate()
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape' || e.defaultPrevented) return
-      // Escape steps back out of a send first, then closes the window. A step card inside takes its own Escape first.
-      if (sending) setSending(null)
+      // Escape steps back out of their portal or a send first, then closes the window. A step card inside takes its own Escape first.
+      if (portalOpen) setPortalOpen(false)
+      else if (sending) setSending(null)
       else onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [onClose, sending])
+  }, [onClose, sending, portalOpen])
+  /** A piece of their page goes to the page that feeds it: the bill or the change orders for the money team, the words in Settings, else the job. */
+  const fixFrom = (fix: ReadyFix, projectId: string) => {
+    setPortalOpen(false)
+    if ((fix === 'payApp' || fix === 'forecast') && moneyPart) moneyPart.onOpenBill(projectId)
+    else if (fix === 'changeOrders' && moneyPart) moneyPart.onOpenChanges(projectId)
+    else if (fix === 'words') navigate('/settings?tab=settings-what-customers-see')
+    else onOpenProject(projectId)
+  }
   // The money team reads their jobs as laid (gc 5): each job through its own copy, the contract's rows from the board.
   const view = moneyPart?.view ?? null
   const docs = view ? customerMoneyDocuments(view, customer, notEmailed) : customerDocuments(state, customer, notEmailed)
@@ -160,6 +175,9 @@ export function GcCustomerWindow({
             <strong style={{ fontSize: '1.1rem' }}>{customer.name}</strong>
             <Chip tone="blue">customer</Chip>
             <span style={{ flex: 1 }} />
+            <Btn kind="quiet" onClick={() => setPortalOpen(true)}>
+              See their page
+            </Btn>
             <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
               ×
             </button>
@@ -235,6 +253,7 @@ export function GcCustomerWindow({
           )}
         </div>
       </div>
+      {portalOpen && <GcCustomerPortalWindow customer={customer} onFix={fixFrom} onClose={() => setPortalOpen(false)} />}
     </div>,
     document.body,
   )

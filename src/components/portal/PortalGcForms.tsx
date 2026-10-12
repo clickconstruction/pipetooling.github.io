@@ -5,23 +5,28 @@
  * price as one number, how billing works, the sign-by day, the file, `/contract/accept`'s form), and Accept the work
  * once every line is billed. Each press posts to submit-portal-request (`gc_change_order_answer`,
  * `gc_owner_contract_sign`, `gc_accept_work`), which runs the database's own function as their portal; a sample token
- * only says thank you. `onOpen` tells the page a paper was opened, for the office's read-back. Customer-facing ⇒
+ * only says thank you, and the office's preview (`PortalPreviewContext`, Messages cut 8d) sends nothing and says so.
+ * `onOpen` tells the page a paper was opened, for the office's read-back. Customer-facing ⇒
  * single-theme light with the statement's own palette. Their words are English until the customer page's words take
  * them (8b-ii).
  */
-import { useState } from 'react'
+import { useContext, useState } from 'react'
 import { ContractAcceptSignatureForm } from '../contracts/ContractAcceptSignatureForm'
 import { esignConsentText } from '../../lib/esignConsent'
 import { formatPortalDate, type PortalGcChangeOrder, type PortalGcContract, type PortalGcJob } from '../../lib/portal/portalPayload'
 import { gcContractTermsLines } from '../../../supabase/functions/_shared/gcPortal'
 import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { CARD, COPPER, HAIR, INK, MUTED, PAPER_GREEN } from '../../lib/portal/portalTheme'
+import { PortalPreviewContext } from './portalPreviewContext'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
 type Ui = { kind: 'idle' } | { kind: 'sending' } | { kind: 'done'; words: string } | { kind: 'error'; text: string }
 
-async function post(token: string, body: Record<string, unknown>): Promise<{ ok: true } | { ok: false; text: string }> {
+const PREVIEW_WORDS = 'This is the office’s preview. Nothing was sent.'
+
+async function post(token: string, body: Record<string, unknown>, preview: boolean): Promise<{ ok: true } | { ok: false; text: string }> {
+  if (preview) return { ok: false, text: PREVIEW_WORDS }
   if (sampleStateFromToken(token)) return { ok: true }
   try {
     const res = await fetch(`${supabaseUrl}/functions/v1/submit-portal-request`, {
@@ -54,9 +59,10 @@ export function ChangeOrderRow({ token, co, formatUsd, onOpen }: { token: string
   const [asking, setAsking] = useState<'sign' | 'decline' | null>(null)
   const [why, setWhy] = useState('')
   const [ui, setUi] = useState<Ui>({ kind: 'idle' })
+  const preview = useContext(PortalPreviewContext)
   const answer = async (signed: boolean) => {
     setUi({ kind: 'sending' })
-    const r = await post(token, { kind: 'gc_change_order_answer', changeOrderId: co.id, signed, note: signed ? undefined : why.trim() || undefined })
+    const r = await post(token, { kind: 'gc_change_order_answer', changeOrderId: co.id, signed, note: signed ? undefined : why.trim() || undefined }, preview)
     setUi(r.ok ? { kind: 'done', words: signed ? `You signed change order ${co.number}. Thank you.` : `You declined change order ${co.number}. We will be in touch.` } : { kind: 'error', text: r.text })
   }
   const sent = formatPortalDate(co.sentOn) ?? co.sentOn
@@ -133,6 +139,7 @@ export function OurContract({ token, job, contract, formatUsd, onOpen }: { token
   const [name, setName] = useState('')
   const [agreed, setAgreed] = useState(false)
   const [ui, setUi] = useState<Ui>({ kind: 'idle' })
+  const preview = useContext(PortalPreviewContext)
   if (contract.state === 'signed' || ui.kind === 'done') {
     const words =
       contract.state === 'signed'
@@ -179,7 +186,7 @@ export function OurContract({ token, job, contract, formatUsd, onOpen }: { token
                   printedName: p.printedName,
                   ...(p.mode === 'draw' ? { signaturePngBase64: p.signaturePngBase64 } : {}),
                   ...(p.consent ? { esignConsent: p.consent } : {}),
-                })
+                }, preview)
                 setUi(r.ok ? { kind: 'done', words: 'You signed our contract. Thank you.' } : { kind: 'error', text: r.text })
               })()
             }
@@ -200,10 +207,11 @@ export function AcceptWork({ token, job }: { token: string; job: PortalGcJob }) 
   const [name, setName] = useState('')
   const [note, setNote] = useState('')
   const [ui, setUi] = useState<Ui>({ kind: 'idle' })
+  const preview = useContext(PortalPreviewContext)
   const ready = name.trim() !== '' && ui.kind !== 'sending'
   const accept = async () => {
     setUi({ kind: 'sending' })
-    const r = await post(token, { kind: 'gc_accept_work', projectId: job.projectId, byName: name.trim(), note: note.trim() || undefined })
+    const r = await post(token, { kind: 'gc_accept_work', projectId: job.projectId, byName: name.trim(), note: note.trim() || undefined }, preview)
     setUi(r.ok ? { kind: 'done', words: 'You accepted the work. Thank you.' } : { kind: 'error', text: r.text })
   }
   if (ui.kind === 'done') return <div style={{ color: PAPER_GREEN, fontWeight: 700, borderTop: `1px solid ${HAIR}`, paddingTop: 8 }}>{ui.words}</div>

@@ -3,11 +3,13 @@
  * Messages cut 8b-i: the customer's page (shape B) for a GC job, from customer-portal's answer through the real payload
  * parser. Home's Your move, This week and Your people; Money's win, its cards and the folds; Schedule's What moved;
  * Papers with the existing forms under Waiting on you; the office's words laid over; a paper opened on the page sends
- * one quiet request; and a job without its page block reads as before. Made-up customer and job.
+ * one quiet request; and a job without its page block reads as before. Made-up customer and job. The office's preview
+ * (Messages cut 8d) sends nothing and tells no paper open, offers the Spanish, and tags each card with its source.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { PortalGcJobs } from './PortalGcJobs'
+import { PortalGcPage } from './PortalGcPage'
 import { parsePortalPayload, type PortalPayload } from '../../lib/portal/portalPayload'
 import { installDomShims } from '../../test/renderSmokeMocks'
 
@@ -120,5 +122,46 @@ describe("the customer's page, shape B", () => {
     render(<PortalGcJobs token={TOKEN} jobs={payload.gcJobs} formatUsd={usd} payload={payload} />)
     expect(screen.queryByTestId('portal-gc-page')).toBeNull()
     expect(screen.getByTestId('portal-gc-co-2')).toBeTruthy()
+  })
+})
+
+describe("the office's preview (Messages cut 8d)", () => {
+  const preview = (office: { sources: boolean; onSource: (fix: string) => void }) => {
+    const payload = payloadOf()
+    const job = payload.gcJobs[0]!
+    return render(<PortalGcPage token={TOKEN} job={job} page={job.page!} payload={payload} formatUsd={usd} office={office} />)
+  }
+
+  it('sends nothing and tells no paper open, and says so on a press', async () => {
+    preview({ sources: false, onSource: vi.fn() })
+    fireEvent.click(screen.getByTestId('portal-gc-tab-papers'))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign it' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, sign it' }))
+    expect(await screen.findByText('This is the office’s preview. Nothing was sent.')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('portal-gc-tab-money'))
+    fireEvent.click(screen.getByRole('link', { name: 'Read the application' }))
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('offers Español so the office can read the Spanish before it is on', () => {
+    preview({ sources: false, onSource: vi.fn() })
+    fireEvent.click(screen.getByRole('button', { name: 'Español' }))
+    expect(screen.getByTestId('portal-gc-move').textContent).toContain('La orden de cambio 2 espera su respuesta')
+  })
+
+  it('tags each card with the page that feeds it, and a tag goes there', () => {
+    const onSource = vi.fn()
+    preview({ sources: true, onSource })
+    expect(screen.getByRole('button', { name: 'From Settings → Customer page · change ›' })).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'From the daily log · change ›' }))
+    expect(onSource).toHaveBeenCalledWith('log')
+    fireEvent.click(screen.getByTestId('portal-gc-tab-money'))
+    fireEvent.click(screen.getByRole('button', { name: 'From the pay application · change ›' }))
+    expect(onSource).toHaveBeenLastCalledWith('payApp')
+  })
+
+  it('draws no tag on the customer’s own page', () => {
+    show()
+    expect(document.querySelector('[data-source-tag]')).toBeNull()
   })
 })
