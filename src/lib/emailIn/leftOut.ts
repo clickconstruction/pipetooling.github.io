@@ -1,0 +1,42 @@
+/**
+ * Messages, cut 6 (email in): the mail the bids@ reader leaves out, so a thread holds people and not notices. It stays
+ * in Gmail with no label. The rules, in order: spam and trash; anything not in the Inbox (the lead's answer to Q2:
+ * Inbox only for now); our own address or the app's (the thread already shows what the app sent, as a sent copy); mail
+ * marked as a list, as bulk or as sent by a machine (an unsubscribe line, `Precedence`, `Auto-Submitted`, which also
+ * catches an out-of-office reply); a no-reply sender; and Gmail's Promotions, Social, Updates and Forums.
+ */
+import type { EmailIn } from './gmailMessage'
+
+export type LeftOut = 'spamOrTrash' | 'notInbox' | 'ours' | 'bulk' | 'noReply' | 'category'
+
+/** Gmail's tabs other than Primary: the reader takes none of them. */
+export const LEFT_OUT_CATEGORIES: readonly string[] = ['CATEGORY_PROMOTIONS', 'CATEGORY_SOCIAL', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS']
+
+const NO_REPLY = /^(?:no[-_.]?reply|do[-_.]?not[-_.]?reply|mailer[-_.]?daemon|postmaster|bounces?|notifications?)(?:[-+_.][^@]*)?@/i
+
+/** Spam, trash, or not in the Inbox: the reader takes nothing else, a forwarded copy included. */
+export function outsideInbox(email: Pick<EmailIn, 'labels'>): 'spamOrTrash' | 'notInbox' | null {
+  const labels = new Set(email.labels)
+  if (labels.has('SPAM') || labels.has('TRASH')) return 'spamOrTrash'
+  return labels.has('INBOX') ? null : 'notInbox'
+}
+
+/**
+ * Why the reader leaves an email out, or null when it takes it. `isOurs` says whether an address is ours: the mailbox,
+ * the app's own sender, or one of the team's. One of us writing to bids@ is left out unless it is a forwarded copy,
+ * which `forwarded.ts` reads first.
+ */
+export function leftOut(email: Pick<EmailIn, 'labels' | 'from' | 'headers'>, isOurs: (address: string) => boolean): LeftOut | null {
+  const outside = outsideInbox(email)
+  if (outside) return outside
+  const labels = new Set(email.labels)
+  const from = email.from?.address.trim().toLowerCase() ?? ''
+  if (from && isOurs(from)) return 'ours'
+  const h = email.headers
+  const precedence = (h['precedence'] ?? '').trim().toLowerCase()
+  const auto = (h['auto-submitted'] ?? '').trim().toLowerCase()
+  if (h['list-unsubscribe'] || h['list-id'] || ['bulk', 'list', 'junk'].includes(precedence) || (auto !== '' && auto !== 'no')) return 'bulk'
+  if (from && NO_REPLY.test(from)) return 'noReply'
+  if (LEFT_OUT_CATEGORIES.some((c) => labels.has(c))) return 'category'
+  return null
+}
