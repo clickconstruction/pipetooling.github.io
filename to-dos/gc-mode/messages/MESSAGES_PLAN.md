@@ -664,6 +664,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.115, 2026-10-11**: the consent version and language come off the signer's side of the sign page; they are the
+  office's bookkeeping and stay on the signed copy's audit line, as the app's kernel has it (the owner, 2026-10-11).
 - **v1.114, 2026-10-11**: the sign page's consent is the app's own, `src/lib/esignConsent.ts` version 2, verbatim, in English
   and Spanish by the portal's switch: the one sentence (the same effect as ink, and paper from the office at no charge),
   How electronic signing works opening the two paragraphs (the statutes, this page and its PDF are your copy, you do
