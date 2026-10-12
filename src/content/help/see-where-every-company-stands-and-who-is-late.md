@@ -2,10 +2,10 @@
 title: see where every company stands and who is late
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: trade partners, by step, by company, by trade, board, flow, steps, late, lapsed, over usual, waiting, needs a hand, tiles, papers, quote, remind, ask for papers, off the flow, portal
+keywords: trade partners, customers, by step, by company, by trade, board, flow, steps, late, lapsed, over usual, waiting, needs a hand, tiles, papers, quote, remind, ask for papers, off the flow, portal
 order: 95
 ---
-By step shows every trade partner on the step of the flow they are on. The late ones come first, in red. One look tells you who needs a call today.
+By step shows every trade partner and customer on the step of the flow they are on. The late ones come first, in red. One look tells you who needs a call today.
 
 ## Open By step
 
@@ -91,6 +91,15 @@ Press {{button:outline|Open}} on a row to open the company's window on the Flow 
 4. Press a company to open its window on the Flow tab.
 
 The late ones come first, in red. The companies off the flow come last. A company with two trades on its record shows under each trade. A company with no trade sits under **No trade yet**.
+
+## See the customers the same way
+
+1. Open [Customers](/gc?view=customers).
+2. Press {{button:outline|By step}} or {{button:outline|By company}}.
+
+The steps follow the customer's flow. The tiles read **Setting up**, **Bidding** and **Building**. A change order counts under Building.
+
+In By company, the **Portal** column says when the customer last opened their page. The column reads today, 3 d ago or never. Opens by our own office never count.
 
 ## See who is off the flow
 

@@ -1,7 +1,8 @@
-import type { ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useFlowBoard } from '../../../hooks/useFlowBoard'
 import { companyAtForStep, customerAtForStep } from '../../../lib/flows/boardOpen'
 import { portalCellWords } from '../../../lib/flows/boardRead'
+import { loadCustomerPageOpens } from '../../../lib/flows/flowsIo'
 import type { BoardLine } from '../../../lib/flows/board'
 import type { BoardBy } from '../../../lib/gc/links'
 import { useCompanyOpener } from '../gcCompanyOpener'
@@ -57,6 +58,30 @@ export function GcFlowBoard({
   const views = VIEWS[kind].filter(([v]) => v !== 'list' || list)
   const shown = views.some(([v]) => v === by) ? by : (views[0]?.[0] ?? 'step')
   const board = useFlowBoard(kind, { enabled: shown !== 'list' })
+  // A customer's last open of their page, for By company's Portal column (helper 8's read). Null until read, or when it fails.
+  const [pageOpens, setPageOpens] = useState<Record<string, string> | null>(null)
+  const read = board.read
+  useEffect(() => {
+    if (kind !== 'customer' || shown !== 'company' || !read) return
+    let alive = true
+    const ids = [...new Set(Object.values(read.refs).flatMap((r) => (r.customerId ? [r.customerId] : [])))]
+    loadCustomerPageOpens(ids)
+      .then((o) => {
+        if (alive) setPageOpens(o)
+      })
+      .catch(() => {
+        if (alive) setPageOpens(null)
+      })
+    return () => {
+      alive = false
+    }
+  }, [kind, shown, read])
+  const portalWords = (contactId: string): string => {
+    if (kind !== 'customer') return portalCellWords(board.flow, read?.readings[contactId], null)
+    const customerId = read?.refs[contactId]?.customerId
+    if (!pageOpens || !customerId) return '—'
+    return portalCellWords(board.flow, read?.readings[contactId], pageOpens[customerId] ?? null)
+  }
   const companyOpener = useCompanyOpener()
   const customerOpener = useCustomerOpener()
 
@@ -123,7 +148,7 @@ export function GcFlowBoard({
         <GcBoardByCompany
           ctx={board.ctx}
           companies={board.read.companies}
-          portal={(contactId) => portalCellWords(board.flow, board.read?.readings[contactId], null)}
+          portal={portalWords}
           onOpen={(contactId) => openFlow(contactId)}
         />
       ) : shown === 'trade' ? (
