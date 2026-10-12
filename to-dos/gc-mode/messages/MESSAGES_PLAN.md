@@ -768,6 +768,10 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.131, 2026-10-11**: one color per channel (the owner, 2026-10-11): a text is blue, an email violet, a note yellow,
+  on the kind buttons, the box and the thread's bubbles (a colored left edge and the channel word; our texts and
+  emails on a tint of it); calls stay plain. The picked kind wears a thick orange ring, the one place orange means
+  *picked*.
 - **v1.130, 2026-10-11**: *Quick replies ▸* is a press at the right of the kinds row on a text or an email, the
   only way in and out of the strip; the folded strip's own line is gone, and the helper line sits under the kinds
   (the owner, 2026-10-11: just the word, up there).

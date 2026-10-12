@@ -6,7 +6,7 @@
 <title>Messages prototype</title>
 <meta name="description" content="Prototype: every call, text and email with a contact in one place; jobs hang off the contact; a message can be tied to one job. GC mode, Click Construction. Made-up people. Nothing is saved.">
 <style>
-:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--team:#fff6c2;--team-border:#e9d77a;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--danger:#b3261e;--chip:#eef1f5;--radius:10px}
+:root{--text-ch:#1f5fbf;--text-ch-soft:#e8f0fc;--email-ch:#6b4fbb;--email-ch-soft:#efe9fb;--pick:#e07a1f;--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--team:#fff6c2;--team-border:#e9d77a;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--danger:#b3261e;--chip:#eef1f5;--radius:10px}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
 button{font:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px}
@@ -219,6 +219,11 @@ button.court{cursor:pointer;line-height:inherit}button.court:hover{filter:bright
 .msg.out{margin-left:40px;background:#f4f8ff}
 .msg.in{margin-right:40px}
 .msg.team{background:var(--team);border-color:var(--team-border)}
+.msg.ch-text{border-left:4px solid var(--text-ch)}.msg.ch-text .meta .ch{color:var(--text-ch)}
+.msg.ch-email{border-left:4px solid var(--email-ch)}.msg.ch-email .meta .ch{color:var(--email-ch)}
+.msg.ch-note{border-left:4px solid #b89a1c}
+.msg.ch-text.out{background:var(--text-ch-soft)}.msg.ch-email.out{background:var(--email-ch-soft)}
+.reply textarea.text{border-color:#bcd0f0;background:#f7faff}.reply textarea.email{border-color:#d3c6ee;background:#faf8fe}
 .msg.drop{outline:2px dashed var(--accent);outline-offset:2px}
 .evt{text-align:center;font-size:12px;color:var(--text-muted);margin:10px 0}
 .evt b{font-weight:600;color:var(--text)}
@@ -276,9 +281,10 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .msg .written{margin-top:6px;font-size:13px;color:var(--ok)}
 .reply{margin-top:12px;border-top:1px solid var(--border);padding-top:10px}
 .reply .kinds{display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap;align-items:center}
-.reply .kinds button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.reply .kinds button.text{background:var(--text-ch-soft);border-color:#bcd0f0;color:var(--text-ch)}
+.kinds button.email{background:var(--email-ch-soft);border-color:#d3c6ee;color:var(--email-ch)}
 .reply .kinds button.team{background:var(--team);border-color:var(--team-border);color:var(--text)}
-.reply .kinds button.team.on{background:var(--team);border-color:#b89a1c;color:var(--text);font-weight:600}
+.reply .kinds button.on{box-shadow:0 0 0 3px var(--pick);border-color:var(--pick);font-weight:600}
 .reply textarea{width:100%;min-height:64px;resize:vertical}
 .reply textarea.team{background:var(--team);border-color:var(--team-border)}
 .reply .settling{background:var(--team);border:1px solid var(--team-border);border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
@@ -1160,12 +1166,12 @@ function renderMessages(m){
   </div>
   <div id="lines"></div></div>
   <div class="reply">
-    <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team ':''}${replyKind===k?'on':''}" onclick="replyKind='${k}';if('${k}'!=='note')settling=null;render()">${l}</button>`).join('')}${replyKind!=='note'?`<button type="button" class="qrtab ${qrOpen?'on':''}" data-tip="Quick replies|Opens the lines above the box: a press on one fills the box, nothing sends.|Press again to fold them. Your choice is kept on this computer." onclick="toggleQuick()">Quick replies ${qrOpen?'▾':'▸'}</button>`:''}<span class="note helper">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees it · closes the row'}</span></div>
+    <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team':k} ${replyKind===k?'on':''}" onclick="replyKind='${k}';if('${k}'!=='note')settling=null;render()">${l}</button>`).join('')}${replyKind!=='note'?`<button type="button" class="qrtab ${qrOpen?'on':''}" data-tip="Quick replies|Opens the lines above the box: a press on one fills the box, nothing sends.|Press again to fold them. Your choice is kept on this computer." onclick="toggleQuick()">Quick replies ${qrOpen?'▾':'▸'}</button>`:''}<span class="note helper">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees it · closes the row'}</span></div>
     ${replyKind!=='note'?qrStripHtml(c):''}
     ${replyKind==='note'&&settling!==c.id&&(noteBackOpen||noteBack)?noteBackHtml(c):''}
     ${owedOpen===c.id&&settling!==c.id?owedStripHtml(c):''}
     ${settling===c.id&&c.owe?`<div class="settling"><b>Marking it done:</b> we owed ${esc(c.owe.what)}${c.owe.by?' · by '+esc(c.owe.by):''} · marked by ${esc(c.owe.who)} ${esc(c.owe.since)}<span class="note">Say how it got done, for the team. The note marks it done.</span></div>`:''}
-    <textarea id="box" oninput="countBox(this)" class="${replyKind==='note'?'team':''}" placeholder="${settling===c.id&&c.owe?'How it got done: what we did, or why nothing is owed…':replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
+    <textarea id="box" oninput="countBox(this)" class="${replyKind==='note'?'team':replyKind}" placeholder="${settling===c.id&&c.owe?'How it got done: what we did, or why nothing is owed…':replyKind==='note'?'A note only the team sees…':'Write to '+esc(c.name)+'…'}" ${c.optout&&replyKind==='text'?'disabled':''}></textarea>
     ${replyKind!=='note'&&draftFiles.length?`<div class="att draft">${draftFiles.map((f,i)=>`<span class="chip" data-tip="${esc(f.name)}|${f.from==='job'?'From the job.':f.from==='photo'?'A photo from this device.':'From this computer.'} ${f.big?'Over the email limit, so it stays in the job\'s Drive folder and goes as our link to it.':f.from==='computer'?'Goes into the job\'s Team only folder on the way out.':''}|On an email it goes as ${f.from==='photo'?'the picture':f.big?'our link to it in Drive':'the file'}; on a text as ${f.from==='photo'?'the picture':'our link, to their portal when it has a page there'}.">${f.from==='photo'?'<span class="thumb"></span>':`<span class="ic ${f.kind}">${f.kind==='pdf'?'PDF':'F'}</span>`}<span>${esc(f.name)} <span class="note">· ${esc(f.size)}</span></span><span class="x" onclick="draftFiles.splice(${i},1);render()">×</span></span>`).join('')}</div>`:''}
     ${replyKind!=='note'?`<div class="previews"><span>Send shows it to you the way they will see it, before it goes.</span><span class="note" id="pvcount"></span></div>`:''}
     <div class="send">${settling===c.id&&c.owe?`<button class="primary" data-tip="Done, with this note|Marks what we owed done and keeps your words in the thread.|The row closes as any note does; the move goes by whose word was last. Follow up drops it from We owe them." onclick="finishSettle('${c.id}')">Done, with this note</button><button class="quiet" onclick="cancelSettle()">Not done yet</button>`:`<button class="primary" onclick="${replyKind==='note'?`sendReply('${c.id}')`:`previewDraft('${c.id}','${replyKind}')`}" ${c.optout&&replyKind==='text'?'disabled':''}>${replyKind==='note'?'Add the note':replyKind==='email'?'Send email…':'Send text…'}</button>${replyKind==='note'&&settling!==c.id&&!(noteBackOpen||noteBack)?noteBackLink():''}`}${c.optout&&replyKind==='text'?'<span class="note">They sent STOP. The app will not text this number.</span>':''}
@@ -1177,7 +1183,7 @@ function renderMessages(m){
   let lastDay='';
   for(const x of lines){ const d=dayOf(x.at); if(d!==lastDay){ const dd=document.createElement('div'); dd.className='day'; dd.textContent=d; L.appendChild(dd); lastDay=d; }
     if(x.ch==='event'){ const ev=document.createElement('div'); ev.className='evt'; ev.innerHTML=`${esc(x.text)} · ${fmt(x.at)}`; L.appendChild(ev); continue; }
-    const e=document.createElement('div'); e.className=`msg clickable ${x.dir==='team'?'team':x.dir}`; e.dataset.id=x.id; e.title='Open this message';
+    const e=document.createElement('div'); e.className=`msg clickable ${x.dir==='team'?'team':x.dir} ch-${x.ch}`; e.dataset.id=x.id; e.title='Open this message';
     e.addEventListener('click',ev=>{ if(ev.target.closest('button, a, select, input, .job, .offer, .chip, .player')) return; openMessage(x.id); });
     e.innerHTML=`<div class="meta"><span class="ch">${chWord(x)}${x.dur?` · ${x.dur}`:''}</span><span>${esc(x.who)}</span><span>${fmt(x.at)}</span>
         ${x.back?`<span class="settled-chip" style="background:var(--accent-soft);color:var(--accent);border-color:#bcd0f0" data-tip="Comes back ${esc(x.back.label)}|This note brings the row back to Follow up that morning, under Needs you, with the note on it.|Marked by ${esc(x.who.split(' · ')[0])}. Clear it from the row when it comes back, or from the move line now.">↩ back ${esc(x.back.label)}</span>`:''}${x.settled?`<span class="settled-chip" data-tip="Done|This ${x.ch==='note'?'note':'message'} marked what we owed them done.|We owed ${esc(x.settled.what)}${x.settled.by?' by '+esc(x.settled.by):''}; the move went back to whoever wrote last.">✓ done: ${esc(x.settled.what)}</span>`:''}<span class="job ${x.job?'':'none'}" title="${x.job?'Untie from this job':'Tie to a job'}" onclick="${x.job?`untie(${x.id})`:`tieMenu(${x.id})`}">${x.job?jobTag(x.job)+' ×':'no job'}</span></div>
