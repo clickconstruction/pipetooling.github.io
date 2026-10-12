@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The draws bar · its legend, three ways</title>
+<style>
+:root{--text:#1b1f24;--muted:#6b7280;--border:#e3e6ea;--surface:#fff;--bg:#f4f5f7;--accent:#1f5fbf;--ok:#2a8f5a;--warn:#b45309;--chip:#f0f2f5}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg);padding:24px}
+h1{font-size:22px;margin:0 0 4px}h3{font-size:14px;margin:22px 0 6px}p{max-width:760px;margin:4px 0}.note{color:var(--muted);font-size:13px}
+.card{width:640px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:6px}
+.h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stack{display:flex;height:26px;border-radius:7px;overflow:hidden;margin:4px 0}.stack div{display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;font-size:11.5px;font-weight:600;color:#fff}
+.notin{background:#c2410c}.back{background:#d97706}.wait{background:#1f5fbf}.ok{background:#2a8f5a}
+/* A: four columns in bar order, swatch and count above, the state below */
+.lgA{display:flex;gap:18px;margin-top:6px}.lgA div{font-size:12.5px}.lgA b{display:flex;align-items:center;gap:6px;font-size:14px}.lgA i{display:inline-block;width:11px;height:11px;border-radius:3px}.lgA small{display:block;color:var(--muted);font-size:12px}
+/* B: the legend under its own segment, same widths as the bar */
+.lgB{display:flex;margin-top:4px}.lgB div{font-size:12px;padding:0 4px;min-width:0}.lgB b{display:block;font-size:13.5px}.lgB small{display:block;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lgB div:first-child{text-align:left}.lgB div:last-child{text-align:right}
+/* C: a taller bar carries its own labels, no legend */
+.stack.tall{height:44px}.stack.tall div{flex-direction:column;line-height:1.2}.stack.tall small{font-weight:500;font-size:10.5px;opacity:.92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;background:#e6f4ec;color:var(--ok)}
+.rev{background:#fffbe9;border:1px solid #f0e2a8;border-radius:10px;padding:10px 14px;max-width:760px;margin-top:18px}.rev li{margin:4px 0}
+.chosen{outline:3px solid var(--accent);outline-offset:3px}
+</style></head><body>
+<h1>The draws bar · its legend, three ways</h1>
+<p class="note">Today the legend is a wrapped list under the bar, out of step with the segments. Three ways to make it lateral: the color and the number above, the state below, in the bar's own order.</p>
+
+<h3>A · Four columns in bar order</h3>
+<p class="note">A row of columns, left to right like the bar. Each column: the swatch and the count on top, the state and its detail under. Even widths, so long labels never squeeze.</p>
+<div class="card"><div class="h">The trades' draws · 6 · $107,900 as it stands</div>
+<div class="stack"><div class="notin" style="width:45%">$48,300</div><div class="back" style="width:17%">$18,400</div><div class="wait" style="width:26%">$27,900</div><div class="ok" style="width:12%">$13,300</div></div>
+<div class="lgA"><div><b><i class="notin"></i>3</b><small>Not in · due Oct 19</small></div><div><b><i class="back"></i>1</b><small>Sent back</small></div><div><b><i class="wait"></i>1</b><small>Waiting on us · 4 days</small></div><div><b><i class="ok"></i>1</b><small>Approved</small></div></div></div>
+
+<h3>B · Under its own segment <span class="pill">the pick</span></h3>
+<p class="note">The legend takes the bar's widths, so each count sits under its own color with the state beneath it. The eye drops straight down from a segment to its name. No swatch needed; the color is right above. A narrow segment keeps its count and shortens its label.</p>
+<div class="card chosen"><div class="h">The trades' draws · 6 · $107,900 as it stands</div>
+<div class="stack"><div class="notin" style="width:45%">$48,300</div><div class="back" style="width:17%">$18,400</div><div class="wait" style="width:26%">$27,900</div><div class="ok" style="width:12%">$13,300</div></div>
+<div class="lgB"><div style="width:45%"><b>3</b><small>Not in · due Oct 19</small></div><div style="width:17%"><b>1</b><small>Sent back</small></div><div style="width:26%"><b>1</b><small>Waiting on us · 4 d</small></div><div style="width:12%"><b>1</b><small>Approved</small></div></div></div>
+
+<h3>C · The bar carries its own labels</h3>
+<p class="note">A taller bar, dollars on the first line and the state on the second, no legend at all. Shortest. A thin segment clips its label, so Approved at 12% barely fits and a 5% segment would lose it.</p>
+<div class="card"><div class="h">The trades' draws · 6 · $107,900 as it stands</div>
+<div class="stack tall"><div class="notin" style="width:45%">$48,300<small>Not in · 3 · due Oct 19</small></div><div class="back" style="width:17%">$18,400<small>Sent back · 1</small></div><div class="wait" style="width:26%">$27,900<small>Waiting on us · 1</small></div><div class="ok" style="width:12%">$13,300<small>Approved · 1</small></div></div></div>
+
+<div class="rev"><b>Is this the best we can do?</b><ul>
+<li><b>B wins on the drop-down read.</b> The question under a segment is "which is this and how many", and B answers it without a swatch, in the segment's own column. A needs the eye to match colors across a gap; C runs out of room on thin segments.</li>
+<li><b>B's weakness is a thin segment.</b> Under 10% the label shortens to the state alone, and under 6% it shows the count only, with the full words on hover. The count always shows.</li>
+<li><b>Helotes, one segment:</b> B becomes one column, "1 · Not in · due Oct 19", which reads fine.</li>
+</ul></div>
+</body></html>
