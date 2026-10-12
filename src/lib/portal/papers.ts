@@ -19,7 +19,7 @@
 import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { weekdayDate } from '../gc/words'
 import { openChanges, signedChanges, type CustomerChange } from './moneyLines'
-import { changeAmount, changeDays, paperWords, pWeekday, say, signedMoney, typed, type PortalLang } from './pageWords'
+import { changeAmount, changeDays, CODE_WORDS, pWeekday, signedMoney, typed, type PageWords, type PortalLang } from './pageWords'
 
 /** Our contract on the job as their page has it (main's `PortalGcContract`, its day and signer only). */
 export type CustomerContract = { state: 'toSign'; signBy: string } | { state: 'signed'; signedOn: string; signer: string | null }
@@ -57,56 +57,56 @@ export interface CustomerPapers {
   footer: string
 }
 
-export function customerPapers(lang: PortalLang, input: CustomerPapersIn): CustomerPapers {
-  const read = say(lang, 'readCopy')
+export function customerPapers(lang: PortalLang, input: CustomerPapersIn, words: PageWords = CODE_WORDS): CustomerPapers {
+  const read = words.say(lang, 'readCopy')
   const signed: SignedPaperRow[] = []
   if (input.agreement) {
-    signed.push({ title: paperWords(lang, 'msa').label, detail: null, sub: [say(lang, 'signedOn', { day: pWeekday(lang, input.agreement.signedOn) })], read })
+    signed.push({ title: words.paper(lang, 'msa').label, detail: null, sub: [words.say(lang, 'signedOn', { day: pWeekday(lang, input.agreement.signedOn) })], read })
   }
   if (input.contract?.state === 'signed') {
-    const sub = [say(lang, 'signedOn', { day: pWeekday(lang, input.contract.signedOn) })]
+    const sub = [words.say(lang, 'signedOn', { day: pWeekday(lang, input.contract.signedOn) })]
     if (input.contract.signer) sub.push(input.contract.signer)
-    signed.push({ title: paperWords(lang, 'contract').label, detail: null, sub, read })
+    signed.push({ title: words.paper(lang, 'contract').label, detail: null, sub, read })
   }
   for (const x of signedChanges(input.changes)) {
-    const sub = x.signedOn ? [say(lang, 'signedOn', { day: pWeekday(lang, x.signedOn) })] : []
+    const sub = x.signedOn ? [words.say(lang, 'signedOn', { day: pWeekday(lang, x.signedOn) })] : []
     sub.push(signedMoney(x.price))
-    signed.push({ title: say(lang, 'changeOrderN', { n: x.number }), detail: typed(lang, x.description) || null, sub, read })
+    signed.push({ title: words.say(lang, 'changeOrderN', { n: x.number }), detail: typed(lang, x.description) || null, sub, read })
   }
 
   const waiting: WaitingPaperRow[] = []
   if (input.contract?.state === 'toSign') {
     waiting.push({
-      title: paperWords(lang, 'contract').label,
+      title: words.paper(lang, 'contract').label,
       detail: null,
-      sub: [say(lang, 'signBy', { day: pWeekday(lang, input.contract.signBy) })],
+      sub: [words.say(lang, 'signBy', { day: pWeekday(lang, input.contract.signBy) })],
       changeId: null,
-      buttons: [{ label: say(lang, 'readAndSign'), primary: true, press: 'sign' }],
+      buttons: [{ label: words.say(lang, 'readAndSign'), primary: true, press: 'sign' }],
     })
   }
   for (const x of openChanges(input.changes)) {
     waiting.push({
-      title: say(lang, 'changeOrderN', { n: x.number }),
+      title: words.say(lang, 'changeOrderN', { n: x.number }),
       detail: typed(lang, x.description) || null,
-      sub: [changeAmount(lang, x.price), changeDays(lang, x.days)],
+      sub: [changeAmount(lang, x.price, words), changeDays(lang, x.days, words)],
       changeId: x.id,
       buttons: [
-        { label: say(lang, 'readAndSign'), primary: true, press: 'signChange' },
-        { label: say(lang, 'decline'), primary: false, press: 'declineChange' },
+        { label: words.say(lang, 'readAndSign'), primary: true, press: 'signChange' },
+        { label: words.say(lang, 'decline'), primary: false, press: 'declineChange' },
       ],
     })
   }
 
   const later: { title: string; when: string }[] = []
-  if (input.arrived.payApps === 0) later.push({ title: say(lang, 'laterPayApps'), when: say(lang, 'laterPayAppsWhen') })
-  if (input.arrived.waivers === 0) later.push({ title: say(lang, 'laterWaivers'), when: say(lang, 'laterWaiversWhen') })
-  if (!input.arrived.binder) later.push({ title: say(lang, 'laterBinder'), when: say(lang, 'laterBinderWhen') })
+  if (input.arrived.payApps === 0) later.push({ title: words.say(lang, 'laterPayApps'), when: words.say(lang, 'laterPayAppsWhen') })
+  if (input.arrived.waivers === 0) later.push({ title: words.say(lang, 'laterWaivers'), when: words.say(lang, 'laterWaiversWhen') })
+  if (!input.arrived.binder) later.push({ title: words.say(lang, 'laterBinder'), when: words.say(lang, 'laterBinderWhen') })
 
   return {
-    signed: { title: say(lang, 'signedTitle'), rows: signed, empty: signed.length ? null : say(lang, 'nothingYetShort') },
-    waiting: waiting.length ? { title: say(lang, 'waitingOnYou'), rows: waiting } : null,
-    later: later.length ? { title: say(lang, 'comesLater'), rows: later } : null,
-    footer: say(lang, 'everyPaper'),
+    signed: { title: words.say(lang, 'signedTitle'), rows: signed, empty: signed.length ? null : words.say(lang, 'nothingYetShort') },
+    waiting: waiting.length ? { title: words.say(lang, 'waitingOnYou'), rows: waiting } : null,
+    later: later.length ? { title: words.say(lang, 'comesLater'), rows: later } : null,
+    footer: words.say(lang, 'everyPaper'),
   }
 }
 

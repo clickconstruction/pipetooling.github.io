@@ -408,6 +408,49 @@ export function paperWords(lang: PortalLang, paper: PortalPaperId): PaperWords {
   return PAPER_WORDS[paper][lang]
 }
 
+/**
+ * The words a page reads: the code's table (`CODE_WORDS`), or the table with the office's edits from Settings →
+ * Customer page laid over it (`wordsWith`, the `customer_page_words` rows). Every kernel that writes a sentence for a
+ * person's page takes one, so an edit reaches every place the sentence shows.
+ */
+export interface PageWords {
+  say(lang: PortalLang, key: PortalWordKey, vars?: Record<string, string | number>): string
+  paper(lang: PortalLang, paper: PortalPaperId): PaperWords
+}
+
+export const CODE_WORDS: PageWords = { say: (lang, key, vars) => say(lang, key, vars), paper: paperWords }
+
+function fill(text: string, vars?: Record<string, string | number>): string {
+  let out = text
+  if (vars) for (const [k, v] of Object.entries(vars)) out = out.split(`{${k}}`).join(String(v))
+  return out
+}
+
+/**
+ * The code's words with each row laid over its key: a page key (`nothingToday`) or a paper's field
+ * (`paper.contract.why`). A row whose key the code no longer has is left out, so a stale row never shows.
+ */
+export function wordsWith(rows: readonly { key: string; en: string; es: string }[]): PageWords {
+  const page = new Map<string, Bilingual>()
+  const papers = new Map<string, Bilingual>()
+  for (const r of rows) {
+    if (r.key.startsWith('paper.')) papers.set(r.key, { en: r.en, es: r.es })
+    else if (r.key in W) page.set(r.key, { en: r.en, es: r.es })
+  }
+  return {
+    say: (lang, key, vars) => fill((page.get(key) ?? W[key])[lang], vars),
+    paper: (lang, id) => {
+      const base = PAPER_WORDS[id][lang]
+      const out: PaperWords = { ...base }
+      for (const field of Object.keys(base) as (keyof PaperWords)[]) {
+        const edit = papers.get(`paper.${id}.${field}`)
+        if (edit) out[field] = edit[lang]
+      }
+      return out
+    },
+  }
+}
+
 const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MONTHS_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 
@@ -421,10 +464,10 @@ export function pMonth(lang: PortalLang, iso: string): string {
 export { pDate, pWeekday }
 
 /** "2 and 1", "3, 2 and 1" in English; "2 y 1", "3, 2 y 1" in Spanish. */
-export function listWords(lang: PortalLang, items: (string | number)[]): string {
+export function listWords(lang: PortalLang, items: (string | number)[], words: PageWords = CODE_WORDS): string {
   const parts = items.map(String)
   if (parts.length <= 1) return parts.join('')
-  return `${parts.slice(0, -1).join(', ')}${say(lang, 'and')}${parts[parts.length - 1]}`
+  return `${parts.slice(0, -1).join(', ')}${words.say(lang, 'and')}${parts[parts.length - 1]}`
 }
 
 /** "$41,200", the same in both languages. */
@@ -436,12 +479,12 @@ export function signedMoney(n: number): string {
 }
 
 /** What a change order does to the sum, in their words: "+$2,150", or "a credit of $500" for one that takes off. */
-export function changeAmount(lang: PortalLang, price: number): string {
-  return price < 0 ? say(lang, 'creditOf', { amount: money(-price) }) : `+${money(price)}`
+export function changeAmount(lang: PortalLang, price: number, words: PageWords = CODE_WORDS): string {
+  return price < 0 ? words.say(lang, 'creditOf', { amount: money(-price) }) : `+${money(price)}`
 }
 
 /** What a change order does to the finish: "adds no days", "adds 1 working day", "adds 3 working days". */
-export function changeDays(lang: PortalLang, days: number): string {
-  if (days <= 0) return say(lang, 'addsNoDays')
-  return days === 1 ? say(lang, 'addsOneDay') : say(lang, 'addsDays', { n: days })
+export function changeDays(lang: PortalLang, days: number, words: PageWords = CODE_WORDS): string {
+  if (days <= 0) return words.say(lang, 'addsNoDays')
+  return days === 1 ? words.say(lang, 'addsOneDay') : words.say(lang, 'addsDays', { n: days })
 }

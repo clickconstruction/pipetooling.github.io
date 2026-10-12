@@ -21,14 +21,15 @@
 import { moneyLines, openChanges, paidPct, signedChanges, statementRows, type CustomerChange, type MoneyLines, type StatementRow } from './moneyLines'
 import {
   changeAmount,
+  CODE_WORDS,
   listWords,
   money,
   pDate,
   pMonth,
   pWeekday,
-  say,
   signedMoney,
   typed,
+  type PageWords,
   type PortalLang,
   type TypedLine,
 } from './pageWords'
@@ -158,12 +159,12 @@ export function nextAppSizeWords(bill: number): string {
   return 'about' in size ? `about ${money(size.about)}` : `${money(size.low)} to ${money(size.high)}`
 }
 
-function nextAppWords(lang: PortalLang, next: NextAppIn): string {
+function nextAppWords(lang: PortalLang, next: NextAppIn, words: PageWords): string {
   const size = nextAppSize(next.bill)
   const day = pDate(lang, next.aboutOn)
   return 'about' in size
-    ? say(lang, 'afterAbout', { amount: money(size.about), day })
-    : say(lang, 'afterRange', { low: money(size.low), high: money(size.high), day })
+    ? words.say(lang, 'afterAbout', { amount: money(size.about), day })
+    : words.say(lang, 'afterRange', { low: money(size.low), high: money(size.high), day })
 }
 
 /** Paid by the day it was due. A payment with no due day on file is not praised. */
@@ -171,66 +172,66 @@ function onTime(app: PaidApp): boolean {
   return !!app.dueOn && app.paidOn <= app.dueOn
 }
 
-function sumIs(lang: PortalLang, n: number): string {
-  if (n === 0) return say(lang, 'sumIsNone')
-  return n === 1 ? say(lang, 'sumIsOne') : say(lang, 'sumIsMany', { n })
+function sumIs(lang: PortalLang, n: number, words: PageWords): string {
+  if (n === 0) return words.say(lang, 'sumIsNone')
+  return n === 1 ? words.say(lang, 'sumIsOne') : words.say(lang, 'sumIsMany', { n })
 }
 
-function header(lang: PortalLang, input: MoneyStoryIn, lines: MoneyLines, paidApps: PaidApp[]): MoneyHeader {
+function header(lang: PortalLang, input: MoneyStoryIn, lines: MoneyLines, paidApps: PaidApp[], words: PageWords): MoneyHeader {
   const pct = paidPct(lines)
-  const check = sumIs(lang, lines.changesCount)
+  const check = sumIs(lang, lines.changesCount, words)
   if (paidApps.length) {
-    const small = [say(lang, 'investedOf', { paid: money(lines.paid), sum: money(lines.revised) })]
-    if (paidApps.every(onTime)) small.push(say(lang, 'paidOnTime', { n: paidApps.length }))
-    return { big: say(lang, 'builtPct', { pct }), small, pct, check, howPay: null }
+    const small = [words.say(lang, 'investedOf', { paid: money(lines.paid), sum: money(lines.revised) })]
+    if (paidApps.every(onTime)) small.push(words.say(lang, 'paidOnTime', { n: paidApps.length }))
+    return { big: words.say(lang, 'builtPct', { pct }), small, pct, check, howPay: null }
   }
-  const small = [say(lang, 'soFarOf', { paid: money(lines.paid), sum: money(lines.revised) })]
-  if (input.next) small.push(say(lang, 'firstAppAbout', { day: pDate(lang, input.next.aboutOn) }))
+  const small = [words.say(lang, 'soFarOf', { paid: money(lines.paid), sum: money(lines.revised) })]
+  if (input.next) small.push(words.say(lang, 'firstAppAbout', { day: pDate(lang, input.next.aboutOn) }))
   const howPay = input.apps.length
     ? null
     : {
-        title: say(lang, 'howPayTitle'),
-        words: input.payDays != null ? say(lang, 'howPayWords', { days: input.payDays }) : say(lang, 'howPayWordsNoDays'),
+        title: words.say(lang, 'howPayTitle'),
+        words: input.payDays != null ? words.say(lang, 'howPayWords', { days: input.payDays }) : words.say(lang, 'howPayWordsNoDays'),
       }
-  return { big: say(lang, 'startingTitle'), small, pct, check, howPay }
+  return { big: words.say(lang, 'startingTitle'), small, pct, check, howPay }
 }
 
-function appCard(lang: PortalLang, input: MoneyStoryIn, a: PayAppIn): MoneyCard {
+function appCard(lang: PortalLang, input: MoneyStoryIn, a: PayAppIn, words: PageWords): MoneyCard {
   const checks: { mark: MoneyCheckMark; words: string }[] = []
   let buttons: Extract<MoneyCard, { kind: 'payApp' }>['buttons']
   if (a.state === 'architect') {
     const day = pWeekday(lang, a.withArchitectSince)
-    checks.push({ mark: 'plain', words: a.architect ? say(lang, 'withArchitect', { name: a.architect, day }) : say(lang, 'withArchitectUnnamed', { day }) })
-    if (input.payDays != null) checks.push({ mark: 'plain', words: say(lang, 'dueDaysAfter', { days: input.payDays }) })
-    checks.push({ mark: 'plain', words: say(lang, 'nothingYet') })
-    buttons = [{ label: say(lang, 'readApp'), primary: false, press: 'read' }]
+    checks.push({ mark: 'plain', words: a.architect ? words.say(lang, 'withArchitect', { name: a.architect, day }) : words.say(lang, 'withArchitectUnnamed', { day }) })
+    if (input.payDays != null) checks.push({ mark: 'plain', words: words.say(lang, 'dueDaysAfter', { days: input.payDays }) })
+    checks.push({ mark: 'plain', words: words.say(lang, 'nothingYet') })
+    buttons = [{ label: words.say(lang, 'readApp'), primary: false, press: 'read' }]
   } else {
-    if (a.certifiedBy && a.certifiedOn) checks.push({ mark: 'done', words: say(lang, 'certifiedBy', { name: a.certifiedBy, day: pDate(lang, a.certifiedOn) }) })
+    if (a.certifiedBy && a.certifiedOn) checks.push({ mark: 'done', words: words.say(lang, 'certifiedBy', { name: a.certifiedBy, day: pDate(lang, a.certifiedOn) }) })
     if (a.state === 'due') {
-      checks.push({ mark: 'strong', words: say(lang, 'dueOnDay', { day: pDate(lang, a.dueOn) }) })
+      checks.push({ mark: 'strong', words: words.say(lang, 'dueOnDay', { day: pDate(lang, a.dueOn) }) })
       buttons = [
-        { label: say(lang, 'payIt'), primary: true, press: 'pay' },
-        { label: say(lang, 'readApp'), primary: false, press: 'read' },
+        { label: words.say(lang, 'payIt'), primary: true, press: 'pay' },
+        { label: words.say(lang, 'readApp'), primary: false, press: 'read' },
       ]
     } else {
       if (a.waivers > 0 && a.tradesPaidOn) {
         const day = pDate(lang, a.tradesPaidOn)
-        checks.push({ mark: 'done', words: a.waivers === 1 ? say(lang, 'waiversOne', { day }) : say(lang, 'waiversMany', { n: a.waivers, day }) })
+        checks.push({ mark: 'done', words: a.waivers === 1 ? words.say(lang, 'waiversOne', { day }) : words.say(lang, 'waiversMany', { n: a.waivers, day }) })
       }
-      checks.push({ mark: 'done', words: say(lang, 'thankYou') })
+      checks.push({ mark: 'done', words: words.say(lang, 'thankYou') })
       buttons = [
-        { label: say(lang, 'receipt'), primary: false, press: 'receipt' },
-        { label: say(lang, 'waiversButton'), primary: false, press: 'waivers' },
+        { label: words.say(lang, 'receipt'), primary: false, press: 'receipt' },
+        { label: words.say(lang, 'waiversButton'), primary: false, press: 'waivers' },
       ]
     }
   }
   return {
     kind: 'payApp',
     n: a.n,
-    title: say(lang, 'payAppN', { n: a.n }),
+    title: words.say(lang, 'payAppN', { n: a.n }),
     month: pMonth(lang, a.month),
     open: a.state !== 'paid',
-    pill: a.state === 'paid' ? say(lang, 'paidOnDay', { day: pDate(lang, a.paidOn) }) : null,
+    pill: a.state === 'paid' ? words.say(lang, 'paidOnDay', { day: pDate(lang, a.paidOn) }) : null,
     covers: a.covers ? typed(lang, a.covers) : '',
     amount: money(a.amount),
     photos: a.photos,
@@ -239,44 +240,44 @@ function appCard(lang: PortalLang, input: MoneyStoryIn, a: PayAppIn): MoneyCard 
   }
 }
 
-function history(lang: PortalLang, input: MoneyStoryIn, lines: MoneyLines, openApps: PayAppIn[], paidApps: PaidApp[]): MoneyStory['history'] {
+function history(lang: PortalLang, input: MoneyStoryIn, lines: MoneyLines, openApps: PayAppIn[], paidApps: PaidApp[], words: PageWords): MoneyStory['history'] {
   const dated: { at: string; event: HistoryEvent }[] = []
   for (const a of paidApps) {
-    const sub = [pDate(lang, a.paidOn), say(lang, 'thankYouSmall')]
+    const sub = [pDate(lang, a.paidOn), words.say(lang, 'thankYouSmall')]
     if (a.waivers > 0 && a.tradesPaidOn) {
       const day = pDate(lang, a.tradesPaidOn)
-      sub.push(a.waivers === 1 ? say(lang, 'tradesPaidOne', { day }) : say(lang, 'tradesPaidMany', { n: a.waivers, day }))
+      sub.push(a.waivers === 1 ? words.say(lang, 'tradesPaidOne', { day }) : words.say(lang, 'tradesPaidMany', { n: a.waivers, day }))
     }
-    dated.push({ at: a.paidOn, event: { kind: 'done', title: say(lang, 'payAppPaid', { n: a.n }), amount: money(a.amount), sub } })
+    dated.push({ at: a.paidOn, event: { kind: 'done', title: words.say(lang, 'payAppPaid', { n: a.n }), amount: money(a.amount), sub } })
   }
   for (const x of signedChanges(input.changes)) {
     dated.push({
       at: x.signedOn ?? '',
-      event: { kind: 'done', title: say(lang, 'changeSigned', { n: x.number }), amount: signedMoney(x.price), sub: [pWeekday(lang, x.signedOn ?? null), typed(lang, x.description)].filter(Boolean) },
+      event: { kind: 'done', title: words.say(lang, 'changeSigned', { n: x.number }), amount: signedMoney(x.price), sub: [pWeekday(lang, x.signedOn ?? null), typed(lang, x.description)].filter(Boolean) },
     })
   }
   dated.sort((p, q) => (p.at < q.at ? -1 : p.at > q.at ? 1 : 0))
   const events: HistoryEvent[] = [
-    { kind: 'done', title: say(lang, 'contractSigned'), amount: money(input.contract), sub: input.contractSignedOn ? [pWeekday(lang, input.contractSignedOn)] : [] },
+    { kind: 'done', title: words.say(lang, 'contractSigned'), amount: money(input.contract), sub: input.contractSignedOn ? [pWeekday(lang, input.contractSignedOn)] : [] },
     ...dated.map((d) => d.event),
   ]
   for (const a of openApps) {
     const sub =
       a.state === 'architect'
-        ? [say(lang, 'withArchitectSince', { day: pWeekday(lang, a.withArchitectSince) }), ...(input.payDays != null ? [say(lang, 'dueDaysAfter', { days: input.payDays })] : [])]
+        ? [words.say(lang, 'withArchitectSince', { day: pWeekday(lang, a.withArchitectSince) }), ...(input.payDays != null ? [words.say(lang, 'dueDaysAfter', { days: input.payDays })] : [])]
         : a.state === 'due'
-          ? [say(lang, 'dueOnDay', { day: pDate(lang, a.dueOn) })]
+          ? [words.say(lang, 'dueOnDay', { day: pDate(lang, a.dueOn) })]
           : []
-    events.push({ kind: 'open', title: say(lang, 'payAppN', { n: a.n }), amount: money(a.amount), sub })
+    events.push({ kind: 'open', title: words.say(lang, 'payAppN', { n: a.n }), amount: money(a.amount), sub })
   }
   if (input.next) {
-    events.push({ kind: 'next', title: say(lang, 'payAppN', { n: input.next.n }), amount: null, sub: [say(lang, 'aboutDay', { day: pDate(lang, input.next.aboutOn) }), pMonth(lang, input.next.month)] })
+    events.push({ kind: 'next', title: words.say(lang, 'payAppN', { n: input.next.n }), amount: null, sub: [words.say(lang, 'aboutDay', { day: pDate(lang, input.next.aboutOn) }), pMonth(lang, input.next.month)] })
   }
   return {
-    title: say(lang, 'historyTitle'),
+    title: words.say(lang, 'historyTitle'),
     events,
-    investedSoFar: { label: say(lang, 'investedSoFar'), amount: money(lines.paid) },
-    toFinish: { label: say(lang, 'toFinish'), amount: money(lines.balance) },
+    investedSoFar: { label: words.say(lang, 'investedSoFar'), amount: money(lines.paid) },
+    toFinish: { label: words.say(lang, 'toFinish'), amount: money(lines.balance) },
   }
 }
 
@@ -284,41 +285,42 @@ function history(lang: PortalLang, input: MoneyStoryIn, lines: MoneyLines, openA
  * The Money tab for one job. `showOlder` opens the paid applications folded under the newest one, the way the fold
  * line's press does.
  */
-export function moneyStory(lang: PortalLang, input: MoneyStoryIn, opts: { showOlder?: boolean } = {}): MoneyStory {
+export function moneyStory(lang: PortalLang, input: MoneyStoryIn, opts: { showOlder?: boolean; words?: PageWords } = {}): MoneyStory {
+  const words = opts.words ?? CODE_WORDS
   const lines = moneyLines(input)
   const byNewest = [...input.apps].sort((p, q) => q.n - p.n)
   const openApps = byNewest.filter((a) => a.state !== 'paid')
   const paidApps = byNewest.filter((a): a is PaidApp => a.state === 'paid')
   const waiting = openChanges(input.changes)
 
-  const cards: MoneyCard[] = openApps.map((a) => appCard(lang, input, a))
+  const cards: MoneyCard[] = openApps.map((a) => appCard(lang, input, a, words))
   if (input.next) {
     cards.push({
       kind: 'after',
-      title: say(lang, 'afterThatTitle'),
-      rows: [{ title: say(lang, 'payAppN', { n: input.next.n }), month: pMonth(lang, input.next.month), words: nextAppWords(lang, input.next) }],
-      note: say(lang, 'sizesNote'),
+      title: words.say(lang, 'afterThatTitle'),
+      rows: [{ title: words.say(lang, 'payAppN', { n: input.next.n }), month: pMonth(lang, input.next.month), words: nextAppWords(lang, input.next, words) }],
+      note: words.say(lang, 'sizesNote'),
     })
   }
   if (waiting.length) {
     cards.push({
       kind: 'changes',
-      title: say(lang, 'waitingAnswer'),
-      rows: waiting.map((x) => ({ title: say(lang, 'changeOrderN', { n: x.number }), detail: typed(lang, x.description), amount: changeAmount(lang, x.price) })),
-      note: say(lang, 'signingAdds'),
+      title: words.say(lang, 'waitingAnswer'),
+      rows: waiting.map((x) => ({ title: words.say(lang, 'changeOrderN', { n: x.number }), detail: typed(lang, x.description), amount: changeAmount(lang, x.price, words) })),
+      note: words.say(lang, 'signingAdds'),
     })
   }
   const older = paidApps.slice(1)
-  for (const a of opts.showOlder ? paidApps : paidApps.slice(0, 1)) cards.push(appCard(lang, input, a))
+  for (const a of opts.showOlder ? paidApps : paidApps.slice(0, 1)) cards.push(appCard(lang, input, a, words))
   if (older.length && !opts.showOlder) {
-    cards.push({ kind: 'older', words: say(lang, 'olderPaid', { list: listWords(lang, older.map((a) => a.n)) }), ns: older.map((a) => a.n) })
+    cards.push({ kind: 'older', words: words.say(lang, 'olderPaid', { list: listWords(lang, older.map((a) => a.n), words) }), ns: older.map((a) => a.n) })
   }
 
   return {
-    header: header(lang, input, lines, paidApps),
+    header: header(lang, input, lines, paidApps, words),
     cards,
-    history: history(lang, input, lines, openApps, paidApps),
-    statement: { title: say(lang, 'statementTitle'), rows: statementRows(lang, lines) },
-    payNote: input.cardFeePct != null ? say(lang, 'payNoteCard', { fee: `${input.cardFeePct}%` }) : say(lang, 'payNoteBank'),
+    history: history(lang, input, lines, openApps, paidApps, words),
+    statement: { title: words.say(lang, 'statementTitle'), rows: statementRows(lang, lines, words) },
+    payNote: input.cardFeePct != null ? words.say(lang, 'payNoteCard', { fee: `${input.cardFeePct}%` }) : words.say(lang, 'payNoteBank'),
   }
 }

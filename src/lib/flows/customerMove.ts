@@ -16,7 +16,7 @@
 
 import type { PortalStepIn } from './portalPage'
 import { openChanges, type CustomerChange } from '../portal/moneyLines'
-import { changeAmount, changeDays, paperWords, pWeekday, say, typed, type PortalLang, type PortalPaperId } from '../portal/pageWords'
+import { changeAmount, changeDays, CODE_WORDS, pWeekday, typed, type PageWords, type PortalLang, type PortalPaperId } from '../portal/pageWords'
 
 export interface CustomerMoveIn {
   /** Off the flow: declined, or a job lost. */
@@ -44,8 +44,8 @@ export type CustomerMove =
   | { kind: 'off'; line: string }
 
 /** The first thing we need from them, or the one line that says we need nothing today. */
-export function customerMove(lang: PortalLang, input: CustomerMoveIn): CustomerMove {
-  if (input.off) return { kind: 'off', line: say(lang, 'offThanks') }
+export function customerMove(lang: PortalLang, input: CustomerMoveIn, words: PageWords = CODE_WORDS): CustomerMove {
+  if (input.off) return { kind: 'off', line: words.say(lang, 'offThanks') }
   const change = openChanges(input.changes)[0]
   for (const step of input.steps) {
     const now = step.where === 'now'
@@ -53,11 +53,11 @@ export function customerMove(lang: PortalLang, input: CustomerMoveIn): CustomerM
     if (now && step.decision && step.who === 'them') {
       return {
         kind: 'decide',
-        title: say(lang, 'tellUsYesNo'),
+        title: words.say(lang, 'tellUsYesNo'),
         sub: step.name[lang],
         buttons: [
-          { label: say(lang, 'acceptBid'), primary: true, press: 'accept' },
-          { label: say(lang, 'notThisTime'), primary: false, press: 'decline' },
+          { label: words.say(lang, 'acceptBid'), primary: true, press: 'accept' },
+          { label: words.say(lang, 'notThisTime'), primary: false, press: 'decline' },
         ],
       }
     }
@@ -65,24 +65,24 @@ export function customerMove(lang: PortalLang, input: CustomerMoveIn): CustomerM
       return {
         kind: 'change',
         changeId: change.id,
-        title: say(lang, 'changeWaits', { n: change.number }),
-        detail: [typed(lang, change.description), changeAmount(lang, change.price), changeDays(lang, change.days)].filter(Boolean),
+        title: words.say(lang, 'changeWaits', { n: change.number }),
+        detail: [typed(lang, change.description), changeAmount(lang, change.price, words), changeDays(lang, change.days, words)].filter(Boolean),
         buttons: [
-          { label: say(lang, 'readAndSign'), primary: true, press: 'signChange' },
-          { label: say(lang, 'decline'), primary: false, press: 'declineChange' },
+          { label: words.say(lang, 'readAndSign'), primary: true, press: 'signChange' },
+          { label: words.say(lang, 'decline'), primary: false, press: 'declineChange' },
         ],
       }
     }
     if (now && step.who === 'them' && !step.loop && !step.waitingOn) {
       const paper = (step.papers ?? []).find((p) => p.ours && p.mark === 'wait')
       if (paper) {
-        const pw = paperWords(lang, paper.id)
-        const label = pw.button ?? say(lang, 'readAndSign')
+        const pw = words.paper(lang, paper.id)
+        const label = pw.button ?? words.say(lang, 'readAndSign')
         return {
           kind: 'paper',
           paper: paper.id,
           title: label,
-          due: step.day ? say(lang, step.day.late ? 'lateSince' : 'dueOn', { day: pWeekday(lang, step.day.on) }) : null,
+          due: step.day ? words.say(lang, step.day.late ? 'lateSince' : 'dueOn', { day: pWeekday(lang, step.day.on) }) : null,
           late: !!step.day?.late,
           sub: pw.why ?? '',
           buttons: [{ label, primary: true, press: 'sign' }],
@@ -91,7 +91,7 @@ export function customerMove(lang: PortalLang, input: CustomerMoveIn): CustomerM
     }
   }
   const on = input.steps.find((s) => s.where === 'now')
-  return { kind: 'none', line: on ? `${say(lang, 'nothingToday')} ${say(lang, 'weAreOn', { step: on.name[lang] })}` : say(lang, 'nothingToday') }
+  return { kind: 'none', line: on ? `${words.say(lang, 'nothingToday')} ${words.say(lang, 'weAreOn', { step: on.name[lang] })}` : words.say(lang, 'nothingToday') }
 }
 
 /** The move as one plain line for the office's readiness list: its title and what follows, in English. */
