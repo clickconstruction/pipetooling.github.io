@@ -40,9 +40,9 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 /* 761–860 px: the people list is hidden (narrow), so the grid must not keep its column; the thread and the flow share the row (v1.47) */
 @media(min-width:761px) and (max-width:860px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:minmax(0,1fr) 280px}}
 @media(max-width:760px){.two.with-flow,.two.with-flow.collapsed{grid-template-columns:minmax(0,1fr)}.two.with-flow .list,.two.with-flow .rail{display:none}.fpanel{position:static;max-height:none}}
-.fpanel{background:#fbfbfc;align-self:start;position:sticky;top:58px;max-height:calc(100vh - 74px);overflow:auto}
+.fpanel{background:#fbfbfc;align-self:start}
 .rail{align-self:start;position:sticky;top:58px}
-.frail{align-self:start;position:sticky;top:58px;display:flex;flex-direction:column;align-items:center;padding:8px 4px 10px;gap:0}
+.frail{align-self:start;position:sticky;top:var(--hdrh,58px);display:flex;flex-direction:column;align-items:center;padding:8px 4px 10px;gap:0}
 .frail .open{font-size:14px;color:var(--accent);border:1px solid var(--border);border-radius:50%;width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;background:var(--surface);margin-bottom:6px;padding:0;cursor:pointer}
 .frail .lane{font-size:9px;letter-spacing:.6px;color:var(--text-muted);text-transform:uppercase;margin:6px 0 2px}
 .frail .stepw{display:flex;flex-direction:column;align-items:center}
@@ -506,21 +506,23 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .tip .callg{display:flex;gap:10px;align-items:center;margin-top:7px;font-size:11px;color:var(--text-muted);flex-wrap:wrap}
 .tip .callg i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:4px;vertical-align:-1px}
 .tip .callg i.us{background:#c5d8f5}.tip .callg i.them{background:#bfe3c9}.tip .callg i.both{background:linear-gradient(135deg,#c5d8f5 50%,#bfe3c9 50%)}.tip .callg i.note{background:#e9c400;border-radius:50%;width:7px;height:7px;margin:0 6px 0 2px}.tip .callg i.today{background:transparent;outline:2px solid var(--warn);outline-offset:-2px}
+.settings dd{min-width:0;overflow-wrap:anywhere}
 /* the papers read the flow back (v1.100) */
 .doc{display:grid;grid-template-columns:1fr 180px 200px 90px;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12.5px;align-items:center}
 .doc.h{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
 .doc.h span:first-child{color:var(--text);font-weight:600;text-transform:none;letter-spacing:0;font-size:12.5px}
 .whopick .wrow.star{background:#fffbe6}
+@media(max-width:760px){.doc{grid-template-columns:1fr 90px}.doc span:nth-child(2){grid-column:1}.doc span:nth-child(3){grid-column:1;color:var(--text-muted);font-size:12px}.doc span:nth-child(4){grid-column:2;grid-row:1/4;text-align:right}.doc.h span:nth-child(2),.doc.h span:nth-child(3),.doc.h span:nth-child(4){display:none}}
 /* everyone by step (v1.99) */
-.board{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
-.board .col{flex:none;width:138px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:6px}
+.board{display:flex;gap:4px;overflow-x:auto;padding-bottom:4px}
+.board .col{flex:none;width:126px;border:1px solid var(--border);border-radius:10px;background:var(--surface);padding:6px}
 .board .col.lanegap{width:8px;border:0;background:transparent;padding:0}
 .board .col .ch{font-size:11px;font-weight:600;line-height:1.25;min-height:30px}
 .board .col .cn{font-size:11px;color:var(--text-muted);margin:2px 0 6px}
 .board .col .cn b{color:var(--danger)}
 .board .col .cn i{color:var(--warn);font-style:normal}
 .board .col.off{opacity:.7}
-.face{display:flex;align-items:center;gap:5px;font-size:11.5px;padding:3px 4px;border-radius:7px;border:1px solid transparent;margin-bottom:2px;white-space:nowrap;overflow:hidden;cursor:pointer}
+.face{display:flex;align-items:center;gap:4px;font-size:11px;padding:3px 4px;border-radius:7px;border:1px solid transparent;margin-bottom:2px;white-space:nowrap;overflow:hidden;cursor:pointer}
 .face .av{width:20px;height:20px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-size:9px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .face .nm{overflow:hidden;text-overflow:ellipsis}
 .face .d{margin-left:auto;font-size:10px;color:var(--text-muted);flex:none}
@@ -530,13 +532,14 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 /* the editor (v1.98) */
 .feditor .tabs{display:flex;gap:4px;flex-wrap:wrap;align-items:center}
 .edwrap{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
-.edtable{flex:1;min-width:560px;font-size:12.5px}
+.edscroll{flex:1 1 900px;min-width:0;max-width:100%;overflow-x:auto}
+.edtable{width:100%;min-width:880px;font-size:12.5px}
 .edtable th{white-space:nowrap}
 .edtable td{vertical-align:top;padding:7px 6px}
 .edtable td.mv{white-space:nowrap}
 .edtable td.mv button{padding:0 3px}
 .edtable tr.edited td{background:#fbfdff}
-.ename{font:inherit;font-size:12.5px;border:1px solid var(--border);border-radius:6px;padding:2px 6px;width:160px;display:block}
+.ename{font:inherit;font-size:12.5px;border:1px solid var(--border);border-radius:6px;padding:2px 6px;width:150px;min-width:150px;display:block}
 .ename.es{margin-top:3px;font-size:11.5px;color:var(--text-muted)}
 .esel{font:inherit;font-size:12px;border:1px solid var(--border);border-radius:6px;padding:2px 4px;background:var(--surface);max-width:120px}
 .pick{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:2px 7px;background:var(--surface);font-size:12px;white-space:nowrap;margin:1px 0}
@@ -554,7 +557,8 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .prev .p:last-child{border-bottom:0}
 .prev .p .s{color:var(--warn);font-weight:600;text-align:right}
 .prev .p .s.moved{color:var(--danger)}
-.funnel{display:flex;gap:6px;align-items:flex-end;margin:6px 0 10px}
+.funnel{display:flex;gap:6px;align-items:flex-end;margin:6px 0 10px;overflow-x:auto;max-width:100%}
+.feditor{overflow:hidden}
 .funnel .f{flex:none;text-align:center;font-size:11.5px;color:var(--text-muted)}
 .funnel .f b{display:block;font-size:15px;color:var(--text)}
 .funnel .f .bk{width:84px;background:var(--accent-soft);border:1px solid #bcd0f0;border-radius:8px;margin:0 auto 3px}
@@ -772,6 +776,8 @@ const FACTS = [
 ];
 const factById = id => FACTS.find(f=>f.id===id);
 const PAPER_NAMES = {invitation:'the invitation', w9:'their W-9', coi:'their certificate of insurance', msa:'the master agreement', quote:'their quote', sow:'the statement of work', waiver:'the waiver', final_waiver:'the final waiver', bid:'our bid', contract:'our contract', schedule:'the schedule', payapp:'the pay application', co:'the change order', plans:'the plan set', addendum:'the addendum', submittal:'the submittal', certificate:'the certificate'};
+const A_PAPER = {coi:'A certificate', w9:'A W-9', msa:'An agreement', sow:'A statement of work', quote:'A quote', waiver:'A waiver', final_waiver:'A final waiver', plans:'A plan set', submittal:'A submittal', certificate:'A certificate', contract:'A contract', co:'A change order'};
+const aPaper = p => A_PAPER[p] || ('A '+(PAPER_SHORT[p]||p));
 const PAPER_SHORT = {invitation:'email', w9:'W-9', coi:'insurance', msa:'MSA', quote:'quote', sow:'SOW', waiver:'waiver', final_waiver:'final waiver', bid:'bid', contract:'contract', schedule:'schedule', payapp:'pay app', co:'CO', plans:'plans', addendum:'addendum', submittal:'submittal', certificate:'certificate'};
 const FACT_WISHES = []; // facts the office asked for that the app does not keep yet (the editor's Ask for a fact)
 const FLOW_HISTORY = {trade:[{by:'Robert', when:'Sep 12, 9:00 AM', what:'the flow drawn, nine steps'}, {by:'Rosa', when:'Sep 20, 2:10 PM', what:'Papers in: the nudge from 3 days to 5, a call'}], customer:[{by:'Rosa', when:'Sep 12, 9:30 AM', what:'the flow drawn, ten steps'}], arch:[{by:'Robert', when:'Sep 12, 9:40 AM', what:'the flow drawn, five steps'}]};
@@ -996,7 +1002,8 @@ function renderFollowup(m){
 function renderMessages(m){
   if(view==='customers' && customersBoard){ const el=document.createElement('div'); el.innerHTML=`<p class="lead">Customers <span class="note">· ${boardPeople('customer').length}</span></p><div class="filters"><button onclick="customersBoard=false;render()">List</button><button class="on">By step</button></div><div class="card" style="padding:12px">${boardHtml('customer')}</div>`; m.appendChild(el); return; }
   const autoRail = flowOpen && openContact && window.innerWidth<=1040 && window.innerWidth>760;
-  const wrap=document.createElement('div'); wrap.className='two'+((listCollapsed||autoRail)&&!narrow()?' collapsed':'')+(flowOpen&&openContact?' with-flow':openContact?' with-frail':'');
+  const panelOn = flowOpen && !window.matchMedia('(max-width: 760px)').matches;
+  const wrap=document.createElement('div'); wrap.className='two'+((listCollapsed||autoRail)&&!narrow()?' collapsed':'')+(panelOn&&openContact?' with-flow':openContact?' with-frail':'');
   // list
   const list=document.createElement('div'); list.className='card list'+(narrow()&&openContact?' hidden-narrow':'');
   if((listCollapsed||autoRail)&&!narrow()){ const filt0 = c => (listFilter==='all')|| (listFilter==='customers'&&c.kind==='customer')|| (listFilter==='trades'&&(c.kind==='trade'||c.kind==='arch'))|| (listFilter==='unknown'&&c.kind==='unknown');
@@ -1072,7 +1079,7 @@ function renderMessages(m){
     L.appendChild(e); }
   th.querySelectorAll('.jobtile[draggable]').forEach(ch=>{ ch.addEventListener('dragstart',ev=>{ dragJob=ch.dataset.job; ev.dataTransfer.setData('text/plain',dragJob); }); ch.addEventListener('dragend',()=>{dragJob=null;}); });
   wrap.appendChild(th);
-  if(flowOpen){ const fp=document.createElement('div'); fp.className='card fpanel'; fp.innerHTML=flowPanelHtml(c); wrap.appendChild(fp); }
+  if(panelOn){ const fp=document.createElement('div'); fp.className='card fpanel'; fp.innerHTML=flowPanelHtml(c); wrap.appendChild(fp); }
   else { const fr=document.createElement('div'); fr.className='card frail'; fr.innerHTML=flowRailHtml(c); wrap.appendChild(fr); }
   m.appendChild(wrap);
   requestAnimationFrame(()=>{ const sa=document.querySelector('.scrollarea'); if(sa) sa.scrollTop=sa.scrollHeight; });
@@ -1321,7 +1328,7 @@ function stepCardHtml(c, step){ const st=S(c); const sub=subState(c,step); const
   const head = `<div class="hd"><button class="x" onclick="closeCard()" aria-label="Close">×</button><b>${esc(step.name)}${s==='lapsed'?' · lapsed':''}</b><div class="note">${esc(lane)}${step.loop?' · '+esc(step.loop)+' · '+(sub.rounds[step.id]||[]).length+' so far':''} · ${move}${(s==='now'||s==='lapsed')&&sinceWords(c,step)?' · '+sinceWords(c,step):''}${day?' · <span class="'+(day.late?'late':'')+'">'+day.words+'</span>':''}${s==='now'?usualWords(c,step):''}</div></div>`;
   let body='';
   if(step.loop){ const rounds=sub.rounds[step.id]||[]; body+=`<div class="sec"><div class="h">${esc(step.loop)}</div>${rounds.length?rounds.map((r,i)=>{ const m=r.s==='done'?'ok':r.s==='now'?'wait':'no'; const d=r.due?dayDiff(NOW,r.due):null; const act = r.s==='done'?`<button class="small" onclick="toast('Opens it.')">Open</button>`:r.s==='now'?`<button class="small primary" onclick="askFor('${c.id}','${step.id}','${(step.papers||[])[0]||''}',${i})">${step.who==='them'?'Ask again':'Nudge'}</button>`:`<button class="small" onclick="toast('The ask-companies send the Board has; not a new one.')">Ask</button>`; return factLine(m, `${esc(r.n)}${r.due&&r.s!=='done'?' · '+(d>0?'<span class="late">promised '+wdayOf(r.due)+', late '+d+' day'+(d===1?'':'s')+'</span>':'due '+wdayOf(r.due)):''}`, esc(r.when||r.words||(r.s==='now'?'their move · finished when '+factsWords(step):'')), act); }).join(''):'<div class="note">none yet</div>'}</div>`; }
-  else { const fs=stepFacts(c,step); body+=`<div class="sec"><div class="h">Finished when</div>${fs.map(({f,r})=>{ const act = f.paper ? paperAct(c,step,f,r) : ''; const extra = r.m==='bad' ? ` A new one, uploaded from their portal or filed by us, makes the step done again.` : (r.m==='no' && f.paper && !f.ours ? ` A ${PAPER_SHORT[f.paper]} uploaded from their portal, or one we file, finishes it.` : ''); return factLine(r.m, `${esc(f.text.replace(/^\w/,ch=>ch.toUpperCase()))}.`, esc(r.words?r.words.replace(/\.?$/,'.'):'')+esc(extra), act); }).join('')}${step.join==='or'?'<div class="note">A fork: either way out finishes it.</div>':''}${fs.some(({f,r})=>f.paper&&!f.ours&&r.m!=='ok'&&r.m!=='wait')?`<div class="note" style="margin-top:6px">Both facts are the app's own: the step turns green by itself the moment they are true. <button class="quiet small" style="padding:0" data-tip="File a paper we were handed|A paper handed to us in the office is filed as a paper: a file or a photo, a date, who filed it. That is a fact the app keeps, so the step finishes the same way.|There is no mark-it-done that writes nothing." onclick="fileByHand('${c.id}','${step.id}')">File a ${esc(PAPER_SHORT[fs.find(({f,r})=>f.paper&&!f.ours&&r.m!=='ok').f.paper])} we were handed</button> · <button class="quiet small" style="padding:0" title="Demo: the upload arrives from their portal" onclick="demoArrives('${c.id}','${step.id}')">their upload arrives (demo)</button></div>`:''}</div>`; }
+  else { const fs=stepFacts(c,step); body+=`<div class="sec"><div class="h">Finished when</div>${fs.map(({f,r})=>{ const act = f.paper ? paperAct(c,step,f,r) : ''; const extra = r.m==='bad' ? ` A new one, uploaded from their portal or filed by us, makes the step done again.` : (r.m==='no' && f.paper && !f.ours ? ` ${aPaper(f.paper)} uploaded from their portal, or one we file, finishes it.` : ''); return factLine(r.m, `${esc(f.text.replace(/^\w/,ch=>ch.toUpperCase()))}.`, esc(r.words?r.words.replace(/\.?$/,'.'):'')+esc(extra), act); }).join('')}${step.join==='or'?'<div class="note">A fork: either way out finishes it.</div>':''}${fs.some(({f,r})=>f.paper&&!f.ours&&r.m!=='ok'&&r.m!=='wait')?`<div class="note" style="margin-top:6px">Both facts are the app's own: the step turns green by itself the moment they are true. <button class="quiet small" style="padding:0" data-tip="File a paper we were handed|A paper handed to us in the office is filed as a paper: a file or a photo, a date, who filed it. That is a fact the app keeps, so the step finishes the same way.|There is no mark-it-done that writes nothing." onclick="fileByHand('${c.id}','${step.id}')">File ${esc(aPaper(fs.find(({f,r})=>f.paper&&!f.ours&&r.m!=='ok').f.paper).toLowerCase().replace(/^a /,'a ').replace(/^an /,'an '))} we were handed</button> · <button class="quiet small" style="padding:0" title="Demo: the upload arrives from their portal" onclick="demoArrives('${c.id}','${step.id}')">their upload arrives (demo)</button></div>`:''}</div>`; }
   if(s==='lapsed'){ const bad=stepFacts(c,step).find(x=>x.r.m==='bad'); body+=`<div class="sec"><div class="h">What it holds up</div><div class="note">${bad&&bad.f.paper==='coi'?`Nothing on the quote: ${first} can quote and we can compare. A statement of work cannot go to ${first} until the papers are in again, since Once comes before Per job.`:`The steps after it in this lane wait until it is true again.`}</div></div>`; }
   if(waiting){ body+=`<div class="sec"><div class="h">Whose move</div><div class="note">Not ${first}'s and not ours: ${esc(cById(waiting.who).name)}'s. ${first}'s thread says <i>waiting on the architect</i>, and nothing nudges ${first}. The nudge for this is on ${esc(firstName(cById(waiting.who)))}'s flow, <i>${esc(stepById('arch',waiting.step)?.name||waiting.step)}</i>. <button class="quiet small" style="padding:0" onclick="openThread('${waiting.who}');closeCard()">Open ${esc(firstName(cById(waiting.who)))}'s thread</button> · <button class="quiet small" style="padding:0" onclick="toast('A Follow up row for ${esc(firstName(cById(waiting.who)))} today: ${esc(stepById('arch',waiting.step)?.name||'')}.')">Nudge ${esc(firstName(cById(waiting.who)))} now</button></div></div>`; }
   // after this
@@ -1403,6 +1410,7 @@ const PT = {en:{title:'Where you are with Click Construction', setup:'Getting se
 function portalStepHtml(c, step, jid){ const L=portalLang; const t=PT[L]; const s=stepState(c,step.id); if(s==='skipped' || step.dec && s!=='now') return ''; const st=S(c); const name=L==='es'?(step.es||step.name):step.name; const w=step.who; const paper=(step.papers||[]).find(p=>{ const f=FACTS.find(x=>x.paper===p); return f && !f.ours && factRead(c,f.id).m!=='ok'; }) || (step.papers||[]).find(p=>{ const f=FACTS.find(x=>x.paper===p); return f && !f.ours; }) || (step.papers||[])[0]; const pw=paper&&PW[paper]?PW[paper][L]:null; const day=stepDay(c,step);
   if(s==='done') return `<div class="ps"><span class="m ok">✓</span><span class="t">${esc(name)}<small>${esc(st.when[step.id]||t.done)}</small></span></div>`;
   if(s==='lapsed'){ return `<div class="ps"><span class="m you">!</span><span class="t"><b>${esc(pw?pw.btn.replace(/^(Upload|Suba|Sign|Firme) /,'')+' · ':'')}${esc(name)}</b><small>${esc(PAPER_NAMES[paper]||'').replace(/^their /,'Your ').replace(/^\w/,ch=>ch.toUpperCase())} ${t.lapsed}. ${esc(pw?pw.why:'')}</small>${pw?`<span class="btn small primary" onclick="toast('Their upload; it lands on their Documents and finishes the step.')">${esc(pw.btn)}</span>`:''}</span></div>`; }
+  if(s==='now' && st.waiting[step.id]) return `<div class="ps"><span class="m">·</span><span class="t">${esc(name)}<small>${t.withus}: ${L==='es'?'con su arquitecto para su certificado.':'with your architect for his certificate.'}</small></span></div>`;
   if(s==='now'){ if(step.dec){ return `<div class="ps"><span class="m you">!</span><span class="t"><b>${esc(name)}</b><small>${t.say}</small><span class="btn small primary">${t.accept}</span> <span class="btn small">${t.decline}</span></span></div>`; }
     if(w==='them' || (w==='both' && paper && !(FACTS.find(x=>x.paper===paper)||{}).ours)){ const waiting=st.waiting[step.id]; if(waiting) return `<div class="ps"><span class="m">·</span><span class="t">${esc(name)}<small>${t.withus}: ${L==='es'?'con su arquitecto para su certificado.':'with your architect for his certificate.'}</small></span></div>`;
       const f=paper?FACTS.find(x=>x.paper===paper):null; const r=f?factRead(c,f.id,step.loop?(subState(c,step).rounds[step.id]||[]).find(x=>x.s==='now'):null):null; if(f && f.ours && r && r.m==='no') return `<div class="ps"><span class="m">·</span><span class="t">${esc(name)}<small>${t.withus}: ${esc((pw&&pw.withus)||'')}</small></span></div>`;
@@ -1466,14 +1474,14 @@ function flowsEditorHtml(){ const kinds=[['customer','Customer'],['trade','Trade
       <td class="g">${s.usual?s.usual+' d':'—'}</td>
       <td><button class="quiet small" style="padding:0;color:var(--danger)" onclick="removeStep('${kind}','${s.id}')">Remove</button></td></tr>`; }).join('')+`<tr><td colspan="9"><button class="quiet small" style="padding:0" onclick="addStep('${kind}','${esc(l.lane)}')">+ a step in ${esc(l.lane)}</button></td></tr>`).join('');
     const people=contacts.filter(c=>c.kind===kind); const preview = flowSnap&&flowSnap.kind===kind ? `<div class="prev"><div class="h">Before you save · who moves</div><div class="note" style="margin-bottom:6px">The flow is a read over the stamps, so the edit is tried on everyone first.</div>${people.map(c=>{ const before=flowSnap.people[c.id]; const after=wouldBeNow(c); const nm=id=>id?(stepById(kind,id)||{name:id}).name:'nothing on'; return `<div class="p"><span>${esc(c.name)}</span><span class="s ${before!==after?'moved':''}">${before!==after?esc(nm(before))+' → '+esc(nm(after)):esc(nm(after))+' · same'}</span></div>`; }).join('')}<div class="note" style="margin-top:6px">${flowSnap.what.map(esc).join('; ')}.</div><div class="btns" style="margin-top:8px;display:flex;gap:8px"><button class="primary small" onclick="flowSave()">Save</button><button class="small" onclick="flowPutBack()">Put it back</button></div></div>` : `<div class="prev"><div class="h">Who is where</div>${people.map(c=>`<div class="p"><span>${esc(c.name)}</span><span class="s">${esc(S(c).now?(stepById(kind,S(c).now)||{}).name||'':S(c).off?'off the flow':'nothing on')}</span></div>`).join('')}<div class="note" style="margin-top:6px">An edit shows here who moves before it is saved.</div></div>`;
-    body=`<div class="edwrap"><table class="edtable"><tr><th></th><th>Step</th><th>Finished when</th><th>Whose move · our seat</th><th>Nudge after · how</th><th>Repeats</th><th>Papers</th><th>Usual</th><th></th></tr>${rows}</table>${preview}</div>`; }
+    body=`<div class="edwrap"><div class="edscroll"><table class="edtable"><tr><th></th><th>Step</th><th>Finished when</th><th>Whose move · our seat</th><th>Nudge after · how</th><th>Repeats</th><th>Papers</th><th>Usual</th><th></th></tr>${rows}</table></div>${preview}</div>`; }
   return `<h2 id="flows" style="margin-top:18px">Flows</h2><p class="note">One flow per kind of person. A step is finished by facts the app already keeps, picked from a list and never typed; whose move it is, the nudge and the papers it turns on are the office's to change, and so is the order. Every edit is tried on everyone before it is saved. The office edits; everyone reads.</p><div class="card feditor">${tabs}${body}</div>`; }
 // ---------- How it is going: the funnel and one row per step (v1.102) ----------
 function goingHtml(kind){ const people=[...contacts.filter(c=>c.kind===kind), ...GHOSTS.filter(g=>g.kind===kind)]; const steps=flat(kind);
   const onIt=s=>people.filter(p=>personOn(p,s.id)); const longest=s=>{ let best=null; for(const p of onIt(s)){ const at=(S(p).since||{})[s.id]; if(!at) continue; const n=dayDiff(NOW,at); if(!best||n>best.n) best={p,n}; } return best; };
   const rows=steps.map(s=>{ const on=onIt(s); const lg=longest(s); const done=people.filter(p=>S(p).done.includes(s.id)).length + (GOING_DONE[kind]&&GOING_DONE[kind][s.id]||0); const stick=STICKS[kind]&&STICKS[kind][s.id]||'—'; return `<tr><td>${esc(s.name)}</td><td>${on.length}</td><td>${s.usual?s.usual+' d':'—'}</td><td>${lg?`<span class="${s.usual&&lg.n>s.usual?'late':''}">${esc(lg.p.name)} · ${lg.n} d</span>`:'—'}</td><td>${done}</td><td class="note">${esc(stick)}</td></tr>`; }).join('');
   const f=FUNNEL[kind]; const funnel = f ? `<div class="funnel">${f.map((x,i)=>`<div class="f"><div class="bk" style="height:${Math.max(12,Math.round(64*x.n/f[0].n))}px${x.out?';background:var(--chip);border-color:var(--border)':''}"></div><b>${x.n}</b>${esc(x.l)}</div>${i<f.length-1&&!f[i+1].out?`<div class="ar">→ ${Math.round(100*f[i+1].n/x.n)}%</div>`:''}`).join('')}</div>` : '';
-  return `<p class="note" style="margin:8px 0">This quarter. The funnel is the per-job lane as counts, with the fall-off between each and the ones that fell out. The table is one row per step: on it now, the usual (the middle of the done ones over a year), the longest now with its name, done this quarter, and where it sticks, the fact last to turn true most often. A press on a name opens the thread. Nothing here is money.</p>${funnel}<table class="edtable"><tr><th>Step</th><th>On it now</th><th>Usual</th><th>Longest now</th><th>Done this quarter</th><th>Where it sticks</th></tr>${rows}</table>`; }
+  return `<p class="note" style="margin:8px 0">This quarter. The funnel is the per-job lane as counts, with the fall-off between each and the ones that fell out. The table is one row per step: on it now, the usual (the middle of the done ones over a year), the longest now with its name, done this quarter, and where it sticks, the fact last to turn true most often. A press on a name opens the thread. Nothing here is money.</p>${funnel}<div class="edscroll"><table class="edtable"><tr><th>Step</th><th>On it now</th><th>Usual</th><th>Longest now</th><th>Done this quarter</th><th>Where it sticks</th></tr>${rows}</table></div>`; }
 const FUNNEL = {trade:[{n:24,l:'asked'},{n:17,l:'quoted'},{n:6,l:'carried'},{n:5,l:'SOW signed'},{n:7,l:'not quoted',out:true}], customer:[{n:11,l:'asked us'},{n:9,l:'bid'},{n:4,l:'said yes'},{n:4,l:'contract'},{n:5,l:'declined',out:true}], arch:[{n:6,l:'plans in'},{n:14,l:'questions'},{n:9,l:'addenda'}]};
 const GOING_DONE = {trade:{invited:8, portal:8, papers:5, msa:4, ask:14, compare:14, sow:3}, customer:{asked:8, bid:7, yes:2, contract:2, start:2, onsite:1, payapp:3}, arch:{plans:4, questions:9, addenda:6, submittals:2, certify:3}};
 const STICKS = {trade:{papers:'the certificate, 6 of 8 times', ask:'7 never quoted, 4 of them never opened the plans', sow:'signed late twice, both after a start-date change'}, customer:{yes:'3 of 5 declines said price', payapp:"the architect's certificate, 2 of 3 times"}, arch:{questions:'answered after the close 3 of 9 times'}};

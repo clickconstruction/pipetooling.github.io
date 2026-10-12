@@ -662,6 +662,12 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.104, 2026-10-11**: the proof pass (the owner: the panel fell off the page). The flow panel scrolls with the page,
+  whole, while the thread stays pinned, instead of sticking with a height that ran past the window; on a phone the
+  panel is never drawn, the rail and the sheet are; the editor's table scrolls inside its card and the who-moves card
+  drops below it when the window is under about 1,200 px; the How it is going funnel and the job's papers fold on a
+  phone; "A certificate uploaded", not "A insurance"; a step waiting on someone else reads so in the portal. Every
+  view was screenshotted at 1440, 1180, 900 and 375 px and read for broken words and overflow.
 - **v1.103, 2026-10-11**: the phone: at 375 px the panel is never drawn, the rail's mark or the thread's step opens the
   step card as a sheet from the bottom with the same sections; the by-step board scrolls sideways.
 - **v1.102, 2026-10-11**: time in step and How it is going: the card's first line reads the usual (the step's median) with
