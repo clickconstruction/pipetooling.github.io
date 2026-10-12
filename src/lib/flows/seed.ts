@@ -159,7 +159,7 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
             loop: 'each question', loopEnds: 'rounds', facts: ['question_answered'],
             nudge: { days: 0, how: 'email', send: 'ask', dayFact: 'questions_close' }, usual: 3,
           }),
-          step({ id: 'addenda', name: 'Addenda', nameEs: 'Adendas', phase: 'building', who: 'them', loop: 'each addendum', loopEnds: 'rounds', facts: ['addendum_filed'], papers: ['addendum'], usual: 1 }),
+          step({ id: 'addenda', name: 'Addenda', nameEs: 'Adendas', phase: 'building', who: 'them', loop: 'each addendum', loopEnds: 'rounds', facts: ['addendum_filed', 'addendum_sent'], papers: ['addendum'], usual: 1 }),
           step({
             id: 'submittals', name: 'Submittals', nameEs: 'Sometimientos', phase: 'building', who: 'them',
             loop: 'each submittal', loopEnds: 'next', facts: ['submittal_reviewed'], papers: ['submittal'],

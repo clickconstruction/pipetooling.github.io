@@ -170,7 +170,10 @@ export const FLOW_FIXTURE_PEOPLE: readonly FlowFixturePerson[] = [
             round('q-curbs', 'Roof curbs', '2026-09-21', [ok('question_answered', '2026-09-23')]),
             round('q-pond', 'Pond', '2026-10-02T08:30:00-05:00', [], '2026-10-05T12:00:00-05:00'),
           ],
-          addenda: [round('add-1', 'Addendum 1', '2026-09-24', [ok('addendum_filed', '2026-09-25')]), round('add-2', 'Addendum 2', '2026-10-02T10:00:00-05:00')],
+          addenda: [
+            round('add-1', 'Addendum 1', '2026-09-24', [ok('addendum_filed', '2026-09-24'), ok('addendum_sent', '2026-09-25')]),
+            round('add-2', 'Addendum 2', '2026-10-02T10:00:00-05:00', [ok('addendum_filed', '2026-10-02T10:00:00-05:00')]),
+          ],
           certify: [round('cert-payapp-4', 'Pay app 4 · Cibolo Creek', '2026-09-28')],
         }),
       ],

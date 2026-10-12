@@ -44,6 +44,7 @@ export type FactId =
   | 'plans_in'
   | 'question_answered'
   | 'addendum_filed'
+  | 'addendum_sent'
   | 'submittal_reviewed'
   | 'certified'
   | 'named'
@@ -107,6 +108,11 @@ export type FlowFact = {
   ours?: true
   /** A way out: when it finishes the step the job's lane ends there (they declined to quote, we did not carry it, they declined). */
   endsLane?: true
+  /**
+   * Whose doing it is, where a step mixes sides: the architect files an addendum and we send it on. While it is the
+   * first of its step's facts still open, the step is that side's move (`moverOf` in `state.ts`). Unset: the step's own.
+   */
+  side?: 'us' | 'them'
 }
 
 export const FLOW_FACTS: readonly FlowFact[] = [
@@ -407,14 +413,26 @@ export const FLOW_FACTS: readonly FlowFact[] = [
   },
   {
     id: 'addendum_filed',
-    text: 'the addendum is filed and sent',
-    small: 'an addendum filed with the plan sets and sent to the trades',
+    text: 'the addendum is filed',
+    small: "the architect's addendum filed with the job's plan sets",
     group: 'Papers',
-    reads: "gc_plan_sets where kind = 'addendum', sent by gc_plan_set_sends.sent_at",
+    reads: "gc_plan_sets where kind = 'addendum' (issued_on)",
     scope: 'round',
     kept: 'yes',
     gap: null,
     paper: 'addendum',
+    side: 'them',
+  },
+  {
+    id: 'addendum_sent',
+    text: 'the addendum went to the trades',
+    small: 'the addendum sent to the trade partners on the job',
+    group: 'Papers',
+    reads: 'gc_plan_set_sends.sent_at',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    side: 'us',
   },
   {
     id: 'submittal_reviewed',

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FactStamp, FlowDef, FlowReading, FlowStamps } from './state'
-import { flowMoves, flowProgress, moveWords, paperRead, perJobJobs, placesOf, readFlow, stepReading, whoMoves, wouldBeNow } from './state'
+import { flowMoves, flowProgress, moveWords, moverOf, paperRead, perJobJobs, placesOf, readFlow, stepById, stepReading, whoMoves, wouldBeNow } from './state'
 import { FLOW_FIXTURE_NOW as NOW, FLOW_FIXTURE_PEOPLE, flowFixture } from './flowFixtures'
 import { SEED_FLOWS } from './seed'
 
@@ -232,6 +232,20 @@ describe('readFlow: the rules the prototype did not have', () => {
     ])
     expect(moveWords(SEED_FLOWS.trade, moves)).toBe('Papers in is done. MSA signed is on now.')
     expect(stepReading(after, 'msa', null)?.since).toBe('2026-10-02')
+  })
+
+  it('names the mover from the first fact still open: Jonah filed Addendum 2, and sending it on is ours', () => {
+    const r = read('jonah')
+    const addenda = stepReading(r, 'addenda', 'boerne')
+    const def = stepById(SEED_FLOWS.arch, 'addenda')
+    if (!addenda || !def) throw new Error('fixture')
+    expect(addenda.rounds.map((x) => `${x.name}:${x.state}`)).toEqual(['Addendum 1:done', 'Addendum 2:now'])
+    expect([def.who, moverOf(def, addenda)]).toEqual(['them', 'us'])
+    // His question is still his to answer; a fork is the step's own; a step whose facts name no side is its own.
+    const questions = stepReading(r, 'questions', 'boerne')
+    if (!questions) throw new Error('fixture')
+    expect(moverOf(stepById(SEED_FLOWS.arch, 'questions')!, questions)).toBe('them')
+    expect(moverOf({ who: 'us', join: 'or' }, addenda)).toBe('us')
   })
 
   it('lists the per-job lane’s jobs with the step each is on, the unstarted ones too', () => {

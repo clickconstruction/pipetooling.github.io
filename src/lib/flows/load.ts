@@ -370,14 +370,20 @@ export function planStamps(rows: FlowRows, projectId: string): FactStamp[] {
   return first ? [stamp('plans_in', 'ok', first)] : []
 }
 
-/** The addenda on one job: one round each, filed and sent once it went to a trade. */
+/** The addenda on one job: one round each, filed by the architect when it is in the plan sets, sent once it went to a trade. */
 export function addendaRounds(rows: FlowRows, projectId: string): RoundStamp[] {
   return [...(rows.planSets ?? [])]
     .filter((s) => s.project_id === projectId && s.kind === 'addendum')
     .sort((a, b) => a.issued_on.localeCompare(b.issued_on))
     .map((s) => {
       const sent = earliest(...(rows.planSetSends ?? []).filter((x) => x.set_id === s.id).map((x) => x.sent_at))
-      return { key: s.id, name: s.label, opened: s.issued_on, due: null, stamps: sent ? [stamp('addendum_filed', 'ok', sent)] : [] }
+      return {
+        key: s.id,
+        name: s.label,
+        opened: s.issued_on,
+        due: null,
+        stamps: [stamp('addendum_filed', 'ok', s.issued_on), ...(sent ? [stamp('addendum_sent', 'ok', sent)] : [])],
+      }
     })
 }
 

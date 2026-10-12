@@ -529,6 +529,18 @@ export function readFlow(flow: FlowDef, stamps: FlowStamps, now: Date): FlowRead
   return { kind: flow.kind, off: stamps.off, defaultJobId: stamps.defaultJobId, lanes, nowStepId, nowJobId }
 }
 
+/**
+ * Whose move a step is by its facts: on a step that needs every fact, the side of the first one still open when its
+ * fact names one (the architect files an addendum, then we send it on); otherwise the step's own `who`. A loop reads
+ * its open round's facts.
+ */
+export function moverOf(def: Pick<FlowStep, 'who' | 'join'>, step: Pick<StepReading, 'facts' | 'rounds'>): Who {
+  if (def.join === 'or') return def.who
+  const facts = step.rounds.find((r) => r.state === 'now')?.facts ?? step.facts
+  const open = facts.find((f) => f.mark !== 'ok')
+  return open?.fact.side ?? def.who
+}
+
 /** The lane a step sits on for one job: the job's Per job lane, else the Once or Any time lane. */
 export function laneReadingOf(reading: FlowReading, stepId: string, jobId: string | null): LaneReading | null {
   for (const l of reading.lanes) {
