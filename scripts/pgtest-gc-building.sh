@@ -27,6 +27,7 @@ PRESSES=(
   supabase/migrations/*_gc_trade_closeout.sql
   supabase/migrations/*_gc_punch_writes.sql
   supabase/migrations/*_gc_crew_job.sql
+  supabase/migrations/*_gc_bill_day_walk.sql
 )
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
