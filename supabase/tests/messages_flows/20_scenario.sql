@@ -272,19 +272,19 @@ SELECT mfl.same('and back on', (SELECT concat_ws('|', coalesce(off_since::text, 
 SELECT mfl.refused('back on once', $q$SELECT public.contact_put_back_on('00000000-0000-0000-0000-000000006004')$q$, 'notFound');
 
 -- 6d · flow_rows: what the flow reads, for the office, days and marks only.
-SELECT mfl.same('a trade partner''s rows: the first visit, the job tied, the page''s preview path, and no token or amount', (
+SELECT mfl.same('a trade partner''s rows: the first visit, the job tied, the office''s preview link, no token outside it and no amount', (
   SELECT concat_ws('|',
     r->'contact'->>'kind',
     r->'company'->>'portal_opened_on',
     r->'portalLinks'->0->>'first_opened_at',
-    ((r->'portalLinks'->0) ? 'token')::text,
+    ((r - 'previewPath')::text LIKE '%flows-link-token%')::text,
     r->>'previewPath',
     r->'projects'->0->>'project_id',
     r->'projects'->0->>'stage',
     r->'contactJobs'->0->>'is_default',
     (r::text ~ '"(token|amount|price|cost|gross|net|budget|due)"')::text)
   FROM (SELECT public.flow_rows('00000000-0000-0000-0000-000000006005') AS r) x),
-  'trade|2026-09-09|2026-09-08T23:30:00+00:00|false|/t/flows-link-token|00000000-0000-0000-0000-0000000006f1|buyout|true|false');
+  'trade|2026-09-09|2026-09-08T23:30:00+00:00|false|/t/flows-link-token?preview=1|00000000-0000-0000-0000-0000000006f1|buyout|true|false');
 SELECT mfl.refused('no such contact', $q$SELECT public.flow_rows(gen_random_uuid())$q$, 'notFound');
 SELECT mfl.same('the office takes a person off the flow',
   (SELECT concat_ws('|', off_since, off_why) FROM public.contacts WHERE id = '00000000-0000-0000-0000-000000006001'), '2026-10-02|A wrong number.');

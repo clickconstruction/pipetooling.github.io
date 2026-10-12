@@ -18,8 +18,8 @@ SET lock_timeout = '3s';
 --   * The presses, SECURITY INVOKER so training mode and a twin change nothing: flow_add_note, flow_skip_step,
 --     flow_unskip_step, nudge_hold_until, nudge_let_go, nudge_record_sent, contact_set_off, contact_put_back_on.
 --   * flow_rows(contact): the rows the flow reads (src/lib/flows/load.ts's FlowRows), for the office. SECURITY DEFINER,
---     since the facts sit behind other doors (the Portal's, the money's): it returns days and marks, never an amount or
---     a token, and a trade partner's page as its preview path.
+--     since the facts sit behind other doors (the Portal's, the money's): it returns days and marks, never an amount,
+--     and a trade partner's page as the office's preview link.
 --   * Four facts main did not keep: gc_trade_portal_links.first_opened_at, gc_invites.lost_on, gc_projects.won_on and
 --     gc_owner_pay_apps.paid_on. Nothing writes them yet; their writers come with cut 4's screens.
 --   * contacts.off_*: the spine's columns (20261012010000); the office may now update them (Off the flow).
@@ -721,9 +721,9 @@ $$;
 
 -- One person's rows as src/lib/flows/load.ts's FlowRows: their contact and jobs, and for their kind the asks, papers,
 -- draws, pay applications, change orders, plans, questions and submittals the flow reads. Definer, since those rows sit
--- behind other doors (the Portal's, the money's), and gated on the office team. Days and marks only: no amount, no
--- price, no token. A trade partner's page comes as its preview path. 'notAllowed' outside the office; 'notFound' for no
--- such contact.
+-- behind other doors (the Portal's, the money's), and gated on the office team. Days and marks only, never an amount or
+-- a price. A trade partner's page comes as the office's preview link ('/t/<token>?preview=1', so an office open never
+-- counts as theirs), the one place a token appears. 'notAllowed' outside the office; 'notFound' for no such contact.
 CREATE OR REPLACE FUNCTION public.flow_rows(p_contact uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -771,7 +771,7 @@ BEGIN
     'company', (SELECT jsonb_build_object('id', g.id, 'portal_opened_on', g.portal_opened_on) FROM public.gc_companies g WHERE g.id = v_company AND c.kind = 'trade'),
     'portalLinks', coalesce((SELECT jsonb_agg(jsonb_build_object('company_id', l.company_id, 'revoked_at', l.revoked_at, 'first_opened_at', l.first_opened_at))
       FROM public.gc_trade_portal_links l WHERE l.company_id = v_company AND c.kind = 'trade'), '[]'::jsonb),
-    'previewPath', (SELECT '/t/' || l.token FROM public.gc_trade_portal_links l
+    'previewPath', (SELECT '/t/' || l.token || '?preview=1' FROM public.gc_trade_portal_links l
       WHERE l.company_id = v_company AND c.kind = 'trade' AND l.revoked_at IS NULL AND l.token IS NOT NULL ORDER BY l.created_at DESC LIMIT 1),
     'tradeMessages', coalesce((SELECT jsonb_agg(jsonb_build_object('company_id', m.company_id, 'kind', m.kind, 'sent_on', m.sent_on, 'sent_by', m.sent_by))
       FROM public.gc_trade_messages m WHERE m.company_id = v_company AND c.kind = 'trade' AND m.kind = 'invite'), '[]'::jsonb),
@@ -844,7 +844,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.flow_rows(uuid) IS
-  'Messages (cut 4): one person''s rows as src/lib/flows/load.ts FlowRows, for the office team (gc_office_team()). SECURITY DEFINER over the Portal''s and the money''s doors: days and marks only, never an amount, a price or a token; a trade partner''s page as its preview path.';
+  'Messages (cut 4): one person''s rows as src/lib/flows/load.ts FlowRows, for the office team (gc_office_team()). SECURITY DEFINER over the Portal''s and the money''s doors: days and marks only, never an amount or a price; a trade partner''s page as the office''s preview link (/t/<token>?preview=1), the one place a token appears.';
 
 DO $$
 DECLARE
