@@ -41,6 +41,8 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Contracts & terms', marker: 'The wording as it stands today' },
   // Messages, cut 4c (v2.5285): the papers built from clauses; the lede renders before the clauses load.
   { label: 'Contracts and clauses', marker: 'A contract here is an ordered set of clauses' },
+  // Messages, cut 2's screens (v2.5311): who gets a new message; its heading renders before the seats load.
+  { label: 'Phone and texts', marker: 'Who gets a new message' },
   { label: 'Company', marker: 'Company documents' },
   { label: 'Usage', marker: 'Where the time goes' },
   { label: 'Data & recovery', marker: /[Bb]ackup/ },
