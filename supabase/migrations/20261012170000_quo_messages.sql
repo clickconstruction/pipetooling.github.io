@@ -17,6 +17,8 @@ SET lock_timeout = '3s';
 --     a failed one for about 27 and a half). quo_webhook_claim takes one, false when it was taken already;
 --     quo_webhook_release gives one back after a failure so Quo's retry is taken; quo_webhook_ids_forget drops the ones
 --     past 28 hours.
+--   * quo_place_number finds the contact a number from Quo lands on, or makes the unknown contact (the Who is this?
+--     row) with that one phone, the number's key locked so two events for one new number make one contact.
 --   * Only the service role writes any of it: the webhook. The office reads the new columns as it reads messages (the
 --     spine's policy and its SELECT grant). quo_webhook_ids holds nothing for anyone signed in.
 
@@ -124,6 +126,46 @@ BEGIN
 END
 $$;
 
+-- ---------- the contact a number lands on ----------
+
+-- The contact a number from Quo lands on, by contact_for_channel, with the channel it came on and when that number sent
+-- STOP. A number nobody has makes an unknown contact named p_name (the kernel's unknownContact: "(830) 555-0172") with
+-- that one phone, and made is true. The number's key is locked for the transaction, so two events for one new number
+-- at once make one contact.
+CREATE OR REPLACE FUNCTION public.quo_place_number(p_value text, p_name text)
+RETURNS TABLE (placed_contact uuid, placed_channel uuid, stopped_at timestamptz, made boolean)
+LANGUAGE plpgsql
+VOLATILE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_key text := public.contact_channel_key('phone', p_value);
+  v_contact uuid;
+  v_channel uuid;
+BEGIN
+  IF coalesce(v_key, '') = '' THEN
+    RAISE EXCEPTION 'That is not a phone number: %', p_value;
+  END IF;
+  PERFORM pg_advisory_xact_lock(hashtextextended('quo_place_number:' || v_key, 0));
+  v_contact := public.contact_for_channel('phone', p_value);
+  IF v_contact IS NULL THEN
+    INSERT INTO public.contacts (kind, name) VALUES ('unknown', coalesce(nullif(btrim(p_name), ''), p_value))
+      RETURNING id INTO v_contact;
+    INSERT INTO public.contact_channels (contact_id, kind, value) VALUES (v_contact, 'phone', p_value)
+      RETURNING id INTO v_channel;
+    RETURN QUERY SELECT v_contact, v_channel, NULL::timestamptz, true;
+    RETURN;
+  END IF;
+  RETURN QUERY
+    SELECT ch.contact_id, ch.id, ch.opted_out_at, false
+    FROM public.contact_channels ch
+    WHERE ch.contact_id = v_contact AND ch.kind = 'phone' AND ch.key = v_key
+    ORDER BY ch.created_at, ch.id
+    LIMIT 1;
+END
+$$;
+
 -- ---------- the deliveries the webhook took ----------
 
 CREATE TABLE IF NOT EXISTS public.quo_webhook_ids (
@@ -191,6 +233,8 @@ AS $$
   SELECT count(*) = 1 FROM gone
 $$;
 
+REVOKE EXECUTE ON FUNCTION public.quo_place_number(text, text) FROM PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.quo_place_number(text, text) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.quo_write_line(text, integer, jsonb) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.quo_write_line(text, integer, jsonb) TO service_role;
 REVOKE EXECUTE ON FUNCTION public.quo_webhook_ids_forget(interval) FROM PUBLIC, anon, authenticated;

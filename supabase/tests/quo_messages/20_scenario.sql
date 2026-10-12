@@ -125,7 +125,29 @@ SELECT mqo.same('a text of ours keeps how it ended',
 SELECT mqo.same('with its opt-out line',
   (SELECT concat_ws('|', delivery, optout_line) FROM public.messages WHERE quo_id = 'MS-2'), 'failed|first');
 
--- 4 · The deliveries the webhook took.
+-- 4 · The contact a number lands on.
+SELECT mqo.same('a number nobody has makes an unknown contact with that phone',
+  (SELECT concat_ws('|', p.made::text, c.kind, c.name, ch.value, coalesce(p.stopped_at::text, '-'))
+   FROM public.quo_place_number('+12105550199', '(210) 555-0199') p
+   JOIN public.contacts c ON c.id = p.placed_contact
+   JOIN public.contact_channels ch ON ch.id = p.placed_channel),
+  'true|unknown|(210) 555-0199|+12105550199|-');
+SELECT mqo.same('the same number again lands on that contact',
+  (SELECT concat_ws('|', p.made::text, (p.placed_contact = c.id)::text)
+   FROM public.quo_place_number('(210) 555-0199', 'ignored') p, public.contacts c WHERE c.name = '(210) 555-0199'),
+  'false|true');
+SELECT mqo.same('one contact holds that number',
+  (SELECT count(*)::text FROM public.contact_channels WHERE key = '2105550199'), '1');
+SELECT mqo.same('a known number lands on its contact, with its STOP',
+  (SELECT concat_ws('|', p.made::text, p.placed_contact::text, p.placed_channel::text)
+   FROM public.quo_place_number('830-555-0172', 'ignored') p),
+  'false|00000000-0000-0000-0000-0000000006c1|00000000-0000-0000-0000-0000000006e1');
+UPDATE public.contact_channels SET opted_out_at = '2026-10-01 15:00:00+00' WHERE id = '00000000-0000-0000-0000-0000000006e1';
+SELECT mqo.same('a stopped number says when',
+  (SELECT (p.stopped_at = '2026-10-01 15:00:00+00'::timestamptz)::text FROM public.quo_place_number('+18305550172', 'ignored') p), 'true');
+SELECT mqo.refused('a word is not a number', $q$SELECT * FROM public.quo_place_number('call me', 'x')$q$, 'not a phone number');
+
+-- 5 · The deliveries the webhook took.
 SELECT mqo.same('a new delivery is taken', public.quo_webhook_claim('msg_quo_1')::text, 'true');
 SELECT mqo.same('the same delivery again is a repeat', public.quo_webhook_claim('msg_quo_1')::text, 'false');
 INSERT INTO public.quo_webhook_ids (id, seen_at) VALUES
@@ -140,7 +162,7 @@ SELECT mqo.same('and Quo''s retry is taken', public.quo_webhook_claim('msg_quo_1
 SELECT mqo.same('a release of nothing says so', public.quo_webhook_release('msg_quo_none')::text, 'false');
 SELECT mqo.refused('a delivery needs its id', $q$SELECT public.quo_webhook_claim(' ')$q$, 'needs its webhook-id');
 
--- 5 · Who reads and writes.
+-- 6 · Who reads and writes.
 SELECT mqo.as_user('00000000-0000-0000-0000-0000000006d2');
 SET LOCAL ROLE authenticated;
 SELECT mqo.same('the office reads the new columns',
@@ -150,6 +172,7 @@ SELECT mqo.refused('the office writes no Quo column', $q$UPDATE public.messages 
 SELECT mqo.refused('the office reads no delivery memory', $q$SELECT count(*) FROM public.quo_webhook_ids$q$, 'permission denied for table quo_webhook_ids');
 SELECT mqo.refused('the office takes no delivery', $q$SELECT public.quo_webhook_claim('msg_quo_2')$q$, 'permission denied for function quo_webhook_claim');
 SELECT mqo.refused('the office writes no line through the webhook''s door', $q$SELECT * FROM public.quo_write_line('CA-9', NULL, '{}'::jsonb)$q$, 'permission denied for function quo_write_line');
+SELECT mqo.refused('the office places no number', $q$SELECT * FROM public.quo_place_number('+12105550198', 'x')$q$, 'permission denied for function quo_place_number');
 RESET ROLE;
 SET LOCAL ROLE anon;
 SELECT mqo.refused('no sign-in reads the memory', $q$SELECT count(*) FROM public.quo_webhook_ids$q$, 'permission denied for table quo_webhook_ids');
