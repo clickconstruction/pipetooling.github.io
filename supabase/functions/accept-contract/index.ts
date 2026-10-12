@@ -7,6 +7,7 @@ import { buildFillPlan, hasOfficeBoxes, schemaForParty, splitFormValuesForStorag
 import { fillFormPdf, type FormPdfLibLike } from '../_shared/fillFormPdf.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
+import { clauseFreeze, clausePaperFor, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
 
 const SIGNATURE_BUCKET = 'contract-signer-signatures'
 // Contract Forms (v2.2797): the uploaded template lives here…
@@ -95,6 +96,9 @@ serve(async (req) => {
       formLang?: string
       /** v2.3100: the ESIGN / Texas UETA consent words the signer saw (stored on esign_consents). */
       esignConsent?: unknown
+      /** Messages, cut 4c (v2.5294): a paper built from clauses, the revision the page showed and the language it was read in. */
+      paperRevision?: unknown
+      paperLang?: string
     }
     const raw = body.token?.trim()
     const printedName = body.printedName?.trim() ?? ''
@@ -137,7 +141,7 @@ serve(async (req) => {
     const { data: row, error: fetchErr } = await admin
       .from('person_contract_documents')
       .select(
-        'id, status, public_token_expires_at, signer_printed_name, form_template_id',
+        'id, status, public_token_expires_at, signer_printed_name, form_template_id, applied_contract_template_document_id, company_id, document_name',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -149,7 +153,15 @@ serve(async (req) => {
       })
     }
 
-    const doc = row as { id: string; status: string; public_token_expires_at: string | null; form_template_id: string | null }
+    const doc = row as {
+      id: string
+      status: string
+      public_token_expires_at: string | null
+      form_template_id: string | null
+      applied_contract_template_document_id: string | null
+      company_id: string | null
+      document_name: string
+    }
 
     if (doc.status === 'signed') {
       return new Response(JSON.stringify({ ok: true, alreadySigned: true }), {
@@ -171,6 +183,33 @@ serve(async (req) => {
         status: 410,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // Messages, cut 4c (v2.5294): a paper built from clauses signs only as the page showed it, and the copy keeps what was
+    // signed. Checked before anything is stored, so a refusal leaves nothing behind. A page that showed clauses never signs
+    // without the freeze; a page that showed the body signs as before when the clause read fails.
+    let clauseUpdate: Record<string, unknown> = {}
+    {
+      let paper: ClausePaperJson | null = null
+      try {
+        paper = await clausePaperFor(admin as unknown as ClauseAdmin, doc, body.paperLang === 'es' ? 'es' : 'en')
+      } catch (e) {
+        console.error('clause paper', e)
+        if (body.paperRevision !== undefined) {
+          return new Response(JSON.stringify({ error: 'Could not read the paper. Try again.' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
+      }
+      const freeze = clauseFreeze(paper, body.paperRevision, doc.document_name)
+      if (!freeze.ok) {
+        return new Response(JSON.stringify({ error: freeze.error, code: freeze.code }), {
+          status: 409,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+      clauseUpdate = freeze.update
     }
 
     let storagePath: string | null = null
@@ -275,7 +314,7 @@ serve(async (req) => {
           public_token_hash: null,
           public_token_expires_at: null,
         }
-    const updatePayload = { ...basePayload, ...formUpdate }
+    const updatePayload = { ...basePayload, ...formUpdate, ...clauseUpdate }
 
     const { data: updatedRows, error: updErr } = await admin
       .from('person_contract_documents')

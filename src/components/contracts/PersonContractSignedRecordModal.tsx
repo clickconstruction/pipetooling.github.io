@@ -11,6 +11,8 @@ import { missingRequired } from '../../lib/forms/formPaperEntry'
 import { hasOfficeBoxes } from '../../lib/forms/formSchema'
 import { ContractFormOfficeModal } from './formFill/ContractFormOfficeModal'
 import { paperForName } from '../../../supabase/functions/_shared/companyPaper'
+import { signedClauseView, type ClausePaperView } from '../../lib/contracts/clauseSign'
+import { ClausePaper } from './ClausePaper'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
@@ -63,6 +65,8 @@ export function PersonContractSignedRecordModal({
   const [formSchema, setFormSchema] = useState<FormSchema | null>(null)
   const [pdfBusy, setPdfBusy] = useState(false)
   const [pdfError, setPdfError] = useState<string | null>(null)
+  // Messages, cut 4c (v2.5294): the clauses a paper built from clauses was signed with, frozen on the copy.
+  const [signedClauses, setSignedClauses] = useState<ClausePaperView | null>(null)
 
   useEffect(() => {
     if (!open) {
@@ -72,6 +76,7 @@ export function PersonContractSignedRecordModal({
       setSignatureSignedUrl(null)
       setFormSchema(null)
       setPdfError(null)
+      setSignedClauses(null)
       return
     }
     if (!documentId?.trim()) {
@@ -111,6 +116,9 @@ export function PersonContractSignedRecordModal({
           return
         }
         setRow(doc)
+        // Not in the generated types yet: a read of its own, and a copy with none draws its body as before.
+        const kept = await supabase.from('person_contract_documents' as never).select('clause_versions').eq('id', id).maybeSingle()
+        if (!cancelled) setSignedClauses(kept.error ? null : signedClauseView((kept.data as unknown as { clause_versions?: unknown } | null)?.clause_versions))
         if (doc.form_template_id) {
           const { data: tpl } = await supabase.from('contract_form_templates' as never).select('schema').eq('id', doc.form_template_id).maybeSingle()
           if (!cancelled) setFormSchema(((tpl as unknown as { schema?: FormSchema } | null)?.schema) ?? null)
@@ -337,7 +345,22 @@ export function PersonContractSignedRecordModal({
                 </p>
               ) : null}
 
-              {hasRenderableSigningBody && row ? (
+              {signedClauses ? (
+                <div data-signed-clauses style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--bg-subtle)', marginBottom: '0.75rem' }}>
+                  <ClausePaper paper={signedClauses} showTitle={false} />
+                </div>
+              ) : null}
+
+              {hasRenderableSigningBody && row && signedClauses ? (
+                <details style={{ marginBottom: '0.75rem' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>The full agreement</summary>
+                  <div style={{ maxHeight: 'min(50vh, 420px)', overflow: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '1rem', background: 'var(--bg-subtle)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+                    <ContractBodyDisplay format={row.signing_body_format} bodyHtml={row.signing_body_html} />
+                  </div>
+                </details>
+              ) : null}
+
+              {hasRenderableSigningBody && row && !signedClauses ? (
                 <div
                   style={{
                     maxHeight: 'min(50vh, 420px)',

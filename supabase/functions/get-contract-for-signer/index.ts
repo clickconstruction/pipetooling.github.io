@@ -6,6 +6,7 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { formatYmdForContractEmail } from '../_shared/contractSigningEmail.ts'
 import type { FormSchema } from '../_shared/formSchema.ts'
 import { paperForName } from '../_shared/companyPaper.ts'
+import { clausePaperFor, type ClauseAdmin, type ClausePaperJson } from '../_shared/clausePaper.ts'
 
 const FORM_TEMPLATES_BUCKET = 'contract-form-templates'
 
@@ -69,7 +70,7 @@ serve(async (req) => {
     const { data: row, error } = await admin
       .from('person_contract_documents')
       .select(
-        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name, form_template_id, person_id, form_values, company_id',
+        'id, person_name, document_name, signing_body_html, signing_body_format, canonical_document_url, url, status, public_token_expires_at, signer_printed_name, form_template_id, person_id, form_values, company_id, applied_contract_template_document_id',
       )
       .eq('public_token_hash', tokenHash)
       .maybeSingle()
@@ -95,6 +96,7 @@ serve(async (req) => {
       person_id: string | null
       form_values: Record<string, unknown> | null
       company_id: string | null
+      applied_contract_template_document_id: string | null
     }
     // A trade partner company's paper (GC mode, B6-b-i) names the company, never its stored name.
     const companyName = r.company_id
@@ -181,6 +183,19 @@ serve(async (req) => {
       }
     }
 
+    // Messages, cut 4c (v2.5294): a paper built from clauses reads as its clauses, in English and Spanish, at one revision.
+    // The page sends the revision back on sign; a read that fails leaves the page on the paper's body, and the accept then
+    // asks for a reload.
+    let clausePaper: { revision: number; en: ClausePaperJson; es: ClausePaperJson } | null = null
+    try {
+      const doc = { applied_contract_template_document_id: r.applied_contract_template_document_id, company_id: r.company_id, form_template_id: r.form_template_id }
+      const reader = admin as unknown as ClauseAdmin
+      const [en, es] = await Promise.all([clausePaperFor(reader, doc, 'en'), clausePaperFor(reader, doc, 'es')])
+      if (en && es && en.revision === es.revision) clausePaper = { revision: en.revision, en, es }
+    } catch (e) {
+      console.error('clause paper', e)
+    }
+
     return new Response(
       JSON.stringify({
         id: r.id,
@@ -190,6 +205,7 @@ serve(async (req) => {
         signing_body_format: r.signing_body_format,
         canonical_document_url: canonical,
         form,
+        clause_paper: clausePaper,
       }),
       {
         status: 200,

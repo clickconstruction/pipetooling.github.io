@@ -62,7 +62,9 @@ The preview shows the clauses for everyone. Then it shows the exhibit for that c
 
 ## What a signed copy keeps
 
-A signed copy keeps the words and the version it was signed with. A later change never reaches it. Nor does a retire. The next paper sent carries the new words.
+The company reads the clauses on its sign page, in English or Spanish. The version shows under them. If a clause changes while the page is open, the page asks them to reload before they sign.
+
+A signed copy keeps the words and the version it was signed with. A later change never reaches it. Nor does a retire. The signed record shows the clauses as they were signed. The next paper sent carries the new words.
 
 ## Build a paper from clauses
 

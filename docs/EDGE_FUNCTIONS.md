@@ -2269,6 +2269,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### get-contract-for-signer
 
+> **v2.5294 — a paper built from clauses** (Messages, cut 4c): when the row's library document (`applied_contract_template_document_id`) has live clauses at revision 1 or more and the row is no form, the response also carries `clause_paper: { revision, en, es }`. Each language is `contract_paper_clauses()` for the row's company's trades (none for a person's paper), read through `_shared/clausePaper.ts` (`clausePaperFor`): `{ paperId, revision, lang, clauses, exhibit, exhibitFor, between }`, each clause `{ id, v, n, text }`, the between line the GC frame's in that language (*Click Construction and …* / *y …*), null on a person's paper. A read that fails, or two languages at different revisions, leaves `clause_paper` null and the page on the body; `accept-contract` then asks for a reload. `ContractAccept` draws the clauses with the version line and folds the body under *The full agreement*. **Redeploy required.** No new secret.
+
 > **v2.5041 — a company's paper names the company** (GC mode, B6-b-i): for a row with `company_id`, the response's `person_name` and a W-9's prefilled name are the company's (`paperForName`, `_shared/companyPaper.ts`), never its stored `gc-company:<id>` name. **Redeploy required.**
 
 **Purpose**: Public read of a **sent** person contract document for the signing page (no JWT).
@@ -2291,6 +2293,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### accept-contract
 
+> **v2.5294 — a paper built from clauses signs as it read** (Messages, cut 4c): the body may carry `paperRevision` (the revision the page showed) and `paperLang` (`en` | `es`). Before anything is stored, the function puts the paper together again (`clausePaperFor`, `_shared/clausePaper.ts`) for the row's library document, company trades and language. A paper not built from clauses signs as before. One built from clauses signs only at the revision the page showed: else `409 { code: 'paper_changed', error: 'The paper changed since you opened it. Reload to read the new version.' }`, A library document with no clauses costs one small read of `contract_clauses` and nothing more. When the page showed clauses (it sent `paperRevision`), a read that fails answers 500 rather than signing without the freeze; a page that showed the body signs as before. The same update as the signature writes `paper_revision` and `clause_versions` (the paper with its `title`), which `contract_signed_clauses_frozen` keeps as signed. **Redeploy required.** No new secret.
+
 **Purpose**: Record contract signature (typed or drawn PNG); sets **`status = signed`**, clears token, stores signature in **`contract-signer-signatures`** when drawn. **Two-party forms (v2.2802):** the signer's boxes only are validated and filled (`schemaForParty(schema, 'signer')`); when the template has office boxes the PDF is filed unflattened with the filled fields read-only, and `complete-contract-form-office` finishes it. The success response is `{ ok, documentId, officeSectionPending }` (v2.2803) so the thank-you page can offer the office step to a signed-in staff member on the same device.
 
 **Endpoint**: `POST /functions/v1/accept-contract`
@@ -2299,7 +2303,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Dates** (v2.2703): `signed_at` is the Central civil day via `todayYmdInAppTz()` — evening signatures used to be dated tomorrow.
 
-**Body**: `{ "token": string, "printedName": string, "signaturePngBase64"?: string, "agreedTerms": true, "formValues"?: Record<string, string | boolean>, "formLang"?: "en" | "es" }`
+**Body**: `{ "token": string, "printedName": string, "signaturePngBase64"?: string, "agreedTerms": true, "formValues"?: Record<string, string | boolean>, "formLang"?: "en" | "es", "paperRevision"?: number, "paperLang"?: "en" | "es" }`
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`; optional `APP_ORIGIN` (where `/fonts/GreatVibes-Regular.ttf` is fetched for typed signatures; default `https://clicktooling.com`)
 
