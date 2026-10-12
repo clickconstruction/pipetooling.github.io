@@ -49,7 +49,7 @@ type Result = PromiseLike<{ data: unknown; error: unknown }>
 
 /** The few calls this needs from the service-role client. */
 export interface ClauseAdmin {
-  from(table: string): { select(columns: string): { eq(column: string, value: string): { maybeSingle(): Result } } }
+  from(table: string): { select(columns: string): { eq(column: string, value: string): { maybeSingle(): Result; limit(count: number): Result } } }
   rpc(fn: string, args: Record<string, unknown>): Result
 }
 
@@ -84,6 +84,10 @@ export function readSignedClauses(json: unknown): SignedClauses | null {
 export async function clausePaperFor(admin: ClauseAdmin, doc: ClauseDoc, lang: ClausePaperLang): Promise<ClausePaperJson | null> {
   const paperId = doc.applied_contract_template_document_id
   if (!paperId || doc.form_template_id) return null
+  // Most library documents have no clauses: one small read settles it, and nothing more runs for them.
+  const any = await admin.from('contract_clauses').select('id').eq('paper_id', paperId).limit(1)
+  if (any.error) throw new Error('could not read the clauses')
+  if (!Array.isArray(any.data) || any.data.length === 0) return null
   let trades: string[] = []
   let companyName: string | null = null
   if (doc.company_id) {

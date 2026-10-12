@@ -186,18 +186,21 @@ serve(async (req) => {
     }
 
     // Messages, cut 4c (v2.5294): a paper built from clauses signs only as the page showed it, and the copy keeps what was
-    // signed. Checked before anything is stored, so a refusal leaves nothing behind.
+    // signed. Checked before anything is stored, so a refusal leaves nothing behind. A page that showed clauses never signs
+    // without the freeze; a page that showed the body signs as before when the clause read fails.
     let clauseUpdate: Record<string, unknown> = {}
     {
-      let paper: ClausePaperJson | null
+      let paper: ClausePaperJson | null = null
       try {
         paper = await clausePaperFor(admin as unknown as ClauseAdmin, doc, body.paperLang === 'es' ? 'es' : 'en')
       } catch (e) {
         console.error('clause paper', e)
-        return new Response(JSON.stringify({ error: 'Could not read the paper. Try again.' }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+        if (body.paperRevision !== undefined) {
+          return new Response(JSON.stringify({ error: 'Could not read the paper. Try again.' }), {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          })
+        }
       }
       const freeze = clauseFreeze(paper, body.paperRevision, doc.document_name)
       if (!freeze.ok) {

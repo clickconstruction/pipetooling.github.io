@@ -18,7 +18,7 @@ const PAPER = {
   exhibitFor: ['Sitework'],
 }
 
-function fakeAdmin(over: { company?: { name: string; trades: string[] } | null; companyError?: boolean; paper?: unknown; rpcError?: boolean } = {}) {
+function fakeAdmin(over: { company?: { name: string; trades: string[] } | null; companyError?: boolean; paper?: unknown; rpcError?: boolean; clauseRows?: number; gateError?: boolean } = {}) {
   const calls: { fn: string; args: Record<string, unknown> }[] = []
   const reads: string[] = []
   const admin: ClauseAdmin = {
@@ -28,6 +28,11 @@ function fakeAdmin(over: { company?: { name: string; trades: string[] } | null; 
           maybeSingle: () => {
             reads.push(`${table}:${columns}:${value}`)
             return Promise.resolve(over.companyError ? { data: null, error: { message: 'no' } } : { data: over.company ?? null, error: null })
+          },
+          limit: () => {
+            reads.push(`${table}:${columns}:${value}`)
+            if (over.gateError) return Promise.resolve({ data: null, error: { message: 'no' } })
+            return Promise.resolve({ data: Array.from({ length: over.clauseRows ?? 1 }, (_, i) => ({ id: `c${i}` })), error: null })
           },
         }),
       }),
@@ -46,7 +51,7 @@ describe('clausePaperFor', () => {
   it('puts a company’s paper together with its trades, in the language asked, with its between line', async () => {
     const { admin, calls, reads } = fakeAdmin({ company: { name: 'Hillside Excavation', trades: ['Sitework'] } })
     const paper = await clausePaperFor(admin, DOC, 'es')
-    expect(reads).toEqual(['gc_companies:name, trades:co-hillside'])
+    expect(reads).toEqual(['contract_clauses:id:doc-msa', 'gc_companies:name, trades:co-hillside'])
     expect(calls).toEqual([{ fn: 'contract_paper_clauses', args: { p_paper_id: 'doc-msa', p_trades: ['Sitework'], p_lang: 'es' } }])
     expect(paper).toEqual({ ...PAPER, between: 'Click Construction y Hillside Excavation' })
   })
@@ -54,7 +59,7 @@ describe('clausePaperFor', () => {
   it('reads a person’s paper with no trades and no between line', async () => {
     const { admin, calls, reads } = fakeAdmin()
     expect(await clausePaperFor(admin, { ...DOC, company_id: null }, 'en')).toEqual({ ...PAPER, between: null })
-    expect(reads).toEqual([])
+    expect(reads).toEqual(['contract_clauses:id:doc-msa'])
     expect(calls[0]?.args.p_trades).toEqual([])
   })
 
@@ -66,7 +71,15 @@ describe('clausePaperFor', () => {
     expect(await clausePaperFor(fakeAdmin({ paper: { nonsense: true } }).admin, DOC, 'en')).toBeNull()
   })
 
+  it('puts nothing together for a library document with no clauses: one small read and no call', async () => {
+    const { admin, calls, reads } = fakeAdmin({ clauseRows: 0 })
+    expect(await clausePaperFor(admin, DOC, 'en')).toBeNull()
+    expect(reads).toEqual(['contract_clauses:id:doc-msa'])
+    expect(calls).toEqual([])
+  })
+
   it('throws when a read fails, so a signing fails closed', async () => {
+    await expect(clausePaperFor(fakeAdmin({ gateError: true }).admin, DOC, 'en')).rejects.toThrow()
     await expect(clausePaperFor(fakeAdmin({ rpcError: true }).admin, DOC, 'en')).rejects.toThrow()
     await expect(clausePaperFor(fakeAdmin({ companyError: true }).admin, DOC, 'en')).rejects.toThrow()
   })
