@@ -768,6 +768,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.135, 2026-10-11**: the reply box's last row is flipped: Tie to on the left, Attach and Send on the right (the
+  owner, 2026-10-11).
 - **v1.134, 2026-10-11**: the line under the box, *Send shows it to you the way they will see it, before it goes*, is
   gone from the page and lives on the Send button's hover card; the *from the company number* line moved down into
   its place, right-aligned, so nothing sits between the kinds and the box (the owner's marks, 2026-10-11).
