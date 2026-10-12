@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Papers on this job · two shapes</title>
+<style>
+:root{--text:#1b1f24;--muted:#6b7280;--border:#e3e6ea;--surface:#fff;--bg:#f4f5f7;--accent:#1f5fbf;--accent-soft:#e8f0fc;--ok:#2a8f5a;--ok-soft:#e6f4ec;--warn:#b45309;--warn-soft:#fdf1e3;--bad:#b42318;--bad-soft:#fdecea;--chip:#f0f2f5}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg);padding:24px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:34px 0 6px}p{max-width:860px;margin:4px 0}.note{color:var(--muted);font-size:13px}
+.page{width:1100px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:10px}
+.sec{display:flex;align-items:center;gap:10px;margin:0 0 6px}.sec h3{margin:0;font-size:13px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;background:var(--chip);color:var(--muted);cursor:pointer}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.b{background:var(--accent-soft);color:var(--accent)}
+.strip{border:1px solid #f0c58a;background:var(--warn-soft);border-radius:10px;padding:10px 12px;margin:8px 0 12px}.strip .h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--warn);margin-bottom:4px}.strip .row{display:flex;gap:8px;align-items:center;padding:3px 0;font-size:13.5px}.strip .row .btn{margin-left:auto}
+.btn{display:inline-block;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12.5px;background:var(--surface);white-space:nowrap;cursor:pointer}.btn.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}.dot.r{background:var(--bad)}.dot.o{background:var(--warn)}.dot.g{background:#c3c9d2}.dot.k{background:var(--ok)}
+.co{border:1px solid var(--border);border-radius:10px;margin:8px 0;overflow:hidden}.co .hd{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--chip);cursor:pointer}.co .hd b{font-size:14px}.co .hd small{color:var(--muted);font-size:12.5px}.co .hd .r{margin-left:auto;display:flex;gap:6px;align-items:center}
+.co.trouble .hd{background:#fff7f6}
+.co table{border-collapse:collapse;width:100%;font-size:13.5px}.co td{padding:7px 12px;border-top:1px solid var(--border);vertical-align:middle}.co td:nth-child(2){width:300px}.co td:nth-child(3){width:220px;color:var(--muted)}.co td:last-child{text-align:right;width:130px}
+.st{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;border-radius:999px;padding:2px 9px}.st.ok{background:var(--ok-soft);color:var(--ok)}.st.bad{background:var(--bad-soft);color:var(--bad)}.st.warn{background:var(--warn-soft);color:var(--warn)}.st.wait{background:var(--chip);color:var(--muted)}.st.soon{background:#fff7e6;color:#8a5a00}
+.fold{font-size:12.5px;color:var(--accent);padding:6px 12px;border-top:1px solid var(--border);cursor:pointer}
+.grid{border-collapse:collapse;width:100%;font-size:13px}.grid th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);text-align:center;padding:6px 4px;border-bottom:1px solid var(--border);font-weight:600}.grid th:first-child{text-align:left}.grid td{padding:7px 4px;border-bottom:1px solid var(--border);text-align:center}.grid td:first-child{text-align:left}.grid td b{font-weight:600}.grid td small{display:block;color:var(--muted);font-size:11.5px}
+.cell{display:inline-flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--muted)}.cell i{width:14px;height:14px;border-radius:50%;display:inline-block}.cell i.k{background:var(--ok)}.cell i.r{background:var(--bad)}.cell i.o{background:var(--warn)}.cell i.g{background:#c3c9d2}.cell i.w{background:var(--surface);border:2px solid #c3c9d2}.cell i.dash{background:none;border:1px dashed var(--border)}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin-top:8px}.legend i{width:11px;height:11px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:-1px}
+.rev{background:#fffbe9;border:1px solid #f0e2a8;border-radius:10px;padding:12px 14px;max-width:860px}.rev li{margin:4px 0}
+.chosen{outline:3px solid var(--accent);outline-offset:3px}.num{display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:18px;margin-right:4px;vertical-align:1px}
+table.t{border-collapse:collapse;font-size:13.5px;max-width:860px}table.t td,table.t th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top}table.t th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+</style></head><body>
+<h1>Papers on this job · two shapes</h1>
+<p class="note">Boerne Retail Shell, a bid due Thu Oct 8. Today the section lists every paper of every company in one long table, the done rows as loud as the one that ran out, and the heading says nothing. What the office wants from it: is anything on this job at risk, what must be in before bid day, and who do I chase. Two shapes, with the same four pieces.</p>
+
+<h2>1. The pieces</h2>
+<table class="t">
+<tr><th></th><th>Piece</th><th>What it does</th></tr>
+<tr><td><span class="num">1</span></td><td>The count in the title</td><td><i>Papers on this job · 1 lapsed · 2 late · 3 waiting</i>, each a pill that filters the list to those rows. Green <i>all in</i> when there is nothing.</td></tr>
+<tr><td><span class="num">2</span></td><td>Before bid day</td><td>A strip of what the job's next day needs: for a bid, every carried trade's insurance current and every quote in; for a project, the waivers and the certificate before bill day. Each line with its press.</td></tr>
+<tr><td><span class="num">3</span></td><td>Companies in trouble first, done folded</td><td>A company reads as one header line with its own counts; its at-risk and waiting papers show, its done ones fold behind <i>4 done ›</i>. A company with nothing wrong is one line.</td></tr>
+<tr><td><span class="num">4</span></td><td>One state language</td><td>Every paper's state is one pill: done with its day, waiting with its days, lapsed with why, <i>runs out</i> in amber thirty days before it lapses, <i>later</i> for one not due yet. Today's prose becomes the hover.</td></tr>
+</table>
+
+<h2>2. A · The list, reshaped <span class="pill ok">the pick</span></h2>
+<div class="page chosen">
+<div class="sec"><h3>Papers on this job</h3><span class="num">1</span><span class="pill bad">1 lapsed</span><span class="pill warn">2 late</span><span class="pill">3 waiting</span><span class="pill ok">14 done</span><span class="note" style="margin-left:auto">by company · a press on a pill shows only those</span></div>
+<div class="strip"><div class="h"><span class="num">2</span>Before bid day · Thu Oct 8 · 6 days</div>
+<div class="row"><span class="dot r"></span>Hillside Excavation's insurance ran out Sep 30. No statement of work can go to them until a new one is in.<span class="btn p">Ask for it</span></div>
+<div class="row"><span class="dot o"></span>Hillside Excavation's quote is late 2 days.<span class="btn">Remind Greg</span></div>
+<div class="row"><span class="dot o"></span>Tejas Power's quote is in; the compare has sat 3 days, over the usual 2.<span class="btn">Open the compare</span></div>
+<div class="row"><span class="dot g"></span>3 quotes due Thursday: Lone Star Mechanical, Kerr Electric, Bexar Steel Erectors. On time so far.<span class="btn">Remind all 3</span></div></div>
+
+<div class="co trouble"><div class="hd"><span class="num">3</span><b>Hillside Excavation</b><small>trade partner · Greg Paulk</small><span class="r"><span class="pill bad">1 lapsed</span><span class="pill warn">1 late</span><span class="pill ok">3 done</span><span class="note">▾</span></span></div>
+<table><tr><td>Their certificate of insurance</td><td><span class="st bad"><span class="num" style="background:var(--bad)">4</span>ran out Wed Sep 30</span></td><td>Papers in · lapsed</td><td><span class="btn p">Ask for it</span></td></tr>
+<tr><td>Their quote</td><td><span class="st warn">late 2 days</span></td><td>Asked to quote · their move</td><td><span class="btn">Remind Greg</span></td></tr></table>
+<div class="fold">3 done › the invitation went Sep 8 · their W-9 signed Sep 12 · the master agreement signed Sep 14</div></div>
+
+<div class="co"><div class="hd"><b>Lone Star Mechanical</b><small>trade partner</small><span class="r"><span class="pill warn">runs out Nov 1</span><span class="pill">2 waiting</span><span class="pill ok">2 done</span><span class="note">▾</span></span></div>
+<table><tr><td>Their certificate of insurance</td><td><span class="st soon">current · runs out Nov 1</span></td><td>Papers in · done</td><td><span class="btn">Ask for the renewal</span></td></tr>
+<tr><td>The master agreement</td><td><span class="st wait">sent Sep 29 · waiting 3 d</span></td><td>MSA signed · their move</td><td><span class="btn">Remind them</span></td></tr>
+<tr><td>Their quote</td><td><span class="st wait">asked · due Thu</span></td><td>Asked to quote · their move</td><td></td></tr></table>
+<div class="fold">2 done ›</div></div>
+
+<div class="co"><div class="hd"><b>Kerr Electric</b><small>trade partner · Dana Kerr</small><span class="r"><span class="pill">1 waiting</span><span class="pill ok">4 done</span><span class="note">›</span></span></div></div>
+<div class="co"><div class="hd"><b>Bexar Steel Erectors</b><small>trade partner · Tom Riddle</small><span class="r"><span class="pill">1 waiting</span><span class="pill ok">3 done</span><span class="note">›</span></span></div></div>
+<div class="co"><div class="hd"><b>Tejas Power</b><small>trade partner · Bill Sorrell</small><span class="r"><span class="pill ok">5 done</span><span class="note">›</span></span></div></div>
+<div class="co"><div class="hd"><b>Cibolo Creek Partners</b><small>customer · Elena Marchetti</small><span class="r"><span class="pill ok">5 done</span><span class="note">›</span></span></div></div>
+<p class="note" style="margin-top:8px">Companies with something wrong come first and open; the rest are one line each and open on a press. Hover on a pill gives today's prose.</p>
+</div>
+
+<h2>3. B · The grid</h2>
+<p class="note">Companies as rows, the papers as columns in the flow's order, a dot per cell. The whole job's paper health in one look, and a column that is mostly empty says what everyone still owes. Best on a job with many trades; thin on a job with two.</p>
+<div class="page">
+<div class="sec"><h3>Papers on this job</h3><span class="pill bad">1 lapsed</span><span class="pill warn">2 late</span><span class="pill">3 waiting</span><span class="pill ok">14 done</span></div>
+<div class="strip" style="margin-top:4px"><div class="h">Before bid day · Thu Oct 8 · 6 days</div><div class="row"><span class="dot r"></span>Hillside's insurance ran out · <span class="dot o"></span>Hillside's quote late 2 days · <span class="dot o"></span>Tejas' compare over usual · <span class="dot g"></span>3 quotes due Thursday<span class="btn p">Ask for the certificate</span></div></div>
+<table class="grid"><tr><th>Company</th><th>Invitation</th><th>W-9</th><th>Insurance</th><th>MSA</th><th>Quote</th><th>SOW</th><th>Waivers</th></tr>
+<tr><td><b>Hillside Excavation</b><small>Sitework · Greg Paulk</small></td><td><span class="cell"><i class="k"></i>Sep 8</span></td><td><span class="cell"><i class="k"></i>Sep 12</span></td><td><span class="cell"><i class="r"></i>ran out</span></td><td><span class="cell"><i class="k"></i>Sep 14</span></td><td><span class="cell"><i class="o"></i>late 2 d</span></td><td><span class="cell"><i class="dash"></i></span></td><td><span class="cell"><i class="dash"></i></span></td></tr>
+<tr><td><b>Lone Star Mechanical</b><small>Mechanical</small></td><td><span class="cell"><i class="k"></i>Sep 25</span></td><td><span class="cell"><i class="k"></i>Sep 29</span></td><td><span class="cell"><i class="o"></i>Nov 1</span></td><td><span class="cell"><i class="w"></i>3 d</span></td><td><span class="cell"><i class="w"></i>Thu</span></td><td><span class="cell"><i class="dash"></i></span></td><td><span class="cell"><i class="dash"></i></span></td></tr>
+<tr><td><b>Kerr Electric</b><small>Electrical · Dana Kerr</small></td><td><span class="cell"><i class="k"></i>Sep 8</span></td><td><span class="cell"><i class="k"></i>Sep 9</span></td><td><span class="cell"><i class="k"></i>Mar 27</span></td><td><span class="cell"><i class="k"></i>Sep 10</span></td><td><span class="cell"><i class="w"></i>Thu</span></td><td><span class="cell"><i class="dash"></i></span></td><td><span class="cell"><i class="dash"></i></span></td></tr>
+<tr><td><b>Bexar Steel Erectors</b><small>Structural steel · Tom Riddle</small></td><td><span class="cell"><i class="k"></i>Sep 25</span></td><td><span class="cell"><i class="k"></i>Sep 29</span></td><td><span class="cell"><i class="g"></i>none yet</span></td><td><span class="cell"><i class="g"></i>none yet</span></td><td><span class="cell"><i class="w"></i>Thu</span></td><td><span class="cell"><i class="dash"></i></span></td><td><span class="cell"><i class="dash"></i></span></td></tr>
+<tr><td><b>Tejas Power</b><small>Electrical, low voltage · Bill Sorrell</small></td><td><span class="cell"><i class="k"></i>Sep 8</span></td><td><span class="cell"><i class="k"></i>Sep 9</span></td><td><span class="cell"><i class="k"></i>Mar 1</span></td><td><span class="cell"><i class="k"></i>Sep 10</span></td><td><span class="cell"><i class="k"></i>Sep 29</span></td><td><span class="cell"><i class="dash"></i></span></td><td><span class="cell"><i class="dash"></i></span></td></tr>
+</table>
+<div class="legend"><span><i style="background:var(--ok)"></i>done, with its day</span><span><i style="background:var(--surface);border:2px solid #c3c9d2"></i>waiting on them</span><span><i style="background:#c3c9d2"></i>none yet</span><span><i style="background:var(--warn)"></i>late, or runs out soon</span><span><i style="background:var(--bad)"></i>lapsed</span><span><i style="border:1px dashed var(--border)"></i>not yet on this job</span></div>
+<p class="note" style="margin-top:8px">The customer's papers sit in a second grid under it with their own columns: agreement, bid, contract, schedule, pay applications.</p>
+</div>
+
+<h2>4. Is this the best we can do?</h2>
+<div class="rev"><ul>
+<li><b>A wins on the press.</b> Every bad row carries its own ask, and the strip at the top is the three things to do before Thursday in the order that matters. B shows more at once but every press is a hover away.</li>
+<li><b>B is the view to keep for the big job.</b> Stone Oak with twelve trades and three paper columns each is a grid, not a list. Drawn as a second tab on the section, <i>List · Grid</i>, the list first.</li>
+<li><b>"Runs out Nov 1" is the piece that earns its keep.</b> The certificate that lapses on a Wednesday was fine on Tuesday; thirty days of amber is what stops the next Hillside.</li>
+<li><b>The strip reads the next day, not every day.</b> On a bid it is bid day; on a project, bill day; on a closed job, nothing, and the strip does not draw. The rules are the gates the Money page already keeps, read per paper.</li>
+<li><b>Left out:</b> a paper-by-paper timeline, the sent and signed emails inline (Open reaches them), a per-job count of Spanish pages.</li>
+<li><b>Not sure of:</b> whether a company with nothing wrong should fold to one line, as drawn, or show its done rows gray. Folded keeps a twelve-trade job to twelve lines; the hover on <i>5 done</i> lists them.</li>
+</ul></div>
+<p class="note" style="margin-top:14px">Pick one and I build it into the job page; the pills in the title and the strip come with either.</p>
+</body></html>
