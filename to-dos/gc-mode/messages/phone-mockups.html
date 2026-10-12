@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages, cut 10: the phone and Job activity</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--muted:#5c6470;--faint:#8a93a0;--border:#dde1e6;--chip:#eef1f5;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--email-ch:#6b4fbb;--team:#fff6c2;--team-border:#e9d77a;--cust:#d9731a;--cust-deep:#a8520a;--cust-soft:#fdf0e3;--cust-soft-2:#fbe4cc;--shade:rgba(20,24,30,.38);--radius:10px}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--faint:#7a838e;--border:#323841;--chip:#272c34;--accent:#6ea3f0;--accent-soft:#1d2d47;--warn:#f0a35a;--warn-soft:#3a2a14;--ok:#5ec98a;--ok-soft:#173424;--email-ch:#a68ff0;--team:#3a3418;--team-border:#6b5e1e;--cust:#f0a05a;--cust-deep:#f7bb84;--cust-soft:#33231a;--cust-soft-2:#452c1c;--shade:rgba(0,0,0,.55)}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+h2.sec{font-size:16px;margin:30px 0 8px}
+p.lead{color:var(--muted);font-size:13.5px;margin:0 0 14px;max-width:920px;line-height:1.45}
+.opt{margin:0 0 26px}
+.opt>h2{font-size:14px;margin:0 0 8px}
+.opt>h2 small{font-weight:400;color:var(--muted)}
+.frames{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 6px}
+.why{font-size:12.5px;color:var(--muted);margin:8px 0 0;line-height:1.45;max-width:920px}
+.why b{color:var(--text)}
+/* the phone */
+.phone{width:375px;max-width:100%;height:700px;border:1px solid var(--border);border-radius:30px;background:var(--surface);overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 6px 24px rgba(0,0,0,.08)}
+.phone.short{height:560px}
+.sb{height:34px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-size:12px;font-weight:600}
+.home{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);width:120px;height:4px;border-radius:2px;background:var(--text);opacity:.5}
+.desk{width:720px;max-width:100%;border:1px solid var(--border);border-radius:12px;background:var(--surface);overflow:hidden}
+/* the thread */
+.hdr{padding:8px 12px 0;border-bottom:1px solid var(--border)}
+.r1{display:flex;align-items:center;gap:6px}
+.back{display:inline-flex;align-items:center;gap:1px;flex:none}
+.back .chev{color:var(--accent);font-size:22px;font-weight:600;width:14px}
+.av{width:36px;height:36px;border-radius:50%;background:var(--chip);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:var(--muted);flex:none}
+.av.sm{width:22px;height:22px;font-size:10px}
+.nm{flex:1;min-width:0}
+.nm b{display:block;font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nm small{display:block;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ic{border:1px solid var(--border);border-radius:8px;padding:3px 7px;font-size:13px;background:var(--surface);flex:none}
+.face{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:1px solid var(--accent);flex:none}
+.pill{display:inline-flex;align-items:center;gap:4px;border:1px solid var(--accent);border-radius:999px;padding:2px 9px;background:var(--accent-soft);color:var(--accent);font-size:12.5px;font-weight:600;white-space:nowrap;flex:none}
+.pill.gray{border-color:var(--border);background:var(--chip);color:var(--muted)}
+.pill.warn{border-color:#f0d3b0;background:var(--warn-soft);color:var(--warn)}
+.reach{font-size:12.5px;color:var(--accent);margin:4px 0 0 52px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status{display:flex;gap:6px;overflow:hidden;margin:6px 0 0;mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 22px),transparent)}
+.stampsn{font-size:12.5px;color:var(--muted);margin:5px 0 0}
+.stampsn b{color:var(--text);font-weight:600}
+.strip{display:flex;gap:6px;overflow:hidden;margin:8px -12px 0;padding:7px 12px;border-top:1px solid var(--border);mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 26px),transparent)}
+.tile{flex:none;width:200px;border:1px solid var(--border);border-radius:10px;padding:5px 8px;font-size:12.5px}
+.tile.on{border-color:var(--accent);background:var(--accent-soft)}
+.tile .t1,.tile .t2{display:block}
+.tile .t1{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .t2{color:var(--muted);font-size:11.5px}
+.tile.add{width:auto;border-style:dashed;color:var(--muted);display:flex;align-items:center}
+.star{color:#c9a200}
+.frail{display:flex;align-items:center;gap:6px;padding:6px 12px;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)}
+.frail .dots{display:flex;align-items:center;gap:3px}
+.frail .d{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--faint)}
+.frail .d.done{background:var(--ok);border-color:var(--ok)}
+.frail .d.now{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.frail .ln{width:9px;height:2px;background:var(--border)}
+.frail .open{margin-left:auto;color:var(--accent);font-weight:600}
+.lines{flex:1;min-height:0;overflow:hidden;padding:4px 12px;background:var(--bg)}
+.day{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;text-align:center;margin:10px 0 6px}
+.ln2{border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;margin:6px 0;background:var(--surface);font-size:13.5px}
+.ln2.out{margin-left:28px;background:var(--accent-soft);border-color:transparent}
+.ln2.in{margin-right:28px}
+.ln2.team{background:var(--team);border-color:var(--team-border)}
+.ln2 .meta{display:flex;gap:6px;align-items:center;font-size:11.5px;color:var(--muted);margin-bottom:2px}
+.ln2 .meta .jt{margin-left:auto;background:var(--chip);border-radius:999px;padding:0 7px;color:var(--text)}
+.ln2 .meta .jt.none{color:var(--muted);border:1px dashed var(--border);background:transparent}
+.ln2.held{outline:2px solid var(--accent);outline-offset:1px;transform:scale(.985)}
+.box{flex:none;border-top:1px solid var(--border);padding:8px 12px 22px;display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.box .in{flex:1;border:1px solid var(--border);border-radius:18px;padding:7px 12px;background:var(--surface)}
+.box .send{border-radius:999px;background:var(--accent);color:#fff;padding:6px 12px;font-weight:600}
+/* today, squeezed */
+.squeeze{display:flex;flex:1;min-height:0}
+.squeeze .col{flex:1;min-width:0;display:flex;flex-direction:column}
+.squeeze .vrail{width:66px;flex:none;border-left:1px solid var(--border);display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 0;font-size:10px;color:var(--muted)}
+.squeeze .vrail .d{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--faint)}
+.squeeze .vrail .d.done{background:var(--ok);border-color:var(--ok)}.squeeze .vrail .d.now{background:var(--accent);border-color:var(--accent)}
+.wrap{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 0}
+.wrap .tile{width:190px}
+.bad{outline:2px dashed var(--warn);outline-offset:2px;border-radius:6px}
+.badnote{position:absolute;right:8px;font-size:11px;background:var(--warn-soft);color:var(--warn);border-radius:6px;padding:2px 6px;font-weight:600}
+/* sheets */
+.shade{position:absolute;inset:0;background:var(--shade)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:14px 14px 0 0;padding:8px 16px 26px;box-shadow:0 -10px 30px rgba(0,0,0,.18);max-height:85%;overflow:hidden;display:flex;flex-direction:column}
+.grab{width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 10px;flex:none}
+.sheet h3{font-size:15px;margin:0 0 8px}
+.sheet .opts{display:flex;flex-direction:column;gap:6px}
+.sheet .o{border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:14px;display:flex;gap:8px;align-items:center}
+.sheet .o.on{border-color:var(--accent);background:var(--accent-soft)}
+.sheet .o small{color:var(--muted);margin-left:auto;font-size:12px}
+.sheet .o.quiet{border-color:transparent;color:var(--accent);justify-content:center}
+.sheet .o.red{color:#b3261e}
+.card dl{margin:0;font-size:13.5px}
+.card dt{font-weight:600;margin-top:9px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.card dd{margin:2px 0 0}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.btn{border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px;background:var(--surface)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.field{border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:14px;color:var(--muted);margin:4px 0 8px}
+.lab{font-size:12px;color:var(--muted)}
+.kbd{position:absolute;left:0;right:0;bottom:0;height:200px;background:#d1d5db;display:grid;grid-template-columns:repeat(10,1fr);gap:5px;padding:8px 4px}
+.kbd span{background:#fff;border-radius:5px;opacity:.9}
+/* follow up */
+.fu{flex:1;min-height:0;overflow:hidden}
+.fu h4{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:12px 12px 4px;display:flex;justify-content:space-between}
+.fr{display:flex;gap:9px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border)}
+.fr .who{flex:1;min-width:0}
+.fr .who b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fr .who small{display:block;color:var(--muted);font-size:12.5px;line-height:1.3}
+.fr .when{font-size:11.5px;color:var(--warn);font-weight:700;flex:none}
+/* by step */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 12px}
+.tiles div{border:1px solid var(--border);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--muted)}
+.tiles b{display:block;font-size:16px;color:var(--text)}
+.board{display:flex;gap:10px;overflow:hidden;padding:4px 12px 8px;mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent);-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent)}
+.bcol{flex:none;width:255px;border:1px solid var(--border);border-radius:10px;background:var(--bg)}
+.bcol h5{margin:0;padding:7px 10px;font-size:13px;border-bottom:1px solid var(--border);background:var(--surface);border-radius:10px 10px 0 0;display:flex;justify-content:space-between}
+.bcol h5 small{color:var(--muted);font-weight:400}
+.brow{margin:6px;padding:7px 9px;border-radius:8px;background:var(--surface);border:1px solid var(--border);font-size:13px}
+.brow small{display:block;color:var(--muted);font-size:12px}
+.brow .late{color:#b3261e;font-weight:700}
+.dots2{display:flex;justify-content:center;gap:5px;padding:4px 0 10px}
+.dots2 i{width:6px;height:6px;border-radius:50%;background:var(--border)}
+.dots2 i.on{background:var(--accent)}
+/* job activity */
+.jhead{padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.jhead b{font-size:15px}
+.jhead .tag{display:inline-block;border-radius:6px;padding:1px 7px;font-weight:700;font-size:12px;color:#fff;background:#c9772b;margin-right:6px}
+.filters{display:flex;gap:5px;flex-wrap:wrap;padding:8px 14px 6px}
+.filters span{border:1px solid var(--border);border-radius:999px;padding:2px 9px;font-size:12.5px;color:var(--muted);background:var(--surface);white-space:nowrap}
+.filters span.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+.filters span.new{border-color:var(--cust);color:var(--cust-deep)}
+.feed{padding:2px 14px 10px;font-size:13.5px}
+.jday{font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:12px 0 4px}
+.jr{display:grid;grid-template-columns:28px 52px 104px minmax(0,1fr);gap:8px;align-items:start;padding:6px 0;border-bottom:1px dashed var(--border)}
+.jr .n{width:22px;height:22px;border:1px solid var(--border);border-radius:50%;font-size:11px;display:grid;place-items:center;color:var(--muted)}
+.jr .t{color:var(--muted);font-size:12px;padding-top:2px;font-variant-numeric:tabular-nums}
+.jr .w{color:var(--muted);padding-top:1px}
+.jr .w b{color:var(--text);font-weight:600}
+.jr .ch{color:var(--cust-deep);font-size:11.5px;font-weight:600}
+.jr .b{min-width:0;padding-top:1px}
+.jr .dim{color:var(--muted);font-size:12px;display:block}
+.jr.mute .w,.jr.mute .b{color:var(--muted)}
+.jr.conv{background:var(--chip);border-radius:6px;border-bottom-color:transparent}
+.jr.cust{background:var(--cust-soft);border-left:3px solid var(--cust);margin-left:-10px;padding-left:7px;border-radius:0 8px 8px 0;border-bottom-color:transparent;margin-bottom:2px}
+.jr.cust.in{background:var(--cust-soft-2);border-left:5px solid var(--cust-deep);padding-left:5px}
+.jr.cust.in .w b{color:var(--cust-deep)}
+.jr .open{display:block;margin-top:5px;padding:6px 8px;border-radius:6px;background:var(--surface);border:1px solid var(--border);font-size:12.5px}
+.jr .open a{color:var(--accent);font-weight:600;text-decoration:none}
+.subj{font-weight:600}
+/* phone feed: one flowing line with a hanging indent, as JobActivityFeed's narrow mode */
+.pf{padding:2px 12px;font-size:13px;flex:1;min-height:0;overflow:hidden}
+.pr{position:relative;padding:6px 0 6px 28px;border-bottom:1px dashed var(--border)}
+.pr .n{position:absolute;left:0;top:6px;width:20px;height:20px;border:1px solid var(--border);border-radius:50%;font-size:10.5px;display:grid;place-items:center;color:var(--muted)}
+.pr .t{color:var(--muted);font-size:11.5px;margin-right:5px}
+.pr b{font-weight:600}
+.pr .ch{color:var(--cust-deep);font-size:11px;font-weight:600}
+.pr.cust{background:var(--cust-soft);border-left:3px solid var(--cust);border-bottom-color:transparent;border-radius:0 8px 8px 0;margin:2px 0;padding-left:30px}
+.pr.cust .n{left:4px}
+.pr.cust.in{background:var(--cust-soft-2);border-left:5px solid var(--cust-deep)}
+.pr.cust.in b{color:var(--cust-deep)}
+.pr.mute{color:var(--muted)}
+.pr.conv{background:var(--chip);border-radius:6px;border-bottom-color:transparent;margin:2px 0}
+/* text blocks */
+ol.list,ul.list{max-width:920px;font-size:13.5px;line-height:1.5;margin:0 0 8px 18px;padding:0}
+ol.list li,ul.list li{margin-bottom:6px}
+code{font-size:12.5px;background:var(--chip);padding:0 4px;border-radius:4px}
+table.cuts{border-collapse:collapse;font-size:13px;max-width:1100px;width:100%;margin:6px 0 10px}
+table.cuts th,table.cuts td{border:1px solid var(--border);padding:6px 8px;text-align:left;vertical-align:top}
+table.cuts th{background:var(--chip);font-weight:600}
+.pickk{max-width:920px;font-size:13.5px;line-height:1.5;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+@media (max-width:420px){body{padding:8px}.phone{border-radius:16px}}
+</style>
+</head>
+<body>
+<h1>Messages, cut 10: the thread and Follow up at 375 px, and calls, texts and emails in the Pipeline's Job activity</h1>
+<p class="lead">Helper 7, 2026-10-12, for the lead. These are cut 10's first two bullets, drawn from the prototype's phone frames (v1.32, v1.48, v1.51, v1.103, v1.104, v1.166) and from <code>customer-messages-prototype.html</code> v0.3, built against main at <code>fdad38966</code>. On main the thread window already goes full screen under 760 px, but nothing inside it changes there. Today at 375 px its header runs five rows, the jobs rail wraps, and the flow rail keeps a 66 px column beside the lines. What follows is each screen as I would build it, what main has today where it differs, the cut list, the questions for you, and my pick. Every person and job here is the prototypes' demo cast.</p>
+
+<h2 class="sec">1 · The thread at 375 px</h2>
+
+<div class="opt">
+<h2>1a · The header folds <small>v1.32 pick C, the chevron of v1.48, the sentence of v1.51, the rows of v1.166</small></h2>
+<div class="frames">
+<div>
+<p class="cap">Today on main at 375 px</p>
+<div class="phone short">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="squeeze">
+<div class="col">
+<div class="hdr" style="position:relative">
+<div class="r1"><span class="av">GP</span><div class="nm"><b style="white-space:normal">Greg Paulk</b><small style="white-space:normal">Trade partner: Hillside Excavation ▾</small></div><span class="ic">☎</span><span class="ic">⋯</span><span class="ic">×</span></div>
+<div class="reach" style="margin-left:0">(512) 555-0190</div>
+<div class="reach" style="margin-left:0">greg@hillside.example</div>
+<div class="wrap"><span class="pill">Their move · 2 d</span><span class="pill gray">back Thu</span><span class="pill gray">portal · 3 d ago</span></div>
+<div class="stampsn">Greg <b>texted yesterday</b>. We <b>emailed two weeks ago</b>.</div>
+<div class="wrap bad"><span class="tile on"><span class="t1"><span class="star">★</span> B482 Boerne Retail Shell</span><span class="t2">6 lines</span></span><span class="tile"><span class="t1">Stone Oak Medical</span><span class="t2">2 lines</span></span><span class="tile add">+ Add a job</span></div>
+<span class="badnote" style="bottom:2px;right:14px">the jobs wrap to three rows</span>
+<div style="height:6px"></div>
+</div>
+<div class="lines"><div class="day">Thu, Oct 8</div><div class="ln2 in"><div class="meta">Text from Greg</div>Numbers by Friday…</div></div>
+</div>
+<div class="vrail bad" style="position:relative"><span>Trade</span><span class="d done"></span><span class="d done"></span><span class="d now"></span><span class="d"></span><span class="d"></span><span style="writing-mode:vertical-rl;margin-top:14px;color:var(--warn);font-weight:600">66 px of the 375</span></div>
+</div>
+<div class="home"></div>
+</div>
+</div>
+<div>
+<p class="cap">Folded, at 640 px of thread or less</p>
+<div class="phone">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="hdr">
+<div class="r1"><span class="back"><span class="chev">‹</span><span class="av">GP</span></span><div class="nm"><b>Greg Paulk</b><small>Trade partner: Hillside Excavation ▾</small></div><span class="face" title="Rosa has it">R</span><span class="ic">☎</span><span class="ic">⋯</span></div>
+<div class="status"><span class="pill">Their move · 2 d</span><span class="pill gray">back Thu</span><span class="pill gray">portal · 3 d ago · 1 unopened</span></div>
+<div class="stampsn">Greg <b>texted yesterday</b>. We <b>emailed two weeks ago</b>.</div>
+<div class="strip"><span class="tile on"><span class="t1"><span class="star">★</span> B482 Boerne Retail Shell</span><span class="t2">6 lines · their default</span></span><span class="tile"><span class="t1">Stone Oak Medical</span><span class="t2">2 lines</span></span><span class="tile add">+ Add a job</span></div>
+</div>
+<div class="frail"><span>Trade partner</span><span class="dots"><span class="d done"></span><span class="ln"></span><span class="d done"></span><span class="ln"></span><span class="d now"></span><span class="ln"></span><span class="d"></span><span class="ln"></span><span class="d"></span></span><span>Papers in · 2 d</span><span class="open">›</span></div>
+<div class="lines">
+<div class="day">Wed, Oct 7</div>
+<div class="ln2 out"><div class="meta">Email to Greg · Rosa <span class="jt">B482</span></div><b>Boerne sitework, the geotech</b><br>Greg, the geotech report is attached. Numbers by Friday?</div>
+<div class="ln2 team"><div class="meta">Note · Rosa · only the team sees this</div>He prices the pond separately. Ask for it in.</div>
+<div class="day">Thu, Oct 8</div>
+<div class="ln2 in"><div class="meta">Text from Greg <span class="jt">B482</span></div>Got it. Numbers by Friday, pond priced on its own line.</div>
+<div class="ln2 in"><div class="meta">Missed call from Greg <span class="jt none">no job</span></div>No voicemail.</div>
+</div>
+<div class="box"><span class="in">Text Greg…</span><span class="send">Send</span></div>
+<div class="home"></div>
+</div>
+</div>
+</div>
+<p class="why"><b>What folds.</b> The name and the company sit on one row with the corner at its right: the who-has-it pill as a face only, then ☎ and ⋯. The chevron and the avatar are one press back to everyone, and they take the place of × on a phone, where the window covers the list. Esc still closes. The company's ▾ still shows the phone and the email, closed by default here so the lines get the room. The status row stays one row and scrolls sideways when its pills run long. The stamps are main's sentence already. The jobs rail becomes one strip that scrolls sideways, with a fade at its edge so the next tile shows there is more.</p>
+<p class="why"><b>When it folds.</b> By the thread column's own width, not the screen's: 640 px or less folds, as v1.32 asks, so a narrow window at a desk folds too. Main has <code>useMeasuredWidth</code> for this, and inline styles cannot hold a container query. The flow rail turns into the row under the strip, as the prototype does under 760 px, so the lines get the full 375 px. Its press opens the step card as a sheet, screen 2a.</p>
+</div>
+
+<div class="opt">
+<h2>1b · Press and hold a line to tie it <small>in place of drag; the sheet is the prototype's <code>tieMenu</code></small></h2>
+<div class="frames">
+<div>
+<p class="cap">Hold the line, or press its job tag</p>
+<div class="phone">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="hdr">
+<div class="r1"><span class="back"><span class="chev">‹</span><span class="av">GP</span></span><div class="nm"><b>Greg Paulk</b><small>Trade partner: Hillside Excavation ▾</small></div><span class="face">R</span><span class="ic">☎</span><span class="ic">⋯</span></div>
+<div class="stampsn">Greg <b>called this morning</b>, no voicemail. We <b>emailed yesterday</b>.</div>
+</div>
+<div class="lines">
+<div class="day">Thu, Oct 8</div>
+<div class="ln2 in"><div class="meta">Text from Greg <span class="jt">B482</span></div>Got it. Numbers by Friday, pond priced on its own line.</div>
+<div class="ln2 in held"><div class="meta">Missed call from Greg <span class="jt none">no job</span></div>No voicemail.</div>
+</div>
+<div class="shade"></div>
+<div class="sheet">
+<div class="grab"></div>
+<h3>Tie this message to</h3>
+<div class="opts">
+<div class="o on"><span class="star">★</span> B482 Boerne Retail Shell <small>their default</small></div>
+<div class="o">Stone Oak Medical <small>2 lines</small></div>
+<div class="o">Another job… <small>every open job</small></div>
+<div class="o quiet">Cancel</div>
+</div>
+</div>
+<div class="home"></div>
+</div>
+</div>
+<div>
+<p class="cap">A tied line offers Untie too</p>
+<div class="phone short">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="lines" style="padding-top:12px">
+<div class="ln2 in held"><div class="meta">Text from Greg <span class="jt">B482</span></div>Got it. Numbers by Friday, pond priced on its own line.</div>
+</div>
+<div class="shade"></div>
+<div class="sheet">
+<div class="grab"></div>
+<h3>Tie this message to</h3>
+<div class="opts">
+<div class="o on"><span class="star">★</span> B482 Boerne Retail Shell <small>tied here now ✓</small></div>
+<div class="o">Stone Oak Medical</div>
+<div class="o">Another job…</div>
+<div class="o red">Untie it <small>it stays on Greg</small></div>
+<div class="o quiet">Cancel</div>
+</div>
+</div>
+<div class="home"></div>
+</div>
+</div>
+</div>
+<p class="why"><b>The hold.</b> Main's <code>useLongPress</code>: 450 ms, and it fires when the finger lifts, so the sheet never opens under the finger. The line darkens once the hold is long enough, so the person knows to lift. A finger that moves more than 10 px is a scroll, so scrolling the lines never ties anything, and a short tap still opens the message window. The line's job tag opens the same sheet with one press, for anyone who never finds the hold. A pick writes through main's own tie and untie and says so in a toast. <b>Another job…</b> opens main's job picker, as a sheet too.</p>
+<p class="why"><b>Main's own hold stays.</b> Holding a job tile and then tapping a line still ties, as today. The tiles take <code>touch-action: pan-x</code> in place of <code>none</code>, so the strip scrolls sideways under a thumb and a hold that does not move still arms the tile.</p>
+</div>
+
+<div class="opt">
+<h2>1c · The windows inside the thread become sheets <small>the ⋯ menu, the message window, Who is this?, the job picker</small></h2>
+<div class="frames">
+<div>
+<p class="cap">The ⋯ menu</p>
+<div class="phone short">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="lines"></div>
+<div class="shade"></div>
+<div class="sheet">
+<div class="grab"></div>
+<div class="opts">
+<div class="o">Show all text</div>
+<div class="o">Open their record</div>
+<div class="o" style="color:var(--muted);border-style:dashed">the rows Follow up and the flow add</div>
+<div class="o quiet">Cancel</div>
+</div>
+</div>
+<div class="home"></div>
+</div>
+</div>
+<div>
+<p class="cap">Who is this?, over the keyboard</p>
+<div class="phone short">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="lines"></div>
+<div class="shade"></div>
+<div class="sheet" style="bottom:200px;border-radius:14px 14px 0 0;padding-bottom:12px">
+<div class="grab"></div>
+<h3>Who is this? (210) 555-0112</h3>
+<span class="lab">Their name</span><div class="field">Dee…</div>
+<span class="lab">What they are to us</span><div class="field">trade partner ▾</div>
+<div class="btns"><span class="btn primary">Save</span><span class="btn">Cancel</span></div>
+</div>
+<div class="kbd"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>
+</div>
+</div>
+</div>
+<p class="why">The menu's rows are main's <code>menuRows</code> as they are: Show all text, Open their record, and what the slots add. Under 760 px each inner window rises from the bottom at full width with a grab bar, scrolls inside at most 85% of the screen, and rides above the keyboard on <code>useVisualViewportHeight</code>. One shell does all of them (self-review a). The sheet sits inside the thread window's panel, so the window's backdrop never takes its press for a close. That is what the nested-windows check guards.</p>
+</div>
+
+<h2 class="sec">2 · The rail's sheet</h2>
+<div class="opt">
+<h2>2a · The step card from the bottom <small>v1.103: at 375 px the panel is never drawn; the rail's mark or the thread's step opens the card</small></h2>
+<div class="frames">
+<div>
+<div class="phone">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="hdr"><div class="r1"><span class="back"><span class="chev">‹</span><span class="av">GP</span></span><div class="nm"><b>Greg Paulk</b><small>Trade partner: Hillside Excavation ▾</small></div><span class="face">R</span><span class="ic">☎</span><span class="ic">⋯</span></div><div style="height:8px"></div></div>
+<div class="frail"><span>Trade partner</span><span class="dots"><span class="d done"></span><span class="ln"></span><span class="d done"></span><span class="ln"></span><span class="d now"></span><span class="ln"></span><span class="d"></span><span class="ln"></span><span class="d"></span></span><span>Papers in · 2 d</span><span class="open">›</span></div>
+<div class="lines"></div>
+<div class="shade"></div>
+<div class="sheet card">
+<div class="grab"></div>
+<h3>Papers in · Hillside Excavation</h3>
+<div style="font-size:13.5px">Waiting on Hillside for 2 days. Usually 3.</div>
+<dl>
+<dt>What we need</dt><dd>W-9 ✓ · Certificate of insurance, not yet</dd>
+<dt>Until then</dt><dd>Their statement of work waits.</dd>
+<dt>Next</dt><dd>Statement of work</dd>
+<dt>Reminder</dt><dd>Thu at 9 AM, by text</dd>
+<dt>So far</dt><dd>Asked Oct 6 · W-9 in Oct 7</dd>
+</dl>
+<div class="btns"><span class="btn primary">Ask for it</span><span class="btn">Hold it…</span><span class="btn">Note</span></div>
+</div>
+<div class="home"></div>
+</div>
+</div>
+</div>
+<p class="why">The card is main's <code>FlowStepCard</code> with the same sections and presses, in the shared sheet. The rail is the row from screen 1a, so the thread keeps its width. Main's <code>FlowTab</code> already opens the panel and the card as sheets on a phone, and it keeps the 66 px column beside the lines. That column is the piece that moves. I will check the sheet's layer against the thread window's 1200 while building, since a sheet drawn under the window would never show.</p>
+</div>
+
+<h2 class="sec">3 · Follow up at 375 px <small style="font-weight:400;color:var(--muted)">after helper 2's B (#5478) and C1 (#5489) land</small></h2>
+<div class="opt">
+<div class="frames">
+<div>
+<p class="cap">One column, the sections stacked</p>
+<div class="phone">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="hdr" style="padding-bottom:8px"><b style="font-size:17px">Follow up</b></div>
+<div class="fu">
+<h4>Needs you <span>3</span></h4>
+<div class="fr"><span class="av">GP</span><div class="who"><b>Greg Paulk</b><small>Hillside Excavation · we owe him the geotech</small></div><span class="when">today</span><span class="face">R</span></div>
+<div class="fr"><span class="av">DR</span><div class="who"><b>Dr. Raman</b><small>Helotes Dental Office · texted, no answer</small></div><span class="when">2 d</span><span class="face">W</span></div>
+<div class="fr"><span class="av">EM</span><div class="who"><b>Elena Marchetti</b><small>Fair Oaks addition · bid by Thu</small></div><span class="when">Thu</span><span class="face" style="background:var(--chip);color:var(--muted);border-color:var(--border)">+</span></div>
+<h4>Needs a reply <span>2</span></h4>
+<div class="fr"><span class="av">LS</span><div class="who"><b>Lone Star Fire</b><small>Draw 2 sent back Mon · their move</small></div><span class="when" style="color:var(--muted)">3 d</span><span class="face">R</span></div>
+<h4>We owe them <span>1</span></h4>
+<div class="fr"><span class="av">TM</span><div class="who"><b>Tejas Mechanical</b><small>the revised drawings, by Fri</small></div><span class="when">Fri</span><span class="face">R</span></div>
+</div>
+<div class="home"></div>
+</div>
+</div>
+<div>
+<p class="cap">The face opens Who has it as a sheet</p>
+<div class="phone short">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="fu"><h4>Needs you <span>3</span></h4><div class="fr"><span class="av">GP</span><div class="who"><b>Greg Paulk</b><small>Hillside Excavation · we owe him the geotech</small></div><span class="face">R</span></div></div>
+<div class="shade"></div>
+<div class="sheet">
+<div class="grab"></div>
+<h3>Who has Greg Paulk</h3>
+<div class="opts">
+<div class="o on"><span class="av sm">R</span> Rosa <small>has it since Oct 6 ✓</small></div>
+<div class="o"><span class="av sm">W</span> Wendi</div>
+<div class="o"><span class="av sm">RD</span> Robert</div>
+<div class="o">Nobody</div>
+<div class="o quiet">Cancel</div>
+</div>
+</div>
+<div class="home"></div>
+</div>
+</div>
+</div>
+<p class="why">The rows, the sections and the words are helper 2's, from cut 2's queue. This pass only lays them out. The sections stack in one column. A row is two lines, the person and then what is owed or waited on. The who-has-it pill is a face only, and its 280 px menu becomes the sheet, since it runs off a 375 px screen today. A press on the row opens the thread window full screen, folded as in screen 1. Nothing here is built until B and C1 are on main.</p>
+</div>
+
+<h2 class="sec">4 · By step at 375 px <small style="font-weight:400;color:var(--muted)">after helper 6's B (#5463) lands</small></h2>
+<div class="opt">
+<div class="frames">
+<div>
+<div class="phone short">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="hdr" style="padding-bottom:8px"><b style="font-size:17px">Trade partners · By step</b></div>
+<div class="tiles"><div><b>14</b>on a step</div><div><b style="color:#b3261e">3</b>past the usual</div><div><b>5</b>waiting on us</div><div><b>2</b>quiet a week</div></div>
+<div class="board">
+<div class="bcol"><h5>Papers in <small>4 · usual 3 d</small></h5><div class="brow">Hillside Excavation <small><span class="late">6 d</span> · certificate of insurance</small></div><div class="brow">Rio Paving <small>2 d · W-9</small></div></div>
+<div class="bcol"><h5>Statement of work <small>3</small></h5><div class="brow">Lone Star Fire <small>4 d · to sign</small></div></div>
+</div>
+<div class="dots2"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+<div class="home"></div>
+</div>
+</div>
+</div>
+<p class="why">The board scrolls sideways one step at a time, 255 px a column, with a snap. The dots say which step is in view. Each column keeps helper 6's order, the late ones first. The tiles fold to two by two above it. A row's press does what it does at a desk.</p>
+</div>
+
+<h2 class="sec">5 · Calls, texts and emails in the Pipeline's Job activity</h2>
+<div class="opt">
+<h2>5a · The feed, mixed <small>colors from <code>customer-messages-prototype.html</code> v0.3, the owner's call of 2026-10-12</small></h2>
+<div class="frames">
+<div>
+<p class="cap">Jobs → Pipeline, the row's Job activity, full screen at a desk</p>
+<div class="desk">
+<div class="jhead"><span class="tag">1312</span><b>Oakridge sewer line</b> <span style="color:var(--muted)">· Dana Whitfield · 4120 Oakridge Trl</span><span style="float:right;color:var(--faint);font-size:11px">esc to close</span></div>
+<div class="filters"><span class="on">All 14</span><span>Notes 2</span><span>Reports 1</span><span>Status 3</span><span>Billing</span><span>Crew 2</span><span class="new">Customer 6</span></div>
+<div class="feed">
+<div class="jday">Mon, Oct 5 · 7d ago</div>
+<div class="jr cust"><span class="n">1</span><span class="t">9:02a</span><span class="w"><b>Luis</b> <span class="ch">text</span></span><span class="b">Dana, this is Luis with Click Plumbing. We are on our way to 4120 Oakridge Trl, about 30 minutes out.</span></div>
+<div class="jr cust in"><span class="n">2</span><span class="t">9:04a</span><span class="w"><b>Dana</b> <span class="ch">text</span></span><span class="b">Great. Gate code is 4471.</span></div>
+<div class="jr mute"><span class="n">3</span><span class="t">9:41a</span><span class="w">Luis</span><span class="b">Arrived at job</span></div>
+<div class="jr conv"><span class="n">4</span><span class="t">11:07a</span><span class="w"><b>Luis</b></span><span class="b">Status Report <span style="color:var(--accent);font-size:11px;font-weight:600">▸ 2 answers</span></span></div>
+<div class="jr mute"><span class="n">5</span><span class="t">12:30p</span><span class="w">Luis</span><span class="b">9:41a → 12:30p · 2h 49m</span></div>
+<div class="jday">Tue, Oct 6 · 6d ago</div>
+<div class="jr cust"><span class="n">6</span><span class="t">2:20p</span><span class="w"><b>Rosa</b> <span class="ch">email</span></span><span class="b"><span class="subj">Your estimate for Oakridge sewer line</span> · Hello Dana, your estimate is ready. Review and approve it here…<span class="dim">📎 Estimate 1312.pdf</span></span></div>
+<div class="jr cust in"><span class="n">7</span><span class="t">4:05p</span><span class="w"><b>Dana</b> <span class="ch">call · 3 min</span></span><span class="b">Asked if Thursday works and if the water heater quote still stands.<span class="open">Rosa took it. The call's summary from Quo. <a href="#">Open Dana's thread ›</a></span></span></div>
+<div class="jr conv"><span class="n">8</span><span class="t">4:12p</span><span class="w"><b>Rosa</b></span><span class="b">Called Dana back. Thursday works for her, and the water heater quote stands.</span></div>
+<div class="jr"><span class="n">9</span><span class="t">4:14p</span><span class="w"><b>Rosa</b> <span style="color:var(--muted);font-size:11.5px">note in Messages</span></span><span class="b">She wants texts after 5, never calls.<span class="dim">only the team sees this</span></span></div>
+<div class="jday">Wed, Oct 7 · 5d ago</div>
+<div class="jr cust"><span class="n">10</span><span class="t">8:00a</span><span class="w"><b>the app</b> <span class="ch">text</span></span><span class="b">Dana, your estimate for Oakridge sewer line is waiting for your approval…</span></div>
+<div class="jr cust in"><span class="n">11</span><span class="t">8:14a</span><span class="w"><b>Dana</b> <span class="ch">missed call</span></span><span class="b">No voicemail.</span></div>
+<div class="jr mute"><span class="n">12</span><span class="t">8:15a</span><span class="w">Rosa</span><span class="b">Waiting → Working</span></div>
+</div>
+</div>
+</div>
+<div>
+<p class="cap">The same feed at 375 px</p>
+<div class="phone">
+<div class="sb"><span>9:41</span><span>●●● ▮</span></div>
+<div class="jhead" style="padding:8px 12px"><span class="tag">1312</span><b>Oakridge sewer line</b><span style="float:right">✕</span></div>
+<div class="filters" style="padding:8px 12px 4px;flex-wrap:nowrap;overflow:hidden"><span>All 14</span><span>Notes 2</span><span>Reports 1</span><span>Status 3</span><span class="new on" style="border-color:var(--cust);background:var(--cust-soft);color:var(--cust-deep)">Customer 6</span></div>
+<div class="pf">
+<div class="jday" style="margin-top:6px">Mon, Oct 5 · 7d ago</div>
+<div class="pr cust"><span class="n">1</span><span class="t">9:02a</span><b>Luis</b> <span class="ch">text</span> · Dana, this is Luis with Click Plumbing. We are on our way to 4120 Oakridge Trl, about 30 minutes out.</div>
+<div class="pr cust in"><span class="n">2</span><span class="t">9:04a</span><b>Dana</b> <span class="ch">text</span> · Great. Gate code is 4471.</div>
+<div class="jday">Tue, Oct 6 · 6d ago</div>
+<div class="pr cust"><span class="n">6</span><span class="t">2:20p</span><b>Rosa</b> <span class="ch">email</span> · <span class="subj">Your estimate for Oakridge sewer line</span> · Hello Dana, your estimate is ready…</div>
+<div class="pr cust in"><span class="n">7</span><span class="t">4:05p</span><b>Dana</b> <span class="ch">call · 3 min</span> · Asked if Thursday works and if the water heater quote still stands.</div>
+<div class="jday">Wed, Oct 7 · 5d ago</div>
+<div class="pr cust"><span class="n">10</span><span class="t">8:00a</span><b>the app</b> <span class="ch">text</span> · Dana, your estimate for Oakridge sewer line is waiting for your approval…</div>
+<div class="pr cust in"><span class="n">11</span><span class="t">8:14a</span><b>Dana</b> <span class="ch">missed call</span> · No voicemail.</div>
+</div>
+<div class="home"></div>
+</div>
+</div>
+</div>
+<p class="why"><b>Orange is the customer's.</b> A line the job's customer sent or got is orange, with a deeper bar when it came from her. The channel reads as a small orange word after the name: text, email, call with its length, voicemail, missed call, or portal. This is v0.3 as the owner set it on 2026-10-12. It turns BUILD_PLAN's "team-only rows yellow" around: here a team note is the usual thing, so it stays plain. A note written in her thread in Messages reads like any job note, plain, with where it was written and "only the team sees this". Status, clock and schedule lines stay muted as today.</p>
+<p class="why"><b>Numbers and filters.</b> Every line keeps the feed's rule: numbered oldest first across everything, before any filter, so a number never moves. A new <b>Customer</b> pill counts her lines and shows only them. A line opens like a report does, to the whole text, a call's summary or a voicemail's words, and a link to her thread in Messages. The narrow feed under 700 px is main's flowing line with the hanging indent, with the orange bar added and nothing else new.</p>
+</div>
+
+<h2 class="sec">How Job activity reads the lines</h2>
+<ol class="list">
+<li><b>Which lines.</b> The <code>messages</code> rows tied to this Pipeline job, <code>jobs_ledger_id</code> = the job. One read when the row's activity opens, beside the notes, reports and events <code>useJobThreadNotes</code> reads now.</li>
+<li><b>Who sees them.</b> Messages' own rule, the office team. Everyone else reads no rows, and the feed looks as it does today, so a tech's or an estimator's view does not change. The rows' policy already says this. Nothing new is opened.</li>
+<li><b>The columns.</b> Main's <code>MESSAGE_COLS</code>, plus a call's length and summary once cut 5's <code>20261012170000_quo_messages.sql</code> is on prod. Until then a call line reads "call" with no length, because asking for a column that is not there fails the whole read.</li>
+<li><b>Not a new kind in the old union.</b> The lines come in beside <code>JobThreadActivityItem</code>, not inside it. <code>buildJobActivityLines</code> takes them as a second input and numbers them with everything else. That keeps Job Detail, Job Mode, Quickfill and Dispatch's customer summary, which share the union, exactly as they are.</li>
+<li><b>Live.</b> <code>messages</code> is not in the realtime publication, so a text that lands while the feed is open shows on the next open. Notes stay live as today.</li>
+<li><b>An index.</b> The table has none on <code>jobs_ledger_id</code>. One small migration adds <code>messages (jobs_ledger_id, at)</code> where the job is set, for when Quo and the mailbox fill the table.</li>
+</ol>
+
+<h2 class="sec">The cut list</h2>
+<p class="lead">Small PRs on main, each with its render smoke at 375 px, its release note and fragment, and the guides it touches. P1, P2, J0 and J1 can start at once. P3 and P4 follow P2, and J2 follows J1. P5 and P6 wait on the drafts named.</p>
+<table class="cuts">
+<tr><th>PR</th><th>What</th><th>Files</th><th>Waits on, or re-seats on</th></tr>
+<tr><td>P1</td><td>The header folds at 640 px of thread: ‹ and the avatar back on a phone, the face, the status row, the jobs rail as one sideways strip, tiles on <code>pan-x</code>.</td><td><code>ThreadWindow.tsx</code>, <code>JobsRail.tsx</code>, a small <code>threadFold.ts</code> kernel for what folds, its test, the smoke</td><td>Main. The face is C1's <code>WhoHasItPill</code> in the <code>headerRight</code> slot, so if C1 lands first the fold reads it, and if later C1 re-seats on the fold.</td></tr>
+<tr><td>P2</td><td>One sheet shell for the phone, and the windows inside the thread on it: the ⋯ menu, the message window, Who is this?, the job picker. The keyboard and the bottom safe area.</td><td><code>PhoneSheet.tsx</code> new, <code>MessageWindow.tsx</code>, <code>WhoIsThisWindow.tsx</code>, <code>JobPickerWindow.tsx</code>, <code>ThreadWindow.tsx</code></td><td>Main. R1 (#5497) adds the reply box at the bottom. Whichever lands second takes the keyboard rule for the box.</td></tr>
+<tr><td>P3</td><td>Press and hold a line, or press its tag: Tie this message to, Untie it, Another job…</td><td><code>ThreadLine.tsx</code>, <code>ThreadWindow.tsx</code>, a small <code>tieSheet.ts</code> kernel for the sheet's rows, its test</td><td>P2</td></tr>
+<tr><td>P4</td><td>The flow rail as a row under the strip on a phone. Its mark opens the step card in the sheet.</td><td><code>FlowTab.tsx</code>, <code>FlowRail.tsx</code>, <code>threadSlots.tsx</code></td><td>P2</td></tr>
+<tr><td>P5</td><td>Follow up at 375 px: the stacked sections, the face, Who has it as a sheet.</td><td><code>FollowUpPanel.tsx</code>, <code>FollowUpSections.tsx</code>, <code>WhoHasItPill.tsx</code></td><td>#5478 and #5489 on main, then P2</td></tr>
+<tr><td>P6</td><td>By step at 375 px: the sideways board, the snap, the dots, the tiles two by two.</td><td><code>GcBoardByStep.tsx</code> and its siblings from helper 6</td><td>#5463 on main</td></tr>
+<tr><td>J0</td><td>The index on <code>messages (jobs_ledger_id, at)</code>. <code>SET lock_timeout = '3s'</code>, <code>IF NOT EXISTS</code>, no new table so no fences. You push it after the merge.</td><td><code>supabase/migrations/&lt;claimed&gt;_messages_job_index.sql</code>, its <code>docs/migrations</code> page</td><td>Main</td></tr>
+<tr><td>J1</td><td>The kernel: a message as a Job activity line. Who, the channel word, the body from <code>snippetOf</code>, the tone, what opens, the thread link. <code>buildJobActivityLines</code> takes messages as a second input, and the Customer filter.</td><td><code>src/lib/jobs/jobActivityMessages.ts</code>, <code>jobActivityLine.ts</code>, <code>jobActivityFilter.ts</code>, their tests, a fixture of Dana's job</td><td>Main</td></tr>
+<tr><td>J2</td><td>The read and the feed: <code>loadJobMessages</code>, <code>useJobThreadNotes</code> reads it, <code>JobActivityView</code> and <code>JobActivityFeed</code> draw the orange lines and the pill. The guide <code>open-job-activity-full-screen.md</code> gains them.</td><td><code>messagesIo.ts</code>, <code>useJobThreadNotes.ts</code>, <code>JobActivityView.tsx</code>, <code>JobActivityFeed.tsx</code>, <code>Jobs.tsx</code>, the smoke, the guide, <code>PROJECT_DOCUMENTATION.md</code></td><td>J1. J0 before it is busy, not before it works.</td></tr>
+</table>
+
+<h2 class="sec">Questions for you</h2>
+<ol class="list">
+<li><b>The colors.</b> v0.3 makes the customer's lines orange and team notes plain in the job's feed. BUILD_PLAN's bullet says team-only rows yellow. I follow v0.3 unless you say otherwise.</li>
+<li><b>Who is orange.</b> I read "the customer" as a contact on the customer's side of the job: the customer, or a person at the customer. A line with anyone else tied to the job, a supplier or a trade, shows plain with its channel word and only under All. Is that right?</li>
+<li><b>Lines not tied yet.</b> v0.3 shows Dana's untied reply on both her open jobs until someone ties it. A message on main holds at most one job, and a read by <code>jobs_ledger_id</code> cannot see an untied line. Do I add "her lines with no job, marked not tied yet" in J2, through <code>contact_jobs</code>, or leave it to the customer window's work?</li>
+<li><b>The box.</b> v0.3's Text and Email kinds in the job's box, with the quick replies strip, are not in my two bullets. I leave the box alone. Say if it is mine next.</li>
+<li><b>J0.</b> The index migration now, or later when the table grows? I lean now, since it is one line.</li>
+<li><b>Cut 5's columns.</b> Is <code>20261012170000_quo_messages.sql</code> on prod? If it is, J2 reads a call's length and summary from the start.</li>
+<li><b>A GC job's lines under its billing job.</b> I leave them on /gc and do not repeat them on the Pipeline job named in <code>billing_job_id</code>.</li>
+<li><b>× on a phone.</b> The chevron and the avatar replace × in the folded header, as v1.48 does where the list is hidden. Esc still closes.</li>
+</ol>
+
+<h2 class="sec">Three ways it could be better, and the pick</h2>
+<ol class="list">
+<li><b>a · One sheet shell, not five.</b> The tie sheet, the ⋯ menu, the three windows, the step card and Who has it could each grow their own bottom sheet. One <code>PhoneSheet</code> gives them the same grab bar, safe area, focus trap, Esc and backdrop rule, and one smoke covers the nested-windows case. Better, and it costs one PR up front.</li>
+<li><b>b · Fold by the column, not the screen.</b> A 760 px media query would fold the header only on a phone. The thread's measured width folds it wherever the column is narrow, as v1.32 asks, and the same width decides the rail's row. Better, and <code>useMeasuredWidth</code> is already on main.</li>
+<li><b>c · Messages as their own tab in Job activity.</b> A Messages tab would be simpler to build and to filter. But the plan and v0.3 both mix them into one numbered feed, and a reader would lose the order of what happened. Worse, so not this.</li>
+</ol>
+<div class="pickk"><b>The pick:</b> a and b, not c. P1 to P4 make the thread whole at 375 px on main as it is. P5 and P6 follow helper 2's and helper 6's drafts as they land. J0 to J2 put the customer's calls, texts and emails into the Pipeline's Job activity in v0.3's orange, read only by the office team. Nothing is built until you say go.</div>
+</body>
+</html>
