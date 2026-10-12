@@ -13,8 +13,8 @@ import { partnerById } from '../lookups.ts'
 import { contractDaysAdded } from '../ownerBilling.ts'
 import { scheduleDraft } from './draft.ts'
 import { dayNumber, daysBetween, isoOf, lagOf, lineOf, scheduleFloat, waitOrder } from './network.ts'
-import type { InspectionFailure, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TemplateLine } from '../../../../../../../src/lib/gc/schedule/types'
-import type { GcProject, GcState, TradePackage } from '../../../../../../../src/lib/gc/types'
+import type { InspectionFailure, LookAheadMark, LookAheadReason, ProjectSchedule, ScheduleActivity, ScheduleMilestone, TemplateLine } from '../../../../../../../src/lib/gc/schedule/types.ts'
+import type { GcProject, GcState, TradePackage } from '../types.ts'
 import { shortDate, weekdayDate } from '../words.ts'
 
 // The days, the links, the spare days and the pushes live in `network.ts` (G-130); their readers keep importing them from here.

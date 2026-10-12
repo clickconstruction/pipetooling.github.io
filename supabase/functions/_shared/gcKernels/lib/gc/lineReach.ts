@@ -9,7 +9,7 @@
  * sections as they stand after the newest set, and its trades with their scope.
  */
 import { guessLineSheets, guessLineSpecs, tradeForSpec, tradesForSheets } from './plans.ts'
-import type { PlanSheet, SpecSection } from '../../../../../../src/lib/gc/types'
+import type { PlanSheet, SpecSection } from './types.ts'
 
 export interface ReachLine {
   id: string

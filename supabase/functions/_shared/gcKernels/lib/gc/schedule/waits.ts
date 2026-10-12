@@ -8,8 +8,8 @@ import { partnerById } from '../lookups.ts'
 import type { GanttHold } from './gantt.ts'
 import { moveActivityName } from './moves.ts'
 import { daysBetween } from './schedule.ts'
-import type { ScheduleWait, WaitKind } from '../../../../../../../src/lib/gc/schedule/types'
-import type { GcProject, GcState } from '../../../../../../../src/lib/gc/types'
+import type { ScheduleWait, WaitKind } from '../../../../../../../src/lib/gc/schedule/types.ts'
+import type { GcProject, GcState } from '../types.ts'
 import { shortDate, weekdayDate } from '../words.ts'
 
 /** The four kinds, with the words each one's steps go by. */

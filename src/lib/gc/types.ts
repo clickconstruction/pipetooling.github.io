@@ -1096,3 +1096,41 @@ export interface CustomerSend {
   /** Its email went (B6-d-iii-b): the day and who got it, from its sent copy. Unset: not emailed yet. */
   emailed?: { on: string; to: string }
 }
+
+/** Who and what the pay application is for: the parts of the form that are not numbers. */
+export interface PayAppParties {
+  project: string
+  /** "3", or "4, final". */
+  applicationNo: string
+  /** The bill day it is for (YYYY-MM-DD). */
+  periodTo: string
+  /** The day it went. Null: a draft. */
+  sentOn: string | null
+  contractDate: string | null
+  /** Who it goes to: our customer on ours, us on a trade's. */
+  to: { name: string; address: string }
+  /** The property's owner, when it is not the customer (`GcProject.propertyOwner`). */
+  propertyOwner?: string | null
+  /** Who sends it: us on ours, the trade's company on theirs. */
+  from: { name: string; address: string; license?: string }
+  architect: string | null
+  /** The change orders in line 2, each with whether it was signed in this period. A credit is negative. */
+  changeOrders: { amount: number; thisPeriod: boolean }[]
+  /** Line 5's words when retainage is not one plain percent. */
+  retainageWords?: string | null
+}
+
+/** What the book reads of a project: its scopes, which set added a line, what quotes left out, what each trade says it leaves out. */
+export interface ScopeBookProject {
+  id: string
+  name: string
+  planSets: { label: string; issuedOn: string; addedLines?: { packageId: string; scopeId: string }[] }[]
+  packages: {
+    id: string
+    trade: string
+    scope: { id: string; label: string; specs?: string[] }[]
+    invites: { bid?: { includes: Record<string, string>; exclusions?: { name: string }[] } | null }[]
+    excludes?: ScopeExclusion[]
+  }[]
+  changeOrders?: { packageId: string | null; description: string }[]
+}

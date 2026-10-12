@@ -7,7 +7,7 @@
 import { addDays } from './building.ts'
 import { partnerById } from './lookups.ts'
 import { daysBetween } from './schedule/schedule.ts'
-import type { GcProject, GcState, Submittal, TradePackage } from '../../../../../../src/lib/gc/types'
+import type { GcProject, GcState, Submittal, TradePackage } from './types.ts'
 
 /**
  * Whose move it is. The trade's: asked and not sent yet, or sent back to revise. Ours: sent, not

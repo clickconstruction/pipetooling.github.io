@@ -7,7 +7,7 @@
  */
 import { exclusionCoversTotal, exclusionListWords, uncoveredExclusions } from './exclusions.ts'
 import { ownBidPriced, partnerById } from './lookups.ts'
-import type { GcProject, GcState, Invite, ScopeItem, Sow, SubBid, TradePackage } from '../../../../../../src/lib/gc/types'
+import type { GcProject, GcState, Invite, ScopeItem, Sow, SubBid, TradePackage } from './types.ts'
 import { GC_COMPANY } from './company.ts'
 import type { PortalLang } from './portalI18n.ts'
 import { pDate } from './portalI18n.ts'

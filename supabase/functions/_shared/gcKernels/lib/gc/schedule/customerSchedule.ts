@@ -11,9 +11,9 @@ import type { GanttBar } from './gantt.ts'
 import { ganttBars, ganttGroups, ganttListGroups } from './gantt.ts'
 import type { MilestoneRow } from './schedule.ts'
 import { daysBetween, milestoneRows, projectedFinish, scheduleMeasures, substantialCompletionOn } from './schedule.ts'
-import type { ScheduleMoveReason } from '../../../../../../../src/lib/gc/schedule/types'
+import type { ScheduleMoveReason } from '../../../../../../../src/lib/gc/schedule/types.ts'
 import { customerDecisions } from './waits.ts'
-import type { GcProject, GcState } from '../../../../../../../src/lib/gc/types'
+import type { GcProject, GcState } from '../types.ts'
 import { shortDate, weekdayDate } from '../words.ts'
 
 /** One stage of the job as the customer sees it. */

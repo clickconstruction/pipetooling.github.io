@@ -5,7 +5,7 @@
  * (branch spike/gc-mode, `gcMap.ts`).
  */
 import { compareReliability } from './reliability.ts'
-import type { GcProject, GcState, Invite, Partner, Town, TradePackage } from '../../../../../../src/lib/gc/types'
+import type { GcProject, GcState, Invite, Partner, Town, TradePackage } from './types.ts'
 
 export const TOWNS: Town[] = [
   { name: 'Austin', lat: 30.2672, lng: -97.7431 },

@@ -9,7 +9,7 @@
 
 import type { PromiseState } from './followUp.ts'
 import { partnerById } from './lookups.ts'
-import type { GcState, Partner, PromiseKind, TradePromise } from '../../../../../../src/lib/gc/types'
+import type { GcState, Partner, PromiseKind, TradePromise } from './types.ts'
 import { daysUntil, shortDate, weekdayDate } from './words.ts'
 
 /** Ask for the renewed certificate this many days before the policy runs out. */

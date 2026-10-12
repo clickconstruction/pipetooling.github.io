@@ -4,7 +4,7 @@
  * GC mode, the real build: lookups the kernels share, moved word for word from the GC mode prototype
  * (branch spike/gc-mode, `gcLookups.ts`) by the schedule's PR 1a.
  */
-import type { GcProject, GcState, Partner, TradePackage } from '../../../../../../src/lib/gc/types'
+import type { GcProject, GcState, Partner, TradePackage } from './types.ts'
 
 export function partnerById(state: GcState, id: string): Partner | undefined {
   return state.partners.find((p) => p.id === id)

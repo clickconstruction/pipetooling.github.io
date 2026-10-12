@@ -12,7 +12,7 @@ import { CAUSE_OF } from './schedule/daysLost.ts'
 import { daysBetween } from './schedule/schedule.ts'
 import type { TimeExtensionAsk } from './timeExtension.ts'
 import { askedMoveIds, isTimeExtension, timeExtensionAsk } from './timeExtension.ts'
-import type { GcProject, GcState } from '../../../../../../src/lib/gc/types'
+import type { GcProject, GcState } from './types.ts'
 import { money, weekdayDate } from './words.ts'
 
 export interface LateFinishOrder {

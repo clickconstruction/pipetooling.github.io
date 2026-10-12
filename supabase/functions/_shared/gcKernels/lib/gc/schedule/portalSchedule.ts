@@ -6,7 +6,7 @@
  */
 import type { ScheduleRow } from './schedule.ts'
 import { daysBetween, scheduleRows } from './schedule.ts'
-import type { GcProject, GcState } from '../../../../../../../src/lib/gc/types'
+import type { GcProject, GcState } from '../types.ts'
 
 export interface PortalScheduleBar {
   lineId: string

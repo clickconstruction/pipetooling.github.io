@@ -8,7 +8,7 @@
  * reads these. The cover costs' total came with the schedule's PR 1a, which reads it for a line's
  * worth; the quote's own cells and habits stay with the prototype until their step.
  */
-import type { Invite, QuoteExclusion, SubBid, TradePackage } from '../../../../../../src/lib/gc/types'
+import type { Invite, QuoteExclusion, SubBid, TradePackage } from './types.ts'
 import { money } from './words.ts'
 
 /** Exclusions any trade's quote may list, and each trade's own. The portal's form offers these as ticks. */

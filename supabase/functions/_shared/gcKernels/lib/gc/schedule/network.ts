@@ -9,8 +9,8 @@
  */
 import { carriedAmount } from '../bids.ts'
 import { addDays, crewStages, sentBackOpen } from '../building.ts'
-import type { ScheduleActivity } from '../../../../../../../src/lib/gc/schedule/types'
-import type { GcProject, TradePackage } from '../../../../../../../src/lib/gc/types'
+import type { ScheduleActivity } from '../../../../../../../src/lib/gc/schedule/types.ts'
+import type { GcProject, TradePackage } from '../types.ts'
 import { weekdayDate } from '../words.ts'
 
 // ---------------------------------------------------------------------------------------------

@@ -5,30 +5,11 @@
  */
 import type { AiaFieldValues } from '../aiaG702G703Template'
 import type { PayApplication } from './building'
+import type { PayAppParties } from './types'
 import { shortDate } from './words'
 
-/** Who and what the pay application is for: the parts of the form that are not numbers. */
-export interface PayAppParties {
-  project: string
-  /** "3", or "4, final". */
-  applicationNo: string
-  /** The bill day it is for (YYYY-MM-DD). */
-  periodTo: string
-  /** The day it went. Null: a draft. */
-  sentOn: string | null
-  contractDate: string | null
-  /** Who it goes to: our customer on ours, us on a trade's. */
-  to: { name: string; address: string }
-  /** The property's owner, when it is not the customer (`GcProject.propertyOwner`). */
-  propertyOwner?: string | null
-  /** Who sends it: us on ours, the trade's company on theirs. */
-  from: { name: string; address: string; license?: string }
-  architect: string | null
-  /** The change orders in line 2, each with whether it was signed in this period. A credit is negative. */
-  changeOrders: { amount: number; thisPeriod: boolean }[]
-  /** Line 5's words when retainage is not one plain percent. */
-  retainageWords?: string | null
-}
+/** Who and what the pay application is for. It lives in `types.ts`, a types file the edge copy holds whole. */
+export type { PayAppParties } from './types'
 
 /** The 703 rows the template has: 13 to 46. */
 export const PAY_APP_FIRST_ROW = 13

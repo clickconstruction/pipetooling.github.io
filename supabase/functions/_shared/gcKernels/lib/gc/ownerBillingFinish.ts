@@ -7,7 +7,7 @@
  */
 import type { ProjectedFinish } from './schedule/schedule.ts'
 import { daysBetween, isSubstantial, projectedFinish, substantialCompletionOn } from './schedule/schedule.ts'
-import type { GcProject, GcState } from '../../../../../../src/lib/gc/types'
+import type { GcProject, GcState } from './types.ts'
 import { money, weekdayDate } from './words.ts'
 
 export interface OwnerFinishRisk {

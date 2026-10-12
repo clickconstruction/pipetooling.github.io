@@ -11,7 +11,7 @@
  * packet would read the same way; today the packet holds one (`mockups/board-b6b.md`, the known limit).
  */
 import { isoToPlainDateInAppTz } from '../personContractAppliedDate.ts'
-import type { Partner } from '../../../../../../src/lib/gc/types'
+import type { Partner } from './types.ts'
 
 /** A company's paper, as the readers select it. */
 export interface CompanyPaperRow {

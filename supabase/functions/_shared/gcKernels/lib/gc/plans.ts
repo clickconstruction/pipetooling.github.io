@@ -9,7 +9,7 @@
  * reads them yet; New project on real data does (PR 4 of to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md,
  * on branch spike/gc-mode).
  */
-import type { PlanSheet, ScopeExclusion, SpecSection } from '../../../../../../src/lib/gc/types'
+import type { PlanSheet, ScopeExclusion, SpecSection } from './types.ts'
 
 // ---------------------------------------------------------------------------------------------
 // The trades: the list, its usual scope and what each usually leaves out, budgets by size

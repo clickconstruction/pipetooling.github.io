@@ -11,7 +11,7 @@
  * builds a project of its own. Nothing here reads the database: the io passes the rows in
  * (`src/lib/gc/scheduleIo.ts`).
  */
-import type { GcProject, GcState } from '../../../../../../../src/lib/gc/types'
+import type { GcProject, GcState } from '../types.ts'
 import type {
   ActivityPart,
   CrewCount,
@@ -35,7 +35,7 @@ import type {
   TemplateUse,
   WaitKind,
   WhatIfBase,
-} from '../../../../../../../src/lib/gc/schedule/types'
+} from '../../../../../../../src/lib/gc/schedule/types.ts'
 import { waitKind } from './waits.ts'
 
 /** The rows one job's schedule is kept in (the generated types, trimmed to what the mapper reads). */

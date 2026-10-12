@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { gcPortalStages, loadGcStageInputs, type GcPortalStages } from '../_shared/gcStages.ts'
+import { gcPortalStages, loadGcStageInputs, type GcPortalStages, type GcStageAdmin } from '../_shared/gcStages.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { portalLetterhead } from '../_shared/portalLetterhead.ts'
@@ -199,7 +199,7 @@ serve(async (req) => {
         .select(jobSelect)
         .or(`customer_id.eq.${link.customer_id},gc_customer_id.eq.${link.customer_id}`)
         .limit(500)
-      jobs = dedupeJobsById((jobsRaw ?? []) as PortalJobRow[])
+      jobs = dedupeJobsById((jobsRaw ?? []) as unknown as PortalJobRow[])
     } else {
       const jobFilterColumn = link.audience === 'gc' ? 'gc_customer_id' : 'customer_id'
       const { data: jobsRaw } = await admin
@@ -207,7 +207,7 @@ serve(async (req) => {
         .select(jobSelect)
         .eq(jobFilterColumn, link.customer_id)
         .limit(500)
-      jobs = (jobsRaw ?? []) as PortalJobRow[]
+      jobs = (jobsRaw ?? []) as unknown as PortalJobRow[]
     }
 
     // Billed invoices on jobs of ANY non-paid status (working, waiting,
@@ -595,7 +595,7 @@ serve(async (req) => {
     if (link.audience === 'gc' || link.audience === 'all') {
       const sharing = jobs.filter((j) => j.gc_shares_stage_dates === true && j.gc_customer_id === link.customer_id)
       if (sharing.length > 0) {
-        const inputs = await loadGcStageInputs(admin, sharing.map((j) => j.id))
+        const inputs = await loadGcStageInputs(admin as unknown as GcStageAdmin, sharing.map((j) => j.id))
         const todayYmd = todayYmdInAppTz()
         for (const j of sharing) {
           const forJob = inputs.byJob(j.id)

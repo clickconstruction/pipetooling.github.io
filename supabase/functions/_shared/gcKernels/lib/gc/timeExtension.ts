@@ -9,8 +9,8 @@ import { changeOrderDays, projectChangeOrders } from './ownerBilling.ts'
 import { ownerFinishRisk } from './ownerBillingFinish.ts'
 import { CUSTOMER_WHY } from './schedule/customerSchedule.ts'
 import { daysBetween, scheduleLinesOf, substantialCompletionOn } from './schedule/schedule.ts'
-import type { ScheduleMove, ScheduleMoveReason } from '../../../../../../src/lib/gc/schedule/types'
-import type { ChangeOrder, ChangeOrderReason, GcProject, GcState } from '../../../../../../src/lib/gc/types'
+import type { ScheduleMove, ScheduleMoveReason } from '../../../../../../src/lib/gc/schedule/types.ts'
+import type { ChangeOrder, ChangeOrderReason, GcProject, GcState } from './types.ts'
 import { money, shortDate, weekdayDate } from './words.ts'
 
 /** The reasons a time extension asks for: the customer's own decision, or a change to the plans. A move for a change order belongs to that order. */

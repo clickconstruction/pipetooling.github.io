@@ -12,7 +12,7 @@
  * `gc_plan_sets`.
  */
 import { packagesForSheets, packagesForSpecs, type ReachProject } from './lineReach.ts'
-import type { PlanSheet } from '../../../../../../src/lib/gc/types'
+import type { PlanSheet } from './types.ts'
 
 /** A `gc_plan_set_sends` row as the board reads it: which company a set went to, and whether it changed their trade. */
 export interface PlanSetSendRow {

@@ -8,10 +8,10 @@
  * its scope item's, or its own on a change order's line (`gc_sow_line_of`). Neither percent is stored on the line:
  * `pctReported` is the newest report, `pctBilled` the most an approved or paid draw took it to (decision 3).
  */
-import type { Database } from '../../../../../../src/types/database'
+import type { Database } from '../../../../../../src/types/database.ts'
 import { drawMoney, payAppKnown, payApplication } from './building.ts'
 import { backChargeOf } from './backChargeRows.ts'
-import type { BackCharge, ChangeOrder, Draw, DrawSentBack, GcState, Partner, Sow, SovLine } from '../../../../../../src/lib/gc/types'
+import type { BackCharge, ChangeOrder, Draw, DrawSentBack, GcState, Partner, Sow, SovLine } from './types.ts'
 
 type Tables = Database['public']['Tables']
 export type DrawTableRow = Tables['gc_draws']['Row']

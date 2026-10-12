@@ -7,8 +7,11 @@
  *
  * - from the entries below, every file their value imports reach, in `src`'s own layout, so each relative import stays
  *   the same with `.ts` added;
- * - an import of types alone becomes `import type`, which Deno erases; one of a file outside the copy points back at
- *   the file in `src`, so the app's typecheck reads the copy as it reads `src`;
+ * - an import of types alone becomes `import type`, which Deno erases at run time but `deno check` reads. A file of types
+ *   whose own imports are types alone is copied too. One that imports nothing (the database's types, the schedule's)
+ *   is pointed at in `src` with its `.ts`, so `deno check` resolves it as it stands and the copy never holds the
+ *   generated database file. A file the copy only takes types from that runs code of its own is refused: move the
+ *   types to a types file;
  * - a package import, a dynamic or side-effect import, a browser global (`document`, `localStorage`, `import.meta`)
  *   or an import it cannot find is refused, by file.
  *
@@ -81,7 +84,8 @@ function allTypeNames(clause) {
 }
 
 /**
- * The copy, worked out: `files` maps each path under `OUT_DIR` to its content, and `problems` says what was refused.
+ * The copy, worked out: `files` maps each path under `OUT_DIR` to its content, `problems` says what was refused, and
+ * `typeFiles` names the files held for their types alone.
  * `io` reads the repo, so a test can plant a file. Two passes: the files the entries' value imports reach, then each
  * file's imports written for where it lands.
  */
@@ -104,32 +108,61 @@ export function generateEdgeKernels(root, io = { readFile: (p) => readFileSync(p
       return { whole, indent, kind, clause, quote, spec, types: typeOnly || typeNames !== null, typeNames }
     })
 
-  // 1. What the entries' value imports reach, each file read once.
+  // 1. What the entries' value imports reach, each file read once, then the files of types the copy reads types from.
   const sources = new Map()
   const queue = Object.keys(ENTRIES).map((e) => join(src, e))
-  while (queue.length > 0) {
-    const abs = queue.shift()
-    const rel = relOf(abs)
-    if (sources.has(rel)) continue
-    const source = io.readFile(abs)
-    sources.set(rel, { abs, source })
-    const code = codeOnly(source)
-    if (SIDE_EFFECT.test(code)) problems.push(`src/${rel}: a side-effect import`)
-    if (DYNAMIC.test(code)) problems.push(`src/${rel}: a dynamic import`)
-    for (const re of BROWSER) if (re.test(code)) problems.push(`src/${rel}: a browser global (${re.source})`)
-    for (const imp of importsOf(source)) {
-      if (!imp.spec.startsWith('./') && !imp.spec.startsWith('../')) {
-        if (!imp.types) problems.push(`src/${rel}: a package import ('${imp.spec}')`)
-        continue
+  /** Each import of types alone from a relative file: who imports it, as written, and the file. */
+  const typeImports = []
+  const drain = () => {
+    while (queue.length > 0) {
+      const abs = queue.shift()
+      const rel = relOf(abs)
+      if (sources.has(rel)) continue
+      const source = io.readFile(abs)
+      sources.set(rel, { abs, source })
+      const code = codeOnly(source)
+      if (SIDE_EFFECT.test(code)) problems.push(`src/${rel}: a side-effect import`)
+      if (DYNAMIC.test(code)) problems.push(`src/${rel}: a dynamic import`)
+      for (const re of BROWSER) if (re.test(code)) problems.push(`src/${rel}: a browser global (${re.source})`)
+      for (const imp of importsOf(source)) {
+        if (!imp.spec.startsWith('./') && !imp.spec.startsWith('../')) {
+          if (!imp.types) problems.push(`src/${rel}: a package import ('${imp.spec}')`)
+          continue
+        }
+        const target = find(abs, imp.spec)
+        if (!target) problems.push(`src/${rel}: cannot find '${imp.spec}'`)
+        else if (!imp.types) queue.push(target)
+        else typeImports.push({ rel, spec: imp.spec, target })
       }
-      const target = find(abs, imp.spec)
-      if (!target) problems.push(`src/${rel}: cannot find '${imp.spec}'`)
-      else if (!imp.types) queue.push(target)
     }
+  }
+  drain()
+  // A file only types are taken from, once the code is known: one the copy holds already is read there; one that
+  // imports nothing is pointed at in src; one whose imports are types alone is copied, and its imports read the same
+  // way; one with code of its own is refused.
+  const refused = new Set()
+  /** The files copied for their types alone: no value import reaches them, so no bundle does. */
+  const typeFiles = []
+  for (let i = 0; i < typeImports.length; i += 1) {
+    const { rel, spec, target } = typeImports[i]
+    const targetRel = relOf(target)
+    if (sources.has(targetRel)) continue
+    const own = importsOf(io.readFile(target))
+    if (own.length === 0) continue
+    if (own.every((imp) => imp.types)) {
+      typeFiles.push(targetRel)
+      queue.push(target)
+      drain()
+      continue
+    }
+    const key = `${rel} ${targetRel}`
+    if (refused.has(key)) continue
+    refused.add(key)
+    problems.push(`src/${rel}: types from '${spec}', which runs code of its own: move them to a types file`)
   }
 
   // 2. Each file's imports for where it lands: a value import with `.ts`; types alone as `import type`, at the copy's
-  // own file when it holds one, else back at src, which Deno erases and the typecheck reads.
+  // own file when it holds one, else at the file in src with its `.ts` (one that imports nothing, step 1 says).
   const files = new Map()
   for (const rel of [...sources.keys()].sort()) {
     const { abs, source } = sources.get(rel)
@@ -142,14 +175,14 @@ export function generateEdgeKernels(root, io = { readFile: (p) => readFileSync(p
       const dotted = (to) => (to.startsWith('.') ? to : `./${to}`)
       const to = sources.has(targetRel)
         ? dotted(posix.relative(posix.dirname(rel), targetRel))
-        : dotted(posix.relative(posix.dirname(posix.join(OUT_DIR, rel)), posix.join('src', targetRel.replace(/\.ts$/, ''))))
+        : dotted(posix.relative(posix.dirname(posix.join(OUT_DIR, rel)), posix.join('src', targetRel)))
       const clause = imp.typeNames ? ` type { ${imp.typeNames.join(', ')} } ` : imp.clause
       out = out.replace(imp.whole, `${imp.indent}${imp.kind}${clause}from ${imp.quote}${to}${imp.quote}`)
     }
     files.set(rel, HEADER(rel) + out)
   }
   files.set('index.ts', indexOf([...sources.keys()].sort()))
-  return { files, problems }
+  return { files, problems, typeFiles: typeFiles.sort() }
 }
 
 /** The copy's index: what the readers import, and the files it holds. */

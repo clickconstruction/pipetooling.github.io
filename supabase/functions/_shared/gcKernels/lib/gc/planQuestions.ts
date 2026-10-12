@@ -7,7 +7,7 @@
  */
 import type { QuestionState } from './questions.ts'
 import { QUESTIONS_CLOSE_DAYS } from './questions.ts'
-import type { GcProject, PlanQuestion } from '../../../../../../src/lib/gc/types'
+import type { GcProject, PlanQuestion } from './types.ts'
 
 /**
  * The day questions close on a project we are bidding: three days before our bid is due. From

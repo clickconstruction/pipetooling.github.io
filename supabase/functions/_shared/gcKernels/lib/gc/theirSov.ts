@@ -5,7 +5,7 @@
  * spike/gc-mode, `gcTheirSov.ts`). The Portal lane's P2b-ii brought the lines a quote form starts with and the add-up check; the
  * Board's B6 brings where the money claimed stands on their lines.
  */
-import type { TheirSovLine } from '../../../../../../src/lib/gc/types'
+import type { TheirSovLine } from './types.ts'
 
 /** The lines a trade's form starts with. They can rename, add or take any out. */
 export const SOV_STAGES = ['Rough-in', 'Top out', 'Trim']

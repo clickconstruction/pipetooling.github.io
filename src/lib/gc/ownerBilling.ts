@@ -5,14 +5,13 @@
  * bill's money, when it is due, our waivers, the spread of our costs and fee, a change order's words. O2b
  * adds `ownerPayApp` and the rest, which read the Building lane's kernels.
  */
-import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, OwnerRetainageStep, TradePackage } from './types'
+import type { ChangeOrder, GcCustomer, GcProject, GcState, OwnerPayAppSent, OwnerRetainageStep, PayAppParties, TradePackage } from './types'
 import { carriedAmount, proposalTotals } from './bids'
 import { partnerById } from './lookups'
 import { daysUntil, money, shortDate } from './words'
 import type { PayAppLine, PayApplication } from './building'
 import { changeOrderTradePct, ownCrewWork, retainageHeldNow, tradeCloseout } from './building'
 import { GC_COMPANY } from './company'
-import type { PayAppParties } from './payAppFile'
 
 export function projectChangeOrders(project: GcProject): ChangeOrder[] {
   return project.changeOrders ?? []

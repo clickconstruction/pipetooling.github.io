@@ -8,10 +8,9 @@
  * sections at any set, its trades with their scope lines and exclusions, and the scope book's view
  * of it (`ScopeBookProject`). Nothing here reads the database: the screen passes the rows in.
  */
-import type { CustomerRole, PlanSheet, ScopeExclusion, SpecSection } from '../../../../../../src/lib/gc/types'
+import type { CustomerRole, PlanSheet, ScopeBookProject, ScopeExclusion, SpecSection } from './types.ts'
 import type { PlanQuestionView } from './questions.ts'
 import { indexDiff, sheetIndexInText, type IndexDiff } from './plans.ts'
-import type { ScopeBookProject } from '../../../../../../src/lib/gc/scopeBook'
 
 /** The rows as the tables hold them (the generated types, trimmed to what the mapper reads). */
 export interface GcProjectRows {

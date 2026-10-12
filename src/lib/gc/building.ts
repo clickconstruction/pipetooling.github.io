@@ -3,8 +3,7 @@
  * word for word from the GC mode prototype (branch spike/gc-mode, `gcBuilding.ts`) by the schedule's
  * PR 1a, which reads them. The Building lane's lift (U2) adds the rest of `gcBuilding.ts` here.
  */
-import type { PayAppParties } from './payAppFile'
-import type { ChangeOrder, Draw, DrawSentBack, GcProject, GcState, Partner, SovLine, Sow, TradePackage } from './types'
+import type { ChangeOrder, Draw, DrawSentBack, GcProject, GcState, Partner, PayAppParties, SovLine, Sow, TradePackage } from './types'
 import { punchCounts, punchWords } from './buildingPunch'
 import { GC_COMPANY } from './company'
 import { partnerById } from './lookups'

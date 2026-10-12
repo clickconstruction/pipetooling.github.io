@@ -159,7 +159,8 @@ async function readJobWork(admin: SupabaseClient, awarded: string[]): Promise<Pi
   return { submittals, submittalHolds, submittalRounds, rfis, rfiHolds, punch }
 }
 
-const NO_SCHEDULE = { schedules: {}, scheduleWork: {}, scheduleTodos: [] }
+// Typed as the read's own to-dos, so a job with a schedule fits the same shape.
+const NO_SCHEDULE = { schedules: {}, scheduleWork: {}, scheduleTodos: [] as ReturnType<typeof portalScheduleWorkFromRows>['todos'] }
 
 /**
  * The company's chart and its side of the schedule on each of its jobs being built, from one read. A failed read
