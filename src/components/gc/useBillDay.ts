@@ -26,7 +26,7 @@ import {
 } from '../../lib/gc/billDay/billDayIo'
 import { billRiver, type BillRiver } from '../../lib/gc/billDay/summary'
 import { billDayDates, billDayGates, scheduleSays, tradeDraws, walkDraws, type BillDayDates, type BillDayGate, type TradeDraw } from '../../lib/gc/billDay/trades'
-import { claimsToCheck, type ClaimToCheck } from '../../lib/gc/billDay/walk'
+import { claimsToCheck, type ClaimToCheck, type LineCheck } from '../../lib/gc/billDay/walk'
 import type { DrawTables } from '../../lib/gc/drawRows'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -38,6 +38,8 @@ export interface BillDayRead {
   items: ClaimToCheck[]
   gates: BillDayGate[]
   river: BillRiver
+  /** Every tap on the job's draws, oldest first, as the kernels read them (a draw's lines at what we see read them). */
+  checks: LineCheck[]
   /** Each tap's photo link, by `drawId:sovId`, the newest kept. */
   photos: Map<string, string>
   nothing: NothingRecord[]
@@ -115,9 +117,10 @@ export function useBillDay(
     const nothing = nothingOf(reads.nothing)
     const rows = tradeDraws(state, project, dates, nothing)
     const where = whereOnSiteOf(reads.where)
+    const checks = lineChecksOf(reads.checks, drawTables.sowLines)
     const items = claimsToCheck(
       walkDraws(rows),
-      lineChecksOf(reads.checks, drawTables.sowLines),
+      checks,
       (sovId) => where[sovId] ?? null,
       (sovId) => scheduleSays(project, sovId, dates.billDay),
     )
@@ -127,6 +130,7 @@ export function useBillDay(
       items,
       gates: billDayGates(project, rows, dates, state.today, items, superintendent),
       river: billRiver(state, project, rows, dates),
+      checks,
       photos: photoLinksOf(reads.checks, drawTables.sowLines),
       nothing,
       cutoff: dates.cutoffDays,

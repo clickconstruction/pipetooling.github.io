@@ -107,4 +107,20 @@ describe('GcMoney', () => {
     expect(screen.getByText('Nobody owes us right now.')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Bill the customer' })).toBeNull()
   })
+
+  it('switches Bill day between To the owner and From the trades (Messages cut 9)', () => {
+    const onSwitch = vi.fn()
+    const { rerender } = render(<GcMoney state={initialGcState()} fromTheTrades={{ open: false, onSwitch, view: <div data-testid="trades-view">the trades</div> }} />)
+    expect(screen.getByRole('button', { name: 'To the owner' }).getAttribute('aria-pressed')).toBe('true')
+    expect(screen.queryByTestId('trades-view')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'From the trades' }))
+    expect(onSwitch).toHaveBeenCalledWith(true)
+    rerender(<GcMoney state={initialGcState()} fromTheTrades={{ open: true, onSwitch, view: <div data-testid="trades-view">the trades</div> }} />)
+    expect(screen.getByTestId('trades-view')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'From the trades' }).getAttribute('aria-pressed')).toBe('true')
+    cleanup()
+    // Without it, Bill day reads as it did: no switch.
+    render(<GcMoney state={initialGcState()} />)
+    expect(screen.queryByRole('button', { name: 'From the trades' })).toBeNull()
+  })
 })
