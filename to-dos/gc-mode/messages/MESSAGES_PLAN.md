@@ -662,6 +662,9 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.105, 2026-10-11**: the quick replies head in a thread narrower than 640 px is two rows, Quick replies with the
+  narrow box and Edit on the first, the group pills on their own line under it, instead of three rows with the box
+  alone on the last (the owner: narrow belongs beside Quick replies in this viewport).
 - **v1.104, 2026-10-11**: the proof pass (the owner: the panel fell off the page). The flow panel scrolls with the page,
   whole, while the thread stays pinned, instead of sticking with a height that ran past the window; on a phone the
   panel is never drawn, the rail and the sheet are; the editor's table scrolls inside its card and the who-moves card
