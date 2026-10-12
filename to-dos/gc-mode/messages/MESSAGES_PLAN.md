@@ -821,6 +821,11 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.166, 2026-10-12**: the thread header in four calm rows: the name with *Customer: Helotes Dental Office ▾*
+  (the chevron hides and shows the contact line, open by default), the phone and the email, then one status row
+  that leads with the move strip and follows with the back pill and a short portal pill at the same size (*portal ·
+  3 d ago · 1 unopened*, the facts on hover), then the stamps sentence; the jobs rail last (the owner, 2026-10-12:
+  "this section feels a little chaotic").
 - **v1.165, 2026-10-12**: the customer's list drops *With us*: the step we are on reads *We are on it* with what
   to expect (*You will have the start date by Mon Oct 5*), a step not reached yet reads *Later* with when it comes
   (*After your start date*, *Once a month, from the first month on site*), each step's when-line in both languages
