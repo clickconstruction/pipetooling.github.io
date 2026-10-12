@@ -664,6 +664,9 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.110, 2026-10-11**: the panel's title is the person's name, *Elena's flow · customer*, and the card's history is
+  *How Elena got here*; the demo had said *Her flow* for every customer, a pronoun guessed from a name (the owner,
+  2026-10-11: why her?). The app never guesses a pronoun; a name is always there.
 - **v1.109, 2026-10-11**: the customer's pay application step is named *Pay application*, not *Pay app sent · certified ·
   paid*, which wrapped the box to three lines beside its day and its tag (the owner, 2026-10-11); the three stages are
   the round's own words instead, *Pay app 3 · paid*, *Pay app 4 · with the architect*, and change orders say *signed*.
