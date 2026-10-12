@@ -380,6 +380,8 @@ type StepPre = {
   facts: FactReading[]
   rounds: RoundReading[]
   open: RoundReading | null
+  /** Its facts as a round not opened yet reads them: what a loop between two rounds is waiting for. */
+  fresh: FactReading[]
   isTrue: boolean
   /** Every fact was true once (ok or bad), so a bad one makes the step lapsed rather than not reached. */
   lapsed: boolean
@@ -397,7 +399,8 @@ function preRead(step: FlowStep, lane: LaneStamps, person: LaneStamps, jobId: st
     return { key: r.key, name: r.name, state, opened: stampDay(r.opened), facts, day: state === 'done' ? null : stepDay(r.due, now) }
   })
   const open = rounds.find((r) => r.state === 'now') ?? null
-  const facts = step.loop ? (open ?? rounds[rounds.length - 1])?.facts ?? step.facts.map(factsFrom([])) : step.facts.map(factsFrom(lane.stamps))
+  const fresh = step.facts.map(factsFrom([]))
+  const facts = step.loop ? (open ?? rounds[rounds.length - 1])?.facts ?? fresh : step.facts.map(factsFrom(lane.stamps))
   const isTrue = step.loop ? rounds.length > 0 && rounds.every((r) => r.state === 'done') : stepTrue(step, facts)
   const wasTrue = (x: FactReading) => x.mark === 'ok' || x.mark === 'bad'
   const lapsed =
@@ -408,7 +411,7 @@ function preRead(step: FlowStep, lane: LaneStamps, person: LaneStamps, jobId: st
       ? { stepId: step.id, jobId, why: `One job, so no ${step.name.toLowerCase()}.`, by: null, at: null }
       : null
   const due = step.loop ? (open ?? rounds.find((r) => r.state === 'next'))?.day?.due ?? null : stampDay(lane.dues[step.id])
-  return { step, facts, rounds, open, isTrue, lapsed, skip: typed ?? oneJob, due }
+  return { step, facts, rounds, open, fresh, isTrue, lapsed, skip: typed ?? oneJob, due }
 }
 
 function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId: string | null, stamps: FlowStamps, now: Date): LaneReading {
@@ -458,6 +461,10 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
 
   const steps: StepReading[] = pre.map((p, i) => {
     const state = states[i] ?? 'later'
+    // A loop on now with no round open waits for its next round: it reads that round's facts, none of them in yet,
+    // not the last round's (the next draw is theirs to ask for, not the last one's payment). A loop past its end keeps
+    // its last round's.
+    const facts = state === 'now' && p.step.loop && !p.open ? p.fresh : p.facts
     let since: string | null = null
     if (state === 'lapsed') {
       const bad = p.facts.find((x) => x.mark === 'bad')
@@ -483,7 +490,7 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
       lane: def.lane,
       state,
       isTrue: p.isTrue,
-      facts: p.facts,
+      facts,
       rounds: p.rounds,
       since,
       day,

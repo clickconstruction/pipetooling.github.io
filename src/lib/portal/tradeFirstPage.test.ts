@@ -109,7 +109,7 @@ describe('Where you are with Click Construction, from the sample company', () =>
         [
           ['ask', 'done', 'Mon Aug 17'],
           ['sow', 'done', 'Sat Sep 5'],
-          ['draws', 'onIt', 'We are on it.'],
+          ['draws', 'yours', 'Send your pay application with its conditional waiver.'],
           ['closeout', 'later', 'Later. At the end of your work.'],
         ],
       ],

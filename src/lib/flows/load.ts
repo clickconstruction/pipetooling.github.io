@@ -297,6 +297,7 @@ export function drawRounds(rows: FlowRows, projectId: string): RoundStamp[] {
       opened: d.requested_on,
       due: null,
       stamps: [
+        stamp('draw_requested', 'ok', d.requested_on),
         ...(d.approved_on ? [stamp('draw_approved', 'ok', d.approved_on)] : []),
         ...(d.paid_on ? [stamp('draw_paid', 'ok', d.paid_on)] : []),
       ],
