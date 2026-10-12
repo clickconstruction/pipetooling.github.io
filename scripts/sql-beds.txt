@@ -7,6 +7,7 @@ ar-unbanked-checks
 ar-stripe-cases
 gc-building
 gc-owner-billing
+portal-customer-lines
 gc-award
 pay-applications
 gc-back-charges
@@ -23,4 +24,3 @@ gc-customer-contacts
 messages-spine
 contract-clauses
 portal-customer-page
-portal-customer-lines
