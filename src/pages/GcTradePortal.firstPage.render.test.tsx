@@ -66,7 +66,9 @@ describe('the trade partner’s first page', () => {
     const needs = region(/^Needs you/)
     expect(needs.queryByText(/Send your Electrical quote for Sample Retail Shell/)).toBeNull()
     expect(needs.getByText('Click charged you $850 on Sample Dental Office. Agree or dispute it by Sun Oct 11.')).toBeTruthy()
-    expect(needs.getByText('You can ask Click for $2,916 on Sample Dental Office.')).toBeTruthy()
+    // Its one draw is paid, so the page's Draws step asks for the next one, and the draw's to-do leaves Needs you.
+    expect(steps('Sample Dental Office').getByText('Send your pay application with its conditional waiver.')).toBeTruthy()
+    expect(needs.queryByText('You can ask Click for $2,916 on Sample Dental Office.')).toBeNull()
   })
 
   it('opens the job from a press on its step and from its name', async () => {

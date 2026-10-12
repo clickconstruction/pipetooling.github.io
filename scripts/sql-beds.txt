@@ -24,8 +24,8 @@ gc-customer-contacts
 quick-replies
 messages-spine
 messages-flows
-flow-draws
 quo-messages
+flow-draws
 contract-clauses
 gc-clause-papers
 portal-customer-page
