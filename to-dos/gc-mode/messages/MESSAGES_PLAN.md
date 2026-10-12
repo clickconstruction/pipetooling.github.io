@@ -768,6 +768,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.134, 2026-10-11**: the line under the box, *Send shows it to you the way they will see it, before it goes*, is
+  gone from the page and lives on the Send button's hover card; the *from the company number* line moved down into
+  its place, right-aligned, so nothing sits between the kinds and the box (the owner's marks, 2026-10-11).
 - **v1.133, 2026-10-11**: a text bubble is filled the Text button's pale blue, with its blue edge, so the two read as one
   thing the way the yellow note and its button do; our own texts a shade deeper (the owner, 2026-10-11).
 - **v1.132, 2026-10-11**: an email is white, plain like a letter, with no edge (the owner: not purple).
