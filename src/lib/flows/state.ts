@@ -15,7 +15,7 @@
  */
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, todayYmdInAppTz, ymdDaysBetween } from '../../utils/dateUtils'
 import type { FactId, FactMark, FlowFact, FlowKind, PaperId } from './facts'
-import { factById } from './facts'
+import { factById, stepFactById } from './facts'
 
 // ---------- the shape: a flow as the office edits it ----------
 
@@ -303,9 +303,12 @@ export function stampDay(at: string | null | undefined): string | null {
   return calendarYmdInAppTzFromIso(t) || null
 }
 
-/** One fact for one person, from the stamps of the lane or round it sits on. No stamp reads `no`. */
+/**
+ * One fact for one person, from the stamps of the lane or round it sits on. No stamp reads `no`. A fact on a library
+ * paper (`doc:<uuid>:signed`) rides in `FactId`'s type from the database and reads the same way.
+ */
 export function factRead(stamps: readonly FactStamp[], fact: FactId): FactReading {
-  const f = factById(fact)
+  const f = stepFactById(fact)
   if (!f) throw new Error(`flows: unknown fact ${fact}`)
   const s = stamps.find((x) => x.fact === fact)
   if (!s) return { fact: f, mark: 'no', at: null, by: null, until: null }

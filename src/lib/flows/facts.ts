@@ -496,5 +496,70 @@ export function factGroups(): { group: FactGroup; facts: FlowFact[] }[] {
 
 /** A step's facts in one phrase: "their W-9 is signed and their insurance is current"; `or` on a fork. */
 export function factsWords(facts: readonly string[], join: 'and' | 'or'): string {
-  return facts.map((id) => factById(id)?.text ?? id).join(join === 'or' ? ' or ' : ' and ')
+  return facts.map((id) => stepFactById(id)?.text ?? id).join(join === 'or' ? ' or ' : ' and ')
+}
+
+// ---------- papers made at runtime: the Contract library's documents ----------
+
+/** A paper the editor's New paper window made: its Contract library document, `doc:<uuid>`. */
+export type DocPaperId = `doc:${string}`
+
+/** What a library paper's row says: on file, current (its last day ahead), signed, or sent. */
+export type DocFactKind = 'on_file' | 'current' | 'signed' | 'sent'
+
+export const DOC_FACT_KINDS: readonly DocFactKind[] = ['on_file', 'current', 'signed', 'sent']
+
+/** A fact on a library paper: `doc:<uuid>:signed`. */
+export type DocFactId = `doc:${string}:${DocFactKind}`
+
+/** What a step may pick: a fact from the list or one on a library paper; a paper from the list or a library one. */
+export type StepFactId = FactId | DocFactId
+export type StepPaperId = PaperId | DocPaperId
+
+const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+const DOC_PAPER = new RegExp(`^doc:(${UUID})$`)
+const DOC_FACT = new RegExp(`^doc:(${UUID}):(on_file|current|signed|sent)$`)
+
+export function isDocPaperId(id: string): id is DocPaperId {
+  return DOC_PAPER.test(id)
+}
+
+/** The library document and the kind a `doc:<uuid>:<kind>` fact reads; null for any other id. */
+export function docFactOf(id: string): { docId: string; kind: DocFactKind } | null {
+  const m = DOC_FACT.exec(id)
+  return m ? { docId: m[1] ?? '', kind: (m[2] ?? 'on_file') as DocFactKind } : null
+}
+
+export const docFactId = (docId: string, kind: DocFactKind): DocFactId => `doc:${docId}:${kind}`
+
+const DOC_WORDS: Readonly<Record<DocFactKind, (name: string) => string>> = {
+  on_file: (name) => `${name} is on file`,
+  current: (name) => `${name} is current`,
+  signed: (name) => `${name} is signed`,
+  sent: (name) => `${name} went`,
+}
+
+/**
+ * A fact on a library paper, read like the list's: a Papers fact on the person, kept in full. `name` is the library
+ * document's, "the paper" until the caller knows it. Its `id` is the runtime id; it borrows `FactId`'s type, since a
+ * reading names its fact by the step's id and nothing indexes the list by a runtime one.
+ */
+export function docFact(id: DocFactId, name = 'the paper'): FlowFact {
+  const of = docFactOf(id)
+  const kind = of?.kind ?? 'on_file'
+  return {
+    id: id as unknown as FactId,
+    text: DOC_WORDS[kind](name),
+    small: `${name}, from the Contract library, as its row on their Documents says`,
+    group: 'Papers',
+    reads: `person_contract_documents where applied_contract_template_document_id = ${of?.docId ?? '?'}`,
+    scope: 'person',
+    kept: 'yes',
+    gap: null,
+  }
+}
+
+/** A step's fact by its id: from the list, or one on a library paper; null for neither. */
+export function stepFactById(id: string, docName?: string): FlowFact | null {
+  return factById(id) ?? (docFactOf(id) ? docFact(id as DocFactId, docName) : null)
 }
