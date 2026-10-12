@@ -1,0 +1,607 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Customer messages prototype</title>
+<meta name="description" content="Prototype: one line to a residential customer from the job window, the tech's phone and the office, on the Messages spine. Click Plumbing. Made-up people. Nothing is saved.">
+<style>
+[hidden]{display:none!important}
+img{max-width:100%}
+.ver{font-size:13px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:1px 8px;align-self:center}
+.log{max-width:76ch;display:flex;flex-direction:column;gap:10px}
+.log article{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.log article h4{margin:0 0 4px;font-size:15px}
+.log article h4 small{color:var(--muted);font-weight:400;margin-left:8px}
+.log ul{margin:4px 0 0;padding-left:18px;font-size:14px}
+.log li{margin:2px 0}
+
+/* Layout: one page, five screens behind a top switch; each screen is a replica of the app surface it changes, at that surface's real width. Tokens follow the Messages prototype's (text blue, email violet, team yellow). */
+:root{
+  --bg:#f3f5f8;--surface:#ffffff;--text:#1b1f24;--muted:#5c6470;--border:#dde1e6;--chip:#eef1f5;
+  --accent:#1f5fbf;--accent-soft:#e8f0fc;--text-ch:#1f5fbf;--text-soft:#e8f0fc;--email-ch:#6b4fbb;--email-soft:#efe9fb;
+  --team:#fff6c2;--team-border:#e9d77a;--ok:#1a7f3c;--ok-soft:#e6f6ec;--warn:#b35c00;--warn-soft:#fff1e0;--danger:#b3261e;
+  --app:#7a3e9d;--app-soft:#f3e9f9;--bubble-them:#e9ebef;--phone:#111318;--radius:10px;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;
+  --accent:#6ea3f0;--accent-soft:#1d2d47;--text-ch:#6ea3f0;--text-soft:#1d2d47;--email-ch:#a68ff0;--email-soft:#2b2446;
+  --team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;
+  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;
+  --accent:#6ea3f0;--accent-soft:#1d2d47;--text-ch:#6ea3f0;--text-soft:#1d2d47;--email-ch:#a68ff0;--email-soft:#2b2446;
+  --team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;
+  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--font)}
+button{font:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px}
+button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.quiet{border-color:transparent;background:transparent;color:var(--accent)}
+button.pill{border-radius:999px;padding:5px 12px;font-size:14px}
+button.pill.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.pill .n{font-weight:700;margin-left:4px;color:var(--accent)}
+button.pill.on .n{color:#fff}
+textarea{font:inherit;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--text);width:100%;resize:vertical;min-height:64px}
+.wrap{max-width:1040px;margin:0 auto;padding-block:16px 48px;padding-inline:16px}
+header.top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-bottom:6px}
+header.top h1{font-size:22px;margin:0 12px 0 0;letter-spacing:-.01em}
+header.top .note{flex-basis:100%}
+.note{color:var(--muted);font-size:13px}
+nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:10px 0 18px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:6px;z-index:5}
+nav.tabs button{border-color:transparent;background:transparent;border-radius:999px;padding:6px 12px;color:var(--muted)}
+nav.tabs button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+nav.tabs button b{display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--chip);color:var(--muted);font-size:11px;line-height:18px;text-align:center;margin-right:6px}
+nav.tabs button.on b{background:var(--accent);color:#fff}
+section.screen{display:none}section.screen.on{display:block}
+.lead{margin:0 0 14px;font-size:16px;max-width:70ch}
+.lead b{font-weight:600}
+h2{font-size:17px;margin:22px 0 8px}
+h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 14px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* ---- Screen 1: the job window ---- */
+.win{background:var(--surface);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.08);overflow:hidden}
+.win .head{padding:18px 22px 10px;border-bottom:1px solid var(--border)}
+.win .hrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.win .hrow .sp{margin-left:auto;display:flex;gap:10px;align-items:center;color:var(--muted);font-size:14px}
+.tag{display:inline-block;border-radius:8px;padding:2px 10px;font-weight:700;font-size:14px;color:#fff;background:var(--accent)}
+.tag.plum{background:#c9772b}
+.win .hrow h2{margin:0;font-size:22px}
+.win .addr{color:var(--muted);margin-top:4px;font-size:15px}
+.win .sub{display:flex;align-items:center;gap:12px;padding:14px 22px 8px;flex-wrap:wrap}
+.win .sub .crew{display:inline-flex;align-items:center;gap:8px}
+.win .sub .crew i{width:36px;height:36px;border:1px solid var(--border);border-radius:9px;display:inline-grid;place-items:center;font-style:normal;color:var(--accent)}
+.win .sub .right{margin-left:auto;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.chip{display:inline-block;border:1px solid var(--border);border-radius:999px;padding:2px 10px;font-size:13px;color:var(--muted);background:var(--surface)}
+.win .filters{display:flex;gap:6px;padding:4px 22px 10px;flex-wrap:wrap;align-items:center}
+.win .filters .new{position:relative}
+.win .filters .new::after{content:"";position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:var(--danger);border:2px solid var(--surface)}
+.feed{padding:4px 22px 8px;max-height:520px;overflow:auto}
+.day{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:16px 0 6px}
+.row{display:grid;grid-template-columns:30px 62px 118px minmax(0,1fr);gap:10px;align-items:start;padding:9px 0;border-bottom:1px dashed var(--border);font-size:15px}
+.row .n{width:26px;height:26px;border:1px solid var(--border);border-radius:50%;font-size:12px;display:grid;place-items:center;color:var(--muted);font-variant-numeric:tabular-nums}
+.row .t{color:var(--muted);font-family:var(--mono);font-size:13px;padding-top:4px;font-variant-numeric:tabular-nums}
+.row .w{color:var(--muted);padding-top:3px}
+.row .w b{color:var(--text);font-weight:600}
+.row .b{min-width:0;padding-top:3px}
+.row .b .dim{color:var(--muted)}
+.row.cust{background:var(--surface);border-left:3px solid transparent;margin-left:-14px;padding-left:11px;border-radius:0 8px 8px 0}
+.row.cust.text{border-left-color:var(--text-ch)}
+.row.cust.email{border-left-color:var(--email-ch)}
+.row.cust.portal{border-left-color:var(--ok)}
+.row.cust.app{border-left-color:var(--app)}
+.row.cust.in{background:var(--bg)}
+.row.team{background:var(--team)}
+.who{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px}
+.who.text{background:var(--text-soft);color:var(--text-ch)}
+.who.email{background:var(--email-soft);color:var(--email-ch)}
+.who.portal{background:var(--ok-soft);color:var(--ok)}
+.who.app{background:var(--app-soft);color:var(--app)}
+.tie{display:inline-flex;gap:6px;margin-top:5px;flex-wrap:wrap}
+.tie span{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted)}
+.tie span.this{color:var(--accent);border-color:var(--accent)}
+.att{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:2px 8px;font-size:13px;margin-top:4px;color:var(--muted)}
+.subj{font-weight:600}
+.composer{border-top:1px solid var(--border);padding:12px 22px 18px;background:var(--surface)}
+.kinds{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.kinds button{border-radius:999px;padding:4px 12px;font-size:14px}
+.kinds button.on.note{background:var(--team);border-color:var(--team-border);color:var(--text)}
+.kinds button.on.text{background:var(--text-soft);border-color:var(--text-ch);color:var(--text-ch);font-weight:600}
+.kinds button.on.email{background:var(--email-soft);border-color:var(--email-ch);color:var(--email-ch);font-weight:600}
+.kinds .from{margin-left:auto;color:var(--muted);font-size:13px}
+.qr{border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:8px;background:var(--bg)}
+.qr .grp{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px;align-items:start;padding:4px 0}
+.qr .grp + .grp{border-top:1px dashed var(--border)}
+.qr .gt{font-size:13px;color:var(--muted);padding-top:5px}
+.qr .gt i{display:block;font-style:normal;font-size:11px;color:var(--warn)}
+.qr .lines{display:flex;gap:6px;flex-wrap:wrap}
+.qr .lines button{font-size:13px;padding:4px 10px;border-radius:999px;background:var(--surface)}
+.qr .lines button.mine{border-style:dashed}
+.qr .lines button:hover{border-color:var(--accent)}
+.boxrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.boxrow .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.count{font-size:13px;color:var(--muted);margin-top:6px;display:flex;gap:14px;flex-wrap:wrap}
+.count b{color:var(--text);font-weight:600}
+@media (max-width:640px){.row{grid-template-columns:24px 50px minmax(0,1fr)}.row .w{grid-column:3}.row .b{grid-column:1/-1;padding-left:84px}.qr .grp{grid-template-columns:1fr}.boxrow{grid-template-columns:1fr}.win .head,.win .sub,.win .filters,.feed,.composer{padding-inline:14px}}
+
+/* ---- Screen 2 & 3: phones ---- */
+.phones{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.phone{width:375px;max-width:100%;background:var(--phone);border-radius:38px;padding:12px;box-shadow:0 14px 40px rgba(0,0,0,.25)}
+.phone .scr{background:var(--bg);border-radius:28px;min-height:680px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.phone .bar{display:flex;justify-content:space-between;padding:12px 22px 4px;font-size:13px;font-weight:600}
+.pcap{max-width:375px;margin-top:10px}
+.jm{padding:10px 14px;display:flex;flex-direction:column;gap:10px;flex:1}
+.jm .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px}
+.jm .card h4{margin:0 0 2px;font-size:17px}
+.jm .card .m{color:var(--muted);font-size:14px}
+.jm .press{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.jm .press button{min-height:48px;border-radius:12px;font-size:15px}
+.jm .press button.msg{grid-column:1/-1;background:var(--text-soft);border-color:var(--text-ch);color:var(--text-ch);font-weight:600;position:relative}
+.jm .press button.msg .dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--danger)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;border-top:1px solid var(--border);padding:12px 14px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(0,0,0,.15);transform:translateY(102%);transition:transform .25s}
+.sheet.open{transform:none}
+.sheet .grab{width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 10px}
+.sheet h4{margin:0 0 2px;font-size:16px}
+.sheet .big{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.sheet .big button{min-height:52px;text-align:left;border-radius:12px;padding:8px 14px;font-size:15px;display:flex;flex-direction:column;justify-content:center}
+.sheet .big button small{color:var(--muted);font-size:12px;font-weight:400}
+.sheet .big button.office{border-style:dashed}
+.prev{background:var(--text-soft);border:1px solid var(--text-ch);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:15px;white-space:pre-wrap}
+.prev .opt{display:block;margin-top:8px;font-size:12px;color:var(--muted)}
+.sheet .acts{display:flex;gap:8px;margin-top:10px}
+.sheet .acts button{flex:1;min-height:46px;border-radius:12px;font-size:15px}
+.mini{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 12px}
+.mini .ln{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px;font-size:13px;padding:6px 0;border-bottom:1px dashed var(--border)}
+.mini .ln:last-child{border-bottom:0}
+.mini .ln .t{color:var(--muted);font-family:var(--mono);font-size:12px}
+.mini .ln .w{font-weight:600;font-size:12px;color:var(--muted)}
+.sent{font-size:13px;color:var(--ok);margin-top:8px}
+/* Dana's phone */
+.imsg{padding:8px 12px;display:flex;flex-direction:column;gap:6px;flex:1}
+.imsg .from{text-align:center;font-size:12px;color:var(--muted);margin-bottom:4px}
+.bub{max-width:82%;padding:8px 12px;border-radius:18px;font-size:15px;line-height:1.35}
+.bub.us{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.bub.them{align-self:flex-start;background:var(--bubble-them);border-bottom-left-radius:5px}
+.bub.app{align-self:flex-end;background:var(--accent);color:#fff;border-bottom-right-radius:5px}
+.bub u{text-decoration:underline}
+.bub .dl{display:block;font-size:11px;opacity:.75;margin-top:3px;text-align:right}
+.stamp{text-align:center;font-size:11px;color:var(--muted);margin:6px 0 2px}
+.portal{background:var(--surface);margin:8px 12px 12px;border:1px solid var(--border);border-radius:14px;padding:12px}
+.portal h4{margin:0;font-size:15px}
+.portal .yourmove{background:var(--warn-soft);border:1px solid var(--warn);border-radius:10px;padding:10px;margin-top:8px}
+.portal .yourmove b{display:block;color:var(--warn);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.portal .yourmove button{margin-top:8px;width:100%;min-height:42px;border-radius:10px}
+.steps{display:flex;gap:4px;margin-top:10px;align-items:center;flex-wrap:wrap}
+.steps span{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
+.steps span.done{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.steps span.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn);font-weight:700}
+
+/* ---- Screen 4: across the app ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.place{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.place h4{margin:0;font-size:15px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.place p{margin:0;font-size:14px}
+.place .st{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:1px 6px}
+.st.built{background:var(--ok-soft);color:var(--ok)}
+.st.spike{background:var(--text-soft);color:var(--text-ch)}
+.st.new{background:var(--warn-soft);color:var(--warn)}
+.place .how{font-size:13px;color:var(--muted)}
+.flow{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 4px}
+.flow span{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 9px;background:var(--surface)}
+.flow span i{font-style:normal;color:var(--muted);display:block;font-size:11px}
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:6px 0 14px}
+
+/* ---- Screen 5: decisions ---- */
+ol.dec{padding-left:0;list-style:none;counter-reset:d;display:flex;flex-direction:column;gap:10px;max-width:76ch}
+ol.dec li{counter-increment:d;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px 12px 50px;position:relative}
+ol.dec li::before{content:counter(d);position:absolute;left:14px;top:12px;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700;display:grid;place-items:center;font-size:13px}
+ol.dec li b{display:block;margin-bottom:2px}
+ol.dec li .rec{margin-top:6px;font-size:14px;padding:6px 10px;border-left:3px solid var(--ok);background:var(--ok-soft);border-radius:0 8px 8px 0}
+ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
+.built{columns:2;column-gap:24px;font-size:14px;max-width:76ch}
+.built div{break-inside:avoid;padding:3px 0}
+.built div::before{content:"✓ ";color:var(--ok);font-weight:700}
+@media (max-width:640px){.built{columns:1}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <h1>Customer messages</h1><span class="ver" id="ver">v0.1 · 2026-10-12</span>
+  <span class="note">A mockup of one line to the customer from the job, the tech's phone and the office. Made-up people and jobs, nothing is saved. Everything that moves here is a press you can try.</span>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="on" data-s="s1"><b>1</b>In the job window</button>
+  <button data-s="s2"><b>2</b>On the tech's phone</button>
+  <button data-s="s3"><b>3</b>What Dana sees</button>
+  <button data-s="s4"><b>4</b>Across the app</button>
+  <button data-s="s5"><b>5</b>Decisions</button>
+  <button data-s="s6"><b>6</b>Log</button>
+</nav>
+
+<!-- ===================== 1 ===================== -->
+<section class="screen on" id="s1">
+<p class="lead">The job window you showed, with a <b>Customer</b> chip and the customer's lines in the same feed as notes, reports and status. A text is blue, an email is violet, a line from the app is purple, a portal press is green. The box at the bottom gains two kinds beside <b>Note</b>: <b>Text</b> and <b>Email</b>, each with the team's quick replies for the step the job is on.</p>
+
+<div class="win" aria-label="Job window mockup">
+  <div class="head">
+    <div class="hrow">
+      <span class="tag">Job: 1312</span><span class="tag plum">PLUM</span><h2>Oakridge sewer line</h2>
+      <span class="sp"><span class="chip" style="color:var(--accent);border-color:var(--accent)">Sessions</span><span>esc to close</span><span style="font-size:22px;line-height:1">×</span></span>
+    </div>
+    <div class="addr">4120 Oakridge Trl San Antonio, TX · Dana Whitfield · (210) 555-0137 · dana.whitfield@example.com</div>
+  </div>
+  <div class="sub">
+    <span class="crew"><i>👥</i>Luis</span>
+    <span class="right"><span>40% complete</span><span class="chip">crew report Oct 5</span><span style="color:var(--accent)">money story →</span></span>
+  </div>
+  <div class="filters" id="filters">
+    <button class="pill" data-f="all">All</button>
+    <button class="pill" data-f="note">Notes <span class="n">3</span></button>
+    <button class="pill" data-f="report">Reports <span class="n">1</span></button>
+    <button class="pill" data-f="status">Status <span class="n">3</span></button>
+    <button class="pill" data-f="billing">Billing</button>
+    <button class="pill" data-f="crew">Crew <span class="n">1</span></button>
+    <button class="pill on new" data-f="cust" title="New: every text, email, call and portal press with Dana, on this job or tied to it">Customer <span class="n" id="custN">7</span></button>
+  </div>
+
+  <div class="feed" id="feed">
+    <div class="day">Mon, Oct 5 · 7d ago</div>
+    <div class="row cust text" data-k="cust"><span class="n">1</span><span class="t">9:02a</span><span class="w"><b>Luis</b><span class="who text">text</span></span><div class="b">Dana, this is Luis with Click Plumbing. We are on our way to 4120 Oakridge Trl, about 30 minutes out.<div class="dim" style="font-size:12px;margin-top:3px">first text to this number · the opt-out line went with it · sent from Job Mode</div></div></div>
+    <div class="row cust text in" data-k="cust"><span class="n">2</span><span class="t">9:04a</span><span class="w"><b>Dana</b><span class="who text">text</span></span><div class="b">Great. Gate code is 4471.</div></div>
+    <div class="row" data-k="status"><span class="n">3</span><span class="t">9:41a</span><span class="w"><b>Luis</b></span><div class="b">Arrived at job</div></div>
+    <div class="row" data-k="report"><span class="n">4</span><span class="t">11:07a</span><span class="w"><b>Luis</b></span><div class="b">Status Report<br><span class="dim">How complete is the job? — 40%<br>What is the status of the job? — Camera showed a break at 32 ft. Need to send estimate.</span></div></div>
+    <div class="row cust text" data-k="cust"><span class="n">5</span><span class="t">11:12a</span><span class="w"><b>Luis</b><span class="who text">text</span></span><div class="b">Here is what we found: a break in the line about 32 feet out, under the front walk. Rosa will send you the estimate today.</div></div>
+    <div class="row" data-k="crew"><span class="n">6</span><span class="t">12:30p</span><span class="w">Luis</span><div class="b"><span class="dim">9:41a → 12:30p · 2h 49m</span></div></div>
+
+    <div class="day">Tue, Oct 6 · 6d ago</div>
+    <div class="row cust email" data-k="cust"><span class="n">7</span><span class="t">2:20p</span><span class="w"><b>Rosa</b><span class="who email">email</span></span><div class="b"><span class="subj">Your estimate for Oakridge sewer line</span><br>Hello Dana, your estimate is ready. Review and approve it here: <span style="color:var(--accent)">click.co/e/8Kp4</span>. Call or text us with any question.<br><span class="att">📎 Estimate 1312.pdf · 84 KB</span><div class="dim" style="font-size:12px;margin-top:3px">from office@clickplumbing.com · the copy is kept in Documents</div></div></div>
+    <div class="row cust text in" data-k="cust"><span class="n">8</span><span class="t">4:05p</span><span class="w"><b>Dana</b><span class="who text">text</span></span><div class="b">Can you do Thursday? Also is the water heater quote still good?<div class="tie"><span class="this">1312 · this job</span><span>also 1298 · Water heater</span><span style="border:0;padding-left:0">Rosa tied it to both</span></div></div></div>
+    <div class="row team" data-k="note"><span class="n">9</span><span class="t">4:12p</span><span class="w"><b>Rosa</b></span><div class="b">Called Dana. Thursday works for her, and the water heater quote stands. She will approve on the portal tonight.<div class="dim" style="font-size:12px;margin-top:3px">only the team sees this</div></div></div>
+
+    <div class="day">Wed, Oct 7 · 5d ago</div>
+    <div class="row cust app" data-k="cust"><span class="n">10</span><span class="t">8:00a</span><span class="w"><b>the app</b><span class="who app">text</span></span><div class="b">Dana, your estimate for Oakridge sewer line is waiting for your approval. Approve it here: click.co/e/8Kp4. Reply to this text with any question.<div class="dim" style="font-size:12px;margin-top:3px">Estimate sent step · the 1-day reminder · the team's line for this step</div></div></div>
+    <div class="row cust portal in" data-k="cust"><span class="n">11</span><span class="t">8:14a</span><span class="w"><b>Dana</b><span class="who portal">portal</span></span><div class="b">Approved the estimate · $4,850 · signed on her phone</div></div>
+    <div class="row" data-k="status"><span class="n">12</span><span class="t">8:15a</span><span class="w">Rosa</span><div class="b">Waiting → Working</div></div>
+    <div class="row" data-k="status"><span class="n">13</span><span class="t">8:16a</span><span class="w">Rosa</span><div class="b">Scheduled Thu, Oct 8 · 8:00a · Luis</div></div>
+    <div class="row team" data-k="note"><span class="n">14</span><span class="t">8:20a</span><span class="w"><b>Rosa</b></span><div class="b">Water heater (1298) goes on the same visit if the first day runs short.</div></div>
+    <div id="today"></div>
+  </div>
+
+  <div class="composer">
+    <div class="kinds" id="kinds">
+      <button class="note" data-k="note">Note</button>
+      <button class="text on" data-k="text">Text to Dana</button>
+      <button class="email" data-k="email">Email to Dana</button>
+      <span class="from" id="fromLine">from the company number (512) 555-0144 · Click Plumbing</span>
+    </div>
+    <div class="qr" id="qr">
+      <div class="grp"><div class="gt">Working, the step Dana is on<i>mine first, then the team's</i></div><div class="lines">
+        <button data-fill="Dana, this is {me} with Click Plumbing. We are on our way to {addr}, about {min} minutes out.">On our way, about {min} min</button>
+        <button data-fill="Dana, we are running behind this morning. Our new window is {window}. Sorry for the wait.">Running late · new window</button>
+        <button data-fill="Dana, we are done for today at {addr}. We are back {day} at {time} to finish.">Done for today, back {day}</button>
+        <button data-fill="Dana, the water is off at the house while we work on the line. It is back on before we leave today.">Water off while we work</button>
+      </div></div>
+      <div class="grp"><div class="gt">Anyone</div><div class="lines">
+        <button data-fill="Dana, could you send a photo of {thing}? Reply to this text with the picture.">Send us a photo of {thing}</button>
+        <button data-fill="Dana, your bill for {job} is ready. Pay it here: click.co/p/{code}. Thank you for your business.">Your bill is ready</button>
+        <button data-fill="Dana, thank you for choosing Click Plumbing. If you have a minute, a review helps us a lot: click.co/r/{code}.">Thank you and a review</button>
+        <button class="mine" data-fill="Dana, this is Rosa at the office. Give me a call at (512) 555-0144 when you have a minute.">Call me when you can · mine</button>
+      </div></div>
+      <div class="grp"><div class="gt">Not on the strip?</div><div class="lines"><button class="quiet" style="padding-left:0">⤢ Find a reply</button><button class="quiet">Edit quick replies</button></div></div>
+    </div>
+    <div class="boxrow">
+      <div><textarea id="box" placeholder="Pick a line above, or write to Dana…" aria-label="Message to Dana"></textarea>
+        <div class="count" id="count"><span>1 text · <b>0</b> characters</span><span>Replies come to this job and to 1298</span><span>Dana reads English</span></div></div>
+      <div class="acts"><button id="pct">Set % complete</button><button class="primary" id="send">Send text…</button></div>
+    </div>
+  </div>
+</div>
+<p class="note" style="margin-top:10px">Try it: press <b>Text to Dana</b>, pick a line, press <b>Send text…</b>. The line lands in the feed with the blanks filled from the job, and Dana's answer comes back a moment later. Press <b>Note</b> to see the window as it is today.</p>
+
+<h2>What is drawn here, in one breath</h2>
+<p class="lead">Nothing new is stored on the job. The customer's lines are the <b>contact's thread</b> that the Messages spine already keeps, shown through the job that each line is tied to. A line Dana sends with no job in it shows on every active job of hers until the office ties it, muted on the others. The filters, the day dividers and the numbered rows are the window's own.</p>
+</section>
+
+<!-- ===================== 2 ===================== -->
+<section class="screen" id="s2">
+<p class="lead">Job Mode, the tech's phone. One new press on the job card, <b>Message Dana</b>. It opens five big lines and nothing to type. A tap shows the text as it will go, with the blanks already filled from the drive, the job and the clock. The tech never types a name, an address or a time.</p>
+<div class="phones">
+  <div>
+  <div class="phone"><div class="scr" id="techScr">
+    <div class="bar"><span>9:01</span><span>●●● ᯤ ▮</span></div>
+    <div class="jm">
+      <div class="card">
+        <div class="m">Today · first stop</div>
+        <h4>1312 · Oakridge sewer line</h4>
+        <div class="m">8:00a · Dana Whitfield · 4120 Oakridge Trl</div>
+        <div class="m" style="margin-top:6px;color:var(--text)">Camera the line from the cleanout. Break at 32 ft per Oct 5.</div>
+        <div class="press">
+          <button>Clock in</button><button>Directions</button><button>Report</button><button>Notes</button>
+          <button class="msg" id="openSheet"><span class="dot" id="techDot" hidden></span>Message Dana</button>
+        </div>
+      </div>
+      <div class="mini" id="techThread">
+        <div class="note" style="margin-bottom:4px">Dana · last three lines · <span style="color:var(--accent)">see all</span></div>
+        <div class="ln"><span class="t">Oct 7</span><span><span class="w">Dana · portal</span><br>Approved the estimate · $4,850</span></div>
+        <div class="ln"><span class="t">Oct 7</span><span><span class="w">Rosa</span><br>Scheduled Thu, Oct 8 · 8:00a · Luis</span></div>
+        <div class="ln"><span class="t">Oct 6</span><span><span class="w">Dana · text</span><br>Can you do Thursday? Also is the water heater quote still good?</span></div>
+      </div>
+      <div class="note" style="padding:0 4px">Luis sees Dana's lines on the jobs he is dispatched to. Money lines and office-only notes stay out.</div>
+    </div>
+    <div class="sheet" id="sheet">
+      <div class="grab"></div>
+      <div id="sheetPick">
+        <h4>Text Dana</h4>
+        <div class="note">From the company number. Her replies come to you until 5 PM, then to the office.</div>
+        <div class="big">
+          <button data-line="onway">On our way<small>about 25 minutes, from the drive</small></button>
+          <button data-line="late">Running late<small>new window 9:30 to 10:00</small></button>
+          <button data-line="found">Here is what we found<small>you fill one line, the rest is written</small></button>
+          <button data-line="done">Done for today<small>back Fri, Oct 9 at 8:00a, from the schedule</small></button>
+          <button data-line="photo">Send us a photo<small>of the cleanout, the heater, a leak</small></button>
+          <button class="office" data-line="office">Something else<small>a note to the office, Rosa sends it</small></button>
+        </div>
+        <div class="acts"><button id="closeSheet">Cancel</button></div>
+      </div>
+      <div id="sheetPrev" hidden>
+        <h4 id="prevTitle">On our way</h4>
+        <div class="prev" id="prevText"></div>
+        <div class="note" id="prevNote">Nothing sends until you press Send.</div>
+        <div class="acts"><button id="prevBack">Back</button><button class="primary" id="prevSend">Send</button></div>
+      </div>
+      <div id="sheetDone" hidden>
+        <h4>Sent 9:02 AM</h4>
+        <div class="sent">Dana has it. Her reply shows here and on the job.</div>
+        <div class="mini" id="doneThread" style="margin-top:10px"></div>
+        <div class="acts"><button class="primary" id="doneClose">Done</button></div>
+      </div>
+    </div>
+  </div></div>
+  <p class="pcap note">Try it: press <b>Message Dana</b>, pick a line, press <b>Send</b>. The reply arrives a moment later and the dot lights on the job card.</p>
+  </div>
+  <div style="flex:1;min-width:260px;max-width:46ch">
+    <h3>Why five lines and not a keyboard</h3>
+    <p>The complaint was silence, not wording. Five presses a tech can make with one thumb, between the truck and the door, get sent. A keyboard does not. The lines are the team's quick replies for the <b>customer</b> kind on the step the job is on, so the office edits them in one place and every tech's phone changes.</p>
+    <h3>What fills the blanks</h3>
+    <p>The minutes come from the drive to the address. The window and the back day come from the schedule. The address and the first name come from the job. The tech's name comes from the sign-in. "Here is what we found" is the one line with a blank the tech fills, and it is the same words that go on the status report.</p>
+    <h3>Who gets the reply</h3>
+    <p>Dana's answer comes back to the tech who texted until the end of the day, then to the office. Outside hours the app answers once that the office opens at 7:30 and puts her on Needs a reply. The office sees every line either way.</p>
+    <h3>The door</h3>
+    <p>Everything in Messages today is behind the office team. A tech's door is narrower: the threads of customers on jobs they are dispatched to or clocked on, this week and last, with no money lines and no office-only notes. That door is the one new piece of access this needs.</p>
+  </div>
+</div>
+</section>
+
+<!-- ===================== 3 ===================== -->
+<section class="screen" id="s3">
+<p class="lead">Dana's side. One number and one mailbox for everything from Click Plumbing, whoever pressed Send. A request that needs something from her is a text plus a press on her portal page, never a text alone.</p>
+<div class="phones">
+  <div>
+  <div class="phone"><div class="scr">
+    <div class="bar"><span>9:02</span><span>●●● ᯤ ▮</span></div>
+    <div class="imsg">
+      <div class="from">Click Plumbing<br><span style="font-weight:400">(512) 555-0144</span></div>
+      <div class="stamp">Mon, Oct 5 · 9:02 AM</div>
+      <div class="bub us">Dana, this is Luis with Click Plumbing. We are on our way to 4120 Oakridge Trl, about 30 minutes out.<br><br>Reply STOP to stop texts from us.<span class="dl">Delivered</span></div>
+      <div class="bub them">Great. Gate code is 4471.</div>
+      <div class="bub us">Here is what we found: a break in the line about 32 feet out, under the front walk. Rosa will send you the estimate today.</div>
+      <div class="stamp">Wed, Oct 7 · 8:00 AM</div>
+      <div class="bub app">Dana, your estimate for Oakridge sewer line is waiting for your approval. Approve it here: <u>click.co/e/8Kp4</u>. Reply to this text with any question.<span class="dl">Delivered</span></div>
+      <div class="stamp">Thu, Oct 8 · 9:02 AM</div>
+      <div class="bub us" id="danaNew" hidden></div>
+    </div>
+    <div class="portal">
+      <div class="note" style="margin-bottom:2px">click.co/e/8Kp4 · her page</div>
+      <h4>Oakridge sewer line</h4>
+      <div class="yourmove"><b>Your move</b>Approve the estimate, $4,850. Work can start Thursday once it is approved.<button class="primary">Read and approve</button></div>
+      <div class="note" style="margin-top:10px">Where you are</div>
+      <div class="steps"><span class="done">Booked</span><span class="done">On the way</span><span class="done">Arrived</span><span class="done">What we found</span><span class="now">Estimate</span><span>Approved</span><span>Work</span><span>Done</span><span>Bill</span><span>Paid</span></div>
+    </div>
+  </div></div>
+  </div>
+  <div style="flex:1;min-width:260px;max-width:46ch">
+    <h3>One sender</h3>
+    <p>Luis, Rosa and the app all read as Click Plumbing on her phone, from the one number the office already answers. A text she sends back lands on her contact, not on a job, so the office never misses one because it came in on the wrong job.</p>
+    <h3>Email</h3>
+    <p>Her estimate, her bill and anything with a paper go from office@clickplumbing.com, kept in Documents as today. bids@ stays the estimators' box for trade partners' quotes. Cut 6's reader watches both.</p>
+    <h3>Her page</h3>
+    <p>The portal she already has for bills gains the Messages portal's two pieces: <b>Your move</b>, the one thing we need from her, and <b>Where you are</b>, the residential flow's steps. Approve the estimate, pick a day, pay, send a photo are presses there. The text carries the link.</p>
+    <h3>Spanish</h3>
+    <p>Her language sits on her record. The quick replies carry Spanish beside English the way the portal words do, behind the same gate until a native speaker reads them.</p>
+  </div>
+</div>
+</section>
+
+<!-- ===================== 4 ===================== -->
+<section class="screen" id="s4">
+<p class="lead">Where the thread shows up once a residential customer is a contact like any other. Most of this is the Messages build pointed at customers; the new pieces are the tech's door, the residential flow and a few chips.</p>
+<div class="legend"><span><span class="st built">built</span> on main today</span><span><span class="st spike">spike</span> in the Messages build, kernels on main</span><span><span class="st new">new</span> not drawn anywhere yet</span></div>
+<div class="grid">
+  <div class="place"><h4>The job window <span class="st new">new</span></h4><p>The <b>Customer</b> chip and the lines in the feed, and the box's Text and Email kinds with the quick replies. Screen 1.</p><div class="how">Wiring only: the thread, the stamps, the reply box and the quick replies are kernels on main.</div></div>
+  <div class="place"><h4>Job Mode <span class="st new">new</span></h4><p><b>Message Dana</b> on the job card, five lines, the reply back to the tech until 5 PM. Screen 2.</p><div class="how">Needs the tech's door and a strip of the quick replies per step.</div></div>
+  <div class="place"><h4>Dashboard → Needs you <span class="st spike">spike</span></h4><p>One line for the office: <b>Customers</b> · 3 need a reply, 1 we owe. It opens Follow up on those rows.</p><div class="how">Cut 2's queue counts each person once. The GC projects line already works this way.</div></div>
+  <div class="place"><h4>Follow up <span class="st spike">spike</span></h4><p>Today it lives on GC projects. It becomes <b>Messages</b> in the main nav for the office: Needs you, Needs a reply, We owe them, GC and residential together, a filter by kind of person.</p><div class="how">Cut 2's rows, cut 5's nudges. One queue so nobody checks two.</div></div>
+  <div class="place"><h4>The customer's own window <span class="st spike">spike</span></h4><p>From a customer's name anywhere: their whole thread across jobs, who has it, what we owe them, STOP state, <b>Who is this?</b> for a new number.</p><div class="how">Cut 1's thread window, opened by the same URL contract as on /gc.</div></div>
+  <div class="place"><h4>Jobs board <span class="st new">new</span></h4><p>A blue dot on a row whose customer wrote and nobody answered. Hover shows the last line.</p><div class="how">One read of the queue by job. Small.</div></div>
+  <div class="place"><h4>Settings → Quick replies <span class="st spike">spike</span></h4><p>The team's lines by kind and step, and each person's own. Techs see the customer kind only.</p><div class="how">Cut 3's editor. The five Job Mode lines are rows here.</div></div>
+  <div class="place"><h4>Settings → Flows <span class="st new">new</span></h4><p>A fifth flow, <b>Residential customer</b>. Every step reads a fact the app already keeps.</p>
+    <div class="flow"><span>Booked<i>dispatch</i></span><span>On the way<i>the text</i></span><span>Arrived<i>clock in at the job</i></span><span>What we found<i>status report</i></span><span>Estimate sent<i>estimates</i></span><span>Approved<i>accept-estimate</i></span><span>Working<i>status</i></span><span>Done<i>Ready to Bill</i></span><span>Billed<i>the bill</i></span><span>Paid<i>payment</i></span><span>Review asked<i>the text</i></span></div>
+    <div class="how">facts.ts and seed.ts gain the steps, load.ts the reads. Nothing new is stored.</div></div>
+  <div class="place"><h4>The morning reminders <span class="st spike">spike</span></h4><p>The app texts by itself: the estimate reminder after a day, the bill reminder at the terms, a review ask two days after paid. Off per step until the owner turns each on.</p><div class="how">Cut 5's dispatch kernel. The words are the step's quick reply.</div></div>
+  <div class="place"><h4>The customer portal <span class="st spike">spike</span></h4><p><b>Your move</b> and <b>Where you are</b> on the residential page beside the bills it already shows.</p><div class="how">Cut 8's page kernels, the residential flow as input.</div></div>
+  <div class="place"><h4>Email in and out <span class="st spike">spike</span></h4><p>office@ for customers, bids@ for trades. Out through Resend as today; in through cut 6's reader on both boxes.</p><div class="how">The mailbox is an input to the reply box per company.</div></div>
+  <div class="place"><h4>The phone number <span class="st spike">spike</span></h4><p>One Quo number for customers, the office line everyone knows. A second for trade partners, so a trade's STOP never silences a customer's number.</p><div class="how">Cut 5's send takes the number as an input.</div></div>
+</div>
+</section>
+
+<!-- ===================== 5 ===================== -->
+<section class="screen" id="s5">
+<p class="lead">What only you can decide before a helper draws the screens. Each one has my lean under it. Answer in the chat, in order or out of it.</p>
+<ol class="dec">
+  <li><b>The tech's door.</b> Which customers' threads can a tech read and write? All customers, or the ones on jobs they are dispatched to or clocked on?<div class="rec">Dispatched or clocked on, this week and last. No money lines, no office-only notes. The office sees everything.</div></li>
+  <li><b>Free text for techs.</b> Quick replies only, or a keyboard too?<div class="rec">Quick replies at first. "Something else" is a note to the office that Rosa sends. Open the keyboard to named techs later.</div></li>
+  <li><b>Who answers a reply.</b> The tech who texted, the office, or both?<div class="rec">The tech until 5 PM, then the office. After hours the app answers once and the line waits on Needs a reply.</div></li>
+  <li><b>Numbers and boxes.</b> One Quo number for everything, or one for customers and one for trades? office@ for all customer mail, bids@ for the estimators' quotes?<div class="rec">Two numbers, two boxes, one inbox. The customer number is the office line people already have.</div></li>
+  <li><b>Where a line lives.</b> On the job window alone, or the customer's whole thread with other jobs' lines muted?<div class="rec">The whole thread, other jobs muted. A customer with two jobs is one conversation.</div></li>
+  <li><b>Which reminders start on.</b> The app can text the estimate reminder, the bill reminder and the review ask by itself.<div class="rec">Estimate and bill on from day one. The review ask after you read ten real threads.</div></li>
+  <li><b>Order of building.</b><div class="rec">Finish the thread window on GC projects, make it the customer window everywhere, then the job window's chip and box, then Job Mode's press, then the residential flow and its reminders.</div></li>
+</ol>
+
+<h2>Already on main, as kernels with tests</h2>
+<div class="built">
+  <div>A contact over a customer or a person at a customer</div>
+  <div>The thread, the day dividers, the stamps</div>
+  <div>The reply box: Text, Email, Note, the opt-out line, the count</div>
+  <div>Quick replies by kind and step, mine first</div>
+  <div>What we owe them and the day a person said</div>
+  <div>Follow up's queue, one row per person</div>
+  <div>Quo in: calls, texts, voicemails, STOP and START</div>
+  <div>Quo out: the send, the opt-out line, the refusals</div>
+  <div>The webhook's signature check</div>
+  <div>Flows read from facts, the step card, the nudges</div>
+  <div>The morning run, off per step</div>
+  <div>The portal page's words in English and Spanish</div>
+  <div>Your move, Where you are, the papers, readiness</div>
+  <div>A change order started from a message</div>
+  <div>The four spine tables on prod</div>
+</div>
+</section>
+
+<!-- ===================== 6 ===================== -->
+<section class="screen" id="s6">
+<p class="lead">What changed in this prototype, newest first. Open it from the repo: <code>to-dos/gc-mode/messages/customer-messages-prototype.html</code> on <code>spike/gc-mode</code>.</p>
+<div class="log">
+  <article><h4>v0.1<small>2026-10-12</small></h4>
+    <ul>
+      <li>The job window with a <b>Customer</b> chip, the customer's lines in the feed by channel, and the box's Note · Text · Email kinds with the quick replies by step. Send puts the line in the feed and Dana answers.</li>
+      <li>Job Mode: <b>Message Dana</b> on the job card, five lines and no keyboard, the preview with the blanks filled, the reply back to the tech until 5 PM.</li>
+      <li>Dana's phone and her page: one sender, the app's reminder, <b>Your move</b> and <b>Where you are</b> on the residential flow.</li>
+      <li>The map of where the thread shows up across the app, marked built · spike · new, and the residential flow's steps with the fact each reads.</li>
+      <li>The seven decisions with a lean under each, and what is already on main as kernels.</li>
+    </ul>
+  </article>
+</div>
+</section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  const $=(s,r)=> (r||document).querySelector(s), $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+  const toastEl=$('#toast'); let tt;
+  function toast(m){ toastEl.textContent=m; toastEl.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>toastEl.classList.remove('show'),2800); }
+  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const wait=(ms)=>new Promise(r=>setTimeout(r,reduce?0:ms));
+
+  // tabs
+  $$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
+    $$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+    $$('section.screen').forEach(s=>s.classList.toggle('on',s.id===b.dataset.s));
+    try{localStorage.setItem('cm-tab',b.dataset.s)}catch(e){}
+  }));
+  try{ const t=localStorage.getItem('cm-tab'); if(t){ const b=$(`#tabs button[data-s="${t}"]`); if(b) b.click(); } }catch(e){}
+  if(location.hash){ const b=$(`#tabs button[data-s="${location.hash.slice(1)}"]`); if(b) b.click(); }
+
+  // ---- screen 1 ----
+  const BLANKS={me:'Luis',addr:'4120 Oakridge Trl',min:'25',window:'9:30 to 10:00',day:'Fri',time:'8:00 AM',thing:'the cleanout',job:'Oakridge sewer line',code:'4m2Q'};
+  const fill=(s)=>s.replace(/\{(\w+)\}/g,(m,k)=>BLANKS[k]||m);
+  let kind='text';
+  const box=$('#box'), count=$('#count'), send=$('#send'), pct=$('#pct'), qr=$('#qr'), fromLine=$('#fromLine');
+  function paintKind(){
+    $$('#kinds button').forEach(b=>b.classList.toggle('on',b.dataset.k===kind));
+    qr.hidden = kind==='note';
+    fromLine.hidden = kind==='note';
+    fromLine.textContent = kind==='email' ? 'from office@clickplumbing.com · Click Plumbing' : 'from the company number (512) 555-0144 · Click Plumbing';
+    box.placeholder = kind==='note' ? 'Add a note to Oakridge sewer line…' : kind==='email' ? 'Pick a line above, or write the email to Dana…' : 'Pick a line above, or write to Dana…';
+    send.textContent = kind==='note' ? 'Post' : kind==='email' ? 'Send email…' : 'Send text…';
+    pct.hidden = kind!=='note';
+    paintCount();
+  }
+  function paintCount(){
+    const n=box.value.length;
+    if(kind==='note'){ count.innerHTML='<span>only the team sees it</span>'; return; }
+    if(kind==='email'){ count.innerHTML=`<span>subject <b>Oakridge sewer line</b></span><span>Hello Dana, … and the office signature are added</span><span>a copy is kept in Documents</span>`; return; }
+    const first=false; const pieces=Math.max(1,Math.ceil(n/153));
+    count.innerHTML=`<span>${pieces} text${pieces>1?'s':''} · <b>${n}</b> characters</span><span>Replies come to this job and to 1298</span><span>Dana reads English</span>`;
+  }
+  $$('#kinds button').forEach(b=>b.addEventListener('click',()=>{kind=b.dataset.k;paintKind();}));
+  $$('#qr .lines button[data-fill]').forEach(b=>b.addEventListener('click',()=>{ box.value=fill(b.dataset.fill); box.focus(); paintCount(); toast('The line is in the box. Nothing sent.'); }));
+  box.addEventListener('input',paintCount);
+  $$('#filters button').forEach(b=>b.addEventListener('click',()=>{
+    $$('#filters button').forEach(x=>x.classList.toggle('on',x===b));
+    const f=b.dataset.f;
+    $$('#feed .row').forEach(r=>{ r.hidden = f!=='all' && r.dataset.k!==f; });
+    $$('#feed .day').forEach(d=>{ let n=d.nextElementSibling, any=false; while(n && !n.classList.contains('day')){ if(n.classList.contains('row') && !n.hidden) any=true; n=n.nextElementSibling; } d.hidden=!any; });
+  }));
+  // start on All so the whole feed reads; the Customer chip is lit to say it is new
+  $$('#filters button')[0].click(); $$('#filters button')[0].classList.remove('on'); $('#filters .new').classList.add('on');
+  let rowN=14, todayDrawn=false, sending=false;
+  function addRow(cls,who,whoKind,body,t,k){
+    const today=$('#today');
+    if(!todayDrawn){ const d=document.createElement('div'); d.className='day'; d.textContent='Thu, Oct 8 · today'; today.appendChild(d); todayDrawn=true; }
+    const r=document.createElement('div'); r.className='row '+cls; r.dataset.k=k||'cust'; rowN++;
+    r.innerHTML=`<span class="n">${rowN}</span><span class="t">${t}</span><span class="w"><b>${who}</b>${whoKind?`<span class="who ${whoKind}">${whoKind}</span>`:''}</span><div class="b">${body}</div>`;
+    today.appendChild(r); r.scrollIntoView({block:'nearest',behavior:reduce?'auto':'smooth'});
+    if(r.dataset.k==='cust'){ $('#custN').textContent=String(+$('#custN').textContent+1); }
+    return r;
+  }
+  send.addEventListener('click',async()=>{
+    const text=box.value.trim();
+    if(!text){ toast('Pick a line or write something first.'); return; }
+    if(sending) return; sending=true;
+    if(kind==='note'){ addRow('team','Rosa','',text+'<div class="dim" style="font-size:12px;margin-top:3px">only the team sees this</div>','9:02a','note'); box.value=''; paintCount(); toast('Note added. Only the team sees it.'); sending=false; return; }
+    if(kind==='email'){ addRow('cust email','Rosa','email',`<span class="subj">Oakridge sewer line</span><br>Hello Dana, ${text}<div class="dim" style="font-size:12px;margin-top:3px">from office@clickplumbing.com · the copy is kept in Documents</div>`,'9:02a'); box.value=''; paintCount(); toast('Email sent as Click Plumbing. Its copy is kept in Documents.'); sending=false; return; }
+    addRow('cust text','Rosa','text',text+'<div class="dim" style="font-size:12px;margin-top:3px">Dana has had our texts before, so no opt-out line · sent from the job window</div>','9:02a');
+    box.value=''; paintCount(); toast('Text sent from the company number.');
+    await wait(1800);
+    addRow('cust text in','Dana','text','Perfect, thank you. The side gate is unlocked.<div class="tie"><span class="this">1312 · this job</span><span>also 1298 · Water heater</span><span style="border:0;padding-left:0">until the office ties it</span></div>','9:04a');
+    toast('Dana wrote back. Her line shows on 1312 and on 1298 until someone ties it.');
+    sending=false;
+  });
+  paintKind();
+
+  // ---- screen 2 ----
+  const LINES={
+    onway:{title:'On our way',text:'Dana, this is Luis with Click Plumbing. We are on our way to 4120 Oakridge Trl, about 25 minutes out.',note:'The minutes come from the drive. Dana has had our texts before, so no opt-out line goes.'},
+    late:{title:'Running late',text:'Dana, we are running behind this morning. Our new window at 4120 Oakridge Trl is 9:30 to 10:00. Sorry for the wait.',note:'The window comes from the schedule. The office is told too.'},
+    found:{title:'Here is what we found',text:'Dana, here is what we found: a break in the line about 32 feet out, under the front walk. Rosa will send you the estimate today.',note:'You fill the one line in the middle. The same words go on your status report.'},
+    done:{title:'Done for today',text:'Dana, we are done for today at 4120 Oakridge Trl. We are back Fri, Oct 9 at 8:00 AM to finish.',note:'The back day comes from the schedule. If nothing is scheduled, the line says the office will call with a day.'},
+    photo:{title:'Send us a photo',text:'Dana, could you send a photo of the cleanout in the front yard? Reply to this text with the picture.',note:'Her picture lands on the job as a file and in the thread.'},
+    office:{title:'Something else',text:'Note to the office: Dana asked whether we can look at the hose bib while here. Please quote it.',note:'This goes to Rosa as a note on the job, not to Dana. Rosa sends what Dana should hear.'}
+  };
+  const sheet=$('#sheet'), pick=$('#sheetPick'), prev=$('#sheetPrev'), done=$('#sheetDone'); let chosen=null;
+  function show(part){ pick.hidden=part!=='pick'; prev.hidden=part!=='prev'; done.hidden=part!=='done'; }
+  $('#openSheet').addEventListener('click',()=>{ show('pick'); sheet.classList.add('open'); $('#techDot').hidden=true; });
+  $('#closeSheet').addEventListener('click',()=>sheet.classList.remove('open'));
+  $$('#sheetPick .big button').forEach(b=>b.addEventListener('click',()=>{
+    chosen=LINES[b.dataset.line]; $('#prevTitle').textContent=chosen.title;
+    $('#prevText').innerHTML=chosen.text.replace(/</g,'&lt;')+(b.dataset.line==='office'?'':'<span class="opt">Goes from (512) 555-0144 as Click Plumbing. Her reply comes to you until 5 PM, then to the office.</span>');
+    $('#prevNote').textContent=chosen.note; $('#prevSend').textContent=b.dataset.line==='office'?'Send to the office':'Send'; show('prev');
+  }));
+  $('#prevBack').addEventListener('click',()=>show('pick'));
+  $('#prevSend').addEventListener('click',async()=>{
+    const isOffice=chosen&&chosen.title==='Something else';
+    const dt=$('#doneThread'); dt.innerHTML=`<div class="ln"><span class="t">9:02a</span><span><span class="w">${isOffice?'Luis · note to the office':'Luis · text'}</span><br>${chosen.text}</span></div>`;
+    $('#sheetDone h4').textContent=isOffice?'Sent to the office 9:02 AM':'Sent 9:02 AM';
+    $('#sheetDone .sent').textContent=isOffice?'Rosa has it on the job. She writes to Dana.':'Dana has it. Her reply shows here and on the job.';
+    show('done');
+    const dn=$('#danaNew'); if(!isOffice){ dn.textContent=chosen.text; dn.hidden=false; }
+    if(isOffice) return;
+    await wait(1800);
+    dt.insertAdjacentHTML('beforeend',`<div class="ln"><span class="t">9:04a</span><span><span class="w">Dana · text</span><br>Perfect, thank you. The side gate is unlocked.</span></div>`);
+    $('#techThread').insertAdjacentHTML('afterbegin',`<div class="ln" style="background:var(--text-soft);border-radius:8px;padding:6px 8px"><span class="t">9:04a</span><span><span class="w">Dana · text</span><br>Perfect, thank you. The side gate is unlocked.</span></div>`);
+    $('#techDot').hidden=false;
+    toast("Dana wrote back. It comes to Luis until 5 PM, and the office sees it too.");
+  });
+  $('#doneClose').addEventListener('click',()=>sheet.classList.remove('open'));
+})();
+</script>
+</body>
+</html>
