@@ -72,8 +72,8 @@ export function GcCustomerWindow({
   const [notEmailed, setNotEmailed] = useState<Record<string, string>>({})
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      // Escape steps back out of a send first, then closes the window.
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      // Escape steps back out of a send first, then closes the window. A step card inside takes its own Escape first.
       if (sending) setSending(null)
       else onClose()
     }

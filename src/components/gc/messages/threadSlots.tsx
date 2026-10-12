@@ -12,6 +12,7 @@
 import { createElement, Fragment, type ReactNode } from 'react'
 import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
+import { FlowTab } from '../../flows/FlowTab'
 
 /** A row of the header's ⋯ menu. The window's own rows (Show all text, Open their record) come first. */
 export interface ThreadMenuRow {
@@ -101,5 +102,8 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
  * thread (`useThreadWindow`) and ask for the read again after its own write (`useMessagesReread`).
  */
 export function useThreadSlots(): ThreadSlots {
-  return {}
+  return {
+    // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh.
+    side: (c) => <FlowTab key={c.id} at={{ contactId: c.id }} side />,
+  }
 }

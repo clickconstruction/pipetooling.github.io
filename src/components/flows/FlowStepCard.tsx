@@ -78,12 +78,15 @@ export function FlowStepCard({
 }) {
   const [words, setWords] = useState('')
   useEffect(() => setWords(''), [asking])
+  // Escape closes the card and not the window it is in: taken first, in the capture, and marked done.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') (asking ? onCancelAsk : onClose)()
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      e.preventDefault()
+      ;(asking ? onCancelAsk : onClose)()
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    document.addEventListener('keydown', onKey, true)
+    return () => document.removeEventListener('keydown', onKey, true)
   }, [asking, onCancelAsk, onClose])
   const can = (p: CardPress) => handles.has(p.id)
 

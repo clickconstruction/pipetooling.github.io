@@ -29,6 +29,10 @@ vi.mock('../../lib/flows/flowPersonIo', () => ({
   },
 }))
 
+// The thread window's phone width, as the side reads it.
+const media = vi.hoisted(() => ({ phone: false }))
+vi.mock('../../hooks/useMatchMedia', () => ({ useMatchMedia: () => media.phone }))
+
 import { FlowTab } from './FlowTab'
 
 // Tom of Bexar Steel Erectors, as flow_rows would give him: invited, on his portal, his W-9 signed, no insurance yet.
@@ -50,6 +54,7 @@ const TOM: FlowPersonRead = {
 }
 
 beforeEach(() => {
+  media.phone = false
   io.read = TOM
   io.addNote.mockClear()
   io.holdUntil.mockClear()
@@ -88,5 +93,45 @@ describe('FlowTab', () => {
     io.find.mockResolvedValueOnce(null as never)
     renderWithProviders(<FlowTab at={{ customerId: 'nobody' }} />)
     expect(await screen.findByText('There is no thread for them yet, so there is no flow to show.')).toBeTruthy()
+  })
+})
+
+describe('FlowTab in the thread window’s side', () => {
+  const sideOf = (c: HTMLElement) => c.querySelector('[data-flow-side]')?.getAttribute('data-flow-side')
+
+  it('at a desk: the rail opens to the panel, a step’s card covers the side, and Escape closes only the card', async () => {
+    const { container } = renderWithProviders(<FlowTab at={{ contactId: 'tom' }} side />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Open the / }))
+    expect(sideOf(container)).toBe('panel')
+    fireEvent.click(screen.getByRole('button', { name: /^Papers in: on now/ }))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    // The thread window listens after the card, and finds the Escape taken.
+    const behind = vi.fn((e: KeyboardEvent) => e.defaultPrevented)
+    document.addEventListener('keydown', behind)
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    document.removeEventListener('keydown', behind)
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(behind.mock.results[0]?.value).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'fold ›' }))
+    expect(sideOf(container)).toBe('rail')
+  })
+
+  it('on a phone: the rail stays beside the thread, and the panel and the card open as sheets over it', async () => {
+    media.phone = true
+    const { container } = renderWithProviders(<FlowTab at={{ contactId: 'tom' }} side />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Open the / }))
+    expect(sideOf(container)).toBe('rail')
+    const sheet = screen.getByRole('dialog')
+    expect(sheet.getAttribute('aria-modal')).toBe('true')
+    fireEvent.click(within(sheet).getByRole('button', { name: /^Papers in: on now/ }))
+    expect(screen.getAllByRole('dialog')).toHaveLength(2)
+    // Escape closes the card first, then folds the sheet.
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    // A mark on the rail opens its card alone.
+    fireEvent.click(container.querySelector('[data-flow-mark="papers"]')!)
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
   })
 })

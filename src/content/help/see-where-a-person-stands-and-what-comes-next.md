@@ -2,7 +2,7 @@
 title: see where a person stands and what comes next
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, flow, steps, trade partner, customer, architect, on now, lapsed, skip, hold, reminder, note, see their page, off the flow, step card
+keywords: gc mode, flow, steps, trade partner, customer, architect, on now, lapsed, skip, hold, reminder, note, see their page, off the flow, step card, messages, thread, rail
 order: 98
 ---
 Every trade partner, customer and architect has a flow. The flow lists the steps we take with them, from the first ask to the end of a job. The app moves each person along it from facts it already keeps.
@@ -43,6 +43,16 @@ The card says where the step stands, what we need, and what comes next. Its butt
 - {{button:outline|Remind now}} writes down that you reminded them. Their **Activity** tab opens, so you can log the call.
 
 A paper's button opens the window's **Documents** tab. The paper is sent from there, as always.
+
+## See the flow beside their thread
+
+Their flow also sits at the right side of their thread in [Messages](/help/find-every-message-with-a-person-in-one-place). It starts as a narrow rail with one mark for each step.
+
+- Press a mark to open that step's card.
+- Press {{button:outline|‹}} at the top of the rail to open the whole flow.
+- Press {{button:outline|fold ›}} to shrink the flow back to the rail.
+
+On a phone, the rail stays beside the thread. The flow and its cards open over the thread.
 
 ## See their page
 

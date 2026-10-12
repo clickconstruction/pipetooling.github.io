@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FLOW_FIXTURE_NOW as NOW } from './flowFixtures'
 import { docStamps, type FlowRows } from './load'
-import { courtFrom, marksFrom, personFlowFrom, sendsFrom } from './person'
+import { courtFrom, marksFrom, oweFrom, personFlowFrom, portalFrom, sendsFrom, type PortalPaperRow } from './person'
 import { SEED_FLOWS } from './seed'
 import { stepReading } from './state'
 
@@ -34,8 +34,10 @@ describe('personFlowFrom: one person for the panel, the card and the nudges', ()
         { step_key: 'papers', project_id: null, until_on: '2026-10-03', released_at: '2026-10-01T15:00:00Z' },
       ],
       sent: [
-        { step_key: 'papers', project_id: null, sent_at: '2026-09-30T15:00:00Z' },
-        { step_key: 'papers', project_id: null, sent_at: '2026-10-01T15:00:00Z' },
+        { step_key: 'papers', project_id: null, sent_at: '2026-09-30T15:00:00Z', sent_by: 'person' },
+        { step_key: 'papers', project_id: null, sent_at: '2026-10-01T15:00:00Z', sent_by: 'person' },
+        // The app's own morning reminder is no Remind now.
+        { step_key: 'papers', project_id: null, sent_at: '2026-10-02T13:00:00Z', sent_by: 'app' },
       ],
       notes: [{ step_key: 'papers', project_id: null, who_user_id: 'u-rosa', body: 'Their broker renews Nov 1.', at: '2026-10-01T15:00:00Z' }],
       lines: [
@@ -49,6 +51,7 @@ describe('personFlowFrom: one person for the panel, the card and the nudges', ()
     expect(p.jobs).toEqual({ boerne: 'Boerne Retail Shell' })
     expect([p.court, p.lastOutAt, p.quietDays]).toEqual(['theirs', '2026-09-30T15:00:00Z', 3])
     expect(p.sends).toEqual({ coi: ['2026-09-28T15:00:00Z', '2026-10-01T15:00:00Z'] })
+    expect([p.owe, p.portal]).toEqual([false, null])
   })
 
   it('reads whose court a thread is in from its last lines', () => {
@@ -59,8 +62,34 @@ describe('personFlowFrom: one person for the panel, the card and the nudges', ()
   })
 
   it('keeps one mark per step and job, and only papers it knows the words for', () => {
-    expect(marksFrom([], [{ step_key: 'ask', project_id: 'padb', sent_at: '2026-10-01T15:00:00Z' }])).toEqual([{ stepId: 'ask', jobId: 'padb', nudgedAt: '2026-10-01T15:00:00Z' }])
+    expect(marksFrom([], [{ step_key: 'ask', project_id: 'padb', sent_at: '2026-10-01T15:00:00Z', sent_by: 'person' }])).toEqual([{ stepId: 'ask', jobId: 'padb', nudgedAt: '2026-10-01T15:00:00Z' }])
+    expect(marksFrom([], [{ step_key: 'ask', project_id: 'padb', sent_at: '2026-10-01T15:00:00Z', sent_by: 'app' }])).toEqual([])
     expect(sendsFrom({ contact })).toEqual({})
+  })
+
+  it('owes them while one of their contact_owed rows is not done', () => {
+    const owed = [
+      { contact_id: 'tom', done_at: '2026-10-01T15:00:00Z' },
+      { contact_id: 'elena', done_at: null },
+    ]
+    expect([oweFrom('tom', owed), oweFrom('elena', owed)]).toEqual([false, true])
+    expect(personFlowFrom({ id: 'elena', first: 'Elena', flow: SEED_FLOWS.customer, rows: { contact: { ...contact, id: 'elena', kind: 'customer' } }, now: NOW, owed }).owe).toBe(true)
+  })
+
+  it('reads their page from cut 8: each kind’s newest paper and when they opened it, and the change order not answered', () => {
+    const paper = (kind: PortalPaperRow['kind'], title: string, sentAt: string, viewedAt: string | null, answered = false): PortalPaperRow => ({ kind, title, sentAt, viewedAt, answered })
+    const papers = [
+      paper('contract', 'Our contract', '2026-09-10', '2026-09-11T14:00:00Z', true),
+      paper('changeOrder', 'Change order 1', '2026-09-20', '2026-09-21T14:00:00Z', true),
+      paper('changeOrder', 'Change order 2', '2026-09-28', null),
+      paper('payApp', 'Pay application 1', '2026-09-25', '2026-09-26T14:00:00Z'),
+      paper('payApp', 'Pay application 2', '2026-09-30', null),
+    ]
+    // The newest pay application is not opened yet, so none shows; change order 2 is out and not answered.
+    expect(portalFrom({ lastOpenedAt: '2026-09-26T14:00:00Z', papers })).toEqual({ views: { contract: '2026-09-11T14:00:00Z' }, openChange: { name: 'Change order 2' } })
+    // Never opened: nothing seen, and change order 2 still waits on them, so the card can say they have not opened it.
+    expect(portalFrom({ lastOpenedAt: null, papers })).toEqual({ views: {}, openChange: { name: 'Change order 2' } })
+    expect(portalFrom(null)).toBeNull()
   })
 })
 
