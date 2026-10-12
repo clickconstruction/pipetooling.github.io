@@ -337,7 +337,8 @@ BEGIN
     JOIN pg_namespace n ON n.oid = p.pronamespace
     WHERE n.nspname = 'public'
       AND starts_with(p.proname, 'contacts_fold_')
-      AND p.proargtypes::oid[] = ARRAY['uuid'::regtype::oid, 'uuid'::regtype::oid]
+      -- Two uuids, counted without comparing arrays: an oidvector counts from 0, so it never equals an ARRAY[...].
+      AND p.pronargs = 2 AND 'uuid'::regtype::oid = ALL (p.proargtypes::oid[])
       AND p.prorettype = 'void'::regtype
       AND p.proowner = (SELECT f.proowner FROM pg_proc f WHERE f.oid = 'public.contacts_fold(uuid, uuid)'::regprocedure)
     ORDER BY p.proname
