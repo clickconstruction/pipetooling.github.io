@@ -176,7 +176,7 @@ export function FlowStepCard({
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 760, display: 'flex', alignItems: 'flex-end' }}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: 760, display: 'flex', alignItems: 'flex-end', paddingTop: 'var(--app-top-chrome, 0px)' }}
     >
       <div role="dialog" aria-modal="true" aria-label={card.title} data-flow-card="" style={{ ...frame, width: '100%', maxHeight: 'min(80vh, 100%)' }}>
         {body}
