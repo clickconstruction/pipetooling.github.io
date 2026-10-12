@@ -21,3 +21,4 @@ gc-start
 gc-owner-contract
 gc-customer-contacts
 contract-clauses
+portal-customer-page
