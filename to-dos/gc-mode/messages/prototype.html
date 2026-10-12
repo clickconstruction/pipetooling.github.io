@@ -2046,7 +2046,11 @@ function peekQuick(){ const w=document.querySelector('.quickwrap'); if(!w) retur
 function toggleQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; if(w.classList.contains('folded')) peekQuick(); else closeQuick(); }
 function syncQrTab(){ const w=document.querySelector('.quickwrap'); const t=document.querySelector('.qrtab'); if(!w||!t) return; const open=!w.classList.contains('folded'); t.textContent=`Quick replies ${open?'▾':'▸'}`; t.classList.toggle('on', open); }
 function closeQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; qrOpen=false; try{ localStorage.setItem('msgQrOpen','0'); }catch(e){} w.dataset.peek=''; w.classList.add('folded'); syncQrTab(); }
-function countBox(el){ const w=el.closest('.boxwrap'); if(w) w.classList.toggle('typing', el.value.length>0); if(!el.value.trim()) qrStepInBox=null; foldQuick(el.value.trim().length>0); const n=document.getElementById('pvcount'); if(!n) return; const L=el.value.length; n.textContent = L? `${L} characters · ${Math.max(1,Math.ceil(L/160))} text${L>160?'s':''}` : ''; }
+function countBox(el){ const w=el.closest('.boxwrap'); if(w) w.classList.toggle('typing', el.value.length>0); if(!el.value.trim()) qrStepInBox=null; foldQuick(el.value.trim().length>0); const n=document.getElementById('pvcount'); if(!n) return; const L=el.value.length; const words=(el.value.trim().match(/\S+/g)||[]).length;
+  if(!L){ n.innerHTML=''; return; }
+  if(replyKind==='text'){ const segs=Math.max(1,Math.ceil(L/160)); n.innerHTML=`${L} characters · ${segs} text${segs>1?'s':''}${segs>2?' · long for a text; an email may read better':''}`; return; }
+  if(replyKind==='email'){ const c=cById(openContact); const job=replyTie==='none'?null:(replyTie||(c&&c.def)); const subj=subjectOverride||(c?subjectFor(c,job,el.value):''); n.innerHTML=`<span data-tip="The subject|From your first line and the job.|Change it in the send window, for this email only."><b>Subject:</b> ${esc(subj)}</span> · ${words} word${words===1?'':'s'}`; return; }
+  n.innerHTML=`${words} word${words===1?'':'s'} · only the team sees it`; }
 // The send window's To line (v1.79, the owner's go): the contact's email or number, with a press to set it, writing to the contact's
 // record, the same place Who is this? writes. A change is to the contact, not to this one message; the thread records it.
 let toEditing=null; // 'email' | 'phone' while the box is open

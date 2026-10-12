@@ -770,6 +770,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.149, 2026-10-11**: the line under the box reads by kind: a text its characters and how many texts (and a word
+  when it runs past two); an email the subject it will go with, from the first line and the job, and the word count;
+  a note its words (the owner, 2026-10-11: texts counted on an email).
 - **v1.148, 2026-10-11**: every file in the Attach picker has *preview*: the paper as it reads (our contract, a statement
   of work, the agreement drawn from their own words; a plan set or a schedule as its first page), the page count and
   size, Open in a tab, and Attach it from there (the owner, 2026-10-11).
