@@ -420,5 +420,39 @@ RESET ROLE;
 SELECT mfu.same('the owner sets the seats',
   (SELECT value_text::jsonb ->> 'customer' FROM public.app_settings WHERE key = 'messages_assign_rule_v1'), '00000000-0000-0000-0000-0000000006d3');
 
+-- 15 · A message we sent gets what we owe done (cut 2's addendum, 20261013030000): one of ours to them, once.
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+SELECT public.mark_owed(priya, 'the start date', '2026-10-05') FROM ids;
+RESET ROLE;
+CREATE TEMP TABLE sent AS SELECT
+  mfu.line(priya, 'text', 'in', interval '3 minutes', 'When do you start?') AS theirs,
+  mfu.line(greg, 'text', 'out', interval '2 minutes', 'Monday.') AS to_greg,
+  mfu.line(priya, 'email', 'out', interval '1 minute', 'We start Monday, Oct 5.') AS ours
+FROM ids;
+GRANT SELECT ON sent TO authenticated;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d6');
+SET LOCAL ROLE authenticated;
+SELECT mfu.refused('a training account marks nothing done by a message', $q$SELECT public.owed_sent_done(priya, ours) FROM ids, sent$q$, 'A training account cannot mark what we owe done.');
+RESET ROLE;
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+SELECT mfu.refused('their own line gets nothing done', $q$SELECT public.owed_sent_done(priya, theirs) FROM ids, sent$q$, 'Only their team note, or a message we sent them, marks what we owe done.');
+SELECT mfu.refused('our line to someone else gets nothing done', $q$SELECT public.owed_sent_done(priya, to_greg) FROM ids, sent$q$, 'Only their team note, or a message we sent them, marks what we owe done.');
+SELECT mfu.refused('no line gets nothing done', $q$SELECT public.owed_sent_done(priya, NULL) FROM ids$q$, 'Only their team note, or a message we sent them, marks what we owe done.');
+SELECT public.owed_sent_done(priya, ours) FROM ids, sent;
+RESET ROLE;
+SELECT mfu.same('our email got it done, by that line',
+  (SELECT concat_ws('|', o.what, o.by_day::text, o.done_how, (o.done_note_message_id = s.ours)::text)
+   FROM public.contact_owed o, sent s WHERE o.contact_id = (SELECT priya FROM ids) AND o.done_how = 'message'),
+  'the start date|2026-10-05|message|true');
+SELECT mfu.same('the thread says so in the kernel''s words',
+  (SELECT body FROM public.messages WHERE contact_id = (SELECT priya FROM ids) AND channel = 'event' ORDER BY at DESC, id DESC LIMIT 1),
+  'Rosa sent the start date. It is done.');
+SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
+SET LOCAL ROLE authenticated;
+SELECT mfu.refused('done once', $q$SELECT public.owed_sent_done(priya, ours) FROM ids, sent$q$, 'Nothing is owed to them now.');
+RESET ROLE;
+
 DO $$ BEGIN RAISE NOTICE 'messages_follow_up PASSED'; END $$;
 ROLLBACK;
