@@ -5,6 +5,7 @@ import { publishChange } from './approval'
 import {
   andList,
   assemblePaper,
+  betweenLine,
   clauseLabel,
   clauseText,
   clauseVersionsOf,
@@ -88,8 +89,12 @@ describe('assemblePaper: the base plus the trade exhibit', () => {
 })
 
 describe('assemblePaper: what stops a paper going', () => {
-  it('holds a statement of work with no job', () => {
-    expect(assemblePaper(SOW, SOW_CLAUSES, forGreg).problem).toBe('Pick the job the statement of work is for.')
+  it('holds a statement of work with no job, and drops the job from its between line rather than leave it cut off', () => {
+    const paper = assemblePaper(SOW, SOW_CLAUSES, forGreg)
+    expect(paper.problem).toBe('Pick the job the statement of work is for.')
+    expect(paper.between).toBe('Click Construction and Hillside Excavation')
+    expect(betweenLine('Click Construction and {company}, for {job}', 'Tejas Power', 'Boerne Retail Shell')).toBe('Click Construction and Tejas Power, for Boerne Retail Shell')
+    expect(betweenLine('Click Construction and {company}', 'Tejas Power', null)).toBe('Click Construction and Tejas Power')
   })
 
   it('holds a draft paper, which never goes', () => {
