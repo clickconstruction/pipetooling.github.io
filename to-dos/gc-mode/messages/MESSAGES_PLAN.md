@@ -821,6 +821,10 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.170, 2026-10-12**: the draws bar's legend as four columns in the bar's order, the swatch and the count on
+  top and the state with its detail under (`bill-day-legend-mockups.html` A; B's stress set in
+  `bill-day-legend-b-stress.html` stays as the record of why not B: a thin segment has no room for its words). A
+  press on a column jumps to its section (the owner, 2026-10-12).
 - **v1.169, 2026-10-12**: Money → Bill day opens with a summary (`bill-day-summary-mockups.html`, the pick): the
   money river, one bar of the draws by state in dollars flowing into the owner's number with its parts, and the
   dates under it with today marked; beside it the 3 of 7 ring and *Today*, the first three open gates with their
