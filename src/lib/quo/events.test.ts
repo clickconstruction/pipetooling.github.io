@@ -9,18 +9,23 @@ import { plainWordsFailures } from '../plainWords'
 import {
   QUO_API_VERSION,
   callWho,
+  deliveryWords,
   helpAnswer,
   keywordOf,
   mayAskToStop,
   mergeCall,
   phoneWords,
   planQuoEvent,
+  quoSentWho,
   readQuoEvent,
+  sentKey,
   stopAnswer,
+  strongerDelivery,
   summaryWords,
   toE164,
   transcriptWords,
   unknownContact,
+  type CallReading,
   type QuoLine,
   type QuoPlanContext,
   type QuoReading,
@@ -154,7 +159,7 @@ const VOICEMAIL = {
 function fold(events: readonly QuoReading[], c: QuoPlanContext): QuoLine | null {
   let line: QuoLine | null = null
   for (const e of events) {
-    if (e.kind === 'text') throw new Error('a call only')
+    if (e.kind === 'text' || e.kind === 'sent') throw new Error('a call only')
     line = mergeCall(line, e, { ...c, existing: line }) ?? line
   }
   return line
@@ -285,6 +290,8 @@ describe('a text into the thread', () => {
         summary: null,
         durationSeconds: null,
         media: [],
+        optoutLine: null,
+        delivery: null,
       },
       optout: null,
       answer: null,
@@ -371,6 +378,8 @@ describe('a call, merged from its events', () => {
       summary: 'Greg is busy on a subdivision. He will price the Boerne sitework by Wednesday, Sep 30.\nNext: Watch for his number Wednesday.',
       durationSeconds: 252,
       media: [],
+      optoutLine: null,
+      delivery: null,
     })
   })
 
@@ -404,6 +413,8 @@ describe('a call, merged from its events', () => {
         summary: null,
         durationSeconds: 24,
         media: [],
+        optoutLine: null,
+        delivery: null,
       })
     }
   })
@@ -449,7 +460,7 @@ describe('a call, merged from its events', () => {
   it('keeps the job a person tied the call to', () => {
     const first = fold([ANSWERED.completed], ctx())
     const retied = first ? { ...first, jobId: 'job-padb' } : null
-    expect(mergeCall(retied, ANSWERED.summary as Exclude<QuoReading, { kind: 'text' }>, ctx({ existing: retied }))?.jobId).toBe('job-padb')
+    expect(mergeCall(retied, ANSWERED.summary as CallReading, ctx({ existing: retied }))?.jobId).toBe('job-padb')
   })
 
   it('writes Quo’s summary as one paragraph and the transcript one turn a line', () => {
@@ -457,6 +468,128 @@ describe('a call, merged from its events', () => {
     expect(summaryWords([], ['Call back'])).toBe('Next: Call back.')
     expect(summaryWords([], [])).toBeNull()
     expect(transcriptWords([{ userId: 'US-nobody', identifier: GREG, content: 'Hello.' }], { users: USERS, contactWords: 'Greg' })).toBe('Greg: Hello.')
+  })
+})
+
+// A text of ours as Quo reports it: Rosa's from Quo's own phone app, to Greg, delivered.
+const ours = (type: string, extra: Record<string, unknown> = {}, recipients = [GREG], userId: string | null = 'US-rosa') =>
+  read(
+    delivery(
+      type,
+      { id: 'MS-50', direction: 'outgoing', text: 'Greg, the walk moved to 8.', media: [], status: 'delivered', createdAt: '2026-10-02T15:30:00.000Z', ...extra },
+      { userId, senderIdentifier: '+12105550100', recipientIdentifiers: recipients },
+    ),
+  )
+type Sent = Extract<QuoReading, { kind: 'sent' }>
+const asSent = (r: QuoReading): Sent => {
+  if (r.kind !== 'sent') throw new Error('a text of ours only')
+  return r
+}
+
+describe('a text of ours, as Quo reports it', () => {
+  it('reads delivered, failed and undelivered', () => {
+    expect(ours('message.delivered')).toEqual({
+      kind: 'sent',
+      quoId: 'MS-50',
+      at: '2026-10-02T15:30:00.000Z',
+      external: GREG,
+      ourNumberId: 'PN-click',
+      outcome: 'delivered',
+      recipients: [GREG],
+      userId: 'US-rosa',
+      body: 'Greg, the walk moved to 8.',
+      media: [],
+      errorCode: null,
+    })
+    expect(ours('message.failed', { status: 'failed', errorCode: '30007' })).toMatchObject({ outcome: 'failed', errorCode: '30007' })
+    expect(ours('message.undelivered', { status: 'undelivered', errorCode: null })).toMatchObject({ outcome: 'undelivered', errorCode: null })
+    expect(readQuoEvent(delivery('message.delivered', { id: 'MS-51', direction: 'outgoing', text: 'x' }, { recipientIdentifiers: [] }))).toEqual({
+      ok: false,
+      why: 'message.delivered without the id it needs',
+    })
+  })
+
+  it('writes a text from Quo’s app as the person who sent it, on the default job', () => {
+    expect(planQuoEvent(ours('message.delivered'), ctx())).toEqual({
+      line: {
+        quoId: 'MS-50',
+        contactId: 'c-greg',
+        channelId: 'ch-greg',
+        jobId: 'job-boerne',
+        channel: 'text',
+        direction: 'out',
+        at: '2026-10-02T15:30:00.000Z',
+        who: 'Rosa · from the company number',
+        whoUserId: 'u-rosa',
+        body: 'Greg, the walk moved to 8.',
+        recordingUrl: null,
+        transcript: null,
+        summary: null,
+        durationSeconds: null,
+        media: [],
+        optoutLine: null,
+        delivery: 'delivered',
+      },
+      optout: null,
+      answer: null,
+      event: null,
+    })
+    expect(planQuoEvent(ours('message.delivered', {}, [GREG], 'US-somebody'), ctx()).line).toMatchObject({
+      who: 'Quo’s app · from the company number',
+      whoUserId: null,
+    })
+    expect(quoSentWho(null, USERS)).toBe('Quo’s app · from the company number')
+  })
+
+  it('writes a group text from Quo’s app as one line a person, each under its own key', () => {
+    const group = asSent(ours('message.delivered', {}, [GREG, '+12105550188']))
+    expect(sentKey(group, GREG)).toBe('MS-50:+12105550113')
+    expect(sentKey(group, '(210) 555-0188')).toBe('MS-50:+12105550188')
+    expect(sentKey(asSent(ours('message.delivered')), GREG)).toBe('MS-50')
+    const elena = planQuoEvent(group, ctx({ contactId: 'c-elena', contactWords: 'Elena', channelId: 'ch-elena', defaultJobId: 'job-fairoaks', recipient: '+12105550188' }))
+    expect(elena.line).toMatchObject({ quoId: 'MS-50:+12105550188', contactId: 'c-elena', jobId: 'job-fairoaks' })
+  })
+
+  it('only fills what is missing on a line already written', () => {
+    const written: QuoLine = {
+      quoId: 'MS-50',
+      contactId: 'c-greg',
+      channelId: 'ch-greg',
+      jobId: 'job-padb',
+      channel: 'text',
+      direction: 'out',
+      at: '2026-10-02T15:29:58.000Z',
+      who: 'Robert · from the company number',
+      whoUserId: 'u-robert',
+      body: 'Greg, the walk moved to 8.\n\nClick Construction. Reply STOP to opt out.',
+      recordingUrl: null,
+      transcript: null,
+      summary: null,
+      durationSeconds: null,
+      media: [],
+      optoutLine: 'first',
+      delivery: null,
+    }
+    const photo = { url: 'https://files.example/walk.jpg', type: 'image/jpeg' }
+    expect(planQuoEvent(ours('message.delivered', { media: [photo] }), ctx({ existing: written })).line).toEqual({ ...written, delivery: 'delivered', media: [photo] })
+  })
+
+  it('says a failure once, and keeps delivered once a carrier said so', () => {
+    const failed = planQuoEvent(ours('message.failed', { errorCode: '30007' }), ctx())
+    expect(failed).toMatchObject({ line: { delivery: 'failed' }, event: 'The text to Greg did not go out. Quo gave code 30007.' })
+    expect(planQuoEvent(ours('message.failed', { errorCode: '30007' }), ctx({ existing: failed.line })).event).toBeNull()
+    const lost = planQuoEvent(ours('message.undelivered'), ctx({ existing: failed.line }))
+    expect(lost).toMatchObject({ line: { delivery: 'undelivered' }, event: 'The text to Greg did not reach their phone.' })
+    const arrived = planQuoEvent(ours('message.delivered'), ctx({ existing: lost.line }))
+    expect(arrived).toMatchObject({ line: { delivery: 'delivered' }, event: null })
+    expect(planQuoEvent(ours('message.failed'), ctx({ existing: arrived.line }))).toMatchObject({ line: { delivery: 'delivered' }, event: null })
+  })
+
+  it('ranks the endings', () => {
+    expect(strongerDelivery(null, 'failed')).toBe('failed')
+    expect(strongerDelivery('failed', 'undelivered')).toBe('undelivered')
+    expect(strongerDelivery('delivered', 'failed')).toBe('delivered')
+    expect(deliveryWords('delivered', 'Greg', null)).toBeNull()
   })
 })
 
@@ -472,7 +605,8 @@ describe('plain words', () => {
         return plan.event ? [plan.event] : []
       }),
     ]
-    expect(said).toHaveLength(6)
+    said.push(deliveryWords('failed', 'Greg', '30007') ?? '', deliveryWords('undelivered', 'Elena', null) ?? '')
+    expect(said).toHaveLength(8)
     expect(said.flatMap((s) => plainWordsFailures(s))).toEqual([])
   })
 })

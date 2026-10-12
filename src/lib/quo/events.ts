@@ -13,14 +13,22 @@
  * Quo stops a number by itself on STOP, STOPALL, UNSUBSCRIBE, CANCEL, END or QUIT sent alone, and answers it; START or
  * UNSTOP brings it back, also answered by Quo. The app mirrors both on the number (`contact_channels.opted_out_at`) and
  * answers only what Quo does not: HELP and INFO, and the FCC's REVOKE and OPT OUT.
+ *
+ * A text going out comes back as `message.delivered`, `message.failed` or `message.undelivered`, whether it went from
+ * this app or from Quo's own phone app ("Text message sent from workspace", Quo's webhooks page). Our own send writes its
+ * line first or second; either way the event only fills what is missing and the send's fields win (`mergeSent` here,
+ * `sendOver` in `send.ts`), so the race ends on the same line both ways.
  */
-import type { ComposeCompany } from '../messages/compose'
+import type { ComposeCompany, OptoutRecord } from '../messages/compose'
 
 export const QUO_API_VERSION = '2026-03-30'
 
 /** The events the webhook takes. Every other type is read as nothing to do. */
 export const QUO_EVENT_TYPES = [
   'message.received',
+  'message.delivered',
+  'message.failed',
+  'message.undelivered',
   'call.completed',
   'call.missed',
   'call.voicemail.completed',
@@ -41,6 +49,9 @@ export interface QuoMedia {
   url: string
   type: string | null
 }
+
+/** How a text of ours ended: it reached the phone, the carrier could not deliver it, or it never went out. */
+export type QuoDelivery = 'delivered' | 'undelivered' | 'failed'
 
 /** One turn of a call's transcript: a person of ours by Quo user id, or the number on the other end. */
 export interface QuoDialogue {
@@ -81,6 +92,20 @@ export type QuoReading =
   | (QuoBase & { kind: 'recording'; direction: 'in' | 'out' | null; recordingUrl: string | null; durationSeconds: number | null })
   | (QuoBase & { kind: 'transcript'; done: boolean; dialogue: QuoDialogue[] })
   | (QuoBase & { kind: 'summary'; done: boolean; summary: string[]; nextSteps: string[]; answeredByUserId: string | null })
+  | (QuoBase & {
+      kind: 'sent'
+      outcome: QuoDelivery
+      /** Every number it went to: one line each. `external` is the first. */
+      recipients: string[]
+      userId: string | null
+      body: string
+      media: QuoMedia[]
+      /** The carrier's or Quo's own code on a failure, as Quo passed it. */
+      errorCode: string | null
+    })
+
+/** The events of a call. */
+export type CallReading = Exclude<QuoReading, { kind: 'text' | 'sent' }>
 
 export type QuoRead = { ok: true; eventId: string; type: QuoEventType; reading: QuoReading } | { ok: false; why: string }
 
@@ -118,6 +143,13 @@ export function readQuoEvent(body: unknown): QuoRead {
   return reading ? { ok: true, eventId, type, reading } : { ok: false, why: `${type} without the id it needs` }
 }
 
+function mediaOf(r: Json): QuoMedia[] {
+  return (Array.isArray(r.media) ? r.media : [])
+    .map(obj)
+    .filter((m): m is Json => m !== null && str(m.url) !== null)
+    .map((m) => ({ url: str(m.url) ?? '', type: str(m.type) }))
+}
+
 function readResource(
   type: QuoEventType,
   r: Json,
@@ -130,11 +162,26 @@ function readResource(
       const quoId = str(r.id)
       const from = str(context.senderIdentifier)
       if (!quoId || !from) return null
-      const media = (Array.isArray(r.media) ? r.media : [])
-        .map(obj)
-        .filter((m): m is Json => m !== null && str(m.url) !== null)
-        .map((m) => ({ url: str(m.url) ?? '', type: str(m.type) }))
-      return { ...base, kind: 'text', quoId, external: from, userId, body: typeof r.text === 'string' ? r.text.trim() : '', media }
+      return { ...base, kind: 'text', quoId, external: from, userId, body: typeof r.text === 'string' ? r.text.trim() : '', media: mediaOf(r) }
+    }
+    case 'message.delivered':
+    case 'message.failed':
+    case 'message.undelivered': {
+      const quoId = str(r.id)
+      const recipients = strs(context.recipientIdentifiers)
+      if (!quoId || !recipients.length) return null
+      return {
+        ...base,
+        kind: 'sent',
+        quoId,
+        external: recipients[0] ?? null,
+        outcome: type === 'message.delivered' ? 'delivered' : type === 'message.failed' ? 'failed' : 'undelivered',
+        recipients,
+        userId,
+        body: typeof r.text === 'string' ? r.text.trim() : '',
+        media: mediaOf(r),
+        errorCode: str(r.errorCode),
+      }
     }
     case 'call.completed': {
       const quoId = str(r.id)
@@ -319,6 +366,10 @@ export interface QuoLine {
   summary: string | null
   durationSeconds: number | null
   media: QuoMedia[]
+  /** `messages.optout_line`: on a text of ours, why the opt-out line rode along, or held. */
+  optoutLine: OptoutRecord | null
+  /** `messages.delivery`, cut 5's column: how a text of ours ended, once Quo says. */
+  delivery: QuoDelivery | null
 }
 
 /** What the webhook found before it asks what to write. */
@@ -335,8 +386,10 @@ export interface QuoPlanContext {
   /** Quo's workspace users mapped to ours (Settings → Phone and texts): our user id and the name a line shows. */
   users: Readonly<Record<string, { userId: string; name: string }>>
   company: ComposeCompany
-  /** The call's line as already written, when this event adds to a call. */
+  /** The line as already written under this event's key, when the event adds to one. */
   existing: QuoLine | null
+  /** On a text of ours: the number this line is for. A group text from Quo's app is one plan per number. */
+  recipient?: string | null
 }
 
 /** What the webhook does with one event. */
@@ -355,7 +408,9 @@ const NOTHING: QuoPlan = { line: null, optout: null, answer: null, event: null }
 
 /** Decides what the thread gets from one event. */
 export function planQuoEvent(reading: QuoReading, ctx: QuoPlanContext): QuoPlan {
-  return reading.kind === 'text' ? planText(reading, ctx) : { ...NOTHING, line: mergeCall(ctx.existing, reading, ctx) }
+  if (reading.kind === 'text') return planText(reading, ctx)
+  if (reading.kind === 'sent') return { ...NOTHING, ...mergeSent(ctx.existing, reading, ctx) }
+  return { ...NOTHING, line: mergeCall(ctx.existing, reading, ctx) }
 }
 
 function mediaWords(media: readonly QuoMedia[]): string {
@@ -382,6 +437,8 @@ function planText(t: Extract<QuoReading, { kind: 'text' }>, ctx: QuoPlanContext)
     summary: null,
     durationSeconds: null,
     media: t.media,
+    optoutLine: null,
+    delivery: null,
   }
   const key = keywordOf(t.body)
   const who = ctx.contactWords
@@ -422,7 +479,7 @@ function completedChannel(c: Extract<QuoReading, { kind: 'call' }>): CallChannel
   return c.hasVoicemail ? 'voicemail' : 'missed'
 }
 
-function readingChannel(r: Exclude<QuoReading, { kind: 'text' }>): CallChannel | null {
+function readingChannel(r: CallReading): CallChannel | null {
   if (r.kind === 'call') return completedChannel(r)
   if (r.kind === 'missed') return 'missed'
   if (r.kind === 'voicemail') return 'voicemail'
@@ -433,7 +490,7 @@ function readingChannel(r: Exclude<QuoReading, { kind: 'text' }>): CallChannel |
  * A line's length in seconds, the same whatever order the events came in. A voicemail's line keeps the voicemail's own
  * length once it has it. A call's line keeps `call.completed`'s. The recording fills a length only when none is known.
  */
-function callDuration(prev: QuoLine | null, r: Exclude<QuoReading, { kind: 'text' }>, channel: CallChannel): number | null {
+function callDuration(prev: QuoLine | null, r: CallReading, channel: CallChannel): number | null {
   const known = prev?.durationSeconds ?? null
   if (r.kind === 'voicemail') return r.durationSeconds ?? known
   if (r.kind === 'call') return channel === 'voicemail' && prev?.channel === 'voicemail' && known != null ? known : (r.durationSeconds ?? known)
@@ -488,7 +545,7 @@ export function summaryWords(summary: readonly string[], nextSteps: readonly str
  * The body is the summary on a call, the voicemail's words on a voicemail, else a plain word. Nobody answered a missed
  * call or a voicemail, so neither names one of ours. A transcript or summary still in progress writes nothing.
  */
-export function mergeCall(prev: QuoLine | null, r: Exclude<QuoReading, { kind: 'text' }>, ctx: QuoPlanContext): QuoLine | null {
+export function mergeCall(prev: QuoLine | null, r: CallReading, ctx: QuoPlanContext): QuoLine | null {
   if ((r.kind === 'transcript' || r.kind === 'summary') && !r.done) return null
   const prevChannel = prev && prev.channel !== 'text' ? prev.channel : null
   const own = readingChannel(r)
@@ -536,5 +593,76 @@ export function mergeCall(prev: QuoLine | null, r: Exclude<QuoReading, { kind: '
     summary,
     durationSeconds,
     media: prev?.media ?? [],
+    optoutLine: null,
+    delivery: null,
+  }
+}
+
+// ---------- a text of ours, as Quo reports it ----------
+
+/**
+ * A text of ours as `messages.quo_id` keys it: the message's id, or, on a group text from Quo's app, the id and the
+ * number, since `quo_id` is unique and the thread is one line per person.
+ */
+export function sentKey(r: Extract<QuoReading, { kind: 'sent' }>, recipient: string): string {
+  return r.recipients.length > 1 ? `${r.quoId}:${toE164(recipient) ?? recipient.trim()}` : r.quoId
+}
+
+const DELIVERY_RANK: Record<QuoDelivery, number> = { failed: 1, undelivered: 2, delivered: 3 }
+
+/** The ending to keep when two events disagree: once a carrier said delivered, the person has it. */
+export function strongerDelivery(a: QuoDelivery | null, b: QuoDelivery): QuoDelivery {
+  return a && DELIVERY_RANK[a] >= DELIVERY_RANK[b] ? a : b
+}
+
+/** The words for who sent a text the app did not send itself: one of ours by their seat, or Quo's app. */
+export function quoSentWho(userId: string | null, users: QuoPlanContext['users']): string {
+  const name = userId ? users[userId]?.name : undefined
+  return `${name ?? 'Quo’s app'} · from the company number`
+}
+
+/** The team event when a text of ours did not arrive, with the code Quo passed. */
+export function deliveryWords(delivery: QuoDelivery, who: string, errorCode: string | null): string | null {
+  if (delivery === 'delivered') return null
+  const head = delivery === 'failed' ? `The text to ${who} did not go out.` : `The text to ${who} did not reach their phone.`
+  return errorCode ? `${head} Quo gave code ${errorCode}.` : head
+}
+
+/**
+ * A text of ours from its delivery event. With no line under the key yet, the event writes the whole line: a text from
+ * Quo's app, or ours before our own write landed. With a line there, the event only fills what is missing, the ending
+ * and the media, and never touches who sent it, its words, its time, its job or its opt-out line. A failure says so
+ * once, as a team event.
+ */
+export function mergeSent(
+  prev: QuoLine | null,
+  r: Extract<QuoReading, { kind: 'sent' }>,
+  ctx: QuoPlanContext,
+): { line: QuoLine; event: string | null } {
+  const recipient = ctx.recipient ?? r.recipients[0] ?? ''
+  const delivery = strongerDelivery(prev?.delivery ?? null, r.outcome)
+  const event = delivery !== prev?.delivery ? deliveryWords(delivery, ctx.contactWords, r.errorCode) : null
+  if (prev) return { line: { ...prev, delivery, media: prev.media.length ? prev.media : r.media }, event }
+  return {
+    line: {
+      quoId: sentKey(r, recipient),
+      contactId: ctx.contactId,
+      channelId: ctx.channelId,
+      jobId: ctx.defaultJobId,
+      channel: 'text',
+      direction: 'out',
+      at: r.at,
+      who: quoSentWho(r.userId, ctx.users),
+      whoUserId: (r.userId && ctx.users[r.userId]?.userId) || null,
+      body: r.body || mediaWords(r.media),
+      recordingUrl: null,
+      transcript: null,
+      summary: null,
+      durationSeconds: null,
+      media: r.media,
+      optoutLine: null,
+      delivery,
+    },
+    event,
   }
 }

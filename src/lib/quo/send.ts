@@ -8,7 +8,7 @@
  * API sends text only, up to 1,600 characters: a photo goes as a link line, which the caller adds before it asks.
  */
 import { type ComposeCompany, type LinkLine, type OptoutRecord, optoutReason, textToSend } from '../messages/compose'
-import { toE164 } from './events'
+import { type QuoLine, toE164 } from './events'
 
 /** The most a text sent by Quo's API carries. */
 export const QUO_MAX_CHARACTERS = 1600
@@ -139,4 +139,31 @@ export function sentQuoId(answer: unknown): string | null {
   const top = answer as Record<string, unknown>
   const data = top.data && typeof top.data === 'object' && !Array.isArray(top.data) ? (top.data as Record<string, unknown>) : top
   return typeof data.id === 'string' && data.id.trim() ? data.id.trim() : null
+}
+
+/**
+ * Our send's line, written under the id Quo answered with. When Quo's delivery event wrote a line there first, the
+ * send's fields win: who sent it, its words, its time, its job and its opt-out line. The event's ending and media stay.
+ * With `mergeSent` in `events.ts`, the two writes end on the same line in either order.
+ */
+export function sendOver(prev: QuoLine | null, sent: SentLine, quoId: string): QuoLine {
+  return {
+    quoId,
+    contactId: sent.contactId,
+    channelId: sent.channelId,
+    jobId: sent.jobId,
+    channel: 'text',
+    direction: 'out',
+    at: sent.at,
+    who: sent.who,
+    whoUserId: sent.whoUserId,
+    body: sent.body,
+    recordingUrl: null,
+    transcript: null,
+    summary: null,
+    durationSeconds: null,
+    media: prev?.media ?? [],
+    optoutLine: sent.optoutLine,
+    delivery: prev?.delivery ?? null,
+  }
 }
