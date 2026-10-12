@@ -178,6 +178,21 @@ page. The prototype's words are the words; its hover cards are the help text.
   files and a send record like the contract's (sent, the link, opened, signed, the name, the
   signature, the consent). Draft by anyone, send by the money team. Its own PR after cut 4.
 
+### Cut 4c · Contracts from clauses (after cut 4; `MESSAGES_PLAN.md` → *Contracts from clauses*)
+
+- **Kernels**: `contracts/assemble.ts` (the base plus the trade's exhibit for a company on a job, the fields
+  filled, the version), `contracts/approval.ts` (who may publish, what a proposal is, the Needs you row).
+- **SQL**: `contract_clauses` (`paper_id`, `order`, `text_en`, `text_es`, `scope` = all or a trade, `version`,
+  `published_by`, `published_at`), `contract_clause_proposals` (`clause_id` or null for new, the words, the
+  scope, `by`, `why`, `state`, `decided_by`, `decided_at`, `decline_why`), a `clause_versions` column on the
+  signed copy in `person_contract_documents` and `gc_owner_contract_sends`. The Contract library's document
+  becomes the paper the clauses hang on; Form Studio's template is the frame around them.
+- **Edge**: the approvers' push and email on a proposal (`messages-notify`), the editor's text on a decision.
+- **Screens**: Settings → Contracts and clauses; the Needs you rows; the sign page's version and exhibit line;
+  the builder's scope per clause and preview per trade.
+- **Access**: edit by any office role; approve and publish by controller and dev (`ACCESS_CONTROL.md`).
+- **The bridge until then**: one master agreement document per trade in the library's packets.
+
 ### Cut 5 · Calls and texts: the Quo link
 
 - **Edge**: `quo-webhook` (`message.received`, `call.completed`, `call.missed`,
@@ -320,6 +335,8 @@ Each is taken in the cut that needs it; none blocks cut 1 through 4 except the f
 10. Yearly or monthly Quo billing; Claude from the first day or later (`MESSAGES_PLAN.md`).
 11. **Who may start a change order from a message** (after cut 4): the money team only, or draft by
     anyone and send by the money team. Lean: the split.
+13. ~~Who edits clauses~~ Taken 2026-10-12: anyone in the office edits, a controller or a dev approves,
+    with a push and an email; the exhibits live on both the master agreement and the statement of work.
 12. **Over usual on the boards**: a watch in orange, never a call and never in Follow up's count
     (taken in the prototype, v1.174); the usuals themselves are the flow's to tune.
 

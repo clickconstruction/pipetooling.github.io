@@ -594,6 +594,31 @@ welcome, Spanish, photos, a weekly read, and the office never learns what was op
   the architect sees this page or a cousin of it; whether photos are opt-in per job, since some owners share the
   link with tenants.
 
+## Contracts from clauses (drawn 2026-10-12, v1.178)
+
+A contract is not a text. It is an ordered set of clauses, each with a scope, everyone or one trade, and its
+own version. At send time the paper for this company on this job is the base clauses plus the trade's exhibit,
+with the job's fields filled; the signed copy freezes the words and each clause's version, and the sign page
+says which version and which exhibit it carries. The trade's exhibit lives on both papers: the standing rules on
+the master agreement, the job's specifics on each statement of work, whose base reads as *The job* and whose
+exhibits as *This trade*.
+
+- **Settings → Contracts and clauses**: one card per contract paper (the master agreement, the statement of
+  work, our contract, a change order, and any contract made in the flow editor) with its version and its
+  clauses in two sections, everyone and the trade exhibits, each clause with its scope pill, its version and
+  Edit; *+ a clause*; *preview per trade* assembles the paper for a chosen company.
+- **Who may change a clause** (the owner, 2026-10-12): anyone in the office may edit one; the edit goes out
+  once a controller or a dev approves it. An office edit becomes a proposal: the approvers get a push on their
+  phones and an email with the change, and it sits on their Follow up under Needs you (*Rosa changed clause 2
+  of the master agreement · waiting on your approval*, with Approve, Decline with a why, Open in Settings).
+  Approved, it is the next version and the next paper sent carries it; declined, the editor gets a text with
+  the why. A controller's or a dev's own edit publishes at once. A paper already signed keeps the words it was
+  signed with. The roles are the app's own (`ROLE`: dev, controller, office, superintendent).
+- **The flow editor's contract builder** gives each clause its scope and previews the sign page as a chosen
+  company, with that trade's exhibit.
+- **Built later**, after cut 4, as its own cut (`BUILD_PLAN.md` → *Cut 4c*); until then one master agreement
+  document per trade in the Contract library's packets is the bridge.
+
 ## How it would be built, once the shape is settled
 
 The detailed plan is `BUILD_PLAN.md` (2026-10-11); the list below is the first sketch it grew from.
@@ -821,6 +846,12 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.178, 2026-10-12**: contracts from clauses: a clause has a scope and a version, the sign page assembles
+  the base plus the trade's exhibit and names its version; Settings → Contracts and clauses holds the library
+  with Edit, *+ a clause* and *preview per trade*; an office edit waits on a controller or a dev with a push,
+  an email and a Needs you row, Approve or Decline with a why; the flow editor's builder gives each clause its
+  scope and previews as a chosen company; Maria joins the team as the controller (the owner, 2026-10-12).
+  *Contracts from clauses* above holds the shape.
 - **v1.177b, 2026-10-12**: `BUILD_PLAN.md` brought up to v1.177: every cut gains what landed since v1.141, the
   kernels list grows by six, the decisions list marks the portal taken and adds the change order's seat and the
   over-usual rule, and a new section 9 gives the build order with rough sizes and what the office gets at the end
