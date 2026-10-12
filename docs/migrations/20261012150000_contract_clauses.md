@@ -5,7 +5,7 @@ Messages, cut 4c: contracts from clauses (`to-dos/gc-mode/messages/BUILD_PLAN.md
 ## What it does
 
 1. **`gc_clause_approve_team()`**: dev and controller, named once. Its client copy is `GC_CLAUSE_APPROVE_TEAM` in `src/lib/gc/access.ts`, and `access.test.ts` fails when the two differ. Editing is `gc_office_team()`'s.
-2. **`contract_template_documents`** gains `revision` (0 until a clause is published, then one up on every publish) and `published_at`. A publish also moves the row's `updated_at` through its existing trigger, so the Contract library's version date for a clause paper is the day of its newest publish. The library's history trigger does not fire, since it watches the body, the name, the date and the audience only.
+2. **`contract_template_documents`** gains `revision` (0 until a clause is published, then one up on every publish) and `published_at`. A publish also moves the row's `updated_at` through its existing trigger, so the Contract library's version date for a clause paper is the day of its newest publish. The library and the People tab's contracts read that date as the book's last edit when no date is set by hand. The library's history trigger does not fire, since it watches the body, the name, the date and the audience only.
 3. **`contract_clauses`**, a new table:
    - `paper_id` (the library document, on delete cascade) and `sequence_order`, its place on the paper;
    - `text_en` (1 to 4,000 characters once trimmed) and `text_es` (empty until written; the Spanish page shows the English meanwhile);
@@ -32,7 +32,7 @@ The approvers' push and email on a proposal, and the editor's text on a decision
 
 ## Checked before the push
 
-**The SQL bed** (`npm run test:pg:contract-clauses`, the new `contract-clauses` bed) runs every migration on Supabase Postgres 17, then the clauses' migration once more (changing nothing), then the scenario. Docker does not run on the office Mac, so it runs in the SQL beds workflow on the PR.
+**The SQL bed** (`npm run test:pg:contract-clauses`, the new `contract-clauses` bed) runs every migration on Supabase Postgres 17, then the clauses' migration once more (changing nothing), then the scenario. Docker does not run on the office Mac, so it ran in the SQL beds workflow on #5439. It was green on its first run, 2026-10-12: all 59 assertions, every other bed still passing, and the second apply changing nothing.
 
 - No sign-in reads or changes a clause. A superintendent reads none, changes none, approves none and cannot reach the assembly.
 - Rosa proposes a change to clause 2 and it waits. Nobody writes the tables by hand. Rosa does not approve her own change, nor does a leader.
