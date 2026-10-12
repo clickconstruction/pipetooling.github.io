@@ -6,49 +6,47 @@
 <title>Customer messages prototype</title>
 <meta name="description" content="Prototype: one line to a residential customer from the job window, the tech's phone and the office, on the Messages spine. Click Plumbing. Made-up people. Nothing is saved.">
 <style>
-[hidden]{display:none!important}
-img{max-width:100%}
-.ver{font-size:13px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:1px 8px;align-self:center}
-.log{max-width:76ch;display:flex;flex-direction:column;gap:10px}
-.log article{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
-.log article h4{margin:0 0 4px;font-size:15px}
-.log article h4 small{color:var(--muted);font-weight:400;margin-left:8px}
-.log ul{margin:4px 0 0;padding-left:18px;font-size:14px}
-.log li{margin:2px 0}
-
-/* Layout: one page, five screens behind a top switch; each screen is a replica of the app surface it changes, at that surface's real width. Tokens follow the Messages prototype's (text blue, email violet, team yellow). */
+/* Layout: one page, six screens behind a top switch; each screen is a replica of the app surface it changes, at that surface's real width. Tokens follow the Messages prototype's (text blue, email violet, team yellow). */
 :root{
   --bg:#f3f5f8;--surface:#ffffff;--text:#1b1f24;--muted:#5c6470;--border:#dde1e6;--chip:#eef1f5;
   --accent:#1f5fbf;--accent-soft:#e8f0fc;--text-ch:#1f5fbf;--text-soft:#e8f0fc;--email-ch:#6b4fbb;--email-soft:#efe9fb;
-  --team:#fff6c2;--team-border:#e9d77a;--ok:#1a7f3c;--ok-soft:#e6f6ec;--warn:#b35c00;--warn-soft:#fff1e0;--danger:#b3261e;
-  --app:#7a3e9d;--app-soft:#f3e9f9;--bubble-them:#e9ebef;--phone:#111318;--radius:10px;
+  --team:#fff6c2;--team-border:#e9d77a;--ok:#1a7f3c;--ok-soft:#e6f6ec;--warn:#b35c00;--warn-soft:#fff1e0;--danger:#b3261e;--danger-soft:#fbe9e7;
+  --app:#7a3e9d;--app-soft:#f3e9f9;--bubble-them:#e9ebef;--phone:#111318;--mark:#fff3a3;--radius:10px;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;
   --accent:#6ea3f0;--accent-soft:#1d2d47;--text-ch:#6ea3f0;--text-soft:#1d2d47;--email-ch:#a68ff0;--email-soft:#2b2446;
-  --team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;
-  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;color-scheme:dark}}
+  --team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;--danger-soft:#3d1f1d;
+  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;--mark:#5a4d12;color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;
   --accent:#6ea3f0;--accent-soft:#1d2d47;--text-ch:#6ea3f0;--text-soft:#1d2d47;--email-ch:#a68ff0;--email-soft:#2b2446;
-  --team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;
-  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;color-scheme:dark}
+  --team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;--danger-soft:#3d1f1d;
+  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;--mark:#5a4d12;color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
+img{max-width:100%}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--font)}
 button{font:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px}
-button:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:focus-visible,[tabindex]:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
 button.quiet{border-color:transparent;background:transparent;color:var(--accent)}
+button.small{padding:3px 8px;font-size:13px}
+button.danger{color:var(--danger);border-color:var(--danger)}
 button.pill{border-radius:999px;padding:5px 12px;font-size:14px}
 button.pill.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
 button.pill .n{font-weight:700;margin-left:4px;color:var(--accent)}
 button.pill.on .n{color:#fff}
-textarea{font:inherit;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--text);width:100%;resize:vertical;min-height:64px}
+textarea,input,select{font:inherit;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--text)}
+textarea{width:100%;resize:vertical;min-height:64px}
+mark{background:var(--mark);color:inherit;border-radius:3px;padding:0 1px}
+code{font-family:var(--mono);font-size:.92em;background:var(--chip);padding:1px 5px;border-radius:5px}
 .wrap{max-width:1040px;margin:0 auto;padding-block:16px 48px;padding-inline:16px}
 header.top{display:flex;flex-wrap:wrap;gap:8px;align-items:baseline;margin-bottom:6px}
-header.top h1{font-size:22px;margin:0 12px 0 0;letter-spacing:-.01em}
+header.top h1{font-size:22px;margin:0 6px 0 0;letter-spacing:-.01em}
 header.top .note{flex-basis:100%}
+.ver{font-size:13px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:1px 8px;align-self:center}
 .note{color:var(--muted);font-size:13px}
 nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:10px 0 18px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:6px;z-index:5}
 nav.tabs button{border-color:transparent;background:transparent;border-radius:999px;padding:6px 12px;color:var(--muted)}
@@ -60,7 +58,7 @@ section.screen{display:none}section.screen.on{display:block}
 .lead b{font-weight:600}
 h2{font-size:17px;margin:22px 0 8px}
 h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
-.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 14px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 14px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center;z-index:50}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 
@@ -81,7 +79,7 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .win .filters{display:flex;gap:6px;padding:4px 22px 10px;flex-wrap:wrap;align-items:center}
 .win .filters .new{position:relative}
 .win .filters .new::after{content:"";position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:var(--danger);border:2px solid var(--surface)}
-.feed{padding:4px 22px 8px;max-height:520px;overflow:auto}
+.feed{padding:4px 22px 8px;max-height:460px;overflow:auto}
 .day{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:16px 0 6px}
 .row{display:grid;grid-template-columns:30px 62px 118px minmax(0,1fr);gap:10px;align-items:start;padding:9px 0;border-bottom:1px dashed var(--border);font-size:15px}
 .row .n{width:26px;height:26px;border:1px solid var(--border);border-radius:50%;font-size:12px;display:grid;place-items:center;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -90,7 +88,7 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .row .w b{color:var(--text);font-weight:600}
 .row .b{min-width:0;padding-top:3px}
 .row .b .dim{color:var(--muted)}
-.row.cust{background:var(--surface);border-left:3px solid transparent;margin-left:-14px;padding-left:11px;border-radius:0 8px 8px 0}
+.row.cust{border-left:3px solid transparent;margin-left:-14px;padding-left:11px;border-radius:0 8px 8px 0}
 .row.cust.text{border-left-color:var(--text-ch)}
 .row.cust.email{border-left-color:var(--email-ch)}
 .row.cust.portal{border-left-color:var(--ok)}
@@ -114,22 +112,107 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .kinds button.on.text{background:var(--text-soft);border-color:var(--text-ch);color:var(--text-ch);font-weight:600}
 .kinds button.on.email{background:var(--email-soft);border-color:var(--email-ch);color:var(--email-ch);font-weight:600}
 .kinds .from{margin-left:auto;color:var(--muted);font-size:13px}
-.qr{border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:8px;background:var(--bg)}
-.qr .grp{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px;align-items:start;padding:4px 0}
-.qr .grp + .grp{border-top:1px dashed var(--border)}
-.qr .gt{font-size:13px;color:var(--muted);padding-top:5px}
-.qr .gt i{display:block;font-style:normal;font-size:11px;color:var(--warn)}
-.qr .lines{display:flex;gap:6px;flex-wrap:wrap}
-.qr .lines button{font-size:13px;padding:4px 10px;border-radius:999px;background:var(--surface)}
-.qr .lines button.mine{border-style:dashed}
-.qr .lines button:hover{border-color:var(--accent)}
+
+/* the quick replies strip, the GC prototype's shape */
+.quick{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--bg);overflow:hidden}
+.quick .peek{width:100%;text-align:left;border:0;background:transparent;padding:8px 10px;color:var(--accent);font-weight:600}
+.quick .peek .n{color:var(--muted);font-weight:400}
+.quick .ql{display:flex;align-items:center;gap:8px;padding:6px 10px 4px;flex-wrap:wrap}
+.quick .ql .lbl{border:0;background:transparent;padding:0;color:var(--accent);font-weight:600}
+.quick .ql .cnt{color:var(--muted);font-size:13px}
+.quick .ql input{margin-left:auto;padding:4px 8px;font-size:13px;width:180px;max-width:100%}
+.quick .groups{max-height:168px;overflow:auto;padding:0 10px 8px}
+.quick .grp{display:grid;grid-template-columns:160px minmax(0,1fr);gap:8px;align-items:start;padding:5px 0}
+.quick .grp + .grp{border-top:1px dashed var(--border)}
+.quick .gt{font-size:13px;color:var(--muted);padding-top:5px}
+.quick .gt i{display:block;font-style:normal;font-size:11px;color:var(--warn)}
+.quick .lines{display:flex;gap:6px;flex-wrap:wrap}
+.quick .lines button{font-size:13px;padding:4px 10px;border-radius:999px;background:var(--surface);text-align:left}
+.quick .lines button.mine{border-style:dashed}
+.quick .lines button .ph{font-size:10px;color:var(--muted);margin-left:5px}
+.quick .lines button:hover{border-color:var(--accent)}
+.quick .empty{padding:8px 0;font-size:13px;color:var(--muted)}
+.blank{color:var(--warn);font-weight:600}
 .boxrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
 .boxrow .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .count{font-size:13px;color:var(--muted);margin-top:6px;display:flex;gap:14px;flex-wrap:wrap}
 .count b{color:var(--text);font-weight:600}
-@media (max-width:640px){.row{grid-template-columns:24px 50px minmax(0,1fr)}.row .w{grid-column:3}.row .b{grid-column:1/-1;padding-left:84px}.qr .grp{grid-template-columns:1fr}.boxrow{grid-template-columns:1fr}.win .head,.win .sub,.win .filters,.feed,.composer{padding-inline:14px}}
+.count .bad{color:var(--warn);font-weight:600}
+@media (max-width:640px){.row{grid-template-columns:24px 50px minmax(0,1fr)}.row .w{grid-column:3}.row .b{grid-column:1/-1;padding-left:84px}.quick .grp{grid-template-columns:1fr}.boxrow{grid-template-columns:1fr}.win .head,.win .sub,.win .filters,.feed,.composer{padding-inline:14px}}
 
-/* ---- Screen 2 & 3: phones ---- */
+/* ---- modals: the editor and Find a reply ---- */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;padding:16px;z-index:40}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:560px;max-height:92vh;overflow:auto;padding:16px 18px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal.wide{max-width:960px}
+.modal h2{margin:0;font-size:18px}
+.modal .mhead{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.modal .mhead input.search{flex:1;min-width:180px;padding:6px 10px;font-size:14px}
+.modal .btns{display:flex;gap:8px;justify-content:flex-end;align-items:center;margin-top:12px;flex-wrap:wrap}
+.modal .btns .l{margin-right:auto;font-size:13px;color:var(--muted)}
+.etabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.etabs button{border-radius:999px;padding:3px 10px;font-size:13px;border-color:transparent;background:transparent;color:var(--muted)}
+.etabs button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.add{border:1px solid var(--accent);border-radius:10px;padding:10px;margin-bottom:10px;background:var(--accent-soft)}
+.frm{display:grid;gap:8px}
+.frm .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.frm label{font-size:12px;color:var(--muted);display:block;margin-bottom:2px}
+.frm textarea{min-height:52px}
+.frm .opts{display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:13px}
+.frm .opts label{display:inline-flex;gap:6px;align-items:center;margin:0;font-size:13px;color:var(--text)}
+.frm .opts input[type=checkbox]{width:auto;padding:0}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chips button{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--surface);font-family:var(--mono)}
+.chips button span{font-family:var(--font);color:var(--muted);margin-left:4px}
+.prevline{font-size:14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px}
+.prevline small{display:block;color:var(--muted);font-size:12px;margin-top:3px}
+@media (max-width:640px){.frm .two{grid-template-columns:1fr}}
+table.qrt{width:100%;border-collapse:collapse;font-size:14px}
+table.qrt th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--border)}
+table.qrt th.r,table.qrt td.r{text-align:right;white-space:nowrap}
+table.qrt tr.ghead td{padding:12px 6px 4px;font-size:12px;color:var(--muted)}
+table.qrt tr.ghead .ktag{font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:11px;border-radius:4px;padding:1px 6px;background:var(--chip);color:var(--text)}
+table.qrt tr.ghead .ktag.customer{background:var(--text-soft);color:var(--text-ch)}
+table.qrt tr.ghead .ktag.trade{background:var(--warn-soft);color:var(--warn)}
+table.qrt tr.ghead .ktag.arch{background:var(--email-soft);color:var(--email-ch)}
+table.qrt tr.ghead .step{font-weight:600;color:var(--text);margin-left:6px}
+table.qrt tr.line td{padding:7px 6px;border-bottom:1px dashed var(--border);vertical-align:top;cursor:pointer}
+table.qrt tr.line:hover td{background:var(--bg)}
+table.qrt tr.line.open td{background:var(--accent-soft)}
+table.qrt tr.line.removed td{opacity:.6}
+table.qrt td.dim{color:var(--muted);font-size:13px;white-space:nowrap}
+table.qrt .used{font-variant-numeric:tabular-nums}
+table.qrt .used small{display:block;color:var(--muted);font-size:11px}
+table.qrt .flags{display:inline-flex;gap:4px;margin-left:6px;vertical-align:1px}
+table.qrt .flags span{font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:0 5px;background:var(--chip);color:var(--muted)}
+table.qrt .flags span.ph{background:var(--ok-soft);color:var(--ok)}
+table.qrt .flags span.es{background:var(--email-soft);color:var(--email-ch)}
+table.qrt .flags span.noes{background:var(--warn-soft);color:var(--warn)}
+table.qrt .flags span.mine{border:1px dashed var(--border);background:transparent}
+table.qrt tr.edit td{padding:10px 6px 14px;background:var(--bg);border-bottom:1px solid var(--border)}
+.hist{margin-top:10px;font-size:13px}
+.hist .h{font-weight:600;margin-bottom:4px}
+.hist .e{display:grid;grid-template-columns:170px minmax(0,1fr);gap:8px;padding:3px 0;border-top:1px dashed var(--border)}
+.hist .e .w{color:var(--muted)}
+.hist del{color:var(--danger);text-decoration:line-through}
+.hist ins{color:var(--ok);text-decoration:none}
+.hist .usedby span{margin-right:10px}
+.phonelist{display:flex;flex-direction:column;gap:6px}
+.phonelist .pl{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:8px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--surface)}
+.phonelist .pl .k{width:24px;height:24px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:12px;color:var(--muted)}
+.phonelist .pl small{display:block;color:var(--muted);font-size:12px}
+.phonelist .pl .mv{display:flex;gap:4px}
+.phonelist .pl .mv button{padding:2px 7px;font-size:12px}
+.flast,.fwhere{border:1px solid var(--border);border-radius:10px;padding:8px 10px;margin-bottom:8px;font-size:14px}
+.fh{font-size:12px;color:var(--muted);font-weight:600;margin-bottom:3px}
+.fsearch{display:flex;gap:8px;align-items:center;margin:8px 0}
+.fsearch input{flex:1;padding:6px 10px;font-size:14px}
+.fgrp{margin-top:10px}
+.fline{display:block;width:100%;text-align:left;border-radius:10px;padding:8px 10px;margin-top:5px;background:var(--surface)}
+.fline.mine{border-style:dashed}
+.fline .t{display:block}
+.fline .m{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+
+/* ---- Screens 2 & 3: phones ---- */
 .phones{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
 .phone{width:375px;max-width:100%;background:var(--phone);border-radius:38px;padding:12px;box-shadow:0 14px 40px rgba(0,0,0,.25)}
 .phone .scr{background:var(--bg);border-radius:28px;min-height:680px;overflow:hidden;display:flex;flex-direction:column;position:relative}
@@ -143,7 +226,7 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .jm .press button{min-height:48px;border-radius:12px;font-size:15px}
 .jm .press button.msg{grid-column:1/-1;background:var(--text-soft);border-color:var(--text-ch);color:var(--text-ch);font-weight:600;position:relative}
 .jm .press button.msg .dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--danger)}
-.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;border-top:1px solid var(--border);padding:12px 14px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(0,0,0,.15);transform:translateY(102%);transition:transform .25s}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;border-top:1px solid var(--border);padding:12px 14px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(0,0,0,.15);transform:translateY(102%);transition:transform .25s;max-height:92%;overflow:auto}
 .sheet.open{transform:none}
 .sheet .grab{width:38px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 10px}
 .sheet h4{margin:0 0 2px;font-size:16px}
@@ -151,8 +234,12 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .sheet .big button{min-height:52px;text-align:left;border-radius:12px;padding:8px 14px;font-size:15px;display:flex;flex-direction:column;justify-content:center}
 .sheet .big button small{color:var(--muted);font-size:12px;font-weight:400}
 .sheet .big button.office{border-style:dashed}
+.sheet .big button.step{border-color:var(--text-ch);background:var(--text-soft)}
 .prev{background:var(--text-soft);border:1px solid var(--text-ch);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:15px;white-space:pre-wrap}
 .prev .opt{display:block;margin-top:8px;font-size:12px;color:var(--muted)}
+.sheet .fillrow{margin-top:8px}
+.sheet .fillrow label{font-size:12px;color:var(--muted);display:block;margin-bottom:3px}
+.sheet .fillrow input{width:100%;padding:8px 10px}
 .sheet .acts{display:flex;gap:8px;margin-top:10px}
 .sheet .acts button{flex:1;min-height:46px;border-radius:12px;font-size:15px}
 .mini{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:10px 12px}
@@ -161,7 +248,6 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .mini .ln .t{color:var(--muted);font-family:var(--mono);font-size:12px}
 .mini .ln .w{font-weight:600;font-size:12px;color:var(--muted)}
 .sent{font-size:13px;color:var(--ok);margin-top:8px}
-/* Dana's phone */
 .imsg{padding:8px 12px;display:flex;flex-direction:column;gap:6px;flex:1}
 .imsg .from{text-align:center;font-size:12px;color:var(--muted);margin-bottom:4px}
 .bub{max-width:82%;padding:8px 12px;border-radius:18px;font-size:15px;line-height:1.35}
@@ -186,7 +272,7 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .place{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;min-width:0}
 .place h4{margin:0;font-size:15px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .place p{margin:0;font-size:14px}
-.place .st{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:1px 6px}
+.st{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:1px 6px}
 .st.built{background:var(--ok-soft);color:var(--ok)}
 .st.spike{background:var(--text-soft);color:var(--text-ch)}
 .st.new{background:var(--warn-soft);color:var(--warn)}
@@ -196,7 +282,7 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .flow span i{font-style:normal;color:var(--muted);display:block;font-size:11px}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:6px 0 14px}
 
-/* ---- Screen 5: decisions ---- */
+/* ---- Screen 5: decisions; 6: log ---- */
 ol.dec{padding-left:0;list-style:none;counter-reset:d;display:flex;flex-direction:column;gap:10px;max-width:76ch}
 ol.dec li{counter-increment:d;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px 12px 50px;position:relative}
 ol.dec li::before{content:counter(d);position:absolute;left:14px;top:12px;width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700;display:grid;place-items:center;font-size:13px}
@@ -207,13 +293,22 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 .built div{break-inside:avoid;padding:3px 0}
 .built div::before{content:"✓ ";color:var(--ok);font-weight:700}
 @media (max-width:640px){.built{columns:1}}
+.log{max-width:76ch;display:flex;flex-direction:column;gap:10px}
+.log article{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px}
+.log article h4{margin:0 0 4px;font-size:15px}
+.log article h4 small{color:var(--muted);font-weight:400;margin-left:8px}
+.log ul{margin:4px 0 0;padding-left:18px;font-size:14px}
+.log li{margin:2px 0}
+.rules{max-width:76ch;font-size:14px}
+.rules dt{font-weight:600;margin-top:10px}
+.rules dd{margin:2px 0 0}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header class="top">
-  <h1>Customer messages</h1><span class="ver" id="ver">v0.1 · 2026-10-12</span>
-  <span class="note">A mockup of one line to the customer from the job, the tech's phone and the office. Made-up people and jobs, nothing is saved. Everything that moves here is a press you can try.</span>
+  <h1>Customer messages</h1><span class="ver" id="ver">v0.2 · 2026-10-12</span>
+  <span class="note">A prototype of one line to the customer from the job, the tech's phone and the office. Made-up people and jobs, nothing is saved. Everything that moves here is a press you can try.</span>
 </header>
 
 <nav class="tabs" id="tabs">
@@ -227,7 +322,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 
 <!-- ===================== 1 ===================== -->
 <section class="screen on" id="s1">
-<p class="lead">The job window you showed, with a <b>Customer</b> chip and the customer's lines in the same feed as notes, reports and status. A text is blue, an email is violet, a line from the app is purple, a portal press is green. The box at the bottom gains two kinds beside <b>Note</b>: <b>Text</b> and <b>Email</b>, each with the team's quick replies for the step the job is on.</p>
+<p class="lead">The job window you showed, with a <b>Customer</b> chip and the customer's lines in the same feed as notes, reports and status. The box at the bottom gains <b>Text</b> and <b>Email</b> beside <b>Note</b>, and the <b>Quick replies</b> strip from GC mode: the step Dana is on first, then the rest of her flow, then anyone's lines, yours first in each. <b>Edit</b> opens the same editor the office uses for trade partners, with three things added for residential: blanks the app fills, a mark for the lines that show on a tech's phone, and Spanish beside English.</p>
 
 <div class="win" aria-label="Job window mockup">
   <div class="head">
@@ -257,7 +352,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     <div class="row cust text in" data-k="cust"><span class="n">2</span><span class="t">9:04a</span><span class="w"><b>Dana</b><span class="who text">text</span></span><div class="b">Great. Gate code is 4471.</div></div>
     <div class="row" data-k="status"><span class="n">3</span><span class="t">9:41a</span><span class="w"><b>Luis</b></span><div class="b">Arrived at job</div></div>
     <div class="row" data-k="report"><span class="n">4</span><span class="t">11:07a</span><span class="w"><b>Luis</b></span><div class="b">Status Report<br><span class="dim">How complete is the job? — 40%<br>What is the status of the job? — Camera showed a break at 32 ft. Need to send estimate.</span></div></div>
-    <div class="row cust text" data-k="cust"><span class="n">5</span><span class="t">11:12a</span><span class="w"><b>Luis</b><span class="who text">text</span></span><div class="b">Here is what we found: a break in the line about 32 feet out, under the front walk. Rosa will send you the estimate today.</div></div>
+    <div class="row cust text" data-k="cust"><span class="n">5</span><span class="t">11:12a</span><span class="w"><b>Luis</b><span class="who text">text</span></span><div class="b">Dana, here is what we found: a break in the line about 32 feet out, under the front walk. Rosa will send you the estimate today.</div></div>
     <div class="row" data-k="crew"><span class="n">6</span><span class="t">12:30p</span><span class="w">Luis</span><div class="b"><span class="dim">9:41a → 12:30p · 2h 49m</span></div></div>
 
     <div class="day">Tue, Oct 6 · 6d ago</div>
@@ -266,7 +361,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     <div class="row team" data-k="note"><span class="n">9</span><span class="t">4:12p</span><span class="w"><b>Rosa</b></span><div class="b">Called Dana. Thursday works for her, and the water heater quote stands. She will approve on the portal tonight.<div class="dim" style="font-size:12px;margin-top:3px">only the team sees this</div></div></div>
 
     <div class="day">Wed, Oct 7 · 5d ago</div>
-    <div class="row cust app" data-k="cust"><span class="n">10</span><span class="t">8:00a</span><span class="w"><b>the app</b><span class="who app">text</span></span><div class="b">Dana, your estimate for Oakridge sewer line is waiting for your approval. Approve it here: click.co/e/8Kp4. Reply to this text with any question.<div class="dim" style="font-size:12px;margin-top:3px">Estimate sent step · the 1-day reminder · the team's line for this step</div></div></div>
+    <div class="row cust app" data-k="cust"><span class="n">10</span><span class="t">8:00a</span><span class="w"><b>the app</b><span class="who app">text</span></span><div class="b">Dana, your estimate for Oakridge sewer line is waiting for your approval. Approve it here: click.co/e/8Kp4. Reply to this text with any question.<div class="dim" style="font-size:12px;margin-top:3px">Estimate sent step · the 1-day reminder · the step's quick reply</div></div></div>
     <div class="row cust portal in" data-k="cust"><span class="n">11</span><span class="t">8:14a</span><span class="w"><b>Dana</b><span class="who portal">portal</span></span><div class="b">Approved the estimate · $4,850 · signed on her phone</div></div>
     <div class="row" data-k="status"><span class="n">12</span><span class="t">8:15a</span><span class="w">Rosa</span><div class="b">Waiting → Working</div></div>
     <div class="row" data-k="status"><span class="n">13</span><span class="t">8:16a</span><span class="w">Rosa</span><div class="b">Scheduled Thu, Oct 8 · 8:00a · Luis</div></div>
@@ -281,37 +376,28 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
       <button class="email" data-k="email">Email to Dana</button>
       <span class="from" id="fromLine">from the company number (512) 555-0144 · Click Plumbing</span>
     </div>
-    <div class="qr" id="qr">
-      <div class="grp"><div class="gt">Working, the step Dana is on<i>mine first, then the team's</i></div><div class="lines">
-        <button data-fill="Dana, this is {me} with Click Plumbing. We are on our way to {addr}, about {min} minutes out.">On our way, about {min} min</button>
-        <button data-fill="Dana, we are running behind this morning. Our new window is {window}. Sorry for the wait.">Running late · new window</button>
-        <button data-fill="Dana, we are done for today at {addr}. We are back {day} at {time} to finish.">Done for today, back {day}</button>
-        <button data-fill="Dana, the water is off at the house while we work on the line. It is back on before we leave today.">Water off while we work</button>
-      </div></div>
-      <div class="grp"><div class="gt">Anyone</div><div class="lines">
-        <button data-fill="Dana, could you send a photo of {thing}? Reply to this text with the picture.">Send us a photo of {thing}</button>
-        <button data-fill="Dana, your bill for {job} is ready. Pay it here: click.co/p/{code}. Thank you for your business.">Your bill is ready</button>
-        <button data-fill="Dana, thank you for choosing Click Plumbing. If you have a minute, a review helps us a lot: click.co/r/{code}.">Thank you and a review</button>
-        <button class="mine" data-fill="Dana, this is Rosa at the office. Give me a call at (512) 555-0144 when you have a minute.">Call me when you can · mine</button>
-      </div></div>
-      <div class="grp"><div class="gt">Not on the strip?</div><div class="lines"><button class="quiet" style="padding-left:0">⤢ Find a reply</button><button class="quiet">Edit quick replies</button></div></div>
-    </div>
+    <div class="quick" id="quick"></div>
     <div class="boxrow">
       <div><textarea id="box" placeholder="Pick a line above, or write to Dana…" aria-label="Message to Dana"></textarea>
-        <div class="count" id="count"><span>1 text · <b>0</b> characters</span><span>Replies come to this job and to 1298</span><span>Dana reads English</span></div></div>
+        <div class="count" id="count"></div></div>
       <div class="acts"><button id="pct">Set % complete</button><button class="primary" id="send">Send text…</button></div>
     </div>
   </div>
 </div>
-<p class="note" style="margin-top:10px">Try it: press <b>Text to Dana</b>, pick a line, press <b>Send text…</b>. The line lands in the feed with the blanks filled from the job, and Dana's answer comes back a moment later. Press <b>Note</b> to see the window as it is today.</p>
+<p class="note" style="margin-top:10px">Try it: pick a line on the strip and press <b>Send text…</b>. Press <b>Edit</b> on the strip to open the editor, or <b>⤢ Find</b> for the long list. A line with a blank the app cannot fill, like <span class="blank">{thing}</span>, waits in the box until you fill it.</p>
 
-<h2>What is drawn here, in one breath</h2>
-<p class="lead">Nothing new is stored on the job. The customer's lines are the <b>contact's thread</b> that the Messages spine already keeps, shown through the job that each line is tied to. A line Dana sends with no job in it shows on every active job of hers until the office ties it, muted on the others. The filters, the day dividers and the numbered rows are the window's own.</p>
+<h2>How the strip reads</h2>
+<dl class="rules">
+  <dt>The step Dana is on comes first.</dt><dd>Her flow is the residential one, and the job is Working, so the Working lines lead. Then the rest of her flow, then anyone's. In each group the lines you use most come first, then the team's. That is the GC strip's rule, unchanged.</dd>
+  <dt>Blanks are filled when you press, never typed.</dt><dd><code>{first}</code>, <code>{me}</code>, <code>{address}</code>, <code>{job}</code> come from the job and the sign-in. <code>{minutes}</code> from the drive, <code>{window}</code>, <code>{back day}</code> and <code>{back time}</code> from the schedule, <code>{link}</code> from her page. A blank the app does not know, <code>{thing}</code> or <code>{found}</code>, stays lit in the box and Send waits for it.</dd>
+  <dt>A phone mark says which lines a tech gets.</dt><dd>Lines for customers marked <b>on the phone</b> are the five on Job Mode, the step's first. The office orders them in the editor's Phone tab. A tech sees no other line.</dd>
+  <dt>Spanish beside English.</dt><dd>A line carries both. Dana's record says English, so she gets English. A line with no Spanish reads English to a Spanish speaker, and the editor marks it <b>no es</b> so the office can fill it.</dd>
+</dl>
 </section>
 
 <!-- ===================== 2 ===================== -->
 <section class="screen" id="s2">
-<p class="lead">Job Mode, the tech's phone. One new press on the job card, <b>Message Dana</b>. It opens five big lines and nothing to type. A tap shows the text as it will go, with the blanks already filled from the drive, the job and the clock. The tech never types a name, an address or a time.</p>
+<p class="lead">Job Mode, the tech's phone. One new press on the job card, <b>Message Dana</b>. It opens the customer lines marked <b>on the phone</b> in the editor, the step's first, with nothing to type. A tap shows the text as it will go, with the blanks filled from the drive, the job and the clock. Change a line in the editor on screen 1 and it changes here.</p>
 <div class="phones">
   <div>
   <div class="phone"><div class="scr" id="techScr">
@@ -340,19 +426,13 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
       <div id="sheetPick">
         <h4>Text Dana</h4>
         <div class="note">From the company number. Her replies come to you until 5 PM, then to the office.</div>
-        <div class="big">
-          <button data-line="onway">On our way<small>about 25 minutes, from the drive</small></button>
-          <button data-line="late">Running late<small>new window 9:30 to 10:00</small></button>
-          <button data-line="found">Here is what we found<small>you fill one line, the rest is written</small></button>
-          <button data-line="done">Done for today<small>back Fri, Oct 9 at 8:00a, from the schedule</small></button>
-          <button data-line="photo">Send us a photo<small>of the cleanout, the heater, a leak</small></button>
-          <button class="office" data-line="office">Something else<small>a note to the office, Rosa sends it</small></button>
-        </div>
+        <div class="big" id="phoneLines"></div>
         <div class="acts"><button id="closeSheet">Cancel</button></div>
       </div>
       <div id="sheetPrev" hidden>
         <h4 id="prevTitle">On our way</h4>
         <div class="prev" id="prevText"></div>
+        <div id="fillRows"></div>
         <div class="note" id="prevNote">Nothing sends until you press Send.</div>
         <div class="acts"><button id="prevBack">Back</button><button class="primary" id="prevSend">Send</button></div>
       </div>
@@ -364,17 +444,17 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
       </div>
     </div>
   </div></div>
-  <p class="pcap note">Try it: press <b>Message Dana</b>, pick a line, press <b>Send</b>. The reply arrives a moment later and the dot lights on the job card.</p>
+  <p class="pcap note">Try it: press <b>Message Dana</b>, pick a line, press <b>Send</b>. "Here is what we found" asks you for the one blank. The reply arrives a moment later and the dot lights on the job card.</p>
   </div>
   <div style="flex:1;min-width:260px;max-width:46ch">
-    <h3>Why five lines and not a keyboard</h3>
-    <p>The complaint was silence, not wording. Five presses a tech can make with one thumb, between the truck and the door, get sent. A keyboard does not. The lines are the team's quick replies for the <b>customer</b> kind on the step the job is on, so the office edits them in one place and every tech's phone changes.</p>
+    <h3>Why a short list and not a keyboard</h3>
+    <p>The complaint was silence, not wording. Five or six presses a tech can make with one thumb, between the truck and the door, get sent. A keyboard does not. The lines are the team's quick replies marked for the phone, so the office edits them in one place and every tech's phone changes.</p>
     <h3>What fills the blanks</h3>
-    <p>The minutes come from the drive to the address. The window and the back day come from the schedule. The address and the first name come from the job. The tech's name comes from the sign-in. "Here is what we found" is the one line with a blank the tech fills, and it is the same words that go on the status report.</p>
+    <p>The minutes come from the drive to the address. The window and the back day come from the schedule. The address and the first name come from the job. The tech's name comes from the sign-in. A line with a blank only the tech knows, like what was found, asks for that one thing and nothing else, and the same words go on the status report.</p>
     <h3>Who gets the reply</h3>
     <p>Dana's answer comes back to the tech who texted until the end of the day, then to the office. Outside hours the app answers once that the office opens at 7:30 and puts her on Needs a reply. The office sees every line either way.</p>
     <h3>The door</h3>
-    <p>Everything in Messages today is behind the office team. A tech's door is narrower: the threads of customers on jobs they are dispatched to or clocked on, this week and last, with no money lines and no office-only notes. That door is the one new piece of access this needs.</p>
+    <p>Everything in Messages today is behind the office team. A tech's door is narrower: the threads of customers on jobs they are dispatched to or clocked on, this week and last, with no money lines and no office-only notes. A tech reads the strip and never the editor.</p>
   </div>
 </div>
 </section>
@@ -391,7 +471,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
       <div class="stamp">Mon, Oct 5 · 9:02 AM</div>
       <div class="bub us">Dana, this is Luis with Click Plumbing. We are on our way to 4120 Oakridge Trl, about 30 minutes out.<br><br>Reply STOP to stop texts from us.<span class="dl">Delivered</span></div>
       <div class="bub them">Great. Gate code is 4471.</div>
-      <div class="bub us">Here is what we found: a break in the line about 32 feet out, under the front walk. Rosa will send you the estimate today.</div>
+      <div class="bub us">Dana, here is what we found: a break in the line about 32 feet out, under the front walk. Rosa will send you the estimate today.</div>
       <div class="stamp">Wed, Oct 7 · 8:00 AM</div>
       <div class="bub app">Dana, your estimate for Oakridge sewer line is waiting for your approval. Approve it here: <u>click.co/e/8Kp4</u>. Reply to this text with any question.<span class="dl">Delivered</span></div>
       <div class="stamp">Thu, Oct 8 · 9:02 AM</div>
@@ -414,7 +494,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     <h3>Her page</h3>
     <p>The portal she already has for bills gains the Messages portal's two pieces: <b>Your move</b>, the one thing we need from her, and <b>Where you are</b>, the residential flow's steps. Approve the estimate, pick a day, pay, send a photo are presses there. The text carries the link.</p>
     <h3>Spanish</h3>
-    <p>Her language sits on her record. The quick replies carry Spanish beside English the way the portal words do, behind the same gate until a native speaker reads them.</p>
+    <p>Her language sits on her record. A quick reply carries Spanish beside English, so the same press reads right to a Spanish speaker, behind the same gate as the portal words until a native speaker reads them.</p>
   </div>
 </div>
 </section>
@@ -424,17 +504,17 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <p class="lead">Where the thread shows up once a residential customer is a contact like any other. Most of this is the Messages build pointed at customers; the new pieces are the tech's door, the residential flow and a few chips.</p>
 <div class="legend"><span><span class="st built">built</span> on main today</span><span><span class="st spike">spike</span> in the Messages build, kernels on main</span><span><span class="st new">new</span> not drawn anywhere yet</span></div>
 <div class="grid">
-  <div class="place"><h4>The job window <span class="st new">new</span></h4><p>The <b>Customer</b> chip and the lines in the feed, and the box's Text and Email kinds with the quick replies. Screen 1.</p><div class="how">Wiring only: the thread, the stamps, the reply box and the quick replies are kernels on main.</div></div>
-  <div class="place"><h4>Job Mode <span class="st new">new</span></h4><p><b>Message Dana</b> on the job card, five lines, the reply back to the tech until 5 PM. Screen 2.</p><div class="how">Needs the tech's door and a strip of the quick replies per step.</div></div>
+  <div class="place"><h4>The job window <span class="st new">new</span></h4><p>The <b>Customer</b> chip and the lines in the feed, and the box's Text and Email kinds with the quick replies strip. Screen 1.</p><div class="how">Wiring only: the thread, the stamps, the reply box and the quick replies are kernels on main.</div></div>
+  <div class="place"><h4>Job Mode <span class="st new">new</span></h4><p><b>Message Dana</b> on the job card, the phone's lines, the reply back to the tech until 5 PM. Screen 2.</p><div class="how">Needs the tech's door and the phone mark on a line.</div></div>
+  <div class="place"><h4>Settings → Quick replies <span class="st spike">spike</span></h4><p>The one editor for every kind of person: who a line is for, its step, mine or the team's, every change with who and when, Removed with Put it back. Residential adds blanks, the phone mark and Spanish. Press <b>Edit</b> on screen 1.</p><div class="how">Cut 3's editor kernel. The Phone tab orders the tech's lines.</div></div>
   <div class="place"><h4>Dashboard → Needs you <span class="st spike">spike</span></h4><p>One line for the office: <b>Customers</b> · 3 need a reply, 1 we owe. It opens Follow up on those rows.</p><div class="how">Cut 2's queue counts each person once. The GC projects line already works this way.</div></div>
   <div class="place"><h4>Follow up <span class="st spike">spike</span></h4><p>Today it lives on GC projects. It becomes <b>Messages</b> in the main nav for the office: Needs you, Needs a reply, We owe them, GC and residential together, a filter by kind of person.</p><div class="how">Cut 2's rows, cut 5's nudges. One queue so nobody checks two.</div></div>
   <div class="place"><h4>The customer's own window <span class="st spike">spike</span></h4><p>From a customer's name anywhere: their whole thread across jobs, who has it, what we owe them, STOP state, <b>Who is this?</b> for a new number.</p><div class="how">Cut 1's thread window, opened by the same URL contract as on /gc.</div></div>
   <div class="place"><h4>Jobs board <span class="st new">new</span></h4><p>A blue dot on a row whose customer wrote and nobody answered. Hover shows the last line.</p><div class="how">One read of the queue by job. Small.</div></div>
-  <div class="place"><h4>Settings → Quick replies <span class="st spike">spike</span></h4><p>The team's lines by kind and step, and each person's own. Techs see the customer kind only.</p><div class="how">Cut 3's editor. The five Job Mode lines are rows here.</div></div>
-  <div class="place"><h4>Settings → Flows <span class="st new">new</span></h4><p>A fifth flow, <b>Residential customer</b>. Every step reads a fact the app already keeps.</p>
+  <div class="place"><h4>Settings → Flows <span class="st new">new</span></h4><p>A fifth flow, <b>Residential customer</b>. Every step reads a fact the app already keeps, and the quick replies hang off its steps.</p>
     <div class="flow"><span>Booked<i>dispatch</i></span><span>On the way<i>the text</i></span><span>Arrived<i>clock in at the job</i></span><span>What we found<i>status report</i></span><span>Estimate sent<i>estimates</i></span><span>Approved<i>accept-estimate</i></span><span>Working<i>status</i></span><span>Done<i>Ready to Bill</i></span><span>Billed<i>the bill</i></span><span>Paid<i>payment</i></span><span>Review asked<i>the text</i></span></div>
     <div class="how">facts.ts and seed.ts gain the steps, load.ts the reads. Nothing new is stored.</div></div>
-  <div class="place"><h4>The morning reminders <span class="st spike">spike</span></h4><p>The app texts by itself: the estimate reminder after a day, the bill reminder at the terms, a review ask two days after paid. Off per step until the owner turns each on.</p><div class="how">Cut 5's dispatch kernel. The words are the step's quick reply.</div></div>
+  <div class="place"><h4>The morning reminders <span class="st spike">spike</span></h4><p>The app texts by itself: the estimate reminder after a day, the bill reminder at the terms, a review ask two days after paid. Off per step until the owner turns each on.</p><div class="how">Cut 5's dispatch kernel. The words are the step's quick reply, blanks filled the same way.</div></div>
   <div class="place"><h4>The customer portal <span class="st spike">spike</span></h4><p><b>Your move</b> and <b>Where you are</b> on the residential page beside the bills it already shows.</p><div class="how">Cut 8's page kernels, the residential flow as input.</div></div>
   <div class="place"><h4>Email in and out <span class="st spike">spike</span></h4><p>office@ for customers, bids@ for trades. Out through Resend as today; in through cut 6's reader on both boxes.</p><div class="how">The mailbox is an input to the reply box per company.</div></div>
   <div class="place"><h4>The phone number <span class="st spike">spike</span></h4><p>One Quo number for customers, the office line everyone knows. A second for trade partners, so a trade's STOP never silences a customer's number.</p><div class="how">Cut 5's send takes the number as an input.</div></div>
@@ -447,6 +527,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <ol class="dec">
   <li><b>The tech's door.</b> Which customers' threads can a tech read and write? All customers, or the ones on jobs they are dispatched to or clocked on?<div class="rec">Dispatched or clocked on, this week and last. No money lines, no office-only notes. The office sees everything.</div></li>
   <li><b>Free text for techs.</b> Quick replies only, or a keyboard too?<div class="rec">Quick replies at first. "Something else" is a note to the office that Rosa sends. Open the keyboard to named techs later.</div></li>
+  <li><b>Who edits the phone's lines.</b> The office team, as every quick reply today, or a tech lead too?<div class="rec">The office team. A tech who wants a line asks in "Something else" and the office adds it; the editor's history says who.</div></li>
   <li><b>Who answers a reply.</b> The tech who texted, the office, or both?<div class="rec">The tech until 5 PM, then the office. After hours the app answers once and the line waits on Needs a reply.</div></li>
   <li><b>Numbers and boxes.</b> One Quo number for everything, or one for customers and one for trades? office@ for all customer mail, bids@ for the estimators' quotes?<div class="rec">Two numbers, two boxes, one inbox. The customer number is the office line people already have.</div></li>
   <li><b>Where a line lives.</b> On the job window alone, or the customer's whole thread with other jobs' lines muted?<div class="rec">The whole thread, other jobs muted. A customer with two jobs is one conversation.</div></li>
@@ -454,12 +535,20 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   <li><b>Order of building.</b><div class="rec">Finish the thread window on GC projects, make it the customer window everywhere, then the job window's chip and box, then Job Mode's press, then the residential flow and its reminders.</div></li>
 </ol>
 
+<h2>What the quick replies kernel gains for this</h2>
+<dl class="rules">
+  <dt>Steps per flow, not per kind.</dt><dd>Today a line's step comes from one flow per kind of person. A customer may be on the GC customer flow or the residential one, so the strip takes the person's flow and the editor groups customer lines by flow, then step.</dd>
+  <dt>Blanks.</dt><dd>A line may hold named blanks. A fill table per send names what the app knows (the person, the job, the drive, the schedule, the link). <code>fillLine</code> returns the text and the blanks left, and the box refuses to send with one left.</dd>
+  <dt>The phone mark and its order.</dt><dd>A line for customers may be marked for the phone with a place in the phone's order. <code>phoneLines(lines, stepId)</code> gives the tech's list, the step's first, at most six.</dd>
+  <dt>Spanish.</dt><dd>A line carries <code>text_es</code>. The strip picks by the person's language and falls back to English, as the portal words do. A change to either language is a version.</dd>
+</dl>
+
 <h2>Already on main, as kernels with tests</h2>
 <div class="built">
   <div>A contact over a customer or a person at a customer</div>
   <div>The thread, the day dividers, the stamps</div>
   <div>The reply box: Text, Email, Note, the opt-out line, the count</div>
-  <div>Quick replies by kind and step, mine first</div>
+  <div>Quick replies by kind and step, mine first, versions, Removed</div>
   <div>What we owe them and the day a person said</div>
   <div>Follow up's queue, one row per person</div>
   <div>Quo in: calls, texts, voicemails, STOP and START</div>
@@ -478,9 +567,17 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <section class="screen" id="s6">
 <p class="lead">What changed in this prototype, newest first. Open it from the repo: <code>to-dos/gc-mode/messages/customer-messages-prototype.html</code> on <code>spike/gc-mode</code>.</p>
 <div class="log">
+  <article><h4>v0.2<small>2026-10-12</small></h4>
+    <ul>
+      <li>The quick replies are the GC strip and editor, not a fixed list: the step Dana is on first, then the rest of her flow, then anyone's; yours first in each; narrow after ten lines; <b>⤢ Find</b> with her last message and where she is; <b>Edit</b> with the tabs, the search, add, the edit row, Remove and Put it back, and every change in the line's history with who and when.</li>
+      <li>Three additions for residential: blanks the app fills on the press, with the ones it cannot fill left lit in the box; a <b>phone</b> mark with a Phone tab that orders the tech's lines; Spanish beside English, with <b>no es</b> marking the gap.</li>
+      <li>Job Mode reads the same lines: the ones marked for the phone, the step's first, each by its short name from the editor. "Here is what we found" asks for its one blank on the phone.</li>
+      <li>A decision on who edits the phone's lines, and a note on what the kernel gains.</li>
+    </ul>
+  </article>
   <article><h4>v0.1<small>2026-10-12</small></h4>
     <ul>
-      <li>The job window with a <b>Customer</b> chip, the customer's lines in the feed by channel, and the box's Note · Text · Email kinds with the quick replies by step. Send puts the line in the feed and Dana answers.</li>
+      <li>The job window with a <b>Customer</b> chip, the customer's lines in the feed by channel, and the box's Note · Text · Email kinds with a fixed quick replies strip. Send puts the line in the feed and Dana answers.</li>
       <li>Job Mode: <b>Message Dana</b> on the job card, five lines and no keyboard, the preview with the blanks filled, the reply back to the tech until 5 PM.</li>
       <li>Dana's phone and her page: one sender, the app's reminder, <b>Your move</b> and <b>Where you are</b> on the residential flow.</li>
       <li>The map of where the thread shows up across the app, marked built · spike · new, and the residential flow's steps with the fact each reads.</li>
@@ -494,13 +591,15 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 
 <script>
 (function(){
+  'use strict';
   const $=(s,r)=> (r||document).querySelector(s), $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
   const toastEl=$('#toast'); let tt;
-  function toast(m){ toastEl.textContent=m; toastEl.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>toastEl.classList.remove('show'),2800); }
-  const reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function toast(m){ toastEl.textContent=m; toastEl.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>toastEl.classList.remove('show'),3000); }
+  const reduce=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   const wait=(ms)=>new Promise(r=>setTimeout(r,reduce?0:ms));
 
-  // tabs
+  // ---------- tabs ----------
   $$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
     $$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
     $$('section.screen').forEach(s=>s.classList.toggle('on',s.id===b.dataset.s));
@@ -509,30 +608,123 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   try{ const t=localStorage.getItem('cm-tab'); if(t){ const b=$(`#tabs button[data-s="${t}"]`); if(b) b.click(); } }catch(e){}
   if(location.hash){ const b=$(`#tabs button[data-s="${location.hash.slice(1)}"]`); if(b) b.click(); }
 
-  // ---- screen 1 ----
-  const BLANKS={me:'Luis',addr:'4120 Oakridge Trl',min:'25',window:'9:30 to 10:00',day:'Fri',time:'8:00 AM',thing:'the cleanout',job:'Oakridge sewer line',code:'4m2Q'};
-  const fill=(s)=>s.replace(/\{(\w+)\}/g,(m,k)=>BLANKS[k]||m);
-  let kind='text';
-  const box=$('#box'), count=$('#count'), send=$('#send'), pct=$('#pct'), qr=$('#qr'), fromLine=$('#fromLine');
+  // ---------- the people, the flows, the blanks ----------
+  // Who is signed in on each screen: Rosa at the office on the job window, Luis the tech on Job Mode.
+  const OFFICE='Rosa', TECH='Luis';
+  const NOW_WORDS='Oct 12, 9:02 AM';
+  // The flows a quick reply's step can belong to, by who the line is for. A customer may be on either customer flow.
+  const FLOWS={
+    customer:[
+      {id:'res', name:'Residential customer', steps:[['booked','Booked'],['onway','On the way'],['arrived','Arrived'],['found','What we found'],['estimate','Estimate sent'],['approved','Approved'],['working','Working'],['done','Done'],['billed','Billed'],['paid','Paid'],['review','Review asked']]},
+      {id:'gcc', name:'GC customer', steps:[['gc_ask','Asked us'],['gc_bid','Our bid'],['gc_yes','Said yes'],['gc_contract','Contract'],['gc_start','Start date'],['gc_co','Change order'],['gc_payapp','Pay application'],['gc_closeout','Closeout']]},
+    ],
+    trade:[{id:'trade', name:'Trade partner', steps:[['invited','Invited'],['ask','Asked to quote'],['papers','Papers in'],['sow','Statement of work'],['draws','Draws']]}],
+    arch:[{id:'arch', name:'Architect', steps:[['questions','Questions'],['submittals','Submittals'],['certify','Certify']]}],
+  };
+  const KINDS={customer:'customers',trade:'trade partners',arch:'architects',any:'anyone'};
+  const KIND_ORDER=['customer','trade','arch','any'];
+  const stepName=(id)=>{ for(const k in FLOWS) for(const f of FLOWS[k]) for(const [sid,n] of f.steps) if(sid===id) return n; return id; };
+  const flowOfStep=(id)=>{ for(const k in FLOWS) for(const f of FLOWS[k]) if(f.steps.some(s=>s[0]===id)) return f; return null; };
+  const stepIds=(kind)=>(FLOWS[kind]||[]).flatMap(f=>f.steps.map(s=>s[0]));
+  // Dana: a residential customer on Working, English.
+  const DANA={first:'Dana', kind:'customer', flow:'res', now:'working', lang:'en', lastIn:{ch:'text', when:'Tue Oct 6, 4:05 PM', text:'Can you do Thursday? Also is the water heater quote still good?'}};
+  // The blanks the app fills at send time, and where each comes from. A blank not here is the person's to fill.
+  const BLANKS=[
+    ['first','her first name','Dana'],['me','your name',null],['address',"the job's address",'4120 Oakridge Trl'],['job',"the job's name",'Oakridge sewer line'],
+    ['minutes','minutes out, from the drive','25'],['window','the new window, from the schedule','9:30 to 10:00'],['back day','the next visit, from the schedule','Fri, Oct 9'],['back time','its time','8:00 AM'],
+    ['day','the day of the visit','Thu'],['link',"her page's link",'click.co/e/8Kp4'],['amount','the estimate or bill','$4,850'],
+    ['thing','what you want a photo of',null],['found','what you found',null],
+  ];
+  const KNOWN=Object.fromEntries(BLANKS.map(b=>[b[0],b[2]]));
+  function fillLine(text, me, extra){ const left=[]; const out=text.replace(/\{([a-z ]+)\}/g,(m,k)=>{ const v=k==='me'?me:(extra&&extra[k])||KNOWN[k]; if(v==null){ left.push(k); return m; } return v; }); return {text:out, left:[...new Set(left)]}; }
+  const blanksIn=(text)=>[...new Set(Array.from(text.matchAll(/\{([a-z ]+)\}/g),m=>m[1]))];
+  const markBlanks=(html)=>html.replace(/\{([a-z ]+)\}/g,'<span class="blank">{$1}</span>');
+
+  // ---------- the quick replies ----------
+  const V=(by,at,kind,to,from)=>({by,at,kind,to,from});
+  let qseq=100;
+  const QR=[
+    {id:1, scope:'team', for:'customer', step:'booked', phone:0, es:'{first}, le habla Click Plumbing. Lo tenemos agendado el {day} entre {window}. Responda aquí si cambia algo.', text:'{first}, this is Click Plumbing. We have you down for {day} between {window}. Reply here if that changes.', uses:{Rosa:38}, lastUsed:'Oct 11', versions:[V('Rosa','Sep 30, 8:10 AM','added','{first}, this is Click Plumbing. We have you down for {day} between {window}. Reply here if that changes.')]},
+    {id:2, name:'On our way', scope:'team', for:'customer', step:'onway', phone:1, es:'{first}, le habla {me} de Click Plumbing. Vamos en camino a {address}, llegamos en unos {minutes} minutos.', text:'{first}, this is {me} with Click Plumbing. We are on our way to {address}, about {minutes} minutes out.', uses:{Luis:41,Rosa:2,Marco:19}, lastUsed:'Oct 12', versions:[V('Rosa','Sep 30, 8:12 AM','added','{first}, this is {me} with Click Plumbing. We are on the way, about {minutes} minutes out.'), V('Rosa','Oct 3, 9:40 AM','words','{first}, this is {me} with Click Plumbing. We are on our way to {address}, about {minutes} minutes out.','{first}, this is {me} with Click Plumbing. We are on the way, about {minutes} minutes out.')]},
+    {id:3, name:'Running late', scope:'team', for:'customer', step:'onway', phone:2, es:'{first}, vamos atrasados esta mañana. Nuestra nueva ventana en {address} es {window}. Disculpe la espera.', text:'{first}, we are running behind this morning. Our new window at {address} is {window}. Sorry for the wait.', uses:{Luis:6,Marco:4}, lastUsed:'Oct 9', versions:[V('Rosa','Sep 30, 8:14 AM','added','{first}, we are running behind this morning. Our new window at {address} is {window}. Sorry for the wait.')]},
+    {id:4, name:'Here is what we found', scope:'team', for:'customer', step:'found', phone:3, es:null, text:'{first}, here is what we found: {found}. {me} will send you the estimate today.', uses:{Luis:12,Marco:7}, lastUsed:'Oct 5', versions:[V('Rosa','Sep 30, 8:20 AM','added','{first}, here is what we found: {found}. Rosa will send you the estimate today.'), V('Robert','Oct 2, 4:00 PM','words','{first}, here is what we found: {found}. {me} will send you the estimate today.','{first}, here is what we found: {found}. Rosa will send you the estimate today.')]},
+    {id:5, scope:'team', for:'customer', step:'estimate', phone:0, es:'{first}, su presupuesto para {job} está listo. Revíselo y apruébelo aquí: {link}.', text:'{first}, your estimate for {job} is ready. Review and approve it here: {link}.', uses:{Rosa:22}, lastUsed:'Oct 7', versions:[V('Rosa','Sep 30, 8:24 AM','added','{first}, your estimate for {job} is ready. Review and approve it here: {link}.')]},
+    {id:6, name:'Water off while we work', scope:'team', for:'customer', step:'working', phone:4, es:'{first}, el agua de la casa está cerrada mientras trabajamos en la línea. La abrimos antes de irnos hoy.', text:'{first}, the water is off at the house while we work on the line. It is back on before we leave today.', uses:{Luis:9,Marco:3}, lastUsed:'Oct 8', versions:[V('Luis','Oct 1, 7:50 AM','added','{first}, the water is off at the house while we work on the line. It is back on before we leave today.')]},
+    {id:7, name:'Done for today', scope:'team', for:'customer', step:'working', phone:5, es:null, text:'{first}, we are done for today at {address}. We are back {back day} at {back time} to finish.', uses:{Luis:15,Marco:11,Rosa:1}, lastUsed:'Oct 9', versions:[V('Rosa','Sep 30, 8:30 AM','added','{first}, we are done for today at {address}. We are back {back day} at {back time} to finish.')]},
+    {id:8, scope:'team', for:'customer', step:'billed', phone:0, es:'{first}, su factura por {job} está lista. Páguela aquí: {link}. Gracias por su preferencia.', text:'{first}, your bill for {job} is ready. Pay it here: {link}. Thank you for your business.', uses:{Rosa:31}, lastUsed:'Oct 10', versions:[V('Rosa','Sep 30, 8:34 AM','added','{first}, your bill for {job} is ready. Pay it here: {link}. Thank you for your business.')]},
+    {id:9, scope:'team', for:'customer', step:'paid', phone:0, es:null, text:'{first}, thank you for choosing Click Plumbing. If you have a minute, a review helps us a lot: {link}.', uses:{Rosa:14}, lastUsed:'Oct 10', versions:[V('Robert','Oct 2, 4:10 PM','added','{first}, thank you for choosing Click Plumbing. If you have a minute, a review helps us a lot: {link}.')]},
+    {id:10, name:'Send us a photo', scope:'team', for:'customer', step:null, phone:6, es:'{first}, ¿nos manda una foto de {thing}? Responda a este mensaje con la foto.', text:'{first}, could you send a photo of {thing}? Reply to this text with the picture.', uses:{Luis:4,Rosa:6}, lastUsed:'Oct 8', versions:[V('Rosa','Sep 30, 8:40 AM','added','{first}, could you send a photo of {thing}? Reply to this text with the picture.')]},
+    {id:11, scope:'team', for:'any', step:null, phone:0, es:'Recibido, gracias.', text:'Got it, thank you.', uses:{Rosa:30,Robert:7,Wendi:9}, lastUsed:'Oct 12', versions:[V('Rosa','Sep 12, 9:00 AM','added','Got it, thank you.')]},
+    {id:12, scope:'team', for:'any', step:null, phone:0, es:'Gracias, le devolvemos la llamada dentro de una hora.', text:'Thanks, we will call you back within the hour.', uses:{Rosa:8,Robert:1,Wendi:3}, lastUsed:'Oct 11', versions:[V('Rosa','Sep 20, 2:02 PM','added','Thanks, we will call you back within the hour.')]},
+    {id:13, scope:'mine', for:'customer', step:null, phone:0, es:null, text:'{first}, this is Rosa at the office. Give me a call at (512) 555-0144 when you have a minute.', uses:{Rosa:17}, lastUsed:'Oct 9', versions:[V('Rosa','Oct 1, 1:15 PM','added','{first}, this is Rosa at the office. Give me a call at (512) 555-0144 when you have a minute.')]},
+    {id:14, scope:'team', for:'customer', step:'gc_bid', phone:0, es:null, text:'Understood. You will have it by 9 AM Thursday.', uses:{Rosa:9}, lastUsed:'Oct 1', versions:[V('Rosa','Sep 20, 2:00 PM','added','Understood. You will have it by 9 AM Thursday.')]},
+    {id:15, scope:'team', for:'customer', step:'gc_co', phone:0, es:null, text:'The change order is in your portal to sign.', uses:{Rosa:3}, lastUsed:'Sep 29', versions:[V('Rosa','Sep 28, 3:00 PM','added','The change order is in your portal to sign.')]},
+    {id:16, scope:'team', for:'trade', step:'ask', phone:0, es:'Su cotización ya está en su portal, gracias.', text:'Your quote is in your portal now, thank you.', uses:{Rosa:10,Robert:2,Wendi:2}, lastUsed:'Oct 2', versions:[V('Rosa','Sep 12, 9:10 AM','added','Your quote is in your portal now, thank you.')]},
+    {id:17, scope:'team', for:'trade', step:'papers', phone:0, es:null, text:'Send the W-9 when you can; the insurance certificate too.', uses:{Rosa:4}, lastUsed:'Sep 25', versions:[V('Rosa','Sep 24, 10:00 AM','added','Send the W-9 when you can; the insurance certificate too.')]},
+    {id:18, scope:'team', for:'arch', step:'certify', phone:0, es:null, text:'The pay application is in your portal to certify.', uses:{Rosa:2}, lastUsed:'Sep 30', versions:[V('Rosa','Sep 30, 4:00 PM','added','The pay application is in your portal to certify.')]},
+  ];
+  for(const q of QR) q.removed=false;
+  const qTotal=q=>Object.values(q.uses).reduce((a,b)=>a+b,0);
+  const qMine=(q,me)=>q.uses[me]||0;
+  const qOrder=(me)=>(a,b)=>(b.scope==='mine')-(a.scope==='mine') || qMine(b,me)-qMine(a,me) || qTotal(b)-qTotal(a) || a.id-b.id;
+  const visible=(me)=>QR.filter(q=>!q.removed && (q.scope==='team' || q.addedBy===me || (q.scope==='mine' && me==='Rosa')));
+  const wordsFor=(q,lang)=> lang==='es' && q.es ? q.es : q.text;
+  // The strip's groups for one person: the step they are on, the rest of their flow, anyone. Lines on another flow of their kind stay in Find.
+  function groups(person, me, filter){
+    const f=(filter||'').trim().toLowerCase(); const fits=q=>(q.for===person.kind||q.for==='any')&&(!f||q.text.toLowerCase().includes(f)||(q.es||'').toLowerCase().includes(f));
+    const rows=visible(me).filter(fits).sort(qOrder(me));
+    const flowSteps=(FLOWS[person.kind]||[]).find(x=>x.id===person.flow)?.steps.map(s=>s[0])||[];
+    const onStep=rows.filter(q=>q.for===person.kind&&q.step===person.now);
+    const rest=rows.filter(q=>q.for===person.kind&&q.step!==person.now&&(q.step==null||flowSteps.includes(q.step)));
+    const any=rows.filter(q=>q.for==='any');
+    const out=[]; if(onStep.length) out.push({title:stepName(person.now), tag:'the step they are on', rows:onStep}); if(rest.length) out.push({title:'The rest of her flow', rows:rest}); if(any.length) out.push({title:'Anyone', rows:any}); return out;
+  }
+  const phoneLines=(now)=>QR.filter(q=>!q.removed&&q.for==='customer'&&q.phone>0).sort((a,b)=>((b.step===now)-(a.step===now))||a.phone-b.phone).slice(0,6);
+  const tagWords=q=>`for ${KINDS[q.for]} · on ${q.step?stepName(q.step):'no step'}${q.phone?' · on the phone as “'+(q.name||'')+'”':''}`;
+  function guess(text){ const t=text.toLowerCase(); const has=(...w)=>w.some(x=>t.includes(x));
+    if(has('on our way','minutes out','on the way')) return {for:'customer',step:'onway'}; if(has('running behind','new window')) return {for:'customer',step:'onway'};
+    if(has('what we found','found:')) return {for:'customer',step:'found'}; if(has('estimate')) return {for:'customer',step:'estimate'}; if(has('bill','pay it')) return {for:'customer',step:'billed'};
+    if(has('review','thank you for choosing')) return {for:'customer',step:'paid'}; if(has('done for today','back tomorrow','water is off')) return {for:'customer',step:'working'}; if(has('we have you down','scheduled')) return {for:'customer',step:'booked'};
+    if(has('w-9','insurance')) return {for:'trade',step:'papers'}; if(has('quote','portal')) return {for:'trade',step:'ask'}; if(has('certify')) return {for:'arch',step:'certify'};
+    return {for:'any',step:null}; }
+  const markWith=(text,needle)=>{ if(!needle) return esc(text); const low=text.toLowerCase(), n=needle.toLowerCase(); let out='',i=0; for(;;){ const j=low.indexOf(n,i); if(j<0){ out+=esc(text.slice(i)); break; } out+=esc(text.slice(i,j))+'<mark>'+esc(text.slice(j,j+needle.length))+'</mark>'; i=j+needle.length; } return out; };
+
+  // ---------- screen 1: composer ----------
+  let kind='text', qrOpen=true, qrFilter='';
+  try{ const v=localStorage.getItem('cm-qr-open'); if(v!=null) qrOpen=v==='1'; }catch(e){}
+  const box=$('#box'), count=$('#count'), send=$('#send'), pct=$('#pct'), quick=$('#quick'), fromLine=$('#fromLine');
+  function paintStrip(){
+    if(kind==='note'){ quick.hidden=true; return; } quick.hidden=false;
+    const gs=groups(DANA,OFFICE,qrFilter); const n=gs.reduce((a,g)=>a+g.rows.length,0); const teamCount=visible(OFFICE).filter(q=>q.for===DANA.kind||q.for==='any').length;
+    if(!qrOpen){ quick.innerHTML=`<button type="button" class="peek" id="peek">Quick replies <span class="n">· ${n} for ${KINDS[DANA.kind]} ▸</span></button>`; $('#peek').onclick=()=>{qrOpen=true; try{localStorage.setItem('cm-qr-open','1')}catch(e){} paintStrip();}; return; }
+    const line=q=>`<button type="button" class="${q.scope==='mine'?'mine':''}" data-id="${q.id}" title="${q.scope==='mine'?'Mine':"The team's"} · used ${qTotal(q)} time${qTotal(q)===1?'':'s'}${q.step?' · on '+esc(stepName(q.step)):''}. Fills the box. Nothing sends.">${markBlanks(markWith(wordsFor(q,DANA.lang),qrFilter))}${q.phone?'<span class="ph">☎</span>':''}</button>`;
+    quick.innerHTML=`<div class="ql"><button type="button" class="lbl" id="fold">Quick replies ▾</button><span class="cnt">${n} for ${KINDS[DANA.kind]}</span>${teamCount>10?`<input id="narrow" placeholder="⌕ narrow" value="${esc(qrFilter)}" aria-label="Narrow the lines">`:''}<button class="quiet small" id="editQr">Edit</button><button class="quiet small" id="findQr">⤢ Find</button></div>
+      <div class="groups">${gs.length?gs.map(g=>`<div class="grp"><div class="gt">${esc(g.title)}${g.tag?`<i>${esc(g.tag)}</i>`:''}</div><div class="lines">${g.rows.map(line).join('')}</div></div>`).join(''):`<div class="empty">${qrFilter?`No line has those words. <button class="small primary" id="addFromNarrow">Add “${esc(qrFilter.trim())}” as a quick reply</button>`:'No lines for this kind of person yet. Edit adds one.'}</div>`}</div>`;
+    $('#fold').onclick=()=>{qrOpen=false; try{localStorage.setItem('cm-qr-open','0')}catch(e){} paintStrip();};
+    $('#editQr').onclick=()=>openEditor(); $('#findQr').onclick=()=>openFind();
+    const nar=$('#narrow'); if(nar){ nar.oninput=()=>{ qrFilter=nar.value; paintStrip(); const i=$('#narrow'); i.focus(); i.setSelectionRange(i.value.length,i.value.length); }; }
+    const afn=$('#addFromNarrow'); if(afn) afn.onclick=()=>openEditor(qrFilter.trim());
+    $$('.lines button',quick).forEach(b=>b.onclick=()=>useLine(+b.dataset.id));
+  }
+  function useLine(id){ const q=QR.find(x=>x.id===id); q.uses[OFFICE]=(q.uses[OFFICE]||0)+1; q.lastUsed='Oct 12'; const r=fillLine(wordsFor(q,DANA.lang),OFFICE); box.value=r.text; box.focus(); paintCount(); toast(r.left.length?`In the box. Fill ${r.left.map(x=>'{'+x+'}').join(' and ')} before it goes.`:'The line is in the box. Nothing sent.'); }
   function paintKind(){
     $$('#kinds button').forEach(b=>b.classList.toggle('on',b.dataset.k===kind));
-    qr.hidden = kind==='note';
     fromLine.hidden = kind==='note';
     fromLine.textContent = kind==='email' ? 'from office@clickplumbing.com · Click Plumbing' : 'from the company number (512) 555-0144 · Click Plumbing';
     box.placeholder = kind==='note' ? 'Add a note to Oakridge sewer line…' : kind==='email' ? 'Pick a line above, or write the email to Dana…' : 'Pick a line above, or write to Dana…';
     send.textContent = kind==='note' ? 'Post' : kind==='email' ? 'Send email…' : 'Send text…';
     pct.hidden = kind!=='note';
-    paintCount();
+    paintStrip(); paintCount();
   }
   function paintCount(){
-    const n=box.value.length;
+    const n=box.value.length; const left=blanksIn(box.value);
+    const leftWords=left.length?`<span class="bad">fill ${left.map(x=>'{'+x+'}').join(' and ')} before it goes</span>`:'';
     if(kind==='note'){ count.innerHTML='<span>only the team sees it</span>'; return; }
-    if(kind==='email'){ count.innerHTML=`<span>subject <b>Oakridge sewer line</b></span><span>Hello Dana, … and the office signature are added</span><span>a copy is kept in Documents</span>`; return; }
-    const first=false; const pieces=Math.max(1,Math.ceil(n/153));
-    count.innerHTML=`<span>${pieces} text${pieces>1?'s':''} · <b>${n}</b> characters</span><span>Replies come to this job and to 1298</span><span>Dana reads English</span>`;
+    if(kind==='email'){ count.innerHTML=`<span>subject <b>Oakridge sewer line</b></span><span>Hello Dana, … and the office signature are added</span><span>a copy is kept in Documents</span>${leftWords}`; return; }
+    const pieces=Math.max(1,Math.ceil(n/153));
+    count.innerHTML=`<span>${pieces} text${pieces>1?'s':''} · <b>${n}</b> characters</span><span>Replies come to this job and to 1298</span><span>Dana reads English</span>${leftWords}`;
   }
   $$('#kinds button').forEach(b=>b.addEventListener('click',()=>{kind=b.dataset.k;paintKind();}));
-  $$('#qr .lines button[data-fill]').forEach(b=>b.addEventListener('click',()=>{ box.value=fill(b.dataset.fill); box.focus(); paintCount(); toast('The line is in the box. Nothing sent.'); }));
   box.addEventListener('input',paintCount);
   $$('#filters button').forEach(b=>b.addEventListener('click',()=>{
     $$('#filters button').forEach(x=>x.classList.toggle('on',x===b));
@@ -540,7 +732,6 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     $$('#feed .row').forEach(r=>{ r.hidden = f!=='all' && r.dataset.k!==f; });
     $$('#feed .day').forEach(d=>{ let n=d.nextElementSibling, any=false; while(n && !n.classList.contains('day')){ if(n.classList.contains('row') && !n.hidden) any=true; n=n.nextElementSibling; } d.hidden=!any; });
   }));
-  // start on All so the whole feed reads; the Customer chip is lit to say it is new
   $$('#filters button')[0].click(); $$('#filters button')[0].classList.remove('on'); $('#filters .new').classList.add('on');
   let rowN=14, todayDrawn=false, sending=false;
   function addRow(cls,who,whoKind,body,t,k){
@@ -555,45 +746,136 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   send.addEventListener('click',async()=>{
     const text=box.value.trim();
     if(!text){ toast('Pick a line or write something first.'); return; }
+    const left=blanksIn(text); if(left.length&&kind!=='note'){ toast(`Fill ${left.map(x=>'{'+x+'}').join(' and ')} first. The app does not know it.`); box.focus(); return; }
     if(sending) return; sending=true;
-    if(kind==='note'){ addRow('team','Rosa','',text+'<div class="dim" style="font-size:12px;margin-top:3px">only the team sees this</div>','9:02a','note'); box.value=''; paintCount(); toast('Note added. Only the team sees it.'); sending=false; return; }
-    if(kind==='email'){ addRow('cust email','Rosa','email',`<span class="subj">Oakridge sewer line</span><br>Hello Dana, ${text}<div class="dim" style="font-size:12px;margin-top:3px">from office@clickplumbing.com · the copy is kept in Documents</div>`,'9:02a'); box.value=''; paintCount(); toast('Email sent as Click Plumbing. Its copy is kept in Documents.'); sending=false; return; }
-    addRow('cust text','Rosa','text',text+'<div class="dim" style="font-size:12px;margin-top:3px">Dana has had our texts before, so no opt-out line · sent from the job window</div>','9:02a');
+    if(kind==='note'){ addRow('team','Rosa','',esc(text)+'<div class="dim" style="font-size:12px;margin-top:3px">only the team sees this</div>','9:02a','note'); box.value=''; paintCount(); toast('Note added. Only the team sees it.'); sending=false; return; }
+    if(kind==='email'){ addRow('cust email','Rosa','email',`<span class="subj">Oakridge sewer line</span><br>Hello Dana, ${esc(text)}<div class="dim" style="font-size:12px;margin-top:3px">from office@clickplumbing.com · the copy is kept in Documents</div>`,'9:02a'); box.value=''; paintCount(); toast('Email sent as Click Plumbing. Its copy is kept in Documents.'); sending=false; return; }
+    addRow('cust text','Rosa','text',esc(text)+'<div class="dim" style="font-size:12px;margin-top:3px">Dana has had our texts before, so no opt-out line · sent from the job window</div>','9:02a');
     box.value=''; paintCount(); toast('Text sent from the company number.');
     await wait(1800);
     addRow('cust text in','Dana','text','Perfect, thank you. The side gate is unlocked.<div class="tie"><span class="this">1312 · this job</span><span>also 1298 · Water heater</span><span style="border:0;padding-left:0">until the office ties it</span></div>','9:04a');
     toast('Dana wrote back. Her line shows on 1312 and on 1298 until someone ties it.');
     sending=false;
   });
-  paintKind();
 
-  // ---- screen 2 ----
-  const LINES={
-    onway:{title:'On our way',text:'Dana, this is Luis with Click Plumbing. We are on our way to 4120 Oakridge Trl, about 25 minutes out.',note:'The minutes come from the drive. Dana has had our texts before, so no opt-out line goes.'},
-    late:{title:'Running late',text:'Dana, we are running behind this morning. Our new window at 4120 Oakridge Trl is 9:30 to 10:00. Sorry for the wait.',note:'The window comes from the schedule. The office is told too.'},
-    found:{title:'Here is what we found',text:'Dana, here is what we found: a break in the line about 32 feet out, under the front walk. Rosa will send you the estimate today.',note:'You fill the one line in the middle. The same words go on your status report.'},
-    done:{title:'Done for today',text:'Dana, we are done for today at 4120 Oakridge Trl. We are back Fri, Oct 9 at 8:00 AM to finish.',note:'The back day comes from the schedule. If nothing is scheduled, the line says the office will call with a day.'},
-    photo:{title:'Send us a photo',text:'Dana, could you send a photo of the cleanout in the front yard? Reply to this text with the picture.',note:'Her picture lands on the job as a file and in the thread.'},
-    office:{title:'Something else',text:'Note to the office: Dana asked whether we can look at the hose bib while here. Please quote it.',note:'This goes to Rosa as a note on the job, not to Dana. Rosa sends what Dana should hear.'}
-  };
-  const sheet=$('#sheet'), pick=$('#sheetPick'), prev=$('#sheetPrev'), done=$('#sheetDone'); let chosen=null;
+  // ---------- modals ----------
+  function modal(cls){ const bg=document.createElement('div'); bg.className='modal-bg'; const m=document.createElement('div'); m.className='modal '+(cls||''); bg.appendChild(m); document.body.appendChild(bg); bg.addEventListener('click',e=>{ if(e.target===bg) close(); }); function close(){ bg.remove(); document.removeEventListener('keydown',onKey); paintStrip(); paintPhone(); } function onKey(e){ if(e.key==='Escape') close(); } document.addEventListener('keydown',onKey); return {bg,m,close}; }
+  const stepOptions=(kind,cur)=>{ let h='<option value="">on no step</option>'; for(const f of FLOWS[kind]||[]) h+=`<optgroup label="${esc(f.name)}">${f.steps.map(([id,n])=>`<option value="${id}" ${id===cur?'selected':''}>on ${esc(n)}</option>`).join('')}</optgroup>`; return h; };
+  const forOptions=cur=>KIND_ORDER.map(k=>`<option value="${k}" ${k===cur?'selected':''}>for ${KINDS[k]}</option>`).join('');
+  const chipsHtml=(target)=>`<div class="chips">${BLANKS.map(b=>`<button type="button" data-ins="{${b[0]}}" data-target="${target}">{${b[0]}}<span>${esc(b[1])}${b[2]==null&&b[0]!=='me'?' · theirs to fill':''}</span></button>`).join('')}</div>`;
+  function wireChips(m){ $$('.chips button',m).forEach(b=>b.onclick=()=>{ const ta=$('#'+b.dataset.target,m); if(!ta) return; const s=ta.selectionStart??ta.value.length, e=ta.selectionEnd??s; ta.value=ta.value.slice(0,s)+b.dataset.ins+ta.value.slice(e); ta.focus(); ta.setSelectionRange(s+b.dataset.ins.length,s+b.dataset.ins.length); ta.dispatchEvent(new Event('input')); }); }
+  const previewHtml=(text)=>{ const r=fillLine(text,TECH); return `<div class="prevline">${markBlanks(esc(r.text))}<small>as Luis would send it to Dana${r.left.length?` · ${r.left.map(x=>'{'+x+'}').join(', ')} ${r.left.length===1?'is':'are'} theirs to fill on the press`:''}</small></div>`; };
+
+  // The editor: the GC prototype's, with blanks, the phone mark and Spanish.
+  function openEditor(prefill){
+    const {m,close}=modal('wide'); let tab='all', search='', open=null, adding=!!prefill, addGuess=prefill?{...guess(prefill),text:prefill}:null;
+    const counts=()=>{ const all=QR.filter(q=>!q.removed); const c={all:all.length, mine:all.filter(q=>q.scope==='mine').length, phone:all.filter(q=>q.phone>0).length, removed:QR.filter(q=>q.removed).length}; for(const k of KIND_ORDER) c[k]=all.filter(q=>q.for===k).length; return c; };
+    const rowsFor=()=>{ const f=search.trim().toLowerCase(); return QR.filter(q=>(tab==='removed'?q.removed:!q.removed)&&(tab==='all'||tab==='removed'||tab==='phone'||(tab==='mine'?q.scope==='mine':q.for===tab))&&(tab!=='phone'||q.phone>0)&&(!f||q.text.toLowerCase().includes(f)||(q.es||'').toLowerCase().includes(f))).sort((a,b)=>qTotal(b)-qTotal(a)||a.id-b.id); };
+    // Groups: by who the line is for; inside customers by flow, then step in the flow's order; no step last; inside a step by use.
+    const grouped=rows=>{ const out=[]; for(const k of KIND_ORDER){ const ofKind=rows.filter(q=>q.for===k); if(!ofKind.length) continue; const flows=FLOWS[k]||[{id:'',name:'',steps:[]}]; for(const f of flows){ const ids=f.steps.map(s=>s[0]); for(const id of ids){ const rs=ofKind.filter(q=>q.step===id); if(rs.length) out.push({kind:k, flow:f, step:id, rows:rs}); } } const none=ofKind.filter(q=>!q.step||!stepIds(k).includes(q.step)); if(none.length) out.push({kind:k, flow:null, step:null, rows:none}); } return out; };
+    const flags=q=>`<span class="flags">${q.phone?'<span class="ph">☎ phone</span>':''}${q.for!=='any'&&q.for!=='trade'&&q.for!=='arch'?(q.es?'<span class="es">es</span>':'<span class="noes">no es</span>'):''}${q.scope==='mine'?'<span class="mine">mine</span>':''}</span>`;
+    const hist=q=>`<div class="hist"><div class="h">History · ${q.versions.length} version${q.versions.length===1?'':'s'} · used ${qTotal(q)} time${qTotal(q)===1?'':'s'}</div>${[...q.versions].reverse().map(v=>`<div class="e"><span class="w">${esc(v.by)} · ${esc(v.at)}</span><span>${v.kind==='added'?`added it: <ins>${esc(v.to)}</ins>`:v.kind==='words'?`changed the words: <del>${esc(v.from)}</del> → <ins>${esc(v.to)}</ins>`:v.kind==='es'?`changed the Spanish: <ins>${esc(v.to)}</ins>`:v.kind==='tags'?`tagged it <ins>${esc(v.to)}</ins> (was ${esc(v.from)})`:v.kind==='removed'?'removed it (it stays here and can be brought back)':'brought it back'}</span></div>`).join('')}<div class="e"><span class="w">Used by</span><span class="usedby">${Object.entries(q.uses).sort((a,b)=>b[1]-a[1]).map(([w,n])=>`<span><b>${esc(w)}</b> ${n}</span>`).join('')||'<span class="note">nobody yet</span>'}${q.lastUsed?`<span class="note">· last used ${esc(q.lastUsed)}</span>`:''}</span></div></div>`;
+    const editRow=q=>`<tr class="edit"><td colspan="4"><div class="frm">
+        <div><label for="qe-text">English</label><textarea id="qe-text">${esc(q.text)}</textarea></div>
+        ${chipsHtml('qe-text')}
+        <div id="qe-prev">${previewHtml(q.text)}</div>
+        ${q.for==='customer'?`<div><label for="qe-es">Spanish${q.es?'':' · none yet, so a Spanish speaker reads the English'}</label><textarea id="qe-es" placeholder="La misma línea en español…">${esc(q.es||'')}</textarea></div>`:''}
+        <div class="two"><div><label for="qe-for">Who it is for</label><select id="qe-for">${forOptions(q.for)}</select></div><div><label for="qe-step">Its step</label><select id="qe-step">${stepOptions(q.for,q.step)}</select></div></div>
+        <div class="opts"><label><input type="checkbox" id="qe-phone" ${q.phone?'checked':''} ${q.for==='customer'?'':'disabled'}> on the tech's phone${q.for==='customer'?'':' (customer lines only)'}</label><label><input type="checkbox" id="qe-mine" ${q.scope==='mine'?'checked':''}> just for me</label></div>
+        ${q.for==='customer'?`<div class="two"><div><label for="qe-name">Its short name on the phone</label><input id="qe-name" value="${esc(q.name||'')}" placeholder="${esc(shortTitle({text:q.text}))}"></div><div class="note" style="align-self:end;padding-bottom:8px">What the tech's button says. Empty reads the line's first sentence.</div></div>`:''}
+        <div class="opts"><button class="small primary" id="qe-save">Save</button><button class="small" id="qe-cancel">Cancel</button><span class="note">Saving keeps the old words in the history below, with your name and today.</span>${q.removed?`<button class="quiet small" id="qe-restore" style="margin-left:auto">Bring it back</button>`:`<button class="quiet small" id="qe-remove" style="margin-left:auto;color:var(--danger)">Remove this line…</button>`}</div>
+      </div>${hist(q)}</td></tr>`;
+    const phoneTab=()=>{ const ls=QR.filter(q=>!q.removed&&q.phone>0).sort((a,b)=>a.phone-b.phone); return `<div class="note" style="margin:4px 0 10px">The lines a tech gets on Job Mode, in this order. The step the job is on moves to the top on the phone; the rest keep this order. Six at most reach the phone; "Something else" is always last.</div><div class="phonelist">${ls.map((q,i)=>`<div class="pl"><span class="k">${i+1}</span><span><b>${esc(shortTitle(q))}</b> · ${markBlanks(esc(q.text))}<small>${q.step?'on '+esc(stepName(q.step)):'no step'} · used ${qTotal(q)}</small></span><span class="mv"><button data-mv="-1" data-id="${q.id}" ${i===0?'disabled':''} aria-label="Move up">↑</button><button data-mv="1" data-id="${q.id}" ${i===ls.length-1?'disabled':''} aria-label="Move down">↓</button><button data-off="${q.id}" title="Take it off the phone">off</button></span></div>`).join('')}${ls.length>6?`<div class="note">Only the first six reach the phone.</div>`:''}</div>`; };
+    function paint(){ const n=counts(); const rows=rowsFor();
+      m.innerHTML=`<div class="mhead"><h2>Quick replies</h2><input class="search" id="qsearch" placeholder="⌕ find a line, or words in it" value="${esc(search)}" aria-label="Search the lines"><button class="primary small" id="qadd">+ Add a line</button></div>
+      <div class="etabs">${[['all','All',n.all],['customer','Customers',n.customer],['trade','Trade partners',n.trade],['arch','Architects',n.arch],['any','Anyone',n.any],['mine','Mine',n.mine],['phone','Phone',n.phone]].concat(n.removed?[['removed','Removed',n.removed]]:[]).map(([k,l,c])=>`<button class="${tab===k?'on':''}" data-tab="${k}">${l} · ${c}</button>`).join('')}</div>
+      ${adding?`<div class="add"><div class="frm"><div><label for="qnew">The line you type every day</label><textarea id="qnew" placeholder="The line you type every day…">${esc(addGuess?.text||'')}</textarea></div>${chipsHtml('qnew')}<div id="qnew-prev">${previewHtml(addGuess?.text||'')}</div><div><label for="qnew-es">Spanish, if you have it</label><textarea id="qnew-es" placeholder="La misma línea en español…"></textarea></div><div class="two"><div><label for="qnew-for">Who it is for</label><select id="qnew-for">${forOptions(addGuess?.for||'any')}</select></div><div><label for="qnew-step">Its step</label><select id="qnew-step">${stepOptions(addGuess?.for||'any',addGuess?.step||'')}</select></div></div><div class="two"><div><label for="qnew-name">Its short name on the phone, if it goes there</label><input id="qnew-name" placeholder="On our way"></div></div><div class="opts"><span class="note" id="qguess">${addGuess&&addGuess.text?'the tags are guessed from the words':'the tags are guessed from the words as you type'}</span><label><input type="checkbox" id="qnew-phone"> on the tech's phone</label><label><input type="checkbox" id="qnew-mine"> just for me</label><button class="small primary" id="qnew-add">Add</button><button class="small" id="qnew-cancel">Cancel</button></div></div></div>`:''}
+      ${tab==='phone'?phoneTab():`<table class="qrt"><tr><th>Line</th><th class="r">Used</th><th>Added</th><th>Last change</th></tr>${rows.length?grouped(rows).map(g=>`<tr class="ghead"><td colspan="4"><span class="ktag ${g.kind}">${KINDS[g.kind]}</span>${g.flow&&FLOWS[g.kind].length>1?` <span class="note">${esc(g.flow.name)} ·</span>`:''}${g.step?`<span class="step">${esc(stepName(g.step))}</span>`:(g.kind==='any'?'':' <span class="note">no step</span>')}<span class="note" style="margin-left:8px">${g.rows.length} line${g.rows.length===1?'':'s'}</span></td></tr>`+g.rows.map(q=>`<tr class="line ${open===q.id?'open':''} ${q.removed?'removed':''}" data-id="${q.id}"><td>${markBlanks(markWith(q.text,search))}${flags(q)}</td><td class="r"><span class="used">${qTotal(q)}<small>${qMine(q,OFFICE)} by you</small></span></td><td class="dim">${esc(q.versions[0].by)} · ${esc(q.versions[0].at.split(',')[0])}</td><td class="dim">${q.versions.length>1?esc(q.versions[q.versions.length-1].by)+' · '+esc(q.versions[q.versions.length-1].at.split(',')[0]):'—'}</td></tr>${open===q.id?editRow(q):''}`).join('')).join(''):`<tr><td colspan="4" class="note" style="padding:14px 6px">${search?'No line has those words.':'Nothing here yet.'}</td></tr>`}</table>`}
+      <div class="btns"><span class="l">${tab==='phone'?'':`${rows.length} line${rows.length===1?'':'s'}${search?` match “${esc(search)}”`:''} · by who they are for, then the flow and the step, the most used first.`}</span><button id="qdone">Done</button></div>`;
+      // wiring
+      $('#qsearch',m).oninput=e=>{ search=e.target.value; paint(); const i=$('#qsearch',m); i.focus(); i.setSelectionRange(i.value.length,i.value.length); };
+      $('#qadd',m).onclick=()=>{ adding=true; addGuess={text:'',for:'any',step:null}; paint(); $('#qnew',m)?.focus(); };
+      $('#qdone',m).onclick=close;
+      $$('.etabs button',m).forEach(b=>b.onclick=()=>{ tab=b.dataset.tab; open=null; paint(); });
+      $$('tr.line',m).forEach(tr=>tr.onclick=()=>{ const id=+tr.dataset.id; open=open===id?null:id; paint(); });
+      wireChips(m);
+      const qe=$('#qe-text',m); if(qe){ const q=QR.find(x=>x.id===open);
+        qe.oninput=()=>{ $('#qe-prev',m).innerHTML=previewHtml(qe.value); };
+        $('#qe-for',m).onchange=e=>{ $('#qe-step',m).innerHTML=stepOptions(e.target.value,''); $('#qe-phone',m).disabled=e.target.value!=='customer'; if(e.target.value!=='customer') $('#qe-phone',m).checked=false; };
+        $('#qe-cancel',m).onclick=()=>{ open=null; paint(); };
+        $('#qe-save',m).onclick=()=>{ const v=qe.value.trim(); if(!v){ toast('Write something, or Cancel.'); return; } let changed=false; const es=$('#qe-es',m)?($('#qe-es',m).value.trim()||null):q.es;
+          if(v!==q.text){ q.versions.push(V(OFFICE,NOW_WORDS,'words',v,q.text)); q.text=v; changed=true; }
+          if(es!==q.es){ q.versions.push(V(OFFICE,NOW_WORDS,'es',es||'(none)',q.es||'(none)')); q.es=es; changed=true; }
+          const nf=$('#qe-for',m).value, ns=$('#qe-step',m).value||null, nph=$('#qe-phone',m).checked, nm=$('#qe-mine',m).checked?'mine':'team', nn=$('#qe-name',m)?($('#qe-name',m).value.trim()||null):q.name;
+          const before=tagWords(q); if(nf!==q.for||ns!==q.step||(!!q.phone)!==nph||nm!==q.scope||nn!==(q.name||null)){ q.for=nf; q.step=ns; q.scope=nm; q.name=nn||undefined; if(nph&&!q.phone) q.phone=Math.max(0,...QR.map(x=>x.phone))+1; if(!nph) q.phone=0; q.versions.push(V(OFFICE,NOW_WORDS,'tags',tagWords(q),before)); changed=true; }
+          toast(changed?'Saved, with your name and today in its history.':'Nothing changed.'); open=null; paint(); };
+        const rm=$('#qe-remove',m); if(rm) rm.onclick=()=>{ const {m:m2,close:c2}=modal(); m2.innerHTML=`<h2>Remove this line?</h2><p>“${esc(q.text)}”</p><p class="note">It leaves the strip, the phone and the list. It stays in the history as removed, with your name and today, and can be brought back from the Removed tab.</p><div class="btns"><button class="danger" id="rm">Remove it</button><button class="primary" id="keep">Keep it</button></div>`; $('#keep',m2).onclick=c2; $('#rm',m2).onclick=()=>{ q.removed=true; q.versions.push(V(OFFICE,NOW_WORDS,'removed','')); c2(); open=null; toast('Removed. It can be brought back from the Removed tab.'); paint(); }; $('#keep',m2).focus(); };
+        const rs=$('#qe-restore',m); if(rs) rs.onclick=()=>{ q.removed=false; q.versions.push(V(OFFICE,NOW_WORDS,'restored','')); open=null; tab='all'; toast('Back on the list.'); paint(); };
+      }
+      const qn=$('#qnew',m); if(qn){ let setByYou=false;
+        qn.oninput=()=>{ $('#qnew-prev',m).innerHTML=previewHtml(qn.value); if(setByYou) return; const g=guess(qn.value); $('#qnew-for',m).value=g.for; $('#qnew-step',m).innerHTML=stepOptions(g.for,g.step||''); $('#qnew-phone',m).disabled=g.for!=='customer'; $('#qguess',m).textContent=qn.value.trim()?'guessed from the words':'the tags are guessed from the words as you type'; };
+        $('#qnew-for',m).onchange=e=>{ setByYou=true; $('#qnew-step',m).innerHTML=stepOptions(e.target.value,''); $('#qnew-phone',m).disabled=e.target.value!=='customer'; $('#qguess',m).textContent='set by you'; };
+        $('#qnew-step',m).onchange=()=>{ setByYou=true; $('#qguess',m).textContent='set by you'; };
+        $('#qnew-cancel',m).onclick=()=>{ adding=false; addGuess=null; paint(); };
+        $('#qnew-add',m).onclick=()=>{ const v=qn.value.trim(); if(!v){ toast('Write the line first.'); return; } const f=$('#qnew-for',m).value, s=$('#qnew-step',m).value||null, mine=$('#qnew-mine',m).checked, ph=$('#qnew-phone',m).checked&&f==='customer', es=$('#qnew-es',m).value.trim()||null, nm=$('#qnew-name',m).value.trim()||undefined;
+          QR.push({id:++qseq, name:nm, scope:mine?'mine':'team', for:f, step:s, phone:ph?Math.max(0,...QR.map(x=>x.phone))+1:0, es, text:v, uses:{}, lastUsed:null, removed:false, addedBy:OFFICE, versions:[V(OFFICE,NOW_WORDS,'added',v)]});
+          adding=false; addGuess=null; toast(mine?'Added to yours, with your name and today on it.':ph?'Added for the team and on every tech’s phone.':'Added for the team, with your name and today on it.'); paint(); };
+        if(adding&&!addGuess?.text){ qn.focus(); } }
+      $$('[data-mv]',m).forEach(b=>b.onclick=()=>{ const ls=QR.filter(q=>!q.removed&&q.phone>0).sort((a,b)=>a.phone-b.phone); const i=ls.findIndex(q=>q.id===+b.dataset.id); const j=i+(+b.dataset.mv); if(j<0||j>=ls.length) return; const t=ls[i].phone; ls[i].phone=ls[j].phone; ls[j].phone=t; paint(); });
+      $$('[data-off]',m).forEach(b=>b.onclick=()=>{ const q=QR.find(x=>x.id===+b.dataset.off); const before=tagWords(q); q.phone=0; q.versions.push(V(OFFICE,NOW_WORDS,'tags',tagWords(q),before)); toast('Off the phone. It stays on the strip.'); paint(); });
+    }
+    paint(); if(prefill){ $('#qnew',m)?.focus(); }
+  }
+
+  // Find a reply: their last message, where they are, every line with room.
+  function openFind(){
+    const {m,close}=modal(); let f='';
+    const draw=()=>{ const gs=groups(DANA,OFFICE,f); const any=gs.length;
+      const line=q=>`<button type="button" class="fline ${q.scope==='mine'?'mine':''}" data-id="${q.id}"><span class="t">${markBlanks(markWith(wordsFor(q,DANA.lang),f))}</span><span class="m">${q.step?esc(stepName(q.step))+' · ':''}used ${qTotal(q)}${q.scope==='mine'?' · mine':''}${q.phone?' · on the phone':''}</span></button>`;
+      m.innerHTML=`<div class="mhead"><div><h2>Find a reply · Dana Whitfield</h2><div class="note">A press on a line fills the box. Nothing sends. The lines for the step she is on come first.</div></div><button class="quiet" id="fclose" style="margin-left:auto">Close</button></div>
+        <div class="flast"><div class="fh">Her last message <span style="font-weight:400">· ${esc(DANA.lastIn.ch)} · ${esc(DANA.lastIn.when)}</span></div>${esc(DANA.lastIn.text)}</div>
+        <div class="fwhere"><div class="fh">Where Dana is</div><b>Working</b> · our move · on it 1 day. Done for today or Ready to Bill finishes it. Residential customer flow.</div>
+        <div class="fsearch"><input id="ffilter" placeholder="⌕ narrow the lines" value="${esc(f)}" aria-label="Narrow the lines"><button class="quiet small" id="fedit">Edit quick replies</button></div>
+        ${any?gs.map(g=>`<div class="fgrp"><div class="fh">${esc(g.title)}${g.tag?` · ${esc(g.tag)}`:''} <span>${g.rows.length}</span></div>${g.rows.map(line).join('')}</div>`).join(''):`<div class="note" style="margin-top:10px">Nothing matches. <button class="small primary" id="faddnew">Add “${esc(f.trim())}” as a quick reply</button></div>`}`;
+      $('#fclose',m).onclick=close; $('#fedit',m).onclick=()=>{ close(); openEditor(); };
+      $('#ffilter',m).oninput=e=>{ f=e.target.value; draw(); const i=$('#ffilter',m); i.focus(); i.setSelectionRange(i.value.length,i.value.length); };
+      const fa=$('#faddnew',m); if(fa) fa.onclick=()=>{ close(); openEditor(f.trim()); };
+      $$('.fline',m).forEach(b=>b.onclick=()=>{ useLine(+b.dataset.id); close(); });
+    };
+    draw(); setTimeout(()=>$('#ffilter',m)?.focus(),0);
+  }
+
+  // ---------- screen 2: Job Mode ----------
+  const sheet=$('#sheet'), pick=$('#sheetPick'), prev=$('#sheetPrev'), done=$('#sheetDone'); let chosen=null, chosenOffice=false;
   function show(part){ pick.hidden=part!=='pick'; prev.hidden=part!=='prev'; done.hidden=part!=='done'; }
-  $('#openSheet').addEventListener('click',()=>{ show('pick'); sheet.classList.add('open'); $('#techDot').hidden=true; });
+  const SUB={onway:'about 25 minutes, from the drive',found:'you fill one blank, the rest is written',working:'from the schedule',booked:'from the schedule'};
+  function shortTitle(q){ if(q.name) return q.name; const t=fillLine(q.text,TECH).text.replace(/^[A-Z][a-z]+,?\s*/,''); const parts=t.split(/[.:?]/).map(x=>x.trim()).filter(Boolean); const cut=parts.find(x=>!/^this is .* with Click Plumbing$/i.test(x))||parts[0]||t; return cut.charAt(0).toUpperCase()+cut.slice(1); }
+  function paintPhone(){
+    const ls=phoneLines(DANA.now);
+    $('#phoneLines').innerHTML=ls.map(q=>{ const r=fillLine(wordsFor(q,DANA.lang),TECH); const sub=r.left.length?`asks you for ${r.left.map(x=>'{'+x+'}').join(' and ')}`:(q.step===DANA.now?'the step the job is on · ':'')+(SUB[q.step]||'ready to go'); return `<button data-id="${q.id}" class="${q.step===DANA.now?'step':''}">${esc(shortTitle(q))}<small>${esc(sub)}</small></button>`; }).join('')+`<button class="office" data-id="office">Something else<small>a note to the office, Rosa sends it</small></button>`;
+    $$('#phoneLines button').forEach(b=>b.onclick=()=>pickLine(b.dataset.id));
+  }
+  function pickLine(id){
+    $('#fillRows').innerHTML='';
+    if(id==='office'){ chosenOffice=true; chosen={title:'Something else', text:'Note to the office: Dana asked whether we can look at the hose bib while here. Please quote it.', left:[]}; $('#prevTitle').textContent=chosen.title; $('#prevText').innerHTML=esc(chosen.text); $('#prevNote').textContent='This goes to Rosa as a note on the job, not to Dana. Rosa sends what Dana should hear.'; $('#prevSend').textContent='Send to the office'; show('prev'); return; }
+    chosenOffice=false; const q=QR.find(x=>x.id===+id); const r=fillLine(wordsFor(q,DANA.lang),TECH); chosen={q, title:shortTitle(q), raw:wordsFor(q,DANA.lang), text:r.text, left:r.left};
+    $('#prevTitle').textContent=chosen.title; $('#prevSend').textContent='Send';
+    $('#fillRows').innerHTML=r.left.map(k=>`<div class="fillrow"><label for="fill-${k.replace(/ /g,'-')}">${esc(k)} · ${esc((BLANKS.find(b=>b[0]===k)||[])[1]||'yours to fill')}</label><input id="fill-${k.replace(/ /g,'-')}" data-k="${esc(k)}" placeholder="…"></div>`).join('');
+    const paintPrev=()=>{ const extra={}; $$('#fillRows input').forEach(i=>{ if(i.value.trim()) extra[i.dataset.k]=i.value.trim(); }); const rr=fillLine(chosen.raw,TECH,extra); chosen.text=rr.text; chosen.left=rr.left; $('#prevText').innerHTML=markBlanks(esc(rr.text))+'<span class="opt">Goes from (512) 555-0144 as Click Plumbing. Her reply comes to you until 5 PM, then to the office.</span>'; $('#prevNote').textContent=rr.left.length?`Fill ${rr.left.map(x=>'{'+x+'}').join(' and ')} first. The rest is written.`:'Nothing sends until you press Send.'; };
+    $$('#fillRows input').forEach(i=>i.oninput=paintPrev); paintPrev(); show('prev'); const fi=$('#fillRows input'); if(fi) setTimeout(()=>fi.focus(),50);
+  }
+  $('#openSheet').addEventListener('click',()=>{ paintPhone(); show('pick'); sheet.classList.add('open'); $('#techDot').hidden=true; });
   $('#closeSheet').addEventListener('click',()=>sheet.classList.remove('open'));
-  $$('#sheetPick .big button').forEach(b=>b.addEventListener('click',()=>{
-    chosen=LINES[b.dataset.line]; $('#prevTitle').textContent=chosen.title;
-    $('#prevText').innerHTML=chosen.text.replace(/</g,'&lt;')+(b.dataset.line==='office'?'':'<span class="opt">Goes from (512) 555-0144 as Click Plumbing. Her reply comes to you until 5 PM, then to the office.</span>');
-    $('#prevNote').textContent=chosen.note; $('#prevSend').textContent=b.dataset.line==='office'?'Send to the office':'Send'; show('prev');
-  }));
   $('#prevBack').addEventListener('click',()=>show('pick'));
   $('#prevSend').addEventListener('click',async()=>{
-    const isOffice=chosen&&chosen.title==='Something else';
-    const dt=$('#doneThread'); dt.innerHTML=`<div class="ln"><span class="t">9:02a</span><span><span class="w">${isOffice?'Luis · note to the office':'Luis · text'}</span><br>${chosen.text}</span></div>`;
-    $('#sheetDone h4').textContent=isOffice?'Sent to the office 9:02 AM':'Sent 9:02 AM';
-    $('#sheetDone .sent').textContent=isOffice?'Rosa has it on the job. She writes to Dana.':'Dana has it. Her reply shows here and on the job.';
+    if(!chosenOffice&&chosen.left.length){ toast(`Fill ${chosen.left.map(x=>'{'+x+'}').join(' and ')} first.`); return; }
+    if(!chosenOffice){ chosen.q.uses[TECH]=(chosen.q.uses[TECH]||0)+1; }
+    const dt=$('#doneThread'); dt.innerHTML=`<div class="ln"><span class="t">9:02a</span><span><span class="w">${chosenOffice?'Luis · note to the office':'Luis · text'}</span><br>${esc(chosen.text)}</span></div>`;
+    $('#sheetDone h4').textContent=chosenOffice?'Sent to the office 9:02 AM':'Sent 9:02 AM';
+    $('#sheetDone .sent').textContent=chosenOffice?'Rosa has it on the job. She writes to Dana.':'Dana has it. Her reply shows here and on the job.';
     show('done');
-    const dn=$('#danaNew'); if(!isOffice){ dn.textContent=chosen.text; dn.hidden=false; }
-    if(isOffice) return;
+    const dn=$('#danaNew'); if(!chosenOffice){ dn.textContent=chosen.text; dn.hidden=false; }
+    if(chosenOffice) return;
     await wait(1800);
     dt.insertAdjacentHTML('beforeend',`<div class="ln"><span class="t">9:04a</span><span><span class="w">Dana · text</span><br>Perfect, thank you. The side gate is unlocked.</span></div>`);
     $('#techThread').insertAdjacentHTML('afterbegin',`<div class="ln" style="background:var(--text-soft);border-radius:8px;padding:6px 8px"><span class="t">9:04a</span><span><span class="w">Dana · text</span><br>Perfect, thank you. The side gate is unlocked.</span></div>`);
@@ -601,6 +883,8 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     toast("Dana wrote back. It comes to Luis until 5 PM, and the office sees it too.");
   });
   $('#doneClose').addEventListener('click',()=>sheet.classList.remove('open'));
+
+  paintKind(); paintPhone();
 })();
 </script>
 </body>
