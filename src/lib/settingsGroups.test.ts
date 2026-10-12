@@ -26,6 +26,7 @@ describe('getZonedSettingsGroups', () => {
       'settings-what-customers-see',
       'settings-what-the-team-sees',
       'settings-contracts',
+      'settings-clauses',
       'settings-company',
       'settings-usage',
       'settings-data',
@@ -51,6 +52,15 @@ describe('getZonedSettingsGroups', () => {
         'settings-guides',
         'settings-release-notes',
       ])
+    }
+  })
+
+  it('the office team gets Contracts and clauses, and nobody else does (Messages, cut 4c)', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id)).toContain('settings-clauses')
+    }
+    for (const role of ['superintendent', 'subcontractor', 'helpers', 'primary'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id)).not.toContain('settings-clauses')
     }
   })
 

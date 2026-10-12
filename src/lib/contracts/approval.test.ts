@@ -45,9 +45,14 @@ describe('editClause: the two paths', () => {
     const p = proposed(r)
     expect(p).toMatchObject({ paperId: 'msa', kind: 'edit', clauseId: 'msa-2', baseV: 1, by: 'Rosa', why: 'the insurer asked for it', state: 'proposed' })
     expect(p.en).toBe(editTwo.kind === 'edit' ? editTwo.en : '')
-    expect(r.kind === 'proposed' && r.toast).toBe('Sent to Robert and Maria with a push and an email. It goes out once one of them approves it. Until then it waits on their Needs you.')
+    expect(r.kind === 'proposed' && r.toast).toBe('It waits for Robert or Maria to approve it. Until then it is on their Needs you.')
     expect(BOOK.paper.revision).toBe(1)
     expect(BOOK.clauses[1]?.v).toBe(1)
+  })
+
+  it('says who got the push and the email once the sends are live (messages-notify)', () => {
+    const r = editClause(BOOK, editTwo, ROSA, { ...ctx(), told: true })
+    expect(r.kind === 'proposed' && r.toast).toBe('Sent to Robert and Maria with a push and an email. It goes out once one of them approves it. Until then it waits on their Needs you.')
   })
 
   it("publishes Maria's own edit at once: the clause's version and the paper's revision each one up", () => {
@@ -115,7 +120,8 @@ describe('approveProposal and declineProposal', () => {
     expect(r.book?.paper.revision).toBe(2)
     expect(r.proposal).toMatchObject({ state: 'approved', decidedBy: 'Maria', decidedAt: LATER })
     expect(r.change).toMatchObject({ by: 'Maria', proposedBy: 'Rosa', why: 'the insurer asked for it', v: 2 })
-    expect(r.toast).toBe('Approved by Maria. Rosa gets a text that it went out. The next paper sent carries it.')
+    expect(r.toast).toBe('Approved by Maria. The next paper sent carries it.')
+    expect(decided(approveProposal(BOOK, p, MARIA, { at: LATER, newId: idsFrom('clause'), told: true })).toast).toBe('Approved by Maria. Rosa gets a text that it went out. The next paper sent carries it.')
   })
 
   it('gives an approved new clause its id and its place at the end', () => {
@@ -130,7 +136,7 @@ describe('approveProposal and declineProposal', () => {
     expect(p).toMatchObject({ kind: 'retire', clauseId: 'msa-6', baseV: 1, en: MSA_CLAUSES[5]?.en, scope: ['Sitework'] })
     const r = decided(approveProposal(BOOK, p, MARIA, { at: LATER, newId: idsFrom('clause') }))
     expect(r.book?.clauses.find((c) => c.id === 'msa-6')).toMatchObject({ retiredAt: LATER, retiredBy: 'Maria' })
-    expect(r.toast).toBe('Approved by Maria. Rosa gets a text that it went out. The next paper sent leaves it out.')
+    expect(r.toast).toBe('Approved by Maria. The next paper sent leaves it out.')
   })
 
   it('refuses a proposal the clause has moved on from, so a newer publish is never overwritten', () => {
@@ -166,13 +172,14 @@ describe('approveProposal and declineProposal', () => {
     expect(declineProposal(done.proposal, ROBERT, { at: LATER, why: 'no' })).toEqual({ kind: 'refused', why: 'This change is decided already.' })
   })
 
-  it('declines only with a why, which Rosa gets by text', () => {
+  it('declines only with a why, which Rosa reads on the history, and gets by text once that is live', () => {
     const p = proposed(editClause(BOOK, editTwo, ROSA, ctx()))
     expect(declineProposal(p, MARIA, { at: LATER, why: '  ' })).toEqual({ kind: 'refused', why: 'Say why, for Rosa.' })
     const r = decided(declineProposal(p, MARIA, { at: LATER, why: 'keep the old wording; the insurer wants the dollar figure' }))
     expect(r.proposal).toMatchObject({ state: 'declined', decidedBy: 'Maria', decidedAt: LATER, declineWhy: 'keep the old wording; the insurer wants the dollar figure' })
     expect(r.book).toBeNull()
-    expect(r.toast).toBe('Declined. Rosa gets a text with your why.')
+    expect(r.toast).toBe("Declined. Rosa sees your why on the clause's history.")
+    expect(decided(declineProposal(p, MARIA, { at: LATER, why: 'no', told: true })).toast).toBe('Declined. Rosa gets a text with your why.')
   })
 })
 
@@ -193,10 +200,11 @@ describe('clauseNeeds: the approvers’ Needs you rows', () => {
     ])
     expect(rows[0]).toMatchObject({
       badge: 'Waiting on your approval',
-      facts: ['for everyone', 'today, 10:00 AM', 'the insurer asked for it', 'A push and an email went to Robert and Maria.'],
+      facts: ['for everyone', 'today, 10:00 AM', 'the insurer asked for it'],
       words: 'Insurance: general liability of $2,000,000 per occurrence.',
     })
-    expect(rows[1]?.facts).toEqual(['for Paving and Sitework', 'today, 12:00 PM', 'A push and an email went to Robert and Maria.'])
+    expect(rows[1]?.facts).toEqual(['for Paving and Sitework', 'today, 12:00 PM'])
+    expect(clauseNeeds('controller', all, [BOOK], { ...needCtx, told: true })[0]?.facts.slice(-1)).toEqual(['A push and an email went to Robert and Maria.'])
     expect(clauseNeeds('dev', all, [BOOK], needCtx)).toHaveLength(3)
   })
 
@@ -226,6 +234,9 @@ describe('plain words', () => {
       proposedToast(APPROVERS),
       proposedToast(['Maria']),
       proposedToast([]),
+      proposedToast(APPROVERS, true),
+      proposedToast(['Maria'], true),
+      proposedToast([], true),
       publishedToast({ ...MSA, revision: 2 }, 'edit'),
       publishedToast(MSA, 'retire'),
       'Only the office changes a clause.',
@@ -240,7 +251,9 @@ describe('plain words', () => {
       declineProposal(proposed(editClause(BOOK, editTwo, ROSA, ctx())), MARIA, { at: LATER, why: '' }),
     ].map((r) => (r.kind === 'refused' ? r.why : ''))
     for (const s of [...words, ...refusals]) expect(plainWordsFailures(s ?? '')).toEqual([])
-    expect(proposedToast(['Maria'])).toBe('Sent to Maria with a push and an email. It goes out once Maria approves it. Until then it waits on their Needs you.')
-    expect(proposedToast([])).toBe('Sent for approval with a push and an email. It goes out once a controller or a dev approves it. Until then it waits on their Needs you.')
+    expect(proposedToast(['Maria'])).toBe('It waits for Maria to approve it. Until then it is on their Needs you.')
+    expect(proposedToast([])).toBe('It waits for a controller or a dev to approve it. Until then it is on their Needs you.')
+    expect(proposedToast(['Maria'], true)).toBe('Sent to Maria with a push and an email. It goes out once Maria approves it. Until then it waits on their Needs you.')
+    expect(proposedToast([], true)).toBe('Sent for approval with a push and an email. It goes out once a controller or a dev approves it. Until then it waits on their Needs you.')
   })
 })

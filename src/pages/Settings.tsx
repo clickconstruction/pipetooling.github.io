@@ -39,6 +39,8 @@ import { SettingsUsageTab } from '../components/settings/SettingsUsageTab'
 import { SettingsWhatCustomersSeeTab } from '../components/settings/SettingsWhatCustomersSeeTab'
 import { SettingsWhatTheTeamSeesTab } from '../components/settings/SettingsWhatTheTeamSeesTab'
 import { SettingsContractsTab } from '../components/settings/SettingsContractsTab'
+import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
+import { canEditClause } from '../lib/gc/access'
 import { ANCHOR_BID_COVER_LETTER_DEFAULTS, ANCHOR_ESTIMATE_CX_DEFAULTS, ANCHOR_ESTIMATE_PUBLIC_TERMS, CONTRACTS_TAB_ID, contractAnchorId, stepParam, type ContractStepRef } from '../lib/contracts/customerContractCatalog'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
@@ -1478,6 +1480,11 @@ export default function Settings() {
             }}
           />
         )}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-clauses" hidden={activeSettingsTab !== 'settings-clauses'} title={settingsGroupTitle('settings-clauses', 'Contracts and clauses')} description={settingsGroupHint('settings-clauses')}>
+        {/* Mounted while it is open, so it re-reads the clauses and the waiting changes each time it is opened. */}
+        {activeSettingsTab === 'settings-clauses' && canEditClause(myRole) && <SettingsClausesTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>

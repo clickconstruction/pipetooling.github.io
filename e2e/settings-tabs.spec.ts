@@ -39,6 +39,8 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   // The v2.4108 index dropped the "Contracts customers accept or sign" section heading; this
   // line is the toolbar's intro and only renders once the wording has loaded (v2.4223).
   { label: 'Contracts & terms', marker: 'The wording as it stands today' },
+  // Messages, cut 4c (v2.5285): the papers built from clauses; the lede renders before the clauses load.
+  { label: 'Contracts and clauses', marker: 'A contract here is an ordered set of clauses' },
   { label: 'Company', marker: 'Company documents' },
   { label: 'Usage', marker: 'Where the time goes' },
   { label: 'Data & recovery', marker: /[Bb]ackup/ },

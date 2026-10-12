@@ -35,6 +35,7 @@ export const SETTINGS_SEARCH_INDEX: readonly SettingsSearchEntry[] = [
   // What the team sees (v2.4142)
   { label: 'What the team sees', keywords: ['team emails', 'staff emails', 'digest preview', 'crew day preview', 'money waiting preview', 'what does a controller get', 'who gets which email', 'sign-in email preview', 'invitation preview', 'workflow notification preview', 'email subjects'], tabId: 'settings-what-the-team-sees' },
   // Contracts & terms
+  { label: 'Contracts and clauses', keywords: ['clause', 'clauses', 'exhibit', 'trade exhibit', 'master agreement', 'statement of work', 'approve a clause', 'contract version'], tabId: 'settings-clauses' },
   { label: 'Contracts & terms', keywords: ['contract', 'contracts', 'terms and conditions', 'legal wording', 'agreement', 'warranty', 'exclusions', 'what we send', 'side by side', 'compare contracts', 'lien waiver', 'esign', 'electronic signature'], tabId: 'settings-contracts' },
   { label: 'Estimate Terms and Conditions', keywords: ['estimate terms', 'public terms', 'terms page'], tabId: 'settings-contracts', anchorId: 'settings-contract-estimate-terms' },
   { label: 'Bid terms & warranty', keywords: ['bid terms', 'proposal terms', 'bid room terms'], tabId: 'settings-contracts', anchorId: 'settings-contract-bid-terms' },

@@ -46,6 +46,8 @@ import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
 import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
+import { useClauseNeeds } from '../../hooks/useClauseNeeds'
+import { clausePaperHref } from '../../lib/contracts/clauseRows'
 import { canOpenGcProjects, canSeeGcMoney } from '../../lib/gc/access'
 import { GC_FOLLOW_UP_HREF } from '../../lib/gc/links'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
@@ -509,6 +511,9 @@ export function DashboardPinnedQuickRow({
   // GC mode's Follow up (v2.4941): the GC office team, the people who see the Follow up pill on /gc.
   const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && canOpenGcProjects(role)
   const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled, canSeeGcMoney(role))
+  // Contracts and clauses (Messages, cut 4c): the clause changes waiting on a controller's or a dev's approval.
+  const contractClausesEnabled = !hideBanners && Boolean(authUserId)
+  const { rows: contractClauses } = useClauseNeeds(contractClausesEnabled)
   // The robots' backlog (v2.3287): bids wanting a shadow + matrices waiting on the pricer — devs only; the Console is its door.
   const robotBacklogEnabled = !hideBanners && Boolean(authUserId) && role === 'dev'
   const robotBacklogNudge = useRobotBacklogNudge(robotBacklogEnabled, robotBacklogEnabled ? authUserId : undefined)
@@ -589,6 +594,8 @@ export function DashboardPinnedQuickRow({
     priceRequestsLate,
     gcFollowUpEnabled,
     gcFollowUp,
+    contractClausesEnabled,
+    contractClauses,
     robotBacklogEnabled,
     robotBacklog: robotBacklogNudge.backlog,
     legalReviewEnabled,
@@ -792,6 +799,10 @@ export function DashboardPinnedQuickRow({
               navigate(priceRequestsLate ? `/bids?tab=pricing&bidId=${priceRequestsLate.first.bidId}` : '/bids?tab=pricing')
             } else if (item.key === 'gc-follow-up') {
               navigate(GC_FOLLOW_UP_HREF)
+            } else if (item.key === 'contract-clauses') {
+              // The oldest waiting change's paper, on Settings → Contracts and clauses, where Approve and Decline sit.
+              const first = contractClauses[0]
+              navigate(first ? clausePaperHref(first.proposal.paperId) : '/settings?tab=settings-clauses')
             } else if (item.key === 'price-matrix-ready') {
               // Land on the bid's Pricing tab; the green chip opens the compare (and stamps the review).
               navigate(priceMatrixReady ? `/bids?tab=pricing&bidId=${priceMatrixReady.first.bidId}` : '/bids?tab=pricing')

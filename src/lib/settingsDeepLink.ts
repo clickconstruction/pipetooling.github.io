@@ -39,6 +39,9 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
 /** `#settings-contract-<entry id>`: one card on Contracts & terms (the prefix the catalog's anchors carry). */
 const CONTRACT_CARD_ANCHOR = /^settings-contract-[a-z][a-z0-9-]*$/
 const CONTRACTS_TAB = 'settings-contracts'
+/** `#settings-clause-paper-<document id>`: one paper's card on Contracts and clauses, which the approvers' Needs you opens. */
+const CLAUSE_PAPER_ANCHOR = /^settings-clause-paper-[0-9a-f-]{36}$/
+const CLAUSES_TAB = 'settings-clauses'
 
 /** `?focus=<key>` (v2.3697): a field to land on and ring once its tab shows — `issuer.companyName`, `issuer.addressText`. */
 export function settingsFocusParam(search: string): string | null {
@@ -69,7 +72,7 @@ export function resolveSettingsDeepLink(search: string, hash: string): SettingsD
   let anchorId: string | null = null
 
   if (rawHash.startsWith('settings-')) {
-    const owningTab = SETTINGS_HASH_ANCHOR_TO_TAB[rawHash] ?? (CONTRACT_CARD_ANCHOR.test(rawHash) ? CONTRACTS_TAB : undefined)
+    const owningTab = SETTINGS_HASH_ANCHOR_TO_TAB[rawHash] ?? (CONTRACT_CARD_ANCHOR.test(rawHash) ? CONTRACTS_TAB : CLAUSE_PAPER_ANCHOR.test(rawHash) ? CLAUSES_TAB : undefined)
     if (owningTab) {
       anchorId = rawHash
       if (!tabId) tabId = owningTab
