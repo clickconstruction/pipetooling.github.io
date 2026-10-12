@@ -4,6 +4,7 @@
  * Tom on Papers in, Dr. Priya Raman on Start date, Jonah on Addenda and an unknown number.
  */
 import { describe, expect, it } from 'vitest'
+import { SEED_FLOWS } from '../flows/seed'
 import { plainWordsFailures } from '../plainWords'
 import {
   FIND_NOTE,
@@ -33,6 +34,7 @@ import {
   restoreQuickReply,
   showNarrow,
   stepLine,
+  stepsByKind,
   usedBy,
   versionWords,
   type QrResult,
@@ -44,39 +46,8 @@ import {
 const at = (month: number, day: number, hour = 9, minute = 0) => Date.UTC(2026, month - 1, day, hour, minute)
 const NOW = at(10, 2, 11, 45)
 
-const STEPS: StepsByKind = {
-  trade: [
-    { id: 'invited', name: 'Invited' },
-    { id: 'portal', name: 'Portal opened' },
-    { id: 'papers', name: 'Papers in' },
-    { id: 'msa', name: 'MSA signed' },
-    { id: 'ask', name: 'Asked to quote' },
-    { id: 'compare', name: 'Compared' },
-    { id: 'sow', name: 'Statement of work' },
-    { id: 'draws', name: 'Draws' },
-    { id: 'closeout', name: 'Closeout' },
-  ],
-  customer: [
-    { id: 'agreement', name: 'Master agreement' },
-    { id: 'asked', name: 'Asked us' },
-    { id: 'bid', name: 'Our bid' },
-    { id: 'yes', name: 'Said yes' },
-    { id: 'contract', name: 'Contract signed' },
-    { id: 'start', name: 'Start date' },
-    { id: 'onsite', name: 'On site' },
-    { id: 'payapp', name: 'Pay application' },
-    { id: 'close', name: 'Closeout' },
-    { id: 'warranty', name: 'Warranty' },
-    { id: 'co', name: 'Change orders' },
-  ],
-  arch: [
-    { id: 'plans', name: 'Plans in' },
-    { id: 'questions', name: 'Questions' },
-    { id: 'addenda', name: 'Addenda' },
-    { id: 'submittals', name: 'Submittals' },
-    { id: 'certify', name: 'Certify pay apps' },
-  ],
-}
+// The flow's own steps, as helper 4's seed holds them (`flows/seed.ts`), not a copy.
+const STEPS: StepsByKind = stepsByKind(SEED_FLOWS)
 
 type Seed = Pick<QuickReply, 'text' | 'for' | 'stepId' | 'scope' | 'addedBy' | 'addedAt' | 'uses'>
 const line = (id: string, seed: Seed): QuickReply => ({ id, removed: false, lastUsed: null, ...seed })
@@ -233,6 +204,37 @@ describe('the line a step’s ask puts in the box', () => {
     expect(stepLine(LINES, 'trade', 'ask', 'rosa')?.id).toBe('q3')
     expect(stepLine(LINES, 'trade', 'papers', 'rosa')?.id).toBe('q13')
     expect(stepLine(LINES, 'customer', 'warranty', 'rosa')).toBeNull()
+  })
+})
+
+describe('the steps a line can belong to', () => {
+  it('reads them from the flows, by who the line is for, in the flow’s order', () => {
+    expect(STEPS.trade?.map((s) => s.id)).toEqual(['invited', 'portal', 'papers', 'msa', 'ask', 'compare', 'sow', 'draws', 'closeout'])
+    expect(STEPS.customer?.map((s) => s.id)).toEqual(['agreement', 'asked', 'bid', 'yes', 'contract', 'start', 'onsite', 'payapp', 'close', 'warranty', 'co'])
+    expect(STEPS.arch?.map((s) => s.name)).toEqual(['Plans in', 'Questions', 'Addenda', 'Submittals', 'Certify pay apps'])
+    expect(STEPS.any).toBeUndefined()
+    expect(stepsByKind({})).toEqual({ trade: [], customer: [], arch: [] })
+  })
+
+  it('guesses only steps the flows have', () => {
+    const texts = [
+      'Send the W-9.',
+      'The submittal is back.',
+      'Pay application 3 is in for your certificate.',
+      'Your pay application is sent.',
+      'The start date is Monday.',
+      'The change order is ready.',
+      'Your contract is ready.',
+      'The statement of work is attached.',
+      'Your draw is approved.',
+      'Did the invite come through?',
+      'Your quote is in.',
+    ]
+    for (const text of texts) {
+      const guess = qrGuess(text)
+      expect(guess.stepId, text).not.toBeNull()
+      expect(STEPS[guess.for]?.some((s) => s.id === guess.stepId), text).toBe(true)
+    }
   })
 })
 

@@ -8,6 +8,7 @@
  * API sends text only, up to 1,600 characters: a photo goes as a link line, which the caller adds before it asks.
  */
 import { type ComposeCompany, type LinkLine, type OptoutRecord, optoutReason, textToSend } from '../messages/compose'
+import type { ThreadMessage } from '../messages/thread'
 import { type QuoLine, toE164 } from './events'
 
 /** The most a text sent by Quo's API carries. */
@@ -51,17 +52,12 @@ export interface QuoSendRequest {
   userId?: string
 }
 
-/** The line the send writes: helper 1's `messages` row for a text out. `quoId` comes from Quo's answer. */
-export interface SentLine {
-  contactId: string
+/** The line the send writes: the spine's `ThreadMessage` fields for a text out. `quoId` comes from Quo's answer. */
+export interface SentLine extends Pick<ThreadMessage, 'contactId' | 'jobId' | 'at' | 'who' | 'body'> {
   channelId: string | null
-  jobId: string | null
   channel: 'text'
   direction: 'out'
-  at: string
-  who: string
   whoUserId: string | null
-  body: string
   optoutLine: OptoutRecord | null
 }
 

@@ -4,6 +4,7 @@
  * Robert and Rosa answering on Click Construction's one number.
  */
 import { describe, expect, it } from 'vitest'
+import { normalizeChannel, type Contact, type ContactChannel } from '../contacts/kernel'
 import type { ComposeCompany } from '../messages/compose'
 import { plainWordsFailures } from '../plainWords'
 import {
@@ -232,6 +233,21 @@ describe('numbers', () => {
 
   it('makes a number nobody knows an unknown contact, its Who is this? row', () => {
     expect(unknownContact(STRANGER)).toEqual({ kind: 'unknown', name: '(830) 555-0172', channel: { kind: 'phone', value: STRANGER } })
+  })
+
+  it('reads a number by the spine’s own rule', () => {
+    for (const raw of ['(210) 555-0113', '1-210-555-0113', GREG, '210.555.0113', '555-0113', '+44 20 7946 0958', '', 'call me']) {
+      const ten = normalizeChannel('phone', raw)
+      expect(toE164(raw), raw).toBe(/^\d{10}$/.test(ten) ? `+1${ten}` : null)
+    }
+  })
+
+  it('makes the spine’s own shapes', () => {
+    // A compile-time check: the unknown contact is a Contact's kind and name, and its channel a ContactChannel's kind and value.
+    const made = unknownContact(STRANGER)
+    const contact: Pick<Contact, 'kind' | 'name'> = made
+    const channel: Pick<ContactChannel, 'kind' | 'value'> = made.channel
+    expect([contact.kind, channel.kind]).toEqual(['unknown', 'phone'])
   })
 })
 

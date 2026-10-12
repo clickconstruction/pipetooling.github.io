@@ -20,6 +20,7 @@
  * `sendOver` in `send.ts`), so the race ends on the same line both ways.
  */
 import type { ComposeCompany, OptoutRecord } from '../messages/compose'
+import type { MessageChannel, MessageDirection, ThreadMessage } from '../messages/thread'
 
 export const QUO_API_VERSION = '2026-03-30'
 
@@ -257,12 +258,15 @@ function readResource(
 
 // ---------- numbers ----------
 
-/** A US or Canadian number as Quo's API takes it, "+12105550113", or null when the words are not one. */
+/**
+ * A US or Canadian number as Quo's API takes it, "+12105550113", or null when the words are not one. The same ten
+ * digits as the spine's `normalizeChannel`, which the test holds it to. It is not imported: this file runs on the edge,
+ * and the spine's kernel reaches outside `src`.
+ */
 export function toE164(raw: string): string | null {
   const digits = raw.replace(/\D/g, '')
-  if (digits.length === 10) return `+1${digits}`
-  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
-  return null
+  const ten = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits
+  return /^\d{10}$/.test(ten) ? `+1${ten}` : null
 }
 
 /** A number as a line shows it: "(830) 555-0172". A number outside the US and Canada shows as it came. */
@@ -274,7 +278,8 @@ export function phoneWords(raw: string): string {
 
 /**
  * The contact a number nobody knows makes: kind unknown, named by the number, with the one phone channel. It is the
- * Who is this? row; naming it re-points the contact and keeps the thread.
+ * Who is this? row; naming it re-points the contact and keeps the thread. The spine's `Contact` and `ContactChannel`
+ * shapes, which the test holds it to.
  */
 export function unknownContact(external: string): { kind: 'unknown'; name: string; channel: { kind: 'phone'; value: string } } {
   return { kind: 'unknown', name: phoneWords(external), channel: { kind: 'phone', value: toE164(external) ?? external.trim() } }
@@ -345,22 +350,19 @@ export function stopAnswer(company: Pick<ComposeCompany, 'name'>): string {
 
 // ---------- the line ----------
 
-/** A line of the thread as the webhook writes it: helper 1's `messages` row, with cut 5's call columns. */
-export interface QuoLine {
+/**
+ * A line of the thread as the webhook writes it: the spine's `ThreadMessage` fields, with cut 5's columns. `jobId` is
+ * mapped by the webhook to the bid, project or ledger column. `who` is the words the line shows ("Greg", "Robert
+ * answered", "rang everyone on the company number").
+ */
+export interface QuoLine extends Pick<ThreadMessage, 'contactId' | 'jobId' | 'at' | 'who' | 'body'> {
   /** `messages.quo_id`, unique: the message's id, or the call's for every event of the call. */
   quoId: string
-  contactId: string
   /** The `contact_channels` row of the number. */
   channelId: string | null
-  /** The job it lands on; the webhook maps it to the bid, project or ledger column. Null is on the person. */
-  jobId: string | null
-  channel: 'text' | 'call' | 'missed' | 'voicemail'
-  direction: 'in' | 'out'
-  at: string
-  /** The words the line shows for who: "Greg", "Robert answered", "rang everyone on the company number". */
-  who: string
+  channel: Extract<MessageChannel, 'text' | 'call' | 'missed' | 'voicemail'>
+  direction: Extract<MessageDirection, 'in' | 'out'>
   whoUserId: string | null
-  body: string
   recordingUrl: string | null
   transcript: string | null
   summary: string | null
