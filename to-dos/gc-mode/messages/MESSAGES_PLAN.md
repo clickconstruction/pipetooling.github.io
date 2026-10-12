@@ -45,14 +45,15 @@ a new cell starts over). The person is the spine; jobs are labels on the person 
 
 | Surface | What it shows | In the prototype |
 |---|---|---|
-| **Follow up** (the queue) | Everyone waiting on us, one count: *Needs a reply* (texts, voicemails, missed calls nobody answered, longest waiting first, with who has it), then the quote asks it lists today. Answering clears the row. A click anywhere on a row, off its buttons, opens the conversation landed on that message (the owner, 2026-10-11). | yes |
+| **Follow up** (the queue) | Everyone waiting on us, one count: *Needs a reply* (texts, voicemails, missed calls nobody answered, longest waiting first, with who has it; a missed call or a voicemail carries *Call back in Quo*), *We owe them*, *Nudges from the flow* (one row per step quiet past its nudge, with Call in Quo, Text instead or Write it, and Hold; v1.101) and then the quote asks it lists today. Answering clears the row. A click anywhere on a row, off its buttons, opens the conversation landed on that message (the owner, 2026-10-11). | yes |
 | **Messages** (the history) | Every contact, every channel, search across words and transcripts. No badge of its own. Where the list is hidden (a narrow window), a chevron left of the thread's avatar, with the avatar itself, is the way back to everyone (v1.48). The people list folds to a rail of faces with a move dot on each (‹ beside the search, › to open it again), kept per computer (the owner, 2026-10-11). | yes |
-| **A contact's thread** | The thread is a window (v1.69, `thread-regions-mockups.html` D): the name row pins at the top and the reply box at the bottom, the conversation scrolls between them in a tinted well (v1.68), and the rest of the header scrolls away with it. The header is layout A of `header-mockups.html` (the owner's pick, 2026-10-11): a name line with the who-has-it pill at the right; a facts line that starts with what they are to us as a label before the company, "Customer: Helotes Dental Office", "Trade partner: Hillside Excavation" (the owner, 2026-10-11), then phone, email; the move line with Settled; the Them and Us stamps. The name line's right end holds the conversation's state as one family: the who-has-it pill and Open · Snoozed · Done. The Them and Us stamps are a two-column block hugging the right edge of the move line, the dates lined up under each other (the owner, 2026-10-11: stacked, from the right). One quiet toolbar: Call in Quo and More ▾ (Show all text, Mark STOP, Edit the flow); Text and Email live only on the reply box, since they were the same buttons twice (the owner, 2026-10-11: what is redundant). Their flow is never a button: the right edge always carries a 64px rail, the twin of the list's, with the flow drawn as marks (green ticks done, the ring for the step on now with us or them under it, hollow for what comes, the lanes captioned, a count at the foot); its ‹ opens the 300px panel, the panel's fold › shrinks it back, the choice is kept like the list's, a mark's hover card names the step and what finishes it, and a click opens the panel at that step (the owner, 2026-10-11: the flow is as important as the messages, so a rail like the left one). Below 760px the rail is one row of marks above the thread. The jobs rail is one row of **tiles**, one size (240px; 220px in the folded header), since v1.34 (`jobs-tile-mockups.html` B1, the owner's pick 2026-10-11, after `jobs-chip-size-mockups.html`): the first line is the star, the job's **number badge** in its kind's color (a bid's bid number **B482**, a GC project's project number **#42**, a Pipeline job's HCP or Click number **J1077**; the app's number-first rule, as the header search and the schedule draw a job) and the name, cut with an ellipsis; the second line is **the day in words**, from facts the app keeps: a bid's *bid due Thu Oct 8 · 6 days* (amber within a week, *today*, red *bid was due Wed Sep 30 · 2 days late*, then *bid sent Sep 30* once ours went), a GC project's stage with its day (*building · since Sep 14*), a Pipeline job's Stages word (*billed Oct 1 · pay app 3*). A tile is **blue** when the thread is filtered to its lines and carries the **gold star** when it is the default; since the two marks mean different things, the *Their jobs* hover card is a legend drawn with the thread's own tiles, a blue one and a starred one, saying what each is, what ⧉ and × do, and the drag hint (the owner, 2026-10-11; the chip redraws stay in `jobs-rail-mockups.html`). GC projects carry no number today: the real build reads `projects.project_number` into GC mode and has New project claim the next free one; a project with none reads **GC** in its badge. **When the thread's own column is 640px or narrower** (a container query on the card, so it folds at a phone and at a wide window with the list and the flow open alike), the header folds to five rows (`header-narrow-mockups.html`, the owner's pick C with one change, 2026-10-11): the label and company as a subtitle under the name; the who-has-it pill stays in the corner as its avatar and first name, *R Rosa*, with since-when on its hover card, beside one pill naming the state, *Open ▾*, that opens the three; the phone and the email as links on one line; the move line; the two stamps on one line with the difference mark between them; and Call in Quo, More ▾ and the jobs chips as one strip that scrolls sideways. Then the lines in time order with the job on each, the tiles to filter by job, the reply box (text, email, note for the team), the quick replies. Wherever the thread names a job it is **the badge then the name** (v1.36, the owner's go): the tag on each line (*B482 Boerne Retail Shell ×*, the trade left off as on the tile), the Tie to button and its picker (whose rows read the tile's day words and the tied count), the job's card and the A job page, the Follow up row's job, and the Add a job and Who is this? pickers. | yes |
-| **Customers** | The same threads kept to customers, ordered by who is waiting; team notes yellow. A filter of Follow up and Messages, never a second queue. | yes |
-| **A job's conversations** | On the job's page: its own recent calls and texts, by contact, with answered or waiting. Reads the messages tied to that job. | yes |
+| **A contact's thread** | The thread is a window (v1.69, `thread-regions-mockups.html` D): the name row pins at the top and the reply box at the bottom, the conversation scrolls between them in a tinted well (v1.68), and the rest of the header scrolls away with it. The header is layout A of `header-mockups.html` (the owner's pick, 2026-10-11): a name line with the who-has-it pill at the right; a facts line that starts with what they are to us as a label before the company, "Customer: Helotes Dental Office", "Trade partner: Hillside Excavation" (the owner, 2026-10-11), then phone, email; the move line with Settled; the Them and Us stamps. The name line's right end holds the conversation's state as one family: the who-has-it pill and Open · Snoozed · Done. The Them and Us stamps are a two-column block hugging the right edge of the move line, the dates lined up under each other (the owner, 2026-10-11: stacked, from the right). One quiet toolbar: Call in Quo and More ▾ (Show all text, Mark STOP, See their page, Edit the flow); Text and Email live only on the reply box, since they were the same buttons twice (the owner, 2026-10-11: what is redundant). Their flow is never a button: the right edge always carries a 64px rail, the twin of the list's, with the flow drawn as marks (green ticks done, the ring for the step on now with us or them under it, hollow for what comes, the lanes captioned, a count at the foot); its ‹ opens the 300px panel, the panel's fold › shrinks it back, the choice is kept like the list's, a mark's hover card names the step and what finishes it, and a click opens the panel at that step (the owner, 2026-10-11: the flow is as important as the messages, so a rail like the left one). Below 760px the rail is one row of marks above the thread. The jobs rail is one row of **tiles**, one size (240px; 220px in the folded header), since v1.34 (`jobs-tile-mockups.html` B1, the owner's pick 2026-10-11, after `jobs-chip-size-mockups.html`): the first line is the star, the job's **number badge** in its kind's color (a bid's bid number **B482**, a GC project's project number **#42**, a Pipeline job's HCP or Click number **J1077**; the app's number-first rule, as the header search and the schedule draw a job) and the name, cut with an ellipsis; the second line is **the day in words**, from facts the app keeps: a bid's *bid due Thu Oct 8 · 6 days* (amber within a week, *today*, red *bid was due Wed Sep 30 · 2 days late*, then *bid sent Sep 30* once ours went), a GC project's stage with its day (*building · since Sep 14*), a Pipeline job's Stages word (*billed Oct 1 · pay app 3*). A tile is **blue** when the thread is filtered to its lines and carries the **gold star** when it is the default; since the two marks mean different things, the *Their jobs* hover card is a legend drawn with the thread's own tiles, a blue one and a starred one, saying what each is, what ⧉ and × do, and the drag hint (the owner, 2026-10-11; the chip redraws stay in `jobs-rail-mockups.html`). GC projects carry no number today: the real build reads `projects.project_number` into GC mode and has New project claim the next free one; a project with none reads **GC** in its badge. **When the thread's own column is 640px or narrower** (a container query on the card, so it folds at a phone and at a wide window with the list and the flow open alike), the header folds to five rows (`header-narrow-mockups.html`, the owner's pick C with one change, 2026-10-11): the label and company as a subtitle under the name; the who-has-it pill stays in the corner as its avatar and first name, *R Rosa*, with since-when on its hover card, beside one pill naming the state, *Open ▾*, that opens the three; the phone and the email as links on one line; the move line; the two stamps on one line with the difference mark between them; and Call in Quo, More ▾ and the jobs chips as one strip that scrolls sideways. Then the lines in time order with the job on each, the tiles to filter by job, the reply box (text, email, note for the team), the quick replies. Wherever the thread names a job it is **the badge then the name** (v1.36, the owner's go): the tag on each line (*B482 Boerne Retail Shell ×*, the trade left off as on the tile), the Tie to button and its picker (whose rows read the tile's day words and the tied count), the job's card and the A job page, the Follow up row's job, and the Add a job and Who is this? pickers. | yes |
+| **Customers** | The same threads kept to customers, ordered by who is waiting; team notes yellow. A filter of Follow up and Messages, never a second queue. Since v1.108 the page has *Threads · By step · By company*, the last two the same boards Trade partners has. | yes |
+| **Trade partners** | A page since v1.99: *By step* (one row per step with the people as chips, v1.108), *By company* (one row per company with the Once lane as a track) and *Asks* (the Board's, unchanged). | yes |
+| **A job's conversations** | On the job's page: *Papers on this job, by company* (each paper with its state, the step it finishes and where the person is, with the step card's own buttons, v1.100), then its own recent calls and texts, by contact, with answered or waiting. Reads the messages tied to that job. | yes |
 | **Who is this?** | A number the app does not know: name it, say what they are to us, pick their company, tie it to a job. The answer becomes the rule for that number. | yes |
-| **Their flow** (the right panel) | Folded by default; *Their flow ›* on the toolbar opens it. The person's journey with us as a small chart in lanes (Once; Per job; Any time): boxes green when done, orange on now with an *us* or *them* tag from whose move it is, a decision as a slanted box, a loop as a dashed box with one pill per round (each ask, each pay application, each change order). Under it: what is on now, whose move, what finishes it, when the app nudges. Drawn from Settings → Flows (the owner picked B with C's tags, 2026-10-11). Its title is the flow's own name, *Customer flow*, *Trade partner flow* or *Architect flow* (v1.111). A step that turns on a paper carries a paper mark, and a press on a step opens its card: see *The flow suite* below. Built v1.96 to v1.103: the marks, the card, the states, the portal page, the by-step boards, the papers on the job page, the Follow up nudge rows, the usual, the phone sheet. | yes |
-| **Settings → Flows** | One flow per kind of person as a table: step, finished when (a fact the app keeps, never typed), whose move, nudge after, repeats. Renaming a step changes every panel. The rest of the editor, order, whose move, nudge, papers and the facts picked from a list, is drawn in *The flow suite* below and built in v1.98 with the History and How it is going tabs. The same list is meant to drive Follow up's nudges and the Board's ring later. | yes, names editable |
+| **The flow** (the right panel) | Folded to a rail of marks by default; the rail's ‹ opens it. The person's journey with us as a small chart in lanes (Once; Per job; Any time): boxes green when done, orange on now with an *us* or *them* tag from whose move it is, a decision as a box with a colored left edge (v1.27), a loop as a dashed box with one pill per round (each ask, each pay application, each change order). Under it: what is on now, whose move, what finishes it, when the app nudges. Drawn from Settings → Flows (the owner picked B with C's tags, 2026-10-11). Its title is the flow's own name, *Customer flow*, *Trade partner flow* or *Architect flow* (v1.111). A step that turns on a paper carries a paper mark, and a press on a step opens its card: see *The flow suite* below. Built v1.96 to v1.103: the marks, the card, the states, the portal page, the by-step boards, the papers on the job page, the Follow up nudge rows, the usual, the phone sheet. | yes |
+| **Settings → Flows** | One flow per kind of person as a table: step, finished when (a fact the app keeps, never typed), whose move, nudge after, repeats. Renaming a step changes every panel. The rest of the editor, order, whose move with the seat, the nudge with *⌕ see it* (what it looks like when it goes, v1.106), papers, the usual, and the facts picked from a list, is drawn in *The flow suite* below and built in v1.98 with the History and How it is going tabs and a *Who is where* card that becomes the who-moves preview while an edit waits. The same list drives Follow up's nudges since v1.101; the Board's ring later. | yes |
 | **A message's window** | Click any message: the whole text with its facts (who, the exact time received or sent, what it came through, the job it is tied to, whether a copy is kept), its attachments, its highlights, and the tools: Highlight the selected words, Copy, Print or save as PDF, Share (the Mac's share sheet), Tie to, Reply. | yes |
 | **Settings → Phone and texts** | The Quo connection, the company number, registration, recordings on, who has a seat, who sees what. | yes, read only |
 | The Pipeline's Job activity | Later: calls, texts and emails mixed into the feed; company-only rows yellow, anything the customer saw white. | not yet |
@@ -79,7 +80,7 @@ Each one is a button in the prototype; each becomes one press in the app.
   closes on a note every time (the owner, 2026-10-11). Nothing reopens by hand; a new message from
   them reopens the row by itself.
 - **Remind me**: snooze a row to a day; it returns to Follow up then.
-- **A day was heard** / **Not a promise**: a day read from a call, voicemail or text is offered, never
+- **A day was heard** / **just talk**: a day read from a call, voicemail or text is offered, never
   written on its own, and never as one general button (the owner, 2026-10-11: a general *Write it down*
   is confusing when the day could be a payment, a quote or a start). The offer names what the day is a
   promise of and where it goes, by who they are: a trade partner's quote (their ask on the Board, which
@@ -88,7 +89,7 @@ Each one is a button in the prototype; each becomes one press in the app.
   answer on our bid (the bid's follow-up), a day we can be on site (the schedule as a wait); an
   architect's answer (the plan question) or certificate (the pay application). The written line repeats
   exactly what and where. The first choice is the likely one for who they are; the others are one press.
-  The offer is one line: the day, "is a promise of", and short choices with a one-word tag for where it
+  The offer is one line: the day, "is a promise of", and short choices with a short tag for where it
   goes (Board, Schedule, Papers, Pipeline, Bid); the job is already on the message's own line, so the
   choice does not repeat it (the owner, 2026-10-11: too long and wordy).
 - **Ask the architect** / **Answer it myself**: a text that reads like a plans question.
@@ -162,7 +163,7 @@ In place of a bare "waiting 6 d", the header's third line says whose move it is 
 words (the owner, 2026-10-11): an orange **Our move · 6 d** when the last word was theirs (it counts from
 their last message), a green **Their move · 2 d** when the last word was ours (it counts from our last
 message, or reads *Their move · until Wed Oct 7* while a promise runs), and beside it two stamps,
-**Them** text · Sep 26 *+6* and **Us** email · Sep 19 *+13*: an older stamp is its date and a mark in parentheses for how many days ago, *(+6)*, a stamp from today keeps its time, *today · 11:30 AM*, and the block's hover card spells each out in full, *text · Sat, Sep 26 · 2:14 PM · 6 days ago*, then draws **a small calendar** of the last six weeks (or back to the first message), S M T W T F S with each week's dates at its right (*Sep 27 – Oct 3 · this week*), each day colored by who wrote, blue us, green them, split for both, a yellow dot for a team note, today outlined, a count on a day with more than one, so who wrote and when reads at a glance (the owner, 2026-10-11; the owner's pick 4 of five compact forms for the stamp; the folded one-line form uses the same compact date and leaves the mark off, since the mark between the stamps carries the difference) (the owner, 2026-10-11; the same on the Follow up row's snippet and the job card's list, while a line in the thread keeps the bare time under its day divider). On the folded header the two stamps are **one sentence in words, no color** (`stamps-words-mockups.html` B, the owner's pick 2026-10-11, after the pills whose green read as the move pill's): *Priya texted last Saturday; we emailed two weeks ago.* The newer side comes first, so the order says who wrote last; the channel is the verb (texted, emailed, called, left a voicemail); the when is *today at 11:30 AM*, *yesterday*, the weekday (*on Wednesday* this week, *last Saturday* the week before), *last week*, *two weeks ago*, *three weeks ago*, then the date. The person is named, never a guessed pronoun; a number nobody has named reads *they*. The sentence is the hover target for the same card as the block, which keeps the exact stamps and the calendar. A reply, an email or a call
+**Them** text · Sep 26 *(+6)* and **Us** email · Sep 19 *(+13)*: an older stamp is its date and a mark in parentheses for how many days ago, *(+6)*, a stamp from today keeps its time, *today · 11:30 AM*, and the block's hover card spells each out in full, *text · Sat, Sep 26 · 2:14 PM · 6 days ago*, then draws **a small calendar** of the last six weeks (or back to the first message), S M T W T F S with each week's dates at its right (*Sep 27 – Oct 3 · this week*), each day colored by who wrote, blue us, green them, split for both, a yellow dot for a team note, today outlined, a count on a day with more than one, so who wrote and when reads at a glance (the owner, 2026-10-11; the owner's pick 4 of five compact forms for the stamp; the folded one-line form uses the same compact date and leaves the mark off, since the mark between the stamps carries the difference) (the owner, 2026-10-11; the same on the Follow up row's snippet and the job card's list, while a line in the thread keeps the bare time under its day divider). On the folded header the two stamps are **one sentence in words, no color** (`stamps-words-mockups.html` B, the owner's pick 2026-10-11, after the pills whose green read as the move pill's): *Priya texted last Saturday; we emailed two weeks ago.* The newer side comes first, so the order says who wrote last; the channel is the verb (texted, emailed, called, left a voicemail); the when is *today at 11:30 AM*, *yesterday*, the weekday (*on Wednesday* this week, *last Saturday* the week before), *last week*, *two weeks ago*, *three weeks ago*, then the date. The person is named, never a guessed pronoun; a number nobody has named reads *they*. The sentence is the hover target for the same card as the block, which keeps the exact stamps and the calendar. A reply, an email or a call
 from us moves the ball to their move; their next message moves it back. A note for the team moves
 nothing, since they never saw it. The Follow up rows and the Messages list carry the same move word in
 small, so the queue reads "Our move · 6 d" without opening the thread. Snoozed and the promise stay as
@@ -176,12 +177,12 @@ or *We still owe the start date by Mon Oct 5*, our move the default; with nothin
 still owe [what?] by [when?]* with the two blanks, their move the default (v1.83, the owner: use our move and their
 move here). The strip's *We owe them…* sets the same later. While it is open it stays our move whatever was said last,
 the header reads *Our move · we owe the start date · by Mon Oct 5*, Follow up lists it under **We owe
-them** with who marked it and when, and the thread gets a gray event line. *Settled* opens a note for the
-team at the bottom of the thread, *Settling: we owed the start date · by Mon Oct 5*, and the note is what
-settles it: the person says how or why, the note goes in the thread with a *✓ settled the start date* chip,
-the row closes as any note does, and the move goes back to whose word was last (the owner, 2026-10-11: a
-settle always says why, for the team). *Not settled yet* backs out. The owed pill on the move line is a press (the owner, 2026-10-11): it takes you to the reply box, where a strip above the box reads *We owe Priya the start date by Mon Oct 5*, with who marked it small after it, *Rosa, last Saturday*, the exact stamp on its hover card (the owner, 2026-10-11: the by-date is the point), and holds the ways to deal with it as buttons: **Settle it, with a team note** (the settling note opens in its place), **Send Priya the start date** (the box, as a text; the send window's tick settles it), **Put it off**, and × to put the strip away. The what and the day are **two blanks in the sentence** (`owed-blanks-mockups.html`, the owner's go 2026-10-11), each a press: the what opens a list by who they are, the flow's steps that are our move first (Settings → Flows, the *us* rows), then the lane's usual asks, then *something else* with a free box; the day opens a row of chips, tomorrow and the next five days by name with their dates, a week and two weeks out, one press each, and in the same row, filling what is left beside them, a box for anything else in words, *Oct 20*, *next Friday*, *in two weeks*, read back as a date as you type and set with Enter, kept as typed when it cannot be read (v1.64). *We owe them…* opens the same strip empty, one line, *what?* and *when?* with the list open and **Mark it** at the line's right, which writes it (v1.63: no hint line; the button's hover card holds the rule that the what comes first and the day is optional). A change writes a gray event line, so *Rosa, last Saturday* stays honest. The buttons follow the words: *Send Priya a pay application*. The lists' words are the owner's to confirm. Each button's hover card says what it changes. The choices live where the answer is written, not in a pop-up (the pop-up picker of v1.56–v1.59 and the list on Settled's card before it both read as a second place to decide). The Settled button is gone (the owner, 2026-10-11): the pill is the one control for what we owe, in the thread's header and on Follow up's *We owe them* rows alike, and settling is two presses, the pill then *Settle it*. The send window, while something is owed, carries a real tick, **This message settles the start date**: ticked, the message that goes clears what we owe, carries the ✓ settled chip and writes an event line; left alone, it stays our move (v1.57). The app's table needs an owed item per
-contact: what, by when, who marked it, when, when it was settled and the note that settled it.
+them** with who marked it and when, and the thread gets a gray event line. *Mark it done* opens a note for the
+team at the bottom of the thread, *Marking it done: we owed the start date · by Mon Oct 5*, and the note is what
+marks it done: the person says how or why, the note goes in the thread with a *✓ done: the start date* chip,
+the row closes as any note does, and the move goes back to whose word was last (the owner, 2026-10-11: it
+always says why, for the team; and *done*, not *settled*, is the department's word, v1.66). *Not done yet* backs out. The owed pill on the move line is a press (the owner, 2026-10-11): it takes you to the reply box, where a strip above the box reads *We owe Priya the start date by Mon Oct 5*, with who marked it small after it, *Rosa, last Saturday*, the exact stamp on its hover card (the owner, 2026-10-11: the by-date is the point), and holds the ways to deal with it as buttons: **Mark it done, with a team note** (the note opens in its place), **Send Priya the start date** (the box, as a text; the send window's *After this sends: Their move · Our move* line, v1.83, is where the message that gets it done says so), **Put it off**, and × to put the strip away. The what and the day are **two blanks in the sentence** (`owed-blanks-mockups.html`, the owner's go 2026-10-11), each a press: the what opens a list by who they are, the flow's steps that are our move first (Settings → Flows, the *us* rows), then the lane's usual asks, then *something else* with a free box; the day opens a row of chips, tomorrow and the next five days by name with their dates, a week and two weeks out, one press each, and in the same row, filling what is left beside them, a box for anything else in words, *Oct 20*, *next Friday*, *in two weeks*, read back as a date as you type and set with Enter, kept as typed when it cannot be read (v1.64). *We owe them…* opens the same strip empty, one line, *what?* and *when?* with the list open and **Mark it** at the line's right, which writes it (v1.63: no hint line; the button's hover card holds the rule that the what comes first and the day is optional). A change writes a gray event line, so *Rosa, last Saturday* stays honest. The buttons follow the words: *Send Priya a pay application*. The lists' words are the owner's to confirm. Each button's hover card says what it changes. The choices live where the answer is written, not in a pop-up (the pop-up picker of v1.56–v1.59 and the list on Settled's card before it both read as a second place to decide). The Settled button is gone (the owner, 2026-10-11): the pill is the one control for what we owe, in the thread's header and on Follow up's *We owe them* rows alike, and settling is two presses, the pill then *Settle it*. The send window, while something is owed, carries a real tick, **This message settles the start date**: ticked, the message that goes clears what we owe, carries the ✓ settled chip and writes an event line; left alone, it stays our move (v1.57). The app's table needs an owed item per
+contact: what, by when, who marked it, when, when it was done and the note that marked it done.
 
 ## Every control explains itself on hover
 
@@ -225,7 +226,7 @@ this order, the first that fits:
 3. **A number or address nobody knows → nobody**: the row reads *Nobody has it · Take it* and whoever
    answers first takes it, after *Who is this?* names them.
 
-Whatever assigned it, the pill says so ("Rosa has this · by the rule"), the thread gets the gray event
+Whatever assigned it, the pill says who has it ("Rosa has this"; the rule is named in Settings, not on the pill), the thread gets the gray event
 line, and anyone can take it or hand it on. An email that names a job in its subject or title block is
 tied to that job as well as to the person (the file agent's reading, draft 9). Not proposed: round robin
 or load balancing; the team is three people and the rule is enough. Open: what happens when the rule's
@@ -309,7 +310,7 @@ person meets them:
    marks open the same card when the panel is folded. The On now line gains *Nudge now*.
 2. **The step card.** *Finished when*: the step's facts, each read live with a mark, its date, where the
    copy lives, and one button that moves it (*Open* a paper on file; *Ask for it* fills the reply box with
-   the step's quick reply and their portal link; *Send it* is the paper send the company window already has,
+   the step's quick reply and their portal link; *Send it* opens the send window, the review before a paper goes (v1.113): who it goes to, the sign-by day, the email or text as they see it, the paper as they see it, the standard agreement unchanged; their sign page carries the app's versioned e-sign consent verbatim (v1.114) and a typed signature, and *Remind them* reopens the window with the history in words. The same for the customer's contract and a change order. It is the paper send the company window already has,
    so the sent copy is filed and the thread shows it). *After this*: the next step, with its send, so the
    office can get one step ahead and never two. *Nudge*: the count and the channel, *Nudge now*, *Hold
    until*. *How they got here*: the history in words, one stamp per line with its person and day. A loop's
@@ -331,8 +332,7 @@ person meets them:
    job's tab for per-job papers) gain a *Finishes* column, the step each paper turns on and where the
    person is, with the step card's own buttons.
 5. **The nudge becomes a Follow up row.** When a step is on now, the move is theirs and the thread has been
-   quiet the step's count of days (a promised day beats the count), Follow up gets a row under *Needs a
-   reply*: the step, what we are waiting on, the channel the flow asked for with a one-press switch.
+   quiet the step's count of days (a promised day beats the count), Follow up gets a row in its own section, *Nudges from the flow*, after *We owe them*: the step, what we are waiting on, the channel the flow asked for with a one-press switch.
    Answering or the fact turning true clears it. The Board's ring keeps its own stages until its lists and
    the flows agree (a later cut).
 
@@ -397,13 +397,13 @@ land before the prototype builds pieces 1 to 3 above, since they change what a s
    flow dimmed under a line that says since when and why, read from the bid's outcome, with *Put back on*;
    no new color and no new editor column. A person re-enters at the step the facts say. Decision for the owner: a person on two flows (a GC who also
    quotes as a sub), or two contacts.
-2. **Everyone by step** (piece 7, v1.95). A column per step in the flow's order, the lanes a gap apart: the
-   count with late, lapsed and waiting in words, then faces with the company and how long in the step, longest
-   first, a company once per job in the per-job lane, off the flow a folded last column; a press opens the
-   thread with the panel open on that step. It lives at the top of Trade partners and of Customers (the pick,
+2. **Everyone by step** (piece 7, v1.95; the shape since v1.108). One row per step in the flow's order, the lanes
+   named, the count with late, lapsed and waiting in words under the step, and the people as chips that wrap,
+   each the whole company, the job in the per-job lane and the day or how long, late first and tinted, off
+   the flow a folded last row; a press opens the thread with the panel open on that step. It lives at the top of Trade partners and of Customers (the pick,
    B: a flow is per kind and so are those pages), never as a tab of Follow up (one queue, one count) nor a
    Flows tab of its own (a fourth place). Since v1.108 it is one row per step with chips that wrap, not columns,
-   so a name reads once and nothing is cut (`by-step-mockups.html` A), and the List tab is one row per company
+   so a name reads once and nothing is cut (`by-step-mockups.html` A), and the *By company* tab is one row per company
    with the Once lane as a track (B). The Messages list gains a *by step ▾* chip beside All · Customers ·
    Trades.
 3. **Their own view of it** (piece 8, v1.95). The trade's portal gets a first page, *Where you are with Click
@@ -411,8 +411,7 @@ land before the prototype builds pieces 1 to 3 above, since they change what a s
    the quote) with why in a sentence, our-move steps as *with us* and what unlocks them, nothing of ours
    (no Compared, no nudges, no other companies), done steps keeping their day. An upload there finishes the
    step by itself, so the office asks less. Spanish by the portal's switch, the step names in both languages
-   in the editor (`PORTAL_SPANISH.md`). The customer's portal the same, once the open item on which record a
-   contact is settles whether a customer has one. It builds third, after the card: it changes the most for
+   in the editor (`PORTAL_SPANISH.md`). The customer's and the architect's pages are drawn the same way (Accept the bid or Not this time; Certify the pay application, Review the submittal); whether a customer has a portal to put it on is the open item on which record a contact is. It builds third, after the card: it changes the most for
    the least.
 4. **Time in step, and how it is going** (piece 9, v1.95). The card's first line gains what is usual, the
    median of the done ones over a year, with a bar that runs red past it (*no usual yet* under five done);
@@ -441,6 +440,64 @@ Documents column (4); the Follow up row and the event lines (5); the usual and t
 sheet (10). Still the owner's: two flows per person or two contacts (leaning A); whether the app may send a
 nudge itself, per step (off until then); whether the customer's portal gets the page.
 
+### Bill day on a job: the trades' pay applications against the deadline (proposed 2026-10-11, the owner's ask)
+
+The owner, looking at Elena's pay application card: while a job is being built, a person should see every
+trade on the job and what each has sent in by the deadline, or in the days coming up to it, as one view.
+The app already keeps the facts: our bill to the customer goes on **bill day, the 25th** (`billDay`,
+`ownerBillingDay.ts`), built from the trades' draws (`gc_draws`: requested, approved, paid, sent back with
+a note, `period_to`, the conditional waiver and `waiver_on`, `final`); a trade that has not sent its pay
+application has a `payApp` promise on its row; and the owner's own application then goes to the architect
+to certify and to the customer to pay (`gc_owner_pay_apps`). The Draws window on a project's card holds
+the draws one trade at a time. What is missing is the view across the trades on one job, by the day.
+
+**What goes on the page**, one job, one period:
+
+1. **The deadline, up top**: our bill day, how many days to it, and the cut-off we ask the trades for (bill
+   day less the days we need to check them, a setting). *Pay app 4 · period to Oct 25 · trades by Mon Oct 19
+   · 6 days.*
+2. **One row per trade on the job**, every trade with a signed statement of work, grouped by state and in
+   this order: **sent back** (ours to re-check once it comes back; the note we sent), **not in** (late once
+   the cut-off passes, with their promised day if they gave one, and quiet since), **in, waiting on us**
+   (the amount asked, the lines we doubt), **approved** (the amount, perhaps less than asked), **nothing to
+   bill this period** (no work this month, said by them or by us), and **done for the job** (final pay
+   application in). A trade we do ourselves reads its percent from the Pipeline job and sits in its own
+   line, since it sends nothing.
+3. **On each row**: the company, the draw number, the amount asked and approved, the period it runs to,
+   the conditional waiver (in, missing), the unconditional waiver still owed on the last draw, a back-charge
+   waiting to come off, and whose move it is with how long. A press opens the trade's thread with the flow
+   at Draws, or the draw itself in the Draws window.
+4. **The total as it stands**: what the approved draws add up to against the owner's application we would
+   send, and what is still missing from it, so the office knows whether bill day can go.
+5. **The moves, from the row**: *Ask for it* (the step's line with the portal link), *Remind them* with the
+   history, *Approve* and *Send back with a note* (the Draws window's own, reached from here), *Nothing this
+   period* (recorded, never typed over a draw), and *Call in Quo*.
+6. **The days coming up**: a strip of the next bill days with how many trades are in for each, so a person
+   sees the month, not only today.
+
+**The access points**, in the order a person meets them:
+
+- **The customer's pay application card** (where the owner was): the card's round line, *Pay app 4 · with
+  the architect*, gains a press, *the trades on this application*, which opens the page for that period.
+- **The project's card on the Board**, beside Draws: *Bill day* with the count, *4 of 6 trades in · 2
+  late*, red when the cut-off has passed with one missing.
+- **Follow up**, as rows: a trade late on its pay application is a *Nudges from the flow* row already (the
+  Draws step, at pay by); the page is the place those rows point at, and the section head links to it when
+  more than one trade on a job is late, *3 trades late on Stone Oak Pharmacy · see them together*.
+- **The job page**, *Papers on this job*: the pay applications are papers, so the table's rows for them link
+  to the page.
+- **Trade partners → By step**, the Draws row: a chip's hover names the period and the amount; a press on the
+  row's head opens the page for the job the chips are on.
+- **The trade's portal**: its own side of the same period, *Your pay application for October · send by Mon
+  Oct 19*, with Enter a draw; nothing of the other trades.
+
+**What it is not**: a second place to approve a draw (the Draws window stays the one place that writes a
+draw), and not money the customer sees. **Open for the owner**: the cut-off, days before bill day, as a
+setting or a fixed number; whether the page is one per job or one across every job being built, with the
+job as a filter (the Board's bill day reads across jobs, so across jobs with a filter is the lean).
+**Still a mock-up to draw** before it goes in the prototype: the page at a desk width and the project card's
+pill, with the six states of a row.
+
 ## How it would be built, once the shape is settled
 
 In the order a GC lane builds: a plan page per cut, SQL first, then the read, then the screens.
@@ -464,6 +521,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
    their files, the two landing places, and the Drive handler that hands out the app's own links to the big files
    (the open item *Documents, for files going out*).
 8. Later: Job activity on the Pipeline, photos, the file agent.
+
+The prototype's demo-only presses, never to be built: *They text back*, *their upload arrives*, *sign (demo)*, and the ten companies with no thread that stand on the boards so a page reads like a Tuesday.
 
 ## Prototype log
 
@@ -664,6 +723,14 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.116, 2026-10-11**: the plan's body catches up with the prototype (an audit of the two): Trade partners is a
+  surface row, Customers names its three tabs, Follow up its four sections and the nudge row's buttons, the job page
+  its papers table, the panel its title and its ‹, the editor its whole, the More menu its See their page, *done*
+  for *settled* in Whose move it is, the offer's *just talk*, the pill without *by the rule*, the stamps' parentheses,
+  the send window and the sign page under piece 2, the portal page for customers and architects, By step as rows
+  and By company; the demo-only presses are named once. The More menu's stray *Their portal page* row, which went
+  to Settings, is gone. The plan gains *Bill day on a job*, the trades' pay applications against the deadline
+  (the owner's ask): what goes on the page and its access points.
 - **v1.115, 2026-10-11**: the consent version and language come off the signer's side of the sign page; they are the
   office's bookkeeping and stay on the signed copy's audit line, as the app's kernel has it (the owner, 2026-10-11).
 - **v1.114, 2026-10-11**: the sign page's consent is the app's own, `src/lib/esignConsent.ts` version 2, verbatim, in English
