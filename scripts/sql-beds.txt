@@ -20,6 +20,7 @@ gc-portal-p5b
 gc-start
 gc-owner-contract
 gc-customer-contacts
+quick-replies
 messages-spine
 contract-clauses
 portal-customer-page
