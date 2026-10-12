@@ -10,6 +10,7 @@ import {
   LANE_WORDS,
   flowProgress,
   lapsedWhy,
+  moverOf,
   perJobJobs,
   stepById,
   type FactReading,
@@ -143,7 +144,7 @@ export function flowPanel(person: PersonFlow, jobId: string | null, people: read
         aside: Boolean(def?.aside),
         move:
           placed && def
-            ? whoseMove(def, { onNow: r.nowStepId === s.stepId && (r.nowJobId ?? null) === (s.jobId ?? null), waiting: Boolean(waiting), perJob: l.lane === 'per_job', owe: person.owe, court: person.court })
+            ? whoseMove({ who: moverOf(def, s) }, { onNow: r.nowStepId === s.stepId && (r.nowJobId ?? null) === (s.jobId ?? null), waiting: Boolean(waiting), perJob: l.lane === 'per_job', owe: person.owe, court: person.court })
             : null,
         papers: (def?.papers ?? []).map((p) => paperMark(String(p), factsNow(s))),
         day: day && s.state !== 'done' && s.state !== 'skipped' ? { words: day.words, late: day.late } : null,

@@ -8,7 +8,7 @@ import { createContext, useContext } from 'react'
  */
 
 /** The customer window's tabs. Activity since the Board's B2b-v-ii. */
-export type CustomerTab = 'about' | 'activity' | 'documents'
+export type CustomerTab = 'about' | 'activity' | 'documents' | 'flow'
 
 /** Where the window opens. `doc` is a Documents row's key (`contract-<project id>`); `send` opens its send. Unset: About. */
 export interface CustomerAt {

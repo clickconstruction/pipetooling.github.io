@@ -7,6 +7,7 @@ import { customerSummary, type CustomerSummary } from '../../lib/gc/customers'
 import { telHref } from '../../lib/gc/followUpSheet'
 import type { GcCustomer, GcState } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
+import { FlowTab } from '../flows/FlowTab'
 import { CompanyActivity, CompanyDocuments, CompanyTabStrip, type ContactHow } from './GcCompanyDocuments'
 import { GcCustomerContractSend, type ContractSendInput, type ContractSendOutcome } from './GcCustomerContractSend'
 import type { CustomerAt, CustomerTab } from './gcCustomerOpener'
@@ -179,10 +180,11 @@ export function GcCustomerWindow({
             )}
           </div>
         </div>
-        <CompanyTabStrip tab={tab} onTab={(t) => setTab(t === 'documents' || t === 'activity' ? t : 'about')} activity={activity.length} toGet={docs.toGet} portal={false} />
+        <CompanyTabStrip tab={tab} onTab={(t) => setTab(t === 'documents' || t === 'activity' || t === 'flow' ? t : 'about')} activity={activity.length} toGet={docs.toGet} portal={false} flow />
         <div style={{ padding: '1rem', overflowY: 'auto', minHeight: 0 }}>
           {tab === 'about' && <About state={state} customer={customer} onOpenProject={onOpenProject} money={moneyPart} />}
           {tab === 'activity' && <CompanyActivity events={activity} onOpenProject={onOpenProject} {...(onLogContact ? { onLog: onLogContact } : {})} />}
+          {tab === 'flow' && <FlowTab at={{ customerId: customer.id }} onPaper={() => setTab('documents')} onActivity={() => setTab('activity')} />}
           {tab === 'documents' && (
             <div style={{ display: 'grid', gap: '0.75rem' }}>
               {done && (

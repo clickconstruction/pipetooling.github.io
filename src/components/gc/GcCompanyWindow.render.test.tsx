@@ -14,6 +14,24 @@ import { installDomShims } from '../../test/renderSmokeMocks'
 
 installDomShims()
 
+const flowIo = vi.hoisted(() => ({ find: vi.fn(async (_by: { gcCompanyId?: string | null; customerId?: string | null }) => 'flow-contact') }))
+vi.mock('../../lib/flows/flowPersonIo', async () => {
+  const { SEED_FLOWS } = await import('../../lib/flows/seed')
+  return {
+    findFlowContactId: flowIo.find,
+    readFlowPerson: vi.fn(async () => ({
+      contact: { id: 'flow-contact', kind: 'trade', name: null, goes_by: null },
+      flow: SEED_FLOWS.trade,
+      rows: { contact: { id: 'flow-contact', kind: 'trade', off_since: null, off_why: null, off_by: null } },
+      holds: [],
+      sent: [],
+      notes: [],
+      lines: [],
+    })),
+    flowPresses: {},
+  }
+})
+
 /** The clinic with Lonestar's bookkeeper named, and Hillside's no on the sitework written down. */
 function rows(): BoardRows {
   const base = clinicBoardRows()
@@ -318,7 +336,7 @@ describe('GcCompanyWindow · Activity (the Board’s B2b-iv)', () => {
 
   it('sits between About and Documents with its count, newest first, the filters cutting it', () => {
     const { dialog, events } = openActivity()
-    expect(within(dialog).getAllByRole('tab').map((t) => t.getAttribute('data-gc-company-tab'))).toEqual(['about', 'activity', 'documents'])
+    expect(within(dialog).getAllByRole('tab').map((t) => t.getAttribute('data-gc-company-tab'))).toEqual(['about', 'activity', 'documents', 'flow'])
     expect(within(dialog).getByText('Rosa: New to us; met at the pre-bid.')).toBeTruthy()
     const notes = events.filter((e) => e.kind === 'note').length
     fireEvent.click(within(dialog).getByRole('button', { name: `Calls and notes ${notes}` }))
@@ -356,5 +374,12 @@ describe('GcCompanyWindow · Activity (the Board’s B2b-iv)', () => {
   it('shows no box when the page gives no write', () => {
     const { dialog } = openActivity()
     expect(within(dialog).queryByRole('button', { name: 'Log a contact' })).toBeNull()
+  })
+
+  it('opens their flow on its own tab, read for the company', async () => {
+    const { dialog } = open('lonestar')
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Flow' }))
+    expect(await within(dialog).findByRole('region', { name: 'Trade partner flow' })).toBeTruthy()
+    expect(flowIo.find).toHaveBeenCalledWith({ gcCompanyId: 'lonestar', customerId: null })
   })
 })
