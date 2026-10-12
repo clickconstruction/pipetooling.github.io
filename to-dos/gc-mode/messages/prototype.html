@@ -841,7 +841,7 @@ const jobNum = j => j.num || (j.kind==='project'?'GC':j.kind==='bid'?'B?':'J?');
 const jobDayText = j => jobDay(j).h.replace(/<[^>]+>/g,'');
 // Wherever the thread names a job it is the badge then the name (v1.36, the owner's go): the tag on a line, Tie to and its
 // picker, the job's card, the A job page, the Follow up row and the two pickers. jobLabel (with the trade) stays for toasts and hover text.
-const jobTag = jid => { const j=jobById(jid); if(!j) return ''; return `<span class="jobname"><span class="num ${j.kind}">${esc(jobNum(j))}</span><span>${esc(j.name)}</span></span>`; };
+const jobTag = (jid, short) => { const j=jobById(jid); if(!j) return ''; return `<span class="jobname"><span class="num ${j.kind}">${esc(jobNum(j))}</span>${short?'':`<span>${esc(j.name)}</span>`}</span>`; };
 const jobText = jid => { const j=jobById(jid); return j?`${jobNum(j)} ${j.name}`:''; };
 const jobById = id => jobs.find(j=>j.id===id);
 // What a job already has to send (v1.91): the papers the app makes and the files on it. `portal` names the page in the
@@ -1239,13 +1239,14 @@ function renderMessages(m){
   </div>`;
   const L=th.querySelector('#lines');
   if(!lines.length) L.innerHTML='<div class="empty">Nothing yet.</div>';
-  let lastDay='';
-  for(const x of lines){ const d=dayOf(x.at); if(d!==lastDay){ const dd=document.createElement('div'); dd.className='day'; dd.textContent=d; L.appendChild(dd); lastDay=d; }
+  let lastDay='', lastJob=null;
+  for(const x of lines){ const d=dayOf(x.at); if(d!==lastDay){ const dd=document.createElement('div'); dd.className='day'; dd.textContent=d; L.appendChild(dd); lastDay=d; lastJob=null; }
+    const sameJob = !!x.job && x.job===lastJob; if(x.ch!=='event') lastJob=x.job||null;
     if(x.ch==='event'){ const ev=document.createElement('div'); ev.className='evt'; ev.innerHTML=`${esc(x.text)} · ${fmt(x.at)}`; L.appendChild(ev); continue; }
     const e=document.createElement('div'); e.className=`msg clickable ${x.dir==='team'?'team':x.dir} ch-${x.ch}${(x.attachments||x.transcript||(x.promise&&x.promise.state!=='no')||x.question||(highlights[x.id]||[]).length||(isLong(x)&&!showAll[c.id]))?' tail':''}`; e.dataset.id=x.id; e.title='Open this message';
     e.addEventListener('click',ev=>{ if(ev.target.closest('button, a, select, input, .job, .offer, .chip, .player')) return; openMessage(x.id); });
     e.innerHTML=`<span class="when" data-tip="${esc(chWord(x))}|${esc(longWhen(x.at))}.|${x.dir==='in'?'When it came.':x.dir==='team'?'When it was written.':'When it went.'}">${fmtDay(x.at)}</span><div class="meta"><span class="ch">${chWord(x)}${x.dur?` · ${x.dur}`:''}</span><span>${esc(x.who)}</span>
-        ${x.back?`<span class="settled-chip" style="background:var(--accent-soft);color:var(--accent);border-color:#bcd0f0" data-tip="Comes back ${esc(x.back.label)}|This note brings the row back to Follow up that morning, under Needs you, with the note on it.|Marked by ${esc(x.who.split(' · ')[0])}. To clear it now, press × on the ↩ pill in the header above; when it comes back, Done with it on the row." title="">↩ back ${esc(x.back.label)}</span>`:''}${x.settled?`<span class="settled-chip" title="" data-tip="Done|This ${x.ch==='note'?'note':'message'} marked what we owed them done.|We owed ${esc(x.settled.what)}${x.settled.by?' by '+esc(x.settled.by):''}; the move went back to whoever wrote last.">✓ done: ${esc(x.settled.what)}</span>`:''}<span class="job ${x.job?'':'none'}" title="${x.job?'Untie from this job':'Tie to a job'}" onclick="${x.job?`untie(${x.id})`:`tieMenu(${x.id})`}">${x.job?jobTag(x.job)+' ×':'no job'}</span></div>
+        ${x.back?`<span class="settled-chip" style="background:var(--accent-soft);color:var(--accent);border-color:#bcd0f0" data-tip="Comes back ${esc(x.back.label)}|This note brings the row back to Follow up that morning, under Needs you, with the note on it.|Marked by ${esc(x.who.split(' · ')[0])}. To clear it now, press × on the ↩ pill in the header above; when it comes back, Done with it on the row." title="">↩ back ${esc(x.back.label)}</span>`:''}${x.settled?`<span class="settled-chip" title="" data-tip="Done|This ${x.ch==='note'?'note':'message'} marked what we owed them done.|We owed ${esc(x.settled.what)}${x.settled.by?' by '+esc(x.settled.by):''}; the move went back to whoever wrote last.">✓ done: ${esc(x.settled.what)}</span>`:''}<span class="job ${x.job?'':'none'}" title="${x.job?'Untie from this job':'Tie to a job'}" onclick="${x.job?`untie(${x.id})`:`tieMenu(${x.id})`}"${sameJob?` data-tip="${esc(jobLabel(c,x.job))}|The same job as the message above it, so only the number shows.|A press unties it."`:''}>${x.job?jobTag(x.job,sameJob)+' ×':'no job'}</span></div>
       ${x.subject?`<div class="subject">${esc(x.subject)}</div>`:''}
       ${bodyHtml(c,x)}
       ${x.attachments?`<div class="att">${x.attachments.map((a,i)=>`<span class="chip" onclick="event.stopPropagation();openAttachment(${x.id},${i})">${a.kind==='image'?'<span class="thumb"></span>':`<span class="ic ${a.sentAs==='link'?'link':a.kind}">${a.sentAs==='link'?'↗':a.kind==='pdf'?'PDF':a.kind==='link'?'↗':'F'}</span>`}<span>${esc(a.name)} <span class="note">· ${esc(a.size)}${a.sentAs?' · sent as '+(a.sentAs==='link'?'a link':a.sentAs==='picture'?'the picture':'the file'):''}</span></span></span>`).join('')}</div>`:''}

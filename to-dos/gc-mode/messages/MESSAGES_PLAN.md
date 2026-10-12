@@ -772,6 +772,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.158, 2026-10-11**: within one day, a message tied to the same job as the one above it shows the job's number
+  alone; the name shows once per day and per change of job, and hover gives it back (the owner, 2026-10-11).
 - **v1.157, 2026-10-11**: the customer's Once lane holds only the master agreement, which a one-job customer skips;
   the ask, the bid, the yes and the contract are per job, since each reads a column of the project (the owner,
   2026-10-11: "our bid is on a per-job basis").
