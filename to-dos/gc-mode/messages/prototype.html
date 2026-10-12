@@ -1133,7 +1133,7 @@ const kindClass = c => ({customer:'cust',trade:'trade',arch:'arch',unknown:'unkn
 const initials = c => c.kind==='unknown'?'?':c.name.split(' ').filter(w=>!/^dr\.?$/i.test(w)).map(w=>w[0]).slice(0,2).join('');
 const lastMsg = c => [...messages].filter(m=>m.c===c.id&&m.ch!=='event').sort((a,b)=>b.at-a.at)[0];
 const lastIn = c => [...messages].filter(m=>m.c===c.id&&m.dir==='in').sort((a,b)=>b.at-a.at)[0] || lastMsg(c);
-const chWord = m => ({call:'Call',voicemail:'Voicemail',text:'Text',email:'Email',note:'Note for the team',missed:'Missed call',event:'Event'})[m.ch];
+const chWord = m => ({call:'Call',voicemail:'Voicemail',text:'Text',email:'Email',note:'Note',missed:'Missed call',event:'Event'})[m.ch];
 const jobLabel = (c,jid) => { const j=jobById(jid); if(!j) return ''; return j.name + (c&&c.trade&&j.kind==='bid'?` · ${c.trade}`:''); };
 const esc = s => String(s).replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 let toastT; function toast(s){ const t=document.getElementById('toast'); t.textContent=s; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),2200); }
@@ -1222,7 +1222,7 @@ function renderMessages(m){
   
 `:''}  <div id="lines"></div></div>
   <div class="reply">
-    <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team':k} ${replyKind===k?'on':''}" onclick="replyKind='${k}';if('${k}'!=='note')settling=null;render()">${l}</button>`).join('')}${replyKind==='note'?`<span class="note" style="margin-left:auto">only the team sees it · closes the row</span>`:''}${replyKind!=='note'?`<button type="button" class="qrtab ${qrOpen?'on':''}" data-tip="Quick replies|Opens the lines above the box: a press on one fills the box, nothing sends.|Press again to fold them. Your choice is kept on this computer." onclick="toggleQuick()">Quick replies ${qrOpen?'▾':'▸'}</button>`:''}</div>
+    <div class="kinds">${[['text','Text'],['email','Email'],['note','Note']].map(([k,l])=>`<button class="${k==='note'?'team':k} ${replyKind===k?'on':''}" onclick="replyKind='${k}';if('${k}'!=='note')settling=null;render()">${l}</button>`).join('')}${replyKind==='note'?`<span class="note" style="margin-left:auto">only the team sees it · closes the row</span>`:''}${replyKind!=='note'?`<button type="button" class="qrtab ${qrOpen?'on':''}" data-tip="Quick replies|Opens the lines above the box: a press on one fills the box, nothing sends.|Press again to fold them. Your choice is kept on this computer." onclick="toggleQuick()">Quick replies ${qrOpen?'▾':'▸'}</button>`:''}</div>
     ${replyKind!=='note'?qrStripHtml(c):''}
     ${replyKind==='note'&&settling!==c.id&&(noteBackOpen||noteBack)?noteBackHtml(c):''}
     ${owedOpen===c.id&&settling!==c.id?owedStripHtml(c):''}
