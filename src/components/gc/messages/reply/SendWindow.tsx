@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useToastContext } from '../../../../contexts/ToastContext'
+import { pressProblem } from '../../../../lib/followUp/followUpIo'
+import { afterSendDefault, afterSendResult, afterSendTips, afterSendWords, dayKept, owedMarkedToast, readDay, type AfterSendMove } from '../../../../lib/messages/owed'
+import { todayYmdInAppTz } from '../../../../utils/dateUtils'
+import { useOwedAfterSend, useThreadOwed } from '../../../followUp/useThreadOwed'
 import { buildMessagesEmail } from '../../../../../supabase/functions/_shared/messagesEmail'
 import { firstName, type Contact } from '../../../../lib/contacts/kernel'
 import {
@@ -58,7 +63,8 @@ export function SendWindow({
   io: ReplyIo
   onKind: (kind: Kind) => void
   onClose: () => void
-  onSent: (kind: Kind) => void
+  /** It went: the toast's second sentence, when what we owe changed with it. */
+  onSent: (kind: Kind, more?: string | null) => void
 }) {
   const open = useOpenThread()
   const to = useMemo(() => replyRecipient(contact), [contact])
@@ -70,6 +76,18 @@ export function SendWindow({
   const [held, setHeld] = useState(false)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  // Cut 2's *After this sends*: whose move it is once this goes, read with the thread (`useThreadOwed`).
+  const { showToast } = useToastContext()
+  const { owed, loaded } = useThreadOwed(contact.id)
+  const afterSend = useOwedAfterSend(contact.id)
+  const [move, setMove] = useState<AfterSendMove | null>(null)
+  const [oweWhat, setOweWhat] = useState('')
+  const [oweWhen, setOweWhen] = useState('')
+  const today = todayYmdInAppTz()
+  const shownMove = move ?? afterSendDefault(owed)
+  const moveWords = afterSendWords(owed, shownMove)
+  const moveTips = afterSendTips(owed)
+  const whenRead = readDay(oweWhen, today)
 
   useEffect(() => {
     let live = true
@@ -112,14 +130,29 @@ export function SendWindow({
     setBusy(true)
     setProblem(null)
     try {
+      let messageId: string
       if (kind === 'email') {
         if (!to.emailChannelId) return
-        await io.sendEmail({ contactId: contact.id, channelId: to.emailChannelId, jobKey, draft })
+        messageId = await io.sendEmail({ contactId: contact.id, channelId: to.emailChannelId, jobKey, draft })
       } else {
         if (!to.numberChannelId) return
-        await io.sendText({ contactId: contact.id, channelId: to.numberChannelId, jobKey, body, held })
+        messageId = await io.sendText({ contactId: contact.id, channelId: to.numberChannelId, jobKey, body, held })
       }
-      onSent(kind)
+      // It went. What we owe follows the press under the message; a refusal there is said, and the message stays sent.
+      let more: string | null = null
+      const result = loaded ? afterSendResult(owed, shownMove, { what: oweWhat }) : 'none'
+      try {
+        if (result === 'done') {
+          await afterSend.sentDone(messageId)
+          more = 'It is done.'
+        } else if (result === 'mark') {
+          await afterSend.mark(oweWhat.trim(), dayKept(readDay(oweWhen, today)))
+          more = owedMarkedToast(greetingName || contact.name, { what: oweWhat.trim() })
+        }
+      } catch (e) {
+        showToast(pressProblem(e), 'error')
+      }
+      onSent(kind, more)
     } catch (e) {
       setProblem(formatErrorMessage(e, kind === 'email' ? 'The email did not go.' : 'The text did not go.'))
     } finally {
@@ -321,6 +354,38 @@ export function SendWindow({
             </div>
           )}
         </div>
+
+        {loaded && (
+          <div data-after-send={shownMove} style={{ padding: '0.55rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem' }}>
+            <strong>After this sends:</strong>
+            <span role="radiogroup" aria-label="After this sends" style={{ display: 'inline-flex', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+              {(['theirs', 'ours'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={shownMove === m}
+                  title={`${moveTips[m].title}. ${moveTips[m].does} ${moveTips[m].changes}`}
+                  onClick={() => setMove(m)}
+                  style={{ border: 'none', padding: '0.2rem 0.6rem', cursor: 'pointer', background: shownMove === m ? (m === 'ours' ? 'var(--bg-amber-tint)' : 'var(--bg-green-tint)') : 'var(--surface)', fontWeight: shownMove === m ? 600 : 400 }}
+                >
+                  {m === 'theirs' ? 'Their move' : 'Our move'}
+                </button>
+              ))}
+            </span>
+            {moveWords !== null ? (
+              <span data-after-words>{moveWords}</span>
+            ) : (
+              <span style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                We still owe
+                <input aria-label="What we still owe" placeholder="what?" value={oweWhat} onChange={(e) => setOweWhat(e.target.value)} style={{ ...input, width: 160, padding: '0.15rem 0.4rem' }} />
+                by
+                <input aria-label="By when" placeholder="when?" value={oweWhen} onChange={(e) => setOweWhen(e.target.value)} style={{ ...input, width: 120, padding: '0.15rem 0.4rem' }} />
+                {whenRead && <em style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{whenRead.known ? `Reads as ${whenRead.label}.` : 'Kept as typed, with no day.'}</em>}
+              </span>
+            )}
+          </div>
+        )}
 
         <div style={{ padding: '0.65rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <Btn onClick={onClose} disabled={busy}>

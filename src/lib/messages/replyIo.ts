@@ -15,6 +15,7 @@ import { checkSupabaseError } from '../../utils/errorHandling'
 import { supabaseFollowUpIo, type FollowUpIo } from '../followUp/followUpIo'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { ComposeSender, EmailDraft } from './compose'
+import type { DayKept } from './owed'
 import { jobRefOf } from './load'
 import { tieOf } from './replyBox'
 
@@ -47,8 +48,8 @@ export interface ReplyText {
 export interface ReplyIo {
   /** The signed-in person as an email signs: their name, their title and their own cell. */
   loadSender(): Promise<ComposeSender>
-  /** A team note. Resolves to the note. */
-  addNote(contactId: string, body: string, jobKey: string | null): Promise<string>
+  /** A team note, with its day to come back to Follow up when one is set (cut 2). Resolves to the note. */
+  addNote(contactId: string, body: string, jobKey: string | null, back: DayKept | null): Promise<string>
   /** Resolves to the email's line. */
   sendEmail(input: ReplyEmail): Promise<string>
   /** Resolves to the text's line. */
@@ -87,7 +88,7 @@ export function supabaseReplyIo(followUp: Pick<FollowUpIo, 'addNote'> = supabase
       const row = read.data as { name?: string | null; phone?: string | null; title?: string | null } | null
       return { name: row?.name?.trim() ?? '', title: row?.title ?? null, cell: row?.phone ?? null }
     },
-    addNote: (contactId, body, jobKey) => followUp.addNote(contactId, body, jobRefOf(jobKey), null),
+    addNote: (contactId, body, jobKey, back) => followUp.addNote(contactId, body, jobRefOf(jobKey), back),
     sendEmail: (input) => {
       const { subject, greeting, body, signature, footer } = input.draft
       return invoke(
