@@ -9,7 +9,7 @@ covers:
   - src/components/settings/SettingsDashboardTab.tsx
 mapped_at: 871e06336
 audience: Developers, AI Agents
-last_updated: 2026-10-05
+last_updated: 2026-10-12
 ---
 
 > **Line numbers are exact as of `871e06336`** (from `npm run map -- <file>` fact sheets) and rot with the next edit — search the symbol; the range is only a hint. Re-run `npm run map -- src/pages/Settings.tsx` (or the tab file) before trusting a range.
@@ -21,7 +21,7 @@ last_updated: 2026-10-05
 | [`src/pages/Settings.tsx`](../src/pages/Settings.tsx) | 1,821 | 2 (`SettingsGroup`, `Settings`) | 51 | 14 | 5 | 2 | 1 | 13 | 2026-09-29 `340941456` | **62** |
 | [`src/components/settings/SettingsDashboardTab.tsx`](../src/components/settings/SettingsDashboardTab.tsx) | 1,643 | 3 (`SortablePinRow`, `SettingsDashboardTab`, `QuickEstimateToggleSection`) | 4 | 2 | 0 | 0 | 0 | 4 | 2026-09-28 `1dc8e2dbf` | 15 |
 
-Settings is a **decomposed page shell**: the v2.853–v2.859 campaign took it 5,171 → 1,703 lines by moving every tab's engine into `src/hooks/useSettings*.ts`; since then it has grown only by *born-self-contained* blocks (Company, Emails & reports, Usage, What customers see, Digital twins, Test reports, Owner auto-confirm, HCP reconcile, Dev MCP keys, Contracts & terms…) mounted straight into the render. It is still a **hot file** (62 commits / 90 days) — nearly all churn is new blocks added to the render, not engine edits. `src/App.tsx` is the page's only importer; `Settings.tsx` is the tab file's only importer.
+Settings is a **decomposed page shell**: the v2.853–v2.859 campaign took it 5,171 → 1,703 lines by moving every tab's engine into `src/hooks/useSettings*.ts`; since then it has grown only by *born-self-contained* blocks (Company, Emails & reports, Usage, What customers see, Digital twins, Test reports, Owner auto-confirm, HCP reconcile, Dev MCP keys, Contracts & terms, Contracts and clauses…) mounted straight into the render. It is still a **hot file** (62 commits / 90 days) — nearly all churn is new blocks added to the render, not engine edits. `src/App.tsx` is the page's only importer; `Settings.tsx` is the tab file's only importer.
 
 **Where the weight is now:** of the parent's **51 `useState`, 37 serve the Your dashboard tab** (incl. the 5 report-modal and 2 mute-modal states), and **8 of its 14 effects** serve it too. The three states and the effect added since the 2026-09-25 census are shell glue: `viewAsOpen` + the `#view-as` effect (the View as… door, v2.4041), `bidCoverLetterOpenSignal` and `contractsOpenEntryId` (the Contracts & terms doors, v2.3977 · v2.4108). `SettingsDashboardTab` receives **109 props** (`SettingsDashboardTabProps`, 37–147) — the largest membrane of parent-owned state; `SettingsCatalogsTab` is wider (118 props) but 115 of them come from one hook. Everything else in the parent is shell, role fork, deep-link glue, or hook-output threading.
 
@@ -100,6 +100,7 @@ Tabs in `getZonedSettingsGroups` order (a dev's view). "Engine" = where the tab'
 | 7 | What customers see (`settings-what-customers-see`) · Company | 1440–1451 | `SettingsWhatCustomersSeeTab` (421) | conditional | self-contained; its `onOpenContract` sets the shell's `contractsOpenEntryId` and switches the tab (v2.4108) | 1 | — | Done |
 | 7b | Contracts & terms (`settings-contracts`) · Company | 1452–1473 | `SettingsContractsTab` (675), `ContractReaderModal` (178), `ContractCardHistory` (85), `ContractCardReview` (79) | conditional | self-contained; kernels in `src/lib/contracts/` (`customerContractCatalog` the registry, `contractLastSent` v2.3992, `contractTextHistory` v2.3994); two callbacks from the shell (`onOpenEditor`, `onOpenStep`); `ContractReaderModal` (v2.4098) reads a card on the customer's sample page, `src/lib/contracts/contractReader.ts`; v2.4108 the tab is an index — area sections in journey order, one line per contract opening into its card, a lens and a find box, `src/lib/contracts/contractsIndex.ts`; `openEntryId` from the shell opens a row on arrival | 4 (`role`, `openEntryId`, the two callbacks) | — | Done |
 | 7c | What the team sees (`settings-what-the-team-sees`) · Company | after the stamp (v2.4142) | `SettingsWhatTheTeamSeesTab` (378) | conditional | self-contained, dev-only; the inventory `lib/teamEmails.ts` (one row per team / internal `EMAIL_CATALOG` id, guarded by its test), the browser-built samples `lib/teamSampleEmails.ts`, and a digest's real preview once its renderer is a `_shared` kernel (all 14 lifted, v2.4161 Money waiting through v2.4182 CT roster audit; 25 of 25 rows render live, so the *Only what doesn't render yet* toggle no longer draws) | 1 | — | Done |
+| 7d | Contracts and clauses (`settings-clauses`) · Company | after the stamp (v2.5285) | `SettingsClausesTab` (298) | conditional (`canEditClause(myRole)`, the office team) | self-contained; kernels in `src/lib/contracts/` (`assemble.ts`, `approval.ts`, `clauseRows.ts`), the loader `clausesIo.ts` over the RPCs `edit_clause` / `approve_clause_proposal` / `decline_clause_proposal`, the windows `src/components/contracts/Clause*`; Approve and Decline draw for `GC_CLAUSE_APPROVE_TEAM` (dev · controller); the approvers' Needs you line (`contract-clauses`, `useClauseNeeds`) opens a paper's card by `#settings-clause-paper-<id>` (`settingsDeepLink.ts`) | 0 | — | Done |
 | 8 | Company (`settings-company`) · Company | 1225–1240 | `SettingsCompanyDocumentsSection` (278), `SettingsOrgDefaultsSection` (111), `BankTransferDetailsSettingsBlock`, `OfficeAddressSettingsBlock`, `MapDefaultViewSettingsBlock` | kept | self-contained | 1 (`isDev`) | — | Done |
 | 9 | Usage (`settings-usage`) · System | 1436–1438 | `SettingsUsageTab` (354) | conditional | self-contained (`usage_*` RPCs) | 0 | — | Done |
 | 10 | Data & recovery (`settings-data`) · System | 1475–1504 | `SettingsDataTab` (185; `DeletedRecordsSection`, `BulkDeleteAlertSettingsBlock`, `BidJobBackfillSettingsBlock`, `StaleDraftBillsOnPaidJobsSection`) | kept | `useSettingsBackupExports` (parent; shared with Account trailing) + `dataBackupSectionOpen` (215) | 24 | — | Effectively done |
@@ -143,6 +144,7 @@ Nine runtime roles. `isAssistantLike` = assistant | controller; `isSubcontractor
 | What customers see | ✓ | ✓ | ✓ | — | — | — | — |
 | What the team sees (v2.4142) | ✓ | — | — | — | — | — | — |
 | Contracts & terms (the doors to the editors on Bids & materials: dev only) | ✓ | ✓ | ✓ | — | — | — | — |
+| Contracts and clauses (v2.5285; `GC_CLAUSE_EDIT_TEAM` = the GC office team; Approve · Decline for dev and controller only) | ✓ | ✓ | ✓ | ✓ | — | — | — |
 | Company (tab; company documents) | ✓ | ✓ | ✓ | ✓ | — | — | — |
 | ↳ Org defaults, bank transfer details | ✓ | ✓ | — | — | — | — | — |
 | ↳ Office address, Map default view | ✓ | — | — | — | — | — | — |
