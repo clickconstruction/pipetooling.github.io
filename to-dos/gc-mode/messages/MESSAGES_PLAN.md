@@ -770,6 +770,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.145, 2026-10-11**: when narrow finds no line, on the strip or in Find a reply, a button adds the typed words as
+  a quick reply: the editor opens on its add form with the words in it and its guess at who it is for and the step
+  (the owner, 2026-10-11).
 - **v1.144, 2026-10-11**: the strip's narrow box takes the room the pills left (the owner, 2026-10-11).
 - **v1.143, 2026-10-11**: the group pills on the strip's head are gone, since the rows carry their titles; the head
   reads the count, *13 for trade partners* (the owner, 2026-10-11).
