@@ -85,7 +85,7 @@ On a phone you can also press and hold a message.
 1. Hold until the message turns darker, then lift your finger.
 2. Pick a job in the list that opens. The job new messages land on comes first.
 3. Press **Another job…** to find a job that is not theirs.
-4. Press **Untie it** to take the message off its job. It stays with the person.
+4. Press **Untie it** to take the message off its job. The message stays with the person.
 
 To change a message's job, open the message and press **change** beside **Tied to**. Pick **On the person, no job** to untie it.
 
