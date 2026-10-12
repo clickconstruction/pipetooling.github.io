@@ -77,7 +77,8 @@ export function canOpenOwnerContractFile(role: UserRole | null | undefined): boo
  * Messages, cut 4c (v2.5247): who edits a contract clause and who approves one (the owner, 2026-10-12: anyone in the
  * office edits, a controller or a dev approves). An office edit waits as a proposal; a dev's or a controller's own edit
  * publishes at once (`src/lib/contracts/approval.ts`). Nobody else edits, so a superintendent reads the papers and never
- * changes them. Cut 4c's tables name these same roles in their policies when they land.
+ * changes them. The database's copies: gc_office_team() edits and gc_clause_approve_team() approves
+ * (`20261012150000_contract_clauses.sql`); `access.test.ts` fails when the approvers differ.
  */
 export const GC_CLAUSE_EDIT_TEAM: readonly UserRole[] = GC_OFFICE_TEAM
 

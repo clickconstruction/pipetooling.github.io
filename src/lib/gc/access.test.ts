@@ -28,7 +28,7 @@ describe('canOpenGcProjects', () => {
 })
 
 /** The roles the newest migration that defines `fn` names in it: the database's copy of a GC team. */
-function teamInSql(fn: 'gc_money_team' | 'gc_office_team'): string[] {
+function teamInSql(fn: 'gc_money_team' | 'gc_office_team' | 'gc_clause_approve_team'): string[] {
   const dir = join(process.cwd(), 'supabase', 'migrations')
   const head = `FUNCTION public.${fn}()`
   const newest = readdirSync(dir)
@@ -185,5 +185,9 @@ describe('canEditClause and canApproveClause (Messages, cut 4c)', () => {
 
   it('keeps every approver on the team that edits', () => {
     for (const role of GC_CLAUSE_APPROVE_TEAM) expect(canEditClause(role)).toBe(true)
+  })
+
+  it('names the same approvers as the database’s gc_clause_approve_team(), so the two copies cannot drift', () => {
+    expect([...GC_CLAUSE_APPROVE_TEAM].sort()).toEqual(teamInSql('gc_clause_approve_team').sort())
   })
 })

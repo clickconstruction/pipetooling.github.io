@@ -20,3 +20,4 @@ gc-portal-p5b
 gc-start
 gc-owner-contract
 gc-customer-contacts
+contract-clauses
