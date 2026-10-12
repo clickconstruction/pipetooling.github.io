@@ -455,7 +455,7 @@ export default function GcProjects() {
         const project = board.projects.find((p) => p.packages.some((k) => k.id === packageId))
         const pkg = project?.packages.find((k) => k.id === packageId)
         const companyId = pkg?.invites.find((i) => i.id === pkg.awardedInviteId)?.partnerId
-        const req = project && companyId ? sowEmailRequest(board, project.id, packageId, sowId, langs[companyId] ?? 'en') : null
+        const req = project && companyId ? sowEmailRequest(board, project.id, packageId, sowId, tradeMailLang(langs[companyId])) : null
         const answer = req ? await sendGcTradeEmail(req) : null
         if (answer && !answer.ok) refused = `Sent to their portal. The email did not go: ${gcTradeEmailRefusal(answer.key)}`
       }
