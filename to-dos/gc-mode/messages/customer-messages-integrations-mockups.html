@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Messages integrations mockups</title>
+<meta name="description" content="Seventeen before-and-after mockups: how each part of the app could reach into the customer messages prototype. Made-up people. Mark Add, Later or No on each; the picks stay on this computer.">
+<style>
+/* Layout: one column of seventeen decision cards, each a before panel and an after panel side by side, drawn with the prototype's own pieces. Tokens follow customer-messages-prototype.html. */
+:root{
+  --bg:#f3f5f8;--surface:#ffffff;--text:#1b1f24;--muted:#5c6470;--border:#dde1e6;--chip:#eef1f5;
+  --accent:#1f5fbf;--accent-soft:#e8f0fc;--team:#fff6c2;--team-border:#e9d77a;--ok:#1a7f3c;--ok-soft:#e6f6ec;--warn:#b35c00;--warn-soft:#fff1e0;--danger:#b3261e;--danger-soft:#fbe9e7;
+  --app:#7a3e9d;--app-soft:#f3e9f9;--cust:#d9731a;--cust-deep:#a8520a;--cust-soft:#fdf0e3;--cust-soft-2:#fbe4cc;--email-ch:#6b4fbb;--email-soft:#efe9fb;--phone:#111318;
+  --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;
+  --accent:#6ea3f0;--accent-soft:#1d2d47;--team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;--danger-soft:#3d1f1d;
+  --app:#c59be0;--app-soft:#33243f;--cust:#f0a05a;--cust-deep:#f7bb84;--cust-soft:#33231a;--cust-soft-2:#452c1c;--email-ch:#a68ff0;--email-soft:#2b2446;--phone:#000;color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;
+  --accent:#6ea3f0;--accent-soft:#1d2d47;--team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;--danger-soft:#3d1f1d;
+  --app:#c59be0;--app-soft:#33243f;--cust:#f0a05a;--cust-deep:#f7bb84;--cust-soft:#33231a;--cust-soft-2:#452c1c;--email-ch:#a68ff0;--email-soft:#2b2446;--phone:#000;color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--font)}
+button{font:inherit;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.quiet{border-color:transparent;background:transparent;color:var(--accent)}
+button.small{padding:3px 8px;font-size:13px}
+code{font-family:var(--mono);font-size:.92em;background:var(--chip);padding:1px 5px;border-radius:5px}
+.wrap{max-width:1080px;margin:0 auto;padding-block:16px 60px;padding-inline:16px}
+header.top h1{font-size:22px;margin:0 0 4px;letter-spacing:-.01em}
+header.top .ver{font-size:13px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:1px 8px;margin-left:8px;vertical-align:2px}
+.lead{margin:0 0 12px;font-size:16px;max-width:76ch}
+.note{color:var(--muted);font-size:13px}
+.picks{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:8px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0 18px;font-size:14px}
+.picks b{font-weight:600}
+.picks .cnt{display:inline-flex;gap:8px}
+.picks .cnt span{border-radius:999px;padding:1px 9px;font-size:13px;background:var(--chip)}
+.picks .cnt span.add{background:var(--ok-soft);color:var(--ok)}
+.picks .cnt span.later{background:var(--warn-soft);color:var(--warn)}
+.picks .cnt span.no{background:var(--danger-soft);color:var(--danger)}
+.picks .sp{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}
+.toc{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 18px}
+.toc a{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;color:var(--muted);text-decoration:none;background:var(--surface)}
+.toc a:hover{border-color:var(--accent);color:var(--accent)}
+h2.grp{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:26px 0 8px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px 12px;margin-bottom:14px;scroll-margin-top:70px}
+.card.dec-add{border-color:var(--ok)}
+.card.dec-later{border-color:var(--warn)}
+.card.dec-no{border-color:var(--danger);opacity:.85}
+.card .hd{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.card .hd .n{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-weight:700;display:inline-grid;place-items:center;font-size:13px;flex:none;align-self:center}
+.card .hd h3{margin:0;font-size:17px}
+.card .hd .meta{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.sz{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:4px;padding:1px 6px;background:var(--chip);color:var(--muted)}
+.sz.s{background:var(--ok-soft);color:var(--ok)}
+.sz.m{background:var(--warn-soft);color:var(--warn)}
+.sz.l{background:var(--danger-soft);color:var(--danger)}
+.card .q{margin:6px 0 10px;font-size:15px;max-width:80ch}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.ba{grid-template-columns:1fr}}
+.pane{border:1px solid var(--border);border-radius:10px;overflow:hidden;min-width:0;display:flex;flex-direction:column}
+.pane .lbl{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:6px 10px;border-bottom:1px solid var(--border);color:var(--muted);background:var(--bg)}
+.pane.after .lbl{color:var(--accent);background:var(--accent-soft)}
+.pane .body{padding:10px;font-size:13px;flex:1;display:flex;flex-direction:column;gap:6px}
+.pane .cap{font-size:12px;color:var(--muted);padding:6px 10px 8px;border-top:1px dashed var(--border)}
+.card .foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:13px}
+.card .foot .lean{padding:5px 10px;border-left:3px solid var(--ok);background:var(--ok-soft);border-radius:0 8px 8px 0;flex:1;min-width:220px}
+.card .foot .lean::before{content:"Lean: ";font-weight:700;color:var(--ok)}
+.card .foot .dep{flex-basis:100%;color:var(--muted)}
+.card .foot .dep b{color:var(--text);font-weight:600}
+.dec{display:flex;gap:4px;flex:none}
+.dec button{border-radius:999px;padding:4px 11px;font-size:13px}
+.dec button.on.add{background:var(--ok);border-color:var(--ok);color:#fff}
+.dec button.on.later{background:var(--warn);border-color:var(--warn);color:#fff}
+.dec button.on.no{background:var(--danger);border-color:var(--danger);color:#fff}
+.whynot{font-size:13px;margin-top:8px;padding:6px 10px;border-left:3px solid var(--border);color:var(--muted)}
+/* the prototype's pieces, small */
+.row{display:grid;grid-template-columns:44px 96px minmax(0,1fr);gap:6px;padding:6px 0;border-bottom:1px dashed var(--border);font-size:13px;align-items:start}
+.row:last-child{border-bottom:0}
+.row .t{color:var(--muted);font-family:var(--mono);font-size:11px;padding-top:2px}
+.row .w{color:var(--muted);display:flex;gap:5px;align-items:center;white-space:nowrap;min-width:0}
+.row .w b{color:var(--text);font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.row .b{min-width:0}
+.row .b .dim{color:var(--muted);font-size:11px;margin-top:2px}
+.row.cust{background:var(--cust-soft);border-left:3px solid var(--cust);margin-left:-6px;padding-left:3px;border-radius:0 6px 6px 0;border-bottom-color:transparent}
+.row.cust.in{background:var(--cust-soft-2);border-left-width:5px;padding-left:1px;border-left-color:var(--cust-deep)}
+.row.cust.in .w b{color:var(--cust-deep)}
+.row.team{background:transparent}
+.row.lock{background:var(--chip);border-left:3px solid var(--muted);margin-left:-6px;padding-left:3px;border-radius:0 6px 6px 0}
+.who{display:inline-block;flex:none;font-size:9px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:0 4px;line-height:14px;border:1px solid var(--cust);color:var(--cust-deep)}
+.row.cust.in .who{background:var(--cust);color:#fff;border-color:var(--cust)}
+.who.app{border-color:var(--app);color:var(--app)}
+.who.lock{border-color:var(--muted);color:var(--muted)}
+.fold{font-size:12px;color:var(--muted);padding:4px 0 4px 56px;border-bottom:1px dashed var(--border)}
+.fold b{color:var(--accent);font-weight:600;cursor:pointer}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chips span,.chips button{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted);background:var(--surface)}
+.chips span.this{color:var(--accent);border-color:var(--accent)}
+.chips span.file{color:var(--text)}
+.chips button{color:var(--text);padding:3px 9px}
+.chips button.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.strip{border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--bg);font-size:12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.strip.step{border-color:var(--warn);background:var(--warn-soft)}
+.strip.cust{border-color:var(--cust);background:var(--cust-soft)}
+.strip b{font-weight:600}
+.box{border:1px solid var(--border);border-radius:8px;padding:7px 9px;color:var(--muted);font-size:13px;background:var(--surface)}
+.box.off{background:var(--chip);color:var(--muted)}
+.box.cust{border-color:var(--cust)}
+.sec{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;margin-top:4px;display:flex;gap:6px;align-items:center}
+.sec .cnt{background:var(--chip);border-radius:999px;padding:0 6px;font-size:10px;letter-spacing:0}
+.sec.new{color:var(--cust-deep)}
+.sec.new .cnt{background:var(--cust);color:#fff}
+.prow{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:6px;padding:5px 0;border-bottom:1px dashed var(--border);align-items:start}
+.prow:last-child{border-bottom:0}
+.prow .av{width:24px;height:24px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:10px;font-weight:700;color:var(--muted)}
+.prow .av.q{background:var(--cust-soft-2);color:var(--cust-deep)}
+.prow .nm{font-weight:600;font-size:13px;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.prow .nm .k{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-radius:4px;padding:0 4px;background:var(--chip);color:var(--muted)}
+.prow .nm .k.customer{background:var(--cust-soft);color:var(--cust-deep)}
+.prow .nm .k.trade{background:var(--warn-soft);color:var(--warn)}
+.prow .nm .k.lead{background:var(--accent-soft);color:var(--accent)}
+.prow .nm .k.house{background:var(--email-soft);color:var(--email-ch)}
+.prow .nm .k.unknown{background:var(--cust);color:#fff}
+.prow .nm .k.late{background:var(--danger-soft);color:var(--danger)}
+.prow .sn{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.prow .t{font-size:10px;color:var(--muted);font-family:var(--mono)}
+.prow > span:nth-child(2){min-width:0}
+.sortcard{border:1px solid var(--cust);background:var(--cust-soft);border-radius:10px;padding:8px 10px}
+.sortcard h5{margin:0 0 2px;font-size:13px;color:var(--cust-deep)}
+.sortcard .opts{display:flex;flex-direction:column;gap:4px;margin-top:6px}
+.sortcard .opts div{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:5px 8px;font-size:13px}
+.sortcard .opts div small{display:block;color:var(--muted);font-size:11px}
+.sortcard .opts div.new{border-color:var(--accent);background:var(--accent-soft)}
+.kv{display:grid;grid-template-columns:90px minmax(0,1fr);gap:3px 8px;font-size:13px}
+.kv span:nth-child(odd){color:var(--muted)}
+.card-ny{border:1px solid var(--border);border-radius:10px;padding:8px 10px}
+.card-ny h5{margin:0 0 4px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.card-ny .ln{display:flex;gap:8px;align-items:center;padding:4px 0;border-top:1px dashed var(--border);font-size:13px}
+.card-ny .ln:first-of-type{border-top:0}
+.card-ny .ln b{font-weight:600}
+.card-ny .ln .go{margin-left:auto;color:var(--accent);font-size:12px}
+.card-ny .ln.new{background:var(--cust-soft);margin:0 -6px;padding:4px 6px;border-radius:6px}
+.jrow{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:8px;padding:5px 0;border-bottom:1px dashed var(--border);font-size:13px;align-items:center}
+.jrow .num{font-weight:700;color:var(--accent)}
+.jrow .st{font-size:11px;color:var(--muted)}
+.jrow .dot{width:8px;height:8px;border-radius:50%;background:var(--cust);display:inline-block;margin-right:6px;vertical-align:1px}
+.hover{border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--surface);box-shadow:0 6px 18px rgba(0,0,0,.12);font-size:12px;max-width:260px}
+.lock-screen{background:var(--phone);border-radius:14px;padding:10px;color:#fff}
+.lock-screen .time{text-align:center;font-size:26px;font-weight:300;margin:4px 0 8px}
+.lock-screen .notif{background:rgba(255,255,255,.14);border-radius:12px;padding:8px 10px;font-size:13px;margin-bottom:6px}
+.lock-screen .notif b{display:block;font-size:12px;opacity:.85}
+.lock-screen .notif small{float:right;opacity:.7;font-size:11px}
+.board{display:grid;grid-template-columns:60px minmax(0,1fr);gap:4px 8px;font-size:12px}
+.board .h{color:var(--muted);font-family:var(--mono);font-size:11px}
+.board .blk{background:var(--accent-soft);border:1px solid var(--accent);border-radius:6px;padding:3px 8px;color:var(--text)}
+.board .blk.moved{background:var(--cust-soft);border-color:var(--cust)}
+.board .blk.ghost{background:transparent;border-style:dashed;color:var(--muted)}
+.review{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;margin-top:26px;max-width:80ch}
+.review h2{margin:0 0 6px;font-size:17px}
+.review ol{margin:6px 0 0;padding-left:20px}
+.review li{margin:4px 0}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 14px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:92vw;text-align:center}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <h1>Messages integrations<span class="ver">v0.1 · 2026-10-12</span></h1>
+  <p class="lead">Seventeen questions about what else in the app should reach into Messages, each as a <b>before</b> drawn from the prototype as it stands and an <b>after</b> with the feature in. Mark each <b>Add</b>, <b>Later</b> or <b>No</b>. The picks stay on this computer; <b>Copy picks</b> puts them on the clipboard to paste back to me. Made-up people and jobs throughout.</p>
+  <p class="note" style="max-width:76ch"><b>The baseline.</b> If every answer is No, you still have the prototype as it stands: the job window, the tech’s phone, the quick replies and the Messages page. That already answers the complaint that started this. Nothing below is needed for day one; each one makes a later day better.</p>
+</header>
+
+<div class="picks" id="picks">
+  <b>Your picks</b><span class="cnt" id="cnt"></span>
+  <span class="sp"><button class="small primary" id="leans">Start from my leans</button><button class="small" id="copy">Copy picks</button><button class="small quiet" id="clear">Clear</button></span>
+</div>
+<div class="toc" id="toc"></div>
+<div id="cards"></div>
+
+<div class="review" id="review">
+  <h2>Is this the best we can do?</h2>
+  <p class="note">The pass I made over the seventeen after drawing them, and what it changed.</p>
+  <ol>
+    <li><b>Four of them were not features.</b> Hiring (11), residential subs (12), Spanish's home (16) and history (17) change a rule or a table, not a screen, so a before and after of the same screen would have been a lie. Their after panels show the one place the rule is felt, and the card says so.</li>
+    <li><b>Two said the same thing twice.</b> Estimates (5) and the add-on (8) are both "the thread offers the next press from the step", so their after panels share one strip, the step card's folded to a line; add one and the other is a row in it. Billing (6) looked like a third but is a queue, not a press, so it stays a section on Follow up.</li>
+    <li><b>Every card needed its cost.</b> A yes is cheap when the kernel exists and dear when a table does. Each card carries a size and names what it depends on, so a pick is a trade and not a wish.</li>
+    <li><b>Two leans moved.</b> Push (13) was "yes to both"; an hour's silence before the office hears is too long for a customer on a leaking heater, so the after shows fifteen minutes and names it as a setting. Dispatch write-back (3) was a plain yes; a tech's press moving the board without the dispatcher's eye is a new kind of write, so the after shows the board asking once.</li>
+    <li><b>The baseline is on the page.</b> Under the title, before the first card, one line says what you get if you pick No on all seventeen: the prototype as it stands, which already answers the complaint that started this. Nothing here is needed for that, and <b>Start from my leans</b> at the top sets the picks to what I would do, so your work is the disagreements.</li>
+  </ol>
+</div>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+  'use strict';
+  const $=(s,r)=>(r||document).querySelector(s), $$=(s,r)=>Array.from((r||document).querySelectorAll(s));
+  const toastEl=$('#toast'); let tt; const toast=m=>{ toastEl.textContent=m; toastEl.classList.add('show'); clearTimeout(tt); tt=setTimeout(()=>toastEl.classList.remove('show'),2600); };
+  // small builders in the prototype's shapes
+  const row=(cls,t,who,badge,body,dim)=>`<div class="row ${cls}"><span class="t">${t}</span><span class="w"><b>${who}</b>${badge?`<span class="who ${badge==='app'?'app':badge==='lock'?'lock':''}">${badge==='app'?'text':badge}</span>`:''}</span><div class="b">${body}${dim?`<div class="dim">${dim}</div>`:''}</div></div>`;
+  const prow=(av,nm,k,sn,t,q)=>`<div class="prow"><span class="av ${q?'q':''}">${av}</span><span><span class="nm">${nm}<span class="k ${k.toLowerCase().replace(/ .*/,'')==='trade'?'trade':k.toLowerCase().replace(/[^a-z]/g,'')}">${k}</span></span><span class="sn">${sn}</span></span><span class="t">${t}</span></div>`;
+  const sec=(name,n,isNew)=>`<div class="sec ${isNew?'new':''}">${name} <span class="cnt">${n}</span></div>`;
+
+  const G={
+    into:'What flows into the thread',
+    out:'What the thread opens or starts',
+    who:'Who else writes to these lines',
+    own:'Notification and ownership',
+    shape:'The ones that decide the shape'
+  };
+  const CARDS=[
+    {n:1,g:'into',size:'m',title:'The app’s own emails in the thread',
+      q:'Estimates, invoices, paid-job emails, report emails, statement rounds and reminders go out today as sent copies in Documents. Should each be a line in the person’s thread?',
+      before:row('cust text','2:20p','Rosa','email','<b>Your estimate for Oakridge sewer line</b><br>Hello Dana, your estimate is ready…','from office@ · the copy is kept in Documents')+row('cust text in','4:05p','Dana','text','Can you do Thursday? Also is the water heater quote still good?')+row('','Oct 10','Rosa','','Billed · invoice 1312 · $4,850','the invoice email is in Documents, not here'),
+      bcap:'Only what a person typed or pressed is in the thread. The invoice and the paid email are in Documents.',
+      after:row('cust text','2:20p','Rosa','email','<b>Your estimate for Oakridge sewer line</b><br>Hello Dana, your estimate is ready…')+row('cust text in','4:05p','Dana','text','Can you do Thursday? Also is the water heater quote still good?')+`<div class="fold">the app · <b>3 emails, Oct 8 to Oct 10 ▸</b> · work scheduled · invoice 1312 · paid, thank you</div>`+row('cust text','Oct 10','the app','app','<b>Invoice 1312 · $4,850</b> · Pay it here: click.co/p/4m2Q','opened Oct 10, 6:12 PM · paid Oct 11 by card'),
+      acap:'Every automatic send is a line marked the app, folded by default and opened on a press, with its read and paid stamps.',
+      lean:'Yes. The thread is the whole record, so nobody opens Documents to learn what the customer got.',
+      dep:'<b>Depends on</b> sent_documents carrying a contact id, which cut 7 planned. <b>Size</b>: one loader, no table.'},
+    {n:2,g:'into',size:'m',title:'Status reports and photos',
+      q:'“Here is what we found” uses the report’s words. Should the report’s photos be offered to the customer from the thread, and should a customer’s photo reply land on the job as a file?',
+      before:row('','11:07a','Luis','','Status Report · 40% · Camera showed a break at 32 ft.','2 photos on the report')+row('cust text','11:12a','Luis','text','Dana, here is what we found: a break in the line about 32 feet out…')+row('cust text in','11:20a','Dana','text','[photo]','an image came with the text · nowhere to put it'),
+      bcap:'The report’s photos stay on the report. A photo Dana sends is a bubble nobody can find later.',
+      after:row('','11:07a','Luis','','Status Report · 40% · Camera showed a break at 32 ft.','2 photos on the report')+`<div class="strip cust"><b>Attach from the report</b><span class="chips"><span class="file">✓ cleanout.jpg</span><span class="file">✓ camera-32ft.jpg</span></span><span class="note">go as links in a text, as files in an email</span></div>`+row('cust text','11:12a','Luis','text','Dana, here is what we found: a break in the line about 32 feet out… Photos: click.co/f/8Kp4')+row('cust text in','11:20a','Dana','text','Here is the front walk.<div class="chips" style="margin-top:4px"><span class="file">📎 IMG_2041.jpg · on job 1312 · Documents</span></div>'),
+      acap:'The report’s photos are two ticks on the send. Her photo is a file on the job, in Documents, and a chip on the line.',
+      lean:'Yes to both. Cut 7 already carries files out and cut 6 brings them in; the report is one more source in the job’s file list.',
+      dep:'<b>Depends on</b> cut 6 (files that arrive) and cut 7 (files going out), both planned. <b>Size</b>: wiring on both.'},
+    {n:3,g:'into',size:'m',title:'Dispatch writes back',
+      q:'On our way and Running late read the drive and the schedule. Should they also write back, so a Running late press moves the window on the dispatch board?',
+      before:row('cust text','9:02a','Luis','text','Dana, we are running behind this morning. Our new window at 4120 Oakridge Trl is 9:30 to 10:00.')+`<div class="board"><span class="h">8:00</span><span class="blk">1312 · Oakridge sewer line · Luis · 8:00–8:30</span><span class="h">9:30</span><span class="blk ghost">the board still says 8:00</span></div>`,
+      bcap:'Dana knows the new window. The dispatcher’s board does not.',
+      after:row('cust text','9:02a','Luis','text','Dana, we are running behind this morning. Our new window at 4120 Oakridge Trl is 9:30 to 10:00.')+`<div class="strip step"><b>Move the board too?</b> 1312 · 8:00 → 9:30, Luis’s next stop slides 30 minutes. <span class="chips"><button class="pri">Move it</button><button>Leave the board</button></span></div>`+`<div class="board"><span class="h">9:30</span><span class="blk moved">1312 · Oakridge sewer line · Luis · 9:30–10:00 · said to Dana</span></div>`+row('team','9:02a','Luis','','Running late · the board moved to 9:30 · Rosa was told'),
+      acap:'The send offers the move once, names what else slides, and the board’s block says it came from a text to the customer.',
+      lean:'Yes, with the ask. What the tech told the customer should be what the board says, but a tech’s press moving other stops is a new kind of write, so the board asks once and the dispatcher is told.',
+      dep:'<b>Depends on</b> the dispatch board’s move RPC and a reason on the move. <b>Size</b>: a kernel for what slides, one event line.'},
+    {n:4,g:'into',size:'s',title:'Calls and voicemails on the office line',
+      q:'Quo brings calls, voicemails and transcripts. Should a voicemail’s words become a line the office can act on, and should the “day heard” reader run on it?',
+      before:row('cust text in','2:14p','Dana','voicemail','Voicemail · 0:41','the words are in Quo; open Quo to hear it'),
+      bcap:'A voicemail is a stamp. Someone opens Quo, listens, and types the day into a note.',
+      after:row('cust text in','2:14p','Dana','voicemail','“Hi, it’s Dana. Thursday after two works for us, and can you bring the water heater quote? Thanks.”<div class="strip" style="margin-top:6px"><b>Heard:</b> <span class="chips"><span class="this">Thu Oct 8, after 2 PM</span></span><span class="chips"><button class="pri">Keep the day</button><button>Another day</button></span></div>','0:41 · Quo’s transcript · the summary is on the hover'),
+      acap:'The transcript is the line. The day reader lifts the day out as a chip, and Keep the day writes it where cut 2 writes any day heard.',
+      lean:'Yes. Cut 2 built the reader for exactly this, and cut 5 brings the transcript in already.',
+      dep:'<b>Depends on</b> cut 5’s transcript column, which is in the migration. <b>Size</b>: small, the reader exists.'},
+    {n:5,g:'out',size:'s',title:'Estimates: the next press above the box',
+      q:'From a customer’s “can you do Thursday”, should the thread offer the next presses, approve, reschedule, send the estimate again, as one strip above the box?',
+      before:row('cust text in','4:05p','Dana','text','Can you do Thursday? Also is the water heater quote still good?')+`<div class="box cust">Pick a line above, or write to Dana…</div><div class="note">to approve for her: open the estimate; to move the day: open dispatch</div>`,
+      bcap:'The box answers with words. Doing the thing means leaving the thread.',
+      after:row('cust text in','4:05p','Dana','text','Can you do Thursday? Also is the water heater quote still good?')+`<div class="strip step"><b>Estimate sent</b> · her move · 2 days <span class="chips"><button class="pri">Approve for her</button><button>Move the day</button><button>Send it again</button><button>She declined</button></span></div><div class="box cust">Pick a line above, or write to Dana…</div>`,
+      acap:'The step card’s presses sit above the box. Approve for her writes what the portal press writes, with “by phone, Rosa” on it.',
+      lean:'Yes. The flow already knows the step, and cut 5’s card already lists each step’s presses; the strip is that card folded to one line.',
+      dep:'<b>Depends on</b> the residential flow (screen 4) and accept-estimate taking an office “how”. <b>Size</b>: small once the flow exists.'},
+    {n:6,g:'out',size:'m',title:'Billing and collections on Follow up',
+      q:'Should a billed or collections job put its customer on Follow up’s They owe us beside We owe them, with the bill’s own reminder as the quick reply?',
+      before:sec('Needs a reply',3)+prow('EO','Elena Ortiz','Customer','Is the certificate in yet?','Tue')+sec('We owe them',1)+prow('PR','Priya Raman','Customer','the start date · by Mon Oct 5','Mon')+`<div class="note" style="margin-top:6px">a bill 20 days late is on the AR page, not here</div>`,
+      bcap:'Money waits on the AR page. The customer hears nothing until a demand letter.',
+      after:sec('Needs a reply',3)+prow('EO','Elena Ortiz','Customer','Is the certificate in yet?','Tue')+sec('We owe them',1)+prow('PR','Priya Raman','Customer','the start date · by Mon Oct 5','Mon')+sec('They owe us',2)+prow('DW','Dana Whitfield','late','invoice 1312 · $4,850 · 20 days · last reminder Oct 15','20 d')+prow('MB','Marcus Bell','Customer','invoice 1288 · $640 · 6 days · no reminder yet','6 d')+`<div class="strip cust"><b>Reminder</b> · Dana, your bill for Oakridge sewer line is still open. Pay it here: click.co/p/4m2Q <span class="chips"><button class="pri">Send</button></span></div>`,
+      acap:'One more section, read from the bills. The row’s press is the bill’s reminder as a quick reply, and the app can send it at the terms.',
+      lean:'Yes. It is the same complaint from the other side, and the reminder already exists as an email; this gives it the text and the queue.',
+      dep:'<b>Depends on</b> the bills’ reads the AR page already has. <b>Size</b>: a section builder and one quick reply per step.'},
+    {n:7,g:'out',size:'s',title:'The Lien desk’s sends',
+      q:'Notices and demand letters are legal sends. Should they show in the thread read-only, with no reply box under them?',
+      before:row('cust text in','Oct 20','Dana','text','Got a letter about a lien?? Nobody told me the bill was late.')+`<div class="box cust">Pick a line above, or write to Dana…</div><div class="note">the notice is on the Lien desk; the office sees no sign of it here</div>`,
+      bcap:'The customer’s reply arrives with no context. The thread does not know a notice went.',
+      after:row('lock','Oct 18','the office','lock','<b>Notice of intent to lien</b> · sent by certified mail and email · the Lien desk','read-only · a reply to this goes to the office, never to a tech')+row('cust text in','Oct 20','Dana','text','Got a letter about a lien?? Nobody told me the bill was late.')+`<div class="box off">Replies on a legal line go to the office. Open the Lien desk to answer.</div>`,
+      acap:'The send is a grey locked line with the desk named. Under it the box is off for everyone but the office, and the reply lands on Needs you for the office alone.',
+      lean:'Show them, lock the box on that line, route the reply to the office only.',
+      dep:'<b>Depends on</b> the Lien desk’s sent rows, which exist. <b>Size</b>: small, one line kind and a rule.'},
+    {n:8,g:'out',size:'s',title:'An add-on from a message',
+      q:'Cut 4b starts a change order from a GC customer’s message. Should the same press exist for a residential estimate add-on?',
+      before:row('cust text in','4:05p','Dana','text','While you are here can you also replace the hose bib out front?')+`<div class="note">Rosa opens Estimates, starts a new line, types the words again</div>`,
+      bcap:'The ask is in the thread. The estimate line is typed from scratch somewhere else.',
+      after:row('cust text in','4:05p','Dana','text','While you are here can you also replace the hose bib out front?<div class="chips" style="margin-top:4px"><span class="this">became add-on 2 · $0 until priced</span></div>')+`<div class="strip step"><b>⋯ on the line</b> <span class="chips"><button class="pri">Start an add-on from this</button><button>Tie to a job</button><button>Mark as read</button></span></div>`,
+      acap:'The line’s menu starts the add-on with her words as the description and the job from the tie. The chip on the line says what it became.',
+      lean:'Yes. It is cut 4b’s kernel with the estimate’s form instead of the change order’s.',
+      dep:'<b>Depends on</b> an estimate add-on RPC taking a source message. <b>Size</b>: small on the kernel, a column on the estimate line.'},
+    {n:9,g:'who',size:'m',title:'Prospects: a lead is not a customer yet',
+      q:'A new number on the team line may be a lead. Should Who is this? offer “a new lead on Prospects” beside “a new customer”, and should a lead’s thread live on Prospects until they book?',
+      before:`<div class="sortcard"><h5>Who is this?</h5><div class="note">A number nobody has named, on the team line.</div><div class="opts"><div>Kevin Alvarez, a new customer<small>makes the customer and the contact</small></div><div>Kevin Alvarez at Alvarez Family Dental<small>a customer with this last name</small></div><div>Someone else</div></div></div>`,
+      bcap:'Naming him makes a customer row before he has booked anything. Prospects never sees him.',
+      after:`<div class="sortcard"><h5>Who is this?</h5><div class="note">A number nobody has named, on the team line.</div><div class="opts"><div class="new">Kevin Alvarez, a new lead on Prospects<small>a lead with this thread; becomes a customer when he books</small></div><div>Kevin Alvarez, a new customer<small>makes the customer and the contact</small></div><div>Kevin Alvarez at Alvarez Family Dental<small>a customer with this last name</small></div><div>Someone else</div></div></div>`+prow('KA','Kevin Alvarez','lead','Prospects · water heater leak · thread open','8:41a'),
+      acap:'The lead is a kind of contact with no flow. His thread sits on Prospects with the lead card, and the day he books the contact re-points to the new customer and keeps the thread.',
+      lean:'Yes. Prospects is where the office already works leads, and the contact kernel’s re-point keeps the thread when he becomes a customer.',
+      dep:'<b>Depends on</b> a lead record kind on contacts and Prospects showing the thread window. <b>Size</b>: medium, a kind and a page wiring.'},
+    {n:10,g:'who',size:'m',title:'Supply houses on bids@',
+      q:'RFQ answers arrive on bids@ through their own path today. Should a supply house be a kind of contact so its emails sort instead of sitting as unknown?',
+      before:sec('New',3,true)+prow('?','quotes@ferguson.example','unknown','RFQ 2210 · your pricing attached · 14 lines','9:10a',true)+`<div class="note">the office names it every time; the RFQ page never sees the email</div>`,
+      bcap:'Every supply house email is a stranger in New. The RFQ it answers does not know it arrived.',
+      after:sec('New',2,true)+`<div class="note">supply houses sort themselves and stay off Follow up</div>`+prow('FG','Ferguson · San Antonio','house','RFQ 2210 · pricing attached · landed on the RFQ','9:10a')+`<div class="strip"><b>Filter</b> <span class="chips"><span class="this">Customers</span><span>Trade partners</span><span>Architects</span><span>Supply houses</span></span></div>`,
+      acap:'A fourth kind with no flow, matched by the address on the supply house record. Its email lands on the RFQ, shows under its own filter, and never counts on Follow up.',
+      lean:'Yes, as a kind with no flow, off Follow up by default.',
+      dep:'<b>Depends on</b> supply_houses carrying addresses, which it does, and the RFQ page reading messages. <b>Size</b>: medium, a kind and a tie to RFQs.'},
+    {n:11,g:'who',size:'s',title:'Hiring: candidates text the office line',
+      q:'Should candidates be a kind of contact in Messages, or stay out?',
+      before:sec('New',3,true)+prow('?','(210) 555-0164','unknown','Hi, I saw the plumber opening on Indeed, is it still open?','7:30a',true),
+      bcap:'A candidate is a stranger in New like anyone else, and naming him has no good answer.',
+      after:`<div class="sortcard"><h5>Who is this?</h5><div class="opts"><div>A new customer</div><div>A new lead on Prospects</div><div class="new">A candidate · Team hiring board<small>the text moves to the hiring board’s thread and leaves Messages</small></div><div>Someone else</div></div></div><div class="note">The hiring board keeps its own thread. Messages keeps no row for him.</div>`,
+      acap:'This is a No drawn honestly: the only change is one more answer in Who is this?, which hands the text to the hiring board and forgets it.',
+      lean:'Out, for now. The hiring board has its own thread and a different audience.',
+      dep:'<b>Depends on</b> nothing new. <b>Size</b>: one option in the sort.'},
+    {n:12,g:'who',size:'l',title:'Residential subs, the people rows',
+      q:'Trade partners get the portal and the GC thread. Should a residential sub, a people row, get the same when the office texts them about a job?',
+      before:prow('?','(210) 555-0171','unknown','This is Manny, I can do the Oakridge tie-in Friday','3:12p',true)+`<div class="note">the contact kernel points at people rows, so he names fine; nothing reads his thread on the sub sheet</div>`,
+      bcap:'The sub is a contact already. His thread goes nowhere the sheet looks.',
+      after:prow('MR','Manny Reyes','sub','sub · Oakridge tie-in Friday · on the sheet for 1312','3:12p')+`<div class="strip"><b>On the sub sheet</b> · 1312 · Manny Reyes · <span class="note">last word: can do Friday · 3:12p</span></div><div class="note">a sub flow would be: asked · said yes · on site · done · paid, read from the sheet</div>`,
+      acap:'A Later drawn honestly: a sub kind whose lines show on the sheet, and a flow read from the sheet’s own facts. None of the sheet’s facts are stamps today.',
+      lean:'Later. Subs are paid through the sheet, and that flow is not drawn; the thread already works for a sub, it just has no home.',
+      dep:'<b>Depends on</b> the sub sheet’s facts as stamps and a sub flow. <b>Size</b>: large.'},
+    {n:13,g:'own',size:'m',title:'Push: who hears a reply, and when',
+      q:'When Dana replies to Luis before 5 PM, should Luis get a push, and when should the office hear?',
+      before:`<div class="lock-screen"><div class="time">9:04</div><div class="notif" style="opacity:.4"><b>PipeTooling</b>nothing arrives · Luis finds the reply when he opens the job<small>—</small></div></div>`,
+      bcap:'A reply waits until someone opens the thread. The complaint was this silence.',
+      after:`<div class="lock-screen"><div class="time">9:04</div><div class="notif"><b>PipeTooling · Dana Whitfield</b>Perfect, thank you. The side gate is unlocked.<small>now</small></div><div class="notif" style="opacity:.75"><b>PipeTooling · office · 9:19</b>Nobody answered Dana in 15 minutes. It is on Needs a reply.<small>in 15 min</small></div></div><div class="note">The wait before the office hears is a setting, 15 minutes to start. After 5 PM the office is first.</div>`,
+      acap:'Luis gets the reply as a push at once. The office hears only when it sits, after a wait the owner sets.',
+      lean:'Yes to both, with the wait at fifteen minutes, not an hour. A customer with a leaking heater reads an hour as silence.',
+      dep:'<b>Depends on</b> the notify functions, which exist, and a who-has-it rule. <b>Size</b>: medium, one dispatcher and a setting.'},
+    {n:14,g:'own',size:'s',title:'The Dashboard’s Needs you line',
+      q:'One Needs you line, Customers · 3 need a reply, 1 we owe, or one line per kind of person?',
+      before:`<div class="card-ny"><h5>Needs you · 4</h5><div class="ln"><b>Deposits</b> 2 to apply<span class="go">Apply ›</span></div><div class="ln"><b>GC projects</b> 3 to follow up<span class="go">Follow up ›</span></div><div class="ln"><b>Contracts</b> 1 change waiting<span class="go">Review ›</span></div></div>`,
+      bcap:'Residential customers have no line. GC projects has one since v2.4941.',
+      after:`<div class="card-ny"><h5>Needs you · 5</h5><div class="ln"><b>Deposits</b> 2 to apply<span class="go">Apply ›</span></div><div class="ln new"><b>Customers</b> 3 need a reply · 1 we owe · 2 to sort<span class="go">Messages ›</span></div><div class="ln"><b>GC projects</b> 3 to follow up<span class="go">Follow up ›</span></div><div class="ln"><b>Contracts</b> 1 change waiting<span class="go">Review ›</span></div></div>`,
+      acap:'One line for the office, with the three counts that matter, opening Messages filtered to customers.',
+      lean:'One line. The kinds are filters on the page, not lines on the card.',
+      dep:'<b>Depends on</b> cut 2’s queue count. <b>Size</b>: small, a Needs you item.'},
+    {n:15,g:'own',size:'m',title:'The Jobs board dot and the stages in the thread',
+      q:'A dot on a job whose customer is waiting, and the thread from the customer’s name. Should the Pipeline’s stage change also be a line in the thread, so the office and the customer share one timeline?',
+      before:`<div class="jrow"><span class="num">1312</span><span>Oakridge sewer line · Dana Whitfield<div class="st">Working · Luis · Thu</div></span><span class="st">$4,850</span></div><div class="jrow"><span class="num">1298</span><span>Water heater · Dana Whitfield<div class="st">Waiting</div></span><span class="st">$1,240</span></div>`+row('','8:15a','Rosa','','Waiting → Working','a status line the customer never sees'),
+      bcap:'The board does not say a customer is waiting on us. The stage change is the office’s line only.',
+      after:`<div class="jrow"><span class="num"><span class="dot"></span>1312</span><span>Oakridge sewer line · Dana Whitfield<div class="st">Working · Luis · Thu</div></span><span class="st">$4,850</span></div><div class="hover">Dana · text · 4:05p · <i>Can you do Thursday? Also is the water heater quote…</i> · nobody has answered</div>`+row('cust text','8:15a','the app','app','We are scheduled to start Thu, Oct 8 at 8:00 AM. Luis will text when he is on the way.','Working · the step’s line, sent because the step is on')+row('','8:15a','Rosa','','Waiting → Working'),
+      acap:'The dot reads the queue by job and the hover shows the last line. A stage the customer feels sends the step’s line, so the status change and the customer’s text are the same moment.',
+      lean:'Yes for the stages the customer feels: scheduled, started, done, billed, paid. The others stay the office’s.',
+      dep:'<b>Depends on</b> the residential flow and the morning run’s per-step switch. <b>Size</b>: medium, a board read and five steps turned on.'},
+    {n:16,g:'shape',size:'s',title:'Where a customer’s language lives',
+      q:'On the customer row or on the contact?',
+      before:`<div class="kv"><span>Customer</span><span>Dana Whitfield</span><span>Language</span><span class="note">nowhere · every text goes in English</span></div>`+row('cust text','9:02a','Luis','text','Dana, this is Luis with Click Plumbing. We are on our way…'),
+      bcap:'Nothing on the customer says Spanish. The trade companies have a language; customers do not.',
+      after:`<div class="kv"><span>Customer</span><span>Dana Whitfield</span><span>Language</span><span>Spanish · set on the customer record · read by every contact of hers</span></div>`+row('cust text','9:02a','Luis','text','Dana, le habla Luis de Click Plumbing. Vamos en camino a 4120 Oakridge Trl…','the Spanish of the same quick reply · a line with no Spanish goes in English and the editor says so'),
+      acap:'One column on customers, as gc_companies has. The strip, the phone and the app’s reminders all read it through the contact.',
+      lean:'The customer row, read by the contact, as the trade companies do. One column, no new table.',
+      dep:'<b>Depends on</b> a column on customers and the portal gate for Spanish. <b>Size</b>: small.'},
+    {n:17,g:'shape',size:'m',title:'History from before the app',
+      q:'Import the HousecallPro export’s old texts into the threads, or start Messages on day one?',
+      before:row('cust text','9:02a','Luis','text','Dana, this is Luis with Click Plumbing. We are on our way…','the first line in the thread · Dana has been a customer since 2024')+`<div class="note">the office keeps the old texts in a spreadsheet nobody opens</div>`,
+      bcap:'Day one. The thread starts at the first text the app sent, and three years of history are elsewhere.',
+      after:`<div class="fold" style="padding-left:0">before the app · <b>14 texts from HousecallPro, Mar to Sep 2026 ▸</b> · read-only · matched by her number</div>`+row('lock','Sep 2','HCP','lock','Your technician is on the way. Track: hcp.me/…','imported · no reply possible')+row('cust text','9:02a','Luis','text','Dana, this is Luis with Click Plumbing. We are on our way…'),
+      acap:'A folded grey block above the first live line, matched by number, read-only, with the old sender named.',
+      lean:'Start clean, then import the last twelve months as read-only history once the export’s numbers match. The fold keeps the thread honest without making the import a condition of day one.',
+      dep:'<b>Depends on</b> the export having numbers and a one-time importer. <b>Size</b>: medium, run once.'},
+  ];
+
+  // picks
+  let picks={}; try{ picks=JSON.parse(localStorage.getItem('cm-int-picks')||'{}'); }catch(e){ picks={}; }
+  const save=()=>{ try{ localStorage.setItem('cm-int-picks',JSON.stringify(picks)); }catch(e){} };
+  const WORD={add:'Add',later:'Later',no:'No'};
+  function paintPicks(){ const c={add:0,later:0,no:0}; Object.values(picks).forEach(v=>{ if(c[v]!=null) c[v]++; }); const left=CARDS.length-(c.add+c.later+c.no); $('#cnt').innerHTML=`<span class="add">Add ${c.add}</span><span class="later">Later ${c.later}</span><span class="no">No ${c.no}</span><span>${left} undecided</span>`; }
+  function render(){
+    const toc=$('#toc'); toc.innerHTML=CARDS.map(c=>`<a href="#c${c.n}">${c.n} · ${c.title}</a>`).join('');
+    const host=$('#cards'); let h=''; let g='';
+    for(const c of CARDS){ if(c.g!==g){ g=c.g; h+=`<h2 class="grp">${G[g]}</h2>`; }
+      const d=picks[c.n]||'';
+      h+=`<article class="card ${d?'dec-'+d:''}" id="c${c.n}"><div class="hd"><span class="n">${c.n}</span><h3>${c.title}</h3><span class="meta"><span class="sz ${c.size}">${c.size==='s'?'small build':c.size==='m'?'medium build':'large build'}</span></span></div>
+        <p class="q">${c.q}</p>
+        <div class="ba"><div class="pane"><div class="lbl">Before · the prototype today</div><div class="body">${c.before}</div><div class="cap">${c.bcap}</div></div><div class="pane after"><div class="lbl">After · with it in</div><div class="body">${c.after}</div><div class="cap">${c.acap}</div></div></div>
+        <div class="foot"><div class="lean">${c.lean}</div><div class="dec" data-n="${c.n}">${['add','later','no'].map(k=>`<button class="${k} ${d===k?'on':''}" data-k="${k}">${WORD[k]}</button>`).join('')}</div><div class="dep">${c.dep}</div></div>
+        ${d==='no'&&c.n!==11?`<div class="whynot">Marked No. If there is a reason I should know, say it in the chat and I will carry it into the plan beside the pick.</div>`:''}</article>`; }
+    host.innerHTML=h;
+    $$('.dec button').forEach(b=>b.onclick=()=>{ const n=+b.closest('.dec').dataset.n; picks[n]=picks[n]===b.dataset.k?'':b.dataset.k; if(!picks[n]) delete picks[n]; save(); render(); paintPicks(); });
+    $$('.fold b').forEach(b=>b.onclick=()=>toast('In the app this opens the folded lines in place.'));
+    $$('.pane button').forEach(b=>b.onclick=()=>toast('A drawing of the press. Nothing happens here.'));
+    paintPicks();
+  }
+  $('#copy').onclick=async()=>{ const lines=CARDS.map(c=>`${c.n}. ${c.title} — ${WORD[picks[c.n]]||'undecided'}`); const text=`Messages integrations picks (${new Date().toISOString().slice(0,10)})\n`+lines.join('\n'); try{ await navigator.clipboard.writeText(text); toast('Picks copied. Paste them to me in the chat.'); }catch(e){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); toast('Select and copy the text that appeared at the bottom of the page.'); } };
+  $('#clear').onclick=()=>{ picks={}; save(); render(); toast('Cleared.'); };
+  const LEANS={1:'add',2:'add',3:'add',4:'add',5:'add',6:'add',7:'add',8:'add',9:'add',10:'add',11:'no',12:'later',13:'add',14:'add',15:'add',16:'add',17:'later'};
+  $('#leans').onclick=()=>{ picks={...LEANS}; save(); render(); toast('Set to my leans: 14 Add, 2 Later, 1 No. Change any you see differently.'); };
+  render();
+})();
+</script>
+</body>
+</html>
