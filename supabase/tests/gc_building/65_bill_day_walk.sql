@@ -249,8 +249,10 @@ SELECT gbw.same('the controller sets the cut-off', gbw.cutoff(), '7');
 SELECT gbw.as_user('00000000-0000-0000-0000-00000000bd05');
 SET LOCAL ROLE authenticated;
 SELECT gbw.refused('an estimator sets the cut-off', $s$SELECT public.gc_set_bill_day_cutoff(5)$s$, 'Only the money team sets the cut-off');
-SELECT gbw.same('an estimator cannot set it behind the function', (WITH u AS (UPDATE public.app_settings SET value_num = 3 WHERE key = 'gc_bill_day_cutoff_days' RETURNING 1) SELECT count(*)::text FROM u), '0');
+-- Behind the function: no policy lets an estimator update the row, so this reaches none.
+UPDATE public.app_settings SET value_num = 3 WHERE key = 'gc_bill_day_cutoff_days';
 RESET ROLE;
+SELECT gbw.same('an estimator cannot set it behind the function', gbw.cutoff(), '7');
 SELECT gbw.as_user('00000000-0000-0000-0000-00000000bd02');
 SET LOCAL ROLE authenticated;
 SELECT gbw.refused('a training account sets the cut-off', $s$SELECT public.gc_set_bill_day_cutoff(5)$s$, 'A training account cannot change the cut-off');
