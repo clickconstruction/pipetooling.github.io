@@ -16,6 +16,7 @@ SET lock_timeout = '3s';
 --   * gc_change_order_sends keeps each send of a change order to sign, in gc_owner_contract_sends' shape with the change
 --     order in place of the price by line; it is the money team's. gc_send_change_order_to_sign writes one, and sends
 --     the draft the first time. The file goes in a private bucket, gc-change-orders, under the project's id.
+--   * contacts_fold_change_orders: the spine's contacts_fold runs it, so who signs follows a contact that is folded.
 
 -- ---------- 1. Who signs, and the message it came from ----------
 
@@ -316,6 +317,36 @@ COMMENT ON FUNCTION public.gc_send_change_order_to_sign(uuid, date, text, text, 
 
 REVOKE ALL ON FUNCTION public.gc_send_change_order_to_sign(uuid, date, text, text, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.gc_send_change_order_to_sign(uuid, date, text, text, text, text) TO authenticated;
+
+-- ---------- 6. A fold keeps who signs ----------
+
+-- The spine's contacts_fold runs every contacts_fold_<something>(p_from, p_into) after it moves the lines, numbers and
+-- jobs, and before p_from goes; without this, p_from's delete would leave its change orders with no signer. A definer,
+-- since the orders are the money team's and a fold runs as whoever names the number or deletes the record. Outside a
+-- trigger, a call from someone signed in who is not on the office team, or is a twin, moves nothing, as the fold's own
+-- statements move nothing for them.
+CREATE OR REPLACE FUNCTION public.contacts_fold_change_orders(p_from uuid, p_into uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF p_from IS NULL OR p_into IS NULL OR p_from = p_into THEN
+    RETURN;
+  END IF;
+  IF auth.uid() IS NOT NULL AND pg_trigger_depth() = 0 AND (NOT public.gc_office_team() OR public.is_digital_twin()) THEN
+    RETURN;
+  END IF;
+  UPDATE public.gc_change_orders SET signer_contact_id = p_into WHERE signer_contact_id = p_from;
+END;
+$$;
+
+COMMENT ON FUNCTION public.contacts_fold_change_orders(uuid, uuid) IS
+  'Messages (cut 4b): the spine''s contacts_fold runs it, so a folded contact''s change orders are signed by the contact it folds into. A definer, since the orders are the money team''s. Outside a trigger, a call from someone signed in off the office team, or a twin, moves nothing.';
+
+REVOKE EXECUTE ON FUNCTION public.contacts_fold_change_orders(uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.contacts_fold_change_orders(uuid, uuid) TO authenticated, service_role;
 
 -- ---------- The fences on the new table ----------
 

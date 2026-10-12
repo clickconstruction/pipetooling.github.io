@@ -4,10 +4,10 @@
 -- draft is numbered after the job's own, keeps the message and who signs, and a message starts one change order; a
 -- message that is not a customer's, has no job, or is on a job still bidding or lost is refused in words, as are a
 -- superintendent, a training account and a digital twin; only the money team sends, an unpriced draft has nothing to
--- sign, and each send keeps a row the money team reads and nobody changes. The fixture and the messages are made as
--- postgres, standing in for the seed and the service role; the presses run as each user through RLS; everything rolls
--- back. Raises on the first failed assertion; ends with "gc_change_orders_from_messages PASSED". See
--- scripts/pgtest-gc-change-orders-from-messages.sh. Never against prod.
+-- sign, and each send keeps a row the money team reads and nobody changes; a fold of the contact moves who signs. The
+-- fixture and the messages are made as postgres, standing in for the seed and the service role; the presses run as
+-- each user through RLS; everything rolls back. Raises on the first failed assertion; ends with
+-- "gc_change_orders_from_messages PASSED". See scripts/pgtest-gc-change-orders-from-messages.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -48,9 +48,12 @@ INSERT INTO public.gc_change_orders (project_id, number, description, reason, co
 INSERT INTO public.gc_companies (id, name, contact_name, phone, email) VALUES
   ('00000000-0000-0000-0000-00000000c0e9', 'Cofm Plumbing', 'Greg Paulk', '(210) 555-0113', 'greg@cofm.example');
 
--- Priya, the customer's contact, and Greg, the trade partner's; their messages, as cut 5's sync will make them.
+-- Priya, the customer's contact, and Greg, the trade partner's; their messages, as cut 5's sync will make them. Two
+-- more on the customer, for the fold at the end.
 INSERT INTO public.contacts (id, kind, customer_id, name) VALUES
-  ('00000000-0000-0000-0000-00000000c0e1', 'customer', '00000000-0000-0000-0000-00000000c0c1', 'Dr. Priya Raman');
+  ('00000000-0000-0000-0000-00000000c0e1', 'customer', '00000000-0000-0000-0000-00000000c0c1', 'Dr. Priya Raman'),
+  ('00000000-0000-0000-0000-00000000c0e3', 'customer', '00000000-0000-0000-0000-00000000c0c1', 'Priya Raman'),
+  ('00000000-0000-0000-0000-00000000c0e4', 'customer', '00000000-0000-0000-0000-00000000c0c1', 'Front desk');
 INSERT INTO public.contacts (id, kind, gc_company_id) VALUES
   ('00000000-0000-0000-0000-00000000c0e2', 'trade', '00000000-0000-0000-0000-00000000c0e9');
 INSERT INTO public.messages (id, contact_id, project_id, channel, direction, body) VALUES
@@ -206,6 +209,22 @@ SELECT cfm.as_user('00000000-0000-0000-0000-00000000c0d1');
 SELECT cfm.same('Rosa reads change order 2 sent, through the view',
   (SELECT number || ':' || status FROM public.gc_change_orders_office WHERE source_message_id = '00000000-0000-0000-0000-00000000c0f1'), '2:sent');
 SELECT cfm.same('and no send, which is the money team''s', (SELECT count(*)::text FROM public.gc_change_order_sends), '0');
+
+-- 7 · Rosa folds Priya's contact into the customer's other Priya: who signs change order 2 follows. Outside a fold, a
+-- call from the superintendent or a twin moves nothing.
+SELECT public.contacts_fold('00000000-0000-0000-0000-00000000c0e1', '00000000-0000-0000-0000-00000000c0e3');
+SELECT cfm.as_user('00000000-0000-0000-0000-00000000c0d2');
+SELECT cfm.same('after the fold, the contact it folded into signs change order 2, which still came from the text',
+  (SELECT (signer_contact_id = '00000000-0000-0000-0000-00000000c0e3') || ':' || (source_message_id = '00000000-0000-0000-0000-00000000c0f1')
+   FROM public.gc_change_orders WHERE project_id = '00000000-0000-0000-0000-00000000c0a1' AND number = 2), 'true:true');
+SELECT cfm.as_user('00000000-0000-0000-0000-00000000c0d3');
+SELECT public.contacts_fold_change_orders('00000000-0000-0000-0000-00000000c0e3', '00000000-0000-0000-0000-00000000c0e4');
+SELECT cfm.as_user('00000000-0000-0000-0000-00000000c0d5');
+SELECT public.contacts_fold_change_orders('00000000-0000-0000-0000-00000000c0e3', '00000000-0000-0000-0000-00000000c0e4');
+SELECT cfm.as_user('00000000-0000-0000-0000-00000000c0d2');
+SELECT cfm.same('a call outside a fold, by the superintendent or a twin, moves nothing',
+  (SELECT (signer_contact_id = '00000000-0000-0000-0000-00000000c0e3')::text
+   FROM public.gc_change_orders WHERE project_id = '00000000-0000-0000-0000-00000000c0a1' AND number = 2), 'true');
 RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'gc_change_orders_from_messages PASSED'; END $$;

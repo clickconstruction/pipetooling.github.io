@@ -49,6 +49,13 @@ and `messages` (`20261012010000_messages_spine.sql`, v2.5258), so it lands after
      fingerprinted or not uploaded.
    - The first send marks a draft sent through `gc_send_change_order`; later ones are reminders (`first` false). It
      returns the send's id.
+7. **`contacts_fold_change_orders(p_from, p_into)`**, so who signs follows a contact that is folded. The spine's
+   `contacts_fold` runs every `contacts_fold_<something>` before the folded contact goes; without this one, its delete
+   would set the signer to null.
+   - It is `SECURITY DEFINER`, since the orders are the money team's and a fold runs as whoever names the number or
+     deletes the record.
+   - Outside a trigger, a call from someone signed in who is not on the office team, or is a twin, moves nothing. The
+     fold's own statements move nothing for them either. Everyone who may merge customers is on the office team.
 
 `SET lock_timeout = '3s'`. Adding the two columns takes `gc_change_orders`' lock for a moment, and the foreign keys a
 share lock on `contacts` and `messages`. Every statement is idempotent: a second run changes nothing, which the bed
@@ -67,6 +74,8 @@ text asking for a sink in exam 3, and Maria (the controller) prices it and sends
 - Maria finds the draft unpriced, and its send is refused with "nothing to sign". Maria prices it.
 - A missing file, another job's file and a past sign-by day are refused. Then Maria sends it, and a reminder after.
 - Nobody changes or deletes a send, and Rosa reads none.
+- Rosa folds Priya's contact into the customer's other Priya, and the change order's signer follows. Called outside a
+  fold by the superintendent or a twin, the fold function moves nothing.
 
 It runs on GitHub's runners through `scripts/sql-beds.txt`. The office Mac has no Docker.
 
@@ -87,13 +96,14 @@ It runs on GitHub's runners through `scripts/sql-beds.txt`. The office Mac has n
    - the view's fourteen columns, ending in `signer_contact_id,source_message_id`;
    - `2`;
    - `authenticated` with `INSERT,SELECT` and no `anon` row (the owner's and `service_role`'s rows as Supabase makes them).
-2. **The functions' rights.** `SELECT proname, prosecdef FROM pg_proc WHERE proname IN ('gc_draft_change_order_from_message', 'gc_send_change_order_to_sign');`
-   Expect `true` for the draft and `false` for the send.
+2. **The functions' rights.** `SELECT proname, prosecdef FROM pg_proc WHERE proname IN ('gc_draft_change_order_from_message', 'gc_send_change_order_to_sign', 'contacts_fold_change_orders');`
+   Expect `true` for the draft and the fold, and `false` for the send.
 3. `npm run check:migration-drift` is clean.
 
 ## Rollback
 
 ```sql
+DROP FUNCTION IF EXISTS public.contacts_fold_change_orders(uuid, uuid);
 DROP FUNCTION IF EXISTS public.gc_send_change_order_to_sign(uuid, date, text, text, text, text);
 DROP FUNCTION IF EXISTS public.gc_draft_change_order_from_message(uuid, jsonb);
 DROP POLICY IF EXISTS gc_change_orders_files_insert ON storage.objects;
