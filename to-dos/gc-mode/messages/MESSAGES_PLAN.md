@@ -768,6 +768,10 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.141, 2026-10-11**: *⤢ Find* beside Edit on the quick replies strip opens Find a reply: their last message at the
+  top in full, where they are in the flow in one sentence with a link to the step's card, a narrow box, and every
+  line with room to read, the lines for the step they are on first and marked; a press fills the box and closes it
+  (the owner, 2026-10-11: the strip is too tight to find the right line).
 - **v1.140, 2026-10-11**: the *from the company number* line floats inside the box at its bottom right while the box
   is empty and goes as soon as a person types; the line under the box is gone (the owner, 2026-10-11).
 - **v1.139, 2026-10-11**: the message window has one button for it, *Remove the highlight*, beside *Highlight the
