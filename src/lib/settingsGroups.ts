@@ -1,6 +1,7 @@
 import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 import { canEditClause } from './gc/access'
+import { canSeePhoneAndTexts } from './messages/assignRule'
 
 /**
  * Zoned Settings groups (v2.2088, reorg mockup A). The tab bar answers the
@@ -83,6 +84,11 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   // Contracts and clauses (Messages, cut 4c, v2.5285): the papers built from clauses. The office edits, a controller or a dev approves.
   if (canEditClause(r)) {
     groups.push({ id: 'settings-clauses', label: 'Contracts and clauses', zone: 'company', pagesHint: 'The papers our trade partners sign, clause by clause. The office changes them and a controller or a dev approves.' })
+  }
+  // Phone and texts (Messages, cut 2's screens, v2.5311): who gets a new message first. The office reads it, the owner
+  // and a dev set the seats; Quo's rows (cut 5) join the same group.
+  if (canSeePhoneAndTexts(r)) {
+    groups.push({ id: 'settings-phone-texts', label: 'Phone and texts', zone: 'company', pagesHint: 'Shows on: GC projects, in Follow up and each thread. Who gets a new text, call or email first.' })
   }
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r) || r === 'estimator') {
     groups.push({ id: 'settings-company', label: 'Company', zone: 'company', pagesHint: 'Company documents, the office address, and the Map.' })

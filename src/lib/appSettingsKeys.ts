@@ -378,3 +378,10 @@ export function parseJobContractFloorCents(value: number | string | null | undef
   if (!Number.isFinite(n) || n <= 0) return 0
   return Math.round(n)
 }
+
+/**
+ * `value_text` — Who gets a new message (Messages, cut 2's migration `20261012160000_messages_follow_up.sql`): the
+ * seats the rule reads, `{"customer": uuid|null, "trade": uuid|null, "arch": uuid|null}`. The owner and a dev write it
+ * from Settings → Phone and texts; the office reads it. Parsed by `messages/assignRule.ts`.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1 = 'messages_assign_rule_v1' as const
