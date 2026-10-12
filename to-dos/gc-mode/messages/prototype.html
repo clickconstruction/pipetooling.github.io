@@ -64,7 +64,8 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .flow .boxes{display:flex;flex-direction:column;align-items:stretch;gap:2px}
 .flow .box{border:1px solid var(--border);border-radius:7px;padding:6px 9px;background:var(--surface);position:relative;display:flex;align-items:center;justify-content:flex-end;gap:4px 8px;font-size:12.5px;flex-wrap:wrap}
 .flow .box>span:first-child{flex:1 0 auto}
-.flow .box .tags{display:inline-flex;align-items:center;gap:8px;flex:none;margin-left:auto}
+.flow .box .tags{display:inline-flex;align-items:center;gap:8px;flex:none;margin-left:auto;white-space:nowrap}
+.flow .box .tags>*{white-space:nowrap}
 .flow .box .tags:empty{display:none}
 .flow .box.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
 .flow .box.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn);font-weight:600}

@@ -770,6 +770,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.155, 2026-10-11**: a step box's day and tags never break mid-word, so a done box is one line tall; the day had
+  been wrapping to two lines beside the name (the owner, 2026-10-11: unnecessarily tall).
 - **v1.154, 2026-10-11**: *Note* for *Note for the team*, on the kind button and the card; the yellow and the helper
   say the rest (the owner, 2026-10-11).
 - **v1.153, 2026-10-11**: a note's top line says who wrote it and no more; *Note for the team* was there twice (the
