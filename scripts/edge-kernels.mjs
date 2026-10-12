@@ -75,6 +75,8 @@ export const ENTRIES = {
     values: ['MESSAGE_ROW_COLUMNS', 'contactKindOf', 'contactWords', 'defaultJob', 'jobOf', 'lineFromRow', 'parseQuoSendBody', 'quoSeatUserIds', 'quoSeats', 'rowFromLine', 'seatOf', 'seatsSource'],
     types: ['JobAt', 'MessageColumns', 'MessageRow', 'QuoSendBody'],
   },
+  // Texts paused while Quo will not take one for the account's money (v2.5352).
+  'lib/quo/paused.ts': { values: ['QUO_PAUSED_KEY', 'notePause', 'readQuoRefusal'], types: ['PauseChange', 'PauseStore', 'QuoRefusal'] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

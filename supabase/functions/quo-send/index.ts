@@ -13,7 +13,8 @@ import { lastOurTextAt, loadSeats, quoCompany, sendText } from '../_shared/quoLi
  * `sendText` (`_shared/quoLines.ts`) does the rest, the same path the webhook's HELP answer takes: `planSend` refuses a
  * number that sent STOP and adds the opt-out line when our last text to that number is missing or 30 days old, the text
  * goes to Quo's `POST /v1/messages` as the sender's seat when they have one, and its line is written under the id Quo
- * answers with, so Quo's delivery event lands on the same line whichever comes first.
+ * answers with, so Quo's delivery event lands on the same line whichever comes first. Quo turning a text away for the
+ * account's money answers 402 and pauses texts until a text goes (`quo/paused.ts`).
  *
  * verify_jwt is off in config.toml, as for gc-customer-email: the caller's session is checked here.
  */

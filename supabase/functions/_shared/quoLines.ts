@@ -7,6 +7,9 @@
  * id, every text's From), QUO_SEATS (`{"US…": "<our user id>"}`, the seats until Settings → Phone and texts has a
  * table), QUO_COMPANY_NAME, QUO_COMPANY_PHONE and QUO_COMPANY_MAILBOX (the words a HELP answer and a stop's confirmation
  * carry).
+ *
+ * The pause: a text Quo turns away for the account's money pauses texts, and the next text it takes ends the pause
+ * (`app_settings` `messages_quo_paused_v1`, `quo/paused.ts`).
  */
 // deno-lint-ignore-file no-explicit-any
 // The Quo kernels straight from the copy, not its index: the index re-exports every kernel in it, which the check would
@@ -27,6 +30,7 @@ import {
   type MessageRow,
 } from './gcKernels/lib/quo/rows.ts'
 import { planSend, sendOver, sentQuoId, type QuoSendInput } from './gcKernels/lib/quo/send.ts'
+import { QUO_PAUSED_KEY, notePause, readQuoRefusal, type PauseChange, type PauseStore } from './gcKernels/lib/quo/paused.ts'
 
 /** Quo's send endpoint. */
 export const QUO_MESSAGES_URL = 'https://api.quo.com/v1/messages'
@@ -145,6 +149,37 @@ export async function lastOurTextAt(admin: any, channelId: string): Promise<numb
   return data ? Date.parse((data as { at: string }).at) : null
 }
 
+/**
+ * A text's word on the pause (`notePause`), over the `app_settings` row: a write goes only over the words it read, so
+ * two texts' words never cross. Never throws: a word not written is logged, and the text's own answer stands.
+ */
+export async function notePauseRow(admin: any, change: PauseChange): Promise<void> {
+  const settings = () => admin.from('app_settings')
+  const store: PauseStore = {
+    read: async () => {
+      const { data, error } = await settings().select('value_text').eq('key', QUO_PAUSED_KEY).maybeSingle()
+      if (error) throw new Error(`app_settings: ${error.message}`)
+      return data ? ((data as { value_text: string | null }).value_text ?? null) : undefined
+    },
+    write: async (prev, next) => {
+      const write =
+        prev === undefined
+          ? settings().upsert({ key: QUO_PAUSED_KEY, value_text: next }, { onConflict: 'key', ignoreDuplicates: true })
+          : prev === null
+            ? settings().update({ value_text: next }).eq('key', QUO_PAUSED_KEY).is('value_text', null)
+            : settings().update({ value_text: next }).eq('key', QUO_PAUSED_KEY).eq('value_text', prev)
+      const { data, error } = await write.select('key')
+      if (error) throw new Error(`app_settings: ${error.message}`)
+      return (data ?? []).length > 0
+    },
+  }
+  try {
+    if ((await notePause(store, change)) === 'kept-changing') console.error(`[quo] the pause kept changing, so the ${change.kind} at ${change.at} was dropped`)
+  } catch (e) {
+    console.error('[quo] the pause was not written:', e instanceof Error ? e.message : String(e))
+  }
+}
+
 export type SendOutcome =
   | { ok: true; messageId: string | null; quoId: string | null; segments: number }
   | { ok: false; refused: string; words: string; status: number }
@@ -152,7 +187,8 @@ export type SendOutcome =
 /**
  * A text out: planned by `planSend` (which refuses a number that sent STOP, and adds the opt-out line when a rule
  * says), posted to Quo from the company number, and written under the id Quo answers with (`sendOver`, so Quo's own
- * delivery event, before or after, ends on the same line). `tie` is the job the line goes on.
+ * delivery event, before or after, ends on the same line). `tie` is the job the line goes on. Quo turning it away is
+ * read by `readQuoRefusal`: for money it pauses texts, and a text Quo takes ends the pause.
  */
 export async function sendText(admin: any, input: Omit<QuoSendInput, 'fromNumberId'>, tie: JobAt | null): Promise<SendOutcome> {
   const apiKey = Deno.env.get('QUO_API_KEY')
@@ -168,7 +204,13 @@ export async function sendText(admin: any, input: Omit<QuoSendInput, 'fromNumber
     body: JSON.stringify(plan.request),
   })
   const answer = await res.json().catch(() => null)
-  if (!res.ok) return { ok: false, refused: 'quo', words: `Quo did not take the text. It answered ${res.status}.`, status: 502 }
+  if (!res.ok) {
+    const { refused, words, status, why } = readQuoRefusal(res.status, answer)
+    console.error(`[quo] Quo turned a text away: ${why}`)
+    if (refused === 'paused') await notePauseRow(admin, { kind: 'pause', at: plan.line.at })
+    return { ok: false, refused, words, status }
+  }
+  await notePauseRow(admin, { kind: 'go', at: plan.line.at })
   const quoId = sentQuoId(answer)
   if (!quoId) {
     // Nothing to key the line by: it is written as it went, and Quo's delivery event will not find it.

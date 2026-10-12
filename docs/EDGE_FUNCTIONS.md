@@ -5046,6 +5046,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 - **Texts**: a text in is a line. A text of ours that Quo reports (`message.delivered`, `message.failed`, `message.undelivered`) is a line per recipient. That covers a text sent from Quo's own phone app, and our own send's fields always win.
 - **STOP, START and HELP**: Quo stops a number on STOP, STOPALL, UNSUBSCRIBE, CANCEL, END or QUIT and answers it, and START and UNSTOP bring it back. The function mirrors that on `contact_channels.opted_out_at`. It answers only what Quo leaves: HELP and INFO, and the FCC's REVOKE and OPT OUT once, through `quo-send`'s path. A longer text that may ask to stop gets a team note instead.
 - **A number nobody has** becomes an unknown contact, the Who is this? row, through `quo_place_number`.
+- **The pause** (v2.5352): a `message.delivered` ends a pause for the balance (see `quo-send`), unless a newer text was turned away. A failed or undelivered text never pauses: its `errorCode` is the carrier's raw code, and none names the balance.
 
 **Endpoint**: `POST /functions/v1/quo-webhook`, called by Quo.
 
@@ -5087,6 +5088,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 - It adds the opt-out line on the first text to a number, or after 30 days since our last text to it. A person may hold it once, on the silence reason.
 - The text is posted to `https://api.quo.com/v1/messages` as `{ content, from: QUO_PHONE_NUMBER_ID, to: [E.164], userId }`, the user being the sender's seat when they have one.
 - The line is written by `quo_write_line` under the id Quo answers with (`sendOver`), so Quo's delivery event, before or after, ends on the same line.
+- **Quo turning a text away** is read by `readQuoRefusal` (`quo/paused.ts`, v2.5352). Quo documents no refusal for an empty prepaid balance, so a `402` (Subscription Expired, `0201402`) or a refusal whose words name money pauses texts. Code `0206400` (A2P registration not approved) and code `0204403` (the A2P 10DLC daily cap) get their own words. Any other `403` is a permission or a setting and never pauses. Each refusal logs Quo's status, code and title.
+- **The pause** is the `app_settings` row `messages_quo_paused_v1`, `{ since, reason, at }`. The functions write it with the service role, and everyone signed in reads it. A text turned away for money pauses texts, and the next text Quo takes ends the pause. `at` is the newest deciding text's own time: a word about an older text changes nothing, either way (`nextPause`). A write goes only over the words it read, three tries (`notePause`), and a word not written is logged without failing the send.
 
 **Endpoint**: `POST /functions/v1/quo-send` with `{ contactId, channelId, body, links?, held?, tie? }` (`parseQuoSendBody`). The number is one of the contact's `contact_channels`. `tie` is `{ jobId, column }` with the column `bid_id`, `project_id` or `jobs_ledger_id`.
 
@@ -5101,8 +5104,10 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 - `400 badRequest`;
 - `404 notFound`;
 - `422` a refusal of `planSend`'s;
-- `502 quo` (Quo did not take it);
-- `503 not-set-up`.
+- `402 paused` (Quo turned it away for money: "Texts are paused until the phone balance is topped up.");
+- `429 daily-cap`;
+- `502 quo` (Quo did not take it, for a reason not read above);
+- `503 not-set-up`, or `503 not-registered` ("Texts start once the carriers approve the company number.").
 
 **Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. **The seats** (which of Quo's workspace users is which of ours) come from `app_settings` `messages_quo_seats_v1` (Settings → Phone and texts, migration `20261013040000_quo_seats`) once it names a seat; until then from the `QUO_SEATS` secret (`{"US…": "<user id>"}`), which can go once the row is filled (`seatsSource` in `quo/rows.ts`).
 

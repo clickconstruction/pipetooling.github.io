@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { planQuoEvent, readQuoEvent, sentKey, type QuoPlan, type QuoPlanContext, type QuoReading } from '../_shared/gcKernels/lib/quo/events.ts'
 import { verifySignature, webhookAnswer, type WebhookOutcome } from '../_shared/gcKernels/lib/quo/webhook.ts'
-import { loadSeats, placeNumber, quoCompany, sendText, writeLine, type Placed } from '../_shared/quoLines.ts'
+import { loadSeats, notePauseRow, placeNumber, quoCompany, sendText, writeLine, type Placed } from '../_shared/quoLines.ts'
 
 /**
  * quo-webhook — Messages, cut 5: Quo's calls and texts land in a person's thread. Quo posts every event of the company
@@ -17,7 +17,8 @@ import { loadSeats, placeNumber, quoCompany, sendText, writeLine, type Placed } 
  * 4. For each number the event is about: quo_place_number (the contact, made when nobody has the number), then
  *    planQuoEvent merged and written through quo_write_line over the revision read, then the number's STOP mirrored,
  *    a team event, and the app's own answer through quo-send's path (HELP, or the one confirmation of a stop Quo did
- *    not catch), the answer last.
+ *    not catch), the answer last. A text of ours that reached a phone ends a pause for the balance (`notePauseRow`). A
+ *    failed or undelivered one never pauses: its code is the carrier's, and none names the balance.
  * 5. 200. On a failure the claim is given back (quo_webhook_release) and the answer is 500, so Quo sends it again.
  *
  * verify_jwt is off in config.toml: Quo signs its deliveries, it holds no Supabase session.
@@ -85,6 +86,7 @@ async function handle(admin: any, reading: QuoReading): Promise<void> {
       await planAndWrite(admin, reading, placed, { users, company, recipient: number }, sentKey(reading, number))
     }
     if (!placedAny) throw new Ignored('none of its numbers is a phone number')
+    if (reading.outcome === 'delivered') await notePauseRow(admin, { kind: 'go', at: reading.at })
     return
   }
   const placed = await placeEvent(admin, reading)
@@ -170,8 +172,9 @@ async function planAndWrite(
       },
       placed.star,
     )
-    // Quo turning the text away is worth Quo's retry: the line, the STOP and the event above write the same again.
-    // A refusal of ours, or texts not set up yet, would only fail again.
+    // Quo turning the text away for no reason we read is worth Quo's retry: the line, the STOP and the event above
+    // write the same again. A refusal of ours, texts not set up yet, or paused, or waiting on the carriers or the daily
+    // cap, would only fail again.
     if (!sent.ok && sent.refused === 'quo') throw new Error(sent.words)
     if (!sent.ok) console.error(`[quo-webhook] the app's answer did not go: ${sent.words}`)
   }
