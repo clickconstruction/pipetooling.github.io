@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Customer's portal · the Money tab, four ways</title>
+<style>
+:root{--text:#1b1f24;--muted:#6b7280;--border:#e3e6ea;--surface:#fff;--bg:#f4f5f7;--accent:#1f5fbf;--accent-soft:#e8f0fc;--ok:#2a8f5a;--ok-soft:#e6f4ec;--warn:#b45309;--warn-soft:#fdf1e3;--chip:#f0f2f5}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg);padding:24px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:34px 0 6px}h3{font-size:14px;margin:18px 0 6px}
+p{max-width:820px;margin:4px 0}.note{color:var(--muted);font-size:13px}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:10px}
+.phone{width:340px;border:9px solid #15181d;border-radius:28px;background:var(--surface);padding:12px 12px 16px;flex:none;font-size:13.5px}
+.phone .brand{font-weight:700;font-size:16px;margin:0 0 2px}.phone .es{float:right;color:var(--accent);font-size:12px;font-weight:400}
+.tabs{display:flex;border-bottom:1px solid var(--border);margin:8px 0 10px}.tabs span{padding:5px 6px;font-size:12px;color:var(--muted);border-bottom:2px solid transparent}.tabs span.on{color:var(--accent);border-color:var(--accent);font-weight:600}
+.card{border:1px solid var(--border);border-radius:10px;padding:9px 11px;margin:8px 0;background:var(--surface)}
+.card.move{border-color:#f0c58a;background:var(--warn-soft)}.card.ok{border-color:#bfe3cd;background:var(--ok-soft)}
+.card .h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.btn{display:inline-block;border:1px solid var(--border);border-radius:8px;padding:5px 11px;font-size:12.5px;background:var(--surface);margin:6px 6px 0 0}.btn.p{background:var(--accent);color:#fff;border-color:var(--accent)}.btn.big{display:block;text-align:center;padding:9px;font-size:14px;margin:8px 0 0}
+.ln{display:flex;justify-content:space-between;gap:10px;padding:4px 0}.ln.sum{border-top:1px solid var(--border);margin-top:3px;padding-top:6px;font-weight:600}.ln small{display:block;color:var(--muted);font-size:11.5px;font-weight:400}
+.bar{height:9px;border-radius:5px;background:var(--chip);overflow:hidden;margin:6px 0}.bar i{display:block;height:100%;background:var(--ok)}
+.big{font-size:26px;font-weight:700;line-height:1.1}.big small{display:block;font-size:12.5px;color:var(--muted);font-weight:400;margin-top:2px}
+.pics{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}.pics div{aspect-ratio:1;border-radius:5px;background:linear-gradient(135deg,#b9c7d6,#7d8f9f)}.pics div:nth-child(2){background:linear-gradient(135deg,#cdb79e,#8c7a62)}.pics div:nth-child(3){background:linear-gradient(135deg,#9fb8a8,#5f7a6a)}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;background:var(--chip)}.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.w{background:var(--warn-soft);color:var(--warn)}.pill.b{background:var(--accent-soft);color:var(--accent)}
+.tl{position:relative;padding-left:22px}.tl:before{content:'';position:absolute;left:7px;top:6px;bottom:6px;width:2px;background:var(--border)}
+.tl .ev{position:relative;padding:5px 0 7px}.tl .ev:before{content:'';position:absolute;left:-19px;top:10px;width:10px;height:10px;border-radius:50%;background:var(--ok);border:2px solid #fff;box-shadow:0 0 0 1px var(--border)}.tl .ev.open:before{background:var(--warn)}.tl .ev.next:before{background:#fff}.tl .ev small{display:block;color:var(--muted);font-size:11.5px}
+.covers{font-size:12.5px;color:var(--muted);margin-top:3px}.check{font-size:12.5px;margin-top:4px}.check b{color:var(--ok)}
+.rev{background:#fffbe9;border:1px solid #f0e2a8;border-radius:10px;padding:12px 14px;max-width:820px}.rev li{margin:4px 0}
+.chosen{outline:3px solid var(--accent);outline-offset:3px;border-radius:28px}
+table{border-collapse:collapse;font-size:13.5px;max-width:820px}td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+</style></head><body>
+<h1>The Money tab, four ways</h1>
+<p class="note">Elena's job, Boerne Retail Shell, month four: three pay applications paid, the fourth with the architect, two change orders signed. The six-line statement (v1.162) is correct and cold. A customer pays gladly when the page shows what the money built, that someone independent checked it, that everyone under us got paid, and that nothing is coming they did not sign. The words stay plain and true; nothing here is a trick.</p>
+
+<h2>1. What makes a customer glad to pay</h2>
+<table>
+<tr><th>They feel</th><th>Because the page shows</th></tr>
+<tr><td>I can see what I bought.</td><td>Each pay application names the work it covers, with the photos from those weeks. "This one is the slab, the underground and the framing to 40%."</td></tr>
+<tr><td>Someone checked it.</td><td>The architect's certificate on every application, by name and day. Not our word alone.</td></tr>
+<tr><td>Nobody is going to lien my building.</td><td>A lien waiver from every trade on every paid application, in a list they can open. "Everyone who worked in September has been paid."</td></tr>
+<tr><td>No surprises.</td><td>Revised sum = contract + the changes they signed, nothing else. The next application named with a rough size and day before it comes.</td></tr>
+<tr><td>We are getting somewhere.</td><td>Percent built and a bar. Paid to date as money invested, not money gone.</td></tr>
+<tr><td>Paying is easy and noticed.</td><td>One big button on the open application. A thank-you line when it clears, with the day the trades were paid.</td></tr>
+</table>
+
+<h2>2. Four shapes</h2>
+<h3>A · The statement (today)</h3>
+<div class="row"><div class="phone"><div class="brand">Boerne Retail Shell <span class="es">Español</span></div><div class="note">with Click Construction</div><div class="tabs"><span>Home</span><span class="on">Money</span><span>Schedule</span><span>Papers</span><span>Messages</span></div>
+<div class="card"><div class="h">Where it stands</div><div class="ln"><span>Contract</span><span>$1,284,000</span></div><div class="ln"><span>Changes signed (2)</span><span>+$18,450</span></div><div class="ln sum"><span>Revised sum</span><span>$1,302,450</span></div><div class="ln"><span>Billed so far</span><span>$486,200</span></div><div class="ln"><span>Paid so far</span><span>$445,000</span></div><div class="ln sum"><span>Balance to finish</span><span>$857,450</span></div></div>
+<div class="card"><div class="h">Next</div>Pay application 4, $41,200, is with your architect for the certificate. It is due 30 days after.</div>
+<div class="card"><div class="h">Each payment</div><div class="ln"><span>Pay application 3<small>Fri Sep 25 · receipt · lien waiver</small></span><span>$118,600</span></div><div class="ln"><span>Pay application 2<small>Fri Aug 28</small></span><span>$164,400</span></div></div></div>
+<div style="max-width:420px"><p class="note">Right, complete, and it reads like a bill. Nothing says what the $445,000 built, who checked it, or that the trades were paid. "Balance to finish" is the biggest number on the page and it is the one they still owe.</p></div></div>
+
+<h3>B · What your money built</h3>
+<p class="note">One card per pay application, newest first. Each names the work it covers, carries its photos, the architect's check, the waivers, and the receipt. The open one carries the button. The statement moves to the foot, folded.</p>
+<div class="row"><div class="phone"><div class="brand">Boerne Retail Shell <span class="es">Español</span></div><div class="note">with Click Construction</div><div class="tabs"><span>Home</span><span class="on">Money</span><span>Schedule</span><span>Papers</span><span>Messages</span></div>
+<div class="card move"><div class="h">Pay application 4 · September</div><div class="ln"><b>Roof deck, rough-in started, storefront glass</b><span><b>$41,200</b></span></div><div class="pics"><div></div><div></div><div></div></div><div class="check">With your architect, Jonah Vale, for the certificate since Tue Sep 29. Due 30 days after it.</div><span class="btn">Read the application</span></div>
+<div class="card"><div class="h">Pay application 3 · August <span class="pill ok">paid Fri Sep 25</span></div><div class="ln"><b>Slab, underground plumbing, framing to 40%</b><span>$118,600</span></div><div class="pics"><div></div><div></div><div></div></div><div class="check"><b>✓</b> Certified by Jonah Vale, Sep 22 &nbsp;<b>✓</b> 6 lien waivers, every trade on it paid Mon Sep 28</div><span class="btn">Receipt</span><span class="btn">Waivers</span></div>
+<div class="card"><div class="h">Pay application 2 · July <span class="pill ok">paid Fri Aug 28</span></div><div class="ln"><b>Site work, utilities, foundations</b><span>$164,400</span></div><div class="check"><b>✓</b> Certified &nbsp;<b>✓</b> 4 waivers</div></div>
+<div class="note" style="margin:6px 0">Pay application 1 · June · paid ›</div>
+<div class="card"><div class="h">The statement</div><div class="ln"><span>Contract + 2 changes you signed</span><span>$1,302,450</span></div><div class="ln"><span>Paid so far</span><span>$445,000</span></div><div class="note">All six lines ›</div></div></div>
+<div style="max-width:420px"><p class="note">The page is a story of the building. The number they owe sits under a sentence about roof decks and glass, next to the photos of it. Everything that makes a customer trust a bill is on the same card as the bill.</p></div></div>
+
+<h3>C · Progress first</h3>
+<p class="note">A header that reads like a project, not a ledger: percent built, money invested, on budget, no surprises. Then the one thing to do, then the history.</p>
+<div class="row"><div class="phone"><div class="brand">Boerne Retail Shell <span class="es">Español</span></div><div class="note">with Click Construction</div><div class="tabs"><span>Home</span><span class="on">Money</span><span>Schedule</span><span>Papers</span><span>Messages</span></div>
+<div class="card ok"><div class="big">37% built<small>$445,000 of $1,302,450 invested · 3 of 3 paid on time</small></div><div class="bar"><i style="width:37%"></i></div><div class="check"><b>✓</b> On budget: the sum is your contract plus the 2 changes you signed, nothing else.</div></div>
+<div class="card move"><div class="h">Coming up</div><b>Pay application 4 · $41,200</b><div class="covers">Roof deck, rough-in started, storefront glass. With your architect for the certificate; due 30 days after. Nothing to do yet.</div></div>
+<div class="card"><div class="h">After that</div><div class="ln"><span>Pay application 5 · October<small>roughly $120,000 to $140,000, about Nov 5</small></span></div><div class="ln"><span>Pay application 6 · November<small>about Dec 5</small></span></div><div class="note">Sizes follow the schedule; the real number comes with the application.</div></div>
+<div class="card"><div class="h">Paid</div><div class="ln"><span>Pay application 3<small>Sep 25 · certified · 6 waivers · receipt</small></span><span>$118,600</span></div><div class="ln"><span>Pay application 2<small>Aug 28 · certified · 4 waivers · receipt</small></span><span>$164,400</span></div><div class="ln"><span>Pay application 1<small>Jul 31 · certified · 3 waivers · receipt</small></span><span>$162,000</span></div></div>
+<div class="note">The statement, all six lines ›</div></div>
+<div style="max-width:420px"><p class="note">The first thing they read is a win. The forecast is the part the other shapes miss: a customer who knows a $130,000 application is coming Nov 5 has the money ready and does not feel ambushed. The risk is the rough size: it must be a range from the schedule, with the sentence that says so, or it becomes a promise.</p></div></div>
+
+<h3>D · The money timeline</h3>
+<p class="note">One line of events, oldest first: signed, paid, certified, with the trades, next. Reads like a receipt roll. Every event has a day and a thank-you where one is due.</p>
+<div class="row"><div class="phone"><div class="brand">Boerne Retail Shell <span class="es">Español</span></div><div class="note">with Click Construction</div><div class="tabs"><span>Home</span><span class="on">Money</span><span>Schedule</span><span>Papers</span><span>Messages</span></div>
+<div class="card"><div class="tl">
+<div class="ev"><b>Contract signed</b> · $1,284,000<small>Wed Sep 2</small></div>
+<div class="ev"><b>Pay application 1 paid</b> · $162,000<small>Fri Jul 31 · thank you · 3 trades paid Aug 3</small></div>
+<div class="ev"><b>Pay application 2 paid</b> · $164,400<small>Fri Aug 28 · thank you · 4 trades paid Aug 31</small></div>
+<div class="ev"><b>Change order 1 signed</b> · +$11,200<small>Fri Sep 18 · storefront glass</small></div>
+<div class="ev"><b>Change order 2 signed</b> · +$7,250<small>Thu Sep 24 · roof curbs</small></div>
+<div class="ev"><b>Pay application 3 paid</b> · $118,600<small>Fri Sep 25 · thank you · 6 trades paid Sep 28</small></div>
+<div class="ev open"><b>Pay application 4</b> · $41,200<small>with your architect since Sep 29 · due 30 days after the certificate</small></div>
+<div class="ev next"><b>Pay application 5</b><small>about Nov 5, for October</small></div>
+</div></div>
+<div class="card"><div class="ln"><span>Invested so far</span><span>$445,000</span></div><div class="ln"><span>To finish</span><span>$857,450</span></div></div></div>
+<div style="max-width:420px"><p class="note">Honest and easy to scan, and the "thank you · trades paid" line on every payment does real work. But a long job makes a long roll, there is no room for photos, and the open application is buried seventh.</p></div></div>
+
+<h2>3. The pick: C's header, B's cards <span class="pill ok">recommended</span></h2>
+<p class="note">Progress first, so the first read is a win and the forecast removes the ambush. Then each pay application as a card that tells what it built, who certified it and that the trades were paid. The six-line statement stays, folded at the foot, for the bookkeeper.</p>
+<div class="row"><div class="phone chosen"><div class="brand">Boerne Retail Shell <span class="es">Español</span></div><div class="note">with Click Construction</div><div class="tabs"><span>Home</span><span class="on">Money</span><span>Schedule</span><span>Papers</span><span>Messages</span></div>
+<div class="card ok"><div class="big">37% built<small>$445,000 of $1,302,450 invested · 3 of 3 paid on time</small></div><div class="bar"><i style="width:37%"></i></div><div class="check"><b>✓</b> The sum is your contract plus the 2 changes you signed. Nothing else.</div></div>
+<div class="card move"><div class="h">Pay application 4 · September</div><div class="ln"><b>Roof deck, rough-in started, storefront glass</b><span><b>$41,200</b></span></div><div class="pics"><div></div><div></div><div></div></div><div class="check">With your architect, Jonah Vale, for the certificate since Tue Sep 29. Due 30 days after it. Nothing to do yet.</div><span class="btn">Read the application</span></div>
+<div class="card"><div class="h">After that</div><div class="ln"><span>Pay application 5 · October<small>roughly $120,000 to $140,000, about Nov 5</small></span></div><div class="note">Sizes follow the schedule; the real number comes with the application.</div></div>
+<div class="card"><div class="h">Pay application 3 · August <span class="pill ok">paid Sep 25</span></div><div class="ln"><b>Slab, underground plumbing, framing to 40%</b><span>$118,600</span></div><div class="pics"><div></div><div></div><div></div></div><div class="check"><b>✓</b> Certified by Jonah Vale, Sep 22 &nbsp;<b>✓</b> 6 lien waivers, every trade on it paid Sep 28 &nbsp;<b>✓</b> Thank you</div><span class="btn">Receipt</span><span class="btn">Waivers</span></div>
+<div class="note" style="margin:6px 0">Pay applications 2 and 1 · paid ›</div>
+<div class="card"><div class="h">The statement</div><div class="ln"><span>Contract</span><span>$1,284,000</span></div><div class="ln"><span>Changes signed (2)</span><span>+$18,450</span></div><div class="note">All six lines ›</div></div>
+<div class="note">Pay by bank transfer (no fee) or by card (3%). Details on each application.</div></div>
+
+<div class="phone"><div class="brand">Helotes Dental Office <span class="es">Español</span></div><div class="note">with Click Construction</div><div class="tabs"><span>Home</span><span class="on">Money</span><span>Schedule</span><span>Papers</span><span>Messages</span></div>
+<div class="card ok"><div class="big">Getting started<small>$0 of $418,300 so far · first pay application about Nov 5</small></div><div class="bar"><i style="width:0"></i></div><div class="check"><b>✓</b> The sum is your contract plus the 1 change you signed. Nothing else.</div></div>
+<div class="card"><div class="h">How paying works</div>Once a month we send a pay application for that month's work, with photos. Your architect certifies it. Then it is due in 30 days. Every one comes with a lien waiver from every trade we paid.</div>
+<div class="card move"><div class="h">Waiting on your answer</div><div class="ln"><span>Change order 2 · a sink in exam 3</span><span class="pill w">+$2,150</span></div><div class="covers">Signing it adds it to the sum. Declining it changes nothing.</div></div>
+<div class="card"><div class="h">After that</div><div class="ln"><span>Pay application 1 · October<small>roughly $60,000 to $80,000, about Nov 5</small></span></div></div>
+<div class="card"><div class="h">The statement</div><div class="ln"><span>Contract</span><span>$412,000</span></div><div class="ln"><span>Changes signed (1)</span><span>+$6,300</span></div><div class="note">All six lines ›</div></div></div>
+</div>
+<p class="note" style="max-width:820px">The second phone is Priya, month zero: nothing paid, so the header says Getting started and the page teaches how paying works before the first bill ever comes. A customer who has read that paragraph in September does not call in November.</p>
+
+<h2>4. Is this the best we can do?</h2>
+<div class="rev"><ul>
+<li><b>Why not just B.</b> B is the warmest card but it starts on the open application, the thing they owe. C's header puts the win first and the forecast second, and that order is what changes how the ask lands.</li>
+<li><b>Why not just C.</b> C's history is a list of lines with "certified · 6 waivers" in small print. The photos and the covers sentence are what make a paid application feel like a purchase rather than a payment. B's card does that.</li>
+<li><b>The forecast is the risky line.</b> "Roughly $120,000 to $140,000" comes from the schedule of values and the look-ahead, and must say so. Shown as a range with the sentence under it, it is the single most calming thing on the page. Shown as one number, it is a promise we will miss.</li>
+<li><b>"Paid on time: 3 of 3" is earned, not given.</b> It appears only when it is true. A customer who paid late sees nothing there, not a scold. The page praises and never nags; the nagging is ours, by text, from Follow up.</li>
+<li><b>The thank-you is real work.</b> "Thank you · 6 trades paid Sep 28" tells them their money went where it should within days. Few GCs say it. It costs us one line we already know.</li>
+<li><b>Left out on purpose.</b> Our costs and margins, trade names on the waivers list (the waiver itself carries the name when opened), retainage math (a line in the statement, not the header), interest on late payment (in the reminder, never on this page), a pay-now button on an application the architect has not certified.</li>
+<li><b>Not sure of.</b> Whether the percent is money or schedule (money is honest and simple; schedule percent can run ahead or behind it). Whether the photos per application are picked by Wendi or are the three most recent of those weeks. Whether a card customer should see the 3% on the header or only on the application.</li>
+</ul></div>
+<p class="note" style="margin-top:14px">Pick one and I rebuild the Money tab in the prototype to match, with Priya's month-zero version.</p>
+</body></html>
