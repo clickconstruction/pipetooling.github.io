@@ -9,6 +9,8 @@ const seen = vi.hoisted(() => ({
   from: [] as { table: string; ops: [string, unknown[]][] }[],
   rpc: [] as { fn: string; args: unknown }[],
   answer: { data: [] as unknown, error: null as unknown },
+  /** Per table, when a test reads two tables. */
+  byTable: {} as Record<string, { data: unknown; error: unknown }>,
   rpcAnswer: { data: null as unknown, error: null as unknown },
 }))
 
@@ -19,7 +21,7 @@ vi.mock('../../supabase', () => {
       {
         get: (_t, key) =>
           key === 'then'
-            ? (ok: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve(seen.answer).then(ok, bad)
+            ? (ok: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => Promise.resolve(seen.byTable[rec.table] ?? seen.answer).then(ok, bad)
             : (...args: unknown[]) => {
                 rec.ops.push([String(key), args])
                 return builder(rec)
@@ -45,6 +47,7 @@ import {
   cutoffOf,
   lineChecksOf,
   loadBillDayCutoff,
+  loadJobSuperintendent,
   loadLineChecks,
   nothingOf,
   photoLinksOf,
@@ -79,6 +82,7 @@ beforeEach(() => {
   seen.from.length = 0
   seen.rpc.length = 0
   seen.answer = { data: [], error: null }
+  seen.byTable = {}
   seen.rpcAnswer = { data: null, error: null }
 })
 
@@ -132,6 +136,18 @@ describe('the reads', () => {
     expect(seen.from[0]?.ops.find(([op]) => op === 'eq')?.[1]).toEqual(['key', 'gc_bill_day_cutoff_days'])
     seen.answer = { data: null, error: { message: 'boom' } }
     expect(await loadBillDayCutoff()).toBe(6)
+  })
+})
+
+describe('the job’s superintendent', () => {
+  it('reads the first one assigned, with a phone when on file, and none when nobody is', async () => {
+    seen.byTable = {
+      project_superintendents: { data: [{ superintendent_id: 'u9' }], error: null },
+      users: { data: { name: ' Wendi ', phone: '(210) 555-0190' }, error: null },
+    }
+    expect(await loadJobSuperintendent('job-1')).toEqual({ name: 'Wendi', phone: '(210) 555-0190' })
+    seen.byTable = { project_superintendents: { data: [], error: null } }
+    expect(await loadJobSuperintendent('job-1')).toBeNull()
   })
 })
 

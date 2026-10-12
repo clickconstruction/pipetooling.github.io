@@ -18,7 +18,7 @@ The owner, the leaders and the controller see it.
 
 - **The top line** says where we stand across our jobs. It counts what customers paid us less what we paid the trades.
 - **Who owes us** lists each bill with money still open. A late bill comes first. A bill waiting on the architect comes last.
-- **Bill day** shows what each job would ask on the next bill day.
+- **Bill day** shows what each job would ask on the next bill day. The card's **From the trades** side shows each trade's draw against the day. See [get the trades' draws in](/help/get-the-trades-draws-in-and-checked-before-bill-day).
 - **The next weeks** show what comes in and goes out each week.
 - **Each job** shows its price, what we billed, what the customer owes and where we stand.
 - **What each job makes us** shows our fee, what buying out saved and the change orders. **Our own work** shows what our general conditions really cost against their budget.

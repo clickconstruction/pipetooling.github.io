@@ -124,6 +124,7 @@ import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
 import { loadCompanyPaperEntries, loadReceivedCoiLink, markCompanyCoiGood, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
 import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
+import { GcBillDayTrades } from '../components/gc/GcBillDayTrades'
 import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import type { ContractSendInput, ContractSendOutcome } from '../components/gc/GcCustomerContractSend'
@@ -228,7 +229,7 @@ import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { DailyLog, GcProject, GcState, ScopeBookStore, TradeChangeRequest } from '../lib/gc/types'
 import { partnerById } from '../lib/gc/lookups'
-import { gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
+import { billDayFromSearch, gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
 
 interface Loaded {
   customers: GcPickerCustomer[]
@@ -1315,6 +1316,19 @@ export default function GcProjects() {
     const laid = boardWithChanges && moneyRows ? billingStateForAll(boardWithChanges, moneyRows, ourIds) : null
     return laid && moneySchedules ? withSchedules(laid, moneySchedules) : laid
   }, [boardWithChanges, moneyRows, ourIds, moneySchedules])
+  // Bill day's From the trades (Messages cut 9): the trades' draws against the bill day for one job being built with a
+  // signed trade, opened at `billday=<projectId>` beside To the owner. The money team's, as Money is.
+  const billDayProjectId = billDayFromSearch(params)
+  const billDayJobs = useMemo(
+    () => (moneyState ? moneyState.projects.filter((p) => p.stage === 'building' && p.packages.some((k) => !k.selfPerform && k.sow?.status === 'signed')) : []),
+    [moneyState],
+  )
+  const setBillDayJob = (projectId: string | null) => {
+    const next = new URLSearchParams(params)
+    if (projectId) next.set('billday', projectId)
+    else next.delete('billday')
+    setParams(next, { replace: true })
+  }
 
   // Bill the customer (Owner Billing's O4a): the project's terms, its price as signed and its bills, read when
   // the window opens at `bill=<projectId>` and laid over the board's project with its change orders. The money
@@ -1711,7 +1725,28 @@ export default function GcProjects() {
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
-                  <GcMoney state={moneyState} schedulesRead={moneySchedules !== null} own={ownWork} />
+                  <GcMoney
+                    state={moneyState}
+                    schedulesRead={moneySchedules !== null}
+                    own={ownWork}
+                    fromTheTrades={{
+                      open: billDayProjectId !== null,
+                      onSwitch: (open) => setBillDayJob(open ? (billDayJobs[0]?.id ?? 'none') : null),
+                      view: (
+                        <GcBillDayTrades
+                          state={moneyState}
+                          jobs={billDayJobs}
+                          projectId={billDayProjectId}
+                          onPickJob={setBillDayJob}
+                          drawTables={drawTables}
+                          canWrite={canUseGcBuilding(role)}
+                          {...(canUseGcBuilding(role) ? { onOpenDraws: setDrawsWindow } : {})}
+                          onOpenBill={setBillWindow}
+                          onToOwner={() => setBillDayJob(null)}
+                        />
+                      ),
+                    }}
+                  />
                   {user && loaded && (
                     <GcMoneyMondayEmail
                       me={{ id: user.id, name: profileName ?? '' }}

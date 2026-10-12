@@ -148,6 +148,18 @@ export async function loadBillDayCutoff(): Promise<number> {
   return cutoffOf((data as { value_num?: number | null } | null)?.value_num ?? null)
 }
 
+/** The job's superintendent, for Ask to walk it: the first one assigned (`project_superintendents`), with a phone when on file. */
+export async function loadJobSuperintendent(projectId: string): Promise<{ name: string; phone: string | null } | null> {
+  const assigned = await supabase.from('project_superintendents').select('superintendent_id').eq('project_id', projectId)
+  checkSupabaseError(assigned, 'load the job’s superintendent')
+  const id = (assigned.data ?? []).map((r) => r.superintendent_id).find(Boolean)
+  if (!id) return null
+  const who = await supabase.from('users').select('name, phone').eq('id', id).maybeSingle()
+  checkSupabaseError(who, 'load the job’s superintendent')
+  const name = (who.data?.name ?? '').trim()
+  return name ? { name, phone: who.data?.phone ?? null } : null
+}
+
 /** A tap of the walk, by the kernels' line id: the percent seen or whether the stored material is on site. Returns the tap's id. */
 export async function recordLineCheck(tap: { drawId: string; sovId: string; weSee: number | null; onSite: boolean | null; photoUrl?: string; note?: string }): Promise<string> {
   const result = (await supabase.rpc('gc_record_line_check' as never, {
