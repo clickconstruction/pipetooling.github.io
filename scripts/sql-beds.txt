@@ -23,6 +23,7 @@ gc-owner-contract
 gc-customer-contacts
 quick-replies
 messages-spine
+quo-messages
 contract-clauses
 portal-customer-page
 customer-portal-papers
