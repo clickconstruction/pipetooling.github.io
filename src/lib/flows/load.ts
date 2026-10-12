@@ -12,6 +12,7 @@
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 import type { CompanyPaperRow } from '../gc/companyPapers'
 import type { FactId, FactMark, FlowKind } from './facts'
+import { docFactId } from './facts'
 import type { FactStamp, FlowStamps, JobStamps, LaneStamps, OffFlow, RoundStamp, StepSkip, StepWait } from './state'
 
 // ---------- the rows, as the query layer selects them ----------
@@ -75,7 +76,10 @@ export type ProjectRow = {
 }
 /** `gc_schedule_sends`: the start date letter. */
 export type ScheduleSendRow = { project_id: string; sent_on: string; sent_by: string | null }
-/** `gc_owner_pay_apps`, with cut 4's `paid_on`; `invoice_paid_on` is its invoice's paid day where the query joins it. */
+/**
+ * `gc_owner_pay_apps`, with cut 4's `paid_on`; `invoice_paid_on` is its invoice's paid day where a query has one, and
+ * `invoice_paid` says its invoice reads paid where none keeps the day (`flow_rows`).
+ */
 export type OwnerPayAppRow = {
   id: string
   project_id: string
@@ -84,6 +88,7 @@ export type OwnerPayAppRow = {
   certified_on: string | null
   paid_on: string | null
   invoice_paid_on?: string | null
+  invoice_paid?: boolean
 }
 /** `gc_owner_acceptances`: the customer accepted the work. */
 export type OwnerAcceptanceRow = { project_id: string; accepted_on: string }
@@ -99,6 +104,19 @@ export type PlanQuestionRow = { id: string; project_id: string; text: string; se
 export type RfiRow = { id: string; project_id: string; number: number; question: string; sent_to_architect_on: string | null; answered_on: string | null; needed_days: number }
 /** `gc_submittal_rounds` joined to its submittal for the job and the name. */
 export type SubmittalRoundRow = { id: string; project_id: string; name: string; round: number; to_architect_on: string | null; sent_on: string; answered_on: string | null }
+/** `person_contract_documents` as `flow_rows` gives them: a company's paper, with its Contract library document. */
+export type FlowPaperRow = CompanyPaperRow & { library_id?: string | null }
+/** `gc_paper_sends`: a paper of ours that went to them, the first send and each reminder. */
+export type PaperSendRow = { paper: string; project_id: string | null; sent_on: string; created_at: string }
+/** The names a board prints and the record a window opens by (`flow_rows`' card). */
+export type FlowCard = {
+  name: string
+  goes_by: string | null
+  company: string | null
+  trades: string[]
+  gc_company_id?: string | null
+  customer_id?: string | null
+}
 /** `contact_step_skips` (cut 4). A skip on a bid or a Pipeline job has no Per job lane to sit on. */
 export type StepSkipRow = { step_key: string; project_id: string | null; why: string; by_name: string; created_at: string; undone_at: string | null }
 
@@ -112,7 +130,13 @@ export type FlowRows = {
   portalLinks?: readonly PortalLinkRow[]
   tradeMessages?: readonly TradeMessageRow[]
   /** `person_contract_documents` keyed to them (the company's papers for a trade partner). */
-  papers?: readonly CompanyPaperRow[]
+  papers?: readonly FlowPaperRow[]
+  /** The papers of ours that went to them (`gc_paper_sends`), for the card's history. */
+  paperSends?: readonly PaperSendRow[]
+  /** Their page as the office opens it (`/t/<token>?preview=1`), for See their page. */
+  previewPath?: string | null
+  /** The names a board prints and the record a window opens by. */
+  card?: FlowCard
   invites?: readonly InviteRow[]
   packages?: readonly PackageRow[]
   quotes?: readonly QuoteRow[]
@@ -325,13 +349,14 @@ export function payAppRounds(rows: FlowRows, projectId: string): RoundStamp[] {
     .sort((a, b) => a.number - b.number)
     .map((a) => {
       const paid = a.paid_on ?? a.invoice_paid_on ?? null
+      const paidNoDay = !paid && a.invoice_paid === true
       const sent = dayOf(a.sent_on)
       return {
         key: a.id,
         name: `Pay app ${a.number}`,
         opened: a.sent_on,
         due: sent && p?.owner_pay_days ? ymdAddDays(sent, p.owner_pay_days) : null,
-        stamps: [paid ? stamp('payapp_paid', 'ok', paid) : stamp('payapp_paid', 'wait', a.sent_on)],
+        stamps: [paid || paidNoDay ? stamp('payapp_paid', 'ok', paid) : stamp('payapp_paid', 'wait', a.sent_on)],
       }
     })
 }
@@ -442,8 +467,37 @@ export function waitsOf(rows: FlowRows): StepWait[] {
   for (const a of rows.payApps ?? []) byJob.set(a.project_id, [...(byJob.get(a.project_id) ?? []), a])
   for (const [projectId, apps] of byJob) {
     const architect = rows.architectByProject?.[projectId]
-    const open = newest(apps.filter((a) => !a.certified_on && !a.paid_on && !a.invoice_paid_on), (a) => a.sent_on)
+    const open = newest(apps.filter((a) => !a.certified_on && !a.paid_on && !a.invoice_paid_on && !a.invoice_paid), (a) => a.sent_on)
     if (architect && open) out.push({ stepId: 'payapp', jobId: projectId, waitingOn: { contactId: architect, stepId: 'certify', since: dayOf(open.sent_on) ?? open.sent_on } })
+  }
+  return out
+}
+
+/**
+ * The facts on their library papers (a paper made in the New paper window, `doc:<uuid>`), one family for any of them:
+ * `:on_file` once one is signed or filed, `:signed` once signed (waiting on them while one is out to sign), `:sent` once
+ * one went to them, `:current` while the newest on file has no last day or one ahead (bad after it). The ids ride in
+ * `FactId`'s type, as a step's do.
+ */
+export function docStamps(rows: FlowRows, now: Date): FactStamp[] {
+  const byDoc = new Map<string, FlowPaperRow[]>()
+  for (const p of rows.papers ?? []) if (p.library_id) byDoc.set(p.library_id, [...(byDoc.get(p.library_id) ?? []), p])
+  const today = todayYmdInAppTz(now)
+  const id = (docId: string, kind: Parameters<typeof docFactId>[1]) => docFactId(docId, kind) as unknown as FactId
+  const out: FactStamp[] = []
+  for (const [docId, papers] of byDoc) {
+    const onDay = (r: FlowPaperRow) => r.signed_at ?? dayOf(r.created_at)
+    const kept = newest(papers.filter((r) => r.status === 'signed' || r.status === 'received'), onDay)
+    const signed = newest(papers.filter((r) => r.status === 'signed'), onDay)
+    const sent = newest(papers.filter((r) => r.sent_at), (r) => r.sent_at)
+    if (kept) out.push(stamp(id(docId, 'on_file'), 'ok', onDay(kept)))
+    if (signed) out.push(stamp(id(docId, 'signed'), 'ok', onDay(signed)))
+    else if (sent) out.push(stamp(id(docId, 'signed'), 'wait', dayOf(sent.sent_at)))
+    if (sent) out.push(stamp(id(docId, 'sent'), 'ok', dayOf(sent.sent_at)))
+    if (kept) {
+      const current = !kept.expires_at || kept.expires_at >= today
+      out.push(stamp(id(docId, 'current'), current ? 'ok' : 'bad', current ? onDay(kept) : kept.expires_at, null, kept.expires_at ?? null))
+    }
   }
   return out
 }
@@ -505,7 +559,7 @@ export function flowStampsFor(kind: FlowKind, rows: FlowRows, now: Date): FlowSt
   }
   const person =
     kind === 'trade'
-      ? lane([...inviteSentStamps(rows), ...portalStamps(rows), ...paperStamps(rows, now)])
+      ? lane([...inviteSentStamps(rows), ...portalStamps(rows), ...paperStamps(rows, now), ...docStamps(rows, now)])
       : kind === 'customer'
         ? lane(paperStamps(rows, now).filter((s) => s.fact === 'msa_signed'))
         : lane([])
