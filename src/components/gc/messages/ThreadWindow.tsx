@@ -1,15 +1,16 @@
 import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
 import { useMeasuredWidth } from '../../../hooks/useMeasuredWidth'
-import { contactById, initials, isOptedOut, kindWord, type Contact } from '../../../lib/contacts/kernel'
+import { contactById, firstName, initials, isOptedOut, kindWord, type Contact } from '../../../lib/contacts/kernel'
 import type { MessagesView } from '../../../lib/messages/messagesIo'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { stampSentence } from '../../../lib/messages/stamps'
 import { courtOf, threadOf, threadRows } from '../../../lib/messages/thread'
 import { isThreadFolded, reachOpen } from '../../../lib/messages/threadFold'
+import { tieSheetRows } from '../../../lib/messages/tieSheet'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { PhoneSheet } from '../../PhoneSheet'
 import { Chip, type Tone } from '../gcUi'
@@ -79,6 +80,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const [naming, setNaming] = useState(false)
   const [picker, setPicker] = useState<{ kind: 'add' } | { kind: 'tie'; messageId: string } | null>(null)
   const [tying, setTying] = useState<string | null>(null)
+  /** The line *Tie this message to* is open for: a phone's press and hold, or its *no job* (cut 10). */
+  const [tieSheetFor, setTieSheetFor] = useState<string | null>(null)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const contact = view ? contactById(view.contacts, contactId) : undefined
@@ -424,8 +427,11 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                         onJob={() =>
                           r.message.jobId && view?.tiles[r.message.jobId]
                             ? setJobFilter((f) => (f === r.message.jobId ? null : r.message.jobId))
-                            : setPicker({ kind: 'tie', messageId: r.message.id })
+                            : phone
+                              ? setTieSheetFor(r.message.id)
+                              : setPicker({ kind: 'tie', messageId: r.message.id })
                         }
+                        onHold={phone ? () => setTieSheetFor(r.message.id) : undefined}
                       />
                     ),
                   )}
@@ -458,6 +464,23 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
             onClose={() => setNaming(false)}
           />
         )}
+        {contact && tieSheetFor && (
+          <TieSheet
+            contactName={firstName(contact) || contact.name}
+            sheet={tieSheetRows(rail, view?.tiles ?? {}, contact.defaultJobId, allLines.find((m) => m.id === tieSheetFor)?.jobId ?? null)}
+            onPick={(key) => {
+              const messageId = tieSheetFor
+              setTieSheetFor(null)
+              void tie(messageId, key)
+            }}
+            onAnother={() => {
+              const messageId = tieSheetFor
+              setTieSheetFor(null)
+              setPicker({ kind: 'tie', messageId })
+            }}
+            onClose={() => setTieSheetFor(null)}
+          />
+        )}
         {contact && picker && (
           <JobPickerWindow
             title={picker.kind === 'add' ? `Put a job on ${contact.name}` : 'Tie this line to a job'}
@@ -476,5 +499,63 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
         )}
       </div>
     </div>
+  )
+}
+
+/**
+ * *Tie this message to* (cut 10, `phone-mockups.html` screen 1b): a sheet of the person's jobs, the one their new
+ * messages land on first, the line's own job marked; *Another job…* opens the job picker, a tied line offers *Untie it*.
+ */
+function TieSheet({
+  contactName,
+  sheet,
+  onPick,
+  onAnother,
+  onClose,
+}: {
+  contactName: string
+  sheet: ReturnType<typeof tieSheetRows>
+  /** A job's key, or null to untie the line so it sits on the person. */
+  onPick: (key: string | null) => void
+  onAnother: () => void
+  onClose: () => void
+}) {
+  const row: CSSProperties = { display: 'flex', alignItems: 'center', gap: '0.5rem', textAlign: 'left', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', borderRadius: 10, padding: '0.6rem 0.8rem', fontSize: '0.9rem', cursor: 'pointer' }
+  return (
+    <PhoneSheet label="Tie this message to" title="Tie this message to" width={480} dataAttrs={{ 'data-tie-sheet': '' }} onClose={onClose}>
+      <div style={{ display: 'grid', gap: '0.4rem', padding: '0.6rem 1rem 0.9rem', overflowY: 'auto' }}>
+        {sheet.rows.map((r) => (
+          <button
+            key={r.key}
+            type="button"
+            aria-pressed={r.here}
+            onClick={() => (r.here ? onClose() : onPick(r.key))}
+            style={{ ...row, ...(r.here ? { borderColor: 'var(--text-blue-500)', background: 'var(--bg-blue-tint)' } : null) }}
+          >
+            {r.star && (
+              <span aria-label="their default" style={{ color: 'var(--text-amber-800)' }}>
+                ★
+              </span>
+            )}
+            <span style={{ minWidth: 0 }}>
+              <strong>{r.num}</strong> {r.name}
+              <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{r.here ? 'tied here now' : r.words}</span>
+            </span>
+          </button>
+        ))}
+        <button type="button" onClick={onAnother} style={row}>
+          Another job…
+        </button>
+        {sheet.untie && (
+          <button type="button" onClick={() => onPick(null)} style={{ ...row, color: 'var(--text-red-700)' }}>
+            Untie it
+            <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>it stays on {contactName}</span>
+          </button>
+        )}
+        <button type="button" onClick={onClose} style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', padding: '0.6rem', fontSize: '0.95rem', cursor: 'pointer' }}>
+          Cancel
+        </button>
+      </div>
+    </PhoneSheet>
   )
 }

@@ -1,5 +1,9 @@
 import { useDroppable } from '@dnd-kit/core'
-import type { CSSProperties, ReactNode } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { LONG_PRESS_MS, useLongPress } from '../../../hooks/useLongPress'
+
+/** How far a finger may travel and still be a hold: `useLongPress`'s own tolerance. */
+const HOLD_TRAVEL_PX = 10
 import type { JobTile } from '../../../lib/messages/jobTiles'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { callLength, channelWord, clockTime, isLong, type ThreadMessage } from '../../../lib/messages/thread'
@@ -8,7 +12,9 @@ import { callLength, channelWord, clockTime, isLong, type ThreadMessage } from '
  * Messages, cut 1's screens: one line of a thread (the prototype's `.msg`, v1.178). Its meta (the channel and a call's
  * length, who, its job), its words (four lines until opened, or all of them), and its time on the last line when there
  * is room, the way a phone's bubbles do (v1.156). Within one day a line tied to the same job as the one above shows the
- * job's number alone (v1.158). A press anywhere but a button opens the message window.
+ * job's number alone (v1.158). A press anywhere but a button opens the message window. On a phone a press and hold
+ * opens *Tie this message to* (cut 10, `onHold`): the line darkens once the hold is long enough, and the sheet opens as
+ * the finger lifts, so it never opens under the finger; a finger that moves is a scroll.
  */
 export function ThreadLine({
   message,
@@ -22,6 +28,7 @@ export function ThreadLine({
   onOpen,
   onTie,
   onJob,
+  onHold,
 }: {
   message: ThreadMessage
   tile: JobTile | undefined
@@ -40,9 +47,59 @@ export function ThreadLine({
   onTie: () => void
   /** A press on the line's job tag: the job's tiles filter, or a line with no job asks for one. */
   onJob: () => void
+  /** Press and hold the line: *Tie this message to* (a phone's, cut 10). Absent: a hold does nothing. */
+  onHold?: () => void
 }) {
   const tieable = !isSentLine(message)
   const { setNodeRef, isOver } = useDroppable({ id: `line:${message.id}`, disabled: !tieable, data: { messageId: message.id } })
+  const holds = Boolean(onHold) && tieable
+  const hold = useLongPress(() => onHold?.(), { disabled: !holds })
+  // The hold's look: dark once it is long enough, so the person knows to lift. It ends with the hold: a lift, a leave,
+  // a cancel, or a finger that travels as far as useLongPress calls a scroll.
+  const [ready, setReady] = useState(false)
+  const readyTimer = useRef<number | null>(null)
+  const startAt = useRef<{ x: number; y: number } | null>(null)
+  const unready = () => {
+    if (readyTimer.current !== null) window.clearTimeout(readyTimer.current)
+    readyTimer.current = null
+    startAt.current = null
+    setReady(false)
+  }
+  useEffect(
+    () => () => {
+      if (readyTimer.current !== null) window.clearTimeout(readyTimer.current)
+    },
+    [],
+  )
+  const holdHandlers = holds
+    ? {
+        ...hold.handlers,
+        onPointerDown: (e: ReactPointerEvent) => {
+          hold.handlers.onPointerDown(e)
+          unready()
+          if (e.button !== 0) return
+          startAt.current = { x: e.clientX, y: e.clientY }
+          readyTimer.current = window.setTimeout(() => setReady(true), LONG_PRESS_MS)
+        },
+        onPointerMove: (e: ReactPointerEvent) => {
+          hold.handlers.onPointerMove(e)
+          const at = startAt.current
+          if (at && (Math.abs(e.clientX - at.x) > HOLD_TRAVEL_PX || Math.abs(e.clientY - at.y) > HOLD_TRAVEL_PX)) unready()
+        },
+        onPointerUp: () => {
+          hold.handlers.onPointerUp()
+          unready()
+        },
+        onPointerLeave: () => {
+          hold.handlers.onPointerLeave()
+          unready()
+        },
+        onPointerCancel: () => {
+          hold.handlers.onPointerCancel()
+          unready()
+        },
+      }
+    : {}
   const folded = !showAll && isLong(message)
   const time = clockTime(message.at)
   const side = message.direction === 'out' ? 'flex-end' : 'flex-start'
@@ -61,7 +118,10 @@ export function ThreadLine({
         role="button"
         tabIndex={0}
         aria-label={`${channelWord(message)} ${message.direction === 'in' ? 'from' : message.direction === 'out' ? 'to' : 'by'} ${message.who || 'them'}, ${time}. Open it.`}
+        data-holding={ready || undefined}
+        {...holdHandlers}
         onClick={(e) => {
+          if (holds && hold.consumeLongPress()) return
           if ((e.target as HTMLElement).closest('button, a')) return
           if (tying && tieable) onTie()
           else onOpen()
@@ -76,8 +136,11 @@ export function ThreadLine({
           padding: '0.5rem 0.7rem',
           maxWidth: 'min(640px, 92%)',
           cursor: tying && tieable ? 'copy' : 'pointer',
-          outline: marked ? '2px solid var(--text-blue-500)' : isOver ? '2px dashed var(--text-blue-500)' : 'none',
+          outline: marked || ready ? '2px solid var(--text-blue-500)' : isOver ? '2px dashed var(--text-blue-500)' : 'none',
           outlineOffset: 2,
+          ...(ready ? { filter: 'brightness(0.94)' } : null),
+          // A hold is the press here, so the phone's own text menu stays shut.
+          ...(holds ? { WebkitTouchCallout: 'none', userSelect: 'none', WebkitUserSelect: 'none' } : null),
         }}
       >
         <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
