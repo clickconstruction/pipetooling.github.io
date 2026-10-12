@@ -664,6 +664,8 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.112, 2026-10-11**: a step box keeps its name on one line; when the day and the tag do not fit beside it they
+  drop to a second line at the right, instead of the name breaking in two (the owner, 2026-10-11, the 280 px panel).
 - **v1.111, 2026-10-11**: the panel's title is the flow's own name, *Customer flow*, *Trade partner flow*, *Architect
   flow*, the words of the editor's tabs, and *The flow* for a number nobody has named; the person's name is in the
   thread header beside it and is not said twice (the owner's pick, 2026-10-11). The rail's hover card says the same.

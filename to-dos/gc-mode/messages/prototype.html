@@ -62,9 +62,10 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .flow .lane{border:1px solid var(--border);border-radius:10px;padding:8px;background:var(--surface)}
 .flow .lane .t{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
 .flow .boxes{display:flex;flex-direction:column;align-items:stretch;gap:2px}
-.flow .box{border:1px solid var(--border);border-radius:7px;padding:6px 9px;background:var(--surface);position:relative;display:flex;align-items:center;gap:6px 8px;font-size:12.5px;flex-wrap:wrap}
-.flow .box>span:first-child{flex:1 1 auto}
-.flow .box>span:first-child{flex:1;min-width:0}
+.flow .box{border:1px solid var(--border);border-radius:7px;padding:6px 9px;background:var(--surface);position:relative;display:flex;align-items:center;justify-content:flex-end;gap:4px 8px;font-size:12.5px;flex-wrap:wrap}
+.flow .box>span:first-child{flex:1 0 auto}
+.flow .box .tags{display:inline-flex;align-items:center;gap:8px;flex:none;margin-left:auto}
+.flow .box .tags:empty{display:none}
 .flow .box.done{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
 .flow .box.now{background:var(--warn-soft);border-color:var(--warn);color:var(--warn);font-weight:600}
 .flow .box.dec{border-left:4px solid #c9b7ea}
@@ -1394,8 +1395,8 @@ function flowPanelHtml(c){ const flow=FLOWS[c.kind]||[]; const st=S(c);
     const dayTag = day ? `<span class="day ${day.late?'late':''}" data-tip="${day.late?'Late':'Due'}|${esc(day.day)}.|The nudge fires off the day, not only off silence.">${esc(day.words)}</span>` : '';
     const pm = (s==='now'||s==='lapsed'||s==='skipped') ? '' : paperMark(c,step);
     const press=`onclick="stepCard('${c.id}','${step.id}')"`; const tip=`data-tip="${esc(step.name)}|${s==='done'?'Done: '+esc(st.when[step.id]||step.done):s==='lapsed'?esc(lapsedWhy(c,step))+'.':s==='now'?'On now. Finished when '+esc(step.done)+'.':s==='skipped'?'Skipped for '+esc(firstName(c))+'.':'Not yet. Finished when '+esc(step.done)+'.'}|Press for the step's card: the facts, the papers, what to do."`;
-    if(step.loop){ const rounds=(sub.rounds[step.id]||[]); return `<div class="loop"><span class="lt">${esc(step.loop)}${rounds.length?` · ${rounds.length} so far`:''}</span><span class="box ${s==='lapsed'?'now':s} ${cardOpen&&cardOpen.stepId===step.id?'pressed':''}" id="fstep-${step.id}" ${press} ${tip}><span>${esc(step.name)}</span>${dayTag}${pm}${tag}</span>${rounds.length?`<span class="rounds">${rounds.map(r=>`<span class="${r.s==='done'?'done':r.s==='now'?'now':''}" title="${esc(r.words||r.when||'')}">${esc(r.n)}${r.stage?' · '+esc(r.stage):''}</span>`).join('')}</span>`:`<span class="rounds"><span>none yet</span></span>`}</div>`; }
-    return `<span class="box ${s==='lapsed'?'now':s} ${step.dec?'dec':''} ${cardOpen&&cardOpen.stepId===step.id?'pressed':''}" id="fstep-${step.id}" ${press} ${tip}><span>${esc(step.name)}${step.dec?' <span class="note">· a fork</span>':''}</span>${dayTag}${pm}${tag}</span>`; };
+    if(step.loop){ const rounds=(sub.rounds[step.id]||[]); return `<div class="loop"><span class="lt">${esc(step.loop)}${rounds.length?` · ${rounds.length} so far`:''}</span><span class="box ${s==='lapsed'?'now':s} ${cardOpen&&cardOpen.stepId===step.id?'pressed':''}" id="fstep-${step.id}" ${press} ${tip}><span>${esc(step.name)}</span><span class="tags">${dayTag}${pm}${tag}</span></span>${rounds.length?`<span class="rounds">${rounds.map(r=>`<span class="${r.s==='done'?'done':r.s==='now'?'now':''}" title="${esc(r.words||r.when||'')}">${esc(r.n)}${r.stage?' · '+esc(r.stage):''}</span>`).join('')}</span>`:`<span class="rounds"><span>none yet</span></span>`}</div>`; }
+    return `<span class="box ${s==='lapsed'?'now':s} ${step.dec?'dec':''} ${cardOpen&&cardOpen.stepId===step.id?'pressed':''}" id="fstep-${step.id}" ${press} ${tip}><span>${esc(step.name)}${step.dec?' <span class="note">· a fork</span>':''}</span><span class="tags">${dayTag}${pm}${tag}</span></span>`; };
   const lanes=flow.map(l=>`<div class="lane"><div class="t">${esc(l.lane)}${l.lane==='Per job'&&c.jobs.length?` · <span class="whowrap"><button type="button" class="lanepick" data-tip="Which job|The per-job lane is drawn for one job at a time; this lists ${esc(firstName(c))}'s jobs with the step each is on.|The default job opens first." onclick="laneJobPicker('${c.id}',this)">${esc(jobById(laneJobOf(c))?.name||'')} ▾</button></span>`:''}</div><div class="boxes">${l.steps.map((s,i)=>(i?'<div class="arr">↓</div>':'')+box(s)).join('')}</div></div>`).join('');
   const nowStep=st.now?stepById(c.kind,st.now):null; const lapsed=flat(c.kind).filter(s=>stepState(c,s.id)==='lapsed'); const k=courtOf(c); const day=nowStep?stepDay(c,nowStep):null;
   const next = st.off ? `<b>Off the flow.</b> ${esc(firstName(c))}'s last step was ${esc(stepById(c.kind,st.done[st.done.length-1])?.name||'')}${st.outcome?': '+esc(st.outcome):''}. A new ask or a new bid starts the flow again.`
