@@ -44,9 +44,11 @@ describe('GC project links', () => {
 })
 
 describe('how Trade partners shows its companies', () => {
-  it('reads ?by= as the list or the board by step, and anything else as the view’s first', () => {
+  it('reads ?by= as the list or a board, and anything else as the view’s first', () => {
     expect(gcBoardByFromSearch(new URLSearchParams('view=partners&by=step'))).toBe('step')
     expect(gcBoardByFromSearch(new URLSearchParams('by=list'))).toBe('list')
+    expect(gcBoardByFromSearch(new URLSearchParams('by=company'))).toBe('company')
+    expect(gcBoardByFromSearch(new URLSearchParams('by=trade'))).toBe('trade')
     expect(gcBoardByFromSearch(new URLSearchParams('by=columns'))).toBeNull()
     expect(gcBoardByFromSearch(new URLSearchParams(''))).toBeNull()
   })

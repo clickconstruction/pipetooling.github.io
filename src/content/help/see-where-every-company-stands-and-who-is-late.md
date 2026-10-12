@@ -2,7 +2,7 @@
 title: see where every company stands and who is late
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: trade partners, by step, board, flow, steps, late, lapsed, over usual, waiting, needs a hand, tiles, papers, quote, remind, ask for papers, off the flow
+keywords: trade partners, by step, by company, by trade, board, flow, steps, late, lapsed, over usual, waiting, needs a hand, tiles, papers, quote, remind, ask for papers, off the flow, portal
 order: 95
 ---
 By step shows every trade partner on the step of the flow they are on. The late ones come first, in red. One look tells you who needs a call today.
@@ -70,6 +70,27 @@ Nothing goes to a company until you press Send.
 1. Pick a job in the list that starts on All jobs. Every row and tile keeps that job only.
 2. Pick a seat in the list that starts on Everyone's seat. You see the steps in that person's seat, and every step that is theirs to move.
 3. Pick All jobs and Everyone's seat again to see everyone.
+
+## See one row for each company
+
+1. Press {{button:outline|By company}} at the top.
+2. Each company has one row, so its name shows once.
+
+- The dots show the steps a company goes through once. A green dot is done. An orange ring is the step on now. A filled orange dot has lapsed.
+- **On now** shows the step, whose move it is and how long it has taken. Over usual shows in orange.
+- **Per job** has a line for each job with its step and its day. A job that ended says declined or not carried.
+- **Portal** says opened when the company has opened its portal, and never when it has not.
+
+Press {{button:outline|Open}} on a row to open the company's window on the Flow tab.
+
+## See them by trade
+
+1. Press {{button:outline|By trade}} at the top.
+2. Each trade has a row, A to Z. The counts for the trade sit under its name.
+3. Each company shows the step it is on, its job and its day.
+4. Press a company to open its window on the Flow tab.
+
+The late ones come first, in red. The companies off the flow come last. A company with two trades on its record shows under each trade. A company with no trade sits under **No trade yet**.
 
 ## See who is off the flow
 

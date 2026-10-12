@@ -1,17 +1,20 @@
 import type { ReactNode } from 'react'
 import { useFlowBoard } from '../../../hooks/useFlowBoard'
 import { companyAtForStep, customerAtForStep } from '../../../lib/flows/boardOpen'
+import { portalCellWords } from '../../../lib/flows/boardRead'
 import type { BoardLine } from '../../../lib/flows/board'
 import type { BoardBy } from '../../../lib/gc/links'
 import { useCompanyOpener } from '../gcCompanyOpener'
 import { useCustomerOpener } from '../gcCustomerOpener'
+import { GcBoardByCompany } from './GcBoardByCompany'
 import { GcBoardByStep, type BoardPresses } from './GcBoardByStep'
+import { GcBoardByTrade } from './GcBoardByTrade'
 
 /**
  * Trade partners' and Customers' boards (Messages cut 4): the strip of views, the read (`useFlowBoard`), and where each
- * press goes. A chip or a dot opens the person's own window on its Flow tab, the prototype's row press. The row's nudge
- * opens the first company's paper with its send, Open the compare goes to the project's card, and Invite a company goes
- * to the list, where a company is added.
+ * press goes. A chip, a dot or a company's row opens the person's own window on its Flow tab, the prototype's row
+ * press. The row's nudge opens the first company's paper with its send, Open the compare goes to the project's card,
+ * and Invite a company goes to the list, where a company is added.
  */
 
 /** A chip's or a dot's press: their window on its Flow tab, which finds them by their record (`findFlowContactId`). */
@@ -21,8 +24,13 @@ const VIEWS: Record<'trade' | 'customer', readonly [BoardBy, string][]> = {
   trade: [
     ['list', 'List'],
     ['step', 'By step'],
+    ['company', 'By company'],
+    ['trade', 'By trade'],
   ],
-  customer: [['step', 'By step']],
+  customer: [
+    ['step', 'By step'],
+    ['company', 'By company'],
+  ],
 }
 
 export function GcFlowBoard({
@@ -52,7 +60,7 @@ export function GcFlowBoard({
   const companyOpener = useCompanyOpener()
   const customerOpener = useCustomerOpener()
 
-  // A chip or a dot: their window on its Flow tab.
+  // A chip, a dot, or a company's row on By company or By trade: their window on its Flow tab.
   const openFlow = (contactId: string) => {
     const ref = board.read?.refs[contactId]
     if (kind === 'trade' && ref?.companyId) companyOpener?.openPartner(ref.companyId, FLOW_TAB)
@@ -111,6 +119,15 @@ export function GcFlowBoard({
         <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{board.error}</div>
       ) : !board.ctx || !board.read ? (
         <div style={{ fontSize: '0.875rem' }}>Reading where everyone stands…</div>
+      ) : shown === 'company' ? (
+        <GcBoardByCompany
+          ctx={board.ctx}
+          companies={board.read.companies}
+          portal={(contactId) => portalCellWords(board.flow, board.read?.readings[contactId], null)}
+          onOpen={(contactId) => openFlow(contactId)}
+        />
+      ) : shown === 'trade' ? (
+        <GcBoardByTrade ctx={board.ctx} companies={board.read.companies} onOpen={(c) => openFlow(c.contactId)} />
       ) : (
         <GcBoardByStep ctx={board.ctx} companies={board.read.companies} presses={presses} />
       )}

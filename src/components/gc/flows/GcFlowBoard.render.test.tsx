@@ -89,6 +89,17 @@ describe('GcFlowBoard', () => {
     expect(openCustomer).toHaveBeenCalledWith('cu-priya', { tab: 'flow' })
   })
 
+  it('shows By company with the Portal column and By trade, each opening the company on its Flow tab', () => {
+    const { unmount } = withOpeners(<GcFlowBoard kind="trade" by="company" list={<p>The list as it was</p>} {...page} />)
+    expect(screen.getByRole('button', { name: 'By trade' })).toBeTruthy()
+    fireEvent.click(within(document.querySelector('[data-board-company="bill"]') as HTMLElement).getByRole('button', { name: 'Open' }))
+    expect(openPartner).toHaveBeenLastCalledWith('co-bill', { tab: 'flow' })
+    unmount()
+    withOpeners(<GcFlowBoard kind="trade" by="trade" list={<p>The list as it was</p>} {...page} />)
+    fireEvent.click(within(document.querySelector('[data-board-trade="Structural steel"]') as HTMLElement).getByRole('button', { name: /Bexar Steel Erectors/ }))
+    expect(openPartner).toHaveBeenLastCalledWith('co-tom', { tab: 'flow' })
+  })
+
   it('says it is reading, and says what went wrong in words', () => {
     board = { ...fromFixtures('trade'), read: null, ctx: null, loading: true }
     const { unmount } = withOpeners(<GcFlowBoard kind="trade" by="step" list={<p>The list as it was</p>} {...page} />)
