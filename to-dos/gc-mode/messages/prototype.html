@@ -893,11 +893,12 @@ const FLOWS = {
       {id:'closeout', name:'Closeout', es:'Cierre', who:'them', facts:['final_waiver'], papers:['final_waiver'], nudge:{days:7, how:'an email', send:'ask'}, usual:9} ]} ],
   customer: [
     {lane:'Once', steps:[
+      {id:'agreement', name:'Master agreement', es:'Acuerdo marco', who:'them', facts:['msa_signed'], papers:['msa'], nudge:{days:5, how:'a call', send:'ask'}, usual:10} ]},
+    {lane:'Per job', steps:[
       {id:'asked', name:'Asked us', es:'Nos consultó', who:'them', facts:['asked_us'], papers:[], nudge:null, usual:1},
       {id:'bid', name:'Our bid', es:'Nuestra oferta', who:'us', seat:'Rosa', facts:['bid_sent'], papers:['bid'], nudge:null, usual:9},
       {id:'yes', name:'Said yes', es:'Aceptó', who:'them', dec:true, facts:['said_yes','declined'], join:'or', papers:[], nudge:{days:5, how:'a call', send:'ask'}, usual:6},
-      {id:'contract', name:'Contract signed', es:'Contrato firmado', who:'them', facts:['contract_signed'], papers:['contract'], nudge:{days:3, how:'a text', send:'ask'}, usual:4} ]},
-    {lane:'Per job', steps:[
+      {id:'contract', name:'Contract signed', es:'Contrato firmado', who:'them', facts:['contract_signed'], papers:['contract'], nudge:{days:3, how:'a text', send:'ask'}, usual:4},
       {id:'start', name:'Start date', es:'Fecha de inicio', who:'us', seat:'Rosa', facts:['start_sent'], papers:['schedule'], nudge:null, usual:3},
       {id:'onsite', name:'On site', es:'En obra', who:'us', seat:'Rosa', facts:['started'], papers:[], nudge:null, usual:10},
       {id:'payapp', name:'Pay application', es:'Solicitud de pago', who:'both', loop:'each month', facts:['payapp_paid'], papers:['payapp'], nudge:{days:5, how:'a text', send:'ask', day:'pay by'}, usual:21},
@@ -921,7 +922,7 @@ const FACTS = [
   {id:'portal_opened', text:'they opened their portal', small:'their first visit to their link (half today: their press on Got it)', group:'Their portal'},
   {id:'w9_signed', text:'their W-9 is signed', small:"a W-9 on the company's Documents, signed", group:'Papers', paper:'w9'},
   {id:'coi_current', text:'their insurance is current', small:'a certificate on file whose expiry is ahead of today', group:'Papers', paper:'coi'},
-  {id:'msa_signed', text:'the master agreement is signed', small:"the MSA on the company's Documents, signed", group:'Papers', paper:'msa', ours:true},
+  {id:'msa_signed', text:'the master agreement is signed', small:"the MSA on the company's Documents, signed. A customer signs one only when they are a repeat customer", group:'Papers', paper:'msa', ours:true},
   {id:'quote_in', text:'their quote is in the portal', small:'a quote submitted on the ask (gc_quotes.submitted_on)', group:'Their portal', paper:'quote'},
   {id:'tab_seen', text:'they saw the bid results', small:'the shared tab opened (gc_bid_tab_views)', group:'Their portal'},
   {id:'carried', text:'we carried their quote', small:'their quote in our number (gc_trade_packages.carried_invite_id)', group:'Our number'},
@@ -930,7 +931,7 @@ const FACTS = [
   {id:'draw_approved', text:'the draw is approved', small:'a draw of theirs approved by us (gc_draws.approved_on)', group:'Money'},
   {id:'draw_paid', text:'the draw is paid', small:'a draw of theirs paid (gc_draws.paid_on)', group:'Money', paper:'waiver'},
   {id:'final_waiver', text:'the unconditional final waiver is in', small:"the final draw's waiver, unconditional (gc_draws.waiver_on)", group:'Papers', paper:'final_waiver'},
-  {id:'asked_us', text:'they asked us', small:'the first conversation or the plans came in (gc_customer_contacts.contacted_on)', group:'Their portal'},
+  {id:'asked_us', text:'they asked us', small:'the ask or the plans came in for this job (gc_projects.created_on or the first gc_plan_sets.issued_on)', group:'Their portal'},
   {id:'bid_sent', text:'our bid went', small:'gc_projects.our_bid_sent_on', group:'Papers', paper:'bid', ours:true},
   {id:'said_yes', text:'they said yes', small:'the stage moved to buyout (the day is one of the four gaps)', group:'Our number'},
   {id:'declined', text:'they declined', small:'gc_projects.lost_on with its reason', group:'Our number'},
@@ -954,7 +955,7 @@ const A_PAPER = {coi:'A certificate', w9:'A W-9', msa:'An agreement', sow:'A sta
 const aPaper = p => A_PAPER[p] || ('A '+(PAPER_SHORT[p]||p));
 const PAPER_SHORT = {invitation:'email', w9:'W-9', coi:'insurance', msa:'MSA', quote:'quote', sow:'SOW', waiver:'waiver', final_waiver:'final waiver', bid:'bid', contract:'contract', schedule:'schedule', payapp:'pay app', co:'CO', plans:'plans', addendum:'addendum', submittal:'submittal', certificate:'certificate'};
 const FACT_WISHES = []; // facts the office asked for that the app does not keep yet (the editor's Ask for a fact)
-const FLOW_HISTORY = {trade:[{by:'Robert', when:'Sep 12, 9:00 AM', what:'the flow drawn, nine steps'}, {by:'Rosa', when:'Sep 20, 2:10 PM', what:'Papers in: the nudge from 3 days to 5, a call'}], customer:[{by:'Rosa', when:'Sep 12, 9:30 AM', what:'the flow drawn, ten steps'}], arch:[{by:'Robert', when:'Sep 12, 9:40 AM', what:'the flow drawn, five steps'}]};
+const FLOW_HISTORY = {trade:[{by:'Robert', when:'Sep 12, 9:00 AM', what:'the flow drawn, nine steps'}, {by:'Rosa', when:'Sep 20, 2:10 PM', what:'Papers in: the nudge from 3 days to 5, a call'}], customer:[{by:'Rosa', when:'Sep 12, 9:30 AM', what:'the flow drawn, ten steps'}, {by:'Robert', when:'Oct 2, 11:40 AM', what:'Once holds the master agreement; the ask, the bid, the yes and the contract moved to Per job'}], arch:[{by:'Robert', when:'Sep 12, 9:40 AM', what:'the flow drawn, five steps'}]};
 const flowName = c => c.kind==='unknown' ? 'The flow' : ({customer:'Customer flow', trade:'Trade partner flow', arch:'Architect flow'})[c.kind];
 const flat = kind => (FLOWS[kind]||[]).flatMap(l=>l.steps);
 const stepById = (kind,id) => flat(kind).find(s=>s.id===id);
@@ -968,7 +969,7 @@ const PAPERS = {
   greg: {invitation:{state:'sent', on:'Sep 8', words:'went Tue Sep 8'}, w9:{state:'signed', on:'Sep 12', words:'signed in their portal, Sat Sep 12'}, coi:{state:'expired', on:'Sep 30', words:'the certificate on file ran out Wed Sep 30'}, msa:{state:'signed', on:'Sep 14', words:'signed in their portal, Mon Sep 14'}},
   bill: {invitation:{state:'sent', on:'Sep 8', words:'went Tue Sep 8'}, w9:{state:'signed', on:'Sep 9', words:'signed in their portal, Wed Sep 9'}, coi:{state:'current', on:'Sep 9', expires:'Mar 1, 2027', words:'current to Mar 1, 2027'}, msa:{state:'signed', on:'Sep 10', words:'signed in their portal, Thu Sep 10'}, quote:{state:'in', on:'Sep 29', words:'came Tue Sep 29'}},
   tom: {invitation:{state:'sent', on:'Sep 25', words:'went Fri Sep 25'}, w9:{state:'signed', on:'Sep 29', words:'signed in their portal, Tue Sep 29'}, coi:{state:'none'}, msa:{state:'none'}},
-  elena: {bid:{state:'sent', on:'Aug 20', words:'went Thu Aug 20'}, contract:{state:'signed', on:'Sep 2', words:'signed Wed Sep 2'}, schedule:{state:'sent', on:'Sep 8', words:'went Tue Sep 8'}, payapp:{state:'sent', on:'Sep 28', words:'pay app 4 went Mon Sep 28, with the architect for his certificate'}},
+  elena: {msa:{state:'signed', on:'Aug 4', words:'signed in her portal, Tue Aug 4'}, bid:{state:'sent', on:'Aug 20', words:'went Thu Aug 20'}, contract:{state:'signed', on:'Sep 2', words:'signed Wed Sep 2'}, schedule:{state:'sent', on:'Sep 8', words:'went Tue Sep 8'}, payapp:{state:'sent', on:'Sep 28', words:'pay app 4 went Mon Sep 28, with the architect for his certificate'}},
   priya: {bid:{state:'sent', on:'Sep 10', words:'went Thu Sep 10'}, contract:{state:'signed', on:'Sep 19', words:'signed Sat Sep 19'}, schedule:{state:'none'}},
   jonah: {plans:{state:'in', on:'Sep 15', words:'filed Tue Sep 15'}, addendum:{state:'in', on:'Oct 2', words:'Addendum 2 filed today'}},
   marcus: {bid:{state:'sent', on:'Sep 21', words:'went Mon Sep 21'}},
@@ -983,10 +984,10 @@ const FLOW_STATE = {
     perJob:{boerne:{now:'ask'}, padb:{now:'ask', words:'not asked yet', due:D(10,22), since:D(9,22)}, stoneoak:{done:['ask','compare','sow'], now:'draws', rounds:{draws:[{n:'Draw 1',s:'done'},{n:'Draw 2',s:'now'}]}}}, notes:{}, skipped:{}, waiting:{}},
   bill: {done:['invited','portal','papers','msa','ask'], now:'compare', since:{compare:D(9,29,14)}, when:{invited:'Rosa sent the invitation, Tue Sep 8', portal:'Bill opened his portal, Tue Sep 8', papers:'done Wed Sep 9', msa:'signed Thu Sep 10', ask:'his quote came Tue Sep 29'}, rounds:{ask:[{n:'Boerne Shell',s:'done',when:'came Tue Sep 29'}]}, notes:{}, skipped:{}, waiting:{}},
   tom:  {done:['invited','portal'], now:'papers', since:{papers:D(9,28)}, when:{invited:'Rosa sent the invitation, Fri Sep 25', portal:'Tom pressed Got it on his welcome, Mon Sep 28'}, rounds:{ask:[{n:'Boerne Shell',s:'next',due:D(10,8),words:'bid Thu Oct 8, not asked yet'}]}, notes:{papers:[{by:'Rosa', when:'Thu Oct 1', text:'Their broker renews the policy Nov 1; the certificate comes after.'}]}, skipped:{}, waiting:{}},
-  priya:{done:['asked','bid','yes','contract'], now:'start', since:{start:D(9,19)}, when:{asked:'She called, Tue Sep 1', bid:'our bid went Thu Sep 10', yes:'she said yes Fri Sep 18', contract:'signed Sat Sep 19'}, rounds:{payapp:[], co:[]}, notes:{}, skipped:{}, waiting:{}},
-  elena:{done:['asked','bid','yes','contract','start','onsite'], now:'payapp', since:{payapp:D(9,28)}, when:{asked:'The plans came in, Tue Aug 11', bid:'our bid went Thu Aug 20', yes:'she said yes Fri Aug 28', contract:'signed Wed Sep 2', start:'the start date went Tue Sep 8', onsite:'on site Mon Sep 14'}, rounds:{payapp:[{n:'Pay app 3',s:'done',stage:'paid',when:'paid Sep 25'},{n:'Pay app 4',s:'now',stage:'with the architect',due:D(10,30),words:'sent Mon Sep 28, with the architect'}], co:[{n:'CO 1',s:'done',stage:'signed'},{n:'CO 2',s:'done',stage:'signed'}]}, notes:{}, skipped:{}, waiting:{payapp:{who:'jonah', step:'certify', since:'Mon Sep 28', sinceAt:D(9,28)}}},
+  priya:{done:['asked','bid','yes','contract'], now:'start', since:{start:D(9,19)}, when:{asked:'She called, Tue Sep 1', bid:'our bid went Thu Sep 10', yes:'she said yes Fri Sep 18', contract:'signed Sat Sep 19'}, rounds:{payapp:[], co:[]}, notes:{}, skipped:{agreement:'One job. No master agreement.'}, waiting:{}},
+  elena:{done:['agreement','asked','bid','yes','contract','start','onsite'], now:'payapp', since:{payapp:D(9,28)}, when:{agreement:'signed Tue Aug 4', asked:'The plans came in, Tue Aug 11', bid:'our bid went Thu Aug 20', yes:'she said yes Fri Aug 28', contract:'signed Wed Sep 2', start:'the start date went Tue Sep 8', onsite:'on site Mon Sep 14'}, rounds:{payapp:[{n:'Pay app 3',s:'done',stage:'paid',when:'paid Sep 25'},{n:'Pay app 4',s:'now',stage:'with the architect',due:D(10,30),words:'sent Mon Sep 28, with the architect'}], co:[{n:'CO 1',s:'done',stage:'signed'},{n:'CO 2',s:'done',stage:'signed'}]}, notes:{}, skipped:{}, waiting:{payapp:{who:'jonah', step:'certify', since:'Mon Sep 28', sinceAt:D(9,28)}}},
   jonah:{done:['plans'], now:'addenda', since:{addenda:D(10,2,10)}, when:{plans:'the plan set filed Tue Sep 15'}, rounds:{questions:[{n:'Panel size',s:'done'},{n:'Roof curbs',s:'done'},{n:'Pond',s:'now',due:D(10,5,12),words:'asked Fri Oct 2, questions close Mon Oct 5 noon'}], addenda:[{n:'Addendum 1',s:'done'},{n:'Addendum 2',s:'now',words:'filed today, not sent to the trades yet'}], submittals:[], certify:[{n:'Pay app 4 · Cibolo Creek',s:'now',words:'with him since Mon Sep 28'}]}, notes:{}, skipped:{}, waiting:{}},
-  marcus:{done:['asked','bid','yes'], now:null, since:{}, when:{asked:'He called, Mon Sep 14', bid:'our bid went Mon Sep 21', yes:'declined Tue Sep 29'}, rounds:{payapp:[], co:[]}, notes:{}, skipped:{}, waiting:{}, outcome:'declined', off:{since:'Tue Sep 29', why:'Declined our bid, went with another plumber.', by:'Rosa', fact:"the bid's outcome"}},
+  marcus:{done:['asked','bid','yes'], now:null, since:{}, when:{asked:'He called, Mon Sep 14', bid:'our bid went Mon Sep 21', yes:'declined Tue Sep 29'}, rounds:{payapp:[], co:[]}, notes:{}, skipped:{agreement:'One job. No master agreement.'}, waiting:{}, outcome:'declined', off:{since:'Tue Sep 29', why:'Declined our bid, went with another plumber.', by:'Rosa', fact:"the bid's outcome"}},
   unk1: {done:[], now:'who', since:{}, when:{}, rounds:{}, notes:{}, skipped:{}, waiting:{}}
 };
 const S = c => FLOW_STATE[c.id] || (FLOW_STATE[c.id]={done:[],now:null,since:{},when:{},rounds:{},notes:{},skipped:{},waiting:{}});

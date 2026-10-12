@@ -53,7 +53,7 @@ a new cell starts over). The person is the spine; jobs are labels on the person 
 | **Trade partners** | A page since v1.99: *By step* (one row per step with the people as chips, v1.108), *By company* (one row per company with the Once lane as a track) and *Asks* (the Board's, unchanged). | yes |
 | **A job's conversations** | On the job's page: *Papers on this job, by company* (each paper with its state, the step it finishes and where the person is, with the step card's own buttons, v1.100), then its own recent calls and texts, by contact, with answered or waiting. Reads the messages tied to that job. | yes |
 | **Who is this?** | A number the app does not know: name it, say what they are to us, pick their company, tie it to a job. The answer becomes the rule for that number. | yes |
-| **The flow** (the right panel) | Folded to a rail of marks by default; the rail's ‹ opens it. The person's journey with us as a small chart in lanes (Once; Per job; Any time): boxes green when done, orange on now with an *us* or *them* tag from whose move it is, a decision as a box with a colored left edge (v1.27), a loop as a dashed box with one pill per round (each ask, each pay application, each change order). Under it: what is on now, whose move, what finishes it, when the app nudges. Drawn from Settings → Flows (the owner picked B with C's tags, 2026-10-11). Its title is the flow's own name, *Customer flow*, *Trade partner flow* or *Architect flow* (v1.111). A step that turns on a paper carries a paper mark, and a press on a step opens its card: see *The flow suite* below. Built v1.96 to v1.103: the marks, the card, the states, the portal page, the by-step boards, the papers on the job page, the Follow up nudge rows, the usual, the phone sheet. | yes |
+| **The flow** (the right panel) | Folded to a rail of marks by default; the rail's ‹ opens it. The person's journey with us as a small chart in lanes (Once, the papers signed once per company: the trade's W-9, insurance and MSA, the customer's master agreement; Per job, where a customer's ask, bid, yes and contract live since v1.157; Any time): boxes green when done, orange on now with an *us* or *them* tag from whose move it is, a decision as a box with a colored left edge (v1.27), a loop as a dashed box with one pill per round (each ask, each pay application, each change order). Under it: what is on now, whose move, what finishes it, when the app nudges. Drawn from Settings → Flows (the owner picked B with C's tags, 2026-10-11). Its title is the flow's own name, *Customer flow*, *Trade partner flow* or *Architect flow* (v1.111). A step that turns on a paper carries a paper mark, and a press on a step opens its card: see *The flow suite* below. Built v1.96 to v1.103: the marks, the card, the states, the portal page, the by-step boards, the papers on the job page, the Follow up nudge rows, the usual, the phone sheet. | yes |
 | **Settings → Flows** | One flow per kind of person as a table: step, finished when (a fact the app keeps, never typed), whose move, nudge after, repeats. Renaming a step changes every panel. The rest of the editor, order, whose move with the seat, the nudge with *⌕ see it* (what it looks like when it goes, v1.106), papers, the usual, and the facts picked from a list, is drawn in *The flow suite* below and built in v1.98 with the History and How it is going tabs and a *Who is where* card that becomes the who-moves preview while an edit waits. The same list drives Follow up's nudges since v1.101; the Board's ring later. | yes |
 | **A message's window** | Click any message: the whole text with its facts (who, the exact time received or sent, what it came through, the job it is tied to, whether a copy is kept), its attachments, its highlights, and the tools: Highlight the selected words, Copy, Print or save as PDF, Share (the Mac's share sheet), Tie to, Reply. | yes |
 | **Settings → Phone and texts** | The Quo connection, the company number, registration, recordings on, who has a seat, who sees what. | yes, read only |
@@ -241,7 +241,8 @@ person is out (fall to the other seat, or to nobody).
 
 ## Open, from the flow panel (2026-10-11)
 
-- Does a customer's flow start at the bid or at the first conversation? (Drawn as the first conversation.)
+- Does a customer's flow start at the bid or at the first conversation? (Drawn as the first conversation, per job.
+  The customer's Once lane holds only the master agreement, which one-job customers skip; v1.157.)
 - Is a trade partner's onboarding one shared flow, or does it differ by trade? (Drawn as one.)
 - Which facts finish each step: the table names them in words; each must map to a column or a row the app has.
 - Whether the flow list also drives Follow up's nudges and the Board's ring, or only the panel at first.
@@ -350,7 +351,8 @@ person meets them:
 | Trade · Statement of work | `gc_sows.signed_on` |
 | Trade · Draws | `gc_draws.approved_on`, `paid_on` |
 | Trade · Closeout | the final draw's `waiver='unconditional'`, `waiver_on`; the upload `gc_trade_files.paper='unconditional_final'` |
-| Customer · Asked us | `gc_customer_contacts.contacted_on` or the first `gc_plan_sets.issued_on` |
+| Customer · Master agreement (Once; repeat customers only, skipped for one job) | `person_contract_documents` keyed to the customer's company, the `agreement` paper signed |
+| Customer · Asked us (Per job, as are the bid, the yes and the contract since v1.157) | `gc_projects.created_on` or the first `gc_plan_sets.issued_on` |
 | Customer · Our bid | `gc_projects.our_bid_sent_on` |
 | Customer · Said yes | half: a loss is `lost_on`; a win only moves `stage` and keeps no day |
 | Customer · Contract signed | `gc_projects.owner_contract_signed_on`, `gc_owner_contract_sends.signed_on` |
@@ -770,6 +772,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.157, 2026-10-11**: the customer's Once lane holds only the master agreement, which a one-job customer skips;
+  the ask, the bid, the yes and the contract are per job, since each reads a column of the project (the owner,
+  2026-10-11: "our bid is on a per-job basis").
 - **v1.156, 2026-10-11**: the time shares the last line of a message when there is room and drops under it only when
   the words reach it, the way a phone's bubbles do; a card that ends in a file, a transcript or an offer keeps a line
   for it (the owner, 2026-10-11).
