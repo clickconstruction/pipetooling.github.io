@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PaperChoice } from '../../lib/contracts/clauseRows'
 import { loadOwnerContractPaper, loadPaperChoices } from '../../lib/contracts/clausesIo'
-import { newestContractSend, type ContractStep } from '../../lib/gc/customerContract'
+import { OWNER_CONTRACT_PAPER_LIVE, newestContractSend, type ContractStep } from '../../lib/gc/customerContract'
 import { contractMail, contractMailFacts } from '../../lib/gc/customerEmail'
 import { ownerContractWorthNow } from '../../lib/gc/ownerBilling'
 import { contractFileProblem, type StoredContractFile } from '../../lib/gc/ownerContractIo'
@@ -22,6 +22,7 @@ import { Btn, input } from './gcUi'
  * Messages, cut 4c (v2.5334): **Paper** picks what a new send is built from, the last send's paper to begin with. Our
  * contract file is today's paper; a paper built from clauses reads in their portal as its clauses, the file still with
  * it. The page sets it on the new send before any email (`gc_set_owner_contract_paper`). An emailed-again send keeps its own.
+ * It shows only once the customer's portal reads and signs a contract built from clauses (`OWNER_CONTRACT_PAPER_LIVE`).
  */
 
 /** Light like a printed page in either theme, as the paper send draws the email. */
@@ -89,7 +90,7 @@ export function GcCustomerContractSend({
   const [paper, setPaper] = useState<string | null>(null)
   const newestId = newest?.id ?? null
   useEffect(() => {
-    if (again) return
+    if (again || !OWNER_CONTRACT_PAPER_LIVE) return
     let live = true
     Promise.all([loadPaperChoices(), newestId ? loadOwnerContractPaper(newestId) : Promise.resolve(null)])
       .then(([c, last]) => {
@@ -188,7 +189,7 @@ export function GcCustomerContractSend({
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>A PDF they read and sign. A file is never replaced once it goes.</span>
         </span>
       </div>
-      {!again && choices !== null && (choices.length > 0 || paper !== null) && (
+      {OWNER_CONTRACT_PAPER_LIVE && !again && choices !== null && (choices.length > 0 || paper !== null) && (
         <div style={field}>
           <span style={label}>Paper</span>
           <span style={{ display: 'grid', gap: '0.3rem', minWidth: 0 }}>

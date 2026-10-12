@@ -15,6 +15,14 @@ import { ownerContractWorthNow } from './ownerBilling'
 import type { CustomerSend, GcCustomer, GcProject, GcState } from './types'
 import { daysUntil, shortDate, weekdayDate } from './words'
 
+/**
+ * Messages, cut 4c (v2.5345): our contract's **Paper** on its send (v2.5334) waits for the customer's side. Their portal
+ * must first show a contract built from clauses and sign it at the revision it showed: `customer-portal` and
+ * `submit-portal-request` on `gc_customer_sign_owner_contract`'s `p_paper_revision`, helper 8's clause read. Until then a
+ * send with a paper is refused at their signing (paperChanged), so the picker stays hidden. That PR turns this on.
+ */
+export const OWNER_CONTRACT_PAPER_LIVE = false
+
 /** A send of our contract: its first, a reminder at the same price, the new price after ours moved, or the newest send emailed. */
 export interface ContractStep {
   docKey: string
