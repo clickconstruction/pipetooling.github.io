@@ -62,6 +62,7 @@
     "test:pg:gc-portal-p5b": "bash scripts/pgtest-gc-portal-p5b.sh",
     "test:pg:gc-customer-contacts": "bash scripts/pgtest-gc-customer-contacts.sh",
     "test:pg:quick-replies": "bash scripts/pgtest-quick-replies.sh",
+    "test:pg:messages-follow-up": "bash scripts/pgtest-messages-follow-up.sh",
     "test:pg:messages-spine": "bash scripts/pgtest-messages-spine.sh",
     "test:pg:messages-flows": "bash scripts/pgtest-messages-flows.sh",
     "test:pg:quo-messages": "bash scripts/pgtest-quo-messages.sh",
