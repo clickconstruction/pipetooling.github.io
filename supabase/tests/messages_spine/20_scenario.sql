@@ -170,7 +170,9 @@ SET LOCAL ROLE authenticated;
 SELECT msp.same('the office reads every contact and line',
   (SELECT concat_ws('|', (SELECT count(*) FROM public.contacts), (SELECT count(*) FROM public.messages))), '11|9');
 SELECT msp.refused('nobody makes a contact by hand', $q$INSERT INTO public.contacts (kind) VALUES ('unknown')$q$, 'permission denied for table contacts');
-SELECT msp.refused('nobody writes a line by hand', $q$INSERT INTO public.messages (contact_id, channel, direction, body) SELECT greg, 'text', 'out', 'x' FROM ids$q$, 'permission denied for table messages');
+-- Cut 2 grants INSERT on a team note's columns (its presses run as the caller), and its restrictive policy holds every
+-- line a client writes to that writer's own team note. So a text by hand is refused there.
+SELECT msp.refused('nobody writes a call, text or email by hand', $q$INSERT INTO public.messages (contact_id, channel, direction, body) SELECT greg, 'text', 'out', 'x' FROM ids$q$, 'messages_client_writes_own_team_lines');
 SELECT msp.refused('nobody marks a STOP by hand', $q$UPDATE public.contact_channels SET opted_out_at = now()$q$, 'permission denied for table contact_channels');
 
 -- 5 · Whose number it is: by its key, and a number two people share lands on the newest line's.
