@@ -25,8 +25,15 @@ function bytesFromBase64(b64: string): Uint8Array {
   return out
 }
 
+/** The bytes in a plain ArrayBuffer of their own, which WebCrypto and fetch take under every TypeScript Deno uses. */
+function ownBuffer(bytes: Uint8Array): ArrayBuffer {
+  const out = new ArrayBuffer(bytes.byteLength)
+  new Uint8Array(out).set(bytes)
+  return out
+}
+
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  const digest = await crypto.subtle.digest('SHA-256', ownBuffer(bytes))
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
@@ -34,7 +41,7 @@ async function put(supabaseUrl: string, serviceKey: string, path: string, bytes:
   const res = await fetch(`${supabaseUrl}/storage/v1/object/${BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`, {
     method: 'POST',
     headers: { apikey: serviceKey, Authorization: `Bearer ${serviceKey}`, 'Content-Type': type, 'x-upsert': 'false' },
-    body: bytes,
+    body: ownBuffer(bytes),
   })
   return res.ok
 }
