@@ -23,3 +23,4 @@ gc-customer-contacts
 messages-spine
 contract-clauses
 portal-customer-page
+portal-customer-lines
