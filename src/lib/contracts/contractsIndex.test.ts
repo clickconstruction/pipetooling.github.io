@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CONTRACT_AREA_ORDER, contractLensCounts, contractLensLabel, entryIdFromHash, indexRowMatches, indexSection, needsLookReasons, reviewWord, type IndexCard } from './contractsIndex'
-import { CUSTOMER_CONTRACT_CATALOG } from './customerContractCatalog'
+import { CUSTOMER_CONTRACT_CATALOG, DATA_DRIVEN_AREAS } from './customerContractCatalog'
 
 const card = (id: string, over: Partial<IndexCard> = {}): IndexCard => {
   const entry = CUSTOMER_CONTRACT_CATALOG.find((e) => e.id === id)!
@@ -8,9 +8,19 @@ const card = (id: string, over: Partial<IndexCard> = {}): IndexCard => {
 }
 
 describe('contractsIndex', () => {
-  it('orders the sections the way a customer meets them, and every catalog area has one', () => {
-    expect(CONTRACT_AREA_ORDER).toEqual(['website', 'estimates', 'bids', 'jobs', 'signing', 'billing', 'liens'])
+  it('orders the sections the way a customer meets them, then the flows, and every catalog area has one', () => {
+    expect(CONTRACT_AREA_ORDER).toEqual(['website', 'estimates', 'bids', 'jobs', 'signing', 'billing', 'liens', 'flows'])
     for (const e of CUSTOMER_CONTRACT_CATALOG) expect(CONTRACT_AREA_ORDER).toContain(e.area)
+  })
+
+  it('Papers on the flows is data-driven: no catalog entry is written there, and every other section has one', () => {
+    expect(DATA_DRIVEN_AREAS).toEqual(['flows'])
+    for (const area of CONTRACT_AREA_ORDER) {
+      const written = CUSTOMER_CONTRACT_CATALOG.filter((e) => e.area === area).length
+      if (DATA_DRIVEN_AREAS.includes(area)) expect(written, area).toBe(0)
+      else expect(written, area).toBeGreaterThan(0)
+    }
+    expect(contractLensLabel('theirs')).toBe('Their paper')
   })
 
   it('a card needs a look when what went out differs, nothing is set, or the review is due — never for "never reviewed"', () => {
