@@ -820,6 +820,10 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.165, 2026-10-12**: the customer's list drops *With us*: the step we are on reads *We are on it* with what
+  to expect (*You will have the start date by Mon Oct 5*), a step not reached yet reads *Later* with when it comes
+  (*After your start date*, *Once a month, from the first month on site*), each step's when-line in both languages
+  in the flow (the owner asked whether *with us* was the best use of words, 2026-10-12).
 - **v1.164, 2026-10-12**: the portal window gains a side panel for the office: Edit mode tags every card with where
   it comes from and takes you there, and *Ready for Priya?* lists what is missing or stale with a fix link per
   row (the owner asked how we manage what goes in, 2026-10-12).

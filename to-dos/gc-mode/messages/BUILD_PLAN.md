@@ -185,7 +185,7 @@ page. The prototype's words are the words; its hover cards are the help text.
 ### Cut 8 · Their own view: the portal's first page
 
 - **Kernels**: `flows/portalPage.ts` (the same list read from their side: their-move steps as the
-  only buttons with why in a sentence, ours as *with us* and what unlocks them, a done step's day,
+  only buttons with why in a sentence, the one we are on as *We are on it* with what to expect, the unreached ones as *Later* with when they come, a done step's day,
   one section per job, nothing of ours; the step names in both languages).
 - **Edge**: `gc-trade-portal` gains the page's read; the uploads there already finish the steps.
 - **Screens**: the portal's first page, EN and ES; *See their page* from the panel, the card and ⋯.
