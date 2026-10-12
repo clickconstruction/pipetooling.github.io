@@ -625,3 +625,31 @@ describe('nextOwnerBillDay', () => {
     expect(nextOwnerBillDay('2026-12-30')).toBe('2027-01-25')
   })
 })
+
+describe('a change order keyed by its database id (a uuid, not "co-…")', () => {
+  const UUID = '8f3f2a9e-6c1b-4d2e-9a7b-0c5d4e3f2a1b'
+  const withChange = (project: GcProject): GcProject => ({
+    ...project,
+    changeOrders: [
+      ...(project.changeOrders ?? []),
+      { id: UUID, number: 1, description: 'Add a hose bibb', reason: 'owner', schedule: 'none', packageId: null, cost: 5000, price: 6000, status: 'signed', sentOn: '2026-09-20', answeredOn: '2026-09-22', pctDone: 50 },
+    ],
+  })
+
+  it('passes through the spread as it is, with no share of our costs and none of the trades’ markup', () => {
+    const { state, project } = helotes()
+    const lines = ownerPayApp(state, withChange(project)).lines
+    const co = spreadMarkup(lines).find((l) => l.id === UUID)
+    expect(co && [co.worth, co.ourShare, co.tradeWorth, co.doneToDate]).toEqual([6000, 0, 6000, 3000])
+    expect(markupOnTop(lines)).toBe(markupOnTop(ownerPayApp(state, project).lines))
+  })
+
+  it('reads on the G702 as line 2, net change by change orders, and in the form’s change-order list', () => {
+    const { state, project } = helotes()
+    const form = ownerPayAppForm(state, withChange(project), 'draft')
+    if (!form) throw new Error('no form')
+    expect(form.app.summary.changeOrders).toBe(6000)
+    expect(form.app.summary.originalSum).toBe(form.app.summary.sumToDate - 6000)
+    expect(form.changeOrders.map((c) => [c.number, c.price])).toEqual([[1, 6000]])
+  })
+})
