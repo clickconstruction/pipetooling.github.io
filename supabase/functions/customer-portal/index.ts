@@ -750,6 +750,17 @@ serve(async (req) => {
         console.error('customer-portal: the page did not load', e)
       }
     }
+    // Messages cut 8e: their thread for the page's Messages tab, only the lines between us and them by text, email or
+    // their page (`_shared/gcPortalThread.ts`). Null: no page, or a read that failed, and the page draws no tab.
+    let thread: unknown[] | null = null
+    if (gcJobs.some((j) => j.page)) {
+      try {
+        const { loadPortalThread } = await import('../_shared/gcPortalThread.ts')
+        thread = await loadPortalThread(admin, link.customer_id)
+      } catch (e) {
+        console.error('customer-portal: the thread did not load', e)
+      }
+    }
 
     // GC mode (Owner Billing O8b, v2.5123): the certified GC bills they may pay by card, with its 3% fee, and the
     // ones on card already (their fee shown under the bill). The offer needs the switch, the app_settings row
@@ -799,6 +810,7 @@ serve(async (req) => {
       ownerRecords,
       gcJobs,
       pageWords,
+      thread,
       cardBills,
     })
   } catch (e) {

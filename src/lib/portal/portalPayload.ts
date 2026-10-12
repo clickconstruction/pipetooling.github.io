@@ -8,6 +8,7 @@ import type { PortalGcSchedule, PortalGcScheduleBar, PortalGcScheduleDate, Porta
 import { PORTAL_TAGLINE } from '../../../supabase/functions/_shared/portalLetterhead'
 export type { PortalGcSchedule } from '../../../supabase/functions/_shared/gcCustomerSchedule'
 import { parsePortalGcPage } from './customerPage'
+import { parsePortalThread, type PortalThreadLine } from './portalThread'
 /**
  * Customer portal payload parsing (portal train PR 1). The /portal page
  * receives this from the customer-portal edge function; the parser is
@@ -132,6 +133,8 @@ export type PortalPayload = {
   cardBills: PortalCardBill[]
   /** Messages cut 8b-i: every sentence of ours on the customer's page as the office keeps it (`customer_page_words`), laid over the code's words; [] from an older function. */
   pageWords: { key: string; en: string; es: string }[]
+  /** Messages cut 8e: their thread for the page's Messages tab, held to what they may read; null from an older function or with no page. */
+  thread: PortalThreadLine[] | null
 }
 
 /** One bill's card offer (`state: 'offer'`) or its card bill (`'onCard'`): the bill as certified, the fee and what the card pays. */
@@ -552,6 +555,7 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
           return o && typeof o.key === 'string' && typeof o.en === 'string' && typeof o.es === 'string' && o.en.trim() && o.es.trim() ? [{ key: o.key, en: o.en, es: o.es }] : []
         })
       : [],
+    thread: parsePortalThread(r.thread),
   }
 }
 

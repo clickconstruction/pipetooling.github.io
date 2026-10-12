@@ -13,6 +13,7 @@ import { bytesSha256Hex, CONTRACT_FILE_CHANGED_WORDS, gcContractSignWords, gcPor
 import { parseEsignConsent, recordEsignConsent } from '../_shared/esignConsent.ts'
 import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { signaturePngOf } from '../_shared/gcTradeSubmit.ts'
+import { PORTAL_LINE_MAX, writePortalLine } from '../_shared/gcPortalThread.ts'
 
 /**
  * Portal request intake (portal train PR 2): a customer/GC submits a
@@ -88,6 +89,7 @@ serve(async (req) => {
       : body.kind === 'gc_change_order_answer' ? 'gc_change_order_answer'
       : body.kind === 'gc_accept_work' ? 'gc_accept_work'
       : body.kind === 'gc_owner_contract_sign' ? 'gc_owner_contract_sign'
+      : body.kind === 'portal_message' ? 'portal_message'
       : null
     const description = typeof body.description === 'string' ? body.description.trim() : ''
     const availability = typeof body.availability === 'string' ? body.availability.trim().slice(0, 300) : ''
@@ -99,7 +101,7 @@ serve(async (req) => {
       return jsonResponse({ error: 'Bad request' }, 400)
     }
     const gcPress = kind === 'gc_change_order_answer' || kind === 'gc_accept_work' || kind === 'gc_owner_contract_sign'
-    if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && !gcPress && (description.length < 5 || description.length > 2000)) {
+    if (kind !== 'stage_window' && kind !== 'payment_promise' && kind !== 'share_bill_ask' && kind !== 'portal_message' && !gcPress && (description.length < 5 || description.length > 2000)) {
       return jsonResponse({ error: 'Please tell us a little more about what you need (a sentence or two).' }, 400)
     }
     if (plansLink && !/^https:\/\//.test(plansLink)) {
@@ -265,6 +267,23 @@ serve(async (req) => {
     // work. Each is the link's customer's own project, and each goes through the database's function as the service
     // role with how = 'portal', on today. A change order is answered once and the work accepted once, so the database
     // limits them. No inbox row: the office sees the answer in Change orders and Closeout.
+    // A line from their page (Messages cut 8e): it lands in their thread on the page's contact, tied to the job of the
+    // page they wrote on, written by the service role (`_shared/gcPortalThread.ts`). The office reads it there as it
+    // reads a text. No inbox row and no email: the thread is where it lands.
+    if (kind === 'portal_message') {
+      const text = typeof body.text === 'string' ? body.text.trim() : ''
+      if (!text || text.length > PORTAL_LINE_MAX) return jsonResponse({ error: 'Write a line, up to 2,000 characters.' }, 400)
+      const projectId = typeof body.projectId === 'string' && /^[0-9a-f-]{36}$/.test(body.projectId) ? body.projectId : null
+      const result = await writePortalLine(admin, { customerId: link.customer_id, projectId, text })
+      if (!result.ok) {
+        if (result.key === 'tooMany') return jsonResponse({ error: 'That is a lot of messages this hour. Please call our office.' }, 429)
+        if (result.key === 'notTheirs') return jsonResponse({ error: 'That job is not on your account.' }, 404)
+        return jsonResponse({ error: 'Something went wrong. Please try again, or call our office.' }, 500)
+      }
+      console.log(JSON.stringify({ event: 'portal_message', customer_id: link.customer_id, project_id: projectId }))
+      return jsonResponse({ ok: true, line: result.line })
+    }
+
     if (kind === 'gc_change_order_answer' || kind === 'gc_accept_work') {
       const uuid = (v: unknown) => (typeof v === 'string' && /^[0-9a-f-]{36}$/.test(v) ? v : null)
       const note = typeof body.note === 'string' ? body.note.trim() : ''

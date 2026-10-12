@@ -4,7 +4,8 @@
  * parser. Home's Your move, This week and Your people; Money's win, its cards and the folds; Schedule's What moved;
  * Papers with the existing forms under Waiting on you; the office's words laid over; a paper opened on the page sends
  * one quiet request; and a job without its page block reads as before. Made-up customer and job. The office's preview
- * (Messages cut 8d) sends nothing and tells no paper open, offers the Spanish, and tags each card with its source.
+ * (Messages cut 8d) sends nothing and tells no paper open, offers the Spanish, and tags each card with its source. The
+ * Messages tab (cut 8e) reads their thread and writes to it as a line from their page.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
@@ -163,5 +164,44 @@ describe("the office's preview (Messages cut 8d)", () => {
   it('draws no tag on the customer’s own page', () => {
     show()
     expect(document.querySelector('[data-source-tag]')).toBeNull()
+  })
+})
+
+describe('the Messages tab (Messages cut 8e)', () => {
+  const THREAD = [
+    { id: 'm1', at: '2026-10-07T15:05:00Z', dir: 'out', door: 'text', who: 'Wendi', subject: null, body: 'The framing inspection passed this morning.' },
+    { id: 'm2', at: '2026-10-08T21:30:00Z', dir: 'in', door: 'portal', who: null, subject: null, body: 'Can we look at the coffee bar on Friday?' },
+  ]
+
+  it('reads their thread, and lands their line in it from this job’s page', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ok: true, line: { id: 'm9', at: '2026-10-09T14:00:00Z', dir: 'in', door: 'portal', who: null, subject: null, body: 'Friday at 10 works.' } }) })
+    show(payloadOf({ thread: THREAD }))
+    fireEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    const list = screen.getByRole('list', { name: 'Messages' })
+    expect(list.textContent).toContain('The framing inspection passed this morning.Wendi · Wed Oct 7 · by text')
+    expect(list.textContent).toContain('Can we look at the coffee bar on Friday?You · Thu Oct 8 · here')
+    expect(screen.getByTestId('portal-gc-messages').textContent).toContain('For something urgent on site, call Wendi.')
+    fireEvent.change(screen.getByRole('textbox', { name: 'Write to us…' }), { target: { value: 'Friday at 10 works.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(screen.getByRole('list', { name: 'Messages' }).textContent).toContain('Friday at 10 works.You · Fri Oct 9 · here'))
+    const [url, init] = fetchMock.mock.calls[fetchMock.mock.calls.length - 1] as [string, { body: string }]
+    expect(url).toContain('/functions/v1/submit-portal-request')
+    expect(JSON.parse(init.body)).toEqual({ token: TOKEN, kind: 'portal_message', projectId: 'p-clinic', text: 'Friday at 10 works.' })
+  })
+
+  it('draws no Messages tab from an older function', () => {
+    show()
+    expect(screen.queryByRole('tab', { name: 'Messages' })).toBeNull()
+  })
+
+  it('sends nothing from the office’s preview', async () => {
+    const payload = payloadOf({ thread: THREAD })
+    const job = payload.gcJobs[0]!
+    render(<PortalGcPage token={TOKEN} job={job} page={job.page!} payload={payload} formatUsd={usd} office={{ sources: false, onSource: vi.fn() }} />)
+    fireEvent.click(screen.getByRole('tab', { name: 'Messages' }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Write to us…' }), { target: { value: 'Hello' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    expect((await screen.findByRole('alert')).textContent).toBe('This is the office’s preview. Nothing was sent.')
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 })
