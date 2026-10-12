@@ -56,6 +56,7 @@ export const ENTRIES = {
   'lib/emailIn/emailLine.ts': { values: ['emailLine', 'emailParty', 'emailFileRows'], types: ['EmailLine', 'EmailFileRow'] },
   'lib/emailIn/jobInSubject.ts': { values: ['jobInSubject'], types: ['SubjectJob'] },
   'lib/emailIn/subjectJobs.ts': { values: ['subjectJobs', 'subjectNumbers'], types: ['SubjectJobRows'] },
+  'lib/emailIn/historyWalk.ts': { values: ['walkHistory'], types: ['HistoryWalk', 'Took'] },
   'lib/ledgerDisplayPrefixes.ts': { values: ['buildLedgerPrefixMap'], types: ['LedgerPrefixMap'] },
 }
 

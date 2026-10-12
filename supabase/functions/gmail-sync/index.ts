@@ -19,9 +19,10 @@
  * - Each file up to 25 MB is copied into the private `message-attachments` bucket. A bigger one, or one that would
  *   not copy, stays in Gmail. A file host's link stays a link. A trade partner's W-9 or certificate is guessed for the
  *   thread's offer (`emailLine.ts`).
- * - The run saves where it got to only after the messages before that point are taken. A failure keeps the point and
- *   writes `last_error`, and the next run reads the same messages again; what was taken is passed over by its label.
- *   The run's health is on `gmail_sync_state` (`last_run_at`, `last_ok_at`, `last_error`, `last_taken`).
+ * - The point moves only past records taken whole (`historyWalk.ts`): a message that fails stops the run, keeps the point
+ *   at the last record taken whole and writes `last_error`, and the next run starts there; what was taken is passed
+ *   over by its label. The run's health is on `gmail_sync_state` (`last_run_at`, `last_ok_at`, `last_error`,
+ *   `last_taken`).
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON, GMAIL_IMPERSONATE_USER
  * (the mailbox, never written in the repo), EMAIL_FROM. config.toml keeps verify_jwt = false: the cron sends no JWT.
@@ -33,6 +34,7 @@ import { GMAIL_SCOPES, GmailError, gmailAddLabel, gmailAttachment, gmailHistory,
 import { googleServiceToken } from '../_shared/googleToken.ts'
 import { emailFileRows, emailLine, emailParty } from '../_shared/gcKernels/lib/emailIn/emailLine.ts'
 import { readForwarded } from '../_shared/gcKernels/lib/emailIn/forwarded.ts'
+import { walkHistory, type HistoryWalk, type Took } from '../_shared/gcKernels/lib/emailIn/historyWalk.ts'
 import { base64UrlBytes, parseAddress, readGmailMessage } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
 import { jobInSubject } from '../_shared/gcKernels/lib/emailIn/jobInSubject.ts'
 import { leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
@@ -160,8 +162,6 @@ async function jobFor(ctx: Ctx, contactId: string, subject: string): Promise<str
 /** A file's name as a path part: the bucket takes letters, digits, dots, dashes, underscores and spaces. */
 const safeName = (name: string): string => name.replace(/[^A-Za-z0-9._ -]+/g, '_').slice(0, 120) || 'file'
 
-type Took = 'taken' | 'already' | 'left' | 'gone'
-
 /** One message: read, placed, tied, its files copied, written once, then labelled. */
 async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   let m
@@ -225,6 +225,8 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
     ...jobColumns(jobKey),
   }
   const note = fwd?.note ? { who_user_id: by?.id ?? null, who_text: by ? '' : fwd.by.name || fwd.by.address, at: email.at, body: fwd.note } : null
+  // Written or not (a line written before the label went on answers written false and writes nothing), the label goes on
+  // only once the write has answered: a crash in between leaves no label, and the next run's write is a repeat.
   const wrote = await ctx.admin.rpc('email_write_line', { p_gmail_id: email.gmailId, p_row: row, p_files: files, p_note: note })
   if (wrote.error) throw new Error(`Writing ${email.gmailId} failed: ${wrote.error.message}`)
   await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
@@ -252,39 +254,25 @@ async function run(admin: Admin): Promise<Record<string, unknown>> {
     }
 
     const ctx: Ctx = { admin, token, labelId, mailbox: `${box.split('@')[0]}@`, ...(await loadTeam(admin, box)), prefixes: await loadPrefixes(admin) }
-    const counts: Record<Took, number> = { taken: 0, already: 0, left: 0, gone: 0 }
-    let read = 0
-    let cursor: string = state.history_id
+    let walk: HistoryWalk
     try {
-      let pageToken: string | undefined
-      let newest: string | undefined
-      let full = false
-      pages: do {
-        const page = await gmailHistory(token, state.history_id, pageToken)
-        newest = page.historyId ?? newest
-        for (const record of page.history ?? []) {
-          for (const added of record.messagesAdded ?? []) {
-            if (read >= MAX_PER_RUN) {
-              full = true
-              break pages
-            }
-            read++
-            counts[await takeOne(ctx, added.message.id)]++
-          }
-          cursor = record.id
-        }
-        pageToken = page.nextPageToken
-      } while (pageToken)
-      if (!full && newest) cursor = newest
+      walk = await walkHistory(state.history_id, (pageToken) => gmailHistory(token, state.history_id, pageToken), (id) => takeOne(ctx, id), MAX_PER_RUN)
     } catch (e) {
       if (!(e instanceof GmailError && e.status === 404)) throw e
       // Gmail no longer keeps that history point: the Inbox's untaken mail of the last week, then the box's newest point.
+      const counts: Record<Took, number> = { taken: 0, already: 0, left: 0, gone: 0 }
       const found = await gmailSearch(token, `in:inbox -label:"${LABEL_NAME}" newer_than:7d`)
       for (const m of (found.messages ?? []).slice(0, MAX_PER_RUN).reverse()) counts[await takeOne(ctx, m.id)]++
-      cursor = (await gmailProfile(token)).historyId
+      walk = { cursor: (await gmailProfile(token)).historyId, counts, full: false, error: null }
     }
-    await saveState(admin, { history_id: cursor, label_id: labelId, last_ok_at: nowIso(), last_error: null, last_taken: counts.taken })
-    return { ok: true, ...counts }
+    if (walk.error) {
+      // A message failed: keep the point at the last record taken whole, and say why. The next run starts there.
+      const message = walk.error instanceof Error ? walk.error.message : String(walk.error)
+      await saveState(admin, { history_id: walk.cursor, label_id: labelId, last_error: message.slice(0, 1000), last_taken: walk.counts.taken })
+      throw walk.error
+    }
+    await saveState(admin, { history_id: walk.cursor, label_id: labelId, last_ok_at: nowIso(), last_error: null, last_taken: walk.counts.taken })
+    return { ok: true, full: walk.full, ...walk.counts }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
     await saveState(admin, { last_error: message.slice(0, 1000) }).catch(() => undefined)
