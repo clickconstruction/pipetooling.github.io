@@ -172,10 +172,11 @@ const PROTOTYPE: Record<string, string[]> = {
     'presses: + a note · Skip for Bill · See their page',
   ],
   'jonah/addenda': [
-    "Addenda | Jonah's move. On it 0 days, usually 1.",
+    // CHANGED (moverOf): Jonah filed addendum 2 and it waits on us to send it to the trades, so the move is ours.
+    'Addenda | Our move. On it 0 days, usually 1.',
     '[Each addendum]',
     '✓ Addendum 1 <Fri Sep 25> {Open}', // STAMPS: was 'done'
-    '↗ Addendum 2 <since Fri Oct 2> {Ask again}', // STAMPS: was 'filed today, not sent to the trades yet'
+    '↗ Addendum 2 <since Fri Oct 2> {Remind}', // STAMPS: was 'filed today, not sent to the trades yet'; ours to send, so Remind
     '[Next]',
     "→ Submittals, Jonah's move. <Done when the submittal is reviewed.>",
     '[Reminder]',
@@ -283,6 +284,16 @@ const PROTOTYPE: Record<string, string[]> = {
     'presses: + a note · Skip for (830) · See their page',
   ],
 }
+
+describe('whose move by its facts (moverOf)', () => {
+  // Jonah filed addendum 2 on Fri Oct 2, and it has not gone to the trades: the step is his, its open fact is ours.
+  it('reads Jonah’s filed addendum as ours on its card, its open round and the Next line of Questions', () => {
+    const addenda = text(card('jonah', 'addenda'))
+    expect(addenda[0]).toBe('Addenda | Our move. On it 0 days, usually 1.')
+    expect(addenda).toContain('↗ Addendum 2 <since Fri Oct 2> {Remind}')
+    expect(text(card('jonah', 'questions'))).toContain('→ Addenda, our move. <Done when the addendum is filed and the addendum went to the trades.>')
+  })
+})
 
 describe('the step card reads as the prototype v1.178 drew it', () => {
   it.each(Object.keys(PROTOTYPE))('%s', (key) => {

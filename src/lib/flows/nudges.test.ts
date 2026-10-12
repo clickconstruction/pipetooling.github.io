@@ -190,6 +190,27 @@ describe('Follow up rows on the demo people', () => {
     expect(due(people.find((p) => p.id === 'marcus')!, 'asked').reason).toBe('off')
   })
 
+  it('never come for an addendum the architect filed that waits on us to send it on: the move is ours (moverOf)', () => {
+    // Jonah filed addendum 2 on Fri Oct 2 and it has not gone to the trades. Give the step a reminder, as an office
+    // might, to see whose move it reads: the step is his, but its first open fact (sent to the trades) is ours.
+    const reminded = (person: PersonFlow): PersonFlow => ({
+      ...person,
+      flow: {
+        ...person.flow,
+        lanes: person.flow.lanes.map((l) => ({ ...l, steps: l.steps.map((s) => (s.id === 'addenda' ? { ...s, nudge: { days: 1, how: 'email' as const, send: 'ask' as const, dayFact: null } } : s)) })),
+      },
+    })
+    const jonah = reminded(demoPerson('jonah', with_({ quietDays: 30, lastOutAt: null })))
+    expect(stepById(jonah.flow, 'addenda')?.who).toBe('them')
+    expect(due(jonah, 'addenda').reason).toBe('ours')
+    // Before he files the next one, it is his move again, and the reminder can come.
+    const unfiled = withStep(jonah, 'addenda', stepOf(jonah, 'addenda').jobId, (s) => ({
+      ...s,
+      rounds: s.rounds.map((r) => (r.state === 'now' ? { ...r, facts: r.facts.map((f) => ({ ...f, mark: 'no' as const })) } : r)),
+    }))
+    expect(due(unfiled, 'addenda').reason).not.toBe('ours')
+  })
+
   it('nudge an open change order like any other step, unless Follow up shows its paper on a portal row', () => {
     const asked: [string, string, string | null][] = []
     const skip: NudgeOptions['skip'] = (contactId, paper, key) => {
