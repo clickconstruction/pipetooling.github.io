@@ -577,6 +577,16 @@ welcome, Spanish, photos, a weekly read, and the office never learns what was op
   order Tue 9:14 AM. Not signed.* or *has not opened it yet*; Follow up's Needs you, a row for a customer who wrote
   on the page and a row for a paper sent two days ago and not signed, which says opened-and-left or never-opened
   since they are different nudges; Customers → By company, a *Portal* column with the last open in days.
+- **Managing it from our side** (v1.164): the portal window shows the phone beside a side panel. *Show where each
+  piece comes from* (Edit mode) tags every card with the page that feeds it, *the daily log · change ›*, *the
+  application's customer line and photos · change ›*, *Settings → Flows · change ›*, and a press on the tag
+  closes the window and opens that page; a computed piece (the header's sum, the history, the statement) says so
+  and has nothing to type. *Ready for Priya?* is one row per piece with a green or orange dot: is there something
+  to do, is this week's line fresh (older than seven days reads as stale), are photos marked, does every pay
+  application say what it covers, is the next one sized, does every schedule move carry its why, are there two
+  people to call, do the words read in both languages; each row ends in *fix ›* or *change ›* to the same page.
+  It never checks our numbers; those come from the ledger. Where the words live: *Settings → Customer page*, every
+  sentence of ours on the page in EN and ES and the switches per job (photos, the forecast, Spanish).
 - **Kept out on purpose**: trade names, our costs, nudges, a live schedule chart, document markup, a chat with the
   superintendent, a log-in. The link is the key, as today.
 - **Open**: whether Accept the work and the warranty year belong on Home as a last *Your move* or on Papers; whether
@@ -810,6 +820,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.164, 2026-10-12**: the portal window gains a side panel for the office: Edit mode tags every card with where
+  it comes from and takes you there, and *Ready for Priya?* lists what is missing or stale with a fix link per
+  row (the owner asked how we manage what goes in, 2026-10-12).
 - **v1.163, 2026-10-11**: the Money tab reshaped to the pick, C's header over B's cards with D folded as
   History at the foot and the statement folded under it (the owner, 2026-10-11).
 - **v1.162, 2026-10-11**: the customer's portal as shape B behind See their page: Home with Your move, Where you
