@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages, cut 6: email in</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--chip:#eef1f5;--email-ch:#6b4fbb;--radius:10px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+h2.sec{font-size:16px;margin:26px 0 8px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:900px;line-height:1.45}
+.opt{max-width:900px;margin:0 0 22px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.frame{width:720px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;position:relative}
+.frame .st{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45;max-width:900px}
+button{font:inherit;cursor:default;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.small{padding:3px 8px;font-size:13px}
+button.quiet{border-color:transparent;background:transparent;color:var(--accent);padding:4px 6px}
+button[disabled]{opacity:.45}
+.msg{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin:8px 40px 8px 0;background:var(--surface);position:relative}
+.msg .meta{font-size:12px;color:var(--text-muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg .meta .ch{font-weight:600;color:var(--email-ch)}
+.msg .meta .job{margin-left:auto;background:var(--chip);padding:1px 8px;border-radius:999px;color:var(--text)}
+.msg .subject{font-weight:600;margin-top:6px}
+.msg .body{margin:4px 0 0;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.msg .when{position:absolute;right:12px;bottom:7px;font-size:11.5px;color:#9aa4b1}
+.att{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;padding-bottom:12px}
+.att .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:12px;background:var(--surface)}
+.ic{width:22px;height:22px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;background:#8a93a0;flex:none}
+.ic.pdf{background:#c0392b}.ic.image{background:#2a8f5a}.ic.link{background:#1f5fbf}
+.thumb{width:40px;height:30px;border-radius:4px;background:linear-gradient(135deg,#9bc 0%,#7a9 60%,#cc9 100%);flex:none}
+.note{color:var(--text-muted)}
+.offer{margin-top:8px;padding:8px;border-radius:8px;background:var(--warn-soft);font-size:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.done{margin-top:6px;font-size:12.5px;color:var(--ok)}
+.mw h3{font-size:14px;margin:12px 0 6px}
+.facts{display:grid;grid-template-columns:110px 1fr;gap:4px 12px;font-size:13px;margin:8px 0 10px}
+.facts dt{color:var(--text-muted)}.facts dd{margin:0}
+.attl>div{display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--border);font-size:13.5px;flex-wrap:wrap}
+.attl .nm{flex:1;min-width:200px}
+.row{display:flex;gap:10px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border)}
+.av{width:34px;height:34px;border-radius:50%;background:#e4e7eb;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;color:#5c6470;flex:none}
+.row .who{flex:1;min-width:0}.row .who>b{display:block}.row .who small{color:var(--text-muted);font-size:12.5px}
+.pill{font-size:11.5px;padding:1px 8px;border-radius:999px;background:#fff1e0;color:#8a4b00}
+.sheet{margin:8px 0 0 30px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13.5px;background:#fbfcfd;width:520px;max-width:100%}
+.sheet label{display:block;font-size:12px;color:var(--text-muted);margin:6px 0 2px}
+.sheet .in{border:1px solid var(--border);border-radius:6px;padding:4px 8px;background:#fff;display:inline-block;min-width:140px}
+.gm{font:13px/1.4 Arial,sans-serif;border:1px solid #dadce0;border-radius:8px;overflow:hidden;width:620px;max-width:100%}
+.gm div{padding:7px 10px;border-bottom:1px solid #eee;display:flex;gap:10px}
+.gm .lb{background:#e8f0fe;color:#1a56c4;border-radius:4px;padding:0 6px;font-size:11.5px}
+ul.list{max-width:900px;font-size:13.5px;line-height:1.5;margin:0 0 8px 18px;padding:0}
+ol.list{max-width:900px;font-size:13.5px;line-height:1.5;margin:0 0 8px 18px;padding:0}
+ol.list li,ul.list li{margin-bottom:5px}
+code{font-size:12.5px;background:#eef1f5;padding:0 4px;border-radius:4px}
+.pickk{max-width:900px;font-size:13.5px;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>Messages, cut 6: email in, the bids@ reader and the files that arrive</h1>
+<p class="lead">Every email that reaches bids@ lands in the sender's thread, the way a text from the company number does in cut 5. A reader on the server (<code>gmail-sync</code>, run every few minutes) takes each new email once, finds whose address it is, ties it to a job when its subject names one, keeps a copy of each small file and keeps a link as a link, then puts a label on it in Gmail. It never deletes or archives. A file that reads as a paper a step waits on is offered in the thread, never filed on its own. What follows is each screen as it would look, the rules the reader keeps, the cut list, and what I need the lead to settle.</p>
+
+<h2 class="sec">The screens</h2>
+
+<div class="opt"><h2>1 · An email in the thread <small>· the line as cut 1 draws it, with its files under it</small></h2>
+<div class="frame"><div class="st">Greg Paulk's thread</div>
+<div class="msg"><div class="meta"><span class="ch">Email</span><span>Greg Paulk &lt;greg@hillside.example&gt; to bids@</span><span class="job" title="Tied from its subject: B482">B482 Boerne Retail Shell</span></div>
+<div class="subject">Hillside sitework, Boerne, rev 1</div>
+<div class="body">Robert,
+
+Numbers attached for the Boerne sitework. A few things to know when you read it:
+
+1. Detention pond excluded per our call. We can price it at $38,500 if you need it in.</div>
+<div class="att"><span class="chip"><span class="ic pdf">PDF</span><span>Hillside-Boerne-sitework-rev1.pdf <span class="note">· 1.2 MB</span></span></span><span class="chip"><span class="thumb"></span><span>site-photo-pad.jpg <span class="note">· 2.8 MB</span></span></span><span class="chip"><span class="ic link">↗</span><span>Addendum 2 drawings <span class="note">· a link</span></span></span></div>
+<span class="when">11:30 AM</span></div></div>
+<p class="why">The chips are the prototype's: a picture shows its thumbnail, a link is a ↗ chip with no size, and a press on any chip opens the message window at its files. The job tag came from the subject's <b>B482</b>; its hover card says <i>Tied from its subject: B482</i>, and the tag's own picker changes it, as for any line. With no job in the subject the line takes the person's star, as Quo's lines do, and with no star it sits on the person.</p></div>
+
+<div class="opt"><h2>2 · The message window's files <small>· v1.159's window with an Attachments section</small></h2>
+<div class="frame mw"><div class="st">The message window</div>
+<b>Email: Hillside sitework, Boerne, rev 1</b>
+<dl class="facts"><dt>From</dt><dd>Greg Paulk &lt;greg@hillside.example&gt;</dd><dt>Received</dt><dd>Friday, October 2, 2026 at 11:30 AM</dd><dt>Through</dt><dd>an email to bids@</dd><dt>Tied to</dt><dd>B482 Boerne Retail Shell, from its subject <button class="small quiet">change</button></dd></dl>
+<h3>Attachments (3)</h3>
+<div class="attl">
+<div><span class="ic pdf">PDF</span><span class="nm">Hillside-Boerne-sitework-rev1.pdf <span class="note">· 1.2 MB · our copy kept on arrival</span></span><button class="small">Open</button><button class="small">Save to Drive</button></div>
+<div><span class="ic image">IMG</span><span class="nm">site-photo-pad.jpg <span class="note">· 2.8 MB · our copy kept on arrival</span></span><button class="small">Open</button><button class="small">Save to Drive</button></div>
+<div><span class="ic link">↗</span><span class="nm">Addendum 2 drawings <span class="note">· a link, not a file</span></span><button class="small">Open</button></div>
+<div><span class="ic">F</span><span class="nm">Hillside-Boerne-full-set.zip <span class="note">· 31 MB · too big to keep, it stays in Gmail</span></span><button class="small">Open in Gmail</button></div>
+</div></div>
+<p class="why"><b>Open</b> reads our copy through a link that lasts a few minutes, so a file is never public. <b>Save to Drive</b> is the prototype's button. It is question 6 below: it can come in this cut with a small function, or wait for cut 7's Drive handler, and until then the row shows Open alone. A file over the size we keep stays in Gmail, and its row says so, with Open in Gmail.</p></div>
+
+<div class="opt"><h2>3 · A paper offered, never filed on its own <small>· decision 5's lean: offer when it reads like a step's paper</small></h2>
+<div class="frame"><div class="st">Greg Paulk's thread · an email with a certificate</div>
+<div class="msg"><div class="meta"><span class="ch">Email</span><span>Greg Paulk &lt;greg@hillside.example&gt; to bids@</span><span class="job">no job</span></div>
+<div class="subject">Updated insurance</div>
+<div class="body">Robert, here is our new certificate. Good through next September.</div>
+<div class="att" style="padding-bottom:0"><span class="chip"><span class="ic pdf">PDF</span><span>Hillside COI 2027.pdf <span class="note">· 380 KB</span></span></span></div>
+<div class="offer"><span>This reads like Hillside Excavation's <b>certificate of insurance</b>.</span><button class="small primary">File this as their certificate</button><button class="small">It is not</button></div>
+<span class="when">9:12 AM</span></div>
+<div class="sheet"><b>Hillside Excavation · Documents · Insurance</b> <span class="note">(the company window, opened by the press)</span>
+<label>The file</label><span class="in">Hillside COI 2027.pdf, from Greg's email</span>
+<label>Good from</label><span class="in">Oct 1, 2026</span> <label style="display:inline;margin-left:10px">to</label> <span class="in">Sep 30, 2027</span>
+<div style="margin-top:8px"><button class="small primary">Save their insurance</button> <button class="small">Cancel</button></div></div>
+<div class="msg" style="margin-top:12px"><div class="att" style="padding-bottom:0"><span class="chip"><span class="ic pdf">PDF</span><span>Hillside COI 2027.pdf <span class="note">· 380 KB</span></span></span></div><div class="done">✓ Filed as their certificate · Rosa, Oct 12</div></div>
+</div>
+<p class="why">The guess reads the file's name and kind, and only when the sender is a trade partner. A W-9 and a certificate of insurance are the two papers for now. The press opens the company window's Documents at that paper with this file in place. The office types the dates there and saves, through the same save the window has today, so the app never files a paper by itself. <b>It is not</b> takes the offer away for everyone. Once filed, the line says so and the offer is gone.</p></div>
+
+<div class="opt"><h2>4 · A forwarded copy <small>· mail that went to someone's own inbox, sent on to bids@</small></h2>
+<div class="frame"><div class="st">Elena Marchetti's thread</div>
+<div class="msg"><div class="meta"><span class="ch">Email</span><span>Elena Marchetti &lt;elena@cibolocreek.example&gt; · forwarded to bids@ by Rosa</span><span class="job">J1077 Fair Oaks Shops, Building D</span></div>
+<div class="subject">Pay application 3</div>
+<div class="body">Rosa, the check for pay application 3 goes out Friday. Our accounting runs then.</div>
+<span class="when">Thu 4:02 PM</span></div></div>
+<p class="why">The reader takes the first sender from the forwarded block, so the line lands on Elena, not on Rosa, with Elena's own time and subject. The meta names who forwarded it. When there is no forwarded block to read, the line lands on the person who sent it, as any email does.</p></div>
+
+<div class="opt"><h2>5 · An address nobody knows <small>· the Who is this? row, the way a new number lands from Quo</small></h2>
+<div class="frame"><div class="st">Messages · Who is this?</div>
+<div class="row"><span class="av">?</span><span class="who"><b>estimating@alamoconcrete.example</b><small>Who is this? · <b>Email</b> Quote for Boerne flatwork</small></span><span class="pill">Our move</span></div></div>
+<p class="why">A new address makes one contact with that one address, named by the address, unless the email gives a display name. <b>Who is this?</b> (cut 1) then names it, and its thread joins the person's. Bulk mail never makes a row (the next list).</p></div>
+
+<div class="opt"><h2>6 · In Gmail <small>· the box stays as it was, with one label</small></h2>
+<div class="frame"><div class="st">bids@ in Gmail</div>
+<div class="gm"><div><b>Greg Paulk</b><span>Hillside sitework, Boerne, rev 1</span><span class="lb">In ClickTooling</span></div><div><b>Elena Marchetti</b><span>Fwd: Pay application 3</span><span class="lb">In ClickTooling</span></div><div><b>Suppliers Weekly</b><span>This week's copper prices</span></div></div></div>
+<p class="why">The reader adds a label to each email it took, and nothing else changes: nothing is archived, marked read, moved or deleted. The weekly newsletter has no label, because the reader left it out.</p></div>
+
+<h2 class="sec">What the reader keeps to</h2>
+<ul class="list">
+<li><b>Once each.</b> An email is one line, claimed by its Gmail id, so a second run or two runs at once write it once. The reader keeps Gmail's history id to start the next run where the last one stopped, and falls back to a search by the label when Gmail has dropped that history.</li>
+<li><b>Whose it is.</b> The sender's address, matched by its key (lower case, trimmed), finds the contact through <code>contact_for_channel</code>, as cut 1 built it. An address two people share goes to the one it last carried a message for.</li>
+<li><b>Left out.</b> Mail with an unsubscribe line or marked bulk, no-reply senders, Gmail's Promotions, Social, Updates and Forums, spam and trash, and anything our own app sent, which the thread already shows as a sent copy. These stay in Gmail with no label.</li>
+<li><b>Files.</b> Each file up to the size we keep is copied into the private <code>message-attachments</code> bucket. The office reads it there, and only the server writes it. A small inline picture, a signature's logo, is left out. A link to a file host (Drive, Dropbox, Box, WeTransfer, OneDrive) in the body is kept as a link.</li>
+<li><b>The job.</b> A bid's, a GC project's or a Pipeline job's number in the subject ties the line to that job. With no number, an exact name among the person's own jobs does. Otherwise the line takes their star, and with no star it sits on the person.</li>
+<li><b>Who sees it.</b> The office team, as every line. Nothing reaches a portal. The emails we sent stay the office's read, so an estimator sees none of them (the known gap, not widened).</li>
+<li><b>A switch.</b> The reader does nothing until a dev turns it on (<code>gmail_sync_on_v1</code>), so the first run is watched.</li>
+</ul>
+
+<h2 class="sec">The cut list</h2>
+<ol class="list">
+<li><b>Kernels</b> (pure, tested): <code>src/lib/emailIn/</code>. <code>gmailMessage.ts</code> turns Gmail's message into an email: the headers, the plain text (or the HTML read as text), the files and the inline pictures. <code>forwarded.ts</code> reads the first sender, time and subject out of a forwarded block. <code>leftOut.ts</code> holds the bulk rules above. <code>jobInSubject.ts</code> finds the job number in a subject. <code>paperGuess.ts</code> reads a file's name and kind into a W-9 or a certificate, or nothing. <code>fileLinks.ts</code> finds the links to file hosts. Fixtures use only made-up <code>.example</code> addresses.</li>
+<li><b>SQL</b> (one migration, claimed from main): <code>messages.gmail_id</code> with a unique index (whole, not partial, as <code>quo_id</code>'s is, so the write's <code>ON CONFLICT</code> can use it) and <code>gmail_thread_id</code> for cut 3's replies. <code>message_attachments</code> holds the message, kind (file or link), name, mime, size, our bucket path or the link, the paper guess, and whether it was filed or turned down. The private <code>message-attachments</code> bucket gets its storage policies: the office team reads, the service role writes. <code>email_place_address</code> is <code>quo_place_number</code>'s twin for an address. <code>email_write_line</code> writes once by the Gmail id. <code>gmail_sync_state</code> holds the history id, the last run and the last error. The switch is off. A cron runs it every few minutes, as <code>gc_office_notices</code>'s does. The house fences, the doc, ACCESS_CONTROL, and a bed.</li>
+<li><b>The edge function</b> <code>gmail-sync</code>: the token from <code>_shared/driveUpload.ts</code>'s path, given the Gmail scopes (one optional argument, which leaves every Drive caller as it is), as <code>GMAIL_IMPERSONATE_USER</code>. <code>X-Cron-Secret</code>, the switch, the history since the last run, each email through the kernels' copy in <code>_shared</code>, the line, the files, the label, and the history id saved last. Its EDGE_FUNCTIONS.md section, the dev-mcp catalog line (as #5452 did) and config.toml's <code>verify_jwt = false</code>. Secrets by name only.</li>
+<li><b>The screens</b>: the chips under a line, the window's Attachments with Open, the paper offer and its press into the company window, a forwarded line's words, and whatever question 6 decides for Save to Drive. The help guide's section, the release note, and the docs.</li>
+</ol>
+
+<h2 class="sec">What I need the lead to settle</h2>
+<ol class="list">
+<li><b>Replies go to people's own inboxes today.</b> The GC senders (<code>gc-trade-email</code>, <code>gc-customer-email</code>) send from the app's address with the Reply-To set to the PM's or the sender's own address. So a trade's or a customer's answer lands in a person's inbox, never in bids@, unless they forward it. Should our sends add bids@ to the Reply-To (Resend takes two), so every answer reaches the reader? That is a change to cuts 3 and 4's senders, and it is the owner's call. Without it, the forwarded copy (screen 4) is the only way their answers arrive.</li>
+<li><b>Which mail.</b> The Inbox only, or the Inbox and Sent? Sent would bring the team's own replies written in Gmail into the threads as lines from us. Spam and trash are left out either way.</li>
+<li><b>The first run.</b> Only new mail from the day it is turned on, or the last 30 days so the threads start full?</li>
+<li><b>The size we keep.</b> Every file up to 25 MB (Gmail's own cap on an email), leaving out inline pictures under 30 KB?</li>
+<li><b>Who reads the files.</b> The office team, <code>gc_office_team()</code>, the same as the lines they hang on, estimators included. Or <code>is_office_staff()</code>, the sent copies' readers?</li>
+<li><b>Save to Drive.</b> In this cut, with a small function that copies our copy into the job's Drive folder through <code>driveUpload.ts</code> (Plans, or Team only for a quote or a photo)? Or with cut 7's Drive handler, showing Open alone until then?</li>
+<li><b>The papers.</b> A trade partner's W-9 and certificate only for now, offered as screen 3 shows? A customer's papers later?</li>
+<li><b>The label and the pace.</b> The label <i>In ClickTooling</i>, and a run every 3 minutes all day?</li>
+<li><b>A dev's view of the reader.</b> Is <code>gmail_sync_state</code> through the dev-mcp catalog enough to watch it (the last run, its count and its last error)? Or should a line on Messages show it to a dev?</li>
+</ol>
+
+<h2 class="sec">Is this the best we can do? Three ways it could be better, and the pick</h2>
+<div class="pickk"><ol class="list">
+<li><b>A push instead of a poll.</b> Gmail's watch through Pub/Sub would land an email in seconds, not minutes. But it needs a Pub/Sub topic, a public endpoint and a watch renewed every week. The lead chose the poll, and three minutes is fast enough for an office.</li>
+<li><b>Reading inside the PDF.</b> A plan set's title block and a certificate's dates read from the file itself would tie more jobs and fill the dates for the office. That means reading PDFs on the server. It is a later step, once the name-and-subject rules show how often they miss.</li>
+<li><b>Every answer through bids@.</b> Question 1. If our sends add bids@ to the Reply-To, the forwarded copy becomes the rare case instead of the rule.</li>
+</ol>
+<p><b>The pick:</b> the poll, the name-and-subject rules, and the offer that never files on its own, built as the four PRs above. Question 1 goes to the owner before cut 3's sender is final.</p></div>
+</body>
+</html>
