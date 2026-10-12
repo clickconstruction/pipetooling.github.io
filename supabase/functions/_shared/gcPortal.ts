@@ -15,6 +15,7 @@
  */
 
 import type { PortalGcSchedule } from './gcCustomerSchedule.ts'
+import type { PortalGcPage } from './gcPortalPage.ts'
 
 export type PortalGcChangeOrder = {
   id: string
@@ -73,6 +74,12 @@ export type PortalGcJob = {
    * show. `customer-portal` lays it on after this read, with the copy of the kernels loaded only for a GC customer.
    */
   schedule?: PortalGcSchedule
+  /**
+   * What the customer's page (shape B, Messages cut 8b-i) reads beyond this block: the money, this week's line, the
+   * people, the schedule's moves and the switches. `customer-portal` lays it on after this read
+   * (`gcPortalPage.ts`). Absent: the page reads as it did.
+   */
+  page?: PortalGcPage
 }
 
 export type GcPortalRows = {

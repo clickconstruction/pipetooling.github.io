@@ -277,6 +277,13 @@ the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule
 with *The dock* row — tap a slot there to swap it — every page, the mode switches and Help /
 Settings / Sign out); holding a slot on the bar swaps it too.
 
+### /portal · /p/:slug — A customer's portal (public)
+One no-password link per customer (`CustomerPortal.tsx`, read through `customer-portal`): their open bills and the
+statement, payments, waivers, their agreements and test reports. On a GC job we build it is the customer's page
+(v2.5303, shape B): Home with *Your move*, *This week* and *Your people*, then Money, Schedule and Papers, where they
+sign our contract, answer a change order and accept the work. `/portal?t=sample-owner` is the GC owner's sample.
+Roles: public.
+
 ### /t/:token — A trade partner's portal (public)
 One no-password link per trade partner company (v2.4920, `GcTradePortal.tsx`, read through `gc-trade-portal`): the
 company's asks, quotes, plans and questions on each project. Its home opens on **Where you are with Click
