@@ -768,6 +768,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.140, 2026-10-11**: the *from the company number* line floats inside the box at its bottom right while the box
+  is empty and goes as soon as a person types; the line under the box is gone (the owner, 2026-10-11).
 - **v1.139, 2026-10-11**: the message window has one button for it, *Remove the highlight*, beside *Highlight the
   selected words*; with more than one highlight it takes the one the cursor is in, or all of them (the owner,
   2026-10-11: one button).
