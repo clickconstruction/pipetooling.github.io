@@ -11,6 +11,10 @@ import type { QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { ReplyBox } from './ReplyBox'
 
+// The step a person is on is cut 4's read (R4). This strip's smokes hold it at nothing on, so Find a reply's Where line
+// is said at once and no read waits on the suite's load.
+vi.mock('../../../../hooks/useFlowNow', () => ({ useFlowNow: () => null, openFlowStep: vi.fn() }))
+
 const line = (id: string, text: string, set: Partial<QuickReply> = {}): QuickReply => ({
   id,
   text,
@@ -167,7 +171,8 @@ describe('the quick replies strip above the reply box (Messages, cut 3)', () => 
     fireEvent.click(await within(el).findByRole('button', { name: '⤢ Find' }))
     const find = await screen.findByRole('dialog', { name: 'Find a reply · Greg Paulk' })
     expect(find.querySelector('[data-find-last]')?.textContent).toContain('Their last message · email')
-    expect(find.querySelector('[data-find-where]')?.textContent).toContain('Where Greg is')
+    // Where they are waits on cut 4's read of the step they are on (R4), so nothing is said until it lands.
+    await waitFor(() => expect(find.querySelector('[data-find-where]')?.textContent).toContain('Where Greg is'))
     expect(find.querySelector('[data-find-where]')?.textContent).toContain('Nothing on now.')
     fireEvent.click(find.querySelector('[data-find-line="q14"]') as HTMLElement)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Find a reply · Greg Paulk' })).toBeNull())

@@ -35,13 +35,13 @@ Quick replies are lines the office types every day. They sit above the box for a
 2. Press a line. It fills the box. Nothing sends.
 3. Change the words if you like, then send as usual.
 
-The lines for their kind of person come first. The lines for anyone come last. In each group the lines you use most come first. A press counts, so the order follows the office.
+The lines for the step they are on come first, then the rest for their kind of person. The lines for anyone come last. In each group the lines you use most come first. A press counts, so the order follows the office.
 
 While you type, the lines fold away. They come back when the box is empty.
 
 ## Find a reply
 
-Press **⤢ Find** in the quick replies. A window opens with their last message on top. It also says where they are in the flow.
+Press **⤢ Find** in the quick replies. A window opens with their last message on top. It also says where they are in the flow, and what finishes that step. Press **the step’s card ›** to open the step itself.
 
 Every line shows with room to read. Type in the narrow box to find a line by its words. Press a line to fill the box.
 
