@@ -451,6 +451,35 @@ export function wordsWith(rows: readonly { key: string; en: string; es: string }
   }
 }
 
+/** The keys only the trade partner's first page reads; the customer's page never shows them. */
+const TRADE_ONLY_KEYS: readonly PortalWordKey[] = ['pageTitle', 'setUp', 'openSection', 'questions', 'waiverWhy', 'waiverWhyPlain']
+
+/** The papers a customer meets on their page. */
+const CUSTOMER_PAPERS: readonly PortalPaperId[] = ['msa', 'bid', 'contract', 'schedule', 'payapp', 'co']
+
+/** One sentence of ours on the customer's page, as `customer_page_words` holds it. A paper's words are `paper.<id>.<field>`. */
+export interface CustomerPageWordRow {
+  key: string
+  en: string
+  es: string
+}
+
+/**
+ * Every sentence of ours on the customer's page, in the order Settings → Customer page lists them: the page's own
+ * words, then each paper's. `customer_page_words` is seeded from these rows (`scripts/customer-page-words-sql.ts`
+ * writes the migration's seed block; `customerPageWords.test.ts` fails when the newest block and this list differ).
+ */
+export function customerPageWordRows(): CustomerPageWordRow[] {
+  const rows: CustomerPageWordRow[] = PORTAL_WORD_KEYS.filter((key) => !TRADE_ONLY_KEYS.includes(key)).map((key) => ({ key, ...W[key] }))
+  for (const paper of CUSTOMER_PAPERS) {
+    const { en, es } = PAPER_WORDS[paper]
+    for (const field of Object.keys(en) as (keyof PaperWords)[]) {
+      rows.push({ key: `paper.${paper}.${field}`, en: en[field] ?? '', es: es[field] ?? '' })
+    }
+  }
+  return rows
+}
+
 const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 const MONTHS_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre']
 

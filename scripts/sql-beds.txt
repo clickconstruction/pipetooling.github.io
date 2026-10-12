@@ -22,3 +22,4 @@ gc-owner-contract
 gc-customer-contacts
 messages-spine
 contract-clauses
+portal-customer-page
