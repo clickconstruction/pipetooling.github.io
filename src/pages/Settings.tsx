@@ -67,6 +67,8 @@ import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeIn
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import TestReportSettingsBlock from '../components/settings/TestReportSettingsBlock'
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
+import GcBillDayCutoffSettingsBlock from '../components/settings/GcBillDayCutoffSettingsBlock'
+import { canSeeGcMoney } from '../lib/gc/access'
 import GcCardBillSettingsBlock from '../components/settings/GcCardBillSettingsBlock'
 import GcOfficeNoticesSettingsBlock from '../components/settings/GcOfficeNoticesSettingsBlock'
 import GcCustomerDueNoticesSettingsBlock from '../components/settings/GcCustomerDueNoticesSettingsBlock'
@@ -1561,6 +1563,8 @@ export default function Settings() {
       {(myRole === 'dev' || myRole === 'master_technician') && <GcCardBillSettingsBlock />}
       {(myRole === 'dev' || myRole === 'master_technician') && <GcOfficeNoticesSettingsBlock />}
       {(myRole === 'dev' || myRole === 'master_technician') && <GcCustomerDueNoticesSettingsBlock />}
+      {/* GC mode, Bill day (Messages cut 9): the trades' cut-off, for the money team as its policy is. */}
+      {canSeeGcMoney(myRole) && <GcBillDayCutoffSettingsBlock />}
       {myRole === 'dev' && (
         <>
           <StripeInvoiceFooterDevSettingsBlock />

@@ -16,6 +16,8 @@ From the trades is on the Money screen, for the money team.
 3. On the **Bill day** card, press {{button:outline|From the trades}}.
 4. Pick the job when more than one is being built.
 
+Or press {{button:outline|Bill day · 3 of 7}} on a building job's card. The line under it gives the bill day and the cut-off. The line also counts the trades in and the gates clear.
+
 {{button:outline|To the owner}} beside it goes back to what each job would ask the owner.
 
 ## What the top shows
@@ -75,4 +77,4 @@ The checked gate's button asks the job's superintendent to walk the claims. The 
 
 When every gate is clear on bill day, press {{button:blue|Send pay application 4}}. The button opens Bill the customer. See [bill the customer on a GC job](/help/bill-the-customer-on-a-gc-job).
 
-The trades' pay applications are due 6 days before bill day, the cut-off, on every job.
+The trades' pay applications are due 6 days before bill day, the cut-off, on every job. The money team changes it in Settings, under **Jobs & billing**, from 2 to 20 days.
