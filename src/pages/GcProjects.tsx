@@ -6,7 +6,7 @@
  * and the one write; the window and the kernels decide the rest.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Navigate, useSearchParams } from 'react-router-dom'
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { GC_MONEY_TEAM, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
@@ -229,7 +229,28 @@ import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { DailyLog, GcProject, GcState, ScopeBookStore, TradeChangeRequest } from '../lib/gc/types'
 import { partnerById } from '../lib/gc/lookups'
-import { billDayFromSearch, gcFocusFromSearch, gcViewFromSearch } from '../lib/gc/links'
+import { billDayFromSearch, gcFocusFromSearch, gcViewFromSearch, type GcView } from '../lib/gc/links'
+import { GcMessages } from '../components/gc/GcMessages'
+import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
+import { useThreadSlots } from '../components/gc/messages/threadSlots'
+import { useThreadWindow } from '../components/gc/messages/useThreadWindow'
+import type { MessagesWrites } from '../components/gc/messages/messagesWrites'
+import { useCustomerProfileModal } from '../contexts/CustomerProfileModalContext'
+import { useBidPreview } from '../contexts/BidPreviewModalContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
+import type { Contact } from '../lib/contacts/kernel'
+import { jobRefOf } from '../lib/messages/load'
+import {
+  addContactJob,
+  loadMessagesView,
+  nameContact as nameMessagesContact,
+  removeContactJob,
+  searchContactRecords,
+  searchJobs,
+  setDefaultJob,
+  tieMessage,
+  type MessagesView,
+} from '../lib/messages/messagesIo'
 
 interface Loaded {
   customers: GcPickerCustomer[]
@@ -400,7 +421,7 @@ export default function GcProjects() {
   const openProjectCard = (projectId: string) => document.querySelector(`[data-gc-project="${projectId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
   // `?view=followUp` (the Dashboard's Needs you line, v2.4941) opens on Follow up.
-  const [devView, setDevView] = useState<'board' | 'partners' | 'followUp' | 'money'>(() => gcViewFromSearch(params))
+  const [devView, setDevView] = useState<GcView>(() => gcViewFromSearch(params))
   /** Read the board again; answers what it read, for a press that emails from the rows as they are now (P5c-4). */
   const refreshBoard = async (): Promise<GcState | null> => {
     if (!loaded) return null
@@ -574,6 +595,77 @@ export default function GcProjects() {
   const [customerWin, setCustomerWin] = useState<{ id: string; at: CustomerAt | null } | null>(null)
   const customerOpener: CustomerOpener | null = canUseGcBoardWrites(role) && board ? { openCustomer: (id, at) => setCustomerWin({ id, at: at ?? null }) } : null
   const openCustomer = customerWin && board ? (board.customers.find((c) => c.id === customerWin.id) ?? null) : null
+  // Messages (cut 1's screens): every person the office talks with and their lines, read while the view or a thread is
+  // open and again after each press. A thread opens as a window over any view (`?thread=<id>&at=<message id>`).
+  const navigate = useNavigate()
+  const thread = useThreadWindow()
+  const threadSlots = useThreadSlots()
+  const customerProfile = useCustomerProfileModal()
+  const jobDetail = useJobDetailModal()
+  const bidPreview = useBidPreview()
+  const [messagesView, setMessagesView] = useState<MessagesView | null>(null)
+  const [messagesProblem, setMessagesProblem] = useState<string | null>(null)
+  const [messagesNow, setMessagesNow] = useState(() => new Date().toISOString())
+  const [messagesTick, setMessagesTick] = useState(0)
+  const messagesOpen = canOpenGcProjects(role) && (devView === 'messages' || thread.contactId !== null)
+  useEffect(() => {
+    if (!messagesOpen) return
+    let live = true
+    const now = new Date().toISOString()
+    setMessagesProblem(null)
+    loadMessagesView(now)
+      .then((v) => {
+        if (!live) return
+        setMessagesView(v)
+        setMessagesNow(now)
+      })
+      .catch((e) => {
+        if (live) setMessagesProblem(formatErrorMessage(e, 'The messages did not load.'))
+      })
+    return () => {
+      live = false
+    }
+  }, [messagesOpen, messagesTick])
+  const messagesWrites = useMemo<MessagesWrites>(() => {
+    const after = async <T,>(press: Promise<T>): Promise<T> => {
+      const answer = await press
+      setMessagesTick((t) => t + 1)
+      return answer
+    }
+    return {
+      nameContact: (contactId, target) => after(nameMessagesContact(contactId, target)),
+      tieMessage: (messageId, jobKey) => after(tieMessage(messageId, jobKey)),
+      setDefaultJob: (contactId, jobKey) => after(setDefaultJob(contactId, jobKey)),
+      addJob: (contactId, jobKey) => after(addContactJob(contactId, jobKey)),
+      removeJob: (contactId, jobKey) => after(removeContactJob(contactId, jobKey)),
+      searchRecords: searchContactRecords,
+      searchJobs: (words) => searchJobs(words, new Date().toISOString()),
+    }
+  }, [])
+  // ⧉ on a job: a GC project's card on this page, a Pipeline job in its job window, a bid in its preview, each over
+  // the page (Bids or Jobs when the window is not there). The thread closes first.
+  const openMessagesJob = (key: string) => {
+    const ref = jobRefOf(key)
+    if (!ref) return
+    thread.closeThread()
+    if (ref.kind === 'project') requestAnimationFrame(() => openProjectCard(ref.id))
+    else if (ref.kind === 'pipeline') {
+      if (jobDetail) jobDetail.openJobDetail({ jobId: ref.id })
+      else navigate('/jobs')
+    } else if (bidPreview) bidPreview.openBidPreview(ref.id)
+    else navigate(`/bids?bidId=${encodeURIComponent(ref.id)}`)
+  }
+  // Open their record, from the thread's ⋯: a trade partner's company window, else the customer's.
+  const openMessagesRecord = (c: Contact) => {
+    thread.closeThread()
+    if (c.gcCompanyId && board?.partners.some((p) => p.id === c.gcCompanyId)) {
+      setCompanyId(c.gcCompanyId)
+      setCompanyAt(null)
+    } else if (c.customerId) {
+      if (customerOpener) customerOpener.openCustomer(c.customerId)
+      else customerProfile?.openCustomerProfile(c.customerId)
+    }
+  }
   // With its tick (B6-d-iii-b), the send emails them: their portal link made first if they have none (call D6, the
   // merged link, as every door makes one), then gc-customer-email's contract kind, which attaches the send's own file.
   // A refusal is said after the board reads the send, which stays on record either way.
@@ -679,7 +771,7 @@ export default function GcProjects() {
   // Follow up's badge is the one count (the Board's B2b-ii-b, call E1): everyone we wait on, once a person across their
   // jobs, as the Dashboard's Follow up line reads it from these same rows. Each board row shows its job's share.
   const toCall = board ? allPeople(board).count : 0
-  const devPill = (view: 'board' | 'partners' | 'followUp' | 'money', label: string) => {
+  const devPill = (view: GcView, label: string) => {
     const on = devView === view
     return (
       <button
@@ -1698,16 +1790,19 @@ export default function GcProjects() {
       {canOpenGcProjects(role) && loaded && loaded.projects.length > 0 && (
         <div style={{ display: 'grid', gap: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
-            <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Follow up or Money' : 'Project Board, Trade partners or Follow up'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '1.1rem' }}>{devView === 'board' ? 'Project Board' : devView === 'partners' ? 'Trade partners' : devView === 'messages' ? 'Messages' : devView === 'money' && canSeeGcMoney(role) ? 'Money' : 'Follow up'}</h2>
+            <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Follow up, Messages or Money' : 'Project Board, Trade partners, Follow up or Messages'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
               {devPill('followUp', toCall > 0 ? `Follow up (${toCall})` : 'Follow up')}
+              {devPill('messages', 'Messages')}
               {/* Money is the money team's (the Owner Billing door). */}
               {canSeeGcMoney(role) && devPill('money', 'Money')}
             </div>
           </div>
-          {board ? (
+          {devView === 'messages' ? (
+            <GcMessages view={messagesView} problem={messagesProblem} nowIso={messagesNow} onOpenThread={(id) => thread.openThread(id)} />
+          ) : board ? (
             devView === 'board' ? (
               <GcBoard
                 state={board}
@@ -2162,6 +2257,21 @@ export default function GcProjects() {
               }
             : {})}
           onClose={() => setCustomerWin(null)}
+        />
+      )}
+      {canOpenGcProjects(role) && thread.contactId && (
+        <ThreadWindow
+          contactId={thread.contactId}
+          at={thread.at}
+          onClose={thread.closeThread}
+          slots={threadSlots}
+          view={messagesView}
+          problem={messagesProblem}
+          nowIso={messagesNow}
+          writes={messagesWrites}
+          onOpenJob={openMessagesJob}
+          onOpenRecord={openMessagesRecord}
+          onShowContact={(id) => thread.openThread(id)}
         />
       )}
       {openCompany && board && (

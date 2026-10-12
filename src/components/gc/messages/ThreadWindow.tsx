@@ -1,0 +1,398 @@
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
+import { useToastContext } from '../../../contexts/ToastContext'
+import { useMatchMedia } from '../../../hooks/useMatchMedia'
+import { contactById, initials, isOptedOut, kindWord, type Contact } from '../../../lib/contacts/kernel'
+import type { MessagesView } from '../../../lib/messages/messagesIo'
+import { isSentLine } from '../../../lib/messages/sentLines'
+import { stampSentence } from '../../../lib/messages/stamps'
+import { courtOf, threadOf, threadRows } from '../../../lib/messages/thread'
+import { formatErrorMessage } from '../../../utils/errorHandling'
+import { Chip, type Tone } from '../gcUi'
+import { JobPickerWindow } from './JobPickerWindow'
+import { JobsRail } from './JobsRail'
+import { MessageWindow } from './MessageWindow'
+import type { MessagesWrites } from './messagesWrites'
+import { EventLine, ThreadLine } from './ThreadLine'
+import type { ThreadMenuRow, ThreadSlots } from './threadSlots'
+import { WhoIsThisWindow } from './WhoIsThisWindow'
+
+export interface ThreadWindowProps {
+  contactId: string
+  /** The line to show and mark: a message id. */
+  at?: string | null
+  onClose: () => void
+  /** What later cuts draw inside the window (`threadSlots.tsx`). */
+  slots?: ThreadSlots
+  /** The page's read of the contacts and their lines. Null: still loading. */
+  view: MessagesView | null
+  problem?: string | null
+  nowIso: string
+  writes: MessagesWrites
+  /** ⧉ on a job: open it. */
+  onOpenJob?: (jobKey: string) => void
+  /** Open their record, from ⋯: the company window, or the customer. */
+  onOpenRecord?: (c: Contact) => void
+  /** Who is this? joined the number to a person who already had a thread: show theirs. */
+  onShowContact?: (contactId: string) => void
+}
+
+const COURT_TONE: Record<'ours' | 'theirs' | 'none', Tone> = { ours: 'amber', theirs: 'green', none: 'grey' }
+const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+/**
+ * Messages, cut 1's screens: a person's thread, as a window over any view of GC projects (`?thread=<id>&at=<id>`),
+ * and a full-screen sheet on a phone. The header in four calm rows (v1.166): the name with ☎ ⋯, what they are to us
+ * and their company with the chevron over their numbers and addresses, one status row that leads with whose move it
+ * is, then the stamps sentence; the jobs rail last. Then the lines, a divider at each day, and the slots later cuts
+ * fill (`ThreadSlots`). The message window, Who is this? and the job picker are drawn inside the panel.
+ */
+export function ThreadWindow({ contactId, at = null, onClose, slots = {}, view, problem = null, nowIso, writes, onOpenJob, onOpenRecord, onShowContact }: ThreadWindowProps) {
+  const phone = useMatchMedia('(max-width: 760px)')
+  const { showToast } = useToastContext()
+  const confirm = useConfirmDialog()
+  const [contactOpen, setContactOpen] = useState(true)
+  const [showAll, setShowAll] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [jobFilter, setJobFilter] = useState<string | null>(null)
+  const [openMessageId, setOpenMessageId] = useState<string | null>(null)
+  const [naming, setNaming] = useState(false)
+  const [picker, setPicker] = useState<{ kind: 'add' } | { kind: 'tie'; messageId: string } | null>(null)
+  const [tying, setTying] = useState<string | null>(null)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+
+  const contact = view ? contactById(view.contacts, contactId) : undefined
+  const lines = useMemo(() => (view && contact ? threadOf(view.messages, contact.id, jobFilter) : []), [view, contact, jobFilter])
+  const allLines = useMemo(() => (view && contact ? threadOf(view.messages, contact.id) : []), [view, contact])
+  const rows = useMemo(() => threadRows(lines, nowIso), [lines, nowIso])
+  const rail = (contact && view?.rails[contact.id]) || []
+
+  const run = useCallback((press: Promise<unknown>, failed: string) => press.catch((e: unknown) => showToast(formatErrorMessage(e, failed), 'error')), [showToast])
+  const tie = (messageId: string, jobKey: string | null) => run(writes.tieMessage(messageId, jobKey), 'The message was not tied.')
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented) {
+        if (tying) setTying(null)
+        else onClose()
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose, tying])
+
+  // A link's line: brought into view and marked once the thread is drawn.
+  useEffect(() => {
+    if (!at || !contact) return
+    requestAnimationFrame(() => document.querySelector(`[data-thread-line="${at.replace(/["\\]/g, '')}"]`)?.scrollIntoView({ block: 'center' }))
+  }, [at, contact])
+
+  const onDragEnd = (e: DragEndEvent) => {
+    const jobKey = (e.active.data.current as { jobKey?: string } | undefined)?.jobKey
+    const messageId = (e.over?.data.current as { messageId?: string } | undefined)?.messageId
+    if (jobKey && messageId) void tie(messageId, jobKey)
+  }
+
+  const removeJob = async (key: string) => {
+    if (!contact) return
+    const tile = view?.tiles[key]
+    const ok = await confirm({
+      title: `Take ${tile ? `${tile.num} ${tile.name}` : 'this job'} off ${contact.name}?`,
+      message: 'Their lines tied to it keep their tie. New messages stop landing there if it has the star.',
+      confirmLabel: 'Take it off',
+      cancelIsSafe: true,
+    })
+    if (ok) await run(writes.removeJob(contact.id, key), 'The job was not taken off.')
+  }
+
+  const ownRows: ThreadMenuRow[] = contact
+    ? [
+        { key: 'show-all', label: showAll ? 'Fold long messages' : 'Show all text', tip: 'Long messages show four lines until opened.', onPress: () => setShowAll((v) => !v) },
+        { key: 'record', label: 'Open their record', disabled: !contact.record || !onOpenRecord, onPress: () => onOpenRecord?.(contact) },
+      ]
+    : []
+  const menuRows = contact ? [...ownRows, ...(slots.menuRows?.(contact) ?? [])] : []
+  const phones = contact?.channels.filter((ch) => ch.kind === 'phone') ?? []
+  const emails = contact?.channels.filter((ch) => ch.kind === 'email') ?? []
+  const court = contact ? courtOf(allLines, contact.id, nowIso, { optedOut: isOptedOut(contact) }) : null
+  const stamps = contact ? stampSentence(contact, allLines, contact.id, nowIso) : null
+  const openMessage = openMessageId ? allLines.find((m) => m.id === openMessageId) : undefined
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(15, 23, 42, 0.55)',
+        zIndex: 1200,
+        display: 'flex',
+        alignItems: phone ? 'stretch' : 'center',
+        justifyContent: 'center',
+        padding: phone ? 'var(--app-top-chrome, 0px) 0 0' : 'calc(0.75rem + var(--app-top-chrome, 0px)) 0.75rem 0.75rem',
+      }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={contact ? `${contact.name}: messages` : 'Messages'}
+        data-thread-window={contactId}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'var(--surface-muted)',
+          color: 'var(--text-base)',
+          borderRadius: phone ? 0 : 10,
+          width: phone ? '100%' : 'min(1100px, 100%)',
+          height: phone ? '100%' : 'min(92vh, 100%)',
+          display: 'flex',
+          overflow: 'hidden',
+          border: phone ? 'none' : '1px solid var(--border-strong)',
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          {!contact ? (
+            <div style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, fontSize: '0.875rem', color: problem ? 'var(--text-red-700)' : 'var(--text-muted)' }} role={problem ? 'alert' : undefined}>
+                {problem ?? (view ? 'This person is not in Messages.' : 'Loading the thread…')}
+              </div>
+              <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)' }}>
+                ×
+              </button>
+            </div>
+          ) : (
+            <>
+              <div data-thread-header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '0.6rem 0.9rem', display: 'grid', gap: '0.45rem' }}>
+                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                  <span
+                    aria-hidden="true"
+                    style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flex: 'none', color: 'var(--text-600)' }}
+                  >
+                    {initials(contact)}
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <h2 style={{ margin: 0, fontSize: '1.05rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {contact.name}
+                      {isOptedOut(contact) && <Chip tone="red">opted out</Chip>}
+                    </h2>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-600)', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                      {contact.kind === 'unknown' ? (
+                        <span>Who is this?</span>
+                      ) : (
+                        <span>
+                          <strong>{capital(kindWord(contact.kind))}:</strong> {contact.company || contact.name}
+                        </span>
+                      )}
+                      {(phones.length > 0 || emails.length > 0) && contact.kind !== 'unknown' && (
+                        <button
+                          type="button"
+                          aria-expanded={contactOpen}
+                          aria-label={contactOpen ? 'Hide their numbers and addresses' : 'Show their numbers and addresses'}
+                          onClick={() => setContactOpen((v) => !v)}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 0.2rem' }}
+                        >
+                          {contactOpen ? '▾' : '›'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <span style={{ flex: 1 }} />
+                  <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', position: 'relative' }}>
+                    {phones[0] ? (
+                      <a
+                        href={`tel:${phones[0].value.replace(/[^\d+]/g, '')}`}
+                        aria-label={`Call ${phones[0].value}`}
+                        title="Calls their first number from this device. Calls on the company number come with Quo."
+                        style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.2rem 0.5rem', textDecoration: 'none', color: 'var(--text-base)' }}
+                      >
+                        ☎
+                      </a>
+                    ) : (
+                      <span aria-label="No number to call" title="No number to call" style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.2rem 0.5rem', opacity: 0.4 }}>
+                        ☎
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      aria-haspopup="menu"
+                      aria-expanded={menuOpen}
+                      aria-label="More"
+                      onClick={() => setMenuOpen((v) => !v)}
+                      style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.2rem 0.5rem', background: 'var(--surface)', cursor: 'pointer' }}
+                    >
+                      ⋯
+                    </button>
+                    {menuOpen && (
+                      <div role="menu" style={{ position: 'absolute', right: 0, top: '110%', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.25rem', display: 'grid', minWidth: 200, zIndex: 1 }}>
+                        {menuRows.map((r) => (
+                          <button
+                            key={r.key}
+                            type="button"
+                            role="menuitem"
+                            disabled={r.disabled}
+                            title={r.tip}
+                            onClick={() => {
+                              setMenuOpen(false)
+                              r.onPress()
+                            }}
+                            style={{ textAlign: 'left', border: 'none', background: 'transparent', padding: '0.4rem 0.55rem', cursor: r.disabled ? 'not-allowed' : 'pointer', opacity: r.disabled ? 0.5 : 1, borderRadius: 6 }}
+                          >
+                            {r.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </span>
+                  {slots.headerRight?.(contact)}
+                  <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
+                    ×
+                  </button>
+                </div>
+                {contact.kind === 'unknown' ? (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setNaming(true)}
+                      style={{ background: 'var(--text-blue-700)', color: 'white', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
+                    >
+                      Who is this?
+                    </button>
+                  </div>
+                ) : (
+                  contactOpen &&
+                  (phones.length > 0 || emails.length > 0) && (
+                    <div data-thread-reach style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                      {phones.map((ch) => (
+                        <a key={ch.id} href={`tel:${ch.value.replace(/[^\d+]/g, '')}`} style={{ color: 'var(--text-blue-700)' }}>
+                          {ch.value}
+                          {ch.optedOutAt ? ' (sent STOP)' : ''}
+                        </a>
+                      ))}
+                      {emails.map((ch) => (
+                        <a key={ch.id} href={`mailto:${ch.value}`} style={{ color: 'var(--text-blue-700)' }}>
+                          {ch.value}
+                        </a>
+                      ))}
+                    </div>
+                  )
+                )}
+                <div data-thread-status style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                  {court && <Chip tone={COURT_TONE[court.side]}>{court.word}</Chip>}
+                  {slots.statusRow?.(contact)}
+                </div>
+                {stamps && (
+                  <div data-thread-stamps style={{ fontSize: '0.8rem', color: 'var(--text-600)' }}>
+                    {stamps.sentences.map((s, i) => (
+                      <Fragment key={i}>
+                        {i > 0 && ' '}
+                        {s.map((p, j) => (p.strong ? <strong key={j}>{p.text}</strong> : <Fragment key={j}>{p.text}</Fragment>))}
+                      </Fragment>
+                    ))}
+                  </div>
+                )}
+                <JobsRail
+                  contact={contact}
+                  keys={rail}
+                  tiles={view?.tiles ?? {}}
+                  filter={jobFilter}
+                  onFilter={setJobFilter}
+                  onStar={(key) => void run(writes.setDefaultJob(contact.id, key), 'The star did not move.')}
+                  onOpenJob={onOpenJob}
+                  onRemove={(key) => void removeJob(key)}
+                  onAdd={() => setPicker({ kind: 'add' })}
+                  onHold={(key) => setTying(key)}
+                />
+                {tying && (
+                  <div role="status" style={{ fontSize: '0.8rem', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.3rem 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    Press a line to tie it to {view?.tiles[tying]?.num ?? 'the job'}.
+                    <button type="button" onClick={() => setTying(null)} style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer' }}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+              <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+                <div data-thread-lines style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
+                  {rows.length === 0 && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>{jobFilter ? 'No line is tied to this job yet.' : 'No messages with them yet.'}</div>
+                  )}
+                  {rows.map((r) =>
+                    r.kind === 'day' ? (
+                      <div key={`day:${r.ymd}`} data-thread-day={r.ymd} style={{ textAlign: 'center', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', margin: '0.25rem 0' }}>
+                        {r.label}
+                      </div>
+                    ) : r.kind === 'event' ? (
+                      <EventLine key={r.message.id} message={r.message} time={r.time} />
+                    ) : (
+                      <ThreadLine
+                        key={`${r.message.id}:${r.message.contactId}`}
+                        message={r.message}
+                        tile={r.message.jobId ? view?.tiles[r.message.jobId] : undefined}
+                        job={r.job}
+                        showAll={showAll}
+                        marked={r.message.id === at}
+                        tying={tying}
+                        body={slots.lineBody?.(r.message, contact) ?? null}
+                        under={slots.underLine?.(r.message, contact)}
+                        onOpen={() => setOpenMessageId(r.message.id)}
+                        onTie={() => {
+                          if (tying) void tie(r.message.id, tying)
+                          setTying(null)
+                        }}
+                        onJob={() =>
+                          r.message.jobId && view?.tiles[r.message.jobId]
+                            ? setJobFilter((f) => (f === r.message.jobId ? null : r.message.jobId))
+                            : setPicker({ kind: 'tie', messageId: r.message.id })
+                        }
+                      />
+                    ),
+                  )}
+                </div>
+              </DndContext>
+              {slots.aboveBox?.(contact)}
+              {slots.box?.(contact)}
+            </>
+          )}
+        </div>
+        {contact && slots.side?.(contact)}
+        {contact && openMessage && (
+          <MessageWindow
+            message={openMessage}
+            contact={contact}
+            tile={openMessage.jobId ? view?.tiles[openMessage.jobId] : undefined}
+            first={slots.messageWindowFirst}
+            onChangeJob={isSentLine(openMessage) ? undefined : () => setPicker({ kind: 'tie', messageId: openMessage.id })}
+            onClose={() => setOpenMessageId(null)}
+          />
+        )}
+        {contact && naming && (
+          <WhoIsThisWindow
+            contact={contact}
+            writes={writes}
+            onNamed={(id) => {
+              setNaming(false)
+              if (id !== contact.id) onShowContact?.(id)
+            }}
+            onClose={() => setNaming(false)}
+          />
+        )}
+        {contact && picker && (
+          <JobPickerWindow
+            title={picker.kind === 'add' ? `Put a job on ${contact.name}` : 'Tie this line to a job'}
+            theirs={rail.map((k) => view?.tiles[k]).filter((t): t is NonNullable<typeof t> => Boolean(t))}
+            untie={picker.kind === 'tie'}
+            searchJobs={writes.searchJobs}
+            onPick={(key) => {
+              const p = picker
+              setPicker(null)
+              if (p.kind === 'add') {
+                if (key) void run(writes.addJob(contact.id, key), 'The job was not put on them.')
+              } else void tie(p.messageId, key)
+            }}
+            onClose={() => setPicker(null)}
+          />
+        )}
+      </div>
+    </div>
+  )
+}

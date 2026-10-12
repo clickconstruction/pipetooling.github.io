@@ -43,6 +43,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Company transactions, payroll marks, spending → `/tally`
 - Bank ledger, card sorting, accounting review → `/banking`
 - Customers and builders (GCs), their profile and history → `/customers`, `/customers/:id`
+- Every message with a customer, trade partner or architect on GC projects, one thread each → `/gc?view=messages` (guide `find-every-message-with-a-person-in-one-place`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Small quotes to homeowners (not bids) → `/estimates`
 - Contracts and document packets → `/documents`
@@ -73,7 +74,10 @@ architect, and its price so far with the card behind it. Its switch opens **Trad
 `approve-a-company-new-to-us`): each trade's companies and the projects short of quotes, **Add a company**, and the
 **New to us** box to approve or decline a company, and **Follow up** (guide `follow-up-on-a-quote-from-a-trade-partner`):
 every company we wait on for a quote, the ones to call first at the top, with Log a contact and **Will not do it** /
-**Cannot do it**. A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, its language, and **Their portal** (guide `share-a-trade-partner-its-portal`), its portal link,
+**Cannot do it**. **Messages** (guide `find-every-message-with-a-person-in-one-place`; `/gc?view=messages` opens it) lists every
+person the office works with, newest conversation first, and opens a person's thread as a window over any view
+(`?thread=<contact id>&at=<message id>`): their jobs with the star, each line's job, one message in full, and **Who is this?** for a
+number nobody named. A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, its language, and **Their portal** (guide `share-a-trade-partner-its-portal`), its portal link,
 made, copied, remade or turned off, and whether they opened it (a dev's only, until the trade wave). Each project's trades list their asks too, with **Ask for quotes**: the Ask window
 (guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, saves the asks and, for a dev, emails each company its invitation.
 Once a trade has a quote, **Compare quotes** (guide `compare-quotes-and-carry-one`) puts its quotes side by side, takes a cost to cover what each leaves out, and carries one as the trade's number.
