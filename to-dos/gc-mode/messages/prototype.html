@@ -251,6 +251,8 @@ button.court{cursor:pointer;line-height:inherit}button.court:hover{filter:bright
 .seg button+button{border-left:1px solid var(--border)}
 .seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .msg .meta{font-size:12px;color:var(--text-muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg{padding-bottom:22px}
+.msg .when{position:absolute;right:12px;bottom:6px;font-size:11.5px;color:#9aa4b1}
 .msg .meta .ch{font-weight:600;color:var(--text)}
 .msg .meta .job{margin-left:auto;background:var(--chip);padding:1px 8px 1px 3px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .msg .meta .job.none{padding-left:8px}
@@ -1239,7 +1241,7 @@ function renderMessages(m){
     if(x.ch==='event'){ const ev=document.createElement('div'); ev.className='evt'; ev.innerHTML=`${esc(x.text)} · ${fmt(x.at)}`; L.appendChild(ev); continue; }
     const e=document.createElement('div'); e.className=`msg clickable ${x.dir==='team'?'team':x.dir} ch-${x.ch}`; e.dataset.id=x.id; e.title='Open this message';
     e.addEventListener('click',ev=>{ if(ev.target.closest('button, a, select, input, .job, .offer, .chip, .player')) return; openMessage(x.id); });
-    e.innerHTML=`<div class="meta"><span class="ch">${chWord(x)}${x.dur?` · ${x.dur}`:''}</span><span>${esc(x.who)}</span><span>${fmt(x.at)}</span>
+    e.innerHTML=`<span class="when" data-tip="${esc(chWord(x))}|${esc(longWhen(x.at))}.|${x.dir==='in'?'When it came.':x.dir==='team'?'When it was written.':'When it went.'}">${fmtDay(x.at)}</span><div class="meta"><span class="ch">${chWord(x)}${x.dur?` · ${x.dur}`:''}</span><span>${esc(x.who)}</span>
         ${x.back?`<span class="settled-chip" style="background:var(--accent-soft);color:var(--accent);border-color:#bcd0f0" data-tip="Comes back ${esc(x.back.label)}|This note brings the row back to Follow up that morning, under Needs you, with the note on it.|Marked by ${esc(x.who.split(' · ')[0])}. To clear it now, press × on the ↩ pill in the header above; when it comes back, Done with it on the row." title="">↩ back ${esc(x.back.label)}</span>`:''}${x.settled?`<span class="settled-chip" title="" data-tip="Done|This ${x.ch==='note'?'note':'message'} marked what we owed them done.|We owed ${esc(x.settled.what)}${x.settled.by?' by '+esc(x.settled.by):''}; the move went back to whoever wrote last.">✓ done: ${esc(x.settled.what)}</span>`:''}<span class="job ${x.job?'':'none'}" title="${x.job?'Untie from this job':'Tie to a job'}" onclick="${x.job?`untie(${x.id})`:`tieMenu(${x.id})`}">${x.job?jobTag(x.job)+' ×':'no job'}</span></div>
       ${x.subject?`<div class="subject">${esc(x.subject)}</div>`:''}
       ${bodyHtml(c,x)}
