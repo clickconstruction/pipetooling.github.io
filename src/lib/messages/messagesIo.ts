@@ -9,7 +9,7 @@
  * overlay, never rows written into `messages`. Cut 6's lines carry their files from `message_attachments`.
  */
 import { supabase } from '../supabase'
-import { fetchAllRows } from '../supabasePaging'
+import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from '../supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import type { Contact, ContactKind, ContactRecord } from '../contacts/kernel'
@@ -167,18 +167,33 @@ async function loadTiles(keys: readonly string[], todayYmd: string): Promise<Rec
   )
 }
 
-/** The files and links on the lines (cut 6, email in). None while the table is not there yet. */
-export async function loadLineFiles(): Promise<MessageAttachmentRow[]> {
-  return fetchAllRows<MessageAttachmentRow>(async (a, b) => {
-    const page = (await from('message_attachments').select(ATTACHMENT_COLS).order('id').range(a, b)) as unknown as Result<MessageAttachmentRow[]>
-    return page.error && isMissingTable(page.error.code) ? { data: [], error: null } : page
-  }, 'load the files on the lines')
+/**
+ * The files and links on the lines given (cut 6, email in): 150 ids a request, each paged, so a line with many files is
+ * never cut at PostgREST's row cap. None while the table is not there yet, after one refused read.
+ */
+export async function loadLineFiles(messageIds: readonly string[]): Promise<MessageAttachmentRow[]> {
+  const out: MessageAttachmentRow[] = []
+  const seen = { missing: false }
+  for (let i = 0; i < messageIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const slice = messageIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE)
+    const rows = await fetchAllRows<MessageAttachmentRow>(async (a, b) => {
+      const page = (await from('message_attachments').select(ATTACHMENT_COLS).in('message_id', slice).order('id').range(a, b)) as unknown as Result<MessageAttachmentRow[]>
+      if (!page.error || !isMissingTable(page.error.code)) return page
+      seen.missing = true
+      return { data: [], error: null }
+    }, 'load the files on the lines')
+    if (seen.missing) return []
+    out.push(...rows)
+  }
+  return out
 }
 
 /** Everything the view and the window draw, at `nowIso`. */
 export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
   const spine = await loadSpineRows()
-  const [records, fileRows] = await Promise.all([loadRecords(spine.contacts), loadLineFiles()])
+  // Only an email carries files, so the files are read for the email lines alone.
+  const emailIds = spine.messages.filter((m) => m.channel === 'email').map((m) => m.id)
+  const [records, fileRows] = await Promise.all([loadRecords(spine.contacts), loadLineFiles(emailIds)])
   const contacts = contactsFromRows(spine.contacts, spine.channels, spine.jobs, records)
   const userIds = unique([
     ...spine.messages.flatMap((m) => [m.who_user_id, m.back_by]),
