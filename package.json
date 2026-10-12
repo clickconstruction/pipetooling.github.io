@@ -64,6 +64,7 @@
     "test:pg:quick-replies": "bash scripts/pgtest-quick-replies.sh",
     "test:pg:messages-spine": "bash scripts/pgtest-messages-spine.sh",
     "test:pg:messages-flows": "bash scripts/pgtest-messages-flows.sh",
+    "test:pg:flow-draws": "bash scripts/pgtest-flow-draws.sh",
     "test:pg:quo-messages": "bash scripts/pgtest-quo-messages.sh",
     "test:pg:contract-clauses": "bash scripts/pgtest-contract-clauses.sh",
     "test:pg:gc-clause-papers": "bash scripts/pgtest-gc-clause-papers.sh",

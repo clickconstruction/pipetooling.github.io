@@ -8,7 +8,7 @@ import { FLOW_FIXTURE_JOBS, FLOW_FIXTURE_NOW, flowFixture } from './flowFixtures
 import { customerWhere, portalPage, type PortalPage } from './portalPage'
 import { askedOn, customerJobSteps, portalLanes } from './portalSteps'
 import { SEED_FLOWS } from './seed'
-import { readFlow } from './state'
+import { readFlow, type FlowStamps } from './state'
 
 const KINDS: Readonly<Record<string, FlowKind>> = { jonah: 'arch', elena: 'customer', priya: 'customer' }
 const opts = { kindOf: (id: string) => KINDS[id] ?? null }
@@ -43,7 +43,7 @@ describe("a trade partner's and an architect's page, from the flow's real readin
     expect(rows(page, 'Stone Oak Pharmacy')).toEqual([
       ['ask', 'done', 'Fri Sep 11', null],
       ['sow', 'done', 'Fri Sep 18', null],
-      ['draws', 'yours', 'Send your pay application with its conditional waiver.', null],
+      ['draws', 'onIt', 'We are on it.', null],
       ['closeout', 'later', 'Later. At the end of your work.', null],
     ])
   })
@@ -65,6 +65,17 @@ describe("a trade partner's and an architect's page, from the flow's real readin
     expect(page.sections.map((s) => s.title)).toEqual(['Boerne Retail Shell'])
     expect(rows(page, 'Boerne Retail Shell')?.find((r) => r[0] === 'certify')).toEqual(['certify', 'yours', 'Certify it or send it back with a note.', null])
     expect(rows(pageOf('jonah', 'es'), 'Boerne Retail Shell')?.find((r) => r[0] === 'questions')).toEqual(['questions', 'yours', 'Le toca a usted.', 'para el lun 5 oct'])
+  })
+
+  it("reads a draw asked for as on us, and the next one as theirs once the last is paid", () => {
+    const p = flowFixture('greg')
+    const stoneoak = p.stamps.jobs.stoneoak
+    if (!stoneoak) throw new Error('no Stone Oak in Greg’s fixture')
+    const paidOnly: FlowStamps = { ...p.stamps, jobs: { ...p.stamps.jobs, stoneoak: { ...stoneoak, rounds: { ...stoneoak.rounds, draws: (stoneoak.rounds.draws ?? []).slice(0, 1) } } } }
+    const flow = SEED_FLOWS.trade
+    const page = portalPage('en', { company: 'Click Construction', phone: '(210) 555-0100', off: false, lanes: portalLanes(flow, readFlow(flow, paidOnly, FLOW_FIXTURE_NOW), FLOW_FIXTURE_JOBS, opts) })
+    expect(rows(page, 'Stone Oak Pharmacy')?.find((r) => r[0] === 'draws')).toEqual(['draws', 'yours', 'Send your pay application with its conditional waiver.', null])
+    expect(rows(pageOf('greg'), 'Stone Oak Pharmacy')?.find((r) => r[0] === 'draws')).toEqual(['draws', 'onIt', 'We are on it.', null])
   })
 
   it('takes a job onto the page only once something on it went', () => {

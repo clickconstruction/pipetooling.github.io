@@ -71,7 +71,7 @@ describe('each run through the per-job lane', () => {
   it('runs from the ask, with every fact that turned true, once per round', () => {
     expect(of('greg').runs).toEqual([
       { contactId: 'greg', jobId: 'boerne', from: '2026-09-22', facts: [], ended: false },
-      { contactId: 'greg', jobId: 'stoneoak', from: '2026-09-08', facts: ['quote_in', 'carried', 'sow_signed', 'draw_paid'], ended: false },
+      { contactId: 'greg', jobId: 'stoneoak', from: '2026-09-08', facts: ['quote_in', 'carried', 'sow_signed', 'draw_requested', 'draw_paid', 'draw_requested'], ended: false },
     ])
     // His first addendum filed and sent on, his second filed only (the architect files it, then we send it on).
     expect(of('jonah').runs[0]?.facts).toEqual(['plans_in', 'question_answered', 'question_answered', 'addendum_filed', 'addendum_sent', 'addendum_filed'])

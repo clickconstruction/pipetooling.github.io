@@ -65,7 +65,7 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
           step({
             id: 'draws', name: 'Draws', nameEs: 'Pagos parciales', phase: 'building', who: 'both',
             later: { en: 'Monthly, once you are on site.', es: 'Cada mes, una vez en obra.' },
-            loop: 'each draw', loopEnds: 'next', facts: ['draw_paid'], papers: ['waiver'], usual: 12,
+            loop: 'each draw', loopEnds: 'next', facts: ['draw_requested', 'draw_paid'], papers: ['waiver'], usual: 12,
           }),
           step({
             id: 'closeout', name: 'Closeout', nameEs: 'Cierre', phase: 'building', who: 'them',

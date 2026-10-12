@@ -85,7 +85,10 @@ export const FLOW_FIXTURE_PEOPLE: readonly FlowFixturePerson[] = [
         job('padb', [], { ask: [round('inv-greg-padb', 'Boerne Retail Pad B', null, [], '2026-10-22')] }),
         job('stoneoak', [ok('carried', '2026-09-14', 'Robert'), ok('sow_signed', '2026-09-18')], {
           ask: [round('inv-greg-stoneoak', 'Stone Oak Pharmacy', '2026-09-08', [ok('quote_in', '2026-09-11')])],
-          draws: [round('draw-greg-1', 'Draw 1', '2026-09-25', [ok('draw_paid', '2026-09-30')]), round('draw-greg-2', 'Draw 2', '2026-10-01')],
+          draws: [
+            round('draw-greg-1', 'Draw 1', '2026-09-25', [ok('draw_requested', '2026-09-25'), ok('draw_paid', '2026-09-30')]),
+            round('draw-greg-2', 'Draw 2', '2026-10-01', [ok('draw_requested', '2026-10-01')]),
+          ],
         }),
       ],
     },
@@ -233,7 +236,7 @@ export const FLOW_FIXTURE_PEOPLE: readonly FlowFixturePerson[] = [
         job('boerne', [], { ask: [round('inv-g5-boerne', 'Boerne Retail Shell', '2026-09-24', [stamp('quote_in', 'wait', '2026-09-24')], '2026-10-08')] }),
         job('stoneoak', [ok('carried', '2026-09-10', 'Robert'), ok('sow_signed', '2026-09-20')], {
           ask: [round('inv-g5-stoneoak', 'Stone Oak Pharmacy', '2026-09-01', [ok('quote_in', '2026-09-05')])],
-          draws: [round('draw-g5-1', 'Draw 1', '2026-09-29')],
+          draws: [round('draw-g5-1', 'Draw 1', '2026-09-29', [ok('draw_requested', '2026-09-29')])],
         }),
       ],
     },

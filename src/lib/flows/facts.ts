@@ -27,6 +27,7 @@ export type FactId =
   | 'carried'
   | 'not_carried'
   | 'sow_signed'
+  | 'draw_requested'
   | 'draw_approved'
   | 'draw_paid'
   | 'final_waiver'
@@ -238,6 +239,18 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     ours: true,
   },
   {
+    id: 'draw_requested',
+    text: 'their pay application is in',
+    small: 'a draw of theirs asked for, with its conditional waiver',
+    group: 'Money',
+    reads: 'gc_draws.requested_on',
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    paper: 'waiver',
+    side: 'them',
+  },
+  {
     id: 'draw_approved',
     text: 'the draw is approved',
     small: 'a draw of theirs approved by us',
@@ -256,7 +269,7 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     scope: 'round',
     kept: 'yes',
     gap: null,
-    paper: 'waiver',
+    side: 'us',
   },
   {
     id: 'final_waiver',
@@ -514,7 +527,7 @@ export function isPaperId(id: string): id is PaperId {
   return Object.prototype.hasOwnProperty.call(FLOW_PAPERS, id)
 }
 
-/** The fact that reads a paper; the first in the list when two do (a draw's waiver is read by `draw_paid`). */
+/** The fact that reads a paper; the first in the list when two do (a draw's waiver is read by `draw_requested`). */
 export function factForPaper(paper: PaperId): FlowFact | null {
   return FLOW_FACTS.find((f) => f.paper === paper) ?? null
 }
