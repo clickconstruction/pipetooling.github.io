@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import { GC_MONEY_TEAM, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
+import { GC_MONEY_TEAM, canApproveClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from '../lib/gc/access'
 import { inviteEmailRequest, type NewAsk } from '../lib/gc/askEmail'
 import { packageHasTab } from '../lib/gc/bids'
 import { GC_NEW_HERE_CONTROL, GC_NEW_HERE_GUIDE, GC_NEW_HERE_SEEN_KEY, GC_NEW_HERE_STEPS, gcNewHereTarget } from '../lib/gc/tour'
@@ -113,6 +113,9 @@ import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTra
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
+import { ClauseNeedRows } from '../components/contracts/ClauseNeedRows'
+import { useClauseNeeds } from '../hooks/useClauseNeeds'
+import type { ClauseNeedRow } from '../lib/contracts/approval'
 import { useThreadWindow } from '../components/gc/messages/useThreadWindow'
 import { supabaseFollowUpIo } from '../lib/followUp/followUpIo'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
@@ -700,6 +703,8 @@ export default function GcProjects() {
   const followUpMe = useMemo(() => ({ id: user?.id ?? '', name: profileName || 'You', role: role ?? '' }), [user?.id, profileName, role])
   // A person's thread at a line (`?thread=<contactId>&at=<messageId>`, Messages cut 1's link): Back closes it.
   const { openThread } = useThreadWindow()
+  // The clause changes waiting on the viewer's approval (cut 4c), in Follow up's Needs you: a controller's or a dev's.
+  const clauseNeeds = useClauseNeeds(canApproveClause(role))
   const devPill = (view: 'board' | 'partners' | 'followUp' | 'money', label: string) => {
     const on = devView === view
     return (
@@ -1757,6 +1762,9 @@ export default function GcProjects() {
                   onOpenThread={openThread}
                   say={showToast}
                   onCount={setFollowUpCount}
+                  {...(canApproveClause(role)
+                    ? { clauses: { rows: clauseNeeds.rows, render: (rows: readonly ClauseNeedRow[]) => <ClauseNeedRows rows={rows} onDecided={clauseNeeds.reload} /> } }
+                    : {})}
                   planQuestions={{
                     record: recordQuestion,
                     send: sendQuestionToArchitect,
