@@ -13,7 +13,6 @@ import {
   perJobJobs,
   placesOf,
   quietDays,
-  readFlow,
   stampDay,
   stepById,
   stepDay,
@@ -127,9 +126,6 @@ describe('flows/state: the small reads', () => {
     expect(lapsedWhy({ state: 'done', lapsedPaper: null })).toBeNull()
   })
 
-  it('leaves readFlow to the next PR, loudly', () => {
-    expect(() => readFlow(SEED_FLOWS.trade, { kind: 'trade', jobIds: [], defaultJobId: null, person: { stamps: [], rounds: {}, dues: {} }, jobs: {}, skips: [], waits: [], off: null }, NOW)).toThrow(/next PR/)
-  })
 })
 
 describe('flows/state: reads over a reading', () => {

@@ -89,6 +89,8 @@ export type FlowStep = {
   nudge: FlowNudge | null
   /** The middle of the done ones over a year, in days; the boards' "over usual" reads it. */
   usual: number
+  /** On an our-move step, what we owe them in Follow up's We owe them list ("our bid"); null elsewhere. */
+  owedWords: string | null
 }
 
 export type FlowLaneDef = { lane: Lane; steps: FlowStep[] }
@@ -194,7 +196,7 @@ export type StepPlace = {
   /** Null on the Once and Any time lanes. */
   jobId: string | null
   state: 'now' | 'lapsed'
-  /** The day it went on now, YYYY-MM-DD. */
+  /** The day it went on now, YYYY-MM-DD; on a lapsed step, the day it lapsed (the paper ran out). */
   since: string | null
   due: string | null
   lateDays: number | null
@@ -360,15 +362,163 @@ export function lapsedWhy(step: Pick<StepReading, 'state' | 'lapsedPaper'>, pape
   return `lapsed · ${paperShort ? paperShort(step.lapsedPaper) : step.lapsedPaper} expired`
 }
 
+const EMPTY_LANE: LaneStamps = { stamps: [], rounds: {}, dues: {} }
+
+/** The latest day among readings that read true, as the day a step finished. */
+function finishedOn(facts: readonly FactReading[]): string | null {
+  let best: string | null = null
+  for (const f of facts) if (f.mark === 'ok' && f.at && (best == null || f.at > best)) best = f.at
+  return best
+}
+
+/** A step's own reading before the chain is walked: its facts, its rounds, whether it reads true. */
+type StepPre = {
+  step: FlowStep
+  facts: FactReading[]
+  rounds: RoundReading[]
+  open: RoundReading | null
+  isTrue: boolean
+  /** Every fact was true once (ok or bad), so a bad one makes the step lapsed rather than not reached. */
+  lapsed: boolean
+  skip: StepSkip | null
+  due: string | null
+}
+
+function preRead(step: FlowStep, lane: LaneStamps, person: LaneStamps, jobId: string | null, stamps: FlowStamps, now: Date): StepPre {
+  // A Per job lane reads its job's stamps, and a person's own facts (their papers) from the person.
+  const factsFrom = (own: readonly FactStamp[]) => (fid: FactId) =>
+    factById(fid)?.scope === 'person' && lane !== person ? factRead(person.stamps, fid) : factRead(own, fid)
+  const rounds: RoundReading[] = (step.loop ? lane.rounds[step.id] ?? [] : []).map((r) => {
+    const facts = step.facts.map(factsFrom(r.stamps))
+    const state: RoundState = stepTrue(step, facts) ? 'done' : r.opened ? 'now' : 'next'
+    return { key: r.key, name: r.name, state, opened: stampDay(r.opened), facts, day: state === 'done' ? null : stepDay(r.due, now) }
+  })
+  const open = rounds.find((r) => r.state === 'now') ?? null
+  const facts = step.loop ? (open ?? rounds[rounds.length - 1])?.facts ?? step.facts.map(factsFrom([])) : step.facts.map(factsFrom(lane.stamps))
+  const isTrue = step.loop ? rounds.length > 0 && rounds.every((r) => r.state === 'done') : stepTrue(step, facts)
+  const wasTrue = (x: FactReading) => x.mark === 'ok' || x.mark === 'bad'
+  const lapsed =
+    !step.loop && !isTrue && facts.some((x) => x.mark === 'bad') && (step.join === 'or' ? facts.some(wasTrue) : facts.every(wasTrue))
+  const typed = stamps.skips.find((k) => k.stepId === step.id && k.jobId === jobId) ?? null
+  const oneJob =
+    !typed && step.skipOneJob && stamps.jobIds.length <= 1 && !isTrue
+      ? { stepId: step.id, jobId, why: `One job, so no ${step.name.toLowerCase()}.`, by: null, at: null }
+      : null
+  const due = step.loop ? (open ?? rounds.find((r) => r.state === 'next'))?.day?.due ?? null : stampDay(lane.dues[step.id])
+  return { step, facts, rounds, open, isTrue, lapsed, skip: typed ?? oneJob, due }
+}
+
+function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId: string | null, stamps: FlowStamps, now: Date): LaneReading {
+  const pre = def.steps.map((s) => preRead(s, lane, person, jobId, stamps, now))
+  // A Per job lane with nothing on it yet is not started: nobody is on its first step until the job gives a stamp.
+  const started = def.lane !== 'per_job' || lane.stamps.some((x) => x.mark !== 'no') || Object.values(lane.rounds).some((rs) => !!rs?.length)
+  // A loop that ends on what follows it is done once a later step in its lane has read true.
+  const laterTrue = (i: number) =>
+    pre.slice(i + 1).some((p) => !p.step.aside && (p.step.loop ? p.rounds.some((r) => r.state === 'done') : p.isTrue || p.lapsed))
+  const loopPasses = (p: StepPre, i: number) => (p.step.loopEnds === 'next' ? laterTrue(i) : p.isTrue)
+
+  let head: number | null = null
+  let ended: FactId | null = null
+  let nextGiven = false
+  const states: StepState[] = pre.map((p, i) => {
+    const s = p.step
+    if (p.skip) return 'skipped'
+    if (s.aside) return p.open ? 'now' : p.isTrue ? 'done' : 'later'
+    if (ended) return 'later'
+    if (head == null && started) {
+      if (s.loop) {
+        if (loopPasses(p, i)) return p.open ? 'now' : 'done'
+        head = i
+        return 'now'
+      }
+      if (p.isTrue) {
+        ended = s.fork ? p.facts.find((x) => x.mark === 'ok' && x.fact.endsLane)?.fact.id ?? null : null
+        return 'done'
+      }
+      if (p.lapsed) return 'lapsed'
+      if (!s.facts.length) return 'later'
+      head = i
+      return 'now'
+    }
+    if (s.loop && p.open) return 'now'
+    if (s.loop ? loopPasses(p, i) : p.isTrue) return 'done'
+    if (p.lapsed) return 'lapsed'
+    if (nextGiven) return 'later'
+    nextGiven = true
+    return 'next'
+  })
+
+  const steps: StepReading[] = pre.map((p, i) => {
+    const state = states[i] ?? 'later'
+    let since: string | null = null
+    if (state === 'lapsed') {
+      const bad = p.facts.find((x) => x.mark === 'bad')
+      since = bad?.at ?? bad?.until ?? null
+    } else if (state === 'now' && p.open) since = p.open.opened
+    else if (state === 'now' && p.rounds.some((r) => r.state === 'done')) {
+      // A loop between two rounds: since the last round finished.
+      since = finishedOn(p.rounds.filter((r) => r.state === 'done').flatMap((r) => r.facts))
+    } else if (state === 'now') {
+      // The day the step before it in the chain finished.
+      for (let j = i - 1; j >= 0 && since == null; j--) {
+        const b = pre[j]
+        if (!b || b.skip || b.step.aside || !b.step.facts.length) continue
+        since = b.step.loop ? finishedOn(b.rounds.filter((r) => r.state === 'done').flatMap((r) => r.facts)) : finishedOn(b.facts)
+        break
+      }
+    }
+    const day = state === 'done' || state === 'skipped' ? null : stepDay(p.due, now)
+    const wait = stamps.waits.find((w) => w.stepId === p.step.id && w.jobId === jobId)
+    return {
+      stepId: p.step.id,
+      jobId,
+      lane: def.lane,
+      state,
+      isTrue: p.isTrue,
+      facts: p.facts,
+      rounds: p.rounds,
+      since,
+      day,
+      due: day?.due ?? null,
+      lateDays: day?.lateDays ?? null,
+      waitingOn: state === 'now' && wait ? { ...wait.waitingOn, since: stampDay(wait.waitingOn.since) ?? wait.waitingOn.since } : null,
+      lapsedPaper: state === 'lapsed' ? p.facts.find((x) => x.mark === 'bad')?.fact.paper ?? null : null,
+      skip: p.skip,
+    }
+  })
+  return { lane: def.lane, jobId, steps, headStepId: head == null ? null : pre[head]?.step.id ?? null, ended }
+}
+
 /**
- * Reads where one person stands on a flow. Built in the next PR (cluster 4's read); until then it
- * throws, so nothing can show a made-up state.
+ * Reads where one person stands on a flow, from their stamps alone. The chain in each lane passes a
+ * step that is done, lapsed, skipped or has no facts yet, and stops at the first that is none of
+ * these: that step is on now. After it, one step is next and the rest are later, except a step
+ * whose facts already read true (done) and a loop with a round open (now). An aside step reads from
+ * its rounds and is never on the chain. A fork's way out ends its lane.
  */
 export function readFlow(flow: FlowDef, stamps: FlowStamps, now: Date): FlowReading {
-  void flow
-  void stamps
-  void now
-  throw new Error('flows: readFlow lands in the next PR')
+  const lanes: LaneReading[] = []
+  for (const def of flow.lanes) {
+    if (def.lane === 'per_job') {
+      for (const jobId of stamps.jobIds) lanes.push(readLane(def, stamps.jobs[jobId] ?? EMPTY_LANE, stamps.person, jobId, stamps, now))
+    } else {
+      lanes.push(readLane(def, stamps.person, stamps.person, null, stamps, now))
+    }
+  }
+  let nowStepId: string | null = null
+  let nowJobId: string | null = null
+  if (!stamps.off) {
+    const pick =
+      lanes.find((l) => l.lane === 'once' && l.headStepId) ??
+      lanes.find((l) => l.lane === 'per_job' && l.jobId === stamps.defaultJobId && l.headStepId) ??
+      lanes.find((l) => l.lane === 'per_job' && l.headStepId) ??
+      lanes.find((l) => l.headStepId)
+    if (pick) {
+      nowStepId = pick.headStepId
+      nowJobId = pick.jobId
+    }
+  }
+  return { kind: flow.kind, off: stamps.off, defaultJobId: stamps.defaultJobId, lanes, nowStepId, nowJobId }
 }
 
 /** The lane a step sits on for one job: the job's Per job lane, else the Once or Any time lane. */
@@ -393,8 +543,12 @@ export function isPlace(step: StepReading): step is StepPlaceReading {
   return step.state === 'now' || step.state === 'lapsed'
 }
 
-/** Every step a person is on: on now or lapsed, one per job in the Per job lane. The boards read these. */
+/**
+ * Every step a person is on: on now or lapsed, one per job in the Per job lane. The boards and the
+ * nudges read these. A person off the flow is on none, so nothing nudges them.
+ */
 export function placesOf(reading: FlowReading): StepPlaceReading[] {
+  if (reading.off) return []
   return reading.lanes.flatMap((l) => l.steps.filter(isPlace))
 }
 
@@ -424,11 +578,15 @@ export function perJobJobs(reading: FlowReading): PerJobRow[] {
     }))
 }
 
-/** How far along on one job: the Once lane and the job's Per job lane; a loop counts once, aside and skipped steps not at all. */
-export function flowProgress(reading: FlowReading, jobId: string | null): { done: number; of: number } {
+/**
+ * The rail's "4 / 9" for one job: the Once lane and the job's Per job lane. A loop counts once; an
+ * aside step and a skipped one not at all; a lapsed step is not done.
+ */
+export function flowProgress(flow: FlowDef, reading: FlowReading, jobId: string | null): { done: number; of: number } {
+  const aside = new Set(flat(flow).filter((s) => s.aside).map((s) => s.id))
   const lanes = reading.lanes.filter((l) => l.lane === 'once' || (l.lane === 'per_job' && l.jobId === jobId))
-  const steps = lanes.flatMap((l) => l.steps).filter((s) => s.state !== 'skipped')
-  return { done: steps.filter((s) => s.state === 'done' || s.state === 'lapsed').length, of: steps.length }
+  const steps = lanes.flatMap((l) => l.steps).filter((s) => s.state !== 'skipped' && !aside.has(s.stepId))
+  return { done: steps.filter((s) => s.state === 'done').length, of: steps.length }
 }
 
 /** Where a person would be on a flow read now: the editor's preview. */
