@@ -821,6 +821,13 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.177, 2026-10-12**: *Add a new paper* asks the kind first, one word for three things: something they give
+  us (a name in both languages, a date it runs out), something we write and they sign (a contract: between whom,
+  who signs and the order, the fields it draws from the job, the clauses in both languages seeded from the master
+  agreement, the consent fixed, Preview the sign page, Save as draft or Publish v1), something we send to inform (a
+  notice: subject, the words in both languages, what rides with it). A contract has a version and never a date; an
+  upload has a date and never clauses (the owner, 2026-10-12: "I don't know where the papers end and contracts
+  begin").
 - **v1.176, 2026-10-12**: *Papers on this job* opens as a grid (`job-papers-mockups.html` B): a row per company,
   a column per paper in the flow's order, a dot per cell (done with its day, waiting, none yet, late or runs out
   soon in orange, lapsed in red, not yet on this job dashed), companies with something wrong first; the counts in
