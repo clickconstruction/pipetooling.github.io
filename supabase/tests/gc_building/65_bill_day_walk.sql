@@ -87,11 +87,13 @@ BEGIN
   END;
   RAISE EXCEPTION '% was allowed', label;
 END $$;
--- Sign in as someone (the claims auth.uid() reads).
+-- Sign in as someone: the claims auth.uid() reads, and the role auth.role() reads, which app_settings' read policy
+-- checks (the card switch's bed signs in the same way). Without it only a dev's own policy sees the cut-off's row.
 CREATE FUNCTION gbw.as_user(p_user uuid) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', coalesce(p_user::text, ''), true);
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
 -- Lone Star's draw 1 as the Draws window reads it: each line's percent, stored dollars (+) and the percent we see (~).
 CREATE FUNCTION gbw.lines() RETURNS text LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
