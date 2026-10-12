@@ -53,10 +53,13 @@ p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:1000px}
 .btn.quiet{border-color:transparent;color:var(--accent);padding:0}
 .btn.faint{opacity:.5}
 /* rows */
-.grp{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:10px 0 4px;display:flex;gap:8px;align-items:center}
-.grp b{color:var(--danger);text-transform:none;letter-spacing:0;font-weight:600}
-.grp i{color:var(--warn);font-style:normal;text-transform:none;letter-spacing:0}
-.grp .r{margin-left:auto;text-transform:none;letter-spacing:0}
+.grp{font-size:13.5px;font-weight:700;color:var(--text);background:var(--chip);border-radius:8px;padding:8px 12px;margin:14px 0 4px;display:flex;gap:8px;align-items:center}
+.grp b{color:var(--danger);font-weight:700}
+.grp i{color:var(--warn);font-style:normal;font-weight:700}
+.grp .n{font-weight:400;color:var(--text-muted);font-size:12.5px}
+.grp .r{margin-left:auto;font-weight:400;font-size:12.5px}
+.grp.hot{background:#fdecea}
+.grp.warn{background:var(--warn-soft)}
 table{border-collapse:collapse;width:100%;font-size:12.5px}
 th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)}
 td{padding:8px 8px;border-bottom:1px solid var(--border);vertical-align:top}
@@ -133,19 +136,19 @@ td.num small{display:block;color:var(--text-muted);font-weight:400}
 <div class="gate"><span class="m ok">✓</span><span class="t">Last period's certificate and payment are in.<small>Pay app 3 certified in full by Jonah Vale, paid Sep 25.</small></span><span class="act"></span></div>
 </div>
 
-<div class="grp">Sent back · <i>ours to re-check once it comes back</i></div>
+<div class="grp warn">Sent back <span class="n">· 1 · ours to re-check once it comes back</span></div>
 <table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Asked</th><th style="text-align:right">Expected</th><th>Waivers · changes</th><th>Whose move</th><th></th></tr>
 <tr><td class="co"><b>Rio Paving</b><small>Paving · Dan Ruiz</small></td><td>Draw 2</td><td class="num">$18,400<small>sent back Thu Oct 1</small></td><td class="num">$14,100<small>from the schedule</small></td><td><span class="pill">conditional in</span></td><td><span class="pill theirs">their move · 1 d</span><br><small style="color:var(--text-muted)">"Line 3 reads 80%; we see 50. Send it again."</small></td><td><span class="btn">Open the lines</span> <span class="btn">Remind them</span></td></tr>
 </table>
 
-<div class="grp">Not in · <i>3</i> · due by Mon Oct 19<span class="r"><span class="btn quiet">ask all three in one press</span></span></div>
+<div class="grp hot">Not in <span class="n">· <b>3</b> · due by Mon Oct 19</span><span class="r"><span class="btn quiet">ask all three in one press</span></span></div>
 <table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Last draw</th><th style="text-align:right">Expected</th><th>Waivers · changes</th><th>Whose move</th><th></th></tr>
 <tr class="hot"><td class="co"><b>Hillside Excavation</b><small>Sitework · Greg Paulk</small></td><td>Draw 3 <span class="pill">next</span></td><td class="num">$22,000<small>draw 2, paid Sep 28</small></td><td class="num">$9,800<small>sitework 85% by Oct 25</small></td><td><span class="pill warn">unconditional owed on draw 2</span></td><td><span class="pill theirs">their move</span><br><small style="color:var(--text-muted)">promised Fri Oct 16 · quiet 4 d · late once before</small></td><td><span class="btn primary">Ask for it</span> <span class="btn">Call in Quo</span></td></tr>
 <tr><td class="co"><b>Kerr Electric</b><small>Electrical · Dana Kerr</small></td><td>Draw 3 <span class="pill">next</span></td><td class="num">$31,500<small>draw 2, paid Sep 28</small></td><td class="num">$26,000<small>rough-in 70% by Oct 25 · CO 3 signed, $3,400</small></td><td><span class="pill ok">all in</span> <span class="pill ok">CO 3 signed</span></td><td><span class="pill theirs">their move</span><br><small style="color:var(--text-muted)">no day given · quiet 2 d · never late</small></td><td><span class="btn primary">Ask for it</span></td></tr>
 <tr><td class="co"><b>Alamo Steel</b><small>Structural steel · Pat Alamo</small></td><td>Draw 1 <span class="pill">first</span></td><td class="num">—<small>statement of work signed Sep 27</small></td><td class="num">$12,500<small>erection 40% by Oct 25 · stored steel likely</small></td><td><span class="pill">none yet</span></td><td><span class="pill theirs">their move</span><br><small style="color:var(--text-muted)">on site since Oct 1 · first draw: the form is in their portal</small></td><td><span class="btn primary">Ask for it</span> <span class="btn">Nothing this period</span></td></tr>
 </table>
 
-<div class="grp">In, waiting on us · 1 · <i>the lines, opened</i></div>
+<div class="grp">In, waiting on us <span class="n">· 1 · the lines, opened</span></div>
 <table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Asked</th><th style="text-align:right">Expected</th><th>Waivers · changes</th><th>Whose move</th><th></th></tr>
 <tr class="open"><td class="co"><b>Lone Star Mechanical</b><small>Mechanical · Luis Ortega</small></td><td>Draw 2</td><td class="num">$27,900<small>came Mon Sep 28 · stored $4,100, invoice in</small></td><td class="num">$24,200<small>from the schedule</small></td><td><span class="pill">conditional in</span> <span class="pill warn">CO 1 unsigned · $2,600 held out</span></td><td><span class="pill ours">our move · 4 d</span></td><td><span class="btn primary">Approve $27,180</span> <span class="btn">Send back with a note</span></td></tr>
 <tr class="open"><td colspan="7" style="padding:0 8px 10px"><div class="lines"><div class="linehd"><span>Draw 2's lines · what they claim, what we see, and what the schedule expects</span><span class="note" style="color:var(--text-muted)">Wendi saw lines 1 to 4 on site Thu Oct 1 · photos on the daily log</span></div>
@@ -160,13 +163,13 @@ td.num small{display:block;color:var(--text-muted);font-weight:400}
 </table></div></td></tr>
 </table>
 
-<div class="grp">Approved · 1</div>
+<div class="grp">Approved <span class="n">· 1</span></div>
 <table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Asked · approved</th><th style="text-align:right">Expected</th><th>Waivers · changes</th><th>Whose move</th><th></th></tr>
 <tr><td class="co"><b>Tejas Power</b><small>Electrical, low voltage · Bill Sorrell</small></td><td>Draw 2</td><td class="num">$14,200 · <b>$13,300</b><small>approved Wed Sep 30 · a back-charge of $900 came off</small></td><td class="num">$13,000</td><td><span class="pill">conditional in</span></td><td><span class="pill">paid when the owner pays · about Nov 30</span></td><td><span class="btn">Open the draw</span></td></tr>
 </table>
 
-<div class="grp">Closing out · 0 <span class="r" style="color:var(--text-muted)">a trade's final pay application and retainage release list here when they come</span></div>
-<div class="grp">Our own crew · from the Pipeline job</div>
+<div class="grp">Closing out <span class="n">· 0</span><span class="r" style="color:var(--text-muted)">a trade's final pay application and retainage release list here when they come</span></div>
+<div class="grp">Our own crew <span class="n">· from the Pipeline job</span></div>
 <table><tr><td class="co" style="width:180px"><b>Plumbing</b><small>ours · J1082</small></td><td class="num" style="text-align:left">$27,900 this period · 62% done from the job's stages · <span style="color:var(--text-muted)">no draw, no waiver; Bill the customer bills its line from the percent</span></td></tr></table>
 
 <div class="tot"><span>As it stands: approved <b>$13,300</b> · waiting on us <b>$27,180</b> · ours <b>$27,900</b> · expected from the rest <b>$48,300</b> → pay application 4 about <b>$116,700</b></span><span><span class="btn">To the owner ›</span> <span class="btn primary faint">Send pay application 4</span></span></div>

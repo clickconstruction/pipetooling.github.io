@@ -752,6 +752,10 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.119, 2026-10-11**: the bill-day page's section titles (Sent back, Not in, In waiting on us, Approved, Closing
+  out, Our own crew) are bars across the page, bold at the body's size with the count and the note small after them,
+  tinted red for Not in and amber for Sent back, instead of small gray caps that read smaller than the rows (the
+  owner, 2026-10-11).
 - **v1.118, 2026-10-11**: `bill-day-mockup-2.html`, Bill day's second pass (the owner: not the best we can do): the page
   as the Money screen's From the trades tab, the cascade, the seven gates with a press each, Expected from the
   schedule's forecast, changes beside waivers, the lines opened with claimed, we see and the schedule, the
