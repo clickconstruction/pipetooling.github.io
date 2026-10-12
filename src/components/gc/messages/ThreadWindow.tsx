@@ -11,6 +11,7 @@ import { stampSentence } from '../../../lib/messages/stamps'
 import { courtOf, threadOf, threadRows } from '../../../lib/messages/thread'
 import { isThreadFolded, reachOpen } from '../../../lib/messages/threadFold'
 import { formatErrorMessage } from '../../../utils/errorHandling'
+import { PhoneSheet } from '../../PhoneSheet'
 import { Chip, type Tone } from '../gcUi'
 import { JobPickerWindow } from './JobPickerWindow'
 import { JobsRail } from './JobsRail'
@@ -263,7 +264,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                     >
                       ⋯
                     </button>
-                    {menuOpen && (
+                    {menuOpen && !phone && (
                       <div role="menu" style={{ position: 'absolute', right: 0, top: '110%', background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.25rem', display: 'grid', minWidth: 200, zIndex: 1 }}>
                         {menuRows.map((r) => (
                           <button
@@ -282,6 +283,32 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                           </button>
                         ))}
                       </div>
+                    )}
+                    {/* On a phone ⋯ is a sheet from the bottom: a row a thumb can hit, and Cancel (cut 10, phone-mockups.html 1c). */}
+                    {menuOpen && phone && (
+                      <PhoneSheet label="More" onClose={() => setMenuOpen(false)}>
+                        <div role="menu" aria-label="More" style={{ display: 'grid', gap: '0.4rem', padding: '0.35rem 1rem 0.9rem', overflowY: 'auto' }}>
+                          {menuRows.map((r) => (
+                            <button
+                              key={r.key}
+                              type="button"
+                              role="menuitem"
+                              disabled={r.disabled}
+                              title={r.tip}
+                              onClick={() => {
+                                setMenuOpen(false)
+                                r.onPress()
+                              }}
+                              style={{ textAlign: 'left', border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', borderRadius: 10, padding: '0.7rem 0.85rem', fontSize: '0.95rem', cursor: r.disabled ? 'not-allowed' : 'pointer', opacity: r.disabled ? 0.5 : 1 }}
+                            >
+                              {r.label}
+                            </button>
+                          ))}
+                          <button type="button" onClick={() => setMenuOpen(false)} style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', padding: '0.6rem', fontSize: '0.95rem', cursor: 'pointer' }}>
+                            Cancel
+                          </button>
+                        </div>
+                      </PhoneSheet>
                     )}
                   </span>
                   {!folded && slots.headerRight?.(contact, { folded })}

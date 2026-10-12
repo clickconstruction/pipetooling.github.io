@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import type { JobTile } from '../../../lib/messages/jobTiles'
+import { PhoneSheet } from '../../PhoneSheet'
 import { Btn, input } from '../gcUi'
 
 /**
  * Messages, cut 1's screens: pick a job, for *+ add a job* on the rail and for a line's *Tie to* (the prototype's
  * picker, v1.4). Their own jobs first, then any job found by its name or number. A line can also be untied, so it sits
- * on the person.
+ * on the person. A sheet from the bottom on a phone (`PhoneSheet`, cut 10).
  */
 export function JobPickerWindow({
   title,
@@ -46,17 +47,6 @@ export function JobPickerWindow({
     }
   }, [words, searchJobs])
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented) {
-        e.preventDefault()
-        onClose()
-      }
-    }
-    document.addEventListener('keydown', onKey, true)
-    return () => document.removeEventListener('keydown', onKey, true)
-  }, [onClose])
-
   const row = (t: JobTile) => (
     <button
       key={t.key}
@@ -72,46 +62,24 @@ export function JobPickerWindow({
   )
 
   return (
-    <div
-      onClick={(e) => {
-        e.stopPropagation()
-        onClose()
-      }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.35)', zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(0.75rem + var(--app-top-chrome, 0px)) 0.75rem 0.75rem' }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        data-job-picker
-        onClick={(e) => e.stopPropagation()}
-        style={{ background: 'var(--surface)', color: 'var(--text-base)', borderRadius: 10, width: 'min(480px, 100%)', maxHeight: 'min(80vh, 100%)', display: 'flex', flexDirection: 'column', overflow: 'hidden', border: '1px solid var(--border-strong)' }}
-      >
-        <div style={{ padding: '0.7rem 1rem', borderBottom: '1px solid var(--border)', display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-          <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{title}</h2>
-          <span style={{ flex: 1 }} />
-          <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
-            ×
-          </button>
-        </div>
-        <div style={{ padding: '0.8rem 1rem', overflowY: 'auto', display: 'grid', gap: '0.5rem', fontSize: '0.875rem' }}>
-          {problem && (
-            <div role="alert" style={{ color: 'var(--text-red-700)' }}>
-              {problem}
-            </div>
-          )}
-          {untie && (
-            <Btn onClick={() => onPick(null)} kind="quiet">
-              On the person, no job
-            </Btn>
-          )}
-          {theirs.length > 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Their jobs</div>}
-          {theirs.map(row)}
-          <input value={words} onChange={(e) => setWords(e.target.value)} placeholder="Find another job by its name or number" style={input} />
-          {found && found.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No job goes by that.</div>}
-          {found?.filter((t) => !theirs.some((x) => x.key === t.key)).map(row)}
-        </div>
+    <PhoneSheet label={title} title={title} width={480} maxHeight="80vh" dataAttrs={{ 'data-job-picker': '' }} onClose={onClose}>
+      <div style={{ padding: '0.8rem 1rem', overflowY: 'auto', display: 'grid', gap: '0.5rem', fontSize: '0.875rem' }}>
+        {problem && (
+          <div role="alert" style={{ color: 'var(--text-red-700)' }}>
+            {problem}
+          </div>
+        )}
+        {untie && (
+          <Btn onClick={() => onPick(null)} kind="quiet">
+            On the person, no job
+          </Btn>
+        )}
+        {theirs.length > 0 && <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Their jobs</div>}
+        {theirs.map(row)}
+        <input value={words} onChange={(e) => setWords(e.target.value)} placeholder="Find another job by its name or number" style={input} />
+        {found && found.length === 0 && <div style={{ color: 'var(--text-muted)' }}>No job goes by that.</div>}
+        {found?.filter((t) => !theirs.some((x) => x.key === t.key)).map(row)}
       </div>
-    </div>
+    </PhoneSheet>
   )
 }

@@ -50,6 +50,8 @@ On a phone or in a narrow window, the top of the thread folds to fit.
 - Press the arrow beside their company to show their numbers and addresses.
 - The chips sit in one row, and the person's jobs sit in one row under them.
 - Swipe a row sideways to see the rest of it.
+- A message, the job picker and the menu under {{button:outline|⋯}} open from the bottom of the screen.
+- Press outside one to close it. Press **Cancel** to close the menu.
 
 ## Open one message
 
