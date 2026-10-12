@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { threadFromSearch } from '../../components/gc/messages/useThreadWindow'
-import { billDayFromSearch, billDayHref, GC_FOLLOW_UP_HREF, GC_MESSAGES_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcFocusFromSearch, gcProjectHref, gcViewFromSearch, messagesThreadHref } from './links'
+import { billDayFromSearch, billDayHref, GC_FOLLOW_UP_HREF, GC_MESSAGES_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcBoardByFromSearch, gcFocusFromSearch, gcProjectHref, gcViewFromSearch, messagesThreadHref } from './links'
 
 describe('GC project links', () => {
   it('opens a GC project on its card on the GC projects page', () => {
@@ -40,5 +40,14 @@ describe('GC project links', () => {
 
   it('says it in plain words', () => {
     for (const [key, words] of Object.entries(GC_PROJECT_WORDS)) expect(plainWordsFailures(words), key).toEqual([])
+  })
+})
+
+describe('how Trade partners shows its companies', () => {
+  it('reads ?by= as the list or the board by step, and anything else as the view’s first', () => {
+    expect(gcBoardByFromSearch(new URLSearchParams('view=partners&by=step'))).toBe('step')
+    expect(gcBoardByFromSearch(new URLSearchParams('by=list'))).toBe('list')
+    expect(gcBoardByFromSearch(new URLSearchParams('by=columns'))).toBeNull()
+    expect(gcBoardByFromSearch(new URLSearchParams(''))).toBeNull()
   })
 })
