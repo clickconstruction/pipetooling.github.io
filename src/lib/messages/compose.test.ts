@@ -4,7 +4,9 @@
  * unknown number receiving. The prototype's clock is Fri Oct 2, 2026, 11:45 AM.
  */
 import { describe, expect, it } from 'vitest'
+import type { Contact } from '../contacts/kernel'
 import { plainWordsFailures } from '../plainWords'
+import { DEMO_CONTACTS } from './messagesDemo'
 import {
   EMAIL_SOURCES_NOTE,
   GSM7_BASIC_SIZE,
@@ -33,6 +35,7 @@ import {
   optoutLine,
   optoutReason,
   optoutRecord,
+  replyRecipient,
   sendWarnings,
   sentCopyNote,
   sentWords,
@@ -100,6 +103,36 @@ describe('the kinds row', () => {
     expect(textBoxBlocked('email', GREG_STOPPED)).toBeNull()
     expect(textBoxBlocked('note', GREG_STOPPED)).toBeNull()
     expect(textBoxBlocked('text', GREG)).toBeNull()
+  })
+})
+
+describe('the recipient, from the spine’s contact', () => {
+  const demo = (id: string): Contact => {
+    const c = DEMO_CONTACTS.find((x) => x.id === id)
+    if (!c) throw new Error(`no ${id}`)
+    return c
+  }
+
+  it('takes their name, their number and their address', () => {
+    expect(replyRecipient(demo('greg'))).toEqual({
+      name: 'Greg Paulk',
+      number: '(210) 555-0113',
+      numberOptedOut: false,
+      email: 'greg@hillside.example',
+      numberChannelId: 'greg-phone',
+      emailChannelId: 'greg-email',
+    })
+    expect(replyRecipient(demo('tom'))).toMatchObject({ number: '(210) 555-0130', email: null, emailChannelId: null })
+    expect(replyRecipient(demo('unk1'))).toMatchObject({ name: '(830) 555-0172', number: '(830) 555-0172', email: null })
+  })
+
+  it('texts the next number when one sent STOP, and says so when every number has', () => {
+    const greg = demo('greg')
+    const stopped = { id: 'greg-phone', kind: 'phone' as const, value: '(210) 555-0113', optedOutAt: '2026-10-01T15:00:00.000Z' }
+    const cell = { id: 'greg-cell', kind: 'phone' as const, value: '(210) 555-0199', optedOutAt: null }
+    expect(replyRecipient({ ...greg, channels: [stopped, cell] })).toMatchObject({ number: '(210) 555-0199', numberOptedOut: false, numberChannelId: 'greg-cell' })
+    expect(replyRecipient({ ...greg, channels: [stopped] })).toMatchObject({ number: '(210) 555-0113', numberOptedOut: true })
+    expect(defaultReplyKind(replyRecipient({ ...greg, channels: [stopped, greg.channels[1]!] }))).toBe('email')
   })
 })
 
@@ -224,8 +257,8 @@ describe('the pieces a text arrives in', () => {
     expect(GSM7_BASIC_SIZE).toBe(127)
     expect(textSegments('ΔΦΓΛΩΠΨΣΘΞ').encoding).toBe('gsm7')
     // The ohm sign and the increment look like Ω and Δ but are not in it.
-    expect(textSegments('Ω').encoding).toBe('ucs2')
-    expect(textSegments('∆').encoding).toBe('ucs2')
+    expect(textSegments('\u2126').encoding).toBe('ucs2')
+    expect(textSegments('\u2206').encoding).toBe('ucs2')
     expect(textSegments('é è ù ì ò à Ñ ñ Ü ü ¿ ¡').encoding).toBe('gsm7')
     expect(textSegments(optoutLine(CLICK)).encoding).toBe('gsm7')
   })

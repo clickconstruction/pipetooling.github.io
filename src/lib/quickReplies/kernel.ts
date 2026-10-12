@@ -11,13 +11,14 @@
  * removed line stays in the history and comes back from the Removed tab.
  */
 
+import type { ContactKind } from '../contacts/kernel'
+import type { FlowKind } from '../flows/facts'
+import type { FlowDef, FlowStep } from '../flows/state'
+
 // ---------- the line ----------
 
-/** Who a line is for. `any` is for anyone, an unknown number among them. */
-export type QuickReplyFor = 'trade' | 'customer' | 'arch' | 'any'
-
-/** A contact's kind (`contacts.kind`, the spine's); an unknown number reads the lines for anyone. */
-export type ContactKind = 'customer' | 'trade' | 'arch' | 'unknown'
+/** Who a line is for: a contact's kind (the spine's `ContactKind`), or anyone, an unknown number among them. */
+export type QuickReplyFor = Exclude<ContactKind, 'unknown'> | 'any'
 
 /** The team's lines are everyone's; a line marked just for me is on my strip only. */
 export type QuickReplyScope = 'team' | 'mine'
@@ -39,14 +40,18 @@ export interface QuickReply {
   lastUsed: { at: number; by: string; contactId: string | null } | null
 }
 
-/** A step of a kind's flow as a line names it. The flow's own type replaces this when its kernel lands. */
-export interface StepRef {
-  id: string
-  name: string
-}
+/** A step of a kind's flow as a line names it: the flow's own step, by its id and name. */
+export type StepRef = Pick<FlowStep, 'id' | 'name'>
 
 /** The flow's steps for each kind of person, in the flow's order. */
 export type StepsByKind = Partial<Record<QuickReplyFor, readonly StepRef[]>>
+
+/** The steps a line can belong to, by who it is for, from the flows (the seed until the flows table is read). Anyone's lines have none. */
+export function stepsByKind(flows: Readonly<Partial<Record<FlowKind, FlowDef>>>): StepsByKind {
+  const of = (kind: Exclude<QuickReplyFor, 'any'>): StepRef[] =>
+    (flows[kind]?.lanes ?? []).flatMap((lane) => lane.steps.map((step) => ({ id: step.id, name: step.name })))
+  return { trade: of('trade'), customer: of('customer'), arch: of('arch') }
+}
 
 /** Who a line is for, as the strip and the editor name them. */
 export const QR_KINDS: Readonly<Record<QuickReplyFor, string>> = {

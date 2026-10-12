@@ -6,7 +6,8 @@
 import { describe, expect, it } from 'vitest'
 import { optoutLine, type ComposeCompany } from '../messages/compose'
 import { plainWordsFailures } from '../plainWords'
-import { QUO_MAX_CHARACTERS, planSend, refusalWords, sentQuoId, sentWho, type QuoSendInput, type SendRefusal } from './send'
+import { planQuoEvent, readQuoEvent, type QuoLine, type QuoPlanContext, type QuoReading } from './events'
+import { QUO_MAX_CHARACTERS, planSend, refusalWords, sendOver, sentQuoId, sentWho, type QuoSendInput, type SendRefusal } from './send'
 
 const at = (month: number, day: number, hour = 9, minute = 0) => Date.UTC(2026, month - 1, day, hour, minute)
 const NOW = at(10, 2, 11, 45)
@@ -148,5 +149,80 @@ describe('plain words', () => {
   it('holds every refusal', () => {
     const all: SendRefusal[] = ['empty', 'no-number', 'not-a-number', 'stopped', 'too-long']
     expect(all.flatMap((r) => plainWordsFailures(refusalWords(r, 1601)))).toEqual([])
+  })
+})
+
+describe('the race between our own write and Quo’s delivery event', () => {
+  // Robert's first text to Greg, tied in the box to Pad B, not to Greg's default job.
+  const plan = sent(toGreg({ lastOurTextAt: null, jobId: 'job-padb', body: 'Greg, the walk moved to 8.' }))
+  const QUO_ID = 'MS-77'
+  const event = (type: string, extra: Record<string, unknown> = {}): QuoReading => {
+    const r = readQuoEvent({
+      id: 'EV-77',
+      apiVersion: '2026-03-30',
+      createdAt: '2026-10-02T11:45:03.000Z',
+      type,
+      data: {
+        resource: { id: QUO_ID, direction: 'outgoing', text: plan.request.content, media: [], status: 'delivered', createdAt: '2026-10-02T11:45:01.000Z', ...extra },
+        context: { orgId: 'OR-click', phoneNumberId: 'PN-click', userId: 'US-robert', senderIdentifier: '+12105550100', recipientIdentifiers: ['+12105550113'] },
+        links: { quo: null },
+      },
+    })
+    if (!r.ok) throw new Error(r.why)
+    return r.reading
+  }
+  const ctx = (existing: QuoLine | null): QuoPlanContext => ({
+    contactId: 'c-greg',
+    contactWords: 'Greg',
+    channelId: 'ch-greg',
+    optedOut: false,
+    defaultJobId: 'job-boerne',
+    users: { 'US-robert': { userId: 'u-robert', name: 'Robert' } },
+    company: CLICK,
+    existing,
+  })
+  const ours = (prev: QuoLine | null) => sendOver(prev, plan.line, QUO_ID)
+  const theirs = (prev: QuoLine | null, type: string, extra?: Record<string, unknown>) => {
+    const line = planQuoEvent(event(type, extra), ctx(prev)).line
+    if (!line) throw new Error('no line')
+    return line
+  }
+
+  it('ends on the same line whichever writes first, our send’s fields winning', () => {
+    const sendFirst = theirs(ours(null), 'message.delivered')
+    const eventFirst = ours(theirs(null, 'message.delivered'))
+    expect(sendFirst).toEqual(eventFirst)
+    expect(sendFirst).toEqual({
+      quoId: 'MS-77',
+      contactId: 'c-greg',
+      channelId: 'ch-greg',
+      jobId: 'job-padb',
+      channel: 'text',
+      direction: 'out',
+      at: '2026-10-02T11:45:00.000Z',
+      who: 'Robert · from the company number',
+      whoUserId: 'u-robert',
+      body: `Greg, the walk moved to 8.\n\n${optoutLine(CLICK)}`,
+      recordingUrl: null,
+      transcript: null,
+      summary: null,
+      durationSeconds: null,
+      media: [],
+      optoutLine: 'first',
+      delivery: 'delivered',
+    })
+  })
+
+  it('ends the same both ways when the text failed', () => {
+    const sendFirst = theirs(ours(null), 'message.failed', { errorCode: '30007' })
+    const eventFirst = ours(theirs(null, 'message.failed', { errorCode: '30007' }))
+    expect(sendFirst).toEqual(eventFirst)
+    expect(sendFirst).toMatchObject({ delivery: 'failed', optoutLine: 'first', jobId: 'job-padb' })
+  })
+
+  it('keeps the event’s media when our write lands second', () => {
+    const photo = { url: 'https://files.example/walk.jpg', type: 'image/jpeg' }
+    expect(ours(theirs(null, 'message.delivered', { media: [photo] })).media).toEqual([photo])
+    expect(ours(null)).toMatchObject({ media: [], delivery: null })
   })
 })

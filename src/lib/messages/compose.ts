@@ -9,11 +9,14 @@
  * tag) comes back as parts, which the screen joins with a middle dot. Every sentence keeps the plain-words rules
  * (`src/lib/plainWords.ts`), and `compose.test.ts` holds them.
  */
+import { textableNumbers, type Contact } from '../contacts/kernel'
 import { helloLine } from '../gc/ownerBillingRemind'
+import type { MessageChannel, ThreadMessage } from './thread'
 
 // ---------- the kinds row ----------
 
-export type ReplyKind = 'text' | 'email' | 'note'
+/** What the box writes: one of the thread's channels. */
+export type ReplyKind = Extract<MessageChannel, 'text' | 'email' | 'note'>
 
 /** The kinds row, in its order: Text blue, Email white, Note yellow. `send` is the box's Send press. */
 export const REPLY_KINDS: ReadonlyArray<{ kind: ReplyKind; label: string; send: string }> = [
@@ -47,6 +50,26 @@ export interface ReplyRecipient {
   numberOptedOut: boolean
   /** The address an email goes to, or null when none is on file. */
   email: string | null
+}
+
+/**
+ * The recipient from the spine's contact. The number is the first that can still take a text, else the first they
+ * have, so a STOP from one number leaves the next one open. The address is their first. The channel ids name the
+ * `contact_channels` rows the message goes to.
+ */
+export function replyRecipient(
+  contact: Pick<Contact, 'name' | 'channels'>,
+): ReplyRecipient & { numberChannelId: string | null; emailChannelId: string | null } {
+  const number = textableNumbers(contact)[0] ?? contact.channels.find((ch) => ch.kind === 'phone') ?? null
+  const email = contact.channels.find((ch) => ch.kind === 'email') ?? null
+  return {
+    name: contact.name,
+    number: number?.value ?? null,
+    numberOptedOut: Boolean(number?.optedOutAt),
+    email: email?.value ?? null,
+    numberChannelId: number?.id ?? null,
+    emailChannelId: email?.id ?? null,
+  }
 }
 
 /**
@@ -227,7 +250,7 @@ export interface TextSegments {
 // The Greek capitals are written by code point, since lookalikes elsewhere in Unicode (the ohm sign, the increment) are not in it.
 const GSM7_BASIC = new Set([
   ...'@£$¥èéùìòÇ\nØø\rÅå',
-  ...'Δ_ΦΓΛΩΠΨΣΘΞÆæßÉ',
+  ...'\u0394_\u03A6\u0393\u039B\u03A9\u03A0\u03A8\u03A3\u0398\u039EÆæßÉ',
   ...' !"#¤%&\'()*+,-./0123456789:;<=>?',
   ...'¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§',
   ...'¿abcdefghijklmnopqrstuvwxyzäöñüà',
@@ -279,7 +302,7 @@ export type OptoutReason = 'first' | 'silence'
  * What a sent text keeps in `messages.optout_line`: the reason the line rode along, or `held` when a person left it off
  * on the silence reason. A text with no reason keeps nothing.
  */
-export type OptoutRecord = OptoutReason | 'held'
+export type OptoutRecord = NonNullable<ThreadMessage['optoutLine']>
 
 const DAY_MS = 86_400_000
 
