@@ -1939,7 +1939,7 @@ function subjectFor(c, job, body){ const j=job?jobById(job):null; const first=bo
 // The strip is folded by default (the owner, 2026-10-11); a press on its line opens it, a press on the open label folds it, and the choice is kept on this computer. Typing still folds an open strip until the box is empty again.
 let qrOpen=false; try{ qrOpen = localStorage.getItem('msgQrOpen')==='1'; }catch(e){}
 function foldQuick(hasWords){ const w=document.querySelector('.quickwrap'); if(!w) return; if(!hasWords) w.dataset.peek=''; w.classList.toggle('folded', !qrOpen || (hasWords && !w.dataset.peek)); }
-function peekQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; qrOpen=true; try{ localStorage.setItem('msgQrOpen','1'); }catch(e){} w.dataset.peek='1'; w.classList.remove('folded'); }
+function peekQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; qrOpen=true; try{ localStorage.setItem('msgQrOpen','1'); }catch(e){} const bx=document.getElementById('box'); w.dataset.peek = bx&&bx.value.trim() ? '1' : ''; w.classList.remove('folded'); }
 function closeQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; qrOpen=false; try{ localStorage.setItem('msgQrOpen','0'); }catch(e){} w.dataset.peek=''; w.classList.add('folded'); }
 function countBox(el){ if(!el.value.trim()) qrStepInBox=null; foldQuick(el.value.trim().length>0); const n=document.getElementById('pvcount'); if(!n) return; const L=el.value.length; n.textContent = L? `${L} characters · ${Math.max(1,Math.ceil(L/160))} text${L>160?'s':''}` : ''; }
 // The send window's To line (v1.79, the owner's go): the contact's email or number, with a press to set it, writing to the contact's
