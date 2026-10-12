@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { dailyLogOn, logTrades, missingLogs, newDailyLog, weekOfLogs } from '../../lib/gc/buildingLog'
 import { crewOnSiteOn, crewsToSave, logWithClockIns, ourCrewNote, type OurCrewOnLog } from '../../lib/gc/dailyLogRows'
 import { partnerById } from '../../lib/gc/lookups'
@@ -40,6 +40,8 @@ interface Props {
    * is read and never stored. Absent: our crew's count is typed, as every trade's is.
    */
   ourCrew?: OurCrewOnLog | null
+  /** Bill day's Claims to check (Messages cut 9): the walk of the draws waiting on us, drawn above the day's log. Absent: no card. */
+  claims?: ReactNode
   onClose: () => void
 }
 
@@ -68,7 +70,7 @@ function companyOf(state: GcState, project: GcProject, packageId: string | null)
   return company ? `${pkg.trade} · ${company}` : pkg.trade
 }
 
-export function GcDailyLogWindow({ state, project, today, busy = false, problem, onSave, weekly = null, ourCrew = null, onClose }: Props) {
+export function GcDailyLogWindow({ state, project, today, busy = false, problem, onSave, weekly = null, ourCrew = null, claims = null, onClose }: Props) {
   const missing = missingLogs(project, today)
   const [day, setDay] = useState(today)
   const [editing, setEditing] = useState(false)
@@ -130,6 +132,7 @@ export function GcDailyLogWindow({ state, project, today, busy = false, problem,
           ) : (
             <>
               {weekly && <GcWeeklyReportCard state={weekly.state} project={weekly.project} me={weekly.me} writes={weekly.writes} />}
+              {claims}
               {missing.length > 0 && (
                 <Card style={{ border: '1px solid var(--border-strong)' }}>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.875rem' }}>
