@@ -22,6 +22,7 @@ export type FactId =
   | 'coi_current'
   | 'msa_signed'
   | 'quote_in'
+  | 'quote_declined'
   | 'tab_seen'
   | 'carried'
   | 'not_carried'
@@ -104,7 +105,7 @@ export type FlowFact = {
   paper?: PaperId
   /** The paper is one we send (Send it, Remind them), not one they hand us (Ask for it). */
   ours?: true
-  /** A way out of a fork: when it is true the job's lane ends there (we did not carry it, they declined). */
+  /** A way out: when it finishes the step the job's lane ends there (they declined to quote, we did not carry it, they declined). */
   endsLane?: true
 }
 
@@ -126,7 +127,7 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     text: 'they opened their portal',
     small: 'their press on Got it in their portal stands in for their first visit',
     group: 'Their portal',
-    reads: 'gc_companies.portal_opened_on',
+    reads: 'gc_trade_portal_links.first_opened_at, else gc_companies.portal_opened_on',
     scope: 'person',
     kept: 'half',
     gap: 'gc_trade_portal_links.first_opened_at, the first visit to their link',
@@ -177,6 +178,17 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     paper: 'quote',
   },
   {
+    id: 'quote_declined',
+    text: 'they declined to quote',
+    small: 'their no on the ask, pressed in their portal or taken by the office',
+    group: 'Their portal',
+    reads: "gc_invites.status = 'declined', declined_on",
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    endsLane: true,
+  },
+  {
     id: 'tab_seen',
     text: 'they saw the bid results',
     small: 'the shared bid results opened',
@@ -201,7 +213,7 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     text: 'we did not carry it',
     small: 'another quote carried, or none. Read from the package today, since no lost mark is kept',
     group: 'Our number',
-    reads: 'gc_trade_packages.carried_invite_id names another invite',
+    reads: 'gc_invites.lost_on, else gc_trade_packages.carried_invite_id names another invite',
     scope: 'job',
     kept: 'half',
     gap: 'a lost mark per invite: gc_invites.lost_on',
@@ -278,7 +290,7 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     text: 'they said yes',
     small: 'the job moved to buyout. No day is kept for the yes',
     group: 'Our number',
-    reads: "gc_projects.stage in ('buyout', 'building')",
+    reads: "gc_projects.won_on, else stage in ('buyout', 'building', 'closed') with no lost_on",
     scope: 'job',
     kept: 'half',
     gap: 'the day they said yes: gc_projects.won_on',
@@ -333,7 +345,7 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     text: 'the pay application is paid',
     small: 'the pay application paid, read through its invoice. The pay application keeps no paid day',
     group: 'Money',
-    reads: "gc_owner_pay_apps.invoice_id → the invoice's paid status",
+    reads: "gc_owner_pay_apps.paid_on, else its invoice's paid day (invoice_id)",
     scope: 'round',
     kept: 'half',
     gap: 'a paid day on the pay application: gc_owner_pay_apps.paid_on',

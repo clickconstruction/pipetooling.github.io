@@ -412,9 +412,9 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
   const pre = def.steps.map((s) => preRead(s, lane, person, jobId, stamps, now))
   // A Per job lane with nothing on it yet is not started: nobody is on its first step until the job gives a stamp.
   const started = def.lane !== 'per_job' || lane.stamps.some((x) => x.mark !== 'no') || Object.values(lane.rounds).some((rs) => !!rs?.length)
-  // A loop that ends on what follows it is done once a later step in its lane has read true.
-  const laterTrue = (i: number) =>
-    pre.slice(i + 1).some((p) => !p.step.aside && (p.step.loop ? p.rounds.some((r) => r.state === 'done') : p.isTrue || p.lapsed))
+  // A loop that ends on what follows it is done once a later step in its lane that runs once has read true (draws end
+  // at closeout). Another loop's round ends nothing: a certified pay application does not finish the submittals.
+  const laterTrue = (i: number) => pre.slice(i + 1).some((p) => !p.step.aside && !p.step.loop && (p.isTrue || p.lapsed))
   const loopPasses = (p: StepPre, i: number) => (p.step.loopEnds === 'next' ? laterTrue(i) : p.isTrue)
 
   let head: number | null = null
@@ -427,7 +427,12 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
     if (ended) return 'later'
     if (head == null && started) {
       if (s.loop) {
-        if (loopPasses(p, i)) return p.open ? 'now' : 'done'
+        if (loopPasses(p, i)) {
+          // Every round finished by a way out (they declined to quote each ask) ends the lane, as a fork's does.
+          const outs = p.rounds.map((r) => r.facts.find((x) => x.mark === 'ok' && x.fact.endsLane)?.fact.id ?? null)
+          if (!p.open && outs.length && outs.every((x) => x)) ended = outs[0] ?? null
+          return p.open ? 'now' : 'done'
+        }
         head = i
         return 'now'
       }
@@ -494,7 +499,7 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
  * step that is done, lapsed, skipped or has no facts yet, and stops at the first that is none of
  * these: that step is on now. After it, one step is next and the rest are later, except a step
  * whose facts already read true (done) and a loop with a round open (now). An aside step reads from
- * its rounds and is never on the chain. A fork's way out ends its lane.
+ * its rounds and is never on the chain. A way out ends its lane: a fork's, or one that finished every round of a loop.
  */
 export function readFlow(flow: FlowDef, stamps: FlowStamps, now: Date): FlowReading {
   const lanes: LaneReading[] = []

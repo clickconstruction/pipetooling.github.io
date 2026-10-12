@@ -153,6 +153,34 @@ describe('readFlow: the rules the prototype did not have', () => {
     expect(stepReading(after, 'warranty', 'boerne')).toMatchObject({ state: 'now', since: '2026-10-02' })
   })
 
+  it('another loop’s round ends nothing: a certified pay application leaves the submittals next', () => {
+    const jonah = flowFixture('jonah').stamps
+    const boerne = jonah.jobs.boerne
+    if (!boerne) throw new Error('fixture')
+    const certified = {
+      ...boerne,
+      rounds: { ...boerne.rounds, certify: [{ key: 'cert-payapp-3', name: 'Pay app 3', opened: '2026-08-28', due: null, stamps: [{ fact: 'certified' as const, mark: 'ok' as const, at: '2026-09-02', by: null, until: null }] }, ...(boerne.rounds.certify ?? [])] },
+    }
+    const r = readFlow(SEED_FLOWS.arch, { ...jonah, jobs: { ...jonah.jobs, boerne: certified } }, NOW)
+    expect(stepReading(r, 'submittals', 'boerne')?.state).toBe('next')
+    expect(stepReading(r, 'certify', 'boerne')).toMatchObject({ state: 'now', since: '2026-09-28' })
+  })
+
+  it('their no to every ask ends the job’s lane: Tom declines Pad B', () => {
+    const tom = flowFixture('tom').stamps
+    const padb = { jobId: 'padb', stamps: [], dues: {}, rounds: { ask: [{ key: 'inv-tom-padb', name: 'Structural steel', opened: '2026-09-29', due: '2026-10-22', stamps: [{ fact: 'quote_declined' as const, mark: 'ok' as const, at: '2026-10-01', by: null, until: null }] }] } }
+    const r = readFlow(SEED_FLOWS.trade, { ...tom, jobIds: ['boerne', 'padb'], jobs: { ...tom.jobs, padb } }, NOW)
+    expect(r.lanes.find((l) => l.jobId === 'padb')).toMatchObject({ headStepId: null, ended: 'quote_declined' })
+    expect(drawn(r)[2]).toBe('per_job@padb: ask:done compare:later sow:later draws:later closeout:later')
+    expect(stepReading(r, 'ask', 'padb')?.rounds.map((x) => `${x.name}:${x.state}`)).toEqual(['Structural steel:done'])
+    // Boerne and his papers are untouched.
+    expect([r.nowStepId, stepReading(r, 'ask', 'boerne')?.state]).toEqual(['papers', 'now'])
+    // A no on one ask and a quote on another leaves the lane open.
+    const both = { ...padb, rounds: { ask: [...padb.rounds.ask, { key: 'inv-tom-padb-2', name: 'Misc. metals', opened: '2026-09-29', due: null, stamps: [{ fact: 'quote_in' as const, mark: 'ok' as const, at: '2026-10-01', by: null, until: null }] }] } }
+    const open = readFlow(SEED_FLOWS.trade, { ...tom, jobIds: ['boerne', 'padb'], jobs: { ...tom.jobs, padb: both } }, NOW)
+    expect(open.lanes.find((l) => l.jobId === 'padb')).toMatchObject({ headStepId: 'compare', ended: null })
+  })
+
   it('a fork’s way out ends the job’s lane: a quote we did not carry', () => {
     const bill = flowFixture('bill').stamps
     const boerne = bill.jobs.boerne

@@ -49,7 +49,7 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
           step({
             id: 'ask', name: 'Asked to quote', nameEs: 'Cotización pedida', phase: 'pricing', who: 'them',
             later: { en: 'When a job of yours comes up.', es: 'Cuando surja un trabajo para usted.' },
-            loop: 'each ask', loopEnds: 'rounds', facts: ['quote_in'], papers: ['quote'],
+            loop: 'each ask', loopEnds: 'rounds', facts: ['quote_in', 'quote_declined'], join: 'or', papers: ['quote'],
             nudge: { days: 7, how: 'text', send: 'ask', dayFact: 'promised' }, usual: 6,
           }),
           step({
