@@ -17,6 +17,14 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
   ('00000000-0000-0000-0000-0000000006d2', 'estimator@quo.test', 'Quo Estimator', 'estimator', false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
+-- A trade partner whose main contact is Greg, and his contact as the spine's seed makes it (no name of its own).
+INSERT INTO public.gc_companies (id, name, contact_name, phone) VALUES
+  ('00000000-0000-0000-0000-0000000006a1', 'Quo Hillside', 'Greg Paulk', '(210) 555-0113');
+INSERT INTO public.contacts (id, kind, gc_company_id, goes_by) VALUES
+  ('00000000-0000-0000-0000-0000000006c2', 'trade', '00000000-0000-0000-0000-0000000006a1', NULL);
+INSERT INTO public.contact_channels (id, contact_id, kind, value) VALUES
+  ('00000000-0000-0000-0000-0000000006e2', '00000000-0000-0000-0000-0000000006c2', 'phone', '(210) 555-0113');
+
 -- A number nobody knew, as the webhook makes one: an unknown contact with its phone.
 INSERT INTO public.contacts (id, kind, name) VALUES
   ('00000000-0000-0000-0000-0000000006c1', 'unknown', '(830) 555-0172');
@@ -127,11 +135,11 @@ SELECT mqo.same('with its opt-out line',
 
 -- 4 · The contact a number lands on.
 SELECT mqo.same('a number nobody has makes an unknown contact with that phone',
-  (SELECT concat_ws('|', p.made::text, c.kind, c.name, ch.value, coalesce(p.stopped_at::text, '-'))
+  (SELECT concat_ws('|', p.made::text, c.kind, c.name, ch.value, coalesce(p.stopped_at::text, '-'), p.placed_kind, p.placed_name)
    FROM public.quo_place_number('+12105550199', '(210) 555-0199') p
    JOIN public.contacts c ON c.id = p.placed_contact
    JOIN public.contact_channels ch ON ch.id = p.placed_channel),
-  'true|unknown|(210) 555-0199|+12105550199|-');
+  'true|unknown|(210) 555-0199|+12105550199|-|unknown|(210) 555-0199');
 SELECT mqo.same('the same number again lands on that contact',
   (SELECT concat_ws('|', p.made::text, (p.placed_contact = c.id)::text)
    FROM public.quo_place_number('(210) 555-0199', 'ignored') p, public.contacts c WHERE c.name = '(210) 555-0199'),
@@ -145,6 +153,13 @@ SELECT mqo.same('a known number lands on its contact, with its STOP',
 UPDATE public.contact_channels SET opted_out_at = '2026-10-01 15:00:00+00' WHERE id = '00000000-0000-0000-0000-0000000006e1';
 SELECT mqo.same('a stopped number says when',
   (SELECT (p.stopped_at = '2026-10-01 15:00:00+00'::timestamptz)::text FROM public.quo_place_number('+18305550172', 'ignored') p), 'true');
+SELECT mqo.same('a trade partner''s number reads the name on its record',
+  (SELECT concat_ws('|', p.made::text, p.placed_contact::text, p.placed_kind, p.placed_name, coalesce(p.placed_goes_by, '-'))
+   FROM public.quo_place_number('+12105550113', 'ignored') p),
+  'false|00000000-0000-0000-0000-0000000006c2|trade|Greg Paulk|-');
+UPDATE public.contacts SET goes_by = 'Gregory' WHERE id = '00000000-0000-0000-0000-0000000006c2';
+SELECT mqo.same('and what he goes by',
+  (SELECT p.placed_goes_by FROM public.quo_place_number('+12105550113', 'ignored') p), 'Gregory');
 SELECT mqo.refused('a word is not a number', $q$SELECT * FROM public.quo_place_number('call me', 'x')$q$, 'not a phone number');
 
 -- 5 · The deliveries the webhook took.
