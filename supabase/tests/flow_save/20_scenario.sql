@@ -88,6 +88,11 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA fsv TO anon, authenticated;
 SELECT (to_jsonb(fsv.step('trade', 'closeout')) - 'id' - 'flow_id' - 'updated_at')::text AS closeout_row \gset
 SELECT (fsv.step('trade', 'invited')).updated_at AS invited_at \gset
 
+-- The flow's newest History line before Rosa's Save, as the screen reads it: a later migration may have written one
+-- (20261013050000 adds Draws' pay application with its line). Empty: none.
+SELECT coalesce(max(h.created_at)::text, '') AS before_rosa
+FROM public.flow_step_history h JOIN public.flows f ON f.id = h.flow_id WHERE f.kind = 'trade' \gset
+
 -- 1 · Rosa renames Papers in, removes Closeout and adds a step in Once, in one Save.
 SET LOCAL ROLE authenticated;
 SELECT fsv.as_user(:'rosa');
@@ -101,7 +106,7 @@ SELECT public.flow_save('trade',
     jsonb_build_object('step_key', 'closeout', 'what', '− Closeout'),
     jsonb_build_object('step_key', 'safety_orientation', 'what', '+ Safety orientation in Once')),
   jsonb_build_array(jsonb_build_object('step_key', 'closeout', 'lane', 'per_job', 'step', :'closeout_row'::jsonb)),
-  '{}', NULL) AS saved_at \gset
+  '{}', nullif(:'before_rosa', '')::timestamptz) AS saved_at \gset
 SELECT fsv.same('the rename and the new step, in the Once lane''s order',
   (SELECT string_agg(s.step_key || ':' || s.name, ',' ORDER BY s.position)
    FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'trade' AND s.lane = 'once'),
@@ -113,7 +118,8 @@ SELECT fsv.same('Closeout gone from the steps, and in Removed by Rosa',
   'true|per_job,Closeout,Rosa,true,-');
 SELECT fsv.same('History keeps the three lines in order, by Rosa, a null before as no before',
   (SELECT string_agg(coalesce(h.step_key, '-') || ': ' || h.what || ' · ' || h.by_name || ' · ' || (h.before IS NULL)::text, ' | ' ORDER BY h.created_at)
-   FROM public.flow_step_history h JOIN public.flows f ON f.id = h.flow_id WHERE f.kind = 'trade'),
+   FROM public.flow_step_history h JOIN public.flows f ON f.id = h.flow_id
+   WHERE f.kind = 'trade' AND h.created_at > coalesce(nullif(:'before_rosa', '')::timestamptz, '-infinity')),
   'papers: Papers in renamed Papers and insurance · Rosa · true | closeout: − Closeout · Rosa · true | safety_orientation: + Safety orientation in Once · Rosa · true');
 SELECT fsv.same('the Save returns its newest History line''s time, and Invited, left alone, keeps its clock',
   concat_ws('|',
@@ -124,7 +130,7 @@ SELECT fsv.same('the Save returns its newest History line''s time, and Invited, 
 -- 2 · Maria saves from the flow as it was before Rosa's Save: refused, and nothing changes.
 SELECT fsv.as_user(:'maria');
 SELECT fsv.refused('a Save from the flow as it was before another''s',
-  $q$SELECT public.flow_save('trade', fsv.rows('trade'), '[]', '[]', '{}', NULL)$q$, 'savedMeanwhile');
+  format($q$SELECT public.flow_save('trade', fsv.rows('trade'), '[]', '[]', '{}', %L)$q$, nullif(:'before_rosa', '')), 'savedMeanwhile');
 
 -- 3 · A Save that fails part way changes nothing: the rename goes with the History line too long for its column.
 SELECT fsv.refused('a History line past 500 characters fails the whole Save',
