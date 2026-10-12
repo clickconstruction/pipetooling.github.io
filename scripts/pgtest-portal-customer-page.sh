@@ -5,11 +5,12 @@
 #   npm run test:pg:portal-customer-page
 #
 # The same bed as scripts/pgtest-gc-customer-contacts.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order (about a minute). The cut 8 migration is then applied a second time, which must
-# change nothing. The scenario, inside one transaction that rolls back: nobody signed out reads the words or the
-# read-back; the words are seeded from the code; the office edits a sentence, keeps its blanks and is stamped with who
-# and when; nobody outside the office, in training mode or a digital twin edits one; the migration runs once more
-# mid-scenario (at its -- @reseed line, as a later push would) and follows the code only for sentences nobody edited;
+# supabase/migrations applied in order (about a minute). The cut 8 migration and the newest migration that seeds the
+# words are then applied a second time, which must change nothing. The scenario, inside one transaction that rolls
+# back: nobody signed out reads the words or the read-back; the words are seeded from the code, as many as the newest
+# seed holds; the office edits a sentence, keeps its blanks and is stamped with who and when; nobody outside the office,
+# in training mode or a digital twin edits one; both run once more mid-scenario (at its -- @reseed line, as a later
+# push would) and follow the code only for sentences nobody edited;
 # a paper view is read back per customer and paper, outside opens only, office only; a paper row names its paper and
 # the usage readout still counts page loads only; the three switches start off and the office turns one on. It raises
 # on its first failed assertion and ends with "portal_customer_page PASSED". PGTEST_KEEP=1 leaves the container up.
@@ -23,6 +24,11 @@ NAME="pgtest-portal-customer-page"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 WRITES="$(ls supabase/migrations/*_portal_customer_page.sql)"
 SCENARIO="supabase/tests/portal_customer_page/20_scenario.sql"
+# A word change ships its own seed block in a later migration (scripts/customer-page-words-sql.ts). The newest block
+# is what prod holds, and its rows are the sentence count the scenario checks.
+SEED="$(grep -l '^-- customer_page_words seed: begin' supabase/migrations/*.sql | sort | tail -1)"
+SEEDED="$(sed -n '/^-- customer_page_words seed: begin/,/^-- customer_page_words seed: end/p' "$SEED" | grep -c "^  ('")"
+AGAIN=("$WRITES"); [ "$SEED" = "$WRITES" ] || AGAIN+=("$SEED")
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -44,10 +50,12 @@ for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
 # A second run must change nothing: the columns, the checks, the read-back, the table, its trigger, policy, grants and
-# seed are there as before.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
-# The scenario, with the migration itself streamed in at its -- @reseed line.
-out="$({ sed -n '1,/^-- @reseed$/p' "$SCENARIO"; cat "$WRITES"; sed -n '/^-- @reseed$/,$p' "$SCENARIO" | tail -n +2; } | psql_as postgres -f - 2>&1 || true)"
+# seed are there as before. The newest seed runs after the first, as on prod.
+for f in "${AGAIN[@]}"; do
+  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
+# The scenario, with the migration and the newest seed streamed in at its -- @reseed line.
+out="$({ sed -n '1,/^-- @reseed$/p' "$SCENARIO"; cat "${AGAIN[@]}"; sed -n '/^-- @reseed$/,$p' "$SCENARIO" | tail -n +2; } | psql_as postgres -v seeded="$SEEDED" -f - 2>&1 || true)"
 if ! grep -q "portal_customer_page PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
 echo "portal-customer-page bed ok"
