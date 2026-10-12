@@ -5,7 +5,7 @@
  * (branch spike/gc-mode, `gcReliability.ts`).
  */
 import { wordRecord } from './followUp.ts'
-import type { GcState, Partner } from '../../../../../../src/lib/gc/types'
+import type { GcState, Partner } from './types.ts'
 
 export type AnswerRecord = 'new' | 'reliable' | 'mixed' | 'silent'
 

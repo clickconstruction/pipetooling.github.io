@@ -8,8 +8,8 @@
 import { addDays } from '../building.ts'
 import { daysBetween, pushAfter, scheduleLinesOf, wouldLoop } from './schedule.ts'
 import { partMoveSpans, withPartDays } from './splitBars.ts'
-import type { ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason } from '../../../../../../../src/lib/gc/schedule/types'
-import type { GcProject } from '../../../../../../../src/lib/gc/types'
+import type { ProjectSchedule, ScheduleActivity, ScheduleMove, ScheduleMoveReason } from '../../../../../../../src/lib/gc/schedule/types.ts'
+import type { GcProject } from '../types.ts'
 import { shortDate, weekdayDate } from '../words.ts'
 
 /** Why a bar moved, in the order offered. The first four are the look-ahead's own reasons. */

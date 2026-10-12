@@ -5,7 +5,7 @@
  * The trade's portal (`tradePortalState.ts`) and Building's draws (`drawRows.ts`) map the table's rows with this one
  * function. It lives on its own so the portal's mapper can read Building's draws without an import loop (P5c-1).
  */
-import type { BackCharge } from '../../../../../../src/lib/gc/types'
+import type { BackCharge } from './types.ts'
 
 type Row = Record<string, unknown>
 

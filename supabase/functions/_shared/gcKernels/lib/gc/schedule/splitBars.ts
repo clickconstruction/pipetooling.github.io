@@ -7,8 +7,8 @@
  */
 import { addDays } from '../building.ts'
 import { daysBetween, plannedPct, scheduleLinesOf } from './schedule.ts'
-import type { ActivityPart, ScheduleActivity, ScheduleMove } from '../../../../../../../src/lib/gc/schedule/types'
-import type { GcProject } from '../../../../../../../src/lib/gc/types'
+import type { ActivityPart, ScheduleActivity, ScheduleMove } from '../../../../../../../src/lib/gc/schedule/types.ts'
+import type { GcProject } from '../types.ts'
 import { shortDate, weekdayDate } from '../words.ts'
 
 /** A part behind its own plan by this many points or more reads "behind": the chart's own rule for a bar (`BEHIND_POINTS`). */

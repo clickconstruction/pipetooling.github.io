@@ -6,8 +6,8 @@
  */
 import { moveReasonLabel } from './moves.ts'
 import { daysBetween } from './schedule.ts'
-import type { ScheduleMove, ScheduleMoveReason } from '../../../../../../../src/lib/gc/schedule/types'
-import type { DailyLog, GcProject } from '../../../../../../../src/lib/gc/types'
+import type { ScheduleMove, ScheduleMoveReason } from '../../../../../../../src/lib/gc/schedule/types.ts'
+import type { DailyLog, GcProject } from '../types.ts'
 import { shortDate, weekdayDate } from '../words.ts'
 
 /** One day one activity lost to the weather, by the daily log. */

@@ -7,8 +7,8 @@
  */
 import { addDays } from '../building.ts'
 import { LOOKAHEAD_WEEKS, mondayOf } from './schedule.ts'
-import type { CrewCount } from '../../../../../../../src/lib/gc/schedule/types'
-import type { GcProject, GcState, Partner } from '../../../../../../../src/lib/gc/types'
+import type { CrewCount } from '../../../../../../../src/lib/gc/schedule/types.ts'
+import type { GcProject, GcState, Partner } from '../types.ts'
 import { shortDate, weekdayDate } from '../words.ts'
 import { portalLookAhead } from '../portal.ts'
 import type { PortalKey } from '../portalI18n.ts'

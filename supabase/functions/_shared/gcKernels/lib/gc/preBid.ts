@@ -5,7 +5,7 @@
  * GC mode prototype (branch spike/gc-mode, `gcPlans.ts`).
  */
 import { partnerById } from './lookups.ts'
-import type { GcProject, GcState, Partner } from '../../../../../../src/lib/gc/types'
+import type { GcProject, GcState, Partner } from './types.ts'
 
 /** The companies asked to the pre-bid meeting: every company still quoting a trade, each once, with its trades. */
 export function preBidInvited(state: GcState, project: GcProject): { partner: Partner; trades: string[] }[] {

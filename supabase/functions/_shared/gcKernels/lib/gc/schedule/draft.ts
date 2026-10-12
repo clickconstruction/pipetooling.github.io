@@ -6,8 +6,8 @@
  * lane wrote): the rough-ins side by side after framing, close-in after the inspection, the trims
  * after the finishes, or a template's lines (G-44).
  */
-import type { ProjectSchedule, ScheduleActivity, ScheduleMilestone, TemplateLine } from '../../../../../../../src/lib/gc/schedule/types'
-import type { GcProject, TradePackage } from '../../../../../../../src/lib/gc/types'
+import type { ProjectSchedule, ScheduleActivity, ScheduleMilestone, TemplateLine } from '../../../../../../../src/lib/gc/schedule/types.ts'
+import type { GcProject, TradePackage } from '../types.ts'
 
 // ---------------------------------------------------------------------------------------------
 // The schedule's first draft: what waits on what, from the stages of the job

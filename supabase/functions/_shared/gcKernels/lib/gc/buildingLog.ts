@@ -5,9 +5,9 @@
  * `gcBuildingLog.ts`) by the schedule's PR 1b, which reads it. The Building lane's lift (U2) adds the rest of `gcBuildingLog.ts` here.
  */
 import { addDays } from './building.ts'
-import type { DailyLog, GcProject, TradePackage } from '../../../../../../src/lib/gc/types'
+import type { DailyLog, GcProject, TradePackage } from './types.ts'
 import { daysBetween, mondayOf } from './schedule/schedule.ts'
-import type { LookAheadReason } from '../../../../../../src/lib/gc/schedule/types'
+import type { LookAheadReason } from '../../../../../../src/lib/gc/schedule/types.ts'
 import { shortDate, weekdayDate } from './words.ts'
 
 const WEEKDAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']

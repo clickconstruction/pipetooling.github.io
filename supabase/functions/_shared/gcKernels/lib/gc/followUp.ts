@@ -6,7 +6,7 @@
  */
 import { partnerById } from './lookups.ts'
 import { tradePromiseRecord } from './promises.ts'
-import type { GcProject, GcState, Invite, Partner, TradePackage } from '../../../../../../src/lib/gc/types'
+import type { GcProject, GcState, Invite, Partner, TradePackage } from './types.ts'
 import { daysUntil, weekdayDate } from './words.ts'
 
 /**

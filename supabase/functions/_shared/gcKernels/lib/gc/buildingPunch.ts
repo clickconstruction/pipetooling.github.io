@@ -4,7 +4,7 @@
  * GC mode, the real build, the Building lane's U2: the punch list, moved word for word from the GC mode prototype
  * (branch spike/gc-mode, `gcBuildingPunch.ts`). The plan: to-dos/gc-mode/BUILDING_REAL_BUILD.md on that branch.
  */
-import type { GcProject, PunchItem } from '../../../../../../src/lib/gc/types'
+import type { GcProject, PunchItem } from './types.ts'
 
 /** Open: still to fix. Fixed: the trade says so and it waits on our check. Done: checked fixed. */
 export type PunchState = 'open' | 'fixed' | 'done'

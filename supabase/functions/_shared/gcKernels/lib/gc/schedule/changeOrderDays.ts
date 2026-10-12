@@ -9,8 +9,8 @@ import { addDays } from '../building.ts'
 import { changeOrderDays, signedChangeOrders } from '../ownerBilling.ts'
 import { moveActivityName } from './moves.ts'
 import { substantialCompletionOn } from './schedule.ts'
-import type { ScheduleActivity, ScheduleMove, ScheduleMoveReason } from '../../../../../../../src/lib/gc/schedule/types'
-import type { ChangeOrder, GcProject } from '../../../../../../../src/lib/gc/types'
+import type { ScheduleActivity, ScheduleMove, ScheduleMoveReason } from '../../../../../../../src/lib/gc/schedule/types.ts'
+import type { ChangeOrder, GcProject } from '../types.ts'
 import { shortDate, weekdayDate } from '../words.ts'
 
 export interface ChangeOrderOnChart {

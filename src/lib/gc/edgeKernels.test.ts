@@ -18,7 +18,7 @@ const g = generator as {
   OUT_DIR: string
   IMPORTERS: string[]
   ENTRIES: Record<string, unknown>
-  generateEdgeKernels: (root: string, io?: Io) => { files: Map<string, string>; problems: string[] }
+  generateEdgeKernels: (root: string, io?: Io) => { files: Map<string, string>; problems: string[]; typeFiles: string[] }
   copyDifferences: (root: string, copy: Map<string, string>) => string[]
 }
 const walk = walkBundle as (root: string, entry: string, io: Io) => { files: string[]; unresolved: string[] }
@@ -27,7 +27,7 @@ const ROOT = resolve(__dirname, '../../..')
 const disk: Io = { readFile: (p) => readFileSync(p, 'utf8'), exists: existsSync }
 
 describe('the copy of the kernels', () => {
-  const { files, problems } = g.generateEdgeKernels(ROOT)
+  const { files, problems, typeFiles } = g.generateEdgeKernels(ROOT)
 
   it('is refused nothing, and holds the entries and every file they reach', () => {
     expect(problems).toEqual([])
@@ -48,11 +48,12 @@ describe('the copy of the kernels', () => {
     for (const [path, content] of files) expect(content, path).toContain(`Imported by ${g.IMPORTERS.join(', ')}`)
   })
 
-  it('loads on the edge: every relative value import ends in .ts and resolves inside the copy', () => {
+  it('loads on the edge: every relative value import ends in .ts and resolves inside the copy, the files of types aside', () => {
     const io: Io = { readFile: (p) => files.get(p.slice(ROOT.length + g.OUT_DIR.length + 2)) ?? '', exists: (p) => files.has(p.slice(ROOT.length + g.OUT_DIR.length + 2)) }
     const bundle = walk(ROOT, `${g.OUT_DIR}/index.ts`, io)
     expect(bundle.unresolved).toEqual([])
-    expect(bundle.files).toHaveLength(files.size)
+    expect(bundle.files).toHaveLength(files.size - typeFiles.length)
+    expect(typeFiles).toEqual(['lib/gc/types.ts'])
   })
 })
 
@@ -76,15 +77,41 @@ describe('what the generator refuses and rewrites, on planted files', () => {
     expect(plant(entry, "import type { ReactNode } from 'react'\n// the document.title is not read here\n").problems).toEqual([])
   })
 
-  it('adds .ts to a value import, keeps the layout, and points types outside the copy back at src', () => {
-    const { files } = plant(entry, "import { b } from './helper'\nimport { type T } from './onlyTypes'\nexport { b }\n", {
+  it('adds .ts to a value import, keeps the layout, and points types from a file that imports nothing back at src, .ts and all', () => {
+    const { files, problems } = plant(entry, "import { b } from './helper'\nimport { type T } from './onlyTypes'\nexport { b }\n", {
       [entry.replace(/[^/]+$/, 'helper.ts')]: 'export const b = 2\n',
       [entry.replace(/[^/]+$/, 'onlyTypes.ts')]: 'export type T = number\n',
     })
     const out = files.get(entry)!
+    expect(problems).toEqual([])
     expect(out).toContain("import { b } from './helper.ts'")
-    expect(out).toMatch(/import type \{ T \} from '(\.\.\/)+src\/.*onlyTypes'/)
+    expect(out).toMatch(/import type \{ T \} from '(\.\.\/)+src\/.*onlyTypes\.ts'/)
     expect(files.has(entry.replace(/[^/]+$/, 'helper.ts'))).toBe(true)
     expect(files.has(entry.replace(/[^/]+$/, 'onlyTypes.ts'))).toBe(false)
+  })
+
+  it('copies a file of types whose own imports are types alone, so deno check resolves it inside the copy', () => {
+    const { files, problems } = plant(entry, "import type { T } from './someTypes'\nexport const x: T = 1\n", {
+      [entry.replace(/[^/]+$/, 'someTypes.ts')]: "import type { U } from './leafTypes'\nexport type T = U\n",
+      [entry.replace(/[^/]+$/, 'leafTypes.ts')]: 'export type U = number\n',
+    })
+    expect(problems).toEqual([])
+    expect(files.get(entry)).toContain("import type { T } from './someTypes.ts'")
+    expect(files.has(entry.replace(/[^/]+$/, 'someTypes.ts'))).toBe(true)
+    expect(files.get(entry.replace(/[^/]+$/, 'someTypes.ts'))).toMatch(/import type \{ U \} from '(\.\.\/)+src\/.*leafTypes\.ts'/)
+    expect(files.has(entry.replace(/[^/]+$/, 'leafTypes.ts'))).toBe(false)
+  })
+
+  it('refuses types from a file that runs code of its own, unless the copy holds that file already', () => {
+    const more = {
+      [entry.replace(/[^/]+$/, 'withCode.ts')]: "import { b } from './helper'\nexport type T = number\nexport const c = b\n",
+      [entry.replace(/[^/]+$/, 'helper.ts')]: 'export const b = 2\n',
+    }
+    expect(plant(entry, "import type { T } from './withCode'\nexport const x: T = 1\n", more).problems).toEqual([
+      `src/${entry}: types from './withCode', which runs code of its own: move them to a types file`,
+    ])
+    const held = plant(entry, "import type { T } from './withCode'\nimport { c } from './withCode'\nexport const x: T = c\n", more)
+    expect(held.problems).toEqual([])
+    expect(held.files.get(entry)).toContain("import type { T } from './withCode.ts'")
   })
 })

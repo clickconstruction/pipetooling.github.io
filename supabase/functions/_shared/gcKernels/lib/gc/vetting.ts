@@ -6,7 +6,7 @@
  */
 import { leveledTotal } from './bids.ts'
 import { partnerById } from './lookups.ts'
-import type { GcState, Invite, Partner, PartnerVetting, TradePackage } from '../../../../../../src/lib/gc/types'
+import type { GcState, Invite, Partner, PartnerVetting, TradePackage } from './types.ts'
 import { money } from './words.ts'
 
 const KNOWN: PartnerVetting = { status: 'approved' }
