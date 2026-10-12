@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 /** One person's flow where a window shows it (Messages cut 4): read through flowPersonIo, pressed through its presses. */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import type { FlowPersonRead } from '../../lib/flows/flowPersonIo'
 import { SEED_FLOWS } from '../../lib/flows/seed'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 
 const io = vi.hoisted(() => ({
   read: null as unknown as FlowPersonRead,
+  readPerson: vi.fn(async () => null as unknown as FlowPersonRead),
   find: vi.fn(async () => 'tom'),
   addNote: vi.fn(async () => 'n1'),
   holdUntil: vi.fn(async () => 'h1'),
@@ -16,7 +17,7 @@ const io = vi.hoisted(() => ({
 
 vi.mock('../../lib/flows/flowPersonIo', () => ({
   findFlowContactId: io.find,
-  readFlowPerson: vi.fn(async () => io.read),
+  readFlowPerson: io.readPerson,
   flowPresses: {
     addNote: io.addNote,
     skip: vi.fn(async () => 's1'),
@@ -33,6 +34,7 @@ vi.mock('../../lib/flows/flowPersonIo', () => ({
 const media = vi.hoisted(() => ({ phone: false }))
 vi.mock('../../hooks/useMatchMedia', () => ({ useMatchMedia: () => media.phone }))
 
+import { openFlowStep, useFlowNow } from '../../hooks/useFlowNow'
 import { FlowTab } from './FlowTab'
 
 // Tom of Bexar Steel Erectors, as flow_rows would give him: invited, on his portal, his W-9 signed, no insurance yet.
@@ -56,6 +58,8 @@ const TOM: FlowPersonRead = {
 beforeEach(() => {
   media.phone = false
   io.read = TOM
+  io.readPerson.mockReset()
+  io.readPerson.mockImplementation(async () => io.read)
   io.addNote.mockClear()
   io.holdUntil.mockClear()
   io.setOff.mockClear()
@@ -133,5 +137,40 @@ describe('FlowTab in the thread window’s side', () => {
     // A mark on the rail opens its card alone.
     fireEvent.click(container.querySelector('[data-flow-mark="papers"]')!)
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
+  })
+})
+
+describe('where a person is, for cut 3 beside the thread', () => {
+  function Now({ contactId }: { contactId: string }) {
+    const now = useFlowNow(contactId)
+    return <output aria-label="Where they are">{now === undefined ? 'reading' : now ? `${now.stepName} · ${now.who} · ${now.finishes}` : 'Nothing on now.'}</output>
+  }
+
+  it('reads the step on now, and reads again after a press in the side’s panel', async () => {
+    const { container } = renderWithProviders(
+      <>
+        <Now contactId="tom" />
+        <FlowTab at={{ contactId: 'tom' }} side />
+      </>,
+    )
+    await waitFor(() => expect(screen.getByLabelText('Where they are').textContent).toMatch(/^Papers in · them · /))
+    const reads = io.readPerson.mock.calls.length
+    fireEvent.click(container.querySelector('[data-flow-mark="papers"]')!)
+    fireEvent.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Hold until Mon' }))
+    await waitFor(() => expect(io.holdUntil).toHaveBeenCalled())
+    // Both readers of Tom read again.
+    await waitFor(() => expect(io.readPerson.mock.calls.length).toBeGreaterThanOrEqual(reads + 2))
+  })
+
+  it('opens a step’s card in the side when Find a reply asks', async () => {
+    const { container } = renderWithProviders(<FlowTab at={{ contactId: 'tom' }} side />)
+    await screen.findByRole('button', { name: /^Open the / })
+    act(() => openFlowStep('tom', 'papers', null))
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+    expect(container.querySelector('[data-flow-side]')?.getAttribute('data-flow-side')).toBe('panel')
+    // Someone else's ask opens nothing here.
+    fireEvent.keyDown(document.body, { key: 'Escape' })
+    act(() => openFlowStep('greg', 'papers', null))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

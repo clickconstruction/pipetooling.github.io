@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useOpenFlowStep } from '../../hooks/useFlowNow'
 import { useFlowPerson, type FlowPersonAt } from '../../hooks/useFlowPerson'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
 import { useIsNarrowScreen } from '../../hooks/useIsNarrowScreen'
@@ -47,7 +48,7 @@ export function FlowTab({
   /** The thread window's side: a rail that opens to the panel. */
   side?: boolean
 }) {
-  const { got, presses } = useFlowPerson(at)
+  const { contactId, got, presses } = useFlowPerson(at)
   const narrow = useIsNarrowScreen()
   const phone = useMatchMedia(THREAD_PHONE)
   const [jobId, setJobId] = useState<string | null>(null)
@@ -69,6 +70,18 @@ export function FlowTab({
     () => new Set<PressId>(['addNote', 'skip', 'putBack', 'holdUntilMon', 'remindNow', 'putBackOn', ...(href ? (['seeTheirPage'] as PressId[]) : []), ...(onPaper ? PAPER_PRESSES : [])]),
     [href, onPaper],
   )
+
+  // Cut 3's Find a reply opens a step's card in the side (`openFlowStep`): over the side at a desk, a sheet on a phone.
+  const openAsked = useCallback(
+    (stepId: string, j: string | null) => {
+      if (!phone) setFolded(false)
+      setAsking(null)
+      setProblem(null)
+      setOpen({ stepId, jobId: j })
+    },
+    [phone],
+  )
+  useOpenFlowStep(side ? contactId : null, openAsked)
 
   // The side's panel sheet on a phone folds back to the rail on Escape, before the thread window takes it. An open
   // card takes Escape first (`FlowStepCard`).

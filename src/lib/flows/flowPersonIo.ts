@@ -58,8 +58,19 @@ export async function readFlowDef(kind: FlowKind): Promise<FlowDef> {
   }
 }
 
-/** Everything the panel and the card read for one contact. */
-export async function readFlowPerson(contactId: string): Promise<FlowPersonRead> {
+/** The reads under way, by contact: two readers at once (the side's panel and cut 3's strip) share one. */
+const reading = new Map<string, Promise<FlowPersonRead>>()
+
+/** Everything the panel and the card read for one contact; a second reader while it reads gets the same read. */
+export function readFlowPerson(contactId: string): Promise<FlowPersonRead> {
+  const under = reading.get(contactId)
+  if (under) return under
+  const read = readFlowPersonOnce(contactId).finally(() => reading.delete(contactId))
+  reading.set(contactId, read)
+  return read
+}
+
+async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
   const [contactA, rowsA, holdsA, sentA, notesA, linesA] = await Promise.all([
     table('contacts').select('id, kind, name, goes_by').eq('id', contactId).maybeSingle() as unknown as Promise<Answer<FlowContact>>,
     call<FlowRows>('flow_rows', { p_contact: contactId }),

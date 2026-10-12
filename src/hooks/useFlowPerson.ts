@@ -14,9 +14,18 @@ export type FlowPersonState =
   | { state: 'error'; words: string }
   | { state: 'ready'; person: PersonFlow; read: FlowPersonRead }
 
+/** Every reader of one person, by contact id: a press in one reads them again in all (the side's panel, cut 3's strip). */
+const readers = new Set<(contactId: string) => void>()
+
+/** Read this person again wherever they are shown: after a press here, or a write elsewhere that moves their flow. */
+export function flowPersonChanged(contactId: string): void {
+  for (const reread of readers) reread(contactId)
+}
+
 /**
  * One person on their flow, for the flow panel and the step card (Messages cut 4): their contact, their flow, their
- * rows through `flow_rows`, and the presses, each followed by a fresh read. `now` is read once per load.
+ * rows through `flow_rows`, and the presses, each followed by a fresh read in every reader of the person. `now` is read
+ * once per load.
  */
 export function useFlowPerson(at: FlowPersonAt) {
   const [contactId, setContactId] = useState<string | null>(at.contactId ?? null)
@@ -57,13 +66,25 @@ export function useFlowPerson(at: FlowPersonAt) {
     }
   }, [at.contactId, at.gcCompanyId, at.customerId, tick])
 
+  useEffect(() => {
+    if (!contactId) return
+    const reread = (id: string) => {
+      if (id === contactId) refresh()
+    }
+    readers.add(reread)
+    return () => {
+      readers.delete(reread)
+    }
+  }, [contactId, refresh])
+
   const read = got.state === 'ready' ? got.read : null
   const presses = useMemo(() => {
     const run =
       <A extends unknown[]>(fn: (...a: A) => Promise<unknown>) =>
       async (...a: A) => {
         await fn(...a)
-        refresh()
+        if (contactId) flowPersonChanged(contactId)
+        else refresh()
       }
     const skipId = (stepId: string, jobId: string | null) =>
       read?.rows.skips?.find((k) => k.step_key === stepId && (k.project_id ?? null) === jobId && !k.undone_at)?.id ?? null
