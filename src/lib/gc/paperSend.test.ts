@@ -4,8 +4,10 @@
  * prototype's reducer or read another lane stay on the spike, where they run against these kernels.
  */
 import { describe, expect, it } from 'vitest'
+import { ymdAddDays } from '../../utils/dateUtils'
 import { partnerById } from './lookups'
 import { paperStep } from './paperSend'
+import { INSURANCE_ASK_DAYS, insuranceRenewals } from './promises'
 import { initialGcState } from './schedule/testState'
 import type { GcState, Partner } from './types'
 
@@ -53,5 +55,26 @@ describe('a paper its portal started or sent (P5b-2)', () => {
     const p = { ...partner(state, 'hillside'), w9SentOn: '2026-10-01' }
     expect(paperStep(state, p, 'w9')).toMatchObject({ mode: 'first', verb: 'Ask for it', history: 'Started in their portal Oct 1.' })
     expect(paperStep(state, partner(state, 'hillside'), 'w9')).toMatchObject({ history: 'Not asked yet.' })
+  })
+})
+
+describe('the insurance ask and the renewal list read one window', () => {
+  it('asks for the renewed certificate on exactly the days the renewal list chases it, so the two never drift', () => {
+    const state = initialGcState()
+    const offsets = [-5, 0, INSURANCE_ASK_DAYS - 1, INSURANCE_ASK_DAYS, INSURANCE_ASK_DAYS + 1, INSURANCE_ASK_DAYS + 60]
+    const read = offsets.map((d) => {
+      const p = { ...partner(state, 'ironhorse'), coiExpires: ymdAddDays(state.today, d) }
+      const withP = { ...state, partners: state.partners.map((x) => (x.id === p.id ? p : x)) }
+      return [d, paperStep(withP, p, 'insurance') !== null, insuranceRenewals(withP).some((r) => r.partner.id === p.id)]
+    })
+    expect(read.every(([, asks, renews]) => asks === renews)).toBe(true)
+    expect(read.map(([d, asks]) => [d, asks])).toEqual([
+      [-5, true],
+      [0, true],
+      [INSURANCE_ASK_DAYS - 1, true],
+      [INSURANCE_ASK_DAYS, true],
+      [INSURANCE_ASK_DAYS + 1, false],
+      [INSURANCE_ASK_DAYS + 60, false],
+    ])
   })
 })
