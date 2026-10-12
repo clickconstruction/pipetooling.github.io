@@ -10,6 +10,7 @@ import {
   FIND_NOTE,
   QR_KIND_ORDER,
   QR_KINDS,
+  QR_PRESS_COUNTED,
   REMOVE_ASK,
   addQuickReply,
   editQuickReply,
@@ -27,6 +28,7 @@ import {
   qrGroups,
   qrGuess,
   qrKindOf,
+  qrLineCount,
   qrMarks,
   qrStripCount,
   qrTagWords,
@@ -154,7 +156,17 @@ describe('the strip’s groups for a thread', () => {
 
   it('offers to add the words when no line has them', () => {
     expect(qrEmpty(' striping ')).toEqual({ words: 'No line has those words.', add: 'Add “striping” as a quick reply' })
-    expect(qrEmpty('')).toEqual({ words: 'No lines for this kind of person yet. Edit adds one.', add: null })
+    expect(qrEmpty('')).toEqual({ words: 'No lines for this kind of person yet. Press Add a line to write one.', add: null })
+  })
+
+  it('says Nothing matches. in Find a reply, as the prototype did', () => {
+    expect(qrEmpty(' striping ', 'find')).toEqual({ words: 'Nothing matches.', add: 'Add “striping” as a quick reply' })
+    expect(qrEmpty('', 'find').words).toBe(qrEmpty('').words)
+  })
+
+  it('counts a group’s lines for its pill', () => {
+    expect(qrLineCount(1)).toBe('1 line.')
+    expect(qrLineCount(4)).toBe('4 lines.')
   })
 
   it('lights the typed words in a line, whatever their case', () => {
@@ -481,6 +493,8 @@ describe('plain words', () => {
       REMOVE_ASK.words,
       qrEmpty('').words,
       qrEmpty('x').words,
+      qrEmpty('x', 'find').words,
+      QR_PRESS_COUNTED,
       findWhere({ step: { name: 'Asked to quote', done: 'their quote is in the portal' }, who: 'them', firstName: 'Greg', daysOn: 10, off: false }).sentence,
       findWhere({ step: null, who: 'them', firstName: 'Marcus', daysOn: null, off: true }).sentence,
       findWhere({ step: null, who: 'them', firstName: 'Dee', daysOn: null, off: false }).sentence,

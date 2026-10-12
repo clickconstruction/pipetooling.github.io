@@ -173,12 +173,21 @@ export function showNarrow(lines: readonly QuickReply[], me: string): boolean {
 
 /**
  * The words when the strip or Find a reply has no line to show: with narrowed words, a press that adds them as a
- * quick reply (v1.145), the editor opening on its add form with its guess at the tags.
+ * quick reply (v1.145), the editor opening on its add form with its guess at the tags. Find a reply says it as the
+ * prototype's window did.
  */
-export function qrEmpty(filter: string): { words: string; add: string | null } {
+export function qrEmpty(filter: string, place: 'strip' | 'find' = 'strip'): { words: string; add: string | null } {
   const typed = filter.trim()
-  if (typed) return { words: 'No line has those words.', add: `Add “${typed}” as a quick reply` }
-  return { words: 'No lines for this kind of person yet. Edit adds one.', add: null }
+  if (typed) return { words: place === 'find' ? 'Nothing matches.' : 'No line has those words.', add: `Add “${typed}” as a quick reply` }
+  return { words: 'No lines for this kind of person yet. Press Add a line to write one.', add: null }
+}
+
+/** A line's hover on the strip ends with why the order moves. */
+export const QR_PRESS_COUNTED = 'The strip counts the press, so the lines you use most come first.'
+
+/** A group pill's hover ends with how many lines the group holds. */
+export function qrLineCount(n: number): string {
+  return `${n} line${n === 1 ? '' : 's'}.`
 }
 
 /** A line's text in pieces, the narrowed words lit, the way a highlight reads in a message's window. */
