@@ -5,6 +5,7 @@
  * to-dos/gc-mode/NEW_PROJECT_REAL_BUILD.md and SCHEDULE_REAL_BUILD.md on branch spike/gc-mode.
  */
 import type { CrewCount, LookAheadReason, ProjectSchedule, RoughSchedule, ScheduleSend, ScheduleTemplate, ScheduleWait, ScheduleWhatIf } from './schedule/types'
+import type { ClausePaperPair, SignedClauses } from '../../../supabase/functions/_shared/clausePaper'
 
 /** One drawing in a set: its number, like "E-201", and its title. */
 export interface PlanSheet {
@@ -505,6 +506,14 @@ export interface Sow {
    * instead when we know. Set at award from their quote.
    */
   excluded?: { name: string; by: string | null; unitPrice?: { amount: number; unit: string } }[]
+  /**
+   * Messages, cut 4c (v2.5329): a statement of work built from clauses, as its portal reads it while it is sent to sign.
+   * The job's clauses come first, then the exhibit for its trade, in English and Spanish at one revision. Signing sends
+   * the revision back. Absent: its lines are the whole paper, as before.
+   */
+  clausePaper?: ClausePaperPair
+  /** Its clauses as signed (`clause_versions`), for the version line. Absent: it was not built from clauses. */
+  signedClauses?: SignedClauses
 }
 
 export interface TradePackage {

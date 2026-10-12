@@ -138,7 +138,9 @@ export const TRADE_PORTAL_FIELDS = {
   // Its own number on its own work: never the leveled total or another company's. What it will not do (P2c-ii) is
   // what its own quote left out. The signer's fields stay the server's.
   // The day we accepted its work (U6d) opens its final pay application (P5c-1).
-  sows: ['id', 'package_id', 'invite_id', 'status', 'price', 'retainage_pct', 'based_on_rev', 'sent_on', 'signed_on', 'excluded', 'accepted_on'],
+  // Messages, cut 4c (v2.5329): a statement of work built from clauses carries its paper while sent (`clause_paper`, which
+  // the read function puts together) and its clauses as signed.
+  sows: ['id', 'package_id', 'invite_id', 'status', 'price', 'retainage_pct', 'based_on_rev', 'sent_on', 'signed_on', 'excluded', 'accepted_on', 'clause_paper', 'paper_revision', 'clause_versions'],
   // Its statement of work's lines (P2c-ii): each one's price on its own work, and the scope item it is, which the
   // kernels' SovLine.id reads.
   sowLines: ['id', 'sow_id', 'position', 'label', 'amount', 'scope_item_id'],

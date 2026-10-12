@@ -216,6 +216,22 @@ describe('its work, on the prototype’s shapes (P4b-i)', () => {
     expect([pkg.sow?.excluded, pkg.sow?.sov]).toEqual([undefined, []])
   })
 
+  it('reads a statement of work built from clauses: its paper while sent, its clauses once signed (Messages, cut 4c, v2.5329)', () => {
+    const line = { id: 'msa-1', v: 2, n: 1, text: 'Term: through final completion.' }
+    const paperIn = (lang: 'en' | 'es') => ({ paperId: 'doc-sow', revision: 3, lang, clauses: [line], exhibit: [], exhibitFor: [], between: 'Click Construction and Test Electric' })
+    const pair = { revision: 3, en: paperIn('en'), es: paperIn('es') }
+    const kept = { ...paperIn('en'), title: 'Statement of work' }
+    const r = workRows()
+    const sowWith = (fields: Record<string, unknown>) => tradePortalState(tradePortalSlice({ ...r, sows: (r.sows ?? []).map((s) => ({ ...s, ...fields })) }, ME), TODAY).state.projects[0]?.packages[0]?.sow
+    const sent = sowWith({ status: 'sent', signed_on: null, clause_paper: pair })
+    expect([sent?.clausePaper, sent?.signedClauses]).toEqual([pair, undefined])
+    const signed = sowWith({ clause_paper: pair, paper_revision: 3, clause_versions: kept })
+    expect([signed?.clausePaper, signed?.signedClauses]).toEqual([undefined, kept])
+    // A pair not at one revision, or a kept copy with no heading, reads as none.
+    expect(sowWith({ status: 'sent', signed_on: null, clause_paper: { ...pair, revision: 4 } })?.clausePaper).toBeUndefined()
+    expect(sowWith({ clause_versions: paperIn('en') })?.signedClauses).toBeUndefined()
+  })
+
   it('reads a slice from a function deployed before P4b-i as no work at all', () => {
     const { sows: _s, backCharges: _b, changeRequests: _r, changeOrders: _o, ...older } = tradePortalSlice(rows(), ME)
     const { state: olderState } = tradePortalState(older, TODAY)

@@ -39,6 +39,8 @@ From its portal the company can:
 
 To sign, the company types its name and signs by typing or drawing. It also ticks that it agrees to sign electronically. It can sign only after it signs our master agreement. Once it signs, the statement of work shows the day it was signed.
 
+A statement of work can be built from our clauses. Then the company reads the clauses first, with its trade's exhibit after them. The price and the lines fold under **The price and the lines**. If a clause changes while the page is open, the signing is refused. The company reloads the page to read the new version. Once signed, the statement of work shows the version it signed. So does **See every paper**. [Change a contract clause](/help/change-a-contract-clause#what-a-signed-copy-keeps) says what a signed copy keeps.
+
 On a job we are building, the job page opens on **Your schedule on this job**. It shows the company's own bars and the work right before and after them. Other companies show by name, never by price. Their notes and contacts never show.
 
 Under each of its own bars the company can press **We will be late**. It gives the new day, picks why and says what happened. Before it sends, it sees what that day would push back. After we push back, it can press **We will make** the day. **Your dates moved** shows the new dates we sent it. It answers **These dates work** or **I need another day**. **Your next three weeks** lists its work for this week and the next two. It marks each bar **Done** or **Not done** at the week's end. It also says how many people a day it will have on site.

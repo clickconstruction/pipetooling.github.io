@@ -204,6 +204,18 @@ describe('each kind, read into its verb', () => {
       expect(parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: 'sow-1', printedName: 'Dana', esignConsent: CONSENT })).toEqual({ ok: false })
     })
 
+    it('sends the revision a page built from clauses showed and the language it read, and refuses one not a whole number (v2.5329)', () => {
+      const read = (fields: Record<string, unknown>) => parseTradeSubmit({ token: TOKEN, kind: 'sign_sow', sowId: SOW, printedName: 'Dana Whitfield', esignConsent: CONSENT, ...fields })
+      const withPaper = (lang: string) => ({ ...signCall, params: { ...signCall.params, p_paper_revision: 3, p_paper_lang: lang } })
+      expect(read({ paperRevision: 3, paperLang: 'es' })).toMatchObject({ ok: true, call: withPaper('es') })
+      expect(read({ paperRevision: 3 })).toMatchObject({ ok: true, call: withPaper('en') })
+      expect(read({ paperRevision: 3, paperLang: 'fr' })).toMatchObject({ ok: true, call: withPaper('en') })
+      // A language with no revision sends neither: the SQL refuses one built from clauses (paperChanged).
+      expect(read({ paperLang: 'es' })).toMatchObject({ ok: true, call: signCall })
+      for (const bad of [2.5, '3', Number.NaN]) expect(read({ paperRevision: bad })).toEqual({ ok: false })
+      expect(tradeErrorOf({ code: 'P0001', message: 'paperChanged' })).toEqual({ key: 'paperChanged', status: 409 })
+    })
+
     it('is not under the hourly cap: a second press is alreadySigned', () => {
       expect(FREE_TEXT_KINDS.has('sign_sow')).toBe(false)
       expect(tradeErrorOf({ code: 'P0001', message: 'alreadySigned' })).toEqual({ key: 'alreadySigned', status: 409 })
@@ -568,13 +580,9 @@ describe('the verb’s refusals', () => {
    * status in TRADE_SQL_ERRORS and its words in TRADE_ERROR_WORDS. A lane whose migration adds a trade
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
-  // The Portal's P5b-1 mapped P5b-m's eight keys, and P5d-ii the ten the schedule's 13a and 14a raised.
-  const WAITING: Record<string, string> = {
-    // v2.5309 (cut 4c, `20261013000000_gc_clause_papers.sql`): gc_trade_sign_sow refuses a statement of work built from
-    // clauses at a revision its page did not show. No page shows those clauses yet, so nothing can raise it; the PR that
-    // shows them on GcTradePortalSow gives it its status and its words in both languages.
-    paperChanged: 'cluster 9: the statement of work clause page, after v2.5309',
-  }
+  // The Portal's P5b-1 mapped P5b-m's eight keys, P5d-ii the ten the schedule's 13a and 14a raised, and v2.5329 cut 4c's
+  // paperChanged: none waits.
+  const WAITING: Record<string, string> = {}
 
   /**
    * Every key a trade verb raises, its own and those of the `*_ask` helpers it returns through (P5c-2: U3b-i's

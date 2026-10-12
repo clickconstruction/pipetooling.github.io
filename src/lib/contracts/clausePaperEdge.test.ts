@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PAPER_CHANGED, clauseBetween, clauseFreeze, clausePaperFor, readClausePaper, readSignedClauses, type ClauseAdmin } from '../../../supabase/functions/_shared/clausePaper'
+import { PAPER_CHANGED, clauseBetween, clauseFreeze, clausePaperFor, clausePaperOf, clausePaperPair, readClausePaper, readClausePaperPair, readSignedClauses, type ClauseAdmin } from '../../../supabase/functions/_shared/clausePaper'
 import { plainWordsFailures } from '../plainWords'
 
 /**
@@ -18,7 +18,7 @@ const PAPER = {
   exhibitFor: ['Sitework'],
 }
 
-function fakeAdmin(over: { company?: { name: string; trades: string[] } | null; companyError?: boolean; paper?: unknown; rpcError?: boolean; clauseRows?: number; gateError?: boolean } = {}) {
+function fakeAdmin(over: { company?: { name: string; trades: string[] } | null; companyError?: boolean; paper?: unknown; paperFor?: (args: Record<string, unknown>) => unknown; rpcError?: boolean; clauseRows?: number; gateError?: boolean } = {}) {
   const calls: { fn: string; args: Record<string, unknown> }[] = []
   const reads: string[] = []
   const admin: ClauseAdmin = {
@@ -39,7 +39,8 @@ function fakeAdmin(over: { company?: { name: string; trades: string[] } | null; 
     }),
     rpc: (fn, args) => {
       calls.push({ fn, args })
-      return Promise.resolve(over.rpcError ? { data: null, error: { message: 'no' } } : { data: over.paper === undefined ? PAPER : over.paper, error: null })
+      const paper = over.paperFor ? over.paperFor(args) : over.paper === undefined ? PAPER : over.paper
+      return Promise.resolve(over.rpcError ? { data: null, error: { message: 'no' } } : { data: paper, error: null })
     },
   }
   return { admin, calls, reads }
@@ -82,6 +83,66 @@ describe('clausePaperFor', () => {
     await expect(clausePaperFor(fakeAdmin({ gateError: true }).admin, DOC, 'en')).rejects.toThrow()
     await expect(clausePaperFor(fakeAdmin({ rpcError: true }).admin, DOC, 'en')).rejects.toThrow()
     await expect(clausePaperFor(fakeAdmin({ companyError: true }).admin, DOC, 'en')).rejects.toThrow()
+  })
+})
+
+/**
+ * The portals' read (v2.5329): a statement of work built from clauses in the trade's portal, with the exhibit for its
+ * package's one trade and the company on the between line; our contract in the customer's, with no trades.
+ */
+describe('clausePaperOf', () => {
+  const SOW = { paperId: 'doc-sow', trades: ['Electrical'], betweenName: 'Sample Electric Co.' }
+
+  it('puts a statement of work’s paper together for its one trade, with the company on the between line', async () => {
+    const { admin, calls, reads } = fakeAdmin()
+    expect(await clausePaperOf(admin, SOW, 'en')).toEqual({ ...PAPER, between: 'Click Construction and Sample Electric Co.' })
+    expect(reads).toEqual(['contract_clauses:id:doc-sow'])
+    expect(calls).toEqual([{ fn: 'contract_paper_clauses', args: { p_paper_id: 'doc-sow', p_trades: ['Electrical'], p_lang: 'en' } }])
+  })
+
+  it('reads nothing for a copy with no paper, and puts nothing together for a document with no clauses', async () => {
+    const none = fakeAdmin()
+    expect(await clausePaperOf(none.admin, { ...SOW, paperId: null }, 'en')).toBeNull()
+    expect(none.reads).toEqual([])
+    const empty = fakeAdmin({ clauseRows: 0 })
+    expect(await clausePaperOf(empty.admin, SOW, 'en')).toBeNull()
+    expect(empty.reads).toEqual(['contract_clauses:id:doc-sow'])
+    expect(empty.calls).toEqual([])
+  })
+
+  it('is null when nothing is live, and throws when a read fails', async () => {
+    expect(await clausePaperOf(fakeAdmin({ paper: { ...PAPER, clauses: [], exhibit: [] } }).admin, SOW, 'en')).toBeNull()
+    await expect(clausePaperOf(fakeAdmin({ gateError: true }).admin, SOW, 'en')).rejects.toThrow()
+    await expect(clausePaperOf(fakeAdmin({ rpcError: true }).admin, SOW, 'en')).rejects.toThrow()
+  })
+})
+
+describe('clausePaperPair', () => {
+  const SOW = { paperId: 'doc-sow', trades: ['Electrical'], betweenName: 'Sample Electric Co.' }
+  const inLang = (args: Record<string, unknown>) => ({ ...PAPER, lang: args.p_lang })
+
+  it('reads the paper in English and Spanish at one revision, each with its own between line', async () => {
+    const pair = await clausePaperPair(fakeAdmin({ paperFor: inLang }).admin, SOW)
+    expect(pair?.revision).toBe(3)
+    expect(pair?.en).toEqual({ ...PAPER, between: 'Click Construction and Sample Electric Co.' })
+    expect(pair?.es).toEqual({ ...PAPER, lang: 'es', between: 'Click Construction y Sample Electric Co.' })
+  })
+
+  it('is null when a publish lands between the two reads, or when the paper is not built from clauses', async () => {
+    const moved = (args: Record<string, unknown>) => ({ ...inLang(args), revision: args.p_lang === 'es' ? 4 : 3 })
+    expect(await clausePaperPair(fakeAdmin({ paperFor: moved }).admin, SOW)).toBeNull()
+    expect(await clausePaperPair(fakeAdmin({ clauseRows: 0 }).admin, SOW)).toBeNull()
+  })
+
+  it('reads back as the page carries it, and nothing that is not a pair at one revision', () => {
+    const en = { ...PAPER, between: 'Click Construction and Sample Electric Co.' }
+    const es = { ...PAPER, lang: 'es', between: 'Click Construction y Sample Electric Co.' }
+    expect(readClausePaperPair({ revision: 3, en, es })).toEqual({ revision: 3, en, es })
+    expect(readClausePaperPair({ revision: 4, en, es })).toBeNull()
+    expect(readClausePaperPair({ revision: 3, en, es: en })).toBeNull()
+    expect(readClausePaperPair({ revision: 3, en })).toBeNull()
+    expect(readClausePaperPair(null)).toBeNull()
+    expect(readClausePaperPair('paper')).toBeNull()
   })
 })
 

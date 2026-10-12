@@ -201,6 +201,8 @@ const S = {
   sowSignLead: { en: 'By signing, you agree to do this work for this price, under our master agreement.', es: 'Al firmar, usted acepta hacer este trabajo por este precio, conforme a nuestro contrato maestro.' },
   sowSignAgree: { en: 'I read this statement of work and I agree to it.', es: 'Leí esta orden de trabajo y estoy de acuerdo.' },
   sowConsentNoun: { en: 'this statement of work', es: 'esta orden de trabajo' },
+  // Messages, cut 4c (v2.5329): one built from clauses reads as its clauses, with its price and lines folded under them.
+  sowPriceAndLines: { en: 'The price and the lines', es: 'El precio y las partidas' },
   reportTitle: { en: '{trade} · report your work and get paid', es: '{trade} · reporte su avance y cobre' },
   paidThrough: { en: 'paid through {pct}%', es: 'pagado hasta {pct}%' },
   percentAria: { en: 'Percent done, {line}', es: 'Porcentaje de avance, {line}' },
@@ -471,6 +473,7 @@ const S = {
   paperVetForm: { en: 'Your company form', es: 'El formulario de su empresa' },
   paperSent: { en: 'sent {date}', es: 'enviado el {date}' },
   paperSow: { en: '{trade} statement of work', es: 'Orden de trabajo de {trade}' },
+  paperVersion: { en: 'version {n}', es: 'versión {n}' },
   paperChange: { en: 'Change order {n}', es: 'Orden de cambio {n}' },
   paperPayApp: { en: 'Pay application {n}', es: 'Solicitud de pago {n}' },
   paperPayAppFinal: { en: 'Final pay application', es: 'Solicitud de pago final' },
@@ -979,6 +982,8 @@ const S = {
   errSowNotSent: { en: 'This statement of work is not ready to sign. Reload the page.', es: 'Esta orden de trabajo todavía no está lista para firmar. Vuelva a cargar la página.' },
   errAlreadySigned: { en: 'This is signed already.', es: 'Esto ya está firmado.' },
   errConsentNeeded: { en: 'Tick I agree to sign electronically, then sign.', es: 'Marque Acepto firmar electrónicamente y luego firme.' },
+  // Messages, cut 4c (v2.5329): a statement of work built from clauses signs only at the revision its page showed.
+  errPaperChanged: { en: 'The paper changed since you opened it. Reload to read the new version.', es: 'El documento cambió desde que lo abrió. Vuelva a cargar la página para leer la versión nueva.' },
   // P5c-2: the punch list, submittals and questions while we build.
   errPunchNotOpen: { en: 'That item is marked fixed already. Reload the page.', es: 'Ese punto ya está marcado como arreglado. Vuelva a cargar la página.' },
   errNotYourMove: { en: 'That submittal is with us or the architect now. Reload the page.', es: 'Ese documento para aprobación ya está con nosotros o con el arquitecto. Vuelva a cargar la página.' },

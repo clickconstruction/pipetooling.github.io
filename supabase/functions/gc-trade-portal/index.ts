@@ -9,6 +9,7 @@ import { resolveTradeLink, type TradeLinkRow } from '../_shared/gcTradeLink.ts'
 import { lateWaitingFromRows, portalScheduleJobs, portalSchedulesFromRows, portalScheduleWorkFromRows } from '../_shared/gcTradePortalSchedule.ts'
 import { readScheduleRows } from '../_shared/gcScheduleRead.ts'
 import { readTradeFlowExtra, stampFirstOpen, tradeFlowRowsOf, type TradeFlowRows } from '../_shared/gcTradeFlow.ts'
+import { clausePaperPair, type ClauseAdmin } from '../_shared/clausePaper.ts'
 
 /**
  * GC mode, the trade partner portal's read (P1b-ii, to-dos/gc-mode/PORTAL_REAL_BUILD.md): resolves a
@@ -43,6 +44,10 @@ import { readTradeFlowExtra, stampFirstOpen, tradeFlowRowsOf, type TradeFlowRows
  * another company's quote stay here. A flow that fails to read answers null and leaves the slice whole. Its one write
  * beyond the visit row: an outside visit stamps the live link's first open (`first_opened_at`) once, never a staff look,
  * a preview or the sample.
+ *
+ * Since Messages' cut 4c (v2.5329), a statement of work sent to sign that is built from clauses (`gc_sows.paper_id`)
+ * carries its paper on its row as `clause_paper`: the job's clauses, then the exhibit for its package's trade, in English
+ * and Spanish at one revision (`_shared/clausePaper.ts`). The page shows it and signs at that revision.
  */
 
 const corsHeaders = {
@@ -71,7 +76,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     admin.from('gc_trade_messages').select('*').eq('company_id', companyId).order('sent_at', { ascending: false }).limit(200).then(rowsOf),
     admin.from('gc_plan_set_sends').select('set_id, company_id, touched').eq('company_id', companyId).then(rowsOf),
     // Its own work (P4b-i): its statements of work, the charges to it and the changes it asked for.
-    admin.from('gc_sows').select('id, package_id, invite_id, company_id, status, price, retainage_pct, based_on_rev, sent_on, signed_on, excluded, accepted_on').eq('company_id', companyId).then(rowsOf),
+    admin.from('gc_sows').select('id, package_id, invite_id, company_id, status, price, retainage_pct, based_on_rev, sent_on, signed_on, excluded, accepted_on, paper_id, paper_revision, clause_versions').eq('company_id', companyId).then(rowsOf),
     admin.from('gc_back_charges').select('*').eq('company_id', companyId).order('sent_on').then(rowsOf),
     admin.from('gc_trade_change_requests').select('*').eq('company_id', companyId).order('asked_on').then(rowsOf),
     // Its own papers (B6-b-ii), where each stands: for its master agreement first.
@@ -166,6 +171,34 @@ async function readJobWork(admin: SupabaseClient, awarded: string[]): Promise<Pi
   return { submittals, submittalHolds, submittalRounds, rfis, rfiHolds, punch }
 }
 
+/**
+ * Each statement of work sent to sign that is built from clauses, with its paper as it reads today (Messages, cut 4c,
+ * v2.5329): the job's clauses, then the exhibit for its package's one trade, between us and the company, as
+ * `gc_trade_sign_sow` freezes it. A paper that fails to read leaves that statement of work with no clauses, and the SQL
+ * refuses its signing until a reload reads them (paperChanged).
+ */
+async function withSowPapers(admin: SupabaseClient, rows: TradePortalRows): Promise<TradePortalRows> {
+  const sent = (rows.sows ?? []).filter((s) => s.status === 'sent' && s.paper_id)
+  if (sent.length === 0) return rows
+  const reader = admin as unknown as ClauseAdmin
+  const betweenName = String(rows.company.name ?? '')
+  const tradeOf = new Map(rows.packages.map((k) => [String(k.id), String(k.trade ?? '')]))
+  const papers = new Map(
+    await Promise.all(
+      sent.map(async (s) => {
+        const trade = tradeOf.get(String(s.package_id)) ?? ''
+        try {
+          return [String(s.id), await clausePaperPair(reader, { paperId: String(s.paper_id), trades: trade ? [trade] : [], betweenName })] as const
+        } catch (e) {
+          console.error('gc-trade-portal: a statement of work\'s paper did not read', e)
+          return [String(s.id), null] as const
+        }
+      }),
+    ),
+  )
+  return { ...rows, sows: (rows.sows ?? []).map((s) => (papers.get(String(s.id)) ? { ...s, clause_paper: papers.get(String(s.id)) } : s)) }
+}
+
 // Typed as the read's own to-dos, so a job with a schedule fits the same shape.
 const NO_SCHEDULE = { schedules: {}, scheduleWork: {}, scheduleTodos: [] as ReturnType<typeof portalScheduleWorkFromRows>['todos'] }
 
@@ -258,9 +291,10 @@ serve(async (req) => {
     // The first outside visit (Messages cut 8c): the fact portal_opened, before the flow reads it.
     if (viewDecision.count) await stampFirstOpen(admin, link.company_id)
 
-    const rows = await readRows(admin, link.company_id)
-    if (!rows) return jsonResponse({ error: 'linkOff' }, 404)
-    const [schedule, flow] = await Promise.all([scheduleFor(admin, link.company_id, rows, today), flowFor(admin, link.company_id, rows)])
+    const read = await readRows(admin, link.company_id)
+    if (!read) return jsonResponse({ error: 'linkOff' }, 404)
+    // The papers ride on the statements of work, which the chart and the flow do not read, so the three run together.
+    const [rows, schedule, flow] = await Promise.all([withSowPapers(admin, read), scheduleFor(admin, link.company_id, read, today), flowFor(admin, link.company_id, read)])
     return jsonResponse({ today, slice: tradePortalSlice(rows, link.company_id), ...schedule, flow })
   } catch (e) {
     console.error('gc-trade-portal failed', e)
