@@ -68,15 +68,19 @@ CREATE FUNCTION mfu.tried(stmt text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   BEGIN EXECUTE stmt; EXCEPTION WHEN OTHERS THEN NULL; END;
 END $$;
+-- app_settings' read policy asks auth.role(), which reads the role claim on its own (PostgREST sets both), as the
+-- card switch's bed (gc_owner_billing/91_card_switch.sql) says.
 CREATE FUNCTION mfu.as_user(p_user uuid) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
 CREATE FUNCTION mfu.signed_out() RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', '', true);
   PERFORM set_config('request.jwt.claim.sub', '', true);
+  PERFORM set_config('request.jwt.claim.role', '', true);
 END $$;
 -- A conversation as Follow up reads it: the state, the snooze's day, who has it and how.
 CREATE FUNCTION mfu.state(p_contact uuid) RETURNS text LANGUAGE sql AS $$

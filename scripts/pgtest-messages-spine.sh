@@ -5,8 +5,8 @@
 #   npm run test:pg:messages-spine
 #
 # The same bed as scripts/pgtest-gc-customer-contacts.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order (about a minute). The spine's migration is then applied a second time, which
-# must change nothing. The scenario, inside one transaction that rolls back: the seed makes one contact per person the
+# supabase/migrations applied in order (about a minute). The spine's migration is applied a second time right after its
+# first, which must change nothing. The scenario, inside one transaction that rolls back: the seed makes one contact per person the
 # app already has, and nothing the second time; only the office team reads; a number finds its person by its key, and
 # a number two people share lands on the newest line's; Who is this? re-points a contact or folds it into the one
 # already there, keeping the thread and a STOP; a company's row holds its own person and others by name; a line is tied
@@ -40,10 +40,14 @@ psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
 for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  # A second run must change nothing: the tables, their indexes, policies and grants, the functions and the triggers are
+  # there, and the seed finds nobody new. It runs right after the first, as a retried push would. Its grants start with
+  # a REVOKE on its tables, which also takes back the column grants a later cut gives on them (Follow up's on contacts
+  # and messages), so a second run after every later migration would build a schema prod never has.
+  if [ "$f" = "$SPINE" ]; then
+    psql_as postgres -f - < "$SPINE" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $SPINE"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  fi
 done
-# A second run must change nothing: the tables, their indexes, policies and grants, the functions and the triggers are
-# there, and the seed finds nobody new.
-psql_as postgres -f - < "$SPINE" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $SPINE"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/messages_spine/20_scenario.sql 2>&1 || true)"
 if ! grep -q "messages_spine PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
