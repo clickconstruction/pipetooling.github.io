@@ -1,5 +1,5 @@
 -- A change order's non-money half for the office (v2.5156, the schedule's PR 16b; Owner Billing's door, call C): the
--- view gc_change_orders_office carries twelve columns and never cost, price or pct_done; it is a security barrier; the
+-- view gc_change_orders_office carries fourteen columns (twelve, and two from Messages cut 4b) and never cost, price or pct_done; it is a security barrier; the
 -- office team reads every change order through it while the table itself stays the money team's; anyone outside the
 -- office reads none; nobody signed in writes through it; anon reads nothing. The fixture is made as postgres; the reads
 -- run through RLS; everything runs inside one transaction that rolls back. Raises on the first failed assertion; ends
@@ -63,8 +63,9 @@ GRANT USAGE ON SCHEMA gvt TO authenticated, anon;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA gvt TO authenticated, anon;
 
 -- 1) The view's shape: twelve columns, none of the three money ones, behind a security barrier.
-SELECT gvt.same('the view carries its twelve columns', (SELECT string_agg(column_name, ',' ORDER BY ordinal_position) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'gc_change_orders_office'),
-  'id,project_id,number,description,reason,schedule_words,package_id,status,sent_on,answered_on,days,days_on_chart');
+-- Messages cut 4b (20261012180000) added who signs and the message it came from, at the end; still no money column.
+SELECT gvt.same('the view carries its fourteen columns', (SELECT string_agg(column_name, ',' ORDER BY ordinal_position) FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'gc_change_orders_office'),
+  'id,project_id,number,description,reason,schedule_words,package_id,status,sent_on,answered_on,days,days_on_chart,signer_contact_id,source_message_id');
 SELECT gvt.same('never cost, price or pct_done', (SELECT count(*)::text FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'gc_change_orders_office' AND column_name IN ('cost', 'price', 'pct_done')), '0');
 SELECT gvt.same('a security barrier', (SELECT coalesce(array_to_string(reloptions, ','), '') FROM pg_class WHERE oid = 'public.gc_change_orders_office'::regclass), 'security_barrier=true');
 SELECT gvt.same('authenticated may only read it', (SELECT string_agg(privilege_type, ',' ORDER BY privilege_type) FROM information_schema.role_table_grants WHERE table_schema = 'public' AND table_name = 'gc_change_orders_office' AND grantee = 'authenticated'), 'SELECT');
