@@ -568,8 +568,13 @@ describe('the verb’s refusals', () => {
    * status in TRADE_SQL_ERRORS and its words in TRADE_ERROR_WORDS. A lane whose migration adds a trade
    * verb lists its new keys here in the same PR; the PR that maps one takes it off.
    */
-  // The Portal's P5b-1 mapped P5b-m's eight keys, and P5d-ii the ten the schedule's 13a and 14a raised: none waits.
-  const WAITING: Record<string, string> = {}
+  // The Portal's P5b-1 mapped P5b-m's eight keys, and P5d-ii the ten the schedule's 13a and 14a raised.
+  const WAITING: Record<string, string> = {
+    // v2.5309 (cut 4c, `20261013000000_gc_clause_papers.sql`): gc_trade_sign_sow refuses a statement of work built from
+    // clauses at a revision its page did not show. No page shows those clauses yet, so nothing can raise it; the PR that
+    // shows them on GcTradePortalSow gives it its status and its words in both languages.
+    paperChanged: 'cluster 9: the statement of work clause page, after v2.5309',
+  }
 
   /**
    * Every key a trade verb raises, its own and those of the `*_ask` helpers it returns through (P5c-2: U3b-i's
