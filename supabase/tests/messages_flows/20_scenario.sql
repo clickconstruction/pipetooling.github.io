@@ -294,9 +294,10 @@ SELECT mfl.same('a trade partner''s rows: the first visit, the job tied, the off
   'trade|2026-09-09|2026-09-08T23:30:00+00:00|false|/t/flows-link-token?preview=1|00000000-0000-0000-0000-0000000006f1|buyout|true|false');
 SELECT mfl.refused('no such contact', $q$SELECT public.flow_rows(gen_random_uuid())$q$, 'notFound');
 SELECT mfl.same('the card a board prints, and the job''s name', (
-  SELECT concat_ws('|', r->'card'->>'name', r->'card'->>'company', r->'card'->>'trades', coalesce(r->'card'->>'goes_by', '-'), r->'projects'->0->>'name')
+  SELECT concat_ws('|', r->'card'->>'name', r->'card'->>'company', r->'card'->>'trades', coalesce(r->'card'->>'goes_by', '-'), r->'projects'->0->>'name',
+    r->'card'->>'gc_company_id', coalesce(r->'card'->>'customer_id', '-'))
   FROM (SELECT public.flow_rows('00000000-0000-0000-0000-000000006005') AS r) x),
-  'Flows Hillside|Flows Hillside|["Sitework"]|-|Flows Clinic');
+  'Flows Hillside|Flows Hillside|["Sitework"]|-|Flows Clinic|00000000-0000-0000-0000-0000000006a1|-');
 SELECT mfl.same('everyone of a kind in one read, the same rows as one person''s, and everyone on one job', concat_ws('|',
   (SELECT count(*) FROM jsonb_object_keys(public.flow_rows_kind('trade')))::text,
   (public.flow_rows_kind('trade') -> '00000000-0000-0000-0000-000000006005' = public.flow_rows('00000000-0000-0000-0000-000000006005'))::text,
