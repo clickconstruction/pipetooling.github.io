@@ -88,6 +88,16 @@ export function canEditClause(role: UserRole | null | undefined): boolean {
   return role != null && GC_CLAUSE_EDIT_TEAM.includes(role)
 }
 
+/**
+ * Who edits the flows in Settings → Flows (Messages, cut 4): the office team, the client copy of the flows tables'
+ * `gc_office_team()` policies and `flow_save`'s own check (`20261012120000`, `20261013020000`).
+ */
+export const GC_FLOWS_EDIT_TEAM: readonly UserRole[] = GC_OFFICE_TEAM
+
+export function canEditFlows(role: UserRole | null | undefined): boolean {
+  return role != null && GC_FLOWS_EDIT_TEAM.includes(role)
+}
+
 export function canApproveClause(role: UserRole | null | undefined): boolean {
   return role != null && GC_CLAUSE_APPROVE_TEAM.includes(role)
 }

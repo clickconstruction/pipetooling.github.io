@@ -1,6 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
-import { canEditClause } from './gc/access'
+import { canEditClause, canEditFlows } from './gc/access'
 import { canSeePhoneAndTexts } from './messages/assignRule'
 
 /**
@@ -89,6 +89,10 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   // and a dev set the seats; Quo's rows (cut 5) join the same group.
   if (canSeePhoneAndTexts(r)) {
     groups.push({ id: 'settings-phone-texts', label: 'Phone and texts', zone: 'company', pagesHint: 'Shows on: GC projects, in Follow up and each thread. Who gets a new text, call or email first.' })
+  }
+  // Flows (Messages, cut 4): the steps each kind of person goes through. The office edits them.
+  if (canEditFlows(r)) {
+    groups.push({ id: 'settings-flows', label: 'Flows', zone: 'company', pagesHint: 'The steps each customer, trade partner and architect goes through. The office changes them.' })
   }
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r) || r === 'estimator') {
     groups.push({ id: 'settings-company', label: 'Company', zone: 'company', pagesHint: 'Company documents, the office address, and the Map.' })

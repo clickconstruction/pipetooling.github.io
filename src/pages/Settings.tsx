@@ -40,7 +40,8 @@ import { SettingsWhatCustomersSeeTab } from '../components/settings/SettingsWhat
 import { SettingsWhatTheTeamSeesTab } from '../components/settings/SettingsWhatTheTeamSeesTab'
 import { SettingsContractsTab } from '../components/settings/SettingsContractsTab'
 import { SettingsClausesTab } from '../components/settings/SettingsClausesTab'
-import { canEditClause } from '../lib/gc/access'
+import { SettingsFlowsTab } from '../components/settings/SettingsFlowsTab'
+import { canEditClause, canEditFlows } from '../lib/gc/access'
 import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTextsSettingsSection'
 import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettingsSection'
 import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSettingsCard'
@@ -1503,6 +1504,11 @@ export default function Settings() {
             {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
           </div>
         )}
+      </SettingsGroup>
+
+      <SettingsGroup id="settings-flows" hidden={activeSettingsTab !== 'settings-flows'} title={settingsGroupTitle('settings-flows', 'Flows')} description={settingsGroupHint('settings-flows')}>
+        {/* Mounted while it is open, so it reads the flow and who is on it each time it is opened. */}
+        {activeSettingsTab === 'settings-flows' && canEditFlows(myRole) && <SettingsFlowsTab />}
       </SettingsGroup>
 
       <SettingsGroup id="settings-data" hidden={activeSettingsTab !== 'settings-data'} title={settingsGroupTitle('settings-data', 'Data & recovery')} description={settingsGroupHint('settings-data')}>

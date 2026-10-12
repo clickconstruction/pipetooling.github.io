@@ -43,6 +43,8 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Contracts and clauses', marker: 'A contract here is an ordered set of clauses' },
   // Messages, cut 2's screens (v2.5311): who gets a new message; its heading renders before the seats load.
   { label: 'Phone and texts', marker: 'Who gets a new message' },
+  // Messages, cut 4: the flows; the lede renders before the flow loads.
+  { label: 'Flows', marker: 'One flow for each kind of person' },
   { label: 'Company', marker: 'Company documents' },
   { label: 'Usage', marker: 'Where the time goes' },
   { label: 'Data & recovery', marker: /[Bb]ackup/ },
