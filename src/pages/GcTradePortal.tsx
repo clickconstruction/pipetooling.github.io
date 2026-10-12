@@ -127,6 +127,7 @@ export default function GcTradePortal() {
           schedules={page.schedules}
           scheduleWork={page.scheduleWork}
           scheduleTodos={page.scheduleTodos}
+          flow={page.flow}
         />
         </PortalPressContext.Provider>
       ) : null}

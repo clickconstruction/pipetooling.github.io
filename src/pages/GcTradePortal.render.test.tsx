@@ -2,12 +2,14 @@
 /**
  * Render smoke for GC mode's trade partner portal (P1b-ii-b): it opens on the link alone, draws the company's home
  * from the sample `gc-trade-portal` answers, opens a project's page with its plans, questions and ask, lists the
- * messages we sent, says so when the link is off, and keeps a Spanish company in English while Spanish is held.
+ * messages we sent, says so when the link is off, and keeps a Spanish company in English while Spanish is held. The
+ * home opens on Where you are since Messages cut 8c (GcTradePortal.firstPage.render.test.tsx); an answer with no flow
+ * keeps the home as it was.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { gcTradePortalSample } from '../../supabase/functions/_shared/gcTradePortalSample'
+import { gcTradePortalSample, gcTradePortalSampleFlow } from '../../supabase/functions/_shared/gcTradePortalSample'
 
 vi.mock('../lib/publicFunctionStaffHeaders', () => ({ staffAwarePublicHeaders: async () => ({ apikey: 'anon', Authorization: 'Bearer anon' }) }))
 
@@ -19,7 +21,7 @@ let answer: { ok: boolean; body: unknown } = { ok: true, body: null }
 
 beforeEach(() => {
   urls.length = 0
-  answer = { ok: true, body: { today: TODAY, slice: gcTradePortalSample(TODAY), sample: true } }
+  answer = { ok: true, body: { today: TODAY, slice: gcTradePortalSample(TODAY), flow: gcTradePortalSampleFlow(TODAY), sample: true } }
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
@@ -47,6 +49,19 @@ describe('GcTradePortal', () => {
     expect(await screen.findByText('Hello, Dana Ortiz.')).toBeTruthy()
     expect(urls[0]).toContain('/functions/v1/gc-trade-portal?t=sample')
     expect(screen.getByText('A sample portal. The company and its jobs are made up.')).toBeTruthy()
+    const where = block('Where you are with Click Construction')
+    expect(where.getByRole('button', { name: 'Sample Retail Shell' })).toBeTruthy()
+    expect(where.getByRole('button', { name: 'Enter your quote' })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: /^Asked to quote/ })).toBeNull()
+    expect(block('Who gets our emails').getByText(/Marcus Lee/)).toBeTruthy()
+    expect(block('Before').getByText(/Sample Clinic Finish Out · Electrical · you passed/)).toBeTruthy()
+  })
+
+  it('keeps the home as it was when the answer has no flow', async () => {
+    answer = { ok: true, body: { today: TODAY, slice: gcTradePortalSample(TODAY), sample: true } }
+    open()
+    expect(await screen.findByText('Hello, Dana Ortiz.')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: 'Where you are with Click Construction' })).toBeNull()
     const asked = block('Asked to quote · 1')
     expect(asked.getByText('Sample Retail Shell')).toBeTruthy()
     expect(asked.getByText('Due Mon Oct 19, 11 days left.')).toBeTruthy()

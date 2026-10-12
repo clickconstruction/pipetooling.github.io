@@ -2,7 +2,7 @@
 title: share a trade partner its portal
 category: Bids & Estimating
 roles: dev
-keywords: gc mode, trade partner, trade portal, paperwork, vetting form, w-9, master agreement, your papers, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request, statement of work, sign, signature, punch list, submittal, percent done, report, sign the change, pay application, closeout, needs you, file, upload, schedule, their schedule, chart
+keywords: gc mode, trade partner, trade portal, where you are, first page, steps, paperwork, vetting form, w-9, master agreement, your papers, portal link, their portal, make the link, copy link, turn it off, new link, quote, plans, questions, subcontractor, charge, back-charge, dispute, change request, statement of work, sign, signature, punch list, submittal, percent done, report, sign the change, pay application, closeout, needs you, file, upload, schedule, their schedule, chart
 order: 96
 ---
 Every trade partner company can have one private portal link. The company opens it without signing in and sees everything it has with us.
@@ -11,12 +11,18 @@ Only a dev makes links while the portal is built.
 
 ## What the company sees
 
-The link opens on the company's home. The home shows:
+The link opens on the company's home. The home starts with **Where you are with Click Construction**. It lists the company's steps with us in order:
 
-- Each project it is asked to quote, with the day its quote is due.
-- Each job of ours it is signed for.
-- Who at the company gets our emails.
-- The asks it passed on, jobs we did not win, and trades we gave another company, under **Before**.
+- **Getting set up** holds its invitation, its first visit and its papers with us.
+- Each job it is asked on has its own part. It holds the quote, the statement of work, the draws and the closeout.
+- A done step shows its day.
+- A step that waits on the company says why and has its press.
+- A step that waits on us says we are on it.
+- A job's name opens the job.
+
+A job it passed on leaves the list. So does a trade we gave another company.
+
+Below that the home shows who at the company gets our emails. **Before** lists the asks it passed on, jobs we did not win, and trades we gave another company.
 
 A project opens its own page. The page shows the latest plans and the questions about them. It also shows the lines the quote should cover and who to call. Messages lists every email we sent the company.
 
@@ -53,7 +59,7 @@ The job page also shows where its pay application stands. It can open one it sen
 
 The company sends its pay application from the job page too. It presses **Fill out pay application** and checks each line. Then it signs the conditional waiver that goes with it and presses **Send to Click**. Once we pay, it presses **Sign the unconditional waiver** on the draw. The final pay application and the final release work the same way. To sign a waiver, it types its name and ticks that it agrees to sign electronically.
 
-Its home has **Needs you** at the top. It lists what the company has to do, like a punch item to fix. Each one opens the job where it is. A paper the company owes opens **Your paperwork with Click** on its home.
+Under **Where you are**, **Needs you** lists what else the company has to do, like a punch item to fix. A step that **Where you are** already shows never shows twice. Each one opens the job where it is. A paper the company owes opens **Your paperwork with Click** on its home.
 
 ## Its paperwork with us
 

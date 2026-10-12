@@ -7,6 +7,7 @@
  */
 import type { PortalSchedule, PortalTodo } from './gcKernels/index.ts'
 import type { ScheduleWork } from './gcTradePortalSchedule.ts'
+import { NO_FLOW_EXTRA, tradeFlowRowsOf, type TradeFlowRows } from './gcTradeFlow.ts'
 import { tradePortalSlice, type TradePortalRows, type TradePortalSlice } from './gcTradePortalSlice.ts'
 
 /** The sample's ids: real uuids, so a press on the sample passes the submit function's shape check (P2b-ii). */
@@ -97,29 +98,29 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
     quotes: [
       { id: ID.jobQuote, invite_id: ID.jobAsk, amount: 48600, based_on_rev: 0, submitted_on: d(-52), includes: {}, note: '', good_for_days: 30, alternates: [], quote_file: '', sov: null, exclusions: null, exclusions_answered: null, source: 'trade', created_at: `${d(-52)}T15:00:00Z` },
     ],
-    contacts: [{ id: ID.quoteDay, company_id: COMPANY, invite_id: ID.ask, contacted_on: d(-3), how: 'portal', note: 'Sending it Friday.', promised_by: d(4) }],
+    contacts: [{ id: ID.quoteDay, company_id: COMPANY, invite_id: ID.ask, contacted_on: d(-3), how: 'portal', note: 'Sending it Friday.', promised_by: d(4), created_at: `${d(-3)}T15:00:00Z` }],
     promises: [],
     projects: [
       {
         project: { id: ID.project, name: 'Sample Retail Shell', address: '1 Sample Rd, Boerne' },
-        gc: { project_id: ID.project, stage: 'bidding', bid_due: d(14), size_note: '9,600 sq ft retail shell, four bays', lost_on: null, lost_why: null },
+        gc: { project_id: ID.project, stage: 'bidding', bid_due: d(14), size_note: '9,600 sq ft retail shell, four bays', lost_on: null, lost_why: null, created_at: `${d(-12)}T15:00:00Z` },
         team: [{ role: 'projectManager', name: 'Avery Lin', phone: '(210) 555-0199', email: 'avery@example.com' }],
       },
       {
         project: { id: ID.project2, name: 'Sample Clinic Finish Out', address: '2 Sample Ave, Helotes' },
-        gc: { project_id: ID.project2, stage: 'bidding', bid_due: d(5), size_note: '3,100 sq ft tenant finish out', lost_on: null, lost_why: null },
+        gc: { project_id: ID.project2, stage: 'bidding', bid_due: d(5), size_note: '3,100 sq ft tenant finish out', lost_on: null, lost_why: null, created_at: `${d(-22)}T15:00:00Z` },
         team: [],
       },
       {
         project: { id: ID.job, name: 'Sample Dental Office', address: '3 Sample Ln, Fair Oaks Ranch' },
-        gc: { project_id: ID.job, stage: 'building', bid_due: d(-45), size_note: '4,200 sq ft dental office', lost_on: null, lost_why: null },
+        gc: { project_id: ID.job, stage: 'building', bid_due: d(-45), size_note: '4,200 sq ft dental office', lost_on: null, lost_why: null, created_at: `${d(-70)}T15:00:00Z` },
         team: [{ role: 'superintendent', name: 'Jordan Reyes', phone: '(210) 555-0170', email: 'jordan@example.com' }],
       },
     ],
     packages: [
       { id: ID.trade, project_id: ID.project, trade: 'Electrical', position: 0 },
       { id: ID.trade2, project_id: ID.project2, trade: 'Electrical', position: 0 },
-      { id: ID.jobTrade, project_id: ID.job, trade: 'Electrical', position: 0, awarded_invite_id: ID.jobAsk },
+      { id: ID.jobTrade, project_id: ID.job, trade: 'Electrical', position: 0, awarded_invite_id: ID.jobAsk, carried_invite_id: ID.jobAsk, awarded_on: d(-36) },
     ],
     scopeItems: [
       { id: ID.line1, package_id: ID.trade, position: 0, label: 'Service and gear', sheets: ['E-101'], specs: null, added_in_set_id: null },
@@ -263,6 +264,11 @@ export function gcTradePortalSampleRows(today: string): TradePortalRows {
 /** The sample company's slice, as `gc-trade-portal` returns it for the sample token. */
 export function gcTradePortalSample(today: string): TradePortalSlice {
   return tradePortalSlice(gcTradePortalSampleRows(today), COMPANY)
+}
+
+/** The sample's trade flow rows (Messages cut 8c): the same made-up rows through the same builder, its link first opened six days ago. */
+export function gcTradePortalSampleFlow(today: string): TradeFlowRows {
+  return tradeFlowRowsOf(gcTradePortalSampleRows(today), { ...NO_FLOW_EXTRA, links: [{ revoked_at: null, first_opened_at: `${addDays(today, -6)}T15:00:00Z` }] }, COMPANY)
 }
 
 /**
