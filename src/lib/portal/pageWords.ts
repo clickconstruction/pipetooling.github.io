@@ -19,6 +19,7 @@
  * native speaker reads the portal's Spanish every page reads English. Pure.
  */
 
+import type { PaperId } from '../flows/facts'
 import { pDate, pWeekday, type PortalLang } from '../gc/portalI18n'
 import { money } from '../gc/words'
 
@@ -263,25 +264,8 @@ export function portalWord(key: PortalWordKey): Bilingual {
   return W[key]
 }
 
-/** The papers a step can turn on: the same ids as the flow's facts (`FACTS[].paper` in the prototype). */
-export type PortalPaperId =
-  | 'invitation'
-  | 'w9'
-  | 'coi'
-  | 'msa'
-  | 'quote'
-  | 'sow'
-  | 'waiver'
-  | 'final_waiver'
-  | 'bid'
-  | 'contract'
-  | 'schedule'
-  | 'payapp'
-  | 'co'
-  | 'plans'
-  | 'addendum'
-  | 'submittal'
-  | 'certificate'
+/** The papers a step can turn on: the flow's own list (`flows/facts.ts`), so every paper there has words here. */
+export type PortalPaperId = PaperId
 
 /**
  * What a paper says on their page (PW): its name, a name that is theirs for the line that says it ran out, why we ask,
