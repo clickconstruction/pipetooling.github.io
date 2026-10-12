@@ -8,6 +8,7 @@ import { ownerInterestOnBill } from './ownerBillingInterest'
 import type { GcCustomer, GcProject, GcState, OwnerPayAppSent } from './types'
 import { daysUntil, money, shortDate, weekdayDate } from './words'
 import { payLinkUrl } from '../billing/payLink'
+import { greetingName } from '../contacts/kernel'
 import { cardMoney } from './ownerBillingCard'
 
 /** The pay-by day the office starts from: this many days from today. */
@@ -71,11 +72,8 @@ export function payReminderStep(state: GcState, project: GcProject, number: numb
  * "Hello GC,").
  */
 export function customerGreeting(customer: GcCustomer | undefined): string {
-  // "Dr. Priya Raman" is greeted "Dr. Raman": a title keeps the last name (the Board's rule).
-  const words = (customer?.contact ?? '').trim().split(/\s+/).filter(Boolean)
-  if (words.length === 0) return ''
-  const titled = words.length > 1 && /^(Dr|Mr|Mrs|Ms)\.?$/i.test(words[0]!)
-  return titled ? `${words[0]} ${words[words.length - 1]}` : words[0]!
+  // "Dr. Priya Raman" is greeted "Dr. Raman": a title keeps the last name (the Board's rule, kept in contacts/kernel).
+  return greetingName(customer?.contact ?? '')
 }
 
 /** An email's first line: "Hello Elena," or, with no one to greet by name, "Hello,". */

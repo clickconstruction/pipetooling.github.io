@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_TRADE_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcTradeEmail'
 import { GC_CUSTOMER_EMAIL_ROLES } from '../../../supabase/functions/_shared/gcCustomerEmails'
-import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_TRADE_EMAIL_TEAM, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
+import { GC_BOARD_WRITE_TEAM, GC_BUILDING_TEAM, GC_CLAUSE_APPROVE_TEAM, GC_CLAUSE_EDIT_TEAM, GC_MONEY_TEAM, GC_OFFICE_TEAM, GC_OWNER_CONTRACT_FILE_TEAM, GC_TRADE_EMAIL_TEAM, canApproveClause, canEditClause, canOpenGcProjects, canOpenOwnerContractFile, canSeeGcMoney, canSendGcTradeEmail, canUseGcBoardWrites, canUseGcBuilding } from './access'
 import { GC_TABLE_DOORS } from './doors'
 
 describe('canOpenGcProjects', () => {
@@ -28,7 +28,7 @@ describe('canOpenGcProjects', () => {
 })
 
 /** The roles the newest migration that defines `fn` names in it: the database's copy of a GC team. */
-function teamInSql(fn: 'gc_money_team' | 'gc_office_team'): string[] {
+function teamInSql(fn: 'gc_money_team' | 'gc_office_team' | 'gc_clause_approve_team'): string[] {
   const dir = join(process.cwd(), 'supabase', 'migrations')
   const head = `FUNCTION public.${fn}()`
   const newest = readdirSync(dir)
@@ -166,5 +166,28 @@ describe('canOpenOwnerContractFile (the Board’s B2b-v-iii)', () => {
     expect(canOpenOwnerContractFile('dev')).toBe(true)
     for (const role of ['master_technician', 'controller', 'assistant', 'estimator', 'superintendent'] as UserRole[]) expect(canOpenOwnerContractFile(role)).toBe(false)
     expect(canOpenOwnerContractFile(null)).toBe(false)
+  })
+})
+
+describe('canEditClause and canApproveClause (Messages, cut 4c)', () => {
+  it('lets anyone in the office edit a clause, and nobody else', () => {
+    expect([...GC_CLAUSE_EDIT_TEAM].sort()).toEqual([...GC_OFFICE_TEAM].sort())
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as UserRole[]) expect(canEditClause(role)).toBe(true)
+    for (const role of ['superintendent', 'subcontractor', 'helpers', 'primary'] as UserRole[]) expect(canEditClause(role)).toBe(false)
+    expect(canEditClause(null)).toBe(false)
+  })
+
+  it('lets a dev or a controller approve, and nobody else (the owner, 2026-10-12)', () => {
+    expect([...GC_CLAUSE_APPROVE_TEAM].sort()).toEqual(['controller', 'dev'])
+    for (const role of ['master_technician', 'assistant', 'estimator', 'superintendent', 'subcontractor'] as UserRole[]) expect(canApproveClause(role)).toBe(false)
+    expect(canApproveClause(null)).toBe(false)
+  })
+
+  it('keeps every approver on the team that edits', () => {
+    for (const role of GC_CLAUSE_APPROVE_TEAM) expect(canEditClause(role)).toBe(true)
+  })
+
+  it('names the same approvers as the database’s gc_clause_approve_team(), so the two copies cannot drift', () => {
+    expect([...GC_CLAUSE_APPROVE_TEAM].sort()).toEqual(teamInSql('gc_clause_approve_team').sort())
   })
 })

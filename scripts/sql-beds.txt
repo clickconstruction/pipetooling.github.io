@@ -21,3 +21,4 @@ gc-start
 gc-owner-contract
 gc-customer-contacts
 messages-spine
+contract-clauses
