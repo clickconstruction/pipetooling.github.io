@@ -139,7 +139,7 @@ Each one is a button in the prototype; each becomes one press in the app.
   file over the email limit (a plan set) goes as a link, the way a plan set always has; a text takes a photo as the
   picture and anything else as a link line under the message, to their portal when the thing has a page there (*The
   plans are in your portal: click.co/t/…*), else a signed link to the file. The sent message keeps each file with how
-  it went, as the file, a link or the picture, and the preview shows the chips, the picture or the link lines before
+  it went, as the file or a link (a photo on a text goes as a link line, since Quo's API sends no picture messages; helper 3's read of the docs, 2026-10-12), and the preview shows the chips, the picture or the link lines before
   it goes. A file from this computer is kept in the job's Team only folder; a photo in the job's photos. Open: whether
   a highlight should also become a team note on the job.
 - **Quick replies**: a gray panel above the box, folded to one line by default since v1.126 (a press opens it, the label folds it, kept per computer); a press on a line fills the box and nothing sends. Since v1.67 (`quick-replies-mockups.html` C, the owner's pick 2026-10-11) each line says who it is for, customers, trade partners, architects or anyone, and may belong to a flow step, and the strip shows only the lines for this kind of person in three groups, the step they are on first, then the rest of their kind, then anyone's, your most used first in each and then the team's; lines read whole on wrapping rows; the strip's head names the groups as pills with their counts, a press scrolls the box to that group and the pill for the group in view stays lit (the owner, 2026-10-11, v1.71); past ten lines on the team's list a box in the head narrows every group as you type, the typed words lit in each line (v1.72). Once the box has words, from typing or from a quick reply's press, the strip folds to one row, *Quick replies · 13 for trade partners ▸*, a press showing the lines again until the box is cleared, which shows them by itself (v1.77). The app counts each press. **Edit** on the strip opens the
@@ -261,7 +261,7 @@ Each gets an answer here and a picture in the prototype before it is built.
 - **A trade's portal messages and its Quo texts**: one thread or two.
 - **Outbound beyond a text**: send our bid, the schedule, a pay application from the thread.
 - **A text that is a promise to pay** becomes a payment promise on the Pipeline, not a quote promise.
-- **Opt-out and compliance**: STOP and HELP, the opt-out flag, what the app refuses to send.
+- **Opt-out and compliance**: STOP, which Quo answers itself and the app mirrors as the number's opt-out; HELP, INFO, REVOKE and OPT OUT, which the app answers; a stop asked in plain words becomes a team note to use Mark STOP, never an automatic stop; the opt-out flag; what the app refuses to send.
 - **Missed-call text-back and after hours**: Quo's or ours, and what the thread records.
 - **Correcting a tie** and whether the job's feed follows.
 - **Search inside transcripts.**
@@ -276,7 +276,7 @@ Each gets an answer here and a picture in the prototype before it is built.
      each with where it lives and whether it has a portal page; the picker and the job's own page read it. No new tab
      and no second list: the thread, the picker and Documents read the same files.
   2. **A sent copy keeps its files.** The copy of an email as it went carries the files that went with it, and a text
-     that went as a link keeps the link, each marked how it went (the file, a link, the picture), as the thread shows
+     that went as a link keeps the link, each marked how it went (the file or a link; never a picture on a text), as the thread shows
      it; otherwise the copy is not the copy.
   3. **Two landing places, by rule.** A file picked from this computer goes to the job's Team only folder and a photo
      to the job's photos, the way incoming ones already do, so nothing sent lives only on the message.

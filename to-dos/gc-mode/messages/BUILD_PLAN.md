@@ -200,7 +200,7 @@ page. The prototype's words are the words; its hover cards are the help text.
   `call.summary.completed`; checked as Quo's; matched by `contact_for_channel`; threaded; tied to the
   default job; a number nobody knows makes an unknown contact and a *Who is this?* row), `quo-send`
   (a text from the company number, with the opt-out line when `compose.ts` says so, refusing an opted-out
-  number), the STOP and HELP answers. `docs/EDGE_FUNCTIONS.md` sections for each.
+  number), the HELP, INFO, REVOKE and OPT OUT answers (Quo answers STOP itself and the app mirrors the opt-out), the signature check on every event and a 28-hour memory of webhook ids for Quo's retries. `docs/EDGE_FUNCTIONS.md` sections for each.
 - **Settings → Phone and texts** becomes live: the connection, the seats, who gets a new message.
 - **The nudge the app sends** (`flow_steps.nudge_send = 'app'`): a scheduled function that reads
   `flows/nudges.ts` each morning and sends through `quo-send`, writing `nudge_sent`; off for every
@@ -227,7 +227,7 @@ page. The prototype's words are the words; its hover cards are the help text.
 - **Kernels**: `documents/jobFiles.ts` (the one list of a job's files: the papers the app makes,
   the Drive folder's Plans and Team only halves, `gc_trade_files`, the sent copies, the files that
   arrived on messages, each tagged with where it lives and its portal page), `documents/outgoing.ts`
-  (by size and kind: the file, our link, the picture; a plan set always a link; a file from this
+  (by size and kind: the file, our link, the picture on an email only since Quo sends no picture messages; a plan set always a link; a file from this
   computer into Team only first).
 - **Edge**: `drive-link` (the app's own link to a Drive file: a signed file link or the portal
   page; forwards to the file; counts who opened it; can be cut off).
