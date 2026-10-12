@@ -664,6 +664,10 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.109, 2026-10-11**: the customer's pay application step is named *Pay application*, not *Pay app sent · certified ·
+  paid*, which wrapped the box to three lines beside its day and its tag (the owner, 2026-10-11); the three stages are
+  the round's own words instead, *Pay app 3 · paid*, *Pay app 4 · with the architect*, and change orders say *signed*.
+  A box's day and tag may drop under a long name rather than squeeze it.
 - **v1.108, 2026-10-11**: Everyone by step is `by-step-mockups.html` A, one row per step with the people as chips that
   wrap, each the whole company, the job and the day, late first and tinted, the lanes named, off the flow folded as the
   last row; the List tab is B, By company: one row per company with the Once lane as a track, the step on now in
