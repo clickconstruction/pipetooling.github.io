@@ -664,6 +664,15 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.113, 2026-10-11**: a paper to sign, the four the owner asked for. (1) Send it on a paper we send (the MSA, the
+  statement of work, our contract, a change order) opens the send window, the review before it goes: who it goes to,
+  the sign-by day, the email as they see it with its Read and sign link, and the paper as they see it, the standard
+  agreement unchanged; Send to sign files the copy, the thread shows it, the step waits on their signature. (2) Their
+  sign page, what the link opens: the paper, the consent sentence with How electronic signing works, a typed
+  signature and Sign; the portal's Sign button and the card's sign (demo) open it, and Sign makes the step green by
+  itself, writes the event line and puts the signed copy on Documents. (3) The reminder: Remind them on the card opens
+  the same window in reminder mode with the history in words, First sent Oct 2, today, no reminder yet, and the
+  Follow up row carries the same words. (4) The customer's contract and a change order go the same way as the MSA.
 - **v1.112, 2026-10-11**: a step box keeps its name on one line; when the day and the tag do not fit beside it they
   drop to a second line at the right, instead of the name breaking in two (the owner, 2026-10-11, the 280 px panel).
 - **v1.111, 2026-10-11**: the panel's title is the flow's own name, *Customer flow*, *Trade partner flow*, *Architect
