@@ -821,6 +821,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.171, 2026-10-12**: every trade row on Money → Bill day carries *See their page* under the name, with the
+  globe, opening that trade's portal window (the owner, 2026-10-12).
 - **v1.170, 2026-10-12**: the draws bar's legend as four columns in the bar's order, the swatch and the count on
   top and the state with its detail under (`bill-day-legend-mockups.html` A; B's stress set in
   `bill-day-legend-b-stress.html` stays as the record of why not B: a thin segment has no room for its words). A
