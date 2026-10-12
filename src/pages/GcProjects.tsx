@@ -118,6 +118,7 @@ import { useClauseNeeds } from '../hooks/useClauseNeeds'
 import type { ClauseNeedRow } from '../lib/contracts/approval'
 import { useThreadWindow } from '../components/gc/messages/useThreadWindow'
 import { supabaseFollowUpIo } from '../lib/followUp/followUpIo'
+import { followUpTeamOf } from '../lib/followUp/team'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
 import { GcTradeSow, type SowWrites } from '../components/gc/GcTradeSow'
@@ -698,7 +699,8 @@ export default function GcProjects() {
       live = false
     }
   }, [role])
-  const followUpTeam = useMemo(() => (loaded?.team ?? []).map((t) => ({ id: t.id, name: t.name, role: t.role })), [loaded?.team])
+  // Who a conversation can be handed to: the office team, never a superintendent, who cannot open Follow up.
+  const followUpTeam = useMemo(() => followUpTeamOf((loaded?.team ?? []).map((t) => ({ id: t.id, name: t.name, role: t.role }))), [loaded?.team])
   // A profile with no name still reads its own rows as *You have this*.
   const followUpMe = useMemo(() => ({ id: user?.id ?? '', name: profileName || 'You', role: role ?? '' }), [user?.id, profileName, role])
   // A person's thread at a line (`?thread=<contactId>&at=<messageId>`, Messages cut 1's link): Back closes it.
