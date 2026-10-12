@@ -770,6 +770,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.142, 2026-10-11**: the quick replies strip draws each group as one row: the title with a colon at the left, the
+  lines after it in a row that scrolls sideways past the title (the owner, 2026-10-11).
 - **v1.141b, 2026-10-11**: `BUILD_PLAN.md`, the build plan for everything in the prototype (the owner: the edits are
   becoming cosmetic, the basis is right): what is reused from main, the tables, ten cuts in order with their kernels,
   SQL, edge functions and screens, the decisions still the owner's, what is left out, and what done means.
