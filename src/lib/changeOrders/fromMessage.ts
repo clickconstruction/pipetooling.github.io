@@ -5,9 +5,10 @@
  * tie, the customer contact who signs, the message kept on the order. Saved, the message carries a *became CO 2* chip
  * and the order a line back to the message; sent, it keeps a record as our contract's send does.
  *
- * Pure. The draft is the form's `ChangeOrderDraft` (`gc/changeOrderRows.ts`), so `gc_draft_change_order` numbers and
- * checks it as any other; the message and the contact are the least of cluster 1's shapes this reads. The send record
- * is `gc_owner_contract_sends`'s columns with the change order in place of the price by line.
+ * Pure. The draft is the form's `ChangeOrderDraft` (`gc/changeOrderRows.ts`). `gc_draft_change_order_from_message`
+ * numbers it under the job's lock and refuses it in `gc_draft_change_order`'s words; the message and the contact are
+ * the least of cluster 1's shapes this reads. The send record is `gc_owner_contract_sends`'s columns with the change
+ * order in place of the price by line.
  */
 import type { UserRole } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly } from '../../utils/dateUtils'
@@ -65,15 +66,15 @@ export interface ChangeOrderFromMessage {
   projectId: string
   jobName: string
   /**
-   * The form's starting words: the message's first line as the description, the customer's ask as the reason. The
-   * office types the cost and the price before Save the draft, as on any change order.
+   * The form's starting words: the message's first line as the description, the customer's ask as the reason. Its
+   * cost and price may stay 0: the money team prices the draft before it goes.
    */
   draft: ChangeOrderDraft
   /** The customer contact who signs it. */
   signer: { contactId: string; name: string }
   /** The message it came from, kept on the order. */
   sourceMessageId: string
-  /** The number it should take; `gc_draft_change_order` gives the real one under a lock on the job. */
+  /** The number it should take; `gc_draft_change_order_from_message` gives the real one under a lock on the job. */
   nextNumber: number
 }
 

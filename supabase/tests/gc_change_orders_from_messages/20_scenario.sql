@@ -45,8 +45,8 @@ INSERT INTO public.gc_trade_packages (id, project_id, trade, position) VALUES
   ('00000000-0000-0000-0000-00000000c0b1', '00000000-0000-0000-0000-00000000c0a1', 'Plumbing', 0);
 INSERT INTO public.gc_change_orders (project_id, number, description, reason, cost, price, status, sent_on, answered_on, answered_how, days) VALUES
   ('00000000-0000-0000-0000-00000000c0a1', 1, 'Exam 2 cabinets', 'owner', 5200, 6300, 'signed', public.app_today() - 6, public.app_today() - 4, 'office', 0);
-INSERT INTO public.gc_companies (id, name, contact_name, phone, email) VALUES
-  ('00000000-0000-0000-0000-00000000c0e9', 'Cofm Plumbing', 'Greg Paulk', '(210) 555-0113', 'greg@cofm.example');
+INSERT INTO public.gc_companies (id, name, trades, contact_name, phone, email) VALUES
+  ('00000000-0000-0000-0000-00000000c0e9', 'Cofm Plumbing', ARRAY['Plumbing'], 'Greg Paulk', '(210) 555-0113', 'greg@cofm.example');
 
 -- Priya, the customer's contact, and Greg, the trade partner's; their messages, as cut 5's sync will make them. Two
 -- more on the customer, for the fold at the end.
