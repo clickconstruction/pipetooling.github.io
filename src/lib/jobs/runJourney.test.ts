@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { runEnvelopeProblems, runEnvelopeSigned, runEnvelopeStage, runLaneOf, runStageLabels } from './runEnvelopeStage'
+import { runEnvelopeChip, runEnvelopeProblems, runEnvelopeSigned, runEnvelopeStage, runLaneOf, runStageLabels } from './runEnvelopeStage'
 import { runJourney } from './runJourney'
 import { runFootAction } from './runFootAction'
 import { runChecklistRows, runChecklistWords } from './runChecklist'
@@ -183,5 +183,25 @@ describe('the checklist, live (Run-1)', () => {
     expect(runChecklistWords(rows.map(() => ({ done: true })))).toBe('Every envelope has its number')
     expect(runChecklistWords([{ done: true }])).toBe('The envelope has its number')
     expect(runChecklistWords([])).toBe('')
+  })
+})
+
+describe('the one chip on a card (Run-3)', () => {
+  const env = (over: Partial<RunEnvelope> = {}) => envelope(1, 'owner', [notice('a', '650')], over)
+  it('says what state the envelope is in and what moves it, in order: waits, prints, owes, records', () => {
+    const waits = runEnvelopeStage(envelope(2, 'original_contractor', [notice('b', '712', { signature: null })]), { printed: false })
+    expect(runEnvelopeChip(waits, { tracking: '', method: 'certified_mail' }, { leaderName: 'Robert' })).toEqual({ tone: 'amber', words: 'Waiting on Robert’s signature', next: 'He signs from his phone, or draws it here with Leader here, sign ▸.' })
+    const n = notice('a', '650'); n.recipients[0] = { ...n.recipients[0]!, address: '' }
+    const noAddress = runEnvelopeStage(envelope(1, 'owner', [n], { address: '' }), { printed: false })
+    expect(runEnvelopeChip(noAddress, { tracking: '', method: 'certified_mail' })).toEqual({ tone: 'amber', words: 'Held · no mailing address', next: null })
+    expect(runEnvelopeChip(runEnvelopeStage(env(), { printed: false }), { tracking: '', method: 'certified_mail' })).toEqual({ tone: 'blue', words: 'Prints here', next: 'Next: print, then type the number from the slip' })
+    expect(runEnvelopeChip(runEnvelopeStage(env({ method: 'hand' as RunSendMethod }), { printed: false }), { tracking: '', method: 'hand' }).next).toBe('Next: print, then type who signed for it')
+    expect(runEnvelopeChip(runEnvelopeStage(env(), { printed: true }), { tracking: '', method: 'certified_mail' })).toMatchObject({ tone: 'amber', words: 'Printed · number owed' })
+    // A hand delivery counts as mailed once it prints (recipientMailed, v2.4119), so it is ready to record with or without a name.
+    expect(runEnvelopeChip(runEnvelopeStage(env({ method: 'hand' as RunSendMethod }), { printed: true }), { tracking: '', method: 'hand' }).words).toBe('Ready to record')
+    const numbered = env({ tracking: '9407 1118 9876 5432 1001' })
+    expect(runEnvelopeChip(runEnvelopeStage(numbered, { printed: true }), numbered)).toEqual({ tone: 'green', words: 'Ready to record · 9407 1118 9876 5432 1001', next: null })
+    expect(runEnvelopeChip(runEnvelopeStage(numbered, { printed: true, recorded: true }), numbered).words).toBe('Recorded')
+    expect(runEnvelopeChip(runEnvelopeStage(env({ method: 'email' as RunSendMethod }), { printed: false }), { tracking: '', method: 'email' })).toEqual({ tone: 'blue', words: 'Emails when the run records', next: null })
   })
 })

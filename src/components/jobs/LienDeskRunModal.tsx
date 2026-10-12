@@ -29,7 +29,8 @@ import { lienNoticeSignatureAfterSigning } from '../../lib/jobs/lienNoticeSignat
 import { LienNoticeSignLine, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 import LienPenSignaturePane, { type PenPaneRecorded } from './LienPenSignaturePane'
 import LienRunJourney from './LienRunJourney'
-import { runEnvelopeStage } from '../../lib/jobs/runEnvelopeStage'
+import LienRunEnvelopeGlyph from './LienRunEnvelopeGlyph'
+import { runEnvelopeChip, runEnvelopeStage, type RunEnvelopeStageState } from '../../lib/jobs/runEnvelopeStage'
 import { runJourney } from '../../lib/jobs/runJourney'
 
 /**
@@ -249,12 +250,14 @@ export default function LienDeskRunModal({
   const [printedCopies, setPrintedCopies] = useState<ReadonlySet<string>>(() => new Set())
   const partsIds = (n: CombinedRunNotice) => partsOf(n) ?? [{ itemId: n.itemId, jobId: n.jobId }]
   // The journey (Run-2): each envelope's stage from the same facts the rows show — printed when the packet printed before this sitting or every copy inside printed in it.
-  const journey = useMemo(() => {
-    const states = envelopes.map((env) => runEnvelopeStage(env, { printed: printedAt != null || env.contents.every((c) => partsIds(c.notice as CombinedRunNotice).every((p) => printedCopies.has(runCopyKey(p.itemId, c.recipient.key)))) }))
-    const leaderName = notices.find((n) => n.leader?.name)?.leader?.name ?? null
-    return runJourney(states, { leaderName })
+  const leaderName = useMemo(() => notices.find((n) => n.leader?.name)?.leader?.name ?? null, [notices])
+  const stageByKey = useMemo(() => {
+    const out = new Map<string, RunEnvelopeStageState>()
+    for (const env of envelopes) out.set(env.key, runEnvelopeStage(env, { printed: printedAt != null || env.contents.every((c) => partsIds(c.notice as CombinedRunNotice).every((p) => printedCopies.has(runCopyKey(p.itemId, c.recipient.key)))) }))
+    return out
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [envelopes, printedAt, printedCopies, notices])
+  }, [envelopes, printedAt, printedCopies])
+  const journey = useMemo(() => runJourney(envelopes.map((env) => stageByKey.get(env.key)!), { leaderName }), [envelopes, stageByKey, leaderName])
   // The notices in an envelope the leader has not signed (v2.5086), by the run's own list so a combined notice's parts are found.
   const unsignedIn = (env: RunEnvelope): RunNotice[] => {
     const seen = new Set<string>()
@@ -536,29 +539,44 @@ export default function LienDeskRunModal({
               </span>
             </label>
           ) : null}
-          <table className="lienRunTable" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
-            <thead>
-              <tr>
-                {['Envelope', 'What', 'Method', 'Tracking #'].map((h) => (
-                  <th key={h} style={{ textAlign: 'left', fontSize: '0.62rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.4rem 0.5rem 0.3rem 0', borderBottom: '1px solid var(--border)' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {envelopes.map((env) => {
-                const who = `Envelope ${env.n} · ${env.label}: ${env.name || '—'}`
-                return [
-                  <tr key={env.key} className="lienRunEnvelope" data-testid={`run-envelope-${env.n}`} style={{ background: 'var(--bg-subtle)' }}>
-                    <td colSpan={2} className="lienRunWho">
-                      <div style={{ fontWeight: 600 }}>
-                        <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>Envelope {env.n} · {env.label}</span>{' '}
+          <div className="lienRunCards" data-testid="run-cards">
+            {envelopes.map((env) => {
+              const who = `Envelope ${env.n} · ${env.label}: ${env.name || '—'}`
+              const st = stageByKey.get(env.key)!
+              const chip = runEnvelopeChip(st, env, { held: heldWhy.get(env.key) ?? null, leaderName })
+              const tone = st.waiting || heldWhy.has(env.key) ? 'waiting' : st.glyph !== 'open' ? 'sealed' : 'open'
+              return (
+                <div key={env.key} className="lienRunCard" data-testid={`run-envelope-${env.n}`} data-tone={tone}>
+                  <LienRunEnvelopeGlyph glyph={st.glyph} waiting={tone === 'waiting'} />
+                  <div style={{ minWidth: 0 }}>
+                      <div className="lienRunCardWho">
+                        <span className="lienRunCardN">Envelope {env.n} · {env.label}</span>{' '}
                         {env.name || <span style={{ color: 'var(--text-red-600)' }}>— {env.label.toLowerCase()} missing</span>}
                       </div>
+                      <div className="lienRunCardLine">
+                        {env.address || (env.name ? 'no mailing address' : '')}{env.email ? ` · ${env.email}` : ''}
+                        {env.contents.length > 1 ? ` · ${env.contents.length} notices inside` : ''}
+                        {' · '}
+                        <button type="button" onClick={() => printEnvelope(env)} data-testid={`run-print-envelope-${env.n}`} title="Print every copy inside this envelope, in packet order, and file them as printed" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}>
+                          Print this envelope ›
+                        </button>
+                      </div>
                       {heldWhy.has(env.key) ? (
-                        <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem', fontWeight: 600 }} data-testid={`run-held-${env.n}`}>
+                        <div className="lienRunCardHeld" data-testid={`run-held-${env.n}`}>
                           Held · {heldWhy.get(env.key)}
                         </div>
                       ) : null}
+                      <div className="lienRunSteps" aria-label="This envelope's steps">
+                        {st.stages.map((s, i) => (
+                          <span key={s.key} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                            {i > 0 ? <span className="lienRunStepGap" aria-hidden="true" /> : null}
+                            <span className="lienRunStep" data-done={s.done ? 'yes' : 'no'} data-now={!s.done && s.key === st.current ? (tone === 'waiting' ? 'wait' : 'yes') : 'no'}>
+                              {s.label}
+                              {!s.done && s.key === st.current && s.key === 'signed' && tone === 'waiting' ? ` · waits on ${leaderName ?? 'the leader'}` : ''}
+                            </span>
+                          </span>
+                        ))}
+                      </div>
                       {heldWhy.has(env.key) && viewer && unsignedIn(env)[0]?.leader ? (
                         signOpen === env.key ? (
                           <div data-testid={`run-sign-here-${env.n}`} style={{ marginTop: '0.45rem', display: 'grid', gap: '0.4rem', maxWidth: 480 }}>
@@ -587,14 +605,6 @@ export default function LienDeskRunModal({
                           </div>
                         )
                       ) : null}
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>
-                        {env.address || (env.name ? 'no mailing address' : '')}{env.email ? ` · ${env.email}` : ''}
-                        {env.contents.length > 1 ? ` · ${env.contents.length} notices inside` : ''}
-                        {' · '}
-                        <button type="button" onClick={() => printEnvelope(env)} data-testid={`run-print-envelope-${env.n}`} title="Print every copy inside this envelope, in packet order, and file them as printed" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-link)', font: 'inherit', fontSize: '0.72rem', fontWeight: 600 }}>
-                          Print this envelope ›
-                        </button>
-                      </div>
                       {(() => {
                         const offer = envelopeCourtesy(env)
                         return offer ? (
@@ -620,45 +630,19 @@ export default function LienDeskRunModal({
                           </div>
                         ) : null
                       })()}
-                    </td>
-                    <td className="lienRunMethod" data-label="Method">
-                      <select value={env.method} onChange={(ev) => setEnvelope(env, { method: ev.target.value as RunSendMethod })} aria-label={`${who} — method`} className="lienRunSelect" style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>
-                        {RUN_SEND_METHODS.map((m) => (
-                          <option key={m.key} value={m.key} disabled={m.key === 'email' && !env.email}>{m.label}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="lienRunTracking" data-label="Tracking #">
-                      {env.method === 'email' ? (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>sent on record — the email id is the tracking{env.contents.length > 1 ? ', one email per notice' : ''}</span>
-                      ) : (
-                        <>
-                        <input value={env.tracking} onChange={(ev) => setEnvelope(env, { tracking: ev.target.value })} placeholder={env.method === 'hand' ? 'who signed for it' : '9407 1118 …'} aria-label={`${who} — tracking`} style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
-                        {(() => {
-                          const shape = trackingShape(env.method, env.tracking)
-                          return env.tracking.trim() && shape.hint ? (
-                            <div data-testid={`run-tracking-shape-${env.n}`} style={{ fontSize: '0.7rem', color: shape.ok ? 'var(--text-green-700)' : 'var(--text-red-600)', marginTop: 2 }}>
-                              {shape.ok ? '✓ ' : ''}
-                              {shape.hint}
-                            </div>
-                          ) : null
-                        })()}
-                        </>
-                      )}
-                    </td>
-                  </tr>,
-                  ...env.contents.map(({ notice: n, recipient: r, noticeIndex: ni }) => {
+                      <div className="lienRunCopies">
+                      {env.contents.map(({ notice: n, recipient: r, noticeIndex: ni }) => {
                     const mine = problems[ni]!.filter((p) => p.startsWith(`${r.label}:`))
                     return (
-                      <tr key={`${n.itemId}-${r.key}`} className="lienRunCopy" data-testid={`run-row-${n.jobId}-${r.key}`}>
-                        <td className="lienRunJob" style={{ fontWeight: 600 }}>
+                      <div key={`${n.itemId}-${r.key}`} className="lienRunCopyRow" data-testid={`run-row-${n.jobId}-${r.key}`}>
+                        <div className="lienRunJob">
                           {n.label}
                           {partsOf(n as CombinedRunNotice) ? <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.72rem' }} data-testid="run-combined-parts">{partsOf(n as CombinedRunNotice)!.map((p) => `${p.jobNumber} ${formatUsdNoCents(p.amount)}`).join(' · ')}</div> : null}
                           <div style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: '0.75rem' }}>{formatUsdNoCents(n.amount)}{r.key === 'owner' ? (n.coverLetter ? ' · cover letter' : n.coverNote ? ' · cover note' : '') : ''}</div>
                           {mine.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.72rem' }}>{mine.join(' · ')}</div> : null}
-                        </td>
-                        <td className="lienRunMonths" style={{ color: 'var(--text-muted)' }}>{n.kind === 'retainage_53_057' ? '§ 53.057 retainage' : describeNoticeMonths(n.months)}</td>
-                        <td colSpan={2} className="lienRunFor" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                        </div>
+                        <div className="lienRunMonths">{n.kind === 'retainage_53_057' ? '§ 53.057 retainage' : describeNoticeMonths(n.months)}</div>
+                        <div className="lienRunFor">
                           Copy for: {r.label.toLowerCase()}
                           {(() => {
                             const at = previewEntries.findIndex((e) => e.key === `${n.itemId}-${r.key}`)
@@ -675,14 +659,41 @@ export default function LienDeskRunModal({
                               </>
                             ) : null
                           })()}
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     )
-                  }),
-                ]
-              })}
-            </tbody>
-          </table>
+                      })}
+                      </div>
+                  </div>
+                  <div className="lienRunCardSide">
+                      <select value={env.method} onChange={(ev) => setEnvelope(env, { method: ev.target.value as RunSendMethod })} aria-label={`${who} — method`} className="lienRunSelect" style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}>
+                        {RUN_SEND_METHODS.map((m) => (
+                          <option key={m.key} value={m.key} disabled={m.key === 'email' && !env.email}>{m.label}</option>
+                        ))}
+                      </select>
+                      <span className="lienRunChip" data-tone={chip.tone} data-testid={`run-chip-${env.n}`}>{chip.words}</span>
+                      {env.method === 'email' ? (
+                        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>sent on record — the email id is the tracking{env.contents.length > 1 ? ', one email per notice' : ''}</span>
+                      ) : (
+                        <>
+                        <input value={env.tracking} onChange={(ev) => setEnvelope(env, { tracking: ev.target.value })} placeholder={env.method === 'hand' ? 'who signed for it' : '9407 1118 …'} aria-label={`${who} — tracking`} className="lienRunTracking" style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
+                        {(() => {
+                          const shape = trackingShape(env.method, env.tracking)
+                          return env.tracking.trim() && shape.hint ? (
+                            <div data-testid={`run-tracking-shape-${env.n}`} style={{ fontSize: '0.7rem', color: shape.ok ? 'var(--text-green-700)' : 'var(--text-red-600)', marginTop: 2 }}>
+                              {shape.ok ? '✓ ' : ''}
+                              {shape.hint}
+                            </div>
+                          ) : null
+                        })()}
+                        </>
+                      )}
+                      {chip.next ? <span className="lienRunCardNext">{chip.next}</span> : null}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
         <div className="lienRunFoot" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
           <div style={{ flexBasis: '100%', display: 'grid', gridTemplateColumns: 'auto minmax(160px, 2fr) minmax(120px, 1fr)', gap: '0.4rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="run-saved-copy">
