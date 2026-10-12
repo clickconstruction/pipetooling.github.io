@@ -22,6 +22,7 @@ export type FactId =
   | 'coi_current'
   | 'msa_signed'
   | 'quote_in'
+  | 'quote_declined'
   | 'tab_seen'
   | 'carried'
   | 'not_carried'
@@ -104,7 +105,7 @@ export type FlowFact = {
   paper?: PaperId
   /** The paper is one we send (Send it, Remind them), not one they hand us (Ask for it). */
   ours?: true
-  /** A way out of a fork: when it is true the job's lane ends there (we did not carry it, they declined). */
+  /** A way out: when it finishes the step the job's lane ends there (they declined to quote, we did not carry it, they declined). */
   endsLane?: true
 }
 
@@ -175,6 +176,17 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     kept: 'yes',
     gap: null,
     paper: 'quote',
+  },
+  {
+    id: 'quote_declined',
+    text: 'they declined to quote',
+    small: 'their no on the ask, pressed in their portal or taken by the office',
+    group: 'Their portal',
+    reads: "gc_invites.status = 'declined', declined_on",
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    endsLane: true,
   },
   {
     id: 'tab_seen',

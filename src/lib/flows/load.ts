@@ -26,8 +26,8 @@ export type CompanyRow = { id: string; portal_opened_on: string | null }
 export type PortalLinkRow = { company_id: string; revoked_at: string | null; first_opened_at: string | null }
 /** `gc_trade_messages`: the welcome to their portal is `kind` 'invite'. */
 export type TradeMessageRow = { company_id: string; kind: string; sent_on: string; sent_by: string | null }
-/** `gc_invites`: one ask on one trade package, with cut 4's lost mark. */
-export type InviteRow = { id: string; company_id: string; package_id: string; invited_on: string; status: string; lost_on: string | null }
+/** `gc_invites`: one ask on one trade package; `declined_on` is their no, with cut 4's lost mark. */
+export type InviteRow = { id: string; company_id: string; package_id: string; invited_on: string; status: string; declined_on: string | null; lost_on: string | null }
 /** `gc_trade_packages`: a trade on a job, the quote carried in our number and the one awarded. */
 export type PackageRow = {
   id: string
@@ -205,19 +205,27 @@ const invitesOn = (rows: FlowRows, projectId: string) =>
   (rows.invites ?? []).filter((i) => projectOfPackage(rows, i.package_id) === projectId)
 
 /**
- * The ask's rounds on one job: one per ask (`gc_invites`), the quote in once one is submitted, else waiting on them;
- * due their promised day (the newest `promised_by` on the ask), else the bid's day. A job the office put them on with
- * no ask yet has one round not opened, due the bid's day. An ask they declined drops out: no fact says it ended.
+ * The ask's rounds on one job: one per ask (`gc_invites`), the quote in once one is submitted, their no once they
+ * declined (`quote_declined`, which ends the job's lane when it finished every ask), else waiting on them; due their
+ * promised day (the newest `promised_by` on the ask), else the bid's day. A job the office put them on with no ask yet
+ * has one round not opened, due the bid's day.
  */
 export function askRounds(rows: FlowRows, projectId: string): RoundStamp[] {
   const project = (rows.projects ?? []).find((p) => p.project_id === projectId)
-  const asks = invitesOn(rows, projectId).filter((i) => i.status !== 'declined')
+  const asks = invitesOn(rows, projectId)
   const rounds: RoundStamp[] = asks.map((i) => {
     const quote = newest((rows.quotes ?? []).filter((q) => q.invite_id === i.id), (q) => q.submitted_on)
     const promise = newest((rows.askLines ?? []).filter((l) => l.invite_id === i.id && l.promised_by), (l) => `${l.contacted_on} ${l.created_at}`)
     const trade = (rows.packages ?? []).find((p) => p.id === i.package_id)?.trade ?? ''
-    const quoteIn = quote ? stamp('quote_in', 'ok', quote.submitted_on) : i.status === 'bid' ? stamp('quote_in', 'ok', null) : stamp('quote_in', 'wait', i.invited_on)
-    return { key: i.id, name: trade, opened: i.invited_on, due: promise?.promised_by ?? project?.bid_due ?? null, stamps: [quoteIn] }
+    const answer =
+      i.status === 'declined'
+        ? stamp('quote_declined', 'ok', i.declined_on)
+        : quote
+          ? stamp('quote_in', 'ok', quote.submitted_on)
+          : i.status === 'bid'
+            ? stamp('quote_in', 'ok', null)
+            : stamp('quote_in', 'wait', i.invited_on)
+    return { key: i.id, name: trade, opened: i.invited_on, due: promise?.promised_by ?? project?.bid_due ?? null, stamps: [answer] }
   })
   const tied = (rows.contactJobs ?? []).some((j) => j.project_id === projectId)
   if (!rounds.length && tied && !(rows.invites ?? []).some((i) => projectOfPackage(rows, i.package_id) === projectId)) {

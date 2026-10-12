@@ -166,6 +166,21 @@ describe('readFlow: the rules the prototype did not have', () => {
     expect(stepReading(r, 'certify', 'boerne')).toMatchObject({ state: 'now', since: '2026-09-28' })
   })
 
+  it('their no to every ask ends the job’s lane: Tom declines Pad B', () => {
+    const tom = flowFixture('tom').stamps
+    const padb = { jobId: 'padb', stamps: [], dues: {}, rounds: { ask: [{ key: 'inv-tom-padb', name: 'Structural steel', opened: '2026-09-29', due: '2026-10-22', stamps: [{ fact: 'quote_declined' as const, mark: 'ok' as const, at: '2026-10-01', by: null, until: null }] }] } }
+    const r = readFlow(SEED_FLOWS.trade, { ...tom, jobIds: ['boerne', 'padb'], jobs: { ...tom.jobs, padb } }, NOW)
+    expect(r.lanes.find((l) => l.jobId === 'padb')).toMatchObject({ headStepId: null, ended: 'quote_declined' })
+    expect(drawn(r)[2]).toBe('per_job@padb: ask:done compare:later sow:later draws:later closeout:later')
+    expect(stepReading(r, 'ask', 'padb')?.rounds.map((x) => `${x.name}:${x.state}`)).toEqual(['Structural steel:done'])
+    // Boerne and his papers are untouched.
+    expect([r.nowStepId, stepReading(r, 'ask', 'boerne')?.state]).toEqual(['papers', 'now'])
+    // A no on one ask and a quote on another leaves the lane open.
+    const both = { ...padb, rounds: { ask: [...padb.rounds.ask, { key: 'inv-tom-padb-2', name: 'Misc. metals', opened: '2026-09-29', due: null, stamps: [{ fact: 'quote_in' as const, mark: 'ok' as const, at: '2026-10-01', by: null, until: null }] }] } }
+    const open = readFlow(SEED_FLOWS.trade, { ...tom, jobIds: ['boerne', 'padb'], jobs: { ...tom.jobs, padb: both } }, NOW)
+    expect(open.lanes.find((l) => l.jobId === 'padb')).toMatchObject({ headStepId: 'compare', ended: null })
+  })
+
   it('a fork’s way out ends the job’s lane: a quote we did not carry', () => {
     const bill = flowFixture('bill').stamps
     const boerne = bill.jobs.boerne

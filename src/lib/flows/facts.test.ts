@@ -7,7 +7,7 @@ describe('flows/facts', () => {
   it('lists each fact once, in a known group', () => {
     const ids = FLOW_FACTS.map((f) => f.id)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(ids).toHaveLength(30)
+    expect(ids).toHaveLength(31)
     for (const f of FLOW_FACTS) expect(FACT_GROUPS).toContain(f.group)
   })
 
@@ -23,8 +23,8 @@ describe('flows/facts', () => {
     expect(factById('warranty_over')?.gap).toBeNull()
   })
 
-  it('marks the two ways out of a fork as ending the lane', () => {
-    expect(FLOW_FACTS.filter((f) => f.endsLane).map((f) => f.id)).toEqual(['not_carried', 'declined'])
+  it('marks the ways out that end a job’s lane: their no to an ask, and the two forks’', () => {
+    expect(FLOW_FACTS.filter((f) => f.endsLane).map((f) => f.id)).toEqual(['quote_declined', 'not_carried', 'declined'])
   })
 
   it('has a paper entry for every paper a fact reads, and a fact for every paper', () => {

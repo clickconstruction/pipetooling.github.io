@@ -427,7 +427,12 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
     if (ended) return 'later'
     if (head == null && started) {
       if (s.loop) {
-        if (loopPasses(p, i)) return p.open ? 'now' : 'done'
+        if (loopPasses(p, i)) {
+          // Every round finished by a way out (they declined to quote each ask) ends the lane, as a fork's does.
+          const outs = p.rounds.map((r) => r.facts.find((x) => x.mark === 'ok' && x.fact.endsLane)?.fact.id ?? null)
+          if (!p.open && outs.length && outs.every((x) => x)) ended = outs[0] ?? null
+          return p.open ? 'now' : 'done'
+        }
         head = i
         return 'now'
       }
@@ -494,7 +499,7 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
  * step that is done, lapsed, skipped or has no facts yet, and stops at the first that is none of
  * these: that step is on now. After it, one step is next and the rest are later, except a step
  * whose facts already read true (done) and a loop with a round open (now). An aside step reads from
- * its rounds and is never on the chain. A fork's way out ends its lane.
+ * its rounds and is never on the chain. A way out ends its lane: a fork's, or one that finished every round of a loop.
  */
 export function readFlow(flow: FlowDef, stamps: FlowStamps, now: Date): FlowReading {
   const lanes: LaneReading[] = []

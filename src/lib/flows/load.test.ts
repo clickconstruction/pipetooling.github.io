@@ -87,8 +87,8 @@ const GREG: FlowRows = {
     { id: 'pk-stone-site', project_id: 'stoneoak', trade: 'Sitework', carried_invite_id: 'inv-greg-stone', awarded_invite_id: 'inv-greg-stone', awarded_on: '2026-09-14', awarded_by: 'u-robert' },
   ],
   invites: [
-    { id: 'inv-greg-boerne', company_id: 'hillside', package_id: 'pk-boerne-site', invited_on: '2026-09-22', status: 'opened', lost_on: null },
-    { id: 'inv-greg-stone', company_id: 'hillside', package_id: 'pk-stone-site', invited_on: '2026-09-08', status: 'bid', lost_on: null },
+    { id: 'inv-greg-boerne', company_id: 'hillside', package_id: 'pk-boerne-site', invited_on: '2026-09-22', status: 'opened', declined_on: null, lost_on: null },
+    { id: 'inv-greg-stone', company_id: 'hillside', package_id: 'pk-stone-site', invited_on: '2026-09-08', status: 'bid', declined_on: null, lost_on: null },
   ],
   quotes: [{ invite_id: 'inv-greg-stone', submitted_on: '2026-09-11', created_at: '2026-09-11T20:00:00Z' }],
   askLines: [
@@ -215,12 +215,33 @@ describe('flows/load: one family at a time', () => {
     expect(portalStamps({ contact: contact('x', 'trade') })).toEqual([])
   })
 
-  it('reads an ask: their promise over the bid’s day, a declined one dropped, a tied job not asked yet', () => {
+  it('reads an ask: their promise over the bid’s day, their no, a tied job not asked yet', () => {
     const r = askRounds(GREG, 'boerne')
     expect(r.map((x) => `${x.name}:${x.opened}:${x.due}:${x.stamps.map((s) => s.mark).join()}`)).toEqual(['Sitework:2026-09-22:2026-09-30:wait'])
     expect(askRounds(GREG, 'padb')).toEqual([{ key: 'planned:padb', name: 'Not asked yet', opened: null, due: '2026-10-22', stamps: [] }])
-    const declined: FlowRows = { ...GREG, invites: GREG.invites?.map((i) => (i.id === 'inv-greg-boerne' ? { ...i, status: 'declined' } : i)) }
-    expect(askRounds(declined, 'boerne')).toEqual([])
+    const declined: FlowRows = { ...GREG, invites: GREG.invites?.map((i) => (i.id === 'inv-greg-boerne' ? { ...i, status: 'declined', declined_on: '2026-09-25' } : i)) }
+    expect(askRounds(declined, 'boerne')[0]?.stamps).toEqual([{ fact: 'quote_declined', mark: 'ok', at: '2026-09-25', by: null, until: null }])
+  })
+
+  it('Tom declines Pad B in his portal: the ask is done and the job’s lane ends', () => {
+    const tom: FlowRows = {
+      contact: contact('tom', 'trade'),
+      contactJobs: [{ project_id: 'boerne', is_default: true }],
+      company: { id: 'bexar', portal_opened_on: '2026-09-28' },
+      tradeMessages: [{ company_id: 'bexar', kind: 'invite', sent_on: '2026-09-25', sent_by: 'u-rosa' }],
+      papers: [paper({ company_id: 'bexar', doc_type: 'w9', status: 'signed', signed_at: '2026-09-29' })],
+      projects: [project({ project_id: 'boerne', bid_due: '2026-10-08' }), project({ project_id: 'padb', bid_due: '2026-10-22', created_at: '2026-09-01T15:00:00Z' })],
+      packages: [{ id: 'pk-padb-steel', project_id: 'padb', trade: 'Structural steel', carried_invite_id: null, awarded_invite_id: null, awarded_on: null, awarded_by: null }],
+      invites: [{ id: 'inv-tom-padb', company_id: 'bexar', package_id: 'pk-padb-steel', invited_on: '2026-09-29', status: 'declined', declined_on: '2026-10-01', lost_on: null }],
+    }
+    const r = fromRows(tom)
+    expect(r.lanes.find((l) => l.jobId === 'padb')).toMatchObject({ headStepId: null, ended: 'quote_declined' })
+    expect(shape(r).lanes['per_job@padb']).toBe(
+      'head null · ask:done -→- - - -, compare:later -→- - - -, sow:later -→- - - -, draws:later -→- - - -, closeout:later -→- - - -',
+    )
+    // His Boerne ask, not sent yet, and his papers read as his fixture does.
+    expect(shape(r).lanes['per_job@boerne']).toBe(shape(fromFixture('tom')).lanes['per_job@boerne'])
+    expect(shape(r).lanes['once@-']).toBe(shape(fromFixture('tom')).lanes['once@-'])
   })
 
   it('reads carried and not carried: ours, another’s, or a lost mark', () => {
