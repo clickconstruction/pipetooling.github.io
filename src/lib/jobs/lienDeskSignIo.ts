@@ -1,5 +1,6 @@
 import { LIEN_RELEASE_DOCUMENTS_BUCKET } from './lienReleaseDocuments'
-import { lienFieldsHash } from './lienNoticeSignature'
+import { lienFieldsHash, type LienPenWitnessHow } from './lienNoticeSignature'
+import { penPageFileProblem, penPagePath, penWitnessHowWithPage } from './lienPenRecord'
 import { validateReportSignatureDataUrlForSubmit } from '../reportSignatureField'
 import { trimSignatureInk } from '../signatureInkTrim'
 import { supabase } from '../supabase'
@@ -82,4 +83,68 @@ export async function signLienDeskItem(args: SignLienDeskItemArgs): Promise<Sign
     return { ok: false, message: e instanceof Error && e.message ? e.message : 'Could not record the signature — nothing was saved. Try again.' }
   }
   return { ok: true, signedAtIso }
+}
+
+/**
+ * Recording a pen signature (the pen train, PR 2): the leader signed the paper as printed with a
+ * pen, and the signed-in office user writes it down — who signed, the day, how they know, and the
+ * signed page when they have it (a photo or scan, stored best-effort beside the drawn signatures;
+ * the row is the record either way). The guard (migration 20261013100000) holds the recorder to
+ * the signed-in user and asks for the witness word. The draft's hash binds the record to the paper
+ * as printed, so an edit after it reads as unsigned, like the electronic ones.
+ */
+export type RecordLienPenSignatureArgs = {
+  itemId: string
+  /** The row's `fields` as saved; its hash binds the record to the paper as printed. */
+  fields: unknown
+  /** The leader whose signature is on the paper. */
+  signer: { userId: string | null; printedName: string }
+  /** The signed-in office user writing it down. */
+  recordedBy: { userId: string | null; name: string | null }
+  how: LienPenWitnessHow
+  /** The instant the row keeps for the signing day (`penSignedAtIso`). */
+  signedAtIso: string
+  /** The signed page, when the office has it. */
+  page: { blob: Blob; type: string } | null
+}
+
+export type RecordLienPenSignatureResult = { ok: true; signedAtIso: string; how: LienPenWitnessHow; pagePath: string | null } | { ok: false; message: string }
+
+export async function recordLienPenSignature(args: RecordLienPenSignatureArgs): Promise<RecordLienPenSignatureResult> {
+  const { itemId, fields, signer, recordedBy, signedAtIso } = args
+  const printedName = signer.printedName.trim()
+  if (!printedName) return { ok: false, message: 'There is no leader to name. Set the job’s master first.' }
+  if (!signer.userId) return { ok: false, message: 'The leader has no account to name. Set the job’s master first.' }
+  let pagePath: string | null = null
+  if (args.page) {
+    const problem = penPageFileProblem({ type: args.page.type, size: args.page.blob.size })
+    if (problem) return { ok: false, message: problem }
+    try {
+      const path = penPagePath(itemId, crypto.randomUUID(), args.page.type)
+      const { error } = await supabase.storage.from(LIEN_RELEASE_DOCUMENTS_BUCKET).upload(path, args.page.blob, { contentType: args.page.type })
+      if (!error) pagePath = path
+    } catch {
+      /* the row below is the record of it; the page is the proof when it lands */
+    }
+  }
+  const how = penWitnessHowWithPage(args.how, pagePath != null)
+  const fieldsHash = lienFieldsHash(JSON.parse(JSON.stringify(fields ?? null)))
+  const patch = {
+    signed_at: signedAtIso,
+    signed_by: signer.userId,
+    signed_on_device_of: null,
+    signer_printed_name: printedName,
+    signer_signature_mode: 'pen',
+    signer_signature_storage_path: pagePath,
+    signed_fields_hash: fieldsHash,
+    signed_recorded_by: recordedBy.userId,
+    signed_witness_how: how,
+    signed_leader_confirmed_at: null,
+  }
+  try {
+    await withSupabaseRetry(() => supabase.from('job_lien_desk_items').update(patch as never).eq('id', itemId), 'lien desk: record a pen signature')
+  } catch (e) {
+    return { ok: false, message: e instanceof Error && e.message ? e.message : 'Could not record the pen signature — nothing was saved. Try again.' }
+  }
+  return { ok: true, signedAtIso, how, pagePath }
 }

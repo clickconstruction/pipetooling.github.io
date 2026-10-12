@@ -114,6 +114,7 @@ import { lienFindMatch, lienFindNothingWords, lienFindPileCount, lienFindSingle,
 import { ownerFromRollUnconfirmed } from '../../lib/jobs/ownerConfirm'
 import LienDeskMonths, { type LienDeskMonthCard } from './LienDeskMonths'
 import LienNoticeByHandPane from './LienNoticeByHandPane'
+import LienPenSignaturePane from './LienPenSignaturePane'
 import { buildLienMonthGrid } from '../../lib/jobs/lienMonthGrid'
 import { buildLienTimelineFromDesk, lienRetainageClockFromDesk } from '../../lib/jobs/lienTimelineDesk'
 import LienTimelineStrip from './LienTimelineStrip'
@@ -361,6 +362,8 @@ export default function LienDeskModal({
   const [wordChannel, setWordChannel] = useState<LienWordChannel>('phone')
   // Record a notice that already went out (#35 PR 2): the paper was printed here and mailed by hand.
   const [byHandOpen, setByHandOpen] = useState(false)
+  // He signed the paper ▸ (the pen train, PR 2): the office writes down the leader's pen signature on a ready, unsigned notice.
+  const [penOpen, setPenOpen] = useState(false)
   /** Counsel's sign-off ask on a sent notice (#41 PR 3). */
   const [signoffOpen, setSignoffOpen] = useState(false)
   const [signoffText, setSignoffText] = useState('')
@@ -953,7 +956,7 @@ export default function LienDeskModal({
     if (!item) return null
     const cols = signatureColumnsOf(item)
     const jobNumber = job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—'
-    return lienNoticeSignatureFromRow(cols, { jobNumber, itemId: item.id, fieldsHash: lienFieldsHash(item.fields), onDeviceName: cols.signed_on_device_of ? (leaderNameFor?.(cols.signed_on_device_of) ?? null) : null, pngDataUrl: inks.get(item.id) ?? null })
+    return lienNoticeSignatureFromRow(cols, { jobNumber, itemId: item.id, fieldsHash: lienFieldsHash(item.fields), onDeviceName: cols.signed_on_device_of ? (leaderNameFor?.(cols.signed_on_device_of) ?? null) : null, recordedByName: cols.signed_recorded_by ? (leaderNameFor?.(cols.signed_recorded_by) ?? null) : null, pngDataUrl: inks.get(item.id) ?? null })
   }, [item, job, leaderNameFor, inks])
   const paneSigned = useMemo(() => (paneSignature ? toFilingSignature(paneSignature) : null), [paneSignature])
   const docHtml = useMemo(() => filingDocHtml(buildLienNoticeBlocks(noticeFields, docExtras, { ghostOptional: !wordingLocked, signature: paneSigned }), { marks: paperMarks }), [noticeFields, docExtras, paperMarks, paneSigned, wordingLocked])
@@ -2625,6 +2628,23 @@ export default function LienDeskModal({
     )
 
   // Record a notice that already went out (#35 PR 2) — the desk passes its own claim and months; the pane writes one filing per covered job and the desk re-reads.
+  // The pen pane (the pen train, PR 2) sits where the footer sits, like the by-hand pane: the one notice, its leader, the print day.
+  const penPane =
+    selected && penOpen && item ? (
+      <LienPenSignaturePane
+        leader={{ userId: job?.master_user_id ?? null, name: leaderName }}
+        recorder={{ userId: authUserId, name: authName }}
+        notices={[{ itemId: item.id, jobNumber: job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) || '—' : '—', label: jobLabel(job, selected.jobId), amount: claimed.claim, fields: item.fields }]}
+        printedYmd={(item as { printed_at?: string | null }).printed_at ? calendarYmdInAppTzFromIso((item as { printed_at?: string | null }).printed_at as string) : null}
+        todayYmd={todayYmd}
+        onClose={() => setPenOpen(false)}
+        onRecorded={(_recorded, words) => {
+          setPenOpen(false)
+          showToast(words)
+          onChanged()
+        }}
+      />
+    ) : null
   const byHandPane =
     selected && byHandOpen ? (
       <LienNoticeByHandPane
@@ -2874,7 +2894,7 @@ export default function LienDeskModal({
     } else if (state === 'ready') {
       const itemOffer = lienOfferFromItem(selected.item)
       const readySigned = selected.item ? lienChipSigned(signatureColumnsOf(selected.item), lienFieldsHash(selected.item.fields)) : null
-      footer = byHandPane ?? (
+      footer = byHandPane ?? penPane ?? (
         <>
         {leader ? offerBox(saveOffer, itemOffer != null) : null}
         {leader && readySigned === 'unsigned' ? signLine() : null}
@@ -2887,6 +2907,11 @@ export default function LienDeskModal({
           {leader ? offerSwitch() : null}
           {leader && readySigned === 'unsigned' ? (
             <button type="button" onClick={signOnly} disabled={busy} style={btn('green', busy)} data-lien-desk-sign title="Approved on your word; your signature goes on the paper">Sign ▸</button>
+          ) : null}
+          {office && readySigned === 'unsigned' ? (
+            <button type="button" className="lienFootLink" onClick={() => setPenOpen(true)} disabled={busy} data-lien-desk-pen title="He signed the printed paper with a pen: write down who, when, how you know, and add the signed page">
+              He signed the paper ›
+            </button>
           ) : null}
           <button type="button" className="lienFootLink" onClick={() => setByHandOpen(true)} disabled={!office || busy} data-lien-desk-by-hand title="The paper was printed here and already went out by hand — record it instead of sending the run">
             Already mailed? Record it ›

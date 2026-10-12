@@ -256,6 +256,12 @@ The chip on a ready notice reads **signed** with the day. Edit a signed notice a
 
 A notice approved on your word reaches Ready to send unsigned. Open it and press {{button:green|Sign ▸}} on its footer. Your name goes on the paper the same way.
 
+### He signed it with a pen
+
+Sometimes the paper prints first and the leader signs it with a pen. The app can record that too. The office presses {{button:outline|He signed the paper ▸}} on the held envelope in the run. The same door sits on a ready notice's footer. A pane opens. It names the leader. It fills in the day the paper printed. Change the day if he signed later. Pick how you know. You watched him sign, he told you, or the signed page is in front of you. Add a photo of the signed page when you have one. The record ID in the frame's corner ties the page to the notice. Tick the notices he signed. Press {{button:blue|Record N pen signatures ▸}}. The envelope goes back into the run.
+
+The record names him as the one who signed. It names you as the one who wrote it down. A reprinted copy's frame reads **Signed by pen**. He sees the record on his phone and can confirm it. Nothing waits on that.
+
 ## A discount if they pay before the lien
 
 The owner's packet carries a pay page with one code per unpaid bill. The leader can offer a discount on each bill if it is paid in full by a day. The tick box sits in the bottom row beside the buttons when he approves a notice.
