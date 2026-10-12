@@ -114,6 +114,8 @@ import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
+import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
+import { supabaseFollowUpIo } from '../lib/followUp/followUpIo'
 import { GcAskCompanies } from '../components/gc/GcAskCompanies'
 import { GcCompareQuotes, type CompareWrites } from '../components/gc/GcCompareQuotes'
 import { GcTradeSow, type SowWrites } from '../components/gc/GcTradeSow'
@@ -139,7 +141,6 @@ import { customerBilledJobIds, customerMoneyView } from '../lib/gc/customerMoney
 import { newestContractSend } from '../lib/gc/customerContract'
 import { mintCustomerPortalLink } from '../lib/portal/mintCustomerPortalLink'
 import { benchAnchor } from '../lib/gc/tradeViews'
-import { allPeople } from '../lib/gc/projectPeople'
 import { boardFollowPeople } from '../lib/gc/schedule/counts'
 import type { FollowUpWriters } from '../lib/gc/followUpWrites'
 import { boardStateFromRows, type BoardRows } from '../lib/gc/boardRows'
@@ -276,6 +277,9 @@ const MONEY_MONDAY_IO: MoneyMondayIo = {
   preview: () => previewMoneyMonday(),
   test: () => sendMoneyMondayTest(),
 }
+
+/** Follow up's reads and presses (Messages, cut 2), one for the page. */
+const FOLLOW_UP_IO = supabaseFollowUpIo()
 
 export default function GcProjects() {
   const { user, role, profileName, loading: authLoading } = useAuth()
@@ -791,9 +795,24 @@ export default function GcProjects() {
     setDevView('partners')
     requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(benchAnchor(trade))?.scrollIntoView({ behavior: 'smooth', block: 'start' })))
   }
-  // Follow up's badge is the one count (the Board's B2b-ii-b, call E1): everyone we wait on, once a person across their
-  // jobs, as the Dashboard's Follow up line reads it from these same rows. Each board row shows its job's share.
-  const toCall = board ? allPeople(board).count : 0
+  // Follow up's badge is the one count (call E1), the Dashboard's Follow up line's too: since v2.5289 the people waiting on
+  // us, once a person (`follow_up_count`, cut 2), read on load and kept fresh by the tab while it is open. Everyone we
+  // wait on (`allPeople`, the Board's B2b-ii-b) heads the asks list on the tab instead; each board row shows its job's share.
+  const [followUpCount, setFollowUpCount] = useState(0)
+  useEffect(() => {
+    if (!canOpenGcProjects(role)) return
+    let live = true
+    void FOLLOW_UP_IO.count().then(
+      (n) => live && setFollowUpCount(n),
+      () => undefined,
+    )
+    return () => {
+      live = false
+    }
+  }, [role])
+  const followUpTeam = useMemo(() => (loaded?.team ?? []).map((t) => ({ id: t.id, name: t.name, role: t.role })), [loaded?.team])
+  // A profile with no name still reads its own rows as *You have this*.
+  const followUpMe = useMemo(() => ({ id: user?.id ?? '', name: profileName || 'You', role: role ?? '' }), [user?.id, profileName, role])
   const devPill = (view: GcView, label: string) => {
     const on = devView === view
     return (
@@ -1855,7 +1874,7 @@ export default function GcProjects() {
             <div role="group" aria-label={canSeeGcMoney(role) ? 'Project Board, Trade partners, Follow up, Messages or Money' : 'Project Board, Trade partners, Follow up or Messages'} style={{ display: 'flex', gap: '0.35rem', marginLeft: 'auto', flexWrap: 'wrap' }}>
               {devPill('board', 'Project Board')}
               {devPill('partners', 'Trade partners')}
-              {devPill('followUp', toCall > 0 ? `Follow up (${toCall})` : 'Follow up')}
+              {devPill('followUp', followUpCount > 0 ? `Follow up (${followUpCount})` : 'Follow up')}
               {devPill('messages', 'Messages')}
               {/* Money is the money team's (the Owner Billing door). */}
               {canSeeGcMoney(role) && devPill('money', 'Money')}
@@ -1917,7 +1936,24 @@ export default function GcProjects() {
                 <div style={{ fontSize: '0.875rem' }}>Loading the money…</div>
               )
             ) : (
-              <GcFollowUp state={board} writes={askWrites} onWhoElse={showTrade} onFollowUp={(partnerId, calling) => setFollowSheet({ ...(partnerId ? { partnerId } : {}), calling: calling ?? false })} />
+              <div style={{ display: 'grid', gap: '1rem' }}>
+                {/* Messages, cut 2: who is waiting on us and what we owe them, above the asks (v2.5289). */}
+                <FollowUpPanel
+                  me={followUpMe}
+                  team={followUpTeam}
+                  io={FOLLOW_UP_IO}
+                  onOpenThread={thread.openThread}
+                  say={showToast}
+                  onCount={setFollowUpCount}
+                  planQuestions={{
+                    record: recordQuestion,
+                    send: sendQuestionToArchitect,
+                    jobName: (projectId) => loaded.projects.find((p) => p.id === projectId)?.name ?? null,
+                    onAsked: () => void load(),
+                  }}
+                />
+                <GcFollowUp state={board} writes={askWrites} onWhoElse={showTrade} onFollowUp={(partnerId, calling) => setFollowSheet({ ...(partnerId ? { partnerId } : {}), calling: calling ?? false })} />
+              </div>
             )
           ) : boardProblem ? (
             <div style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>{boardProblem}</div>
