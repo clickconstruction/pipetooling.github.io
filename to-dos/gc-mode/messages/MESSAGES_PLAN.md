@@ -770,6 +770,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.148, 2026-10-11**: every file in the Attach picker has *preview*: the paper as it reads (our contract, a statement
+  of work, the agreement drawn from their own words; a plan set or a schedule as its first page), the page count and
+  size, Open in a tab, and Attach it from there (the owner, 2026-10-11).
 - **v1.147, 2026-10-11**: the people list sorts by the newest conversation only; it had put the waiting threads first,
   so a snooze or a reply made a row jump with nothing saying why (the owner, 2026-10-11). The move pill says whose
   move it is; Follow up is the queue.
