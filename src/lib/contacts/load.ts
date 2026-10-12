@@ -1,48 +1,35 @@
 /**
  * Messages, cut 1 (the spine): the contacts as the screens load them. Pure mappers from the rows `contacts`,
  * `contact_channels` and `contact_jobs` hold (migration 20261012010000_messages_spine.sql), with the records they point
- * at, to `Contact`. No client here: the hooks that fetch the rows come with the screens (wave 2). The contact rows are
- * written out until the generated types carry the tables; the records' are the app's own types already.
+ * at, to `Contact`. No client here: the hooks that fetch the rows come with the screens (wave 2). Every row is the
+ * generated types' own, picked to the columns the mappers read.
  */
 import type { Tables } from '../../types/database'
 import { jobKeyOfRow } from '../messages/load'
 import type { ChannelKind, Contact, ContactChannel, ContactKind, ContactRecord } from './kernel'
 
 /** A `contacts` row as the client reads it. */
-export interface ContactRow {
-  id: string
-  kind: string
-  customer_id: string | null
-  customer_contact_person_id: string | null
-  gc_company_id: string | null
-  gc_company_person_id: string | null
-  person_id: string | null
-  name: string | null
-  goes_by: string | null
-  off_since: string | null
-  off_why: string | null
-  off_by: string | null
-}
+export type ContactRow = Pick<
+  Tables<'contacts'>,
+  | 'id'
+  | 'kind'
+  | 'customer_id'
+  | 'customer_contact_person_id'
+  | 'gc_company_id'
+  | 'gc_company_person_id'
+  | 'person_id'
+  | 'name'
+  | 'goes_by'
+  | 'off_since'
+  | 'off_why'
+  | 'off_by'
+>
 
-/** A `contact_channels` row. */
-export interface ContactChannelRow {
-  id: string
-  contact_id: string
-  kind: string
-  value: string
-  opted_out_at: string | null
-  created_at: string
-}
+/** A `contact_channels` row. Its `key` is the database's own, matched there. */
+export type ContactChannelRow = Pick<Tables<'contact_channels'>, 'id' | 'contact_id' | 'kind' | 'value' | 'opted_out_at' | 'created_at'>
 
 /** A `contact_jobs` row. */
-export interface ContactJobRow {
-  contact_id: string
-  bid_id: string | null
-  project_id: string | null
-  jobs_ledger_id: string | null
-  is_default: boolean
-  created_at: string
-}
+export type ContactJobRow = Pick<Tables<'contact_jobs'>, 'contact_id' | 'bid_id' | 'project_id' | 'jobs_ledger_id' | 'is_default' | 'created_at'>
 
 /** The records the contacts point at, as much of each as a name, a company and a trade need. */
 export interface ContactRecordRows {

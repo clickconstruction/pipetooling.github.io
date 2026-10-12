@@ -4,6 +4,7 @@
  * by. No client here: the hooks that fetch the rows come with the screens (wave 2). The row types are written out until
  * the generated types carry the tables; then they become `Tables<'messages'>`.
  */
+import type { Tables } from '../../types/database'
 import { firstName, type Contact } from '../contacts/kernel'
 import type { MessageChannel, MessageDirection, ThreadMessage } from './thread'
 
@@ -44,23 +45,25 @@ export function jobKeyOfRow(row: { bid_id: string | null; project_id: string | n
 // ---------- a line ----------
 
 /** A `messages` row as the client reads it. */
-export interface MessageRow {
-  id: string
-  contact_id: string
-  channel_id: string | null
-  bid_id: string | null
-  project_id: string | null
-  jobs_ledger_id: string | null
-  channel: string
-  direction: string
-  who_user_id: string | null
-  who_text: string
-  at: string
-  subject: string | null
-  body: string
-  optout_line: string | null
-  back_on: string | null
-  back_by: string | null
+export type MessageRow = Pick<
+  Tables<'messages'>,
+  | 'id'
+  | 'contact_id'
+  | 'channel_id'
+  | 'bid_id'
+  | 'project_id'
+  | 'jobs_ledger_id'
+  | 'channel'
+  | 'direction'
+  | 'who_user_id'
+  | 'who_text'
+  | 'at'
+  | 'subject'
+  | 'body'
+  | 'optout_line'
+  | 'back_on'
+  | 'back_by'
+> & {
   /** Cut 5's column (Quo's length of a call). Absent until its migration. */
   duration_seconds?: number | null
 }
