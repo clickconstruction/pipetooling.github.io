@@ -772,6 +772,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.159, 2026-10-11**: the message window's first button is one slot: *Remove the highlight* while a highlight
+  stands and nothing is selected, *Highlight the selected words* the moment words are selected; a highlight snaps to
+  whole words (the owner, 2026-10-11).
 - **v1.158, 2026-10-11**: within one day, a message tied to the same job as the one above it shows the job's number
   alone; the name shows once per day and per change of job, and hover gives it back (the owner, 2026-10-11).
 - **v1.157, 2026-10-11**: the customer's Once lane holds only the master agreement, which a one-job customer skips;
