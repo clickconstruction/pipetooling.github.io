@@ -118,7 +118,7 @@ export type FlowCard = {
   customer_id?: string | null
 }
 /** `contact_step_skips` (cut 4). A skip on a bid or a Pipeline job has no Per job lane to sit on. */
-export type StepSkipRow = { step_key: string; project_id: string | null; why: string; by_name: string; created_at: string; undone_at: string | null }
+export type StepSkipRow = { id?: string; step_key: string; project_id: string | null; why: string; by_name: string; created_at: string; undone_at: string | null }
 
 /** One person's rows. Every list is theirs already; a list left out is empty. */
 export type FlowRows = {

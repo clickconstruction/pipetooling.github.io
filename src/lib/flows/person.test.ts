@@ -79,7 +79,7 @@ describe('docStamps: the facts on a paper made in the New paper window', () => {
     // Out to sign: waiting on them; nothing on file yet.
     expect(marks([paper({ status: 'sent', sent_at: '2026-09-30T15:00:00Z' })])).toEqual(['doc:D:signed:wait:2026-09-30', 'doc:D:sent:ok:2026-09-30'])
     // Past its last day: bad.
-    expect(marks([paper({ status: 'signed', signed_at: '2025-10-01', expires_at: '2026-10-01' })]).at(-1)).toBe('doc:D:current:bad:2026-10-01')
+    expect(marks([paper({ status: 'signed', signed_at: '2025-10-01', expires_at: '2026-10-01' })]).slice(-1)[0]).toBe('doc:D:current:bad:2026-10-01')
     // A company paper with no library document has no runtime fact.
     expect(docStamps({ contact, papers: [paper({ library_id: null })] as never }, NOW)).toEqual([])
   })

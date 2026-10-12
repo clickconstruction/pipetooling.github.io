@@ -9,7 +9,7 @@ import type { NudgeMark, PersonFlow, StepNote } from './nudges'
 import { quietDays as quietDaysOf, readFlow, type FlowDef } from './state'
 
 /** `nudge_holds`, standing or let go. */
-export type HoldRow = { step_key: string; project_id: string | null; until_on: string; released_at: string | null }
+export type HoldRow = { id?: string; step_key: string; project_id: string | null; until_on: string; released_at: string | null }
 /** `nudge_sent`: a reminder a person or the app sent. */
 export type SentRow = { step_key: string; project_id: string | null; sent_at: string }
 /** A step's team note: a `messages` line with its `step_key`. */
