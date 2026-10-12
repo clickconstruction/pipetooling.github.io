@@ -18,7 +18,10 @@ import { FlowStepCard, type AskFor } from './FlowStepCard'
 /** The presses a paper takes: the window's own send, the Documents row, the file it holds. */
 const PAPER_PRESSES: readonly PressId[] = ['open', 'sendIt', 'remindThem', 'askForIt', 'fileByHand', 'seeIt', 'askAgain', 'remind', 'ask', 'sendItNow']
 
-/** The thread window's phone (`ThreadWindow.tsx`): under it the side keeps its rail and opens sheets over the window. */
+/**
+ * The thread window's phone (`ThreadWindow.tsx`): under it the side is a row over the thread's lines (cut 10), and the
+ * panel and a step's card open as sheets over the window.
+ */
 const THREAD_PHONE = '(max-width: 760px)'
 /** The side's width at a desk with the panel open. */
 const SIDE_WIDTH = 340
@@ -27,7 +30,8 @@ const SIDE_WIDTH = 340
  * One person's flow where a window shows it (Messages cut 4): the panel and a step's card, beside the panel at a desk
  * and as a sheet on a phone. In the thread window's side (`side`, `threadSlots.tsx`) it starts as the rail beside the
  * thread: at a desk the rail opens to the panel at the side's width and a step's card covers the side; on a phone the
- * rail stays, and the panel and the card open as sheets over the window. The notes, skips, holds and reminders go
+ * rail is a row over the lines (the thread window draws the side there), and the panel and the card open as sheets over
+ * the window, the card as the shared `PhoneSheet` so it stays above the keyboard. The notes, skips, holds and reminders go
  * through the flow's presses; a paper's press goes to the window's own send (`onPaper`); nothing new sends.
  */
 export function FlowTab({
@@ -102,7 +106,16 @@ export function FlowTab({
 
   if (side && got.state !== 'ready')
     return got.state === 'none' ? null : (
-      <aside aria-label="Their flow" aria-busy={got.state === 'loading'} data-flow-side="" style={{ flex: 'none', width: 64, display: 'flex', justifyContent: 'center', padding: '0.75rem 0', borderLeft: '1px solid var(--border)', background: 'var(--surface)' }}>
+      <aside
+        aria-label="Their flow"
+        aria-busy={got.state === 'loading'}
+        data-flow-side=""
+        style={
+          phone
+            ? { flex: 'none', display: 'flex', alignItems: 'center', padding: '0.3rem 0.75rem', borderBottom: '1px solid var(--border)', background: 'var(--surface)' }
+            : { flex: 'none', width: 64, display: 'flex', justifyContent: 'center', padding: '0.75rem 0', borderLeft: '1px solid var(--border)', background: 'var(--surface)' }
+        }
+      >
         {got.state === 'error' ? (
           <span role="alert" title={got.words} aria-label={`Their flow: ${got.words}`} style={{ color: 'var(--text-red-800)', fontWeight: 700 }}>
             !
@@ -248,6 +261,7 @@ export function FlowTab({
     const rail = (
       <FlowRail
         model={model}
+        row={phone}
         onOpen={() => setFolded(false)}
         onStep={(stepId, j) => {
           if (!phone) setFolded(false)
@@ -259,10 +273,14 @@ export function FlowTab({
     return (
       <aside
         aria-label="Their flow"
-        data-flow-side={railOnly ? 'rail' : 'panel'}
-        style={{ position: 'relative', flex: 'none', width: railOnly ? undefined : SIDE_WIDTH, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid var(--border)', background: 'var(--surface)' }}
+        data-flow-side={phone ? 'row' : railOnly ? 'rail' : 'panel'}
+        style={
+          phone
+            ? { position: 'relative', flex: 'none', display: 'flex', alignItems: 'center', borderBottom: '1px solid var(--border)', background: 'var(--surface)', padding: '0.3rem 0.75rem', minWidth: 0 }
+            : { position: 'relative', flex: 'none', width: railOnly ? undefined : SIDE_WIDTH, display: 'flex', flexDirection: 'column', overflow: 'hidden', borderLeft: '1px solid var(--border)', background: 'var(--surface)' }
+        }
       >
-        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: railOnly ? '0.5rem 0.25rem' : '0.75rem' }}>{railOnly ? rail : panel}</div>
+        {phone ? rail : <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: railOnly ? '0.5rem 0.25rem' : '0.75rem' }}>{railOnly ? rail : panel}</div>}
         {sheetOpen ? (
           <div role="dialog" aria-modal="true" aria-label={model.title} data-flow-sheet="" style={{ position: 'fixed', inset: 0, zIndex: 760, display: 'flex', flexDirection: 'column', background: 'var(--surface)', paddingTop: 'var(--app-top-chrome, 0px)' }}>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0.75rem' }}>{panel}</div>

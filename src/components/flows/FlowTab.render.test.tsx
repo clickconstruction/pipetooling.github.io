@@ -120,11 +120,13 @@ describe('FlowTab in the thread window’s side', () => {
     expect(sideOf(container)).toBe('rail')
   })
 
-  it('on a phone: the rail stays beside the thread, and the panel and the card open as sheets over it', async () => {
+  it('on a phone: the rail is a row over the lines, and the panel and the card open as sheets over it', async () => {
     media.phone = true
     const { container } = renderWithProviders(<FlowTab at={{ contactId: 'tom' }} side />)
-    fireEvent.click(await screen.findByRole('button', { name: /^Open the / }))
-    expect(sideOf(container)).toBe('rail')
+    expect((await screen.findByRole('button', { name: /^Open the / })).textContent).toBe('›')
+    expect(container.querySelector('[data-flow-rail]')?.getAttribute('data-flow-rail')).toBe('row')
+    fireEvent.click(screen.getByRole('button', { name: /^Open the / }))
+    expect(sideOf(container)).toBe('row')
     const sheet = screen.getByRole('dialog')
     expect(sheet.getAttribute('aria-modal')).toBe('true')
     fireEvent.click(within(sheet).getByRole('button', { name: /^Papers in: on now/ }))
@@ -134,9 +136,10 @@ describe('FlowTab in the thread window’s side', () => {
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
     fireEvent.keyDown(document.body, { key: 'Escape' })
     expect(screen.queryByRole('dialog')).toBeNull()
-    // A mark on the rail opens its card alone.
+    // A mark on the rail opens its card alone, as the shared sheet from the bottom.
     fireEvent.click(container.querySelector('[data-flow-mark="papers"]')!)
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    expect(screen.getByRole('dialog').closest('[data-phone-sheet]')?.getAttribute('data-phone-sheet')).toBe('sheet')
   })
 })
 

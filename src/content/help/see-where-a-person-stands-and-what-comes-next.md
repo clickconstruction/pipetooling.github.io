@@ -52,7 +52,7 @@ Their flow also sits at the right side of their thread in [Messages](/help/find-
 - Press {{button:outline|‹}} at the top of the rail to open the whole flow.
 - Press {{button:outline|fold ›}} to shrink the flow back to the rail.
 
-On a phone, the rail stays beside the thread. The flow and its cards open over the thread.
+On a phone, the rail is a row above the messages, so the messages keep the whole width. Swipe the row sideways to see every step. Press {{button:outline|›}} at its end to open the whole flow. A step's card opens from the bottom and stays above the keyboard while you type a note.
 
 ## See their page
 
