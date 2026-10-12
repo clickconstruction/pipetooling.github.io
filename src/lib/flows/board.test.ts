@@ -8,6 +8,7 @@ import {
   boardRows,
   boardSummary,
   byTrade,
+  companyJobLines,
   companyTable,
   dueWords,
   lineDayWords,
@@ -21,7 +22,8 @@ import {
   type BoardRow,
 } from './board'
 import { ARCH_FLOW, ARCHITECTS, contextFor, CUSTOMER_FLOW, CUSTOMERS, TODAY, TRADE_FLOW, TRADES } from './boardFixtures'
-import { flat, type FlowDef, type FlowStep } from './state'
+import { FLOW_FIXTURE_NOW, FLOW_FIXTURE_PEOPLE } from './flowFixtures'
+import { flat, perJobJobs, placesOf, readFlow, type FlowDef, type FlowStep } from './state'
 
 const trade = contextFor(TRADE_FLOW)
 const customer = contextFor(CUSTOMER_FLOW)
@@ -336,9 +338,9 @@ describe('companyTable', () => {
     expect(row('bill')?.now).toEqual({ stepId: 'compare', name: 'Compared', small: ['ours', '3 d', 'over usual'], tone: 'over' })
     expect(row('g5')?.now).toEqual({ stepId: 'msa', name: 'MSA signed', small: ['their move', '3 d', 'usually 4'], tone: '' })
     expect(row('greg')?.jobs).toEqual([
-      { jobId: 'boerne', name: 'Boerne Retail Shell', words: 'Asked to quote · late 2 days', lateDays: 2 },
-      { jobId: 'padb', name: 'Boerne Retail Pad B', words: 'Asked to quote · due Oct 22', lateDays: 0 },
-      { jobId: 'stoneoak', name: 'Stone Oak Pharmacy', words: 'Draws', lateDays: 0 },
+      { jobId: 'boerne', name: 'Boerne Retail Shell', words: 'Asked to quote · late 2 days', lateDays: 2, ended: null },
+      { jobId: 'padb', name: 'Boerne Retail Pad B', words: 'Asked to quote · due Oct 22', lateDays: 0, ended: null },
+      { jobId: 'stoneoak', name: 'Stone Oak Pharmacy', words: 'Draws', lateDays: 0, ended: null },
     ])
     expect(row('bill')?.jobs.map((j) => j.words)).toEqual(['Compared · 3 d', 'not started'])
     expect(row('greg')?.sub).toBe('Sitework · Greg Paulk')
@@ -347,6 +349,27 @@ describe('companyTable', () => {
   it('reads a job whose lane is finished as done', () => {
     const done = companyTable(trade, [{ ...TRADES[1]!, jobsDone: ['stoneoak'] }])
     expect(done[0]?.jobs.map((j) => j.words)).toEqual(['Compared · 3 d', 'done'])
+  })
+
+  it('reads a job whose lane ended at a fork by how it ended, ahead of done', () => {
+    const notCarried = companyTable(trade, [{ ...TRADES[1]!, jobsDone: ['stoneoak'], jobsEnded: { stoneoak: 'not_carried' } }])
+    expect(notCarried[0]?.jobs.map((j) => [j.words, j.ended])).toEqual([
+      ['Compared · 3 d', null],
+      ['not carried', 'not_carried'],
+    ])
+  })
+
+  it('reads Marcus’s Bell Family Dental as declined, from his own reading, and leaves him off the table', () => {
+    const marcus = FLOW_FIXTURE_PEOPLE.find((p) => p.contactId === 'marcus')
+    if (!marcus) throw new Error('no marcus')
+    const r = readFlow(CUSTOMER_FLOW, marcus.stamps, FLOW_FIXTURE_NOW)
+    const company: BoardCompany = {
+      ...CUSTOMERS.find((c) => c.contactId === 'marcus')!,
+      places: placesOf(r),
+      jobsEnded: Object.fromEntries(perJobJobs(r).flatMap((j) => (j.ended ? [[j.jobId, j.ended]] : []))),
+    }
+    expect(companyJobLines(customer, company)).toEqual([{ jobId: 'bell', name: 'Bell Family Dental', words: 'declined', lateDays: 0, ended: 'declined' }])
+    expect(companyTable(customer, [company])).toEqual([])
   })
 
   it('reads waiting on someone, and draws no track for a flow with no Once lane', () => {
