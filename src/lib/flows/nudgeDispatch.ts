@@ -1,0 +1,205 @@
+/**
+ * Messages, cut 5: the morning run of the reminders the app sends itself (`messages-nudge-dispatch`; `BUILD_PLAN.md` →
+ * Cut 5, and section 7's decision 3: per step, off until the owner turns it on). Pure. The edge function reads each
+ * person's flow, the steps switched on, what `nudge_sent` holds and each text number, asks `planNudgeRun`, then sends
+ * each text through `quo/send.ts`'s `planSend` with the purpose `nudge` (which adds the opt-out line when a rule says
+ * and refuses a number that sent STOP), and writes the `nudge_sent` row and the thread's event line each text carries.
+ *
+ * The run reads Follow up's rows (`nudgeRows`), so it sends only what Follow up would show as due, and holds, quiet
+ * days, our last message and a portal row keep it out the same way. Lifted from the prototype v1.178: `nudgeLine` and
+ * `NUDGE_DEFAULT` (the step's own line), and "the app sends it by itself, from the company number, at 9 AM that day".
+ */
+import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { weekdayDate } from '../gc/words'
+import { stepLine, type QuickReply } from '../quickReplies/kernel'
+import { FLOW_PAPERS, factForPaper, type FlowKind, type PaperId } from './facts'
+import { daysSince, nudgeRows, type NudgeOptions, type NudgeStep, type PersonFlow } from './nudges'
+import { stampDay, stepById, type FlowStep, type NudgeHow } from './state'
+
+/** The steps the app may send a reminder for itself, by kind: off for every step until the owner turns one on. */
+export type AppSends = Partial<Record<FlowKind, Partial<Record<string, boolean>>>>
+
+/** A reminder sent for a step, by the app or by one of ours (`nudge_sent`), so a reminder never doubles. */
+export interface NudgeSent {
+  contactId: string
+  stepId: string
+  jobId: string | null
+  /** When it went, an ISO timestamp. */
+  at: string
+  /** 'app', or the user id of the one of ours who sent it. */
+  by: string
+  how: NudgeHow
+}
+
+/** A person's text number as `contact_channels` holds it. */
+export interface TextNumber {
+  number: string | null
+  /** That number sent STOP. */
+  optedOut: boolean
+}
+
+export interface NudgeRunInput {
+  people: readonly PersonFlow[]
+  /** The morning of the run: 9 AM Central. */
+  now: Date
+  appSends: AppSends
+  sent: readonly NudgeSent[]
+  numbers: Partial<Record<string, TextNumber>>
+  /** The team's quick replies: a step's own line, when the team keeps one (`quickReplies/kernel.ts`). */
+  quickReplies?: readonly QuickReply[]
+  /** Each person's portal link, for a line that points at it. */
+  links?: Partial<Record<string, string>>
+  /** Follow up's options, so a change order on a portal row stays out of the run too. */
+  options?: NudgeOptions
+  /**
+   * Follow up's Snoozed on a person (`contacts.snoozed_until`), by contact: the day the snooze ends, as a YYYY-MM-DD or
+   * an ISO timestamp. Snoozed is a person's "not now", and the app never overrules one of ours.
+   */
+  snoozed?: Partial<Record<string, string>>
+}
+
+/** One text the run sends. */
+export interface NudgeText {
+  contactId: string
+  stepId: string
+  jobId: string | null
+  /** The step's own line. `planSend` adds the opt-out line after it when a rule says. */
+  body: string
+  /** The `nudge_sent` row to write once Quo takes the text. */
+  record: NudgeSent
+  /** The thread's event line, from the app; only the team sees it. */
+  event: string
+}
+
+/**
+ * Why a due reminder of the app's did not go: its step is not switched on, its channel is not a text, the person is
+ * snoozed on Follow up, one went inside its days, the number sent STOP or there is none, or the person already has a
+ * text this morning.
+ */
+export type NudgeNotSent = 'off' | 'not a text' | 'snoozed' | 'sent lately' | 'opted out' | 'no number' | 'one a morning'
+
+/** A due reminder of the app's the run kept back, with why in words for the run's log. */
+export interface NudgeKept {
+  contactId: string
+  stepId: string
+  jobId: string | null
+  why: NudgeNotSent
+  words: string
+}
+
+export interface NudgeRun {
+  texts: NudgeText[]
+  notSent: NudgeKept[]
+}
+
+/** The run log's words for a reminder kept back. */
+export function notSentWords(why: NudgeNotSent, snoozedUntil: string | null = null): string {
+  switch (why) {
+    case 'off':
+      return 'the app does not send this step yet'
+    case 'not a text':
+      return 'its reminder is not a text'
+    case 'snoozed':
+      return snoozedUntil ? `snoozed until ${weekdayDate(snoozedUntil)}` : 'snoozed'
+    case 'sent lately':
+      return 'reminded inside the step’s days'
+    case 'opted out':
+      return 'the number sent STOP'
+    case 'no number':
+      return 'no number on file'
+    case 'one a morning':
+      return 'one text a morning'
+  }
+}
+
+// ---------- the step's own line ----------
+
+/**
+ * A reminder's words by step, after the first name, when the team keeps no quick reply for it: the prototype's
+ * `NUDGE_DEFAULT`, its three semicolons made two sentences for the plain-words rules.
+ */
+const NUDGE_LINES: Readonly<Record<string, (link: string | null) => string>> = {
+  portal: (link) => `did the invite come through?${link ? ` Your portal is at ${link}.` : ''}`,
+  ask: () => 'checking on the number. Still good for the day you gave us?',
+  msa: () => 'the agreement is in your portal to sign.',
+  sow: () => 'the statement of work is in your portal to sign.',
+  closeout: () => 'checking on the final waiver. It is the last paper before the last check.',
+  yes: () => 'any word on our bid? Happy to walk through it.',
+  contract: () => 'the contract is in your portal to sign.',
+  co: () => 'the change order is in your portal to sign or decline.',
+  payapp: () => 'checking on the pay application. Pay by is the day on it.',
+  questions: () => 'checking on our question. Questions close soon.',
+  submittals: () => 'checking on the submittal we sent you.',
+  certify: () => 'checking on the pay application we sent for your certificate.',
+}
+
+/** The steps with words of their own. */
+export const NUDGE_LINE_STEPS: readonly string[] = Object.keys(NUDGE_LINES)
+
+/** A paper of theirs as the message names it to them: 'your W-9'. */
+const yours = (paper: PaperId): string => (FLOW_PAPERS[paper]?.name ?? paper).replace(/^their /, 'your ')
+
+/**
+ * The reminder's own line for a step: the team's quick reply for it, with their portal link when the step waits on a
+ * paper of theirs; else the step's own words; else a check on that paper; else a check-in on the step.
+ */
+export function nudgeLine(person: Pick<PersonFlow, 'first' | 'reading'>, def: FlowStep, quickReplies: readonly QuickReply[] = [], link: string | null = null): string {
+  const paper = def.papers.find((p) => !factForPaper(p)?.ours) ?? null
+  const upload = paper && link ? ` You can upload it here: ${link}` : ''
+  const team = stepLine(quickReplies, person.reading.kind, def.id, '')
+  if (team) return upload && link && !team.text.includes(link) ? `${team.text}\n${upload.trim()}` : team.text
+  const own = NUDGE_LINES[def.id]
+  if (own) return `${person.first}, ${own(link)}`
+  if (paper) return `${person.first}, checking on ${yours(paper)}.${upload}`
+  return `${person.first}, checking in on ${def.name.toLowerCase()}. Anything you need from us?`
+}
+
+// ---------- the run ----------
+
+/** One of ours or the app sent this step's reminder inside its days: at least the same day, so a second run sends none. */
+function sentLately(sent: readonly NudgeSent[], contactId: string, step: NudgeStep, days: number, now: Date): boolean {
+  const within = Math.max(1, days)
+  return sent.some((s) => s.contactId === contactId && s.stepId === step.stepId && (s.jobId ?? null) === step.jobId && daysSince(s.at, now) < within)
+}
+
+/**
+ * The morning's texts: of every Follow up row, each due step whose reminder the app sends (`nudge.send` is `app`) and
+ * whose step is switched on, unless the person is snoozed on Follow up, one of ours or the app sent it inside its days,
+ * or their number sent STOP or there is none. One text a person a morning, their worst such step; another waits for
+ * the next run.
+ */
+export function planNudgeRun(input: NudgeRunInput): NudgeRun {
+  const texts: NudgeText[] = []
+  const notSent: NudgeKept[] = []
+  const today = todayYmdInAppTz(input.now)
+  for (const row of nudgeRows(input.people, input.now, input.options)) {
+    const person = input.people.find((p) => p.id === row.contactId)
+    if (!person) continue
+    for (const step of row.steps) {
+      const def = stepById(person.flow, step.stepId)
+      const n = def?.nudge
+      if (!def || !n || !step.due || n.send !== 'app') continue
+      const snoozed = stampDay(input.snoozed?.[person.id])
+      const keep = (why: NudgeNotSent) =>
+        notSent.push({ contactId: person.id, stepId: step.stepId, jobId: step.jobId, why, words: notSentWords(why, snoozed) })
+      const number = input.numbers[person.id]
+      if (!input.appSends[person.reading.kind]?.[step.stepId]) keep('off')
+      else if (n.how !== 'text') keep('not a text')
+      else if (snoozed && today < snoozed) keep('snoozed')
+      else if (sentLately(input.sent, person.id, step, n.days, input.now)) keep('sent lately')
+      else if (!number?.number) keep('no number')
+      else if (number.optedOut) keep('opted out')
+      else if (texts.some((t) => t.contactId === person.id)) keep('one a morning')
+      else
+        texts.push({
+          contactId: person.id,
+          stepId: step.stepId,
+          jobId: step.jobId,
+          body: nudgeLine(person, def, input.quickReplies, input.links?.[person.id] ?? null),
+          record: { contactId: person.id, stepId: step.stepId, jobId: step.jobId, at: input.now.toISOString(), by: 'app', how: n.how },
+          event: `The app sent the ${def.name} reminder by text.`,
+        })
+    }
+  }
+  return { texts, notSent }
+}
