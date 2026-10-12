@@ -224,6 +224,7 @@ async function handleStripeInvoicePaidEvent(
       p_reference_number?: string
       p_paid_on?: string
       p_internal_note?: string
+      p_recorded_by?: string
     } = { p_invoice_id: row.id }
     if (oob.p_payment_type) rpcArgs.p_payment_type = oob.p_payment_type
     if (oob.p_reference_number) rpcArgs.p_reference_number = oob.p_reference_number
