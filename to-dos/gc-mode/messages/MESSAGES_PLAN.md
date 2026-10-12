@@ -664,6 +664,14 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.114, 2026-10-11**: the sign page's consent is the app's own, `src/lib/esignConsent.ts` version 2, verbatim, in English
+  and Spanish by the portal's switch: the one sentence (the same effect as ink, and paper from the office at no charge),
+  How electronic signing works opening the two paragraphs (the statutes, this page and its PDF are your copy, you do
+  not have to sign this way, withdrawing consent later, what you need), the Full disclosure link to the public page,
+  and the separate checkbox as the affirmative consent; a line says what signing records (the name as typed, the
+  time, the consent words by version and language, the signed PDF); the signed block carries the audit line with the
+  statutes and the consent version (the owner, 2026-10-11: does this meet the criteria, and the paper disclosure).
+  The prototype's earlier box had its own shorter words, which is the drift the kernel exists to stop.
 - **v1.113, 2026-10-11**: a paper to sign, the four the owner asked for. (1) Send it on a paper we send (the MSA, the
   statement of work, our contract, a change order) opens the send window, the review before it goes: who it goes to,
   the sign-by day, the email as they see it with its Read and sign link, and the paper as they see it, the standard
