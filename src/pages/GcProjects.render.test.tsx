@@ -1225,11 +1225,12 @@ describe('GcProjects: the customer window’s money (the Board’s B2b-v-iii)', 
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
     await renderSettled(<GcProjects />, loaded)
-    expect(loadGcBillingRows).not.toHaveBeenCalledWith(['p1'])
+    // The board may read a building job's bills for its Bill day pill (Messages cut 9); the window reads its own on open.
+    const before = vi.mocked(loadGcBillingRows).mock.calls.length
     const row = document.querySelector('[data-gc-board-row="p1"]') as HTMLElement
     fireEvent.click(within(row).getByRole('button', { name: 'Oak Street Partners' }))
     const dialog = await screen.findByRole('dialog', { name: 'Oak Street Partners' })
-    await waitFor(() => expect(loadGcBillingRows).toHaveBeenCalledWith(['p1']))
+    await waitFor(() => expect(vi.mocked(loadGcBillingRows).mock.calls.slice(before)).toContainEqual([['p1']]))
     expect(await within(dialog).findByText('They owe us now')).toBeTruthy()
   })
 })

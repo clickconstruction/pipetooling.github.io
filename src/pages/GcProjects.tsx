@@ -124,7 +124,9 @@ import { GcCompanyWindow } from '../components/gc/GcCompanyWindow'
 import { GcTheirPortal } from '../components/gc/GcTheirPortal'
 import { loadCompanyPaperEntries, loadReceivedCoiLink, markCompanyCoiGood, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
 import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
+import { BillDayCardLine } from '../components/gc/GcBillDayCardLine'
 import { GcBillDayTrades } from '../components/gc/GcBillDayTrades'
+import { billDayJobs, useBillDayCards } from '../components/gc/useBillDayCards'
 import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import type { ContractSendInput, ContractSendOutcome } from '../components/gc/GcCustomerContractSend'
@@ -422,6 +424,12 @@ export default function GcProjects() {
   // Trade partners (the Board's B3-b) and Follow up (B4-b) sit beside the board for a dev: each write reads the rows again.
   // `?view=followUp` (the Dashboard's Needs you line, v2.4941) opens on Follow up.
   const [devView, setDevView] = useState<GcView>(() => gcViewFromSearch(params))
+  // The view follows `?view=`, so a link on the page (Bill day's `billDayHref` from Follow up, a flow card or By step)
+  // switches it as a fresh load would. The pills write it back.
+  const viewParam = params.get('view')
+  useEffect(() => {
+    setDevView(gcViewFromSearch(new URLSearchParams(viewParam ? `view=${viewParam}` : '')))
+  }, [viewParam])
   /** Read the board again; answers what it read, for a press that emails from the rows as they are now (P5c-4). */
   const refreshBoard = async (): Promise<GcState | null> => {
     if (!loaded) return null
@@ -778,7 +786,14 @@ export default function GcProjects() {
       <button
         type="button"
         aria-pressed={on}
-        onClick={() => setDevView(view)}
+        onClick={() => {
+          setDevView(view)
+          const next = new URLSearchParams(params)
+          if (view === 'board') next.delete('view')
+          else next.set('view', view)
+          if (view !== 'money') next.delete('billday')
+          setParams(next, { replace: true })
+        }}
         style={{
           padding: '0.3rem 0.8rem',
           borderRadius: 999,
@@ -1412,10 +1427,16 @@ export default function GcProjects() {
   // Bill day's From the trades (Messages cut 9): the trades' draws against the bill day for one job being built with a
   // signed trade, opened at `billday=<projectId>` beside To the owner. The money team's, as Money is.
   const billDayProjectId = billDayFromSearch(params)
-  const billDayJobs = useMemo(
-    () => (moneyState ? moneyState.projects.filter((p) => p.stage === 'building' && p.packages.some((k) => !k.selfPerform && k.sow?.status === 'signed')) : []),
-    [moneyState],
-  )
+  const billDayJobList = useMemo(() => billDayJobs(moneyState), [moneyState])
+  // Each building job's card: the "Bill day · 3 of 7" pill and its line, read for the money team on the board.
+  const billDayCards = useBillDayCards(boardWithChanges, drawTables, canSeeGcMoney(role) && devView === 'board')
+  const openBillDay = (projectId: string) => {
+    setDevView('money')
+    const next = new URLSearchParams(params)
+    next.set('view', 'money')
+    next.set('billday', projectId)
+    setParams(next, { replace: true })
+  }
   const setBillDayJob = (projectId: string | null) => {
     const next = new URLSearchParams(params)
     if (projectId) next.set('billday', projectId)
@@ -1827,11 +1848,11 @@ export default function GcProjects() {
                     own={ownWork}
                     fromTheTrades={{
                       open: billDayProjectId !== null,
-                      onSwitch: (open) => setBillDayJob(open ? (billDayJobs[0]?.id ?? 'none') : null),
+                      onSwitch: (open) => setBillDayJob(open ? (billDayJobList[0]?.id ?? 'none') : null),
                       view: (
                         <GcBillDayTrades
                           state={moneyState}
-                          jobs={billDayJobs}
+                          jobs={billDayJobList}
                           projectId={billDayProjectId}
                           onPickJob={setBillDayJob}
                           drawTables={drawTables}
@@ -1962,6 +1983,12 @@ export default function GcProjects() {
                   Bill the customer
                 </Btn>
               )}
+              {/* Bill day (Messages cut 9): the money team's, on a job being built with a signed trade. */}
+              {canSeeGcMoney(role) && billDayCards.get(p.id) && (
+                <Btn kind="quiet" onClick={() => openBillDay(p.id)} title="Opens Money → Bill day → From the trades on this job.">
+                  {`Bill day · ${billDayCards.get(p.id)?.ok ?? 0} of ${billDayCards.get(p.id)?.gates ?? 7}`}
+                </Btn>
+              )}
               {(p.sqFt || p.sizeNote) && (
                 <span style={{ fontSize: '0.85rem' }}>{[p.sqFt ? `${p.sqFt.toLocaleString('en-US')} sq ft` : '', p.sizeNote].filter(Boolean).join(' ')}</span>
               )}
@@ -2014,6 +2041,9 @@ export default function GcProjects() {
                 />
               )
             })()}
+            {canSeeGcMoney(role) && billDayCards.get(p.id) && (
+              <BillDayCardLine facts={billDayCards.get(p.id)!} onOpen={() => openBillDay(p.id)} />
+            )}
             {boardProject && <GcProjectOutcome project={boardProject} writes={outcomeWrites(p.id)} />}
             {roughKeepLines[p.id] && (
               <div role="status" data-rough-not-kept style={{ color: 'var(--text-amber-800)', fontSize: '0.85rem' }}>
