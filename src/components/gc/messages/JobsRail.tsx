@@ -10,11 +10,15 @@ const TONE_COLOR: Record<JobTile['day']['tone'], string> = {
   past: 'var(--text-red-700)',
 }
 
+/** The strip's fade at its right end, so the tile cut off there says there is more (the prototype's v1.32). */
+const STRIP_FADE = 'linear-gradient(90deg, black calc(100% - 26px), transparent)'
+
 /**
  * Messages, cut 1's screens: the person's jobs as tiles (the prototype's jobs rail, v1.166's last header row). Each
  * tile: the star (where new messages from them land), the job's number and name (a press shows only its lines), ⧉ to
  * open the job, × to take a job the office tied off the person. Drag a tile onto a line to tie that line; on a phone,
- * press and hold a tile, then press the line.
+ * press and hold a tile, then press the line. In a folded header (cut 10) the tiles run in one strip that scrolls
+ * sideways, its label left off, and a tile lets a sideways swipe scroll the strip while a hold still arms it.
  */
 export function JobsRail({
   contact,
@@ -27,6 +31,7 @@ export function JobsRail({
   onRemove,
   onAdd,
   onHold,
+  strip = false,
 }: {
   contact: Contact
   /** The rail's jobs: the office's ties, then the facts'. */
@@ -39,12 +44,25 @@ export function JobsRail({
   onRemove: (key: string) => void
   onAdd: () => void
   onHold: (key: string) => void
+  /** One strip that scrolls sideways: the folded header's (cut 10). */
+  strip?: boolean
 }) {
   return (
-    <div data-jobs-rail style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-      <span title="The jobs they are on. The star is where a new message from them lands." style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        Their jobs
-      </span>
+    <div
+      data-jobs-rail={strip ? 'strip' : ''}
+      style={{
+        display: 'flex',
+        gap: '0.4rem',
+        alignItems: 'center',
+        flexWrap: strip ? 'nowrap' : 'wrap',
+        ...(strip ? { overflowX: 'auto', whiteSpace: 'nowrap', scrollbarWidth: 'none', paddingBottom: 2, maskImage: STRIP_FADE, WebkitMaskImage: STRIP_FADE } : null),
+      }}
+    >
+      {!strip && (
+        <span title="The jobs they are on. The star is where a new message from them lands." style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          Their jobs
+        </span>
+      )}
       {keys.map((key) => {
         const tile = tiles[key]
         return tile ? (
@@ -59,14 +77,15 @@ export function JobsRail({
             onOpen={onOpenJob ? () => onOpenJob(key) : undefined}
             onRemove={() => onRemove(key)}
             onHold={() => onHold(key)}
+            strip={strip}
           />
         ) : null
       })}
-      <button type="button" onClick={onAdd} style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'transparent', padding: '0.25rem 0.55rem', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--text-600)' }}>
+      <button type="button" onClick={onAdd} style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, background: 'transparent', padding: '0.25rem 0.55rem', fontSize: '0.8rem', cursor: 'pointer', color: 'var(--text-600)', flex: 'none' }}>
         + add a job
       </button>
       {filter && (
-        <button type="button" onClick={() => onFilter(null)} style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', fontSize: '0.8rem', cursor: 'pointer' }}>
+        <button type="button" onClick={() => onFilter(null)} style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', fontSize: '0.8rem', cursor: 'pointer', flex: 'none' }}>
           show all
         </button>
       )}
@@ -84,6 +103,7 @@ function RailTile({
   onOpen,
   onRemove,
   onHold,
+  strip,
 }: {
   tile: JobTile
   starred: boolean
@@ -94,6 +114,7 @@ function RailTile({
   onOpen?: () => void
   onRemove: () => void
   onHold: () => void
+  strip: boolean
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: `job:${tile.key}`, data: { jobKey: tile.key } })
   const hold = useLongPress(onHold)
@@ -122,7 +143,10 @@ function RailTile({
         borderRadius: 8,
         padding: '0.25rem 0.5rem',
         opacity: isDragging ? 0.5 : 1,
-        touchAction: 'none',
+        flex: 'none',
+        // In the strip a sideways swipe scrolls it; a hold that does not move still arms the tile, and a drag down still ties.
+        // Off the strip nothing scrolls sideways, so the tile keeps every touch for the drag.
+        touchAction: strip ? 'pan-x' : 'none',
         WebkitTouchCallout: 'none',
         cursor: 'grab',
       }}

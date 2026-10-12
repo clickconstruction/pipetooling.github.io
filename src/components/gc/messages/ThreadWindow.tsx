@@ -3,11 +3,13 @@ import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useMatchMedia } from '../../../hooks/useMatchMedia'
+import { useMeasuredWidth } from '../../../hooks/useMeasuredWidth'
 import { contactById, initials, isOptedOut, kindWord, type Contact } from '../../../lib/contacts/kernel'
 import type { MessagesView } from '../../../lib/messages/messagesIo'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { stampSentence } from '../../../lib/messages/stamps'
 import { courtOf, threadOf, threadRows } from '../../../lib/messages/thread'
+import { isThreadFolded, reachOpen } from '../../../lib/messages/threadFold'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { Chip, type Tone } from '../gcUi'
 import { JobPickerWindow } from './JobPickerWindow'
@@ -40,6 +42,10 @@ export interface ThreadWindowProps {
 
 const COURT_TONE: Record<'ours' | 'theirs' | 'none', Tone> = { ours: 'amber', theirs: 'green', none: 'grey' }
 const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+/** A folded row's fade at its right end, so a pill cut off there says there is more. */
+const ROW_FADE = 'linear-gradient(90deg, black calc(100% - 22px), transparent)'
+/** One line, cut with an ellipsis: a folded header's name and company. */
+const ONE_LINE = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 } as const
 
 /**
  * Messages, cut 1's screens: a person's thread, as a window over any view of GC projects (`?thread=<id>&at=<id>`),
@@ -47,6 +53,11 @@ const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
  * and their company with the chevron over their numbers and addresses, one status row that leads with whose move it
  * is, then the stamps sentence; the jobs rail last. Then the lines, a divider at each day, and the slots later cuts
  * fill (`ThreadSlots`). The message window, Who is this? and the job picker are drawn inside the panel.
+ *
+ * Folded (cut 10, `threadFold.ts`): on a phone, or when the thread's column is 640 px or narrower. The chevron and the
+ * face are one press back to everyone in place of ×, the name and the company take one line each, the corner keeps the
+ * header slot (as its narrow form), ☎ and ⋯, the numbers and addresses wait under the arrow, the status row scrolls
+ * sideways, and the jobs run in one sideways strip.
  */
 export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven, view, problem = null, nowIso, writes, onOpenJob, onOpenRecord, onShowContact }: ThreadWindowProps) {
   // Every cut's slots, read here and not by the page: under the page's providers (`useMessagesReread`), and only while a
@@ -54,9 +65,12 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
   const cutSlots = useThreadSlots()
   const slots = slotsGiven ?? cutSlots
   const phone = useMatchMedia('(max-width: 760px)')
+  const [columnRef, columnWidth] = useMeasuredWidth<HTMLDivElement>()
+  const folded = isThreadFolded(columnWidth, phone)
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
-  const [contactOpen, setContactOpen] = useState(true)
+  const [contactChosen, setContactChosen] = useState<boolean | null>(null)
+  const contactOpen = reachOpen(contactChosen, folded)
   const [showAll, setShowAll] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [jobFilter, setJobFilter] = useState<string | null>(null)
@@ -144,7 +158,8 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
         data-thread-window={contactId}
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'var(--surface-muted)',
+          // The page's ground, so the white lines sit on gray (v2.2203). `--surface-muted` was never a token: the backdrop showed through.
+          background: 'var(--bg-page)',
           color: 'var(--text-base)',
           borderRadius: phone ? 0 : 10,
           width: phone ? '100%' : 'min(1100px, 100%)',
@@ -154,7 +169,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
           border: phone ? 'none' : '1px solid var(--border-strong)',
         }}
       >
-        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <div ref={columnRef} style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           {!contact ? (
             <div style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
               <div style={{ flex: 1, fontSize: '0.875rem', color: problem ? 'var(--text-red-700)' : 'var(--text-muted)' }} role={problem ? 'alert' : undefined}>
@@ -166,24 +181,45 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
             </div>
           ) : (
             <>
-              <div data-thread-header style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: '0.6rem 0.9rem', display: 'grid', gap: '0.45rem' }}>
-                <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                  <span
-                    aria-hidden="true"
-                    style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flex: 'none', color: 'var(--text-600)' }}
-                  >
-                    {initials(contact)}
-                  </span>
-                  <div style={{ minWidth: 0 }}>
-                    <h2 style={{ margin: 0, fontSize: '1.05rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                      {contact.name}
+              <div data-thread-header={folded ? 'folded' : 'wide'} style={{ background: 'var(--surface)', borderBottom: '1px solid var(--border)', padding: folded ? '0.5rem 0.75rem' : '0.6rem 0.9rem', display: 'grid', gap: folded ? '0.35rem' : '0.45rem' }}>
+                <div style={{ display: 'flex', gap: folded ? '0.45rem' : '0.6rem', alignItems: 'center', minWidth: 0 }}>
+                  {folded ? (
+                    <button
+                      type="button"
+                      data-thread-back
+                      onClick={onClose}
+                      aria-label="Back to everyone"
+                      title="Back to everyone"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 2, border: 'none', background: 'transparent', padding: '0.1rem 0.2rem 0.1rem 0', margin: '0 0 0 -0.25rem', borderRadius: 999, cursor: 'pointer', flex: 'none' }}
+                    >
+                      <span aria-hidden="true" style={{ color: 'var(--text-blue-700)', fontSize: '1.4rem', lineHeight: 1, fontWeight: 600, width: 14, textAlign: 'center' }}>
+                        ‹
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-600)' }}
+                      >
+                        {initials(contact)}
+                      </span>
+                    </button>
+                  ) : (
+                    <span
+                      aria-hidden="true"
+                      style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--bg-muted)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.8rem', flex: 'none', color: 'var(--text-600)' }}
+                    >
+                      {initials(contact)}
+                    </span>
+                  )}
+                  <div style={{ minWidth: 0, ...(folded ? { flex: 1 } : null) }}>
+                    <h2 style={{ margin: 0, fontSize: '1.05rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: folded ? 'nowrap' : 'wrap', minWidth: 0 }}>
+                      {folded ? <span style={ONE_LINE}>{contact.name}</span> : contact.name}
                       {isOptedOut(contact) && <Chip tone="red">opted out</Chip>}
                     </h2>
-                    <div style={{ fontSize: '0.8rem', color: 'var(--text-600)', display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-600)', display: 'flex', gap: '0.3rem', alignItems: 'center', minWidth: 0 }}>
                       {contact.kind === 'unknown' ? (
                         <span>Who is this?</span>
                       ) : (
-                        <span>
+                        <span style={folded ? ONE_LINE : undefined}>
                           <strong>{capital(kindWord(contact.kind))}:</strong> {contact.company || contact.name}
                         </span>
                       )}
@@ -192,16 +228,17 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                           type="button"
                           aria-expanded={contactOpen}
                           aria-label={contactOpen ? 'Hide their numbers and addresses' : 'Show their numbers and addresses'}
-                          onClick={() => setContactOpen((v) => !v)}
-                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 0.2rem' }}
+                          onClick={() => setContactChosen(!contactOpen)}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--text-muted)', padding: '0 0.2rem', flex: 'none' }}
                         >
                           {contactOpen ? '▾' : '›'}
                         </button>
                       )}
                     </div>
                   </div>
-                  <span style={{ flex: 1 }} />
-                  <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', position: 'relative' }}>
+                  {!folded && <span style={{ flex: 1 }} />}
+                  {folded && slots.headerRight?.(contact, { folded })}
+                  <span style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', position: 'relative', flex: 'none' }}>
                     {phones[0] ? (
                       <a
                         href={`tel:${phones[0].value.replace(/[^\d+]/g, '')}`}
@@ -247,10 +284,12 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                       </div>
                     )}
                   </span>
-                  {slots.headerRight?.(contact)}
-                  <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
-                    ×
-                  </button>
+                  {!folded && slots.headerRight?.(contact, { folded })}
+                  {!folded && (
+                    <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'transparent', fontSize: '1.3rem', lineHeight: 1, cursor: 'pointer', color: 'var(--text-muted)', padding: '0.2rem 0.4rem' }}>
+                      ×
+                    </button>
+                  )}
                 </div>
                 {contact.kind === 'unknown' ? (
                   <div>
@@ -280,7 +319,18 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                     </div>
                   )
                 )}
-                <div data-thread-status style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                <div
+                  data-thread-status
+                  style={{
+                    display: 'flex',
+                    gap: '0.4rem',
+                    alignItems: 'center',
+                    fontSize: '0.8rem',
+                    ...(folded
+                      ? { flexWrap: 'nowrap', whiteSpace: 'nowrap', overflowX: 'auto', scrollbarWidth: 'none', maskImage: ROW_FADE, WebkitMaskImage: ROW_FADE }
+                      : { flexWrap: 'wrap' }),
+                  }}
+                >
                   {court && <Chip tone={COURT_TONE[court.side]}>{court.word}</Chip>}
                   {slots.statusRow?.(contact)}
                 </div>
@@ -305,6 +355,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                   onRemove={(key) => void removeJob(key)}
                   onAdd={() => setPicker({ kind: 'add' })}
                   onHold={(key) => setTying(key)}
+                  strip={folded}
                 />
                 {tying && (
                   <div role="status" style={{ fontSize: '0.8rem', background: 'var(--bg-blue-tint)', borderRadius: 6, padding: '0.3rem 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
