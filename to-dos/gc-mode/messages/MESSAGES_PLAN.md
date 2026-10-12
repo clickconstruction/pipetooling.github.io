@@ -821,6 +821,12 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.173, 2026-10-12**: By step rebuilt on the six pieces of `by-step-review-mockup.html`: a summary line that
+  adds up (getting set up, quoting on N bids, building, off, then late, lapsed, over usual, waiting, with a link to
+  Follow up); empty steps fold to one line per run with the sentence that says what lands there; per-job chips group
+  by job, the job named once with the day they share; days read against the step's usual, over usual in orange and
+  counted; a press per row, the step's own nudge (Ask the 4 for papers, Remind the 1 late, Open the compare, Bill
+  day); the job and the seat as pickers. Customers → By step takes the same (the owner, 2026-10-12).
 - **v1.172, 2026-10-12**: Trade partners gains *By trade*: one row per trade, A to Z, the companies as chips with the
   step each is on, its job and how long or how late, late first and off the flow last; a company with no trade
   on its record sits under *No trade yet* (the owner, 2026-10-12).
