@@ -770,6 +770,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.153, 2026-10-11**: a note's top line says who wrote it and no more; *Note for the team* was there twice (the
+  owner, 2026-10-11).
 - **v1.152, 2026-10-11**: every message's time floats at the card's bottom right in light gray, *Sat, Sep 26 · 2:14 PM*,
   off the top line, which keeps the channel, who, and the job (the owner, 2026-10-11).
 - **v1.151, 2026-10-11**: a done step's box carries its day at the right, *Aug 28*, in place of the paper mark, so the
