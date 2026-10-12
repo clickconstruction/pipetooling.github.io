@@ -37,6 +37,13 @@ A missed call or a voicemail also shows {{button:outline|Call back in Quo}}. The
 
 A message may give a day, like a quote by Wednesday. The row then shows a button like {{button:outline|A day was heard: Wed Oct 7 · say what it is}}. Press it to open the message and write the day down.
 
+Under the message, the thread asks what the day is a promise of.
+
+1. Press what it is, like {{button:blue|Their quote}} or {{button:outline|A start or delivery}}.
+2. Or press {{button:outline|just talk}} when it was no promise.
+
+A day written down shows as {{chip:yellow|promised Wed Oct 7 · quote}} under their name. Their move runs until that day.
+
 A question about the plans shows {{button:outline|Ask the architect}}. The button shows only when the message is on a GC job. Press it to ask the job's architect.
 
 - The question goes on the job, under **Questions about the plans**, with who asked.
@@ -44,6 +51,14 @@ A question about the plans shows {{button:outline|Ask the architect}}. The butto
 - The email goes to the job's architect. A line in the person's thread says it was sent.
 
 Sometimes the email cannot go. The words on screen then say why. The question still waits on the job. Send it from there, as [Ask the architect about the plans](/help/ask-the-architect-about-the-plans) shows.
+
+## Highlight words in a message
+
+1. Press a message in someone's thread to open it.
+2. Select the words that matter.
+3. Press {{button:blue|Highlight the selected words}}.
+
+The thread shows the highlight instead of the message's first lines. Press *remove* under a highlight to take it off.
 
 ## Who has it
 

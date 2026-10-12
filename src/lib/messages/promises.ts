@@ -113,17 +113,25 @@ export function writtenWhat(choice: PromiseChoice): string {
   return choice.writes?.what ?? choice.what
 }
 
+/** The offer line's words after its day. */
+export const IS_A_PROMISE_OF = 'is a promise of'
+
 /** The offer line's words before its buttons: "Wed Oct 7 is a promise of". */
 export function promiseOfferWords(day: string): string {
-  return `${day} is a promise of`
+  return `${day} ${IS_A_PROMISE_OF}`
 }
 
 /** The offer's last press: the day was not a promise. */
 export const JUST_TALK = 'just talk'
 
-/** The button's hover: where the choice is written. */
-export function promiseGoesOn(choice: PromiseChoice): string {
-  return `Goes on ${choice.where}`
+/**
+ * The button's hover: what it writes down, and what that does. A written promise runs the thread's move line, the pill
+ * under the name and Follow up's row (the lead, 2026-10-12); each target it will reach (the company's ask on the Board,
+ * the Pipeline's payment promises, the bid's follow-up, the plan question, the pay application) comes as its own piece,
+ * so nothing here claims it.
+ */
+export function promiseChoiceTip(choice: PromiseChoice, day: string): string {
+  return `Writes down ${writtenWhat(choice)} by ${day}. Their move runs until that day.`
 }
 
 /** The word after a written promise's day on the pill: its kind, or the one kind written. */
@@ -132,13 +140,57 @@ export function promiseWord(choice: Pick<PromiseChoice, 'kind' | 'writes'>): str
 }
 
 /**
- * What the office reads after *Written down*: where, then exactly what and by when. Two sentences, so a long job name
- * keeps each under twenty words (the prototype's one sentence ran to 22 on *Fair Oaks Shops, Building D*).
+ * What the office reads after *Written down*: exactly what and by when. Two sentences, so a long job name keeps the
+ * second under twenty words. It names no target, since none is written yet (the lead, 2026-10-12).
  */
 export function promiseWrittenWords(choice: PromiseChoice, day: string): string {
   const what = writtenWhat(choice)
-  return `Written down on ${choice.where.split(',')[0]}. ${what.charAt(0).toUpperCase()}${what.slice(1)} by ${day}.`
+  return `Written down. ${what.charAt(0).toUpperCase()}${what.slice(1)} by ${day}.`
 }
+
+/** A written promise's kind as the office reads it, on the pill, the move line and the written line. */
+export const PROMISE_KIND_WORDS: Readonly<Record<HeardPromiseKind | Extract<PromiseKind, 'delivery' | 'insurance' | 'w9'>, string>> = {
+  quote: 'quote',
+  start: 'start',
+  delivery: 'delivery',
+  papers: 'papers',
+  insurance: 'insurance',
+  w9: 'W-9',
+  payment: 'payment',
+  decision: 'answer on our bid',
+  access: 'day on site',
+  answer: 'answer',
+  cert: 'certificate',
+}
+
+/** Under a written line: "✓ Written down by Rosa: the quote by Wed Oct 7.", or the day in the words heard after a comma. */
+export function writtenLineWords(line: Extract<HeardLine, { state: HeardPromiseState }>): string {
+  const word = PROMISE_KIND_WORDS[line.writes ?? line.kind ?? 'quote']
+  const words = line.dayWords?.trim()
+  const day = line.dayYmd ? ` by ${dayLabel(line.dayYmd)}` : words ? `, ${words}` : ''
+  return `✓ Written down by ${line.by?.trim() || 'the team'}: the ${word}${day}.`
+}
+
+/** Under a line someone said was just talk. */
+export function notAPromiseWords(by: string | null | undefined): string {
+  return `Not a promise, said ${by?.trim() || 'the team'}.`
+}
+
+/** The plans question's offer, before its two presses. */
+export const PLANS_QUESTION_WORDS = 'This reads like a question about the plans.'
+
+/** Under a plans question sent to the architect. */
+export function askedLineWords(by: string | null | undefined): string {
+  return `✓ Sent to the architect as a plan question by ${by?.trim() || 'the team'}.`
+}
+
+/** Under a plans question someone answers themselves. */
+export function answeringLineWords(by: string | null | undefined): string {
+  return `✓ ${by?.trim() || 'The team'} is answering it, not the architect.`
+}
+
+/** What the office reads after *Answer it myself*. */
+export const ANSWER_IT_MYSELF_TOAST = 'Answer them in the box below.'
 
 /** The Follow up row's press on a line with a day still offered. */
 export function heardDayButton(day: string): string {
@@ -151,6 +203,8 @@ export type HeardLine = {
   contactId: string
   /** The message's time, ISO. */
   at: string
+  /** Who said what it is, or asked the architect, by name; null while it is offered. */
+  by?: string | null
 } & (
   | { kind: 'question'; state: QuestionState }
   | {
@@ -193,7 +247,7 @@ export function runningPromise(lines: ReadonlyArray<HeardLine>, contactId: strin
     if (!line.dayYmd || line.dayYmd < todayYmd || !line.kind) continue
     const at = Date.parse(line.at)
     if (best && at <= bestAt) continue
-    const word = line.writes ?? line.kind
+    const word = PROMISE_KIND_WORDS[line.writes ?? line.kind]
     const day = dayLabel(line.dayYmd)
     best = { messageId: line.messageId, dayYmd: line.dayYmd, pill: `promised ${day} · ${word}`, until: `until ${day} · ${word}` }
     bestAt = at

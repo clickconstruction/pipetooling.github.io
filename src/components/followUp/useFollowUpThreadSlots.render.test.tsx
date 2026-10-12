@@ -8,6 +8,7 @@
 import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Contact } from '../../lib/contacts/kernel'
+import type { ThreadMessage } from '../../lib/messages/thread'
 import type { FollowUpThreadIo, FollowUpThreadRows } from '../../lib/followUp/followUpThreadIo'
 import { BACK_CLEARED_TOAST } from '../../lib/followUp/queue'
 import { owedStore } from '../../lib/followUp/owedStore'
@@ -77,7 +78,9 @@ const rows = (contact: Partial<FollowUpThreadRows['contact'] & object> = {}): Fo
     { id: 'priya', state: 'waiting', snoozed_until: null, has_user_id: 'u-rosa' },
   ],
   owed: [],
-  promises: [],
+  heard: [],
+  highlights: [],
+  jobNames: { 'project:p-boerne': 'Boerne Clinic' },
 })
 
 function fakeIo(over: Partial<FollowUpThreadIo> = {}, read: FollowUpThreadRows = rows()): FollowUpThreadIo {
@@ -92,6 +95,11 @@ function fakeIo(over: Partial<FollowUpThreadIo> = {}, read: FollowUpThreadRows =
     setState: vi.fn(async () => null),
     backDone: vi.fn(async () => undefined),
     markOwed: vi.fn(async () => 'o-new'),
+    writeDown: vi.fn(async () => undefined),
+    readQuestion: vi.fn(async () => undefined),
+    highlight: vi.fn(async () => 'h-new'),
+    unhighlight: vi.fn(async () => undefined),
+    planQuestions: { record: vi.fn(async () => 'pq-1'), send: vi.fn(async () => ({ to: 'studio@archfirm.example' })) },
     ...over,
   }
 }
@@ -102,8 +110,26 @@ function BoxStandIn({ contactId }: { contactId: string }) {
   return settling.active ? <p>The box is marking it done.</p> : null
 }
 
-/** The slots as the window draws them, for one person, with or without a reply box. */
-function Harness({ io, contact, box = false }: { io: FollowUpThreadIo; contact: Contact; box?: boolean }) {
+/** Greg's question on the Boerne job, as the thread window holds a line. */
+const LINE: ThreadMessage = {
+  id: 'm-greg',
+  contactId: 'greg',
+  jobId: 'project:p-boerne',
+  channel: 'text',
+  direction: 'in',
+  at: '2026-10-01T14:00:00.000Z',
+  who: 'Greg',
+  subject: null,
+  body: 'Is the detention pond in sitework or concrete?',
+  channelId: null,
+  durationSeconds: null,
+  optoutLine: null,
+  backOn: null,
+  backBy: null,
+}
+
+/** The slots as the window draws them, for one person, with or without a reply box, a line and a selection. */
+function Harness({ io, contact, box = false, selection = '' }: { io: FollowUpThreadIo; contact: Contact; box?: boolean; selection?: string }) {
   const slots = useFollowUpThreadSlots(io)
   return (
     <div>
@@ -111,6 +137,11 @@ function Harness({ io, contact, box = false }: { io: FollowUpThreadIo; contact: 
       <div data-testid="status">{slots.statusRow?.(contact)}</div>
       <div data-testid="above">{slots.aboveBox?.(contact)}</div>
       {box && <BoxStandIn contactId={contact.id} />}
+      <div data-testid="line">
+        {slots.lineBody?.(LINE, contact)}
+        {slots.underLine?.(LINE, contact)}
+      </div>
+      <div data-testid="window">{slots.messageWindowFirst?.(LINE, selection)}</div>
       <div data-testid="more">
         {(slots.menuRows?.(contact) ?? []).map((r) => (
           <button key={r.key} type="button" title={r.tip} disabled={r.disabled} onClick={r.onPress}>
@@ -123,10 +154,10 @@ function Harness({ io, contact, box = false }: { io: FollowUpThreadIo; contact: 
 }
 
 const reread = vi.fn()
-function renderThread(io: FollowUpThreadIo, contact: Contact = GREG, box = false) {
+function renderThread(io: FollowUpThreadIo, contact: Contact = GREG, box = false, selection = '') {
   renderWithProviders(
     <MessagesRereadContext.Provider value={reread}>
-      <Harness io={io} contact={contact} box={box} />
+      <Harness io={io} contact={contact} box={box} selection={selection} />
     </MessagesRereadContext.Provider>,
   )
 }
@@ -218,11 +249,29 @@ describe('Follow up in the thread window', () => {
   })
 
   it('draws nothing for another person than the open thread, or for someone off the office team', async () => {
-    const io = fakeIo()
+    const io = fakeIo({}, {
+      ...rows(),
+      heard: [
+        {
+          id: 'p1',
+          message_id: 'm-greg',
+          kind: 'question',
+          state: 'offered',
+          day: null,
+          day_words: null,
+          writes: null,
+          decided_by: null,
+          decided_at: null,
+          message: { contact_id: 'greg', at: '2026-10-01T14:00:00.000Z' },
+        },
+      ],
+      highlights: [{ id: 'h1', message_id: 'm-greg', text: 'detention pond', highlighted_by: 'u-rosa', highlighted_at: '2026-10-02T15:00:00.000Z' }],
+    })
     renderThread(io, PRIYA)
-    await waitFor(() => expect(io.loadThread).toHaveBeenCalledWith('greg', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)))
+    await waitFor(() => expect(io.loadThread).toHaveBeenCalledWith('greg'))
     expect(screen.getByTestId('header').textContent).toBe('')
     expect(screen.getByTestId('more').textContent).toBe('')
+    expect(screen.getByTestId('line').textContent).toBe('')
     cleanup()
 
     auth.role = 'superintendent'
@@ -292,5 +341,92 @@ describe('what we owe, in the thread window (C2)', () => {
     expect(await screen.findByText('Greg Paulk comes back to Follow up on Monday.')).toBeTruthy()
     expect(io.setState).toHaveBeenCalledWith('greg', 'snoozed')
     expect(io.markOwed).not.toHaveBeenCalled()
+  })
+})
+
+/** A message_promises row on Greg's line. */
+const heardRow = (patch: Record<string, unknown>) => ({
+  id: 'p1',
+  message_id: 'm-greg',
+  kind: null,
+  state: 'offered',
+  day: '2026-10-07',
+  day_words: null,
+  writes: null,
+  decided_by: null,
+  decided_at: null,
+  message: { contact_id: 'greg', at: '2026-10-01T14:00:00.000Z', project_id: 'p-boerne' },
+  ...patch,
+})
+const line = () => within(screen.getByTestId('line'))
+
+describe('what a line was heard as, and highlights, in the thread window (C3)', () => {
+  it('a heard day: a choice writes it down in words that claim no other place', async () => {
+    const io = fakeIo({}, { ...rows(), heard: [heardRow({})] })
+    renderThread(io)
+    expect(await line().findByText('is a promise of')).toBeTruthy()
+    expect(line().getAllByRole('button').map((b) => b.textContent)).toEqual(['Their quote', 'A start or delivery', 'Insurance or W-9', 'just talk'])
+    fireEvent.click(line().getByRole('button', { name: 'A start or delivery' }))
+    expect(await screen.findByText('Written down. Hillside Excavation’s start on Boerne Clinic by Wed Oct 7.')).toBeTruthy()
+    expect(io.writeDown).toHaveBeenCalledWith('m-greg', 'start', 'start')
+    expect(reread).toHaveBeenCalledTimes(1)
+  })
+
+  it('just talk says the day was no promise', async () => {
+    const io = fakeIo({}, { ...rows(), heard: [heardRow({})] })
+    renderThread(io)
+    fireEvent.click(await line().findByRole('button', { name: 'just talk' }))
+    await waitFor(() => expect(io.writeDown).toHaveBeenCalledWith('m-greg', null))
+  })
+
+  it('a written promise says who wrote it down, and its pill runs in the status row', async () => {
+    renderThread(fakeIo({}, { ...rows(), heard: [heardRow({ kind: 'quote', state: 'written', day: '2099-12-01', decided_by: 'u-rosa' })] }))
+    expect(await line().findByText('✓ Written down by Rosa: the quote by Tue Dec 1.')).toBeTruthy()
+    expect(status().getByText('promised Tue Dec 1 · quote')).toBeTruthy()
+  })
+
+  it('a plans question on a GC project: Ask the architect records it, marks it and emails it', async () => {
+    const io = fakeIo({}, { ...rows(), heard: [heardRow({ kind: 'question', day: null })] })
+    renderThread(io)
+    fireEvent.click(await line().findByRole('button', { name: 'Ask the architect' }))
+    expect(await screen.findByText('Sent to studio@archfirm.example as a plan question.')).toBeTruthy()
+    expect(io.planQuestions.record).toHaveBeenCalledWith({
+      projectId: 'p-boerne',
+      packageId: null,
+      askedByName: 'Greg Paulk at Hillside Excavation',
+      text: 'Is the detention pond in sitework or concrete?',
+      sheets: [],
+    })
+    expect(io.readQuestion).toHaveBeenCalledWith('m-greg', 'asked')
+    expect(io.planQuestions.send).toHaveBeenCalledWith('pq-1')
+  })
+
+  it('Answer it myself marks it, and an asked question says who sent it', async () => {
+    const io = fakeIo({}, { ...rows(), heard: [heardRow({ kind: 'question', day: null })] })
+    renderThread(io)
+    fireEvent.click(await line().findByRole('button', { name: 'Answer it myself' }))
+    expect(await screen.findByText('Answer them in the box below.')).toBeTruthy()
+    expect(io.readQuestion).toHaveBeenCalledWith('m-greg', 'answered')
+    cleanup()
+    renderThread(fakeIo({}, { ...rows(), heard: [heardRow({ kind: 'question', day: null, state: 'asked', decided_by: 'u-rosa' })] }))
+    expect(await line().findByText('✓ Sent to the architect as a plan question by Rosa.')).toBeTruthy()
+  })
+
+  it('highlights take the line’s first lines, each with remove; the message window highlights whole words or removes them all', async () => {
+    const marked = { id: 'h1', message_id: 'm-greg', text: 'detention pond', highlighted_by: 'u-rosa', highlighted_at: '2026-10-02T15:00:00.000Z' }
+    const io = fakeIo({}, { ...rows(), highlights: [marked] })
+    renderThread(io)
+    expect(await line().findByText('detention pond')).toBeTruthy()
+    fireEvent.click(line().getByRole('button', { name: 'remove' }))
+    expect(await screen.findByText('Highlight removed.')).toBeTruthy()
+    expect(io.unhighlight).toHaveBeenCalledWith('h1')
+    expect(within(screen.getByTestId('window')).getByRole('button', { name: 'Remove the highlight' })).toBeTruthy()
+    cleanup()
+
+    const fresh = fakeIo()
+    renderThread(fresh, GREG, false, 'tention po')
+    fireEvent.click(await within(screen.getByTestId('window')).findByRole('button', { name: 'Highlight the selected words' }))
+    expect(await screen.findByText('Highlighted. The thread shows it instead of the first lines.')).toBeTruthy()
+    expect(fresh.highlight).toHaveBeenCalledWith('m-greg', 'detention pond')
   })
 })

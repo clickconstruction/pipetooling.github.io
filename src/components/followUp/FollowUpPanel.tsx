@@ -7,7 +7,7 @@
  * marks the line asked and emails the architect, through the page's GC writes (`planQuestions`, `followUp/askArchitect.ts`).
  */
 import { useEffect, useMemo, type ReactNode } from 'react'
-import { askArchitectToast, planQuestionOf, type AskArchitectEnd, type PlanQuestionInput } from '../../lib/followUp/askArchitect'
+import { askArchitectToast, askTheArchitect, planQuestionOf, type AskArchitectEnd, type PlanQuestionIo } from '../../lib/followUp/askArchitect'
 import { pressProblem, supabaseFollowUpIo, type FollowUpIo } from '../../lib/followUp/followUpIo'
 import { anotherDay, BACK_CLEARED_TOAST, hasToast, stateToast, type OnPortal } from '../../lib/followUp/queue'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
@@ -19,10 +19,7 @@ import type { Teammate } from './WhoHasItPill'
 const DEFAULT_IO = supabaseFollowUpIo()
 
 /** GC mode's plan questions, for *Ask the architect*: the page's own writes (`gcIo`). */
-export interface PlanQuestionWrites {
-  record: (question: PlanQuestionInput) => Promise<string>
-  /** Emails it to the job's architect. Rejects with the send's own reason, its gate's included. */
-  send: (questionId: string) => Promise<{ to: string }>
+export interface PlanQuestionWrites extends PlanQuestionIo {
   /** The job's name, for the words when the email does not go. */
   jobName?: (projectId: string) => string | null
   /** After a question is recorded, so the job's questions show it. */
@@ -77,14 +74,13 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
     if (!question) return
     const out: { recorded: boolean; end: AskArchitectEnd | null } = { recorded: false, end: null }
     const ok = await q.press(`ask ${messageId}`, async (x) => {
-      const questionId = await writes.record(question)
-      out.recorded = true
-      await x.readQuestion(messageId, 'asked')
-      try {
-        out.end = { sent: true, to: (await writes.send(questionId)).to }
-      } catch (e) {
-        out.end = { sent: false, job: writes.jobName?.(question.projectId) ?? null, reason: pressProblem(e) }
-      }
+      out.end = await askTheArchitect(writes, () => x.readQuestion(messageId, 'asked'), question, {
+        jobName: writes.jobName?.(question.projectId) ?? null,
+        reason: pressProblem,
+        onRecorded: () => {
+          out.recorded = true
+        },
+      })
     })
     if (out.recorded) writes.onAsked?.()
     if (ok && out.end) {

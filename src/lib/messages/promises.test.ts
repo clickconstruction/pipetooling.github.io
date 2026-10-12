@@ -8,7 +8,11 @@ import {
   heardDayButton,
   JUST_TALK,
   promiseChoices,
-  promiseGoesOn,
+  promiseChoiceTip,
+  notAPromiseWords,
+  askedLineWords,
+  answeringLineWords,
+  writtenLineWords,
   promiseOfferWords,
   promiseWord,
   promiseWrittenWords,
@@ -71,15 +75,27 @@ describe('the offer line and the written line', () => {
   it('reads the day, then its choices, then just talk', () => {
     expect(promiseOfferWords('Wed Oct 7')).toBe('Wed Oct 7 is a promise of')
     expect(JUST_TALK).toBe('just talk')
-    expect(promiseGoesOn(promiseChoices(person('greg'), 'Boerne Retail Shell')[0]!)).toBe('Goes on their ask on the Board')
+    expect(promiseChoiceTip(promiseChoices(person('greg'), 'Boerne Retail Shell')[0]!, 'Wed Oct 7')).toBe(
+      'Writes down Hillside Excavation’s Sitework quote for Boerne Retail Shell by Wed Oct 7. Their move runs until that day.',
+    )
   })
 
-  it('repeats exactly what and where once written, the one kind of a double', () => {
+  it('repeats exactly what once written, the one kind of a double, and claims no place it is not written (the lead, 2026-10-12)', () => {
     const [quote, start] = promiseChoices(person('greg'), DEMO_JOB_NAMES.boerne!)
-    expect(promiseWrittenWords(quote!, 'Wed Oct 7')).toBe('Written down on their ask on the Board. Hillside Excavation’s Sitework quote for Boerne Retail Shell by Wed Oct 7.')
-    expect(promiseWrittenWords(start!, 'Wed Oct 7')).toBe('Written down on the schedule. Hillside Excavation’s start on Boerne Retail Shell by Wed Oct 7.')
+    expect(promiseWrittenWords(quote!, 'Wed Oct 7')).toBe('Written down. Hillside Excavation’s Sitework quote for Boerne Retail Shell by Wed Oct 7.')
+    expect(promiseWrittenWords(start!, 'Wed Oct 7')).toBe('Written down. Hillside Excavation’s start on Boerne Retail Shell by Wed Oct 7.')
     const access = promiseChoices(person('elena'), DEMO_JOB_NAMES.fairoaks!)[2]!
-    expect(promiseWrittenWords(access, 'Fri Oct 9')).toBe('Written down on the schedule. A day we can be on site at Fair Oaks Shops, Building D by Fri Oct 9.')
+    expect(promiseWrittenWords(access, 'Fri Oct 9')).toBe('Written down. A day we can be on site at Fair Oaks Shops, Building D by Fri Oct 9.')
+    for (const words of [promiseWrittenWords(quote!, 'Wed Oct 7'), promiseChoiceTip(start!, 'Wed Oct 7')]) expect(words).not.toMatch(/Board|schedule|Pipeline/)
+  })
+
+  it('says under the line who wrote it down, who called it talk, and who asked or answers the question', () => {
+    const written = { messageId: '3', contactId: 'greg', at: '2026-10-01T14:00:00.000Z', by: 'Rosa', kind: 'papers' as const, state: 'written' as const, dayYmd: '2026-10-07', writes: 'w9' as const }
+    expect(writtenLineWords(written)).toBe('✓ Written down by Rosa: the W-9 by Wed Oct 7.')
+    expect(writtenLineWords({ ...written, kind: 'decision', writes: null, dayYmd: null, dayWords: 'after the Board meets' })).toBe('✓ Written down by Rosa: the answer on our bid, after the Board meets.')
+    expect(notAPromiseWords('Rosa')).toBe('Not a promise, said Rosa.')
+    expect(askedLineWords('Robert')).toBe('✓ Sent to the architect as a plan question by Robert.')
+    expect(answeringLineWords('Robert')).toBe('✓ Robert is answering it, not the architect.')
   })
 })
 

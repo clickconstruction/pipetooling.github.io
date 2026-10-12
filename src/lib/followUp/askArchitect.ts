@@ -39,8 +39,36 @@ export function planQuestionOf(line: { jobId?: string | null; body: string }, pe
   return { projectId, packageId: null, askedByName: askedByOf(person), text, sheets: [] }
 }
 
+/** GC mode's plan question writes (`gcIo.recordQuestion`, `gcIo.sendQuestionToArchitect`), as Follow up hands them on. */
+export interface PlanQuestionIo {
+  record: (question: PlanQuestionInput) => Promise<string>
+  /** Emails it to the job's architect. Rejects with the send's own reason, its gate's included. */
+  send: (questionId: string) => Promise<{ to: string }>
+}
+
 /** How the press ended: the email went (to whom), or the question is on its job and the email did not go, with the send's reason. */
 export type AskArchitectEnd = { sent: true; to?: string | null } | { sent: false; job: string | null; reason: string }
+
+/**
+ * The lead's order: the question on the job, the line marked asked so a second press makes no second question, then the
+ * email. A refused record or mark rejects, and `onRecorded` has said whether a question was made first; a refused email
+ * does not reject, and the end carries the send's reason. Follow up's row and the thread's line both press through this.
+ */
+export async function askTheArchitect(
+  io: PlanQuestionIo,
+  markAsked: () => Promise<unknown>,
+  question: PlanQuestionInput,
+  opts: { jobName: string | null; reason: (error: unknown) => string; onRecorded?: () => void },
+): Promise<AskArchitectEnd> {
+  const questionId = await io.record(question)
+  opts.onRecorded?.()
+  await markAsked()
+  try {
+    return { sent: true, to: (await io.send(questionId)).to }
+  } catch (e) {
+    return { sent: false, job: opts.jobName, reason: opts.reason(e) }
+  }
+}
 
 /** What the office reads after the press. */
 export function askArchitectToast(end: AskArchitectEnd): { words: string; tone: 'success' | 'error' } {

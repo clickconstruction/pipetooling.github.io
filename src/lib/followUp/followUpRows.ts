@@ -173,11 +173,11 @@ export function followUpMessagesFromRows(rows: readonly FollowUpMessageRow[], ct
  * What each line was read as. A row this build does not know (a kind, a state, a pairing the migration's checks
  * refuse) is left out rather than drawn wrong.
  */
-export function heardLinesFromRows(rows: readonly MessagePromiseRow[]): HeardLine[] {
+export function heardLinesFromRows(rows: readonly MessagePromiseRow[], userNames?: Readonly<Record<string, string>>): HeardLine[] {
   const out: HeardLine[] = []
   for (const r of rows) {
     if (!r.message) continue
-    const base = { messageId: r.message_id, contactId: r.message.contact_id, at: r.message.at }
+    const base = { messageId: r.message_id, contactId: r.message.contact_id, at: r.message.at, ...(userNames ? { by: nameOf(userNames, r.decided_by) } : {}) }
     if (r.kind === 'question') {
       if (QUESTION_STATES.has(r.state)) out.push({ ...base, kind: 'question', state: r.state as QuestionState })
       continue
