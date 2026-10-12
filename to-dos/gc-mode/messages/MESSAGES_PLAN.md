@@ -495,8 +495,8 @@ the draws one trade at a time. What is missing is the view across the trades on 
 draw), and not money the customer sees. **Open for the owner**: the cut-off, days before bill day, as a
 setting or a fixed number; whether the page is one per job or one across every job being built, with the
 job as a filter (the Board's bill day reads across jobs, so across jobs with a filter is the lean).
-**Still a mock-up to draw** before it goes in the prototype: the page at a desk width and the project card's
-pill, with the six states of a row.
+Drawn in `bill-day-mockup.html` (v1.117): the page at a desk width with the six groups, the three cards up
+top, the total line, and the six access points each as a picture.
 
 ## How it would be built, once the shape is settled
 
@@ -723,6 +723,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.117, 2026-10-11**: `bill-day-mockup.html`, Bill day drawn: across jobs with the job as a filter, the deadline
+  card, as-it-stands, the days coming up, the trades grouped by state (sent back, not in, waiting on us, approved,
+  our own crew), the total line with Send faint until bill day, and the six access points. No prototype change.
 - **v1.116, 2026-10-11**: the plan's body catches up with the prototype (an audit of the two): Trade partners is a
   surface row, Customers names its three tabs, Follow up its four sections and the nudge row's buttons, the job page
   its papers table, the panel its title and its ‹, the editor its whole, the More menu its See their page, *done*

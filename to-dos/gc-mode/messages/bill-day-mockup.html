@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bill day on a job: the trades' pay applications against the deadline</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--danger:#b3261e;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:1000px}
+.opt{max-width:1100px;margin:0 0 26px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45;max-width:1000px}
+.app{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.nav{display:flex;gap:14px;font-size:13px;padding:10px 14px;border-bottom:1px solid var(--border);align-items:center}
+.nav b{font-weight:700;margin-right:4px}
+.nav span.on{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 10px;font-weight:600}
+.page{padding:14px 16px}
+.lead2{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 6px}
+.lead2 h3{font-size:16px;margin:0}
+.filters{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin:0 0 12px;font-size:12.5px}
+.filters span{border:1px solid var(--border);border-radius:999px;padding:3px 10px;background:var(--surface)}
+.filters span.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.filters .note{margin-left:auto;color:var(--text-muted)}
+.top{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:0 0 12px}
+.card{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.card .h{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+.card .big{font-size:20px;font-weight:700}
+.card .big small{font-size:12.5px;font-weight:400;color:var(--text-muted);margin-left:6px}
+.card .sub{font-size:12.5px;color:var(--text-muted);margin-top:2px}
+.card .sub b{color:var(--danger)}
+.days{display:flex;gap:6px;margin-top:8px}
+.days span{flex:1;border:1px solid var(--border);border-radius:8px;padding:5px 8px;font-size:11.5px;text-align:center;color:var(--text-muted)}
+.days span b{display:block;color:var(--text);font-size:13px}
+.days span.now{border-color:var(--warn);background:var(--warn-soft)}
+.grp{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:10px 0 4px;display:flex;gap:8px;align-items:center}
+.grp b{color:var(--danger);text-transform:none;letter-spacing:0;font-weight:600}
+.grp i{color:var(--warn);font-style:normal;text-transform:none;letter-spacing:0}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)}
+td{padding:8px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+tr.hot td{background:#fdecea}
+td.co b{display:block}
+td.co small{color:var(--text-muted)}
+td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+td.num small{display:block;color:var(--text-muted);font-weight:400}
+.pill{font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--border);white-space:nowrap;background:var(--chip)}
+.pill.late{color:var(--danger);border-color:#f1b3ae;background:#fdecea;font-weight:600}
+.pill.warn{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}
+.pill.ok{color:var(--ok);border-color:#bfe3c9;background:var(--ok-soft)}
+.pill.ours{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}
+.pill.theirs{color:var(--ok);border-color:#bfe3c9;background:var(--ok-soft)}
+.btn{display:inline-block;font-size:12px;border:1px solid var(--border);border-radius:8px;padding:3px 8px;background:var(--surface);white-space:nowrap;margin:1px 0}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.quiet{border-color:transparent;color:var(--accent);padding:0}
+.tot{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:2px solid var(--border);padding:10px 8px;font-size:13px;flex-wrap:wrap}
+.tot b{font-size:15px}
+.tot .miss{color:var(--danger)}
+/* access points */
+.aps{display:flex;gap:10px;flex-wrap:wrap}
+.ap{flex:1;min-width:260px;border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface)}
+.ap .t{font-size:12px;font-weight:600;margin-bottom:6px}
+.ap p{font-size:12px;color:var(--text-muted);margin:6px 0 0}
+.pcard{border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12.5px;background:var(--surface)}
+.pcard .n{font-weight:600}
+.pcard .pills{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.round{display:inline-flex;align-items:center;gap:6px;font-size:11px;border:1px solid #f0d3b0;background:var(--warn-soft);color:var(--warn);border-radius:999px;padding:0 8px}
+.qrow{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--surface);font-size:12.5px}
+.qrow .av{width:24px;height:24px;border-radius:999px;background:var(--accent-soft);color:var(--accent);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex:none}
+.qrow .t{flex:1}
+.qrow .t small{display:block;color:var(--text-muted)}
+.phone{width:300px;border:8px solid #1b1f24;border-radius:24px;background:var(--surface);padding:12px;font-size:13px}
+.phone .ps{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--border)}
+.phone .ps .m{flex:none;width:20px;height:20px;border-radius:999px;border:1.5px solid var(--warn);background:var(--warn-soft);color:var(--warn);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.phone .ps .t small{display:block;color:var(--text-muted);font-size:12px}
+.pickbox{max-width:1000px;font-size:13.5px;line-height:1.5}
+.pickbox ol{margin:0 0 8px 18px;padding:0}
+</style>
+</head>
+<body>
+<h1>Bill day: the trades' pay applications against the deadline</h1>
+<p class="lead">The page the owner asked for from Elena's pay application card: every trade on a job and what each has sent in by the cut-off, or in the days coming up to it, in one view. Drawn across every job being built with the job as a filter (the lean), on the prototype's Tuesday, Oct 2, with Stone Oak Pharmacy the job in view. The facts are the app's: bill day the 25th, the trades' draws, their promises, the waivers.</p>
+
+<div class="opt">
+<h2>The page <small>· GC → Bill day · one period, one job in view</small></h2>
+<div class="app">
+<div class="nav"><b>GC</b><span>Project Board</span><span>Follow up <span style="background:var(--danger);color:#fff;border-radius:999px;padding:0 6px;font-size:11px">4</span></span><span>Messages</span><span>Customers</span><span>Trade partners</span><span class="on">Bill day</span><span>Settings</span></div>
+<div class="page">
+<div class="lead2"><h3>Bill day · Oct 25</h3><span class="note" style="font-size:13px;color:var(--text-muted)">pay application 4 · the period to Oct 25 · trades by <b style="color:var(--text)">Mon Oct 19</b> · 17 days</span></div>
+<div class="filters"><span class="on">#42 Stone Oak Pharmacy</span><span>#47 Helotes Dental Office</span><span>every job being built · 2</span><span class="note">cut-off: 6 days before bill day · Settings</span></div>
+<div class="top">
+<div class="card"><div class="h">The trades on this application</div><div class="big">2 of 6 in<small>1 sent back · 3 not in</small></div><div class="sub">Nothing is late yet; the cut-off is Mon Oct 19. <b>Rio Paving</b> has been sent back since Thu.</div></div>
+<div class="card"><div class="h">As it stands</div><div class="big">$41,200<small>approved so far</small></div><div class="sub">Pay application 4 would ask the owner for <b style="color:var(--text)">$118,600</b> when every trade is in; $77,400 is still to come from 4 trades.</div></div>
+<div class="card"><div class="h">The days coming up</div><div class="days"><span class="now"><b>Oct 25</b>2 of 6 in</span><span><b>Nov 25</b>—</span><span><b>Dec 25</b>—</span></div><div class="sub">Each bill day with how many trades are in, so a person sees the month and not only today.</div></div>
+</div>
+
+<div class="grp">Sent back · <i>ours to re-check once it comes back</i></div>
+<table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Asked · approved</th><th>Period to</th><th>Waivers</th><th>Whose move</th><th></th></tr>
+<tr><td class="co"><b>Rio Paving</b><small>Paving · Dan Ruiz</small></td><td>Draw 2</td><td class="num">$18,400<small>sent back Thu Oct 1</small></td><td>Sep 30</td><td><span class="pill">conditional in</span></td><td><span class="pill theirs">their move · 1 d</span><br><small style="color:var(--text-muted)">"Line 3 reads 80%; we see 50. Send it again."</small></td><td><span class="btn">Open the draw</span> <span class="btn">Remind them</span></td></tr>
+</table>
+
+<div class="grp">Not in · <i>3</i> · due by Mon Oct 19</div>
+<table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Last draw</th><th>Period to</th><th>Waivers</th><th>Whose move</th><th></th></tr>
+<tr><td class="co"><b>Hillside Excavation</b><small>Sitework · Greg Paulk</small></td><td>Draw 3 <span class="pill">next</span></td><td class="num">$22,000<small>draw 2, paid Sep 28</small></td><td>—</td><td><span class="pill warn">unconditional owed on draw 2</span></td><td><span class="pill theirs">their move</span><br><small style="color:var(--text-muted)">promised Fri Oct 16 · quiet 4 d</small></td><td><span class="btn primary">Ask for it</span> <span class="btn">Call in Quo</span></td></tr>
+<tr><td class="co"><b>Kerr Electric</b><small>Electrical · Dana Kerr</small></td><td>Draw 3 <span class="pill">next</span></td><td class="num">$31,500<small>draw 2, paid Sep 28</small></td><td>—</td><td><span class="pill ok">all in</span></td><td><span class="pill theirs">their move</span><br><small style="color:var(--text-muted)">no day given · quiet 2 d</small></td><td><span class="btn primary">Ask for it</span> <span class="btn">Nothing this period</span></td></tr>
+<tr><td class="co"><b>Alamo Steel</b><small>Structural steel · Pat Alamo</small></td><td>Draw 1 <span class="pill">first</span></td><td class="num">—<small>statement of work signed Sep 27</small></td><td>—</td><td><span class="pill">none yet</span></td><td><span class="pill theirs">their move</span><br><small style="color:var(--text-muted)">on site since Oct 1</small></td><td><span class="btn primary">Ask for it</span> <span class="btn">Nothing this period</span></td></tr>
+</table>
+
+<div class="grp">In, waiting on us · 1</div>
+<table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Asked</th><th>Period to</th><th>Waivers</th><th>Whose move</th><th></th></tr>
+<tr><td class="co"><b>Lone Star Mechanical</b><small>Mechanical · Luis Ortega</small></td><td>Draw 2</td><td class="num">$27,900<small>came Mon Sep 28 · stored $4,100</small></td><td>Sep 30</td><td><span class="pill">conditional in</span></td><td><span class="pill ours">our move · 4 d</span><br><small style="color:var(--text-muted)">line 2 reads 90%, we see 75</small></td><td><span class="btn primary">Approve</span> <span class="btn">Send back with a note</span></td></tr>
+</table>
+
+<div class="grp">Approved · 1</div>
+<table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Asked · approved</th><th>Period to</th><th>Waivers</th><th>Whose move</th><th></th></tr>
+<tr><td class="co"><b>Tejas Power</b><small>Electrical, low voltage · Bill Sorrell</small></td><td>Draw 2</td><td class="num">$14,200 · <b>$13,300</b><small>approved Wed Sep 30, kept what they asked</small></td><td>Sep 30</td><td><span class="pill">conditional in</span></td><td><span class="pill">waits on the owner's payment</span></td><td><span class="btn">Open the draw</span></td></tr>
+</table>
+
+<div class="grp">Our own crew · from the Pipeline job</div>
+<table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">This period</th><th colspan="4"></th></tr>
+<tr><td class="co"><b>Plumbing</b><small>ours · J1082 on the Pipeline</small></td><td>—</td><td class="num">$27,900<small>62% done, from the job's stages</small></td><td colspan="4" class="note" style="color:var(--text-muted)">Paid through payroll: no statement of work, no draw, no waiver. Bill the customer bills its line from the percent.</td></tr>
+</table>
+
+<div class="tot"><span>Approved so far <b>$41,200</b> · ours <b>$27,900</b></span><span class="miss">Still to come: 4 trades, about $77,400 by their last draws</span><span><span class="btn">See the owner's application as it stands</span> <span class="btn primary" style="opacity:.5">Send pay application 4 · Oct 25</span></span></div>
+<p class="why" style="margin:8px 0 0">Send stays faint until bill day and until nothing is sent back; the Draws window is still the one place a draw is approved or sent back, reached from the row. Nothing this period is recorded with who said it, never typed over a draw. A trade late past the cut-off moves to a red <i>Late</i> group at the top with the days past.</p>
+</div></div>
+</div>
+
+<div class="opt">
+<h2>Where it is reached from <small>· the six access points, drawn</small></h2>
+<div class="aps">
+<div class="ap"><div class="t">1 · The customer's pay application card</div><div class="pcard"><div class="n">Pay application</div><div class="pills"><span class="round">Pay app 4 · with the architect</span></div><p style="margin:6px 0 0"><span class="btn quiet">the trades on this application ›</span></p></div><p>Where the owner was. The round line gains the press.</p></div>
+<div class="ap"><div class="t">2 · The project's card on the Board</div><div class="pcard"><div class="n">#42 Stone Oak Pharmacy</div><div class="pills"><span class="pill">Draws</span><span class="pill warn">Bill day · 2 of 6 in</span><span class="pill">Schedule</span><span class="pill">Closeout</span></div></div><p>Beside Draws; red once the cut-off has passed with one missing.</p></div>
+<div class="ap"><div class="t">3 · Follow up</div><div class="qrow"><span class="av">HE</span><span class="t">Hillside Excavation <span class="pill">Draws</span><small>Stone Oak · draw 3 not in · promised Fri Oct 16</small></span><span class="btn">Ask for it</span></div><p style="margin-top:6px"><span class="btn quiet">3 trades not in on Stone Oak Pharmacy · see them together ›</span></p><p>The nudge rows already exist; the section head links here when more than one trade on a job is waiting.</p></div>
+<div class="ap"><div class="t">4 · The job page's papers</div><div class="pcard" style="font-size:12px"><span>The pay application · draw 3</span> <span style="color:var(--text-muted)">· nothing on file</span> <span style="color:var(--text-muted)">· Draws · Greg is on it</span> <span class="btn quiet" style="float:right">bill day ›</span></div><p>A pay application is a paper, so its rows link here.</p></div>
+<div class="ap"><div class="t">5 · Trade partners → By step, the Draws row</div><div class="pcard"><div class="n" style="font-size:12px">Draws <span style="color:var(--text-muted);font-weight:400">· 5 draws · 3 not in</span> <span class="btn quiet" style="float:right">bill day ›</span></div></div><p>The row's head opens the page for the job the chips are on.</p></div>
+<div class="ap"><div class="t">6 · The trade's portal</div><div class="phone"><div class="ps"><span class="m">!</span><span class="t"><b>Your pay application for October</b><small>Send by Mon Oct 19. Draw 3 on Stone Oak Pharmacy.</small><span class="btn primary" style="margin-top:4px">Enter a draw</span></span></div></div><p>Its own side of the same period; nothing of the other trades.</p></div>
+</div>
+</div>
+
+<div class="pickbox">
+<h2 style="font-size:15px;margin:0 0 6px">Is this the best we can do?</h2>
+<ol>
+<li><b>Across jobs with a filter, not per job.</b> Bill day is one day for every job, and the office works it as one morning; a per-job page would be opened six times. The filter row keeps the job in view when that is the question.</li>
+<li><b>Grouped by state, not by trade.</b> The page's question is "what is still missing", and the groups answer it top down: sent back, not in, waiting on us, approved. A sort by trade is the By company tab's job.</li>
+<li><b>Nothing new is written here.</b> Approve and Send back are the Draws window's; Ask for it is the step's line; Nothing this period is the one new fact, and it is a recorded word, not a typed-over draw.</li>
+<li><b>The cut-off is one setting</b>, days before bill day, not a day per job; a job that needs a different one is the open question, not the default.</li>
+<li><b>What was dropped</b>: a calendar of every trade's promised days (the days strip says the month in one line); approving from the row (two places to approve a draw is one too many); dollar bars (the words say it).</li>
+</ol>
+</div>
+</body>
+</html>
