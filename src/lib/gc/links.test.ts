@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { billDayFromSearch, billDayHref, GC_FOLLOW_UP_HREF, GC_MESSAGES_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcFocusFromSearch, gcProjectHref, gcViewFromSearch } from './links'
+import { threadFromSearch } from '../../components/gc/messages/useThreadWindow'
+import { billDayFromSearch, billDayHref, GC_FOLLOW_UP_HREF, GC_MESSAGES_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcFocusFromSearch, gcProjectHref, gcViewFromSearch, messagesThreadHref } from './links'
 
 describe('GC project links', () => {
   it('opens a GC project on its card on the GC projects page', () => {
@@ -26,6 +27,15 @@ describe('GC project links', () => {
     expect([gcViewFromSearch(search), billDayFromSearch(search)]).toEqual(['money', 'ef8905d1-039a-4cbc-9d69-9468cfea50e0'])
     expect(billDayFromSearch(new URLSearchParams('view=money'))).toBeNull()
     expect(billDayFromSearch(new URLSearchParams('billday=%20'))).toBeNull()
+  })
+
+  it('opens a person’s thread over Messages, at a line when one is named', () => {
+    const href = messagesThreadHref('c-dana', 'm-dana-2')
+    expect(href).toBe('/gc?view=messages&thread=c-dana&at=m-dana-2')
+    const search = new URLSearchParams(href.split('?')[1])
+    expect(gcViewFromSearch(search)).toBe('messages')
+    expect(threadFromSearch(search)).toEqual({ contactId: 'c-dana', at: 'm-dana-2' })
+    expect(threadFromSearch(new URLSearchParams(messagesThreadHref('c-dana').split('?')[1]))).toEqual({ contactId: 'c-dana', at: null })
   })
 
   it('says it in plain words', () => {

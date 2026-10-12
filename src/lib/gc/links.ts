@@ -22,6 +22,15 @@ export const GC_MONEY_HREF = '/gc?view=money'
 /** Messages on the GC projects page (cut 1): every person the office talks with, and their threads. */
 export const GC_MESSAGES_HREF = '/gc?view=messages'
 
+/**
+ * One person's thread over Messages, opened at a line when one is named (`useThreadWindow`'s `?thread=` and `?at=`).
+ * A line in a Pipeline job's Job activity opens it (cut 10).
+ */
+export function messagesThreadHref(contactId: string, messageId?: string | null): string {
+  const at = messageId ? `&at=${encodeURIComponent(messageId)}` : ''
+  return `${GC_MESSAGES_HREF}&thread=${encodeURIComponent(contactId)}${at}`
+}
+
 /** The GC projects page's views, one pill each. */
 export type GcView = 'board' | 'partners' | 'followUp' | 'money' | 'messages'
 
