@@ -43,8 +43,8 @@ INSERT INTO public.projects (id, name, customer_id) VALUES
   ('00000000-0000-0000-0000-0000000005f1', 'Spine Clinic', '00000000-0000-0000-0000-0000000005c1');
 INSERT INTO public.gc_projects (project_id, stage, architect_customer_id, property_owner_customer_id) VALUES
   ('00000000-0000-0000-0000-0000000005f1', 'buyout', '00000000-0000-0000-0000-0000000005c2', '00000000-0000-0000-0000-0000000005c3');
-INSERT INTO public.gc_companies (id, name, contact_name, phone, email) VALUES
-  ('00000000-0000-0000-0000-0000000005a1', 'Spine Hillside', 'Greg Paulk', '(210) 555-0113', 'greg@hillside.example');
+INSERT INTO public.gc_companies (id, name, trades, contact_name, phone, email) VALUES
+  ('00000000-0000-0000-0000-0000000005a1', 'Spine Hillside', ARRAY['Sitework'], 'Greg Paulk', '(210) 555-0113', 'greg@hillside.example');
 INSERT INTO public.gc_company_people (id, company_id, name, email) VALUES
   ('00000000-0000-0000-0000-0000000005a2', '00000000-0000-0000-0000-0000000005a1', 'Dana Paulk', 'dana@hillside.example');
 INSERT INTO public.people (id, master_user_id, kind, name, phone) VALUES
