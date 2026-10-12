@@ -108,6 +108,7 @@ export default function PeopleSubsTab() {
       .from('contract_template_documents')
       .select('id, document_name, book_version_date')
       .eq('audience', 'sub')
+      .is('flow_kind', null)
       .order('sequence_order', { ascending: true })
     const gcDoc =
       ((subBookDocs ?? []) as Array<{ id: string; document_name: string; book_version_date: string | null }>).find((d) => /general conditions/i.test(d.document_name)) ??

@@ -142,7 +142,7 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
         const [settings, docs] = await Promise.all([
           withSupabaseRetry(() => supabase.from('app_settings').select('key, value_text').in('key', contractSettingKeys()), 'contracts tab: settings texts'),
           withSupabaseRetry(
-            () => supabase.from('contract_template_documents').select('id, document_name, book_body_html, book_body_format, book_version_date, updated_at').eq('audience', 'customer').order('document_name'),
+            () => supabase.from('contract_template_documents').select('id, document_name, book_body_html, book_body_format, book_version_date, updated_at').eq('audience', 'customer').is('flow_kind', null).order('document_name'),
             'contracts tab: customer documents',
           ),
         ])

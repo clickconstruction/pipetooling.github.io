@@ -164,7 +164,7 @@ export function WorkOrderAssemblerModal({
         const [pRes, sRes, bRes, aRes, uRes] = await Promise.all([
           supabase.from('people').select('id, name, email, notes, end_date').eq('kind', 'sub').is('archived_at', null).order('name'),
           supabase.from('sub_scope_items').select('*').is('archived_at', null).order('sequence_order', { ascending: true }),
-          supabase.from('contract_template_documents').select('id, document_name, book_version_date').eq('audience', 'sub').order('sequence_order', { ascending: true }),
+          supabase.from('contract_template_documents').select('id, document_name, book_version_date').eq('audience', 'sub').is('flow_kind', null).order('sequence_order', { ascending: true }),
           supabase.from('app_settings').select('key, value_text').in('key', ['sub_pay_run_day']),
           authUserId ? supabase.from('users').select('name, role').eq('id', authUserId).maybeSingle() : Promise.resolve({ data: null }),
         ])

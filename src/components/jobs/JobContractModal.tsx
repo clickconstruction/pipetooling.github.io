@@ -268,6 +268,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           .from('contract_template_documents')
           .select('id, document_name, book_body_html, book_body_format, book_version_date')
           .eq('audience', 'customer')
+          .is('flow_kind', null)
           .order('document_name')
         const list = (data ?? []) as TemplateRow[]
         setTemplates(list)
