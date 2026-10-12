@@ -182,6 +182,19 @@ SELECT msp.same('words that are not a number', coalesce(public.contact_for_chann
 RESET ROLE;
 
 -- 6 · Who is this? An assistant names the numbers.
+-- A later cut's row on a contact moves with a fold through its own contacts_fold_<something>(uuid, uuid). One with any
+-- other shape is never run.
+CREATE TABLE msp.fold_rows (contact_id uuid, note text);
+INSERT INTO msp.fold_rows VALUES ('00000000-0000-0000-0000-000000005012', 'we owe him a call back');
+CREATE FUNCTION public.contacts_fold_test(p_from uuid, p_into uuid) RETURNS void LANGUAGE sql AS $$
+  UPDATE msp.fold_rows SET contact_id = p_into WHERE contact_id = p_from
+$$;
+CREATE FUNCTION public.contacts_fold_wrong_shape(p_from uuid) RETURNS void LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'a contacts_fold_ function of another shape was run';
+END $$;
+GRANT ALL ON msp.fold_rows TO authenticated;
+GRANT EXECUTE ON FUNCTION public.contacts_fold_test(uuid, uuid) TO authenticated;
 SELECT msp.as_user('00000000-0000-0000-0000-0000000005d3');
 SET LOCAL ROLE authenticated;
 -- Dee: a second person at the trade partner, known only by her cell, on the clinic.
@@ -204,6 +217,8 @@ SELECT msp.same('the empty contact is gone and both his lines are his, on his on
    FROM ids),
   '0|Greg here. / Greg from my other phone.|1|1');
 SELECT msp.same('so his number is his again', (SELECT public.contact_for_channel('phone', '2105550113') = greg FROM ids)::text, 'true');
+SELECT msp.same('a later cut''s row on the folded contact moved with it, by its own contacts_fold_ function',
+  (SELECT concat_ws('|', count(*), bool_and(f.contact_id = i.greg)) FROM msp.fold_rows f, ids i), '1|true');
 RESET ROLE;
 -- The customers and the roster are their masters' to see, and the dev's: the dev names the rest.
 SELECT msp.as_user('00000000-0000-0000-0000-0000000005d1');

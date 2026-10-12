@@ -268,25 +268,15 @@ $$;
 
 -- ---------- the fold ----------
 
--- What else a fold moves: a later cut's rows that hang off a contact (cut 2's what we owe, its state and who has it). A
--- no-op here. A later migration redefines this function, keeping every line before its own, and never contacts_fold, so
--- a fix to the fold never has to be copied. contacts_fold calls it before the folded contact goes.
-CREATE OR REPLACE FUNCTION public.contacts_fold_also(p_from uuid, p_into uuid)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY INVOKER
-SET search_path = public
-AS $$
-BEGIN
-  -- Nothing hangs off a contact yet but what contacts_fold moves itself.
-  RETURN;
-END;
-$$;
-
 -- p_from's thread, numbers, addresses and jobs move onto p_into, and p_from goes. A number both have keeps the copy that
 -- says STOP, else p_into's. p_into keeps its star, else takes p_from's; its goes-by, else p_from's. Its name is never
 -- changed: the name says which person on a company's row it is. Used by name_contact, merge_customers and the delete
 -- trigger below.
+--
+-- A later cut's rows on a contact (cut 2's what we owe, cut 4's notes and nudges) move through a function of its own
+-- named contacts_fold_<something>(p_from uuid, p_into uuid) RETURNS void, in the public schema and owned as this one is.
+-- The fold runs each of them, in name order, after its own rows and while p_from is still there to read. No cut ever
+-- redefines this function, so the result never depends on the order the cuts merge in.
 CREATE OR REPLACE FUNCTION public.contacts_fold(p_from uuid, p_into uuid)
 RETURNS void
 LANGUAGE plpgsql
@@ -295,6 +285,7 @@ SET search_path = public
 AS $$
 DECLARE
   r record;
+  v_fn name;
 BEGIN
   IF p_from IS NULL OR p_into IS NULL OR p_from = p_into THEN
     RETURN;
@@ -338,8 +329,21 @@ BEGIN
   UPDATE public.contacts t SET goes_by = f.goes_by
   FROM public.contacts f
   WHERE t.id = p_into AND f.id = p_from AND t.goes_by IS NULL AND f.goes_by IS NOT NULL;
-  -- A later cut's rows, while p_from is still there to read.
-  PERFORM public.contacts_fold_also(p_from, p_into);
+  -- Every later cut's rows on a contact, by its own contacts_fold_<something>, while p_from is still there to read. Only
+  -- a function of the fold's own owner, with the fold's two uuids, returning nothing, is run.
+  FOR v_fn IN
+    SELECT p.proname
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND starts_with(p.proname, 'contacts_fold_')
+      AND p.proargtypes::oid[] = ARRAY['uuid'::regtype::oid, 'uuid'::regtype::oid]
+      AND p.prorettype = 'void'::regtype
+      AND p.proowner = (SELECT f.proowner FROM pg_proc f WHERE f.oid = 'public.contacts_fold(uuid, uuid)'::regprocedure)
+    ORDER BY p.proname
+  LOOP
+    EXECUTE format('SELECT public.%I($1, $2)', v_fn) USING p_from, p_into;
+  END LOOP;
   DELETE FROM public.contacts WHERE id = p_from;
 END;
 $$;
@@ -809,8 +813,6 @@ REVOKE EXECUTE ON FUNCTION public.contact_job_check(text, uuid) FROM PUBLIC, ano
 GRANT EXECUTE ON FUNCTION public.contact_job_check(text, uuid) TO authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.contact_name_on(text, uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.contact_name_on(text, uuid, text) TO authenticated, service_role;
-REVOKE EXECUTE ON FUNCTION public.contacts_fold_also(uuid, uuid) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.contacts_fold_also(uuid, uuid) TO authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.contacts_fold(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.contacts_fold(uuid, uuid) TO authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.contact_for_channel(text, text) FROM PUBLIC, anon;
