@@ -26,6 +26,11 @@ import type { DrawTables } from '../lib/gc/drawRows'
 import { loadMessagesView } from '../lib/messages/messagesIo'
 import type { ThreadSlots } from '../components/gc/messages/threadSlots'
 import { useMessagesReread } from '../components/gc/messages/useMessagesReread'
+import { loadPaperChoices, setOwnerContractPaper } from '../lib/contracts/clausesIo'
+import { paperChoices } from '../lib/contracts/clauseRows'
+import { clauseLibraryRows } from '../test/fixtures/clauseBookDemo'
+import { sendGcOwnerContract } from '../lib/gc/ownerContractIo'
+import { sendGcCustomerEmail } from '../lib/gc/customerEmailIo'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -234,6 +239,26 @@ vi.mock('../lib/gc/punchIo', () => ({
   punchFixedIn: vi.fn(() => Promise.resolve()),
   checkPunchItem: vi.fn(() => Promise.resolve()),
 }))
+// The papers to build a statement of work or our contract from (v2.5334): none unless a test gives them. Our contract's
+// send keeps its id, so the paper picked is set on it, and its email goes through.
+vi.mock('../lib/contracts/clausesIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/contracts/clausesIo')>()),
+  loadPaperChoices: vi.fn(() => Promise.resolve([])),
+  loadSowPaper: vi.fn(() => Promise.resolve(null)),
+  loadOwnerContractPaper: vi.fn(() => Promise.resolve(null)),
+  setSowPaper: vi.fn(() => Promise.resolve()),
+  setOwnerContractPaper: vi.fn(() => Promise.resolve()),
+}))
+vi.mock('../lib/gc/ownerContractIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/gc/ownerContractIo')>()),
+  sendGcOwnerContract: vi.fn(() => Promise.resolve('cs-new')),
+}))
+vi.mock('../lib/portal/mintCustomerPortalLink', () => ({ mintCustomerPortalLink: vi.fn(() => Promise.resolve()) }))
+vi.mock('../lib/gc/customerEmailIo', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/gc/customerEmailIo')>()),
+  sendGcCustomerEmail: vi.fn(() => Promise.resolve({ ok: true, to: 'Pat Oak', email: 'pat@example.com' })),
+}))
+
 vi.mock('../lib/gc/closeoutIo', () => ({
   acceptWork: vi.fn(() => Promise.resolve('2026-10-12')),
   finalPayAppCameIn: vi.fn(() => Promise.resolve('draw-final')),
@@ -1269,5 +1294,51 @@ describe('GcProjects: How the stage is going under a project’s title (the Boar
     // The clinic's next step is its unawarded trade, which every reader of the card can reach.
     expect(within(card).getByRole('button', { name: 'Next: Award Concrete →' })).toBeTruthy()
     expect(within(card).queryByLabelText('Set a start date')).toBeNull()
+  })
+})
+
+describe('GcProjects: our contract built from clauses (Messages, cut 4c, v2.5334)', () => {
+  const loaded = { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) }
+  afterEach(() => {
+    auth.role = 'dev'
+    vi.mocked(loadPaperChoices).mockResolvedValue([])
+    vi.mocked(setOwnerContractPaper).mockReset()
+    vi.mocked(setOwnerContractPaper).mockResolvedValue(undefined)
+    vi.mocked(sendGcOwnerContract).mockClear()
+    vi.mocked(sendGcCustomerEmail).mockClear()
+    vi.mocked(loadGcBoardRows).mockReset()
+  })
+
+  /** The clinic's customer window, its contract's send open with a PDF picked and the paper given. */
+  async function sendWithPaper(paperId: string) {
+    vi.mocked(loadPaperChoices).mockResolvedValue(paperChoices(clauseLibraryRows()))
+    const rows = awardedClinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    fireEvent.click(within(document.querySelector('[data-gc-board-row="p1"]') as HTMLElement).getByRole('button', { name: 'Oak Street Partners' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Oak Street Partners' })
+    fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
+    fireEvent.click(within(dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement).getByRole('button', { name: 'Send to sign' }))
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    fireEvent.change(await within(box).findByRole('combobox', { name: 'Paper' }), { target: { value: paperId } })
+    fireEvent.change(within(box).getByLabelText('The contract PDF'), { target: { files: [new File(['%PDF-1.7'], 'Clinic contract.pdf', { type: 'application/pdf' })] } })
+    fireEvent.click(within(box).getByLabelText('Email it to them now, with their portal link'))
+    fireEvent.click(within(box).getByRole('button', { name: 'Send to sign' }))
+    return dialog
+  }
+
+  it('sets the paper the send picked on the new send, before the email names it', async () => {
+    const dialog = await sendWithPaper('doc-msa')
+    await waitFor(() => expect(setOwnerContractPaper).toHaveBeenCalledWith('cs-new', 'doc-msa'))
+    await waitFor(() => expect(sendGcCustomerEmail).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(setOwnerContractPaper).mock.invocationCallOrder[0]!).toBeLessThan(vi.mocked(sendGcCustomerEmail).mock.invocationCallOrder[0]!)
+    expect(await within(dialog).findByText('On record, and sent to Pat Oak.')).toBeTruthy()
+  })
+
+  it('says a refused paper after the send, which stands on our contract file', async () => {
+    vi.mocked(setOwnerContractPaper).mockRejectedValue(new Error('Only the money team picks the paper for our contract.'))
+    const dialog = await sendWithPaper('doc-sow')
+    expect(await within(dialog).findByText('On record, and sent to Pat Oak. The paper did not save, so it goes on our contract file alone: Only the money team picks the paper for our contract.')).toBeTruthy()
   })
 })

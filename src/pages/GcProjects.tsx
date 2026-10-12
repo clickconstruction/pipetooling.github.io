@@ -132,6 +132,7 @@ import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '.
 import { GcCustomerWindow } from '../components/gc/GcCustomerWindow'
 import type { ContractSendInput, ContractSendOutcome } from '../components/gc/GcCustomerContractSend'
 import { openOwnerContractFile, sendGcOwnerContract } from '../lib/gc/ownerContractIo'
+import { setOwnerContractPaper } from '../lib/contracts/clausesIo'
 import { customerBilledJobIds, customerMoneyView } from '../lib/gc/customerMoney'
 import { newestContractSend } from '../lib/gc/customerContract'
 import { mintCustomerPortalLink } from '../lib/portal/mintCustomerPortalLink'
@@ -684,6 +685,16 @@ export default function GcProjects() {
       ? async (projectId: string, input: ContractSendInput): Promise<ContractSendOutcome> => {
           // Email it now (Owner Billing's call): the newest send as it is, emailed with nothing sent anew.
           const sendId = input.sendId ?? (await sendGcOwnerContract({ projectId, ...input }))
+          // The paper the window picked (Messages, cut 4c, v2.5334), set on the new send before any email names it. A
+          // refusal leaves the send on our contract file, and the words say so.
+          let paperWords = ''
+          if (!input.sendId && input.paperId) {
+            try {
+              await setOwnerContractPaper(sendId, input.paperId)
+            } catch (e) {
+              paperWords = ` The paper did not save, so it goes on our contract file alone: ${formatErrorMessage(e, 'try again')}`
+            }
+          }
           let outcome: ContractSendOutcome = { words: 'On record with its price and file. No email went: they find it when they open their portal.' }
           const project = board?.projects.find((x) => x.id === projectId)
           if (input.email && board && project) {
@@ -702,7 +713,7 @@ export default function GcProjects() {
             }
           }
           await refreshBoard()
-          return outcome
+          return paperWords ? { ...outcome, words: `${outcome.words}${paperWords}` } : outcome
         }
       : undefined
   // The Contract Book's entries a company is sent (B6-b-ii), read once someone who writes the Board opens a company.
