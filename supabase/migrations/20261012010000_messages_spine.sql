@@ -268,6 +268,21 @@ $$;
 
 -- ---------- the fold ----------
 
+-- What else a fold moves: a later cut's rows that hang off a contact (cut 2's what we owe, its state and who has it). A
+-- no-op here. A later migration redefines this function, keeping every line before its own, and never contacts_fold, so
+-- a fix to the fold never has to be copied. contacts_fold calls it before the folded contact goes.
+CREATE OR REPLACE FUNCTION public.contacts_fold_also(p_from uuid, p_into uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  -- Nothing hangs off a contact yet but what contacts_fold moves itself.
+  RETURN;
+END;
+$$;
+
 -- p_from's thread, numbers, addresses and jobs move onto p_into, and p_from goes. A number both have keeps the copy that
 -- says STOP, else p_into's. p_into keeps its star, else takes p_from's; its goes-by, else p_from's. Its name is never
 -- changed: the name says which person on a company's row it is. Used by name_contact, merge_customers and the delete
@@ -323,6 +338,8 @@ BEGIN
   UPDATE public.contacts t SET goes_by = f.goes_by
   FROM public.contacts f
   WHERE t.id = p_into AND f.id = p_from AND t.goes_by IS NULL AND f.goes_by IS NOT NULL;
+  -- A later cut's rows, while p_from is still there to read.
+  PERFORM public.contacts_fold_also(p_from, p_into);
   DELETE FROM public.contacts WHERE id = p_from;
 END;
 $$;
@@ -792,6 +809,8 @@ REVOKE EXECUTE ON FUNCTION public.contact_job_check(text, uuid) FROM PUBLIC, ano
 GRANT EXECUTE ON FUNCTION public.contact_job_check(text, uuid) TO authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.contact_name_on(text, uuid, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.contact_name_on(text, uuid, text) TO authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION public.contacts_fold_also(uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.contacts_fold_also(uuid, uuid) TO authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.contacts_fold(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.contacts_fold(uuid, uuid) TO authenticated, service_role;
 REVOKE EXECUTE ON FUNCTION public.contact_for_channel(text, text) FROM PUBLIC, anon;
