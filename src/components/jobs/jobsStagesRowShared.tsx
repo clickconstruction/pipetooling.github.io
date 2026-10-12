@@ -351,15 +351,15 @@ export function renderStagesThreadFullscreenJobHeader(job: JobCalendarJobIdentit
   const addr = (job.job_address ?? '').trim()
   const addrLines = formatAddressTwoLines(addr)
   const addrOneLine = addrLines ? [addrLines.line1, addrLines.line2].filter(Boolean).join(' ') : ''
+  // No divider of its own (v2.5336): every host (the activity modal, the thread
+  // panel's fullscreen, the calendar modal) sets this in a header row that draws
+  // the rule, so one here doubled it and left a band of space under the address.
   return (
     <div
       style={{
         display: 'flex',
         flexDirection: 'column',
         gap: '0.25rem',
-        marginBottom: '0.5rem',
-        paddingBottom: '0.5rem',
-        borderBottom: '1px solid var(--border)',
         flexShrink: 0,
       }}
     >
