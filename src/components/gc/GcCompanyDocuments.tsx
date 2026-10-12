@@ -20,6 +20,7 @@ export function CompanyTabStrip({
   activity,
   toGet,
   portal,
+  flow = false,
 }: {
   tab: CompanyTab
   onTab: (t: CompanyTab) => void
@@ -27,11 +28,14 @@ export function CompanyTabStrip({
   activity?: number
   toGet: number
   portal: boolean
+  /** Their flow (Messages cut 4): where they stand and what comes next. */
+  flow?: boolean
 }) {
   const tabs: { key: CompanyTab; label: string }[] = [
     { key: 'about', label: 'About' },
     ...(activity === undefined ? [] : [{ key: 'activity' as const, label: `Activity (${activity})` }]),
     { key: 'documents', label: toGet > 0 ? `Documents · ${toGet} to get` : 'Documents' },
+    ...(flow ? [{ key: 'flow' as const, label: 'Flow' }] : []),
     ...(portal ? [{ key: 'portal' as const, label: 'Their portal' }] : []),
   ]
   const stripRef = useRef<HTMLDivElement | null>(null)

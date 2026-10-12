@@ -7,8 +7,8 @@ import { createContext, useContext } from 'react'
  * does: a not-ready bar's paper on the schedule opens Documents at that paper with its send open.
  */
 
-/** The company window's tabs. Activity since the Board's B2b-iv. */
-export type CompanyTab = 'about' | 'activity' | 'documents' | 'portal'
+/** The company window's tabs. Activity since the Board's B2b-iv; Flow since Messages cut 4. */
+export type CompanyTab = 'about' | 'activity' | 'documents' | 'flow' | 'portal'
 
 /**
  * Where the window opens. `doc` is a Documents row's key: 'msa', 'insurance', 'w9' (`DOC_KEYS`) or

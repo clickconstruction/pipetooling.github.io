@@ -11,6 +11,24 @@ import { customerMoneyView } from '../../lib/gc/customerMoney'
 import type { OwnerPayAppRow } from '../../lib/gc/ownerBillingRows'
 import type { GcState } from '../../lib/gc/types'
 
+const flowIo = vi.hoisted(() => ({ find: vi.fn(async (_by: { gcCompanyId?: string | null; customerId?: string | null }) => 'flow-contact') }))
+vi.mock('../../lib/flows/flowPersonIo', async () => {
+  const { SEED_FLOWS } = await import('../../lib/flows/seed')
+  return {
+    findFlowContactId: flowIo.find,
+    readFlowPerson: vi.fn(async () => ({
+      contact: { id: 'flow-contact', kind: 'customer', name: null, goes_by: null },
+      flow: SEED_FLOWS.customer,
+      rows: { contact: { id: 'flow-contact', kind: 'customer', off_since: null, off_why: null, off_by: null } },
+      holds: [],
+      sent: [],
+      notes: [],
+      lines: [],
+    })),
+    flowPresses: {},
+  }
+})
+
 /** Oak Street Partners' window: the clinic won, our contract on it in the state the rows give. */
 function open(rows: BoardRows = awardedClinicBoardRows(), opts: { send?: boolean; email?: boolean; at?: { tab?: 'about' | 'documents'; doc?: string; send?: boolean } } = { send: true }) {
   const state = boardStateFromRows(rows)
@@ -183,7 +201,7 @@ describe('GcCustomerWindow · Activity (the Board’s B2b-v-ii)', () => {
 
   it('sits between About and Documents, with their call log newest first and no other customer’s', () => {
     const { dialog, tab } = openActivity()
-    expect(within(dialog).getAllByRole('tab').map((t) => t.getAttribute('data-gc-company-tab'))).toEqual(['about', 'activity', 'documents'])
+    expect(within(dialog).getAllByRole('tab').map((t) => t.getAttribute('data-gc-company-tab'))).toEqual(['about', 'activity', 'documents', 'flow'])
     const lines = within(dialog).getAllByRole('listitem').map((li) => li.textContent ?? '')
     expect(tab.textContent).toBe(`Activity (${lines.length})`)
     const calls = lines.filter((l) => l.includes('Rosa:') || l.includes('Abe:'))
@@ -294,5 +312,12 @@ describe('GcCustomerWindow · their money, for the money team (the Board’s B2b
     fireEvent.click(within(dialog).getByRole('tab', { name: /^Documents/ }))
     expect(within(dialog).queryByRole('button', { name: 'Open the bill' })).toBeNull()
     expect(within(dialog).queryByText(/Pay application/)).toBeNull()
+  })
+
+  it('opens their flow on its own tab, read for the customer', async () => {
+    const { dialog } = open()
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Flow' }))
+    expect(await within(dialog).findByRole('region', { name: 'Customer flow' })).toBeTruthy()
+    expect(flowIo.find).toHaveBeenCalledWith({ gcCompanyId: null, customerId: 'c1' })
   })
 })

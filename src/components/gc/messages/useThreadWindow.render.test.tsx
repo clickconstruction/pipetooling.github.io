@@ -42,8 +42,8 @@ describe('opening a thread on /gc (the URL holds it)', () => {
     expect(result.current).toMatchObject({ contactId: 'c-elena', at: 'm-7' })
   })
 
-  it('draws no slot until a later cut fills one', () => {
+  it('draws only the slots a cut has filled: cut 4’s flow at the side', () => {
     const { result } = renderHook(() => useThreadSlots())
-    expect(result.current).toEqual({})
+    expect(Object.keys(result.current)).toEqual(['side'])
   })
 })

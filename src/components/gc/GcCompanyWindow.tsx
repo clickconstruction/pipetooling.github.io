@@ -12,6 +12,7 @@ import { answerRecord, type AnswerRecord } from '../../lib/gc/reliability'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { vettingOf } from '../../lib/gc/vetting'
 import { money, shortDate } from '../../lib/gc/words'
+import { FlowTab } from '../flows/FlowTab'
 import { CompanyActivity, CompanyDocuments, CompanyTabStrip, type CompanyTab, type ContactHow } from './GcCompanyDocuments'
 import type { CompanyAt } from './gcCompanyOpener'
 import { GcPaperSend } from './GcPaperSend'
@@ -110,8 +111,8 @@ export function GcCompanyWindow({
   }, [pendingSend, papers, state, partner])
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      // Escape steps back out of a send first, then closes the window.
+      if (e.key !== 'Escape' || e.defaultPrevented) return
+      // Escape steps back out of a send first, then closes the window. A step card inside takes its own Escape first.
       if (aside) setAside(null)
       else onClose()
     }
@@ -227,7 +228,7 @@ export function GcCompanyWindow({
           </div>
           {problem && <div style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>{problem}</div>}
         </div>
-        <CompanyTabStrip tab={tab} onTab={setTab} activity={activity.length} toGet={docs.toGet} portal={Boolean(portal)} />
+        <CompanyTabStrip tab={tab} onTab={setTab} activity={activity.length} toGet={docs.toGet} portal={Boolean(portal)} flow />
         <div style={{ padding: '1rem', overflowY: 'auto', minHeight: 0 }}>
           {tab === 'about' && <About state={state} partner={partner} onOpenProject={onOpenProject} />}
           {tab === 'activity' && <CompanyActivity events={activity} onOpenProject={onOpenProject} {...(onLogContact ? { onLog: onLogContact } : {})} />}
@@ -272,6 +273,7 @@ export function GcCompanyWindow({
               />
             </div>
           )}
+          {tab === 'flow' && <FlowTab at={{ gcCompanyId: partner.id }} onPaper={() => setTab('documents')} onActivity={() => setTab('activity')} />}
           {tab === 'portal' && portal && (
             <section>
               <Heading>Their portal</Heading>
