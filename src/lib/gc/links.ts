@@ -20,6 +20,20 @@ export const GC_FOLLOW_UP_HREF = '/gc?view=followUp'
 export const GC_MONEY_HREF = '/gc?view=money'
 
 /**
+ * Money → Bill day → From the trades for one job (Messages cut 9): the trades' draws against the bill day. Follow up's
+ * trades-not-in head, the flow's pay application round and By step's Draws row open it here.
+ */
+export function billDayHref(projectId: string): string {
+  return `/gc?view=money&billday=${encodeURIComponent(projectId)}`
+}
+
+/** Pure: the job a `?billday=` opens Bill day's From the trades on, or null. */
+export function billDayFromSearch(search: URLSearchParams): string | null {
+  const id = search.get('billday')?.trim()
+  return id ? id : null
+}
+
+/**
  * Pure: the view a `?view=` on the GC projects page opens on, or the board. A dev's own views open from their pills
  * only. Money opens for the money team; the page shows anyone else Follow up in its place.
  */

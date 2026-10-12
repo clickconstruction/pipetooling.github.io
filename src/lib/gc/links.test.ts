@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { GC_FOLLOW_UP_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcFocusFromSearch, gcProjectHref, gcViewFromSearch } from './links'
+import { billDayFromSearch, billDayHref, GC_FOLLOW_UP_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcFocusFromSearch, gcProjectHref, gcViewFromSearch } from './links'
 
 describe('GC project links', () => {
   it('opens a GC project on its card on the GC projects page', () => {
@@ -16,6 +16,15 @@ describe('GC project links', () => {
     expect(gcViewFromSearch(new URLSearchParams(GC_MONEY_HREF.split('?')[1]))).toBe('money')
     expect(gcViewFromSearch(new URLSearchParams('focus=abc'))).toBe('board')
     expect(gcViewFromSearch(new URLSearchParams('view=portals'))).toBe('board')
+  })
+
+  it('opens Bill day’s From the trades on one job, in the Money view', () => {
+    const href = billDayHref('ef8905d1-039a-4cbc-9d69-9468cfea50e0')
+    expect(href).toBe('/gc?view=money&billday=ef8905d1-039a-4cbc-9d69-9468cfea50e0')
+    const search = new URLSearchParams(href.split('?')[1])
+    expect([gcViewFromSearch(search), billDayFromSearch(search)]).toEqual(['money', 'ef8905d1-039a-4cbc-9d69-9468cfea50e0'])
+    expect(billDayFromSearch(new URLSearchParams('view=money'))).toBeNull()
+    expect(billDayFromSearch(new URLSearchParams('billday=%20'))).toBeNull()
   })
 
   it('says it in plain words', () => {
