@@ -24,3 +24,4 @@ quick-replies
 messages-spine
 contract-clauses
 portal-customer-page
+customer-portal-papers

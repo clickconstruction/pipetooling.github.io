@@ -126,6 +126,8 @@ export interface PaperView {
   /** Signed or declined. A pay application is never answered here; it is paid. */
   answered: boolean
   viewedAt: string | null
+  /** The job it went on, when the reader knows it. */
+  jobId?: string
 }
 
 /** The paper's name inside a sentence: "the contract", "change order 2", "the pay application". */
@@ -167,4 +169,85 @@ export function portalWords(lastOpenedAt: string | null, papers: PaperView[]): P
     } else words.push(p.kind === 'changeOrder' ? `opened ${label}` : `read ${label}`)
   }
   return { words, unopened }
+}
+
+/** A paper sent to a customer, as `customer_portal_papers` reads it for the office: its non-money half, never a dollar. */
+export interface CustomerPaperRow {
+  customer_id: string
+  project_id: string
+  job: string
+  paper_kind: 'contract' | 'change_order' | 'pay_app'
+  paper_id: string
+  number: number | null
+  description: string | null
+  sent_on: string
+  answered: boolean
+  first_opened_at: string | null
+}
+
+/** A customer's page as `customer_portal_views` reads it: its row with no paper. */
+export interface CustomerPageViewRow {
+  customer_id: string
+  paper_kind: string | null
+  last_opened_at: string
+  opens: number
+}
+
+/** What the office reads back about one customer's page: the last open of the page, and every paper sent. */
+export interface CustomerReadBack {
+  lastOpenedAt: string | null
+  opens: number
+  papers: PaperView[]
+}
+
+const PAPER_ORDER: Record<PaperView['kind'], number> = { contract: 0, changeOrder: 1, payApp: 2 }
+
+function paperViewOf(r: CustomerPaperRow): PaperView {
+  const base = { id: r.paper_id, sentAt: r.sent_on, answered: r.answered, viewedAt: r.first_opened_at, jobId: r.project_id }
+  if (r.paper_kind === 'contract') return { ...base, kind: 'contract', title: 'Our contract', detail: r.job }
+  if (r.paper_kind === 'change_order') return { ...base, kind: 'changeOrder', title: `Change order ${r.number ?? ''}`.trim(), detail: r.description }
+  return { ...base, kind: 'payApp', title: `Pay application ${r.number ?? ''}`.trim(), detail: r.job }
+}
+
+/**
+ * The read-back for each customer named: the page's last outside open and every paper sent, contract first, then
+ * change orders, then pay applications, each in the order it went. A customer with no opens and no papers still has
+ * an entry, so a row can say "never opened".
+ */
+export function customerPaperViews(customerIds: readonly string[], papers: readonly CustomerPaperRow[], pages: readonly CustomerPageViewRow[]): Map<string, CustomerReadBack> {
+  const out = new Map<string, CustomerReadBack>()
+  for (const id of customerIds) out.set(id, { lastOpenedAt: null, opens: 0, papers: [] })
+  for (const page of pages) {
+    if (page.paper_kind !== null) continue
+    const entry = out.get(page.customer_id)
+    if (entry) {
+      entry.lastOpenedAt = page.last_opened_at
+      entry.opens = page.opens
+    }
+  }
+  for (const row of papers) out.get(row.customer_id)?.papers.push(paperViewOf(row))
+  for (const entry of out.values()) {
+    entry.papers.sort((a, b) => PAPER_ORDER[a.kind] - PAPER_ORDER[b.kind] || (a.sentAt < b.sentAt ? -1 : a.sentAt > b.sentAt ? 1 : 0))
+  }
+  return out
+}
+
+/**
+ * The papers the portal pill names, as the prototype's did: our contract on each job, each change order still waiting
+ * on them, and the newest pay application on each job. `portalWords(lastOpenedAt, pillPapers(papers))` words the pill.
+ */
+export function pillPapers(papers: readonly PaperView[]): PaperView[] {
+  const newestPayApp = new Map<string, PaperView>()
+  for (const p of papers) {
+    if (p.kind !== 'payApp') continue
+    const key = p.jobId ?? ''
+    const held = newestPayApp.get(key)
+    if (!held || p.sentAt > held.sentAt) newestPayApp.set(key, p)
+  }
+  return papers.filter((p) => p.kind === 'contract' || (p.kind === 'changeOrder' && !p.answered) || newestPayApp.get(p.jobId ?? '') === p)
+}
+
+/** Follow up's portal rows read these: a paper we sent that waits on their signature (never a pay application). */
+export function papersWaitingOnThem(papers: readonly PaperView[]): PaperView[] {
+  return papers.filter((p) => !p.answered && p.kind !== 'payApp')
 }

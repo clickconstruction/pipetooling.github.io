@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { customerPapers, openedAtWords, paperViewLabel, portalWords } from './papers'
+import { customerPaperViews, customerPapers, openedAtWords, papersWaitingOnThem, paperViewLabel, pillPapers, portalWords } from './papers'
 import { ELENA_PAPERS, PRIYA_PAPERS } from './portalTestPeople'
 
 describe("the customer's Papers tab", () => {
@@ -110,5 +110,67 @@ describe('what the office reads back about the page', () => {
     expect(paperViewLabel({ ...base, kind: 'contract', title: 'Our contract' })).toBe('the contract')
     expect(paperViewLabel({ ...base, kind: 'payApp', title: 'Pay application 4' })).toBe('the pay application')
     expect(paperViewLabel({ ...base, kind: 'changeOrder', title: 'Change order 2' })).toBe('change order 2')
+  })
+})
+
+describe("the office's read-back of customers' pages", () => {
+  const row = (over: Partial<import('./papers').CustomerPaperRow>): import('./papers').CustomerPaperRow => ({
+    customer_id: 'priya',
+    project_id: 'helotes',
+    job: 'Helotes Dental Office',
+    paper_kind: 'contract',
+    paper_id: 'send-1',
+    number: null,
+    description: null,
+    sent_on: '2026-09-15',
+    answered: true,
+    first_opened_at: '2026-09-19T13:02:00Z',
+    ...over,
+  })
+  const rows = [
+    row({ paper_kind: 'change_order', paper_id: 'co-2', number: 2, description: 'a sink in exam 3', sent_on: '2026-09-30', answered: false, first_opened_at: null }),
+    row({}),
+    row({ paper_kind: 'change_order', paper_id: 'co-1', number: 1, description: 'exam 2 cabinets', sent_on: '2026-09-25', answered: true, first_opened_at: '2026-09-26T15:00:00Z' }),
+    row({ paper_kind: 'pay_app', paper_id: 'pa-1', number: 1, sent_on: '2026-10-01', answered: false, first_opened_at: null }),
+    row({ paper_kind: 'pay_app', paper_id: 'pa-2', number: 2, sent_on: '2026-11-01', answered: false, first_opened_at: null }),
+  ]
+  const pages = [{ customer_id: 'priya', paper_kind: null, last_opened_at: '2026-09-29T14:14:00Z', opens: 4 }]
+
+  it('gives each customer the page’s last open and every paper, contract first, each kind in the order it went', () => {
+    const back = customerPaperViews(['priya', 'marcus'], rows, pages)
+    expect(back.get('marcus')).toEqual({ lastOpenedAt: null, opens: 0, papers: [] })
+    const priya = back.get('priya')
+    expect(priya?.lastOpenedAt).toBe('2026-09-29T14:14:00Z')
+    expect(priya?.opens).toBe(4)
+    expect(priya?.papers.map((p) => [p.kind, p.title, p.detail, p.answered, p.viewedAt])).toEqual([
+      ['contract', 'Our contract', 'Helotes Dental Office', true, '2026-09-19T13:02:00Z'],
+      ['changeOrder', 'Change order 1', 'exam 2 cabinets', true, '2026-09-26T15:00:00Z'],
+      ['changeOrder', 'Change order 2', 'a sink in exam 3', false, null],
+      ['payApp', 'Pay application 1', 'Helotes Dental Office', false, null],
+      ['payApp', 'Pay application 2', 'Helotes Dental Office', false, null],
+    ])
+  })
+
+  it('names in the pill the contract, the change orders still out and the newest pay application on each job', () => {
+    const priya = customerPaperViews(['priya'], rows, pages).get('priya')!
+    expect(pillPapers(priya.papers).map((p) => p.title)).toEqual(['Our contract', 'Change order 2', 'Pay application 2'])
+    expect(portalWords(priya.lastOpenedAt, pillPapers(priya.papers))).toEqual({
+      words: ['opened Tue Sep 29 9:14 AM', 'read the contract', 'has not opened change order 2', 'has not opened the pay application'],
+      unopened: 2,
+    })
+  })
+
+  it('gives Follow up the papers that wait on their signature, never a pay application', () => {
+    const priya = customerPaperViews(['priya'], rows, pages).get('priya')!
+    expect(papersWaitingOnThem(priya.papers).map((p) => p.title)).toEqual(['Change order 2'])
+  })
+
+  it('keeps the newest pay application per job apart when a customer has two jobs', () => {
+    const two = [...rows, row({ project_id: 'bell', job: 'Bell Family Dental', paper_kind: 'pay_app', paper_id: 'pa-b1', number: 1, sent_on: '2026-10-05', answered: false, first_opened_at: null })]
+    const priya = customerPaperViews(['priya'], two, pages).get('priya')!
+    expect(pillPapers(priya.papers).filter((p) => p.kind === 'payApp').map((p) => `${p.title} · ${p.detail}`)).toEqual([
+      'Pay application 1 · Bell Family Dental',
+      'Pay application 2 · Helotes Dental Office',
+    ])
   })
 })
