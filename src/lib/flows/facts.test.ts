@@ -7,7 +7,7 @@ describe('flows/facts', () => {
   it('lists each fact once, in a known group', () => {
     const ids = FLOW_FACTS.map((f) => f.id)
     expect(new Set(ids).size).toBe(ids.length)
-    expect(ids).toHaveLength(31)
+    expect(ids).toHaveLength(32)
     for (const f of FLOW_FACTS) expect(FACT_GROUPS).toContain(f.group)
   })
 
