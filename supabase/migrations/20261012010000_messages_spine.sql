@@ -221,6 +221,8 @@ STABLE
 SECURITY INVOKER
 SET search_path = public
 AS $$
+DECLARE
+  v_found boolean;
 BEGIN
   IF p_job_kind IS NULL AND p_job_id IS NULL THEN
     RETURN;
@@ -228,11 +230,13 @@ BEGIN
   IF p_job_kind IS NULL OR p_job_id IS NULL OR p_job_kind NOT IN ('bid', 'project', 'pipeline') THEN
     RAISE EXCEPTION 'jobUnknown' USING ERRCODE = 'P0001', DETAIL = 'A job is a bid, a GC project or a Pipeline job, with its id.';
   END IF;
-  IF NOT CASE p_job_kind
+  -- Read into a variable: an IF's condition ends at its first THEN, a CASE's included.
+  v_found := CASE p_job_kind
     WHEN 'bid' THEN EXISTS (SELECT 1 FROM public.bids WHERE id = p_job_id)
     WHEN 'project' THEN EXISTS (SELECT 1 FROM public.gc_projects WHERE project_id = p_job_id)
     ELSE EXISTS (SELECT 1 FROM public.jobs_ledger WHERE id = p_job_id)
-  END THEN
+  END;
+  IF NOT v_found THEN
     RAISE EXCEPTION 'jobNotFound' USING ERRCODE = 'P0001', DETAIL = 'No job with that id.';
   END IF;
 END;
