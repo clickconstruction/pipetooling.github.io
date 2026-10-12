@@ -11,6 +11,7 @@
  */
 import { firstName, type ContactKind } from '../contacts/kernel'
 import { messagesThreadHref } from '../gc/links'
+import { threadMessageFromRow, type MessageRow } from '../messages/load'
 import { callLength, type MessageChannel, type MessageDirection } from '../messages/thread'
 import type { JobActivityDetailLine } from './jobActivityLine'
 
@@ -53,6 +54,8 @@ export interface JobActivityMessageFacts {
   notTiedYet: boolean
   /** The person's thread in Messages, opened at this line. */
   threadHref: string
+  /** Who the thread is with, as the link names them: "Dana". */
+  withName: string
 }
 
 /** The longest a line's words run before the rest folds into what opens. */
@@ -145,6 +148,72 @@ export function messageLineParts(m: JobActivityMessage): { who: string; body: st
       subject: m.channel === 'email' ? m.subject?.trim() || null : null,
       notTiedYet: !m.tied,
       threadHref: messagesThreadHref(m.contactId, m.id),
+      withName: firstName(m.contact) || m.contact.name.trim() || 'them',
     },
   }
+}
+
+// ---------- the read's rows (J2) ----------
+
+/** A `messages` row as Job activity reads it: the spine's columns, and cut 5's call columns. */
+export type JobMessageRow = MessageRow & { summary?: string | null; transcript?: string | null }
+
+/** The person a line is with, as the read hands them over. */
+export interface JobMessageContact {
+  id: string
+  name: string
+  goesBy?: string | null
+  kind: ContactKind
+}
+
+/** A job takes the customer's lines tied to no job yet while it is open: until it is paid. */
+export function jobTakesUntiedLines(status: string | null | undefined): boolean {
+  return status !== 'paid'
+}
+
+/**
+ * The lines Job activity shows for one Pipeline job: every line tied to it, and the lines tied to no job yet of the
+ * customer's people put on it, since the job began. A trade's or a supplier's untied line stays with them, and a team
+ * note tied to nothing is about the person, not the job. A row whose person the read did not bring, or whose channel
+ * this build does not know, is left out. Oldest first.
+ */
+export function jobActivityMessagesFromRows(
+  rows: readonly JobMessageRow[],
+  contacts: readonly JobMessageContact[],
+  userNames: Readonly<Record<string, string>>,
+  job: { id: string; since: string | null },
+): JobActivityMessage[] {
+  const byId = new Map(contacts.map((c) => [c.id, c]))
+  const since = job.since ? Date.parse(job.since) : Number.NaN
+  const seen = new Set<string>()
+  const out: JobActivityMessage[] = []
+  for (const row of rows) {
+    const contact = byId.get(row.contact_id)
+    if (!contact || seen.has(row.id)) continue
+    const tied = row.jobs_ledger_id === job.id
+    if (!tied) {
+      const onNoJob = !row.bid_id && !row.project_id && !row.jobs_ledger_id
+      const afterStart = Number.isNaN(since) || Date.parse(row.at) >= since
+      if (!onNoJob || contact.kind !== 'customer' || row.direction === 'team' || !afterStart) continue
+    }
+    const m = threadMessageFromRow(row, { userNames, contacts: [{ ...contact, goesBy: contact.goesBy ?? null }] })
+    if (!m) continue
+    seen.add(row.id)
+    out.push({
+      id: m.id,
+      contactId: m.contactId,
+      contact: { name: contact.name, goesBy: contact.goesBy ?? null, kind: contact.kind },
+      channel: m.channel,
+      direction: m.direction,
+      at: m.at,
+      who: m.who,
+      subject: m.subject ?? null,
+      body: m.body,
+      durationSeconds: m.durationSeconds ?? null,
+      summary: row.summary ?? null,
+      transcript: row.transcript ?? null,
+      tied,
+    })
+  }
+  return out.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
 }

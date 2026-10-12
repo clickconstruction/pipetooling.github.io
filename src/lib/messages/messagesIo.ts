@@ -12,6 +12,7 @@ import { supabase } from '../supabase'
 import { fetchAllRows } from '../supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
+import { jobActivityMessagesFromRows, jobTakesUntiedLines, type JobActivityMessage, type JobMessageContact, type JobMessageRow } from '../jobs/jobActivityMessages'
 import type { Contact, ContactKind, ContactRecord } from '../contacts/kernel'
 import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
 import { loadSentEmailsTo } from '../sent/sentCopiesIo'
@@ -49,6 +50,10 @@ const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, created_at'
 const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at'
 const MESSAGE_COLS =
   'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by'
+/** A job's lines also read cut 5's call columns (20261012170000_quo_messages.sql): a call's length, summary and words. */
+const JOB_MESSAGE_COLS = `${MESSAGE_COLS}, duration_seconds, summary, transcript`
+/** The most lines one job's read brings, each way. */
+const JOB_MESSAGES_MAX = 1000
 
 const unique = (ids: readonly (string | null | undefined)[]) => [...new Set(ids.filter((id): id is string => Boolean(id)))]
 
@@ -180,6 +185,52 @@ export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
   const keys = unique([...Object.values(rails).flat(), ...messages.map((m) => m.jobId)])
   const tiles = await loadTiles(keys, calendarYmdInAppTzFromIso(nowIso))
   return { contacts, messages, rails, tiles, userNames }
+}
+
+/**
+ * One Pipeline job's calls, texts and emails for its Job activity (cut 10, J2): the lines tied to the job, and while
+ * the job is open the lines of the customer's people put on it that are tied to no job yet, since the job began
+ * (`jobActivityMessagesFromRows` keeps the rule). Read as the signed-in user, so only the office team gets rows. It
+ * leans on v2.5353's indexes: `messages_pipeline_job` and `contact_jobs_pipeline_job`.
+ */
+export async function loadJobMessages(job: { id: string; status: string | null; createdAt: string | null }): Promise<JobActivityMessage[]> {
+  const [tied, on] = await Promise.all([
+    from('messages').select(JOB_MESSAGE_COLS).eq('jobs_ledger_id', job.id).order('at').limit(JOB_MESSAGES_MAX) as unknown as PromiseLike<Result<JobMessageRow[]>>,
+    jobTakesUntiedLines(job.status)
+      ? (from('contact_jobs').select('contact_id').eq('jobs_ledger_id', job.id) as unknown as PromiseLike<Result<{ contact_id: string }[]>>)
+      : Promise.resolve({ data: [] as { contact_id: string }[], error: null }),
+  ])
+  const tiedRows = taken(tied, 'load the job’s messages') ?? []
+  const onIds = unique((taken(on, 'load the people on the job') ?? []).map((r) => r.contact_id))
+  const contactRows = await inSlices<{ id: string; kind: string; name: string | null; goes_by: string | null }>(
+    unique([...tiedRows.map((r) => r.contact_id), ...onIds]),
+    (ids) => from('contacts').select('id, kind, name, goes_by').in('id', ids) as never,
+    'load the people on the job’s messages',
+  )
+  const contacts: JobMessageContact[] = contactRows.map((c) => ({ id: c.id, name: c.name ?? '', goesBy: c.goes_by, kind: c.kind as ContactKind }))
+  const customersOn = contacts.filter((c) => c.kind === 'customer' && onIds.includes(c.id)).map((c) => c.id)
+  const untiedRows = customersOn.length
+    ? await inSlices<JobMessageRow>(
+        customersOn,
+        (ids) =>
+          from('messages')
+            .select(JOB_MESSAGE_COLS)
+            .in('contact_id', ids)
+            .is('bid_id', null)
+            .is('project_id', null)
+            .is('jobs_ledger_id', null)
+            .neq('direction', 'team')
+            .gte('at', job.createdAt ?? '1970-01-01T00:00:00Z')
+            .order('at')
+            .limit(JOB_MESSAGES_MAX) as never,
+        'load the customer’s lines not tied to a job',
+      )
+    : []
+  const rows = [...tiedRows, ...untiedRows]
+  const userIds = unique(rows.map((r) => r.who_user_id))
+  const users = await inSlices<{ id: string; name: string | null }>(userIds, (ids) => supabase.from('users').select('id, name').in('id', ids), 'load the names of the team')
+  const userNames = Object.fromEntries(users.map((u) => [u.id, u.name ?? '']))
+  return jobActivityMessagesFromRows(rows, contacts, userNames, { id: job.id, since: job.createdAt })
 }
 
 // ---------- the presses ----------
