@@ -7246,6 +7246,38 @@ export type Database = {
           },
         ]
       }
+      customer_page_words: {
+        Row: {
+          edited_at: string | null
+          edited_by: string | null
+          en: string
+          es: string
+          key: string
+        }
+        Insert: {
+          edited_at?: string | null
+          edited_by?: string | null
+          en: string
+          es: string
+          key: string
+        }
+        Update: {
+          edited_at?: string | null
+          edited_by?: string | null
+          en?: string
+          es?: string
+          key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_page_words_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_portal_links: {
         Row: {
           audience: string
@@ -11429,6 +11461,9 @@ export type Database = {
           owner_retainage_step_to_pct: number | null
           owner_retainage_step_way: string | null
           permit_on: string | null
+          portal_forecast_on: boolean
+          portal_photos_on: boolean
+          portal_spanish_on: boolean
           project_id: string
           project_manager_user_id: string | null
           property_owner_customer_id: string | null
@@ -11465,6 +11500,9 @@ export type Database = {
           owner_retainage_step_to_pct?: number | null
           owner_retainage_step_way?: string | null
           permit_on?: string | null
+          portal_forecast_on?: boolean
+          portal_photos_on?: boolean
+          portal_spanish_on?: boolean
           project_id: string
           project_manager_user_id?: string | null
           property_owner_customer_id?: string | null
@@ -11501,6 +11539,9 @@ export type Database = {
           owner_retainage_step_to_pct?: number | null
           owner_retainage_step_way?: string | null
           permit_on?: string | null
+          portal_forecast_on?: boolean
+          portal_photos_on?: boolean
+          portal_spanish_on?: boolean
           project_id?: string
           project_manager_user_id?: string | null
           property_owner_customer_id?: string | null
@@ -24474,6 +24515,8 @@ export type Database = {
           entity_id: string | null
           id: string
           occurred_at: string
+          paper_id: string | null
+          paper_kind: string | null
           surface: string
           via: string | null
           viewer: string | null
@@ -24483,6 +24526,8 @@ export type Database = {
           entity_id?: string | null
           id?: string
           occurred_at?: string
+          paper_id?: string | null
+          paper_kind?: string | null
           surface: string
           via?: string | null
           viewer?: string | null
@@ -24492,6 +24537,8 @@ export type Database = {
           entity_id?: string | null
           id?: string
           occurred_at?: string
+          paper_id?: string | null
+          paper_kind?: string | null
           surface?: string
           via?: string | null
           viewer?: string | null
@@ -30708,6 +30755,18 @@ export type Database = {
       customer_date_met_apply: {
         Args: { p_customer_id: string; p_work_date: string }
         Returns: undefined
+      }
+      customer_page_word_blanks: { Args: { t: string }; Returns: string[] }
+      customer_portal_views: {
+        Args: { p_customer_ids: string[] }
+        Returns: {
+          customer_id: string
+          first_opened_at: string
+          last_opened_at: string
+          opens: number
+          paper_id: string
+          paper_kind: string
+        }[]
       }
       day_book_payload_for: {
         Args: { p_from: string; p_person?: string; p_to: string; p_uid: string }
