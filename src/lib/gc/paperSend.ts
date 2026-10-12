@@ -6,10 +6,8 @@
 import type { PortalLang } from './portalI18n'
 import { pWeekday } from './portalI18n'
 import type { GcProject, GcState, PaperKind, PaperSend, Partner, PromiseKind, TradePackage } from './types'
+import { INSURANCE_ASK_DAYS } from './promises'
 import { daysUntil, shortDate, weekdayDate } from './words'
-
-/** Insurance gets its next step this many days before it runs out (the same 30 days as the renewal ask). */
-const INSURANCE_ASK_WITHIN_DAYS = 30
 
 export interface PaperStep {
   paper: PaperKind
@@ -80,7 +78,7 @@ export function paperStep(state: GcState, partner: Partner, docKey: string): Pap
   }
   if (docKey === 'insurance' || docKey === 'w9') {
     const paper: 'insurance' | 'w9' = docKey
-    const needed = paper === 'w9' ? !partner.w9 : !partner.coiExpires || daysUntil(partner.coiExpires, today) <= INSURANCE_ASK_WITHIN_DAYS
+    const needed = paper === 'w9' ? !partner.w9 : !partner.coiExpires || daysUntil(partner.coiExpires, today) <= INSURANCE_ASK_DAYS
     if (!needed) return null
     const sends = paperSendsFor(state, partner.id, paper)
     // An open promise from the office counts as asked, even from before sends were kept.
