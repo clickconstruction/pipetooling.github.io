@@ -56,7 +56,8 @@ const CONTACT_COLUMNS = [
   'roster:people(id, name)',
 ].join(', ')
 const CHANNEL_COLUMNS = 'id, contact_id, kind, value, opted_out_at, created_at'
-const MESSAGE_COLUMNS =
+/** A line's columns as Follow up reads them, the thread's read too (`followUpThreadIo.ts`). */
+export const MESSAGE_COLUMNS =
   'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at'
 const OWED_COLUMNS = 'id, contact_id, what, by_day, by_words, marked_by, marked_at, done_at, done_how, done_note_message_id'
 const PROMISE_COLUMNS = 'id, message_id, kind, state, day, day_words, writes, decided_by, decided_at, message:messages(contact_id, at)'

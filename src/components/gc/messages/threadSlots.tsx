@@ -12,6 +12,7 @@
 import type { ReactNode } from 'react'
 import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
+import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
 
 /** A row of the header's ⋯ menu. The window's own rows (Show all text, Open their record) come first. */
 export interface ThreadMenuRow {
@@ -46,5 +47,7 @@ export interface ThreadSlots {
 
 /** The slots every thread window draws. Each cut adds its own lines here. */
 export function useThreadSlots(): ThreadSlots {
-  return {}
+  // Cut 2 (Follow up): who has it, the back and snoozed pills, and ⋯'s state rows.
+  const followUp = useFollowUpThreadSlots()
+  return { ...followUp }
 }

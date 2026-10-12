@@ -2,9 +2,13 @@
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { useThreadSlots } from './threadSlots'
 import { threadFromSearch, useThreadWindow, withoutThread, withThread } from './useThreadWindow'
+
+// Cut 2's slots (Follow up) read the open thread through their own hook; here they are a marker, to see them reach the window.
+const cut2 = vi.hoisted(() => ({ headerRight: () => null, statusRow: () => null, menuRows: () => [] }))
+vi.mock('../../followUp/useFollowUpThreadSlots', () => ({ useFollowUpThreadSlots: () => cut2 }))
 
 const at = (url: string) =>
   function Wrapper({ children }: { children: ReactNode }) {
@@ -42,8 +46,8 @@ describe('opening a thread on /gc (the URL holds it)', () => {
     expect(result.current).toMatchObject({ contactId: 'c-elena', at: 'm-7' })
   })
 
-  it('draws no slot until a later cut fills one', () => {
+  it('hands the window each cut’s slots: cut 2’s who has it, status row and ⋯ rows', () => {
     const { result } = renderHook(() => useThreadSlots())
-    expect(result.current).toEqual({})
+    expect(result.current).toEqual(cut2)
   })
 })

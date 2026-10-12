@@ -110,23 +110,49 @@ const nameOf = (userNames: Readonly<Record<string, string>>, id: string | null) 
  */
 export function followUpContactsFromRows(rows: FollowUpRows, userNames: Readonly<Record<string, string>>): FollowUpContact[] {
   const byId = new Map(rows.contacts.map((r) => [r.id, r]))
-  return contactsFromRows(rows.contacts, rows.channels, [], rows.records).map((c: Contact) => {
-    const row = byId.get(c.id)!
-    const state = STATES.has(row.state) ? (row.state as ContactState) : 'done'
-    return {
-      id: c.id,
-      kind: c.kind,
-      name: c.name,
-      goesBy: c.goesBy,
-      company: c.company,
-      ...(c.trade ? { trade: c.trade } : {}),
-      state,
-      snoozedUntil: state === 'snoozed' ? row.snoozed_until : null,
-      has: nameOf(userNames, row.has_user_id),
-      hasUserId: row.has_user_id,
-      hasSince: row.has_user_id ? row.has_since : null,
-      hasHow: row.has_user_id && row.has_how && HOWS.has(row.has_how) ? (row.has_how as HasHow) : null,
-    }
+  return contactsFromRows(rows.contacts, rows.channels, [], rows.records).map((c: Contact) => followUpContactOf(c, byId.get(c.id), userNames))
+}
+
+/**
+ * One person as Follow up reads them: the spine's contact (as the thread window holds it) with cut 2's columns. No row,
+ * or a state this build does not know, reads as done with nobody.
+ */
+export function followUpContactOf(
+  c: Pick<Contact, 'id' | 'kind' | 'name' | 'goesBy' | 'company' | 'trade'>,
+  row: ContactFollowUpRow | null | undefined,
+  userNames: Readonly<Record<string, string>>,
+): FollowUpContact {
+  const state = row && STATES.has(row.state) ? (row.state as ContactState) : 'done'
+  const hasUserId = row?.has_user_id ?? null
+  return {
+    id: c.id,
+    kind: c.kind,
+    name: c.name,
+    goesBy: c.goesBy,
+    company: c.company,
+    ...(c.trade ? { trade: c.trade } : {}),
+    state,
+    snoozedUntil: state === 'snoozed' ? (row?.snoozed_until ?? null) : null,
+    has: nameOf(userNames, hasUserId),
+    hasUserId,
+    hasSince: hasUserId ? (row?.has_since ?? null) : null,
+    hasHow: hasUserId && row?.has_how && HOWS.has(row.has_how) ? (row.has_how as HasHow) : null,
+  }
+}
+
+/** Someone holding a conversation that is not done: what the picker counts for each teammate. */
+export interface HolderRow {
+  id: string
+  state: string
+  snoozed_until: string | null
+  has_user_id: string
+}
+
+/** The holders as `holdCount` reads them: who has each, by name, and its state. Their names do not matter here. */
+export function holdersFromRows(rows: readonly HolderRow[], userNames: Readonly<Record<string, string>>): QueueContact[] {
+  return rows.map((r) => {
+    const state = STATES.has(r.state) ? (r.state as ContactState) : 'done'
+    return { id: r.id, kind: 'unknown', name: '', state, snoozedUntil: state === 'snoozed' ? r.snoozed_until : null, has: nameOf(userNames, r.has_user_id) }
   })
 }
 

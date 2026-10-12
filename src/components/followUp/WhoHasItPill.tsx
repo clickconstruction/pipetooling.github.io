@@ -9,13 +9,9 @@ import type { FollowUpContact } from '../../lib/followUp/followUpRows'
 import { hasPillWords, hasSinceWords, holdCount, takeItWords, whoPickerHead, type QueueContact } from '../../lib/followUp/queue'
 import { exactStamp } from '../../lib/messages/owed'
 import { whenWords } from '../../lib/messages/thread'
+import type { Teammate } from '../../lib/followUp/team'
 
-export interface Teammate {
-  id: string
-  name: string
-  /** What they do, on their picker row: "estimator". */
-  role: string
-}
+export type { Teammate }
 
 export interface WhoHasItPillProps {
   contact: FollowUpContact
