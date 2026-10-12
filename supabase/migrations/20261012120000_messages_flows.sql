@@ -14,7 +14,7 @@ SET lock_timeout = '3s';
 --   * contact_step_skips: a step skipped for one person with a reason. nudge_holds, nudge_sent: Hold until a day, and
 --     what was sent for a step, so a reminder never doubles. Each names its job the spine's way (bid_id, project_id or
 --     jobs_ledger_id, at most one; none on the Once lane). A step's team note is a line of the thread: messages gains
---     step_id, and a signed-in user may write a team line (a note or an event) as themselves and nothing else.
+--     step_key, and a signed-in user may write a team line (a note or an event) as themselves and nothing else.
 --   * The presses, SECURITY INVOKER so training mode and a twin change nothing: flow_add_note, flow_skip_step,
 --     flow_unskip_step, nudge_hold_until, nudge_let_go, nudge_record_sent, contact_set_off, contact_put_back_on.
 --   * flow_rows(contact): the rows the flow reads (src/lib/flows/load.ts's FlowRows), for the office. SECURITY DEFINER,
@@ -47,6 +47,31 @@ LANGUAGE sql
 IMMUTABLE PARALLEL SAFE
 AS $$
   SELECT ARRAY['invitation', 'w9', 'coi', 'msa', 'quote', 'sow', 'waiver', 'final_waiver', 'bid', 'contract', 'schedule', 'payapp', 'co', 'plans', 'addendum', 'submittal', 'certificate']::text[]
+$$;
+
+-- A paper made at runtime in the editor's New paper window is its Contract library document, doc:<uuid>; a fact on it
+-- is doc:<uuid>:on_file, :current, :signed or :sent (facts.ts's runtime family). A step's facts and papers are each from
+-- the code list or of that shape.
+CREATE OR REPLACE FUNCTION public.flow_facts_ok(p_facts text[])
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE
+AS $$
+  SELECT coalesce(bool_and(
+    f = ANY (public.flow_fact_ids())
+    OR f ~ '^doc:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:(on_file|current|signed|sent)$'), true)
+  FROM unnest(p_facts) AS f
+$$;
+
+CREATE OR REPLACE FUNCTION public.flow_papers_ok(p_papers text[])
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE PARALLEL SAFE
+AS $$
+  SELECT coalesce(bool_and(
+    p = ANY (public.flow_paper_ids())
+    OR p ~ '^doc:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'), true)
+  FROM unnest(p_papers) AS p
 $$;
 
 -- ---------- the flows ----------
@@ -83,11 +108,11 @@ CREATE TABLE IF NOT EXISTS public.flow_steps (
   -- Whose seat an our-move step sits with.
   seat_user_id uuid REFERENCES public.users(id) ON DELETE SET NULL,
   facts text[] NOT NULL DEFAULT '{}'
-    CONSTRAINT flow_steps_facts_known CHECK (facts <@ public.flow_fact_ids()),
+    CONSTRAINT flow_steps_facts_known CHECK (public.flow_facts_ok(facts)),
   join_word text NOT NULL DEFAULT 'and'
     CONSTRAINT flow_steps_join_known CHECK (join_word IN ('and', 'or')),
   papers text[] NOT NULL DEFAULT '{}'
-    CONSTRAINT flow_steps_papers_known CHECK (papers <@ public.flow_paper_ids()),
+    CONSTRAINT flow_steps_papers_known CHECK (public.flow_papers_ok(papers)),
   -- It repeats, per what ("each ask"); null when it runs once. loop_ends: rounds or next (FlowStep.loopEnds).
   loop_words text,
   loop_ends text
@@ -187,18 +212,18 @@ COMMENT ON TABLE public.flow_fact_wishes IS
 
 -- A step's team note is a line of the thread (messages, channel note, direction team), with the step it is on. No
 -- foreign key: a removed step keeps its notes, and a step's id outlives an edit.
-ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS step_id text;
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS step_key text;
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'messages_step_on_team_lines' AND conrelid = 'public.messages'::regclass) THEN
     ALTER TABLE public.messages ADD CONSTRAINT messages_step_on_team_lines
-      CHECK (step_id IS NULL OR (direction = 'team' AND step_id ~ '^[a-z][a-z0-9_]{0,39}$'));
+      CHECK (step_key IS NULL OR (direction = 'team' AND step_key ~ '^[a-z][a-z0-9_]{0,39}$'));
   END IF;
 END
 $$;
-COMMENT ON COLUMN public.messages.step_id IS
+COMMENT ON COLUMN public.messages.step_key IS
   'Messages (cut 4): the flow step a team note or an event is on (flow_steps.step_key); the step card shows the notes. No foreign key: a removed step keeps its notes.';
-CREATE INDEX IF NOT EXISTS messages_step_idx ON public.messages (contact_id, step_id) WHERE step_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS messages_step_keyx ON public.messages (contact_id, step_key) WHERE step_key IS NOT NULL;
 
 -- A signed-in user writes a team line (a note or an event) as themselves and no other line: calls, texts and emails
 -- arrive as the service role. The office's policy stays the spine's; this one narrows what a client may insert. The same
@@ -208,7 +233,7 @@ DROP POLICY IF EXISTS messages_team_lines_by_hand ON public.messages;
 DROP POLICY IF EXISTS messages_client_writes_own_team_lines ON public.messages;
 CREATE POLICY messages_client_writes_own_team_lines ON public.messages AS RESTRICTIVE FOR INSERT TO authenticated
   WITH CHECK (channel IN ('note', 'event') AND direction = 'team' AND who_user_id = (SELECT auth.uid()));
-GRANT INSERT (contact_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, body, step_id)
+GRANT INSERT (contact_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, body, step_key)
   ON TABLE public.messages TO authenticated;
 
 CREATE TABLE IF NOT EXISTS public.contact_step_skips (
@@ -549,7 +574,7 @@ BEGIN
   END IF;
   PERFORM public.contact_job_check(p_job_kind, p_job_id);
   PERFORM public.flow_step_check(p_contact, p_step);
-  INSERT INTO public.messages (contact_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, body, step_id)
+  INSERT INTO public.messages (contact_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, body, step_key)
   VALUES (p_contact,
     v_bid, v_project, v_pipeline,
     'note', 'team', auth.uid(), v_note, p_step)
@@ -719,11 +744,221 @@ $$;
 
 -- ---------- what the flow reads, for the office ----------
 
--- One person's rows as src/lib/flows/load.ts's FlowRows: their contact and jobs, and for their kind the asks, papers,
--- draws, pay applications, change orders, plans, questions and submittals the flow reads. Definer, since those rows sit
--- behind other doors (the Portal's, the money's), and gated on the office team. Days and marks only, never an amount or
--- a price. A trade partner's page comes as the office's preview link ('/t/<token>?preview=1', so an office open never
--- counts as theirs), the one place a token appears. 'notAllowed' outside the office; 'notFound' for no such contact.
+-- The GC jobs each of these contacts is on: the ones the office tied them to, and the ones their kind's facts put them
+-- on (a trade partner's asks, a customer's projects, an architect's). Internal: flow_rows and flow_rows_kind read it.
+CREATE OR REPLACE FUNCTION public.flow_jobs_of(p_ids uuid[])
+RETURNS TABLE (contact_id uuid, project_id uuid)
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+  WITH k AS (
+    SELECT c.id, c.kind,
+      coalesce(c.gc_company_id, gp.company_id) AS company,
+      coalesce(c.customer_id, cp.customer_id) AS customer
+    FROM public.contacts c
+    LEFT JOIN public.gc_company_people gp ON gp.id = c.gc_company_person_id
+    LEFT JOIN public.customer_contact_persons cp ON cp.id = c.customer_contact_person_id
+    WHERE c.id = ANY (p_ids)
+  )
+  SELECT DISTINCT x.cid, x.pid FROM (
+    SELECT j.contact_id AS cid, j.project_id AS pid FROM public.contact_jobs j WHERE j.contact_id = ANY (p_ids)
+    UNION ALL
+    SELECT k.id, p.project_id FROM k
+      JOIN public.gc_invites i ON i.company_id = k.company
+      JOIN public.gc_trade_packages p ON p.id = i.package_id
+    WHERE k.kind = 'trade'
+    UNION ALL
+    SELECT k.id, g.project_id FROM k
+      JOIN public.projects pr ON pr.customer_id = k.customer
+      JOIN public.gc_projects g ON g.project_id = pr.id
+    WHERE k.kind = 'customer'
+    UNION ALL
+    SELECT k.id, g.project_id FROM k JOIN public.gc_projects g ON g.architect_customer_id = k.customer WHERE k.kind = 'arch'
+  ) x
+  WHERE x.pid IS NOT NULL
+$$;
+
+-- These contacts' rows as src/lib/flows/load.ts's FlowRows, keyed by contact id, read set-wise so a board of everyone
+-- is one read. Each also carries 'card', the names a board prints. Days and marks only, never an amount or a price; a
+-- trade partner's page as the office's preview link ('/t/<token>?preview=1', so an office open never counts as theirs),
+-- the one place a token appears. Internal: flow_rows and flow_rows_kind, which gate it, read it as its owner.
+CREATE OR REPLACE FUNCTION public.flow_rows_for(p_ids uuid[])
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+  WITH k AS (
+    SELECT c.id, c.kind, c.name, c.goes_by, c.off_since, c.off_why, c.off_by,
+      coalesce(c.gc_company_id, gp.company_id) AS company,
+      coalesce(c.customer_id, cp.customer_id) AS customer,
+      coalesce(c.name, gp.name, cp.name, pe.name) AS person_name
+    FROM public.contacts c
+    LEFT JOIN public.gc_company_people gp ON gp.id = c.gc_company_person_id
+    LEFT JOIN public.customer_contact_persons cp ON cp.id = c.customer_contact_person_id
+    LEFT JOIN public.people pe ON pe.id = c.person_id
+    WHERE c.id = ANY (p_ids)
+  ),
+  pj AS (SELECT j.contact_id AS cid, j.project_id AS pid FROM public.flow_jobs_of(p_ids) j),
+  kp AS (SELECT pj.cid, pj.pid, k.kind FROM pj JOIN k ON k.id = pj.cid),
+  inv AS (SELECT k.id AS cid, i.id, i.company_id, i.package_id, i.invited_on, i.status, i.declined_on, i.lost_on
+    FROM k JOIN public.gc_invites i ON i.company_id = k.company WHERE k.kind = 'trade'),
+  sw AS (SELECT k.id AS cid, s.id, s.invite_id, s.package_id, s.sent_on, s.signed_on
+    FROM k JOIN public.gc_sows s ON s.company_id = k.company WHERE k.kind = 'trade'),
+  names AS (SELECT coalesce(jsonb_object_agg(u.id, split_part(btrim(u.name), ' ', 1)), '{}'::jsonb) AS v FROM public.users u
+    WHERE u.role IN ('dev', 'master_technician', 'assistant', 'controller', 'estimator') AND coalesce(btrim(u.name), '') <> ''),
+  a_jobs AS (SELECT j.contact_id AS cid, jsonb_agg(jsonb_build_object('project_id', j.project_id, 'is_default', j.is_default)) AS v
+    FROM public.contact_jobs j WHERE j.contact_id = ANY (p_ids) AND j.project_id IS NOT NULL GROUP BY j.contact_id),
+  a_company AS (SELECT k.id AS cid, jsonb_build_object('id', g.id, 'portal_opened_on', g.portal_opened_on) AS v, g.name AS company_name, g.trades
+    FROM k JOIN public.gc_companies g ON g.id = k.company WHERE k.kind = 'trade'),
+  a_customer AS (SELECT k.id AS cid, cu.name AS customer_name FROM k JOIN public.customers cu ON cu.id = k.customer WHERE k.kind IN ('customer', 'arch')),
+  a_links AS (SELECT k.id AS cid, jsonb_agg(jsonb_build_object('company_id', l.company_id, 'revoked_at', l.revoked_at, 'first_opened_at', l.first_opened_at)) AS v
+    FROM k JOIN public.gc_trade_portal_links l ON l.company_id = k.company WHERE k.kind = 'trade' GROUP BY k.id),
+  a_preview AS (SELECT DISTINCT ON (k.id) k.id AS cid, '/t/' || l.token || '?preview=1' AS v
+    FROM k JOIN public.gc_trade_portal_links l ON l.company_id = k.company
+    WHERE k.kind = 'trade' AND l.revoked_at IS NULL AND l.token IS NOT NULL ORDER BY k.id, l.created_at DESC),
+  a_msgs AS (SELECT k.id AS cid, jsonb_agg(jsonb_build_object('company_id', m.company_id, 'kind', m.kind, 'sent_on', m.sent_on, 'sent_by', m.sent_by)) AS v
+    FROM k JOIN public.gc_trade_messages m ON m.company_id = k.company WHERE k.kind = 'trade' AND m.kind = 'invite' GROUP BY k.id),
+  a_papers AS (SELECT k.id AS cid, jsonb_agg(jsonb_build_object('id', d.id, 'company_id', d.company_id, 'doc_type', d.doc_type, 'status', d.status,
+      'sent_at', d.sent_at, 'signed_at', d.signed_at, 'expires_at', d.expires_at, 'created_at', d.created_at,
+      'library_id', d.applied_contract_template_document_id)) AS v
+    FROM k JOIN public.person_contract_documents d ON d.company_id = k.company WHERE k.kind = 'trade' GROUP BY k.id),
+  a_psends AS (SELECT k.id AS cid, jsonb_agg(jsonb_build_object('paper', s.paper, 'project_id', s.project_id, 'sent_on', s.sent_on, 'created_at', s.created_at)) AS v
+    FROM k JOIN public.gc_paper_sends s ON s.company_id = k.company WHERE k.kind = 'trade' GROUP BY k.id),
+  a_invites AS (SELECT inv.cid, jsonb_agg(jsonb_build_object('id', inv.id, 'company_id', inv.company_id, 'package_id', inv.package_id,
+      'invited_on', inv.invited_on, 'status', inv.status, 'declined_on', inv.declined_on, 'lost_on', inv.lost_on)) AS v
+    FROM inv GROUP BY inv.cid),
+  a_packages AS (SELECT x.cid, jsonb_agg(jsonb_build_object('id', x.id, 'project_id', x.project_id, 'trade', x.trade, 'carried_invite_id', x.carried_invite_id,
+      'awarded_invite_id', x.awarded_invite_id, 'awarded_on', x.awarded_on, 'awarded_by', x.awarded_by)) AS v
+    FROM (SELECT DISTINCT inv.cid, p.id, p.project_id, p.trade, p.carried_invite_id, p.awarded_invite_id, p.awarded_on, p.awarded_by
+      FROM inv JOIN public.gc_trade_packages p ON p.id = inv.package_id) x
+    GROUP BY x.cid),
+  a_quotes AS (SELECT inv.cid, jsonb_agg(jsonb_build_object('invite_id', q.invite_id, 'submitted_on', q.submitted_on, 'created_at', q.created_at)) AS v
+    FROM inv JOIN public.gc_quotes q ON q.invite_id = inv.id GROUP BY inv.cid),
+  a_asks AS (SELECT inv.cid, jsonb_agg(jsonb_build_object('invite_id', l.invite_id, 'promised_by', l.promised_by, 'contacted_on', l.contacted_on, 'created_at', l.created_at)) AS v
+    FROM inv JOIN public.gc_company_contacts l ON l.invite_id = inv.id AND l.promised_by IS NOT NULL GROUP BY inv.cid),
+  a_sows AS (SELECT sw.cid, jsonb_agg(jsonb_build_object('id', sw.id, 'invite_id', sw.invite_id, 'package_id', sw.package_id, 'sent_on', sw.sent_on, 'signed_on', sw.signed_on)) AS v
+    FROM sw GROUP BY sw.cid),
+  a_draws AS (SELECT sw.cid, jsonb_agg(jsonb_build_object('id', d.id, 'sow_id', d.sow_id, 'number', d.number, 'requested_on', d.requested_on,
+      'approved_on', d.approved_on, 'paid_on', d.paid_on, 'final', d.final, 'waiver', d.waiver, 'waiver_on', d.waiver_on)) AS v
+    FROM sw JOIN public.gc_draws d ON d.sow_id = sw.id GROUP BY sw.cid),
+  a_files AS (SELECT k.id AS cid, jsonb_agg(jsonb_build_object('company_id', f.company_id, 'project_id', f.project_id, 'paper', f.paper, 'uploaded_at', f.uploaded_at)) AS v
+    FROM k JOIN public.gc_trade_files f ON f.company_id = k.company WHERE k.kind = 'trade' AND f.paper IS NOT NULL GROUP BY k.id),
+  a_projects AS (SELECT pj.cid, jsonb_agg(jsonb_build_object('project_id', g.project_id, 'name', pr.name, 'stage', g.stage, 'created_at', g.created_at,
+      'bid_due', g.bid_due, 'our_bid_sent_on', g.our_bid_sent_on, 'won_on', g.won_on, 'lost_on', g.lost_on,
+      'owner_contract_sent_on', g.owner_contract_sent_on, 'owner_contract_signed_on', g.owner_contract_signed_on,
+      'started_on', g.started_on, 'closed_on', g.closed_on, 'owner_pay_days', g.owner_pay_days)) AS v
+    FROM pj JOIN public.gc_projects g ON g.project_id = pj.pid JOIN public.projects pr ON pr.id = g.project_id GROUP BY pj.cid),
+  a_sched AS (SELECT kp.cid, jsonb_agg(jsonb_build_object('project_id', s.project_id, 'sent_on', s.sent_on, 'sent_by', s.sent_by)) AS v
+    FROM kp JOIN public.gc_schedule_sends s ON s.project_id = kp.pid WHERE kp.kind = 'customer' GROUP BY kp.cid),
+  a_payapps AS (SELECT kp.cid, jsonb_agg(jsonb_build_object('id', a.id, 'project_id', a.project_id, 'number', a.number, 'sent_on', a.sent_on,
+      'certified_on', a.certified_on, 'paid_on', a.paid_on,
+      'invoice_paid', coalesce(inv2.status = 'paid' OR inv2.stripe_invoice_status = 'paid', false))) AS v
+    FROM kp JOIN public.gc_owner_pay_apps a ON a.project_id = kp.pid
+    LEFT JOIN public.jobs_ledger_invoices inv2 ON inv2.id = a.invoice_id
+    WHERE kp.kind IN ('customer', 'arch') GROUP BY kp.cid),
+  a_accepts AS (SELECT kp.cid, jsonb_agg(jsonb_build_object('project_id', a.project_id, 'accepted_on', a.accepted_on)) AS v
+    FROM kp JOIN public.gc_owner_acceptances a ON a.project_id = kp.pid WHERE kp.kind = 'customer' GROUP BY kp.cid),
+  a_cos AS (SELECT kp.cid, jsonb_agg(jsonb_build_object('id', o.id, 'project_id', o.project_id, 'number', o.number, 'description', o.description,
+      'status', o.status, 'sent_on', o.sent_on, 'answered_on', o.answered_on)) AS v
+    FROM kp JOIN public.gc_change_orders o ON o.project_id = kp.pid WHERE kp.kind = 'customer' GROUP BY kp.cid),
+  a_sets AS (SELECT kp.cid, jsonb_agg(jsonb_build_object('id', s.id, 'project_id', s.project_id, 'kind', s.kind, 'label', s.label, 'issued_on', s.issued_on)) AS v
+    FROM kp JOIN public.gc_plan_sets s ON s.project_id = kp.pid WHERE kp.kind IN ('customer', 'arch') GROUP BY kp.cid),
+  a_setsends AS (SELECT kp.cid, jsonb_agg(jsonb_build_object('set_id', x.set_id, 'sent_at', x.sent_at)) AS v
+    FROM kp JOIN public.gc_plan_sets s ON s.project_id = kp.pid AND s.kind = 'addendum'
+    JOIN public.gc_plan_set_sends x ON x.set_id = s.id WHERE kp.kind = 'arch' GROUP BY kp.cid),
+  a_questions AS (SELECT kp.cid, jsonb_agg(jsonb_build_object('id', q.id, 'project_id', q.project_id, 'text', q.text,
+      'sent_to_architect_on', q.sent_to_architect_on, 'answered_on', q.answered_on)) AS v
+    FROM kp JOIN public.gc_plan_questions q ON q.project_id = kp.pid WHERE kp.kind = 'arch' GROUP BY kp.cid),
+  a_rfis AS (SELECT kp.cid, jsonb_agg(jsonb_build_object('id', r.id, 'project_id', r.project_id, 'number', r.number, 'question', r.question,
+      'sent_to_architect_on', r.sent_to_architect_on, 'answered_on', r.answered_on, 'needed_days', r.needed_days)) AS v
+    FROM kp JOIN public.gc_rfis r ON r.project_id = kp.pid WHERE kp.kind = 'arch' GROUP BY kp.cid),
+  a_subs AS (SELECT kp.cid, jsonb_agg(jsonb_build_object('id', r.id, 'project_id', s.project_id, 'name', s.title, 'round', r.round,
+      'to_architect_on', r.to_architect_on, 'sent_on', r.sent_on, 'answered_on', r.answered_on)) AS v
+    FROM kp JOIN public.gc_submittals s ON s.project_id = kp.pid JOIN public.gc_submittal_rounds r ON r.submittal_id = s.id
+    WHERE kp.kind = 'arch' GROUP BY kp.cid),
+  a_skips AS (SELECT s.contact_id AS cid, jsonb_agg(jsonb_build_object('id', s.id, 'step_key', s.step_key, 'project_id', s.project_id, 'why', s.why,
+      'by_name', s.by_name, 'created_at', s.created_at, 'undone_at', s.undone_at)) AS v
+    FROM public.contact_step_skips s WHERE s.contact_id = ANY (p_ids) AND s.undone_at IS NULL GROUP BY s.contact_id),
+  a_arch AS (SELECT kp.cid, jsonb_object_agg(g.project_id, ac.id) AS v
+    FROM kp JOIN public.gc_projects g ON g.project_id = kp.pid AND g.architect_customer_id IS NOT NULL
+    JOIN LATERAL (
+      SELECT ct.id FROM public.contacts ct
+      LEFT JOIN public.customer_contact_persons cp2 ON cp2.id = ct.customer_contact_person_id
+      WHERE ct.kind = 'arch' AND (ct.customer_id = g.architect_customer_id OR cp2.customer_id = g.architect_customer_id)
+      ORDER BY ct.customer_id IS NULL, ct.created_at
+      LIMIT 1
+    ) ac ON true
+    WHERE kp.kind = 'customer' GROUP BY kp.cid)
+  SELECT coalesce(jsonb_object_agg(k.id, jsonb_build_object(
+    'contact', jsonb_build_object('id', k.id, 'kind', k.kind, 'off_since', k.off_since, 'off_why', k.off_why, 'off_by', k.off_by),
+    'card', jsonb_build_object(
+      'name', coalesce(k.person_name, co.company_name, cu.customer_name, ''),
+      'goes_by', k.goes_by,
+      'company', coalesce(co.company_name, cu.customer_name),
+      'trades', coalesce(to_jsonb(co.trades), '[]'::jsonb)),
+    'contactJobs', coalesce(a_jobs.v, '[]'::jsonb),
+    'userNames', (SELECT v FROM names),
+    'company', co.v,
+    'portalLinks', coalesce(a_links.v, '[]'::jsonb),
+    'previewPath', a_preview.v,
+    'tradeMessages', coalesce(a_msgs.v, '[]'::jsonb),
+    'papers', coalesce(a_papers.v, '[]'::jsonb),
+    'paperSends', coalesce(a_psends.v, '[]'::jsonb),
+    'invites', coalesce(a_invites.v, '[]'::jsonb),
+    'packages', coalesce(a_packages.v, '[]'::jsonb),
+    'quotes', coalesce(a_quotes.v, '[]'::jsonb),
+    'askLines', coalesce(a_asks.v, '[]'::jsonb),
+    'sows', coalesce(a_sows.v, '[]'::jsonb),
+    'draws', coalesce(a_draws.v, '[]'::jsonb),
+    'tradeFiles', coalesce(a_files.v, '[]'::jsonb),
+    'projects', coalesce(a_projects.v, '[]'::jsonb),
+    'scheduleSends', coalesce(a_sched.v, '[]'::jsonb),
+    'payApps', coalesce(a_payapps.v, '[]'::jsonb),
+    'acceptances', coalesce(a_accepts.v, '[]'::jsonb),
+    'changeOrders', coalesce(a_cos.v, '[]'::jsonb),
+    'planSets', coalesce(a_sets.v, '[]'::jsonb),
+    'planSetSends', coalesce(a_setsends.v, '[]'::jsonb),
+    'planQuestions', coalesce(a_questions.v, '[]'::jsonb),
+    'rfis', coalesce(a_rfis.v, '[]'::jsonb),
+    'submittalRounds', coalesce(a_subs.v, '[]'::jsonb),
+    'skips', coalesce(a_skips.v, '[]'::jsonb),
+    'architectByProject', coalesce(a_arch.v, '{}'::jsonb))), '{}'::jsonb)
+  FROM k
+  LEFT JOIN a_jobs ON a_jobs.cid = k.id
+  LEFT JOIN a_company co ON co.cid = k.id
+  LEFT JOIN a_customer cu ON cu.cid = k.id
+  LEFT JOIN a_links ON a_links.cid = k.id
+  LEFT JOIN a_preview ON a_preview.cid = k.id
+  LEFT JOIN a_msgs ON a_msgs.cid = k.id
+  LEFT JOIN a_papers ON a_papers.cid = k.id
+  LEFT JOIN a_psends ON a_psends.cid = k.id
+  LEFT JOIN a_invites ON a_invites.cid = k.id
+  LEFT JOIN a_packages ON a_packages.cid = k.id
+  LEFT JOIN a_quotes ON a_quotes.cid = k.id
+  LEFT JOIN a_asks ON a_asks.cid = k.id
+  LEFT JOIN a_sows ON a_sows.cid = k.id
+  LEFT JOIN a_draws ON a_draws.cid = k.id
+  LEFT JOIN a_files ON a_files.cid = k.id
+  LEFT JOIN a_projects ON a_projects.cid = k.id
+  LEFT JOIN a_sched ON a_sched.cid = k.id
+  LEFT JOIN a_payapps ON a_payapps.cid = k.id
+  LEFT JOIN a_accepts ON a_accepts.cid = k.id
+  LEFT JOIN a_cos ON a_cos.cid = k.id
+  LEFT JOIN a_sets ON a_sets.cid = k.id
+  LEFT JOIN a_setsends ON a_setsends.cid = k.id
+  LEFT JOIN a_questions ON a_questions.cid = k.id
+  LEFT JOIN a_rfis ON a_rfis.cid = k.id
+  LEFT JOIN a_subs ON a_subs.cid = k.id
+  LEFT JOIN a_skips ON a_skips.cid = k.id
+  LEFT JOIN a_arch ON a_arch.cid = k.id
+$$;
+
+-- One person's rows (flow_rows_for's value for them), for the office team. 'notAllowed' outside the office; 'notFound'
+-- for no such contact.
 CREATE OR REPLACE FUNCTION public.flow_rows(p_contact uuid)
 RETURNS jsonb
 LANGUAGE plpgsql
@@ -731,120 +966,51 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-  c public.contacts;
-  v_company uuid;
-  v_customer uuid;
-  v_projects uuid[];
-  v_invites uuid[];
-  v_sows uuid[];
 BEGIN
   IF NOT public.gc_office_team() THEN
     RAISE EXCEPTION 'notAllowed' USING ERRCODE = '42501';
   END IF;
-  SELECT * INTO c FROM public.contacts WHERE id = p_contact;
-  IF NOT FOUND THEN
+  IF NOT EXISTS (SELECT 1 FROM public.contacts WHERE id = p_contact) THEN
     RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001';
   END IF;
-  v_company := coalesce(c.gc_company_id, (SELECT company_id FROM public.gc_company_people WHERE id = c.gc_company_person_id));
-  v_customer := coalesce(c.customer_id, (SELECT customer_id FROM public.customer_contact_persons WHERE id = c.customer_contact_person_id));
-  v_invites := CASE WHEN c.kind = 'trade' THEN ARRAY(SELECT id FROM public.gc_invites WHERE company_id = v_company) ELSE '{}'::uuid[] END;
-  v_sows := CASE WHEN c.kind = 'trade' THEN ARRAY(SELECT id FROM public.gc_sows WHERE company_id = v_company) ELSE '{}'::uuid[] END;
-  -- Their GC jobs: the ones the office tied them to, and the ones their kind's facts put them on.
-  v_projects := ARRAY(
-    SELECT DISTINCT x.pid FROM (
-      SELECT j.project_id AS pid FROM public.contact_jobs j WHERE j.contact_id = p_contact
-      UNION ALL
-      SELECT p.project_id FROM public.gc_trade_packages p JOIN public.gc_invites i ON i.package_id = p.id WHERE i.id = ANY (v_invites)
-      UNION ALL
-      SELECT g.project_id FROM public.gc_projects g JOIN public.projects pr ON pr.id = g.project_id
-      WHERE c.kind = 'customer' AND pr.customer_id = v_customer
-      UNION ALL
-      SELECT g.project_id FROM public.gc_projects g WHERE c.kind = 'arch' AND g.architect_customer_id = v_customer
-    ) x WHERE x.pid IS NOT NULL);
-  RETURN jsonb_build_object(
-    'contact', jsonb_build_object('id', c.id, 'kind', c.kind, 'off_since', c.off_since, 'off_why', c.off_why, 'off_by', c.off_by),
-    'contactJobs', coalesce((SELECT jsonb_agg(jsonb_build_object('project_id', j.project_id, 'is_default', j.is_default))
-      FROM public.contact_jobs j WHERE j.contact_id = p_contact AND j.project_id IS NOT NULL), '[]'::jsonb),
-    'userNames', coalesce((SELECT jsonb_object_agg(u.id, split_part(btrim(u.name), ' ', 1)) FROM public.users u
-      WHERE u.role IN ('dev', 'master_technician', 'assistant', 'controller', 'estimator') AND coalesce(btrim(u.name), '') <> ''), '{}'::jsonb),
-    'company', (SELECT jsonb_build_object('id', g.id, 'portal_opened_on', g.portal_opened_on) FROM public.gc_companies g WHERE g.id = v_company AND c.kind = 'trade'),
-    'portalLinks', coalesce((SELECT jsonb_agg(jsonb_build_object('company_id', l.company_id, 'revoked_at', l.revoked_at, 'first_opened_at', l.first_opened_at))
-      FROM public.gc_trade_portal_links l WHERE l.company_id = v_company AND c.kind = 'trade'), '[]'::jsonb),
-    'previewPath', (SELECT '/t/' || l.token || '?preview=1' FROM public.gc_trade_portal_links l
-      WHERE l.company_id = v_company AND c.kind = 'trade' AND l.revoked_at IS NULL AND l.token IS NOT NULL ORDER BY l.created_at DESC LIMIT 1),
-    'tradeMessages', coalesce((SELECT jsonb_agg(jsonb_build_object('company_id', m.company_id, 'kind', m.kind, 'sent_on', m.sent_on, 'sent_by', m.sent_by))
-      FROM public.gc_trade_messages m WHERE m.company_id = v_company AND c.kind = 'trade' AND m.kind = 'invite'), '[]'::jsonb),
-    'papers', coalesce((SELECT jsonb_agg(jsonb_build_object('id', d.id, 'company_id', d.company_id, 'doc_type', d.doc_type, 'status', d.status,
-        'sent_at', d.sent_at, 'signed_at', d.signed_at, 'expires_at', d.expires_at, 'created_at', d.created_at))
-      FROM public.person_contract_documents d WHERE d.company_id = v_company AND c.kind = 'trade'), '[]'::jsonb),
-    'paperSends', coalesce((SELECT jsonb_agg(jsonb_build_object('paper', s.paper, 'project_id', s.project_id, 'sent_on', s.sent_on, 'created_at', s.created_at))
-      FROM public.gc_paper_sends s WHERE s.company_id = v_company AND c.kind = 'trade'), '[]'::jsonb),
-    'invites', coalesce((SELECT jsonb_agg(jsonb_build_object('id', i.id, 'company_id', i.company_id, 'package_id', i.package_id, 'invited_on', i.invited_on,
-        'status', i.status, 'declined_on', i.declined_on, 'lost_on', i.lost_on))
-      FROM public.gc_invites i WHERE i.id = ANY (v_invites)), '[]'::jsonb),
-    'packages', coalesce((SELECT jsonb_agg(jsonb_build_object('id', p.id, 'project_id', p.project_id, 'trade', p.trade, 'carried_invite_id', p.carried_invite_id,
-        'awarded_invite_id', p.awarded_invite_id, 'awarded_on', p.awarded_on, 'awarded_by', p.awarded_by))
-      FROM public.gc_trade_packages p WHERE p.id IN (SELECT package_id FROM public.gc_invites WHERE id = ANY (v_invites))), '[]'::jsonb),
-    'quotes', coalesce((SELECT jsonb_agg(jsonb_build_object('invite_id', q.invite_id, 'submitted_on', q.submitted_on, 'created_at', q.created_at))
-      FROM public.gc_quotes q WHERE q.invite_id = ANY (v_invites)), '[]'::jsonb),
-    'askLines', coalesce((SELECT jsonb_agg(jsonb_build_object('invite_id', l.invite_id, 'promised_by', l.promised_by, 'contacted_on', l.contacted_on, 'created_at', l.created_at))
-      FROM public.gc_company_contacts l WHERE l.invite_id = ANY (v_invites) AND l.promised_by IS NOT NULL), '[]'::jsonb),
-    'sows', coalesce((SELECT jsonb_agg(jsonb_build_object('id', s.id, 'invite_id', s.invite_id, 'package_id', s.package_id, 'sent_on', s.sent_on, 'signed_on', s.signed_on))
-      FROM public.gc_sows s WHERE s.id = ANY (v_sows)), '[]'::jsonb),
-    'draws', coalesce((SELECT jsonb_agg(jsonb_build_object('id', d.id, 'sow_id', d.sow_id, 'number', d.number, 'requested_on', d.requested_on,
-        'approved_on', d.approved_on, 'paid_on', d.paid_on, 'final', d.final, 'waiver', d.waiver, 'waiver_on', d.waiver_on))
-      FROM public.gc_draws d WHERE d.sow_id = ANY (v_sows)), '[]'::jsonb),
-    'tradeFiles', coalesce((SELECT jsonb_agg(jsonb_build_object('company_id', f.company_id, 'project_id', f.project_id, 'paper', f.paper, 'uploaded_at', f.uploaded_at))
-      FROM public.gc_trade_files f WHERE f.company_id = v_company AND c.kind = 'trade' AND f.paper IS NOT NULL), '[]'::jsonb),
-    'projects', coalesce((SELECT jsonb_agg(jsonb_build_object('project_id', g.project_id, 'stage', g.stage, 'created_at', g.created_at, 'bid_due', g.bid_due,
-        'our_bid_sent_on', g.our_bid_sent_on, 'won_on', g.won_on, 'lost_on', g.lost_on, 'owner_contract_sent_on', g.owner_contract_sent_on,
-        'owner_contract_signed_on', g.owner_contract_signed_on, 'started_on', g.started_on, 'closed_on', g.closed_on, 'owner_pay_days', g.owner_pay_days))
-      FROM public.gc_projects g WHERE g.project_id = ANY (v_projects)), '[]'::jsonb),
-    'scheduleSends', coalesce((SELECT jsonb_agg(jsonb_build_object('project_id', s.project_id, 'sent_on', s.sent_on, 'sent_by', s.sent_by))
-      FROM public.gc_schedule_sends s WHERE s.project_id = ANY (v_projects) AND c.kind = 'customer'), '[]'::jsonb),
-    'payApps', coalesce((SELECT jsonb_agg(jsonb_build_object('id', a.id, 'project_id', a.project_id, 'number', a.number, 'sent_on', a.sent_on,
-        'certified_on', a.certified_on, 'paid_on', a.paid_on,
-        'invoice_paid', coalesce(inv.status = 'paid' OR inv.stripe_invoice_status = 'paid', false)))
-      FROM public.gc_owner_pay_apps a LEFT JOIN public.jobs_ledger_invoices inv ON inv.id = a.invoice_id
-      WHERE a.project_id = ANY (v_projects) AND c.kind IN ('customer', 'arch')), '[]'::jsonb),
-    'acceptances', coalesce((SELECT jsonb_agg(jsonb_build_object('project_id', a.project_id, 'accepted_on', a.accepted_on))
-      FROM public.gc_owner_acceptances a WHERE a.project_id = ANY (v_projects) AND c.kind = 'customer'), '[]'::jsonb),
-    'changeOrders', coalesce((SELECT jsonb_agg(jsonb_build_object('id', o.id, 'project_id', o.project_id, 'number', o.number, 'description', o.description,
-        'status', o.status, 'sent_on', o.sent_on, 'answered_on', o.answered_on))
-      FROM public.gc_change_orders o WHERE o.project_id = ANY (v_projects) AND c.kind = 'customer'), '[]'::jsonb),
-    'planSets', coalesce((SELECT jsonb_agg(jsonb_build_object('id', s.id, 'project_id', s.project_id, 'kind', s.kind, 'label', s.label, 'issued_on', s.issued_on))
-      FROM public.gc_plan_sets s WHERE s.project_id = ANY (v_projects) AND c.kind IN ('customer', 'arch')), '[]'::jsonb),
-    'planSetSends', coalesce((SELECT jsonb_agg(jsonb_build_object('set_id', x.set_id, 'sent_at', x.sent_at))
-      FROM public.gc_plan_set_sends x JOIN public.gc_plan_sets s ON s.id = x.set_id
-      WHERE s.project_id = ANY (v_projects) AND s.kind = 'addendum' AND c.kind = 'arch'), '[]'::jsonb),
-    'planQuestions', coalesce((SELECT jsonb_agg(jsonb_build_object('id', q.id, 'project_id', q.project_id, 'text', q.text,
-        'sent_to_architect_on', q.sent_to_architect_on, 'answered_on', q.answered_on))
-      FROM public.gc_plan_questions q WHERE q.project_id = ANY (v_projects) AND c.kind = 'arch'), '[]'::jsonb),
-    'rfis', coalesce((SELECT jsonb_agg(jsonb_build_object('id', r.id, 'project_id', r.project_id, 'number', r.number, 'question', r.question,
-        'sent_to_architect_on', r.sent_to_architect_on, 'answered_on', r.answered_on, 'needed_days', r.needed_days))
-      FROM public.gc_rfis r WHERE r.project_id = ANY (v_projects) AND c.kind = 'arch'), '[]'::jsonb),
-    'submittalRounds', coalesce((SELECT jsonb_agg(jsonb_build_object('id', r.id, 'project_id', s.project_id, 'name', s.title, 'round', r.round,
-        'to_architect_on', r.to_architect_on, 'sent_on', r.sent_on, 'answered_on', r.answered_on))
-      FROM public.gc_submittal_rounds r JOIN public.gc_submittals s ON s.id = r.submittal_id
-      WHERE s.project_id = ANY (v_projects) AND c.kind = 'arch'), '[]'::jsonb),
-    'skips', coalesce((SELECT jsonb_agg(jsonb_build_object('id', k.id, 'step_key', k.step_key, 'project_id', k.project_id, 'why', k.why,
-        'by_name', k.by_name, 'created_at', k.created_at, 'undone_at', k.undone_at))
-      FROM public.contact_step_skips k WHERE k.contact_id = p_contact AND k.undone_at IS NULL), '[]'::jsonb),
-    'architectByProject', coalesce((SELECT jsonb_object_agg(g.project_id, a.id) FROM public.gc_projects g
-      JOIN LATERAL (
-        SELECT ct.id FROM public.contacts ct
-        LEFT JOIN public.customer_contact_persons cp ON cp.id = ct.customer_contact_person_id
-        WHERE ct.kind = 'arch' AND (ct.customer_id = g.architect_customer_id OR cp.customer_id = g.architect_customer_id)
-        ORDER BY ct.customer_id IS NULL, ct.created_at LIMIT 1
-      ) a ON true
-      WHERE g.project_id = ANY (v_projects) AND c.kind = 'customer' AND g.architect_customer_id IS NOT NULL), '{}'::jsonb)
-  );
+  RETURN public.flow_rows_for(ARRAY[p_contact]) -> p_contact::text;
 END;
 $$;
 
 COMMENT ON FUNCTION public.flow_rows(uuid) IS
-  'Messages (cut 4): one person''s rows as src/lib/flows/load.ts FlowRows, for the office team (gc_office_team()). SECURITY DEFINER over the Portal''s and the money''s doors: days and marks only, never an amount or a price; a trade partner''s page as the office''s preview link (/t/<token>?preview=1), the one place a token appears.';
+  'Messages (cut 4): one person''s rows as src/lib/flows/load.ts FlowRows, with the names a board prints (card), for the office team (gc_office_team()). SECURITY DEFINER over the Portal''s and the money''s doors: days and marks only, never an amount or a price; a trade partner''s page as the office''s preview link (/t/<token>?preview=1), the one place a token appears.';
+
+-- Everyone of a kind, keyed by contact id, or everyone on one job (any kind, or one kind) when p_project is given: the
+-- boards' and a job's Papers window's one read. Never every contact of every kind ('kindOrJob').
+CREATE OR REPLACE FUNCTION public.flow_rows_kind(p_kind text, p_project uuid DEFAULT NULL)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_ids uuid[];
+BEGIN
+  IF NOT public.gc_office_team() THEN
+    RAISE EXCEPTION 'notAllowed' USING ERRCODE = '42501';
+  END IF;
+  IF p_kind IS NOT NULL AND p_kind NOT IN ('customer', 'trade', 'arch', 'unknown') THEN
+    RAISE EXCEPTION 'kindUnknown' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_kind IS NULL AND p_project IS NULL THEN
+    RAISE EXCEPTION 'kindOrJob' USING ERRCODE = 'P0001', DETAIL = 'Read one kind of person, or everyone on one job.';
+  END IF;
+  v_ids := ARRAY(SELECT c.id FROM public.contacts c WHERE p_kind IS NULL OR c.kind = p_kind);
+  IF p_project IS NOT NULL THEN
+    v_ids := ARRAY(SELECT DISTINCT j.contact_id FROM public.flow_jobs_of(v_ids) j WHERE j.project_id = p_project);
+  END IF;
+  RETURN public.flow_rows_for(v_ids);
+END;
+$$;
+
+COMMENT ON FUNCTION public.flow_rows_kind(text, uuid) IS
+  'Messages (cut 4): flow_rows for everyone of a kind, keyed by contact id, or for everyone on one job (p_project), read set-wise: the boards'' and a job''s Papers window''s one read. The office team only; the same days and marks as flow_rows.';
 
 DO $$
 DECLARE
@@ -855,13 +1021,16 @@ BEGIN
     'public.flow_add_note(uuid, text, text, uuid, text)', 'public.flow_skip_step(uuid, text, text, uuid, text)',
     'public.flow_unskip_step(uuid)', 'public.nudge_hold_until(uuid, text, text, uuid, date)', 'public.nudge_let_go(uuid)',
     'public.nudge_record_sent(uuid, text, text, uuid, text, text, uuid)', 'public.contact_set_off(uuid, text)',
-    'public.contact_put_back_on(uuid)', 'public.flow_rows(uuid)'
+    'public.contact_put_back_on(uuid)', 'public.flow_rows(uuid)', 'public.flow_rows_kind(text, uuid)'
   ] LOOP
     EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon', f);
     EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated, service_role', f);
   END LOOP;
 END
 $$;
+-- The set-wise read is the gated functions' own.
+REVOKE EXECUTE ON FUNCTION public.flow_jobs_of(uuid[]) FROM PUBLIC, anon, authenticated;
+REVOKE EXECUTE ON FUNCTION public.flow_rows_for(uuid[]) FROM PUBLIC, anon, authenticated;
 
 -- House rules: read-only training mode and the twin write fence cover every new table.
 SELECT public.apply_read_only_write_blocks();

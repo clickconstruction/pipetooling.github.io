@@ -36,8 +36,8 @@ INSERT INTO public.contacts (id, kind) VALUES
   ('00000000-0000-0000-0000-000000006002', 'unknown'),
   ('00000000-0000-0000-0000-000000006003', 'unknown'),
   ('00000000-0000-0000-0000-000000006004', 'unknown');
-INSERT INTO public.gc_companies (id, name, contact_name, phone, email, portal_opened_on) VALUES
-  ('00000000-0000-0000-0000-0000000006a1', 'Flows Hillside', 'Greg Paulk', '(210) 555-0113', 'greg@hillside.example', '2026-09-09');
+INSERT INTO public.gc_companies (id, name, contact_name, phone, email, portal_opened_on, trades) VALUES
+  ('00000000-0000-0000-0000-0000000006a1', 'Flows Hillside', 'Greg Paulk', '(210) 555-0113', 'greg@hillside.example', '2026-09-09', ARRAY['Sitework']);
 INSERT INTO public.gc_trade_portal_links (company_id, token, first_opened_at) VALUES
   ('00000000-0000-0000-0000-0000000006a1', 'flows-link-token', '2026-09-08T23:30:00Z');
 INSERT INTO public.contacts (id, kind, gc_company_id) VALUES ('00000000-0000-0000-0000-000000006005', 'trade', '00000000-0000-0000-0000-0000000006a1');
@@ -160,6 +160,13 @@ INSERT INTO public.flow_steps (flow_id, step_key, lane, position, name, phase, w
   SELECT id, 'safety', 'once', 2, 'Safety orientation', 'setup', 'them' FROM public.flows WHERE kind = 'trade';
 SELECT mfl.same('a new step starts with nothing that finishes it', mfl.step('trade', 'safety'),
   'once|2|setup|them||and||-|-|false|false|false|-|-|-|-|0|-|Safety orientation||-');
+UPDATE public.flow_steps SET papers = ARRAY['doc:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d'], facts = ARRAY['doc:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d:signed']
+  WHERE step_key = 'safety';
+SELECT mfl.same('a paper made in the New paper window, and a fact on it', (SELECT concat_ws('|', array_to_string(papers, ','), array_to_string(facts, ','))
+  FROM public.flow_steps WHERE step_key = 'safety'),
+  'doc:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d|doc:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d:signed');
+SELECT mfl.refused('a doc paper that is not a library id', $q$UPDATE public.flow_steps SET papers = ARRAY['doc:napkin'] WHERE step_key = 'safety'$q$, 'flow_steps_papers_known');
+SELECT mfl.refused('a doc fact that reads nothing the library keeps', $q$UPDATE public.flow_steps SET facts = ARRAY['doc:0a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d:eaten'] WHERE step_key = 'safety'$q$, 'flow_steps_facts_known');
 SELECT mfl.refused('the flows themselves are the seed''s', $q$UPDATE public.flows SET name = 'Mine' WHERE kind = 'trade'$q$, 'permission denied for table flows');
 
 -- 5 · The editor's history, the removed steps and a wish: who and when are the table's.
@@ -222,7 +229,7 @@ SELECT public.contacts_fold('00000000-0000-0000-0000-000000006002', '00000000-00
 SELECT mfl.same('a fold moves the note, the hold, the skips and the send; a skip both had keeps the survivor''s', (
   SELECT concat_ws('|',
     (SELECT count(*) FROM public.contacts WHERE id = '00000000-0000-0000-0000-000000006002'),
-    (SELECT string_agg(body || '@' || step_id, ',') FROM public.messages WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
+    (SELECT string_agg(body || '@' || step_key, ',') FROM public.messages WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
     (SELECT concat_ws(',', until_on, (released_at IS NULL)::text) FROM public.nudge_holds WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
     (SELECT string_agg(why || ':' || (undone_at IS NULL)::text, ',' ORDER BY why COLLATE "C") FROM public.contact_step_skips WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
     (SELECT count(*) FROM public.nudge_sent WHERE contact_id = '00000000-0000-0000-0000-000000006003'))),
@@ -231,7 +238,7 @@ SELECT mfl.same('a fold moves the note, the hold, the skips and the send; a skip
 -- 6c · The presses, as the caller: a note, a skip and its undo, a hold and its let go, a reminder sent, off and back on.
 INSERT INTO pressed SELECT 'note', public.flow_add_note('00000000-0000-0000-0000-000000006004', 'who', 'project', '00000000-0000-0000-0000-0000000006f1', 'Sounds like the broker.');
 SELECT mfl.same('a note is a team line on the step, in the writer''s name',
-  (SELECT concat_ws('|', m.channel, m.direction, m.step_id, m.who_user_id, m.body, coalesce(m.project_id::text, 'on the person'))
+  (SELECT concat_ws('|', m.channel, m.direction, m.step_key, m.who_user_id, m.body, coalesce(m.project_id::text, 'on the person'))
    FROM public.messages m JOIN pressed p ON p.id = m.id AND p.what = 'note'),
   'note|team|who|00000000-0000-0000-0000-0000000006d2|Sounds like the broker.|00000000-0000-0000-0000-0000000006f1');
 SELECT mfl.refused('a note with nothing in it', $q$SELECT public.flow_add_note('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, '  ')$q$, 'noteEmpty');
@@ -286,6 +293,18 @@ SELECT mfl.same('a trade partner''s rows: the first visit, the job tied, the off
   FROM (SELECT public.flow_rows('00000000-0000-0000-0000-000000006005') AS r) x),
   'trade|2026-09-09|2026-09-08T23:30:00+00:00|false|/t/flows-link-token?preview=1|00000000-0000-0000-0000-0000000006f1|buyout|true|false');
 SELECT mfl.refused('no such contact', $q$SELECT public.flow_rows(gen_random_uuid())$q$, 'notFound');
+SELECT mfl.same('the card a board prints, and the job''s name', (
+  SELECT concat_ws('|', r->'card'->>'name', r->'card'->>'company', r->'card'->>'trades', coalesce(r->'card'->>'goes_by', '-'), r->'projects'->0->>'name')
+  FROM (SELECT public.flow_rows('00000000-0000-0000-0000-000000006005') AS r) x),
+  'Flows Hillside|Flows Hillside|["Sitework"]|-|Flows Clinic');
+SELECT mfl.same('everyone of a kind in one read, the same rows as one person''s, and everyone on one job', concat_ws('|',
+  (SELECT count(*) FROM jsonb_object_keys(public.flow_rows_kind('trade')))::text,
+  (public.flow_rows_kind('trade') -> '00000000-0000-0000-0000-000000006005' = public.flow_rows('00000000-0000-0000-0000-000000006005'))::text,
+  (SELECT string_agg(k, ',' ORDER BY k) FROM jsonb_object_keys(public.flow_rows_kind(NULL, '00000000-0000-0000-0000-0000000006f1')) k),
+  (SELECT count(*) FROM jsonb_object_keys(public.flow_rows_kind('unknown')))::text),
+  '1|true|00000000-0000-0000-0000-000000006005|3');
+SELECT mfl.refused('never everyone of every kind', $q$SELECT public.flow_rows_kind(NULL)$q$, 'kindOrJob');
+SELECT mfl.refused('a kind the flows do not have', $q$SELECT public.flow_rows_kind('vendor')$q$, 'kindUnknown');
 SELECT mfl.same('the office takes a person off the flow',
   (SELECT concat_ws('|', off_since, off_why) FROM public.contacts WHERE id = '00000000-0000-0000-0000-000000006001'), '2026-10-02|A wrong number.');
 RESET ROLE;
@@ -294,6 +313,8 @@ RESET ROLE;
 SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d4');
 SET LOCAL ROLE authenticated;
 SELECT mfl.refused('a superintendent outside the office reads no flow rows', $q$SELECT public.flow_rows('00000000-0000-0000-0000-000000006005')$q$, 'notAllowed');
+SELECT mfl.refused('nor a board''s', $q$SELECT public.flow_rows_kind('trade')$q$, 'notAllowed');
+SELECT mfl.refused('nor the set-wise read under them', $q$SELECT public.flow_rows_for(ARRAY['00000000-0000-0000-0000-000000006005'::uuid])$q$, 'permission denied');
 RESET ROLE;
 SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d6');
 SET LOCAL ROLE authenticated;
