@@ -63,6 +63,7 @@
     "test:pg:gc-customer-contacts": "bash scripts/pgtest-gc-customer-contacts.sh",
     "test:pg:quick-replies": "bash scripts/pgtest-quick-replies.sh",
     "test:pg:messages-spine": "bash scripts/pgtest-messages-spine.sh",
+    "test:pg:messages-flows": "bash scripts/pgtest-messages-flows.sh",
     "test:pg:quo-messages": "bash scripts/pgtest-quo-messages.sh",
     "test:pg:contract-clauses": "bash scripts/pgtest-contract-clauses.sh",
     "test:pg:portal-customer-page": "bash scripts/pgtest-portal-customer-page.sh",
