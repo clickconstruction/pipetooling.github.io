@@ -18,8 +18,9 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
 
 -- A trade partner whose main contact is Greg, and his contact as the spine's seed makes it (no name of its own).
-INSERT INTO public.gc_companies (id, name, contact_name, phone) VALUES
-  ('00000000-0000-0000-0000-0000000006a1', 'Quo Hillside', 'Greg Paulk', '(210) 555-0113');
+-- A trade partner needs a trade (gc_companies_has_a_trade).
+INSERT INTO public.gc_companies (id, name, contact_name, phone, trades) VALUES
+  ('00000000-0000-0000-0000-0000000006a1', 'Quo Hillside', 'Greg Paulk', '(210) 555-0113', ARRAY['Sitework']);
 INSERT INTO public.contacts (id, kind, gc_company_id, goes_by) VALUES
   ('00000000-0000-0000-0000-0000000006c2', 'trade', '00000000-0000-0000-0000-0000000006a1', NULL);
 INSERT INTO public.contact_channels (id, contact_id, kind, value) VALUES
