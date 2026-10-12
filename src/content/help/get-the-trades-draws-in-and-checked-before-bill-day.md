@@ -55,7 +55,7 @@ A first pay application on a job has no last period, so the last gate is clear.
 
 Once the company number is linked, the same button sends the text from there. A trade with no portal link yet says so. Make its link in its company window first. See [share a trade partner its portal](/help/share-a-trade-partner-its-portal).
 
-Press {{button:outline|Remind them}} on a draw we sent back. Press {{button:outline|Ask for the waiver}} when they still owe an unconditional waiver.
+Their portal says when the next pay application is due and the bill it goes on. Press {{button:outline|Remind them}} on a draw we sent back. Press {{button:outline|Ask for the waiver}} when they still owe an unconditional waiver.
 
 ## When a trade sends nothing this period
 

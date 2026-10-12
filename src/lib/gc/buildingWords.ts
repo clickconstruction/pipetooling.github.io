@@ -23,6 +23,8 @@ const W = {
   // Short in Spanish: the long form is too wide for a button on a phone (Portal lane, 2026-10-03).
   fixResend: { en: 'Fix and resend pay application {n}', es: 'Corregir y reenviar la solicitud {n}' },
   fillOut: { en: 'Fill out pay application {n}', es: 'Llenar la solicitud de pago {n}' },
+  // Bill day (Messages cut 9): the day a pay application is due for the bill it goes on. Spanish held with the portal's.
+  dueBy: { en: 'Send pay application {n} by {cutoff}. It goes on our bill of {billDay}.', es: 'Envíe la solicitud de pago {n} a más tardar el {cutoff}. Entra en nuestra facturación del {billDay}.' },
   lessNote: {
     en: '{gc} approved {x} of the {y} you asked for on pay application {n}. {note} The rest is still yours to ask for.',
     es: '{gc} aprobó {x} de los {y} que pidió en la solicitud de pago {n}. {note} El resto lo puede seguir pidiendo.',

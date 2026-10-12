@@ -119,7 +119,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
   // The job's work (P5c-1) on the trades awarded to it: Building's rows carry no company, so they are read by its trades.
   const awarded = packages.filter((k) => inviteIds.includes(String(k.awarded_invite_id ?? ''))).map((k) => String(k.id))
   const jobRead = readJobWork(admin, awarded)
-  const [projectRows, gcRows, scopeItems, exclusions, sets, questions, supers] = await Promise.all([
+  const [projectRows, gcRows, scopeItems, exclusions, sets, questions, supers, billDayCutoffDays] = await Promise.all([
     admin.from('projects').select('id, name, address').in('id', projectIds).then(rowsOf),
     admin.from('gc_projects').select('project_id, stage, bid_due, size_note, lost_on, lost_why, closed_on, project_manager_user_id, created_at').in('project_id', projectIds).then(rowsOf),
     admin.from('gc_scope_items').select('*').in('package_id', packageIds).then(rowsOf),
@@ -127,6 +127,8 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     admin.from('gc_plan_sets').select('id, project_id, rev, label, kind, issued_on, note, drive_url').in('project_id', projectIds).then(rowsOf),
     admin.from('gc_plan_questions').select('id, project_id, package_id, company_id, text, sheets, asked_on, answered_on, answer, answer_sent_to, in_set_id').in('project_id', projectIds).then(rowsOf),
     admin.from('project_superintendents').select('project_id, superintendent_id').in('project_id', projectIds).then(rowsOf),
+    // Bill day's cut-off (Messages cut 9): the pay application's door names the day it is due.
+    admin.from('app_settings').select('value_num').eq('key', 'gc_bill_day_cutoff_days').maybeSingle().then((r) => (r.data ? Number((r.data as R).value_num) : null)),
   ])
   const job = await jobRead
   const setIds = ids(sets)
@@ -146,7 +148,7 @@ async function readRows(admin: SupabaseClient, companyId: string): Promise<Trade
     ].filter((t): t is NonNullable<typeof t> => t !== null)
     return { project, gc, team }
   })
-  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, vettingForm, ...work, ...job }
+  return { company, people, invites, quotes, contacts, promises, projects, packages, scopeItems, exclusions, sets, setItems, questions, messages, setSends, papers, vettingForm, billDayCutoffDays, ...work, ...job }
 }
 
 /**

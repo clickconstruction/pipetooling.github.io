@@ -26,7 +26,8 @@ import { GC_COMPANY } from '../../lib/gc/company'
 import { WAIVER_SIGN_LIVE } from '../../lib/gc/drawEmail'
 import { esignConsentPayload, esignConsentText, type EsignConsentPayload } from '../../lib/esignConsent'
 import { downloadPayAppExcel, downloadPayAppPdf } from '../../lib/gc/payAppFileWriters'
-import { pDate, pt } from '../../lib/gc/portalI18n'
+import { tradeBillDay } from '../../lib/gc/billDay/trades'
+import { pDate, pt, pWeekday } from '../../lib/gc/portalI18n'
 import { openInspectionFailures } from '../../lib/gc/schedule/schedule'
 import { tradePayAppWaiverPaper } from '../../lib/gc/tradeWaiverPaper'
 import type { Draw, DrawPayApp, DrawSentBack, GcProject, Partner, TradePackage } from '../../lib/gc/types'
@@ -35,6 +36,7 @@ import type { ReleaseStep } from '../../lib/jobs/lienReleaseSteps'
 import { EsignConsentLine } from '../EsignConsentLine'
 import { LienReleaseStepRow } from '../jobs/LienReleaseStepRow'
 import { Btn, input as inputStyle } from './gcUi'
+import { usePortalCutoffDays } from './gcTradePortalBillDay'
 import { usePortalLang } from './gcTradePortalLang'
 import { usePress } from './gcTradePortalPress'
 import { GcPayAppNotary } from './GcPayAppNotary'
@@ -123,6 +125,8 @@ export function GcBuildingPayAppDoor({
   const { lang, w } = useWords()
   // The submit adapter (P5c-3c-ii): the window's draft as `pay_app` or `final_pay_app`, with the waiver's e-sign consent.
   const { busy: sending, problem: sendProblem, run } = usePress()
+  // Bill day (Messages cut 9): the bill a pay application sent today goes on, and the day it is due for it.
+  const due = tradeBillDay(today, usePortalCutoffDays())
   const sow = pkg.sow
   if (!sow || sow.status !== 'signed') return null
   const onSend = (input: PayAppInput, final: boolean, esignConsent: EsignConsentPayload) => {
@@ -143,7 +147,9 @@ export function GcBuildingPayAppDoor({
   const openWindow = (which: 'draft' | 'final') => {
     const key = keyFor(which)
     if (held?.key !== key) {
-      setHeld({ key, input: which === 'draft' && back ? resendPayAppDraft(sow, partner, back) : newPayAppDraft(sow, partner) })
+      // A new one runs to the bill day it goes on, which they can change; a resend keeps what they typed.
+      const fresh = newPayAppDraft(sow, partner)
+      setHeld({ key, input: which === 'draft' && back ? resendPayAppDraft(sow, partner, back) : which === 'draft' ? { ...fresh, periodTo: fresh.periodTo || due.billDay } : fresh })
     }
     setOpen(which)
   }
@@ -193,6 +199,9 @@ export function GcBuildingPayAppDoor({
         ) : (
           <>
             {lessNote && <div>{lessNote}</div>}
+            {project.stage === 'building' && !project.closedOn && (
+              <div data-portal-due>{w('dueBy', { n: sow.draws.length + 1, cutoff: pWeekday(lang, due.cutoff), billDay: pDate(lang, due.billDay) })}</div>
+            )}
             <div>
               {WAIVER_SIGN_LIVE
                 ? ready > 0

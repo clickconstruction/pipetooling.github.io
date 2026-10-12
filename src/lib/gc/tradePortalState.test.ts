@@ -304,3 +304,14 @@ describe('the job’s work, through Building’s own row mappers (P5c-1)', () =>
     expect([p.submittals, p.rfis, p.punch, p.packages[0]?.sow?.draws]).toEqual([[], [], [], []])
   })
 })
+
+describe('the trades’ cut-off for bill day (Messages cut 9)', () => {
+  it('carries the setting the function read, and the default for an older read or a number that is not a day count', () => {
+    expect(tradePortalSlice({ ...rows(), billDayCutoffDays: 8 }, ME).billDayCutoffDays).toBe(8)
+    expect(tradePortalState(tradePortalSlice({ ...rows(), billDayCutoffDays: 8 }, ME), TODAY).billDayCutoffDays).toBe(8)
+    expect(tradePortalState(tradePortalSlice(rows(), ME), TODAY).billDayCutoffDays).toBe(6)
+    const { billDayCutoffDays: _gone, ...older } = tradePortalSlice(rows(), ME)
+    expect(tradePortalState(older, TODAY).billDayCutoffDays).toBe(6)
+    expect(tradePortalState({ ...older, billDayCutoffDays: 99 }, TODAY).billDayCutoffDays).toBe(6)
+  })
+})

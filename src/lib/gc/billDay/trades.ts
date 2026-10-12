@@ -9,7 +9,7 @@
 import { forecastPct } from '../billingForecast'
 import { addDays, drawMoney, payApplication, sentBackOpen, tradeChangesFor, workAllBilled, type TradeChange } from '../building'
 import { partnerById } from '../lookups'
-import { appCertified, owedDrawWords, ownerPayApp, ownerPayAppsSent } from '../ownerBilling'
+import { appCertified, nextOwnerBillDay, owedDrawWords, ownerPayApp, ownerPayAppsSent } from '../ownerBilling'
 import { PAY_WITHIN_DAYS } from '../portal'
 import type { Draw, DrawSentBack, GcProject, GcState, Sow, TradePackage } from '../types'
 import { daysUntil, money, shortDate, weekdayDate } from '../words'
@@ -72,6 +72,16 @@ export function billDayDates(state: GcState, project: GcProject, cutoffDays = BI
     ownerPaysBy: app.expectPaidOn,
     tradesPaidWithin: PAY_WITHIN_DAYS,
   }
+}
+
+/**
+ * The bill day a draw sent today goes on, and its cut-off: the next 25th whose cut-off is today or later. A draw sent
+ * after the cut-off goes on the next month's bill, as `periodFrom` reads it. The trade's portal names it.
+ */
+export function tradeBillDay(today: string, cutoffDays = BILL_DAY_CUTOFF_DAYS): { billDay: string; cutoff: string } {
+  let billDay = nextOwnerBillDay(today)
+  if (addDays(billDay, -cutoffDays) < today) billDay = nextOwnerBillDay(addDays(billDay, 1))
+  return { billDay, cutoff: addDays(billDay, -cutoffDays) }
 }
 
 /** Where a trade's draw stands this period. */

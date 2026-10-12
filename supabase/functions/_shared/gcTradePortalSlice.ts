@@ -51,6 +51,8 @@ export interface TradePortalRows {
   papers?: Row[]
   /** Its vetting form (P5b-1), or none: the company new to us sent it. Optional, so a caller with none passes none. */
   vettingForm?: Row | null
+  /** The trades' cut-off for bill day (Messages cut 9, `app_settings.gc_bill_day_cutoff_days`). Absent: not read. */
+  billDayCutoffDays?: number | null
   /**
    * The job's work on the trades awarded to it (P5c-1): Building's submittals with their holds and rounds, the RFIs
    * on its trades with their holds, its punch items, the draws on its statements of work with their lines, each
@@ -101,6 +103,11 @@ export interface TradePortalSlice {
   papers?: SliceRow[]
   /** Its vetting form's day (P5b-1), or null. Absent from a slice the function sent before P5b-1 was deployed. */
   vettingForm?: SliceRow | null
+  /**
+   * The trades' cut-off for bill day (Messages cut 9): the days before the 25th a pay application is due. A day count, never
+   * money. Null: not read. Absent from a slice the function sent before it was deployed: the page reads the default.
+   */
+  billDayCutoffDays?: number | null
   /** The job's work (P5c-1). Absent from a slice the function sent before P5c-1 was deployed: the page reads none. */
   submittals?: SliceRow[]
   submittalHolds?: SliceRow[]
@@ -239,6 +246,7 @@ export function tradePortalSlice(rows: TradePortalRows, companyId: string): Requ
     setSends: rows.setSends.filter((s) => idOf(s, 'company_id') === companyId && setIds.has(idOf(s, 'set_id'))).map((s) => pick(s, TRADE_PORTAL_FIELDS.setSends)),
     papers: (rows.papers ?? []).filter((d) => idOf(d, 'company_id') === companyId).map((d) => pick(d, TRADE_PORTAL_FIELDS.papers)),
     vettingForm: rows.vettingForm && idOf(rows.vettingForm, 'company_id') === companyId ? pick(rows.vettingForm, TRADE_PORTAL_FIELDS.vettingForm) : null,
+    billDayCutoffDays: typeof rows.billDayCutoffDays === 'number' ? rows.billDayCutoffDays : null,
     ...ownWork(rows, companyId, packageIds),
     ...jobWork(rows, companyId, new Set(packages.filter((p) => inviteIds.has(idOf(p, 'awarded_invite_id'))).map((p) => idOf(p)))),
   }
