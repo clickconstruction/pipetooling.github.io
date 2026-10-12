@@ -287,6 +287,102 @@ table.qrt tr.edit td{padding:10px 6px 14px;background:var(--bg);border-bottom:1p
 .flow span i{font-style:normal;color:var(--muted);display:block;font-size:11px}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:6px 0 14px}
 
+/* ---- Screen 7: the Messages page mockups ---- */
+.vars{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px;align-items:center}
+.vars button{border-radius:999px;padding:5px 12px}
+.vars button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.vars .what{font-size:13px;color:var(--muted);flex-basis:100%}
+.appbar{display:flex;gap:4px;align-items:center;background:var(--surface);border:1px solid var(--border);border-bottom:0;border-radius:14px 14px 0 0;padding:8px 14px;flex-wrap:wrap}
+.appbar .brand{font-weight:700;margin-right:8px}
+.appbar button{border-color:transparent;background:transparent;border-radius:999px;padding:5px 10px;color:var(--muted);font-size:14px}
+.appbar button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.appbar .badge{display:inline-block;min-width:18px;padding:0 5px;border-radius:999px;background:var(--danger);color:#fff;font-size:11px;line-height:18px;text-align:center;margin-left:4px}
+.appbar .me{margin-left:auto;font-size:13px;color:var(--muted)}
+.mpage{display:grid;grid-template-columns:320px minmax(0,1fr) 260px;gap:0;background:var(--surface);border:1px solid var(--border);border-radius:0 0 14px 14px;min-height:560px;overflow:hidden}
+.mpage.two{grid-template-columns:320px minmax(0,1fr)}
+.mpage.one{grid-template-columns:minmax(0,1fr)}
+.mcol{min-width:0;border-right:1px solid var(--border);display:flex;flex-direction:column}
+.mcol:last-child{border-right:0}
+.mcol .mh{padding:10px 12px 8px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.mcol .mh b{font-size:15px}
+.mcol .mh .n{color:var(--muted);font-size:13px}
+.kf{display:flex;gap:4px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--border)}
+.kf button{border-radius:999px;padding:2px 9px;font-size:12px;border-color:transparent;background:var(--chip);color:var(--muted)}
+.kf button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.kf button.new.on{background:var(--cust-soft-2);color:var(--cust-deep)}
+.sec{padding:8px 12px 2px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:700;display:flex;gap:6px;align-items:center}
+.sec.new{color:var(--cust-deep)}
+.sec .cnt{background:var(--chip);color:var(--muted);border-radius:999px;padding:0 6px;font-size:11px;letter-spacing:0}
+.sec.new .cnt{background:var(--cust);color:#fff}
+.sec .all{margin-left:auto;border:0;background:transparent;color:var(--accent);font-size:12px;padding:0;text-transform:none;letter-spacing:0;font-weight:600}
+.prow{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:8px;padding:8px 12px;border-bottom:1px dashed var(--border);cursor:pointer;align-items:start;text-align:left;width:100%;border-radius:0;border-left:0;border-right:0;border-top:0;background:transparent}
+.prow:hover{background:var(--bg)}
+.prow.on{background:var(--accent-soft)}
+.prow.new{border-left:3px solid var(--cust);padding-left:9px}
+.prow .av{width:30px;height:30px;border-radius:50%;background:var(--chip);display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--muted)}
+.prow .av.q{background:var(--cust-soft-2);color:var(--cust-deep)}
+.prow .nm{font-weight:600;font-size:14px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.prow .nm .k{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;border-radius:4px;padding:0 5px;background:var(--chip);color:var(--muted)}
+.prow .nm .k.customer{background:var(--cust-soft);color:var(--cust-deep)}
+.prow .nm .k.trade{background:var(--warn-soft);color:var(--warn)}
+.prow .nm .k.arch{background:var(--email-soft);color:var(--email-ch)}
+.prow .nm .k.unknown{background:var(--cust);color:#fff}
+.prow > span:nth-child(2){min-width:0;display:flex;flex-direction:column;gap:1px}
+.prow .sn{display:block;font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prow .sort{font-size:12px;color:var(--cust-deep);font-weight:600}
+.prow .t{font-size:11px;color:var(--muted);font-family:var(--mono);white-space:nowrap}
+.prow .dot{width:8px;height:8px;border-radius:50%;background:var(--accent);display:inline-block;margin-left:4px}
+.thr{display:flex;flex-direction:column;min-height:0;flex:1}
+.thr .th{padding:12px 14px 10px;border-bottom:1px solid var(--border)}
+.thr .th h4{margin:0;font-size:17px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.thr .th .pill{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted);font-weight:400;margin-left:auto}
+.thr .th .facts{font-size:13px;color:var(--muted);margin-top:3px}
+.thr .th .facts b{color:var(--text);font-weight:600}
+.thr .th .move{font-size:13px;margin-top:4px}
+.thr .well{flex:1;background:var(--bg);padding:10px 14px;display:flex;flex-direction:column;gap:8px;overflow:auto;min-height:200px}
+.thr .ln{max-width:88%;padding:7px 10px;border-radius:12px;font-size:14px;background:var(--surface);border:1px solid var(--border)}
+.thr .ln.them{align-self:flex-start;background:var(--cust-soft);border-color:var(--cust)}
+.thr .ln.us{align-self:flex-end}
+.thr .ln small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.thr .box{padding:8px 14px 10px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.thr .box .fake{flex:1;min-width:160px;border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--muted);font-size:14px;background:var(--surface)}
+.sortcard{margin:10px 14px 0;border:1px solid var(--cust);background:var(--cust-soft);border-radius:12px;padding:10px 12px}
+.sortcard h5{margin:0 0 2px;font-size:14px;color:var(--cust-deep)}
+.sortcard .why{font-size:12px;color:var(--muted);margin-bottom:8px}
+.sortcard .opts{display:flex;flex-direction:column;gap:6px}
+.sortcard .opts button{text-align:left;border-radius:10px;padding:8px 10px;background:var(--surface);display:flex;flex-direction:column}
+.sortcard .opts button small{color:var(--muted);font-size:12px}
+.sortcard .opts button.on{border-color:var(--accent);background:var(--accent-soft)}
+.sortcard .chips{margin-top:0}
+.sortcard .chips button{font-family:var(--font);font-size:13px;padding:5px 10px}
+.sortcard .chips button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.sortcard .foot{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.sortcard .foot .note{margin-right:auto}
+.side{padding:12px;display:flex;flex-direction:column;gap:10px;font-size:13px}
+.side .card{border:1px solid var(--border);border-radius:10px;padding:10px}
+.side .card h5{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.side .card .kv{display:grid;grid-template-columns:70px minmax(0,1fr);gap:4px 8px}
+.side .card .kv span:nth-child(odd){color:var(--muted)}
+.side .fl{display:flex;flex-direction:column;gap:4px}
+.side .fl div{display:flex;gap:8px;align-items:center;font-size:13px}
+.side .fl i{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);display:inline-block;flex:none}
+.side .fl i.done{background:var(--ok);border-color:var(--ok)}
+.side .fl i.now{border-color:var(--warn);background:var(--warn-soft)}
+.side .fl div.now{font-weight:600}
+.desk{padding:18px;display:flex;flex-direction:column;gap:12px;align-items:center}
+.desk .prog{font-size:13px;color:var(--muted)}
+.desk .dcard{width:100%;max-width:620px;border:1px solid var(--cust);border-radius:14px;background:var(--surface);padding:14px 16px;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+.desk .dcard .via{font-size:12px;color:var(--cust-deep);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.desk .dcard .from{font-size:16px;font-weight:600;margin:2px 0 6px}
+.desk .dcard .txt{background:var(--cust-soft);border-radius:10px;padding:10px 12px;font-size:15px;margin-bottom:10px}
+.desk .dcard .sortcard{margin:0;background:transparent;border-color:var(--border)}
+.desk .done{text-align:center;padding:30px 10px}
+.desk .done b{display:block;font-size:18px;margin-bottom:4px}
+.desk .skip{font-size:13px}
+.mockcap{font-size:13px;color:var(--muted);margin-top:8px;max-width:76ch}
+@media (max-width:900px){.mpage,.mpage.two{grid-template-columns:280px minmax(0,1fr)}.mpage .mcol.sidecol{display:none}}
+@media (max-width:640px){.mpage,.mpage.two{grid-template-columns:minmax(0,1fr)}.mpage .mcol.listcol{max-height:260px;overflow:auto;border-right:0;border-bottom:1px solid var(--border)}}
+
 /* ---- Screen 5: decisions; 6: log ---- */
 ol.dec{padding-left:0;list-style:none;counter-reset:d;display:flex;flex-direction:column;gap:10px;max-width:76ch}
 ol.dec li{counter-increment:d;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px 12px 50px;position:relative}
@@ -312,7 +408,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <body>
 <div class="wrap">
 <header class="top">
-  <h1>Customer messages</h1><span class="ver" id="ver">v0.4 · 2026-10-12</span>
+  <h1>Customer messages</h1><span class="ver" id="ver">v0.5 · 2026-10-12</span>
   <span class="note">A prototype of one line to the customer from the job, the tech's phone and the office. Made-up people and jobs, nothing is saved. Everything that moves here is a press you can try.</span>
 </header>
 
@@ -323,6 +419,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   <button data-s="s4"><b>4</b>Across the app</button>
   <button data-s="s5"><b>5</b>Decisions</button>
   <button data-s="s6"><b>6</b>Log</button>
+  <button data-s="s7"><b>7</b>The Messages page</button>
 </nav>
 
 <!-- ===================== 1 ===================== -->
@@ -569,10 +666,39 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 </div>
 </section>
 
+<!-- ===================== 7 ===================== -->
+<section class="screen" id="s7">
+<p class="lead"><b>Messages</b> in the header, for the office. Three mockups of the same page, each with the same four lines that just came in and need a sort: a number nobody has named on the team line, a new address on bids@, a line from Dana with two jobs and no tie, and a new conversation nobody has yet. Sort them in any mockup; the other two see the same result.</p>
+<div class="vars" id="vars">
+  <button class="on" data-v="A">A · the New lane</button>
+  <button data-v="B">B · inbox first</button>
+  <button data-v="C">C · the sort desk</button>
+  <span class="what" id="varWhat"></span>
+</div>
+<div class="appbar" id="appbar"></div>
+<div class="mpage" id="mpage"></div>
+<p class="mockcap" id="mockcap"></p>
+
+<h2>What the three share</h2>
+<dl class="rules">
+  <dt>People, not tickets.</dt><dd>A row is a person, and their whole thread opens in the middle. Nothing is a ticket with a status; the person is Open, Snoozed or Done, as cut 2 built it.</dd>
+  <dt>Three sorts and no more.</dt><dd><b>Who is this?</b> for a sender nobody has named, with the box or number it came in on setting the first guess. <b>Which job?</b> for a person with two or more active jobs and no tie, where the default already took it. <b>Who has it?</b> for a conversation nobody is on, where the rule gives it out and the pill changes it.</dd>
+  <dt>The areas are filters.</dt><dd>Customers, Trade partners and Architects filter one list. A GC customer sits with the trade partners' work because her flow is the GC one, whichever box she wrote to.</dd>
+  <dt>The thread is the same window everywhere.</dt><dd>From the job window, from a customer's name, from Job Mode and from here, it is cut 1's window at its URL. The page only decides what sits beside it.</dd>
+</dl>
+</section>
+
 <!-- ===================== 6 ===================== -->
 <section class="screen" id="s6">
 <p class="lead">What changed in this prototype, newest first. Open it from the repo: <code>to-dos/gc-mode/messages/customer-messages-prototype.html</code> on <code>spike/gc-mode</code>.</p>
 <div class="log">
+  <article><h4>v0.5<small>2026-10-12</small></h4>
+    <ul>
+      <li>Screen 7, <b>The Messages page</b>: three mockups of Messages in the header for the office, over one shared set of four lines to sort. <b>A</b> puts a New lane on top of Follow up with the sort on the row and above the thread. <b>B</b> is the inbox-first CRM shape with the sort in the right column. <b>C</b> is a desk that walks the new lines one at a time.</li>
+      <li>The three sorts: Who is this? with the box or number setting the first guess, Which job? for a person with two active jobs, Who has it? with the rule's pick first. Sorting in one mockup shows in the others.</li>
+      <li>The lean is A, with C as the press on the lane's Sort all for a backlog.</li>
+    </ul>
+  </article>
   <article><h4>v0.4<small>2026-10-12</small></h4>
     <ul>
       <li>A pass with screenshots: the channel word sits beside the name on one line and never wraps under it; the strip and Find read each line as it would go to Dana, with only the blanks the app cannot fill left lit; a strip line marked for the phone says <b>phone</b>; the step group names her; a screen opens at its top.</li>
@@ -904,6 +1030,97 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     toast("Dana wrote back. It comes to Luis until 5 PM, and the office sees it too.");
   });
   $('#doneClose').addEventListener('click',()=>sheet.classList.remove('open'));
+
+  // ---------- screen 7: the Messages page, three mockups over one sort state ----------
+  const VAR_WHAT={
+    A:'Follow up as it is on the spike, with a New lane on top. The sorts sit on the row and on a strip above the thread. One queue, so nobody checks two places.',
+    B:'The CRM shape: every conversation newest first, with pills to narrow it, and the person’s facts, the sort and the flow in the right column. Reads like Intercom; the New pill is the triage.',
+    C:'A desk for the new lines alone, one at a time, with nothing else on the screen. Fastest through a backlog; the office goes back to Follow up when it is empty.'};
+  const CAP={
+    A:'Lean: this one. The New lane is three rows most mornings, and it empties into the queue people already work from. C’s desk is the press on the lane’s Sort all for a day with thirty.',
+    B:'The list is honest about what came in and when, but new lines hide among old ones until the New pill is pressed, and the sort lives in a column that folds away on a laptop.',
+    C:'Right for a backlog, wrong as a home: a desk with nothing on it is a dead page, and the office would live on Follow up anyway.'};
+  const SORT=[
+    {id:'kevin', need:'who', who:'(210) 555-0188', kind:'unknown', via:'text · the team number', when:'8:41a', text:'Hi this is Kevin Alvarez, can someone come look at my water heater? It is leaking at the bottom.', why:'A number nobody has named, on the team line, so customers come first.',
+      opts:[{l:'Kevin Alvarez, a new customer',s:'the name is in the text; makes the customer and the contact'},{l:'Kevin Alvarez at Alvarez Family Dental',s:'a customer with this last name and no cell on file'},{l:'Someone else',s:'type who'}]},
+    {id:'bexar', need:'who', who:'estimating@bexarsteel.example', kind:'unknown', via:'email · bids@', when:'8:12a', text:'Boerne Retail Shell, steel. Attached is our number for the shell, 212,400 with a six week lead. Call with questions.', why:'A new address on bids@, so trade partners come first. The company is on the Boerne ask.',
+      opts:[{l:'Tom Riddle at Bexar Steel Erectors',s:'the trade partner asked on Boerne; adds this address to him'},{l:'Someone new at Bexar Steel Erectors',s:'a second person at the company'},{l:'A new trade partner',s:'a company we have not asked'}]},
+    {id:'dana', need:'job', who:'Dana Whitfield', kind:'customer', via:'text · the team number', when:'yesterday 4:05p', text:'Can you do Thursday? Also is the water heater quote still good?', why:'Dana has two active jobs. The default, 1312, took the line; it reads about both.',
+      jobs:[{n:'1312',name:'Oakridge sewer line',def:true},{n:'1298',name:'Water heater'}]},
+    {id:'greg', need:'has', who:'Greg Paulk · Hillside Excavation', kind:'trade', via:'email · bids@', when:'7:55a', text:'We can start the pad Monday if the permit is in. Who do we check in with on site?', why:'Nobody is on this conversation yet. The rule says Robert, who has Hillside on Boerne.',
+      people:[{n:'Robert',s:'has Hillside on Boerne · the rule’s pick'},{n:'Rosa',s:'the office'},{n:'Wendi',s:'the superintendent'}]},
+  ];
+  const sorted={}; let variant='A', openId='kevin', kf='all', danaPick={'1312':true,'1298':false};
+  const QUEUE=[
+    {sec:'Needs you', rows:[{who:'Priya Raman',kind:'customer',sn:'wrote on her page: can the sink move to the other wall?',t:'Mon'},{who:'Rosa’s note on Elena',kind:'customer',sn:'back today: ask about the change order',t:'today'}]},
+    {sec:'Needs a reply', rows:[{who:'Elena Ortiz',kind:'customer',sn:'Is the certificate in yet? The bank is asking.',t:'Tue'},{who:'Bill Sorrell · Tejas Power',kind:'trade',sn:'Our quote is in the portal. Anything else you need?',t:'Tue'},{who:'Jonah Vale',kind:'arch',sn:'Addendum 2 is filed. Questions close Monday.',t:'Mon'}]},
+    {sec:'We owe them', rows:[{who:'Priya Raman',kind:'customer',sn:'the start date · by Mon Oct 5',t:'Mon'}]},
+  ];
+  const KIND_WORD={customer:'Customer',trade:'Trade partner',arch:'Architect',unknown:'No name yet'};
+  const ini=w=>w.replace(/[^A-Za-z ]/g,'').split(' ').filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'?';
+  const unsorted=()=>SORT.filter(x=>!sorted[x.id]);
+  const needWord={who:'Who is this?',job:'Which job?',has:'Who has it?'};
+  const fitsKind=k=> kf==='all' || (kf==='new'? false : k===kf);
+  function appbarHtml(){ const n=unsorted().length; return `<span class="brand">PipeTooling</span>${['Dashboard','Jobs','Bids','GC projects'].map(x=>`<button>${x}</button>`).join('')}<button class="on">Messages${n?`<span class="badge">${n}</span>`:''}</button>${['People','Settings'].map(x=>`<button>${x}</button>`).join('')}<span class="me">Rosa · the office</span>`; }
+  const rowHtml=(r,id,isNew,need)=>`<button type="button" class="prow ${isNew?'new':''} ${openId===id?'on':''}" data-open="${id}"><span class="av ${r.kind==='unknown'?'q':''}">${r.kind==='unknown'?'?':ini(r.who)}</span><span><span class="nm">${esc(r.who)}<span class="k ${r.kind}">${KIND_WORD[r.kind]}</span></span><span class="sn">${esc(r.sn||r.text)}</span>${need?`<span class="sort">${need} ›</span>`:''}</span><span class="t">${esc(r.t||r.when)}</span></button>`;
+  function listHtml(withNewLane){
+    const news=unsorted().filter(x=>kf==='all'||kf==='new'||x.kind===kf);
+    let h=`<div class="kf">${[['all','All'],['new','New'],['customer','Customers'],['trade','Trade partners'],['arch','Architects']].map(([k,l])=>`<button class="${kf===k?'on':''} ${k==='new'?'new':''}" data-kf="${k}">${l}${k==='new'&&unsorted().length?' · '+unsorted().length:''}</button>`).join('')}</div>`;
+    if(withNewLane){ h+=`<div class="sec new">New <span class="cnt">${news.length}</span>${news.length>1?`<button class="all" data-v2="C">Sort all ›</button>`:''}</div>`+(news.length?news.map(x=>rowHtml(x,x.id,true,needWord[x.need])).join(''):`<div class="note" style="padding:6px 12px 10px">Nothing to sort. Every line that came in has a person, a job and someone on it.</div>`); }
+    if(kf!=='new') for(const s of QUEUE){ const rows=s.rows.filter(r=>fitsKind(r.kind)); if(!rows.length) continue; h+=`<div class="sec">${s.sec} <span class="cnt">${rows.length}</span></div>`+rows.map((r,i)=>rowHtml(r,s.sec+i,false,null)).join(''); }
+    return h;
+  }
+  function inboxHtml(){
+    const all=[...unsorted().map(x=>({...x,isNew:true,id:x.id})), ...QUEUE.flatMap((s,si)=>s.rows.map((r,i)=>({...r,id:s.sec+i})))];
+    const rows=all.filter(r=>r.isNew?(kf==='all'||kf==='new'||r.kind===kf):(kf!=='new'&&fitsKind(r.kind)));
+    return `<div class="kf">${[['all','All'],['new','New'],['customer','Customers'],['trade','Trade partners'],['arch','Architects']].map(([k,l])=>`<button class="${kf===k?'on':''} ${k==='new'?'new':''}" data-kf="${k}">${l}${k==='new'&&unsorted().length?' · '+unsorted().length:''}</button>`).join('')}</div>`+rows.map(r=>rowHtml(r,r.id,!!r.isNew,r.isNew?needWord[r.need]:null)).join('');
+  }
+  function sortCardHtml(x){
+    if(!x) return '';
+    let body='';
+    if(x.need==='who') body=`<div class="opts">${x.opts.map((o,i)=>`<button data-who="${x.id}" data-i="${i}">${esc(o.l)}<small>${esc(o.s)}</small></button>`).join('')}</div>`;
+    if(x.need==='job') body=`<div class="chips">${x.jobs.map(j=>`<button data-job="${j.n}" class="${danaPick[j.n]?'on':''}">${j.n} · ${esc(j.name)}${j.def?' · default':''}</button>`).join('')}</div><div class="foot"><span class="note">Tick every job the line is about. Her reply shows on each until then.</span><button class="small primary" data-jobdone="${x.id}">Tie it</button></div>`;
+    if(x.need==='has') body=`<div class="opts">${x.people.map((p,i)=>`<button data-has="${x.id}" data-i="${i}">${esc(p.n)}<small>${esc(p.s)}</small></button>`).join('')}</div>`;
+    return `<div class="sortcard"><h5>${needWord[x.need]}</h5><div class="why">${esc(x.why)}</div>${body}</div>`;
+  }
+  function findOpen(){ const x=SORT.find(s=>s.id===openId); if(x) return {kind:'new',x}; for(const s of QUEUE) for(let i=0;i<s.rows.length;i++) if(s.sec+i===openId) return {kind:'old',r:s.rows[i]}; return null; }
+  function threadHtml(showSort){
+    const o=findOpen(); if(!o) return `<div class="thr"><div class="well"><div class="note">Pick a row.</div></div></div>`;
+    if(o.kind==='new'){ const x=o.x; const named=sorted[x.id];
+      return `<div class="thr"><div class="th"><h4>${esc(named&&named.name||x.who)}<span class="pill">${named?'Open · '+(named.has||'the office'):'nobody on it yet'}</span></h4><div class="facts"><b>${named?named.kind:KIND_WORD[x.kind]}</b>${named&&named.company?' · '+esc(named.company):''} · ${esc(x.via)}</div><div class="move">Their move came in ${esc(x.when)}. ${named?'Needs a reply.':'Sort it, then answer.'}</div></div>${showSort&&!named?sortCardHtml(x):''}<div class="well"><div class="ln them">${esc(x.text)}<small>${esc(x.who)} · ${esc(x.via)} · ${esc(x.when)}</small></div>${named?`<div class="ln us" style="background:var(--team);border-color:var(--team-border)">${esc(named.event)}<small>Rosa · event · just now</small></div>`:''}</div><div class="box"><span class="fake">${named?'Write to '+esc((named.name||x.who).split(' ')[0])+'…':'Name them first, then the box opens.'}</span><button class="primary small" ${named?'':'disabled'}>Send text…</button></div></div>`; }
+    const r=o.r; return `<div class="thr"><div class="th"><h4>${esc(r.who)}<span class="pill">Open · Rosa</span></h4><div class="facts"><b>${KIND_WORD[r.kind]}</b></div><div class="move">Their move · ${esc(r.t)}.</div></div><div class="well"><div class="ln them">${esc(r.sn)}<small>${esc(r.who)} · ${esc(r.t)}</small></div></div><div class="box"><span class="fake">Pick a line above, or write…</span><button class="primary small">Send text…</button></div></div>`;
+  }
+  function sideHtml(withFacts){
+    const o=findOpen(); if(!o) return '<div class="side"></div>';
+    const facts = o.kind==='new' ? (sorted[o.x.id]? `<div class="card"><h5>Who</h5><div class="kv"><span>Name</span><span>${esc(sorted[o.x.id].name||o.x.who)}</span><span>Kind</span><span>${esc(sorted[o.x.id].kind)}</span><span>Came in</span><span>${esc(o.x.via)}</span></div></div>` : `<div class="card"><h5>Who</h5><div class="note">Nobody has named them. The sort is ${variant==='B'?'below':'above the thread'}.</div></div>`) : `<div class="card"><h5>Who</h5><div class="kv"><span>Name</span><span>${esc(o.r.who)}</span><span>Kind</span><span>${KIND_WORD[o.r.kind]}</span><span>Has it</span><span>Rosa</span></div></div>`;
+    const sort = variant==='B' && o.kind==='new' && !sorted[o.x.id] ? sortCardHtml(o.x).replace('class="sortcard"','class="sortcard" style="margin:0"') : '';
+    const flow = (o.kind==='old'||sorted[o.x?.id]) ? `<div class="card"><h5>Their flow</h5><div class="fl"><div><i class="done"></i>Booked</div><div><i class="done"></i>On the way</div><div class="now"><i class="now"></i>What we found</div><div><i></i>Estimate sent</div><div><i></i>Approved</div></div></div>` : `<div class="card"><h5>Their flow</h5><div class="note">No flow until they have a kind.</div></div>`;
+    return `<div class="side">${withFacts?facts:''}${sort}${flow}</div>`;
+  }
+  function deskHtml(){
+    const left=unsorted(); const x=left.find(s=>s.id===openId)||left[0];
+    if(!x) return `<div class="desk"><div class="done"><b>All sorted.</b><span class="note">Every line that came in has a person, a job and someone on it.</span><div style="margin-top:12px"><button class="primary" data-v2="A">Back to Follow up</button></div></div></div>`;
+    openId=x.id; const i=SORT.length-left.length+1;
+    return `<div class="desk"><div class="prog">New · ${left.length} to sort · ${i} of ${SORT.length}</div><div class="dcard"><div class="via">${esc(x.via)} · ${esc(x.when)}</div><div class="from">${esc(x.who)}</div><div class="txt">${esc(x.text)}</div>${sortCardHtml(x)}<div class="foot" style="display:flex;justify-content:space-between;margin-top:10px"><button class="quiet small skip" data-skip="${x.id}">Skip for now</button><span class="note">${left.length-1} more after this</span></div></div></div>`;
+  }
+  function paintPage(){
+    const bar=$('#appbar'), pg=$('#mpage'); if(!bar) return; bar.innerHTML=appbarHtml();
+    $$('#vars button').forEach(b=>b.classList.toggle('on',b.dataset.v===variant)); $('#varWhat').textContent=VAR_WHAT[variant]; $('#mockcap').textContent=CAP[variant];
+    pg.className='mpage'+(variant==='C'?' one':'');
+    if(variant==='A') pg.innerHTML=`<div class="mcol listcol"><div class="mh"><b>Follow up</b><span class="n">each person once</span></div>${listHtml(true)}</div><div class="mcol">${threadHtml(true)}</div><div class="mcol sidecol">${sideHtml(false)}</div>`;
+    if(variant==='B') pg.innerHTML=`<div class="mcol listcol"><div class="mh"><b>Conversations</b><span class="n">newest first</span></div>${inboxHtml()}</div><div class="mcol">${threadHtml(false)}</div><div class="mcol sidecol">${sideHtml(true)}</div>`;
+    if(variant==='C') pg.innerHTML=`<div class="mcol">${deskHtml()}</div>`;
+    $$('[data-open]',pg).forEach(b=>b.onclick=()=>{ openId=b.dataset.open; paintPage(); });
+    $$('[data-kf]',pg).forEach(b=>b.onclick=()=>{ kf=b.dataset.kf; paintPage(); });
+    $$('[data-v2]',pg).forEach(b=>b.onclick=()=>{ variant=b.dataset.v2; paintPage(); });
+    $$('[data-who]',pg).forEach(b=>b.onclick=()=>{ const x=SORT.find(s=>s.id===b.dataset.who); const o=x.opts[+b.dataset.i]; const name=o.l.replace(/,.*$/,'').replace(/ at .*$/,''); const company=(o.l.match(/ at (.*)$/)||[])[1]||null; const kind=x.id==='bexar'?'Trade partner':'Customer'; sorted[x.id]={name:o.l.startsWith('Someone')?x.who:name, company, kind, has:'the office', event:`Rosa named this ${kind==='Customer'?'customer':'trade partner'}: ${o.l}. The thread moved to Needs a reply.`}; toast(`Named. ${o.l}. Their thread is on Needs a reply.`); paintPage(); });
+    $$('[data-job]',pg).forEach(b=>b.onclick=()=>{ danaPick[b.dataset.job]=!danaPick[b.dataset.job]; paintPage(); });
+    $$('[data-jobdone]',pg).forEach(b=>b.onclick=()=>{ const picked=Object.keys(danaPick).filter(k=>danaPick[k]); if(!picked.length){ toast('Tick at least one job.'); return; } sorted.dana={name:'Dana Whitfield',kind:'Customer',has:'Luis until 5 PM',event:`Rosa tied the line to ${picked.join(' and ')}.`}; toast(`Tied to ${picked.join(' and ')}. It reads on ${picked.length===1?'that job':'both jobs'} now.`); paintPage(); });
+    $$('[data-has]',pg).forEach(b=>b.onclick=()=>{ const x=SORT.find(s=>s.id===b.dataset.has); const p=x.people[+b.dataset.i]; sorted[x.id]={name:x.who,kind:'Trade partner',company:null,has:p.n,event:`${p.n} has it, since just now.`}; toast(`${p.n} has it. It is on ${p.n}’s Needs a reply.`); paintPage(); });
+    $$('[data-skip]',pg).forEach(b=>b.onclick=()=>{ const left=unsorted(); const i=left.findIndex(s=>s.id===b.dataset.skip); openId=(left[i+1]||left[0]).id; paintPage(); });
+  }
+  $$('#vars button').forEach(b=>b.onclick=()=>{ variant=b.dataset.v; paintPage(); });
+  paintPage();
 
   paintKind(); paintPhone();
 })();
