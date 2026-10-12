@@ -33,7 +33,7 @@ const words = (person: PersonFlow, id: string, now = NOW, options: NudgeOptions 
 const portalRows: NudgeOptions = { skip: (contactId, paper, key) => contactId === 'priya' && paper === 'co' && key === CHANGE_ORDERS.priya2 }
 const with_ = (change: Partial<Seed>) => (seed: Seed): Seed => ({ ...seed, ...change })
 
-/** Tom, on Papers in since Mon Sep 28, waiting on his insurance: quiet this many days, our last message then. */
+/** Tom, on Papers in since Mon Sep 28, waiting on the insurance certificate: quiet this many days, our last message then. */
 const tom = (quietDays: number | null, lastOutAt: string | null, marks: NudgeMark[] = []) =>
   demoPerson('tom', with_({ quietDays, lastOutAt, marks }))
 
