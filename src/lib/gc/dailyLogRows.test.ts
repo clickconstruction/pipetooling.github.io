@@ -123,7 +123,7 @@ describe('dailyLogPayload', () => {
     expect(dailyLogFromRow(saved, fairOaks())).toEqual({ ...asLog, crews, writtenOn: '2026-10-03' })
   })
 
-  it('sends the keys the press reads, so the two cannot drift (the photos link waits for the owner’s call)', () => {
+  it('sends the keys the press reads, so the two cannot drift (the photos link waits for the owner’s call, the customer’s line for its field on the form)', () => {
     const dir = join(process.cwd(), 'supabase', 'migrations')
     const head = 'FUNCTION public.gc_save_daily_log('
     const sql = readdirSync(dir)
@@ -135,7 +135,7 @@ describe('dailyLogPayload', () => {
     if (!sql) throw new Error('no migration defines gc_save_daily_log')
     const body = sql.slice(sql.indexOf(head), sql.indexOf('$$;', sql.indexOf(head)))
     const read = new Set([...body.matchAll(/\blog->>?'(\w+)'/g)].map((m) => m[1]))
-    read.delete('photosUrl')
+    for (const key of ['photosUrl', 'customerLine', 'customerLineEs']) read.delete(key)
     expect([...read].sort()).toEqual(Object.keys(dailyLogPayload('fairoaksd', log, '2026-10-02')).sort())
     expect([...new Set([...body.matchAll(/\bx->>'(\w+)'/g)].map((m) => m[1]))].sort()).toEqual(['note', 'packageId', 'reason', 'workers'])
   })
