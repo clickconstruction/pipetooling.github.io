@@ -9,7 +9,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { flowFromRows, type FlowStepRow } from './editor'
 import type { FlowKind } from './facts'
 import type { FlowRows } from './load'
-import type { HoldRow, SentRow, StepNoteRow, ThreadLineRow } from './person'
+import { loadCustomerPortalReadBack } from '../portal/customerPortalViewsIo'
+import type { HoldRow, PortalReadBackRow, SentRow, StepNoteRow, ThreadLineRow } from './person'
 import { SEED_FLOWS } from './seed'
 import type { FlowDef } from './state'
 
@@ -24,6 +25,8 @@ export type FlowPersonRead = {
   sent: SentRow[]
   notes: StepNoteRow[]
   lines: ThreadLineRow[]
+  /** A customer's page as cut 8 reads it back (`customerPortalViewsIo`); null for anyone else, or when it cannot be read. */
+  portal?: PortalReadBackRow | null
 }
 
 /** A press's job: a GC project, or none on the Once lane. */
@@ -86,14 +89,26 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
   ])
   const contact = check(contactA, 'Their contact')
   if (!contact) throw new Error('Their contact: not found')
+  const rows = check(rowsA, 'Their flow')
   return {
     contact,
     flow: await readFlowDef(contact.kind),
-    rows: check(rowsA, 'Their flow'),
+    rows,
+    portal: contact.kind === 'customer' ? await portalOf(rows.card?.customer_id ?? null) : null,
     holds: check(holdsA, 'Their holds') ?? [],
     sent: check(sentA, 'Their reminders') ?? [],
     notes: check(notesA, 'Their notes') ?? [],
     lines: check(linesA, 'Their thread') ?? [],
+  }
+}
+
+/** A customer's page, read back; the card goes without it when it cannot be read (the flow itself still reads). */
+async function portalOf(customerId: string | null): Promise<PortalReadBackRow | null> {
+  if (!customerId) return null
+  try {
+    return (await loadCustomerPortalReadBack([customerId])).get(customerId) ?? null
+  } catch {
+    return null
   }
 }
 

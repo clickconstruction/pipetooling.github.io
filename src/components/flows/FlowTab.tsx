@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMessagesReread } from '../gc/messages/useMessagesReread'
 import { useOpenFlowStep } from '../../hooks/useFlowNow'
 import { useFlowPerson, type FlowPersonAt } from '../../hooks/useFlowPerson'
 import { useGcPortalLinks } from '../../hooks/useGcPortalLinks'
@@ -49,6 +50,8 @@ export function FlowTab({
   side?: boolean
 }) {
   const { contactId, got, presses } = useFlowPerson(at)
+  // In the thread window, a press that writes a line (a note) shows it in the thread; elsewhere this does nothing.
+  const rereadThread = useMessagesReread()
   const narrow = useIsNarrowScreen()
   const phone = useMatchMedia(THREAD_PHONE)
   const [jobId, setJobId] = useState<string | null>(null)
@@ -125,6 +128,7 @@ export function FlowTab({
     setProblem(null)
     try {
       await fn()
+      rereadThread()
       setAsking(null)
       setTakingOff(false)
       setOffWhy('')

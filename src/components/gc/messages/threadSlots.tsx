@@ -102,8 +102,7 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
  * thread (`useThreadWindow`) and ask for the read again after its own write (`useMessagesReread`).
  */
 export function useThreadSlots(): ThreadSlots {
-  return {
-    // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh.
-    side: (c) => <FlowTab key={c.id} at={{ contactId: c.id }} side />,
-  }
+  // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh.
+  const flow: ThreadSlots = { side: (c) => <FlowTab key={c.id} at={{ contactId: c.id }} side /> }
+  return mergeThreadSlots(flow)
 }

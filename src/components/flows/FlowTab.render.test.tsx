@@ -174,3 +174,28 @@ describe('where a person is, for cut 3 beside the thread', () => {
     expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
+
+describe('a customer’s page on the card (cut 8’s read-back)', () => {
+  it('says she has not opened our contract yet, from her page’s read-back', async () => {
+    io.read = {
+      contact: { id: 'elena', kind: 'customer', name: 'Elena Ruiz', goes_by: null },
+      flow: SEED_FLOWS.customer,
+      rows: {
+        contact: { id: 'elena', kind: 'customer', off_since: null, off_why: null, off_by: null },
+        projects: [
+          { project_id: 'pj', stage: 'buyout', created_at: '2026-08-01T15:00:00Z', bid_due: null, our_bid_sent_on: '2026-09-20', won_on: '2026-09-25', lost_on: null, owner_contract_sent_on: '2026-09-30', owner_contract_signed_on: null, started_on: null, closed_on: null, owner_pay_days: null },
+        ],
+        contactJobs: [{ project_id: 'pj', is_default: true }],
+        card: { name: 'Elena Ruiz', goes_by: null, company: null, trades: [], customer_id: 'cust-elena' },
+      },
+      holds: [],
+      sent: [],
+      notes: [],
+      lines: [],
+      portal: { lastOpenedAt: null, papers: [{ kind: 'contract', title: 'Our contract', sentAt: '2026-09-30', answered: false, viewedAt: null }] },
+    }
+    renderWithProviders(<FlowTab at={{ contactId: 'elena' }} />)
+    fireEvent.click(await screen.findByRole('button', { name: /^Contract signed: on now/ }))
+    expect(within(await screen.findByRole('dialog')).getByText(/Elena has not opened the contract yet\./)).toBeTruthy()
+  })
+})
