@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bill day · a summary at the top, three ways</title>
+<style>
+:root{--text:#1b1f24;--muted:#6b7280;--border:#e3e6ea;--surface:#fff;--bg:#f4f5f7;--accent:#1f5fbf;--accent-soft:#e8f0fc;--ok:#2a8f5a;--ok-soft:#e6f4ec;--warn:#b45309;--warn-soft:#fdf1e3;--bad:#b42318;--bad-soft:#fdecea;--chip:#f0f2f5}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg);padding:24px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:34px 0 6px}h3{font-size:14px;margin:18px 0 6px}
+p{max-width:860px;margin:4px 0}.note{color:var(--muted);font-size:13px}
+.page{width:1100px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:10px}
+.lead{font-size:15px;margin:0 0 8px}.lead b{font-weight:600}.num{display:inline-block;border:1px solid #bfe3c9;background:var(--ok-soft);color:var(--ok);border-radius:999px;padding:0 7px;font-size:12px;font-weight:700}
+.card{border:1px solid var(--border);border-radius:10px;padding:12px 14px;background:var(--surface)}
+.grid{display:grid;gap:12px}.g2{grid-template-columns:1.4fr 1fr}.g3{grid-template-columns:1fr 1fr 1fr}
+.h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.big{font-size:22px;font-weight:700;line-height:1.1}.big small{display:block;font-size:12.5px;color:var(--muted);font-weight:400;margin-top:3px}
+.stack{display:flex;height:26px;border-radius:7px;overflow:hidden;margin:8px 0 4px;font-size:11.5px;font-weight:600;color:#fff}.stack div{display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden}
+.s-back{background:#d97706}.s-notin{background:#c2410c}.s-wait{background:#1f5fbf}.s-ok{background:#2a8f5a}.s-close{background:#9aa4b1}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.flow{display:flex;align-items:center;gap:10px}.flow .arrow{color:var(--muted);font-size:18px}
+.sum{border:1px solid var(--border);border-radius:10px;padding:10px 12px;min-width:170px}.sum .v{font-size:18px;font-weight:700}.sum small{display:block;color:var(--muted);font-size:11.5px}
+.ring{width:64px;height:64px;border-radius:50%;background:conic-gradient(var(--ok) 0 43%,var(--chip) 43% 100%);display:grid;place-items:center;flex:none}.ring b{width:48px;height:48px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:12px}
+.tl{position:relative;height:46px;margin:10px 0 0}.tl:before{content:'';position:absolute;left:0;right:0;top:9px;height:2px;background:var(--border)}.tl .m{position:absolute;top:0;transform:translateX(-50%);text-align:center;font-size:11.5px;color:var(--muted);white-space:nowrap}.tl .m i{display:block;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--muted);margin:3px auto 3px}.tl .m.now i{border-color:var(--accent);background:var(--accent)}.tl .m.now{color:var(--accent);font-weight:600}.tl .m.hot i{border-color:var(--warn);background:var(--warn-soft)}.tl .m b{display:block;color:var(--text)}
+.todo{display:flex;flex-direction:column;gap:6px}.todo div{display:flex;align-items:center;gap:8px;font-size:13.5px}.todo .btn{margin-left:auto}
+.btn{display:inline-block;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12.5px;background:var(--surface);white-space:nowrap}.btn.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}.dot.r{background:var(--bad)}.dot.o{background:var(--warn)}.dot.b{background:var(--accent)}
+.fold{color:var(--accent);font-size:13px;margin-top:8px}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;background:var(--chip)}.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.rev{background:#fffbe9;border:1px solid #f0e2a8;border-radius:10px;padding:12px 14px;max-width:860px}.rev li{margin:4px 0}
+.chosen{outline:3px solid var(--accent);outline-offset:3px}
+table{border-collapse:collapse;font-size:13.5px;max-width:860px}td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.old{opacity:.55;font-size:12px;border:1px dashed var(--border);border-radius:8px;padding:6px 10px;margin-top:10px}
+</style></head><body>
+<h1>Bill day · a summary at the top, three ways</h1>
+<p class="note">The page today opens with a strip of five sections, six calendar cards, a seven-line gate list and then the tables. All of it is true and none of it says, in one look, where the money is and what to do today. These three put one picture at the top and fold the rest. Stone Oak Pharmacy, pay application 4, Fri Oct 2, thirteen days to bill day.</p>
+
+<h2>1. What a person wants from the top of this page</h2>
+<table>
+<tr><th>They ask</th><th>So the top shows</th></tr>
+<tr><td>How much of the money is in?</td><td>One bar: the six draws by where they stand, in dollars, from not in to approved.</td></tr>
+<tr><td>What will the owner be billed?</td><td>One number with its parts: the trades' draws, our own crew, the fee.</td></tr>
+<tr><td>Are we on time?</td><td>One line of dates with today on it: trades by, the walk, bill day, owner pays.</td></tr>
+<tr><td>What do I do today?</td><td>Three presses, the ones that move the bar, in the order that matters.</td></tr>
+<tr><td>Can the application go?</td><td>A ring, 3 of 7, with the gates folded under it.</td></tr>
+</table>
+
+<h2>2. Three shapes</h2>
+
+<h3>A · The money river</h3>
+<p class="note">One stacked bar of the draws by state, flowing into the owner's application. Dollars on the bar, counts in the legend, the dates underneath. Nothing to do here; it is a picture, and the presses stay in the sections.</p>
+<div class="page">
+<div class="lead">Bill day · <b>Sun Oct 25</b> · <span class="num">#42</span> Stone Oak Pharmacy · pay application 4 · 13 days away</div>
+<div class="card"><div class="flow">
+  <div style="flex:1"><div class="h">The trades' draws · 6 · $104,200 asked</div>
+    <div class="stack"><div class="s-notin" style="width:46%">Not in · $48,300</div><div class="s-back" style="width:18%">Sent back · $18,400</div><div class="s-wait" style="width:23%">Waiting on us · $27,900</div><div class="s-ok" style="width:13%">Approved · $13,300</div></div>
+    <div class="legend"><span><i class="s-notin"></i>3 not in, due Oct 19</span><span><i class="s-back"></i>1 sent back</span><span><i class="s-wait"></i>1 waiting on us, 4 days</span><span><i class="s-ok"></i>1 approved</span></div></div>
+  <div class="arrow">→</div>
+  <div class="sum"><div class="h">To the owner</div><div class="v">$118,600</div><small>trades $86,400 · our crew $27,900 · fee $4,300 · if all come in as expected</small></div>
+  <div class="ring" title="3 of 7 gates"><b>3 of 7</b></div>
+</div>
+<div class="tl"><div class="m now" style="left:4%"><i></i><b>Today</b>Fri Oct 2</div><div class="m hot" style="left:42%"><i></i><b>Trades by</b>Mon Oct 19</div><div class="m" style="left:58%"><i></i><b>Wendi walks</b>Thu Oct 22</div><div class="m" style="left:72%"><i></i><b>Bill day</b>Sun Oct 25</div><div class="m" style="left:96%"><i></i><b>Owner pays by</b>Wed Nov 25</div></div>
+</div>
+<div class="old">below it, unchanged: the five section pills, the gates, the sections</div>
+</div>
+
+<h3>B · Today's three things</h3>
+<p class="note">No chart. One card that says how far off bill day is, whether the application can go, and the three presses that move it, in order. The calendar cards and the gate list fold behind one link.</p>
+<div class="page">
+<div class="lead">Bill day · <b>Sun Oct 25</b> · <span class="num">#42</span> Stone Oak Pharmacy · pay application 4</div>
+<div class="grid g2">
+  <div class="card"><div class="h">Today · 13 days to bill day</div>
+    <div class="todo">
+      <div><span class="dot r"></span>Ask the 3 trades not in. Due Mon Oct 19. <span class="btn p">Ask all 3</span></div>
+      <div><span class="dot o"></span>Rio Paving's draw went back Thu Oct 1 and has not come back. <span class="btn">Remind Rio</span></div>
+      <div><span class="dot b"></span>Lone Star's draw 2 waits on us, 4 days. $27,729 against $27,900 asked. <span class="btn">Open the lines</span></div>
+    </div>
+    <div class="fold">Everything else is on track · the dates ›</div></div>
+  <div class="card" style="display:flex;gap:14px;align-items:center"><div class="ring"><b>3 of 7</b></div><div><div class="big">Not yet<small>4 gates open: trades in, nothing sent back, conditional waivers, Hillside's final waiver</small></div><div class="fold">the gates ›</div></div></div>
+</div>
+<div class="old">below it: the five section pills, the sections</div>
+</div>
+
+<h3>C · The calendar as one line</h3>
+<p class="note">The six cards become one timeline with what hangs on each date, and today marked. The counts live on the dates. Reads well for "are we on time", says less about the money.</p>
+<div class="page">
+<div class="lead">Bill day · <b>Sun Oct 25</b> · <span class="num">#42</span> Stone Oak Pharmacy · pay application 4</div>
+<div class="card"><div class="tl" style="height:60px"><div class="m" style="left:3%"><i></i><b>Pay app 3 paid</b>Sep 25 · trades Sep 28</div><div class="m now" style="left:20%"><i></i><b>Today</b>Fri Oct 2</div><div class="m hot" style="left:42%"><i></i><b>Trades by</b>Mon Oct 19 · 3 of 6 in</div><div class="m" style="left:58%"><i></i><b>Wendi walks</b>Thu Oct 22 · 1 draw to check</div><div class="m" style="left:73%"><i></i><b>Bill day</b>Sun Oct 25 · $118,600</div><div class="m" style="left:92%"><i></i><b>Owner pays by</b>Wed Nov 25</div></div></div>
+<div class="old">below it: the gate list, the five section pills, the sections</div>
+</div>
+
+<h2>3. The pick: A's picture with B's three things beside it <span class="pill ok">recommended</span></h2>
+<p class="note">The bar answers "where is the money" in one look and the dates under it answer "are we on time". The three things beside it answer "what do I do", and they are the same presses the sections carry, so nothing is new to learn. The six calendar cards and the gate list fold behind the ring and the dates; the section pills and the tables stay as they are.</p>
+<div class="page chosen">
+<div class="lead">Bill day · <b>Sun Oct 25</b> · <span class="num">#42</span> Stone Oak Pharmacy · pay application 4 · 13 days away</div>
+<div class="grid g2">
+  <div class="card">
+    <div class="flow"><div style="flex:1"><div class="h">The trades' draws · 6 · $104,200 asked</div>
+      <div class="stack"><div class="s-notin" style="width:46%">Not in · $48,300</div><div class="s-back" style="width:18%">Sent back · $18,400</div><div class="s-wait" style="width:23%">Waiting on us · $27,900</div><div class="s-ok" style="width:13%">Approved · $13,300</div></div>
+      <div class="legend"><span><i class="s-notin"></i>3 not in</span><span><i class="s-back"></i>1 sent back</span><span><i class="s-wait"></i>1 waiting on us</span><span><i class="s-ok"></i>1 approved</span></div></div>
+      <div class="arrow">→</div>
+      <div class="sum"><div class="h">To the owner</div><div class="v">$118,600</div><small>trades $86,400 · our crew $27,900 · fee $4,300</small></div></div>
+    <div class="tl"><div class="m now" style="left:4%"><i></i><b>Today</b>Oct 2</div><div class="m hot" style="left:40%"><i></i><b>Trades by</b>Oct 19</div><div class="m" style="left:57%"><i></i><b>Walk</b>Oct 22</div><div class="m" style="left:72%"><i></i><b>Bill day</b>Oct 25</div><div class="m" style="left:95%"><i></i><b>Owner pays</b>Nov 25</div></div>
+    <div class="fold">the dates in full ›</div>
+  </div>
+  <div class="card"><div style="display:flex;gap:12px;align-items:center;margin-bottom:10px"><div class="ring"><b>3 of 7</b></div><div><b>Can it go? Not yet.</b><div class="note">4 gates open · <span style="color:var(--accent)">the gates ›</span></div></div></div>
+    <div class="h">Today</div>
+    <div class="todo">
+      <div><span class="dot r"></span>Ask the 3 not in <span class="btn p">Ask all 3</span></div>
+      <div><span class="dot o"></span>Rio's draw, sent back Oct 1 <span class="btn">Remind Rio</span></div>
+      <div><span class="dot b"></span>Lone Star waits on us, 4 d <span class="btn">Open the lines</span></div>
+    </div></div>
+</div>
+<div class="old">below it, unchanged: Sent back 1 → Not in 3 → In, waiting on us 1 → Approved 1 → Closing out 0 · Our own crew, then the sections</div>
+</div>
+
+<h2>4. Is this the best we can do?</h2>
+<div class="rev"><ul>
+<li><b>Why a bar and not a pie.</b> The question is "how much is still out", and a bar reads left to right the way the sections do below it: not in, sent back, waiting, approved. The same colors tint the section bars, so the picture and the page agree.</li>
+<li><b>Dollars on the bar, counts in the legend.</b> Counts alone hide that the three not in are half the money. Dollars alone hide that it is three trades, not one.</li>
+<li><b>The three things are not a new list.</b> They are the first three open gates, in the gate list's order, with the gate's own press. When a gate closes, the next one steps up. Nothing to maintain.</li>
+<li><b>Fold, do not delete.</b> The six calendar cards hold words people rely on (the reminder day, Wendi's list, who certifies). They fold behind "the dates in full"; the gate list folds behind the ring. Both open with one press and remember the choice per computer.</li>
+<li><b>Left out on purpose.</b> A forecast line (it has its own tab), last period's numbers (one word on the timeline is enough), a per-trade mini-chart (the tables are that).</li>
+<li><b>Not sure of.</b> Whether "To the owner" should show the expected number or the asked number before the draws are approved; drawn as expected, with "if all come in as expected" on hover. Whether the picture belongs on the Helotes job too, where there is one trade and nothing to stack; probably a single-row bar and the same three things.</li>
+</ul></div>
+<p class="note" style="margin-top:14px">Pick one and I put it at the top of Money → Bill day in the prototype, with the cards and the gates folded.</p>
+</body></html>
