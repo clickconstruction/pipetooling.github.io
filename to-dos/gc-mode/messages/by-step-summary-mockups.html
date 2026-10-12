@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>By step · the summary line as a visual</title>
+<style>
+:root{--text:#1b1f24;--muted:#6b7280;--border:#e3e6ea;--surface:#fff;--bg:#f4f5f7;--accent:#1f5fbf;--accent-soft:#e8f0fc;--ok:#2a8f5a;--ok-soft:#e6f4ec;--warn:#b45309;--warn-soft:#fdf1e3;--bad:#b42318;--bad-soft:#fdecea;--chip:#f0f2f5}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg);padding:24px}
+h1{font-size:22px;margin:0 0 4px}h3{font-size:14px;margin:24px 0 6px}p{max-width:860px;margin:4px 0}.note{color:var(--muted);font-size:13px}
+.card{width:1100px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:6px}
+.h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.flex{display:flex;gap:16px;align-items:center}
+.stack{display:flex;height:26px;border-radius:7px;overflow:hidden;gap:1px}.stack div{display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;color:#fff;min-width:22px}
+.c-setup{background:#6b7fa3}.c-quote{background:#1f5fbf}.c-build{background:#2a8f5a}.c-off{background:#c3c9d2;color:#4b5563!important}
+.lg{display:flex;gap:18px;margin-top:6px}.lg div{font-size:12.5px}.lg b{display:flex;align-items:center;gap:6px;font-size:14px}.lg i{display:inline-block;width:11px;height:11px;border-radius:3px}.lg small{display:block;color:var(--muted);font-size:12px}
+.hand{border-left:1px solid var(--border);padding-left:16px;min-width:260px}.hand .pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}.pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:600;background:var(--chip);color:var(--muted)}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.hand a{font-size:12.5px;color:var(--accent);display:block;margin-top:6px}
+.funnel{display:flex;gap:10px;align-items:flex-end;height:70px}.funnel div{background:var(--accent-soft);border:1px solid #bcd0f0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 14px;color:var(--accent)}.funnel b{font-size:20px;line-height:1}.funnel small{font-size:11.5px;color:var(--muted)}.funnel .arr{background:none;border:0;color:var(--muted);font-size:18px;padding:0 0 18px}
+.tiles{display:flex;gap:10px}.tile{flex:1;border:1px solid var(--border);border-radius:10px;padding:8px 12px}.tile b{font-size:22px;line-height:1.1;display:block}.tile small{color:var(--muted);font-size:12px}.tile .dots{display:flex;gap:3px;margin-top:6px;flex-wrap:wrap}.tile .dots i{width:9px;height:9px;border-radius:50%;background:#c3c9d2}.tile .dots i.ok{background:var(--ok)}.tile .dots i.warn{background:var(--warn)}.tile .dots i.bad{background:var(--bad)}.tile.hand{border-color:#f0c58a;background:var(--warn-soft)}
+.rev{background:#fffbe9;border:1px solid #f0e2a8;border-radius:10px;padding:10px 14px;max-width:860px;margin-top:18px}.rev li{margin:4px 0}
+.chosen{outline:3px solid var(--accent);outline-offset:3px}.pick{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;background:var(--ok-soft);color:var(--ok)}
+</style></head><body>
+<h1>By step · the summary line as a visual</h1>
+<p class="note">The line today: <i>10 · 5 getting set up | 6 quoting on 2 bids | 4 building on Stone Oak | 2 off | 1 late · 1 lapsed · 6 over usual · Follow up has the 2 ›</i>. True, and seven numbers in a row. Three ways to make it a picture. The numbers are the demo's: ten companies, and the six quoting are five asks plus one compare.</p>
+
+<h3>A · The same bar as Bill day <span class="pick">the pick</span></h3>
+<p class="note">One bar of the companies by where they are, the count in each segment, A's legend under it (the swatch and the count above, the words below). To the right, what needs a hand, as pills, with the Follow up link. The same shape the Money page opens with, so the two pages read the same way.</p>
+<div class="card chosen"><div class="flex">
+  <div style="flex:1"><div class="h">10 companies · where they are</div>
+    <div class="stack"><div class="c-setup" style="width:29%">5</div><div class="c-quote" style="width:35%">6</div><div class="c-build" style="width:24%">4</div><div class="c-off" style="width:12%">2</div></div>
+    <div class="lg"><div><b><i class="c-setup"></i>5</b><small>Getting set up</small></div><div><b><i class="c-quote"></i>6</b><small>Quoting · on 2 bids</small></div><div><b><i class="c-build"></i>4</b><small>Building · on Stone Oak</small></div><div><b><i class="c-off"></i>2</b><small>Off the flow</small></div></div></div>
+  <div class="hand"><div class="h">Needs a hand</div><div class="pills"><span class="pill bad">1 late</span><span class="pill warn">1 lapsed</span><span class="pill warn">6 over usual</span></div><a>Follow up has the 2 ›</a></div>
+</div></div>
+
+<h3>B · The funnel</h3>
+<p class="note">Three blocks in the flow's direction with an arrow between, the count big, off the flow aside. Reads as motion, which the flow is. Says nothing about how long anyone has been where they are.</p>
+<div class="card"><div class="flex">
+  <div class="funnel"><div><b>5</b><small>getting set up</small></div><div class="arr">→</div><div><b>6</b><small>quoting · 2 bids</small></div><div class="arr">→</div><div><b>4</b><small>building · Stone Oak</small></div><div class="arr" style="color:var(--border)">|</div><div style="background:var(--chip);border-color:var(--border);color:var(--muted)"><b>2</b><small>off the flow</small></div></div>
+  <div class="hand"><div class="h">Needs a hand</div><div class="pills"><span class="pill bad">1 late</span><span class="pill warn">1 lapsed</span><span class="pill warn">6 over usual</span></div><a>Follow up has the 2 ›</a></div>
+</div></div>
+
+<h3>C · Tiles with a dot per company</h3>
+<p class="note">A tile per phase with the count big and one dot per company under it, colored by how it is doing: gray fine, orange over usual or lapsed, red late. The trouble shows where it sits, not in a separate count. A fifth tile holds the hand.</p>
+<div class="card"><div class="tiles">
+  <div class="tile"><b>5</b><small>Getting set up</small><div class="dots"><i class="warn"></i><i class="warn"></i><i class="warn"></i><i></i><i></i></div></div>
+  <div class="tile"><b>6</b><small>Quoting · on 2 bids</small><div class="dots"><i class="bad"></i><i class="warn"></i><i class="warn"></i><i class="warn"></i><i></i><i></i></div></div>
+  <div class="tile"><b>4</b><small>Building · on Stone Oak</small><div class="dots"><i></i><i></i><i></i><i></i></div></div>
+  <div class="tile"><b>2</b><small>Off the flow</small><div class="dots"><i></i><i></i></div></div>
+  <div class="tile hand"><b>2</b><small>Need a hand today</small><div class="pills" style="margin-top:6px"><span class="pill bad">1 late</span><span class="pill warn">1 lapsed</span></div></div>
+</div></div>
+
+<div class="rev"><b>Is this the best we can do?</b><ul>
+<li><b>A wins on sameness.</b> The office will read this bar on Money → Bill day every month; the same bar here, with the same legend, costs nothing to learn. The legend is the A you picked for the money bar.</li>
+<li><b>C says the most</b>, a dot per company with its color, and it is the one to grow into if the list gets long: forty companies is forty dots, still one glance. But its tiles are tall, and the trouble dots repeat what the pills say.</li>
+<li><b>B is the prettiest and the thinnest.</b> It draws the direction and nothing else. If the page ever gets a "this month" read (how many moved from quoting to building), B is where it goes.</li>
+<li><b>In every shape the pieces press.</b> A segment, a block or a tile jumps to its first row; a pill jumps to Follow up with that filter.</li>
+<li><b>Not sure of:</b> whether "over usual" belongs on the hand at all (six is most of the board, which says the usuals are tight, not that six people need a call). Drawn as a pill in orange, never red; dropped from the Follow up count.</li>
+</ul></div>
+</body></html>
