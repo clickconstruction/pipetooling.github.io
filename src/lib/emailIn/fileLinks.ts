@@ -1,0 +1,66 @@
+/**
+ * Messages, cut 6 (email in): the links in an email that are files on a file host, kept as links (a plan set too big
+ * to attach goes out this way). Each becomes a ↗ chip under the line and a row in the message window that reads *a
+ * link, not a file*. A link to anything else stays in the words only.
+ */
+
+export type FileHost = 'drive' | 'dropbox' | 'box' | 'wetransfer' | 'onedrive' | 'sharepoint'
+
+export interface FileLink {
+  url: string
+  host: FileHost
+  /** What the chip says: the file's own name when the link carries one, else the host's words. */
+  name: string
+}
+
+const HOST_WORDS: Readonly<Record<FileHost, string>> = {
+  drive: 'Google Drive link',
+  dropbox: 'Dropbox link',
+  box: 'Box link',
+  wetransfer: 'WeTransfer link',
+  onedrive: 'OneDrive link',
+  sharepoint: 'SharePoint link',
+}
+
+/** The host a link's file lives on, or null for a link that is not a file host's. */
+export function fileHost(url: string): FileHost | null {
+  let host: string
+  let path: string
+  try {
+    const u = new URL(url)
+    host = u.hostname.toLowerCase()
+    path = u.pathname
+  } catch {
+    return null
+  }
+  const on = (domain: string) => host === domain || host.endsWith(`.${domain}`)
+  if ((on('drive.google.com') && /\/(?:file\/d|drive\/(?:u\/\d+\/)?folders|open|uc)\b/.test(path)) || (on('docs.google.com') && /\/(?:document|spreadsheets|presentation|file)\/d\//.test(path))) return 'drive'
+  if (on('dropbox.com') && /^\/(?:s|scl|sh|t)\//.test(path)) return 'dropbox'
+  if (on('box.com') && /^\/(?:s|shared\/static)\//.test(path)) return 'box'
+  if (on('we.tl') || (on('wetransfer.com') && /^\/downloads\//.test(path))) return 'wetransfer'
+  if (on('1drv.ms') || on('onedrive.live.com')) return 'onedrive'
+  if (on('sharepoint.com') && /\/:[a-z]:\//i.test(path)) return 'sharepoint'
+  return null
+}
+
+const nameInPath = (url: string): string | null => {
+  try {
+    const last = decodeURIComponent(new URL(url).pathname.split('/').filter(Boolean).pop() ?? '')
+    return /\.[a-z0-9]{2,5}$/i.test(last) && last.length <= 120 ? last : null
+  } catch {
+    return null
+  }
+}
+
+/** The file hosts' links among an email's links, once each, in order. */
+export function fileLinks(links: readonly string[]): FileLink[] {
+  const out: FileLink[] = []
+  const seen = new Set<string>()
+  for (const url of links) {
+    const host = fileHost(url)
+    if (!host || seen.has(url)) continue
+    seen.add(url)
+    out.push({ url, host, name: nameInPath(url) ?? HOST_WORDS[host] })
+  }
+  return out
+}
