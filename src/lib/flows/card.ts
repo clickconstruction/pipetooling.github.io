@@ -180,10 +180,13 @@ const theLabel = (paper: PaperId): string => label(paper).toLowerCase().replace(
 /** The facts that read 'signed' when true, where the rest read 'on file': the W-9, the agreements, the contract. */
 const SIGNED_FACT = /_signed$/
 
-/** The latest day among facts that came true: the day a step or a round was done. */
+/**
+ * The latest day among facts that came true: the day a step or a round was done. A fact that ran out is left out, so
+ * a lapsed step keeps the day it was done, not the day its paper ran out.
+ */
 function latestDay(facts: readonly FactReading[]): string | null {
   let last: string | null = null
-  for (const f of facts) if ((f.mark === 'ok' || f.mark === 'bad') && f.at && (last == null || f.at > last)) last = f.at
+  for (const f of facts) if (f.mark === 'ok' && f.at && (last == null || f.at > last)) last = f.at
   return last
 }
 
