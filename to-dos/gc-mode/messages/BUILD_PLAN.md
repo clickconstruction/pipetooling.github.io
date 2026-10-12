@@ -189,7 +189,14 @@ page. The prototype's words are the words; its hover cards are the help text.
   one section per job, nothing of ours; the step names in both languages).
 - **Edge**: `gc-trade-portal` gains the page's read; the uploads there already finish the steps.
 - **Screens**: the portal's first page, EN and ES; *See their page* from the panel, the card and ⋯.
-- **Later**: the customer's page, once a customer has a portal (section 7).
+- **The customer's page**: shape B, a home and four tabs (`customer-portal-mockups.html`, the prototype
+  v1.162, `MESSAGES_PLAN.md` → *The customer's portal*): Your move, Where you are, This week, Your people; Money,
+  Schedule, Papers, Messages; EN and ES. Kernels `flows/customerMove.ts` (the first thing we need from them in
+  the flow's order), `portal/moneyLines.ts` (contract, signed changes, pay applications → six lines),
+  `portal/papers.ts` (signed, waiting, comes later). Edge: `customer-portal` gains the five reads and a write
+  that lands a `portal` message in the thread; a view per paper in `public_page_views` keyed by the paper.
+  Screens: the page; the thread header's portal pill, the step card's So far line, Needs you's two portal rows,
+  By company's Portal column. Field: one customer line and a photo mark on the daily log; the Friday roll-up.
 
 ### Cut 9 · Bill day: From the trades, and the superintendent's walk
 

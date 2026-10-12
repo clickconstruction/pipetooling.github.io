@@ -545,6 +545,38 @@ note is written from; it never approves, and the office can override it with the
 tapped clears the *checked against the site* gate by itself. *The site*: taps queue without signal; big
 targets, one screen per draw. *Open*: a whole-draw *matches* press against a tap per line (lean per line).
 
+## The customer's portal (shape B, picked 2026-10-11, `customer-portal-mockups.html`)
+
+The page a customer opens from the link in our emails and texts, built in the prototype at v1.162 behind *See their
+page* on a customer. On main the customer's portal already carries bills with pay by bank or card, the contract to
+sign, change orders to sign or decline, Accept the work, a schedule in words and the papers; it lacks a thread, a
+welcome, Spanish, photos, a weekly read, and the office never learns what was opened. Shape B puts the two together.
+
+- **Home**: *Your move*, one orange card with the first thing we need from them in the flow's order (a decision, a
+  paper of ours waiting on their signature, an open change order) and its button, or one line, *Nothing from you
+  today. We are on …*; *Where you are*, the per-job lane from their side with a bar and three rows (the last done, the
+  one on now, the next) that open to all; *This week*, one line from the daily log in customer words and three
+  photos, every Friday; *Your people*, the office line, the project manager, the superintendent.
+- **Money**: six lines, contract, changes signed, revised sum, billed, paid, balance to finish; *Next*, the coming
+  pay application in a sentence; *Waiting on your answer*, open change orders with their amount; *Each payment*, a
+  receipt and a lien waiver per payment; how to pay.
+- **Schedule**: the milestones; *What moved* since the schedule went, one line per change with why.
+- **Papers**: signed, each with its day and *read · a copy*; *Waiting on you* in orange with the buttons; *Comes
+  later*, so the page never looks empty.
+- **Messages**: the same thread this page holds, read from their side, texts and emails and portal writes in one
+  list; a write box. A portal write lands in the thread as a *Portal* message, under Open, and on Follow up.
+- **Español** at the top, every word of ours in both; the step names from the flow's own `es`.
+- **What the office reads back**: a *portal* pill under the name in the thread header (opened when, read the
+  contract, has not opened change order 2; gray *never opened*); the step card's So far, *Priya opened the change
+  order Tue 9:14 AM. Not signed.* or *has not opened it yet*; Follow up's Needs you, a row for a customer who wrote
+  on the page and a row for a paper sent two days ago and not signed, which says opened-and-left or never-opened
+  since they are different nudges; Customers → By company, a *Portal* column with the last open in days.
+- **Kept out on purpose**: trade names, our costs, nudges, a live schedule chart, document markup, a chat with the
+  superintendent, a log-in. The link is the key, as today.
+- **Open**: whether Accept the work and the warranty year belong on Home as a last *Your move* or on Papers; whether
+  the architect sees this page or a cousin of it; whether photos are opt-in per job, since some owners share the
+  link with tenants.
+
 ## How it would be built, once the shape is settled
 
 The detailed plan is `BUILD_PLAN.md` (2026-10-11); the list below is the first sketch it grew from.
@@ -772,6 +804,11 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.162, 2026-10-11**: the customer's portal as shape B behind See their page: Home with Your move, Where you
+  are, This week and Your people, then Money, Schedule, Papers and Messages, in both languages; a portal write lands
+  in the thread as a Portal message; the office reads it back on the thread header's portal pill, the step card's So
+  far, Follow up's Needs you and By company's Portal column (the owner picked B, 2026-10-11). *The customer's
+  portal* above holds the shape.
 - **v1.161, 2026-10-11**: the portal window is titled by kind, *Customer's portal*, *Trade partner's portal*,
   *Architect's portal*, not by the person's name; a section with no rows (a skipped master agreement) draws no
   heading (the owner, 2026-10-11).
