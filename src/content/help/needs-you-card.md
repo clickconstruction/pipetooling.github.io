@@ -67,6 +67,12 @@ The office and estimators see this one.
 
 - **N to follow up on in GC mode**. This counts everyone we wait on in GC mode, each person once. A trade partner may owe us a quote, a paper or a day it gave. A customer may owe us a signature. Anyone late turns the card red. {{button:outline|Follow up}} opens Follow up on GC projects. The Follow up button there counts the same people, and so does **By people**. See [follow up on a quote from a trade partner](/help/follow-up-on-a-quote-from-a-trade-partner).
 
+**Contracts**
+
+A controller or a dev sees this one.
+
+- **A clause change waits on your approval**. Someone in the office changed a contract clause, and it waits for you. Several read as **N clause changes wait on your approval**. {{button:outline|Review}} opens the oldest change's paper on [Contracts and clauses](/settings?tab=settings-clauses). See [change a contract clause](/help/change-a-contract-clause#approve-or-decline-a-change).
+
 **Dev only**
 
 - **Roadmap tasks with nobody's name on them**. {{button:outline|Open Plan}} opens the Roadmap page's Plan view. Roadmap items sit in their own group after the company list. So a planning gap never outranks a customer's money.

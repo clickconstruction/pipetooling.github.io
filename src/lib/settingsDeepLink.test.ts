@@ -55,6 +55,9 @@ describe('resolveSettingsDeepLink', () => {
   it('lands a Contracts & terms card, and the editors the tab opens', () => {
     expect(resolveSettingsDeepLink('', '#settings-contract-bid-terms')).toEqual({ tabId: 'settings-contracts', anchorId: 'settings-contract-bid-terms' })
     expect(resolveSettingsDeepLink('?tab=settings-contracts', '#settings-contract-job-standard-terms')).toEqual({ tabId: 'settings-contracts', anchorId: 'settings-contract-job-standard-terms' })
+    // A paper's card on Contracts and clauses (Messages, cut 4c): the approvers' Needs you opens it.
+    expect(resolveSettingsDeepLink('?tab=settings-clauses', '#settings-clause-paper-00000000-0000-0000-0000-00000000c1c1')).toEqual({ tabId: 'settings-clauses', anchorId: 'settings-clause-paper-00000000-0000-0000-0000-00000000c1c1' })
+    expect(resolveSettingsDeepLink('', '#settings-clause-paper-00000000-0000-0000-0000-00000000c1c1')).toEqual({ tabId: 'settings-clauses', anchorId: 'settings-clause-paper-00000000-0000-0000-0000-00000000c1c1' })
     // The tab's own id is still a tab, not a card.
     expect(resolveSettingsDeepLink('', '#settings-contracts')).toEqual({ tabId: 'settings-contracts', anchorId: null })
     expect(resolveSettingsDeepLink('', '#settings-estimate-public-terms')).toEqual({ tabId: 'settings-catalogs', anchorId: 'settings-estimate-public-terms' })

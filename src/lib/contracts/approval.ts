@@ -157,8 +157,21 @@ export function publishChange(book: ClauseBook, change: ClauseChange, who: { nam
   return { book: { paper, clauses }, change: { kind: change.kind, clauseId, v, revision, by: who.name, proposedBy: null, at: who.at, why: who.why.trim() } }
 }
 
+/**
+ * Whether the approvers' push and email, and the editor's text on a decision, go out. Off until the messages-notify
+ * function sends them (`BUILD_PLAN.md` → Cut 4c), so no word on a screen claims a send that never happened.
+ */
+export const CLAUSE_NOTIFY_LIVE = false
+
 /** *Robert and Maria*, or *a controller or a dev* when no approver is named. */
 const approverWords = (approvers: readonly string[]): string => (approvers.length ? andList(approvers) : 'a controller or a dev')
+
+/** *Robert or Maria*, or *a controller or a dev* when no approver is named. */
+export function orWords(approvers: readonly string[]): string {
+  if (approvers.length === 0) return 'a controller or a dev'
+  if (approvers.length === 1) return approvers[0] ?? ''
+  return `${approvers.slice(0, -1).join(', ')} or ${approvers[approvers.length - 1]}`
+}
 
 /** *the next master services agreement*: the paper by its heading, as the toasts say it. */
 const nextPaper = (paper: ContractPaper): string => `The next ${paper.title.toLowerCase()} sent`
@@ -169,11 +182,23 @@ export function publishedToast(paper: ContractPaper, kind: ClauseChange['kind'])
   return `Published as version ${paper.revision}. ${nextPaper(paper)} carries it. Signed copies keep their words.`
 }
 
-/** What the editor reads once their change is sent for approval. */
-export function proposedToast(approvers: readonly string[]): string {
+/** What the editor reads once their change is sent for approval. `told`: the approvers got a push and an email. */
+export function proposedToast(approvers: readonly string[], told = CLAUSE_NOTIFY_LIVE): string {
+  if (!told) return `It waits for ${orWords(approvers)} to approve it. Until then it is on their Needs you.`
   const sent = approvers.length ? `Sent to ${andList(approvers)} with a push and an email.` : 'Sent for approval with a push and an email.'
   const once = approvers.length === 1 ? `It goes out once ${approvers[0]} approves it.` : `It goes out once ${approvers.length ? 'one of them' : 'a controller or a dev'} approves it.`
   return `${sent} ${once} Until then it waits on their Needs you.`
+}
+
+/** What the approver reads once a change is approved. */
+export function approvedToast(approver: string, proposer: string, kind: ClauseChange['kind'], told = CLAUSE_NOTIFY_LIVE): string {
+  const carries = kind === 'retire' ? 'The next paper sent leaves it out.' : 'The next paper sent carries it.'
+  return told ? `Approved by ${approver}. ${proposer} gets a text that it went out. ${carries}` : `Approved by ${approver}. ${carries}`
+}
+
+/** What the approver reads once a change is declined. */
+export function declinedToast(proposer: string, told = CLAUSE_NOTIFY_LIVE): string {
+  return told ? `Declined. ${proposer} gets a text with your why.` : `Declined. ${proposer} sees your why on the clause's history.`
 }
 
 /**
@@ -184,7 +209,7 @@ export function editClause(
   book: ClauseBook,
   change: ClauseChange,
   editor: Signer,
-  ctx: { at: string; why: string; approvers: readonly string[]; newId: () => string },
+  ctx: { at: string; why: string; approvers: readonly string[]; newId: () => string; told?: boolean },
 ): EditResult {
   if (!canEditClause(editor.role)) return { kind: 'refused', why: 'Only the office changes a clause.' }
   const problem = changeProblem(book, change)
@@ -211,7 +236,7 @@ export function editClause(
     decidedAt: null,
     declineWhy: null,
   }
-  return { kind: 'proposed', proposal, toast: proposedToast(ctx.approvers) }
+  return { kind: 'proposed', proposal, toast: proposedToast(ctx.approvers, ctx.told ?? CLAUSE_NOTIFY_LIVE) }
 }
 
 /** The change a proposal asks for. */
@@ -232,7 +257,7 @@ function decideProblem(p: ClauseProposal, approver: Signer): string | null {
  * A controller or a dev approves a proposal: it is published as the proposer wrote it. Refused when the clause moved on
  * since it was proposed, so a newer publish is never overwritten: decline it, and the proposer proposes it again.
  */
-export function approveProposal(book: ClauseBook, p: ClauseProposal, approver: Signer, ctx: { at: string; newId: () => string }): DecideResult {
+export function approveProposal(book: ClauseBook, p: ClauseProposal, approver: Signer, ctx: { at: string; newId: () => string; told?: boolean }): DecideResult {
   const no = decideProblem(p, approver)
   if (no) return { kind: 'refused', why: no }
   if (p.paperId !== book.paper.id) return { kind: 'refused', why: `This change is not for ${book.paper.name}.` }
@@ -248,18 +273,17 @@ export function approveProposal(book: ClauseBook, p: ClauseProposal, approver: S
   const problem = changeProblem(book, change)
   if (problem) return { kind: 'refused', why: problem }
   const done = publishChange(book, change, { name: approver.name, at: ctx.at, why: p.why, newId: ctx.newId })
-  const carries = p.kind === 'retire' ? 'The next paper sent leaves it out.' : 'The next paper sent carries it.'
   return {
     kind: 'decided',
     proposal: { ...p, state: 'approved', decidedBy: approver.name, decidedAt: ctx.at },
     book: done.book,
     change: { ...done.change, proposedBy: p.by },
-    toast: `Approved by ${approver.name}. ${p.by} gets a text that it went out. ${carries}`,
+    toast: approvedToast(approver.name, p.by, p.kind, ctx.told ?? CLAUSE_NOTIFY_LIVE),
   }
 }
 
-/** A controller or a dev declines a proposal, with a why the proposer gets by text. */
-export function declineProposal(p: ClauseProposal, approver: Signer, ctx: { at: string; why: string }): DecideResult {
+/** A controller or a dev declines a proposal, with a why the proposer reads on the clause's history, and gets by text once that is live. */
+export function declineProposal(p: ClauseProposal, approver: Signer, ctx: { at: string; why: string; told?: boolean }): DecideResult {
   const no = decideProblem(p, approver)
   if (no) return { kind: 'refused', why: no }
   const why = ctx.why.trim()
@@ -269,7 +293,7 @@ export function declineProposal(p: ClauseProposal, approver: Signer, ctx: { at: 
     proposal: { ...p, state: 'declined', decidedBy: approver.name, decidedAt: ctx.at, declineWhy: why },
     book: null,
     change: null,
-    toast: `Declined. ${p.by} gets a text with your why.`,
+    toast: declinedToast(p.by, ctx.told ?? CLAUSE_NOTIFY_LIVE),
   }
 }
 
@@ -307,7 +331,7 @@ export function clauseNeeds(
   role: UserRole | null | undefined,
   proposals: readonly ClauseProposal[],
   books: readonly ClauseBook[],
-  ctx: { approvers: readonly string[]; when: (at: string) => string },
+  ctx: { approvers: readonly string[]; when: (at: string) => string; told?: boolean },
 ): ClauseNeedRow[] {
   if (!canApproveClause(role)) return []
   return proposals
@@ -315,7 +339,8 @@ export function clauseNeeds(
     .sort((a, b) => a.at.localeCompare(b.at) || a.id.localeCompare(b.id))
     .map((p) => {
       const book = books.find((b) => b.paper.id === p.paperId)
-      const facts = [scopeFor(p.scope), ctx.when(p.at), ...(p.why ? [p.why] : []), `A push and an email went to ${approverWords(ctx.approvers)}.`]
+      const told = ctx.told ?? CLAUSE_NOTIFY_LIVE
+      const facts = [scopeFor(p.scope), ctx.when(p.at), ...(p.why ? [p.why] : []), ...(told ? [`A push and an email went to ${approverWords(ctx.approvers)}.`] : [])]
       return { proposal: p, title: proposalTitle(p, book), badge: 'Waiting on your approval', facts, words: p.en }
     })
 }

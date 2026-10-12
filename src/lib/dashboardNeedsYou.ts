@@ -115,6 +115,7 @@ export type NeedsYouItem = {
     | 'price-matrix-ready'
     | 'price-requests-late'
     | 'gc-follow-up'
+    | 'contract-clauses'
     | 'robot-backlog'
     | 'test-reports-ready'
     | 'legal-review'
@@ -212,6 +213,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'price-requests-late': 40,
   // Revenue chasing tier: a trade partner's quote we need for our own bid (GC mode, Follow up).
   'gc-follow-up': 40,
+  // A clause change the office made waits on a controller or a dev (Messages, cut 4c); the next paper sent carries it.
+  'contract-clauses': 40,
   'robot-backlog': 60,
   'legal-review': 40,
   'legal-firm-activity': 20,
@@ -561,6 +564,12 @@ export type NeedsYouInputs = {
    */
   gcFollowUpEnabled?: boolean
   gcFollowUp?: GcNeedsYou | null
+  /**
+   * Messages, cut 4c (v2.5285): the clause changes waiting on a controller's or a dev's approval, as `useClauseNeeds` reads
+   * them (`contracts/approval.ts` → `clauseNeeds`). Approvers only; the rows are empty for anyone else.
+   */
+  contractClausesEnabled?: boolean
+  contractClauses?: readonly import('./contracts/approval').ClauseNeedRow[] | null
   /**
    * The robots' backlog (v2.3287, dev only): bids that want a shadow and
    * price matrices waiting on the pricer, from `buildRobotBacklog` — the same
@@ -1563,6 +1572,20 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: f.detail,
       figure: String(f.count),
       actionLabel: 'Follow up',
+    })
+  }
+
+  if (inputs.contractClausesEnabled && inputs.contractClauses && inputs.contractClauses.length > 0) {
+    const rows = inputs.contractClauses
+    const n = rows.length
+    items.push({
+      key: 'contract-clauses',
+      severity: 'amber',
+      kicker: 'Contracts',
+      title: n === 1 ? (rows[0]?.title ?? 'A clause change waits on your approval.') : `${n} clause changes wait on your approval`,
+      detail: 'The next paper sent carries a change once you approve it. Decline one with a why for the person who made it.',
+      figure: String(n),
+      actionLabel: 'Review',
     })
   }
 

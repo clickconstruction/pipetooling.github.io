@@ -1,5 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
+import { canEditClause } from './gc/access'
 
 /**
  * Zoned Settings groups (v2.2088, reorg mockup A). The tab bar answers the
@@ -78,6 +79,10 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   // Contracts & terms: the same people, by the document instead of by the journey.
   if (canSeeWhatCustomersSee(r)) {
     groups.push({ id: 'settings-contracts', label: 'Contracts & terms', zone: 'company', pagesHint: 'Every contract a customer accepts or signs, and every notice they receive — the wording side by side, where it is edited, and where the customer meets it.' })
+  }
+  // Contracts and clauses (Messages, cut 4c, v2.5285): the papers built from clauses. The office edits, a controller or a dev approves.
+  if (canEditClause(r)) {
+    groups.push({ id: 'settings-clauses', label: 'Contracts and clauses', zone: 'company', pagesHint: 'The papers our trade partners sign, clause by clause. The office changes them and a controller or a dev approves.' })
   }
   if (r === 'dev' || r === 'master_technician' || isAssistantLike(r) || r === 'estimator') {
     groups.push({ id: 'settings-company', label: 'Company', zone: 'company', pagesHint: 'Company documents, the office address, and the Map.' })
