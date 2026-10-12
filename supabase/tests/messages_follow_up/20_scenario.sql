@@ -42,8 +42,8 @@ INSERT INTO public.projects (id, name, customer_id) VALUES
   ('00000000-0000-0000-0000-0000000006f1', 'Follow Clinic', '00000000-0000-0000-0000-0000000006c1');
 INSERT INTO public.gc_projects (project_id, stage) VALUES
   ('00000000-0000-0000-0000-0000000006f1', 'buyout');
-INSERT INTO public.gc_companies (id, name, contact_name, phone, email) VALUES
-  ('00000000-0000-0000-0000-0000000006a1', 'Hillside Excavation', 'Greg Paulk', '(210) 555-0113', 'greg@hillside.example');
+INSERT INTO public.gc_companies (id, name, trades, contact_name, phone, email) VALUES
+  ('00000000-0000-0000-0000-0000000006a1', 'Hillside Excavation', ARRAY['Sitework'], 'Greg Paulk', '(210) 555-0113', 'greg@hillside.example');
 
 CREATE SCHEMA mfu;
 CREATE FUNCTION mfu.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
