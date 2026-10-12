@@ -358,6 +358,10 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .msg.flash{animation:flash 1.6s ease-out}
 @keyframes flash{0%{background:#fff3a3}100%{background:inherit}}
 .queue .row .top{display:flex;gap:10px;align-items:flex-start;width:100%}
+.queue .row .top .right{max-width:none}
+.queue .row .top>div[style*='flex:1']{min-width:0}
+.queue .row .who{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.queue .snippet{overflow-wrap:anywhere}
 .queue .row .acts{display:flex;gap:6px;flex-wrap:wrap;padding-left:46px}
 .queue .row .snippet{padding-left:46px;font-size:14px}
 .empty{color:var(--text-muted);padding:14px;text-align:center}

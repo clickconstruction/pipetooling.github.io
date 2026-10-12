@@ -768,6 +768,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.127, 2026-10-11**: Follow up's rows keep their who-has-it pill inside the card; the right column had the list's
+  132 px cap, which cut *Nobody has it · Take it* off the edge, and the name line wraps its move pill under the name
+  when the row is narrow (the owner, 2026-10-11).
 - **v1.126, 2026-10-11**: the quick replies strip is folded by default to its one line, *Quick replies · 13 for trade
   partners ▸*; a press on the line opens it and a press on the open *Quick replies* label folds it, kept on this
   computer (the owner, 2026-10-11). Typing still folds an open strip until the box is empty.
