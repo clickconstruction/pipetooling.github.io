@@ -94,15 +94,17 @@ export function askedOn(lane: LaneReading): boolean {
 
 /**
  * Every lane of a trade partner's or an architect's flow, for `portalPage`: Once, one Per job lane per job they are
- * asked on (`askedOn`), by its name in `jobNames` (a job with no name there stays off), then Any time.
+ * asked on (`askedOn`), by its name in `jobNames` and with its id (a job with no name there stays off), then Any time.
+ * A job whose lane ended (they declined every ask, or we did not carry their quote) stays off too: its later steps
+ * would read *Later*, and the portal's Before already keeps it.
  */
 export function portalLanes(flow: FlowDef, reading: FlowReading, jobNames: Readonly<Record<string, string>>, opts: PortalStepsOptions = {}): PortalLaneIn[] {
   const out: PortalLaneIn[] = []
-  const jobs: { name: string; steps: PortalStepIn[] }[] = []
+  const jobs: { name: string; jobId: string; steps: PortalStepIn[] }[] = []
   for (const lane of reading.lanes) {
-    if (lane.lane !== 'per_job' || !lane.jobId || !askedOn(lane)) continue
+    if (lane.lane !== 'per_job' || !lane.jobId || lane.ended || !askedOn(lane)) continue
     const name = jobNames[lane.jobId]
-    if (name !== undefined) jobs.push({ name, steps: laneSteps(flow, lane, opts) })
+    if (name !== undefined) jobs.push({ name, jobId: lane.jobId, steps: laneSteps(flow, lane, opts) })
   }
   for (const def of flow.lanes) {
     if (def.lane === 'once') {

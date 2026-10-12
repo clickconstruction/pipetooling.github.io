@@ -209,7 +209,7 @@ function readAll(lang: PortalLang, steps: PortalStepIn[], before: Bilingual | nu
 /** A lane of their flow, in the flow's order. The per-job lane carries one read per job they are asked on. */
 export type PortalLaneIn =
   | { lane: 'once'; steps: PortalStepIn[] }
-  | { lane: 'perJob'; jobs: { name: string; steps: PortalStepIn[] }[] }
+  | { lane: 'perJob'; jobs: { name: string; jobId?: string; steps: PortalStepIn[] }[] }
   | { lane: 'anyTime'; steps: PortalStepIn[] }
 
 export interface PortalPageIn {
@@ -225,6 +225,10 @@ export interface PortalPageIn {
 export interface PortalPageSection {
   /** "Getting set up", a job's name, or "Open". */
   title: string
+  /** The lane it reads, so a press knows where it lands: the company's own papers, or a job. */
+  lane: 'once' | 'perJob' | 'anyTime'
+  /** The job a Per job section reads; null for Getting set up and Open, or a job that came without its id. */
+  jobId: string | null
   rows: PortalStepReading[]
 }
 
@@ -246,19 +250,19 @@ export function portalPage(lang: PortalLang, page: PortalPageIn, words: PageWord
   for (const lane of page.lanes) {
     if (lane.lane === 'once') {
       const rows = readAll(lang, lane.steps, before, words)
-      if (rows.length) sections.push({ title: words.say(lang, 'setUp'), rows: rows.map((r) => r.reading) })
+      if (rows.length) sections.push({ title: words.say(lang, 'setUp'), lane: 'once', jobId: null, rows: rows.map((r) => r.reading) })
       before = rows[rows.length - 1]?.step.name ?? before
     } else if (lane.lane === 'perJob') {
       let last: Bilingual | null = before
       for (const job of lane.jobs) {
         const rows = readAll(lang, job.steps.filter((s) => !s.aside || s.roundNow), before, words)
-        if (rows.length) sections.push({ title: job.name, rows: rows.map((r) => r.reading) })
+        if (rows.length) sections.push({ title: job.name, lane: 'perJob', jobId: job.jobId ?? null, rows: rows.map((r) => r.reading) })
         last = rows[rows.length - 1]?.step.name ?? last
       }
       before = last
     } else {
       const rows = readAll(lang, lane.steps.filter((s) => s.roundNow), before, words)
-      if (rows.length) sections.push({ title: words.say(lang, 'openSection'), rows: rows.map((r) => r.reading) })
+      if (rows.length) sections.push({ title: words.say(lang, 'openSection'), lane: 'anyTime', jobId: null, rows: rows.map((r) => r.reading) })
     }
   }
   return {

@@ -274,7 +274,8 @@ Settings / Sign out); holding a slot on the bar swaps it too.
 
 ### /t/:token — A trade partner's portal (public)
 One no-password link per trade partner company (v2.4920, `GcTradePortal.tsx`, read through `gc-trade-portal`): the
-company's asks, quotes, plans and questions on each project. From it the company names its people, promises a quote
+company's asks, quotes, plans and questions on each project. Its home opens on **Where you are with Click
+Construction** (v2.5315): its steps with us from its trade flow, Getting set up then each job it is asked on. From it the company names its people, promises a quote
 day, quotes, answers lines, passes, asks about the plans and picks who gets our emails (v2.4935, through
 `submit-gc-trade-portal`). On a job of its own it also reads its statement of work, the charges to it and the
 changes it asked for (v2.5044), and agrees with or disputes a charge and asks for a change (v2.5048). From its papers it sends its vetting form, signs its master agreement and W-9 (v2.5201) and sends its insurance certificate for the office to check first (v2.5225). `/t/sample`

@@ -6,6 +6,8 @@
  * messages we sent) and words the rows the way the prototype's home did.
  */
 import type { SliceRow, TradePortalSlice } from '../../../supabase/functions/_shared/gcTradePortalSlice'
+import type { TradeFlowRows } from '../../../supabase/functions/_shared/gcTradeFlow'
+import { parseTradeFlow } from '../portal/tradeFirstPage'
 import type { TradeSubmitErrorKey } from '../../../supabase/functions/_shared/gcTradeSubmit'
 import { GC_COMPANY } from './company'
 import { WAIVER_SIGN_LIVE } from './drawEmail'
@@ -41,6 +43,8 @@ export type TradePortalAnswer =
       scheduleWork: Record<string, ScheduleWork>
       /** The home's schedule to-dos, worked out where the schedule is (P5d-ii, call 5). */
       scheduleTodos: PortalTodo[]
+      /** The company's trade flow rows, for its first page (Messages cut 8c). Null: an older function, or a flow that did not read. */
+      flow: TradeFlowRows | null
     }
   | { kind: 'error'; key: TradePortalErrorKey }
 
@@ -63,6 +67,7 @@ export function readTradePortalAnswer(ok: boolean, body: unknown): TradePortalAn
     schedules: schedulesOf(body.schedules),
     scheduleWork: scheduleWorkOf(body.scheduleWork),
     scheduleTodos: scheduleTodosOf(body.scheduleTodos),
+    flow: parseTradeFlow(body.flow),
   }
 }
 
