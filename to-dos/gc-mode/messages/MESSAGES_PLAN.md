@@ -752,6 +752,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.120, 2026-10-11**: every group on the bill-day page shares one column layout, so a trade's name reads whole in
+  each group instead of each table sizing its own columns (the owner, 2026-10-11: Tejas Power wrapped word by word).
 - **v1.119, 2026-10-11**: the bill-day page's section titles (Sent back, Not in, In waiting on us, Approved, Closing
   out, Our own crew) are bars across the page, bold at the body's size with the count and the note small after them,
   tinted red for Not in and amber for Sent back, instead of small gray caps that read smaller than the rows (the
