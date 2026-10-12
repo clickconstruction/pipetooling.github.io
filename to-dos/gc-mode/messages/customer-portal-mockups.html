@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Customer's portal · mock-ups</title>
+<style>
+:root{--text:#1b1f24;--muted:#6b7280;--border:#e3e6ea;--surface:#fff;--bg:#f4f5f7;--accent:#1f5fbf;--accent-soft:#e8f0fc;--ok:#2a8f5a;--ok-soft:#e6f4ec;--warn:#b45309;--warn-soft:#fdf1e3;--chip:#f0f2f5}
+*{box-sizing:border-box}body{margin:0;font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg);padding:24px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:34px 0 6px}h3{font-size:14px;margin:18px 0 6px}
+p{max-width:820px;margin:4px 0}.note{color:var(--muted);font-size:13px}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start;margin-top:10px}
+.phone{width:360px;border:10px solid #15181d;border-radius:30px;background:var(--surface);padding:14px 14px 18px;flex:none}
+.phone .brand{font-weight:700;font-size:17px;margin:0 0 2px}.phone .es{float:right;color:var(--accent);font-size:13px;font-weight:400}
+.wide{width:720px;border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:16px;flex:none}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin:10px 0 12px}.tabs span{padding:6px 10px;font-size:13px;color:var(--muted);border-bottom:2px solid transparent}.tabs span.on{color:var(--accent);border-color:var(--accent);font-weight:600}
+.card{border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--surface)}
+.card.move{border-color:#f0c58a;background:var(--warn-soft)}.card.move b{color:var(--warn)}
+.card .h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.btn{display:inline-block;border:1px solid var(--border);border-radius:8px;padding:5px 11px;font-size:13px;background:var(--surface);margin:6px 6px 0 0}.btn.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+.ps{display:flex;gap:9px;padding:7px 0;border-bottom:1px solid var(--border);font-size:14px}.ps:last-child{border:0}.ps .m{width:20px;height:20px;border-radius:50%;border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex:none;color:var(--muted)}.ps .m.ok{background:var(--ok-soft);color:var(--ok);border-color:#bfe3cd}.ps .m.you{background:var(--warn-soft);color:var(--warn);border-color:#f0c58a;font-weight:700}.ps small{display:block;color:var(--muted);font-size:12.5px}
+.ln{display:flex;justify-content:space-between;padding:4px 0;font-size:14px}.ln.sum{border-top:1px solid var(--border);margin-top:4px;padding-top:6px;font-weight:600}.ln .r{text-align:right}
+.bar{height:8px;border-radius:4px;background:var(--chip);overflow:hidden;margin:6px 0}.bar i{display:block;height:100%;background:var(--ok)}
+.pics{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:6px}.pics div{aspect-ratio:1;border-radius:6px;background:linear-gradient(135deg,#b9c7d6,#7d8f9f)}.pics div:nth-child(2){background:linear-gradient(135deg,#cdb79e,#8c7a62)}.pics div:nth-child(3){background:linear-gradient(135deg,#9fb8a8,#5f7a6a)}
+.msg{border-radius:10px;padding:7px 10px;font-size:13.5px;margin:6px 0;max-width:88%}.msg.in{background:var(--chip)}.msg.out{background:var(--accent-soft);margin-left:auto}.msg small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.box{border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:13.5px;color:var(--muted);margin-top:8px}
+.people{display:flex;gap:8px;flex-wrap:wrap}.people div{border:1px solid var(--border);border-radius:8px;padding:6px 10px;font-size:13px}.people b{display:block}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:12px;background:var(--chip)}.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.w{background:var(--warn-soft);color:var(--warn)}
+table{border-collapse:collapse;font-size:13.5px;width:100%}td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.rev{background:#fffbe9;border:1px solid #f0e2a8;border-radius:10px;padding:12px 14px;max-width:820px}.rev li{margin:4px 0}
+.chosen{outline:3px solid var(--accent);outline-offset:3px;border-radius:30px}
+</style></head><body>
+<h1>Customer's portal · mock-ups</h1>
+<p class="note">The page a customer opens from the link in our emails and texts. Today it lists the flow's steps and nothing else (the prototype), while the real app's portal already carries bills, a pay-by-card press, the contract to sign, change orders to sign or decline, Accept the work, a schedule in words and the papers. These mock-ups put the two together and add what a customer asks us on the phone. Rule kept throughout: nothing of ours shows. No trade names, no costs, no nudges, no other customers.</p>
+
+<h2>1. What a customer wants to know, in the order they ask</h2>
+<table style="max-width:820px">
+<tr><th>They ask</th><th>So the page shows</th><th>Have it today?</th></tr>
+<tr><td>Do you need anything from me?</td><td><b>Your move</b>: one orange card at the top with the thing and its button. Sign, answer, pay, pick a day. Nothing to do: the card says so.</td><td>No. The sign and answer presses exist, but they sit in a list.</td></tr>
+<tr><td>Where are we?</td><td><b>Where you are</b>: the flow from their side, done steps with their day, the step on now, the next one.</td><td>Yes, the prototype's page.</td></tr>
+<tr><td>What is happening this week?</td><td><b>This week</b>: three lines from the daily log in customer words, three photos, the next milestone.</td><td>No. Weekly reports go by email only; the daily log is ours.</td></tr>
+<tr><td>What do I owe and what have I paid?</td><td><b>Money</b>: contract sum, changes, revised sum, billed, paid, balance, the next pay application and its day; a receipt and a lien waiver per payment.</td><td>Half. Bills and a pay press exist; no summary, no next-pay line.</td></tr>
+<tr><td>When will you finish?</td><td><b>Schedule</b>: start, the milestones, finish, and what moved since last time, with why in one line.</td><td>Yes, words and dates. No "what moved".</td></tr>
+<tr><td>Where is the contract? The change orders?</td><td><b>Papers</b>: every signed thing with its day, open to read, a copy to keep. Contract, change orders, waivers, certificates, warranty, closeout binder.</td><td>Half. Agreements and waivers, no change orders or closeout.</td></tr>
+<tr><td>Who do I call?</td><td><b>Your people</b>: the office line, the project manager, the superintendent, with hours. The architect, when they have one.</td><td>No. One line, the company number.</td></tr>
+<tr><td>I have a question.</td><td><b>Messages</b>: the same conversation they have with us by text and email, here too. One thread, three doors.</td><td>No. The trade portal has it; the customer's does not.</td></tr>
+<tr><td>Can I read it in Spanish?</td><td><b>Español</b> at the top, every word of ours in both.</td><td>No on the customer's page. Yes on the trade's.</td></tr>
+</table>
+
+<h2>2. Three shapes</h2>
+
+<h3>A · One long page, top to bottom</h3>
+<p class="note">Today's shape, extended. Your move, then where you are, this week, money, schedule, papers, people. One scroll, nothing hidden, long by the end of a job.</p>
+<div class="row">
+<div class="phone"><div class="brand">Helotes Dental Office <span class="es">Español</span></div><div class="note">with Click Construction</div>
+<div class="card move"><div class="h">Your move</div><b>Change order 2 waits on your answer</b><div class="note">Add a sink in exam 3 · +$2,150 · 2 more days</div><span class="btn p">Read and sign</span><span class="btn">Decline</span></div>
+<div class="card"><div class="h">Where you are</div>
+<div class="ps"><span class="m ok">✓</span><span>Contract signed<small>Sat Sep 19</small></span></div>
+<div class="ps"><span class="m">·</span><span>Start date<small>With us: we send it once Plumbing is awarded. Expect it by Mon Oct 5.</small></span></div>
+<div class="ps"><span class="m">·</span><span>On site<small>With us.</small></span></div>
+<div class="note" style="padding-top:6px">6 more steps ›</div></div>
+<div class="card"><div class="h">This week</div><div style="font-size:14px">Permits are in. The slab pour is set for the week of Oct 12.</div><div class="pics"><div></div><div></div><div></div></div></div>
+<div class="card"><div class="h">Money</div><div class="ln"><span>Contract</span><span>$412,000</span></div><div class="ln"><span>Changes signed</span><span>+$6,300</span></div><div class="ln sum"><span>Revised sum</span><span>$418,300</span></div><div class="ln"><span>Billed so far</span><span>$0</span></div><div class="note">The first pay application comes after the first month on site.</div></div>
+<div class="card"><div class="h">Schedule</div><div class="ln"><span>Start</span><span>Oct 12</span></div><div class="ln"><span>Dry in</span><span>Dec 4</span></div><div class="ln"><span>Finish</span><span>Mar 20</span></div></div>
+<div class="card"><div class="h">Papers</div><div class="ps"><span class="m ok">✓</span><span>Our contract<small>signed Sep 19 · read · a copy</small></span></div><div class="ps"><span class="m ok">✓</span><span>Change order 1<small>signed Sep 28</small></span></div></div>
+<div class="card"><div class="h">Your people</div><div class="people"><div><b>Rosa</b>office · (210) 555-0100</div><div><b>Robert</b>project manager</div></div></div>
+</div></div>
+
+<h3>B · A home and four tabs <span class="pill ok">the pick</span></h3>
+<p class="note">The trade portal's shape. Home holds what changes week to week: your move, where you are, this week. Money, Schedule, Papers and Messages each get a tab, so a customer who wants the contract finds it in one press and a customer who wants the photos is not scrolling past money. Your people sit at the foot of every tab.</p>
+<div class="row">
+<div class="phone chosen"><div class="brand">Helotes Dental Office <span class="es">Español</span></div><div class="note">with Click Construction</div>
+<div class="tabs"><span class="on">Home</span><span>Money</span><span>Schedule</span><span>Papers</span><span>Messages</span></div>
+<div class="card move"><div class="h">Your move</div><b>Change order 2 waits on your answer</b><div class="note">Add a sink in exam 3 · +$2,150 · adds no days</div><span class="btn p">Read and sign</span><span class="btn">Decline</span></div>
+<div class="card"><div class="h">Where you are · 3 of 9 done</div><div class="bar"><i style="width:33%"></i></div>
+<div class="ps"><span class="m ok">✓</span><span>Contract signed<small>Sat Sep 19</small></span></div>
+<div class="ps"><span class="m">·</span><span><b>Start date</b><small>With us: we send it once Plumbing is awarded. Expect it by Mon Oct 5.</small></span></div>
+<div class="ps"><span class="m">·</span><span>On site<small>Next. The week of Oct 12.</small></span></div>
+<div class="note" style="padding-top:6px">All 9 steps ›</div></div>
+<div class="card"><div class="h">This week · Fri Oct 2</div><div style="font-size:14px">Permits are in. Plumbing is being awarded. The slab pour is set for the week of Oct 12.</div><div class="pics"><div></div><div></div><div></div></div><div class="note" style="margin-top:4px">Every Friday. Last week ›</div></div>
+<div class="card"><div class="h">Your people</div><div class="people"><div><b>Rosa</b>office · (210) 555-0100</div><div><b>Robert</b>project manager</div><div><b>Wendi</b>on site</div></div></div>
+</div>
+
+<div class="phone"><div class="brand">Helotes Dental Office <span class="es">Español</span></div><div class="note">with Click Construction</div>
+<div class="tabs"><span>Home</span><span class="on">Money</span><span>Schedule</span><span>Papers</span><span>Messages</span></div>
+<div class="card"><div class="h">Where it stands</div><div class="ln"><span>Contract</span><span>$412,000</span></div><div class="ln"><span>Changes signed (1)</span><span>+$6,300</span></div><div class="ln sum"><span>Revised sum</span><span>$418,300</span></div><div class="ln"><span>Billed so far</span><span>$0</span></div><div class="ln"><span>Paid so far</span><span>$0</span></div><div class="ln sum"><span>Balance to finish</span><span>$418,300</span></div></div>
+<div class="card"><div class="h">Next</div><div style="font-size:14px">Pay application 1 comes about Nov 5, for October's work. Your architect certifies it first; then it is due in 30 days.</div><div class="note">How a pay application works ›</div></div>
+<div class="card"><div class="h">Waiting on your answer</div><div class="ln"><span>Change order 2 · a sink in exam 3</span><span class="pill w">+$2,150</span></div></div>
+<div class="card"><div class="h">Each payment</div><div class="note">A receipt and a lien waiver land here the day a payment clears. None yet.</div></div>
+<div class="box">Pay by bank transfer (no fee) or by card (3%). Details on each bill.</div>
+</div>
+
+<div class="phone"><div class="brand">Helotes Dental Office <span class="es">Español</span></div><div class="note">with Click Construction</div>
+<div class="tabs"><span>Home</span><span>Money</span><span>Schedule</span><span class="on">Papers</span><span>Messages</span></div>
+<div class="card"><div class="h">Signed</div>
+<div class="ps"><span class="m ok">✓</span><span>Our contract<small>signed Sat Sep 19 by Priya Raman · read · a copy</small></span></div>
+<div class="ps"><span class="m ok">✓</span><span>Change order 1 · exam 2 cabinets<small>signed Mon Sep 28 · +$6,300</small></span></div></div>
+<div class="card move"><div class="h">Waiting on you</div><div class="ps"><span class="m you">!</span><span><b>Change order 2 · a sink in exam 3</b><small>+$2,150 · adds no days</small><span class="btn p">Read and sign</span><span class="btn">Decline</span></span></div></div>
+<div class="card"><div class="h">Comes later</div><div class="ps"><span class="m">·</span><span>Pay applications<small>one a month, with the architect's certificate</small></span></div><div class="ps"><span class="m">·</span><span>Lien waivers<small>one per payment</small></span></div><div class="ps"><span class="m">·</span><span>Closeout binder<small>warranties, manuals, as-builts, at the end</small></span></div></div>
+<div class="box">Every paper here is also in the email we sent it in.</div>
+</div>
+
+<div class="phone"><div class="brand">Helotes Dental Office <span class="es">Español</span></div><div class="note">with Click Construction</div>
+<div class="tabs"><span>Home</span><span>Money</span><span>Schedule</span><span>Papers</span><span class="on">Messages</span></div>
+<div class="note" style="margin:4px 0 6px">The same conversation as your texts and emails with us. Write here, by text or by email; it all lands in one place.</div>
+<div class="msg out">Dr. Raman, the contract is signed on our side and the trades are being lined up. I will send the start date as soon as Plumbing is awarded.<small>Rosa · Sat Sep 19 · by email</small></div>
+<div class="msg in">Thanks! Can you send me the start date when you have it?<small>You · Sat Sep 26 · by text</small></div>
+<div class="msg out">Yes. Expect it by Monday Oct 5.<small>Rosa · Mon Sep 28 · by text</small></div>
+<div class="box">Write to us…</div>
+<div class="note" style="margin-top:8px">Replies come from the office in business hours. For something urgent on site, call Wendi.</div>
+</div>
+</div>
+
+<h3>C · Your move only, everything else by email</h3>
+<p class="note">The smallest page: the orange card and the flow. Money, schedule and papers stay in the emails we already send. Cheapest to build, and the customer keeps asking us on the phone where the contract is.</p>
+<div class="row"><div class="phone"><div class="brand">Helotes Dental Office <span class="es">Español</span></div><div class="note">with Click Construction</div>
+<div class="card move"><div class="h">Your move</div><b>Change order 2 waits on your answer</b><span class="btn p">Read and sign</span><span class="btn">Decline</span></div>
+<div class="card"><div class="h">Where you are</div><div class="ps"><span class="m ok">✓</span><span>Contract signed<small>Sat Sep 19</small></span></div><div class="ps"><span class="m">·</span><span>Start date<small>With us.</small></span></div><div class="note" style="padding-top:6px">7 more ›</div></div>
+<div class="box">Questions: text or call (210) 555-0100.</div></div></div>
+
+<h2>3. What the office sees of it</h2>
+<p class="note">The page is only worth building if it tells us something back. Three reads, all on surfaces the prototype already has.</p>
+<div class="wide">
+<table><tr><th>Where</th><th>What it shows</th></tr>
+<tr><td>The thread's header, under the name</td><td><span class="pill">portal · opened Tue 9:14 AM · read the contract · has not opened CO 2</span>. One line, from the page's own views. A press opens the portal preview.</td></tr>
+<tr><td>The step card, So far</td><td>"Priya opened the change order Tue 9:14 AM. Not signed." Opened-but-not-signed is a different nudge than never-opened, and the card says which.</td></tr>
+<tr><td>Follow up, Needs you</td><td>A row when a customer wrote in the portal's Messages tab, the same as a text. A row when a paper has sat opened and unsigned for 3 days.</td></tr>
+<tr><td>Customers · By company</td><td>A column, Portal: last opened, in days. Never-opened customers in gray, so the office knows who still runs on paper.</td></tr>
+</table></div>
+
+<h2>4. What would need building, by piece</h2>
+<div class="wide"><table>
+<tr><th>Piece</th><th>On main today</th><th>To add</th></tr>
+<tr><td>Your move card</td><td>The presses: sign the contract, answer a change order, accept the work, pay a bill, promise a pay date</td><td>One read that picks the first open item in the flow's order and puts it in the card; the "nothing today" words</td></tr>
+<tr><td>Where you are</td><td>Nothing on main; the prototype's portal page</td><td>The flow read from the customer's side, per job, with a progress bar; the plain words per step</td></tr>
+<tr><td>This week</td><td>Weekly reports by email; the daily log (ours)</td><td>A customer line on the daily log (Wendi writes one sentence for the owner) and three photos marked "for the customer"; the Friday roll-up on the page</td></tr>
+<tr><td>Money</td><td>Open bills, pay by card, bank details, lien waivers</td><td>The summary lines from the contract, the signed change orders and the pay applications; the Next line; a receipt per payment</td></tr>
+<tr><td>Schedule</td><td>Words and dates</td><td>"What moved since last time", one line per change, kept 90 days</td></tr>
+<tr><td>Papers</td><td>Agreements, waivers, test reports</td><td>Change orders, certificates, the closeout binder; "comes later" rows so the page never looks empty; a view per paper recorded</td></tr>
+<tr><td>Messages</td><td>The trade portal's thread</td><td>The customer's thread on the portal, reading and writing the same rows the office's Messages page reads; the text and email doors stay</td></tr>
+<tr><td>Español</td><td>The trade portal's words</td><td>The customer's words in both; every sentence we write for a step, in both, in the flow editor</td></tr>
+<tr><td>Office reads</td><td>Views per portal, not per paper</td><td>A view per paper; the header line, the So far line, the Needs you rows, the By company column</td></tr>
+</table></div>
+
+<h2>5. Is this the best we can do?</h2>
+<div class="rev"><ul>
+<li><b>Why B and not A.</b> A reads fine in month one and badly in month six: eight pay applications, twelve change orders and twenty weeks of photos make one scroll nobody finishes. Tabs let the home page stay short and each tab grow. C is too small: the phone calls it saves are the ones about papers and money, which C leaves in email.</li>
+<li><b>Your move is the whole point.</b> Most weeks the customer owes us nothing, and the card says so in one line. The weeks they do, it is the first thing on the page with its button. The same read drives our side: the step on now with "their move" is the card.</li>
+<li><b>Money in plain words, not a G702.</b> Six lines a dentist reads in ten seconds. The pay application itself, with its schedule of values and the architect's certificate, opens from Papers for the customer who wants it.</li>
+<li><b>One conversation, three doors.</b> The portal's Messages tab is not a fourth channel. It reads and writes the same thread the office sees. A customer who writes there shows up in Follow up exactly like a text.</li>
+<li><b>This week costs Wendi one sentence a day.</b> The daily log already exists. A customer line and a photo mark on it are the only new asks of the field, and the Friday roll-up writes itself.</li>
+<li><b>What I left out on purpose.</b> No live schedule chart, no trade names, no our-costs, no document markup, no chat with the superintendent. A log-in: the link is the key, as today; a customer who wants a password gets one later.</li>
+<li><b>What I am not sure of.</b> Whether "Accept the work" and the warranty year belong on Home as a final Your move or on Papers. Whether the architect sees the same page or a cousin of it (the certify step is theirs). Whether photos should be opt-in per job, since some owners share the link with tenants.</li>
+</ul></div>
+<p class="note" style="margin-top:14px">Pick a shape and I add it to the prototype's portal window, with the office reads on the thread header, the step card and Follow up.</p>
+</body></html>
