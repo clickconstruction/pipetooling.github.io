@@ -14,14 +14,15 @@ SET lock_timeout = '3s';
 -- authenticated: add_quick_reply, edit_quick_reply, remove_quick_reply, restore_quick_reply and press_quick_reply make
 -- every change and write its version, so the history holds every change with who and when. Each refuses, in words,
 -- someone signed out, a training account, a digital twin and anyone off the office team. contacts_fold_quick_replies
--- keeps a press's thread through the spine's fold, and quick_replies_seed adds the prototype's lines once.
+-- keeps a press's thread through the spine's fold, and quick_replies_seed adds the prototype's team lines once.
 
 -- ---------- 1. The title under a signature ----------
 
--- Null: no title, and the signature is the name alone. Each person sets their own under the users table's own-profile
--- policy, as a dev sets anyone's.
+-- Null: no title, and the signature is the name alone. Prod grants UPDATE on users column by column, so the title is
+-- granted on its own; the own-profile policy then keeps it to each person's own row, as a dev sets anyone's.
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS title text
   CONSTRAINT users_title_short CHECK (char_length(title) <= 80);
+GRANT UPDATE (title) ON public.users TO authenticated;
 
 COMMENT ON COLUMN public.users.title IS
   'Messages (cut 3): the title under the person''s name in an email''s signature ("Rosa · Office manager"). Null: none. 80 characters at most.';
@@ -371,12 +372,12 @@ $$;
 
 -- ---------- 9. The prototype's lines, once ----------
 
--- The Messages prototype's nineteen lines (v1.178), in its order: sixteen for the team, and three its viewer keeps as
--- their own. A line of one's own needs someone to own it, so with no one named the seed adds the team's sixteen, as
--- the app's (added_by null); naming a person adds the three as theirs. A line whose words a line already has, or
--- started with, is skipped, so a second run adds nothing and a line the team removed or reworded stays as they left
--- it. Returns how many it added. The database's own: the migration runs it once.
-CREATE OR REPLACE FUNCTION public.quick_replies_seed(p_mine_for uuid DEFAULT NULL)
+-- The Messages prototype's team lines (v1.178) that read for any job, in its order, as the app's (added_by null). Its
+-- three that name a demo job's details are left out, and so are the three its viewer keeps as their own: a person's
+-- own lines are theirs to add. A line whose words a line already has, or started with, is skipped, so a second run
+-- adds nothing and a line the team removed or reworded stays as they left it. Returns how many it added. The
+-- database's own: the migration runs it once.
+CREATE OR REPLACE FUNCTION public.quick_replies_seed()
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY INVOKER
@@ -388,35 +389,28 @@ DECLARE
   v_added integer := 0;
 BEGIN
   FOR r IN
-    SELECT s.scope, s.words, s.for_kind, s.step_key
+    SELECT s.words, s.for_kind, s.step_key
     FROM (VALUES
-      (1, 'team', 'Your quote is in your portal now, thank you.', 'trade', 'ask'),
-      (2, 'team', 'Did the invite come through?', 'trade', 'invited'),
-      (3, 'team', 'Checking on the number. Still good for today?', 'trade', 'ask'),
-      (4, 'team', 'Understood. You will have it by 9 AM Thursday.', 'customer', 'bid'),
-      (5, 'team', 'Thanks, we will call you back within the hour.', 'any', NULL),
-      (6, 'team', 'The plans are in your portal; questions close Monday.', 'trade', 'invited'),
-      (7, 'team', 'We received it, thank you. We will be in touch after we compare.', 'trade', 'ask'),
-      (8, 'team', 'The site is open from 7. Check in with the super when you arrive.', 'trade', NULL),
-      (9, 'team', 'Your pay application is sent; the architect has it.', 'customer', 'payapp'),
-      (10, 'mine', 'Can you get it to us a day earlier?', 'trade', 'ask'),
-      (11, 'mine', 'Running about 20 minutes late, sorry.', 'any', NULL),
-      (12, 'mine', 'Is the detention pond in your scope or concrete''s?', 'trade', 'ask'),
-      (13, 'team', 'Send the W-9 when you can; the insurance certificate too.', 'trade', 'papers'),
-      (14, 'team', 'Got it, thank you.', 'any', NULL),
-      (15, 'team', 'The change order is in your portal to sign.', 'customer', 'co'),
-      (16, 'team', 'We will have the start date to you by Friday.', 'customer', 'start'),
-      (17, 'team', 'Addendum 2 is in the portal; the pond is in sitework.', 'trade', 'invited'),
-      (18, 'team', 'The submittal is back to you with comments.', 'arch', 'submittals'),
-      (19, 'team', 'Pay application 3 is in for your certificate.', 'arch', 'certify')
-    ) AS s(n, scope, words, for_kind, step_key)
+      (1, 'Your quote is in your portal now, thank you.', 'trade', 'ask'),
+      (2, 'Did the invite come through?', 'trade', 'invited'),
+      (3, 'Checking on the number. Still good for today?', 'trade', 'ask'),
+      (5, 'Thanks, we will call you back within the hour.', 'any', NULL),
+      (6, 'The plans are in your portal; questions close Monday.', 'trade', 'invited'),
+      (7, 'We received it, thank you. We will be in touch after we compare.', 'trade', 'ask'),
+      (8, 'The site is open from 7. Check in with the super when you arrive.', 'trade', NULL),
+      (9, 'Your pay application is sent; the architect has it.', 'customer', 'payapp'),
+      (13, 'Send the W-9 when you can; the insurance certificate too.', 'trade', 'papers'),
+      (14, 'Got it, thank you.', 'any', NULL),
+      (15, 'The change order is in your portal to sign.', 'customer', 'co'),
+      (16, 'We will have the start date to you by Friday.', 'customer', 'start'),
+      (18, 'The submittal is back to you with comments.', 'arch', 'submittals')
+    ) AS s(n, words, for_kind, step_key)
     ORDER BY s.n
   LOOP
-    CONTINUE WHEN r.scope = 'mine' AND p_mine_for IS NULL;
     CONTINUE WHEN EXISTS (SELECT 1 FROM public.quick_replies q WHERE q.text = r.words)
       OR EXISTS (SELECT 1 FROM public.quick_reply_versions v WHERE v.kind = 'added' AND v.to_text = r.words);
-    INSERT INTO public.quick_replies (text, for_kind, step_key, scope, added_by)
-    VALUES (r.words, r.for_kind, r.step_key, r.scope, CASE WHEN r.scope = 'mine' THEN p_mine_for END)
+    INSERT INTO public.quick_replies (text, for_kind, step_key, scope)
+    VALUES (r.words, r.for_kind, r.step_key, 'team')
     RETURNING id INTO v_id;
     INSERT INTO public.quick_reply_versions (quick_reply_id, kind, to_text, to_for_kind, to_step_key)
     VALUES (v_id, 'added', r.words, r.for_kind, r.step_key);
@@ -444,8 +438,8 @@ COMMENT ON FUNCTION public.press_quick_reply(uuid, uuid) IS
   'Messages (cut 3): counts a press on a quick reply, by the caller, in a contact''s thread or none. A press fills the box; nothing sends.';
 COMMENT ON FUNCTION public.contacts_fold_quick_replies(uuid, uuid) IS
   'Messages (cut 3): the spine''s contacts_fold runs it, so a folded contact''s presses move to the contact it folds into. A definer, since the presses are read only. Outside a trigger, a call from someone signed in off the office team, or a twin, moves nothing.';
-COMMENT ON FUNCTION public.quick_replies_seed(uuid) IS
-  'Messages (cut 3): adds the Messages prototype''s quick replies once: the team''s sixteen as the app''s, and with a person named, the three the prototype''s viewer keeps as theirs. Skips a line whose words a line has or started with, so a second run adds nothing. Returns how many it added. The database''s own.';
+COMMENT ON FUNCTION public.quick_replies_seed() IS
+  'Messages (cut 3): adds the Messages prototype''s thirteen team lines that read for any job, once, as the app''s. Skips a line whose words a line has or started with, so a second run adds nothing. Returns how many it added. The database''s own.';
 
 -- The changes, to the signed in; each says who may in its body.
 REVOKE ALL ON FUNCTION public.add_quick_reply(text, text, text, boolean) FROM PUBLIC, anon;
@@ -464,7 +458,7 @@ GRANT EXECUTE ON FUNCTION public.contacts_fold_quick_replies(uuid, uuid) TO auth
 -- The functions' own helpers and the seed are the database's.
 REVOKE ALL ON FUNCTION public.quick_reply_caller(text) FROM PUBLIC, anon, authenticated;
 REVOKE ALL ON FUNCTION public.quick_reply_step(text, text) FROM PUBLIC, anon, authenticated;
-REVOKE ALL ON FUNCTION public.quick_replies_seed(uuid) FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON FUNCTION public.quick_replies_seed() FROM PUBLIC, anon, authenticated;
 
 -- ---------- The fences on the new tables ----------
 

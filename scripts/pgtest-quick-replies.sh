@@ -6,8 +6,8 @@
 #
 # The same bed as scripts/pgtest-messages-spine.sh: the Supabase Postgres image with every file in supabase/migrations
 # applied in order (about a minute). The migration is then applied a second time, which must change nothing, its seed
-# included. The scenario, inside one transaction that rolls back: the seed's sixteen team lines, once; the prototype's
-# three as Rosa's own; Rosa adds a line and changes its words, Maria its tags, two versions with who; presses counted
+# included. The scenario, inside one transaction that rolls back: the seed's thirteen team lines, once, and none of the
+# three that name a demo job; Rosa adds a line and changes its words, Maria its tags, two versions with who; presses counted
 # and read by the team; a removed line comes back with its history; each refusal in words, and a superintendent, a
 # training account, a digital twin and someone signed out refused; nobody writes the tables by hand; Rosa's title; a
 # fold moves the presses. It raises on its first failed assertion and ends with "quick_replies PASSED".

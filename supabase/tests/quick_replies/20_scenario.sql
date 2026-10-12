@@ -72,38 +72,35 @@ END $$;
 GRANT USAGE ON SCHEMA qr TO anon, authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA qr TO anon, authenticated;
 
--- 0 · The migration ran twice: its seed added the team's sixteen once, as the app's, each with the version it was added
--- with, in the prototype's words and tags.
-SELECT qr.same('the team''s sixteen lines, once, as the app''s',
+-- 0 · The migration ran twice: its seed added the prototype's thirteen team lines that read for any job, once, as the
+-- app's, each with the version it was added with, in the prototype's words and tags. The three that name a demo job
+-- are not among them.
+SELECT qr.same('the thirteen team lines, once, as the app''s',
   (SELECT count(*) || ':' || count(*) FILTER (WHERE scope = 'team' AND added_by IS NULL AND removed_at IS NULL) FROM public.quick_replies),
-  '16:16');
+  '13:13');
 SELECT qr.same('each with the version it was added with, by the app',
-  (SELECT count(*) || ':' || count(*) FILTER (WHERE kind = 'added' AND by_user_id IS NULL) FROM public.quick_reply_versions), '16:16');
+  (SELECT count(*) || ':' || count(*) FILTER (WHERE kind = 'added' AND by_user_id IS NULL) FROM public.quick_reply_versions), '13:13');
 SELECT qr.same('the prototype''s tags, and a line for anyone on no step',
   (SELECT string_agg(for_kind || '/' || coalesce(step_key, '-'), ',' ORDER BY text) FROM public.quick_replies
    WHERE text IN ('Checking on the number. Still good for today?', 'Got it, thank you.',
                   'The site is open from 7. Check in with the super when you arrive.')),
   'trade/ask,any/-,trade/-');
+SELECT qr.same('none of the three that name a demo job',
+  (SELECT count(*)::text FROM public.quick_replies
+   WHERE text IN ('Understood. You will have it by 9 AM Thursday.', 'Addendum 2 is in the portal; the pond is in sitework.',
+                  'Pay application 3 is in for your certificate.')),
+  '0');
 SELECT qr.same('a third run adds nothing', public.quick_replies_seed()::text, '0');
 
--- 1 · Named, the seed adds the three the prototype's viewer keeps as Rosa's own, once.
-SELECT qr.same('the three, as Rosa''s', public.quick_replies_seed(:'rosa')::text, '3');
-SELECT qr.same('and nothing for Maria after', public.quick_replies_seed(:'maria')::text, '0');
-SELECT qr.same('nineteen lines, three of them Rosa''s own',
-  (SELECT count(*) || ':' || count(*) FILTER (WHERE scope = 'mine' AND added_by = :'rosa') FROM public.quick_replies), '19:3');
-
--- 2 · Who reads what: the team's lines are the office's, a line marked mine its owner's.
+-- 1 · Who reads the team's lines: the office.
 SET LOCAL ROLE authenticated;
 SELECT qr.as_user(:'rosa');
-SELECT qr.same('Rosa reads the team''s sixteen and Rosa''s own three', (SELECT count(*)::text FROM public.quick_replies), '19');
+SELECT qr.same('Rosa reads the team''s thirteen', (SELECT count(*)::text FROM public.quick_replies), '13');
 SELECT qr.refused('the seed is the database''s', $q$SELECT public.quick_replies_seed()$q$, 'permission denied');
-SELECT qr.as_user(:'maria');
-SELECT qr.same('Maria reads the team''s sixteen, and none of Rosa''s own', (SELECT count(*)::text FROM public.quick_replies), '16');
-SELECT qr.same('nor their versions', (SELECT count(*)::text FROM public.quick_reply_versions), '16');
 SELECT qr.as_user(:'wendi');
 SELECT qr.same('the superintendent reads no line', (SELECT count(*)::text FROM public.quick_replies), '0');
 
--- 3 · Rosa adds a line for the team, and one of Rosa's own.
+-- 2 · Rosa adds a line for the team, and the prototype's late line as one of Rosa's own, which stays Rosa's.
 SELECT qr.as_user(:'rosa');
 SELECT public.add_quick_reply('The insurance certificate came through, thank you.', 'trade', 'papers') AS line \gset
 SELECT qr.same('a line for the team, with the version it was added with, by Rosa',
@@ -111,16 +108,21 @@ SELECT qr.same('a line for the team, with the version it was added with, by Rosa
        || v.kind || ':' || v.to_text || ':' || v.to_for_kind || ':' || v.to_step_key || ':' || (v.by_user_id = :'rosa')
    FROM public.quick_replies q JOIN public.quick_reply_versions v ON v.quick_reply_id = q.id WHERE q.id = :'line'),
   'team:trade:papers:true / added:The insurance certificate came through, thank you.:trade:papers:true');
-SELECT public.add_quick_reply('  On my way to the site.  ', 'any', 'papers', true) AS mine \gset
+SELECT public.add_quick_reply('  Running about 20 minutes late, sorry.  ', 'any', 'papers', true) AS mine \gset
 SELECT qr.same('one of Rosa''s own, for anyone so on no step, its words trimmed',
   (SELECT scope || ':' || for_kind || ':' || coalesce(step_key, '-') || ':' || text FROM public.quick_replies WHERE id = :'mine'),
-  'mine:any:-:On my way to the site.');
+  'mine:any:-:Running about 20 minutes late, sorry.');
+SELECT qr.same('Rosa reads fifteen lines', (SELECT count(*)::text FROM public.quick_replies), '15');
+SELECT qr.as_user(:'maria');
+SELECT qr.same('Maria reads fourteen, and not Rosa''s own', (SELECT count(*)::text FROM public.quick_replies), '14');
+SELECT qr.same('nor its version', (SELECT count(*)::text FROM public.quick_reply_versions), '14');
+SELECT qr.as_user(:'rosa');
 SELECT qr.refused('a blank line', $q$SELECT public.add_quick_reply('   ', 'trade', NULL)$q$, 'Write the line first.');
 SELECT qr.refused('a line for no one we know', $q$SELECT public.add_quick_reply('Hello', 'vendor', NULL)$q$, 'Say who the line is for');
 SELECT qr.refused('a step that is no step''s id', $q$SELECT public.add_quick_reply('Hello', 'trade', 'Asked to quote')$q$, 'Pick the step from the flow.');
 SELECT qr.refused('a line past 1,000 characters', $q$SELECT public.add_quick_reply(repeat('a', 1001), 'trade', NULL)$q$, '1,000 characters at most');
 
--- 4 · Rosa changes its words, then Maria its tags: one version each, with who.
+-- 3 · Rosa changes its words, then Maria its tags: one version each, with who.
 SELECT qr.same('Rosa changes the words: one version',
   public.edit_quick_reply(:'line', 'The insurance certificate is here, thank you.', 'trade', 'papers')::text, '1');
 SELECT qr.as_user(:'maria');
@@ -145,7 +147,7 @@ SELECT qr.refused('a blank save', format($q$SELECT public.edit_quick_reply(%L, '
 SELECT qr.refused('Maria changes Rosa''s own line', format($q$SELECT public.edit_quick_reply(%L, 'Mine now', 'any', NULL)$q$, :'mine'),
   'That line is not there.');
 
--- 5 · Rosa presses it in Priya's thread and once outside a thread, and presses Rosa's own; the team reads the presses
+-- 4 · Rosa presses it in Priya's thread and once outside a thread, and presses Rosa's own; the team reads the presses
 -- on the team's line.
 SELECT qr.as_user(:'rosa');
 SELECT public.press_quick_reply(:'line', :'priya');
@@ -161,7 +163,7 @@ SELECT qr.refused('Maria presses Rosa''s own line', format($q$SELECT public.pres
 SELECT qr.refused('a press in a thread that is not there',
   format($q$SELECT public.press_quick_reply(%L, '00000000-0000-0000-0000-00000000a3ff')$q$, :'line'), 'That person is not there.');
 
--- 6 · Rosa removes it: off the list, still in the history. Maria brings it back.
+-- 5 · Rosa removes it: off the list, still in the history. Maria brings it back.
 SELECT qr.as_user(:'rosa');
 SELECT public.remove_quick_reply(:'line');
 SELECT qr.same('removed, it stays, with a removed version by Rosa',
@@ -181,7 +183,7 @@ SELECT qr.same('back on the list, its history whole',
    FROM public.quick_replies q WHERE q.id = :'line'),
   'true:added,words,tags,words,tags,removed,restored');
 
--- 7 · Outside the office, in training, a twin, signed out: refused in words. Nobody writes the tables by hand, and
+-- 6 · Outside the office, in training, a twin, signed out: refused in words. Nobody writes the tables by hand, and
 -- anon reaches nothing.
 SELECT qr.as_user(:'wendi');
 SELECT qr.refused('the superintendent adds a line', $q$SELECT public.add_quick_reply('Hello', 'trade', NULL)$q$,
@@ -209,7 +211,7 @@ SELECT qr.refused('and reads no line', $q$SELECT count(*) FROM public.quick_repl
 RESET ROLE;
 SET LOCAL ROLE authenticated;
 
--- 8 · Rosa sets the title under Rosa's signature; Maria has none.
+-- 7 · Rosa sets the title under Rosa's signature; Maria has none.
 SELECT qr.as_user(:'rosa');
 UPDATE public.users SET title = 'Office manager' WHERE id = :'rosa';
 SELECT qr.same('Rosa''s title', (SELECT title FROM public.users WHERE id = :'rosa'), 'Office manager');
@@ -218,7 +220,7 @@ SELECT qr.refused('a title past 80 characters', format($q$UPDATE public.users SE
 SELECT qr.as_user(:'maria');
 SELECT qr.same('Maria has no title', (SELECT coalesce(title, '-') FROM public.users WHERE id = :'maria'), '-');
 
--- 9 · Rosa folds Priya into the customer's other Priya: the presses in Priya's thread follow. Outside a fold, a call
+-- 8 · Rosa folds Priya into the customer's other Priya: the presses in Priya's thread follow. Outside a fold, a call
 -- from the superintendent moves nothing.
 SELECT qr.as_user(:'rosa');
 SELECT public.contacts_fold(:'priya', :'priya2');
