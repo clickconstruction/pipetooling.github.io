@@ -2,9 +2,10 @@ name: SQL beds
 
 # The whole-schema SQL beds (scripts/pgtest-*.sh) need Docker, and no session on the office Mac can
 # reach it. GitHub's runners have it. Each bed applies every migration and then plays its scenario,
-# so any migration can break any bed: when a PR touches a migration, a bed's test folder, a bed
-# script or this workflow (in its own commits, diffed from where it left main, so a migration main
-# gained after the branch point does not count), every bed in scripts/sql-beds.txt runs. The one job
+# so any migration can break any bed: when a ready (not draft) PR touches a migration, a bed's test
+# folder, a bed script or this workflow (in its own commits, diffed from where it left main, so a
+# migration main gained after the branch point does not count), every bed in scripts/sql-beds.txt runs;
+# a draft's pushes run none until it is marked ready, and the merge queue's build always runs them. The one job
 # branch protection requires is `sql-beds`, the gate at the bottom: it reports on every pull request
 # and every merge-queue build (a required check that never reports would block the merge), passes
 # when the beds passed or were not needed, and fails when any bed failed or was cancelled
@@ -14,8 +15,15 @@ name: SQL beds
 # line in scripts/sql-beds.txt. This file does not change.
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
   workflow_dispatch:
+
+# A newer push to the same PR (or the same queue group) cancels the run it supersedes, so a superseded
+# matrix never holds twenty runners (2026-10-12: the merge queue timed out four times behind them).
+concurrency:
+  group: sql-beds-${{ github.event.pull_request.number || github.event.merge_group.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   changes:
@@ -50,7 +58,8 @@ jobs:
 
   bed:
     needs: changes
-    if: needs.changes.outputs.beds == 'true'
+    # A draft runs no beds: they run once the PR is marked ready (ready_for_review above) and in the queue.
+    if: needs.changes.outputs.beds == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     strategy:
