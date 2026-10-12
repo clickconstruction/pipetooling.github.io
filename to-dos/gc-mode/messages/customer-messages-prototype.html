@@ -54,6 +54,7 @@ header.top .note{flex-basis:100%}
 nav.tabs{display:flex;gap:4px;flex-wrap:wrap;margin:10px 0 18px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:6px;z-index:5}
 nav.tabs button{border-color:transparent;background:transparent;border-radius:999px;padding:6px 12px;color:var(--muted)}
 nav.tabs button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+@media (max-width:640px){nav.tabs{gap:2px}nav.tabs button{padding:4px 8px;font-size:13px}}
 nav.tabs button b{display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--chip);color:var(--muted);font-size:11px;line-height:18px;text-align:center;margin-right:6px}
 nav.tabs button.on b{background:var(--accent);color:#fff}
 section.screen{display:none}section.screen.on{display:block}
@@ -84,10 +85,11 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .win .filters .new::after{content:"";position:absolute;top:-2px;right:-2px;width:9px;height:9px;border-radius:50%;background:var(--danger);border:2px solid var(--surface)}
 .feed{padding:4px 22px 8px;max-height:460px;overflow:auto}
 .day{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:16px 0 6px}
-.row{display:grid;grid-template-columns:30px 62px 118px minmax(0,1fr);gap:10px;align-items:start;padding:9px 0;border-bottom:1px dashed var(--border);font-size:15px}
+.row{display:grid;grid-template-columns:30px 62px 128px minmax(0,1fr);gap:10px;align-items:start;padding:9px 0;border-bottom:1px dashed var(--border);font-size:15px}
 .row .n{width:26px;height:26px;border:1px solid var(--border);border-radius:50%;font-size:12px;display:grid;place-items:center;color:var(--muted);font-variant-numeric:tabular-nums}
 .row .t{color:var(--muted);font-family:var(--mono);font-size:13px;padding-top:4px;font-variant-numeric:tabular-nums}
-.row .w{color:var(--muted);padding-top:3px}
+.row .w{color:var(--muted);padding-top:3px;display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0}
+.row .w b{overflow:hidden;text-overflow:ellipsis}
 .row .w b{color:var(--text);font-weight:600}
 .row .b{min-width:0;padding-top:3px}
 .row .b .dim{color:var(--muted)}
@@ -97,7 +99,7 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .row.cust .b .dim{color:var(--muted)}
 .row.team{background:transparent}
 .row.team .w b::after{content:" · note";font-weight:400;color:var(--muted);font-size:12px}
-.who{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:0 6px;margin-left:6px;vertical-align:1px;border:1px solid var(--cust);color:var(--cust-deep);background:transparent}
+.who{display:inline-block;flex:none;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:0 5px;line-height:16px;border:1px solid var(--cust);color:var(--cust-deep);background:transparent}
 .row.cust.in .who{background:var(--cust);color:#fff;border-color:var(--cust)}
 .tie{display:inline-flex;gap:6px;margin-top:5px;flex-wrap:wrap}
 .tie span{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted)}
@@ -132,7 +134,7 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .quick .lines{display:flex;gap:6px;flex-wrap:wrap}
 .quick .lines button{font-size:13px;padding:4px 10px;border-radius:999px;background:var(--surface);text-align:left}
 .quick .lines button.mine{border-style:dashed}
-.quick .lines button .ph{font-size:10px;color:var(--muted);margin-left:5px}
+.quick .lines button .ph{font-size:10px;color:var(--ok);margin-left:6px;text-transform:uppercase;letter-spacing:.03em;font-weight:700}
 .quick .lines button:hover{border-color:var(--accent)}
 .quick .empty{padding:8px 0;font-size:13px;color:var(--muted)}
 .blank{color:var(--warn);font-weight:600}
@@ -141,7 +143,7 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .count{font-size:13px;color:var(--muted);margin-top:6px;display:flex;gap:14px;flex-wrap:wrap}
 .count b{color:var(--text);font-weight:600}
 .count .bad{color:var(--warn);font-weight:600}
-@media (max-width:640px){.row{grid-template-columns:24px 50px minmax(0,1fr)}.row .w{grid-column:3}.row .b{grid-column:1/-1;padding-left:84px}.quick .grp{grid-template-columns:1fr}.boxrow{grid-template-columns:1fr}.win .head,.win .sub,.win .filters,.feed,.composer{padding-inline:14px}}
+@media (max-width:640px){.row{grid-template-columns:24px 50px minmax(0,1fr);gap:8px}.row .w{grid-column:3}.row .b{grid-column:1/-1;padding-left:0}.quick .grp{grid-template-columns:1fr}.boxrow{grid-template-columns:1fr}.win .head,.win .sub,.win .filters,.feed,.composer{padding-inline:14px}}
 
 /* ---- modals: the editor and Find a reply ---- */
 .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.35);display:grid;place-items:center;padding:16px;z-index:40}
@@ -260,11 +262,11 @@ table.qrt tr.edit td{padding:10px 6px 14px;background:var(--bg);border-bottom:1p
 .bub u{text-decoration:underline}
 .bub .dl{display:block;font-size:11px;opacity:.75;margin-top:3px;text-align:right}
 .stamp{text-align:center;font-size:11px;color:var(--muted);margin:6px 0 2px}
-.portal{background:var(--surface);margin:8px 12px 12px;border:1px solid var(--border);border-radius:14px;padding:12px}
-.portal h4{margin:0;font-size:15px}
-.portal .yourmove{background:var(--warn-soft);border:1px solid var(--warn);border-radius:10px;padding:10px;margin-top:8px}
-.portal .yourmove b{display:block;color:var(--warn);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
-.portal .yourmove button{margin-top:8px;width:100%;min-height:42px;border-radius:10px}
+.pcard{background:var(--surface);margin:8px 12px 12px;border:1px solid var(--border);border-radius:14px;padding:12px}
+.pcard h4{margin:0;font-size:15px}
+.pcard .yourmove{background:var(--warn-soft);border:1px solid var(--warn);border-radius:10px;padding:10px;margin-top:8px}
+.pcard .yourmove b{display:block;color:var(--warn);font-size:12px;text-transform:uppercase;letter-spacing:.05em}
+.pcard .yourmove button{margin-top:8px;width:100%;min-height:42px;border-radius:10px}
 .steps{display:flex;gap:4px;margin-top:10px;align-items:center;flex-wrap:wrap}
 .steps span{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid var(--border);color:var(--muted)}
 .steps span.done{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
@@ -310,7 +312,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <body>
 <div class="wrap">
 <header class="top">
-  <h1>Customer messages</h1><span class="ver" id="ver">v0.3 · 2026-10-12</span>
+  <h1>Customer messages</h1><span class="ver" id="ver">v0.4 · 2026-10-12</span>
   <span class="note">A prototype of one line to the customer from the job, the tech's phone and the office. Made-up people and jobs, nothing is saved. Everything that moves here is a press you can try.</span>
 </header>
 
@@ -387,7 +389,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     </div>
   </div>
 </div>
-<p class="note" style="margin-top:10px">Try it: pick a line on the strip and press <b>Send text…</b>. Press <b>Edit</b> on the strip to open the editor, or <b>⤢ Find</b> for the long list. A line with a blank the app cannot fill, like <span class="blank">{thing}</span>, waits in the box until you fill it.</p>
+<p class="note" style="margin-top:10px">Try it: pick a line on the strip and press <b>Send text…</b>. Press <b>Edit</b> on the strip to open the editor, or <b>⤢ Find</b> for the long list. The strip reads each line as it would go to Dana. A blank the app cannot fill, like <span class="blank">{thing}</span>, stays lit and waits in the box until you fill it.</p>
 
 <h2>How the window reads</h2>
 <dl class="rules">
@@ -481,7 +483,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
       <div class="stamp">Thu, Oct 8 · 9:02 AM</div>
       <div class="bub us" id="danaNew" hidden></div>
     </div>
-    <div class="portal">
+    <div class="pcard">
       <div class="note" style="margin-bottom:2px">click.co/e/8Kp4 · her page</div>
       <h4>Oakridge sewer line</h4>
       <div class="yourmove"><b>Your move</b>Approve the estimate, $4,850. Work can start Thursday once it is approved.<button class="primary">Read and approve</button></div>
@@ -571,6 +573,11 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <section class="screen" id="s6">
 <p class="lead">What changed in this prototype, newest first. Open it from the repo: <code>to-dos/gc-mode/messages/customer-messages-prototype.html</code> on <code>spike/gc-mode</code>.</p>
 <div class="log">
+  <article><h4>v0.4<small>2026-10-12</small></h4>
+    <ul>
+      <li>A pass with screenshots: the channel word sits beside the name on one line and never wraps under it; the strip and Find read each line as it would go to Dana, with only the blanks the app cannot fill left lit; a strip line marked for the phone says <b>phone</b>; the step group names her; a screen opens at its top.</li>
+    </ul>
+  </article>
   <article><h4>v0.3<small>2026-10-12</small></h4>
     <ul>
       <li>Orange means Dana saw it or did it (the owner, 2026-10-12): her lines in the feed carry an orange tint and bar, a deeper bar when the line came from her, and the channel reads as a small orange word. Team notes lose the yellow, since in this window they are the rule, not the exception.</li>
@@ -614,6 +621,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   $$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
     $$('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
     $$('section.screen').forEach(s=>s.classList.toggle('on',s.id===b.dataset.s));
+    window.scrollTo(0,0);
     try{localStorage.setItem('cm-tab',b.dataset.s)}catch(e){}
   }));
   try{ const t=localStorage.getItem('cm-tab'); if(t){ const b=$(`#tabs button[data-s="${t}"]`); if(b) b.click(); } }catch(e){}
@@ -682,13 +690,13 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   const wordsFor=(q,lang)=> lang==='es' && q.es ? q.es : q.text;
   // The strip's groups for one person: the step they are on, the rest of their flow, anyone. Lines on another flow of their kind stay in Find.
   function groups(person, me, filter){
-    const f=(filter||'').trim().toLowerCase(); const fits=q=>(q.for===person.kind||q.for==='any')&&(!f||q.text.toLowerCase().includes(f)||(q.es||'').toLowerCase().includes(f));
+    const f=(filter||'').trim().toLowerCase(); const fits=q=>(q.for===person.kind||q.for==='any')&&(!f||q.text.toLowerCase().includes(f)||fillLine(q.text,me).text.toLowerCase().includes(f)||(q.es||'').toLowerCase().includes(f));
     const rows=visible(me).filter(fits).sort(qOrder(me));
     const flowSteps=(FLOWS[person.kind]||[]).find(x=>x.id===person.flow)?.steps.map(s=>s[0])||[];
     const onStep=rows.filter(q=>q.for===person.kind&&q.step===person.now);
     const rest=rows.filter(q=>q.for===person.kind&&q.step!==person.now&&(q.step==null||flowSteps.includes(q.step)));
     const any=rows.filter(q=>q.for==='any');
-    const out=[]; if(onStep.length) out.push({title:stepName(person.now), tag:'the step they are on', rows:onStep}); if(rest.length) out.push({title:'The rest of her flow', rows:rest}); if(any.length) out.push({title:'Anyone', rows:any}); return out;
+    const out=[]; if(onStep.length) out.push({title:stepName(person.now), tag:'the step she is on', rows:onStep}); if(rest.length) out.push({title:'The rest of her flow', rows:rest}); if(any.length) out.push({title:'Anyone', rows:any}); return out;
   }
   const phoneLines=(now)=>QR.filter(q=>!q.removed&&q.for==='customer'&&q.phone>0).sort((a,b)=>((b.step===now)-(a.step===now))||a.phone-b.phone).slice(0,6);
   const tagWords=q=>`for ${KINDS[q.for]} · on ${q.step?stepName(q.step):'no step'}${q.phone?' · on the phone as “'+(q.name||'')+'”':''}`;
@@ -708,7 +716,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     if(kind==='note'){ quick.hidden=true; return; } quick.hidden=false;
     const gs=groups(DANA,OFFICE,qrFilter); const n=gs.reduce((a,g)=>a+g.rows.length,0); const teamCount=visible(OFFICE).filter(q=>q.for===DANA.kind||q.for==='any').length;
     if(!qrOpen){ quick.innerHTML=`<button type="button" class="peek" id="peek">Quick replies <span class="n">· ${n} for ${KINDS[DANA.kind]} ▸</span></button>`; $('#peek').onclick=()=>{qrOpen=true; try{localStorage.setItem('cm-qr-open','1')}catch(e){} paintStrip();}; return; }
-    const line=q=>`<button type="button" class="${q.scope==='mine'?'mine':''}" data-id="${q.id}" title="${q.scope==='mine'?'Mine':"The team's"} · used ${qTotal(q)} time${qTotal(q)===1?'':'s'}${q.step?' · on '+esc(stepName(q.step)):''}. Fills the box. Nothing sends.">${markBlanks(markWith(wordsFor(q,DANA.lang),qrFilter))}${q.phone?'<span class="ph">☎</span>':''}</button>`;
+    const line=q=>`<button type="button" class="${q.scope==='mine'?'mine':''}" data-id="${q.id}" title="${q.scope==='mine'?'Mine':"The team's"} · used ${qTotal(q)} time${qTotal(q)===1?'':'s'}${q.step?' · on '+esc(stepName(q.step)):''}. Fills the box. Nothing sends.">${markBlanks(markWith(fillLine(wordsFor(q,DANA.lang),OFFICE).text,qrFilter))}${q.phone?'<span class="ph">phone</span>':''}</button>`;
     quick.innerHTML=`<div class="ql"><button type="button" class="lbl" id="fold">Quick replies ▾</button><span class="cnt">${n} for ${KINDS[DANA.kind]}</span>${teamCount>10?`<input id="narrow" placeholder="⌕ narrow" value="${esc(qrFilter)}" aria-label="Narrow the lines">`:''}<button class="quiet small" id="editQr">Edit</button><button class="quiet small" id="findQr">⤢ Find</button></div>
       <div class="groups">${gs.length?gs.map(g=>`<div class="grp"><div class="gt">${esc(g.title)}${g.tag?`<i>${esc(g.tag)}</i>`:''}</div><div class="lines">${g.rows.map(line).join('')}</div></div>`).join(''):`<div class="empty">${qrFilter?`No line has those words. <button class="small primary" id="addFromNarrow">Add “${esc(qrFilter.trim())}” as a quick reply</button>`:'No lines for this kind of person yet. Edit adds one.'}</div>`}</div>`;
     $('#fold').onclick=()=>{qrOpen=false; try{localStorage.setItem('cm-qr-open','0')}catch(e){} paintStrip();};
@@ -843,7 +851,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   function openFind(){
     const {m,close}=modal(); let f='';
     const draw=()=>{ const gs=groups(DANA,OFFICE,f); const any=gs.length;
-      const line=q=>`<button type="button" class="fline ${q.scope==='mine'?'mine':''}" data-id="${q.id}"><span class="t">${markBlanks(markWith(wordsFor(q,DANA.lang),f))}</span><span class="m">${q.step?esc(stepName(q.step))+' · ':''}used ${qTotal(q)}${q.scope==='mine'?' · mine':''}${q.phone?' · on the phone':''}</span></button>`;
+      const line=q=>`<button type="button" class="fline ${q.scope==='mine'?'mine':''}" data-id="${q.id}"><span class="t">${markBlanks(markWith(fillLine(wordsFor(q,DANA.lang),OFFICE).text,f))}</span><span class="m">${q.step?esc(stepName(q.step))+' · ':''}used ${qTotal(q)}${q.scope==='mine'?' · mine':''}${q.phone?' · on the phone':''}</span></button>`;
       m.innerHTML=`<div class="mhead"><div><h2>Find a reply · Dana Whitfield</h2><div class="note">A press on a line fills the box. Nothing sends. The lines for the step she is on come first.</div></div><button class="quiet" id="fclose" style="margin-left:auto">Close</button></div>
         <div class="flast"><div class="fh">Her last message <span style="font-weight:400">· ${esc(DANA.lastIn.ch)} · ${esc(DANA.lastIn.when)}</span></div>${esc(DANA.lastIn.text)}</div>
         <div class="fwhere"><div class="fh">Where Dana is</div><b>Working</b> · our move · on it 1 day. Done for today or Ready to Bill finishes it. Residential customer flow.</div>
@@ -860,11 +868,12 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   // ---------- screen 2: Job Mode ----------
   const sheet=$('#sheet'), pick=$('#sheetPick'), prev=$('#sheetPrev'), done=$('#sheetDone'); let chosen=null, chosenOffice=false;
   function show(part){ pick.hidden=part!=='pick'; prev.hidden=part!=='prev'; done.hidden=part!=='done'; }
-  const SUB={onway:'about 25 minutes, from the drive',found:'you fill one blank, the rest is written',working:'from the schedule',booked:'from the schedule'};
+  const HINTS=[['minutes','about 25 minutes, from the drive'],['window','the new window 9:30 to 10:00, from the schedule'],['back day','back Fri, Oct 9 at 8:00 AM, from the schedule'],['day','Thu, from the schedule'],['link','with the link to her page']];
+  const hintFor=(text)=>{ const used=blanksIn(text); const h=HINTS.find(([k])=>used.includes(k)); return h?h[1]:'ready to go'; };
   function shortTitle(q){ if(q.name) return q.name; const t=fillLine(q.text,TECH).text.replace(/^[A-Z][a-z]+,?\s*/,''); const parts=t.split(/[.:?]/).map(x=>x.trim()).filter(Boolean); const cut=parts.find(x=>!/^this is .* with Click Plumbing$/i.test(x))||parts[0]||t; return cut.charAt(0).toUpperCase()+cut.slice(1); }
   function paintPhone(){
     const ls=phoneLines(DANA.now);
-    $('#phoneLines').innerHTML=ls.map(q=>{ const r=fillLine(wordsFor(q,DANA.lang),TECH); const sub=r.left.length?`asks you for ${r.left.map(x=>'{'+x+'}').join(' and ')}`:(q.step===DANA.now?'the step the job is on · ':'')+(SUB[q.step]||'ready to go'); return `<button data-id="${q.id}" class="${q.step===DANA.now?'step':''}">${esc(shortTitle(q))}<small>${esc(sub)}</small></button>`; }).join('')+`<button class="office" data-id="office">Something else<small>a note to the office, Rosa sends it</small></button>`;
+    $('#phoneLines').innerHTML=ls.map(q=>{ const r=fillLine(wordsFor(q,DANA.lang),TECH); const sub=r.left.length?`asks you for ${r.left.map(x=>'{'+x+'}').join(' and ')}`:(q.step===DANA.now?'the step the job is on · ':'')+hintFor(wordsFor(q,DANA.lang)); return `<button data-id="${q.id}" class="${q.step===DANA.now?'step':''}">${esc(shortTitle(q))}<small>${esc(sub)}</small></button>`; }).join('')+`<button class="office" data-id="office">Something else<small>a note to the office, Rosa sends it</small></button>`;
     $$('#phoneLines button').forEach(b=>b.onclick=()=>pickLine(b.dataset.id));
   }
   function pickLine(id){
