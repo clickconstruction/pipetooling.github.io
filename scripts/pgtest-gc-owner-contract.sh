@@ -42,6 +42,11 @@ done
 # A second run must change nothing: the table, the bucket and its policies are there, and every function is replaced
 # as it was, with the same grants.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# v2.5309 (20261013000000) replaced gc_customer_sign_owner_contract with an eight-argument one and dropped this one. The
+# second run above makes the six-argument one again beside it, which prod never does, so v2.5309 runs again too and the
+# schema is main's.
+LATER="$(ls supabase/migrations/*_gc_clause_papers.sql)"
+psql_as postgres -f - < "$LATER" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $LATER"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/gc_owner_contract/20_scenario.sql 2>&1 || true)"
 if ! grep -q "gc_owner_contract PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
