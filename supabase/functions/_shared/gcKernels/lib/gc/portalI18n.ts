@@ -1045,6 +1045,31 @@ const S = {
   mFinalInWhat: { en: 'Your final pay application for {amount} on {trade} for {project} came in.', es: 'Llegó su solicitud de pago final por {amount} de {trade} para {project}.' },
   mFinalInReleasePortal: { en: 'Once we pay it, sign your unconditional final release of lien in your portal.', es: 'Cuando la paguemos, firme su liberación final de gravamen incondicional en su portal.' },
   mFinalInReleaseEmail: { en: 'Once we pay it, send us your unconditional final release of lien.', es: 'Cuando la paguemos, envíenos su liberación final de gravamen incondicional.' },
+
+  // Bill day's texts to a trade, from the company number (Messages, cut 9; src/lib/gc/billDay/asks.ts). Spanish drafted by
+  // helper 8; a native speaker reads it before PORTAL_SPANISH_ON. The greeting is the first name and a comma, so a key
+  // that may open a text starts in lower case and the text capitalizes it when there is no name.
+  bdAskDraw: { en: 'pay application {app} on {job} closes {date}.', es: 'la solicitud de pago {app} de {job} cierra el {date}.' },
+  bdDrawDue: { en: 'Your draw {n} is due by then.', es: 'Su pago {n} debe llegar antes de esa fecha.' },
+  bdWaiverToo: { en: 'The unconditional waiver for {draws} is still owed too.', es: 'La renuncia incondicional {draws} también está pendiente.' },
+  bdSendIt: { en: 'Send it here: {link}', es: 'Envíelo aquí: {link}' },
+  bdSendThem: { en: 'Send them here: {link}', es: 'Envíelos aquí: {link}' },
+  bdAskWaiver: { en: 'the unconditional waiver for {draws} is still owed.', es: 'la renuncia incondicional {draws} sigue pendiente.' },
+  bdPaidThatDraw: { en: 'We paid that draw {date}.', es: 'Ese pago se pagó el {date}.' },
+  bdUploadIt: { en: 'Upload it here: {link}', es: 'Súbala aquí: {link}' },
+  bdWentBack: { en: 'draw {n} went back {date}.', es: 'el pago {n} se le devolvió el {date}.' },
+  bdResendIt: { en: 'Resend it here: {link}', es: 'Reenvíelo aquí: {link}' },
+  bdBackLine: { en: 'Line {item}, {label}, reads {claimed}%. We see {weSee}%.', es: 'Línea {item}, {label}, dice {claimed}%. Nosotros vemos {weSee}%.' },
+  bdBackStored: {
+    en: 'Line {item}, {label}, claims {amount} of stored material. We did not see it on site.',
+    es: 'Línea {item}, {label}, cobra {amount} de material almacenado. No lo vimos en la obra.',
+  },
+  bdBackPhoto: { en: 'We have a photo of it.', es: 'Tenemos una foto.' },
+  bdBackAgain: { en: 'Send it again.', es: 'Envíelo de nuevo.' },
+  // The draws a waiver is for, after the waiver: "for draw 2" reads "del pago 2", so the Spanish carries its de.
+  bdDrawOne: { en: 'draw {n}', es: 'del pago {n}' },
+  bdDrawsMany: { en: 'draws {list} and {last}', es: 'de los pagos {list} y {last}' },
+  bdDrawFinal: { en: 'the final draw', es: 'del pago final' },
   // P5a-1: a file from the portal into the job's Drive folder.
   errFileType: { en: 'Send a PDF or a photo.', es: 'Envíe un PDF o una foto.' },
   errFileTooBig: { en: 'That file is over 10 MB. Email it to {gc}, or paste its Drive link.', es: 'Ese archivo pesa más de 10 MB. Envíelo por correo a {gc} o pegue su enlace de Drive.' },
