@@ -199,3 +199,16 @@ describe('a customer’s page on the card (cut 8’s read-back)', () => {
     expect(within(await screen.findByRole('dialog')).getByText(/Elena has not opened the contract yet\./)).toBeTruthy()
   })
 })
+
+describe('what we owe them (cut 2’s contact_owed)', () => {
+  it('reads their move on the step on now while we owe them nothing', async () => {
+    renderWithProviders(<FlowTab at={{ contactId: 'tom' }} />)
+    expect(await screen.findByRole('button', { name: /^Papers in: on now, their move/ })).toBeTruthy()
+  })
+
+  it('reads our move once a row of theirs is not done', async () => {
+    io.read = { ...TOM, owed: [{ contact_id: 'tom', done_at: null }] }
+    renderWithProviders(<FlowTab at={{ contactId: 'tom' }} />)
+    expect(await screen.findByRole('button', { name: /^Papers in: on now, our move/ })).toBeTruthy()
+  })
+})

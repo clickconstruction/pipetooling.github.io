@@ -1,7 +1,7 @@
 /**
  * One person's flow, read and pressed (Messages cut 4's first screens): their contact, their kind's flow, their rows
  * through `flow_rows` (days and marks, for the office), their holds, reminders sent, step notes and thread's last lines,
- * and the eight presses (`20261012120000_messages_flows.sql`). The hook (`useFlowPerson`) and the smokes read through
+ * what we owe them (cut 2's `contact_owed`), and the eight presses (`20261012120000_messages_flows.sql`). The hook (`useFlowPerson`) and the smokes read through
  * this one file, so a test mocks it whole.
  */
 import { supabase } from '../supabase'
@@ -10,7 +10,7 @@ import { flowFromRows, type FlowStepRow } from './editor'
 import type { FlowKind } from './facts'
 import type { FlowRows } from './load'
 import { loadCustomerPortalReadBack } from '../portal/customerPortalViewsIo'
-import type { HoldRow, PortalReadBackRow, SentRow, StepNoteRow, ThreadLineRow } from './person'
+import type { HoldRow, OwedRow, PortalReadBackRow, SentRow, StepNoteRow, ThreadLineRow } from './person'
 import { SEED_FLOWS } from './seed'
 import type { FlowDef } from './state'
 
@@ -27,6 +27,8 @@ export type FlowPersonRead = {
   lines: ThreadLineRow[]
   /** A customer's page as cut 8 reads it back (`customerPortalViewsIo`); null for anyone else, or when it cannot be read. */
   portal?: PortalReadBackRow | null
+  /** What we owe them and have not done (cut 2's `contact_owed`). */
+  owed?: OwedRow[]
 }
 
 /** A press's job: a GC project, or none on the Once lane. */
@@ -74,7 +76,7 @@ export function readFlowPerson(contactId: string): Promise<FlowPersonRead> {
 }
 
 async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
-  const [contactA, rowsA, holdsA, sentA, notesA, linesA] = await Promise.all([
+  const [contactA, rowsA, holdsA, sentA, notesA, linesA, owedA] = await Promise.all([
     table('contacts').select('id, kind, name, goes_by').eq('id', contactId).maybeSingle() as unknown as Promise<Answer<FlowContact>>,
     call<FlowRows>('flow_rows', { p_contact: contactId }),
     table('nudge_holds').select('id, step_key, project_id, until_on, released_at').eq('contact_id', contactId) as unknown as Promise<Answer<HoldRow[]>>,
@@ -86,6 +88,7 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
     table('messages').select('direction, at').eq('contact_id', contactId).order('at', { ascending: false }).limit(50) as unknown as Promise<
       Answer<ThreadLineRow[]>
     >,
+    table('contact_owed').select('contact_id, done_at').eq('contact_id', contactId).is('done_at', null) as unknown as Promise<Answer<OwedRow[]>>,
   ])
   const contact = check(contactA, 'Their contact')
   if (!contact) throw new Error('Their contact: not found')
@@ -99,6 +102,7 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
     sent: check(sentA, 'Their reminders') ?? [],
     notes: check(notesA, 'Their notes') ?? [],
     lines: check(linesA, 'Their thread') ?? [],
+    owed: check(owedA, 'What we owe them') ?? [],
   }
 }
 

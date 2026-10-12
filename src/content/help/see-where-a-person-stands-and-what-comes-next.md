@@ -28,7 +28,7 @@ The flow is in lanes. **Once** holds the steps a person does one time, like thei
 
 A green step is done. A yellow step is on now. A red step was done and then ran out, like insurance past its last day. A step marked ↻ repeats, once for each ask, draw or pay application.
 
-Under each step you see its papers and its day. A check means the paper is on file. An arrow means it went and we wait on them. A step on now also says whose move it is.
+Under each step you see its papers and its day. A check means the paper is on file. An arrow means it went and we wait on them. A step on now also says whose move it is. While we owe them something, it is our move.
 
 ## Open a step's card
 
