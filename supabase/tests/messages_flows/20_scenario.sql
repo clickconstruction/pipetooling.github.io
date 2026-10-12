@@ -62,7 +62,7 @@ $$;
 -- One step in one line: where it sits, whose it is, what finishes it, how it repeats, its nudge, its usual, its words.
 CREATE FUNCTION mfl.step(p_kind text, p_key text) RETURNS text LANGUAGE sql AS $$
   SELECT concat_ws('|', s.lane, s.position, s.phase, s.who, array_to_string(s.facts, ','), s.join_word, array_to_string(s.papers, ','),
-    coalesce(s.loop_words, '-'), coalesce(s.loop_ends, '-'), s.fork, s.aside, s.skip_one_job,
+    coalesce(s.loop_words, '-'), coalesce(s.loop_ends, '-'), s.fork::text, s.aside::text, s.skip_one_job::text,
     coalesce(s.nudge_days::text, '-'), coalesce(s.nudge_how, '-'), coalesce(s.nudge_send, '-'), coalesce(s.nudge_day_fact, '-'),
     s.usual, coalesce(s.owed_words, '-'), s.name, s.name_es, coalesce(s.later_en, '-'))
   FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = p_kind AND s.step_key = p_key
@@ -132,7 +132,7 @@ SELECT mfl.same('the office reads every flow and step',
   concat_ws('|', (SELECT count(*) FROM public.flows), (SELECT count(*) FROM public.flow_steps)), '4|25');
 UPDATE public.flow_steps SET nudge_days = 4 WHERE step_key = 'portal';
 SELECT mfl.same('an edit lands and its clock moves',
-  (SELECT concat_ws('|', s.nudge_days, s.updated_at > w.updated_at) FROM public.flow_steps s, was w WHERE s.step_key = 'portal'), '4|true');
+  (SELECT concat_ws('|', s.nudge_days, (s.updated_at > w.updated_at)::text) FROM public.flow_steps s, was w WHERE s.step_key = 'portal'), '4|true');
 SELECT mfl.refused('a fact that is not in the code list', $q$UPDATE public.flow_steps SET facts = ARRAY['typed_done'] WHERE step_key = 'portal'$q$, 'flow_steps_facts_known');
 SELECT mfl.refused('a paper that is not in the code list', $q$UPDATE public.flow_steps SET papers = ARRAY['napkin'] WHERE step_key = 'portal'$q$, 'flow_steps_papers_known');
 SELECT mfl.refused('a loop that does not say when it ends', $q$UPDATE public.flow_steps SET loop_words = 'each visit' WHERE step_key = 'portal'$q$, 'flow_steps_loop_ends_with_loop');
