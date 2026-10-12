@@ -798,8 +798,8 @@ serve(async (req) => {
       bankTransfer,
       ownerRecords,
       gcJobs,
-      cardBills,
       pageWords,
+      cardBills,
     })
   } catch (e) {
     console.error('customer-portal error', e)
