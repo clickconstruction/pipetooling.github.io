@@ -66,6 +66,7 @@
     "test:pg:messages-follow-up": "bash scripts/pgtest-messages-follow-up.sh",
     "test:pg:messages-spine": "bash scripts/pgtest-messages-spine.sh",
     "test:pg:messages-flows": "bash scripts/pgtest-messages-flows.sh",
+    "test:pg:flow-save": "bash scripts/pgtest-flow-save.sh",
     "test:pg:quo-messages": "bash scripts/pgtest-quo-messages.sh",
     "test:pg:messages-email": "bash scripts/pgtest-messages-email.sh",
     "test:pg:flow-draws": "bash scripts/pgtest-flow-draws.sh",
