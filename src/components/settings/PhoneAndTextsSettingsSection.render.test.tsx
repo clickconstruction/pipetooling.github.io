@@ -6,7 +6,7 @@
  */
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { SEATS_NOT_SAVED, SEATS_SAVED_TOAST, SEAT_GONE } from '../../lib/messages/assignRule'
+import { SEATS_NOT_SAVED, SEATS_SAVED_TOAST, SEAT_GONE, type AssignRuleSeats } from '../../lib/messages/assignRule'
 import type { AssignRuleIo } from '../../lib/messages/assignRuleIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { PhoneAndTextsSettingsSection } from './PhoneAndTextsSettingsSection'
@@ -30,7 +30,7 @@ const TEAM = [
   { id: 's1', name: 'Sam', role: 'superintendent' },
 ]
 
-function fakeIo(over: Partial<AssignRuleIo> = {}, seats = { customer: ROSA, trade: ROBERT, arch: null as string | null }): AssignRuleIo {
+function fakeIo(over: Partial<AssignRuleIo> = {}, seats: AssignRuleSeats = { customer: ROSA, trade: ROBERT, arch: null }): AssignRuleIo {
   return { load: vi.fn(async () => ({ seats, team: TEAM })), save: vi.fn(async () => undefined), ...over }
 }
 
