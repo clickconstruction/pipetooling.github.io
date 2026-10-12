@@ -662,6 +662,18 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.96, 2026-10-11**: the flow suite's pieces 1, 2 and 6 in the prototype. The flows carry facts from a list in code
+  (FACTS, one line each with the column it reads), the papers a step turns on, the seat on our-move steps, the nudge as
+  days, how and who sends it, and a usual; a person's papers live on PAPERS and the state is a read: done, on now,
+  next, late (a day on the step or the round), lapsed (a done fact that is not true now: Greg's insurance), waiting on
+  someone else (Elena's pay app on Jonah's certificate), skipped, and off the flow (Marcus Bell, a new customer whose bid
+  was lost). The panel's boxes carry a paper mark (○ ✓ ↗ !), a day, the lapsed reason or the person waited on, and the
+  per-job caption picks the job; a press on a box or a rail mark opens the step card: the facts read live with Open,
+  Ask for it (fills the box with the step's line and the portal link), Send it (an email with the paper, filed) or
+  File a paper we were handed (a fact, never a bare mark); What it holds up; After this with Send now; the nudge with
+  Nudge now and Hold until Mon; the history, team notes on the step, Does not apply; a loop's card one line per
+  round; the off card. A fact turning true (the demo's upload) finishes the step by itself, moves the next one on and
+  writes the gray event line.
 - **v1.95, 2026-10-11**: `flow-suite-mockups.html` pieces 7 to 10 and cut 5 folded in. Everyone by step (7): one column per
   step with counts, faces and how long, late tinted, off the flow folded, three homes drawn and B picked, the top
   of Trade partners and of Customers, with a by-step filter chip on the Messages list. Their own view (8): the
