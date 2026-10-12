@@ -34,6 +34,8 @@ export interface BoardCompany {
   onceDone: readonly string[]
   /** The jobs whose per-job lane is finished, so By company reads done there and not "not started". */
   jobsDone: readonly string[]
+  /** How a job's lane ended at a fork, by job: `perJobJobs(reading)`'s `ended`, such as 'declined' or 'not_carried'. */
+  jobsEnded?: Readonly<Partial<Record<string, FactId>>>
 }
 
 export interface BoardContext {
@@ -561,7 +563,39 @@ export interface CompanyRow {
   track: { stepId: string; name: string; mark: TrackMark }[]
   /** On now: a lapsed step first, then the step its chip shows, else set up. */
   now: { stepId: string | null; name: string; small: string[]; tone: 'lapsed' | 'over' | '' }
-  jobs: { jobId: string; name: string; words: string; lateDays: number }[]
+  jobs: CompanyJobLine[]
+}
+
+/** One of a company's jobs on By company: the step on it with its day, how its lane ended, done, or not started. */
+export interface CompanyJobLine {
+  jobId: string
+  name: string
+  words: string
+  lateDays: number
+  /** The way out of a fork that ended the job's lane, so the screen can mute the line. */
+  ended: FactId | null
+}
+
+/** How a lane that ended at a fork reads on its job's line. */
+const ENDED_WORDS: Readonly<Partial<Record<FactId, string>>> = { declined: 'declined', not_carried: 'not carried' }
+
+/** A company's jobs, one line each: the step on it, else how its lane ended, else done or not started. */
+export function companyJobLines(ctx: BoardContext, c: BoardCompany): CompanyJobLine[] {
+  const steps = flat(ctx.flow)
+  return c.jobIds.flatMap((jobId) => {
+    const job = ctx.jobs[jobId]
+    if (!job) return []
+    const p = c.places.find((x) => x.jobId === jobId && x.state === 'now') ?? c.places.find((x) => x.jobId === jobId)
+    const step = p ? steps.find((s) => s.id === p.stepId) : undefined
+    if (!p || !step) {
+      const ended = c.jobsEnded?.[jobId] ?? null
+      const words = ended ? (ENDED_WORDS[ended] ?? factById(ended)?.text ?? ended) : c.jobsDone.includes(jobId) ? 'done' : 'not started'
+      return [{ jobId, name: job.name, words, lateDays: 0, ended }]
+    }
+    const l = lineOf(ctx, c, p, step, 'per_job')
+    const day = l.lateDays ? `late ${plural(l.lateDays, 'day')}` : l.due ? `due ${dueWords(l.due, ctx.today)}` : l.days != null ? `${l.days} d` : ''
+    return [{ jobId, name: job.name, words: day ? `${step.name} · ${day}` : step.name, lateDays: l.lateDays, ended: null }]
+  })
 }
 
 function whoWords(ctx: BoardContext, l: BoardLine): string {
@@ -591,17 +625,7 @@ function companyRow(ctx: BoardContext, c: BoardCompany): CompanyRow {
     else if (l.usual != null && l.days != null) small.push(`usually ${l.usual}`)
     now = { stepId: shownStep.id, name: shownStep.name, small, tone: l.overUsual ? 'over' : '' }
   } else now = { stepId: null, name: '', small: ['set up'], tone: '' }
-  const jobs = c.jobIds.flatMap((jobId) => {
-    const job = ctx.jobs[jobId]
-    if (!job) return []
-    const p = c.places.find((x) => x.jobId === jobId && x.state === 'now') ?? c.places.find((x) => x.jobId === jobId)
-    const step = p ? stepOf(p.stepId) : undefined
-    if (!p || !step) return [{ jobId, name: job.name, words: c.jobsDone.includes(jobId) ? 'done' : 'not started', lateDays: 0 }]
-    const l = lineOf(ctx, c, p, step, 'per_job')
-    const day = l.lateDays ? `late ${plural(l.lateDays, 'day')}` : l.due ? `due ${dueWords(l.due, ctx.today)}` : l.days != null ? `${l.days} d` : ''
-    return [{ jobId, name: job.name, words: day ? `${step.name} · ${day}` : step.name, lateDays: l.lateDays }]
-  })
-  return { contactId: c.contactId, name: c.name, sub: [c.trades.join(', '), c.personName].filter(Boolean).join(' · '), track, now, jobs }
+  return { contactId: c.contactId, name: c.name, sub: [c.trades.join(', '), c.personName].filter(Boolean).join(' · '), track, now, jobs: companyJobLines(ctx, c) }
 }
 
 /** One row per company on the flow, in the order given; companies off the flow are left out. */
