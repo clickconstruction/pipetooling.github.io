@@ -1538,7 +1538,7 @@ function stepCardHtml(c, step){ const st=S(c); const sub=subState(c,step); const
   // one sentence that says where it stands
   let status='';
   if(s==='done') status=`Done ${esc(whenShort(st.when[step.id]||''))}`.trim().replace(/\.$/,'')+'.';
-  else if(s==='skipped') status=`Skipped for ${first}: ${esc(st.skipped[step.id])}.`;
+  else if(s==='skipped') status=`Skipped for ${first}: ${esc(String(st.skipped[step.id]).replace(/\.$/,''))}.`;
   else if(s==='lapsed') status=`${first}'s ${esc(PAPER_LABEL[bad.f.paper].toLowerCase())} ran out ${esc(bad.p&&bad.p.on||'')}. We need a new one.`;
   else if(waiting) status=`Waiting on ${esc(firstName(cById(waiting.who)))}, ${dayDiff(NOW,waiting.sinceAt)} days. Not ${first}'s move and not ours.`;
   else if(s==='now'){ const who = w==='us'?'Our move':w==='them'?`${first}'s move`:'Both sides'; const forWords = onFor!=null?` On it ${onFor} day${onFor===1?'':'s'}${step.usual?`, usually ${step.usual}`:''}.`:''; const dayWords = day?(day.late?` <span class="late">Late ${day.words.replace('late ','')}.</span>`:` Due ${esc(day.day)}.`):''; status=`${who}.${forWords}${dayWords}`; }
