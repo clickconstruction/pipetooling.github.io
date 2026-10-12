@@ -63,6 +63,7 @@
     "test:pg:messages-spine": "bash scripts/pgtest-messages-spine.sh",
     "test:pg:contract-clauses": "bash scripts/pgtest-contract-clauses.sh",
     "test:pg:portal-customer-page": "bash scripts/pgtest-portal-customer-page.sh",
+    "test:pg:customer-portal-papers": "bash scripts/pgtest-customer-portal-papers.sh",
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "test:pg:lien-claim": "bash scripts/pgtest-lien-claim.sh",
     "test:pg:ar-stripe-cases": "bash scripts/pgtest-ar-stripe-cases.sh",
