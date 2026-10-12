@@ -846,6 +846,10 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.178b, 2026-10-12**: `BUILD_HELPERS.md`, the brief for the real build on main: the spec and the plan by
+  `git show`, the rules from CLAUDE.md, wave 1 as nine kernel clusters with the prototype's functions to lift,
+  how to prepare, go, block and finish, wave 2 named, the decisions already taken (the owner: "prepare to build
+  it using all the helpers").
 - **v1.178, 2026-10-12**: contracts from clauses: a clause has a scope and a version, the sign page assembles
   the base plus the trade's exhibit and names its version; Settings → Contracts and clauses holds the library
   with Edit, *+ a clause* and *preview per trade*; an office edit waits on a controller or a dev with a push,
