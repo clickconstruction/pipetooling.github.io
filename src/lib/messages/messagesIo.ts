@@ -6,7 +6,7 @@
  * `sentCopiesIo` does, and the rows are typed by the loaders (`contacts/load.ts`, `messages/load.ts`).
  *
  * The thread also shows every email the app already sent (`sent_documents`, through `loadSentEmailsTo`): a read-side
- * overlay, never rows written into `messages` (cut 6 backfills those).
+ * overlay, never rows written into `messages`. Cut 6's lines carry their files from `message_attachments`.
  */
 import { supabase } from '../supabase'
 import { fetchAllRows } from '../supabasePaging'
@@ -17,6 +17,7 @@ import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type Cont
 import { loadSentEmailsTo } from '../sent/sentCopiesIo'
 import { factJobKeys, railJobKeys, type InviteJobRow, type ProjectRolesRow } from './factJobs'
 import { jobTilesByKey, type BidTileRow, type GcProjectTileRow, type JobTile, type PipelineTileRow } from './jobTiles'
+import { lineFilesFromRows, withLineFiles, type MessageAttachmentRow } from './lineFiles'
 import { jobRefOf, threadMessagesFromRows, type MessageRow } from './load'
 import { sentLines } from './sentLines'
 import type { ThreadMessage } from './thread'
@@ -49,6 +50,12 @@ const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, created_at'
 const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at'
 const MESSAGE_COLS =
   'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by'
+
+const ATTACHMENT_COLS =
+  'id, message_id, sort_order, kind, name, mime, size_bytes, bucket_path, left_in_gmail, url, host, paper, paper_answer, paper_answered_by, paper_answered_at'
+
+/** Before the email migration is pushed, the table is not there: the lines then have no files. */
+const isMissingTable = (code: string | null | undefined): boolean => code === '42P01' || code === 'PGRST205'
 
 const unique = (ids: readonly (string | null | undefined)[]) => [...new Set(ids.filter((id): id is string => Boolean(id)))]
 
@@ -160,21 +167,32 @@ async function loadTiles(keys: readonly string[], todayYmd: string): Promise<Rec
   )
 }
 
+/** The files and links on the lines (cut 6, email in). None while the table is not there yet. */
+export async function loadLineFiles(): Promise<MessageAttachmentRow[]> {
+  return fetchAllRows<MessageAttachmentRow>(async (a, b) => {
+    const page = (await from('message_attachments').select(ATTACHMENT_COLS).order('id').range(a, b)) as unknown as Result<MessageAttachmentRow[]>
+    return page.error && isMissingTable(page.error.code) ? { data: [], error: null } : page
+  }, 'load the files on the lines')
+}
+
 /** Everything the view and the window draw, at `nowIso`. */
 export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
   const spine = await loadSpineRows()
-  const records = await loadRecords(spine.contacts)
+  const [records, fileRows] = await Promise.all([loadRecords(spine.contacts), loadLineFiles()])
   const contacts = contactsFromRows(spine.contacts, spine.channels, spine.jobs, records)
-  const userIds = unique([...spine.messages.flatMap((m) => [m.who_user_id, m.back_by]), ...spine.contacts.map((c) => c.off_by)])
+  const userIds = unique([
+    ...spine.messages.flatMap((m) => [m.who_user_id, m.back_by]),
+    ...spine.contacts.map((c) => c.off_by),
+    ...fileRows.map((f) => f.paper_answered_by),
+  ])
   const [users, facts, copies] = await Promise.all([
     inSlices<{ id: string; name: string | null }>(userIds, (ids) => supabase.from('users').select('id, name').in('id', ids), 'load the names of the team'),
     loadFactRows(contacts),
     loadSentEmailsTo(contacts.flatMap((c) => c.channels.filter((ch) => ch.kind === 'email').map((ch) => ch.value))),
   ])
   const userNames = Object.fromEntries(users.map((u) => [u.id, u.name ?? '']))
-  const messages = [...threadMessagesFromRows(spine.messages, { userNames, contacts }), ...sentLines(copies, contacts)].sort(
-    (a, b) => Date.parse(a.at) - Date.parse(b.at),
-  )
+  const own = withLineFiles(threadMessagesFromRows(spine.messages, { userNames, contacts }), lineFilesFromRows(fileRows))
+  const messages = [...own, ...sentLines(copies, contacts)].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
   const factKeys = factJobKeys(contacts, facts)
   const rails = Object.fromEntries(contacts.map((c) => [c.id, railJobKeys(c, factKeys[c.id] ?? [])]))
   const keys = unique([...Object.values(rails).flat(), ...messages.map((m) => m.jobId)])
@@ -183,6 +201,18 @@ export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
 }
 
 // ---------- the presses ----------
+
+/**
+ * The office's answer to a paper offer on a line (cut 6): filed, once the company window filed it, or not it. A trigger
+ * stamps who and when. Refused in words when nothing was answered (training mode, a digital twin).
+ */
+export async function answerPaper(attachmentId: string, answer: 'filed' | 'not_it'): Promise<void> {
+  const rows = taken(
+    (await from('message_attachments').update({ paper_answer: answer } as never).eq('id', attachmentId).select('id')) as unknown as Result<{ id: string }[]>,
+    'answer the offer',
+  )
+  if (rows.length === 0) throw new Error('That offer could not be answered from this account.')
+}
 
 const jobArgs = (key: string | null) => {
   const ref = jobRefOf(key)

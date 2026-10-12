@@ -2,7 +2,7 @@
 title: find every message with a person in one place
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back
+keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox
 order: 116
 ---
 Messages lists each person the office works with on GC projects. Press a person to read every message with them in one thread.
@@ -63,6 +63,30 @@ On a customer's message, the office also sees {{button:outline|Start a change or
 
 Press Escape to go back to the thread.
 
+## Open a file that came with an email
+
+An email's files show as chips under its words. A PDF has a red badge and a picture a green one. A link has an arrow.
+
+1. Press a file's chip. The message opens.
+2. Under **Attachments**, press {{button:outline|Open}} beside the file.
+
+The file opens in a new tab. Open shows our copy, kept when the email came. A link opens at its own address.
+
+A file too big to keep stays in Gmail. That file's row says so and has no {{button:outline|Open}}.
+
+## File a paper that came by email
+
+A trade partner may email us their certificate of insurance or their W-9. The thread offers that file under its message. The app never files it on its own.
+
+- Press {{button:blue|File this as their certificate}}. The company window opens at **Insurance** with the file's link in the form. Fill in the day it runs out. Then press {{button:blue|File the certificate}}.
+- Press {{button:outline|It is not}} when the file is something else. The offer goes away for everyone.
+
+Once the certificate is filed, the message says who filed it and on what day.
+
+A W-9 offer has {{button:outline|Go to their W-9 paper}}. A W-9 is not filed from an email yet.
+
+Filing a certificate is a dev's job for now. Others see {{button:outline|Go to their insurance paper}} in its place.
+
 ## Keep a person's jobs
 
 A person's jobs show as tiles under the top of the window. The star marks the job where a new message from them lands.
@@ -104,6 +128,6 @@ The number joins that person. Every message from the number and the person stays
 
 ## What shows in a thread today
 
-A thread holds the emails the office sent them from the app. Calls, texts and the emails they send us join it in later updates.
+A thread holds the emails the office sent them from the app. A thread also holds the emails they send to our bids inbox. Calls and texts join it in a later update.
 
 An estimator does not see the emails we sent in a thread.

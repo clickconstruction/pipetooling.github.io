@@ -7,7 +7,7 @@
  * Who fills what, as agreed on 2026-10-12: cut 2 (Follow up) the who-has-it pill, the state rows of ⋯, the owed strip,
  * the settling note and a note's back day above the box, a heard day's offer under a line, a highlighted body and the
  * message window's highlight slot; cut 3 the reply box; cut 4 the flow panel at the side; cut 8 the portal pill in the
- * status row.
+ * status row; cut 6 a paper's offer under its line.
  */
 import { createElement, Fragment, type ReactNode } from 'react'
 import { useChangeOrderThreadSlots } from '../../changeOrders/useChangeOrderThreadSlots'
@@ -15,6 +15,8 @@ import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
 import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
+import { hasPaperOffer } from '../../../lib/messages/lineFiles'
+import { PaperOffers } from './PaperOffers'
 
 /** A row of the header's ⋯ menu. The window's own rows (Show all text, Open their record) come first. */
 export interface ThreadMenuRow {
@@ -116,5 +118,7 @@ export function useThreadSlots(): ThreadSlots {
   const flow: ThreadSlots = { side: (c) => <FlowTab key={c.id} at={{ contactId: c.id }} side /> }
   // Cut 4b: a change order from a customer's message, after cut 2's in both slots it shares.
   const changeOrders = useChangeOrderThreadSlots()
-  return mergeThreadSlots(followUp, flow, changeOrders)
+  // Cut 6: a file that reads as a trade partner's paper, offered under its line until someone answers it.
+  const email: ThreadSlots = { underLine: (m, c) => (hasPaperOffer(m.files, c) ? <PaperOffers key={m.id} message={m} contact={c} /> : null) }
+  return mergeThreadSlots(followUp, flow, changeOrders, email)
 }

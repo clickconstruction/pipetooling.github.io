@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { GcCompanyWindow, type CompanyPapersDoor } from './GcCompanyWindow'
 import { PartnerName } from './GcPartnerName'
-import { GcCompanyOpenerContext } from './gcCompanyOpener'
+import { GcCompanyOpenerContext, type CompanyAt } from './gcCompanyOpener'
 import { boardStateFromRows, type BoardRows } from '../../lib/gc/boardRows'
 import { clinicBoardRows } from '../../lib/gc/boardTestRows'
 import { partnerActivity } from '../../lib/gc/companyFile'
@@ -263,7 +263,7 @@ describe('GcCompanyWindow · Documents (B6-b-ii)', () => {
 })
 
 describe('GcCompanyWindow · opened at a paper (the opener’s CompanyAt)', () => {
-  function openAt(at: { tab?: 'about' | 'documents' | 'portal'; doc?: string; send?: boolean }, entries: CompanyPapersDoor['entries'] | 'none' = { msa: null, w9: 'entry-w9' }) {
+  function openAt(at: CompanyAt, entries: CompanyPapersDoor['entries'] | 'none' = { msa: null, w9: 'entry-w9' }) {
     const state = boardStateFromRows(rows())
     const partner = state.partners.find((p) => p.id === 'hillside')!
     const papers = (e: CompanyPapersDoor['entries']): CompanyPapersDoor => ({
@@ -305,6 +305,39 @@ describe('GcCompanyWindow · opened at a paper (the opener’s CompanyAt)', () =
     expect(within(dialog).getByRole('tab', { name: /^Documents/ }).getAttribute('aria-selected')).toBe('true')
     expect(dialog.querySelector('[data-gc-paper-send]')).toBeNull()
     expect(within(dialog).queryByRole('button', { name: 'Ask for it' })).toBeNull()
+  })
+
+  const COI_FILE = { attachmentId: 'f-coi', name: 'Hillside COI 2027.pdf', link: 'https://clicktooling.com/files/messages/f-coi', from: 'Greg’s email' }
+
+  it('opens the certificate’s form with a file from a thread’s line: where it came from, and its lasting link (Messages cut 6)', async () => {
+    const state = boardStateFromRows(rows())
+    const partner = state.partners.find((p) => p.id === 'hillside')!
+    const onRecordInsurance = vi.fn(() => Promise.resolve())
+    const papers: CompanyPapersDoor = { entries: { msa: null, w9: 'entry-w9' }, onSend: vi.fn(), onRecordInsurance, onMarkCoiGood: vi.fn() }
+    render(<GcCompanyWindow state={state} partner={partner} lang="en" onLanguage={vi.fn()} onClose={vi.fn()} onOpenProject={() => undefined} papers={papers} at={{ tab: 'documents', doc: 'insurance', file: COI_FILE }} />)
+    const dialog = screen.getByRole('dialog', { name: partner.company })
+    const form = within(dialog.querySelector('[data-gc-record-insurance="hillside"]') as HTMLElement)
+    expect(form.getByText('From Greg’s email:')).toBeTruthy()
+    expect(form.getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('/files/messages/f-coi')
+    expect(dialog.querySelectorAll('[data-from-email]').length).toBe(1)
+    expect((form.getByLabelText('Link to the certificate') as HTMLInputElement).value).toBe(COI_FILE.link)
+    fireEvent.change(form.getByLabelText('The day their insurance runs out'), { target: { value: '2027-09-30' } })
+    fireEvent.click(form.getByRole('button', { name: 'File the certificate' }))
+    await waitFor(() => expect(onRecordInsurance).toHaveBeenCalledWith('2027-09-30', COI_FILE.link))
+  })
+
+  it('shows where a W-9 from a line came from at its row, and that it is not filed from here yet', () => {
+    const { dialog } = openAt({ tab: 'documents', doc: 'w9', file: { ...COI_FILE, name: 'Hillside W-9.pdf' } })
+    expect(dialog.querySelector('[data-gc-record-insurance]')).toBeNull()
+    expect(dialog.querySelector('[data-from-email="f-coi"]')!.textContent).toContain('Hillside W-9.pdf')
+    expect(within(dialog).getByText('A W-9 that came by email is not filed from here yet. It stays on its line.')).toBeTruthy()
+  })
+
+  it('shows a certificate from a line, read only, to a reader who may not file one', () => {
+    const { dialog } = openAt({ tab: 'documents', doc: 'insurance', file: COI_FILE }, 'none')
+    expect(dialog.querySelector('[data-gc-record-insurance]')).toBeNull()
+    expect(dialog.querySelector('[data-from-email="f-coi"]')).toBeTruthy()
+    expect(within(dialog).getByText('Filing their insurance is a dev’s while GC mode is built.')).toBeTruthy()
   })
 
   it('opens on About when only the company is named, as every caller did before', () => {

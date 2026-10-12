@@ -254,6 +254,7 @@ import type { Contact } from '../lib/contacts/kernel'
 import { jobRefOf } from '../lib/messages/load'
 import {
   addContactJob,
+  answerPaper,
   loadMessagesView,
   nameContact as nameMessagesContact,
   removeContactJob,
@@ -2415,7 +2416,7 @@ export default function GcProjects() {
       )}
       {openCompany && board && (
         <GcCompanyWindow
-          key={`${openCompany.id}:${companyAt?.tab ?? ''}:${companyAt?.doc ?? ''}:${companyAt?.send ? 'send' : ''}`}
+          key={`${openCompany.id}:${companyAt?.tab ?? ''}:${companyAt?.doc ?? ''}:${companyAt?.send ? 'send' : ''}:${companyAt?.file?.attachmentId ?? ''}`}
           state={board}
           partner={openCompany}
           lang={langs[openCompany.id] ?? 'en'}
@@ -2444,6 +2445,14 @@ export default function GcProjects() {
                   onRecordInsurance: async (expiresOn, url) => {
                     await recordCompanyInsurance(openCompany.id, expiresOn, url)
                     await refreshBoard()
+                    // A certificate offered from a thread's line (Messages cut 6), filed with its own link: its offer is
+                    // answered, so the line says Filed. A link changed by hand files another file and leaves the offer.
+                    const offered = companyAt?.file
+                    if (offered && url.trim() === offered.link) {
+                      await answerPaper(offered.attachmentId, 'filed')
+                        .then(rereadMessages)
+                        .catch((e: unknown) => showToast(formatErrorMessage(e, 'The certificate is filed, but its line still offers it.'), 'error'))
+                    }
                   },
                   // A certificate from their portal, looked at (P5b-2m): marked good, then the board reads again.
                   onMarkCoiGood: async (paperId) => {

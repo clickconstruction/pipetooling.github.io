@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { MessageWindow } from './MessageWindow'
 import { renderWithProviders } from '../../../test/renderSmokeMocks'
 import { openHtmlPrintWindow } from '../../../lib/jobsDocuments/printWindow'
@@ -32,6 +32,23 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     fireEvent.click(within(facts).getByRole('button', { name: 'change' }))
     expect(onChangeJob).toHaveBeenCalledTimes(1)
     expect(win.querySelector('[data-message-full]')!.textContent).toBe(m.body)
+  })
+
+  it('lists an email’s Attachments: where each is, and Open where it can be opened (cut 6)', () => {
+    renderWithProviders(<MessageWindow message={line('m-greg-email-in')} contact={greg} tile={undefined} onClose={vi.fn()} />)
+    const files = screen.getByRole('dialog', { name: 'Email: Hillside sitework, Boerne, rev 1' }).querySelector('[data-message-files]') as HTMLElement
+    expect(within(files).getByRole('heading', { name: 'Attachments (4)' })).toBeTruthy()
+    expect([...files.querySelectorAll('[data-message-file]')].map((r) => r.textContent)).toEqual([
+      'PDFHillside-Boerne-sitework-rev1.pdf · 1.3 MB · our copy kept on arrivalOpen',
+      'IMGsite-photo-pad.jpg · 2.8 MB · our copy kept on arrivalOpen',
+      '↗Addendum 2 drawings · a link, not a fileOpen',
+      'FHillside-Boerne-full-set.zip · 31 MB · too big to keep, it stays in Gmail',
+    ])
+    expect(within(files).getByRole('link', { name: 'Open Hillside-Boerne-sitework-rev1.pdf' }).getAttribute('href')).toBe('/files/messages/f-greg-sitework')
+    expect(within(files).getByRole('link', { name: 'Open Addendum 2 drawings' }).getAttribute('href')).toBe('https://drive.example/addendum-2')
+    cleanup()
+    renderWithProviders(<MessageWindow message={line('m-greg-text-in')} contact={greg} tile={undefined} onClose={vi.fn()} />)
+    expect(screen.getByRole('dialog', { name: 'Text' }).querySelector('[data-message-files]')).toBeNull()
   })
 
   it('a line on the person says so; a sent copy keeps its own job and says where its copy is kept', () => {

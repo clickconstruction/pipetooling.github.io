@@ -8,12 +8,14 @@ import { isSentLine } from '../../../lib/messages/sentLines'
 import { callLength, channelWord, fullWhen, type ThreadMessage } from '../../../lib/messages/thread'
 import { PhoneSheet } from '../../PhoneSheet'
 import { Btn } from '../gcUi'
+import { MessageFiles } from './LineFiles'
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch] ?? ch)
 
 /**
  * Messages, cut 1's screens: one message in full, as a window over its thread (the prototype's `openMessage`, v1.159).
- * Its facts (who, when, through what, its job), its whole words, and its tools: a later cut's first slot (cut 2's
+ * Its facts (who, when, through what, its job), an email's Attachments with Open (cut 6), its whole words, and its
+ * tools: a later cut's first slot (cut 2's
  * highlight, which reads Remove or Highlight by the selection), Copy, Print or save as PDF, and Share. It is drawn
  * inside the thread window's panel, so a press on its backdrop never reaches the thread's. A sheet from the bottom on a
  * phone (`PhoneSheet`, cut 10).
@@ -103,6 +105,7 @@ export function MessageWindow({
             </>
           )}
         </dl>
+        {message.files && message.files.length > 0 && <MessageFiles files={message.files} />}
         <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
           {first?.(message, selection)}
           <Btn onClick={() => void copy()} title="Copies the whole message.">
