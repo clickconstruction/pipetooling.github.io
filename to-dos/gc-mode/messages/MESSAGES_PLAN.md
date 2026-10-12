@@ -821,6 +821,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.168, 2026-10-12**: a press on a round pill in a loop box opens the round's window: a change order with its
+  facts, whether the customer opened it, the paper and Ask again; a pay application with what it covers, the
+  certificate, the waivers and the trades on it; any other round with its words and its ask (the owner, 2026-10-12).
 - **v1.167, 2026-10-12**: *See their page* on its own line under the flow panel and on the step card, with a small
   globe before it, the way a portal link reads (the owner, 2026-10-12).
 - **v1.166, 2026-10-12**: the thread header in four calm rows: the name with *Customer: Helotes Dental Office ▾*
