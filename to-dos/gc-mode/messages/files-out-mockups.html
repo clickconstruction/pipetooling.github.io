@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Messages, cut 7: files going out</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e7f5ec;--chip:#eef1f5;--email-ch:#6b4fbb;--text-ch:#1a7f3c;--radius:10px}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+h2.sec{font-size:16px;margin:26px 0 8px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:900px;line-height:1.45}
+.opt{max-width:900px;margin:0 0 22px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.frame{width:720px;max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:8px;position:relative}
+.frame .st{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45;max-width:900px}
+button{font:inherit;cursor:default;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:8px;padding:6px 10px}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.small{padding:3px 8px;font-size:13px}
+button.quiet{border-color:transparent;background:transparent;color:var(--accent);padding:4px 6px}
+.note{color:var(--text-muted)}
+.box{border:1px solid var(--border);border-radius:10px;padding:10px;min-height:64px;font-size:14px;color:var(--text);background:#fff}
+.box .from{display:block;font-size:11.5px;color:var(--text-muted);margin-top:6px}
+.lastrow{display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.lastrow .sp{flex:1}
+.tie{font-size:13px;border:1px solid var(--border);border-radius:999px;padding:3px 10px;background:var(--chip)}
+.att{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.att .chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:4px 8px;font-size:12px;background:var(--surface)}
+.att .chip .x{color:var(--text-muted);margin-left:2px}
+.ic{width:22px;height:22px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;background:#8a93a0;flex:none}
+.ic.pdf{background:#c0392b}.ic.image{background:#2a8f5a}.ic.link{background:#1f5fbf}.ic.sheet{background:#1d7a4c}
+.thumb{width:28px;height:22px;border-radius:4px;background:linear-gradient(135deg,#9bc 0%,#7a9 60%,#cc9 100%);flex:none}
+.pick{width:400px;max-width:100%;border:1px solid var(--border);border-radius:10px;background:#fff;box-shadow:0 8px 24px rgba(20,30,50,.14);font-size:13.5px;overflow:hidden;margin:6px 0 0 auto}
+.pick .ph{font-size:11.5px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:8px 10px 4px;background:#fafbfc;border-top:1px solid var(--border)}
+.pick .ph:first-child{border-top:none}
+.pick .row{display:flex;gap:8px;align-items:flex-start;padding:7px 10px;border-top:1px solid #f0f2f5}
+.pick .row .wn{flex:1;min-width:0}
+.pick .row .wn b{display:block;font-weight:600}
+.pick .row .wn small{color:var(--text-muted);font-size:12px}
+.pick .row.star .wn b::before{content:"★ ";color:#c98a00}
+.pick .row .pv{font-size:12px}
+.home{display:inline-block;font-size:11px;border-radius:999px;padding:0 7px;margin-left:4px;background:var(--chip);color:var(--text-muted);font-weight:400}
+.home.plans{background:#e8f0fc;color:#1f4f9f}.home.team{background:#f3ecfb;color:#5b3a99}.home.trade{background:#e7f5ec;color:#1a6b39}.home.sent{background:#fff1e0;color:#8a4b00}.home.came{background:#eef1f5;color:#465060}
+.sendw{border:1px solid var(--border);border-radius:12px;overflow:hidden;width:620px;max-width:100%}
+.sendw .hd{background:#f6f3ec;padding:8px 12px;font-size:13px;border-bottom:1px solid #e5dfd0}
+.sendw .hd b{font-size:14px}
+.sendw .bd{padding:10px 12px;font-size:14px;line-height:1.5}
+.sendw .fn{margin:8px 12px 0;padding:8px 10px;border-radius:8px;background:var(--accent-soft);font-size:13px;color:#203a63}
+.sendw .ft{padding:8px 12px;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);margin-top:10px}
+.sendw .btns{display:flex;gap:8px;justify-content:flex-end;padding:8px 12px;border-top:1px solid var(--border)}
+.sms{background:#e9f7ee;border-radius:14px;padding:9px 12px;max-width:420px;font-size:14px;line-height:1.45;white-space:pre-wrap}
+.sms a{color:#1f5fbf}
+.msg{border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin:8px 0 8px 40px;background:#f8fbff;position:relative}
+.msg .meta{font-size:12px;color:var(--text-muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.msg .meta .ch{font-weight:600;color:var(--email-ch)}
+.msg .meta .job{margin-left:auto;background:var(--chip);padding:1px 8px;border-radius:999px;color:var(--text)}
+.msg .subject{font-weight:600;margin-top:6px}
+.msg .body{margin:4px 0 0}
+.attl>div{display:flex;gap:8px;align-items:center;padding:7px 0;border-top:1px solid var(--border);font-size:13.5px;flex-wrap:wrap}
+.attl .nm{flex:1;min-width:220px}
+.mw h3{font-size:14px;margin:12px 0 6px}
+.facts{display:grid;grid-template-columns:110px 1fr;gap:4px 12px;font-size:13px;margin:8px 0 10px}
+.facts dt{color:var(--text-muted)}.facts dd{margin:0}
+.cut{color:var(--warn);font-size:12.5px}
+.phone{width:330px;max-width:100%;border:1px solid var(--border);border-radius:22px;padding:14px;background:#fff}
+.phone .bar{font-size:11px;color:var(--text-muted);text-align:center;margin-bottom:10px}
+.page{border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;font-size:14px}
+.page .co{font-weight:700;margin-bottom:6px}
+.page .spin{width:22px;height:22px;border-radius:50%;border:3px solid #cfd8e3;border-top-color:var(--accent);margin:10px auto}
+.sheet{border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:13.5px;background:#fbfcfd;width:440px;max-width:100%;margin-top:6px}
+.sheet label{display:flex;gap:6px;align-items:flex-start;margin:4px 0}
+.done{margin-top:6px;font-size:12.5px;color:var(--ok)}
+.two{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start}
+table.data{border-collapse:collapse;font-size:13px;max-width:900px;margin:6px 0 10px}
+table.data th,table.data td{border:1px solid var(--border);padding:4px 8px;text-align:left;vertical-align:top}
+table.data th{background:#f3f5f8;font-weight:600}
+ul.list,ol.list{max-width:900px;font-size:13.5px;line-height:1.5;margin:0 0 8px 18px;padding:0}
+ol.list li,ul.list li{margin-bottom:5px}
+code{font-size:12.5px;background:#eef1f5;padding:0 4px;border-radius:4px}
+.pickk{max-width:900px;font-size:13.5px;line-height:1.5}
+</style>
+</head>
+<body>
+<h1>Messages, cut 7: files going out, the job's one list and our own links</h1>
+<p class="lead">Rosa writes to Greg Paulk of Hillside Excavation about B482 Boerne Retail Shell and presses <b>Attach</b> beside the box. One list offers the job's own files first: the papers the app makes, the plan sets, the job's Drive folder in its Plans and Team only halves, what a trade uploaded from its portal, what we sent before and what came in on a message. Then a file from this computer or a photo. The two kernels on main already decide everything a person reads here: <code>documents/jobFiles.ts</code> makes the one list and <code>documents/outgoing.ts</code> decides how each file goes. This cut adds what they wait on: the reads, a <code>drive-link</code> function that hands out our own links to Drive files, the screens in helper 3's reply box, and the sent copy that keeps its files. Every name below is the prototype's demo cast.</p>
+
+<h2 class="sec">The screens</h2>
+
+<div class="opt"><h2>1 · Attach in the reply box <small>· helper 3's box (R1, #5497), its last row as v1.135 has it: Tie to on the left, Attach and Send on the right</small></h2>
+<div class="frame"><div class="st">Greg Paulk · Email</div>
+<div class="box">Greg, here is addendum 2 and the plan set with it. The rock clause is marked up where we talked.<span class="from">from bids@clickconstruction · Click Construction</span></div>
+<div class="att">
+<span class="chip"><span class="ic pdf">PDF</span><span>Addendum 2.pdf <span class="note">· 412 KB</span></span><span class="x">×</span></span>
+<span class="chip"><span class="ic pdf">PDF</span><span>Boerne Retail Shell plans, rev 2 <span class="note">· 184 MB</span></span><span class="x">×</span></span>
+<span class="chip"><span class="ic pdf">PDF</span><span>Rock clause, marked up.pdf <span class="note">· 640 KB</span></span><span class="x">×</span></span>
+</div>
+<div class="lastrow"><span class="tie">Tie to · B482 Boerne Retail Shell</span><span class="sp"></span><button>Attach</button><button class="primary">Send email…</button></div>
+</div>
+<p class="why">Attach shows for an email or a text, never a note, as <code>compose.ts</code> already says. Each chip has its × and the hover card from <code>chipHover</code>: <i>From this computer. It goes into the job's Team only folder on the way out. On an email it goes as the file. On a text it goes as our link.</i> A file is on the message once, by its key, so picking it again says <i>That one is on it already.</i></p></div>
+
+<div class="opt"><h2>2 · The Attach picker <small>· <code>attachPicker</code>: the step's papers starred first, then the job's one list, then this computer and a photo</small></h2>
+<div class="frame"><div class="st">Above Attach, while the box holds the Papers in quick reply</div>
+<div class="pick">
+<div class="ph">For Papers in · starred</div>
+<div class="row star"><span class="ic pdf">PDF</span><span class="wn"><b>The W-9 form</b><small>What they fill in and send back, or upload in their portal.</small></span></div>
+<div class="row star"><span class="ic link">↗</span><span class="wn"><b>Their portal link</b><small>Uploads there land on their Documents and finish the step.</small></span></div>
+<div class="ph">From B482 Boerne Retail Shell</div>
+<div class="row"><span class="ic pdf">PDF</span><span class="wn"><b>Boerne Retail Shell plans, rev 2 <span class="home plans">plan set</span></b><small>184 MB · a plan set, so it goes as our link · in their portal under the plans</small></span><button class="quiet pv">Preview</button></div>
+<div class="row"><span class="ic pdf">PDF</span><span class="wn"><b>Addendum 2.pdf <span class="home plans">Drive · Plans</span></b><small>412 KB · in their portal under the plans</small></span><button class="quiet pv">Preview</button></div>
+<div class="row"><span class="ic pdf">PDF</span><span class="wn"><b>Bid tab, Sitework.pdf <span class="home team">Drive · Team only</span></b><small>96 KB</small></span><button class="quiet pv">Preview</button></div>
+<div class="row"><span class="ic image">IMG</span><span class="wn"><b>Rock at the pad, test pit 3.jpg <span class="home trade">from their portal</span></b><small>3.4 MB</small></span><button class="quiet pv">Preview</button></div>
+<div class="row"><span class="ic pdf">PDF</span><span class="wn"><b>Our bid, Boerne Retail Shell.pdf <span class="home sent">we sent it Oct 8</span></b><small>1.1 MB</small></span><button class="quiet pv">Preview</button></div>
+<div class="row"><span class="ic pdf">PDF</span><span class="wn"><b>Hillside-Boerne-sitework-rev1.pdf <span class="home came">came in Oct 6</span></b><small>1.2 MB</small></span><button class="quiet pv">Preview</button></div>
+<div class="ph">Or</div>
+<div class="row"><span class="ic">💻</span><span class="wn"><b>A file from this computer</b><small>Kept on the message and in the job's Team only folder.</small></span></div>
+<div class="row"><span class="ic image">📷</span><span class="wn"><b>A photo</b><small>Goes as the picture on an email and as our link on a text. Saved to the job's photos.</small></span></div>
+</div>
+</div>
+<p class="why">The facts are the kernel's, each its own piece: the size, how it goes when it goes as our link, and the portal page when this person's portal has one. The small tag says where it lives, from <code>JobFile.home</code> and <code>source</code>. A Drive file reached two ways is one row. A sent copy's file that is already listed adds no row. A message on nobody's job shows <i>This message is on nobody's job, so nothing to pick from a job.</i> A job with no files shows <i>Nothing on this job yet.</i> While the Drive folder reads, its rows show <i>Reading the job's Drive folder…</i> under the app's own rows, and a folder that will not read says so and leaves the rest.</p></div>
+
+<div class="opt"><h2>3 · A file's preview <small>· v1.148: the file as it reads, with Attach from there</small></h2>
+<div class="frame"><div class="st">Preview from the picker</div>
+<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><b>Addendum 2.pdf</b><div class="note" style="font-size:12.5px">412 KB · from B482 Boerne Retail Shell</div></div><button class="quiet">Close</button></div>
+<div style="margin:10px 0;height:150px;border:1px solid var(--border);border-radius:8px;background:repeating-linear-gradient(0deg,#fff 0 18px,#f3f5f8 18px 19px);display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:13px">The first page, as Drive previews it</div>
+<div style="display:flex;gap:8px;justify-content:flex-end"><button>Open in a tab</button><button class="primary">Attach it</button></div>
+</div>
+<p class="why">The head line is <code>previewFacts</code>: its size, its pages when known, how it goes when it goes as our link, and the job. A paper the app makes shows the paper itself, as its own window draws it. A Drive file shows Drive's preview of it, read through the function, so a Team only file is never opened up to make the preview. Open in a tab goes through helper 1's office page, <code>/files/drive/&lt;id&gt;</code>, beside cut 6's <code>/files/messages/&lt;id&gt;</code>. One page opens every file the office opens.</p></div>
+
+<div class="opt"><h2>4 · The send window, an email <small>· R1's send window with the files: the chips with their facts, the note, the foot</small></h2>
+<div class="frame"><div class="st">Send email… pressed</div>
+<div class="sendw">
+<div class="hd"><b>Boerne Retail Shell: addendum 2 and the plans</b><div class="note">To Greg Paulk &lt;greg@hillside.example&gt; · from bids@clickconstruction</div></div>
+<div class="bd">Greg, here is addendum 2 and the plan set with it. The rock clause is marked up where we talked.</div>
+<div class="att" style="padding:0 12px">
+<span class="chip"><span class="ic pdf">PDF</span><span>Addendum 2.pdf <span class="note">· 412 KB</span></span></span>
+<span class="chip"><span class="ic link">↗</span><span>Boerne Retail Shell plans, rev 2 <span class="note">· our link to their portal · 184 MB</span></span></span>
+<span class="chip"><span class="ic pdf">PDF</span><span>Rock clause, marked up.pdf <span class="note">· 640 KB</span></span></span>
+</div>
+<div class="fn">Boerne Retail Shell plans, rev 2 goes as our link, the way a plan set always has. The link opens their portal at the plans. The link is ours, not Drive’s. We see who opened it, and we can cut it off.</div>
+<div class="ft">Click Construction, San Antonio, Texas. About Boerne Retail Shell. A copy of this email is kept in Documents, with its files.</div>
+<div class="btns"><button class="quiet">Back to the box</button><button class="primary">Send</button></div>
+</div>
+</div>
+<p class="why">The chips' facts are <code>chipFacts</code>, the note is <code>emailFileNote</code> (a sentence per reason: a plan set, over the email limit, a size not known yet, the files together too big), and the foot is <code>sentCopyFoot</code>. One file over 10 MB goes as our link, and when the files together pass 20 MB the largest go as links until the rest fit. Rock clause, marked up.pdf goes into Team only, under Sent by us, the moment Send is pressed, and the email carries the file itself.</p></div>
+
+<div class="opt"><h2>5 · The send window, a text <small>· every file as our link, one line per portal page</small></h2>
+<div class="frame"><div class="st">Send text… pressed, the same three files</div>
+<div class="two"><div class="sms">Greg, here is addendum 2 and the plan set with it. The rock clause is marked up where we talked.
+The plans are in your portal: <a>clicktooling.com/t/7Hq2#plans</a>
+Rock clause, marked up.pdf: <a>clicktooling.com/f/k3Pw9xQ</a></div>
+<div class="note" style="font-size:13px;max-width:240px;padding-top:6px">A text cannot carry a file, so each goes as our link. It opens their portal when the file has a page there.</div></div>
+</div>
+<p class="why"><code>linkLines</code> and <code>textFileNote</code>. The addendum and the plan set share one line, since both live under the plans in Greg's portal. Quo sends no picture messages, so a photo on a text goes as our link too. Texts stay off until R1's <code>TEXTS_ON</code> turns them on. The text path is wired in this cut so the lines are right the day it does.</p></div>
+
+<div class="opt"><h2>6 · The sent line, and the message window's Files <small>· the copy as it went: each file marked how it went, and each link with its opens</small></h2>
+<div class="frame"><div class="st">The thread, then the message window</div>
+<div class="msg"><div class="meta"><span class="ch">Email</span><span>Rosa · bids@</span><span class="job">B482 Boerne Retail Shell</span></div>
+<div class="subject">Boerne Retail Shell: addendum 2 and the plans</div>
+<div class="body">Greg, here is addendum 2 and the plan set with it. The rock clause is marked up where we talked.</div>
+<div class="att"><span class="chip"><span class="ic pdf">PDF</span><span>Addendum 2.pdf <span class="note">· sent as the file</span></span></span><span class="chip"><span class="ic link">↗</span><span>Boerne Retail Shell plans, rev 2 <span class="note">· sent as our link to their portal</span></span></span><span class="chip"><span class="ic pdf">PDF</span><span>Rock clause, marked up.pdf <span class="note">· sent as the file</span></span></span></div></div>
+<div class="mw" style="margin-top:10px"><h3>Files (3)</h3><div class="attl">
+<div><span class="ic pdf">PDF</span><span class="nm">Addendum 2.pdf <span class="note">· 412 KB · sent as the file · kept with the copy</span></span><button class="small">Open</button></div>
+<div><span class="ic link">↗</span><span class="nm">Boerne Retail Shell plans, rev 2 <span class="note">· sent as our link to their portal · they opened their portal twice since, last Mon Oct 12 at 2:10 PM</span></span><button class="small">Open</button></div>
+<div><span class="ic pdf">PDF</span><span class="nm">Rock clause, marked up.pdf <span class="note">· 640 KB · sent as the file · in the job's Team only folder</span></span><button class="small">Open</button></div>
+</div>
+<h3>On Jonah Vale's email of Oct 9, a file's own link</h3><div class="attl"><div><span class="ic link">↗</span><span class="nm">Bid tab, Sitework.pdf <span class="note">· sent as our link to the file · Jonah has no portal · opened once, Oct 9</span></span><button class="small">Open</button><button class="small">Cut it off</button></div>
+<div><span class="ic link">↗</span><span class="nm">Bid tab, Sitework.pdf, once it is cut off <span class="cut">· cut off by Rosa Mon Oct 12 · our link opens nothing now</span></span><button class="small">Open</button></div></div>
+</div></div>
+<p class="why">The chips come from the new columns on <code>message_attachments</code>: <code>sent_as</code> and the link. A link to their portal opens with the portal's own link. Its views are the whole portal's, so the window says how often they opened their portal since it went, never that they opened this file. A file's own link counts its opens in <code>public_page_views</code> under the surface <code>drive_link</code>, the way the portals count theirs. Cut it off shows on a file's own link, never on a portal link, which is cut off from the company window as today. Open goes through the same office page as screen 3. The sent copy in Documents keeps the files that went as files, and now the links too.</p></div>
+
+<div class="opt"><h2>7 · Their side: our link opens <small>· <code>/f/&lt;link&gt;</code> on the app's address, the way <code>/t/&lt;link&gt;</code> opens a trade's portal</small></h2>
+<div class="two">
+<div class="phone"><div class="bar">clicktooling.com/f/k3Pw9xQ</div><div class="page"><div class="co">Click Construction</div><div class="spin"></div><div>Opening Rock clause, marked up.pdf…</div><div class="note" style="font-size:12.5px;margin-top:6px">From Click Construction, for Boerne Retail Shell.</div></div></div>
+<div class="phone"><div class="bar">clicktooling.com/f/k3Pw9xQ</div><div class="page"><div class="co">Click Construction</div><div style="margin:10px 0">This link was turned off.</div><div class="note" style="font-size:13px">Ask Click Construction for a new one: (210) 555-0100.</div></div></div>
+</div>
+<p class="why">The page asks <code>drive-link</code>, which counts the open, then hands the file over. A file in the job's Plans half opens in Drive's own viewer, since that half is open to anyone with the link already and a 184 MB plan set reads best there. A file in Team only comes through the function itself, so Team only is never opened up. An expired link reads the same as one cut off, in the person's language once the portal's Spanish is on.</p></div>
+
+<div class="opt"><h2>8 · Save to Drive on a file that came in <small>· cut 6's screen 2, its second button: the message window's Attachments</small></h2>
+<div class="frame"><div class="st">Greg's email of Oct 6, its window</div>
+<div class="mw"><div class="attl">
+<div><span class="ic pdf">PDF</span><span class="nm">Hillside-Boerne-sitework-rev1.pdf <span class="note">· 1.2 MB · our copy kept on arrival</span></span><button class="small">Open</button><button class="small primary">Save to Drive</button></div>
+</div>
+<div class="sheet"><b>Save it to B482's Drive folder</b>
+<label><input type="radio" checked> <span><b>Team only</b><br><span class="note">Only the team sees it there. A quote or a photo goes here.</span></span></label>
+<label><input type="radio"> <span><b>Plans</b><br><span class="note">Anyone with the folder's link reads it, so trades see it with the plans.</span></span></label>
+<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px"><button class="quiet">Not now</button><button class="primary">Save it</button></div></div>
+<div class="done">Saved to the job's Team only folder, under From email. <button class="quiet small">Open in Drive</button></div>
+</div></div>
+<p class="why">Helper 1's screen 2 shows Open alone until this lands. Save to Drive copies our copy from the <code>message-attachments</code> bucket into the job's folder through the function and keeps the Drive file's id on the row. From then on the one list shows it once, where it lives in Drive. A message on nobody's job asks which job first. Team only is the pick for a quote or a photo, and Plans for anything else.</p></div>
+
+<h2 class="sec">What the handler keeps to</h2>
+<ol class="list">
+<li><b>Size and kind decide, never a person.</b> <code>outgoing.ts</code> already holds the rule: an email takes the file up to 10 MB, the files together up to 20 MB, and a plan set or a file of unknown size always goes as our link. A text carries everything as our link.</li>
+<li><b>Our link, not Drive's.</b> A trade partner's file with a portal page goes as their portal link at that page. A customer's goes the same way only where their portal has the page. An architect's, or any file with no page, goes as a file's own link, <code>clicktooling.com/f/&lt;link&gt;</code>, which names one file and nothing else.</li>
+<li><b>Team only stays team only.</b> The function reads a Team only file with the service account and hands its bytes to the person holding the link. It never changes a share. A Plans file opens in Drive's viewer, since that half is open to anyone with the link already.</li>
+<li><b>Every open is counted, and any link can be cut off.</b> An open is a <code>public_page_views</code> row. A cut-off link answers the turned-off page at once, and the file stays where it was.</li>
+<li><b>Nothing goes out that Documents does not hold.</b> A file from this computer goes into Team only, under Sent by us, before the email leaves. A photo goes into the job's photos. A send that cannot put the file there stops and says so, and nothing goes.</li>
+<li><b>Drive stays the one copy.</b> The one list reads the folder each time it is asked and copies nothing into the database. The rows hold only what the database already holds: our links, their opens, and how each file went.</li>
+</ol>
+
+<h2 class="sec">The data</h2>
+<table class="data">
+<tr><th>What</th><th>Where</th><th>Why</th></tr>
+<tr><td><code>drive_links</code>, new</td><td>One row per file's own link: its hash, never the link itself; the project; the Drive file and its half; its name, type and size; who made it and when; when it ends; when and by whom it was cut off; the message it went on.</td><td>Our link names one file, can end, and can be cut off. The three fences and the read-only blocks, as every new table gets.</td></tr>
+<tr><td><code>message_attachments</code>, three columns</td><td><code>sent_as</code> (the file, a link or the picture, null for one that came in), <code>drive_link_id</code>, and <code>drive_file_id</code>.</td><td>The sent copy keeps how each file went. A file saved to Drive is one row in the one list. The kernels already name the first and the last.</td></tr>
+<tr><td>Opens</td><td><code>public_page_views</code> with the surface <code>drive_link</code>.</td><td>No new table. The portals count their views here already.</td></tr>
+</table>
+<p class="why">It all waits on cut 6's table (#5520) being on prod, since the new columns go on it.</p>
+
+<h2 class="sec">The cut list</h2>
+<ol class="list">
+<li><b>7a · The SQL.</b> <code>drive_links</code> with its policies, the three house calls and <code>SET lock_timeout</code>. The three columns on <code>message_attachments</code>. <code>cut_drive_link</code> for the office team. A bed: who reads, who cuts, a link that ends, the CHECK that a sent row says how it went. The migration note. After #5520 on prod.</li>
+<li><b>7b · <code>drive-link</code>.</b> Two doors in one function. The open door takes a link, counts the open, and answers the file: Drive's viewer for Plans, the bytes for Team only, or the turned-off words. The office door, a signed-in member of the office team, does four things: <i>list</i> a job's folder in its two halves, <i>put</i> a file into Team only or the photos, <i>link</i> a Drive file, and <i>save</i> a file that came in into Drive. Built on <code>driveUpload.ts</code> and the secrets <code>gc-drive-access</code> already has. Its <code>EDGE_FUNCTIONS.md</code> section.</li>
+<li><b>7c · The reads.</b> <code>documents/jobFilesIo.ts</code>: one read per job that hands <code>jobFiles</code> its six sources, with the Drive folder from 7b and the rest from the tables. It fixes the two places the kernels named before #5520 was written: <code>ArrivedFileRow.drive_file_id</code> and <code>message_attachments.sent_as</code>. It renames <code>documents/jobFiles.ts</code>'s <code>JobPaperRow</code> to <code>AppPaperRow</code>, since <code>flows/jobPapers.ts</code> exports another.</li>
+<li><b>7d · The two pages.</b> For a person outside, <code>/f/:link</code>, with no sign-in, the opening and turned-off words, its route in <code>APP_DIRECTORY.md</code> and a render smoke. For the office, the <code>drive</code> source on helper 1's <code>/files/:source/:id</code> page and its <code>fileRoute.ts</code> kernel from cut 6, asking 7b's office door for the file. The outside link stays short for a text and names a link, not a row, so it is not under <code>/files/</code>.</li>
+<li><b>7e · Sending the files.</b> <code>messages-email</code> takes the message's files. A file goes as its bytes, read from Drive, our bucket or the paper the app draws. A link is made through 7b. Each file becomes a <code>message_attachments</code> row with how it went, and the sent copy keeps them. <code>quo-send</code> carries the link lines for the day texts turn on. Built against R1's branch and re-seated when it lands.</li>
+<li><b>7f · The screens.</b> Attach and the picker, the preview, the chips with ×, the send window's notes, the sent line's chips, the window's Files with opens and Cut it off, and Save to Drive. Render smokes for each, and the help guide's section, <i>send a file with a message</i>.</li>
+</ol>
+<p class="why">Kernels first is already done: both are on main. Each piece is its own PR with its release note and fragment. 7a goes first, then 7b, then 7c and 7d side by side, then 7e and 7f against R1.</p>
+
+<h2 class="sec">What I need the lead to settle</h2>
+<ol class="list">
+<li><b>A Team only file through our link.</b> The function hands over the bytes, so nothing is ever shared. My pick is a cap of 50 MB for that path, with a bigger Team only file going only as a portal link or not at all. Or is a Team only file never sent outside, and the picker says so?</li>
+<li><b>How long a file's own link lives.</b> The plan says a week fits a plan set. Most files on a message are read in the first days. My pick is 30 days, then the turned-off words, and any send of the file makes a fresh link. A portal link lives as long as the portal does, as now.</li>
+<li><b>A customer's link.</b> <code>outgoing.ts</code> sends a customer their portal at the page only where their portal has it, and else the file's own link. Is that the plan's open item settled, or does a customer always get the file?</li>
+<li><b>The papers the app draws on demand.</b> Only our contract is stored. A statement of work and the schedule have no file, and a pay application is made in the browser. My pick: a statement of work and the schedule go as their portal page only, and on an email to someone without that page they are not offered. The pay application is made at send time, as Bill the customer makes it. A PDF writer for the statement of work is its own later piece.</li>
+<li><b>The opens.</b> Counting in <code>public_page_views</code> under a new surface, with no new table. Yes?</li>
+<li><b>The address.</b> <code>clicktooling.com/f/&lt;link&gt;</code>, an app page beside <code>/t/</code>. Or straight to the function's address, which is longer and names Supabase?</li>
+<li><b>Save to Drive's default.</b> Team only for a quote or a photo, Plans for anything else, with the person's pick in the sheet. Or Team only always, with Plans picked on purpose?</li>
+<li><b>One function or two.</b> The plan names one, <code>drive-link</code>. I keep its open door and the office's four actions in it, each checked in code, so there is one Drive client to deploy. Or split the office's actions into their own function, so the open door has nothing else in it?</li>
+</ol>
+
+<h2 class="sec">Is this the best we can do? Three ways it could be better, and the pick</h2>
+<ol class="list">
+<li><b>Read the Drive folder once a day into the database.</b> The picker would open with every row at once. But Drive would stop being the one copy, a file added this morning would be missing, and the plan says copy nothing. Not this.</li>
+<li><b>Make every file's own link a portal page.</b> Each person would have one place to read everything we sent them. But an architect has no portal, and a customer's pages are not all there yet. The kernel already prefers the page wherever one exists, so this comes on its own as the portals grow.</li>
+<li><b>Show the opens in the thread as they happen.</b> A line like <i>Greg opened the plans, 2:10 PM</i> would tell Rosa her email landed. It is the most useful, and it is cheap: the opens are rows already. But it is a new kind of line in the thread, so it is cut 1's to draw. My pick: the opens show on the sent line's chip and in the window now, as above, and the thread line is a question for helper 1.</li>
+</ol>
+<p class="pickk"><b>The pick:</b> the eight screens and six rules above, with the opens on the chip, and the thread line asked of helper 1.</p>
+</body>
+</html>
