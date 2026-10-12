@@ -846,6 +846,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.179, 2026-10-12**: two bugs the helpers found while lifting: a decision step that is our move drew the
+  customer's Accept and Not this time on the trade's page (Bill on Compared), now only when it is their move; a
+  portal write set a state no contact has, so Needs you never showed it, now waiting (helpers 8 and 2).
 - **v1.178b, 2026-10-12**: `BUILD_HELPERS.md`, the brief for the real build on main: the spec and the plan by
   `git show`, the rules from CLAUDE.md, wave 1 as nine kernel clusters with the prototype's functions to lift,
   how to prepare, go, block and finish, wave 2 named, the decisions already taken (the owner: "prepare to build
