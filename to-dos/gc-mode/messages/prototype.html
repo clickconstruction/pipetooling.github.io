@@ -252,8 +252,9 @@ button.court{cursor:pointer;line-height:inherit}button.court:hover{filter:bright
 .seg button+button{border-left:1px solid var(--border)}
 .seg button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
 .msg .meta{font-size:12px;color:var(--text-muted);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.msg{padding-bottom:22px}
-.msg .when{position:absolute;right:12px;bottom:6px;font-size:11.5px;color:#9aa4b1}
+.msg.tail{padding-bottom:22px}
+.msg .when{position:absolute;right:12px;bottom:7px;font-size:11.5px;color:#9aa4b1;line-height:1}
+.msg .whensp{display:inline-block;width:128px;height:1px;vertical-align:baseline}
 .msg .meta .ch{font-weight:600;color:var(--text)}
 .msg .meta .job{margin-left:auto;background:var(--chip);padding:1px 8px 1px 3px;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .msg .meta .job.none{padding-left:8px}
@@ -1240,7 +1241,7 @@ function renderMessages(m){
   let lastDay='';
   for(const x of lines){ const d=dayOf(x.at); if(d!==lastDay){ const dd=document.createElement('div'); dd.className='day'; dd.textContent=d; L.appendChild(dd); lastDay=d; }
     if(x.ch==='event'){ const ev=document.createElement('div'); ev.className='evt'; ev.innerHTML=`${esc(x.text)} · ${fmt(x.at)}`; L.appendChild(ev); continue; }
-    const e=document.createElement('div'); e.className=`msg clickable ${x.dir==='team'?'team':x.dir} ch-${x.ch}`; e.dataset.id=x.id; e.title='Open this message';
+    const e=document.createElement('div'); e.className=`msg clickable ${x.dir==='team'?'team':x.dir} ch-${x.ch}${(x.attachments||x.transcript||(x.promise&&x.promise.state!=='no')||x.question||(highlights[x.id]||[]).length||(isLong(x)&&!showAll[c.id]))?' tail':''}`; e.dataset.id=x.id; e.title='Open this message';
     e.addEventListener('click',ev=>{ if(ev.target.closest('button, a, select, input, .job, .offer, .chip, .player')) return; openMessage(x.id); });
     e.innerHTML=`<span class="when" data-tip="${esc(chWord(x))}|${esc(longWhen(x.at))}.|${x.dir==='in'?'When it came.':x.dir==='team'?'When it was written.':'When it went.'}">${fmtDay(x.at)}</span><div class="meta"><span class="ch">${chWord(x)}${x.dur?` · ${x.dur}`:''}</span><span>${esc(x.who)}</span>
         ${x.back?`<span class="settled-chip" style="background:var(--accent-soft);color:var(--accent);border-color:#bcd0f0" data-tip="Comes back ${esc(x.back.label)}|This note brings the row back to Follow up that morning, under Needs you, with the note on it.|Marked by ${esc(x.who.split(' · ')[0])}. To clear it now, press × on the ↩ pill in the header above; when it comes back, Done with it on the row." title="">↩ back ${esc(x.back.label)}</span>`:''}${x.settled?`<span class="settled-chip" title="" data-tip="Done|This ${x.ch==='note'?'note':'message'} marked what we owed them done.|We owed ${esc(x.settled.what)}${x.settled.by?' by '+esc(x.settled.by):''}; the move went back to whoever wrote last.">✓ done: ${esc(x.settled.what)}</span>`:''}<span class="job ${x.job?'':'none'}" title="${x.job?'Untie from this job':'Tie to a job'}" onclick="${x.job?`untie(${x.id})`:`tieMenu(${x.id})`}">${x.job?jobTag(x.job)+' ×':'no job'}</span></div>
@@ -1446,7 +1447,7 @@ const isLong = x => (x.text.split('\n').length>4) || x.text.length>280;
 function bodyHtml(c,x){ const hls=highlights[x.id]||[]; const full=showAll[c.id];
   if(hls.length && !full) return hls.map(h=>`<div class="hl">${esc(h.text)}<small>highlighted by ${esc(h.by)} · ${esc(h.at)} · <button type="button" class="quiet small" style="padding:0;font-size:inherit" data-tip="Remove the highlight|Takes these words off the highlights; the message stays.|Anyone on the team can." onclick="event.stopPropagation();window.__unhlText(${x.id},${JSON.stringify(h.text).replace(/"/g,'&quot;')})">remove</button></small></div>`).join('')+`<div class="more">the whole ${x.ch==='email'?'email':'message'} ›</div>`;
   if(isLong(x) && !full) return `<div class="body clamp">${esc(x.text)}</div><div class="more">the whole ${x.ch==='email'?'email':'message'} ›</div>`;
-  return `<div class="body">${markHtml(x)}</div>`; }
+  return `<div class="body">${markHtml(x)}<span class="whensp"></span></div>`; }
 function markHtml(x){ let h=esc(x.text); for(const hl of (highlights[x.id]||[])){ const e=esc(hl.text); h=h.split(e).join(`<mark data-tip="Highlighted by ${esc(hl.by)}|${esc(hl.at)}.|Press to remove the highlight." onclick="event.stopPropagation();window.__unhlText&&window.__unhlText(${x.id},${JSON.stringify(hl.text).replace(/"/g,'&quot;')})" style="cursor:pointer">${e}</mark>`); } return h; }
 
 // ---------- the message window ----------
