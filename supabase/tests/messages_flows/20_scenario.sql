@@ -237,7 +237,7 @@ SELECT mfl.same('a note is a team line on the step, in the writer''s name',
 SELECT mfl.refused('a note with nothing in it', $q$SELECT public.flow_add_note('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, '  ')$q$, 'noteEmpty');
 SELECT mfl.refused('a note on a step not on their flow', $q$SELECT public.flow_add_note('00000000-0000-0000-0000-000000006004', 'papers', NULL, NULL, 'x')$q$, 'stepUnknown');
 SELECT mfl.refused('a note on a job that is not there', $q$SELECT public.flow_add_note('00000000-0000-0000-0000-000000006004', 'who', 'project', gen_random_uuid(), 'x')$q$, 'job');
-SELECT mfl.refused('a client writes no line but a note of its own',
+SELECT mfl.refused('a client writes no line but a team line of its own',
   $q$INSERT INTO public.messages (contact_id, channel, direction, who_user_id, body) VALUES ('00000000-0000-0000-0000-000000006004', 'text', 'in', '00000000-0000-0000-0000-0000000006d2', 'A text that never came.')$q$,
   'row-level security');
 SELECT mfl.refused('nor a note in another''s name',

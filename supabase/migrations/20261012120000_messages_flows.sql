@@ -14,7 +14,7 @@ SET lock_timeout = '3s';
 --   * contact_step_skips: a step skipped for one person with a reason. nudge_holds, nudge_sent: Hold until a day, and
 --     what was sent for a step, so a reminder never doubles. Each names its job the spine's way (bid_id, project_id or
 --     jobs_ledger_id, at most one; none on the Once lane). A step's team note is a line of the thread: messages gains
---     step_id, and a signed-in user may write a team note of their own and nothing else.
+--     step_id, and a signed-in user may write a team line (a note or an event) as themselves and nothing else.
 --   * The presses, SECURITY INVOKER so training mode and a twin change nothing: flow_add_note, flow_skip_step,
 --     flow_unskip_step, nudge_hold_until, nudge_let_go, nudge_record_sent, contact_set_off, contact_put_back_on.
 --   * flow_rows(contact): the rows the flow reads (src/lib/flows/load.ts's FlowRows), for the office. SECURITY DEFINER,
@@ -200,11 +200,14 @@ COMMENT ON COLUMN public.messages.step_id IS
   'Messages (cut 4): the flow step a team note or an event is on (flow_steps.step_key); the step card shows the notes. No foreign key: a removed step keeps its notes.';
 CREATE INDEX IF NOT EXISTS messages_step_idx ON public.messages (contact_id, step_id) WHERE step_id IS NOT NULL;
 
--- A signed-in user writes a team note of their own and no other line: calls, texts and emails arrive as the service
--- role. The office's policy stays the spine's; this one narrows what a client may insert.
+-- A signed-in user writes a team line (a note or an event) as themselves and no other line: calls, texts and emails
+-- arrive as the service role. The office's policy stays the spine's; this one narrows what a client may insert. The same
+-- name and definition as cut 2's (20261012160000, helper 2's), so whichever runs last leaves the same policy.
 DROP POLICY IF EXISTS messages_client_writes_own_team_notes ON public.messages;
-CREATE POLICY messages_client_writes_own_team_notes ON public.messages AS RESTRICTIVE FOR INSERT TO authenticated
-  WITH CHECK (channel = 'note' AND direction = 'team' AND who_user_id = (SELECT auth.uid()));
+DROP POLICY IF EXISTS messages_team_lines_by_hand ON public.messages;
+DROP POLICY IF EXISTS messages_client_writes_own_team_lines ON public.messages;
+CREATE POLICY messages_client_writes_own_team_lines ON public.messages AS RESTRICTIVE FOR INSERT TO authenticated
+  WITH CHECK (channel IN ('note', 'event') AND direction = 'team' AND who_user_id = (SELECT auth.uid()));
 GRANT INSERT (contact_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, body, step_id)
   ON TABLE public.messages TO authenticated;
 
