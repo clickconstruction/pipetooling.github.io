@@ -103,6 +103,7 @@ when_to_read:
    - [gc-money-monday-email](#gc-money-monday-email)
    - [bridge-sheet-email](#bridge-sheet-email)
    - [gc-office-notices](#gc-office-notices)
+   - [gmail-sync](#gmail-sync)
    - [drive-contract-scan](#drive-contract-scan)
    - [plan-fetch](#plan-fetch)
    - [ct-bridge](#ct-bridge)
@@ -1306,6 +1307,30 @@ The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on 
 The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildGcCustomerEmail`'s frame with no portal line and keeps its sent copy on the billing job's Documents tab (`gc_certify_reminder`, [SENT_COPIES.md](./SENT_COPIES.md)); ours are staff mail with a link to Bill the customer (`/gc?bill=<projectId>`), logged as `gc_office_notice` and not filed. The customer's notice (`customerDueWords`, `buildCustomerDueEmail`) wears the same frame with the bill's portal line and card line.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `RESEND_API_KEY`, `CRON_SECRET`, `EMAIL_FROM`, `APP_ORIGIN` (Bill the customer's link; clicktooling.com when unset). **Deploy**: `supabase functions deploy gc-office-notices --no-verify-jwt` after O10a's migration (`20261010060000_gc_office_notices.sql`, the record, the payload and the switch), then push O10b's cron migration, so no tick finds the function missing. Turning the switch on is the owner's press in Settings → Jobs & billing, after the live walk on Grace's yes. O12b redeploys it after O12a's migration (`20261010130000_gc_customer_due_notices.sql`); the cron is unchanged. The customer's switch is the owner's too, after a test copy.
+
+---
+
+### gmail-sync
+
+**Purpose**: Messages, cut 6 (email in), the bids@ reader (v2.5354; `to-dos/gc-mode/messages/BUILD_PLAN.md` → Cut 6 and the mock-up `email-in-mockups.html` on branch `spike/gc-mode`). Every email that reaches bids@ lands in its sender's thread. It reads Gmail as the bids@ mailbox under the service account's domain-wide delegation, takes each email once by its Gmail id (`email_write_line`), and marks it with the label **In ClickTooling**. Nothing in Gmail is deleted, archived, moved or marked read.
+
+**Endpoint**: `POST /functions/v1/gmail-sync` · **Auth**: `verify_jwt = false`; the cron's `X-Cron-Secret` only.
+
+- The cron runs every 3 minutes (`20261013080000_messages_email_in.sql`). Its statement posts only while `app_settings.gmail_sync_on_v1` is `'true'`, and the function checks the switch again.
+- The first run after the switch keeps the mailbox's history point (`users.getProfile`) and reads nothing older: no backfill.
+- Each run reads the Inbox's new messages since the last point (`users.history.list`, `messageAdded`, `INBOX`), oldest first, up to 40. The next run takes the rest. When Gmail no longer keeps the point (404), it searches the Inbox's untaken mail of the last week (`in:inbox -label:"In ClickTooling" newer_than:7d`) and starts again from the newest point.
+- For each message, through the kernels in `src/lib/emailIn/` (mirrored by `scripts/edge-kernels.mjs`):
+  - one already labelled is passed over;
+  - a forwarded copy one of us sent on lands on its first sender, with the forwarder's note as a team note (`forwarded.ts`);
+  - bulk, no-reply, Gmail's other tabs and our own addresses are left out and stay with no label (`leftOut.ts`);
+  - the address finds its contact or makes the Who is this? row (`email_place_address`);
+  - the subject's job number, or a job's name among the sender's own jobs, ties the line, else the person's star does (`subjectJobs.ts`, `jobInSubject.ts`);
+  - each file up to 25 MB is copied into the private `message-attachments` bucket. A bigger one, or one that would not copy, stays in Gmail. A file host's link stays a link, and a trade partner's W-9 or certificate is guessed for the thread's offer (`emailLine.ts`);
+  - then `email_write_line` writes the line once, and the label goes on.
+- A run saves its new point only after every message before it was taken. A failure keeps the point and writes `last_error`, and the next run reads the same messages again; what was taken is passed over by its label. `gmail_sync_state` shows the reader's health (`last_run_at`, `last_ok_at`, `last_error`, `last_taken`) through the dev-mcp catalog.
+- "Ours": the mailbox, `EMAIL_FROM`'s address, and every staff user's email (dev, master, assistant, controller, estimator, primary, superintendent). A sub or a helper is someone we write to.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `GOOGLE_SERVICE_ACCOUNT_JSON` (the Drive service account, now delegated `gmail.readonly` and `gmail.modify` on the Workspace), `GMAIL_IMPERSONATE_USER` (the mailbox, never written in the repo; `DRIVE_IMPERSONATE_USER` is untouched), and `EMAIL_FROM`. The token comes from `_shared/googleToken.ts`, `driveUpload.ts`'s path with the scopes given, so no Drive function changes. **Deploy**: `supabase functions deploy gmail-sync --no-verify-jwt` after the migration is pushed. Then redeploy `dev-mcp` (its catalog names the function), `customer-portal` and `gc-trade-portal` (their mirrored kernels' headers name the new importer). A dev turns the switch on after the live test: an email to bids@ from the owner's phone.
 
 ---
 

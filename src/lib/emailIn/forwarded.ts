@@ -7,6 +7,7 @@
  * Only a forward by one of us counts: when someone outside forwards us a message, they are the one talking to us. The
  * blocks Gmail, Apple Mail and Outlook write are read. A block whose From has no address reads as no forward.
  */
+import { appTzWallTimeMs } from '../../utils/dateUtils'
 import { parseAddress, parseAddressList, type EmailAddress, type EmailIn } from './gmailMessage'
 
 export interface Forwarded {
@@ -38,20 +39,8 @@ const MONTHS: Readonly<Record<string, number>> = {
   jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9, oct: 10, nov: 11, dec: 12,
 }
 
-/** The offset of the time zones a mail program writes, in hours. With none, the office's own (Chicago). */
+/** The offset of the time zones a mail program writes, in hours. With none, the time is the office's own (Chicago). */
 const ZONES: Readonly<Record<string, number>> = { CDT: -5, CST: -6, EDT: -4, EST: -5, MDT: -6, MST: -7, PDT: -7, PST: -8, UTC: 0, GMT: 0 }
-
-/** Chicago's offset on a day: daylight time from the second Sunday of March to the first Sunday of November. */
-const chicagoOffset = (y: number, m: number, d: number): number => {
-  const nthSunday = (month: number, n: number) => {
-    const first = new Date(Date.UTC(y, month - 1, 1)).getUTCDay()
-    return 1 + ((7 - first) % 7) + (n - 1) * 7
-  }
-  const day = m * 100 + d
-  const start = 300 + nthSunday(3, 2)
-  const end = 1100 + nthSunday(11, 1)
-  return day >= start && day < end ? -5 : -6
-}
 
 /**
  * A forwarded block's day and time as mail programs write it ("Thu, Oct 1, 2026 at 4:02 PM", "October 1, 2026 at
@@ -76,8 +65,10 @@ const whenOf = (m: RegExpMatchArray, month: number): string | null => {
   if (half === 'pm' && hour < 12) hour += 12
   if (half === 'am' && hour === 12) hour = 0
   if (day < 1 || day > 31 || hour > 23 || minute > 59) return null
-  const offset = m[8] && m[8] in ZONES ? ZONES[m[8]]! : chicagoOffset(year, month, day)
-  return new Date(Date.UTC(year, month - 1, day, hour - offset, minute, second)).toISOString()
+  const zone = m[8]
+  if (zone && zone in ZONES) return new Date(Date.UTC(year, month - 1, day, hour - ZONES[zone]!, minute, second)).toISOString()
+  const ms = appTzWallTimeMs(`${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`, hour, minute, second)
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null
 }
 
 /** The forwarded copy in an email, or null when it is not one of ours forwarding a message. */

@@ -1,0 +1,72 @@
+/**
+ * Messages, cut 6 (email in): the jobs a subject may name, as `jobInSubject` reads them. The reader looks up the jobs
+ * whose number appears in the subject (`subjectNumbers`), and the sender's own jobs, and this gives each one the labels
+ * the app shows for it: a bid's `BP523` (its service type's bid prefix), a GC project's `#42`, a Pipeline job's
+ * `JP1077` (its job prefix and HCP number) or its Click number when that carries a letter (`C88`). Pure.
+ */
+import { resolveBidLedgerPrefix, resolveJobLedgerPrefix, type LedgerPrefixMap } from '../ledgerDisplayPrefixes'
+import type { SubjectJob } from './jobInSubject'
+
+export interface SubjectBidRow {
+  id: string
+  bid_number: string | null
+  project_name: string | null
+  service_type_id: string | null
+}
+
+export interface SubjectProjectRow {
+  /** A GC project's `projects.id`, which `gc_projects.project_id` holds. */
+  id: string
+  project_number: string | null
+  name: string | null
+}
+
+export interface SubjectPipelineRow {
+  id: string
+  hcp_number: string | null
+  click_number: string | null
+  job_name: string | null
+  service_type_id: string | null
+}
+
+export interface SubjectJobRows {
+  bids: readonly SubjectBidRow[]
+  projects: readonly SubjectProjectRow[]
+  pipeline: readonly SubjectPipelineRow[]
+  prefixes: LedgerPrefixMap
+}
+
+/** The digits of each token in a subject that may be a job's number: a prefix of letters, or `#`, then 2 or more digits. */
+export function subjectNumbers(subject: string): string[] {
+  const out = new Set<string>()
+  for (const m of subject.matchAll(/(?:^|[^A-Za-z0-9])#?[A-Za-z]{0,4}(\d{2,})(?![A-Za-z0-9])/g)) out.add(m[1]!)
+  return [...out]
+}
+
+const trim = (s: string | null | undefined): string => (s ?? '').trim()
+
+/**
+ * Each job with the labels the app shows for it, and whether the sender is on it (`mine`, by `messages/load.ts`'s job
+ * keys: `bid:<id>`, `project:<id>`, `pipeline:<id>`). A job read twice is listed once.
+ */
+export function subjectJobs(rows: SubjectJobRows, mine: ReadonlySet<string>): SubjectJob[] {
+  const out = new Map<string, SubjectJob>()
+  const put = (key: string, labels: string[], name: string) => {
+    if (!out.has(key)) out.set(key, { key, labels: labels.filter(Boolean), name, mine: mine.has(key) })
+  }
+  for (const b of rows.bids) {
+    const num = trim(b.bid_number)
+    put(`bid:${b.id}`, num ? [`${resolveBidLedgerPrefix(b.service_type_id, rows.prefixes)}${num}`] : [], trim(b.project_name))
+  }
+  for (const p of rows.projects) {
+    const num = trim(p.project_number)
+    put(`project:${p.id}`, num ? [`#${num}`] : [], trim(p.name))
+  }
+  for (const j of rows.pipeline) {
+    const hcp = trim(j.hcp_number)
+    const click = trim(j.click_number)
+    const labels = [hcp ? `${resolveJobLedgerPrefix(j.service_type_id, rows.prefixes)}${hcp}` : '', /[a-z]/i.test(click) ? click : '']
+    put(`pipeline:${j.id}`, labels, trim(j.job_name))
+  }
+  return [...out.values()]
+}

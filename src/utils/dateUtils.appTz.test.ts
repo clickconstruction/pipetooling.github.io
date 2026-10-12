@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { endOfYmdInAppTzMs, startOfYmdInAppTzMs, todayYmdInAppTz } from './dateUtils'
+import { appTzWallTimeMs, endOfYmdInAppTzMs, startOfYmdInAppTzMs, todayYmdInAppTz } from './dateUtils'
 
 /**
  * v2.2703 — the before/after measurement for the civil-date sweep, kept as tests.
@@ -49,5 +49,24 @@ describe('start/end of a civil day in the app zone', () => {
   it('malformed input → NaN, never a wrong date', () => {
     expect(startOfYmdInAppTzMs('nope')).toBeNaN()
     expect(endOfYmdInAppTzMs('2026-9-3')).toBeNaN()
+  })
+})
+
+describe('appTzWallTimeMs', () => {
+  it('reads a Chicago wall time in daylight and in standard time', () => {
+    expect(new Date(appTzWallTimeMs('2026-10-01', 16, 2)).toISOString()).toBe('2026-10-01T21:02:00.000Z')
+    expect(new Date(appTzWallTimeMs('2026-01-05', 9, 0, 30)).toISOString()).toBe('2026-01-05T15:00:30.000Z')
+  })
+
+  it('takes the right side of a daylight switch on its own day', () => {
+    expect(new Date(appTzWallTimeMs('2026-03-08', 1, 30)).toISOString()).toBe('2026-03-08T07:30:00.000Z')
+    expect(new Date(appTzWallTimeMs('2026-03-08', 3, 30)).toISOString()).toBe('2026-03-08T08:30:00.000Z')
+    expect(new Date(appTzWallTimeMs('2026-11-01', 5, 0)).toISOString()).toBe('2026-11-01T11:00:00.000Z')
+  })
+
+  it('is NaN for a day or a time that does not read', () => {
+    expect(appTzWallTimeMs('Oct 1', 9, 0)).toBeNaN()
+    expect(appTzWallTimeMs('2026-10-01', 24, 0)).toBeNaN()
+    expect(appTzWallTimeMs('2026-10-01', 9, 60)).toBeNaN()
   })
 })
