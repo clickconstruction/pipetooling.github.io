@@ -108,6 +108,8 @@ export function contactFromRows(
     .map((ch) => ({ id: ch.id, kind: ch.kind as ChannelKind, value: ch.value, optedOutAt: ch.opted_out_at }))
   const myJobs = jobs.filter((j) => j.contact_id === row.id).sort((a, b) => a.created_at.localeCompare(b.created_at))
   const star = myJobs.find((j) => j.is_default)
+  const customerId = row.customer_id ?? byId(records.customerContactPersons, row.customer_contact_person_id)?.customer_id ?? null
+  const gcCompanyId = row.gc_company_id ?? byId(records.gcCompanyPeople, row.gc_company_person_id)?.company_id ?? null
   return {
     id: row.id,
     kind: row.kind as ContactKind,
@@ -119,6 +121,8 @@ export function contactFromRows(
     channels: mine,
     jobIds: myJobs.map(jobKeyOfRow).filter((k): k is string => k !== null),
     defaultJobId: star ? jobKeyOfRow(star) : null,
+    customerId,
+    gcCompanyId,
   }
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { billDayFromSearch, billDayHref, GC_FOLLOW_UP_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcFocusFromSearch, gcProjectHref, gcViewFromSearch } from './links'
+import { billDayFromSearch, billDayHref, GC_FOLLOW_UP_HREF, GC_MESSAGES_HREF, GC_MONEY_HREF, GC_PROJECT_WORDS, gcFocusFromSearch, gcProjectHref, gcViewFromSearch } from './links'
 
 describe('GC project links', () => {
   it('opens a GC project on its card on the GC projects page', () => {
@@ -14,6 +14,7 @@ describe('GC project links', () => {
     expect(gcViewFromSearch(new URLSearchParams(GC_FOLLOW_UP_HREF.split('?')[1]))).toBe('followUp')
     expect(gcViewFromSearch(new URLSearchParams('view=partners'))).toBe('partners')
     expect(gcViewFromSearch(new URLSearchParams(GC_MONEY_HREF.split('?')[1]))).toBe('money')
+    expect(gcViewFromSearch(new URLSearchParams(GC_MESSAGES_HREF.split('?')[1]))).toBe('messages')
     expect(gcViewFromSearch(new URLSearchParams('focus=abc'))).toBe('board')
     expect(gcViewFromSearch(new URLSearchParams('view=portals'))).toBe('board')
   })

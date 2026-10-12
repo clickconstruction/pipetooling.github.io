@@ -23,6 +23,9 @@ import { loadGcBillingRows, sendGcSow } from '../lib/gc/gcIo'
 import { awardedClinicBoardRows, lonestarPapersInRows } from '../lib/gc/boardTestRows'
 import { sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
 import type { DrawTables } from '../lib/gc/drawRows'
+import { loadMessagesView } from '../lib/messages/messagesIo'
+import type { ThreadSlots } from '../components/gc/messages/threadSlots'
+import { useMessagesReread } from '../components/gc/messages/useMessagesReread'
 
 vi.mock('../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../test/renderSmokeMocks')
@@ -68,6 +71,41 @@ vi.mock('../lib/gc/scheduleIo', () => {
     // The rough (the schedule's PR 12b): none drawn, and a keep after the Board's presses that writes nothing.
     loadRough: vi.fn(() => Promise.resolve(null)),
     keepRoughAt: vi.fn(() => Promise.resolve(null)),
+  }
+})
+
+// Every cut's slots in the thread window (`useThreadSlots`, which the window calls), as a test lays them; none by default.
+const slotsRead = vi.hoisted(() => ({ use: (): ThreadSlots => ({}) }))
+vi.mock('../components/gc/messages/threadSlots', () => ({ useThreadSlots: () => slotsRead.use() }))
+
+/** A slot that writes on its own (cut 3's reply box), then asks the page to read again. */
+function SendBox() {
+  const reread = useMessagesReread()
+  return (
+    <button type="button" onClick={reread}>
+      Send it
+    </button>
+  )
+}
+
+/** Cut 2's slots as a hook: its ⋯ row writes, then asks for the read again (No reply needed). */
+function useRereadMenuSlots(): ThreadSlots {
+  const reread = useMessagesReread()
+  return { menuRows: () => [{ key: 'no-reply', label: 'No reply needed', onPress: reread }] }
+}
+
+// Messages (cut 1's screens): the spine's rows, read only while the view or a thread is open; no press writes here.
+vi.mock('../lib/messages/messagesIo', async () => {
+  const { spineMessagesView } = await import('../lib/messages/spineRows')
+  return {
+    loadMessagesView: vi.fn(() => Promise.resolve(spineMessagesView())),
+    nameContact: vi.fn(),
+    tieMessage: vi.fn(() => Promise.resolve()),
+    setDefaultJob: vi.fn(() => Promise.resolve()),
+    addContactJob: vi.fn(() => Promise.resolve()),
+    removeContactJob: vi.fn(() => Promise.resolve()),
+    searchContactRecords: vi.fn(() => Promise.resolve([])),
+    searchJobs: vi.fn(() => Promise.resolve([])),
   }
 })
 
@@ -245,6 +283,7 @@ describe('GcProjects: the Project Board', () => {
   afterEach(() => {
     window.localStorage.clear()
     auth.role = 'dev'
+    slotsRead.use = () => ({})
   })
 
   it('door 2: an estimator sees the board, Trade partners and Follow up, and never Trade portals', async () => {
@@ -254,7 +293,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
     expect(screen.getByRole('heading', { name: 'Project Board' })).toBeTruthy()
-    expect(screen.getByRole('group', { name: 'Project Board, Trade partners or Follow up' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Messages' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Trade partners' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
     expect(screen.queryByText('Devs only')).toBeNull()
@@ -267,7 +306,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Money' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up, Messages or Money' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Money' })).toBeTruthy()
     expect(await screen.findByRole('button', { name: 'Change orders' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
@@ -280,7 +319,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    expect(screen.getByRole('group', { name: 'Project Board, Trade partners or Follow up' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Messages' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Money' })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Change orders/ })).toBeNull()
   })
@@ -290,8 +329,77 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up or Money' })).toBeTruthy()
+    expect(screen.getByRole('group', { name: 'Project Board, Trade partners, Follow up, Messages or Money' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Trade portals' })).toBeNull()
+  })
+
+  it('Messages: an estimator opens the people list from its pill, read only then, and a row opens the thread as a window', async () => {
+    auth.role = 'estimator'
+    vi.mocked(loadMessagesView).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    expect(loadMessagesView).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
+    expect(await screen.findByRole('group', { name: 'Who to show' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Messages' }).getAttribute('aria-pressed')).toBe('true')
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+    const greg = document.querySelector('[data-messages-row="c-greg"]') as HTMLElement
+    expect(greg.textContent).toContain('Greg Paulk')
+
+    fireEvent.click(greg)
+    const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
+    expect(within(win).getByRole('link', { name: 'Call (210) 555-0113' }).getAttribute('href')).toBe('tel:2105550113')
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(within(win).getAllByRole('button', { name: 'Close' })[0]!)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Greg Paulk: messages' })).toBeNull())
+    expect(screen.getByRole('group', { name: 'Who to show' })).toBeTruthy()
+  })
+
+  it('Messages: a slot that writes on its own asks the page to read again', async () => {
+    slotsRead.use = () => ({ box: () => <SendBox /> })
+    vi.mocked(loadMessagesView).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
+    await screen.findByRole('group', { name: 'Who to show' })
+    fireEvent.click(document.querySelector('[data-messages-row="c-greg"]') as HTMLElement)
+    const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(within(win).getByRole('button', { name: 'Send it' }))
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalledTimes(2))
+  })
+
+  it('Messages: a cut\'s slots hook runs inside the window, so its ⋯ row reads the thread again', async () => {
+    slotsRead.use = useRereadMenuSlots
+    vi.mocked(loadMessagesView).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
+    await screen.findByRole('group', { name: 'Who to show' })
+    fireEvent.click(document.querySelector('[data-messages-row="c-greg"]') as HTMLElement)
+    const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(within(win).getByRole('button', { name: 'More' }))
+    fireEvent.click(within(win).getByRole('menuitem', { name: 'No reply needed' }))
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalledTimes(2))
+  })
+
+  it('Messages: a superintendent is sent on from the page and reads no messages', async () => {
+    auth.role = 'superintendent'
+    vi.mocked(loadMessagesView).mockClear()
+    await renderSettled(<GcProjects />, { loaded: () => null })
+    expect(screen.queryByRole('button', { name: 'Messages' })).toBeNull()
+    expect(loadMessagesView).not.toHaveBeenCalled()
   })
 
   it('a dev sees the board above the projects, with each project still listed under it', async () => {

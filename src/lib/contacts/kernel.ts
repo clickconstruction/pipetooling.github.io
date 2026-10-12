@@ -57,6 +57,10 @@ export interface Contact {
   jobIds: string[]
   /** Where a new message from them lands until someone moves the star. Null: on the person, no job. */
   defaultJobId: string | null
+  /** The customer they are, or are at: a customer's own row, or the customer of a person at one. The loader fills it. */
+  customerId?: string | null
+  /** The trade partner they are, or are at: its main contact, or someone it named. The loader fills it. */
+  gcCompanyId?: string | null
 }
 
 export function contactById(contacts: readonly Contact[], id: string): Contact | undefined {

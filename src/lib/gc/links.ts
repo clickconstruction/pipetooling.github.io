@@ -19,6 +19,12 @@ export const GC_FOLLOW_UP_HREF = '/gc?view=followUp'
 /** Money on the GC projects page, the money team's lens: the Monday money email's Open Money (O7b). */
 export const GC_MONEY_HREF = '/gc?view=money'
 
+/** Messages on the GC projects page (cut 1): every person the office talks with, and their threads. */
+export const GC_MESSAGES_HREF = '/gc?view=messages'
+
+/** The GC projects page's views, one pill each. */
+export type GcView = 'board' | 'partners' | 'followUp' | 'money' | 'messages'
+
 /**
  * Money → Bill day → From the trades for one job (Messages cut 9): the trades' draws against the bill day. Follow up's
  * trades-not-in head, the flow's pay application round and By step's Draws row open it here.
@@ -37,9 +43,9 @@ export function billDayFromSearch(search: URLSearchParams): string | null {
  * Pure: the view a `?view=` on the GC projects page opens on, or the board. A dev's own views open from their pills
  * only. Money opens for the money team; the page shows anyone else Follow up in its place.
  */
-export function gcViewFromSearch(search: URLSearchParams): 'board' | 'partners' | 'followUp' | 'money' {
+export function gcViewFromSearch(search: URLSearchParams): GcView {
   const view = search.get('view')
-  return view === 'partners' || view === 'followUp' || view === 'money' ? view : 'board'
+  return view === 'partners' || view === 'followUp' || view === 'money' || view === 'messages' ? view : 'board'
 }
 
 /** The words a GC project carries outside GC mode (the Projects page, the Workflow page, Edit project). */

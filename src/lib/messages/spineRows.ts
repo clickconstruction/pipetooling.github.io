@@ -4,8 +4,11 @@
  * holds them, with the records they point at. Made-up ids, names, numbers and addresses only, never a live row.
  */
 import { startOfYmdInAppTzMs } from '../../utils/dateUtils'
-import type { ContactChannelRow, ContactJobRow, ContactRecordRows, ContactRow } from '../contacts/load'
-import type { MessageRow } from './load'
+import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
+import { railJobKeys } from './factJobs'
+import { jobTilesByKey } from './jobTiles'
+import { threadMessagesFromRows, type MessageRow } from './load'
+import type { MessagesView } from './messagesIo'
 
 const ct = (ymd: string, hour: number, minute: number): string => new Date(startOfYmdInAppTzMs(ymd) + (hour * 60 + minute) * 60_000).toISOString()
 
@@ -200,3 +203,25 @@ export const SPINE_MESSAGES: MessageRow[] = [
   line('m-greg-fax', 'c-greg', { channel: 'fax', body: 'A fax.' }),
   line('m-greg-odd-optout', 'c-greg', { direction: 'out', at: ct('2026-10-01', 9, 0), body: 'Hello.', optout_line: 'later' }),
 ]
+
+/** The jobs the rows name, as their tables hold them, for the tiles. */
+export const SPINE_TILE_ROWS = {
+  bids: [{ id: 'bid-boerne', bid_number: 'B482', project_name: 'Boerne Retail Shell', bid_due_date: '2026-10-08', bid_date_sent: null, outcome: null }],
+  projects: [
+    { project_id: 'proj-stoneoak', name: 'Stone Oak Pharmacy', project_number: '42', stage: 'building', bid_due: null, our_bid_sent_on: null, lost_on: null, started_on: '2026-09-14' },
+  ],
+  pipeline: [{ id: 'jl-fairoaks', hcp_number: 'J1077', click_number: null, job_name: 'Fair Oaks Shops, Building D', status: 'Billed' }],
+}
+
+/** The rows above as the Messages view and the thread window draw them, at the demo's clock: the screens' smokes. */
+export function spineMessagesView(): MessagesView {
+  const contacts = contactsFromRows(SPINE_CONTACTS, SPINE_CHANNELS, SPINE_JOBS, SPINE_RECORDS)
+  const messages = threadMessagesFromRows(SPINE_MESSAGES, { userNames: SPINE_USER_NAMES, contacts })
+  return {
+    contacts,
+    messages,
+    rails: Object.fromEntries(contacts.map((c) => [c.id, railJobKeys(c)])),
+    tiles: jobTilesByKey(SPINE_TILE_ROWS, '2026-10-02'),
+    userNames: { ...SPINE_USER_NAMES },
+  }
+}

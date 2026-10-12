@@ -9,7 +9,7 @@
  * message window's highlight slot; cut 3 the reply box; cut 4 the flow panel at the side; cut 8 the portal pill in the
  * status row.
  */
-import type { ReactNode } from 'react'
+import { createElement, Fragment, type ReactNode } from 'react'
 import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 
@@ -44,7 +44,62 @@ export interface ThreadSlots {
   side?: (c: Contact) => ReactNode
 }
 
-/** The slots every thread window draws. Each cut adds its own lines here. */
+/** What a shared slot draws: nothing when every cut draws nothing, one cut's node as itself, else each in order. */
+function drawEach(nodes: readonly ReactNode[]): ReactNode {
+  const drawn = nodes.filter((n) => n !== null && n !== undefined && n !== false)
+  if (drawn.length === 0) return null
+  if (drawn.length === 1) return drawn[0]
+  return createElement(Fragment, null, ...drawn.map((n, i) => createElement(Fragment, { key: i }, n)))
+}
+
+/** One slot that draws a node, filled by any number of cuts. */
+function eachNode<A extends unknown[]>(fs: ReadonlyArray<((...a: A) => ReactNode) | undefined>): ((...a: A) => ReactNode) | undefined {
+  const filled = fs.filter((f): f is (...a: A) => ReactNode => f !== undefined)
+  if (filled.length < 2) return filled[0]
+  return (...a: A) => drawEach(filled.map((f) => f(...a)))
+}
+
+/**
+ * Several cuts' slots as one, in the order given (cut 2 first): a key two cuts fill draws both, the first cut's first;
+ * ⋯'s rows join; a line's body is the first cut's that gives one. A key every cut leaves empty stays empty. A key added
+ * later adds its rule here: a node draws each cut's, facts (cut 2's `court`) merge field by field, the later cut's
+ * winning.
+ */
+export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots {
+  const merged: ThreadSlots = {}
+  const headerRight = eachNode(parts.map((p) => p.headerRight))
+  if (headerRight) merged.headerRight = headerRight
+  const statusRow = eachNode(parts.map((p) => p.statusRow))
+  if (statusRow) merged.statusRow = statusRow
+  const aboveBox = eachNode(parts.map((p) => p.aboveBox))
+  if (aboveBox) merged.aboveBox = aboveBox
+  const box = eachNode(parts.map((p) => p.box))
+  if (box) merged.box = box
+  const underLine = eachNode(parts.map((p) => p.underLine))
+  if (underLine) merged.underLine = underLine
+  const messageWindowFirst = eachNode(parts.map((p) => p.messageWindowFirst))
+  if (messageWindowFirst) merged.messageWindowFirst = messageWindowFirst
+  const side = eachNode(parts.map((p) => p.side))
+  if (side) merged.side = side
+  const menus = parts.flatMap((p) => (p.menuRows ? [p.menuRows] : []))
+  if (menus.length > 0) merged.menuRows = (c) => menus.flatMap((rows) => rows(c))
+  const bodies = parts.flatMap((p) => (p.lineBody ? [p.lineBody] : []))
+  if (bodies.length > 0)
+    merged.lineBody = (m, c) => {
+      for (const body of bodies) {
+        const drawn = body(m, c)
+        if (drawn !== null && drawn !== undefined) return drawn
+      }
+      return null
+    }
+  return merged
+}
+
+/**
+ * The slots every thread window draws. Each cut adds its own lines here, as `mergeThreadSlots(followUp, …)`. The thread
+ * window calls it, under the page's providers and only while a thread is open, so a cut's hook here may read the open
+ * thread (`useThreadWindow`) and ask for the read again after its own write (`useMessagesReread`).
+ */
 export function useThreadSlots(): ThreadSlots {
   return {}
 }
