@@ -140,6 +140,16 @@ page. The prototype's words are the words; its hover cards are the help text.
 - **Papers**: *Send it* and *Remind them* call the existing paper send; the sign page is the existing
   one with the consent kernel verbatim; the customer's contract and a change order go the same way
   (the contract's send exists as `gc_owner_contract_sends`).
+- **A new paper from the editor** (v1.177): the prototype registers it in its own lists; on main a paper
+  lives in the Contract library (`contract_template_documents`, a packet's copy per person in
+  `person_contract_documents`), with a Form Studio template behind one that is filled or signed
+  (`contract_form_templates`, `doc_type` of agreement, coi, w9, license or other), on the company's
+  Documents through `src/lib/gc/companyPapers.ts`, and on the Settings → Contracts & terms index, which
+  CI holds to the customer-surface registry. So the add is: a library document with its kind (upload,
+  contract, notice), a form template for a contract with the clauses in both languages and a version, a
+  `doc_type` beyond the five or `other` with a name, a fact in `flows/facts.ts` that reads the document
+  row (on file, current, signed, sent), a column on the job's grid, and a line on the index. Nothing of
+  this is a new table; it is the library and the flow agreeing on one id.
 
 ### Cut 5 · Calls and texts: the Quo link
 
