@@ -821,6 +821,11 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.169, 2026-10-12**: Money → Bill day opens with a summary (`bill-day-summary-mockups.html`, the pick): the
+  money river, one bar of the draws by state in dollars flowing into the owner's number with its parts, and the
+  dates under it with today marked; beside it the 3 of 7 ring and *Today*, the first three open gates with their
+  own presses. The six calendar cards fold behind *the dates in full* and the gate list behind *the gates*; the
+  section pills and the tables stay (the owner, 2026-10-12: "a little overwhelmed").
 - **v1.168, 2026-10-12**: a press on a round pill in a loop box opens the round's window: a change order with its
   facts, whether the customer opened it, the paper and Ask again; a pay application with what it covers, the
   certificate, the waivers and the trades on it; any other round with its words and its ask (the owner, 2026-10-12).
