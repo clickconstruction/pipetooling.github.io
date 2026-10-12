@@ -1210,13 +1210,13 @@ function renderMessages(m){
     <div class="row3">${courtStrip(c)}</div>
     
     <div class="jobs-rail" id="rail"><span class="sep"></span><span class="note lbl" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of. A chip can be marked two ways, and they mean different things:|" data-tip-legend="jobs">Their jobs</span><span class="tiles">${cJobs.map(j=>jobTile(c,j)).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</span></div></div>
-  </div>
+  
 `}<div class="scrollarea">${narrow()?`<div class="hdr hdr-rest">
     <div class="row2"><span class="kindco">${c.kind==='unknown'?`<button type="button" class="primary small" onclick="whoIsThis('${c.id}')">Who is this?</button>`:`<b style="font-weight:600;color:var(--text)">${esc(kindWord(c).replace(/^\w/,ch=>ch.toUpperCase()))}:</b> ${esc(c.company||'')}`}</span>${c.phones.length?`<span class="sepdot">·</span><a class="fact" href="tel:${esc(c.phones[0].replace(/\D/g,''))}">${esc(c.phones.join(', '))}</a>`:''}${c.emails.length?`<span class="sepdot">·</span><a class="fact" href="mailto:${esc(c.emails[0])}">${esc(c.emails.join(', '))}</a>`:''}${c.state==='snoozed'?`<span class="pill">snoozed until Monday</span>`:''}${c.back?`<span class="pill" data-tip="Comes back ${esc(c.back.label)}|A note by ${esc(c.back.by)} brings this row back to Follow up that morning.|× clears it; the note stays.">↩ back ${esc(c.back.label)} <b style="cursor:pointer" onclick="clearBack('${c.id}')">×</b></span>`:''}${c.promise?`<span class="pill promise">${esc(c.promise)}</span>`:''}</div>
     <div class="row3">${courtStrip(c)}</div>
     
     <div class="jobs-rail" id="rail"><span class="sep"></span><span class="note lbl" data-tip="Their jobs|The bids, projects and Pipeline jobs they are part of. A chip can be marked two ways, and they mean different things:|" data-tip-legend="jobs">Their jobs</span><span class="tiles">${cJobs.map(j=>jobTile(c,j)).join('')}<span class="jobchip ghost" onclick="addJob('${c.id}')">+ add a job</span>${jobFilter?`<button class="quiet small" onclick="jobFilter=null;render()">show all</button>`:''}</span></div></div>
-  </div>
+  
 `:''}  <div id="lines"></div></div>
   <div class="reply">
     <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team':k} ${replyKind===k?'on':''}" onclick="replyKind='${k}';if('${k}'!=='note')settling=null;render()">${l}</button>`).join('')}${replyKind==='note'?`<span class="note" style="margin-left:auto">only the team sees it · closes the row</span>`:''}${replyKind!=='note'?`<button type="button" class="qrtab ${qrOpen?'on':''}" data-tip="Quick replies|Opens the lines above the box: a press on one fills the box, nothing sends.|Press again to fold them. Your choice is kept on this computer." onclick="toggleQuick()">Quick replies ${qrOpen?'▾':'▸'}</button>`:''}</div>
