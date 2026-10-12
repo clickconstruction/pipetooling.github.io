@@ -765,6 +765,11 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.123, 2026-10-11**: the superintendent's list is in walking order by where a line is on site (Site, Yard, Level 1,
+  Level 2, Roof), under a heading per place, not by trade; a tap under the claim opens a photo or a note on the spot and
+  the line stays marked until one is kept; the send-back note is written from the walk's notes, the opened lines read
+  them, and the *checked against the site* gate clears only when every line is tapped and every one under the claim
+  has its photo or note.
 - **v1.122b, 2026-10-11**: the plan's Bill day section gains the criteria for the superintendent's list: who, when, what
   is on it, what a tap does and does not do, and what the site needs. No prototype change.
 - **v1.122, 2026-10-11**: Bill day in the prototype, as `bill-day-mockup-2.html`: a Money page with From the trades (To the
