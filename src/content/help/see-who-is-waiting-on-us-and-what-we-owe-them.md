@@ -71,6 +71,8 @@ A team note can carry a day to come back. On that morning the person shows in **
 
 A customer who wrote on their page shows here too, with {{chip:purple|portal · wrote in the portal}}. Answer them by text or email, like any other message.
 
+A controller or a dev also sees the contract clause changes waiting on their approval. [Change a contract clause](/help/change-a-contract-clause#approve-or-decline-a-change) shows how to approve or decline one.
+
 ## We owe them
 
 Each row says what we owe and by when, like {{chip:blue|we owe the start date · by Mon Oct 5}}. The chip turns red once that day has passed. The line under the name says who marked it and when.

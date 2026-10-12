@@ -339,7 +339,7 @@ describe('FollowUpPanel', () => {
     expect(say).not.toHaveBeenCalled()
   })
 
-  it('draws the clause rows in Needs you and the nudges after We owe them, counting each clause on the badge', async () => {
+  it('draws the clause rows in Needs you, counted in its heading but not on the badge, and the nudges after We owe them', async () => {
     const { onCount } = renderPanel({
       clauses: { rows: [{ id: 'cl-1' }], render: (rows) => <p>{rows.length} clause edit waits on you</p> },
       nudges: { build: () => [{ contactId: 'greg' }], render: (rows) => <p>{rows.length} nudge from the flow</p> },
@@ -348,7 +348,9 @@ describe('FollowUpPanel', () => {
     expect(within(screen.getByRole('region', { name: 'Needs you' })).getByText('1 clause edit waits on you')).toBeTruthy()
     const nudge = screen.getByText('1 nudge from the flow')
     expect(screen.getByRole('region', { name: 'We owe them' }).compareDocumentPosition(nudge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(5))
+    // The badge counts people, as follow_up_count does: the clauses have the Dashboard's own line (the lead, 2026-10-12).
+    await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(4))
+    expect(screen.getByText(/A clause row waits on a controller or a dev\./)).toBeTruthy()
   })
 
   it('See their page shows on a portal row only when the page hands it', async () => {
@@ -361,6 +363,12 @@ describe('FollowUpPanel', () => {
     await loaded()
     fireEvent.click(screen.getByRole('button', { name: 'See their page' }))
     expect(seeTheirPage).toHaveBeenCalledWith('elena')
+  })
+
+  it('names the clause rows under Needs you only when the page hands them in', async () => {
+    renderPanel()
+    await loaded()
+    expect(screen.queryByText(/A clause row/)).toBeNull()
   })
 
   it('says so when nobody is waiting and nothing is owed', async () => {
