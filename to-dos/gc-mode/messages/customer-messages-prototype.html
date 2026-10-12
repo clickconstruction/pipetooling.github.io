@@ -11,19 +11,19 @@
   --bg:#f3f5f8;--surface:#ffffff;--text:#1b1f24;--muted:#5c6470;--border:#dde1e6;--chip:#eef1f5;
   --accent:#1f5fbf;--accent-soft:#e8f0fc;--text-ch:#1f5fbf;--text-soft:#e8f0fc;--email-ch:#6b4fbb;--email-soft:#efe9fb;
   --team:#fff6c2;--team-border:#e9d77a;--ok:#1a7f3c;--ok-soft:#e6f6ec;--warn:#b35c00;--warn-soft:#fff1e0;--danger:#b3261e;--danger-soft:#fbe9e7;
-  --app:#7a3e9d;--app-soft:#f3e9f9;--bubble-them:#e9ebef;--phone:#111318;--mark:#fff3a3;--radius:10px;
+  --app:#7a3e9d;--app-soft:#f3e9f9;--bubble-them:#e9ebef;--phone:#111318;--mark:#fff3a3;--cust:#d9731a;--cust-deep:#a8520a;--cust-soft:#fdf0e3;--cust-soft-2:#fbe4cc;--radius:10px;
   --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;
   --accent:#6ea3f0;--accent-soft:#1d2d47;--text-ch:#6ea3f0;--text-soft:#1d2d47;--email-ch:#a68ff0;--email-soft:#2b2446;
   --team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;--danger-soft:#3d1f1d;
-  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;--mark:#5a4d12;color-scheme:dark}}
+  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;--mark:#5a4d12;--cust:#f0a05a;--cust-deep:#f7bb84;--cust-soft:#33231a;--cust-soft-2:#452c1c;color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#14171c;--surface:#1d2127;--text:#e8eaee;--muted:#9aa3ad;--border:#323841;--chip:#272c34;
   --accent:#6ea3f0;--accent-soft:#1d2d47;--text-ch:#6ea3f0;--text-soft:#1d2d47;--email-ch:#a68ff0;--email-soft:#2b2446;
   --team:#3a3418;--team-border:#6b5e1e;--ok:#5ec98a;--ok-soft:#173424;--warn:#f0a35a;--warn-soft:#3a2a14;--danger:#f08a84;--danger-soft:#3d1f1d;
-  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;--mark:#5a4d12;color-scheme:dark}
+  --app:#c59be0;--app-soft:#33243f;--bubble-them:#2a2f37;--phone:#000;--mark:#5a4d12;--cust:#f0a05a;--cust-deep:#f7bb84;--cust-soft:#33231a;--cust-soft-2:#452c1c;color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 img{max-width:100%}
@@ -36,6 +36,9 @@ button.small{padding:3px 8px;font-size:13px}
 button.danger{color:var(--danger);border-color:var(--danger)}
 button.pill{border-radius:999px;padding:5px 12px;font-size:14px}
 button.pill.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+button.pill.cust.on{background:var(--cust);border-color:var(--cust)}
+button.pill.cust .n{color:var(--cust-deep)}
+button.pill.cust.on .n{color:#fff}
 button.pill .n{font-weight:700;margin-left:4px;color:var(--accent)}
 button.pill.on .n{color:#fff}
 textarea,input,select{font:inherit;border:1px solid var(--border);border-radius:8px;padding:8px 10px;background:var(--surface);color:var(--text)}
@@ -88,18 +91,14 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .row .w b{color:var(--text);font-weight:600}
 .row .b{min-width:0;padding-top:3px}
 .row .b .dim{color:var(--muted)}
-.row.cust{border-left:3px solid transparent;margin-left:-14px;padding-left:11px;border-radius:0 8px 8px 0}
-.row.cust.text{border-left-color:var(--text-ch)}
-.row.cust.email{border-left-color:var(--email-ch)}
-.row.cust.portal{border-left-color:var(--ok)}
-.row.cust.app{border-left-color:var(--app)}
-.row.cust.in{background:var(--bg)}
-.row.team{background:var(--team)}
-.who{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:1px 6px;margin-left:6px;vertical-align:1px}
-.who.text{background:var(--text-soft);color:var(--text-ch)}
-.who.email{background:var(--email-soft);color:var(--email-ch)}
-.who.portal{background:var(--ok-soft);color:var(--ok)}
-.who.app{background:var(--app-soft);color:var(--app)}
+.row.cust{background:var(--cust-soft);border-left:3px solid var(--cust);margin-left:-14px;padding-left:11px;border-radius:0 8px 8px 0;border-bottom-color:transparent}
+.row.cust.in{background:var(--cust-soft-2);border-left-width:5px;padding-left:9px;border-left-color:var(--cust-deep)}
+.row.cust.in .w b{color:var(--cust-deep)}
+.row.cust .b .dim{color:var(--muted)}
+.row.team{background:transparent}
+.row.team .w b::after{content:" · note";font-weight:400;color:var(--muted);font-size:12px}
+.who{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:0 6px;margin-left:6px;vertical-align:1px;border:1px solid var(--cust);color:var(--cust-deep);background:transparent}
+.row.cust.in .who{background:var(--cust);color:#fff;border-color:var(--cust)}
 .tie{display:inline-flex;gap:6px;margin-top:5px;flex-wrap:wrap}
 .tie span{font-size:12px;border:1px solid var(--border);border-radius:999px;padding:1px 8px;color:var(--muted)}
 .tie span.this{color:var(--accent);border-color:var(--accent)}
@@ -108,9 +107,13 @@ h3{font-size:14px;margin:14px 0 6px;text-transform:uppercase;letter-spacing:.04e
 .composer{border-top:1px solid var(--border);padding:12px 22px 18px;background:var(--surface)}
 .kinds{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
 .kinds button{border-radius:999px;padding:4px 12px;font-size:14px}
-.kinds button.on.note{background:var(--team);border-color:var(--team-border);color:var(--text)}
-.kinds button.on.text{background:var(--text-soft);border-color:var(--text-ch);color:var(--text-ch);font-weight:600}
-.kinds button.on.email{background:var(--email-soft);border-color:var(--email-ch);color:var(--email-ch);font-weight:600}
+.kinds button.on.note{background:var(--chip);border-color:var(--border);color:var(--text);font-weight:600}
+.kinds button.on.text,.kinds button.on.email{background:var(--cust);border-color:var(--cust);color:#fff;font-weight:600}
+.composer.tocust{background:var(--cust-soft);border-top-color:var(--cust)}
+.composer.tocust textarea{border-color:var(--cust)}
+.composer.tocust #send{background:var(--cust);border-color:var(--cust)}
+.composer.tocust .quick{background:var(--surface)}
+.composer.tocust .count .to{color:var(--cust-deep);font-weight:600}
 .kinds .from{margin-left:auto;color:var(--muted);font-size:13px}
 
 /* the quick replies strip, the GC prototype's shape */
@@ -307,7 +310,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <body>
 <div class="wrap">
 <header class="top">
-  <h1>Customer messages</h1><span class="ver" id="ver">v0.2 · 2026-10-12</span>
+  <h1>Customer messages</h1><span class="ver" id="ver">v0.3 · 2026-10-12</span>
   <span class="note">A prototype of one line to the customer from the job, the tech's phone and the office. Made-up people and jobs, nothing is saved. Everything that moves here is a press you can try.</span>
 </header>
 
@@ -322,7 +325,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 
 <!-- ===================== 1 ===================== -->
 <section class="screen on" id="s1">
-<p class="lead">The job window you showed, with a <b>Customer</b> chip and the customer's lines in the same feed as notes, reports and status. The box at the bottom gains <b>Text</b> and <b>Email</b> beside <b>Note</b>, and the <b>Quick replies</b> strip from GC mode: the step Dana is on first, then the rest of her flow, then anyone's lines, yours first in each. <b>Edit</b> opens the same editor the office uses for trade partners, with three things added for residential: blanks the app fills, a mark for the lines that show on a tech's phone, and Spanish beside English.</p>
+<p class="lead">The job window you showed, with a <b>Customer</b> chip and the customer's lines in the same feed as notes, reports and status. <b>Orange means Dana saw it or did it.</b> Everything else in the feed is ours and stays plain, a note included. The box at the bottom gains <b>Text</b> and <b>Email</b> beside <b>Note</b>, and turns orange while what you write goes to her, and the <b>Quick replies</b> strip from GC mode: the step Dana is on first, then the rest of her flow, then anyone's lines, yours first in each. <b>Edit</b> opens the same editor the office uses for trade partners, with three things added for residential: blanks the app fills, a mark for the lines that show on a tech's phone, and Spanish beside English.</p>
 
 <div class="win" aria-label="Job window mockup">
   <div class="head">
@@ -343,7 +346,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     <button class="pill" data-f="status">Status <span class="n">3</span></button>
     <button class="pill" data-f="billing">Billing</button>
     <button class="pill" data-f="crew">Crew <span class="n">1</span></button>
-    <button class="pill on new" data-f="cust" title="New: every text, email, call and portal press with Dana, on this job or tied to it">Customer <span class="n" id="custN">7</span></button>
+    <button class="pill cust on new" data-f="cust" title="New: every text, email, call and portal press with Dana, on this job or tied to it">Customer <span class="n" id="custN">7</span></button>
   </div>
 
   <div class="feed" id="feed">
@@ -369,7 +372,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     <div id="today"></div>
   </div>
 
-  <div class="composer">
+  <div class="composer tocust" id="composer">
     <div class="kinds" id="kinds">
       <button class="note" data-k="note">Note</button>
       <button class="text on" data-k="text">Text to Dana</button>
@@ -386,8 +389,9 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 </div>
 <p class="note" style="margin-top:10px">Try it: pick a line on the strip and press <b>Send text…</b>. Press <b>Edit</b> on the strip to open the editor, or <b>⤢ Find</b> for the long list. A line with a blank the app cannot fill, like <span class="blank">{thing}</span>, waits in the box until you fill it.</p>
 
-<h2>How the strip reads</h2>
+<h2>How the window reads</h2>
 <dl class="rules">
+  <dt>Orange is the customer's.</dt><dd>A line Dana got or sent, pressed on her page, or the app sent her, is orange, with a deeper bar when it came from her. Most of this feed is ours, so the few lines she saw are the ones to find at a glance. The GC thread is the other way around, mostly her words, so there the team's notes carry the color. The box turns orange the moment what you write goes to her, so a note and a text never look alike.</dd>
   <dt>The step Dana is on comes first.</dt><dd>Her flow is the residential one, and the job is Working, so the Working lines lead. Then the rest of her flow, then anyone's. In each group the lines you use most come first, then the team's. That is the GC strip's rule, unchanged.</dd>
   <dt>Blanks are filled when you press, never typed.</dt><dd><code>{first}</code>, <code>{me}</code>, <code>{address}</code>, <code>{job}</code> come from the job and the sign-in. <code>{minutes}</code> from the drive, <code>{window}</code>, <code>{back day}</code> and <code>{back time}</code> from the schedule, <code>{link}</code> from her page. A blank the app does not know, <code>{thing}</code> or <code>{found}</code>, stays lit in the box and Send waits for it.</dd>
   <dt>A phone mark says which lines a tech gets.</dt><dd>Lines for customers marked <b>on the phone</b> are the five on Job Mode, the step's first. The office orders them in the editor's Phone tab. A tech sees no other line.</dd>
@@ -567,6 +571,13 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <section class="screen" id="s6">
 <p class="lead">What changed in this prototype, newest first. Open it from the repo: <code>to-dos/gc-mode/messages/customer-messages-prototype.html</code> on <code>spike/gc-mode</code>.</p>
 <div class="log">
+  <article><h4>v0.3<small>2026-10-12</small></h4>
+    <ul>
+      <li>Orange means Dana saw it or did it (the owner, 2026-10-12): her lines in the feed carry an orange tint and bar, a deeper bar when the line came from her, and the channel reads as a small orange word. Team notes lose the yellow, since in this window they are the rule, not the exception.</li>
+      <li>The <b>Customer</b> chip, the <b>Text</b> and <b>Email</b> kinds, the box and <b>Send</b> turn orange while what you write goes to her; the count line says <b>Dana gets this</b>. A note stays plain and says she never sees it.</li>
+      <li>On Job Mode her reply lands in the same orange.</li>
+    </ul>
+  </article>
   <article><h4>v0.2<small>2026-10-12</small></h4>
     <ul>
       <li>The quick replies are the GC strip and editor, not a fixed list: the step Dana is on first, then the rest of her flow, then anyone's; yours first in each; narrow after ten lines; <b>⤢ Find</b> with her last message and where she is; <b>Edit</b> with the tabs, the search, add, the edit row, Remove and Put it back, and every change in the line's history with who and when.</li>
@@ -714,15 +725,16 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     box.placeholder = kind==='note' ? 'Add a note to Oakridge sewer line…' : kind==='email' ? 'Pick a line above, or write the email to Dana…' : 'Pick a line above, or write to Dana…';
     send.textContent = kind==='note' ? 'Post' : kind==='email' ? 'Send email…' : 'Send text…';
     pct.hidden = kind!=='note';
+    $('#composer').classList.toggle('tocust', kind!=='note');
     paintStrip(); paintCount();
   }
   function paintCount(){
     const n=box.value.length; const left=blanksIn(box.value);
     const leftWords=left.length?`<span class="bad">fill ${left.map(x=>'{'+x+'}').join(' and ')} before it goes</span>`:'';
-    if(kind==='note'){ count.innerHTML='<span>only the team sees it</span>'; return; }
-    if(kind==='email'){ count.innerHTML=`<span>subject <b>Oakridge sewer line</b></span><span>Hello Dana, … and the office signature are added</span><span>a copy is kept in Documents</span>${leftWords}`; return; }
+    if(kind==='note'){ count.innerHTML='<span>only the team sees it · Dana never does</span>'; return; }
+    if(kind==='email'){ count.innerHTML=`<span class="to">Dana gets this</span><span>subject <b>Oakridge sewer line</b></span><span>Hello Dana, … and the office signature are added</span><span>a copy is kept in Documents</span>${leftWords}`; return; }
     const pieces=Math.max(1,Math.ceil(n/153));
-    count.innerHTML=`<span>${pieces} text${pieces>1?'s':''} · <b>${n}</b> characters</span><span>Replies come to this job and to 1298</span><span>Dana reads English</span>${leftWords}`;
+    count.innerHTML=`<span class="to">Dana gets this</span><span>${pieces} text${pieces>1?'s':''} · <b>${n}</b> characters</span><span>Replies come to this job and to 1298</span><span>Dana reads English</span>${leftWords}`;
   }
   $$('#kinds button').forEach(b=>b.addEventListener('click',()=>{kind=b.dataset.k;paintKind();}));
   box.addEventListener('input',paintCount);
@@ -878,7 +890,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     if(chosenOffice) return;
     await wait(1800);
     dt.insertAdjacentHTML('beforeend',`<div class="ln"><span class="t">9:04a</span><span><span class="w">Dana · text</span><br>Perfect, thank you. The side gate is unlocked.</span></div>`);
-    $('#techThread').insertAdjacentHTML('afterbegin',`<div class="ln" style="background:var(--text-soft);border-radius:8px;padding:6px 8px"><span class="t">9:04a</span><span><span class="w">Dana · text</span><br>Perfect, thank you. The side gate is unlocked.</span></div>`);
+    $('#techThread').insertAdjacentHTML('afterbegin',`<div class="ln" style="background:var(--cust-soft-2);border-left:3px solid var(--cust);border-radius:8px;padding:6px 8px"><span class="t">9:04a</span><span><span class="w">Dana · text</span><br>Perfect, thank you. The side gate is unlocked.</span></div>`);
     $('#techDot').hidden=false;
     toast("Dana wrote back. It comes to Luis until 5 PM, and the office sees it too.");
   });
