@@ -412,9 +412,9 @@ function readLane(def: FlowLaneDef, lane: LaneStamps, person: LaneStamps, jobId:
   const pre = def.steps.map((s) => preRead(s, lane, person, jobId, stamps, now))
   // A Per job lane with nothing on it yet is not started: nobody is on its first step until the job gives a stamp.
   const started = def.lane !== 'per_job' || lane.stamps.some((x) => x.mark !== 'no') || Object.values(lane.rounds).some((rs) => !!rs?.length)
-  // A loop that ends on what follows it is done once a later step in its lane has read true.
-  const laterTrue = (i: number) =>
-    pre.slice(i + 1).some((p) => !p.step.aside && (p.step.loop ? p.rounds.some((r) => r.state === 'done') : p.isTrue || p.lapsed))
+  // A loop that ends on what follows it is done once a later step in its lane that runs once has read true (draws end
+  // at closeout). Another loop's round ends nothing: a certified pay application does not finish the submittals.
+  const laterTrue = (i: number) => pre.slice(i + 1).some((p) => !p.step.aside && !p.step.loop && (p.isTrue || p.lapsed))
   const loopPasses = (p: StepPre, i: number) => (p.step.loopEnds === 'next' ? laterTrue(i) : p.isTrue)
 
   let head: number | null = null

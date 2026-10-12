@@ -153,6 +153,19 @@ describe('readFlow: the rules the prototype did not have', () => {
     expect(stepReading(after, 'warranty', 'boerne')).toMatchObject({ state: 'now', since: '2026-10-02' })
   })
 
+  it('another loop’s round ends nothing: a certified pay application leaves the submittals next', () => {
+    const jonah = flowFixture('jonah').stamps
+    const boerne = jonah.jobs.boerne
+    if (!boerne) throw new Error('fixture')
+    const certified = {
+      ...boerne,
+      rounds: { ...boerne.rounds, certify: [{ key: 'cert-payapp-3', name: 'Pay app 3', opened: '2026-08-28', due: null, stamps: [{ fact: 'certified' as const, mark: 'ok' as const, at: '2026-09-02', by: null, until: null }] }, ...(boerne.rounds.certify ?? [])] },
+    }
+    const r = readFlow(SEED_FLOWS.arch, { ...jonah, jobs: { ...jonah.jobs, boerne: certified } }, NOW)
+    expect(stepReading(r, 'submittals', 'boerne')?.state).toBe('next')
+    expect(stepReading(r, 'certify', 'boerne')).toMatchObject({ state: 'now', since: '2026-09-28' })
+  })
+
   it('a fork’s way out ends the job’s lane: a quote we did not carry', () => {
     const bill = flowFixture('bill').stamps
     const boerne = bill.jobs.boerne
