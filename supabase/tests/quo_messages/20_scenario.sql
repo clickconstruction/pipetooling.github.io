@@ -134,9 +134,11 @@ SELECT mqo.same('with its opt-out line',
   (SELECT concat_ws('|', delivery, optout_line) FROM public.messages WHERE quo_id = 'MS-2'), 'failed|first');
 
 -- 4 · The contact a number lands on.
+-- One statement places the number; the next reads the rows it made (a statement never sees what it writes itself).
+CREATE TEMP TABLE mqo_placed AS SELECT * FROM public.quo_place_number('+12105550199', '(210) 555-0199');
 SELECT mqo.same('a number nobody has makes an unknown contact with that phone',
   (SELECT concat_ws('|', p.made::text, c.kind, c.name, ch.value, coalesce(p.stopped_at::text, '-'), p.placed_kind, p.placed_name)
-   FROM public.quo_place_number('+12105550199', '(210) 555-0199') p
+   FROM mqo_placed p
    JOIN public.contacts c ON c.id = p.placed_contact
    JOIN public.contact_channels ch ON ch.id = p.placed_channel),
   'true|unknown|(210) 555-0199|+12105550199|-|unknown|(210) 555-0199');
