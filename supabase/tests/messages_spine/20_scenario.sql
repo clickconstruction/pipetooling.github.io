@@ -218,7 +218,7 @@ SELECT msp.same('the empty contact is gone and both his lines are his, on his on
   '0|Greg here. / Greg from my other phone.|1|1');
 SELECT msp.same('so his number is his again', (SELECT public.contact_for_channel('phone', '2105550113') = greg FROM ids)::text, 'true');
 SELECT msp.same('a later cut''s row on the folded contact moved with it, by its own contacts_fold_ function',
-  (SELECT concat_ws('|', count(*), bool_and(f.contact_id = i.greg)) FROM msp.fold_rows f, ids i), '1|true');
+  (SELECT concat_ws('|', count(*), bool_and(f.contact_id = i.greg)::text) FROM msp.fold_rows f, ids i), '1|true');
 RESET ROLE;
 -- The customers and the roster are their masters' to see, and the dev's: the dev names the rest.
 SELECT msp.as_user('00000000-0000-0000-0000-0000000005d1');
