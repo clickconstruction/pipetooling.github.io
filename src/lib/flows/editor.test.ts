@@ -23,6 +23,7 @@ import {
   restoreStep,
   saveDraft,
   savedWords,
+  setFork,
   setJoin,
   setLoop,
   setNudge,
@@ -133,7 +134,7 @@ describe('the edits, in the prototype’s words', () => {
       (d) => removeFact(d, 'msa', 'tab_seen'),
       (d) => addPaper(d, 'compare', 'quote'),
       (d) => removePaper(d, 'compare', 'quote'),
-      (d) => setJoin(d, 'papers', 'or'),
+      (d) => setFork(d, 'papers', true),
       (d) => setLoop(d, 'closeout', 'each building'),
       (d) => setWho(d, 'compare', 'both'),
       (d) => setSeat(d, 'invited', { id: 'user-rosa', name: 'Rosa' }),
@@ -239,6 +240,7 @@ describe('the refusals', () => {
     expect(renameStep(draft, 'papers', { name: 'Papers (W-9 and insurance)' })).toMatchObject({ ok: false, why: 'not plain' })
     expect(addStep(draft, 'once', { name: '   ' })).toEqual({ ok: false, why: 'no name', words: 'Name it, or Not now.' })
     expect(renameStep(draft, 'papers', { name: 'msa signed' })).toEqual({ ok: false, why: 'name taken', words: 'Another step in this flow has that name.' })
+    expect(renameStep(draft, 'papers', { name: `Papers ${'x'.repeat(80)}` })).toEqual({ ok: false, why: 'too long', words: 'A step’s name is 80 characters at most.' })
   })
 
   it('pick facts only from the app’s list and papers only from the list, once each', () => {
@@ -314,5 +316,95 @@ describe('Before you save · who moves', () => {
   it('says nobody moves, or one person, in words', () => {
     expect(savedWords(0)).toBe('Saved. Nobody moved.')
     expect(savedWords(1)).toBe('Saved. 1 person moved with it.')
+  })
+})
+
+describe('a paper made in the Contract library', () => {
+  const doc = 'doc:7d0c3f4e-5a6b-4c7d-8e9f-0a1b2c3d4e5f'
+  const withPaper = (d: FlowDraft) =>
+    edits(
+      d,
+      (x) => addPaper(x, 'papers', doc, 'Safety plan'),
+      (x) => addFact(x, 'papers', `${doc}:current`, 'Safety plan'),
+    )
+
+  it('goes on a step with its one fact, said by its name, and is written to the step’s row as it is', () => {
+    const draft = withPaper(draftFrom(SEED_FLOWS.trade))
+    expect(draftWords(draft).map((w) => w.words)).toEqual(['Papers in: + paper Safety plan', 'Papers in: + the Safety plan is current'])
+    const row = saveDraft(draft, 'Rosa', at(10, 2, 9)).rows.find((r) => r.step_key === 'papers')
+    expect(row?.papers.slice(-1)).toEqual([doc])
+    expect(row?.facts.slice(-1)).toEqual([`${doc}:current`])
+    expect(row?.join_word).toBe('and')
+  })
+
+  it('is picked once, and comes off by its name', () => {
+    const on = withPaper(draftFrom(SEED_FLOWS.trade))
+    expect(addPaper(on, 'papers', doc, 'Safety plan')).toEqual({ ok: false, why: 'picked', words: 'It is picked already.' })
+    expect(addFact(on, 'papers', `${doc}:current`)).toEqual({ ok: false, why: 'picked', words: 'It is picked already.' })
+    const off = edits(
+      on,
+      (x) => removeFact(x, 'papers', `${doc}:current`, 'Safety plan'),
+      (x) => removePaper(x, 'papers', doc, 'Safety plan'),
+    )
+    expect(draftWords(off).slice(-2).map((w) => w.words)).toEqual(['Papers in: − the Safety plan is current', 'Papers in: − paper Safety plan'])
+    expect(off.flow).toEqual(SEED_FLOWS.trade)
+  })
+
+  it('refuses an id that is no library document’s, and a kind of fact the library does not keep', () => {
+    const draft = draftFrom(SEED_FLOWS.trade)
+    expect(addPaper(draft, 'papers', 'doc:safety-plan')).toMatchObject({ ok: false, why: 'not a paper' })
+    expect(addFact(draft, 'papers', `${doc}:expired`)).toMatchObject({ ok: false, why: 'not a fact' })
+    expect(addStep(draft, 'once', { name: 'Safety plan in', facts: [`${doc}:on_file`], papers: [doc] })).toMatchObject({ ok: true })
+  })
+
+  it('keeps a name that has its own article, and calls a paper with no name a library paper', () => {
+    const draft = edits(
+      draftFrom(SEED_FLOWS.trade),
+      (x) => addFact(x, 'papers', `${doc}:on_file`, 'their W-2'),
+      (x) => addPaper(x, 'papers', doc),
+    )
+    expect(draftWords(draft).map((w) => w.words)).toEqual(['Papers in: + their W-2 is on file', 'Papers in: + paper a library paper'])
+  })
+})
+
+describe('a fork, and the join it holds', () => {
+  const draft = draftFrom(SEED_FLOWS.trade)
+
+  it('marks a step a fork and back, the join moving with it in the prototype’s words', () => {
+    const fork = ok(setFork(draft, 'papers', true))
+    expect(stepById(fork.flow, 'papers')).toMatchObject({ fork: true, join: 'or' })
+    const back = ok(setFork(fork, 'papers', false))
+    expect(stepById(back.flow, 'papers')).toMatchObject({ fork: false, join: 'and' })
+    expect(draftWords(back).map((w) => w.words)).toEqual(['Papers in: facts joined with or', 'Papers in: facts joined with and'])
+    expect(ok(setFork(draft, 'compare', true))).toBe(draft)
+  })
+
+  it('refuses a join the fork does not hold, in words, for a step and for a new one', () => {
+    expect(setJoin(draft, 'papers', 'or')).toEqual({ ok: false, why: 'not a fork', words: 'Only a fork finishes on either fact. Mark the step a fork first.' })
+    expect(setJoin(draft, 'compare', 'and')).toEqual({ ok: false, why: 'a fork', words: 'A fork finishes on either fact. Unmark the fork to need every fact.' })
+    expect(ok(setJoin(draft, 'compare', 'or'))).toBe(draft)
+    expect(addStep(draft, 'once', { name: 'Either way', facts: ['portal_opened', 'tab_seen'], join: 'or' })).toMatchObject({ ok: false, why: 'not a fork' })
+    const fork = ok(addStep(draft, 'once', { name: 'Either way', facts: ['portal_opened', 'tab_seen'], fork: true }))
+    expect(stepById(fork.flow, 'either_way')).toMatchObject({ fork: true, join: 'or' })
+  })
+
+  it('sets right a step read from a row whose join its fork does not hold', () => {
+    const rows = flowRows(SEED_FLOWS.trade).map((r) => (r.step_key === 'papers' ? { ...r, join_word: 'or' as const } : r))
+    const fixed = ok(setJoin(draftFrom(flowFromRows('trade', rows)), 'papers', 'and'))
+    expect(stepById(fixed.flow, 'papers')).toMatchObject({ fork: false, join: 'and' })
+    expect(draftWords(fixed).map((w) => w.words)).toEqual(['Papers in: facts joined with and'])
+  })
+})
+
+describe('History past 500 characters', () => {
+  it('begins a second line for the step where the next change would pass the column, splitting at a change', () => {
+    const a = 'Papers in from the trade partner before they start any work on the job'
+    const b = 'Papers on file from the trade partner before they start any work on site'
+    const rename = (name: string) => (d: FlowDraft) => renameStep(d, 'papers', { name })
+    const draft = edits(draftFrom(SEED_FLOWS.trade), rename(a), rename(b), rename(a), rename(b), rename(a))
+    const history = saveDraft(draft, 'Rosa', at(10, 2, 9)).history
+    expect(history.map((h) => h.stepId)).toEqual(['papers', 'papers'])
+    expect(history.every((h) => h.what.length <= 500)).toBe(true)
+    expect(history.map((h) => h.what).join('; ')).toBe(draftWords(draft).map((w) => w.words).join('; '))
   })
 })
