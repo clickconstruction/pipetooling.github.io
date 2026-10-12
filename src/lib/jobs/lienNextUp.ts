@@ -13,7 +13,7 @@ import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { letterTwoIsDue, type LetterTwoStatus } from './lienLetterTwo'
 import { lienOfferChipWords, lienOfferFromItem } from './lienPayOffer'
-import { lienChipSigned, lienFieldsHash, signatureColumnsOf } from './lienNoticeSignature'
+import { lienChipSigned, lienFieldsHash, lienPenAwaitsConfirm, signatureColumnsOf } from './lienNoticeSignature'
 import { formatYmdMonthDay } from './billedExpectedPay'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 
@@ -25,6 +25,8 @@ export type LienNextUpAction =
   | 'approve'
   /** The leader's signature on a notice already approved (v2.5087): the run holds it until his name is on it. */
   | 'sign'
+  /** The leader's word on a pen record the office wrote down (the pen train, PR 3): nothing waits on it, it strengthens the record. */
+  | 'confirm_pen'
   | 'send'
   | 'send_run'
   | 'add_tracking'
@@ -48,7 +50,7 @@ export type LienNextUpTarget =
   | { open: 'lien_window'; jobId: string; tab: 'affidavit' }
 
 /** `now` / `coming` by the day; the list draws `sign` (v2.5087, his signature on an approved notice) and `mine` (only the viewer can press it) first and `waiting` (on the leader) last — punch list #101 PR 3. */
-export type LienNextUpGroup = 'sign' | 'mine' | 'now' | 'coming' | 'waiting'
+export type LienNextUpGroup = 'sign' | 'pen' | 'mine' | 'now' | 'coming' | 'waiting'
 
 export type LienNextUpRow = {
   key: string
@@ -83,6 +85,7 @@ const BUTTON: Record<LienNextUpAction, string> = {
   draft: 'Draft notice',
   approve: 'Approve',
   sign: 'Sign',
+  confirm_pen: 'Yes, I signed it',
   send: 'Send',
   send_run: 'Send the run',
   add_tracking: 'Add tracking',
@@ -110,6 +113,8 @@ export type LienNextUpInput = {
   gcName: (gcId: string) => string
   /** The leader who approves this job's paper, by name (the job's master), for the office's waiting rows; null or absent reads *the leader*. */
   leaderName?: (jobId: string) => string | null
+  /** Any user by id (the pen train, PR 3): who wrote down a pen record, for the leader's row. */
+  userName?: (userId: string) => string | null
 }
 
 function daysBetween(fromYmd: string, toYmd: string): number {
@@ -179,6 +184,14 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         const unsigned = e.item ? lienChipSigned(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields)) === 'unsigned' : false
         if (unsigned && leader) {
           push({ ...base, key: `notice:${e.jobId}`, sub: e.item?.approval_mode === 'word' ? 'Approved on your word · unsigned' : 'Approved · unsigned', action: 'sign', button: BUTTON.sign, target: pane('ready') })
+          break
+        }
+        // A pen record the leader has not confirmed (the pen train, PR 3): his own row, first on the list; it blocks nothing, so the office's row is the ready one below.
+        if (leader && e.item && lienPenAwaitsConfirm(signatureColumnsOf(e.item), lienFieldsHash(e.item.fields))) {
+          const cols = signatureColumnsOf(e.item)
+          const who = (cols.signed_recorded_by ? input.userName?.(cols.signed_recorded_by) : null)?.trim() || 'the office'
+          const day = cols.signed_at ? calendarYmdInAppTzFromIso(cols.signed_at) : ''
+          push({ ...base, key: `notice:${e.jobId}`, sub: `Signed by pen${/^\d{4}-\d{2}-\d{2}$/.test(day) ? ` ${formatYmdMonthDay(day)}` : ''} · recorded by ${who}`, action: 'confirm_pen', button: BUTTON.confirm_pen, target: pane('ready') })
           break
         }
         // A GC with several ready is one row below; a single job sends from its own pane.
@@ -334,8 +347,9 @@ export function lienPrintedDaysWords(stamps: ReadonlyArray<string | null>): stri
 }
 
 /** An approval only the leader can give (punch list #101 PR 3): his, when the row has his button; the office waits on it. */
-function approvalGroup(r: LienNextUpRow): 'sign' | 'mine' | 'waiting' | null {
+function approvalGroup(r: LienNextUpRow): 'sign' | 'pen' | 'mine' | 'waiting' | null {
   if (r.action === 'sign') return 'sign'
+  if (r.action === 'confirm_pen') return 'pen'
   if (r.action !== 'approve') return null
   return r.button ? 'mine' : 'waiting'
 }
@@ -347,6 +361,7 @@ function approvalGroup(r: LienNextUpRow): 'sign' | 'mine' | 'waiting' | null {
  */
 export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: { waitingOn?: string | null } = {}): Array<{ group: LienNextUpGroup; label: string; rows: LienNextUpRow[] }> {
   const sign = rows.filter((r) => approvalGroup(r) === 'sign')
+  const pen = rows.filter((r) => approvalGroup(r) === 'pen')
   const mine = rows.filter((r) => approvalGroup(r) === 'mine')
   const waiting = rows.filter((r) => approvalGroup(r) === 'waiting')
   const rest = rows.filter((r) => approvalGroup(r) == null)
@@ -354,6 +369,7 @@ export function groupLienNextUp(rows: ReadonlyArray<LienNextUpRow>, opts: { wait
   const coming = rest.filter((r) => r.group === 'coming')
   return [
     ...(sign.length ? [{ group: 'sign' as const, label: 'Only you can sign', rows: sign }] : []),
+    ...(pen.length ? [{ group: 'pen' as const, label: 'Signed by pen, as recorded', rows: pen }] : []),
     ...(mine.length ? [{ group: 'mine' as const, label: 'Only you can approve', rows: mine }] : []),
     ...(now.length ? [{ group: 'now' as const, label: 'Needs you now', rows: now }] : []),
     ...(coming.length ? [{ group: 'coming' as const, label: 'Coming up', rows: coming }] : []),

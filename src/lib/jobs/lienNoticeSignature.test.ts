@@ -5,6 +5,7 @@ import {
   lienFieldsHash,
   lienNoticeSignatureAfterSigning,
   lienPenWitnessWords,
+  lienPenAwaitsConfirm,
   lienSignatureModeOf,
   lienPenWitnessHowOf,
   lienNoticeSignatureFromRow,
@@ -117,7 +118,7 @@ describe('the row’s signature', () => {
 describe('the chip’s word and the clearing patch (v2.5082)', () => {
   it('signed with the instant while the draft is what he signed, unsigned otherwise; the clearing patch nulls all seven columns', () => {
     const hash = lienFieldsHash(FIELDS)
-    expect(lienChipSigned(signed(), hash)).toEqual({ at: SIGNED_AT })
+    expect(lienChipSigned(signed(), hash)).toEqual({ at: SIGNED_AT, mode: 'type', recordedBy: null, confirmedAt: null })
     expect(lienChipSigned(signed(), lienFieldsHash({ ...FIELDS, gcEmail: 'x' }))).toBe('unsigned')
     expect(lienChipSigned(signed({ signed_at: null }), hash)).toBe('unsigned')
     expect(Object.values(LIEN_DESK_SIGNATURE_CLEAR).every((v) => v === null)).toBe(true)
@@ -174,7 +175,7 @@ describe('signed with a pen (the pen train, migration 20261013100000)', () => {
     const sig = lienNoticeSignatureFromRow(pen({ signed_leader_confirmed_at: '2026-10-12T23:00:00.000Z' }), opts)
     expect(sig!.pen!.confirmedAtIso).toBe('2026-10-12T23:00:00.000Z')
     expect(sig!.auditLine).toBe('Signed by pen by Robert Douglas on October 9, 2026, on the paper as printed. Recorded by Taunya, who watched him sign. Confirmed by Robert Douglas from his own sign-in on October 12, 2026.')
-    expect(lienChipSigned(pen(), lienFieldsHash(FIELDS))).toEqual({ at: SIGNED_AT })
+    expect(lienChipSigned(pen(), lienFieldsHash(FIELDS))).toEqual({ at: SIGNED_AT, mode: 'pen', recordedBy: 'u-taunya', confirmedAt: null })
   })
 
   it('a pen signature is bound to the paper as printed: an edit after it reads as unsigned, like the electronic ones', () => {
@@ -189,5 +190,18 @@ describe('signed with a pen (the pen train, migration 20261013100000)', () => {
     expect(sig.auditLine).toContain('Recorded by Taunya, who was told by him that he had signed.')
     expect(Object.keys(LIEN_DESK_SIGNATURE_CLEAR)).toHaveLength(10)
     expect(LIEN_DESK_SIGNATURE_CLEAR.signed_witness_how).toBeNull()
+  })
+})
+
+describe('a pen record awaiting the leader’s word (the pen train, PR 3)', () => {
+  const pen = (over: Partial<LienDeskSignatureColumns> = {}) => signed({ signer_signature_mode: 'pen', signed_recorded_by: 'u-taunya', signed_witness_how: 'watched', ...over })
+  it('the chip carries the mode, who wrote it down and the confirmation; awaiting is a pen record with no confirmation and a draft that still matches', () => {
+    const hash = lienFieldsHash(FIELDS)
+    expect(lienChipSigned(pen(), hash)).toEqual({ at: SIGNED_AT, mode: 'pen', recordedBy: 'u-taunya', confirmedAt: null })
+    expect(lienChipSigned(signed(), hash)).toEqual({ at: SIGNED_AT, mode: 'type', recordedBy: null, confirmedAt: null })
+    expect(lienPenAwaitsConfirm(pen(), hash)).toBe(true)
+    expect(lienPenAwaitsConfirm(pen({ signed_leader_confirmed_at: '2026-10-12T22:00:00Z' }), hash)).toBe(false)
+    expect(lienPenAwaitsConfirm(signed(), hash)).toBe(false)
+    expect(lienPenAwaitsConfirm(pen(), lienFieldsHash({ ...FIELDS, gcEmail: 'x' }))).toBe(false)
   })
 })

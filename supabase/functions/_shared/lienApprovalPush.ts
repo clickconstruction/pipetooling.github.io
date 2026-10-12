@@ -66,3 +66,48 @@ export function lienApprovalPush(input: LienApprovalPushInput): LienApprovalPush
   ].filter((l) => l !== null) as string[]
   return { title, body, url: lienApprovalUrl(input.jobId), tag: `lien-approval-${input.jobId}`, subject: `Approve a lien notice · ${input.jobLabel}`, emailText: lines.join('\n') }
 }
+
+export type LienPenRecordedPushInput = {
+  /** "891 · Take 5 Liberty Hill" */
+  jobLabel: string
+  jobId: string
+  /** The claim on the draft, dollars; null when the draft has none. */
+  claim: number | null
+  /** The day the office says he signed, YYYY-MM-DD; null when it is not a date. */
+  signedYmd: string | null
+  /** Who wrote it down; null when unknown. */
+  recorderName: string | null
+  /** How the office knows: watched, told, or page. */
+  how: string | null
+}
+
+/** The door that exists: the desk opened on this job in the Ready pile, where Yes, I signed it ▸ sits (the pen train, PR 3). */
+export function lienPenRecordedUrl(jobId: string): string {
+  return `/jobs?tab=stages&liendesk=1&liendeskPile=ready&liendeskJob=${encodeURIComponent(jobId)}`
+}
+
+/**
+ * The words the leader gets when the office writes down his pen signature (the pen train, PR 3):
+ * one line, the job, the money, the day, who wrote it down. The tap lands on the notice, where
+ * Yes, I signed it ▸ and Not what I signed sit. Nothing waits on his answer.
+ */
+export function lienPenRecordedPush(input: LienPenRecordedPushInput): LienApprovalPush {
+  const first = (input.recorderName ?? '').trim().split(/\s+/)[0] || null
+  const who = first ?? 'The office'
+  const owed = input.claim != null && input.claim > 0 ? money(input.claim) : null
+  const day = shortDay(input.signedYmd)
+  const howWords = input.how === 'watched' ? `${who} watched you sign` : input.how === 'page' ? `${who} has the signed page` : `${who} says you told them`
+  const body = [input.jobLabel, owed, day ? `signed ${day}` : null, howWords].filter(Boolean).join(' · ')
+  const title = `${who} recorded your pen signature`
+  const lines = [
+    `${who} recorded that you signed a lien notice with a pen.`,
+    '',
+    input.jobLabel,
+    owed ? `${owed}.` : null,
+    day ? `Signed ${day}.` : null,
+    `${howWords}.`,
+    '',
+    'Open the Lien desk and press Yes, I signed it, or Not what I signed. Nothing waits on your answer.',
+  ].filter((l) => l !== null) as string[]
+  return { title, body, url: lienPenRecordedUrl(input.jobId), tag: `lien-pen-${input.jobId}`, subject: `${title} · ${input.jobLabel}`, emailText: lines.join('\n') }
+}

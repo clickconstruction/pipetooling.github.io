@@ -264,3 +264,21 @@ describe('Only you can sign (v2.5087)', () => {
     expect(officeRow.sub).toBe('Approved · ready to send · unsigned, waits on Robert')
   })
 })
+
+describe('Signed by pen, as recorded (the pen train, PR 3)', () => {
+  it('a pen record the leader has not confirmed is his own row, first after Only you can sign, with Yes, I signed it; the office sees the ready row', () => {
+    const pen = { id: 'i-pen', status: 'approved', approval_mode: 'word', fields: {}, signed_at: '2026-10-09T17:00:00Z', signer_printed_name: 'Robert Douglas', signer_signature_mode: 'pen', signed_recorded_by: 'u-taunya', signed_witness_how: 'watched', signed_leader_confirmed_at: null } as unknown as LienDeskEntry['item']
+    const leaderRows = build({ role: 'master_technician', notices: [notice('j1', 'ready', { item: pen })], userName: (id) => (id === 'u-taunya' ? 'Taunya' : null) })
+    const row = leaderRows.find((r) => r.jobId === 'j1')!
+    expect(row.action).toBe('confirm_pen')
+    expect(row.button).toBe('Yes, I signed it')
+    expect(row.sub).toBe('Signed by pen Oct 9 · recorded by Taunya')
+    expect(row.target).toEqual({ open: 'notices', jobId: 'j1', pile: 'ready' })
+    const groups = groupLienNextUp(leaderRows)
+    expect(groups[0]!.group).toBe('pen')
+    expect(groups[0]!.label).toBe('Signed by pen, as recorded')
+    const confirmed = { ...(pen as object), signed_leader_confirmed_at: '2026-10-12T22:00:00Z' } as unknown as LienDeskEntry['item']
+    expect(build({ role: 'master_technician', notices: [notice('j1', 'ready', { item: confirmed })] }).find((r) => r.jobId === 'j1')!.action).toBe('send')
+    expect(build({ role: 'assistant', notices: [notice('j1', 'ready', { item: pen })] }).find((r) => r.jobId === 'j1')!.action).toBe('send')
+  })
+})

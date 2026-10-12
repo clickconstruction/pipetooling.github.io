@@ -2961,6 +2961,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 { "item_id": "<job_lien_desk_items.id>", "due_ymd": "2026-10-15" }
 ```
 
+**The pen train (PR 3)**: `{ "item_id": "<id>", "kind": "pen_recorded" }` tells the leader the office wrote down his pen signature (migration 20261013100000). The caller must be the row's `signed_recorded_by` and the row's mode must be `pen`, else 403; the push goes to the signer (`signed_by`) only, never the roster; the words come from `lienPenRecordedPush` (the job, the money, the day he signed, who wrote it down and how they know) and land on the notice in the Ready pile (`lienPenRecordedUrl`), where *Yes, I signed it ▸* and *Not what I signed* sit. Logged as `lien_pen_recorded`. The client calls it best-effort from `recordLienPenSignature`.
+
 `due_ymd` is optional and must be a date; it is the only thing the caller may say. The function writes the words itself from [`_shared/lienApprovalPush.ts`](../supabase/functions/_shared/lienApprovalPush.ts) (re-exported at `src/lib/jobs/lienApprovalPush.ts`): title *Approve a lien notice*, body *891 · Take 5 Liberty Hill · $27,199 owed by Burd & Assoc. · mail by Oct 15 · 8 days*, the tap opening `/jobs?tab=stages&liendesk=1&liendeskPile=awaiting&liendeskJob=<job>`. The leader is the job's master when he holds a leader role (`dev`, `master_technician`), else every leader on the roster but the caller (`REAL_ACCOUNT`). One push per registered device (`push_subscriptions`); a leader with no device gets the same words by email to his own address (our own staff, so no sent copy). Each reached leader gets one `notification_history` row, `template_type = 'lien_approval_ask'`, `channel` push or email.
 
 #### Response
