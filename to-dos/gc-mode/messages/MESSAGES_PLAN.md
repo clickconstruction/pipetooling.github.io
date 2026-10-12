@@ -768,6 +768,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.129, 2026-10-11**: the note box's rows tightened (the owner's marks): the helper reads *only the team sees it · closes
+  the row* so it stays on the kinds row, and *Bring it back on a day…* sits on the send row beside Add the note; the
+  day strip opens above the box as before.
 - **v1.128, 2026-10-11**: a team note can carry a follow-up day (the owner, 2026-10-11). Under the note box, *↩ Bring it
   back on a day…* opens the owed strip's day chips and a typed day; with a day on it the note still closes the row,
   and that morning the row comes back to Follow up under a new first section, *Needs you*, with the note on it and
