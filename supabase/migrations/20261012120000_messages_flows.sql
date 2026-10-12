@@ -17,6 +17,8 @@ SET lock_timeout = '3s';
 --   * Four facts main did not keep: gc_trade_portal_links.first_opened_at, gc_invites.lost_on, gc_projects.won_on and
 --     gc_owner_pay_apps.paid_on. Nothing writes them yet; their writers come with cut 4's screens.
 --   * contacts.off_*: the spine's columns (20261012010000); the office may now update them (Off the flow).
+--   * contacts_fold_flows(): the spine's contacts_fold runs it, so a person's notes, skips, holds and sends follow them
+--     when two contacts become one. contacts_fold itself is never redefined.
 --   * flows_seed() seeds the four flows from SEED_FLOWS, only for a kind that has no flow yet, so a second run changes
 --     nothing and never brings back a step the office removed.
 --   * The office team's (gc_office_team()), one policy a table. A row's who and when are the table's to set.
@@ -30,7 +32,7 @@ RETURNS text[]
 LANGUAGE sql
 IMMUTABLE PARALLEL SAFE
 AS $$
-  SELECT ARRAY['invite_sent', 'portal_opened', 'w9_signed', 'coi_current', 'msa_signed', 'quote_in', 'tab_seen', 'carried', 'not_carried', 'sow_signed', 'draw_approved', 'draw_paid', 'final_waiver', 'asked_us', 'bid_sent', 'said_yes', 'declined', 'contract_signed', 'start_sent', 'started', 'payapp_paid', 'closed', 'warranty_over', 'co_answered', 'plans_in', 'question_answered', 'addendum_filed', 'submittal_reviewed', 'certified', 'named']::text[]
+  SELECT ARRAY['invite_sent', 'portal_opened', 'w9_signed', 'coi_current', 'msa_signed', 'quote_in', 'quote_declined', 'tab_seen', 'carried', 'not_carried', 'sow_signed', 'draw_approved', 'draw_paid', 'final_waiver', 'asked_us', 'bid_sent', 'said_yes', 'declined', 'contract_signed', 'start_sent', 'started', 'payapp_paid', 'closed', 'warranty_over', 'co_answered', 'plans_in', 'question_answered', 'addendum_filed', 'submittal_reviewed', 'certified', 'named']::text[]
 $$;
 
 CREATE OR REPLACE FUNCTION public.flow_paper_ids()
@@ -297,6 +299,49 @@ CREATE TRIGGER flow_removed_steps_put_back_by BEFORE UPDATE OF put_back_at ON pu
   FOR EACH ROW WHEN (OLD.put_back_at IS NULL AND NEW.put_back_at IS NOT NULL)
   EXECUTE FUNCTION public.flows_stamp_lifted_by('put_back_by_user_id');
 
+-- ---------- a fold keeps a person's place ----------
+
+-- When two contacts become one (Who is this?, a customer merge), the spine's contacts_fold runs every
+-- contacts_fold_<something>(uuid, uuid) before the folded contact goes, which would cascade these rows away. This one moves
+-- the notes, skips, holds and sends onto the contact that stays. A step skipped or held on both keeps the survivor's;
+-- the other's is lifted as the fold's, so one stands. Runs as the caller, so training mode and a twin change nothing.
+CREATE OR REPLACE FUNCTION public.contacts_fold_flows(p_from uuid, p_into uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  IF p_from IS NULL OR p_into IS NULL OR p_from = p_into THEN
+    RETURN;
+  END IF;
+  UPDATE public.contact_step_skips f SET undone_at = clock_timestamp()
+  WHERE f.contact_id = p_from AND f.undone_at IS NULL
+    AND EXISTS (
+      SELECT 1 FROM public.contact_step_skips t
+      WHERE t.contact_id = p_into AND t.undone_at IS NULL AND t.step_key = f.step_key
+        AND t.bid_id IS NOT DISTINCT FROM f.bid_id AND t.project_id IS NOT DISTINCT FROM f.project_id
+        AND t.jobs_ledger_id IS NOT DISTINCT FROM f.jobs_ledger_id);
+  UPDATE public.nudge_holds f SET released_at = clock_timestamp()
+  WHERE f.contact_id = p_from AND f.released_at IS NULL
+    AND EXISTS (
+      SELECT 1 FROM public.nudge_holds t
+      WHERE t.contact_id = p_into AND t.released_at IS NULL AND t.step_key = f.step_key
+        AND t.bid_id IS NOT DISTINCT FROM f.bid_id AND t.project_id IS NOT DISTINCT FROM f.project_id
+        AND t.jobs_ledger_id IS NOT DISTINCT FROM f.jobs_ledger_id);
+  UPDATE public.contact_step_notes SET contact_id = p_into WHERE contact_id = p_from;
+  UPDATE public.contact_step_skips SET contact_id = p_into WHERE contact_id = p_from;
+  UPDATE public.nudge_holds SET contact_id = p_into WHERE contact_id = p_from;
+  UPDATE public.nudge_sent SET contact_id = p_into WHERE contact_id = p_from;
+END;
+$$;
+
+COMMENT ON FUNCTION public.contacts_fold_flows(uuid, uuid) IS
+  'Messages (cut 4): run by the spine''s contacts_fold before the folded contact goes; moves its step notes, skips, holds and sent nudges onto the contact that stays, lifting a skip or a hold both had. SECURITY INVOKER.';
+
+REVOKE EXECUTE ON FUNCTION public.contacts_fold_flows(uuid, uuid) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.contacts_fold_flows(uuid, uuid) TO authenticated, service_role;
+
 -- ---------- the four facts main did not keep ----------
 
 ALTER TABLE public.gc_trade_portal_links ADD COLUMN IF NOT EXISTS first_opened_at timestamptz;
@@ -357,7 +402,7 @@ BEGIN
       ('trade', 'portal', 'once', 1, 'Portal opened', 'Portal abierto', 'setup', 'them', ARRAY['portal_opened'], 'and', '{}'::text[], NULL, NULL, false, false, false, NULL, NULL, 3, 'text', 'app', NULL, 1, NULL),
       ('trade', 'papers', 'once', 2, 'Papers in', 'Documentos recibidos', 'setup', 'them', ARRAY['w9_signed', 'coi_current'], 'and', ARRAY['w9', 'coi'], NULL, NULL, false, false, false, NULL, NULL, 5, 'call', 'ask', NULL, 3, NULL),
       ('trade', 'msa', 'once', 3, 'MSA signed', 'Acuerdo firmado', 'setup', 'them', ARRAY['msa_signed'], 'and', ARRAY['msa'], NULL, NULL, false, false, false, NULL, NULL, 3, 'text', 'ask', NULL, 4, NULL),
-      ('trade', 'ask', 'per_job', 0, 'Asked to quote', 'Cotización pedida', 'pricing', 'them', ARRAY['quote_in'], 'and', ARRAY['quote'], 'each ask', 'rounds', false, false, false, 'When a job of yours comes up.', 'Cuando surja un trabajo para usted.', 7, 'text', 'ask', 'promised', 6, NULL),
+      ('trade', 'ask', 'per_job', 0, 'Asked to quote', 'Cotización pedida', 'pricing', 'them', ARRAY['quote_in', 'quote_declined'], 'or', ARRAY['quote'], 'each ask', 'rounds', false, false, false, 'When a job of yours comes up.', 'Cuando surja un trabajo para usted.', 7, 'text', 'ask', 'promised', 6, NULL),
       ('trade', 'compare', 'per_job', 1, 'Compared', 'Comparado', 'pricing', 'us', ARRAY['carried', 'not_carried'], 'or', '{}'::text[], NULL, NULL, true, false, false, 'After your quote is in.', 'Después de recibir su cotización.', NULL, NULL, NULL, NULL, 2, 'our decision on their quote'),
       ('trade', 'sow', 'per_job', 2, 'Statement of work', 'Alcance de trabajo', 'building', 'them', ARRAY['sow_signed'], 'and', ARRAY['sow'], NULL, NULL, false, false, false, 'If we carry your quote.', 'Si llevamos su cotización.', 3, 'text', 'ask', NULL, 5, NULL),
       ('trade', 'draws', 'per_job', 3, 'Draws', 'Pagos parciales', 'building', 'both', ARRAY['draw_paid'], 'and', ARRAY['waiver'], 'each draw', 'next', false, false, false, 'Monthly, once you are on site.', 'Cada mes, una vez en obra.', NULL, NULL, NULL, NULL, 12, NULL),
@@ -435,6 +480,9 @@ GRANT INSERT (contact_id, step_key, bid_id, project_id, jobs_ledger_id, until_on
 GRANT UPDATE (released_at) ON TABLE public.nudge_holds TO authenticated;
 -- A person's send; the app's own sends go in as the service role.
 GRANT INSERT (contact_id, step_key, bid_id, project_id, jobs_ledger_id, round_key, how, sent_by, message_id) ON TABLE public.nudge_sent TO authenticated;
+
+-- A fold re-points a person's rows (contacts_fold_flows runs as the caller).
+GRANT UPDATE (contact_id) ON TABLE public.contact_step_notes, public.contact_step_skips, public.nudge_holds, public.nudge_sent TO authenticated;
 
 -- Off the flow (the spine's columns): the office's word on a person, kept beside the contact.
 GRANT UPDATE (off_since, off_why, off_by) ON TABLE public.contacts TO authenticated;

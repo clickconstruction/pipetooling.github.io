@@ -1,5 +1,6 @@
 -- Messages, cut 4, the flow suite (migration *_messages_flows): the four flows read back step by step as SEED_FLOWS
--- draws them (src/lib/flows/seed.ts); a second seed adds nothing and brings back no step the office removed; the
+-- draws them (src/lib/flows/seed.ts); a second seed adds nothing and brings back no step the office removed; a fold of
+-- two contacts moves a person's notes, skips, holds and sends onto the one that stays; the
 -- CHECKs refuse an unknown fact or paper, a loop that does not say when it ends, half a nudge and an unknown lane; only
 -- the office team reads and writes; who undid a skip, let go of a hold, put a step back or sent a nudge is the table's
 -- to stamp; training mode and a digital twin change nothing; and the four new facts' columns are there. Presses run as
@@ -29,7 +30,10 @@ INSERT INTO public.customers (id, name, master_user_id) VALUES
 INSERT INTO public.projects (id, name, customer_id) VALUES
   ('00000000-0000-0000-0000-0000000006f1', 'Flows Clinic', '00000000-0000-0000-0000-0000000006c1');
 INSERT INTO public.gc_projects (project_id, stage) VALUES ('00000000-0000-0000-0000-0000000006f1', 'buyout');
-INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-000000006001', 'unknown');
+INSERT INTO public.contacts (id, kind) VALUES
+  ('00000000-0000-0000-0000-000000006001', 'unknown'),
+  ('00000000-0000-0000-0000-000000006002', 'unknown'),
+  ('00000000-0000-0000-0000-000000006003', 'unknown');
 
 CREATE SCHEMA mfl;
 CREATE FUNCTION mfl.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -81,9 +85,9 @@ SELECT mfl.same('the trade partner flow', mfl.order('trade'),
   'once.invited once.portal once.papers once.msa per_job.ask per_job.compare per_job.sow per_job.draws per_job.closeout');
 SELECT mfl.same('the architect flow', mfl.order('arch'), 'per_job.plans per_job.questions per_job.addenda per_job.submittals per_job.certify');
 SELECT mfl.same('the unknown number''s flow', mfl.order('unknown'), 'once.who');
-SELECT mfl.same('an ask: a loop that ends with its rounds, nudged at their promised day',
+SELECT mfl.same('an ask: a quote or their no, a loop that ends with its rounds, nudged at their promised day',
   mfl.step('trade', 'ask'),
-  'per_job|0|pricing|them|quote_in|and|quote|each ask|rounds|false|false|false|7|text|ask|promised|6|-|Asked to quote|Cotización pedida|When a job of yours comes up.');
+  'per_job|0|pricing|them|quote_in,quote_declined|or|quote|each ask|rounds|false|false|false|7|text|ask|promised|6|-|Asked to quote|Cotización pedida|When a job of yours comes up.');
 SELECT mfl.same('comparing: our fork, two ways out, our words when we owe it',
   mfl.step('trade', 'compare'),
   'per_job|1|pricing|us|carried,not_carried|or||-|-|true|false|false|-|-|-|-|2|our decision on their quote|Compared|Comparado|After your quote is in.');
@@ -198,6 +202,22 @@ SELECT mfl.same('the note and the send carry the estimator',
   '00000000-0000-0000-0000-0000000006d2|person,00000000-0000-0000-0000-0000000006d2');
 UPDATE public.contacts SET off_since = '2026-10-02', off_why = 'A wrong number.', off_by = '00000000-0000-0000-0000-0000000006d2'
   WHERE id = '00000000-0000-0000-0000-000000006001';
+-- 6b · Two contacts become one: the notes, skips, holds and sends follow to the contact that stays.
+INSERT INTO public.contact_step_notes (contact_id, step_key, note) VALUES ('00000000-0000-0000-0000-000000006002', 'who', 'Folded note.');
+INSERT INTO public.nudge_holds (contact_id, step_key, until_on) VALUES ('00000000-0000-0000-0000-000000006002', 'who', '2026-10-09');
+INSERT INTO public.contact_step_skips (contact_id, step_key, why) VALUES
+  ('00000000-0000-0000-0000-000000006002', 'who', 'The folded one''s skip.'),
+  ('00000000-0000-0000-0000-000000006003', 'who', 'The survivor''s skip.');
+INSERT INTO public.nudge_sent (contact_id, step_key, how, sent_by) VALUES ('00000000-0000-0000-0000-000000006002', 'who', 'text', 'person');
+SELECT public.contacts_fold('00000000-0000-0000-0000-000000006002', '00000000-0000-0000-0000-000000006003');
+SELECT mfl.same('a fold moves the note, the hold, the skips and the send; a skip both had keeps the survivor''s', (
+  SELECT concat_ws('|',
+    (SELECT count(*) FROM public.contacts WHERE id = '00000000-0000-0000-0000-000000006002'),
+    (SELECT string_agg(note, ',') FROM public.contact_step_notes WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
+    (SELECT concat_ws(',', until_on, (released_at IS NULL)::text) FROM public.nudge_holds WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
+    (SELECT string_agg(why || ':' || (undone_at IS NULL)::text, ',' ORDER BY why COLLATE "C") FROM public.contact_step_skips WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
+    (SELECT count(*) FROM public.nudge_sent WHERE contact_id = '00000000-0000-0000-0000-000000006003'))),
+  '0|Folded note.|2026-10-09,true|The folded one''s skip.:false,The survivor''s skip.:true|1');
 SELECT mfl.same('the office takes a person off the flow',
   (SELECT concat_ws('|', off_since, off_why) FROM public.contacts WHERE id = '00000000-0000-0000-0000-000000006001'), '2026-10-02|A wrong number.');
 RESET ROLE;
