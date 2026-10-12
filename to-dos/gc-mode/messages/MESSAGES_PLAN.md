@@ -821,6 +821,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.167, 2026-10-12**: *See their page* on its own line under the flow panel and on the step card, with a small
+  globe before it, the way a portal link reads (the owner, 2026-10-12).
 - **v1.166, 2026-10-12**: the thread header in four calm rows: the name with *Customer: Helotes Dental Office ▾*
   (the chevron hides and shows the contact line, open by default), the phone and the email, then one status row
   that leads with the move strip and follows with the back pill and a short portal pill at the same size (*portal ·
