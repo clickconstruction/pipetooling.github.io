@@ -527,6 +527,9 @@ Drawn twice. `bill-day-mockup.html` (v1.117) is the first pass, a list of who is
   money team reads amounts, as the Draws window is gated today.
 - **Still the owner's**: the cut-off as a setting or fixed; whether the app may send the cut-off reminder;
   whether a superintendent's tap that matches the claim approves the line by itself (lean no).
+  *How it reaches her* (v1.124): the daily log on her phone on the checking days, a text from the company number
+  on the first of them, the office's *Ask Wendi to walk it* for today, her role showing percents and photos and
+  never a dollar, and her taps read back by the gate.
 
 **The superintendent's list, the criteria** (the owner's question, 2026-10-11). *Who*: the superintendent
 assigned to the job and the project manager, never everyone with the role; percents, quantities and photos,
@@ -765,6 +768,13 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.124, 2026-10-11**: the superintendent's side. *Signed in as* on the header switches between Robert, the office,
+  and Wendi, the superintendent on Stone Oak Pharmacy, whose nav is Daily log · Messages · A job. The daily log carries
+  crews on site (counts), photos, and on a bill-day week *Claims to check*, the same list the office previews as her
+  phone, drawn into the log from one source: walking order, a tap per line with who, a photo or a note under the claim,
+  and "every claim is checked" when it is. The cascade's We check card says the app texts her on the first checking
+  day, with *ask her today* (the text as she sees it, Send it now) and *see her side*; the *checked against the site*
+  gate gains *Ask Wendi to walk it*. Her job page says where the claims are and shows no amounts.
 - **v1.123, 2026-10-11**: the superintendent's list is in walking order by where a line is on site (Site, Yard, Level 1,
   Level 2, Roof), under a heading per place, not by trade; a tap under the claim opens a photo or a note on the spot and
   the line stays marked until one is kept; the send-back note is written from the walk's notes, the opened lines read
