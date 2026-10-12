@@ -179,6 +179,10 @@ SELECT pcp.refused('a paper row with no customer', $q$INSERT INTO public.public_
 SELECT pcp.refused('a surface it does not know', $q$INSERT INTO public.public_page_views (surface, entity_id) VALUES ('portal_papers', '00000000-0000-0000-0000-0000000008c1')$q$,
   'public_page_views_surface_check');
 
+SELECT pcp.same('the surface column names the readers that count its rows as loads',
+  (SELECT col_description('public.public_page_views'::regclass, a.attnum) LIKE '%customer-portal%usage_customer_views%journey_health_counts%'
+   FROM pg_attribute a WHERE a.attrelid = 'public.public_page_views'::regclass AND a.attname = 'surface')::text, 'true');
+
 SELECT pcp.as_user('00000000-0000-0000-0000-0000000008a2');
 SET LOCAL ROLE authenticated;
 SELECT pcp.same('the assistant reads the page and each paper back: first, last and how many outside opens',

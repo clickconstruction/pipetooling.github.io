@@ -30,6 +30,10 @@ COMMENT ON COLUMN public.public_page_views.paper_kind IS
 COMMENT ON COLUMN public.public_page_views.paper_id IS
   'Messages cut 8: on a portal_paper row, the opened paper''s own id in its table. No FK on purpose, as entity_id: a removed paper must not erase that it was read.';
 
+-- The rule for the next surface, kept on the column so whoever adds one reads it where they look.
+COMMENT ON COLUMN public.public_page_views.surface IS
+  'Which public page was loaded. Every reader takes a row as one load of its surface: portal rows are counted by customer-portal (the globe''s Opened N times), usage_customer_views and journey_health_counts; sub_portal rows by sub_portal_visit_summary and sub_portal_visits. Another kind of event gets a surface of its own, never a row under a page''s surface: a paper opened on the customer''s page is portal_paper (Messages cut 8, v2.5263).';
+
 -- Both checks go on unchecked and are then checked under the lighter lock, so the portals keep writing while the
 -- existing rows are read.
 ALTER TABLE public.public_page_views DROP CONSTRAINT IF EXISTS public_page_views_surface_check;
