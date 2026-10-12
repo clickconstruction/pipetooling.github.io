@@ -438,6 +438,12 @@ export function noteBackToast(back: DayKept | null): string | null {
   return null
 }
 
+/** The reply box's press beside *Add the note* that opens a note's day to come back (`NoteBackDay`). */
+export const NOTE_BACK_PRESS = '↩ Bring it back on a day…'
+
+/** Its hover: what a day does, and that it is optional. */
+export const NOTE_BACK_TIP = 'Adds a day to this note. The row comes back to Follow up that morning, under Needs you, with the note on it. Without a day, the note just closes the row.'
+
 /** *Another day* on a note brought back: the next working day, and what the office reads. */
 export function anotherDay(todayYmd: string): { backOn: string; toast: string } {
   const backOn = nextWorkday(todayYmd)

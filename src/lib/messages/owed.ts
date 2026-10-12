@@ -380,6 +380,12 @@ export function owedDoneChip(owed: Pick<Owed, 'what'>): string {
 /** The team note is what marks it done, so it cannot be empty. */
 export const OWED_DONE_NEEDS_A_NOTE = 'Say how it got done, or press Not done yet.'
 
+/** The reply box's placeholder while a team note marks what we owe done. */
+export const OWED_DONE_PLACEHOLDER = 'How it got done: what we did, or why nothing is owed.'
+
+/** The reply box's send button while a team note marks what we owe done. */
+export const OWED_DONE_SEND = 'Done, with this note'
+
 /** What the office reads once the note marks it done. */
 export const OWED_DONE_TOAST = 'Done, with the note for the team. The move goes by whose word was last.'
 

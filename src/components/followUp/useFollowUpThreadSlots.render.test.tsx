@@ -5,15 +5,17 @@
  * press saying the kernel's words and asking the window to read again, a refusal keeping its words, and nothing drawn
  * for another person or off the office team. The people are the prototype's demo people.
  */
-import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Contact } from '../../lib/contacts/kernel'
 import type { FollowUpThreadIo, FollowUpThreadRows } from '../../lib/followUp/followUpThreadIo'
 import { BACK_CLEARED_TOAST } from '../../lib/followUp/queue'
+import { owedStore } from '../../lib/followUp/owedStore'
 import { SMOKE_AUTH_USER_ID, renderWithProviders } from '../../test/renderSmokeMocks'
 import { DatabaseError } from '../../utils/errorHandling'
 import { MessagesRereadContext } from '../gc/messages/useMessagesReread'
 import { useFollowUpThreadSlots } from './useFollowUpThreadSlots'
+import { useOwedSettling } from './useOwedSettling'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -74,6 +76,8 @@ const rows = (contact: Partial<FollowUpThreadRows['contact'] & object> = {}): Fo
     { id: 'greg', state: 'waiting', snoozed_until: null, has_user_id: 'u-rosa' },
     { id: 'priya', state: 'waiting', snoozed_until: null, has_user_id: 'u-rosa' },
   ],
+  owed: [],
+  promises: [],
 })
 
 function fakeIo(over: Partial<FollowUpThreadIo> = {}, read: FollowUpThreadRows = rows()): FollowUpThreadIo {
@@ -87,17 +91,26 @@ function fakeIo(over: Partial<FollowUpThreadIo> = {}, read: FollowUpThreadRows =
     handTo: vi.fn(async () => undefined),
     setState: vi.fn(async () => null),
     backDone: vi.fn(async () => undefined),
+    markOwed: vi.fn(async () => 'o-new'),
     ...over,
   }
 }
 
-/** The three slots as the window draws them, for one person. */
-function Harness({ io, contact }: { io: FollowUpThreadIo; contact: Contact }) {
+/** Cut 3's reply box, as far as a settle goes: it takes one while it is mounted. */
+function BoxStandIn({ contactId }: { contactId: string }) {
+  const settling = useOwedSettling(contactId, { owedDone: async () => 'n1' })
+  return settling.active ? <p>The box is marking it done.</p> : null
+}
+
+/** The slots as the window draws them, for one person, with or without a reply box. */
+function Harness({ io, contact, box = false }: { io: FollowUpThreadIo; contact: Contact; box?: boolean }) {
   const slots = useFollowUpThreadSlots(io)
   return (
     <div>
       <div data-testid="header">{slots.headerRight?.(contact)}</div>
       <div data-testid="status">{slots.statusRow?.(contact)}</div>
+      <div data-testid="above">{slots.aboveBox?.(contact)}</div>
+      {box && <BoxStandIn contactId={contact.id} />}
       <div data-testid="more">
         {(slots.menuRows?.(contact) ?? []).map((r) => (
           <button key={r.key} type="button" title={r.tip} disabled={r.disabled} onClick={r.onPress}>
@@ -110,23 +123,41 @@ function Harness({ io, contact }: { io: FollowUpThreadIo; contact: Contact }) {
 }
 
 const reread = vi.fn()
-function renderThread(io: FollowUpThreadIo, contact: Contact = GREG) {
+function renderThread(io: FollowUpThreadIo, contact: Contact = GREG, box = false) {
   renderWithProviders(
     <MessagesRereadContext.Provider value={reread}>
-      <Harness io={io} contact={contact} />
+      <Harness io={io} contact={contact} box={box} />
     </MessagesRereadContext.Provider>,
   )
 }
 const header = () => within(screen.getByTestId('header'))
 const status = () => within(screen.getByTestId('status'))
 const more = () => within(screen.getByTestId('more'))
+const above = () => within(screen.getByTestId('above'))
+
+/** Greg is owed the plans or an addendum by Friday, marked by Rosa. */
+const OWED_ROW = {
+  id: 'o1',
+  contact_id: 'greg',
+  what: 'the plans or an addendum',
+  by_day: '2026-10-09',
+  by_words: null,
+  marked_by: 'u-rosa',
+  marked_at: '2026-09-26T19:30:00.000Z',
+  done_at: null,
+  done_how: null,
+  done_note_message_id: null,
+}
 
 beforeEach(() => {
   auth.role = 'estimator'
   open.contactId = 'greg'
   reread.mockClear()
 })
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  act(() => owedStore.cancel(owedStore.get().contactId))
+})
 
 describe('Follow up in the thread window', () => {
   it('draws who has it, the back pill and ⋯’s rows for the open thread', async () => {
@@ -189,7 +220,7 @@ describe('Follow up in the thread window', () => {
   it('draws nothing for another person than the open thread, or for someone off the office team', async () => {
     const io = fakeIo()
     renderThread(io, PRIYA)
-    await waitFor(() => expect(io.loadThread).toHaveBeenCalledWith('greg'))
+    await waitFor(() => expect(io.loadThread).toHaveBeenCalledWith('greg', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/)))
     expect(screen.getByTestId('header').textContent).toBe('')
     expect(screen.getByTestId('more').textContent).toBe('')
     cleanup()
@@ -199,5 +230,67 @@ describe('Follow up in the thread window', () => {
     renderThread(off)
     await waitFor(() => expect(screen.getByTestId('header').textContent).toBe(''))
     expect(off.loadThread).not.toHaveBeenCalled()
+  })
+})
+
+describe('what we owe, in the thread window (C2)', () => {
+  it('We owe them… opens the strip, and Mark it writes it with its words and reads again', async () => {
+    const io = fakeIo()
+    renderThread(io)
+    fireEvent.click(await status().findByRole('button', { name: 'We owe them…' }))
+    fireEvent.click(above().getByRole('button', { name: 'a call back' }))
+    fireEvent.click(above().getByRole('button', { name: 'Mark it' }))
+    expect(await screen.findByText('Marked: we owe Greg Paulk a call back.')).toBeTruthy()
+    expect(io.markOwed).toHaveBeenCalledWith('greg', 'a call back', { ymd: null, words: null })
+    expect(reread).toHaveBeenCalledTimes(1)
+    expect(io.loadThread).toHaveBeenCalledTimes(2)
+  })
+
+  it('with something owed: Mark it done, with a team note hands the box a settle, and a landed settle reads again', async () => {
+    const io = fakeIo({}, { ...rows(), owed: [OWED_ROW] })
+    renderThread(io, GREG, true)
+    fireEvent.click(await status().findByRole('button', { name: 'Change what we owe' }))
+    expect(above().getByRole('button', { name: 'the plans or an addendum ▾' })).toBeTruthy()
+    fireEvent.click(above().getByRole('button', { name: 'Mark it done, with a team note' }))
+    expect(owedStore.get()).toMatchObject({ contactId: 'greg', owed: { what: 'the plans or an addendum', byYmd: '2026-10-09', markedBy: 'Rosa' } })
+    expect(screen.getByTestId('above').textContent).toBe('')
+    expect(screen.getByText('The box is marking it done.')).toBeTruthy()
+
+    const reads = vi.mocked(io.loadThread).mock.calls.length
+    act(() => owedStore.landed())
+    await waitFor(() => expect(io.loadThread).toHaveBeenCalledTimes(reads + 1))
+  })
+
+  it('tells the box what we owe the open person once read, and forgets it when the thread closes', async () => {
+    renderThread(fakeIo({}, { ...rows(), owed: [OWED_ROW] }))
+    await waitFor(() => expect(owedStore.get().open).toMatchObject({ contactId: 'greg', owed: { what: 'the plans or an addendum' } }))
+    cleanup()
+    expect(owedStore.get().open).toBeNull()
+  })
+
+  it('leaving the thread ends a settle it started', async () => {
+    const io = fakeIo({}, { ...rows(), owed: [OWED_ROW] })
+    renderThread(io, GREG, true)
+    fireEvent.click(await status().findByRole('button', { name: 'Change what we owe' }))
+    fireEvent.click(above().getByRole('button', { name: 'Mark it done, with a team note' }))
+    expect(owedStore.get().contactId).toBe('greg')
+    cleanup()
+    expect(owedStore.get().contactId).toBeNull()
+  })
+
+  it('offers no done with a team note while no reply box is there to take it', async () => {
+    renderThread(fakeIo({}, { ...rows(), owed: [OWED_ROW] }))
+    fireEvent.click(await status().findByRole('button', { name: 'Change what we owe' }))
+    expect(above().queryByRole('button', { name: 'Mark it done, with a team note' })).toBeNull()
+  })
+
+  it('Put it off snoozes the row to Monday, and what we owe stays marked', async () => {
+    const io = fakeIo({}, { ...rows(), owed: [OWED_ROW] })
+    renderThread(io)
+    fireEvent.click(await status().findByRole('button', { name: 'Change what we owe' }))
+    fireEvent.click(above().getByRole('button', { name: 'Put it off' }))
+    expect(await screen.findByText('Greg Paulk comes back to Follow up on Monday.')).toBeTruthy()
+    expect(io.setState).toHaveBeenCalledWith('greg', 'snoozed')
+    expect(io.markOwed).not.toHaveBeenCalled()
   })
 })

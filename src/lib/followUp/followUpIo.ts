@@ -17,6 +17,7 @@ import { supabase } from '../supabase'
 import { checkSupabaseError, DatabaseError, formatErrorMessage } from '../../utils/errorHandling'
 import type { ContactOwedRow, FollowUpContactRow, FollowUpMessageRow, FollowUpRows, MessageHighlightRow, MessagePromiseRow } from './followUpRows'
 import type { ContactState } from './queue'
+import { courtFactsFromRows, type CourtFacts } from './courtFacts'
 
 /** What Follow up reads and presses. Each press resolves when its write has landed, and rejects with its refusal. */
 export interface FollowUpIo {
@@ -32,6 +33,8 @@ export interface FollowUpIo {
   markOwed(contactId: string, what: string, day: DayKept): Promise<string>
   /** Returns the note that marked it done. */
   owedDone(contactId: string, note: string, job: JobRef | null): Promise<string>
+  /** A message we sent them got what we owe done (`owed_sent_done`, cut 2's addendum): marks it, and writes the gray line. */
+  owedSentDone(contactId: string, messageId: string): Promise<void>
   /** Null is just talk. */
   writeDown(messageId: string, kind: HeardPromiseKind | null, writes?: 'start' | 'delivery' | 'insurance' | 'w9'): Promise<void>
   readQuestion(messageId: string, state: 'asked' | 'answered'): Promise<void>
@@ -59,8 +62,8 @@ const CHANNEL_COLUMNS = 'id, contact_id, kind, value, opted_out_at, created_at'
 /** A line's columns as Follow up reads them, the thread's read too (`followUpThreadIo.ts`). */
 export const MESSAGE_COLUMNS =
   'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at'
-const OWED_COLUMNS = 'id, contact_id, what, by_day, by_words, marked_by, marked_at, done_at, done_how, done_note_message_id'
-const PROMISE_COLUMNS = 'id, message_id, kind, state, day, day_words, writes, decided_by, decided_at, message:messages(contact_id, at)'
+export const OWED_COLUMNS = 'id, contact_id, what, by_day, by_words, marked_by, marked_at, done_at, done_how, done_note_message_id'
+export const PROMISE_COLUMNS = 'id, message_id, kind, state, day, day_words, writes, decided_by, decided_at, message:messages(contact_id, at)'
 const HIGHLIGHT_COLUMNS = 'id, message_id, text, highlighted_by, highlighted_at'
 
 type Named = { id: string; name: string | null }
@@ -173,6 +176,9 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
     async markOwed(contactId, what, day) {
       return call<string>('mark_owed', { p_contact_id: contactId, p_what: what, ...dayArgs(day, 'p_by_day', 'p_by_words') }, 'mark what we owe')
     },
+    async owedSentDone(contactId, messageId) {
+      await call('owed_sent_done', { p_contact_id: contactId, p_message_id: messageId }, 'mark what we owe done by a message')
+    },
     async owedDone(contactId, note, job) {
       return call<string>('owed_done', { p_contact_id: contactId, p_note: note, ...jobArgs(job) }, 'mark what we owe done')
     },
@@ -205,12 +211,28 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
 }
 
 /** The presses' own refusals start with these; a policy's 42501 does not, and reads as the house's sentence. */
-const PRESS_REFUSALS = /^(Sign in to |A training account cannot |A digital twin cannot |Only the office team can )/
+const PRESS_REFUSALS = /^(Sign in to |A training account cannot |A digital twin cannot |Only the office (team )?can )/
 
 /**
  * What the office reads when a press fails. A press refuses in plain words (`P0001`, or `42501` for who may not press),
  * and those words are the screen's. Anything else (offline, a policy, a timeout) reads as the house says it.
  */
+/**
+ * What cut 2 tells every person's move line in the Messages list, in one read (C2, the lead's ruling): the open
+ * `contact_owed` rows and the written promises whose day has not passed, by person (`courtFactsFromRows`). The thread
+ * window reads the same facts for the open person, so the list and the window say one thing.
+ */
+export async function loadCourtFacts(todayYmd: string, client: unknown = supabase): Promise<Map<string, CourtFacts>> {
+  const db = client as SupabaseClient
+  const [owed, promises] = await Promise.all([
+    db.from('contact_owed').select(OWED_COLUMNS).is('done_at', null),
+    db.from('message_promises').select(PROMISE_COLUMNS).eq('state', 'written').gte('day', todayYmd),
+  ])
+  checkSupabaseError(owed, 'load what we owe')
+  checkSupabaseError(promises, 'load the days promised')
+  return courtFactsFromRows((owed.data ?? []) as unknown as ContactOwedRow[], (promises.data ?? []) as unknown as MessagePromiseRow[], todayYmd)
+}
+
 export function pressProblem(error: unknown): string {
   if (error instanceof DatabaseError && error.serverMessage) {
     if (error.code === 'P0001' || (error.code === '42501' && PRESS_REFUSALS.test(error.serverMessage))) return error.serverMessage

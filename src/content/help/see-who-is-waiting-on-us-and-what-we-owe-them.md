@@ -77,7 +77,7 @@ A controller or a dev also sees the contract clause changes waiting on their app
 
 Each row says what we owe and by when, like {{chip:blue|we owe the start date · by Mon Oct 5}}. The chip turns red once that day has passed. The line under the name says who marked it and when.
 
-Press the chip to open their thread at the reply box. What we owe stays our move until a note or a message marks it done.
+Press the chip to open their thread at the reply box. What we owe stays our move until a note or a message marks it done. [Keep track of what we owe someone](/help/keep-track-of-what-we-owe-someone) shows how to mark it, change it and mark it done.
 
 ## In their thread
 
