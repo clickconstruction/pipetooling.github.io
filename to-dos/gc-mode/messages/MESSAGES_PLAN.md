@@ -768,6 +768,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.139, 2026-10-11**: the message window has one button for it, *Remove the highlight*, beside *Highlight the
+  selected words*; with more than one highlight it takes the one the cursor is in, or all of them (the owner,
+  2026-10-11: one button).
 - **v1.138, 2026-10-11**: the thread's toolbar row is gone; a pair after the name on the name row holds ☎ (the call,
   grayed with no number on file) and ⋯ (the rarer things, with the demo's They text back inside), so the header loses
   a row (the owner's [☎ | ⋯], 2026-10-11). A highlight comes off with a press on the highlighted words themselves, in
