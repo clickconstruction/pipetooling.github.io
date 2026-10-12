@@ -10,6 +10,7 @@
  * awarded to it (submittals, RFIs, punch items, draws, each line's newest report, the change orders sent to it), mapped
  * by Building's own row mappers (`drawRows.ts`, `submittalRows.ts`, `rfiRows.ts`, `punchRows.ts`), never a second one.
  */
+import { BILL_DAY_CUTOFF_DAYS } from './billDay/trades'
 import type { TradePortalSlice } from '../../../supabase/functions/_shared/gcTradePortalSlice'
 import { backChargeOf } from './backChargeRows'
 import { companyPapers } from './companyPapers'
@@ -401,8 +402,9 @@ function promiseOf(companyId: string, p: Row): TradePromise {
 }
 
 /** The company's slice as the prototype's state, its id and its language: what the portal page hands the kernels. */
-export function tradePortalState(slice: TradePortalSlice, today: string): { state: GcState; partnerId: string; lang: PortalLang } {
+export function tradePortalState(slice: TradePortalSlice, today: string): { state: GcState; partnerId: string; lang: PortalLang; billDayCutoffDays: number } {
   const partner = partnerOf(slice)
+  const cutoff = slice.billDayCutoffDays
   const draws = drawTablesOf(slice)
   return {
     state: {
@@ -415,5 +417,7 @@ export function tradePortalState(slice: TradePortalSlice, today: string): { stat
     },
     partnerId: partner.id,
     lang: slice.company.lang === 'es' ? 'es' : 'en',
+    // Bill day's cut-off (Messages cut 9), or the default when the read is older or the number is not a day count.
+    billDayCutoffDays: typeof cutoff === 'number' && Number.isInteger(cutoff) && cutoff >= 2 && cutoff <= 20 ? cutoff : BILL_DAY_CUTOFF_DAYS,
   }
 }

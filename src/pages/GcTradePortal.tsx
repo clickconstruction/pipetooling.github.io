@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { GcTradePortalView } from '../components/gc/GcTradePortalView'
 import { PortalPressContext, type PortalPress } from '../components/gc/gcTradePortalPress'
+import { PortalBillDayContext } from '../components/gc/gcTradePortalBillDay'
 import { GC_COMPANY } from '../lib/gc/company'
 import { portalShownLang, pt, type PortalLang } from '../lib/gc/portalI18n'
 import { lateWaitingOf, readTradePortalAnswer, sentMessages, setDriveUrl, tradeErrorWords, type TradePortalAnswer } from '../lib/gc/tradePortalPage'
@@ -117,6 +118,7 @@ export default function GcTradePortal() {
         </div>
       ) : mapped ? (
         <PortalPressContext.Provider value={press}>
+        <PortalBillDayContext.Provider value={mapped.billDayCutoffDays}>
         <GcTradePortalView
           state={mapped.state}
           partnerId={mapped.partnerId}
@@ -129,6 +131,7 @@ export default function GcTradePortal() {
           scheduleTodos={page.scheduleTodos}
           flow={page.flow}
         />
+        </PortalBillDayContext.Provider>
         </PortalPressContext.Provider>
       ) : null}
     </main>

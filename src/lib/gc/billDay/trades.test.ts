@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../../plainWords'
 import type { GcProject, GcState } from '../types'
-import { billDayDates, billDayGates, billGroups, canItGo, rowMove, scheduleSays, tradeDraws, tradesSums, walkDraws, type NothingThisPeriod } from './trades'
+import { billDayDates, billDayGates, billGroups, canItGo, rowMove, scheduleSays, tradeBillDay, tradeDraws, tradesSums, walkDraws, type NothingThisPeriod } from './trades'
 import { billDayJob, billDayState, WENDI_WALK, WHERE_ON_SITE } from '../../../test/fixtures/billDayDemo'
 import { claimsToCheck, type LineCheck } from './walk'
 
@@ -48,6 +48,16 @@ describe('billDayDates', () => {
     const { state, project } = stoneOak()
     const dates = billDayDates(state, project, 8)
     expect([dates.cutoff, dates.checkFrom, dates.periodFrom]).toEqual(['2026-10-17', '2026-10-17', '2026-09-18'])
+  })
+})
+
+describe('tradeBillDay', () => {
+  it('names the bill day a draw sent today goes on: this month’s until its cut-off, then next month’s', () => {
+    expect(tradeBillDay('2026-10-02')).toEqual({ billDay: '2026-10-25', cutoff: '2026-10-19' })
+    expect(tradeBillDay('2026-10-19')).toEqual({ billDay: '2026-10-25', cutoff: '2026-10-19' })
+    expect(tradeBillDay('2026-10-20')).toEqual({ billDay: '2026-11-25', cutoff: '2026-11-19' })
+    expect(tradeBillDay('2026-10-26')).toEqual({ billDay: '2026-11-25', cutoff: '2026-11-19' })
+    expect(tradeBillDay('2026-12-22', 8)).toEqual({ billDay: '2027-01-25', cutoff: '2027-01-17' })
   })
 })
 

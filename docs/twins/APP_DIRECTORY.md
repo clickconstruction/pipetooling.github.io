@@ -282,7 +282,7 @@ company's asks, quotes, plans and questions on each project. Its home opens on *
 Construction** (v2.5315): its steps with us from its trade flow, Getting set up then each job it is asked on. From it the company names its people, promises a quote
 day, quotes, answers lines, passes, asks about the plans and picks who gets our emails (v2.4935, through
 `submit-gc-trade-portal`). On a job of its own it also reads its statement of work, the charges to it and the
-changes it asked for (v2.5044), and agrees with or disputes a charge and asks for a change (v2.5048). From its papers it sends its vetting form, signs its master agreement and W-9 (v2.5201) and sends its insurance certificate for the office to check first (v2.5225). `/t/sample`
+changes it asked for (v2.5044), and agrees with or disputes a charge and asks for a change (v2.5048). From its papers it sends its vetting form, signs its master agreement and W-9 (v2.5201) and sends its insurance certificate for the office to check first (v2.5225). On a job being built, its pay application's door says when the next one is due and the bill it goes on, from the trades' cut-off. `/t/sample`
 is the sample. A link is made by a dev in the company window's **Their portal**
 until the trade wave, and the first email to the company makes one (v2.4936).
 Roles: public.
