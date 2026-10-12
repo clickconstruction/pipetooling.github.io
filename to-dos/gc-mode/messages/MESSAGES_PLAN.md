@@ -528,6 +528,18 @@ Drawn twice. `bill-day-mockup.html` (v1.117) is the first pass, a list of who is
 - **Still the owner's**: the cut-off as a setting or fixed; whether the app may send the cut-off reminder;
   whether a superintendent's tap that matches the claim approves the line by itself (lean no).
 
+**The superintendent's list, the criteria** (the owner's question, 2026-10-11). *Who*: the superintendent
+assigned to the job and the project manager, never everyone with the role; percents, quantities and photos,
+never a dollar. *When*: only in the checking window, the cut-off to two days before bill day; only draws that
+are in, a sent-back draw re-entering when it comes back; as the daily log's list that week, with one text on
+the first checking day. *What*: one line per claimed line in walking order by where it is on site, not by
+trade; the last draw, the claim and the schedule's number beside each; stored material as yes or no on site;
+a change order's line as work to confirm, marked unsigned. *A tap*: is *we see* with who and when, re-tappable
+until the office approves, read-only after; below the claim it requires a photo or a note, which the send-back
+note is written from; it never approves, and the office can override it with the override kept; every line
+tapped clears the *checked against the site* gate by itself. *The site*: taps queue without signal; big
+targets, one screen per draw. *Open*: a whole-draw *matches* press against a tap per line (lean per line).
+
 ## How it would be built, once the shape is settled
 
 In the order a GC lane builds: a plan page per cut, SQL first, then the read, then the screens.
@@ -753,6 +765,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.122b, 2026-10-11**: the plan's Bill day section gains the criteria for the superintendent's list: who, when, what
+  is on it, what a tap does and does not do, and what the site needs. No prototype change.
 - **v1.122, 2026-10-11**: Bill day in the prototype, as `bill-day-mockup-2.html`: a Money page with From the trades (To the
   owner and Forecast named as main's), the job filter, the section strip, the cascade, the seven gates read from the
   draws with a press each, the groups as bars with one column layout, Expected per row, waivers and changes, the
