@@ -158,13 +158,23 @@ export function publishChange(book: ClauseBook, change: ClauseChange, who: { nam
 }
 
 /**
- * Whether the approvers' push and email, and the editor's text on a decision, go out. Off until the messages-notify
- * function sends them (`BUILD_PLAN.md` → Cut 4c), so no word on a screen claims a send that never happened.
+ * Whether the approvers' push and email, and the editor's email on a decision, go out: on since the messages-notify
+ * function sends them (v2.5317, `BUILD_PLAN.md` → Cut 4c). The screens pass what each call reached (`reachOfTold`), so a
+ * failed call reads as nobody told; this is the rule for the words that cannot know. The editor's text comes with Quo.
  */
-export const CLAUSE_NOTIFY_LIVE = false
+export const CLAUSE_NOTIFY_LIVE = true
 
-/** *Robert and Maria*, or *a controller or a dev* when no approver is named. */
-const approverWords = (approvers: readonly string[]): string => (approvers.length ? andList(approvers) : 'a controller or a dev')
+/** How a change reached the approvers: `true` is the rule, a push and an email; `false`, nobody was told. */
+export type ClauseReach = boolean | { push: boolean; email: boolean }
+
+/** What one call to messages-notify reached, as the toasts take it. Null, a call that failed, told nobody. */
+export function reachOfTold(told: { pushSent: number; emailSent: number } | null): ClauseReach {
+  return told ? { push: told.pushSent > 0, email: told.emailSent > 0 } : false
+}
+
+/** *Robert and Maria get a push and an email*: who the rule tells when a change waits. */
+const toldRule = (approvers: readonly string[]): string =>
+  approvers.length === 0 ? 'The approvers get a push and an email.' : `${andList(approvers)} ${approvers.length === 1 ? 'gets' : 'get'} a push and an email.`
 
 /** *Robert or Maria*, or *a controller or a dev* when no approver is named. */
 export function orWords(approvers: readonly string[]): string {
@@ -182,23 +192,25 @@ export function publishedToast(paper: ContractPaper, kind: ClauseChange['kind'])
   return `Published as version ${paper.revision}. ${nextPaper(paper)} carries it. Signed copies keep their words.`
 }
 
-/** What the editor reads once their change is sent for approval. `told`: the approvers got a push and an email. */
-export function proposedToast(approvers: readonly string[], told = CLAUSE_NOTIFY_LIVE): string {
-  if (!told) return `It waits for ${orWords(approvers)} to approve it. Until then it is on their Needs you.`
-  const sent = approvers.length ? `Sent to ${andList(approvers)} with a push and an email.` : 'Sent for approval with a push and an email.'
+/** What the editor reads once their change is sent for approval: who it reached, and how, or that it waits for them. */
+export function proposedToast(approvers: readonly string[], told: ClauseReach = CLAUSE_NOTIFY_LIVE): string {
+  const reach = typeof told === 'boolean' ? { push: told, email: told } : told
+  if (!reach.push && !reach.email) return `It waits for ${orWords(approvers)} to approve it. Until then it is on their Needs you.`
+  const how = reach.push && reach.email ? 'with a push and an email' : reach.push ? 'with a push' : 'by email'
+  const sent = approvers.length ? `Sent to ${andList(approvers)} ${how}.` : `Sent for approval ${how}.`
   const once = approvers.length === 1 ? `It goes out once ${approvers[0]} approves it.` : `It goes out once ${approvers.length ? 'one of them' : 'a controller or a dev'} approves it.`
   return `${sent} ${once} Until then it waits on their Needs you.`
 }
 
-/** What the approver reads once a change is approved. */
+/** What the approver reads once a change is approved. `told`: the editor got the email. */
 export function approvedToast(approver: string, proposer: string, kind: ClauseChange['kind'], told = CLAUSE_NOTIFY_LIVE): string {
   const carries = kind === 'retire' ? 'The next paper sent leaves it out.' : 'The next paper sent carries it.'
-  return told ? `Approved by ${approver}. ${proposer} gets a text that it went out. ${carries}` : `Approved by ${approver}. ${carries}`
+  return told ? `Approved by ${approver}. ${proposer} gets an email that it went out. ${carries}` : `Approved by ${approver}. ${carries}`
 }
 
-/** What the approver reads once a change is declined. */
+/** What the approver reads once a change is declined. `told`: the editor got the email. */
 export function declinedToast(proposer: string, told = CLAUSE_NOTIFY_LIVE): string {
-  return told ? `Declined. ${proposer} gets a text with your why.` : `Declined. ${proposer} sees your why on the clause's history.`
+  return told ? `Declined. ${proposer} gets an email with your why.` : `Declined. ${proposer} sees your why on the clause's history.`
 }
 
 /**
@@ -282,7 +294,7 @@ export function approveProposal(book: ClauseBook, p: ClauseProposal, approver: S
   }
 }
 
-/** A controller or a dev declines a proposal, with a why the proposer reads on the clause's history, and gets by text once that is live. */
+/** A controller or a dev declines a proposal, with a why the proposer reads on the clause's history and gets by email. */
 export function declineProposal(p: ClauseProposal, approver: Signer, ctx: { at: string; why: string; told?: boolean }): DecideResult {
   const no = decideProblem(p, approver)
   if (no) return { kind: 'refused', why: no }
@@ -340,7 +352,8 @@ export function clauseNeeds(
     .map((p) => {
       const book = books.find((b) => b.paper.id === p.paperId)
       const told = ctx.told ?? CLAUSE_NOTIFY_LIVE
-      const facts = [scopeFor(p.scope), ctx.when(p.at), ...(p.why ? [p.why] : []), ...(told ? [`A push and an email went to ${approverWords(ctx.approvers)}.`] : [])]
+      // The rule, not a record: true whether or not one call went (the lead's call, 2026-10-12).
+      const facts = [scopeFor(p.scope), ctx.when(p.at), ...(p.why ? [p.why] : []), ...(told ? [toldRule(ctx.approvers)] : [])]
       return { proposal: p, title: proposalTitle(p, book), badge: 'Waiting on your approval', facts, words: p.en }
     })
 }

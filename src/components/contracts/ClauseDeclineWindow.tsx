@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
-import { declinedToast } from '../../lib/contracts/approval'
-import { declineClauseProposal } from '../../lib/contracts/clausesIo'
+import { CLAUSE_NOTIFY_LIVE, declinedToast } from '../../lib/contracts/approval'
+import { declineClauseProposal, tellClauseEditor } from '../../lib/contracts/clausesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ClauseField, ClauseWindow } from './ClauseWindow'
 import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from './clauseStyles'
 
 /**
  * Messages, cut 4c: *Decline the change* (the prototype's `declineClause`, v1.178). A controller or a dev says why, and
- * the proposer reads it on the clause's history. A decline with no why is refused, here and by the RPC.
+ * the proposer reads it on the clause's history and gets it by email (messages-notify). A decline with no why is refused,
+ * here and by the RPC.
  */
 export function ClauseDeclineWindow({ proposalId, by, onClose, onDone }: { proposalId: string; by: string; onClose: () => void; onDone: () => void }) {
   const { showToast } = useToastContext()
@@ -25,7 +26,8 @@ export function ClauseDeclineWindow({ proposalId, by, onClose, onDone }: { propo
     setProblem(null)
     try {
       await declineClauseProposal(proposalId, why.trim())
-      showToast(declinedToast(by), 'success')
+      const told = await tellClauseEditor(proposalId)
+      showToast(declinedToast(by, Boolean(told?.emailSent)), 'success')
       onDone()
     } catch (e) {
       setProblem(formatErrorMessage(e))
@@ -35,7 +37,7 @@ export function ClauseDeclineWindow({ proposalId, by, onClose, onDone }: { propo
   }
 
   return (
-    <ClauseWindow label="Decline the change" title="Decline the change" lede={`${by} reads your why on the clause's history.`} width={520} onClose={onClose}>
+    <ClauseWindow label="Decline the change" title="Decline the change" lede={CLAUSE_NOTIFY_LIVE ? `${by} gets your why by email. It stays on the clause's history.` : `${by} reads your why on the clause's history.`} width={520} onClose={onClose}>
       {problem && (
         <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem' }}>
           {problem}

@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { canApproveClause } from '../../lib/gc/access'
-import { editClause, proposedToast, publishedToast, type ClauseBook, type ClauseChange } from '../../lib/contracts/approval'
+import { editClause, proposedToast, publishedToast, reachOfTold, type ClauseBook, type ClauseChange } from '../../lib/contracts/approval'
 import { clauseLabel, tradeKey, type Clause, type ClauseScope } from '../../lib/contracts/assemble'
-import { saveClauseChange } from '../../lib/contracts/clausesIo'
+import { saveClauseChange, tellClauseApprovers } from '../../lib/contracts/clausesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ClauseField, ClauseWindow } from './ClauseWindow'
 import { clauseButtonStyle, clauseInputStyle, clausePrimaryStyle } from './clauseStyles'
@@ -91,7 +91,12 @@ export function ClauseEditWindow({
     setProblem(null)
     try {
       const done = await saveClauseChange(book.paper.id, c, why.trim())
-      showToast(done.state === 'published' ? publishedToast({ ...book.paper, revision: done.revision ?? book.paper.revision + 1 }, c.kind) : proposedToast(approvers), 'success')
+      // A change that waits: the approvers hear of it (messages-notify), and the toast says whom it reached and how.
+      const told = done.state === 'proposed' ? await tellClauseApprovers([done.proposal_id]) : null
+      showToast(
+        done.state === 'published' ? publishedToast({ ...book.paper, revision: done.revision ?? book.paper.revision + 1 }, c.kind) : proposedToast(told?.names.length ? told.names : approvers, reachOfTold(told)),
+        'success',
+      )
       onSaved()
     } catch (e) {
       setProblem(formatErrorMessage(e))

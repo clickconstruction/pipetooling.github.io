@@ -2,7 +2,7 @@
 title: change a contract clause
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: clause, clauses, contract, contracts and clauses, exhibit, trade exhibit, master agreement, statement of work, approve, decline, version, retire, signed copy, preview per trade
+keywords: clause, clauses, contract, contracts and clauses, exhibit, trade exhibit, master agreement, statement of work, approve, decline, version, retire, signed copy, preview per trade, push, email, notification
 order: 99
 ---
 A contract we send a trade partner is made of clauses. Anyone in the office can change one. A controller or a dev approves the change before it goes out.
@@ -24,6 +24,8 @@ The clauses for everyone come first, under **Everyone**. A clause for one trade 
 6. Press {{button:blue|Send for approval}}.
 
 The change waits under the clause until a controller or a dev approves it. It shows on their Needs you card.
+
+Each of them gets a push on their phone and an email with the change. The push opens the paper's card. The message after you save says who it reached.
 
 A clause for a trade covers only the trades you pick. A clause for Electrical is not on the low voltage exhibit unless you pick both.
 
@@ -47,6 +49,8 @@ This part is for a controller or a dev.
 2. Read the change under the clause.
 3. Press {{button:blue|Approve}} to send it out. The paper's version goes up by one.
 4. To say no, press {{button:outline|Decline}} and say why. The person who made it reads your why on the clause's history.
+
+Either way, the person who made the change gets an email that says what you decided. A declined change's email carries your why.
 
 Approve is refused when the clause changed after the change was made. Decline it and ask for it again.
 

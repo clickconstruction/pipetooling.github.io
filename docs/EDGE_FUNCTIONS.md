@@ -172,6 +172,7 @@ when_to_read:
    - [notify-estimator-request](#notify-estimator-request)
    - [notify-bid-mark](#notify-bid-mark)
    - [notify-lien-approval](#notify-lien-approval)
+   - [messages-notify](#messages-notify)
    - [notify-team-lead-clock](#notify-team-lead-clock)
    - [send-scheduled-reminders](#send-scheduled-reminders)
    - [recurring-job-report-preview](#recurring-job-report-preview)
@@ -2947,6 +2948,50 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 `leader_name` is set when exactly one leader was told; the desk's toast reads *Sent for approval. Malachi's phone has it.* / *… has it by email.* / *… will see it on the Dashboard.*
 
 **Deploy**: `bash scripts/deploy-functions.sh notify-lien-approval dev-mcp` (the catalog lists it).
+
+---
+
+### messages-notify
+
+**Purpose** (v2.5317, Messages cut 4c): the people a change to a contract clause waits on hear of it. When the office sends a clause change for approval (`edit_clause` answered `proposed`), the approvers get a push on every device **and** an email with the change. When a controller or a dev decides one (`approve_clause_proposal`, `decline_clause_proposal`), the editor gets an email: it went out as the clause's next version, or the why. The editor's **text** by phone is a named follow-up: it comes with Quo (cut 5). The app calls it right after the RPC, best effort (`tellClauseApprovers` and `tellClauseEditor` in `src/lib/contracts/clausesIo.ts`): a call that fails never undoes the change, which still waits on the approvers' Needs you, and the toast then says nothing of a send.
+
+**Endpoint**: `POST /functions/v1/messages-notify`
+
+**Required Role**: any signed-in user, but only the change's **proposer** (`contract_clause_proposals.by_user_id`, for each id named) or its **decider** (`decided_by`); anyone else gets 403. Only a change made or decided in the last 15 minutes is told, so an old row can't be used to buzz the approvers again; an older one returns 200 with nothing sent.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` (the push), `RESEND_API_KEY` (the emails), `APP_ORIGIN` (the links; defaults to the live site).
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer with `getUser` and the row with the service role.
+
+#### Request body
+
+One of:
+
+```json
+{ "proposal_ids": ["<contract_clause_proposals.id>", "…"] }
+```
+
+```json
+{ "decided": "<contract_clause_proposals.id>" }
+```
+
+`proposal_ids` names the changes one save sent for approval (1 to 50), so the New paper window's several clauses on one paper make one push and one email, not one each. The caller names only the rows: the function writes every word itself from [`_shared/clauseNotify.ts`](../supabase/functions/_shared/clauseNotify.ts) (re-exported at `src/lib/contracts/clauseNotify.ts`). Push title *Approve a clause change*. Body: the change's Needs you title and the clause's first words, e.g. *Rosa changed clause 2 of the master agreement: “Insurance: general liability of $2,000,000 per occurrence, naming…”*. Several changes read *Rosa proposed 3 new clauses for the safety agreement.* The tap opens `/settings?tab=settings-clauses#settings-clause-paper-<paper>`. The email carries each change: what it asks, who it is for, the words in English and Spanish, and the why. A clause is named by the one numbering Settings uses (`clauseLabel`), a copy that `src/lib/contracts/clauseNotify.test.ts` holds to `assemble.ts`.
+
+The approvers are the users with role `dev` or `controller` (`gc_clause_approve_team()`, the client's `GC_CLAUSE_APPROVE_TEAM`), `REAL_ACCOUNT`, not archived, never the caller. On a decision the function skips a change the decider made themself (a dev's or a controller's own edit publishes at once). Everyone it writes to is our own staff, so no sent copy and no `EMAIL_CATALOG` row; the registry entry is a staff `sender` in `CUSTOMER_SURFACES`. Each person reached gets one `notification_history` row per channel, `template_type` `clause_proposal` or `clause_decision`.
+
+#### Response
+
+```json
+{ "success": true, "push_sent": 3, "email_sent": 2, "approvers": ["Maria", "Robert"] }
+```
+
+```json
+{ "success": true, "email_sent": true, "editor_name": "Rosa" }
+```
+
+The editor's toast reads *Sent to Maria and Robert with a push and an email.* (or *by email*, or *with a push*, as reached); with nobody reached it reads *It waits for Maria or Robert to approve it.* The approver's reads *Approved by Maria. Rosa gets an email that it went out.* or *Declined. Rosa gets an email with your why.*, and without the email the words from before. The approvers' Needs you row states the rule: *Robert and Maria get a push and an email.*
+
+**Deploy**: `bash scripts/deploy-functions.sh messages-notify dev-mcp` (the catalog lists it).
 
 ---
 

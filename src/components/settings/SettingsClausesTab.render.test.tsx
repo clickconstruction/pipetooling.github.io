@@ -21,9 +21,11 @@ vi.mock('../../lib/contracts/clausesIo', () => ({
   approveClauseProposal: vi.fn(),
   declineClauseProposal: vi.fn(),
   loadClauseNeeds: vi.fn(),
+  tellClauseApprovers: vi.fn(),
+  tellClauseEditor: vi.fn(),
 }))
 
-import { approveClauseProposal, declineClauseProposal, loadClauseLibrary, saveClauseChange } from '../../lib/contracts/clausesIo'
+import { approveClauseProposal, declineClauseProposal, loadClauseLibrary, saveClauseChange, tellClauseApprovers, tellClauseEditor } from '../../lib/contracts/clausesIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { clauseLibraryDemo } from '../../test/fixtures/clauseBookDemo'
 import { SettingsClausesTab } from './SettingsClausesTab'
@@ -39,6 +41,8 @@ beforeEach(() => {
   vi.mocked(saveClauseChange).mockReset()
   vi.mocked(approveClauseProposal).mockReset()
   vi.mocked(declineClauseProposal).mockReset()
+  vi.mocked(tellClauseApprovers).mockReset().mockResolvedValue({ pushSent: 2, emailSent: 2, names: ['Maria', 'Robert'] })
+  vi.mocked(tellClauseEditor).mockReset().mockResolvedValue({ pushSent: 0, emailSent: 1, names: ['Rosa'] })
 })
 
 describe('SettingsClausesTab', () => {
@@ -75,7 +79,8 @@ describe('SettingsClausesTab', () => {
     const waiting = document.querySelector('[data-clause-proposal="p-waiting"]') as HTMLElement
     fireEvent.click(within(waiting).getByText('Approve · v2'))
     await waitFor(() => expect(approveClauseProposal).toHaveBeenCalledWith('p-waiting'))
-    await waitFor(() => expect(screen.getByText('Approved by Maria. The next paper sent carries it.')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Approved by Maria. Rosa gets an email that it went out. The next paper sent carries it.')).toBeTruthy())
+    expect(tellClauseEditor).toHaveBeenCalledWith('p-waiting')
     expect(loadClauseLibrary).toHaveBeenCalledTimes(2)
   })
 
@@ -86,13 +91,15 @@ describe('SettingsClausesTab', () => {
     await open()
     fireEvent.click(within(document.querySelector('[data-clause-proposal="p-waiting"]') as HTMLElement).getByText('Decline'))
     const dialog = await screen.findByRole('dialog', { name: 'Decline the change' })
+    expect(within(dialog).getByText("Rosa gets your why by email. It stays on the clause's history.")).toBeTruthy()
     fireEvent.click(within(dialog).getByText('Decline'))
     expect(within(dialog).getByRole('alert').textContent).toBe('Say why, for Rosa.')
     expect(declineClauseProposal).not.toHaveBeenCalled()
     fireEvent.change(within(dialog).getByLabelText('Why, for Rosa'), { target: { value: 'Keep the old wording.' } })
     fireEvent.click(within(dialog).getByText('Decline'))
     await waitFor(() => expect(declineClauseProposal).toHaveBeenCalledWith('p-waiting', 'Keep the old wording.'))
-    await waitFor(() => expect(screen.getByText("Declined. Rosa sees your why on the clause's history.")).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Declined. Rosa gets an email with your why.')).toBeTruthy())
+    expect(tellClauseEditor).toHaveBeenCalledWith('p-waiting')
   })
 
   it('sends Rosa’s edit for approval, with the trades she picked, after the kernel’s check', async () => {
@@ -111,6 +118,20 @@ describe('SettingsClausesTab', () => {
     await waitFor(() =>
       expect(saveClauseChange).toHaveBeenCalledWith('doc-msa', expect.objectContaining({ kind: 'edit', clauseId: 'msa-7', scope: ['Electrical', 'Electrical, low voltage'] }), 'Tejas Power does low voltage.'),
     )
+    await waitFor(() => expect(screen.getByText('Sent to Maria and Robert with a push and an email. It goes out once one of them approves it. Until then it waits on their Needs you.')).toBeTruthy())
+    expect(tellClauseApprovers).toHaveBeenCalledWith(['p-new'])
+  })
+
+  it('says a change waits, and nothing of a send, when the call to tell the approvers fails', async () => {
+    auth.role = 'assistant'
+    auth.profileName = 'Rosa'
+    vi.mocked(saveClauseChange).mockResolvedValue({ state: 'proposed', proposal_id: 'p-new' })
+    vi.mocked(tellClauseApprovers).mockResolvedValue(null)
+    await open()
+    fireEvent.click(within(document.querySelector('[data-clause-row="msa-7"]') as HTMLElement).getByText('Edit'))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.click(within(dialog).getByText('Electrical, low voltage'))
+    fireEvent.click(within(dialog).getByText('Send for approval'))
     await waitFor(() => expect(screen.getByText('It waits for Maria or Robert to approve it. Until then it is on their Needs you.')).toBeTruthy())
   })
 
