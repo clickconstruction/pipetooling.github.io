@@ -27,6 +27,7 @@ import LienRunPreviewOverlay, { type LienRunPreviewEntry } from './LienRunPrevie
 import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
 import { lienNoticeSignatureAfterSigning } from '../../lib/jobs/lienNoticeSignature'
 import { LienNoticeSignLine, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
+import LienPenSignaturePane, { type PenPaneRecorded } from './LienPenSignaturePane'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
@@ -83,6 +84,8 @@ export default function LienDeskRunModal({
   // Leader here, sign ▸ (v2.5086): the held envelope whose sign sheet is open, and the line he draws on.
   const [signOpen, setSignOpen] = useState<string | null>(null)
   const signRef = useRef<LienNoticeSignLineHandle>(null)
+  // He signed the paper ▸ (the pen train, PR 2): the held envelope whose pen pane is open.
+  const [penOpen, setPenOpen] = useState<string | null>(null)
   // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
   const [docUrl, setDocUrl] = useState('')
   const [docNote, setDocNote] = useState('')
@@ -287,6 +290,21 @@ export default function LienDeskRunModal({
     } finally {
       setBusy(false)
     }
+  }
+  // He signed the paper ▸ (the pen train, PR 2): the office wrote down his pen signature on each ticked notice; dress those rows from what was written and re-read.
+  const penRecorded = (env: RunEnvelope, recorded: PenPaneRecorded[], words: string) => {
+    const leader = unsignedIn(env)[0]?.leader ?? null
+    if (!leader) return
+    const byId = new Map(recorded.map((r) => [r.itemId, r]))
+    setNotices((prev) =>
+      prev.map((n) => {
+        const r = byId.get(n.itemId)
+        return r ? { ...n, signature: lienNoticeSignatureAfterSigning({ mode: 'pen', printedName: leader.name, pngDataUrl: null, signedAtIso: r.signedAtIso, jobNumber: n.jobNumber, itemId: n.itemId, onDeviceName: null, pen: { recordedByName: viewer?.name ?? null, how: r.how } }) } : n
+      }),
+    )
+    setPenOpen(null)
+    showToast(words)
+    onRecorded()
   }
   const notePrinted = (keys: string[]) => {
     const next = new Set(printedCopies)
@@ -539,8 +557,22 @@ export default function LienDeskRunModal({
                               <button type="button" onClick={() => setSignOpen(null)} disabled={busy} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', fontSize: '0.8125rem', cursor: 'pointer' }}>Cancel</button>
                             </div>
                           </div>
+                        ) : penOpen === env.key ? (
+                          <LienPenSignaturePane
+                            compact
+                            leader={unsignedIn(env)[0]!.leader!}
+                            recorder={{ userId: viewer.userId, name: viewer.name }}
+                            notices={unsignedIn(env).map((n) => ({ itemId: n.itemId, jobNumber: n.jobNumber, label: n.label, amount: n.amount, fields: n.rowFields ?? null }))}
+                            printedYmd={printedAt ? calendarYmdInAppTzFromIso(printedAt) : null}
+                            todayYmd={todayYmd}
+                            onClose={() => setPenOpen(null)}
+                            onRecorded={(recorded, words) => penRecorded(env, recorded, words)}
+                          />
                         ) : (
-                          <button type="button" onClick={() => setSignOpen(env.key)} data-testid={`run-leader-here-sign-${env.n}`} title="The leader is beside you: he draws his signature on this screen, and the record names yours" style={{ marginTop: '0.3rem', padding: '4px 11px', borderRadius: 7, border: '1px solid var(--text-link)', background: 'var(--surface)', color: 'var(--text-link)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Leader here, sign ▸</button>
+                          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
+                            <button type="button" onClick={() => setSignOpen(env.key)} data-testid={`run-leader-here-sign-${env.n}`} title="The leader is beside you: he draws his signature on this screen, and the record names yours" style={{ padding: '4px 11px', borderRadius: 7, border: '1px solid var(--text-link)', background: 'var(--surface)', color: 'var(--text-link)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Leader here, sign ▸</button>
+                            <button type="button" onClick={() => setPenOpen(env.key)} data-testid={`run-pen-sign-${env.n}`} title="He signed the printed paper with a pen: write down who, when, how you know, and add the signed page" style={{ padding: '4px 11px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>He signed the paper ▸</button>
+                          </div>
                         )
                       ) : null}
                       <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>

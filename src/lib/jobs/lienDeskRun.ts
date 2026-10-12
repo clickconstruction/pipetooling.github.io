@@ -120,6 +120,8 @@ function runNoticeSignature(item: { id: string; fields: unknown }, jobNumber: st
     itemId: item.id,
     fieldsHash: lienFieldsHash(item.fields),
     onDeviceName: cols.signed_on_device_of ? (opts?.onDeviceNameFor?.(cols.signed_on_device_of) ?? null) : null,
+    // The pen train: who wrote down a pen signature, by the same name lookup.
+    recordedByName: cols.signed_recorded_by ? (opts?.onDeviceNameFor?.(cols.signed_recorded_by) ?? null) : null,
     pngDataUrl: opts?.inks?.get(item.id) ?? null,
   })
 }
@@ -293,7 +295,7 @@ export const RUN_OWNER_UNCONFIRMED_PROBLEM = 'Owner of record: from the roll, un
 
 /** A recipient sent by email needs an address; everything else can go without a tracking number (typed later). An owner nobody confirmed (v2.3450) blocks the record. */
 /** The run's word for a notice the leader has not signed (v2.5086): the envelope is held, and the run does not record it. */
-export const RUN_UNSIGNED_PROBLEM = 'Unsigned: the leader signs it from his phone, or draws it here with Leader here, sign ▸.'
+export const RUN_UNSIGNED_PROBLEM = 'Unsigned: the leader signs it from his phone, draws it here with Leader here, sign ▸, or signed the paper with a pen — record that with He signed the paper ▸.'
 
 export function runNoticeProblems(n: RunNotice): string[] {
   const out: string[] = []
