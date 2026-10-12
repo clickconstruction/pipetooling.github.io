@@ -38,6 +38,15 @@ describe('its papers', () => {
     expect(papers.company.map((p) => p.key)).toEqual(['msa', 'w9', 'coi'])
     expect(papers.jobs.map((j) => [j.trade, j.papers.map((p) => p.key.split(':')[1])])).toEqual([['Electrical', ['app', 'cond', 'sow']]])
   })
+
+  it('says the version a statement of work built from clauses was signed at (Messages, cut 4c, v2.5329)', () => {
+    const sowRow = (s: ReturnType<typeof portalPapers>) => s.jobs[0]?.papers.find((p) => p.key.endsWith(':sow'))?.words
+    expect(sowRow(portalPapers(state, partnerId))).toBe('signed Sep 5')
+    const kept = { paperId: 'doc-sow', revision: 3, lang: 'en' as const, clauses: [], exhibit: [], exhibitFor: [], between: null, title: 'Statement of work' }
+    const signed = { ...state, projects: state.projects.map((p) => (p.id === job.id ? { ...p, packages: p.packages.map((k) => (k.sow ? { ...k, sow: { ...k.sow, signedClauses: kept } } : k)) } : p)) }
+    expect(sowRow(portalPapers(signed, partnerId))).toBe('signed Sep 5 · version 3')
+    expect(sowRow(portalPapers(signed, partnerId, 'es'))).toBe('firmado el 5 sep · versión 3')
+  })
 })
 
 describe('its to-dos', () => {

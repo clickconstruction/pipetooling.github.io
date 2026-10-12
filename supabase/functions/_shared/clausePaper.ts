@@ -6,6 +6,10 @@
  * again and signs only when the revision is the one the page showed, then freezes it on the copy as `clause_versions`,
  * with the revision as `paper_revision`. A trigger keeps them as signed.
  *
+ * Since v2.5329 the portals read the same way (`clausePaperOf`, `clausePaperPair`): a statement of work built from
+ * clauses in the trade's portal, with the exhibit for its package's one trade, and our contract in the customer's.
+ * Their sign verbs check the revision in SQL (`20261013000000_gc_clause_papers.sql`).
+ *
  * No imports, so the app's tests import it as the functions do.
  */
 
@@ -33,6 +37,23 @@ export interface ClausePaperJson {
 /** What the signed copy keeps: the paper as it read when signed, with its heading. */
 export interface SignedClauses extends ClausePaperJson {
   title: string
+}
+
+/** The paper as a sign page carries it: English and Spanish at one revision, which the page sends back on sign. */
+export interface ClausePaperPair {
+  revision: number
+  en: ClausePaperJson
+  es: ClausePaperJson
+}
+
+/** What a portal's paper is put together for. */
+export interface ClauseTarget {
+  /** The library document it is built from (`paper_id`). Null: not built from clauses. */
+  paperId: string | null
+  /** Whose exhibit it carries: a statement of work's one trade. None on our contract with a customer. */
+  trades: string[]
+  /** Who the between line names, the company or the customer. Null draws none. */
+  betweenName: string | null
 }
 
 /** What the accept says when the paper moved on after the page was opened. */
@@ -69,6 +90,16 @@ export function readClausePaper(json: unknown): ClausePaperJson | null {
   return { paperId: o.paperId, revision: o.revision, lang: o.lang, clauses: o.clauses, exhibit: o.exhibit, exhibitFor: o.exhibitFor, between }
 }
 
+/** A sign page's pair from its JSON, or null when it is not one: each language a paper's shape, both at its revision. */
+export function readClausePaperPair(json: unknown): ClausePaperPair | null {
+  const o = json as { revision?: unknown; en?: unknown; es?: unknown } | null
+  if (!o || typeof o !== 'object' || typeof o.revision !== 'number') return null
+  const en = readClausePaper(o.en)
+  const es = readClausePaper(o.es)
+  if (!en || !es || en.lang !== 'en' || es.lang !== 'es' || en.revision !== o.revision || es.revision !== o.revision) return null
+  return { revision: o.revision, en, es }
+}
+
 /** A signed copy's `clause_versions`, or null when the copy kept none. */
 export function readSignedClauses(json: unknown): SignedClauses | null {
   const paper = readClausePaper(json)
@@ -84,10 +115,7 @@ export function readSignedClauses(json: unknown): SignedClauses | null {
 export async function clausePaperFor(admin: ClauseAdmin, doc: ClauseDoc, lang: ClausePaperLang): Promise<ClausePaperJson | null> {
   const paperId = doc.applied_contract_template_document_id
   if (!paperId || doc.form_template_id) return null
-  // Most library documents have no clauses: one small read settles it, and nothing more runs for them.
-  const any = await admin.from('contract_clauses').select('id').eq('paper_id', paperId).limit(1)
-  if (any.error) throw new Error('could not read the clauses')
-  if (!Array.isArray(any.data) || any.data.length === 0) return null
+  if (!(await builtFromClauses(admin, paperId))) return null
   let trades: string[] = []
   let companyName: string | null = null
   if (doc.company_id) {
@@ -97,11 +125,43 @@ export async function clausePaperFor(admin: ClauseAdmin, doc: ClauseDoc, lang: C
     trades = Array.isArray(c?.trades) ? c.trades.filter((x): x is string => typeof x === 'string') : []
     companyName = typeof c?.name === 'string' ? c.name : null
   }
-  const res = await admin.rpc('contract_paper_clauses', { p_paper_id: paperId, p_trades: trades, p_lang: lang })
+  return assembled(admin, { paperId, trades, betweenName: companyName }, lang)
+}
+
+/**
+ * A portal's paper as it reads today, in this language: a statement of work's or our contract's. Null when it is not
+ * built from clauses: no library document, nothing published yet, or no clause live. A read that fails throws, as
+ * `clausePaperFor` does.
+ */
+export async function clausePaperOf(admin: ClauseAdmin, target: ClauseTarget, lang: ClausePaperLang): Promise<ClausePaperJson | null> {
+  if (!target.paperId || !(await builtFromClauses(admin, target.paperId))) return null
+  return assembled(admin, { ...target, paperId: target.paperId }, lang)
+}
+
+/**
+ * The paper in English and Spanish at one revision, as a sign page carries it. Null when it is not built from clauses,
+ * or when a publish landed between the two reads: the page then shows no clauses, and its signing is refused until a
+ * reload reads it whole.
+ */
+export async function clausePaperPair(admin: ClauseAdmin, target: ClauseTarget): Promise<ClausePaperPair | null> {
+  const [en, es] = await Promise.all([clausePaperOf(admin, target, 'en'), clausePaperOf(admin, target, 'es')])
+  return en && es && en.revision === es.revision ? { revision: en.revision, en, es } : null
+}
+
+/** Most library documents have no clauses: one small read settles it, and nothing more runs for them. */
+async function builtFromClauses(admin: ClauseAdmin, paperId: string): Promise<boolean> {
+  const any = await admin.from('contract_clauses').select('id').eq('paper_id', paperId).limit(1)
+  if (any.error) throw new Error('could not read the clauses')
+  return Array.isArray(any.data) && any.data.length > 0
+}
+
+/** The database's assembly for these trades and language, with the between line; null when nothing is live. */
+async function assembled(admin: ClauseAdmin, target: ClauseTarget & { paperId: string }, lang: ClausePaperLang): Promise<ClausePaperJson | null> {
+  const res = await admin.rpc('contract_paper_clauses', { p_paper_id: target.paperId, p_trades: target.trades, p_lang: lang })
   if (res.error) throw new Error('could not put the paper together')
   const paper = readClausePaper(res.data)
   if (!paper || paper.revision < 1 || paper.clauses.length + paper.exhibit.length === 0) return null
-  return { ...paper, between: clauseBetween(companyName, lang) }
+  return { ...paper, between: clauseBetween(target.betweenName, lang) }
 }
 
 /**

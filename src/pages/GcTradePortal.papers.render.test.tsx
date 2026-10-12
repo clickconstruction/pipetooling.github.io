@@ -223,6 +223,17 @@ describe('the paperwork block (P5b-1)', () => {
     expect(await screen.findByRole('region', { name: 'Your paperwork with Click' })).toBeTruthy()
   })
 
+  it('says on Your papers the version a statement of work built from clauses was signed at (Messages, cut 4c, v2.5329)', async () => {
+    const s = gcTradePortalSample(TODAY)
+    const kept = { paperId: 'doc-sow', revision: 3, lang: 'en', clauses: [{ id: 'c1', v: 1, n: 1, text: 'Term: through final completion.' }], exhibit: [], exhibitFor: [], between: 'Click Construction and Sample Electric Co.', title: 'Statement of work' }
+    slice = { ...s, sows: (s.sows ?? []).map((w) => ({ ...w, paper_revision: 3, clause_versions: kept })) }
+    open()
+    fireEvent.click((await paperwork()).getByRole('button', { name: 'See every paper' }))
+    const job = within(await screen.findByRole('region', { name: 'Sample Dental Office · Electrical' }))
+    expect(job.getByText('Electrical statement of work')).toBeTruthy()
+    expect(job.getByText('signed Sep 5 · version 3')).toBeTruthy()
+  })
+
   it('posts nothing from the office’s preview', async () => {
     open(`/t/${TOKEN}?preview=1`)
     const block = await paperwork()

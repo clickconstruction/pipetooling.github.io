@@ -1120,7 +1120,9 @@ export function portalPapers(state: GcState, partnerId: string, lang: PortalLang
     const toJob: PortalPaperOpen = { kind: 'project', projectId: project.id }
     const papers: PortalPaper[] = []
     if (sow.status === 'signed') {
-      papers.push({ key: `${pkg.id}:sow`, title: t('paperSow', { trade: pkg.trade }), words: t('signedOn', { date: d(sow.signedOn) }), on: sow.signedOn, open: toJob })
+      // One built from clauses (Messages, cut 4c, v2.5329) says the version it was signed at.
+      const version = sow.signedClauses ? [t('paperVersion', { n: sow.signedClauses.revision })] : []
+      papers.push({ key: `${pkg.id}:sow`, title: t('paperSow', { trade: pkg.trade }), words: [t('signedOn', { date: d(sow.signedOn) }), ...version].join(' · '), on: sow.signedOn, open: toJob })
     }
     for (const { co, state: where } of tradeChangesFor(project, pkg)) {
       if (where !== 'signed' || !co.tradeChange?.signedOn) continue

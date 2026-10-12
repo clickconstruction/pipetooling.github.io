@@ -53,4 +53,6 @@ Tick **Email it now** first to tell the company by email too. The box starts unt
 
 The company signs it in their portal with **Sign the statement of work**. It can sign only after it signs our master agreement. The chip then reads {{chip:green|Statement of work signed}} with the day.
 
+A statement of work built from our clauses reads as its clauses in their portal. The exhibit for its trade comes after them. The company signs the version it read. Its signed copy keeps those clauses and that version.
+
 [Share a trade partner its portal](/help/share-a-trade-partner-its-portal) shows what the company sees.

@@ -113,6 +113,8 @@ export const TRADE_SQL_ERRORS = {
   sowNotSent: 409,
   alreadySigned: 409,
   msaFirst: 409,
+  // Messages, cut 4c (v2.5329): a statement of work built from clauses signs only at the revision its page showed.
+  paperChanged: 409,
   // P5c-2: Building's punch list (U3b-i), submittals (U4a) and questions while we build (U5a). jobNotBuilding is raised by
   // every verb on a job we are building, the report's and the pay application's too (P5c-3).
   punchNotOpen: 409,
@@ -521,9 +523,15 @@ function callOf(kind: TradeSubmitKind, b: Record<string, unknown>): TradeCall {
     case 'mark_lookahead':
       if (typeof b.done !== 'boolean') throw new Bad()
       return { rpc: 'gc_trade_mark_lookahead', params: { p_activity_id: uuid(b.activityId), p_week_of: monday(b.weekOf), p_done: b.done, p_reason: reasonOrNull(b.reason) } }
-    case 'sign_sow':
-      // The function fills the image's path, the IP and the browser from what it stored and the request.
-      return { rpc: 'gc_trade_sign_sow', params: { p_sow_id: uuid(b.sowId), p_printed_name: text(b.printedName, 200), p_signature_path: null, p_ip: null, p_user_agent: null } }
+    case 'sign_sow': {
+      // The function fills the image's path, the IP and the browser from what it stored and the request. One built from
+      // clauses (v2.5329) also sends the revision its page showed and the language it read; the SQL signs only at that
+      // revision. Without them it signs as before, and the SQL refuses one built from clauses (paperChanged).
+      const revision = num(b.paperRevision)
+      if (revision !== null && !Number.isInteger(revision)) throw new Bad()
+      const paper = revision === null ? {} : { p_paper_revision: revision, p_paper_lang: b.paperLang === 'es' ? 'es' : 'en' }
+      return { rpc: 'gc_trade_sign_sow', params: { p_sow_id: uuid(b.sowId), p_printed_name: text(b.printedName, 200), p_signature_path: null, p_ip: null, p_user_agent: null, ...paper } }
+    }
   }
 }
 

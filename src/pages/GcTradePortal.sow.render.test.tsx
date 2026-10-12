@@ -3,7 +3,8 @@
  * The trade portal's statement of work (P2c-ii, to-dos/gc-mode/mockups/portal-p2c.md): a draft says the office is
  * writing it; a sent one shows the price, the lines and what it will not do, then `/contract/accept`'s form, which needs
  * a name and the e-sign consent and posts `sign_sow`; a signed one reads its day. A refusal shows in the company's
- * words, and the office's preview posts nothing.
+ * words, and the office's preview posts nothing. One built from clauses (Messages, cut 4c, v2.5329) reads as its
+ * clauses with its price and lines folded under them, signs at the revision it showed, and once signed says its version.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
@@ -142,5 +143,75 @@ describe('the statement of work on the company’s job (P2c-ii)', () => {
     const sow = await openJob()
     expect(sow.getByText(/^signed /)).toBeTruthy()
     expect(sow.queryByRole('button', { name: 'Sign the statement of work' })).toBeNull()
+    expect(sow.queryByText(/^Version /)).toBeNull()
+  })
+})
+
+describe('a statement of work built from clauses (Messages, cut 4c, v2.5329)', () => {
+  const paperIn = (lang: 'en' | 'es') => ({
+    paperId: 'doc-sow',
+    revision: 3,
+    lang,
+    clauses: [{ id: 'sow-1', v: 2, n: 1, text: lang === 'es' ? 'Plazo: hasta la terminación final.' : 'Term: through final completion.' }],
+    exhibit: [{ id: 'sow-4', v: 1, n: 2, text: lang === 'es' ? 'Paneles: etiquetados antes de la inspección.' : 'Panels: labeled before the inspection.' }],
+    exhibitFor: ['Electrical'],
+    between: lang === 'es' ? 'Click Construction y Sample Electric Co.' : 'Click Construction and Sample Electric Co.',
+  })
+  const PAPER = { revision: 3, en: paperIn('en'), es: paperIn('es') }
+
+  it('reads as its clauses and the exhibit for its trade, with the price and the lines folded under them', async () => {
+    slice = withSow({ status: 'sent', signed_on: null, clause_paper: PAPER })
+    open()
+    const sow = await openJob()
+    expect(sow.getByText('Term: through final completion.')).toBeTruthy()
+    expect(sow.getByText('Between Click Construction and Sample Electric Co.')).toBeTruthy()
+    expect(sow.getByText('Exhibit for Electrical')).toBeTruthy()
+    expect(sow.getByText('Version 3, with the Electrical exhibit.')).toBeTruthy()
+    const folded = sow.getByText('The price and the lines').closest('details') as HTMLElement
+    expect(within(folded).getByText('$48,600')).toBeTruthy()
+    expect(within(folded).getByText('Rough-in $29,160 · Trim and fixtures $19,440')).toBeTruthy()
+    expect(sow.getByRole('button', { name: 'Sign the statement of work' })).toBeTruthy()
+  })
+
+  it('signs at the revision it showed, in the language it read', async () => {
+    slice = withSow({ status: 'sent', signed_on: null, clause_paper: PAPER })
+    open()
+    const sow = await openJob()
+    fillTheForm(sow)
+    fireEvent.click(sow.getByRole('button', { name: 'Sign the statement of work' }))
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).toMatchObject({ kind: 'sign_sow', sowId: ID.sow, printedName: 'Dana Ortiz', paperRevision: 3, paperLang: 'en' })
+  })
+
+  it('sends no revision from one whose lines are the paper', async () => {
+    open()
+    const sow = await openJob()
+    expect(sow.queryByText('The price and the lines')).toBeNull()
+    fillTheForm(sow)
+    fireEvent.click(sow.getByRole('button', { name: 'Sign the statement of work' }))
+    await waitFor(() => expect(posts).toHaveLength(1))
+    expect(posts[0]).not.toHaveProperty('paperRevision')
+    expect(posts[0]).not.toHaveProperty('paperLang')
+  })
+
+  it('says a paper that moved on since it was opened in the company’s words, and reads nothing again', async () => {
+    slice = withSow({ status: 'sent', signed_on: null, clause_paper: PAPER })
+    postAnswer = { ok: false, body: { error: 'paperChanged' } }
+    open()
+    const sow = await openJob()
+    fillTheForm(sow)
+    fireEvent.click(sow.getByRole('button', { name: 'Sign the statement of work' }))
+    expect(await sow.findByText('The paper changed since you opened it. Reload to read the new version.')).toBeTruthy()
+    expect(reads).toHaveLength(1)
+  })
+
+  it('says the version a signed one was signed at under its day', async () => {
+    const s = gcTradePortalSample(TODAY)
+    slice = { ...s, sows: (s.sows ?? []).map((w) => ({ ...w, paper_revision: 3, clause_versions: { ...paperIn('en'), title: 'Statement of work' } })) }
+    open()
+    const sow = await openJob()
+    expect(sow.getByText(/^signed /)).toBeTruthy()
+    expect(sow.getByText('Version 3, with the Electrical exhibit.')).toBeTruthy()
+    expect(sow.queryByText('Term: through final completion.')).toBeNull()
   })
 })

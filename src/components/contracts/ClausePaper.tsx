@@ -18,7 +18,9 @@ export function ClausePaper({ paper, showTitle = true }: { paper: ClausePaperVie
         {showTitle && <div style={{ fontWeight: 700, fontSize: '1rem' }}>{paper.title}</div>}
         {paper.between.trim() !== '' && (
           <div data-clause-between style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-            {es ? 'Entre' : 'Between'} {paper.between}.
+            {/* A name that ends in its own period, like Sample Electric Co., takes no second one. */}
+            {es ? 'Entre' : 'Between'} {paper.between.trim()}
+            {paper.between.trim().endsWith('.') ? '' : '.'}
           </div>
         )}
       </div>

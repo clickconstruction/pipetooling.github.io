@@ -264,6 +264,8 @@ export const TRADE_ERROR_WORDS: Record<TradeSubmitErrorKey, PortalKey> = {
   sowNotSent: 'errSowNotSent',
   alreadySigned: 'errAlreadySigned',
   msaFirst: 'signMsaFirst',
+  // Messages, cut 4c (v2.5329): a statement of work built from clauses, whose paper moved on since the page showed it.
+  paperChanged: 'errPaperChanged',
   // P5c-2: the punch list, submittals and questions while we build.
   punchNotOpen: 'errPunchNotOpen',
   notYourMove: 'errNotYourMove',

@@ -319,6 +319,14 @@ describe('its own work, and only its part of a change order (P4b-i)', () => {
     ])
   })
 
+  it('reads its statement of work’s paper while sent and its clauses as signed (Messages, cut 4c, v2.5329)', () => {
+    const paper = { revision: 3, en: { paperId: 'doc-sow', revision: 3, lang: 'en' }, es: { paperId: 'doc-sow', revision: 3, lang: 'es' } }
+    const kept = { paperId: 'doc-sow', revision: 3, lang: 'en', title: 'Statement of work' }
+    const r = workRows()
+    const built = tradePortalSlice({ ...r, sows: (r.sows ?? []).map((s) => (s.id === 'sow-me' ? { ...s, paper_id: 'doc-sow', clause_paper: paper, paper_revision: 3, clause_versions: kept } : s)) }, ME)
+    expect(built.sows[0]).toMatchObject({ id: 'sow-me', clause_paper: paper, paper_revision: 3, clause_versions: kept })
+  })
+
   it('reads the lines of its own statement of work only, with the scope item each one is (P2c-ii)', () => {
     expect(slice.sowLines.map((l) => [l.id, l.label, l.amount, l.scope_item_id])).toEqual([
       ['sl-2', 'Trim', 18600, 'si-9'],

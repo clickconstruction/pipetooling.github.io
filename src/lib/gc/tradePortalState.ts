@@ -11,6 +11,7 @@
  * by Building's own row mappers (`drawRows.ts`, `submittalRows.ts`, `rfiRows.ts`, `punchRows.ts`), never a second one.
  */
 import type { TradePortalSlice } from '../../../supabase/functions/_shared/gcTradePortalSlice'
+import { readClausePaperPair, readSignedClauses } from '../../../supabase/functions/_shared/clausePaper'
 import { backChargeOf } from './backChargeRows'
 import { companyPapers } from './companyPapers'
 import { sowWithDraws, type DrawTables } from './drawRows'
@@ -204,6 +205,8 @@ function sowOf(slice: TradePortalSlice, packageId: string, draws: DrawTables): S
   if (!row) return null
   const status = str(row.status)
   const excluded = excludedOf(row.excluded)
+  const clausePaper = readClausePaperPair(row.clause_paper)
+  const signedClauses = readSignedClauses(row.clause_versions)
   const sow: Sow = {
     id: str(row.id),
     status: status === 'sent' || status === 'signed' ? status : 'draft',
@@ -216,6 +219,9 @@ function sowOf(slice: TradePortalSlice, packageId: string, draws: DrawTables): S
     ...(strOrNull(row.sent_on) ? { sentOn: str(row.sent_on) } : {}),
     ...(excluded.length > 0 ? { excluded } : {}),
     ...(strOrNull(row.accepted_on) ? { acceptedOn: str(row.accepted_on) } : {}),
+    // Messages, cut 4c (v2.5329): built from clauses, its paper while sent to sign and its clauses once signed.
+    ...(clausePaper && status === 'sent' ? { clausePaper } : {}),
+    ...(signedClauses && status === 'signed' ? { signedClauses } : {}),
   }
   return sowWithDraws(sow, str(row.id), draws)
 }
