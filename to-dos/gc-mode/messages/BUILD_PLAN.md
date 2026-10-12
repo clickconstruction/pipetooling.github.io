@@ -1,12 +1,12 @@
 ---
 name: "Messages: the build plan"
 parent: to-dos/gc-mode/messages/MESSAGES_PLAN.md
-status: written 2026-10-11 at the owner's ask ("the edits are becoming cosmetic; help me plan the build"); the prototype is v1.141
+status: written 2026-10-11 at the owner's ask ("the edits are becoming cosmetic; help me plan the build"); brought up to the prototype's v1.177 on 2026-10-12 ("I am just about ready to build it")
 ---
 
 # Messages: the build plan
 
-The prototype (`prototype.html`, v1.141) is the spec. This file is the order to build it in, what each
+The prototype (`prototype.html`, v1.177) is the spec. This file is the order to build it in, what each
 cut touches, and what it reuses. `MESSAGES_PLAN.md` holds the why and the decisions; this holds the
 how. The owner will keep changing the prototype while this is built; a change there is a change to
 the cut that owns the surface, named below.
@@ -87,8 +87,11 @@ page. The prototype's words are the words; its hover cards are the help text.
   `set_default_job`; a seed that reads the people the app has into contacts.
 - **Screens** on `/gc`: the Messages tab (the list as three lines per row, All · Customers · Trades ·
   Who is this?, the rail of faces, search across words); the thread as a window (name row with the
-  pair ☎ ⋯, facts line, move line with the stamps, the jobs rail as tiles with the default star,
-  drag and press-and-hold to tie); the message window (the whole text, its facts, Copy, Print, Share).
+  pair ☎ ⋯, the company line with its chevron over the phone and the email, the status row that
+  leads with the move strip, the stamps sentence, the jobs rail as tiles with the default star, drag
+  and press-and-hold to tie; v1.166); a message's time on its last line when there is room (v1.156);
+  a repeated job within a day as its number alone (v1.158); the message window (the whole text, its
+  facts, one highlight slot that reads Remove or Highlight by the selection, Copy, Print, Share; v1.159).
 - **Decision taken here**: *which record a contact is* (section 7).
 
 ### Cut 2 · Follow up, whose move, and what we owe
@@ -102,6 +105,8 @@ page. The prototype's words are the words; its hover cards are the help text.
 - **Screens**: the Follow up tab (Needs you, Needs a reply, We owe them, the nudge section lands in
   cut 4); the who-has-it pill and Open · Snoozed · Done; the owed strip above the box; the settling
   note; a note's follow-up day (*Bring it back on a day…*); the highlight and its three removes.
+  Open · Snoozed · Done is the app's to set and the ⋯ menu's to override (v1.146); the list sorts by
+  the newest conversation only (v1.147).
 
 ### Cut 3 · Replying: the box, quick replies, the send window
 
@@ -116,7 +121,9 @@ page. The prototype's words are the words; its hover cards are the help text.
   on the kinds row; *Find a reply*; the Edit quick replies window with history and Removed; the send
   window (what they see, the To line editable, the subject editable, *After this sends*, the opt-out
   line as the app's own bubble, the email note at the bottom); the sent copy filed through the
-  existing `sent_documents`.
+  existing `sent_documents`; the Attach picker's *preview* on every file (v1.148); the count line by
+  kind (v1.149); the strip's rows with their titles and the narrow box that adds a reply when it finds
+  none (v1.142–v1.145).
 - **Sending** reuses Resend for email; a text waits on cut 5 (until then the send window says so).
 
 ### Cut 4 · The flow suite
@@ -135,8 +142,19 @@ page. The prototype's words are the words; its hover cards are the help text.
   the person waited on, the per-job caption's picker, the title by kind); the step card (as a card
   at a desk, a sheet on a phone); Settings → Flows (the editor, the fact picker, the who-moves
   preview, History, How it is going); Trade partners (By step, By company, Asks) and the same two
-  on Customers; the Messages list's *by step* chip; the job page's *Papers on this job, by company*;
-  Follow up's *Nudges from the flow*; the Attach picker's starred rows for a step.
+  on Customers, plus *By trade* (one row per trade, v1.172); By step on the six pieces (the tiles
+  with a dot per company, empty steps folded, chips grouped by job, days against the step's usual,
+  a press per row that is the step's own nudge, the job and the seat as pickers; v1.173–v1.174); a
+  round pill's window (a change order with its facts, whether the customer opened it, the paper and
+  Ask again; a pay application with what it covers and its certificate; v1.168); the job page's
+  *Papers on this job* as a grid with the counts in the title and the strip before the job's day,
+  List behind a tab (v1.176); *See their page* with the globe under the panel and on the card
+  (v1.167); the Messages list's *by step* chip; Follow up's *Nudges from the flow*; the Attach
+  picker's starred rows for a step.
+- **The lanes as settled** (v1.157, v1.160): a customer's Once lane holds only the master agreement,
+  which a one-job customer skips; the ask, the bid, the yes and the contract are per job; change
+  orders sit in Per job apart under Warranty with no arrow into them (`aside` on the step), never
+  named as what comes next.
 - **Papers**: *Send it* and *Remind them* call the existing paper send; the sign page is the existing
   one with the consent kernel verbatim; the customer's contract and a change order go the same way
   (the contract's send exists as `gc_owner_contract_sends`).
@@ -149,7 +167,16 @@ page. The prototype's words are the words; its hover cards are the help text.
   contract, notice), a form template for a contract with the clauses in both languages and a version, a
   `doc_type` beyond the five or `other` with a name, a fact in `flows/facts.ts` that reads the document
   row (on file, current, signed, sent), a column on the job's grid, and a line on the index. Nothing of
-  this is a new table; it is the library and the flow agreeing on one id.
+  this is a new table; it is the library and the flow agreeing on one id. The window asks the kind
+  first: an upload (a name, a date it runs out), a contract (between whom, who signs and the order,
+  the fields it draws from the job, the clauses in both languages, the consent fixed, Preview the sign
+  page, draft or published v1) or a notice (subject, the words in both languages, what rides with it).
+  A contract has a version and never a date; an upload has a date and never clauses.
+- **A change order from a message** (asked 2026-10-12, not drawn): a *Start a change order* press on
+  a customer's message, the job from the message's tie, the message kept on the order and a *became
+  CO 2* chip on the message; the order gains who signs, where it came from, a sketch from the job's
+  files and a send record like the contract's (sent, the link, opened, signed, the name, the
+  signature, the consent). Draft by anyone, send by the money team. Its own PR after cut 4.
 
 ### Cut 5 · Calls and texts: the Quo link
 
@@ -207,6 +234,17 @@ page. The prototype's words are the words; its hover cards are the help text.
   that lands a `portal` message in the thread; a view per paper in `public_page_views` keyed by the paper.
   Screens: the page; the thread header's portal pill, the step card's So far line, Needs you's two portal rows,
   By company's Portal column. Field: one customer line and a photo mark on the daily log; the Friday roll-up.
+  The Money tab as picked (v1.163, `money-tab-mockups.html`): the win first (*34% built*, paid of revised, *paid
+  on time* only when true, the sum is the contract plus the signed changes), one card per pay application with
+  what it covers, its photos, the certificate, the waivers and the day the trades were paid, *After that* as a
+  range from the schedule of values, History folded as the money timeline, the six-line statement folded;
+  kernel `portal/moneyStory.ts` beside `moneyLines.ts`. The office side of the window (v1.164): Edit mode
+  tags every card with the page that feeds it and takes you there; *Ready for Priya?* is one row per piece
+  (something to do, this week's line fresh, photos marked, every application with its covers sentence, the
+  next one sized, every schedule move with its why, people to call, both languages) with a fix link, kernel
+  `portal/readiness.ts`; Settings → Customer page holds every sentence of ours in EN and ES and the switches
+  per job. The list's words (v1.165): the step we are on reads *We are on it* with what to expect, the unreached
+  ones *Later* with when they come, each step's when-line on the flow in both languages.
 
 ### Cut 9 · Bill day: From the trades, and the superintendent's walk
 
@@ -225,6 +263,11 @@ page. The prototype's words are the words; its hover cards are the help text.
   the trade's portal naming the period); the daily log's *Claims to check* on the checking days for
   the superintendent assigned to the job; the text she gets on the first checking day and *Ask Wendi
   to walk it*. Approve and Send back stay the Draws window's own.
+- **The top of the page** (v1.169–v1.171, `bill-day-summary-mockups.html`): the money river, one bar
+  of the draws by state in dollars flowing into the owner's number, the legend as columns in the bar's
+  order, the dates under it evenly spaced with today marked; beside it the 3 of 7 ring and *Today*, the
+  first three open gates with their own presses; the calendar cards and the gate list fold; *See their
+  page* under every trade's name; kernel `billDay/summary.ts`.
 - **Access**: amounts for the money team only (as the Draws window is gated); the superintendent's
   paths show percents and photos, never a dollar.
 
@@ -240,8 +283,10 @@ page. The prototype's words are the words; its hover cards are the help text.
 `contacts/kernel.ts` · `messages/thread.ts` · `messages/stamps.ts` · `messages/compose.ts` ·
 `messages/owed.ts` · `messages/promises.ts` · `followUp/queue.ts` · `quickReplies/kernel.ts` ·
 `flows/facts.ts` · `flows/state.ts` · `flows/card.ts` · `flows/nudges.ts` · `flows/board.ts` ·
-`flows/going.ts` · `flows/portalPage.ts` · `documents/jobFiles.ts` · `documents/outgoing.ts` ·
-`billDay/trades.ts` · `billDay/lines.ts` · `billDay/walk.ts` · `billDay/asks.ts`.
+`flows/going.ts` · `flows/portalPage.ts` · `flows/customerMove.ts` · `flows/jobPapers.ts` (the grid's cell
+states, the counts, the strip before the job's day) · `portal/moneyLines.ts` · `portal/moneyStory.ts` ·
+`portal/papers.ts` · `portal/readiness.ts` · `documents/jobFiles.ts` · `documents/outgoing.ts` ·
+`billDay/trades.ts` · `billDay/summary.ts` · `billDay/lines.ts` · `billDay/walk.ts` · `billDay/asks.ts`.
 
 Each ships with its unit test, and each screen with a render smoke (`*.render.test.tsx`). The
 prototype's functions are the first draft of each kernel; lift the words, not the DOM.
@@ -269,8 +314,14 @@ Each is taken in the cut that needs it; none blocks cut 1 through 4 except the f
    every job.
 8. **Whether a superintendent's tap that matches the claim approves the line** (cut 9). Lean: no;
    the walk informs, the office approves.
-9. **Whether the customer's portal gets the page** (cut 8).
+9. ~~Whether the customer's portal gets the page~~ Taken 2026-10-11: shape B, with the Money tab as
+   picked (cut 8). Still open there: whether Accept the work and the warranty year sit on Home or
+   Papers; whether the architect sees the page or a cousin; whether photos are opt-in per job.
 10. Yearly or monthly Quo billing; Claude from the first day or later (`MESSAGES_PLAN.md`).
+11. **Who may start a change order from a message** (after cut 4): the money team only, or draft by
+    anyone and send by the money team. Lean: the split.
+12. **Over usual on the boards**: a watch in orange, never a call and never in Follow up's count
+    (taken in the prototype, v1.174); the usuals themselves are the flow's to tune.
 
 ## 8. What is left out, on purpose
 
@@ -279,7 +330,35 @@ companies with no thread), the Board's ring reading the flows (its own cut, late
 load balancing on who gets a message, a second contact per role, a files@ address, a Flows tab of
 its own, and any screen that writes a draw outside the Draws window.
 
-## 9. How a cut is done
+## 9. The order, and where to start
+
+The cuts are in the order their data needs; the value lands earlier than the numbering says, because
+main already holds most of the facts. The first useful day for the office is the end of cut 2: one
+thread per person over what the app already sends, Follow up as one queue, and whose move. Cut 4 is
+the big one and the one the prototype spent the most on; it is also the one with no outside
+dependency, so it can run beside cuts 5 and 6, which wait on Quo and on the Google grant.
+
+| Order | Cut | Waits on | Rough size | What the office gets at its end |
+|---|---|---|---|---|
+| 1 | 1 · the spine | decision 1 | 2 weeks | the people, their jobs, every sent email in one thread per person |
+| 2 | 2 · Follow up | cut 1 | 1 week | one queue, whose move, what we owe, notes that come back |
+| 3 | 3 · replying | cut 1 | 1 week | the box, quick replies, the send window (texts wait on 5) |
+| 4 | 4 · the flow suite | cut 1 | 4 weeks | the flows, the cards, the boards, the papers, the job's grid, the editor with new papers |
+| 4b | the change order from a message | cut 4 | 1 week | decision 11 |
+| 5 | 5 · Quo | the Quo account | 2 weeks, beside 4 | calls and texts in the thread, the app's nudges off by default |
+| 6 | 6 · bids@ | the Google grant | 2 weeks, beside 4 | email in, the files that arrive |
+| 7 | 7 · files out | cut 6 | 1 week | one list of a job's files, our link |
+| 8 | 8 · the portals | cut 4 | 3 weeks | the trade's first page; the customer's home and four tabs; Edit mode and the readiness list |
+| 9 | 9 · Bill day | cut 4, the Draws window | 3 weeks | From the trades with the river and today's three things; the walk |
+| 10 | 10 · the phone and the rest | 8, 9 | 1 week | the phone layouts, Job activity, photos |
+
+Sizes are one builder's weeks with helpers on the screens; the kernels come first in every cut and
+can be lifted from the prototype's functions by name (`MESSAGES_PLAN.md` → *Prototype log* names the
+version each one landed in). Three things to settle before cut 1 starts: decision 1 (which record a
+contact is); whether the prototype's demo people become the seed (no: the seed reads the people the
+app has); and which helper sessions take which screens (the ledger in `docs/SESSIONS.md`).
+
+## 10. How a cut is done
 
 A cut is done when: its kernels and tests are on `main`; its migrations are pushed with
 `supabase db push` and verified read-only on prod; its edge functions are deployed and

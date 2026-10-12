@@ -821,6 +821,10 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.177b, 2026-10-12**: `BUILD_PLAN.md` brought up to v1.177: every cut gains what landed since v1.141, the
+  kernels list grows by six, the decisions list marks the portal taken and adds the change order's seat and the
+  over-usual rule, and a new section 9 gives the build order with rough sizes and what the office gets at the end
+  of each cut (the owner: "I am just about ready to build it").
 - **v1.177, 2026-10-12**: *Add a new paper* asks the kind first, one word for three things: something they give
   us (a name in both languages, a date it runs out), something we write and they sign (a contract: between whom,
   who signs and the order, the fields it draws from the job, the clauses in both languages seeded from the master
