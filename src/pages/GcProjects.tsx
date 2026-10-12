@@ -125,6 +125,7 @@ import { GcTheirPortal } from '../components/gc/GcTheirPortal'
 import { loadCompanyPaperEntries, loadReceivedCoiLink, markCompanyCoiGood, recordCompanyInsurance, sendCompanyPaper, type CompanyPaperEntries } from '../lib/gc/papersIo'
 import { GcCompanyOpenerContext, type CompanyAt, type CompanyOpener } from '../components/gc/gcCompanyOpener'
 import { BillDayCardLine } from '../components/gc/GcBillDayCardLine'
+import { GcBillDayClaims } from '../components/gc/GcBillDayClaims'
 import { GcBillDayTrades } from '../components/gc/GcBillDayTrades'
 import { billDayJobs, useBillDayCards } from '../components/gc/useBillDayCards'
 import { GcCustomerOpenerContext, type CustomerAt, type CustomerOpener } from '../components/gc/gcCustomerOpener'
@@ -2487,6 +2488,11 @@ export default function GcProjects() {
           onSave={(log) => saveLog(logProject.id, log)}
           weekly={weeklyState && weeklyProject ? { state: weeklyState, project: weeklyProject, me: profileName ?? null, writes: weeklyWrites } : null}
           ourCrew={{ rows: crewRows, jobs: crewJobLabels }}
+          claims={
+            canUseGcBuilding(role) && boardWithChanges && boardWithChanges.projects.some((x) => x.id === logProject.id) ? (
+              <GcBillDayClaims state={boardWithChanges} project={boardWithChanges.projects.find((x) => x.id === logProject.id) ?? logProject} drawTables={drawTables} />
+            ) : null
+          }
           onClose={() => setLogWindow(null)}
         />
       )}

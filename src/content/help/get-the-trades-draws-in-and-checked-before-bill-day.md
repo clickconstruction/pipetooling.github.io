@@ -71,7 +71,7 @@ Press {{button:outline|Open the lines}} on a draw waiting on us. Each line shows
 
 Approve and send back happen in the Draws window. Press {{button:blue|Approve or send back in Draws}}, then see [pay a trade's draw](/help/pay-a-trades-draw).
 
-The checked gate's button asks the job's superintendent to walk the claims. The text names the job and the day, and never a dollar.
+The checked gate's button asks the job's superintendent to walk the claims. The text names the job and the day, and never a dollar. See [check the trades' claims on site](/help/check-the-trades-claims-on-site).
 
 ## Send our pay application
 
