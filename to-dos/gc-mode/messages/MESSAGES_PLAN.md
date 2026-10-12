@@ -557,9 +557,15 @@ welcome, Spanish, photos, a weekly read, and the office never learns what was op
   today. We are on …*; *Where you are*, the per-job lane from their side with a bar and three rows (the last done, the
   one on now, the next) that open to all; *This week*, one line from the daily log in customer words and three
   photos, every Friday; *Your people*, the office line, the project manager, the superintendent.
-- **Money**: six lines, contract, changes signed, revised sum, billed, paid, balance to finish; *Next*, the coming
-  pay application in a sentence; *Waiting on your answer*, open change orders with their amount; *Each payment*, a
-  receipt and a lien waiver per payment; how to pay.
+- **Money** (reshaped v1.163, `money-tab-mockups.html`, the owner's pick): the win first, *37% built · $445,000 of
+  $1,302,450 invested · 3 of 3 paid on time* with a bar and *the sum is your contract plus the 2 changes you signed,
+  nothing else* (month zero reads *Getting started* and teaches how paying works); then one card per pay
+  application, the open one in orange with what it covers, its photos and where it stands, *After that* with the
+  next application as a range from the schedule and its day, open change orders, then the paid ones newest first
+  with the architect's certificate, the waivers, the day the trades were paid and a thank-you, older ones folded;
+  *History*, folded, is the money timeline (contract, each payment with its thank-you, each change, the open one,
+  the next); *The statement*, folded, is the six lines for the bookkeeper. *Paid on time* shows only when true; the
+  page praises and never nags.
 - **Schedule**: the milestones; *What moved* since the schedule went, one line per change with why.
 - **Papers**: signed, each with its day and *read · a copy*; *Waiting on you* in orange with the buttons; *Comes
   later*, so the page never looks empty.
@@ -804,6 +810,8 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.163, 2026-10-11**: the Money tab reshaped to the pick, C's header over B's cards with D folded as
+  History at the foot and the statement folded under it (the owner, 2026-10-11).
 - **v1.162, 2026-10-11**: the customer's portal as shape B behind See their page: Home with Your move, Where you
   are, This week and Your people, then Money, Schedule, Papers and Messages, in both languages; a portal write lands
   in the thread as a Portal message; the office reads it back on the thread header's portal pill, the step card's So
