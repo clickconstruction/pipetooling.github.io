@@ -19,8 +19,9 @@ import { loadGcRfis, startRfiChangeOrder } from '../lib/gc/rfisIo'
 import { emailTheTrade, loadGcDraws, payDraw } from '../lib/gc/drawsIo'
 import { acceptWork } from '../lib/gc/closeoutIo'
 import { addPunchItem, loadGcPunch } from '../lib/gc/punchIo'
-import { loadGcBillingRows } from '../lib/gc/gcIo'
-import { awardedClinicBoardRows } from '../lib/gc/boardTestRows'
+import { loadGcBillingRows, sendGcSow } from '../lib/gc/gcIo'
+import { awardedClinicBoardRows, lonestarPapersInRows } from '../lib/gc/boardTestRows'
+import { sendGcTradeEmail } from '../lib/gc/tradeEmailIo'
 import type { DrawTables } from '../lib/gc/drawRows'
 
 vi.mock('../lib/supabase', async () => {
@@ -118,8 +119,16 @@ vi.mock('../lib/gc/gcIo', async () => {
     loadGcChangeRequests: vi.fn(none),
     loadGcChangeRequestEmails: vi.fn(none),
     loadGcBillingRows: vi.fn(() => Promise.resolve({ terms: [], contract: [], billing: new Map(), names: {}, payDays: {} })),
+    sendGcSow: vi.fn(() => Promise.resolve('w1')),
   }
 })
+
+// A trade's emails: every send goes through and is kept, so a test reads the language it went in.
+vi.mock('../lib/gc/tradeEmailIo', () => ({
+  sendGcTradeEmail: vi.fn(() => Promise.resolve({ ok: true })),
+  sendGcTradeEmailTest: vi.fn(() => Promise.resolve({ ok: true })),
+  emailTheAnswer: vi.fn(() => Promise.resolve()),
+}))
 
 // Building's daily log: no log yet, and a save that goes through.
 vi.mock('../lib/gc/dailyLogIo', () => ({
@@ -815,6 +824,24 @@ describe('GcProjects: Draws (Building)', () => {
     const sow = document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement
     expect(within(sow).getByText('Statement of work drafted')).toBeTruthy()
     expect(within(sow).queryByRole('button', { name: 'Send to their portal to sign' })).toBeNull()
+  })
+
+  it('sends a Spanish-speaking company its statement of work email in English while Spanish waits for its reader', async () => {
+    auth.role = 'dev'
+    // The company's papers all in, so the send is not held for a missing paper.
+    const base = awardedClinicBoardRows({ papers: lonestarPapersInRows() })
+    const rows = { ...base, sows: (base.sows ?? []).map((w) => ({ ...w, status: 'draft', sent_on: null })), companies: base.companies.map((c) => ({ ...c, lang: 'es' })) }
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
+    await renderSettled(<GcProjects />, loaded)
+    const sow = document.querySelector('[data-gc-trade-sow="k1"]') as HTMLElement
+    const emailIt = within(sow).queryByRole('checkbox', { name: /Email it now/ })
+    if (emailIt && !(emailIt as HTMLInputElement).checked) fireEvent.click(emailIt)
+    fireEvent.click(within(sow).getByRole('button', { name: 'Send to their portal to sign' }))
+    await waitFor(() => expect(sendGcSow).toHaveBeenCalled())
+    await waitFor(() => expect(sendGcTradeEmail).toHaveBeenCalledWith(expect.objectContaining({ kind: 'sow', lang: 'en' })))
+    expect(screen.queryByText(/The email did not go/)).toBeNull()
+    vi.mocked(loadGcBoardRows).mockReset()
   })
 
   it('an estimator reads no draws', async () => {
