@@ -126,6 +126,10 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   gc_draw_lines: moneyReads(dev('Building', BUILDING_MONEY_OPENS)),
   gc_sow_line_reports: moneyReads(dev('Building', BUILDING_MONEY_OPENS)),
   gc_change_order_trade_sends: moneyReads(dev('Building', BUILDING_MONEY_OPENS)),
+  // Bill day's walk and a trade's word that it sends nothing this period (Messages cut 9): a dev writes them until
+  // Building's door, the superintendent's taps at its job door and the office's word at its money door; the money team reads both.
+  gc_superintendent_checks: moneyReads(dev('Building', BUILDING_OPENS)),
+  gc_bill_day_nothing: moneyReads(dev('Building', BUILDING_MONEY_OPENS)),
 
   // Owner Billing.
   gc_owner_contract_lines: { lane: 'Owner Billing', door: 'money' },
