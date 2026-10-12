@@ -15,7 +15,7 @@ import { JobsRail } from './JobsRail'
 import { MessageWindow } from './MessageWindow'
 import type { MessagesWrites } from './messagesWrites'
 import { EventLine, ThreadLine } from './ThreadLine'
-import type { ThreadMenuRow, ThreadSlots } from './threadSlots'
+import { useThreadSlots, type ThreadMenuRow, type ThreadSlots } from './threadSlots'
 import { WhoIsThisWindow } from './WhoIsThisWindow'
 
 export interface ThreadWindowProps {
@@ -23,7 +23,7 @@ export interface ThreadWindowProps {
   /** The line to show and mark: a message id. */
   at?: string | null
   onClose: () => void
-  /** What later cuts draw inside the window (`threadSlots.tsx`). */
+  /** A smoke's slots in place of every cut's (`useThreadSlots`, which the window reads itself). */
   slots?: ThreadSlots
   /** The page's read of the contacts and their lines. Null: still loading. */
   view: MessagesView | null
@@ -48,7 +48,11 @@ const capital = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
  * is, then the stamps sentence; the jobs rail last. Then the lines, a divider at each day, and the slots later cuts
  * fill (`ThreadSlots`). The message window, Who is this? and the job picker are drawn inside the panel.
  */
-export function ThreadWindow({ contactId, at = null, onClose, slots = {}, view, problem = null, nowIso, writes, onOpenJob, onOpenRecord, onShowContact }: ThreadWindowProps) {
+export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven, view, problem = null, nowIso, writes, onOpenJob, onOpenRecord, onShowContact }: ThreadWindowProps) {
+  // Every cut's slots, read here and not by the page: under the page's providers (`useMessagesReread`), and only while a
+  // thread is open.
+  const cutSlots = useThreadSlots()
+  const slots = slotsGiven ?? cutSlots
   const phone = useMatchMedia('(max-width: 760px)')
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()

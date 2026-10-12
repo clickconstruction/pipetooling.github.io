@@ -44,7 +44,11 @@ export interface ThreadSlots {
   side?: (c: Contact) => ReactNode
 }
 
-/** The slots every thread window draws. Each cut adds its own lines here. */
+/**
+ * The slots every thread window draws. Each cut adds its own lines here. The thread window calls it, under the page's
+ * providers and only while a thread is open, so a cut's hook here may read the open thread (`useThreadWindow`) and ask
+ * for the read again after its own write (`useMessagesReread`).
+ */
 export function useThreadSlots(): ThreadSlots {
   return {}
 }

@@ -232,7 +232,6 @@ import { partnerById } from '../lib/gc/lookups'
 import { billDayFromSearch, gcFocusFromSearch, gcViewFromSearch, type GcView } from '../lib/gc/links'
 import { GcMessages } from '../components/gc/GcMessages'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
-import { useThreadSlots } from '../components/gc/messages/threadSlots'
 import { useThreadWindow } from '../components/gc/messages/useThreadWindow'
 import { MessagesRereadContext } from '../components/gc/messages/useMessagesReread'
 import type { MessagesWrites } from '../components/gc/messages/messagesWrites'
@@ -600,7 +599,6 @@ export default function GcProjects() {
   // open and again after each press. A thread opens as a window over any view (`?thread=<id>&at=<message id>`).
   const navigate = useNavigate()
   const thread = useThreadWindow()
-  const threadSlots = useThreadSlots()
   const customerProfile = useCustomerProfileModal()
   const jobDetail = useJobDetailModal()
   const bidPreview = useBidPreview()
@@ -2268,7 +2266,6 @@ export default function GcProjects() {
             contactId={thread.contactId}
             at={thread.at}
             onClose={thread.closeThread}
-            slots={threadSlots}
             view={messagesView}
             problem={messagesProblem}
             nowIso={messagesNow}

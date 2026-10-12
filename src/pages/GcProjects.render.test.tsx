@@ -73,9 +73,9 @@ vi.mock('../lib/gc/scheduleIo', () => {
   }
 })
 
-// A later cut's slots in the thread window, as a test lays them; none by default.
-const slotsRead = vi.hoisted(() => ({ value: {} as ThreadSlots }))
-vi.mock('../components/gc/messages/threadSlots', () => ({ useThreadSlots: () => slotsRead.value }))
+// Every cut's slots in the thread window (`useThreadSlots`, which the window calls), as a test lays them; none by default.
+const slotsRead = vi.hoisted(() => ({ use: (): ThreadSlots => ({}) }))
+vi.mock('../components/gc/messages/threadSlots', () => ({ useThreadSlots: () => slotsRead.use() }))
 
 /** A slot that writes on its own (cut 3's reply box), then asks the page to read again. */
 function SendBox() {
@@ -85,6 +85,12 @@ function SendBox() {
       Send it
     </button>
   )
+}
+
+/** Cut 2's slots as a hook: its ⋯ row writes, then asks for the read again (No reply needed). */
+function useRereadMenuSlots(): ThreadSlots {
+  const reread = useMessagesReread()
+  return { menuRows: () => [{ key: 'no-reply', label: 'No reply needed', onPress: reread }] }
 }
 
 // Messages (cut 1's screens): the spine's rows, read only while the view or a thread is open; no press writes here.
@@ -268,7 +274,7 @@ describe('GcProjects: the Project Board', () => {
   afterEach(() => {
     window.localStorage.clear()
     auth.role = 'dev'
-    slotsRead.value = {}
+    slotsRead.use = () => ({})
   })
 
   it('door 2: an estimator sees the board, Trade partners and Follow up, and never Trade portals', async () => {
@@ -345,7 +351,7 @@ describe('GcProjects: the Project Board', () => {
   })
 
   it('Messages: a slot that writes on its own asks the page to read again', async () => {
-    slotsRead.value = { box: () => <SendBox /> }
+    slotsRead.use = () => ({ box: () => <SendBox /> })
     vi.mocked(loadMessagesView).mockClear()
     const rows = clinicBoardRows()
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
@@ -358,6 +364,24 @@ describe('GcProjects: the Project Board', () => {
     expect(loadMessagesView).toHaveBeenCalledTimes(1)
 
     fireEvent.click(within(win).getByRole('button', { name: 'Send it' }))
+    await waitFor(() => expect(loadMessagesView).toHaveBeenCalledTimes(2))
+  })
+
+  it('Messages: a cut\'s slots hook runs inside the window, so its ⋯ row reads the thread again', async () => {
+    slotsRead.use = useRereadMenuSlots
+    vi.mocked(loadMessagesView).mockClear()
+    const rows = clinicBoardRows()
+    vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
+    vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
+    await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
+    fireEvent.click(screen.getByRole('button', { name: 'Messages' }))
+    await screen.findByRole('group', { name: 'Who to show' })
+    fireEvent.click(document.querySelector('[data-messages-row="c-greg"]') as HTMLElement)
+    const win = await screen.findByRole('dialog', { name: 'Greg Paulk: messages' })
+    expect(loadMessagesView).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(within(win).getByRole('button', { name: 'More' }))
+    fireEvent.click(within(win).getByRole('menuitem', { name: 'No reply needed' }))
     await waitFor(() => expect(loadMessagesView).toHaveBeenCalledTimes(2))
   })
 
