@@ -9,7 +9,7 @@ import { checkSupabaseError, withSupabaseRetry, type SupabaseClientResult } from
 import type { UserRole } from '../../hooks/useAuth'
 import { GC_CLAUSE_APPROVE_TEAM, canApproveClause } from '../gc/access'
 import { clauseNeeds, type ClauseChange, type ClauseNeedRow } from './approval'
-import { approverNames, clausePaperCards, scopeToRow, type ClauseLibraryRows, type ClauseRow, type PaperRow, type ProposalRow, type TemplateRow } from './clauseRows'
+import { approverNames, clausePaperCards, paperChoices, scopeToRow, type ClauseLibraryRows, type ClauseRow, type PaperChoice, type PaperRow, type ProposalRow, type TemplateRow } from './clauseRows'
 
 const PAPER_COLUMNS = 'id, document_name, template_id, form_template_id, sequence_order, revision, published_at'
 const CLAUSE_COLUMNS = 'id, paper_id, sequence_order, text_en, text_es, scope, version, published_by_name, published_at, retired_at, retired_by_name'
@@ -165,4 +165,49 @@ export async function loadClauseNeeds(role: UserRole | null, when: (at: string) 
     cards.map((c) => c.book),
     { approvers, when },
   )
+}
+
+/**
+ * Messages, cut 4c (v2.5334): the paper pickers on a statement of work and on our contract's send, over
+ * `20261013000000_gc_clause_papers.sql`'s `paper_id` columns and setters, which are not in the generated types yet. The
+ * setters refuse in their own words: a twin, a form, a paper not in the library, a copy signed already.
+ */
+
+/** The papers a statement of work or our contract can be built from, in the library's order. */
+export async function loadPaperChoices(): Promise<PaperChoice[]> {
+  const [papers, templates, clauses] = await Promise.all([
+    rows<PaperRow>('load the contract library', () => supabase.from('contract_template_documents' as never).select(PAPER_COLUMNS)),
+    rows<TemplateRow>('load the contract packets', () => supabase.from('contract_templates').select('id, name, sequence_order')),
+    rows<ClauseRow>('load the clauses', () => supabase.from('contract_clauses' as never).select(CLAUSE_COLUMNS).order('sequence_order')),
+  ])
+  return paperChoices({ papers, templates: templates.map((t) => ({ ...t, sequence_order: t.sequence_order ?? 0 })), clauses })
+}
+
+/**
+ * A trade's statement of work not signed yet, with the paper it is built from now (null for its lines). Read by its
+ * trade, since the board's statement of work carries no id. Null when it has none waiting.
+ */
+export async function loadSowPaper(packageId: string): Promise<{ sowId: string; paperId: string | null } | null> {
+  const [row] = await rows<{ id: string; paper_id: string | null }>('load the statement of work’s paper', () =>
+    supabase.from('gc_sows' as never).select('id, paper_id').eq('package_id', packageId).in('status', ['draft', 'sent']),
+  )
+  return row ? { sowId: row.id, paperId: row.paper_id } : null
+}
+
+/** The paper a send of our contract is built from, or null for our contract file. */
+export async function loadOwnerContractPaper(sendId: string): Promise<string | null> {
+  const [row] = await rows<{ paper_id: string | null }>('load our contract’s paper', () => supabase.from('gc_owner_contract_sends' as never).select('paper_id').eq('id', sendId))
+  return row?.paper_id ?? null
+}
+
+/** A dev picks the paper a statement of work is built from, or null for its lines, until it is signed. */
+export async function setSowPaper(sowId: string, paperId: string | null): Promise<void> {
+  const res = await supabase.rpc('gc_set_sow_paper' as never, { p_sow_id: sowId, p_paper_id: paperId } as never)
+  checkSupabaseError(res, 'pick the paper')
+}
+
+/** The money team picks the paper a send of our contract is built from, or null for our contract file, until it is signed. */
+export async function setOwnerContractPaper(sendId: string, paperId: string | null): Promise<void> {
+  const res = await supabase.rpc('gc_set_owner_contract_paper' as never, { p_send_id: sendId, p_paper_id: paperId } as never)
+  checkSupabaseError(res, 'pick the paper')
 }

@@ -51,6 +51,8 @@ The button waits until the company's papers are in. Its master agreement must be
 
 Tick **Email it now** first to tell the company by email too. The box starts unticked, so the send alone emails no one.
 
+Pick its paper under **Paper** before you send it. **Today's paper: its lines** keeps it as it is. A paper built from our clauses reads in their portal as its clauses. Press {{button:outline|Preview}} to read it as the company will. Each pick saves at once, and you can change it until they sign. **Paper** shows once a paper is built from clauses in [Contracts and clauses](/settings?tab=settings-clauses).
+
 The company signs it in their portal with **Sign the statement of work**. It can sign only after it signs our master agreement. The chip then reads {{chip:green|Statement of work signed}} with the day.
 
 A statement of work built from our clauses reads as its clauses in their portal. The exhibit for its trade comes after them. The company signs the version it read. Its signed copy keeps those clauses and that version.

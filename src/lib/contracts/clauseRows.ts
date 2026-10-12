@@ -186,6 +186,34 @@ export function buildablePapers(rows: ClauseLibraryRows): BuildablePaper[] {
     .map((p) => ({ id: p.id, label: names.get(p.template_id) ? `${names.get(p.template_id)} · ${p.document_name}` : p.document_name }))
 }
 
+/**
+ * A paper a statement of work or our contract can be built from (Messages, cut 4c, v2.5334): its id for the setter, its
+ * label, and its book for the preview.
+ */
+export interface PaperChoice {
+  id: string
+  /** *Subs · Statement of work*. */
+  label: string
+  book: ClauseBook
+}
+
+/**
+ * The papers the pickers offer, in the library's order: a library document that is no form, published at revision 1 or
+ * more, with a clause still live. One with nothing live reads as today's paper anyway, so it is not offered.
+ */
+export function paperChoices(rows: Pick<ClauseLibraryRows, 'papers' | 'templates' | 'clauses'>): PaperChoice[] {
+  const names = new Map(rows.templates.map((t) => [t.id, t.name] as const))
+  const live = new Set(rows.clauses.filter((c) => c.retired_at == null).map((c) => c.paper_id))
+  return rows.papers
+    .filter((p) => !p.form_template_id && p.revision >= 1 && live.has(p.id))
+    .sort(packetOrder(rows.templates))
+    .map((p) => ({
+      id: p.id,
+      label: names.get(p.template_id) ? `${names.get(p.template_id)} · ${p.document_name}` : p.document_name,
+      book: { paper: paperFromRow(p), clauses: rows.clauses.filter((c) => c.paper_id === p.id).map(clauseFromRow) },
+    }))
+}
+
 /** One line of a clause's history. */
 export interface HistoryLine {
   id: string

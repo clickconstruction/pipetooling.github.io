@@ -1,7 +1,19 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+
+// The papers to build it from (v2.5334): none unless a test gives them, so the card reads as before.
+const paperIo = vi.hoisted(() => ({ choices: [] as unknown[], current: null as string | null, refuse: null as string | null }))
+vi.mock('../../lib/contracts/clausesIo', () => ({
+  loadPaperChoices: vi.fn(() => Promise.resolve(paperIo.choices)),
+  loadSowPaper: vi.fn(() => Promise.resolve({ sowId: 'w1', paperId: paperIo.current })),
+  setSowPaper: vi.fn(() => (paperIo.refuse ? Promise.reject(new Error(paperIo.refuse)) : Promise.resolve())),
+}))
+
 import { GcTradeSow, type SowWrites } from './GcTradeSow'
+import { loadSowPaper, setSowPaper } from '../../lib/contracts/clausesIo'
+import { paperChoices } from '../../lib/contracts/clauseRows'
+import { clauseLibraryRows } from '../../test/fixtures/clauseBookDemo'
 import { boardStateFromRows, type SowRow } from '../../lib/gc/boardRows'
 import { awardedClinicBoardRows, clinicBoardRows, lonestarPapersInRows } from '../../lib/gc/boardTestRows'
 import type { CompanyPaperRow } from '../../lib/gc/companyPapers'
@@ -117,5 +129,65 @@ describe('GcTradeSow', () => {
     render(<GcTradeSow state={boardStateFromRows(clinicBoardRows())} projectId="p1" packageId="k1" writes={writes()} />)
     expect(document.querySelector('[data-gc-trade-sow]')).toBeNull()
     expect(screen.queryByText(/Statement of work/)).toBeNull()
+  })
+})
+
+describe('GcTradeSow · the paper it is built from (Messages, cut 4c, v2.5334)', () => {
+  beforeEach(() => {
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    paperIo.current = null
+    paperIo.refuse = null
+    vi.mocked(setSowPaper).mockClear()
+  })
+  afterEach(() => {
+    paperIo.choices = []
+  })
+
+  it('a dev picks it while it is not signed: today’s paper first, the pick saves, and Preview puts it together for the company and this trade', async () => {
+    const { el } = card({ status: 'draft', sent_on: null })
+    const paper = (await within(el).findByRole('combobox', { name: 'Paper' })) as HTMLSelectElement
+    expect(paper.value).toBe('')
+    expect(within(paper).getByRole('option', { name: "Today's paper: its lines" })).toBeTruthy()
+    expect(within(paper).getByRole('option', { name: 'Subs · Statement of work' })).toBeTruthy()
+    expect(within(el).queryByRole('button', { name: 'Preview' })).toBeNull()
+    fireEvent.change(paper, { target: { value: 'doc-sow' } })
+    await waitFor(() => expect(setSowPaper).toHaveBeenCalledWith('w1', 'doc-sow'))
+    expect(await within(el).findByText('Saved. Their portal reads it as its clauses.')).toBeTruthy()
+    expect(paper.value).toBe('doc-sow')
+    fireEvent.click(within(el).getByRole('button', { name: 'Preview' }))
+    const preview = await screen.findByRole('dialog', { name: 'Statement of work, put together per trade' })
+    expect(within(preview).getByText('As it would go to Lonestar Earthworks, Sitework')).toBeTruthy()
+    expect(within(preview).queryByRole('combobox')).toBeNull()
+  })
+
+  it('reads the paper it has, and says a refused pick in its words, keeping that paper', async () => {
+    paperIo.current = 'doc-msa'
+    paperIo.refuse = 'That statement of work is signed already.'
+    const { el } = card()
+    const paper = (await within(el).findByRole('combobox', { name: 'Paper' })) as HTMLSelectElement
+    await waitFor(() => expect(paper.value).toBe('doc-msa'))
+    fireEvent.change(paper, { target: { value: '' } })
+    await waitFor(() => expect(setSowPaper).toHaveBeenCalledWith('w1', null))
+    expect(await within(el).findByText('That statement of work is signed already.')).toBeTruthy()
+    expect(paper.value).toBe('doc-msa')
+  })
+
+  it('shows none on a signed one, to a reader who may not send it, or with no paper built from clauses', async () => {
+    // A signed one and a reader who may not send it read nothing.
+    vi.mocked(loadSowPaper).mockClear()
+    const signed = card({ status: 'signed', signed_on: '2026-10-09' }).el
+    expect(within(signed).queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    cleanup()
+    const state = boardStateFromRows(awardedClinicBoardRows({ papers: lonestarPapersInRows() }))
+    render(<GcTradeSow state={state} projectId="p1" packageId="k1" writes={writes()} />)
+    expect(screen.queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    expect(loadSowPaper).not.toHaveBeenCalled()
+    cleanup()
+    paperIo.choices = []
+    vi.mocked(loadSowPaper).mockClear()
+    const none = card({ status: 'draft', sent_on: null }).el
+    await waitFor(() => expect(loadSowPaper).toHaveBeenCalledWith('k1'))
+    await waitFor(() => expect(within(none).getByText('Statement of work drafted')).toBeTruthy())
+    expect(within(none).queryByRole('combobox', { name: 'Paper' })).toBeNull()
   })
 })

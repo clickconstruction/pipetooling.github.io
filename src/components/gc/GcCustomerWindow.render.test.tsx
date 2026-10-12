@@ -1,7 +1,18 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
+
+// The papers to build our contract from (v2.5334): none unless a test gives them, so the send reads as before.
+const paperIo = vi.hoisted(() => ({ choices: [] as unknown[], last: null as string | null }))
+vi.mock('../../lib/contracts/clausesIo', () => ({
+  loadPaperChoices: vi.fn(() => Promise.resolve(paperIo.choices)),
+  loadOwnerContractPaper: vi.fn(() => Promise.resolve(paperIo.last)),
+}))
+
 import { GcCustomerWindow, type CustomerWindowMoney } from './GcCustomerWindow'
+import { loadOwnerContractPaper } from '../../lib/contracts/clausesIo'
+import { paperChoices } from '../../lib/contracts/clauseRows'
+import { clauseLibraryRows } from '../../test/fixtures/clauseBookDemo'
 import type { ContractSendInput, ContractSendOutcome } from './GcCustomerContractSend'
 import { boardStateFromRows, type BoardRows } from '../../lib/gc/boardRows'
 import { CLINIC_WORTH_NOW, awardedClinicBoardRows, contractSendRow } from '../../lib/gc/boardTestRows'
@@ -156,6 +167,64 @@ describe('GcCustomerWindow', () => {
     const { dialog } = open(awardedClinicBoardRows(), { send: false, at: { doc: 'contract-p1', send: true } })
     expect(dialog.querySelector('[data-gc-customer-send]')).toBeNull()
     expect(within(dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement).queryByRole('button')).toBeNull()
+  })
+})
+
+describe('GcCustomerWindow · the paper our contract is built from (Messages, cut 4c, v2.5334)', () => {
+  beforeEach(() => {
+    vi.mocked(loadOwnerContractPaper).mockClear()
+  })
+  afterEach(() => {
+    paperIo.choices = []
+    paperIo.last = null
+  })
+
+  it('a first send starts on our contract file, offers the papers built from clauses, and goes with the one picked', async () => {
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    const { sendContract, dialog } = open(awardedClinicBoardRows(), { send: true, at: { doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    const paper = (await within(box).findByRole('combobox', { name: 'Paper' })) as HTMLSelectElement
+    expect(paper.value).toBe('')
+    expect(within(paper).getByRole('option', { name: "Today's paper: our contract file" })).toBeTruthy()
+    expect(loadOwnerContractPaper).not.toHaveBeenCalled()
+    fireEvent.change(paper, { target: { value: 'doc-msa' } })
+    fireEvent.click(within(box).getByRole('button', { name: 'Preview' }))
+    const preview = await screen.findByRole('dialog', { name: 'Master services agreement, put together per trade' })
+    expect(within(preview).getByText('As it would go to Oak Street Partners')).toBeTruthy()
+    fireEvent.click(within(preview).getByRole('button', { name: 'Close' }))
+    fireEvent.change(within(box).getByLabelText('The contract PDF'), { target: { files: [pdf()] } })
+    fireEvent.click(within(box).getByRole('button', { name: 'Send to sign' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1]).toMatchObject({ paperId: 'doc-msa', mode: 'first' })
+  })
+
+  it('a reminder starts on the paper the last send went with', async () => {
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    paperIo.last = 'doc-sow'
+    const { sendContract, dialog } = open(sent([{ worth: CLINIC_WORTH_NOW }]), { send: true, at: { doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    const paper = (await within(box).findByRole('combobox', { name: 'Paper' })) as HTMLSelectElement
+    await waitFor(() => expect(paper.value).toBe('doc-sow'))
+    expect(loadOwnerContractPaper).toHaveBeenCalledWith('cs1')
+    fireEvent.click(within(box).getByRole('button', { name: 'Send the reminder' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1].paperId).toBe('doc-sow')
+  })
+
+  it('offers no paper with none built from clauses, nor on an email sent again, which picks nothing anew', async () => {
+    const first = open(awardedClinicBoardRows(), { send: true, at: { doc: 'contract-p1', send: true } })
+    const box = first.dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    await waitFor(() => expect(within(box).getByText('Our number today. Check the file says this price.')).toBeTruthy())
+    expect(within(box).queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    cleanup()
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    const { sendContract, dialog } = open(sent([{ emailed: false }]), { send: true, email: true, at: { doc: 'contract-p1' } })
+    fireEvent.click(within(dialog.querySelector('[data-gc-doc="contract-p1"]') as HTMLElement).getByRole('button', { name: 'Email it now' }))
+    const again = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    expect(within(again).queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    fireEvent.click(within(again).getByRole('button', { name: 'Send the email' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1]).not.toHaveProperty('paperId')
   })
 })
 

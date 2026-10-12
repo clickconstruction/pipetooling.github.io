@@ -11,6 +11,7 @@ import {
   clausePaperAnchor,
   clausePaperCards,
   clausePaperHref,
+  paperChoices,
   paperFromRow,
   scopeFromRow,
   scopeToRow,
@@ -65,6 +66,26 @@ describe('clausePaperCards', () => {
 describe('buildablePapers', () => {
   it('offers the library documents not built from clauses yet, leaving the forms out', () => {
     expect(buildablePapers(clauseLibraryRows())).toEqual([{ id: 'doc-safety', label: 'Subs · Safety acknowledgment' }])
+  })
+})
+
+describe('paperChoices (v2.5334)', () => {
+  it('offers the papers built from clauses, published and with a clause live, in the library’s order, each with its book', () => {
+    const choices = paperChoices(clauseLibraryRows())
+    expect(choices.map((c) => [c.id, c.label, c.book.paper.revision, c.book.clauses.length])).toEqual([
+      ['doc-msa', 'Subs · Master services agreement', 2, 8],
+      ['doc-sow', 'Subs · Statement of work', 1, 6],
+    ])
+  })
+
+  it('leaves out a paper whose every clause is retired, one never published, and a form', () => {
+    const rows = clauseLibraryRows()
+    const retired = rows.clauses.map((c) => (c.paper_id === 'doc-sow' ? { ...c, retired_at: '2026-10-12T16:00:00Z', retired_by_name: 'Robert' } : c))
+    expect(paperChoices({ ...rows, clauses: retired }).map((c) => c.id)).toEqual(['doc-msa'])
+    const unpublished = rows.papers.map((p) => (p.id === 'doc-msa' ? { ...p, revision: 0 } : p))
+    expect(paperChoices({ ...rows, papers: unpublished }).map((c) => c.id)).toEqual(['doc-sow'])
+    const form = rows.papers.map((p) => (p.id === 'doc-sow' ? { ...p, form_template_id: 'form-sow' } : p))
+    expect(paperChoices({ ...rows, papers: form }).map((c) => c.id)).toEqual(['doc-msa'])
   })
 })
 

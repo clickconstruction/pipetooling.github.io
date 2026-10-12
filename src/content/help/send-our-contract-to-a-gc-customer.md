@@ -32,9 +32,12 @@ The line goes on their Activity with your name and today's date. A line is never
 1. Press {{button:blue|Send to sign}} on the job's row.
 2. Check the price under **The price**. It is our number today.
 3. Pick the contract PDF under **The file**. Check that it says the same price.
-4. Pick the day under **Sign by**. A week out is picked first.
-5. Type a line of your own under **Your line** if you want one.
-6. Press {{button:blue|Send to sign}}.
+4. Under **Paper**, keep **Today's paper: our contract file** or pick a paper built from our clauses.
+5. Pick the day under **Sign by**. A week out is picked first.
+6. Type a line of your own under **Your line** if you want one.
+7. Press {{button:blue|Send to sign}}.
+
+**Paper** shows once a paper is built from clauses in [Contracts and clauses](/settings?tab=settings-clauses). Press {{button:outline|Preview}} to read the paper as they will get it. The file still goes with it.
 
 The row then reads {{chip:yellow|waiting on their signature}}. Get started shows the day it went.
 
@@ -44,7 +47,7 @@ The row then reads {{chip:yellow|waiting on their signature}}. Get started shows
 
 ## Remind them
 
-Press {{button:blue|Remind them}} on the row. A reminder keeps the price and the file that went before. Pick another PDF only if the file changed.
+Press {{button:blue|Remind them}} on the row. A reminder keeps the price and the file that went before. Pick another PDF only if the file changed. **Paper** starts on the paper that went before.
 
 The row reads late once the sign by day passes.
 

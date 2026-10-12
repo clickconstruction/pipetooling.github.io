@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import type { PaperChoice } from '../../lib/contracts/clauseRows'
+import { loadOwnerContractPaper, loadPaperChoices } from '../../lib/contracts/clausesIo'
 import { newestContractSend, type ContractStep } from '../../lib/gc/customerContract'
 import { contractMail, contractMailFacts } from '../../lib/gc/customerEmail'
 import { ownerContractWorthNow } from '../../lib/gc/ownerBilling'
@@ -6,6 +8,7 @@ import { contractFileProblem, type StoredContractFile } from '../../lib/gc/owner
 import { paperDayChoices } from '../../lib/gc/paperSend'
 import type { GcCustomer, GcProject, GcState } from '../../lib/gc/types'
 import { money, weekdayDate } from '../../lib/gc/words'
+import { GcPaperPicker } from './GcPaperPicker'
 import { Btn, input } from './gcUi'
 
 /**
@@ -15,6 +18,10 @@ import { Btn, input } from './gcUi'
  * first send and a new price need a file; a reminder keeps the last one unless another is picked. They sign the newest
  * in their portal (B6-d-iii-a). With **Email it to them now** ticked (B6-d-iii-b, a box that starts off, as every GC
  * send's does), the page makes their portal link if they have none and emails them, the file attached by the function.
+ *
+ * Messages, cut 4c (v2.5334): **Paper** picks what a new send is built from, the last send's paper to begin with. Our
+ * contract file is today's paper; a paper built from clauses reads in their portal as its clauses, the file still with
+ * it. The page sets it on the new send before any email (`gc_set_owner_contract_paper`). An emailed-again send keeps its own.
  */
 
 /** Light like a printed page in either theme, as the paper send draws the email. */
@@ -33,6 +40,8 @@ export interface ContractSendInput {
   email: boolean
   /** Email it now: the newest send, emailed again with nothing sent anew. */
   sendId?: string
+  /** The paper the new send is built from, set on it before any email. Null or unset: our contract file alone. */
+  paperId?: string | null
 }
 
 /** What the press did: the words to show, and why the email did not go when it did not. */
@@ -74,6 +83,27 @@ export function GcCustomerContractSend({
   const [email, setEmail] = useState(false)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
+  // The papers to build it from, and the last send's to begin with. A read that fails offers none: the send goes on our
+  // contract file, as before.
+  const [choices, setChoices] = useState<PaperChoice[] | null>(null)
+  const [paper, setPaper] = useState<string | null>(null)
+  const newestId = newest?.id ?? null
+  useEffect(() => {
+    if (again) return
+    let live = true
+    Promise.all([loadPaperChoices(), newestId ? loadOwnerContractPaper(newestId) : Promise.resolve(null)])
+      .then(([c, last]) => {
+        if (!live) return
+        setChoices(c)
+        setPaper(last && c.some((x) => x.id === last) ? last : null)
+      })
+      .catch(() => {
+        if (live) setChoices([])
+      })
+    return () => {
+      live = false
+    }
+  }, [again, newestId])
   const box = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     const el = box.current
@@ -104,7 +134,7 @@ export function GcCustomerContractSend({
           mode: mailMode,
           total,
           email: again || (canEmail && email),
-          ...(again && newest ? { sendId: newest.id } : {}),
+          ...(again && newest ? { sendId: newest.id } : { paperId: paper }),
         }),
       )
     } catch (e) {
@@ -158,6 +188,23 @@ export function GcCustomerContractSend({
           <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>A PDF they read and sign. A file is never replaced once it goes.</span>
         </span>
       </div>
+      {!again && choices !== null && (choices.length > 0 || paper !== null) && (
+        <div style={field}>
+          <span style={label}>Paper</span>
+          <span style={{ display: 'grid', gap: '0.3rem', minWidth: 0 }}>
+            <GcPaperPicker
+              choices={choices}
+              value={paper}
+              today="Today's paper: our contract file"
+              previewAs={{ id: customer.id, name: customer.name, trades: [] }}
+              disabled={busy}
+              labelled={false}
+              onPick={setPaper}
+            />
+            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>A paper built from clauses reads in their portal as its clauses. The file still goes with it.</span>
+          </span>
+        </div>
+      )}
       {again && newest ? (
         <div style={field}>
           <span style={label}>{step.dayWord}</span>

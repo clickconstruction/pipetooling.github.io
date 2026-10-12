@@ -8,8 +8,14 @@
  * lines with Building's draws (U6). Since B6-c-ii the send waits on those papers (`partnerBlockers`), saying "Cannot send
  * yet." and what is missing, with **Send the master agreement** beside it while none has gone (the company window's send),
  * and the company's paperwork chips beside its name, as the spike's Contracts tab has them.
+ *
+ * Messages, cut 4c (v2.5334): until it is signed, a dev picks the paper it is built from (**Paper**). Its lines are today's
+ * paper; a paper built from clauses reads in their portal as its clauses, with the exhibit for this trade after them.
  */
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { PaperChoice } from '../../lib/contracts/clauseRows'
+import { loadPaperChoices, loadSowPaper, setSowPaper } from '../../lib/contracts/clausesIo'
+import { formatErrorMessage } from '../../utils/errorHandling'
 import { partnerBlockers } from '../../lib/gc/bench'
 import { unitPriceWords } from '../../lib/gc/exclusions'
 import { partnerById, planLabel } from '../../lib/gc/lookups'
@@ -18,6 +24,7 @@ import { theirSovGap } from '../../lib/gc/theirSov'
 import type { GcState, Sow } from '../../lib/gc/types'
 import { money, shortDate } from '../../lib/gc/words'
 import { useCompanyOpener } from './gcCompanyOpener'
+import { GcPaperPicker } from './GcPaperPicker'
 import { PartnerName } from './GcPartnerName'
 import { PaperworkChips } from './GcPaperworkChips'
 import { Btn, Chip, Stat, td, th as thBase, type Tone } from './gcUi'
@@ -128,6 +135,59 @@ function SowExcluded({ excluded }: { excluded: NonNullable<Sow['excluded']> }) {
   )
 }
 
+/**
+ * The paper a dev builds the statement of work from, read when the card shows and saved on the pick (`gc_set_sow_paper`),
+ * which refuses once it is signed. With no paper built from clauses in the library and none picked, nothing shows.
+ */
+function SowPaper({ packageId, company, trade }: { packageId: string; company: { id: string; name: string }; trade: string }) {
+  const [choices, setChoices] = useState<PaperChoice[] | null>(null)
+  const [sowId, setSowId] = useState<string | null>(null)
+  const [value, setValue] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const [said, setSaid] = useState<{ ok: boolean; words: string } | null>(null)
+  useEffect(() => {
+    let live = true
+    Promise.all([loadPaperChoices(), loadSowPaper(packageId)])
+      .then(([c, waiting]) => {
+        if (!live) return
+        setChoices(waiting ? c : [])
+        setSowId(waiting?.sowId ?? null)
+        setValue(waiting?.paperId ?? null)
+      })
+      .catch((e: unknown) => {
+        if (live) setSaid({ ok: false, words: `The papers did not load: ${formatErrorMessage(e, 'try again')}` })
+      })
+    return () => {
+      live = false
+    }
+  }, [packageId])
+  const line = said && (
+    <div role="status" style={{ fontSize: '0.85rem', color: said.ok ? 'var(--text-muted)' : 'var(--text-red-700)' }}>
+      {said.words}
+    </div>
+  )
+  // Nothing until the papers are read, then nothing more when none is built from clauses and none is picked.
+  if (choices === null || !sowId) return line || null
+  if (choices.length === 0 && value === null) return null
+  const pick = (paperId: string | null) => {
+    setBusy(true)
+    setSaid(null)
+    setSowPaper(sowId, paperId)
+      .then(() => {
+        setValue(paperId)
+        setSaid({ ok: true, words: paperId ? 'Saved. Their portal reads it as its clauses.' : 'Saved. Their portal reads its lines.' })
+      })
+      .catch((e: unknown) => setSaid({ ok: false, words: formatErrorMessage(e, 'That did not save.') }))
+      .finally(() => setBusy(false))
+  }
+  return (
+    <div style={{ display: 'grid', gap: '0.25rem' }}>
+      <GcPaperPicker choices={choices} value={value} today="Today's paper: its lines" previewAs={{ id: company.id, name: company.name, trades: trade ? [trade] : [] }} disabled={busy} onPick={pick} />
+      {line}
+    </div>
+  )
+}
+
 export function GcTradeSow({
   state,
   projectId,
@@ -186,6 +246,7 @@ export function GcTradeSow({
       </div>
       <SovSideBySide sow={sow} />
       <SowExcluded excluded={sow.excluded ?? []} />
+      {canSend && sow.status !== 'signed' && partner && <SowPaper packageId={pkg.id} company={{ id: partner.id, name: partner.company }} trade={pkg.trade} />}
       {sow.status === 'draft' && !canSend && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>A dev sends it to their portal to sign.</div>}
       {sow.status === 'draft' && canSend && (
         <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
