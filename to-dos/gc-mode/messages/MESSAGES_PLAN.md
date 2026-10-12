@@ -51,8 +51,8 @@ a new cell starts over). The person is the spine; jobs are labels on the person 
 | **Customers** | The same threads kept to customers, ordered by who is waiting; team notes yellow. A filter of Follow up and Messages, never a second queue. | yes |
 | **A job's conversations** | On the job's page: its own recent calls and texts, by contact, with answered or waiting. Reads the messages tied to that job. | yes |
 | **Who is this?** | A number the app does not know: name it, say what they are to us, pick their company, tie it to a job. The answer becomes the rule for that number. | yes |
-| **Their flow** (the right panel) | Folded by default; *Their flow ›* on the toolbar opens it. The person's journey with us as a small chart in lanes (Once; Per job; Any time): boxes green when done, orange on now with an *us* or *them* tag from whose move it is, a decision as a slanted box, a loop as a dashed box with one pill per round (each ask, each pay application, each change order). Under it: what is on now, whose move, what finishes it, when the app nudges. Drawn from Settings → Flows (the owner picked B with C's tags, 2026-10-11). A step that turns on a paper carries a paper mark, and a press on a step opens its card: see *The flow suite* below. | yes |
-| **Settings → Flows** | One flow per kind of person as a table: step, finished when (a fact the app keeps, never typed), whose move, nudge after, repeats. Renaming a step changes every panel. The rest of the editor, order, whose move, nudge, papers and the facts picked from a list, is drawn in *The flow suite* below. The same list is meant to drive Follow up's nudges and the Board's ring later. | yes, names editable |
+| **Their flow** (the right panel) | Folded by default; *Their flow ›* on the toolbar opens it. The person's journey with us as a small chart in lanes (Once; Per job; Any time): boxes green when done, orange on now with an *us* or *them* tag from whose move it is, a decision as a slanted box, a loop as a dashed box with one pill per round (each ask, each pay application, each change order). Under it: what is on now, whose move, what finishes it, when the app nudges. Drawn from Settings → Flows (the owner picked B with C's tags, 2026-10-11). A step that turns on a paper carries a paper mark, and a press on a step opens its card: see *The flow suite* below. Built v1.96 to v1.103: the marks, the card, the states, the portal page, the by-step boards, the papers on the job page, the Follow up nudge rows, the usual, the phone sheet. | yes |
+| **Settings → Flows** | One flow per kind of person as a table: step, finished when (a fact the app keeps, never typed), whose move, nudge after, repeats. Renaming a step changes every panel. The rest of the editor, order, whose move, nudge, papers and the facts picked from a list, is drawn in *The flow suite* below and built in v1.98 with the History and How it is going tabs. The same list is meant to drive Follow up's nudges and the Board's ring later. | yes, names editable |
 | **A message's window** | Click any message: the whole text with its facts (who, the exact time received or sent, what it came through, the job it is tied to, whether a copy is kept), its attachments, its highlights, and the tools: Highlight the selected words, Copy, Print or save as PDF, Share (the Mac's share sheet), Tie to, Reply. | yes |
 | **Settings → Phone and texts** | The Quo connection, the company number, registration, recordings on, who has a seat, who sees what. | yes, read only |
 | The Pipeline's Job activity | Later: calls, texts and emails mixed into the feed; company-only rows yellow, anything the customer saw white. | not yet |
@@ -662,6 +662,35 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.103, 2026-10-11**: the phone: at 375 px the panel is never drawn, the rail's mark or the thread's step opens the
+  step card as a sheet from the bottom with the same sections; the by-step board scrolls sideways.
+- **v1.102, 2026-10-11**: time in step and How it is going: the card's first line reads the usual (the step's median) with
+  a bar that runs red past it; Settings → Flows gains a How it is going tab, the funnel of the per-job lane and one row
+  per step (on it now, usual, longest now with its name, done this quarter, where it sticks).
+- **v1.101, 2026-10-11**: the nudge is a Follow up row: *Nudges from the flow* under We owe them, one row per step on now
+  with their move that is quiet past its count of days or past its day, folded with a lapsed step of the same person,
+  with the step, what we wait on and the channel the flow asked for (Call in Quo · Text instead · Hold); a person's
+  step that waits on someone else's makes the row for that person (Jonah's certificate); the hard-coded Late on their
+  word section went. A fact turning true writes the gray event line and clears the row.
+- **v1.100, 2026-10-11**: the papers read the flow back: while the box holds a step's line (Ask for it, Nudge now, a
+  quick reply on a step) the Attach picker's first rows are that step's papers, starred (the form, their portal link);
+  the job page gains *Papers on this job, by company*, each paper with its state, the step it finishes and where the
+  person is, with the step card's own buttons, for the steps done, on now and next.
+- **v1.99, 2026-10-11**: Everyone by step: Trade partners is a page (By step · List · Asks) with one column per step in
+  the flow's order, the lanes a gap apart, the count with late, lapsed and waiting in words, faces longest first, a
+  company once per job in the per-job lane, off the flow folded at the end; Customers gains the same board behind a
+  By step button; the Messages list gains a *by step ▾* chip. Ten companies with no thread stand on the board so it
+  reads like a Tuesday; a press on one says so.
+- **v1.98, 2026-10-11**: Settings → Flows is the editor: the name and its Spanish name, the facts as chips with × and a
+  picker in groups (in use on which step, picked, Ask for a fact that is missing), and · or on a fork, whose move with
+  the seat on an our-move step, the nudge as days · how · ask me or the app sends it, repeats, the papers as chips, the
+  usual, up and down, Remove (who is on it, they land on the next step), + a step in a lane; every edit opens a *Before
+  you save · who moves* card that tries it on everyone (Tom Riddle · Papers in → MSA signed) with Save and Put it
+  back; a History tab with every change and the Removed steps with Put it back.
+- **v1.97, 2026-10-11**: their own view of it: *See their page* (the panel, the step card, More ▾) opens the portal's
+  first page as a phone: *Where you are with Click Construction*, their-move steps the only buttons with why in a
+  sentence, our-move steps as *with us* and what unlocks them, done steps with their day, one section per job they
+  are on, nothing of ours; Español switches it, the step names from the editor's Spanish column.
 - **v1.96, 2026-10-11**: the flow suite's pieces 1, 2 and 6 in the prototype. The flows carry facts from a list in code
   (FACTS, one line each with the column it reads), the papers a step turns on, the seat on our-move steps, the nudge as
   days, how and who sends it, and a usual; a person's papers live on PAPERS and the state is a read: done, on now,
