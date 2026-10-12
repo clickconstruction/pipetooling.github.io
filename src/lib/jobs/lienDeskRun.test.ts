@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { EMPTY_LIEN_RETAINAGE_QUEUE } from './lienDeskRetainage'
 import { buildLienDeskQueue, type LienDeskItemRow, type LienNoticeMonthRow } from './lienDesk'
-import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
+import { buildLienDeskRun, buildLienRetainageRun, RUN_OWNER_UNCONFIRMED_PROBLEM, RUN_UNSIGNED_PROBLEM, runDoorPill, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, runNoticeProblems, runNoticeWhatWords, runCopyPages, runPacketHtml, stepRunPreview, runPayPageBlocks, trackingShape, recipientMailed, runRecordSplit, runOpening, runDoorWords, runCopyHtml, runEnvelopeHtml, runPagesHtml, runCopyKey, noticesFullyPrinted, runEnvelopeFacesHtml, runCourtesyCopies, runCourtesyEmailWords, runCourtesyResultWords } from './lienDeskRun'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { runEnvelopes } from './runEnvelopes'
 import type { LienDeskData } from '../../hooks/useLienDeskData'
@@ -623,5 +623,16 @@ describe('the run and an unsigned notice (v2.5086)', () => {
     expect(run[0]!.signature).toBeNull()
     expect(runNoticeProblems(run[0]!)).toContain(RUN_UNSIGNED_PROBLEM)
     expect(runNoticeProblems({ ...run[0]!, signature: undefined })).not.toContain(RUN_UNSIGNED_PROBLEM)
+  })
+})
+
+describe('the door on the desk as a pill (Run-5)', () => {
+  it('a bar of sealed, ready and waiting, and the count of who waits', () => {
+    expect(runDoorPill({ ready: 2, printed: 1, retReady: 0, waits: 1 }, 'Robert')).toEqual({ sealedPct: 33, waitPct: 33, words: '1 sealed · 1 ready · 1 waits on Robert' })
+    expect(runDoorPill({ ready: 3, printed: 0, retReady: 1, waits: 0 })).toEqual({ sealedPct: 0, waitPct: 0, words: '4 ready' })
+    expect(runDoorPill({ ready: 0, printed: 2, retReady: 0, waits: 0 })).toEqual({ sealedPct: 100, waitPct: 0, words: '2 sealed' })
+    expect(runDoorPill({ ready: 0, printed: 0, retReady: 0, waits: 0 })).toEqual({ sealedPct: 0, waitPct: 0, words: '' })
+    // waits never exceeds what is ready
+    expect(runDoorPill({ ready: 1, printed: 0, retReady: 0, waits: 5 }).words).toBe('1 waits on the leader')
   })
 })
