@@ -27,7 +27,7 @@ import {
   type NudgeOptions,
   type PersonFlow,
 } from './nudges'
-import { laneReadingOf, stepById, type FactReading, type FlowStep, type LaneReading, type StepReading } from './state'
+import { laneReadingOf, moverOf, stepById, type FactReading, type FlowStep, type LaneReading, type StepReading } from './state'
 
 // ---------- the model ----------
 
@@ -282,7 +282,8 @@ function statusWords({ person, def, step, state, order, index, other, now }: At)
     return said(`Waiting on ${other?.first ?? 'someone else'}, ${plural(days, 'day')}. Not ${first}'s move and not ours.`)
   }
   if (state === 'now') {
-    const move = whoseMove(def, {
+    // Whose move by its facts: Jonah filed the addendum, so sending it on is ours (`moverOf`).
+    const move = whoseMove({ who: moverOf(def, step) }, {
       onNow: step.stepId === person.reading.nowStepId && step.jobId === person.reading.nowJobId,
       waiting: false,
       perJob: step.lane === 'per_job',
@@ -326,7 +327,8 @@ function roundsSection({ def, step }: At): CardSection {
           ? [{ text: `late ${plural(r.day.lateDays, 'day')}`, late: true }, { text: `, promised ${weekday(r.day.due)}` }]
           : said(`due ${weekday(r.day.due)}`)
         : said(r.opened ? `since ${weekday(r.opened)}` : 'their move')
-      const them = def.who === 'them'
+      // The round's own open fact says whose move: an addendum filed waits on us to send it on.
+      const them = moverOf(def, { facts: r.facts, rounds: [] }) === 'them'
       const press: CardPress = { id: them ? 'askAgain' : 'remind', label: them ? 'Ask again' : 'Remind', primary: true, round: r.key }
       if (def.papers[0]) press.paper = def.papers[0]
       return { mark: 'wait', text: r.name, small, presses: [press] }
@@ -345,7 +347,8 @@ function nextSection({ person, step, state, lane }: At): CardSection | null {
   if (!next || !def || next.state === 'done') return null
   const ours = def.papers.map((p) => next.facts.find((x) => x.fact.paper === p)).find((x) => x?.fact.ours)
   const paper = ours?.fact.paper
-  const who = def.who === 'us' ? 'our move' : def.who === 'them' ? `${person.first}'s move` : 'both sides'
+  const mover = moverOf(def, next)
+  const who = mover === 'us' ? 'our move' : mover === 'them' ? `${person.first}'s move` : 'both sides'
   const small =
     !ours || !paper
       ? `Done when ${doneWords(def)}.`

@@ -16,6 +16,7 @@ import {
   NUDGE_DAY_WORDS,
   NUDGE_HOW_WORDS,
   lapsedWhy as railLapsedWhy,
+  moverOf,
   placesOf,
   stampDay,
   stepById,
@@ -231,7 +232,8 @@ export function nudgeDue(person: PersonFlow, step: StepReading, now: Date, optio
   const skip = options.skip
   if (def && skip && def.papers.some((p) => skip(person.id, p, open?.key ?? null))) return say(false, 'portal')
   if (!def || !n) return say(false, 'no reminder')
-  if (def.who === 'us') return say(false, 'ours')
+  // Whose move by its facts (`moverOf`): an addendum the architect filed is ours to send on, so no reminder goes to them.
+  if (moverOf(def, step) === 'us') return say(false, 'ours')
   const mark = markOf(person, step.stepId, step.jobId)
   if (heldUntil(mark, now)) return say(false, 'held')
   if (pressed(mark, person)) return say(true, 'pressed')
