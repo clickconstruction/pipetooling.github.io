@@ -28,6 +28,9 @@ import { signLienDeskItem } from '../../lib/jobs/lienDeskSignIo'
 import { lienNoticeSignatureAfterSigning } from '../../lib/jobs/lienNoticeSignature'
 import { LienNoticeSignLine, type LienNoticeSignLineHandle } from './LienNoticeSignLine'
 import LienPenSignaturePane, { type PenPaneRecorded } from './LienPenSignaturePane'
+import LienRunJourney from './LienRunJourney'
+import { runEnvelopeStage } from '../../lib/jobs/runEnvelopeStage'
+import { runJourney } from '../../lib/jobs/runJourney'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
@@ -245,6 +248,13 @@ export default function LienDeskRunModal({
   // stamped printed only once every copy of it has printed this sitting, so a half-printed notice never reads as in the mail.
   const [printedCopies, setPrintedCopies] = useState<ReadonlySet<string>>(() => new Set())
   const partsIds = (n: CombinedRunNotice) => partsOf(n) ?? [{ itemId: n.itemId, jobId: n.jobId }]
+  // The journey (Run-2): each envelope's stage from the same facts the rows show — printed when the packet printed before this sitting or every copy inside printed in it.
+  const journey = useMemo(() => {
+    const states = envelopes.map((env) => runEnvelopeStage(env, { printed: printedAt != null || env.contents.every((c) => partsIds(c.notice as CombinedRunNotice).every((p) => printedCopies.has(runCopyKey(p.itemId, c.recipient.key)))) }))
+    const leaderName = notices.find((n) => n.leader?.name)?.leader?.name ?? null
+    return runJourney(states, { leaderName })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [envelopes, printedAt, printedCopies, notices])
   // The notices in an envelope the leader has not signed (v2.5086), by the run's own list so a combined notice's parts are found.
   const unsignedIn = (env: RunEnvelope): RunNotice[] => {
     const seen = new Set<string>()
@@ -457,6 +467,8 @@ export default function LienDeskRunModal({
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
         </div>
+        {/* The journey (Run-2): where the run stands, shown; the step strip below stays one release longer. */}
+        <LienRunJourney journey={journey} />
         {undo ? (
           <div data-testid="run-undo" role="status" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', padding: '0.5rem 1.25rem', borderBottom: '1px solid var(--border)', borderLeft: '4px solid #f59e0b', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
             <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1 }}>↶</span>
