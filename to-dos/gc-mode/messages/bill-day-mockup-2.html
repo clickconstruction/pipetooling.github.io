@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bill day, second pass: what the office does, and what can go wrong</title>
+<style>
+:root{--bg:#f6f7f9;--surface:#fff;--text:#1b1f24;--text-muted:#5c6470;--border:#dde1e6;--accent:#1f5fbf;--accent-soft:#e8f0fc;--warn:#b35c00;--warn-soft:#fff1e0;--ok:#1a7f3c;--ok-soft:#e6f6ec;--danger:#b3261e;--chip:#eef1f5}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:16px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:1000px}
+.opt{max-width:1100px;margin:0 0 26px}
+.opt h2{font-size:14px;margin:0 0 6px}
+.opt h2 small{font-weight:400;color:var(--text-muted)}
+.why{font-size:12.5px;color:var(--text-muted);margin:6px 0 0;line-height:1.45;max-width:1000px}
+.app{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.nav{display:flex;gap:14px;font-size:13px;padding:10px 14px;border-bottom:1px solid var(--border);align-items:center}
+.nav b{font-weight:700;margin-right:4px}
+.nav span.on{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:2px 10px;font-weight:600}
+.page{padding:14px 16px}
+.lead2{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 6px}
+.lead2 h3{font-size:16px;margin:0}
+.tabs{display:flex;gap:6px;margin:0 0 12px;font-size:12.5px;align-items:center}
+.tabs span{border:1px solid var(--border);border-radius:999px;padding:3px 10px;background:var(--surface)}
+.tabs span.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.tabs .note{margin-left:auto;color:var(--text-muted)}
+/* the cascade */
+.cascade{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:0 0 12px}
+.cascade .st{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--surface);position:relative}
+.cascade .st .d{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em}
+.cascade .st .w{font-size:12.5px;font-weight:600;margin:2px 0}
+.cascade .st .s{font-size:11.5px;color:var(--text-muted)}
+.cascade .st.done{background:var(--ok-soft);border-color:#bfe3c9}
+.cascade .st.now{background:var(--warn-soft);border-color:var(--warn)}
+.cascade .st.now .w{color:var(--warn)}
+.cascade .st.bad{background:#fdecea;border-color:#f1b3ae}
+.cascade .st.bad .w{color:var(--danger)}
+/* gates */
+.gates{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface);margin:0 0 12px}
+.gates .h{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:flex;gap:8px;align-items:center}
+.gates .h b{color:var(--text);text-transform:none;letter-spacing:0;font-size:13px}
+.gate{display:flex;gap:8px;align-items:flex-start;padding:4px 0;font-size:12.5px}
+.gate .m{flex:none;width:18px;height:18px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:1.5px solid var(--border);color:var(--text-muted)}
+.gate .m.ok{background:var(--ok-soft);border-color:#bfe3c9;color:var(--ok)}
+.gate .m.bad{background:#fdecea;border-color:#f1b3ae;color:var(--danger)}
+.gate .m.wait{background:var(--warn-soft);border-color:#f0d3b0;color:var(--warn)}
+.gate .t{flex:1}
+.gate .t small{color:var(--text-muted);display:block}
+.gate .act{flex:none}
+.btn{display:inline-block;font-size:12px;border:1px solid var(--border);border-radius:8px;padding:3px 8px;background:var(--surface);white-space:nowrap;margin:1px 0}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.quiet{border-color:transparent;color:var(--accent);padding:0}
+.btn.faint{opacity:.5}
+/* rows */
+.grp{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;padding:10px 0 4px;display:flex;gap:8px;align-items:center}
+.grp b{color:var(--danger);text-transform:none;letter-spacing:0;font-weight:600}
+.grp i{color:var(--warn);font-style:normal;text-transform:none;letter-spacing:0}
+.grp .r{margin-left:auto;text-transform:none;letter-spacing:0}
+table{border-collapse:collapse;width:100%;font-size:12.5px}
+th{text-align:left;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;font-weight:600;padding:6px 8px;border-bottom:1px solid var(--border)}
+td{padding:8px 8px;border-bottom:1px solid var(--border);vertical-align:top}
+tr.hot td{background:#fdecea}
+tr.open td{background:#fbfdff}
+td.co b{display:block}
+td.co small{color:var(--text-muted)}
+td.num{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
+td.num small{display:block;color:var(--text-muted);font-weight:400}
+.pill{font-size:11px;border-radius:999px;padding:1px 8px;border:1px solid var(--border);white-space:nowrap;background:var(--chip)}
+.pill.late{color:var(--danger);border-color:#f1b3ae;background:#fdecea;font-weight:600}
+.pill.warn{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}
+.pill.ok{color:var(--ok);border-color:#bfe3c9;background:var(--ok-soft)}
+.pill.ours{color:var(--warn);border-color:#f0d3b0;background:var(--warn-soft)}
+.pill.theirs{color:var(--ok);border-color:#bfe3c9;background:var(--ok-soft)}
+/* the opened row: lines */
+.lines{margin:0;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.lines table{font-size:12px}
+.lines th,.lines td{padding:6px 8px}
+.bar{display:inline-block;width:70px;height:7px;border-radius:4px;background:var(--chip);vertical-align:middle;position:relative;margin-right:6px}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px;background:var(--accent)}
+.bar i.see{background:var(--ok);opacity:.7}
+.bar i.gap{background:var(--danger)}
+.linehd{display:flex;justify-content:space-between;gap:10px;padding:8px 10px;background:var(--bg);font-size:12.5px;border-bottom:1px solid var(--border);align-items:center;flex-wrap:wrap}
+.tot{display:flex;justify-content:space-between;gap:12px;align-items:center;border-top:2px solid var(--border);padding:10px 8px;font-size:13px;flex-wrap:wrap}
+.tot b{font-size:15px}
+/* phone */
+.phone{width:320px;border:8px solid #1b1f24;border-radius:24px;background:var(--surface);padding:12px;font-size:13px;flex:none}
+.phone .ph{font-weight:700;font-size:14px}
+.phone .pl{display:flex;justify-content:space-between;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.phone .pl .n{flex:1;font-size:12.5px}
+.phone .pl .n small{display:block;color:var(--text-muted);font-size:11.5px}
+.phone .seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:12px}
+.phone .seg span{padding:4px 8px}
+.phone .seg span.on{background:var(--ok-soft);color:var(--ok);font-weight:600}
+.phone .seg span.no{background:#fdecea;color:var(--danger);font-weight:600}
+.row2{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.pickbox{max-width:1000px;font-size:13.5px;line-height:1.5}
+.pickbox ol{margin:0 0 8px 18px;padding:0}
+.pickbox li{margin-bottom:4px}
+.email{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:#fff;font-size:12.5px;max-width:460px}
+.email .s{font-weight:600;margin-bottom:4px}
+.email p{margin:4px 0;color:var(--text)}
+</style>
+</head>
+<body>
+<h1>Bill day, second pass: what the office does on the day, and what can go wrong</h1>
+<p class="lead">The first draft listed who is in. This one starts from the work: on bill day the office turns six trades' claims into one application the architect will certify and the owner will pay, without paying for work that is not there, without billing a change nobody signed, and without a lien later from a waiver nobody collected. The app already has the owner's half of this on the Money page (bill day across every job, with amber notes, a forecast that follows the schedule, and the email two days before the 25th), so this page is that screen's missing half, <b>From the trades</b>, beside <b>To the owner</b>. Same Tuesday, Oct 2, Stone Oak Pharmacy.</p>
+
+<div class="opt">
+<h2>1 · The page, rebuilt <small>· Money → Bill day → From the trades</small></h2>
+<div class="app">
+<div class="nav"><b>GC</b><span>Project Board</span><span>Follow up <span style="background:var(--danger);color:#fff;border-radius:999px;padding:0 6px;font-size:11px">4</span></span><span>Messages</span><span>Customers</span><span>Trade partners</span><span class="on">Money</span><span>Settings</span></div>
+<div class="page">
+<div class="lead2"><h3>Bill day · Oct 25</h3><span style="font-size:13px;color:var(--text-muted)">#42 Stone Oak Pharmacy · pay application 4 · the period to Oct 25</span></div>
+<div class="tabs"><span class="on">From the trades</span><span>To the owner</span><span>Forecast</span><span class="note">every job · #47 Helotes Dental Office · cut-off 6 days before, Settings</span></div>
+
+<div class="cascade">
+<div class="st done"><div class="d">Last period</div><div class="w">Pay app 3 paid</div><div class="s">owner paid Sep 25 · 4 trades paid Sep 28</div></div>
+<div class="st now"><div class="d">Trades by</div><div class="w">Mon Oct 19</div><div class="s">2 of 6 in · 17 days · the app reminds them Fri Oct 16</div></div>
+<div class="st"><div class="d">We check</div><div class="w">Oct 19 to 23</div><div class="s">Wendi walks the lines Thu Oct 22</div></div>
+<div class="st"><div class="d">Bill day</div><div class="w">Sun Oct 25</div><div class="s">goes Mon Oct 26 · to Jonah Vale to certify</div></div>
+<div class="st"><div class="d">Owner pays by</div><div class="w">Wed Nov 25</div><div class="s">30 days · Elena Marchetti</div></div>
+<div class="st"><div class="d">Trades paid</div><div class="w">about Nov 30</div><div class="s">net 30 from the owner's payment, per the MSA</div></div>
+</div>
+
+<div class="gates"><div class="h"><b>Can pay application 4 go?</b> · not yet · 3 of 7</div>
+<div class="gate"><span class="m bad">!</span><span class="t">Every trade is in, or said nothing this period.<small>3 not in: Hillside Excavation, Kerr Electric, Alamo Steel. Due Mon Oct 19.</small></span><span class="act"><span class="btn primary">Ask the 3 not in</span></span></div>
+<div class="gate"><span class="m bad">!</span><span class="t">Nothing is sent back.<small>Rio Paving's draw 2 went back Thu Oct 1: line 3 reads 80%, we see 50.</small></span><span class="act"><span class="btn">Remind Rio</span></span></div>
+<div class="gate"><span class="m wait">○</span><span class="t">Every claim is checked against the site.<small>Lone Star's draw 2 waits on us, 4 days; 1 line in doubt. Wendi checks Thu Oct 22.</small></span><span class="act"><span class="btn">Open the lines</span></span></div>
+<div class="gate"><span class="m bad">!</span><span class="t">The conditional waivers for this period are in.<small>Come with each draw; 2 of 6 so far.</small></span><span class="act"></span></div>
+<div class="gate"><span class="m bad">!</span><span class="t">The unconditional waivers for last period's payment are in.<small>Hillside Excavation owes one on draw 2, paid Sep 28. Nothing is paid to Hillside until it is in.</small></span><span class="act"><span class="btn">Ask Hillside</span></span></div>
+<div class="gate"><span class="m ok">✓</span><span class="t">No change order is being billed before it is signed.<small>Kerr's CO 3, $3,400, is signed; Lone Star's CO 1 is in Elena's portal, not yet, and its line is held out.</small></span><span class="act"></span></div>
+<div class="gate"><span class="m ok">✓</span><span class="t">Last period's certificate and payment are in.<small>Pay app 3 certified in full by Jonah Vale, paid Sep 25.</small></span><span class="act"></span></div>
+</div>
+
+<div class="grp">Sent back · <i>ours to re-check once it comes back</i></div>
+<table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Asked</th><th style="text-align:right">Expected</th><th>Waivers · changes</th><th>Whose move</th><th></th></tr>
+<tr><td class="co"><b>Rio Paving</b><small>Paving · Dan Ruiz</small></td><td>Draw 2</td><td class="num">$18,400<small>sent back Thu Oct 1</small></td><td class="num">$14,100<small>from the schedule</small></td><td><span class="pill">conditional in</span></td><td><span class="pill theirs">their move · 1 d</span><br><small style="color:var(--text-muted)">"Line 3 reads 80%; we see 50. Send it again."</small></td><td><span class="btn">Open the lines</span> <span class="btn">Remind them</span></td></tr>
+</table>
+
+<div class="grp">Not in · <i>3</i> · due by Mon Oct 19<span class="r"><span class="btn quiet">ask all three in one press</span></span></div>
+<table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Last draw</th><th style="text-align:right">Expected</th><th>Waivers · changes</th><th>Whose move</th><th></th></tr>
+<tr class="hot"><td class="co"><b>Hillside Excavation</b><small>Sitework · Greg Paulk</small></td><td>Draw 3 <span class="pill">next</span></td><td class="num">$22,000<small>draw 2, paid Sep 28</small></td><td class="num">$9,800<small>sitework 85% by Oct 25</small></td><td><span class="pill warn">unconditional owed on draw 2</span></td><td><span class="pill theirs">their move</span><br><small style="color:var(--text-muted)">promised Fri Oct 16 · quiet 4 d · late once before</small></td><td><span class="btn primary">Ask for it</span> <span class="btn">Call in Quo</span></td></tr>
+<tr><td class="co"><b>Kerr Electric</b><small>Electrical · Dana Kerr</small></td><td>Draw 3 <span class="pill">next</span></td><td class="num">$31,500<small>draw 2, paid Sep 28</small></td><td class="num">$26,000<small>rough-in 70% by Oct 25 · CO 3 signed, $3,400</small></td><td><span class="pill ok">all in</span> <span class="pill ok">CO 3 signed</span></td><td><span class="pill theirs">their move</span><br><small style="color:var(--text-muted)">no day given · quiet 2 d · never late</small></td><td><span class="btn primary">Ask for it</span></td></tr>
+<tr><td class="co"><b>Alamo Steel</b><small>Structural steel · Pat Alamo</small></td><td>Draw 1 <span class="pill">first</span></td><td class="num">—<small>statement of work signed Sep 27</small></td><td class="num">$12,500<small>erection 40% by Oct 25 · stored steel likely</small></td><td><span class="pill">none yet</span></td><td><span class="pill theirs">their move</span><br><small style="color:var(--text-muted)">on site since Oct 1 · first draw: the form is in their portal</small></td><td><span class="btn primary">Ask for it</span> <span class="btn">Nothing this period</span></td></tr>
+</table>
+
+<div class="grp">In, waiting on us · 1 · <i>the lines, opened</i></div>
+<table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Asked</th><th style="text-align:right">Expected</th><th>Waivers · changes</th><th>Whose move</th><th></th></tr>
+<tr class="open"><td class="co"><b>Lone Star Mechanical</b><small>Mechanical · Luis Ortega</small></td><td>Draw 2</td><td class="num">$27,900<small>came Mon Sep 28 · stored $4,100, invoice in</small></td><td class="num">$24,200<small>from the schedule</small></td><td><span class="pill">conditional in</span> <span class="pill warn">CO 1 unsigned · $2,600 held out</span></td><td><span class="pill ours">our move · 4 d</span></td><td><span class="btn primary">Approve $25,300</span> <span class="btn">Send back with a note</span></td></tr>
+<tr class="open"><td colspan="7" style="padding:0 8px 10px"><div class="lines"><div class="linehd"><span>Draw 2's lines · what they claim, what we see, and what the schedule expects</span><span class="note" style="color:var(--text-muted)">Wendi saw lines 1 to 4 on site Thu Oct 1 · photos on the daily log</span></div>
+<table><tr><th>Line</th><th style="text-align:right">Value</th><th>Last</th><th>Claimed</th><th>We see</th><th>Schedule says</th><th style="text-align:right">This draw</th><th></th></tr>
+<tr><td>1 · Underground</td><td class="num">$42,000</td><td>100%</td><td>100%</td><td>100%</td><td>done Sep 12</td><td class="num">$0</td><td></td></tr>
+<tr><td>2 · Rough-in, level 1</td><td class="num">$58,000</td><td>40%</td><td><span class="bar"><i style="width:90%"></i></span>90%</td><td><span class="bar"><i class="see" style="width:75%"></i><i class="gap" style="left:75%;width:15%"></i></span><b style="color:var(--danger)">75%</b></td><td>78% by Oct 25</td><td class="num">$20,300<small>at 75, not 29,000 at 90</small></td><td><span class="btn">photo</span></td></tr>
+<tr><td>3 · Rough-in, level 2</td><td class="num">$58,000</td><td>0%</td><td>10%</td><td>10%</td><td>12% by Oct 25</td><td class="num">$5,800</td><td></td></tr>
+<tr><td>4 · Equipment, stored</td><td class="num">$61,000</td><td>—</td><td>$4,100 stored</td><td>on site, invoice in</td><td>sets Nov</td><td class="num">$4,100</td><td><span class="btn">invoice</span></td></tr>
+<tr><td style="color:var(--text-muted)">CO 1 · Add a split system</td><td class="num">$2,600</td><td>—</td><td>100%</td><td>—</td><td>unsigned</td><td class="num" style="color:var(--warn)">held out</td><td><span class="btn quiet">nudge Elena</span></td></tr>
+<tr><td colspan="6" style="text-align:right;color:var(--text-muted)">less 10% retainage</td><td class="num">−$3,020</td><td></td></tr>
+<tr><td colspan="6" style="text-align:right"><b>Approve</b></td><td class="num"><b>$27,180</b> · they asked $27,900</td><td></td></tr>
+</table></div></td></tr>
+</table>
+
+<div class="grp">Approved · 1</div>
+<table><tr><th>Trade</th><th>Draw</th><th style="text-align:right">Asked · approved</th><th style="text-align:right">Expected</th><th>Waivers · changes</th><th>Whose move</th><th></th></tr>
+<tr><td class="co"><b>Tejas Power</b><small>Electrical, low voltage · Bill Sorrell</small></td><td>Draw 2</td><td class="num">$14,200 · <b>$13,300</b><small>approved Wed Sep 30 · a back-charge of $900 came off</small></td><td class="num">$13,000</td><td><span class="pill">conditional in</span></td><td><span class="pill">paid when the owner pays · about Nov 30</span></td><td><span class="btn">Open the draw</span></td></tr>
+</table>
+
+<div class="grp">Closing out · 0 <span class="r" style="color:var(--text-muted)">a trade's final pay application and retainage release list here when they come</span></div>
+<div class="grp">Our own crew · from the Pipeline job</div>
+<table><tr><td class="co" style="width:180px"><b>Plumbing</b><small>ours · J1082</small></td><td class="num" style="text-align:left">$27,900 this period · 62% done from the job's stages · <span style="color:var(--text-muted)">no draw, no waiver; Bill the customer bills its line from the percent</span></td></tr></table>
+
+<div class="tot"><span>As it stands: approved <b>$40,480</b> · ours <b>$27,900</b> · expected from the rest <b>$48,300</b> → pay application 4 about <b>$116,700</b></span><span><span class="btn">To the owner ›</span> <span class="btn primary faint">Send pay application 4</span></span></div>
+</div></div>
+<p class="why"><b>What changed from the first draft.</b> A <b>cascade</b> across the top, because bill day is a chain and not a day: last period's payment, the trades' deadline, our checking days, bill day, the owner's pay-by, the trades' pay day. <b>Gates</b> under it: the seven things that must be true before the application goes, each with its blocker named and one press to clear it; these are the Money page's amber notes made into a list with buttons, so there is one list and not two. <b>Expected</b> on every row, from the schedule's forecast, so "still to come" is a number and a trade asking for far more than the schedule expects stands out. <b>Changes</b> beside waivers, since an unsigned change order billed early is the mistake this page exists to catch. <b>The lines opened</b> under a draw that waits on us: claimed, we see, the schedule, and this draw's money at what we see, with the photo and the invoice beside the line; Approve reads the corrected amount. <b>Ask all three in one press</b>, and the app's own reminder three days before the cut-off, named on the cascade. <b>A trade's habit</b> in the small words: late once before, never late. <b>Closing out</b> as its own group for the final application and the retainage release. The Draws window still writes the draw.</p>
+</div>
+
+<div class="opt">
+<h2>2 · The superintendent's half <small>· Wendi walks the site with the claims on a phone</small></h2>
+<div class="row2">
+<div class="phone"><div class="ph">Check the claims · Stone Oak</div><div style="font-size:12px;color:var(--text-muted);margin:2px 0 6px">Thu Oct 22 · 3 trades, 9 lines · tap what you see</div>
+<div class="pl"><span class="n">Lone Star · Rough-in, level 1<small>claims 90% · last draw 40% · schedule 78%</small></span><span class="seg"><span>90</span><span class="no">75</span><span>…</span></span></div>
+<div class="pl"><span class="n">Lone Star · Rough-in, level 2<small>claims 10% · schedule 12%</small></span><span class="seg"><span class="on">10</span><span>…</span></span></div>
+<div class="pl"><span class="n">Lone Star · Equipment stored<small>$4,100 · on site?</small></span><span class="seg"><span class="on">yes</span><span>no</span></span></div>
+<div class="pl"><span class="n">Rio Paving · Base, lot<small>claims 80% · we said 50 · they resend</small></span><span class="seg"><span>80</span><span class="on">50</span><span>…</span></span></div>
+<div style="font-size:12px;color:var(--text-muted);margin-top:8px">A photo goes on the daily log with the line. Each tap is <i>we see</i> on the draw's line; the office sees it on the lines when it opens them.</div></div>
+<div style="flex:1;min-width:280px"><p class="why" style="margin:0 0 8px"><b>Why this is the piece that matters most.</b> The office cannot know whether level 1 rough-in is 90% or 75% from a desk; the superintendent can, by walking it. Today that walk is a conversation and a guess. The phone page is the day's claims as a list, with the last draw and the schedule's number as the eyes' calibration, and one tap per line that becomes <i>we see</i> on the draw. The checking days on the cascade are this walk.</p>
+<p class="why" style="margin:0"><b>It is the daily log's own list on a bill-day week</b>, not a new place: the daily log already carries crews on site and photos; on the days between the cut-off and bill day it carries the claims to check.</p></div>
+</div>
+</div>
+
+<div class="opt">
+<h2>3 · The app's own reminder, and the one-press ask <small>· what goes, as they see it</small></h2>
+<div class="row2">
+<div class="email"><div class="s">Fri Oct 16 · from the company number · to the 3 not in, each their own</div><p>Greg, pay application 4 on Stone Oak Pharmacy closes Mon Oct 19. Your draw 3 is due by then: click.co/t/7Hq2#draws. Also still owed: the unconditional waiver for draw 2.</p><p style="color:var(--text-muted);font-size:12px">The step's line in Quick replies, with the job, the day, the portal link, and anything else owed on the same row. Off until the owner turns <i>the app sends it</i> on for the Draws step.</p></div>
+<div class="email"><div class="s">Ask the 3 not in · one press · three texts</div><p>Each text names its own trade's draw, day and link; nothing is copied to all. The thread shows each as the app's, and the gate's count drops as each comes in.</p><p style="color:var(--text-muted);font-size:12px">The owner's rule holds: a press by a person, or the app on a day the owner set; never both for the same trade in the same day.</p></div>
+</div>
+</div>
+
+<div class="opt">
+<h2>4 · Where it is reached from <small>· the same six, two corrected</small></h2>
+<p class="why" style="margin:0">The customer's pay application card, the project's card (the pill now reads the gates, <i>Bill day · 3 of 7</i>, red once the cut-off has passed with a gate open), Follow up, the job page's papers, the Draws row on Trade partners, and the trade's portal stay as drawn. <b>Corrected</b>: the page lives on the <b>Money</b> page's Bill day, not as a tab of its own, since the owner's half is already there, and the two halves share the cascade; and the <b>daily log</b> is the seventh access point, the superintendent's. <b>Who</b>: the money team reads amounts (as the Draws window is gated today); the superintendent's phone shows percents and photos and never a dollar.</p>
+</div>
+
+<div class="pickbox">
+<h2 style="font-size:15px;margin:0 0 6px">Is this the best we can do? What the second pass found</h2>
+<ol>
+<li><b>The first draft was a list; the job is a chain with gates.</b> The office's question on bill day is "can it go, and what stops it", not "who is in". The gates answer it in one glance and every blocker has its press. The trade rows become the detail under the gates.</li>
+<li><b>"Expected" turns chasing into judgment.</b> A trade asking for $27,900 when the schedule expects $24,200 is a line to walk, not a draw to approve. The forecast exists already; it was not on the trade side.</li>
+<li><b>The check is the work, and it happens on site.</b> Nothing in the first draft said how "we see 75" gets known. The superintendent's phone list is the answer, and it is the daily log, not a new page.</li>
+<li><b>Changes and waivers are gates, not columns.</b> Billing an unsigned change and paying without an unconditional waiver are the two expensive mistakes; a column is read past, a gate is not.</li>
+<li><b>It is half of a screen that exists.</b> The Money page's bill day, amber notes and forecast are the owner's half; building beside it would make two bill days. The two halves share the cascade and the total line.</li>
+<li><b>Dropped from the first draft</b>: the "days coming up" strip (the Forecast tab is that, and better); the Bill day nav tab (it is the Money page's); the job as the only unit (every job, filtered).</li>
+<li><b>Still the owner's</b>: the cut-off as a setting or fixed; whether the app may send the cut-off reminder itself; whether the superintendent's taps approve a line by themselves when they match the claim (lean no: the office approves, the walk informs).</li>
+</ol>
+</div>
+</body>
+</html>

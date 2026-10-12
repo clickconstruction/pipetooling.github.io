@@ -495,8 +495,37 @@ the draws one trade at a time. What is missing is the view across the trades on 
 draw), and not money the customer sees. **Open for the owner**: the cut-off, days before bill day, as a
 setting or a fixed number; whether the page is one per job or one across every job being built, with the
 job as a filter (the Board's bill day reads across jobs, so across jobs with a filter is the lean).
-Drawn in `bill-day-mockup.html` (v1.117): the page at a desk width with the six groups, the three cards up
-top, the total line, and the six access points each as a picture.
+Drawn twice. `bill-day-mockup.html` (v1.117) is the first pass, a list of who is in. `bill-day-mockup-2.html`
+(v1.118, the owner: not the best we can do) starts from the work instead, and is the shape to build:
+
+- **It is half of a screen that exists.** The Money page's bill day already holds the owner's half (the
+  application per job, the amber notes, the forecast that follows the schedule, the email two days before
+  the 25th), so this is its *From the trades* tab beside *To the owner* and *Forecast*, never a tab of its own.
+- **A cascade across the top**, since bill day is a chain: last period's payment, the trades' deadline, our
+  checking days, bill day and who certifies, the owner's pay-by, the trades' pay day (net 30 from the owner's
+  payment, per the MSA).
+- **Gates under it**, *Can pay application 4 go?*: every trade in or said nothing this period; nothing sent
+  back; every claim checked against the site; the conditional waivers in; last period's unconditional
+  waivers in (nothing is paid to a trade until its is); no change order billed before it is signed; last
+  period's certificate and payment in. Each gate names its blocker and carries one press to clear it. These
+  are the Money page's amber notes as a list with buttons: one list, not two.
+- **Expected on every row**, from the schedule's forecast, so still-to-come is a number and a trade asking
+  for far more than the schedule expects stands out as a line to walk.
+- **Changes beside waivers** on the row: a signed change order bills, an unsigned one is held out.
+- **The lines opened** under a draw that waits on us: last, claimed, we see, what the schedule says, and this
+  draw's money at what we see, with the photo and the stored-material invoice beside the line; Approve
+  reads the corrected amount. The Draws window still writes the draw.
+- **The superintendent's half**: the daily log, on the days between the cut-off and bill day, carries the
+  claims to check as a phone list with the last draw and the schedule's number beside each, one tap per
+  line that becomes *we see*, a photo to the log; percents and photos, never a dollar.
+- **The one-press ask** to every trade not in, each its own text, and the app's own reminder three days
+  before the cut-off, off until the owner turns *the app sends it* on for the Draws step.
+- **A trade's habit** in the small words (*late once before*, *never late*), and **Closing out** as a group
+  for the final application and the retainage release.
+- **Access**: the six named above, with the page on Money's bill day and the daily log as the seventh; the
+  money team reads amounts, as the Draws window is gated today.
+- **Still the owner's**: the cut-off as a setting or fixed; whether the app may send the cut-off reminder;
+  whether a superintendent's tap that matches the claim approves the line by itself (lean no).
 
 ## How it would be built, once the shape is settled
 
@@ -723,6 +752,11 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.118, 2026-10-11**: `bill-day-mockup-2.html`, Bill day's second pass (the owner: not the best we can do): the page
+  as the Money screen's From the trades tab, the cascade, the seven gates with a press each, Expected from the
+  schedule's forecast, changes beside waivers, the lines opened with claimed, we see and the schedule, the
+  superintendent's phone list on the daily log, the one-press ask and the app's reminder, Closing out; the plan's
+  section rewritten to this shape. No prototype change.
 - **v1.117, 2026-10-11**: `bill-day-mockup.html`, Bill day drawn: across jobs with the job as a filter, the deadline
   card, as-it-stands, the days coming up, the trades grouped by state (sent back, not in, waiting on us, approved,
   our own crew), the total line with Send faint until bill day, and the six access points. No prototype change.
