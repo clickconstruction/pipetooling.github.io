@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
+import { customerMove } from '../flows/customerMove'
 import {
+  CODE_WORDS,
   PAPER_WORDS,
   PORTAL_WORD_KEYS,
   changeAmount,
@@ -12,6 +14,7 @@ import {
   say,
   signedMoney,
   typed,
+  wordsWith,
   type PaperWords,
 } from './pageWords'
 
@@ -85,5 +88,30 @@ describe('the helpers the kernels share', () => {
     expect(changeDays('es', 3)).toBe('agrega 3 días hábiles')
     expect(signedMoney(18450)).toBe('+$18,450')
     expect(signedMoney(-500)).toBe('−$500')
+  })
+})
+
+describe("the office's edits from Settings → Customer page", () => {
+  const edited = wordsWith([
+    { key: 'nothingToday', en: 'Nothing needed from you today.', es: 'Hoy no le pedimos nada.' },
+    { key: 'weAreOn', en: 'Right now we are on {step}.', es: 'Ahora estamos en {step}.' },
+    { key: 'paper.contract.button', en: 'Read and sign the contract', es: 'Lea y firme el contrato' },
+    { key: 'goneKey', en: 'A sentence the code dropped.', es: 'Una frase que el código quitó.' },
+  ])
+
+  it('lays an edit over its sentence, in both languages, and fills its blanks', () => {
+    expect(edited.say('en', 'nothingToday')).toBe('Nothing needed from you today.')
+    expect(edited.say('es', 'weAreOn', { step: 'Fecha de inicio' })).toBe('Ahora estamos en Fecha de inicio.')
+    expect(edited.say('en', 'fewer')).toBe('Fewer')
+    expect(edited.paper('es', 'contract').button).toBe('Lea y firme el contrato')
+    expect(edited.paper('en', 'contract').why).toBe('Read it and sign it here.')
+    expect(CODE_WORDS.say('en', 'nothingToday')).toBe('Nothing from you today.')
+  })
+
+  it('reaches every kernel that writes the sentence', () => {
+    const steps = [{ id: 'start', name: { en: 'Start date', es: 'Fecha de inicio' }, who: 'us' as const, where: 'now' as const }]
+    expect(customerMove('en', { off: false, steps, changes: [] }, edited)).toEqual({ kind: 'none', line: 'Nothing needed from you today. Right now we are on Start date.' })
+    const signing = [{ id: 'contract', name: { en: 'Contract signed', es: 'Contrato firmado' }, who: 'them' as const, where: 'now' as const, papers: [{ id: 'contract' as const, ours: true, mark: 'wait' as const }] }]
+    expect(customerMove('en', { off: false, steps: signing, changes: [] }, edited)).toMatchObject({ kind: 'paper', title: 'Read and sign the contract' })
   })
 })

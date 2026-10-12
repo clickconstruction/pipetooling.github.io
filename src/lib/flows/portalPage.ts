@@ -29,11 +29,11 @@
  */
 
 import {
-  paperWords,
+  CODE_WORDS,
   pMonth,
   pWeekday,
-  say,
   type Bilingual,
+  type PageWords,
   type PaperWords,
   type PortalLang,
   type PortalPaperId,
@@ -130,75 +130,75 @@ function line(...parts: (string | null | undefined)[]): string {
   return parts.filter((p): p is string => !!p && p.trim() !== '').join(' ')
 }
 
-function waitingWords(lang: PortalLang, w: { who: PortalWaitingOn; forCertificate: boolean }): string {
-  if (w.who === 'architect') return say(lang, w.forCertificate ? 'waitCertificate' : 'waitArchitect')
-  return say(lang, w.who === 'owner' ? 'waitOwner' : 'waitOther')
+function waitingWords(lang: PortalLang, w: { who: PortalWaitingOn; forCertificate: boolean }, words: PageWords): string {
+  if (w.who === 'architect') return words.say(lang, w.forCertificate ? 'waitCertificate' : 'waitArchitect')
+  return words.say(lang, w.who === 'owner' ? 'waitOwner' : 'waitOther')
 }
 
-function whyWords(lang: PortalLang, step: PortalStepIn, paper: PortalPaperRead | null, pw: PaperWords | null): string {
+function whyWords(lang: PortalLang, step: PortalStepIn, paper: PortalPaperRead | null, pw: PaperWords | null, words: PageWords): string {
   if (paper?.id === 'waiver') {
     return step.month && step.day
-      ? say(lang, 'waiverWhy', { month: pMonth(lang, step.month), day: pWeekday(lang, step.day.on) })
-      : say(lang, 'waiverWhyPlain')
+      ? words.say(lang, 'waiverWhy', { month: pMonth(lang, step.month), day: pWeekday(lang, step.day.on) })
+      : words.say(lang, 'waiverWhyPlain')
   }
-  return pw?.why ?? say(lang, 'yourMove')
+  return pw?.why ?? words.say(lang, 'yourMove')
 }
 
 /**
  * One step read from their side, or null when it does not show (skipped for them, a decision that is ours or not on
  * now). `after` is the step before it in the flow, for the when-line of a step not reached that has none of its own.
  */
-export function portalStep(lang: PortalLang, step: PortalStepIn, after: Bilingual | null = null): PortalStepReading | null {
+export function portalStep(lang: PortalLang, step: PortalStepIn, after: Bilingual | null = null, words: PageWords = CODE_WORDS): PortalStepReading | null {
   if (!shows(step)) return null
   const base = { id: step.id, name: step.name[lang] }
   const papers = step.papers ?? []
   const paper = pickPaper(papers)
-  const pw = paper ? paperWords(lang, paper.id) : null
+  const pw = paper ? words.paper(lang, paper.id) : null
 
-  if (step.where === 'done') return { ...base, kind: 'done', when: step.doneOn ? pWeekday(lang, step.doneOn) : say(lang, 'doneWord') }
+  if (step.where === 'done') return { ...base, kind: 'done', when: step.doneOn ? pWeekday(lang, step.doneOn) : words.say(lang, 'doneWord') }
 
   if (step.where === 'lapsed') {
     const bad = papers.find((p) => p.mark === 'bad') ?? paper
-    const bw = bad ? paperWords(lang, bad.id) : null
-    const words = bw?.yours ? line(say(lang, 'ranOut', { paper: bw.yours }), bw.renew) : (bw?.why ?? say(lang, 'yourMove'))
-    return { ...base, kind: 'ranOut', line: words, button: bw?.button ?? null, paper: bad?.id ?? null }
+    const bw = bad ? words.paper(lang, bad.id) : null
+    const text = bw?.yours ? line(words.say(lang, 'ranOut', { paper: bw.yours }), bw.renew) : (bw?.why ?? words.say(lang, 'yourMove'))
+    return { ...base, kind: 'ranOut', line: text, button: bw?.button ?? null, paper: bad?.id ?? null }
   }
 
   if (step.where === 'now') {
-    if (step.waitingOn) return { ...base, kind: 'waiting', line: waitingWords(lang, step.waitingOn) }
-    if (step.decision) return { ...base, kind: 'decide', line: say(lang, 'sayYesNo'), accept: say(lang, 'acceptBid'), decline: say(lang, 'notThisTime') }
+    if (step.waitingOn) return { ...base, kind: 'waiting', line: waitingWords(lang, step.waitingOn, words) }
+    if (step.decision) return { ...base, kind: 'decide', line: words.say(lang, 'sayYesNo'), accept: words.say(lang, 'acceptBid'), decline: words.say(lang, 'notThisTime') }
     // A shared step is theirs once its paper is out to them: their own paper, or ours once it went (a pay application).
     const theirs = step.who === 'them' || (step.who === 'both' && !!paper && (!paper.ours || paper.mark !== 'no'))
     // Theirs, and still on us: our paper not sent yet, or their own paper already in.
     const weOwe = !!paper && (paper.ours ? paper.mark === 'no' : paper.mark === 'ok')
     if (theirs && !weOwe) {
-      const due = step.day ? say(lang, step.day.late ? 'lateSince' : 'dueOn', { day: pWeekday(lang, step.day.on) }) : null
+      const due = step.day ? words.say(lang, step.day.late ? 'lateSince' : 'dueOn', { day: pWeekday(lang, step.day.on) }) : null
       return {
         ...base,
         kind: 'yours',
         due,
         late: !!step.day?.late,
-        line: whyWords(lang, step, paper, pw),
+        line: whyWords(lang, step, paper, pw, words),
         button: pw?.button ?? null,
         button2: pw?.button2 ?? null,
         paper: paper?.id ?? null,
         signs: !!paper && paper.ours && paper.mark === 'wait',
       }
     }
-    const expect = step.owedBy ? say(lang, 'sendBy', { day: pWeekday(lang, step.owedBy) }) : pw?.onIt
-    return { ...base, kind: 'onIt', line: line(say(lang, 'onIt'), expect) }
+    const expect = step.owedBy ? words.say(lang, 'sendBy', { day: pWeekday(lang, step.owedBy) }) : pw?.onIt
+    return { ...base, kind: 'onIt', line: line(words.say(lang, 'onIt'), expect) }
   }
 
-  const when = step.later?.[lang] ?? pw?.comes ?? (after ? say(lang, 'afterStep', { step: after[lang] }) : '')
-  return { ...base, kind: 'later', line: line(say(lang, 'later'), when) }
+  const when = step.later?.[lang] ?? pw?.comes ?? (after ? words.say(lang, 'afterStep', { step: after[lang] }) : '')
+  return { ...base, kind: 'later', line: line(words.say(lang, 'later'), when) }
 }
 
 /** The steps that can show, in order, each with the one before it for its when-line. */
-function readAll(lang: PortalLang, steps: PortalStepIn[], before: Bilingual | null): { step: PortalStepIn; reading: PortalStepReading }[] {
+function readAll(lang: PortalLang, steps: PortalStepIn[], before: Bilingual | null, words: PageWords): { step: PortalStepIn; reading: PortalStepReading }[] {
   const out: { step: PortalStepIn; reading: PortalStepReading }[] = []
   let prev = before
   for (const step of steps) {
-    const reading = portalStep(lang, step, prev)
+    const reading = portalStep(lang, step, prev, words)
     if (!reading) continue
     out.push({ step, reading })
     prev = step.name
@@ -240,32 +240,32 @@ export interface PortalPage {
  * (an aside step only while one of its rounds is open), then Open (an Any time step with a round open). A section with
  * no rows is left out, so a skipped master agreement draws nothing.
  */
-export function portalPage(lang: PortalLang, page: PortalPageIn): PortalPage {
+export function portalPage(lang: PortalLang, page: PortalPageIn, words: PageWords = CODE_WORDS): PortalPage {
   const sections: PortalPageSection[] = []
   let before: Bilingual | null = null
   for (const lane of page.lanes) {
     if (lane.lane === 'once') {
-      const rows = readAll(lang, lane.steps, before)
-      if (rows.length) sections.push({ title: say(lang, 'setUp'), rows: rows.map((r) => r.reading) })
+      const rows = readAll(lang, lane.steps, before, words)
+      if (rows.length) sections.push({ title: words.say(lang, 'setUp'), rows: rows.map((r) => r.reading) })
       before = rows[rows.length - 1]?.step.name ?? before
     } else if (lane.lane === 'perJob') {
       let last: Bilingual | null = before
       for (const job of lane.jobs) {
-        const rows = readAll(lang, job.steps.filter((s) => !s.aside || s.roundNow), before)
+        const rows = readAll(lang, job.steps.filter((s) => !s.aside || s.roundNow), before, words)
         if (rows.length) sections.push({ title: job.name, rows: rows.map((r) => r.reading) })
         last = rows[rows.length - 1]?.step.name ?? last
       }
       before = last
     } else {
-      const rows = readAll(lang, lane.steps.filter((s) => s.roundNow), before)
-      if (rows.length) sections.push({ title: say(lang, 'openSection'), rows: rows.map((r) => r.reading) })
+      const rows = readAll(lang, lane.steps.filter((s) => s.roundNow), before, words)
+      if (rows.length) sections.push({ title: words.say(lang, 'openSection'), rows: rows.map((r) => r.reading) })
     }
   }
   return {
-    title: say(lang, 'pageTitle', { company: page.company }),
-    off: page.off ? say(lang, 'offThanks') : null,
+    title: words.say(lang, 'pageTitle', { company: page.company }),
+    off: page.off ? words.say(lang, 'offThanks') : null,
     sections,
-    questions: say(lang, 'questions', { phone: page.phone }),
+    questions: words.say(lang, 'questions', { phone: page.phone }),
   }
 }
 
@@ -284,18 +284,18 @@ export interface CustomerWhere {
  * The customer's *Where you are* on Home: the job's per-job lane from their side, with a bar, and three rows (the last
  * done, the one on now, the next) that open to all. A change order, aside, is on Money and Papers instead.
  */
-export function customerWhere(lang: PortalLang, steps: PortalStepIn[], all = false): CustomerWhere {
-  const rows = readAll(lang, steps.filter((s) => !s.aside), null)
+export function customerWhere(lang: PortalLang, steps: PortalStepIn[], all = false, words: PageWords = CODE_WORDS): CustomerWhere {
+  const rows = readAll(lang, steps.filter((s) => !s.aside), null, words)
   const total = rows.length
   const done = rows.filter((r) => r.reading.kind === 'done').length
   const now = rows.findIndex((r) => r.step.where === 'now')
   const from = Math.max(0, (now < 0 ? done : now) - 1)
   const shown = all ? rows : rows.slice(from, from + 3)
   return {
-    title: say(lang, 'whereTitle'),
-    count: say(lang, 'whereCount', { done, total }),
+    title: words.say(lang, 'whereTitle'),
+    count: words.say(lang, 'whereCount', { done, total }),
     pct: total ? Math.round((100 * done) / total) : 0,
     rows: shown.map((r) => r.reading),
-    more: all ? say(lang, 'fewer') : say(lang, 'allSteps', { n: total }),
+    more: all ? words.say(lang, 'fewer') : words.say(lang, 'allSteps', { n: total }),
   }
 }

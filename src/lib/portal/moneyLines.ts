@@ -9,7 +9,7 @@
  * Retainage is not counted apart; it stays inside billed and not yet paid. Pure.
  */
 
-import { money, say, signedMoney, type PortalLang, type TypedLine } from './pageWords'
+import { CODE_WORDS, money, signedMoney, type PageWords, type PortalLang, type TypedLine } from './pageWords'
 
 /**
  * A change order on the job as their page reads it: sent and waiting on them (`open`, main's `PortalGcChangeOrder`), or
@@ -89,13 +89,13 @@ export interface StatementRow {
 }
 
 /** The statement's six lines for the bookkeeper. Folded, the page shows the first two. */
-export function statementRows(lang: PortalLang, lines: MoneyLines): StatementRow[] {
+export function statementRows(lang: PortalLang, lines: MoneyLines, words: PageWords = CODE_WORDS): StatementRow[] {
   return [
-    { label: say(lang, 'lineContract'), amount: money(lines.contract) },
-    { label: say(lang, 'lineChanges'), amount: signedMoney(lines.changes), count: lines.changesCount },
-    { label: say(lang, 'lineRevised'), amount: money(lines.revised), sum: true },
-    { label: say(lang, 'lineBilled'), amount: money(lines.billed) },
-    { label: say(lang, 'linePaid'), amount: money(lines.paid) },
-    { label: say(lang, 'lineBalance'), amount: money(lines.balance), sum: true },
+    { label: words.say(lang, 'lineContract'), amount: money(lines.contract) },
+    { label: words.say(lang, 'lineChanges'), amount: signedMoney(lines.changes), count: lines.changesCount },
+    { label: words.say(lang, 'lineRevised'), amount: money(lines.revised), sum: true },
+    { label: words.say(lang, 'lineBilled'), amount: money(lines.billed) },
+    { label: words.say(lang, 'linePaid'), amount: money(lines.paid) },
+    { label: words.say(lang, 'lineBalance'), amount: money(lines.balance), sum: true },
   ]
 }
