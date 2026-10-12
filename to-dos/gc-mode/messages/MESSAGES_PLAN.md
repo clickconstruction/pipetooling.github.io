@@ -772,6 +772,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.161, 2026-10-11**: the portal window is titled by kind, *Customer's portal*, *Trade partner's portal*,
+  *Architect's portal*, not by the person's name; a section with no rows (a skipped master agreement) draws no
+  heading (the owner, 2026-10-11).
 - **v1.160, 2026-10-11**: change orders leave the Any time lane for Per job, drawn apart under Warranty behind a
   dashed line that reads *any time in the job*, with no arrow into them; the card never names them as what comes
   next (the owner, 2026-10-11).
