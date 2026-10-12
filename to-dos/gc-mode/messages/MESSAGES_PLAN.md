@@ -768,6 +768,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.130, 2026-10-11**: *Quick replies ▸* is a press at the right of the kinds row on a text or an email, the
+  only way in and out of the strip; the folded strip's own line is gone, and the helper line sits under the kinds
+  (the owner, 2026-10-11: just the word, up there).
 - **v1.129, 2026-10-11**: the note box's rows tightened (the owner's marks): the helper reads *only the team sees it · closes
   the row* so it stays on the kinds row, and *Bring it back on a day…* sits on the send row beside Add the note; the
   day strip opens above the box as before.

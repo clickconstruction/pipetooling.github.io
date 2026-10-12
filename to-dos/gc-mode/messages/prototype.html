@@ -320,9 +320,12 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .quickwrap .rows button{font-size:13px;border-radius:999px;background:var(--surface);text-align:left;white-space:normal}
 .quickwrap .rows button.mine{border-style:dashed}
 .quickwrap .rows button mark{background:#fff3a3;border-radius:3px;padding:0 1px;color:inherit}
+.kinds .qrtab{margin-left:auto;font:inherit;font-size:12.5px;border:1px solid var(--border);border-radius:999px;padding:4px 10px;background:var(--surface);color:var(--accent);cursor:pointer}
+.kinds .qrtab.on{background:var(--accent-soft);border-color:var(--accent)}
+.kinds .helper{flex-basis:100%;text-align:right}
 .quickwrap .qlabel{border:0;background:transparent;padding:0;font:inherit;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
 .quickwrap .qpeek{display:none;border:0;background:transparent;color:var(--accent);font-size:12.5px;padding:0;cursor:pointer;text-align:left}.quickwrap .qpeek .n{color:var(--text-muted)}
-.quickwrap.folded{padding:7px 10px}.quickwrap.folded .ql,.quickwrap.folded .qgroups{display:none}.quickwrap.folded .qpeek{display:inline-block}
+.quickwrap.folded{display:none}.quickwrap.folded .ql,.quickwrap.folded .qgroups{display:none}.quickwrap.folded .qpeek{display:inline-block}
 .quickwrap .qfilter{font-size:12.5px;padding:3px 8px;min-width:90px;width:120px;text-transform:none;letter-spacing:0;margin-left:auto}
 .quickwrap .ql{flex-wrap:wrap;row-gap:4px}
 /* In a thread narrower than 640px the head is two rows: the label with narrow and Edit, then the group pills on their own line (the owner, 2026-10-11: narrow belongs beside Quick replies). */
@@ -1157,7 +1160,7 @@ function renderMessages(m){
   </div>
   <div id="lines"></div></div>
   <div class="reply">
-    <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team ':''}${replyKind===k?'on':''}" onclick="replyKind='${k}';if('${k}'!=='note')settling=null;render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees it · closes the row'}</span></div>
+    <div class="kinds">${[['text','Text'],['email','Email'],['note','Note for the team']].map(([k,l])=>`<button class="${k==='note'?'team ':''}${replyKind===k?'on':''}" onclick="replyKind='${k}';if('${k}'!=='note')settling=null;render()">${l}</button>`).join('')}${replyKind!=='note'?`<button type="button" class="qrtab ${qrOpen?'on':''}" data-tip="Quick replies|Opens the lines above the box: a press on one fills the box, nothing sends.|Press again to fold them. Your choice is kept on this computer." onclick="toggleQuick()">Quick replies ${qrOpen?'▾':'▸'}</button>`:''}<span class="note helper">${replyKind==='text'?'from the company number (210) 555-0100 · Click Construction':replyKind==='email'?'from bids@clickconstruction · Click Construction':'only the team sees it · closes the row'}</span></div>
     ${replyKind!=='note'?qrStripHtml(c):''}
     ${replyKind==='note'&&settling!==c.id&&(noteBackOpen||noteBack)?noteBackHtml(c):''}
     ${owedOpen===c.id&&settling!==c.id?owedStripHtml(c):''}
@@ -1964,9 +1967,11 @@ let optoutHeld=false; // the person held the line back on this send (silence onl
 function subjectFor(c, job, body){ const j=job?jobById(job):null; const first=body.split('\n')[0].replace(/[.!?]+$/,'').slice(0,60); return (j?`${j.name}: `:'')+(first||'A note from Click Construction'); }
 // The strip is folded by default (the owner, 2026-10-11); a press on its line opens it, a press on the open label folds it, and the choice is kept on this computer. Typing still folds an open strip until the box is empty again.
 let qrOpen=false; try{ qrOpen = localStorage.getItem('msgQrOpen')==='1'; }catch(e){}
-function foldQuick(hasWords){ const w=document.querySelector('.quickwrap'); if(!w) return; if(!hasWords) w.dataset.peek=''; w.classList.toggle('folded', !qrOpen || (hasWords && !w.dataset.peek)); }
-function peekQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; qrOpen=true; try{ localStorage.setItem('msgQrOpen','1'); }catch(e){} const bx=document.getElementById('box'); w.dataset.peek = bx&&bx.value.trim() ? '1' : ''; w.classList.remove('folded'); }
-function closeQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; qrOpen=false; try{ localStorage.setItem('msgQrOpen','0'); }catch(e){} w.dataset.peek=''; w.classList.add('folded'); }
+function foldQuick(hasWords){ const w=document.querySelector('.quickwrap'); if(!w) return; if(!hasWords) w.dataset.peek=''; w.classList.toggle('folded', !qrOpen || (hasWords && !w.dataset.peek)); syncQrTab(); }
+function peekQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; qrOpen=true; try{ localStorage.setItem('msgQrOpen','1'); }catch(e){} const bx=document.getElementById('box'); w.dataset.peek = bx&&bx.value.trim() ? '1' : ''; w.classList.remove('folded'); syncQrTab(); }
+function toggleQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; if(w.classList.contains('folded')) peekQuick(); else closeQuick(); }
+function syncQrTab(){ const w=document.querySelector('.quickwrap'); const t=document.querySelector('.qrtab'); if(!w||!t) return; const open=!w.classList.contains('folded'); t.textContent=`Quick replies ${open?'▾':'▸'}`; t.classList.toggle('on', open); }
+function closeQuick(){ const w=document.querySelector('.quickwrap'); if(!w) return; qrOpen=false; try{ localStorage.setItem('msgQrOpen','0'); }catch(e){} w.dataset.peek=''; w.classList.add('folded'); syncQrTab(); }
 function countBox(el){ if(!el.value.trim()) qrStepInBox=null; foldQuick(el.value.trim().length>0); const n=document.getElementById('pvcount'); if(!n) return; const L=el.value.length; n.textContent = L? `${L} characters · ${Math.max(1,Math.ceil(L/160))} text${L>160?'s':''}` : ''; }
 // The send window's To line (v1.79, the owner's go): the contact's email or number, with a press to set it, writing to the contact's
 // record, the same place Who is this? writes. A change is to the contact, not to this one message; the thread records it.
