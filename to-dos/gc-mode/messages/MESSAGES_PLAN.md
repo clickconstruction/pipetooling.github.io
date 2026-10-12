@@ -402,7 +402,9 @@ land before the prototype builds pieces 1 to 3 above, since they change what a s
    first, a company once per job in the per-job lane, off the flow a folded last column; a press opens the
    thread with the panel open on that step. It lives at the top of Trade partners and of Customers (the pick,
    B: a flow is per kind and so are those pages), never as a tab of Follow up (one queue, one count) nor a
-   Flows tab of its own (a fourth place). The Messages list gains a *by step ▾* chip beside All · Customers ·
+   Flows tab of its own (a fourth place). Since v1.108 it is one row per step with chips that wrap, not columns,
+   so a name reads once and nothing is cut (`by-step-mockups.html` A), and the List tab is one row per company
+   with the Once lane as a track (B). The Messages list gains a *by step ▾* chip beside All · Customers ·
    Trades.
 3. **Their own view of it** (piece 8, v1.95). The trade's portal gets a first page, *Where you are with Click
    Construction*: the same list read from their side, their-move steps the only buttons (upload, sign, enter
@@ -662,6 +664,11 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.108, 2026-10-11**: Everyone by step is `by-step-mockups.html` A, one row per step with the people as chips that
+  wrap, each the whole company, the job and the day, late first and tinted, the lanes named, off the flow folded as the
+  last row; the List tab is B, By company: one row per company with the Once lane as a track, the step on now in
+  words and one line per job. Customers has Threads · By step · By company. The column board went. The Messages
+  list's by-step picker sits on top of everything instead of under the list's edge (the owner, 2026-10-11).
 - **v1.107, 2026-10-11**: `by-step-mockups.html`, three shapes for Everyone by step that say a name once and cut
   nothing (the owner: no duplicate names, no hidden information): A one row per step with the people as chips that
   wrap, B one row per company with the Once lane as a track, C the columns one lane at a time; the pick is A with B
