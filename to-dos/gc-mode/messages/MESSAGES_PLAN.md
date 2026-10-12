@@ -846,6 +846,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.180, 2026-10-12**: two more from the lift: a decision of ours never offers the customer's yes and no on their
+  page's Your move; a trade's page lists a job only once we have asked them on it, so a bid they are not asked on
+  never shows our pipeline (helper 8).
 - **v1.179, 2026-10-12**: two bugs the helpers found while lifting: a decision step that is our move drew the
   customer's Accept and Not this time on the trade's page (Bill on Compared), now only when it is their move; a
   portal write set a state no contact has, so Needs you never showed it, now waiting (helpers 8 and 2).
