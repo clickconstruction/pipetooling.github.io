@@ -11,13 +11,19 @@ SET lock_timeout = '3s';
 --     the boards; skip_one_job is the customer's master agreement; owed_words is Follow up's We owe them.
 --   * flow_step_history and flow_removed_steps: every edit with its person and day, and the removed steps with Put it
 --     back. flow_fact_wishes: Ask for a fact that is missing.
---   * contact_step_notes, contact_step_skips: a team note on a step, and a step skipped for one person with a reason.
---     nudge_holds, nudge_sent: Hold until a day, and what was sent for a step, so a reminder never doubles. Each names
---     its job the spine's way (bid_id, project_id or jobs_ledger_id, at most one; none on the Once lane).
+--   * contact_step_skips: a step skipped for one person with a reason. nudge_holds, nudge_sent: Hold until a day, and
+--     what was sent for a step, so a reminder never doubles. Each names its job the spine's way (bid_id, project_id or
+--     jobs_ledger_id, at most one; none on the Once lane). A step's team note is a line of the thread: messages gains
+--     step_id, and a signed-in user may write a team note of their own and nothing else.
+--   * The presses, SECURITY INVOKER so training mode and a twin change nothing: flow_add_note, flow_skip_step,
+--     flow_unskip_step, nudge_hold_until, nudge_let_go, nudge_record_sent, contact_set_off, contact_put_back_on.
+--   * flow_rows(contact): the rows the flow reads (src/lib/flows/load.ts's FlowRows), for the office. SECURITY DEFINER,
+--     since the facts sit behind other doors (the Portal's, the money's): it returns days and marks, never an amount or
+--     a token, and a trade partner's page as its preview path.
 --   * Four facts main did not keep: gc_trade_portal_links.first_opened_at, gc_invites.lost_on, gc_projects.won_on and
 --     gc_owner_pay_apps.paid_on. Nothing writes them yet; their writers come with cut 4's screens.
 --   * contacts.off_*: the spine's columns (20261012010000); the office may now update them (Off the flow).
---   * contacts_fold_flows(): the spine's contacts_fold runs it, so a person's notes, skips, holds and sends follow them
+--   * contacts_fold_flows(): the spine's contacts_fold runs it, so a person's skips, holds and sends follow them
 --     when two contacts become one. contacts_fold itself is never redefined.
 --   * flows_seed() seeds the four flows from SEED_FLOWS, only for a kind that has no flow yet, so a second run changes
 --     nothing and never brings back a step the office removed.
@@ -179,25 +185,28 @@ COMMENT ON TABLE public.flow_fact_wishes IS
 
 -- ---------- what the office did to one person's place ----------
 
-CREATE TABLE IF NOT EXISTS public.contact_step_notes (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  contact_id uuid NOT NULL REFERENCES public.contacts(id) ON DELETE CASCADE,
-  step_key text NOT NULL,
-  bid_id uuid REFERENCES public.bids(id) ON DELETE CASCADE,
-  project_id uuid REFERENCES public.gc_projects(project_id) ON DELETE CASCADE,
-  jobs_ledger_id uuid REFERENCES public.jobs_ledger(id) ON DELETE CASCADE,
-  note text NOT NULL
-    CONSTRAINT contact_step_notes_note_said CHECK (length(btrim(note)) BETWEEN 1 AND 2000),
-  by_user_id uuid DEFAULT auth.uid() REFERENCES public.users(id) ON DELETE SET NULL,
-  by_name text NOT NULL DEFAULT '',
-  created_at timestamptz NOT NULL DEFAULT clock_timestamp(),
-  CONSTRAINT contact_step_notes_one_job CHECK (num_nonnulls(bid_id, project_id, jobs_ledger_id) <= 1)
-);
+-- A step's team note is a line of the thread (messages, channel note, direction team), with the step it is on. No
+-- foreign key: a removed step keeps its notes, and a step's id outlives an edit.
+ALTER TABLE public.messages ADD COLUMN IF NOT EXISTS step_id text;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'messages_step_on_team_lines' AND conrelid = 'public.messages'::regclass) THEN
+    ALTER TABLE public.messages ADD CONSTRAINT messages_step_on_team_lines
+      CHECK (step_id IS NULL OR (direction = 'team' AND step_id ~ '^[a-z][a-z0-9_]{0,39}$'));
+  END IF;
+END
+$$;
+COMMENT ON COLUMN public.messages.step_id IS
+  'Messages (cut 4): the flow step a team note or an event is on (flow_steps.step_key); the step card shows the notes. No foreign key: a removed step keeps its notes.';
+CREATE INDEX IF NOT EXISTS messages_step_idx ON public.messages (contact_id, step_id) WHERE step_id IS NOT NULL;
 
-COMMENT ON TABLE public.contact_step_notes IS
-  'Messages (cut 4): a team note on one person''s step (the step card''s notes), on a job or, with none, on the Once lane. Append only.';
-
-CREATE INDEX IF NOT EXISTS contact_step_notes_contact_idx ON public.contact_step_notes (contact_id, step_key, created_at);
+-- A signed-in user writes a team note of their own and no other line: calls, texts and emails arrive as the service
+-- role. The office's policy stays the spine's; this one narrows what a client may insert.
+DROP POLICY IF EXISTS messages_client_writes_own_team_notes ON public.messages;
+CREATE POLICY messages_client_writes_own_team_notes ON public.messages AS RESTRICTIVE FOR INSERT TO authenticated
+  WITH CHECK (channel = 'note' AND direction = 'team' AND who_user_id = (SELECT auth.uid()));
+GRANT INSERT (contact_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, body, step_id)
+  ON TABLE public.messages TO authenticated;
 
 CREATE TABLE IF NOT EXISTS public.contact_step_skips (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -303,7 +312,7 @@ CREATE TRIGGER flow_removed_steps_put_back_by BEFORE UPDATE OF put_back_at ON pu
 
 -- When two contacts become one (Who is this?, a customer merge), the spine's contacts_fold runs every
 -- contacts_fold_<something>(uuid, uuid) before the folded contact goes, which would cascade these rows away. This one moves
--- the notes, skips, holds and sends onto the contact that stays. A step skipped or held on both keeps the survivor's;
+-- the skips, holds and sends onto the contact that stays (the spine moves the notes, which are messages). A step skipped or held on both keeps the survivor's;
 -- the other's is lifted as the fold's, so one stands. Runs as the caller, so training mode and a twin change nothing.
 CREATE OR REPLACE FUNCTION public.contacts_fold_flows(p_from uuid, p_into uuid)
 RETURNS void
@@ -329,7 +338,6 @@ BEGIN
       WHERE t.contact_id = p_into AND t.released_at IS NULL AND t.step_key = f.step_key
         AND t.bid_id IS NOT DISTINCT FROM f.bid_id AND t.project_id IS NOT DISTINCT FROM f.project_id
         AND t.jobs_ledger_id IS NOT DISTINCT FROM f.jobs_ledger_id);
-  UPDATE public.contact_step_notes SET contact_id = p_into WHERE contact_id = p_from;
   UPDATE public.contact_step_skips SET contact_id = p_into WHERE contact_id = p_from;
   UPDATE public.nudge_holds SET contact_id = p_into WHERE contact_id = p_from;
   UPDATE public.nudge_sent SET contact_id = p_into WHERE contact_id = p_from;
@@ -337,7 +345,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.contacts_fold_flows(uuid, uuid) IS
-  'Messages (cut 4): run by the spine''s contacts_fold before the folded contact goes; moves its step notes, skips, holds and sent nudges onto the contact that stays, lifting a skip or a hold both had. SECURITY INVOKER.';
+  'Messages (cut 4): run by the spine''s contacts_fold before the folded contact goes; moves its step skips, holds and sent nudges onto the contact that stays (its notes are messages, which the spine moves), lifting a skip or a hold both had. SECURITY INVOKER.';
 
 REVOKE EXECUTE ON FUNCTION public.contacts_fold_flows(uuid, uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.contacts_fold_flows(uuid, uuid) TO authenticated, service_role;
@@ -437,7 +445,6 @@ ALTER TABLE public.flow_steps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.flow_step_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.flow_removed_steps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.flow_fact_wishes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.contact_step_notes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.contact_step_skips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.nudge_holds ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.nudge_sent ENABLE ROW LEVEL SECURITY;
@@ -449,7 +456,7 @@ DECLARE
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'flows', 'flow_steps', 'flow_step_history', 'flow_removed_steps', 'flow_fact_wishes',
-    'contact_step_notes', 'contact_step_skips', 'nudge_holds', 'nudge_sent'
+    'contact_step_skips', 'nudge_holds', 'nudge_sent'
   ] LOOP
     EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', t || '_team', t);
     EXECUTE format('CREATE POLICY %I ON public.%I FOR ALL TO authenticated USING ((SELECT public.gc_office_team())) WITH CHECK ((SELECT public.gc_office_team()))', t || '_team', t);
@@ -473,7 +480,6 @@ GRANT INSERT (flow_id, step_key, what, before, after, by_name) ON TABLE public.f
 GRANT INSERT (flow_id, step_key, lane, step, removed_by_name) ON TABLE public.flow_removed_steps TO authenticated;
 GRANT UPDATE (put_back_at) ON TABLE public.flow_removed_steps TO authenticated;
 GRANT INSERT (flow_id, step_key, text, by_name) ON TABLE public.flow_fact_wishes TO authenticated;
-GRANT INSERT (contact_id, step_key, bid_id, project_id, jobs_ledger_id, note, by_name) ON TABLE public.contact_step_notes TO authenticated;
 GRANT INSERT (contact_id, step_key, bid_id, project_id, jobs_ledger_id, why, by_name) ON TABLE public.contact_step_skips TO authenticated;
 GRANT UPDATE (undone_at) ON TABLE public.contact_step_skips TO authenticated;
 GRANT INSERT (contact_id, step_key, bid_id, project_id, jobs_ledger_id, until_on, by_name) ON TABLE public.nudge_holds TO authenticated;
@@ -482,10 +488,377 @@ GRANT UPDATE (released_at) ON TABLE public.nudge_holds TO authenticated;
 GRANT INSERT (contact_id, step_key, bid_id, project_id, jobs_ledger_id, round_key, how, sent_by, message_id) ON TABLE public.nudge_sent TO authenticated;
 
 -- A fold re-points a person's rows (contacts_fold_flows runs as the caller).
-GRANT UPDATE (contact_id) ON TABLE public.contact_step_notes, public.contact_step_skips, public.nudge_holds, public.nudge_sent TO authenticated;
+GRANT UPDATE (contact_id) ON TABLE public.contact_step_skips, public.nudge_holds, public.nudge_sent TO authenticated;
 
 -- Off the flow (the spine's columns): the office's word on a person, kept beside the contact.
 GRANT UPDATE (off_since, off_why, off_by) ON TABLE public.contacts TO authenticated;
+
+-- ---------- the presses on a person's place ----------
+
+-- The step must be on the person's flow (their kind's), else 'stepUnknown'. Read as the caller: nobody outside the
+-- office finds a step.
+CREATE OR REPLACE FUNCTION public.flow_step_check(p_contact uuid, p_step text)
+RETURNS void
+LANGUAGE plpgsql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM public.contacts c
+    JOIN public.flows f ON f.kind = c.kind
+    JOIN public.flow_steps s ON s.flow_id = f.id AND s.step_key = p_step
+    WHERE c.id = p_contact
+  ) THEN
+    RAISE EXCEPTION 'stepUnknown' USING ERRCODE = 'P0001', DETAIL = 'That step is not on this person''s flow.';
+  END IF;
+END;
+$$;
+
+-- The signed-in user's name, as a row's by_name shows it.
+CREATE OR REPLACE FUNCTION public.flows_my_name()
+RETURNS text
+LANGUAGE sql
+STABLE
+SECURITY INVOKER
+SET search_path = public
+AS $$
+  SELECT coalesce((SELECT btrim(name) FROM public.users WHERE id = auth.uid()), '')
+$$;
+
+-- Add a note: a team line in their thread on the step, on a job or on the person.
+CREATE OR REPLACE FUNCTION public.flow_add_note(p_contact uuid, p_step text, p_job_kind text, p_job_id uuid, p_note text)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_bid uuid := CASE WHEN p_job_kind = 'bid' THEN p_job_id END;
+  v_project uuid := CASE WHEN p_job_kind = 'project' THEN p_job_id END;
+  v_pipeline uuid := CASE WHEN p_job_kind = 'pipeline' THEN p_job_id END;
+  v_id uuid;
+  v_note text := btrim(coalesce(p_note, ''));
+BEGIN
+  IF v_note = '' OR length(v_note) > 2000 THEN
+    RAISE EXCEPTION 'noteEmpty' USING ERRCODE = 'P0001', DETAIL = 'A note says something, in 2,000 letters or fewer.';
+  END IF;
+  PERFORM public.contact_job_check(p_job_kind, p_job_id);
+  PERFORM public.flow_step_check(p_contact, p_step);
+  INSERT INTO public.messages (contact_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, body, step_id)
+  VALUES (p_contact,
+    v_bid, v_project, v_pipeline,
+    'note', 'team', auth.uid(), v_note, p_step)
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+-- Skip a step for one person, with the reason; 'alreadySkipped' when one stands.
+CREATE OR REPLACE FUNCTION public.flow_skip_step(p_contact uuid, p_step text, p_job_kind text, p_job_id uuid, p_why text)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_bid uuid := CASE WHEN p_job_kind = 'bid' THEN p_job_id END;
+  v_project uuid := CASE WHEN p_job_kind = 'project' THEN p_job_id END;
+  v_pipeline uuid := CASE WHEN p_job_kind = 'pipeline' THEN p_job_id END;
+  v_id uuid;
+  v_why text := btrim(coalesce(p_why, ''));
+BEGIN
+  IF v_why = '' OR length(v_why) > 500 THEN
+    RAISE EXCEPTION 'whyEmpty' USING ERRCODE = 'P0001', DETAIL = 'Say why the step is skipped for them.';
+  END IF;
+  PERFORM public.contact_job_check(p_job_kind, p_job_id);
+  PERFORM public.flow_step_check(p_contact, p_step);
+  IF EXISTS (
+    SELECT 1 FROM public.contact_step_skips
+    WHERE contact_id = p_contact AND step_key = p_step AND undone_at IS NULL
+      AND bid_id IS NOT DISTINCT FROM v_bid AND project_id IS NOT DISTINCT FROM v_project
+      AND jobs_ledger_id IS NOT DISTINCT FROM v_pipeline
+  ) THEN
+    RAISE EXCEPTION 'alreadySkipped' USING ERRCODE = 'P0001';
+  END IF;
+  INSERT INTO public.contact_step_skips (contact_id, step_key, bid_id, project_id, jobs_ledger_id, why, by_name)
+  VALUES (p_contact, p_step,
+    v_bid, v_project, v_pipeline,
+    v_why, public.flows_my_name())
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+-- Put a skipped step back on: the skip is undone, stamped with who.
+CREATE OR REPLACE FUNCTION public.flow_unskip_step(p_skip uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.contact_step_skips SET undone_at = clock_timestamp() WHERE id = p_skip AND undone_at IS NULL;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001';
+  END IF;
+END;
+$$;
+
+-- Hold a step's reminder until a day after today; a hold already standing is let go first.
+CREATE OR REPLACE FUNCTION public.nudge_hold_until(p_contact uuid, p_step text, p_job_kind text, p_job_id uuid, p_until date)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_bid uuid := CASE WHEN p_job_kind = 'bid' THEN p_job_id END;
+  v_project uuid := CASE WHEN p_job_kind = 'project' THEN p_job_id END;
+  v_pipeline uuid := CASE WHEN p_job_kind = 'pipeline' THEN p_job_id END;
+  v_id uuid;
+BEGIN
+  IF p_until IS NULL OR p_until <= public.app_today() THEN
+    RAISE EXCEPTION 'dayPassed' USING ERRCODE = 'P0001', DETAIL = 'Hold until a day after today.';
+  END IF;
+  PERFORM public.contact_job_check(p_job_kind, p_job_id);
+  PERFORM public.flow_step_check(p_contact, p_step);
+  UPDATE public.nudge_holds SET released_at = clock_timestamp()
+  WHERE contact_id = p_contact AND step_key = p_step AND released_at IS NULL
+    AND bid_id IS NOT DISTINCT FROM v_bid AND project_id IS NOT DISTINCT FROM v_project
+    AND jobs_ledger_id IS NOT DISTINCT FROM v_pipeline;
+  INSERT INTO public.nudge_holds (contact_id, step_key, bid_id, project_id, jobs_ledger_id, until_on, by_name)
+  VALUES (p_contact, p_step,
+    v_bid, v_project, v_pipeline,
+    p_until, public.flows_my_name())
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+-- Let a hold go before its day.
+CREATE OR REPLACE FUNCTION public.nudge_let_go(p_hold uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.nudge_holds SET released_at = clock_timestamp() WHERE id = p_hold AND released_at IS NULL;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001';
+  END IF;
+END;
+$$;
+
+-- What a person sent for a step (Remind now), so the app never sends a second reminder on top of it.
+CREATE OR REPLACE FUNCTION public.nudge_record_sent(p_contact uuid, p_step text, p_job_kind text, p_job_id uuid, p_round text, p_how text, p_message uuid)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_bid uuid := CASE WHEN p_job_kind = 'bid' THEN p_job_id END;
+  v_project uuid := CASE WHEN p_job_kind = 'project' THEN p_job_id END;
+  v_pipeline uuid := CASE WHEN p_job_kind = 'pipeline' THEN p_job_id END;
+  v_id uuid;
+BEGIN
+  IF p_how IS NULL OR p_how NOT IN ('text', 'call', 'email') THEN
+    RAISE EXCEPTION 'howUnknown' USING ERRCODE = 'P0001', DETAIL = 'A reminder goes as a text, a call or an email.';
+  END IF;
+  PERFORM public.contact_job_check(p_job_kind, p_job_id);
+  PERFORM public.flow_step_check(p_contact, p_step);
+  INSERT INTO public.nudge_sent (contact_id, step_key, bid_id, project_id, jobs_ledger_id, round_key, how, sent_by, message_id)
+  VALUES (p_contact, p_step,
+    v_bid, v_project, v_pipeline,
+    nullif(btrim(coalesce(p_round, '')), ''), p_how, 'person', p_message)
+  RETURNING id INTO v_id;
+  RETURN v_id;
+END;
+$$;
+
+-- Take a person off the flow, with why: the office's word, from today, with who.
+CREATE OR REPLACE FUNCTION public.contact_set_off(p_contact uuid, p_why text)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_why text := btrim(coalesce(p_why, ''));
+BEGIN
+  IF v_why = '' OR length(v_why) > 500 THEN
+    RAISE EXCEPTION 'whyEmpty' USING ERRCODE = 'P0001', DETAIL = 'Say why they come off the flow.';
+  END IF;
+  UPDATE public.contacts SET off_since = public.app_today(), off_why = v_why, off_by = auth.uid() WHERE id = p_contact;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001';
+  END IF;
+END;
+$$;
+
+-- Put them back on the flow.
+CREATE OR REPLACE FUNCTION public.contact_put_back_on(p_contact uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE public.contacts SET off_since = NULL, off_why = NULL, off_by = NULL WHERE id = p_contact AND off_since IS NOT NULL;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001';
+  END IF;
+END;
+$$;
+
+-- ---------- what the flow reads, for the office ----------
+
+-- One person's rows as src/lib/flows/load.ts's FlowRows: their contact and jobs, and for their kind the asks, papers,
+-- draws, pay applications, change orders, plans, questions and submittals the flow reads. Definer, since those rows sit
+-- behind other doors (the Portal's, the money's), and gated on the office team. Days and marks only: no amount, no
+-- price, no token. A trade partner's page comes as its preview path. 'notAllowed' outside the office; 'notFound' for no
+-- such contact.
+CREATE OR REPLACE FUNCTION public.flow_rows(p_contact uuid)
+RETURNS jsonb
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  c public.contacts;
+  v_company uuid;
+  v_customer uuid;
+  v_projects uuid[];
+  v_invites uuid[];
+  v_sows uuid[];
+BEGIN
+  IF NOT public.gc_office_team() THEN
+    RAISE EXCEPTION 'notAllowed' USING ERRCODE = '42501';
+  END IF;
+  SELECT * INTO c FROM public.contacts WHERE id = p_contact;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'notFound' USING ERRCODE = 'P0001';
+  END IF;
+  v_company := coalesce(c.gc_company_id, (SELECT company_id FROM public.gc_company_people WHERE id = c.gc_company_person_id));
+  v_customer := coalesce(c.customer_id, (SELECT customer_id FROM public.customer_contact_persons WHERE id = c.customer_contact_person_id));
+  v_invites := CASE WHEN c.kind = 'trade' THEN ARRAY(SELECT id FROM public.gc_invites WHERE company_id = v_company) ELSE '{}'::uuid[] END;
+  v_sows := CASE WHEN c.kind = 'trade' THEN ARRAY(SELECT id FROM public.gc_sows WHERE company_id = v_company) ELSE '{}'::uuid[] END;
+  -- Their GC jobs: the ones the office tied them to, and the ones their kind's facts put them on.
+  v_projects := ARRAY(
+    SELECT DISTINCT x.pid FROM (
+      SELECT j.project_id AS pid FROM public.contact_jobs j WHERE j.contact_id = p_contact
+      UNION ALL
+      SELECT p.project_id FROM public.gc_trade_packages p JOIN public.gc_invites i ON i.package_id = p.id WHERE i.id = ANY (v_invites)
+      UNION ALL
+      SELECT g.project_id FROM public.gc_projects g JOIN public.projects pr ON pr.id = g.project_id
+      WHERE c.kind = 'customer' AND pr.customer_id = v_customer
+      UNION ALL
+      SELECT g.project_id FROM public.gc_projects g WHERE c.kind = 'arch' AND g.architect_customer_id = v_customer
+    ) x WHERE x.pid IS NOT NULL);
+  RETURN jsonb_build_object(
+    'contact', jsonb_build_object('id', c.id, 'kind', c.kind, 'off_since', c.off_since, 'off_why', c.off_why, 'off_by', c.off_by),
+    'contactJobs', coalesce((SELECT jsonb_agg(jsonb_build_object('project_id', j.project_id, 'is_default', j.is_default))
+      FROM public.contact_jobs j WHERE j.contact_id = p_contact AND j.project_id IS NOT NULL), '[]'::jsonb),
+    'userNames', coalesce((SELECT jsonb_object_agg(u.id, split_part(btrim(u.name), ' ', 1)) FROM public.users u
+      WHERE u.role IN ('dev', 'master_technician', 'assistant', 'controller', 'estimator') AND coalesce(btrim(u.name), '') <> ''), '{}'::jsonb),
+    'company', (SELECT jsonb_build_object('id', g.id, 'portal_opened_on', g.portal_opened_on) FROM public.gc_companies g WHERE g.id = v_company AND c.kind = 'trade'),
+    'portalLinks', coalesce((SELECT jsonb_agg(jsonb_build_object('company_id', l.company_id, 'revoked_at', l.revoked_at, 'first_opened_at', l.first_opened_at))
+      FROM public.gc_trade_portal_links l WHERE l.company_id = v_company AND c.kind = 'trade'), '[]'::jsonb),
+    'previewPath', (SELECT '/t/' || l.token FROM public.gc_trade_portal_links l
+      WHERE l.company_id = v_company AND c.kind = 'trade' AND l.revoked_at IS NULL AND l.token IS NOT NULL ORDER BY l.created_at DESC LIMIT 1),
+    'tradeMessages', coalesce((SELECT jsonb_agg(jsonb_build_object('company_id', m.company_id, 'kind', m.kind, 'sent_on', m.sent_on, 'sent_by', m.sent_by))
+      FROM public.gc_trade_messages m WHERE m.company_id = v_company AND c.kind = 'trade' AND m.kind = 'invite'), '[]'::jsonb),
+    'papers', coalesce((SELECT jsonb_agg(jsonb_build_object('id', d.id, 'company_id', d.company_id, 'doc_type', d.doc_type, 'status', d.status,
+        'sent_at', d.sent_at, 'signed_at', d.signed_at, 'expires_at', d.expires_at, 'created_at', d.created_at))
+      FROM public.person_contract_documents d WHERE d.company_id = v_company AND c.kind = 'trade'), '[]'::jsonb),
+    'paperSends', coalesce((SELECT jsonb_agg(jsonb_build_object('paper', s.paper, 'project_id', s.project_id, 'sent_on', s.sent_on, 'created_at', s.created_at))
+      FROM public.gc_paper_sends s WHERE s.company_id = v_company AND c.kind = 'trade'), '[]'::jsonb),
+    'invites', coalesce((SELECT jsonb_agg(jsonb_build_object('id', i.id, 'company_id', i.company_id, 'package_id', i.package_id, 'invited_on', i.invited_on,
+        'status', i.status, 'declined_on', i.declined_on, 'lost_on', i.lost_on))
+      FROM public.gc_invites i WHERE i.id = ANY (v_invites)), '[]'::jsonb),
+    'packages', coalesce((SELECT jsonb_agg(jsonb_build_object('id', p.id, 'project_id', p.project_id, 'trade', p.trade, 'carried_invite_id', p.carried_invite_id,
+        'awarded_invite_id', p.awarded_invite_id, 'awarded_on', p.awarded_on, 'awarded_by', p.awarded_by))
+      FROM public.gc_trade_packages p WHERE p.id IN (SELECT package_id FROM public.gc_invites WHERE id = ANY (v_invites))), '[]'::jsonb),
+    'quotes', coalesce((SELECT jsonb_agg(jsonb_build_object('invite_id', q.invite_id, 'submitted_on', q.submitted_on, 'created_at', q.created_at))
+      FROM public.gc_quotes q WHERE q.invite_id = ANY (v_invites)), '[]'::jsonb),
+    'askLines', coalesce((SELECT jsonb_agg(jsonb_build_object('invite_id', l.invite_id, 'promised_by', l.promised_by, 'contacted_on', l.contacted_on, 'created_at', l.created_at))
+      FROM public.gc_company_contacts l WHERE l.invite_id = ANY (v_invites) AND l.promised_by IS NOT NULL), '[]'::jsonb),
+    'sows', coalesce((SELECT jsonb_agg(jsonb_build_object('id', s.id, 'invite_id', s.invite_id, 'package_id', s.package_id, 'sent_on', s.sent_on, 'signed_on', s.signed_on))
+      FROM public.gc_sows s WHERE s.id = ANY (v_sows)), '[]'::jsonb),
+    'draws', coalesce((SELECT jsonb_agg(jsonb_build_object('id', d.id, 'sow_id', d.sow_id, 'number', d.number, 'requested_on', d.requested_on,
+        'approved_on', d.approved_on, 'paid_on', d.paid_on, 'final', d.final, 'waiver', d.waiver, 'waiver_on', d.waiver_on))
+      FROM public.gc_draws d WHERE d.sow_id = ANY (v_sows)), '[]'::jsonb),
+    'tradeFiles', coalesce((SELECT jsonb_agg(jsonb_build_object('company_id', f.company_id, 'project_id', f.project_id, 'paper', f.paper, 'uploaded_at', f.uploaded_at))
+      FROM public.gc_trade_files f WHERE f.company_id = v_company AND c.kind = 'trade' AND f.paper IS NOT NULL), '[]'::jsonb),
+    'projects', coalesce((SELECT jsonb_agg(jsonb_build_object('project_id', g.project_id, 'stage', g.stage, 'created_at', g.created_at, 'bid_due', g.bid_due,
+        'our_bid_sent_on', g.our_bid_sent_on, 'won_on', g.won_on, 'lost_on', g.lost_on, 'owner_contract_sent_on', g.owner_contract_sent_on,
+        'owner_contract_signed_on', g.owner_contract_signed_on, 'started_on', g.started_on, 'closed_on', g.closed_on, 'owner_pay_days', g.owner_pay_days))
+      FROM public.gc_projects g WHERE g.project_id = ANY (v_projects)), '[]'::jsonb),
+    'scheduleSends', coalesce((SELECT jsonb_agg(jsonb_build_object('project_id', s.project_id, 'sent_on', s.sent_on, 'sent_by', s.sent_by))
+      FROM public.gc_schedule_sends s WHERE s.project_id = ANY (v_projects) AND c.kind = 'customer'), '[]'::jsonb),
+    'payApps', coalesce((SELECT jsonb_agg(jsonb_build_object('id', a.id, 'project_id', a.project_id, 'number', a.number, 'sent_on', a.sent_on,
+        'certified_on', a.certified_on, 'paid_on', a.paid_on,
+        'invoice_paid', coalesce(inv.status = 'paid' OR inv.stripe_invoice_status = 'paid', false)))
+      FROM public.gc_owner_pay_apps a LEFT JOIN public.jobs_ledger_invoices inv ON inv.id = a.invoice_id
+      WHERE a.project_id = ANY (v_projects) AND c.kind IN ('customer', 'arch')), '[]'::jsonb),
+    'acceptances', coalesce((SELECT jsonb_agg(jsonb_build_object('project_id', a.project_id, 'accepted_on', a.accepted_on))
+      FROM public.gc_owner_acceptances a WHERE a.project_id = ANY (v_projects) AND c.kind = 'customer'), '[]'::jsonb),
+    'changeOrders', coalesce((SELECT jsonb_agg(jsonb_build_object('id', o.id, 'project_id', o.project_id, 'number', o.number, 'description', o.description,
+        'status', o.status, 'sent_on', o.sent_on, 'answered_on', o.answered_on))
+      FROM public.gc_change_orders o WHERE o.project_id = ANY (v_projects) AND c.kind = 'customer'), '[]'::jsonb),
+    'planSets', coalesce((SELECT jsonb_agg(jsonb_build_object('id', s.id, 'project_id', s.project_id, 'kind', s.kind, 'label', s.label, 'issued_on', s.issued_on))
+      FROM public.gc_plan_sets s WHERE s.project_id = ANY (v_projects) AND c.kind IN ('customer', 'arch')), '[]'::jsonb),
+    'planSetSends', coalesce((SELECT jsonb_agg(jsonb_build_object('set_id', x.set_id, 'sent_at', x.sent_at))
+      FROM public.gc_plan_set_sends x JOIN public.gc_plan_sets s ON s.id = x.set_id
+      WHERE s.project_id = ANY (v_projects) AND s.kind = 'addendum' AND c.kind = 'arch'), '[]'::jsonb),
+    'planQuestions', coalesce((SELECT jsonb_agg(jsonb_build_object('id', q.id, 'project_id', q.project_id, 'text', q.text,
+        'sent_to_architect_on', q.sent_to_architect_on, 'answered_on', q.answered_on))
+      FROM public.gc_plan_questions q WHERE q.project_id = ANY (v_projects) AND c.kind = 'arch'), '[]'::jsonb),
+    'rfis', coalesce((SELECT jsonb_agg(jsonb_build_object('id', r.id, 'project_id', r.project_id, 'number', r.number, 'question', r.question,
+        'sent_to_architect_on', r.sent_to_architect_on, 'answered_on', r.answered_on, 'needed_days', r.needed_days))
+      FROM public.gc_rfis r WHERE r.project_id = ANY (v_projects) AND c.kind = 'arch'), '[]'::jsonb),
+    'submittalRounds', coalesce((SELECT jsonb_agg(jsonb_build_object('id', r.id, 'project_id', s.project_id, 'name', s.title, 'round', r.round,
+        'to_architect_on', r.to_architect_on, 'sent_on', r.sent_on, 'answered_on', r.answered_on))
+      FROM public.gc_submittal_rounds r JOIN public.gc_submittals s ON s.id = r.submittal_id
+      WHERE s.project_id = ANY (v_projects) AND c.kind = 'arch'), '[]'::jsonb),
+    'skips', coalesce((SELECT jsonb_agg(jsonb_build_object('id', k.id, 'step_key', k.step_key, 'project_id', k.project_id, 'why', k.why,
+        'by_name', k.by_name, 'created_at', k.created_at, 'undone_at', k.undone_at))
+      FROM public.contact_step_skips k WHERE k.contact_id = p_contact AND k.undone_at IS NULL), '[]'::jsonb),
+    'architectByProject', coalesce((SELECT jsonb_object_agg(g.project_id, a.id) FROM public.gc_projects g
+      JOIN LATERAL (
+        SELECT ct.id FROM public.contacts ct
+        LEFT JOIN public.customer_contact_persons cp ON cp.id = ct.customer_contact_person_id
+        WHERE ct.kind = 'arch' AND (ct.customer_id = g.architect_customer_id OR cp.customer_id = g.architect_customer_id)
+        ORDER BY ct.customer_id IS NULL, ct.created_at LIMIT 1
+      ) a ON true
+      WHERE g.project_id = ANY (v_projects) AND c.kind = 'customer' AND g.architect_customer_id IS NOT NULL), '{}'::jsonb)
+  );
+END;
+$$;
+
+COMMENT ON FUNCTION public.flow_rows(uuid) IS
+  'Messages (cut 4): one person''s rows as src/lib/flows/load.ts FlowRows, for the office team (gc_office_team()). SECURITY DEFINER over the Portal''s and the money''s doors: days and marks only, never an amount, a price or a token; a trade partner''s page as its preview path.';
+
+DO $$
+DECLARE
+  f text;
+BEGIN
+  FOREACH f IN ARRAY ARRAY[
+    'public.flow_step_check(uuid, text)', 'public.flows_my_name()',
+    'public.flow_add_note(uuid, text, text, uuid, text)', 'public.flow_skip_step(uuid, text, text, uuid, text)',
+    'public.flow_unskip_step(uuid)', 'public.nudge_hold_until(uuid, text, text, uuid, date)', 'public.nudge_let_go(uuid)',
+    'public.nudge_record_sent(uuid, text, text, uuid, text, text, uuid)', 'public.contact_set_off(uuid, text)',
+    'public.contact_put_back_on(uuid)', 'public.flow_rows(uuid)'
+  ] LOOP
+    EXECUTE format('REVOKE EXECUTE ON FUNCTION %s FROM PUBLIC, anon', f);
+    EXECUTE format('GRANT EXECUTE ON FUNCTION %s TO authenticated, service_role', f);
+  END LOOP;
+END
+$$;
 
 -- House rules: read-only training mode and the twin write fence cover every new table.
 SELECT public.apply_read_only_write_blocks();

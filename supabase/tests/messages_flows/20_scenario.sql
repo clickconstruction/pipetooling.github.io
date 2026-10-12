@@ -1,6 +1,7 @@
 -- Messages, cut 4, the flow suite (migration *_messages_flows): the four flows read back step by step as SEED_FLOWS
 -- draws them (src/lib/flows/seed.ts); a second seed adds nothing and brings back no step the office removed; a fold of
--- two contacts moves a person's notes, skips, holds and sends onto the one that stays; the
+-- two contacts moves a person's notes, skips, holds and sends onto the one that stays; the presses write as the
+-- caller and flow_rows reads days and marks for the office only; the
 -- CHECKs refuse an unknown fact or paper, a loop that does not say when it ends, half a nudge and an unknown lane; only
 -- the office team reads and writes; who undid a skip, let go of a hold, put a step back or sent a nudge is the table's
 -- to stamp; training mode and a digital twin change nothing; and the four new facts' columns are there. Presses run as
@@ -33,7 +34,14 @@ INSERT INTO public.gc_projects (project_id, stage) VALUES ('00000000-0000-0000-0
 INSERT INTO public.contacts (id, kind) VALUES
   ('00000000-0000-0000-0000-000000006001', 'unknown'),
   ('00000000-0000-0000-0000-000000006002', 'unknown'),
-  ('00000000-0000-0000-0000-000000006003', 'unknown');
+  ('00000000-0000-0000-0000-000000006003', 'unknown'),
+  ('00000000-0000-0000-0000-000000006004', 'unknown');
+INSERT INTO public.gc_companies (id, name, contact_name, phone, email, portal_opened_on) VALUES
+  ('00000000-0000-0000-0000-0000000006a1', 'Flows Hillside', 'Greg Paulk', '(210) 555-0113', 'greg@hillside.example', '2026-09-09');
+INSERT INTO public.gc_trade_portal_links (company_id, token, first_opened_at) VALUES
+  ('00000000-0000-0000-0000-0000000006a1', 'flows-link-token', '2026-09-08T23:30:00Z');
+INSERT INTO public.contacts (id, kind, gc_company_id) VALUES ('00000000-0000-0000-0000-000000006005', 'trade', '00000000-0000-0000-0000-0000000006a1');
+INSERT INTO public.contact_jobs (contact_id, project_id, is_default) VALUES ('00000000-0000-0000-0000-000000006005', '00000000-0000-0000-0000-0000000006f1', true);
 
 CREATE SCHEMA mfl;
 CREATE FUNCTION mfl.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -130,6 +138,9 @@ RESET ROLE;
 -- 4 · The office edits a step; the CHECKs hold the code lists and the shapes.
 CREATE TEMP TABLE was AS SELECT updated_at FROM public.flow_steps WHERE step_key = 'portal';
 GRANT SELECT ON was TO authenticated;
+-- What the presses returned, to read back.
+CREATE TEMP TABLE pressed (what text, id uuid);
+GRANT ALL ON pressed TO authenticated;
 SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d2');
 SET LOCAL ROLE authenticated;
 SELECT mfl.same('the office reads every flow and step',
@@ -191,19 +202,17 @@ SELECT mfl.refused('one standing hold per person, step and job',
 UPDATE public.nudge_holds SET released_at = now();
 SELECT mfl.same('a hold let go is stamped with who let it go',
   (SELECT concat_ws(',', until_on, released_by_user_id) FROM public.nudge_holds), '2026-10-05,00000000-0000-0000-0000-0000000006d2');
-INSERT INTO public.contact_step_notes (contact_id, step_key, note) VALUES ('00000000-0000-0000-0000-000000006001', 'who', 'Sounds like the broker.');
 INSERT INTO public.nudge_sent (contact_id, step_key, project_id, how, sent_by) VALUES ('00000000-0000-0000-0000-000000006001', 'start', '00000000-0000-0000-0000-0000000006f1', 'text', 'person');
 SELECT mfl.refused('a person cannot say the app sent it',
   $q$INSERT INTO public.nudge_sent (contact_id, step_key, how, sent_by) VALUES ('00000000-0000-0000-0000-000000006001', 'who', 'call', 'app')$q$,
   'nudge_sent_app_has_no_person');
 SELECT mfl.refused('a sent nudge is never changed', $q$UPDATE public.nudge_sent SET how = 'call'$q$, 'permission denied for table nudge_sent');
-SELECT mfl.same('the note and the send carry the estimator',
-  concat_ws('|', (SELECT by_user_id FROM public.contact_step_notes), (SELECT concat_ws(',', sent_by, by_user_id) FROM public.nudge_sent)),
-  '00000000-0000-0000-0000-0000000006d2|person,00000000-0000-0000-0000-0000000006d2');
+SELECT mfl.same('the send carries the estimator',
+  (SELECT concat_ws(',', sent_by, by_user_id) FROM public.nudge_sent), 'person,00000000-0000-0000-0000-0000000006d2');
 UPDATE public.contacts SET off_since = '2026-10-02', off_why = 'A wrong number.', off_by = '00000000-0000-0000-0000-0000000006d2'
   WHERE id = '00000000-0000-0000-0000-000000006001';
 -- 6b · Two contacts become one: the notes, skips, holds and sends follow to the contact that stays.
-INSERT INTO public.contact_step_notes (contact_id, step_key, note) VALUES ('00000000-0000-0000-0000-000000006002', 'who', 'Folded note.');
+SELECT public.flow_add_note('00000000-0000-0000-0000-000000006002', 'who', NULL, NULL, 'Folded note.');
 INSERT INTO public.nudge_holds (contact_id, step_key, until_on) VALUES ('00000000-0000-0000-0000-000000006002', 'who', '2026-10-09');
 INSERT INTO public.contact_step_skips (contact_id, step_key, why) VALUES
   ('00000000-0000-0000-0000-000000006002', 'who', 'The folded one''s skip.'),
@@ -213,24 +222,89 @@ SELECT public.contacts_fold('00000000-0000-0000-0000-000000006002', '00000000-00
 SELECT mfl.same('a fold moves the note, the hold, the skips and the send; a skip both had keeps the survivor''s', (
   SELECT concat_ws('|',
     (SELECT count(*) FROM public.contacts WHERE id = '00000000-0000-0000-0000-000000006002'),
-    (SELECT string_agg(note, ',') FROM public.contact_step_notes WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
+    (SELECT string_agg(body || '@' || step_id, ',') FROM public.messages WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
     (SELECT concat_ws(',', until_on, (released_at IS NULL)::text) FROM public.nudge_holds WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
     (SELECT string_agg(why || ':' || (undone_at IS NULL)::text, ',' ORDER BY why COLLATE "C") FROM public.contact_step_skips WHERE contact_id = '00000000-0000-0000-0000-000000006003'),
     (SELECT count(*) FROM public.nudge_sent WHERE contact_id = '00000000-0000-0000-0000-000000006003'))),
-  '0|Folded note.|2026-10-09,true|The folded one''s skip.:false,The survivor''s skip.:true|1');
+  '0|Folded note.@who|2026-10-09,true|The folded one''s skip.:false,The survivor''s skip.:true|1');
+
+-- 6c · The presses, as the caller: a note, a skip and its undo, a hold and its let go, a reminder sent, off and back on.
+INSERT INTO pressed SELECT 'note', public.flow_add_note('00000000-0000-0000-0000-000000006004', 'who', 'project', '00000000-0000-0000-0000-0000000006f1', 'Sounds like the broker.');
+SELECT mfl.same('a note is a team line on the step, in the writer''s name',
+  (SELECT concat_ws('|', m.channel, m.direction, m.step_id, m.who_user_id, m.body, coalesce(m.project_id::text, 'on the person'))
+   FROM public.messages m JOIN pressed p ON p.id = m.id AND p.what = 'note'),
+  'note|team|who|00000000-0000-0000-0000-0000000006d2|Sounds like the broker.|00000000-0000-0000-0000-0000000006f1');
+SELECT mfl.refused('a note with nothing in it', $q$SELECT public.flow_add_note('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, '  ')$q$, 'noteEmpty');
+SELECT mfl.refused('a note on a step not on their flow', $q$SELECT public.flow_add_note('00000000-0000-0000-0000-000000006004', 'papers', NULL, NULL, 'x')$q$, 'stepUnknown');
+SELECT mfl.refused('a note on a job that is not there', $q$SELECT public.flow_add_note('00000000-0000-0000-0000-000000006004', 'who', 'project', gen_random_uuid(), 'x')$q$, 'job');
+SELECT mfl.refused('a client writes no line but a note of its own',
+  $q$INSERT INTO public.messages (contact_id, channel, direction, who_user_id, body) VALUES ('00000000-0000-0000-0000-000000006004', 'text', 'in', '00000000-0000-0000-0000-0000000006d2', 'A text that never came.')$q$,
+  'row-level security');
+SELECT mfl.refused('nor a note in another''s name',
+  $q$INSERT INTO public.messages (contact_id, channel, direction, who_user_id, body) VALUES ('00000000-0000-0000-0000-000000006004', 'note', 'team', '00000000-0000-0000-0000-0000000006d1', 'Not mine.')$q$,
+  'row-level security');
+INSERT INTO pressed SELECT 'skip', public.flow_skip_step('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, 'A wrong number.');
+SELECT mfl.refused('a second skip of the same step', $q$SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, 'Again.')$q$, 'alreadySkipped');
+SELECT mfl.refused('a skip says why', $q$SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006004', 'who', 'project', '00000000-0000-0000-0000-0000000006f1', '')$q$, 'whyEmpty');
+SELECT public.flow_unskip_step(id) FROM pressed WHERE what = 'skip';
+SELECT mfl.refused('an undone skip is undone once', $q$SELECT public.flow_unskip_step(id) FROM pressed WHERE what = 'skip'$q$, 'notFound');
+INSERT INTO pressed SELECT 'hold', public.nudge_hold_until('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, public.app_today() + 3);
+INSERT INTO pressed SELECT 'hold2', public.nudge_hold_until('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, public.app_today() + 5);
+SELECT mfl.refused('a hold ends after today', $q$SELECT public.nudge_hold_until('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, public.app_today())$q$, 'dayPassed');
+SELECT public.nudge_let_go(id) FROM pressed WHERE what = 'hold2';
+SELECT mfl.refused('a hold let go is let go once', $q$SELECT public.nudge_let_go(id) FROM pressed WHERE what = 'hold2'$q$, 'notFound');
+INSERT INTO pressed SELECT 'sent', public.nudge_record_sent('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, NULL, 'call', NULL);
+SELECT mfl.refused('a reminder goes a known way', $q$SELECT public.nudge_record_sent('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, NULL, 'fax', NULL)$q$, 'howUnknown');
+SELECT mfl.same('the skip undone, the second hold replacing the first and let go, the reminder a person''s', (
+  SELECT concat_ws('|',
+    (SELECT concat_ws(',', why, by_name, undone_by_user_id) FROM public.contact_step_skips k JOIN pressed p ON p.id = k.id),
+    (SELECT string_agg(concat_ws(',', (until_on - public.app_today())::text, (released_at IS NOT NULL)::text, coalesce(released_by_user_id::text, '-')), ' / ' ORDER BY created_at)
+     FROM public.nudge_holds WHERE contact_id = '00000000-0000-0000-0000-000000006004'),
+    (SELECT concat_ws(',', how, sent_by, by_user_id) FROM public.nudge_sent n JOIN pressed p ON p.id = n.id))),
+  'A wrong number.,Flows Estimator,00000000-0000-0000-0000-0000000006d2|3,true,00000000-0000-0000-0000-0000000006d2 / 5,true,00000000-0000-0000-0000-0000000006d2|call,person,00000000-0000-0000-0000-0000000006d2');
+SELECT mfl.refused('off the flow says why', $q$SELECT public.contact_set_off('00000000-0000-0000-0000-000000006004', ' ')$q$, 'whyEmpty');
+SELECT public.contact_set_off('00000000-0000-0000-0000-000000006004', 'A wrong number.');
+SELECT mfl.same('off the flow from today, with who',
+  (SELECT concat_ws('|', (off_since = public.app_today())::text, off_why, off_by) FROM public.contacts WHERE id = '00000000-0000-0000-0000-000000006004'),
+  'true|A wrong number.|00000000-0000-0000-0000-0000000006d2');
+SELECT public.contact_put_back_on('00000000-0000-0000-0000-000000006004');
+SELECT mfl.same('and back on', (SELECT concat_ws('|', coalesce(off_since::text, 'on'), coalesce(off_why, '-')) FROM public.contacts WHERE id = '00000000-0000-0000-0000-000000006004'), 'on|-');
+SELECT mfl.refused('back on once', $q$SELECT public.contact_put_back_on('00000000-0000-0000-0000-000000006004')$q$, 'notFound');
+
+-- 6d · flow_rows: what the flow reads, for the office, days and marks only.
+SELECT mfl.same('a trade partner''s rows: the first visit, the job tied, the page''s preview path, and no token or amount', (
+  SELECT concat_ws('|',
+    r->'contact'->>'kind',
+    r->'company'->>'portal_opened_on',
+    r->'portalLinks'->0->>'first_opened_at',
+    ((r->'portalLinks'->0) ? 'token')::text,
+    r->>'previewPath',
+    r->'projects'->0->>'project_id',
+    r->'projects'->0->>'stage',
+    r->'contactJobs'->0->>'is_default',
+    (r::text ~ '"(token|amount|price|cost|gross|net|budget|due)"')::text)
+  FROM (SELECT public.flow_rows('00000000-0000-0000-0000-000000006005') AS r) x),
+  'trade|2026-09-09|2026-09-08T23:30:00+00:00|false|/t/flows-link-token|00000000-0000-0000-0000-0000000006f1|buyout|true|false');
+SELECT mfl.refused('no such contact', $q$SELECT public.flow_rows(gen_random_uuid())$q$, 'notFound');
 SELECT mfl.same('the office takes a person off the flow',
   (SELECT concat_ws('|', off_since, off_why) FROM public.contacts WHERE id = '00000000-0000-0000-0000-000000006001'), '2026-10-02|A wrong number.');
 RESET ROLE;
 
--- 7 · Training mode and the digital twin change nothing.
+-- 7 · Training mode and the digital twin change nothing; nobody outside the office reads flow_rows.
+SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d4');
+SET LOCAL ROLE authenticated;
+SELECT mfl.refused('a superintendent outside the office reads no flow rows', $q$SELECT public.flow_rows('00000000-0000-0000-0000-000000006005')$q$, 'notAllowed');
+RESET ROLE;
 SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d6');
 SET LOCAL ROLE authenticated;
 SELECT mfl.refused('training mode edits no step', $q$UPDATE public.flow_steps SET usual = 9 WHERE step_key = 'portal'$q$, 'Read-only (training) mode');
+SELECT mfl.refused('training mode adds no note', $q$SELECT public.flow_add_note('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, 'x')$q$, 'Read-only (training) mode');
 SELECT mfl.refused('training mode skips nothing',
   $q$INSERT INTO public.contact_step_skips (contact_id, step_key, why) VALUES ('00000000-0000-0000-0000-000000006001', 'start', 'x')$q$, 'Read-only (training) mode');
 RESET ROLE;
 SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d7');
 SET LOCAL ROLE authenticated;
+SELECT mfl.refused('a twin adds no note', $q$SELECT public.flow_add_note('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, 'x')$q$, 'row-level security');
 SELECT mfl.refused('a twin skips nothing',
   $q$INSERT INTO public.contact_step_skips (contact_id, step_key, why) VALUES ('00000000-0000-0000-0000-000000006001', 'start', 'x')$q$, 'row-level security');
 SELECT mfl.refused('a twin adds no step',
@@ -243,8 +317,7 @@ SELECT mfl.same('every new table carries the office policy and the read-only and
     || ':' || (SELECT count(*) FROM pg_trigger WHERE tgrelid = c.oid AND tgname = 'read_only_block_stmt'), E'\n' ORDER BY c.relname COLLATE "C")
   FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public' AND c.relname IN ('flows', 'flow_steps', 'flow_step_history', 'flow_removed_steps', 'flow_fact_wishes',
-    'contact_step_notes', 'contact_step_skips', 'nudge_holds', 'nudge_sent')),
-  'contact_step_notes:contact_step_notes_team,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
+    'contact_step_skips', 'nudge_holds', 'nudge_sent')),
   'contact_step_skips:contact_step_skips_team,digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
   'flow_fact_wishes:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_fact_wishes_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
   'flow_removed_steps:digital_twin_write_fence_delete,digital_twin_write_fence_insert,digital_twin_write_fence_update,flow_removed_steps_team,read_only_users_cannot_delete,read_only_users_cannot_insert,read_only_users_cannot_update:1' || E'\n' ||
