@@ -14,6 +14,7 @@ import { useChangeOrderThreadSlots } from '../../changeOrders/useChangeOrderThre
 import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
+import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
 
 /** A row of the header's ⋯ menu. The window's own rows (Show all text, Open their record) come first. */
 export interface ThreadMenuRow {
@@ -109,9 +110,11 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
  * thread (`useThreadWindow`) and ask for the read again after its own write (`useMessagesReread`).
  */
 export function useThreadSlots(): ThreadSlots {
+  // Cut 2 (Follow up): who has it, the back and snoozed pills, and ⋯'s state rows.
+  const followUp = useFollowUpThreadSlots()
   // Cut 4: their flow, a rail beside the thread that opens to the panel. A new person starts it fresh.
   const flow: ThreadSlots = { side: (c) => <FlowTab key={c.id} at={{ contactId: c.id }} side /> }
   // Cut 4b: a change order from a customer's message, after cut 2's in both slots it shares.
   const changeOrders = useChangeOrderThreadSlots()
-  return mergeThreadSlots(flow, changeOrders)
+  return mergeThreadSlots(followUp, flow, changeOrders)
 }

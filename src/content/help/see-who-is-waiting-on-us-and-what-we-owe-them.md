@@ -79,6 +79,19 @@ Each row says what we owe and by when, like {{chip:blue|we owe the start date ·
 
 Press the chip to open their thread at the reply box. What we owe stays our move until a note or a message marks it done.
 
+## In their thread
+
+Open someone's thread from any row. The same pill sits at the top right of the thread. Press it to take the conversation or hand it on. Taking it or handing it on adds a gray line to the thread.
+
+The {{button:outline|⋯}} menu at the top changes where the conversation stands.
+
+- On a conversation waiting on us, it has {{button:outline|No reply needed}} and {{button:outline|Remind me Monday}}.
+- On any other, it has {{button:outline|Reopen}}. Reopen puts the person back on Follow up.
+
+A note with a day shows {{chip:blue|↩ back Fri Oct 2}} under the name. Press × beside it to clear the day. The note stays in the thread.
+
+A snoozed conversation shows {{chip:gray|snoozed until Mon Oct 5}} there too.
+
 ## What comes next
 
 To work through everyone we wait on, see [Work through everyone we wait on in one sitting](/help/work-through-everyone-we-wait-on).
