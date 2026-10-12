@@ -7,7 +7,8 @@
  * words), and the unknown kind's First lane is `once`; `dec` is `fork`; the nudge's how and day are
  * ids (`NUDGE_HOW_WORDS`, `NUDGE_DAY_WORDS`); and four fields are new: `phase` for the boards' tiles,
  * `loopEnds` for when a loop lets the chain move on, `skipOneJob` for the customer's master agreement,
- * and `aside` set on change orders only, as before.
+ * `owedWords` for Follow up's We owe them list on our-move steps, and `aside` set on change orders only,
+ * as before.
  */
 import type { FlowKind } from './facts'
 import type { FlowDef, FlowStep } from './state'
@@ -25,6 +26,7 @@ const step = (s: StepInput): FlowStep => ({
   skipOneJob: false,
   later: null,
   nudge: null,
+  owedWords: null,
   ...s,
 })
 
@@ -35,7 +37,7 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
       {
         lane: 'once',
         steps: [
-          step({ id: 'invited', name: 'Invited', nameEs: 'Invitado', phase: 'setup', who: 'us', seat: 'Robert', facts: ['invite_sent'], papers: ['invitation'], usual: 2 }),
+          step({ id: 'invited', name: 'Invited', nameEs: 'Invitado', phase: 'setup', who: 'us', seat: 'Robert', facts: ['invite_sent'], papers: ['invitation'], owedWords: 'the invitation', usual: 2 }),
           step({ id: 'portal', name: 'Portal opened', nameEs: 'Portal abierto', phase: 'setup', who: 'them', facts: ['portal_opened'], nudge: { days: 3, how: 'text', send: 'app', dayFact: null }, usual: 1 }),
           step({ id: 'papers', name: 'Papers in', nameEs: 'Documentos recibidos', phase: 'setup', who: 'them', facts: ['w9_signed', 'coi_current'], papers: ['w9', 'coi'], nudge: { days: 5, how: 'call', send: 'ask', dayFact: null }, usual: 3 }),
           step({ id: 'msa', name: 'MSA signed', nameEs: 'Acuerdo firmado', phase: 'setup', who: 'them', facts: ['msa_signed'], papers: ['msa'], nudge: { days: 3, how: 'text', send: 'ask', dayFact: null }, usual: 4 }),
@@ -53,7 +55,7 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
           step({
             id: 'compare', name: 'Compared', nameEs: 'Comparado', phase: 'pricing', who: 'us', seat: 'Robert', fork: true,
             later: { en: 'After your quote is in.', es: 'Después de recibir su cotización.' },
-            facts: ['carried', 'not_carried'], join: 'or', usual: 2,
+            facts: ['carried', 'not_carried'], join: 'or', owedWords: 'our decision on their quote', usual: 2,
           }),
           step({
             id: 'sow', name: 'Statement of work', nameEs: 'Alcance de trabajo', phase: 'building', who: 'them',
@@ -98,7 +100,7 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
           step({
             id: 'bid', name: 'Our bid', nameEs: 'Nuestra oferta', phase: 'pricing', who: 'us', seat: 'Rosa',
             later: { en: 'Within two weeks of your plans.', es: 'Dentro de dos semanas de recibir sus planos.' },
-            facts: ['bid_sent'], papers: ['bid'], usual: 9,
+            facts: ['bid_sent'], papers: ['bid'], owedWords: 'our bid', usual: 9,
           }),
           step({
             id: 'yes', name: 'Said yes', nameEs: 'Aceptó', phase: 'pricing', who: 'them', fork: true,
@@ -112,12 +114,12 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
           step({
             id: 'start', name: 'Start date', nameEs: 'Fecha de inicio', phase: 'building', who: 'us', seat: 'Rosa',
             later: { en: 'Once the contract is signed.', es: 'Cuando el contrato esté firmado.' },
-            facts: ['start_sent'], papers: ['schedule'], usual: 3,
+            facts: ['start_sent'], papers: ['schedule'], owedWords: 'the start date', usual: 3,
           }),
           step({
             id: 'onsite', name: 'On site', nameEs: 'En obra', phase: 'building', who: 'us', seat: 'Rosa',
             later: { en: 'After your start date.', es: 'Después de su fecha de inicio.' },
-            facts: ['started'], usual: 10,
+            facts: ['started'], owedWords: 'the day we are on site', usual: 10,
           }),
           step({
             id: 'payapp', name: 'Pay application', nameEs: 'Solicitud de pago', phase: 'building', who: 'both',
@@ -128,12 +130,12 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
           step({
             id: 'close', name: 'Closeout', nameEs: 'Cierre', phase: 'building', who: 'us', seat: 'Rosa',
             later: { en: 'When the work is done and you accept it.', es: 'Cuando la obra termine y usted la acepte.' },
-            facts: ['closed'], usual: 14,
+            facts: ['closed'], owedWords: 'the closeout papers', usual: 14,
           }),
           step({
             id: 'warranty', name: 'Warranty', nameEs: 'Garantía', phase: 'building', who: 'us', seat: 'Rosa',
             later: { en: 'A year from closeout.', es: 'Un año desde el cierre.' },
-            facts: ['warranty_over'], usual: 365,
+            facts: ['warranty_over'], owedWords: 'the warranty papers', usual: 365,
           }),
           step({
             id: 'co', name: 'Change orders', nameEs: 'Órdenes de cambio', phase: 'building', who: 'them', aside: true,
