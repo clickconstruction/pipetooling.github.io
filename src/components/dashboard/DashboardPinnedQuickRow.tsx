@@ -48,7 +48,7 @@ import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge
 import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
 import { useClauseNeeds } from '../../hooks/useClauseNeeds'
 import { clausePaperHref } from '../../lib/contracts/clauseRows'
-import { canOpenGcProjects, canSeeGcMoney } from '../../lib/gc/access'
+import { canOpenGcProjects } from '../../lib/gc/access'
 import { GC_FOLLOW_UP_HREF } from '../../lib/gc/links'
 import { useRobotBacklogNudge } from '../../hooks/useRobotBacklogNudge'
 import { useLegalReviewNudge } from '../../hooks/useLegalReviewNudge'
@@ -508,9 +508,10 @@ export function DashboardPinnedQuickRow({
   const { ready: priceMatrixReady } = usePriceMatrixReadyNudge(priceMatrixEnabled)
   // Price requests PR 4 (v2.3573): the same audience as the robot card — the people who price bids.
   const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
-  // GC mode's Follow up (v2.4941): the GC office team, the people who see the Follow up pill on /gc.
+  // GC mode's Follow up (v2.4941): the GC office team, the people who see the Follow up pill on /gc. Since v2.5289 it
+  // counts the people waiting on us, as the pill does.
   const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && canOpenGcProjects(role)
-  const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled, canSeeGcMoney(role))
+  const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
   // Contracts and clauses (Messages, cut 4c): the clause changes waiting on a controller's or a dev's approval.
   const contractClausesEnabled = !hideBanners && Boolean(authUserId)
   const { rows: contractClauses } = useClauseNeeds(contractClausesEnabled)

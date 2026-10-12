@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 /**
  * Wiring for GC mode's Follow up on Needs You (v2.4941): the GC office team gets the line, other
- * roles do not, and its button opens Follow up on the GC projects page. Since the Board's B2b-ii-b the
- * read takes our contract's sends for the money team only, as GC projects does.
+ * roles do not, and its button opens Follow up on the GC projects page. Since v2.5289 it counts the
+ * people waiting on us (`follow_up_count`), one read for every role on the team.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen } from '@testing-library/react'
@@ -13,12 +13,11 @@ import { DashboardPinnedQuickRow } from './DashboardPinnedQuickRow'
 
 const NEEDS: GcNeedsYou = {
   count: 2,
-  late: true,
-  title: '2 to follow up on in GC mode',
-  detail: 'Alamo Concrete is late on their word · Pecan Valley Electric’s insurance ran out.',
+  late: false,
+  title: '2 people are waiting on us',
+  detail: 'Answer them, or say what we owe them.',
 }
 const seen: NeedsYouInputs[] = []
-const moneyAsked: boolean[] = []
 const navigate = vi.fn()
 
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<typeof import('react-router-dom')>()), useNavigate: () => navigate }))
@@ -32,10 +31,7 @@ vi.mock('../../hooks/useAuth', async () => {
 })
 vi.mock('../../lib/navClickTelemetry', () => ({ recordNavClick: vi.fn(), recordNavClickFromEvent: vi.fn() }))
 vi.mock('../../hooks/useGcFollowUpNeeds', () => ({
-  useGcFollowUpNeeds: (enabled: boolean, money: boolean) => {
-    moneyAsked.push(money)
-    return enabled ? NEEDS : null
-  },
+  useGcFollowUpNeeds: (enabled: boolean) => (enabled ? NEEDS : null),
 }))
 vi.mock('../../lib/dashboardNeedsYou', async () => {
   const actual = await vi.importActual<typeof import('../../lib/dashboardNeedsYou')>('../../lib/dashboardNeedsYou')
@@ -53,7 +49,6 @@ beforeAll(installDomShims)
 afterEach(() => {
   cleanup()
   seen.length = 0
-  moneyAsked.length = 0
   navigate.mockClear()
 })
 
@@ -73,20 +68,13 @@ const props = {
 }
 
 describe('DashboardPinnedQuickRow · GC Follow up on Needs You', () => {
-  it.each([
-    ['dev', true],
-    ['master_technician', true],
-    ['assistant', false],
-    ['controller', true],
-    ['estimator', false],
-  ] as const)('%s gets everyone to follow up on, our contract’s sends read: %s', async (role, money) => {
+  it.each(['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const)('%s gets the people waiting on us', async (role) => {
     renderWithProviders(<DashboardPinnedQuickRow {...props} role={role} />)
     await settle()
     const last = seen[seen.length - 1]!
     expect(last.gcFollowUpEnabled).toBe(true)
     expect(last.gcFollowUp).toEqual(NEEDS)
-    expect(moneyAsked[moneyAsked.length - 1]).toBe(money)
-    expect(screen.getByText('2 to follow up on in GC mode')).toBeTruthy()
+    expect(screen.getByText('2 people are waiting on us')).toBeTruthy()
   })
 
   it.each(['primary', 'superintendent', 'subcontractor'] as const)('%s does not', async (role) => {

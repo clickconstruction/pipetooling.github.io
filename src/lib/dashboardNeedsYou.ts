@@ -559,8 +559,8 @@ export type NeedsYouInputs = {
     first: { bidId: string; bidLabel: string; project: string | null; house: string; daysLate: number }
   } | null
   /**
-   * GC mode's Follow up (v2.4941): everyone the office waits on since the Board's B2b-ii-b, once a person, the same count
-   * as the Follow up pill on /gc — `useGcFollowUpNeeds` over `lib/gc/needsYou.ts`. The GC office team.
+   * GC mode's Follow up (v2.4941): since v2.5289 the people waiting on us, each once (`follow_up_count`), the same count
+   * as the Follow up pill on /gc — `useGcFollowUpNeeds` over `lib/gc/followUpNeedsIo.ts`. The GC office team.
    */
   gcFollowUpEnabled?: boolean
   gcFollowUp?: GcNeedsYou | null

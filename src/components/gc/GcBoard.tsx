@@ -37,8 +37,8 @@ import { usePriceCard } from './usePriceCard'
  * the strip that jumps between them; each project a row with its days left (or its start), its
  * customer and architect, and its price with the card behind it. Read only: a row opens the
  * project. Since the Board's B2b-ii each row carries Who to call (`GcPeoplePill`): its job's share of the people we wait
- * on (`projectPeople`). Follow up's badge and Needs you move to the count once a person (`allPeople`, call E1) together,
- * so the two keep one number. Since B2b-iii the strip's **By stage | By customer** switch (the owner, 2026-10-04; By
+ * on (`projectPeople`). Follow up's badge and Needs you keep one number (call E1): since v2.5289 the people waiting on us
+ * (`follow_up_count`), while everyone we wait on (`allPeople`) heads the asks list under them. Since B2b-iii the strip's **By stage | By customer** switch (the owner, 2026-10-04; By
  * stage each time the board opens) shows the same rows under each customer we build for, a heading per stage they
  * have jobs in, their closed and lost jobs on one quiet line. A section and a customer are worth `priceToOwner`'s price
  * (gc 5's read). The ring comes with a later cut. Since B2b-viii-a (`onFollowUpJob`) the Who to call card's Follow up and
