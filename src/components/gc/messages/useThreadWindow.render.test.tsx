@@ -2,9 +2,16 @@
 import { act, renderHook } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import type { Contact } from '../../../lib/contacts/kernel'
+import type { ThreadMessage } from '../../../lib/messages/thread'
 import { useThreadSlots } from './threadSlots'
 import { threadFromSearch, useThreadWindow, withoutThread, withThread } from './useThreadWindow'
+
+// Cut 4b's slots read the open thread through their own hook; here they are a marker, to see them reach the window.
+vi.mock('../../changeOrders/useChangeOrderThreadSlots', () => ({
+  useChangeOrderThreadSlots: () => ({ underLine: () => 'became CO 1', messageWindowFirst: () => 'Start a change order' }),
+}))
 
 const at = (url: string) =>
   function Wrapper({ children }: { children: ReactNode }) {
@@ -42,8 +49,11 @@ describe('opening a thread on /gc (the URL holds it)', () => {
     expect(result.current).toMatchObject({ contactId: 'c-elena', at: 'm-7' })
   })
 
-  it('draws only the slots a cut has filled: cut 4’s flow at the side', () => {
+  it('hands the window each cut’s slots: cut 4’s flow at the side, cut 4b’s press in the message window and its chip under a line', () => {
     const { result } = renderHook(() => useThreadSlots())
-    expect(Object.keys(result.current)).toEqual(['side'])
+    expect(Object.keys(result.current).sort()).toEqual(['messageWindowFirst', 'side', 'underLine'])
+    const line = { id: 'm-1' } as ThreadMessage
+    expect(result.current.underLine?.(line, {} as Contact)).toBe('became CO 1')
+    expect(result.current.messageWindowFirst?.(line, '')).toBe('Start a change order')
   })
 })

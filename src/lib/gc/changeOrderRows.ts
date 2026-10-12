@@ -22,6 +22,12 @@ function declinedNoteOf(row: ChangeOrderRow): string {
   return ((row as ChangeOrderRow & { declined_note?: string | null }).declined_note ?? '').trim()
 }
 
+/** Who signs it and the message it came from (Messages cut 4b), read loosely until the types regenerate after 20261012180000's push. */
+function fromMessageOf(row: ChangeOrderRow): Pick<ChangeOrder, 'sourceMessageId' | 'signerContactId'> {
+  const r = row as ChangeOrderRow & { source_message_id?: string | null; signer_contact_id?: string | null }
+  return { ...(r.source_message_id ? { sourceMessageId: r.source_message_id } : {}), ...(r.signer_contact_id ? { signerContactId: r.signer_contact_id } : {}) }
+}
+
 /** One row as the kernels read it. A time extension names its moves (`daysOnChart`); an ordinary one has none. */
 export function changeOrderFromRow(row: ChangeOrderRow): ChangeOrder {
   return {
@@ -41,6 +47,7 @@ export function changeOrderFromRow(row: ChangeOrderRow): ChangeOrder {
     pctDone: Number(row.pct_done),
     days: row.days,
     ...(row.days_on_chart ? { daysOnChart: row.days_on_chart } : {}),
+    ...fromMessageOf(row),
   }
 }
 

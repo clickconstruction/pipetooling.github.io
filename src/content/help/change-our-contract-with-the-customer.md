@@ -2,7 +2,7 @@
 title: change our contract with the customer on a GC job
 category: Bids & Estimating
 roles: dev, master_technician, controller
-keywords: gc mode, change order, customer, contract, signed, declined, credit, days, price, fee, percent done, email
+keywords: gc mode, change order, customer, price it, from a message, contract, signed, declined, credit, days, price, fee, percent done, email
 order: 98
 ---
 When the work on a GC job changes, write a change order and send it to the customer to sign. A signed one changes their price.
@@ -21,6 +21,19 @@ A change order is for a job we won. Each one gets the next number on the job. On
 8. Press {{button:blue|Save the draft}}.
 
 A draft can be deleted. Press {{button:outline|Delete the draft}} under it.
+
+## Price a draft from a message
+
+Anyone in the office can start a change order from a customer's message. [Start a change order from a customer's message](/help/start-a-change-order-from-a-customers-message) shows how. That draft comes in with no cost and no price.
+
+1. Press {{button:outline|Price it}} on the draft.
+2. Type what it costs us. A credit is a cost below zero.
+3. Type what it adds to their price.
+4. Press {{button:blue|Save the price}}.
+
+Prices are whole dollars. A draft with a price shows {{button:outline|Change the price}} instead.
+
+A line under the draft says where it came from. Press that line to open their thread at the message. The line reads like *From Dr. Raman's text on Thu Oct 1.*
 
 ## Send it to the customer
 

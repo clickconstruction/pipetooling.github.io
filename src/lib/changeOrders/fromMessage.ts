@@ -131,6 +131,10 @@ export function draftFromMessage(message: SourceMessage, contact: MessageContact
 /** The chip on the message once its change order is saved: 'became CO 2'. */
 export const becameChip = (number: number): string => `became CO ${number}`
 
+/** What the office hears once a message's draft is saved: the number, the job, and who takes it from there. */
+export const draftedWords = (number: number, jobName: string): string =>
+  `Change order ${number} is drafted on ${jobName}. The money team prices it and sends it to sign.`
+
 const CHANNEL_WORDS: Readonly<Record<SourceMessage['channel'], string>> = {
   text: 'text',
   email: 'email',

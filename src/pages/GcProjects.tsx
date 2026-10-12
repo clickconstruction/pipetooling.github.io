@@ -22,7 +22,9 @@ import { GcScopeBookWindow } from '../components/gc/GcScopeBook'
 import { GcNewPlansWindow } from '../components/gc/GcNewPlans'
 import { GcPlansWindow } from '../components/gc/GcPlansWindow'
 import { GcQuestionsWindow, type AnswerReach } from '../components/gc/GcQuestions'
-import { GcChangeOrdersWindow } from '../components/gc/GcChangeOrders'
+import { GcChangeOrdersWindow, type FromMessageLink } from '../components/gc/GcChangeOrders'
+import { fromMessageLine } from '../lib/changeOrders/fromMessage'
+import { loadSourceMessages, priceChangeOrder } from '../lib/changeOrders/fromMessageIo'
 import { GcScheduleWindow } from '../components/gc/GcScheduleWindow'
 import { withChangeOrders, withChangeRequests, type ChangeOrderRow, type ChangeRequestRow } from '../lib/gc/changeOrderRows'
 import { GcDailyLogWindow } from '../components/gc/GcDailyLog'
@@ -236,7 +238,7 @@ import { partnerById } from '../lib/gc/lookups'
 import { billDayFromSearch, gcFocusFromSearch, gcViewFromSearch, type GcView } from '../lib/gc/links'
 import { GcMessages } from '../components/gc/GcMessages'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
-import { useThreadWindow } from '../components/gc/messages/useThreadWindow'
+import { useThreadWindow, withThread } from '../components/gc/messages/useThreadWindow'
 import { MessagesRereadContext } from '../components/gc/messages/useMessagesReread'
 import type { MessagesWrites } from '../components/gc/messages/messagesWrites'
 import { useCustomerProfileModal } from '../contexts/CustomerProfileModalContext'
@@ -918,6 +920,31 @@ export default function GcProjects() {
     [board, drawTables, changeOrderRows, changeRequestRows],
   )
   const changesProject = changesProjectId ? (boardWithChanges?.projects.find((p) => p.id === changesProjectId) ?? null) : null
+  // Messages cut 4b: each change order started from a customer's message, with its line back, read while its window is open.
+  const [changeFromMessages, setChangeFromMessages] = useState<Record<string, FromMessageLink>>({})
+  const changeSources = changesProject ? projectChangeOrders(changesProject).flatMap((co) => (co.sourceMessageId ? [`${co.id}=${co.sourceMessageId}`] : [])).join(',') : ''
+  useEffect(() => {
+    if (!changeSources) {
+      setChangeFromMessages({})
+      return
+    }
+    let live = true
+    const pairs = changeSources.split(',').map((pair) => pair.split('=') as [string, string])
+    loadSourceMessages(pairs.map(([, messageId]) => messageId))
+      .then((got) => {
+        if (!live) return
+        const links = pairs.flatMap(([coId, messageId]) => {
+          const source = got.get(messageId)
+          return source ? [[coId, { line: fromMessageLine(source.message, source.contact), contactId: source.message.contactId, messageId }] as const] : []
+        })
+        setChangeFromMessages(Object.fromEntries(links))
+      })
+      // The line back waits for a read that works; the change orders still draw.
+      .catch(() => live && setChangeFromMessages({}))
+    return () => {
+      live = false
+    }
+  }, [changeSources])
   // The customer window's money (the Board's B2b-v-iii, gc 5's read): for the money team only, their billed jobs' billing
   // read when the window opens, laid over the board with its change orders, each job keeping its own copy of the customer.
   // Anyone else reads none, so their window makes no money call.
@@ -2415,8 +2442,17 @@ export default function GcProjects() {
           problem={changeProblem}
           emailed={changeEmailed}
           askEmailed={askEmailed}
+          fromMessages={changeFromMessages}
+          onOpenMessage={(contactId, messageId) => {
+            // One step: the window closes and their thread opens at the message, so Back comes back to it.
+            const next = withThread(params, contactId, messageId)
+            next.delete('changes')
+            setParams(next)
+            setChangeProblem(null)
+          }}
           onClose={() => setChangesWindow(null)}
           writes={{
+            onPrice: (id, cost, price) => changeWrite(id, priceChangeOrder(id, cost, price), 'The change order was not priced.'),
             onDraft: (draft) => changeWrite('new', draftChangeOrder(changesProject.id, draft), 'The change order was not drafted.'),
             onSend: (id, email) => {
               // The tick (off to start) also emails it to the customer to sign by reply (O4b-2). The change orders are

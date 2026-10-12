@@ -48,6 +48,8 @@ Press Escape or {{button:outline|×}} to close the thread.
 2. Read who sent it, when it came and the job it is tied to.
 3. Press {{button:outline|Copy}}, {{button:outline|Print or save as PDF}} or {{button:outline|Share…}}.
 
+On a customer's message, the office also sees {{button:outline|Start a change order}}. [Start a change order from a customer's message](/help/start-a-change-order-from-a-customers-message) shows how.
+
 Press Escape to go back to the thread.
 
 ## Keep a person's jobs
