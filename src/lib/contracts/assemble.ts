@@ -180,7 +180,7 @@ export function assemblePaper(paper: ContractPaper, clauses: readonly Clause[], 
   return {
     paperId: paper.id,
     title: paper.title,
-    between: paper.between.replace(/\{company\}/g, forWhom.company).replace(/\{job\}/g, forWhom.job ?? ''),
+    between: betweenLine(paper.between, forWhom.company, forWhom.job),
     revision: paper.revision,
     lang: forWhom.lang,
     clauses: numbered(base, 1),
@@ -188,6 +188,15 @@ export function assemblePaper(paper: ContractPaper, clauses: readonly Clause[], 
     exhibitFor: tradesCarried(exhibit, forWhom.trades),
     problem,
   }
+}
+
+/**
+ * The between line with its fields filled. With no job the job's piece goes, *, for {job}* and all, so a paper held for its
+ * missing job never reads with a sentence cut off.
+ */
+export function betweenLine(between: string, company: string, job: string | null): string {
+  const withJob = job ? between.replace(/\{job\}/g, job) : between.replace(/,?\s*\bfor \{job\}/g, '').replace(/\{job\}/g, '')
+  return withJob.replace(/\{company\}/g, company).replace(/\s{2,}/g, ' ').trim()
 }
 
 /** The paper's version line under the clauses: *Version 3, with the Sitework exhibit.* */
