@@ -351,11 +351,11 @@ h2 .num,.lead .num{font-size:12px;vertical-align:middle}
 .quickwrap .qlabel{border:0;background:transparent;padding:0;font:inherit;font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
 .quickwrap .qpeek{display:none;border:0;background:transparent;color:var(--accent);font-size:12.5px;padding:0;cursor:pointer;text-align:left}.quickwrap .qpeek .n{color:var(--text-muted)}
 .quickwrap.folded{display:none}.quickwrap.folded .ql,.quickwrap.folded .qgroups{display:none}.quickwrap.folded .qpeek{display:inline-block}
-.quickwrap .qfilter{font-size:12.5px;padding:3px 8px;min-width:90px;width:120px;text-transform:none;letter-spacing:0;margin-left:auto}
+.quickwrap .qfilter{font-size:12.5px;padding:3px 8px;min-width:90px;flex:1 1 auto;text-transform:none;letter-spacing:0;margin-left:12px}
 .quickwrap .ql{flex-wrap:wrap;row-gap:4px}
 /* In a thread narrower than 640px the head is two rows: the label with narrow and Edit, then the group pills on their own line (the owner, 2026-10-11: narrow belongs beside Quick replies). */
 @container (max-width: 640px){.quickwrap .ql .gpills{order:4;flex-basis:100%;margin-left:0}.quickwrap .ql .qfilter{margin-left:auto}}
-.quickwrap .gpills{display:inline-flex;gap:4px;flex-wrap:wrap;margin-left:6px}
+.quickwrap .gpills{display:inline-flex;gap:4px;flex-wrap:wrap;margin-left:6px;flex:none}
 .quickwrap .gpills button{font-size:11.5px;padding:1px 8px;border-radius:999px;text-transform:none;letter-spacing:0;background:var(--surface)}
 .quickwrap .gpills button .n{color:var(--text-muted);font-weight:400;margin-left:2px}
 .quickwrap .gpills button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
