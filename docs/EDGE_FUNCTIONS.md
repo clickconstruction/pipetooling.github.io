@@ -1589,6 +1589,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### submit-portal-request
 
+> **v2.5359 — `deno check` passes again**: handing the supabase client to `loadGcStageInputs` sent TypeScript's structural check against `GcStageAdmin` too deep (TS2589, 1 error). The stage ask now casts the client to the loader's own `GcStageAdmin`, as `customer-portal` has since v2.5283. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4142 — the staff notice is a kernel**: the "Portal {kind} — {customer}" email comes from [`_shared/portalRequestStaffEmail.ts`](../supabase/functions/_shared/portalRequestStaffEmail.ts) (moved verbatim) so Settings → What the team sees renders it on sample data (punch list #60).
 
 > **v2.3438 — the offered columns are gone**: the `stage_window` ask reads the window **by id only** (`.eq('id', stageId)`) and selects no `bundle_id` / `offered_to_gc` — migration `20260914250000` drops both plus `offered_to_gc_at`. **Redeploy before the push**: the old bundle selects those columns and would 400 once they are gone.
@@ -1865,6 +1867,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### sign-bid-room
 
+> **v2.5359 — `deno check` passes again**: `gcNamesForVersions` and `notifyStaff` typed their client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so none of their six callers could hand them the service-role client (6 errors). Both take `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4142 — the staff notice is a kernel**: the "Bid room — {project}: the GC {what}" email comes from [`_shared/bidRoomActivityStaffEmail.ts`](../supabase/functions/_shared/bidRoomActivityStaffEmail.ts) (moved verbatim) so Settings → What the team sees renders it on sample data (punch list #60).
 
 **Purpose**: Record a GC's signature or decline on a bid-room proposal (Signable Bids Phase 2, v2.2470) — the signature-time freeze.
@@ -1988,6 +1992,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **Response**: `{ ok, due, reminded, sent }`.
 
 ### share-job-contract
+
+> **v2.5359 — `deno check` passes again**: `fetchBytes` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so none of its five callers could hand it the service-role client (5 errors). It takes `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.5101 — a record part link, part paper is shared as the paper**: a signed row with either frame filed from the paper (`filedOnPaper` in [`_shared/jobContractSigners.ts`](../supabase/functions/_shared/jobContractSigners.ts): `signer_mode` or `co_signer_mode` is `paper`) sends `paper_upload_path` or its `signed_document_url`, as a paper record always has. That covers a first signature given through the link with the second filed from the paper (punch list #64). It has no stored PDF, and the rebuild printed its paper frame as typed. The email still names both signers. **Redeploy required.**
 
@@ -2215,6 +2221,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### accept-estimate
+
+> **v2.5359 — `deno check` passes again**: `handleDecline` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the decline's `.update` took `never` and the service-role client could not be handed in (2 errors). It takes `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Record Approach A acceptance (typed name + `agreedTerms: true`); sets `customer_accepted` and audit fields.
 
@@ -2866,6 +2874,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 ---
 
 ### send-report-email
+
+> **v2.5359 — `deno check` passes again**: `AdminClient` was `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `report_email_dispatch_log` insert was refused and the service-role client could not be handed to `resolveReportContent` or `sendReportToSubscription` (5 errors). It is `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4574 — a report that leaves the company is kept**: when a subscription names an outside address (`recipient_email`), the report email is filed (`field_report`) on its job and bid. A subscription that names one of our own users is our own mail and is not filed. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
@@ -4252,6 +4262,8 @@ interface SendHazmatNoticeEmailBody {
 ---
 
 ### send-stripe-invoice
+> **v2.5359 — `deno check` passes again**: `persistSendAfterEmail` and `sendBillCopies` typed their client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the send-time `.update` was refused and the service-role client could not be handed in (3 errors). Both take `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.4557 — the bill is kept as it went**: the payer's own bill email (`kind` `bill`, with Stripe's PDF when it was attached) and each live copy (`bill_copy`) are filed in `sent_documents` through `sendEmailViaResend`'s new `file` option ([`fileSentCopy.ts`](../supabase/functions/_shared/fileSentCopy.ts)), keyed to the job and the invoice. The statement's code, an inline image in the email, is drawn into the kept page. A test-mode bill and its single test copy go to ourselves and are not filed; a bill Stripe emails itself (the fallback) has no message of ours to keep. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
 
 > **v2.4127 — the bill comes from the company**: the bill email and every copy send as [`COMPANY_EMAIL_FROM`](../supabase/functions/_shared/emailFrom.ts) — *Click Plumbing and Electrical* on `EMAIL_FROM`'s verified address (`mailboxWithName`, [`_shared/mailboxWithName.ts`](../supabase/functions/_shared/mailboxWithName.ts)); `sendEmailViaResend` takes `options.from` for it and `email_send_log.from_email` records it. Staff emails keep `EMAIL_FROM`. Punch list #53, PR 1.
@@ -4770,6 +4782,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ---
 
 ### mercury-webhook
+
+> **v2.5359 — `deno check` passes again**: `generateSuggestion` and `autoApproveIfSwitchedOn` typed their client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so both RPC calls' arguments were refused (`p_rows` and `p_tx_ids`, each the RPC's real argument) and the service-role client could not be handed in (3 errors). Both take `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4181 — rendered in What the team sees**: the check-returned notice was already a kernel (`_shared/bankReturnedDeposits.ts` — `buildBankReturnNoticeEmail`); Settings → What the team sees now renders it over a sample returned draw (punch list #60, lift 12 of 14). No function change, nothing to redeploy.
 

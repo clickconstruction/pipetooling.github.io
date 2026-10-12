@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { notifySignedAgreement } from '../_shared/signedAgreementNotify.ts'
 import { clientIpFromRequest, insertEstimateCustomerEvent } from '../_shared/logEstimateCustomerEvent.ts'
 import { canDeclineEstimate, normalizeEstimateDeclineReason } from '../_shared/estimateDecline.ts'
@@ -94,7 +94,7 @@ function json(status: number, body: Record<string, unknown>): Response {
  * 20260905170000 (event_type CHECK).
  */
 async function handleDecline(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   req: Request,
   tokenHash: string,
   declineReason: unknown,

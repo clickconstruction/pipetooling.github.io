@@ -11,7 +11,7 @@
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { notifySignedAgreement } from '../_shared/signedAgreementNotify.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { parseSharedBidRoomPayload } from '../_shared/bidRoomPayload.ts'
 import { isRoomDeclineCategory, planRoomOutcome, type OutcomeVersionRow, wonVersionIdsForSignature } from '../_shared/bidRoomOutcome.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
@@ -441,7 +441,7 @@ serve(async (req) => {
 
 /** Display names of the GC packets behind a set of version ids (null customer = the bid's own GC). */
 async function gcNamesForVersions(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   versions: OutcomeVersionRow[],
   versionIds: string[],
   bidCustomerId: string | null,
@@ -457,7 +457,7 @@ async function gcNamesForVersions(
 }
 
 async function notifyStaff(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   room: { master_user_id: string; created_by: string | null },
   projectName: string,
   what: string,

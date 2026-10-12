@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { askProblem } from '../_shared/stageAsk.ts'
-import { gcPortalStages, loadGcStageInputs } from '../_shared/gcStages.ts'
+import { gcPortalStages, loadGcStageInputs, type GcStageAdmin } from '../_shared/gcStages.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
@@ -399,7 +399,7 @@ serve(async (req) => {
       // Stage Plan PR 5: only the NEXT stage of the sequence can be asked about — the one the
       // portal card carries the link on. Same plan, same rule, server-side.
       {
-        const inputs = await loadGcStageInputs(admin, [mine[0]!.job_id])
+        const inputs = await loadGcStageInputs(admin as unknown as GcStageAdmin, [mine[0]!.job_id])
         const out = gcPortalStages({ ...inputs.byJob(mine[0]!.job_id), todayYmd })
         if (!out.askWindowId || !mine.some((w) => w.id === out.askWindowId)) {
           return jsonResponse({ error: 'Only the next stage can be moved. Call the office about the others.' }, 400)
