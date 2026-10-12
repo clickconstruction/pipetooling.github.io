@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import Stripe from 'https://esm.sh/stripe@16.12.0?target=deno'
 import { customerEmailFromStripeInvoice } from '../_shared/stripeInvoiceCustomerEmail.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
@@ -42,7 +42,7 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
 }
 
 async function persistSendAfterEmail(args: {
-  admin: ReturnType<typeof createClient>
+  admin: SupabaseClient
   jobsLedgerInvoiceId: string
   sentAtIso: string
   stripeInvoiceStatus: string | null
@@ -84,7 +84,7 @@ function payerNameFromStripe(inv: Stripe.Invoice): string {
  * test must not email the customer's people, the GC or a one-off address.
  */
 async function sendBillCopies(args: {
-  admin: ReturnType<typeof createClient>
+  admin: SupabaseClient
   jobsLedgerInvoiceId: string
   inv: Stripe.Invoice
   payerName: string

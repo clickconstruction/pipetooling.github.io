@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { fetchMercuryTransactionById, mapMercuryTransactionToRow } from '../_shared/mercuryTransaction.ts'
 import {
   matchAccountingLabelRuleCriteria,
@@ -83,7 +83,7 @@ async function verifyMercurySignature(
  * the row is already saved and surfaced via Realtime regardless.
  */
 async function generateSuggestion(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   tx: { id: string; amount: number | string | null; counterparty_name: string | null; raw: unknown; mercury_category?: unknown },
 ): Promise<void> {
   // Skip if this transaction already has a drag-sort assignment (already sorted).
@@ -152,7 +152,7 @@ async function generateSuggestion(
  * suggestion row already exists; failures here only leave it pending.
  */
 async function autoApproveIfSwitchedOn(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   txId: string,
   rule: { id: string; label_id: string },
 ): Promise<void> {

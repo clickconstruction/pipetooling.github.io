@@ -10,7 +10,7 @@
  * has an answer.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as pdfLib from 'https://esm.sh/pdf-lib@1.17.1'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
@@ -73,7 +73,7 @@ function parseIssuer(raw: string | null | undefined): Issuer | null {
   }
 }
 
-async function fetchBytes(admin: ReturnType<typeof createClient>, path: string): Promise<Uint8Array | null> {
+async function fetchBytes(admin: SupabaseClient, path: string): Promise<Uint8Array | null> {
   const { data, error } = await admin.storage.from(JOB_CONTRACT_BUCKET).download(path)
   if (error || !data) return null
   return new Uint8Array(await data.arrayBuffer())

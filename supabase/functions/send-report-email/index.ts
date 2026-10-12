@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 // The email itself is `_shared/fieldReportEmail.ts` (v2.4180) — What the team sees renders it on sample data.
 import { buildReportEmail, type ReportContent } from '../_shared/fieldReportEmail.ts'
@@ -59,7 +59,7 @@ interface SubscriptionRow {
   enabled: boolean
 }
 
-type AdminClient = ReturnType<typeof createClient>
+type AdminClient = SupabaseClient
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
