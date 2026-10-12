@@ -6,12 +6,18 @@
  *
  * Pure, and nothing here is state. A draft is the flow as saved, the flow as edited and each change in order; every
  * edit returns a new draft, or a refusal in words. Save returns the flow's rows to write, one History entry per step
- * that changed and the removed list. The screen holds the draft while Settings → Flows is open; `flow_steps`,
- * `flow_step_history` and `flow_removed_steps` hold what is saved (cut 4's SQL).
+ * that changed (two when its words pass `flow_step_history.what`'s 500 characters) and the removed list. The screen
+ * holds the draft while Settings → Flows is open; `flow_steps`, `flow_step_history` and `flow_removed_steps` hold what
+ * is saved (cut 4's SQL).
+ *
+ * A step waits on the app's facts and papers, or on a paper made in the Contract library (`doc:<uuid>`, its fact
+ * `doc:<uuid>:<kind>`, the doc family in `facts.ts`). The words of a library paper are its name, which the screen
+ * passes, as it knows it. A step's facts join with and unless the step is a fork, and a fork's with or (the lead,
+ * 2026-10-12): `setFork` changes the two together, and any other join is refused in words.
  */
 import { formatDenverDateTimeShort } from '../../utils/dateUtils'
 import { plainWordsFailures } from '../plainWords'
-import { FLOW_PAPERS, factById, isFactId, isPaperId, type FactId, type FlowKind, type PaperId } from './facts'
+import { FLOW_PAPERS, docFactOf, isDocPaperId, isFactId, isPaperId, stepFactById, type FactId, type FlowKind, type PaperId } from './facts'
 import {
   LANE_WORDS,
   NUDGE_DAY_WORDS,
@@ -154,6 +160,7 @@ export interface FlowDraft {
 
 export type FlowRefusal =
   | 'no name'
+  | 'too long'
   | 'not plain'
   | 'name taken'
   | 'no step'
@@ -163,6 +170,8 @@ export type FlowRefusal =
   | 'at the edge'
   | 'same lane'
   | 'not removed'
+  | 'not a fork'
+  | 'a fork'
 
 export type EditResult = { ok: true; draft: FlowDraft } | { ok: false; why: FlowRefusal; words: string }
 
@@ -202,9 +211,13 @@ function onStep(draft: FlowDraft, stepId: string, edit: (step: FlowStep) => Edit
   return found ? edit(found.step) : refuse('no step', 'That step is not in this flow.')
 }
 
-/** A step's name: plain words, said, and not another step's. */
+/** `flow_steps.name` holds 80 characters. */
+const NAME_MAX = 80
+
+/** A step's name: plain words, said, 80 characters at most, and not another step's. */
 function nameRefusal(draft: FlowDraft, name: string, stepId: string | null): EditResult | null {
   if (!name) return refuse('no name', 'Name it, or Not now.')
+  if (name.length > NAME_MAX) return refuse('too long', 'A step’s name is 80 characters at most.')
   if (plainWordsFailures(name).length)
     return refuse('not plain', 'A step’s name is a few plain words: no dash, semicolon or parenthesis, and under twenty words.')
   const taken = draft.flow.lanes.some((l) => l.steps.some((s) => s.id !== stepId && s.name.toLowerCase() === name.toLowerCase()))
@@ -216,6 +229,28 @@ const WHO_WORDS: Readonly<Record<Who, string>> = { us: 'ours', them: 'theirs', b
 const NUMBER_WORDS = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve']
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
+
+/** A fact a step may wait on: one of the app's, or a Contract library paper's (`doc:<uuid>:<kind>`). */
+const isStepFact = (id: string): boolean => isFactId(id) || docFactOf(id) != null
+
+/** A paper a step may turn on: one of the app's, or a Contract library document (`doc:<uuid>`). */
+const isStepPaper = (id: string): boolean => isPaperId(id) || isDocPaperId(id)
+
+/** A library paper's name as a fact says it: 'Safety plan' reads 'the Safety plan'; 'their W-2' stays as it is. */
+const theName = (docName?: string): string | undefined =>
+  docName == null ? undefined : /^(the|our|their|a|an) /i.test(docName) ? docName : `the ${docName}`
+
+/** A fact in words: the app's own, or a library paper's by its name ('the Safety plan is on file'). */
+const factWords = (fact: string, docName?: string): string => stepFactById(fact, theName(docName))?.text ?? fact
+
+/** A paper in words: the app's short name, or a library paper's name. */
+const paperWords = (paper: string, docName?: string): string => (isPaperId(paper) ? FLOW_PAPERS[paper].short : (docName ?? 'a library paper'))
+
+/** The join a step's fork holds it to. */
+const joinOf = (fork: boolean): 'and' | 'or' => (fork ? 'or' : 'and')
+
+const NOT_A_FORK = 'Only a fork finishes on either fact. Mark the step a fork first.'
+const A_FORK = 'A fork finishes on either fact. Unmark the fork to need every fact.'
 
 // ---------- the edits ----------
 
@@ -284,6 +319,9 @@ export interface NewStep {
   who?: Who
   seat?: string | null
   facts?: readonly string[]
+  /** A fork, where either fact finishes it; its facts then join with or. */
+  fork?: boolean
+  /** Held to the fork: and unless it is one, or only on one. */
   join?: 'and' | 'or'
   papers?: readonly string[]
   loop?: string | null
@@ -305,16 +343,18 @@ export function stepKeyFor(draft: FlowDraft, name: string): string {
   return key
 }
 
-/** Add a step at the end of a lane, with what finishes it picked only from the app's facts and papers. */
+/** Add a step at the end of a lane, with what finishes it picked only from the app's facts and papers and the library's. */
 export function addStep(draft: FlowDraft, lane: Lane, input: NewStep): EditResult {
   const name = input.name.trim()
   const refused = nameRefusal(draft, name, null)
   if (refused) return refused
   const facts = input.facts ?? []
   const papers = input.papers ?? []
-  const fact = facts.find((f) => !isFactId(f))
+  const fact = facts.find((f) => !isStepFact(f))
   if (fact != null) return refuse('not a fact', 'A fact that is not in the app’s list cannot be picked. Ask for a fact that is missing.')
-  if (papers.some((p) => !isPaperId(p))) return refuse('not a paper', 'A paper that is not on the list cannot be added.')
+  if (papers.some((p) => !isStepPaper(p))) return refuse('not a paper', 'A paper that is not on the list cannot be added.')
+  const fork = input.fork ?? false
+  if (input.join && input.join !== joinOf(fork)) return fork ? refuse('a fork', A_FORK) : refuse('not a fork', NOT_A_FORK)
   const loop = input.loop?.trim() || null
   const step: FlowStep = {
     id: input.id ?? stepKeyFor(draft, name),
@@ -323,12 +363,13 @@ export function addStep(draft: FlowDraft, lane: Lane, input: NewStep): EditResul
     phase: input.phase ?? PHASE_BY_LANE[lane],
     who: input.who ?? 'them',
     seat: input.seat ?? null,
-    facts: facts.filter(isFactId),
-    join: input.join ?? 'and',
-    papers: papers.filter(isPaperId),
+    // A library paper's id rides in the step's lists as the app's own do (the doc family's cast, `facts.ts`).
+    facts: facts.filter(isStepFact) as FactId[],
+    join: joinOf(fork),
+    papers: papers.filter(isStepPaper) as PaperId[],
     loop,
     loopEnds: loop ? (input.loopEnds ?? 'rounds') : null,
-    fork: (input.join ?? 'and') === 'or',
+    fork,
     aside: false,
     skipOneJob: false,
     later: input.later ?? null,
@@ -401,64 +442,83 @@ export function setLoop(draft: FlowDraft, stepId: string, loop: string | null, l
   )
 }
 
-/** Every fact finishes it, or either way out does (a fork). */
-export function setJoin(draft: FlowDraft, stepId: string, join: 'and' | 'or'): EditResult {
+/**
+ * Mark the step a fork, where either fact finishes it, or take the mark off, so every fact does. The join moves with it
+ * (or on a fork, and off one), in the prototype's words for its join press.
+ */
+export function setFork(draft: FlowDraft, stepId: string, fork: boolean): EditResult {
   return onStep(draft, stepId, (step) =>
-    step.join === join
+    step.fork === fork && step.join === joinOf(fork)
       ? { ok: true, draft }
-      : next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, join, fork: join === 'or' })), {
+      : next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, fork, join: joinOf(fork) })), {
           stepId,
-          words: `${step.name}: facts joined with ${join}`,
+          words: `${step.name}: facts joined with ${joinOf(fork)}`,
         }),
   )
 }
 
-/** Pick a fact that finishes the step, only from the app's list. */
-export function addFact(draft: FlowDraft, stepId: string, fact: string): EditResult {
-  if (!isFactId(fact)) return refuse('not a fact', 'A fact that is not in the app’s list cannot be picked. Ask for a fact that is missing.')
+/**
+ * How the step's facts join, held to its fork: and unless the step is a fork, or only on one. A join the fork does not
+ * hold is refused in words; `setFork` changes both. A step read from a row whose join its fork does not hold is set right.
+ */
+export function setJoin(draft: FlowDraft, stepId: string, join: 'and' | 'or'): EditResult {
+  return onStep(draft, stepId, (step) => {
+    if (join !== joinOf(step.fork)) return step.fork ? refuse('a fork', A_FORK) : refuse('not a fork', NOT_A_FORK)
+    return step.join === join
+      ? { ok: true, draft }
+      : next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, join })), { stepId, words: `${step.name}: facts joined with ${join}` })
+  })
+}
+
+/**
+ * Pick a fact that finishes the step, from the app's list or a library paper's (`doc:<uuid>:<kind>`), whose name the
+ * screen passes for the words.
+ */
+export function addFact(draft: FlowDraft, stepId: string, fact: string, docName?: string): EditResult {
+  if (!isStepFact(fact)) return refuse('not a fact', 'A fact that is not in the app’s list cannot be picked. Ask for a fact that is missing.')
   return onStep(draft, stepId, (step) =>
-    step.facts.includes(fact)
+    (step.facts as readonly string[]).includes(fact)
       ? refuse('picked', 'It is picked already.')
-      : next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, facts: [...s.facts, fact] })), {
+      : next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, facts: [...s.facts, fact as FactId] })), {
           stepId,
-          words: `${step.name}: + ${factById(fact)?.text ?? fact}`,
+          words: `${step.name}: + ${factWords(fact, docName)}`,
         }),
   )
 }
 
 /** Take a fact off the step. */
-export function removeFact(draft: FlowDraft, stepId: string, fact: string): EditResult {
+export function removeFact(draft: FlowDraft, stepId: string, fact: string, docName?: string): EditResult {
   return onStep(draft, stepId, (step) =>
-    !isFactId(fact) || !step.facts.includes(fact)
+    !isStepFact(fact) || !(step.facts as readonly string[]).includes(fact)
       ? { ok: true, draft }
       : next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, facts: s.facts.filter((f) => f !== fact) })), {
           stepId,
-          words: `${step.name}: − ${factById(fact)?.text ?? fact}`,
+          words: `${step.name}: − ${factWords(fact, docName)}`,
         }),
   )
 }
 
-/** Add a paper the step turns on, only from the list. */
-export function addPaper(draft: FlowDraft, stepId: string, paper: string): EditResult {
-  if (!isPaperId(paper)) return refuse('not a paper', 'A paper that is not on the list cannot be added.')
+/** Add a paper the step turns on, from the list or the library (`doc:<uuid>`), whose name the screen passes for the words. */
+export function addPaper(draft: FlowDraft, stepId: string, paper: string, docName?: string): EditResult {
+  if (!isStepPaper(paper)) return refuse('not a paper', 'A paper that is not on the list cannot be added.')
   return onStep(draft, stepId, (step) =>
-    step.papers.includes(paper)
+    (step.papers as readonly string[]).includes(paper)
       ? refuse('picked', 'It is picked already.')
-      : next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, papers: [...s.papers, paper] })), {
+      : next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, papers: [...s.papers, paper as PaperId] })), {
           stepId,
-          words: `${step.name}: + paper ${FLOW_PAPERS[paper].short}`,
+          words: `${step.name}: + paper ${paperWords(paper, docName)}`,
         }),
   )
 }
 
 /** Take a paper off the step. */
-export function removePaper(draft: FlowDraft, stepId: string, paper: string): EditResult {
+export function removePaper(draft: FlowDraft, stepId: string, paper: string, docName?: string): EditResult {
   return onStep(draft, stepId, (step) =>
-    !isPaperId(paper) || !step.papers.includes(paper)
+    !isStepPaper(paper) || !(step.papers as readonly string[]).includes(paper)
       ? { ok: true, draft }
       : next(draft, withStep(draft.flow, stepId, (s) => ({ ...s, papers: s.papers.filter((p) => p !== paper) })), {
           stepId,
-          words: `${step.name}: − paper ${FLOW_PAPERS[paper].short}`,
+          words: `${step.name}: − paper ${paperWords(paper, docName)}`,
         }),
   )
 }
@@ -544,25 +604,42 @@ export interface SavedFlow {
   removed: readonly RemovedStep[]
   /** Removed steps put back by this save, for `flow_removed_steps.put_back_at`. */
   putBack: string[]
-  /** One History line per step that changed, in the order first changed; its changes joined. */
+  /** One History line per step that changed, in the order first changed; its changes joined, and a second line past 500 characters. */
   history: FlowHistoryEntry[]
+}
+
+/** `flow_step_history.what` holds 500 characters. */
+const HISTORY_WHAT_MAX = 500
+
+/** A step's changes joined with semicolons, a new line begun where the next would pass the column. */
+function historyWhats(words: readonly string[]): string[] {
+  const out: string[] = []
+  let line = ''
+  for (const w of words) {
+    const said = w.length > HISTORY_WHAT_MAX ? `${w.slice(0, HISTORY_WHAT_MAX - 1)}…` : w
+    if (line && line.length + 2 + said.length > HISTORY_WHAT_MAX) {
+      out.push(line)
+      line = said
+    } else line = line ? `${line}; ${said}` : said
+  }
+  if (line) out.push(line)
+  return out
 }
 
 /** Save: the flow and its rows, the removed list, and one History line per step that changed. */
 export function saveDraft(draft: FlowDraft, by: string, at: string): SavedFlow {
   const words = draftWords(draft)
   const order = [...new Set(words.map((w) => w.stepId))]
-  const history = order.map((stepId) => ({
-    stepId,
-    what: words
-      .filter((w) => w.stepId === stepId)
-      .map((w) => w.words)
-      .join('; '),
-    before: savedStep(draft, stepId),
-    after: find(draft.flow, stepId)?.step ?? null,
-    by,
-    at,
-  }))
+  const history = order.flatMap((stepId) =>
+    historyWhats(words.filter((w) => w.stepId === stepId).map((w) => w.words)).map((what) => ({
+      stepId,
+      what,
+      before: savedStep(draft, stepId),
+      after: find(draft.flow, stepId)?.step ?? null,
+      by,
+      at,
+    })),
+  )
   const putBack = draft.saved.removed.filter((r) => !draft.removed.some((x) => x.step.id === r.step.id)).map((r) => r.step.id)
   return { flow: draft.flow, rows: flowRows(draft.flow), removed: draft.removed, putBack, history }
 }
