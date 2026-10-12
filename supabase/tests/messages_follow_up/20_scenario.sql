@@ -168,14 +168,15 @@ RESET ROLE;
 SELECT mfu.as_user('00000000-0000-0000-0000-0000000006d3');
 SET LOCAL ROLE authenticated;
 SELECT public.take_it(greg) FROM ids;
-SELECT public.hand_to(greg, '00000000-0000-0000-0000-0000000006d4') FROM ids;
-SELECT mfu.same('handed to the superintendent', (SELECT mfu.state(greg) FROM ids), 'waiting|-|Wendi|handed');
+SELECT mfu.refused('a superintendent, outside the office, is handed nothing', $q$SELECT public.hand_to(greg, '00000000-0000-0000-0000-0000000006d4') FROM ids$q$, 'Pick a teammate in the office.');
+SELECT public.hand_to(greg, '00000000-0000-0000-0000-0000000006d5') FROM ids;
+SELECT mfu.same('handed to the owner', (SELECT mfu.state(greg) FROM ids), 'waiting|-|Owner|handed');
 SELECT public.hand_to(greg, NULL) FROM ids;
-SELECT mfu.refused('an archived teammate is handed nothing', $q$SELECT public.hand_to(greg, '00000000-0000-0000-0000-0000000006d8') FROM ids$q$, 'Pick a teammate to hand it to.');
+SELECT mfu.refused('an archived teammate is handed nothing', $q$SELECT public.hand_to(greg, '00000000-0000-0000-0000-0000000006d8') FROM ids$q$, 'Pick a teammate in the office.');
 SELECT public.hand_to(dee, '00000000-0000-0000-0000-0000000006d5') FROM ids;
 SELECT mfu.same('every change in words',
   (SELECT concat_ws(' || ', mfu.events(greg), mfu.events(dee)) FROM ids),
-  'Robert took Greg Paulk. / Rosa took Greg Paulk from Robert. / Rosa handed Greg Paulk to Wendi. / Rosa put Greg Paulk back for whoever answers first. || Rosa gave (830) 555-0172 to Owner.');
+  'Robert took Greg Paulk. / Rosa took Greg Paulk from Robert. / Rosa handed Greg Paulk to Owner. / Rosa put Greg Paulk back for whoever answers first. || Rosa gave (830) 555-0172 to Owner.');
 SELECT public.take_it(greg) FROM ids;
 RESET ROLE;
 SELECT mfu.line(greg, 'text', 'out', interval '1 hour', 'Concrete. Addendum 2 settles it.') FROM ids;

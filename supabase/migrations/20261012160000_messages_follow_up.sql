@@ -321,7 +321,9 @@ AS $$
   SELECT coalesce((SELECT nullif(btrim(name), '') FROM public.users WHERE id = p_user_id), 'Someone')
 $$;
 
--- Whether a conversation can be handed to this user: there, and not archived. SECURITY DEFINER for the same reason.
+-- Whether a conversation can be handed to this user: on the office team, the five roles gc_office_team() names, and not
+-- archived. A superintendent cannot open Follow up, so a conversation handed to one would sit unseen (the lead,
+-- 2026-10-12). SECURITY DEFINER for the same reason. src/lib/followUp/followUpSql.test.ts holds the roles to GC_OFFICE_TEAM.
 CREATE OR REPLACE FUNCTION public.follow_up_user_known(p_user_id uuid)
 RETURNS boolean
 LANGUAGE sql
@@ -329,7 +331,10 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT EXISTS (SELECT 1 FROM public.users WHERE id = p_user_id AND archived_at IS NULL)
+  SELECT EXISTS (
+    SELECT 1 FROM public.users
+    WHERE id = p_user_id AND archived_at IS NULL AND role IN ('dev', 'master_technician', 'assistant', 'controller', 'estimator')
+  )
 $$;
 
 -- A contact's name as the screens show it (src/lib/contacts/load.ts): their own name, else the record's (a trade
@@ -415,7 +420,7 @@ BEGIN
     RAISE EXCEPTION 'That conversation is not there.' USING ERRCODE = 'P0001';
   END IF;
   IF p_user_id IS NOT NULL AND NOT public.follow_up_user_known(p_user_id) THEN
-    RAISE EXCEPTION 'Pick a teammate to hand it to.' USING ERRCODE = 'P0001';
+    RAISE EXCEPTION 'Pick a teammate in the office.' USING ERRCODE = 'P0001';
   END IF;
   IF v_before IS NOT DISTINCT FROM p_user_id THEN
     RETURN;

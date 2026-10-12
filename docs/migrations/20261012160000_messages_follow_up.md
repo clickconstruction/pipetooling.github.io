@@ -44,7 +44,8 @@ and the thread call, and the badge. Nothing in the app calls them until cut 2's 
    and the fences refuse the same writes behind them.
    - `take_it(contact)` and `hand_to(contact, user or null)` write the gray line (*Robert took Greg Paulk.*, *Rosa took
      Dr. Priya Raman from Robert.*, *Rosa handed …*, *Rosa gave …*, *… put … back for whoever answers first.*);
-     unchanged writes nothing; an archived user is no teammate.
+     unchanged writes nothing; only someone on the office team who is not archived can be handed it (a
+     superintendent cannot open Follow up), else *Pick a teammate in the office.*
    - `set_state(contact, state)`: Reopen, Remind me Monday (the coming Monday from `app_today()`; a Monday's press
      means the Monday after; returns the day), No reply needed (also clears who has it).
    - `mark_owed(contact, what, by_day, by_words)` marks or changes the open row and writes *marked that we owe …*,

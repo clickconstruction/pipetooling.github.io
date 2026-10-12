@@ -9,6 +9,7 @@ import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { OWED_DONE_NEEDS_A_NOTE, owedDayChangedLine, owedMarkedLine, owedWhatChangedLine } from '../messages/owed'
 import { askArchitectNote } from '../messages/promises'
+import { GC_OFFICE_TEAM } from '../gc/access'
 import { plainWordsFailures } from '../plainWords'
 import { hasLine } from './queue'
 
@@ -74,6 +75,14 @@ describe('the gray lines are the kernels’ words', () => {
 const refusals = [...BED.matchAll(/mfu\.refused\('(?:[^']|'')*',\s*\$q\$[\s\S]*?\$q\$,\s*'((?:[^']|'')*)'\);/g)].map((m) => unquote(m[1]!))
 /** Every refusal the migration can raise; `%` is what the press does, or who makes the promise. */
 const raised = [...SQL.matchAll(/RAISE EXCEPTION '((?:[^']|'')*)'/g)].map((m) => unquote(m[1]!))
+
+describe('who a conversation can be handed to', () => {
+  it('follow_up_user_known names the five roles of the office team, as GC_OFFICE_TEAM does', () => {
+    const fn = SQL.slice(SQL.indexOf('FUNCTION public.follow_up_user_known'))
+    const roles = /role IN \(([^)]*)\)/.exec(fn.slice(0, fn.indexOf('$$;')))?.[1] ?? ''
+    expect([...roles.matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort()).toEqual([...GC_OFFICE_TEAM].sort())
+  })
+})
 
 describe('the refusals', () => {
   it('the bed asserts every refusal the migration can raise', () => {
