@@ -1,5 +1,6 @@
 /**
- * Cut 2's SQL (`20261012160000_messages_follow_up.sql`) writes the thread's gray lines and says its refusals in words.
+ * Cut 2's SQL (`20261012160000_messages_follow_up.sql`, and its addendum `20261013030000_messages_owed_sent_done.sql`)
+ * writes the thread's gray lines and says its refusals in words.
  * The words are the kernels' (`queue.ts`, `owed.ts`, `promises.ts`), so this holds each `format()` the migration
  * renders to the kernel's own sentence, and checks the bed (`supabase/tests/messages_follow_up`, GitHub, the whole
  * schema) asserts every refusal the migration can raise, each in plain words, as `startSql.test.ts` does for its own.
@@ -7,13 +8,15 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { OWED_DONE_NEEDS_A_NOTE, owedDayChangedLine, owedMarkedLine, owedWhatChangedLine } from '../messages/owed'
+import { OWED_DONE_NEEDS_A_NOTE, owedDayChangedLine, owedMarkedLine, owedSentDoneLine, owedWhatChangedLine } from '../messages/owed'
 import { askArchitectNote } from '../messages/promises'
 import { GC_OFFICE_TEAM } from '../gc/access'
 import { plainWordsFailures } from '../plainWords'
 import { hasLine } from './queue'
 
-const SQL = readFileSync(resolve(__dirname, '../../../supabase/migrations/20261012160000_messages_follow_up.sql'), 'utf8')
+const SQL = ['20261012160000_messages_follow_up.sql', '20261013030000_messages_owed_sent_done.sql']
+  .map((f) => readFileSync(resolve(__dirname, '../../../supabase/migrations', f), 'utf8'))
+  .join('\n')
 const BED = readFileSync(resolve(__dirname, '../../../supabase/tests/messages_follow_up/20_scenario.sql'), 'utf8')
 
 const unquote = (s: string) => s.replace(/''/g, "'")
@@ -58,6 +61,10 @@ describe('the gray lines are the kernels’ words', () => {
     expect(render(template('%s set the day we owe'), 'Robert', 'Dr. Priya Raman', 'the start date', 'no day')).toBe(
       owedDayChangedLine('Robert', 'Dr. Priya Raman', { what: 'the start date', byYmd: null, byWords: null }),
     )
+  })
+
+  it('a message we sent got it done (owedSentDoneLine, the addendum)', () => {
+    expect(render(template('%s sent %s. It is done.'), 'Rosa', 'the start date')).toBe(owedSentDoneLine('Rosa', { what: 'the start date' }))
   })
 
   it('the plans question (askArchitectNote)', () => {
