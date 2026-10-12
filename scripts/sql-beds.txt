@@ -8,6 +8,7 @@ ar-stripe-cases
 gc-building
 gc-owner-billing
 portal-customer-lines
+gc-change-orders-from-messages
 gc-award
 pay-applications
 gc-back-charges

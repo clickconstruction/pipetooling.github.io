@@ -134,6 +134,8 @@ export const GC_TABLE_DOORS: Record<string, GcTableDoor> = {
   // Owner Billing.
   gc_owner_contract_lines: { lane: 'Owner Billing', door: 'money' },
   gc_change_orders: { lane: 'Owner Billing', door: 'money' },
+  // A change order's sends to sign (Messages, cut 4b), in gc_owner_contract_sends' shape: the money team's.
+  gc_change_order_sends: { lane: 'Owner Billing', door: 'money' },
   gc_owner_pay_apps: { lane: 'Owner Billing', door: 'money' },
   gc_owner_pay_app_lines: { lane: 'Owner Billing', door: 'money' },
   gc_owner_pay_reminders: { lane: 'Owner Billing', door: 'money' },
