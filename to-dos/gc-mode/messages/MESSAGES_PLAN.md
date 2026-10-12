@@ -411,7 +411,8 @@ land before the prototype builds pieces 1 to 3 above, since they change what a s
    Trades.
 3. **Their own view of it** (piece 8, v1.95). The trade's portal gets a first page, *Where you are with Click
    Construction*: the same list read from their side, their-move steps the only buttons (upload, sign, enter
-   the quote) with why in a sentence, our-move steps as *with us* and what unlocks them, nothing of ours
+   the quote) with why in a sentence, the our-move step we are on as *We are on it* with what to expect, the
+   ones not reached yet as *Later* with when they come (v1.165), nothing of ours
    (no Compared, no nudges, no other companies), done steps keeping their day. An upload there finishes the
    step by itself, so the office asks less. Spanish by the portal's switch, the step names in both languages
    in the editor (`PORTAL_SPANISH.md`). The customer's and the architect's pages are drawn the same way (Accept the bid or Not this time; Certify the pay application, Review the submittal); whether a customer has a portal to put it on is the open item on which record a contact is. It builds third, after the card: it changes the most for
