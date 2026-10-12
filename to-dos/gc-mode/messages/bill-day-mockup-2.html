@@ -36,6 +36,15 @@ p.lead{color:var(--text-muted);font-size:13px;margin:0 0 14px;max-width:1000px}
 .cascade .st.now .w{color:var(--warn)}
 .cascade .st.bad{background:#fdecea;border-color:#f1b3ae}
 .cascade .st.bad .w{color:var(--danger)}
+.secs{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:0 0 12px;font-size:12.5px}
+.secs .sp{border:1px solid var(--border);border-radius:999px;padding:3px 10px;background:var(--chip);font-weight:600;color:var(--text);cursor:pointer}
+.secs .sp b{font-weight:400;color:var(--text-muted);margin-left:4px}
+.secs .sp.hot{background:#fdecea;border-color:#f1b3ae}
+.secs .sp.hot b{color:var(--danger);font-weight:700}
+.secs .sp.warn{background:var(--warn-soft);border-color:#f0d3b0}
+.secs .sp.warn b{color:var(--warn);font-weight:700}
+.secs .ar{color:var(--text-muted)}
+.secs .sep{width:1px;height:18px;background:var(--border);margin:0 4px}
 /* gates */
 .gates{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--surface);margin:0 0 12px}
 .gates .h{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;display:flex;gap:8px;align-items:center}
@@ -123,6 +132,7 @@ td.num small{display:block;color:var(--text-muted);font-weight:400}
 <div class="lead2"><h3>Bill day · Oct 25</h3><span style="font-size:13px;color:var(--text-muted)">#42 Stone Oak Pharmacy · pay application 4 · the period to Oct 25</span></div>
 <div class="tabs"><span class="on">From the trades</span><span>To the owner</span><span>Forecast</span><span class="note">every job · #47 Helotes Dental Office · cut-off 6 days before, Settings</span></div>
 
+<div class="secs"><a class="sp warn">Sent back <b>1</b></a><span class="ar">→</span><a class="sp hot">Not in <b>3</b></a><span class="ar">→</span><a class="sp">In, waiting on us <b>1</b></a><span class="ar">→</span><a class="sp">Approved <b>1</b></a><span class="ar">→</span><a class="sp">Closing out <b>0</b></a><span class="sep"></span><a class="sp">Our own crew</a><span class="note" style="margin-left:auto;font-size:12px;color:var(--text-muted)">a press jumps to the section</span></div>
 <div class="cascade">
 <div class="st done"><div class="d">Last period</div><div class="w">Pay app 3 paid</div><div class="s">owner paid Sep 25 · 4 trades paid Sep 28</div></div>
 <div class="st now"><div class="d">Trades by</div><div class="w">Mon Oct 19</div><div class="s">2 of 6 in · 17 days · the app reminds them Fri Oct 16</div></div>
