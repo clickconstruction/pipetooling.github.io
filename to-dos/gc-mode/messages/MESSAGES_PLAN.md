@@ -821,6 +821,11 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.174, 2026-10-12**: By step's summary line becomes tiles (`by-step-summary-mockups.html` C): one per phase
+  with the count big and a dot per company, gray fine, orange over usual or lapsed, red late; an Off the flow tile;
+  a *Needs a hand today* tile counting the late and the lapsed with the pills, over usual as a watch. A tile jumps
+  to the rows, a dot to that company's thread at the step, the hand tile to Follow up (the owner picked C,
+  2026-10-12).
 - **v1.173, 2026-10-12**: By step rebuilt on the six pieces of `by-step-review-mockup.html`: a summary line that
   adds up (getting set up, quoting on N bids, building, off, then late, lapsed, over usual, waiting, with a link to
   Follow up); empty steps fold to one line per run with the sentence that says what lands there; per-job chips group
