@@ -662,6 +662,11 @@ In the order a GC lane builds: a plan page per cut, SQL first, then the read, th
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.106, 2026-10-11**: beside every nudge in the editor, and on the step card's nudge line, *⌕ see it* opens what the
+  nudge looks like when it goes, for a person on the step now (or a sample one): a text as the bubble on their phone
+  with the carriers' line, an email as the letter from the seat, a call as the Follow up row with what to say; the
+  words are the step's line in Quick replies, with Edit quick replies there (the owner, 2026-10-11). The portal page's
+  frame got its own class; it had taken the send preview's.
 - **v1.105, 2026-10-11**: the quick replies head in a thread narrower than 640 px is two rows, Quick replies with the
   narrow box and Edit on the first, the group pills on their own line under it, instead of three rows with the box
   alone on the last (the owner: narrow belongs beside Quick replies in this viewport).
