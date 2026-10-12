@@ -21,5 +21,6 @@ gc-start
 gc-owner-contract
 gc-customer-contacts
 messages-spine
+quo-messages
 contract-clauses
 portal-customer-page
