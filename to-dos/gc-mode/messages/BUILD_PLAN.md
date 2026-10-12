@@ -1,0 +1,272 @@
+---
+name: "Messages: the build plan"
+parent: to-dos/gc-mode/messages/MESSAGES_PLAN.md
+status: written 2026-10-11 at the owner's ask ("the edits are becoming cosmetic; help me plan the build"); the prototype is v1.141
+---
+
+# Messages: the build plan
+
+The prototype (`prototype.html`, v1.141) is the spec. This file is the order to build it in, what each
+cut touches, and what it reuses. `MESSAGES_PLAN.md` holds the why and the decisions; this holds the
+how. The owner will keep changing the prototype while this is built; a change there is a change to
+the cut that owns the surface, named below.
+
+## 1. What we are building, in one paragraph
+
+Every call, text and email with a person, in one thread per person, with the jobs they are on as
+labels on the person and on each line. Follow up is one queue of everything waiting on us. A flow per
+kind of person (customer, trade partner, architect) says where each one is, and every step of it is
+finished by a fact the app already keeps, never by a typed word. The papers a step turns on are sent,
+signed and reminded from the thread. Bill day reads the trades' pay applications against the
+deadline, with the superintendent's walk feeding it. One rule under all of it, from the plan: **a step
+is finished by a fact the app keeps.** Everything else is a view.
+
+## 2. What exists on main and is reused, never rebuilt
+
+| Need | What exists |
+|---|---|
+| The people | `customers` and their contacts, the GC customer contacts, `gc_companies` and their people, the Person Desk. A contact here must be one of them (the open item *which record a contact is*, settled in cut 1). |
+| The jobs | `bids`, `gc_projects`, `jobs_ledger`; `gc_trade_packages` for which trade a company is on a job. |
+| Email out | Resend through the edge functions (`gc-trade-email`, `gc-customer-email`, `gc-architect-email`); every sent copy in `sent_documents` (`docs/SENT_COPIES.md`). |
+| Email in | Nothing. Cut 6 builds the bids@ reader. |
+| Calls and texts | Nothing. Cut 5 builds the Quo link (`HANDOFF.md` section 5 holds the taken design: one company number, two seats, every call recorded). |
+| The flow's facts | The stamps the sweep found (`MESSAGES_PLAN.md` → *What finishes each step today*): `gc_invites`, `gc_companies.portal_opened_on`, `person_contract_documents` (w9, coi, agreement), `gc_quotes`, `gc_trade_packages`, `gc_sows`, `gc_draws`, `gc_projects.*_on`, `gc_owner_pay_apps`, `gc_change_orders`, `gc_plan_sets`, `gc_plan_questions`, `gc_rfis`, `gc_submittal_rounds`. |
+| A state per step from stamps | `src/lib/journeys/personJourney.ts` and `journeyHealth.ts`: five journeys, a state per step. The flow is that kernel's list made editable. |
+| A paper to sign | `src/lib/gc/paperSend.ts` and `GcPaperSend.tsx` (send, remind, the history words); `src/lib/esignConsent.ts` (the consent, versioned); the sign page the office's email opens (`GcTradePortalPapers.tsx`, `/contract/accept`). |
+| The trade's portal | `GcTradePortal.tsx` over `gc-trade-portal`, EN and ES (`PORTAL_SPANISH.md`). |
+| Bill day, the owner's half | `src/lib/gc/ownerBillingDay.ts` (`billDay`, the amber notes), `billingForecast.ts`, `ownerBillingRemind.ts`, the Money page (`GcMoney.tsx`), the office notices (`gc_office_notices`). |
+| The trades' draws | `gc_draws`, `gc_draw_lines` (`we_see`), `gc_sow_lines`, `drawRows.ts`, `drawsIo.ts`, the Draws window, `tradeCloseout` in `building.ts`. |
+| The daily log | `buildingLog.ts`, `gc_crew_on_site`, the log's photos. |
+| Quick replies | Nothing; cut 3. |
+| Who has it, Open · Snoozed · Done | Nothing; cut 2. |
+| Help, release notes, the app directory | `src/content/help/`, `src/content/releaseNotes/`, `docs/twins/APP_DIRECTORY.md`, as CLAUDE.md says. |
+
+## 3. The data
+
+Every table gets the read-only and digital-twin fences (`apply_read_only_write_blocks`,
+`apply_read_only_stmt_blocks`, `apply_digital_twin_write_blocks`), `SET lock_timeout = '3s'`, the
+`docs/migrations/<version>_<slug>.md` note, and a number claimed from `origin/main`.
+
+| Table | Holds | Cut |
+|---|---|---|
+| `contacts` | A view over the people the app has, not a fifth list: the record it points at (`customer_contact_id` / `gc_company_person_id` / `person_id`), `kind` (customer, trade, arch, unknown), `goes_by`, `opted_out_at`, `state` (waiting, snoozed, done), `snoozed_until`, `has_user_id`, `has_since`, `has_how` (took it, by the rule, handed), `off_since`, `off_why`, `off_by`. | 1, 2 |
+| `contact_channels` | A phone number or email that is theirs; a number nobody knows is a contact with one channel until *Who is this?* names it, which re-points the contact and keeps its thread. | 1 |
+| `contact_jobs` | The association, with `is_default` (one per contact). | 1 |
+| `messages` | One row per call, voicemail, missed call, text, email, team note or event: `contact_id`, `job_id` (null = on the person), `channel`, `direction` (in, out, team), `who_user_id` or `who_text`, `at`, `subject`, `body`, `quo_id` / `gmail_id` (the source id, unique), `recording_url`, `transcript`, `summary`, `duration`, `optout_line` (first, silence), `back_on`, `back_by` (a note's follow-up day), `step_id` (a note tied to a step). | 1, 5, 6 |
+| `message_attachments` | A file as it arrived or went: `kind`, `name`, `size`, `bucket_path` (our copy), `link` (a link is a link), `sent_as` (file, link, picture), `drive_file_id` once filed. | 6, 7 |
+| `message_highlights` | `message_id`, `text`, `by`, `at`. | 2 |
+| `message_promises` | What a line was read as: `kind` (quote, start, papers, payment), `day`, `state` (offered, written, no), `by`, `where` (the row it was written to). | 2 |
+| `contact_owed` | What we owe a person: `what`, `by_day`, `marked_by`, `marked_at`, `done_at`, `done_note_message_id`. One open row per contact. | 2 |
+| `quick_replies` | `text`, `for_kind`, `step_id`, `scope` (team, mine), `added_by`, `removed_at`; `quick_reply_uses` (`user_id`, `contact_id`, `at`); `quick_reply_versions` (every edit with who and when). | 3 |
+| `flows` / `flow_steps` | One flow per kind: `lane` (once, per_job, any_time), `order`, `name`, `name_es`, `who` (us, them, both), `seat_user_id`, `facts` (ids from the code list), `join` (and, or), `papers`, `loop` (each ask, …), `nudge_days`, `nudge_how`, `nudge_send` (ask, app), `nudge_day_fact`; `flow_step_history`; `flow_removed_steps`. **State is never stored**: it is a read. | 4 |
+| `contact_step_notes`, `contact_step_skips` | A team note tied to a step; a step skipped for one person with a reason. | 4 |
+| `flow_fact_wishes` | *Ask for a fact that is missing*: `text`, `step_id`, `by`, `at`. | 4 |
+| `nudge_holds`, `nudge_sent` | *Hold until Mon*; what the app or a person sent for a step and when, so a reminder never doubles. | 4, 5 |
+| `superintendent_checks` | Per draw line, per walk: `we_see_pct` or `stored_on_site`, `by`, `at`, `photo_id`, `note`. The Draws window reads the newest into `gc_draw_lines.we_see`. | 9 |
+| `bill_day_nothing` | *Nothing this period*: `sow_id`, `period_to`, `said_by`, `at`. | 9 |
+| Four facts the app does not keep | `gc_trade_portal_links.first_opened_at`; `gc_trade_packages.lost_on` per invite (or a `gc_invites.lost_on`); `gc_projects.won_on`; warranty end computed from `gc_owner_acceptances.accepted_on` + 1 year (no column). | 4 |
+
+The flow's facts are **a list in code** (`src/lib/flows/facts.ts`): id, words, the group, the column
+each reads, and whether it names a paper we send. A fact that is not there cannot be picked.
+
+## 4. The build, in order
+
+Kernels first (`src/lib/…`, pure, unit-tested), then SQL, then the read, then the screens; one
+change, one PR, auto-merge; every PR its release note, its `docs/recent-features/` fragment, its
+help guide when it changes a flow a person meets, and its `APP_DIRECTORY.md` line when it adds a
+page. The prototype's words are the words; its hover cards are the help text.
+
+### Cut 1 · The spine: a contact, its channels, its jobs, its messages (read only)
+
+- **Kernels**: `contacts/kernel.ts` (which record a contact is, the matching rule by number and
+  address, `firstName` from `goes_by`), `messages/thread.ts` (the thread in time order, the day
+  dividers, a line's job, whose move from the last in and out, `whenWords`), `messages/stamps.ts`
+  (Them · Us, the `(+6)` mark, the calendar).
+- **SQL**: `contacts`, `contact_channels`, `contact_jobs`, `messages` with its fences; the RPCs
+  `contact_for_channel`, `name_contact` (*Who is this?*: re-points, keeps the thread), `tie_message`,
+  `set_default_job`; a seed that reads the people the app has into contacts.
+- **Screens** on `/gc`: the Messages tab (the list as three lines per row, All · Customers · Trades ·
+  Who is this?, the rail of faces, search across words); the thread as a window (name row with the
+  pair ☎ ⋯, facts line, move line with the stamps, the jobs rail as tiles with the default star,
+  drag and press-and-hold to tie); the message window (the whole text, its facts, Copy, Print, Share).
+- **Decision taken here**: *which record a contact is* (section 7).
+
+### Cut 2 · Follow up, whose move, and what we owe
+
+- **Kernels**: `followUp/queue.ts` (Needs a reply, longest waiting first; Needs you; We owe them),
+  `messages/owed.ts` (the two blanks, the flow's our-move words, `readDay`, done with a note),
+  `messages/promises.ts` (a day heard: the kinds by who they are, *just talk*).
+- **SQL**: `contact_owed`, `message_promises`, `message_highlights`; `contacts.state`, `has_*`,
+  the rule in Settings → Phone and texts (`app_settings.messages_assign_rule`); RPCs `take_it`,
+  `hand_to`, `set_state`, `mark_owed`, `owed_done`, `write_down`, `highlight`.
+- **Screens**: the Follow up tab (Needs you, Needs a reply, We owe them, the nudge section lands in
+  cut 4); the who-has-it pill and Open · Snoozed · Done; the owed strip above the box; the settling
+  note; a note's follow-up day (*Bring it back on a day…*); the highlight and its three removes.
+
+### Cut 3 · Replying: the box, quick replies, the send window
+
+- **Kernels**: `messages/compose.ts` (the kinds, the from line, the greeting from `goes_by`, the
+  subject from the job and the first line, the signature from the account, the opt-out line's two
+  rules and 30 quiet days, the segment count), `quickReplies/kernel.ts` (groups by kind and step,
+  most used first, the search mark, `qrGuess`).
+- **SQL**: `quick_replies` and its two side tables; RPCs `use_quick_reply`, `edit_quick_reply`
+  (versioned), `remove_quick_reply`, `restore_quick_reply`.
+- **Screens**: the reply box (Text blue, Email white, Note yellow, the orange ring, the from line
+  floating in the empty box, Tie to left and Send right); the quick replies strip folded to a press
+  on the kinds row; *Find a reply*; the Edit quick replies window with history and Removed; the send
+  window (what they see, the To line editable, the subject editable, *After this sends*, the opt-out
+  line as the app's own bubble, the email note at the bottom); the sent copy filed through the
+  existing `sent_documents`.
+- **Sending** reuses Resend for email; a text waits on cut 5 (until then the send window says so).
+
+### Cut 4 · The flow suite
+
+- **Kernels**: `flows/facts.ts` (the list), `flows/state.ts` (done, on now, next, late, lapsed,
+  waiting on someone else, skipped, off the flow, as reads over the stamps; the per-job lane per
+  job; `wouldBeNow` for the editor's preview), `flows/card.ts` (the step card's words: the status
+  sentence, what we need, until then, next, reminder, so far), `flows/nudges.ts` (which rows Follow
+  up gets, the folding of a lapsed step into the same person's row, the row that goes to the other
+  person), `flows/board.ts` (everyone by step, by company), `flows/going.ts` (the usual, the funnel,
+  where it sticks).
+- **SQL**: `flows`, `flow_steps`, `flow_step_history`, `flow_removed_steps`, `contact_step_notes`,
+  `contact_step_skips`, `flow_fact_wishes`, `nudge_holds`; the four missing facts' columns; a seed
+  with the three flows as the prototype has them.
+- **Screens**: the flow panel and its rail (the marks, the paper marks, the day, the lapsed reason,
+  the person waited on, the per-job caption's picker, the title by kind); the step card (as a card
+  at a desk, a sheet on a phone); Settings → Flows (the editor, the fact picker, the who-moves
+  preview, History, How it is going); Trade partners (By step, By company, Asks) and the same two
+  on Customers; the Messages list's *by step* chip; the job page's *Papers on this job, by company*;
+  Follow up's *Nudges from the flow*; the Attach picker's starred rows for a step.
+- **Papers**: *Send it* and *Remind them* call the existing paper send; the sign page is the existing
+  one with the consent kernel verbatim; the customer's contract and a change order go the same way
+  (the contract's send exists as `gc_owner_contract_sends`).
+
+### Cut 5 · Calls and texts: the Quo link
+
+- **Edge**: `quo-webhook` (`message.received`, `call.completed`, `call.missed`,
+  `call.voicemail.completed`, `call.recording.completed`, `call.transcript.completed`,
+  `call.summary.completed`; checked as Quo's; matched by `contact_for_channel`; threaded; tied to the
+  default job; a number nobody knows makes an unknown contact and a *Who is this?* row), `quo-send`
+  (a text from the company number, with the opt-out line when `compose.ts` says so, refusing an opted-out
+  number), the STOP and HELP answers. `docs/EDGE_FUNCTIONS.md` sections for each.
+- **Settings → Phone and texts** becomes live: the connection, the seats, who gets a new message.
+- **The nudge the app sends** (`flow_steps.nudge_send = 'app'`): a scheduled function that reads
+  `flows/nudges.ts` each morning and sends through `quo-send`, writing `nudge_sent`; off for every
+  step until the owner turns it on.
+- **Decision taken here**: whether the app may send a nudge itself (section 7).
+
+### Cut 6 · Email in: the bids@ reader and the files that arrive
+
+- **Edge**: `gmail-sync` on a Google grant to the bids@ account (push or a short poll): every email
+  into `messages` by `gmail_id`, the sender matched by address, the thread by the sender; a small
+  attachment copied into the private `message-attachments` bucket; a link kept as a link; a file
+  that is a step's paper (a signed W-9, a certificate) read as that paper and filed on the company's
+  Documents when sure, else offered in the thread as *File this as their certificate*. The subject
+  or title block that names a job ties the email to it.
+- **A forwarded copy** as the fallback for mail that lands in a person's own inbox: the same reader
+  on a forward to bids@.
+- **Screens**: the message window's attachments (Open, Save to Drive, *a link, not a file*, *our copy
+  kept on arrival*); the thread's chips.
+- **Decisions taken here**: the Google grant on bids@; whether the agent files on its own when sure;
+  how long an email's copy of a file stays in our bucket (section 7).
+
+### Cut 7 · Files going out: Documents' one list and the Drive handler
+
+- **Kernels**: `documents/jobFiles.ts` (the one list of a job's files: the papers the app makes,
+  the Drive folder's Plans and Team only halves, `gc_trade_files`, the sent copies, the files that
+  arrived on messages, each tagged with where it lives and its portal page), `documents/outgoing.ts`
+  (by size and kind: the file, our link, the picture; a plan set always a link; a file from this
+  computer into Team only first).
+- **Edge**: `drive-link` (the app's own link to a Drive file: a signed file link or the portal
+  page; forwards to the file; counts who opened it; can be cut off).
+- **Screens**: the Attach picker (the job's files, this computer, a photo); the send window's file
+  notes; the sent copy keeping its files (`sent_documents` + `message_attachments`).
+
+### Cut 8 · Their own view: the portal's first page
+
+- **Kernels**: `flows/portalPage.ts` (the same list read from their side: their-move steps as the
+  only buttons with why in a sentence, ours as *with us* and what unlocks them, a done step's day,
+  one section per job, nothing of ours; the step names in both languages).
+- **Edge**: `gc-trade-portal` gains the page's read; the uploads there already finish the steps.
+- **Screens**: the portal's first page, EN and ES; *See their page* from the panel, the card and ⋯.
+- **Later**: the customer's page, once a customer has a portal (section 7).
+
+### Cut 9 · Bill day: From the trades, and the superintendent's walk
+
+- **Kernels**: `billDay/trades.ts` (the cascade's days from the 25th and the cut-off setting; the
+  seven gates read from the draws, the waivers, the change orders and last period's certificate; the
+  groups; Expected from `billingForecast.ts`; the total line), `billDay/lines.ts` (claimed, we see,
+  the schedule, this draw's money at what we see, the held-out change order, retainage),
+  `billDay/walk.ts` (the claims to check in walking order by where a line is, the photo-or-note
+  rule, when the checked gate clears), `billDay/asks.ts` (the one-press ask, each its own text; the
+  send-back note written from the walk).
+- **SQL**: `superintendent_checks`, `bill_day_nothing`, `app_settings.bill_day_cutoff_days`,
+  `gc_sow_lines.where_on_site`.
+- **Screens**: Money → Bill day → *From the trades* beside the existing *To the owner* and
+  *Forecast*; the project card's *Bill day · 3 of 7* pill; the access points (the pay application
+  card's round line, Follow up's section head, the job page's line, the Draws row on Trade partners,
+  the trade's portal naming the period); the daily log's *Claims to check* on the checking days for
+  the superintendent assigned to the job; the text she gets on the first checking day and *Ask Wendi
+  to walk it*. Approve and Send back stay the Draws window's own.
+- **Access**: amounts for the money team only (as the Draws window is gated); the superintendent's
+  paths show percents and photos, never a dollar.
+
+### Cut 10 · The phone, the Pipeline's Job activity, photos
+
+- The thread and Follow up at 375 px (the folded header, the rail's sheet, the by-step rows);
+  press-and-hold in place of drag.
+- Calls, texts and emails mixed into the Pipeline's Job activity (team-only rows yellow).
+- Photos saved on arrival to the job's photos; the file agent copying and naming.
+
+## 5. The kernels, listed
+
+`contacts/kernel.ts` · `messages/thread.ts` · `messages/stamps.ts` · `messages/compose.ts` ·
+`messages/owed.ts` · `messages/promises.ts` · `followUp/queue.ts` · `quickReplies/kernel.ts` ·
+`flows/facts.ts` · `flows/state.ts` · `flows/card.ts` · `flows/nudges.ts` · `flows/board.ts` ·
+`flows/going.ts` · `flows/portalPage.ts` · `documents/jobFiles.ts` · `documents/outgoing.ts` ·
+`billDay/trades.ts` · `billDay/lines.ts` · `billDay/walk.ts` · `billDay/asks.ts`.
+
+Each ships with its unit test, and each screen with a render smoke (`*.render.test.tsx`). The
+prototype's functions are the first draft of each kernel; lift the words, not the DOM.
+
+## 6. The edge functions, listed
+
+`quo-webhook` · `quo-send` · `gmail-sync` · `drive-link` · `messages-nudge-dispatch` (the app's
+reminders, each morning) · `bill-day-ask` (the one-press asks and the superintendent's text).
+`gc-trade-portal` gains the page read. Each gets its `docs/EDGE_FUNCTIONS.md` section and TOC line,
+and is deployed by hand after merge (`supabase functions deploy`).
+
+## 7. Decisions still the owner's
+
+Each is taken in the cut that needs it; none blocks cut 1 through 4 except the first.
+
+1. **Which record a contact is** (cut 1): a view over the people the app has, pointing at one of
+   them. Lean: yes, and *Who is this?* re-points.
+2. **A person on two flows** (cut 4): one contact with two flows as tabs, or two contacts. Lean: one
+   contact, two tabs.
+3. **Whether the app may send a nudge itself** (cut 5): per step, off until turned on.
+4. **The Google grant on bids@** (cut 6): the app reads the whole box.
+5. **Whether the file agent files papers on its own when sure** (cut 6), or always offers.
+6. **How long an email's copy of a file stays** once it is in Drive (cut 6). Lean: keep it.
+7. **The cut-off** as a setting or fixed days before bill day (cut 9). Lean: a setting, one for
+   every job.
+8. **Whether a superintendent's tap that matches the claim approves the line** (cut 9). Lean: no;
+   the walk informs, the office approves.
+9. **Whether the customer's portal gets the page** (cut 8).
+10. Yearly or monthly Quo billing; Claude from the first day or later (`MESSAGES_PLAN.md`).
+
+## 8. What is left out, on purpose
+
+The prototype's demo-only presses (*They text back*, *their upload arrives*, *sign (demo)*, the ten
+companies with no thread), the Board's ring reading the flows (its own cut, later), round robin or
+load balancing on who gets a message, a second contact per role, a files@ address, a Flows tab of
+its own, and any screen that writes a draw outside the Draws window.
+
+## 9. How a cut is done
+
+A cut is done when: its kernels and tests are on `main`; its migrations are pushed with
+`supabase db push` and verified read-only on prod; its edge functions are deployed and
+`npm run check:edge-drift` is clean; its screens pass the render smokes and the deploy checks;
+its help guide passes the plain-words test; its release note and fragment are in; `APP_DIRECTORY.md`,
+`PROJECT_DOCUMENTATION.md`, `GLOSSARY.md` and `ACCESS_CONTROL.md` say what changed; and the owner
+has pressed on it on prod with a test row that matches nothing real.

@@ -545,6 +545,8 @@ targets, one screen per draw. *Open*: a whole-draw *matches* press against a tap
 
 ## How it would be built, once the shape is settled
 
+The detailed plan is `BUILD_PLAN.md` (2026-10-11); the list below is the first sketch it grew from.
+
 In the order a GC lane builds: a plan page per cut, SQL first, then the read, then the screens.
 
 1. **Tables**: `contacts` (or a view over the people the app already has), `contact_channels`
@@ -768,6 +770,9 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.141b, 2026-10-11**: `BUILD_PLAN.md`, the build plan for everything in the prototype (the owner: the edits are
+  becoming cosmetic, the basis is right): what is reused from main, the tables, ten cuts in order with their kernels,
+  SQL, edge functions and screens, the decisions still the owner's, what is left out, and what done means.
 - **v1.141, 2026-10-11**: *⤢ Find* beside Edit on the quick replies strip opens Find a reply: their last message at the
   top in full, where they are in the flow in one sentence with a link to the step's card, a narrow box, and every
   line with room to read, the lines for the step they are on first and marked; a press fills the box and closes it
