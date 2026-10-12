@@ -112,7 +112,16 @@ main{max-width:1180px;margin:0 auto;padding:16px}
 .avatar.cust{background:#e6f1ff;color:#1f5fbf}.avatar.trade{background:#eef7ea;color:#1a7f3c}.avatar.arch{background:#f3eaff;color:#6d3fb8}.avatar.unknown{background:#fff1e0;color:#b35c00}
 .row .who{font-weight:600}
 .row .sub{color:var(--text-muted);font-size:13px}
-.row .last{font-size:14px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .last{font-size:13.5px;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text)}
+.row .last b{font-weight:600;color:var(--text-muted)}
+.list .row .body{flex:1;min-width:0}
+.list .row .l1,.list .row .l2{display:flex;gap:8px;align-items:center;min-width:0}
+.list .row .l1 .who{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;margin:0;font-size:14px;color:var(--text)}
+.list .row .when{flex:none;font-size:12px;color:var(--text-muted)}
+.list .row .l2{margin-top:1px}
+.list .row .l2 .sub{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .row .l2 .court.tiny{flex:none;max-width:60%}
+.list .row .l2 .pill.has{flex:none;font-size:11px}
 .row .right{margin-left:auto;text-align:right;font-size:12px;color:var(--text-muted);flex:none;max-width:132px}
 .court.tiny{font-size:11px;padding:1px 7px 1px 5px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-flex}
 .list .row > div:nth-child(2){flex:1;min-width:0}
@@ -1145,7 +1154,7 @@ function renderMessages(m){
     <div class="filters" style="padding:0 10px">${[['all','All'],['customers','Customers'],['trades','Trades'],['unknown','Who is this?']].map(([k,l])=>`<button class="${listFilter===k?'on':''}" onclick="listFilter='${k}';stepFilter=null;render()">${l}</button>`).join('')}<span class="whowrap"><button class="${stepFilter?'on':''}" data-tip="By step|Narrows the list to the people on one step of their flow.|Press again to clear it." onclick="${stepFilter?'stepFilter=null;render()':'stepFilterPicker(this)'}">${stepFilter?esc((stepById(stepFilter.kind,stepFilter.id)||{}).name||'')+' ×':'by step ▾'}</button></span>${view==='customers'?`<button data-tip="By step|Everyone by step: one row per step with the people as chips.|The same people, by where they are." onclick="customersBoard='step';render()">By step</button><button data-tip="By company|One row per company: the flow as a track, the step on now, one line per job.|The same people, by name." onclick="customersBoard='company';render()">By company</button>`:''}</div>`;
   if(!rows.length) list.innerHTML+='<div class="empty">Nothing matches.</div>';
   for(const c of rows){ const last=lastMsg(c); const r=document.createElement('div'); r.className='row'+(c.id===openContact?' on':''); r.onclick=()=>openThread(c.id);
-    r.innerHTML=`<div class="avatar ${kindClass(c)}">${initials(c)}</div><div style="min-width:0;flex:1"><div class="who">${esc(c.name)}</div><div class="sub">${esc(c.company||kindWord(c))}${c.trade?` · ${esc(c.trade)}`:''}</div><div class="last">${last?`${chWord(last)}: ${esc(snippetOf(last))}`:''}</div></div><div class="right">${last?fmt(last.at).split(' · ')[0]:''}<br><span class="court ${courtShort(c).side} tiny" title="${esc(courtShort(c).title)}"><i></i>${esc(courtShort(c).word)}</span>${c.has?`<br><span class="pill has">${esc(c.has)}</span>`:''}</div>`;
+    r.innerHTML=`<div class="avatar ${kindClass(c)}">${initials(c)}</div><div class="body"><div class="l1"><span class="who">${esc(c.name)}</span><span class="when">${last?fmt(last.at).split(' · ')[0]:''}</span></div><div class="l2"><span class="sub">${esc(c.company||kindWord(c))}${c.trade?` · ${esc(c.trade)}`:''}</span>${c.has?`<span class="pill has">${esc(c.has)}</span>`:''}<span class="court ${courtShort(c).side} tiny" title="${esc(courtShort(c).title)}"><i></i>${esc(courtShort(c).word)}</span></div><div class="last">${last?`<b>${chWord(last)}</b> ${esc(snippetOf(last))}`:''}</div></div>`;
     list.appendChild(r); }
   wrap.appendChild(list); }
   // thread

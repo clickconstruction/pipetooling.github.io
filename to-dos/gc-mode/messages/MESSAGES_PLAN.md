@@ -768,6 +768,10 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.136, 2026-10-11**: the people list's row is three full-width lines instead of two columns: the name with the
+  time at its right, the company and trade with the move pill at their right, and the last message across the whole
+  width; the old right column had squeezed the name and cut the last line short with room to spare (the owner,
+  2026-10-11).
 - **v1.135, 2026-10-11**: the reply box's last row is flipped: Tie to on the left, Attach and Send on the right (the
   owner, 2026-10-11).
 - **v1.134, 2026-10-11**: the line under the box, *Send shows it to you the way they will see it, before it goes*, is
