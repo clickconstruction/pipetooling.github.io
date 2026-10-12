@@ -4167,6 +4167,13 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   .lienRunCardNext { text-align: left; }
   .lienRunCopyRow { grid-template-columns: 1fr; gap: 0.05rem; }
 }
+/* Lien desk → the run's foot (Run-4, the run shown not told): one status line, one button named for the next thing, everything else under More. */
+.lienRunFoot2 { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; padding: 0.7rem 1.25rem 0.9rem; border-top: 1px solid var(--border); background: var(--bg-subtle); }
+.lienRunFootStatus { flex: 1 1 14rem; min-width: 0; display: grid; gap: 2px; }
+.lienRunFootStatus b { color: var(--text-strong); font-size: 0.9rem; }
+.lienRunFootStatus span { font-size: 0.78rem; color: var(--text-muted); }
+.lienRunMore { flex-basis: 100%; display: flex; gap: 0.5rem 0.75rem; align-items: center; flex-wrap: wrap; padding-top: 0.6rem; border-top: 1px dashed var(--border); }
+.lienRunMore > div[data-testid='run-saved-copy'] { flex-basis: 100%; }
 /* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */
 .lienFootRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; }
 .lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; flex: 1 1 12rem; }
