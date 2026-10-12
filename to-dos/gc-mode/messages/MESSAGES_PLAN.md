@@ -768,6 +768,15 @@ The prototype's demo-only presses, never to be built: *They text back*, *their u
   we can do?).
 - **v1.65, 2026-10-11**: the typed-day box sits in the chips' row, filling the space beside the last chips, not on a
   row of its own (the owner's screenshot).
+- **v1.125, 2026-10-11**: the step card in plain words (the owner: not easy to follow; everything in simple English a
+  person reads at a glance). The title is the step; under it one sentence says where it stands (*Greg's insurance
+  certificate ran out Sep 30. We need a new one.* / *Greg's move. On it 4 days, usually 3.* / *Waiting on Jonah, 4
+  days.* / *Done Sep 12.*). Then only the sections that apply, each a short heading: *What we need* (or *What we
+  have*), one line per paper as its name, its state and date, and one button; *Until then*, what the lapse or the
+  wait holds up in two sentences; *Next*, only when the next step is not done; *Reminder*, one sentence (*A call after
+  5 quiet days. Greg wrote today, so not yet.*) with Remind now, Hold until Mon and see it; *So far*, the history as
+  short lines and the notes. Gone: *Finished when*, the lane and move in the subtitle, *Both facts are the app's own*,
+  *Nudge* as a word, *Whose move* as a paragraph, *How Greg got here*. *Skip for Greg* for *Does not apply to Greg*.
 - **v1.124, 2026-10-11**: the superintendent's side. *Signed in as* on the header switches between Robert, the office,
   and Wendi, the superintendent on Stone Oak Pharmacy, whose nav is Daily log · Messages · A job. The daily log carries
   crews on site (counts), photos, and on a bill-day week *Claims to check*, the same list the office previews as her
