@@ -190,6 +190,7 @@ button.court{cursor:pointer;line-height:inherit}button.court:hover{filter:bright
 .bring{display:flex;gap:12px;align-items:center;margin-bottom:10px}.ring{width:64px;height:64px;border-radius:50%;display:grid;place-items:center;flex:none}.ring b{width:48px;height:48px;border-radius:50%;background:var(--surface);display:grid;place-items:center;font-size:12px}
 .btodo{display:flex;flex-direction:column;gap:6px}.bt{display:flex;align-items:center;gap:8px;font-size:13.5px}.bt .act{margin-left:auto;flex:none}.bt .dot{width:9px;height:9px;border-radius:50%;flex:none}.bt .dot.r{background:#b42318}.bt .dot.o{background:var(--warn)}.bt .dot.b{background:var(--accent)}
 @container (max-width: 900px){ .bsum{grid-template-columns:1fr} }
+.pchip.off{opacity:.6}
 .pagelink{margin-top:6px}
 .rows td.co .pagelnk{padding:0;font-size:11.5px;margin-top:2px}.rows td.co .pagelnk .globe{width:11px;height:11px;margin-right:3px}.globe{width:13px;height:13px;vertical-align:-2px;margin-right:4px;fill:none;stroke:currentColor;stroke-width:1.2}
 .chev2{border:0;background:none;color:var(--accent);cursor:pointer;font-size:13px;padding:0 2px;line-height:1}
@@ -1960,13 +1961,13 @@ const STICKS = {trade:{papers:'the certificate, 6 of 8 times', ask:'7 never quot
 // ---------- everyone by step (v1.99): one column per step, the lanes a gap apart, at the top of Trade partners and Customers ----------
 // Companies the board shows that have no thread in this prototype; a press on one says so.
 const GHOSTS = [
-  {id:'g1', name:'Alamo Steel', company:'Alamo Steel', kind:'trade', ghost:true, jobs:['stoneoak'], def:'stoneoak'},
-  {id:'g2', name:'Rio Paving', company:'Rio Paving', kind:'trade', ghost:true, jobs:['stoneoak'], def:'stoneoak'},
-  {id:'g3', name:'Lone Star Mechanical', company:'Lone Star Mechanical', kind:'trade', ghost:true, jobs:['boerne'], def:'boerne'},
-  {id:'g4', name:'Cibolo Fence', company:'Cibolo Fence', kind:'trade', ghost:true, jobs:['padb'], def:'padb'},
-  {id:'g5', name:'Kerr Electric', company:'Kerr Electric', kind:'trade', ghost:true, jobs:['boerne','stoneoak'], def:'boerne'},
-  {id:'g6', name:'Hill Country Paving', company:'Hill Country Paving', kind:'trade', ghost:true, jobs:[], def:null},
-  {id:'g7', name:'Medina Drywall', company:'Medina Drywall', kind:'trade', ghost:true, jobs:[], def:null},
+  {id:'g1', trade:'Structural steel', name:'Alamo Steel', company:'Alamo Steel', kind:'trade', ghost:true, jobs:['stoneoak'], def:'stoneoak'},
+  {id:'g2', trade:'Paving', name:'Rio Paving', company:'Rio Paving', kind:'trade', ghost:true, jobs:['stoneoak'], def:'stoneoak'},
+  {id:'g3', trade:'Mechanical', name:'Lone Star Mechanical', company:'Lone Star Mechanical', kind:'trade', ghost:true, jobs:['boerne'], def:'boerne'},
+  {id:'g4', trade:'Fencing', name:'Cibolo Fence', company:'Cibolo Fence', kind:'trade', ghost:true, jobs:['padb'], def:'padb'},
+  {id:'g5', trade:'Electrical', name:'Kerr Electric', company:'Kerr Electric', kind:'trade', ghost:true, jobs:['boerne','stoneoak'], def:'boerne'},
+  {id:'g6', trade:'Paving', name:'Hill Country Paving', company:'Hill Country Paving', kind:'trade', ghost:true, jobs:[], def:null},
+  {id:'g7', trade:'Drywall', name:'Medina Drywall', company:'Medina Drywall', kind:'trade', ghost:true, jobs:[], def:null},
   {id:'g8', name:'Oak Hills Veterinary', company:'Oak Hills Veterinary', kind:'customer', ghost:true, jobs:[], def:null},
   {id:'g9', name:'Leon Valley Bakery', company:'Leon Valley Bakery', kind:'customer', ghost:true, jobs:[], def:null},
   {id:'g10', name:'Castle Hills HOA', company:'Castle Hills HOA', kind:'customer', ghost:true, jobs:[], def:null},
@@ -1983,6 +1984,20 @@ Object.assign(FLOW_STATE, {
   g9:{done:['asked','bid'], now:'yes', since:{yes:D(9,24)}, when:{}, rounds:{}, notes:{}, skipped:{}, waiting:{}},
   g10:{done:['asked','bid','yes'], now:null, since:{}, when:{}, rounds:{}, notes:{}, skipped:{}, waiting:{}, outcome:'declined', off:{since:'Sep 18', why:'Declined: price.', by:'Rosa', fact:"the bid's outcome"}},
 });
+// By trade (v1.172): one row per trade, alphabetical, with the companies as chips. Each chip reads the step the company
+// is on, its job in the per-job lane, and how long or how late; off the flow folds at the end of the row.
+function byTradeHtml(kind){ const people=boardPeople(kind); const by={}; for(const p of people){ const t=p.trade||'No trade yet'; (by[t]=by[t]||[]).push(p); } const trades=Object.keys(by).sort((a,b)=>a==='No trade yet'?1:b==='No trade yet'?-1:a.localeCompare(b));
+  const press=(p,step)=> p.ghost?`toast('${esc(p.name)}: no thread in this prototype.')`:`view='messages';openThread('${p.id}');setFlow(true${step?",'"+step.id+"'":''})`;
+  const chip=p=>{ const st=S(p); if(st.off) return `<span class="pchip off" data-tip="${esc(p.company||p.name)}|Off the flow since ${esc(st.off.since)}: ${esc(st.off.why)}|${p.ghost?'No thread in this prototype.':'Press to open the thread.'}" onclick="${press(p)}">${esc(p.company||p.name)} <span class="d">off the flow</span></span>`;
+    const step=st.now?stepById(kind,st.now):null; const lane=step?laneOf(kind,step.id):''; const job=step&&lane==='Per job'&&laneJobOf(p)?jobById(laneJobOf(p)):null; const day=step?stepDay(p,step):null; const since=step&&(st.since||{})[step.id]; const n=since?dayDiff(NOW,since):null; const lapsed=flat(kind).find(s=>stepState(p,s.id)==='lapsed'); const waiting=step&&st.waiting[step.id];
+    const words = lapsed?esc(lapsedWhy(p,lapsed)):day&&day.late?esc(day.words):waiting?'waiting on '+esc(firstName(cById(waiting.who))):day?'due '+esc(day.day):n!=null?n+' d':'';
+    const jobs=(p.jobs||[]).map(j=>jobById(j)?.name).filter(Boolean);
+    return `<span class="pchip ${day&&day.late?'hot':''}" data-tip="${esc(p.company||p.name)}|${step?'On '+esc(step.name)+(job?' for '+esc(job.name):'')+(n!=null?', '+n+' day'+(n===1?'':'s'):'')+'.':'Set up and on no step.'}${jobs.length?' Jobs: '+esc(jobs.join(', '))+'.':' On no job.'}|${p.ghost?'No thread in this prototype.':'Press to open the thread with the flow at this step.'}" onclick="${press(p,step)}">${esc(p.company||p.name)}${step?` <span class="j">· ${esc(step.name)}${job?' · '+esc(job.name):''}</span>`:' <span class="j">· set up</span>'}${words?` <span class="d ${day&&day.late?'late':lapsed?'lapsed':waiting?'wait':''}">${words}</span>`:''}</span>`; };
+  const rows=trades.map(t=>{ const ps=by[t]; const on=ps.filter(p=>!S(p).off&&(p.jobs||[]).length).length; const late=ps.filter(p=>{ const st=S(p); const step=st.now?stepById(kind,st.now):null; const d=step?stepDay(p,step):null; return d&&d.late; }).length; const lapsed=ps.filter(p=>flat(kind).some(s=>stepState(p,s.id)==='lapsed')).length; const off=ps.filter(p=>S(p).off).length;
+    const head=`${ps.length} compan${ps.length===1?'y':'ies'}${on?` · ${on} on a job`:''}${late?` · <b>${late} late</b>`:''}${lapsed?` · <i>${lapsed} lapsed</i>`:''}${off?` · ${off} off the flow`:''}`;
+    const order=ps.slice().sort((a,b)=>{ const sa=S(a), sb=S(b); const la=sa.now&&stepDay(a,stepById(kind,sa.now))?.late?1:0, lb=sb.now&&stepDay(b,stepById(kind,sb.now))?.late?1:0; if(la!==lb) return lb-la; if(!!sa.off!==!!sb.off) return sa.off?1:-1; return (a.company||a.name).localeCompare(b.company||b.name); });
+    return `<div class="srow"><div class="sh">${esc(t)}<small>${head}</small></div><div class="chips">${order.map(chip).join('')}</div></div>`; }).join('');
+  return rows+`<p class="note" style="margin:10px 0 0">One row per trade, A to Z. Each company once, with the step it is on, its job in the per-job lane, and how long or how late; a late one is tinted and comes first, off the flow last. A press opens the thread with the flow at that step. A company's trade is set on its record; one with none sits under <i>No trade yet</i>.</p>`; }
 const boardPeople = kind => [...contacts.filter(c=>c.kind===kind), ...GHOSTS.filter(g=>g.kind===kind)];
 const personOn = (p, stepId) => { const s=stepState(p,stepId); if(s==='now'||s==='lapsed') return true; const pj=S(p).perJob; return !!(pj && Object.values(pj).some(x=>x.now===stepId)); };
 // One line per person on a step; in the per-job lane one per job, since each ask is its own round.
@@ -2023,8 +2038,8 @@ function nudgeRows(){ const out=[]; for(const c of contacts){ const st=S(c); if(
   return out.sort((a,b)=>quietDays(b.c)-quietDays(a.c)); }
 let tradesTab='bystep';
 function renderTrades(m){ const el=document.createElement('div'); const trades=contacts.filter(c=>c.kind==='trade');
-  el.innerHTML=`<p class="lead">Trade partners <span class="note">· ${boardPeople('trade').length} companies</span></p><div class="filters">${[['bystep','By step'],['list','By company'],['asks','Asks']].map(([k,l])=>`<button class="${tradesTab===k?'on':''}" onclick="tradesTab='${k}';render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">all jobs · everyone's seat</span></div>
-  ${tradesTab==='bystep'?`<div class="card" style="padding:12px">${boardHtml('trade')}</div>`:tradesTab==='list'?`<div class="card" style="padding:12px">${companyTableHtml('trade')}</div>`:`<div class="card"><div class="empty">The asks, as the Board lists them today.</div></div>`}`;
+  el.innerHTML=`<p class="lead">Trade partners <span class="note">· ${boardPeople('trade').length} companies</span></p><div class="filters">${[['bystep','By step'],['list','By company'],['bytrade','By trade'],['asks','Asks']].map(([k,l])=>`<button class="${tradesTab===k?'on':''}" onclick="tradesTab='${k}';render()">${l}</button>`).join('')}<span class="note" style="margin-left:auto">all jobs · everyone's seat</span></div>
+  ${tradesTab==='bystep'?`<div class="card" style="padding:12px">${boardHtml('trade')}</div>`:tradesTab==='list'?`<div class="card" style="padding:12px">${companyTableHtml('trade')}</div>`:tradesTab==='bytrade'?`<div class="card" style="padding:12px">${byTradeHtml('trade')}</div>`:`<div class="card"><div class="empty">The asks, as the Board lists them today.</div></div>`}`;
   m.appendChild(el); }
 let customersBoard=false;
 let stepFilter=null; // {kind,id} when the Messages list is narrowed to one step (v1.99)
