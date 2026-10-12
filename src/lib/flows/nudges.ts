@@ -157,6 +157,7 @@ const LAPSED_AFTER = 3
 export type NudgeReason =
   | 'off'
   | 'not on'
+  | 'none open'
   | 'waiting'
   | 'portal'
   | 'no reminder'
@@ -223,6 +224,8 @@ export function nudgeDue(person: PersonFlow, step: StepReading, now: Date, optio
   const { reading } = person
   if (reading.off || reading.kind === 'unknown') return say(false, 'off')
   if (!(step.state === 'now' || lapsed)) return say(false, 'not on')
+  // A loop on now with no round open waits on us to open one: nothing is asked of them yet.
+  if (def?.loop && !lapsed && !step.rounds.some((r) => r.state === 'now')) return say(false, 'none open')
   if (step.waitingOn) return say(false, 'waiting')
   const open = step.rounds.find((r) => r.state === 'now')
   const skip = options.skip
@@ -249,8 +252,8 @@ export const holdNudge = (mark: NudgeMark, now: Date): NudgeMark => ({ ...mark, 
 /** A step with no reminder of its own: nothing to press on its card. */
 export const noReminder = (reason: NudgeReason): boolean => reason === 'off' || reason === 'no reminder' || reason === 'ours'
 
-/** A reminder the card shows without its presses: none of its own, or the portal row's. */
-export const nothingToPress = (reason: NudgeReason): boolean => noReminder(reason) || reason === 'portal'
+/** A reminder the card shows without its presses: none of its own, the portal row's, or nothing open to remind of. */
+export const nothingToPress = (reason: NudgeReason): boolean => noReminder(reason) || reason === 'portal' || reason === 'none open'
 
 /** The step card's Reminder line: what the step's reminder does, and whether it is on Follow up now. */
 export function reminderWords(person: PersonFlow, step: StepReading, now: Date, options: NudgeOptions = {}): string {
@@ -258,6 +261,7 @@ export function reminderWords(person: PersonFlow, step: StepReading, now: Date, 
   const n = stepById(person.flow, step.stepId)?.nudge
   const first = person.first
   if (noReminder(due.reason) || !n) return 'No reminder on this step.'
+  if (due.reason === 'none open') return `Nothing is open with ${first} on this step yet.`
   if (due.reason === 'held') return `Held until ${weekdayDate(markOf(person, step.stepId, step.jobId)?.holdUntil ?? null)}.`
   if (due.reason === 'pressed') return 'Remind now put it on Follow up today.'
   if (due.reason === 'late') return `${first} passed the day. It is on Follow up now.`
@@ -333,11 +337,13 @@ export function worstFirst(a: Pick<NudgeStep, 'due' | 'lateDays'>, b: Pick<Nudge
   return la === lb ? 0 : lb > la ? 1 : -1
 }
 
-const quietWords = (quiet: number | null): string => (quiet == null ? 'no word from them yet' : `quiet ${plural(quiet, 'day')}`)
+const quietWords = (quiet: number | null): string =>
+  quiet == null ? 'no word from them yet' : quiet === 0 ? 'wrote today' : `quiet ${plural(quiet, 'day')}`
 
 function rowWhy(person: PersonFlow, def: FlowStep, step: StepReading, due: NudgeDue, now: Date): string {
   const paper = paperToAsk(def, step)
-  const waitingOn = paper ? paperName(paper) : doneWords(def)
+  // What the step waits on: a paper of theirs by name, else what finishes it ('done when their answer came').
+  const waitingOn = paper ? `waiting on ${paperName(paper)}` : `done when ${doneWords(def)}`
   const facts = factsNow(step)
   const sent = def.papers.find((p) => paperSigned(p) && facts.some((x) => x.fact.paper === p && x.fact.ours && x.mark === 'wait'))
   if (sent) {
@@ -345,9 +351,10 @@ function rowWhy(person: PersonFlow, def: FlowStep, step: StepReading, due: Nudge
     return `${paperName(sent)} went to sign${history ? ` · ${history}` : ''}`
   }
   const day = dayOf(step)
-  if (day?.late) return `${day.words} · waiting on ${waitingOn}`
+  if (day?.late) return `${day.words} · ${waitingOn}`
   if (step.state === 'lapsed') return `${lapsedWhy(step)} · ${quietWords(due.quiet)}`
-  return `${quietWords(due.quiet)} · the flow says ${def.nudge ? NUDGE_HOW_WORDS[def.nudge.how] : 'a reminder'}. We are waiting on ${waitingOn}.`
+  const tail = paper ? `We are waiting on ${paperName(paper)}.` : `Done when ${doneWords(def)}.`
+  return `${quietWords(due.quiet)} · the flow says ${def.nudge ? NUDGE_HOW_WORDS[def.nudge.how] : 'a reminder'}. ${tail}`
 }
 
 /** A step someone else's waits on is due once their own hold, Remind now and our last message to them allow, as any other. */

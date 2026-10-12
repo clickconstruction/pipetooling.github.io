@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CHANGE_ORDERS, NOW, at, day, demoPeople, demoPerson, fact, round, withJob, type Seed } from './demoPeople.fixture'
+import { CHANGE_ORDERS, NOW, at, day, demoPeople, demoPerson, fact, round, withStep, type Seed } from './demoPeople.fixture'
 import {
   historyWords,
   holdNudge,
@@ -16,7 +16,7 @@ import {
   type NudgeOptions,
   type PersonFlow,
 } from './nudges'
-import { stepById, type StepReading } from './state'
+import { stepById, stepDay, type StepReading } from './state'
 
 const stepOf = (person: PersonFlow, id: string): StepReading => {
   const step = person.reading.lanes.flatMap((l) => l.steps).find((x) => x.stepId === id)
@@ -40,7 +40,9 @@ const tom = (quietDays: number | null, lastOutAt: string | null, marks: NudgeMar
 const insuranceRow = (why: string) => ({ contactId: 'tom', stepId: 'papers', jobId: null, how: 'call', why, paper: 'coi' })
 
 describe('Follow up rows on the demo people', () => {
-  it('are the prototype v1.178 rows, word for word', () => {
+  // Greg's row is the prototype's word for word. Jonah's carries the Questions step on now beside the one Elena waits on: the
+  // prototype read one step on now a person, where cluster 4's readFlow reads Questions, Addenda and Certify on now.
+  it('are the prototype v1.178 rows, with each step on now carried', () => {
     expect(nudgeRows(demoPeople(), NOW, portalRows)).toEqual([
       {
         contactId: 'greg',
@@ -61,7 +63,7 @@ describe('Follow up rows on the demo people', () => {
             how: 'text',
             paper: 'quote',
             waitedOnBy: null,
-            round: 'Boerne Shell',
+            round: 'inv-greg-boerne',
           },
           {
             stepId: 'papers',
@@ -83,7 +85,7 @@ describe('Follow up rows on the demo people', () => {
         stepId: 'certify',
         jobId: 'boerne',
         how: 'email',
-        why: "with Jonah 4 days · Elena's pay application waits on it",
+        why: "with Jonah 4 days · Elena's pay application waits on it · Questions: due Mon",
         paper: null,
         steps: [
           {
@@ -97,7 +99,20 @@ describe('Follow up rows on the demo people', () => {
             how: 'email',
             paper: null,
             waitedOnBy: 'elena',
-            round: 'Pay app 4 · Cibolo Creek',
+            round: 'cert-payapp-4',
+          },
+          {
+            stepId: 'questions',
+            jobId: 'boerne',
+            due: false,
+            lateDays: -3,
+            named: true,
+            lapsed: false,
+            why: 'wrote today · the flow says an email. Done when their answer came.',
+            how: 'email',
+            paper: null,
+            waitedOnBy: null,
+            round: 'q-pond',
           },
         ],
       },
@@ -118,8 +133,8 @@ describe('Follow up rows on the demo people', () => {
   it('lead with a lapsed paper after three quiet days, and carry the step on now behind it', () => {
     const people = demoPeople({
       greg: (seed) => {
-        const ask = seed.steps.ask
-        if (ask?.rounds) ask.rounds = [round('Boerne Shell', 'now', [fact('quote_in', 'wait')], { opened: day(9, 22) })]
+        // Boerne's ask with no day: the quote was asked for with no promised day.
+        seed.steps.ask = { ...seed.steps.ask, day: null, rounds: [round('inv-greg-boerne', 'now', [fact('quote_in', 'wait')], { opened: day(9, 22) })] }
         return { ...seed, quietDays: 3, lastOutAt: at(9, 25) }
       },
     })
@@ -194,10 +209,17 @@ describe('Follow up rows on the demo people', () => {
 })
 
 describe('one row per person, never one per job', () => {
-  const padb = (seed: Parameters<typeof withJob>[2]['ask']) => withJob(demoPerson('greg'), 'padb', { ask: seed })
+  /** Greg with Pad B's quote asked for Thu Sep 24 and due on `due`; the prototype had Pad B not asked yet. */
+  const padb = (due: string) =>
+    withStep(demoPerson('greg'), 'ask', 'padb', (s) => ({
+      ...s,
+      since: day(9, 24),
+      day: stepDay(due, NOW),
+      rounds: [round('inv-greg-padb', 'now', [fact('quote_in', 'wait', { at: day(9, 24) })], { opened: day(9, 24), due, name: 'Boerne Retail Pad B' })],
+    }))
 
   it('carries each job’s step on now worst first, as the lead’s Greg reads: Boerne late 2 days, then Pad B due Oct 22', () => {
-    const rows = nudgeRows([padb({ state: 'now', since: day(9, 22), due: day(10, 22), facts: [fact('quote_in')] })], NOW)
+    const rows = nudgeRows([padb(day(10, 22))], NOW)
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({
       contactId: 'greg',
@@ -213,11 +235,11 @@ describe('one row per person, never one per job', () => {
   })
 
   it('puts the worse job first, and names in the one message any step due within the week', () => {
-    const late = nudgeRows([padb({ state: 'now', since: day(9, 22), due: day(9, 29), facts: [fact('quote_in')] })], NOW)
+    const late = nudgeRows([padb(day(9, 29))], NOW)
     expect(late.map((r) => [r.jobId, r.why])).toEqual([
       ['padb', 'Boerne Retail Pad B: late 3 days · waiting on their quote · Boerne Retail Shell: late 2 days · insurance expired'],
     ])
-    const soon = nudgeRows([padb({ state: 'now', since: day(9, 22), due: day(10, 5), facts: [fact('quote_in')] })], NOW)
+    const soon = nudgeRows([padb(day(10, 5))], NOW)
     expect(soon[0]?.steps.map((s) => [s.jobId, s.named])).toEqual([
       ['boerne', true],
       ['padb', true],
@@ -255,6 +277,17 @@ describe('one row per person, never one per job', () => {
   })
 })
 
+describe('a loop with no round open', () => {
+  it('reminds of nothing: Tom is on Boerne’s ask, but nobody has asked Tom to quote yet', () => {
+    const tom = demoPerson('tom', (seed) => ({ ...seed, quietDays: 5, lastOutAt: at(9, 25) }))
+    const ask = tom.reading.lanes.flatMap((l) => l.steps).find((s) => s.stepId === 'ask' && s.jobId === 'boerne')
+    expect(ask?.state).toBe('now')
+    expect(ask && nudgeDue(tom, ask, NOW).reason).toBe('none open')
+    expect(ask && reminderWords(tom, ask, NOW)).toBe('Nothing is open with Tom on this step yet.')
+    expect(nudgeRows([tom], NOW).flatMap((r) => r.steps.map((x) => x.stepId))).toEqual(['papers'])
+  })
+})
+
 describe('the row for the person waited on', () => {
   const certify = (mark: Partial<NudgeMark>): NudgeMark[] => [{ stepId: 'certify', jobId: 'boerne', ...mark }]
   const since = (d: string) => (seed: Seed): Seed => {
@@ -268,7 +301,7 @@ describe('the row for the person waited on', () => {
     expect(nudgeRows(held, new Date(at(10, 5, 8))).some((r) => r.contactId === 'jonah')).toBe(true)
     expect(nudgeRows(demoPeople({ elena: since(day(10, 1)) }), NOW).some((r) => r.contactId === 'jonah')).toBe(false)
     const pressed = demoPeople({ elena: since(day(10, 1)), jonah: with_({ marks: certify({ nudgedAt: NOW.toISOString() }) }) })
-    expect(nudgeRows(pressed, NOW).find((r) => r.contactId === 'jonah')?.why).toBe("with Jonah 1 day · Elena's pay application waits on it")
+    expect(nudgeRows(pressed, NOW).find((r) => r.contactId === 'jonah')?.why).toBe("with Jonah 1 day · Elena's pay application waits on it · Questions: due Mon")
     const wrote = demoPeople({ jonah: with_({ lastOutAt: at(10, 1) }) })
     expect(nudgeRows(wrote, NOW).some((r) => r.contactId === 'jonah')).toBe(false)
   })

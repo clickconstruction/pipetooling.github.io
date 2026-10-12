@@ -35,14 +35,15 @@ const card = (id: string, stepId: string) => cardOf(demoPerson(id), stepId)
 // What the prototype v1.178 draws for each card, read off its own stepCardHtml on its clock. The demo presses
 // (their upload arrives, sign) are left out, as BUILD_PLAN.md says. A line marked CHANGED is a decision of the lead's
 // review of cluster 5 (2026-10-12), named in the PR. A line marked STAMPS reads a day or a name from the stamps
-// (flows/state.ts's FactReading and RoundReading) where the prototype had the words typed in its demo state.
+// (flows/state.ts's FactReading and RoundReading) where the prototype had the words typed in its demo state; one marked
+// READFLOW is where cluster 4's readFlow reads the demo people's stamps apart from the prototype's typed state.
 const PROTOTYPE: Record<string, string[]> = {
   'greg/ask': [
     "Asked to quote | Greg's move. On it 10 days, usually 6. Late 2 days.",
     '[Each ask]',
-    '✓ Stone Oak <Fri Sep 11> {Open}', // STAMPS: was 'Fri Sep 11, carried Mon Sep 14'
-    '↗ Boerne Shell <late 2 days, promised Wed Sep 30> {Ask again}',
-    '○ Pad B <due Oct 22, not asked yet> {Ask}', // STAMPS: was 'bid Oct 22, not asked yet'
+    // READFLOW: each job's lane holds its own rounds, so Boerne's card shows Boerne's ask. Stone Oak's and Pad B's rounds
+    // read on their own jobs' lanes, where the prototype listed every ask of Greg's on one card.
+    '↗ Boerne Retail Shell <late 2 days, promised Wed Sep 30> {Ask again}',
     '[Next]',
     '→ Compared, our move. <Done when we carried their quote or we did not carry it.>',
     '[Reminder]',
@@ -173,7 +174,7 @@ const PROTOTYPE: Record<string, string[]> = {
   'jonah/addenda': [
     "Addenda | Jonah's move. On it 0 days, usually 1.",
     '[Each addendum]',
-    '✓ Addendum 1 <done> {Open}',
+    '✓ Addendum 1 <Fri Sep 25> {Open}', // STAMPS: was 'done'
     '↗ Addendum 2 <since Fri Oct 2> {Ask again}', // STAMPS: was 'filed today, not sent to the trades yet'
     '[Next]',
     "→ Submittals, Jonah's move. <Done when the submittal is reviewed.>",
@@ -198,7 +199,7 @@ const PROTOTYPE: Record<string, string[]> = {
   'marcus/asked': [
     'Asked us | Done Mon Sep 14.',
     '[What we have]',
-    '✓ They asked us <Mon Sep 14>', // STAMPS: was 'He called, Mon Sep 14'
+    '✓ They asked us <Marcus, Mon Sep 14>', // STAMPS: the day and who; the prototype typed its own words
     '[So far]',
     'hist: Asked us · Mon Sep 14',
     'presses: + a note · See their page',
@@ -215,7 +216,7 @@ const PROTOTYPE: Record<string, string[]> = {
     'presses: + a note · See their page',
   ],
   'priya/agreement': [
-    'Master agreement | Skipped for Priya: One job. No master agreement.',
+    'Master agreement | Skipped for Priya: One job, so no master agreement.', // READFLOW: the skip's reason as stamped
     '[What we need]',
     '○ Master agreement <not sent yet> {Send it}',
     '[So far]',
@@ -259,8 +260,8 @@ const PROTOTYPE: Record<string, string[]> = {
   'elena/co': [
     'Change orders | Any time in the job. 2 so far.',
     '[Each change]',
-    '✓ CO 1 <done> {Open}',
-    '✓ CO 2 <done> {Open}',
+    '✓ CO 1 <Sat Sep 12> {Open}', // STAMPS: was 'done'
+    '✓ CO 2 <Fri Sep 18> {Open}', // STAMPS: was 'done'
     '[So far]',
     'hist: Master agreement · Tue Aug 4',
     'hist: Asked us · Tue Aug 11',
@@ -311,7 +312,7 @@ describe('the status sentence', () => {
   it('marks only the late words late', () => {
     const ask = card('greg', 'ask')
     expect(ask?.status.filter((x) => x.late).map((x) => x.text)).toEqual(['Late 2 days.'])
-    expect(ask?.sections[0]?.lines[1]?.small).toEqual([{ text: 'late 2 days', late: true }, { text: ', promised Wed Sep 30' }])
+    expect(ask?.sections[0]?.lines[0]?.small).toEqual([{ text: 'late 2 days', late: true }, { text: ', promised Wed Sep 30' }])
   })
 
   it('counts a wait of one day as one day', () => {
@@ -365,6 +366,19 @@ describe('the status sentence', () => {
   })
 })
 
+describe('a lapsed step', () => {
+  it('keeps the day it was done in So far, not the day its paper ran out', () => {
+    const soFar = card('greg', 'papers')?.sections.find((s) => s.id === 'soFar')
+    expect(soFar?.history.find((h) => h.label === 'Papers in')?.words).toBe('Sat Sep 12')
+  })
+
+  it('shows a loop with nothing open a Reminder line with nothing to press', () => {
+    const reminder = cardOf(demoPerson('tom'), 'ask')?.sections.find((s) => s.id === 'reminder')
+    expect(reminder?.says.map(wordsText)).toEqual(['Nothing is open with Tom on this step yet.'])
+    expect(reminder?.presses).toEqual([])
+  })
+})
+
 describe('the presses', () => {
   it('carry hover cards in plain words, for the longest paper names too', () => {
     const names = Object.values(FLOW_PAPERS).map((p) => p.name)
@@ -380,11 +394,11 @@ describe('the presses', () => {
     expect(papers?.sections[0]?.presses[0]).toMatchObject({ id: 'fileByHand', stepId: 'papers', jobId: null })
     const next = card('tom', 'papers')?.sections.find((s) => s.id === 'next')
     expect(next?.lines[0]?.presses[0]).toMatchObject({ id: 'sendItNow', paper: 'msa', stepId: 'msa', jobId: null })
-    expect(card('greg', 'ask')?.sections[0]?.lines[1]?.presses[0]).toEqual({
+    expect(card('greg', 'ask')?.sections[0]?.lines[0]?.presses[0]).toEqual({
       id: 'askAgain',
       label: 'Ask again',
       primary: true,
-      round: 'Boerne Shell',
+      round: 'inv-greg-boerne',
       paper: 'quote',
     })
     const remind = card('greg', 'ask')?.sections.find((s) => s.id === 'reminder')?.presses[0]
