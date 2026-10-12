@@ -69,6 +69,7 @@
     "test:pg:flow-save": "bash scripts/pgtest-flow-save.sh",
     "test:pg:quo-messages": "bash scripts/pgtest-quo-messages.sh",
     "test:pg:messages-email": "bash scripts/pgtest-messages-email.sh",
+    "test:pg:drive-links": "bash scripts/pgtest-drive-links.sh",
     "test:pg:flow-draws": "bash scripts/pgtest-flow-draws.sh",
     "test:pg:contract-clauses": "bash scripts/pgtest-contract-clauses.sh",
     "test:pg:gc-clause-papers": "bash scripts/pgtest-gc-clause-papers.sh",
