@@ -26,6 +26,7 @@ messages-spine
 messages-flows
 quo-messages
 contract-clauses
+gc-clause-papers
 portal-customer-page
 customer-portal-papers
 merge-customers

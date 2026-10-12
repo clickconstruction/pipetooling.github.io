@@ -99,7 +99,7 @@ GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA gss TO anon, authenticated, service_rol
 -- 0 · The service role's alone.
 SELECT gss.same('only the service role signs for a trade', (
   SELECT has_function_privilege('service_role', f, 'EXECUTE')::text || '/' || has_function_privilege('authenticated', f, 'EXECUTE')::text || '/' || has_function_privilege('anon', f, 'EXECUTE')::text
-  FROM (VALUES ('public.gc_trade_sign_sow(uuid, uuid, text, text, text, text)')) v(f)), 'true/false/false');
+  FROM (VALUES ('public.gc_trade_sign_sow(uuid, uuid, text, text, text, text, integer, text)')) v(f)), 'true/false/false');
 
 -- 1 · The refusals, each in its words.
 SELECT gss.as_service();

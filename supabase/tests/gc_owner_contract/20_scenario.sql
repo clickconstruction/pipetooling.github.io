@@ -137,7 +137,7 @@ SELECT goc.same('nothing went and no day is stamped', (
 SELECT goc.same('anon calls none of the five', (
   SELECT string_agg(has_function_privilege('anon', f, 'EXECUTE')::text, ' ') FROM unnest(ARRAY[
     'public.gc_send_owner_contract(uuid, date, text, jsonb, text, text, text)',
-    'public.gc_customer_sign_owner_contract(uuid, uuid, text, text, text, text)',
+    'public.gc_customer_sign_owner_contract(uuid, uuid, text, text, text, text, integer, text)',
     'public.gc_owner_contract_keep(uuid, date, jsonb)',
     'public.gc_owner_contract_worth_ok(uuid, jsonb)',
     'public.gc_owner_contract_portal_signed_on(uuid)']) AS f), 'false false false false false');
@@ -145,7 +145,7 @@ SELECT goc.same('anon calls none of the five', (
 -- (customer-portal's loader), so a missing grant would leave the price warning failing quietly.
 SELECT goc.same('the service role signs and checks the price', (
   SELECT string_agg(has_function_privilege('service_role', f, 'EXECUTE')::text, ' ') FROM unnest(ARRAY[
-    'public.gc_customer_sign_owner_contract(uuid, uuid, text, text, text, text)',
+    'public.gc_customer_sign_owner_contract(uuid, uuid, text, text, text, text, integer, text)',
     'public.gc_owner_contract_worth_ok(uuid, jsonb)',
     'public.gc_owner_contract_keep(uuid, date, jsonb)']) AS f), 'true true true');
 
