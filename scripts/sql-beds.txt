@@ -27,3 +27,4 @@ quo-messages
 contract-clauses
 portal-customer-page
 customer-portal-papers
+merge-customers
