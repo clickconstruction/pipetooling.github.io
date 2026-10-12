@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>By step · a holistic pass</title>
+<style>
+:root{--text:#1b1f24;--muted:#6b7280;--border:#e3e6ea;--surface:#fff;--bg:#f4f5f7;--accent:#1f5fbf;--accent-soft:#e8f0fc;--ok:#2a8f5a;--ok-soft:#e6f4ec;--warn:#b45309;--warn-soft:#fdf1e3;--bad:#b42318;--bad-soft:#fdecea;--chip:#f0f2f5}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg);padding:24px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:34px 0 6px}p{max-width:860px;margin:4px 0}.note{color:var(--muted);font-size:13px}
+.page{width:1100px;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-top:10px}
+.lead{font-size:18px;font-weight:600;margin:0 0 6px}.lead small{font-weight:400;color:var(--muted);font-size:13px}
+.filters{display:flex;gap:6px;align-items:center;margin:0 0 10px}.filters span{border:1px solid var(--border);border-radius:999px;padding:3px 11px;font-size:13px}.filters span.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}.filters .r{margin-left:auto;display:flex;gap:6px}.filters .r span{color:var(--muted)}.filters .r span b{color:var(--text);font-weight:600}
+.sum{display:flex;gap:16px;align-items:center;border:1px solid var(--border);border-radius:10px;padding:9px 12px;margin:0 0 10px;font-size:13px}.sum b{font-weight:600}.sum .act{color:var(--accent);cursor:pointer}.sum .warn{color:var(--warn);font-weight:600}.sum .bad{color:var(--bad);font-weight:600}.sum .sep{color:var(--border)}
+.lanehd{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:10px 0 2px}
+.srow{display:flex;gap:14px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start}.srow .sh{width:210px;flex:none}.srow .sh b{display:block}.srow .sh small{display:block;color:var(--muted);font-size:12.5px}.srow .sh small i{color:var(--bad);font-style:normal;font-weight:600}.srow .sh small u{color:var(--warn);text-decoration:none}
+.srow .chips{flex:1;display:flex;flex-wrap:wrap;gap:6px;align-items:center}.srow .act{flex:none;width:170px;text-align:right}
+.pchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:9px;padding:4px 10px;font-size:13px;background:var(--surface)}.pchip .j{color:var(--muted)}.pchip .d{color:var(--muted);font-size:12px}.pchip .d.late{color:var(--bad);font-weight:600}.pchip .d.over{color:var(--warn);font-weight:600}.pchip .d.lapsed{color:var(--warn);font-weight:600}.pchip.hot{background:var(--bad-soft);border-color:#f1b3ae}
+.jobgrp{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.jobgrp .jl{font-size:12px;color:var(--muted);margin-right:2px}.jobgrp+.jobgrp{margin-left:10px;padding-left:12px;border-left:1px solid var(--border)}
+.btn{display:inline-block;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:12.5px;background:var(--surface);white-space:nowrap}.btn.p{background:var(--accent);color:#fff;border-color:var(--accent)}
+.empty{color:var(--muted);font-size:12.5px}
+.old .srow .act{display:none}.old .srow .sh{width:300px}
+.num{display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--accent);color:#fff;font-size:11px;font-weight:700;text-align:center;line-height:18px;margin-right:4px;vertical-align:1px}
+.rev{background:#fffbe9;border:1px solid #f0e2a8;border-radius:10px;padding:12px 14px;max-width:860px}.rev li{margin:4px 0}
+table{border-collapse:collapse;font-size:13.5px;max-width:860px}td,th{text-align:left;padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:top}th{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+</style></head><body>
+<h1>By step · a holistic pass</h1>
+<p class="note">What the page is for: the office asks "who is stuck where, and what do I do about it" across every trade partner at once. The rows answer the first half. Six things keep it from answering the second.</p>
+
+<h2>1. What holds it back</h2>
+<table>
+<tr><th>Today</th><th>The cost</th></tr>
+<tr><td>Three rows say <i>nobody</i> with a dash.</td><td>A third of the page is empty, and the eye has to read it to learn that.</td></tr>
+<tr><td>The job name repeats on every chip: Boerne Retail Shell five times in one row.</td><td>The company names, which are the point, drown in job names.</td></tr>
+<tr><td>Days are plain: 6 d, 4 d, 2 d.</td><td>Nothing says 6 d is fine on Papers in (usually 3) and 5 d is slow on Statement of work. The step's usual is on hover only.</td></tr>
+<tr><td>No row has a press. The only action is to open a thread.</td><td>"1 late" is a fact, not a move. The nudge is two pages away on Follow up.</td></tr>
+<tr><td>Nothing adds up at the top.</td><td>Ten companies, but how many are getting set up, how many quoting, how many building, how many need something today? Count the chips.</td></tr>
+<tr><td><i>all jobs · everyone's seat</i> is text.</td><td>Reads like a filter, does nothing. A superintendent cannot see one job's trades.</td></tr>
+</table>
+
+<h2>2. Before</h2>
+<div class="page old">
+<div class="lead">Trade partners <small>· 10 companies</small></div>
+<div class="filters"><span class="on">By step</span><span>By company</span><span>By trade</span><span>Asks</span><span class="r"><span>all jobs · everyone's seat</span></span></div>
+<div class="lanehd">Once</div>
+<div class="srow"><div class="sh"><b>Invited</b><small>nobody</small></div><div class="chips"><span class="empty">—</span></div></div>
+<div class="srow"><div class="sh"><b>Portal opened</b><small>nobody</small></div><div class="chips"><span class="empty">—</span></div></div>
+<div class="srow"><div class="sh"><b>Papers in</b><small>4 · <u>1 lapsed</u></small></div><div class="chips"><span class="pchip">Cibolo Fence <span class="d">6 d</span></span><span class="pchip">Bexar Steel Erectors <span class="d">4 d</span></span><span class="pchip">Hillside Excavation <span class="d lapsed">lapsed · insurance expired</span></span><span class="pchip">Lone Star Mechanical <span class="d">2 d</span></span></div></div>
+<div class="srow"><div class="sh"><b>MSA signed</b><small>1</small></div><div class="chips"><span class="pchip">Kerr Electric <span class="d">3 d</span></span></div></div>
+<div class="lanehd">Per job</div>
+<div class="srow"><div class="sh"><b>Asked to quote</b><small>5 asks · <i>1 late</i></small></div><div class="chips"><span class="pchip hot">Hillside Excavation <span class="j">· Boerne Retail Shell</span> <span class="d late">late 2 days</span></span><span class="pchip">Hillside Excavation <span class="j">· Boerne Retail Pad B</span> <span class="d">due Oct 22</span></span><span class="pchip">Lone Star Mechanical <span class="j">· Boerne Retail Shell</span> <span class="d">due Thu</span></span><span class="pchip">Kerr Electric <span class="j">· Boerne Retail Shell</span> <span class="d">due Thu</span></span><span class="pchip">Cibolo Fence <span class="j">· Boerne Retail Pad B</span> <span class="d">due Oct 22</span></span></div></div>
+<div class="srow"><div class="sh"><b>Compared</b><small>1 · ours</small></div><div class="chips"><span class="pchip">Tejas Power <span class="j">· Boerne Retail Shell</span> <span class="d">3 d</span></span></div></div>
+<div class="srow"><div class="sh"><b>Statement of work</b><small>2</small></div><div class="chips"><span class="pchip">Alamo Steel <span class="j">· Stone Oak Pharmacy</span> <span class="d">5 d</span></span><span class="pchip">Rio Paving <span class="j">· Stone Oak Pharmacy</span> <span class="d">1 d</span></span></div></div>
+<div class="srow"><div class="sh"><b>Draws</b><small>2 draws · bill day ›</small></div><div class="chips"><span class="pchip">Kerr Electric <span class="j">· Stone Oak Pharmacy</span> <span class="d">3 d</span></span><span class="pchip">Hillside Excavation <span class="j">· Stone Oak Pharmacy</span> <span class="d">0 d</span></span></div></div>
+<div class="srow"><div class="sh"><b>Closeout</b><small>nobody</small></div><div class="chips"><span class="empty">—</span></div></div>
+<div class="srow"><div class="sh"><b>Off the flow</b><small>2 · folded</small></div><div class="chips"><span class="btn">show</span></div></div>
+</div>
+
+<h2>3. After · six pieces</h2>
+<p class="note"><span class="num">1</span>a summary line that adds up · <span class="num">2</span>empty steps fold to one line · <span class="num">3</span>chips grouped by job, the job named once · <span class="num">4</span>days read against the step's usual · <span class="num">5</span>a press per row, the row's own move · <span class="num">6</span>job and seat as real filters</p>
+<div class="page">
+<div class="lead">Trade partners <small>· 10 companies</small></div>
+<div class="filters"><span class="on">By step</span><span>By company</span><span>By trade</span><span>Asks</span><span class="r"><span><b>All jobs</b> ▾</span><span><b>Everyone's seat</b> ▾</span><span class="num" style="margin:0">6</span></span></div>
+<div class="sum"><span class="num">1</span><b>4 getting set up</b><span class="sep">|</span><b>5 quoting</b> on 2 bids<span class="sep">|</span><b>4 building</b> on Stone Oak<span class="sep">|</span><b>2 off</b><span class="sep">|</span><span class="bad">1 late</span> · <span class="warn">1 lapsed</span> · <span class="warn">2 over usual</span><span class="act" style="margin-left:auto">Follow up has the 4 ›</span></div>
+<div class="lanehd">Once</div>
+<div class="srow"><div class="sh"><b>Papers in</b><small>4 · <u>1 lapsed</u> · <u>1 over usual</u> · usually 3 d</small></div><div class="chips"><span class="pchip">Hillside Excavation <span class="d lapsed">insurance expired</span></span><span class="pchip">Cibolo Fence <span class="d over">6 d · over usual</span></span><span class="pchip">Bexar Steel Erectors <span class="d">4 d</span></span><span class="pchip">Lone Star Mechanical <span class="d">2 d</span></span></div><div class="act"><span class="num">5</span><span class="btn">Ask the 4 for papers</span></div></div>
+<div class="srow"><div class="sh"><b>MSA signed</b><small>1 · usually 4 d</small></div><div class="chips"><span class="pchip">Kerr Electric <span class="d">3 d</span></span></div><div class="act"><span class="btn">Remind Kerr</span></div></div>
+<div class="srow"><div class="sh"><b>Invited · Portal opened</b><small><span class="num">2</span>nobody on these</small></div><div class="chips"><span class="empty">A new invitation lands here.</span></div><div class="act"><span class="btn">Invite a company</span></div></div>
+<div class="lanehd">Per job</div>
+<div class="srow"><div class="sh"><b>Asked to quote</b><small>5 asks · <i>1 late</i> · usually 6 d</small></div><div class="chips"><div class="jobgrp"><span class="num">3</span><span class="jl">Boerne Retail Shell · due Thu</span><span class="pchip hot">Hillside Excavation <span class="d late">late 2 days</span></span><span class="pchip">Lone Star Mechanical</span><span class="pchip">Kerr Electric</span></div><div class="jobgrp"><span class="jl">Boerne Retail Pad B · due Oct 22</span><span class="pchip">Hillside Excavation</span><span class="pchip">Cibolo Fence</span></div></div><div class="act"><span class="btn p">Remind the 1 late</span></div></div>
+<div class="srow"><div class="sh"><b>Compared</b><small>1 · ours · usually 2 d</small></div><div class="chips"><div class="jobgrp"><span class="jl">Boerne Retail Shell</span><span class="pchip">Tejas Power <span class="d over">3 d · over usual</span></span></div></div><div class="act"><span class="btn">Open the compare</span></div></div>
+<div class="srow"><div class="sh"><b>Statement of work</b><small>2 · usually 5 d</small></div><div class="chips"><div class="jobgrp"><span class="jl">Stone Oak Pharmacy</span><span class="pchip">Alamo Steel <span class="d">5 d</span></span><span class="pchip">Rio Paving <span class="d">1 d</span></span></div></div><div class="act"><span class="btn">Remind the 2</span></div></div>
+<div class="srow"><div class="sh"><b>Draws</b><small>2 draws · bill day Oct 25</small></div><div class="chips"><div class="jobgrp"><span class="jl">Stone Oak Pharmacy</span><span class="pchip">Kerr Electric <span class="d">3 d</span></span><span class="pchip">Hillside Excavation <span class="d">today</span></span></div></div><div class="act"><span class="btn">Bill day ›</span></div></div>
+<div class="srow"><div class="sh"><b>Closeout</b><small>nobody</small></div><div class="chips"><span class="empty">A trade's final waiver lands here.</span></div><div class="act"></div></div>
+<div class="srow" style="border:0"><div class="sh"><b>Off the flow</b><small>2 · folded</small></div><div class="chips"><span class="btn">show</span></div><div class="act"></div></div>
+</div>
+
+<h2>4. Is this the best we can do?</h2>
+<div class="rev"><ul>
+<li><b>The summary line is the page's first sentence.</b> Four numbers in the flow's order, then what needs a hand today. It is the same read the Trade partners funnel on main gives, in words, so nothing new is computed.</li>
+<li><b>Grouping by job is the biggest single gain.</b> Five job names become two labels, the due day moves to the label where it belongs, and the chips go back to being company names. A row with one job keeps the label, so every row reads the same way.</li>
+<li><b>"Over usual" is the honest middle between fine and late.</b> Late needs a day; most steps have none. Usual is on the flow already and the By company view reads it. Here it tints the day orange and counts under the step.</li>
+<li><b>The row's press is the step's own nudge</b>, the same send Follow up would make: remind the late, ask for papers, open the compare. Draws keeps Bill day. Nothing sends until the send window.</li>
+<li><b>Empty steps fold to one line each lane</b>, with the sentence that says what lands there, so the page never looks broken on a quiet week. Closeout stays as its own line because its emptiness means something (nobody is finishing).</li>
+<li><b>The filters become controls</b>: a job picker, so a superintendent sees one job's trades; a seat picker, so Robert sees his. Both already exist as readings on this page.</li>
+<li><b>Left out:</b> a count bar per step (a funnel drawn in rows), which repeats the summary line; sorting chips by days, since late-first then name is enough.</li>
+<li><b>Not sure of:</b> whether the Once lane's Invited and Portal opened should fold together, as drawn, or stay apart; and whether "Remind the 1 late" belongs on the row or only on the summary line, to keep one place for sends.</li>
+</ul></div>
+<p class="note" style="margin-top:14px">Say which pieces and I build them into By step; By trade and the Customers board take the same pieces where they apply.</p>
+</body></html>
