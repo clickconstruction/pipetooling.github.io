@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { approvedToast, type ClauseNeedRow } from '../../lib/contracts/approval'
 import { clausePaperHref } from '../../lib/contracts/clauseRows'
-import { approveClauseProposal } from '../../lib/contracts/clausesIo'
+import { approveClauseProposal, tellClauseEditor } from '../../lib/contracts/clausesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ClauseDeclineWindow } from './ClauseDeclineWindow'
 import { clauseButtonStyle, clausePrimaryStyle } from './clauseStyles'
@@ -25,7 +25,8 @@ export function ClauseNeedRows({ rows, onDecided }: { rows: readonly ClauseNeedR
     setBusy(row.proposal.id)
     try {
       await approveClauseProposal(row.proposal.id)
-      showToast(approvedToast(profileName ?? 'you', row.proposal.by, row.proposal.kind), 'success')
+      const told = await tellClauseEditor(row.proposal.id)
+      showToast(approvedToast(profileName ?? 'you', row.proposal.by, row.proposal.kind, Boolean(told?.emailSent)), 'success')
       onDecided()
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')

@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'r
 import { useToastContext } from '../../contexts/ToastContext'
 import { useAuth } from '../../hooks/useAuth'
 import { canApproveClause } from '../../lib/gc/access'
-import { approveProposal, orWords, scopeFor, type ClauseBook, type ClauseProposal } from '../../lib/contracts/approval'
+import { approvedToast, approveProposal, orWords, scopeFor, type ClauseBook, type ClauseProposal } from '../../lib/contracts/approval'
 import { scopeWords, settingsView, type Clause } from '../../lib/contracts/assemble'
 import { buildablePapers, clauseHistory, clausePaperAnchor, clausePaperCards, paperFromRow, tradeChoices, type ClausePaperCard } from '../../lib/contracts/clauseRows'
-import { approveClauseProposal, loadClauseLibrary, type ClauseLibrary } from '../../lib/contracts/clausesIo'
+import { approveClauseProposal, loadClauseLibrary, tellClauseEditor, type ClauseLibrary } from '../../lib/contracts/clausesIo'
 import { formatDenverDateTimeShort } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { ClauseDeclineWindow } from '../contracts/ClauseDeclineWindow'
@@ -82,7 +82,9 @@ export function SettingsClausesTab() {
     setBusy(p.id)
     try {
       await approveClauseProposal(p.id)
-      showToast(checked.toast, 'success')
+      // The editor hears of it (messages-notify); the toast says whether the email went.
+      const told = await tellClauseEditor(p.id)
+      showToast(approvedToast(signer.name || 'you', p.by, p.kind, Boolean(told?.emailSent)), 'success')
       await load()
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')

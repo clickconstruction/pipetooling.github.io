@@ -631,6 +631,10 @@ verify_jwt = false
 [functions.notify-lien-approval]
 verify_jwt = false
 
+# Push and email to the approvers when an office edit to a contract clause waits for approval, and the editor's email on a decision (v2.5317, Messages cut 4c): Bearer + getUser, caller must be the proposer or the decider.
+[functions.messages-notify]
+verify_jwt = false
+
 [functions.send-report-notification]
 verify_jwt = false
 

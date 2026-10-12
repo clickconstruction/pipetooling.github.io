@@ -112,6 +112,39 @@ export async function declineClauseProposal(proposalId: string, why: string): Pr
   return res.data as unknown as ClauseWriteResult
 }
 
+/** Who `messages-notify` reached, and how. */
+export interface ClauseTold {
+  pushSent: number
+  emailSent: number
+  /** The approvers it reached, or the editor, by name. */
+  names: string[]
+}
+
+async function tell(body: Record<string, unknown>): Promise<ClauseTold | null> {
+  try {
+    const { data, error } = await supabase.functions.invoke('messages-notify', { body })
+    if (error) return null
+    const d = (data ?? {}) as { push_sent?: number; email_sent?: number | boolean; approvers?: string[]; editor_name?: string | null }
+    const emailSent = typeof d.email_sent === 'boolean' ? Number(d.email_sent) : (d.email_sent ?? 0)
+    return { pushSent: d.push_sent ?? 0, emailSent, names: d.approvers ?? (d.editor_name ? [d.editor_name] : []) }
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Tell the approvers of the changes one save sent for approval (`messages-notify`): a push on every device and an email.
+ * Best effort: null when it could not, and the changes still wait on their Needs you.
+ */
+export async function tellClauseApprovers(proposalIds: readonly string[]): Promise<ClauseTold | null> {
+  return proposalIds.length ? tell({ proposal_ids: [...proposalIds] }) : null
+}
+
+/** Tell the editor of a decision on their change (`messages-notify`): an email now, a text once Quo is in. Best effort. */
+export async function tellClauseEditor(proposalId: string): Promise<ClauseTold | null> {
+  return tell({ decided: proposalId })
+}
+
 /**
  * The approvers' Needs you rows: every change waiting, the longest waiting first. Empty for anyone who cannot approve,
  * without a read. `when` turns a time into words.

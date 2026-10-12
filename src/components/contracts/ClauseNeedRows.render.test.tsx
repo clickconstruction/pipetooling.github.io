@@ -11,9 +11,9 @@ vi.mock('../../hooks/useAuth', async () => {
   const m = await import('../../test/renderSmokeMocks')
   return m.useAuthModuleMock({ role: 'controller', profileName: 'Maria' })
 })
-vi.mock('../../lib/contracts/clausesIo', () => ({ approveClauseProposal: vi.fn(), declineClauseProposal: vi.fn() }))
+vi.mock('../../lib/contracts/clausesIo', () => ({ approveClauseProposal: vi.fn(), declineClauseProposal: vi.fn(), tellClauseEditor: vi.fn() }))
 
-import { approveClauseProposal, declineClauseProposal } from '../../lib/contracts/clausesIo'
+import { approveClauseProposal, declineClauseProposal, tellClauseEditor } from '../../lib/contracts/clausesIo'
 import { APPROVERS, MSA, MSA_CLAUSES, ROSA, idsFrom } from '../../test/fixtures/clauseBookDemo'
 import { clauseNeeds, editClause } from '../../lib/contracts/approval'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -27,6 +27,7 @@ const rows = clauseNeeds('controller', [{ ...made.proposal, paperId: 'msa' }], [
 beforeEach(() => {
   vi.mocked(approveClauseProposal).mockReset().mockResolvedValue({ state: 'published', proposal_id: 'p-1' })
   vi.mocked(declineClauseProposal).mockReset().mockResolvedValue({ state: 'declined', proposal_id: 'p-1' })
+  vi.mocked(tellClauseEditor).mockReset().mockResolvedValue({ pushSent: 0, emailSent: 1, names: ['Rosa'] })
 })
 
 describe('ClauseNeedRows', () => {
@@ -45,6 +46,16 @@ describe('ClauseNeedRows', () => {
     fireEvent.click(screen.getByText('Approve'))
     await waitFor(() => expect(approveClauseProposal).toHaveBeenCalledWith('p-1'))
     await waitFor(() => expect(decided).toHaveBeenCalled())
+    expect(tellClauseEditor).toHaveBeenCalledWith('p-1')
+    expect(screen.getByText('Approved by Maria. Rosa gets an email that it went out. The next paper sent carries it.')).toBeTruthy()
+  })
+
+  it('says nothing of an email the call could not send', async () => {
+    vi.mocked(tellClauseEditor).mockResolvedValue(null)
+    const decided = vi.fn()
+    renderWithProviders(<ClauseNeedRows rows={rows} onDecided={decided} />)
+    fireEvent.click(screen.getByText('Approve'))
+    await waitFor(() => expect(decided).toHaveBeenCalled())
     expect(screen.getByText('Approved by Maria. The next paper sent carries it.')).toBeTruthy()
   })
 
@@ -57,6 +68,8 @@ describe('ClauseNeedRows', () => {
     fireEvent.click(within(dialog).getByText('Decline'))
     await waitFor(() => expect(declineClauseProposal).toHaveBeenCalledWith('p-1', 'Keep the old wording.'))
     await waitFor(() => expect(decided).toHaveBeenCalled())
+    expect(tellClauseEditor).toHaveBeenCalledWith('p-1')
+    expect(screen.getByText('Declined. Rosa gets an email with your why.')).toBeTruthy()
   })
 
   it('draws nothing with no rows', () => {
