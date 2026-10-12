@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Legend B under stress</title>
+<style>
+:root{--text:#1b1f24;--muted:#6b7280;--border:#e3e6ea;--surface:#fff;--bg:#f4f5f7;--accent:#1f5fbf;--ok:#2a8f5a;--warn:#b45309;--chip:#f0f2f5}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--text);background:var(--bg);padding:24px}
+h1{font-size:22px;margin:0 0 4px}h3{font-size:14px;margin:22px 0 6px}p{max-width:760px;margin:4px 0}.note{color:var(--muted);font-size:13px}
+.card{width:640px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-top:6px}.card.phone{width:340px}
+.h{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.stack{display:flex;height:26px;border-radius:7px;overflow:hidden;margin:4px 0;gap:1px;background:var(--surface)}.stack div{display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden;font-size:11.5px;font-weight:600;color:#fff;min-width:14px}
+.notin{background:#c2410c}.back{background:#d97706}.wait{background:#1f5fbf}.ok{background:#2a8f5a}.close{background:#9aa4b1}
+.lg{display:flex;margin-top:4px;gap:1px}.lg div{font-size:12px;padding:0 3px;min-width:14px;overflow:hidden}.lg b{display:block;font-size:13.5px}.lg small{display:block;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg div:first-child{text-align:left}.lg div:last-child{text-align:right}.lg div.mid{text-align:center}.lg div.cnt{text-align:center}
+.also{font-size:12px;color:var(--muted);margin-top:4px}.also i{display:inline-block;width:9px;height:9px;border-radius:2px;margin:0 4px 0 8px;vertical-align:-1px}.also i:first-child{margin-left:0}
+.rule{display:grid;grid-template-columns:120px 1fr;gap:4px 12px;font-size:13px;max-width:760px;margin-top:8px}.rule b{font-weight:600}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;background:#e6f4ec;color:var(--ok)}
+.rev{background:#fffbe9;border:1px solid #f0e2a8;border-radius:10px;padding:10px 14px;max-width:760px;margin-top:18px}.rev li{margin:4px 0}
+.chosen{outline:3px solid var(--accent);outline-offset:3px}
+</style></head><body>
+<h1>Legend B under stress</h1>
+<p class="note">The worry: a thin segment has no room for its words. The rule below gives every segment a floor and drops words in steps, never the count, and anything dropped reads again on the <i>also</i> line. Six cases, worst first.</p>
+
+<h3>The rule</h3>
+<div class="rule">
+<b>Floor</b><span>No segment draws thinner than 14px, even at 1%. The bar's other segments give up the difference. A 1px white seam separates neighbors, so two thin ones never read as one.</span>
+<b>Wide, 14% and up</b><span>Dollars in the bar. Under it, the count and the full words: <i>Not in · due Oct 19</i>.</span>
+<b>Middle, 7 to 14%</b><span>Dollars in the bar. Under it, the count and the state alone: <i>Sent back</i>.</span>
+<b>Thin, under 7%</b><span>Nothing in the bar. Under it, the count alone. Its state and dollars move to the <i>also</i> line under the legend, with its color square, and read on hover.</span>
+<b>One segment</b><span>One column, left-aligned, the full words. No <i>also</i> line.</span>
+</div>
+
+<h3>1 · Today's case, for scale</h3>
+<div class="card"><div class="h">The trades' draws · 6 · $107,900 as it stands</div>
+<div class="stack"><div class="notin" style="width:45%">$48,300</div><div class="back" style="width:17%">$18,400</div><div class="wait" style="width:26%">$27,900</div><div class="ok" style="width:12%">$13,300</div></div>
+<div class="lg"><div style="width:45%"><b>3</b><small>Not in · due Oct 19</small></div><div style="width:17%" class="mid"><b>1</b><small>Sent back</small></div><div style="width:26%" class="mid"><b>1</b><small>Waiting on us · 4 d</small></div><div style="width:12%"><b>1</b><small>Approved</small></div></div></div>
+
+<h3>2 · One thin segment: Approved at 4%</h3>
+<div class="card"><div class="h">The trades' draws · 6 · $98,600 as it stands</div>
+<div class="stack"><div class="notin" style="width:49%">$48,300</div><div class="back" style="width:19%">$18,400</div><div class="wait" style="width:28%">$27,900</div><div class="ok" style="width:4%"></div></div>
+<div class="lg"><div style="width:49%"><b>3</b><small>Not in · due Oct 19</small></div><div style="width:19%" class="mid"><b>1</b><small>Sent back</small></div><div style="width:28%" class="mid"><b>1</b><small>Waiting on us · 4 d</small></div><div style="width:4%" class="cnt"><b>1</b></div></div>
+<div class="also">also: <i class="ok"></i>Approved · 1 · $4,000</div></div>
+
+<h3>3 · Two thin, side by side: Sent back 3%, Approved 5%</h3>
+<div class="card"><div class="h">The trades' draws · 6 · $84,100 as it stands</div>
+<div class="stack"><div class="notin" style="width:58%">$48,300</div><div class="back" style="width:3%"></div><div class="wait" style="width:34%">$27,900</div><div class="ok" style="width:5%"></div></div>
+<div class="lg"><div style="width:58%"><b>3</b><small>Not in · due Oct 19</small></div><div style="width:3%" class="cnt"><b>1</b></div><div style="width:34%" class="mid"><b>1</b><small>Waiting on us · 4 d</small></div><div style="width:5%" class="cnt"><b>1</b></div></div>
+<div class="also">also: <i class="back"></i>Sent back · 1 · $2,600 <i class="ok"></i>Approved · 1 · $4,000</div></div>
+
+<h3>4 · One giant and three slivers: Not in at 88%</h3>
+<div class="card"><div class="h">The trades' draws · 6 · $412,000 as it stands</div>
+<div class="stack"><div class="notin" style="width:88%">$362,000</div><div class="back" style="width:4%"></div><div class="wait" style="width:5%"></div><div class="ok" style="width:3%"></div></div>
+<div class="lg"><div style="width:88%"><b>3</b><small>Not in · due Oct 19</small></div><div style="width:4%" class="cnt"><b>1</b></div><div style="width:5%" class="cnt"><b>1</b></div><div style="width:3%" class="cnt"><b>1</b></div></div>
+<div class="also">also: <i class="back"></i>Sent back · 1 · $18,400 <i class="wait"></i>Waiting on us · 1 · $19,300 <i class="ok"></i>Approved · 1 · $12,300</div></div>
+
+<h3>5 · One segment: Helotes</h3>
+<div class="card"><div class="h">The trades' draws · 1 · $6,200 as it stands</div>
+<div class="stack"><div class="notin" style="width:100%">$6,200</div></div>
+<div class="lg"><div style="width:100%"><b>1</b><small>Not in · due Oct 19</small></div></div></div>
+
+<h3>6 · A phone, today's case</h3>
+<p class="note">At 340px the middle rule kicks in earlier: Sent back and Approved drop their detail, Waiting on us keeps the state. Still readable, no wrapping, nothing clipped.</p>
+<div class="card phone"><div class="h">The trades' draws · 6 · $107,900</div>
+<div class="stack"><div class="notin" style="width:45%">$48,300</div><div class="back" style="width:17%">$18,400</div><div class="wait" style="width:26%">$27,900</div><div class="ok" style="width:12%"></div></div>
+<div class="lg"><div style="width:45%"><b>3</b><small>Not in · due Oct 19</small></div><div style="width:17%" class="mid"><b>1</b><small>Sent back</small></div><div style="width:26%" class="mid"><b>1</b><small>Waiting on us</small></div><div style="width:12%" class="cnt"><b>1</b></div></div>
+<div class="also">also: <i class="ok"></i>Approved · 1 · $13,300</div></div>
+
+<div class="rev"><b>Is this good to go?</b><ul>
+<li><b>Nothing is ever lost.</b> The count always sits under its segment, and whatever words a thin segment cannot hold reappear on the <i>also</i> line with the color square. Hover on the segment or the count says the same.</li>
+<li><b>Case 4 is the real test</b> and it still reads: one big number, three small counts under three slivers, and one line naming them. That is the shape of a job in its first month, when nothing is in yet.</li>
+<li><b>The 14px floor is a lie of one or two percent.</b> A 1% segment draws at about 2%. The hover carries the true dollars, and the section below carries the rows. Worth it so a sliver is never invisible.</li>
+<li><b>The widths are measured, not guessed.</b> The tiers use the segment's drawn pixels, not its percent, so the phone and the desk pick the right tier on their own.</li>
+<li><b>Not sure of:</b> whether a thin segment's count should sit under it (as drawn) or move to the <i>also</i> line too, leaving the legend row with gaps. Drawn under, so the count and the color stay together.</li>
+</ul></div>
+</body></html>
