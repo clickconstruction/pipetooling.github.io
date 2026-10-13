@@ -894,6 +894,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Calendar** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | **Bids** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ board + RFI / Change Order / Lien Release only, no analytics (v2.3066) | ✅ limited |
 | **GC projects** (`/gc`, v2.4832 — GC mode door 1; `canOpenGcProjects` ↔ `gc_office_team()`; the **Trades \| GC** switch on Bids is its door) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
+| **Messages** (`/messages`, v2.5446 — residential R2; `canOpenMessages` = `GC_OFFICE_TEAM`, since the spine's tables open to `gc_office_team()` alone; **Messages** in the header is its door; estimators reach it through `estimatorAllowedPaths`) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | **Estimates** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited (project-linked super visibility) |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |

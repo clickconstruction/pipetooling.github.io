@@ -14,6 +14,15 @@ export function canOpenGcProjects(role: UserRole | null | undefined): boolean {
 }
 
 /**
+ * Messages in the header (residential R2): who opens `/messages`, Follow up for every kind of person with their
+ * threads. The GC office team, since the spine's tables open to `gc_office_team()` alone. The field reaches a customer
+ * from Job Mode through the tech's door (`canMessageCustomersFromJobMode`), never from this page.
+ */
+export function canOpenMessages(role: UserRole | null | undefined): boolean {
+  return canOpenGcProjects(role)
+}
+
+/**
  * GC mode, B5 (v2.4923): who sees our number, the general conditions, contingency and fee we add on
  * top of the trades. The client's copy of the database's `gc_money_team()`
  * (`20261008130000_gc_our_number.sql`): dev, the leaders and the controller. `access.test.ts` reads
