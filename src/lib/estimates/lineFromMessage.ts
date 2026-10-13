@@ -106,11 +106,17 @@ export type LineResult = { ok: true; draft: LineDraft } | { ok: false; why: Line
 /** A description longer than this is cut at a word, for the office to finish. */
 const DESCRIPTION_MAX = 160
 
-const KIND_WORDS: Readonly<Record<LineContact['kind'], string>> = {
+// Keyed by string, not ContactKind: R0 (#5565) widens the kinds, and an exhaustive map would fail the type check on
+// whichever side of that change it is read. The fallback covers a kind the words don't name.
+const KIND_WORDS: Readonly<Record<string, string>> = {
   customer: 'a customer',
   trade: 'a trade partner',
   arch: 'an architect',
   unknown: 'a number nobody has named yet',
+  lead: 'a lead',
+  supply_house: 'a supply house',
+  candidate: 'a candidate',
+  sub: 'a sub',
 }
 
 /** The message's first sentence, cut at a word when it runs long. */
@@ -142,7 +148,7 @@ export function lineDraftFromMessage(
   estimates: readonly LineEstimate[],
 ): LineResult {
   if (contact.kind !== 'customer')
-    return { ok: false, why: 'not a customer', words: `A line from a message goes on a customer's estimate. This message is with ${KIND_WORDS[contact.kind]}.` }
+    return { ok: false, why: 'not a customer', words: `A line from a message goes on a customer's estimate. This message is with ${KIND_WORDS[contact.kind] ?? 'someone who is not a customer'}.` }
   if (!message.jobId) return { ok: false, why: 'no job', words: 'Tie the message to a job first. An estimate belongs to one job.' }
   const job = jobs.find((j) => j.id === message.jobId)
   if (!job || !contact.customerId || job.customerId !== contact.customerId)
