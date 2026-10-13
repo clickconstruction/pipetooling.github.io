@@ -1040,7 +1040,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 ### drive-link
 
-**Purpose**: Messages, cut 7b (v2.5383, `MESSAGES_PLAN.md` → *Documents, for files going out*, the handler; the mock-up is `to-dos/gc-mode/messages/files-out-mockups.html` on spike/gc-mode). Our own link to one file in a job's Drive folder, `clicktooling.com/f/<link>`, and the office's door to a job's folder. The rules are pure in `_shared/driveLink.ts`, tested by `src/lib/documents/driveLink.test.ts`. A link is a `drive_links` row (cut 7a, `20261013110000_drive_links.sql`), kept by its SHA-256.
+**Purpose**: Messages, cut 7b (v2.5383, `MESSAGES_PLAN.md` → *Documents, for files going out*, the handler; the mock-up is `to-dos/gc-mode/messages/files-out-mockups.html` on spike/gc-mode). Our own link to one file in a job's Drive folder, `clicktooling.com/f/<link>`, and the office's door to a job's folder. The rules are pure in `_shared/driveLink.ts`, tested by `src/lib/documents/driveLink.test.ts`. Its Drive reads and writes are `_shared/driveJobFolder.ts`, shared with [photo-save](#photo-save) and [messages-email](#messages-email): the job's folder, `halfInside`, the byte read (`driveMedia`, `driveFileBytes`) and our link (`makeDriveLink`). A link is a `drive_links` row (cut 7a, `20261013110000_drive_links.sql`), kept by its SHA-256.
 
 **The open door**, no sign-in: the link is the key.
 - `GET ?t=<link>` answers `{ kind: 'drive', url, name }` for a file in the job's Plans half, which opens in Drive's own viewer since that half is open to anyone with its link. It answers `{ kind: 'stream', name, url }` for a Team only file, `url` being this function's public address (from `SUPABASE_URL`, never the request's) with `&raw=1`. It answers `{ kind: 'off', why }` for a link cut off, ended (30 days), unknown, or a Team only file over 50 MB. Each answer that opens counts one `public_page_views` row, surface `drive_link`. A staff look or a preview is stamped and not counted, as the portals do.
@@ -1058,7 +1058,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [gc-drive-access](#gc-drive-access)), `APP_ORIGIN` (the link's page, else `https://clicktooling.com`).
 
-**Status**: v2.5383, deployed 2026-10-13. v2.5433 saves a page or a script in place of showing it, checks Drive's own length against the cap, and keeps one copy on a second save; redeploy once it merges. v2.5458 sends a saved photo to the job's photos under its name and imports `_shared/gcKernels/`; redeploy once it merges.
+**Status**: v2.5383, deployed 2026-10-13. v2.5433 saves a page or a script in place of showing it, checks Drive's own length against the cap, and keeps one copy on a second save; redeploy once it merges. v2.5458 sends a saved photo to the job's photos under its name and imports `_shared/gcKernels/`; redeploy once it merges. v2.5465 lifts `halfInside`, the byte read and the link-making into `_shared/driveJobFolder.ts` and `bytesOfBase64` into `_shared/driveLink.ts`, with nothing that behaves differently; redeploy drive-link and photo-save once it merges.
 
 ### photo-save
 
