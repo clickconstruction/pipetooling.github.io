@@ -29,6 +29,8 @@ The message must be tied to a job we won. The words under the button say what is
 
 Only a customer's message can start one. A trade partner's thread has no such button, and neither has an architect's.
 
+A message on a Pipeline job goes on the customer's estimate instead. [Put a customer's message on their estimate](/help/put-a-customers-message-on-their-estimate) shows how.
+
 ## After you save it
 
 The message shows a {{chip:blue|became CO 2}} chip in the thread. The money team finds the draft in **Change orders** on the job. A line there leads back to the message. The money team prices it and sends it, as [Change our contract with the customer](/help/change-our-contract-with-the-customer#price-a-draft-from-a-message) shows.

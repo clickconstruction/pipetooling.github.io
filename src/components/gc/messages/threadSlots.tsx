@@ -11,6 +11,7 @@
  */
 import { createElement, Fragment, type ReactNode } from 'react'
 import { useChangeOrderThreadSlots } from '../../changeOrders/useChangeOrderThreadSlots'
+import { useEstimateLineThreadSlots } from '../../estimates/useEstimateLineThreadSlots'
 import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
@@ -124,6 +125,9 @@ export function useThreadSlots(): ThreadSlots {
   const changeOrders = useChangeOrderThreadSlots()
   // Cut 6: a file that reads as a trade partner's paper, offered under its line until someone answers it.
   const email: ThreadSlots = { underLine: (m, c) => (hasPaperOffer(m.files, c) ? <PaperOffers key={m.id} message={m} contact={c} /> : null) }
-  // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, cut 6's paper offer.
-  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, email)
+  // R8 · 8: a customer's line on a Pipeline job goes on its estimate, after cut 4b's in both slots it shares.
+  const estimateLines = useEstimateLineThreadSlots()
+  // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, R8 · 8's estimate lines,
+  // cut 6's paper offer.
+  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, estimateLines, email)
 }

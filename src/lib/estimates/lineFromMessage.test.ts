@@ -6,6 +6,8 @@ import {
   lineDraftFromMessage,
   becameChip,
   draftedWords,
+  hasOptionsWords,
+  onEstimateChip,
   pricedWords,
   whoMayDraft,
   whoMaySend,
@@ -164,6 +166,11 @@ describe('the chip and the lines after', () => {
     expect(becameChip({ number: 3, estimateNumber: 1044, amountCents: 185000 })).toBe('became line 3 on estimate 1044, $1,850')
   })
 
+  it('says the estimate a message is on when the thread reads it back, and why one with options takes no line', () => {
+    expect(onEstimateChip(1044)).toBe('a line on estimate 1044')
+    expect(hasOptionsWords(1044)).toBe('Estimate 1044 has options. Add the line on the estimate itself.')
+  })
+
   it('tells the office where the draft went', () => {
     expect(draftedWords(draftOf(ESTIMATES))).toBe('Line 2 is drafted on estimate 1044 for Helotes. The money team prices it and sends it.')
     expect(draftedWords(draftOf([]))).toBe('Line 1 is drafted on a new estimate for Helotes. The money team prices it and sends it.')
@@ -192,6 +199,8 @@ describe('the chip and the lines after', () => {
       draftedWords(draftOf(ESTIMATES)),
       draftedWords(draftOf([])),
       pricedWords('Dana', { amountCents: 18500 }, 'Helotes')!,
+      onEstimateChip(1044),
+      hasOptionsWords(1044),
     ]
     expect(refusals).toHaveLength(5)
     expect(texts.flatMap(plainWordsFailures)).toEqual([])
