@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { MessageFiles } from './LineFiles'
+import { LineFileChips, MessageFiles } from './LineFiles'
+import { lineFilesFromRows, type MessageAttachmentRow } from '../../../lib/messages/lineFiles'
+import type { OwnLinkState } from '../../../lib/messages/sentLineFiles'
 import { MessageWindow } from './MessageWindow'
 import { renderWithProviders } from '../../../test/renderSmokeMocks'
 import { openHtmlPrintWindow } from '../../../lib/jobsDocuments/printWindow'
@@ -111,6 +113,51 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     fireEvent.click(within(photo).getByRole('button', { name: 'Save it' }))
     await waitFor(() => expect(photo.textContent).toContain('A training account cannot change Drive.'))
     expect(within(photo).getByRole('button', { name: 'Save it' })).toBeTruthy()
+  })
+
+  it('marks each file on a line we sent how it went, under the line and in its Files, with our link’s opens and Cut it off (cut 7f)', async () => {
+    const row = (id: string, more: Partial<MessageAttachmentRow>): MessageAttachmentRow => ({
+      id, message_id: 'm-rosa-out', sort_order: 0, kind: 'file', name: '', mime: 'application/pdf', size_bytes: null, bucket_path: null,
+      left_in_gmail: null, url: null, host: null, paper: null, paper_answer: null, paper_answered_by: null, paper_answered_at: null, ...more,
+    })
+    const files = lineFilesFromRows([
+      row('a-addendum', { sort_order: 0, name: 'Addendum 2.pdf', size_bytes: 412_000, bucket_path: 'out/m/1-Addendum 2.pdf', sent_as: 'file' }),
+      row('a-plans', { sort_order: 1, kind: 'link', name: 'Boerne Retail Shell plans, rev 2', url: 'https://clicktooling.com/t/7Hq2#plans', sent_as: 'link' }),
+      row('a-bidtab', { sort_order: 2, kind: 'link', name: 'Bid tab, Sitework.pdf', url: 'https://clicktooling.com/f/k3Pw9xQaB2cD4eF6gH8iJ0', sent_as: 'link', drive_link_id: 'dl-bidtab', drive_file_id: 'drvBidTab00001' }),
+    ]).get('m-rosa-out')!
+
+    renderWithProviders(<LineFileChips files={files} onOpen={vi.fn()} />)
+    expect([...document.querySelectorAll('[data-line-files] button')].map((b) => b.textContent)).toEqual([
+      'PDFAddendum 2.pdf · sent as the file',
+      '↗Boerne Retail Shell plans, rev 2 · sent as our link to their portal',
+      '↗Bid tab, Sitework.pdf · sent as our link to the file',
+    ])
+    cleanup()
+
+    const state: OwnLinkState = { cutAt: null, cutByName: null, endsAt: '2026-11-08T21:42:00Z', opens: 2, openedAt: ['2026-10-12T19:10:00Z', '2026-10-09T21:42:00Z'] }
+    const links = { load: vi.fn((): Promise<Record<string, OwnLinkState>> => Promise.resolve({ 'dl-bidtab': state })), cut: vi.fn(() => Promise.resolve()) }
+    renderWithProviders(<MessageFiles files={files} jobKey="bid:b482" jobLabel="B482" links={links} nowIso="2026-10-12T20:00:00Z" />)
+    const section = document.querySelector('[data-message-files]') as HTMLElement
+    expect(within(section).getByRole('heading', { name: 'Files (3)' })).toBeTruthy()
+    await waitFor(() => expect(section.querySelector('[data-link-opens]')).toBeTruthy())
+    expect(links.load).toHaveBeenCalledWith(['dl-bidtab'])
+    const rows = [...section.querySelectorAll('[data-message-file]')] as HTMLElement[]
+    expect(rows.map((r) => r.textContent)).toEqual([
+      'PDFAddendum 2.pdf · 412 KB · sent as the file · kept with the copyOpen',
+      '↗Boerne Retail Shell plans, rev 2 · sent as our link to their portalOpen',
+      '↗Bid tab, Sitework.pdf · sent as our link to the file · opened twice, last 2:10 PMOpens: today 2:10 PM · Fri Oct 9, 4:42 PMOpenCut it off',
+    ])
+    // A sent file has no Save to Drive; our own link opens through the office's page, never the public one.
+    expect(within(section).queryByRole('button', { name: 'Save to Drive' })).toBeNull()
+    expect(within(rows[2]!).getByRole('link', { name: 'Open Bid tab, Sitework.pdf' }).getAttribute('href')).toBe('/files/drive/bid%3Ab482%3AdrvBidTab00001')
+    expect(within(rows[1]!).queryByRole('button', { name: 'Cut it off' })).toBeNull()
+
+    links.load.mockImplementation(() => Promise.resolve({ 'dl-bidtab': { ...state, cutAt: '2026-10-12T19:30:00Z', cutByName: 'Rosa' } }))
+    fireEvent.click(within(rows[2]!).getByRole('button', { name: 'Cut it off' }))
+    await waitFor(() => expect(rows[2]!.textContent).toContain('cut off by Rosa Mon Oct 12 · our link opens nothing now'))
+    expect(links.cut).toHaveBeenCalledWith('dl-bidtab')
+    expect(within(rows[2]!).queryByRole('button', { name: 'Cut it off' })).toBeNull()
+    expect(rows[2]!.querySelector('[data-link-opens]')).toBeNull()
   })
 
   it('a line on the person says so; a sent copy keeps its own job and says where its copy is kept', () => {

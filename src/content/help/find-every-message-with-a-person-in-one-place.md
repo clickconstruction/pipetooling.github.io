@@ -2,7 +2,7 @@
 title: find every message with a person in one place
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans
+keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans, cut it off, opens, our link
 order: 116
 ---
 Messages lists each person the office works with on GC projects. Press a person to read every message with them in one thread.
@@ -87,6 +87,18 @@ Team only is for a quote or a photo. Only the team sees it there. Plans is for a
 A photo goes into the job's photos. A file on a bid or a Pipeline job goes into the job's folder.
 
 The row then says where the file went. Press **Open in Drive** to see it there. A message on nobody's job asks you to tie it to a job first.
+
+## See how a file we sent went
+
+An email we sent lists its files under **Files**. Each one says how it went.
+
+- **sent as the file** means the file went with the email. A copy is kept with the message.
+- **sent as our link to their portal** means the link opens their portal at the right page.
+- **sent as our link to the file** means our own link to that one file.
+
+Our own link says how often it was opened. Under it is the time of each open, newest first. It never says who opened it, since a link cannot know.
+
+To stop our link, press {{button:outline|Cut it off}}. From then on it opens nothing. The file stays where it is. Our link also stops by itself 30 days after it went.
 
 ## File a paper that came by email
 
