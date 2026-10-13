@@ -3,7 +3,7 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import { filingDocFooter, filingDocPdfBlob, filingPdfFilename, type FilingDocBlock } from '../jobsDocuments/lienFilingDocuments'
 import { markLienDeskItemSent } from './lienDeskIo'
 import { clearOneShotLienClaimCorrection } from './lienClaimCorrectionIo'
-import { runCourtesyCopies, runCourtesyEmailWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunCourtesySend, type RunNotice, type RunSendRecord } from './lienDeskRun'
+import { runCourtesyCopies, runCourtesyEmailWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunCourtesySend, type RunNotice, type RunSendRecord, type CoverWindow } from './lienDeskRun'
 import { combinedFilingPayloads, type CombinedRunNotice } from './lienNoticeCombine'
 import { buildDemandLetterPacket, mergePdfBlobs } from '../jobsDocuments/demandLetterPacket'
 import { buildPhysicalInvoicePdfBlob } from '../physicalInvoicePdf'
@@ -25,13 +25,14 @@ import { issueNoticeRelease } from './lienNoticeReleaseIo'
  * pay page and unpaid bills stacked as the printed packet stacks them. The send attaches it, and
  * the run window's courtesy-email preview (v2.5073) shows it, so the preview is the attachment.
  */
-export async function buildRunNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', invoiceDocs: readonly NoticeInvoiceDoc[], payBlocks: readonly FilingDocBlock[] = []): Promise<Blob> {
+export async function buildRunNoticePdf(n: RunNotice, recipientKey: 'owner' | 'original_contractor', invoiceDocs: readonly NoticeInvoiceDoc[], payBlocks: readonly FilingDocBlock[] = [], opts: { window?: CoverWindow | null } = {}): Promise<Blob> {
   const r = n.recipients.find((x) => x.key === recipientKey)!
   const form = await filingDocPdfBlob(runNoticeBlocks(n, r), { footer: filingDocFooter(n.kind) })
   // The run's cover letter (v2.3482) rides in front of the owner's copy, as the printed packet prints it;
   // the pay page (v2.3758) rides behind the form, in front of the invoices it points at.
   const parts: Blob[] = []
-  if (recipientKey === 'owner' && n.coverLetter) parts.push(await filingDocPdfBlob(runCoverNoteBlocks({ ...n, withInvoices: invoiceDocs.length > 0 })))
+  // The window envelope (the Docsmit train, PR 4): a copy that mails through a provider carries the recipient block at the window zone and the pay page's code under it.
+  if (recipientKey === 'owner' && n.coverLetter) parts.push(await filingDocPdfBlob(runCoverNoteBlocks({ ...n, withInvoices: invoiceDocs.length > 0, window: opts.window ?? null })))
   // The conditional release (v2.4729): behind the owner's letter, behind the GC's form — as the printed packet stacks it.
   const release = n.release ? await buildLienWaiverPdfBlob(n.release.formType, n.release.fields, n.release.signature) : null
   if (recipientKey === 'owner' && release) parts.push(release)

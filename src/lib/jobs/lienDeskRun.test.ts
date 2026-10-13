@@ -636,3 +636,20 @@ describe('the door on the desk as a pill (Run-5)', () => {
     expect(runDoorPill({ ready: 1, printed: 0, retReady: 0, waits: 5 }).words).toBe('1 waits on the leader')
   })
 })
+
+describe('the window envelope on the cover letter (the Docsmit train, PR 4)', () => {
+  it('a copy that mails through a provider puts the window block and the code right after the letterhead; a plain copy has neither', async () => {
+    const { coverWindowBlocks, runCoverNoteBlocks } = await import('./lienDeskRun')
+    const fields = { noticeDate: '2026-10-12', projectDescription: 'ATI Schertz', claimantName: 'Click Plumbing', laborMaterialsType: 'Plumbing', originalContractorName: 'Loberg', contactPerson: 'Robert', claimAmount: '1' } as unknown as Parameters<typeof runCoverNoteBlocks>[0]['fields']
+    const base = { kind: 'notice_53_056' as const, label: '650 · ATI', months: ['2026-07'], fields, extras: { letterhead: { company: 'Click Plumbing', licenseLine: '', contactLines: [] } }, coverNote: null, coverLetter: 'Dear owner,\n\nPlease read this.' }
+    const window = { lines: ['ATI Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'], qr: { png: null, svg: null, display: 'clicktooling.com/pay/abc?m=KX7M2QRT', caption: 'Scan to pay.' } }
+    expect(coverWindowBlocks(null)).toEqual([])
+    expect(coverWindowBlocks({ lines: [] })).toEqual([])
+    expect(coverWindowBlocks({ lines: ['A'] }).map((b) => b.kind)).toEqual(['windowAddress'])
+    const kinds = runCoverNoteBlocks({ ...base, window }).map((b) => b.kind)
+    expect(kinds.slice(0, 4)).toEqual(['letterhead', 'windowAddress', 'qrLink', 'title'])
+    expect(runCoverNoteBlocks(base).map((b) => b.kind)).not.toContain('windowAddress')
+    expect(runCoverNoteBlocks({ ...base, coverLetter: null, coverNote: 'A note.', window }).map((b) => b.kind).slice(0, 3)).toEqual(['letterhead', 'windowAddress', 'qrLink'])
+  })
+})
+

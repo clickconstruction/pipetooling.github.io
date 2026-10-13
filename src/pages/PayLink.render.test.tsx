@@ -101,4 +101,23 @@ describe('PayLink page — the sample (What customers see)', () => {
     expect(screen.getByTestId('pay-link-pay-now').getAttribute('href')).toBe('#sample')
     expect(fetch).not.toHaveBeenCalled()
   })
+
+  it('a code scanned off a mailed notice (?m=CODE) records the piece’s open, once, beside the bill read (the Docsmit train, PR 4)', async () => {
+    answer(200, open)
+    window.history.replaceState({}, '', `/pay/${ID}?m=kx7m2qrt`)
+    mount(ID)
+    await screen.findByTestId('pay-link-amount')
+    const calls = vi.mocked(fetch).mock.calls.map((c): [string, string | null] => [String(c[0]), typeof (c[1] as RequestInit | undefined)?.body === 'string' ? ((c[1] as RequestInit).body as string) : null])
+    const opened = calls.find(([u]) => u.includes('/rest/v1/rpc/mail_piece_opened'))
+    expect(opened?.[1]).toBe(JSON.stringify({ p_code: 'KX7M2QRT' }))
+    window.history.replaceState({}, '', '/')
+  })
+
+  it('no code on the address: no open is recorded', async () => {
+    answer(200, open)
+    mount(ID)
+    await screen.findByTestId('pay-link-amount')
+    expect(vi.mocked(fetch).mock.calls.some((c) => String(c[0]).includes('mail_piece_opened'))).toBe(false)
+  })
 })
+
