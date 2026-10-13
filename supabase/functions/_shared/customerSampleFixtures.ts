@@ -431,7 +431,7 @@ function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: strin
   }
 }
 
-/** The owner's sample GC job: our contract to sign, a change order, the work to accept and its schedule. */
+/** The owner's sample GC job: our contract to sign, a change order, the work to accept, its schedule and its page. */
 function sampleOwnerGcJobs(todayYmd: string, appOrigin: string) {
   return [
     {
@@ -457,6 +457,23 @@ function sampleOwnerGcJobs(todayYmd: string, appOrigin: string) {
       canAccept: true,
       accepted: null,
       schedule: sampleGcSchedule(todayYmd),
+      // The customer's page (Messages cut 8b-i, shape B): its money before the first bill, this week's line, who to
+      // call, a move with its reason, and the switches off. Made up, in the page block's own shape.
+      page: {
+        contract: 187_000,
+        contractSignedOn: null,
+        architect: 'Rivera Design Studio',
+        payDays: 30,
+        changes: [{ id: 'sample-gc-co-2', number: 2, description: 'Add a coffee bar cabinet, per the customer', descriptionEs: null, price: 1_100, days: 3, state: 'open', signedOn: null }],
+        payApps: [],
+        week: { on: ymdPlusDays(todayYmd, -1), line: 'The framing is up. The roof deck goes on next week.', lineEs: null, photosUrl: null },
+        people: [
+          { role: 'pm', name: 'Robert' },
+          { role: 'super', name: 'Wendi' },
+        ],
+        moves: [{ activity: 'Roof deck', madeOn: ymdPlusDays(todayYmd, -3), from: ymdPlusDays(todayYmd, 4), to: ymdPlusDays(todayYmd, 8), reason: 'weather' }],
+        switches: { photos: false, forecast: false, spanish: false },
+      },
     },
   ]
 }
