@@ -3,7 +3,7 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.5412',
   date: '2026-10-12',
-  title: 'Five more server functions pass their own type check again',
+  title: 'Five server functions whose types were too narrow pass their type check again',
   kind: 'infra',
   roles: ['dev'],
   highlights: [
