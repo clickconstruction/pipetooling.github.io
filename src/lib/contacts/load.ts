@@ -8,14 +8,6 @@ import type { Tables } from '../../types/database'
 import { jobKeyOfRow } from '../messages/load'
 import type { ChannelKind, Contact, ContactChannel, ContactKind, ContactRecord } from './kernel'
 
-/**
- * The id columns of the four kinds of 2026-10-13: a lead, a supply house's counter, a rep at a supply house and a
- * candidate, as R0's SQL (`20261013180000_contacts_seven_kinds.sql`) added them and the generated types carry them.
- * They stay optional here until the fetchers select them (`CONTACT_COLS` in `messages/messagesIo.ts`, `CONTACT_COLUMNS`
- * in `followUp/followUpIo.ts`, R0's PR 4), since a row read without them has none of the four.
- */
-type NewRecordColumns = Partial<Pick<Tables<'contacts'>, 'prospect_id' | 'supply_house_id' | 'supply_house_contact_id' | 'team_prospect_id'>>
-
 /** A `contacts` row as the client reads it. */
 export type ContactRow = Pick<
   Tables<'contacts'>,
@@ -31,8 +23,13 @@ export type ContactRow = Pick<
   | 'off_since'
   | 'off_why'
   | 'off_by'
-> &
-  NewRecordColumns
+  // The four kinds of 2026-10-13 (R0, `20261013180000_contacts_seven_kinds.sql`): a lead, a supply house's counter, a
+  // rep at a supply house and a candidate.
+  | 'prospect_id'
+  | 'supply_house_id'
+  | 'supply_house_contact_id'
+  | 'team_prospect_id'
+>
 
 /** A `contact_channels` row. Its `key` is the database's own, matched there. */
 export type ContactChannelRow = Pick<Tables<'contact_channels'>, 'id' | 'contact_id' | 'kind' | 'value' | 'opted_out_at' | 'created_at'>

@@ -52,12 +52,16 @@ export interface FollowUpIo {
 const CONTACT_COLUMNS = [
   'id, kind, customer_id, customer_contact_person_id, gc_company_id, gc_company_person_id, person_id, name, goes_by',
   'off_since, off_why, off_by, state, snoozed_until, has_user_id, has_since, has_how',
+  // R0's four kinds (`20261013180000`). Follow up never holds a supply house or a candidate (`OFF_FOLLOW_UP`), so of
+  // their records only a lead's prospect is embedded below.
+  'prospect_id, supply_house_id, supply_house_contact_id, team_prospect_id',
   // The records a name, a company and a trade come from (contactsFromRows).
   'customer:customers(id, name)',
   'person:customer_contact_persons(id, customer_id, name, customer:customers(id, name))',
   'company:gc_companies(id, name, contact_name, trades)',
   'gc_person:gc_company_people(id, company_id, name, company:gc_companies(id, name, contact_name, trades))',
   'roster:people(id, name)',
+  'prospect:prospects(id, contact_name, company_name)',
 ].join(', ')
 const CHANNEL_COLUMNS = 'id, contact_id, kind, value, opted_out_at, created_at'
 /**
@@ -79,6 +83,8 @@ type EmbeddedContact = FollowUpContactRow & {
   company: (Named & { contact_name: string | null; trades: string[] | null }) | null
   gc_person: (Named & { company_id: string; company: (Named & { contact_name: string | null; trades: string[] | null }) | null }) | null
   roster: Named | null
+  /** A lead's row on Prospects. Null when there is none, or when the signed-in person may not read Prospects. */
+  prospect?: { id: string; contact_name: string | null; company_name: string | null } | null
 }
 
 /** The records the contacts' embedded rows name, as `contactsFromRows` takes them. */
@@ -88,6 +94,7 @@ export function recordsOfContacts(rows: readonly EmbeddedContact[]): ContactReco
   const companies = new Map<string, { id: string; name: string; contact_name: string; trades: string[] }>()
   const companyPeople = new Map<string, { id: string; company_id: string; name: string }>()
   const people = new Map<string, { id: string; name: string }>()
+  const prospects = new Map<string, { id: string; contact_name: string | null; company_name: string | null }>()
   const company = (c: (Named & { contact_name: string | null; trades: string[] | null }) | null) => {
     if (c) companies.set(c.id, { id: c.id, name: c.name ?? '', contact_name: c.contact_name ?? '', trades: c.trades ?? [] })
   }
@@ -103,6 +110,7 @@ export function recordsOfContacts(rows: readonly EmbeddedContact[]): ContactReco
       company(r.gc_person.company)
     }
     if (r.roster) people.set(r.roster.id, { id: r.roster.id, name: r.roster.name ?? '' })
+    if (r.prospect) prospects.set(r.prospect.id, r.prospect)
   }
   return {
     customers: [...customers.values()],
@@ -110,6 +118,7 @@ export function recordsOfContacts(rows: readonly EmbeddedContact[]): ContactReco
     gcCompanies: [...companies.values()],
     gcCompanyPeople: [...companyPeople.values()],
     people: [...people.values()],
+    prospects: [...prospects.values()],
   }
 }
 

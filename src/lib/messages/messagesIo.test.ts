@@ -7,6 +7,9 @@ const calls = vi.hoisted(() => ({
   /** Each read's answer in turn, and the ids and range each read asked for. */
   reads: [] as Array<{ data: unknown; error: unknown }>,
   asked: [] as Array<{ table: string; ids: unknown; range: [number, number] }>,
+  /** A read awaited straight after `.in()`: its rows by table, and the columns and ids each asked for. */
+  byTable: {} as Record<string, unknown[]>,
+  selected: [] as Array<{ table: string; cols: string; ids: unknown }>,
 }))
 
 vi.mock('../supabase', () => {
@@ -22,12 +25,16 @@ vi.mock('../supabase', () => {
     }
     return builder
   }
-  const read = (table: string) => {
+  const read = (table: string, cols: string) => {
     let ids: unknown = null
     const builder: Record<string, unknown> = {
       in: (_column: string, list: unknown) => {
         ids = list
         return builder
+      },
+      then: (resolve: (v: unknown) => void) => {
+        calls.selected.push({ table, cols, ids })
+        resolve({ data: calls.byTable[table] ?? [], error: null })
       },
       order: () => builder,
       range: (a: number, b: number) => {
@@ -47,19 +54,22 @@ vi.mock('../supabase', () => {
         insert: (row: unknown) => chain(table, 'insert', [row]),
         delete: () => chain(table, 'delete', []),
         update: (row: unknown) => chain(table, 'update', [row]),
-        select: () => read(table),
+        select: (cols: string) => read(table, cols),
       }),
     },
   }
 })
 
-import { addContactJob, answerPaper, contactForCustomer, loadLineFiles, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
+import type { ContactRow } from '../contacts/load'
+import { addContactJob, answerPaper, contactForCustomer, loadLineFiles, loadRecords, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
 
 beforeEach(() => {
   calls.rpc.length = 0
   calls.writes.length = 0
   calls.next = { data: null, error: null }
   calls.reads.length = 0
+  calls.byTable = {}
+  calls.selected.length = 0
   calls.asked.length = 0
 })
 
@@ -152,5 +162,68 @@ describe('the files on the lines (cut 6)', () => {
     ])
     calls.next = { data: [], error: null }
     await expect(answerPaper('f1', 'filed')).rejects.toThrow('That offer could not be answered from this account.')
+  })
+})
+
+describe('the records the contacts point at (R0, PR 4)', () => {
+  const row = (id: string, kind: string, patch: Partial<ContactRow>): ContactRow => ({
+    id,
+    kind,
+    customer_id: null,
+    customer_contact_person_id: null,
+    gc_company_id: null,
+    gc_company_person_id: null,
+    person_id: null,
+    name: null,
+    goes_by: null,
+    off_since: null,
+    off_why: null,
+    off_by: null,
+    prospect_id: null,
+    supply_house_id: null,
+    supply_house_contact_id: null,
+    team_prospect_id: null,
+    ...patch,
+  })
+
+  it('reads a lead’s prospect, a supply house, a rep and the rep’s house, and a candidate, each by the ids that point at them', async () => {
+    // The prototype's people: Kevin a lead, Ferguson's counter and its rep Rita, Marco on the hiring board. Nothing real.
+    calls.byTable = {
+      prospects: [{ id: 'pr-kevin', contact_name: 'Kevin Alvarez', company_name: null }],
+      supply_house_contacts: [{ id: 'shc-rita', supply_house_id: 'sh-winnelson', name: 'Rita Gomez' }],
+      supply_houses: [
+        { id: 'sh-ferguson', name: 'Ferguson' },
+        { id: 'sh-winnelson', name: 'Winnelson' },
+      ],
+      team_prospects: [{ id: 'tp-marco', name: 'Marco Diaz' }],
+    }
+    const records = await loadRecords([
+      row('c-kevin', 'lead', { prospect_id: 'pr-kevin' }),
+      row('c-ferguson', 'supply_house', { supply_house_id: 'sh-ferguson' }),
+      row('c-rita', 'supply_house', { supply_house_contact_id: 'shc-rita' }),
+      row('c-marco', 'candidate', { team_prospect_id: 'tp-marco' }),
+    ])
+    expect(records).toMatchObject({
+      prospects: [{ id: 'pr-kevin', contact_name: 'Kevin Alvarez', company_name: null }],
+      supplyHouses: [
+        { id: 'sh-ferguson', name: 'Ferguson' },
+        { id: 'sh-winnelson', name: 'Winnelson' },
+      ],
+      supplyHouseContacts: [{ id: 'shc-rita', supply_house_id: 'sh-winnelson', name: 'Rita Gomez' }],
+      teamProspects: [{ id: 'tp-marco', name: 'Marco Diaz' }],
+    })
+    const asked = Object.fromEntries(calls.selected.map((q) => [q.table, { cols: q.cols, ids: q.ids }]))
+    expect(asked).toEqual({
+      supply_house_contacts: { cols: 'id, supply_house_id, name', ids: ['shc-rita'] },
+      prospects: { cols: 'id, contact_name, company_name', ids: ['pr-kevin'] },
+      // The counter's own house and the rep's, once each.
+      supply_houses: { cols: 'id, name', ids: ['sh-ferguson', 'sh-winnelson'] },
+      team_prospects: { cols: 'id, name', ids: ['tp-marco'] },
+    })
+  })
+
+  it('reads none of the four tables when no contact points at them', async () => {
+    await loadRecords([row('c-dana', 'customer', { customer_id: 'cu-dana' })])
+    expect(calls.selected.map((q) => q.table)).toEqual(['customers'])
   })
 })

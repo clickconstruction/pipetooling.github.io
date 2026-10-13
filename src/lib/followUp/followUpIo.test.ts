@@ -60,6 +60,11 @@ describe('loadQueue', () => {
       ['contact_jobs', ['contact.state in waiting,snoozed']],
     ])
     expect(queries[0]!.select).toContain('state, snoozed_until, has_user_id, has_since, has_how')
+    // R0's four kinds point at their records, and a lead's prospect is embedded. Follow up never holds a supply house
+    // or a candidate, so their records are not read here.
+    expect(queries[0]!.select).toContain('prospect_id, supply_house_id, supply_house_contact_id, team_prospect_id')
+    expect(queries[0]!.select).toContain('prospect:prospects(id, contact_name, company_name)')
+    expect(queries[0]!.select).not.toMatch(/supply_houses\(|supply_house_contacts\(|team_prospects\(/)
     expect(queries[2]!.select).toContain('contact:contacts!inner(state)')
     // The New lane's: each line's box and who tied it, and the open people's jobs.
     expect(queries[2]!.select).toContain('mailbox, tied_by')
@@ -93,6 +98,9 @@ describe('loadQueue', () => {
       { company: hillside, customer: null, person: null, gc_person: null, roster: null },
       { company: null, customer: null, person: null, gc_person: { id: 'gcp-1', company_id: 'gc-1', name: 'Dana Paulk', company: hillside }, roster: null },
       { company: null, customer: null, person: { id: 'ccp-1', customer_id: 'cust-1', name: 'Dr. Priya Raman', customer: { id: 'cust-1', name: 'Helotes Dental Office' } }, gc_person: null, roster: { id: 'p-1', name: null } },
+      { company: null, customer: null, person: null, gc_person: null, roster: null, prospect: { id: 'pr-kevin', contact_name: 'Kevin Alvarez', company_name: null } },
+      // A lead whose prospect the signed-in person may not read: the embed is null, and nothing is gathered.
+      { company: null, customer: null, person: null, gc_person: null, roster: null, prospect: null },
     ] as never)
     expect(records).toEqual({
       customers: [{ id: 'cust-1', name: 'Helotes Dental Office' }],
@@ -100,6 +108,7 @@ describe('loadQueue', () => {
       gcCompanies: [{ id: 'gc-1', name: 'Hillside Excavation', contact_name: 'Greg Paulk', trades: ['Sitework'] }],
       gcCompanyPeople: [{ id: 'gcp-1', company_id: 'gc-1', name: 'Dana Paulk' }],
       people: [{ id: 'p-1', name: '' }],
+      prospects: [{ id: 'pr-kevin', contact_name: 'Kevin Alvarez', company_name: null }],
     })
   })
 })

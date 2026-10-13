@@ -49,7 +49,10 @@ function taken<T>(result: Result<T>, operation: string): T {
 const from = (table: string) => supabase.from(table as never)
 const rpc = (fn: string, args: Record<string, unknown>) => supabase.rpc(fn as never, args as never)
 
-const CONTACT_COLS = 'id, kind, customer_id, customer_contact_person_id, gc_company_id, gc_company_person_id, person_id, name, goes_by, off_since, off_why, off_by'
+const CONTACT_COLS =
+  'id, kind, customer_id, customer_contact_person_id, gc_company_id, gc_company_person_id, person_id, name, goes_by, off_since, off_why, off_by, ' +
+  // R0's four kinds: a lead, a supply house's counter, a rep at one and a candidate (`20261013180000`).
+  'prospect_id, supply_house_id, supply_house_contact_id, team_prospect_id'
 const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, created_at'
 const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at'
 /** `mailbox` is R6's column (20261014003000_messages_two_boxes.sql): the box a line came in on or went out from. */
@@ -89,19 +92,34 @@ export async function loadSpineRows(): Promise<{ contacts: ContactRow[]; channel
   return { contacts, channels, jobs, messages }
 }
 
-/** The records the contacts point at, as much of each as a name, a company and a trade need. */
-async function loadRecords(rows: readonly ContactRow[]): Promise<ContactRecordRows> {
-  const persons = await inSlices<{ id: string; customer_id: string; name: string }>(
-    unique(rows.map((r) => r.customer_contact_person_id)),
-    (ids) => supabase.from('customer_contact_persons').select('id, customer_id, name').in('id', ids),
-    'load the people at the customers',
-  )
-  const gcPeople = await inSlices<{ id: string; company_id: string; name: string }>(
-    unique(rows.map((r) => r.gc_company_person_id)),
-    (ids) => supabase.from('gc_company_people').select('id, company_id, name').in('id', ids),
-    'load the people the trade partners named',
-  )
-  const [customers, gcCompanies, people] = await Promise.all([
+/** One record row of a kind, as `contactsFromRows` takes it. */
+type RecordRow<K extends keyof ContactRecordRows> = NonNullable<ContactRecordRows[K]>[number]
+
+/**
+ * The records the contacts point at, as much of each as a name, a company and a trade need. R0's four (a lead's
+ * prospect, a supply house, a rep at one, a candidate on the hiring board) are read the same way. A table the signed-in
+ * person may not read, as `prospects` is to an estimator, comes back empty, and the contact's own name stands.
+ * Exported for its test; `loadMessagesView` is its one caller.
+ */
+export async function loadRecords(rows: readonly ContactRow[]): Promise<ContactRecordRows> {
+  const [persons, gcPeople, supplyHouseContacts] = await Promise.all([
+    inSlices<{ id: string; customer_id: string; name: string }>(
+      unique(rows.map((r) => r.customer_contact_person_id)),
+      (ids) => supabase.from('customer_contact_persons').select('id, customer_id, name').in('id', ids),
+      'load the people at the customers',
+    ),
+    inSlices<{ id: string; company_id: string; name: string }>(
+      unique(rows.map((r) => r.gc_company_person_id)),
+      (ids) => supabase.from('gc_company_people').select('id, company_id, name').in('id', ids),
+      'load the people the trade partners named',
+    ),
+    inSlices<RecordRow<'supplyHouseContacts'>>(
+      unique(rows.map((r) => r.supply_house_contact_id)),
+      (ids) => supabase.from('supply_house_contacts').select('id, supply_house_id, name').in('id', ids),
+      'load the reps at the supply houses',
+    ),
+  ])
+  const [customers, gcCompanies, people, prospects, supplyHouses, teamProspects] = await Promise.all([
     inSlices<{ id: string; name: string }>(
       unique([...rows.map((r) => r.customer_id), ...persons.map((p) => p.customer_id)]),
       (ids) => supabase.from('customers').select('id, name').in('id', ids),
@@ -113,8 +131,23 @@ async function loadRecords(rows: readonly ContactRow[]): Promise<ContactRecordRo
       'load the trade partners',
     ),
     inSlices<{ id: string; name: string }>(unique(rows.map((r) => r.person_id)), (ids) => supabase.from('people').select('id, name').in('id', ids), 'load the roster'),
+    inSlices<RecordRow<'prospects'>>(
+      unique(rows.map((r) => r.prospect_id)),
+      (ids) => supabase.from('prospects').select('id, contact_name, company_name').in('id', ids),
+      'load the leads on Prospects',
+    ),
+    inSlices<RecordRow<'supplyHouses'>>(
+      unique([...rows.map((r) => r.supply_house_id), ...supplyHouseContacts.map((c) => c.supply_house_id)]),
+      (ids) => supabase.from('supply_houses').select('id, name').in('id', ids),
+      'load the supply houses',
+    ),
+    inSlices<RecordRow<'teamProspects'>>(
+      unique(rows.map((r) => r.team_prospect_id)),
+      (ids) => supabase.from('team_prospects').select('id, name').in('id', ids),
+      'load the candidates on the hiring board',
+    ),
   ])
-  return { customers, customerContactPersons: persons, gcCompanies, gcCompanyPeople: gcPeople, people }
+  return { customers, customerContactPersons: persons, gcCompanies, gcCompanyPeople: gcPeople, people, prospects, supplyHouses, supplyHouseContacts, teamProspects }
 }
 
 /** The jobs the facts give: a customer's GC projects in its three roles, a trade partner's asks. */
