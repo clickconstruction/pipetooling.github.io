@@ -102,4 +102,18 @@ describe('mail-poll (the Docsmit train, PR 3)', () => {
     expect(db.tables.mail_pieces).toHaveLength(2)
     expect(db.tables.mail_pieces![1]).toMatchObject({ kind: 'other', provider: 'docsmit', provider_message_id: 'm-88', recipient: 'unknown', organization: 'Harlan Dental PLLC', state: 'TX', status: 'delivered', usps_tracking: '9407 0000', problem: "Sent from Docsmit's own site (Demand to Harlan). Match it to a job." })
   })
+
+  it('an affidavit copy mailed through the provider serves the affidavit the day USPS accepted it, once (the Docsmit train, PR 8)', async () => {
+    db.tables.mail_pieces = [{ ...open, id: 'p5', kind: 'lien_affidavit_copy', source_ids: ['a1', 'a2'], provider_message_id: 'm-5' }]
+    db.tables.job_lien_filings = [
+      { id: 'a1', kind: 'affidavit', served_at: null, sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '', sent_on: '2026-10-12' }] },
+      { id: 'a2', kind: 'affidavit', served_at: '2026-10-01', sends: [] },
+    ]
+    docsmit.answers['GET /messages/m-5/parties'] = { body: [{ USPSTrackingID: '9407 5555', DeliveryStatus: 'Accepted at USPS Origin Facility', DStatusao: '2026-10-14T00:30:00Z' }] }
+    await post({})
+    expect(db.tables.job_lien_filings![0]).toMatchObject({ served_at: '2026-10-13' })
+    expect((db.tables.job_lien_filings![0]!.sends as unknown[])[0]).toMatchObject({ tracking: '9407 5555', via: 'docsmit', piece_id: 'p5', sent_on: '2026-10-13' })
+    expect(db.tables.job_lien_filings![1]!.served_at).toBe('2026-10-01')
+  })
 })
+

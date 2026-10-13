@@ -25,8 +25,8 @@ const timeline = buildLienTimeline({
 const envelope: LegalEnvelope = {
   key: 'pk-1', letter: 'A', kind: 'notice_53_056', kindLabel: '§ 53.056 notice', wentOutYmd: '2026-09-22', byHand: false,
   sends: [
-    { recipient: 'owner', recipientLabel: 'owner of record', method: 'certified_mail', methodLabel: 'certified mail, return receipt', tracking: '9407 1118', sentOn: '2026-09-22' },
-    { recipient: 'original_contractor', recipientLabel: 'original contractor', method: 'certified_mail', methodLabel: 'certified mail, return receipt', tracking: '9407 1119', sentOn: '2026-09-22' },
+    { recipient: 'owner', recipientLabel: 'owner of record', method: 'certified_mail', methodLabel: 'certified mail, return receipt', tracking: '9407 1118', sentOn: '2026-09-22', via: '', pieceId: '', mail: null },
+    { recipient: 'original_contractor', recipientLabel: 'original contractor', method: 'certified_mail', methodLabel: 'certified mail, return receipt', tracking: '9407 1119', sentOn: '2026-09-22', via: '', pieceId: '', mail: null },
   ],
   claim: 27_199, shares: [{ jobId: 'j891', jobLabel: '891', amount: 27_199 }],
   months: [{ key: '2026-07', label: 'July 2026', asInformation: false }, { key: '2026-08', label: 'August 2026', asInformation: false }],
