@@ -98,7 +98,7 @@ Each cut lists its PRs. A PR is one change, kernel and test first, screens in th
 - **SQL**: `messages_tech_can_read`, the two policies, `contacts.has_until`, the wait setting; `doors.ts` lists them; `access.ts` → `MESSAGES_TECH_TEAM` (`primary` and `helpers`, the field roles in `roleLabels.ts`; `subcontractor` stays out until R8 · 12) with `canMessageCustomersFromJobMode`; `access.test.ts` holds it to the policy. One PR, pushed by the lead.
 - **Job Mode**: **Message the customer** on `DashboardJobModeCard` (a dot when a reply waits); the sheet with `phoneLines`, each by its short name and a hint from its blanks; the preview with the fill row for a blank the tech owns; **Something else** as a note to the office; the reply to the tech until 5 PM. One PR with smokes at 375 px.
 - **Who answers**: `messages/hasRule.ts` — a reply goes to the tech who texted until `has_until`, then to the office; after hours the app answers once and the row waits on Needs a reply; the words in `plainWords`. One PR.
-- **Push** (integration 13): `messages-notify` edge function on a new inbound row: the tech at once, the office after the wait, never a candidate's or supply house's line; `docs/EDGE_FUNCTIONS.md` section. One PR, deployed by the lead.
+- **Push** (integration 13): the rule as a kernel first (`messages/notifyRule.ts`: the tech at once, a seat pick at once, the office after the wait, the office first after hours, never a candidate's or supply house's line, a legal reply to the office alone, never twice for one line), then a new body shape on the existing `messages-notify` function (v2.5317) rather than a new one, with `notification_history.message_id` nullable in R5's SQL so a sent push can be read back; the tech's push carries no URL until Job Mode's thread has one; `docs/EDGE_FUNCTIONS.md` section amended. Two PRs, the function deployed by the lead (helper 8's prepare note, 2026-10-13).
 - **Guide**: `message-a-customer-from-job-mode` (new); `ACCESS_CONTROL.md` → the tech's door.
 
 ### R6 · Two boxes, two numbers, one inbox (3 PRs)
@@ -152,14 +152,14 @@ The catch-up after the last cut lands: `PROJECT_DOCUMENTATION.md` (§6 Jobs gain
 | R2 · the thread everywhere | 3 | — | — |
 | R3 · quick replies | 3 | 1 | — |
 | R4 · the residential flow | 4 | 1 | — |
-| R5 · the tech's door, Job Mode, push | 4 | 1 | 1 (`messages-notify`) |
+| R5 · the tech's door, Job Mode, push | 5 | 1 | 1 (`messages-notify`, amended) |
 | R6 · two boxes | 3 | 1 | 1 (`gmail-sync`, second grant) |
 | R7 · the New lane | 4 | 1 | — |
 | R8 · the integrations | 17 | 4 | — |
 | R9 · the docs pass | 1 | — | — |
-| **Residential, on top of wave 2** | **45** | **10** | **2** |
+| **Residential, on top of wave 2** | **46** | **10** | **2** |
 | Wave 2 pieces it stands on (cut 1 screens, cut 2 screens, cut 3 SQL and editor, cut 4 tables, cut 5 functions, cut 6 reader), already in `BUILD_PLAN.md` | ~18 | 4 | 3 |
-| **Everything from today to done** | **~63** | **14** | **5** |
+| **Everything from today to done** | **~64** | **14** | **5** |
 
 PR sizes follow wave 1's: a kernel PR is a day with its tests; a screens PR two to three with smokes; a SQL PR a day plus the bed and the push. Four helpers in parallel after R0 and R1 land, which are the floor everyone else builds on.
 
