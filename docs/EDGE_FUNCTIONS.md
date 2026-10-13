@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 152 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-10-12
+last_updated: 2026-10-13
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -94,6 +94,7 @@ when_to_read:
    - [drive-intake](#drive-intake)
    - [gc-drive-access](#gc-drive-access)
    - [drive-link](#drive-link)
+   - [photo-save](#photo-save)
    - [gc-plan-question-email](#gc-plan-question-email)
    - [gc-architect-email](#gc-architect-email)
    - [gc-trade-portal](#gc-trade-portal)
@@ -1048,7 +1049,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 - `{ action: 'list', job }`: the job's folder in its two halves, three levels deep, at most 500 files, for the one list (`documents/jobFiles.ts`).
 - `{ action: 'put', job, name, mime, where, base64 }`: a file from this computer into Team only → Sent by us, or a photo into Team only → Photos, up to 10 MB, as the trade portal's files are.
 - `{ action: 'link', job, driveFileId, messageId }`: our link to a file whose parents reach the job's folder, half as found → `{ linkId, url }`. A plan set's folder in Plans opens as the folder. A Team only folder has no bytes to hand over, so it is refused (*Only a folder in Plans can go as our link.*).
-- `{ action: 'save', attachmentId, half }`: Save to Drive for a file that came in, from the `message-attachments` bucket into Team only → From email, or the top of Plans. The row keeps `drive_file_id`, and a second save answers that one copy.
+- `{ action: 'save', attachmentId, half }`: Save to Drive for a file that came in, from the `message-attachments` bucket into Team only → From email, or the top of Plans. The row keeps `drive_file_id`, and a second save answers that one copy. Since v2.5458 (Messages, cut 10) a photo goes to the job's photos instead, named by day, sender and caption (`photoDriveName`, as [photo-save](#photo-save) files one): Team only → Photos, or a Pipeline job's own Customer Pictures folder when that link is plainly a Drive folder (`photoLanding`). The folder reads live in `_shared/driveJobFolder.ts`, shared with photo-save.
 - `{ action: 'open', job, driveFileId }`: Drive's own viewer for a file inside the job's folder, for the office's `/files/drive/<id>` page (cut 6's router).
 - A job is one of the spine's three. A GC project is `gc_projects.drive_folder_url`, with its Plans and Team only halves found by name. A bid is `bids.drive_link`, and a Pipeline job is `jobs_ledger.google_drive_link`; their folders have no halves, so every file in them is Team only.
 
@@ -1056,7 +1057,22 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [gc-drive-access](#gc-drive-access)), `APP_ORIGIN` (the link's page, else `https://clicktooling.com`).
 
-**Status**: v2.5383, deployed 2026-10-13. v2.5433 saves a page or a script in place of showing it, checks Drive's own length against the cap, and keeps one copy on a second save; redeploy once it merges.
+**Status**: v2.5383, deployed 2026-10-13. v2.5433 saves a page or a script in place of showing it, checks Drive's own length against the cap, and keeps one copy on a second save; redeploy once it merges. v2.5458 sends a saved photo to the job's photos under its name and imports `_shared/gcKernels/`; redeploy once it merges.
+
+### photo-save
+
+**Purpose**: Messages, cut 10 (v2.5458, `BUILD_PLAN.md` → *Cut 10*; the design is `quo-messages-mockup.html` drafts 8 and 9 on spike/gc-mode). The file agent's sweep: photos saved on arrival to the job's photos.
+- Every few minutes it reads the jobs whose office ticked *Save every photo on this job to Drive as it comes in* (`photo_saves`, v2.5457), the ones on.
+- It copies each photo that came in on a line tied to one of them since the tick went on (`photosToSave`), 20 a run, oldest first.
+- Each lands in Team only → Photos under the job's Drive folder, or in a Pipeline job's own Customer Pictures folder when that link is plainly a Drive folder (`photoFolderFor`, `_shared/driveJobFolder.ts`).
+- Each is named by day, sender and caption (`photoDriveName`), *2026-10-02 Priya Raman · Ceiling tile op 3.jpg*, with *(2)* when the folder holds the name.
+- The row keeps `drive_file_id`, written only where no save got there first, so a photo is copied once. A failed copy is tried again next run, and a line tied to its job later is caught then.
+
+**Endpoint**: `POST /functions/v1/photo-save` · **Auth**: `X-Cron-Secret`; `verify_jwt = false` in `config.toml`, since the cron sends no JWT. Answers `{ ticks, saved, failed: [{ id, why }] }`.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)).
+
+**Status**: v2.5458, not yet deployed. Its `cron.schedule` (every 5 minutes) rides its own small migration after the deploy. Until then nothing calls it.
 
 ### gc-plan-question-email
 
@@ -1106,7 +1122,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Sample**: the sample token (`sample`, as on every outside page) answers `{ today, slice, schedules, scheduleWork, scheduleTodos, flow, sample: true }` from `_shared/gcTradePortalSample.ts`: made-up rows run through the same slice builder, the sample job's chart with made-up neighbours (`gcTradePortalSampleSchedules`, v2.5200), and the same rows run through the flow's builder (`gcTradePortalSampleFlow`, v2.5315), dated from today, and no visit is counted.
 
-**The copy of the kernels** (v2.5200): `_shared/gcKernels/` is generated from `src` by `scripts/edge-kernels.mjs` (`npm run gen:edge-kernels`), because an edge function cannot import `src/lib` as it stands: the files the value imports of `portalSchedule`, `gcProjectFromRows`, `boardStateFromRows`, `withDraws` and `withScheduleRows` reach, and since P5d-ii-1 (v2.5206) those of `datesNotices`, `lateDoor`, `lateTarget`, `lateWaiting`, `portalLateNotice`, `portalCrewAsks`, `portalLookAhead` and `portalTodos`, since the Board's B2b-vi-b (v2.5208) `boardRows.ts`'s `setTouches.ts` and `lineReach.ts`, and since the schedule's PR 15b (v2.5211) those of `customerSchedulePicture`, `customerBarWords`, `lateFinish` and `withOfficeChangeOrders` for the customer's picture (52 files and 14,720 lines on 2026-10-12, the index aside, the generator's own count), in `src`'s layout with `.ts` on each relative import. A type-only import of a file outside the copy goes one of three ways since v2.5283 (before it the copy pointed back at `src` with no `.ts`, which Deno erases at run time but `deno check` cannot resolve, so every type through it read as `any` and both importers' checks failed, 504 errors in `gc-trade-portal`'s): a file that imports nothing (the database's types, the schedule's) is pointed at in `src` with its `.ts`; a file of types whose own imports are types alone is copied, so its imports resolve inside the copy (`gc/types.ts`, where `PayAppParties` and `ScopeBookProject` now live, the old files re-exporting them); a file that runs code of its own is refused with a word to move the types to a types file. The generator reports the files it holds for their types alone (`typeFiles`), and `edgeKernels.test.ts` plants all three cases. `deno check` passes for both importers since v2.5283. `src/lib/gc/edgeKernels.test.ts` fails when the copy differs from a regenerate, or its importers' list (`IMPORTERS`, today `customer-portal` and `gc-trade-portal`) from the functions whose bundles reach it, a string-literal `import()` included. So a change to any of the 52 files regenerates in its own PR and redeploys both portals, and `check:edge-drift` names each importer to redeploy. Its ids are fixed uuids (`SAMPLE_TRADE_IDS`, v2.4935), so a press on the sample passes `submit-gc-trade-portal`'s shape check and answers ok.
+**The copy of the kernels** (v2.5200): `_shared/gcKernels/` is generated from `src` by `scripts/edge-kernels.mjs` (`npm run gen:edge-kernels`), because an edge function cannot import `src/lib` as it stands: the files the value imports of `portalSchedule`, `gcProjectFromRows`, `boardStateFromRows`, `withDraws` and `withScheduleRows` reach, and since P5d-ii-1 (v2.5206) those of `datesNotices`, `lateDoor`, `lateTarget`, `lateWaiting`, `portalLateNotice`, `portalCrewAsks`, `portalLookAhead` and `portalTodos`, since the Board's B2b-vi-b (v2.5208) `boardRows.ts`'s `setTouches.ts` and `lineReach.ts`, and since the schedule's PR 15b (v2.5211) those of `customerSchedulePicture`, `customerBarWords`, `lateFinish` and `withOfficeChangeOrders` for the customer's picture (66 files and 16,312 lines on 2026-10-13, the index aside, the generator's own count; since v2.5458 also the photo kernels `photoDriveName`, `photosToSave` and `photoRows.ts`'s reads), in `src`'s layout with `.ts` on each relative import. A type-only import of a file outside the copy goes one of three ways since v2.5283 (before it the copy pointed back at `src` with no `.ts`, which Deno erases at run time but `deno check` cannot resolve, so every type through it read as `any` and both importers' checks failed, 504 errors in `gc-trade-portal`'s): a file that imports nothing (the database's types, the schedule's) is pointed at in `src` with its `.ts`; a file of types whose own imports are types alone is copied, so its imports resolve inside the copy (`gc/types.ts`, where `PayAppParties` and `ScopeBookProject` now live, the old files re-exporting them); a file that runs code of its own is refused with a word to move the types to a types file. The generator reports the files it holds for their types alone (`typeFiles`), and `edgeKernels.test.ts` plants all three cases. `deno check` passes for both importers since v2.5283. `src/lib/gc/edgeKernels.test.ts` fails when the copy differs from a regenerate, or its importers' list (`IMPORTERS`, today `customer-portal`, `drive-link`, `gc-trade-portal`, `gmail-sync` and `photo-save`) from the functions whose bundles reach it, a string-literal `import()` included. So a change to any of the 66 files regenerates in its own PR and redeploys every importer, and `check:edge-drift` names each importer to redeploy. Its ids are fixed uuids (`SAMPLE_TRADE_IDS`, v2.4935), so a press on the sample passes `submit-gc-trade-portal`'s shape check and answers ok.
 
 **Views**: each validated load writes `public_page_views` with surface `gc_trade_portal` and `entity_id` = the company, stamped outside, staff or preview by `_shared/publicViewCounting.ts`. Only outside loads count. The function's one write beyond that row (v2.5315): an outside load fills the company's live links' empty `first_opened_at`, the fact `portal_opened`, before the flow reads it. A staff look, a preview or the sample never stamps it, and until cut 4's column is on prod the stamp changes nothing.
 
