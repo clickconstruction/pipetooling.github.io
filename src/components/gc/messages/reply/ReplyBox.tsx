@@ -1,10 +1,11 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../../../contexts/ToastContext'
 import { useOptionalAuth } from '../../../../hooks/useAuth'
+import { openFlowStep, useFlowNow } from '../../../../hooks/useFlowNow'
 import { SEED_FLOWS } from '../../../../lib/flows/seed'
 import { NOTE_BACK_PRESS, NOTE_BACK_TIP, noteBackToast } from '../../../../lib/followUp/queue'
 import { OWED_DONE_NEEDS_A_NOTE, OWED_DONE_PLACEHOLDER, OWED_DONE_SEND, OWED_DONE_TOAST, type DayKept } from '../../../../lib/messages/owed'
-import { todayYmdInAppTz } from '../../../../utils/dateUtils'
+import { todayYmdInAppTz, ymdDaysBetween } from '../../../../utils/dateUtils'
 import { NoteBackDay } from '../../../followUp/NoteBackDay'
 import { SettlingNote } from '../../../followUp/SettlingNote'
 import { useOwedSettling } from '../../../followUp/useOwedSettling'
@@ -172,10 +173,23 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
 
   // Quick replies: typing folds an open strip until the box is empty again; a press on the folded line peeks at it.
   const [peek, setPeek] = useState(false)
-  const kindSteps = STEPS[qrKindOf(contact.kind)] ?? []
+  // The step they are on, cut 4's read (`useFlowNow`, one read shared with the flow panel). Undefined while it reads,
+  // so nothing is said until it lands; null when nothing is on, they are off the flow, or the read failed.
+  const flowNow = useFlowNow(contact.id)
+  const nowStepId = flowNow?.stepId ?? null
+  // The live flow names the step; the seed names the rest of their kind's steps.
+  const kindSteps = flowNow ? [{ id: flowNow.stepId, name: flowNow.stepName }, ...(STEPS[qrKindOf(contact.kind)] ?? [])] : (STEPS[qrKindOf(contact.kind)] ?? [])
   const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
-  // Where they are in the flow waits on cut 4's read of a person's step; until it is here, nothing is on.
-  const where = findWhere({ step: null, who: 'us', firstName: first, daysOn: null, off: false })
+  const where =
+    flowNow === undefined
+      ? null
+      : findWhere({
+          step: flowNow ? { name: flowNow.stepName, done: flowNow.finishes } : null,
+          who: flowNow?.who ?? 'us',
+          firstName: first,
+          daysOn: flowNow?.sinceYmd ? ymdDaysBetween(flowNow.sinceYmd, todayYmdInAppTz()) : null,
+          off: false,
+        })
   const use = (q: QuickReply) => {
     setBody(q.text)
     setFinding(false)
@@ -218,7 +232,7 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
           kind={contact.kind}
           lines={quick.lines}
           me={me}
-          nowStepId={null}
+          nowStepId={nowStepId}
           steps={kindSteps}
           open={stripOpen && (!body.trim() || peek)}
           problem={quick.problem}
@@ -358,9 +372,17 @@ export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; 
           lines={quick.lines ?? []}
           threadLines={open?.lines ?? []}
           me={me}
-          nowStepId={null}
+          nowStepId={nowStepId}
           steps={kindSteps}
           where={where}
+          onOpenStep={
+            flowNow
+              ? () => {
+                  setFinding(false)
+                  openFlowStep(contact.id, flowNow.stepId, flowNow.jobId)
+                }
+              : undefined
+          }
           onUse={use}
           onAdd={(words) => {
             setFinding(false)

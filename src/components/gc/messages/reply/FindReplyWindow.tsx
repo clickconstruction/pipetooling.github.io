@@ -24,6 +24,7 @@ export function FindReplyWindow({
   nowStepId,
   steps,
   where,
+  onOpenStep,
   onUse,
   onAdd,
   onEdit,
@@ -35,7 +36,10 @@ export function FindReplyWindow({
   me: string
   nowStepId: string | null
   steps: readonly StepRef[]
-  where: { head: string[]; sentence: string }
+  /** Where they are in the flow (`findWhere`); null while the flow is still being read, so nothing is said yet. */
+  where: { head: string[]; sentence: string } | null
+  /** Opens the step's card in the thread window's side panel; absent when no step is on. */
+  onOpenStep?: () => void
   onUse: (q: QuickReply) => void
   onAdd: (words: string) => void
   /** Closes this window and opens the quick replies editor. */
@@ -101,13 +105,23 @@ export function FindReplyWindow({
               <span style={{ color: 'var(--text-muted)' }}>Nothing from {first} yet.</span>
             )}
           </div>
-          <div data-find-where style={{ display: 'grid', gap: '0.2rem' }}>
-            <span style={head}>Where {first} is</span>
-            <span>
-              {where.head.length > 0 && <strong>{where.head.join(' · ')}. </strong>}
-              {where.sentence}
-            </span>
-          </div>
+          {where && (
+            <div data-find-where style={{ display: 'grid', gap: '0.2rem' }}>
+              <span style={head}>Where {first} is</span>
+              <span>
+                {where.head.length > 0 && <strong>{where.head.join(' · ')}. </strong>}
+                {where.sentence}
+                {onOpenStep && (
+                  <>
+                    {' '}
+                    <button type="button" onClick={onOpenStep} style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer', padding: 0, font: 'inherit' }}>
+                      the step’s card ›
+                    </button>
+                  </>
+                )}
+              </span>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <input aria-label="Narrow the lines" placeholder="⌕ narrow the lines" value={filter} autoFocus onChange={(e) => setFilter(e.target.value)} style={{ ...input, flex: 1, minWidth: 0 }} />
             <button type="button" onClick={onEdit} style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
