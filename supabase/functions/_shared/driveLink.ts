@@ -88,10 +88,18 @@ export function tokenFromLink(link: string): string | null {
   return m ? m[1]! : null
 }
 
-/** How the stream names the file: shown in the browser, saved under its own name. */
-export function contentDisposition(name: string): string {
+/**
+ * Whether the stream may show a file in the browser. A page, a drawing that can carry a script, or a script is saved
+ * instead: a file that came by email from outside must never run on the function's address.
+ */
+export function streamsInline(mime: string | null): boolean {
+  return !/^(text\/html|application\/xhtml\+xml|image\/svg\+xml|text\/xml|application\/xml|text\/javascript|application\/javascript)\b/i.test((mime ?? '').trim())
+}
+
+/** How the stream names the file: shown in the browser, saved under its own name. A page or a script is only saved. */
+export function contentDisposition(name: string, mime: string | null = null): string {
   const plain = name.replace(/[^\x20-\x7e]/g, '_').replace(/["\\]/g, '_')
-  return `inline; filename="${plain}"; filename*=UTF-8''${encodeURIComponent(name)}`
+  return `${streamsInline(mime) ? 'inline' : 'attachment'}; filename="${plain}"; filename*=UTF-8''${encodeURIComponent(name)}`
 }
 
 /** A job, as the spine ties a line: a bid, a GC project or a Pipeline job. */
