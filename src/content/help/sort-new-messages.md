@@ -55,3 +55,19 @@ Either press marks the line as tied by a person, so it leaves **New**.
 The card lists the office team. The person the rule picks is first. Press a name to give them the conversation. Press your own name to take it.
 
 The rule is [Who gets a new message](/help/choose-who-gets-a-new-message). It picks whoever answered them last, else the seat for their kind.
+
+## Sort a backlog
+
+When two or more people wait in **New**, its header has {{button:blue|Sort all}}. Press it to sort them one at a time.
+
+:::example The desk, one person at a time
+New · 3 to sort · 1 of 3 &nbsp; {{chip:blue|Who has it?}} &nbsp; {{button:outline|Skip for now}}
+:::
+
+The desk shows one person's card. It says how the line came in, who sent it and what they wrote. The sort card sits under it, with the same presses it has above the thread.
+
+- Press a choice on the sort card. The next person comes up.
+- Press **Skip for now** to come back to someone after the rest.
+- Press **Someone else** on **Who is this?** to close the desk. Their thread opens at the line.
+
+The top of the desk counts who is left. When nobody is left, it says **All sorted.** Press **Back to Follow up** to close it.

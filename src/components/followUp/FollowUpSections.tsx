@@ -11,6 +11,7 @@ import type { ReactNode } from 'react'
 import { lineGcProject } from '../../lib/followUp/askArchitect'
 import type { FollowUpContact, FollowUpLine } from '../../lib/followUp/followUpRows'
 import { NEW_LANE_EMPTY, type NewLaneRow } from '../../lib/followUp/newLane'
+import { canSortAll, SORT_ALL } from '../../lib/followUp/sortDesk'
 import { needsYouCount, type BackRow, type FollowUpQueue, type NeedsReplyRow, type OwedRow, type PortalRow } from '../../lib/followUp/queue'
 import { markedByWords } from '../../lib/messages/owed'
 import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/thread'
@@ -29,6 +30,8 @@ export interface FollowUpSectionActions {
   askArchitect?: (messageId: string) => void
   /** A customer's page as they see it (the portal's; the screen comes with cut 8). Unset: no press. */
   seeTheirPage?: (contactId: string) => void
+  /** **Sort all** on New's header (R7, mockup C): opens the desk. Unset: no press. */
+  sortAll?: () => void
 }
 
 export interface FollowUpSectionsProps<C, N extends { contactId: string }> {
@@ -72,7 +75,7 @@ const initials = (c: FollowUpContact) =>
 const clip = (s: string) => (s.length > 220 ? `${s.slice(0, 220).replace(/\s+\S*$/, '')}…` : s)
 
 export function FollowUpSections<C, N extends { contactId: string }>(props: FollowUpSectionsProps<C, N>) {
-  const { queue, contacts, renderClauses, renderNudges } = props
+  const { queue, contacts, renderClauses, renderNudges, actions } = props
   const byId = new Map(contacts.map((c) => [c.id, c]))
   const youCount = needsYouCount(queue)
   const back = queue.needsYou.filter((r): r is BackRow => r.kind === 'back')
@@ -80,7 +83,17 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
 
   return (
     <section aria-label="Follow up: who is waiting on us" style={{ display: 'grid', gap: '0.9rem' }}>
-      <Section title={`New (${queue.newLane.length})`} note="What came in and still needs sorting. Its row opens the thread, with the sort at the top.">
+      <Section
+        title={`New (${queue.newLane.length})`}
+        note="What came in and still needs sorting. Its row opens the thread, with the sort at the top."
+        action={
+          actions.sortAll && canSortAll(queue.newLane.length) ? (
+            <Btn kind="primary" onClick={actions.sortAll}>
+              {SORT_ALL}
+            </Btn>
+          ) : undefined
+        }
+      >
         {queue.newLane.length === 0 ? (
           <Empty>{NEW_LANE_EMPTY}</Empty>
         ) : (
@@ -109,12 +122,13 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
   )
 }
 
-function Section({ title, note, children }: { title: string; note: string; children: ReactNode }) {
+function Section({ title, note, action, children }: { title: string; note: string; action?: ReactNode; children: ReactNode }) {
   return (
     <section aria-label={title.replace(/ \(\d+\)$/, '')}>
       <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '1rem' }}>{title}</h3>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{note}</span>
+        {action && <span style={{ marginLeft: 'auto' }}>{action}</span>}
       </div>
       <div style={{ display: 'grid', gap: '0.5rem' }}>{children}</div>
     </section>
