@@ -48,6 +48,7 @@ const Documents = lazy(() => import('./pages/Documents'))
 const EstimateAcceptStaffPreview = lazy(() => import('./pages/EstimateAcceptStaffPreview'))
 // GC mode's trade partner portal (P1b-ii-b): public, and loaded only when a company opens its link.
 const GcTradePortal = lazy(() => import('./pages/GcTradePortal'))
+const FileLinkPage = lazy(() => import('./pages/FileLinkPage'))
 import EstimateAccept from './pages/EstimateAccept'
 import EstimatePublicTerms from './pages/EstimatePublicTerms'
 import HazmatNoticePublic from './pages/HazmatNoticePublic'
@@ -241,6 +242,14 @@ function AppContent() {
           element={
             <Suspense fallback={null}>
               <GcTradePortal />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/f/:link"
+          element={
+            <Suspense fallback={null}>
+              <FileLinkPage />
             </Suspense>
           }
         />

@@ -288,6 +288,14 @@ is the sample. A link is made by a dev in the company window's **Their portal**
 until the trade wave, and the first email to the company makes one (v2.4936).
 Roles: public.
 
+### /f/:link — A file our office sent as its own link (public)
+What a file's own link opens (v2.5447, `FileLinkPage.tsx`, Messages cut 7d), with no sign-in: it asks `drive-link`'s
+open door once, which counts the open, then forwards to the file. A file in the job's Plans half opens in Drive's own
+viewer, and a Team only file streams through the function. A link that was cut off or has ended says **This link was
+turned off.**, and an unknown or too-big link says so in plain words. A teammate signed in on the browser, or the
+office's `?preview=1`, is stamped and not counted. The office makes the link when a file goes on a message.
+Roles: public.
+
 ### /pay/:id — Pay a bill (public)
 What a scanned pay code opens (v2.3754): the bill's number and job, what is still owed, then
 a forward to Stripe's secure payment page (a Pay now button if the forward is blocked). A paid
