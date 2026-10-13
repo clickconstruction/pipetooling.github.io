@@ -313,6 +313,39 @@ export async function contactForCustomer(customerId: string): Promise<string> {
   return taken(await rpc('contact_for_customer', { p_customer_id: customerId }), 'open their messages') as unknown as string
 }
 
+/**
+ * One person as the thread reads them: their row, their numbers and addresses, their jobs and the record's name. Null
+ * when the row is not there or is of a kind this build does not know.
+ */
+export async function loadContact(contactId: string): Promise<Contact | null> {
+  const [rows, channels, jobs] = await Promise.all([
+    from('contacts').select(CONTACT_COLS).eq('id', contactId).limit(1),
+    from('contact_channels').select(CHANNEL_COLS).eq('contact_id', contactId),
+    from('contact_jobs').select(JOB_COLS).eq('contact_id', contactId),
+  ])
+  const row = taken(rows as Result<ContactRow[]>, 'read who they are')[0]
+  if (!row) return null
+  const records: ContactRecordRows = {}
+  if (row.customer_id || row.customer_contact_person_id) {
+    const persons = row.customer_contact_person_id
+      ? taken((await from('customer_contact_persons').select('id, customer_id, name').eq('id', row.customer_contact_person_id)) as Result<NonNullable<ContactRecordRows['customerContactPersons']>[number][]>, 'read who they are')
+      : []
+    records.customerContactPersons = persons
+    const customerId = row.customer_id ?? persons[0]?.customer_id
+    records.customers = customerId
+      ? taken((await from('customers').select('id, name').eq('id', customerId)) as Result<NonNullable<ContactRecordRows['customers']>[number][]>, 'read who they are')
+      : []
+  }
+  return contactsFromRows([row], taken(channels as Result<ContactChannelRow[]>, 'read their numbers'), taken(jobs as Result<ContactJobRow[]>, 'read their jobs'), records)[0] ?? null
+}
+
+/** A customer's own thread as a person to write to: their contact, made when there is none, read whole. */
+export async function loadCustomerContact(customerId: string): Promise<Contact> {
+  const contact = await loadContact(await contactForCustomer(customerId))
+  if (!contact) throw new Error('Their messages could not be opened. Read the job again.')
+  return contact
+}
+
 /** Ties a line to a job, or unties it (null): it then sits on the person. */
 export async function tieMessage(messageId: string, jobKey: string | null): Promise<void> {
   taken(await rpc('tie_message', { p_message_id: messageId, ...jobArgs(jobKey) }), 'tie the message')

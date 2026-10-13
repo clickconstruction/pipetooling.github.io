@@ -81,6 +81,8 @@ import { JOB_STEPPER_LABELS, type JobStepperStatus } from '../../lib/jobs/jobSta
 import { buildEditJobBillingBar } from '../../lib/jobs/editJobBillingBar'
 import { jobWindowTiles, viewerOnCrew } from '../../lib/jobs/jobWindowBar'
 import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
+import { jobBoxJobName, jobBoxOffered } from '../../lib/messages/jobBox'
+import { JobCustomerBox } from './JobCustomerBox'
 import JobReportsModal from '../JobReportsModal'
 import { formatDispatchNoteDaysAgoShortPhrase } from '../../utils/dispatchNoteDisplay'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -2073,6 +2075,22 @@ export default function DetailJobModal({
             showEmptyPlaceholder={false}
             showComposerLabel={false}
             viewerRole={authRole as UserRole | null}
+            customerBox={
+              fullJob && jobBoxOffered(authRole as UserRole | null)
+                ? {
+                    // Residential R2: Text and Email to the job's customer, tied to this job, beside the crew's note.
+                    render: (kind) => (
+                      <JobCustomerBox
+                        kind={kind}
+                        jobId={fullJob.id}
+                        jobName={jobBoxJobName(fullJob)}
+                        customerId={fullJob.customer_id ?? null}
+                        onSent={threadNotes.reload}
+                      />
+                    ),
+                  }
+                : undefined
+            }
           />
         </div>
 
