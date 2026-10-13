@@ -29,8 +29,12 @@
  * `app_settings` `messages_boxes_v1.team.address` holds an address, read as that Workspace user under the same
  * delegation. Each box has its own token, its own `gmail_sync_state` row (by `mailbox`; the team row is made on its first
  * run, at its newest point), its own label and its own try, so a box that fails writes its own `last_error` and the other
- * still reads. Each line carries the box it came through (`messages.mailbox`). One email sent to both boxes is two Gmail
- * messages and lands twice; a Message-ID column would dedupe it, a later migration if it ever matters.
+ * still reads. Each line carries the box it came through (`messages.mailbox`).
+ *
+ * One email sent to both boxes is two Gmail messages with one Message-ID (v2.5504, `messages.rfc_message_id`). Each line
+ * carries the mail's Message-ID, and the box that reads one second writes nothing: it finds the line the first box wrote,
+ * puts its own label on, and counts it as taken before. `email_write_line` holds the same rule, so two runs at once
+ * still write one line.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON, GMAIL_IMPERSONATE_USER
  * (bids@, never written in the repo), EMAIL_FROM. config.toml keeps verify_jwt = false: the cron sends no JWT.
@@ -40,7 +44,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { GMAIL_SCOPES, GmailError, gmailAddLabel, gmailAttachment, gmailHistory, gmailLabelId, gmailMessage, gmailProfile, gmailSearch } from '../_shared/gmail.ts'
 import { googleServiceToken } from '../_shared/googleToken.ts'
-import { emailFileRows, emailLine, emailParty } from '../_shared/gcKernels/lib/emailIn/emailLine.ts'
+import { emailFileRows, emailLine, emailParty, rfcMessageId } from '../_shared/gcKernels/lib/emailIn/emailLine.ts'
 import { readerBoxes, type ReaderBox } from '../_shared/gcKernels/lib/emailIn/readerBoxes.ts'
 import { BOXES_SETTINGS_KEY, parseBoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import { readForwarded } from '../_shared/gcKernels/lib/emailIn/forwarded.ts'
@@ -179,6 +183,14 @@ async function jobFor(ctx: Ctx, contactId: string, subject: string): Promise<str
 /** A file's name as a path part: the bucket takes letters, digits, dots, dashes, underscores and spaces. */
 const safeName = (name: string): string => name.replace(/[^A-Za-z0-9._ -]+/g, '_').slice(0, 120) || 'file'
 
+/** A line already holding this Message-ID: the same mail, read first in the other box. */
+async function heldLine(ctx: Ctx, rfc: string | null): Promise<boolean> {
+  if (!rfc) return false
+  const { data, error } = await ctx.admin.from('messages').select('id').eq('rfc_message_id', rfc).limit(1)
+  if (error) throw new Error(`Reading the line for ${rfc} failed: ${error.message}`)
+  return (data ?? []).length > 0
+}
+
 /** One message: read, placed, tied, its files copied, written once, then labelled. */
 async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   let m
@@ -194,6 +206,11 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   if (fwd ? outsideInbox(email) : leftOut(email, ctx.isOurs)) return 'left'
   const party = emailParty(email, fwd, ctx.isOurs)
   if (!party) return 'left'
+  // The same mail, read first in the other box: no address placed, no file copied, no line. Only this box's label.
+  if (await heldLine(ctx, rfcMessageId(email))) {
+    await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
+    return 'already'
+  }
 
   const placed = await ctx.admin.rpc('email_place_address', { p_value: party.address.address, p_name: party.address.name }).single()
   if (placed.error) throw new Error(`Placing ${email.gmailId}'s address failed: ${placed.error.message}`)
@@ -240,15 +257,17 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
     body: line.body,
     gmail_thread_id: line.gmailThreadId,
     mailbox: ctx.box,
+    rfc_message_id: line.rfcMessageId,
     ...jobColumns(jobKey),
   }
   const note = fwd?.note ? { who_user_id: by?.id ?? null, who_text: by ? '' : fwd.by.name || fwd.by.address, at: email.at, body: fwd.note } : null
-  // Written or not (a line written before the label went on answers written false and writes nothing), the label goes on
-  // only once the write has answered: a crash in between leaves no label, and the next run's write is a repeat.
+  // Written or not (a line written before the label went on, or the same mail's line from the other box, answers written
+  // false and writes nothing), the label goes on only once the write has answered: a crash in between leaves no label,
+  // and the next run's write is a repeat.
   const wrote = await ctx.admin.rpc('email_write_line', { p_gmail_id: email.gmailId, p_row: row, p_files: files, p_note: note })
   if (wrote.error) throw new Error(`Writing ${email.gmailId} failed: ${wrote.error.message}`)
   await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
-  return 'taken'
+  return (wrote.data as { written: boolean }[] | null)?.[0]?.written === false ? 'already' : 'taken'
 }
 
 /** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */

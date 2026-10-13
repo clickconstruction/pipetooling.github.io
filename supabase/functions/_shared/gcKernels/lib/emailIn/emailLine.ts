@@ -54,6 +54,20 @@ export interface EmailLine {
   body: string
   /** The line's who: `Greg Paulk <greg@…> to bids@`, or `… · forwarded to bids@ by Rosa`. */
   whoText: string
+  /**
+   * The mail's own Message-ID header, trimmed (`<CAF…@mail.gmail.com>`): the same in both boxes, where the Gmail id is
+   * not, so the box that reads one email second writes nothing (v2.5504). Null when the mail has none we can keep.
+   */
+  rfcMessageId: string | null
+}
+
+/** The longest Message-ID a line keeps: a mail header line's own cap. A longer one is not stamped. */
+export const RFC_MESSAGE_ID_MAX = 998
+
+/** An email's Message-ID as the mail carries it, trimmed; null when it has none, or one too long to be one. */
+export function rfcMessageId(email: Pick<EmailIn, 'headers'>): string | null {
+  const id = (email.headers['message-id'] ?? '').trim()
+  return id && id.length <= RFC_MESSAGE_ID_MAX ? id : null
 }
 
 const display = (a: EmailAddress): string => (a.name ? `${a.name} <${a.address}>` : a.address)
@@ -75,6 +89,7 @@ export function emailLine(email: EmailIn, fwd: Forwarded | null, party: EmailPar
       subject: email.subject || null,
       body: email.text,
       whoText: `${display(email.from ?? party.address)} to ${mailbox}`,
+      rfcMessageId: rfcMessageId(email),
     }
   }
   const by = forwarderName?.trim() || fwd.by.name || fwd.by.address
@@ -86,6 +101,7 @@ export function emailLine(email: EmailIn, fwd: Forwarded | null, party: EmailPar
     subject: fwd.subject ?? (unforwarded(email.subject) || null),
     body: fwd.text,
     whoText: `${display(fwd.from)} · forwarded to ${mailbox} by ${by}`,
+    rfcMessageId: rfcMessageId(email),
   }
 }
 
