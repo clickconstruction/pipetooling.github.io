@@ -7,7 +7,7 @@
  */
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { SentCopy } from '../sent/sentCopies'
-import { clockTime, type ThreadMessage } from './thread'
+import { byTimeOldestFirst, chicagoDay, clockTime, dayLabel, pushThreadRow, snippetOf, type ThreadMessage, type ThreadRow, type ThreadRowState } from './thread'
 
 /**
  * The who of a line the app sent with nobody pressing Send: a reminder, a scheduled notice, a bill a cron sent. A sent
@@ -114,3 +114,71 @@ export function foldAppLines(lines: readonly ThreadMessage[]): AppFoldRow[] {
   flush()
   return rows
 }
+
+// ---------- the thread with the app's runs folded (the screen, R8 · 1 PR 2) ----------
+
+/** A run of the app's lines as the thread draws it: closed, one row; open, this row and then its lines in place. */
+export interface AppFoldThreadRow {
+  kind: 'fold'
+  /** `fold:<first line's id>`, stable across reads while the run's first line stands. */
+  id: string
+  open: boolean
+  who: typeof APP_WHO
+  /** "3 emails, Oct 8 to Oct 10". */
+  words: string
+  /** Each folded line's subject or first line, oldest first: "Work scheduled", "Invoice 1312". */
+  titles: string[]
+  count: number
+}
+
+export type FoldedThreadRow = ThreadRow | AppFoldThreadRow
+
+/**
+ * The thread as the screen draws it, with each run of two or more of the app's lines folded (card 1). A closed run is one
+ * row at its first line's day: its divider comes first when that day is new, and the next line's divider follows on from
+ * the run's last day. An open run draws its row and then its lines exactly as `threadRows` does. A run holding the line a
+ * link opened the thread at (`at`) is open, so the marked line shows.
+ */
+export function foldedThreadRows(
+  lines: readonly ThreadMessage[],
+  nowIso: string,
+  folds: { open: ReadonlySet<string>; at?: string | null },
+): FoldedThreadRow[] {
+  const rows: FoldedThreadRow[] = []
+  const state: ThreadRowState = { day: '', lastJob: null }
+  for (const r of foldAppLines(byTimeOldestFirst(lines))) {
+    if (r.kind === 'line') {
+      pushThreadRow(rows, state, r.message, nowIso)
+      continue
+    }
+    const first = r.lines[0]!
+    const last = r.lines[r.lines.length - 1]!
+    const ymd = chicagoDay(first.at)
+    if (ymd !== state.day) {
+      rows.push({ kind: 'day', ymd, label: dayLabel(first.at, nowIso) })
+      state.day = ymd
+    }
+    state.lastJob = null
+    const open = folds.open.has(r.id) || (!!folds.at && r.lines.some((m) => m.id === folds.at))
+    rows.push({ kind: 'fold', id: r.id, open, who: r.who, words: r.words, titles: r.lines.map((m) => snippetOf(m)), count: r.lines.length })
+    if (open) for (const m of r.lines) pushThreadRow(rows, state, m, nowIso)
+    else state.day = chicagoDay(last.at)
+  }
+  return rows
+}
+
+/**
+ * How a payment came, as the small print says it after "paid … by": the payment's own word, the app's many spellings
+ * read as one ("Check", "checkDeposit", "Cheque" are a check). An import's marker, or nothing, says no how.
+ */
+export function paidHowWord(type: string | null | undefined): string {
+  const raw = (type ?? '').trim()
+  const key = raw.toLowerCase().replace(/[\s_-]+/g, '')
+  if (!key || key === 'hcpimport' || key === 'other' || key.length < 2) return ''
+  if (key === 'check' || key === 'checkdeposit' || key === 'cheque') return 'check'
+  if (key === 'ach' || key === 'wire' || key === 'banktransfer') return 'bank transfer'
+  if (key === 'card' || key === 'creditcard' || key === 'debitcard' || key === 'stripe') return 'card'
+  if (key === 'cash') return 'cash'
+  return raw.toLowerCase()
+}
+

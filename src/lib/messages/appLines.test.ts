@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Contact } from '../contacts/kernel'
 import { plainWordsFailures } from '../plainWords'
-import { APP_WHO, foldAppLines, foldWords, isAppLine, sentCopyFacts, type AppFoldRow, type SentCopyStamps } from './appLines'
+import { APP_WHO, foldAppLines, foldedThreadRows, foldWords, isAppLine, paidHowWord, sentCopyFacts, type AppFoldRow, type FoldedThreadRow, type SentCopyStamps } from './appLines'
 import { sentLineFacts, sentLines, type SentCopyWithJobs } from './sentLines'
 import type { ThreadMessage } from './thread'
 
@@ -155,3 +155,77 @@ describe('sentCopyFacts', () => {
     expect(facts.get(invoiceLine.id)).toHaveLength(2)
   })
 })
+
+describe('foldedThreadRows', () => {
+  // Thu, Oct 15 at noon in Chicago: the dividers read "Thu, Oct 8" and on.
+  const NOW = cdt('2026-10-15', '12:00')
+  const THREAD = [
+    ...sentLines([ESTIMATE, SCHEDULED, INVOICE, PAID], [DANA]),
+    line('can you do Thursday', '2026-10-06', '16:05', 'Dana'),
+    line('see you then', '2026-10-10', '20:00', 'Dana'),
+    line('gate code', '2026-10-11', '09:00', 'Dana'),
+  ]
+  /** A row in one word: the day's label, a line's id, or a fold's words with ▸ closed and ▾ open. */
+  const word = (r: FoldedThreadRow) =>
+    r.kind === 'day' ? `— ${r.ymd}` : r.kind === 'fold' ? `${r.open ? '▾' : '▸'} ${r.words} (${r.titles.join(' · ')})` : r.message.id
+
+  it('draws a closed run as one row at its first day, and the next divider follows on from its last day', () => {
+    expect(foldedThreadRows(THREAD, NOW, { open: new Set() }).map(word)).toEqual([
+      '— 2026-10-06',
+      'sent:sd-estimate',
+      'can you do Thursday',
+      '— 2026-10-08',
+      '▸ 3 emails, Oct 8 to Oct 10 (Your work is scheduled for Thu, Oct 8 · Invoice 1312 · $4,850 · Paid, thank you)',
+      // Oct 10 is the run's last day, so Dana's line that evening needs no divider of its own.
+      'see you then',
+      '— 2026-10-11',
+      'gate code',
+    ])
+  })
+
+  it('draws an open run’s row and then its lines in place, with their own dividers, as threadRows does', () => {
+    const rows = foldedThreadRows(THREAD, NOW, { open: new Set(['fold:sent:sd-scheduled']) })
+    expect(rows.map(word)).toEqual([
+      '— 2026-10-06',
+      'sent:sd-estimate',
+      'can you do Thursday',
+      '— 2026-10-08',
+      '▾ 3 emails, Oct 8 to Oct 10 (Your work is scheduled for Thu, Oct 8 · Invoice 1312 · $4,850 · Paid, thank you)',
+      'sent:sd-scheduled',
+      '— 2026-10-09',
+      'sent:sd-invoice',
+      '— 2026-10-10',
+      'sent:sd-paid',
+      'see you then',
+      '— 2026-10-11',
+      'gate code',
+    ])
+    // The first line after the row reads its job in full, as the first line of a day does.
+    expect(rows[5]).toMatchObject({ kind: 'line', job: 'full' })
+  })
+
+  it('opens the run that holds the line a link opened the thread at', () => {
+    const rows = foldedThreadRows(THREAD, NOW, { open: new Set(), at: 'sent:sd-invoice' })
+    expect(rows.find((r) => r.kind === 'fold')).toMatchObject({ open: true, count: 3 })
+    expect(rows.some((r) => r.kind === 'line' && r.message.id === 'sent:sd-invoice')).toBe(true)
+  })
+
+  it('draws a thread with no run of the app’s lines as threadRows does', () => {
+    const plain = [line('a', '2026-10-08', '09:00', 'Dana'), line('b', '2026-10-08', '09:05', 'Rosa')]
+    expect(foldedThreadRows(plain, NOW, { open: new Set() }).map(word)).toEqual(['— 2026-10-08', 'a', 'b'])
+  })
+})
+
+describe('paidHowWord', () => {
+  it('reads the app’s spellings of a payment as one word each', () => {
+    expect(['Check', 'check ', 'checkDeposit', 'Cheque'].map(paidHowWord)).toEqual(['check', 'check', 'check', 'check'])
+    expect(['ach', 'ACH', 'wire'].map(paidHowWord)).toEqual(['bank transfer', 'bank transfer', 'bank transfer'])
+    expect(['card', 'Credit card', 'stripe', 'Cash'].map(paidHowWord)).toEqual(['card', 'card', 'card', 'cash'])
+  })
+
+  it('says no how for an import’s marker, an other, a stray letter or nothing, and keeps any other word as it is', () => {
+    expect(['HCP import', 'other', 't', '', null, undefined].map(paidHowWord)).toEqual(['', '', '', '', '', ''])
+    expect(paidHowWord('Zelle')).toBe('zelle')
+  })
+})
+
