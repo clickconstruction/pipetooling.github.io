@@ -46,7 +46,26 @@ describe('quick replies read from the tables', () => {
       removed: false,
       uses: { [ROSA]: 2, [ROBERT]: 1 },
       lastUsed: { at: Date.parse('2026-10-03T15:00:00.000Z'), by: ROBERT, contactId: 'elena' },
+      textEs: null,
+      phoneOrder: null,
+      phoneName: null,
     })
+  })
+
+  it('reads a line’s Spanish, its place on the phone and its name, and a line for each of the seven kinds (R3)', () => {
+    const lines = quickRepliesFromRows(
+      [
+        row({ id: 'r2', for_kind: 'customer', step_key: 'onway', text_es: 'Vamos en camino.', phone_order: 1, phone_name: 'On our way' }),
+        row({ id: 'r9', for_kind: 'lead' }),
+        row({ id: 'r10', for_kind: 'supply_house' }),
+      ],
+      [],
+    )
+    expect(lines.map((l) => [l.id, l.for, l.textEs, l.phoneOrder, l.phoneName])).toEqual([
+      ['r2', 'customer', 'Vamos en camino.', 1, 'On our way'],
+      ['r9', 'lead', null, null, null],
+      ['r10', 'supply_house', null, null, null],
+    ])
   })
 
   it('reads a step on a kind’s line, a removed line, and a line of my own', () => {
@@ -89,6 +108,19 @@ describe('a line’s versions', () => {
       { by: ROBERT, at: Date.parse('2026-09-14T13:40:00.000Z'), kind: 'added', toText: 'Checking on the quote. Still good for today?', toTags: { for: 'trade', stepId: 'ask' } },
       { by: ROBERT, at: Date.parse(at), kind: 'words', fromText: 'Checking on the quote. Still good for today?', toText: 'Checking on the number. Still good for today?' },
       { by: ROBERT, at: Date.parse(at), kind: 'tags', fromTags: { for: 'trade', stepId: 'ask' }, toTags: { for: 'trade', stepId: null } },
+    ])
+  })
+
+  it('reads the Spanish’s words and the phone’s places (R3)', () => {
+    const out = versionsFromRows([
+      version({ id: 1, kind: 'es', at: '2026-10-01T15:00:00.000Z', to_text: 'Vamos en camino.' }),
+      version({ id: 2, kind: 'phone', at: '2026-10-02T15:00:00.000Z', from_phone_order: null, to_phone_order: 2 }),
+      version({ id: 3, kind: 'phone', at: '2026-10-03T15:00:00.000Z' }),
+    ])
+    expect(out.q3).toEqual([
+      { by: ROBERT, at: Date.parse('2026-10-01T15:00:00.000Z'), kind: 'es', toText: 'Vamos en camino.' },
+      { by: ROBERT, at: Date.parse('2026-10-02T15:00:00.000Z'), kind: 'phone', fromPhoneOrder: null, toPhoneOrder: 2 },
+      { by: ROBERT, at: Date.parse('2026-10-03T15:00:00.000Z'), kind: 'phone', fromPhoneOrder: null, toPhoneOrder: null },
     ])
   })
 

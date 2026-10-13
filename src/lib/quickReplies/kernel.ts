@@ -43,6 +43,14 @@ export interface QuickReply {
   /** Presses by user id, counted from `quick_reply_uses`. A press fills the box, so a use is a press, not a send. */
   uses: Readonly<Record<string, number>>
   lastUsed: { at: number; by: string; contactId: string | null } | null
+  /**
+   * R3's columns (`quick_replies.text_es`, `phone_order`, `phone_name`): the line in Spanish, its place on the tech's
+   * phone, and its name there. Each is null when unset, and absent on a line read before R3. The phone's `PhoneLine`
+   * holds all three as read.
+   */
+  textEs?: string | null
+  phoneOrder?: number | null
+  phoneName?: string | null
 }
 
 /** A step of a kind's flow as a line names it: the flow's own step, by its id and name, and the flow it is on. */
@@ -334,11 +342,17 @@ export function qrTagWords(tags: { for: QuickReplyFor; stepId: string | null }, 
 
 // ---------- the Edit quick replies window ----------
 
-export type QrEditorTab = 'all' | QuickReplyFor | 'mine' | 'removed'
+/** The editor's tabs. **Phone** (R3) holds the lines on the tech's phone, in their places, with its own panel. */
+export type QrEditorTab = 'all' | QuickReplyFor | 'mine' | 'phone' | 'removed'
 
 /** The lines the editor holds for a person: the team's and their own, removed ones too. Another person's own lines stay theirs. */
 function editorLines(lines: readonly QuickReply[], me: string): QuickReply[] {
   return lines.filter((q) => q.scope === 'team' || q.addedBy === me)
+}
+
+/** A line on the tech's phone: the team's, for customers, not removed, with a place. As `phoneLines` reads them. */
+export function onThePhone(q: QuickReply): boolean {
+  return !q.removed && q.scope === 'team' && q.for === 'customer' && q.phoneOrder != null
 }
 
 /** The count on each tab. The prototype counted every person's own lines, which the window does not show. */
@@ -350,6 +364,7 @@ export function editorCounts(lines: readonly QuickReply[], me: string): Record<Q
     all: live.length,
     ...byKind,
     mine: live.filter((q) => q.scope === 'mine').length,
+    phone: live.filter(onThePhone).length,
     removed: all.filter((q) => q.removed).length,
   }
 }
@@ -357,7 +372,10 @@ export function editorCounts(lines: readonly QuickReply[], me: string): Record<Q
 /** The four kinds of 2026-10-13: each has a tab only once a line is for them. */
 const TAB_ONCE_USED: readonly QuickReplyFor[] = ['lead', 'sub', 'supply_house', 'candidate']
 
-/** The tabs in their order; Removed, and a tab for one of the four newer kinds, show only once they hold a line. */
+/**
+ * The tabs in their order; Removed, and a tab for one of the four newer kinds, show only once they hold a line. Phone
+ * comes after Mine once a line is on the phone, so an office that writes only to GCs never sees it.
+ */
 export function editorTabs(counts: Record<QrEditorTab, number>): Array<{ tab: QrEditorTab; label: string; count: number }> {
   const tabs: Array<[QrEditorTab, string]> = [
     ['all', 'All'],
@@ -368,17 +386,21 @@ export function editorTabs(counts: Record<QrEditorTab, number>): Array<{ tab: Qr
     ['any', 'Anyone'],
     ['mine', 'Mine'],
   ]
+  if (counts.phone > 0) tabs.push(['phone', 'Phone'])
   if (counts.removed > 0) tabs.push(['removed', 'Removed'])
   return tabs.map(([tab, label]) => ({ tab, label, count: counts[tab] }))
 }
 
-/** A tab's rows, narrowed by the search, the most used first. */
+/**
+ * A tab's rows, narrowed by the search in either language, the most used first. The Phone tab's rows are the lines on
+ * the phone; its panel orders them by place (`phoneTab.ts`).
+ */
 export function editorRows(lines: readonly QuickReply[], me: string, tab: QrEditorTab, search: string): QuickReply[] {
   const needle = search.trim().toLowerCase()
   return editorLines(lines, me)
     .filter((q) => (tab === 'removed' ? q.removed : !q.removed))
-    .filter((q) => tab === 'all' || tab === 'removed' || (tab === 'mine' ? q.scope === 'mine' : q.for === tab))
-    .filter((q) => !needle || q.text.toLowerCase().includes(needle))
+    .filter((q) => tab === 'all' || tab === 'removed' || (tab === 'mine' ? q.scope === 'mine' : tab === 'phone' ? onThePhone(q) : q.for === tab))
+    .filter((q) => !needle || q.text.toLowerCase().includes(needle) || (q.textEs ?? '').toLowerCase().includes(needle))
     .sort((a, b) => qrTotal(b) - qrTotal(a) || a.addedAt - b.addedAt || a.id.localeCompare(b.id))
 }
 
@@ -502,18 +524,50 @@ export function addQuickReply(input: {
   }
 }
 
-/** Save a line from the editor: a version for the words and one for the tags, each only when it changed. */
-export function editQuickReply(q: QuickReply, change: { text: string; tags: QuickReplyTags }, by: string, at: number): QrResult {
+/**
+ * A Save from the editor: the words and the tags, and R3's three parts. A part left out keeps what the line has. A
+ * blank Spanish or name clears it, and a place of 0 or null takes the line off the phone, as `edit_quick_reply` reads them.
+ */
+export interface QuickReplyEdit {
+  text: string
+  tags: QuickReplyTags
+  textEs?: string | null
+  phoneOrder?: number | null
+  phoneName?: string | null
+}
+
+/** The refusal when a line that is not the team's for customers is put on the phone, in `edit_quick_reply`'s words. */
+export const PHONE_ONLY_CUSTOMERS = "Only the team's lines for customers go on the phone."
+
+/** The most characters a name on the phone holds (`quick_replies_phone_name_said`). */
+export const PHONE_NAME_MAX = 60
+
+/**
+ * Save a line from the editor: a version for each part that changed, in `edit_quick_reply`'s order. The words, the
+ * tags, the Spanish, then the phone. The phone keeps its places before and after when the place changed, and neither
+ * when only its name did.
+ */
+export function editQuickReply(q: QuickReply, change: QuickReplyEdit, by: string, at: number): QrResult {
   const text = change.text.trim()
   if (!text) return { error: 'Write something, or Cancel.' }
   const tags = tidyTags(change.tags)
+  const es = change.textEs === undefined ? (q.textEs ?? null) : change.textEs?.trim() || null
+  const place = change.phoneOrder === undefined ? (q.phoneOrder ?? null) : change.phoneOrder && change.phoneOrder > 0 ? change.phoneOrder : null
+  const name = change.phoneName === undefined ? (q.phoneName ?? null) : change.phoneName?.trim() || null
+  if (name && name.length > PHONE_NAME_MAX) return { error: `A name on the phone holds ${PHONE_NAME_MAX} characters at most.` }
+  if (place != null && (q.scope !== 'team' || tags.for !== 'customer')) return { error: PHONE_ONLY_CUSTOMERS }
   const versions: QuickReplyVersion[] = []
   if (text !== q.text) versions.push({ by, at, kind: 'words', fromText: q.text, toText: text })
   if (tags.for !== q.for || tags.stepId !== q.stepId) {
     versions.push({ by, at, kind: 'tags', fromTags: { for: q.for, stepId: q.stepId }, toTags: tags })
   }
+  const wasEs = q.textEs ?? null
+  if (es !== wasEs) versions.push({ by, at, kind: 'es', ...(wasEs ? { fromText: wasEs } : {}), ...(es ? { toText: es } : {}) })
+  const wasPlace = q.phoneOrder ?? null
+  if (place !== wasPlace) versions.push({ by, at, kind: 'phone', fromPhoneOrder: wasPlace, toPhoneOrder: place })
+  else if (name !== (q.phoneName ?? null)) versions.push({ by, at, kind: 'phone' })
   return {
-    line: { ...q, text, for: tags.for, stepId: tags.stepId },
+    line: { ...q, text, for: tags.for, stepId: tags.stepId, textEs: es, phoneOrder: place, phoneName: name },
     versions,
     words: versions.length ? 'Saved, with your name and today in its history.' : 'Nothing changed.',
   }
