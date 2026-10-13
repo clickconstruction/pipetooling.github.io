@@ -57,6 +57,8 @@ export const ENTRIES = {
   'lib/emailIn/jobInSubject.ts': { values: ['jobInSubject'], types: ['SubjectJob'] },
   'lib/emailIn/subjectJobs.ts': { values: ['subjectJobs', 'subjectNumbers'], types: ['SubjectJobRows'] },
   'lib/emailIn/historyWalk.ts': { values: ['walkHistory'], types: ['HistoryWalk', 'Took'] },
+  // Residential R6, the reader's PR: bids@ and, once Settings holds its address, the team box.
+  'lib/emailIn/readerBoxes.ts': { values: ['boxWords', 'readerBoxes'], types: ['ReaderBox'] },
   'lib/ledgerDisplayPrefixes.ts': { values: ['buildLedgerPrefixMap'], types: ['LedgerPrefixMap'] },
   // Messages, cut 10: photos saved on arrival, named and picked for the photo-save sweep and drive-link's save.
   'lib/photos/photoName.ts': { values: ['photoDriveName'], types: ['PhotoNameInput'] },

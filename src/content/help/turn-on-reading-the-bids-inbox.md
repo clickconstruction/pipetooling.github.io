@@ -29,6 +29,14 @@ The line under the switch says when the app last read the inbox, such as *Last r
 
 When a read stops on a problem, the line shows the problem's own words. The next read starts where the last good one stopped.
 
+## The team inbox
+
+The same switch reads the office's own inbox too, once a dev has entered its address. Its email lands on each sender's thread, as the bids inbox's does. The first read starts with new email only.
+
+A second line under the switch then says how the team inbox is doing, such as *The team box: Last read today at 7:12 PM. Nothing wrong.*
+
+A problem with one inbox never stops the other.
+
 ## Turn it off
 
 Press the {{button:green|On}} switch. Email to the bids inbox then stays in Gmail only.
