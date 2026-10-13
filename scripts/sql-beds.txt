@@ -24,6 +24,7 @@ gc-start
 gc-owner-contract
 gc-customer-contacts
 quick-replies
+quick-replies-phone-tech
 messages-follow-up
 messages-spine
 messages-flows
