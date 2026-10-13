@@ -3,12 +3,16 @@
  * kind of person, Customer, Trade partner and Architect, each with The flow, History and How it is going. Every press
  * is an edit to a draft (`flows/editor.ts`); Before you save · who moves tries the draft on everyone first; Save writes
  * it all at once (`flow_save`) and the boards read it next. The office edits (`canEditFlows`, `gc_office_team()`).
+ * Above the flow, the newest morning run of the reminders the app sends itself; on each such step, the owner's switch
+ * (cut 5, `flows/appSends.ts`).
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useConfirmDialog, usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAppSends } from '../../hooks/useAppSends'
 import { useAuth } from '../../hooks/useAuth'
 import { useFlowEditor, type EditorKind } from '../../hooks/useFlowEditor'
+import { canSetAppSends, lastRunLine, READ_THE_RUN } from '../../lib/flows/appSends'
 import { PUT_BACK_WORDS, restoreStep, WHO_MOVES_NOTE } from '../../lib/flows/editor'
 import { askForFact, loadDocNames, loadSeats, loadTradeNames } from '../../lib/flows/flowEditorIo'
 import { isDocPaperId } from '../../lib/flows/facts'
@@ -16,7 +20,7 @@ import { flat, type FlowStep } from '../../lib/flows/state'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { FlowGoing, FlowHistory } from './flows/FlowHistoryAndGoing'
 import { FlowStepsTable } from './flows/FlowStepsTable'
-import { flowButton, flowNote, flowPrimary, flowTab } from './flows/flowStyles'
+import { flowButton, flowNote, flowPrimary, flowQuiet, flowTab } from './flows/flowStyles'
 
 const KINDS: readonly (readonly [EditorKind, string])[] = [
   ['customer', 'Customer'],
@@ -35,11 +39,14 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
   const { showToast } = useToastContext()
   const prompt = usePromptDialog()
   const confirm = useConfirmDialog()
-  const { profileName } = useAuth()
+  const { profileName, role } = useAuth()
   const by = profileName?.trim() || 'someone'
   const [kind, setKind] = useState<EditorKind>('trade')
   const [view, setView] = useState<View>('flow')
   const editor = useFlowEditor(kind, { now })
+  const appSends = useAppSends()
+  const [runOpen, setRunOpen] = useState(false)
+  const nowIso = (now ?? (() => new Date()))().toISOString()
   const [seats, setSeats] = useState<{ id: string; name: string }[]>([])
   const [trades, setTrades] = useState<string[]>([])
   const [docNames, setDocNames] = useState<Record<string, string>>({})
@@ -90,6 +97,12 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
     showToast(done.words, done.ok ? 'success' : 'error')
   }
 
+  const flipAppSend = async (step: FlowStep, on: boolean) => {
+    const done = await appSends.set(kind, step, on)
+    showToast(done.words, done.ok ? 'success' : 'error')
+  }
+  const runWords = appSends.read?.lastRun?.words ?? []
+
   const draft = editor.draft
   const changed = !!draft && draft.changes.length > 0
   const historyCount = (editor.kept?.history.length ?? 0) + (draft?.removed.length ?? 0)
@@ -113,6 +126,29 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
   return (
     <div style={{ display: 'grid', gap: '0.75rem' }} data-settings-flows>
       <p style={flowNote}>{FLOWS_LEDE}</p>
+      <div data-flows-last-run style={{ display: 'grid', gap: '0.25rem' }}>
+        <span style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'baseline', fontSize: '0.85rem' }}>
+          <span>
+            {appSends.read
+              ? lastRunLine(appSends.read.lastRun, nowIso)
+              : appSends.problem
+                ? `The morning run did not read. ${appSends.problem}`
+                : 'Reading the morning run…'}
+          </span>
+          {runWords.length > 0 && (
+            <button type="button" aria-expanded={runOpen} onClick={() => setRunOpen((o) => !o)} style={flowQuiet}>
+              {READ_THE_RUN}
+            </button>
+          )}
+        </span>
+        {runOpen && runWords.length > 0 && (
+          <ul aria-label="The morning run" style={{ ...flowNote, margin: 0, paddingLeft: '1.1rem' }}>
+            {runWords.map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        )}
+      </div>
       <div role="tablist" aria-label="Which flow" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
         {KINDS.map(([k, label]) => (
           <button key={k} type="button" role="tab" aria-selected={kind === k} onClick={() => void pickKind(k)} style={flowTab(kind === k)}>
@@ -160,6 +196,18 @@ export function SettingsFlowsTab({ now }: { now?: () => Date } = {}) {
           by={by}
           onAskForFact={(step) => void ask(step)}
           onPaperMade={(paper) => setDocNames((was) => ({ ...was, [paper.paperId.slice(4)]: paper.label }))}
+          appSends={
+            appSends.read
+              ? {
+                  sends: appSends.read.sends,
+                  canSet: canSetAppSends(role),
+                  saved: editor.kept?.flow ?? null,
+                  quickReplies: appSends.read.quickReplies,
+                  busy: appSends.busy,
+                  onSet: (step, on) => void flipAppSend(step, on),
+                }
+              : undefined
+          }
         />
       )}
       {draft && view === 'history' && editor.kept && (
