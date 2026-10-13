@@ -1,5 +1,5 @@
 import type { RunEnvelope } from './runEnvelopes'
-import { recipientMailed, type RunSendMethod } from './lienDeskRun'
+import { recipientMailed, recipientViaDocsmit, type RunSendMethod } from './lienDeskRun'
 import { runLaneOf, type RunLane } from './runEnvelopeStage'
 
 /**
@@ -36,11 +36,11 @@ export function runChecklistPlaceholder(lane: RunLane): string {
   return lane === 'hand' ? 'who signed for it' : lane === 'courier' ? 'the courier’s number' : '9407 1118 …'
 }
 
-/** One row per paper envelope that printed; email copies go out when the run records and have no row. */
+/** One row per paper envelope that printed; email copies go out when the run records and have no row, and a Docsmit envelope was never in hand. */
 export function runChecklistRows(envelopes: ReadonlyArray<Pick<RunEnvelope, 'n' | 'name' | 'address' | 'method' | 'tracking' | 'contents'>>, printed: boolean): RunChecklistRow[] {
   if (!printed) return []
   return envelopes
-    .filter((e) => e.method !== 'email')
+    .filter((e) => e.method !== 'email' && !e.contents.some((c) => recipientViaDocsmit(c.recipient)))
     .map((e) => {
       const lane = runLaneOf(e.method)
       return {

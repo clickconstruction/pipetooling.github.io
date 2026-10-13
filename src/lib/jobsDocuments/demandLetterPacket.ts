@@ -169,6 +169,13 @@ export async function buildDemandLetterPacket(
 }
 
 /** Concatenate PDFs in order, no stamps, no footers (v2.3482: the cover letter in front of an emailed notice). */
+/** How many pages a PDF has (the Docsmit train, PR 5b): the envelope a copy takes, #10 or flat, follows from it. */
+export async function pdfPageCount(blob: Blob, loadPdfLib: () => Promise<PdfLibLike> = async () => (await import('pdf-lib')) as unknown as PdfLibLike): Promise<number> {
+  const lib = await loadPdfLib()
+  const src = await lib.PDFDocument.load(await blob.arrayBuffer(), { ignoreEncryption: true })
+  return src.getPageIndices().length
+}
+
 export async function mergePdfBlobs(blobs: readonly Blob[], loadPdfLib: () => Promise<PdfLibLike> = async () => (await import('pdf-lib')) as unknown as PdfLibLike): Promise<Blob> {
   const lib = await loadPdfLib()
   const out = await lib.PDFDocument.create()

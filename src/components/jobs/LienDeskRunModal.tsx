@@ -10,7 +10,7 @@ import { printAndFile } from '../../lib/sent/sentCopiesIo'
 import { describeNoticeMonths } from '../../lib/jobs/lienNoticeDraft'
 import { runMailing } from '../../lib/jobs/lienRunPaper'
 import { runLabelCsv, runLabelFilename, runLabelRows, runLabelSavedWords } from '../../lib/jobs/lienRunLabels'
-import { RUN_SEND_METHODS, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
+import { RUN_SEND_METHODS, recipientViaDocsmit, noticesFullyPrinted, runCopyHtml, runCopyKey, runCopyPages, runCourtesyResultWords, runEnvelopeFacesHtml, runEnvelopeHtml, runNoticeProblems, runOpening, runPacketHtml, runPayPageBlocks, runRecordSplit, trackingShape, type RunNotice, type RunPayPages, type RunRecipient, type RunSendMethod } from '../../lib/jobs/lienDeskRun'
 import { demandDate } from '../../lib/jobsDocuments/demandLetter'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { payPageRows, type PayPageAssets, type PayPageRow } from '../../lib/jobs/lienNoticePayPage'
@@ -33,8 +33,13 @@ import LienRunEnvelopeGlyph from './LienRunEnvelopeGlyph'
 import { runEnvelopeChip, runEnvelopeStage, type RunEnvelopeStageState } from '../../lib/jobs/runEnvelopeStage'
 import { runFootAction } from '../../lib/jobs/runFootAction'
 import { runChecklistRows, runChecklistWords } from '../../lib/jobs/runChecklist'
-import { runLaneOf, runStageLabels } from '../../lib/jobs/runEnvelopeStage'
+import { runLaneOfEnvelope, runStageLabels, type RunLane } from '../../lib/jobs/runEnvelopeStage'
 import { runJourney } from '../../lib/jobs/runJourney'
+import DocsmitReviewModal from './DocsmitReviewModal'
+import { useDocsmitSettings } from '../../hooks/useDocsmitSettings'
+import { docsmitCandidates, docsmitPriceWords, docsmitRunDoor, docsmitSendByStrip, docsmitSendOutcome } from '../../lib/mail/runDocsmit'
+import { docsmitHeldWords, docsmitRecipientPatches, prepareDocsmitRun, sendDocsmitRun, type DocsmitPrepareOutcome } from '../../lib/mail/runDocsmitIo'
+import { noticeDeadlineForMonth } from '../../lib/jobs/lienDeadlines'
 
 /**
  * Send the run: every approved notice on the desk as one packet (the cover
@@ -95,6 +100,9 @@ export default function LienDeskRunModal({
   const [penOpen, setPenOpen] = useState<string | null>(null)
   // More ▾ (Run-4): the foot's secondary doors, folded.
   const [moreOpen, setMoreOpen] = useState(false)
+  // Mail through Docsmit (the Docsmit train, PR 5b): the switches, what prepare made of the certified envelopes, the review, the send's outcome.
+  const docsmit = useDocsmitSettings()
+  const [dsm, setDsm] = useState<{ stage: 'idle' | 'preparing' | 'review' | 'sending'; outcome: DocsmitPrepareOutcome | null; sent: string | null }>({ stage: 'idle', outcome: null, sent: null })
   // The checklist, live (Run-5): the printed sheet's three boxes per envelope, ticked here at the counter; the window's own state.
   const [ticks, setTicks] = useState<Record<number, [boolean, boolean, boolean]>>({})
   // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
@@ -216,7 +224,7 @@ export default function LienDeskRunModal({
   const [explainerOpen, setExplainerOpen] = useState(false)
 
   // One method and one tracking number per envelope — every recipient inside it takes the patch, so the record writes the same send on each notice.
-  const setEnvelope = (env: RunEnvelope, patch: { method?: RunSendMethod; tracking?: string }) => {
+  const setEnvelope = (env: RunEnvelope, patch: Partial<Pick<RunRecipient, 'method' | 'tracking' | 'via' | 'pieceId' | 'pieceStatus' | 'pieceProblem'>>) => {
     // Keyed by item and recipient, not by index: a combined notice stands for several items, and every one takes the patch.
     const inside = new Set(env.contents.flatMap((c) => (partsOf(c.notice as CombinedRunNotice) ?? [{ itemId: c.notice.itemId }]).map((p) => `${p.itemId}:${c.recipient.key}`)))
     setNotices((prev) => prev.map((n) => ({ ...n, recipients: n.recipients.map((r) => (inside.has(`${n.itemId}:${r.key}`) ? { ...r, ...patch } : r)) })))
@@ -270,20 +278,84 @@ export default function LienDeskRunModal({
   // The lanes (Run-5): once the packet printed and the envelopes travel more than one way, each way is a line with its envelopes and how far they are.
   const lanes = useMemo(() => {
     if (printedAt == null) return []
-    const byLane = new Map<string, RunEnvelope[]>()
+    const byLane = new Map<RunLane, RunEnvelope[]>()
     for (const env of envelopes) {
-      const lane = runLaneOf(env.method)
+      const lane = runLaneOfEnvelope(env)
       byLane.set(lane, [...(byLane.get(lane) ?? []), env])
     }
     if (byLane.size < 2) return []
-    const words: Record<string, string> = { certified: 'Certified', courier: 'Courier', hand: 'By hand', email: 'Email' }
+    const words: Record<string, string> = { certified: 'Certified', courier: 'Courier', hand: 'By hand', email: 'Email', docsmit: 'Docsmit' }
     return [...byLane.entries()].map(([lane, envs]) => {
       const states = envs.map((env) => stageByKey.get(env.key)!)
-      const labels = runStageLabels(lane as 'certified' | 'courier' | 'hand' | 'email')
+      const labels = runStageLabels(lane)
       const done = (key: string) => states.filter((st) => st.stages.find((x) => x.key === key)?.done).length
       return { lane, label: words[lane] ?? lane, envelopes: envs.map((e) => e.n), steps: [{ label: labels.printed, done: done('printed'), now: false }, { label: labels.mailed, done: done('mailed'), now: done('mailed') < envs.length }, { label: labels.recorded, done: done('recorded'), now: false }], total: envs.length }
     })
   }, [envelopes, printedAt, stageByKey])
+  // Mail through Docsmit (PR 5b): the door shows once a dev saved the connection and while not paused, before anything printed;
+  // an envelope already mailed through Docsmit leaves the paper paths and its card says so.
+  const envelopeViaDocsmit = (env: RunEnvelope) => env.contents.some((c) => recipientViaDocsmit(c.recipient))
+  // What still goes on paper: the mailed envelopes less the ones Docsmit carries, and the notices with a copy among them.
+  const paperMailed = useMemo(() => mailing.mailed.filter((e) => !envelopeViaDocsmit(e)), [mailing])
+  const paperShown = useMemo(() => shown.map((n) => ({ ...n, recipients: n.recipients.filter((r) => !recipientViaDocsmit(r)) })).filter((n) => n.recipients.length > 0), [shown])
+  const docsmitDoor = useMemo(() => {
+    const cands = docsmitCandidates(envelopes.filter((e) => !envelopeViaDocsmit(e)))
+    return { cands, door: docsmitRunDoor(docsmit.settings, cands) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [envelopes, docsmit.settings])
+  const showDocsmit = docsmit.loaded && docsmit.setUp && docsmitDoor.door.show && printedAt == null && !recording
+  // The send-by strip: the tightest window in the run (the earliest month's deadline on the residential clock), less the buffer, at Docsmit's cutoff.
+  const windowLastYmd = useMemo(() => notices.flatMap((n) => n.months.map((m) => noticeDeadlineForMonth(`${m}-01`, ''))).filter(Boolean).sort()[0] ?? null, [notices])
+  const sendBy = useMemo(() => {
+    const now = new Date()
+    return docsmitSendByStrip(windowLastYmd, docsmit.settings, { ymd: todayYmd, local: `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}` })
+  }, [windowLastYmd, docsmit.settings, todayYmd])
+  const docsmitPrice = dsm.outcome ? docsmitPriceWords(dsm.outcome.prepared, dsm.outcome.balance, docsmit.settings.creditWarn) : null
+  const openDocsmit = async () => {
+    if (busy || dsm.stage !== 'idle') return
+    setBusy(true)
+    setDsm({ stage: 'preparing', outcome: null, sent: null })
+    try {
+      const outcome = await prepareDocsmitRun(envelopes.filter((e) => !envelopeViaDocsmit(e)), {
+        receipt: docsmit.settings.returnReceipt,
+        invoiceDocsByJob: invoiceDocsShown,
+        payBlocksByJob,
+        payRowsByJob: Object.fromEntries(Object.entries(payByJob).map(([id, v]) => [id, v.rows])),
+      })
+      setDsm({ stage: 'review', outcome, sent: null })
+      if (outcome.held.length) showToast(docsmitHeldWords(outcome.held), 'warning')
+    } finally {
+      setBusy(false)
+    }
+  }
+  const closeDocsmit = () => {
+    for (const p of dsm.outcome?.prepared ?? []) {
+      try { URL.revokeObjectURL(p.pdfUrl) } catch { /* a stand-in url */ }
+    }
+    setDsm({ stage: 'idle', outcome: null, sent: null })
+  }
+  const mailDocsmit = async () => {
+    const outcome = dsm.outcome
+    if (!outcome || outcome.prepared.length === 0 || busy) return
+    setBusy(true)
+    setDsm((d) => ({ ...d, stage: 'sending' }))
+    try {
+      const answer = await sendDocsmitRun(outcome.prepared.map((p) => p.pieceId))
+      const result = docsmitSendOutcome(answer, outcome.prepared)
+      const patches = docsmitRecipientPatches(outcome.prepared, answer)
+      for (const env of envelopes) {
+        const patch = patches.get(env.key)
+        if (patch) setEnvelope(env, patch)
+      }
+      setDsm((d) => ({ ...d, stage: 'review', sent: result.words }))
+      showToast(result.words, answer.ok ? 'success' : 'warning')
+      // Every envelope that goes on paper is already through Docsmit: the run is sealed and postmarked, and the foot moves to recording.
+      const paperLeft = mailing.mailed.filter((e) => !result.mailedKeys.includes(e.key) && !envelopeViaDocsmit(e))
+      if (result.mailedKeys.length > 0 && paperLeft.length === 0) setPrintedAt((v) => v ?? new Date().toISOString())
+    } finally {
+      setBusy(false)
+    }
+  }
   // The notices in an envelope the leader has not signed (v2.5086), by the run's own list so a combined notice's parts are found.
   const unsignedIn = (env: RunEnvelope): RunNotice[] => {
     const seen = new Set<string>()
@@ -362,13 +434,13 @@ export default function LienDeskRunModal({
     // A print counts as a send (docs/SENT_COPIES.md): the packet is filed as it printed, on every job in it.
     const packetJobIds = shown.flatMap((n) => (partsOf(n) ?? [{ jobId: n.jobId }]).map((p) => p.jobId))
     const filing = { kind: 'lien_notice_packet', title: shown.length === 1 ? '§ 53.056 notice packet' : `§ 53.056 notice packet · ${shown.length} notices`, jobIds: packetJobIds }
-    if (!printAndFile(runPacketHtml(shown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob), filing)) {
+    if (!printAndFile(runPacketHtml(paperShown, todayYmd, issuer, invoiceSectionsByJob, payPagesByJob), filing)) {
       showToast('Popup blocked — allow popups to print the packet.', 'error')
       return
     }
     // Printed is a state (v2.4119): the desk shows these items in their own pile until the mailing is recorded. Best-effort.
     // Only the copies inside the envelopes that printed count (v2.4971): a notice whose other envelope is held stays half-printed.
-    notePrinted(mailing.mailed.flatMap((env) => env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key)))))
+    notePrinted(paperMailed.flatMap((env) => env.contents.flatMap((c) => partsIds(c.notice as CombinedRunNotice).map((p) => runCopyKey(p.itemId, c.recipient.key)))))
   }
   const printCopy = (n: CombinedRunNotice, r: RunRecipient) => {
     const filing = { kind: 'lien_notice', title: `${n.label} · copy for ${r.label.toLowerCase()}`, jobIds: partsIds(n).map((p) => p.jobId), recipientName: r.name || null }
@@ -407,7 +479,7 @@ export default function LienDeskRunModal({
   }
   // The envelope faces are addresses, not a paper anyone reads: the packet is what is filed.
   const printEnvelopes = () => {
-    if (!openHtmlPrintWindow(runEnvelopeFacesHtml(mailing.mailed, issuer))) showToast('Popup blocked — allow popups to print the envelopes.', 'error')
+    if (!openHtmlPrintWindow(runEnvelopeFacesHtml(paperMailed, issuer))) showToast('Popup blocked — allow popups to print the envelopes.', 'error')
   }
   // Take back (punch list #101): every notice that printed — before this sitting or in it — and is still here, unrecorded.
   const printedIds = useMemo(() => runPrintedItemIds(notices, printedNow), [notices, printedNow])
@@ -490,7 +562,7 @@ export default function LienDeskRunModal({
             </div>
             {explainerOpen ? (
               <p data-testid="run-explainer" style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)', maxWidth: '78ch' }}>
-                One packet with every approved notice: a checklist sheet listing the {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}, then for each one a divider page with its face and what goes in it, in that order.{mailing.held.length ? ` ${mailing.held.length} ${mailing.held.length === 1 ? 'envelope is' : 'envelopes are'} held back — no mailing address, nothing to claim, or unsigned — and listed in red.` : ''} The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
+                One packet with every approved notice: a checklist sheet listing the {paperMailed.length} {paperMailed.length === 1 ? 'envelope' : 'envelopes'}, then for each one a divider page with its face and what goes in it, in that order.{mailing.held.length ? ` ${mailing.held.length} ${mailing.held.length === 1 ? 'envelope is' : 'envelopes are'} held back — no mailing address, nothing to claim, or unsigned — and listed in red.` : ''} The owner of record's copy behind its cover page; the original contractor's copy alone{payCodes > 0 ? `; the pay codes page behind the owner's copy (${payCodes} ${payCodes === 1 ? 'code' : 'codes'}, one per Stripe bill)` : ''}{invoicesEnclosed > 0 ? `; the job's unpaid ${invoicesEnclosed === 1 ? 'invoice' : 'invoices'} behind each copy (§ 53.056(a-3))` : ''}.{shared ? ' Notices to one name at one address share an envelope, so its tracking number covers everything inside.' : ''} {recording ? `It printed ${demandDate(calendarYmdInAppTzFromIso(opening.printedAt!))}; type the tracking numbers when you are back from the post office.` : 'Print it first; type the tracking numbers when you are back from the post office.'} Recording the run writes each notice to its job with every month it named. Press Preview on any copy to read it as the packet prints it.
               </p>
             ) : null}
           </div>
@@ -588,11 +660,22 @@ export default function LienDeskRunModal({
               })}
             </div>
           ) : null}
+          {showDocsmit && sendBy ? (
+            <div data-testid="run-docsmit-send-by" style={{ margin: '0 0 0.5rem', padding: '0.35rem 0.6rem', borderRadius: 6, fontSize: '0.78rem', background: sendBy.late ? 'var(--bg-red-tint))' : 'var(--bg-page)', color: sendBy.late ? 'var(--text-red-600)' : 'var(--text-muted)', border: '1px solid var(--border)' }}>
+              {sendBy.words}
+            </div>
+          ) : null}
           <div className="lienRunCards" data-testid="run-cards">
             {envelopes.map((env) => {
               const who = `Envelope ${env.n} · ${env.label}: ${env.name || '—'}`
               const st = stageByKey.get(env.key)!
-              const chip = runEnvelopeChip(st, env, { held: heldWhy.get(env.key) ?? null, leaderName })
+              const viaDsm = env.contents.map((c) => c.recipient).find((r) => r.via === 'docsmit')
+              const dsmMailed = !!viaDsm && (viaDsm.pieceStatus === 'sent' || viaDsm.pieceStatus === 'mailed')
+              const chip = dsmMailed
+                ? { tone: 'blue' as const, words: env.tracking.trim() ? `mailed through Docsmit · ${env.tracking.trim()}` : 'mailed through Docsmit · number coming', next: 'Docsmit brings the USPS number within the hour; nothing to type.' }
+                : viaDsm?.pieceStatus === 'failed'
+                  ? { tone: 'amber' as const, words: `Docsmit held it · ${viaDsm.pieceProblem ?? ''}`.trim(), next: 'It stays on paper: print it here.' }
+                  : runEnvelopeChip(st, env, { held: heldWhy.get(env.key) ?? null, leaderName })
               const tone = st.waiting || heldWhy.has(env.key) ? 'waiting' : st.glyph !== 'open' ? 'sealed' : 'open'
               return (
                 <div key={env.key} className="lienRunCard" data-testid={`run-envelope-${env.n}`} data-tone={tone}>
@@ -725,7 +808,7 @@ export default function LienDeskRunModal({
                         <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>sent on record — the email id is the tracking{env.contents.length > 1 ? ', one email per notice' : ''}</span>
                       ) : (
                         <>
-                        <input value={env.tracking} onChange={(ev) => setEnvelope(env, { tracking: ev.target.value })} placeholder={env.method === 'hand' ? 'who signed for it' : '9407 1118 …'} aria-label={`${who} — tracking`} className="lienRunTracking" style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
+                        <input value={env.tracking} onChange={(ev) => setEnvelope(env, { tracking: ev.target.value })} disabled={dsmMailed} placeholder={dsmMailed ? 'number coming from Docsmit' : env.method === 'hand' ? 'who signed for it' : '9407 1118 …'} aria-label={`${who} — tracking`} className="lienRunTracking" style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
                         {(() => {
                           const shape = trackingShape(env.method, env.tracking)
                           return env.tracking.trim() && shape.hint ? (
@@ -768,8 +851,13 @@ export default function LienDeskRunModal({
             </>
           ) : (
             <>
+          {showDocsmit ? (
+            <button type="button" onClick={() => void openDocsmit()} disabled={busy || !docsmitDoor.door.enabled} title={docsmitDoor.door.why || 'Each certified envelope goes to Docsmit as a PDF; you review every one before anything mails.'} data-testid="run-docsmit" style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', cursor: busy || !docsmitDoor.door.enabled ? 'not-allowed' : 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
+              {dsm.stage === 'preparing' ? 'Preparing…' : `${docsmitDoor.door.label} ▸`}
+            </button>
+          ) : null}
           <button type="button" onClick={printPacket} disabled={notices.length === 0} title={printedAt ? 'It already printed. Print it again only if the first copy was lost; every copy is filed on the job.' : undefined} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: printedAt ? 400 : 600, cursor: 'pointer' }}>
-            {printedAt ? 'Print it again' : 'Print the packet'} · {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}
+            {printedAt ? 'Print it again' : 'Print the packet'} · {paperMailed.length} {paperMailed.length === 1 ? 'envelope' : 'envelopes'}
           </button>
             </>
           )}
@@ -792,7 +880,7 @@ export default function LienDeskRunModal({
           </button>
               {printedAt ? (
                 <button type="button" onClick={printPacket} disabled={notices.length === 0} title={printedAt ? 'It already printed. Print it again only if the first copy was lost; every copy is filed on the job.' : undefined} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: printedAt ? 400 : 600, cursor: 'pointer' }}>
-            {printedAt ? 'Print it again' : 'Print the packet'} · {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}
+            {printedAt ? 'Print it again' : 'Print the packet'} · {paperMailed.length} {paperMailed.length === 1 ? 'envelope' : 'envelopes'}
                 </button>
               ) : (
                 <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>
@@ -808,6 +896,9 @@ export default function LienDeskRunModal({
           ) : null}
         </div>
       </div>
+      {dsm.stage !== 'idle' && dsm.outcome && docsmitPrice ? (
+        <DocsmitReviewModal prepared={dsm.outcome.prepared} held={dsm.outcome.held} priceWords={docsmitPrice.words} short={docsmitPrice.short} low={docsmitPrice.low} sendBy={sendBy} busy={busy || dsm.stage === 'sending'} outcome={dsm.sent} onMail={() => void mailDocsmit()} onClose={closeDocsmit} />
+      ) : null}
       {preview != null && previewEntries.length > 0 ? (
         <LienRunPreviewOverlay
           entries={previewEntries}
