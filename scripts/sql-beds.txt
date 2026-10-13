@@ -39,3 +39,4 @@ portal-customer-page
 customer-portal-papers
 merge-customers
 contact-for-customer
+photo-saves
