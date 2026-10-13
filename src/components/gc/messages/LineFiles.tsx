@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { fileHref, driveFileRouteId } from '../../../lib/files/fileRoute'
 import { driveOf, fileNote, fileOpenHref, filedWords, sizeWords, type FileIcon, type LineFile } from '../../../lib/messages/lineFiles'
 import { jobRefOf } from '../../../lib/messages/load'
-import { cutOwnLink, loadOwnLinks } from '../../../lib/messages/messagesIo'
-import { canCut, opensList, sentChipWords, sentRowNote, sentWay, type OwnLinkState } from '../../../lib/messages/sentLineFiles'
+import { cutOwnLink, loadOwnLinks, loadPortalOpensSince } from '../../../lib/messages/messagesIo'
+import { canCut, opensList, sentChipWords, sentRowNote, sentWay, type OwnLinkState, type PortalOpens } from '../../../lib/messages/sentLineFiles'
+import type { Contact } from '../../../lib/contacts/kernel'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { Btn } from '../gcUi'
 import { SaveToDrive, type SaveToDriveIo } from './SaveToDrive'
@@ -103,10 +104,12 @@ const openLink: CSSProperties = {
 export interface OwnLinksIo {
   load: (linkIds: readonly string[]) => Promise<Record<string, OwnLinkState>>
   cut: (linkId: string) => Promise<void>
+  /** Their portal's opens since the line went, for a link to their portal. */
+  portalOpens?: (who: Pick<Contact, 'kind' | 'gcCompanyId' | 'customerId'>, sinceIso: string) => Promise<PortalOpens | null>
 }
 
 // Read at the call, so a page whose smoke mocks messagesIo without these still loads this file.
-const ownLinksIo: OwnLinksIo = { load: (ids) => loadOwnLinks(ids), cut: (id) => cutOwnLink(id) }
+const ownLinksIo: OwnLinksIo = { load: (ids) => loadOwnLinks(ids), cut: (id) => cutOwnLink(id), portalOpens: (who, since) => loadPortalOpensSince(who, since) }
 
 /** Where Open goes on a file a line we sent carried: our copy, or the office's own page for a Drive file, never our public link. */
 function sentOpenHref(f: LineFile, jobKey: string | null): string | null {
@@ -129,6 +132,8 @@ export function MessageFiles({
   save,
   links = ownLinksIo,
   nowIso,
+  who = null,
+  sentAt = null,
 }: {
   files: readonly LineFile[]
   /** The line's job, as the thread keys it, for Save to Drive and the office's own page. Null: on nobody's job. */
@@ -139,6 +144,10 @@ export function MessageFiles({
   links?: OwnLinksIo
   /** The clock the opens are told against. */
   nowIso?: string
+  /** The person the line went to, whose portal a link opens. */
+  who?: Pick<Contact, 'kind' | 'gcCompanyId' | 'customerId'> | null
+  /** When the line went, for their portal's opens since. */
+  sentAt?: string | null
 }) {
   const now = nowIso ?? new Date().toISOString()
   const sent = files.some((f) => sentWay(f) !== null)
@@ -152,6 +161,25 @@ export function MessageFiles({
     links.load(idsKey.split(',')).then(setStates, (e: unknown) => setProblem(formatErrorMessage(e, 'Our links’ opens did not read.')))
   }, [idsKey, links])
   useEffect(read, [read])
+
+  // A link to their portal says how often they opened their portal since the line went (cut 7f's follow-up).
+  const hasPortalLink = files.some((f) => sentWay(f) === 'portal')
+  const [portal, setPortal] = useState<PortalOpens | null>(null)
+  // The person by their parts, since the contact object is new on every read of the thread.
+  const whoKind = who?.kind ?? null
+  const whoCompany = who?.gcCompanyId ?? null
+  const whoCustomer = who?.customerId ?? null
+  useEffect(() => {
+    if (!hasPortalLink || !whoKind || !sentAt || !links.portalOpens) return
+    let live = true
+    links.portalOpens({ kind: whoKind, gcCompanyId: whoCompany, customerId: whoCustomer }, sentAt).then(
+      (p) => live && setPortal(p),
+      () => live && setPortal(null),
+    )
+    return () => {
+      live = false
+    }
+  }, [hasPortalLink, whoKind, whoCompany, whoCustomer, sentAt, links])
 
   const cut = (linkId: string) => {
     setCutting(linkId)
@@ -173,7 +201,7 @@ export function MessageFiles({
         const linkId = driveOf(f).driveLinkId
         const state = linkId ? states[linkId] : undefined
         const href = way ? sentOpenHref(f, jobKey) : fileOpenHref(f)
-        const note = way ? sentRowNote(f, state, now) : [f.kept === 'link' ? '' : sizeWords(f.size), fileNote(f)].filter(Boolean).join(' · ')
+        const note = way ? sentRowNote(f, state, now, portal) : [f.kept === 'link' ? '' : sizeWords(f.size), fileNote(f)].filter(Boolean).join(' · ')
         const opens = way === 'own' && state && canCut(f, state, now) ? opensList(state, now) : null
         return (
           <div key={f.id} data-message-file={f.id} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', padding: '0.4rem 0', borderTop: '1px solid var(--border)', fontSize: '0.85rem', flexWrap: 'wrap' }}>

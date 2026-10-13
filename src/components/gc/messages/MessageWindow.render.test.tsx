@@ -135,16 +135,25 @@ describe('MessageWindow: one message in full (Messages, cut 1)', () => {
     cleanup()
 
     const state: OwnLinkState = { cutAt: null, cutByName: null, endsAt: '2026-11-08T21:42:00Z', opens: 2, openedAt: ['2026-10-12T19:10:00Z', '2026-10-09T21:42:00Z'] }
-    const links = { load: vi.fn((): Promise<Record<string, OwnLinkState>> => Promise.resolve({ 'dl-bidtab': state })), cut: vi.fn(() => Promise.resolve()) }
-    renderWithProviders(<MessageFiles files={files} jobKey="bid:b482" jobLabel="B482" links={links} nowIso="2026-10-12T20:00:00Z" />)
+    const links = {
+      load: vi.fn((): Promise<Record<string, OwnLinkState>> => Promise.resolve({ 'dl-bidtab': state })),
+      cut: vi.fn(() => Promise.resolve()),
+      portalOpens: vi.fn(() => Promise.resolve({ opens: 2, lastOpenedAt: '2026-10-12T19:10:00Z' })),
+    }
+    renderWithProviders(
+      <MessageFiles files={files} jobKey="bid:b482" jobLabel="B482" links={links} nowIso="2026-10-12T20:00:00Z" who={greg} sentAt="2026-10-09T21:42:00Z" />,
+    )
     const section = document.querySelector('[data-message-files]') as HTMLElement
     expect(within(section).getByRole('heading', { name: 'Files (3)' })).toBeTruthy()
     await waitFor(() => expect(section.querySelector('[data-link-opens]')).toBeTruthy())
     expect(links.load).toHaveBeenCalledWith(['dl-bidtab'])
+    // Their portal's opens since the line went, by Greg's company (a trade partner).
+    await waitFor(() => expect(section.textContent).toContain('they opened their portal twice since'))
+    expect(links.portalOpens).toHaveBeenCalledWith({ kind: 'trade', gcCompanyId: greg.gcCompanyId ?? null, customerId: greg.customerId ?? null }, '2026-10-09T21:42:00Z')
     const rows = [...section.querySelectorAll('[data-message-file]')] as HTMLElement[]
     expect(rows.map((r) => r.textContent)).toEqual([
       'PDFAddendum 2.pdf · 412 KB · sent as the file · kept with the copyOpen',
-      '↗Boerne Retail Shell plans, rev 2 · sent as our link to their portalOpen',
+      '↗Boerne Retail Shell plans, rev 2 · sent as our link to their portal · they opened their portal twice since, last Mon Oct 12 at 2:10 PMOpen',
       '↗Bid tab, Sitework.pdf · sent as our link to the file · opened twice, last 2:10 PMOpens: today 2:10 PM · Fri Oct 9, 4:42 PMOpenCut it off',
     ])
     // A sent file has no Save to Drive; our own link opens through the office's page, never the public one.
