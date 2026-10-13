@@ -10,7 +10,8 @@
 # three that name a demo job; Rosa adds a line and changes its words, Maria its tags, two versions with who; presses counted
 # and read by the team; a removed line comes back with its history; each refusal in words, and a superintendent, a
 # training account, a digital twin and someone signed out refused; nobody writes the tables by hand; Rosa's title; a
-# fold moves the presses. It raises on its first failed assertion and ends with "quick_replies PASSED".
+# fold moves the presses; then R3's Spanish and the phone's place, each with its version, and a sent text's line. It raises
+# on its first failed assertion and ends with "quick_replies PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a PR
 # that touches a migration. Never touches prod.
 set -euo pipefail
@@ -42,6 +43,10 @@ done
 # A second run must change nothing: the column, the tables, their policies and grants are there, every function is
 # replaced as it was, and the seed adds no line.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# R3 drops edit_quick_reply's four-argument signature for one with three more. The second run above made the old one
+# again beside it, so R3's migration runs again last, which drops it and leaves the new one alone.
+LATER="$(ls supabase/migrations/*_quick_replies_phone_es.sql)"
+psql_as postgres -f - < "$LATER" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $LATER"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < supabase/tests/quick_replies/20_scenario.sql 2>&1 || true)"
 if ! grep -q "quick_replies PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"

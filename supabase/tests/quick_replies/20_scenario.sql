@@ -3,7 +3,9 @@
 -- its tags: two versions, each with who. A press in Priya's thread counts, and the team reads it. A removed line keeps
 -- its history and comes back. A line marked mine stays Rosa's. Each refusal comes back in words; a superintendent, a
 -- training account, a digital twin and someone signed out are refused, and nobody writes the tables by hand. Rosa sets
--- the title under Rosa's signature, and a fold moves a press with the person. The fixture is made as postgres,
+-- the title under Rosa's signature, and a fold moves a press with the person. Then R3 (*_quick_replies_phone_es): the
+-- Spanish and the phone's place in one Save, each with its version, a Save with four arguments keeping both, and a sent
+-- text letting go of a deleted line. The fixture is made as postgres,
 -- standing in for the seed; the presses run as each user through RLS; everything rolls back. Raises on the first
 -- failed assertion; ends with "quick_replies PASSED". See scripts/pgtest-quick-replies.sh. Never against prod.
 \set ON_ERROR_STOP 1
@@ -233,6 +235,91 @@ SELECT qr.as_user(:'rosa');
 SELECT qr.same('a call outside a fold, by the superintendent, moves nothing',
   (SELECT count(*)::text FROM public.quick_reply_uses WHERE contact_id = :'priya2'), '2');
 RESET ROLE;
+
+-- 9 · R3 (migration *_quick_replies_phone_es): Rosa adds a team line for customers and saves its Spanish and its place
+-- on the tech's phone in one Save, an es version and a phone version with the place before and after. A Save with
+-- four arguments keeps both. A new name alone is a phone version with no place; a move and a cleared Spanish are two;
+-- 0 takes it off the phone. The phone refuses a line kept for one person, a line for trades, a place below 0 and a
+-- long name. A line for leads is one of the seven kinds now. Each kind keeps only its own columns. One edit_quick_reply, the signed in's alone. A sent text's
+-- quick_reply_id lets go when its line is deleted.
+SET LOCAL ROLE authenticated;
+SELECT qr.as_user(:'rosa');
+SELECT public.add_quick_reply('{first}, we are on our way.', 'customer', NULL) AS onway \gset
+SELECT qr.same('the Spanish and the phone in one Save: two versions',
+  public.edit_quick_reply(:'onway', '{first}, we are on our way.', 'customer', NULL, '  {first}, vamos en camino. ', 1, 'On our way')::text, '2');
+SELECT qr.same('the line holds them, the Spanish trimmed',
+  (SELECT text_es || ':' || phone_order || ':' || phone_name FROM public.quick_replies WHERE id = :'onway'),
+  '{first}, vamos en camino.:1:On our way');
+SELECT qr.same('an es version with the Spanish after, a phone version with the place after, both by Rosa',
+  (SELECT string_agg(kind || ':' || coalesce(from_text, '-') || '>' || coalesce(to_text, '-') || ':'
+       || coalesce(from_phone_order::text, '-') || '>' || coalesce(to_phone_order::text, '-') || ':' || (by_user_id = :'rosa'), ' | ' ORDER BY id)
+   FROM public.quick_reply_versions WHERE quick_reply_id = :'onway' AND kind IN ('es', 'phone')),
+  'es:->{first}, vamos en camino.:->-:true | phone:->-:->1:true');
+SELECT qr.same('a Save with four arguments changes the words and keeps the Spanish and the phone',
+  public.edit_quick_reply(:'onway', '{first}, we are on our way now.', 'customer', NULL)::text, '1');
+SELECT qr.same('both kept', (SELECT text_es || ':' || phone_order || ':' || phone_name FROM public.quick_replies WHERE id = :'onway'),
+  '{first}, vamos en camino.:1:On our way');
+SELECT qr.same('a new name alone: one phone version',
+  public.edit_quick_reply(:'onway', '{first}, we are on our way now.', 'customer', NULL, NULL, NULL, 'Heading over')::text, '1');
+SELECT qr.same('moved to 3 with the Spanish cleared: two versions',
+  public.edit_quick_reply(:'onway', '{first}, we are on our way now.', 'customer', NULL, '   ', 3, NULL)::text, '2');
+SELECT qr.same('0 takes it off the phone',
+  public.edit_quick_reply(:'onway', '{first}, we are on our way now.', 'customer', NULL, NULL, 0, NULL)::text, '1');
+SELECT qr.same('the history: the Spanish set, put on, the name, the Spanish cleared, moved, taken off',
+  (SELECT string_agg(CASE kind WHEN 'es' THEN 'es:' || CASE WHEN to_text IS NULL THEN 'cleared' ELSE 'set' END
+       ELSE 'phone:' || coalesce(from_phone_order::text, '-') || '>' || coalesce(to_phone_order::text, '-') END, ',' ORDER BY id)
+   FROM public.quick_reply_versions WHERE quick_reply_id = :'onway' AND kind IN ('es', 'phone')),
+  'es:set,phone:->1,phone:->-,es:cleared,phone:1>3,phone:3>-');
+SELECT qr.same('the line is off the phone, its name kept, no Spanish',
+  (SELECT coalesce(text_es, '-') || ':' || coalesce(phone_order::text, '-') || ':' || phone_name FROM public.quick_replies WHERE id = :'onway'),
+  '-:-:Heading over');
+SELECT qr.refused('nothing changed, the three kept',
+  format($q$SELECT public.edit_quick_reply(%L, '{first}, we are on our way now.', 'customer', NULL)$q$, :'onway'), 'Nothing changed.');
+SELECT qr.refused('the phone on a line kept for Rosa',
+  format($q$SELECT public.edit_quick_reply(%L, 'Running about 20 minutes late, sorry.', 'customer', NULL, NULL, 2, NULL)$q$, :'mine'),
+  'Only the team''s lines for customers go on the phone.');
+SELECT qr.refused('the phone on a line for trades',
+  format($q$SELECT public.edit_quick_reply(%L, 'The certificate is here, thank you.', 'trade', 'papers', NULL, 2, NULL)$q$, :'line'),
+  'Only the team''s lines for customers go on the phone.');
+SELECT qr.refused('a place below 0',
+  format($q$SELECT public.edit_quick_reply(%L, '{first}, we are on our way now.', 'customer', NULL, NULL, -1, NULL)$q$, :'onway'),
+  'Put the line on the phone at 1 or later');
+SELECT qr.refused('a name past 60 characters',
+  format($q$SELECT public.edit_quick_reply(%L, '{first}, we are on our way now.', 'customer', NULL, NULL, NULL, %L)$q$, :'onway', repeat('a', 61)),
+  '60 characters at most');
+SELECT public.add_quick_reply('Thanks for asking about the estimate. We will call you today.', 'lead', NULL) AS lead \gset
+SELECT qr.same('a line for leads, one of the seven kinds',
+  (SELECT q.for_kind || ':' || v.kind || ':' || v.to_for_kind FROM public.quick_replies q
+   JOIN public.quick_reply_versions v ON v.quick_reply_id = q.id WHERE q.id = :'lead'),
+  'lead:added:lead');
+SELECT qr.same('its tags to subs: one version',
+  public.edit_quick_reply(:'lead', 'Thanks for asking about the estimate. We will call you today.', 'sub', NULL)::text, '1');
+SELECT qr.same('the tags version from leads to subs',
+  (SELECT from_for_kind || '>' || to_for_kind FROM public.quick_reply_versions WHERE quick_reply_id = :'lead' AND kind = 'tags'), 'lead>sub');
+SELECT qr.refused('a line for vendors is still no kind',
+  $q$SELECT public.add_quick_reply('Hello', 'vendor', NULL)$q$, 'supply houses, candidates or anyone');
+RESET ROLE;
+SELECT qr.same('one edit_quick_reply, with the three trailing parameters, the signed in''s and never anon''s',
+  (SELECT count(*) || ':' || string_agg(oidvectortypes(p.proargtypes), ';') FROM pg_proc p
+   WHERE p.proname = 'edit_quick_reply' AND p.pronamespace = 'public'::regnamespace)
+  || ':' || has_function_privilege('authenticated', 'public.edit_quick_reply(uuid, text, text, text, text, integer, text)', 'EXECUTE')
+  || ':' || has_function_privilege('anon', 'public.edit_quick_reply(uuid, text, text, text, text, integer, text)', 'EXECUTE'),
+  '1:uuid, text, text, text, text, integer, text:true:false');
+SELECT qr.refused('a phone version keeps no words',
+  format($q$INSERT INTO public.quick_reply_versions (quick_reply_id, kind, to_text) VALUES (%L, 'phone', 'x')$q$, :'onway'), 'quick_reply_versions_kept');
+SELECT qr.refused('and only a phone version keeps a place',
+  format($q$INSERT INTO public.quick_reply_versions (quick_reply_id, kind, from_text, to_text, to_phone_order) VALUES (%L, 'words', 'a', 'b', 2)$q$, :'onway'),
+  'quick_reply_versions_kept');
+SELECT qr.refused('an es version that changes nothing',
+  format($q$INSERT INTO public.quick_reply_versions (quick_reply_id, kind, from_text, to_text) VALUES (%L, 'es', 'hola', 'hola')$q$, :'onway'),
+  'quick_reply_versions_kept');
+SELECT qr.refused('a line at place 0, written by hand as the database',
+  format($q$UPDATE public.quick_replies SET phone_order = 0 WHERE id = %L$q$, :'onway'), 'quick_replies_phone_order_counts');
+INSERT INTO public.messages (contact_id, channel, direction, body, quick_reply_id)
+  VALUES (:'priya2', 'text', 'out', 'Priya, we are on our way now.', :'onway') RETURNING id AS sent \gset
+DELETE FROM public.quick_replies WHERE id = :'onway';
+SELECT qr.same('the sent text stays, and lets go of its deleted line',
+  (SELECT coalesce(quick_reply_id::text, '-') || ':' || body FROM public.messages WHERE id = :'sent'), '-:Priya, we are on our way now.');
 
 DO $$ BEGIN RAISE NOTICE 'quick_replies PASSED'; END $$;
 ROLLBACK;
