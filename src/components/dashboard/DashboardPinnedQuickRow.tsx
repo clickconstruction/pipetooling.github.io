@@ -16,7 +16,7 @@ import { useTeamReviewsDue } from '../../hooks/useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from '../../hooks/useRoadmapNeedsNameNudges'
 import { recordNavClick, recordNavClickFromEvent } from '../../lib/navClickTelemetry'
 import { needsYouDoorWords } from '../../lib/dashboard/phoneFolds'
-import { buildNeedsYouItems } from '../../lib/dashboardNeedsYou'
+import { buildNeedsYouItems, CUSTOMER_MESSAGES_HREF, CUSTOMER_MESSAGES_LINE_ON } from '../../lib/dashboardNeedsYou'
 import { useCustomerWaitingOptional } from '../../contexts/CustomerWaitingContext'
 import { summarizeCustomerWaiting } from '../../lib/customerWaiting'
 import { roadmapPath } from '../../lib/roadmapVisibility'
@@ -46,6 +46,7 @@ import { useVehicleRecordGapsNudge } from '../../hooks/useVehicleRecordGapsNudge
 import { usePriceMatrixReadyNudge } from '../../hooks/usePriceMatrixReadyNudge'
 import { usePriceRequestsLateNudge } from '../../hooks/usePriceRequestsLateNudge'
 import { useGcFollowUpNeeds } from '../../hooks/useGcFollowUpNeeds'
+import { useCustomerMessagesCounts } from '../../hooks/useCustomerMessagesCounts'
 import { useClauseNeeds } from '../../hooks/useClauseNeeds'
 import { clausePaperHref } from '../../lib/contracts/clauseRows'
 import { canOpenGcProjects, canSeeGcMoney } from '../../lib/gc/access'
@@ -511,6 +512,9 @@ export function DashboardPinnedQuickRow({
   // GC mode's Follow up (v2.4941): the GC office team, the people who see the Follow up pill on /gc.
   const gcFollowUpEnabled = !hideBanners && Boolean(authUserId) && canOpenGcProjects(role)
   const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled, canSeeGcMoney(role))
+  // The Customers line (residential build, R8 · 14): the same team, off until Messages has its page.
+  const customerMessagesEnabled = CUSTOMER_MESSAGES_LINE_ON && gcFollowUpEnabled
+  const customerMessages = useCustomerMessagesCounts(customerMessagesEnabled)
   // Contracts and clauses (Messages, cut 4c): the clause changes waiting on a controller's or a dev's approval.
   const contractClausesEnabled = !hideBanners && Boolean(authUserId)
   const { rows: contractClauses } = useClauseNeeds(contractClausesEnabled)
@@ -594,6 +598,8 @@ export function DashboardPinnedQuickRow({
     priceRequestsLate,
     gcFollowUpEnabled,
     gcFollowUp,
+    customerMessagesEnabled,
+    customerMessages,
     contractClausesEnabled,
     contractClauses,
     robotBacklogEnabled,
@@ -799,6 +805,8 @@ export function DashboardPinnedQuickRow({
               navigate(priceRequestsLate ? `/bids?tab=pricing&bidId=${priceRequestsLate.first.bidId}` : '/bids?tab=pricing')
             } else if (item.key === 'gc-follow-up') {
               navigate(GC_FOLLOW_UP_HREF)
+            } else if (item.key === 'customer-messages') {
+              navigate(CUSTOMER_MESSAGES_HREF)
             } else if (item.key === 'contract-clauses') {
               // The oldest waiting change's paper, on Settings → Contracts and clauses, where Approve and Decline sit.
               const first = contractClauses[0]

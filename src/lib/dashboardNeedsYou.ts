@@ -42,6 +42,26 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
 import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
 import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGaps'
 import type { GcNeedsYou } from './gc/needsYou'
+import type { CustomerMessagesCounts } from './followUp/customerCounts'
+
+/**
+ * Residential build, R8 · 14: the Customers line is built, counted and wired, and stays off until Messages has its page.
+ * R2 turns it on with the `/messages` route, so the press never opens a page that is not there.
+ */
+export const CUSTOMER_MESSAGES_LINE_ON = false
+
+/** Where the Customers line's press goes: Messages, its customers only. */
+export const CUSTOMER_MESSAGES_HREF = '/messages?kind=customer'
+
+/** "3 need a reply, 1 we owe, 2 to sort.": each count that is not zero, in that order. Empty when all three are. */
+export function customerMessagesLine(c: CustomerMessagesCounts): string {
+  const parts = [
+    c.needReply > 0 ? `${c.needReply} ${c.needReply === 1 ? 'needs' : 'need'} a reply` : null,
+    c.weOwe > 0 ? `${c.weOwe} we owe` : null,
+    c.toSort > 0 ? `${c.toSort} to sort` : null,
+  ].filter((p): p is string => p !== null)
+  return parts.length ? `${parts.join(', ')}.` : ''
+}
 
 /** Whole days from today (the company calendar) to a 'YYYY-MM-DD' — the Lien desk cards' urgency. */
 function daysUntilYmd(ymd: string): number | null {
@@ -79,6 +99,7 @@ export type NeedsYouItem = {
     | 'statement-round'
     | 'roadmap-needs-person'
     | 'job-followups'
+    | 'customer-messages'
     | 'gc-review-weekly'
     | 'bulk-delete'
     | 'bulk-hours'
@@ -172,6 +193,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'tally-self': 30,
   'tally-team': 30,
   'job-followups': 40,
+  // Revenue chasing tier, beside the quiet jobs: a customer waiting on our answer (residential build, R8 · 14).
+  'customer-messages': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
   'bid-followups': 40,
   'demand-deadline': 40,
@@ -564,6 +587,13 @@ export type NeedsYouInputs = {
    */
   gcFollowUpEnabled?: boolean
   gcFollowUp?: GcNeedsYou | null
+  /**
+   * The Customers line (residential build, R8 · 14): customers who need a reply, what we owe them, and senders to sort,
+   * from `useCustomerMessagesCounts` over Follow up's queue (`followUp/customerCounts.ts`). The GC office team, as the GC
+   * projects line, and only while `CUSTOMER_MESSAGES_LINE_ON`.
+   */
+  customerMessagesEnabled?: boolean
+  customerMessages?: CustomerMessagesCounts | null
   /**
    * Messages, cut 4c (v2.5285): the clause changes waiting on a controller's or a dev's approval, as `useClauseNeeds` reads
    * them (`contracts/approval.ts` → `clauseNeeds`). Approvers only; the rows are empty for anyone else.
@@ -1113,6 +1143,22 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Start review',
     })
+  }
+
+  if (inputs.customerMessagesEnabled && inputs.customerMessages) {
+    const c = inputs.customerMessages
+    const n = c.needReply + c.weOwe + c.toSort
+    if (n > 0) {
+      items.push({
+        key: 'customer-messages',
+        severity: 'amber',
+        kicker: 'Messages',
+        title: 'Customers',
+        detail: customerMessagesLine(c),
+        figure: n > 99 ? '99+' : String(n),
+        actionLabel: 'Messages',
+      })
+    }
   }
 
   if (inputs.statementRoundEnabled && inputs.statementRound && inputs.statementRound.count > 0) {
