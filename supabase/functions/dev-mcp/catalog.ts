@@ -1533,6 +1533,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "merge-users",
   "messages-email",
   "messages-notify",
+  "messages-nudge-dispatch",
   "money-waiting-email-dispatch",
   "notify-bid-mark",
   "notify-dispatch-request",

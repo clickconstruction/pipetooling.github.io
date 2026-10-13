@@ -44,7 +44,7 @@ describe('customerSurfaceRegistry — every outside surface has a place on What 
     expect(senders).toContain('legal-notify-dispatch')
     expect(senders.length).toBeGreaterThan(20)
     // Messages cut 5: the two functions that text from the company number.
-    expect(textSendersFromSources(realFunctions())).toEqual(['quo-send', 'quo-webhook'])
+    expect(textSendersFromSources(realFunctions())).toEqual(['messages-nudge-dispatch', 'quo-send', 'quo-webhook'])
   })
 
   it('the registry, the routes, the senders and the journeys agree', () => {
