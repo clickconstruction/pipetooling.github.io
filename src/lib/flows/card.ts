@@ -8,6 +8,9 @@
  *
  * In: the person (`PersonFlow` in `nudges.ts`: the flow, its reading, and what the reading does not hold), the step
  * and its job, and the other people, for a step that waits on someone else's.
+ *
+ * `stepStrip` folds the card to one line above the reply box (residential R4 · 3, integration 5): the step's name, whose
+ * move, the days, and the presses that move it, each with what it opens and what it writes.
  */
 import { FLOW_PAPERS, factById, type PaperId } from './facts'
 import {
@@ -27,6 +30,7 @@ import {
   type NudgeOptions,
   type PersonFlow,
 } from './nudges'
+import type { AppSends } from './nudgeDispatch'
 import { laneReadingOf, moverOf, stepById, type FactReading, type FlowStep, type LaneReading, type StepReading } from './state'
 
 // ---------- the model ----------
@@ -66,6 +70,13 @@ export type PressId =
   | 'seeTheirPage'
   | 'openBid'
   | 'putBackOn'
+  | 'approveFor'
+  | 'moveTheDay'
+  | 'sendAgain'
+  | 'declined'
+  | 'sendBillAgain'
+  | 'markPaidByCheck'
+  | 'askForReview'
 
 /** A hover card: the press's name, what it does, what it changes. */
 export interface Tip {
@@ -151,6 +162,41 @@ export const CARD_TIPS = {
     name: 'See their page',
     does: "Their portal's first page, where this flow reads from their side.",
     changes: 'What they see. Nothing of ours shows.',
+  },
+} as const
+
+/** The strip's own presses' hover cards: a residential step's, keyed on the step they are on (`stepStrip`). */
+export const STRIP_TIPS = {
+  approveFor: (first: string, me: string): Tip => ({
+    name: `Approve for ${first}`,
+    does: `Marks the estimate approved, the same as ${first}'s own press on it.`,
+    changes: `The step is done. The record says ${me || 'you'} pressed it by phone.`,
+  }),
+  moveTheDay: { name: 'Move the day', does: 'Opens dispatch at this job, to move its day.', changes: 'Nothing changes until you move it there.' },
+  sendAgain: (first: string): Tip => ({
+    name: 'Send it again',
+    does: `Sends the estimate to ${first} again, the way it went the first time.`,
+    changes: `The step keeps waiting on ${first}.`,
+  }),
+  declined: (first: string): Tip => ({
+    name: `${first} declined`,
+    does: `Marks the estimate declined, the same as ${first}'s own decline on it.`,
+    changes: 'The estimate reads declined. A new one can go after.',
+  }),
+  sendBillAgain: (first: string): Tip => ({
+    name: 'Send the bill again',
+    does: `Sends the bill to ${first} again, the way it went the first time.`,
+    changes: `The step keeps waiting on ${first}.`,
+  }),
+  markPaidByCheck: {
+    name: 'Mark paid by check',
+    does: 'Opens the record payment window for this bill, set to a check.',
+    changes: 'Nothing changes until you save the amount, the day and the check number.',
+  },
+  askForReview: {
+    name: 'Ask for a review',
+    does: 'Fills the reply box with the review line.',
+    changes: 'Nothing sends until you press Send.',
   },
 } as const
 
@@ -259,6 +305,18 @@ interface At {
   options: NudgeOptions
 }
 
+/** Whose move a step on now is, by its facts and the thread. */
+function moveOnNow({ person, def, step }: Pick<At, 'person' | 'def' | 'step'>): 'us' | 'them' | 'both' | 'wait' {
+  // Whose move by its facts: Jonah filed the addendum, so sending it on is ours (`moverOf`).
+  return whoseMove({ who: moverOf(def, step) }, {
+    onNow: step.stepId === person.reading.nowStepId && step.jobId === person.reading.nowJobId,
+    waiting: false,
+    perJob: step.lane === 'per_job',
+    owe: person.owe,
+    court: person.court,
+  })
+}
+
 /** The sentence under the title that says where the step stands. */
 function statusWords({ person, def, step, state, order, index, other, now }: At): Words {
   const first = person.first
@@ -282,14 +340,7 @@ function statusWords({ person, def, step, state, order, index, other, now }: At)
     return said(`Waiting on ${other?.first ?? 'someone else'}, ${plural(days, 'day')}. Not ${first}'s move and not ours.`)
   }
   if (state === 'now') {
-    // Whose move by its facts: Jonah filed the addendum, so sending it on is ours (`moverOf`).
-    const move = whoseMove({ who: moverOf(def, step) }, {
-      onNow: step.stepId === person.reading.nowStepId && step.jobId === person.reading.nowJobId,
-      waiting: false,
-      perJob: step.lane === 'per_job',
-      owe: person.owe,
-      court: person.court,
-    })
+    const move = moveOnNow({ person, def, step })
     const who = move === 'us' ? 'Our move' : move === 'them' ? `${first}'s move` : 'Both sides'
     const onFor = step.since ? daysSince(step.since, now) : null
     const forWords = onFor != null ? ` On it ${plural(onFor, 'day')}${def.usual ? `, usually ${def.usual}` : ''}.` : ''
@@ -531,4 +582,168 @@ export function stepCard(
   if (reminds && !w) sections.push(reminderSection(at))
   sections.push(soFarSection(at))
   return { title: def.name, status: statusWords(at), sections }
+}
+
+// ---------- the strip above the box ----------
+
+/** What a strip press writes, for the screen that does it. The kernel calls nothing. */
+export type StripWrite =
+  /**
+   * Approve for them: accept-estimate's write on the job's sent estimate (`estimates`, guarded on `status = 'sent'`, to
+   * `customer_accepted` with `acceptor_consented_at` now and `acceptor_printed_name`). The printed name is the office
+   * user's, with "by phone" on the audit row's note, so the trail says a person pressed it for them. No IP, browser or
+   * signature. `how` has no column yet: the edge PR that lets accept-estimate take it reads this.
+   */
+  | { kind: 'accept_estimate'; jobId: string | null; printedName: string; auditNote: 'by phone'; how: 'office' }
+  /** They declined: accept-estimate's decline path (`status = 'declined'` and its `declined` event), from the office. */
+  | { kind: 'decline_estimate'; jobId: string | null; by: string; how: 'office' }
+  /**
+   * Mark paid by check: the record payment window's `mark_invoice_paid(p_invoice_id, p_amount, p_paid_on, p_note,
+   * p_payment_type, p_reference_number)` with the type 'check'. The window asks the amount, the day and the number.
+   */
+  | { kind: 'mark_invoice_paid'; invoiceId: string; paymentType: 'check' }
+
+/** Where a strip press opens: dispatch, a send window, the record payment window, or the reply box. */
+export type StripOpens = 'dispatch' | 'send_estimate' | 'send_bill' | 'record_payment' | 'reply_box'
+
+/** A press on the strip: the card's press, with what it opens and what it writes. A card press folded in has neither. */
+export interface StripPress extends CardPress {
+  opens: StripOpens | null
+  writes: StripWrite | null
+}
+
+/** The step card folded to one line, in parts the screen draws side by side, each in plain words. */
+export interface StepStrip {
+  stepId: string
+  jobId: string | null
+  /** The step's name: "Approved". */
+  name: string
+  /** Whose move: "Dana's move", "Our move", "Both sides", "Waiting on Jonah". */
+  move: string
+  /** How long it has been on, "2 days", or how late, "Late 3 days". Null with no day. */
+  days: string | null
+  late: boolean
+  presses: StripPress[]
+}
+
+export interface StripOptions {
+  /** The signed-in user's name: the printed name on Approve for them, and who marked the decline. */
+  me: string
+  people?: readonly PersonFlow[]
+  options?: NudgeOptions
+  /** The steps the app sends by itself. The review ask shows while the review step's send is off. */
+  appSends?: AppSends
+}
+
+/** The card's presses that move a step, in the card's order. Its housekeeping (hold, see it, a note, skip, their page, open) stays on the card. */
+const MOVES_THE_STEP: ReadonlySet<PressId> = new Set<PressId>(['sendIt', 'askForIt', 'remindThem', 'fileByHand', 'remind', 'askAgain', 'ask', 'remindNow', 'sendItNow'])
+
+/** The card's own presses that move the step, each once. */
+function foldedPresses(card: StepCard): StripPress[] {
+  const out: StripPress[] = []
+  for (const s of card.sections) {
+    for (const p of [...s.lines.flatMap((l) => l.presses), ...s.presses]) {
+      if (MOVES_THE_STEP.has(p.id) && !out.some((x) => x.id === p.id)) out.push({ ...p, opens: null, writes: null })
+    }
+  }
+  return out
+}
+
+/**
+ * A residential step's presses on now, keyed on the step they are on: their yes on the estimate (Approved), their
+ * payment on a bill (Paid), the review ask after it, and the visit's days. Null for a step with none of its own, which
+ * folds the card's presses instead.
+ */
+function residentialPresses(person: PersonFlow, step: StepReading, opts: StripOptions): StripPress[] | null {
+  const first = person.first
+  const on = { stepId: step.stepId, jobId: step.jobId }
+  const moveTheDay: StripPress = { id: 'moveTheDay', label: 'Move the day', tip: STRIP_TIPS.moveTheDay, ...on, opens: 'dispatch', writes: null }
+  switch (step.stepId) {
+    case 'approved':
+      return [
+        {
+          id: 'approveFor',
+          label: `Approve for ${first}`,
+          tip: STRIP_TIPS.approveFor(first, opts.me),
+          primary: true,
+          ...on,
+          opens: null,
+          writes: { kind: 'accept_estimate', jobId: step.jobId, printedName: opts.me, auditNote: 'by phone', how: 'office' },
+        },
+        moveTheDay,
+        { id: 'sendAgain', label: 'Send it again', tip: STRIP_TIPS.sendAgain(first), paper: 'estimate', ...on, opens: 'send_estimate', writes: null },
+        {
+          id: 'declined',
+          label: `${first} declined`,
+          tip: STRIP_TIPS.declined(first),
+          ...on,
+          opens: null,
+          writes: { kind: 'decline_estimate', jobId: step.jobId, by: opts.me, how: 'office' },
+        },
+      ]
+    case 'paid': {
+      // The oldest bill still out: its round's key is the bill's id (`paidRounds` in `load.ts`).
+      const bill = step.rounds.find((r) => r.state === 'now')
+      return [
+        { id: 'sendBillAgain', label: 'Send the bill again', tip: STRIP_TIPS.sendBillAgain(first), paper: 'bill', ...on, opens: 'send_bill', writes: null },
+        ...(bill
+          ? [
+              {
+                id: 'markPaidByCheck',
+                label: 'Mark paid by check',
+                tip: STRIP_TIPS.markPaidByCheck,
+                round: bill.key,
+                ...on,
+                opens: 'record_payment',
+                writes: { kind: 'mark_invoice_paid', invoiceId: bill.key, paymentType: 'check' },
+              } satisfies StripPress,
+            ]
+          : []),
+      ]
+    }
+    case 'review':
+      return opts.appSends?.residential?.review
+        ? []
+        : [{ id: 'askForReview', label: 'Ask for a review', tip: STRIP_TIPS.askForReview, primary: true, ...on, opens: 'reply_box', writes: null }]
+    case 'onway':
+    case 'arrived':
+    case 'working':
+      return [moveTheDay]
+    default:
+      return null
+  }
+}
+
+/**
+ * The step card folded to one line above the reply box: the step's name, whose move, the days, and the presses that
+ * move it. A residential step offers its own presses (Approve for them, Move the day, Send it again, They declined;
+ * Send the bill again and Mark paid by check; the review ask while the app does not send it). Every other step keeps
+ * the card's own presses that move it. Null when they are off the flow, or the step is not on now.
+ */
+export function stepStrip(person: PersonFlow, stepId: string, jobId: string | null, now: Date, opts: StripOptions): StepStrip | null {
+  if (person.reading.off) return null
+  const lane = laneReadingOf(person.reading, stepId, jobId)
+  const step = lane?.steps.find((x) => x.stepId === stepId)
+  const def = stepById(person.flow, stepId)
+  if (!step || !def || (step.state !== 'now' && step.state !== 'lapsed')) return null
+  const card = stepCard(person, stepId, jobId, now, opts.people ?? [], opts.options ?? {})
+  if (!card) return null
+  const first = person.first
+  const w = step.waitingOn
+  const other = w ? (opts.people ?? []).find((p) => p.id === w.contactId) : null
+  const move = w ? 'wait' : moveOnNow({ person, def, step })
+  const day = dayOf(step)
+  const late = !!day?.late
+  const since = w ? w.since : step.since
+  const onFor = since ? daysSince(since, now) : null
+  const own = person.reading.kind === 'residential' ? residentialPresses(person, step, opts) : null
+  return {
+    stepId,
+    jobId: step.jobId,
+    name: def.name,
+    move: move === 'wait' ? `Waiting on ${other?.first ?? 'someone else'}` : move === 'us' ? 'Our move' : move === 'them' ? `${first}'s move` : 'Both sides',
+    days: late && day ? `Late ${plural(day.lateDays, 'day')}` : onFor != null ? plural(onFor, 'day') : null,
+    late,
+    presses: own ?? foldedPresses(card),
+  }
 }
