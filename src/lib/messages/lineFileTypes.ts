@@ -5,8 +5,11 @@
  */
 import type { PaperGuess } from '../emailIn/paperGuess'
 
-/** Our copy, a file left in Gmail (too big, or not copied), or a link. */
-export type FileKept = 'copy' | 'tooBig' | 'notCopied' | 'link'
+/**
+ * Our copy, a file left in Gmail (too big, or not copied), a picture or a file on a text we could not copy, which Quo's
+ * own history still holds (cut 10, `left_in_gmail` 'quo_not_copied'), or a link.
+ */
+export type FileKept = 'copy' | 'tooBig' | 'notCopied' | 'quoNotCopied' | 'link'
 
 export type FileIcon = 'pdf' | 'image' | 'link' | 'file'
 

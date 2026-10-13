@@ -8,6 +8,7 @@ import type { Contact } from '../../../lib/contacts/kernel'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { Btn } from '../gcUi'
 import { SaveToDrive, type SaveToDriveIo } from './SaveToDrive'
+import { PhotoSaveTick } from './PhotoSaveTick'
 
 /**
  * Messages, cut 6's screens (email in): the files and links on a line, as the mock-up `email-in-mockups.html` draws them
@@ -123,7 +124,8 @@ function sentOpenHref(f: LineFile, jobKey: string | null): string | null {
  * The message window's files. On a line that came in, its Attachments: each file with its size and where it is, Open
  * where it can be opened, and Save to Drive on our copy (cut 7f). On a line we sent, its Files (cut 7f, the mock-up
  * `files-out-mockups.html`, screen 6): each marked how it went, our own link with its opens, newest first and never who,
- * and Cut it off while it still opens.
+ * and Cut it off while it still opens. Under a line that came in with a picture and is tied to a job, the job's tick
+ * to save every photo to Drive as it comes in (cut 10).
  */
 export function MessageFiles({
   files,
@@ -134,6 +136,7 @@ export function MessageFiles({
   nowIso,
   who = null,
   sentAt = null,
+  photoJob = null,
 }: {
   files: readonly LineFile[]
   /** The line's job, as the thread keys it, for Save to Drive and the office's own page. Null: on nobody's job. */
@@ -148,6 +151,8 @@ export function MessageFiles({
   who?: Pick<Contact, 'kind' | 'gcCompanyId' | 'customerId'> | null
   /** When the line went, for their portal's opens since. */
   sentAt?: string | null
+  /** The job whose photo tick shows under the files (`photoTickJob`). Null: none. */
+  photoJob?: string | null
 }) {
   const now = nowIso ?? new Date().toISOString()
   const sent = files.some((f) => sentWay(f) !== null)
@@ -228,6 +233,7 @@ export function MessageFiles({
           </div>
         )
       })}
+      {photoJob && !sent && <PhotoSaveTick key={photoJob} jobKey={photoJob} />}
     </section>
   )
 }
