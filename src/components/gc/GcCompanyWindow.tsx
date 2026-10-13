@@ -16,7 +16,7 @@ import { FlowTab } from '../flows/FlowTab'
 import { CompanyActivity, CompanyDocuments, CompanyTabStrip, type CompanyTab, type ContactHow } from './GcCompanyDocuments'
 import type { CompanyAt } from './gcCompanyOpener'
 import { GcPaperSend } from './GcPaperSend'
-import { GcRecordInsurance } from './GcRecordInsurance'
+import { FromEmailLine, GcRecordInsurance } from './GcRecordInsurance'
 import { Btn, Chip, Stat, type Tone } from './gcUi'
 import { VettingChip } from './GcTradePartners'
 
@@ -26,7 +26,8 @@ import { VettingChip } from './GcTradePartners'
  * vetting and insurance, who at the company gets which emails, their work with us and the times they
  * passed. The office sets the company's language here. Their portal is the Portal lane's block, passed in
  * by the page (v2.4932). Documents (B6-b-ii) leads with what is missing, and a dev sends each paper's next step from
- * its row (Send a paper) or files a certificate that came by email (Record their insurance). Activity (B2b-iv) is
+ * its row (Send a paper) or files a certificate that came by email (Record their insurance), and a file a thread's line
+ * offered as a paper (Messages cut 6) opens there with where it came from. Activity (B2b-iv) is
  * everything with the company, newest first (`partnerActivity`), with Log a contact: a line of the company's own in the
  * call log.
  */
@@ -92,7 +93,9 @@ export function GcCompanyWindow({
 }) {
   const [problem, setProblem] = useState<string | null>(null)
   const [tab, setTab] = useState<CompanyTab>(at?.tab ?? (at?.doc ? 'documents' : 'about'))
-  const [aside, setAside] = useState<Aside | null>(null)
+  // A certificate offered from a thread's line opens its form, for a reader who may file one.
+  const fromLine = at?.file ?? null
+  const [aside, setAside] = useState<Aside | null>(fromLine && at?.doc === DOC_KEYS.insurance && papers ? { kind: 'insurance' } : null)
   const [done, setDone] = useState<string | null>(null)
   const [marking, setMarking] = useState(false)
   // A paper it was opened at: shown as picked, and its send opened once the Book's entries are read and the step can
@@ -239,6 +242,16 @@ export function GcCompanyWindow({
                   {done}
                 </div>
               )}
+              {fromLine && !(papers && aside?.kind === 'insurance' && at?.doc === DOC_KEYS.insurance) && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '0.45rem 0.65rem', background: 'var(--bg-blue-tint)', display: 'grid', gap: '0.2rem' }}>
+                  <FromEmailLine file={fromLine} />
+                  {at?.doc === DOC_KEYS.w9 ? (
+                    <span style={muted}>A W-9 that came by email is not filed from here yet. It stays on its line.</span>
+                  ) : !papers ? (
+                    <span style={muted}>Filing their insurance is a dev’s while GC mode is built.</span>
+                  ) : null}
+                </div>
+              )}
               <CompanyDocuments
                 groups={docs.groups}
                 selected={aside?.kind === 'send' ? aside.key : aside?.kind === 'insurance' ? DOC_KEYS.insurance : (at?.doc ?? null)}
@@ -261,6 +274,7 @@ export function GcCompanyWindow({
                   ) : papers && aside?.kind === 'insurance' ? (
                     <GcRecordInsurance
                       partner={partner}
+                      {...(fromLine && at?.doc === DOC_KEYS.insurance ? { from: fromLine } : {})}
                       onRecord={papers.onRecordInsurance}
                       onDone={(words) => {
                         setDone(words)

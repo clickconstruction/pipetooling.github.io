@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const calls = vi.hoisted(() => ({ rpc: [] as Array<[string, unknown]>, writes: [] as Array<{ table: string; op: string; args: unknown[] }>, next: { data: null as unknown, error: null as unknown } }))
+const calls = vi.hoisted(() => ({
+  rpc: [] as Array<[string, unknown]>,
+  writes: [] as Array<{ table: string; op: string; args: unknown[] }>,
+  next: { data: null as unknown, error: null as unknown },
+  /** Each read's answer in turn, and the ids and range each read asked for. */
+  reads: [] as Array<{ data: unknown; error: unknown }>,
+  asked: [] as Array<{ table: string; ids: unknown; range: [number, number] }>,
+}))
 
 vi.mock('../supabase', () => {
   const chain = (table: string, op: string, args: unknown[]) => {
@@ -10,7 +17,23 @@ vi.mock('../supabase', () => {
         calls.writes.push({ table, op: 'eq', args: a })
         return builder
       },
+      select: () => builder,
       then: (resolve: (v: unknown) => void) => resolve({ data: calls.next.data, error: calls.next.error }),
+    }
+    return builder
+  }
+  const read = (table: string) => {
+    let ids: unknown = null
+    const builder: Record<string, unknown> = {
+      in: (_column: string, list: unknown) => {
+        ids = list
+        return builder
+      },
+      order: () => builder,
+      range: (a: number, b: number) => {
+        calls.asked.push({ table, ids, range: [a, b] })
+        return Promise.resolve(calls.reads.shift() ?? { data: [], error: null })
+      },
     }
     return builder
   }
@@ -23,17 +46,21 @@ vi.mock('../supabase', () => {
       from: (table: string) => ({
         insert: (row: unknown) => chain(table, 'insert', [row]),
         delete: () => chain(table, 'delete', []),
+        update: (row: unknown) => chain(table, 'update', [row]),
+        select: () => read(table),
       }),
     },
   }
 })
 
-import { addContactJob, contactForCustomer, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
+import { addContactJob, answerPaper, contactForCustomer, loadLineFiles, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
 
 beforeEach(() => {
   calls.rpc.length = 0
   calls.writes.length = 0
   calls.next = { data: null, error: null }
+  calls.reads.length = 0
+  calls.asked.length = 0
 })
 
 describe('the presses (the spine’s functions)', () => {
@@ -90,5 +117,40 @@ describe('the presses (the spine’s functions)', () => {
       { table: 'contact_jobs', op: 'eq', args: ['bid_id', 'b482'] },
     ])
     await expect(addContactJob('c-greg', 'boerne')).rejects.toThrow('That is not a job.')
+  })
+})
+
+describe('the files on the lines (cut 6)', () => {
+  const ids = Array.from({ length: 151 }, (_, i) => `m${i}`)
+
+  it('reads the files of the lines it is given, 150 ids a request, each request paged', async () => {
+    calls.reads.push({ data: [{ id: 'f1', message_id: 'm0' }], error: null }, { data: [{ id: 'f2', message_id: 'm150' }], error: null })
+    const rows = await loadLineFiles(ids)
+    expect(rows.map((r) => r.id)).toEqual(['f1', 'f2'])
+    expect(calls.asked.map((a) => [a.table, (a.ids as string[]).length, a.range])).toEqual([
+      ['message_attachments', 150, [0, 999]],
+      ['message_attachments', 1, [0, 999]],
+    ])
+    await expect(loadLineFiles([])).resolves.toEqual([])
+    expect(calls.asked).toHaveLength(2)
+  })
+
+  it('reads no files, after one refused read, while the table is not there yet', async () => {
+    calls.reads.push({ data: null, error: { code: 'PGRST205', message: 'Could not find the table' } })
+    await expect(loadLineFiles(ids)).resolves.toEqual([])
+    expect(calls.asked).toHaveLength(1)
+    calls.reads.push({ data: null, error: { code: '42501', message: 'permission denied' } })
+    await expect(loadLineFiles(ids)).rejects.toThrow()
+  })
+
+  it('answers an offer, and says so in words when nothing was answered', async () => {
+    calls.next = { data: [{ id: 'f1' }], error: null }
+    await expect(answerPaper('f1', 'not_it')).resolves.toBeUndefined()
+    expect(calls.writes.slice(0, 2)).toEqual([
+      { table: 'message_attachments', op: 'update', args: [{ paper_answer: 'not_it' }] },
+      { table: 'message_attachments', op: 'eq', args: ['id', 'f1'] },
+    ])
+    calls.next = { data: [], error: null }
+    await expect(answerPaper('f1', 'filed')).rejects.toThrow('That offer could not be answered from this account.')
   })
 })

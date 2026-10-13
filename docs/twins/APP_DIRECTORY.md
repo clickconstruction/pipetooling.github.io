@@ -78,7 +78,8 @@ architect, and its price so far with the card behind it. Its switch opens **Trad
 then **We are waiting on them** (guide `follow-up-on-a-quote-from-a-trade-partner`): every company we wait on for a quote,
 the ones to call first at the top, with Log a contact and **Will not do it** / **Cannot do it**. **Messages** (guide `find-every-message-with-a-person-in-one-place`; `/gc?view=messages` opens it) lists every
 person the office works with, newest conversation first, and opens a person's thread as a window over any view
-(`?thread=<contact id>&at=<message id>`): their jobs with the star, each line's job, one message in full, and **Who is this?** for a
+(`?thread=<contact id>&at=<message id>`): their jobs with the star, each line's job, one message in full with an email's
+**Attachments** and **Open**, the offer to file a trade partner's certificate or W-9 that came by email, and **Who is this?** for a
 number nobody named. At its right side sits the person's flow, a rail that opens to the panel (guide `see-where-a-person-stands-and-what-comes-next`). A customer's own message has **Start a change order** for the office (guide `start-a-change-order-from-a-customers-message`), and a line that became one shows *became CO 2*. A company's name opens its window (guide `look-up-a-trade-partner`): About, who gets our emails, its language, **Flow** (guide `see-where-a-person-stands-and-what-comes-next`: where they stand on their flow, each step's card with its notes, skips and holds, and their page), and **Their portal** (guide `share-a-trade-partner-its-portal`), its portal link,
 made, copied, remade or turned off, and whether they opened it (a dev's only, until the trade wave). Each project's trades list their asks too, with **Ask for quotes**: the Ask window
 (guide `ask-trade-partners-for-a-quote`) lists who to ask and draws each company's invitation, saves the asks and, for a dev, emails each company its invitation.
@@ -312,6 +313,13 @@ sign-in: the id is the capability. The office never lands here on purpose — it
 customer's page; the codes that carry it are drawn on the lien notice's pay page and in View
 bill (punch list #35).
 Roles: public.
+
+### /files/:source/:id — A kept file's lasting link
+What a file's **Open** goes to (Messages cut 6, `FileOpen.tsx`): `/files/messages/<attachment id>` is a file that came
+on an email's line. Signed in as the office team, it goes straight to the file through a link that lasts a minute; a
+link the email carried goes to its own address. Signed out, it asks for a sign-in and comes back. Anyone else reads
+*This file is not one you can open.* No page of its own to work on.
+Roles: dev, master, assistant, controller, estimator.
 
 ## Nav skeletons by role (what you actually see)
 

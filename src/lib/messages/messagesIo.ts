@@ -6,10 +6,10 @@
  * `sentCopiesIo` does, and the rows are typed by the loaders (`contacts/load.ts`, `messages/load.ts`).
  *
  * The thread also shows every email the app already sent (`sent_documents`, through `loadSentEmailsTo`): a read-side
- * overlay, never rows written into `messages` (cut 6 backfills those).
+ * overlay, never rows written into `messages`. Cut 6's lines carry their files from `message_attachments`.
  */
 import { supabase } from '../supabase'
-import { fetchAllRows } from '../supabasePaging'
+import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from '../supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
 import { jobActivityMessagesFromRows, jobTakesUntiedLines, type JobActivityMessage, type JobMessageContact, type JobMessageRow } from '../jobs/jobActivityMessages'
@@ -18,6 +18,7 @@ import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type Cont
 import { loadSentEmailsTo } from '../sent/sentCopiesIo'
 import { factJobKeys, railJobKeys, type InviteJobRow, type ProjectRolesRow } from './factJobs'
 import { jobTilesByKey, type BidTileRow, type GcProjectTileRow, type JobTile, type PipelineTileRow } from './jobTiles'
+import { lineFilesFromRows, withLineFiles, type MessageAttachmentRow } from './lineFiles'
 import { jobRefOf, threadMessagesFromRows, type MessageRow } from './load'
 import { sentLines } from './sentLines'
 import type { ThreadMessage } from './thread'
@@ -54,6 +55,12 @@ const MESSAGE_COLS =
 const JOB_MESSAGE_COLS = `${MESSAGE_COLS}, duration_seconds, summary, transcript`
 /** The most lines one job's read brings, each way: the newest, so a long job drops its oldest lines first. */
 const JOB_MESSAGES_MAX = 1000
+
+const ATTACHMENT_COLS =
+  'id, message_id, sort_order, kind, name, mime, size_bytes, bucket_path, left_in_gmail, url, host, paper, paper_answer, paper_answered_by, paper_answered_at'
+
+/** Before the email migration is pushed, the table is not there: the lines then have no files. */
+const isMissingTable = (code: string | null | undefined): boolean => code === '42P01' || code === 'PGRST205'
 
 const unique = (ids: readonly (string | null | undefined)[]) => [...new Set(ids.filter((id): id is string => Boolean(id)))]
 
@@ -165,21 +172,47 @@ async function loadTiles(keys: readonly string[], todayYmd: string): Promise<Rec
   )
 }
 
+/**
+ * The files and links on the lines given (cut 6, email in): 150 ids a request, each paged, so a line with many files is
+ * never cut at PostgREST's row cap. None while the table is not there yet, after one refused read.
+ */
+export async function loadLineFiles(messageIds: readonly string[]): Promise<MessageAttachmentRow[]> {
+  const out: MessageAttachmentRow[] = []
+  const seen = { missing: false }
+  for (let i = 0; i < messageIds.length; i += SUPABASE_IN_CHUNK_SIZE) {
+    const slice = messageIds.slice(i, i + SUPABASE_IN_CHUNK_SIZE)
+    const rows = await fetchAllRows<MessageAttachmentRow>(async (a, b) => {
+      const page = (await from('message_attachments').select(ATTACHMENT_COLS).in('message_id', slice).order('id').range(a, b)) as unknown as Result<MessageAttachmentRow[]>
+      if (!page.error || !isMissingTable(page.error.code)) return page
+      seen.missing = true
+      return { data: [], error: null }
+    }, 'load the files on the lines')
+    if (seen.missing) return []
+    out.push(...rows)
+  }
+  return out
+}
+
 /** Everything the view and the window draw, at `nowIso`. */
 export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
   const spine = await loadSpineRows()
-  const records = await loadRecords(spine.contacts)
+  // Only an email carries files, so the files are read for the email lines alone.
+  const emailIds = spine.messages.filter((m) => m.channel === 'email').map((m) => m.id)
+  const [records, fileRows] = await Promise.all([loadRecords(spine.contacts), loadLineFiles(emailIds)])
   const contacts = contactsFromRows(spine.contacts, spine.channels, spine.jobs, records)
-  const userIds = unique([...spine.messages.flatMap((m) => [m.who_user_id, m.back_by]), ...spine.contacts.map((c) => c.off_by)])
+  const userIds = unique([
+    ...spine.messages.flatMap((m) => [m.who_user_id, m.back_by]),
+    ...spine.contacts.map((c) => c.off_by),
+    ...fileRows.map((f) => f.paper_answered_by),
+  ])
   const [users, facts, copies] = await Promise.all([
     inSlices<{ id: string; name: string | null }>(userIds, (ids) => supabase.from('users').select('id, name').in('id', ids), 'load the names of the team'),
     loadFactRows(contacts),
     loadSentEmailsTo(contacts.flatMap((c) => c.channels.filter((ch) => ch.kind === 'email').map((ch) => ch.value))),
   ])
   const userNames = Object.fromEntries(users.map((u) => [u.id, u.name ?? '']))
-  const messages = [...threadMessagesFromRows(spine.messages, { userNames, contacts }), ...sentLines(copies, contacts)].sort(
-    (a, b) => Date.parse(a.at) - Date.parse(b.at),
-  )
+  const own = withLineFiles(threadMessagesFromRows(spine.messages, { userNames, contacts }), lineFilesFromRows(fileRows))
+  const messages = [...own, ...sentLines(copies, contacts)].sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
   const factKeys = factJobKeys(contacts, facts)
   const rails = Object.fromEntries(contacts.map((c) => [c.id, railJobKeys(c, factKeys[c.id] ?? [])]))
   const keys = unique([...Object.values(rails).flat(), ...messages.map((m) => m.jobId)])
@@ -235,6 +268,18 @@ export async function loadJobMessages(job: { id: string; status: string | null; 
 }
 
 // ---------- the presses ----------
+
+/**
+ * The office's answer to a paper offer on a line (cut 6): filed, once the company window filed it, or not it. A trigger
+ * stamps who and when. Refused in words when nothing was answered (training mode, a digital twin).
+ */
+export async function answerPaper(attachmentId: string, answer: 'filed' | 'not_it'): Promise<void> {
+  const rows = taken(
+    (await from('message_attachments').update({ paper_answer: answer } as never).eq('id', attachmentId).select('id')) as unknown as Result<{ id: string }[]>,
+    'answer the offer',
+  )
+  if (rows.length === 0) throw new Error('That offer could not be answered from this account.')
+}
 
 const jobArgs = (key: string | null) => {
   const ref = jobRefOf(key)

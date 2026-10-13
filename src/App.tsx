@@ -63,6 +63,7 @@ import PartnerStatement from './pages/PartnerStatement'
 import ContractAccept from './pages/ContractAccept'
 import JobContractSign from './pages/JobContractSign'
 import ContractBookPreview from './pages/ContractBookPreview'
+import FileOpen from './pages/FileOpen'
 import TaskShortcut from './pages/TaskShortcut'
 import { POST_LOGIN_REDIRECT_KEY } from './lib/iosPwa'
 import { wipeServiceWorkersAndCaches } from './lib/hardReload'
@@ -262,6 +263,8 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        {/* A kept file's lasting link (Messages cut 6): it signs in on its own, so it returns to the file after. */}
+        <Route path="/files/:source/:id" element={<FileOpen />} />
         <Route
           path="/contract/book-preview"
           element={

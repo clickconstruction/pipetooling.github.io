@@ -12,6 +12,7 @@ import {
   companyWeekStartSundayContaining,
   ymdDaysBetween,
 } from '../../utils/dateUtils'
+import type { LineFile } from './lineFiles'
 
 export type MessageChannel = 'call' | 'voicemail' | 'missed' | 'text' | 'email' | 'note' | 'event' | 'portal'
 
@@ -42,6 +43,8 @@ export interface ThreadMessage {
   /** A team note's day to come back to Follow up, and who set it. */
   backOn?: string | null
   backBy?: string | null
+  /** The files and links it came or went with, in order (cut 6, `lineFiles.ts`). */
+  files?: readonly LineFile[]
 }
 
 const byTime = (a: { at: string }, b: { at: string }) => Date.parse(a.at) - Date.parse(b.at)

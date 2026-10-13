@@ -7,6 +7,7 @@ import { startOfYmdInAppTzMs } from '../../utils/dateUtils'
 import { contactsFromRows, type ContactChannelRow, type ContactJobRow, type ContactRecordRows, type ContactRow } from '../contacts/load'
 import { railJobKeys } from './factJobs'
 import { jobTilesByKey } from './jobTiles'
+import { lineFilesFromRows, withLineFiles, type MessageAttachmentRow } from './lineFiles'
 import { threadMessagesFromRows, type MessageRow } from './load'
 import type { MessagesView } from './messagesIo'
 
@@ -204,6 +205,33 @@ export const SPINE_MESSAGES: MessageRow[] = [
   line('m-greg-odd-optout', 'c-greg', { direction: 'out', at: ct('2026-10-01', 9, 0), body: 'Hello.', optout_line: 'later' }),
 ]
 
+/** The files on Greg's email (cut 6, the mock-up's screens 1 and 2): our copies, a link, and one too big to keep. */
+const file = (id: string, sort: number, set: Partial<MessageAttachmentRow>): MessageAttachmentRow => ({
+  id,
+  message_id: 'm-greg-email-in',
+  sort_order: sort,
+  kind: 'file',
+  name: '',
+  mime: null,
+  size_bytes: null,
+  bucket_path: null,
+  left_in_gmail: null,
+  url: null,
+  host: null,
+  paper: null,
+  paper_answer: null,
+  paper_answered_by: null,
+  paper_answered_at: null,
+  ...set,
+})
+
+export const SPINE_ATTACHMENTS: MessageAttachmentRow[] = [
+  file('f-greg-sitework', 0, { name: 'Hillside-Boerne-sitework-rev1.pdf', mime: 'application/pdf', size_bytes: 1_250_000, bucket_path: 'g-greg-1/1-Hillside-Boerne-sitework-rev1.pdf' }),
+  file('f-greg-photo', 1, { name: 'site-photo-pad.jpg', mime: 'image/jpeg', size_bytes: 2_800_000, bucket_path: 'g-greg-1/2-site-photo-pad.jpg' }),
+  file('f-greg-addendum', 2, { kind: 'link', name: 'Addendum 2 drawings', url: 'https://drive.example/addendum-2', host: 'drive' }),
+  file('f-greg-fullset', 3, { name: 'Hillside-Boerne-full-set.zip', mime: 'application/zip', size_bytes: 31_000_000, left_in_gmail: 'too_big' }),
+]
+
 /** The jobs the rows name, as their tables hold them, for the tiles. */
 export const SPINE_TILE_ROWS = {
   bids: [{ id: 'bid-boerne', bid_number: 'B482', project_name: 'Boerne Retail Shell', bid_due_date: '2026-10-08', bid_date_sent: null, outcome: null }],
@@ -216,7 +244,7 @@ export const SPINE_TILE_ROWS = {
 /** The rows above as the Messages view and the thread window draw them, at the demo's clock: the screens' smokes. */
 export function spineMessagesView(): MessagesView {
   const contacts = contactsFromRows(SPINE_CONTACTS, SPINE_CHANNELS, SPINE_JOBS, SPINE_RECORDS)
-  const messages = threadMessagesFromRows(SPINE_MESSAGES, { userNames: SPINE_USER_NAMES, contacts })
+  const messages = withLineFiles(threadMessagesFromRows(SPINE_MESSAGES, { userNames: SPINE_USER_NAMES, contacts }), lineFilesFromRows(SPINE_ATTACHMENTS))
   return {
     contacts,
     messages,

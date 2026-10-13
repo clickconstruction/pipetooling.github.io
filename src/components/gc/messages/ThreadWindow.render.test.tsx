@@ -51,6 +51,21 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     expect(screen.getByText('This person is not in Messages.')).toBeTruthy()
   })
 
+  it('draws an email’s files as chips under its words, the time below them, and a chip opens the message (cut 6)', () => {
+    const { win } = open('c-greg')
+    const line = win.querySelector('[data-thread-line="m-greg-email-in"]') as HTMLElement
+    const chips = within(line.querySelector('[data-line-files]') as HTMLElement).getAllByRole('button')
+    expect(chips.map((c) => c.textContent)).toEqual([
+      'PDFHillside-Boerne-sitework-rev1.pdf · 1.3 MB',
+      'IMGsite-photo-pad.jpg · 2.8 MB',
+      '↗Addendum 2 drawings · a link',
+      'FHillside-Boerne-full-set.zip · 31 MB',
+    ])
+    expect(line.lastElementChild!.textContent).toBe('11:30 AM')
+    fireEvent.click(chips[1]!)
+    expect(screen.getByRole('dialog', { name: 'Email: Hillside sitework, Boerne, rev 1' }).querySelector('[data-message-files]')).toBeTruthy()
+  })
+
   it('draws the header in its rows: name with ☎ and ⋯, what they are, their numbers, whose move, the stamps, the jobs', () => {
     const { win } = open('c-greg')
     expect(within(win).getByRole('heading', { name: 'Greg Paulk' })).toBeTruthy()

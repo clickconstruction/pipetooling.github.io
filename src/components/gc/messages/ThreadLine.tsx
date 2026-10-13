@@ -7,14 +7,16 @@ const HOLD_TRAVEL_PX = 10
 import type { JobTile } from '../../../lib/messages/jobTiles'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { callLength, channelWord, clockTime, isLong, type ThreadMessage } from '../../../lib/messages/thread'
+import { FiledLines, LineFileChips } from './LineFiles'
 
 /**
  * Messages, cut 1's screens: one line of a thread (the prototype's `.msg`, v1.178). Its meta (the channel and a call's
  * length, who, its job), its words (four lines until opened, or all of them), and its time on the last line when there
  * is room, the way a phone's bubbles do (v1.156). Within one day a line tied to the same job as the one above shows the
- * job's number alone (v1.158). A press anywhere but a button opens the message window. On a phone a press and hold
- * opens *Tie this message to* (cut 10, `onHold`): the line darkens once the hold is long enough, and the sheet opens as
- * the finger lifts, so it never opens under the finger; a finger that moves is a scroll.
+ * job's number alone (v1.158). An email's files (cut 6) show as chips under the words, with the time below them. A press
+ * anywhere but a button opens the message window. On a phone a press and hold opens *Tie this message to* (cut 10,
+ * `onHold`): the line darkens once the hold is long enough, and the sheet opens as the finger lifts, so it never opens
+ * under the finger; a finger that moves is a scroll.
  */
 export function ThreadLine({
   message,
@@ -25,6 +27,7 @@ export function ThreadLine({
   tying,
   body,
   under,
+  userNames = {},
   onOpen,
   onTie,
   onJob,
@@ -41,8 +44,10 @@ export function ThreadLine({
   tying: string | null
   /** A later cut's body in place of the words (cut 2's highlight). Undefined or null keeps the words. */
   body?: ReactNode | null
-  /** What a later cut draws under the line (cut 2's offer for a heard day). */
+  /** What a later cut draws under the line (cut 2's offer for a heard day, cut 6's paper offer). */
   under?: ReactNode
+  /** The team's names, for who filed a paper from the line. */
+  userNames?: Readonly<Record<string, string>>
   onOpen: () => void
   onTie: () => void
   /** A press on the line's job tag: the job's tiles filter, or a line with no job asks for one. */
@@ -101,6 +106,9 @@ export function ThreadLine({
       }
     : {}
   const folded = !showAll && isLong(message)
+  const files = message.files ?? []
+  // With chips under the words, the time goes below them, as it does under folded words.
+  const timeBelow = folded || files.length > 0
   const time = clockTime(message.at)
   const side = message.direction === 'out' ? 'flex-end' : 'flex-start'
   const tone: CSSProperties =
@@ -175,11 +183,17 @@ export function ThreadLine({
         {message.subject && <div style={{ fontWeight: 600, fontSize: '0.85rem', marginTop: '0.15rem' }}>{message.subject}</div>}
         {body != null ? (
           <div style={{ fontSize: '0.875rem', marginTop: '0.15rem' }}>{body}</div>
-        ) : folded ? (
-          <>
-            <div style={{ fontSize: '0.875rem', marginTop: '0.15rem', whiteSpace: 'pre-wrap', display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{message.body}</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'right' }}>{time}</div>
-          </>
+        ) : timeBelow ? (
+          <div
+            style={{
+              fontSize: '0.875rem',
+              marginTop: '0.15rem',
+              whiteSpace: 'pre-wrap',
+              ...(folded ? { display: '-webkit-box', WebkitLineClamp: 4, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : {}),
+            }}
+          >
+            {message.body}
+          </div>
         ) : (
           // The time keeps a slot at the end of the last line; when the words reach it, the slot wraps and the time drops.
           <div style={{ position: 'relative', fontSize: '0.875rem', marginTop: '0.15rem', whiteSpace: 'pre-wrap' }}>
@@ -188,6 +202,22 @@ export function ThreadLine({
             <span style={{ position: 'absolute', right: 0, bottom: 0, fontSize: '0.7rem', color: 'var(--text-muted)' }}>{time}</span>
           </div>
         )}
+        {files.length > 0 && (
+          <>
+            {/* A chip is the line's own press: it ties the line while a job is held, and opens the message otherwise. A
+                hold that began on a chip is the line's hold, so the click that trails it opens nothing more. */}
+            <LineFileChips
+              files={files}
+              onOpen={() => {
+                if (holds && hold.consumeLongPress()) return
+                if (tying && tieable) onTie()
+                else onOpen()
+              }}
+            />
+            <FiledLines files={files} userNames={userNames} />
+          </>
+        )}
+        {body == null && timeBelow && <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'right' }}>{time}</div>}
       </div>
       {under}
     </div>

@@ -103,6 +103,14 @@ afterEach(() => {
 describe('press and hold a line to tie it, on a phone (cut 10)', () => {
   beforeEach(() => screenIs(true))
 
+  it('a hold that begins on a file chip is the line’s hold: the sheet opens and the chip’s click opens no message', () => {
+    const { line } = open()
+    const chip = within(line('m-greg-email-in').querySelector('[data-line-files]') as HTMLElement).getAllByRole('button')[0]!
+    hold(chip)
+    expect(sheet()).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: /^Email/ })).toBeNull()
+  })
+
   it('darkens the held line, opens the sheet as it lifts, and the lift’s click opens nothing else', () => {
     const { w, line } = open()
     expect(hold(line('m-greg-odd-optout'))).toBe(true)
