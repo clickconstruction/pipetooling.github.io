@@ -39,10 +39,12 @@ BEGIN
   END;
   RAISE EXCEPTION '% was allowed', label;
 END $$;
+-- The role claim too: app_settings's read policy asks auth.role(), which reads request.jwt.claim.role.
 CREATE FUNCTION mtb.as_user(p_user uuid) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
 -- The box of the line a write answered with. The line is read in a statement after the write: the write's own
 -- statement reads from a snapshot taken before it.
