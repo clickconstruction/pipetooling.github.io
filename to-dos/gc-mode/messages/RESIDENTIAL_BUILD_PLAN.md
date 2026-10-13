@@ -45,6 +45,17 @@ New, in order of appearance. Every migration starts `SET lock_timeout = '3s';`, 
 | R8 · 3 | a reason and the job's event line on `self_move_schedule_block` (the tech's own move, one block per call; the office's board writes the table directly and there is no move RPC with a reason), and the dispatcher's note filed as a `dispatch_requests` row, since a tech cannot insert it; a slide past 23:59 moves nothing (helper 7's prepare note, 2026-10-13) | a Running late press moves the board with a reason |
 | R8 · 12 | the sub flow's facts on main: asked = `step_commitments.offered_at`, said yes = `accepted_at`, declined = `declined_at` (the fork's way out), on site = the first portal `progress_at` (half), done = the stage past working (half, the day lost once it moves on), paid = `subLaborJobBalance` at zero dated by the newest payment (`paid_at` is never written); PR 2 adds `people_labor_jobs.on_site_at` and `done_at`, filled by one trigger on the sheet's existing writes, `done_at` backfilled from the activity events; PR 1 ships the fact list and seed migration as #5568 did; a sub's job is the labor job, an order before its sheet on a lane keyed `order:<step_commitments.id>` (helper 1's prepare note, 2026-10-13) | the sub flow |
 
+### Migrations in flight (2026-10-13, pushed by the lead in stamp order after each merges)
+
+| Stamp | Cut | PR | What |
+|---|---|---|---|
+| 20261013170000 | R4 | #5568 (helper 3) | `flows_kind_known` + residential and sub, the fact and paper lists, the residential seed |
+| 20261013180000 | R0 | building (helper 2) | `contacts_kind_known`, four id columns, `name_contact` for the new kinds and a lead with no record, the sub backfill, reps in the seed |
+| 20261013190000 | R5 | building (helper 8) | `messages_tech_team()`, the tech's door, `has_until`, `office_only`, the hours and wait settings, `notification_history.message_id` |
+| 20261013200000 | R3 | building (helper 7) | `text_es`, `phone_order`, `phone_name`, the `es` and `phone` version kinds, `edit_quick_reply` recreated, `messages.quick_reply_id` |
+| next | R8 · 12 | PR 1 (helper 1) | the sub flow's facts and seed lists |
+| next | R8 · 16 | PR 1 (helper 6) | `customers.language` |
+
 ## 4. The build, in order
 
 Each cut lists its PRs. A PR is one change, kernel and test first, screens in their own PR, docs and the help guide in the PR that ships the flow.
