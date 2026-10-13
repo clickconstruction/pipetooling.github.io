@@ -727,8 +727,8 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     await waitFor(() => expect(screen.queryByTestId('dsm-review')).toBeNull())
     expect(screen.getByTestId('run-chip-1').textContent).toBe('mailed through Docsmit · number coming')
     expect((screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking') as HTMLInputElement).disabled).toBe(true)
-    // The GC's envelope stays on paper, so the foot still prints; the door is gone from a run that already mailed one.
-    expect(screen.getByRole('button', { name: /Print the packet/ })).toBeTruthy()
+    // The GC's envelope stays on paper, so the foot still prints, and only that one: the Docsmit envelope left the packet.
+    expect(screen.getByRole('button', { name: /Print the packet · 1 envelope$/ })).toBeTruthy()
     docsmitState.setUp = false
   })
 
