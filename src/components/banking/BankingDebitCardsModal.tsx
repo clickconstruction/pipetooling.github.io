@@ -262,7 +262,7 @@ export function BankingDebitCardsModal({
                     padding: '0.55rem 0.5rem',
                     marginBottom: 2,
                     borderRadius: 6,
-                    border: `1px solid ${highlighted ? 'var(--text-link)' : 'var(--border-soft)'}`,
+                    border: `1px solid ${highlighted ? 'var(--text-link)' : 'var(--border)'}`,
                     background: highlighted ? 'var(--bg-subtle)' : 'transparent',
                   }}
                 >

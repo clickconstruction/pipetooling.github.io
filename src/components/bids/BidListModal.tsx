@@ -137,7 +137,7 @@ export function BidListModal({ open, onClose, title, sub, rows, cohort, onOpenBi
               })}
             </div>
             <div style={{ display: 'flex', height: 8, borderRadius: 3, overflow: 'hidden', background: 'var(--bg-subtle)', marginTop: 8 }} aria-hidden>
-              {d.monthCount > 0 ? d.slices.filter((s) => s.n > 0).map((s) => <span key={s.bucket} style={{ display: 'block', height: '100%', width: `${(s.n / d.monthCount) * 100}%`, background: BUCKET_COLOR[s.bucket], outline: s.bucket === d.bucket ? '2px solid var(--text-primary, currentColor)' : 'none', outlineOffset: -2 }} />) : null}
+              {d.monthCount > 0 ? d.slices.filter((s) => s.n > 0).map((s) => <span key={s.bucket} style={{ display: 'block', height: '100%', width: `${(s.n / d.monthCount) * 100}%`, background: BUCKET_COLOR[s.bucket], outline: s.bucket === d.bucket ? '2px solid currentColor' : 'none', outlineOffset: -2 }} />) : null}
             </div>
           </div>
         ) : null}
@@ -146,13 +146,13 @@ export function BidListModal({ open, onClose, title, sub, rows, cohort, onOpenBi
           <div style={{ padding: '0.6rem 1rem 0', display: 'flex', gap: 14, flexWrap: 'wrap', fontSize: '0.75rem', color: 'var(--text-muted)', alignItems: 'center' }}>
             {byEstimator.length > 1 ? (
               <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-                <b style={{ color: 'var(--text-primary, inherit)', fontWeight: 500 }}>By estimator</b>
+                <b style={{ color: 'inherit', fontWeight: 500 }}>By estimator</b>
                 {byEstimator.slice(0, 6).map((r) => <button key={r.key} type="button" aria-pressed={estimator === r.key} onClick={() => setEstimator(estimator === r.key ? null : r.key)} style={{ ...chip, padding: '1px 8px', fontSize: '0.72rem', ...(estimator === r.key ? { borderColor: 'var(--text-link)', color: 'var(--text-link)', fontWeight: 600 } : {}) }}>{r.label} · {r.n}</button>)}
               </span>
             ) : null}
             {byGc.length > 1 ? (
               <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
-                <b style={{ color: 'var(--text-primary, inherit)', fontWeight: 500 }}>By GC</b>
+                <b style={{ color: 'inherit', fontWeight: 500 }}>By GC</b>
                 {byGc.slice(0, 5).map((r) => <button key={r.key} type="button" aria-pressed={gc === r.key} onClick={() => setGc(gc === r.key ? null : r.key)} style={{ ...chip, padding: '1px 8px', fontSize: '0.72rem', ...(gc === r.key ? { borderColor: 'var(--text-link)', color: 'var(--text-link)', fontWeight: 600 } : {}) }}>{r.label} · {r.n}</button>)}
                 {byGc.length > 5 ? <span>+{byGc.length - 5} more</span> : null}
               </span>

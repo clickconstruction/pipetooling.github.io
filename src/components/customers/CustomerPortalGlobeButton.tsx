@@ -627,7 +627,7 @@ export default function CustomerPortalGlobeButton({
               </div>
             ) : main.kind === 'unminted' ? (
               <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 6, padding: '0.75rem 0.9rem', marginBottom: '0.8rem' }}>
-                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-900)' }}>No portal link yet.</div>
+                <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-strong)' }}>No portal link yet.</div>
                 <p style={{ margin: '0.3rem 0 0.6rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                   {customerName} has never been given a portal page. Creating the link makes their page live — you decide when to share it. Just looking? Close this and nothing is created.
                 </p>
@@ -654,7 +654,7 @@ export default function CustomerPortalGlobeButton({
                         border: 'none',
                         outline: 'none',
                         background: 'transparent',
-                        color: 'var(--text-900, inherit)',
+                        color: 'inherit',
                         fontFamily: 'inherit',
                         fontSize: 'inherit',
                         fontWeight: 600,
@@ -680,7 +680,7 @@ export default function CustomerPortalGlobeButton({
                     {slugLocked ? '' : 'Editable until first shared'}
                   </span>
                   {guess && (
-                    <span style={{ fontSize: '0.72rem', color: guess.grade === 'hard' ? 'var(--text-green-600, #16a34a)' : 'var(--text-amber-600, #d97706)' }}>
+                    <span style={{ fontSize: '0.72rem', color: guess.grade === 'hard' ? 'var(--text-green-600, #16a34a)' : 'var(--text-amber-700)' }}>
                       {slugGuessabilityLabel(guess)}
                     </span>
                   )}

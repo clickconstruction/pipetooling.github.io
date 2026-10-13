@@ -351,7 +351,7 @@ export function JobFormGcPicker({
               gap: '0.35rem',
               padding: '0.35rem 0.75rem',
               fontSize: '0.875rem',
-              border: '1px solid var(--border-blue-soft, var(--border-strong))',
+              border: '1px solid var(--border-strong)',
               background: 'var(--bg-blue-tint)',
               color: 'var(--text-blue-800)',
               borderRadius: 4,

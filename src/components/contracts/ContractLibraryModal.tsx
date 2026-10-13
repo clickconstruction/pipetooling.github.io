@@ -842,7 +842,7 @@ export function ContractLibraryModal({
                   fontWeight: 600,
                   border: 'none',
                   borderRadius: 6,
-                  background: packetDeleting ? 'var(--bg-400)' : '#dc2626',
+                  background: packetDeleting ? 'var(--border-400)' : '#dc2626',
                   color: '#fff',
                   cursor: packetDeleting ? 'not-allowed' : 'pointer',
                 }}

@@ -172,7 +172,7 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
                 <Bar yAxisId="n" dataKey="lost" name="Lost" stackId="c" fill={LOST} isAnimationActive={false} onClick={openBar('lost')} cursor="pointer" />
                 <Bar yAxisId="n" dataKey="open" name="Still open" stackId="c" fill={OPEN} isAnimationActive={false} onClick={openBar('open')} cursor="pointer" />
                 <Bar yAxisId="n" dataKey="openStale" name="Open 120+ days" stackId="c" fill={OPEN_STALE} isAnimationActive={false} onClick={openBar('openStale')} cursor="pointer" radius={[2, 2, 0, 0]} />
-                <Line yAxisId="r" type="monotone" dataKey="rateByCount" name="Win rate by count" stroke="var(--text-primary, currentColor)" strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
+                <Line yAxisId="r" type="monotone" dataKey="rateByCount" name="Win rate by count" stroke="currentColor" strokeWidth={2} dot={{ r: 3 }} connectNulls isAnimationActive={false} />
                 <Line yAxisId="r" type="monotone" dataKey="rateByValue" name="Win rate by value" stroke={VALUE_LINE} strokeWidth={2} strokeDasharray="5 4" dot={{ r: 3 }} connectNulls isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
@@ -196,7 +196,7 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
                 <div style={{ ...tile, cursor: 'default' }}><span style={tileN}>{times.p90Days} d</span><span style={tileL}>slowest 10%</span></div>
               </div>
               <div style={{ marginTop: 8, fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-                {times.byMonth.map((m) => <span key={m.month} style={{ display: 'inline-block', marginRight: 10 }}>{m.label} <b style={{ color: 'var(--text-primary, inherit)' }}>{m.medianDays} d</b> · {m.n}</span>)}
+                {times.byMonth.map((m) => <span key={m.month} style={{ display: 'inline-block', marginRight: 10 }}>{m.label} <b style={{ color: 'inherit' }}>{m.medianDays} d</b> · {m.n}</span>)}
               </div>
             </>
           ) : (
@@ -231,7 +231,7 @@ export function BidsForecastLens({ rows, todayYmd, showRobots, onToggleRobots, r
               )
             })}
           </div>
-          <p style={{ ...sub, margin: '8px 0 0' }}>{whoWords === 'everyone' ? 'Everyone' : whoWords}, all sizes: <b style={{ color: 'var(--text-primary, inherit)' }}>{pct(bandOdds.byCount)} by count · {pct(bandOdds.byValue)} by value</b> ({bandOdds.won} won, {bandOdds.lost} lost).</p>
+          <p style={{ ...sub, margin: '8px 0 0' }}>{whoWords === 'everyone' ? 'Everyone' : whoWords}, all sizes: <b style={{ color: 'inherit' }}>{pct(bandOdds.byCount)} by count · {pct(bandOdds.byValue)} by value</b> ({bandOdds.won} won, {bandOdds.lost} lost).</p>
         </div>
       </div>
 

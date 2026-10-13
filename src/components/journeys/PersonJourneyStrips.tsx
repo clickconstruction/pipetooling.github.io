@@ -18,11 +18,11 @@ const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const PILL: CSSProperties = { font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.12rem 0.55rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', whiteSpace: 'nowrap' }
 
 const TONE: Record<'green' | 'amber' | 'red' | 'blue' | 'gray', CSSProperties> = {
-  green: { background: 'var(--bg-green-50)', borderColor: 'var(--border-green)', color: 'var(--text-green-700)' },
-  amber: { background: 'var(--bg-amber-50)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-700)' },
-  red: { background: 'var(--bg-red-50)', borderColor: 'var(--border-red)', color: 'var(--text-red-700)' },
-  blue: { background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' },
-  gray: { background: 'var(--sunken)', borderColor: 'var(--border)', color: 'var(--text-muted)' },
+  green: { background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-green-700)' },
+  amber: { background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-700)' },
+  red: { background: 'var(--bg-red-tint)', borderColor: 'var(--border-red)', color: 'var(--text-red-700)' },
+  blue: { background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' },
+  gray: { background: 'var(--bg-muted)', borderColor: 'var(--border)', color: 'var(--text-muted)' },
 }
 
 /** The office opens the page the person holds; a same-origin path is opened with the preview flag so it never counts as their visit. */

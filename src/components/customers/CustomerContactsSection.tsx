@@ -158,7 +158,7 @@ export default function CustomerContactsSection({ customerId }: { customerId: st
                 {c.gets_bill_copies === true && (c.email ?? '').trim() ? (
                   <span
                     title="Copied on every bill sent to this customer"
-                    style={{ fontSize: '0.6875rem', fontWeight: 600, background: 'var(--bg-green-tint)', border: '1px solid var(--border-green-300)', borderRadius: 6, padding: '0.05rem 0.45rem', color: 'var(--text-green-700)' }}
+                    style={{ fontSize: '0.6875rem', fontWeight: 600, background: 'var(--bg-green-tint)', border: '1px solid var(--border-green)', borderRadius: 6, padding: '0.05rem 0.45rem', color: 'var(--text-green-700)' }}
                   >
                     gets every bill
                   </span>

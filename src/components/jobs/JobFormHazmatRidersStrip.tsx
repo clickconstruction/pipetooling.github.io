@@ -189,7 +189,7 @@ export function JobFormHazmatRiderRows({
               <td colSpan={3} style={{ padding: '0.5rem 0.75rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem' }}>
               {/* Icon lives INSIDE the title span so the pair never wraps apart. */}
-              <span style={{ fontWeight: 600, color: 'var(--text-800)' }}>
+              <span style={{ fontWeight: 600, color: 'var(--text-gray-800)' }}>
                 <span aria-hidden style={{ color: 'var(--text-red-600)', fontWeight: 700, fontSize: '1.15em', lineHeight: 1, marginRight: '0.4rem', verticalAlign: '-0.05em' }}>☣</span>
                 Biohazard remediation fee — incident {incidentDay}
               </span>

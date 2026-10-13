@@ -30,7 +30,7 @@ export function BridgeWaits({ reflexes, activeId, line, levers, onPress, onReset
         </button>
       </div>
       {leversOpen && (
-        <div role="tooltip" style={{ position: 'absolute', right: 12, top: 44, zIndex: 5, width: 'min(360px, calc(100% - 24px))', background: 'var(--text)', color: 'var(--surface)', padding: '0.7rem 0.85rem', borderRadius: 8, fontSize: '0.82rem', lineHeight: 1.45, boxShadow: '0 12px 32px rgba(0,0,0,0.25)' }} data-testid="bridge-waits-levers">
+        <div role="tooltip" style={{ position: 'absolute', right: 12, top: 44, zIndex: 5, width: 'min(360px, calc(100% - 24px))', background: 'var(--text-base)', color: 'var(--surface)', padding: '0.7rem 0.85rem', borderRadius: 8, fontSize: '0.82rem', lineHeight: 1.45, boxShadow: '0 12px 32px rgba(0,0,0,0.25)' }} data-testid="bridge-waits-levers">
           <div style={{ ...label, color: 'var(--border)', marginBottom: 6 }}>The other links' levers, greyed until the link moves</div>
           {levers.map((l) => (
             <div key={l.id} style={{ padding: '0.2rem 0', borderTop: '1px solid rgba(255,255,255,0.15)' }}>

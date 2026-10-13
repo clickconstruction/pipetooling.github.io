@@ -87,7 +87,7 @@ export default function SubPortalPaySettingsBlock() {
               setDay(e.target.value)
               setDirty(true)
             }}
-            style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', fontSize: '0.875rem', background: 'var(--surface)', color: 'var(--text-900)' }}
+            style={{ padding: '0.4rem 0.5rem', borderRadius: 6, border: '1px solid var(--border-strong)', fontSize: '0.875rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
           >
             <option value="">— not set (portal makes no run-day promise) —</option>
             {DAY_OPTIONS.map((d) => (
@@ -109,7 +109,7 @@ export default function SubPortalPaySettingsBlock() {
           }}
           rows={3}
           placeholder="We run payments every Friday. When your work passes inspection it's queued for the next run…"
-          style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', fontSize: '0.875rem', fontFamily: 'inherit', resize: 'vertical', background: 'var(--surface)', color: 'var(--text-900)' }}
+          style={{ width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', fontSize: '0.875rem', fontFamily: 'inherit', resize: 'vertical', background: 'var(--surface)', color: 'var(--text-strong)' }}
         />
       </label>
       {dirty && (

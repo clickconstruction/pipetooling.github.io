@@ -326,8 +326,8 @@ export function QuickfillVehicleOdometersSection() {
                       style={{
                         ...pillStyle,
                         marginLeft: '0.5rem',
-                        background: row.motorPool ? 'var(--surface-indigo-50)' : 'var(--surface-blue-50, var(--surface-strong))',
-                        color: row.motorPool ? 'var(--text-indigo-700, var(--text-link))' : 'var(--text-link)',
+                        background: row.motorPool ? 'var(--bg-indigo-100)' : 'var(--bg-blue-tint)',
+                        color: row.motorPool ? 'var(--text-link)' : 'var(--text-link)',
                         border: '1px solid var(--border)',
                       }}
                     >

@@ -122,7 +122,7 @@ export type LegalDeskModalProps = {
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
 const NUM: CSSProperties = { fontVariantNumeric: 'tabular-nums', textAlign: 'right', whiteSpace: 'nowrap' }
 const TH: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, padding: '6px 8px', borderBottom: '1px solid var(--border)' }
-const TD: CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--border-subtle)', verticalAlign: 'top', fontSize: '0.84rem' }
+const TD: CSSProperties = { padding: '6px 8px', borderBottom: '1px solid var(--border)', verticalAlign: 'top', fontSize: '0.84rem' }
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
 /** The firm's name in the header, as the door to its window (v2.4711); amber while no firm is set. */
@@ -687,7 +687,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 <div role="tablist" aria-label="Packet sections" style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border)', margin: '16px 0 4px' }}>
                   {TABS.map((t) => (
                     <button key={t} type="button" role="tab" aria-selected={tab === t} onClick={() => setTab(t)}
-                      style={{ border: 'none', background: 'none', padding: '8px 12px', fontSize: '0.84rem', fontWeight: tab === t ? 600 : 500, color: tab === t ? 'var(--text)' : 'var(--text-muted)', borderBottom: tab === t ? '2px solid var(--text)' : '2px solid transparent', cursor: 'pointer' }}>
+                      style={{ border: 'none', background: 'none', padding: '8px 12px', fontSize: '0.84rem', fontWeight: tab === t ? 600 : 500, color: tab === t ? 'var(--text)' : 'var(--text-muted)', borderBottom: tab === t ? '2px solid var(--text-base)' : '2px solid transparent', cursor: 'pointer' }}>
                       {TAB_LABELS[t]}
                     </button>
                   ))}
@@ -731,7 +731,7 @@ export default function LegalDeskModal(props: LegalDeskModalProps) {
                 </div>
                 <label style={{ fontSize: '0.84rem', display: 'block' }}>Handling person at the firm<input value={sheet.handling} onChange={(e) => setSheet({ ...sheet, handling: e.target.value })} placeholder={firm.handling_name || 'Who at the firm takes it'} style={sheetInput} /></label>
                 <div style={{ fontSize: '0.72rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'flex', justifyContent: 'space-between' }}><span>Who hears about it, by their own rules</span><button type="button" onClick={() => setEmailsOpen(true)} style={{ ...btn, height: 22, fontSize: '0.7rem', textTransform: 'none', letterSpacing: 0 }}>Firm’s emails ↗</button></div>
-                {recipients.length ? recipients.map((r) => <div key={r.email} style={{ fontSize: '0.84rem', padding: '5px 0', borderTop: '1px solid var(--border-subtle)' }}>{pill(r.bucket === 'now' ? 'Email now' : r.bucket === 'digest' ? 'In their digest' : r.bucket === 'unconfirmed' ? 'Not confirmed' : 'Not emailed', r.bucket === 'now' ? 'legal' : r.bucket === 'unconfirmed' ? 'warn' : 'neutral')} <b>{r.name}</b> <span style={MUTED}>{r.email} · {r.why}</span></div>) : <p style={{ ...MUTED, fontSize: '0.82rem' }}>Nobody at the firm is on the list — nobody is emailed; the matter still appears on their portal.</p>}
+                {recipients.length ? recipients.map((r) => <div key={r.email} style={{ fontSize: '0.84rem', padding: '5px 0', borderTop: '1px solid var(--border)' }}>{pill(r.bucket === 'now' ? 'Email now' : r.bucket === 'digest' ? 'In their digest' : r.bucket === 'unconfirmed' ? 'Not confirmed' : 'Not emailed', r.bucket === 'now' ? 'legal' : r.bucket === 'unconfirmed' ? 'warn' : 'neutral')} <b>{r.name}</b> <span style={MUTED}>{r.email} · {r.why}</span></div>) : <p style={{ ...MUTED, fontSize: '0.82rem' }}>Nobody at the firm is on the list — nobody is emailed; the matter still appears on their portal.</p>}
                 {firmPaused ? <p style={{ fontSize: '0.82rem', color: '#b42318', margin: '6px 0 0' }}>All emails to the firm are paused — the matter still appears on their portal; nobody is emailed.</p> : null}
                 <div data-legal-ready-floor style={{ fontSize: '0.84rem', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }}>
                   <span>Settlement floor (optional): the firm may settle at</span>

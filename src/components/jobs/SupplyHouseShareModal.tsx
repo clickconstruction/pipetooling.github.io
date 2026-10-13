@@ -505,7 +505,7 @@ export function SupplyHouseShareModal({ open, job, onClose }: { open: boolean; j
             {sectionHead('Property owner', 'what the supply house needs')}
             <div
               style={{
-                border: blocked ? '1.5px solid var(--border-amber-strong, #f59e0b)' : '1px solid var(--border)',
+                border: blocked ? '1.5px solid var(--border-amber)' : '1px solid var(--border)',
                 borderRadius: 8,
                 padding: '0.2rem 0.7rem 0.5rem',
               }}

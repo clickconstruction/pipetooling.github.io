@@ -107,7 +107,7 @@ const statChipStyle = {
   borderRadius: 999,
   padding: '0.1rem 0.55rem',
   border: '1px solid var(--border)',
-  background: 'var(--surface-raised, var(--surface))',
+  background: 'var(--surface)',
   color: 'var(--text-700)',
   whiteSpace: 'nowrap',
 } as const
@@ -446,7 +446,7 @@ export function DashboardCrewDaySection({
                       <span style={{ minWidth: 0 }}>
                         <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{ymd === todayYmd ? 'Today' : 'That day'}:</b> {outcomeLines.get(p.userId)}
                       </span>
-                      <a href={dayBookDoorHref({ from: ymd, to: ymd, person: p.userId })} style={{ color: 'var(--text-blue-600)', textDecoration: 'none', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
+                      <a href={dayBookDoorHref({ from: ymd, to: ymd, person: p.userId })} style={{ color: 'var(--text-link)', textDecoration: 'none', whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
                         Day book →
                       </a>
                     </div>

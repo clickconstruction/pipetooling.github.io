@@ -67,7 +67,7 @@ import { CONTRACT_AREA_HINTS, CONTRACT_AREA_ORDER, CONTRACT_LENS_ORDER, contract
 const CARD: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.85rem 1rem' }
 const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const PILL: CSSProperties = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }
-const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
+const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
 const CHIP: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, padding: '0.05rem 0.45rem', borderRadius: 9999, whiteSpace: 'nowrap', background: 'var(--bg-subtle)', color: 'var(--text-muted)', border: '1px solid var(--border)' }
 const WORDING: CSSProperties = { margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', font: 'inherit', fontSize: '0.8rem', lineHeight: 1.5, color: 'var(--text-700)' }
 const WORDING_BOX: CSSProperties = { background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 8, padding: '0.6rem 0.7rem', overflowY: 'auto' }
@@ -395,7 +395,7 @@ export function SettingsContractsTab({ role, openEntryId = null, onOpenEditor, o
                 const reasons = needsLookReasons(card)
                 const canRead = readerSurfacesFor(entry).length > 0
                 return (
-                  <article key={text.key} id={first ? contractAnchorId(entry.id) : undefined} style={{ borderTop: '1px solid var(--border)', scrollMarginTop: '0.75rem', background: rowOpen ? 'var(--bg-blue-50)' : undefined }} data-testid={`contract-card-${text.key}`} data-open={rowOpen ? 'true' : undefined}>
+                  <article key={text.key} id={first ? contractAnchorId(entry.id) : undefined} style={{ borderTop: '1px solid var(--border)', scrollMarginTop: '0.75rem', background: rowOpen ? 'var(--bg-blue-tint)' : undefined }} data-testid={`contract-card-${text.key}`} data-open={rowOpen ? 'true' : undefined}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem 0.4rem 0.45rem' }}>
                       <button
                         type="button"

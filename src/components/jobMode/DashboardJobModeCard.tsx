@@ -973,7 +973,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
             target="_blank"
             rel="noopener"
             aria-label="My statement — opens your work and pay portal"
-            style={{ display: 'inline-block', padding: '0.4rem 0.9rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-900)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
+            style={{ display: 'inline-block', padding: '0.4rem 0.9rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.9rem', textDecoration: 'none' }}
           >
             My statement ↗
           </a>
