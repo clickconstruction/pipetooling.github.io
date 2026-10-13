@@ -13,7 +13,9 @@ import {
   NO_BOX_FALLBACK,
   orderHitsByBox,
   parseBoxSettings,
+  numberName,
   phoneWords,
+  sendBox,
   stoppedOn,
   stopScope,
   type BoxFallback,
@@ -87,6 +89,12 @@ describe('boxOfInbound', () => {
     expect(boxOfInbound({}, SETTINGS)).toBeNull()
     expect(boxOfInbound({ mailbox: null, toNumberId: 'PNx', toAddress: 'someone@else.example' }, SETTINGS)).toBeNull()
   })
+
+  it('never places words that are not an address on a box with no address yet', () => {
+    const empty: BoxSettings = { team: { address: '', phone: '', numberId: '' }, bids: SETTINGS.bids }
+    expect(boxOfInbound({ toAddress: 'undisclosed-recipients:;' }, empty)).toBeNull()
+    expect(boxOfInbound({ toNumberId: '' }, empty)).toBeNull()
+  })
 })
 
 describe('a STOP per number', () => {
@@ -114,6 +122,15 @@ describe('a STOP per number', () => {
 
   it('reaches both numbers when the STOP came to a number it cannot place', () => {
     expect(stopScope(DANA_CELL, 'stop', null, AT)).toEqual({ channelId: 'dana-phone', boxes: ['team', 'bids'], optedOutByBox: { team: AT, bids: AT } })
+  })
+
+  it('keeps when they first stopped on a STOP again', () => {
+    const stopped = { ...DANA_CELL, optedOutByBox: { team: '2026-10-01T12:00:00.000Z' } }
+    expect(stopScope(stopped, 'stop', 'team', AT).optedOutByBox).toEqual({ team: '2026-10-01T12:00:00.000Z' })
+    const old: StopChannel = { channelId: 'dana-phone', optedOutAt: '2026-09-01T12:00:00.000Z' }
+    expect(stopScope(old, 'stop', 'bids', AT).optedOutByBox).toEqual({ bids: '2026-09-01T12:00:00.000Z' })
+    const started = { ...DANA_CELL, optedOutByBox: { team: null } }
+    expect(stopScope(started, 'stop', 'team', AT).optedOutByBox).toEqual({ team: AT })
   })
 
   it('reads an older STOP from before two numbers as every number, until a box says otherwise', () => {
@@ -235,5 +252,19 @@ describe('Who is this? in the box’s order (orderHitsByBox)', () => {
   it('keeps the order they came in when the box is not known, and never changes the list it was given', () => {
     expect(order(null)).toEqual(hits.map((h) => h.label))
     expect(hits[0]!.label).toBe('Greg Hill')
+  })
+})
+
+describe('the box a text goes from (sendBox, R6 PR 4)', () => {
+  it('sends from the box wanted when it has a number, else from the company number', () => {
+    // As quo-send reads them before the row names a bids number: today's secrets fill the team box.
+    const today: BoxSettings = { team: boxSetting('team', null, SECRETS), bids: boxSetting('bids', null, SECRETS) }
+    expect(sendBox('bids', today)).toBe('team')
+    expect(sendBox('team', today)).toBe('team')
+    expect(sendBox('bids', SETTINGS)).toBe('bids')
+  })
+
+  it('names each number', () => {
+    expect([numberName('team'), numberName('bids')]).toEqual(['the company number', 'the bids number'])
   })
 })

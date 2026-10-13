@@ -73,6 +73,11 @@ export const ENTRIES = {
   // Messages, cut 10: a text's pictures and files kept on arrival (quo-webhook through _shared/quoMedia.ts).
   'lib/quo/mediaKeep.ts': { values: ['quoMediaPlans', 'quoMediaRow', 'mediaToKeep', 'keepsCopy', 'QUO_NOT_COPIED'], types: ['QuoMediaPlan', 'QuoMediaFetch', 'QuoMediaRow'] },
   'lib/quo/send.ts': { values: ['planSend', 'refusalWords', 'sendOver', 'sentQuoId'], types: ['QuoSendInput', 'QuoSendPlan', 'SendPurpose', 'SentLine'] },
+  // Residential R6 (PR 4): the box a call or text came to, the one a text goes from, and a STOP to one number.
+  'lib/messages/boxes.ts': {
+    values: ['BOXES_SETTINGS_KEY', 'boxForReply', 'boxOfInbound', 'boxSetting', 'parseBoxSettings', 'sendBox', 'stopScope', 'stoppedOn'],
+    types: ['BoxFallback', 'BoxSettings', 'Mailbox', 'OptedOutByBox', 'StopChannel'],
+  },
   'lib/quo/rows.ts': {
     values: ['MESSAGE_ROW_COLUMNS', 'contactKindOf', 'contactWords', 'defaultJob', 'jobOf', 'lineFromRow', 'parseQuoSendBody', 'quoSeatUserIds', 'quoSeats', 'rowFromLine', 'seatOf', 'seatsSource'],
     types: ['JobAt', 'MessageColumns', 'MessageRow', 'QuoSendBody'],

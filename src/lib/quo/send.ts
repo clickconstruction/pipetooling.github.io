@@ -4,9 +4,11 @@
  * send, calls Quo's `POST /v1/messages` with the request, and writes the line with the id Quo answers with
  * (`sentQuoId`). The text is `compose.ts`'s `textToSend`: one text, the opt-out line after a blank line when a rule says.
  *
- * Every text goes from the company number, whoever sends it, so a reply lands back in the thread whoever answers. Quo's
- * API sends text only, up to 1,600 characters: a photo goes as a link line, which the caller adds before it asks.
+ * Every text goes from its box's number (R6: the company number, or the bids number once it has one), whoever sends it,
+ * so a reply lands back in the thread whoever answers. Quo's API sends text only, up to 1,600 characters: a photo goes
+ * as a link line, which the caller adds before it asks.
  */
+import { numberName, type Mailbox } from '../messages/boxes'
 import { type ComposeCompany, type LinkLine, type OptoutRecord, optoutReason, textToSend } from '../messages/textOut'
 import type { ThreadMessage } from '../messages/thread'
 import { type QuoLine, toE164 } from './events'
@@ -27,17 +29,19 @@ export interface QuoSendInput {
   channelId: string | null
   /** Their number, as the record has it. */
   to: string | null
-  /** The number sent STOP. */
+  /** The number sent STOP to the box it goes from (`stoppedOn`). */
   optedOut: boolean
   body: string
   links?: readonly LinkLine[]
-  /** Our newest text to this number (ms), or null when we never texted it. */
+  /** Our newest text to this number from this box (ms), or null when we never texted it from there. */
   lastOurTextAt: number | null
   /** The person left the opt-out line off this one text, on the silence reason only. */
   held?: boolean
   now: number
   company: ComposeCompany
-  /** The company number's Quo id (`PN…`): every text's From. */
+  /** The box it goes from (`sendBox`, R6): the line keeps it and names its number. */
+  mailbox: Mailbox
+  /** That box's number's Quo id (`PN…`): the text's From. */
   fromNumberId: string
   /** Who sends it: one of ours, with their Quo user id when they have a seat, or null for the app. */
   sender: { userId: string; quoUserId: string | null; name: string } | null
@@ -59,6 +63,8 @@ export interface SentLine extends Pick<ThreadMessage, 'contactId' | 'jobId' | 'a
   direction: 'out'
   whoUserId: string | null
   optoutLine: OptoutRecord | null
+  /** `messages.mailbox`: the box it went from. */
+  mailbox: Mailbox
 }
 
 export type SendRefusal = 'empty' | 'no-number' | 'not-a-number' | 'stopped' | 'too-long'
@@ -83,9 +89,9 @@ export function refusalWords(refused: SendRefusal, characters = 0): string {
   }
 }
 
-/** Who a sent line names: "Robert · from the company number", or the app's own. */
-export function sentWho(sender: QuoSendInput['sender']): string {
-  return `${sender ? sender.name : 'The app'} · from the company number`
+/** Who a sent line names: "Robert · from the company number", or the app's own, from `box`'s number. */
+export function sentWho(sender: QuoSendInput['sender'], box: Mailbox = 'team'): string {
+  return `${sender ? sender.name : 'The app'} · from ${numberName(box)}`
 }
 
 /**
@@ -119,10 +125,11 @@ export function planSend(input: QuoSendInput): QuoSendPlan {
       channel: 'text',
       direction: 'out',
       at: new Date(input.now).toISOString(),
-      who: sentWho(input.sender),
+      who: sentWho(input.sender, input.mailbox),
       whoUserId: input.sender?.userId ?? null,
       body: sent.text,
       optoutLine: sent.optout,
+      mailbox: input.mailbox,
     },
     segments: sent.segments,
     characters: sent.characters,
@@ -161,5 +168,6 @@ export function sendOver(prev: QuoLine | null, sent: SentLine, quoId: string): Q
     media: prev?.media ?? [],
     optoutLine: sent.optoutLine,
     delivery: prev?.delivery ?? null,
+    mailbox: sent.mailbox,
   }
 }

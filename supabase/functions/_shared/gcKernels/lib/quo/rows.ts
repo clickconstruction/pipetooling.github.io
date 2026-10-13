@@ -3,15 +3,17 @@
 /**
  * Messages, cut 5: a `messages` row and the Quo kernels' line, both ways, for the `quo-webhook` and `quo-send` edge
  * functions. Pure, and copied to the edge with the other Quo kernels (`scripts/edge-kernels.mjs`). The row's columns are
- * the spine's (`20261012010000_messages_spine.sql`) and cut 5's (`20261012170000_quo_messages.sql`).
+ * the spine's (`20261012010000_messages_spine.sql`), cut 5's (`20261012170000_quo_messages.sql`) and R6's `mailbox`
+ * (`20261014003000_messages_two_boxes.sql`).
  */
 import { firstName, type ContactKind } from '../contacts/names.ts'
+import type { Mailbox } from '../messages/boxes.ts'
 import type { OptoutRecord } from '../messages/textOut.ts'
 import { phoneWords, type QuoDelivery, type QuoLine, type QuoPlanContext } from './events.ts'
 
 /** What the webhook selects of a line. */
 export const MESSAGE_ROW_COLUMNS =
-  'id, quo_id, quo_rev, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, body, optout_line, recording_url, transcript, summary, duration_seconds, delivery'
+  'id, quo_id, quo_rev, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, body, optout_line, recording_url, transcript, summary, duration_seconds, delivery, mailbox'
 
 /** The three columns a line's job can sit in, at most one set. */
 export type JobColumn = 'bid_id' | 'project_id' | 'jobs_ledger_id'
@@ -40,6 +42,7 @@ export interface MessageRow {
   summary: string | null
   duration_seconds: number | null
   delivery: string | null
+  mailbox: string | null
 }
 
 /** A job and the column it sits in. */
@@ -66,6 +69,7 @@ export function defaultJob(rows: readonly (Pick<MessageRow, JobColumn> & { is_de
 const LINE_CHANNELS = ['text', 'call', 'missed', 'voicemail'] as const
 const OPTOUT_LINES: readonly string[] = ['first', 'silence', 'held']
 const DELIVERIES: readonly string[] = ['delivered', 'undelivered', 'failed']
+const MAILBOX_SET: ReadonlySet<string> = new Set<Mailbox>(['team', 'bids'])
 
 /**
  * A row as the kernels' line, with the revision the webhook read. Null for a row Quo did not write: no Quo id, or a
@@ -95,6 +99,7 @@ export function lineFromRow(row: MessageRow): { line: QuoLine; rev: number } | n
       media: [],
       optoutLine: OPTOUT_LINES.includes(row.optout_line ?? '') ? (row.optout_line as OptoutRecord) : null,
       delivery: DELIVERIES.includes(row.delivery ?? '') ? (row.delivery as QuoDelivery) : null,
+      mailbox: MAILBOX_SET.has(row.mailbox ?? '') ? (row.mailbox as Mailbox) : null,
     },
   }
 }
@@ -129,6 +134,7 @@ export function rowFromLine(line: QuoLine, jobs: readonly JobAt[]): { ok: true; 
       summary: line.summary,
       duration_seconds: line.durationSeconds,
       delivery: line.delivery,
+      mailbox: line.mailbox,
     },
   }
 }

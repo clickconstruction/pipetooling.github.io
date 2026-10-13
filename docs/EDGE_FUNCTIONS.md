@@ -5068,10 +5068,11 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### quo-webhook
 
-**Purpose**: Messages, cut 5 (v2.5281): every event of the company number on Quo lands in a person's thread. The rules are the kernels in `src/lib/quo/` (`webhook.ts`, `events.ts`, `send.ts`, `rows.ts`, copied to `_shared/gcKernels/`), and the function reads, writes and calls.
+**Purpose**: Messages, cut 5 (v2.5281): every event of our numbers on Quo lands in a person's thread. The rules are the kernels in `src/lib/quo/` (`webhook.ts`, `events.ts`, `send.ts`, `rows.ts`, copied to `_shared/gcKernels/`), and the function reads, writes and calls.
 - **Calls**: completed, missed, voicemail, recording, transcript and summary merge into one line per call, keyed by `messages.quo_id`. Quo promises no order, so every order ends on the same line.
 - **Texts**: a text in is a line. A text of ours that Quo reports (`message.delivered`, `message.failed`, `message.undelivered`) is a line per recipient. That covers a text sent from Quo's own phone app, and our own send's fields always win.
-- **STOP, START and HELP**: Quo stops a number on STOP, STOPALL, UNSUBSCRIBE, CANCEL, END or QUIT and answers it, and START and UNSTOP bring it back. The function mirrors that on `contact_channels.opted_out_at`. It answers only what Quo leaves: HELP and INFO, and the FCC's REVOKE and OPT OUT once, through `quo-send`'s path. A longer text that may ask to stop gets a team note instead.
+- **The box** (residential R6, v2.5469): the event's `phoneNumberId` is matched against Settings' boxes (`app_settings` `messages_boxes_v1`, read by `loadBoxes`, `boxOfInbound`). Until the row names a number, `QUO_PHONE_NUMBER_ID` is the team box's. A number we cannot place is the team box, today's one number. A new line is stamped with its box (`messages.mailbox`), and a line already written keeps its own. A call's words name the number it rang ("rang everyone on the bids number").
+- **STOP, START and HELP**: Quo stops a number on STOP, STOPALL, UNSUBSCRIBE, CANCEL, END or QUIT and answers it, and START and UNSTOP bring it back. The function mirrors that for the one of our numbers it came to, on `contact_channels.opted_out_by_box` (`stopScope`, v2.5469). A word to a number of ours it cannot place reaches both boxes. A STOP again keeps the first stamp. The older `opted_out_at` is read as a STOP to every box and is never written by a new word. It answers only what Quo leaves: HELP and INFO, and the FCC's REVOKE and OPT OUT once, through `quo-send`'s path from the same box's number. A longer text that may ask to stop gets a team note instead.
 - **A text's pictures and files** (Messages, cut 10, v2.5468): kept the moment the text's line is written, since Quo's link to them does not last (`_shared/quoMedia.ts`'s `keepTextMedia`). Each is fetched once (10 s, with `QUO_API_KEY` when Quo's link refuses a plain read) into the private `message-attachments` bucket at `quo/<quo id>/<place>.<ending>` and gets a `message_attachments` row (`quoMediaPlans`, `quoMediaRow`, `src/lib/quo/mediaKeep.ts`). One that does not read, or is over 25 MB, keeps its row marked `quo_not_copied`. A retry keeps nothing twice (`mediaToKeep`). A photo kept on a ticked job then goes to Drive with [photo-save](#photo-save).
 - **A number nobody has** becomes an unknown contact, the Who is this? row, through `quo_place_number`.
 - **The pause** (v2.5352): a `message.delivered` ends a pause for the balance (see `quo-send`), unless a newer text was turned away. A failed or undelivered text never pauses: its `errorCode` is the carrier's raw code, and none names the balance.
@@ -5088,20 +5089,21 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 1. Verify the signature. A refusal is `401` and records nothing.
 2. `quo_webhook_claim` with the `webhook-id`. A repeat is `200`.
 3. `readQuoEvent`. Nothing to do is `200`, with the reason logged.
-4. For each number:
-   - `quo_place_number`;
-   - `planQuoEvent`, merged and written by `quo_write_line` over the revision read (a refused write is read and merged again, five tries);
-   - the STOP mirrored;
+4. The box, from `phoneNumberId` (`loadBoxes`, `boxOfInbound`).
+5. For each number:
+   - `quo_place_number`, with the number's STOP to that box (`stoppedOn`);
+   - `planQuoEvent`, merged and written by `quo_write_line` over the revision read and stamped with the box (a refused write is read and merged again, five tries);
+   - the STOP or START for that box (`writeStops`);
    - a text in: its pictures and files kept on the line (v2.5468);
    - a team event, keyed `<quo id>:event` so a retry never doubles it;
    - the app's answer, last.
-5. `200`. A failure first gives the claim back (`quo_webhook_release`), then answers `500`, so Quo sends it again: eight tries over about 27 and a half hours.
+6. `200`. A failure first gives the claim back (`quo_webhook_release`), then answers `500`, so Quo sends it again: eight tries over about 27 and a half hours.
 
-**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `QUO_WEBHOOK_SECRET`. The HELP answer also needs `quo-send`'s: `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. The seats are read as `quo-send` reads them.
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` and `QUO_WEBHOOK_SECRET`. The HELP answer also needs `quo-send`'s: `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. The seats and the boxes are read as `quo-send` reads them.
 
-**Tables**: `messages` (its Quo columns, `20261012170000_quo_messages.sql`), `message_attachments` and the `message-attachments` bucket (a text's pictures, v2.5468), `contacts` and `contact_channels` (through `quo_place_number`), `contact_jobs` (the star) and `quo_webhook_ids`.
+**Tables**: `messages` (its Quo columns, `20261012170000_quo_messages.sql`, and `mailbox`, `20261014003000_messages_two_boxes.sql`), `message_attachments` and the `message-attachments` bucket (a text's pictures, v2.5468), `contacts` and `contact_channels` (through `quo_place_number`, and `opted_out_by_box`), `contact_jobs` (the star), `app_settings` (the seats and the boxes) and `quo_webhook_ids`.
 
-**Not deployed yet**: it waits on the spine's and cut 5's migrations on prod and on the Quo account (`to-dos/gc-mode/HANDOFF.md` call 4). To enable it:
+**Not deployed yet**: it waits on the spine's and cut 5's migrations on prod and on the Quo account (`to-dos/gc-mode/HANDOFF.md` call 4). v2.5469's boxes ship with it: the GC lead deploys `quo-webhook` and `quo-send` together after their switch PR, and R6's migration (`20261014003000`) is on prod. To enable it:
 1. `supabase functions deploy quo-webhook --no-verify-jwt`.
 2. Quo's `POST /v1/webhooks` (header `Quo-Api-Version: 2026-03-30`), with the company number's id and the ten events above. Keep the `whsec_` key it returns.
 3. `supabase secrets set QUO_WEBHOOK_SECRET=whsec_…`.
@@ -5112,11 +5114,12 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### quo-send
 
-**Purpose**: Messages, cut 5 (v2.5281): a text from the reply box's send window goes out through Quo from the company number. `sendText` (`_shared/quoLines.ts`) is the path the webhook's HELP answer takes too:
-- `planSend` refuses an empty text, a missing or unreadable number, a number that sent STOP and a text past Quo's 1,600 characters.
-- It adds the opt-out line on the first text to a number, or after 30 days since our last text to it. A person may hold it once, on the silence reason.
-- The text is posted to `https://api.quo.com/v1/messages` as `{ content, from: QUO_PHONE_NUMBER_ID, to: [E.164], userId }`, the user being the sender's seat when they have one.
-- The line is written by `quo_write_line` under the id Quo answers with (`sendOver`), so Quo's delivery event, before or after, ends on the same line.
+**Purpose**: Messages, cut 5 (v2.5281): a text from the reply box's send window goes out through Quo from its box's number. `sendText` (`_shared/quoLines.ts`) is the path the webhook's HELP answer takes too:
+- **The box** (residential R6, v2.5469): the one their newest text on this number came to, else the one their kind of contact is for (`boxForReply`). While that box has no number of its own, the text goes from the company number and the line says so (`sendBox`). No caller picks the box yet.
+- `planSend` refuses an empty text, a missing or unreadable number, a number that sent STOP to that box (`stoppedOn`) and a text past Quo's 1,600 characters.
+- It adds the opt-out line on the first text to a number from that box, or after 30 days since our last text to it from there, since a carrier pairs the two numbers. A person may hold it once, on the silence reason.
+- The text is posted to `https://api.quo.com/v1/messages` as `{ content, from: <the box's number id>, to: [E.164], userId }`, the user being the sender's seat when they have one.
+- The line is written by `quo_write_line` under the id Quo answers with (`sendOver`), stamped with the box, so Quo's delivery event, before or after, ends on the same line.
 - **Quo turning a text away** is read by `readQuoRefusal` (`quo/paused.ts`, v2.5352). Quo documents no refusal for an empty prepaid balance, so a `402` (Subscription Expired, `0201402`) or a refusal whose words name money pauses texts. Code `0206400` (A2P registration not approved) and code `0204403` (the A2P 10DLC daily cap) get their own words. Any other `403` is a permission or a setting and never pauses. Each refusal logs Quo's status, code and title.
 - **The pause** is the `app_settings` row `messages_quo_paused_v1`, `{ since, reason, at }`. The functions write it with the service role, and everyone signed in reads it. A text turned away for money pauses texts, and the next text Quo takes ends the pause. `at` is the newest deciding text's own time: a word about an older text changes nothing, either way (`nextPause`). A write goes only over the words it read, three tries (`notePause`), and a word not written is logged without failing the send.
 
@@ -5127,7 +5130,7 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 - a real account (`REAL_ACCOUNT`: never a sample or a digital twin), not `read_only`;
 - `gc_office_team()`, asked as the caller.
 
-**Responses**: `200 { ok: true, messageId, quoId, segments }`. A refusal is `{ ok: false, error, words }`, the words plain for the window:
+**Responses**: `200 { ok: true, messageId, quoId, segments, mailbox }`, `mailbox` being the box it went from. A refusal is `{ ok: false, error, words }`, the words plain for the window:
 - `401 signIn`;
 - `403 readOnly` or `officeOnly`;
 - `400 badRequest`;
@@ -5138,9 +5141,9 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 - `502 quo` (Quo did not take it, for a reason not read above);
 - `503 not-set-up`, or `503 not-registered` ("Texts start once the carriers approve the company number.").
 
-**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. **The seats** (which of Quo's workspace users is which of ours) come from `app_settings` `messages_quo_seats_v1` (Settings → Phone and texts, migration `20261013040000_quo_seats`) once it names a seat; until then from the `QUO_SEATS` secret (`{"US…": "<user id>"}`), which can go once the row is filled (`seatsSource` in `quo/rows.ts`).
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, `QUO_API_KEY`, `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_NAME`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX`. **The boxes** come from `app_settings` `messages_boxes_v1` (R6, `loadBoxes`): `QUO_PHONE_NUMBER_ID`, `QUO_COMPANY_PHONE` and `QUO_COMPANY_MAILBOX` are the team box's until the row names them, and the bids box has no number until it does (`parseBoxSettings`, `boxSetting`). **The seats** (which of Quo's workspace users is which of ours) come from `app_settings` `messages_quo_seats_v1` (Settings → Phone and texts, migration `20261013040000_quo_seats`) once it names a seat; until then from the `QUO_SEATS` secret (`{"US…": "<user id>"}`), which can go once the row is filled (`seatsSource` in `quo/rows.ts`).
 
-**Not deployed yet**: it waits with `quo-webhook`. Quo's API sends no picture messages, so a photo goes as a link line.
+**Not deployed yet**: it waits with `quo-webhook`, and the GC lead deploys the two together after their switch PR. Quo's API sends no picture messages, so a photo goes as a link line.
 
 ---
 

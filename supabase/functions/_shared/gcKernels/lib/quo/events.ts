@@ -13,14 +13,16 @@
  * into it, in any order, to the same line.
  *
  * Quo stops a number by itself on STOP, STOPALL, UNSUBSCRIBE, CANCEL, END or QUIT sent alone, and answers it; START or
- * UNSTOP brings it back, also answered by Quo. The app mirrors both on the number (`contact_channels.opted_out_at`) and
- * answers only what Quo does not: HELP and INFO, and the FCC's REVOKE and OPT OUT.
+ * UNSTOP brings it back, also answered by Quo. The app mirrors both on the number, for the one of our numbers it came to
+ * (`contact_channels.opted_out_by_box`, R6), and answers only what Quo does not: HELP and INFO, and the FCC's REVOKE and
+ * OPT OUT. A line keeps the box it came through (`messages.mailbox`, R6): the webhook finds it from our number's Quo id.
  *
  * A text going out comes back as `message.delivered`, `message.failed` or `message.undelivered`, whether it went from
  * this app or from Quo's own phone app ("Text message sent from workspace", Quo's webhooks page). Our own send writes its
  * line first or second; either way the event only fills what is missing and the send's fields win (`mergeSent` here,
  * `sendOver` in `send.ts`), so the race ends on the same line both ways.
  */
+import { numberName, type Mailbox } from '../messages/boxes.ts'
 import type { ComposeCompany, OptoutRecord } from '../messages/textOut.ts'
 import type { MessageChannel, MessageDirection, ThreadMessage } from '../messages/thread.ts'
 
@@ -374,6 +376,8 @@ export interface QuoLine extends Pick<ThreadMessage, 'contactId' | 'jobId' | 'at
   optoutLine: OptoutRecord | null
   /** `messages.delivery`, cut 5's column: how a text of ours ended, once Quo says. */
   delivery: QuoDelivery | null
+  /** `messages.mailbox`, R6's column: the box it came in on or went out from. Null on a line from before two boxes. */
+  mailbox: Mailbox | null
 }
 
 /** What the webhook found before it asks what to write. */
@@ -394,13 +398,18 @@ export interface QuoPlanContext {
   existing: QuoLine | null
   /** On a text of ours: the number this line is for. A group text from Quo's app is one plan per number. */
   recipient?: string | null
+  /**
+   * R6: the box the event came to, by our number's Quo id (`boxOfInbound`), else the team box, today's one number. A new
+   * line takes it; a line already written keeps its own. `optedOut` is the number's STOP to this box.
+   */
+  mailbox: Mailbox
 }
 
 /** What the webhook does with one event. */
 export interface QuoPlan {
   /** The line to write, upserted by `quoId`. Null when the event adds nothing to the thread. */
   line: QuoLine | null
-  /** The number's opt-out after this event: out sets `opted_out_at`, in clears it, null leaves it. */
+  /** The number's opt-out after this event, for the box it came to (`stopScope`): out stops it, in starts it, null leaves it. */
   optout: 'out' | 'in' | null
   /** The app's own text back, sent through `send.ts`: an answer to HELP, or the one confirmation of a stop. */
   answer: { body: string; purpose: 'answer' | 'confirm' } | null
@@ -443,6 +452,7 @@ function planText(t: Extract<QuoReading, { kind: 'text' }>, ctx: QuoPlanContext)
     media: t.media,
     optoutLine: null,
     delivery: null,
+    mailbox: ctx.mailbox,
   }
   const key = keywordOf(t.body)
   const who = ctx.contactWords
@@ -512,19 +522,20 @@ function earliest(a: string | null | undefined, b: string): string {
   return tb < ta ? b : a
 }
 
-/** The words for who on a call line. */
-export function callWho(channel: CallChannel, direction: 'in' | 'out', name: string | null, status?: QuoCallStatus): string {
-  if (channel === 'voicemail') return 'rang everyone on the company number'
+/** The words for who on a call line, naming the number it rang (`box`, R6). */
+export function callWho(channel: CallChannel, direction: 'in' | 'out', name: string | null, status?: QuoCallStatus, box: Mailbox = 'team'): string {
+  const number = numberName(box)
+  if (channel === 'voicemail') return `rang everyone on ${number}`
   if (channel === 'missed') return 'rang everyone · no voicemail'
   if (direction === 'out') {
-    const caller = name ? `${name} called` : 'called from the company number'
+    const caller = name ? `${name} called` : `called from ${number}`
     if (status === 'failed') return `${caller} · it did not go through`
     if (status === 'unanswered' || status === 'abandoned') return `${caller} · no answer`
     return caller
   }
   if (status === 'ai-handled') return 'Quo’s assistant answered'
-  if (status === 'forwarded') return 'forwarded from the company number'
-  return name ? `${name} answered` : 'answered on the company number'
+  if (status === 'forwarded') return `forwarded from ${number}`
+  return name ? `${name} answered` : `answered on ${number}`
 }
 
 /** A transcript as the thread keeps it: one turn a line, each with who spoke. */
@@ -563,9 +574,10 @@ export function mergeCall(prev: QuoLine | null, r: CallReading, ctx: QuoPlanCont
   const whoUserId = nobodyAnswered ? null : (user?.userId ?? prev?.whoUserId ?? null)
   const name = user?.name ?? (prev?.whoUserId ? (Object.values(ctx.users).find((u) => u.userId === prev.whoUserId)?.name ?? null) : null)
   const channelMoved = channel !== prevChannel
+  const mailbox = prev?.mailbox ?? ctx.mailbox
   const who =
     r.kind === 'call' || channelMoved || !prev || (user && user.userId !== prev.whoUserId)
-      ? callWho(channel, direction, name, r.kind === 'call' ? r.status : undefined)
+      ? callWho(channel, direction, name, r.kind === 'call' ? r.status : undefined, mailbox)
       : prev.who
   const transcript =
     r.kind === 'transcript' ? transcriptWords(r.dialogue, ctx) || prev?.transcript || null : r.kind === 'voicemail' ? (r.transcript ?? prev?.transcript ?? null) : (prev?.transcript ?? null)
@@ -599,6 +611,7 @@ export function mergeCall(prev: QuoLine | null, r: CallReading, ctx: QuoPlanCont
     media: prev?.media ?? [],
     optoutLine: null,
     delivery: null,
+    mailbox,
   }
 }
 
@@ -619,10 +632,10 @@ export function strongerDelivery(a: QuoDelivery | null, b: QuoDelivery): QuoDeli
   return a && DELIVERY_RANK[a] >= DELIVERY_RANK[b] ? a : b
 }
 
-/** The words for who sent a text the app did not send itself: one of ours by their seat, or Quo's app. */
-export function quoSentWho(userId: string | null, users: QuoPlanContext['users']): string {
+/** The words for who sent a text the app did not send itself: one of ours by their seat, or Quo's app, from `box`'s number. */
+export function quoSentWho(userId: string | null, users: QuoPlanContext['users'], box: Mailbox = 'team'): string {
   const name = userId ? users[userId]?.name : undefined
-  return `${name ?? 'Quo’s app'} · from the company number`
+  return `${name ?? 'Quo’s app'} · from ${numberName(box)}`
 }
 
 /** The team event when a text of ours did not arrive, with the code Quo passed. */
@@ -646,7 +659,7 @@ export function mergeSent(
   const recipient = ctx.recipient ?? r.recipients[0] ?? ''
   const delivery = strongerDelivery(prev?.delivery ?? null, r.outcome)
   const event = delivery !== prev?.delivery ? deliveryWords(delivery, ctx.contactWords, r.errorCode) : null
-  if (prev) return { line: { ...prev, delivery, media: prev.media.length ? prev.media : r.media }, event }
+  if (prev) return { line: { ...prev, delivery, media: prev.media.length ? prev.media : r.media, mailbox: prev.mailbox ?? ctx.mailbox }, event }
   return {
     line: {
       quoId: sentKey(r, recipient),
@@ -656,7 +669,7 @@ export function mergeSent(
       channel: 'text',
       direction: 'out',
       at: r.at,
-      who: quoSentWho(r.userId, ctx.users),
+      who: quoSentWho(r.userId, ctx.users, ctx.mailbox),
       whoUserId: (r.userId && ctx.users[r.userId]?.userId) || null,
       body: r.body || mediaWords(r.media),
       recordingUrl: null,
@@ -666,6 +679,7 @@ export function mergeSent(
       media: r.media,
       optoutLine: null,
       delivery,
+      mailbox: ctx.mailbox,
     },
     event,
   }
