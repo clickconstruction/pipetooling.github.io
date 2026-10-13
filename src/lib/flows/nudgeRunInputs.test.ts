@@ -79,6 +79,13 @@ describe('appSendsFrom: the owner’s switch as stored', () => {
     })
   })
 
+  it('reads the row’s value_text as stored, and text that is not JSON as off', () => {
+    expect(appSendsFrom('{}')).toEqual({})
+    expect(appSendsFrom('{"trade":{"portal":true}}')).toEqual({ trade: { portal: true } })
+    expect(appSendsFrom('{"trade":{"portal":"true"}}')).toEqual({})
+    for (const text of ['', 'true', 'trade.portal', '{"trade":']) expect(appSendsFrom(text)).toEqual({})
+  })
+
   it('keeps the same step id apart under two kinds', () => {
     expect(appSendsFrom({ customer: { yes: true }, trade: { yes: false } })).toEqual({ customer: { yes: true } })
   })

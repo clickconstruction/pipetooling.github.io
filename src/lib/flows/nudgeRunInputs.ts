@@ -76,7 +76,7 @@ export interface NudgeRunRows {
   portals?: Readonly<Partial<Record<string, PortalReadBackRow>>>
   /** A customer's live portal link, by customer id, when the run can give one. */
   customerLinks?: Readonly<Partial<Record<string, string>>>
-  /** The switch's `app_settings` value as stored. */
+  /** The switch's `app_settings` `value_text` as stored, or its value already parsed. */
   appSends: unknown
 }
 
@@ -93,9 +93,22 @@ export interface NudgeRunReads {
 
 // ---------- the pieces ----------
 
-/** The owner's switch as stored: only a `true` under a known kind and a step id turns a step on. */
-export function appSendsFrom(value: unknown): AppSends {
+/** The stored text read as JSON; null when it does not read. */
+const parsed = (text: string): unknown => {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * The owner's switch as stored (`value_text`, or its value already parsed): only a `true` under a known kind and a step
+ * id turns a step on. Text that does not read as JSON is off for every step.
+ */
+export function appSendsFrom(stored: unknown): AppSends {
   const out: AppSends = {}
+  const value = typeof stored === 'string' ? parsed(stored) : stored
   if (!value || typeof value !== 'object' || Array.isArray(value)) return out
   for (const kind of FLOW_KINDS) {
     const steps = (value as Record<string, unknown>)[kind]
