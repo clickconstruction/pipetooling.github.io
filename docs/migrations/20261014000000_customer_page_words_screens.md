@@ -1,4 +1,4 @@
-# 20261013060000_customer_page_words_screens.sql (2026-10-12, v2.5303)
+# 20261014000000_customer_page_words_screens.sql (2026-10-12, v2.5303)
 
 Messages, cut 8b-i (the customer's page on a GC job): the sentences the page's screens add to `customer_page_words`, which [20261012130000_portal_customer_page](20261012130000_portal_customer_page.md) created and first seeded.
 
