@@ -129,7 +129,7 @@ In the order that each unblocks the next. Numbers are the mockups' card numbers.
 | 1 | The app's own emails in the thread | 1 | `messages/sentCopies.ts` reads `sent_documents` by contact into folded **the app** lines with read and paid stamps; `sent_documents.contact_id` set by every sender (cut 7) |
 | 4 | Voicemails read | 1 | the transcript as the line (`QuoLine.transcript` and `summary`, not yet on `ThreadMessage`); `heardDay` finds the phrase with `readDay` over short runs of words and a small time reader; **Keep the day** writes cut 2's `message_promises` offered row through `dayKept` (helper 9's prepare note, 2026-10-13) |
 | 6 | They owe us on Follow up | 1 | `followUp/queue.ts` → `theyOweUs(bills)` from the AR page's reads; the bill's reminder as the step's quick reply, sent by the morning run at the terms |
-| 2 | Reports and photos | 1 | the report as a source in `documents/jobFiles.ts`; **Attach from the report** on the send; a photo reply filed by cut 6 |
+| 2 | Reports and photos | 1 | **parked 2026-10-13, the owner's call**: a field report has no photos on main (`report_template_fields.input_type` is long_text, percent or signature; no photo table, no Drive column, no upload). It needs a photo field and a store first, then the report as a `source: 'report'` in `documents/jobFiles.ts` (kind `image`, home by where the bytes live, keyed `drive:<id>`), **Attach from the report** on the send, and one link line per photo unless `linkLines` learns a grouped link; a photo reply is cut 6's (helper 7's read, 2026-10-13) |
 | 7 | The Lien desk's sends | 1 | a `legal` line kind from the desk's sent rows, read-only, the box off under it, the reply to the office alone |
 | 8 | A line on an estimate from a message | 2 | the column (SQL); the ⋯ press through `estimates/lineFromMessage.ts`, cut 4b's kernel with the estimate's form; never called an add-on, which is Estimates' option kind (helper 6, 2026-10-13) |
 | 3 | Dispatch writes back | 2 | `dispatch/whatSlides.ts` (the stops that move and by how much); the ask on the send, the move RPC with its reason, the dispatcher told |
@@ -191,6 +191,7 @@ From the prototype's screen 5, with the lean each cut builds to unless told othe
 5. **team@ or office@** (R6): office@ is on the letterhead, the lien reply-to and the website terms today; whichever is chosen goes everywhere.
 6. **Which reminders start on** (R4): the estimate and the bill; the review ask after ten real threads.
 7. **The Job activity switch's default** (R1): on for the office, off on the phone.
+8. **Photos on a field report** (R8 · 2): main keeps none. Adding a photo field to reports is its own small cut (the input type, a store, the upload from Job Mode) before the thread can offer them to a customer. Yes, later, or no?
 
 ## 8. How a cut is done
 
