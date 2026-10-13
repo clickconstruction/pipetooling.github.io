@@ -4110,6 +4110,23 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   .lienRunTable .lienRunMonths, .lienRunTable .lienRunFor { font-size: 0.75rem; }
   .lienRunFootHint { flex: 1 1 100%; order: -1; }
 }
+/* Lien desk → the run's journey (Run-2, the run shown not told): six nodes across the top, a count under each, the blocker on the node it blocks, the fill as far as every envelope has come. Two rows of three on a phone. */
+.lienRunJourney { display: grid; grid-template-columns: repeat(6, 1fr); padding: 0.7rem 1.25rem 0.55rem; border-bottom: 1px solid var(--border); position: relative; }
+.lienRunJourney::before { content: ""; position: absolute; left: calc(1.25rem + 8.3%); right: calc(1.25rem + 8.3%); top: calc(0.7rem + 13px); height: 3px; background: var(--border); }
+.lienRunJourneyFill { position: absolute; left: calc(1.25rem + 8.3%); top: calc(0.7rem + 13px); height: 3px; background: var(--text-green-700); max-width: calc(83.4% - 2.5rem); }
+.lienRunJourneyNode { position: relative; text-align: center; font-size: 0.7rem; color: var(--text-muted); min-width: 0; }
+.lienRunJourneyDot { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--border); background: var(--surface); margin: 0 auto 4px; display: grid; place-items: center; font-weight: 700; font-size: 0.72rem; color: var(--text-muted); }
+.lienRunJourneyNode-done .lienRunJourneyDot { border-color: var(--text-green-700); background: var(--text-green-700); color: var(--surface); }
+.lienRunJourneyNode-now .lienRunJourneyDot { border-color: var(--text-link); color: var(--text-link); box-shadow: 0 0 0 4px var(--bg-blue-tint); }
+.lienRunJourneyNode-blocked .lienRunJourneyDot { border-color: var(--border-amber); color: var(--text-amber-700); background: var(--bg-amber-tint); }
+.lienRunJourneyNode b { display: block; color: var(--text-base); font-size: 0.76rem; }
+.lienRunJourneyNode-now b { color: var(--text-strong); }
+.lienRunJourneyCount { display: block; }
+.lienRunJourneyWarn { color: var(--text-amber-700); font-weight: 600; }
+@media (max-width: 640px) {
+  .lienRunJourney { grid-template-columns: repeat(3, 1fr); row-gap: 0.5rem; }
+  .lienRunJourney::before, .lienRunJourneyFill { display: none; }
+}
 /* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */
 .lienFootRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; }
 .lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; flex: 1 1 12rem; }
