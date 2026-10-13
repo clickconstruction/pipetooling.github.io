@@ -75,7 +75,7 @@ SELECT rfl.same('the eleven facts come last, after named',
 SELECT rfl.same('the estimate and the bill are the last papers',
   (SELECT array_to_string(x[array_length(x, 1) - 1:], ',') FROM (SELECT public.flow_paper_ids() AS x) p), 'estimate,bill');
 SELECT rfl.same('a step may pick them', concat_ws('|',
-  public.flow_facts_ok(ARRAY['booked', 'review_asked']), public.flow_papers_ok(ARRAY['estimate', 'bill'])), 'true|true');
+  public.flow_facts_ok(ARRAY['booked', 'review_asked'])::text, public.flow_papers_ok(ARRAY['estimate', 'bill'])::text), 'true|true');
 
 -- 3 · The kinds a flow is for.
 INSERT INTO public.flows (kind, name) VALUES ('sub', 'Sub flow');
