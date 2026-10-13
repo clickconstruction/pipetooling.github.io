@@ -92,7 +92,7 @@ export const ENTRIES = {
     types: ['NotifySettings', 'Push', 'PushSentRow', 'ReplyHas', 'ReplyLine'],
   },
   'lib/messages/notifyPlan.ts': {
-    values: ['NOTIFY_LINES_MAX', 'PUSH_KINDS', 'planReplyPushes', 'sweepSince'],
+    values: ['NOTIFY_LINES_MAX', 'PUSH_KINDS', 'REPLY_PUSH_ON_KEY', 'planReplyPushes', 'sweepSince'],
     types: ['NotifyPlan', 'NotifyPlanInput', 'PlanContact', 'PlanLine', 'PlanOut', 'PlanUser'],
   },
 }

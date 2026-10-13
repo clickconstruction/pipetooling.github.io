@@ -152,6 +152,6 @@ export { legalLines, legalSendsFromDemandLetters, legalSendsFromFilings, routeRe
 export type { LegalLine, LegalRoute, LegalSend } from './lib/messages/legalRoute.ts'
 export { OFFICE_WAIT_KEY, OFFICE_WAIT_MINUTES, PUSH_CHANNELS, answeredBefore, pushDue, pushSentRow, pushesFor } from './lib/messages/notifyRule.ts'
 export type { NotifySettings, Push, PushSentRow, ReplyHas, ReplyLine } from './lib/messages/notifyRule.ts'
-export { NOTIFY_LINES_MAX, PUSH_KINDS, planReplyPushes, sweepSince } from './lib/messages/notifyPlan.ts'
+export { NOTIFY_LINES_MAX, PUSH_KINDS, REPLY_PUSH_ON_KEY, planReplyPushes, sweepSince } from './lib/messages/notifyPlan.ts'
 export type { NotifyPlan, NotifyPlanInput, PlanContact, PlanLine, PlanOut, PlanUser } from './lib/messages/notifyPlan.ts'
 export type { GcProject, GcState } from './lib/gc/types.ts'

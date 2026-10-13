@@ -24,6 +24,12 @@ import { legalLines, routeReply, standingLegalLine, type LegalSend } from './leg
 import { answeredBefore, OFFICE_WAIT_MINUTES, pushDue, pushesFor, type Push, type PushSentRow, type ReplyHas, type ReplyLine } from './notifyRule.ts'
 import type { MessageChannel, MessageDirection } from './thread.ts'
 
+/**
+ * The owner's switch (`app_settings`, R5's PR 3 makes the row, 'false'): nothing pushes until it reads 'true'. The cron
+ * posts only while it is on, and the function checks it too, so a writer's call sends nothing while it is off.
+ */
+export const REPLY_PUSH_ON_KEY = 'messages_reply_push_on_v1'
+
 /** The kinds whose lines push for now, the owner's call: a customer's, a lead's and a sub's. */
 export const PUSH_KINDS: ReadonlySet<string> = new Set(['customer', 'lead', 'sub'])
 

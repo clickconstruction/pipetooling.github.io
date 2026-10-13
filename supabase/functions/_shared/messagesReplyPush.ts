@@ -4,15 +4,16 @@
 // line in message_id, so no line is pushed twice. It writes nothing to contacts.
 //
 // Two bodies, server to server with X-Cron-Secret: { message_ids: [...] } (1 to 50, for a line's writer right after
-// its insert; the writers call it in a later PR) and { sweep: true } (the cron, R5's PR 3, every minute behind a switch
-// that ships off). The sweep reads the lines in from the last wait plus thirty minutes plus five (sweepSince).
+// its insert; the writers call it in a later PR) and { sweep: true } (the cron, R5's PR 3, every minute). Both send
+// nothing while the owner's switch (REPLY_PUSH_ON_KEY, R5's PR 3, 'false' as it ships) is off. The sweep reads the lines
+// in from the last wait plus thirty minutes plus five (sweepSince).
 // deno-lint-ignore-file no-explicit-any
 // The kernels straight from the copy, not its index: the index re-exports every kernel in it, which the check would
 // then walk too.
 import { ASSIGN_RULE_KEY, parseAssignSeats } from './gcKernels/lib/followUp/assignSeats.ts'
 import { OFFICE_HOURS_KEY, parseOfficeHours } from './gcKernels/lib/messages/hasRule.ts'
 import { legalSendsFromDemandLetters, legalSendsFromFilings, type LegalSend } from './gcKernels/lib/messages/legalRoute.ts'
-import { NOTIFY_LINES_MAX, planReplyPushes, PUSH_KINDS, sweepSince, type PlanContact, type PlanLine, type PlanOut, type PlanUser } from './gcKernels/lib/messages/notifyPlan.ts'
+import { NOTIFY_LINES_MAX, planReplyPushes, PUSH_KINDS, REPLY_PUSH_ON_KEY, sweepSince, type PlanContact, type PlanLine, type PlanOut, type PlanUser } from './gcKernels/lib/messages/notifyPlan.ts'
 import { OFFICE_WAIT_KEY, PUSH_CHANNELS, pushSentRow, type Push } from './gcKernels/lib/messages/notifyRule.ts'
 import { MESSAGES_OFFICE_ROLES, MESSAGES_TECH_ROLES } from './messagesTeams.ts'
 import { REAL_ACCOUNT } from './realAccount.ts'
@@ -41,6 +42,8 @@ export function readReplyPushBody(json: unknown): ReplyPushBody | { error: strin
 }
 
 export interface ReplyPushResult {
+  /** The owner's switch is off (or its row is not there yet): nothing was read or sent. */
+  off?: true
   lines: number
   /** Pushes sent, one a push however many people it reached. */
   sent: number
@@ -59,8 +62,13 @@ const LINE_COLUMNS = 'id, contact_id, channel, direction, at, body, subject'
 export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: PushToPerson, now: string = new Date().toISOString()): Promise<ReplyPushResult> {
   const empty: ReplyPushResult = { lines: 0, sent: 0, reached: 0, waiting: 0, answered: 0, late: 0 }
 
-  const { data: settingRows } = await admin.from('app_settings').select('key, value_text, value_num').in('key', [ASSIGN_RULE_KEY, OFFICE_HOURS_KEY, OFFICE_WAIT_KEY])
+  const { data: settingRows } = await admin
+    .from('app_settings')
+    .select('key, value_text, value_num')
+    .in('key', [REPLY_PUSH_ON_KEY, ASSIGN_RULE_KEY, OFFICE_HOURS_KEY, OFFICE_WAIT_KEY])
   const setting = (key: string) => ((settingRows ?? []) as Array<{ key: string; value_text: string | null; value_num: number | null }>).find((r) => r.key === key)
+  // The owner's switch, for a writer's call as for the cron's: off until it reads 'true'.
+  if (setting(REPLY_PUSH_ON_KEY)?.value_text !== 'true') return { ...empty, off: true }
   const waitRaw = setting(OFFICE_WAIT_KEY)?.value_num
   const waitMinutes = typeof waitRaw === 'number' && Number.isFinite(waitRaw) ? waitRaw : null
 
