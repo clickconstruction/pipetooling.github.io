@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import type { QuickReply } from './kernel'
-import { SPANISH_WORDS, lineMarks, spanishOffered } from './spanish'
+import { IN_SPANISH, SPANISH_WORDS, lineMarks, lineWords, spanishOffered } from './spanish'
 
 const line = (set: Partial<QuickReply>): QuickReply => ({
   id: 'r2',
@@ -33,6 +33,15 @@ describe('a line’s Spanish', () => {
   it('gives a line for anyone else no Spanish mark, and a line of my own its mine mark', () => {
     expect(lineMarks(line({ for: 'trade', stepId: 'ask', phoneOrder: 1 }))).toEqual({ phone: false, es: null, mine: false })
     expect(lineMarks(line({ scope: 'mine', phoneOrder: 2 }))).toEqual({ phone: false, es: 'no es', mine: true })
+  })
+
+  it('reads a line in the language given, its English when it has no Spanish', () => {
+    const es = '{first}, le habla {me} de Click Plumbing. Vamos en camino.'
+    expect(lineWords(line({ textEs: es }), 'es')).toBe(es)
+    expect(lineWords(line({ textEs: es }), 'en')).toBe(line({}).text)
+    expect(lineWords(line({ textEs: '  ' }), 'es')).toBe(line({}).text)
+    expect(lineWords(line({}), 'es')).toBe(line({}).text)
+    expect(IN_SPANISH).toBe('in Spanish')
   })
 
   it('says its words plainly', () => {

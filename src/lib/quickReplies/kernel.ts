@@ -183,7 +183,7 @@ export interface QrGroupsInput {
  * A thread's lines in their groups. A line fits when it is for their kind or for anyone and holds the narrowed words.
  * An unknown number's lines are all for anyone, so they show once, under Anyone; the prototype listed them twice, as
  * "Lines" and "Anyone", and counted them twice in the head. On the strip, a line on another flow of their kind stays in
- * Find, as the residential prototype's strip leaves it.
+ * Find, as the residential prototype's strip leaves it. The narrowed words find a line by its English or its Spanish.
  */
 export function qrGroups(lines: readonly QuickReply[], input: QrGroupsInput): QrGroup[] {
   const kind = qrKindOf(input.kind)
@@ -191,7 +191,7 @@ export function qrGroups(lines: readonly QuickReply[], input: QrGroupsInput): Qr
   const flowOf = (q: QuickReply) => input.steps.find((s) => s.id === q.stepId)?.flow
   const otherFlow = (q: QuickReply) => input.place !== 'find' && Boolean(input.flow) && Boolean(flowOf(q)) && flowOf(q) !== input.flow
   const rows = qrVisible(lines, input.me)
-    .filter((q) => (q.for === kind || q.for === 'any') && (!needle || q.text.toLowerCase().includes(needle)) && !otherFlow(q))
+    .filter((q) => (q.for === kind || q.for === 'any') && (!needle || q.text.toLowerCase().includes(needle) || (q.textEs ?? '').toLowerCase().includes(needle)) && !otherFlow(q))
     .sort(qrOrder(input.me))
   const now = input.nowStepId
   const onStep = (q: QuickReply) => Boolean(now) && q.stepId === now

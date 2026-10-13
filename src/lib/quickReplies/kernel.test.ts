@@ -333,6 +333,13 @@ describe('the steps of each flow, a customer’s two among them (R3)', () => {
     expect(qrTagWords({ for: 'customer', stepId: 'booked' }, STEPS)).toEqual(['for customers', 'on Booked'])
   })
 
+  it('narrows the strip by a line’s Spanish as well as its English', () => {
+    const lines = [...LINES, { ...RES[1]!, textEs: '{first}, le habla {me} de Click Plumbing. Vamos en camino.' }]
+    const dana = { kind: 'customer' as const, nowStepId: 'working', steps: STEPS.customer ?? [], me: 'rosa' }
+    expect(qrGroups(lines, { ...dana, filter: 'camino' }).flatMap((g) => ids(g.rows))).toEqual(['r2'])
+    expect(qrGroups(lines, { ...dana, filter: 'on our way' }).flatMap((g) => ids(g.rows))).toEqual(['r2'])
+  })
+
   it('leaves a line on the other flow off a customer’s strip, and keeps it in Find', () => {
     const lines = [...LINES, ...RES]
     const dana = { kind: 'customer' as const, nowStepId: 'working', steps: STEPS.customer ?? [], me: 'rosa' }

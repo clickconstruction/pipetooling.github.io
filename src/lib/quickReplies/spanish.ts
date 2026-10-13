@@ -6,9 +6,14 @@
  * A line for customers carries its words in English and, once someone writes it, in Spanish (`quick_replies.text_es`).
  * A customer who reads Spanish gets the Spanish when it is there, else the English (`phone.ts`'s `wordsFor`). The
  * editor marks a customer line with no Spanish **no es**, so the office sees the gap and fills it.
+ *
+ * The strip and *Find a reply* show a line in the language the person reads (`lineWords`), from `customerLang`, which
+ * holds Spanish behind the owner's one switch, `PORTAL_SPANISH_ON`. Until it is on, every line reads English.
  */
 
+import type { PortalLang } from '../gc/portalI18n'
 import { onThePhone, type QuickReply } from './kernel'
+import { wordsFor } from './phone'
 
 /** The editor offers a Spanish box on a line for customers, the people who read the Spanish. */
 export function spanishOffered(line: Pick<QuickReply, 'for'>): boolean {
@@ -29,6 +34,17 @@ export function lineMarks(line: QuickReply): LineMarks {
     mine: line.scope === 'mine',
   }
 }
+
+/**
+ * A line's words in a language: its Spanish when that is the language and it has Spanish, else its English. The pick is
+ * `phone.ts`'s `wordsFor`, read from a line that may predate R3's columns.
+ */
+export function lineWords(line: Pick<QuickReply, 'text' | 'textEs'>, lang: PortalLang): string {
+  return wordsFor({ text: line.text, textEs: line.textEs ?? null }, lang)
+}
+
+/** The strip's count gains this while it shows the Spanish: "3 for customers · in Spanish". */
+export const IN_SPANISH = 'in Spanish'
 
 /** The Spanish box's words. */
 export const SPANISH_WORDS = {
