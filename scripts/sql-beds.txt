@@ -33,6 +33,7 @@ drive-links
 flow-draws
 contract-clauses
 gc-clause-papers
+flow-papers
 portal-customer-page
 customer-portal-papers
 merge-customers
