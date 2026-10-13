@@ -174,7 +174,8 @@ vi.mock('../lib/gc/tradeEmailIo', () => ({
 }))
 
 // Follow up's own reads (Messages, cut 2, v2.5289): two people waiting on us, Greg's text and a number nobody has named.
-// The badge is theirs; the asks keep everyone we wait on for their own heading.
+// The badge is theirs; the asks keep everyone we wait on for their own heading. Nobody is on either conversation, so
+// both wait in New (residential R7, v2.5477), not in Needs a reply.
 vi.mock('../lib/followUp/followUpIo', async (orig) => {
   const actual = await orig<typeof import('../lib/followUp/followUpIo')>()
   const contact = (id: string, kind: string, patch: Record<string, unknown> = {}) => ({
@@ -516,7 +517,8 @@ describe('GcProjects: the Project Board', () => {
     // The badge counts the people waiting on us (v2.5289); everyone we wait on heads the asks under them.
     fireEvent.click(screen.getByRole('button', { name: 'Follow up (2)' }))
     expect(screen.getByRole('heading', { name: 'Follow up' })).toBeTruthy()
-    expect(await screen.findByRole('heading', { name: 'Needs a reply (2)' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'New (2)' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Needs a reply (0)' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'We are waiting on them (1)' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Late on their word (1)' })).toBeTruthy()
   })
