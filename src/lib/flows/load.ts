@@ -713,9 +713,9 @@ export function visitStamps(rows: ResidentialRows, jobId: string): FactStamp[] {
   return out
 }
 
-/** `estimate_sent` (the newest estimate that went, a change order aside) and `estimate_approved` (their yes on one). */
+/** `estimate_sent` (the newest estimate that went; a change order or a bid proposal is not one) and `estimate_approved` (their yes on one). */
 export function estimateStamps(rows: ResidentialRows, jobId: string): FactStamp[] {
-  const estimates = (rows.estimates ?? []).filter((e) => e.job_ledger_id === jobId && e.doc_kind !== 'change_order' && e.status !== 'draft')
+  const estimates = (rows.estimates ?? []).filter((e) => e.job_ledger_id === jobId && e.doc_kind === 'estimate' && e.status !== 'draft')
   const out: FactStamp[] = []
   const sent = newest(estimates.filter((e) => e.sent_at), (e) => e.sent_at)
   if (sent) out.push(stamp('estimate_sent', 'ok', sent.sent_at))

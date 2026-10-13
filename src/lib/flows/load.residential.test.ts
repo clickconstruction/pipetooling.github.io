@@ -9,7 +9,7 @@ import type {
   PipelinePaymentRow,
   ResidentialRows,
 } from './load'
-import { billedRounds, isOnOurWayText, isReviewAskText, paidRounds, residentialStampsFor, statusStamps, visitStamps } from './load'
+import { billedRounds, estimateStamps, isOnOurWayText, isReviewAskText, paidRounds, residentialStampsFor, statusStamps, visitStamps } from './load'
 import { SEED_FLOWS } from './seed'
 import type { FlowReading } from './state'
 import { readFlow } from './state'
@@ -232,6 +232,18 @@ describe('residentialStampsFor', () => {
     expect(laneOn(read(rows), 'job-1400')).toBe(
       'head onway · booked:done onway:now arrived:next found:later estimate:later approved:later working:later done:later billed:later paid:later review:later',
     )
+  })
+
+  it('a change order or a bid proposal that went is not the estimate', () => {
+    const rows: ResidentialRows = {
+      ...base(),
+      jobs: [job({ id: 'job-1400' })],
+      estimates: [
+        estimate('job-1400', { doc_kind: 'change_order', sent_at: '2026-10-12T15:00:00Z' }),
+        estimate('job-1400', { doc_kind: 'bid_proposal', status: 'customer_accepted', sent_at: '2026-10-12T15:00:00Z', acceptor_consented_at: '2026-10-12T16:00:00Z' }),
+      ],
+    }
+    expect(estimateStamps(rows, 'job-1400')).toEqual([])
   })
 
   it('a job with nothing on it yet has nobody on its first step, not even Booked', () => {
