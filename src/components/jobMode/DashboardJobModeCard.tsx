@@ -33,6 +33,8 @@ import { canHandThePhone, goToSigningPage, handPhoneDoorText, handPhoneState, op
 import { QuickEstimateWizard } from '../estimates/QuickEstimateWizard'
 import { WriteUpChangeGlyph } from '../dashboard/dashboardJobRowShared'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
+import { jobModeMessagesOffered } from '../../lib/messages/jobBox'
+import { MessageCustomerDoor } from './MessageCustomerDoor'
 
 type LeaveReportJobPick = {
   id: string
@@ -274,7 +276,7 @@ function safeTrim(s: string | null | undefined): string {
 export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway, canClockOut }: Props) {
   const { prefixMap } = useLedgerDisplayPrefixes()
   const navigate = useNavigate()
-  const { role } = useAuth()
+  const { role, profileName } = useAuth()
   const { showToast } = useToastContext()
   // SP-2 (v2.3067): a sub or helper with a login reaches their own statement from here.
   const myStatement = useMySubPortalAddress(role === 'subcontractor' || role === 'helpers')
@@ -1049,6 +1051,16 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
           <span aria-hidden>✍</span>
           {handPhoneBusy ? 'Opening the agreement…' : handPhoneDoor.label}
         </button>
+      ) : null}
+      {!loading && leaveReportTarget && jobModeMessagesOffered(role) ? (
+        <MessageCustomerDoor
+          jobId={leaveReportTarget.id}
+          jobName={leaveReportTarget.jobName === '—' ? null : leaveReportTarget.jobName}
+          jobAddress={leaveReportTarget.jobAddress === '—' ? null : leaveReportTarget.jobAddress}
+          userId={userId}
+          me={profileName}
+          style={{ ...quietClockOutBtn, color: 'var(--text-link)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+        />
       ) : null}
       {writeUpChangeOpen && writeUpChangeJobId ? (
         <QuickEstimateWizard open initialJobId={writeUpChangeJobId} onClose={() => setWriteUpChangeOpen(false)} />
