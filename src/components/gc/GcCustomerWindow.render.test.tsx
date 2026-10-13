@@ -8,9 +8,20 @@ vi.mock('../../lib/contracts/clausesIo', () => ({
   loadPaperChoices: vi.fn(() => Promise.resolve(paperIo.choices)),
   loadOwnerContractPaper: vi.fn(() => Promise.resolve(paperIo.last)),
 }))
+// Our contract's Paper waits for the customer's side (v2.5345): as shipped unless a test turns it on.
+const contractFlag = vi.hoisted(() => ({ live: null as boolean | null }))
+vi.mock('../../lib/gc/customerContract', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../lib/gc/customerContract')>()
+  return {
+    ...real,
+    get OWNER_CONTRACT_PAPER_LIVE() {
+      return contractFlag.live ?? real.OWNER_CONTRACT_PAPER_LIVE
+    },
+  }
+})
 
 import { GcCustomerWindow, type CustomerWindowMoney } from './GcCustomerWindow'
-import { loadOwnerContractPaper } from '../../lib/contracts/clausesIo'
+import { loadOwnerContractPaper, loadPaperChoices } from '../../lib/contracts/clausesIo'
 import { paperChoices } from '../../lib/contracts/clauseRows'
 import { clauseLibraryRows } from '../../test/fixtures/clauseBookDemo'
 import type { ContractSendInput, ContractSendOutcome } from './GcCustomerContractSend'
@@ -191,10 +202,29 @@ describe('GcCustomerWindow', () => {
 describe('GcCustomerWindow · the paper our contract is built from (Messages, cut 4c, v2.5334)', () => {
   beforeEach(() => {
     vi.mocked(loadOwnerContractPaper).mockClear()
+    vi.mocked(loadPaperChoices).mockClear()
+    contractFlag.live = true
   })
   afterEach(() => {
     paperIo.choices = []
     paperIo.last = null
+    contractFlag.live = null
+  })
+
+  it('stays hidden while the customer’s side is not built (OWNER_CONTRACT_PAPER_LIVE off), and reads no paper (v2.5345)', async () => {
+    // As shipped: the customer's clause read (helper 8's PR) turns it on, and this line goes with it.
+    expect((await vi.importActual<typeof import('../../lib/gc/customerContract')>('../../lib/gc/customerContract')).OWNER_CONTRACT_PAPER_LIVE).toBe(false)
+    contractFlag.live = null
+    paperIo.choices = paperChoices(clauseLibraryRows())
+    paperIo.last = 'doc-sow'
+    const { sendContract, dialog } = open(sent([{ worth: CLINIC_WORTH_NOW }]), { send: true, at: { doc: 'contract-p1', send: true } })
+    const box = dialog.querySelector('[data-gc-customer-send="contract-p1"]') as HTMLElement
+    expect(within(box).queryByRole('combobox', { name: 'Paper' })).toBeNull()
+    expect(loadPaperChoices).not.toHaveBeenCalled()
+    expect(loadOwnerContractPaper).not.toHaveBeenCalled()
+    fireEvent.click(within(box).getByRole('button', { name: 'Send the reminder' }))
+    await waitFor(() => expect(sendContract).toHaveBeenCalledTimes(1))
+    expect(sendContract.mock.calls[0]![1].paperId).toBeNull()
   })
 
   it('a first send starts on our contract file, offers the papers built from clauses, and goes with the one picked', async () => {

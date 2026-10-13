@@ -254,6 +254,11 @@ vi.mock('../lib/gc/ownerContractIo', async (importOriginal) => ({
   sendGcOwnerContract: vi.fn(() => Promise.resolve('cs-new')),
 }))
 vi.mock('../lib/portal/mintCustomerPortalLink', () => ({ mintCustomerPortalLink: vi.fn(() => Promise.resolve()) }))
+// Our contract's Paper waits for the customer's side (OWNER_CONTRACT_PAPER_LIVE, v2.5345); the send's tests read it on.
+vi.mock('../lib/gc/customerContract', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../lib/gc/customerContract')>()),
+  OWNER_CONTRACT_PAPER_LIVE: true,
+}))
 vi.mock('../lib/gc/customerEmailIo', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../lib/gc/customerEmailIo')>()),
   sendGcCustomerEmail: vi.fn(() => Promise.resolve({ ok: true, to: 'Pat Oak', email: 'pat@example.com' })),
