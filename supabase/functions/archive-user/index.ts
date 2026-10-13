@@ -15,7 +15,9 @@ interface ArchiveUserRequest {
   reassign_customers_to?: string  // Optional: UUID of master to reassign customers to
 }
 
-const BAN_UNTIL_FAR_FUTURE = '9999-12-31T23:59:59.999Z'
+// GoTrue's admin update bans by `ban_duration`, a Go duration (100 years here); it silently
+// drops a `banned_until`.
+const BAN_DURATION_FOREVER = '876000h'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -272,7 +274,7 @@ serve(async (req) => {
     }
 
     const { error: banError } = await adminClient.auth.admin.updateUserById(userToArchive.id, {
-      banned_until: BAN_UNTIL_FAR_FUTURE,
+      ban_duration: BAN_DURATION_FOREVER,
     })
 
     if (banError) {
@@ -285,7 +287,11 @@ serve(async (req) => {
 
     // CT bridge (v2.2435): mirror the retirement to CountTooling when a seat is linked.
     // Fail-soft — a CT-leg failure never blocks the archive; the audit catches drift.
-    const ctBridge = await forwardCtSeatState(adminClient, userToArchive.id, 'deactivate')
+    const ctBridge = await forwardCtSeatState(
+      adminClient as unknown as Parameters<typeof forwardCtSeatState>[0],
+      userToArchive.id,
+      'deactivate',
+    )
 
     return new Response(
       JSON.stringify({
@@ -301,7 +307,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in archive-user function:', error)
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: (error as Error).message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
