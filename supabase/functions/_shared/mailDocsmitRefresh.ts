@@ -8,7 +8,7 @@ import type { DocsmitClient } from './docsmitClient.ts'
 import { MAIL_FILING_KINDS, MAIL_OPEN_STATUSES, appendEvent, mailChargeRead, mailPieceUpdateFromParty, sendsWithPiece, ymdInZone, type MailPieceRow } from './mailSend.ts'
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 
-export const PIECE_COLUMNS = 'id, kind, source_ids, job_id, provider, recipient, short_code, name, organization, address1, address2, city, state, postal_code, send_type, envelope, sheets, provider_message_id, client_msg_id, price, status, usps_tracking, mailed_at, delivered_at, signed_by, delivery_status, delivery_as_of, events, opened_at, pdf_bucket, pdf_path, certification_path, problem'
+export const PIECE_COLUMNS = 'id, kind, source_ids, job_id, provider, recipient, short_code, name, organization, address1, address2, city, state, postal_code, send_type, envelope, sheets, provider_message_id, client_msg_id, price, status, usps_tracking, mailed_at, delivered_at, signed_by, delivery_status, delivery_as_of, events, opened_at, pdf_bucket, pdf_path, certification_path, problem, resend_of, resolved_at, resolved_note'
 
 export const APP_TZ = APP_CALENDAR_TZ
 

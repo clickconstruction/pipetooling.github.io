@@ -323,7 +323,7 @@ export function useLienDeskData(
           for (const chunk of chunkIds(filingIds)) {
             if (chunk.length === 0) continue
             const part = await withSupabaseRetry(
-              () => (supabase as unknown as SupabaseClient).from('mail_pieces').select('id, kind, recipient, status, usps_tracking, mailed_at, delivered_at, signed_by, delivery_status, source_ids, problem, price').overlaps('source_ids', chunk),
+              () => (supabase as unknown as SupabaseClient).from('mail_pieces').select('id, kind, recipient, status, usps_tracking, mailed_at, delivered_at, signed_by, delivery_status, source_ids, problem, price, name, organization, send_type, resend_of, resolved_at, resolved_note').overlaps('source_ids', chunk),
               'lien desk: mail pieces',
             ).catch(() => [])
             for (const [id, pieces] of Object.entries(foldMailPieces((part ?? []) as LienMailPieceRow[]))) mailPiecesByFiling[id] = [...(mailPiecesByFiling[id] ?? []), ...pieces.filter((p) => !(mailPiecesByFiling[id] ?? []).some((q) => q.id === p.id))]

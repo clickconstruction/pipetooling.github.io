@@ -21,6 +21,13 @@ export type LienMailPieceRow = {
   problem?: string | null
   /** What Docsmit charged, once the poll read it (6b, the cost line). */
   price?: number | null
+  /** The doors (6b-3): the name on the envelope (the re-mail door's prefill), the provider's send type (a plain copy is First Class), the piece this one answers, when and how this one was answered. */
+  name?: string | null
+  organization?: string | null
+  send_type?: string | null
+  resend_of?: string | null
+  resolved_at?: string | null
+  resolved_note?: string | null
 }
 
 const RECIPIENT_WORDS: Record<string, string> = { owner: 'Owner of record', original_contractor: 'Original contractor' }
@@ -74,17 +81,22 @@ export function filingMailTail(pieces: ReadonlyArray<LienMailPieceRow>, fmt: (ym
 export function filingMailLines(pieces: ReadonlyArray<LienMailPieceRow>, fmt: (ymd: string) => string = (d) => d): Array<{ id: string; who: string; words: string; tracking: string; cost: string; tone: 'green' | 'red' | 'amber' | 'muted' }> {
   return pieces.map((p) => ({
     id: p.id,
-    who: RECIPIENT_WORDS[p.recipient] ?? p.recipient,
-    words: mailPieceWords(p, fmt),
+    who: `${RECIPIENT_WORDS[p.recipient] ?? p.recipient}${mailPieceIsPlainCopy(p) ? ' (plain copy)' : ''}`,
+    words: p.resolved_at ? `${mailPieceWords(p, fmt)} · ${(p.resolved_note ?? '').trim() || 'handled'}` : mailPieceWords(p, fmt),
     tracking: (p.usps_tracking ?? '').trim(),
     cost: mailCostDollars(p.price),
-    tone: p.status === 'delivered' ? 'green' : p.status === 'returned' || p.status === 'failed' ? 'red' : p.status === 'notice_left' || p.status === 'unknown' ? 'amber' : 'muted',
+    tone: p.resolved_at ? 'muted' : p.status === 'delivered' ? 'green' : p.status === 'returned' || p.status === 'failed' ? 'red' : p.status === 'notice_left' || p.status === 'unknown' ? 'amber' : 'muted',
   }))
 }
 
-/** The pieces that want a person: returned, unclaimed, refused, or a status the fold had not seen. */
+/** The pieces that want a person: returned, unclaimed, refused, or a status the fold had not seen — and not yet answered through a door (6b-3). */
 export function mailPiecesNeedingYou(pieces: ReadonlyArray<LienMailPieceRow>): LienMailPieceRow[] {
-  return pieces.filter((p) => p.status === 'returned' || p.status === 'notice_left' || p.status === 'failed' || p.status === 'unknown')
+  return pieces.filter((p) => !p.resolved_at && (p.status === 'returned' || p.status === 'notice_left' || p.status === 'failed' || p.status === 'unknown'))
+}
+
+/** A plain First Class copy sent through a door, riding beside the certified envelope it answers. */
+export function mailPieceIsPlainCopy(p: Pick<LienMailPieceRow, 'send_type' | 'resend_of'>): boolean {
+  return !!p.resend_of && /^first class$/i.test((p.send_type ?? '').trim())
 }
 
 /** `$2.49`, or empty while the charge is not read. */

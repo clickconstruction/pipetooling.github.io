@@ -195,3 +195,36 @@ export function docsmitHeldWords(held: ReadonlyArray<DocsmitHeld>): string {
   if (held.length === 0) return ''
   return `${held.length} ${held.length === 1 ? 'envelope stays' : 'envelopes stay'} on paper: ${held.map((h) => `envelope ${h.n} (${h.why.replace(/\.$/, '')})`).join('; ')}.`
 }
+
+/** The doors on an envelope that came back (6b-3): what `resend` answers, or a refusal in the same shape. */
+export type DocsmitResendAnswer = { ok: boolean; pieceId: string | null; status: string | null; tracking: string | null; price: number | null; resolvedNote: string | null; shortfall: number | null; error: string | null }
+
+export type DocsmitResendAddress = { name: string; organization: string; address1: string; address2: string; city: string; state: string; postal_code: string }
+
+/** A plain First Class copy to the same address, or the letter again to another one, as one call; the old piece is marked answered. */
+export async function resendDocsmitPiece(input: { pieceId: string; mode: 'plain' | 'address'; address?: DocsmitResendAddress; jobNumber?: string | null }, io: Partial<DocsmitIo> = {}): Promise<DocsmitResendAnswer> {
+  const invoke = io.invoke ?? realIo.invoke
+  const none: DocsmitResendAnswer = { ok: false, pieceId: null, status: null, tracking: null, price: null, resolvedNote: null, shortfall: null, error: null }
+  try {
+    const { data, error } = await invoke({ action: 'resend', piece_id: input.pieceId, mode: input.mode, ...(input.mode === 'address' && input.address ? { address: input.address } : {}), ...(input.jobNumber ? { job_number: input.jobNumber } : {}) })
+    const d = data as { ok?: unknown; piece_id?: unknown; status?: unknown; usps_tracking?: unknown; price?: unknown; resolved_note?: unknown; shortfall?: unknown; error?: unknown } | null
+    if (d && d.ok === true) {
+      return { ...none, ok: true, pieceId: typeof d.piece_id === 'string' ? d.piece_id : null, status: typeof d.status === 'string' ? d.status : null, tracking: typeof d.usps_tracking === 'string' ? d.usps_tracking : null, price: typeof d.price === 'number' ? d.price : null, resolvedNote: typeof d.resolved_note === 'string' ? d.resolved_note : null }
+    }
+    return { ...none, pieceId: d && typeof d.piece_id === 'string' ? d.piece_id : null, shortfall: d && typeof d.shortfall === 'number' ? d.shortfall : null, error: answerError(data, error, 'Docsmit did not answer.') }
+  } catch (e) {
+    return { ...none, error: e instanceof Error && e.message ? e.message : 'Docsmit did not answer.' }
+  }
+}
+
+/** The office answered the envelope by hand (a courier, a visit): the piece is marked, the desk stops asking. */
+export async function resolveDocsmitPiece(pieceId: string, note: string, io: Partial<DocsmitIo> = {}): Promise<{ ok: boolean; error: string | null }> {
+  const invoke = io.invoke ?? realIo.invoke
+  try {
+    const { data, error } = await invoke({ action: 'resolve', piece_id: pieceId, note })
+    const d = data as { ok?: unknown } | null
+    return d && d.ok === true ? { ok: true, error: null } : { ok: false, error: answerError(data, error, 'Could not record it.') }
+  } catch (e) {
+    return { ok: false, error: e instanceof Error && e.message ? e.message : 'Could not record it.' }
+  }
+}

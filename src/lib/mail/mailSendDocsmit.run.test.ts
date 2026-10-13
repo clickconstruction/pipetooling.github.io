@@ -203,4 +203,84 @@ describe('mail-send-docsmit (the Docsmit train, PR 3)', () => {
     expect(Object.keys(storage.files)).toEqual(['lien-release-documents/mail/p1/certification.pdf'])
     expect(docsmit.calls.filter((c) => c.path.includes('m-9'))).toEqual([])
   })
+
+  const returned = { id: 'p-old', kind: 'lien_notice_53_056', source_ids: ['f1'], job_id: 'j650', provider: 'docsmit', recipient: 'owner', short_code: 'ABCD2345', name: '', organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Electronic Return Receipt', envelope: '#10', sheets: 4, provider_message_id: 'm-1', client_msg_id: 'lien_notice_53_056:p-old', price: 9.85, status: 'returned', usps_tracking: '9407 1118', mailed_at: '2026-10-14T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'Return to Sender', delivery_as_of: null, events: [], opened_at: null, pdf_bucket: 'lien-release-documents', pdf_path: 'mail/env-1.pdf', certification_path: null, problem: null, resend_of: null, resolved_at: null, resolved_note: null }
+
+  it('resend, plain (6b-3): the same PDF goes First Class to the same address as a new piece in one call, the old piece is marked answered, and the filing keeps its certified number', async () => {
+    storage.files['lien-release-documents/mail/env-1.pdf'] = new TextEncoder().encode('%PDF-1.4 fake')
+    db.tables.mail_pieces = [{ ...returned }]
+    db.tables.job_lien_filings = [{ id: 'f1', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1118', sent_on: '2026-10-13', via: 'docsmit', piece_id: 'p-old' }] }]
+    docsmit.answers['POST /utils/multiCASS'] = { body: [{ nonMailable: false, coarseCorrectionMsg: '' }] }
+    docsmit.answers['POST /messages/new'] = { body: { messageID: 'm-2' } }
+    docsmit.answers['POST /messages/m-2/upload'] = { body: { ok: true } }
+    docsmit.answers['GET /messages/m-2/priceCheck'] = { body: { netPrice: 1.12 } }
+    docsmit.answers['POST /messages/m-2/send'] = { status: 201, body: { ok: true } }
+    docsmit.answers['GET /messages/m-2/parties'] = { body: [{ USPSTrackingID: '', DeliveryStatus: '' }] }
+    const res = await post({ action: 'resend', piece_id: 'p-old', mode: 'plain', job_number: '650' })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, piece_id: 'id-1', status: 'sent', price: 1.12, resolved_note: 'a plain First Class copy sent' })
+    const made = docsmit.calls.find((c) => c.path === '/messages/new')!.body as Record<string, unknown>
+    expect(made).toMatchObject({ clientMsgID: 'lien_notice_53_056:id-1', billTo: '650' })
+    expect((made.physicalParties as unknown[])[0]).toMatchObject({ organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', sendType: 'First Class', envelope: '#10' })
+    expect(docsmit.calls.find((c) => c.path === '/messages/m-2/upload')!.body).toEqual({ file: 'id-1.pdf' })
+    const [old, copy] = db.tables.mail_pieces as Array<Record<string, unknown>>
+    expect(copy).toMatchObject({ id: 'id-1', status: 'sent', send_type: 'First Class', resend_of: 'p-old', short_code: null, pdf_path: 'mail/env-1.pdf', provider_message_id: 'm-2', price: 1.12 })
+    expect(old).toMatchObject({ id: 'p-old', status: 'returned', resolved_note: 'a plain First Class copy sent' })
+    expect(typeof old!.resolved_at).toBe('string')
+    expect((old!.events as Array<{ kind: string }>).map((e) => e.kind)).toEqual(['resent'])
+    // The filing's send still names the certified envelope and its number.
+    expect((db.tables.job_lien_filings![0]!.sends as unknown[])[0]).toMatchObject({ piece_id: 'p-old', tracking: '9407 1118' })
+  })
+
+  it('resend, address (6b-3): a bad address is refused before any Docsmit call; a good one mails the letter again certified and becomes the filing’s send', async () => {
+    storage.files['lien-release-documents/mail/env-1.pdf'] = new TextEncoder().encode('%PDF-1.4 fake')
+    db.tables.mail_pieces = [{ ...returned }]
+    db.tables.job_lien_filings = [{ id: 'f1', sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '9407 1118', sent_on: '2026-10-13', via: 'docsmit', piece_id: 'p-old' }] }]
+    const bad = await post({ action: 'resend', piece_id: 'p-old', mode: 'address', address: { address1: '1 Main St', city: 'Austin', state: 'Texas', postal_code: '787' } })
+    expect(bad.status).toBe(400)
+    expect((await bad.json()).error).toMatch(/a two-letter state, a ZIP/)
+    expect(docsmit.calls).toEqual([])
+    expect(db.tables.mail_pieces).toHaveLength(1)
+    docsmit.answers['POST /utils/multiCASS'] = { body: [{ nonMailable: false, coarseCorrectionMsg: 'ZIP+4: 78230-1234' }] }
+    docsmit.answers['POST /messages/new'] = { body: { messageID: 'm-3' } }
+    docsmit.answers['POST /messages/m-3/upload'] = { body: { ok: true } }
+    docsmit.answers['GET /messages/m-3/priceCheck'] = { status: 400, body: {} }
+    docsmit.answers['POST /messages/m-3/send'] = { status: 201, body: { ok: true } }
+    docsmit.answers['GET /messages/m-3/parties'] = { body: [{ USPSTrackingID: '9407 2222', DeliveryStatus: 'Pre-Shipment Info Sent to USPS', DStatusao: '2026-10-15T00:30:00Z' }] }
+    const res = await post({ action: 'resend', piece_id: 'p-old', mode: 'address', address: { address1: '9993 IH 10 W', address2: 'Suite 102', city: 'San Antonio', state: 'tx', postal_code: '78230' } })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ ok: true, piece_id: 'id-1', status: 'mailed', usps_tracking: '9407 2222', price: null, resolved_note: 'mailed again to 9993 IH 10 W, San Antonio' })
+    const copy = db.tables.mail_pieces![1] as Record<string, unknown>
+    expect(copy).toMatchObject({ status: 'mailed', send_type: 'Certified, Electronic Return Receipt', address1: '9993 IH 10 W', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postal_code: '78230', organization: 'ATI Schertz Holdings LLC', resend_of: 'p-old', usps_tracking: '9407 2222' })
+    expect((db.tables.job_lien_filings![0]!.sends as unknown[])[0]).toMatchObject({ recipient: 'owner', piece_id: 'id-1', tracking: '9407 2222', sent_on: '2026-10-14', via: 'docsmit' })
+  })
+
+  it('resend: credit short leaves the copy prepared and the old piece unanswered (402); a never-sent piece or one with no PDF is refused', async () => {
+    storage.files['lien-release-documents/mail/env-1.pdf'] = new TextEncoder().encode('%PDF')
+    db.tables.mail_pieces = [{ ...returned }, { ...returned, id: 'p-prep', status: 'prepared' }, { ...returned, id: 'p-nopdf', pdf_path: null }]
+    docsmit.answers['POST /utils/multiCASS'] = { body: [{ nonMailable: false }] }
+    docsmit.answers['POST /messages/new'] = { body: { messageID: 'm-4' } }
+    docsmit.answers['POST /messages/m-4/upload'] = { body: { ok: true } }
+    docsmit.answers['GET /messages/m-4/priceCheck'] = { body: { netPrice: 1.12 } }
+    docsmit.answers['POST /messages/m-4/send'] = { status: 402, body: { shortfall: 0.62 } }
+    const res = await post({ action: 'resend', piece_id: 'p-old', mode: 'plain' })
+    expect(res.status).toBe(402)
+    expect(await res.json()).toMatchObject({ ok: false, piece_id: 'id-1', shortfall: 0.62 })
+    expect(db.tables.mail_pieces![3]).toMatchObject({ id: 'id-1', status: 'prepared', resend_of: 'p-old' })
+    expect(db.tables.mail_pieces![0]!.resolved_at ?? null).toBeNull()
+    expect((await post({ action: 'resend', piece_id: 'p-prep', mode: 'plain' })).status).toBe(400)
+    expect((await post({ action: 'resend', piece_id: 'p-nopdf', mode: 'plain' })).status).toBe(400)
+    expect((await post({ action: 'resend', piece_id: 'nope', mode: 'plain' })).status).toBe(404)
+  })
+
+  it('resolve (6b-3): the office answered it by hand; the piece is marked with the words, and a blank note is refused', async () => {
+    db.tables.mail_pieces = [{ ...returned }]
+    expect((await post({ action: 'resolve', piece_id: 'p-old', note: '  ' })).status).toBe(400)
+    const res = await post({ action: 'resolve', piece_id: 'p-old', note: 'courier, Oct 14, signed by the front desk' })
+    expect(await res.json()).toEqual({ ok: true, piece_id: 'p-old', resolved_note: 'courier, Oct 14, signed by the front desk' })
+    const old = db.tables.mail_pieces![0] as Record<string, unknown>
+    expect(old).toMatchObject({ status: 'returned', resolved_note: 'courier, Oct 14, signed by the front desk' })
+    expect((old.events as Array<{ kind: string; by: string }>)[0]).toMatchObject({ kind: 'resolved', by: 'u-taunya' })
+    expect(docsmit.calls.map((c) => c.path)).toEqual([])
+  })
 })

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { mailStatusFromProvider as appFold, mailClientMsgId as appId } from './mailPiece'
-import { mailCassAddress, mailCassVerdict, mailChargeFromTransactions, mailChargeRead, mailClientMsgId, mailMessageTitle, mailPartyFromPiece, mailPieceUpdateFromParty, mailPrepareProblems, mailStatusFromProvider, sendsWithPiece, ymdInZone } from '../../../supabase/functions/_shared/mailSend'
+import { mailCassAddress, mailCassVerdict, mailChargeFromTransactions, mailChargeRead, mailClientMsgId, mailMessageTitle, mailPartyFromPiece, mailPieceUpdateFromParty, mailPrepareProblems, mailResendInput, mailResolvedWords, mailStatusFromProvider, sendsWithPiece, ymdInZone, type MailPieceRow } from '../../../supabase/functions/_shared/mailSend'
 
 const piece = { id: '0f2a9c11-aaaa-bbbb-cccc-000000000001', kind: 'lien_notice_53_056', recipient: 'owner', name: '', organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Electronic Return Receipt', envelope: '#10' as const, status: 'sent' as const, usps_tracking: null, mailed_at: null, delivered_at: null, signed_by: null, delivery_status: null, delivery_as_of: null }
 
@@ -78,5 +78,16 @@ describe('the mail-send kernel the functions share (the Docsmit train, PR 3)', (
     expect(mailChargeRead([{ at: 'x', kind: 'poll' }])).toBe(false)
     expect(mailChargeRead([{ at: 'x', kind: 'poll' }, { at: 'y', kind: 'charged', price: 9.85 }])).toBe(true)
     expect(mailChargeRead(null)).toBe(false)
+  })
+
+  it('the piece that answers one which came back (6b-3): plain keeps the address and goes First Class; address keeps the send type and takes what was typed, a blank keeping the old', () => {
+    const old = { ...piece, source_ids: ['f1'], job_id: 'j650', short_code: 'ABCD2345', sheets: 4, provider: 'docsmit', provider_message_id: 'm-1', client_msg_id: 'x', price: 9.85, events: [], opened_at: null, pdf_bucket: 'b', pdf_path: 'mail/x.pdf', certification_path: null, problem: null } as unknown as MailPieceRow
+    const plain = mailResendInput(old, 'plain', null)
+    expect(plain).toMatchObject({ kind: 'lien_notice_53_056', source_ids: ['f1'], recipient: 'owner', short_code: null, organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', send_type: 'First Class', envelope: '#10', sheets: 4 })
+    const again = mailResendInput(old, 'address', { address1: '9993 IH 10 W', address2: 'Suite 102', city: 'San Antonio', state: 'tx', postal_code: '78230' })
+    expect(again).toMatchObject({ organization: 'ATI Schertz Holdings LLC', name: '', address1: '9993 IH 10 W', address2: 'Suite 102', city: 'San Antonio', state: 'TX', postal_code: '78230', send_type: 'Certified, Electronic Return Receipt' })
+    expect(mailResendInput(old, 'address', { name: 'John A. Backham', address1: '1 Main St', address2: '', city: '', state: '', postal_code: '' })).toMatchObject({ name: 'John A. Backham', organization: '', address1: '1 Main St', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154' })
+    expect(mailResolvedWords('plain', again)).toBe('a plain First Class copy sent')
+    expect(mailResolvedWords('address', again)).toBe('mailed again to 9993 IH 10 W, San Antonio')
   })
 })

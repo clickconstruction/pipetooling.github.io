@@ -57,4 +57,14 @@ describe('the desk reads the mail pieces behind a sent notice (the Docsmit train
     const jobs = jobsWithMailPieces([{ jobId: 'j1', item: { sent_filing_id: 'f1' } }, { jobId: 'j2', item: { sent_filing_id: 'f9' } }, { jobId: 'j3', item: null }], by)
     expect([...jobs]).toEqual(['j1'])
   })
+
+  it('an envelope answered through a door (6b-3) no longer needs a person, its line says how, and a plain copy names itself', () => {
+    const answered = { ...base, status: 'returned' as const, resolved_at: '2026-10-14T15:00:00Z', resolved_note: 'a plain First Class copy sent' }
+    const copy = { ...base, id: 'p9', status: 'mailed' as const, send_type: 'First Class', resend_of: 'p1', usps_tracking: null }
+    expect(mailPiecesNeedingYou([answered, copy, { ...base, id: 'p3', status: 'returned' }]).map((p) => p.id)).toEqual(['p3'])
+    const lines = filingMailLines([answered, copy], fmt)
+    expect(lines[0]).toMatchObject({ who: 'Owner of record', words: 'returned to sender · a plain First Class copy sent', tone: 'muted' })
+    expect(lines[1]).toMatchObject({ who: 'Owner of record (plain copy)', words: 'mailed 2026-10-13', tone: 'muted' })
+    expect(mailNeedsYouRows({ j1: [{ id: 'f1' }] }, { f1: [answered, copy] })).toEqual([])
+  })
 })
