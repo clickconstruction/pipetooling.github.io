@@ -122,3 +122,12 @@ export const MESSAGES_TECH_TEAM: readonly UserRole[] = ['primary', 'helpers']
 export function canMessageCustomersFromJobMode(role: UserRole | null | undefined): boolean {
   return role != null && MESSAGES_TECH_TEAM.includes(role)
 }
+
+/**
+ * Messages, cut 10: who reads a Pipeline job's calls, texts and emails in its Job activity. The office team, and since
+ * the owner's word of 2026-10-13 the field roles of R5's door. The read runs under the rows' policies, so a tech gets
+ * the lines of a customer whose job they worked this week or last, tied to the job, and never an office-only note.
+ */
+export function canReadJobMessages(role: UserRole | null | undefined): boolean {
+  return role != null && (GC_OFFICE_TEAM.includes(role) || MESSAGES_TECH_TEAM.includes(role))
+}

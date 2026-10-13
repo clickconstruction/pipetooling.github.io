@@ -5,7 +5,7 @@ import type { JobThreadActivityItem } from '../JobThreadNotesPanel'
 import { JobActivityFeed } from './JobActivityFeed'
 import { buildJobActivityLines, countJobActivityLines, filterJobActivityLines } from '../../lib/jobs/jobActivityLine'
 import { ACTIVITY_FILTERS, JOB_ACTIVITY_FILTERS, type JobActivityFilter } from '../../lib/jobActivityFilter'
-import { GC_OFFICE_TEAM } from '../../lib/gc/access'
+import { canOpenGcProjects, canReadJobMessages } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
 import { formatStagesCompactWindow, formatStagesNextDateLabel } from '../../lib/stagesUpcomingSchedule'
 import type { StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
@@ -30,8 +30,10 @@ import { canOpenMoneyStory, moneyStoryHref } from '../../lib/jobs/moneyStoryDoor
  * here (owner call): scheduling lives on its own surfaces, and the pinned Next
  * strip still shows the upcoming block inside the thread.
  *
- * Messages, cut 10: for the office team the job's calls, texts and emails from Messages are in the same numbered feed,
- * the customer's in orange, with a Customer pill (`useJobMessages`, `jobActivityMessages.ts`). The feed waits for that
+ * Messages, cut 10: for the office team, and since the owner's word of 2026-10-13 a tech (`canReadJobMessages`), the
+ * job's calls, texts and emails from Messages are in the same numbered feed, the customer's in orange, with a Customer
+ * pill (`useJobMessages`, `jobActivityMessages.ts`). The read runs under the rows' policies, so a tech gets what R5's
+ * door gives them, and the link to a thread shows only to a reader who can open Messages. The feed waits for that
  * read too, so no line's number moves once it shows. Anyone else reads none and sees the feed as before.
  */
 
@@ -94,8 +96,8 @@ export function JobActivityView({
   const [pctNoteError, setPctNoteError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  const office = Boolean(viewerRole && GC_OFFICE_TEAM.includes(viewerRole))
-  const messages = useJobMessages(office ? { id: job.id, status: job.status ?? null, createdAt: job.created_at ?? null } : null)
+  const readsMessages = canReadJobMessages(viewerRole)
+  const messages = useJobMessages(readsMessages ? { id: job.id, status: job.status ?? null, createdAt: job.created_at ?? null } : null)
   const allLines = useMemo(
     () => (activity && messages ? buildJobActivityLines(activity, { viewerRole, messages }) : null),
     [activity, messages, viewerRole],
@@ -105,7 +107,7 @@ export function JobActivityView({
     [allLines, activityFilter],
   )
   const filterCounts = useMemo(() => (allLines ? countJobActivityLines(allLines) : null), [allLines])
-  const filters = office ? JOB_ACTIVITY_FILTERS : ACTIVITY_FILTERS
+  const filters = readsMessages ? JOB_ACTIVITY_FILTERS : ACTIVITY_FILTERS
   // Who set the recorded % (v2.2852): the crew, when the newest report with a % says the same number; else the office.
   const pctProvenance = useMemo(
     () =>
@@ -285,7 +287,7 @@ export function JobActivityView({
         </div>
       ) : null}
 
-      <JobActivityFeed lines={lines} filtered={activityFilter !== 'all'} narrow={narrow} reportsOpenByDefault={reportsOpenByDefault} />
+      <JobActivityFeed lines={lines} filtered={activityFilter !== 'all'} narrow={narrow} reportsOpenByDefault={reportsOpenByDefault} threadLinks={canOpenGcProjects(viewerRole)} />
 
       {submitNoteWithBody ? (
         pctEditorOpen && canEditPct ? (

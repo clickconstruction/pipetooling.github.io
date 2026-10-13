@@ -3,7 +3,9 @@
  * Calls, texts and emails in the Pipeline's Job activity (Messages cut 10, J2): for the office team the job's
  * messages are in the same numbered feed, the customer's in orange with a deeper bar when the line came from her, the
  * channel a small word before the words, a Customer pill that counts and shows only hers, and every message opening to
- * a link to her thread. Anyone else reads none. Dana Whitfield's made-up job from the customer prototype v0.3.
+ * a link to her thread. A tech (primary or helpers, since the owner's word of 2026-10-13) reads the lines R5's door
+ * gives them, the tied ones, with no link to a thread they cannot open. Anyone else reads none. Dana Whitfield's
+ * made-up job from the customer prototype v0.3.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
@@ -28,8 +30,8 @@ afterEach(() => {
   vi.mocked(loadJobMessages).mockReset()
 })
 
-function show(role: UserRole) {
-  vi.mocked(loadJobMessages).mockResolvedValue(DANA_JOB_MESSAGES)
+function show(role: UserRole, messages = DANA_JOB_MESSAGES) {
+  vi.mocked(loadJobMessages).mockResolvedValue(messages)
   const job = makeJob({ id: 'jl-1312', status: 'working', created_at: '2026-10-01T12:00:00Z' } as never)
   renderWithProviders(<JobActivityView job={job} activity={[note('n-1', '2026-10-06T21:12:00Z', 'Called Dana back. Thursday works for her.')]} upcoming={null} viewerRole={role} narrow={false} />)
 }
@@ -74,7 +76,29 @@ describe('Job activity with a job’s messages (cut 10)', () => {
     expect(screen.getByText('Great. Gate code is 4471.')).toBeTruthy()
   })
 
-  it('reads no messages for anyone off the office team, and shows no Customer pill', async () => {
+  for (const tech of ['primary', 'helpers'] as UserRole[]) {
+    it(`reads the job’s lines for a tech (${tech}), with the Customer pill and no link to a thread`, async () => {
+      // R5's door gives a tech the tied lines alone: contact_jobs is the office's, so the untied read comes back empty.
+      show(tech, DANA_JOB_MESSAGES.filter((m) => m.tied))
+      expect(await screen.findByText('Great. Gate code is 4471.')).toBeTruthy()
+      expect(loadJobMessages).toHaveBeenCalledWith({ id: 'jl-1312', status: 'working', createdAt: '2026-10-01T12:00:00Z' })
+      expect(row('Great. Gate code is 4471.').style.borderLeft).toContain('var(--text-orange-700)')
+      expect(within(row('She wants texts after 5, never calls.')).getByText('only the team sees this')).toBeTruthy()
+      expect(screen.queryByText('Perfect, thank you. See you Thursday.')).toBeNull()
+      expect(screen.getByRole('tab', { name: /^Customer/ })).toBeTruthy()
+      fireEvent.click((await screen.findByText(/^Asked if Thursday works/)).closest('[role="button"]') as HTMLElement)
+      expect(screen.getByText(/^Dana: Hi, can you do Thursday\?/)).toBeTruthy()
+      expect(screen.queryByRole('link', { name: /^Open the thread with/ })).toBeNull()
+    })
+  }
+
+  it('says an office-only note is the office’s', async () => {
+    show('assistant', DANA_JOB_MESSAGES.map((m) => (m.id === 'm-dana-5' ? { ...m, officeOnly: true } : m)))
+    await screen.findByText('She wants texts after 5, never calls.')
+    expect(within(row('She wants texts after 5, never calls.')).getByText('only the office sees this')).toBeTruthy()
+  })
+
+  it('reads no messages for anyone outside the office and the techs, and shows no Customer pill', async () => {
     show('subcontractor')
     expect(await screen.findByText('Called Dana back. Thursday works for her.')).toBeTruthy()
     expect(loadJobMessages).not.toHaveBeenCalled()

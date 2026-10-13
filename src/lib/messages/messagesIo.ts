@@ -52,8 +52,11 @@ const CHANNEL_COLS = 'id, contact_id, kind, value, opted_out_at, created_at'
 const JOB_COLS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at'
 const MESSAGE_COLS =
   'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by'
-/** A job's lines also read cut 5's call columns (20261012170000_quo_messages.sql): a call's length, summary and words. */
-const JOB_MESSAGE_COLS = `${MESSAGE_COLS}, duration_seconds, summary, transcript`
+/**
+ * A job's lines also read cut 5's call columns (20261012170000_quo_messages.sql), a call's length, summary and words,
+ * and R5's office-only mark on a team note (20261013190000_messages_tech_door.sql).
+ */
+const JOB_MESSAGE_COLS = `${MESSAGE_COLS}, duration_seconds, summary, transcript, office_only`
 /** The most lines one job's read brings, each way: the newest, so a long job drops its oldest lines first. */
 const JOB_MESSAGES_MAX = 1000
 
@@ -224,9 +227,10 @@ export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
 /**
  * One Pipeline job's calls, texts and emails for its Job activity (cut 10, J2): the lines tied to the job, and while
  * the job is open the lines of the customer's people put on it that are tied to no job yet, since the job began
- * (`jobActivityMessagesFromRows` keeps the rule). Read as the signed-in user, and asked only for the office team
- * (`useJobMessages`), though R5's tech door lets a tech read a thread of their own jobs. It
- * leans on v2.5353's indexes: `messages_pipeline_job` and `contact_jobs_pipeline_job`.
+ * (`jobActivityMessagesFromRows` keeps the rule). Read as the signed-in user by the office team and, since the owner's
+ * word of 2026-10-13, a tech (`canReadJobMessages`). R5's door gives a tech the lines of a customer whose job they
+ * worked this week or last, never an office-only note, and no `contact_jobs` row, so a tech gets the tied lines alone.
+ * It leans on v2.5353's indexes: `messages_pipeline_job` and `contact_jobs_pipeline_job`.
  */
 export async function loadJobMessages(job: { id: string; status: string | null; createdAt: string | null }): Promise<JobActivityMessage[]> {
   const [tied, on] = await Promise.all([

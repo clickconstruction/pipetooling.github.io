@@ -36,6 +36,8 @@ export interface JobActivityMessage {
   transcript?: string | null
   /** Tied to this job. False: a line of a person on the job, tied to no job yet. */
   tied: boolean
+  /** R5's: a team note only the office reads. A tech's read never brings one. */
+  officeOnly?: boolean
 }
 
 /** How a message line reads. `customerIn` came from the customer and takes the deeper bar. */
@@ -52,6 +54,8 @@ export interface JobActivityMessageFacts {
   subject: string | null
   /** A line of a person on the job, tied to no job yet. The tie is made in the thread. */
   notTiedYet: boolean
+  /** Who reads a team note, in small words after it: the office alone, or the whole team, techs too. '' on other lines. */
+  readersWord: string
   /** The person's thread in Messages, opened at this line. */
   threadHref: string
   /** Who the thread is with, as the link names them: "Dana". */
@@ -133,6 +137,15 @@ function wordsOf(m: JobActivityMessage): { body: string; detail: JobActivityDeta
   return { body: lead.shown, detail: lead.folded ? [{ value: m.body.trim() }] : [] }
 }
 
+/**
+ * Who reads a team note (cut 10, R5): one marked for the office says so. Any other team note is the team's, a tech's
+ * too, since R5's door shows a tech every team note but the office's. '' for any other line.
+ */
+export function noteReaders(m: Pick<JobActivityMessage, 'channel' | 'officeOnly'>): string {
+  if (m.channel !== 'note') return ''
+  return m.officeOnly ? 'only the office sees this' : 'only the team sees this'
+}
+
 /** A message's who, words, opened detail and facts. `buildJobActivityLines` adds the number and the time. */
 export function messageLineParts(m: JobActivityMessage): { who: string; body: string; detail: JobActivityDetailLine[]; message: JobActivityMessageFacts } {
   const { body, detail } = wordsOf(m)
@@ -147,6 +160,7 @@ export function messageLineParts(m: JobActivityMessage): { who: string; body: st
       channelWord: messageChannelWord(m),
       subject: m.channel === 'email' ? m.subject?.trim() || null : null,
       notTiedYet: !m.tied,
+      readersWord: noteReaders(m),
       threadHref: messagesThreadHref(m.contactId, m.id),
       withName: firstName(m.contact) || m.contact.name.trim() || 'them',
     },
@@ -155,8 +169,8 @@ export function messageLineParts(m: JobActivityMessage): { who: string; body: st
 
 // ---------- the read's rows (J2) ----------
 
-/** A `messages` row as Job activity reads it: the spine's columns, and cut 5's call columns. */
-export type JobMessageRow = MessageRow & { summary?: string | null; transcript?: string | null }
+/** A `messages` row as Job activity reads it: the spine's columns, cut 5's call columns and R5's office-only mark. */
+export type JobMessageRow = MessageRow & { summary?: string | null; transcript?: string | null; office_only?: boolean | null }
 
 /** The person a line is with, as the read hands them over. */
 export interface JobMessageContact {
@@ -213,6 +227,7 @@ export function jobActivityMessagesFromRows(
       summary: row.summary ?? null,
       transcript: row.transcript ?? null,
       tied,
+      officeOnly: row.office_only === true,
     })
   }
   return out.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))

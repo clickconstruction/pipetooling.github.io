@@ -107,9 +107,14 @@ type Props = {
    * line still folds it (openKeys stores toggles away from the default).
    */
   reportsOpenByDefault?: boolean
+  /**
+   * A message line opens to *Open the thread with …* (cut 10). Off for a reader who cannot open Messages on GC projects,
+   * a tech (`canOpenGcProjects`): main has no thread page of theirs yet, so the line keeps its words and no link.
+   */
+  threadLinks?: boolean
 }
 
-export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false }: Props) {
+export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenByDefault = false, threadLinks = true }: Props) {
   const [openKeys, setOpenKeys] = useState<ReadonlySet<string>>(() => new Set())
   const scrollRef = useRef<HTMLDivElement | null>(null)
   // Whether the reader is parked at the newest item. New arrivals re-pin only
@@ -168,8 +173,8 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
             </div>
             {g.lines.map((line) => {
               const message = line.kind === 'message' ? line.message : null
-              // A message always opens: to its words and the link to its thread.
-              const hasDetail = line.detail.length > 0 || message !== null
+              // A message opens to its words and, for a reader who can open it, the link to its thread.
+              const hasDetail = line.detail.length > 0 || (message !== null && threadLinks)
               const msg = isConversationalLine(line)
               const customer = message ? isCustomerSide(message.tone) : false
               // Report answers fold (they're long) except in full-screen
@@ -245,7 +250,7 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                   {line.body}
                   {line.pending ? <span style={pendingChipStyle}>Pending</span> : null}
                   {message?.notTiedYet ? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>not tied yet</span> : null}
-                  {message?.tone === 'teamNote' ? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>only the team sees this</span> : null}
+                  {message?.readersWord ? <span style={{ ...smallWord, marginLeft: '0.35rem', color: 'var(--text-muted)' }}>{message.readersWord}</span> : null}
                   {hasDetail && !open && (!message || line.detail.length > 0) ? (
                     <span style={{ color: 'var(--text-link)', fontWeight: 600, fontSize: '0.6875rem', marginLeft: '0.35rem' }}>
                       {line.kind === 'report'
@@ -275,7 +280,7 @@ export function JobActivityFeed({ lines, filtered, narrow = false, reportsOpenBy
                         {d.value}
                       </span>
                     ))}
-                    {message ? (
+                    {message && threadLinks ? (
                       <Link to={message.threadHref} style={{ display: 'inline-block', marginTop: 4, color: 'var(--text-link)', fontWeight: 600, fontSize: '0.75rem' }}>
                         Open the thread with {message.withName} ›
                       </Link>
