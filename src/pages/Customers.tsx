@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, useMemo } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import CustomerPortalGlobeButton from '../components/customers/CustomerPortalGlobeButton'
+import { MessagesButton } from '../components/messages/MessagesButton'
 import { NO_CUSTOMER_TYPE_LABEL } from '../constants/customerTypeLabels'
 import { supabase } from '../lib/supabase'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
@@ -966,6 +967,7 @@ export default function Customers() {
                     customerId={c.id}
                     customerName={(c.name ?? 'Customer').trim() || 'Customer'}
                   />
+                  <MessagesButton customerId={c.id} customerName={c.name} />
                   <button
                     type="button"
                     aria-label={`Edit ${(c.name ?? 'customer').trim() || 'customer'}`}

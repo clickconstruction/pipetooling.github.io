@@ -67,6 +67,12 @@ The office and estimators see this one.
 
 - **N people are waiting on us**. The line counts the people in GC mode waiting on an answer or on something we owe. Each person counts once. {{button:outline|Follow up}} opens Follow up on GC projects. The Follow up button there shows the same count. See [see who is waiting on us and what we owe them](/help/see-who-is-waiting-on-us-and-what-we-owe-them).
 
+**Customers**
+
+The office and estimators see this one.
+
+- **Customers**. The line counts customers who need a reply, what we owe them and senders to sort. {{button:outline|Messages}} opens Messages with **Customers** picked. See [answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page).
+
 **Contracts**
 
 A controller or a dev sees this one.

@@ -67,9 +67,13 @@ const mockup: CustomerMessagesCounts = { needReply: 3, weOwe: 1, toSort: 2 }
 const card = (over: Partial<NeedsYouInputs>) => buildNeedsYouItems(inputs({ customerMessagesEnabled: true, ...over })).find((i) => i.key === 'customer-messages')
 
 describe('customer-messages (residential build, R8 · 14)', () => {
-  it('is off until Messages has its page, so the Dashboard passes it disabled and nothing draws', () => {
-    expect(CUSTOMER_MESSAGES_LINE_ON).toBe(false)
-    expect(card({ customerMessagesEnabled: CUSTOMER_MESSAGES_LINE_ON, customerMessages: mockup })).toBeUndefined()
+  it('is on now that Messages has its page (R2 PR 3b), so the Dashboard passes it enabled and it draws', () => {
+    expect(CUSTOMER_MESSAGES_LINE_ON).toBe(true)
+    expect(card({ customerMessagesEnabled: CUSTOMER_MESSAGES_LINE_ON, customerMessages: mockup })).toBeDefined()
+  })
+
+  it('with the switch off, the Dashboard passes it disabled and nothing draws', () => {
+    expect(card({ customerMessagesEnabled: false, customerMessages: mockup })).toBeUndefined()
   })
 
   it('once on, says Customers with the three counts, under Messages', () => {

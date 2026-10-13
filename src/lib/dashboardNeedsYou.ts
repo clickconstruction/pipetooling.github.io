@@ -45,10 +45,10 @@ import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
 
 /**
- * Residential build, R8 · 14: the Customers line is built, counted and wired, and stays off until Messages has its page.
- * R2 turns it on with the `/messages` route, so the press never opens a page that is not there.
+ * Residential build, R8 · 14: the Customers line, built, counted and wired. On since R2 PR 3b (v2.5451), with the
+ * `/messages` route of R2 PR 1 there for its press. False takes the line off the card and stops the counts' read.
  */
-export const CUSTOMER_MESSAGES_LINE_ON = false
+export const CUSTOMER_MESSAGES_LINE_ON = true
 
 /** Where the Customers line's press goes: Messages, its customers only. */
 export const CUSTOMER_MESSAGES_HREF = '/messages?kind=customer'

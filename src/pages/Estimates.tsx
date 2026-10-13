@@ -19,6 +19,7 @@ import {
   patchDraftLine,
 } from '../lib/estimates/estimateDraftLines'
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { MessagesButton } from '../components/messages/MessagesButton'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
@@ -4669,7 +4670,8 @@ function EstimateDetail({ routeSegment }: { routeSegment: string }) {
                         {displayName}
                       </button>
                     )
-                  })()}
+                  })()}{' '}
+                  <MessagesButton customerId={row.customer_id} customerName={customers.find((c) => c.id === row.customer_id)?.name} size={14} />
                 </p>
               ) : null}
               {row.customer_email && (

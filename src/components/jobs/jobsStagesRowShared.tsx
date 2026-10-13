@@ -31,6 +31,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import CustomerContactCardIcon from '../icons/CustomerContactCardIcon'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
+import { MessagesButton } from '../messages/MessagesButton'
 import OwnerShareChip from './OwnerShareChip'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { contractRowChipForJob, type ContractRowChip } from '../../lib/jobs/contractRowChip'
@@ -680,6 +681,7 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
         // and the owner-sees chip (v2.3827: only on a GC-billed job whose customer is the owner; renders null otherwise).
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.15rem', verticalAlign: 'middle', marginLeft: '0.15rem' }} data-testid="customer-line-tail">
           <CustomerPortalGlobeButton customerId={job.customer_id} customerName={cn || 'Customer'} size={13} />
+          <MessagesButton customerId={job.customer_id} customerName={cn} size={13} />
           <OwnerShareChip job={job} invoices={job.invoices ?? []} ownerName={cn || 'The owner'} gcName={gcName} role={ctx.authRole} onChanged={() => void ctx.loadJobs()} onError={(m) => ctx.showToast(m, 'error')} />
         </span>
       ) : null}
@@ -815,6 +817,7 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
             <span style={{ textDecoration: job.customer_id ? 'underline dotted' : 'none', textUnderlineOffset: 2 }}>{cn || '—'}</span>
           </button>
         ) : null}
+        {hasCustomerInfo && job.customer_id ? <MessagesButton customerId={job.customer_id} customerName={cn} size={14} /> : null}
         {hasCustomerInfo && addrOneLine ? <span aria-hidden>·</span> : null}
         {addrOneLine ? (
           <a
