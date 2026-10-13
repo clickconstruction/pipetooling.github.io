@@ -22,6 +22,9 @@ import { lastOurTextAt, loadBoxes, loadSeats, quoCompany, sendText } from '../_s
  * for that box alone (`stoppedOn`), the opt-out line's first-text and silence rule counts our texts from that box, and
  * the line keeps the box. No caller picks the box yet.
  *
+ * While Settings → Phone and texts → Send texts is off (`app_settings` `messages_texts_on_v1`), `sendText` refuses with
+ * 503 `textsOff` before anything reaches Quo (`quo/textsSwitch.ts`). The send window reads the same row first.
+ *
  * verify_jwt is off in config.toml, as for gc-customer-email: the caller's session is checked here.
  */
 

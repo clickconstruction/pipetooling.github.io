@@ -415,3 +415,11 @@ export const APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1 = 'messages_nudge_app_
  * its own.
  */
 export const APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 = 'messages_nudge_last_run_v1' as const
+
+/**
+ * `value_text` — Send texts (Messages, cut 5's migration `20261014160000_messages_texts_on.sql`): 'true' lets the office
+ * text from the company number, and anything else, 'false' as it ships, keeps texts off. The owner and a dev set it from
+ * Settings → Phone and texts (its own UPDATE policy, `master_or_dev_update_messages_texts_on`); the send window and
+ * `quo-send` read it. HELP answers and a stop's confirmation go either way. Read by `quo/textsSwitch.ts`.
+ */
+export const APP_SETTINGS_KEY_MESSAGES_TEXTS_ON_V1 = 'messages_texts_on_v1' as const

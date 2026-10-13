@@ -25,4 +25,4 @@ A longer text that may ask us to stop does not stop anything. It leaves a note i
 
 The texts sit on What customers see, one to a customer and one to a trade partner. [See what customers see](/help/see-what-customers-see) shows how to open them.
 
-Texts start once the phone service is connected. Until then this guide is for devs.
+Texts start once the owner turns on **Send texts** in Settings. [Turn on texts from the company number](/help/turn-on-texts-from-the-company-number) shows how. Until then this guide is for devs.

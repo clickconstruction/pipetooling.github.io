@@ -15,6 +15,10 @@
  * with QUO_PHONE_NUMBER_ID, QUO_COMPANY_PHONE and QUO_COMPANY_MAILBOX as the team box's while the row leaves them empty.
  * A line keeps the box it came through (`messages.mailbox`), a STOP is kept per box (`contact_channels.opted_out_by_box`),
  * and a text goes from its box's number.
+ *
+ * The switch: a person's text and the app's reminder wait while Settings → Phone and texts → Send texts is off
+ * (`app_settings` `messages_texts_on_v1`, `quo/textsSwitch.ts`). The answer to HELP and a stop's confirmation go either
+ * way, since they answer the person's own keyword.
  */
 // deno-lint-ignore-file no-explicit-any
 // The Quo kernels straight from the copy, not its index: the index re-exports every kernel in it, which the check would
@@ -37,6 +41,7 @@ import {
 import { planSend, sendOver, sentQuoId, type QuoSendInput } from './gcKernels/lib/quo/send.ts'
 import { QUO_PAUSED_KEY, notePause, readQuoRefusal, type PauseChange, type PauseStore } from './gcKernels/lib/quo/paused.ts'
 import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings, stopScope, stoppedOn, type BoxFallback, type BoxSettings, type Mailbox, type StopChannel } from './gcKernels/lib/messages/boxes.ts'
+import { TEXTS_OFF, TEXTS_SWITCH_KEY, switchGates, textsAreOn } from './gcKernels/lib/quo/textsSwitch.ts'
 
 /** Quo's send endpoint. */
 export const QUO_MESSAGES_URL = 'https://api.quo.com/v1/messages'
@@ -229,6 +234,13 @@ export async function notePauseRow(admin: any, change: PauseChange): Promise<voi
   }
 }
 
+/** Whether Settings → Phone and texts → Send texts is on. A row not there, or one that cannot be read, reads off. */
+export async function textsSwitchOn(admin: any): Promise<boolean> {
+  const { data, error } = await admin.from('app_settings').select('value_text').eq('key', TEXTS_SWITCH_KEY).maybeSingle()
+  if (error) console.error('[quo] the texts switch was not read:', error.message)
+  return textsAreOn((data as { value_text: string | null } | null)?.value_text)
+}
+
 export type SendOutcome =
   | { ok: true; messageId: string | null; quoId: string | null; segments: number }
   | { ok: false; refused: string; words: string; status: number }
@@ -247,6 +259,7 @@ export async function sendText(
   box: Mailbox,
   boxes: BoxSettings,
 ): Promise<SendOutcome> {
+  if (switchGates(input.purpose) && !(await textsSwitchOn(admin))) return { ok: false, refused: 'textsOff', words: TEXTS_OFF, status: 503 }
   const apiKey = Deno.env.get('QUO_API_KEY')
   const fromNumberId = boxes[box].numberId
   if (!apiKey || !fromNumberId) {

@@ -48,8 +48,10 @@ import { PhoneAndTextsSettingsSection } from '../components/settings/PhoneAndTex
 import { QuoSeatsSettingsSection } from '../components/settings/QuoSeatsSettingsSection'
 import { EmailReaderSettingsCard } from '../components/settings/EmailReaderSettingsCard'
 import { BoxesSettingsCard } from '../components/settings/BoxesSettingsCard'
+import { TextsSwitchSettingsCard } from '../components/settings/TextsSwitchSettingsCard'
 import { canSeePhoneAndTexts } from '../lib/messages/assignRule'
 import { canSwitchReader } from '../lib/messages/emailReader'
+import { canSwitchTexts } from '../lib/quo/textsSwitch'
 import { ANCHOR_BID_COVER_LETTER_DEFAULTS, ANCHOR_ESTIMATE_CX_DEFAULTS, ANCHOR_ESTIMATE_PUBLIC_TERMS, CONTRACTS_TAB_ID, contractAnchorId, stepParam, type ContractStepRef } from '../lib/contracts/customerContractCatalog'
 import type { EmailStreamKey } from '../lib/emailLogStreamLink'
 import SettingsAccountBackupTrailing from '../components/settings/SettingsAccountBackupTrailing'
@@ -1500,12 +1502,13 @@ export default function Settings() {
       </SettingsGroup>
 
       <SettingsGroup id="settings-phone-texts" hidden={activeSettingsTab !== 'settings-phone-texts'} title={settingsGroupTitle('settings-phone-texts', 'Phone and texts')} description={settingsGroupHint('settings-phone-texts')}>
-        {/* Mounted while it is open, so it reads the seats, Quo's seats, the inboxes and the bids@ reader again each time. */}
+        {/* Mounted while it is open, so it reads the seats, Quo's seats, the inboxes, the texts switch and the bids@ reader again each time. */}
         {activeSettingsTab === 'settings-phone-texts' && canSeePhoneAndTexts(myRole) && (
           <div style={{ display: 'grid', gap: '1rem' }}>
             <PhoneAndTextsSettingsSection />
             <QuoSeatsSettingsSection />
             <BoxesSettingsCard />
+            {canSwitchTexts(myRole) && <TextsSwitchSettingsCard />}
             {canSwitchReader(myRole) && <EmailReaderSettingsCard />}
             {canSwitchReplyPush(myRole) && <ReplyPushSettingsCard />}
           </div>
