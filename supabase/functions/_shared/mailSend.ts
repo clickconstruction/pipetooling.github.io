@@ -44,6 +44,10 @@ export type MailPieceRow = {
   pdf_path: string | null
   certification_path: string | null
   problem: string | null
+  /** The doors (6b-3): the piece this one answers, and when and how the office answered this one. */
+  resend_of?: string | null
+  resolved_at?: string | null
+  resolved_note?: string | null
 }
 
 export type MailEvent = { at: string; kind: string; [k: string]: unknown }
@@ -240,4 +244,40 @@ export function mailChargeFromTransactions(raw: unknown): number | null {
 /** Whether a piece's charge has been read (a `charged` event), so the poll reads it once and never again. */
 export function mailChargeRead(events: MailEvent[] | null | undefined): boolean {
   return Array.isArray(events) && events.some((e) => e != null && typeof e === 'object' && e.kind === 'charged')
+}
+
+/** A corrected address for a re-mail (6b-3): the fields the office typed; a blank one keeps the old piece's. */
+export type MailResendAddress = Partial<Pick<MailPiecePrepareInput, 'name' | 'organization' | 'address1' | 'address2' | 'city' | 'state' | 'postal_code'>>
+
+/**
+ * The new piece that answers an envelope which came back (6b-3): the same kind, sources, job, recipient, envelope
+ * and sheets, no short code of its own (the PDF's code is the old piece's). `plain` keeps the address and goes
+ * First Class; `address` keeps the send type and takes the typed address, a blank field keeping the old one
+ * (address2 always taken, so a suite can be dropped).
+ */
+export function mailResendInput(old: MailPieceRow, mode: 'plain' | 'address', address: MailResendAddress | null): MailPiecePrepareInput {
+  const base: MailPiecePrepareInput = {
+    kind: old.kind, source_ids: old.source_ids, job_id: old.job_id, recipient: old.recipient, short_code: null,
+    name: old.name, organization: old.organization, address1: old.address1, address2: old.address2, city: old.city, state: old.state, postal_code: old.postal_code,
+    send_type: old.send_type, envelope: old.envelope === 'Flat' ? 'Flat' : old.envelope === '#10' ? '#10' : null, sheets: old.sheets,
+  }
+  if (mode === 'plain') return { ...base, send_type: 'First Class' }
+  const a = address ?? {}
+  const keep = (next: string | undefined, prev: string) => (next ?? '').trim() || prev
+  const named = (a.name ?? '').trim() || (a.organization ?? '').trim()
+  return {
+    ...base,
+    name: named ? (a.name ?? '').trim() : old.name,
+    organization: named ? (a.organization ?? '').trim() : old.organization,
+    address1: keep(a.address1, old.address1),
+    address2: (a.address2 ?? old.address2).trim(),
+    city: keep(a.city, old.city),
+    state: keep(a.state, old.state).toUpperCase(),
+    postal_code: keep(a.postal_code, old.postal_code),
+  }
+}
+
+/** The note `resend` leaves on the old piece. */
+export function mailResolvedWords(mode: 'plain' | 'address', next: Pick<MailPiecePrepareInput, 'address1' | 'city'>): string {
+  return mode === 'plain' ? 'a plain First Class copy sent' : `mailed again to ${[next.address1, next.city].filter(Boolean).join(', ')}`
 }

@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DocsmitClient, DocsmitError } from '../_shared/docsmitClient.ts'
 import { loadDocsmitConfig } from '../_shared/mailConfig.ts'
-import { appendEvent, mailCassAddress, mailCassVerdict, mailClientMsgId, mailMessageTitle, mailPartyFromPiece, mailPieceUpdateFromParty, mailPrepareProblems, type MailPiecePrepareInput, type MailPieceRow } from '../_shared/mailSend.ts'
+import { appendEvent, mailCassAddress, mailCassVerdict, mailClientMsgId, mailMessageTitle, mailPartyFromPiece, mailPieceUpdateFromParty, mailPrepareProblems, mailResendInput, mailResolvedWords, type MailPiecePrepareInput, type MailPieceRow } from '../_shared/mailSend.ts'
 import { PIECE_COLUMNS, loadOpenPieces, loadPiecesByIds, refreshPieces, writeTrackingToFilings, type MailDb } from '../_shared/mailDocsmitRefresh.ts'
 
 /**
@@ -18,6 +18,10 @@ import { PIECE_COLUMNS, loadOpenPieces, loadPiecesByIds, refreshPieces, writeTra
  *   { action: "send", piece_ids[] }          → one at a time, in order; 201 marks the piece sent and reads /parties once;
  *       402 stops: { ok: false, sent[], shortfall, stopped_at } so the run can say credit is short and nothing more went
  *   { action: "refresh", piece_ids?[] }      → /parties for each (or every open Docsmit piece), the fold, the filing's sends[]
+ *   { action: "resend", piece_id, mode: plain | address, address?, job_number? }   (6b-3) a new piece answering one that came
+ *       back: the same PDF from the bucket, First Class to the same address (plain) or the old send type to the typed
+ *       address (address, through CASS); made, uploaded, priced and sent in one call; the old piece marked resolved
+ *   { action: "resolve", piece_id, note }    → (6b-3) the office answered it by hand (a courier, a visit); marked resolved
  *
  * Secrets: SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, DOCSMIT_EMAIL, DOCSMIT_PASSWORD_SHA512,
  * DOCSMIT_SOFTWARE_ID, DOCSMIT_BASE_URL (Tracksmit when unset). app_settings docsmit_paused = 'true' refuses
@@ -197,6 +201,84 @@ serve(async (req) => {
         sent.push(piece.id)
       }
       return jsonResponse({ ok: true, sent, skipped })
+    }
+
+    if (action === 'resend') {
+      const old = (await loadPiecesByIds(admin, [str(body.piece_id, 40)].filter(Boolean)))[0]
+      if (!old) return jsonResponse({ error: 'No such piece.' }, 404)
+      if (old.status === 'prepared') return jsonResponse({ error: 'That envelope was never sent; send it, or leave it.' }, 400)
+      if (!old.pdf_path) return jsonResponse({ error: 'That envelope has no PDF in the bucket to send again.' }, 400)
+      const mode = body.mode === 'address' ? 'address' : 'plain'
+      const a = (body.address ?? {}) as Record<string, unknown>
+      const piece = mailResendInput(old, mode, mode === 'address' ? { name: str(a.name, 120), organization: str(a.organization, 120), address1: str(a.address1, 120), address2: str(a.address2, 120), city: str(a.city, 80), state: str(a.state, 20), postal_code: str(a.postal_code, 10) } : null)
+      const problems = mailPrepareProblems(piece)
+      if (problems.length > 0) return jsonResponse({ error: `The envelope needs ${problems.join(', ')}.` }, 400)
+      const pdf = await readPdf(supabaseUrl, serviceKey, old.pdf_bucket, old.pdf_path)
+      if (!pdf || pdf.byteLength === 0) return jsonResponse({ error: `The PDF is not in the bucket: ${old.pdf_bucket}/${old.pdf_path}` }, 400)
+      const verdict = mailCassVerdict(await client.multiCass([mailCassAddress(piece)]))
+      if (!verdict.mailable) return jsonResponse({ error: 'Docsmit says this address will not mail.', correction: verdict.correction, non_mailable: true }, 422)
+      const jobNumber = str(body.job_number, 20) || null
+
+      const { data: inserted, error: insErr } = await admin.from('mail_pieces').insert({
+        ...piece,
+        provider: 'docsmit',
+        status: 'prepared',
+        pdf_bucket: old.pdf_bucket,
+        pdf_path: old.pdf_path,
+        resend_of: old.id,
+        created_by: user.id,
+        events: [{ at: nowIso, kind: 'prepared', by: user.id, resend_of: old.id, mode, correction: verdict.correction, env: client.env() }],
+      }).select(PIECE_COLUMNS).single()
+      if (insErr || !inserted) return jsonResponse({ error: `Could not keep the piece: ${insErr?.message ?? 'no row'}` }, 500)
+      const row = inserted as MailPieceRow
+
+      try {
+        const clientMsgId = mailClientMsgId(row.kind, row.id)
+        const messageId = await client.newMessage({ title: mailMessageTitle(row, jobNumber), clientMsgID: clientMsgId, ...(jobNumber ? { billTo: jobNumber } : {}), physicalParties: [mailPartyFromPiece(row)] })
+        await client.upload(messageId, pdf, `${row.id}.pdf`)
+        const priced = await client.priceCheck(messageId).catch((e: unknown) => ({ price: null, raw: { error: e instanceof Error ? e.message : String(e) } }))
+        let events = appendEvent(row.events, { at: nowIso, kind: 'message_made', provider_message_id: messageId, price: priced.price, price_raw: priced.price == null ? priced.raw : undefined })
+        const { error: upErr } = await admin.from('mail_pieces').update({ provider_message_id: messageId, client_msg_id: clientMsgId, price: priced.price, events }).eq('id', row.id)
+        if (upErr) throw new Error(`mail_pieces ${row.id}: ${upErr.message}`)
+        const answer = await client.send(messageId)
+        if (!answer.sent) {
+          const short = answer.shortfall ?? 0
+          await admin.from('mail_pieces').update({ events: appendEvent(events, { at: nowIso, kind: 'send_short', shortfall: short }) }).eq('id', row.id)
+          return jsonResponse({ ok: false, piece_id: row.id, shortfall: short, error: `Docsmit credit is short by $${short.toFixed(2)}; the copy is prepared, not sent.` }, 402)
+        }
+        events = appendEvent(events, { at: nowIso, kind: 'sent', env: client.env() })
+        let next: MailPieceRow = { ...row, provider_message_id: messageId, client_msg_id: clientMsgId, price: priced.price, status: 'sent', events }
+        const patch: Record<string, unknown> = { status: 'sent', events }
+        try {
+          const party = (await client.parties(messageId))[0]
+          if (party) {
+            const u = mailPieceUpdateFromParty(next, party, nowIso)
+            next = { ...next, ...u.patch, events: appendEvent(next.events, { ...u.event, party }) }
+            Object.assign(patch, u.patch, { events: next.events })
+          }
+        } catch { /* the poll reads it next hour */ }
+        const { error: sentErr } = await admin.from('mail_pieces').update(patch).eq('id', row.id)
+        if (sentErr) return jsonResponse({ ok: false, piece_id: row.id, error: `Sent, but could not write the piece: ${sentErr.message}` }, 500)
+        // A re-mail is the filing's certified send now; a plain copy rides beside the old one and never takes its number.
+        if (mode === 'address') await writeTrackingToFilings(admin, next).catch(() => [])
+        const note = mailResolvedWords(mode, piece)
+        await admin.from('mail_pieces').update({ resolved_at: nowIso, resolved_note: note, events: appendEvent(old.events, { at: nowIso, kind: 'resent', by: user.id, piece_id: row.id, mode }) }).eq('id', old.id)
+        return jsonResponse({ ok: true, piece_id: row.id, status: next.status, usps_tracking: next.usps_tracking, price: priced.price, resolved_note: note, env: client.env() })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        await admin.from('mail_pieces').update({ status: 'failed', problem: message, events: appendEvent(row.events, { at: nowIso, kind: 'prepare_failed', error: message }) }).eq('id', row.id)
+        return jsonResponse({ error: message, piece_id: row.id }, e instanceof DocsmitError ? 502 : 500)
+      }
+    }
+
+    if (action === 'resolve') {
+      const old = (await loadPiecesByIds(admin, [str(body.piece_id, 40)].filter(Boolean)))[0]
+      if (!old) return jsonResponse({ error: 'No such piece.' }, 404)
+      const note = str(body.note, 200)
+      if (!note) return jsonResponse({ error: 'Say how it was handled, in a few words.' }, 400)
+      const { error: upErr } = await admin.from('mail_pieces').update({ resolved_at: nowIso, resolved_note: note, events: appendEvent(old.events, { at: nowIso, kind: 'resolved', by: user.id, note }) }).eq('id', old.id)
+      if (upErr) return jsonResponse({ error: `Could not write the piece: ${upErr.message}` }, 500)
+      return jsonResponse({ ok: true, piece_id: old.id, resolved_note: note })
     }
 
     if (action === 'refresh') {
