@@ -133,7 +133,7 @@ In the order that each unblocks the next. Numbers are the mockups' card numbers.
 | 7 | The Lien desk's sends | 1 | a `legal` line kind from the desk's sent rows, read-only, the box off under it, the reply to the office alone |
 | 8 | A line on an estimate from a message | 2 | the column (SQL); the ⋯ press through `estimates/lineFromMessage.ts`, cut 4b's kernel with the estimate's form; never called an add-on, which is Estimates' option kind (helper 6, 2026-10-13) |
 | 3 | Dispatch writes back | 2 | `dispatch/whatSlides.ts` (the stops that move and by how much); the ask on the send, the move RPC with its reason, the dispatcher told |
-| 9 | Leads on Prospects | 1 | Prospects shows the thread window on a lead's card; booking re-points the contact to the customer (the `name_contact` fold) |
+| 9 | Leads | 1 | **moved off Prospects 2026-10-13**: Prospects is a cold-call deck of companies, so a homeowner who texted is a `lead` contact with no record whose home is Messages and Follow up; a `prospects` row is written only on the card's **Add to Prospects**; booking re-points the contact to the new customer and keeps the thread (R0's SQL lets `name_contact` re-point a lead); the Who is this? guess still reads "a new lead" (helper 6's read, 2026-10-13) |
 | 10 | Supply houses to the RFQ | 1 | an email from a supply house ties to the open RFQ; the RFQ page reads its lines |
 | 11 | Candidates to the hiring board | 1 | Who is this? hands the text to the board's thread; Messages keeps no row |
 | 16 | Language on the customer | 1 | `customers.language` (SQL and the reads in one PR: the strip, the phone, the morning run through the contact) |
@@ -191,7 +191,8 @@ From the prototype's screen 5, with the lean each cut builds to unless told othe
 5. **team@ or office@** (R6): office@ is on the letterhead, the lien reply-to and the website terms today; whichever is chosen goes everywhere.
 6. **Which reminders start on** (R4): the estimate and the bill; the review ask after ten real threads.
 7. **The Job activity switch's default** (R1): on for the office, off on the phone.
-8. **Photos on a field report** (R8 · 2): main keeps none. Adding a photo field to reports is its own small cut (the input type, a store, the upload from Job Mode) before the thread can offer them to a customer. Yes, later, or no?
+8. **Leads' home** (R8 · 9): the pick said Prospects; the build keeps a texting homeowner on Messages until they book, with Add to Prospects as a press, because Prospects is the companies' cold-call deck and a homeowner would land in it as "never called". Object if you want them in the deck.
+9. **Photos on a field report** (R8 · 2): main keeps none. Adding a photo field to reports is its own small cut (the input type, a store, the upload from Job Mode) before the thread can offer them to a customer. Yes, later, or no?
 
 ## 8. How a cut is done
 
