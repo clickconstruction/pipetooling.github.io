@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
 /** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'messages-notify', 'photo-save', 'quo-send', 'quo-webhook']
+export const IMPORTERS = ['customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-sync', 'messages-email', 'messages-notify', 'photo-save', 'quo-send', 'quo-webhook']
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {

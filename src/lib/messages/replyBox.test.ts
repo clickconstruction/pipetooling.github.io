@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { JobTile } from './jobTiles'
 import type { BoxSettings } from './boxes'
-import { fromLine } from './compose'
+import { fromLine, replyToHeader } from './compose'
 import { lastFromThem, lastOurTextAt, priorTexts, replyCompany, replyJob, tieWords } from './replyBox'
 import type { ThreadMessage } from './thread'
 
@@ -124,22 +124,34 @@ describe('the company a reply goes as (replyCompany)', () => {
 
   it('takes the number and the address of the customer’s box, or of bids@ for a trade partner', () => {
     const dana = replyCompany('pipeline:j1040', { settings: SETTINGS, kind: 'customer', wroteTo: null })
-    expect(dana).toEqual({ name: 'Click Plumbing and Electrical', phone: '(512) 555-0144', mailbox: 'team@clickplumbing.example', address: '' })
+    expect(dana).toEqual({ name: 'Click Plumbing and Electrical', phone: '(512) 555-0144', numberWords: 'the company number', mailbox: 'team@clickplumbing.example', address: '' })
     const greg = replyCompany('bid:b482', { settings: SETTINGS, kind: 'trade', wroteTo: null })
-    expect(fromLine('email', greg)).toEqual(['from bids@clickconstruction.example', 'Click Construction'])
+    expect(fromLine('email', greg)).toEqual(['from Click Construction', 'replies to bids@clickconstruction.example'])
+    expect(fromLine('text', greg)).toEqual(['from the bids number (512) 555-0199', 'Click Construction'])
   })
 
   it('answers from the box they wrote to', () => {
     const elena = replyCompany('bid:b482', { settings: SETTINGS, kind: 'customer', wroteTo: 'bids' })
-    expect(fromLine('text', elena)).toEqual(['from the company number (512) 555-0199', 'Click Construction'])
+    expect(fromLine('text', elena)).toEqual(['from the bids number (512) 555-0199', 'Click Construction'])
+    expect(fromLine('email', elena)).toEqual(['from Click Construction', 'replies to bids@clickconstruction.example'])
+  })
+
+  it('texts from the company number while bids@ has no number of its own, as quo-send sends it', () => {
+    const noBidsNumber: BoxSettings = { ...SETTINGS, bids: { ...SETTINGS.bids, numberId: '' } }
+    const greg = replyCompany('bid:b482', { settings: noBidsNumber, kind: 'trade', wroteTo: null })
+    expect(fromLine('text', greg)).toEqual(['from the company number (512) 555-0144', 'Click Construction'])
+    expect(replyToHeader(greg)).toBe('bids@clickconstruction.example')
   })
 
   it('leaves the number and the address out while Settings has none', () => {
     expect(replyCompany('pipeline:j1040', { settings: null, kind: 'customer', wroteTo: null })).toEqual({
       name: 'Click Plumbing and Electrical',
       phone: '',
+      numberWords: 'the company number',
       mailbox: '',
       address: '',
     })
+    // With nothing read, a trade partner's text still says the company number, which is what quo-send uses.
+    expect(fromLine('text', replyCompany('bid:b482', { settings: null, kind: 'trade', wroteTo: null }))).toEqual(['from the company number', 'Click Construction'])
   })
 })

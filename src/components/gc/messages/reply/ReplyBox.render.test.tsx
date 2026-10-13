@@ -6,6 +6,7 @@ import { renderWithProviders } from '../../../../test/renderSmokeMocks'
 import { DEMO_NOW } from '../../../../lib/messages/messagesDemo'
 import { spineMessagesView } from '../../../../lib/messages/spineRows'
 import type { JobTile } from '../../../../lib/messages/jobTiles'
+import type { BoxSettings } from '../../../../lib/messages/boxes'
 import type { ReplyIo } from '../../../../lib/messages/replyIo'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
@@ -36,13 +37,16 @@ function thread(contactId: string, jobFilter: string | null = null): OpenThread 
   }
 }
 
-function box(contactId = 'c-greg', more: { jobFilter?: string | null; io?: ReplyIo; provider?: boolean } = {}) {
+// No boxes in Settings, as it ships: the from line keeps today's words.
+const NO_BOXES = () => Promise.resolve(null)
+
+function box(contactId = 'c-greg', more: { jobFilter?: string | null; io?: ReplyIo; provider?: boolean; boxes?: () => Promise<BoxSettings | null> } = {}) {
   const io = more.io ?? fakeIo()
   const reread = vi.fn()
   const open = thread(contactId, more.jobFilter ?? null)
   const wrap = (child: ReactNode) =>
     more.provider === false ? child : <OpenThreadContext.Provider value={open}>{child}</OpenThreadContext.Provider>
-  renderWithProviders(<MessagesRereadContext.Provider value={reread}>{wrap(<ReplyBox contact={open.contact} io={io} />)}</MessagesRereadContext.Provider>)
+  renderWithProviders(<MessagesRereadContext.Provider value={reread}>{wrap(<ReplyBox contact={open.contact} io={io} loadBoxes={more.boxes ?? NO_BOXES} />)}</MessagesRereadContext.Provider>)
   const el = document.querySelector('[data-reply-box]') as HTMLElement
   return { io, reread, el, open }
 }
@@ -154,5 +158,23 @@ describe('ReplyBox: the reply box at the foot of a thread (Messages, cut 3)', ()
   it('draws with no window around it, its tie on the person’s star and no choices', () => {
     const { el } = box('c-greg', { provider: false })
     expect(el.querySelector('[data-reply-tie]')?.textContent).toBe('a job not loaded · default ▾')
+  })
+
+  it('names the box an email’s answer comes back to, and the number a text goes from, once Settings holds them (R6)', async () => {
+    const SETTINGS: BoxSettings = {
+      team: { address: 'team@clickplumbing.example', phone: '(512) 555-0144', numberId: 'PNteam0144' },
+      bids: { address: 'bids@clickconstruction.example', phone: '(512) 555-0199', numberId: 'PNbids0199' },
+    }
+    const { el } = box('c-greg', { boxes: () => Promise.resolve(SETTINGS) })
+    // Greg is a trade partner: bids@ is his box.
+    await waitFor(() => expect(el.querySelector('[data-reply-from]')?.textContent).toBe('from the bids number (512) 555-0199 · Click Construction'))
+    fireEvent.click(within(el).getByRole('radio', { name: 'Email' }))
+    expect(el.querySelector('[data-reply-from]')?.textContent).toBe('from Click Construction · replies to bids@clickconstruction.example')
+    fireEvent.change(within(el).getByRole('textbox'), { target: { value: 'Checking on the number.' } })
+    fireEvent.click(within(el).getByRole('button', { name: 'Send email…' }))
+    const win = await screen.findByRole('dialog', { name: 'Before it goes, this is what they see' })
+    expect(win.querySelector('[data-send-reply-to]')?.textContent).toBe('Replies to: bids@clickconstruction.example')
+    expect(win.textContent).toContain('From: Click Construction')
+    expect(win.textContent).toContain('Their answer comes to bids@clickconstruction.example.')
   })
 })

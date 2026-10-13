@@ -127,26 +127,40 @@ export function textBoxBlocked(kind: ReplyKind, to: ReplyRecipient): string | nu
 }
 
 /**
- * The from line floating in the empty box: our one number or our one mailbox, never a person's own. Empty on a note.
- * Before the phone is switched on the app has no number to name, and an email goes as our name on the app's sending
- * address, so a blank number or mailbox leaves it out rather than drawing a gap.
+ * The from line floating in the empty box: our number or the box their answer comes back to, never a person's own.
+ * Empty on a note. An email goes as our name on the app's sending address, with the box as its Reply-To (R6), so the
+ * line says where the answer goes. A blank number or box leaves it out rather than drawing a gap.
  */
 export function fromLine(kind: ReplyKind, company: ComposeCompany): string[] {
   const phone = company.phone.trim()
   const mailbox = company.mailbox.trim()
-  if (kind === 'text') return [phone ? `from the company number ${phone}` : 'from the company number', company.name]
-  if (kind === 'email') return mailbox ? [`from ${mailbox}`, company.name] : [`from ${company.name}`]
+  const number = company.numberWords?.trim() || 'the company number'
+  if (kind === 'text') return [phone ? `from ${number} ${phone}` : `from ${number}`, company.name]
+  if (kind === 'email') return mailbox ? [`from ${company.name}`, `replies to ${mailbox}`] : [`from ${company.name}`]
   return []
 }
 
-/** An email's From: "Click Construction <bids@clickconstruction.example>", or our name alone when the app does not know the address. */
+/** An email's From as their inbox shows it: our name, on the app's own sending address. */
 export function fromHeader(company: ComposeCompany): string {
-  const mailbox = company.mailbox.trim()
-  return mailbox ? `${company.name} <${mailbox}>` : company.name
+  return company.name
 }
 
-/** Where an answer to the reply box's email goes, until the company mailbox is read into the thread. */
+/** An email's Reply-To (R6): the box their answer comes back to. Null when the app does not know one. */
+export function replyToHeader(company: ComposeCompany): string | null {
+  return company.mailbox.trim() || null
+}
+
+/** Where an answer to the reply box's email goes while no box is set: the sender's own inbox. */
 export const EMAIL_REPLIES_NOTE = 'Their answer comes to your own inbox. Bring anything that matters back to this thread.'
+
+/**
+ * Where an answer goes: the box, else the sender's own inbox. It names the box alone, since the box's answers reach this
+ * thread only while Read bids@ is on and the box is read.
+ */
+export function emailRepliesNote(company: ComposeCompany): string {
+  const box = company.mailbox.trim()
+  return box ? `Their answer comes to ${box}.` : EMAIL_REPLIES_NOTE
+}
 
 // ---------- the email ----------
 
