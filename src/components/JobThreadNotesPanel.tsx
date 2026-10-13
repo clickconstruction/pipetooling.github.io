@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
 import type { UserRole } from '../hooks/useAuth'
 import { displayReportTemplateName } from '../lib/reportTemplateDisplayName'
@@ -8,6 +8,8 @@ import type { JobThreadScheduleActivityItem } from '../lib/jobThreadScheduleActi
 import type { JobThreadClockActivityItem } from '../lib/jobThreadClockActivity'
 import { eventRenderMeta, type JobThreadEventActivityItem } from '../lib/jobActivityEvent'
 import { ACTIVITY_FILTERS, countActivityByFilter, filterActivity, type ActivityFilter } from '../lib/jobActivityFilter'
+import { JOB_BOX_KINDS, type JobBoxKind } from '../lib/messages/jobBox'
+import { KIND_LOOK, RING } from './gc/messages/reply/kindLook'
 import { formatDecimalWorkHoursToHhMm } from '../lib/formatDecimalWorkHoursHhMm'
 import {
   scheduleFormatDateLongNoWeekday,
@@ -78,6 +80,11 @@ type JobThreadNotesPanelProps = {
   onCommitPct?: (value: number, note: string) => void | Promise<void>
   /** People assigned to the job (jobs_ledger_team_members). Shown top-left. */
   teamMembers?: Array<{ user_id: string; name: string | null }>
+  /**
+   * Residential R2: Text and Email to the job's customer beside the note, through a kinds row over the composer (the
+   * job's window, for the office team). Note is this composer, as it was; Text and Email draw `render`'s box in its place.
+   */
+  customerBox?: { render: (kind: 'text' | 'email') => ReactNode }
 }
 
 const ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -148,7 +155,9 @@ export function JobThreadNotesPanel({
   pctSaving = false,
   onCommitPct,
   teamMembers,
+  customerBox,
 }: JobThreadNotesPanelProps) {
+  const [boxKind, setBoxKind] = useState<JobBoxKind>('note')
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
   const [pctDraft, setPctDraft] = useState(pctComplete ?? 0)
   // Who set the recorded % (v2.2852): the crew, when the newest report with a % says the same number; else the office.
@@ -641,7 +650,26 @@ export function JobThreadNotesPanel({
             padding: '0.6rem',
           }}
         >
-          {pctEditorOpen && canEditPct ? (
+          {customerBox && (
+            <div role="radiogroup" aria-label="Write as" style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {JOB_BOX_KINDS.map((k) => (
+                <button
+                  key={k.kind}
+                  type="button"
+                  role="radio"
+                  aria-checked={boxKind === k.kind}
+                  title={k.tip}
+                  onClick={() => setBoxKind(k.kind)}
+                  style={{ ...KIND_LOOK[k.kind], border: '1px solid', borderRadius: 6, padding: '0.2rem 0.7rem', fontSize: '0.82rem', cursor: 'pointer', ...(boxKind === k.kind ? RING : null) }}
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {customerBox && boxKind !== 'note' ? (
+            customerBox.render(boxKind)
+          ) : pctEditorOpen && canEditPct ? (
             /* % complete editor takes over the composer area: slider on top, then
                [note field | Cancel | Set to N%]. A note is required below 100%. */
             <div
