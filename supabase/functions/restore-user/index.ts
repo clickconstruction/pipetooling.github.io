@@ -133,8 +133,9 @@ serve(async (req) => {
       )
     }
 
+    // GoTrue's admin update lifts a ban with `ban_duration: 'none'`; it silently drops a `banned_until`.
     const { error: unbanError } = await adminClient.auth.admin.updateUserById(user_id, {
-      banned_until: null,
+      ban_duration: 'none',
     })
 
     if (unbanError) {
@@ -147,7 +148,11 @@ serve(async (req) => {
 
     // CT bridge (v2.2435): mirror the restore to CountTooling when a seat is linked.
     // Fail-soft — a CT-leg failure never blocks the restore; the audit catches drift.
-    const ctBridge = await forwardCtSeatState(adminClient, user_id, 'reactivate')
+    const ctBridge = await forwardCtSeatState(
+      adminClient as unknown as Parameters<typeof forwardCtSeatState>[0],
+      user_id,
+      'reactivate',
+    )
 
     return new Response(
       JSON.stringify({
@@ -160,7 +165,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in restore-user function:', error)
     return new Response(
-      JSON.stringify({ error: error.message || 'Internal server error' }),
+      JSON.stringify({ error: (error as Error).message || 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

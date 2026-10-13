@@ -13,7 +13,9 @@ interface MergeUsersRequest {
   dry_run?: boolean
 }
 
-const BAN_UNTIL_FAR_FUTURE = '9999-12-31T23:59:59.999Z'
+// GoTrue's admin update bans by `ban_duration`, a Go duration (100 years here); it silently
+// drops a `banned_until`.
+const BAN_DURATION_FOREVER = '876000h'
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -124,7 +126,7 @@ serve(async (req) => {
         auth: { autoRefreshToken: false, persistSession: false },
       })
       const { error: banError } = await adminClient.auth.admin.updateUserById(absorbed_user_id, {
-        banned_until: BAN_UNTIL_FAR_FUTURE,
+        ban_duration: BAN_DURATION_FOREVER,
       })
       if (banError) {
         console.error('merge-users: auth ban failed after data merge committed:', banError)

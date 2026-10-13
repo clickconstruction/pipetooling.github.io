@@ -532,6 +532,8 @@ interface SendSignInEmailRequest {
 
 ### merge-users
 
+> **v2.5397 — the absorbed login's ban lands, and `deno check` passes again**: the ban sent `banned_until`, which GoTrue's admin update drops without an error (see `archive-user`), so the call answered 200 and the absorbed login stayed open (TS2353). It sends `ban_duration: '876000h'` (100 years) now. **Redeploy** once merged, after `restore-user`: the ban works from then on.
+
 **Purpose**: Merge one user account into another (dev-only). Calls the `merge_user_accounts` RPC (migration `20260712190000` + `191500` fix) to reassign every reference from the absorbed account to the survivor — explicit handling for unique/membership tables, org pair tables, labels, roster link, `estimates.accept_notify_user_ids`, plus a dynamic FK sweep and a zero-leftovers coverage assert — then bans the absorbed login via the service role. Rules (validated in the RPC): both accounts same role; absorbed must be **archived or never signed in**; when one account is live it must be the survivor. Absorbed account keeps its email (tombstone) and stays restorable-in-name only — merges cannot be undone.
 
 **Endpoint**: `POST /functions/v1/merge-users`
@@ -573,6 +575,8 @@ interface MergeUsersRequest {
 
 ### archive-user
 
+> **v2.5397 — the ban lands, and `deno check` passes again**: the ban sent `banned_until`, which GoTrue's admin update does not take. `PUT /admin/users/{id}` reads the body into `AdminUserParams`, which has `ban_duration` and no `banned_until`, with a plain `json.Unmarshal` that drops unknown keys, so the call answered 200 and banned nobody (TS2353, confirmed by a read-only check on production). It sends `ban_duration: '876000h'` (100 years) now, and GoTrue writes `auth.users.banned_until` from it. The service-role client goes to `forwardCtSeatState` as that helper's own narrow type (TS2589, TS2345), and the outer `catch` reads `(error as Error).message` (TS18046). **Redeploy** once merged, after `restore-user`: the ban works from then on.
+
 **Purpose**: Archive users by email or name. Archived users are hidden across the app and cannot sign in, but can be restored later.
 
 **Endpoint**: `POST /functions/v1/archive-user`
@@ -603,7 +607,7 @@ interface ArchiveUserRequest {
 - Archiving an **already-archived** account returns **409** with `"That user is already archived (May 21, 2026)."` (second lookup without the archived filter; a genuinely unknown user still returns 404 `User not found`)
 - If `reassign_customers_to` is provided, all customers owned by the user will be reassigned to the specified master before archival
 - The new master must be a `dev` or `master_technician` role
-- Sets `archived_at` in `public.users` and `banned_until` in `auth.users` (user cannot sign in)
+- Sets `archived_at` in `public.users` and bans the auth login with `ban_duration: '876000h'`, which GoTrue stores as `auth.users.banned_until` (user cannot sign in, and an open session ends at its next token refresh)
 
 #### Example Request
 
@@ -635,7 +639,9 @@ const response = await supabase.functions.invoke('archive-user', {
 
 ### restore-user
 
-**Purpose**: Restore an archived user. Clears `archived_at` and `banned_until` so the user can sign in again.
+> **v2.5397 — the unban lands, and `deno check` passes again**: the unban sent `banned_until: null`, which GoTrue's admin update drops (see `archive-user`). It sends `ban_duration: 'none'` now, which clears `auth.users.banned_until`. The service-role client goes to `forwardCtSeatState` as that helper's own narrow type (TS2589, TS2345), and the outer `catch` reads `(error as Error).message` (TS18046). **Redeploy** once merged, before `archive-user` and `merge-users`, so a login they ban can always be restored.
+
+**Purpose**: Restore an archived user. Clears `archived_at` and lifts the auth ban (`ban_duration: 'none'`) so the user can sign in again.
 
 **Endpoint**: `POST /functions/v1/restore-user`
 
