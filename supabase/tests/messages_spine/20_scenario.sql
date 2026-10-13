@@ -346,5 +346,117 @@ SELECT msp.same('a deleted draft leaves both lines on the thread, unlinked (R8 �
   (SELECT concat_ws('|', count(*), count(estimate_id)) FROM public.messages WHERE body IN ('The start date goes Monday.', 'Tell her Monday.')),
   '2|0');
 
+-- 13 · The office puts a customer's message on their estimate (R8 · 8, draft_estimate_line_from_message). Elena's
+-- customer has the kitchen being worked, the bath billed and the laundry, whose job link an older estimate holds; the
+-- architects have an office. Her lines come in by email, as the reader writes them, each tied to its job; Greg's line
+-- is tied to the kitchen too.
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-000000000592', 'Spine Plumbing');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, job_address, customer_id, status) VALUES
+  ('00000000-0000-0000-0000-000000000593', '00000000-0000-0000-0000-0000000005d1', '00000000-0000-0000-0000-000000000592', 'Cibolo kitchen', '12 Oak St', '00000000-0000-0000-0000-0000000005c1', 'working'),
+  ('00000000-0000-0000-0000-000000000594', '00000000-0000-0000-0000-0000000005d1', '00000000-0000-0000-0000-000000000592', 'Cibolo bath', '12 Oak St', '00000000-0000-0000-0000-0000000005c1', 'billed'),
+  ('00000000-0000-0000-0000-000000000595', '00000000-0000-0000-0000-0000000005d1', '00000000-0000-0000-0000-000000000592', 'Cibolo laundry', '12 Oak St', '00000000-0000-0000-0000-0000000005c1', 'ready_to_bill'),
+  ('00000000-0000-0000-0000-000000000596', '00000000-0000-0000-0000-0000000005d1', '00000000-0000-0000-0000-000000000592', 'Marsh office', '', '00000000-0000-0000-0000-0000000005c2', 'working');
+INSERT INTO public.estimates (id, master_user_id, created_by, customer_id, job_ledger_id, title)
+VALUES ('00000000-0000-0000-0000-000000000597', '00000000-0000-0000-0000-0000000005d2', '00000000-0000-0000-0000-0000000005d2',
+  '00000000-0000-0000-0000-0000000005c1', '00000000-0000-0000-0000-000000000595', 'The laundry, as the job was made');
+INSERT INTO public.messages (contact_id, channel_id, channel, direction, at, body, jobs_ledger_id)
+SELECT (SELECT elena FROM ids), ch.id, 'email', 'in', now() - v.ago, v.body, v.job
+FROM (VALUES
+  (interval '50 minutes', 'Can you also fix the garbage disposal? It hums.', '00000000-0000-0000-0000-000000000593'::uuid),
+  (interval '40 minutes', 'And the kitchen faucet drips.', '00000000-0000-0000-0000-000000000593'::uuid),
+  (interval '30 minutes', 'One more thing for the kitchen.', '00000000-0000-0000-0000-000000000593'::uuid),
+  (interval '20 minutes', 'The tub drain is slow too.', '00000000-0000-0000-0000-000000000594'::uuid),
+  (interval '10 minutes', 'Look at the dryer vent while you are here.', '00000000-0000-0000-0000-000000000595'::uuid),
+  (interval '5 minutes', 'This is for the Marsh office.', '00000000-0000-0000-0000-000000000596'::uuid)
+) AS v(ago, body, job)
+JOIN public.contact_channels ch ON ch.contact_id = (SELECT elena FROM ids) AND ch.kind = 'email';
+UPDATE public.messages SET jobs_ledger_id = '00000000-0000-0000-0000-000000000593' WHERE body = 'Greg here.';
+-- The press as the window makes it: the message by its words, the open draft by the words of a message on it (none
+-- for a new draft), read at its updated_at unless a stale one is given. Gives the line's number on the estimate.
+CREATE FUNCTION msp.put_on(p_body text, p_on text, p_line jsonb, p_replaces boolean DEFAULT false, p_seen timestamptz DEFAULT NULL)
+RETURNS text LANGUAGE sql AS $$
+  SELECT d.drafted_line_number::text
+  FROM public.draft_estimate_line_from_message(
+    (SELECT id FROM public.messages WHERE body = p_body),
+    (SELECT estimate_id FROM public.messages WHERE body = p_on),
+    p_line, p_replaces,
+    coalesce(p_seen, (SELECT e.updated_at FROM public.estimates e JOIN public.messages m ON m.estimate_id = e.id WHERE m.body = p_on))) d
+$$;
+-- What a line's estimate is: its title, customer, job link, total and each line's description and amount.
+CREATE FUNCTION msp.estimate_of(p_body text) RETURNS text LANGUAGE sql AS $$
+  SELECT concat_ws('|', e.title, e.customer_id, coalesce(e.job_ledger_id::text, 'no job link'), e.total_cents,
+    (SELECT string_agg((l ->> 'description') || ' ' || (l ->> 'amount_cents'), ' / ' ORDER BY i) FROM jsonb_array_elements(e.line_items_snapshot) WITH ORDINALITY AS x(l, i)))
+  FROM public.messages m JOIN public.estimates e ON e.id = m.estimate_id WHERE m.body = p_body
+$$;
+GRANT EXECUTE ON FUNCTION msp.put_on(text, text, jsonb, boolean, timestamptz), msp.estimate_of(text) TO authenticated;
+
+SELECT msp.as_user('00000000-0000-0000-0000-0000000005d2');
+SET LOCAL ROLE authenticated;
+SELECT msp.same('the disposal starts a draft on the kitchen, as its line 1 (R8 · 8)',
+  msp.put_on('Can you also fix the garbage disposal? It hums.', NULL,
+    '{"line_item": "", "description": "Can you also fix the garbage disposal?", "quantity": 1, "unit_price_cents": 0, "amount_cents": 0}'), '1');
+SELECT msp.same('the draft is the kitchen''s, for her customer, holding the job''s free link (R8 · 8)',
+  msp.estimate_of('Can you also fix the garbage disposal? It hums.'),
+  'Cibolo kitchen|00000000-0000-0000-0000-0000000005c1|00000000-0000-0000-0000-000000000593|0|Can you also fix the garbage disposal? 0');
+SELECT msp.refused('a message on an estimate already is not drafted twice (R8 · 8)',
+  $q$SELECT msp.put_on('Can you also fix the garbage disposal? It hums.', NULL, '{"description": "Again"}')$q$, 'is a line on estimate');
+SELECT msp.same('the faucet joins the kitchen''s open draft as line 2, its amount worked out here (R8 · 8)',
+  msp.put_on('And the kitchen faucet drips.', 'Can you also fix the garbage disposal? It hums.',
+    '{"line_item": "Faucet", "description": "And the kitchen faucet drips.", "quantity": 2, "unit_price_cents": 18500, "amount_cents": 1}'), '2');
+SELECT msp.same('two lines on one draft, and the total is their sum (R8 · 8)',
+  msp.estimate_of('And the kitchen faucet drips.'),
+  'Cibolo kitchen|00000000-0000-0000-0000-0000000005c1|00000000-0000-0000-0000-000000000593|37000|Can you also fix the garbage disposal? 0 / And the kitchen faucet drips. 37000');
+SELECT msp.refused('a second new draft on a job with one open (R8 · 8)',
+  $q$SELECT msp.put_on('One more thing for the kitchen.', NULL, '{"description": "One more thing"}')$q$, 'An estimate on Cibolo kitchen is open already.');
+SELECT msp.refused('a draft read before it changed (R8 · 8)',
+  $q$SELECT msp.put_on('One more thing for the kitchen.', 'And the kitchen faucet drips.', '{"description": "One more thing"}', false, now() - interval '1 hour')$q$,
+  'changed since you opened it. Open the message again.');
+SELECT msp.refused('a billed job (R8 · 8)', $q$SELECT msp.put_on('The tub drain is slow too.', NULL, '{"description": "Tub"}')$q$, 'Cibolo bath is billed already. Start the work as a new job.');
+SELECT msp.refused('a job that is not theirs (R8 · 8)', $q$SELECT msp.put_on('This is for the Marsh office.', NULL, '{"description": "Marsh"}')$q$,
+  'This message is tied to a job that is not Elena Marchetti''s.');
+SELECT msp.refused('a trade partner''s line (R8 · 8)', $q$SELECT msp.put_on('Greg here.', NULL, '{"description": "Greg"}')$q$, 'This message is with a trade partner.');
+SELECT msp.refused('a customer''s line on the person, with no job (R8 · 8)', $q$SELECT msp.put_on('Bell asks about the bill.', NULL, '{"description": "Bill"}')$q$,
+  'Tie the message to a job first. An estimate belongs to one job.');
+SELECT msp.refused('a line that says nothing (R8 · 8)', $q$SELECT msp.put_on('Look at the dryer vent while you are here.', NULL, '{"line_item": " ", "description": ""}')$q$, 'Say what the line is for.');
+SELECT msp.same('the dryer vent starts the laundry''s draft as its line 1 (R8 · 8)',
+  msp.put_on('Look at the dryer vent while you are here.', NULL, '{"description": "Look at the dryer vent."}'), '1');
+SELECT msp.same('the laundry''s draft goes without the job link an older estimate holds (R8 · 8)',
+  msp.estimate_of('Look at the dryer vent while you are here.'),
+  'Cibolo laundry|00000000-0000-0000-0000-0000000005c1|no job link|0|Look at the dryer vent. 0');
+RESET ROLE;
+-- The kitchen's line moves to the laundry, as a person re-ties it; the laundry draft's last line is the kernel's to
+-- replace, and a draft with options is the estimate's own to change.
+UPDATE public.messages SET jobs_ledger_id = '00000000-0000-0000-0000-000000000595' WHERE body = 'One more thing for the kitchen.';
+UPDATE public.estimates SET options_snapshot = '[{"key": "a", "name": "Good", "line_items": []}]'
+WHERE id = (SELECT estimate_id FROM public.messages WHERE body = 'And the kitchen faucet drips.');
+SELECT msp.as_user('00000000-0000-0000-0000-0000000005d2');
+SET LOCAL ROLE authenticated;
+SELECT msp.same('a line the kernel marks to replace keeps the draft at one line (R8 · 8)',
+  msp.put_on('One more thing for the kitchen.', 'Look at the dryer vent while you are here.', '{"description": "And the lint trap."}', true), '1');
+SELECT msp.same('and takes the place of the draft''s last (R8 · 8)',
+  msp.estimate_of('Look at the dryer vent while you are here.'),
+  'Cibolo laundry|00000000-0000-0000-0000-0000000005c1|no job link|0|And the lint trap. 0');
+RESET ROLE;
+UPDATE public.messages SET estimate_id = NULL, jobs_ledger_id = '00000000-0000-0000-0000-000000000593' WHERE body = 'One more thing for the kitchen.';
+SELECT msp.as_user('00000000-0000-0000-0000-0000000005d2');
+SET LOCAL ROLE authenticated;
+SELECT msp.refused('a draft with options (R8 · 8)',
+  $q$SELECT msp.put_on('One more thing for the kitchen.', 'And the kitchen faucet drips.', '{"description": "One more thing"}')$q$, 'has options. Add the line on the estimate itself.');
+RESET ROLE;
+SELECT msp.as_user('00000000-0000-0000-0000-0000000005d6');
+SET LOCAL ROLE authenticated;
+SELECT msp.refused('training mode puts nothing on an estimate (R8 · 8)', $q$SELECT msp.put_on('One more thing for the kitchen.', NULL, '{"description": "x"}')$q$, 'A training account cannot');
+RESET ROLE;
+SELECT msp.as_user('00000000-0000-0000-0000-0000000005d7');
+SET LOCAL ROLE authenticated;
+SELECT msp.refused('a digital twin puts nothing on an estimate (R8 · 8)', $q$SELECT msp.put_on('One more thing for the kitchen.', NULL, '{"description": "x"}')$q$, 'A digital twin cannot');
+RESET ROLE;
+SELECT msp.as_user('00000000-0000-0000-0000-0000000005d4');
+SET LOCAL ROLE authenticated;
+SELECT msp.refused('a superintendent outside the office puts nothing on an estimate (R8 · 8)', $q$SELECT msp.put_on('One more thing for the kitchen.', NULL, '{"description": "x"}')$q$, 'Only the office');
+RESET ROLE;
+SELECT msp.same('nobody signed out may call it (R8 · 8)',
+  has_function_privilege('anon', 'public.draft_estimate_line_from_message(uuid, uuid, jsonb, boolean, timestamptz)', 'EXECUTE')::text, 'false');
+
 DO $$ BEGIN RAISE NOTICE 'messages_spine PASSED'; END $$;
 ROLLBACK;

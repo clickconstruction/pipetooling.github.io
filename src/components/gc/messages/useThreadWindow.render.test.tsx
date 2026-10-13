@@ -17,6 +17,8 @@ vi.mock('../../followUp/useFollowUpThreadSlots', () => ({ useFollowUpThreadSlots
 vi.mock('../../changeOrders/useChangeOrderThreadSlots', () => ({
   useChangeOrderThreadSlots: () => ({ underLine: () => 'became CO 1', messageWindowFirst: () => 'Start a change order' }),
 }))
+// R8 · 8's slots fill nothing here, so cut 4b's reach the window as themselves.
+vi.mock('../../estimates/useEstimateLineThreadSlots', () => ({ useEstimateLineThreadSlots: () => ({}) }))
 
 const at = (url: string) =>
   function Wrapper({ children }: { children: ReactNode }) {

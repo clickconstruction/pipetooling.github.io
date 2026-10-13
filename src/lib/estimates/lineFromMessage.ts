@@ -11,8 +11,10 @@
  * change order is the GC customer's paper with its own signing, and new work after the first estimate is accepted is a
  * second estimate the customer approves the same way as the first.
  *
- * Pure. The line is the estimate's own `EstimateLineItemNormalized`, saved through the Estimates page's existing write
- * (`estimateDraftPersist.ts`); the message that started it is R8's `estimates.source_message_id`.
+ * Pure. The line is the estimate's own `EstimateLineItemNormalized`. It is saved with the message's stamp in one call,
+ * `draft_estimate_line_from_message` (`lineFromMessageIo.ts`), and the message keeps its estimate in
+ * `messages.estimate_id` (the plan's `estimates.source_message_id`, moved to the message since many messages feed one
+ * draft). The job's open estimate is a draft a message on the same Pipeline job points at.
  */
 import type { UserRole } from '../../hooks/useAuth'
 import type { Contact } from '../contacts/kernel'
@@ -63,7 +65,11 @@ export interface LineJob {
 /** An estimate on a job, as this reads its `estimates` row. */
 export interface LineEstimate {
   id: string
-  /** `job_ledger_id`. */
+  /**
+   * The Pipeline job its messages are tied to: a draft a message on that job points at (`messages.estimate_id`).
+   * Never `estimates.job_ledger_id`, which is unique, the link to the job an estimate created, and never set on a
+   * draft for a job that already exists.
+   */
   jobId: string | null
   /** `doc_kind`: an estimate, or a change order, which a line from a message never joins. */
   docKind: string
@@ -186,6 +192,19 @@ function dollars(cents: number): string {
 }
 
 const estimateWords = (estimateNumber: number | null): string => (estimateNumber != null ? `estimate ${estimateNumber}` : 'a new estimate')
+
+/**
+ * The chip on a message the thread reads back later: "a line on estimate 1044". The message keeps its estimate, not
+ * its line, since a line has no key of its own, so the number and the price are the save's words alone.
+ */
+export function onEstimateChip(estimateNumber: number): string {
+  return `a line on estimate ${estimateNumber}`
+}
+
+/** Why a job's open estimate with options takes no line from a message: its lines are the options' to change. */
+export function hasOptionsWords(estimateNumber: number): string {
+  return `Estimate ${estimateNumber} has options. Add the line on the estimate itself.`
+}
 
 /**
  * The chip on the message once its line is saved: "became line 2 on estimate 1044, $0 until priced", then "became
