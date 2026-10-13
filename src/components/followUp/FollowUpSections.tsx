@@ -1,6 +1,7 @@
 /**
  * Messages, cut 2: Follow up's sections, drawn above the asks the tab already lists (the prototype v1.178's
- * `renderFollowup`): **Needs you** (a note's day come back, the clause edits waiting on approval, a customer's portal),
+ * `renderFollowup`): **New** first (residential R7, mockup A: what came in and still needs sorting, each row's press
+ * opening the thread at the sort card), **Needs you** (a note's day come back, the clause edits waiting on approval, a customer's portal),
  * **Needs a reply** (longest waiting first, with who has it and the presses), **We owe them**, and the slot the nudges
  * from the flow fill after them. Each row is one person; a press anywhere off its buttons opens their thread at its
  * line. The queue and its words are the kernels' (`followUp/queue.ts`, `messages/owed.ts`, `messages/promises.ts`);
@@ -9,6 +10,7 @@
 import type { ReactNode } from 'react'
 import { lineGcProject } from '../../lib/followUp/askArchitect'
 import type { FollowUpContact, FollowUpLine } from '../../lib/followUp/followUpRows'
+import { NEW_LANE_EMPTY, type NewLaneRow } from '../../lib/followUp/newLane'
 import { needsYouCount, type BackRow, type FollowUpQueue, type NeedsReplyRow, type OwedRow, type PortalRow } from '../../lib/followUp/queue'
 import { markedByWords } from '../../lib/messages/owed'
 import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/thread'
@@ -78,6 +80,13 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
 
   return (
     <section aria-label="Follow up: who is waiting on us" style={{ display: 'grid', gap: '0.9rem' }}>
+      <Section title={`New (${queue.newLane.length})`} note="What came in and still needs sorting. Its row opens the thread, with the sort at the top.">
+        {queue.newLane.length === 0 ? (
+          <Empty>{NEW_LANE_EMPTY}</Empty>
+        ) : (
+          queue.newLane.map((r) => byId.get(r.contactId) && <NewRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
+        )}
+      </Section>
       {youCount > 0 && (
         <Section title={`Needs you (${youCount})`} note={[NEEDS_YOU_NOTE.back, NEEDS_YOU_NOTE.portal, ...(renderClauses ? [NEEDS_YOU_NOTE.clause] : [])].join(' ')}>
           {back.map((r) => byId.get(r.contactId) && <BackRowView key={r.noteId} row={r} contact={byId.get(r.contactId)!} {...props} />)}
@@ -236,6 +245,29 @@ function PortalRowView<C, N extends { contactId: string }>({ row, contact, ...pr
           </Btn>
           {actions.seeTheirPage && <Btn onClick={() => actions.seeTheirPage!(contact.id)}>See their page</Btn>}
         </>
+      }
+      props={props}
+    />
+  )
+}
+
+function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: NewLaneRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
+  const { actions } = props
+  return (
+    <Row
+      contact={contact}
+      landOn={row.messageId}
+      pill={
+        <Chip tone="blue" title={row.why}>
+          {row.head}
+        </Chip>
+      }
+      sub={[contact.kind === 'unknown' ? '' : companyOf(contact), row.via, row.when].filter(Boolean).join(' · ')}
+      snippet={clip(row.words)}
+      acts={
+        <Btn kind="primary" onClick={() => actions.openThread(contact.id, row.messageId)}>
+          {row.head}
+        </Btn>
       }
       props={props}
     />

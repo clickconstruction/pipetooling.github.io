@@ -7,12 +7,13 @@ order: 117
 ---
 Messages is the office's one page for everyone who writes to us. It shows who is waiting on us and what we owe them.
 
-The office team and estimators see **Messages** in the header. Press it to open the page.
+The office team and estimators see **Messages** in the header. Its count is everyone waiting on us. Press it to open the page.
 
 ## The page
 
-The page is Follow up for every kind of person. It has the same three lists.
+The page is Follow up for every kind of person. It has the same four lists.
 
+- **New** holds what came in and still needs sorting. [Sort new messages before anyone answers them](/help/sort-new-messages) shows how.
 - **Needs you** holds notes whose day has come, and customers who wrote on their page.
 - **Needs a reply** holds everyone who wrote or called and has no answer yet.
 - **We owe them** holds what we still have to do for someone, with its day.

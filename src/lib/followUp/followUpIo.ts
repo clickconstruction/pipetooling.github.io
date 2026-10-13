@@ -9,7 +9,7 @@
  * A thread's highlights load with the thread.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { ContactChannelRow, ContactRecordRows } from '../contacts/load'
+import type { ContactChannelRow, ContactJobRow, ContactRecordRows } from '../contacts/load'
 import type { JobRef } from '../messages/load'
 import type { DayKept } from '../messages/owed'
 import type { HeardPromiseKind } from '../messages/promises'
@@ -18,6 +18,7 @@ import { checkSupabaseError, DatabaseError, formatErrorMessage } from '../../uti
 import type { ContactOwedRow, FollowUpContactRow, FollowUpMessageRow, FollowUpRows, MessageHighlightRow, MessagePromiseRow } from './followUpRows'
 import type { ContactState } from './queue'
 import { courtFactsFromRows, type CourtFacts } from './courtFacts'
+import type { LaneJobRows } from './newLaneRows'
 
 /** What Follow up reads and presses. Each press resolves when its write has landed, and rejects with its refusal. */
 export interface FollowUpIo {
@@ -59,9 +60,14 @@ const CONTACT_COLUMNS = [
   'roster:people(id, name)',
 ].join(', ')
 const CHANNEL_COLUMNS = 'id, contact_id, kind, value, opted_out_at, created_at'
-/** A line's columns as Follow up reads them, the thread's read too (`followUpThreadIo.ts`). */
+/**
+ * A line's columns as Follow up reads them, the thread's read too (`followUpThreadIo.ts`). The box it came through and
+ * who tied it are the New lane's (R6's `mailbox`, R7's `tied_by`).
+ */
 export const MESSAGE_COLUMNS =
-  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at'
+  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at, mailbox, tied_by'
+/** The open people's jobs, for the New lane's *Which job?*. */
+const JOB_COLUMNS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at, contact:contacts!inner(state)'
 export const OWED_COLUMNS = 'id, contact_id, what, by_day, by_words, marked_by, marked_at, done_at, done_how, done_note_message_id'
 export const PROMISE_COLUMNS = 'id, message_id, kind, state, day, day_words, writes, decided_by, decided_at, message:messages(contact_id, at)'
 const HIGHLIGHT_COLUMNS = 'id, message_id, text, highlighted_by, highlighted_at'
@@ -117,6 +123,28 @@ function jobArgs(job: JobRef | null): { p_job_kind: string | null; p_job_id: str
   return { p_job_kind: job?.kind ?? null, p_job_id: job?.id ?? null }
 }
 
+/** The states of the open people's jobs: a bid's outcome, a GC project's stage, a Pipeline job's status. */
+async function loadJobStates(db: SupabaseClient, jobs: readonly ContactJobRow[]): Promise<LaneJobRows> {
+  const ids = (pick: (j: ContactJobRow) => string | null) => [...new Set(jobs.map(pick).filter((id): id is string => Boolean(id)))]
+  const bidIds = ids((j) => j.bid_id)
+  const projectIds = ids((j) => j.project_id)
+  const pipelineIds = ids((j) => j.jobs_ledger_id)
+  const none = { data: [], error: null }
+  const [bids, projects, pipeline] = await Promise.all([
+    bidIds.length ? db.from('bids').select('id, outcome').in('id', bidIds) : none,
+    projectIds.length ? db.from('gc_projects').select('project_id, stage, lost_on').in('project_id', projectIds) : none,
+    pipelineIds.length ? db.from('jobs_ledger').select('id, status').in('id', pipelineIds) : none,
+  ])
+  checkSupabaseError(bids, 'load the bids of the people waiting on us')
+  checkSupabaseError(projects, 'load the GC projects of the people waiting on us')
+  checkSupabaseError(pipeline, 'load the Pipeline jobs of the people waiting on us')
+  return {
+    bids: (bids.data ?? []) as LaneJobRows['bids'],
+    projects: (projects.data ?? []) as LaneJobRows['projects'],
+    pipeline: (pipeline.data ?? []) as LaneJobRows['pipeline'],
+  }
+}
+
 /** Follow up's reads and presses on a client: the app's own unless a test hands it another. */
 export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
   // The cut 1 and cut 2 tables join the generated types with the lead's types PR; until then the client is untyped.
@@ -128,7 +156,7 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
   }
   return {
     async loadQueue(todayYmd) {
-      const [contacts, channels, inbound, notes, heard, owed] = await Promise.all([
+      const [contacts, channels, inbound, notes, heard, owed, jobs] = await Promise.all([
         db.from('contacts').select(CONTACT_COLUMNS),
         db.from('contact_channels').select(CHANNEL_COLUMNS),
         // Their lines in while the conversation is open or snoozed: the queue reads each person's newest.
@@ -136,6 +164,7 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
         db.from('messages').select(MESSAGE_COLUMNS).eq('channel', 'note').or('back_on.not.is.null,back_words.not.is.null'),
         db.from('message_promises').select(PROMISE_COLUMNS).or(`state.eq.offered,and(state.eq.written,day.gte.${todayYmd})`),
         db.from('contact_owed').select(OWED_COLUMNS).is('done_at', null),
+        db.from('contact_jobs').select(JOB_COLUMNS).in('contact.state', ['waiting', 'snoozed']),
       ])
       checkSupabaseError(contacts, 'load the people Follow up reads')
       checkSupabaseError(channels, 'load their numbers and addresses')
@@ -143,6 +172,8 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
       checkSupabaseError(notes, 'load the notes with a day')
       checkSupabaseError(heard, 'load the days heard')
       checkSupabaseError(owed, 'load what we owe')
+      checkSupabaseError(jobs, 'load the jobs of the people waiting on us')
+      const jobRows = (jobs.data ?? []) as unknown as ContactJobRow[]
       const people = (contacts.data ?? []) as unknown as EmbeddedContact[]
       const lines = [...((inbound.data ?? []) as unknown as FollowUpMessageRow[]), ...((notes.data ?? []) as unknown as FollowUpMessageRow[])]
       return {
@@ -153,6 +184,8 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
         messages: [...new Map(lines.map((m) => [m.id, m])).values()],
         heard: (heard.data ?? []) as unknown as MessagePromiseRow[],
         owed: (owed.data ?? []) as unknown as ContactOwedRow[],
+        jobs: jobRows,
+        jobStates: await loadJobStates(db, jobRows),
       }
     },
     async loadHighlights(messageIds) {

@@ -7,7 +7,7 @@
  * Who fills what, as agreed on 2026-10-12: cut 2 (Follow up) the who-has-it pill, the state rows of ⋯, the owed strip,
  * the settling note and a note's back day above the box, a heard day's offer under a line, a highlighted body and the
  * message window's highlight slot; cut 3 the reply box; cut 4 the flow panel at the side; cut 8 the portal pill in the
- * status row; cut 6 a paper's offer under its line.
+ * status row; cut 6 a paper's offer under its line; residential R7 the sort card above the lines.
  */
 import { createElement, Fragment, type ReactNode } from 'react'
 import { useChangeOrderThreadSlots } from '../../changeOrders/useChangeOrderThreadSlots'
@@ -16,6 +16,7 @@ import type { Contact } from '../../../lib/contacts/kernel'
 import type { ThreadMessage } from '../../../lib/messages/thread'
 import { FlowTab } from '../../flows/FlowTab'
 import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
+import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
 import { hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
 import { ReplyBox } from './reply/ReplyBox'
@@ -30,6 +31,12 @@ export interface ThreadMenuRow {
   onPress: () => void
 }
 
+/** What the window lends a slot above the lines: its own *Who is this?* window, and a move to the thread a fold kept. */
+export interface AboveLinesActs {
+  openWho: () => void
+  showContact: (contactId: string) => void
+}
+
 /** How the window draws the header just now: folded for a narrow column (cut 10, `threadFold.ts`). */
 export interface ThreadLook {
   /** The header is folded. A slot in it draws its narrow form: the who-has-it pill as a face only. */
@@ -41,6 +48,8 @@ export interface ThreadSlots {
   headerRight?: (c: Contact, look?: ThreadLook) => ReactNode
   /** The status row after the move strip: cut 2's back pill, cut 8's portal pill. */
   statusRow?: (c: Contact) => ReactNode
+  /** Over the lines, under the header: residential R7's sort card, while the person waits in the New lane. */
+  aboveLines?: (c: Contact, acts: AboveLinesActs) => ReactNode
   /** Rows for ⋯ after the window's own: cut 2's No reply needed, Remind me Monday, Reopen. */
   menuRows?: (c: Contact) => ThreadMenuRow[]
   /** Between the lines and the box: cut 2's owed strip, its settling note and a note's back day. */
@@ -84,6 +93,8 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
   if (headerRight) merged.headerRight = headerRight
   const statusRow = eachNode(parts.map((p) => p.statusRow))
   if (statusRow) merged.statusRow = statusRow
+  const aboveLines = eachNode(parts.map((p) => p.aboveLines))
+  if (aboveLines) merged.aboveLines = aboveLines
   const aboveBox = eachNode(parts.map((p) => p.aboveBox))
   if (aboveBox) merged.aboveBox = aboveBox
   const box = eachNode(parts.map((p) => p.box))
@@ -127,7 +138,9 @@ export function useThreadSlots(): ThreadSlots {
   const email: ThreadSlots = { underLine: (m, c) => (hasPaperOffer(m.files, c) ? <PaperOffers key={m.id} message={m} contact={c} /> : null) }
   // R8 · 8: a customer's line on a Pipeline job goes on its estimate, after cut 4b's in both slots it shares.
   const estimateLines = useEstimateLineThreadSlots()
+  // Residential R7: the sort card above the lines, while the person waits in Follow up's New lane.
+  const newLane = useNewLaneThreadSlots()
   // By cut number: cut 2's Follow up, cut 3's reply box, cut 4's flow, cut 4b's change orders, R8 · 8's estimate lines,
-  // cut 6's paper offer.
-  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, estimateLines, email)
+  // cut 6's paper offer, R7's sort card.
+  return mergeThreadSlots(followUp, replyBox, flow, changeOrders, estimateLines, email, newLane)
 }

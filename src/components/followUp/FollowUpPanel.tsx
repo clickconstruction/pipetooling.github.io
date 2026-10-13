@@ -60,7 +60,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
   const nowIso = props.nowIso ?? new Date().toISOString()
   const userNames = useMemo(() => Object.fromEntries([...team, me].map((t) => [t.id, t.name])), [team, me])
   const passThrough = useMemo(() => ({ ...(clauses ? { clauses: clauses.rows } : {}), ...(nudges ? { nudges: nudges.build } : {}) }), [clauses, nudges])
-  const q = useFollowUpQueue<C, N>({ io, userNames, enabled, passThrough, todayYmd })
+  const q = useFollowUpQueue<C, N>({ io, userNames, enabled, passThrough, todayYmd, ...(props.nowIso ? { nowIso: props.nowIso } : {}) })
   const count = q.queue?.count
   useEffect(() => {
     if (count !== undefined) onCount?.(count)

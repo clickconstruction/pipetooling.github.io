@@ -45,6 +45,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Customers and builders (GCs), their profile and history → `/customers`, `/customers/:id`
 - Every message with a customer, trade partner or architect on GC projects, one thread each → `/gc?view=messages` (guide `find-every-message-with-a-person-in-one-place`)
 - Everyone waiting on us for an answer and what we owe them, for every kind of person, one pill per kind → `/messages` (`?kind=customer`, `trade`, `arch`, `lead`, `sub`, or `more` for supply houses and candidates) (guide `answer-everyone-waiting-on-us-from-one-page`)
+- Sort what came in before anyone answers it: who a new number is, which job a line is about, who has the conversation → `/messages`, the **New** list on top (guide `sort-new-messages`)
 - New-builder pipeline / hiring pipeline → `/prospects`
 - Small quotes to homeowners (not bids) → `/estimates`
 - Contracts and document packets → `/documents`
@@ -106,7 +107,9 @@ Guides: `/help?g=start-a-gc-project`, `/help?g=use-the-scope-book`, `/help?g=iss
 Roles: dev, master_technician, assistant, controller, estimator.
 
 ### /messages — Messages
-Follow up for every kind of person, from **Messages** in the header: **Needs you**, **Needs a reply** and **We owe them**,
+Follow up for every kind of person, from **Messages** in the header (its count is everyone waiting on us): **New** first
+(what came in and still needs sorting: **Who is this?**, **Which job?**, **Who has it?**, each row opening the thread
+with the sort card at its top; guide `/help?g=sort-new-messages`), then **Needs you**, **Needs a reply** and **We owe them**,
 with pills for Customers, Trade partners, Architects, Leads and Subs (`?kind=`), and **Supply houses and candidates**,
 which never count on Follow up and show as a people list. A row opens the person's thread over the page
 (`?thread=<contactId>&at=<messageId>`). Guide: `/help?g=answer-everyone-waiting-on-us-from-one-page`.

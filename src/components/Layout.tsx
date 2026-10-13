@@ -96,6 +96,7 @@ import { IMPERSONATION_CHROME_BUTTON_STYLE, impersonationReturnPath, readImperso
 import { useIsPartner } from '../hooks/useIsPartner'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import { canOpenMessages } from '../lib/gc/access'
+import { MessagesBadge } from './MessagesBadge'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -689,7 +690,7 @@ export default function Layout() {
           {estimatorProspectsAccess && (
             <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
           )}
-          {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}>Messages</NavLink>}
+          {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}>Messages<MessagesBadge /></NavLink>}
           {onNavClick ? <NavLink to="/checklist" style={linkStyle} onClick={onNavClick}>Checklist</NavLink> : null}
         </>
       )
@@ -791,8 +792,8 @@ export default function Layout() {
                 <NavLink to="/prospects" style={linkStyle} onClick={onNavClick}>Prospects</NavLink>
               </>
             )}
-            {/* Messages in the header (residential R2): the GC office team, as `canOpenMessages` says. */}
-            {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}>Messages</NavLink>}
+            {/* Messages in the header (residential R2): the GC office team, as `canOpenMessages` says. Its count (R7) is everyone waiting on us. */}
+            {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}>Messages<MessagesBadge /></NavLink>}
             {canShowRoadmapNav && (
               <NavLink to="/roadmap" style={linkStyle} onClick={onNavClick}>Roadmap</NavLink>
             )}

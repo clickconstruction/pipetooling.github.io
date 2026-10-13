@@ -410,6 +410,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
               </div>
               {/* On a phone the side (cut 4's flow) is a row over the lines, so the lines keep the whole width (cut 10). */}
               {phone && slots.side?.(contact)}
+              {slots.aboveLines?.(contact, { openWho: () => setNaming(true), showContact: (id) => onShowContact?.(id) })}
               <DndContext sensors={sensors} onDragEnd={onDragEnd}>
                 <div data-thread-lines style={{ flex: 1, overflowY: 'auto', padding: '0.75rem 0.9rem', display: 'grid', gap: '0.5rem', alignContent: 'start' }}>
                   {rows.length === 0 && (

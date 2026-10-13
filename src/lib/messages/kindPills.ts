@@ -79,11 +79,13 @@ export function queueForPill<C, N extends { contactId: string }>(
     const kind = kindById.get(row.contactId)
     return kind !== undefined && inPill(kind, pill)
   }
+  const newLane = queue.newLane.filter(keep)
   const needsYou = queue.needsYou.filter(keep)
   const needsReply = queue.needsReply.filter(keep)
   const weOwe = queue.weOwe.filter(keep)
-  const people = new Set<string>([...needsYou, ...needsReply, ...weOwe].map((r) => r.contactId))
+  const people = new Set<string>([...newLane, ...needsYou, ...needsReply, ...weOwe].map((r) => r.contactId))
   return {
+    newLane,
     needsYou,
     clauses: [],
     needsReply,
