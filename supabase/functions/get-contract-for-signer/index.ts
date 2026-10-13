@@ -83,6 +83,7 @@ serve(async (req) => {
     }
 
     const r = row as {
+      id: string
       status: string
       public_token_expires_at: string | null
       signing_body_html: string | null

@@ -180,7 +180,7 @@ serve(async (req) => {
       return p
     }
     async function attribute(f: DriveFile): Promise<{ id: string; name: string } | null> {
-      let cur = (f.parents ?? [])[0] ?? null
+      let cur: string | null = (f.parents ?? [])[0] ?? null
       const chain: string[] = []
       for (let depth = 0; cur && depth < 5; depth++) {
         if (rootSet.has(cur)) return chain.length > 0 ? { id: cur, name: chain.reverse().join(' / ') } : { id: cur, name: f.name }
@@ -201,9 +201,9 @@ serve(async (req) => {
       if (!job) {
         if (unattributed.length < 40) {
           const names: string[] = []
-          let cur = (f.parents ?? [])[0] ?? null
+          let cur: string | null = (f.parents ?? [])[0] ?? null
           for (let d = 0; cur && d < 4; d++) {
-            const m = metaDone.get(cur) ?? null
+            const m: FolderMeta = metaDone.get(cur) ?? null
             if (!m) break
             names.push(m.name)
             cur = m.parent

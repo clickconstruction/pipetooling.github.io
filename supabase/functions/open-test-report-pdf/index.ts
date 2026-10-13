@@ -20,6 +20,8 @@ const BUCKET = 'job-test-reports'
 const LINK_SECONDS = 300
 const LINK_INACTIVE_MSG = 'This link is no longer active. Please contact our office for a new one.'
 
+type PortalLinkRow = { customer_id: string; audience: string; revoked_at: string | null }
+
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
   return Array.from(new Uint8Array(digest))
@@ -45,14 +47,14 @@ serve(async (req) => {
     const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const admin = createClient(supabaseUrl, serviceKey)
 
-    let link: { customer_id: string; audience: string; revoked_at: string | null } | null = null
+    let link: PortalLinkRow | null = null
     {
       const { data } = await admin.from('customer_portal_links').select('customer_id, audience, revoked_at').eq('token', rawToken).maybeSingle()
-      link = (data as typeof link) ?? null
+      link = (data as PortalLinkRow | null) ?? null
       if (!link) {
         const tokenHash = await sha256Hex(rawToken)
         const { data: byHash } = await admin.from('customer_portal_links').select('customer_id, audience, revoked_at').eq('token_hash', tokenHash).maybeSingle()
-        link = (byHash as typeof link) ?? null
+        link = (byHash as PortalLinkRow | null) ?? null
       }
     }
     if (!link || link.revoked_at) return textResponse(LINK_INACTIVE_MSG, 404)

@@ -17,7 +17,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { DEFAULT_TEST_REPORT_SETTINGS, parseTestReportSettings } from '../_shared/testReport.ts'
 import { asRoomRole, roomCounts, roomRowsFrom, type RoomItemSource, type RoomMessage, type RoomPartSource,
-  type RoomProcurement, type SubmittalRoomPayload, gcRoomItems, officeOnlyTags } from '../_shared/submittalRoomPayload.ts'
+  type RoomPerson, type RoomProcurement, type SubmittalRoomPayload, gcRoomItems, officeOnlyTags } from '../_shared/submittalRoomPayload.ts'
 import { stageDatesFromJob } from '../_shared/procurementStageDates.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleSubmittalRoomResponse } from '../_shared/customerSampleFixtures.ts'
@@ -160,7 +160,7 @@ serve(async (req) => {
         tags: Array.isArray(r.tags) ? (r.tags as string[]) : [],
       }
     })
-    let personOut = base.person
+    let personOut: RoomPerson | null = base.person
     if (person && personOut) {
       const since = new Date(Date.now() - 3600_000).toISOString()
       const { count } = await admin.from('bid_submittal_messages').select('id', { count: 'exact', head: true }).eq('person_id', person.id).in('author_kind', ['reviewer', 'watcher']).gte('created_at', since)

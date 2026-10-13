@@ -1379,6 +1379,8 @@ The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildG
 
 ### drive-contract-scan
 
+> **v2.5412 — `deno check` passes again**: both folder walks start from `let cur = (f.parents ?? [])[0] ?? null`. Deno checks without `noUncheckedIndexedAccess`, so `[0]` reads as `string`, the `?? null` drops out of the type, and `cur` was `string`, so `cur = m.parent`, a `string | null`, was refused (TS2322 ×2). The loops already stop on the `null` an empty `parents` gives. Both read `let cur: string | null` now, and the second walk's `m` is typed `FolderMeta`, which TypeScript could not infer once `cur` may be null (TS7022). The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose**: The Contract sweep's **Drive pass** (v2.3390): lists the contract-looking files the jobs Shared Drive already holds so the office can file the signed copies that exist instead of emailing customers for new ones. Read-only against Drive (scope `drive.readonly`); it writes nothing — the client ([`src/lib/jobs/driveContractMatch.ts`](../src/lib/jobs/driveContractMatch.ts)) matches each file to a job by folder name (job number first, then street number + street, then job name, then customer/GC name) and file name (contract · agreement · subcontract · signed · executed strong; proposal · terms weak; invoices, plans, lien waivers, change orders excluded), states a confidence (Confident · Check · No match), and files confident rows through the normal paper-record write with the Drive link as the signed document (`✍ On file · Google Doc`).
 
 **Shape**: one name-contains query across everything the service account can see (paged, ≤ 20 000 files), the child folders of each root as the job-folder map — the roots are `DRIVE_JOBS_FOLDER_ID` plus **`DRIVE_CONTRACT_ROOTS`** (comma-separated folder ids the owner shared with the SA as Viewer; set 2026-09-14 to the folder the signed contracts live in) — a file sitting directly in a root matched by its own name, and one parent lookup per unknown parent (≤ 400) so a file one level down (a "Contracts" subfolder) is attributed to its job folder. Deeper files come back unattributed and are counted, not listed.
@@ -1817,6 +1819,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 ---
 
 ### get-submittal-room
+
+> **v2.5412 — `deno check` passes again**: `let personOut = base.person` took its type from `base.person`, which has no `messagesThisHour`, so adding the asker's count for the last hour was refused (TS2353). It is typed `RoomPerson | null` now, the payload's own person type, whose `messagesThisHour` is optional. The count reached the page all along. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose** (v2.3485, Submittals stage 4a-i): the **review room**'s public fetch — the one link per bid at `/submittal?t=…` that the GC forwards to the customer's architect or designer. Serves every submittal revision on the GC's record in the customer's words (which rows match the plans, which differ and why; never a price, a quote, a supply house, a bill or a stage date), newest first, plus the person when the token is a personal one. On the record means shared, or since v2.4667 answered by email with its package built (see *The GC's record* below).
 
@@ -2361,6 +2365,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 ---
 
 ### get-contract-for-signer
+
+> **v2.5412 — `deno check` passes again**: the reply sends `id: r.id`, and `r` is the row cast to a type that left `id` out (TS2339). The select fetches `id`, its first column, so the reply always carried it. The cast's type names `id: string` now. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.5329 — the shared clause read, generalized**: `_shared/clausePaper.ts` gains `clausePaperOf`, `clausePaperPair` and `readClausePaperPair` for the portals, and `clausePaperFor` now runs its gate read and the assembly through the same two helpers. Same reads in the same order, and the same answer. Redeployed so `check:edge-drift` reads clean.
 
@@ -3970,6 +3976,8 @@ Body: `{ report_id, to: string[], cc?: string[], subject, email_text, email_html
 
 ### open-test-report-pdf
 
+> **v2.5412 — `deno check` passes again**: `link` started as `let link: {…} | null = null`, and each read was cast `as typeof link`, which reads the type narrowed by that `= null`. So `link` was `null`, then `never` past the `!link` check, and its five reads were refused (TS2339 ×5). The row type is named, `PortalLinkRow`, and both casts use it. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 **Purpose** (v2.3304, Test reports PR 5): the portal's **View report** door — `GET /functions/v1/open-test-report-pdf?t=<portal token>&r=<report id>` answers **302** to a five-minute signed link (`LINK_SECONDS = 300`, the `open-contract-form-pdf` pattern) on the private `job-test-reports` bucket, with a download name like *Sewer Pre-Test Hydrostatic Report - 112 Seidel St - 2026-09-10.pdf*. The bucket has no customer-side policies; this is the only customer-facing way to the file (staff open it from Documents → Jobs through a client signed URL, v2.3331).
 
 **Authentication**: none (`verify_jwt = false`) — the portal link is the capability, resolved exactly as `customer-portal` does (raw token, then the v1 sha256 hash; revoked → 404 text). Guards: the report must be `status = 'sent'` with a `pdf_path`, on a job the link's company pays for (`customer_id` for a customer link, `gc_customer_id` for a GC link, either for `all`); sample tokens get a plain 404 line. Errors are short `text/plain` sentences (the tab the customer opened shows them). **Secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
@@ -4959,6 +4967,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 ---
 
 ### resend-webhook
+
+> **v2.5412 — `deno check` passes again**: `base64ToBytes` declared a plain `Uint8Array`, which TypeScript 5.7 and later read as `Uint8Array<ArrayBufferLike>`, and WebCrypto's `importKey` takes only bytes in a plain `ArrayBuffer` (TS2769). It fills a `new Uint8Array(n)` of its own, so it declares `Uint8Array<ArrayBuffer>` now. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Receive Resend **email.\*** events (sent, delivered, delivery_delayed, bounced, complained, opened, clicked), verify the **Svix** signature, and upsert **`email_send_log`** rows — `last_event`/`last_event_at` update per event; identity fields (from/to/subject) fill in from whichever event carries them. Non-`email.*` event types return `200 { ignored }`.
 
