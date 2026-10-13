@@ -51,7 +51,7 @@ export default function DocsmitReviewModal({ prepared, held, priceWords, short, 
           <button type="button" onClick={onClose} aria-label="Close the review" style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}>×</button>
         </div>
         {sendBy ? (
-          <div data-testid="dsm-send-by" style={{ padding: '0.4rem 1.1rem', fontSize: '0.8rem', background: sendBy.late ? 'var(--bg-red-50, var(--bg-red-tint))' : 'var(--bg-page)', color: sendBy.late ? 'var(--text-red-600)' : 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>{sendBy.words}</div>
+          <div data-testid="dsm-send-by" style={{ padding: '0.4rem 1.1rem', fontSize: '0.8rem', background: sendBy.late ? 'var(--bg-red-tint))' : 'var(--bg-page)', color: sendBy.late ? 'var(--text-red-600)' : 'var(--text-muted)', borderBottom: '1px solid var(--border)' }}>{sendBy.words}</div>
         ) : null}
         <div className="dsmMain" style={{ display: 'grid', gridTemplateColumns: 'minmax(180px, 240px) minmax(0, 1fr)', gap: 0, flex: 1, minHeight: 0 }}>
           <div style={{ borderRight: '1px solid var(--border)', overflowY: 'auto', minWidth: 0 }}>
