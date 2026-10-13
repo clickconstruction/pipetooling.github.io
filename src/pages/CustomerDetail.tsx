@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { MessagesButton } from '../components/messages/MessagesButton'
 import { useEditCustomerModal } from '../contexts/EditCustomerModalContext'
 import { useCustomerProfileModal } from '../contexts/CustomerProfileModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
@@ -301,6 +302,7 @@ export default function CustomerDetail() {
       {/* identity header */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.45rem', color: 'var(--text-strong)' }}>{(customer.name ?? '').trim() || '—'}</h1>
+        <MessagesButton customerId={customerId} customerName={customer.name} size={18} />
         {customer.customer_type === 'commercial' ? (
           <TypeChip label="Commercial" bg="var(--bg-blue-tint)" fg="var(--text-blue-800)" />
         ) : customer.customer_type === 'residential' ? (

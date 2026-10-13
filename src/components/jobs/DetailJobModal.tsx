@@ -88,6 +88,7 @@ import { formatDispatchNoteDaysAgoShortPhrase } from '../../utils/dispatchNoteDi
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LimitedJobDetailSnapshot } from '../../types/limitedJobDetailSnapshot'
 import CustomerPortalGlobeButton from '../customers/CustomerPortalGlobeButton'
+import { MessagesButton } from '../messages/MessagesButton'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
@@ -299,6 +300,7 @@ export function DetailJobModalCustomerPanel({
   gcCustomerName,
   developmentName,
   customerId,
+  onLeave,
 }: {
   customerName: string | null | undefined
   customerPhone: string | null | undefined
@@ -307,6 +309,8 @@ export function DetailJobModalCustomerPanel({
   developmentName?: string | null
   /** The customer's portal globe (v2.3262) renders beside the name when set — office roles only (the button gates itself). */
   customerId?: string | null
+  /** The window closes before the Messages button opens the customer's thread (residential R2). */
+  onLeave?: () => void
 }) {
   const name = customerName?.trim() ?? ''
   const phone = customerPhone?.trim() ?? ''
@@ -362,6 +366,7 @@ export function DetailJobModalCustomerPanel({
         {customerId && name ? (
           <span onClick={(e) => e.stopPropagation()} style={{ display: 'inline-flex', flexShrink: 0 }}>
             <CustomerPortalGlobeButton customerId={customerId} customerName={name} size={15} />
+            <MessagesButton customerId={customerId} customerName={name} size={15} {...(onLeave ? { onOpen: onLeave } : {})} />
           </span>
         ) : null}
       </div>
@@ -1936,6 +1941,7 @@ export default function DetailJobModal({
                     customerEmail={detailJob.customer_email}
                     gcCustomerName={'gc_customer_name' in detailJob ? detailJob.gc_customer_name : detailJob.gcCustomer?.name ?? null}
                     developmentName={'development_name' in detailJob ? detailJob.development_name : detailJob.development?.name ?? null}
+                    onLeave={onClose}
                   />
                 </div>
               ) : (

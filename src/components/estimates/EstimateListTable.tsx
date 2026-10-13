@@ -7,6 +7,7 @@
  */
 import { computeEstimateListReadiness, computeSentWait, isBidProposalDocKind, estimateDraftMeaningfulLineCount, readinessDots } from '../../lib/estimatePipelineRefresh'
 import { EstimateChangeOrderChip, EstimateLegacyChangeOrderTitleChip } from './EstimateKindChips'
+import { MessagesButton } from '../messages/MessagesButton'
 import { estimateLinkedJobHcp, estimateListCustomerColumnLines, estimateListCustomerSubline, estimateListOptionsSuffix, estimateStatusLabel as statusLabel, formatEstimateMoney as formatMoney, type EstimateListRow } from '../../lib/estimates/estimateListRows'
 import { formatEstimateListUpdatedLines } from '../../lib/formatEstimateListUpdated'
 import { Fragment, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
@@ -377,21 +378,32 @@ export function EstimateListTable({
                         {secondary ? <span style={estimateListCustomerCellStyle}>{secondary}</span> : null}
                       </div>
                     )
+                    // The speech bubble beside the name opens their thread (residential R2); the name keeps its snapshot.
+                    const bubble = cid ? <MessagesButton customerId={cid} customerName={cust?.name} /> : null
+                    const withBubble = (cell: ReactNode) =>
+                      bubble ? (
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.25rem', minWidth: 0 }}>
+                          {cell}
+                          {bubble}
+                        </div>
+                      ) : (
+                        cell
+                      )
                     if (cid && onCustomerSnapshotRequest) {
                       const labelName = (cust?.name ?? primary).trim() || 'customer'
-                      return (
+                      return withBubble(
                         <button
                           type="button"
                           className={ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}
                           onClick={() => onCustomerSnapshotRequest(cid)}
-                          style={estimateListCustomerSnapshotButtonStyle}
+                          style={{ ...estimateListCustomerSnapshotButtonStyle, width: 'auto', minWidth: 0 }}
                           aria-label={`View customer details for ${labelName}`}
                         >
                           {inner}
-                        </button>
+                        </button>,
                       )
                     }
-                    return inner
+                    return withBubble(inner)
                   })()}
                 </td>
               ) : null}
@@ -649,21 +661,31 @@ export function EstimateListCards({
         {secondary ? <span style={estimateListCustomerCellStyle}>{secondary}</span> : null}
       </div>
     )
+    // The speech bubble beside the name opens their thread (residential R2); the name keeps its snapshot.
+    const bubble = cid ? <MessagesButton customerId={cid} customerName={cust?.name} size={16} /> : null
     if (cid && onCustomerSnapshotRequest) {
       const labelName = (cust?.name ?? primary).trim() || 'customer'
       return (
-        <button
-          type="button"
-          className={ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}
-          onClick={() => onCustomerSnapshotRequest(cid)}
-          style={{ ...estimateListCustomerSnapshotButtonStyle, marginTop: '0.35rem' }}
-          aria-label={`View customer details for ${labelName}`}
-        >
-          {inner}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.25rem', marginTop: '0.35rem', minWidth: 0 }}>
+          <button
+            type="button"
+            className={ESTIMATE_LIST_CUSTOMER_SNAPSHOT_BTN_CLASS}
+            onClick={() => onCustomerSnapshotRequest(cid)}
+            style={{ ...estimateListCustomerSnapshotButtonStyle, width: 'auto', minWidth: 0 }}
+            aria-label={`View customer details for ${labelName}`}
+          >
+            {inner}
+          </button>
+          {bubble}
+        </div>
       )
     }
-    return <div style={{ marginTop: '0.35rem' }}>{inner}</div>
+    return (
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.25rem', marginTop: '0.35rem', minWidth: 0 }}>
+        {inner}
+        {bubble}
+      </div>
+    )
   }
 
   function renderStatusSection(r: EstimateListRow) {
