@@ -19,7 +19,7 @@ import type { JobDemandLetterRow } from '../jobs/demandLetterTracking'
 import type { JobLienFilingRow } from '../jobs/lienDeadlines'
 import { classifyPromises, parsePaymentPromisesRpc, parsePromiseRecordsRpc } from '../jobs/paymentPromises'
 import { parseChaseTouchesRpc } from '../jobs/paymentChase'
-import type { LegalDeskItemLike } from './legalLienPaper'
+import type { LegalDeskItemLike, LegalMailPieceLike } from './legalLienPaper'
 import type { LegalJobOwnerRow } from './legalProperty'
 import { buildLegalPacket, groupCollectionsByPayer, type LegalContactEntryLike, type LegalContactLike, type LegalCustomerLike, type LegalFeeModel, type LegalPacket } from './legalPacket'
 import { buildJobContractCoverage } from '../jobs/jobContractCoverage'
@@ -63,6 +63,8 @@ export type LegalPortalMatter = {
   signedEstimates: SignedEstimateLike[]
   demandLetters: JobDemandLetterRow[]
   lienFilings: JobLienFilingRow[]
+  /** The mail pieces behind the filings' sends (the Docsmit train, PR 8); [] from an older function. */
+  mailPieces: LegalMailPieceLike[]
   /** The jobs' § 53.056 notice desk items, shaped down to the sent-notice facts (#41 PR 1b); [] from an older function. */
   lienDeskItems: LegalDeskItemLike[]
   promises: unknown[]
@@ -137,6 +139,7 @@ export function parseLegalPortalPayload(raw: unknown): LegalPortalPayload | null
       signedEstimates: Array.isArray(m.signedEstimates) ? (m.signedEstimates as SignedEstimateLike[]) : [],
       demandLetters: Array.isArray(m.demandLetters) ? (m.demandLetters as JobDemandLetterRow[]) : [],
       lienFilings: Array.isArray(m.lienFilings) ? (m.lienFilings as JobLienFilingRow[]) : [],
+      mailPieces: Array.isArray(m.mailPieces) ? (m.mailPieces as unknown[]).filter((p): p is LegalMailPieceLike => isRecord(p) && typeof p.id === 'string' && typeof p.recipient === 'string') : [],
       lienDeskItems: Array.isArray(m.lienDeskItems) ? (m.lienDeskItems as unknown[]).filter((it): it is LegalDeskItemLike => isRecord(it) && typeof it.id === 'string' && typeof it.job_id === 'string') : [],
       promises: Array.isArray(m.promises) ? m.promises : [],
       promiseRecords: Array.isArray(m.promiseRecords) ? m.promiseRecords : [],

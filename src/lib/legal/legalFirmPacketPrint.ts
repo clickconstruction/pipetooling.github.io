@@ -12,7 +12,7 @@ import { legalNarrativeBandWords, type LegalNarrative } from './legalNarrative'
 import { legalNarrativeHtml } from './legalNarrativeHtml'
 import { formatLegalMoney, legalSessionWords, type LegalPacket } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords } from './legalLienPaper'
+import { envelopeAnswersWords, envelopeCertificationLinks, envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords } from './legalLienPaper'
 import { firmEntryKindWords, firmFeeKindWords, firmHistoryKindWords, firmJobRecordWords, firmSaidKindWords, firmSaidRecordedBy, legalFirmStageWords } from './legalFirmWords'
 import { lienFirmNext } from '../jobs/lienTimeline'
 import type { LegalEntryRow } from './legalMatters'
@@ -72,7 +72,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   const demandRows = packet.paper.demandLetters.map((d) => row([`<b>${esc(d.jobLabel)}</b>`, esc(d.sentYmd ?? 'not sent'), esc(d.method), esc(d.tracking || '—'), `${esc(d.deadlineYmd ?? '—')}${d.deadlinePassed ? ' (passed)' : ''}`, formatLegalMoney(d.amount)], [false, false, false, false, false, true]))
   const gcName = a.payer.viaGc ? a.payer.name : 'the general contractor'
   const envelopeRows = packet.paper.envelopes.flatMap((e) => {
-    const main = row([`<b>${esc(e.letter)}</b>`, esc(envelopeKindWords(e)), esc(envelopeWentOutWords(e, packet.todayYmd)), formatLegalMoney(e.claim), esc(envelopeMonthsWords(e) || '—'), esc(envelopeSharesWords(e, formatLegalMoney)), esc([e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—'), e.documentUrl ? `<a href="${esc(e.documentUrl)}">copy</a>` : '—'], [false, false, false, true, false, false, false, false])
+    const main = row([`<b>${esc(e.letter)}</b>`, esc(envelopeKindWords(e)), esc(envelopeWentOutWords(e, packet.todayYmd)) + envelopeCertificationLinks(e).map((l) => ` <a href="${esc(l.url)}">Certification (${esc(l.recipientLabel)})</a>`).join(''), formatLegalMoney(e.claim), esc(envelopeMonthsWords(e) || '—'), esc(envelopeSharesWords(e, formatLegalMoney)), esc([e.county, e.recordingNumber].filter(Boolean).join(' · ') || '—'), e.documentUrl ? `<a href="${esc(e.documentUrl)}">copy</a>` : '—'], [false, false, false, true, false, false, false, false])
     if (!e.answers) return [main]
     const w = envelopeAnswersWords(e.answers, { todayYmd: packet.todayYmd, gcName, formatMoney: formatLegalMoney })
     return [main, `<tr><td colspan="8" class="band"><b>The owner's answers</b> · ${esc(w.owner)}<br><b>Second letter</b> · ${esc(w.letterTwo)} &nbsp; <b>GC's written okay to pay ${esc(opts.companyName)} directly:</b> ${esc(w.gcOkay)}</td></tr>`]

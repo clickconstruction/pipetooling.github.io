@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobLienFilingRow } from '../jobs/lienDeadlines'
-import { buildLegalEnvelopes, buildLegalJobTimelines, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, retainageWordsFor, workMonthsFromSessions } from './legalLienPaper'
+import { buildLegalEnvelopes, buildLegalJobTimelines, envelopeCertificationLinks, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, retainageWordsFor, sendMailWords, workMonthsFromSessions } from './legalLienPaper'
 
 const TODAY = '2026-09-23'
 
@@ -248,3 +248,32 @@ describe('an evening instant keeps its day on the packet (v2.4468)', () => {
     expect(noon.owner).toMatch(/^Oct 2, Taunya — /)
   })
 })
+
+describe('what the mail service said, on the firm’s envelope (the Docsmit train, PR 8)', () => {
+  const build = buildLegalEnvelopes
+  const links = envelopeCertificationLinks
+  const words = envelopeWentOutWords
+  const row = filing({ id: 'f-m', job_id: 'job-273', months_covered: ['2026-08'], sends: [
+    { recipient: 'owner', method: 'certified_mail', tracking: '9407 1118', sent_on: '2026-10-13', via: 'docsmit', piece_id: 'p-owner' },
+    { recipient: 'original_contractor', method: 'certified_mail', tracking: '', sent_on: '2026-10-13' },
+  ], created_at: '2026-10-13T20:00:00Z' })
+  const pieces = [
+    { id: 'p-owner', kind: 'lien_notice_53_056', recipient: 'owner', status: 'delivered', usps_tracking: '9407 1118', mailed_at: '2026-10-13T22:10:00Z', delivered_at: '2026-10-16T17:02:00Z', signed_by: 'R SMITH', delivery_status: 'Delivered, Left with Individual', source_ids: ['f-m'], job_id: 'job-273', certificationUrl: 'https://x.test/cert.pdf' },
+    { id: 'p-gc', kind: 'lien_notice_53_056', recipient: 'original_contractor', status: 'in_transit', usps_tracking: '9407 2222', mailed_at: '2026-10-14T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'In Transit', source_ids: ['f-m'], job_id: null },
+  ]
+  it('a send names its piece, or the piece on its filings for its recipient; the days are Central days', () => {
+    const [e] = build([row], { labelOf, propertyKind: 'residential', mailPieces: pieces })
+    expect(e!.sends[0]!.mail).toEqual({ status: 'delivered', mailedYmd: '2026-10-13', deliveredYmd: '2026-10-16', signedBy: 'R SMITH', tracking: '9407 1118', deliveryStatus: 'Delivered, Left with Individual', certificationUrl: 'https://x.test/cert.pdf' })
+    expect(e!.sends[1]!.mail).toMatchObject({ status: 'in_transit', mailedYmd: '2026-10-13', deliveredYmd: null, certificationUrl: null })
+    expect(build([row], { labelOf, propertyKind: 'residential' })[0]!.sends[0]!.mail).toBeNull()
+    expect(links(e!)).toEqual([{ recipientLabel: 'owner of record', url: 'https://x.test/cert.pdf' }])
+  })
+  it('the went-out line says what each recipient’s copy did', () => {
+    const [e] = build([row], { labelOf, propertyKind: 'residential', mailPieces: pieces })
+    expect(words(e!, '2026-10-20')).toBe('Oct 13 · certified mail · 9407 1118 · owner of record: mailed Oct 13 through Docsmit · delivered Oct 16, signed R SMITH; original contractor: mailed Oct 13 · in transit')
+    expect(sendMailWords({ via: 'docsmit', mail: { status: 'sent', mailedYmd: null, deliveredYmd: null, signedBy: '', tracking: '', deliveryStatus: '', certificationUrl: null } }, '2026-10-20')).toBe('sent to Docsmit, not yet accepted by USPS')
+    expect(sendMailWords({ via: 'docsmit', mail: { status: 'returned', mailedYmd: '2026-10-13', deliveredYmd: null, signedBy: '', tracking: '', deliveryStatus: '', certificationUrl: null } }, '2026-10-20')).toBe('mailed Oct 13 through Docsmit · returned to sender')
+    expect(sendMailWords({ via: '', mail: null }, '2026-10-20')).toBe('')
+  })
+})
+

@@ -49,14 +49,19 @@ export async function loadPiecesByIds(db: MailDb, ids: string[]): Promise<MailPi
 /** The USPS number, the provider and the piece onto every filing behind the piece, for the piece's recipient. */
 export async function writeTrackingToFilings(db: MailDb, piece: MailPieceRow): Promise<string[]> {
   if (!MAIL_FILING_KINDS.has(piece.kind) || piece.source_ids.length === 0) return []
-  const { data, error } = await db.from('job_lien_filings').select('id, sends').in('id', piece.source_ids)
+  const { data, error } = await db.from('job_lien_filings').select('id, kind, sends, served_at').in('id', piece.source_ids)
   if (error) throw new Error(`job_lien_filings: ${error.message}`)
-  const rows = (Array.isArray(data) ? data : []) as Array<{ id: string; sends: unknown }>
+  const rows = (Array.isArray(data) ? data : []) as Array<{ id: string; kind?: string | null; sends: unknown; served_at?: string | null }>
   const written: string[] = []
+  const mailedOn = piece.mailed_at ? ymdInZone(piece.mailed_at, APP_TZ) : null
   for (const row of rows) {
-    const next = sendsWithPiece(row.sends, piece.recipient, { id: piece.id, provider: piece.provider, usps_tracking: piece.usps_tracking, mailed_on: piece.mailed_at ? ymdInZone(piece.mailed_at, APP_TZ) : null })
-    if (JSON.stringify(next) === JSON.stringify(row.sends)) continue
-    const { error: upErr } = await db.from('job_lien_filings').update({ sends: next }).eq('id', row.id)
+    const next = sendsWithPiece(row.sends, piece.recipient, { id: piece.id, provider: piece.provider, usps_tracking: piece.usps_tracking, mailed_on: mailedOn })
+    const patch: Record<string, unknown> = {}
+    if (JSON.stringify(next) !== JSON.stringify(row.sends)) patch.sends = next
+    // § 53.055 (the Docsmit train, PR 8): a filed affidavit's copy mailed through the provider serves it the day USPS accepted it, once.
+    if (piece.kind === 'lien_affidavit_copy' && row.kind === 'affidavit' && mailedOn && !row.served_at) patch.served_at = mailedOn
+    if (Object.keys(patch).length === 0) continue
+    const { error: upErr } = await db.from('job_lien_filings').update(patch).eq('id', row.id)
     if (upErr) throw new Error(`job_lien_filings ${row.id}: ${upErr.message}`)
     written.push(row.id)
   }

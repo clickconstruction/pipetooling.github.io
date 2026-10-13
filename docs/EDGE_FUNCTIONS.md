@@ -2192,7 +2192,9 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **View counting**: every validated load inserts a `public_page_views` row (`surface = 'legal_portal'`, `entity_id` = firm id) stamped by `publicViewDecision` — office previews (`?preview=1`) and staff sessions do not count.
 
-**Auth**: `verify_jwt = false` — the link is the capability. **Endpoint**: `GET /functions/v1/legal-portal?token=<opaque>`. **Deploy**: after the v2.3319 migration is pushed. No secrets beyond the standard ones. The firm's writes (fees, steps, questions, payments received) are `submit-legal-portal` (PR 4).
+**Auth**: `verify_jwt = false` — the link is the capability. **Counsel's packet from the mail service** (v2.5388, the Docsmit train PR 8): each matter carries `mailPieces` — the `mail_pieces` rows behind its filings (by the job, or by `source_ids` overlapping the matter's filing ids), cut by `shapeMailPieces` to when USPS accepted each, the delivery and who signed, the provider's last word, and the Certification PDF as a 15-minute signed link (`certificationUrl`); never the address as sent, the price, the events or a path. A filing's `sends[]` keep `via` and `piece_id`. Until the table exists the list is empty and the portal still opens.
+
+**Endpoint**: `GET /functions/v1/legal-portal?token=<opaque>`. **Deploy**: after the v2.3319 migration is pushed. No secrets beyond the standard ones. The firm's writes (fees, steps, questions, payments received) are `submit-legal-portal` (PR 4).
 
 **v2.3512 (What customers see PR 6):** the sample token answers from `sampleLegalPortalResponse` — the sample firm's empty portal (recipients, particulars, no matters) — before the link lookup and the view row; a real matter never reaches it.
 
