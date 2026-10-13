@@ -98,3 +98,38 @@ export function runEnvelopeStage(env: Pick<RunEnvelope, 'method' | 'tracking' | 
   const glyph: RunGlyph = delivered ? 'delivered' : mailed ? 'postmarked' : printed && lane !== 'email' ? 'sealed' : 'open'
   return { lane, stages, current: first ? first.key : 'done', waiting, glyph }
 }
+
+export type RunEnvelopeChip = { tone: 'blue' | 'green' | 'amber' | 'red' | 'gray'; words: string; /** The quiet line under the chip: what moves it next; null when nothing to say. */ next: string | null }
+
+/**
+ * The one chip on an envelope's card (Run-3): its state in a few words, and what moves it next.
+ * `held` is the run's own hold words for the envelope (the first problem), `leaderName` the job's
+ * leader for the signature wait.
+ */
+export function runEnvelopeChip(state: RunEnvelopeStageState, env: { tracking: string; method: RunSendMethod }, opts: { held?: string | null; leaderName?: string | null } = {}): RunEnvelopeChip {
+  const leader = (opts.leaderName ?? '').trim() || 'the leader'
+  const held = (opts.held ?? state.waiting ?? '').trim()
+  if (held) {
+    if (/^Unsigned/.test(held)) return { tone: 'amber', words: `Waiting on ${leader}’s signature`, next: 'He signs from his phone, or draws it here with Leader here, sign ▸.' }
+    const short = held.replace(/^[^:]+: /, '')
+    return { tone: 'amber', words: `Held · ${short}`, next: null }
+  }
+  const number = (env.tracking ?? '').trim()
+  switch (state.current) {
+    case 'checked':
+      return { tone: 'amber', words: 'No mailing address', next: 'Set the address on the customer, then print again.' }
+    case 'signed':
+      return { tone: 'amber', words: `Waiting on ${leader}’s signature`, next: null }
+    case 'printed':
+      return { tone: 'blue', words: 'Prints here', next: `Next: print, then ${state.lane === 'hand' ? 'type who signed for it' : state.lane === 'courier' ? 'type the courier’s number' : 'type the number from the slip'}` }
+    case 'mailed':
+      if (state.lane === 'email') return { tone: 'blue', words: 'Emails when the run records', next: null }
+      return { tone: 'amber', words: state.lane === 'hand' ? 'Printed · name owed' : 'Printed · number owed', next: state.lane === 'hand' ? 'Type who signed for it when you are back.' : 'Type the number from the slip when you are back.' }
+    case 'recorded':
+      return { tone: 'green', words: number ? `Ready to record · ${number}` : 'Ready to record', next: null }
+    case 'delivered':
+      return { tone: 'green', words: 'Recorded', next: 'Delivery is not known yet.' }
+    default:
+      return { tone: 'green', words: 'Recorded', next: null }
+  }
+}
