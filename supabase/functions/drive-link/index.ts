@@ -6,6 +6,7 @@ import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import {
   DRIVE_FOLDER_MIME,
   LINK_TOKEN_BYTES,
+  STREAM_CAP_BYTES,
   contentDisposition,
   driveViewUrl,
   fileLinkUrl,
@@ -126,7 +127,7 @@ async function filesUnder(token: string, folderId: string, half: Half, out: Reco
     const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`)
     const page = await driveGet<{ files?: DriveListed[]; nextPageToken?: string }>(
       token,
-      `${DRIVE}/files?q=${q}&pageSize=200&orderBy=modifiedTime desc&fields=nextPageToken,files(id,name,mimeType,size,webViewLink,modifiedTime)&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${pageToken}` : ''}`,
+      `${DRIVE}/files?q=${q}&pageSize=200&orderBy=modifiedTime desc&fields=nextPageToken,files(id,name,mimeType,size,webViewLink,modifiedTime)&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
     )
     for (const f of page.files ?? []) {
       if (out.length >= LIST_MAX_FILES) return
@@ -205,14 +206,21 @@ async function openDoor(req: Request, admin: SupabaseClient, url: URL): Promise<
   const google = await googleAccessToken(saJson)
   const file = await fetch(`${DRIVE}/files/${encodeURIComponent(row!.drive_file_id)}?alt=media&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${google}` } })
   if (!file.ok || !file.body) return json({ kind: 'off', why: 'unknown' }, 404)
+  // The size kept on the row is the size the day the link was made; a file grown past the cap since is not streamed.
+  const length = Number(file.headers.get('Content-Length') ?? '')
+  if (Number.isFinite(length) && length > STREAM_CAP_BYTES) {
+    void file.body.cancel().catch(() => {})
+    return json({ kind: 'off', why: 'tooBig' }, 410)
+  }
   // Passed through as it comes, never held whole.
   return new Response(file.body, {
     status: 200,
     headers: {
       ...corsHeaders,
       'Content-Type': row!.mime || file.headers.get('Content-Type') || 'application/octet-stream',
-      'Content-Disposition': contentDisposition(row!.name),
+      'Content-Disposition': contentDisposition(row!.name, row!.mime),
       'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
       ...(file.headers.get('Content-Length') ? { 'Content-Length': file.headers.get('Content-Length')! } : {}),
     },
   })
@@ -240,11 +248,13 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   if (ask.action === 'save') {
     const { data: att } = await admin
       .from('message_attachments')
-      .select('id, kind, name, mime, bucket_path, message_id, messages(bid_id, project_id, jobs_ledger_id)')
+      .select('id, kind, name, mime, bucket_path, drive_file_id, message_id, messages(bid_id, project_id, jobs_ledger_id)')
       .eq('id', ask.attachmentId)
       .maybeSingle()
-    const a = att as { kind: string; name: string; mime: string | null; bucket_path: string | null; messages: { bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null } | null } | null
+    const a = att as { kind: string; name: string; mime: string | null; bucket_path: string | null; drive_file_id: string | null; messages: { bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null } | null } | null
     if (!a || a.kind !== 'file' || !a.bucket_path) return json({ error: 'That file is not one we kept.' }, 404)
+    // Saved already, by a second press or a second person: the one copy in Drive, never another.
+    if (a.drive_file_id) return json({ driveFileId: a.drive_file_id, url: driveViewUrl(a.drive_file_id) })
     const m = a.messages
     const job: JobRef | null = m?.project_id ? { project_id: m.project_id } : m?.bid_id ? { bid_id: m.bid_id } : m?.jobs_ledger_id ? { jobs_ledger_id: m.jobs_ledger_id } : null
     if (!job) return json({ error: 'Tie the message to a job first.' }, 409)
