@@ -31,6 +31,7 @@ import LienPenSignaturePane, { type PenPaneRecorded } from './LienPenSignaturePa
 import LienRunJourney from './LienRunJourney'
 import LienRunEnvelopeGlyph from './LienRunEnvelopeGlyph'
 import { runEnvelopeChip, runEnvelopeStage, type RunEnvelopeStageState } from '../../lib/jobs/runEnvelopeStage'
+import { runFootAction } from '../../lib/jobs/runFootAction'
 import { runJourney } from '../../lib/jobs/runJourney'
 
 /**
@@ -90,6 +91,8 @@ export default function LienDeskRunModal({
   const signRef = useRef<LienNoticeSignLineHandle>(null)
   // He signed the paper ▸ (the pen train, PR 2): the held envelope whose pen pane is open.
   const [penOpen, setPenOpen] = useState<string | null>(null)
+  // More ▾ (Run-4): the foot's secondary doors, folded.
+  const [moreOpen, setMoreOpen] = useState(false)
   // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
   const [docUrl, setDocUrl] = useState('')
   const [docNote, setDocNote] = useState('')
@@ -258,6 +261,7 @@ export default function LienDeskRunModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [envelopes, printedAt, printedCopies])
   const journey = useMemo(() => runJourney(envelopes.map((env) => stageByKey.get(env.key)!), { leaderName }), [envelopes, stageByKey, leaderName])
+  const foot = useMemo(() => runFootAction(envelopes.map((env) => stageByKey.get(env.key)!), { leaderName }), [envelopes, stageByKey, leaderName])
   // The notices in an envelope the leader has not signed (v2.5086), by the run's own list so a combined notice's parts are found.
   const unsignedIn = (env: RunEnvelope): RunNotice[] => {
     const seen = new Set<string>()
@@ -470,8 +474,6 @@ export default function LienDeskRunModal({
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)', padding: 4 }}>×</button>
         </div>
-        {/* The journey (Run-2): where the run stands, shown; the step strip below stays one release longer. */}
-        <LienRunJourney journey={journey} />
         {undo ? (
           <div data-testid="run-undo" role="status" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', padding: '0.5rem 1.25rem', borderBottom: '1px solid var(--border)', borderLeft: '4px solid #f59e0b', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
             <span aria-hidden style={{ fontSize: '1rem', lineHeight: 1 }}>↶</span>
@@ -481,28 +483,8 @@ export default function LienDeskRunModal({
             </button>
           </div>
         ) : null}
-        <div data-testid="run-steps" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', padding: '0.45rem 1.25rem', borderBottom: '1px solid var(--border)', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-          <span style={{ fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Steps</span>
-          {[
-            [printedAt ? `1 · Printed ${demandDate(calendarYmdInAppTzFromIso(printedAt))}` : '1 · Print the packet', printedAt != null],
-            ['2 · Mail them', false],
-            ['3 · Record the mailing', false],
-          ].map(([label, done], i) => (
-            <span key={String(label)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-              {i > 0 ? <span aria-hidden>→</span> : null}
-              <span style={{ padding: '1px 8px', borderRadius: 999, border: '1px solid var(--border-strong)', background: done ? 'var(--bg-green-tint)' : i === (printedAt ? 2 : 0) ? 'var(--bg-blue-tint)' : 'var(--surface)', color: done ? 'var(--text-green-800)' : 'inherit', fontWeight: 600 }}>
-                {label}
-                {done ? ' ✓' : ''}
-              </span>
-              {i === 0 && onTakeBack && printedIds.length > 0 && !takeBackOpen ? (
-                <button type="button" data-testid="run-take-back" onClick={() => setTakeBackOpen(true)} disabled={busy} title="Nothing was mailed? Put the printed notices back in Ready to send." style={{ border: 'none', background: 'none', padding: '0 2px', font: 'inherit', fontWeight: 600, color: 'var(--text-link)', textDecoration: 'underline', textUnderlineOffset: 2, cursor: busy ? 'not-allowed' : 'pointer' }}>
-                  Take back…
-                </button>
-              ) : null}
-            </span>
-          ))}
-          {printedAt ? <span style={{ marginLeft: 'auto' }}>Back from the post office? Type each envelope’s number below — an envelope without one stays in the mail pile.</span> : null}
-        </div>
+        {/* The journey (Run-2): where the run stands, shown. Run-4 retired the step strip under it. */}
+        <LienRunJourney journey={journey} />
         {takeBackOpen && printedIds.length > 0 ? (
           <div data-testid="run-take-back-confirm" role="group" aria-label={takeBackWords.title} style={{ margin: '0.6rem 1.25rem 0', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
             <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 2 }}>{takeBackWords.title}</div>
@@ -695,7 +677,37 @@ export default function LienDeskRunModal({
             })}
           </div>
         </div>
-        <div className="lienRunFoot" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', padding: '0.6rem 1.25rem 0.9rem', borderTop: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
+        <div className="lienRunFoot2" data-testid="run-foot">
+          <div className="lienRunFootStatus" data-testid="run-foot-status">
+            <b>{blocked ? 'Something is marked in red' : split.partial ? `${split.waiting.length} ${split.waiting.length === 1 ? 'envelope has' : 'envelopes have'} no number yet` : foot.line1}</b>
+            <span>
+              {blocked
+                ? 'Fix the recipients marked in red before recording.'
+                : split.partial
+                  ? `${split.waiting.length === 1 ? 'It stays' : 'They stay'} in the mail pile; the numbered ones record now.`
+                  : printedAt
+                    ? 'Back from the post office? Type each envelope’s number below — an envelope without one stays in the mail pile.'
+                    : foot.line2}
+            </span>
+          </div>
+          <button type="button" onClick={() => setMoreOpen((v) => !v)} aria-expanded={moreOpen} data-testid="run-more" style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
+            More {moreOpen ? '▴' : '▾'}
+          </button>
+          {printedAt ? (
+            <>
+          <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>
+            {busy ? 'Recording…' : split.partial ? `Record ${split.mailed.length} mailed · ${split.waiting.length} ${split.waiting.length === 1 ? 'stays' : 'stay'} in the pile ▸` : 'Record the run ▸'}
+          </button>
+            </>
+          ) : (
+            <>
+          <button type="button" onClick={printPacket} disabled={notices.length === 0} title={printedAt ? 'It already printed. Print it again only if the first copy was lost; every copy is filed on the job.' : undefined} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: printedAt ? 400 : 600, cursor: 'pointer' }}>
+            {printedAt ? 'Print it again' : 'Print the packet'} · {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}
+          </button>
+            </>
+          )}
+          {moreOpen ? (
+            <div className="lienRunMore" data-testid="run-more-panel">
           <div style={{ flexBasis: '100%', display: 'grid', gridTemplateColumns: 'auto minmax(160px, 2fr) minmax(120px, 1fr)', gap: '0.4rem 0.5rem', alignItems: 'center', fontSize: '0.75rem', color: 'var(--text-muted)' }} data-testid="run-saved-copy">
             <span title="Where the packet lives once you saved it — a Drive link. Every notice's record carries it, so the paper can be found from the job later.">Saved copy</span>
             <input value={docUrl} onChange={(ev) => setDocUrl(ev.target.value)} placeholder="Drive link to the packet as printed (optional)" aria-label="Saved copy — link" style={{ width: '100%', font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit' }} />
@@ -711,15 +723,22 @@ export default function LienDeskRunModal({
           <button type="button" onClick={saveLabelAddresses} disabled={mailing.mailed.length === 0} data-testid="run-label-addresses" title="Saves a spreadsheet for a certified-mail label service: one row per envelope that goes out, the name and address as the envelope reads them, the envelope number and its jobs as the reference. Upload it as a batch; the labels print with the 20-digit number already on them." style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem' }}>
             Addresses for the labels
           </button>
-          <button type="button" onClick={printPacket} disabled={notices.length === 0} title={printedAt ? 'It already printed. Print it again only if the first copy was lost; every copy is filed on the job.' : undefined} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: printedAt ? 400 : 600, cursor: 'pointer' }}>
+              {printedAt ? (
+                <button type="button" onClick={printPacket} disabled={notices.length === 0} title={printedAt ? 'It already printed. Print it again only if the first copy was lost; every copy is filed on the job.' : undefined} style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontSize: '0.8125rem', fontWeight: printedAt ? 400 : 600, cursor: 'pointer' }}>
             {printedAt ? 'Print it again' : 'Print the packet'} · {mailing.mailed.length} {mailing.mailed.length === 1 ? 'envelope' : 'envelopes'}
-          </button>
-          <span className="lienRunFootHint" style={{ fontSize: '0.78rem', color: blocked ? 'var(--text-red-600)' : 'var(--text-muted)' }}>
-            {blocked ? 'Fix the recipients marked in red before recording.' : split.partial ? `${split.waiting.length} ${split.waiting.length === 1 ? 'envelope has' : 'envelopes have'} no number yet — ${split.waiting.length === 1 ? 'it stays' : 'they stay'} in the mail pile.` : printedAt ? 'Type each envelope’s number; a number can also be added later from the Sent row.' : 'Tracking numbers can be typed now, or added later from the Sent row.'}
-          </span>
-          <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>
+                </button>
+              ) : (
+                <button type="button" onClick={() => void record()} disabled={busy || blocked || notices.length === 0} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid transparent', background: '#2563eb', color: '#fff', fontSize: '0.8125rem', fontWeight: 600, cursor: busy || blocked ? 'default' : 'pointer', opacity: busy || blocked || notices.length === 0 ? 0.55 : 1 }}>
             {busy ? 'Recording…' : split.partial ? `Record ${split.mailed.length} mailed · ${split.waiting.length} ${split.waiting.length === 1 ? 'stays' : 'stay'} in the pile ▸` : 'Record the run ▸'}
-          </button>
+                </button>
+              )}
+              {onTakeBack && printedIds.length > 0 && !takeBackOpen ? (
+                <button type="button" data-testid="run-take-back" onClick={() => { setTakeBackOpen(true); setMoreOpen(false) }} disabled={busy} title="Nothing was mailed? Put the printed notices back in Ready to send." style={{ padding: '5px 10px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', fontSize: '0.8125rem', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}>
+                  Take back…
+                </button>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
       {preview != null && previewEntries.length > 0 ? (
