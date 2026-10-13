@@ -68,7 +68,7 @@ import { LienCallerDoor } from './LienCallerDoor'
 import LienDeskCalendarTab from './LienDeskCalendarTab'
 import LienTrackingOwedEditor from './LienTrackingOwedEditor'
 import { sendsTrackingOwed } from '../../lib/jobs/lienSendTracking'
-import { filingMailCostWords, filingMailLines, filingMailTail } from '../../lib/mail/lienMailPieces'
+import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailNeedsYouRows } from '../../lib/mail/lienMailPieces'
 import { clearLienDeskItemPrinted, markLienDeskItemsPrinted, takeBackLienDeskItems } from '../../lib/jobs/lienDeskIo'
 import { runTakenBackOf, takenBackChipWords } from '../../lib/jobs/lienRunTakeBack'
 import LienOfferBox from './LienOfferBox'
@@ -549,12 +549,16 @@ export default function LienDeskModal({
   )
   // The Calendar's "Draft the N" (v2.4153): the notice list narrows to those jobs until the chip is cleared.
   const [calendarJobFilter, setCalendarJobFilter] = useState<{ ymd: string; jobIds: ReadonlySet<string> } | null>(null)
+  // Deliveries (the Docsmit train, 6b): the Sent pile narrowed to the notices mailed through the provider, each row's tail saying where its envelopes are.
+  const [deliveriesOnly, setDeliveriesOnly] = useState(false)
+  const mailedJobIds = useMemo(() => jobsWithMailPieces(entries, data?.mailPiecesByFiling ?? {}), [entries, data?.mailPiecesByFiling])
   const visibleAll = useMemo(() => {
     // Missed is a lens (v2.3679): a job in To draft with a closed month shows under it too.
     const scoped = calendarJobFilter ? entries.filter((e) => calendarJobFilter.jobIds.has(e.jobId)) : entries
     const list = pile ? scoped.filter((e) => e.pile === pile || (pile === 'missed' && e.missedMonths.length > 0)) : scoped
-    return PILE_ORDER.flatMap((p) => list.filter((e) => e.pile === p))
-  }, [entries, pile, calendarJobFilter])
+    const mailed = deliveriesOnly ? list.filter((e) => e.pile !== 'sent' || mailedJobIds.has(e.jobId)) : list
+    return PILE_ORDER.flatMap((p) => mailed.filter((e) => e.pile === p))
+  }, [entries, pile, calendarJobFilter, deliveriesOnly, mailedJobIds])
   // The find narrows the list (v2.4721); the hidden facts it landed on ride beside each row.
   const { visible, findHits } = useMemo(() => {
     const hits = new Map<string, LienFindFact[]>()
@@ -646,6 +650,7 @@ export default function LienDeskModal({
       gcName: (gcId) => data.gcsById[gcId]?.name ?? 'A GC',
       leaderName: (jobId) => leaderNameFor?.(data.jobsById[jobId]?.master_user_id ?? null)?.trim() || null,
       userName: (userId) => leaderNameFor?.(userId)?.trim() || null,
+      mailNeedsYou: mailNeedsYouRows(data.filingsByJob, data.mailPiecesByFiling ?? {}, formatYmdMonthDay),
     })
   }, [data, authRole, todayYmd, leaderNameFor])
   // The office's waiting rows (punch list #101 PR 3) close the list under the leader's name when they share one.
@@ -1504,6 +1509,11 @@ export default function LienDeskModal({
               {p === 'ready' && office && runCount > 0 ? (
                 <button type="button" data-lien-pile-run onClick={() => setRunOpen(true)} title="Every approved notice as one packet" style={{ padding: '1px 8px', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   Send the run · {runCount}
+                </button>
+              ) : null}
+              {p === 'sent' && mailedJobIds.size > 0 ? (
+                <button type="button" data-lien-pile-deliveries={deliveriesOnly ? 'on' : 'off'} onClick={() => setDeliveriesOnly((v) => !v)} title={deliveriesOnly ? 'Every sent notice' : 'Only the notices mailed through Docsmit, with where each envelope is'} style={{ padding: '1px 8px', borderRadius: 6, border: '1px solid var(--border-strong)', background: deliveriesOnly ? 'var(--bg-blue-tint)' : 'var(--surface)', color: deliveriesOnly ? 'var(--text-blue-700)' : 'var(--text-700)', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, letterSpacing: 0, textTransform: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  {deliveriesOnly ? 'Every sent notice' : `Deliveries · ${mailedJobIds.size}`}
                 </button>
               ) : null}
               {pile ? (

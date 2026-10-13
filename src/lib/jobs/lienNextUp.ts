@@ -39,6 +39,8 @@ export type LienNextUpAction =
   | 'draft_late'
   | 'file_affidavit'
   | 'record_service'
+  /** An envelope mailed through the provider came back, went unclaimed, was refused, or reads a status the fold had not seen (the Docsmit train, 6b). */
+  | 'mail_needs_you'
 
 /** Where a row's button goes — always a screen that exists today. */
 export type LienNextUpTarget =
@@ -98,6 +100,7 @@ const BUTTON: Record<LienNextUpAction, string> = {
   draft_late: 'Draft it late',
   file_affidavit: 'File the affidavit',
   record_service: 'Record service',
+  mail_needs_you: 'Open the notice',
 }
 
 export type LienNextUpInput = {
@@ -115,6 +118,8 @@ export type LienNextUpInput = {
   leaderName?: (jobId: string) => string | null
   /** Any user by id (the pen train, PR 3): who wrote down a pen record, for the leader's row. */
   userName?: (userId: string) => string | null
+  /** The envelopes mailed through the provider that want a person (the Docsmit train, 6b): `mailNeedsYouRows` from the desk's pieces. */
+  mailNeedsYou?: ReadonlyArray<{ jobId: string; pieceId: string; who: string; words: string }>
 }
 
 function daysBetween(fromYmd: string, toYmd: string): number {
@@ -332,6 +337,11 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
       case 'missed':
         break
     }
+  }
+
+  // An envelope the provider mailed that came back or went unclaimed (the Docsmit train, 6b): the office's row, under Needs you now, opening the notice under Sent whose footer has the doors.
+  for (const m of input.mailNeedsYou ?? []) {
+    rows.push({ key: `mail:${m.pieceId}`, kind: 'notice', jobId: m.jobId, gcId: null, title: input.jobTitle(m.jobId), sub: `Docsmit · ${m.who.toLowerCase()} · ${m.words}`, dueOn: null, daysLeft: null, severity: 'red', group: 'now', action: 'mail_needs_you', button: office ? BUTTON.mail_needs_you : null, target: { open: 'notices', jobId: m.jobId, pile: 'sent' } })
   }
 
   return rows.sort(compareRows)

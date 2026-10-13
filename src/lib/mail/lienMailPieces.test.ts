@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filingMailCostWords, filingMailLines, filingMailTail, mailCostDollars, mailPieceWords, mailPiecesByFiling, mailPiecesNeedingYou, type LienMailPieceRow } from './lienMailPieces'
+import { filingMailCostWords, filingMailLines, filingMailTail, jobsWithMailPieces, mailCostDollars, mailNeedsYouRows, mailPieceWords, mailPiecesByFiling, mailPiecesNeedingYou, type LienMailPieceRow } from './lienMailPieces'
 
 const base: LienMailPieceRow = { id: 'p1', kind: 'lien_notice_53_056', recipient: 'owner', status: 'in_transit', usps_tracking: '9407 1118', mailed_at: '2026-10-14T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'In Transit', source_ids: ['f1'] }
 const fmt = (d: string) => d
@@ -45,5 +45,16 @@ describe('the desk reads the mail pieces behind a sent notice (the Docsmit train
     expect(filingMailCostWords([base, { ...base, id: 'p2' }])).toBe('')
     expect(filingMailCostWords([{ ...base, price: 9.85 }, { ...base, id: 'p2', recipient: 'original_contractor', price: 2.49 }])).toBe('Docsmit cost $12.34')
     expect(filingMailCostWords([{ ...base, price: 9.85 }, { ...base, id: 'p2', recipient: 'original_contractor' }])).toBe('Docsmit cost $9.85 · 1 not read yet')
+  })
+
+  it('the Do now rows for the envelopes that want a person, keyed to their jobs, each piece once; and the jobs the Deliveries filter keeps (6b-2)', () => {
+    const by = { f1: [base, { ...base, id: 'p2', recipient: 'original_contractor', status: 'returned' as const }], f2: [{ ...base, id: 'p2', recipient: 'original_contractor', status: 'returned' as const }, { ...base, id: 'p3', status: 'notice_left' as const }] }
+    expect(mailNeedsYouRows({ j1: [{ id: 'f1' }, { id: 'f2' }], j2: [{ id: 'f9' }] }, by, fmt)).toEqual([
+      { jobId: 'j1', pieceId: 'p2', who: 'Original contractor', words: 'returned to sender' },
+      { jobId: 'j1', pieceId: 'p3', who: 'Owner of record', words: 'notice left, unclaimed so far' },
+    ])
+    expect(mailNeedsYouRows({}, by)).toEqual([])
+    const jobs = jobsWithMailPieces([{ jobId: 'j1', item: { sent_filing_id: 'f1' } }, { jobId: 'j2', item: { sent_filing_id: 'f9' } }, { jobId: 'j3', item: null }], by)
+    expect([...jobs]).toEqual(['j1'])
   })
 })
