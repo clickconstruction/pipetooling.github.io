@@ -53,6 +53,7 @@ State is GitHub's: queued = in the merge queue (position in parentheses); armed 
 | #5582 | R6 | two boxes, two numbers (`messages/boxes.ts`) | 7 | `claude/messages-two-boxes` | armed |
 | #5586 | R8 · 12 | the sub flow: six facts, `SEED_FLOWS.sub`, migration 20261013200000 re-creating `flow_fact_ids()` and `flows_seed()`, a `sub-flow` bed | 1 | `claude/sub-flow-facts-seed` | draft on #5568 |
 | #5588 | R3 | the SQL: `text_es`, `phone_order`, `phone_name`, the `es` and `phone` version kinds with from and to order, `edit_quick_reply` recreated (a LATER re-run in the bed), seven kinds widened, `messages.quick_reply_id`; migration 20261013210000 | 7 | `claude/quick-replies-phone-es-sql` | armed |
+| #5590 | R5 | the SQL: `messages_tech_team()`, the tech's door, `has_until`, `office_only`, the hours and wait settings, `notification_history.message_id`, `MESSAGES_TECH_TEAM` in access.ts, bed step 30 with 27 checks; migration 20261013190000 | 8 | (see PR) | armed |
 | #5585 | R8 · 16 | `customers.language`, migration 20261013220000 | 6 | (see PR) | armed; push after merge, then a types PR from prod |
 | #5589 | R8 · 16 | the reads: `Contact.lang`, `customerLang`, `lineFor`, `languageWords` | 6 | (see PR) | draft on #5570; swaps in `wordsFor` once #5558 lands |
 
@@ -69,7 +70,7 @@ Committed locally and not yet open: helper 2's R0 SQL (branch `claude/r0-contact
 | 5 | nothing assigned since #5561 | | assign: see section 8 |
 | 6 | done: #5585 and #5589 opened; waiting | #5565 → #5570, and #5558 | rebase #5583 onto #5570 so `addedToProspects` and `bookingRepoint` call `nameContact` (one home per rule; #5570 gained that logic after #5583 was built), arm #5583 and #5589 |
 | 7 | done: #5588 opened and armed; waiting | #5557 to land | #5559's rebase and arm |
-| 8 | R5 SQL, stamp 20261013190000 (go given) | | |
+| 8 | done: #5590 opened and armed; waiting | | |
 | 9 | R7 SQL `messages.tied_by` (brief sent, no prepare note needed) | #5565 to land for #5584 | the Glossary consolidation PR (section 7) |
 
 ## 6. Migrations: push in this order after each merges
@@ -78,7 +79,7 @@ Committed locally and not yet open: helper 2's R0 SQL (branch `claude/r0-contact
 |---|---|---|---|
 | 20261013170000 | R4 flow: `flows_kind_known`, fact and paper lists, residential seed | #5568 | 3 |
 | 20261013180000 | R0 kinds: `contacts_kind_known`, four id columns, `contacts_one_record`, `name_contact`, `contacts_subs_from_roster()`, `follow_up_count` | not open yet | 2 |
-| 20261013190000 | R5: `messages_tech_team()`, the tech's door, `has_until`, `office_only`, hours and wait settings, `notification_history.message_id` | not open yet | 8 |
+| 20261013190000 | R5: `messages_tech_team()`, the tech's door, `has_until`, `office_only`, hours and wait settings, `notification_history.message_id` | #5590 | 8 |
 | 20261013200000 | R8 · 12 PR 1: the sub flow's fact and seed lists | #5586 | 1 |
 | 20261013210000 | R3: `text_es`, `phone_order`, `phone_name`, `es` and `phone` version kinds, `edit_quick_reply` recreated, `messages.quick_reply_id`, `quick_replies_for_known` widened | #5588 | 7 |
 | 20261013220000 | R8 · 16: `customers.language` | #5585 | 6 |
