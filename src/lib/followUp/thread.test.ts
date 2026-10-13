@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
+import { NOTE_BACK_TIP } from './queue'
 import { backPillTip, threadStateRows } from './thread'
 
 describe('Follow up in the thread (cut 2, C1)', () => {
@@ -27,6 +28,7 @@ describe('Follow up in the thread (cut 2, C1)', () => {
       backPillTip({ backOn: null, backBy: 'Rosa', backWords: 'soon' }),
       ...threadStateRows('waiting', '2026-10-02').map((r) => r.tip),
       ...threadStateRows('done', '2026-10-02').map((r) => r.tip),
+      NOTE_BACK_TIP,
     ]
     for (const w of words) expect(plainWordsFailures(w)).toEqual([])
   })

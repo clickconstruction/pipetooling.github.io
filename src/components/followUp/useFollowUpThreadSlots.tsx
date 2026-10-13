@@ -4,15 +4,19 @@
  * once (`followUpThreadIo.ts`) and fills three slots: who has it in the header (`WhoHasItPill`, as on Follow up's rows),
  * the back and snoozed pills in the status row (the prototype's `statusPills`), and ⋯'s No reply needed, Remind me
  * Monday and Reopen. Each press says the kernel's words, reads the rows again and asks the window to read the thread
- * again (`useMessagesReread`), for the gray line the press wrote.
+ * again (`useMessagesReread`), for the gray line the press wrote. Since C2 it fills `aboveBox` with what we owe them
+ * (`OwedStrip`), opened from the status row's *We owe them…* or *Change what we owe*; *Mark it done, with a team note*
+ * hands the box a settle (`owedStore`), which ends when the thread changes or closes.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { pressProblem } from '../../lib/followUp/followUpIo'
-import { followUpContactOf, followUpMessagesFromRows, holdersFromRows } from '../../lib/followUp/followUpRows'
+import { followUpContactOf, followUpMessagesFromRows, holdersFromRows, owedRecordsFromRows } from '../../lib/followUp/followUpRows'
 import { supabaseFollowUpThreadIo, type FollowUpThreadIo, type FollowUpThreadRows } from '../../lib/followUp/followUpThreadIo'
-import { BACK_CLEARED_TOAST, backPill, hasToast, snoozedWords, standingBackNote, stateToast } from '../../lib/followUp/queue'
+import { BACK_CLEARED_TOAST, backPill, hasToast, openOwed, snoozedWords, standingBackNote, stateToast } from '../../lib/followUp/queue'
+import { owedStore } from '../../lib/followUp/owedStore'
+import { owedDayToast, owedMarkedToast, owedWhatToast, type DayKept } from '../../lib/messages/owed'
 import type { Teammate } from '../../lib/followUp/team'
 import { backPillTip, threadStateRows } from '../../lib/followUp/thread'
 import { canOpenGcProjects } from '../../lib/gc/access'
@@ -21,11 +25,14 @@ import { Chip } from '../gc/gcUi'
 import type { ThreadMenuRow, ThreadSlots } from '../gc/messages/threadSlots'
 import { useMessagesReread } from '../gc/messages/useMessagesReread'
 import { useThreadWindow } from '../gc/messages/useThreadWindow'
+import { OwedStrip } from './OwedStrip'
 import { WhoHasItPill } from './WhoHasItPill'
 
 const DEFAULT_IO = supabaseFollowUpThreadIo()
 
-export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' | 'menuRows'>
+export type FollowUpThreadSlots = Pick<ThreadSlots, 'headerRight' | 'statusRow' | 'menuRows' | 'aboveBox'>
+
+const quiet = { border: '1px solid var(--border)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', padding: '0.1rem 0.55rem' } as const
 
 export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): FollowUpThreadSlots {
   const { contactId } = useThreadWindow()
@@ -40,6 +47,9 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
   const [read, setRead] = useState<{ contactId: string; rows: FollowUpThreadRows } | null>(null)
   const [team, setTeam] = useState<Teammate[]>([])
   const [pressing, setPressing] = useState<string | null>(null)
+  // What we owe's strip, open above the box for the open thread.
+  const [owedOpen, setOwedOpen] = useState(false)
+  const settle = useSyncExternalStore(owedStore.subscribe, owedStore.get, owedStore.get)
   // The thread asked for last: a read for one opened before it never lands on it.
   const asked = useRef<string | null>(null)
 
@@ -47,15 +57,24 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
     asked.current = on ? contactId : null
     if (!on || !contactId) return
     try {
-      const rows = await io.loadThread(contactId)
+      const rows = await io.loadThread(contactId, todayYmdInAppTz())
       if (asked.current === contactId) setRead({ contactId, rows })
     } catch {
       // The pieces wait for a read that works; the thread itself still draws.
     }
   }, [on, contactId, io])
+  // Read on open, and again when a team note from the box marked what we owe done.
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, settle.version])
+  // A settle, and the strip, belong to the thread they started in: leaving it ends them.
+  useEffect(() => {
+    setOwedOpen(false)
+    return () => {
+      owedStore.cancel(contactId)
+      owedStore.unpublish(contactId)
+    }
+  }, [contactId])
   useEffect(() => {
     if (!on) return
     let live = true
@@ -74,6 +93,11 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
   const rows = read && read.contactId === contactId ? read.rows : null
   const notes = useMemo(() => (rows ? followUpMessagesFromRows(rows.notes, { userNames }) : []), [rows, userNames])
   const holders = useMemo(() => (rows ? holdersFromRows(rows.holders, userNames) : []), [rows, userNames])
+  const owed = useMemo(() => (rows && contactId ? openOwed(owedRecordsFromRows(rows.owed, userNames), contactId) : null), [rows, contactId, userNames])
+  // What we owe the open person, for cut 3's send window (`useThreadOwed`), once read.
+  useEffect(() => {
+    if (rows && contactId) owedStore.publish(contactId, owed)
+  }, [rows, contactId, owed])
 
   if (!on || !rows || !toasts) return {}
   const { showToast } = toasts
@@ -118,9 +142,17 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
       const note = standingBackNote(notes, c.id)
       const back = note ? backPill(note) : null
       const snoozed = snoozedWords(followUpContactOf(c, rows.contact, userNames))
-      if (!back && !snoozed) return null
       return (
         <>
+          <button
+            type="button"
+            aria-expanded={owedOpen}
+            title={owed ? 'Change what we owe, or its day, or mark it done.' : 'Mark something we still have to do for them, with a day. It stays our move until it is done.'}
+            onClick={() => setOwedOpen((o) => !o)}
+            style={quiet}
+          >
+            {owed ? 'Change what we owe' : 'We owe them…'}
+          </button>
           {note && back && (
             <span data-follow-up-back={note.id} title={backPillTip(note)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
               <Chip tone="blue">{back}</Chip>
@@ -137,6 +169,39 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO): Follo
           )}
           {snoozed && <Chip tone="grey">{snoozed}</Chip>}
         </>
+      )
+    },
+    aboveBox: (c) => {
+      if (!mine(c.id) || !owedOpen) return null
+      const mark = (what: string, day: DayKept) => {
+        const words = !owed
+          ? owedMarkedToast(c.name, { what })
+          : what !== owed.what
+            ? owedWhatToast(c.name, { what })
+            : owedDayToast({ byYmd: day.ymd, byWords: day.words })
+        void press('owed', () => io.markOwed(c.id, what, day), words)
+      }
+      return (
+        <OwedStrip
+          key={`${c.id}-${owed ? 'owed' : 'new'}`}
+          person={c}
+          owed={owed}
+          todayYmd={todayYmd}
+          nowIso={nowIso}
+          busy={pressing !== null}
+          canSettle={settle.takers > 0}
+          onMark={mark}
+          onSettle={() => {
+            if (!owed) return
+            owedStore.start(c.id, owed)
+            setOwedOpen(false)
+          }}
+          onPutOff={() => {
+            setOwedOpen(false)
+            void press('state', () => io.setState(c.id, 'snoozed'), stateToast('remindMonday', c.name))
+          }}
+          onClose={() => setOwedOpen(false)}
+        />
       )
     },
     menuRows: (c): ThreadMenuRow[] =>

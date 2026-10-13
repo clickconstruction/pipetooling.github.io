@@ -96,6 +96,7 @@ describe('the presses', () => {
     await io.markOwed('c1', 'the start date', { ymd: '2026-10-05', words: null })
     await io.markOwed('c1', 'the start date', { ymd: null, words: 'after the award' })
     await io.owedDone('c1', 'Told her.', { kind: 'project', id: 'p1' })
+    await io.owedSentDone('c1', 'm9')
     await io.writeDown('m1', 'start')
     await io.writeDown('m2', null)
     await io.readQuestion('m3', 'asked')
@@ -111,6 +112,7 @@ describe('the presses', () => {
       { fn: 'mark_owed', args: { p_contact_id: 'c1', p_what: 'the start date', p_by_day: '2026-10-05', p_by_words: null } },
       { fn: 'mark_owed', args: { p_contact_id: 'c1', p_what: 'the start date', p_by_day: null, p_by_words: 'after the award' } },
       { fn: 'owed_done', args: { p_contact_id: 'c1', p_note: 'Told her.', p_job_kind: 'project', p_job_id: 'p1' } },
+      { fn: 'owed_sent_done', args: { p_contact_id: 'c1', p_message_id: 'm9' } },
       { fn: 'write_down', args: { p_message_id: 'm1', p_kind: 'start', p_writes: null } },
       { fn: 'write_down', args: { p_message_id: 'm2', p_kind: null, p_writes: null } },
       { fn: 'read_question', args: { p_message_id: 'm3', p_state: 'asked' } },
@@ -141,6 +143,8 @@ describe('pressProblem', () => {
     expect(pressProblem(refusal('P0001', 'That conversation is not there.'))).toBe('That conversation is not there.')
     expect(pressProblem(refusal('42501', 'A training account cannot take a conversation.'))).toBe('A training account cannot take a conversation.')
     expect(pressProblem(refusal('42501', 'Only the office team can take a conversation.'))).toBe('Only the office team can take a conversation.')
+    // Quick replies (#5457) say it as "Only the office can …".
+    expect(pressProblem(refusal('42501', 'Only the office can save a quick reply.'))).toBe('Only the office can save a quick reply.')
   })
 
   it('leaves a policy’s refusal and anything else to the house’s words', () => {
