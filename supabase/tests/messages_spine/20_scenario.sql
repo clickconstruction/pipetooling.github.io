@@ -2,7 +2,8 @@
 -- with their numbers and addresses, once; only the office team reads them; a number finds its person by its key, and a
 -- number two people share lands on the one it last carried a message for; Who is this? re-points a contact or folds it
 -- into the one already there, keeping the thread, and a company's row holds its own person and others by name; a line
--- is tied to a job and the star moves; training mode and a digital twin change nothing; deleting a customer contact
+-- is tied to a job and the star moves, and whoever ties a line by hand is stamped on it (R7, tied_by) while a line
+-- that took the star as it came in carries nobody; training mode and a digital twin change nothing; deleting a customer contact
 -- person or a roster person keeps their thread; merging two customers keeps both threads on the survivor; and a record
 -- with a contact is not deleted from under it. Presses run as each user through RLS; the fixture and the messages are
 -- made as postgres, standing in for the seed and the service role; everything rolls back. Raises on the first failed
@@ -255,6 +256,8 @@ SELECT msp.same('the line is on the clinic, and the clinic is on her rail withou
   (SELECT concat_ws('|', (SELECT project_id FROM public.messages WHERE body = 'The start date goes Monday.'),
     (SELECT string_agg(is_default::text, ',') FROM public.contact_jobs WHERE contact_id = elena)) FROM ids),
   '00000000-0000-0000-0000-0000000005f1|false');
+SELECT msp.same('the estimator who tied it is stamped on the line (R7)',
+  (SELECT tied_by::text FROM public.messages WHERE body = 'The start date goes Monday.'), '00000000-0000-0000-0000-0000000005d2');
 SELECT public.set_default_job(elena, 'project', '00000000-0000-0000-0000-0000000005f1') FROM ids;
 SELECT public.set_default_job(elena, 'project', '00000000-0000-0000-0000-0000000005f1') FROM ids;
 SELECT msp.same('one star, on the clinic', (SELECT string_agg(is_default::text, ',') FROM public.contact_jobs WHERE contact_id = (SELECT elena FROM ids)), 'true');
@@ -264,9 +267,21 @@ SELECT msp.same('no star, and the line on the person again',
   (SELECT concat_ws('|', (SELECT count(*) FROM public.contact_jobs WHERE contact_id = elena AND is_default),
     coalesce((SELECT project_id::text FROM public.messages WHERE body = 'The start date goes Monday.'), 'on the person')) FROM ids),
   '0|on the person');
+SELECT msp.same('untying it by hand stamps who did (R7)',
+  (SELECT tied_by::text FROM public.messages WHERE body = 'The start date goes Monday.'), '00000000-0000-0000-0000-0000000005d2');
 SELECT msp.refused('no such line', $q$SELECT public.tie_message(gen_random_uuid(), 'project', '00000000-0000-0000-0000-0000000005f1')$q$, 'notFound');
 SELECT msp.refused('a job needs its kind and its id', $q$SELECT public.set_default_job(elena, 'project', NULL) FROM ids$q$, 'jobUnknown');
 RESET ROLE;
+-- A line the reader writes on the person's star as it comes in, standing in for quo-webhook and gmail-sync: nobody
+-- tied it, so the New lane may still ask Which job? (R7).
+INSERT INTO public.messages (contact_id, channel_id, channel, direction, at, body, project_id)
+SELECT ch.contact_id, ch.id, 'text', 'in', now(), 'On site at seven.', '00000000-0000-0000-0000-0000000005f1'
+FROM public.contact_channels ch WHERE ch.contact_id = (SELECT greg FROM ids) AND ch.kind = 'phone' ORDER BY ch.key LIMIT 1;
+SELECT msp.same('a line that took the star as it came in carries nobody (R7)',
+  (SELECT concat_ws('|', project_id, coalesce(tied_by::text, 'nobody')) FROM public.messages WHERE body = 'On site at seven.'),
+  '00000000-0000-0000-0000-0000000005f1|nobody');
+SELECT msp.same('the office team may write the one column, for tie_message (R7)',
+  has_column_privilege('authenticated', 'public.messages', 'tied_by', 'UPDATE')::text, 'true');
 
 -- 8 · Training mode and the digital twin change nothing.
 SELECT msp.as_user('00000000-0000-0000-0000-0000000005d6');
@@ -280,6 +295,7 @@ SELECT msp.refused('a twin ties no line', $q$SELECT public.tie_message((SELECT i
 SELECT msp.refused('a twin moves no star', $q$SELECT public.set_default_job(greg, 'project', '00000000-0000-0000-0000-0000000005f1') FROM ids$q$, 'notFound');
 RESET ROLE;
 SELECT msp.same('Greg''s line is still on the person', coalesce((SELECT project_id::text FROM public.messages WHERE body = 'Greg here.'), 'on the person'), 'on the person');
+SELECT msp.same('and nobody is stamped on it (R7)', coalesce((SELECT tied_by::text FROM public.messages WHERE body = 'Greg here.'), 'nobody'), 'nobody');
 
 -- 9 · The app's screens delete a customer contact person and a roster person: the threads stay.
 DELETE FROM public.customer_contact_persons WHERE id = '00000000-0000-0000-0000-0000000005e1';

@@ -10,7 +10,7 @@
 # app already has, and nothing the second time; only the office team reads; a number finds its person by its key, and
 # a number two people share lands on the newest line's; Who is this? re-points a contact or folds it into the one
 # already there, keeping the thread and a STOP; a company's row holds its own person and others by name; a line is tied
-# to a job and the star moves; training mode and a digital twin change nothing; deleting a customer contact person or a
+# to a job and the star moves, and whoever tied it by hand is stamped on it while a line that took the star carries nobody; training mode and a digital twin change nothing; deleting a customer contact person or a
 # roster person keeps their thread; merging two customers keeps both threads on the survivor; and a record with a
 # contact is not deleted from under it. It raises on its first failed assertion and ends with "messages_spine PASSED".
 # PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds workflow runs it from scripts/sql-beds.txt on a PR
