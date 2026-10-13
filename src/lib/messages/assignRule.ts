@@ -65,7 +65,7 @@ export function assignRuleRows(seats: AssignRuleSeats, nameOf: (userId: string) 
   const trade = name(seats.trade)
   const arch = name(seats.arch)
   return [
-    { key: 'customer', who: 'A customer', goesTo: customer ?? NOBODY },
+    { key: 'customer', who: 'A customer, a lead, a sub, a supply house or a candidate', goesTo: customer ?? NOBODY },
     { key: 'trade', who: 'A trade partner', goesTo: trade ?? NOBODY },
     { key: 'arch', who: 'An architect', goesTo: arch ?? (trade ? `${trade}, the trade partners' seat` : NOBODY) },
     { key: 'unknown', who: 'A number nobody knows', goesTo: NOBODY },
