@@ -29,7 +29,7 @@ const contactRow = (id: string, patch: Record<string, unknown>) => ({
   ...patch,
 })
 
-/** Greg waiting on a text, the unknown number done. */
+/** Greg waiting on a text with nobody on him, the unknown number done. */
 const ROWS: FollowUpRows = {
   contacts: [contactRow('greg', { gc_company_id: 'gc-hillside' }), contactRow('unk1', { kind: 'unknown', state: 'done' })],
   channels: [],
@@ -89,7 +89,9 @@ describe('useFollowUpQueue', () => {
     const { result } = renderHook(() => useFollowUpQueue({ io, userNames: {}, todayYmd: '2026-10-02' }))
     await waitFor(() => expect(result.current.queue).not.toBeNull())
     expect(io.loadQueue).toHaveBeenCalledWith('2026-10-02')
-    expect(result.current.queue!.needsReply.map((r) => [r.contactId, r.landOnId])).toEqual([['greg', 'm1']])
+    // Nobody is on Greg's conversation, so he waits in New (residential R7) at his line, and not in Needs a reply.
+    expect(result.current.queue!.newLane.map((r) => [r.contactId, r.sort, r.messageId])).toEqual([['greg', 'has', 'm1']])
+    expect(result.current.queue!.needsReply).toEqual([])
     expect(result.current.contacts.map((c) => c.name)).toEqual(['Greg Paulk', ''])
     expect(result.current.queue!.count).toBe(1)
   })
