@@ -4,10 +4,10 @@ import { loadJobMessages } from '../lib/messages/messagesIo'
 
 /**
  * One Pipeline job's calls, texts and emails for its Job activity (Messages cut 10, J2), read when the activity opens
- * and again when the job or its status changes. Null while the read is out. No job (a reader off the office team, whom
- * the rows' policy shows none): none to read, so an empty list at once. A read that fails shows the feed without them:
- * the job's own activity never waits on Messages. `messages` is not in the realtime publication, so a line that lands
- * while the feed is open shows on the next open.
+ * and again when the job or its status changes. Null while the read is out. No job (a reader off the office team,
+ * even a tech whom R5's door lets read a thread): none to read, so an empty list at once. A read that fails shows the
+ * feed without them: the job's own activity never waits on Messages. `messages` is not in the realtime publication,
+ * so a line that lands while the feed is open shows on the next open.
  */
 export function useJobMessages(job: { id: string; status: string | null; createdAt: string | null } | null): JobActivityMessage[] | null {
   const key = job ? `${job.id}|${job.status ?? ''}|${job.createdAt ?? ''}` : ''

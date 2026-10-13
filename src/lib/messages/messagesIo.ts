@@ -190,7 +190,8 @@ export async function loadMessagesView(nowIso: string): Promise<MessagesView> {
 /**
  * One Pipeline job's calls, texts and emails for its Job activity (cut 10, J2): the lines tied to the job, and while
  * the job is open the lines of the customer's people put on it that are tied to no job yet, since the job began
- * (`jobActivityMessagesFromRows` keeps the rule). Read as the signed-in user, so only the office team gets rows. It
+ * (`jobActivityMessagesFromRows` keeps the rule). Read as the signed-in user, and asked only for the office team
+ * (`useJobMessages`), though R5's tech door lets a tech read a thread of their own jobs. It
  * leans on v2.5353's indexes: `messages_pipeline_job` and `contact_jobs_pipeline_job`.
  */
 export async function loadJobMessages(job: { id: string; status: string | null; createdAt: string | null }): Promise<JobActivityMessage[]> {
