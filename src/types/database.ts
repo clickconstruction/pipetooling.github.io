@@ -20604,6 +20604,9 @@ export type Database = {
           provider: string
           provider_message_id: string | null
           recipient: string
+          resend_of: string | null
+          resolved_at: string | null
+          resolved_note: string | null
           send_type: string
           sheets: number
           short_code: string | null
@@ -20642,6 +20645,9 @@ export type Database = {
           provider?: string
           provider_message_id?: string | null
           recipient: string
+          resend_of?: string | null
+          resolved_at?: string | null
+          resolved_note?: string | null
           send_type?: string
           sheets?: number
           short_code?: string | null
@@ -20680,6 +20686,9 @@ export type Database = {
           provider?: string
           provider_message_id?: string | null
           recipient?: string
+          resend_of?: string | null
+          resolved_at?: string | null
+          resolved_note?: string | null
           send_type?: string
           sheets?: number
           short_code?: string | null
@@ -20703,6 +20712,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mail_pieces_resend_of_fkey"
+            columns: ["resend_of"]
+            isOneToOne: false
+            referencedRelation: "mail_pieces"
             referencedColumns: ["id"]
           },
         ]
@@ -35821,6 +35837,13 @@ export type Database = {
           new_name: string
           old_name: string
           work: string
+        }[]
+      }
+      portal_opens_since: {
+        Args: { p_entity_id: string; p_since: string; p_surface: string }
+        Returns: {
+          last_opened_at: string
+          opens: number
         }[]
       }
       post_partner_profit_share: { Args: { p_job_id: string }; Returns: Json }
