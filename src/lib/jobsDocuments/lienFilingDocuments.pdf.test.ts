@@ -100,3 +100,26 @@ describe('the signed frame in PDF (v2.5077)', () => {
     expect(FakeJsPDF.last!.rects.filter((r) => r.style === 'round')).toHaveLength(0)
   })
 })
+
+describe('the window envelope on the PDF (the Docsmit train, PR 4)', () => {
+  it('the recipient block is drawn at the window zone, not the cursor, and the code is the next image under it', async () => {
+    const { WINDOW_QR_MM, WINDOW_ZONE_MM } = await import('../mail/windowEnvelope')
+    await filingDocPdfBlob([
+      { kind: 'letterhead', company: 'Click Plumbing', licenseLine: 'M-12345', contactLines: ['(512) 360-0599'] },
+      { kind: 'windowAddress', lines: ['ATI Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'] },
+      { kind: 'qrLink', png: 'data:image/png;base64,QUJD', svg: null, display: 'clicktooling.com/pay/abc?m=KX7M2QRT', caption: 'Scan to see and pay the bills this notice is about.' },
+      { kind: 'paragraph', text: 'Dear owner,' },
+    ])
+    const pdf = FakeJsPDF.last!
+    expect(pdf.texts).toContain('17300 IH 35 N')
+    expect(pdf.texts).toContain('clicktooling.com/pay/abc?m=KX7M2QRT')
+    expect(pdf.images).toHaveLength(1)
+    const img = pdf.images[0]!
+    expect(img.w).toBe(WINDOW_QR_MM)
+    expect(img.h).toBe(WINDOW_QR_MM)
+    // Under the window zone: the code's top is past the zone's bottom.
+    expect(img.y).toBeGreaterThanOrEqual(WINDOW_ZONE_MM.top + WINDOW_ZONE_MM.height)
+    expect(img.y).toBeLessThan(WINDOW_ZONE_MM.top + WINDOW_ZONE_MM.height + 10)
+  })
+})
+

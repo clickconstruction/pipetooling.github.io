@@ -336,12 +336,25 @@ export function runNoticeProblems(n: RunNotice): string[] {
 export type CoverPageInput = Pick<RunNotice, 'label' | 'months' | 'fields' | 'extras' | 'coverNote' | 'coverLetter'> & Partial<Pick<RunNotice, 'kind' | 'release' | 'signature'>> & {
   /** Unpaid invoices ride behind the form (§ 53.056(a-3)): the letter's Enclosed line says so, as counsel's letter does (v2.3828). */
   withInvoices?: boolean
+  /** The window envelope (the Docsmit train, PR 4): the recipient block at the window zone and, under it, the pay page's code with the piece's link. Only a copy that mails through a provider carries it. */
+  window?: CoverWindow | null
+}
+
+export type CoverWindow = { lines: string[]; qr?: { png: string | null; svg: string | null; display: string; caption: string } | null }
+
+/** The window blocks in order, or nothing. */
+export function coverWindowBlocks(w: CoverWindow | null | undefined): FilingDocBlock[] {
+  if (!w || w.lines.length === 0) return []
+  const out: FilingDocBlock[] = [{ kind: 'windowAddress', lines: w.lines }]
+  if (w.qr) out.push({ kind: 'qrLink', png: w.qr.png, svg: w.qr.svg, display: w.qr.display, caption: w.qr.caption })
+  return out
 }
 
 /** The cover page as the packet prints it: the letterhead, "Re: <job>" and the months, the note (or the run's cover letter), the signature. Empty when the draft carries neither. */
 export function runCoverNoteBlocks(n: CoverPageInput): FilingDocBlock[] {
   const head: FilingDocBlock[] = []
   if (n.extras.letterhead && n.extras.letterhead.company.trim()) head.push({ kind: 'letterhead', ...n.extras.letterhead })
+  head.push(...coverWindowBlocks(n.window))
   if (n.coverLetter) {
     const paragraphs = coverLetterParagraphs(n.coverLetter)
     return [

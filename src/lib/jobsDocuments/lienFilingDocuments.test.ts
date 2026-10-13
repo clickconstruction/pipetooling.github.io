@@ -275,3 +275,22 @@ describe('the signed frame (v2.5077, lien desk signing)', () => {
     expect(filingDocPrintHtml(buildLienNoticeBlocks(NOTICE_FIELDS, undefined, { signature: { ...signed, mode: 'draw', pngDataUrl: 'data:image/png;base64,AAAA' } }), 'Notice')).not.toContain('Great+Vibes')
   })
 })
+
+describe('the window envelope blocks (the Docsmit train, PR 4)', () => {
+  it('the HTML shows the recipient block in a window box and the code with its link in words; the text twin carries both', async () => {
+    const { filingDocHtml, filingDocText } = await import('./lienFilingDocuments')
+    const blocks = [
+      { kind: 'windowAddress' as const, lines: ['ATI Schertz Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'] },
+      { kind: 'qrLink' as const, png: null, svg: '<svg data-code="1"></svg>', display: 'clicktooling.com/pay/abc?m=KX7M2QRT', caption: 'Scan to see and pay the bills this notice is about.' },
+    ]
+    const html = filingDocHtml(blocks)
+    expect(html).toContain('data-window-address')
+    expect(html).toContain('ATI Schertz Holdings LLC<br/>17300 IH 35 N<br/>Schertz, TX 78154')
+    expect(html).toContain('data-qr-link')
+    expect(html).toContain('<svg data-code="1"></svg>')
+    expect(html).toContain('clicktooling.com/pay/abc?m=KX7M2QRT')
+    expect(filingDocHtml([{ kind: 'qrLink', png: null, svg: null, display: 'x', caption: 'c' }])).toContain('border:1px dashed')
+    expect(filingDocText(blocks)).toBe('ATI Schertz Holdings LLC\n17300 IH 35 N\nSchertz, TX 78154\n\nScan to see and pay the bills this notice is about.\nclicktooling.com/pay/abc?m=KX7M2QRT')
+  })
+})
+
