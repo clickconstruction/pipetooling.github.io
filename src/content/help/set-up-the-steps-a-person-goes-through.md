@@ -2,7 +2,7 @@
 title: set up the steps a person goes through
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: flows, flow, steps, step, lane, once, per job, any time, finished when, fact, fork, whose move, seat, nudge, reminder, repeats, papers, usual, history, removed, how it is going, funnel, settings
+keywords: flows, flow, steps, step, lane, once, per job, any time, finished when, fact, fork, whose move, seat, nudge, reminder, the app sends this reminder, morning run, read the run, repeats, papers, usual, history, removed, how it is going, funnel, settings
 order: 100
 ---
 Each customer, trade partner and architect goes through a flow of steps. The office sets up those steps in Settings. Every change is tried on everyone before you save it.
@@ -49,6 +49,25 @@ When the fact you need is not on the list, press **Ask for a fact that is missin
 2. Pick a paper from the list.
 
 When the app does not know the paper yet, press **+ Add a new paper** instead. See [add a new paper to a step of a flow](/help/add-a-new-paper-to-a-step-of-a-flow).
+
+## Let the app send a reminder
+
+A step can send its own reminder. Pick **the app sends it** under **Nudge after**, then press **Save**.
+
+The step then shows a switch called **The app sends this reminder**. Every step starts off. Only the owner or a dev turns one on.
+
+When the switch is on, the app texts the reminder at 9 AM. It goes from the company number once the step's quiet days pass. The words under the switch are the text it sends. The app sends texts only, so a call or an email stays with a person.
+
+The switch saves the moment you press it. It does not wait for **Save**.
+
+:::example A step the app sends
+{{chip:green|On}} The app sends this reminder
+“Chris, did the invite come through?”
+:::
+
+## See the morning run
+
+The line above the flow says what the last morning run did. It counts the texts that went and the reminders kept back. It also says why each one was kept back. Press **Read the run** to see every line the run wrote.
 
 ## Save or put it back
 

@@ -3,7 +3,8 @@
  * step's name and its Spanish one; what finishes it, its facts joined with and, or with or on a fork; whose move it is
  * and the seat an our-move step sits with; the nudge; whether it repeats; the papers it turns on; its usual; and its
  * place, moved with the arrows or into another lane, or removed. Every press is an edit to the draft
- * (`flows/editor.ts`), or a refusal said in words.
+ * (`flows/editor.ts`), or a refusal said in words. On a reminder the app sends, the owner's switch writes at once
+ * instead (cut 5, `flows/appSends.ts`), with the words the morning run would send.
  */
 import { useState, type CSSProperties } from 'react'
 import { useConfirmDialog, usePromptDialog } from '../../../contexts/ConfirmDialogContext'
@@ -26,13 +27,16 @@ import {
   type EditResult,
   type FlowDraft,
 } from '../../../lib/flows/editor'
+import { APP_SENDS_LABEL, appSendOn, appSendSwitch, stepNudgeWords } from '../../../lib/flows/appSends'
 import { FLOW_PAPERS, isDocPaperId, isPaperId, stepFactById } from '../../../lib/flows/facts'
 import type { SavedPaper } from '../../../lib/flows/newPaper'
-import { LANE_WORDS, type FlowNudge, type FlowStep, type Lane, type Who } from '../../../lib/flows/state'
+import type { AppSends } from '../../../lib/flows/nudgeDispatch'
+import { LANE_WORDS, type FlowDef, type FlowNudge, type FlowStep, type Lane, type Who } from '../../../lib/flows/state'
+import type { QuickReply } from '../../../lib/quickReplies/kernel'
 import { GcNewPaperWindow } from '../../gc/flows/GcNewPaperWindow'
 import { docName } from './flowNames'
 import { FlowFactPicker, FlowPaperPicker } from './FlowPickers'
-import { flowChip, flowDanger, flowHead, flowInput, flowQuiet, flowSelect, flowSmall } from './flowStyles'
+import { flowChip, flowDanger, flowHead, flowInput, flowNote, flowQuiet, flowSelect, flowSmall, flowSwitch } from './flowStyles'
 
 type Kind = 'customer' | 'trade' | 'arch'
 
@@ -69,6 +73,22 @@ export interface FlowStepsTableProps {
   onAskForFact: (step: FlowStep) => void
   /** The library paper the New paper window saved, so the screen can name it. */
   onPaperMade: (paper: SavedPaper) => void
+  /** The reminders the app sends itself (cut 5), once read: none drawn until then. */
+  appSends?: FlowAppSends
+}
+
+export interface FlowAppSends {
+  /** The owner's switch, by kind and step. */
+  sends: AppSends
+  /** The owner or a dev, who may press it. */
+  canSet: boolean
+  /** The flow as saved, which the morning run reads. */
+  saved: FlowDef | null
+  /** The team's quick replies, for the words the run would send. */
+  quickReplies: readonly QuickReply[]
+  /** The step being written, as `<kind>:<step id>`. */
+  busy: string | null
+  onSet: (step: FlowStep, on: boolean) => void
 }
 
 /** A name box that saves on leaving it or Enter, so one rename is one change. */
@@ -136,6 +156,36 @@ export function FlowStepsTable(p: FlowStepsTableProps) {
     return stepFactById(f, doc ? `the ${doc}` : undefined)?.text ?? f
   }
   const paperLabel = (paper: string) => (isPaperId(paper) ? FLOW_PAPERS[paper].short : isDocPaperId(paper) ? docName(paper, p.docNames) : paper)
+
+  // The owner's switch on a reminder the app sends, with the words the morning run would send.
+  const appSend = (step: FlowStep) => {
+    const a = p.appSends
+    if (!a) return null
+    const sw = appSendSwitch(step, { canSet: a.canSet, saved: a.saved })
+    if (!sw.show) return null
+    const on = appSendOn(a.sends, p.kind, step.id)
+    const busy = a.busy === `${p.kind}:${step.id}`
+    return (
+      <div data-app-sends={step.id} style={{ whiteSpace: 'normal', maxWidth: 280, marginTop: '0.35rem', display: 'grid', gap: '0.2rem' }}>
+        <span style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={on}
+            aria-label={`${step.name}: ${APP_SENDS_LABEL}`}
+            disabled={!sw.live || busy}
+            onClick={() => a.onSet(step, !on)}
+            style={flowSwitch(on, !sw.live || busy)}
+          >
+            {busy ? 'Saving…' : on ? 'On' : 'Off'}
+          </button>
+          <span style={{ fontSize: '0.8rem' }}>{APP_SENDS_LABEL}</span>
+        </span>
+        {sw.note && <span style={{ ...flowNote, fontSize: '0.78rem' }}>{sw.note}</span>}
+        <span style={{ ...flowNote, fontSize: '0.78rem' }}>“{stepNudgeWords(p.kind, step, a.quickReplies)}”</span>
+      </div>
+    )
+  }
 
   const row = (step: FlowStep, lane: Lane, at: number, count: number) => {
     const facts = step.facts as readonly string[]
@@ -250,6 +300,7 @@ export function FlowStepsTable(p: FlowStepsTableProps) {
                 <option value="ask">ask me</option>
                 <option value="app">the app sends it</option>
               </select>
+              {appSend(step)}
             </>
           )}
         </td>

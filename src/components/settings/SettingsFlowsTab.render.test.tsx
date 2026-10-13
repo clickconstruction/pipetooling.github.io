@@ -3,12 +3,15 @@
  * Render smokes for Settings → Flows (Messages, cut 4): the trade partners' flow in its lanes; Remove tried on everyone
  * first, Tom moving on, and Save sending it all at once; a fork made from the join word; a library paper and its one
  * fact from the New paper window; Put it back; a refused Save saying why; History with its first line and Removed; and
- * How it is going. The reads and the Save are mocked at the loader; the people are the flows' fixture, read on its day.
+ * How it is going. The reminders the app sends itself (cut 5): the newest morning run above the flow, and the owner's
+ * switch on Portal opened, read only for the office. The reads and the Save are mocked at the loader; the people are the
+ * flows' fixture, read on its day.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 const auth = vi.hoisted(() => ({ role: 'assistant', profileName: 'Rosa' }))
+const appSendsIo = vi.hoisted(() => ({ load: vi.fn(), set: vi.fn() }))
 
 vi.mock('../../lib/supabase', async () => ({ supabase: (await import('../../test/renderSmokeMocks')).makeSupabaseStub() }))
 vi.mock('../../hooks/useAuth', async () => {
@@ -25,6 +28,7 @@ vi.mock('../../lib/flows/flowEditorIo', async (importOriginal) => ({
   loadDocNames: vi.fn(),
 }))
 vi.mock('../../lib/flows/flowsIo', () => ({ loadFlowRowsKind: vi.fn(), clearFlowDefCache: vi.fn(), loadFlowDef: vi.fn() }))
+vi.mock('../../lib/flows/appSendsIo', () => ({ supabaseAppSendsIo: () => appSendsIo }))
 // Each person's stamps are the flows' fixture's, by contact id, as `flow_rows_kind` would give them.
 vi.mock('../../lib/flows/load', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../lib/flows/load')>()
@@ -53,6 +57,7 @@ vi.mock('../gc/flows/GcNewPaperWindow', () => ({
   ),
 }))
 
+import { APP_SENDS_NOT_SAVED, APP_SENDS_OWNER_ONLY, APP_SENDS_SAVE_FIRST, LAST_RUN_NONE } from '../../lib/flows/appSends'
 import { loadFlowForEditing, loadDocNames, loadSeats, loadTradeNames, saveFlow } from '../../lib/flows/flowEditorIo'
 import { FLOW_FIXTURE_NOW, FLOW_FIXTURE_PEOPLE } from '../../lib/flows/flowFixtures'
 import { loadFlowRowsKind } from '../../lib/flows/flowsIo'
@@ -94,7 +99,12 @@ beforeEach(() => {
   ])
   vi.mocked(loadTradeNames).mockReset().mockResolvedValue(['Electrical', 'Sitework'])
   vi.mocked(loadDocNames).mockReset().mockResolvedValue({})
+  auth.role = 'assistant'
+  appSendsIo.load.mockReset().mockResolvedValue({ sends: {}, lastRun: null, quickReplies: [] })
+  appSendsIo.set.mockReset().mockImplementation(async (kind: string, stepId: string, on: boolean) => (on ? { [kind]: { [stepId]: true } } : {}))
 })
+
+const portalSwitch = () => within(row('portal')).getByRole('switch', { name: 'Portal opened: The app sends this reminder' })
 
 describe('SettingsFlowsTab', () => {
   it('lays the trade partners’ flow out by lane, each step with what finishes it and whose move it is', async () => {
@@ -185,5 +195,54 @@ describe('SettingsFlowsTab', () => {
     expect(within(going).getByLabelText('The funnel')).toBeTruthy()
     const rows = [...going.querySelectorAll('[data-going-step]')].map((r) => r.getAttribute('data-going-step'))
     expect(rows).toEqual(SEED_FLOWS.trade.lanes.flatMap((l) => l.steps.map((s) => s.id)))
+  })
+
+  it('shows the office the app’s reminder switch read only, on the one step the app sends, with the words it would send', async () => {
+    await open()
+    expect(screen.getByText(LAST_RUN_NONE)).toBeTruthy()
+    await waitFor(() => expect(portalSwitch()).toBeTruthy())
+    expect(portalSwitch().getAttribute('aria-checked')).toBe('false')
+    expect((portalSwitch() as HTMLButtonElement).disabled).toBe(true)
+    expect(within(row('portal')).getByText(APP_SENDS_OWNER_ONLY)).toBeTruthy()
+    expect(within(row('portal')).getByText('“Chris, did the invite come through?”')).toBeTruthy()
+    expect(document.querySelectorAll('[data-app-sends]')).toHaveLength(1)
+  })
+
+  it('lets the owner turn the reminder on at once, apart from the flow’s Save', async () => {
+    auth.role = 'master_technician'
+    await open()
+    await waitFor(() => expect((portalSwitch() as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(portalSwitch())
+    await waitFor(() => expect(appSendsIo.set).toHaveBeenCalledWith('trade', 'portal', true))
+    await waitFor(() => expect(portalSwitch().getAttribute('aria-checked')).toBe('true'))
+    expect(screen.getByText('The app sends the Portal opened reminder from its next morning run at 9 AM.')).toBeTruthy()
+    expect(screen.queryByLabelText('Before you save')).toBeNull()
+  })
+
+  it('says so when the switch did not change, and waits for Save on a step the draft hands to the app', async () => {
+    auth.role = 'dev'
+    appSendsIo.set.mockRejectedValue(new Error(APP_SENDS_NOT_SAVED))
+    await open()
+    await waitFor(() => expect((portalSwitch() as HTMLButtonElement).disabled).toBe(false))
+    fireEvent.click(portalSwitch())
+    await waitFor(() => expect(screen.getByText(APP_SENDS_NOT_SAVED)).toBeTruthy())
+    expect(portalSwitch().getAttribute('aria-checked')).toBe('false')
+    fireEvent.change(within(row('msa')).getByLabelText(/: who sends it$/), { target: { value: 'app' } })
+    await waitFor(() => expect(within(row('msa')).getByText(APP_SENDS_SAVE_FIRST)).toBeTruthy())
+    expect((within(row('msa')).getByRole('switch') as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('reads the newest morning run above the flow, and its own sentences on Read the run', async () => {
+    appSendsIo.load.mockResolvedValue({
+      sends: { trade: { portal: true } },
+      lastRun: { at: FLOW_FIXTURE_NOW.toISOString(), dry: false, sent: 0, kept: { off: 11, 'no number': 1 }, textsOff: 0, refusedCount: 0, unread: 0, words: ['No text went.', 'Customers wait until the run can read their page.'] },
+      quickReplies: [],
+    })
+    await open()
+    const line = document.querySelector('[data-flows-last-run]') as HTMLElement
+    await waitFor(() => expect(within(line).getByText(/^Last morning run today at .*: no text went, 12 kept back\. 11 are off and 1 has no number\.$/)).toBeTruthy())
+    expect(portalSwitch().getAttribute('aria-checked')).toBe('true')
+    fireEvent.click(within(line).getByRole('button', { name: 'Read the run' }))
+    expect(within(screen.getByLabelText('The morning run')).getByText('Customers wait until the run can read their page.')).toBeTruthy()
   })
 })

@@ -49,3 +49,15 @@ export const flowTab = (on: boolean): CSSProperties => ({
   borderColor: on ? 'var(--border-blue)' : 'var(--border-strong)',
   fontWeight: on ? 600 : 400,
 })
+/** An On or Off switch, as Read bids@ draws its own: green while on, faded while it cannot be pressed. */
+export const flowSwitch = (on: boolean, still: boolean): CSSProperties => ({
+  border: '1px solid var(--border-strong)',
+  borderRadius: 999,
+  padding: '0.1rem 0.6rem',
+  fontSize: '0.78rem',
+  fontWeight: 600,
+  cursor: still ? 'default' : 'pointer',
+  background: on ? '#16a34a' : 'var(--surface)',
+  color: on ? 'white' : 'var(--text-base)',
+  opacity: still ? 0.6 : 1,
+})
