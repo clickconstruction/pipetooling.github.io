@@ -207,6 +207,15 @@ export async function nameContact(
   ) as unknown as string
 }
 
+/**
+ * A customer's own thread, for a press on their name (residential R2): the contact on their row with no name, made by
+ * `contact_for_customer` when there is none, with the number and address their row keeps. Answers its id. The office
+ * team only, said in the function's words; a training account and a twin find one and never make one.
+ */
+export async function contactForCustomer(customerId: string): Promise<string> {
+  return taken(await rpc('contact_for_customer', { p_customer_id: customerId }), 'open their messages') as unknown as string
+}
+
 /** Ties a line to a job, or unties it (null): it then sits on the person. */
 export async function tieMessage(messageId: string, jobKey: string | null): Promise<void> {
   taken(await rpc('tie_message', { p_message_id: messageId, ...jobArgs(jobKey) }), 'tie the message')
