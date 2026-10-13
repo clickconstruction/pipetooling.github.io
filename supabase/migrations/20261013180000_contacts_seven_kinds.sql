@@ -577,9 +577,10 @@ AS $$
   SELECT coalesce(public.is_dev(), false) OR coalesce(public.user_has_team_prospects_access(), false)
 $$;
 
--- The candidates' contact ids, read once per statement by the two line-level policies below (an initplan), past the
--- contacts policy that would hide them from the reader they are kept from. Only the office team gets any: everyone
--- else reads no contact, number or line under the spine's policies, so an empty list hides nothing from them.
+-- The candidates' contact ids, read once per statement by the two line-level policies below (an initplan; the cast
+-- there makes it an array to compare with, not a subquery to compare each row of), past the contacts policy that would
+-- hide them from the reader they are kept from. Only the office team gets any: everyone else reads no contact, number
+-- or line under the spine's policies, so an empty list hides nothing from them.
 CREATE OR REPLACE FUNCTION public.contacts_candidate_ids()
 RETURNS uuid[]
 LANGUAGE sql
@@ -595,10 +596,10 @@ CREATE POLICY contacts_candidate_door ON public.contacts AS RESTRICTIVE FOR SELE
   USING (kind <> 'candidate' OR (SELECT public.contacts_candidates_readable()));
 DROP POLICY IF EXISTS contact_channels_candidate_door ON public.contact_channels;
 CREATE POLICY contact_channels_candidate_door ON public.contact_channels AS RESTRICTIVE FOR SELECT TO authenticated
-  USING ((SELECT public.contacts_candidates_readable()) OR contact_id <> ALL ((SELECT public.contacts_candidate_ids())));
+  USING ((SELECT public.contacts_candidates_readable()) OR contact_id <> ALL ((SELECT public.contacts_candidate_ids())::uuid[]));
 DROP POLICY IF EXISTS messages_candidate_door ON public.messages;
 CREATE POLICY messages_candidate_door ON public.messages AS RESTRICTIVE FOR SELECT TO authenticated
-  USING ((SELECT public.contacts_candidates_readable()) OR contact_id <> ALL ((SELECT public.contacts_candidate_ids())));
+  USING ((SELECT public.contacts_candidates_readable()) OR contact_id <> ALL ((SELECT public.contacts_candidate_ids())::uuid[]));
 
 -- ---------- who may call what ----------
 
