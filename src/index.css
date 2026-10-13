@@ -4090,26 +4090,6 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienFootMuted { color: var(--text-muted); }
 
 /* Send the run — the envelope table (v2.3720 / v2.3734): a header row per envelope with its method and tracking box, a row per notice inside it. At phone width each envelope stacks as a card, its Method and Tracking # labelled, so the tracking box never sits off-screen. */
-.lienRunTable td { vertical-align: top; }
-.lienRunTable .lienRunWho { padding: 0.5rem 0.5rem 0.4rem 0; border-top: 1px solid var(--border); }
-.lienRunTable .lienRunMethod { padding: 0.45rem 0.5rem 0.4rem 0; border-top: 1px solid var(--border); }
-.lienRunTable .lienRunTracking { padding: 0.45rem 0 0.4rem 0; border-top: 1px solid var(--border); }
-.lienRunTable .lienRunJob { padding: 0.3rem 0.5rem 0.3rem 1rem; }
-.lienRunTable .lienRunMonths { padding: 0.3rem 0.5rem 0.3rem 0; }
-.lienRunTable .lienRunFor { padding: 0.3rem 0 0.3rem 0; }
-.lienRunFootHint { flex: 1; }
-@media (max-width: 640px) {
-  .lienRunTable, .lienRunTable tbody, .lienRunTable tr, .lienRunTable td { display: block; width: 100%; box-sizing: border-box; }
-  .lienRunTable thead { display: none; }
-  .lienRunTable .lienRunEnvelope { margin-top: 0.6rem; padding: 0.35rem 0.5rem 0.5rem; border-radius: 8px; border: 1px solid var(--border); }
-  .lienRunTable .lienRunWho, .lienRunTable .lienRunMethod, .lienRunTable .lienRunTracking { padding: 0.2rem 0; border-top: none; }
-  .lienRunTable td[data-label]::before { content: attr(data-label); display: block; font-size: 0.62rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); margin: 0.25rem 0 0.15rem; }
-  .lienRunTable .lienRunSelect { width: 100%; }
-  .lienRunTable .lienRunCopy { padding: 0.3rem 0 0.1rem 0.75rem; }
-  .lienRunTable .lienRunJob, .lienRunTable .lienRunMonths, .lienRunTable .lienRunFor { padding: 0.05rem 0; }
-  .lienRunTable .lienRunMonths, .lienRunTable .lienRunFor { font-size: 0.75rem; }
-  .lienRunFootHint { flex: 1 1 100%; order: -1; }
-}
 /* Lien desk → the run's journey (Run-2, the run shown not told): six nodes across the top, a count under each, the blocker on the node it blocks, the fill as far as every envelope has come. Two rows of three on a phone. */
 .lienRunJourney { display: grid; grid-template-columns: repeat(6, 1fr); padding: 0.7rem 1.25rem 0.55rem; border-bottom: 1px solid var(--border); position: relative; }
 .lienRunJourney::before { content: ""; position: absolute; left: calc(1.25rem + 8.3%); right: calc(1.25rem + 8.3%); top: calc(0.7rem + 13px); height: 3px; background: var(--border); }
@@ -4174,6 +4154,25 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienRunFootStatus span { font-size: 0.78rem; color: var(--text-muted); }
 .lienRunMore { flex-basis: 100%; display: flex; gap: 0.5rem 0.75rem; align-items: center; flex-wrap: wrap; padding-top: 0.6rem; border-top: 1px dashed var(--border); }
 .lienRunMore > div[data-testid='run-saved-copy'] { flex-basis: 100%; }
+/* Lien desk → the run's live checklist, lanes and the desk's door pill (Run-5, the run shown not told). */
+.lienRunChecklist { display: grid; gap: 0.4rem; padding: 0.4rem 0 0.2rem; }
+.lienRunChecklist h3 { margin: 0; font-size: 0.68rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.lienRunChecklist h3 span { text-transform: none; letter-spacing: 0; font-weight: 500; margin-left: 0.5rem; }
+.lienRunChecklistRow { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 0.6rem; align-items: center; border: 1px solid var(--border); border-radius: 8px; padding: 0.5rem 0.65rem; background: var(--surface); font-size: 0.8125rem; }
+.lienRunChecklistRow[data-done='yes'] { border-color: var(--text-green-700); }
+.lienRunChecklistBoxes { display: flex; gap: 0.75rem; flex-wrap: wrap; font-size: 0.72rem; margin-top: 0.2rem; }
+.lienRunChecklistBoxes label { display: inline-flex; gap: 0.3rem; align-items: center; cursor: pointer; }
+@media (max-width: 700px) { .lienRunChecklistRow { grid-template-columns: 44px minmax(0, 1fr); } .lienRunChecklistRow > input { grid-column: 2; width: 100%; } }
+.lienRunLanes { display: grid; gap: 0.4rem; padding: 0.5rem 1.25rem 0.1rem; }
+.lienRunLane { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 0.6rem; align-items: center; }
+.lienRunLaneKey { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+@media (max-width: 640px) { .lienRunLane { grid-template-columns: 1fr; gap: 0.1rem; } }
+.lienRunDoorBar { display: inline-flex; width: 56px; height: 7px; border-radius: 999px; background: var(--bg-muted); overflow: hidden; vertical-align: middle; margin-right: 0.45rem; }
+.lienRunDoorBar i { display: block; height: 100%; }
+.lienRunDoorSealed { background: var(--text-green-700); }
+.lienRunDoorWait { background: var(--border-amber); }
+.lienRunDoorWords { display: inline-block; margin-left: 0.45rem; font-weight: 500; opacity: 0.85; }
+@media (max-width: 640px) { .lienRunDoorWords { display: none; } }
 /* Lien desk → the draft footer (v2.3776, punch list #36): ONE row — the state and its verb left, Save draft and a quiet Skip right; the why is a parenthetical. */
 .lienFootRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; }
 .lienFootState { font-size: 0.9375rem; font-weight: 700; color: var(--text-strong); min-width: 0; flex: 1 1 12rem; }

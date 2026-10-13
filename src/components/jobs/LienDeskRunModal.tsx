@@ -32,6 +32,8 @@ import LienRunJourney from './LienRunJourney'
 import LienRunEnvelopeGlyph from './LienRunEnvelopeGlyph'
 import { runEnvelopeChip, runEnvelopeStage, type RunEnvelopeStageState } from '../../lib/jobs/runEnvelopeStage'
 import { runFootAction } from '../../lib/jobs/runFootAction'
+import { runChecklistRows, runChecklistWords } from '../../lib/jobs/runChecklist'
+import { runLaneOf, runStageLabels } from '../../lib/jobs/runEnvelopeStage'
 import { runJourney } from '../../lib/jobs/runJourney'
 
 /**
@@ -93,6 +95,8 @@ export default function LienDeskRunModal({
   const [penOpen, setPenOpen] = useState<string | null>(null)
   // More ▾ (Run-4): the foot's secondary doors, folded.
   const [moreOpen, setMoreOpen] = useState(false)
+  // The checklist, live (Run-5): the printed sheet's three boxes per envelope, ticked here at the counter; the window's own state.
+  const [ticks, setTicks] = useState<Record<number, [boolean, boolean, boolean]>>({})
   // The saved copy (v2.3763): where the office keeps the packet as printed — one link and a line for the whole run; every notice's record carries it.
   const [docUrl, setDocUrl] = useState('')
   const [docNote, setDocNote] = useState('')
@@ -262,6 +266,24 @@ export default function LienDeskRunModal({
   }, [envelopes, printedAt, printedCopies])
   const journey = useMemo(() => runJourney(envelopes.map((env) => stageByKey.get(env.key)!), { leaderName }), [envelopes, stageByKey, leaderName])
   const foot = useMemo(() => runFootAction(envelopes.map((env) => stageByKey.get(env.key)!), { leaderName }), [envelopes, stageByKey, leaderName])
+  const checklist = useMemo(() => runChecklistRows(envelopes, printedAt != null), [envelopes, printedAt])
+  // The lanes (Run-5): once the packet printed and the envelopes travel more than one way, each way is a line with its envelopes and how far they are.
+  const lanes = useMemo(() => {
+    if (printedAt == null) return []
+    const byLane = new Map<string, RunEnvelope[]>()
+    for (const env of envelopes) {
+      const lane = runLaneOf(env.method)
+      byLane.set(lane, [...(byLane.get(lane) ?? []), env])
+    }
+    if (byLane.size < 2) return []
+    const words: Record<string, string> = { certified: 'Certified', courier: 'Courier', hand: 'By hand', email: 'Email' }
+    return [...byLane.entries()].map(([lane, envs]) => {
+      const states = envs.map((env) => stageByKey.get(env.key)!)
+      const labels = runStageLabels(lane as 'certified' | 'courier' | 'hand' | 'email')
+      const done = (key: string) => states.filter((st) => st.stages.find((x) => x.key === key)?.done).length
+      return { lane, label: words[lane] ?? lane, envelopes: envs.map((e) => e.n), steps: [{ label: labels.printed, done: done('printed'), now: false }, { label: labels.mailed, done: done('mailed'), now: done('mailed') < envs.length }, { label: labels.recorded, done: done('recorded'), now: false }], total: envs.length }
+    })
+  }, [envelopes, printedAt, stageByKey])
   // The notices in an envelope the leader has not signed (v2.5086), by the run's own list so a combined notice's parts are found.
   const unsignedIn = (env: RunEnvelope): RunNotice[] => {
     const seen = new Set<string>()
@@ -485,6 +507,24 @@ export default function LienDeskRunModal({
         ) : null}
         {/* The journey (Run-2): where the run stands, shown. Run-4 retired the step strip under it. */}
         <LienRunJourney journey={journey} />
+        {lanes.length ? (
+          <div className="lienRunLanes" data-testid="run-lanes">
+            {lanes.map((l) => (
+              <div key={l.lane} className="lienRunLane" data-testid={`run-lane-${l.lane}`}>
+                <span className="lienRunLaneKey">{l.label}</span>
+                <span className="lienRunSteps" style={{ margin: 0 }}>
+                  {l.steps.map((st, i) => (
+                    <span key={st.label} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                      {i > 0 ? <span className="lienRunStepGap" aria-hidden="true" /> : null}
+                      <span className="lienRunStep" data-done={st.done === l.total ? 'yes' : 'no'} data-now={st.done < l.total && st.now ? 'yes' : 'no'}>{st.label}{st.done > 0 && st.done < l.total ? ` ${st.done} of ${l.total}` : ''}</span>
+                    </span>
+                  ))}
+                  <span className="lienRunChip" data-tone="gray" style={{ marginLeft: '0.5rem' }}>{l.envelopes.length === 1 ? `envelope ${l.envelopes[0]}` : `envelopes ${l.envelopes.join(', ')}`}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : null}
         {takeBackOpen && printedIds.length > 0 ? (
           <div data-testid="run-take-back-confirm" role="group" aria-label={takeBackWords.title} style={{ margin: '0.6rem 1.25rem 0', padding: '0.6rem 0.8rem', borderRadius: 8, border: '1px solid var(--border-amber)', background: 'var(--bg-amber-tint)', fontSize: '0.8125rem' }}>
             <div style={{ fontWeight: 700, fontSize: '0.9rem', marginBottom: 2 }}>{takeBackWords.title}</div>
@@ -520,6 +560,33 @@ export default function LienDeskRunModal({
                 <span style={{ color: 'var(--text-muted)' }}>{combinable.jobs} jobs would print as {combinable.notices} {combinable.notices === 1 ? 'notice' : 'notices'} ({combinable.combined} combined). The form's claim changes when jobs combine — off unless the office says so.</span>
               </span>
             </label>
+          ) : null}
+          {checklist.length ? (
+            <div className="lienRunChecklist" data-testid="run-checklist">
+              <h3>At the counter · the checklist, live <span>{runChecklistWords(checklist)}</span></h3>
+              {checklist.map((row) => {
+                const t = ticks[row.n] ?? [false, false, false]
+                const env = envelopes.find((e) => e.n === row.n)!
+                return (
+                  <div key={row.n} className="lienRunChecklistRow" data-testid={`run-checklist-${row.n}`} data-done={row.done ? 'yes' : 'no'}>
+                    <LienRunEnvelopeGlyph glyph={stageByKey.get(env.key)!.glyph} size={44} />
+                    <div style={{ minWidth: 0 }}>
+                      <b>{row.n} · {row.name}</b>
+                      <div className="lienRunCardLine">{row.inside} · {row.address}</div>
+                      <div className="lienRunChecklistBoxes">
+                        {row.boxes.map((label, i) => (
+                          <label key={label}>
+                            <input type="checkbox" checked={t[i]} onChange={(ev) => setTicks((prev) => { const next: [boolean, boolean, boolean] = [...(prev[row.n] ?? [false, false, false])] as [boolean, boolean, boolean]; next[i] = ev.target.checked; return { ...prev, [row.n]: next } })} aria-label={`Envelope ${row.n} — ${label}`} />
+                            {label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                    <input value={row.tracking} onChange={(ev) => setEnvelope(env, { tracking: ev.target.value })} placeholder={row.placeholder} aria-label={`Envelope ${row.n} — number (checklist)`} className="lienRunTracking" style={{ font: 'inherit', fontSize: '0.78rem', padding: '3px 6px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', width: '12rem', maxWidth: '100%' }} />
+                  </div>
+                )
+              })}
+            </div>
           ) : null}
           <div className="lienRunCards" data-testid="run-cards">
             {envelopes.map((env) => {

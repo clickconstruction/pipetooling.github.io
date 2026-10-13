@@ -104,6 +104,23 @@ export function runDoorWords(counts: { ready: number; printed: number; retReady:
 }
 
 
+/**
+ * The door on the desk as a pill (Run-5): the run's bar — green for sealed (printed, in the mail),
+ * amber for what waits on the leader, grey for what is ready to go — and the count of who waits, so
+ * nobody opens the run to find out. `ready` includes the unsigned; `waits` is how many of them are.
+ */
+export type RunDoorPill = { sealedPct: number; waitPct: number; words: string }
+
+export function runDoorPill(counts: { ready: number; printed: number; retReady: number; waits: number }, leaderName?: string | null): RunDoorPill {
+  const total = counts.ready + counts.printed + counts.retReady
+  const waits = Math.min(counts.waits, counts.ready + counts.retReady)
+  const readyNow = counts.ready + counts.retReady - waits
+  const pct = (n: number) => (total === 0 ? 0 : Math.round((n / total) * 100))
+  const leader = (leaderName ?? '').trim() || 'the leader'
+  const parts = [counts.printed ? `${counts.printed} sealed` : null, readyNow ? `${readyNow} ready` : null, waits ? `${waits} wait${waits === 1 ? 's' : ''} on ${leader}` : null].filter(Boolean)
+  return { sealedPct: pct(counts.printed), waitPct: pct(waits), words: parts.join(' · ') }
+}
+
 /** The signature's inputs the run builders take (v2.5077): the drawn inks by item id, and the name of whoever's screen a drawn one was made on. */
 export type RunBuildOpts = {
   inks?: ReadonlyMap<string, string | null>

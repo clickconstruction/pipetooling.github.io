@@ -657,3 +657,37 @@ describe('an unsigned notice at the run (v2.5086)', () => {
     expect(screen.queryByTestId('run-leader-here-sign-1')).toBeNull()
   })
 })
+
+describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () => {
+  it('once the packet printed, one checklist row per paper envelope with its boxes and its number box, and a lane per way the envelopes travel', async () => {
+    const two = [
+      notice({ printedAt: '2026-10-07T16:00:00Z' }),
+      notice({ itemId: 'it2', jobId: 'j688', label: '688 · Harlan Dental', jobNumber: '688', printedAt: '2026-10-07T16:00:00Z', recipients: [{ key: 'owner', label: 'Owner of record', name: 'Harlan Dental PLLC', address: '2200 Bandera Rd', email: '', method: 'hand', tracking: '' }, { key: 'original_contractor', label: 'Original contractor', name: 'Harlan Dental PLLC', address: '2200 Bandera Rd', email: '', method: 'hand', tracking: '' }] }),
+    ]
+    renderWithProviders(<LienDeskRunModal notices={two} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    const list = screen.getByTestId('run-checklist')
+    expect(list.textContent).toContain('At the counter')
+    expect(screen.getByTestId('run-checklist-1').textContent).toContain('650 owner')
+    expect(screen.getByLabelText('Envelope 1 — slip on')).toBeTruthy()
+    expect(screen.getByLabelText('Envelope 3 — handed over')).toBeTruthy()
+    fireEvent.click(screen.getByLabelText('Envelope 1 — stuffed'))
+    expect((screen.getByLabelText('Envelope 1 — stuffed') as HTMLInputElement).checked).toBe(true)
+    // The number typed on the checklist is the envelope's number: the card's box shows it too, and the row is done.
+    fireEvent.change(screen.getByLabelText('Envelope 1 — number (checklist)'), { target: { value: '9407 1118 9876 5432 1098' } })
+    expect((screen.getAllByLabelText(/tracking$/)[0] as HTMLInputElement).value).toBe('9407 1118 9876 5432 1098')
+    expect(screen.getByTestId('run-checklist-1').getAttribute('data-done')).toBe('yes')
+    expect(list.textContent).toContain('2 of 3 have their number')
+    // Two ways to travel: certified and by hand, each a lane.
+    expect(screen.getByTestId('run-lane-certified').textContent).toContain('Certified')
+    expect(screen.getByTestId('run-lane-hand').textContent).toContain('By hand')
+    expect(screen.getByTestId('run-lane-hand').textContent).toContain('envelope 3')
+  })
+
+  it('nothing printed: no checklist and no lanes', async () => {
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-10-08" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.queryByTestId('run-checklist')).toBeNull()
+    expect(screen.queryByTestId('run-lanes')).toBeNull()
+  })
+})
