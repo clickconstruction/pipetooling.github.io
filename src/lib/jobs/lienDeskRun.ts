@@ -53,6 +53,17 @@ export type RunRecipient = {
    * set it there and the run's tick can turn it off. The owner's copy never carries it.
    */
   courtesy?: boolean
+  /** This copy's envelope went (or is going) through a mail provider (the Docsmit train, PR 5b): the provider, the piece and where it stands. */
+  via?: 'docsmit'
+  pieceId?: string
+  pieceStatus?: 'prepared' | 'sent' | 'mailed' | 'failed'
+  /** Why the provider held it, in words for the card; null when it went. */
+  pieceProblem?: string | null
+}
+
+/** The envelope's copies all went through a provider: the provider and the piece ride on the first recipient inside. */
+export function recipientViaDocsmit(r: Pick<RunRecipient, 'via' | 'pieceId' | 'pieceStatus'>): boolean {
+  return r.via === 'docsmit' && !!r.pieceId && (r.pieceStatus === 'sent' || r.pieceStatus === 'mailed')
 }
 
 export type RunNotice = {
@@ -512,7 +523,7 @@ export function noticesFullyPrinted<T extends Pick<RunNotice, 'itemId' | 'recipi
   return notices.filter((n) => n.recipients.length > 0 && n.recipients.every((r) => printed.has(runCopyKey(n.itemId, r.key))))
 }
 
-export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string }
+export type RunSendRecord = { recipient: 'owner' | 'original_contractor'; method: RunSendMethod; tracking: string; sent_on: string; via?: string; piece_id?: string }
 
 /**
  * The courtesy PDFs a recorded notice owes (punch list #87 B): every copy still ticked, with an
@@ -573,8 +584,8 @@ export function trackingShape(method: RunSendMethod, tracking: string): Tracking
 }
 
 /** An envelope counts as mailed once it carries a number, or goes by email or hand (v2.4119). */
-export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking'>): boolean {
-  return r.method === 'email' || r.method === 'hand' || (r.tracking ?? '').trim().length > 0
+export function recipientMailed(r: Pick<RunRecipient, 'method' | 'tracking' | 'via' | 'pieceId' | 'pieceStatus'>): boolean {
+  return r.method === 'email' || r.method === 'hand' || (r.tracking ?? '').trim().length > 0 || recipientViaDocsmit(r)
 }
 
 /**

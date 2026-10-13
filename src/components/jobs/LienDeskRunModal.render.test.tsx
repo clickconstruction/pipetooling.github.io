@@ -6,7 +6,7 @@
  * address on file.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienDeskRunModal from './LienDeskRunModal'
 import type { RunNotice } from '../../lib/jobs/lienDeskRun'
@@ -51,6 +51,15 @@ vi.mock('signature_pad', () => ({
 }))
 vi.mock('../../lib/jobs/lienDeskRunIo', () => ({ recordLienDeskRun: (...args: unknown[]) => recordMock(...(args as [])), buildRunNoticePdf: (...args: unknown[]) => buildPdfMock(...args) }))
 vi.mock('../../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: vi.fn(async () => null) }))
+// Mail through Docsmit (PR 5b): the switches as a dev saved them, and the run's doing side stood in for.
+const docsmitState = { settings: { env: 'tracksmit', paused: false, runDefault: 'docsmit', returnReceipt: 'electronic', plusDefault: false, cutoffLocal: '15:00', sendByBufferDays: 1, creditWarn: 25, pollMinutes: 60, callbacks: false, matchSite: false }, setUp: false, loaded: true }
+vi.mock('../../hooks/useDocsmitSettings', () => ({ useDocsmitSettings: () => docsmitState }))
+const prepareMock = vi.fn(async (envs: Array<{ key: string }>) => ({ prepared: [{ key: envs[0]!.key, n: 1, label: 'Owner of record', who: 'Elbel Holdings LLC', windowLines: ['Elbel Holdings LLC', '17300 IH 35 N', 'Schertz, TX 78154'], sendType: 'Certified, Electronic Return Receipt', shortCode: 'KX7M2QRT', recipient: 'owner', jobNumber: '650', itemIds: ['it1'], pieceId: 'p1', price: 9.85, correction: null, sheets: 4, envelope: '#10', pdfUrl: 'blob:one', pdfPath: 'mail/KX7M2QRT.pdf' }], held: [{ key: envs[1]?.key ?? 'gc', n: 2, label: 'Original contractor', why: 'The address needs a ZIP or ZIP+4.' }], balance: 120 }))
+const sendMock = vi.fn(async () => ({ ok: true, sent: ['p1'] }))
+vi.mock('../../lib/mail/runDocsmitIo', async () => {
+  const actual = await vi.importActual<typeof import('../../lib/mail/runDocsmitIo')>('../../lib/mail/runDocsmitIo')
+  return { ...actual, prepareDocsmitRun: (...args: unknown[]) => prepareMock(...(args as [Array<{ key: string }>])), sendDocsmitRun: (...args: unknown[]) => sendMock(...(args as [])) }
+})
 vi.mock('../../lib/stripeInvoiceFacts', () => ({ fetchStripeInvoiceFacts: vi.fn(async () => ({})) }))
 
 function notice(partial: Partial<RunNotice> = {}): RunNotice {
@@ -690,4 +699,59 @@ describe('LienDeskRunModal · the checklist, live, and the lanes (Run-5)', () =>
     expect(screen.queryByTestId('run-checklist')).toBeNull()
     expect(screen.queryByTestId('run-lanes')).toBeNull()
   })
+
+  it('Mail through Docsmit (PR 5b): the door shows once a dev set the connection up, the review lists the prepared and the held, mailing marks the card and moves the foot to recording', async () => {
+    docsmitState.setUp = true
+    prepareMock.mockClear()
+    sendMock.mockClear()
+    const full = notice({ recipients: [
+      { key: 'owner', label: 'Owner of record', name: 'Elbel Holdings LLC', address: '17300 IH 35 N, Schertz, TX 78154', email: '', method: 'certified_mail', tracking: '' },
+      { key: 'original_contractor', label: 'Original contractor', name: 'Loberg Contracting', address: '2904 Corporate Cr', email: 'office@loberg.test', method: 'certified_mail', tracking: '' },
+    ] })
+    renderWithProviders(<LienDeskRunModal notices={[full]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    const door = screen.getByTestId('run-docsmit') as HTMLButtonElement
+    expect(door.textContent).toBe('Mail through Docsmit · 1 envelope ▸')
+    expect(door.disabled).toBe(false)
+    expect(screen.getByTestId('run-docsmit-send-by').textContent).toMatch(/Docsmit/)
+    fireEvent.click(door)
+    await waitFor(() => expect(screen.getByTestId('dsm-review')).toBeTruthy())
+    expect(prepareMock).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('dsm-env-1').textContent).toContain('Elbel Holdings LLC')
+    expect(screen.getByTestId('dsm-held-2').textContent).toContain('The address needs a ZIP or ZIP+4.')
+    expect(screen.getByTestId('dsm-price').textContent).toBe('1 envelope · $9.85 · balance $120.00')
+    fireEvent.click(screen.getByTestId('dsm-mail'))
+    await waitFor(() => expect(screen.getByTestId('dsm-outcome').textContent).toBe('1 envelope mailed through Docsmit.'))
+    expect(sendMock).toHaveBeenCalledWith(['p1'])
+    fireEvent.click(screen.getByTestId('dsm-close'))
+    await waitFor(() => expect(screen.queryByTestId('dsm-review')).toBeNull())
+    expect(screen.getByTestId('run-chip-1').textContent).toBe('mailed through Docsmit · number coming')
+    expect((screen.getByLabelText('Envelope 1 · Owner of record: Elbel Holdings LLC — tracking') as HTMLInputElement).disabled).toBe(true)
+    // The GC's envelope stays on paper, so the foot still prints; the door is gone from a run that already mailed one.
+    expect(screen.getByRole('button', { name: /Print the packet/ })).toBeTruthy()
+    docsmitState.setUp = false
+  })
+
+  it('Mail through Docsmit: no door until a dev set the connection up, none while paused, and a dim one when every certified address is short', async () => {
+    docsmitState.setUp = false
+    docsmitState.settings.paused = false
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.queryByTestId('run-docsmit')).toBeNull()
+    cleanup()
+    docsmitState.setUp = true
+    docsmitState.settings.paused = true
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    expect(screen.queryByTestId('run-docsmit')).toBeNull()
+    cleanup()
+    docsmitState.settings.paused = false
+    renderWithProviders(<LienDeskRunModal notices={[notice()]} issuer={null} todayYmd="2026-09-14" userId="u1" onClose={() => {}} onRecorded={() => {}} />)
+    await settle()
+    const door = screen.getByTestId('run-docsmit') as HTMLButtonElement
+    expect(door.disabled).toBe(true)
+    expect(door.title).toMatch(/needs .*ZIP/)
+    docsmitState.setUp = false
+  })
 })
+
