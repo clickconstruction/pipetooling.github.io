@@ -7,7 +7,7 @@ const note: ReleaseNote = {
   kind: 'infra',
   roles: ['dev'],
   highlights: [
-    'A lead reads its name and company from Prospects.',
+    'A lead reads its name and company from Prospects. When they book, they become the customer and keep their messages.',
     'A supply house reads its name, and a rep at one reads theirs with the house’s name.',
     'A candidate reads their name from the Team hiring board, and a sub reads theirs from the roster.',
     'Nothing on screen changes yet.',

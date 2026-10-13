@@ -204,12 +204,22 @@ function samePerson(c: Contact, target: NameTarget): boolean {
 }
 
 /**
+ * Who *Who is this?* may name: a number nobody has named, or a lead who booked, named once more as the customer they
+ * became (the SQL's `name_contact` holds the same rule).
+ */
+function nameable(c: Contact, target: NameTarget): boolean {
+  if (c.kind === 'unknown') return true
+  return c.kind === 'lead' && target.kind === 'customer' && (target.record.table === 'customers' || target.record.table === 'customer_contact_persons')
+}
+
+/**
  * *Who is this?*: re-points a contact at a record and keeps its thread. When someone already is that person, one person
- * keeps one contact, so the unknown one folds into theirs. Null when the contact is not an unknown number.
+ * keeps one contact, so the unknown one folds into theirs. A lead who booked re-points to the customer the same way,
+ * keeping their jobs. Null when the contact is neither an unknown number nor a lead named as a customer.
  */
 export function nameContact(contacts: readonly Contact[], unknownId: string, target: NameTarget): NamePlan | null {
   const unknown = contactById(contacts, unknownId)
-  if (!unknown || unknown.kind !== 'unknown') return null
+  if (!unknown || !nameable(unknown, target)) return null
   const jobId = target.jobId ?? null
   const existing = contacts.find((c) => c.id !== unknownId && samePerson(c, target))
   if (existing) {
@@ -232,8 +242,8 @@ export function nameContact(contacts: readonly Contact[], unknownId: string, tar
       company: target.company,
       ...(target.trade ? { trade: target.trade } : {}),
       record: target.record,
-      jobIds: jobId ? [jobId] : [],
-      defaultJobId: jobId,
+      jobIds: jobId && !unknown.jobIds.includes(jobId) ? [...unknown.jobIds, jobId] : unknown.jobIds,
+      defaultJobId: unknown.defaultJobId ?? jobId,
     },
     jobId,
   }

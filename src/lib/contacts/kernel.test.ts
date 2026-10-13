@@ -214,6 +214,30 @@ describe('Who is this? re-points and keeps the thread', () => {
     expect(nameContact(contacts, 'unk1', { record: { table: 'supply_houses', id: 'sh-1' }, kind: 'supply_house', name: 'hill country pipe supply', company: '' })).toMatchObject({ way: 'merge', into: { id: 'sh-main' } })
   })
 
+  it('a lead who books is named once more, as the customer they became, keeping their jobs and thread', () => {
+    const lead: Contact = { ...who('unk1'), kind: 'lead', name: 'Kevin Alvarez', record: { table: 'prospects', id: 'pr-1' }, jobIds: ['estimate'], defaultJobId: 'estimate' }
+    const contacts = DEMO_CONTACTS.map((c) => (c.id === 'unk1' ? lead : c))
+    const booked = nameContact(contacts, 'unk1', { record: { table: 'customers', id: 'cust-alvarez' }, kind: 'customer', name: 'Kevin Alvarez', company: '', jobId: 'job-1' })
+    expect(booked).toMatchObject({
+      way: 'repoint',
+      contact: { id: 'unk1', kind: 'customer', record: { table: 'customers', id: 'cust-alvarez' }, jobIds: ['estimate', 'job-1'], defaultJobId: 'estimate' },
+    })
+    const { messages } = applyNamePlan(contacts, DEMO_MESSAGES, booked!)
+    expect(threadOf(messages, 'unk1').map((m) => m.id)).toEqual(['14'])
+    // A customer who already has a contact: the lead folds into it.
+    const elena = DEMO_CONTACTS.find((c) => c.record?.table === 'customer_contact_persons')!
+    expect(nameContact(contacts, 'unk1', { record: elena.record!, kind: 'customer', name: elena.name, company: elena.company })).toMatchObject({ way: 'merge', into: { id: elena.id }, dropId: 'unk1' })
+  })
+
+  it('a lead is named again only as a customer, and nobody else is named again', () => {
+    const lead: Contact = { ...who('unk1'), kind: 'lead', record: { table: 'prospects', id: 'pr-1' } }
+    const contacts = DEMO_CONTACTS.map((c) => (c.id === 'unk1' ? lead : c))
+    expect(nameContact(contacts, 'unk1', { record: { table: 'gc_companies', id: 'hillside' }, kind: 'trade', name: 'Kevin', company: '' })).toBeNull()
+    expect(nameContact(contacts, 'unk1', { record: { table: 'customers', id: 'x' }, kind: 'arch', name: 'Kevin', company: '' })).toBeNull()
+    const counter: Contact = { ...lead, kind: 'supply_house', record: { table: 'supply_houses', id: 'sh-1' } }
+    expect(nameContact(DEMO_CONTACTS.map((c) => (c.id === 'unk1' ? counter : c)), 'unk1', { record: { table: 'customers', id: 'x' }, kind: 'customer', name: 'X', company: '' })).toBeNull()
+  })
+
   it('only names an unknown number', () => {
     expect(nameContact(DEMO_CONTACTS, 'greg', { record: { table: 'customers', id: 'x' }, kind: 'customer', name: 'X', company: '' })).toBeNull()
     expect(nameContact(DEMO_CONTACTS, 'nobody', { record: { table: 'customers', id: 'x' }, kind: 'customer', name: 'X', company: '' })).toBeNull()
