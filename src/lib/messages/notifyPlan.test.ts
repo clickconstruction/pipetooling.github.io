@@ -1,8 +1,10 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { NO_SEATS } from '../followUp/assignSeats'
 import { OFFICE_HOURS } from './hasRule'
 import type { LegalSend } from './legalRoute'
-import { NOTIFY_LINES_MAX, planReplyPushes, PUSH_LATE_MAX_MINUTES, sweepSince, type NotifyPlanInput, type PlanLine, type PlanOut } from './notifyPlan'
+import { NOTIFY_LINES_MAX, planReplyPushes, PUSH_LATE_MAX_MINUTES, REPLY_PUSH_ON_KEY, sweepSince, type NotifyPlanInput, type PlanLine, type PlanOut } from './notifyPlan'
 
 /**
  * The mockups' card 13 on Tue Oct 6, 2026 (Chicago, CDT): Luis texted Dana Whitfield from job 1312 at 8:50 AM, and
@@ -121,5 +123,16 @@ describe('sweepSince', () => {
     expect(sweepSince(at('10:00'), 15)).toBe(at('09:10'))
     expect(sweepSince(at('10:00'), null)).toBe(at('09:10'))
     expect(sweepSince(at('10:00'), 0)).toBe(at('09:25'))
+  })
+})
+
+describe('the owner’s switch (R5’s PR 3)', () => {
+  it('is the row the cron’s migration makes, shipping off, and the row its cron reads', () => {
+    const dir = resolve(__dirname, '../../../supabase/migrations')
+    const file = readdirSync(dir).find((f) => f.endsWith('_messages_notify_cron.sql'))
+    expect(file).toBeDefined()
+    const sql = readFileSync(resolve(dir, file!), 'utf8')
+    expect(sql).toContain(`VALUES ('${REPLY_PUSH_ON_KEY}', 'false')`)
+    expect(sql).toContain(`WHERE key = '${REPLY_PUSH_ON_KEY}' AND value_text = 'true'`)
   })
 })

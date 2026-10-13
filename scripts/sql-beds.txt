@@ -46,3 +46,4 @@ photo-saves
 running-late-move
 contacts-kinds
 portal-opens-since
+messages-notify-cron
