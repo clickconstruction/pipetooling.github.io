@@ -3,11 +3,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { planQuoEvent, readQuoEvent, sentKey, type QuoPlan, type QuoPlanContext, type QuoReading } from '../_shared/gcKernels/lib/quo/events.ts'
 import { keepTextMedia } from '../_shared/quoMedia.ts'
 import { verifySignature, webhookAnswer, type WebhookOutcome } from '../_shared/gcKernels/lib/quo/webhook.ts'
-import { loadSeats, notePauseRow, placeNumber, quoCompany, sendText, writeLine, type Placed } from '../_shared/quoLines.ts'
+import { boxOfInbound, sendBox, type BoxSettings, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
+import { loadBoxes, loadSeats, notePauseRow, placeNumber, quoCompany, sendText, writeLine, writeStops, type Placed } from '../_shared/quoLines.ts'
 
 /**
- * quo-webhook — Messages, cut 5: Quo's calls and texts land in a person's thread. Quo posts every event of the company
- * number here (`message.received`, `message.delivered`, `message.failed`, `message.undelivered`, `call.completed`,
+ * quo-webhook — Messages, cut 5: Quo's calls and texts land in a person's thread. Quo posts every event of our numbers
+ * here (`message.received`, `message.delivered`, `message.failed`, `message.undelivered`, `call.completed`,
  * `call.missed`, `call.voicemail.completed`, `call.recording.completed`, `call.transcript.completed`,
  * `call.summary.completed`), signed with the webhook's `whsec_` key (QUO_WEBHOOK_SECRET). A thin wrapper over the
  * kernels in src/lib/quo (webhook.ts, events.ts, send.ts, rows.ts), in their order:
@@ -15,12 +16,16 @@ import { loadSeats, notePauseRow, placeNumber, quoCompany, sendText, writeLine, 
  * 1. verifySignature over the raw body. A refusal answers 401 and records nothing.
  * 2. quo_webhook_claim with the delivery's webhook-id. A repeat answers 200 and does nothing.
  * 3. readQuoEvent. An event the webhook does not take answers 200 with its reason.
- * 4. For each number the event is about: quo_place_number (the contact, made when nobody has the number), then
- *    planQuoEvent merged and written through quo_write_line over the revision read, then the number's STOP mirrored,
- *    a team event, and the app's own answer through quo-send's path (HELP, or the one confirmation of a stop Quo did
- *    not catch), the answer last. A text of ours that reached a phone ends a pause for the balance (`notePauseRow`). A
- *    failed or undelivered one never pauses: its code is the carrier's, and none names the balance.
- * 5. 200. On a failure the claim is given back (quo_webhook_release) and the answer is 500, so Quo sends it again.
+ * 4. The box it came to (R6): our number's Quo id (`phoneNumberId`) against Settings' boxes (`messages_boxes_v1`, with
+ *    QUO_PHONE_NUMBER_ID as the team box's until the row has it), else the team box, today's one number.
+ * 5. For each number the event is about: quo_place_number (the contact, made when nobody has the number) with its STOP
+ *    to that box, then planQuoEvent merged and written through quo_write_line over the revision read, stamped with the
+ *    box, then the number's STOP or START for that box alone (`opted_out_by_box`; both boxes when our number is not
+ *    placed), a team event, and the app's own answer through quo-send's path from the same box's number (HELP, or the
+ *    one confirmation of a stop Quo did not catch), the answer last. A text of ours that reached a phone ends a pause
+ *    for the balance (`notePauseRow`). A failed or undelivered one never pauses: its code is the carrier's, and none
+ *    names the balance.
+ * 6. 200. On a failure the claim is given back (quo_webhook_release) and the answer is 500, so Quo sends it again.
  *
  * verify_jwt is off in config.toml: Quo signs its deliveries, it holds no Supabase session.
  */
@@ -77,21 +82,32 @@ function answer(outcome: WebhookOutcome): Response {
 async function handle(admin: any, reading: QuoReading): Promise<void> {
   const users = await loadSeats(admin)
   const company = quoCompany()
+  const boxes = await loadBoxes(admin)
+  // The box it came to: null when our number is not one Settings or the secret names.
+  const to = boxOfInbound({ toNumberId: reading.ourNumberId }, boxes)
+  const boxed: Boxed = { to, box: to ?? 'team', boxes }
   if (reading.kind === 'sent') {
     // A text of ours: one line a person it went to.
     let placedAny = false
     for (const number of reading.recipients) {
-      const placed = await placeNumber(admin, number)
+      const placed = await placeNumber(admin, number, boxed.box)
       if (!placed) continue
       placedAny = true
-      await planAndWrite(admin, reading, placed, { users, company, recipient: number }, sentKey(reading, number))
+      await planAndWrite(admin, reading, placed, { users, company, recipient: number }, sentKey(reading, number), boxed)
     }
     if (!placedAny) throw new Ignored('none of its numbers is a phone number')
     if (reading.outcome === 'delivered') await notePauseRow(admin, { kind: 'go', at: reading.at })
     return
   }
-  const placed = await placeEvent(admin, reading)
-  await planAndWrite(admin, reading, placed, { users, company }, reading.quoId)
+  const placed = await placeEvent(admin, reading, boxed.box)
+  await planAndWrite(admin, reading, placed, { users, company }, reading.quoId, boxed)
+}
+
+/** The box an event came to (`to`, null when not placed), the box its line takes, and both boxes' numbers. */
+interface Boxed {
+  to: Mailbox | null
+  box: Mailbox
+  boxes: BoxSettings
 }
 
 /**
@@ -99,9 +115,9 @@ async function handle(admin: any, reading: QuoReading): Promise<void> {
  * call already wrote; with no line yet it fails, and Quo's retry comes after the call's own event.
  */
 // deno-lint-ignore no-explicit-any
-async function placeEvent(admin: any, reading: Exclude<QuoReading, { kind: 'sent' }>): Promise<Placed> {
+async function placeEvent(admin: any, reading: Exclude<QuoReading, { kind: 'sent' }>, box: Mailbox): Promise<Placed> {
   if (reading.external) {
-    const placed = await placeNumber(admin, reading.external)
+    const placed = await placeNumber(admin, reading.external, box)
     if (placed) return placed
     if (reading.kind === 'text') throw new Ignored('the sender is not a phone number')
   }
@@ -111,12 +127,15 @@ async function placeEvent(admin: any, reading: Exclude<QuoReading, { kind: 'sent
   if (!channelId) throw new Error(`no number and no line yet for ${reading.quoId}`)
   const { data: channel, error: channelError } = await admin.from('contact_channels').select('value').eq('id', channelId).single()
   if (channelError) throw new Error(`contact_channels: ${channelError.message}`)
-  const placed = await placeNumber(admin, (channel as { value: string }).value)
+  const placed = await placeNumber(admin, (channel as { value: string }).value, box)
   if (!placed) throw new Error(`the line for ${reading.quoId} has no phone number`)
   return placed
 }
 
-/** Plans one event for one number, writes its line, then its STOP, its team event and the app's answer, the answer last. */
+/**
+ * Plans one event for one number, writes its line on its box, then its STOP for that box, its team event and the app's
+ * answer from that box's number, the answer last.
+ */
 async function planAndWrite(
   // deno-lint-ignore no-explicit-any
   admin: any,
@@ -124,6 +143,7 @@ async function planAndWrite(
   placed: Placed,
   more: Pick<QuoPlanContext, 'users' | 'company'> & { recipient?: string },
   key: string,
+  boxed: Boxed,
 ): Promise<void> {
   const ctx: Omit<QuoPlanContext, 'existing'> = {
     contactId: placed.contactId,
@@ -131,6 +151,7 @@ async function planAndWrite(
     channelId: placed.channelId,
     optedOut: placed.optedOut,
     defaultJobId: placed.star?.jobId ?? null,
+    mailbox: boxed.box,
     ...more,
   }
   const { id: lineId, then: plan } = await writeLine<QuoPlan>(admin, key, placed.star, (prev) => {
@@ -140,13 +161,8 @@ async function planAndWrite(
   // A text's pictures and files: our copy now, since Quo's link to them does not last (Messages, cut 10).
   if (reading.kind === 'text' && lineId) await keepTextMedia(admin, lineId, reading.quoId, reading.media)
 
-  if (plan.optout === 'out') {
-    const { error } = await admin.from('contact_channels').update({ opted_out_at: new Date().toISOString() }).eq('id', placed.channelId).is('opted_out_at', null)
-    if (error) throw new Error(`contact_channels: ${error.message}`)
-  } else if (plan.optout === 'in') {
-    const { error } = await admin.from('contact_channels').update({ opted_out_at: null }).eq('id', placed.channelId)
-    if (error) throw new Error(`contact_channels: ${error.message}`)
-  }
+  // For the box it came to alone; both when our number is not placed, so a STOP is never missed.
+  if (plan.optout) await writeStops(admin, placed.stops, plan.optout === 'out' ? 'stop' : 'start', boxed.to, reading.at)
 
   if (plan.event) {
     // Keyed beside its line, so Quo's retry never writes it twice.
@@ -174,6 +190,8 @@ async function planAndWrite(
         jobId: placed.star?.jobId ?? null,
       },
       placed.star,
+      sendBox(boxed.box, boxed.boxes),
+      boxed.boxes,
     )
     // Quo turning the text away for no reason we read is worth Quo's retry: the line, the STOP and the event above
     // write the same again. A refusal of ours, texts not set up yet, or paused, or waiting on the carriers or the daily

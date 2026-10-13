@@ -10,6 +10,11 @@
  *
  * The pause: a text Quo turns away for the account's money pauses texts, and the next text it takes ends the pause
  * (`app_settings` `messages_quo_paused_v1`, `quo/paused.ts`).
+ *
+ * R6 (two boxes, two numbers): each box's number is Settings' (`app_settings` `messages_boxes_v1`), read by `loadBoxes`,
+ * with QUO_PHONE_NUMBER_ID, QUO_COMPANY_PHONE and QUO_COMPANY_MAILBOX as the team box's while the row leaves them empty.
+ * A line keeps the box it came through (`messages.mailbox`), a STOP is kept per box (`contact_channels.opted_out_by_box`),
+ * and a text goes from its box's number.
  */
 // deno-lint-ignore-file no-explicit-any
 // The Quo kernels straight from the copy, not its index: the index re-exports every kernel in it, which the check would
@@ -31,6 +36,7 @@ import {
 } from './gcKernels/lib/quo/rows.ts'
 import { planSend, sendOver, sentQuoId, type QuoSendInput } from './gcKernels/lib/quo/send.ts'
 import { QUO_PAUSED_KEY, notePause, readQuoRefusal, type PauseChange, type PauseStore } from './gcKernels/lib/quo/paused.ts'
+import { BOXES_SETTINGS_KEY, boxSetting, parseBoxSettings, stopScope, stoppedOn, type BoxFallback, type BoxSettings, type Mailbox, type StopChannel } from './gcKernels/lib/messages/boxes.ts'
 
 /** Quo's send endpoint. */
 export const QUO_MESSAGES_URL = 'https://api.quo.com/v1/messages'
@@ -61,21 +67,47 @@ export async function loadSeats(admin: any): Promise<QuoPlanContext['users']> {
   return quoSeats(raw, (data ?? []) as { id: string; name: string | null }[])
 }
 
+/**
+ * Both boxes (`messages_boxes_v1`, `parseBoxSettings`), each field the row leaves empty filled from today's secrets
+ * (`boxSetting`), so the functions keep the one company number until the owner types the boxes in. A row not there yet
+ * reads as empty.
+ */
+export async function loadBoxes(admin: any): Promise<BoxSettings> {
+  const { data: row, error } = await admin.from('app_settings').select('value_text').eq('key', BOXES_SETTINGS_KEY).maybeSingle()
+  if (error) throw new Error(`app_settings: ${error.message}`)
+  const settings = parseBoxSettings((row as { value_text: string | null } | null)?.value_text)
+  const fallback: BoxFallback = {
+    team: {
+      numberId: Deno.env.get('QUO_PHONE_NUMBER_ID') ?? '',
+      phone: Deno.env.get('QUO_COMPANY_PHONE') ?? '',
+      address: Deno.env.get('QUO_COMPANY_MAILBOX') ?? '',
+    },
+    bids: {},
+  }
+  return { team: boxSetting('team', settings, fallback), bids: boxSetting('bids', settings, fallback) }
+}
+
 /** Where a number lands: its contact, made when nobody has the number, the channel and its STOP, the words, the star. */
 export interface Placed {
   contactId: string
   channelId: string
   /** The number as Quo takes it. */
   number: string
+  /** The number sent STOP to the box `placeNumber` was asked about (`stoppedOn`). */
   optedOut: boolean
+  /** Its STOPs: the older one to every box and the one per box, for `writeStops`. */
+  stops: StopChannel
   /** What its lines call them: "Greg", or the number. */
   words: string
   /** The contact's default job, where a new line lands. */
   star: JobAt | null
 }
 
-/** Places a number on its contact (`quo_place_number`). Null for an identifier that is not a phone number. */
-export async function placeNumber(admin: any, raw: string): Promise<Placed | null> {
+/**
+ * Places a number on its contact (`quo_place_number`), with its STOP to `box`. Null for an identifier that is not a
+ * phone number.
+ */
+export async function placeNumber(admin: any, raw: string, box: Mailbox): Promise<Placed | null> {
   const number = toE164(raw)
   if (!number) return null
   const { data, error } = await admin.rpc('quo_place_number', { p_value: number, p_name: unknownContact(number).name })
@@ -89,12 +121,20 @@ export async function placeNumber(admin: any, raw: string): Promise<Placed | nul
     .select('bid_id, project_id, jobs_ledger_id, is_default')
     .eq('contact_id', row.placed_contact)
   if (jobsError) throw new Error(`contact_jobs: ${jobsError.message}`)
+  const { data: stopRow, error: stopError } = await admin.from('contact_channels').select('opted_out_by_box').eq('id', row.placed_channel).single()
+  if (stopError) throw new Error(`contact_channels: ${stopError.message}`)
+  const stops: StopChannel = {
+    channelId: row.placed_channel,
+    optedOutAt: row.stopped_at,
+    optedOutByBox: (stopRow as { opted_out_by_box: StopChannel['optedOutByBox'] }).opted_out_by_box ?? {},
+  }
   const kind = contactKindOf(row.placed_kind)
   return {
     contactId: row.placed_contact,
     channelId: row.placed_channel,
     number,
-    optedOut: Boolean(row.stopped_at),
+    optedOut: stoppedOn(stops, box),
+    stops,
     words: contactWords({ name: row.placed_name, goesBy: row.placed_goes_by, kind }, number),
     star: defaultJob(jobs ?? []),
   }
@@ -134,14 +174,23 @@ export async function writeLine<T>(
   throw new Error(`the line under ${quoId} kept changing`)
 }
 
-/** When we last texted this number (ms), for the opt-out line's silence rule; null when we never did. */
-export async function lastOurTextAt(admin: any, channelId: string): Promise<number | null> {
-  const { data, error } = await admin
-    .from('messages')
-    .select('at')
-    .eq('channel_id', channelId)
-    .eq('channel', 'text')
-    .eq('direction', 'out')
+/**
+ * A STOP or a START (`stopScope`): for the box it came to, or both when `to` is null, written as the whole
+ * `opted_out_by_box`. The older `opted_out_at` is read, never written by a new word.
+ */
+export async function writeStops(admin: any, stops: StopChannel, word: 'stop' | 'start', to: Mailbox | null, at: string): Promise<void> {
+  const write = stopScope(stops, word, to, at)
+  const { error } = await admin.from('contact_channels').update({ opted_out_by_box: write.optedOutByBox }).eq('id', write.channelId)
+  if (error) throw new Error(`contact_channels: ${error.message}`)
+}
+
+/**
+ * When we last texted this number from `box` (ms), for the opt-out line's first-text and silence rule, which is per pair
+ * of numbers; null when we never did. A line from before two boxes is the team box's, today's one number.
+ */
+export async function lastOurTextAt(admin: any, channelId: string, box: Mailbox): Promise<number | null> {
+  const query = admin.from('messages').select('at').eq('channel_id', channelId).eq('channel', 'text').eq('direction', 'out')
+  const { data, error } = await (box === 'team' ? query.or('mailbox.eq.team,mailbox.is.null') : query.eq('mailbox', box))
     .order('at', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -186,17 +235,24 @@ export type SendOutcome =
 
 /**
  * A text out: planned by `planSend` (which refuses a number that sent STOP, and adds the opt-out line when a rule
- * says), posted to Quo from the company number, and written under the id Quo answers with (`sendOver`, so Quo's own
- * delivery event, before or after, ends on the same line). `tie` is the job the line goes on. Quo turning it away is
- * read by `readQuoRefusal`: for money it pauses texts, and a text Quo takes ends the pause.
+ * says), posted to Quo from `box`'s number (chosen by the caller with `sendBox`, so a box with no number is never
+ * asked), and written under the id Quo answers with (`sendOver`, so Quo's own delivery event, before or after, ends on
+ * the same line), stamped with the box. `tie` is the job the line goes on. Quo turning it away is read by
+ * `readQuoRefusal`: for money it pauses texts, and a text Quo takes ends the pause.
  */
-export async function sendText(admin: any, input: Omit<QuoSendInput, 'fromNumberId'>, tie: JobAt | null): Promise<SendOutcome> {
+export async function sendText(
+  admin: any,
+  input: Omit<QuoSendInput, 'fromNumberId' | 'mailbox'>,
+  tie: JobAt | null,
+  box: Mailbox,
+  boxes: BoxSettings,
+): Promise<SendOutcome> {
   const apiKey = Deno.env.get('QUO_API_KEY')
-  const fromNumberId = Deno.env.get('QUO_PHONE_NUMBER_ID')
+  const fromNumberId = boxes[box].numberId
   if (!apiKey || !fromNumberId) {
     return { ok: false, refused: 'not-set-up', words: 'Texts are not set up yet. Add the Quo key and the company number first.', status: 503 }
   }
-  const plan = planSend({ ...input, fromNumberId })
+  const plan = planSend({ ...input, mailbox: box, fromNumberId })
   if (!plan.ok) return { ok: false, refused: plan.refused, words: plan.words, status: 422 }
   const res = await fetch(QUO_MESSAGES_URL, {
     method: 'POST',

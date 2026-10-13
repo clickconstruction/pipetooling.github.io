@@ -26,6 +26,7 @@ const ROW: MessageRow = {
   summary: 'Greg will price the Boerne sitework by Wednesday.',
   duration_seconds: 252,
   delivery: null,
+  mailbox: 'team',
 }
 
 describe('a row and a line', () => {
@@ -50,6 +51,7 @@ describe('a row and a line', () => {
         media: [],
         optoutLine: null,
         delivery: null,
+        mailbox: 'team',
       },
     })
   })
@@ -63,6 +65,12 @@ describe('a row and a line', () => {
   it('keeps only the values the columns allow', () => {
     expect(lineFromRow({ ...ROW, channel: 'text', direction: 'out', optout_line: 'held', delivery: 'failed' })?.line).toMatchObject({ optoutLine: 'held', delivery: 'failed' })
     expect(lineFromRow({ ...ROW, optout_line: 'maybe', delivery: 'lost' })?.line).toMatchObject({ optoutLine: null, delivery: null })
+  })
+
+  it('reads the box a line came through, and none from before two boxes (R6)', () => {
+    expect(lineFromRow({ ...ROW, mailbox: 'bids' })?.line.mailbox).toBe('bids')
+    expect(lineFromRow({ ...ROW, mailbox: null })?.line.mailbox).toBeNull()
+    expect(lineFromRow({ ...ROW, mailbox: 'office' })?.line.mailbox).toBeNull()
   })
 
   it('writes a line back to the columns, its job in the column it is known by', () => {
@@ -89,6 +97,7 @@ describe('a row and a line', () => {
         summary: 'Greg will price the Boerne sitework by Wednesday.',
         duration_seconds: 252,
         delivery: null,
+        mailbox: 'team',
       },
     })
     expect(rowFromLine({ ...read.line, jobId: null }, [])).toMatchObject({ ok: true, columns: { bid_id: null, project_id: null, jobs_ledger_id: null } })

@@ -2,10 +2,11 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { parseQuoSendBody, seatOf } from '../_shared/gcKernels/lib/quo/rows.ts'
-import { lastOurTextAt, loadSeats, quoCompany, sendText } from '../_shared/quoLines.ts'
+import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
+import { lastOurTextAt, loadBoxes, loadSeats, quoCompany, sendText } from '../_shared/quoLines.ts'
 
 /**
- * quo-send — Messages, cut 5: a text from the reply box's send window, out through Quo from the company number. The
+ * quo-send — Messages, cut 5: a text from the reply box's send window, out through Quo from its box's number. The
  * caller is someone in the office (`gc_office_team()`, asked as them), a real account (never a sample or a digital
  * twin), and never a training account. The body is `parseQuoSendBody`'s: the contact, the number (one of their
  * `contact_channels`), the words, the files as link lines, the opt-out hold and the job it is tied to.
@@ -15,6 +16,11 @@ import { lastOurTextAt, loadSeats, quoCompany, sendText } from '../_shared/quoLi
  * goes to Quo's `POST /v1/messages` as the sender's seat when they have one, and its line is written under the id Quo
  * answers with, so Quo's delivery event lands on the same line whichever comes first. Quo turning a text away for the
  * account's money answers 402 and pauses texts until a text goes (`quo/paused.ts`).
+ *
+ * The box (R6): the one their newest text on this number came to, else the one their kind of contact is for
+ * (`boxForReply`), sent from the company number while that box has no number of its own (`sendBox`). A STOP is read
+ * for that box alone (`stoppedOn`), the opt-out line's first-text and silence rule counts our texts from that box, and
+ * the line keeps the box. No caller picks the box yet.
  *
  * verify_jwt is off in config.toml, as for gc-customer-email: the caller's session is checked here.
  */
@@ -53,12 +59,30 @@ serve(async (req) => {
 
     const { data: channel } = await admin
       .from('contact_channels')
-      .select('id, contact_id, kind, value, opted_out_at')
+      .select('id, contact_id, kind, value, opted_out_at, opted_out_by_box')
       .eq('id', input.channelId)
       .maybeSingle()
     if (!channel || channel.contact_id !== input.contactId || channel.kind !== 'phone') {
       return refuse('notFound', 'That number is not one of theirs.', 404)
     }
+
+    // The box it goes from: the one they last texted on this number, else their kind's, else the company number's.
+    const { data: contact, error: contactError } = await admin.from('contacts').select('kind').eq('id', input.contactId).single()
+    if (contactError) throw new Error(`contacts: ${contactError.message}`)
+    const { data: lastIn, error: lastInError } = await admin
+      .from('messages')
+      .select('mailbox')
+      .eq('channel_id', channel.id)
+      .eq('direction', 'in')
+      .not('mailbox', 'is', null)
+      .order('at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (lastInError) throw new Error(`messages: ${lastInError.message}`)
+    const boxes = await loadBoxes(admin)
+    const wroteTo = ((lastIn as { mailbox: Mailbox } | null)?.mailbox ?? null) as Mailbox | null
+    const box = sendBox(boxForReply(wroteTo, { kind: (contact as { kind: string }).kind }), boxes)
+    const stops = { channelId: channel.id, optedOutAt: channel.opted_out_at, optedOutByBox: channel.opted_out_by_box ?? {} }
 
     const seats = await loadSeats(admin)
     const outcome = await sendText(
@@ -68,10 +92,10 @@ serve(async (req) => {
         contactId: input.contactId,
         channelId: channel.id,
         to: channel.value,
-        optedOut: Boolean(channel.opted_out_at),
+        optedOut: stoppedOn(stops, box),
         body: input.body,
         links: input.links,
-        lastOurTextAt: await lastOurTextAt(admin, channel.id),
+        lastOurTextAt: await lastOurTextAt(admin, channel.id, box),
         held: input.held,
         now: Date.now(),
         company: quoCompany(),
@@ -79,9 +103,11 @@ serve(async (req) => {
         jobId: input.tie?.jobId ?? null,
       },
       input.tie,
+      box,
+      boxes,
     )
     if (!outcome.ok) return refuse(outcome.refused, outcome.words, outcome.status)
-    return json({ ok: true, messageId: outcome.messageId, quoId: outcome.quoId, segments: outcome.segments })
+    return json({ ok: true, messageId: outcome.messageId, quoId: outcome.quoId, segments: outcome.segments, mailbox: box })
   } catch (e) {
     console.error('[quo-send]', e instanceof Error ? e.message : String(e))
     return refuse('failed', 'The text did not go. Try again.', 500)

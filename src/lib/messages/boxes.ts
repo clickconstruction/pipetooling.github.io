@@ -7,9 +7,10 @@
  * and section 7, decision 5. Pure: the addresses and the numbers are Settings', never written here.
  *
  * `compose.ts` re-exports the reads a send needs (`mailboxFor`, `fromNumberFor`, `parseBoxSettings`), and the reply box
- * names its from line with them once the sends go from the boxes (`SENDS_FROM_BOXES` in `replyIo.ts`).
+ * names its from line with them once the sends go from the boxes (`SENDS_FROM_BOXES` in `replyIo.ts`). `quo-webhook`
+ * and `quo-send` read them on the edge (R6 PR 4): the box a call or text came to, the one a text goes from
+ * (`sendBox`), and a STOP to one number.
  */
-import { normalizeChannel } from '../contacts/kernel'
 
 /** The box a line came in on or goes out from. The same union as `followUp/newLane.ts`'s, which imports it once both land. */
 export type Mailbox = 'team' | 'bids'
@@ -132,6 +133,19 @@ export function fromNumberFor(
   return { box, phone: s.phone, numberId: s.numberId }
 }
 
+/**
+ * The box a text goes from: the one wanted when it has a number, else the team box, today's one number. So the GC side's
+ * trades keep getting texts from the company number until bids has a number of its own, and the line says which.
+ */
+export function sendBox(wanted: Mailbox, settings: BoxSettings): Mailbox {
+  return settings[wanted].numberId ? wanted : 'team'
+}
+
+/** How a line names one of our numbers: "the company number", "the bids number". */
+export function numberName(box: Mailbox): string {
+  return box === 'team' ? 'the company number' : 'the bids number'
+}
+
 /** The box they last wrote to: their newest line in that names one. Null when none does (a line from before R6). */
 export function lastWroteTo(lines: ReadonlyArray<{ direction: string; at: string; mailbox?: Mailbox | null }>): Mailbox | null {
   let newest: { at: number; box: Mailbox } | null = null
@@ -164,7 +178,7 @@ export function phoneWords(phone: string): string {
 export function fromWords(box: Mailbox, channel: 'text' | 'email', settings: BoxSettings, companyName: string): string[] {
   const s = settings[box]
   if (channel === 'email') return [`from ${s.address}`, companyName]
-  return [`from ${box === 'team' ? 'the company number' : 'the bids number'} ${phoneWords(s.phone)}`, companyName]
+  return [`from ${numberName(box)} ${phoneWords(s.phone)}`, companyName]
 }
 
 /** What the reader knows of where a line came in: R6's `messages.mailbox`, the Quo number id it came to, the address it was sent to. */
@@ -176,7 +190,15 @@ export interface InboundTo {
   toAddress?: string | null
 }
 
-const bareAddress = (raw: string) => normalizeChannel('email', /<([^>]+)>/.exec(raw)?.[1] ?? raw)
+/**
+ * An address as a channel's key reads it, from "Click Bids <bids@…>" or the bare address: trimmed, lower case, and empty
+ * for words that are not an address. `normalizeCustomerEmail`'s rule, kept here so the edge's copy of this file
+ * (`quo-webhook`, `quo-send`) needs none of the customer kernels.
+ */
+const bareAddress = (raw: string): string => {
+  const address = (/<([^>]+)>/.exec(raw)?.[1] ?? raw).trim().toLowerCase()
+  return address.includes('@') ? address : ''
+}
 
 /** The box a line came in on: its `mailbox` once R6's SQL fills it, else the number it came to, else the address. Null: not known. */
 export function boxOfInbound(line: InboundTo, settings: BoxSettings): Mailbox | null {
@@ -186,9 +208,8 @@ export function boxOfInbound(line: InboundTo, settings: BoxSettings): Mailbox | 
     const box = MAILBOXES.find((b) => settings[b].numberId === id)
     if (box) return box
   }
-  const to = line.toAddress?.trim()
-  if (to) {
-    const address = bareAddress(to)
+  const address = bareAddress(line.toAddress ?? '')
+  if (address) {
     const box = MAILBOXES.find((b) => bareAddress(settings[b].address) === address)
     if (box) return box
   }
@@ -226,10 +247,14 @@ export interface StopWrite {
 /**
  * A STOP to one of our numbers silences that number for this person and never the other, as carriers scope it to the
  * pair. A START reopens the one it came to. A word to a number we cannot place reaches both, so a STOP is never missed.
+ * A STOP again keeps the first stamp.
  */
 export function stopScope(channel: StopChannel, word: 'stop' | 'start', to: Mailbox | null, at: string): StopWrite {
   const boxes = to ? [to] : [...MAILBOXES]
-  const next: OptedOutByBox = { ...(channel.optedOutByBox ?? {}) }
-  for (const box of boxes) next[box] = word === 'stop' ? at : null
+  const byBox = channel.optedOutByBox ?? {}
+  const next: OptedOutByBox = { ...byBox }
+  // A STOP to a box already stopped keeps when they first stopped: its own stamp, or the older one that stops every box.
+  const since = (box: Mailbox): string | null => (box in byBox ? (byBox[box] ?? null) : channel.optedOutAt)
+  for (const box of boxes) next[box] = word === 'stop' ? (since(box) ?? at) : null
   return { channelId: channel.channelId, boxes, optedOutByBox: next }
 }
