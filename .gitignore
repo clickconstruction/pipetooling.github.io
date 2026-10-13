@@ -18,6 +18,9 @@ dist-ssr
 # Vite transient config timestamp artifacts
 vite.config.ts.timestamp-*.mjs
 
+# Vite dependency pre-bundle cache (regenerated on demand; normally node_modules/.vite)
+.vite/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
