@@ -79,6 +79,11 @@ export interface Contact {
   customerId?: string | null
   /** The trade partner they are, or are at: its main contact, or someone it named. The loader fills it. */
   gcCompanyId?: string | null
+  /**
+   * The language their customer's row keeps (`customers.language`), for a customer and each person at one. Unset:
+   * English, never guessed from a name. The loader fills it; `messages/customerLang.ts` holds Spanish behind the gate.
+   */
+  lang?: 'en' | 'es'
 }
 
 export function contactById(contacts: readonly Contact[], id: string): Contact | undefined {
