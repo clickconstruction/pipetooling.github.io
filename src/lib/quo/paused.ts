@@ -1,0 +1,139 @@
+/**
+ * Messages, cut 5: texts paused while Quo will not take one for the account's money (the owner's ask, 2026-10-12). Pure:
+ * `sendText` (`supabase/functions/_shared/quoLines.ts`, the path of `quo-send` and the webhook's HELP answer) reads
+ * Quo's refusal of a text with `readQuoRefusal`, and one that reads as money pauses texts. The pause is the
+ * `app_settings` row `messages_quo_paused_v1`: the functions write it (the service role), and everyone signed in reads
+ * it, for the send window's strip and the line under Settings → Phone and texts → Company phone seats.
+ *
+ * Quo documents no refusal for an empty prepaid balance (API version 2026-03-30, `POST /v1/messages`). It documents 402
+ * Subscription Expired, 400 A2P Registration Not Approved and 403 A2P 10DLC Daily Message Cap Reached (`QUO_CODES`). So a
+ * 402, or a refusal whose words name money, reads as paused. Any other 403 is a permission or a setting: never paused,
+ * so the owner is not sent to top up a balance that is funded.
+ *
+ * The next text Quo takes ends the pause, and so does a text Quo's webhook says reached a phone. A failed or undelivered
+ * text never pauses: its `errorCode` is the carrier's raw code, and none names the balance. The row keeps the time of the
+ * newest text that decided it (`at`), so a slow answer for an older text never undoes a newer one (`nextPause`). A text
+ * Quo takes while nothing is paused writes nothing.
+ */
+import { calendarYmdInAppTzFromIso, formatWorkDateYmdWeekdayShortFriendly, ymdDaysBetween } from '../../utils/dateUtils'
+
+/** The `app_settings` key of the pause. */
+export const QUO_PAUSED_KEY = 'messages_quo_paused_v1'
+
+/** Quo's billing page, where the balance is topped up: Settings → Plan & billing. */
+export const QUO_BILLING_URL = 'https://my.quo.com/settings/billing'
+
+/** Quo's own codes for the refusals it documents. */
+export const QUO_CODES = { subscriptionExpired: '0201402', notRegistered: '0206400', dailyCap: '0204403' } as const
+
+export const TEXTS_PAUSED = 'Texts are paused until the phone balance is topped up.'
+export const TEXTS_NOT_REGISTERED = 'Texts start once the carriers approve the company number.'
+export const TEXTS_DAILY_CAP = 'The company number sent as many texts today as the carriers allow. Send it as an email, or try again tomorrow.'
+
+/** What Quo turning a text away means here: paused, the carriers' approval, the daily cap, or Quo's own reason. */
+export type QuoRefusal = 'paused' | 'not-registered' | 'daily-cap' | 'quo'
+
+/** The words that name money in a refusal Quo does not document. */
+const MONEY = /\b(balance|funds?|credits?|billing|payments?|(un)?paid|top.?up)\b/i
+
+const text = (v: unknown): string => (typeof v === 'string' ? v : '')
+
+/**
+ * Quo's refusal of a text, read: what it means, the words the sender reads and the status `quo-send` answers with. A
+ * paused text is 402, the carriers' approval 503 like texts not set up, the daily cap 429 and anything else 502. `why`
+ * is Quo's status, code and title for the log, never its message, which may carry a number.
+ */
+export function readQuoRefusal(status: number, body: unknown): { refused: QuoRefusal; words: string; status: number; why: string } {
+  const top = body && typeof body === 'object' && !Array.isArray(body) ? (body as Record<string, unknown>) : {}
+  const err = top.error && typeof top.error === 'object' && !Array.isArray(top.error) ? (top.error as Record<string, unknown>) : top
+  const code = typeof err.code === 'number' ? String(err.code).padStart(7, '0') : text(err.code).trim()
+  const inner = Array.isArray(err.errors) ? err.errors.map((e) => (e && typeof e === 'object' ? text((e as Record<string, unknown>).message) : '')) : []
+  const words = [text(err.title), text(err.message), text(err.description), ...inner].join(' ')
+  const why = [String(status), code, text(err.title).trim()].filter(Boolean).join(' ')
+  if (code === QUO_CODES.notRegistered) return { refused: 'not-registered', words: TEXTS_NOT_REGISTERED, status: 503, why }
+  if (code === QUO_CODES.dailyCap) return { refused: 'daily-cap', words: TEXTS_DAILY_CAP, status: 429, why }
+  if (status === 402 || MONEY.test(words)) return { refused: 'paused', words: TEXTS_PAUSED, status: 402, why }
+  return { refused: 'quo', words: `Quo did not take the text. It answered ${status}.`, status: 502, why }
+}
+
+/** The row: since when texts are paused and why, or nothing paused, and the newest text that decided it. */
+export interface QuoPause {
+  /** The first refused text's own time (ISO), or null when texts go. */
+  since: string | null
+  reason: 'balance' | null
+  /** The newest deciding text's own time (ISO). */
+  at: string
+}
+
+/** A text's word on the pause, at the text's own time: Quo refused it for money, or Quo took it. */
+export type PauseChange = { kind: 'pause' | 'go'; at: string }
+
+const iso = (v: unknown): string | null => (typeof v === 'string' && Number.isFinite(Date.parse(v)) ? v : null)
+
+/** The row's words read, or null with no row or words that do not read as one. A row with no `at` was decided at `since`. */
+export function readPause(row: string | null | undefined): QuoPause | null {
+  if (!row) return null
+  let v: unknown
+  try {
+    v = JSON.parse(row)
+  } catch {
+    return null
+  }
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return null
+  const o = v as Record<string, unknown>
+  const since = iso(o.since)
+  const at = iso(o.at) ?? since
+  return at ? { since, reason: since ? 'balance' : null, at } : null
+}
+
+/** The row's words, as `readPause` reads them. */
+export function pauseText(pause: QuoPause): string {
+  return JSON.stringify({ since: pause.since, reason: pause.reason, at: pause.at })
+}
+
+/** Since when texts are paused (ISO), or null when they go. */
+export function pausedSince(pause: QuoPause | null): string | null {
+  return pause?.since ?? null
+}
+
+/**
+ * The row after a text's word, or null when it stays as it is: the word is about a text no newer than the row's `at`,
+ * or Quo took a text while nothing was paused. A refusal while paused keeps the first refusal's `since`.
+ */
+export function nextPause(prev: QuoPause | null, change: PauseChange): QuoPause | null {
+  const t = Date.parse(change.at)
+  if (!Number.isFinite(t)) return null
+  if (prev && Date.parse(prev.at) >= t) return null
+  if (change.kind === 'go') return prev?.since ? { since: null, reason: null, at: change.at } : null
+  return { since: prev?.since ?? change.at, reason: 'balance', at: change.at }
+}
+
+/** The pause row's read and conditional write, as the functions do them. */
+export interface PauseStore {
+  /** The row's words, null for a row with none, or undefined when there is no row yet. */
+  read(): Promise<string | null | undefined>
+  /** Writes `next` only while the row still holds `prev` (undefined: only while there is still no row). True when it wrote. */
+  write(prev: string | null | undefined, next: string): Promise<boolean>
+}
+
+/** How many times the row is read and written over before a word on it is dropped. */
+const PAUSE_TRIES = 3
+
+/** A text's word on the pause, written over the row as read. A write that finds the row changed meanwhile reads it again. */
+export async function notePause(store: PauseStore, change: PauseChange): Promise<'wrote' | 'unchanged' | 'kept-changing'> {
+  for (let i = 0; i < PAUSE_TRIES; i += 1) {
+    const prev = await store.read()
+    const next = nextPause(readPause(prev), change)
+    if (!next) return 'unchanged'
+    if (await store.write(prev, pauseText(next))) return 'wrote'
+  }
+  return 'kept-changing'
+}
+
+/** The line under the seats card while texts are paused: "Texts are paused since Wed, Oct 7. Top up the phone balance." */
+export function pausedLine(sinceIso: string, nowIso: string): string {
+  const day = calendarYmdInAppTzFromIso(sinceIso)
+  const days = ymdDaysBetween(day, calendarYmdInAppTzFromIso(nowIso))
+  const when = days === 0 ? 'today' : days === 1 ? 'yesterday' : formatWorkDateYmdWeekdayShortFriendly(day)
+  return `Texts are paused since ${when}. Top up the phone balance.`
+}
