@@ -23,6 +23,8 @@ import {
   holdCount,
   needsYouCount,
   noteBackToast,
+  OFF_FOLLOW_UP,
+  onFollowUp,
   openOwed,
   portalNeeds,
   snoozedWords,
@@ -158,6 +160,38 @@ describe('followUpQueue on the prototype’s Friday', () => {
     expect(quiet.needsReply.map((r) => r.contactId)).toEqual(['priya', 'unk1', 'greg'])
     const monday = followUpQueue({ ...demo, contacts: withContact('elena', { state: 'snoozed', snoozedUntil: '2026-10-05' }), todayYmd: '2026-10-05' })
     expect(monday.needsReply.map((r) => r.contactId)).toContain('elena')
+  })
+})
+
+describe('supply houses and candidates are off Follow up (the owner, 2026-10-13)', () => {
+  const kinds = (patch: Record<string, QueueContact['kind']>) => DEMO_FOLLOW_UP_CONTACTS.map((c) => (patch[c.id] ? { ...c, kind: patch[c.id]! } : c))
+  const nudges = [
+    { contactId: 'tom', stepId: 'invited', why: 'quiet 2 days' },
+    { contactId: 'greg', stepId: 'quote', why: 'waiting on their quote' },
+  ]
+
+  it('names the two kinds, and only those', () => {
+    expect([...OFF_FOLLOW_UP]).toEqual(['supply_house', 'candidate'])
+    const all: QueueContact['kind'][] = ['customer', 'trade', 'arch', 'lead', 'supply_house', 'candidate', 'sub', 'unknown']
+    expect(all.filter((k) => !onFollowUp(k))).toEqual(['supply_house', 'candidate'])
+  })
+
+  it('leaves them out of every section, the nudges and the badge', () => {
+    const queue = followUpQueue({ ...demo, contacts: kinds({ priya: 'supply_house', greg: 'candidate' }) }, { nudges: () => nudges })
+    expect(queue.needsReply.map((r) => r.contactId)).toEqual(['unk1', 'elena'])
+    expect(queue.needsYou).toEqual([])
+    expect(queue.weOwe).toEqual([])
+    expect(queue.nudges.map((n) => n.contactId)).toEqual(['tom'])
+    expect(queue.count).toBe(2)
+  })
+
+  it('keeps a lead and a sub on it like anyone else', () => {
+    const queue = followUpQueue({ ...demo, contacts: kinds({ priya: 'sub', greg: 'lead' }) }, { nudges: () => nudges })
+    expect(queue.needsReply.map((r) => r.contactId)).toEqual(['priya', 'unk1', 'elena', 'greg'])
+    expect(queue.needsYou.map((r) => [r.kind, r.contactId])).toEqual([['back', 'priya']])
+    expect(queue.weOwe.map((r) => r.contactId)).toEqual(['priya'])
+    expect(queue.nudges).toEqual(nudges)
+    expect(queue.count).toBe(4)
   })
 })
 

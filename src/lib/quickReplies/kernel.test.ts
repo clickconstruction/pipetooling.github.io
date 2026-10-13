@@ -8,6 +8,8 @@ import { SEED_FLOWS } from '../flows/seed'
 import { plainWordsFailures } from '../plainWords'
 import {
   FIND_NOTE,
+  QR_KIND_ORDER,
+  QR_KINDS,
   REMOVE_ASK,
   addQuickReply,
   editQuickReply,
@@ -213,7 +215,12 @@ describe('the steps a line can belong to', () => {
     expect(STEPS.customer?.map((s) => s.id)).toEqual(['agreement', 'asked', 'bid', 'yes', 'contract', 'start', 'onsite', 'payapp', 'close', 'warranty', 'co'])
     expect(STEPS.arch?.map((s) => s.name)).toEqual(['Plans in', 'Questions', 'Addenda', 'Submittals', 'Certify pay apps'])
     expect(STEPS.any).toBeUndefined()
-    expect(stepsByKind({})).toEqual({ trade: [], customer: [], arch: [] })
+    expect(stepsByKind({})).toEqual({ trade: [], customer: [], arch: [], lead: [], sub: [], supply_house: [], candidate: [] })
+  })
+
+  it('has no steps for the four kinds of 2026-10-13: three have no flow, and a sub’s has no steps yet', () => {
+    expect([STEPS.lead, STEPS.sub, STEPS.supply_house, STEPS.candidate]).toEqual([[], [], [], []])
+    expect(qrTagWords({ for: 'sub', stepId: 'asked' }, STEPS)).toEqual(['for subs', 'on no step'])
   })
 
   it('guesses only steps the flows have', () => {
@@ -291,7 +298,7 @@ describe('the Edit quick replies window', () => {
   const WITH = [...LINES.filter((q) => q.id !== 'q8'), removed, someoneElses]
 
   it('counts each tab over the team’s lines and the person’s own', () => {
-    expect(editorCounts(WITH, 'robert')).toEqual({ all: 18, trade: 9, customer: 4, arch: 2, any: 3, mine: 3, removed: 1 })
+    expect(editorCounts(WITH, 'robert')).toEqual({ all: 18, trade: 9, customer: 4, arch: 2, lead: 0, sub: 0, supply_house: 0, candidate: 0, any: 3, mine: 3, removed: 1 })
     expect(editorCounts(WITH, 'rosa')).toMatchObject({ all: 16, mine: 1, any: 3 })
   })
 
@@ -328,6 +335,28 @@ describe('the Edit quick replies window', () => {
       ['Customers · Change orders', ['q15']],
       ['Architects · Submittals', ['q18']],
       ['Architects · Certify pay apps', ['q19']],
+      ['Anyone', ['q14', 'q5', 'q11']],
+    ])
+  })
+
+  it('gives a lead, a sub, a supply house and a candidate a tab and a group once a line is for them, after the architects', () => {
+    const forLead = line('q22', { scope: 'team', text: 'Thanks for calling. When can we come look?', for: 'lead', stepId: null, addedBy: 'rosa', addedAt: at(10, 2, 9), uses: {} })
+    const forSupply = line('q23', { scope: 'team', text: 'Please send the quote to bids.', for: 'supply_house', stepId: null, addedBy: 'rosa', addedAt: at(10, 2, 9), uses: {} })
+    const rows = [...LINES, forLead, forSupply]
+    expect(editorTabs(editorCounts(rows, 'robert')).map((t) => `${t.label} · ${t.count}`)).toEqual([
+      'All · 21',
+      'Trade partners · 10',
+      'Customers · 4',
+      'Architects · 2',
+      'Leads · 1',
+      'Supply houses · 1',
+      'Anyone · 3',
+      'Mine · 3',
+    ])
+    const groups = editorGroups(editorRows(rows, 'robert', 'all', ''), STEPS)
+    expect(groups.slice(-3).map((g) => [g.title.join(' · '), ids(g.rows)])).toEqual([
+      ['Leads · no step', ['q22']],
+      ['Supply houses · no step', ['q23']],
       ['Anyone', ['q14', 'q5', 'q11']],
     ])
   })
@@ -427,6 +456,20 @@ describe('a line’s versions', () => {
       note: 'It stays here and can be brought back.',
     })
     expect(versionWords({ by: 'robert', at: NOW, kind: 'restored' }, STEPS).did).toBe('brought it back')
+  })
+})
+
+describe('the seven kinds of contact, as the strip and the editor name them', () => {
+  it('names the four kinds of 2026-10-13 after the three that were, and anyone last', () => {
+    expect(QR_KIND_ORDER).toEqual(['trade', 'customer', 'arch', 'lead', 'sub', 'supply_house', 'candidate', 'any'])
+    expect(QR_KIND_ORDER.slice(3, 7).map((k) => QR_KINDS[k])).toEqual(['leads', 'subs', 'supply houses', 'candidates'])
+    expect(qrKindOf('supply_house')).toBe('supply_house')
+    expect(qrStripCount([], 'candidate')).toBe('0 for candidates')
+  })
+
+  it('reads each in plain words', () => {
+    const sentences = QR_KIND_ORDER.map((k) => `These lines are for ${QR_KINDS[k]}.`)
+    expect(sentences.flatMap((s) => plainWordsFailures(s))).toEqual([])
   })
 })
 

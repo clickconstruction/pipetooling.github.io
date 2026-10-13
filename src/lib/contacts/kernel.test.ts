@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEMO_CONTACTS, DEMO_MESSAGES } from '../messages/messagesDemo'
 import { threadOf } from '../messages/thread'
+import { plainWordsFailures } from '../plainWords'
 import {
   applyNamePlan,
   contactById,
@@ -8,12 +9,15 @@ import {
   greetingName,
   initials,
   isOptedOut,
+  kindOf,
   kindWord,
   matchChannel,
   nameContact,
   normalizeChannel,
   textableNumbers,
   type Contact,
+  type ContactKind,
+  type ContactRecord,
 } from './kernel'
 
 const who = (id: string): Contact => contactById(DEMO_CONTACTS, id)!
@@ -46,6 +50,34 @@ describe('what we call a contact (the prototype’s firstName, with main’s tit
     expect(kindWord('trade')).toBe('trade partner')
     expect(kindWord('arch')).toBe('architect')
     expect(kindWord('unknown')).toBe('who is this?')
+  })
+
+  it('says the four kinds of 2026-10-13 in plain words', () => {
+    const four: ContactKind[] = ['lead', 'supply_house', 'candidate', 'sub']
+    expect(four.map(kindWord)).toEqual(['lead', 'supply house', 'candidate', 'sub'])
+    expect(four.flatMap((k) => plainWordsFailures(`Greg is a ${kindWord(k)}.`))).toEqual([])
+  })
+})
+
+describe('seven kinds of contact: what a record makes them', () => {
+  const at = (table: NonNullable<ContactRecord>['table']) => ({ table, id: 'r1' }) as NonNullable<ContactRecord>
+
+  it('reads each table as the kind Who is this? first offers', () => {
+    expect(kindOf(at('customers'))).toBe('customer')
+    expect(kindOf(at('customer_contact_persons'))).toBe('customer')
+    expect(kindOf(at('gc_companies'))).toBe('trade')
+    expect(kindOf(at('gc_company_people'))).toBe('trade')
+    expect(kindOf(at('prospects'))).toBe('lead')
+    expect(kindOf(at('supply_houses'))).toBe('supply_house')
+    expect(kindOf(at('team_prospects'))).toBe('candidate')
+  })
+
+  it('tells a sub from anyone else on the roster by the roster kind', () => {
+    expect(kindOf(at('people'), 'sub')).toBe('sub')
+    expect(kindOf(at('people'), 'helper')).toBe('trade')
+    expect(kindOf(at('people'), 'master_technician')).toBe('trade')
+    expect(kindOf(at('people'), null)).toBe('trade')
+    expect(kindOf(at('people'))).toBe('trade')
   })
 })
 
@@ -162,6 +194,23 @@ describe('Who is this? re-points and keeps the thread', () => {
     const again: Contact = { ...who('unk1'), id: 'unk2', channels: [{ id: 'unk2-phone', kind: 'phone', value: '210.555.0113', optedOutAt: null }] }
     const plan = nameContact([...DEMO_CONTACTS, again], 'unk2', { record: { table: 'gc_companies', id: 'hillside' }, kind: 'trade', name: 'Greg Paulk', company: 'Hillside Excavation' })
     expect(plan?.way === 'merge' && plan.into.channels.map((c) => c.id)).toEqual(['greg-phone', 'greg-email'])
+  })
+
+  it('names a number as a sub on the roster, a lead or a candidate, each one person on their own row', () => {
+    const sub = nameContact(DEMO_CONTACTS, 'unk1', { record: { table: 'people', id: 'p-ray' }, kind: kindOf({ table: 'people', id: 'p-ray' }, 'sub'), name: 'Ray Flores', company: '' })
+    expect(sub).toMatchObject({ way: 'repoint', contact: { id: 'unk1', kind: 'sub', name: 'Ray Flores', record: { table: 'people', id: 'p-ray' } } })
+    const lead = nameContact(DEMO_CONTACTS, 'unk1', { record: { table: 'prospects', id: 'pr-1' }, kind: 'lead', name: 'Kevin Alvarez', company: '' })
+    expect(lead).toMatchObject({ way: 'repoint', contact: { kind: 'lead', record: { table: 'prospects', id: 'pr-1' } } })
+    const candidate = nameContact(DEMO_CONTACTS, 'unk1', { record: { table: 'team_prospects', id: 'tp-1' }, kind: 'candidate', name: 'Luis Ortega', company: '' })
+    expect(candidate).toMatchObject({ way: 'repoint', contact: { kind: 'candidate', record: { table: 'team_prospects', id: 'tp-1' } } })
+  })
+
+  it('a supply house holds more people than its own, each by name', () => {
+    const counter: Contact = { ...who('unk1'), id: 'sh-main', kind: 'supply_house', name: 'Hill Country Pipe Supply', record: { table: 'supply_houses', id: 'sh-1' }, channels: [] }
+    const contacts = [...DEMO_CONTACTS, counter]
+    const ray = nameContact(contacts, 'unk1', { record: { table: 'supply_houses', id: 'sh-1' }, kind: 'supply_house', name: 'Ray', company: 'Hill Country Pipe Supply' })
+    expect(ray).toMatchObject({ way: 'repoint', contact: { id: 'unk1', kind: 'supply_house', name: 'Ray' } })
+    expect(nameContact(contacts, 'unk1', { record: { table: 'supply_houses', id: 'sh-1' }, kind: 'supply_house', name: 'hill country pipe supply', company: '' })).toMatchObject({ way: 'merge', into: { id: 'sh-main' } })
   })
 
   it('only names an unknown number', () => {

@@ -83,6 +83,11 @@ function fromRecord(record: ContactRecord, named: boolean, records: ContactRecor
     }
     case 'people':
       return { ...none, name: trimmed(byId(records.people, record.id)?.name) }
+    // The four kinds of 2026-10-13: the loader reads their records in R0's third PR.
+    case 'prospects':
+    case 'supply_houses':
+    case 'team_prospects':
+      return none
   }
 }
 

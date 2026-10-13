@@ -46,11 +46,14 @@ export type StepRef = Pick<FlowStep, 'id' | 'name'>
 /** The flow's steps for each kind of person, in the flow's order. */
 export type StepsByKind = Partial<Record<QuickReplyFor, readonly StepRef[]>>
 
-/** The steps a line can belong to, by who it is for, from the flows (the seed until the flows table is read). Anyone's lines have none. */
+/**
+ * The steps a line can belong to, by who it is for, from the flows (the seed until the flows table is read). Anyone's
+ * lines have none. A lead, a supply house and a candidate have no flow, and a sub's has no steps yet, so theirs are empty.
+ */
 export function stepsByKind(flows: Readonly<Partial<Record<FlowKind, FlowDef>>>): StepsByKind {
-  const of = (kind: Exclude<QuickReplyFor, 'any'>): StepRef[] =>
+  const of = (kind: Extract<QuickReplyFor, FlowKind>): StepRef[] =>
     (flows[kind]?.lanes ?? []).flatMap((lane) => lane.steps.map((step) => ({ id: step.id, name: step.name })))
-  return { trade: of('trade'), customer: of('customer'), arch: of('arch') }
+  return { trade: of('trade'), customer: of('customer'), arch: of('arch'), lead: [], sub: of('sub'), supply_house: [], candidate: [] }
 }
 
 /** Who a line is for, as the strip and the editor name them. */
@@ -58,11 +61,18 @@ export const QR_KINDS: Readonly<Record<QuickReplyFor, string>> = {
   trade: 'trade partners',
   customer: 'customers',
   arch: 'architects',
+  lead: 'leads',
+  supply_house: 'supply houses',
+  candidate: 'candidates',
+  sub: 'subs',
   any: 'anyone',
 }
 
-/** The editor's groups run in this order of who the line is for. */
-export const QR_KIND_ORDER: readonly QuickReplyFor[] = ['trade', 'customer', 'arch', 'any']
+/**
+ * The editor's groups run in this order of who the line is for: the three that were, then the four kinds of
+ * 2026-10-13 in the Messages page's order of its filters, then anyone.
+ */
+export const QR_KIND_ORDER: readonly QuickReplyFor[] = ['trade', 'customer', 'arch', 'lead', 'sub', 'supply_house', 'candidate', 'any']
 
 export function qrKindOf(kind: ContactKind): QuickReplyFor {
   return kind === 'unknown' ? 'any' : kind
@@ -279,24 +289,26 @@ function editorLines(lines: readonly QuickReply[], me: string): QuickReply[] {
 export function editorCounts(lines: readonly QuickReply[], me: string): Record<QrEditorTab, number> {
   const all = editorLines(lines, me)
   const live = all.filter((q) => !q.removed)
+  const byKind = Object.fromEntries(QR_KIND_ORDER.map((kind) => [kind, live.filter((q) => q.for === kind).length])) as Record<QuickReplyFor, number>
   return {
     all: live.length,
-    trade: live.filter((q) => q.for === 'trade').length,
-    customer: live.filter((q) => q.for === 'customer').length,
-    arch: live.filter((q) => q.for === 'arch').length,
-    any: live.filter((q) => q.for === 'any').length,
+    ...byKind,
     mine: live.filter((q) => q.scope === 'mine').length,
     removed: all.filter((q) => q.removed).length,
   }
 }
 
-/** The tabs in their order; Removed shows only once something is removed. */
+/** The four kinds of 2026-10-13: each has a tab only once a line is for them. */
+const TAB_ONCE_USED: readonly QuickReplyFor[] = ['lead', 'sub', 'supply_house', 'candidate']
+
+/** The tabs in their order; Removed, and a tab for one of the four newer kinds, show only once they hold a line. */
 export function editorTabs(counts: Record<QrEditorTab, number>): Array<{ tab: QrEditorTab; label: string; count: number }> {
   const tabs: Array<[QrEditorTab, string]> = [
     ['all', 'All'],
     ['trade', 'Trade partners'],
     ['customer', 'Customers'],
     ['arch', 'Architects'],
+    ...TAB_ONCE_USED.filter((kind) => counts[kind] > 0).map((kind): [QrEditorTab, string] => [kind, QR_KINDS[kind].charAt(0).toUpperCase() + QR_KINDS[kind].slice(1)]),
     ['any', 'Anyone'],
     ['mine', 'Mine'],
   ]

@@ -8,10 +8,15 @@
  * in `contact_info`, and the people at one are its `customer_contact_persons`; a trade partner's main contact is its
  * `gc_companies` row, and anyone else it named is a `gc_company_people` row; the roster is `people`.
  * `customer_contacts` and `gc_customer_contacts` are logs of calls, not people, so nothing points at them.
+ *
+ * Seven kinds of contact (the owner's call of 2026-10-13, `RESIDENTIAL_BUILD_PLAN.md` R0): a customer, a trade
+ * partner and an architect, and four more. A lead is a `prospects` row until they book; a supply house is a
+ * `supply_houses` row; a candidate is a row on the Team hiring board, `team_prospects`; a sub is a `people` row whose
+ * roster kind is `sub`, so a sub and a roster person point at the same table and `kindOf` tells them apart.
  */
 import { normalizeCustomerEmail, normalizeCustomerPhone } from '../customerSimilarity'
 
-export type ContactKind = 'customer' | 'trade' | 'arch' | 'unknown'
+export type ContactKind = 'customer' | 'trade' | 'arch' | 'lead' | 'supply_house' | 'candidate' | 'sub' | 'unknown'
 
 /** The record a contact is. Null: a number nobody has named yet, the one contact with no record. */
 export type ContactRecord =
@@ -22,7 +27,14 @@ export type ContactRecord =
   /** A trade partner's main contact. */
   | { table: 'gc_companies'; id: string }
   | { table: 'gc_company_people'; id: string }
+  /** Someone on the roster: a sub when their roster kind is `sub`. */
   | { table: 'people'; id: string }
+  /** A lead on Prospects, until they book and become a customer. */
+  | { table: 'prospects'; id: string }
+  /** A supply house. */
+  | { table: 'supply_houses'; id: string }
+  /** A candidate on the Team hiring board. */
+  | { table: 'team_prospects'; id: string }
   | null
 
 export type ChannelKind = 'phone' | 'email'
@@ -107,12 +119,44 @@ const KIND_WORD: Record<ContactKind, string> = {
   customer: 'customer',
   trade: 'trade partner',
   arch: 'architect',
+  lead: 'lead',
+  supply_house: 'supply house',
+  candidate: 'candidate',
+  sub: 'sub',
   unknown: 'who is this?',
 }
 
 /** "trade partner": what they are to us, for the line under a name. */
 export function kindWord(kind: ContactKind): string {
   return KIND_WORD[kind]
+}
+
+/** The roster kind that makes someone on `people` a sub (`people_kind_check`). */
+export const SUB_ROSTER_KIND = 'sub'
+
+/**
+ * What a record makes them, the first answer *Who is this?* offers: a customer's row and a person at one are a
+ * customer, since an architect is the office's pick; a trade partner and the people it named are a trade partner; a
+ * prospect is a lead, a supply house a supply house, a hiring board row a candidate. On the roster, `rosterKind` is
+ * the `people.kind` column: `sub` is a sub, and anyone else on the roster is a trade partner, as the picker has said.
+ */
+export function kindOf(record: NonNullable<ContactRecord>, rosterKind?: string | null): Exclude<ContactKind, 'unknown'> {
+  switch (record.table) {
+    case 'customers':
+    case 'customer_contact_persons':
+      return 'customer'
+    case 'gc_companies':
+    case 'gc_company_people':
+      return 'trade'
+    case 'people':
+      return rosterKind === SUB_ROSTER_KIND ? 'sub' : 'trade'
+    case 'prospects':
+      return 'lead'
+    case 'supply_houses':
+      return 'supply_house'
+    case 'team_prospects':
+      return 'candidate'
+  }
 }
 
 /** A number as ten digits, an address in lower case; '' when it is neither. "+1 (210) 555-0113" is "2105550113". */
@@ -189,8 +233,11 @@ export type NamePlan =
 
 const sameRecord = (a: ContactRecord, b: ContactRecord) => Boolean(a && b && a.table === b.table && a.id === b.id)
 
-/** A customer and a trade partner's company row can hold more people than their own, each by name: Dee at Alamo Concrete. */
-const COMPANY_TABLES: ReadonlySet<string> = new Set(['customers', 'gc_companies'])
+/**
+ * A customer, a trade partner and a supply house are company rows that can hold more people than their own, each by
+ * name: Dee at Alamo Concrete, Ray at the supply house's counter.
+ */
+const COMPANY_TABLES: ReadonlySet<string> = new Set(['customers', 'gc_companies', 'supply_houses'])
 const nameKey = (name: string) => name.trim().toLowerCase()
 
 /**

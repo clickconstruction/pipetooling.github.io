@@ -174,6 +174,9 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
       },
     ],
   },
+  // A residential customer's and a sub's flows have no steps yet (RESIDENTIAL_BUILD_PLAN.md R4 and R8).
+  residential: { kind: 'residential', lanes: [] },
+  sub: { kind: 'sub', lanes: [] },
   unknown: {
     kind: 'unknown',
     lanes: [

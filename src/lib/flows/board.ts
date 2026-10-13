@@ -183,6 +183,9 @@ const PHASES: Record<FlowKind, readonly FlowPhase[]> = {
   trade: ['setup', 'pricing', 'building'],
   customer: ['setup', 'pricing', 'building'],
   arch: ['building'],
+  // No tiles until their flows have steps; their words are the customer's and the architect's until then.
+  residential: [],
+  sub: [],
   unknown: ['setup'],
 }
 
@@ -190,6 +193,8 @@ const PHASE_WORDS: Record<FlowKind, Record<FlowPhase, string>> = {
   trade: { setup: 'Getting set up', pricing: 'Quoting', building: 'Building' },
   customer: { setup: 'Setting up', pricing: 'Bidding', building: 'Building' },
   arch: { setup: 'On the job', pricing: 'On the job', building: 'On the job' },
+  residential: { setup: 'Setting up', pricing: 'Bidding', building: 'Building' },
+  sub: { setup: 'On the job', pricing: 'On the job', building: 'On the job' },
   unknown: { setup: 'Who is this?', pricing: 'Who is this?', building: 'Who is this?' },
 }
 

@@ -276,6 +276,10 @@ export const OWED_USUAL: Readonly<Record<ContactKind, readonly string[]>> = {
   customer: ['a pay application', 'a change order’s price', 'an answer to their question', 'a call back'],
   trade: ['the plans or an addendum', 'our answer to their question', 'the statement of work', 'a draw’s payment', 'a call back'],
   arch: ['a submittal', 'a pay application to certify', 'an answer', 'a call back'],
+  lead: ['a call back'],
+  supply_house: ['a call back'],
+  candidate: ['a call back'],
+  sub: ['a call back'],
   unknown: ['a call back'],
 }
 
