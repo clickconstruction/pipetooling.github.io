@@ -100,7 +100,9 @@ describe('the rule’s pick on Who has it?', () => {
   })
 
   it('picks nobody for a kind no seat holds, an empty seat, or someone no longer on the team', () => {
-    expect(rulePick({ kind: 'lead', answeredLastBy: null, team: TEAM, seats: SEATS })).toBeNull()
+    expect(rulePick({ kind: 'unknown', answeredLastBy: null, team: TEAM, seats: SEATS })).toBeNull()
+    // A lead sits in the Customers seat with a customer since v2.5501.
+    expect(rulePick({ kind: 'lead', answeredLastBy: null, team: TEAM, seats: SEATS })).toEqual({ userId: 'u-rosa', name: 'Rosa', why: 'Rosa gets new customer messages.' })
     expect(rulePick({ kind: 'customer', answeredLastBy: null, team: TEAM, seats: { customer: null, trade: null } })).toBeNull()
     expect(rulePick({ kind: 'trade', answeredLastBy: 'u-gone', team: TEAM, seats: { customer: null, trade: 'u-gone' } })).toBeNull()
   })

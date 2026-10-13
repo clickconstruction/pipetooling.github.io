@@ -58,7 +58,7 @@ describe('Who gets a new message (cut 2, PR D)', () => {
 
   it('says the rule with the seats’ names, an architect sharing the trade partners’ seat when it has none', () => {
     expect(assignRuleRows({ customer: ROSA, trade: ROBERT, arch: null }, nameOf)).toEqual([
-      { key: 'customer', who: 'A customer', goesTo: 'Rosa' },
+      { key: 'customer', who: 'A customer, a lead, a sub, a supply house or a candidate', goesTo: 'Rosa' },
       { key: 'trade', who: 'A trade partner', goesTo: 'Robert' },
       { key: 'arch', who: 'An architect', goesTo: "Robert, the trade partners' seat" },
       { key: 'unknown', who: 'A number nobody knows', goesTo: 'Nobody. Whoever answers first takes it.' },
@@ -75,8 +75,10 @@ describe('Who gets a new message (cut 2, PR D)', () => {
   it('says what whoGetsIt does with the same seats', () => {
     const seats = { customer: ROSA, trade: ROBERT, arch: null }
     const rows = assignRuleRows(seats, nameOf)
-    const got = (kind: 'customer' | 'trade' | 'arch' | 'unknown') => whoGetsIt({ kind, answeredLastBy: null, hereToday: new Set(), seats })
+    const got = (kind: 'customer' | 'lead' | 'sub' | 'supply_house' | 'candidate' | 'trade' | 'arch' | 'unknown') => whoGetsIt({ kind, answeredLastBy: null, hereToday: new Set(), seats })
     expect([got('customer'), got('trade'), got('arch'), got('unknown')].map((id) => (id ? NAMES[id] : null))).toEqual(['Rosa', 'Robert', 'Robert', null])
+    // The first row names the four kinds the Customers seat takes with a customer (v2.5501).
+    expect([got('lead'), got('sub'), got('supply_house'), got('candidate')].map((id) => (id ? NAMES[id] : null))).toEqual(['Rosa', 'Rosa', 'Rosa', 'Rosa'])
     expect(rows.map((r) => r.goesTo.split(',')[0])).toEqual(['Rosa', 'Robert', 'Robert', 'Nobody. Whoever answers first takes it.'])
   })
 
