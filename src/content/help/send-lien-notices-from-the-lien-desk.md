@@ -314,7 +314,9 @@ A printed notice waits on the desk in the mail pile. Open it and press {{button:
 
 **Take back a run.** Sometimes nothing in a printed run goes out. The packet's look changed, a notice needs a fix, or the run waits a day. Open the run and press **Take back…** under More. The run asks first and says what happens. Every printed notice goes back to Ready to send, and the approvals stand. Tracking numbers typed and not recorded are dropped. Press {{button:red|Take back N notices}}. The run goes back to printing, so print the packet again when it is ready. The copies already printed stay in each job's Documents. Each notice's footer says when it was taken back. Mailed some envelopes already? Record those first, then take back the rest.
 
-A notice recorded without its number is never stuck. Its row under Sent says the tracking is owed, and its footer has a box to add the number. The job's Lien window shows the same. The Dashboard's Needs you counts the mailed notices that still have no number.
+A notice recorded without its number is never stuck. Its row under Sent says the tracking is owed, and its footer has a box to add the number. The job's Lien window shows the same.
+
+A notice mailed through Docsmit never owes a number. The mail service brings it within the hour. Its row under Sent says where each envelope is, like in transit or delivered and signed. Its footer lists each envelope with its number. The Dashboard's Needs you counts the mailed notices that still have no number.
 
 :::example One notice on its own
 A ready notice's footer also offers the link **Just this one ›**. It opens the § 53.056 tab with the desk's months filled in. Use it to print or email one notice by hand. Recording it there moves the desk row too.
