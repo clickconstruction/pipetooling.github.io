@@ -91,11 +91,13 @@ SELECT mmi.same('bids@''s own Gmail id again writes nothing, and is answered wit
    WHERE b.gmail_id = 'g-mid-bids'), 'false|true');
 
 -- 5 · Mail with no Message-ID still lands, one line a Gmail id.
-SELECT mmi.same('two emails with no Message-ID, or an empty one, are two lines with none',
-  mmi.write('g-mid-none-1', '{"contact_id":"00000000-0000-0000-0000-00000000f1c0","direction":"in","body":"x"}') || '|' ||
-  mmi.write('g-mid-none-2', '{"contact_id":"00000000-0000-0000-0000-00000000f1c0","direction":"in","body":"x","rfc_message_id":"   "}') || '|' ||
-  (SELECT count(*) FROM public.messages WHERE gmail_id IN ('g-mid-none-1', 'g-mid-none-2') AND rfc_message_id IS NULL),
-  'true|true|2');
+SELECT mmi.same('an email with no Message-ID lands',
+  mmi.write('g-mid-none-1', '{"contact_id":"00000000-0000-0000-0000-00000000f1c0","direction":"in","body":"x"}'), 'true');
+SELECT mmi.same('another, with an empty one, lands beside it',
+  mmi.write('g-mid-none-2', '{"contact_id":"00000000-0000-0000-0000-00000000f1c0","direction":"in","body":"x","rfc_message_id":"   "}'), 'true');
+-- Counted in a statement after the writes: a write's own statement reads from a snapshot taken before it.
+SELECT mmi.same('two lines, each with none',
+  (SELECT count(*)::text FROM public.messages WHERE gmail_id IN ('g-mid-none-1', 'g-mid-none-2') AND rfc_message_id IS NULL), '2');
 
 -- 6 · Only an email carries one, and nobody signed in writes it.
 SELECT mmi.refused('a text carries no Message-ID',
