@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useConfirmDialog } from '../../../../contexts/ConfirmDialogContext'
 import {
   EDITOR_WORDS,
@@ -13,14 +13,24 @@ import {
   versionWords,
   type QrResult,
   type QuickReply,
+  type QuickReplyEdit,
   type QuickReplyTags,
   type QuickReplyVersion,
   type StepsByKind,
 } from '../../../../lib/quickReplies/kernel'
+import type { BlankFills } from '../../../../lib/quickReplies/blanks'
+import { BLANK_CHIPS, insertBlank, preview } from '../../../../lib/quickReplies/filling'
+import { shortName } from '../../../../lib/quickReplies/phone'
+import { PHONE_TAB_WORDS, nextPhonePlace, phoneTick } from '../../../../lib/quickReplies/phoneTab'
+import { SPANISH_WORDS, spanishOffered } from '../../../../lib/quickReplies/spanish'
 import { formatDenverDateTimeShort } from '../../../../utils/dateUtils'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn, input } from '../../gcUi'
+import { FilledLine } from './FilledLine'
 import { QuickReplyTagFields } from './QuickRepliesEditorAdd'
+
+/** R3's three parts of a Save, each only when it changed, so a Save of words and tags alone stays as it was. */
+export type LineR3 = Pick<QuickReplyEdit, 'textEs' | 'phoneOrder' | 'phoneName'>
 
 /** The kernel's words for a change that went. */
 const wordsOf = (r: QrResult): string => ('words' in r ? r.words : '')
@@ -34,27 +44,41 @@ const wordsOf = (r: QrResult): string => ('words' in r ? r.words : '')
  *
  * The fields sit in one section (`data-qr-line-fields`) so a later field joins below the tags without moving them: the
  * residential build's Spanish words and the phone's short name go there.
+ *
+ * R3 (the residential prototype v0.8's `editRow`): under the words, a chip for each blank puts it at the cursor, and a
+ * preview shows the line as it would go, with what the box leaves to the person. Below the tags, a line for customers
+ * takes its Spanish, and the team's lines for customers take the tick **On the tech’s phone** and a short name. A
+ * ticked line goes after the last on the phone; the **Phone** tab moves it. Moved away from customers, it comes off.
  */
 export function QuickRepliesEditorLine({
   line,
+  lines = [],
   versions,
   me,
   steps,
   names,
   contactNames,
+  fills = {},
+  previewTo = null,
   onSave,
   onRemove,
   onRestore,
   onClose,
 }: {
   line: QuickReply
+  /** Every line the window read, so a ticked line goes after the last on the phone. */
+  lines?: readonly QuickReply[]
   versions: readonly QuickReplyVersion[]
   me: string
   steps: StepsByKind
   names: Readonly<Record<string, string>>
   /** The people the window can name in *last used … on*: the open thread's person. */
   contactNames: Readonly<Record<string, string>>
-  onSave: (text: string, tags: QuickReplyTags) => Promise<void>
+  /** What the box fills on a press, for the preview. */
+  fills?: BlankFills
+  /** The open thread's person, by first name, for the preview's *As it would go to*. */
+  previewTo?: string | null
+  onSave: (text: string, tags: QuickReplyTags, r3: LineR3) => Promise<void>
   onRemove: () => Promise<void>
   onRestore: () => Promise<void>
   /** Closes the line; with the words for the toast once something was done. */
@@ -63,6 +87,36 @@ export function QuickRepliesEditorLine({
   const confirm = useConfirmDialog()
   const [text, setText] = useState(line.text)
   const [tags, setTags] = useState<QuickReplyTags>({ for: line.for, stepId: line.stepId })
+  const [es, setEs] = useState(line.textEs ?? '')
+  const [onPhone, setOnPhone] = useState(line.phoneOrder != null)
+  const [phoneName, setPhoneName] = useState(line.phoneName ?? '')
+  const words = useRef<HTMLTextAreaElement>(null)
+  const tick = phoneTick({ for: tags.for, scope: line.scope })
+  const shown = preview(text, fills, previewTo)
+
+  /** A chip's blank at the cursor in the words, the caret after it. */
+  const putBlank = (key: string) => {
+    const box = words.current
+    const next = insertBlank(text, box?.selectionStart ?? text.length, box?.selectionEnd ?? text.length, key)
+    setText(next.text)
+    // After the new words render, so the caret lands after the blank.
+    window.setTimeout(() => {
+      box?.focus()
+      box?.setSelectionRange(next.caret, next.caret)
+    }, 0)
+  }
+
+  /** R3's parts that changed. A line that can no longer be on the phone comes off it. */
+  const r3 = (): LineR3 => {
+    const out: LineR3 = {}
+    const wantEs = spanishOffered(tags) ? es.trim() || null : (line.textEs ?? null)
+    if (wantEs !== (line.textEs ?? null)) out.textEs = wantEs
+    const place = onPhone && tick.can ? (line.phoneOrder ?? nextPhonePlace(lines)) : null
+    if (place !== (line.phoneOrder ?? null)) out.phoneOrder = place
+    const name = tick.can ? phoneName.trim() || null : (line.phoneName ?? null)
+    if (name !== (line.phoneName ?? null)) out.phoneName = name
+    return out
+  }
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
 
@@ -80,7 +134,8 @@ export function QuickRepliesEditorLine({
   }
 
   const save = () => {
-    const result = editQuickReply(line, { text, tags }, me, Date.now())
+    const parts = r3()
+    const result = editQuickReply(line, { text, tags, ...parts }, me, Date.now())
     if ('error' in result) {
       setProblem(result.error)
       return
@@ -89,7 +144,7 @@ export function QuickRepliesEditorLine({
       onClose(result.words, 'info')
       return
     }
-    void run(() => onSave(result.line.text, { for: result.line.for, stepId: result.line.stepId }), result.words, 'The line was not saved.')
+    void run(() => onSave(result.line.text, { for: result.line.for, stepId: result.line.stepId }, parts), result.words, 'The line was not saved.')
   }
 
   const remove = async () => {
@@ -114,6 +169,7 @@ export function QuickRepliesEditorLine({
     <div data-qr-open={line.id} style={{ display: 'grid', gap: '0.55rem', padding: '0.6rem 0.7rem', background: 'var(--bg-subtle)', borderRadius: 8, border: '1px solid var(--border)' }}>
       <div data-qr-line-fields style={{ display: 'grid', gap: '0.5rem' }}>
         <textarea
+          ref={words}
           aria-label="The line's words"
           value={text}
           rows={2}
@@ -121,7 +177,67 @@ export function QuickRepliesEditorLine({
           onChange={(e) => setText(e.target.value)}
           style={{ ...input, resize: 'vertical', font: 'inherit' }}
         />
+        {!line.removed && (
+          <div data-qr-chips role="group" aria-label="Put a blank in the words" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+            {BLANK_CHIPS.map((c) => (
+              <button
+                key={c.key}
+                type="button"
+                title={`${c.label}: ${c.words}. Puts it in the words where the cursor is.`}
+                disabled={busy}
+                onClick={() => putBlank(c.key)}
+                style={{ border: `1px ${c.theirs ? 'dashed' : 'solid'} var(--border)`, borderRadius: 999, background: 'var(--surface)', padding: '0.05rem 0.5rem', cursor: 'pointer', fontSize: '0.74rem' }}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <div data-qr-preview style={{ fontSize: '0.84rem', padding: '0.35rem 0.5rem', borderRadius: 6, background: 'var(--surface)', border: '1px solid var(--border)' }}>
+          <FilledLine text={text} fills={fills} />
+          <span style={{ display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>{shown.note}</span>
+        </div>
         <QuickReplyTagFields tags={tags} steps={steps} onTags={setTags} disabled={busy || line.removed} />
+        {spanishOffered(tags) && (
+          <label style={{ display: 'grid', gap: '0.2rem' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-600)' }}>
+              {SPANISH_WORDS.label}
+              {!es.trim() && <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {SPANISH_WORDS.none}</span>}
+            </span>
+            <textarea
+              aria-label="The line in Spanish"
+              value={es}
+              rows={2}
+              lang="es"
+              placeholder={SPANISH_WORDS.placeholder}
+              disabled={busy || line.removed}
+              onChange={(e) => setEs(e.target.value)}
+              style={{ ...input, resize: 'vertical', font: 'inherit' }}
+            />
+          </label>
+        )}
+        <label data-qr-phone-tick style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.84rem' }}>
+          <input type="checkbox" checked={onPhone && tick.can} disabled={busy || line.removed || !tick.can} onChange={(e) => setOnPhone(e.target.checked)} />
+          <span>{PHONE_TAB_WORDS.tick}</span>
+          {!tick.can && <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{tick.why}</span>}
+        </label>
+        {tick.can && (
+          <label style={{ display: 'grid', gap: '0.2rem' }}>
+            <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-600)' }}>
+              {PHONE_TAB_WORDS.name}
+              <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {PHONE_TAB_WORDS.nameNote}</span>
+            </span>
+            <input
+              aria-label={PHONE_TAB_WORDS.name}
+              value={phoneName}
+              maxLength={60}
+              placeholder={shortName({ text, phoneName: null }, fills)}
+              disabled={busy || line.removed}
+              onChange={(e) => setPhoneName(e.target.value)}
+              style={{ ...input, maxWidth: '22rem' }}
+            />
+          </label>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
