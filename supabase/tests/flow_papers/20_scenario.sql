@@ -104,7 +104,7 @@ RESET ROLE;
 SELECT fpb.same('the agreement is a customers'' contract with no words of its own', fpb.paper((SELECT id FROM made WHERE label = 'certify')),
   'Flow papers · customers | customer | contract | the certification agreement / - | - | - / - | flow-paper | true');
 SELECT fpb.same('each new paper comes after the last in its packet', (
-  SELECT string_agg(document_name, ', ' ORDER BY sequence_order) FROM public.contract_template_documents d JOIN public.contract_templates t ON t.id = d.template_id WHERE t.name = 'Flow papers · customers'),
+  SELECT string_agg(d.document_name, ', ' ORDER BY d.sequence_order) FROM public.contract_template_documents d JOIN public.contract_templates t ON t.id = d.template_id WHERE t.name = 'Flow papers · customers'),
   'the start letter, the certification agreement');
 
 -- 5 · What a paper must say.
