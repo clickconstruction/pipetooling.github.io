@@ -57,6 +57,15 @@ export function gcViewFromSearch(search: URLSearchParams): GcView {
   return view === 'partners' || view === 'followUp' || view === 'money' || view === 'messages' ? view : 'board'
 }
 
+/** How Trade partners or Customers shows its companies (Messages cut 4): the list as it was, or a board. */
+export type BoardBy = 'list' | 'step'
+
+/** Pure: the board a `?by=` asks for, or null for the view's first. */
+export function gcBoardByFromSearch(search: URLSearchParams): BoardBy | null {
+  const by = search.get('by')
+  return by === 'list' || by === 'step' ? by : null
+}
+
 /** The words a GC project carries outside GC mode (the Projects page, the Workflow page, Edit project). */
 export const GC_PROJECT_WORDS = {
   chip: 'GC',

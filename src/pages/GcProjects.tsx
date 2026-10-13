@@ -112,6 +112,7 @@ import { useRingLayers } from '../components/gc/useRingLayers'
 import { GcStageHealth } from '../components/gc/GcStageHealth'
 import { healthTabTarget, type HealthTarget } from '../lib/gc/stageHealthTargets'
 import { GcTradePartners, type TradePartnerWrites } from '../components/gc/GcTradePartners'
+import { GcFlowBoard } from '../components/gc/flows/GcFlowBoard'
 import { GcFollowUp, GcTradeAsks, type AskWrites } from '../components/gc/GcAskThread'
 import { GcFollowUpSheet, type FollowUpFromCompany } from '../components/gc/GcFollowUpSheet'
 import { FollowUpPanel } from '../components/followUp/FollowUpPanel'
@@ -240,7 +241,7 @@ import { scopeGaps } from '../lib/gc/plans'
 import type { GcProjectView } from '../lib/gc/projectRows'
 import type { DailyLog, GcProject, GcState, ScopeBookStore, TradeChangeRequest } from '../lib/gc/types'
 import { partnerById } from '../lib/gc/lookups'
-import { billDayFromSearch, gcFocusFromSearch, gcViewFromSearch, type GcView } from '../lib/gc/links'
+import { billDayFromSearch, billDayHref, gcBoardByFromSearch, gcFocusFromSearch, gcViewFromSearch, type BoardBy, type GcView } from '../lib/gc/links'
 import { GcMessages } from '../components/gc/GcMessages'
 import { ThreadWindow } from '../components/gc/messages/ThreadWindow'
 import { useThreadWindow, withThread } from '../components/gc/messages/useThreadWindow'
@@ -442,6 +443,8 @@ export default function GcProjects() {
   useEffect(() => {
     setDevView(gcViewFromSearch(new URLSearchParams(viewParam ? `view=${viewParam}` : '')))
   }, [viewParam])
+  // How Trade partners shows its companies (Messages cut 4): the list as it was, or by step. `?by=` opens on one.
+  const [partnersBy, setPartnersBy] = useState<BoardBy>(() => gcBoardByFromSearch(params) ?? 'list')
   /** Read the board again; answers what it read, for a press that emails from the rows as they are now (P5c-4). */
   const refreshBoard = async (): Promise<GcState | null> => {
     if (!loaded) return null
@@ -820,20 +823,22 @@ export default function GcProjects() {
   const followUpMe = useMemo(() => ({ id: user?.id ?? '', name: profileName || 'You', role: role ?? '' }), [user?.id, profileName, role])
   // The clause changes waiting on the viewer's approval (cut 4c), in Follow up's Needs you: a controller's or a dev's.
   const clauseNeeds = useClauseNeeds(canApproveClause(role))
+  // A pill, or a board's press that moves the page: the view and `?view=` together, so a reload opens where it is.
+  const showView = (view: GcView) => {
+    setDevView(view)
+    const next = new URLSearchParams(params)
+    if (view === 'board') next.delete('view')
+    else next.set('view', view)
+    if (view !== 'money') next.delete('billday')
+    setParams(next, { replace: true })
+  }
   const devPill = (view: GcView, label: string) => {
     const on = devView === view
     return (
       <button
         type="button"
         aria-pressed={on}
-        onClick={() => {
-          setDevView(view)
-          const next = new URLSearchParams(params)
-          if (view === 'board') next.delete('view')
-          else next.set('view', view)
-          if (view !== 'money') next.delete('billday')
-          setParams(next, { replace: true })
-        }}
+        onClick={() => showView(view)}
         style={{
           padding: '0.3rem 0.8rem',
           borderRadius: 999,
@@ -1903,7 +1908,24 @@ export default function GcProjects() {
                 ring={ringState}
               />
             ) : devView === 'partners' ? (
-              <GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />
+              <GcFlowBoard
+                kind="trade"
+                by={partnersBy}
+                onBy={setPartnersBy}
+                list={<GcTradePartners state={board} writes={partnerWrites} onOpenProject={openProjectCard} onAsk={openAsk} trades={[...new Set(loaded.projects.flatMap((p) => p.trades.map((t) => t.trade)))]} />}
+                onFollowUp={() => showView('followUp')}
+                onOpenProject={(projectId) => {
+                  showView('board')
+                  requestAnimationFrame(() => requestAnimationFrame(() => openProjectCard(projectId)))
+                }}
+                onBillDay={(projectId) => {
+                  // Money → Bill day → From the trades for that job (`billDayHref`, cut 9). The view follows `?view=`,
+                  // and anyone off the money team sees Follow up in Money's place.
+                  const next = new URLSearchParams(params)
+                  new URLSearchParams(billDayHref(projectId).split('?')[1]).forEach((v, k) => next.set(k, v))
+                  setParams(next, { replace: true })
+                }}
+              />
             ) : devView === 'money' && canSeeGcMoney(role) ? (
               moneyState ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '1rem' }}>
