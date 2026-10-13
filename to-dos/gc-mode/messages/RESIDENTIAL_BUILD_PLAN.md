@@ -34,11 +34,11 @@ New, in order of appearance. Every migration starts `SET lock_timeout = '3s';`, 
 | R0 | `contacts_kind_known` widened to `lead`, `supply_house`, `candidate`, `sub`; three id columns beside the five, `prospect_id` (a lead is a `prospects` row), `supply_house_id`, `team_prospect_id` (a candidate is a `team_prospects` row, Prospects → Team); a sub is a `people` row with `kind = 'sub'` through the `people_id` that exists; `contact_for_record` reads the three new tables (helper 2's read of main, 2026-10-13) | seven kinds of contact, one change |
 | R0 | `contacts_kind_door` policies: supply house and candidate rows readable by the office, never counted by `followup_queue` | off Follow up by default |
 | R1 | none | the registry is code; the job panel reads `messages` by `job_id` |
-| R3 | `quick_replies.text_es`, `quick_replies.phone_order` (null = not on the phone), `quick_replies.phone_name`; `quick_reply_versions.kind` gains `es` | blanks are text; the phone mark; Spanish |
-| R4 | `flow_steps` seed rows for `residential` (eleven steps); no new fact columns | the flow reads dispatch, clock, reports, estimates, status, invoices, payments as they are |
+| R3 | `quick_replies.text_es`, `quick_replies.phone_order` (null = not on the phone), `quick_replies.phone_name`; `quick_reply_versions.kind` gains `es`; `messages.quick_reply_id`, the line a sent text came from, so the flow's `on_way` and `review_asked` read a column instead of the words (helper 3's gap, 2026-10-13) | blanks are text; the phone mark; Spanish; which line a text was |
+| R4 | in the facts and seed PR: `flows_kind_known` widened to `residential` and `sub`, the eleven facts in `flow_fact_ids()`, the two papers in `flow_paper_ids()`, the residential `flow_steps` seed rows (`flowsSql.test.ts` pins the seed to the newest migration, so the SQL cannot trail the code); no new fact columns: the loader reads `job_schedule_blocks`, `clock_sessions`, `reports`, `estimates` (`sent_at`; `status = 'customer_accepted'` with `acceptor_consented_at`), `job_status_events`, `jobs_ledger_invoices` (`billed_at`, else `sent_to_customer_at`; `pay_by` = that day plus `customers.payment_terms`), `jobs_ledger_payments`, and `messages` by words until `quick_reply_id` lands (helpers 1 and 3, 2026-10-13) | the flow reads what the app keeps |
 | R5 | `messages_tech_can_read(contact_id)` and the `messages_tech_read` / `contacts_tech_read` policies: a tech reads contacts on jobs they are dispatched to or clocked on, this week and last, and never a row whose kind is `billing` or whose `direction` is `team` with `office_only` | the tech's door |
 | R5 | `contacts.has_until` (timestamptz) beside `has_user_id` | the tech has it until 5 PM, then the office |
-| R5 | `app_settings.messages_office_wait_minutes` (15) | push to the office after a wait |
+| R5 | `app_settings.messages_office_wait_minutes` (15); `app_settings.messages_office_hours_v1` as JSON `{"days":[1,2,3,4,5],"opens":"07:30","closes":"17:00","techUntil":"17:00","emergency":null}`, read by `parseOfficeHours` with the defaults as the fallback; `emergency` set adds one sentence to the after-hours answer naming the number (helper 5's prepare note, 2026-10-13) | push to the office after a wait; who answers, and when the office is closed |
 | R6 | `messages.mailbox` (`bids` · `team`), `contact_channels.from_number_id` per kind | two boxes, two numbers, the reply from the box they wrote to |
 | R8 · 16 | `customers.language` (`en` · `es`) | read by every contact of theirs |
 | R8 · 8 | `estimate_lines.source_message_id` and an `estimate_add_on_from_message` RPC | the add-on from a message |
@@ -60,7 +60,7 @@ Each cut lists its PRs. A PR is one change, kernel and test first, screens in th
 
 - **Kernel**: `jobActivityEvent.ts` gains `message_text`, `message_email`, `message_call`, `message_voicemail`, `message_portal` with render meta (the customer orange, `bucket: 'customer'`, `direction` on the item) and `messagesToActivityItems(rows)`; `jobActivityFilter.ts` gains **Customer**. The orange becomes a registry color, never a rule in Messages. One PR.
 - **The job activity panel**: `JobThreadNotesPanel` and `JobActivityView` read `messages` where `job_id` is the job, through `messagesToActivityItems`; the **Customer** chip with its count; the move line under the crew row (whose move, when they wrote, when we wrote) from `messages/thread.ts` → `courtOf` and the stamps. One PR with render smokes.
-- **The thread's switch**: `messages/activityRows.ts` — `threadWithActivity(messages, activityItems, jobsTied, on)` merges the job's rows for the jobs the person's lines are tied to, in time order, plain; the **Job activity** switch on the thread header, kept in `localStorage`, on by default for the office and off on the tech's phone. One PR.
+- **The thread's switch**: `messages/activityRows.ts` — `threadWithActivity(messages, activityByJob, { on, noMoney })` merges the activity of the jobs the person's lines carry (keyed by `messages/load.ts`'s `jobKey`, since an activity item has no job on it), in time order, plain; `noMoney` drops financial items for the tech's door; `switchState(read, write, door)` keeps the **Job activity** switch per computer with one key per door, on by default for the office and off on the phone (helper 7's prepare note, 2026-10-13). One PR.
 - **Docs**: `GLOSSARY.md` → Job activity ledger gains the five kinds; guide `read-a-customers-thread` (new).
 
 ### R2 · The thread everywhere (3 PRs)
@@ -85,8 +85,8 @@ Each cut lists its PRs. A PR is one change, kernel and test first, screens in th
 
 *Waits on wave 2 cut 4 (the flow tables).*
 
-- **Facts and seed**: `flows/facts.ts` gains the residential facts (`booked` from dispatch's block, `on_way` from the step's text, `arrived` from the clock-in at the job, `found` from a status report, `estimate_sent`, `estimate_approved` from accept-estimate, `working`, `done` as Ready to Bill, `billed`, `paid`, `review_asked`); `flows/seed.ts` the eleven-step flow with its nudges off and its `owedWords`. One PR.
-- **The loader**: `flows/load.ts` → `residentialStampsFor(rows)` from `schedule_blocks`, `clock_sessions`, reports, `estimates`, `job_status_events`, `jobs_ledger_invoices`, `jobs_ledger_payments`. One PR.
+- **Facts, seed and SQL**: `flows/facts.ts` gains the residential facts (`booked`, `on_way`, `arrived`, `found`, `estimate_sent`, `estimate_approved`, `working`, `done`, `billed`, `paid`, `review_asked`) in a fifth group, On the job, with the `estimate` and `bill` papers; `flows/seed.ts` the eleven-step flow with the prototype's step ids (booked, onway, arrived, found, estimate, approved, working, done, billed, paid, review), the estimate reminder on Approved and the bill reminder on Paid (`nudgeDue` never fires on our move, so Estimate sent and Billed carry none), the review ask left to the stage send, all off; the migration above in the same PR, pushed by the lead after it lands. Stacks on R0. One PR.
+- **The loader**: `flows/load.ts` → `residentialStampsFor(rows, now)` from the tables in the data table, one `JobStamps` per `jobs_ledger` job; `on_way` and `review_asked` guessed from the words by two small exported rules until `quick_reply_id` lands. Stacks on the facts PR. One PR.
 - **The strip above the box** (integration 5): `flows/card.ts` → `stepStrip(card)` folds the step card to one line of presses; **Approve for her** writes what the portal press writes with `how = 'office'` (accept-estimate takes it); **Move the day** opens dispatch; **Send it again**; **She declined**. One PR.
 - **The stages the customer feels** (integration 15): the morning run's per-step switch on for scheduled, started, done, billed, paid; the Jobs board dot and hover from the queue by job. One PR.
 - **Guide**: `see-where-a-customer-is-on-their-job` (new); `docs/GLOSSARY.md` → the residential flow under Messages.
@@ -109,11 +109,12 @@ Each cut lists its PRs. A PR is one change, kernel and test first, screens in th
 - **The reader**: cut 6's `gmail-sync` takes two grants and stamps `mailbox`; the sender matched first, the box the first guess for an unknown sender; a reply goes from the box they wrote to, a new conversation from the box of their kind. One PR (edge, deployed by the lead).
 - **Compose and sort**: `compose.ts` → `mailboxFor(kind)` and `fromNumberFor(kind)`; Who is this? orders its guesses by the box; the letterhead, the lien reply-to and the website terms read the chosen customer address. One PR.
 
-### R7 · The New lane (3 PRs)
+### R7 · The New lane (4 PRs)
 
 *Waits on R0 and wave 2 cut 2.*
 
-- **Kernel**: `followUp/newLane.ts` — `newLane(contacts, messages, ties)` gives the rows with their sort: **Who is this?** (a sender nobody has named, the guesses ordered by box: the team line offers customers and leads, bids@ trade partners and supply houses, a candidate on either), **Which job?** (two or more active jobs and no tie; the default already took it), **Who has it?** (nobody on it; the rule's pick first); `queue.ts` counts the lane in the badge. One PR.
+- **Kernel**: `followUp/newLane.ts` — `newLane(contacts, messages, activeJobIds, now)` gives the rows with their sort: **Who is this?** (a sender nobody has named; the guesses on the team line run a matched customer, a new lead on Prospects, a new customer, a candidate, someone else; on bids@ a trade partner on an open ask whose domain matches, a new trade partner, a supply house, a candidate, someone else), **Which job?** (two or more active jobs and the newest inbound line on the default job with `tiedByHand` false), **Who has it?** (nobody on it; the rule's pick passed in from R5); `newLaneCount` for the badge, wired into `queue.ts` by the lead. One PR (helper 6's prepare note, 2026-10-13).
+- **SQL**: `messages.tied_by` (null when the default job took the line, the user when someone tied it), written by `tie_message`; main cannot tell the two apart today. One small PR.
 - **The lane and the sort card**: the lane on Follow up (mockup A), the sort card above the thread, each press writing through `name_contact`, `tie_message`, the has rule. One PR with smokes.
 - **Sort all**: the desk (mockup C) behind the lane's header, one card at a time. One PR.
 - **Guide**: `sort-new-messages` (new).
@@ -124,7 +125,7 @@ In the order that each unblocks the next. Numbers are the mockups' card numbers.
 
 | # | Integration | PRs | What each PR is |
 |---|---|---|---|
-| 14 | The Dashboard's Customers line | 1 | `dashboardNeedsYou.ts` key `customer-messages`: need a reply · we owe · to sort, opening `/messages?kind=customer` |
+| 14 | The Dashboard's Customers line | 1 | `dashboardNeedsYou.ts` key `customer-messages`: need a reply · we owe · to sort, opening `/messages?kind=customer`; built real behind `CUSTOMER_MESSAGES_LINE_ON = false` until R2's route exists, `toSort` counting open unknown contacts until R7's lane replaces it (helper 8's prepare note, 2026-10-13) |
 | 1 | The app's own emails in the thread | 1 | `messages/sentCopies.ts` reads `sent_documents` by contact into folded **the app** lines with read and paid stamps; `sent_documents.contact_id` set by every sender (cut 7) |
 | 4 | Voicemails read | 1 | the transcript as the line; `messages/owed.ts` → `readDay` on it; **Keep the day** writes cut 2's day heard |
 | 6 | They owe us on Follow up | 1 | `followUp/queue.ts` → `theyOweUs(bills)` from the AR page's reads; the bill's reminder as the step's quick reply, sent by the morning run at the terms |
@@ -150,15 +151,15 @@ The catch-up after the last cut lands: `PROJECT_DOCUMENTATION.md` (§6 Jobs gain
 | R1 · one row model | 3 | — | — |
 | R2 · the thread everywhere | 3 | — | — |
 | R3 · quick replies | 3 | 1 | — |
-| R4 · the residential flow | 4 | — | — |
+| R4 · the residential flow | 4 | 1 | — |
 | R5 · the tech's door, Job Mode, push | 4 | 1 | 1 (`messages-notify`) |
 | R6 · two boxes | 3 | 1 | 1 (`gmail-sync`, second grant) |
-| R7 · the New lane | 3 | — | — |
+| R7 · the New lane | 4 | 1 | — |
 | R8 · the integrations | 17 | 4 | — |
 | R9 · the docs pass | 1 | — | — |
-| **Residential, on top of wave 2** | **44** | **8** | **2** |
+| **Residential, on top of wave 2** | **45** | **10** | **2** |
 | Wave 2 pieces it stands on (cut 1 screens, cut 2 screens, cut 3 SQL and editor, cut 4 tables, cut 5 functions, cut 6 reader), already in `BUILD_PLAN.md` | ~18 | 4 | 3 |
-| **Everything from today to done** | **~62** | **12** | **5** |
+| **Everything from today to done** | **~63** | **14** | **5** |
 
 PR sizes follow wave 1's: a kernel PR is a day with its tests; a screens PR two to three with smokes; a SQL PR a day plus the bed and the push. Four helpers in parallel after R0 and R1 land, which are the floor everyone else builds on.
 
