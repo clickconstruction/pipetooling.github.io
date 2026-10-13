@@ -7,11 +7,13 @@
 \set ON_ERROR_STOP 1
 BEGIN;
 
--- The office (an assistant) and an estimator outside it.
+-- The owner, whose job the bills are on; the office (an assistant); and an estimator outside it.
 INSERT INTO auth.users (id, email) VALUES
+  ('00000000-0000-0000-0000-000000005ad1', 'owner@stamps.test'),
   ('00000000-0000-0000-0000-000000005ad2', 'assistant@stamps.test'),
   ('00000000-0000-0000-0000-000000005ad3', 'estimator@stamps.test');
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
+  ('00000000-0000-0000-0000-000000005ad1', 'owner@stamps.test', 'Stamps Owner', 'master_technician', false, false),
   ('00000000-0000-0000-0000-000000005ad2', 'assistant@stamps.test', 'Rosa', 'assistant', false, false),
   ('00000000-0000-0000-0000-000000005ad3', 'estimator@stamps.test', 'Stamps Estimator', 'estimator', false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = EXCLUDED.read_only, is_digital_twin = EXCLUDED.is_digital_twin;
@@ -38,11 +40,12 @@ $$;
 GRANT USAGE ON SCHEMA scs TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA scs TO anon, authenticated, service_role;
 
--- Dana Whitfield's job 1312: bill A paid with two payments, bill B billed and not paid, bill C paid with a payment
--- typed with no paid day, entered Oct 12 at 03:30 UTC, which is Oct 11 in Chicago.
-INSERT INTO public.customers (id, name) VALUES ('00000000-0000-0000-0000-000000005ac1', 'Dana Whitfield');
-INSERT INTO public.jobs_ledger (id, hcp_number, job_name, customer_name, customer_id, bill_to_party, revenue, payments_made, status) VALUES
-  ('00000000-0000-0000-0000-000000005aa1', '1312', 'Oakridge sewer line', 'Dana Whitfield', '00000000-0000-0000-0000-000000005ac1', 'customer', 4850, 0, 'billed');
+-- One job of the owner's, carrying no customer, as the billing beds' jobs do: bill A paid with two payments, bill B
+-- billed and not paid, bill C paid with a payment typed with no paid day, entered Oct 12 at 03:30 UTC, which is Oct 11
+-- in Chicago.
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-000000005a01', 'Stamps Bed Work');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name, billing_only) VALUES
+  ('00000000-0000-0000-0000-000000005aa1', '00000000-0000-0000-0000-000000005ad1', '00000000-0000-0000-0000-000000005a01', 'Oakridge sewer line', true);
 INSERT INTO public.jobs_ledger_invoices (id, job_id, sequence_order, status, amount) VALUES
   ('00000000-0000-0000-0000-000000005ab1', '00000000-0000-0000-0000-000000005aa1', 0, 'paid', 4850),
   ('00000000-0000-0000-0000-000000005ab2', '00000000-0000-0000-0000-000000005aa1', 1, 'billed', 300),
