@@ -940,6 +940,10 @@ verify_jwt = false
 [functions.gc-office-notices]
 verify_jwt = false
 
+# Messages, cut 6: the bids@ reader. The cron (every 3 minutes) sends X-Cron-Secret, no JWT.
+[functions.gmail-sync]
+verify_jwt = false
+
 # bridge-sheet-email (v2.5224) reads the dev's JWT itself and mails the Monday sheet to the caller only.
 [functions.bridge-sheet-email]
 verify_jwt = false

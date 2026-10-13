@@ -30,7 +30,7 @@ import { fileURLToPath } from 'node:url'
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
 /** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['customer-portal', 'gc-trade-portal']
+export const IMPORTERS = ['customer-portal', 'gc-trade-portal', 'gmail-sync']
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {
@@ -49,6 +49,15 @@ export const ENTRIES = {
   'lib/gc/schedule/customerSchedule.ts': { values: ['customerSchedulePicture', 'customerBarWords'], types: ['CustomerSchedulePicture', 'CustomerStage', 'CustomerStanding'] },
   'lib/gc/lateFinish.ts': { values: ['lateFinish'], types: ['LateFinish'] },
   'lib/gc/changeOrderOfficeRows.ts': { values: ['withOfficeChangeOrders', 'CHANGE_ORDER_OFFICE_COLUMNS'], types: ['ChangeOrderOfficeRow'] },
+  // Messages, cut 6: the bids@ reader (gmail-sync) reads each email into a line with these.
+  'lib/emailIn/gmailMessage.ts': { values: ['readGmailMessage', 'base64UrlBytes', 'parseAddress'], types: ['EmailIn', 'GmailMessage'] },
+  'lib/emailIn/forwarded.ts': { values: ['readForwarded'], types: ['Forwarded'] },
+  'lib/emailIn/leftOut.ts': { values: ['leftOut', 'outsideInbox'], types: ['LeftOut'] },
+  'lib/emailIn/emailLine.ts': { values: ['emailLine', 'emailParty', 'emailFileRows'], types: ['EmailLine', 'EmailFileRow'] },
+  'lib/emailIn/jobInSubject.ts': { values: ['jobInSubject'], types: ['SubjectJob'] },
+  'lib/emailIn/subjectJobs.ts': { values: ['subjectJobs', 'subjectNumbers'], types: ['SubjectJobRows'] },
+  'lib/emailIn/historyWalk.ts': { values: ['walkHistory'], types: ['HistoryWalk', 'Took'] },
+  'lib/ledgerDisplayPrefixes.ts': { values: ['buildLedgerPrefixMap'], types: ['LedgerPrefixMap'] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
