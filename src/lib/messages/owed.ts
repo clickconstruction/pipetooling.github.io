@@ -10,7 +10,7 @@
  * lead, 2026-10-12). `contact_owed` keeps `by_day` and `by_words` side by side, and so does a note's day to come back.
  * Pure: the writes are cut 2's RPCs (`mark_owed`, `owed_done`).
  */
-import { firstName, type ContactKind } from '../contacts/kernel'
+import { firstName, type ContactKind } from '../contacts/names'
 import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, ymdAddDays, ymdDaysBetween } from '../../utils/dateUtils'
 import { whenWords } from './thread'
 

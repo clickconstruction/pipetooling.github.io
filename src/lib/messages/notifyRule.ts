@@ -9,7 +9,7 @@
  * person's `push_subscriptions`, then one `notification_history` row per person (`pushSentRow`). That row carries the
  * line it was for in `message_id`, a nullable column R5's SQL PR adds, so no line is pushed twice.
  */
-import { firstName } from '../contacts/kernel'
+import { firstName } from '../contacts/names'
 import { GC_MESSAGES_HREF } from '../gc/links'
 import type { ThreadMessage } from './thread'
 

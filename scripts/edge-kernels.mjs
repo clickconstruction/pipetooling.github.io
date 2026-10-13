@@ -79,6 +79,18 @@ export const ENTRIES = {
   },
   // Texts paused while Quo will not take one for the account's money (v2.5352).
   'lib/quo/paused.ts': { values: ['QUO_PAUSED_KEY', 'notePause', 'readQuoRefusal'], types: ['PauseChange', 'PauseStore', 'QuoRefusal'] },
+  // Residential R5's push (messages-notify): who has a reply, who gets a new message, a reply after a legal line, and
+  // the pushes a line makes.
+  'lib/messages/hasRule.ts': { values: ['OFFICE_HOURS_KEY', 'parseOfficeHours', 'whoHasReply'], types: ['HasRule', 'OfficeHours', 'TechText'] },
+  'lib/followUp/assignSeats.ts': { values: ['parseAssignSeats', 'whoGetsIt'], types: ['AssignRuleSeats', 'AssignSeats'] },
+  'lib/messages/legalRoute.ts': {
+    values: ['legalLines', 'legalSendsFromDemandLetters', 'legalSendsFromFilings', 'routeReply', 'standingLegalLine'],
+    types: ['LegalLine', 'LegalRoute', 'LegalSend'],
+  },
+  'lib/messages/notifyRule.ts': {
+    values: ['OFFICE_WAIT_KEY', 'OFFICE_WAIT_MINUTES', 'answeredBefore', 'pushDue', 'pushSentRow', 'pushesFor'],
+    types: ['NotifySettings', 'Push', 'PushSentRow', 'ReplyHas', 'ReplyLine'],
+  },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */
