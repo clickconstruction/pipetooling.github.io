@@ -171,6 +171,22 @@ describe('the AR row’s lien chip (v2.5488)', () => {
     expect(lienArChipFor({ ...base, letterTwo: two({ state: 'sent', letterTwo: { itemId: 'i2', kind: 'paid_out', status: 'sent', sentAt: '2026-10-01T15:00:00Z' } }) })!).toMatchObject({ tone: 'green', paper: 'letter_two', words: 'Letter two sent Oct 1' })
   })
 
+  it('an envelope that came back or went unclaimed is the desk’s red row: the chip leads with the piece’s state, names who, and opens the notice under Sent', () => {
+    const base = input({ jobId: 'j858', filings: [filing()], piecesByFiling: { f1: [piece({ status: 'returned' })] } })
+    const back = row({ key: 'mail:m1', jobId: 'j858', gcId: null, sub: 'Docsmit · owner of record · returned to sender', dueOn: null, daysLeft: null, action: 'mail_needs_you', target: { open: 'notices', jobId: 'j858', pile: 'sent' } })
+    const chip = lienArChipFor({ ...base, nextUp: [back] })!
+    expect(chip).toMatchObject({ tone: 'red', state: 'due', paper: 'notice', words: 'Returned to sender · owner of record', dueOn: null })
+    expect(chip.sentence).toBe('§ 53.056 notice for Aug 2026 sent Sep 12 by certified mail 9407 1118 9922 0341 · mailed through Docsmit · returned to sender · the envelope to the owner of record needs you · open the notice under Sent to send it again')
+    expect(chip.door).toEqual({ to: 'desk', jobId: 'j858', kind: 'notice', pile: 'sent' })
+    // Unclaimed: the pieces say amber on their own, but the desk wants a person now, so the chip stays red in the desk's words.
+    const unclaimed = lienArChipFor({ ...base, piecesByFiling: { f1: [piece({ status: 'notice_left', delivered_at: null, signed_by: null })] }, nextUp: [row({ ...back, sub: 'Docsmit · original contractor · notice left, unclaimed so far' })] })!
+    expect(unclaimed).toMatchObject({ tone: 'red', words: 'Notice left · unclaimed · original contractor' })
+    // No pieces in hand (the row came from elsewhere): the desk's own words carry it.
+    const bare = lienArChipFor({ ...base, piecesByFiling: {}, nextUp: [back] })!
+    expect(bare.words).toBe('Returned to sender · owner of record')
+    expect(bare.sentence).toBe('§ 53.056 notice for Aug 2026 sent Sep 12 by certified mail 9407 1118 9922 0341 · returned to sender · the envelope to the owner of record needs you · open the notice under Sent to send it again')
+  })
+
   it('a sent notice with no pieces reads its sends: tracking owed is blue, a number is green, by hand says so', () => {
     const owed = lienArChipFor(input({ jobId: 'j858', filings: [filing({ sends: [{ recipient: 'owner', method: 'certified_mail', tracking: '' }] })] }))!
     expect(owed).toMatchObject({ tone: 'blue', words: 'Sent Sep 12 · tracking owed' })

@@ -88,6 +88,7 @@ const MOVE_WORDS: Record<LienNextUpAction, string> = {
   send_run: 'Approved · ready to send',
   add_tracking: 'In the mail · tracking owed',
   record_mailing: 'In the mail · tracking owed',
+  mail_needs_you: 'Envelope came back',
   review_hold: 'Held',
   letter_two: 'Letter two',
   note_missed: 'Window closed',
@@ -229,6 +230,15 @@ function fromNextUp(row: LienNextUpRow, input: LienArJobInput, fmt: (ymd: string
     case 'record_mailing': {
       const printed = dayOf(entry?.item?.printed_at)
       return { tone: 'blue', state: 'out', paper, words: `${prefix}In the mail · tracking owed`, sentence: `${paperWords(row, entry)} · printed with the run${printed ? ` ${fmt(printed)}` : ''} · type its certified number in the run to record it`, title, door, dueOn: row.dueOn, daysLeft: row.daysLeft }
+    }
+    case 'mail_needs_you': {
+      // An envelope Docsmit mailed that came back or went unclaimed (the Docsmit train, 6b). The desk's row reads
+      // "Docsmit · owner of record · returned to sender"; the chip leads with the pieces' own state and names who.
+      const [, who = '', ...rest] = row.sub.split(' · ')
+      const what = rest.join(' · ')
+      const state = mailState(sentNotice(input)?.pieces ?? [])
+      const lead = state?.tone === 'red' || state?.tone === 'amber' ? state.words : what ? what.charAt(0).toUpperCase() + what.slice(1) : MOVE_WORDS.mail_needs_you
+      return { tone: 'red', state: 'due', paper: 'notice', words: `${lead}${who ? ` · ${who}` : ''}`, sentence: `${noticeSentence(input, fmt)}${state || !what ? '' : ` · ${what}`} · the envelope to the ${who || 'recipient'} needs you · open the notice under Sent to send it again`, title, door, dueOn: null, daysLeft: null }
     }
     case 'approve': {
       // The desk's row already names the leader and the day: "Waiting on Robert · since Oct 7".
