@@ -9,6 +9,14 @@ on:
     branches:
       - main
 
+# A newer push to a PR cancels that PR's superseded run, so it stops holding a runner for a result nobody
+# will read. Merge-queue builds and main pushes keep their own group each and are never cancelled: the
+# queue's check timeout (30 min in the ruleset) counts runner wait time, so every runner freed here is a
+# group that lands instead of timing out. sql-beds.yml keys its group the same way.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.event.merge_group.head_ref || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   checks:
     runs-on: ubuntu-latest
