@@ -25,9 +25,15 @@ export interface ThreadMenuRow {
   onPress: () => void
 }
 
+/** How the window draws the header just now: folded for a narrow column (cut 10, `threadFold.ts`). */
+export interface ThreadLook {
+  /** The header is folded. A slot in it draws its narrow form: the who-has-it pill as a face only. */
+  folded: boolean
+}
+
 export interface ThreadSlots {
-  /** The header's right end, beside ☎ ⋯: cut 2's who-has-it pill. */
-  headerRight?: (c: Contact) => ReactNode
+  /** The header's corner, beside ☎ ⋯: cut 2's who-has-it pill. Folded, the window puts it before ☎. */
+  headerRight?: (c: Contact, look?: ThreadLook) => ReactNode
   /** The status row after the move strip: cut 2's back pill, cut 8's portal pill. */
   statusRow?: (c: Contact) => ReactNode
   /** Rows for ⋯ after the window's own: cut 2's No reply needed, Remind me Monday, Reopen. */

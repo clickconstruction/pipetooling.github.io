@@ -2,7 +2,7 @@
 title: find every message with a person in one place
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search
+keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back
 order: 116
 ---
 Messages lists each person the office works with on GC projects. Press a person to read every message with them in one thread.
@@ -41,6 +41,15 @@ The top of the window shows who they are and where things stand.
 Each message shows how it came, who sent it and its job. A long message shows four lines. Press {{button:outline|⋯}} and then **Show all text** to read every message in full.
 
 Press Escape or {{button:outline|×}} to close the thread.
+
+## Read a thread on a phone
+
+On a phone or in a narrow window, the top of the thread folds to fit.
+
+- Press {{button:outline|‹}} beside their face to go back to everyone.
+- Press the arrow beside their company to show their numbers and addresses.
+- The chips sit in one row, and the person's jobs sit in one row under them.
+- Swipe a row sideways to see the rest of it.
 
 ## Open one message
 
