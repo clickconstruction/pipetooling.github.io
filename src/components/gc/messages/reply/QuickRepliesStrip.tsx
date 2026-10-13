@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
 import type { ContactKind } from '../../../../lib/contacts/kernel'
 import { QR_PRESS_COUNTED, qrEmpty, qrGroups, qrLineCount, qrMarks, qrStripCount, qrTotal, showNarrow, type QuickReply, type StepRef } from '../../../../lib/quickReplies/kernel'
+import type { BlankFills } from '../../../../lib/quickReplies/blanks'
 import { input } from '../../gcUi'
+import { FilledLine } from './FilledLine'
 
 const press = { border: '1px solid var(--border)', borderRadius: 999, background: 'var(--surface)', padding: '0.1rem 0.55rem', cursor: 'pointer', fontSize: '0.75rem' } as const
 /** The pill for the group in view, lit as the prototype's `.gpills button.on`. */
@@ -30,6 +32,9 @@ export function Marked({ text, needle }: { text: string; needle: string }) {
  * lines scroll (the prototype's `qrSpy`), the narrow box once the team has more than ten
  * lines, **Edit** (the quick replies editor) and *Find*, then each group's lines. A press on a line fills the box and nothing sends. The groups
  * and every word are `quickReplies/kernel.ts`'s.
+ *
+ * R3: each line reads as it would go, its blanks filled from `fills` (`FilledLine`), and a blank the app cannot fill
+ * lit. The box waits for the person to fill it before it sends.
  */
 export function QuickRepliesStrip({
   kind,
@@ -37,6 +42,7 @@ export function QuickRepliesStrip({
   me,
   nowStepId,
   steps,
+  fills = {},
   open,
   problem,
   onOpen,
@@ -50,6 +56,8 @@ export function QuickRepliesStrip({
   me: string
   nowStepId: string | null
   steps: readonly StepRef[]
+  /** What the box fills on a press (R3's `replyFills`); a blank it leaves is lit. */
+  fills?: BlankFills
   open: boolean
   problem: string | null
   onOpen: (open: boolean) => void
@@ -172,7 +180,7 @@ export function QuickRepliesStrip({
                 onClick={() => onUse(q)}
                 style={{ ...press, whiteSpace: 'nowrap', flex: 'none', borderStyle: q.scope === 'mine' ? 'dashed' : 'solid', fontSize: '0.78rem' }}
               >
-                <Marked text={q.text} needle={filter} />
+                <FilledLine text={q.text} fills={fills} needle={filter} />
               </button>
             ))}
           </div>

@@ -2,12 +2,14 @@ import { useState } from 'react'
 import {
   addQuickReply,
   EDITOR_WORDS,
+  FLOW_NAMES,
   guessWords,
   qrGuess,
   QR_KINDS,
   QR_KIND_ORDER,
   type QuickReplyFor,
   type QuickReplyTags,
+  type StepRef,
   type StepsByKind,
 } from '../../../../lib/quickReplies/kernel'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
@@ -15,9 +17,22 @@ import { Btn, input } from '../../gcUi'
 
 const label = { fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-600)' } as const
 
+/** A kind's steps cut by flow, in order, when they come from two flows; one group with no name otherwise. */
+function byFlow(steps: readonly StepRef[]): Array<{ name: string | null; steps: StepRef[] }> {
+  const groups: Array<{ name: string | null; flow: StepRef['flow']; steps: StepRef[] }> = []
+  for (const s of steps) {
+    const last = groups[groups.length - 1]
+    if (last && last.flow === s.flow) last.steps.push(s)
+    else groups.push({ name: s.flow && s.flow !== 'unknown' ? FLOW_NAMES[s.flow] : null, flow: s.flow, steps: [s] })
+  }
+  return groups.length > 1 ? groups : [{ name: null, steps: [...steps] }]
+}
+
 /**
  * A line's two tags as the editor sets them: who it is for, as a row of choices, and its step in that kind's flow. A
- * line for anyone has no step. Shared by the add row and a line opened to change.
+ * line for anyone has no step. Shared by the add row and a line opened to change. A kind with two flows (customers:
+ * the residential flow and the GC customer's) lists each flow's steps under its name, as the residential prototype's
+ * `stepOptions` did.
  */
 export function QuickReplyTagFields({
   tags,
@@ -62,11 +77,23 @@ export function QuickReplyTagFields({
           style={{ ...input, width: 'auto' }}
         >
           <option value="">No step</option>
-          {kindSteps.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
+          {byFlow(kindSteps).map((g) =>
+            g.name ? (
+              <optgroup key={g.name} label={g.name}>
+                {g.steps.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </optgroup>
+            ) : (
+              g.steps.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))
+            ),
+          )}
         </select>
         {aside && (
           <span data-add-guess style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>

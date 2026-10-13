@@ -20,11 +20,14 @@ import {
   type StepsByKind,
 } from '../../../../lib/quickReplies/kernel'
 import type { QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
+import type { BlankFills } from '../../../../lib/quickReplies/blanks'
+import { SPANISH_WORDS, lineMarks } from '../../../../lib/quickReplies/spanish'
 import { formatDenverCalendarDayShort } from '../../../../utils/dateUtils'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn, input } from '../../gcUi'
 import { QuickRepliesEditorAdd } from './QuickRepliesEditorAdd'
 import { QuickRepliesEditorLine } from './QuickRepliesEditorLine'
+import { QuickRepliesPhoneTab } from './QuickRepliesPhoneTab'
 import { Marked } from './QuickRepliesStrip'
 
 /**
@@ -40,6 +43,10 @@ import { Marked } from './QuickRepliesStrip'
  *
  * The tabs are the kernel's (`editorTabs`), so a tab added there with its own panel (the residential build's **Phone**)
  * joins the row without moving these.
+ *
+ * R3: the **Phone** tab draws `QuickRepliesPhoneTab` in place of the table, once a line is on the phone. A row wears
+ * ☎ when it is on the phone, and a line for customers wears **es**, or **no es** while it has no Spanish. An opened
+ * line saves its Spanish, its place and its short name with its words.
  */
 export function QuickRepliesEditor({
   io,
@@ -47,6 +54,8 @@ export function QuickRepliesEditor({
   steps,
   names,
   contactNames,
+  fills = {},
+  previewTo = null,
   initialAdd,
   onChanged,
   onClose,
@@ -58,6 +67,10 @@ export function QuickRepliesEditor({
   names: Readonly<Record<string, string>>
   /** The people the window can name in *last used … on*: the open thread's person. */
   contactNames: Readonly<Record<string, string>>
+  /** What the box fills on a press (R3), for the preview and the Phone tab. */
+  fills?: BlankFills
+  /** The open thread's person, by first name, for the preview. */
+  previewTo?: string | null
   /** Words to start the add row with; empty opens the window on its list. */
   initialAdd: string
   onChanged: () => void
@@ -116,7 +129,9 @@ export function QuickRepliesEditor({
 
   const all = lines ?? []
   const tabs = editorTabs(editorCounts(all, me))
-  const rows = editorRows(all, me, tab, search)
+  // A tab that empties (the last line off the phone, say) goes away; the window falls back to All.
+  const shownTab: QrEditorTab = tabs.some((t) => t.tab === tab) ? tab : 'all'
+  const rows = editorRows(all, me, shownTab, search)
   const groups = editorGroups(rows, steps)
   const byId = (id: string) => all.find((q) => q.id === id) ?? null
   const opened = open ? byId(open) : null
@@ -167,7 +182,7 @@ export function QuickRepliesEditor({
               key={t.tab}
               type="button"
               role="tab"
-              aria-selected={tab === t.tab}
+              aria-selected={shownTab === t.tab}
               data-qr-tab={t.tab}
               onClick={() => {
                 setTab(t.tab)
@@ -179,10 +194,10 @@ export function QuickRepliesEditor({
                 padding: '0.15rem 0.65rem',
                 fontSize: '0.8rem',
                 cursor: 'pointer',
-                background: tab === t.tab ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                borderColor: tab === t.tab ? 'var(--border-blue)' : 'var(--border)',
-                color: tab === t.tab ? 'var(--text-blue-700)' : 'var(--text-base)',
-                fontWeight: tab === t.tab ? 600 : 400,
+                background: shownTab === t.tab ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                borderColor: shownTab === t.tab ? 'var(--border-blue)' : 'var(--border)',
+                color: shownTab === t.tab ? 'var(--text-blue-700)' : 'var(--text-base)',
+                fontWeight: shownTab === t.tab ? 600 : 400,
               }}
             >
               {t.label} · {t.count}
@@ -212,7 +227,25 @@ export function QuickRepliesEditor({
             </div>
           )}
           {!lines && !problem && <div style={{ color: 'var(--text-muted)' }}>Loading the quick replies…</div>}
-          {lines && (
+          {lines && shownTab === 'phone' && (
+            <QuickRepliesPhoneTab
+              lines={all}
+              steps={steps}
+              fills={fills}
+              onPlaces={async (places) => {
+                try {
+                  for (const p of places) {
+                    const q = byId(p.id)
+                    if (q) await io.edit(q.id, q.text, { for: q.for, stepId: q.stepId }, { phoneOrder: p.phoneOrder })
+                  }
+                } finally {
+                  await changed()
+                }
+              }}
+              onDone={(words) => showToast(words, 'success')}
+            />
+          )}
+          {lines && shownTab !== 'phone' && (
             <table data-qr-editor-lines style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -257,6 +290,7 @@ export function QuickRepliesEditor({
                             <Marked text={q.text} needle={search} />
                           </button>
                           {q.scope === 'mine' && <span style={{ marginLeft: '0.4rem', fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>mine</span>}
+                          <LineMarkChips line={q} />
                           {narrow && (
                             <div data-qr-editor-byline style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                               added by {nameOf(names, q.addedBy)} · {formatDenverCalendarDayShort(q.addedAt)}
@@ -280,13 +314,17 @@ export function QuickRepliesEditor({
                           <td colSpan={span} style={{ padding: '0.3rem 0 0.6rem' }}>
                             <QuickRepliesEditorLine
                               line={opened}
+                              lines={all}
                               versions={versions[q.id] ?? []}
                               me={me}
                               steps={steps}
                               names={names}
                               contactNames={contactNames}
-                              onSave={async (text: string, tags: QuickReplyTags) => {
-                                await io.edit(q.id, text, tags)
+                              fills={fills}
+                              previewTo={previewTo}
+                              onSave={async (text: string, tags: QuickReplyTags, r3) => {
+                                // A Save of words and tags alone stays the four named arguments.
+                                await (Object.keys(r3).length ? io.edit(q.id, text, tags, r3) : io.edit(q.id, text, tags))
                                 await changed()
                               }}
                               onRemove={async () => {
@@ -313,12 +351,36 @@ export function QuickRepliesEditor({
 
         <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <span data-qr-editor-foot style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-            {editorFoot(rows.length, search).join(' · ')}.
+            {shownTab === 'phone' ? '' : `${editorFoot(rows.length, search).join(' · ')}.`}
           </span>
           <span style={{ flex: 1 }} />
           <Btn onClick={onClose}>Done</Btn>
         </div>
       </div>
     </div>
+  )
+}
+
+/** A row's R3 marks after its words: ☎ on the phone, and es or no es on a line for customers. */
+function LineMarkChips({ line }: { line: QuickReply }) {
+  const marks = lineMarks(line)
+  const chip = { marginLeft: '0.35rem', fontSize: '0.7rem', borderRadius: 999, padding: '0 0.4rem', border: '1px solid var(--border)', whiteSpace: 'nowrap' } as const
+  return (
+    <>
+      {marks.phone && (
+        <span data-qr-mark="phone" title={SPANISH_WORDS.phoneTip} style={{ ...chip, color: 'var(--text-blue-700)', borderColor: 'var(--border-blue)' }}>
+          ☎ phone
+        </span>
+      )}
+      {marks.es && (
+        <span
+          data-qr-mark={marks.es}
+          title={marks.es === 'es' ? SPANISH_WORDS.esTip : SPANISH_WORDS.noEsTip}
+          style={marks.es === 'es' ? { ...chip, color: 'var(--text-600)' } : { ...chip, color: 'var(--text-amber-800)', borderColor: 'var(--border-amber)', borderStyle: 'dashed' }}
+        >
+          {marks.es}
+        </span>
+      )}
+    </>
   )
 }

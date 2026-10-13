@@ -9,6 +9,8 @@ import { todayYmdInAppTz, ymdDaysBetween } from '../../../../utils/dateUtils'
 import { NoteBackDay } from '../../../followUp/NoteBackDay'
 import { SettlingNote } from '../../../followUp/SettlingNote'
 import { useOwedSettling } from '../../../followUp/useOwedSettling'
+import { fillLine } from '../../../../lib/quickReplies/blanks'
+import { replyFills, sendWaits } from '../../../../lib/quickReplies/filling'
 import { findWhere, qrKindOf, stepsByKind, type QuickReply } from '../../../../lib/quickReplies/kernel'
 import { supabaseQuickRepliesIo, type QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import {
@@ -78,6 +80,10 @@ const keepOpen = (open: boolean) => {
  * In a job's window (residential R2) it is given `job`: the reply is tied to that job, *Tie to* names it with no
  * picker, and a text or an email to a customer takes the customer's orange (`CUSTOMER_LOOK`). `kinds` keeps the kinds
  * it offers; with one, the caller's own row chose it and the box draws none.
+ *
+ * R3: a quick reply goes into the box with its blanks filled from what the box knows (`replyFills`: their first name,
+ * yours, the job's name in a job's window or the tied job's). A blank it cannot fill stays in the words, and a text or an email waits until the
+ * person fills it (`sendWaits`).
  */
 export function ReplyBox({
   contact,
@@ -239,6 +245,8 @@ export function ReplyBox({
   // The live flow names the step; the seed names the rest of their kind's steps.
   const kindSteps = flowNow ? [{ id: flowNow.stepId, name: flowNow.stepName }, ...(STEPS[qrKindOf(contact.kind)] ?? [])] : (STEPS[qrKindOf(contact.kind)] ?? [])
   const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
+  const fills = replyFills({ first: contact.kind === 'unknown' ? null : first, myName: open?.userNames[me] ?? null, jobName: job?.name ?? ((jobKey && tiles[jobKey]?.name) || null) })
+  const waits = goesOut(shown) ? sendWaits(body) : null
   const where =
     flowNow === undefined
       ? null
@@ -250,7 +258,7 @@ export function ReplyBox({
           off: false,
         })
   const use = (q: QuickReply) => {
-    setBody(q.text)
+    setBody(fillLine(q.text, fills).text)
     setFinding(false)
     setPeek(false)
     quick.press(q, contact.id)
@@ -293,6 +301,7 @@ export function ReplyBox({
           me={me}
           nowStepId={nowStepId}
           steps={kindSteps}
+          fills={fills}
           open={stripOpen && (!body.trim() || peek)}
           problem={quick.problem}
           onOpen={(o) => {
@@ -429,6 +438,11 @@ export function ReplyBox({
           </button>
         )}
         {blocked && <span style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{blocked}</span>}
+        {!blocked && waits && (
+          <span data-reply-waits style={{ fontSize: '0.8rem', color: 'var(--text-amber-800)' }}>
+            {waits}
+          </span>
+        )}
         {goesOut(shown) && !settling.active && (
           <Btn onClick={() => setAttaching(true)} title="Adds a file from the job, this computer or a photo. The send window shows how each goes.">
             Attach
@@ -437,7 +451,7 @@ export function ReplyBox({
         <Btn
           kind="primary"
           onClick={() => void press()}
-          disabled={Boolean(blocked) || busy}
+          disabled={Boolean(blocked) || Boolean(waits) || busy}
           title={
             settling.active
               ? 'Marks what we owed done and keeps your words in the thread. The row closes as any note does.'
@@ -472,6 +486,7 @@ export function ReplyBox({
           me={me}
           nowStepId={nowStepId}
           steps={kindSteps}
+          fills={fills}
           where={where}
           onOpenStep={
             flowNow
@@ -501,6 +516,8 @@ export function ReplyBox({
           steps={STEPS}
           names={open?.userNames ?? {}}
           contactNames={{ [contact.id]: contact.name }}
+          fills={fills}
+          previewTo={contact.kind === 'unknown' ? null : first}
           initialAdd={adding}
           onChanged={quick.reload}
           onClose={() => setAdding(null)}
