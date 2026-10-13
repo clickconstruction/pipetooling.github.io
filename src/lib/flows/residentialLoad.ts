@@ -1,9 +1,11 @@
 /**
  * A residential customer's stamps (`FlowStamps`) for `readFlow`, from their Pipeline jobs (`jobs_ledger.id`):
  * `residentialStampsFor` reads each job's dispatch, clock-ins, reports, estimates, moves on the Jobs board, bills and
- * texts. Pure, as `load.ts` is. It lives apart from `load.ts` because the bills' rules it reads (`billTruth`,
- * `billedExpectedPay`, `billToParty`, `paymentAttribution`) and the report preview would otherwise ride into every edge
- * function that copies the flow's loader (`scripts/edge-kernels.mjs`).
+ * texts. A sub's stamps (`subStampsFor`) live here too, from their sheets (`people_labor_jobs.id`) and work orders: the
+ * sheet's money (`subLaborOutstanding`) is another rule that must not ride along. Pure, as `load.ts` is. It lives apart
+ * from `load.ts` because the bills' rules it reads (`billTruth`, `billedExpectedPay`, `billToParty`,
+ * `paymentAttribution`) and the report preview would otherwise ride into every edge function that copies the flow's
+ * loader (`scripts/edge-kernels.mjs`).
  */
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { isSettledRemainder, openRemainder } from '../billing/billTruth'
@@ -11,6 +13,8 @@ import { billedExpectedPayModel, type PaySpeedData, type PromisedPayDate } from 
 import { paySpeedPayer } from '../jobs/billToParty'
 import { attributeJobPayments, isSentBill } from '../jobs/paymentAttribution'
 import { jobReportPreviewLine } from '../jobReportsTimeline'
+import type { PeopleLaborJobItemLike } from '../peopleLaborJobItemLineCost'
+import { subLaborJobBalance } from '../subLaborOutstanding'
 import { lane, nameOf, newest, offOf, stamp, type ContactRow } from './load'
 import type { FactStamp, FlowStamps, JobStamps, RoundStamp } from './state'
 
@@ -264,6 +268,159 @@ export function residentialStampsFor(rows: ResidentialRows, now: Date): FlowStam
     skips: (rows.skips ?? [])
       .filter((k) => !k.undone_at)
       .map((k) => ({ stepId: k.step_key, jobId: k.jobs_ledger_id, why: k.why, by: k.by_name || null, at: k.created_at })),
+    waits: [],
+    off: offOf(rows),
+  }
+}
+
+// ---------- a sub: their sheets ----------
+
+/** `people_labor_jobs`: one of the sub's sheets, with the two days it keeps since v2.5429. */
+export type SubSheetRow = {
+  id: string
+  job_ledger_id: string | null
+  job_number: string | null
+  address: string
+  stage: string
+  /** The first report of a percent above 0 while Working. */
+  on_site_at: string | null
+  /** The first move out of Working; a move back clears it. */
+  done_at: string | null
+  created_at: string | null
+  labor_rate: number | null
+}
+/** `people_labor_job_items`: a line on a sheet, which prices it. */
+export type SubSheetItemRow = PeopleLaborJobItemLike & { job_id: string }
+/** `people_labor_job_payments`: money to the sub on a sheet. A negative one is a back charge. */
+export type SubSheetPaymentRow = { job_id: string; amount: number; payment_date: string | null; created_at: string }
+/**
+ * `step_commitments`: a work order to the sub, on a sheet (`labor_job_id`) or on its job before the sheet exists.
+ * Withdraw sets it back to a draft with no `offered_at`; a re-offer clears `declined_at`.
+ */
+export type WorkOrderRow = {
+  id: string
+  labor_job_id: string | null
+  job_id: string | null
+  status: string
+  offered_at: string | null
+  accepted_at: string | null
+  declined_at: string | null
+  decline_reason: string | null
+  created_at: string
+}
+
+/**
+ * One sub's rows. `sheets` are theirs through `people_labor_job_assignees`, `orders` theirs by `person_id`. A list
+ * left out is empty. A skip has no sheet column (`contact_step_skips` names a project, a bid or a Pipeline job), so a
+ * sub's lanes take no skips until one is added.
+ */
+export type SubRows = {
+  contact: ContactRow
+  sheets: readonly SubSheetRow[]
+  items?: readonly SubSheetItemRow[]
+  payments?: readonly SubSheetPaymentRow[]
+  orders?: readonly WorkOrderRow[]
+  userNames?: Readonly<Record<string, string>>
+}
+
+/** The lane of a work order with no sheet yet, until its sheet takes it over. */
+export const orderLaneId = (orderId: string): string => `order:${orderId}`
+
+/** A work order still standing: a cancelled one is gone, and a draft was never sent to them. */
+const isLiveOrder = (o: WorkOrderRow) => o.status !== 'cancelled'
+
+/** The lane each live order is on: its sheet when the sheet is theirs, else its own. */
+function orderLanes(rows: SubRows): Map<string, WorkOrderRow[]> {
+  const sheetIds = new Set(rows.sheets.map((s) => s.id))
+  const out = new Map<string, WorkOrderRow[]>()
+  for (const o of (rows.orders ?? []).filter(isLiveOrder)) {
+    const laneId = o.labor_job_id && sheetIds.has(o.labor_job_id) ? o.labor_job_id : o.status === 'draft' ? null : orderLaneId(o.id)
+    if (laneId) out.set(laneId, [...(out.get(laneId) ?? []), o])
+  }
+  return out
+}
+
+/**
+ * `sub_asked`, `sub_said_yes` and `sub_declined` from the lane's newest live work order. A withdrawn order has no
+ * `offered_at`, so it asks nothing; a decline counts only while the order still says declined. A sheet with no work
+ * order was agreed outside the app: it reads asked on the day the sheet was made, and said yes with no day, as
+ * `statusStamps` reads a job whose moves were never kept.
+ */
+export function workOrderStamps(rows: SubRows, laneId: string): FactStamp[] {
+  const order = newest(orderLanes(rows).get(laneId) ?? [], (o) => o.created_at)
+  if (!order) {
+    const sheet = rows.sheets.find((s) => s.id === laneId)
+    return sheet ? [stamp('sub_asked', 'ok', sheet.created_at), stamp('sub_said_yes', 'ok', null)] : []
+  }
+  const out: FactStamp[] = []
+  if (order.offered_at) out.push(stamp('sub_asked', 'ok', order.offered_at))
+  if (order.accepted_at && order.status !== 'declined') out.push(stamp('sub_said_yes', 'ok', order.accepted_at))
+  if (order.status === 'declined' && order.declined_at) out.push(stamp('sub_declined', 'ok', order.declined_at))
+  return out
+}
+
+/** `sub_on_site` and `sub_done`: the sheet's two days. */
+export function sheetDayStamps(sheet: SubSheetRow): FactStamp[] {
+  const out: FactStamp[] = []
+  if (sheet.on_site_at) out.push(stamp('sub_on_site', 'ok', sheet.on_site_at))
+  if (sheet.done_at) out.push(stamp('sub_done', 'ok', sheet.done_at))
+  return out
+}
+
+/** Whether a sheet is paid: its payments cover its lines, back charges counted, and money has gone to them. */
+export function sheetIsPaid(rows: SubRows, sheet: SubSheetRow): boolean {
+  const payments = (rows.payments ?? []).filter((p) => p.job_id === sheet.id)
+  const { balance, paid } = subLaborJobBalance({
+    labor_rate: sheet.labor_rate,
+    items: (rows.items ?? []).filter((i) => i.job_id === sheet.id),
+    payments,
+  })
+  // A sheet with no lines and no money balances to 0, but nothing has gone to them, so it is not paid. To the cent.
+  return paid > 0 && Math.round(balance * 100) <= 0
+}
+
+/** `sub_paid`: the sheet paid, on the day of its newest payment. */
+export function sheetPaidStamps(rows: SubRows, sheet: SubSheetRow): FactStamp[] {
+  if (!sheetIsPaid(rows, sheet)) return []
+  const last = newest((rows.payments ?? []).filter((p) => p.job_id === sheet.id), (p) => p.payment_date ?? p.created_at)
+  return [stamp('sub_paid', 'ok', last?.payment_date ?? last?.created_at ?? null)]
+}
+
+/** Their lanes: each sheet, then each work order with no sheet yet; the newest unpaid sheet first, else the newest lane. */
+function subLanesOf(rows: SubRows): { jobIds: string[]; defaultJobId: string | null } {
+  const created = new Map<string, string>()
+  for (const s of rows.sheets) created.set(s.id, s.created_at ?? '')
+  for (const [laneId, orders] of orderLanes(rows)) if (!created.has(laneId)) created.set(laneId, oldest(orders, (o) => o.created_at)?.created_at ?? '')
+  const ordered = [...created.keys()].sort((a, b) => (created.get(a) ?? '').localeCompare(created.get(b) ?? '') || a.localeCompare(b))
+  const byNewest = [...ordered].reverse()
+  const unpaid = byNewest.find((id) => {
+    const sheet = rows.sheets.find((s) => s.id === id)
+    return sheet ? !sheetIsPaid(rows, sheet) : false
+  })
+  const defaultJobId = unpaid ?? byNewest[0] ?? null
+  return { jobIds: defaultJobId ? [defaultJobId, ...ordered.filter((id) => id !== defaultJobId)] : ordered, defaultJobId }
+}
+
+/**
+ * One sub's stamps, for `readFlow` with the sub flow: one `JobStamps` per sheet, and one per work order with no sheet
+ * yet, keyed `order:<id>`. A draft order with no sheet has not been sent, so it has no lane.
+ */
+export function subStampsFor(rows: SubRows): FlowStamps {
+  const { jobIds, defaultJobId } = subLanesOf(rows)
+  const job = (jobId: string): JobStamps => {
+    const sheet = rows.sheets.find((s) => s.id === jobId)
+    return {
+      jobId,
+      ...lane([...workOrderStamps(rows, jobId), ...(sheet ? [...sheetDayStamps(sheet), ...sheetPaidStamps(rows, sheet)] : [])]),
+    }
+  }
+  return {
+    kind: 'sub',
+    jobIds,
+    defaultJobId,
+    person: lane([]),
+    jobs: Object.fromEntries(jobIds.map((id) => [id, job(id)])),
+    skips: [],
     waits: [],
     off: offOf(rows),
   }

@@ -24,8 +24,6 @@ describe('flows/facts', () => {
       'named',
       'on_way',
       'review_asked',
-      'sub_on_site',
-      'sub_done',
       'sub_paid',
     ])
     for (const f of FLOW_FACTS) if (f.kept === 'not_yet') expect(f.gap).toBeTruthy()
@@ -35,6 +33,9 @@ describe('flows/facts', () => {
     expect(factById('asked_us')?.reads).toContain('gc_projects.created_at')
     // Warranty is computed from the acceptance, so nothing is added for it.
     expect(factById('warranty_over')?.gap).toBeNull()
+    // The sheet keeps the sub's two days since v2.5429 (R8 · 12, PR 2).
+    expect(factById('sub_on_site')?.reads).toContain('people_labor_jobs.on_site_at')
+    expect(factById('sub_done')?.reads).toContain('people_labor_jobs.done_at')
   })
 
   it('lists the residential flow’s eleven facts once each, on the job or one bill, read from main’s columns', () => {
