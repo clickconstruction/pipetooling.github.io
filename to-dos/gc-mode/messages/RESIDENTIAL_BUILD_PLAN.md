@@ -31,7 +31,7 @@ New, in order of appearance. Every migration starts `SET lock_timeout = '3s';`, 
 
 | Cut | Change | Why |
 |---|---|---|
-| R0 | `contacts.record_kind` check widened to `lead`, `supply_house`, `candidate`, `sub`; `contact_for_record` reads the four new tables | seven kinds of contact, one change |
+| R0 | `contacts_kind_known` widened to `lead`, `supply_house`, `candidate`, `sub`; three id columns beside the five, `prospect_id` (a lead is a `prospects` row), `supply_house_id`, `team_prospect_id` (a candidate is a `team_prospects` row, Prospects → Team); a sub is a `people` row with `kind = 'sub'` through the `people_id` that exists; `contact_for_record` reads the three new tables (helper 2's read of main, 2026-10-13) | seven kinds of contact, one change |
 | R0 | `contacts_kind_door` policies: supply house and candidate rows readable by the office, never counted by `followup_queue` | off Follow up by default |
 | R1 | none | the registry is code; the job panel reads `messages` by `job_id` |
 | R3 | `quick_replies.text_es`, `quick_replies.phone_order` (null = not on the phone), `quick_replies.phone_name`; `quick_reply_versions.kind` gains `es` | blanks are text; the phone mark; Spanish |
@@ -51,8 +51,8 @@ Each cut lists its PRs. A PR is one change, kernel and test first, screens in th
 
 ### R0 · Seven kinds of contact (3 PRs)
 
-- **Kernels**: `contacts/kernel.ts` — `ContactKind` gains `lead`, `supply_house`, `candidate`, `sub`; `ContactRecord` points at the prospect row, `supply_houses`, the hiring board's candidate row, and `people` for a sub; `KIND_WORD`; `followUp/queue.ts` leaves supply houses and candidates out of every section; `quickReplies/kernel.ts` — `QuickReplyFor` follows; `flows/facts.ts` — `FlowKind` gains `residential` and `sub` with no steps yet. One PR.
-- **SQL**: the check widened, `contact_for_record` extended, the two policies. One PR, pushed by the lead.
+- **Kernels**: `contacts/kernel.ts` — `ContactKind` gains `lead`, `supply_house`, `candidate`, `sub`; `ContactRecord` points at `prospects` for a lead, `supply_houses`, `team_prospects` for a candidate, and `people` with `kind = 'sub'` for a sub (`kindOf(record, rosterKind)`); `KIND_WORD`; `followUp/queue.ts` leaves supply houses and candidates out of every section; `quickReplies/kernel.ts` — `QuickReplyFor` follows; `flows/facts.ts` — `FlowKind` gains `residential` and `sub` with no steps yet. One PR.
+- **SQL**: `contacts_kind_known` widened, the three id columns, `contact_for_record` extended, the two policies. One PR, pushed by the lead. `flows_kind_known` is R4's SQL, not this one, so `FLOW_KINDS` in `flowsSql.test.ts` stays at four until then while the `FlowKind` type gains the two.
 - **Loaders**: `contacts/load.ts` reads the four records' names, companies and addresses (a supply house by `supply_houses.email`). One PR.
 - **Docs**: `ACCESS_CONTROL.md` → Messages cut 1's paragraph gains the kinds; `GLOSSARY.md` → Messages entry.
 
