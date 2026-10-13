@@ -16,8 +16,8 @@ const page = (over: Partial<PortalGcPage> = {}): PortalGcPage => ({
   payApps: [],
   week: { on: '2026-10-02', line: 'Permits are in.', lineEs: 'Los permisos están.', photosUrl: null },
   people: [
-    { role: 'pm', name: 'Robert', phone: null },
-    { role: 'super', name: 'Wendi', phone: '(210) 555-0190' },
+    { role: 'pm', name: 'Robert' },
+    { role: 'super', name: 'Wendi' },
   ],
   moves: [{ activity: 'Parking lot pour', madeOn: '2026-10-01', from: '2026-10-05', to: '2026-10-12', reason: 'weather' }],
   switches: { photos: false, forecast: false, spanish: false },
@@ -71,7 +71,7 @@ describe('every tab of the page for one job', () => {
     expect(model.people).toEqual([
       { name: 'Click Construction', role: 'office', phone: '(210) 555-0100' },
       { name: 'Robert', role: 'project manager', phone: null },
-      { name: 'Wendi', role: 'on site', phone: '(210) 555-0190' },
+      { name: 'Wendi', role: 'on site', phone: null },
     ])
     expect(customerPageModel('es', { ...base, job: job(), page: page() }).week?.line).toBe('Los permisos están.')
   })
@@ -94,6 +94,14 @@ describe('every tab of the page for one job', () => {
     expect(model.money.payNote).toBe('Pay by bank transfer at no fee, or by card with a 3% fee. The details are on each bill.')
   })
 
+  it('reads an application certified for less as paid once its bill, made for the certificate, is paid in full', () => {
+    const payApps: PortalGcPage['payApps'] = [{ id: 'pa-1', number: 1, final: false, periodTo: '2026-08-31', sentOn: '2026-09-01', due: 63000, certifiedOn: '2026-09-04', invoiceId: 'inv-1', customerLine: null, customerLineEs: null }]
+    const model = customerPageModel('en', { ...base, bills: [bill('inv-1', 60000, [{ date: '2026-09-25', amount: 60000 }])], job: job(), page: page({ payApps }) })
+    expect(model.money.cards.find((c) => c.kind === 'payApp')).toMatchObject({ n: 1, pill: 'paid Sep 25' })
+    const partly = customerPageModel('en', { ...base, bills: [bill('inv-1', 60000, [{ date: '2026-09-25', amount: 30000 }])], job: job(), page: page({ payApps }) })
+    expect(partly.money.cards.find((c) => c.kind === 'payApp')).toMatchObject({ n: 1, pill: null })
+  })
+
   it('reads a certified, unpaid application as due on its day', () => {
     const payApps: PortalGcPage['payApps'] = [{ id: 'pa-1', number: 1, final: false, periodTo: '2026-09-30', sentOn: '2026-10-01', due: 63000, certifiedOn: '2026-10-06', invoiceId: 'inv-1', customerLine: null, customerLineEs: null }]
     const model = customerPageModel('en', { ...base, bills: [bill('inv-1', 63000, [])], job: job(), page: page({ payApps }) })
@@ -111,7 +119,7 @@ describe('every tab of the page for one job', () => {
 
   it("lays the office's words over every tab", () => {
     const words = wordsWith([{ key: 'roleSuper', en: 'your superintendent', es: 'su superintendente' }])
-    expect(customerPageModel('en', { ...base, job: job(), page: page() }, { words }).people[2]).toEqual({ name: 'Wendi', role: 'your superintendent', phone: '(210) 555-0190' })
+    expect(customerPageModel('en', { ...base, job: job(), page: page() }, { words }).people[2]).toEqual({ name: 'Wendi', role: 'your superintendent', phone: null })
   })
 })
 

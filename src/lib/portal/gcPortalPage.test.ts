@@ -1,6 +1,7 @@
 // The customer's page block, as customer-portal lays it on a GC job (supabase/functions/_shared/gcPortalPage.ts):
 // our contract's sum before the changes, the changes and pay applications, this week's line with the photos link only
 // while the photos switch is on, the people, the schedule's moves since it went, by reason, and nothing of ours.
+import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { gcPortalPage, type GcPortalPageRows } from '../../../supabase/functions/_shared/gcPortalPage'
 
@@ -33,8 +34,8 @@ const rows = (over: Partial<GcPortalPageRows> = {}): GcPortalPageRows => ({
   ],
   architects: [{ id: 'arch', name: 'Marsh & Vale Architects' }],
   users: [
-    { id: 'u-pm', name: 'Robert', phone: null },
-    { id: 'u-super', name: 'Wendi', phone: '(210) 555-0190' },
+    { id: 'u-pm', name: 'Robert' },
+    { id: 'u-super', name: 'Wendi' },
   ],
   logs: [
     { project_id: 'p1', log_date: '2026-09-25', customer_line: 'Older line.', customer_line_es: null, photos_url: 'https://photos/old' },
@@ -65,8 +66,8 @@ describe("the customer's page block for one job", () => {
       ],
       week: { on: '2026-10-02', line: 'The slab is poured.', lineEs: 'La losa está vaciada.', photosUrl: null },
       people: [
-        { role: 'pm', name: 'Robert', phone: null },
-        { role: 'super', name: 'Wendi', phone: '(210) 555-0190' },
+        { role: 'pm', name: 'Robert' },
+        { role: 'super', name: 'Wendi' },
       ],
       moves: [{ activity: 'Parking lot pour', madeOn: '2026-10-01', from: '2026-10-05', to: '2026-10-12', reason: 'weather' }],
       switches: { photos: false, forecast: false, spanish: false },
@@ -83,6 +84,20 @@ describe("the customer's page block for one job", () => {
     const page = gcPortalPage(rows({ scheduleSends: [], contractSends: [], terms: rows().terms.map((t) => ({ ...t, owner_contract_signed_on: '2026-09-21' })) }), 'p1')
     expect(page?.moves).toEqual([])
     expect(page?.contractSignedOn).toBe('2026-09-21')
+  })
+
+  it("puts no person's own phone on the page: the office line is the one phone", () => {
+    const withPhone = rows({ users: [{ id: 'u-super', name: 'Wendi', phone: '(210) 555-0190' } as GcPortalPageRows['users'][number]] })
+    expect(gcPortalPage(withPhone, 'p1')?.people).toEqual([{ role: 'super', name: 'Wendi' }])
+    const src = readFileSync(new URL('../../../supabase/functions/_shared/gcPortalPage.ts', import.meta.url), 'utf8')
+    expect(src).toContain(".from('users').select('id, name')")
+  })
+
+  it("reads each job's newest log line on its own, so a busy job never crowds out another's", () => {
+    const src = readFileSync(new URL('../../../supabase/functions/_shared/gcPortalPage.ts', import.meta.url), 'utf8')
+    const logRead = src.slice(src.indexOf(".from('gc_daily_logs')"), src.indexOf('.limit(1)') + '.limit(1)'.length)
+    expect(logRead).toContain(".eq('project_id', id)")
+    expect(logRead).not.toContain(".in('project_id'")
   })
 
   it('reads nothing for a job whose terms it did not read', () => {

@@ -79,7 +79,7 @@ export function parsePortalGcPage(raw: unknown): PortalGcPage | null {
       ? p.people.flatMap((x): PortalGcPage['people'] => {
           const o = x && typeof x === 'object' ? (x as Record<string, unknown>) : null
           const name = o ? str(o.name) : null
-          return o && name && (o.role === 'pm' || o.role === 'super') ? [{ role: o.role, name, phone: str(o.phone) }] : []
+          return o && name && (o.role === 'pm' || o.role === 'super') ? [{ role: o.role, name }] : []
         })
       : [],
     moves: Array.isArray(p.moves)
@@ -119,7 +119,8 @@ function payAppOf(a: PortalGcPage['payApps'][number], page: PortalGcPage, bills:
   const bill = a.invoiceId ? bills.find((b) => b.invoiceId === a.invoiceId) : undefined
   const paidDays = (bill?.payments ?? []).map((p) => p.date).filter((d): d is string => ymd(d)).map((d) => d.slice(0, 10))
   const dueOn = a.certifiedOn && page.payDays !== null ? ymdAddDays(a.certifiedOn, page.payDays) : null
-  if (bill && bill.totalPaid >= a.due - 0.5 && paidDays.length) {
+  // Paid in full against the bill's own amount: the bill is made for what the architect certified, which may be less than asked.
+  if (bill && bill.totalPaid >= bill.amount - 0.5 && paidDays.length) {
     return { ...base, state: 'paid', certifiedBy: a.certifiedOn ? page.architect : null, certifiedOn: a.certifiedOn, dueOn, paidOn: paidDays.reduce((x, y) => (y > x ? y : x)), waivers: 0, tradesPaidOn: null }
   }
   if (a.certifiedOn) return { ...base, state: 'due', certifiedBy: page.architect, certifiedOn: a.certifiedOn, dueOn }
@@ -236,7 +237,8 @@ export function customerPageModel(lang: PortalLang, input: CustomerPageIn, opts:
       : null,
     people: [
       { name: input.company.name, role: words.say(lang, 'roleOffice'), phone: input.company.phone || null },
-      ...page.people.map((p) => ({ name: p.name, role: words.say(lang, p.role === 'pm' ? 'rolePm' : 'roleSuper'), phone: p.phone })),
+      // The office line is the one phone: a person's own number never goes on a public page by default.
+      ...page.people.map((p) => ({ name: p.name, role: words.say(lang, p.role === 'pm' ? 'rolePm' : 'roleSuper'), phone: null })),
     ],
     money: moneyStory(
       lang,

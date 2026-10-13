@@ -26,7 +26,7 @@ const PAGE = {
     { id: '00000000-0000-0000-0000-0000000000a1', number: 1, final: false, periodTo: '2026-09-30', sentOn: '2026-10-01', due: 63000, certifiedOn: null, invoiceId: 'inv-1', customerLine: 'Slab and plumbing', customerLineEs: null },
   ],
   week: { on: '2026-10-02', line: 'Permits are in. The slab pour is set for the week of Oct 12.', lineEs: null, photosUrl: 'https://photos.example/week' },
-  people: [{ role: 'super', name: 'Wendi', phone: '(210) 555-0190' }],
+  people: [{ role: 'super', name: 'Wendi' }],
   moves: [{ activity: 'Parking lot pour', madeOn: '2026-10-01', from: '2026-10-05', to: '2026-10-12', reason: 'weather' }],
   switches: { photos: true, forecast: false, spanish: false },
 }
@@ -71,7 +71,8 @@ describe("the customer's page, shape B", () => {
     expect(screen.getByTestId('portal-gc-week').textContent).toContain('Permits are in.')
     expect(screen.getByRole('link', { name: 'See this week’s photos' }).getAttribute('href')).toBe('https://photos.example/week')
     expect(screen.getByTestId('portal-gc-people').textContent).toContain('Click Construction office(210) 555-0100')
-    expect(screen.getByTestId('portal-gc-people').textContent).toContain('Wendi on site(210) 555-0190')
+    expect(screen.getByTestId('portal-gc-people').textContent).toContain('Wendi on site')
+    expect(screen.getAllByRole('link').filter((a) => a.getAttribute('href')?.startsWith('tel:')).map((a) => a.textContent)).toEqual(['(210) 555-0100'])
     expect(screen.queryByText('Español')).toBeNull()
   })
 

@@ -468,8 +468,8 @@ function sampleOwnerGcJobs(todayYmd: string, appOrigin: string) {
         payApps: [],
         week: { on: ymdPlusDays(todayYmd, -1), line: 'The framing is up. The roof deck goes on next week.', lineEs: null, photosUrl: null },
         people: [
-          { role: 'pm', name: 'Robert', phone: null },
-          { role: 'super', name: 'Wendi', phone: null },
+          { role: 'pm', name: 'Robert' },
+          { role: 'super', name: 'Wendi' },
         ],
         moves: [{ activity: 'Roof deck', madeOn: ymdPlusDays(todayYmd, -3), from: ymdPlusDays(todayYmd, 4), to: ymdPlusDays(todayYmd, 8), reason: 'weather' }],
         switches: { photos: false, forecast: false, spanish: false },

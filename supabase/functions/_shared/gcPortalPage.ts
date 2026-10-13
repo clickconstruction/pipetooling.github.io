@@ -57,8 +57,9 @@ export type PortalGcPage = {
   payApps: PortalGcPagePayApp[]
   /** The newest customer line on the daily log, with the log's photos link while the photos switch is on. */
   week: { on: string; line: string; lineEs: string | null; photosUrl: string | null } | null
-  /** The project manager and the superintendent, by name, with a phone when their record has one. */
-  people: { role: 'pm' | 'super'; name: string; phone: string | null }[]
+  /** The project manager and the superintendent, by name and role. No phone: a person's own number never goes on a
+   * public page by default, so the customer calls the office line. */
+  people: { role: 'pm' | 'super'; name: string }[]
   moves: PortalGcPageMove[]
   switches: { photos: boolean; forecast: boolean; spanish: boolean }
 }
@@ -94,7 +95,7 @@ export type GcPortalPageRows = {
     customer_line_es: string | null
   }[]
   architects: { id: string; name: string }[]
-  users: { id: string; name: string | null; phone: string | null }[]
+  users: { id: string; name: string | null }[]
   logs: { project_id: string; log_date: string; customer_line: string | null; customer_line_es: string | null; photos_url: string | null }[]
   scheduleSends: { project_id: string; sent_on: string }[]
   moves: { project_id: string; activity_name: string; made_on: string; from_start: string; to_start: string; reason: string; undone_on: string | null }[]
@@ -124,7 +125,7 @@ export function gcPortalPage(rows: GcPortalPageRows, projectId: string): PortalG
   const newestSend = rows.contractSends.filter((s) => s.project_id === projectId).sort((a, b) => b.created_at.localeCompare(a.created_at))[0]
   const person = (id: string | null, role: 'pm' | 'super') => {
     const u = id ? rows.users.find((x) => x.id === id) : undefined
-    return u?.name?.trim() ? [{ role, name: u.name.trim(), phone: u.phone?.trim() || null }] : []
+    return u?.name?.trim() ? [{ role, name: u.name.trim() }] : []
   }
   const log = rows.logs
     .filter((l) => l.project_id === projectId && l.customer_line && l.customer_line.trim())
@@ -201,13 +202,18 @@ export async function loadGcPortalPages(admin: Admin, jobs: PortalGcJob[]): Prom
         .from('gc_owner_pay_apps')
         .select('id, project_id, number, final, period_to, sent_on, due, certified_on, invoice_id, customer_line, customer_line_es')
         .in('project_id', ids),
-      admin
-        .from('gc_daily_logs')
-        .select('project_id, log_date, customer_line, customer_line_es, photos_url')
-        .in('project_id', ids)
-        .not('customer_line', 'is', null)
-        .order('log_date', { ascending: false })
-        .limit(50),
+      // The newest customer line, one read per job, so a busy job never crowds out another's.
+      Promise.all(
+        ids.map((id) =>
+          admin
+            .from('gc_daily_logs')
+            .select('project_id, log_date, customer_line, customer_line_es, photos_url')
+            .eq('project_id', id)
+            .not('customer_line', 'is', null)
+            .order('log_date', { ascending: false })
+            .limit(1),
+        ),
+      ),
       admin.from('gc_schedule_sends').select('project_id, sent_on').in('project_id', ids),
       admin.from('gc_schedule_moves').select('project_id, activity_name, made_on, from_start, to_start, reason, undone_on').in('project_id', ids),
     ])
@@ -216,7 +222,7 @@ export async function loadGcPortalPages(admin: Admin, jobs: PortalGcJob[]): Prom
     const userIds = termRows.flatMap((t) => [t.project_manager_user_id, t.superintendent_user_id]).filter((x): x is string => !!x)
     const [architects, users] = await Promise.all([
       architectIds.length ? admin.from('customers').select('id, name').in('id', architectIds) : Promise.resolve({ data: [], error: null }),
-      userIds.length ? admin.from('users').select('id, name, phone').in('id', userIds) : Promise.resolve({ data: [], error: null }),
+      userIds.length ? admin.from('users').select('id, name').in('id', userIds) : Promise.resolve({ data: [], error: null }),
     ])
     const contractNow: Record<string, number> = {}
     for (const id of ids) {
@@ -231,7 +237,7 @@ export async function loadGcPortalPages(admin: Admin, jobs: PortalGcJob[]): Prom
       payApps: must(payApps),
       architects: must(architects),
       users: must(users),
-      logs: must(logs),
+      logs: (logs as { data: GcPortalPageRows['logs'] | null; error: unknown }[]).flatMap((r) => must<GcPortalPageRows['logs']>(r)),
       scheduleSends: must(scheduleSends),
       moves: must(moves),
     }
