@@ -26,6 +26,8 @@ CREATE FUNCTION mnc.as_user(p_user uuid) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
+  -- auth.role(), which app_settings' read policy asks, reads this one.
+  PERFORM set_config('request.jwt.claim.role', 'authenticated', true);
 END $$;
 CREATE FUNCTION mnc.switch() RETURNS text LANGUAGE sql AS $$
   SELECT value_text FROM public.app_settings WHERE key = 'messages_reply_push_on_v1'
