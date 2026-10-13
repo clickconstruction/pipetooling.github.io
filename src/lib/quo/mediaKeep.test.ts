@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { KEEP_FILE_BYTES } from '../emailIn/emailLine'
-import { QUO_NOT_COPIED, quoMediaPlans, quoMediaRow } from './mediaKeep'
+import { QUO_NOT_COPIED, keepsCopy, mediaToKeep, quoMediaPlans, quoMediaRow } from './mediaKeep'
 
 // The pictures a customer texts (quo-messages-mockup.html draft 8, spike/gc-mode), as events.test.ts's fixtures carry them.
 const photo = { url: 'https://files.example/1.jpg', type: 'image/jpeg' }
@@ -40,8 +40,27 @@ describe('quoMediaRow: the row each file leaves on the line', () => {
     })
   })
 
+  it('keeps a copy of what read and fits, and nothing else', () => {
+    expect(keepsCopy({ ok: true, bytes: KEEP_FILE_BYTES })).toBe(true)
+    expect(keepsCopy({ ok: true, bytes: KEEP_FILE_BYTES + 1 })).toBe(false)
+    expect(keepsCopy({ ok: false })).toBe(false)
+  })
+
   it('marks one too big to keep, or one that did not read, as not copied from Quo', () => {
     expect(quoMediaRow(MESSAGE, plan, { ok: true, bytes: KEEP_FILE_BYTES + 1 })).toMatchObject({ bucket_path: null, left_in_gmail: QUO_NOT_COPIED, size_bytes: KEEP_FILE_BYTES + 1 })
     expect(quoMediaRow(MESSAGE, plan, { ok: false })).toMatchObject({ bucket_path: null, left_in_gmail: QUO_NOT_COPIED, size_bytes: null })
+  })
+})
+
+describe('mediaToKeep: Quo’s retry keeps nothing twice', () => {
+  const plans = quoMediaPlans('MS-1', [photo, sink, { url: 'https://files.example/3.pdf', type: 'application/pdf' }])
+
+  it('keeps every file of a text the line has no rows for', () => {
+    expect(mediaToKeep(plans, []).map((p) => p.name)).toEqual(['picture-1.jpg', 'picture-2.jpg', 'file-3.pdf'])
+  })
+
+  it('leaves the files a first delivery already kept, by their place', () => {
+    expect(mediaToKeep(plans, [0, 2]).map((p) => p.name)).toEqual(['picture-2.jpg'])
+    expect(mediaToKeep(plans, new Set([0, 1, 2]))).toEqual([])
   })
 })
