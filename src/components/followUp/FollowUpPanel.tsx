@@ -5,19 +5,23 @@
  * page's `onOpenThread` (`?thread=<contactId>&at=<messageId>`), the clause rows come from their own hook, and the
  * nudges fill their slot when their screen lands. *Ask the architect* puts the question on the job's plan questions,
  * marks the line asked and emails the architect, through the page's GC writes (`planQuestions`, `followUp/askArchitect.ts`).
+ * **Sort all** on New's header opens the desk (`SortAllDesk`, residential R7's mockup C) over the New this panel draws.
  */
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { askArchitectToast, planQuestionOf, type AskArchitectEnd, type PlanQuestionInput } from '../../lib/followUp/askArchitect'
 import { pressProblem, supabaseFollowUpIo, type FollowUpIo } from '../../lib/followUp/followUpIo'
+import { supabaseNewLaneCardIo, type NewLaneCardIo } from '../../lib/followUp/newLaneCardIo'
 import type { FollowUpContact } from '../../lib/followUp/followUpRows'
 import { anotherDay, BACK_CLEARED_TOAST, hasToast, stateToast, type FollowUpQueue, type OnPortal } from '../../lib/followUp/queue'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useFollowUpQueue } from '../../hooks/useFollowUpQueue'
 import { Card } from '../gc/gcUi'
 import { FollowUpSections, type FollowUpSectionActions } from './FollowUpSections'
+import { SortAllDesk } from './SortAllDesk'
 import type { Teammate } from './WhoHasItPill'
 
 const DEFAULT_IO = supabaseFollowUpIo()
+const DEFAULT_SORT_IO = supabaseNewLaneCardIo()
 
 /** GC mode's plan questions, for *Ask the architect*: the page's own writes (`gcIo`). */
 export interface PlanQuestionWrites {
@@ -52,16 +56,21 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
   /** Today and now, for a smoke; the app's clock otherwise. */
   todayYmd?: string
   nowIso?: string
+  /** The Sort all desk's reads and presses: the lane's sort card's own unless a smoke hands it a fake. */
+  sortIo?: NewLaneCardIo
 }
 
 export function FollowUpPanel<C = never, N extends { contactId: string } = never>(props: FollowUpPanelProps<C, N>) {
-  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow } = props
+  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, sortIo = DEFAULT_SORT_IO } = props
   const todayYmd = props.todayYmd ?? todayYmdInAppTz()
   const nowIso = props.nowIso ?? new Date().toISOString()
   const userNames = useMemo(() => Object.fromEntries([...team, me].map((t) => [t.id, t.name])), [team, me])
   const passThrough = useMemo(() => ({ ...(clauses ? { clauses: clauses.rows } : {}), ...(nudges ? { nudges: nudges.build } : {}) }), [clauses, nudges])
   const q = useFollowUpQueue<C, N>({ io, userNames, enabled, passThrough, todayYmd, ...(props.nowIso ? { nowIso: props.nowIso } : {}) })
   const count = q.queue?.count
+  const [sorting, setSorting] = useState(false)
+  // The queue as drawn: the kind pills' narrowing when the page has one. The desk walks the New this draws.
+  const drawn = q.queue ? (narrow ? narrow(q.queue, q.contacts) : q.queue) : null
   useEffect(() => {
     if (count !== undefined) onCount?.(count)
   }, [count, onCount])
@@ -111,6 +120,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
     },
     ...(planQuestions ? { askArchitect: (messageId: string) => void askArchitect(planQuestions, messageId) } : {}),
     ...(seeTheirPage ? { seeTheirPage } : {}),
+    sortAll: () => setSorting(true),
   }
 
   return (
@@ -120,9 +130,9 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
           {q.problem}
         </div>
       )}
-      {q.queue ? (
+      {drawn ? (
         <FollowUpSections<C, N>
-          queue={narrow ? narrow(q.queue, q.contacts) : q.queue}
+          queue={drawn}
           contacts={q.contacts}
           lines={q.lines}
           me={me}
@@ -136,6 +146,19 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
         />
       ) : (
         !q.problem && <Card style={{ color: 'var(--text-muted)' }}>Loading who is waiting on us…</Card>
+      )}
+      {sorting && drawn && (
+        <SortAllDesk
+          lane={drawn.newLane}
+          contacts={q.contacts}
+          io={sortIo}
+          me={me}
+          say={say}
+          reread={() => void q.reload()}
+          onClose={() => setSorting(false)}
+          onOpenThread={onOpenThread}
+          {...(props.nowIso ? { nowIso: props.nowIso } : {})}
+        />
       )}
     </div>
   )
