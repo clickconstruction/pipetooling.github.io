@@ -10,6 +10,16 @@ export class FakeDb {
   tables: Record<string, Row[]> = {}
   writes: Array<{ table: string; op: 'insert' | 'update'; row: Row; where: Array<[string, unknown]> }> = []
   nextId = 1
+  /** Database functions: each name's answer from its args, and every call recorded. */
+  rpcAnswers: Record<string, (args: Record<string, unknown>) => unknown> = {}
+  rpcCalls: Array<{ fn: string; args: Record<string, unknown> }> = []
+
+  rpc(fn: string, args: Record<string, unknown>) {
+    this.rpcCalls.push({ fn, args })
+    const a = this.rpcAnswers[fn]
+    const result = a ? { data: a(args), error: null } : { data: null, error: { message: `no function ${fn}` } }
+    return { then: (res: (v: { data: unknown; error: { message: string } | null }) => unknown, rej?: (e: unknown) => unknown) => Promise.resolve(result).then(res, rej) }
+  }
 
   from(table: string) {
     const rows = () => (this.tables[table] ??= [])

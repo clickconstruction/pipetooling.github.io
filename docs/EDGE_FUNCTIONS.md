@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 151 Supabase Edge Functions
+purpose: Complete API documentation for all 152 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-10-12
 estimated_read_time: 20-25 minutes
@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 151
+total_functions: 152
 
 key_sections:
   - name: "Functions"
@@ -176,6 +176,7 @@ when_to_read:
    - [notify-lien-approval](#notify-lien-approval)
    - [mail-send-docsmit](#mail-send-docsmit)
    - [mail-poll](#mail-poll)
+   - [mail-config](#mail-config)
    - [messages-notify](#messages-notify)
    - [notify-team-lead-clock](#notify-team-lead-clock)
    - [send-scheduled-reminders](#send-scheduled-reminders)
@@ -5190,6 +5191,36 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 **Tests**: `src/lib/mail/mailPoll.run.test.ts`.
 
 **Deploy**: `supabase functions deploy mail-poll`.
+
+---
+
+### mail-config
+
+**Purpose** (v2.5387, the Docsmit train PR 9 — `docs/DOCSMIT_LIEN_RUN_PLAN.md`, *Managed from Developer settings*): the dev's door to the Docsmit connection's secrets, which live in Vault (migration `20261013160000`: `mail_secret_set`, `mail_secret_get`, `mail_secrets_status`, the service role's only). Settings → Developer → *Docsmit · certified mail from the app* (`DocsmitDevSettingsBlock`) calls it. `mail-send-docsmit` and `mail-poll` read Vault first through `_shared/mailConfig.ts` (`loadDocsmitConfig`), then their own environment, so a connection set here wins and nothing breaks where Vault is not set up yet.
+
+**Endpoint**: `POST /functions/v1/mail-config`
+
+**Required Role**: `dev` only, not `read_only` (Bearer JWT → `getUser`, then the role from `users`). Anyone else gets 403.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+| action | fields | does |
+|---|---|---|
+| `status` | — | which of the four secrets are set and where each comes from (`vault` \| `env` \| `none`), the email and the base URL as values (neither is secret), which Docsmit (`tracksmit` \| `prod`), `ready`. Never a password hash or a software id. |
+| `set` | `email?`, `password_sha512?` (128 hex; the browser hashes the password, the cleartext never leaves it), `software_id?`, `base_url?` (Tracksmit's or Docsmit's `/api/v1`) | each given value into Vault as `docsmit_<name>`; a blank forgets it; a bad shape is refused (400) before anything is written; answers the status. |
+| `ping` | — | 409 until set up; else one token and `GET /account/info`: `{ account: { name, credit_balance } }` with the status. |
+
+#### Response
+
+200 with the status (and the account on `ping`); 400 a bad shape or nothing to set; 401 no user; 403 not a dev; 409 not set up; 502 Docsmit refused.
+
+**Tests**: `src/lib/mail/mailConfig.run.test.ts` runs the handler itself with the recording fakes (`src/lib/mail/mailRunFakes.ts`, now with `rpc`).
+
+**Deploy**: `supabase functions deploy mail-config` after migration `20261013160000` is pushed; redeploy `mail-send-docsmit` and `mail-poll` with it (they gained the Vault read).
 
 ---
 

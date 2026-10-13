@@ -79,6 +79,7 @@ import GcOfficeNoticesSettingsBlock from '../components/settings/GcOfficeNotices
 import GcCustomerDueNoticesSettingsBlock from '../components/settings/GcCustomerDueNoticesSettingsBlock'
 import PhysicalInvoiceFooterDevSettingsBlock from '../components/settings/PhysicalInvoiceFooterDevSettingsBlock'
 import BillCustomerMemoDevSettingsBlock from '../components/settings/BillCustomerMemoDevSettingsBlock'
+import DocsmitDevSettingsBlock from '../components/settings/DocsmitDevSettingsBlock'
 import BidCoverLetterDefaultsSettingsBlock from '../components/settings/BidCoverLetterDefaultsSettingsBlock'
 import BidBoardValueRuleSettingsBlock from '../components/settings/BidBoardValueRuleSettingsBlock'
 import JobBookSettingsSection from '../components/settings/JobBookSettingsSection'
@@ -1587,6 +1588,7 @@ export default function Settings() {
           <PhysicalInvoiceIssuerDevSettingsBlock focusField={settingsFocus?.startsWith('issuer.') ? settingsFocus.slice('issuer.'.length) : null} />
           <PhysicalInvoiceFooterDevSettingsBlock />
           <BillCustomerMemoDevSettingsBlock />
+          <DocsmitDevSettingsBlock />
         </>
       )}
       {myRole === 'dev' && <SettingsHcpReconcileSection />}

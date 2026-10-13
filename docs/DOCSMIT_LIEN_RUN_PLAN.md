@@ -115,6 +115,8 @@ One function per provider, office-only (JWT + RLS on the job like `send-lien-fil
 
 ### Managed from Developer settings
 
+Shipped as v2.5387 (`DocsmitDevSettingsBlock`, `mail-config`, migration `20261013160000_mail_config.sql`; the switches' policies came with v2.5385). The call log (`mail_api_calls`) is not built; the pieces' `events` hold the calls that matter.
+
 The connection and its switches live on the Settings page's Developer section, dev role only, as a `DocsmitDevSettingsBlock` beside the existing dev blocks. Two homes, by the app's own pattern:
 
 - **Secrets** (`DOCSMIT_EMAIL`, `DOCSMIT_PASSWORD_SHA512`, `DOCSMIT_SOFTWARE_ID`, one set per environment): Supabase Vault, written by a dev-only edge function `mail-config` (JWT + dev role in-body) that the block calls; the password is hashed in the browser and only the hash travels; `mail-send-docsmit` and `mail-poll` read Vault at call time; nothing is ever returned to a browser. (Vault replaces `supabase secrets set` for these three, so the owner can rotate them without a terminal.)
