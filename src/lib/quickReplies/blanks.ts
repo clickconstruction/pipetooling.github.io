@@ -1,0 +1,97 @@
+/**
+ * Messages R3: the blanks in a quick reply (`to-dos/gc-mode/messages/RESIDENTIAL_BUILD_PLAN.md` → R3). Lifted from
+ * the residential prototype v0.8 on branch spike/gc-mode (`to-dos/gc-mode/messages/customer-messages-prototype.html`:
+ * `BLANKS`, `fillLine`, `blanksIn` and the box's refusal), the words and the rules, never the DOM. Pure: the caller
+ * reads each value where the table says and passes them in on the press.
+ *
+ * A blank is a word in braces, like `{first}`. The app fills the ones in the table. A blank it does not know, like
+ * `{found}`, is the person's to fill, and the box refuses to send while one is left.
+ */
+
+// ---------- the fill table ----------
+
+/** The blanks the app fills on the press. */
+export type BlankKey = 'first' | 'me' | 'address' | 'job' | 'minutes' | 'window' | 'back day' | 'back time' | 'day' | 'link' | 'amount'
+
+/**
+ * Where the app reads a blank: the person written to, the signed-in user, the job, the drive to it, the schedule,
+ * the person's portal page, or the estimate or bill.
+ */
+export type BlankSource = 'person' | 'you' | 'job' | 'drive' | 'schedule' | 'page' | 'money'
+
+export interface Blank {
+  key: BlankKey
+  /** The words beside the blank on the editor's chip. */
+  words: string
+  from: BlankSource
+}
+
+/** The fill table, in the editor's chip order. */
+export const BLANKS: readonly Blank[] = [
+  { key: 'first', words: 'their first name', from: 'person' },
+  { key: 'me', words: 'your name', from: 'you' },
+  { key: 'address', words: "the job's address", from: 'job' },
+  { key: 'job', words: "the job's name", from: 'job' },
+  { key: 'minutes', words: 'minutes out, from the drive', from: 'drive' },
+  { key: 'window', words: 'the new window, from the schedule', from: 'schedule' },
+  { key: 'back day', words: 'the next visit, from the schedule', from: 'schedule' },
+  { key: 'back time', words: 'its time', from: 'schedule' },
+  { key: 'day', words: 'the day of the visit', from: 'schedule' },
+  { key: 'link', words: "their page's link", from: 'page' },
+  { key: 'amount', words: 'the estimate or bill', from: 'money' },
+]
+
+/** Chips for blanks the app never fills: the person types them before it sends. */
+export const THEIRS: ReadonlyArray<{ key: string; words: string }> = [
+  { key: 'thing', words: 'what you want a photo of' },
+  { key: 'found', words: 'what you found' },
+]
+
+/** The words for a blank: the table's, a chip's, or "yours to fill" for one nobody listed. */
+export function blankWords(key: string): string {
+  return BLANKS.find((b) => b.key === key)?.words ?? THEIRS.find((b) => b.key === key)?.words ?? 'yours to fill'
+}
+
+// ---------- filling a line ----------
+
+/**
+ * The values a caller passes on the press, every key optional. A blank the table does not know is filled the same
+ * way, by its word, once the person types it.
+ */
+export type BlankFills = { readonly [K in BlankKey]?: string | null } & { readonly [key: string]: string | null | undefined }
+
+const BLANK = /\{([a-z ]+)\}/g
+
+/** The blanks in a text, each once, in order. */
+export function blanksIn(text: string): string[] {
+  return [...new Set(Array.from(text.matchAll(BLANK)).flatMap((m) => (m[1] ? [m[1]] : [])))]
+}
+
+/**
+ * A line with its blanks filled. `left` is the blanks the app could not fill, each once, in order; they stay in the
+ * text as written. A value that is empty or only spaces does not fill.
+ */
+export function fillLine(text: string, fills: BlankFills): { text: string; left: string[] } {
+  const left: string[] = []
+  const out = text.replace(BLANK, (whole, key: string) => {
+    const value = fills[key]?.trim()
+    if (!value) {
+      left.push(key)
+      return whole
+    }
+    return value
+  })
+  return { text: out, left: [...new Set(left)] }
+}
+
+/** Blanks named in a sentence: "{found}", "{found} and {thing}", "{a}, {b} and {c}". */
+export function blankNames(left: readonly string[]): string {
+  const named = left.map((k) => `{${k}}`)
+  return named.length < 2 ? (named[0] ?? '') : `${named.slice(0, -1).join(', ')} and ${named[named.length - 1]}`
+}
+
+/** Why the box will not send while blanks are left, or null when none are. */
+export function fillFirst(left: readonly string[]): string | null {
+  if (left.length === 0) return null
+  return `Fill ${blankNames(left)} first. The app does not know ${left.length === 1 ? 'it' : 'them'}.`
+}
