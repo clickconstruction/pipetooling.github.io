@@ -2,7 +2,7 @@
 title: show a customer where their job stands
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller
-keywords: gc mode, customer, customer page, their portal, where you are, your move, this week, money, schedule, papers, our words, sentences, spanish, español, photos, next bill, switches, what customers see
+keywords: gc mode, customer, customer page, their portal, see their page, ready for, where each piece comes from, fix, where you are, your move, this week, money, schedule, papers, our words, sentences, spanish, español, photos, next bill, switches, what customers see
 order: 103
 ---
 A customer whose job we build sees that job on its own page in their portal. The page says where the job stands, in plain words.
@@ -17,6 +17,31 @@ The page has four tabs:
 - **Papers** lists what they signed, what waits on them and what comes later.
 
 Nothing of ours shows there. They never see a trade's name, our costs or an office note.
+
+## See their page
+
+1. Open [GC projects](/gc).
+2. Press the customer's name on a job. Their window opens.
+3. Press {{button:gray|See their page}}.
+
+Their page opens as they see it, with **Español** so you can read the Spanish. A press on it sends nothing. If they have more than one job with us, pick it under **Job**.
+
+If they have no portal link yet, the window says so. Press {{button:blue|Make their link}} to make one. Our contract's email makes one too.
+
+Only a dev opens a customer's window while the board is built.
+
+## Is it ready
+
+**Ready for** and their first name sits beside their page. It has one row for each part of the page.
+
+- A green check means that part reads well.
+- An orange mark means something is missing, like this week's line or a line with no Spanish.
+
+Each row names the page that feeds it. Press **fix** or **change** to go there.
+
+## Where each piece comes from
+
+Tick **Show where each piece comes from**. Each card on their page gets a tag that names the page that feeds it. Press a tag to go there.
 
 ## Change our words
 

@@ -20,6 +20,7 @@ import type { CustomerChange } from './moneyLines'
 import { moneyStory, type MoneyStory, type PayAppIn } from './moneyStory'
 import { CODE_WORDS, pDate, typed, type PageWords, type PortalLang, type PortalWordKey, type TypedLine } from './pageWords'
 import { customerPapers, type CustomerContract, type CustomerPapers } from './papers'
+import type { ReadinessIn } from './readiness'
 import type { PortalBill, PortalGcJob, PortalWaiverRow } from './portalPayload'
 
 export type { PortalGcPage }
@@ -274,5 +275,55 @@ export function customerPageModel(lang: PortalLang, input: CustomerPageIn, opts:
       when: words.say(lang, 'movedFromTo', { from: pDate(lang, m.from), to: pDate(lang, m.to) }),
       why: words.say(lang, REASON[m.reason] ?? 'reasonOther'),
     })),
+  }
+}
+
+/** A word of ours in both languages, for the readiness list's Spanish check. */
+const both = (words: PageWords, key: PortalWordKey): TypedLine => ({ en: words.say('en', key), es: words.say('es', key) })
+
+/**
+ * *Ready for <name>?* for one job (Messages cut 8d), from what the page itself reads: Your move from the job's facts
+ * (interim, as on Home until 8b-ii), this week's line with its photos link and the job's switch, each pay application
+ * with its covers line, the change orders, the schedule's dates and moves, and the people with our office first. The
+ * page does not size the next bill yet, so After that is not asked. The schedule's dates and an activity's name have no
+ * Spanish field in the app, so they count as read in both languages: no gap the office can close here.
+ */
+export function customerReadinessIn(input: {
+  firstName: string
+  job: PortalGcJob
+  page: PortalGcPage
+  bills: readonly PortalBill[]
+  company: string
+  today: string
+  words?: PageWords
+}): ReadinessIn {
+  const { job, page, today } = input
+  const words = input.words ?? CODE_WORDS
+  const move = homeMove('en', job, page, today, words)
+  const asTyped = (s: string): TypedLine => ({ en: s, es: s })
+  return {
+    firstName: input.firstName,
+    off: false,
+    move: move.kind === 'accept' ? { kind: 'accept', title: move.title } : move,
+    nowStep: null,
+    today,
+    week: page.week
+      ? { on: page.week.on, line: { en: page.week.line, es: page.week.lineEs }, photos: !page.switches.photos ? 'off' : page.week.photosUrl ? 'linked' : 'none' }
+      : null,
+    apps: page.payApps.map((a) => {
+      const app = payAppOf(a, page, input.bills)
+      return { n: app.n, covers: app.covers, state: app.state }
+    }),
+    next: null,
+    sizesNext: false,
+    changes: changesOf(page),
+    schedule: {
+      milestones: (job.schedule?.dates ?? []).map((d) => ({ name: asTyped(d.label) })),
+      moves: page.moves.map((m) => ({ name: asTyped(m.activity), why: both(words, REASON[m.reason] ?? 'reasonOther') })),
+    },
+    people: [
+      { name: input.company, role: both(words, 'roleOffice') },
+      ...page.people.map((p) => ({ name: p.name, role: both(words, p.role === 'pm' ? 'rolePm' : 'roleSuper') })),
+    ],
   }
 }
