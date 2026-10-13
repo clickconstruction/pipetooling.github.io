@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../../components/JobThreadNotesPanel'
 import { DANA, DANA_JOB_MESSAGES, HECTOR } from '../../test/fixtures/jobActivityMessagesDemo'
 import { buildJobActivityLines, countJobActivityLines, filterJobActivityLines, isConversationalLine, type JobActivityLine } from './jobActivityLine'
-import { jobActivityMessagesFromRows, jobTakesUntiedLines, MESSAGE_LINE_MAX, messageChannelWord, messageLineParts, messageTone, messageWho, type JobActivityMessage, type JobMessageRow } from './jobActivityMessages'
+import { jobActivityMessagesFromRows, jobTakesUntiedLines, MESSAGE_LINE_MAX, messageChannelWord, messageLineParts, messageTone, messageWho, noteReaders, type JobActivityMessage, type JobMessageRow } from './jobActivityMessages'
 
 const byId = (id: string): JobActivityMessage => {
   const m = DANA_JOB_MESSAGES.find((x) => x.id === id)
@@ -87,6 +87,13 @@ describe('a message as a Job activity line (Messages cut 10)', () => {
     expect(messageLineParts(byId('m-dana-11')).message.notTiedYet).toBe(true)
     expect(messageLineParts(byId('m-dana-2')).message.notTiedYet).toBe(false)
     expect(messageLineParts(byId('m-dana-2')).message.threadHref).toBe('/gc?view=messages&thread=c-dana&at=m-dana-2')
+  })
+
+  it('says who reads a team note: the office alone when it is marked so, else the whole team, techs too', () => {
+    expect(messageLineParts(byId('m-dana-5')).message.readersWord).toBe('only the team sees this')
+    expect(messageLineParts({ ...byId('m-dana-5'), officeOnly: true }).message.readersWord).toBe('only the office sees this')
+    expect(noteReaders({ channel: 'text', officeOnly: false })).toBe('')
+    expect(messageLineParts(byId('m-dana-2')).message.readersWord).toBe('')
   })
 })
 
@@ -194,6 +201,12 @@ describe('the read’s rows as Job activity’s lines (J2)', () => {
       ['m4', 'Hector', true],
     ])
     expect([lines[2]?.durationSeconds, lines[2]?.summary, lines[2]?.transcript]).toEqual([192, 'Asked about Thursday.', 'Dana: Thursday?'])
+    expect(lines.every((m) => m.officeOnly === false)).toBe(true)
+  })
+
+  it('reads R5’s office-only mark on a team note', () => {
+    const [kept] = jobActivityMessagesFromRows([row('n1', { channel: 'note', direction: 'team', who_text: 'Rosa', office_only: true })], contacts, {}, job)
+    expect(kept?.officeOnly).toBe(true)
   })
 
   it('takes the customer’s lines tied to no job since the job began, and leaves out the rest', () => {
