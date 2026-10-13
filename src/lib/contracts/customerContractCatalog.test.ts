@@ -15,6 +15,7 @@ import { DEFAULT_JOB_CONTRACT_TERMS_PLAIN } from '../jobs/jobContractDocument'
 import {
   COMPARE_MAX,
   CONTRACTS_TAB_ID,
+  CONTRACT_AREA_LABELS,
   CONTRACT_ROUTE_REASONS,
   CUSTOMER_CONTRACT_CATALOG,
   canEditStandardTerms,
@@ -35,6 +36,7 @@ import {
   type ContractCatalogData,
   type ContractCatalogEntry,
 } from './customerContractCatalog'
+import { flowPaperEntries, type FlowPaperDoc } from './flowPaperEntries'
 
 const ROOT = resolve(__dirname, '../../..')
 const readRepoFile = (file: string): string | null => {
@@ -126,6 +128,28 @@ describe('contractCatalogProblems', () => {
   it('refuses an entry with neither wording nor a sample', () => {
     const bare: ContractCatalogEntry = { ...base, id: 'bare', source: { kind: 'code', text: null }, seenOn: [], routes: [] }
     expect(contractCatalogProblems({ entries: [bare], journeys, surfaces, routeReasons: {} }).some((p) => p.includes('no wording and no sample'))).toBe(true)
+  })
+})
+
+describe('Papers on the flows, the area made from the data', () => {
+  const journeys = customerJourneys()
+  const papers: FlowPaperDoc[] = [
+    { id: '00000000-0000-0000-0000-0000000f1c01', document_name: 'Bond', name_es: 'Fianza', flow_kind: 'upload', audience: 'sub', renew_ask_days: 30, book_body_html: null, book_body_es: null, book_body_format: 'plain', book_version_date: '2026-10-12', revision: null },
+    { id: '00000000-0000-0000-0000-0000000f1c02', document_name: 'Start letter', name_es: null, flow_kind: 'notice', audience: 'customer', renew_ask_days: null, book_body_html: 'We start on Monday.', book_body_es: null, book_body_format: 'plain', book_version_date: '2026-10-12', revision: null },
+  ]
+
+  it('its lines pass every check the written entries do, beside them', () => {
+    const entries = [...CUSTOMER_CONTRACT_CATALOG, ...flowPaperEntries(papers, [])]
+    expect(contractCatalogProblems({ entries, journeys, surfaces: CUSTOMER_SURFACES, routeReasons: CONTRACT_ROUTE_REASONS })).toEqual([])
+    expect(contractPinProblems(entries, readRepoFile)).toEqual([])
+  })
+
+  it('refuses an entry written into it, and a paper on a flow put anywhere else', () => {
+    const written: ContractCatalogEntry = { ...entry('bid-terms'), id: 'written-flow', area: 'flows' }
+    const [paper] = flowPaperEntries(papers, [])
+    const problems = contractCatalogProblems({ entries: [written, { ...paper!, area: 'jobs' }], journeys, surfaces: CUSTOMER_SURFACES, routeReasons: CONTRACT_ROUTE_REASONS })
+    expect(problems).toContain(`entry written-flow sits in ${CONTRACT_AREA_LABELS.flows}, whose lines are made from the data, never written in the catalog`)
+    expect(problems).toContain(`entry ${paper!.id} is a paper on a flow outside Papers on the flows`)
   })
 })
 
@@ -268,10 +292,11 @@ describe('the count', () => {
     const data: ContractCatalogData = { settings: new Map([['bid_cover_letter_terms_default_v1', 'Net 30.']]), bookDocs: [doc()] }
     const texts = ['bid-terms', 'bid-exclusions', 'estimate-terms', 'job-standard-terms', 'esign-consent', 'estimate-terms-box'].flatMap((id) => resolveContractTexts(entry(id), data))
     const c = contractCatalogCounts(texts)
-    expect(c).toEqual({ texts: 6, yours: 2, builtIn: 1, blank: 1, fixed: 1, perRecord: 1, inSettings: 0, external: 0, dated: 2 })
+    expect(c).toEqual({ texts: 6, yours: 2, builtIn: 1, blank: 1, fixed: 1, perRecord: 1, inSettings: 0, external: 0, theirs: 0, dated: 2 })
     expect(contractCountsLine(c)).toBe('6 texts · 2 your wording · 1 built-in · 1 with nothing set · 1 fixed in the app · 1 typed each time · 2 dated')
-    expect(contractCountsLine({ texts: 2, yours: 0, builtIn: 1, blank: 0, fixed: 0, perRecord: 0, inSettings: 1, external: 0, dated: 0 })).toBe('2 texts · 1 built-in · 1 set in Settings · 0 dated')
-    expect(contractCountsLine({ texts: 1, yours: 0, builtIn: 0, blank: 0, fixed: 0, perRecord: 0, inSettings: 0, external: 1, dated: 1 })).toBe('1 text · 1 hosted elsewhere · 1 dated')
+    expect(contractCountsLine({ texts: 2, yours: 0, builtIn: 1, blank: 0, fixed: 0, perRecord: 0, inSettings: 1, external: 0, theirs: 0, dated: 0 })).toBe('2 texts · 1 built-in · 1 set in Settings · 0 dated')
+    expect(contractCountsLine({ texts: 1, yours: 0, builtIn: 0, blank: 0, fixed: 0, perRecord: 0, inSettings: 0, external: 1, theirs: 0, dated: 1 })).toBe('1 text · 1 hosted elsewhere · 1 dated')
+    expect(contractCountsLine({ texts: 3, yours: 1, builtIn: 0, blank: 0, fixed: 0, perRecord: 0, inSettings: 0, external: 0, theirs: 2, dated: 1 })).toBe('3 texts · 1 your wording · 2 they give us · 1 dated')
   })
 })
 
