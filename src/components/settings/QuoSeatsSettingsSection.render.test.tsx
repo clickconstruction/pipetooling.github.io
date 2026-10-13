@@ -60,9 +60,10 @@ describe('Company phone seats (Settings → Phone and texts, Messages cut 5)', (
   it('lets the owner add a seat, pick its person and save it, as the functions read it', async () => {
     const io = fakeIo()
     renderWithProviders(<QuoSeatsSettingsSection io={io} />)
-    await waitFor(() => expect(within(card()).getByRole('button', { name: 'Add a seat' })).toBeTruthy())
+    // The seat loads in an effect and Add a seat draws before it: wait for the loaded seat, or Add makes Seat 1 (CI flake).
+    await within(card()).findByRole('textbox', { name: 'Seat 1: Quo user id' })
     fireEvent.click(within(card()).getByRole('button', { name: 'Add a seat' }))
-    fireEvent.change(within(card()).getByRole('textbox', { name: 'Seat 2: Quo user id' }), { target: { value: ' USrobert1 ' } })
+    fireEvent.change(await within(card()).findByRole('textbox', { name: 'Seat 2: Quo user id' }), { target: { value: ' USrobert1 ' } })
     fireEvent.change(within(card()).getByRole('combobox', { name: 'Seat 2: who answers on it' }), { target: { value: ROBERT } })
     fireEvent.click(within(card()).getByRole('button', { name: 'Save the seats' }))
     await waitFor(() =>
@@ -77,9 +78,10 @@ describe('Company phone seats (Settings → Phone and texts, Messages cut 5)', (
   it('says what stops a save, and saves nothing', async () => {
     const io = fakeIo()
     renderWithProviders(<QuoSeatsSettingsSection io={io} />)
-    await waitFor(() => expect(within(card()).getByRole('button', { name: 'Add a seat' })).toBeTruthy())
+    // The seat loads in an effect and Add a seat draws before it: wait for the loaded seat, or Add makes Seat 1 (CI flake).
+    await within(card()).findByRole('textbox', { name: 'Seat 1: Quo user id' })
     fireEvent.click(within(card()).getByRole('button', { name: 'Add a seat' }))
-    fireEvent.change(within(card()).getByRole('textbox', { name: 'Seat 2: Quo user id' }), { target: { value: 'robert' } })
+    fireEvent.change(await within(card()).findByRole('textbox', { name: 'Seat 2: Quo user id' }), { target: { value: 'robert' } })
     fireEvent.click(within(card()).getByRole('button', { name: 'Save the seats' }))
     expect(within(card()).getByRole('alert').textContent).toBe('Give each seat its Quo user id. They start with US.')
     expect(io.save).not.toHaveBeenCalled()
@@ -97,9 +99,10 @@ describe('Company phone seats (Settings → Phone and texts, Messages cut 5)', (
   it('keeps a refused save’s words', async () => {
     const io = fakeIo([], { save: vi.fn(async () => Promise.reject(new Error(SEATS_NOT_SAVED))) })
     renderWithProviders(<QuoSeatsSettingsSection io={io} />)
-    await waitFor(() => expect(within(card()).getByRole('button', { name: 'Add a seat' })).toBeTruthy())
+    // Wait for the empty load to land, or its setDraft([]) wipes the seat Add made (CI flake).
+    await waitFor(() => expect(card().textContent).toContain(QUO_SEATS_NONE))
     fireEvent.click(within(card()).getByRole('button', { name: 'Add a seat' }))
-    fireEvent.change(within(card()).getByRole('textbox', { name: 'Seat 1: Quo user id' }), { target: { value: 'USrosa2' } })
+    fireEvent.change(await within(card()).findByRole('textbox', { name: 'Seat 1: Quo user id' }), { target: { value: 'USrosa2' } })
     fireEvent.change(within(card()).getByRole('combobox', { name: 'Seat 1: who answers on it' }), { target: { value: ROSA } })
     fireEvent.click(within(card()).getByRole('button', { name: 'Save the seats' }))
     expect((await within(card()).findByRole('alert')).textContent).toBe(SEATS_NOT_SAVED)

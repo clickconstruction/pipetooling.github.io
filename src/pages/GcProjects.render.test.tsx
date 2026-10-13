@@ -173,6 +173,32 @@ vi.mock('../lib/gc/tradeEmailIo', () => ({
   emailTheAnswer: vi.fn(() => Promise.resolve()),
 }))
 
+// Follow up's own reads (Messages, cut 2, v2.5289): two people waiting on us, Greg's text and a number nobody has named.
+// The badge is theirs; the asks keep everyone we wait on for their own heading.
+vi.mock('../lib/followUp/followUpIo', async (orig) => {
+  const actual = await orig<typeof import('../lib/followUp/followUpIo')>()
+  const contact = (id: string, kind: string, patch: Record<string, unknown> = {}) => ({
+    ...{ id, kind, customer_id: null, customer_contact_person_id: null, gc_company_id: null, gc_company_person_id: null, person_id: null },
+    ...{ name: null, goes_by: null, off_since: null, off_why: null, off_by: null },
+    ...{ state: 'waiting', snoozed_until: null, has_user_id: null, has_since: null, has_how: null },
+    ...patch,
+  })
+  const text = (id: string, contactId: string, at: string, body: string) => ({
+    ...{ id, contact_id: contactId, channel_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, channel: 'text', direction: 'in' },
+    ...{ who_user_id: null, who_text: '', at, subject: null, body, optout_line: null, back_on: null, back_by: null, back_words: null, back_done_at: null },
+  })
+  const rows = {
+    contacts: [contact('greg', 'trade', { gc_company_id: 'hillside' }), contact('unk1', 'unknown')],
+    channels: [],
+    records: { gcCompanies: [{ id: 'hillside', name: 'Hillside Excavation', contact_name: 'Greg Paulk', trades: ['Sitework'] }] },
+    messages: [text('m1', 'greg', '2026-10-01T14:00:00.000Z', 'Is the detention pond in sitework?'), text('m2', 'unk1', '2026-10-02T15:00:00.000Z', 'Is this the plumbing office?')],
+    heard: [],
+    owed: [],
+  }
+  const io = { loadQueue: vi.fn(() => Promise.resolve(rows)), loadHighlights: vi.fn(() => Promise.resolve([])), count: vi.fn(() => Promise.resolve(2)) }
+  return { ...actual, supabaseFollowUpIo: () => io }
+})
+
 // Building's daily log: no log yet, and a save that goes through.
 vi.mock('../lib/gc/dailyLogIo', () => ({
   loadGcDailyLogs: vi.fn(() => Promise.resolve([])),
@@ -462,8 +488,11 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
     expect(document.querySelector('[data-gc-project="p1"] [data-gc-trade-asks="k1"]')).toBeTruthy()
-    fireEvent.click(screen.getByRole('button', { name: 'Follow up (1)' }))
+    // The badge counts the people waiting on us (v2.5289); everyone we wait on heads the asks under them.
+    fireEvent.click(screen.getByRole('button', { name: 'Follow up (2)' }))
     expect(screen.getByRole('heading', { name: 'Follow up' })).toBeTruthy()
+    expect(await screen.findByRole('heading', { name: 'Needs a reply (2)' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'We are waiting on them (1)' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Late on their word (1)' })).toBeTruthy()
   })
 
@@ -473,7 +502,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValue(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    fireEvent.click(screen.getByRole('button', { name: 'Follow up (1)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Follow up (2)' }))
     fireEvent.click(screen.getByRole('button', { name: 'By people · 1' }))
     fireEvent.click(screen.getByRole('button', { name: 'Work the list · 1 person' }))
     const sheet = screen.getByRole('dialog', { name: 'Follow up' })
@@ -495,7 +524,7 @@ describe('GcProjects: the Project Board', () => {
     vi.mocked(loadGcProjects).mockResolvedValueOnce(rows.projects)
     vi.mocked(loadGcBoardRows).mockResolvedValueOnce(rows)
     await renderSettled(<GcProjects />, { loaded: () => screen.findByRole('navigation', { name: 'Jump to a stage' }) })
-    fireEvent.click(screen.getByRole('button', { name: 'Follow up (1)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Follow up (2)' }))
     fireEvent.click(screen.getByRole('button', { name: 'By people · 1' }))
     fireEvent.click(screen.getByRole('button', { name: 'Work the list · 1 person' }))
     const sheet = screen.getByRole('dialog', { name: 'Follow up' })

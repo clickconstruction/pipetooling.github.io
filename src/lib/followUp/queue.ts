@@ -383,7 +383,11 @@ export interface FollowUpQueue<C = never, N extends { contactId: string } = neve
   nudges: N[]
   /** The papers the portal rows show, for the step card's options (`flows/card.ts`), so the card agrees with the queue. */
   onPortal: OnPortal
-  /** The badge: each person once across Needs you, Needs a reply and We owe them, and each clause waiting on approval. */
+  /**
+   * The badge: each person once across Needs you, Needs a reply and We owe them, as `follow_up_count` and the Dashboard's
+   * line count them. A clause waiting on approval counts in Needs you's heading only, since the Dashboard gives the
+   * clauses a line of their own (the lead, 2026-10-12).
+   */
   count: number
 }
 
@@ -409,7 +413,7 @@ export function followUpQueue<C = never, N extends { contactId: string } = never
   const shows = onPortal(portal)
   const nudges = [...(passThrough.nudges?.(shows) ?? [])]
   const people = new Set<string>([...needsYou, ...reply, ...owing].map((r) => r.contactId))
-  return { needsYou, clauses, needsReply: reply, weOwe: owing, nudges, onPortal: shows, count: people.size + clauses.length }
+  return { needsYou, clauses, needsReply: reply, weOwe: owing, nudges, onPortal: shows, count: people.size }
 }
 
 /** The Needs you heading's count: every row, as the prototype counts them. */

@@ -13,7 +13,7 @@ The office and estimators can use it. A text or an email goes from your own phon
 
 There are two ways in.
 
-- In [Follow up](/gc), press {{button:outline|By people}}, then {{button:blue|Work the list}}. The sheet holds everyone Follow up counts.
+- In [Follow up](/gc), press {{button:outline|By people}}, then {{button:blue|Work the list}}. The sheet holds everyone on **We are waiting on them**.
 - On a board row, hover over the count of people to call. Press {{button:blue|Work the list}} on the card that opens. The sheet holds that job's people.
 
 A dev can also open it from a job's schedule. Group the chart by company, then press {{button:blue|Work the list}} above the call list.
