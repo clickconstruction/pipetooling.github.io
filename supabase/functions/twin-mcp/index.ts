@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { BRIEF, DIRECTORY, HARNESS, CT_GUIDE, TT_GUIDE, PLACEMENT_GUIDE, PRICING_GUIDE, SUBMITTALS_GUIDE, MISSIONS } from './briefs.ts'
 import { type HeldSubmittalTask, pricerVerbList, seatGate, type TwinKind, twinMayReadPlans } from '../_shared/twinSeatGate.ts'
@@ -694,6 +694,7 @@ function presentedToken(req: Request): string | null {
 }
 
 type ResolvedTwin = { twinUserId: string; email: string; credId: string; kind: TwinKind }
+type TwinUserRow = { email: string; is_digital_twin: boolean; role: string; twin_kind?: string | null }
 
 async function resolveTwin(req: Request): Promise<ResolvedTwin | { error: string; status: number }> {
   const token = presentedToken(req)
@@ -708,12 +709,12 @@ async function resolveTwin(req: Request): Promise<ResolvedTwin | { error: string
   if (!cred || cred.revoked_at) return { error: 'Unknown or revoked twin token', status: 401 }
   // twin_kind lands with 20260911023538 (Price Matrix PR 1); before the push the column is
   // unknown to PostgREST — read the legacy shape and treat every twin as an estimator.
-  let user: { email: string; is_digital_twin: boolean; role: string; twin_kind?: string | null } | null = null
+  let user: TwinUserRow | null = null
   const wide = await admin.from('users').select('email, is_digital_twin, role, twin_kind').eq('id', cred.twin_user_id).maybeSingle()
-  if (!wide.error) user = wide.data as typeof user
+  if (!wide.error) user = wide.data as TwinUserRow | null
   else {
     const legacy = await admin.from('users').select('email, is_digital_twin, role').eq('id', cred.twin_user_id).maybeSingle()
-    user = legacy.data as typeof user
+    user = legacy.data as TwinUserRow | null
   }
   if (!user || user.is_digital_twin !== true || user.role !== 'estimator') return { error: 'Twin account not eligible', status: 403 }
   const kind: TwinKind = user.twin_kind === 'pricer' ? 'pricer' : 'estimator'
@@ -759,7 +760,7 @@ function shapePricerRequest(r: Record<string, unknown>): PricerRequestRow {
 }
 /** The request the pricer is working: claimed by this twin and still open (working), or ready for a re-finish. */
 async function loadPricerRequest(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   twin: ResolvedTwin,
   ref: string,
   allow: ReadonlyArray<string> = ['working'],
@@ -777,13 +778,13 @@ async function loadPricerRequest(
   return { request, bid: bid as { id: string; bid_number: string; project_name: string | null } }
 }
 /** A pricer may stamp the ledger of a bid whose request it holds (working or ready). */
-async function pricerMayTouchBid(admin: ReturnType<typeof createClient>, twin: ResolvedTwin, bidId: string): Promise<boolean> {
+async function pricerMayTouchBid(admin: SupabaseClient, twin: ResolvedTwin, bidId: string): Promise<boolean> {
   if (twin.kind !== 'pricer') return false
   const { data } = await admin.from('bid_price_matrix_requests').select('id').eq('bid_id', bidId).eq('claimed_by', twin.twinUserId).in('status', ['working', 'ready']).limit(1)
   return Array.isArray(data) && data.length > 0
 }
 /** The submittal tasks this twin holds on a bid — the rows twinMayReadPlans decides on. */
-async function heldSubmittalTasks(admin: ReturnType<typeof createClient>, twin: ResolvedTwin, bidId: string): Promise<HeldSubmittalTask[]> {
+async function heldSubmittalTasks(admin: SupabaseClient, twin: ResolvedTwin, bidId: string): Promise<HeldSubmittalTask[]> {
   const { data } = await admin.from('bid_submittal_tasks').select('bid_id, kind, status, claimed_by').eq('bid_id', bidId).eq('claimed_by', twin.twinUserId).eq('status', 'working')
   return (data ?? []) as HeldSubmittalTask[]
 }
@@ -793,7 +794,7 @@ function pricerSlug(s: string): string {
 }
 /** Resolve `house` (a 1-based source index, a supply_house uuid, or a name) to a supply_houses row via the request's sources first. */
 async function resolvePricerHouse(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   request: PricerRequestRow,
   house: unknown,
 ): Promise<{ id: string; name: string; sourceIndex: number | null; url: string | null } | { error: string }> {
@@ -836,13 +837,13 @@ async function resolvePricerHouse(
 // claim door now checks the reference's service type against Plumbing.
 // ---------------------------------------------------------------------------
 let plumbingServiceTypeCache: string | null = null
-async function plumbingServiceTypeId(admin: ReturnType<typeof createClient>): Promise<string | null> {
+async function plumbingServiceTypeId(admin: SupabaseClient): Promise<string | null> {
   if (plumbingServiceTypeCache) return plumbingServiceTypeCache
   const { data } = await admin.from('service_types').select('id').ilike('name', 'plumbing').limit(1).maybeSingle()
   plumbingServiceTypeCache = (data as { id: string } | null)?.id ?? null
   return plumbingServiceTypeCache
 }
-async function disciplineRefusal(admin: ReturnType<typeof createClient>, refBid: { bid_number: string; service_type_id: string | null }): Promise<string | null> {
+async function disciplineRefusal(admin: SupabaseClient, refBid: { bid_number: string; service_type_id: string | null }): Promise<string | null> {
   const plumbing = await plumbingServiceTypeId(admin)
   if (!plumbing || refBid.service_type_id === plumbing) return null
   const { data: st } = await admin.from('service_types').select('name').eq('id', refBid.service_type_id ?? '').maybeSingle()
@@ -876,7 +877,7 @@ async function probePlansSweep(req: Request, limit = 15): Promise<void> {
 // attested the send, else the creator — plus whether they are a calibration
 // standard (users.calibration_standard, v2.3080).
 type TeacherBid = { estimator_id: string | null; bid_date_sent_attested_by: string | null; created_by: string | null }
-async function resolveTeacher(admin: ReturnType<typeof createClient>, bid: TeacherBid): Promise<{ id: string | null; name: string | null; standard: boolean }> {
+async function resolveTeacher(admin: SupabaseClient, bid: TeacherBid): Promise<{ id: string | null; name: string | null; standard: boolean }> {
   const id = bid.estimator_id ?? bid.bid_date_sent_attested_by ?? bid.created_by ?? null
   if (!id) return { id: null, name: null, standard: false }
   const { data: u } = await admin.from('users').select('name, calibration_standard').eq('id', id).maybeSingle()
@@ -903,7 +904,7 @@ type ShadowRefBid = {
 }
 
 async function createShadowShell(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   twin: { twinUserId: string; email: string },
   refBid: ShadowRefBid,
   axis: string | null,
@@ -949,7 +950,7 @@ async function createShadowShell(
  * a question that touches one has its dollar figures scrubbed (`questionTouchesSealedShadow`). Null
  * when the read fails: the caller scrubs anyway, because an over-scrub is safe and a leak is not.
  */
-async function loadSealedShadows(admin: ReturnType<typeof createClient>): Promise<SealedShadow[] | null> {
+async function loadSealedShadows(admin: SupabaseClient): Promise<SealedShadow[] | null> {
   const { data: runs, error } = await admin.from('twin_shadow_runs').select('shadow_bid_id, reference_bid_id').is('scored_at', null)
   if (error) return null
   const rows = (runs ?? []) as Array<{ shadow_bid_id: string; reference_bid_id: string }>
@@ -971,7 +972,7 @@ type BacktestShellResult =
   | { ok: false; error: string }
 
 async function openBacktestShell(
-  admin: ReturnType<typeof createClient>,
+  admin: SupabaseClient,
   twin: { twinUserId: string; email: string },
   reference: string,
   opts: { round?: number; dueInDays?: number; gateRun?: boolean },
@@ -1837,7 +1838,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         .eq('created_by', twin.twinUserId)
         .not('twin_source_bid_id', 'is', null)
       let redacted = 0
-      let out = data
+      let out: Record<string, unknown>[] = data
       if (shells?.length) {
         const [{ data: scored }, { data: shadowScored }] = await Promise.all([
           admin.from('twin_run_scores').select('twin_bid_number').in('twin_bid_number', shells.map((s) => String(s.bid_number))),
@@ -2298,7 +2299,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         if (r.reused) { skipped.push(`${c.bid}: already claimed (${r.bid})`); continue }
         const remaining = candidates.slice(candidates.indexOf(c) + 1).length
         return textContent(JSON.stringify({
-          ok: true, claimed: { label: c.label, axis: c.axis, reference: c.bid }, ...r, remaining_in_list: remaining, skipped,
+          claimed: { label: c.label, axis: c.axis, reference: c.bid }, ...r, remaining_in_list: remaining, skipped,
           next: 'This shell is yours alone. STG-2 substrate first (get_plan_brief), then takeoff, counts+books before the lock, score_backtest, audit questions. Do not call next_backtest again until this bid is scored.',
         }, null, 2))
       }
