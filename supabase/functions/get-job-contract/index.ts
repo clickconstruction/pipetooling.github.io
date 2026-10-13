@@ -54,6 +54,7 @@ serve(async (req) => {
         .from('contract_template_documents')
         .select('document_name, book_body_html, book_body_format, book_version_date, updated_at')
         .eq('audience', 'customer')
+        .is('flow_kind', null)
         .not('book_body_html', 'is', null)
         .order('book_version_date', { ascending: false, nullsFirst: false })
         .order('updated_at', { ascending: false })

@@ -47,7 +47,7 @@ export interface CompanyPaperEntries {
  */
 export async function loadCompanyPaperEntries(): Promise<CompanyPaperEntries> {
   const entries = taken(
-    await supabase.from('contract_template_documents').select('id, document_name, form_template_id').eq('audience', 'sub').order('sequence_order'),
+    await supabase.from('contract_template_documents').select('id, document_name, form_template_id').eq('audience', 'sub').is('flow_kind', null).order('sequence_order'),
     'load the Contract Book',
   )
   const formIds = [...new Set(entries.map((e) => e.form_template_id).filter((id): id is string => Boolean(id)))]
