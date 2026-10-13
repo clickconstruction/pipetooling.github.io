@@ -93,6 +93,7 @@ when_to_read:
    - [twin-setup](#twin-setup)
    - [drive-intake](#drive-intake)
    - [gc-drive-access](#gc-drive-access)
+   - [drive-link](#drive-link)
    - [gc-plan-question-email](#gc-plan-question-email)
    - [gc-architect-email](#gc-architect-email)
    - [gc-trade-portal](#gc-trade-portal)
@@ -1013,6 +1014,28 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Doors**: the GC projects page (`/gc`, the office and estimators since door 1, v2.4832) calls make_folders right after `gc_create_project` and offers **Check the link** / **Check again** on each project's newest set (`src/lib/gc/gcIo.ts`).
 
 ---
+
+### drive-link
+
+**Purpose**: Messages, cut 7b (v2.5383, `MESSAGES_PLAN.md` → *Documents, for files going out*, the handler; the mock-up is `to-dos/gc-mode/messages/files-out-mockups.html` on spike/gc-mode). Our own link to one file in a job's Drive folder, `clicktooling.com/f/<link>`, and the office's door to a job's folder. The rules are pure in `_shared/driveLink.ts`, tested by `src/lib/documents/driveLink.test.ts`. A link is a `drive_links` row (cut 7a, `20261013110000_drive_links.sql`), kept by its SHA-256.
+
+**The open door**, no sign-in: the link is the key.
+- `GET ?t=<link>` answers `{ kind: 'drive', url, name }` for a file in the job's Plans half, which opens in Drive's own viewer since that half is open to anyone with its link. It answers `{ kind: 'stream', name, url }` for a Team only file, `url` being this function's public address (from `SUPABASE_URL`, never the request's) with `&raw=1`. It answers `{ kind: 'off', why }` for a link cut off, ended (30 days), unknown, or a Team only file over 50 MB. Each answer that opens counts one `public_page_views` row, surface `drive_link`. A staff look or a preview is stamped and not counted, as the portals do.
+- `GET ?t=<link>&raw=1` streams a Team only file's bytes from Drive (`alt=media`), passed through and never held whole, so Team only is never opened up. A Plans file asked for raw redirects to Drive's viewer.
+
+**The office's door**: `POST` with a staff JWT validated in-function, office roles (dev, master_technician, assistant, controller, estimator), never a digital twin, as [gc-drive-access](#gc-drive-access) checks. A training account lists and opens, and is refused the three asks that write (*A training account cannot change Drive.*).
+- `{ action: 'list', job }`: the job's folder in its two halves, three levels deep, at most 500 files, for the one list (`documents/jobFiles.ts`).
+- `{ action: 'put', job, name, mime, where, base64 }`: a file from this computer into Team only → Sent by us, or a photo into Team only → Photos, up to 10 MB, as the trade portal's files are.
+- `{ action: 'link', job, driveFileId, messageId }`: our link to a file whose parents reach the job's folder, half as found → `{ linkId, url }`. A plan set's folder in Plans opens as the folder. A Team only folder has no bytes to hand over, so it is refused (*Only a folder in Plans can go as our link.*).
+- `{ action: 'save', attachmentId, half }`: Save to Drive for a file that came in, from the `message-attachments` bucket into Team only → From email, or the top of Plans. The row keeps `drive_file_id`.
+- `{ action: 'open', job, driveFileId }`: Drive's own viewer for a file inside the job's folder, for the office's `/files/drive/<id>` page (cut 6's router).
+- A job is one of the spine's three. A GC project is `gc_projects.drive_folder_url`, with its Plans and Team only halves found by name. A bid is `bids.drive_link`, and a Pipeline job is `jobs_ledger.google_drive_link`; their folders have no halves, so every file in them is Team only.
+
+**Endpoint**: `GET|POST /functions/v1/drive-link` · **Auth**: `verify_jwt = false` in `config.toml`; the open door is the link, the office's door the JWT checked here.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [gc-drive-access](#gc-drive-access)), `APP_ORIGIN` (the link's page, else `https://clicktooling.com`).
+
+**Status**: v2.5383. `20261013110000_drive_links` is on prod (2026-10-13); deploy the function once this merges.
 
 ### gc-plan-question-email
 

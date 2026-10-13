@@ -664,6 +664,11 @@ verify_jwt = false
 [functions.drive-intake]
 verify_jwt = false
 
+# Messages, cut 7b: our own link to a job's Drive file. The open door is the link itself (no sign-in); the office's door
+# checks the staff JWT in-function (office roles, never a twin; a training account only lists and opens).
+[functions.drive-link]
+verify_jwt = false
+
 # CT↔PT user bridge proxy (v2.2435): JWT validated in-function (dev-only), forwards to
 # CountTooling's manage-user with the bridge secret.
 [functions.ct-bridge]
