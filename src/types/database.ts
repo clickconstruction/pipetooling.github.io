@@ -5956,8 +5956,12 @@ export type Database = {
           off_since: string | null
           off_why: string | null
           person_id: string | null
+          prospect_id: string | null
           snoozed_until: string | null
           state: string
+          supply_house_contact_id: string | null
+          supply_house_id: string | null
+          team_prospect_id: string | null
         }
         Insert: {
           created_at?: string
@@ -5977,8 +5981,12 @@ export type Database = {
           off_since?: string | null
           off_why?: string | null
           person_id?: string | null
+          prospect_id?: string | null
           snoozed_until?: string | null
           state?: string
+          supply_house_contact_id?: string | null
+          supply_house_id?: string | null
+          team_prospect_id?: string | null
         }
         Update: {
           created_at?: string
@@ -5998,8 +6006,12 @@ export type Database = {
           off_since?: string | null
           off_why?: string | null
           person_id?: string | null
+          prospect_id?: string | null
           snoozed_until?: string | null
           state?: string
+          supply_house_contact_id?: string | null
+          supply_house_id?: string | null
+          team_prospect_id?: string | null
         }
         Relationships: [
           {
@@ -6049,6 +6061,34 @@ export type Database = {
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_prospect_id_fkey"
+            columns: ["prospect_id"]
+            isOneToOne: false
+            referencedRelation: "prospects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_supply_house_contact_id_fkey"
+            columns: ["supply_house_contact_id"]
+            isOneToOne: false
+            referencedRelation: "supply_house_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contacts_team_prospect_id_fkey"
+            columns: ["team_prospect_id"]
+            isOneToOne: false
+            referencedRelation: "team_prospects"
             referencedColumns: ["id"]
           },
         ]
@@ -32221,6 +32261,8 @@ export type Database = {
         Args: { p_contact: string; p_why: string }
         Returns: undefined
       }
+      contacts_candidate_ids: { Args: never; Returns: string[] }
+      contacts_candidates_readable: { Args: never; Returns: boolean }
       contacts_fold: {
         Args: { p_from: string; p_into: string }
         Returns: undefined
@@ -32241,6 +32283,8 @@ export type Database = {
         Args: { p_from: string; p_into: string }
         Returns: undefined
       }
+      contacts_from_supply_houses: { Args: never; Returns: number }
+      contacts_subs_from_roster: { Args: never; Returns: number }
       contract_clause_apply: {
         Args: { p_by: string; p_by_name: string; p_proposal_id: string }
         Returns: Json
@@ -32541,6 +32585,20 @@ export type Database = {
           last_note_at: string
           note_count: number
           request_id: string
+        }[]
+      }
+      draft_estimate_line_from_message: {
+        Args: {
+          p_estimate_id: string
+          p_line: Json
+          p_message_id: string
+          p_replaces_last: boolean
+          p_seen_at: string
+        }
+        Returns: {
+          drafted_estimate_id: string
+          drafted_estimate_number: number
+          drafted_line_number: number
         }[]
       }
       drive_link_views: {
@@ -36104,6 +36162,16 @@ export type Database = {
       rotate_legal_portal_link: {
         Args: { p_address?: string; p_link_id: string }
         Returns: Json
+      }
+      running_late_move: {
+        Args: {
+          p_job_line: string
+          p_moves: Json
+          p_note_summary: string
+          p_note_title: string
+          p_reason: string
+        }
+        Returns: string
       }
       salary_schedule_staff_or_self_target: {
         Args: { p_target_user_id: string }
