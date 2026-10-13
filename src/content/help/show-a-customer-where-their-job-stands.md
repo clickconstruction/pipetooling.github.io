@@ -9,12 +9,15 @@ A customer whose job we build sees that job on its own page in their portal. The
 
 ## What the customer sees
 
-The page has four tabs:
+The page has five tabs:
 
 - **Home** says what we need from them first, what happened this week and who to call.
 - **Money** shows how far along the job is, each pay application and the statement.
 - **Schedule** shows the job's dates and why a date moved.
 - **Papers** lists what they signed, what waits on them and what comes later.
+- **Messages** is the same conversation as their texts and emails with us.
+
+What they write on **Messages** lands in their thread, like a text. It is tied to the job of the page they wrote on. A team note or a call never shows there.
 
 Nothing of ours shows there. They never see a trade's name, our costs or an office note.
 

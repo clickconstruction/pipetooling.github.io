@@ -11,6 +11,7 @@ import { portalLetterhead } from './portalLetterhead.ts'
 import { SAMPLE_BID, SAMPLE_CHANGE_ORDER, SAMPLE_CONTRACT, SAMPLE_ESTIMATE, SAMPLE_GC, SAMPLE_HOMEOWNER, SAMPLE_OWNER, SAMPLE_SUB, SAMPLE_TOKEN, SAMPLE_TOKEN_OWNER, ymdPlusDays, type SampleState, SAMPLE_JOB_CONTRACT } from './customerSample.ts'
 import { gcPortalStages } from './gcStages.ts'
 import type { PortalGcSchedule } from './gcCustomerSchedule.ts'
+import type { PortalThreadLine } from './gcPortalThread.ts'
 import { buildPortalBills, buildPortalSharedBills, type PortalBillOut, type PortalInvoiceRow, type PortalJobRow, type PortalSharedBillOut } from './portalMergedBills.ts'
 import { buildPortalWaivers, type PortalWaiverReleaseRow, type PortalWaiverRow } from './portalWaivers.ts'
 import { buildPortalChecks, type PortalChecksEventRow, type PortalChecksOut, type PortalChecksPaymentRow } from './portalChecks.ts'
@@ -428,7 +429,27 @@ function sampleOwnerPortalResponse(company: SamplePortalCompany, todayYmd: strin
     gcJobs,
     // The certified bill is not on Stripe, so Pay by card offers it at its 3% (O8b), through the portal's own kernel.
     cardBills: gcPortalCardBills({ on: true, hasEmail: true, bills: money.bills, certifiedInvoiceIds: new Set(['sample-inv-owner']), cardRows: [] }),
+    // Their thread on the page's Messages tab (Messages cut 8e).
+    thread: sampleOwnerThread(todayYmd),
   }
+}
+
+/** The owner's sample thread (Messages cut 8e): a text from the site, their line from the page, our email back. Made up, in the page's own shape. */
+function sampleOwnerThread(todayYmd: string): PortalThreadLine[] {
+  const at = (days: number, hm: string) => `${ymdPlusDays(todayYmd, days)}T${hm}:00-05:00`
+  return [
+    { id: 'sample-line-1', at: at(-2, '10:05'), dir: 'out', door: 'text', who: 'Wendi', subject: null, body: 'The framing inspection passed this morning.' },
+    { id: 'sample-line-2', at: at(-1, '15:30'), dir: 'in', door: 'portal', who: null, subject: null, body: 'Great news. Can we look at the coffee bar layout on Friday?' },
+    {
+      id: 'sample-line-3',
+      at: at(-1, '17:10'),
+      dir: 'out',
+      door: 'email',
+      who: 'Robert',
+      subject: 'Coffee bar cabinet',
+      body: 'Change order 2 has the cabinet. It adds three working days. Friday at 10 works for the walk.',
+    },
+  ]
 }
 
 /** The owner's sample GC job: our contract to sign, a change order, the work to accept, its schedule and its page. */

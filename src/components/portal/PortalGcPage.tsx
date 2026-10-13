@@ -6,8 +6,9 @@
  * from the page words with the office's edits laid over (`customer_page_words`); Español shows only while both the
  * job's switch and main's Spanish gate are on. Drawn from `customerPageModel`; nothing of ours reaches it.
  *
- * Interim, until 8b-ii: Your move reads the job's own facts, and Where you are waits for the customer's flow. Messages
- * comes with the thread (8e). Customer-facing ⇒ single-theme light on the statement's paper.
+ * Interim, until 8b-ii: Your move reads the job's own facts, and Where you are waits for the customer's flow. Since
+ * Messages cut 8e, Messages is the same thread as their texts and emails with us (`PortalGcMessages`), shown while the
+ * answer carries it. Customer-facing ⇒ single-theme light on the statement's paper.
  *
  * The office's preview (`office`, Messages cut 8d, `GcCustomerPortalWindow`): nothing sends (`PortalPreviewContext`) and
  * no paper open is told, Español is offered so the office can read the Spanish before it is on, and with `sources` on
@@ -18,6 +19,7 @@ import { GC_CARD_FEE_PCT } from '../../../supabase/functions/_shared/gcCardBill'
 import { portalShownLang } from '../../lib/gc/portalI18n'
 import { customerPageModel, type CustomerHomeMove, type PortalGcPage as Page } from '../../lib/portal/customerPage'
 import type { MoneyCard } from '../../lib/portal/moneyStory'
+import { urgentName } from '../../lib/portal/portalThread'
 import type { ReadyFix } from '../../lib/portal/readiness'
 import { CODE_WORDS, wordsWith, type PageWords, type PortalLang } from '../../lib/portal/pageWords'
 import type { PortalGcJob, PortalPayload } from '../../lib/portal/portalPayload'
@@ -26,17 +28,19 @@ import { sampleStateFromToken } from '../../lib/customerSampleMode'
 import { staffAwarePublicHeaders } from '../../lib/publicFunctionStaffHeaders'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { AcceptWork, ChangeOrderRow, OurContract } from './PortalGcForms'
+import { PortalGcMessages } from './PortalGcMessages'
 import { PortalPreviewContext } from './portalPreviewContext'
 import { PortalGcSchedule } from './PortalGcSchedule'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
 
-type Tab = 'home' | 'money' | 'schedule' | 'papers'
-const TABS: { tab: Tab; key: 'tabHome' | 'tabMoney' | 'tabSchedule' | 'tabPapers' }[] = [
+type Tab = 'home' | 'money' | 'schedule' | 'papers' | 'messages'
+const TABS: { tab: Tab; key: 'tabHome' | 'tabMoney' | 'tabSchedule' | 'tabPapers' | 'tabMessages' }[] = [
   { tab: 'home', key: 'tabHome' },
   { tab: 'money', key: 'tabMoney' },
   { tab: 'schedule', key: 'tabSchedule' },
   { tab: 'papers', key: 'tabPapers' },
+  { tab: 'messages', key: 'tabMessages' },
 ]
 
 /** A paper opened on the page, for the office's read-back: one quiet request, never in a sample. */
@@ -212,7 +216,7 @@ export function PortalGcPage({
         )}
       </div>
       <div role="tablist" aria-label={job.name} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: `1px solid ${HAIR}`, paddingBottom: 6 }}>
-        {TABS.map((t) => (
+        {TABS.filter((t) => t.tab !== 'messages' || payload.thread !== null).map((t) => (
           <button
             key={t.tab}
             type="button"
@@ -424,6 +428,18 @@ export function PortalGcPage({
           )}
           <div style={{ color: MUTED, fontSize: 12 }}>{model.papers.footer}</div>
         </div>
+      )}
+
+      {tab === 'messages' && payload.thread !== null && (
+        <PortalGcMessages
+          lang={lang}
+          words={words}
+          token={token}
+          projectId={job.projectId}
+          company={payload.company.name}
+          urgent={urgentName(page, payload.company.name)}
+          lines={payload.thread}
+        />
       )}
     </div>
     </PortalPreviewContext.Provider>
