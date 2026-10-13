@@ -2,7 +2,7 @@
 title: open a job's activity full screen
 category: Office
 roles: all
-keywords: job activity, notes, full screen, fullscreen, expand, see all, reports button, mobile, stages, thread, numbered, compact
+keywords: job activity, notes, full screen, fullscreen, expand, see all, reports button, mobile, stages, thread, numbered, compact, calls, texts, emails, customer, messages
 order: 63
 ---
 A job's whole trail opens as one view on Jobs → Pipeline. You see every note, report, schedule, clock, status and billing event in one numbered feed.
@@ -24,9 +24,11 @@ The job's identity sits at the top. That is the {{chip:blue|Job: 4821}} number b
 - **One line per item**, in columns. The columns are circled number, time, who and what. The time is just the clock, like *9:45a*. The **day separator** above carries the date and how long ago it was, like *Wed, Aug 12 · 3d ago*.
 - **Every line has a circled number**, and 1 is the oldest. Notes, reports, schedule, clock, status and billing lines all count alike. So "check line 7" points at one thing. The numbers do not shift when you filter.
 - **Messages stand out.** Notes and reports are a person talking. They sit on a subtle highlight band. System lines stay quiet and gray between them. Those are clock, schedule, crew and status. So scanning the feed reads like a conversation with the bookkeeping in the background.
+- **Calls, texts and emails show for the office.** The customer's lines from Messages sit in the same numbered feed. The customer's lines are orange, with a deeper bar when the line came from the customer. A small word says how it came, like *text* or *call · 3:12*. A line marked *not tied yet* is the customer's but sits on no job yet. A team note written in Messages reads like any other note.
 - **Click a line to open it in place.** In the compact panel under a row, a report folds to its title until you click it. The title reads like *Status Report · ▸ 3 answers*. In the **floating window and full-screen mode, reports show all their answers open by default**. There is room, and the reports are usually why you went big. Click a line to tuck one away. Clock and schedule notes show expanded everywhere. The opened text is selectable for copying. Clicking it will not fold the line. Click the line's top row to fold it back.
 - **Schedule lines name their scheduler** in the who column. The people assigned to go are part of the line itself, same as the green **Next** strip.
-- **Filter pills** narrow the feed. They are All, Notes, Reports, Status, Billing and Crew. Each shows its count.
+- **Filter pills** narrow the feed. The pills are All, Notes, Reports, Status, Billing and Crew. The office also gets **Customer**, which shows only the customer's lines. Each pill shows its count.
+- **Click a call, a text or an email** to read all of it. A call shows its summary and what was said. Press **Open the thread with** and the name to see the whole conversation in [Messages](/help/find-every-message-with-a-person-in-one-place).
 - The people on the job and the **% complete** share the top line, with the manage-people button for editors. The green **Next** appointment stays pinned above the feed.
 - The note bar stays at the bottom. Type and press Enter to post. Editors also get {{button:outline-blue|Set % complete}}. Pick the percent and add a note. The note is required below 100%. Both land on the job.
 
