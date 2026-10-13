@@ -441,6 +441,17 @@ table.qrt tr.edit td{padding:10px 6px 14px;background:var(--bg);border-bottom:1p
 .gap ul{margin:0;padding-left:18px}
 .gap li{margin:3px 0}
 
+/* the Job activity switch on a person's thread (screens 7 and 8) */
+.togg{border-radius:999px;font-size:12px;padding:2px 9px;margin-left:auto;color:var(--muted)}
+.togg.on{background:var(--ok-soft);border-color:var(--ok);color:var(--ok);font-weight:600}
+.togg i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:0}
+.cmp .row.act .b{color:var(--muted)}
+.cmp .row.act .w b{font-weight:500}
+.thr .ln.act{align-self:stretch;max-width:100%;background:transparent;border:0;border-left:3px solid var(--border);border-radius:0;padding:3px 10px;font-size:13px;color:var(--muted)}
+.thr .ln.act b{color:var(--text);font-weight:500}
+.thr .ln.act .ktag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;border-radius:4px;padding:0 4px;line-height:14px;border:1px solid var(--border);color:var(--muted);margin-left:6px}
+.thr .th .acts2{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
+
 /* ---- Screen 5: decisions; 6: log ---- */
 ol.dec{padding-left:0;list-style:none;counter-reset:d;display:flex;flex-direction:column;gap:10px;max-width:76ch}
 ol.dec li{counter-increment:d;background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:12px 14px 12px 50px;position:relative}
@@ -466,7 +477,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <body>
 <div class="wrap">
 <header class="top">
-  <h1>Customer messages</h1><span class="ver" id="ver">v0.7 · 2026-10-13</span>
+  <h1>Customer messages</h1><span class="ver" id="ver">v0.8 · 2026-10-13</span>
   <span class="note">A prototype of one line to the customer from the job, the tech's phone and the office. Made-up people and jobs, nothing is saved. Everything that moves here is a press you can try.</span>
 </header>
 
@@ -717,6 +728,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   <li><b>Where a line lives.</b> On the job window alone, or the customer's whole thread with other jobs' lines muted?<div class="rec">The whole thread, other jobs muted. A customer with two jobs is one conversation.</div></li>
   <li><b>Which reminders start on.</b> The app can text the estimate reminder, the bill reminder and the review ask by itself.<div class="rec">Estimate and bill on from day one. The review ask after you read ten real threads.</div></li>
   <li><b>The seventeen integrations.</b> Decided 2026-10-13 on the mockups: sixteen Add, history No. Candidates and subs went against the lean, so Messages has seven kinds of contact, customer · trade partner · architect · lead · supply house · candidate · sub, four of them with no flow and two off Follow up by default.<div class="rec">Build the kinds as one change to the contact record, not seven; the lead's re-point to a customer is the same move as Who is this?'s fold.</div></li>
+  <li><b>Job activity in a person's thread.</b> Decided 2026-10-13: the thread shows clock, reports, status and billing from the jobs the person's lines are tied to, with a switch to turn it off. Open: the default.<div class="rec">On for the office, off on the tech's phone, kept per computer. The tech's door already keeps money lines out, so billing rows never reach the phone either way.</div></li>
   <li><b>Order of building.</b><div class="rec">Finish the thread window on GC projects, make it the customer window everywhere, then the job window's chip and box, then Job Mode's press, then the residential flow and its reminders.</div></li>
 </ol>
 
@@ -772,7 +784,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 
 <!-- ===================== 8 ===================== -->
 <section class="screen" id="s8">
-<p class="lead">The <b>job activity panel</b>, the app's Job activity / notes on a Stages row, beside the <b>person's thread</b> from Messages, both drawn from <b>one list of rows</b>. The job panel shows the rows on job 1312, Dana's lines among them through their tie. Dana's thread shows every line with her, on either job. Press a kind in the registry below and it lights in both panels; the filters count from the same rows.</p>
+<p class="lead">The <b>job activity panel</b>, the app's Job activity / notes on a Stages row, beside the <b>person's thread</b> from Messages, both drawn from <b>one list of rows</b>. The job panel shows the rows on job 1312, Dana's lines among them through their tie. Dana's thread shows every line with her on either job and, with <b>Job activity</b> on, the clock, reports, status and billing from the jobs her lines are tied to, between her lines (the owner, 2026-10-13). The switch is kept per computer and sits on the thread wherever it opens. Press a kind in the registry below and it lights in both panels; the filters count from the same rows.</p>
 
 <div class="cmp" id="cmp"></div>
 
@@ -786,6 +798,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   <dt>One row model, not two.</dt><dd>A text, an email, a call, a voicemail and a portal press are five entries in the activity registry. The orange becomes one more color there instead of a rule inside Messages, and the numbering, the filter counts and the day words come free to the thread.</dd>
   <dt>The tie is the join.</dt><dd>The job panel shows the person's lines tied to that job. Nothing is stored twice. The Customer chip is a filter by source, as Billing and Crew are today.</dd>
   <dt>Arrived at job and Leaving job are quick replies already.</dt><dd>Two fixed presses for the team's own notes. In the quick replies editor they are lines for the team on the job's steps, so the office adds a third without a release and the phone's lines come from one place.</dd>
+  <dt>The thread takes the job's activity, behind a switch.</dt><dd>With Job activity on, a customer's thread reads the clock, the reports, the status changes and the bills from the jobs her lines are tied to, in time order with her lines, plain where her lines are orange. Only those jobs: a job of hers with no line on it stays out. Off, the thread is her lines alone. The switch is per person reading, kept on their computer, on by default for the office and off on the tech's phone.</dd>
   <dt>The job panel takes the move line.</dt><dd>One line under the crew row, read from the person's thread: whose move it is and when the customer last wrote. Today the panel says nothing about the customer at all.</dd>
   <dt>Sessions and Set % complete stay the job's.</dt><dd>The person's thread links to the job. It does not grow the job's controls.</dd>
 </dl>
@@ -802,6 +815,11 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
 <section class="screen" id="s6">
 <p class="lead">What changed in this prototype, newest first. Open it from the repo: <code>to-dos/gc-mode/messages/customer-messages-prototype.html</code> on <code>spike/gc-mode</code>.</p>
 <div class="log">
+  <article><h4>v0.8<small>2026-10-13</small></h4>
+    <ul>
+      <li><b>Job activity</b> on a person's thread (the owner, 2026-10-13): clock, reports, status and billing from the jobs the person's lines are tied to, between the lines, plain where the lines are orange; a switch on the thread's header on screens 7 and 8, kept per computer. Screen 5 records it with the default as the open piece.</li>
+    </ul>
+  </article>
   <article><h4>v0.7<small>2026-10-13</small></h4>
     <ul>
       <li>Screen 8, <b>Two panels, one row</b>: the job activity panel and the person's thread side by side, drawn from one list of rows; the registry under them with the five kinds Messages adds; a press on a kind lights it in both panels; what each takes from the other, and the gaps this shows.</li>
@@ -1152,6 +1170,11 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   });
   $('#doneClose').addEventListener('click',()=>sheet.classList.remove('open'));
 
+  // The Job activity switch on a person's thread (the owner, 2026-10-13): clock, reports, status and billing from the jobs
+  // the person's lines are tied to, interleaved with the lines, on or off per computer.
+  let showAct=true; try{ const v=localStorage.getItem('cm-show-act'); if(v!=null) showAct=v==='1'; }catch(e){}
+  function setAct(v){ showAct=v; try{ localStorage.setItem('cm-show-act',v?'1':'0'); }catch(e){} paintPage(); paintCmp(); }
+  const toggHtml=()=>`<button type="button" class="togg ${showAct?'on':''}" data-togg="1" title="Clock, reports, status and billing from the jobs this person’s lines are tied to, between the lines. Kept on this computer."><i></i>Job activity ${showAct?'on':'off'}</button>`;
   // ---------- screen 7: the Messages page, three mockups over one sort state ----------
   const VAR_WHAT={
     A:'Follow up as it is on the spike, with a New lane on top. The sorts sit on the row and on a strip above the thread. One queue, so nobody checks two places.',
@@ -1208,8 +1231,9 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   function threadHtml(showSort){
     const o=findOpen(); if(!o) return `<div class="thr"><div class="well"><div class="note">Pick a row.</div></div></div>`;
     if(o.kind==='new'){ const x=o.x; const named=sorted[x.id];
-      return `<div class="thr"><div class="th"><h4>${esc(named&&named.name||x.who)}<span class="pill">${named?'Open · '+(named.has||'the office'):'nobody on it yet'}</span></h4><div class="facts"><b>${named?named.kind:KIND_WORD[x.kind]}</b>${named&&named.company?' · '+esc(named.company):''} · ${esc(x.via)}</div><div class="move">Their move came in ${esc(x.when)}. ${named?'Needs a reply.':'Sort it, then answer.'}</div></div>${showSort&&!named?sortCardHtml(x):''}<div class="well"><div class="ln them">${esc(x.text)}<small>${esc(x.who)} · ${esc(x.via)} · ${esc(x.when)}</small></div>${named?`<div class="ln us" style="background:var(--team);border-color:var(--team-border)">${esc(named.event)}<small>Rosa · event · just now</small></div>`:''}</div><div class="box"><span class="fake">${named?'Write to '+esc((named.name||x.who).split(' ')[0])+'…':'Name them first, then the box opens.'}</span><button class="primary small" ${named?'':'disabled'}>Send text…</button></div></div>`; }
-    const r=o.r; return `<div class="thr"><div class="th"><h4>${esc(r.who)}<span class="pill">Open · Rosa</span></h4><div class="facts"><b>${KIND_WORD[r.kind]}</b></div><div class="move">Their move · ${esc(r.t)}.</div></div><div class="well"><div class="ln them">${esc(r.sn)}<small>${esc(r.who)} · ${esc(r.t)}</small></div></div><div class="box"><span class="fake">Pick a line above, or write…</span><button class="primary small">Send text…</button></div></div>`;
+      const act = x.id==='dana' && showAct ? `<div class="ln act"><b>Luis</b> Status Report · 40% · Camera showed a break at 32 ft.<span class="ktag">report</span> · Mon 11:07a · on 1312</div><div class="ln act"><b>Rosa</b> Waiting → Working<span class="ktag">status</span> · Wed 8:15a · on 1312</div><div class="ln act"><b>Rosa</b> Scheduled Thu, Oct 8 · 8:00a · Luis<span class="ktag">status</span> · Wed 8:16a · on 1312</div>` : '';
+      return `<div class="thr"><div class="th"><h4>${esc(named&&named.name||x.who)}<span class="pill">${named?'Open · '+(named.has||'the office'):'nobody on it yet'}</span></h4><div class="facts"><b>${named?named.kind:KIND_WORD[x.kind]}</b>${named&&named.company?' · '+esc(named.company):''} · ${esc(x.via)}</div><div class="move">Their move came in ${esc(x.when)}. ${named?'Needs a reply.':'Sort it, then answer.'}</div><div class="acts2"><span class="note">${x.id==='dana'?'on her jobs: 1312, 1298':x.need==='who'?'no job yet':'on their jobs: 1'}</span>${toggHtml()}</div></div>${showSort&&!named?sortCardHtml(x):''}<div class="well"><div class="ln them">${esc(x.text)}<small>${esc(x.who)} · ${esc(x.via)} · ${esc(x.when)}</small></div>${act}${named?`<div class="ln us" style="background:var(--team);border-color:var(--team-border)">${esc(named.event)}<small>Rosa · event · just now</small></div>`:''}</div><div class="box"><span class="fake">${named?'Write to '+esc((named.name||x.who).split(' ')[0])+'…':'Name them first, then the box opens.'}</span><button class="primary small" ${named?'':'disabled'}>Send text…</button></div></div>`; }
+    const r=o.r; return `<div class="thr"><div class="th"><h4>${esc(r.who)}<span class="pill">Open · Rosa</span></h4><div class="facts"><b>${KIND_WORD[r.kind]}</b></div><div class="move">Their move · ${esc(r.t)}.</div><div class="acts2"><span class="note">on their jobs: ${r.kind==='customer'?'2':'1'}</span>${toggHtml()}</div></div><div class="well"><div class="ln them">${esc(r.sn)}<small>${esc(r.who)} · ${esc(r.t)}</small></div>${showAct&&r.kind==='customer'?`<div class="ln act"><b>Luis</b> clocked in at the job · 9:41a<span class="ktag">clock</span> · on 1312</div>`:''}</div><div class="box"><span class="fake">Pick a line above, or write…</span><button class="primary small">Send text…</button></div></div>`;
   }
   function sideHtml(withFacts){
     const o=findOpen(); if(!o) return '<div class="side"></div>';
@@ -1234,6 +1258,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
     $$('[data-open]',pg).forEach(b=>b.onclick=()=>{ openId=b.dataset.open; paintPage(); });
     $$('[data-kf]',pg).forEach(b=>b.onclick=()=>{ kf=b.dataset.kf; paintPage(); });
     $$('[data-v2]',pg).forEach(b=>b.onclick=()=>{ variant=b.dataset.v2; paintPage(); });
+    $$('[data-togg]',pg).forEach(b=>b.onclick=()=>setAct(!showAct));
     $$('[data-who]',pg).forEach(b=>b.onclick=()=>{ const x=SORT.find(s=>s.id===b.dataset.who); const o=x.opts[+b.dataset.i]; const name=o.l.replace(/,.*$/,'').replace(/ at .*$/,''); const company=(o.l.match(/ at (.*)$/)||[])[1]||null; const kind=/lead/i.test(o.l)?'Lead':/candidate/i.test(o.l)?'Candidate':x.id==='bexar'?'Trade partner':'Customer'; sorted[x.id]={name:o.l.startsWith('Someone')?x.who:name, company, kind, has:'the office', event:`Rosa named this ${kind.toLowerCase()}: ${o.l}. ${kind==='Lead'?'The thread is on Prospects.':kind==='Candidate'?'The thread is on the hiring board.':'The thread moved to Needs a reply.'}`}; toast(`Named. ${o.l}. ${kind==='Lead'?'Their thread is on Prospects.':kind==='Candidate'?'It is on the hiring board, off Messages.':'Their thread is on Needs a reply.'}`); paintPage(); });
     $$('[data-job]',pg).forEach(b=>b.onclick=()=>{ danaPick[b.dataset.job]=!danaPick[b.dataset.job]; paintPage(); });
     $$('[data-jobdone]',pg).forEach(b=>b.onclick=()=>{ const picked=Object.keys(danaPick).filter(k=>danaPick[k]); if(!picked.length){ toast('Tick at least one job.'); return; } sorted.dana={name:'Dana Whitfield',kind:'Customer',has:'Luis until 5 PM',event:`Rosa tied the line to ${picked.join(' and ')}.`}; toast(`Tied to ${picked.join(' and ')}. It reads on ${picked.length===1?'that job':'both jobs'} now.`); paintPage(); });
@@ -1284,7 +1309,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   function rowsHtml(rows, numbered){
     let h='', day='', n=0;
     for(const r of rows){ if(r.day!==day){ day=r.day; h+=`<div class="day">${esc(day)}</div>`; } n++;
-      const reg=REG.find(x=>x.k===r.k); const cls=(isCust(r.k)?'cust '+(r.dir==='in'?'in':''):(r.k==='note'?'team':''))+(litKind?(litKind===r.k?' lit':' dim'):'');
+      const reg=REG.find(x=>x.k===r.k); const cls=(isCust(r.k)?'cust '+(r.dir==='in'?'in':''):(r.k==='note'?'team':''))+(!numbered&&!isCust(r.k)?' act':'')+(litKind?(litKind===r.k?' lit':' dim'):'');
       h+=`<div class="row ${cls}"><span class="n">${numbered?n:'·'}</span><span class="t">${esc(r.t)}</span><span class="w"><b>${esc(r.who)}</b><span class="ktag ${reg.cls}">${reg.tag}</span></span><div class="b">${esc(r.body)}${r.also?`<div class="tie"><span class="this">${r.job} · this job</span><span>also ${r.also}</span></div>`:''}${r.job&&!numbered?`<div class="dim" style="font-size:11px">on ${r.job}</div>`:(!r.job&&!numbered?`<div class="dim" style="font-size:11px">on Dana alone · no job tied yet</div>`:'')}</div></div>`; }
     return h||'<div class="note" style="padding:8px 0">Nothing of this kind.</div>';
   }
@@ -1292,7 +1317,7 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
   function filtersHtml(rows, cur, names, id){ const c=counts(rows); return `<div class="pf">${['All',...names].map(nm=>`<button class="${cur===nm?'on':''}" data-pf="${id}" data-f="${nm}">${nm}${nm!=='All'&&c[nm]?`<span class="n">${c[nm]}</span>`:''}</button>`).join('')}</div>`; }
   function paintCmp(){
     const host=$('#cmp'); if(!host) return;
-    const jobRows=ROWS.filter(r=>r.job==='1312'); const personRows=ROWS.filter(r=>isCust(r.k));
+    const jobRows=ROWS.filter(r=>r.job==='1312'); const herJobs=new Set(ROWS.filter(r=>isCust(r.k)).flatMap(r=>[r.job,r.also]).filter(Boolean)); const personRows=ROWS.filter(r=>isCust(r.k)||(showAct&&r.job&&herJobs.has(r.job)));
     const jf=jobFilter==='All'?jobRows:jobRows.filter(r=>bucketOf(r.k)===jobFilter);
     const pf=personFilter==='All'?personRows:personFilter==='1312'||personFilter==='1298'?personRows.filter(r=>r.job===personFilter||r.also===personFilter):personRows.filter(r=>bucketOf(r.k)===personFilter);
     host.innerHTML=`
@@ -1301,10 +1326,11 @@ ol.dec li .rec::before{content:"Lean: ";font-weight:700;color:var(--ok)}
         <div class="feed">${rowsHtml(jf,true)}</div>
         <div class="pc"><div class="kinds"><button class="on note">Note</button><button>Arrived at job</button><button>Leaving job</button></div><div class="fakebox">Add a note to Oakridge sewer line…</div><div class="acts"><button>Set % complete</button><button class="primary">Post</button></div></div></div>
       <div class="panel"><div class="ph"><div class="ttl">The person’s thread · Messages, a job, her name, Job Mode</div><h4>Dana Whitfield <span class="chip" style="margin-left:auto">Open · Luis until 5 PM</span></h4><div class="facts"><b>Customer</b> · (210) 555-0137 · dana.whitfield@example.com · 2 active jobs</div><div class="move">Her move · she wrote Tue 4:05p · we wrote Fri 10:03a · nothing owed</div></div>
-        ${filtersHtml(personRows, personFilter, ['Customer','1312','1298'], 'person').replace('>Customer<','>All channels<')}
+        ${filtersHtml(personRows, personFilter, ['Customer','1312','1298'], 'person').replace('>Customer<','>Her lines<').replace('</div>', toggHtml()+'</div>')}
         <div class="feed">${rowsHtml(pf,false)}</div>
         <div class="pc tocust"><div class="kinds"><button>Note</button><button class="on text" style="background:var(--cust);border-color:var(--cust);color:#fff">Text to Dana</button><button>Email to Dana</button></div><div class="fakebox">Quick replies ▸ · Pick a line, or write to Dana…</div><div class="acts"><button class="cust">Send text…</button></div></div></div>`;
-    $$('[data-pf]',host).forEach(b=>b.onclick=()=>{ if(b.dataset.pf==='job') jobFilter=b.dataset.f; else personFilter=b.dataset.f==='All channels'?'All':b.dataset.f; paintCmp(); });
+    $$('[data-pf]',host).forEach(b=>b.onclick=()=>{ if(b.dataset.pf==='job') jobFilter=b.dataset.f; else personFilter=b.dataset.f==='Her lines'?'Customer':b.dataset.f; paintCmp(); });
+    $$('[data-togg]',host).forEach(b=>b.onclick=()=>setAct(!showAct));
     const reg=$('#reg'); const jc=counts(jobRows), pc=counts(personRows);
     reg.innerHTML=`<tr><th>Row kind</th><th>Who writes it</th><th>What it is</th><th>Filter bucket</th><th class="c">On job 1312</th><th class="c">In Dana’s thread</th><th>Today</th></tr>`+REG.map(r=>`<tr class="k ${litKind===r.k?'on':''} ${r.have?'':'new'}" data-k="${r.k}"><td><span class="sw" style="background:${r.cls==='cust'?'var(--cust)':r.cls==='sys'?'var(--accent)':r.cls==='clock'?'var(--email-ch)':r.cls==='bill'?'var(--ok)':'var(--chip)'}"></span>${r.tag}</td><td>${r.who}</td><td>${r.what}</td><td>${r.bucket}</td><td class="c">${ROWS.filter(x=>x.job==='1312'&&x.k===r.k).length||'·'}</td><td class="c">${ROWS.filter(x=>isCust(x.k)&&x.k===r.k).length||'·'}</td><td><span class="stt ${r.have?'have':'add'}">${r.have?'in the registry':'Messages adds'}</span></td></tr>`).join('');
     $$('tr.k',reg).forEach(tr=>tr.onclick=()=>{ litKind=litKind===tr.dataset.k?null:tr.dataset.k; paintCmp(); });

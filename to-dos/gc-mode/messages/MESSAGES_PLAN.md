@@ -648,6 +648,12 @@ report that "communication from the office has been non existent"). Drawn in `cu
   stand: push waits fifteen minutes before the office hears, a setting; a Running late press asks once before it
   moves the dispatch board and tells the dispatcher.
 
+- **Job activity in a person's thread** (2026-10-13): the thread shows the clock, the reports, the status changes and
+  the bills from the jobs the person's lines are tied to, in time order with the lines, behind a **Job activity**
+  switch on the thread's header kept per computer; a job of theirs with no line on it stays out. Both panels draw
+  from one list of rows, the activity panel's registry with five kinds added (prototype screen 8). Open: the default
+  (lean: on for the office, off on the tech's phone).
+
 Decisions still the owner's, on the prototype's screen 5: the tech's door (lean: jobs dispatched to or clocked on,
 this week and last, no money lines), free text for techs (lean: quick replies and *Something else* to the office),
 who edits the phone's lines (lean: the office), who answers a reply (lean: the tech until 5 PM, then the office),
