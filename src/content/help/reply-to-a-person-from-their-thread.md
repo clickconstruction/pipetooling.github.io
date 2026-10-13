@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, reply, reply box, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back
+keywords: gc mode, messages, reply, reply box, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, find a reply, add a line, after this sends, our move, their move, what we owe, bring it back, attach, file, photo, plan set, our link, portal
 order: 117
 ---
 The reply box sits at the foot of every thread in Messages. Write a text, an email or a team note to the person there.
@@ -99,6 +99,28 @@ Once the phone is on, the window shows their phone with our last texts to them. 
 After a quiet spell, press **Leave it off this time** to hold the line back on that one text.
 
 If they texted STOP, the box says so. The app will not text that number.
+
+## Send a file with a message
+
+1. Write the message as a text or an email.
+2. Press {{button:outline|Attach}}. A list of the job's files opens.
+3. Press a file to add it. Or press **A file from this computer** or **A photo**.
+
+Each file shows under the box as a chip. Press its **×** to take it off. A file goes on the message once.
+
+Press **Preview** beside a file to read its facts first. Then press **Open in a tab** to see it, or **Attach it** to add it.
+
+The send window shows how each file goes:
+
+- A small file goes with the email as the file.
+- A plan set always goes as our link.
+- A file over 10 MB goes as our link.
+- Files over 20 MB together go as links, the largest first.
+- A text cannot carry a file, so each goes as our link.
+
+When they have a portal and the file has a page there, our link opens their portal at that page. Otherwise it opens the one file. We see when a link is opened, never who.
+
+A file from this computer goes into the job's Team only folder before the email leaves. A photo goes into the job's photos. The copy of the email in Documents keeps its files.
 
 ## Add a note for the team
 
