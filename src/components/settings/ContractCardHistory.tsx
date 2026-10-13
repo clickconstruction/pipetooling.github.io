@@ -9,7 +9,7 @@ import { inForceLine, versionCompareKey, versionKind, versionLine, wordingInForc
 
 const MUTED: CSSProperties = { fontSize: '0.76rem', color: 'var(--text-muted)' }
 const LINK: CSSProperties = { font: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.1rem 0.5rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
-const LINK_ON: CSSProperties = { ...LINK, background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
+const LINK_ON: CSSProperties = { ...LINK, background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
 const BODY: CSSProperties = { margin: '0.3rem 0 0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', font: 'inherit', fontSize: '0.78rem', lineHeight: 1.5, color: 'var(--text-700)', background: 'var(--bg-page)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem 0.6rem', maxHeight: 220, overflowY: 'auto' }
 
 export type ContractCardHistoryProps = {

@@ -930,7 +930,7 @@ export function HostedStripeBillPanel({
                   fontWeight: 500,
                   color: 'var(--text-green-800)',
                   background: 'var(--bg-green-tint)',
-                  border: '1px solid var(--border-green-soft)',
+                  border: '1px solid var(--border-green)',
                   borderRadius: 6,
                   cursor: 'pointer',
                 }}

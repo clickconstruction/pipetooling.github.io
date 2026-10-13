@@ -53,7 +53,7 @@ const FRAME_H = 760
 const CARD: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.85rem 1rem', marginBottom: '0.9rem' }
 const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const PILL: CSSProperties = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
-const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
+const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
 
 
 export function SettingsWhatCustomersSeeTab({ onOpenContract }: { /** Open a card on Contracts & terms. */ onOpenContract?: (entryId: string) => void } = {}) {

@@ -261,7 +261,7 @@ export function BankingMercuryCategoryTagsModal({
                     alignItems: 'center',
                     gap: 8,
                     padding: '8px 10px',
-                    border: `1px solid ${on ? 'var(--text-link)' : 'var(--border-soft)'}`,
+                    border: `1px solid ${on ? 'var(--text-link)' : 'var(--border)'}`,
                     borderRadius: 8,
                     background: on ? 'var(--bg-subtle)' : 'var(--surface)',
                     cursor: 'pointer',
@@ -394,7 +394,7 @@ export function BankingMercuryCategoryTagsModal({
             </div>
 
             {draft.id && tags.length > 1 ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: '0.85rem', paddingTop: 8, borderTop: '1px solid var(--border-soft)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: '0.85rem', paddingTop: 8, borderTop: '1px solid var(--border)' }}>
                 <span style={fieldLabel}>Merge into</span>
                 <select value={mergeTargetId} onChange={(e) => setMergeTargetId(e.target.value)} disabled={busy} style={{ ...input, padding: '0.3rem 0.5rem' }} aria-label="Merge this tag into">
                   <option value="">Choose a tag…</option>

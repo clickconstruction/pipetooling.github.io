@@ -17,7 +17,7 @@ import type { ContractCatalogEntry, ResolvedContractText } from '../../lib/contr
 export type ContractReaderEditDoor = { label: string; onClick?: () => void; to?: string }
 
 const PILL = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.25rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' } as const
-const PILL_ON = { ...PILL, background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' } as const
+const PILL_ON = { ...PILL, background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' } as const
 
 /** How long the reader keeps looking for the wording on a page that fills in after it loads: 500 ms between looks, 16 looks once the page has text, 40 at most. */
 const HIT_TRIES = 16

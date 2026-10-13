@@ -19,7 +19,7 @@ export const PERSON_KIND_LABEL: Record<PersonKind, string> = {
 }
 
 const PILL: CSSProperties = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }
-const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
+const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
 
 type Hit = { id: string; name: string; hint: string }
 
@@ -95,7 +95,7 @@ export function PersonPicker(props: { value: PersonSubject | null; onChange: (s:
           onChange={(e) => setQ(e.target.value)}
           placeholder={`Find a ${PERSON_KIND_LABEL[kind].toLowerCase()} by name…`}
           aria-label={`Find a ${PERSON_KIND_LABEL[kind].toLowerCase()} by name`}
-          style={{ width: '100%', font: 'inherit', fontSize: '0.85rem', padding: '0.35rem 0.6rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface-2)', color: 'var(--text)' }}
+          style={{ width: '100%', font: 'inherit', fontSize: '0.85rem', padding: '0.35rem 0.6rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', color: 'var(--text)' }}
         />
         {q.trim().length >= 2 ? (
           <ul style={{ position: 'absolute', zIndex: 5, top: '100%', left: 0, right: 0, margin: '0.25rem 0 0', padding: '0.25rem', listStyle: 'none', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, boxShadow: '0 6px 20px rgba(0,0,0,0.12)', maxHeight: 260, overflowY: 'auto' }}>

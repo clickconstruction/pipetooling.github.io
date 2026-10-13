@@ -3761,7 +3761,7 @@ body.my-time-boundary-dragging {
 .settingsRailTitle { margin: 0; font-size: 1.35rem; }
 .settingsRailDoors { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 .settingsRailDoor { font: inherit; font-size: 0.8rem; font-weight: 600; line-height: 1.4; padding: 0.18rem 0.65rem; border-radius: 999px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); cursor: pointer; text-decoration: none; }
-.settingsRailDoor:hover, .settingsRailDoor:focus-visible { background: var(--sunken); outline: none; }
+.settingsRailDoor:hover, .settingsRailDoor:focus-visible { background: var(--bg-muted); outline: none; }
 .settingsRailRecent { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
 .settingsRailRecentWord { font-size: 0.72rem; color: var(--text-muted); margin-right: 0.15rem; }
 .settingsRailChip { font: inherit; font-size: 0.78rem; padding: 0.1rem 0.55rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-strong); cursor: pointer; }
@@ -3770,9 +3770,9 @@ body.my-time-boundary-dragging {
 .settingsRailZoneLabel { font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 0.2rem 0.55rem; }
 .settingsRailList { display: flex; flex-direction: column; gap: 1px; }
 .settingsRailItem { font: inherit; font-size: 0.92rem; text-align: left; padding: 0.38rem 0.6rem; border-radius: 8px; border: 1px solid transparent; background: transparent; color: var(--text); cursor: pointer; width: 100%; }
-.settingsRailItem:hover { background: var(--sunken); }
+.settingsRailItem:hover { background: var(--bg-muted); }
 .settingsRailItem:focus-visible { outline: 2px solid var(--border-blue); outline-offset: -2px; }
-.settingsRailItem--on, .settingsRailItem--on:hover { background: var(--bg-blue-50); color: var(--text-blue-700); font-weight: 600; border-color: var(--border-blue); }
+.settingsRailItem--on, .settingsRailItem--on:hover { background: var(--bg-blue-tint); color: var(--text-blue-700); font-weight: 600; border-color: var(--border-blue); }
 .settingsRailNote { margin: 0.3rem 0 0 0.55rem; font-size: 0.76rem; color: var(--text-muted); }
 .settingsRailFooter { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.4rem; padding-top: 0.6rem; border-top: 1px solid var(--border); }
 .settingsRailFooter button { font: inherit; font-size: 0.8rem; padding: 0.3rem 0.65rem; }
@@ -5043,7 +5043,7 @@ button.gcStep:hover > em { text-decoration: underline; }
 .bid-mark-dot[aria-pressed='true'] .bid-mark-dot__ring { background: var(--bid-mark); }
 .bid-mark-since { flex: 0 0 auto; font-size: 0.75rem; color: var(--bid-mark-text); white-space: nowrap; }
 .bid-mark-hold-fill { position: absolute; left: 0; bottom: 0; height: 3px; width: 0; background: var(--bid-mark); pointer-events: none; }
-[data-holding='true'] .bid-mark-hold-fill { animation: bid-mark-hold-fill var(--bid-mark-hold-ms, 500ms) linear forwards; }
+[data-holding='true'] .bid-mark-hold-fill { animation: bid-mark-hold-fill 500ms linear forwards; }
 @keyframes bid-mark-hold-fill { from { width: 0; } to { width: 100%; } }
 @media (prefers-reduced-motion: reduce) { [data-holding='true'] .bid-mark-hold-fill { animation: none; width: 100%; } }
 .bid-mark-toggle { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 0.85rem; white-space: nowrap; border: 1px solid var(--bid-mark); border-radius: 4px; cursor: pointer; background: var(--surface); color: var(--bid-mark-text); font: inherit; font-size: 0.875rem; font-weight: 600; box-sizing: border-box; }
@@ -5265,7 +5265,7 @@ div.bid-mark-board-row[data-marked='true'] { box-shadow: inset 3px 0 0 var(--bid
 .legalNarrative ul, .legalNarrative ol { margin: 6px 0; padding-left: 22px; }
 .legalNarrative table { border-collapse: collapse; margin: 8px 0; font-size: 12.5px; }
 .legalNarrative th, .legalNarrative td { border: 1px solid var(--border); padding: 5px 8px; text-align: left; vertical-align: top; }
-.legalNarrative th { background: var(--surface-muted, transparent); }
+.legalNarrative th { background: transparent; }
 .legalNarrative a { color: #b0662f; }
 /* Start here and the tour (v2.4820): the rail wraps on a phone; the ring marks what a tour stop means;
    the strip docks at the bottom, full width on a phone. Colors come inline from portalTheme. */

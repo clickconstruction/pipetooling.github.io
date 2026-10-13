@@ -21,7 +21,7 @@ function toneColor(tone: StageReading['tone']): string {
 
 function StageCard({ stage, picked, maxPileUsd, onPick, onOrder }: { stage: StageReading; picked: boolean; maxPileUsd: number; onPick: (id: StageId) => void; onOrder?: (id: StageId) => void }) {
   const h = stage.pile.usd == null ? 64 : Math.max(8, Math.round((stage.pile.usd / Math.max(1, maxPileUsd)) * 64))
-  const pileBg = !stage.readable ? 'repeating-linear-gradient(135deg, var(--surface-2, var(--border)) 0 6px, var(--surface) 6px 12px)' : stage.isLink ? 'var(--text-red-700)' : stage.pile.guessShare > 0 ? `linear-gradient(180deg, var(--border) 0 ${Math.round(stage.pile.guessShare * 100)}%, #93c5fd ${Math.round(stage.pile.guessShare * 100)}% 100%)` : '#93c5fd'
+  const pileBg = !stage.readable ? 'repeating-linear-gradient(135deg, var(--border) 0 6px, var(--surface) 6px 12px)' : stage.isLink ? 'var(--text-red-700)' : stage.pile.guessShare > 0 ? `linear-gradient(180deg, var(--border) 0 ${Math.round(stage.pile.guessShare * 100)}%, #93c5fd ${Math.round(stage.pile.guessShare * 100)}% 100%)` : '#93c5fd'
   return (
     <button
       type="button"
@@ -32,7 +32,7 @@ function StageCard({ stage, picked, maxPileUsd, onPick, onOrder }: { stage: Stag
         textAlign: 'left',
         font: 'inherit',
         color: picked ? 'var(--text)' : 'var(--text-muted)',
-        background: picked ? 'var(--surface)' : 'var(--surface-2, var(--surface))',
+        background: picked ? 'var(--surface)' : 'var(--surface)',
         border: picked ? '2px solid var(--text-red-700)' : '1px solid var(--border)',
         borderRadius: 10,
         padding: picked ? 11 : 12,
@@ -50,7 +50,7 @@ function StageCard({ stage, picked, maxPileUsd, onPick, onOrder }: { stage: Stag
         <span style={det}>{stage.object}</span>
         <span style={{ marginLeft: 'auto', ...det }}>→</span>
       </span>
-      <span style={{ alignSelf: 'flex-end', fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--surface-2, var(--border))', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>↳ {stage.action}</span>
+      <span style={{ alignSelf: 'flex-end', fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--border)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>↳ {stage.action}</span>
       <span style={{ display: 'flex', alignItems: 'flex-end', gap: 8, height: 64 }}>
         <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 34, height: h, borderRadius: '4px 4px 0 0', background: pileBg, border: stage.readable ? undefined : '1px dashed var(--text-muted)', boxSizing: 'border-box', color: 'var(--text-muted)', fontWeight: 700 }}>{stage.readable ? '' : '?'}</span>
         <span style={{ fontSize: '0.78rem', lineHeight: 1.3, color: 'var(--text-muted)' }}>

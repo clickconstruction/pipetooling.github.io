@@ -1852,7 +1852,7 @@ export function JobsGcReviewModal({
                                 type="button"
                                 aria-pressed={on}
                                 onClick={() => setRoundEmailWeekdays((prev) => (prev.includes(dow) ? prev.filter((d) => d !== dow) : [...prev, dow].sort((a, b) => a - b)))}
-                                style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', fontWeight: on ? 700 : 500, borderRadius: 999, border: on ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-100)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
+                                style={{ padding: '0.15rem 0.55rem', fontSize: '0.75rem', fontWeight: on ? 700 : 500, borderRadius: 999, border: on ? '1px solid var(--text-blue-700)' : '1px solid var(--border-strong)', background: on ? 'var(--bg-blue-200)' : 'var(--surface)', color: on ? 'var(--text-blue-800)' : 'var(--text-700)', cursor: 'pointer' }}
                               >
                                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dow]}
                               </button>

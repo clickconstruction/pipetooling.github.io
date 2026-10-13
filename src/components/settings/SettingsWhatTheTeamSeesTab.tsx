@@ -45,11 +45,11 @@ const ROLE_CHIPS: readonly UserRole[] = ['dev', 'master_technician', 'assistant'
 const CARD: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.75rem 1rem', marginBottom: '0.75rem' }
 const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
 const PILL: CSSProperties = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', border: '1px solid var(--border)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
-const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
+const PILL_ON: CSSProperties = { ...PILL, background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' }
 const CHIP: CSSProperties = { fontSize: '0.7rem', padding: '0.05rem 0.5rem', border: '1px solid var(--border)', borderRadius: 999, color: 'var(--text-700)', background: 'var(--surface)' }
 const STATUS: Record<TeamEmail['render']['kind'], { label: string; style: CSSProperties }> = {
-  sample: { label: 'renders live', style: { ...CHIP, background: 'var(--bg-green-50)', borderColor: 'var(--border-green)', color: 'var(--text-green-700)', fontFamily: 'ui-monospace, Menlo, monospace' } },
-  real: { label: 'shows the real one', style: { ...CHIP, background: 'var(--bg-amber-50)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-700)', fontFamily: 'ui-monospace, Menlo, monospace' } },
+  sample: { label: 'renders live', style: { ...CHIP, background: 'var(--bg-green-tint)', borderColor: 'var(--border-green)', color: 'var(--text-green-700)', fontFamily: 'ui-monospace, Menlo, monospace' } },
+  real: { label: 'shows the real one', style: { ...CHIP, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-700)', fontFamily: 'ui-monospace, Menlo, monospace' } },
   soon: { label: 'next release', style: { ...CHIP, borderStyle: 'dashed', color: 'var(--text-muted)', fontFamily: 'ui-monospace, Menlo, monospace' } },
 }
 
@@ -289,7 +289,7 @@ export function SettingsWhatTheTeamSeesTab() {
               return (
                 <div key={row.id} data-testid={`wtts-row-${row.id}`}>
                   <div
-                    style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.3rem 0.75rem', alignItems: 'start', padding: '0.5rem 0.75rem', border: `1px solid ${isSel ? 'var(--border-blue)' : 'var(--border)'}`, borderRadius: 8, background: 'var(--surface)', boxShadow: isSel ? '0 0 0 2px var(--bg-blue-50)' : 'none' }}
+                    style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.3rem 0.75rem', alignItems: 'start', padding: '0.5rem 0.75rem', border: `1px solid ${isSel ? 'var(--border-blue)' : 'var(--border)'}`, borderRadius: 8, background: 'var(--surface)', boxShadow: isSel ? '0 0 0 2px var(--bg-blue-tint)' : 'none' }}
                   >
                     <div style={{ minWidth: 0 }}>
                       <button type="button" onClick={() => setSelectedId(isSel ? null : row.id)} style={{ font: 'inherit', background: 'transparent', border: 0, padding: 0, cursor: 'pointer', textAlign: 'left', color: 'var(--text-strong)', fontWeight: 600, fontSize: '0.9rem' }} aria-expanded={isSel}>
@@ -301,7 +301,7 @@ export function SettingsWhatTheTeamSeesTab() {
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem', alignItems: 'center', marginTop: '0.25rem' }}>
                         {row.recipients.roles.map((r) => (
-                          <span key={r} style={r === (person?.role ?? role) ? { ...CHIP, background: 'var(--bg-blue-50)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' } : CHIP}>{humanRoleLabel(r)}</span>
+                          <span key={r} style={r === (person?.role ?? role) ? { ...CHIP, background: 'var(--bg-blue-tint)', borderColor: 'var(--border-blue)', color: 'var(--text-blue-700)' } : CHIP}>{humanRoleLabel(r)}</span>
                         ))}
                         {row.recipients.decidedBy === 'setting' ? <span style={{ ...CHIP, borderStyle: 'dashed', color: 'var(--text-muted)' }}>a list on Settings decides</span> : null}
                         <Link to={`/settings?tab=${row.manage.tabId}${row.manage.anchorId ? `#${row.manage.anchorId}` : ''}`} style={{ ...CHIP, textDecoration: 'none', borderStyle: 'dashed', color: 'var(--text-blue-700)' }}>

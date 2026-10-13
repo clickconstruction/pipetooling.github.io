@@ -1035,7 +1035,7 @@ export default function Layout() {
           {/* Job Mode: the three task buttons become a labeled "Contact:" row when the
               viewport fits; small viewports keep the icon buttons with a phone on the left. */}
           {jobModeContactRowFits && (
-            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--chrome-muted, var(--text-muted))' }}>
+            <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)' }}>
               Contact:
             </span>
           )}

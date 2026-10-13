@@ -57,6 +57,10 @@ jobs:
       - name: Theme token check
         run: node scripts/theme-tokenize.mjs --check src
 
+      # A var(--name) no stylesheet or code defines paints nothing (v2.5444).
+      - name: CSS token check
+        run: npm run check:css-tokens
+
       - name: App calendar timezone check
         run: npm run check:timezone
 

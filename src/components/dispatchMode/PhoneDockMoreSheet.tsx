@@ -159,7 +159,7 @@ export function PhoneDockMoreSheet(props: PhoneDockMoreSheetProps) {
           gap: 4,
           padding: '0.6rem 0.25rem',
           minHeight: 64,
-          background: onDock ? 'var(--bg-blue-tint)' : 'var(--surface-2, var(--surface))',
+          background: onDock ? 'var(--bg-blue-tint)' : 'var(--surface)',
           border: `1px solid ${onDock ? 'var(--border-blue)' : 'var(--border)'}`,
           borderRadius: 10,
           color: onDock ? 'var(--text-blue-700)' : 'var(--text)',

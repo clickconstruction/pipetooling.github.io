@@ -120,7 +120,7 @@ const inputStyle = {
   fontSize: '0.875rem',
   boxSizing: 'border-box',
   background: 'var(--surface)',
-  color: 'var(--text-900)',
+  color: 'var(--text-strong)',
 } as const
 const primaryBtn = (disabled: boolean) =>
   ({

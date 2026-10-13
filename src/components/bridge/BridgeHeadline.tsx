@@ -22,7 +22,7 @@ function WeekCardPopover({ card, index, count }: { card: WeekCard; index: number
   const left = ((index + 0.5) / Math.max(1, count)) * 100
   const shift = index <= 1 ? '0' : index >= count - 2 ? '-100%' : '-50%'
   return (
-    <div role="tooltip" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: `${Math.max(0, Math.min(100, left))}%`, transform: `translateX(${shift})`, zIndex: 30, width: 360, maxWidth: '100%', background: 'var(--text)', color: 'var(--surface)', padding: '0.6rem 0.75rem', borderRadius: 8, fontSize: '0.78rem', lineHeight: 1.4, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} data-testid="bridge-week-card">
+    <div role="tooltip" style={{ position: 'absolute', top: 'calc(100% + 6px)', left: `${Math.max(0, Math.min(100, left))}%`, transform: `translateX(${shift})`, zIndex: 30, width: 360, maxWidth: '100%', background: 'var(--text-base)', color: 'var(--surface)', padding: '0.6rem 0.75rem', borderRadius: 8, fontSize: '0.78rem', lineHeight: 1.4, display: 'flex', flexDirection: 'column', gap: 4, boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} data-testid="bridge-week-card">
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
         <b style={{ fontSize: '0.9rem' }}>{card.title}</b>
         <span style={{ marginLeft: 'auto', fontWeight: 700 }}>{card.contribution}</span>
@@ -138,7 +138,7 @@ export function BridgeHeadline(props: { headline: Headline | null; loading: bool
                 {tw.pendingHours > 0 ? <> · <span style={{ color: 'var(--text-amber-800)' }}>{hrs(tw.pendingHours)} of this week's hours still wait on approval</span></> : null}
               </div>
             )}
-            <div style={{ background: 'var(--bg-blue-tint, var(--surface-2, transparent))', border: '1px solid var(--border)', borderRadius: 7, padding: '0.45rem 0.6rem', fontSize: '0.88rem' }} data-testid="bridge-headline-verdict">
+            <div style={{ background: 'var(--bg-blue-tint, transparent)', border: '1px solid var(--border)', borderRadius: 7, padding: '0.45rem 0.6rem', fontSize: '0.88rem' }} data-testid="bridge-headline-verdict">
               <b>Verdict:</b> {h.verdict}
             </div>
           </div>

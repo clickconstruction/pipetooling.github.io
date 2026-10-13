@@ -29,13 +29,13 @@ export function BridgeResources({ resources, pickedId, onPick, onOrder }: { reso
               onClick={() => onPick(r.id)}
               aria-pressed={picked}
               data-testid={`bridge-resource-${r.id}`}
-              style={{ textAlign: 'left', font: 'inherit', color: picked ? 'var(--text)' : 'var(--text-muted)', background: picked ? 'var(--surface)' : 'var(--surface-2, var(--surface))', border: picked ? '2px solid var(--text-red-700)' : '1px solid var(--border)', borderRadius: 10, padding: picked ? 11 : 12, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, minHeight: 130, cursor: 'pointer' }}
+              style={{ textAlign: 'left', font: 'inherit', color: picked ? 'var(--text)' : 'var(--text-muted)', background: picked ? 'var(--surface)' : 'var(--surface)', border: picked ? '2px solid var(--text-red-700)' : '1px solid var(--border)', borderRadius: 10, padding: picked ? 11 : 12, display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0, minHeight: 130, cursor: 'pointer' }}
             >
               <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
                 <span style={{ ...label, color: 'inherit' }}>{r.name}</span>
                 <span style={det}>{r.kind}</span>
               </span>
-              <span style={{ alignSelf: 'flex-end', fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--surface-2, var(--border))', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>↳ {r.action}</span>
+              <span style={{ alignSelf: 'flex-end', fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: 'var(--border)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>↳ {r.action}</span>
               <span style={{ fontSize: '1.15rem', fontWeight: 700, color: toneColor(r.tone) }} data-testid={`bridge-resource-gauge-${r.id}`}>
                 {r.gauge}
               </span>

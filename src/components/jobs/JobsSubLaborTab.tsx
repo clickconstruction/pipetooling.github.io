@@ -979,7 +979,7 @@ function SubSheetStageCell({
               role="menuitemradio"
               aria-checked={s === stage}
               onClick={() => onPick(s)}
-              style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', padding: '0.4rem 0.6rem', borderRadius: 5, border: 'none', background: s === stage ? 'var(--bg-subtle)' : 'transparent', color: 'var(--text-900)', fontWeight: s === stage ? 700 : 500, cursor: 'pointer', font: 'inherit' }}
+              style={{ display: 'flex', justifyContent: 'space-between', gap: 8, width: '100%', textAlign: 'left', padding: '0.4rem 0.6rem', borderRadius: 5, border: 'none', background: s === stage ? 'var(--bg-subtle)' : 'transparent', color: 'var(--text-strong)', fontWeight: s === stage ? 700 : 500, cursor: 'pointer', font: 'inherit' }}
             >
               <span>{SUB_SHEET_STAGE_LABEL[s]}</span>
               <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.72rem' }}>{SUB_SHEET_STAGE_HINT[s]}</span>

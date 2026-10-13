@@ -222,7 +222,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
   }
 
   const needsRepBand = (
-    <div style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', borderBottom: '1px solid var(--border-amber-200)' }}>
+    <div style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', borderBottom: '1px solid var(--border-amber-soft)' }}>
       Needs a rep · {coverage.needRep} {coverage.needRep === 1 ? 'house' : 'houses'} — a price request to one of these has to be addressed by hand until someone adds a rep
     </div>
   )

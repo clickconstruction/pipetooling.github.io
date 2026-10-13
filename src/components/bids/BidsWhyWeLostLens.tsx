@@ -645,7 +645,7 @@ export function BidsWhyWeLostLens({
                       padding: '0.15rem 0.55rem',
                       borderRadius: 999,
                       cursor: 'pointer',
-                      border: `1px solid ${current ? 'var(--border-stronger, var(--border-strong))' : 'var(--border)'}`,
+                      border: `1px solid ${current ? 'var(--border-strong)' : 'var(--border)'}`,
                       background: done ? 'var(--bg-emerald-tint)' : current ? 'var(--bg-page)' : 'transparent',
                       color: done ? 'var(--text-emerald-800)' : 'var(--text-700)',
                       fontWeight: current ? 600 : 400,

@@ -205,7 +205,7 @@ export function JobFormHeaderRow({
               fontSize: '0.875rem',
               fontWeight: 500,
               color: importButton.disabled ? 'var(--text-muted)' : 'var(--text-blue-700)',
-              background: importButton.disabled ? 'var(--surface-muted)' : 'var(--bg-blue-tint)',
+              background: importButton.disabled ? 'var(--bg-subtle)' : 'var(--bg-blue-tint)',
               border: `1px solid ${importButton.disabled ? 'var(--border)' : 'var(--border-blue)'}`,
               borderRadius: 6,
               cursor: importButton.disabled ? 'not-allowed' : 'pointer',

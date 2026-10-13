@@ -162,7 +162,7 @@ export function BridgeHoursPanel({ panel, onClose }: { panel: HoursPanel; onClos
             ))}
           </div>
         </div>
-        <div style={{ gridColumn: '1 / -1', fontSize: '0.85rem', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint, var(--surface-2, transparent))', border: '1px solid var(--border)' }} data-testid="bridge-hours-rule">
+        <div style={{ gridColumn: '1 / -1', fontSize: '0.85rem', padding: '0.45rem 0.6rem', borderRadius: 6, background: 'var(--bg-blue-tint, transparent)', border: '1px solid var(--border)' }} data-testid="bridge-hours-rule">
           {panel.rule}
         </div>
       </div>
