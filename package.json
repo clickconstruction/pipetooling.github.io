@@ -82,6 +82,7 @@
     "test:pg:merge-customers": "bash scripts/pgtest-merge-customers.sh",
     "test:pg:running-late-move": "bash scripts/pgtest-running-late-move.sh",
     "test:pg:contacts-kinds": "bash scripts/pgtest-contacts-kinds.sh",
+    "test:pg:messages-notify-cron": "bash scripts/pgtest-messages-notify-cron.sh",
     "test:pg:ar-unbanked-checks": "bash scripts/pgtest-ar-unbanked-checks.sh",
     "test:pg:lien-claim": "bash scripts/pgtest-lien-claim.sh",
     "test:pg:sub-sheet-stamps": "bash scripts/pgtest-sub-sheet-stamps.sh",
