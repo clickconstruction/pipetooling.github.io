@@ -113,8 +113,6 @@ The tick is for the whole job, not for one message. Every job starts with the ti
 
 Photos that come in on the job after that day go to the job's photos in Drive. Photos that came in before that day are not copied. To stop, untick **Save every photo on this job to Drive as it comes in**.
 
-Nothing is copied yet. The copying starts in a later update.
-
 Only the office team can change the tick. A training account cannot change the tick.
 
 ## File a paper that came by email

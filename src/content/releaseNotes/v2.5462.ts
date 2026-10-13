@@ -9,7 +9,7 @@ const note: ReleaseNote = {
   highlights: [
     'Open a message that came with a picture and is tied to a job. Under Attachments, tick Save every photo on this job to Drive as it comes in.',
     'The tick is for the whole job, starts off on every job, and says the day it went on.',
-    'Nothing is copied yet. The copying starts in a later update.',
+    'Photos that came in before the tick went on are not copied.',
     'A picture on a text that the app could not copy now says Quo still has it, not Gmail.',
   ],
 }
