@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { mailStatusFromProvider as appFold, mailClientMsgId as appId } from './mailPiece'
-import { mailCassAddress, mailCassVerdict, mailClientMsgId, mailMessageTitle, mailPartyFromPiece, mailPieceUpdateFromParty, mailPrepareProblems, mailStatusFromProvider, sendsWithPiece, ymdInZone } from '../../../supabase/functions/_shared/mailSend'
+import { mailCassAddress, mailCassVerdict, mailChargeFromTransactions, mailChargeRead, mailClientMsgId, mailMessageTitle, mailPartyFromPiece, mailPieceUpdateFromParty, mailPrepareProblems, mailStatusFromProvider, sendsWithPiece, ymdInZone } from '../../../supabase/functions/_shared/mailSend'
 
 const piece = { id: '0f2a9c11-aaaa-bbbb-cccc-000000000001', kind: 'lien_notice_53_056', recipient: 'owner', name: '', organization: 'ATI Schertz Holdings LLC', address1: '17300 IH 35 N', address2: '', city: 'Schertz', state: 'TX', postal_code: '78154', send_type: 'Certified, Electronic Return Receipt', envelope: '#10' as const, status: 'sent' as const, usps_tracking: null, mailed_at: null, delivered_at: null, signed_by: null, delivery_status: null, delivery_as_of: null }
 
@@ -65,5 +65,18 @@ describe('the mail-send kernel the functions share (the Docsmit train, PR 3)', (
     expect(sendsWithPiece('junk', 'owner', { id: 'p1', provider: 'docsmit', usps_tracking: null })).toEqual([])
     // 00:30 UTC on Oct 14 is 7:30 pm Central on Oct 13.
     expect(ymdInZone('2026-10-14T00:30:00Z', APP_CALENDAR_TZ)).toBe('2026-10-13')
+  })
+
+  it('sums what Docsmit charged from /transactions, a refund negative, null with no priced row; the charge is read once (6b, the cost line)', () => {
+    expect(mailChargeFromTransactions([{ TransactionID: 1, CoR: 'C', price: 9.85, discount: 0 }])).toBe(9.85)
+    expect(mailChargeFromTransactions([{ CoR: 'C', price: '$ 2.49' }, { CoR: 'C', price: 7.36 }, { CoR: 'R', price: 1 }])).toBe(8.85)
+    expect(mailChargeFromTransactions({ transactions: [{ price: 3 }] })).toBe(3)
+    expect(mailChargeFromTransactions({ TransactionID: 9, price: 4.5 })).toBe(4.5)
+    expect(mailChargeFromTransactions([])).toBeNull()
+    expect(mailChargeFromTransactions([{ TransactionID: 1, CoR: 'C' }])).toBeNull()
+    expect(mailChargeFromTransactions(null)).toBeNull()
+    expect(mailChargeRead([{ at: 'x', kind: 'poll' }])).toBe(false)
+    expect(mailChargeRead([{ at: 'x', kind: 'poll' }, { at: 'y', kind: 'charged', price: 9.85 }])).toBe(true)
+    expect(mailChargeRead(null)).toBe(false)
   })
 })

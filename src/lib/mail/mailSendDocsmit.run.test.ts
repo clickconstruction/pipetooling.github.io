@@ -111,7 +111,8 @@ describe('mail-send-docsmit (the Docsmit train, PR 3)', () => {
     expect(row).toMatchObject({ kind: 'lien_notice_53_056', provider: 'docsmit', status: 'prepared', recipient: 'owner', organization: 'ATI Schertz Holdings LLC', pdf_bucket: 'lien-release-documents', pdf_path: 'mail/env-1.pdf', created_by: 'u-taunya', provider_message_id: 'm-77', client_msg_id: 'lien_notice_53_056:id-1', price: 9.85 })
     expect((row.events as Array<{ kind: string }>).map((e) => e.kind)).toEqual(['prepared', 'message_made'])
     const made = docsmit.calls.find((c) => c.path === '/messages/new')!.body as Record<string, unknown>
-    expect(made).toMatchObject({ title: 'Job 650 · lien notice 53 056 · owner · ATI Schertz Holdings LLC · id-1', clientMsgID: 'lien_notice_53_056:id-1' })
+    // billTo = the job number (6b, the cost line), so Docsmit's own invoices group by job.
+    expect(made).toMatchObject({ title: 'Job 650 · lien notice 53 056 · owner · ATI Schertz Holdings LLC · id-1', clientMsgID: 'lien_notice_53_056:id-1', billTo: '650' })
     expect((made.physicalParties as unknown[])[0]).toMatchObject({ organization: 'ATI Schertz Holdings LLC', postalCode: '78154', sendType: 'Certified, Electronic Return Receipt', envelope: '#10' })
     expect(docsmit.calls.find((c) => c.path === '/messages/m-77/upload')!.body).toEqual({ file: 'id-1.pdf' })
   })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { filingMailLines, filingMailTail, mailPieceWords, mailPiecesByFiling, mailPiecesNeedingYou, type LienMailPieceRow } from './lienMailPieces'
+import { filingMailCostWords, filingMailLines, filingMailTail, mailCostDollars, mailPieceWords, mailPiecesByFiling, mailPiecesNeedingYou, type LienMailPieceRow } from './lienMailPieces'
 
 const base: LienMailPieceRow = { id: 'p1', kind: 'lien_notice_53_056', recipient: 'owner', status: 'in_transit', usps_tracking: '9407 1118', mailed_at: '2026-10-14T00:30:00Z', delivered_at: null, signed_by: null, delivery_status: 'In Transit', source_ids: ['f1'] }
 const fmt = (d: string) => d
@@ -32,9 +32,18 @@ describe('the desk reads the mail pieces behind a sent notice (the Docsmit train
   it('the footer’s lines carry the recipient, the words, the number and a tone; the ones needing a person are picked out', () => {
     const lines = filingMailLines([base, { ...base, id: 'p2', recipient: 'original_contractor', status: 'returned', usps_tracking: null }], fmt)
     expect(lines).toEqual([
-      { id: 'p1', who: 'Owner of record', words: 'in transit, mailed 2026-10-13', tracking: '9407 1118', tone: 'muted' },
-      { id: 'p2', who: 'Original contractor', words: 'returned to sender', tracking: '', tone: 'red' },
+      { id: 'p1', who: 'Owner of record', words: 'in transit, mailed 2026-10-13', tracking: '9407 1118', cost: '', tone: 'muted' },
+      { id: 'p2', who: 'Original contractor', words: 'returned to sender', tracking: '', cost: '', tone: 'red' },
     ])
     expect(mailPiecesNeedingYou([base, { ...base, id: 'p2', status: 'notice_left' }, { ...base, id: 'p3', status: 'delivered' }]).map((p) => p.id)).toEqual(['p2'])
+  })
+
+  it('the cost: a line carries the charge once the poll read it, and the footer sums the pieces read, naming the ones not read yet (6b, the cost line)', () => {
+    expect(mailCostDollars(9.85)).toBe('$9.85')
+    expect(mailCostDollars(null)).toBe('')
+    expect(filingMailLines([{ ...base, price: 9.85 }], fmt)[0]!.cost).toBe('$9.85')
+    expect(filingMailCostWords([base, { ...base, id: 'p2' }])).toBe('')
+    expect(filingMailCostWords([{ ...base, price: 9.85 }, { ...base, id: 'p2', recipient: 'original_contractor', price: 2.49 }])).toBe('Docsmit cost $12.34')
+    expect(filingMailCostWords([{ ...base, price: 9.85 }, { ...base, id: 'p2', recipient: 'original_contractor' }])).toBe('Docsmit cost $9.85 · 1 not read yet')
   })
 })

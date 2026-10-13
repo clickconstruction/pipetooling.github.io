@@ -5,7 +5,7 @@
  * structural client so a test can hand it a recording fake. No Deno globals.
  */
 import type { DocsmitClient } from './docsmitClient.ts'
-import { MAIL_FILING_KINDS, MAIL_OPEN_STATUSES, appendEvent, mailPieceUpdateFromParty, sendsWithPiece, ymdInZone, type MailPieceRow } from './mailSend.ts'
+import { MAIL_FILING_KINDS, MAIL_OPEN_STATUSES, appendEvent, mailChargeRead, mailPieceUpdateFromParty, sendsWithPiece, ymdInZone, type MailPieceRow } from './mailSend.ts'
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
 
 export const PIECE_COLUMNS = 'id, kind, source_ids, job_id, provider, recipient, short_code, name, organization, address1, address2, city, state, postal_code, send_type, envelope, sheets, provider_message_id, client_msg_id, price, status, usps_tracking, mailed_at, delivered_at, signed_by, delivery_status, delivery_as_of, events, opened_at, pdf_bucket, pdf_path, certification_path, problem'
@@ -79,11 +79,11 @@ async function putPdf(store: MailStore, bucket: string, path: string, bytes: Uin
   return res.ok
 }
 
-export type RefreshOne = { id: string; status: string; changed: boolean; filings: string[]; certification: boolean; error: string | null }
+export type RefreshOne = { id: string; status: string; changed: boolean; filings: string[]; certification: boolean; charged: number | null; error: string | null }
 
-/** One piece: read `/parties`, fold, write the row, patch the filings, file the certification once delivered. */
+/** One piece: read `/parties`, fold, write the row, patch the filings, read the charge once USPS has it, file the certification once delivered. */
 export async function refreshPiece(db: MailDb, client: DocsmitClient, piece: MailPieceRow, nowIso: string, store?: MailStore): Promise<RefreshOne> {
-  const out: RefreshOne = { id: piece.id, status: piece.status, changed: false, filings: [], certification: false, error: null }
+  const out: RefreshOne = { id: piece.id, status: piece.status, changed: false, filings: [], certification: false, charged: null, error: null }
   if (!piece.provider_message_id) {
     out.error = 'no provider message id'
     return out
@@ -96,13 +96,23 @@ export async function refreshPiece(db: MailDb, client: DocsmitClient, piece: Mai
       return out
     }
     const { patch, event, changed } = mailPieceUpdateFromParty(piece, party, nowIso)
-    const next: MailPieceRow = { ...piece, ...patch, events: appendEvent(piece.events, { ...event, party }) }
+    let next: MailPieceRow = { ...piece, ...patch, events: appendEvent(piece.events, { ...event, party }) }
     out.status = next.status
     out.changed = changed
     if (changed) {
       const { error } = await db.from('mail_pieces').update({ ...patch, events: next.events }).eq('id', piece.id)
       if (error) throw new Error(`mail_pieces ${piece.id}: ${error.message}`)
       if (patch.usps_tracking !== piece.usps_tracking || patch.mailed_at) out.filings = await writeTrackingToFilings(db, next)
+    }
+    // The cost line (6b): once USPS has the piece, one `/transactions` read writes what Docsmit charged, then never again.
+    if (next.mailed_at && !mailChargeRead(next.events)) {
+      const { charge, raw } = await client.transactions(piece.provider_message_id)
+      if (charge != null) {
+        next = { ...next, price: charge, events: appendEvent(next.events, { at: nowIso, kind: 'charged', price: charge, raw }) }
+        const { error } = await db.from('mail_pieces').update({ price: charge, events: next.events }).eq('id', piece.id)
+        if (error) throw new Error(`mail_pieces ${piece.id}: ${error.message}`)
+        out.charged = charge
+      }
     }
     if (next.status === 'delivered' && !next.certification_path && store) {
       const bytes = await client.documentation(piece.provider_message_id)

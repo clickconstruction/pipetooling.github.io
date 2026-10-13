@@ -139,7 +139,9 @@ serve(async (req) => {
 
       try {
         const clientMsgId = mailClientMsgId(row.kind, row.id)
-        const messageId = await client.newMessage({ title: mailMessageTitle(row, str(body.job_number, 20) || null), clientMsgID: clientMsgId, physicalParties: [mailPartyFromPiece(row)] })
+        const jobNumber = str(body.job_number, 20) || null
+        // `billTo` = the job number (6b, the cost line): Docsmit's own invoices then group the charges by job.
+        const messageId = await client.newMessage({ title: mailMessageTitle(row, jobNumber), clientMsgID: clientMsgId, ...(jobNumber ? { billTo: jobNumber } : {}), physicalParties: [mailPartyFromPiece(row)] })
         await client.upload(messageId, pdf, `${row.id}.pdf`)
         // The price is a nicety: a priceCheck that fails never holds the envelope (the send's 402 says when credit is short).
         const priced = await client.priceCheck(messageId).catch((e: unknown) => ({ price: null, raw: { error: e instanceof Error ? e.message : String(e) } }))
