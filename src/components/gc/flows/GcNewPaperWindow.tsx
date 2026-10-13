@@ -13,7 +13,7 @@ import { formatErrorMessage } from '../../../utils/errorHandling'
  * paper, and hands the editor that paper with the one fact that finishes the step (`onSaved`).
  */
 
-const FLOW_WORDS: Record<Exclude<FlowKind, 'unknown'>, string> = { trade: 'the trade partner flow', customer: 'the customer flow', arch: 'the architect flow' }
+const FLOW_WORDS: Record<Exclude<FlowKind, 'unknown'>, string> = { trade: 'the trade partner flow', customer: 'the customer flow', arch: 'the architect flow', residential: 'the residential customer flow', sub: 'the sub flow' }
 
 const label: CSSProperties = { display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: 4 }
 const field: CSSProperties = { width: '100%', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.35rem 0.5rem', background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.875rem' }

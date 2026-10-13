@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { stepsByKind } from '../quickReplies/kernel'
-import { FACT_GROUPS, FLOW_FACTS, FLOW_KINDS, FLOW_PAPERS, factById, factForPaper, factGroups, factsWords, flowContactKind, isFactId, isPaperId, type FlowKind } from './facts'
+import { FACT_GROUPS, FLOW_FACTS, FLOW_KINDS, FLOW_PAPERS, factById, factForPaper, factGroups, contactFlowKind, factsWords, flowContactKind, isFactId, isPaperId, type FlowKind } from './facts'
 import { SEED_FLOWS } from './seed'
 import { flat } from './state'
 
@@ -81,5 +81,13 @@ describe('flows/facts', () => {
   it('reads a residential flow’s person as a customer, and every other flow’s as its own kind', () => {
     const all: FlowKind[] = ['customer', 'trade', 'arch', 'residential', 'sub', 'unknown']
     expect(all.map(flowContactKind)).toEqual(['customer', 'trade', 'arch', 'customer', 'sub', 'unknown'])
+  })
+
+  it('sends a lead, a supply house and a candidate to the unknown flow, and every other kind to its own', () => {
+    expect(contactFlowKind('lead')).toBe('unknown')
+    expect(contactFlowKind('supply_house')).toBe('unknown')
+    expect(contactFlowKind('candidate')).toBe('unknown')
+    expect(contactFlowKind('customer')).toBe('customer')
+    expect(contactFlowKind('sub')).toBe('sub')
   })
 })
