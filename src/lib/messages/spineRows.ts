@@ -46,6 +46,10 @@ const contact = (id: string, kind: string, set: Partial<ContactRow>): ContactRow
   off_since: null,
   off_why: null,
   off_by: null,
+  prospect_id: null,
+  supply_house_id: null,
+  supply_house_contact_id: null,
+  team_prospect_id: null,
   ...set,
 })
 

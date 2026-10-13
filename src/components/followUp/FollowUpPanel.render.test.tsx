@@ -38,6 +38,10 @@ const person = (id: string, kind: string, patch: Partial<FollowUpContactRow> = {
   off_since: null,
   off_why: null,
   off_by: null,
+  prospect_id: null,
+  supply_house_id: null,
+  supply_house_contact_id: null,
+  team_prospect_id: null,
   state: 'waiting',
   snoozed_until: null,
   has_user_id: null,
@@ -401,6 +405,19 @@ describe('FollowUpPanel', () => {
     // Nobody left in Needs a reply; the badge still counts each person once.
     expect(screen.getByRole('heading', { name: 'Needs a reply (0)' })).toBeTruthy()
     await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(4))
+  })
+
+  it('names a lead from their row on Prospects (R0, PR 4), and keeps the contact’s own name when Prospects is not read', async () => {
+    const lead: FollowUpRows = {
+      ...EMPTY,
+      contacts: [person('kevin', 'lead', { prospect_id: 'pr-kevin' }), person('rosie', 'lead', { prospect_id: 'pr-rosie', name: 'Rosie Vega' })],
+      records: { prospects: [{ id: 'pr-kevin', contact_name: 'Kevin Alvarez', company_name: null }] },
+      messages: [line('m-kevin', 'kevin', 'text', 'in', '2026-10-02T15:00:00.000Z', 'Can someone look at my water heater?'), line('m-rosie', 'rosie', 'text', 'in', '2026-10-02T15:30:00.000Z', 'Do you do slab leaks?')],
+    }
+    renderPanel({}, fakeIo({}, lead))
+    expect(await screen.findByText('Kevin Alvarez')).toBeTruthy()
+    // Rosie's prospect was not read (an estimator's Prospects): the name Who is this? stored on the contact stands.
+    expect(screen.getByText('Rosie Vega')).toBeTruthy()
   })
 
   it('says so when nobody is waiting and nothing is owed', async () => {
