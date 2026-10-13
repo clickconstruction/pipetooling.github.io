@@ -90,6 +90,7 @@
     "test:pg:contact-for-customer": "bash scripts/pgtest-contact-for-customer.sh",
     "test:pg:photo-saves": "bash scripts/pgtest-photo-saves.sh",
     "test:pg:portal-opens-since": "bash scripts/pgtest-portal-opens-since.sh",
+    "test:pg:sent-copy-stamps": "bash scripts/pgtest-sent-copy-stamps.sh",
     "forms:inspect": "vite-node scripts/forms/inspect.ts",
     "forms:draft": "vite-node scripts/forms/draft.ts",
     "forms:preview": "vite-node scripts/forms/preview.ts",
