@@ -157,7 +157,7 @@ export function nudgeLine(person: Pick<PersonFlow, 'first' | 'reading'>, def: Fl
 // ---------- the run ----------
 
 /** One of ours or the app sent this step's reminder inside its days: at least the same day, so a second run sends none. */
-function sentLately(sent: readonly NudgeSent[], contactId: string, step: NudgeStep, days: number, now: Date): boolean {
+export function sentLately(sent: readonly NudgeSent[], contactId: string, step: Pick<NudgeStep, 'stepId' | 'jobId'>, days: number, now: Date): boolean {
   const within = Math.max(1, days)
   return sent.some((s) => s.contactId === contactId && s.stepId === step.stepId && (s.jobId ?? null) === step.jobId && daysSince(s.at, now) < within)
 }
