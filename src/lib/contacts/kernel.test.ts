@@ -69,6 +69,7 @@ describe('seven kinds of contact: what a record makes them', () => {
     expect(kindOf(at('gc_company_people'))).toBe('trade')
     expect(kindOf(at('prospects'))).toBe('lead')
     expect(kindOf(at('supply_houses'))).toBe('supply_house')
+    expect(kindOf(at('supply_house_contacts'))).toBe('supply_house')
     expect(kindOf(at('team_prospects'))).toBe('candidate')
   })
 
@@ -211,6 +212,43 @@ describe('Who is this? re-points and keeps the thread', () => {
     const ray = nameContact(contacts, 'unk1', { record: { table: 'supply_houses', id: 'sh-1' }, kind: 'supply_house', name: 'Ray', company: 'Hill Country Pipe Supply' })
     expect(ray).toMatchObject({ way: 'repoint', contact: { id: 'unk1', kind: 'supply_house', name: 'Ray' } })
     expect(nameContact(contacts, 'unk1', { record: { table: 'supply_houses', id: 'sh-1' }, kind: 'supply_house', name: 'hill country pipe supply', company: '' })).toMatchObject({ way: 'merge', into: { id: 'sh-main' } })
+  })
+
+  it('a lead who books is named once more, as the customer they became, keeping their jobs and thread', () => {
+    const lead: Contact = { ...who('unk1'), kind: 'lead', name: 'Kevin Alvarez', record: { table: 'prospects', id: 'pr-1' }, jobIds: ['estimate'], defaultJobId: 'estimate' }
+    const contacts = DEMO_CONTACTS.map((c) => (c.id === 'unk1' ? lead : c))
+    const booked = nameContact(contacts, 'unk1', { record: { table: 'customers', id: 'cust-alvarez' }, kind: 'customer', name: 'Kevin Alvarez', company: '', jobId: 'job-1' })
+    expect(booked).toMatchObject({
+      way: 'repoint',
+      contact: { id: 'unk1', kind: 'customer', record: { table: 'customers', id: 'cust-alvarez' }, jobIds: ['estimate', 'job-1'], defaultJobId: 'estimate' },
+    })
+    const { messages } = applyNamePlan(contacts, DEMO_MESSAGES, booked!)
+    expect(threadOf(messages, 'unk1').map((m) => m.id)).toEqual(['14'])
+    // A customer who already has a contact: the lead folds into it.
+    const elena = DEMO_CONTACTS.find((c) => c.record?.table === 'customer_contact_persons')!
+    expect(nameContact(contacts, 'unk1', { record: elena.record!, kind: 'customer', name: elena.name, company: elena.company })).toMatchObject({ way: 'merge', into: { id: elena.id }, dropId: 'unk1' })
+  })
+
+  it('a lead with no record is added to Prospects, and folds into the lead already there', () => {
+    const lead: Contact = { ...who('unk1'), kind: 'lead', name: 'Kevin Alvarez', record: null }
+    const contacts = DEMO_CONTACTS.map((c) => (c.id === 'unk1' ? lead : c))
+    expect(nameContact(contacts, 'unk1', { record: { table: 'prospects', id: 'pr-1' }, kind: 'lead', name: 'Kevin Alvarez', company: '' })).toMatchObject({
+      way: 'repoint',
+      contact: { id: 'unk1', kind: 'lead', record: { table: 'prospects', id: 'pr-1' } },
+    })
+    const onProspects: Contact = { ...who('greg'), id: 'kevin-pr', kind: 'lead', name: 'Kevin Alvarez', record: { table: 'prospects', id: 'pr-1' }, channels: [] }
+    expect(nameContact([...contacts, onProspects], 'unk1', { record: { table: 'prospects', id: 'pr-1' }, kind: 'lead', name: 'Kevin Alvarez', company: '' })).toMatchObject({ way: 'merge', into: { id: 'kevin-pr' } })
+    // A lead already on Prospects is not added again.
+    expect(nameContact([...contacts, onProspects], 'kevin-pr', { record: { table: 'prospects', id: 'pr-2' }, kind: 'lead', name: 'Kevin Alvarez', company: '' })).toBeNull()
+  })
+
+  it('a lead is named again only as a customer, and nobody else is named again', () => {
+    const lead: Contact = { ...who('unk1'), kind: 'lead', record: { table: 'prospects', id: 'pr-1' } }
+    const contacts = DEMO_CONTACTS.map((c) => (c.id === 'unk1' ? lead : c))
+    expect(nameContact(contacts, 'unk1', { record: { table: 'gc_companies', id: 'hillside' }, kind: 'trade', name: 'Kevin', company: '' })).toBeNull()
+    expect(nameContact(contacts, 'unk1', { record: { table: 'customers', id: 'x' }, kind: 'arch', name: 'Kevin', company: '' })).toBeNull()
+    const counter: Contact = { ...lead, kind: 'supply_house', record: { table: 'supply_houses', id: 'sh-1' } }
+    expect(nameContact(DEMO_CONTACTS.map((c) => (c.id === 'unk1' ? counter : c)), 'unk1', { record: { table: 'customers', id: 'x' }, kind: 'customer', name: 'X', company: '' })).toBeNull()
   })
 
   it('only names an unknown number', () => {

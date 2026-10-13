@@ -8,6 +8,13 @@ import type { Tables } from '../../types/database'
 import { jobKeyOfRow } from '../messages/load'
 import type { ChannelKind, Contact, ContactChannel, ContactKind, ContactRecord } from './kernel'
 
+/**
+ * The id columns of the four kinds of 2026-10-13: a lead, a supply house's counter, a rep at a supply house and a
+ * candidate. R0's SQL PR adds them to `contacts`; until it is pushed and the types regenerate they are optional here,
+ * and the fetchers select them only after that push, since a column the database lacks fails the whole read.
+ */
+type NewRecordColumns = Partial<Record<'prospect_id' | 'supply_house_id' | 'supply_house_contact_id' | 'team_prospect_id', string | null>>
+
 /** A `contacts` row as the client reads it. */
 export type ContactRow = Pick<
   Tables<'contacts'>,
@@ -23,7 +30,8 @@ export type ContactRow = Pick<
   | 'off_since'
   | 'off_why'
   | 'off_by'
->
+> &
+  NewRecordColumns
 
 /** A `contact_channels` row. Its `key` is the database's own, matched there. */
 export type ContactChannelRow = Pick<Tables<'contact_channels'>, 'id' | 'contact_id' | 'kind' | 'value' | 'opted_out_at' | 'created_at'>
@@ -38,18 +46,26 @@ export interface ContactRecordRows {
   gcCompanies?: readonly Pick<Tables<'gc_companies'>, 'id' | 'name' | 'contact_name' | 'trades'>[]
   gcCompanyPeople?: readonly Pick<Tables<'gc_company_people'>, 'id' | 'company_id' | 'name'>[]
   people?: readonly Pick<Tables<'people'>, 'id' | 'name'>[]
+  prospects?: readonly Pick<Tables<'prospects'>, 'id' | 'contact_name' | 'company_name'>[]
+  supplyHouses?: readonly Pick<Tables<'supply_houses'>, 'id' | 'name'>[]
+  supplyHouseContacts?: readonly Pick<Tables<'supply_house_contacts'>, 'id' | 'supply_house_id' | 'name'>[]
+  teamProspects?: readonly Pick<Tables<'team_prospects'>, 'id' | 'name'>[]
 }
 
-const KINDS: ReadonlySet<string> = new Set<ContactKind>(['customer', 'trade', 'arch', 'unknown'])
+const KINDS: ReadonlySet<string> = new Set<ContactKind>(['customer', 'trade', 'arch', 'lead', 'supply_house', 'candidate', 'sub', 'unknown'])
 const CHANNEL_KINDS: ReadonlySet<string> = new Set<ChannelKind>(['phone', 'email'])
 
-/** The record a row points at: the one of its five columns that is set. Null: a number nobody has named. */
+/** The record a row points at: the one of its nine columns that is set. Null: a number nobody has named. */
 export function contactRecordOfRow(row: ContactRow): ContactRecord {
   if (row.customer_id) return { table: 'customers', id: row.customer_id }
   if (row.customer_contact_person_id) return { table: 'customer_contact_persons', id: row.customer_contact_person_id }
   if (row.gc_company_id) return { table: 'gc_companies', id: row.gc_company_id }
   if (row.gc_company_person_id) return { table: 'gc_company_people', id: row.gc_company_person_id }
   if (row.person_id) return { table: 'people', id: row.person_id }
+  if (row.prospect_id) return { table: 'prospects', id: row.prospect_id }
+  if (row.supply_house_id) return { table: 'supply_houses', id: row.supply_house_id }
+  if (row.supply_house_contact_id) return { table: 'supply_house_contacts', id: row.supply_house_contact_id }
+  if (row.team_prospect_id) return { table: 'team_prospects', id: row.team_prospect_id }
   return null
 }
 
@@ -81,13 +97,27 @@ function fromRecord(record: ContactRecord, named: boolean, records: ContactRecor
       const c = byId(records.gcCompanies, p?.company_id)
       return { name: trimmed(p?.name), company: trimmed(c?.name), trade: tradesOf(c) }
     }
+    // Someone on the roster, a sub among them: the kind is the contact's own, and `kindOf` gives it from the roster.
     case 'people':
       return { ...none, name: trimmed(byId(records.people, record.id)?.name) }
-    // The four kinds of 2026-10-13: the loader reads their records in R0's third PR.
-    case 'prospects':
-    case 'supply_houses':
+    case 'prospects': {
+      // A lead is the person Prospects names at a company, or the company itself when it names nobody.
+      const p = byId(records.prospects, record.id)
+      const person = trimmed(p?.contact_name)
+      const company = trimmed(p?.company_name)
+      return { name: person || company, company: person || named ? company : '', trade: '' }
+    }
+    case 'supply_houses': {
+      // The counter is the house's own person; someone it holds by name is at it, as at a trade partner.
+      const h = byId(records.supplyHouses, record.id)
+      return { name: trimmed(h?.name), company: named ? trimmed(h?.name) : '', trade: '' }
+    }
+    case 'supply_house_contacts': {
+      const r = byId(records.supplyHouseContacts, record.id)
+      return { name: trimmed(r?.name), company: trimmed(byId(records.supplyHouses, r?.supply_house_id)?.name), trade: '' }
+    }
     case 'team_prospects':
-      return none
+      return { ...none, name: trimmed(byId(records.teamProspects, record.id)?.name) }
   }
 }
 
