@@ -21,7 +21,8 @@ SET lock_timeout = '3s';
 --     on the roster a contact with their number and address. contacts_from_supply_houses() gives each supply house's
 --     counter and each rep at one a contact. Both run once below and again without adding anything.
 --   * follow_up_count leaves out supply houses and candidates (OFF_FOLLOW_UP in queue.ts), and contact_display_name
---     reads the new records.
+--     reads the new records. write_down takes from every new kind the trade partner's promises, as promiseChoices
+--     offers them (the lead's call, 2026-10-13).
 --   * A candidate's contact, numbers and lines read only to a dev and the hiring board (helper 9's review, the lead's
 --     yes, 2026-10-13): three RESTRICTIVE read policies beside the spine's.
 
@@ -462,6 +463,63 @@ AS $$
     SELECT 1 FROM public.contacts off WHERE off.id = people.contact_id AND off.kind IN ('supply_house', 'candidate'))
 $$;
 
+-- ---------- the promises each kind makes ----------
+
+-- As 20261012160000_messages_follow_up.sql, with the four new kinds (the lead's call, 2026-10-13): the SQL takes what
+-- promiseChoices in src/lib/messages/promises.ts offers, so a press the screen shows is never refused. A customer's
+-- payment, decision or access; an architect's answer or certificate; everyone else's quote, start or papers, as a
+-- trade partner's. Whether a lead makes a customer's promises instead is a later change to both.
+CREATE OR REPLACE FUNCTION public.write_down(p_message_id uuid, p_kind text, p_writes text DEFAULT NULL)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY INVOKER
+SET search_path = public
+AS $$
+DECLARE
+  v_me uuid := public.follow_up_press('write down a promise');
+  v_row public.message_promises%ROWTYPE;
+  v_who text;
+  v_writes text;
+BEGIN
+  SELECT * INTO v_row FROM public.message_promises
+  WHERE message_id = p_message_id AND coalesce(kind, '') <> 'question'
+  FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No day was heard on that line.' USING ERRCODE = 'P0001';
+  END IF;
+  IF v_row.state <> 'offered' THEN
+    RAISE EXCEPTION 'Someone has said what that day is already.' USING ERRCODE = 'P0001';
+  END IF;
+  SELECT c.kind INTO v_who FROM public.messages m JOIN public.contacts c ON c.id = m.contact_id WHERE m.id = p_message_id;
+  -- A line the caller cannot read (a candidate's, off the hiring board) is no line of theirs to write down, or to call
+  -- just talk.
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'No day was heard on that line.' USING ERRCODE = 'P0001';
+  END IF;
+  IF p_kind IS NULL THEN
+    UPDATE public.message_promises SET state = 'no', decided_by = v_me, decided_at = clock_timestamp() WHERE id = v_row.id;
+    RETURN;
+  END IF;
+  IF NOT (
+    (v_who = 'customer' AND p_kind IN ('payment', 'decision', 'access'))
+    OR (v_who = 'arch' AND p_kind IN ('answer', 'cert'))
+    OR (v_who NOT IN ('customer', 'arch') AND p_kind IN ('quote', 'start', 'papers')))
+  THEN
+    RAISE EXCEPTION 'That is not a promise % makes.',
+      CASE v_who WHEN 'customer' THEN 'a customer' WHEN 'arch' THEN 'an architect' ELSE 'a trade partner' END
+      USING ERRCODE = 'P0001';
+  END IF;
+  v_writes := CASE p_kind WHEN 'start' THEN coalesce(p_writes, 'start') WHEN 'papers' THEN coalesce(p_writes, 'insurance') ELSE p_writes END;
+  IF v_writes IS NOT NULL AND NOT (
+    (p_kind = 'start' AND v_writes IN ('start', 'delivery')) OR (p_kind = 'papers' AND v_writes IN ('insurance', 'w9')))
+  THEN
+    RAISE EXCEPTION 'A start or delivery writes a start or a delivery, and insurance or a W-9 writes one of those.' USING ERRCODE = 'P0001';
+  END IF;
+  UPDATE public.message_promises SET kind = p_kind, state = 'written', writes = v_writes, decided_by = v_me, decided_at = clock_timestamp()
+  WHERE id = v_row.id;
+END;
+$$;
+
 -- ---------- a contact's name ----------
 
 -- As 20261012160000_messages_follow_up.sql, with the new records (src/lib/contacts/load.ts): their own name, else the
@@ -520,7 +578,8 @@ AS $$
 $$;
 
 -- The candidates' contact ids, read once per statement by the two line-level policies below (an initplan), past the
--- contacts policy that would hide them from the reader they are kept from.
+-- contacts policy that would hide them from the reader they are kept from. Only the office team gets any: everyone
+-- else reads no contact, number or line under the spine's policies, so an empty list hides nothing from them.
 CREATE OR REPLACE FUNCTION public.contacts_candidate_ids()
 RETURNS uuid[]
 LANGUAGE sql
@@ -528,7 +587,7 @@ STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT coalesce(array_agg(id), '{}'::uuid[]) FROM public.contacts WHERE kind = 'candidate'
+  SELECT coalesce(array_agg(id), '{}'::uuid[]) FROM public.contacts WHERE kind = 'candidate' AND public.gc_office_team()
 $$;
 
 DROP POLICY IF EXISTS contacts_candidate_door ON public.contacts;

@@ -2,7 +2,8 @@
 -- subs, the supply houses' counters and their reps a contact each, once; a row says one kind on its own record; Who is
 -- this? names a lead with no record, points a lead at its Prospects row and re-points a lead who books to the customer,
 -- names a candidate, a sub, a rep and a second person at a supply house, and refuses a record of another kind;
--- Follow up's badge leaves out supply houses and candidates; a candidate reads only to a dev and the hiring board;
+-- Follow up's badge leaves out supply houses and candidates; a sub and a supply house make a trade partner's promises;
+-- a candidate reads only to a dev and the hiring board;
 -- deleting a Prospects row, a candidate, a rep or a supply house keeps every thread; and a roster person's contact
 -- follows the roster's kind. Presses run as each user through RLS; the fixture and the messages are made as postgres,
 -- standing in for the screens and the service role; everything rolls back. Raises on the first failed assertion; ends
@@ -271,6 +272,27 @@ RESET ROLE;
 SELECT mk.as_user('00000000-0000-0000-0000-0000000007d4');
 SET LOCAL ROLE authenticated;
 SELECT mk.same('a superintendent outside the office reads nothing', mk.reads(), '0|0|0|0|0');
+RESET ROLE;
+
+-- 7b · The promises each kind makes are the screen's (promiseChoices): a sub and a supply house make a trade partner's,
+-- and a day heard on a candidate's line is no line of the estimator's off the board.
+INSERT INTO public.message_promises (message_id, day)
+SELECT id, current_date + 1 FROM public.messages
+WHERE body IN ('On my way.', 'Price on the 2210 request attached.', 'Looking for work as a helper.');
+SELECT mk.as_user('00000000-0000-0000-0000-0000000007d1');
+SET LOCAL ROLE authenticated;
+SELECT public.write_down((SELECT id FROM public.messages WHERE body = 'On my way.'), 'start');
+SELECT mk.refused('a supply house promises no payment', $q$SELECT public.write_down((SELECT id FROM public.messages WHERE body = 'Price on the 2210 request attached.'), 'payment')$q$, 'That is not a promise a trade partner makes.');
+SELECT public.write_down((SELECT id FROM public.messages WHERE body = 'Price on the 2210 request attached.'), 'quote');
+RESET ROLE;
+SELECT mk.same('the sub''s start and the house''s quote are written down',
+  (SELECT string_agg(m.body || ' ' || p.kind || coalesce(' ' || p.writes, ''), ', ' ORDER BY m.body)
+   FROM public.message_promises p JOIN public.messages m ON m.id = p.message_id WHERE p.state = 'written'),
+  'On my way. start start, Price on the 2210 request attached. quote');
+SELECT mk.as_user('00000000-0000-0000-0000-0000000007d2');
+SET LOCAL ROLE authenticated;
+SELECT mk.refused('the estimator off the board writes nothing down on a candidate''s line', $q$SELECT public.write_down((SELECT candidate_line FROM lines), 'quote')$q$, 'No day was heard on that line.');
+SELECT mk.refused('nor calls it just talk', $q$SELECT public.write_down((SELECT candidate_line FROM lines), NULL)$q$, 'No day was heard on that line.');
 RESET ROLE;
 
 -- 8 · The screens delete a Prospects row, a candidate, a rep and the supply house: every thread stays.

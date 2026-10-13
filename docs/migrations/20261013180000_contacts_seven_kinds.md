@@ -31,10 +31,12 @@ Messages, residential R0 · 2 of 3 (Customer communication helper 2, directed by
    - `contacts_subs_from_roster()` keeps a roster person's contact a sub while the roster's kind is sub, and a trade partner once it is not. It gives every sub on the roster a contact with the roster's number and address.
    - `contacts_from_supply_houses()` gives each supply house's counter a contact with its number. An insurer, a rental yard and the like are left out. It gives each rep at a house a contact with the rep's address and number. The jobs side's shortlist, the rows with no house, is left out.
 7. **Follow up.** `follow_up_count` leaves out supply houses and candidates, as `OFF_FOLLOW_UP` does in `queue.ts`. `contact_display_name` reads the new records.
+   - `write_down` takes from every new kind the trade partner's promises: a quote, a start or papers. That is what `promiseChoices` in `messages/promises.ts` offers them, so the SQL never refuses what the screen shows (the lead's call). Whether a lead makes a customer's promises instead is a later change to both.
+   - A line the caller cannot read, such as a candidate's for someone off the hiring board, is refused as *No day was heard on that line.*
 8. **The candidate door** (helper 9's review, the lead's yes). The office team reads every contact under the spine's policy, but the hiring board is gated per person.
    - So `contacts`, `contact_channels` and `messages` each gain one restrictive read policy, `*_candidate_door`.
    - A candidate's contact, numbers and lines read only to a dev and to someone with `user_has_team_prospects_access()`.
-   - Two helpers back the policies: `contacts_candidates_readable()` and `contacts_candidate_ids()`, both `SECURITY DEFINER`.
+   - Two helpers back the policies: `contacts_candidates_readable()` and `contacts_candidate_ids()`, both `SECURITY DEFINER`. The list of ids goes only to the office team.
    - An estimator off the board reads no candidate, and so names, ties and writes nothing of theirs.
 
 ## Checked before the push
@@ -50,6 +52,7 @@ The SQL bed `contacts-kinds` (`npm run test:pg:contacts-kinds`) runs every migra
 - Each refusal is asserted in words. A lead made a lead twice, moved to another row or named a supply house is refused. A record of another kind is refused, and so is a lead with no record but for the kind lead. A missing record id, nobody with that id and an unknown kind are refused too.
 - The dev folds the sub's other number into the sub, and refuses a helper as a sub and a customer as a lead. When Kevin books, his lead becomes the customer with the thread whole. A second lead who books as the same customer folds into him. A lead named a trade partner is refused.
 - Six people wait on us, and the badge counts two: the customer and the sub.
+- The dev writes down the sub's start and the supply house's quote, and the house's payment is refused. The estimator off the board writes nothing down on the candidate's line.
 - The estimator off the board reads no candidate, no candidate number and no candidate line, and ties none. The assistant on the board and the dev read them, and a superintendent reads nothing.
 - The screens delete Lena's Prospects row, the candidate, a rep and the supply house, and every thread stays as section 5 says.
 - The helper becomes a sub and the sub a helper. The seed changes both contacts' kind and gives the new sub the roster's number.
