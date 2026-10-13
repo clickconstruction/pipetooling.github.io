@@ -26,6 +26,7 @@ export function FindReplyWindow({
   where,
   onUse,
   onAdd,
+  onEdit,
   onClose,
 }: {
   contact: Contact
@@ -37,6 +38,8 @@ export function FindReplyWindow({
   where: { head: string[]; sentence: string }
   onUse: (q: QuickReply) => void
   onAdd: (words: string) => void
+  /** Closes this window and opens the quick replies editor. */
+  onEdit: () => void
   onClose: () => void
 }) {
   const [filter, setFilter] = useState('')
@@ -105,7 +108,12 @@ export function FindReplyWindow({
               {where.sentence}
             </span>
           </div>
-          <input aria-label="Narrow the lines" placeholder="⌕ narrow the lines" value={filter} autoFocus onChange={(e) => setFilter(e.target.value)} style={input} />
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <input aria-label="Narrow the lines" placeholder="⌕ narrow the lines" value={filter} autoFocus onChange={(e) => setFilter(e.target.value)} style={{ ...input, flex: 1, minWidth: 0 }} />
+            <button type="button" onClick={onEdit} style={{ border: 'none', background: 'transparent', color: 'var(--text-blue-700)', cursor: 'pointer', padding: 0, font: 'inherit', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+              Edit quick replies
+            </button>
+          </div>
           <div data-find-lines style={{ display: 'grid', gap: '0.6rem' }}>
             {groups.length === 0 && (
               <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>

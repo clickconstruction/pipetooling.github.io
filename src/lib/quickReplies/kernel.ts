@@ -173,13 +173,13 @@ export function showNarrow(lines: readonly QuickReply[], me: string): boolean {
 
 /**
  * The words when the strip or Find a reply has no line to show: with narrowed words, a press that adds them as a
- * quick reply (v1.145), the editor opening on its add form with its guess at the tags. Find a reply says it as the
- * prototype's window did.
+ * quick reply (v1.145), the editor opening on its add row with its guess at the tags. Find a reply says it as the
+ * prototype's window did. With nothing narrowed, the strip points at its **Edit**.
  */
 export function qrEmpty(filter: string, place: 'strip' | 'find' = 'strip'): { words: string; add: string | null } {
   const typed = filter.trim()
   if (typed) return { words: place === 'find' ? 'Nothing matches.' : 'No line has those words.', add: `Add “${typed}” as a quick reply` }
-  return { words: 'No lines for this kind of person yet. Press Add a line to write one.', add: null }
+  return { words: 'No lines for this kind of person yet. Edit adds one.', add: null }
 }
 
 /** A line's hover on the strip ends with why the order moves. */
@@ -514,6 +514,28 @@ export function historyHead(versions: readonly QuickReplyVersion[], q: QuickRepl
 export function lastChange(versions: readonly QuickReplyVersion[]): QuickReplyVersion | null {
   const last = versions[versions.length - 1]
   return last && last.kind !== 'added' ? last : null
+}
+
+/** The editor's search box, its note under a line opened to change, and its empty list. */
+export const EDITOR_WORDS = {
+  search: '⌕ find a line, or words in it',
+  saveNote: 'Saving keeps the old words in the history below, with your name and today.',
+  removedNote: 'Bring the line back before you change it.',
+  empty: (search: string) => (search.trim() ? 'No line has those words.' : 'Nothing here yet.'),
+  addPlaceholder: 'The line you type every day…',
+} as const
+
+/**
+ * The end of the history's *Used by* row: when the line was last pressed, and on whose thread when the window knows
+ * that person's name. Only the open thread's person is named for now; a press elsewhere says the day alone.
+ */
+export function lastUsedWords(day: string, on: string | null): string {
+  return `last used ${day}${on ? `, on ${on}` : ''}`
+}
+
+/** A user's name in the editor, or a plain word when the account is gone or unknown. */
+export function nameOf(names: Readonly<Record<string, string>>, id: string | null | undefined): string {
+  return (id && names[id]) || 'Someone'
 }
 
 /** Who used the line and how often, the most first. */

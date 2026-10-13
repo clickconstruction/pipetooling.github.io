@@ -135,34 +135,30 @@ describe('the quick replies strip above the reply box (Messages, cut 3)', () => 
     fireEvent.change(narrow, { target: { value: 'striping' } })
     expect(el.textContent).toContain('No line has those words.')
     fireEvent.click(within(el).getByRole('button', { name: 'Add “striping” as a quick reply' }))
-    const add = await screen.findByRole('dialog', { name: 'Add a quick reply' })
-    expect((within(add).getByRole('textbox', { name: 'The line' }) as HTMLTextAreaElement).value).toBe('striping')
+    const editor = await screen.findByRole('dialog', { name: 'Quick replies' })
+    expect((within(editor).getByRole('textbox', { name: 'The line' }) as HTMLTextAreaElement).value).toBe('striping')
   })
 
-  it('adds a line for the team from the box, its tags guessed from the words until set', async () => {
+  it('opens the quick replies editor from Edit, and a line added there reaches the strip', async () => {
     const { el, quick } = box()
     fireEvent.click(within(el).getByRole('button', { name: /Quick replies/ }))
-    fireEvent.click(await within(el).findByRole('button', { name: 'Add a line' }))
-    const add = await screen.findByRole('dialog', { name: 'Add a quick reply' })
-    fireEvent.change(within(add).getByRole('textbox', { name: 'The line' }), { target: { value: 'Send the W-9 when you can.' } })
-    expect(add.querySelector('[data-add-guess]')?.textContent).toBe('guessed from the words')
-    expect(within(add).getByRole('radio', { name: 'trade partners' }).getAttribute('aria-checked')).toBe('true')
-    fireEvent.click(within(add).getByRole('radio', { name: 'anyone' }))
-    expect(add.querySelector('[data-add-guess]')?.textContent).toBe('set by you')
-    fireEvent.click(within(add).getByRole('button', { name: 'Add the line' }))
-    await waitFor(() => expect(quick.add).toHaveBeenCalledWith('Send the W-9 when you can.', { for: 'any', stepId: null }, false))
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Add a quick reply' })).toBeNull())
-    expect(quick.loadLines).toHaveBeenCalledTimes(2)
+    fireEvent.click(await within(el).findByRole('button', { name: 'Edit' }))
+    const editor = await screen.findByRole('dialog', { name: 'Quick replies' })
+    expect(editor.querySelector('[data-qr-add]')).toBeNull()
+    fireEvent.click(within(editor).getByRole('button', { name: '+ Add a line' }))
+    fireEvent.change(within(editor).getByRole('textbox', { name: 'The line' }), { target: { value: 'Send the W-9 when you can.' } })
+    fireEvent.click(within(editor).getByRole('button', { name: 'Add the line' }))
+    await waitFor(() => expect(quick.add).toHaveBeenCalledWith('Send the W-9 when you can.', { for: 'trade', stepId: 'papers' }, false))
+    // The strip read once when it opened, the editor once when it opened and once after the add, then the strip again.
+    await waitFor(() => expect(quick.loadLines).toHaveBeenCalledTimes(4))
+    fireEvent.click(within(editor).getByRole('button', { name: 'Done' }))
+    expect(screen.queryByRole('dialog', { name: 'Quick replies' })).toBeNull()
   })
 
-  it('refuses an empty line in the add window', async () => {
-    const { el, quick } = box()
+  it('says Edit adds one when their kind has no lines yet', async () => {
+    const { el } = box(fakeQuick([line('c1', 'Understood.', { for: 'customer' })]))
     fireEvent.click(within(el).getByRole('button', { name: /Quick replies/ }))
-    fireEvent.click(await within(el).findByRole('button', { name: 'Add a line' }))
-    const add = await screen.findByRole('dialog', { name: 'Add a quick reply' })
-    fireEvent.click(within(add).getByRole('button', { name: 'Add the line' }))
-    expect(within(add).getByRole('alert').textContent).toBe('Write the line first.')
-    expect(quick.add).not.toHaveBeenCalled()
+    expect(await within(el).findByText('No lines for this kind of person yet. Edit adds one.')).toBeTruthy()
   })
 
   it('opens Find a reply with their last message and every line, and a press fills the box and closes it', async () => {
@@ -187,8 +183,20 @@ describe('the quick replies strip above the reply box (Messages, cut 3)', () => 
     fireEvent.change(within(find).getByRole('textbox', { name: 'Narrow the lines' }), { target: { value: 'striping' } })
     expect(find.querySelector('[data-find-lines]')?.textContent).toContain('Nothing matches.')
     fireEvent.click(within(find).getByRole('button', { name: 'Add “striping” as a quick reply' }))
-    const add = await screen.findByRole('dialog', { name: 'Add a quick reply' })
-    expect((within(add).getByRole('textbox', { name: 'The line' }) as HTMLTextAreaElement).value).toBe('striping')
+    const editor = await screen.findByRole('dialog', { name: 'Quick replies' })
+    expect((within(editor).getByRole('textbox', { name: 'The line' }) as HTMLTextAreaElement).value).toBe('striping')
+    expect(screen.queryByRole('dialog', { name: 'Find a reply · Greg Paulk' })).toBeNull()
+  })
+
+  it('opens the editor from Find a reply’s Edit quick replies, closing Find a reply', async () => {
+    const { el } = box()
+    fireEvent.click(within(el).getByRole('button', { name: /Quick replies/ }))
+    fireEvent.click(await within(el).findByRole('button', { name: '⤢ Find' }))
+    const find = await screen.findByRole('dialog', { name: 'Find a reply · Greg Paulk' })
+    fireEvent.click(within(find).getByRole('button', { name: 'Edit quick replies' }))
+    const editor = await screen.findByRole('dialog', { name: 'Quick replies' })
+    expect(editor.querySelector('[data-qr-add]')).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Find a reply · Greg Paulk' })).toBeNull()
   })
 
   it('has no strip on a note', () => {
