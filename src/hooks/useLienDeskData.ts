@@ -1,3 +1,5 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { mailPiecesByFiling as foldMailPieces, type LienMailPieceRow } from '../lib/mail/lienMailPieces'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
@@ -129,6 +131,8 @@ export type LienDeskData = {
   filingsByJob: Record<string, JobLienFilingRow[]>
   /** The job's live demand letters (v2.3880) — the timeline's demand node on the desk's panes; absent in light mode and on the GC run. */
   demandLettersByJob?: Record<string, JobDemandLetterRow[]>
+  /** The mail pieces behind the filings (the Docsmit train, 6b), by filing id; absent in light mode, and empty until a notice mails through Docsmit. */
+  mailPiecesByFiling?: Record<string, LienMailPieceRow[]>
 }
 
 const EMPTY_AFFIDAVITS: LienAffidavitQueue = {
@@ -277,6 +281,7 @@ export function useLienDeskData(
         let gcsHeldBefore = new Set<string>()
         let claimCorrectionsByJob: Record<string, LienClaimCorrection> = {}
         let filingsByJob: Record<string, JobLienFilingRow[]> = {}
+        let mailPiecesByFiling: Record<string, LienMailPieceRow[]> = {}
         let demandLettersByJob: Record<string, JobDemandLetterRow[]> = {}
         if (!light) {
           const addressIds = [...new Set(jobs.map((j) => j.customer_address_id).filter((v): v is string => Boolean(v)))]
@@ -310,6 +315,18 @@ export function useLienDeskData(
               'lien desk: filings',
             ).catch(() => [])
             for (const f of (part ?? []) as JobLienFilingRow[]) (filingsByJob[f.job_id] ??= []).push(f)
+          }
+          // The mail pieces behind the filings (the Docsmit train, 6b): the provider's word on each envelope, by filing. The
+          // table is read loosely until the generated types carry it; a read that fails (no table yet) leaves the map empty.
+          mailPiecesByFiling = {}
+          const filingIds = Object.values(filingsByJob).flat().map((f) => f.id)
+          for (const chunk of chunkIds(filingIds)) {
+            if (chunk.length === 0) continue
+            const part = await withSupabaseRetry(
+              () => (supabase as unknown as SupabaseClient).from('mail_pieces').select('id, kind, recipient, status, usps_tracking, mailed_at, delivered_at, signed_by, delivery_status, source_ids, problem').overlaps('source_ids', chunk),
+              'lien desk: mail pieces',
+            ).catch(() => [])
+            for (const [id, pieces] of Object.entries(foldMailPieces((part ?? []) as LienMailPieceRow[]))) mailPiecesByFiling[id] = [...(mailPiecesByFiling[id] ?? []), ...pieces.filter((p) => !(mailPiecesByFiling[id] ?? []).some((q) => q.id === p.id))]
           }
           // The demand letters on the desk's jobs (v2.3880): one read, so every pane's strip carries the letter the Lien window draws.
           demandLettersByJob = {}
@@ -367,6 +384,7 @@ export function useLienDeskData(
           claimCorrectionsByJob,
           filingsByJob,
           demandLettersByJob,
+          mailPiecesByFiling,
         })
       } catch {
         if (!cancelled)
