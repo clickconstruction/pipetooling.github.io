@@ -2,7 +2,7 @@
 title: find every message with a person in one place
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox
+keywords: gc mode, messages, thread, person, contact, customer, trade partner, architect, call, text, email, who is this, unknown number, job, star, tie, search, phone, narrow, back, attachment, file, certificate of insurance, w-9, bids inbox, save to drive, team only, plans
 order: 116
 ---
 Messages lists each person the office works with on GC projects. Press a person to read every message with them in one thread.
@@ -73,6 +73,20 @@ An email's files show as chips under its words. A PDF has a red badge and a pict
 The file opens in a new tab. Open shows our copy, kept when the email came. A link opens at its own address.
 
 A file too big to keep stays in Gmail. That file's row says so and has no {{button:outline|Open}}.
+
+## Save a file to the job's Drive
+
+A file that came with an email can go into the job's Drive folder. Then the job's files show it with the rest.
+
+1. Open the message. Under **Attachments**, press {{button:outline|Save to Drive}} beside the file.
+2. Read where it goes. On a GC project, pick **Team only** or **Plans**.
+3. Press {{button:blue|Save it}}.
+
+Team only is for a quote or a photo. Only the team sees it there. Plans is for anything else. Anyone with the folder's link reads it, so trades see it with the plans.
+
+A photo goes into the job's photos. A file on a bid or a Pipeline job goes into the job's folder.
+
+The row then says where the file went. Press **Open in Drive** to see it there. A message on nobody's job asks you to tie it to a job first.
 
 ## File a paper that came by email
 

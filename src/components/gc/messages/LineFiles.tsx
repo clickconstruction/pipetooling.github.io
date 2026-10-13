@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
-import { fileNote, fileOpenHref, filedWords, sizeWords, type FileIcon, type LineFile } from '../../../lib/messages/lineFiles'
+import { driveOf, fileNote, fileOpenHref, filedWords, sizeWords, type FileIcon, type LineFile } from '../../../lib/messages/lineFiles'
+import { SaveToDrive, type SaveToDriveIo } from './SaveToDrive'
 
 /**
  * Messages, cut 6's screens (email in): the files and links on a line, as the mock-up `email-in-mockups.html` draws them
@@ -91,8 +92,23 @@ const openLink: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
-/** The message window's Attachments: each file with its size and where it is, and Open where it can be opened. */
-export function MessageFiles({ files }: { files: readonly LineFile[] }) {
+/**
+ * The message window's Attachments: each file with its size and where it is, and Open where it can be opened. A file
+ * that came in and has our copy also has Save to Drive (cut 7f), into its line's job's folder.
+ */
+export function MessageFiles({
+  files,
+  jobKey = null,
+  jobLabel = null,
+  save,
+}: {
+  files: readonly LineFile[]
+  /** The line's job, as the thread keys it, for Save to Drive. Null: on nobody's job. */
+  jobKey?: string | null
+  /** The job as the window names it, `B482`. */
+  jobLabel?: string | null
+  save?: SaveToDriveIo
+}) {
   return (
     <section data-message-files>
       <h3 style={{ margin: '0 0 0.3rem', fontSize: '0.9rem' }}>Attachments ({files.length})</h3>
@@ -110,6 +126,7 @@ export function MessageFiles({ files }: { files: readonly LineFile[] }) {
                 Open
               </a>
             )}
+            {f.kept === 'copy' && !driveOf(f).sentAs && <SaveToDrive file={f} jobKey={jobKey} jobLabel={jobLabel} {...(save ? { save } : {})} />}
           </div>
         )
       })}

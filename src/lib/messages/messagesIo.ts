@@ -9,6 +9,7 @@
  * overlay, never rows written into `messages`. Cut 6's lines carry their files from `message_attachments`.
  */
 import { supabase } from '../supabase'
+import { fnProblem, type FnResult } from '../gc/gcIo'
 import { fetchAllRows, SUPABASE_IN_CHUNK_SIZE } from '../supabasePaging'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { checkSupabaseError, type SupabaseResultError } from '../../utils/errorHandling'
@@ -57,7 +58,7 @@ const JOB_MESSAGE_COLS = `${MESSAGE_COLS}, duration_seconds, summary, transcript
 const JOB_MESSAGES_MAX = 1000
 
 const ATTACHMENT_COLS =
-  'id, message_id, sort_order, kind, name, mime, size_bytes, bucket_path, left_in_gmail, url, host, paper, paper_answer, paper_answered_by, paper_answered_at'
+  'id, message_id, sort_order, kind, name, mime, size_bytes, bucket_path, left_in_gmail, url, host, paper, paper_answer, paper_answered_by, paper_answered_at, drive_file_id, sent_as, drive_link_id'
 
 /** Before the email migration is pushed, the table is not there: the lines then have no files. */
 const isMissingTable = (code: string | null | undefined): boolean => code === '42P01' || code === 'PGRST205'
@@ -279,6 +280,20 @@ export async function answerPaper(attachmentId: string, answer: 'filed' | 'not_i
     'answer the offer',
   )
   if (rows.length === 0) throw new Error('That offer could not be answered from this account.')
+}
+
+/**
+ * Save to Drive (cut 7f): our copy of a file that came in goes into its line's job's Drive folder through `drive-link`'s
+ * `save`, and the row keeps the Drive file. A second save answers the one copy already there. Refused in words: a line
+ * on nobody's job, a job with no Drive folder, a training account.
+ */
+export async function saveToDrive(attachmentId: string, half: 'plans' | 'team_only'): Promise<{ driveFileId: string; url: string }> {
+  const r = (await supabase.functions.invoke('drive-link', { body: { action: 'save', attachmentId, half } })) as FnResult
+  const problem = await fnProblem(r, 'The file was not saved to Drive.')
+  if (problem) throw new Error(problem)
+  const d = (r.data ?? {}) as { driveFileId?: string; url?: string }
+  if (!d.driveFileId || !d.url) throw new Error('The file was not saved to Drive.')
+  return { driveFileId: d.driveFileId, url: d.url }
 }
 
 const jobArgs = (key: string | null) => {
