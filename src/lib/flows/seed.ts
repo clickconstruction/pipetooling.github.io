@@ -243,8 +243,43 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
       },
     ],
   },
-  // A sub's flow has no steps yet (RESIDENTIAL_BUILD_PLAN.md R8 · 12).
-  sub: { kind: 'sub', lanes: [] },
+  // A sub's flow (RESIDENTIAL_BUILD_PLAN.md R8 · 12): one labor job, the sub sheet, from the work order to the pay. No
+  // reminders; the office turns those on.
+  sub: {
+    kind: 'sub',
+    lanes: [
+      {
+        lane: 'per_job',
+        steps: [
+          step({
+            id: 'asked', name: 'Asked', nameEs: 'Ofrecido', phase: 'pricing', who: 'us', seat: 'Rosa',
+            later: { en: 'When a job of yours comes up.', es: 'Cuando surja un trabajo para usted.' },
+            facts: ['sub_asked'], owedWords: 'the work order', usual: 1,
+          }),
+          step({
+            id: 'yes', name: 'Said yes', nameEs: 'Aceptó', phase: 'pricing', who: 'them', fork: true,
+            later: { en: 'Once the work order comes.', es: 'Cuando llegue la orden de trabajo.' },
+            facts: ['sub_said_yes', 'sub_declined'], join: 'or', usual: 1,
+          }),
+          step({
+            id: 'onsite', name: 'On site', nameEs: 'En obra', phase: 'building', who: 'them',
+            later: { en: 'On the day you picked.', es: 'El día que eligió.' },
+            facts: ['sub_on_site'], usual: 3,
+          }),
+          step({
+            id: 'done', name: 'Done', nameEs: 'Terminado', phase: 'building', who: 'them',
+            later: { en: 'When your work is finished.', es: 'Cuando termine su trabajo.' },
+            facts: ['sub_done'], usual: 5,
+          }),
+          step({
+            id: 'paid', name: 'Paid', nameEs: 'Pagado', phase: 'building', who: 'us', seat: 'Rosa',
+            later: { en: 'After the walkthrough.', es: 'Después de la revisión.' },
+            facts: ['sub_paid'], owedWords: 'their pay', usual: 7,
+          }),
+        ],
+      },
+    ],
+  },
   unknown: {
     kind: 'unknown',
     lanes: [
