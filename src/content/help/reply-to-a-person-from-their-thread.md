@@ -2,7 +2,7 @@
 title: reply to a person from their thread
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, reply, reply box, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead
+keywords: gc mode, messages, reply, reply box, text, email, note, send, send window, subject, tie to, job, opt-out, stop, company number, letterhead, quick reply, quick replies, find a reply, add a line
 order: 117
 ---
 The reply box sits at the foot of every thread in Messages. Write a text, an email or a team note to the person there.
@@ -26,6 +26,34 @@ The row above the box has three kinds. The one you chose has an orange ring.
 The box starts as a text when their number can take one. Otherwise it starts as an email.
 
 While the box is empty, a grey line in it says who the message is from. It always names the company, never you.
+
+## Use a quick reply
+
+Quick replies are lines the office types every day. They sit above the box for a text or an email.
+
+1. Press **Quick replies** above the box. The lines open, and this computer keeps your choice.
+2. Press a line. It fills the box. Nothing sends.
+3. Change the words if you like, then send as usual.
+
+The lines for their kind of person come first. The lines for anyone come last. In each group the lines you use most come first. A press counts, so the order follows the office.
+
+While you type, the lines fold away. They come back when the box is empty.
+
+## Find a reply
+
+Press **⤢ Find** in the quick replies. A window opens with their last message on top. It also says where they are in the flow.
+
+Every line shows with room to read. Type in the narrow box to find a line by its words. Press a line to fill the box.
+
+## Add a quick reply
+
+1. Press **Add a line** in the quick replies.
+2. Write the line.
+3. Choose who it is for, and its step if it has one. The app guesses both from the words until you choose.
+4. Tick **Just for me** to keep the line on your own strip.
+5. Press {{button:blue|Add the line}}.
+
+When the narrow box finds no line, a button offers to add your words as a quick reply.
 
 ## Tie it to a job
 

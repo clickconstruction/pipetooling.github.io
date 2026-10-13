@@ -84,6 +84,13 @@ export function lastOurTextAt(lines: readonly ThreadMessage[], channelId: string
   return last
 }
 
+/** Their newest line to us, on any channel: the last message *Find a reply* puts on top. Null when they never wrote. */
+export function lastFromThem(lines: readonly ThreadMessage[]): ThreadMessage | null {
+  let last: ThreadMessage | null = null
+  for (const m of lines) if (m.direction === 'in' && (!last || timeOf(m) > timeOf(last))) last = m
+  return last
+}
+
 /** The texts already on their phone from this number, the last `count`, oldest first: the send window's phone draws them above the new one. */
 export function priorTexts(lines: readonly ThreadMessage[], channelId: string | null, count = 2): ThreadMessage[] {
   if (!channelId || count <= 0) return []

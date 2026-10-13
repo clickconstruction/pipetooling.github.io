@@ -1,5 +1,9 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../../../contexts/ToastContext'
+import { useOptionalAuth } from '../../../../hooks/useAuth'
+import { SEED_FLOWS } from '../../../../lib/flows/seed'
+import { findWhere, qrKindOf, stepsByKind, type QuickReply } from '../../../../lib/quickReplies/kernel'
+import { supabaseQuickRepliesIo, type QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import {
   boxPlaceholder,
   countLine,
@@ -16,13 +20,37 @@ import {
 } from '../../../../lib/messages/compose'
 import { replyCompany, replyJob, tieWords, TIE_TIP, type ReplyTie } from '../../../../lib/messages/replyBox'
 import { supabaseReplyIo, type ReplyIo } from '../../../../lib/messages/replyIo'
-import type { Contact } from '../../../../lib/contacts/kernel'
+import { firstName, type Contact } from '../../../../lib/contacts/kernel'
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn } from '../../gcUi'
 import { JobPickerWindow } from '../JobPickerWindow'
 import { useOpenThread } from '../openThread'
 import { useMessagesReread } from '../useMessagesReread'
+import { AddQuickReplyWindow } from './AddQuickReplyWindow'
+import { FindReplyWindow } from './FindReplyWindow'
+import { QuickRepliesStrip } from './QuickRepliesStrip'
 import { SendWindow } from './SendWindow'
+import { useQuickReplies } from './useQuickReplies'
+
+/** The flows' steps for each kind of person, to name a line's step. The seed until the flows table is read here. */
+const STEPS = stepsByKind(SEED_FLOWS)
+
+/** The strip's fold is kept on this computer, as the prototype kept it. */
+const QR_OPEN_KEY = 'msgQrOpen'
+const readOpen = (): boolean => {
+  try {
+    return localStorage.getItem(QR_OPEN_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+const keepOpen = (open: boolean) => {
+  try {
+    localStorage.setItem(QR_OPEN_KEY, open ? '1' : '0')
+  } catch {
+    // A browser that keeps nothing still folds and opens; it just forgets.
+  }
+}
 
 /** Text blue, Email white, Note yellow: the thread's own colours for each, so the box reads as the line it becomes. */
 const KIND_LOOK: Record<ReplyKind, CSSProperties> = {
@@ -43,13 +71,19 @@ const RING: CSSProperties = { boxShadow: '0 0 0 3px var(--border-orange)', borde
  * It reads the open thread (`useOpenThread`) for the job in view, the rail and our texts; with no window around it (a
  * smoke) it still draws, with no choices for *Tie to*.
  */
-export function ReplyBox({ contact, io: ioGiven }: { contact: Contact; io?: ReplyIo }) {
+export function ReplyBox({ contact, io: ioGiven, quickIo }: { contact: Contact; io?: ReplyIo; quickIo?: QuickRepliesIo }) {
   const open = useOpenThread()
   const reread = useMessagesReread()
   const { showToast } = useToastContext()
+  const me = useOptionalAuth()?.user?.id ?? ''
   const io = useMemo(() => ioGiven ?? supabaseReplyIo(), [ioGiven])
+  const qio = useMemo(() => quickIo ?? supabaseQuickRepliesIo(), [quickIo])
   const to = useMemo(() => replyRecipient(contact), [contact])
   const [kind, setKind] = useState<ReplyKind>(() => defaultReplyKind(to))
+  const [stripOpen, setStripOpen] = useState(readOpen)
+  const [finding, setFinding] = useState(false)
+  const [adding, setAdding] = useState<string | null>(null)
+  const quick = useQuickReplies(qio, me, goesOut(kind) && (stripOpen || finding))
   const [body, setBody] = useState('')
   const [tie, setTie] = useState<ReplyTie>(undefined)
   const [picking, setPicking] = useState(false)
@@ -95,6 +129,19 @@ export function ReplyBox({ contact, io: ioGiven }: { contact: Contact; io?: Repl
 
   const theirs = (open?.rail ?? []).map((k) => tiles[k]).filter((t): t is NonNullable<typeof t> => Boolean(t))
 
+  // Quick replies: typing folds an open strip until the box is empty again; a press on the folded line peeks at it.
+  const [peek, setPeek] = useState(false)
+  const kindSteps = STEPS[qrKindOf(contact.kind)] ?? []
+  const first = contact.kind === 'unknown' ? contact.name : firstName(contact)
+  // Where they are in the flow waits on cut 4's read of a person's step; until it is here, nothing is on.
+  const where = findWhere({ step: null, who: 'us', firstName: first, daysOn: null, off: false })
+  const use = (q: QuickReply) => {
+    setBody(q.text)
+    setFinding(false)
+    setPeek(false)
+    quick.press(q, contact.id)
+  }
+
   return (
     <div
       data-reply-box
@@ -123,6 +170,26 @@ export function ReplyBox({ contact, io: ioGiven }: { contact: Contact; io?: Repl
         ))}
         {kind === 'note' && <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{NOTE_ASIDE.join(' · ')}</span>}
       </div>
+
+      {goesOut(kind) && (
+        <QuickRepliesStrip
+          kind={contact.kind}
+          lines={quick.lines}
+          me={me}
+          nowStepId={null}
+          steps={kindSteps}
+          open={stripOpen && (!body.trim() || peek)}
+          problem={quick.problem}
+          onOpen={(o) => {
+            setStripOpen(o)
+            keepOpen(o)
+            setPeek(o && Boolean(body.trim()))
+          }}
+          onUse={use}
+          onFind={() => setFinding(true)}
+          onAdd={(words) => setAdding(words)}
+        />
+      )}
 
       <div style={{ position: 'relative' }}>
         <textarea
@@ -200,6 +267,39 @@ export function ReplyBox({ contact, io: ioGiven }: { contact: Contact; io?: Repl
             setTie(key)
           }}
           onClose={() => setPicking(false)}
+        />
+      )}
+
+      {finding && (
+        <FindReplyWindow
+          contact={contact}
+          lines={quick.lines ?? []}
+          threadLines={open?.lines ?? []}
+          me={me}
+          nowStepId={null}
+          steps={kindSteps}
+          where={where}
+          onUse={use}
+          onAdd={(words) => {
+            setFinding(false)
+            setAdding(words)
+          }}
+          onClose={() => setFinding(false)}
+        />
+      )}
+
+      {adding !== null && (
+        <AddQuickReplyWindow
+          initialText={adding}
+          me={me}
+          steps={STEPS}
+          onSave={async (text, tags, mine) => {
+            await quick.add(text, tags, mine)
+          }}
+          onClose={(words) => {
+            setAdding(null)
+            if (words) showToast(words, 'success')
+          }}
         />
       )}
 

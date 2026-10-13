@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobTile } from './jobTiles'
-import { lastOurTextAt, priorTexts, replyJob, tieWords } from './replyBox'
+import { lastFromThem, lastOurTextAt, priorTexts, replyJob, tieWords } from './replyBox'
 import type { ThreadMessage } from './thread'
 
 const tile = (key: string, num: string, name: string): JobTile => ({ key, kind: 'bid', num, name, day: { words: '', tone: '' } })
@@ -68,6 +68,22 @@ describe('our last text to a number', () => {
     expect(lastOurTextAt(lines, 'ch-office')).toBe(Date.parse('2026-09-25T15:00:00.000Z'))
     expect(lastOurTextAt(lines, 'ch-new')).toBeNull()
     expect(lastOurTextAt(lines, null)).toBeNull()
+  })
+})
+
+describe('their last message, for Find a reply', () => {
+  it('is their newest line in, on any channel, in any order', () => {
+    const lines = [
+      line({ id: 'a', at: '2026-09-20T15:00:00.000Z', direction: 'in', who: 'Greg' }),
+      line({ id: 'b', at: '2026-09-28T15:00:00.000Z', direction: 'in', channel: 'email', who: 'Greg' }),
+      line({ id: 'c', at: '2026-09-30T15:00:00.000Z' }),
+    ]
+    expect(lastFromThem(lines)?.id).toBe('b')
+    expect(lastFromThem([...lines].reverse())?.id).toBe('b')
+  })
+
+  it('is none when they never wrote', () => {
+    expect(lastFromThem([line({ id: 'c', at: '2026-09-30T15:00:00.000Z' })])).toBeNull()
   })
 })
 
