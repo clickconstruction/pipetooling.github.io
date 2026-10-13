@@ -59,6 +59,8 @@ h2.grp{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 .sz.s{background:var(--ok-soft);color:var(--ok)}
 .sz.m{background:var(--warn-soft);color:var(--warn)}
 .sz.l{background:var(--danger-soft);color:var(--danger)}
+.sz.dec{background:var(--accent-soft);color:var(--accent)}
+.sz.dec.no{background:var(--chip);color:var(--muted)}
 .card .q{margin:6px 0 10px;font-size:15px;max-width:80ch}
 .ba{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:760px){.ba{grid-template-columns:1fr}}
@@ -171,8 +173,9 @@ h2.grp{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
 <body>
 <div class="wrap">
 <header class="top">
-  <h1>Messages integrations<span class="ver">v0.1 · 2026-10-12</span></h1>
+  <h1>Messages integrations<span class="ver">v0.2 · 2026-10-13</span></h1>
   <p class="lead">Seventeen questions about what else in the app should reach into Messages, each as a <b>before</b> drawn from the prototype as it stands and an <b>after</b> with the feature in. Mark each <b>Add</b>, <b>Later</b> or <b>No</b>. The picks stay on this computer; <b>Copy picks</b> puts them on the clipboard to paste back to me. Made-up people and jobs throughout.</p>
+  <p class="note" style="max-width:76ch"><b>Decided 2026-10-13.</b> The owner's picks are stamped on each card: sixteen Add, history No. Candidates (11) and subs (12) went against the lean. The buttons still work for a change of mind; <b>Copy picks</b> copies what is set, the decision when nothing is.</p>
   <p class="note" style="max-width:76ch"><b>The baseline.</b> If every answer is No, you still have the prototype as it stands: the job window, the tech’s phone, the quick replies and the Messages page. That already answers the complaint that started this. Nothing below is needed for day one; each one makes a later day better.</p>
 </header>
 
@@ -357,13 +360,15 @@ h2.grp{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
   let picks={}; try{ picks=JSON.parse(localStorage.getItem('cm-int-picks')||'{}'); }catch(e){ picks={}; }
   const save=()=>{ try{ localStorage.setItem('cm-int-picks',JSON.stringify(picks)); }catch(e){} };
   const WORD={add:'Add',later:'Later',no:'No'};
+  const DECIDED={1:'add',2:'add',3:'add',4:'add',5:'add',6:'add',7:'add',8:'add',9:'add',10:'add',11:'add',12:'add',13:'add',14:'add',15:'add',16:'add',17:'no'};
   function paintPicks(){ const c={add:0,later:0,no:0}; Object.values(picks).forEach(v=>{ if(c[v]!=null) c[v]++; }); const left=CARDS.length-(c.add+c.later+c.no); $('#cnt').innerHTML=`<span class="add">Add ${c.add}</span><span class="later">Later ${c.later}</span><span class="no">No ${c.no}</span><span>${left} undecided</span>`; }
   function render(){
     const toc=$('#toc'); toc.innerHTML=CARDS.map(c=>`<a href="#c${c.n}">${c.n} · ${c.title}</a>`).join('');
     const host=$('#cards'); let h=''; let g='';
     for(const c of CARDS){ if(c.g!==g){ g=c.g; h+=`<h2 class="grp">${G[g]}</h2>`; }
       const d=picks[c.n]||'';
-      h+=`<article class="card ${d?'dec-'+d:''}" id="c${c.n}"><div class="hd"><span class="n">${c.n}</span><h3>${c.title}</h3><span class="meta"><span class="sz ${c.size}">${c.size==='s'?'small build':c.size==='m'?'medium build':'large build'}</span></span></div>
+      const dd=DECIDED[c.n];
+      h+=`<article class="card ${d?'dec-'+d:(dd?'dec-'+dd:'')}" id="c${c.n}"><div class="hd"><span class="n">${c.n}</span><h3>${c.title}</h3><span class="meta"><span class="sz dec ${dd}">decided ${WORD[dd]}${(c.n===11||c.n===12)?' · against the lean':''}</span><span class="sz ${c.size}">${c.size==='s'?'small build':c.size==='m'?'medium build':'large build'}</span></span></div>
         <p class="q">${c.q}</p>
         <div class="ba"><div class="pane"><div class="lbl">Before · the prototype today</div><div class="body">${c.before}</div><div class="cap">${c.bcap}</div></div><div class="pane after"><div class="lbl">After · with it in</div><div class="body">${c.after}</div><div class="cap">${c.acap}</div></div></div>
         <div class="foot"><div class="lean">${c.lean}</div><div class="dec" data-n="${c.n}">${['add','later','no'].map(k=>`<button class="${k} ${d===k?'on':''}" data-k="${k}">${WORD[k]}</button>`).join('')}</div><div class="dep">${c.dep}</div></div>
@@ -374,7 +379,7 @@ h2.grp{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--
     $$('.pane button').forEach(b=>b.onclick=()=>toast('A drawing of the press. Nothing happens here.'));
     paintPicks();
   }
-  $('#copy').onclick=async()=>{ const lines=CARDS.map(c=>`${c.n}. ${c.title} — ${WORD[picks[c.n]]||'undecided'}`); const text=`Messages integrations picks (${new Date().toISOString().slice(0,10)})\n`+lines.join('\n'); try{ await navigator.clipboard.writeText(text); toast('Picks copied. Paste them to me in the chat.'); }catch(e){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); toast('Select and copy the text that appeared at the bottom of the page.'); } };
+  $('#copy').onclick=async()=>{ const lines=CARDS.map(c=>`${c.n}. ${c.title} — ${WORD[picks[c.n]]||WORD[DECIDED[c.n]]}`); const text=`Messages integrations picks (${new Date().toISOString().slice(0,10)})\n`+lines.join('\n'); try{ await navigator.clipboard.writeText(text); toast('Picks copied. Paste them to me in the chat.'); }catch(e){ const ta=document.createElement('textarea'); ta.value=text; document.body.appendChild(ta); ta.select(); toast('Select and copy the text that appeared at the bottom of the page.'); } };
   $('#clear').onclick=()=>{ picks={}; save(); render(); toast('Cleared.'); };
   const LEANS={1:'add',2:'add',3:'add',4:'add',5:'add',6:'add',7:'add',8:'add',9:'add',10:'add',11:'no',12:'later',13:'add',14:'add',15:'add',16:'add',17:'later'};
   $('#leans').onclick=()=>{ picks={...LEANS}; save(); render(); toast('Set to my leans: 14 Add, 2 Later, 1 No. Change any you see differently.'); };

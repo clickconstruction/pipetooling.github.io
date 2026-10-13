@@ -619,6 +619,40 @@ exhibits as *This trade*.
 - **Built later**, after cut 4, as its own cut (`BUILD_PLAN.md` → *Cut 4c*); until then one master agreement
   document per trade in the Contract library's packets is the bridge.
 
+## Residential customers and the Messages page (decided 2026-10-13, `customer-messages-prototype.html` v0.6)
+
+The owner's ask of 2026-10-12: the same spine for the plumbing company's own customers, so a tech can text a
+customer from the job with no misspelling and a customer's reply shows on every active job of theirs (a customer's
+report that "communication from the office has been non existent"). Drawn in `customer-messages-prototype.html`
+(seven screens, each a replica of the surface it changes) and `customer-messages-integrations-mockups.html`
+(seventeen before-and-after cards). The owner's decisions, in order:
+
+- **Orange is the customer's** in the job window (2026-10-12): a line the customer got, sent, pressed on their page
+  or the app sent them is orange, deeper when it came from them; the team's notes lose the yellow there, since in
+  that window they are the rule. The GC thread keeps its yellow notes. The reply box turns orange while what is
+  written goes to the customer.
+- **The quick replies are the GC strip and editor** (2026-10-12), with four additions for residential: blanks the app
+  fills on the press (`{first}`, `{me}`, `{address}`, `{minutes}`, `{window}`, `{back day}`, `{link}`; one the app
+  cannot fill stays lit and Send waits), a **phone** mark with an order and a short name, so Job Mode's lines are
+  rows of the same editor, Spanish beside English, and steps per flow rather than per kind.
+- **Two boxes, one inbox** (2026-10-12): bids@ for trade partners and the estimators' quotes, **team@clickplumbing.com**
+  for customers. The person decides the area; the box decides the first guess for an unknown sender and the address a
+  reply goes from. Open: team@ or office@, since office@ is already on the letterhead and the lien reply-to.
+- **Messages in the header** for the office (2026-10-12), with a **New** lane on Follow up holding the three sorts,
+  *Who is this?*, *Which job?* and *Who has it?* (mockup A of three; C, the sort desk, is the press behind Sort all).
+- **The seventeen integrations** (2026-10-13): sixteen **Add**, history **No**. Against the lean: **candidates** (11)
+  and **residential subs** (12) come in as kinds of contact. So Messages has seven kinds, customer · trade partner ·
+  architect · lead · supply house · candidate · sub; lead, supply house, candidate and sub have no flow yet, supply
+  house and candidate never count on Follow up, and the sub's flow (asked · said yes · on site · done · paid) is
+  read from the sub sheet once its facts are stamps, the largest of the sixteen. The leans that moved while drawing
+  stand: push waits fifteen minutes before the office hears, a setting; a Running late press asks once before it
+  moves the dispatch board and tells the dispatcher.
+
+Decisions still the owner's, on the prototype's screen 5: the tech's door (lean: jobs dispatched to or clocked on,
+this week and last, no money lines), free text for techs (lean: quick replies and *Something else* to the office),
+who edits the phone's lines (lean: the office), who answers a reply (lean: the tech until 5 PM, then the office),
+which reminders start on (lean: estimate and bill), and team@ against office@.
+
 ## How it would be built, once the shape is settled
 
 The detailed plan is `BUILD_PLAN.md` (2026-10-11); the list below is the first sketch it grew from.
