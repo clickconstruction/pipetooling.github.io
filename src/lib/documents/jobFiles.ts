@@ -76,7 +76,7 @@ export interface JobFile {
 }
 
 /** A paper the app makes for the job: a statement of work, our contract, a pay application, a change order, the schedule. */
-export interface JobPaperRow {
+export interface AppPaperRow {
   id: string
   paper: 'sow' | 'contract' | 'payapp' | 'co' | 'schedule'
   name: string
@@ -124,19 +124,22 @@ export interface SentFileRow {
   sent_at: string
 }
 
-/** A file that came in on a message, as `message_attachments` keeps it (cut 6). */
+/**
+ * A file that came in on a message, as `message_attachments` keeps it (cut 6): a file, never a link, with no `sent_as`
+ * (cut 7a), since a file we sent is on its sent copy. `drive_file_id` is set once Save to Drive put it in the job's folder.
+ */
 export interface ArrivedFileRow {
   id: string
   name: string
   bytes: number | null
-  kind: string
+  mime: string | null
   drive_file_id: string | null
   at: string
 }
 
 /** Every place a job's files live, as the reads hand them over. Any may be empty. */
 export interface JobFileSources {
-  papers?: readonly JobPaperRow[]
+  papers?: readonly AppPaperRow[]
   planSets?: readonly PlanSetRow[]
   drive?: readonly DriveFileRow[]
   trade?: readonly TradeFileRow[]
@@ -145,7 +148,7 @@ export interface JobFileSources {
 }
 
 /** The portal page each paper the app makes lives on. */
-const PAPER_PAGE: Record<JobPaperRow['paper'], PortalPage> = { sow: 'sow', contract: 'contract', payapp: 'bills', co: 'changes', schedule: 'schedule' }
+const PAPER_PAGE: Record<AppPaperRow['paper'], PortalPage> = { sow: 'sow', contract: 'contract', payapp: 'bills', co: 'changes', schedule: 'schedule' }
 
 /** A file's kind from its type, or from its name's ending when the type says nothing. */
 export function fileKindOf(mime: string, name = ''): JobFileKind {
@@ -210,7 +213,7 @@ export function jobFiles(src: JobFileSources): JobFile[] {
       key: a.drive_file_id ? `drive:${a.drive_file_id}` : `arrived:${a.id}`,
       name: a.name,
       bytes: a.bytes,
-      kind: fileKindOf(a.kind, a.name),
+      kind: fileKindOf(a.mime ?? '', a.name),
       source: 'arrived',
       home: a.drive_file_id ? 'team_only' : 'bucket',
       planSet: false,
