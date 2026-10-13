@@ -28,7 +28,7 @@ import {
   type ComposeSender,
 } from '../../../../lib/messages/compose'
 import { lastOurTextAt, priorTexts } from '../../../../lib/messages/replyBox'
-import { TEXTS_ON, TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
+import { TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
 import type { AttachIo } from '../../../../lib/messages/attachIo'
 import type { DeviceBytes } from '../../../../lib/documents/emailFileAsks'
 import { chipFacts, emailFileNote, textFileNote, type Audience } from '../../../../lib/documents/outgoing'
@@ -36,6 +36,7 @@ import { replyFileAsks, replyWays, wordsMakers, type ReplyFile } from '../../../
 import { formatErrorMessage } from '../../../../utils/errorHandling'
 import { Btn, input } from '../../gcUi'
 import { useOpenThread } from '../openThread'
+import { useTextsOn } from './useTextsOn'
 
 type Kind = 'text' | 'email'
 
@@ -142,7 +143,8 @@ export function SendWindow({
   const ways = replyWays(files, kind)
   const makers = wordsMakers(hasPortal)
   const fileNote = kind === 'email' ? emailFileNote(ways, audience, makers) : textFileNote(ways)
-  const waits = kind === 'text' && !TEXTS_ON
+  const textsOn = useTextsOn()
+  const waits = kind === 'text' && !textsOn
   const goes = canSend(kind, to) && !waits && (kind === 'text' || sender !== null)
 
   const send = async () => {

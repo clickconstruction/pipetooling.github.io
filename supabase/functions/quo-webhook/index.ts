@@ -196,7 +196,9 @@ async function planAndWrite(
     // Quo turning the text away for no reason we read is worth Quo's retry: the line, the STOP and the event above
     // write the same again. A refusal of ours, texts not set up yet, or paused, or waiting on the carriers or the daily
     // cap, would only fail again.
-    if (!sent.ok && sent.refused === 'quo') throw new Error(sent.words)
+    // A stop's confirmation is never asked for again: the STOP above is already mirrored, so Quo's retry would read the
+    // number as stopped and plan no confirmation. It is logged instead.
+    if (!sent.ok && sent.refused === 'quo' && plan.answer.purpose !== 'confirm') throw new Error(sent.words)
     if (!sent.ok) console.error(`[quo-webhook] the app's answer did not go: ${sent.words}`)
   }
 }

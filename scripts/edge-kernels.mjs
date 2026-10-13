@@ -102,6 +102,8 @@ export const ENTRIES = {
     values: ['NOTIFY_LINES_MAX', 'PUSH_KINDS', 'REPLY_PUSH_ON_KEY', 'planReplyPushes', 'sweepSince'],
     types: ['NotifyPlan', 'NotifyPlanInput', 'PlanContact', 'PlanLine', 'PlanOut', 'PlanUser'],
   },
+  // The texts switch, Settings → Phone and texts → Send texts (v2.5440).
+  'lib/quo/textsSwitch.ts': { values: ['TEXTS_OFF', 'TEXTS_SWITCH_KEY', 'switchGates', 'textsAreOn'], types: [] },
 }
 
 /** Types the readers name that no entry exports: from the files they live in, erased on the edge. */

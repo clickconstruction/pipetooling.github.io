@@ -1,0 +1,45 @@
+/**
+ * Messages, cut 5: the switch that lets the office text from the company number. It is `app_settings`
+ * `messages_texts_on_v1` (migration `20261014160000_messages_texts_on.sql`): 'true' turns texts on, and anything else,
+ * 'false' as it ships or no row at all, keeps them off. The owner and a dev change it from Settings → Phone and texts →
+ * **Send texts**; the send window reads it before a text can go, and `sendText` (`_shared/quoLines.ts`) reads it as the
+ * service role before every text a person or the app's reminders send.
+ *
+ * Two texts go whatever the switch says: the app's answer to HELP or INFO, and the one confirmation of a stop Quo did
+ * not catch. Each answers the person's own keyword, and the carriers' rules expect it. Pure, and copied to the edge
+ * (`scripts/edge-kernels.mjs`).
+ */
+import type { SendPurpose } from './send'
+
+/** The `app_settings` key, as `APP_SETTINGS_KEY_MESSAGES_TEXTS_ON_V1` names it for the app. */
+export const TEXTS_SWITCH_KEY = 'messages_texts_on_v1'
+
+/** Whether the switch reads on: only 'true' lets a text go. A missing row, an empty one or 'false' reads off. */
+export function textsAreOn(valueText: string | null | undefined): boolean {
+  return valueText === 'true'
+}
+
+/** Whether a text of this purpose waits on the switch: a person's text and the app's reminder do; the two answers do not. */
+export function switchGates(purpose: SendPurpose): boolean {
+  return purpose === 'reply' || purpose === 'nudge'
+}
+
+/** Who may turn texts on or off: the owner and a dev, as the switch's UPDATE policy (`is_master_or_dev()`) allows. */
+export function canSwitchTexts(role: string | null | undefined): boolean {
+  return role === 'master_technician' || role === 'dev'
+}
+
+/** `sendText`'s refusal while the switch is off. */
+export const TEXTS_OFF = 'Texts are off. The owner or a dev turns them on in Settings → Phone and texts.'
+
+export const TEXTS_SWITCH_TITLE = 'Send texts'
+export const TEXTS_SWITCH_WHAT = 'When this is on, the office can text a person from their thread. Each text goes from the company number.'
+export const TEXTS_SWITCH_ALWAYS = 'Even when it is off, the app answers a HELP text and confirms a stop. The carriers expect both.'
+export const TEXTS_SWITCH_CONFIRM = {
+  title: 'Turn on texts?',
+  message: 'The office can then text people from the company number. Each one is a real text to their phone.',
+  confirmLabel: 'Turn it on',
+} as const
+export const TEXTS_ON_TOAST = 'Texts are on. The office can text from a thread now.'
+export const TEXTS_OFF_TOAST = 'Texts are off. A text waits until they are on again.'
+export const TEXTS_NOT_SAVED = 'The switch did not change. Only the owner or a dev can turn texts on or off.'

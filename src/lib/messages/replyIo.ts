@@ -8,8 +8,8 @@
  * - An email goes through `messages-email`: Resend's existing send as the service role, the sent copy filed with the
  *   line as its source, and the line written in `messages` with its job and the address it went to. Its files (cut 7e)
  *   go as the function takes them (`documents/emailFileAsks.ts`), each kept on the line with how it went.
- * - A text goes through `quo-send` (cut 5), from the company number. Until the phone is switched on the box never calls
- *   it (`TEXTS_ON`).
+ * - A text goes through `quo-send` (cut 5), from the company number. While the texts switch is off the box never calls
+ *   it (`useTextsOn`, Settings → Phone and texts → Send texts).
  */
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
@@ -21,9 +21,6 @@ import type { ComposeSender, EmailDraft } from './compose'
 import type { DayKept } from './owed'
 import { jobRefOf } from './load'
 import { tieOf } from './replyBox'
-
-/** Whether a text can go: Quo is switched on (cut 5's go). Until then the send window shows a text and says it waits. */
-export const TEXTS_ON = false
 
 /** The words a text says while the phone is not switched on. */
 export const TEXTS_WAIT = 'Texts wait until the phone is switched on. Send this as an email, or come back to it then.'
