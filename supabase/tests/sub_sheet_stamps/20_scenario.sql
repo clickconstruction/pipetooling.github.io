@@ -14,7 +14,9 @@ INSERT INTO auth.users (id, email) VALUES ('00000000-0000-0000-0000-0000000009d1
 INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VALUES
   ('00000000-0000-0000-0000-0000000009d1', 'dev@stamps.test', 'Stamps Dev', 'dev', false, false)
   ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, name = EXCLUDED.name, read_only = false, is_digital_twin = false;
-INSERT INTO public.jobs_ledger (id) VALUES ('00000000-0000-0000-0000-0000000009a1');
+INSERT INTO public.service_types (id, name) VALUES ('00000000-0000-0000-0000-0000000009e1', 'Stamps Plumbing');
+INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name) VALUES
+  ('00000000-0000-0000-0000-0000000009a1', '00000000-0000-0000-0000-0000000009d1', '00000000-0000-0000-0000-0000000009e1', 'Stamps job');
 
 CREATE SCHEMA sss;
 CREATE FUNCTION sss.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
