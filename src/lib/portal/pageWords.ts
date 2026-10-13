@@ -424,6 +424,14 @@ export const PAPER_WORDS: Record<PortalPaperId, Record<PortalLang, PaperWords>> 
     en: { label: "Architect's certificate", why: 'Certify it or send it back with a note.', button: 'Certify the pay application' },
     es: { label: 'Certificado del arquitecto', why: 'Certifíquela o devuélvala con una nota.', button: 'Certifique la solicitud de pago' },
   },
+  estimate: {
+    en: { label: 'Estimate', onIt: 'We are writing up your estimate.', why: 'Read it and approve it here.', button: 'See the estimate' },
+    es: { label: 'Presupuesto', onIt: 'Estamos preparando su presupuesto.', why: 'Léalo y apruébelo aquí.', button: 'Ver el presupuesto' },
+  },
+  bill: {
+    en: { label: 'Bill', onIt: 'We are getting your bill ready.', why: 'Pay it here.', button: 'See the bill' },
+    es: { label: 'Factura', onIt: 'Estamos preparando su factura.', why: 'Páguela aquí.', button: 'Ver la factura' },
+  },
 }
 
 /** A paper's words in a language. */

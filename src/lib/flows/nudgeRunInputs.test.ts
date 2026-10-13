@@ -73,9 +73,11 @@ describe('appSendsFrom: the owner’s switch as stored', () => {
   })
 
   it('turns a step on only with true, under a kind the app knows', () => {
-    expect(appSendsFrom({ trade: { portal: true, msa: 'yes', ask: 1, sow: false }, customer: { contract: true }, sub: { yes: true }, arch: [] })).toEqual({
+    // The residential customer and the sub are kinds the app knows since the residential flow (v2.5396); robot is not one.
+    expect(appSendsFrom({ trade: { portal: true, msa: 'yes', ask: 1, sow: false }, customer: { contract: true }, sub: { yes: true }, robot: { yes: true }, arch: [] })).toEqual({
       trade: { portal: true },
       customer: { contract: true },
+      sub: { yes: true },
     })
   })
 

@@ -83,7 +83,7 @@ export interface PersonFlow {
 // ---------- the paper words ----------
 
 /** The papers we send that nobody signs: each finishes its step when it goes. */
-const UNSIGNED: ReadonlySet<PaperId> = new Set<PaperId>(['invitation', 'bid', 'schedule', 'payapp'])
+const UNSIGNED: ReadonlySet<PaperId> = new Set<PaperId>(['invitation', 'bid', 'schedule', 'payapp', 'estimate', 'bill'])
 
 /** Whether the paper waits on their signature once it goes. */
 export const paperSigned = (paper: PaperId): boolean => !UNSIGNED.has(paper)
