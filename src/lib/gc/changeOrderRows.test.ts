@@ -28,6 +28,9 @@ const row = (over: Partial<ChangeOrderRow>): ChangeOrderRow => ({
   plan_set_id: null,
   created_by: null,
   created_at: '2026-10-08T15:00:00Z',
+  description_es: null,
+  signer_contact_id: null,
+  source_message_id: null,
   ...over,
 })
 

@@ -5,7 +5,7 @@ import { initialGcState } from './schedule/testState'
 
 const row = (over: Partial<ChangeOrderOfficeRow> = {}): ChangeOrderOfficeRow => ({
   id: 'co-1', project_id: 'fairoaksd', number: 1, description: 'Thicker slab at grid C', reason: 'plans', schedule_words: 'Two more days on the slab.',
-  package_id: 'fconc', status: 'signed', sent_on: '2026-09-24', answered_on: '2026-09-26', days: 2, days_on_chart: null, ...over,
+  package_id: 'fconc', status: 'signed', sent_on: '2026-09-24', answered_on: '2026-09-26', days: 2, days_on_chart: null, signer_contact_id: null, source_message_id: null, ...over,
 })
 
 describe('the office’s view of a change order (the schedule’s PR 16b-ii)', () => {

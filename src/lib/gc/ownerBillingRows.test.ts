@@ -60,6 +60,9 @@ function rowsOf(state: GcState, project: GcProject): OwnerBillingRows {
         conditional_waiver_id: null,
         invoice_id: null,
         created_at: `${app.sentOn}T15:00:00Z`,
+        customer_line: null,
+        customer_line_es: null,
+        paid_on: null,
       }
     }),
     lines: sent.flatMap((app) =>
@@ -199,6 +202,9 @@ describe('money in on the billing job (O5c)', () => {
     invoice_id: 'inv-1',
     conditional_waiver_id: null,
     created_at: '2026-09-25T15:00:00Z',
+    customer_line: null,
+    customer_line_es: null,
+    paid_on: null,
     ...over,
   })
   const money = (over: Partial<OwnerBillingMoney> = {}): OwnerBillingMoney => ({

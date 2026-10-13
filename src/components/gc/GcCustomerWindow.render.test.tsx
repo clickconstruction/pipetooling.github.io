@@ -352,6 +352,7 @@ describe('GcCustomerWindow · their money, for the money team (the Board’s B2b
       id: 'a1', project_id: 'p1', number: 1, final: false, period_to: '2026-08-31', sent_on: '2026-08-31', sent_by: null, retainage_pct: 10,
       retainage_step_at_pct: null, retainage_step_to_pct: null, retainage_step_way: null, retainage: 1000, work_to_date: 10000, due: 9000,
       certified: 9000, certified_on: '2026-09-01', certified_note: '', certified_by: null, invoice_id: null, conditional_waiver_id: null, created_at: '2026-08-31T15:00:00Z',
+      customer_line: null, customer_line_es: null, paid_on: null,
     }
     const billing: BillingRows = {
       terms: [{ project_id: 'p1', owner_retainage_pct: 10, owner_retainage_step_at_pct: null, owner_retainage_step_to_pct: null, owner_retainage_step_way: null, owner_pay_days: 30, owner_late_interest_pct_per_month: null, owner_late_finish_per_day: null, billing_job_id: null, property_owner_customer_id: null }],
